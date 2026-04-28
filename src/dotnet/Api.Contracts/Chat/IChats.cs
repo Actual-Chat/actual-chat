@@ -43,7 +43,7 @@ public interface IChats : IComputeService
     Task<ChatTile> GetTile(
         Session session,
         ChatId chatId,
-        Range<long> idTileRange,
+        Range<long> lidTileRange,
         CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration = 300)]
@@ -52,7 +52,7 @@ public interface IChats : IComputeService
         Session session,
         ChatId chatId,
         int entryKind,
-        Range<long> idTileRange,
+        Range<long> lidTileRange,
         CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration = 300)]

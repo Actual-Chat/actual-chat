@@ -185,7 +185,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var tile = new ChatTile(new Range<long>(0, 100), false, entries);
 
         var s = tile.PassThroughModernSerializers(Out);
-        s.IdTileRange.Should().Be(tile.IdTileRange);
+        s.LidTileRange.Should().Be(tile.LidTileRange);
         s.IncludesRemoved.Should().Be(tile.IncludesRemoved);
         s.Entries.Length.Should().Be(tile.Entries.Length);
     }
@@ -209,12 +209,12 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             100);
 
         var s = meta.PassThroughAllSerializers(Out);
-        s.IdRange.Should().Be(meta.IdRange);
-        s.EntryIdRanges.Should().BeEquivalentTo(meta.EntryIdRanges);
-        s.ConversationIdRanges.Should().BeEquivalentTo(meta.ConversationIdRanges);
+        s.LidRange.Should().Be(meta.LidRange);
+        s.EntryLidRanges.Should().BeEquivalentTo(meta.EntryLidRanges);
+        s.ConversationLidRanges.Should().BeEquivalentTo(meta.ConversationLidRanges);
         s.MinCount.Should().Be(meta.MinCount);
-        s.PreviousIdTileStart.Should().Be(meta.PreviousIdTileStart);
-        s.NextIdTileStart.Should().Be(meta.NextIdTileStart);
+        s.PreviousLidTileStart.Should().Be(meta.PreviousLidTileStart);
+        s.NextLidTileStart.Should().Be(meta.NextLidTileStart);
     }
 
     [Fact]
@@ -230,8 +230,8 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var s = meta.PassThroughAllSerializers(Out);
         s.ChatId.Should().Be(meta.ChatId);
         s.EntryRanges.Should().BeEquivalentTo(meta.EntryRanges);
-        s.PreviousEntryId.Should().Be(meta.PreviousEntryId);
-        s.NextEntryId.Should().Be(meta.NextEntryId);
+        s.PreviousEntryLid.Should().Be(meta.PreviousEntryLid);
+        s.NextEntryLid.Should().Be(meta.NextEntryLid);
     }
 
     [Fact]
@@ -263,7 +263,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             [new ChatEntryLanguage(entryId, 1) { Languages = [Languages.English] }]);
 
         tile.AssertPassesThroughAllSerializers(v => {
-            v.IdTileRange.Should().Be(tile.IdTileRange);
+            v.LidTileRange.Should().Be(tile.LidTileRange);
             v.Entries.Length.Should().Be(tile.Entries.Length);
             v.Entries[0].Id.Should().Be(tile.Entries[0].Id);
         }, Out);

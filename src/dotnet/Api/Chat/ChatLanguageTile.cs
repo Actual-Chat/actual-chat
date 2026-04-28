@@ -3,7 +3,7 @@
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial class ChatLanguageTile
 {
-    [DataMember, MemoryPackOrder(0), Key(0)] public Range<long> IdTileRange { get; init; }
+    [DataMember, MemoryPackOrder(0), Key(0)] public Range<long> LidTileRange { get; init; }
     // Entries area always sorted by Id!
     [DataMember, MemoryPackOrder(1), Key(1)] public ChatEntryLanguage[] Entries { get; init; } = [];
 
@@ -13,23 +13,23 @@ public sealed partial class ChatLanguageTile
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public ChatLanguageTile() { }
 
-    public ChatLanguageTile(Range<long> idTileRange, ChatEntryLanguage[] entries)
+    public ChatLanguageTile(Range<long> lidTileRange, ChatEntryLanguage[] entries)
     {
-        IdTileRange = idTileRange;
+        LidTileRange = lidTileRange;
         Entries = entries;
     }
 
     public ChatLanguageTile(IEnumerable<ChatLanguageTile> tiles)
     {
         var entries = new List<ChatEntryLanguage>();
-        var idTile = new Range<long>(long.MaxValue, long.MinValue);
+        var lidTile = new Range<long>(long.MaxValue, long.MinValue);
         foreach (var tile in tiles) {
-            idTile = idTile.MinMaxWith(tile.IdTileRange);
+            lidTile = lidTile.MinMaxWith(tile.LidTileRange);
             foreach (var entry in tile.Entries)
                 entries.Add(entry);
         }
 
-        IdTileRange = idTile;
+        LidTileRange = lidTile;
         Entries = entries.ToArray();
     }
 }

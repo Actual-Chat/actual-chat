@@ -10,21 +10,21 @@ public record EntryGroup(IReadOnlyList<ChatEntrySlim> Entries, int WordCount = 0
             return [];
 
         var idRanges = new List<Range<long>>();
-        long? startId = null, endId = null;
+        long? startLid = null, endLid = null;
         foreach (var lid in Entries.Select(e => e.LocalId).OrderBy(id => id).EnsureMonotonic())
-            if (startId is null) {
+            if (startLid is null) {
                 startId = lid;
                 endId = lid;
             }
             else if (lid == endId + 1)
                 endId = lid;
             else {
-                idRanges.Add(new Range<long>(startId.Value, endId!.Value + 1));
+                idRanges.Add(new Range<long>(startLid.Value, endLid!.Value + 1));
                 startId = lid;
                 endId = lid;
             }
-        if (startId != null && endId != null)
-            idRanges.Add(new Range<long>(startId.Value, endId.Value + 1));
+        if (startLid != null && endLid != null)
+            idRanges.Add(new Range<long>(startLid.Value, endLid.Value + 1));
 
         return idRanges;
     }

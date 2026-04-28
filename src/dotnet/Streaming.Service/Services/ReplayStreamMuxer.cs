@@ -310,8 +310,8 @@ public sealed class ReplayStreamMuxer : WorkerBase
         if (startEntry == null)
             return null;
 
-        Range<long> idRange = (startEntry.LocalId, fullIdRange.End);
-        var entries = entryReader.Read(idRange, cancellationToken);
+        Range<long> lidRange = (startEntry.LocalId, fullIdRange.End);
+        var entries = entryReader.Read(lidRange, cancellationToken);
         ChatEntry? lastEntry = null;
         await foreach (var entry in entries.ConfigureAwait(false)) {
             if (!entry.HasAudio || entry.IsContentStreaming)
@@ -324,8 +324,8 @@ public sealed class ReplayStreamMuxer : WorkerBase
         if (lastEntry == null)
             return null;
 
-        idRange = ((Range<long>)(fullIdRange.Start, lastEntry.LocalId)).MoveEnd(1);
-        var reverseEntries = entryReader.ReadReverse(idRange, cancellationToken);
+        lidRange = ((Range<long>)(fullIdRange.Start, lastEntry.LocalId)).MoveEnd(1);
+        var reverseEntries = entryReader.ReadReverse(lidRange, cancellationToken);
         var remainingOffset = offset;
         var lastPlayingAt = playingAt;
         await foreach (var entry in reverseEntries.ConfigureAwait(false)) {

@@ -5,8 +5,8 @@
 public sealed partial record ChatEntryRangeMeta(
     [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId? ChatId,
     [property: DataMember, MemoryPackOrder(1), Key(1)] Range<long>[] EntryRanges,
-    [property: DataMember, MemoryPackIgnore, Key(2)] long? PreviousEntryId,
-    [property: DataMember, MemoryPackIgnore, Key(3)] long? NextEntryId)
+    [property: DataMember, MemoryPackIgnore, Key(2)] long? PreviousEntryLid,
+    [property: DataMember, MemoryPackIgnore, Key(3)] long? NextEntryLid)
 {
     public static readonly ChatEntryRangeMeta None = new(null, [], null, null);
 
@@ -17,14 +17,14 @@ public sealed partial record ChatEntryRangeMeta(
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(2), IgnoreMember]
     private ApiNullable8<long> MemoryPackPreviousEntryId {
-        get => PreviousEntryId;
-        init => PreviousEntryId = value;
+        get => PreviousEntryLid;
+        init => PreviousEntryLid = value;
     }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(3), IgnoreMember]
     private ApiNullable8<long> MemoryPackNextEntryId {
-        get => NextEntryId;
-        init => NextEntryId = value;
+        get => NextEntryLid;
+        init => NextEntryLid = value;
     }
 
     #endregion

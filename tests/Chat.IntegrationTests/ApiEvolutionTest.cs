@@ -118,7 +118,7 @@ public class ApiEvolutionTest(ITestOutputHelper @out) : TestBase(@out)
             v.CanWrite().Should().BeTrue();
         });
         DeserializeOne<ChatNews>(dir, errors, v => {
-            v.TextEntryIdRange.Should().Be(new Range<long>(1, 100));
+            v.TextEntryLidRange.Should().Be(new Range<long>(1, 100));
             v.LastTextEntry.Should().NotBeNull();
         });
         DeserializeOne<ChatEntry>(dir, errors, v => {
@@ -127,7 +127,7 @@ public class ApiEvolutionTest(ITestOutputHelper @out) : TestBase(@out)
         });
         DeserializeOne<ChatTile>(dir, errors, v => {
             v.Entries.Length.Should().Be(1);
-            v.IdTileRange.Should().Be(new Range<long>(0, 100));
+            v.LidTileRange.Should().Be(new Range<long>(0, 100));
         });
         DeserializeOne<AuthorFull>(dir, errors, v => {
             v.UserId.Should().Be(TestUserId);

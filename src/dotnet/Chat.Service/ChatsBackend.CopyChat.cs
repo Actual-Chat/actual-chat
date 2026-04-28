@@ -70,9 +70,9 @@ public partial class ChatsBackend
                         cancellationToken)
                     .ConfigureAwait(false);
 
-            var sourceChatRange = await GetIdRange(chatId, true, cancellationToken).ConfigureAwait(false);
+            var sourceChatRange = await GetLidRange(chatId, true, cancellationToken).ConfigureAwait(false);
             if (!sourceChatRange.IsEmpty) {
-                var newChatRange = await GetIdRange(newChatId, true, cancellationToken).ConfigureAwait(false);
+                var newChatRange = await GetLidRange(newChatId, true, cancellationToken).ConfigureAwait(false);
                 var startEntryId = !newChatRange.IsEmpty ? newChatRange.End : 1;
                 var endEntryId = sourceChatRange.End;
                 if (endEntryId > startEntryId)
@@ -321,16 +321,16 @@ public partial class ChatsBackend
 
     private async Task<CopyChatEntriesResult> CopyChatEntries(
         CopyChatEntriesContext context,
-        Range<long> entryIdRange,
+        Range<long> entryLidRange,
         int batchLimit,
         CancellationToken cancellationToken)
     {
-        if (entryIdRange.IsEmpty)
+        if (entryLidRange.IsEmpty)
             return new CopyChatEntriesResult(0, null);
 
         Log.LogInformation(
             "-> CopyChatEntries({CorrelationId}), entry Id range is [{Start},{End})",
-            context.CorrelationId, entryIdRange.Start, entryIdRange.End);
+            context.CorrelationId, entryLidRange.Start, entryLidRange.End);
 
         var dbContext = await DbHub.CreateDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
         dbContext.Database.SetCommandTimeout(TimeSpan.FromSeconds(30));
@@ -340,7 +340,7 @@ public partial class ChatsBackend
 
         var result = await CopyChatEntries(dbContext,
                 context,
-                entryIdRange,
+                entryLidRange,
                 batchLimit,
                 cancellationToken)
             .ConfigureAwait(false);
@@ -350,7 +350,7 @@ public partial class ChatsBackend
 
         Log.LogInformation(
             "<- CopyChatEntries({CorrelationId}), entry Id range is [{Start},{End})",
-            context.CorrelationId, entryIdRange.Start, entryIdRange.End);
+            context.CorrelationId, entryLidRange.Start, entryLidRange.End);
 
         return result;
     }
@@ -358,7 +358,7 @@ public partial class ChatsBackend
     private async Task<CopyChatEntriesResult> CopyChatEntries(
         ChatDbContext dbContext,
         CopyChatEntriesContext context,
-        Range<long> entryIdRange,
+        Range<long> entryLidRange,
         int batchLimit,
         CancellationToken cancellationToken)
     {
@@ -371,8 +371,8 @@ public partial class ChatsBackend
         var mentionUpdatesInsideContent = 0;
         var mentionUpdatesInSystemEntries = 0;
 
-        var minLocalId = entryIdRange.Start;
-        var maxLocalId = entryIdRange.End;
+        var minLocalId = entryLidRange.Start;
+        var maxLocalId = entryLidRange.End;
         var attachmentIds = new List<long>();
         var reactionIds = new List<long>();
 
@@ -399,7 +399,7 @@ public partial class ChatsBackend
                 chatSid,
                 newChatId,
                 correlationId,
-                new Range<long>(entryIdRange.Start, lastFetchedEntry.LocalId + 1),
+                new Range<long>(entryLidRange.Start, lastFetchedEntry.LocalId + 1),
                 migratedAuthors,
                 chatEntryWithMentionIds,
                 cancellationToken)

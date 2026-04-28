@@ -137,7 +137,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
                 if (position.EntryLid <= 0)
                     continue;
 
-                var idRange = await ChatsBackend.GetIdRange(chatId, false, cancellationToken).ConfigureAwait(false);
+                var idRange = await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
                 var lastEntryLid = idRange.End - 1;
                 if (lastEntryLid >= position.EntryLid)
                     continue;

@@ -77,18 +77,18 @@ public partial class Chats(IServiceProvider services) : IChats
     public virtual async Task<ChatTile> GetTile(
         Session session,
         ChatId chatId,
-        Range<long> idTileRange,
+        Range<long> lidTileRange,
         CancellationToken cancellationToken)
     {
         await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetTile(chatId, idTileRange, false, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetTile(chatId, lidTileRange, false, cancellationToken).ConfigureAwait(false);
     }
 
     // Legacy compat: old clients send ChatEntryKind parameter
     [Obsolete("2026.03: Use GetTile without entryKind")]
     public virtual Task<ChatTile> GetTile(
-        Session session, ChatId chatId, int entryKind, Range<long> idTileRange, CancellationToken cancellationToken)
-        => GetTile(session, chatId, idTileRange, cancellationToken);
+        Session session, ChatId chatId, int entryKind, Range<long> lidTileRange, CancellationToken cancellationToken)
+        => GetTile(session, chatId, lidTileRange, cancellationToken);
 
     // [ComputeMethod]
     public virtual async Task<ChatRangeMeta> GetChatRangeMeta(
@@ -109,7 +109,7 @@ public partial class Chats(IServiceProvider services) : IChats
         CancellationToken cancellationToken)
     {
         await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetIdRange(chatId, false, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
     }
 
     // Legacy compat: old clients send ChatEntryKind parameter
@@ -763,7 +763,7 @@ public partial class Chats(IServiceProvider services) : IChats
             }
         }
         {
-            var textEntryRange = await Backend.GetIdRange(newChatId, false, cancellationToken).ConfigureAwait(false);
+            var textEntryRange = await Backend.GetLidRange(newChatId, false, cancellationToken).ConfigureAwait(false);
             var maxEntryId = textEntryRange.End > 0 ? textEntryRange.End - 1 : 0;
             var userIds = await AuthorsBackend.ListUserIds(newChatId, cancellationToken).ConfigureAwait(false);
             var updateUserChatSettingCount = 0;

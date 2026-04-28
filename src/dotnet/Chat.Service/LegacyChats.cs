@@ -18,9 +18,9 @@ public class LegacyChats(IServiceProvider services) : ILegacyChats
     }
 
     public virtual async Task<LegacyChatTile> GetTile(
-        Session session, ChatId chatId, Range<long> idTileRange, CancellationToken cancellationToken)
+        Session session, ChatId chatId, Range<long> lidTileRange, CancellationToken cancellationToken)
     {
-        var tile = await Chats.GetTile(session, chatId, idTileRange, cancellationToken).ConfigureAwait(false);
+        var tile = await Chats.GetTile(session, chatId, lidTileRange, cancellationToken).ConfigureAwait(false);
         return LegacyChatTile.From(tile);
     }
 

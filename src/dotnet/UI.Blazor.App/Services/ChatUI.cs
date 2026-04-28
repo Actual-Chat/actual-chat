@@ -534,7 +534,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         var unreadCount = 0;
         if (chatNews is not null && (readEntryLid > 0 || (chatId.Kind == ChatKind.Peer && readEntryLid == 0))) {
             // Otherwise the chat wasn't ever opened
-            var lastId = chatNews.TextEntryIdRange.End - 1;
+            var lastId = chatNews.TextEntryLidRange.End - 1;
             unreadCount = (int)(lastId - readEntryLid).Clamp(0, ChatInfo.MaxUnreadCount);
         }
         return new Trimmed<int>(unreadCount, ChatInfo.MaxUnreadCount);

@@ -85,9 +85,9 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // [Computed]
-    public virtual async Task<Conversation[]> GetTile(ChatId chatId, Range<long> idTileRange, CancellationToken cancellationToken)
+    public virtual async Task<Conversation[]> GetTile(ChatId chatId, Range<long> lidTileRange, CancellationToken cancellationToken)
     {
-        var idTiles = IdTileStack.LastLayer.GetCoveringTiles(idTileRange);
+        var idTiles = IdTileStack.LastLayer.GetCoveringTiles(lidTileRange);
         var conversationTiles = await idTiles
             .Select(idTile => GetRangeMeta(chatId, idTile.Range.Start, cancellationToken))
             .Collect(cancellationToken)
@@ -368,10 +368,10 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     // Private methods
 
-    private async Task<ConversationEntriesInfo> GetTextEntries(ChatId chatId, Range<long>[] entryIdRanges, CancellationToken cancellationToken)
+    private async Task<ConversationEntriesInfo> GetTextEntries(ChatId chatId, Range<long>[] entryLidRanges, CancellationToken cancellationToken)
     {
-        Log.LogInformation("-> GetTextEntries: {Ranges}", entryIdRanges.Select(c => c.ToString()).ToCommaPhrase());
-        var idTiles = entryIdRanges
+        Log.LogInformation("-> GetTextEntries: {Ranges}", entryLidRanges.Select(c => c.ToString()).ToCommaPhrase());
+        var idTiles = entryLidRanges
             .SelectMany(idRange => IdTileStack.GetOptimalCoveringTiles(idRange))
             .ToList();
 
@@ -385,7 +385,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         var attachmentCount = 0;
         var chatEntries = tiles
             .SelectMany(tile => tile.Entries)
-            .Where(e => entryIdRanges.Any(r => r.Contains(e.LocalId)))
+            .Where(e => entryLidRanges.Any(r => r.Contains(e.LocalId)))
             .ToArray();
         foreach (var entry in chatEntries) {
             textEntries.Add(new ChatEntrySlim(entry));

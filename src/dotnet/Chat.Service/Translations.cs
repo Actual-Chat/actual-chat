@@ -24,10 +24,10 @@ public class Translations(IServiceProvider services) : ITranslations
     public virtual async Task<ChatLanguageTile> GetLanguageTile(
         Session session,
         ChatId chatId,
-        Range<long> idTileRange,
+        Range<long> lidTileRange,
         CancellationToken cancellationToken)
     {
         _ = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
-        return await ChatEntryLanguagesBackend.GetTile(chatId, idTileRange, cancellationToken).ConfigureAwait(false);
+        return await ChatEntryLanguagesBackend.GetTile(chatId, lidTileRange, cancellationToken).ConfigureAwait(false);
     }
 }

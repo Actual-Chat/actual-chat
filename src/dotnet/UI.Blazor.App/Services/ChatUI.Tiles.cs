@@ -51,7 +51,7 @@ public partial class ChatUI
         if (chat == null)
             return ChatItems.Empty;
 
-        var metaIdTiles = ServerIdTileStack.LastLayer.GetCoveringTiles(dataQuery.ExistingIdRange.Expand(LoadLimit))
+        var metaIdTiles = ServerIdTileStack.LastLayer.GetCoveringTiles(dataQuery.ExistingLidRange.Expand(LoadLimit))
             .Where(t => t.Start >= 0)
             .ToList();
         var chatRangeMetaList = (await metaIdTiles
@@ -59,15 +59,15 @@ public partial class ChatUI
                     => Chats.GetChatRangeMeta(Session, chatId, metaIdTile.Range.Start, cancellationToken))
                 .Collect(cancellationToken)
                 .ConfigureAwait(false))
-            .OrderBy(m => m.IdRange.Start)
-            .ThenByDescending(m => m.IdRange.Size()) // ChatRangeMeta can be overlapping, so we need to keep the largest
-            .EnsureMonotonic(Comparer<ChatRangeMeta>.Create((a, b) => a.IdRange.Start.CompareTo(b.IdRange.Start)))
+            .OrderBy(m => m.LidRange.Start)
+            .ThenByDescending(m => m.LidRange.Size()) // ChatRangeMeta can be overlapping, so we need to keep the largest
+            .EnsureMonotonic(Comparer<ChatRangeMeta>.Create((a, b) => a.LidRange.Start.CompareTo(b.LidRange.Start)))
             .ToList();
 
         var showConversations = chat.IsSummarized ?? false;
         if (showConversations && dataQuery.Navigation is { ShouldRestoreViewPosition: false }) {
             var conversationRanges = chatRangeMetaList
-                .SelectMany(rm => rm.ConversationIdRanges)
+                .SelectMany(rm => rm.ConversationLidRanges)
                 .EnsureMonotonic()
                 .ToList();
             var navigateToId = dataQuery.Navigation.EntryLid;
@@ -103,9 +103,9 @@ public partial class ChatUI
                     HalfLoadLimit);
         }
 
-        Range<long> chatIdRange;
+        Range<long> chatLidRange;
         using (Computed.BeginIsolation())
-            chatIdRange = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
+            chatLidRange = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
 
         if (chatRangeMetaList.Count == 0)
             return ChatItems.Empty;
@@ -113,8 +113,8 @@ public partial class ChatUI
         List<Range<long>> idTiles;
         bool hasMoreBefore, hasMoreAfter;
         while (!TryGetIdTilesToLoad(dataQuery, chatRangeMetaList, out idTiles, out hasMoreBefore, out hasMoreAfter)) {
-            var prevIdTileStart = chatRangeMetaList[0].PreviousIdTileStart;
-            var nextIdTileStart = chatRangeMetaList[^1].NextIdTileStart;
+            var prevIdTileStart = chatRangeMetaList[0].PreviousLidTileStart;
+            var nextIdTileStart = chatRangeMetaList[^1].NextLidTileStart;
             var prevChatRangeMetaTask = prevIdTileStart.HasValue
                 ? Chats.GetChatRangeMeta(Session, chatId, prevIdTileStart.Value, cancellationToken)
                 : Task.FromResult<ChatRangeMeta?>(null)!;
@@ -157,7 +157,7 @@ public partial class ChatUI
         var chatSendingMessages = Hub.SendingMessages.GetSendingMessages(chatId);
         var chatSendingMessagesWrapper = new IgnoreComputeArg<ChatSendingMessagesAccessor>(chatSendingMessages);
         var tiles = new List<VirtualListTile<ChatMessage>>();
-        var hasVeryFirstItem = idTiles.Count > 0 && idTiles[0].Start <= chatIdRange.Start;
+        var hasVeryFirstItem = idTiles.Count > 0 && idTiles[0].Start <= chatLidRange.Start;
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId) : null;
         var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
         foreach (var idTile in idTiles) {
@@ -166,7 +166,7 @@ public partial class ChatUI
                 lastReadEntryLid = 0;
             else if (shownReadyEntryLid >= idTile.End - 1)
                 lastReadEntryLid = long.MaxValue;
-            var isLastTile = idTile.Contains(chatIdRange.End - 1);
+            var isLastTile = idTile.Contains(chatLidRange.End - 1);
             var tile = await GetTile(
                     chatId,
                     chat.Rules.Author?.Id,
@@ -175,7 +175,7 @@ public partial class ChatUI
                     expandedConversations,
                     prevMessage,
                     lastReadEntryLid,
-                    isLastTile ? chatIdRange.End : null,
+                    isLastTile ? chatLidRange.End : null,
                     chatSendingMessagesWrapper,
                     cancellationToken)
                 .ConfigureAwait(false);
@@ -275,13 +275,13 @@ public partial class ChatUI
                 return true;
             }
 
-            var hasPreviousIdTile = chatRangeMeta1[0].PreviousIdTileStart.HasValue;
-            var hasNextIdTile = chatRangeMeta1[^1].NextIdTileStart.HasValue;
+            var hasPreviousIdTile = chatRangeMeta1[0].PreviousLidTileStart.HasValue;
+            var hasNextIdTile = chatRangeMeta1[^1].NextLidTileStart.HasValue;
             var entryIdRanges = chatRangeMeta1
-                .SelectMany(m => m.EntryIdRanges)
+                .SelectMany(m => m.EntryLidRanges)
                 .EnsureMonotonic();
             var conversationIdRanges = chatRangeMeta1
-                .SelectMany(m => m.ConversationIdRanges)
+                .SelectMany(m => m.ConversationLidRanges)
                 .EnsureMonotonic();
 
             var excludedRanges = conversationIdRanges
@@ -340,12 +340,12 @@ public partial class ChatUI
             var resultIdRangesSpan = resultIdRanges.AsSpan();
             var startIdWithOffset = GetIdWithOffset(
                 resultIdRangesSpan,
-                dataQuery1.ExistingIdRange.Start,
+                dataQuery1.ExistingLidRange.Start,
                 dataQuery1.StartOffset);
 
             var endIdWithOffset = GetIdWithOffset(
                 resultIdRangesSpan,
-                dataQuery1.ExistingIdRange.End,
+                dataQuery1.ExistingLidRange.End,
                 dataQuery1.EndOffset);
 
             var hasFulfilledStart = (startIdWithOffset != null && HasOffsetReached(dataQuery1.StartOffset, startIdWithOffset.Value.ActualOffset)) || !hasPreviousIdTile;
@@ -388,7 +388,7 @@ public partial class ChatUI
     protected virtual async Task<VirtualListTile<ChatMessage>> GetTile(
         ChatId chatId,
         AuthorId? currentAuthorId,
-        Range<long> idRange,
+        Range<long> lidRange,
         bool showConversations,
         IImmutableSet<ConversationId> expandedConversations,
         ChatMessage? prevMessage,
@@ -398,19 +398,19 @@ public partial class ChatUI
         CancellationToken cancellationToken = default)
     {
         // DebugLog?.LogDebug("GetTile: {ChatId} {IdRange} {LastReadEntryId}", chatId, idRange, lastReadEntryId);
-        if (idRange.IsEmptyOrNegative)
-            throw new ArgumentOutOfRangeException(nameof(idRange));
+        if (lidRange.IsEmptyOrNegative)
+            throw new ArgumentOutOfRangeException(nameof(lidRange));
 
         var chatSendingMessages = chatSendingMessagesWrapper.Value;
         var requestedIdRange = prevMessage == null
-            ? idRange.MoveStart(-IdTileStack.FirstLayer
+            ? lidRange.MoveStart(-IdTileStack.FirstLayer
                 .TileSize) // to request previous item of requested range to properly render block star - we will drop it off
-            : idRange;
+            : lidRange;
         var idRangesToSkip = Array.Empty<Range<long>>();
         var conversations = Array.Empty<Conversation>();
         var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
         if (showConversations) {
-            var conversationIdTile = ServerIdTileStack.LastLayer.GetTile(idRange.Start); // Get largest tile that contains the requested range
+            var conversationIdTile = ServerIdTileStack.LastLayer.GetTile(lidRange.Start); // Get largest tile that contains the requested range
             var conversationTile = await Conversations
                 .GetTile(Session, chatId, conversationIdTile.Range, cancellationToken)
                 .ConfigureAwait(false);
@@ -434,7 +434,7 @@ public partial class ChatUI
             .Collect(ApiConstants.Concurrency.High, cancellationToken)
             .ConfigureAwait(false);
         var entries = new List<ChatEntry>();
-        foreach (var tile in tiles.OrderBy(t => t.IdTileRange.Start)) {
+        foreach (var tile in tiles.OrderBy(t => t.LidTileRange.Start)) {
             foreach (var e in tile.Entries) {
                 if (idRangesToSkip.Any(range => range.Contains(e.Id.LocalId)))
                     continue;
@@ -462,7 +462,7 @@ public partial class ChatUI
             }
         }
         if (entries.Count == 0 && conversations.Length == 0)
-            return new VirtualListTile<ChatMessage>(idRange);
+            return new VirtualListTile<ChatMessage>(lidRange);
 
         IReadOnlyDictionary<ChatEntryId, string> indexDocIds = ImmutableDictionary<ChatEntryId, string>.Empty;
 
@@ -512,7 +512,7 @@ public partial class ChatUI
                 var isForwardAuthorBlockStart = isForwardBlockStart || (isForward && isForwardFromOtherAuthor);
                 var isEntryUnread = entry.LocalId > lastReadEntryId && !isClientMsg;
                 var isAudio = entry.HasAudio;
-                var shouldAddToResult = idRange.Contains(entry.LocalId) || entry.IsSending; // add sending entries
+                var shouldAddToResult = lidRange.Contains(entry.LocalId) || entry.IsSending; // add sending entries
                 var flags = default(ChatMessageFlags);
                 if (isBlockStart)
                     flags |= ChatMessageFlags.BlockStart;
@@ -639,12 +639,12 @@ public partial class ChatUI
             }
             prevDate = date;
         }
-        if (messages.Count > 0 && !idRange.Contains(messages[0].Id))
+        if (messages.Count > 0 && !lidRange.Contains(messages[0].Id))
             // Remove messages that are outside requested range
             messages.RemoveAll(m =>
-                (m is ChatEntryMessage && !idRange.Contains(m.Id))
+                (m is ChatEntryMessage && !lidRange.Contains(m.Id))
                 || (m is ConversationMessage cm && idRange.IntersectWith(cm.Conversation!.EntryRange).IsEmpty));
-        return new VirtualListTile<ChatMessage>($"tile:{idRange.Format()}", messages);
+        return new VirtualListTile<ChatMessage>($"tile:{lidRange.Format()}", messages);
     }
 
     [ComputeMethod]

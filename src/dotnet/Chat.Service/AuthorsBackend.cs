@@ -281,7 +281,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
             if (existingAuthor == null) {
                 // Set the read position to the very end
                 var chatTextIdRange = await ChatsBackend
-                    .GetIdRange(command.ChatId, false, cancellationToken)
+                    .GetLidRange(command.ChatId, false, cancellationToken)
                     .ConfigureAwait(false);
                 var readPosition = new ChatPosition(chatTextIdRange.End - 1);
                 context.Operation.AddEvent(

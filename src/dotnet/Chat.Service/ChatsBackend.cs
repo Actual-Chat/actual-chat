@@ -211,7 +211,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (chat == null)
             return null;
 
-        var idRange = await GetIdRange(chatId, false, cancellationToken).ConfigureAwait(false);
+        var idRange = await GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
         var idTile = IdTileStack.FirstLayer.GetTile(idRange.End - 1);
         var tile = await GetTile(chatId, idTile.Range, false, cancellationToken).ConfigureAwait(false);
         var lastEntry = tile.Entries.Length != 0 ? tile.Entries[^1] : null;
@@ -220,12 +220,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     // Note that it returns (firstId, lastId + 1) range!
     // [ComputeMethod]
-    public virtual async Task<Range<long>> GetIdRange(
+    public virtual async Task<Range<long>> GetLidRange(
         ChatId chatId,
         bool includeRemoved,
         CancellationToken cancellationToken)
     {
-        var minId = await GetMinId(chatId, cancellationToken).ConfigureAwait(false);
+        var minLid = await GetMinLid(chatId, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
@@ -247,11 +247,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     // [ComputeMethod]
     public virtual async Task<ChatTile> GetTile(
         ChatId chatId,
-        Range<long> idTileRange,
+        Range<long> lidTileRange,
         bool includeRemoved,
         CancellationToken cancellationToken)
     {
-        var idTile = IdTileStack.GetTile(idTileRange);
+        var idTile = IdTileStack.GetTile(lidTileRange);
         var smallerIdTiles = idTile.Smaller();
         if (smallerIdTiles.Length != 0) {
             var smallerChatTiles = await smallerIdTiles
@@ -264,8 +264,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return new ChatTile(smallerChatTiles, includeRemoved);
         }
         if (!includeRemoved) {
-            var fullTile = await GetTile(chatId, idTileRange, true, cancellationToken).ConfigureAwait(false);
-            return new ChatTile(idTileRange, false, fullTile.Entries.Where(e => !e.IsRemoved).ToArray());
+            var fullTile = await GetTile(chatId, lidTileRange, true, cancellationToken).ConfigureAwait(false);
+            return new ChatTile(lidTileRange, false, fullTile.Entries.Where(e => !e.IsRemoved).ToArray());
         }
 
         // If we're here, it's the smallest tile & includeRemoved = true
@@ -306,7 +306,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 entry = entry with { Audio = resolvedAudio with { TimeMap = entry.Audio.TimeMap } };
             return entry;
         });
-        return new ChatTile(idTileRange, true, entries.ToArray());
+        return new ChatTile(lidTileRange, true, entries.ToArray());
 
         Task<IReadOnlyDictionary<Symbol, LinkPreview>> GetLinkPreviews()
         {
@@ -330,20 +330,20 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatRangeMeta> GetChatRangeMeta(ChatId chatId, long idTileStart, CancellationToken cancellationToken)
+    public virtual async Task<ChatRangeMeta> GetChatRangeMeta(ChatId chatId, long lidTileStart, CancellationToken cancellationToken)
     {
-        var tile = IdTileStack.LastLayer.AssertIsTileStart(idTileStart);
+        var tile = IdTileStack.LastLayer.AssertIsTileStart(lidTileStart);
 
-        Range<long> chatIdRange;
+        Range<long> chatLidRange;
         using (Computed.BeginIsolation())
-            chatIdRange = await GetIdRange(chatId, false, cancellationToken).ConfigureAwait(false);
+            chatLidRange = await GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
         var start = tile.Start;
         var end = tile.End;
-        var entryIdRanges = new List<Range<long>>();
+        var entryLidRanges = new List<Range<long>>();
         var conversationIdRanges = new List<Range<long>>();
         var minCount = 0;
-        var entryRangeMetaTask = GetEntryRangeMeta(chatId, idTileStart, cancellationToken);
-        var conversationRangeMetaTask = ConversationsBackend.GetRangeMeta(chatId, idTileStart, cancellationToken);
+        var entryRangeMetaTask = GetEntryRangeMeta(chatId, lidTileStart, cancellationToken);
+        var conversationRangeMetaTask = ConversationsBackend.GetRangeMeta(chatId, lidTileStart, cancellationToken);
         await Task.WhenAll(entryRangeMetaTask, conversationRangeMetaTask).ConfigureAwait(false);
 
         var entryRangeMeta = await entryRangeMetaTask.ConfigureAwait(false);
@@ -421,12 +421,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         previousId = Math.Max(previousEntryRangeMeta?.PreviousEntryId ?? 0, (previousConversationRangeMeta?.PreviousConversationRange?.End ?? 1) - 1);
         nextId = Math.Min(nextEntryRangeMeta?.NextEntryId ?? long.MaxValue, nextConversationRangeMeta?.NextConversationRange?.Start ?? long.MaxValue);
-        entryIdRanges.Sort((a, b) => a.Start.CompareTo(b.Start));
+        entryLidRanges.Sort((a, b) => a.Start.CompareTo(b.Start));
         conversationIdRanges.Sort((a, b) => a.Start.CompareTo(b.Start));
 
         // Merge adjacent entryIdRanges into a new collection
         // to avoid duplicates and reduce the number of ranges
-        var mergedEntryIdRanges = entryIdRanges
+        var mergedEntryIdRanges = entryLidRanges
             .MergeAdjacentRanges()
             .ToList();
 
@@ -1400,9 +1400,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .ConfigureAwait(false);
 
             if (previousEntryId != 0)
-                context.Operation.Items.Set(nameof(ChatEntryRangeMeta.PreviousEntryId), previousEntryId);
+                context.Operation.Items.Set(nameof(ChatEntryRangeMeta.PreviousEntryLid), previousEntryId);
             if (nextEntryId != 0)
-                context.Operation.Items.Set(nameof(ChatEntryRangeMeta.NextEntryId), nextEntryId);
+                context.Operation.Items.Set(nameof(ChatEntryRangeMeta.NextEntryLid), nextEntryId);
         }
     }
 
@@ -1795,7 +1795,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             }
         }
         else {
-            var idRange = await GetIdRange(chatId, false, cancellationToken).ConfigureAwait(false);
+            var idRange = await GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
             var lastEntryId = idRange.End - 1; // Start tracking positions stat since this entry
             var shouldTrackPosition = entryLid >= lastEntryId;
             dbContext.Add(new DbReadPositionsStat() {

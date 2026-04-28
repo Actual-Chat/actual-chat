@@ -11,7 +11,7 @@ public interface IChatEntryLanguagesBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ChatLanguageTile> GetTile(
         ChatId chatId,
-        Range<long> idTileRange,
+        Range<long> lidTileRange,
         CancellationToken cancellationToken);
 
     // Command handlers

@@ -27,14 +27,14 @@ public interface IChatsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ChatTile> GetTile(
         ChatId chatId,
-        Range<long> idTileRange,
+        Range<long> lidTileRange,
         bool includeRemoved,
         CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<ChatRangeMeta> GetChatRangeMeta(
         ChatId chatId,
-        long idTileStart,
+        long lidTileStart,
         CancellationToken cancellationToken);
 
     [ComputeMethod]
@@ -45,7 +45,7 @@ public interface IChatsBackend : IComputeService, IBackendService
 
     // Note that it returns (firstId, lastId + 1) range!
     [ComputeMethod]
-    Task<Range<long>> GetIdRange(
+    Task<Range<long>> GetLidRange(
         ChatId chatId,
         bool includeRemoved,
         CancellationToken cancellationToken);

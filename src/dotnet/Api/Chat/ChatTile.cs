@@ -3,7 +3,7 @@ namespace ActualChat.Chat;
 [DataContract, MessagePackObject]
 public sealed partial class ChatTile
 {
-    [DataMember, Key(0)] public Range<long> IdTileRange { get; init; }
+    [DataMember, Key(0)] public Range<long> LidTileRange { get; init; }
     [DataMember, Key(1)] public bool IncludesRemoved { get; init; }
     [DataMember, Key(2)] public Range<Moment> BeginsAtRange { get; init; }
     // Entries area always sorted by Id!
@@ -15,13 +15,13 @@ public sealed partial class ChatTile
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]
     public ChatTile() { }
 
-    public ChatTile(Range<long> idTileRange, bool includesRemoved, ChatEntry[] entries)
+    public ChatTile(Range<long> lidTileRange, bool includesRemoved, ChatEntry[] entries)
     {
         var beginsAtRange = new Range<Moment>(Moment.MaxValue, Moment.MinValue);
         foreach (var entry in entries)
             beginsAtRange = beginsAtRange.MinMaxWith(entry.BeginsAt);
 
-        IdTileRange = idTileRange;
+        LidTileRange = lidTileRange;
         IncludesRemoved = includesRemoved;
         BeginsAtRange = (beginsAtRange.Start, beginsAtRange.End + TimeSpan.FromTicks(1));
         Entries = entries;
@@ -33,13 +33,13 @@ public sealed partial class ChatTile
         var idTile = new Range<long>(long.MaxValue, long.MinValue);
         var beginsAtRange = new Range<Moment>(Moment.MaxValue, Moment.MinValue);
         foreach (var tile in tiles) {
-            idTile = idTile.MinMaxWith(tile.IdTileRange);
+            idTile = idTile.MinMaxWith(tile.LidTileRange);
             beginsAtRange = beginsAtRange.MinMaxWith(tile.BeginsAtRange);
             foreach (var entry in tile.Entries)
                 entries.Add(entry);
         }
 
-        IdTileRange = idTile;
+        LidTileRange = idTile;
         IncludesRemoved = includesRemoved;
         BeginsAtRange = (beginsAtRange.Start, beginsAtRange.End + TimeSpan.FromTicks(1));
         Entries = entries.ToArray();
