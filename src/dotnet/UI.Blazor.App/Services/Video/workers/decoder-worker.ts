@@ -48,6 +48,14 @@ const PULL_LATENCY_REPORT_INTERVAL_MS = 2000;
 let lastLatencyReportAt = 0;
 let apiInitialized = false;
 
+function ensureApiInitialized(apiUrl: string): void {
+    if (apiInitialized) return;
+    Api.init(apiUrl, streamingApi);
+    Api.bindDotNetRpcConnected(WorkerConnectivityUI);
+    Api.requireConnection('VideoDecoder');
+    apiInitialized = true;
+}
+
 function bufferEqual(a: ArrayBuffer, b: ArrayBuffer): boolean {
     if (a.byteLength !== b.byteLength) return false;
     const viewA = new Uint8Array(a);
@@ -427,34 +435,30 @@ const serverImpl: DecoderWorker = {
 
             currentDecoderConfig = config;
 
-            if (config.description) {
-                // Create decoder WITH description — single configure() in AVCC mode.
-                // Do NOT use createDecoder() which strips description, causing
-                // double-configure (Annex B → AVCC) that breaks Chrome's VideoDecoder.
-                decoder = new WebCodecsDecoder(
-                    config,
-                    emitDecodedFrame,
-                    (error) => {
-                        errorLog?.log(`Decoder error (state=${decoder?.getState() ?? '?'}, ` +
-                            `lastChunkSeq=${lastChunkSeq}, lastChunkType=${lastChunkType}, ` +
-                            `lastChunkBytes=${lastChunkSize}, lastDescLen=${lastChunkDescLen}):`, error);
-                    }
-                );
-                decoder.initialize();
-                decoderConfigured = true;
-                initialDescriptionApplied = true;
-                infoLog?.log(`Decoder initialized in AVCC mode (single configure), ` +
-                    `codec=${config.codec}, hwAccel=${config.hardwareAcceleration}, ` +
-                    `descLen=${config.description.byteLength}, ` +
-                    `descHex=${describeBytes(config.description)}`);
-            } else {
-                decoder = createDecoder(config);
-                decoder.initialize();
-                infoLog?.log('Decoder initialized without description');
-            }
+            // Defer decoder.configure() to the first keyframe. iOS Safari HEVC HW
+            // decoder loses state during the idle gap between init's configure()
+            // and first decode (WS handshake + server roundtrip can be hundreds
+            // of ms). Recovery branch already proves single-configure-then-decode
+            // works — match that pattern from the start.
+            decoder = new WebCodecsDecoder(
+                { ...config, description: undefined },
+                emitDecodedFrame,
+                (error) => {
+                    errorLog?.log(`Decoder error (state=${decoder?.getState() ?? '?'}, ` +
+                        `lastChunkSeq=${lastChunkSeq}, lastChunkType=${lastChunkType}, ` +
+                        `lastChunkBytes=${lastChunkSize}, lastDescLen=${lastChunkDescLen}):`, error);
+                }
+            );
+            // Don't call decoder.initialize() — keep state 'unconfigured' until
+            // first keyframe applies its own description via updateDescription.
+            decoderConfigured = false;
+            initialDescriptionApplied = false;
 
             processing = true;
-            infoLog?.log('Ready to decode chunks');
+            warnLog?.log(`[INIT_DEFERRED] Decoder created, configure() deferred to first keyframe, ` +
+                `codec=${config.codec}, hwAccel=${config.hardwareAcceleration}, ` +
+                `descLen=${config.description ? config.description.byteLength : 0}, ` +
+                `decoderState=${decoder.getState()}`);
         } catch (error) {
             errorLog?.log('Failed to initialize decoder:', error);
             throw error;
@@ -478,27 +482,21 @@ const serverImpl: DecoderWorker = {
             // Cross-worker VideoFrame transfer via postMessage+transfer works correctly,
             // unlike WritableStream which uses structured clone.
 
-            if (config.description) {
-                decoder = new WebCodecsDecoder(
-                    config,
-                    emitDecodedFrame,
-                    (error) => {
-                        errorLog?.log(`Decoder error (state=${decoder?.getState() ?? '?'}, ` +
-                            `lastChunkSeq=${lastChunkSeq}, lastChunkType=${lastChunkType}, ` +
-                            `lastChunkBytes=${lastChunkSize}, lastDescLen=${lastChunkDescLen}):`, error);
-                    }
-                );
-                decoder.initialize();
-                decoderConfigured = true;
-                initialDescriptionApplied = true;
-                infoLog?.log(`Decoder initialized in AVCC mode (stream, single configure), ` +
-                    `codec=${config.codec}, descLen=${config.description.byteLength}, ` +
-                    `descHex=${describeBytes(config.description)}`);
-            } else {
-                decoder = createDecoder(config);
-                decoder.initialize();
-                infoLog?.log('Decoder initialized without description (stream)');
-            }
+            // Defer configure() to first keyframe — see initialize() comment above.
+            decoder = new WebCodecsDecoder(
+                { ...config, description: undefined },
+                emitDecodedFrame,
+                (error) => {
+                    errorLog?.log(`Decoder error (state=${decoder?.getState() ?? '?'}, ` +
+                        `lastChunkSeq=${lastChunkSeq}, lastChunkType=${lastChunkType}, ` +
+                        `lastChunkBytes=${lastChunkSize}, lastDescLen=${lastChunkDescLen}):`, error);
+                }
+            );
+            decoderConfigured = false;
+            initialDescriptionApplied = false;
+            warnLog?.log(`[INIT_DEFERRED] Decoder created (stream), configure() deferred to first keyframe, ` +
+                `codec=${config.codec}, descLen=${config.description ? config.description.byteLength : 0}, ` +
+                `decoderState=${decoder.getState()}`);
 
             processing = true;
 
@@ -779,8 +777,9 @@ const serverImpl: DecoderWorker = {
                     // rejects with EncodingError even when bytes are identical.
                     initialDescriptionApplied = false;
                     lastRawDescription = description.slice(0);
-                    infoLog?.log(`First keyframe: decoder already configured at init, ` +
-                        `seeding lastRawDescription (${description.byteLength} bytes)`);
+                    warnLog?.log(`[FLAG_PATH] First keyframe: skipped redundant configure, ` +
+                        `seeded lastRawDescription (${description.byteLength} bytes), ` +
+                        `decoderState=${decoder.getState()}`);
                 } else if (!lastRawDescription || !bufferEqual(lastRawDescription, description)) {
                     warnLog?.log(`updateDescription firing: lastRawDesc=${
                         lastRawDescription ? lastRawDescription.byteLength : 'null'} bytes, ` +
@@ -873,8 +872,10 @@ const serverImpl: DecoderWorker = {
             }
 
             if (isKeyFrame) {
-                infoLog?.log(`Decoding keyframe: seq=${sequenceNumber}, state=${decoder.getState()}, ` +
-                    `configured=${decoderConfigured}, descLen=${description?.byteLength ?? 0}, dataLen=${data.byteLength}`);
+                warnLog?.log(`[PRE_DECODE] Decoding keyframe: seq=${sequenceNumber}, ` +
+                    `state=${decoder.getState()}, configured=${decoderConfigured}, ` +
+                    `descLen=${description?.byteLength ?? 0}, dataLen=${data.byteLength}, ` +
+                    `flagWasUsed=${!initialDescriptionApplied && sequenceNumber === 0 ? 'maybe' : 'n/a'}`);
             }
 
             // Decode using the WebCodecsDecoder wrapper (tracks timing for diagnostics)
@@ -1033,6 +1034,15 @@ const serverImpl: DecoderWorker = {
     },
 
     // eslint-disable-next-line @typescript-eslint/require-await
+    prewarmRpc: async (apiUrl: string): Promise<void> => {
+        const wasInitialized = apiInitialized;
+        ensureApiInitialized(apiUrl);
+        if (!wasInitialized) {
+            infoLog?.log('prewarmRpc: Api initialized, WS handshake started in parallel with decoder setup');
+        }
+    },
+
+    // eslint-disable-next-line @typescript-eslint/require-await
     startPullInWorker: async (
         streamId: string,
         skipToMs: number,
@@ -1085,13 +1095,10 @@ const serverImpl: DecoderWorker = {
 
         mstgSelector = new WorkerMstgSelector(selectorWritable, syncPort, startedAtMs, jitterBufferMs, bgPainter);
 
-        // Lazy Api init (idempotent — second call no-ops with a warn log).
-        if (!apiInitialized) {
-            Api.init(apiUrl, streamingApi);
-            Api.bindDotNetRpcConnected(WorkerConnectivityUI);
-            Api.requireConnection('VideoDecoder');
-            apiInitialized = true;
-        }
+        // Idempotent — usually a no-op here because main calls prewarmRpc()
+        // immediately after initialize(), starting the WS handshake in
+        // parallel with decoder setup. This call is the safety net.
+        ensureApiInitialized(apiUrl);
 
         pullStartedAtMs = startedAtMs;
         pullActive = true;

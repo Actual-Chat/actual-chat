@@ -31,6 +31,7 @@ import { WebGPUManager } from '../webgpu-manager';
 import { WebGpuDownscaler, type DownscaleTarget } from '../webgpu-downscaler';
 
 import { isAvcCDescription, deriveAvcCodecFromDescription, pickAvcLevelByte, resizeFrame, cpuRgbaToI420 } from './video-encoding-helpers';
+import { getCodecCategory } from '../codec-support';
 import {
     type VideoStreamFrame, type StreamingContext,
     microsecondsToTicks, InternalVideoStream,
@@ -72,6 +73,21 @@ export function setCallbacks(cb: VideoProcessingWorkerCallbacks): void {
 let encoder: WebCodecsEncoder | null = null;
 let extraLayerEncoders: WebCodecsEncoder[] = [];
 let encoderConfig: EncoderConfig | null = null;
+
+// Encoder pool — survives across stop/start cycles to keep the NVENC session
+// slot held during the gap. Without this, a fresh `VideoEncoder.configure()`
+// after stop collides with the previous session's still-releasing handle and
+// fails with `OperationError: Encoder initialization error`. Pool is purged
+// after POOL_TTL_MS of idle to avoid retaining HW indefinitely.
+interface PrimaryPoolEntry {
+    encoder: WebCodecsEncoder;
+    codec: string;
+    width: number;
+    height: number;
+}
+let pooledPrimary: PrimaryPoolEntry | null = null;
+let poolExpireTimer: ReturnType<typeof setTimeout> | null = null;
+const POOL_TTL_MS = 30_000;
 // True once .initialize() (configure) has been called on `encoder` and any
 // extras. Encoder.configure() is deferred to the first encoded frame so the
 // configure call sees the FINAL dims (after first-frame rotation/dim reconcile)
@@ -842,6 +858,71 @@ function onEncoderError(error: Error): void {
     lastStreamError = `encoder: ${error.name} ${error.message}`;
 }
 
+// Try to reuse a pooled encoder. Returns true if reused. Match by codec
+// CATEGORY (av1/hevc/vp9/h264), not exact codec string — HEVC L3.1 vs L4.0
+// (or AVC level changes) share the same NVENC session and `configure()` does
+// a level reconfigure on the existing instance. Different category → close
+// pool, create new (NVENC release will overlap with new acquire — best we can
+// do without keeping multiple slots).
+function tryAdoptPooledPrimary(targetCodec: string): boolean {
+    if (poolExpireTimer !== null) {
+        clearTimeout(poolExpireTimer);
+        poolExpireTimer = null;
+    }
+    if (!pooledPrimary) return false;
+    const poolCategory = getCodecCategory(pooledPrimary.codec);
+    const targetCategory = getCodecCategory(targetCodec);
+    if (poolCategory !== targetCategory) {
+        // Pool entry is wrong codec family — close it. Frees slot (eventually).
+        infoLog?.log(`Encoder pool: category mismatch (pool=${poolCategory}/${pooledPrimary.codec}, want=${targetCategory}/${targetCodec}), evicting`);
+        try { pooledPrimary.encoder.close(); } catch { /* ignore */ }
+        pooledPrimary = null;
+        return false;
+    }
+    // Same codec family — reuse. Caller updates encoder.setConfig() with the
+    // new pipeline's config (possibly different level/dims/bitrate), then
+    // initializeEncoders() calls configure() which is a reconfigure on the
+    // existing NVENC session — no new HW slot acquired.
+    infoLog?.log(`Encoder pool: reusing primary (${pooledPrimary.codec} ${pooledPrimary.width}x${pooledPrimary.height} → ${targetCodec})`);
+    encoder = pooledPrimary.encoder;
+    encoder.reset();
+    pooledPrimary = null;
+    return true;
+}
+
+// Park the primary encoder for reuse on next start. Closes extras (per-session).
+// TTL timer evicts the pool if no restart within POOL_TTL_MS.
+function parkPrimaryEncoder(): void {
+    if (encoder && encoderConfig) {
+        // Evict any stale pool entry (shouldn't happen but be safe).
+        if (pooledPrimary) {
+            try { pooledPrimary.encoder.close(); } catch { /* ignore */ }
+        }
+        pooledPrimary = {
+            encoder,
+            codec: encoderConfig.codec,
+            width: encoderConfig.width,
+            height: encoderConfig.height,
+        };
+        infoLog?.log(`Encoder pool: parked primary (${encoderConfig.codec} ${encoderConfig.width}x${encoderConfig.height}), TTL ${POOL_TTL_MS}ms`);
+        encoder = null;
+        if (poolExpireTimer !== null) clearTimeout(poolExpireTimer);
+        poolExpireTimer = setTimeout(() => {
+            poolExpireTimer = null;
+            if (pooledPrimary) {
+                infoLog?.log('Encoder pool: TTL expired, closing primary');
+                try { pooledPrimary.encoder.close(); } catch { /* ignore */ }
+                pooledPrimary = null;
+            }
+        }, POOL_TTL_MS);
+    }
+    // Always close extras — simulcast configs are per-session.
+    for (const e of extraLayerEncoders) {
+        try { e.close(); } catch { /* already closed */ }
+    }
+    extraLayerEncoders = [];
+}
+
 // Creates the base encoder (SpatialLayerId=0) plus any simulcast extras declared
 // in `config.spatialLayers`. Base encoder always present; extras empty in P2P mode.
 function setupEncoders(config: VideoProcessingConfig): void {
@@ -849,7 +930,16 @@ function setupEncoders(config: VideoProcessingConfig): void {
     // Fresh encoder instances emit fresh HVCC/AVCC on their first keyframe — drop
     // any cached descriptions from prior encoder generation to avoid stale bytes.
     storedDescriptionBytesByLayer.clear();
-    encoder = new WebCodecsEncoder(config.encoder, onEncoderOutput, onEncoderError, 0);
+    // Reuse pooled encoder if codec matches — keeps NVENC session held across
+    // stop/start, avoiding `OperationError: Encoder initialization error` from
+    // the previous session's slow async release.
+    if (tryAdoptPooledPrimary(config.encoder.codec)) {
+        // Update the pooled encoder's config to the new pipeline's params.
+        // initializeEncoders() will call configure() with these dims/bitrate.
+        encoder!.setConfig(config.encoder);
+    } else {
+        encoder = new WebCodecsEncoder(config.encoder, onEncoderOutput, onEncoderError, 0);
+    }
 
     // Drop any prior extras (covers switchCodec re-entry and re-init scenarios).
     for (const e of extraLayerEncoders) {
@@ -881,14 +971,13 @@ function setupEncoders(config: VideoProcessingConfig): void {
 // Idempotent. Stream-mode callers invoke this after first-frame dim reconcile
 // so the very first configure call lands on final dims; RPC fallback mode
 // invokes it eagerly during start-up since it has no first-frame reconcile.
-// Async because initialize() retries with backoff (NVENC session lifecycle).
-async function initializeEncoders(): Promise<void> {
+function initializeEncoders(): void {
     if (encodersInitialized) return;
     encodersInitialized = true;
     if (!encoder) return;
-    try { await encoder.initialize(); } catch { /* error already surfaced via onEncoderError */ }
+    try { encoder.initialize(); } catch { /* error already surfaced via onEncoderError */ }
     for (const e of extraLayerEncoders) {
-        try { await e.initialize(); } catch { /* error already surfaced via onEncoderError */ }
+        try { e.initialize(); } catch { /* error already surfaced via onEncoderError */ }
     }
 }
 
@@ -1153,8 +1242,7 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
             // Lazy-initialize encoders on first frame, after dim reconcile mutated
             // encoderConfig.width/height to its final values. This is the SINGLE
             // configure() call — no flip-flop, no HW encoder init crash on HEVC.
-            // Awaited — initialize() retries with backoff on NVENC contention.
-            if (!encodersInitialized) await initializeEncoders();
+            if (!encodersInitialized) initializeEncoders();
 
             const frame = rawFrame;
 
@@ -1377,7 +1465,7 @@ export const serverImpl: VideoProcessingWorker = {
                 await initDownscaler(config);
                 // RPC fallback: no streamReadLoop first-frame reconcile fires here,
                 // so the encoder must be configured eagerly with the supplied dims.
-                await initializeEncoders();
+                initializeEncoders();
             }
 
             if (config.adaptiveFramerate) {
@@ -1494,7 +1582,7 @@ export const serverImpl: VideoProcessingWorker = {
             };
             const spatialId = i + 1;
             const extra = new WebCodecsEncoder(layerCfg, onEncoderOutput, onEncoderError, spatialId);
-            try { await extra.initialize(); } catch { /* error already surfaced via onEncoderError */ }
+            try { extra.initialize(); } catch { /* error already surfaced via onEncoderError */ }
             extraLayerEncoders.push(extra);
             infoLog?.log(`Simulcast layer ${spatialId} (post-switch): ${layer.width}x${layer.height} @ ${(layer.bitrate / 1_000_000).toFixed(1)}Mbps`);
         }
@@ -1513,8 +1601,13 @@ export const serverImpl: VideoProcessingWorker = {
         pendingStreamFrames = [];
         startTimestamp = undefined;
         backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;
+        // Always reset encoderFailed and framesWithoutOutput on codec switch — the
+        // new codec attempt deserves its own watchdog cycle. If switchCodec failed
+        // synchronously, keep encoderErrorSeen=true so the watchdog fires again
+        // for the new codec; otherwise clear it for a normal warmup window.
+        encoderFailed = false; framesWithoutOutput = 0;
         if (!switchFailed) {
-            encoderFailed = false; encoderErrorSeen = false; framesWithoutOutput = 0; lastStreamError = '';
+            encoderErrorSeen = false; lastStreamError = '';
         }
         infoLog?.log(`Codec switched ${switchFailed ? 'with error' : 'successfully'} (${extraLayerEncoders.length} simulcast extras rearmed)`);
     },
@@ -1576,7 +1669,7 @@ export const serverImpl: VideoProcessingWorker = {
             };
             const spatialId = i + 1;
             const extra = new WebCodecsEncoder(layerCfg, onEncoderOutput, onEncoderError, spatialId);
-            try { await extra.initialize(); } catch { /* error already surfaced via onEncoderError */ }
+            try { extra.initialize(); } catch { /* error already surfaced via onEncoderError */ }
             extraLayerEncoders.push(extra);
             infoLog?.log(`Simulcast layer ${spatialId} (hot): ${layer.width}x${layer.height} @ ${(layer.bitrate / 1_000_000).toFixed(1)}Mbps codec=${baseCodec}`);
         }
@@ -1636,10 +1729,8 @@ export const serverImpl: VideoProcessingWorker = {
         }
         try { await awaitAllPendingReadbacks(); } catch { /* ignore */ }
         if (frameQueue) { while (!frameQueue.isEmpty()) { const qf = frameQueue.shift(); if (qf) qf.frame.close(); } frameQueue = null; }
-        if (encoder) {
-            try { await encoder.flush(); } catch (e) { warnLog?.log('Encoder flush error (stop):', e); }
-            try { encoder.close(); } catch (e) { warnLog?.log('Encoder close error:', e); }
-        }
+        // Flush extras first (per-session simulcast — close fully). Primary
+        // gets flushed and parked below for reuse on next start.
         // Snapshot + clear BEFORE awaiting flush — if switchCodec runs during
         // these awaits it also drains the shared array, and concurrent indexed
         // iteration would hit `undefined`. Flush and close are guarded
@@ -1651,6 +1742,13 @@ export const serverImpl: VideoProcessingWorker = {
             const e = extras[i];
             try { await e.flush(); } catch (err) { warnLog?.log(`Extra layer ${i + 1} flush error (stop):`, err); }
             try { e.close(); } catch (err) { warnLog?.log(`Extra layer ${i + 1} close error:`, err); }
+        }
+        // Park primary encoder for reuse on next start — keeps NVENC session
+        // held across the stop/start gap. parkPrimaryEncoder also clears any
+        // remaining extras (defensive — array should already be empty above).
+        if (encoder) {
+            try { await encoder.flush(); } catch (e) { warnLog?.log('Encoder flush error (stop):', e); }
+            parkPrimaryEncoder();
         }
         if (videoStream) {
             videoStream.complete();

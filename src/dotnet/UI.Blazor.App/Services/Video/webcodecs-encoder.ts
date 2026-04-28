@@ -100,15 +100,6 @@ export class WebCodecsEncoder {
     // (P2P, screencast, non-simulcast recordings) leave it at 0.
     private readonly spatialLayerId: number;
 
-    // Init-time error tracking. NVENC sessions don't release synchronously on
-    // VideoEncoder.close(), so a fresh-after-stop configure() can hit OperationError
-    // ~50-200ms later via the async error callback. We retry up to 3× with backoff;
-    // intermediate errors are swallowed (they are not real failures yet, just
-    // cold-start NVENC contention) and only the final failure propagates.
-    // Mutated from the encoder's async error callback — eslint can't see that.
-    private initErrorSeen = false;
-    private suppressInitErrorCallback = false;
-
     constructor(
     private config: EncoderConfig,
     private onChunk: (chunk: EncodedChunkData) => void,
@@ -119,48 +110,38 @@ export class WebCodecsEncoder {
         this.encoder = this.createEncoder();
     }
 
-    async initialize(): Promise<void> {
-        const maxAttempts = 3;
-        // Settle window: the async error fires up to ~150ms after configure()
-        // returns. Wait that long before declaring success.
-        const settleMs = 200;
-        for (let attempt = 0; attempt < maxAttempts; attempt++) {
-            this.initErrorSeen = false;
-            const isLastAttempt = attempt === maxAttempts - 1;
-            // Suppress error propagation during retries — only the final attempt's
-            // failure should reach the watchdog / codec-fallback machinery.
-            this.suppressInitErrorCallback = !isLastAttempt;
-            try {
-                infoLog?.log(`Initializing${attempt > 0 ? ` (attempt ${attempt + 1}/${maxAttempts})` : ''}: ${this.config.width}x${this.config.height} @ ${(this.config.bitrate / 1_000_000).toFixed(1)}Mbps`);
-                const encoderConfig = this.buildEncoderConfig();
-                if (this.config.scalabilityMode && attempt === 0) {
-                    infoLog?.log('Using scalability mode:', this.config.scalabilityMode);
-                }
-                this.encoder.configure(encoderConfig);
-                await new Promise(r => setTimeout(r, settleMs));
-                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-                if (!this.initErrorSeen && this.encoder.state === 'configured') {
-                    this.suppressInitErrorCallback = false;
-                    if (attempt > 0) infoLog?.log(`Encoder init succeeded on attempt ${attempt + 1}`);
-                    return;
-                }
-            } catch (error) {
-                this.initErrorSeen = true;
-                errorLog?.log(`Configure threw on attempt ${attempt + 1}:`, error);
+    // Replace the encoder's config (dims, bitrate, framerate, etc) without
+    // recreating the underlying VideoEncoder instance. Used by the encoder pool
+    // when a pooled instance is adopted by a new pipeline with different params
+    // — initialize() is then called to apply the new config via VideoEncoder.configure(),
+    // which on an existing 'configured' encoder is a reconfigure (no NVENC re-init).
+    setConfig(newConfig: EncoderConfig): void {
+        this.config = newConfig;
+    }
+
+    getConfig(): Readonly<EncoderConfig> {
+        return this.config;
+    }
+
+    initialize(): void {
+        try {
+            infoLog?.log(`Initializing: ${this.config.width}x${this.config.height} @ ${(this.config.bitrate / 1_000_000).toFixed(1)}Mbps`);
+            const encoderConfig = this.buildEncoderConfig();
+            if (this.config.scalabilityMode) {
+                infoLog?.log('Using scalability mode:', this.config.scalabilityMode);
             }
-            if (!isLastAttempt) {
-                const backoff = 500 * (attempt + 1); // 500ms, 1000ms
-                warnLog?.log(`Encoder init failed (attempt ${attempt + 1}/${maxAttempts}) — NVENC likely still releasing previous session. Retrying in ${backoff}ms.`);
-                await new Promise(r => setTimeout(r, backoff));
-                try { this.encoder.close(); } catch { /* already closed */ }
-                this.encoder = this.createEncoder();
-            }
+            this.encoder.configure(encoderConfig);
+        } catch (error) {
+            errorLog?.log('Failed to configure encoder:', error);
+            // Surface the synchronous configure() failure to onError so the
+            // dead-encoder fallback fires immediately. (Async OperationError
+            // from NVENC contention reaches onError via the encoder's `error`
+            // callback.) DO NOT retry here — every retry creates a new NVENC
+            // session attempt, piling on contention. Let the codec-fallback
+            // chain do its thing.
+            this.onError(error as Error);
+            throw error;
         }
-        this.suppressInitErrorCallback = false;
-        const err = new Error(`Encoder init failed after ${maxAttempts} attempts`);
-        errorLog?.log('Failed to configure encoder:', err);
-        this.onError(err);
-        throw err;
     }
 
     encode(frame: VideoFrame, forceKeyFrame = false): void {
@@ -305,7 +286,7 @@ export class WebCodecsEncoder {
         this.encoder = this.createEncoder();
 
         // Configure with new codec
-        await this.initialize();
+        this.initialize();
         infoLog?.log(`Codec switched to ${newConfig.codec}`);
     }
 
@@ -350,10 +331,7 @@ export class WebCodecsEncoder {
             },
             error: (e: DOMException) => {
                 errorLog?.log('Encoder error:', e.name, e.message);
-                this.initErrorSeen = true;
-                if (!this.suppressInitErrorCallback) {
-                    this.onError(e as unknown as Error);
-                }
+                this.onError(e as unknown as Error);
             }
         });
     }

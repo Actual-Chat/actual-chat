@@ -335,28 +335,36 @@ export function getCodecCategory(codecString: string): 'h264' | 'hevc' | 'av1' |
 
 export function getCodecForCategory(category: 'h264' | 'hevc' | 'av1' | 'vp9', width: number, height: number): string {
     const isMobile = DeviceInfo.isMobile; // includes iOS
-    const isHighRes = height > 720;
+    // Codec STRING is the encoder's max-capability hint (level), not the actual
+    // bitstream level. Picking a higher level for low-res streams is harmless —
+    // the encoder still outputs at the actual dims. Critically, keeping the
+    // codec string CONSTANT across resolutions lets the worker-side encoder
+    // pool reuse the NVENC session across stop/start: Chrome's WebCodecs
+    // re-inits the underlying NVENC session on any codec-string change (even
+    // just a level byte), so changing strings on resolution change defeats
+    // pool reuse and reproduces the `OperationError: Encoder initialization
+    // error` storm. Pick the highest "ladder-cap" level per category — L4.0
+    // for 1080p — and use it for every session of that category.
+    // For >1080p (rare path: 4K screencast) bump up; otherwise stay constant.
+    const pixels = width * height;
+    const ultraHi = pixels > 2_073_600; // 4K territory
 
     if (category === 'av1') {
-        return isHighRes ? 'av01.0.08M.08' : 'av01.0.05M.08'; // Main L4.0 / Main L3.0
+        return ultraHi ? 'av01.0.12M.08' : 'av01.0.08M.08'; // Main L5.0 / Main L4.0
     }
     if (category === 'vp9') {
-        return isHighRes ? 'vp09.00.41.08' : 'vp09.00.31.08'; // Profile 0 L4.1 / L3.1
+        return ultraHi ? 'vp09.00.50.08' : 'vp09.00.41.08'; // Profile 0 L5.0 / L4.1
     }
     if (category === 'hevc') {
-        return isHighRes ? 'hev1.1.6.L120.B0' : 'hev1.1.6.L93.B0'; // Main L4.0 / Main L3.1
+        return ultraHi ? 'hev1.1.6.L150.B0' : 'hev1.1.6.L120.B0'; // Main L5.0 / Main L4.0
     }
     // H.264: Firefox and mobile use Main profile, desktop uses High (better compression)
-    // Pick level based on coded area — level 3.1 only supports 921,600 pixels
-    const pixels = width * height;
     if (isMobile || DeviceInfo.isFirefox) {
-        if (pixels > 2_073_600) return 'avc1.4D4034'; // Main 5.2 (max ~4.2M px)
-        if (pixels > 921_600) return 'avc1.4D4029';   // Main 4.1 (max ~2.1M px)
-        return 'avc1.4D401F'; // Main 3.1
+        if (ultraHi) return 'avc1.4D4034'; // Main 5.2
+        return 'avc1.4D4029';              // Main 4.1 (covers up to 1080p)
     }
-    if (pixels > 2_073_600) return 'avc1.640034'; // High 5.2
-    if (pixels > 921_600) return 'avc1.640028';   // High 4.0
-    return 'avc1.64001F'; // High 3.1
+    if (ultraHi) return 'avc1.640034'; // High 5.2
+    return 'avc1.640028';              // High 4.0 (covers up to 1080p)
 }
 
 export function getDefaultCodec(supportedCodecs: CodecInfo[], width: number, height: number): string {

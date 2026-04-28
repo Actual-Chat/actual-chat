@@ -432,6 +432,13 @@ export class VideoPlayer {
                 debugLog?.log('Decoder worker initialized (RPC mode)');
             }
 
+            // Pre-warm the worker's Fusion RPC WebSocket in parallel with the
+            // rest of init. Without this, the WS handshake blocks the first
+            // chunk delivery inside startPullInWorker — adds visible delay to
+            // the rotating-indicator window on iOS.
+            const apiUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
+            void this.decoderWorker.prewarmRpc(apiUrl, rpcNoWait);
+
             // Off-thread renderer activation now happens inside `startPull`,
             // because the worker needs streamId + skipToMs to start the pull
             // loop in one shot.

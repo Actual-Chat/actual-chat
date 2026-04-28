@@ -111,6 +111,18 @@ export interface DecoderWorker {
     toggleDecoderType(useWasm: boolean): Promise<void>;
 
     /**
+     * Pre-warm the worker's Fusion RPC peer: triggers Api.init + requireConnection
+     * so the WebSocket handshake happens BEFORE startPullInWorker is invoked.
+     * Without pre-warm the WS connect (Started → Connecting → WS open →
+     * Handshake) is observed sequentially between `Off-thread pull started`
+     * and the first chunk — adding ~hundreds of ms to the rotating-indicator
+     * window on iOS. Idempotent: subsequent calls no-op.
+     * Fire-and-forget — caller does NOT need to await before starting pull.
+     * @param apiUrl Fusion RPC websocket URL (e.g. wss://host/rpc/ws)
+     */
+    prewarmRpc(apiUrl: string, noWait?: RpcNoWait): Promise<void>;
+
+    /**
      * Switch the worker into off-thread render mode AND start the Fusion RPC
      * pull entirely inside the worker. The worker constructs a
      * MediaStreamTrackGenerator (Chromium) or VideoTrackGenerator (Safari)
