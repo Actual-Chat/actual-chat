@@ -9,4 +9,4 @@ export const BG_DRAW_INTERVAL_MS = 100;
 
 // Blur + saturate baked into the bg bitmap so the CSS layer doesn't need `filter:` —
 // a CSS blur of the upscaled-and-composited canvas was the dominant paint cost.
-export const BG_FILTER = 'blur(3px) saturate(1.3)';
+export const BG_FILTER = 'blur(3px) saturate(1.2)';

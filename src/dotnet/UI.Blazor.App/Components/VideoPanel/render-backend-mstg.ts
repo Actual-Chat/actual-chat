@@ -22,19 +22,16 @@ export function isOffThreadPlausible(): boolean {
 // owns the generator + writable + selector + Fusion RPC pull (see
 // `startPullInWorker` in decoder-worker-contract.ts). When the worker emits
 // `onOffThreadTrackReady`, video-player calls `onTrackReady` here and we
-// attach the MediaStreamTrack to <video srcObject>. When a bg video element
-// is provided, it also gets the same MediaStream — used for the blurred
-// letterbox-fill backdrop.
+// attach the MediaStreamTrack to <video srcObject>. The bg backdrop is
+// handled separately via OffscreenCanvas transferred to the worker (§13);
+// this backend doesn't see the bg canvas.
 export class OffThreadRenderBackend implements RenderBackend {
     readonly kind = 'mstg' as const;
     readonly isOffThread = true;
     private trackAttached = false;
     private disposed = false;
 
-    constructor(
-        private readonly videoEl: HTMLVideoElement,
-        private readonly bgVideoEl: HTMLVideoElement | null,
-    ) {}
+    constructor(private readonly videoEl: HTMLVideoElement) {}
 
     onTrackReady(track: MediaStreamTrack): void {
         if (this.disposed) {
@@ -50,10 +47,6 @@ export class OffThreadRenderBackend implements RenderBackend {
         const stream = new MediaStream([track]);
         this.videoEl.srcObject = stream;
         this.videoEl.play().catch((e: unknown) => warnLog?.log('video.play() rejected:', e));
-        if (this.bgVideoEl) {
-            this.bgVideoEl.srcObject = stream;
-            this.bgVideoEl.play().catch((e: unknown) => warnLog?.log('bg video.play() rejected:', e));
-        }
         infoLog?.log('Off-thread track attached to <video srcObject>');
     }
 
@@ -71,8 +64,5 @@ export class OffThreadRenderBackend implements RenderBackend {
             }
         } catch { /* ignore */ }
         try { this.videoEl.srcObject = null; } catch { /* ignore */ }
-        if (this.bgVideoEl) {
-            try { this.bgVideoEl.srcObject = null; } catch { /* ignore */ }
-        }
     }
 }

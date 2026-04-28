@@ -29,7 +29,7 @@ import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/conne
 // plausibly available. The worker probes the real APIs; if neither exists,
 // it rejects setupWorker() and we swap to canvas at runtime.
 // ?renderBackend=mstg|canvas overrides for diagnostics.
-function pickRenderBackend(canvas: HTMLCanvasElement, videoEl: HTMLVideoElement, bgVideoEl: HTMLVideoElement | null): RenderBackend {
+function pickRenderBackend(canvas: HTMLCanvasElement, videoEl: HTMLVideoElement): RenderBackend {
     let flag: string | null = null;
     try {
         flag = new URL(globalThis.location.href).searchParams.get('renderBackend');
@@ -37,7 +37,7 @@ function pickRenderBackend(canvas: HTMLCanvasElement, videoEl: HTMLVideoElement,
     if (flag === 'canvas')
         return new CanvasRenderBackend(canvas);
     if (flag === 'mstg' || isOffThreadPlausible())
-        return new OffThreadRenderBackend(videoEl, bgVideoEl);
+        return new OffThreadRenderBackend(videoEl);
     return new CanvasRenderBackend(canvas);
 }
 
@@ -123,6 +123,8 @@ export class VideoPlayer {
     private streamId: string;
     private authorId: string;
     private canvas: HTMLCanvasElement;
+    private bgCanvasEl: HTMLCanvasElement;
+    private bgOffscreenTransferred = false;
     private renderBackend: RenderBackend;
     // Decoder worker (off-main-thread decoding)
     private decoderWorkerInstance: Worker | null = null;
@@ -246,7 +248,7 @@ export class VideoPlayer {
     static create(
         canvas: HTMLCanvasElement,
         videoEl: HTMLVideoElement,
-        bgVideoEl: HTMLVideoElement,
+        bgCanvasEl: HTMLCanvasElement,
         blazorRef: DotNet.DotNetObject,
         streamId: string,
         authorId: string,
@@ -256,7 +258,7 @@ export class VideoPlayer {
         codecSettings: string,
         startedAtMs: number
     ): VideoPlayer {
-        return new VideoPlayer(blazorRef, streamId, authorId, codec, width, height, codecSettings, canvas, videoEl, bgVideoEl, startedAtMs);
+        return new VideoPlayer(blazorRef, streamId, authorId, codec, width, height, codecSettings, canvas, videoEl, bgCanvasEl, startedAtMs);
     }
 
     constructor(
@@ -269,7 +271,7 @@ export class VideoPlayer {
         codecSettings: string,
         canvas: HTMLCanvasElement,
         videoEl: HTMLVideoElement,
-        bgVideoEl: HTMLVideoElement,
+        bgCanvasEl: HTMLCanvasElement,
         startedAtMs: number
     ) {
         this.blazorRef = blazorRef;
@@ -277,7 +279,8 @@ export class VideoPlayer {
         this.authorId = authorId;
         this.startedAtMs = startedAtMs;
         this.canvas = canvas;
-        this.renderBackend = pickRenderBackend(canvas, videoEl, bgVideoEl);
+        this.bgCanvasEl = bgCanvasEl;
+        this.renderBackend = pickRenderBackend(canvas, videoEl);
         // Tag the parent container so CSS can hide the inactive surface.
         const container = canvas.parentElement;
         if (container) {
@@ -1511,12 +1514,28 @@ export class VideoPlayer {
         // owns the per-frame pull, so this initialises the main-side peer
         // for control-plane RPCs only. Idempotent.
         initVideoRpc();
+        // Hand the bg canvas to the worker so it can paint a low-res blurred
+        // backdrop directly (see §13). transferControlToOffscreen() can be
+        // called only once per element across the lifetime of the document —
+        // guard so a re-pull doesn't try to re-transfer.
+        let bgOffscreen: OffscreenCanvas | undefined;
+        if (!this.bgOffscreenTransferred &&
+            typeof (this.bgCanvasEl as { transferControlToOffscreen?: () => OffscreenCanvas })
+                .transferControlToOffscreen === 'function') {
+            try {
+                bgOffscreen = this.bgCanvasEl.transferControlToOffscreen();
+                this.bgOffscreenTransferred = true;
+            } catch (e) {
+                warnLog?.log('transferControlToOffscreen failed for bg canvas:', e);
+            }
+        }
         try {
             await this.decoderWorker.startPullInWorker(
                 streamId, skipToMs, apiUrl,
                 this.startedAtMs, this.jitterBufferMs,
                 channel.port2,
-                mainWritable);
+                mainWritable,
+                bgOffscreen);
             this.offThreadPullActive = true;
             debugLog?.log(`Off-thread pull started for ${streamId}, skipTo=${skipToMs}ms (tier ${mainWritable ? 2 : 1})`);
             return true;

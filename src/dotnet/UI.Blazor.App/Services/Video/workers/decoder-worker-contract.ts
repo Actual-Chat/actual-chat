@@ -141,6 +141,10 @@ export interface DecoderWorker {
      * @param syncPort MessagePort subscribed to AudioVideoSync (transferred)
      * @param writable Optional WritableStream<VideoFrame> from main-side MSTG
      *                 (transferred — when present, tier 2). MUST trail syncPort.
+     * @param bgCanvas Optional OffscreenCanvas for the blurred letterbox-fill
+     *                 backdrop (§13). Worker draws the latest VideoFrame at
+     *                 64×N with `ctx.filter='blur(...)'` baked into the bitmap,
+     *                 throttled to ~10 fps. Transferred — main loses control.
      */
     startPullInWorker(
         streamId: string,
@@ -150,6 +154,7 @@ export interface DecoderWorker {
         jitterBufferMs: number,
         syncPort: MessagePort,
         writable?: WritableStream<VideoFrame>,
+        bgCanvas?: OffscreenCanvas,
     ): Promise<void>;
 
     /**

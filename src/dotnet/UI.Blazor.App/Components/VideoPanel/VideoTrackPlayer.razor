@@ -12,7 +12,7 @@
         : "";
 }
 <div class="video-track-player remote-video-container @FocusedClass @streamKindCls">
-    <video @ref="BgVideoElRef" class="remote-video-bg" autoplay playsinline muted aria-hidden="true"></video>
+    <canvas @ref="BgCanvasRef" class="remote-video-bg" aria-hidden="true"></canvas>
     <canvas @ref="CanvasRef" class="remote-video" style="@aspectRatioStyle" data-stream-id="@StreamInfo.StreamId.Value" data-author-id="@StreamInfo.AuthorId.Value"></canvas>
     <video @ref="VideoElRef" class="remote-video" style="@aspectRatioStyle" autoplay playsinline muted aria-hidden="true"></video>
     @if (!string.IsNullOrEmpty(AuthorName)) {
@@ -43,7 +43,7 @@
 
     private ElementReference CanvasRef { get; set; }
     private ElementReference VideoElRef { get; set; }
-    private ElementReference BgVideoElRef { get; set; }
+    private ElementReference BgCanvasRef { get; set; }
     private DotNetObjectReference<VideoTrackPlayer>? BlazorRef { get; set; }
 
     [Parameter, EditorRequired]
@@ -91,7 +91,7 @@
                 _disposeCts.Token,
                 CanvasRef,
                 VideoElRef,
-                BgVideoElRef,
+                BgCanvasRef,
                 BlazorRef,
                 StreamInfo.StreamId.Value,
                 StreamInfo.AuthorId.Value,

@@ -152,6 +152,12 @@ function getTransferables(args: unknown[]): Transferable[] | undefined {
     let result: Transferable[] | undefined = undefined;
     for (let i = args.length - 1; i >= 0; i--) {
         const value = args[i];
+        // null/undefined are transparent — they don't break the trailing
+        // transferable run. This lets a method declare two trailing optional
+        // transferables (e.g. `f(a, b, optTransfer1?, optTransfer2?)`) and pass
+        // `undefined` for one without losing the other from the transfer list.
+        if (value === null || value === undefined)
+            continue;
         if (!isTransferable(value)) {
             if (result !== undefined)
                 // transferable parameters should be placed one after another

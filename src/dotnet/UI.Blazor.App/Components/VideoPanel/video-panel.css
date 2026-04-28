@@ -446,28 +446,30 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     @apply hidden;
 }
 
-/* Blurred backdrop: fills the letterbox/pillarbox bars with a blurred
-   over-cover of the same MediaStream. Only visible when MSTG backend is
-   active (canvas backend hides this video element). z-index 0 sits behind
-   the foreground; foreground gets z-index 1. */
-.video-track-player video.remote-video-bg {
+/* Blurred backdrop (§13): fills the letterbox/pillarbox bars. Worker
+   paints the latest VideoFrame onto a 64×N OffscreenCanvas with
+   `ctx.filter='blur(...)'` baked into the bitmap; CSS just upscales the
+   small texture via `object-fit: cover`. NO CSS `filter:` — the blur is
+   already baked into the canvas pixels, so the compositor only does a
+   bilinear sample instead of a per-frame Gaussian shader. Only visible
+   when the MSTG backend is active. */
+.video-track-player canvas.remote-video-bg {
     @apply hidden;
 }
-.video-track-player.backend-mstg video.remote-video-bg {
+.video-track-player.backend-mstg canvas.remote-video-bg {
     @apply block;
     @apply absolute inset-0;
     @apply w-full h-full;
     @apply bg-black;
     @apply object-cover;
     z-index: 0;
-    filter: blur(28px) saturate(1.2);
-    transform: scale(1.08);
     pointer-events: none;
-    /* Same per-frame containment as the foreground surface — bg video
-       writes at the same rate, intrinsic-size invalidation must not
-       propagate. No aspect-ratio: the bg should fill the box (cover). */
+    /* Containment isolates the bg paint from ancestor invalidation. */
     contain: layout paint style size;
+    /* Promote to its own composited layer so worker draws don't dirty
+       the document layer. */
     will-change: transform;
+    transform: translateZ(0);
 }
 
 /* §6.D + §6.E — bound per-frame invalidations to the render surface element.

@@ -13,6 +13,7 @@ import type { EncodedChunkData } from '../webcodecs-encoder';
 import { extractHVCC } from '../hevc-parser';
 import { getLogs } from 'logging';
 import { WorkerMstgSelector } from './worker-mstg-selector';
+import { BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS, BG_FILTER } from '../services/bg-canvas-settings';
 import { Api, streamingApi } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 
@@ -916,6 +917,7 @@ const serverImpl: DecoderWorker = {
         jitterBufferMs: number,
         syncPort: MessagePort,
         writable?: WritableStream<VideoFrame>,
+        bgCanvas?: OffscreenCanvas,
     ): Promise<void> => {
         if (mstgSelector) {
             warnLog?.log('startPullInWorker called while another selector is active — replacing');
@@ -940,7 +942,24 @@ const serverImpl: DecoderWorker = {
             infoLog?.log(`Off-thread renderer enabled in worker (tier 1, ${gen.api}), startedAtMs=${startedAtMs}, jitterBufferMs=${jitterBufferMs}`);
         }
 
-        mstgSelector = new WorkerMstgSelector(selectorWritable, syncPort, startedAtMs, jitterBufferMs);
+        // Optional bg painter: low-res blurred canvas drawn from the same
+        // VideoFrames the selector picks. Blur baked into the bitmap via
+        // ctx.filter — compositor just bilinear-upscales a 64×N texture
+        // instead of running a Gaussian shader over the full surface.
+        let bgPainter: { canvas: OffscreenCanvas; ctx: OffscreenCanvasRenderingContext2D } | undefined;
+        if (bgCanvas) {
+            const ctx = bgCanvas.getContext('2d', { alpha: false }) as OffscreenCanvasRenderingContext2D | null;
+            if (ctx) {
+                ctx.imageSmoothingEnabled = false;
+                ctx.filter = BG_FILTER;
+                bgPainter = { canvas: bgCanvas, ctx };
+                infoLog?.log(`Bg painter armed: ${BG_CANVAS_WIDTH}px wide, filter=${BG_FILTER}, every ${BG_DRAW_INTERVAL_MS}ms`);
+            } else {
+                warnLog?.log('Bg canvas getContext("2d") returned null — bg painter disabled');
+            }
+        }
+
+        mstgSelector = new WorkerMstgSelector(selectorWritable, syncPort, startedAtMs, jitterBufferMs, bgPainter);
 
         // Lazy Api init (idempotent — second call no-ops with a warn log).
         if (!apiInitialized) {

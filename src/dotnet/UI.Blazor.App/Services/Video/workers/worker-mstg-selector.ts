@@ -10,6 +10,7 @@
 
 import { AudioVideoSyncClient } from 'audio-video-sync-client';
 import { getLogs } from 'logging';
+import { BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS, BG_FILTER } from '../services/bg-canvas-settings';
 
 const { warnLog } = getLogs('VideoDecoder');
 
@@ -18,6 +19,11 @@ const SOFT_CATCHUP_SPAN_MS = 600;
 const SOFT_CATCHUP_KEEP_MS = 300;
 const HARD_CAP_FRAMES = 30;
 
+export interface BgPainter {
+    canvas: OffscreenCanvas;
+    ctx: OffscreenCanvasRenderingContext2D;
+}
+
 export class WorkerMstgSelector {
     private queue: VideoFrame[] = [];
     private readonly writer: WritableStreamDefaultWriter<VideoFrame>;
@@ -25,12 +31,14 @@ export class WorkerMstgSelector {
     private writeInFlight = false;
     private lastWrittenTs = -1;
     private disposed = false;
+    private lastBgDrawAtMs = 0;
 
     constructor(
         writable: WritableStream<VideoFrame>,
         syncPort: MessagePort,
         private readonly startedAtMs: number,
         private jitterBufferMs: number,
+        private readonly bgPainter?: BgPainter,
     ) {
         this.writer = writable.getWriter();
         // tick() on every audio sync update — covers steady-state queue + advancing audio
@@ -110,6 +118,33 @@ export class WorkerMstgSelector {
         }
 
         this.lastWrittenTs = eligible.timestamp;
+
+        // Paint bg backdrop from the same VideoFrame, throttled to ~10 fps.
+        // Drawing happens before writer.write so the frame is still readable
+        // — writer takes ownership when its promise resolves.
+        if (this.bgPainter) {
+            const nowMs = performance.now();
+            if (nowMs - this.lastBgDrawAtMs >= BG_DRAW_INTERVAL_MS) {
+                this.lastBgDrawAtMs = nowMs;
+                try {
+                    const dw = eligible.displayWidth || 1;
+                    const dh = eligible.displayHeight || 1;
+                    const bgH = Math.max(1, Math.round(BG_CANVAS_WIDTH * dh / dw));
+                    if (this.bgPainter.canvas.width !== BG_CANVAS_WIDTH ||
+                        this.bgPainter.canvas.height !== bgH) {
+                        this.bgPainter.canvas.width = BG_CANVAS_WIDTH;
+                        this.bgPainter.canvas.height = bgH;
+                        // Canvas resize resets ctx state — re-apply filter + smoothing.
+                        this.bgPainter.ctx.imageSmoothingEnabled = false;
+                        this.bgPainter.ctx.filter = BG_FILTER;
+                    }
+                    this.bgPainter.ctx.drawImage(eligible, 0, 0, BG_CANVAS_WIDTH, bgH);
+                } catch (e) {
+                    warnLog?.log('Bg paint failed:', e);
+                }
+            }
+        }
+
         this.writeInFlight = true;
         this.writer.write(eligible)
             .catch((e: unknown) => {
