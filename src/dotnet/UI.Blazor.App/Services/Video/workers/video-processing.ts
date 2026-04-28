@@ -1034,17 +1034,21 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                     const configPixels = encoderConfig.width * encoderConfig.height;
                     if (inputPixels <= configPixels) {
                         // Input is smaller than config — reconfigure encoder to match
-                        // (avoids upscaling which wastes CPU for no quality gain)
-                        warnLog?.log(`Display dimensions ${frameW}x${frameH} smaller than config ${encoderConfig.width}x${encoderConfig.height}, reconfiguring`);
-                        encoderConfig.width = frameW; encoderConfig.height = frameH;
+                        // (avoids upscaling which wastes CPU for no quality gain).
+                        // Ensure even dims — video codecs require it; odd window/tab
+                        // capture sizes would cause an encoder error.
+                        const evenW = frameW & ~1;
+                        const evenH = frameH & ~1;
+                        warnLog?.log(`Display dimensions ${frameW}x${frameH} smaller than config ${encoderConfig.width}x${encoderConfig.height}, reconfiguring to ${evenW}x${evenH}`);
+                        encoderConfig.width = evenW; encoderConfig.height = evenH;
                         // Downscaler first (sync), encoder second (async) — same invariant as
                         // orientation/RPC reconfigure paths. Without this the downscaler keeps
                         // its old slot target and feeds frames at the old dims into a smaller
                         // encoder, hitting the dim-mismatch guard and dropping every frame.
                         if (downscaler) downscaler.configure(currentDownscaleTargets());
-                        await encoder.reconfigure({ width: frameW, height: frameH, bitrate: encoderConfig.bitrate });
-                        if (segConfig) { segConfig.outputWidth = frameW; segConfig.outputHeight = frameH; }
-                        void callbacks.onDimensionReconciled(frameW, frameH, rpcNoWait);
+                        await encoder.reconfigure({ width: evenW, height: evenH, bitrate: encoderConfig.bitrate });
+                        if (segConfig) { segConfig.outputWidth = evenW; segConfig.outputHeight = evenH; }
+                        void callbacks.onDimensionReconciled(evenW, evenH, rpcNoWait);
                     } else {
                         // Input is larger than config (e.g., 4K screen capture with 1080p encoder config).
                         // Keep encoder at configured resolution — resizeFrame() will downscale.
@@ -1371,8 +1375,8 @@ export const serverImpl: VideoProcessingWorker = {
         const inSmall = Math.min(params.width, params.height);
         const inLarge = Math.max(params.width, params.height);
         const isPortrait = encoderConfig.height > encoderConfig.width;
-        params.width = isPortrait ? inSmall : inLarge;
-        params.height = isPortrait ? inLarge : inSmall;
+        params.width = (isPortrait ? inSmall : inLarge) & ~1;
+        params.height = (isPortrait ? inLarge : inSmall) & ~1;
         infoLog?.log(`Reconfigure: ${params.bitrate / 1_000_000}Mbps, ${params.width}x${params.height}`);
         encoderConfig.bitrate = params.bitrate; encoderConfig.width = params.width; encoderConfig.height = params.height;
         resizeCanvas = null; resizeCtx = null;

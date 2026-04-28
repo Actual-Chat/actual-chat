@@ -224,6 +224,13 @@ export class RecordingService extends EventTarget {
             let actualWidth = settings.width ?? this.config.width;
             let actualHeight = settings.height ?? this.config.height;
 
+            // Video codecs (H.264, HEVC, etc.) require even dimensions. getDisplayMedia
+            // can return odd sizes (e.g., window/tab capture at 1365x767). Round down
+            // to even — the 1px crop is invisible, and the resize canvas handles the
+            // mismatch when the first frame arrives at the original odd size.
+            actualWidth &= ~1;
+            actualHeight &= ~1;
+
             // For screencast: cap initial resolution to 1080p to avoid sending 4K keyframes
             // before the quality preset arrives (~1s). Floor at 720p for text readability.
             if (this.config.mode === 'screen') {
@@ -437,10 +444,15 @@ export class RecordingService extends EventTarget {
             const maxDim = 1280;
             if (width > maxDim || height > maxDim) {
                 const scale = Math.min(maxDim / width, maxDim / height);
-                width = Math.round(width * scale) & ~1;
-                height = Math.round(height * scale) & ~1;
+                width = Math.round(width * scale);
+                height = Math.round(height * scale);
             }
         }
+
+        // Ensure even dimensions — video codecs require it. Applied after all
+        // platform-specific caps whose Math.round can produce odd values.
+        width &= ~1;
+        height &= ~1;
 
         // Use the specific codec string if provided, otherwise use defaults
         let codecString: string;
