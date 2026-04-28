@@ -16,11 +16,7 @@
                             <div class="c-group-title">Recent</div>
                             <div class="c-emoji-recent-list">
                                 @foreach (var emoji in _recentEmojis) {
-                                    <button @key="@($"recent-{emoji.Id.Value}")"
-                                        class="c-item"
-                                        @onclick="@(() => OnEmojiClick(emoji))">
-                                        <EmojiIcon Emoji="@emoji" Class="c-emoji" HasPreview="true"/>
-                                    </button>
+                                    @EmojiButton(emoji)
                                 }
                             </div>
                         </div>
@@ -30,11 +26,7 @@
                             <div class="c-group-title">@group</div>
                             <div class="c-group-items">
                                 @foreach (var emoji in Emojis.GetByGroup(group)) {
-                                    <button @key="emoji"
-                                        class="c-item"
-                                        @onclick="@(() => OnEmojiClick(emoji))">
-                                        <EmojiIcon Emoji="@emoji" Class="c-emoji" HasPreview="true"/>
-                                    </button>
+                                    @EmojiButton(emoji)
                                 }
                             </div>
                         </div>
@@ -67,6 +59,14 @@
             await LoadRecentEmojis().ConfigureAwait(true);
         }
     }
+
+    private RenderFragment EmojiButton(Emoji emoji) => __builder => {
+        <button @key="emoji"
+            class="c-item"
+            @onclick="@(() => OnEmojiClick(emoji))">
+            <EmojiIcon Emoji="@emoji" Class="c-emoji" HasPreview="true"/>
+        </button>
+    };
 
     private async Task OnEmojiClick(Emoji emoji) {
         await SaveRecentEmoji(emoji).ConfigureAwait(true);
