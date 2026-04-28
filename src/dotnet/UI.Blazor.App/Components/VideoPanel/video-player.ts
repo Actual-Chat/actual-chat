@@ -826,7 +826,8 @@ export class VideoPlayer {
         const audioState = AudioVideoSync.get(this.authorId);
         if (audioState) {
             const audioPlayingAtMs = AudioVideoSync.interpolatePlayingAt(audioState) * 1000;
-            const rawTargetVideoOffsetMs = (audioState.recordedAtMs - this.startedAtMs) + audioPlayingAtMs;
+            const audioStartAtMs = audioState.recordedAtMs - audioState.playingAtSec * 1000;
+            const rawTargetVideoOffsetMs = (audioStartAtMs - this.startedAtMs) + audioPlayingAtMs;
             // Audio sync already accounts for end-to-end latency through audioState.recordedAtMs —
             // subtracting pipelineLatencyMs would double-count, making the target too conservative
             // and causing buffer bloat → render stall → SKIP_TO_LIVE spiral.

@@ -97,7 +97,8 @@ export class WorkerMstgSelector {
         const state = this.syncClient.get();
         if (state) {
             const audioPlayingAtMs = this.syncClient.interpolatePlayingAt() * 1000;
-            const targetMs = (state.recordedAtMs - this.startedAtMs) + audioPlayingAtMs;
+            const audioStartAtMs = state.recordedAtMs - state.playingAtSec * 1000;
+            const targetMs = (audioStartAtMs - this.startedAtMs) + audioPlayingAtMs;
             targetUs = targetMs * 1000;
         } else {
             // No audio sync state → write the newest frame ASAP (wall-clock fallback).
