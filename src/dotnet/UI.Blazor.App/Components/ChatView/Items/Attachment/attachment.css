@@ -1,21 +1,12 @@
 /* image line */
 .message-attachments .message-image-attachments {
+    @apply flex-y gap-y-px;
     @apply w-full;
 }
 .image-line {
     @apply flex-x gap-x-px;
-    @apply h-full w-full min-w-full max-w-full;
+    @apply w-full;
     @apply overflow-hidden;
-}
-.wide .image-line {
-    @apply w-full;
-}
-body.narrow .conversation-message .image-line,
-body.narrow .thread-message .image-line {
-    @apply w-full;
-}
-.message-image-attachments.one-row .image-line:not(.one-image) {
-    @apply h-full;
 }
 .message-image-attachments .image-line:first-child .image-item:first-child {
     @apply rounded-tl-xl;
@@ -44,92 +35,16 @@ body.hoverable .image-line .image-item:hover {
 .image-line .image-item video {
     @apply object-cover;
 }
-.line-height-sm {
-    @apply h-12 md:h-16;
+/* Single image: respect aspect ratio, no cropping */
+.image-line.one-image {
+    @apply w-auto;
+    @apply max-h-96 max-w-full;
 }
-.wide .line-height-sm {
-    @apply h-20;
+.image-line.one-image image-skeleton::part(image) {
+    object-fit: contain;
 }
-.line-height-md {
-    @apply h-16 md:h-20;
-}
-.wide .line-height-md {
-    @apply h-26;
-}
-.line-height-lg {
-    @apply h-28 md:h-32;
-}
-.wide .line-height-lg {
-    @apply h-40;
-}
-.line-height-xl {
-    @apply h-40 md:h-48;
-}
-.wide .line-height-xl {
-    @apply h-60;
-}
-.image-line.sm-sm {
-    @apply h-64 md:h-80;
-}
-.image-line.sm-md {
-    @apply h-48 md:h-64;
-}
-.image-line.md-md {
-    @apply h-32 md:h-40;
-}
-.image-line.lg-lg {
-    @apply h-24 md:h-32;
-}
-.image-line.xl-xl {
-    @apply h-18 md:h-24;
-}
-.one-row .image-line.sm-sm {
-    @apply h-64 md:h-80;
-}
-.one-row .image-line.sm-md {
-    @apply h-48 md:h-64;
-}
-.one-row .image-line.md-md {
-    @apply h-40 md:h-48;
-}
-.one-row .image-line.one-image {
-    @apply h-full w-full;
-}
-
-.one-row .image-line.one-image {
-    @apply max-h-96 w-64 md:w-96;
-}
-.one-row .image-line.one-image.sm-sm {
-    @apply h-80 md:h-96 w-40 md:w-48;
-}
-.one-row .image-line.one-image.md-md {
-    @apply h-64 md:h-96;
-}
-.one-row .image-line.one-image.lg-lg {
-    @apply h-32 md:h-40;
-}
-.one-row .image-line.one-image.xl-xl {
-    @apply h-24 md:h-32;
-}
-.one-row .image-line.one-image .image-item {
-    @apply max-w-full;
-}
-
-.message-image-attachments.one-row:has(.sm-sm),
-.message-image-attachments.one-row:has(.sm-md) {
-    @apply max-w-80;
-}
-.message-image-attachments.one-row .sm-sm .image-item {
-    @apply max-w-32 md:max-w-40;
-}
-.message-image-attachments.one-row .md-md .image-item {
-    @apply max-w-40 md:max-w-48;
-}
-.message-image-attachments.one-row .one-image .image-item {
-    @apply max-w-full;
-}
-.message-image-attachments.one-row .one-image.sm-sm .image-item {
-    @apply max-w-48;
+.image-line.one-image video {
+    @apply object-contain;
 }
 
 /* attachment */

@@ -9,6 +9,6 @@ public interface IVisualMediaGalleryArranger
 
 public static class VisualMediaGalleryArranger
 {
-    public static IVisualMediaGalleryArranger Default { get; } = new DefaultVisualMediaGalleryArranger();
-    public static IVisualMediaGalleryArranger ConversationWideScreen { get; } = new ConversationWideScreenVisualMediaGalleryArranger();
+    public static IVisualMediaGalleryArranger Default { get; } = new JustifiedGalleryArranger(targetRowRatio: 3f, maxPerRow: 5);
+    public static IVisualMediaGalleryArranger ConversationWideScreen { get; } = new JustifiedGalleryArranger(targetRowRatio: 4f, maxPerRow: 6);
 }

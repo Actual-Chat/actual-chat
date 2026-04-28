@@ -1,13 +1,23 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @typeparam TItem
 @{
-    var tileCount = Row.Tiles.Count;
-    var cls = tileCount == 1 ? "one-image" : "";
+    var isSingle = Row.Tiles.Count == 1;
+    var cls = isSingle ? "one-image" : "";
+    string lineStyle;
+    if (isSingle) {
+        var ratio = Row.Tiles[0].Ratio;
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        // max-h-96 = 24rem; limit width to preserve aspect ratio
+        var maxWidthRem = 24f * Math.Min(ratio, 1.5f);
+        lineStyle = $"aspect-ratio: {ratio.ToString(inv)}; max-width: {maxWidthRem.ToString(inv)}rem";
+    } else {
+        lineStyle = Row.GetRowStyle();
+    }
 }
 
-<div class="image-line @Class @Row.LineHeightCls() @cls">
+<div class="image-line @Class @cls" style="@lineStyle">
     @foreach (var tile in Row.Tiles) {
-        <div class="image-item" style="width: @Row.GetTileWidthInPercent(tile)%">
+        <div class="image-item" style="width: @Row.GetTileWidthInPercent(tile).ToString(System.Globalization.CultureInfo.InvariantCulture)%">
             @ItemTemplate(tile.Item)
         </div>
     }
