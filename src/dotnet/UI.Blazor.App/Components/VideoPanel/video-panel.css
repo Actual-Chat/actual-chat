@@ -13,7 +13,7 @@
 /* Collapsed "island" — fixed, positioned below subheader, draggable */
 .video-panel.collapsed {
     @apply fixed z-button top-16 right-2;
-    @apply min-h-0 h-[3.25rem] max-h-[3.25rem];
+    @apply h-full max-h-24;
     @apply w-auto;
     @apply p-px;
     @apply rounded-lg;
@@ -29,12 +29,16 @@
     @apply rounded-[7px];
     @apply bg-03;
 }
+body.wide .video-panel.collapsed > .c-container {
+    @apply gap-0;
+    @apply p-0.5;
+}
 .video-panel.collapsed .video-panel-toolbar {
     @apply hidden;
 }
 .video-panel.collapsed .video-panel-content {
     @apply relative;
-    @apply w-20 h-full min-h-0;
+    @apply w-40 h-full;
     @apply p-0;
     @apply rounded-md;
     @apply overflow-hidden;
@@ -192,6 +196,9 @@ body.wide .video-panel.expanded:has(.video-panel-chat) > .c-container {
     @apply -mt-1 -mr-1;
     order: 1;
 }
+body.wide .video-panel.collapsed .btn-h.video-panel-collapse-toggle {
+    @apply m-0;
+}
 .video-panel.expanded .btn-h.video-panel-collapse-toggle {
     @apply hidden;
 }
@@ -323,6 +330,11 @@ body.device-mobile.narrow .video-panel.expanded .video-panel-content.video-panel
     backdrop-filter: blur(2px);
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.60);
 }
+body.hoverable .btn-video-panel.btn:hover,
+body.hoverable .btn-video-panel.btn-h:hover {
+    @apply text-white;
+    @apply opacity-80;
+}
 .btn-video-panel.btn::before,
 .btn-video-panel.btn-h::before {
     content: "";
@@ -399,10 +411,6 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
         var(--blue-80) 270deg,
         var(--blue-80) 360deg
     );
-}
-body.hoverable .btn-h.expand-btn:hover {
-    @apply text-white;
-    @apply opacity-80;
 }
 .video-panel .show-with-delay {
     @apply invisible;

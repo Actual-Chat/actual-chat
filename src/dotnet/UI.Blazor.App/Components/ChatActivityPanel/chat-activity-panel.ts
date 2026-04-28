@@ -64,6 +64,7 @@ export class ChatActivityPanel {
                     this.isMoving = false;
                 return true;
             }),
+            filter(() => !this.isNotParticipating()),
             filter(() => !this.isLocked() && !this.isPinned),
             takeUntil(this.disposed$)
         ).subscribe(() => this.collapse());
@@ -71,8 +72,10 @@ export class ChatActivityPanel {
         // Continuous drag gesture for expand/pin/unpin.
         // When collapsed: triggers from header OR activity panel touch.
         // When expanded/pinned: triggers from activity panel touch only.
+        // Disabled entirely when not-participating (panel is just a static banner).
         DocumentEvents.capturedPassive.touchStart$.pipe(
             filter(() => !ScreenSize.isWide()),
+            filter(() => !this.isNotParticipating()),
             filter(e => {
                 const onPanel = this.activityPanel.contains(e.target as Node);
                 const onHeader = this.header.contains(e.target as Node);
@@ -85,6 +88,15 @@ export class ChatActivityPanel {
             this.isMoving = true;
             Gestures.addActive(new PanelDragGesture(this, e));
         });
+
+        // Watch for not-participating class: when it appears, force expand
+        // (e.g. user disconnects from call while header is collapsed)
+        const observer = new MutationObserver(() => {
+            if (this.isNotParticipating() && this.state === 'collapsed')
+                this.expand();
+        });
+        observer.observe(this.activityPanel, { attributes: true, attributeFilter: ['class'] });
+        this.disposed$.subscribe(() => observer.disconnect());
     }
 
     public dispose() {
@@ -109,8 +121,14 @@ export class ChatActivityPanel {
         return Date.now() < this.lockUntil;
     }
 
+    public isNotParticipating(): boolean {
+        return this.activityPanel.classList.contains('not-participating');
+    }
+
     public collapse() {
         if (this.state === 'collapsed')
+            return;
+        if (this.isNotParticipating())
             return;
 
         this.state = 'collapsed';
