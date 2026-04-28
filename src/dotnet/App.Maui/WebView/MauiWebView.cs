@@ -79,20 +79,21 @@ public sealed partial class MauiWebView
 
     public partial void SetPlatformWebView(object platformWebView);
 
-    public void SetScopedServices(IServiceProvider scopedServices, Session session)
+    public Task SetScopedServices(IServiceProvider scopedServices, Session session)
     {
         bool isSessionChanged;
         lock (_lock) {
             if (ReferenceEquals(ScopedServices, scopedServices))
-                return;
+                return Task.CompletedTask;
 
             isSessionChanged = Session != session;
             ScopedServices = scopedServices;
             Session = session;
             BlazorAppServices = scopedServices;
         }
-        if (isSessionChanged)
-            SetupSessionCookie(session);
+        return isSessionChanged
+            ? SetupSessionCookie(session)
+            : Task.CompletedTask;
     }
 
     public void ResetScopedServices(IServiceProvider scopedServices)
@@ -140,7 +141,7 @@ public sealed partial class MauiWebView
     private partial void OnInitializing(object? sender, BlazorWebViewInitializingEventArgs eventArgs);
     private partial void OnInitialized(object? sender, BlazorWebViewInitializedEventArgs eventArgs);
     private partial void OnLoaded(object? sender, EventArgs eventArgs);
-    private partial void SetupSessionCookie(Session session);
+    private partial Task SetupSessionCookie(Session session);
 
     public bool HasDisconnected { get; private set; }
 

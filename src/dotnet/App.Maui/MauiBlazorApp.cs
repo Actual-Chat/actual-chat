@@ -29,7 +29,8 @@ public sealed class MauiBlazorApp : AppBase
         _pageContextTracker.AttachTo(_mauiWebView);
         TrueSessionResolver = Services.GetRequiredService<TrueSessionResolver>();
         var session = await TrueSessionResolver.SessionTask.ConfigureAwait(true);
-        _mauiWebView?.SetScopedServices(Services, session);
+        if (_mauiWebView != null)
+            await _mauiWebView.SetScopedServices(Services, session).ConfigureAwait(true);
 
         FirebaseAnalyticsExt.ActivateOwnAnalyticsCollection(Services);
         _ = Services.GetRequiredService<MauiSentryInitializer>().Start();

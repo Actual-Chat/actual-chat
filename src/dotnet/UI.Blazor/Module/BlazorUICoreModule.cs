@@ -120,7 +120,10 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(_ => new BlazorAppLifecycle());
 
         // Uploads
-        services.AddScoped<IFileUploader, WebSourceUploader>();
+        if (hostKind.IsApp())
+            services.AddScoped<IFileUploader, WebSourceRpcUploader>();
+        else
+            services.AddScoped<IFileUploader, WebSourceUploader>();
         services.AddScoped<IFileUploader, StreamUploader>();
         services.AddScoped<FileUploader>();
 
