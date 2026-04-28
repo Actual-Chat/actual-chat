@@ -41,5 +41,10 @@
     protected override Task<bool> Validate() => TaskExt.TrueTask;
 
     private Task TryFocusTotpInput() => _totpVerifier?.Focus().AsTask() ?? Task.CompletedTask;
-    private Task OnTotpVerified() => Stepper.TryMoveForward().AsTask();
+
+    // Return to the first step before the server-side sign-in result lands.
+    // For existing accounts the modal closes when OwnAccount changes; for new
+    // accounts a "Register?" prompt appears, and if the user cancels, they land
+    // back on the phone/email form rather than the spent TOTP step.
+    private Task OnTotpVerified() => Stepper.MoveBack().AsTask();
 }
