@@ -44,7 +44,6 @@ export function microsecondsToTicks(microseconds: number): number {
 }
 
 export interface StreamingContext {
-    sessionToken: string;
     chatId: string;
     serverClockOffsetMs: number;
     streamKind: number; // 0 = Webcam, 1 = Screencast

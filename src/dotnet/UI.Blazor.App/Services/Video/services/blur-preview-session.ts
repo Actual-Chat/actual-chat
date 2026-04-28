@@ -91,7 +91,7 @@ export class BlurPreviewSession {
         const config = {
             encoder: dummyEncoderConfig,
             segmentation: segConfig,
-            streaming: { apiUrl: '', sessionToken: '', chatId: '', serverClockOffsetMs: 0 },
+            streaming: { apiUrl: '', chatId: '', serverClockOffsetMs: 0 },
             previewOnly: true,
         };
 

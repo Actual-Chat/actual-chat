@@ -1,5 +1,4 @@
 using ActualChat.Diagnostics;
-using ActualChat.Hosting;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Diagnostics;
@@ -16,14 +15,12 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private readonly AsyncLock _stateLock = new(LockReentryMode.CheckedPass);
     private readonly MutableState<AudioRecorderState> _state;
     private readonly IAudioRecorderEngine _engine;
-    private SessionTokens? _sessionTokens;
 
     private Activity? _recordingActivity;
     private readonly AudioFocusRequester _audioFocusRequester;
     private AudioFocusScope? _audioFocusScope;
 
     private AppUIHub Hub { get; }
-    private HostInfo HostInfo => Hub.HostInfo;
     private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
     private TuneUI TuneUI => Hub.TuneUI;
     private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
@@ -78,20 +75,13 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         else if (state.ChatId is not null)
             await StopRecordingUnsafe();
 
-        var sessionToken = "";
-        if (HostInfo.HostKind.IsApp()) {
-            var sessionTokens = _sessionTokens ??= Hub.Services.GetRequiredService<SessionTokens>();
-            var secureToken = await sessionTokens.Get(cancellationToken).ConfigureAwait(false);
-            sessionToken = secureToken.Token;
-        }
-
         MarkStarting(chatId);
         try {
             _audioFocusScope = await AudioFocusUI.TryAcquire(_audioFocusRequester).ConfigureAwait(false);
             if (_audioFocusScope is null)
                 Log.LogWarning("Failed to gain audio focus for recording. Continue without it");
 
-            var isStarted = await _engine.Start(chatId, repliedChatEntryId, sessionToken, cancellationToken).WaitAsync(StartRecordingTimeout, cancellationToken).ConfigureAwait(false);
+            var isStarted = await _engine.Start(chatId, repliedChatEntryId, cancellationToken).WaitAsync(StartRecordingTimeout, cancellationToken).ConfigureAwait(false);
             if (!isStarted) {
                 MicrophonePermission.ForgetCached();
                 Log.LogWarning(nameof(StartRecording) + ": chat #{ChatId} - can't access the microphone", chatId);

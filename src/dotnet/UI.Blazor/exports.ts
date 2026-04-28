@@ -20,7 +20,6 @@ export * from './Services/History/history'
 export * from './Services/KeepAwakeUI/keep-awake-ui'
 export * from './Services/Kvas/web-kvas-backend';
 export * from './Services/ScreenSize/screen-size';
-export * from './Services/Security/session-tokens';
 export * from './Services/Settings/local-settings';
 export * from './Services/TuneUI/tune-ui'
 export * from './Services/InteractiveUI/interactive-ui';

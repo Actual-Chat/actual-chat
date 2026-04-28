@@ -146,7 +146,6 @@ let frameSequence = 0;
 
 // Streaming
 const streamCtx: StreamingContext = {
-    sessionToken: '',
     chatId: '',
     serverClockOffsetMs: 0,
     streamKind: 0,
@@ -164,7 +163,6 @@ let lastVideoStream: InternalVideoStream | null = null;
  */
 function applyStreamingConfig(config: VideoProcessingConfig): void {
     const s = config.streaming;
-    streamCtx.sessionToken = s.sessionToken;
     streamCtx.chatId = s.chatId;
     streamCtx.serverClockOffsetMs = s.serverClockOffsetMs;
     streamCtx.streamKind = s.streamKind ?? 0;
@@ -1873,9 +1871,6 @@ export const serverImpl: VideoProcessingWorker = {
         } : null;
         return { encoder: encoderStats, segmentation: segStats, orientation: orientationStats ? { ...orientationStats } : null, streaming: streamStats };
     },
-
-    // eslint-disable-next-line @typescript-eslint/require-await
-    updateSessionToken: async (token): Promise<void> => { streamCtx.sessionToken = token; },
 
     // eslint-disable-next-line @typescript-eslint/require-await
     updateServerClockOffset: async (offsetMs): Promise<void> => { streamCtx.serverClockOffsetMs = offsetMs; },
