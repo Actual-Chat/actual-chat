@@ -130,6 +130,14 @@ export class VideoRecorder {
     // Cached encoder capabilities (detected at recording start)
     private supportedEncoderCategories: string[] = [];
     private audienceCodecs?: string[];
+    // performance.now() of the most recent codec switch fallback. If a second
+    // failure fires inside `codecSwitchCooldownMs` we treat it as a system-level
+    // problem (no GPU, driver crash) and abort recording rather than blasting
+    // through the codec chain — each switch tears down/rebuilds the encoder +
+    // simulcast extras + WebGPU downscaler, so 4 of them in <1s is one of the
+    // freeze surfaces this whole work stream is trying to close.
+    private lastCodecSwitchAt = 0;
+    private readonly codecSwitchCooldownMs = 2000;
     private supportedCodecs: CodecInfo[] = [];
     // Simulcast layer ladder — cached; applied to the next startRecording. Empty/null
     // = single-encoder (P2P) mode. Index 0 is the base layer (lowest res); higher
@@ -769,6 +777,7 @@ export class VideoRecorder {
             this.cleanupPreviewTrack();
             this.isRecording = false;
             this.isScreencasting = false;
+            this.lastCodecSwitchAt = 0;
             this.setRecordingState('stopped');
             this.unregister();
             // Notify Blazor
@@ -1002,11 +1011,23 @@ export class VideoRecorder {
             this.supportedEncoderCategories.splice(idx, 1);
             warnLog?.log(`Excluded encoder codec '${category}' after failure. Remaining: [${this.supportedEncoderCategories.join(', ')}]`);
         }
+        // Back-to-back codec failures within the cooldown window indicate a
+        // system-level problem (no GPU / driver crash / camera revoked).
+        // Continuing the cascade just stretches the freeze surface — each
+        // switchCodec rebuilds the encoder + extras + WebGPU downscaler.
+        // Stop recording instead and surface the error.
+        const now = performance.now();
+        if (this.lastCodecSwitchAt > 0 && now - this.lastCodecSwitchAt < this.codecSwitchCooldownMs) {
+            errorLog?.log(`Codec switch within ${this.codecSwitchCooldownMs}ms cooldown — aborting recording (system-level encoder failure)`);
+            void this.stopRecording();
+            return;
+        }
         const next = this.pickFallbackCodec(category);
         if (!next) {
             errorLog?.log(`No fallback codec available after '${category}' failed`);
             return;
         }
+        this.lastCodecSwitchAt = now;
         warnLog?.log(`Switching codec '${category}' → '${next}' after failure`);
         void this.recordingService?.switchCodec(next);
     }
