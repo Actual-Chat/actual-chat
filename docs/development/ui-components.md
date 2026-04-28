@@ -228,6 +228,58 @@ Properties are grouped by category, top to bottom. Use `@apply` for Tailwind uti
 
 Not all categories are present in every rule — include only what's needed. When a category has only one or two utilities, they can share a line. Separate comments are optional.
 
+## Animation Performance
+
+Animations can cause expensive full-document repaints if the browser can't isolate them to a compositor layer. Follow these rules to keep animations cheap:
+
+### Layer Isolation
+
+Add `will-change: transform` and `contain: layout paint style` to any element that runs a CSS animation or transition. This tells the browser to promote the element to its own compositor layer and prevents layout/paint from leaking to ancestors:
+
+```css
+.c-film-strip {
+    will-change: transform;
+    contain: layout paint style;
+}
+```
+
+Apply it to the **animated element itself**, not a distant parent. If a component has several independent animations (e.g., the root element and a pseudo-element wrapper), each one gets its own pair.
+
+**Caveat:** Don't add `will-change: transform` blindly — each promoted layer consumes GPU memory. On Android WebView, too many compositor layers can cause rendering corruption (e.g., black circles instead of avatars). If you see visual glitches on mobile, reducing the layer count is the first thing to try. See `navbar.css` for a real example of this trade-off.
+
+### Pause Invisible Animations
+
+When an animated element is hidden (e.g., via `opacity: 0` or a state class), pause the animation so it doesn't burn CPU/GPU cycles offscreen:
+
+```css
+.chat-activity-panel.watching .c-film-strip {
+    @apply opacity-0;
+}
+.chat-activity-panel.watching .c-film-strip::after {
+    animation-play-state: paused;
+}
+```
+
+Always pair `opacity: 0` (or `visibility: hidden`) with `animation-play-state: paused` on the animated child.
+
+### Prefer `transform` and `opacity`
+
+Only `transform` and `opacity` can be animated on the compositor thread without triggering layout or paint. Avoid animating `width`, `height`, `top`, `left`, `margin`, `padding`, `box-shadow`, or `border` in tight loops — use `transform: scale()` / `translate()` instead.
+
+When animating `box-shadow` is unavoidable (e.g., the rotating glow on author circles), make sure the element has `will-change: transform` + `contain` so the repaint scope is limited to that layer.
+
+### Respect `prefers-reduced-motion`
+
+Decorative animations (film strips, placeholder waves) should be hidden when the user prefers reduced motion:
+
+```css
+@media (prefers-reduced-motion: reduce) {
+    .c-film-strip {
+        @apply hidden;
+    }
+}
+```
+
 ## TypeScript Interop
 
 ### Class Structure
