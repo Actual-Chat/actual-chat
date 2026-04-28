@@ -6,6 +6,8 @@
     @apply overflow-hidden;
     @apply rounded-full border border-separator;
     @apply cursor-pointer;
+    will-change: transform;
+    contain: layout paint style;
 }
 body.hoverable .streaming-entry-badge:hover::after,
 .touch-capable .streaming-entry-badge:active::after {

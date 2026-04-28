@@ -3,6 +3,8 @@
     @apply flex-none flex-x items-center gap-x-1;
     @apply h-14 w-full md:w-64;
     @apply overflow-hidden;
+    will-change: transform;
+    contain: layout paint style;
 }
 .chat-activity-panel:not(.listening) {
     @apply bg-transparent;
@@ -114,6 +116,8 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
     @apply overflow-hidden;
     @apply transition-opacity duration-500;
     border-radius: inherit;
+    will-change: transform;
+    contain: layout paint style;
 }
 /* Horizontal film strip with character illustrations */
 .c-film-strip::after {
@@ -157,8 +161,14 @@ body.narrow .layout-header:has(.video-streaming) {
 .chat-activity-panel.watching .c-film-strip {
     @apply opacity-0;
 }
+.chat-activity-panel.watching .c-film-strip::after {
+    animation-play-state: paused;
+}
 .layout-header.collapsed .c-film-strip {
     @apply opacity-0;
+}
+.layout-header.collapsed .c-film-strip::after {
+    animation-play-state: paused;
 }
 @media (prefers-reduced-motion: reduce) {
     .c-film-strip {
@@ -205,6 +215,8 @@ body.narrow .chat-activity-panel > .c-buttons > .btn.not-listening {
 }
 .activity-svg {
     @apply md:mt-1;
+    will-change: transform;
+    contain: layout paint style;
 }
 .chat-activity-panel .btn.not-listening {
     @apply md:px-4;
@@ -275,19 +287,15 @@ body.hoverable .chat-activity-panel .btn-h.listening:hover,
 @keyframes timer-swap {
     0%, 40% {
         opacity: 1;
-        filter: blur(0);
     }
     46%, 50% {
         opacity: 0;
-        filter: blur(4px);
     }
     50.01%, 90% {
         opacity: 0;
-        filter: blur(4px);
     }
     96%, 100% {
         opacity: 1;
-        filter: blur(0);
     }
 }
 .chat-activity-panel .btn-h.talking {
