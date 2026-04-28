@@ -6,6 +6,23 @@
 <div class="c-gif-tab">
     <SearchBox Placeholder="Search GIFs..." ClearButton="true" TextChanged="@OnSearch"/>
     <div class="c-gif-scroll">
+        @if (_recentGifs.Count > 0 && _searchQuery.IsNullOrEmpty()) {
+            <div class="c-gif-recent">
+                <div class="c-gif-recent-label">Recent</div>
+                <div class="c-gif-recent-list">
+                    @foreach (var gif in _recentGifs) {
+                        <button @key="gif.Slug"
+                                class="c-gif-recent-item"
+                                @onclick="@(() => OnGifClick(gif))">
+                            <img class="c-gif-img"
+                                 src="@gif.PreviewUrl"
+                                 alt=""
+                                 style="@GetAspectRatioStyle(gif)"/>
+                        </button>
+                    }
+                </div>
+            </div>
+        }
         <div class="c-gif-grid">
             @* Each new item is appended to the currently-shorter column (height estimated from aspect ratio).
                Stable: items are only appended, never reshuffled, so positions don't change across loads. *@
@@ -15,7 +32,7 @@
                     @foreach (var gif in _columns[columnIndex]) {
                         <button @key="gif.Slug"
                                 class="c-gif-item"
-                                @onclick="@(() => GifSelected.InvokeAsync(gif.Url))">
+                                @onclick="@(() => OnGifClick(gif))">
                             <img class="c-gif-img"
                                  src="@gif.PreviewUrl"
                                  alt=""
@@ -23,10 +40,10 @@
                                  style="@GetAspectRatioStyle(gif)"/>
                         </button>
                     }
+                    <div @ref="_sentinelRefs[columnIndex]" class="c-gif-sentinel"></div>
                 </div>
             }
         </div>
-        <div @ref="_sentinelRef" class="c-gif-sentinel"></div>
         @if (_gifItems.Count == 0 && _showEmpty) {
             <div class="c-gif-status">No GIFs found</div>
         }
@@ -36,12 +53,16 @@
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.EmojiModal.create";
 
+    private const int MaxRecentGifs = 20;
+    private const string RecentGifsKey = "GifPicker.Recent";
+
     private readonly List<GifItem> _gifItems = new();
     private readonly List<GifItem>[] _columns = [new(), new()];
     private readonly double[] _columnHeights = new double[2];
     private readonly CancellationTokenSource _disposeCts = new();
+    private readonly List<GifItem> _recentGifs = new();
     private CancellationTokenSource? _searchCts;
-    private ElementReference _sentinelRef;
+    private readonly ElementReference[] _sentinelRefs = new ElementReference[2];
     private IJSObjectReference? _jsRef;
     private DotNetObjectReference<GifPicker>? _blazorRef;
     private string _searchQuery = "";
@@ -54,12 +75,16 @@
     private bool _showEmpty;
 
     private IGifs Gifs => Hub.Gifs;
+    private LocalStorage LocalStorage => Hub.LocalStorage;
 
     [Parameter] public EventCallback<string> GifSelected { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender && !_gifsLoaded)
-            await LoadGifs().ConfigureAwait(true);
+        if (firstRender) {
+            await LoadRecentGifs().ConfigureAwait(true);
+            if (!_gifsLoaded)
+                await LoadGifs().ConfigureAwait(true);
+        }
         await TryInitObserver().ConfigureAwait(true);
     }
 
@@ -68,7 +93,7 @@
             return;
         _jsInitializing = true;
         _blazorRef = DotNetObjectReference.Create(this);
-        _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _sentinelRef, _blazorRef)
+        _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _sentinelRefs, _blazorRef)
             .ConfigureAwait(true);
     }
 
@@ -154,6 +179,35 @@
         }
     }
 
+    private async Task OnGifClick(GifItem gif) {
+        await SaveRecentGif(gif).ConfigureAwait(true);
+        await GifSelected.InvokeAsync(gif.Url);
+    }
+
+    private async Task LoadRecentGifs() {
+        try {
+            var json = await LocalStorage.GetString(RecentGifsKey).ConfigureAwait(true);
+            if (json.IsNullOrEmpty())
+                return;
+            var items = SystemJsonSerializer.Default.Read<List<RecentGifEntry>>(json);
+            _recentGifs.Clear();
+            foreach (var e in items)
+                _recentGifs.Add(new GifItem(e.Slug, "", e.PreviewUrl, e.PreviewWidth, e.PreviewHeight, e.Url, 0, 0, ""));
+            SafeStateHasChanged();
+        }
+        catch { /* corrupted data — ignore */ }
+    }
+
+    private async Task SaveRecentGif(GifItem gif) {
+        _recentGifs.RemoveAll(g => string.Equals(g.Slug, gif.Slug, StringComparison.Ordinal));
+        _recentGifs.Insert(0, gif);
+        if (_recentGifs.Count > MaxRecentGifs)
+            _recentGifs.RemoveRange(MaxRecentGifs, _recentGifs.Count - MaxRecentGifs);
+        var entries = _recentGifs.Select(g => new RecentGifEntry(g.Slug, g.PreviewUrl, g.PreviewWidth, g.PreviewHeight, g.Url)).ToList();
+        var json = SystemJsonSerializer.Default.Write(entries);
+        await LocalStorage.SetString(RecentGifsKey, json).ConfigureAwait(false);
+    }
+
     private void SwapSearchCts() {
         var old = _searchCts;
         _searchCts = CancellationTokenSource.CreateLinkedTokenSource(_disposeCts.Token);
@@ -180,6 +234,10 @@
         => gif.PreviewWidth > 0 && gif.PreviewHeight > 0
             ? $"aspect-ratio: {gif.PreviewWidth} / {gif.PreviewHeight}"
             : "aspect-ratio: 1 / 1";
+
+    // Nested types
+
+    private sealed record RecentGifEntry(string Slug, string PreviewUrl, int PreviewWidth, int PreviewHeight, string Url);
 
     public async ValueTask DisposeAsync() {
         if (!_disposeCts.IsCancellationRequested) {

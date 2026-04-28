@@ -83,6 +83,64 @@ body.hoverable .emoji-modal .c-item:hover,
     @apply flex-none;
     @apply m-2;
 }
+/* Recent GIFs — horizontal scrolling strip */
+.emoji-modal .c-gif-recent {
+    @apply flex-none;
+    @apply px-2 pt-1 pb-2;
+}
+.emoji-modal .c-gif-recent-label {
+    @apply pb-1;
+    @apply text-03 text-text-1;
+}
+.emoji-modal .c-gif-recent-list {
+    @apply flex gap-1;
+    @apply overflow-x-auto;
+    scrollbar-width: none;
+}
+.emoji-modal .c-gif-recent-list::-webkit-scrollbar {
+    display: none;
+}
+.emoji-modal .c-gif-recent-item {
+    @apply flex-none;
+    @apply h-20;
+    @apply rounded-lg;
+    @apply overflow-hidden;
+    @apply cursor-pointer;
+}
+.emoji-modal .c-gif-recent-item > .c-gif-img {
+    @apply h-full w-auto;
+}
+body.hoverable .emoji-modal .c-gif-recent-item:hover {
+    @apply opacity-80;
+}
+/* Arrow buttons for horizontal scroll */
+.emoji-modal .c-gif-recent-wrap {
+    @apply relative;
+}
+.emoji-modal .c-gif-recent-arrow {
+    @apply absolute top-1/2 z-10;
+    @apply flex items-center justify-center;
+    @apply w-6 h-6;
+    @apply rounded-full;
+    @apply bg-[var(--black-60)];
+    @apply text-base text-white leading-none;
+    @apply cursor-pointer;
+    @apply opacity-0 transition-opacity;
+    @apply -translate-y-1/2;
+}
+body.hoverable .emoji-modal .c-gif-recent:hover .c-gif-recent-arrow:not(.hidden) {
+    @apply opacity-100;
+}
+.emoji-modal .c-gif-recent-arrow.left {
+    @apply left-0.5;
+}
+.emoji-modal .c-gif-recent-arrow.right {
+    @apply right-0.5;
+}
+body.hoverable .emoji-modal .c-gif-recent-arrow:hover {
+    @apply bg-[var(--black-80)];
+}
+
 /* Two independent flex columns instead of CSS multi-column.
    Multi-column rebalances ALL items when content changes, which makes the user's
    hover target shuffle to a different GIF mid-click. With independent columns,
