@@ -6,8 +6,8 @@ namespace ActualChat.Users;
 public class SessionTemporalsBackend(IServiceProvider services) : ISessionTemporalsBackend
 {
     public const int MaxKeyLength = 256;
-    public const int MaxValueLength = 1024;
-    public const int MaxEntriesPerSession = 100;
+    public const int MaxValueLength = 16384;
+    public const int MaxEntriesPerSession = 32;
 
     private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(10);
 

@@ -12,6 +12,9 @@ public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
 
     public IState<Moment> TotpNextSendAt => _totpNextSendAt;
 
+    public void Reset()
+        => _totpNextSendAt.Value = default;
+
     public Task<string> CheckIfBlocked(Phone phone, TotpPurpose purpose, CancellationToken cancellationToken)
         => PhoneAuth.CheckIfBlocked(Session, phone, purpose, cancellationToken);
     public Task<string> CheckIfBlocked(Email email, TotpPurpose purpose, CancellationToken cancellationToken)

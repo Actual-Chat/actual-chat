@@ -166,6 +166,19 @@
             return;
 
         _lastSignInErrorConsumedAt = CpuTimestamp.Now;
+
+        // After a registration cancel, the phone/email field is still blocked
+        // by the TOTP throttle and still holds the abandoned input. Reset both
+        // so the user can start fresh.
+        if (signInError == Constants.SessionTemporals.SignInCanceledMessage) {
+            _formModel.PhoneOrEmail = "";
+            TotpSignInModel.Phone = null;
+            TotpSignInModel.Email = null;
+            _validationState = ValidationState.None;
+            _showFieldErrors = false;
+            TotpUI.Reset();
+        }
+
         var cmd = new SessionTemporals_Set(Session, SessionTemporals_SignInErrorKey, null);
         _ = Hub.Services.Commander().Run(cmd, true, CancellationToken.None);
     }

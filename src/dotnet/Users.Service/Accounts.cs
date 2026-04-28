@@ -262,7 +262,7 @@ public class Accounts(IServiceProvider services) : IAccounts
         await Commander.Call(clearCmd, true, cancellationToken).ConfigureAwait(false);
 
         var setErrorCmd = new SessionTemporalsBackend_Set(
-            session, Constants.SessionTemporals.SignInErrorKey, "Sign-in canceled.");
+            session, Constants.SessionTemporals.SignInErrorKey, Constants.SessionTemporals.SignInCanceledMessage);
         await Commander.Call(setErrorCmd, true, cancellationToken).ConfigureAwait(false);
     }
 

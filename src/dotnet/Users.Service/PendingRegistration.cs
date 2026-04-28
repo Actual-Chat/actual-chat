@@ -1,5 +1,4 @@
 using ActualChat.Security;
-using MessagePack;
 
 namespace ActualChat.Users;
 

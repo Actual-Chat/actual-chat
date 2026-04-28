@@ -76,7 +76,7 @@ public class PendingRegistrationTest(AppHostFixture fixture, ITestOutputHelper @
             .Should().BeNull("CancelRegister must clear the prompt");
         var signInError = await SessionTemporals.Get(
             session, Constants.SessionTemporals.SignInErrorKey, CancellationToken.None);
-        signInError.Should().Be("Sign-in canceled.");
+        signInError.Should().Be(Constants.SessionTemporals.SignInCanceledMessage);
         var account = await Accounts.GetOwn(session, default);
         account.IsGuest.Should().BeTrue("no account should be created");
     }

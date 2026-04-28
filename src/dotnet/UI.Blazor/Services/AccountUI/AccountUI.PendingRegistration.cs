@@ -1,6 +1,3 @@
-using ActualChat.UI.Blazor.Components;
-using ActualChat.Users;
-
 namespace ActualChat.UI.Blazor.Services;
 
 public partial class AccountUI
@@ -56,7 +53,7 @@ public partial class AccountUI
                 confirmed = true;
                 _ = commander.Run(new Accounts_ConfirmRegister(session, info.Token), true, CancellationToken.None);
             }) {
-            Title = "Create new account?",
+            Title = "Register new account?",
             ConfirmButtonText = "Register",
         };
         var modalRef = await Hub.ModalUI.Show(model).ConfigureAwait(true);
