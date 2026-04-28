@@ -531,7 +531,7 @@
             }
         }
 
-        await JS.InvokeVoidAsync("navigator.clipboard.writeText", sb.ToString());
+        await Hub.ClipboardUI.WriteText(sb.ToString());
     }
 
     // Nested types
