@@ -77,9 +77,10 @@ export function detectSupportedCodecs(width = 1920, height = 1080): Promise<Code
 // a profile deterministically from category + resolution + platform — no extra
 // probing needed. Reduces startup probe count ~7× vs per-profile detection.
 const REPRESENTATIVE_CODECS: { category: CodecInfo['category']; name: string; codec: string }[] = [
-    { category: 'av1',  name: 'AV1 Main L3.0',      codec: 'av01.0.05M.08' },
+    // TEMPORARILY DISABLED — AV1 mobile issues, VP9 selection disabled. Re-enable by uncommenting.
+    // { category: 'av1',  name: 'AV1 Main L3.0',      codec: 'av01.0.05M.08' },
     { category: 'hevc', name: 'HEVC Main L3.1',     codec: 'hev1.1.6.L93.B0' },
-    { category: 'vp9',  name: 'VP9 Profile 0 L3.1', codec: 'vp09.00.31.08' },
+    // { category: 'vp9',  name: 'VP9 Profile 0 L3.1', codec: 'vp09.00.31.08' },
     { category: 'h264', name: 'H.264 Main 3.1',     codec: 'avc1.4D401F' },
 ];
 
@@ -501,19 +502,8 @@ export function detectSupportedDecoderCodecs(): Promise<string[]> {
 async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
     const codecs: string[] = ['h264']; // H.264 always assumed supported
 
-    // AV1 — test both levels actually used in practice
-    if (!excludedDecoderCodecs.has('av1')) {
-        try {
-            const av1Supported = await isDecoderCodecSupported('av01.0.08M.08', 1280, 720)
-                || await isDecoderCodecSupported('av01.0.05M.08', 1280, 720);
-            warnLog?.log(`Decoder AV1 (av01.0.08M.08): supported=${av1Supported}`);
-            if (av1Supported) codecs.push('av1');
-        } catch (e) {
-            warnLog?.log(`Decoder AV1 (av01.0.08M.08): error=${e}`);
-        }
-    } else {
-        warnLog?.log(`Decoder AV1: excluded at runtime (too slow for realtime)`);
-    }
+    // AV1 — TEMPORARILY DISABLED (mobile issues). Re-enable by restoring the probe block.
+    warnLog?.log('Decoder AV1: temporarily disabled');
 
     // HEVC — try multiple codec strings
     if (!excludedDecoderCodecs.has('hevc')) {
@@ -540,33 +530,9 @@ async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
         warnLog?.log(`Decoder HEVC: excluded at runtime (too slow for realtime)`);
     }
 
-    // VP9
-    if (!excludedDecoderCodecs.has('vp9')) {
-        try {
-            const vp9Supported = await isDecoderCodecSupported('vp09.00.31.08', 1280, 720);
-            warnLog?.log(`Decoder VP9 (vp09.00.31.08): supported=${vp9Supported}`);
-            if (vp9Supported) codecs.push('vp9');
-        } catch (e) {
-            warnLog?.log(`Decoder VP9 (vp09.00.31.08): error=${e}`);
-        }
-    } else {
-        warnLog?.log(`Decoder VP9: excluded at runtime (too slow for realtime)`);
-    }
+    // VP9 — TEMPORARILY DISABLED (selection disabled). Re-enable by restoring the probe block.
+    warnLog?.log('Decoder VP9: temporarily disabled');
 
     warnLog?.log(`DECODER_CODECS: [${codecs.join(', ')}]${excludedDecoderCodecs.size > 0 ? ` (excluded: [${[...excludedDecoderCodecs].join(', ')}])` : ''}`);
     return codecs;
-}
-
-export function getBestScalabilityMode(scalabilityModes: string[]): string | undefined {
-    // Priority: L1T2 > L1T3 > L1T1 (prefer SVC for temporal layer dropping)
-    if (scalabilityModes.includes('L1T2'))
-        return 'L1T2';
-
-    if (scalabilityModes.includes('L1T3'))
-        return 'L1T3';
-
-    if (scalabilityModes.includes('L1T1'))
-        return 'L1T1';
-
-    return undefined;
 }

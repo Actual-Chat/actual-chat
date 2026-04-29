@@ -835,12 +835,14 @@ function deliverChunkToStream(
     }
 
     // Description handling:
+    // - AVC AnnexB: SPS/PPS embedded inline in every keyframe → skip description entirely.
     // - Encoder emitted description on this keyframe → forward as-is, refresh per-layer cache.
     // - Encoder omitted description on this keyframe → fill from per-layer cache so the
-    //   receiver's decoder can always reconfigure() (HEVC/AVC require description on every
+    //   receiver's decoder can always reconfigure() (HEVC requires description on every
     //   configure; Chrome is allowed by spec to omit it on later keyframes).
-    // Keyed by spatialLayerId because HVCC/AVCC bytes differ per resolution in simulcast.
-    if (isKeyFrame) {
+    // Keyed by spatialLayerId because HVCC bytes differ per resolution in simulcast.
+    const isAvcAnnexB = encoderConfig!.codec.startsWith('avc1');
+    if (isKeyFrame && !isAvcAnnexB) {
         const layerId = spatialLayerId ?? 0;
         if (descriptionBytes && descriptionBytes.byteLength > 0) {
             const descBytes = new Uint8Array(descriptionBytes);
@@ -865,7 +867,8 @@ function deliverChunkToStream(
 
     if (!videoStream) {
         const isAV1 = encoderConfig!.codec.startsWith('av01');
-        const canCreateStream = codecSettings ?? (isAV1 && isKeyFrame);
+        // AV1 + AVC AnnexB carry SPS/PPS inline, no description needed for stream creation.
+        const canCreateStream = codecSettings ?? ((isAV1 || isAvcAnnexB) && isKeyFrame);
         if (canCreateStream) {
             const settings = codecSettings ?? '';
             infoLog?.log(`Creating VideoStream: codec=${encoderConfig!.codec}, ${encoderConfig!.width}x${encoderConfig!.height}, codecSettings=${settings.length} chars`);
@@ -928,6 +931,19 @@ function onEncoderError(error: Error): void {
         errorLog?.log('Encoder error:', error.name, error.message);
     encoderErrorSeen = true;
     lastStreamError = `encoder: ${error.name} ${error.message}`;
+
+    // Async error → primary encoder transitions to 'closed'. No further frames
+    // will reach encode() (encodeProcessedFrame early-returns when state !=
+    // 'configured'), so the frame-count watchdog can't fire. Trigger the codec
+    // fallback directly when the primary is dead. Extras-only errors leave
+    // primary alive; this branch skips them and the regular watchdog stays in
+    // charge for primary-stalled-without-error scenarios.
+    if (!encoderFailed && encoder && encoderConfig && encoder.getState() === 'closed') {
+        encoderFailed = true;
+        const codec = encoderConfig.codec;
+        warnLog?.log(`Encoder dead from async error: ${codec} (${error.name}) — triggering fallback`);
+        void callbacks.onEncoderFailed(codec, rpcNoWait);
+    }
 }
 
 // Try to reuse a pooled encoder. Returns true if reused. Match by codec

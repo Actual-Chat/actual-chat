@@ -91,7 +91,8 @@ export class JoinVideoCallModal {
 
             this.firstFrameFired = false;
             this.videoEl.srcObject = new MediaStream([this.track]);
-            void this.videoEl.play();
+            // .catch swallows AbortError when srcObject is cleared mid-play (rapid stop).
+            this.videoEl.play().catch(() => { /* benign */ });
             this.videoFrame.classList.add('has-video', 'shows-video');
 
             infoLog?.log('Camera preview started');
@@ -206,6 +207,11 @@ export class JoinVideoCallModal {
     }
 
     private async stopBlurPreview(): Promise<void> {
+        // No-op when blur was never active. Skipping avoids reassigning srcObject
+        // + play() in the dispose path, which races stopPreview's srcObject=null
+        // and produces unhandled AbortError("play() interrupted by new load").
+        if (!this.isBlurActive && !this.blurSession) return;
+
         this.isBlurActive = false;
 
         if (this.blurSession) {
@@ -217,7 +223,8 @@ export class JoinVideoCallModal {
         // themselves once blur is off.
         if (this.track) {
             this.videoEl.srcObject = new MediaStream([this.track]);
-            void this.videoEl.play();
+            // .catch swallows AbortError when srcObject is cleared mid-play (dispose race).
+            this.videoEl.play().catch(() => { /* benign */ });
         }
     }
 

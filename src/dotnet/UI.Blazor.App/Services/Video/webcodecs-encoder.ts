@@ -4,7 +4,6 @@
  */
 
 import { getLogs } from 'logging';
-import { DeviceInfo } from 'device-info';
 import Denque from 'denque';
 import { getCodecCategory, getCodecForCategory } from './codec-support';
 
@@ -379,10 +378,10 @@ export class WebCodecsEncoder {
             hardwareAcceleration: this.config.hardwareAcceleration,
         };
 
-        // Constant bitrate on iOS prevents CPU spikes on complex frames
-        if (DeviceInfo.isIos) {
-            encoderConfig.bitrateMode = 'constant';
-        }
+        // Variable bitrate is the WebCodecs spec default — leaving bitrateMode
+        // unset gets variable mode without forcing a strict-VBR contract that
+        // some HW encoders (Chrome HEVC HW + L1T2) silently reject by emitting
+        // no output. Explicit 'variable' + HEVC HW = stuck encoder.
 
         if (this.config.scalabilityMode) {
             encoderConfig.scalabilityMode = this.config.scalabilityMode;
@@ -390,11 +389,9 @@ export class WebCodecsEncoder {
 
         // Codec-specific config
         if (this.config.codec.startsWith('avc1')) {
-            // Firefox produces Annex B even with 'avc' config (decode errors on other browsers).
-            // iOS Safari's AVCC serialization adds ~150ms overhead per frame.
-            // Use Annex B on both — SPS/PPS embedded in bitstream, no metadata overhead.
-            const useAnnexB = DeviceInfo.isFirefox || DeviceInfo.isIos;
-            encoderConfig.avc = { format: useAnnexB ? 'annexb' : 'avc' };
+            // Annex B everywhere: SPS/PPS embedded in bitstream → no description needed,
+            // no AVCC serialization overhead, uniform across browsers.
+            encoderConfig.avc = { format: 'annexb' };
         } else if (this.config.codec.startsWith('hev1') || this.config.codec.startsWith('hvc1')) {
             (encoderConfig as VideoEncoderConfig & { hevc?: { format: string } }).hevc = { format: 'hevc' };
         }

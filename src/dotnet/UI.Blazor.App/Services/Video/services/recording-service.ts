@@ -4,7 +4,7 @@
  */
 
 import { VideoPipeline, type PipelineConfig } from './video-pipeline';
-import { getBestScalabilityMode, getCodecCategory, getCodecForCategory } from '../codec-support';
+import { getCodecCategory, getCodecForCategory } from '../codec-support';
 import { detectGPUBackends } from '../gpu-support';
 import type { SegmentationConfig, SpatialLayerConfig } from '../workers/video-processing-worker-contract';
 import { createDefaultSegmentationConfig, createAdaptiveSegmentationConfig } from '../workers/video-processing-worker-contract';
@@ -463,17 +463,11 @@ export class RecordingService extends EventTarget {
             codecString = getCodecForCategory(this.config.codec, width, height);
         }
 
-        // Determine best scalability mode if available
-        const scalabilityMode = this.config.scalabilityModes
-            ? getBestScalabilityMode(this.config.scalabilityModes)
-            : undefined;
+        // Temporal SVC (L1T2/L1T3) disabled — Chrome HEVC HW + L1T2 raises async
+        // OperationError on some HW. Single-layer configure is universally supported.
+        const scalabilityMode: string | undefined = undefined;
 
         infoLog?.log('Using codec string:', codecString, 'for', this.config.codec);
-        if (scalabilityMode) {
-            infoLog?.log('Using scalability mode:', scalabilityMode);
-            if (scalabilityMode === 'L1T1')
-                infoLog?.log('SVC temporal layers (L1T2/L1T3) not supported on this hardware');
-        }
 
         const pipelineConfig: PipelineConfig = {
             encoderConfig: {
