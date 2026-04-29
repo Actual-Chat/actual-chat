@@ -376,7 +376,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
         debugLog?.log(`init(): vadWorker created`);
 
         // Register the trait with the recording context source
-        recordingAudioContextSource.addTrait(this.recordingPipelineTrait);
+        void recordingAudioContextSource.addTrait(this.recordingPipelineTrait);
 
         this.state = 'stopped';
         this.whenInitialized.resolve(undefined);

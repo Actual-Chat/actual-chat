@@ -308,10 +308,10 @@ export class AudioContextSource {
         return this._traits.has(trait.name);
     }
 
-    public addTrait(trait: AudioContextTrait): void {
+    public addTrait(trait: AudioContextTrait): Promise<void> {
         if (this._traits.has(trait.name)) {
             debugLog?.log(`addTrait: trait '${trait.name}' already registered`);
-            return;
+            return ResolvedPromise.Void;
         }
 
         debugLog?.log(`addTrait: registering trait '${trait.name}'`);
@@ -319,9 +319,10 @@ export class AudioContextSource {
 
         // If context is already ready, attach the trait immediately
         const context = this._context;
-        if (context && context.state !== 'closed') {
-            void this.attachTrait(trait, context);
-        }
+        if (context && context.state !== 'closed')
+            return this.attachTrait(trait, context);
+
+        return ResolvedPromise.Void;
     }
 
     public removeTrait(trait: AudioContextTrait): void {
@@ -353,10 +354,10 @@ export class AudioContextSource {
     }
 
     public createRef(...traits: AudioContextTrait[]): AudioContextRef {
-        // Ensure all requested traits are registered
-        for (const trait of traits) {
-            this.addTrait(trait);
-        }
+        // Ensure all requested traits are registered; collect pending attachments
+        const pending: Promise<void>[] = [];
+        for (const trait of traits)
+            pending.push(this.addTrait(trait));
 
         const ref = new AudioContextRef(traits);
         this._refs.add(ref);
@@ -370,9 +371,18 @@ export class AudioContextSource {
             void this.onFirstRefCreated();
         }
 
-        // If context is ready, set the ref as ready
+        // If context is ready, set the ref as ready (after pending trait attachments)
         if (this._context && this._context.state !== 'closed') {
-            ref._setReady(this._context);
+            const context = this._context;
+            if (pending.length > 0) {
+                void Promise.all(pending).then(() => {
+                    if (!ref.isDisposed && context === this._context)
+                        ref._setReady(context);
+                });
+            }
+            else {
+                ref._setReady(this._context);
+            }
         }
 
         // Set up disposal handling
@@ -1044,6 +1054,6 @@ if (BrowserInfo.hostKind !== 'MauiApp') {
 
     // Register DestinationFallbackTrait for iOS Safari
     if (DestinationFallbackTrait.isRequired) {
-        audioContextSource.addTrait(new DestinationFallbackTrait());
+        void audioContextSource.addTrait(new DestinationFallbackTrait());
     }
 }
