@@ -281,6 +281,7 @@ export class VideoPipeline implements IVideoPipeline {
             'VideoPipeline.worker',
             this.workerInstance,
             {
+                getSessionToken: (minLifespanMs?: number) => Api.getSessionToken(minLifespanMs),
                 onSerializedChunk: () => {
                     // RPC fallback only — not used in stream mode
                     return Promise.resolve();

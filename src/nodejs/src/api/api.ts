@@ -1,14 +1,14 @@
 // Central gate for the project's RPC API — a static `Api` that exposes the
 // shared `RpcHub` and its default `RpcClientPeer`, and initializes them via
-// a list of `ApiModule`s.
+// `Api.init(source, { ... })`.
 //
 // Until `Api.init(...)` is called, `Api.hub` and `Api.peer` both throw.
 // After it's called:
 //   - `Api.hub` is the single shared hub for this module graph (main thread,
 //     one per worker, one per Node process).
 //   - `Api.peer` is the hub's default client peer, created lazily.
-//   - Every listed module's `register(hub)` has run — including any modules
-//     those listed via `deps`.
+//   - Every module passed to `Api.init(source, { modules })` has run its
+//     `register(hub)` — including modules listed via `deps`.
 //
 // Connectivity gating:
 //   The peer is allowed to attempt a connection only when `canConnect` is
@@ -30,15 +30,18 @@ import {
     RpcSerializationFormatResolver,
     RpcMessagePackSerializationFormat,
     RpcMessagePackCompactSerializationFormat,
-    type RpcClientPeer,
+    RpcClientPeer,
+    defaultConnectionUrlResolver,
 } from 'actuallab-rpc';
 import { getLogs } from 'logging';
 
 import { ApiReconnectDelayer } from './api-reconnect-delayer.js';
 
-const { infoLog, warnLog } = getLogs('Api');
+const { infoLog, warnLog, errorLog } = getLogs('Api');
 
 const SERIALIZATION_FORMAT = 'msgpack6ck';
+const SESSION_TOKEN_QUERY_PARAMETER = 'session';
+const DEFAULT_SESSION_TOKEN_MIN_LIFESPAN_MS = 10_000;
 
 (RpcSerializationFormat.All as RpcSerializationFormat[]).push(
     new RpcMessagePackSerializationFormat('msgpack6k'),
@@ -60,13 +63,6 @@ export enum WorkerKind {
     VideoCapture = 'VideoCapture',
 }
 
-/** An opt-in chunk of RPC wiring — a group of service registrations and/or
- *  client-side setup, typically expressed as a static class so consumers can
- *  also reach typed accessors on it (e.g. `StreamingApi.streamServer`).
- *  Modules are composed via `deps` so a module that depends on another can
- *  list it and rely on it being registered first. Registration order is
- *  pre-order over the dep graph; duplicates are deduped by reference, so two
- *  modules can safely share a common dep. */
 export interface ApiModule {
     /** Modules whose `register(hub)` must run before this module's. */
     readonly deps?: readonly ApiModule[];
@@ -75,26 +71,46 @@ export interface ApiModule {
     register(hub: RpcHub): void;
 }
 
-export class Api {
-    /** Default peer URL. Main-thread code sets this once (e.g. BrowserInit
-     *  on startup); workers receive the URL through the `url` argument to
-     *  {@link Api.init}. `Api.init` reads `url ?? Api.url` and throws if
-     *  still undefined. */
-    static url: string | undefined;
+export type SessionTokenProvider = (minLifespanMs?: number) => Promise<string>;
 
+export interface ApiConnectivityUI {
+    readonly isConnected: boolean;
+    readonly isConnectedChanged: { add(handler: (v: boolean) => void): unknown };
+}
+
+export interface ApiInitOptions {
+    readonly url?: string;
+    readonly modules?: readonly ApiModule[];
+    readonly connectivityUI?: ApiConnectivityUI;
+    readonly sessionTokenProvider?: SessionTokenProvider;
+    readonly requireConnection?: boolean,
+}
+
+export class Api {
+    private static _url: string | undefined;
     private static _hub: RpcHub | undefined;
     private static readonly _delayer = new ApiReconnectDelayer();
     private static readonly _scopes = new Set<string>();
     /** Default `true` — module graphs without a bridge (e.g. the video
      *  capture worker today) behave as if .NET is connected and rely on
-     *  WebSocket-level failure to back off. `bindDotNetRpcConnected` wires
-     *  the real signal in on main thread and audio worker. */
+     *  WebSocket-level failure to back off. The `connectivityUI` init option
+     *  wires the real signal in on main thread and workers. */
     private static _isDotNetRpcConnected = true;
     private static _canConnect = false;
+    private static _connectivityUI: ApiConnectivityUI | undefined;
+    private static _sessionTokenProvider: SessionTokenProvider | undefined;
+    private static readonly _registeredModules = new Set<ApiModule>();
     /** Per-worker "debug-disconnect requested" event. Workers subscribe so that
      *  {@link Api.disconnect} can reach across Worker boundaries — the main
      *  thread peer is dropped inline, but each worker must clear its own hub. */
     private static readonly _disconnectRequested = new Map<WorkerKind, EventHandlerSet<void>>();
+
+    static get url() : string {
+        if (!Api._url)
+            throw new Error('Api.init(...) must be called first.');
+
+        return Api._url;
+    }
 
     /** Fires when `requiresConnection` flips (0↔≥1 scopes). */
     static readonly requiresConnectionChanged = new EventHandlerSet<boolean>();
@@ -104,38 +120,45 @@ export class Api {
      *  flips. Drives the internal reconnect-delayer gate. */
     static readonly canConnectChanged = new EventHandlerSet<boolean>();
 
-    /** Initialize the shared RpcHub with a URL and zero or more modules.
-     *  Must be called once at startup before `Api.hub` / `Api.peer` are
-     *  accessed. A second call is a no-op (logs a warning) — the hub is
-     *  already live and changing the URL mid-flight would strand in-flight
-     *  calls.
-     *  @param url Default peer URL (WebSocket, e.g. `wss://host/rpc/ws`).
-     *         If `undefined`, falls back to the module-level {@link Api.url}
-     *         (typically set by main-thread bootstrap). Throws if neither is
-     *         provided. The serialization format is fixed (`msgpack6`) and
-     *         appended automatically.
-     *  @param modules Modules to register. Dependencies declared via each
-     *         module's `deps` are registered first (transitively, deduped). */
-    static init(url: string | undefined, ...modules: ApiModule[]): void {
+    /** Initialize or extend the shared RpcHub. Later calls may add modules and
+     *  bind setup options, but changing the live URL is ignored. */
+    static init(source: string, options: ApiInitOptions = {}): void {
         if (Api._hub !== undefined) {
-            warnLog?.log('Api.init called more than once — ignoring subsequent call.');
+            errorLog?.log('init (recurring, ignored):', source, options);
             return;
         }
-        Api.url = url ?? Api.url;
-        if (!Api.url)
-            throw new Error('Api.init: url is not provided and Api.url is not set.');
+
+        infoLog?.log('init:', source, options);
+        if (!options.url)
+            throw new Error('init: url is not provided.');
+
+        // Set _url, _sessionTokenProvider, _connectivityUI
+        Api._url = options.url;
+        Api._sessionTokenProvider = options.sessionTokenProvider;
+        Api._connectivityUI = options.connectivityUI;
+        if (Api._connectivityUI !== undefined) {
+            Api.isDotNetRpcConnected = Api._connectivityUI.isConnected;
+            Api._connectivityUI.isConnectedChanged.add(v => Api.isDotNetRpcConnected = v);
+        }
+
+        // Create RpcHub
         const hub = new RpcHub();
         hub.defaultPeerUrl = RpcPeerRefBuilder.forClient(Api.url, SERIALIZATION_FORMAT);
-        hub.reconnectDelayer = Api._delayer; // shared across all peers in this hub
-        const done = new Set<ApiModule>();
-        const visit = (m: ApiModule): void => {
-            if (done.has(m)) return;
-            done.add(m); // mark first — terminates cycles and blocks duplicate registration
-            for (const d of m.deps ?? []) visit(d);
-            m.register(hub);
+        hub.defaultPeerFactory = (h, r) => {
+            const peer = new RpcClientPeer(h, r, false);
+            Api.configurePeer(peer);
+            peer.start();
+            return peer;
         };
-        for (const m of modules) visit(m);
+        hub.reconnectDelayer = Api._delayer; // shared across all peers in this hub
         Api._hub = hub;
+
+        // Register modules
+        Api._registerModules(hub, options.modules ?? []);
+
+        // Optionally require connection
+        if (options.requireConnection)
+            Api.requireConnection(source);
     }
 
     /** The shared `RpcHub`. Throws if `Api.init` has not been called. */
@@ -162,6 +185,14 @@ export class Api {
     static get isDotNetRpcConnected(): boolean {
         return Api._isDotNetRpcConnected;
     }
+    private static set isDotNetRpcConnected(value: boolean) {
+        if (Api._isDotNetRpcConnected === value)
+            return;
+
+        Api._isDotNetRpcConnected = value;
+        Api.isDotNetRpcConnectedChanged.trigger(value);
+        Api._recomputeCanConnect();
+    }
 
     /** Derived: `requiresConnection && isDotNetRpcConnected`. While false, the
      *  peer's run loop parks on the reconnect delayer and does not open a
@@ -170,34 +201,39 @@ export class Api {
         return Api._canConnect;
     }
 
-    /** Flip the .NET-side connectivity signal. Called by the bridge:
-     *  `ConnectivityUI` → JS interop on the main thread, `WorkerConnectivityUI`
-     *  forward on workers. Safe to call before `Api.init`. */
-    static setDotNetRpcConnected(value: boolean): void {
-        if (Api._isDotNetRpcConnected === value) return;
+    static async getSessionToken(minLifespanMs = DEFAULT_SESSION_TOKEN_MIN_LIFESPAN_MS): Promise<string> {
+        const provider = Api._sessionTokenProvider;
+        if (!provider)
+            throw new Error('Session token provider not configured.');
 
-        Api._isDotNetRpcConnected = value;
-        Api.isDotNetRpcConnectedChanged.trigger(value);
-        Api._recomputeCanConnect();
+        return provider(minLifespanMs);
     }
 
-    /** Bind this module graph's `isDotNetRpcConnected` to a `ConnectivityUI`
-     *  or `WorkerConnectivityUI`-shaped source — both expose the same
-     *  `isConnected` + `isConnectedChanged` pair. Structurally-typed because
-     *  the two sides use different `EventHandlerSet` classes (actuallab-core
-     *  vs the project's own `event-handling` module). Idempotent. */
-    static bindDotNetRpcConnected(source: {
-        readonly isConnected: boolean;
-        readonly isConnectedChanged: { add(handler: (v: boolean) => void): unknown };
-    }): void {
-        Api.setDotNetRpcConnected(source.isConnected);
-        source.isConnectedChanged.add(v => Api.setDotNetRpcConnected(v));
+    static configurePeer(peer: RpcClientPeer): RpcClientPeer {
+        peer.connectionUrlResolver = async p => {
+            const connectionUrl = await defaultConnectionUrlResolver(p);
+            const sessionToken = await Api.getSessionToken();
+            if (!sessionToken)
+                return connectionUrl;
+
+            try {
+                const url = new URL(connectionUrl);
+                url.searchParams.set(SESSION_TOKEN_QUERY_PARAMETER, sessionToken);
+                return url.toString();
+            } catch {
+                const sep = connectionUrl.includes('?') ? '&' : '?';
+                return connectionUrl + sep + `${SESSION_TOKEN_QUERY_PARAMETER}=${encodeURIComponent(sessionToken)}`;
+            }
+        };
+        return peer;
     }
 
     /** Add a scope that requires the peer to be connectable. Idempotent; the
      *  peer is allowed to connect iff at least one scope is currently held. */
     static requireConnection(scope: string): void {
-        if (Api._scopes.has(scope)) return;
+        if (Api._scopes.has(scope))
+            return;
+
         const wasEmpty = Api._scopes.size === 0;
         Api._scopes.add(scope);
         if (wasEmpty) {
@@ -209,7 +245,9 @@ export class Api {
     /** Release a scope previously added via `requireConnection(scope)`.
      *  Idempotent. */
     static releaseConnection(scope: string): void {
-        if (!Api._scopes.delete(scope)) return;
+        if (!Api._scopes.delete(scope))
+            return;
+
         if (Api._scopes.size === 0) {
             Api.requiresConnectionChanged.trigger(false);
             Api._recomputeCanConnect();
@@ -263,9 +301,26 @@ export class Api {
 
     // Private methods
 
+    private static _registerModules(hub: RpcHub, modules: readonly ApiModule[]): void {
+        const visit = (m: ApiModule): void => {
+            if (Api._registeredModules.has(m))
+                return;
+
+            Api._registeredModules.add(m); // mark first — terminates cycles and blocks duplicate registration
+            for (const d of m.deps ?? [])
+                visit(d);
+
+            m.register(hub);
+        };
+        for (const m of modules)
+            visit(m);
+    }
+
     private static _recomputeCanConnect(): void {
         const value = Api.requiresConnection && Api._isDotNetRpcConnected;
-        if (Api._canConnect === value) return;
+        if (Api._canConnect === value)
+            return;
+
         Api._canConnect = value;
         Api.canConnectChanged.trigger(value);
         Api._delayer.setAllowed(value);

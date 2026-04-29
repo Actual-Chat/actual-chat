@@ -3,7 +3,7 @@
 // on its singleton instance.
 //
 // Usage:
-//     Api.init(url, uploadsApi);
+//     Api.init('Example', { url, modules: [uploadsApi] });
 //     const offset = await uploadsApi.uploads.GetOffset('~', uploadId);
 //     await uploadsApi.uploads.OnAppend({ Session: '~', UploadId, Offset, Chunk });
 

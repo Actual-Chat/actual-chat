@@ -36,15 +36,15 @@ public static class HttpSessionExt
         if (!httpContext.Request.Headers.TryGetValue(Constants.Session.HeaderName, out var headers))
             return null;
 
-        var header = headers.SingleOrDefault();
-        if (header.IsNullOrEmpty())
+        return GetOrDecryptSession(httpContext, headers.SingleOrDefault(), format);
+    }
+
+    public static Session? TryGetSessionFromQuery(this HttpContext httpContext, SessionFormat format = SessionFormat.Token)
+    {
+        if (!httpContext.Request.Query.TryGetValue(Constants.Session.QueryParameterName, out var values))
             return null;
 
-        if (!SecureToken.HasValidPrefix(header))
-            return format is SessionFormat.Token ? null : SessionExt.NewValidOrNull(header);
-
-        var secureTokensBackend = httpContext.RequestServices.GetRequiredService<ISecureTokensBackend>();
-        return secureTokensBackend.TryDecryptSessionToken(header);
+        return GetOrDecryptSession(httpContext, values.SingleOrDefault(), format);
     }
 
     public static Session GetSessionFromCookie(this HttpContext httpContext)
@@ -87,5 +87,19 @@ public static class HttpSessionExt
 
         var secureTokensBackend = httpContext.RequestServices.GetRequiredService<ISecureTokensBackend>();
         return secureTokensBackend.TryDecryptSessionToken(token);
+    }
+
+    // Private methods
+
+    private static Session? GetOrDecryptSession(HttpContext httpContext, string? value, SessionFormat format)
+    {
+        if (value.IsNullOrEmpty())
+            return null;
+
+        if (!SecureToken.HasValidPrefix(value))
+            return format is SessionFormat.Token ? null : SessionExt.NewValidOrNull(value);
+
+        var secureTokensBackend = httpContext.RequestServices.GetRequiredService<ISecureTokensBackend>();
+        return secureTokensBackend.TryDecryptSessionToken(value);
     }
 }

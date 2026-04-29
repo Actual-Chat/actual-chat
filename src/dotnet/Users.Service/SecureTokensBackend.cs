@@ -13,7 +13,7 @@ public class SecureTokensBackend(IServiceProvider services) : ISecureTokensBacke
         = services.GetRequiredService<IDataProtectionProvider>()
             .CreateProtector(nameof(SecureTokensBackend))
             .ToTimeLimitedDataProtector();
-    private MomentClock Clock { get; } = services.Clocks().SystemClock;
+    private MomentClock SystemClock { get; } = services.Clocks().SystemClock;
 
     public ValueTask<SecureToken> Create(string value, CancellationToken cancellationToken = default)
     {
@@ -24,7 +24,7 @@ public class SecureTokensBackend(IServiceProvider services) : ISecureTokensBacke
 
         var augmentedPartLength = Random.Shared.Next(8, 16);
         var augmentedValue = $"{AugmentedPartGenerator.Next(augmentedPartLength)} {value}";
-        var expiresAt = Clock.Now + SecureToken.Lifespan;
+        var expiresAt = SystemClock.Now + SecureToken.Lifespan + TimeSpan.FromSeconds(15); // Extra time to acquire/refresh
         var token = SecureToken.Prefix + DataProtector.Protect(augmentedValue, expiresAt.ToDateTimeOffset());
         return ValueTask.FromResult(new SecureToken(token, expiresAt));
     }
@@ -39,7 +39,7 @@ public class SecureTokensBackend(IServiceProvider services) : ISecureTokensBacke
         try {
             var augmentedValue = DataProtector.Unprotect(token[SecureToken.Prefix.Length..], out var expiresAt);
             var delimiterIndex = augmentedValue.IndexOf(' ');
-            if (delimiterIndex < 0 || Clock.UtcNow > expiresAt)
+            if (delimiterIndex < 0 || SystemClock.UtcNow > expiresAt)
                 return null;
 
             var value = augmentedValue[(delimiterIndex + 1)..];

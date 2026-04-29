@@ -10,7 +10,7 @@ import { EventHandlerSet } from 'event-handling';
 import { getLogs } from 'logging';
 import { RpcStream } from 'actuallab-rpc';
 import { Api, streamingApi,
-    type StreamServerClient, type VideoFormatDto, type VideoFrameDto } from 'api';
+    type SessionTokenProvider, type StreamServerClient, type VideoFormatDto, type VideoFrameDto } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
@@ -51,6 +51,7 @@ export interface StreamingContext {
     /** Fusion RPC WebSocket URL. Mirrored into `Api.hub.defaultPeerUrl` on first
      *  push via {@link ensureRpcPush}. */
     apiUrl: string | null;
+    sessionTokenProvider?: SessionTokenProvider;
     /** Lazily-constructed `IStreamServer` RPC client, bound to the hub's
      *  default peer. */
     rpcStreamServer: StreamServerClient | null;
@@ -98,11 +99,18 @@ function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
  * shares the same WebSocket for the life of the worker.
  */
 export function ensureRpcPush(ctx: StreamingContext): void {
-    if (ctx.rpcStreamServer) return;
+    if (ctx.rpcStreamServer)
+        return;
+
     if (!ctx.apiUrl)
         throw new Error('Fusion RPC push: apiUrl is not set');
-    Api.init(ctx.apiUrl, streamingApi);
-    Api.bindDotNetRpcConnected(WorkerConnectivityUI);
+
+    Api.init('VideoStreaming', {
+        url: ctx.apiUrl,
+        modules: [streamingApi],
+        connectivityUI: WorkerConnectivityUI,
+        sessionTokenProvider: ctx.sessionTokenProvider,
+    });
     ctx.rpcStreamServer = streamingApi.streamServer;
 }
 

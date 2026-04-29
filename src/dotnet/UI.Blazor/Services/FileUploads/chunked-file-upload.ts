@@ -10,21 +10,6 @@ const { debugLog, infoLog, warnLog, errorLog } = getLogs('FileUpload');
 // resolved at WS handshake), matching audio-streamer.ts's RPC_SESSION_DEFAULT.
 const RPC_SESSION_DEFAULT = '~';
 
-// One-time wiring of the JS RPC peer for uploads:
-//   - bind the peer's reconnect gate to `ConnectivityUI.isConnected`,
-//   - register `uploadsApi` with the shared hub.
-// Idempotent — Api.init is a no-op on second call, bind is a structural sub.
-let _isUploadsRpcInitialized = false;
-function ensureUploadsRpcInitialized(): void {
-    if (_isUploadsRpcInitialized) return;
-
-    _isUploadsRpcInitialized = true;
-    Api.init(undefined, uploadsApi);
-    Api.bindDotNetRpcConnected(ConnectivityUI);
-    infoLog?.log(`uploads RPC initialized: url=${Api.url ?? '<unset>'}, ` +
-        `canConnect=${Api.canConnect}, isDotNetRpcConnected=${Api.isDotNetRpcConnected}`);
-}
-
 type ProgressReporter = (progressPercent: number) => void;
 
 export class FileUploadProgressReporter {
@@ -63,7 +48,6 @@ export class ChunkedFileUpload implements IFileUpload {
         private readonly blob: Blob,
         private readonly progressReporter: ProgressReporter)
     {
-        ensureUploadsRpcInitialized();
         // Per-upload connection scope: the peer's reconnect loop only opens the
         // WS while at least one scope is held. Released in startInternal()'s
         // finally block.

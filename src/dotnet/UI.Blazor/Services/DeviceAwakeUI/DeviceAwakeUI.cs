@@ -44,7 +44,13 @@ public class DeviceAwakeUI : UIServiceBase<UIHub>, ISleepDurationProvider, IDevi
             cancellationToken);
     }
 
-    public async Task SleepUntil(MomentClock clock, Moment until, CancellationToken cancellationToken = default)
+    public Task Sleep(TimeSpan duration, CancellationToken cancellationToken = default)
+    {
+        var systemClock = Clocks.SystemClock;
+        return Sleep(systemClock, systemClock.Now + duration, cancellationToken);
+    }
+
+    public async Task Sleep(MomentClock clock, Moment until, CancellationToken cancellationToken = default)
     {
         while (true) {
             cancellationToken.ThrowIfCancellationRequested();

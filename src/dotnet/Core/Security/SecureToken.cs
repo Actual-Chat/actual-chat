@@ -9,7 +9,7 @@ public sealed partial record SecureToken(
     [property: DataMember, MemoryPackOrder(0), Key(0)] string Token,
     [property: DataMember, MemoryPackOrder(1), Key(1)] Moment ExpiresAt
 ) {
-    public static readonly TimeSpan Lifespan = TimeSpan.FromHours(1);
+    public static readonly TimeSpan Lifespan = TimeSpan.FromMinutes(30);
     public static readonly string Prefix = "! "; // Must contain space!
 
     public static bool HasValidPrefix([NotNullWhen(true)] string? token)

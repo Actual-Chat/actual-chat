@@ -1,5 +1,4 @@
 import { getLogs } from 'logging';
-import { initVideoRpc } from '../../Services/Video/streaming-rpc-client';
 import { Api, streamingApi, type VideoFrameDto } from 'api';
 import { ServerClock } from 'server-clock';
 import { rpcClientServer, rpcNoWait } from 'rpc';
@@ -388,6 +387,7 @@ export class VideoPlayer {
                 'VideoPlayer.decoder',
                 this.decoderWorkerInstance,
                 {
+                    getSessionToken: (minLifespanMs?: number) => Api.getSessionToken(minLifespanMs),
                     onDecodedFrame: (frame: VideoFrame) => { this.onFrameDecoded(frame); return Promise.resolve(); },
                     onOffThreadTrackReady: (track: MediaStreamTrack) => {
                         const backend = this.renderBackend as { onTrackReady?: (t: MediaStreamTrack) => void };
@@ -1317,12 +1317,6 @@ export class VideoPlayer {
         this.lastSentRenderQuality = level;
         if (level === null) return level; // canvas not laid out yet — wait
         debugLog?.log(`RenderQuality hint: level=${level} (canvas=${this.canvas.clientWidth}x${this.canvas.clientHeight})`);
-        // The ResizeObserver can fire BEFORE startPull initializes the streaming
-        // RPC client (canvas layout happens during the same animation frame
-        // VideoPlayer.start runs in). initVideoRpc is idempotent — calling here
-        // ensures the streaming proxy is ready regardless of which entry point
-        // runs first.
-        initVideoRpc();
         // Hint-only mode: StreamOffsetMs=-1 tells the server to apply just the
         // render hint + visibility flag without recording a latency sample
         // (we haven't rendered a frame yet, no offset to report).
@@ -1437,7 +1431,6 @@ export class VideoPlayer {
         const abortController = new AbortController();
         this.pullAbortController = abortController;
 
-        initVideoRpc();
         const skipToTicks = Math.round(skipToMs * 10000); // ms → .NET TimeSpan ticks (must be integer for MessagePack int64)
 
         warnLog?.log(`startPull [RPC]: stream=${streamId}, skipTo=${skipToMs}ms, skipToTicks=${skipToTicks}, retryCount=${this.pullRetryCount}`);
@@ -1637,10 +1630,6 @@ export class VideoPlayer {
         AudioVideoSync.subscribeWorker(this.authorId, channel.port1);
         this.offThreadSyncChannel = channel;
         const apiUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
-        // Main-thread Api is needed once for ReportVideoLatency; the worker
-        // owns the per-frame pull, so this initialises the main-side peer
-        // for control-plane RPCs only. Idempotent.
-        initVideoRpc();
         // Hand the bg canvas to the worker so it can paint a low-res blurred
         // backdrop directly (see §13). transferControlToOffscreen() can be
         // called only once per element across the lifetime of the document —

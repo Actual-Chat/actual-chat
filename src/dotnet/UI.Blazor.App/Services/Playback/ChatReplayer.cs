@@ -171,7 +171,7 @@ public sealed class ChatReplayer : ChatPlayer
 
             // Wait with awareness of device sleep (re-checks on wake)
             await Hub.DeviceAwakeUI
-                .SleepUntil(Clocks.CpuClock, Clocks.CpuClock.Now + delay, cancellationToken)
+                .Sleep(Clocks.CpuClock, Clocks.CpuClock.Now + delay, cancellationToken)
                 .ConfigureAwait(false);
         }
     }

@@ -75,7 +75,7 @@ const serverImpl: OpusEncoderWorker = {
 
         debugLog?.log(`-> create`);
         Versioning.init(artifactVersions);
-        AudioStreamer.init(apiUrl);
+        AudioStreamer.init(apiUrl, minLifespanMs => stateServer.getSessionToken(minLifespanMs));
         AudioStreamer.connectionStateChangedEvents.add(x => stateServer.onConnectionStateChanged(x, rpcNoWait));
         // Notify initial connected state — must fire after listener is attached
         if (AudioStreamer.isConnected)

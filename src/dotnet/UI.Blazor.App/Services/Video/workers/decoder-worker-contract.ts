@@ -191,6 +191,8 @@ export interface DecoderWorker {
  * These are for asynchronous events only (not method responses)
  */
 export interface DecoderWorkerCallbacks {
+    getSessionToken(minLifespanMs?: number): Promise<string>;
+
     /**
      * Called when a frame has been decoded (asynchronous event)
      * @param frame Decoded VideoFrame (will be transferred)

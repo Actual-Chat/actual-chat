@@ -58,6 +58,7 @@ export type LogScope =
     | 'RecaptchaHandler'
     | 'ScreenSize'
     | 'ServiceWorker'
+    | 'SessionTokens'
     | 'TimerQueue'
     | 'UndoStack'
     | 'Versioning'
@@ -161,6 +162,7 @@ const defaults: Record<LogScope, LogLevel> = {
     RecaptchaHandler: LogLevel.Warn,
     ScreenSize: LogLevel.Warn,
     ServiceWorker: LogLevel.Warn,
+    SessionTokens: LogLevel.Warn,
     TimerQueue: LogLevel.Warn,
     UndoStack: LogLevel.Warn,
     Versioning: LogLevel.Warn,

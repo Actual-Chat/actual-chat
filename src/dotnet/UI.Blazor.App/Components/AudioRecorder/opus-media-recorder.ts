@@ -314,6 +314,10 @@ export class OpusMediaRecorder implements RecorderStateServer {
         this.recordingPipelineTrait = new RecordingPipelineTrait(this);
     }
 
+    public getSessionToken(minLifespanMs?: number): Promise<string> {
+        return Api.getSessionToken(minLifespanMs);
+    }
+
     public async init(baseUri: string, canUseNNVad: boolean): Promise<void> {
         debugLog?.log(`-> init()`, baseUri, canUseNNVad);
         this.state = 'initializing';

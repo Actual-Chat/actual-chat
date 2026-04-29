@@ -151,6 +151,7 @@ const streamCtx: StreamingContext = {
     streamKind: 0,
     processing: false,
     apiUrl: null,
+    sessionTokenProvider: undefined,
     rpcStreamServer: null,
 };
 let videoStream: InternalVideoStream | null = null;
@@ -167,6 +168,7 @@ function applyStreamingConfig(config: VideoProcessingConfig): void {
     streamCtx.serverClockOffsetMs = s.serverClockOffsetMs;
     streamCtx.streamKind = s.streamKind ?? 0;
     streamCtx.apiUrl = s.apiUrl;
+    streamCtx.sessionTokenProvider = minLifespanMs => callbacks.getSessionToken(minLifespanMs);
     streamingEnabled = true;
     streamStatus = 'waiting for first frame';
     // Declare our intent to keep a connection up while we capture.

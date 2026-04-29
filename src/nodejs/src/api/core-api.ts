@@ -3,7 +3,7 @@
 // "is the server still talking to us?" probe after connect / reconnect.
 //
 // Usage:
-//     Api.init(url, coreApi);
+//     Api.init('Example', { url, modules: [coreApi] });
 //     const info = await coreApi.systemProperties.GetServerApiInfo('');
 
 import { defineRpcService, type RpcHub } from 'actuallab-rpc';

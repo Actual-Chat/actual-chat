@@ -1,6 +1,7 @@
 ﻿import { RpcNoWait } from 'rpc';
 
 export interface RecorderStateServer {
+    getSessionToken(minLifespanMs?: number): Promise<string>;
     onConnectionStateChanged(isConnected: boolean, noWait?: RpcNoWait): Promise<void>;
     onVoiceStateChanged(isVoiceActive: boolean, noWait?: RpcNoWait): Promise<void>;
     onAudioPowerChange(power: number, noWait?: RpcNoWait): Promise<void>;
@@ -16,4 +17,3 @@ export interface RecorderState {
     isConnected: boolean;
     isVoiceActive: boolean;
 }
-

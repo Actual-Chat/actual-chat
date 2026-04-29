@@ -228,6 +228,7 @@ export interface VideoProcessingWorker {
 }
 
 export interface VideoProcessingWorkerCallbacks {
+    getSessionToken(minLifespanMs?: number): Promise<string>;
     onSerializedChunk(chunkBytes: ArrayBuffer, timestamp: number, duration: number,
         isKeyFrame: boolean, codec: string, sequenceNumber: number,
         descriptionBytes?: ArrayBuffer, noWait?: RpcNoWait): Promise<void>;

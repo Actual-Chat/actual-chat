@@ -90,7 +90,9 @@ public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBas
         if (!properties.KeylessTryGet<HttpContext>(out var httpContext))
             return Task.FromResult(new RpcConnection(transport, properties));
 
-        var session = httpContext.TryGetSessionFromHeader() ?? httpContext.TryGetSessionFromCookie();
+        var session = httpContext.TryGetSessionFromHeader()
+            ?? httpContext.TryGetSessionFromQuery()
+            ?? httpContext.TryGetSessionFromCookie();
         return Task.FromResult(session.IsValid()
             ? new RpcBackendConnection(transport, properties, session)
             : new RpcConnection(transport, properties));

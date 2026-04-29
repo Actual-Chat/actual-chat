@@ -61,7 +61,8 @@ public class MauiAccountUI(UIHub hub) : AccountUI(hub)
     {
         var isSignIn = endpoint.StartsWith("/signIn", StringComparison.OrdinalIgnoreCase);
         try {
-            var sessionToken = await Hub.SessionTokens.Get().ConfigureAwait(true);
+            var minSessionTokenLifespan = TimeSpan.FromMinutes(isSignIn ? 15 : 1);
+            var sessionToken = await Hub.SessionTokens.Get(minSessionTokenLifespan).ConfigureAwait(true);
             var url = $"{MauiSettings.BaseUrl}maui-auth/start"
                 + $"?s={sessionToken.Token.UrlEncode()}"
                 + $"&e={endpoint.UrlEncode()}"

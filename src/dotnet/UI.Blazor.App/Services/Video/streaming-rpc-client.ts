@@ -1,18 +1,7 @@
 // Streaming RPC client — thin UI-side wrapper over the shared Api + streamingApi.
 
 import { RpcStream } from 'actuallab-rpc';
-import { Api, streamingApi,
-    type VideoFrameDto, type AudioFrameDto } from 'api';
-import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
-
-/**
- * Initialize the video RPC client by configuring the shared Api.hub. Idempotent.
- * `Api.url` must have been set already (BrowserInit sets it on startup).
- */
-export function initVideoRpc(): void {
-    Api.init(undefined, streamingApi);
-    Api.bindDotNetRpcConnected(ConnectivityUI);
-}
+import { Api, type VideoFrameDto, type AudioFrameDto } from 'api';
 
 /**
  * Create a client-side RPC stream for pushing video frames to the server.

@@ -4,7 +4,7 @@
 // its types, service defs, and registration.
 //
 // Usage:
-//     Api.init(url, streamingApi);
+//     Api.init('Example', { url, modules: [streamingApi] });
 //     await streamingApi.streamServer.PushVideo(...);
 
 import { defineRpcService, RpcRemoteExecutionMode, RpcType, type RpcHub } from 'actuallab-rpc';

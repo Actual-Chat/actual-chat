@@ -10,6 +10,7 @@
  */
 
 import { getLogs } from 'logging';
+import { Api } from 'api';
 import { rpcClientServer } from 'rpc';
 import type { Disposable } from 'disposable';
 import type { VideoProcessingWorker, VideoProcessingWorkerCallbacks } from '../workers/video-processing-worker-contract';
@@ -79,6 +80,7 @@ export class BlurPreviewSession {
                 onEncoderFailed: () => Promise.resolve(),
                 onDimensionReconciled: () => Promise.resolve(),
                 onStreamCreated: () => Promise.resolve(),
+                getSessionToken: (minLifespanMs?: number) => Api.getSessionToken(minLifespanMs),
             } as VideoProcessingWorkerCallbacks,
         );
 

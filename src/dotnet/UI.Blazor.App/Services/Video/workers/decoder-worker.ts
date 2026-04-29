@@ -86,10 +86,16 @@ let lastLatencyReportAt = 0;
 let apiInitialized = false;
 
 function ensureApiInitialized(apiUrl: string): void {
-    if (apiInitialized) return;
-    Api.init(apiUrl, streamingApi);
-    Api.bindDotNetRpcConnected(WorkerConnectivityUI);
-    Api.requireConnection('VideoDecoder');
+    if (apiInitialized)
+        return;
+
+    Api.init('VideoDecoder', {
+        url: apiUrl,
+        modules: [streamingApi],
+        connectivityUI: WorkerConnectivityUI,
+        sessionTokenProvider: minLifespanMs => callbacks.getSessionToken(minLifespanMs),
+        requireConnection: true,
+    });
     apiInitialized = true;
 }
 

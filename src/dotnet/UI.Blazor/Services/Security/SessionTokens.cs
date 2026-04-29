@@ -1,48 +1,83 @@
+using ActualChat.Hosting;
 using ActualChat.Security;
+using ActualChat.UI.Blazor.Module;
 using ActualLab.Locking;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class SessionTokens(UIHub hub) : UIServiceBase<UIHub>(hub)
+public sealed class SessionTokens(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService
 {
+    public static readonly TimeSpan InfLifespan = TimeSpan.FromDays(365);
+    public static readonly TimeSpan DefaultLifespan = SecureToken.Lifespan;
+    public static readonly TimeSpan RefreshPeriod = DefaultLifespan / 2;
+
+    private static readonly string JSSetMethod = $"{BlazorUICoreModule.ImportName}.SessionTokens.set";
+
     private readonly AsyncLock _asyncLock = new(LockReentryMode.CheckedFail);
-    private volatile SecureToken? _current;
+    private volatile SecureToken? _lastToken;
 
     private ISecureTokens SecureTokens => field ??= Services.GetRequiredService<ISecureTokens>();
-    private MomentClock ServerClock => field ??= Clocks.ServerClock;
+    private DeviceAwakeUI DeviceAwakeUI => field ??= Services.GetRequiredService<DeviceAwakeUI>();
+    private Moment SystemNow => Clocks.SystemClock.Now;
+    private Moment ServerNow => Clocks.ServerClock.Now;
+    private SecureToken? LastToken => _lastToken;
 
-    public TimeSpan MinLifespan { get; init; } = TimeSpan.FromMinutes(60);
-
-    public ValueTask<SecureToken> Get(CancellationToken cancellationToken = default)
-        => Get(MinLifespan, cancellationToken);
-
-    // Private methods
-
-    private async ValueTask<SecureToken> Get(TimeSpan minLifespan, CancellationToken cancellationToken = default)
+    public async ValueTask<SecureToken> Get(TimeSpan minLifespan, CancellationToken cancellationToken = default)
     {
-        minLifespan = minLifespan
-            .Add(TimeSpan.FromMinutes(1))
-            .Clamp(default, SecureToken.Lifespan / 2);
-        var minExpiresAt = ServerClock.Now + minLifespan;
-        var result = _current;
-        if (result != null && result.ExpiresAt >= minExpiresAt)
-            return result;
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(minLifespan, SecureToken.Lifespan);
 
-        result = await GetNew(cancellationToken).ConfigureAwait(false);
-        return result;
-    }
+        if (TryUseLastToken(minLifespan) is { } token)
+            return token;
 
-    private async ValueTask<SecureToken> GetNew(CancellationToken cancellationToken = default)
-    {
         using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
         releaser.MarkLockedLocally();
 
-        var result = _current;
-        if (result != null && result.ExpiresAt >= ServerClock.Now + (SecureToken.Lifespan / 2))
-            return result;
+        if (TryUseLastToken(minLifespan) is { } token1)
+            return token1;
 
-        result = await SecureTokens.CreateSessionToken(Session, cancellationToken).ConfigureAwait(false);
-        Interlocked.Exchange(ref _current, result);
-        return result;
+        token = await SecureTokens.CreateSessionToken(Session, cancellationToken).ConfigureAwait(false);
+        Interlocked.Exchange(ref _lastToken, token);
+        return token;
     }
+
+    // Protected & private methods
+
+    protected override Task OnRun(CancellationToken cancellationToken)
+    {
+        var retryDelays = RetryDelaySeq.Exp(0.1, 5);
+        return AsyncChain.From(AutoRefresh)
+            .Log(LogLevel.Debug, Log)
+            .RetryForever(retryDelays, Log)
+            .RunIsolated(cancellationToken);
+    }
+
+    private SecureToken? TryUseLastToken(TimeSpan minLifespan)
+        => LastToken is { } token && token.ExpiresAt >= ServerNow + minLifespan
+            ? token
+            : null;
+
+    private async Task AutoRefresh(CancellationToken cancellationToken)
+    {
+        if (HostInfo.AppKind is not AppKind.Ios) {
+            var expiresAtMs = (long)(SystemNow.EpochOffset + InfLifespan).TotalMilliseconds;
+            await SetJSToken("", expiresAtMs, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var jsToken = "";
+        while (!cancellationToken.IsCancellationRequested) {
+            var current = await Get(DefaultLifespan, cancellationToken).ConfigureAwait(false);
+            if (jsToken != current.Token) {
+                var expiresIn = (current.ExpiresAt - ServerNow).Positive();
+                var expiresAtMs = (long)(SystemNow.EpochOffset + expiresIn).TotalMilliseconds;
+                await SetJSToken(current.Token, expiresAtMs, cancellationToken).ConfigureAwait(false);
+                jsToken = current.Token;
+            }
+            await DeviceAwakeUI.Sleep(RefreshPeriod, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task SetJSToken(string token, long expiresAtMs, CancellationToken cancellationToken)
+        => await JS.InvokeVoidAsync(JSSetMethod, CancellationToken.None, token, expiresAtMs)
+            .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
 }

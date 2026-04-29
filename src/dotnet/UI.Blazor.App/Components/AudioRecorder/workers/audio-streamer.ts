@@ -7,7 +7,7 @@ import { ObjectPool } from 'object-pool';
 import { delayAsync } from 'promises';
 import { RpcClientPeer, RpcConnectionState, RpcStream } from 'actuallab-rpc';
 import { Api, coreApi, streamingApi,
-    type ApiModule, type AudioFrameDto } from 'api';
+    type ApiModule, type AudioFrameDto, type SessionTokenProvider } from 'api';
 import { ServerClock } from 'server-clock';
 import { WorkerConnectivityUI } from './worker-connectivity-ui';
 import { getLogs } from 'logging';
@@ -211,11 +211,11 @@ export class AudioStreamer {
     /** Api module that installs a `defaultPeerFactory` wiring connect/disconnect
      *  handlers to `updateConnectionState` before the reconnect loop starts —
      *  otherwise the first connect event can fire before listeners are attached. */
-    private static readonly _connectionStateApi: ApiModule = {
+    private static readonly _connectionStateTracker: ApiModule = {
         deps: [streamingApi],
         register(hub) {
             hub.defaultPeerFactory = (h, r) => {
-                const peer = new RpcClientPeer(h, r, false);
+                const peer = Api.configurePeer(new RpcClientPeer(h, r, false));
                 peer.connectionStateChanged.add(state => {
                     const isConnected = state === RpcConnectionState.Connected;
                     updateConnectionState(isConnected);
@@ -231,17 +231,21 @@ export class AudioStreamer {
         },
     };
 
-    public static init(apiUrl: string): void {
+    public static init(apiUrl: string, sessionTokenProvider?: SessionTokenProvider): void {
         if (this._initialized)
             return;
 
         debugLog?.log(`init`, apiUrl);
 
-        Api.init(apiUrl, this._connectionStateApi);
-        Api.bindDotNetRpcConnected(WorkerConnectivityUI);
+        Api.init('AudioRecorder', {
+            url: apiUrl,
+            modules: [this._connectionStateTracker],
+            connectivityUI: WorkerConnectivityUI,
+            sessionTokenProvider,
+            requireConnection: true,
+        });
         // Audio streamer always wants the peer up — held for the worker's
         // lifetime. The .NET-connected side still gates actual attempts.
-        Api.requireConnection('AudioStreamer');
         this._initialized = true;
     }
 
