@@ -322,7 +322,8 @@ export class AudioContextSource {
         const context = this._context;
         if (context && context.state !== 'closed') {
             const p = this.attachTrait(trait, context).finally(() => {
-                this._pendingAttachments.delete(trait.name);
+                if (this._pendingAttachments.get(trait.name) === p)
+                    this._pendingAttachments.delete(trait.name);
             });
             this._pendingAttachments.set(trait.name, p);
             return p;
