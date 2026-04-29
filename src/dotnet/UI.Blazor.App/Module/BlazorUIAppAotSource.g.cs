@@ -454,6 +454,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.AttachFileRequestEntry>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.EntryRef>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.FileMetadata>();
+        CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.IFileProvider>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.MauiFileProvider>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.RelatedEntryRef>();
         CodeKeeper.KeepSerializable<global::ActualChat.UI.Blazor.App.Services.SendMessageRequestEntry>();
@@ -1100,6 +1101,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Services.AttachFileRequestEntry), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.EntryRef), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.FileMetadata), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.UI.Blazor.App.Services.IFileProvider), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.MauiFileProvider), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.RelatedEntryRef), AotTypeKind.Serializable),
             (typeof(global::ActualChat.UI.Blazor.App.Services.SendMessageRequestEntry), AotTypeKind.Serializable),

@@ -30,6 +30,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.ChatCopyState>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.ChatCopyStateDiff>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.ChatDiff>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.ChatEntry>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.ChatEntryAttachment>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.ChatEntryAudio>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.ChatEntryDiff>();
@@ -58,6 +59,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.ReadPositionsStat>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.Role>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.RoleDiff>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.SystemEntry>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.TextEntry>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.Translation>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.TranslationDiff>();
@@ -84,6 +86,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Interest>();
         CodeKeeper.KeepSerializable<global::ActualChat.Invite.ChatInvite>();
         CodeKeeper.KeepSerializable<global::ActualChat.Invite.ChatInviteSettings>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Invite.Invite>();
         CodeKeeper.KeepSerializable<global::ActualChat.Invite.InviteChatLinkPreview>();
         CodeKeeper.KeepSerializable<global::ActualChat.Invite.PlaceInvite>();
         CodeKeeper.KeepSerializable<global::ActualChat.Invite.UserInvite>();
@@ -91,6 +94,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Live.LiveAudioFrame>();
         CodeKeeper.KeepSerializable<global::ActualChat.Live.LiveStreamEnd>();
         CodeKeeper.KeepSerializable<global::ActualChat.Live.LiveStreamInfo>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Live.LiveStreamItem>();
         CodeKeeper.KeepSerializable<global::ActualChat.Live.LiveStreamReset>();
         CodeKeeper.KeepSerializable<global::ActualChat.Live.LiveStreamSettings>();
         CodeKeeper.KeepSerializable<global::ActualChat.Live.LiveStreamStart>();
@@ -100,6 +104,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Media.GrabStatus>();
         CodeKeeper.KeepSerializable<global::ActualChat.Media.LinkPreview>();
         CodeKeeper.KeepSerializable<global::ActualChat.Media.Media>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Media.MediaFrame>();
         CodeKeeper.KeepSerializable<global::ActualChat.Media.MediaFull>();
         CodeKeeper.KeepSerializable<global::ActualChat.Media.MediaProgress>();
         CodeKeeper.KeepSerializable<global::ActualChat.Media.MediaRef>();
@@ -125,6 +130,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Search.EntrySearchQuery>();
         CodeKeeper.KeepSerializable<global::ActualChat.Search.EntrySearchResult>();
         CodeKeeper.KeepSerializable<global::ActualChat.Search.EntrySearchResultPage>();
+        CodeKeeper.KeepSerializable<global::ActualChat.StoredSettings>();
         CodeKeeper.KeepSerializable<global::ActualChat.StreamId>();
         CodeKeeper.KeepSerializable<global::ActualChat.Streaming.VideoStreamInfo>();
         CodeKeeper.KeepSerializable<global::ActualChat.ThreadChatId>();
@@ -1328,6 +1334,7 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.Chat.ChatCopyState), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.ChatCopyStateDiff), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.ChatDiff), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.ChatEntry), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.ChatEntryAttachment), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.ChatEntryAudio), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.ChatEntryDiff), AotTypeKind.Serializable),
@@ -1356,6 +1363,7 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.Chat.ReadPositionsStat), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.Role), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.RoleDiff), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.SystemEntry), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.TextEntry), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.Translation), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.TranslationDiff), AotTypeKind.Serializable),
@@ -1382,6 +1390,7 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.Interest), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Invite.ChatInvite), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Invite.ChatInviteSettings), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Invite.Invite), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Invite.InviteChatLinkPreview), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Invite.PlaceInvite), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Invite.UserInvite), AotTypeKind.Serializable),
@@ -1389,6 +1398,7 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.Live.LiveAudioFrame), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Live.LiveStreamEnd), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Live.LiveStreamInfo), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Live.LiveStreamItem), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Live.LiveStreamReset), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Live.LiveStreamSettings), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Live.LiveStreamStart), AotTypeKind.Serializable),
@@ -1398,6 +1408,7 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.Media.GrabStatus), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Media.LinkPreview), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Media.Media), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Media.MediaFrame), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Media.MediaFull), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Media.MediaProgress), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Media.MediaRef), AotTypeKind.Serializable),
@@ -1423,6 +1434,7 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.Search.EntrySearchQuery), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Search.EntrySearchResult), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Search.EntrySearchResultPage), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.StoredSettings), AotTypeKind.Serializable),
             (typeof(global::ActualChat.StreamId), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Streaming.VideoStreamInfo), AotTypeKind.Serializable),
             (typeof(global::ActualChat.ThreadChatId), AotTypeKind.Serializable),

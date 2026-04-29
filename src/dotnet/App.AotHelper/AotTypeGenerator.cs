@@ -292,7 +292,9 @@ public static class AotTypeGenerator
 
             try {
                 foreach (var type in assembly.GetTypes()) {
-                    if (type.IsAbstract || type.IsInterface || type.IsGenericTypeDefinition)
+                    if (type.IsGenericTypeDefinition)
+                        continue;
+                    if ((type.IsAbstract || type.IsInterface) && !HasMessagePackUnionMarker(type))
                         continue;
                     if (!HasMessagePackMarker(type))
                         continue;
@@ -301,7 +303,9 @@ public static class AotTypeGenerator
             }
             catch (ReflectionTypeLoadException e) {
                 foreach (var type in e.Types) {
-                    if (type == null || type.IsAbstract || type.IsInterface || type.IsGenericTypeDefinition)
+                    if (type == null || type.IsGenericTypeDefinition)
+                        continue;
+                    if ((type.IsAbstract || type.IsInterface) && !HasMessagePackUnionMarker(type))
                         continue;
                     if (!HasMessagePackMarker(type))
                         continue;
@@ -322,6 +326,15 @@ public static class AotTypeGenerator
             if (n is "MessagePack.MessagePackObjectAttribute"
                 or "MessagePack.MessagePackFormatterAttribute"
                 or "MessagePack.UnionAttribute")
+                return true;
+        }
+        return false;
+    }
+
+    private static bool HasMessagePackUnionMarker(Type type)
+    {
+        foreach (var a in type.CustomAttributes) {
+            if (a.AttributeType.FullName == "MessagePack.UnionAttribute")
                 return true;
         }
         return false;
