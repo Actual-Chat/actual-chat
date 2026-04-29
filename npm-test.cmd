@@ -1,9 +1,9 @@
 :<<BATCH
     @echo off
-    npm test %*
+    call npm run test:unit %*
     exit /b %ERRORLEVEL%
 BATCH
 
 #!/bin/sh
-npm test "$@"
+npm run test:unit "$@"
 exit $?
