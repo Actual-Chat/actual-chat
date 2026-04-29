@@ -39,11 +39,16 @@ export class VisualMediaViewer {
     private hideBlocked = false;
     private isDoubleClick = false;
     private isDraggingThumb = false;
-    // Swipe-to-dismiss state
+    // Swipe-to-dismiss / info panel state
     private isDismissing = false;
     private dismissStartY = 0;
     private dismissStartX = 0;
-    private dismissLocked = false; // true = decided this is NOT a vertical swipe
+    private dismissLocked = false;
+    private isInfoOpen = false;
+    private readonly infoPanel: HTMLElement | null;
+    // Stored transform values when info panel is open (for reverse animation)
+    private infoTranslateY = 0;
+    private infoScale = 1;
 
     static create(imageViewer: HTMLElement, blazorRef: DotNet.DotNetObject): VisualMediaViewer {
         return new VisualMediaViewer(imageViewer, blazorRef);
@@ -59,6 +64,7 @@ export class VisualMediaViewer {
         // @ts-expect-error TODO(Andrey): fix eslint error
         this.footer = this.overlay.querySelector('.image-viewer-footer')!;
         this.videos = this.imageViewer.querySelectorAll<HTMLVideoElement>('video.video-original');
+        this.infoPanel = this.overlay.querySelector<HTMLElement>('.media-info-panel');
 
         // eslint-disable-next-line
         this.swiperEl = document.querySelector('.media-swiper')!;
@@ -175,6 +181,95 @@ export class VisualMediaViewer {
         this.disposed$.complete();
     }
 
+    // State machine:
+    //   VIEWING ──swipe up / info btn──► INFO_OPEN
+    //   VIEWING ──swipe down───────────► CLOSE
+    //   INFO_OPEN ──swipe down─────────► VIEWING
+    //   INFO_OPEN ──close btn──────────► CLOSE
+
+    private openInfoPanel() {
+        if (this.isInfoOpen || !this.infoPanel)
+            return;
+
+        this.isInfoOpen = true;
+        const swiper = this.swiper as Swiper;
+        swiper.allowTouchMove = false;
+
+        // Info panel slides up
+        this.infoPanel.style.transition = 'transform 300ms ease-out';
+        this.infoPanel.style.transform = 'translateY(0)';
+        this.infoPanel.classList.add('is-open');
+
+        // Hide header, footer, navigation
+        this.header.style.transition = 'opacity 200ms ease-out';
+        this.header.style.opacity = '0';
+        this.header.style.pointerEvents = 'none';
+        if (this.footer) {
+            this.footer.style.visibility = 'hidden';
+        }
+        this.imageViewer.classList.remove('navigation-visible');
+        this.imageViewer.classList.add('navigation-hidden');
+
+        setTimeout(() => {
+            if (this.infoPanel) this.infoPanel.style.transition = '';
+            this.header.style.transition = '';
+        }, 350);
+    }
+
+    private closeInfoPanel() {
+        if (!this.isInfoOpen || !this.infoPanel)
+            return;
+
+        this.isInfoOpen = false;
+        const swiper = this.swiper as Swiper;
+        swiper.allowTouchMove = true;
+
+        // Slide content back to center + reset img scale
+        const swiperHost = this.swiperEl as HTMLElement;
+        const content = swiperHost.querySelector<HTMLElement>('.swiper-slide-active .swiper-zoom-container');
+        if (content) {
+            content.style.transition = 'transform 300ms ease-out';
+            content.style.transform = '';
+            const imgEl = content.querySelector<HTMLElement>('img.image-original')
+                ?? content.querySelector<HTMLElement>('img.image-plug')
+                ?? content.querySelector<HTMLElement>('video.video-original');
+            if (imgEl) {
+                imgEl.style.transition = 'transform 300ms ease-out';
+                imgEl.style.transform = '';
+                imgEl.style.transformOrigin = '';
+                const imgRef = imgEl;
+                setTimeout(() => { imgRef.style.transition = ''; }, 350);
+            }
+        }
+
+        // Info panel slides down
+        this.infoPanel.style.transition = 'transform 300ms ease-out';
+        this.infoPanel.style.transform = '';
+        this.infoPanel.classList.remove('is-open');
+
+        // Restore header, footer, navigation
+        this.header.style.transition = 'opacity 300ms ease-out';
+        this.header.style.opacity = '';
+        this.header.style.pointerEvents = '';
+        // Re-center thumbs before showing footer to avoid jump
+        void this.safeCenterThumb().then(() => {
+            if (this.footer)
+                this.footer.style.visibility = '';
+        });
+        this.imageViewer.classList.remove('navigation-hidden');
+        this.imageViewer.classList.add('navigation-visible');
+
+        setTimeout(() => {
+            if (content) {
+                content.style.transition = '';
+                content.style.transform = '';
+                content.style.transformOrigin = '';
+            }
+            if (this.infoPanel) this.infoPanel.style.transition = '';
+            this.header.style.transition = '';
+        }, 350);
+    }
+
     private initSwipeToDismiss() {
         const dismissThreshold = 120;
         const dragDeadzone = 15;
@@ -182,6 +277,29 @@ export class VisualMediaViewer {
         const swiperHost = this.swiperEl as HTMLElement;
         const swiper = this.swiper as Swiper;
         let lastDeltaY = 0;
+        let gestureMaxUp = 0;
+        let gestureImgHeight = 0;
+        let gestureImgTop = 0;
+        let savedThumbsTransform = ''; // lock thumbs position during gesture
+
+        const measureGestureParams = () => {
+            const content = getSlideContent();
+            if (!content) return;
+            for (const sel of ['img.image-original', 'img.image-plug', 'video.video-original']) {
+                const el = content.querySelector<HTMLElement>(sel);
+                if (el) {
+                    const rect = el.getBoundingClientRect();
+                    if (rect.height > 0) {
+                        gestureImgHeight = rect.height;
+                        gestureImgTop = rect.top;
+                        // Image bottom must not go above (screenCenter + 2rem overlap)
+                        const stopAt = window.innerHeight / 2 + 32;
+                        gestureMaxUp = Math.max(0, rect.bottom - stopAt);
+                        return;
+                    }
+                }
+            }
+        };
 
         const getSlideContent = (): HTMLElement | null => {
             const activeSlide = swiperHost.querySelector<HTMLElement>('.swiper-slide-active');
@@ -199,6 +317,10 @@ export class VisualMediaViewer {
             this.dismissStartY = 0;
             this.dismissStartX = 0;
             lastDeltaY = 0;
+            gestureMaxUp = 0;
+            gestureImgHeight = 0;
+            gestureImgTop = 0;
+            savedThumbsTransform = '';
         };
 
         const restoreSwiper = () => {
@@ -210,6 +332,15 @@ export class VisualMediaViewer {
             if (content) {
                 content.style.transition = '';
                 content.style.transform = '';
+                // Clear scale from img element
+                const imgEl = content.querySelector<HTMLElement>('img.image-original')
+                    ?? content.querySelector<HTMLElement>('img.image-plug')
+                    ?? content.querySelector<HTMLElement>('video.video-original');
+                if (imgEl) {
+                    imgEl.style.transform = '';
+                    imgEl.style.transformOrigin = '';
+                    imgEl.style.transition = '';
+                }
             }
             const vc = getVideoControl();
             if (vc) {
@@ -218,6 +349,17 @@ export class VisualMediaViewer {
             }
             modalFrame.style.transition = '';
             modalFrame.style.opacity = '';
+            this.header.style.opacity = '';
+            this.header.style.transition = '';
+            this.header.style.pointerEvents = '';
+            if (this.footer) {
+                this.footer.style.visibility = '';
+                this.footer.style.transition = '';
+            }
+            if (this.infoPanel) {
+                this.infoPanel.style.transition = '';
+                this.infoPanel.style.transform = '';
+            }
         };
 
         const onTouchStart = (e: TouchEvent) => {
@@ -230,7 +372,8 @@ export class VisualMediaViewer {
             const target = e.target as HTMLElement;
             if (target.closest('.image-viewer-header')
                 || target.closest('.image-viewer-footer')
-                || target.closest('.video-control'))
+                || target.closest('.video-control')
+                || target.closest('.media-info-panel'))
                 return;
 
             const touch = e.touches[0];
@@ -239,6 +382,12 @@ export class VisualMediaViewer {
             this.isDismissing = false;
             this.dismissLocked = false;
             lastDeltaY = 0;
+            measureGestureParams();
+            // Lock thumbs position so Swiper doesn't shift them during gesture
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            if (this.thumbs?.wrapperEl)
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                savedThumbsTransform = (this.thumbs.wrapperEl as HTMLElement).style.transform;
         };
 
         const onTouchMove = (e: TouchEvent) => {
@@ -266,35 +415,204 @@ export class VisualMediaViewer {
                 if (Math.abs(deltaY) < dragDeadzone)
                     return;
 
+                // Swipe up while info is open — ignore (panel handles its own scroll)
+                // Swipe up while viewing — this will open info panel on release
+                // Swipe down while info is open — this will close info panel on release
+                // Swipe down while viewing — this will dismiss
                 this.isDismissing = true;
                 swiper.allowTouchMove = false;
             }
 
-            e.preventDefault();
-            e.stopPropagation();
+            if (e.cancelable) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
 
             lastDeltaY = deltaY;
-            const content = getSlideContent();
-            if (content)
-                content.style.transform = `translateY(${deltaY}px)`;
-            // Counter-translate video control so it stays in place
-            const vc = getVideoControl();
-            if (vc)
-                vc.style.transform = `translateY(${-deltaY}px)`;
 
-            const progress = Math.min(Math.abs(deltaY) / 300, 1);
-            modalFrame.style.opacity = `${1 - progress * 0.6}`;
+            if (!this.isInfoOpen && deltaY > 0) {
+                // Swipe down — dismiss feedback
+                const content = getSlideContent();
+                if (content)
+                    content.style.transform = `translateY(${deltaY}px)`;
+                const vc = getVideoControl();
+                if (vc)
+                    vc.style.transform = `translateY(${-deltaY}px)`;
+                const progress = Math.min(deltaY / 300, 1);
+                modalFrame.style.opacity = `${1 - progress * 0.6}`;
+                // Header/footer fade out 3x faster
+                const fastFade = `${1 - Math.min(deltaY / 150, 1)}`;
+                this.header.style.opacity = fastFade;
+                if (this.footer)
+                    this.footer.style.visibility = parseFloat(fastFade) < 0.01 ? 'hidden' : '';
+            } else if (!this.isInfoOpen && deltaY < 0) {
+                // Swipe up — image moves up, clamped so bottom stays at screen center + 2rem
+                const absDelta = Math.abs(deltaY);
+                const clampedDelta = gestureMaxUp > 0
+                    ? Math.max(deltaY, -gestureMaxUp)
+                    : 0;
+
+                const content = getSlideContent();
+                if (content) {
+                    // translateY always on the container
+                    content.style.transform = `translateY(${clampedDelta}px)`;
+
+                    // After image hits the clamp, scale the img element itself
+                    const topAfterTranslate = gestureImgTop + clampedDelta;
+                    const imgEl = content.querySelector<HTMLElement>('img.image-original')
+                        ?? content.querySelector<HTMLElement>('img.image-plug')
+                        ?? content.querySelector<HTMLElement>('video.video-original');
+                    if (imgEl && topAfterTranslate > 0 && absDelta > gestureMaxUp && gestureImgHeight > 0) {
+                        const extraDelta = absDelta - gestureMaxUp;
+                        const growNeeded = topAfterTranslate;
+                        const scaleProgress = Math.min(extraDelta / growNeeded, 1);
+                        const scale = 1 + (topAfterTranslate / gestureImgHeight) * scaleProgress;
+                        imgEl.style.transformOrigin = 'center bottom';
+                        imgEl.style.transform = `scale(${scale})`;
+                    } else if (imgEl) {
+                        imgEl.style.transform = '';
+                        imgEl.style.transformOrigin = '';
+                    }
+                }
+                const vc = getVideoControl();
+                if (vc)
+                    vc.style.transform = `translateY(${-clampedDelta}px)`;
+
+                // Info panel slides up (slower — 2.5x threshold range)
+                const infoPanelProgress = Math.min(absDelta / (dismissThreshold * 2.5), 1);
+                if (this.infoPanel)
+                    this.infoPanel.style.transform = `translateY(${100 * (1 - infoPanelProgress)}%)`;
+
+                // Header/footer fade out 2x faster
+                const fastFade = `${1 - Math.min(absDelta / 150, 1)}`;
+                this.header.style.opacity = fastFade;
+                if (this.footer)
+                    this.footer.style.visibility = parseFloat(fastFade) < 0.01 ? 'hidden' : '';
+                this.imageViewer.classList.remove('navigation-visible');
+                this.imageViewer.classList.add('navigation-hidden');
+            } else if (this.isInfoOpen && deltaY > 0) {
+                // Swipe down while info is open — reverse all transforms proportionally
+                const progress = Math.min(deltaY / dismissThreshold, 1);
+
+                // Image translateY: from infoTranslateY back toward 0
+                const content = getSlideContent();
+                if (content) {
+                    const currentTranslate = this.infoTranslateY * (1 - progress);
+                    content.style.transform = `translateY(${currentTranslate}px)`;
+                }
+
+                // Image scale: from infoScale back toward 1
+                if (this.infoScale > 1) {
+                    const imgEl = content?.querySelector<HTMLElement>('img.image-original')
+                        ?? content?.querySelector<HTMLElement>('img.image-plug')
+                        ?? content?.querySelector<HTMLElement>('video.video-original');
+                    if (imgEl) {
+                        const currentScale = 1 + (this.infoScale - 1) * (1 - progress);
+                        imgEl.style.transformOrigin = 'center bottom';
+                        imgEl.style.transform = `scale(${currentScale})`;
+                    }
+                }
+
+                // Info panel slides down
+                if (this.infoPanel)
+                    this.infoPanel.style.transform = `translateY(${100 * progress}%)`;
+
+                // Header/footer fade back in
+                const fade = `${Math.min(progress / 0.5, 1)}`;
+                this.header.style.opacity = fade;
+                if (this.footer)
+                    this.footer.style.visibility = parseFloat(fade) > 0.5 ? '' : 'hidden';
+            }
+
+            // Keep thumbs locked during gesture
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            if (savedThumbsTransform && this.thumbs?.wrapperEl)
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                (this.thumbs.wrapperEl as HTMLElement).style.transform = savedThumbsTransform;
         };
 
-        const finishDismiss = (deltaY: number) => {
+        const finishGesture = (deltaY: number) => {
             restoreSwiper();
             const content = getSlideContent();
             const vc = getVideoControl();
 
-            if (Math.abs(deltaY) >= dismissThreshold) {
-                // Animate out then close — don't clear styles before Close()
-                // to avoid flicker; modal removal will clean up the DOM
-                const targetY = deltaY > 0 ? window.innerHeight : -window.innerHeight;
+            // Swipe UP while viewing → snap to final info-open state
+            if (!this.isInfoOpen && deltaY < -dismissThreshold) {
+                // Calculate final transform values
+                const finalTranslateY = gestureMaxUp > 0 ? -gestureMaxUp : 0;
+                let finalScale = 1;
+                if (gestureImgHeight > 0) {
+                    const topAtClamp = gestureImgTop + finalTranslateY;
+                    if (topAtClamp > 0)
+                        finalScale = 1 + topAtClamp / gestureImgHeight;
+                }
+
+                // Store for reverse animation
+                this.infoTranslateY = finalTranslateY;
+                this.infoScale = finalScale;
+
+                // Animate content to final position
+                if (content) {
+                    content.style.transition = 'transform 200ms ease-out';
+                    content.style.transform = `translateY(${finalTranslateY}px)`;
+                }
+                const imgEl = content?.querySelector<HTMLElement>('img.image-original')
+                    ?? content?.querySelector<HTMLElement>('img.image-plug')
+                    ?? content?.querySelector<HTMLElement>('video.video-original');
+                if (imgEl && finalScale > 1) {
+                    imgEl.style.transition = 'transform 200ms ease-out';
+                    imgEl.style.transformOrigin = 'center bottom';
+                    imgEl.style.transform = `scale(${finalScale})`;
+                }
+                if (vc) {
+                    vc.style.transition = 'transform 200ms ease-out';
+                    vc.style.transform = '';
+                }
+
+                setTimeout(() => {
+                    if (content) content.style.transition = '';
+                    if (imgEl) imgEl.style.transition = '';
+                    if (vc) vc.style.transition = '';
+                }, 250);
+
+                resetDismiss();
+                this.openInfoPanel();
+                return;
+            }
+
+            // Swipe DOWN while info is open → finish closing info panel
+            if (this.isInfoOpen && deltaY > dismissThreshold) {
+                this.isInfoOpen = false;
+                swiper.allowTouchMove = true;
+
+                // Animate remaining distance
+                if (content) {
+                    content.style.transition = 'transform 200ms ease-out';
+                    content.style.transform = '';
+                    content.style.transformOrigin = '';
+                }
+                if (this.infoPanel) {
+                    this.infoPanel.style.transition = 'transform 200ms ease-out';
+                    this.infoPanel.style.transform = '';
+                    this.infoPanel.classList.remove('is-open');
+                }
+                this.header.style.transition = 'opacity 200ms ease-out';
+                this.header.style.opacity = '';
+                this.header.style.pointerEvents = '';
+                void this.safeCenterThumb().then(() => {
+                    if (this.footer)
+                        this.footer.style.visibility = '';
+                });
+                this.imageViewer.classList.remove('navigation-hidden');
+                this.imageViewer.classList.add('navigation-visible');
+                setTimeout(() => clearStyles(), 250);
+                resetDismiss();
+                return;
+            }
+
+            // Swipe DOWN while viewing → dismiss
+            if (!this.isInfoOpen && deltaY >= dismissThreshold) {
+                const targetY = window.innerHeight;
                 if (content) {
                     content.style.transition = 'transform 200ms ease-out';
                     content.style.transform = `translateY(${targetY}px)`;
@@ -305,12 +623,46 @@ export class VisualMediaViewer {
                 }
                 modalFrame.style.transition = 'opacity 200ms ease-out';
                 modalFrame.style.opacity = '0';
-                // Close after animation — no style reset, modal disposal handles cleanup
                 setTimeout(() => {
                     void this.blazorRef.invokeMethodAsync('Close');
                 }, 200);
+                resetDismiss();
+                return;
+            }
+
+            // Didn't reach threshold — snap back
+            if (this.isInfoOpen) {
+                // Snap back to info-open state
+                if (content) {
+                    content.style.transition = 'transform 200ms ease-out';
+                    content.style.transform = `translateY(${this.infoTranslateY}px)`;
+                }
+                const imgEl = content?.querySelector<HTMLElement>('img.image-original')
+                    ?? content?.querySelector<HTMLElement>('img.image-plug')
+                    ?? content?.querySelector<HTMLElement>('video.video-original');
+                if (imgEl && this.infoScale > 1) {
+                    imgEl.style.transition = 'transform 200ms ease-out';
+                    imgEl.style.transformOrigin = 'center bottom';
+                    imgEl.style.transform = `scale(${this.infoScale})`;
+                }
+                if (this.infoPanel) {
+                    this.infoPanel.style.transition = 'transform 200ms ease-out';
+                    this.infoPanel.style.transform = 'translateY(0)';
+                }
+                // Keep header/footer hidden
+                this.header.style.transition = 'opacity 200ms ease-out';
+                this.header.style.opacity = '0';
+                if (this.footer) {
+                    this.footer.style.visibility = 'hidden';
+                }
+                setTimeout(() => {
+                    if (content) content.style.transition = '';
+                    if (imgEl) imgEl.style.transition = '';
+                    if (this.infoPanel) this.infoPanel.style.transition = '';
+                    this.header.style.transition = '';
+                }, 250);
             } else {
-                // Snap back
+                // Snap back to normal viewing state
                 if (content) {
                     content.style.transition = 'transform 200ms ease-out';
                     content.style.transform = '';
@@ -321,6 +673,17 @@ export class VisualMediaViewer {
                 }
                 modalFrame.style.transition = 'opacity 200ms ease-out';
                 modalFrame.style.opacity = '';
+                this.header.style.transition = 'opacity 200ms ease-out';
+                this.header.style.opacity = '';
+                if (this.footer) {
+                    this.footer.style.visibility = '';
+                }
+                if (this.infoPanel) {
+                    this.infoPanel.style.transition = 'transform 200ms ease-out';
+                    this.infoPanel.style.transform = '';
+                }
+                this.imageViewer.classList.remove('navigation-hidden');
+                this.imageViewer.classList.add('navigation-visible');
                 setTimeout(() => clearStyles(), 250);
             }
 
@@ -332,7 +695,7 @@ export class VisualMediaViewer {
                 resetDismiss();
                 return;
             }
-            finishDismiss(lastDeltaY);
+            finishGesture(lastDeltaY);
         };
 
         const onTouchCancel = () => {
@@ -343,8 +706,6 @@ export class VisualMediaViewer {
             resetDismiss();
         };
 
-        // Use touch events (not pointer events) — Swiper uses touch events internally,
-        // so preventDefault on touch events actually blocks Swiper from handling them.
         this.overlay.addEventListener('touchstart', onTouchStart, { capture: true, passive: true });
         this.overlay.addEventListener('touchmove', onTouchMove, { capture: true, passive: false });
         this.overlay.addEventListener('touchend', onTouchEnd, { capture: true, passive: true });
@@ -540,7 +901,7 @@ export class VisualMediaViewer {
             });
         }
 
-        if (this.thumbs) {
+        if (this.thumbs && !this.isDismissing && !this.isInfoOpen) {
             setTimeout(() => {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
                 this.thumbs.update();
@@ -587,7 +948,7 @@ export class VisualMediaViewer {
 
         }
 
-        if (this.thumbs) {
+        if (this.thumbs && !this.isDismissing && !this.isInfoOpen) {
             setTimeout(() => {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
                 this.thumbs.update();
