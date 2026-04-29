@@ -212,7 +212,9 @@ export class WebGpuDownscaler {
         );
     }
 
-    process(source: VideoFrame, fallbackRotationDeg?: number): DownscaleResult[] {
+    async process(source: VideoFrame, opts?: {
+        fallbackRotationDeg?: number;
+    }): Promise<DownscaleResult[]> {
         if (!this.pipeline || !this.uniformBuffer || !this.bindGroupLayout || this.slots.length === 0)
             throw new Error('WebGpuDownscaler.process: not configured');
 
@@ -230,7 +232,7 @@ export class WebGpuDownscaler {
         // does not populate VideoFrame.rotation.
         // Round (not truncate) to absorb sensor-fusion float noise:
         // 89.999° must map to idx 1, not 0; 359.999° must wrap to 0.
-        const rawRot = source.rotation ?? fallbackRotationDeg ?? 0;
+        const rawRot = source.rotation ?? opts?.fallbackRotationDeg ?? 0;
         const rotationDeg = ((rawRot % 360) + 360) % 360;
         const rotationIdx = Math.round(rotationDeg / 90) % 4;
 
@@ -238,7 +240,7 @@ export class WebGpuDownscaler {
             this.loggedFirstFrame = true;
             infoLog?.log(
                 `Downscaler first frame: rotation=${source.rotation ?? 'null'}`
-                + ` fallback=${fallbackRotationDeg ?? 'none'}`
+                + ` fallback=${opts?.fallbackRotationDeg ?? 'none'}`
                 + ` coded=${source.codedWidth}x${source.codedHeight}`
                 + ` display=${source.displayWidth}x${source.displayHeight}`
                 + ` targets=${this.slots.map(s => `${s.target.width}x${s.target.height}`).join(',')}`
@@ -338,6 +340,13 @@ export class WebGpuDownscaler {
                 drawIdx++;
             }
             this.device.queue.submit([encoder.finish()]);
+            // Drain GPU once before constructing VideoFrames from canvases. Each
+            // `new VideoFrame(canvas)` otherwise blocks the JS thread on an
+            // implicit per-canvas swap-chain sync — N tiers = N stalls. Awaiting
+            // here yields the JS thread to the event loop while the GPU runs;
+            // subsequent constructors see drained work and return without spin.
+            // iOS Safari power-drain mitigation.
+            await this.device.queue.onSubmittedWorkDone();
         }
         else if (!this.loggedAllIdentitySkip) {
             this.loggedAllIdentitySkip = true;
@@ -345,7 +354,9 @@ export class WebGpuDownscaler {
         }
 
         // Build results in slot order. Identity slots clone the input frame
-        // (refcount bump, no copy); rendered slots wrap the canvas.
+        // (refcount bump, no copy); rendered slots wrap the canvas. Timestamps
+        // are inherited from the source frame — rebase to the recording-anchor
+        // timeline happens at chunk emission, not per VideoFrame.
         const results: DownscaleResult[] = [];
         let identityHits = 0;
         for (const slot of this.slots) {
@@ -353,7 +364,6 @@ export class WebGpuDownscaler {
                 results.push({ frame: input.clone(), target: slot.target });
                 identityHits++;
             } else {
-                // new VideoFrame(OffscreenCanvas) implicitly syncs with prior submits.
                 const outFrame = new VideoFrame(slot.canvas, { timestamp, duration });
                 results.push({ frame: outFrame, target: slot.target });
             }

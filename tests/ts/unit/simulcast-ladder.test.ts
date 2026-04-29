@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
     hasHigherTopTier,
     buildLadderForSource,
+    MAX_SIMULCAST_TIERS,
     type SpatialLayerConfig,
 } from '../../../src/dotnet/UI.Blazor.App/Components/VideoPanel/simulcast-ladder';
 
@@ -55,18 +56,16 @@ describe('buildLadderForSource — source-shaped ladder', () => {
         return 650_000;
     };
 
-    it('landscape 1920x1080 source, count=4 — drops the 720 tier (near 1080)', () => {
-        // Source is "1080p" landscape. 720p would be a near-duplicate of the
-        // top, so the dedupe rule excludes it. Result: [320x180, 640x360, 1920x1080].
+    it('landscape 1920x1080 source — top + source/2', () => {
         const result = buildLadderForSource({
             count: 4, srcWidth: 1920, srcHeight: 1080, bitrateFor: hevcBitrate,
         });
         expect(result.map(l => `${l.width}x${l.height}`)).toEqual([
-            '320x180', '640x360', '1920x1080',
+            '960x540', '1920x1080',
         ]);
     });
 
-    it('portrait 1080x1920 source — orients tiers portrait, no transposed duplicate', () => {
+    it('portrait 1080x1920 source — portrait tiers, top + source/2', () => {
         // The exact bug from the field logs: with the old hardcoded landscape
         // ladder + augment trick, the wire carried both 1920x1080 (rotated
         // duplicate of source) and 1080x1920 (source). Source-shaped build
@@ -75,36 +74,43 @@ describe('buildLadderForSource — source-shaped ladder', () => {
             count: 4, srcWidth: 1080, srcHeight: 1920, bitrateFor: hevcBitrate,
         });
         expect(result.map(l => `${l.width}x${l.height}`)).toEqual([
-            '180x320', '360x640', '1080x1920',
+            '540x960', '1080x1920',
         ]);
     });
 
-    it('landscape 1280x720 source — keeps 720 as the top, no upscale', () => {
+    it('landscape 1280x720 source — top + 640x360', () => {
         const result = buildLadderForSource({
             count: 4, srcWidth: 1280, srcHeight: 720, bitrateFor: hevcBitrate,
         });
         expect(result.map(l => `${l.width}x${l.height}`)).toEqual([
-            '320x180', '640x360', '1280x720',
+            '640x360', '1280x720',
         ]);
     });
 
-    it('portrait 720x1280 source — portrait orientation, top = source', () => {
+    it('portrait 720x1280 source — portrait orientation, top + source/2', () => {
         const result = buildLadderForSource({
             count: 4, srcWidth: 720, srcHeight: 1280, bitrateFor: hevcBitrate,
         });
         expect(result.map(l => `${l.width}x${l.height}`)).toEqual([
-            '180x320', '360x640', '720x1280',
+            '360x640', '720x1280',
         ]);
     });
 
-    it('count cap drops bottom tiers, preserves top', () => {
-        // Receivers cap by spatial-id; the top tier is always the reachable
-        // ceiling, so a `count=2` cap keeps the top + the next-highest below.
+    it('count cap clamps to MAX_SIMULCAST_TIERS', () => {
+        // Server may push count > 2; we clamp internally.
+        const result = buildLadderForSource({
+            count: 4, srcWidth: 1920, srcHeight: 1080, bitrateFor: hevcBitrate,
+        });
+        expect(result.length).toBeLessThanOrEqual(MAX_SIMULCAST_TIERS);
+        expect(MAX_SIMULCAST_TIERS).toBe(2);
+    });
+
+    it('count=2 produces top + source/2', () => {
         const result = buildLadderForSource({
             count: 2, srcWidth: 1920, srcHeight: 1080, bitrateFor: hevcBitrate,
         });
         expect(result.map(l => `${l.width}x${l.height}`)).toEqual([
-            '640x360', '1920x1080',
+            '960x540', '1920x1080',
         ]);
     });
 
@@ -129,49 +135,49 @@ describe('buildLadderForSource — source-shaped ladder', () => {
         expect(result).toEqual([]);
     });
 
-    it('640x360 source — ladder collapses to source only (no headroom for sub-tier)', () => {
-        // 320 / 640 = 0.5 < 0.6 → the 320 tier IS kept. So result is [320x180, 640x360].
-        const result = buildLadderForSource({
-            count: 4, srcWidth: 640, srcHeight: 360, bitrateFor: hevcBitrate,
-        });
-        expect(result.map(l => `${l.width}x${l.height}`)).toEqual(['320x180', '640x360']);
-    });
-
-    it('540p (960x540) source — drops 640 tier (640/960 = 0.667 > 0.6)', () => {
-        // 640 is too close to the source long-side (960) under the 0.6
-        // threshold, so the ladder collapses to two tiers.
+    it('540p (960x540) source — top + source/2 (480x270)', () => {
         const result = buildLadderForSource({
             count: 4, srcWidth: 960, srcHeight: 540, bitrateFor: hevcBitrate,
         });
         expect(result.map(l => `${l.width}x${l.height}`)).toEqual([
-            '320x180', '960x540',
+            '480x270', '960x540',
         ]);
     });
 
     it('uses bitrate-table for each tier height', () => {
-        // hevc table: 1080->3.25M, 360->650k, 180->? (under 360 default fallback to 360 row).
         const result = buildLadderForSource({
             count: 4, srcWidth: 1920, srcHeight: 1080, bitrateFor: hevcBitrate,
         });
         // Top tier: 1920x1080 → height 1080 → tier 1080 → 3_250_000.
         expect(result[result.length - 1].bitrate).toBe(3_250_000);
-        // Mid tier: 640x360 → tier 360 → 650_000.
-        expect(result[1].bitrate).toBe(650_000);
-        // Bottom: 320x180 → height 180 → falls into 360 tier → 650_000.
-        expect(result[0].bitrate).toBe(650_000);
+        // Bottom (source/2): 960x540 → tier 540 → 1_250_000.
+        expect(result[0].bitrate).toBe(1_250_000);
     });
 
-    it('odd source dims round to even on the short side', () => {
-        // Aspect-correct shortSide for 9:16 with longSide=320: 320 * 1080 / 1920
-        // = 180 (even). For an oddball source ratio that would yield odd dims,
-        // verify rounding does not produce odd numbers.
+    it('odd source dims: top is source-as-is, bottom even-rounded', () => {
+        // Top tier always uses exact source dims (no upscale, encoder already
+        // running at those). Bottom tier is source/2 with even-rounding so
+        // most encoders accept the dims.
         const result = buildLadderForSource({
-            count: 1, srcWidth: 1001, srcHeight: 561, bitrateFor: hevcBitrate,
+            count: 2, srcWidth: 1001, srcHeight: 561, bitrateFor: hevcBitrate,
         });
-        expect(result).toHaveLength(1);
-        const t = result[0];
-        // No upscale: top is source itself.
-        expect(t.width).toBe(1001);
-        expect(t.height).toBe(561);
+        expect(result).toHaveLength(2);
+        // Top = source (odd dims preserved).
+        expect(result[1].width).toBe(1001);
+        expect(result[1].height).toBe(561);
+        // Bottom = source/2, even-rounded. 1001/2=500.5 → 500. 561/2=280.5 → 280.
+        expect(result[0].width % 2).toBe(0);
+        expect(result[0].height % 2).toBe(0);
+        expect(result[0].width).toBe(500);
+        expect(result[0].height).toBe(280);
+    });
+
+    it('odd source where source/2 rounds to a power of 2 boundary', () => {
+        // 1280x720 → 640x360. Both even. No surprises.
+        const result = buildLadderForSource({
+            count: 2, srcWidth: 1280, srcHeight: 720, bitrateFor: hevcBitrate,
+        });
+        expect(result[0].width).toBe(640);
+        expect(result[0].height).toBe(360);
     });
 });

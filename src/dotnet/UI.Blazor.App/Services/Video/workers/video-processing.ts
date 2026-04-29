@@ -518,29 +518,22 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             infoLog?.log(`Start timestamp set to ${startTimestamp}μs`);
         }
 
-        // Normalize the source frame timestamp ONCE here, before downscaler
-        // fan-out, so primary + simulcast extras share a single timeline and
-        // emitted chunks carry matching offsets per source frame.
-        // Math.round keeps ticks int64-safe — Chromium occasionally hands back
-        // sub-µs fractions on MSTP-wrapped getUserMedia, which would otherwise
-        // propagate to `Offset` and force msgpack float64 (server rejects).
-        const normalizedSourceTs = Math.round(frame.timestamp - startTimestamp);
+        // Source frames carry their original (non-rebased) timestamps through
+        // the pipeline. Rebase to the recording anchor + int rounding happens
+        // at chunk emission (deliverChunkToStream / onSerializedChunk) — this
+        // avoids one VideoFrame allocation per source frame that would
+        // otherwise be needed just to stamp a normalized timestamp.
         sourceFrame = frame;
-        if (normalizedSourceTs !== frame.timestamp) {
-            sourceFrame = new VideoFrame(frame, {
-                timestamp: normalizedSourceTs,
-                duration: frame.duration ?? undefined,
-            });
-            frame.close();
-            liveFrame = sourceFrame;
-        }
+        liveFrame = sourceFrame;
 
         let processedFrame: VideoFrame;
         if (downscaler) {
             // WebGPU path: keeps frame on GPU. Uses VideoFrame.rotation when set,
             // else senderRotationDeg (main-thread supplies from screen.orientation).
             // downscaler.process closes its input internally; sourceFrame is gone.
-            const results = downscaler.process(sourceFrame, senderRotationDeg);
+            const results = await downscaler.process(sourceFrame, {
+                fallbackRotationDeg: senderRotationDeg,
+            });
             sourceFrame = null;
             processedFrame = results[0].frame;
             liveFrame = processedFrame;
@@ -566,6 +559,9 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
                 try { results[i].frame.close(); } catch { /* already closed */ }
             }
         } else {
+            // CPU resize path (older browsers without WebGPU). Source ts is
+            // preserved through resizeFrame; chunk-level rebase handles
+            // recording-anchor offset.
             const resized = resizeFrame(sourceFrame, encoderConfig.width, encoderConfig.height, resizeCanvas, resizeCtx, needsRotation);
             // resizeFrame closes its input when it produces a new frame; the
             // returned `frame` is the live one.
@@ -650,8 +646,9 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             warnLog?.log(`Frame format: ${processedFrame.format}, ${processedFrame.codedWidth}x${processedFrame.codedHeight}`);
         }
 
-        // Timestamp already normalized at source (pre-downscaler), so primary
-        // and simulcast extras share one timeline here.
+        // Frames carry source-timeline timestamps; primary + simulcast extras
+        // share one timeline here. Rebase to recording-anchor offsets happens
+        // post-encode in onEncoderOutput.
 
         // Let the encoder decide keyframes based on its keyframeInterval config
         // (set by recording-service.ts: ~2s screencast, ~3s webcam)
@@ -760,14 +757,31 @@ function onEncoderOutput(chunkData: EncodedChunkData): void {
         }
     }
 
+    // Rebase chunk timestamp from source-camera timeline onto recording-anchor
+    // (startTimestamp, set on first source frame). Math.round keeps ticks
+    // int64-safe — sub-µs fractions on MSTP-wrapped getUserMedia would
+    // otherwise propagate and force msgpack float64 (server rejects).
+    //
+    // Edge: after a videoStream-disposal reset (deliverChunkToStream sets
+    // startTimestamp = undefined), in-flight chunks for frames encoded under
+    // the prior anchor land here before the next source frame reinitializes
+    // the anchor. Those chunks carry stale source-timeline timestamps with no
+    // valid anchor to rebase against — drop silently. The new stream starts
+    // fresh on the first chunk after the next source frame.
+    if (startTimestamp === undefined) {
+        debugLog?.log('Dropping in-flight chunk: recording anchor not set (reset in progress)');
+        return;
+    }
+    const rebasedTs = Math.round(chunkData.chunk.timestamp - startTimestamp);
+
     if (streamingEnabled) {
-        deliverChunkToStream(chunkBuffer, chunkData.chunk.timestamp, chunkData.chunk.duration ?? 0,
+        deliverChunkToStream(chunkBuffer, rebasedTs, chunkData.chunk.duration ?? 0,
             chunkData.type === 'key', actualCodec, chunkData.sequenceNumber, descBuffer,
             chunkData.temporalLayerId, chunkData.spatialLayerId,
             chunkData.width, chunkData.height);
     } else {
         void callbacks.onSerializedChunk(
-            chunkBuffer, chunkData.chunk.timestamp, chunkData.chunk.duration ?? 0,
+            chunkBuffer, rebasedTs, chunkData.chunk.duration ?? 0,
             chunkData.type === 'key', actualCodec, chunkData.sequenceNumber, descBuffer, rpcNoWait);
     }
 }

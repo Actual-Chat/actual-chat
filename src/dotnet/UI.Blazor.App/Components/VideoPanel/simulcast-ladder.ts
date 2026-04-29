@@ -28,18 +28,12 @@ export function hasHigherTopTier(
     return incomingTop.height > existingTop.height;
 }
 
-// Long-side schedule used to derive simulcast tier dims from the source's
-// actual dims. Short side is computed from the source aspect so portrait
-// sources produce portrait tiers and landscape sources produce landscape
-// tiers. The 720-tier is dropped when the source already covers 1080+ (see
-// `NEAR_TIER_THRESHOLD`) — running a 720p extra alongside a 1080p source is
-// near-duplicate work for marginal quality gain.
-const TIER_LONG_SIDES: readonly number[] = [320, 640, 1280, 1920];
-
-// Drop a candidate tier when its long-side is greater than this fraction of
-// the next-higher kept tier's long-side. 0.6 drops 1280 when 1920 is the top
-// (1280/1920 ≈ 0.667) but keeps 640 when 1280 is the top (640/1280 = 0.5).
-const NEAR_TIER_THRESHOLD = 0.6;
+// Cap on simulcast tier count. Caps at 2 because each additional tier costs
+// another concurrent HW encoder slot + another `new VideoFrame(canvas)`
+// implicit GPU sync per source frame in the WebGPU downscaler — both scarce
+// on iOS Safari. Two tiers gives a clean 2× drop ratio with one identity
+// (top = source, no canvas ctor) and one rendered (source/2).
+export const MAX_SIMULCAST_TIERS = 2;
 
 export interface LadderBuildInput {
     /** Layer count requested by the server (caps via MaxSpatialLayer). */
@@ -51,55 +45,35 @@ export interface LadderBuildInput {
     bitrateFor: (height: number) => number;
 }
 
-// Builds a simulcast ladder shaped to the source. Top tier is always the
-// source itself (replaces the augment-with-running-base trick that used to
-// add a transposed duplicate when the C# ladder was hardcoded landscape and
-// the source was portrait). Lower tiers come from `TIER_LONG_SIDES`,
-// near-tier-deduped and oriented to match the source aspect ratio. Result is
-// truncated to `count`, keeping the top tiers (receivers cap by spatial-id;
-// dropping from the bottom preserves the highest reachable quality).
+// Builds a simulcast ladder shaped to the source. Top tier is the source
+// itself (becomes the downscaler's identity slot — `clone()` instead of a
+// canvas-backed VideoFrame, no GPU sync). Second tier is source/2 with even-
+// rounded dims so encoders accept them. Result is bottom-first.
+//
+// Capped to MAX_SIMULCAST_TIERS regardless of `count` — the cap is the
+// power/heat-bound limit, not a server-side knob.
 export function buildLadderForSource(input: LadderBuildInput): SpatialLayerConfig[] {
     const { count, srcWidth, srcHeight, bitrateFor } = input;
     if (count <= 0 || srcWidth <= 0 || srcHeight <= 0)
         return [];
 
-    const srcLong = Math.max(srcWidth, srcHeight);
-    const srcShort = Math.min(srcWidth, srcHeight);
-    const isPortrait = srcHeight > srcWidth;
+    const top: SpatialLayerConfig = {
+        width: srcWidth,
+        height: srcHeight,
+        bitrate: bitrateFor(srcHeight),
+    };
 
-    // Candidate long-sides ≤ source, plus the source itself as the top.
-    const candidates = TIER_LONG_SIDES.filter(l => l < srcLong);
-    candidates.push(srcLong);
+    const effectiveCount = Math.min(count, MAX_SIMULCAST_TIERS);
+    if (effectiveCount === 1) return [top];
 
-    // Top-down near-tier dedupe.
-    const keptLong: number[] = [];
-    for (let i = candidates.length - 1; i >= 0; i--) {
-        const cand = candidates[i];
-        const above = keptLong.length === 0 ? Infinity : keptLong[keptLong.length - 1];
-        if (cand / above > NEAR_TIER_THRESHOLD) continue;
-        keptLong.push(cand);
-    }
-    keptLong.reverse(); // ascending again
-
-    // Truncate to `count`, keeping the top.
-    const startIndex = Math.max(0, keptLong.length - count);
-    const finalLong = keptLong.slice(startIndex);
-
-    return finalLong.map(longSide => {
-        // Top tier reuses the running encoder's exact dims to avoid drift; the
-        // base encoder is already running at those, so even-rounding is a no-op
-        // there. Lower tiers derive shortSide from the source aspect, then
-        // round to even — most encoders reject odd dims.
-        const isTop = longSide === srcLong;
-        const width = isTop
-            ? srcWidth
-            : (isPortrait ? roundToEven(longSide * srcShort / srcLong) : longSide);
-        const height = isTop
-            ? srcHeight
-            : (isPortrait ? longSide : roundToEven(longSide * srcShort / srcLong));
-        const bitrate = bitrateFor(height);
-        return { width, height, bitrate };
-    });
+    const halfW = roundToEven(srcWidth / 2);
+    const halfH = roundToEven(srcHeight / 2);
+    const bottom: SpatialLayerConfig = {
+        width: halfW,
+        height: halfH,
+        bitrate: bitrateFor(halfH),
+    };
+    return [bottom, top];
 }
 
 function roundToEven(value: number): number {

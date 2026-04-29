@@ -4,7 +4,7 @@ import { RecordingService, type RecordingConfig, type RecordingState } from '../
 import type { SpatialLayerConfig } from '../../Services/Video/workers/video-processing-worker-contract';
 import { detectSupportedCodecs, getDefaultCodec, getCodecCategory, probeConcurrentEncoders, type CodecInfo } from '../../Services/Video/codec-support';
 import { getExpectedBitrate } from '../../Services/Video/bitrate-table';
-import { hasHigherTopTier, buildLadderForSource } from './simulcast-ladder';
+import { hasHigherTopTier, buildLadderForSource, MAX_SIMULCAST_TIERS } from './simulcast-ladder';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
 
@@ -296,7 +296,13 @@ export class VideoRecorder {
     // length < 2 disables simulcast. Screencast streams ignore the ladder
     // (single-encoder text legibility path).
     public setSimulcastLayers(layers: SpatialLayerConfig[] | null, force = false): void {
-        const incoming = (layers && layers.length >= 2) ? layers : null;
+        // Clamp incoming server-pushed ladders to MAX_SIMULCAST_TIERS — keep
+        // the top tiers (slice from the tail; ladder is bottom-first, so
+        // dropping the bottom preserves the highest reachable quality).
+        const clamped = (layers && layers.length > MAX_SIMULCAST_TIERS)
+            ? layers.slice(-MAX_SIMULCAST_TIERS)
+            : layers;
+        const incoming = (clamped && clamped.length >= 2) ? clamped : null;
         const prevCount = this.simulcastLayers?.length ?? 0;
         // Ladder persistence: don't downgrade a probe-promoted ladder. C#'s default ladder
         // tops out at 720p; the JS-side startRecording probe may have promoted
@@ -545,7 +551,7 @@ export class VideoRecorder {
                 // encoding native 1080p directly, burning GPU time and
                 // triggering backpressure step-down.
                 const promoted: SpatialLayerConfig[] = isSimulcast
-                    ? [...ladder, tier1080]
+                    ? [...ladder, tier1080].slice(-MAX_SIMULCAST_TIERS)
                     : [tier1080];
                 // Budget: a single 1080p encoder needs more per-frame headroom
                 // than the per-layer cost of concurrent simulcast extras
