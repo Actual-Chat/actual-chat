@@ -109,10 +109,10 @@
     @apply border-primary;
 }
 
-.search-input.icon-alight-right i {
+.search-input.icon-align-right i {
     @apply right-0;
 }
 
-.search-input.icon-alight-right input {
+.search-input.icon-align-right input {
     @apply pr-10 pl-4;
 }

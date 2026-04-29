@@ -452,7 +452,6 @@
     --reaction-own: var(--blue-50-30);
     --viewer-header-text: var(--white-90);
     --left-side-logo: var(--black);
-    --link-preview-icon: var(--blue-70);
     --place-header-search: var(--white-30);
     --place-header-text: var(--white);
     --tile: var(--white);
@@ -623,7 +622,6 @@
     --danger-light: var(--magenta-70);
     --success: var(--green-40);
     --warning: var(--sienna-40);
-    --fatal: var(--red-40);
 
     /* Banners */
     --background-banner-default: var(--ash-22);
@@ -755,8 +753,6 @@
     --toggle-circle: var(--ash-40);
     --toggle-on: var(--blue-60);
     --message-hover: var(--ash-99-08);
-    --mention-message: #FFF7ED;
-    --mention-message-hover: #FFF7E5;
     --mention-other: var(--blue-50-20);
     --mention-other-text: var(--blue-80);
     --mention-own: var(--violet-60-20);
@@ -1112,7 +1108,6 @@
     --reaction-own: var(--blue-50-30);
     --viewer-header-text: var(--white-90);
     --left-side-logo: var(--black);
-    --link-preview-icon: var(--blue-70);
     --place-header-search: var(--white-30);
     --place-header-text: var(--white);
     --tile: var(--white);

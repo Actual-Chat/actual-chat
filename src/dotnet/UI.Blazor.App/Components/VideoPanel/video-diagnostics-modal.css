@@ -1,4 +1,4 @@
-.body.wide .video-diagnostics-modal {
+body.wide .video-diagnostics-modal {
     @apply w-112;
 }
 .video-diagnostics-modal .dialog-body {

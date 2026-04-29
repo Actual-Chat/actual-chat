@@ -295,9 +295,6 @@ body.hoverable .stepper-skip-filler .btn-h:hover {
     @apply p-4;
 }
 .phone-verification-modal .dialog-body > .c-content .c-title {
-    @apply font-bold text-2xl text-02;
-}
-.phone-verification-modal .dialog-body > .c-content .c-title {
     @apply text-headline-1 text-02;
 }
 

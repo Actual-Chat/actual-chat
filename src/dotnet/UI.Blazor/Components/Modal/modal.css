@@ -144,9 +144,6 @@ body.wide .modal-overlay-fullscreen .modal .modal-content {
     @apply text-03;
     @apply md:shadow-modal-wide;
 }
-body.device-ios .modal-chrome,
-body.device-android .modal-chrome {
-}
 .modal-frame {
     @apply flex-y items-stretch gap-y-2 overflow-hidden;
     @apply w-full h-full max-h-screen;
