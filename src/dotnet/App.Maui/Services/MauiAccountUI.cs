@@ -5,7 +5,7 @@ using ActualChat.UI.Blazor.Services;
 namespace ActualChat.App.Maui.Services;
 
 [method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiAccountUI))]
-internal sealed class MauiAccountUI(UIHub hub) : AccountUI(hub)
+public class MauiAccountUI(UIHub hub) : AccountUI(hub)
 {
     public override (string Name, string DisplayName)[] GetAuthSchemas()
     {
