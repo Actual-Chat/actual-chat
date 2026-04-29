@@ -86,7 +86,7 @@ public sealed class ChunkedFileUploader(IServiceProvider services)
             var currentChunkSize = (int)Math.Min(targetChunkSize, remainingBytes);
 
             var chunkBuffer = new byte[currentChunkSize];
-            var bytesRead = await file.ReadAsync(chunkBuffer, 0, currentChunkSize, ct).ConfigureAwait(false);
+            var bytesRead = await file.ReadAsync(chunkBuffer.AsMemory(0, currentChunkSize), ct).ConfigureAwait(false);
 
             if (bytesRead < currentChunkSize)
                 Log.LogWarning(
