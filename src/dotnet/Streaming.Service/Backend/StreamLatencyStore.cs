@@ -398,6 +398,7 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         private CpuTimestamp _lastByteReceivedAt = CpuTimestamp.Now;
         private int _consecutiveHighThroughputChecks;
         private int _consecutiveNetworkSlowChecks;
+        private int _consecutiveReceiverSlowChecks;
         // Highest SpatialLayerId observed across all incoming frames. >0 means
         // simulcast is active — multi-encoder bytes legitimately sum past any
         // single-layer target, so OVER-DELIVERY (which models single-encoder
@@ -526,16 +527,19 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                 var networkSlowCount = 0;
                 var receiverSlowCount = 0;
                 foreach (var (peerId, peer) in peers) {
-                    if (!peer.IsNetworkSlow)
-                        continue;
-
+                    // Receiver-bound classification is independent of IsNetworkSlow:
+                    // a peer with healthy network but a struggling decoder shows up as
+                    // IsReceiverBound=true while IsNetworkSlow may still be false (frames
+                    // arrive on time but pile up past the decoder). Receiver-bound takes
+                    // precedence — decode pressure is the more specific cause and a
+                    // lower-resolution preset addresses both decode and bandwidth.
                     if (peer.IsReceiverBound) {
                         receiverSlowCount++;
                         DebugLog?.LogDebug(
                             "EvaluateQuality: PeerId={PeerId} receiver-bound (decodeMs={DecodeMs:F1}, bufDepth={BufDepth})",
                             peerId, peer.MedianDecodeTimeMs, peer.BufferDepth);
                     }
-                    else {
+                    else if (peer.IsNetworkSlow) {
                         networkSlowCount++;
                         DebugLog?.LogDebug(
                             "EvaluateQuality: PeerId={PeerId} network-slow (medianMs={MedianMs:F0}, baselineMs={BaselineMs:F0})",
@@ -545,9 +549,42 @@ public sealed class StreamLatencyStore(IServiceProvider services)
 
                 var totalSlowCount = networkSlowCount + receiverSlowCount;
                 var networkSlowRatio = (float)networkSlowCount / peers.Count;
+                var receiverSlowRatio = (float)receiverSlowCount / peers.Count;
                 var effectiveOutlierRatio = peers.Count <= 3
                     ? Constants.Video.PeerOutlierRatioSmallCall
                     : Constants.Video.PeerOutlierRatio;
+
+                // Receiver-bound step-down. Stepping the preset down lowers encoder
+                // output resolution, which directly reduces per-frame decode work on
+                // the receiver. Same outlier ratio + consecutive-check hysteresis as
+                // the network-slow path, but counted on its own clock so the two
+                // paths can't mask each other. Runs ahead of the network branch:
+                // when both classes trip, receiver-bound wins (step-down + return).
+                if (receiverSlowRatio > effectiveOutlierRatio) {
+                    _consecutiveReceiverSlowChecks++;
+                    if (_consecutiveReceiverSlowChecks >= Constants.Video.LatencyStepDownConsecutiveChecks) {
+                        var stepped = VideoQualityPreset.StepDown(currentQuality, Kind);
+                        if (stepped != null) {
+                            _consecutiveReceiverSlowChecks = 0;
+                            _consecutiveNetworkSlowChecks = 0;
+                            _lastQualityChangeAt = CpuTimestamp.Now;
+                            QualityPreset.Value = stepped;
+                            Log.LogInformation(
+                                "EvaluateQuality: RECEIVER-BOUND STEP DOWN {OldLevel} -> {NewLevel}, receiverSlow={ReceiverSlow}, total={TotalCount} (threshold={Threshold:F2})",
+                                currentQuality, stepped.Level, receiverSlowCount, peers.Count, effectiveOutlierRatio);
+                            return;
+                        }
+                    }
+                    else {
+                        DebugLog?.LogDebug(
+                            "EvaluateQuality: RECEIVER-BOUND STEP DOWN deferred ({Consecutive}/{Required}), receiverSlow={ReceiverSlow}, total={TotalCount}",
+                            _consecutiveReceiverSlowChecks, Constants.Video.LatencyStepDownConsecutiveChecks,
+                            receiverSlowCount, peers.Count);
+                    }
+                }
+                else {
+                    _consecutiveReceiverSlowChecks = 0;
+                }
 
                 if (networkSlowRatio > effectiveOutlierRatio) {
                     _consecutiveNetworkSlowChecks++;

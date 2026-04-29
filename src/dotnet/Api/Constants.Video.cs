@@ -57,7 +57,12 @@ public static partial class Constants
         public static readonly float BaselineLatencyEmaAlpha = 0.05f;
 
         // Root-cause classification thresholds
-        public static readonly float HighDecodeTimeThresholdMs = 15f; // Receiver's decoder is struggling
+        // 100ms ≈ 3× the 33ms/frame budget at 30fps. Matched to the JS-side
+        // SLOW_DECODE_TIME_THRESHOLD_MS so server and client share one definition
+        // of "decoder is slow". Previous 15ms tripped on healthy mid-tier decoders
+        // and was effectively unused (the EvaluateQuality loop gated receiver-bound
+        // classification behind IsNetworkSlow).
+        public static readonly float HighDecodeTimeThresholdMs = 100f;
         public static readonly int HighBufferDepthThreshold = 10;     // Receiver's buffer is bloated
 
         // Over-delivery detection: HW encoder ignoring bitrate cap (e.g. HEVC VBR blowing past
