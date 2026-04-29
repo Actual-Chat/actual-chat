@@ -47,8 +47,10 @@
   </ItemGroup>
 
   <!-- Generators -->
-  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' AND '$(MSBuildProjectName)' != 'App.Maui'">
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
     <PackageReference Include="ActualLab.Generators" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' AND '$(MSBuildProjectName)' != 'App.Maui'">
     <PackageReference Condition="$(UseMemoryPack)"  Include="MemoryPack.Generator" PrivateAssets="all" />
     <PackageReference Condition="!$(UseMemoryPack)" Include="MemoryPack.Core" />
   </ItemGroup>
