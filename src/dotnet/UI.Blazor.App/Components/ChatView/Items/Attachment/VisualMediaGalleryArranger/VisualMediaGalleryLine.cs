@@ -11,23 +11,24 @@ public class VisualMediaGalleryLine<TItem>
     public VisualMediaGalleryLine(IReadOnlyList<VisualMediaGalleryTile<TItem>> tiles)
         => Tiles = tiles;
 
-    /// <summary>
-    /// Tile width as percentage of row width, proportional to its aspect ratio.
-    /// In justified layout: wider images get more space, all share the same height.
-    /// </summary>
-    public float GetTileWidthInPercent(VisualMediaGalleryTile<TItem> tile) {
+    public string GetTileStyle(VisualMediaGalleryTile<TItem> tile) {
         var ratioSum = GetRatioSum();
-        return ratioSum == 0 ? 100 : tile.Ratio / ratioSum * 100;
+        var widthPercent = ratioSum == 0 ? 100 : tile.Ratio / ratioSum * 100;
+        return $"width: {widthPercent.ToString(Inv)}%";
     }
 
-    /// <summary>
-    /// Row aspect-ratio style. The row ratio = sum of tile ratios,
-    /// so all tiles at the same height fill exactly 100% width.
-    /// </summary>
     public string GetRowStyle(float maxRowRatio = 5f) {
         var ratioSum = GetRatioSum();
         if (ratioSum == 0)
             return "";
+
+        if (Tiles.Count == 1) {
+            var ratio = Tiles[0].Ratio;
+            // max-h-96 = 24rem; limit width to preserve aspect ratio
+            var maxWidthRem = 24f * Math.Min(ratio, 1.5f);
+            return $"aspect-ratio: {ratio.ToString(Inv)}; max-width: {maxWidthRem.ToString(Inv)}rem";
+        }
+
         // Clamp: don't let a single narrow image make the row too tall
         var clamped = Math.Max(ratioSum, 1f);
         // Don't let rows be too short either
