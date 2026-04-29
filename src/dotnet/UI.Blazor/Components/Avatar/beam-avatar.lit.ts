@@ -17,6 +17,7 @@ export class BeamAvatar extends LitElement {
     @property() colors: string[] = ['FFDBA0', 'BBBEFF', '9294E1', 'FF9BC0', '0F2FE8'];
 
     @state() private cachedUrl: string | undefined;
+    private cachedUrlKey: string | undefined;
     private unsubscribe: (() => void) | undefined;
 
     disconnectedCallback() {
@@ -28,7 +29,7 @@ export class BeamAvatar extends LitElement {
     render() {
         const pixelSize = Math.ceil(this.clientWidth * (window.devicePixelRatio || 1)) || SIZE;
         const cacheKey = `beam-${this.key}-${pixelSize}`;
-        const cached = this.cachedUrl ?? SvgCache.get(cacheKey);
+        const cached = this.cachedUrlKey === cacheKey ? this.cachedUrl : SvgCache.get(cacheKey);
 
         if (cached)
             return html`<img src='${cached}' width='100%' height='100%' draggable='false' alt='' />`;
@@ -38,6 +39,7 @@ export class BeamAvatar extends LitElement {
         this.unsubscribe?.();
         this.unsubscribe = SvgCache.onCached(cacheKey, url => {
             this.unsubscribe = undefined;
+            this.cachedUrlKey = cacheKey;
             this.cachedUrl = url;
         });
         SvgCache.add(cacheKey, svgString, pixelSize);

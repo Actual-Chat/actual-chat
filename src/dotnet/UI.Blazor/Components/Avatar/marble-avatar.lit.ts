@@ -19,6 +19,7 @@ export class MarbleAvatar extends LitElement {
     @property() colors: string[] = ['F56095', 'F5CD65', '00B27D', '37D3F5', '2F89EB'];
 
     @state() private cachedUrl: string | undefined;
+    private cachedUrlKey: string | undefined;
     private unsubscribe: (() => void) | undefined;
 
     disconnectedCallback() {
@@ -31,7 +32,7 @@ export class MarbleAvatar extends LitElement {
         const pixelSize = Math.ceil(this.clientWidth * (window.devicePixelRatio || 1)) || SIZE;
         const title = this.title || '';
         const cacheKey = `marble-${this.key}-${title}-${this.doNotBlur ? 1 : 0}-${pixelSize}`;
-        const cached = this.cachedUrl ?? SvgCache.get(cacheKey);
+        const cached = this.cachedUrlKey === cacheKey ? this.cachedUrl : SvgCache.get(cacheKey);
 
         if (cached)
             return html`<img src='${cached}' width='100%' height='100%' draggable='false' alt='' />`;
@@ -41,6 +42,7 @@ export class MarbleAvatar extends LitElement {
         this.unsubscribe?.();
         this.unsubscribe = SvgCache.onCached(cacheKey, url => {
             this.unsubscribe = undefined;
+            this.cachedUrlKey = cacheKey;
             this.cachedUrl = url;
         });
         SvgCache.add(cacheKey, svgString, pixelSize);
