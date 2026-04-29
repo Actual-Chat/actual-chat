@@ -192,7 +192,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
             null,
             Change.Create(new AvatarDiff {
                 Name = "Bob with Picture",
-                MediaId = mediaId,
+                MediaId = Option.Some<MediaId?>(mediaId),
             })));
 
         // Set as default avatar

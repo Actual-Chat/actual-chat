@@ -44,7 +44,7 @@ public class AvatarsBackend(IServiceProvider services) : DbServiceBase<UsersDbCo
             return default!;
         }
 
-        change.RequireValid();
+        change = NormalizeAvatarDiff(change.RequireValid());
         var context = CommandContext.GetCurrent();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -85,5 +85,16 @@ public class AvatarsBackend(IServiceProvider services) : DbServiceBase<UsersDbCo
         context.Operation.AddEvent(
             new AvatarChangedEvent(avatar, existingAvatar, change.Kind));
         return avatar;
+    }
+
+    // Private methods
+
+    private static Change<AvatarDiff> NormalizeAvatarDiff(Change<AvatarDiff> change)
+    {
+        if (change.IsCreate(out var create))
+            return change with { Create = create.NormalizeLegacyMediaId() };
+        if (change.IsUpdate(out var update))
+            return change with { Update = update.NormalizeLegacyMediaId() };
+        return change;
     }
 }

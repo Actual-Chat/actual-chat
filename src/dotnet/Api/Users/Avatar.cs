@@ -73,31 +73,42 @@ public sealed partial record AvatarDiff : RecordDiff
 {
     [DataMember, MemoryPackOrder(0)] public string? Name { get; init; }
     [DataMember, MemoryPackOrder(1)] public string? Bio { get; init; }
-    [DataMember, MemoryPackOrder(2)] public MediaId? MediaId { get; init; }
+    [Obsolete("2026.04: Use MediaId instead.")]
+    [DataMember, MemoryPackOrder(2)] public MediaId? LegacyMediaId { get; init; }
     [DataMember, MemoryPackOrder(3)] public string? PictureUrl { get; init; }
     [DataMember, MemoryPackOrder(4)] public string? AvatarKey { get; init; }
     [DataMember, MemoryPackOrder(5)] public UserId? UserId { get; init; }
     [DataMember, MemoryPackOrder(6)] public bool? IsAnonymous { get; init; }
+    [DataMember, MemoryPackOrder(7)] public Option<MediaId?> MediaId { get; init; }
 
+#pragma warning disable CS0618 // Compatibility bridge for LegacyMediaId.
     public static AvatarDiff FromFull(AvatarFull avatar)
         => new() {
             Name = avatar.Name,
             Bio = avatar.Bio,
-            MediaId = avatar.MediaId,
+            LegacyMediaId = avatar.MediaId,
+            MediaId = Option.Some<MediaId?>(avatar.MediaId),
             PictureUrl = avatar.PictureUrl,
             AvatarKey = avatar.AvatarKey,
             UserId = avatar.UserId,
             IsAnonymous = avatar.IsAnonymous,
         };
 
+    public AvatarDiff NormalizeLegacyMediaId()
+        => LegacyMediaId is not null && !MediaId.HasValue
+            ? this with { MediaId = Option.Some<MediaId?>(LegacyMediaId) }
+            : this;
+
     public AvatarDiff WithMissingPropertiesFrom(AvatarFull other)
         => new() {
             Name = Name ?? other.Name,
             Bio = Bio ?? other.Bio,
-            MediaId = MediaId ?? other.MediaId,
+            LegacyMediaId = LegacyMediaId,
+            MediaId = MediaId.HasValue ? MediaId : Option.Some<MediaId?>(LegacyMediaId ?? other.MediaId),
             PictureUrl = PictureUrl ?? other.PictureUrl,
             AvatarKey = AvatarKey ?? other.AvatarKey,
             UserId = UserId ?? other.UserId,
             IsAnonymous = IsAnonymous ?? other.IsAnonymous,
         };
+#pragma warning restore CS0618
 }

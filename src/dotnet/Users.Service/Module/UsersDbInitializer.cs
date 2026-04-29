@@ -181,7 +181,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
             Change.Create(new AvatarDiff {
                 Name = userInfo.AvatarNameOrDefault,
                 Bio = avatarBio,
-                MediaId = avatarMediaId,
+                MediaId = Option.Some(avatarMediaId),
                 PictureUrl = avatarPictureUrl,
             }));
         var avatar = await commander.Call(changeAvatarCommand, cancellationToken).ConfigureAwait(false);
@@ -228,7 +228,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         var changeAvatarCommand = new AvatarsBackend_Change(avatar.Id, avatar.Version,
             Change.Update(new AvatarDiff {
                 Bio = Constants.User.Sherlock.Name,
-                MediaId = Constants.User.Sherlock.MediaId,
+                MediaId = Option.Some<MediaId?>(Constants.User.Sherlock.MediaId),
                 PictureUrl = "",
             }));
         var commander = services.Commander();

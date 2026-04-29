@@ -74,7 +74,7 @@ public sealed partial class UserSignInFlow : Flow<Unit>
             var change = Change.Create(new AvatarDiff {
                 UserId = UserId,
                 Name = account.Name,
-                MediaId = mediaRef.MediaId,
+                MediaId = Option.Some<MediaId?>(mediaRef.MediaId),
                 PictureUrl = "",
                 AvatarKey = "",
             });
@@ -94,7 +94,7 @@ public sealed partial class UserSignInFlow : Flow<Unit>
                 avatar.Id,
                 avatar.Version,
                 Change.Update(new AvatarDiff {
-                    MediaId = mediaRef.MediaId,
+                    MediaId = Option.Some<MediaId?>(mediaRef.MediaId),
                     PictureUrl = "",
                     AvatarKey = "",
                 })),

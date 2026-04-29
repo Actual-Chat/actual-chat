@@ -381,7 +381,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
             null,
             Change.Create(new AvatarDiff {
                 Name = "test",
-                MediaId = mediaId,
+                MediaId = Option.Some<MediaId?>(mediaId),
             }));
         var avatar = await Commander.Call(command, true, CancellationToken.None);
         return avatar.Id;

@@ -268,7 +268,9 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
         // Diff-based update: only changes MediaId, no version conflicts
         await Commander.Call(
             new AvatarsBackend_Change(item.EntityId, null,
-                Change.Update(new AvatarDiff { MediaId = newMediaId })),
+                Change.Update(new AvatarDiff {
+                    MediaId = Option.Some<MediaId?>(newMediaId),
+                })),
             true, cancellationToken).ConfigureAwait(false);
     }
 
