@@ -240,7 +240,7 @@ describe('avatar editing', () => {
 
         // act - reload the page
         await openSettings(page);
-        const settingsModal = page.locator('.settings-modal');
+        const _settingsModal = page.locator('.settings-modal');
 
         if (await accountTab.isVisible({ timeout: 3000 }).catch(() => false)) {
             await accountTab.click();

@@ -196,7 +196,7 @@ export async function dismissCookieConsent(page: Page, timeout = 10_000) {
 
 export async function skipOnboarding(page: Page) {
     await page.evaluate(() => {
-        /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
+        /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
         const debugUI = (window as any).debugUI;
         if (debugUI) {
             debugUI.resetOnboarding(false);
@@ -213,7 +213,7 @@ export async function skipOnboarding(page: Page) {
             (el as HTMLElement).style.display = 'none';
             (el as HTMLElement).style.pointerEvents = 'none';
         });
-        /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
+        /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
     });
     // debugUI.resetOnboarding/resetBubbles are fire-and-forget on the JS side — the backend
     // call settles asynchronously, so the OnboardingModal (full-screen stepper) and bubble
