@@ -2,7 +2,6 @@
 @import './colors.css';
 @import './keyframes.css';
 @import './scrollbars.css';
-@import './spinkit.css';
 @import './main.css';
 
 @import '../../dotnet/UI.Blazor/styles.css';

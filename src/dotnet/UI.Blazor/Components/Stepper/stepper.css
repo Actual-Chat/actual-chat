@@ -18,7 +18,7 @@
 .stepper-footer {
     @apply relative;
     @apply z-20;
-    @apply pt-8 py-4;
+    @apply pt-8 pb-4;
 }
 .stepper-footer-noise {
     @apply absolute inset-0;

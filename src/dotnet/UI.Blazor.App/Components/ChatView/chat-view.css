@@ -247,9 +247,6 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
     @apply font-bold;
 }
 
-.chat-message-markup .retained {
-}
-
 .chat-message-markup .changes:empty {
     filter: opacity(0);
 }

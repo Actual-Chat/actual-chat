@@ -87,7 +87,6 @@ module.exports = {
         'danger': 'var(--danger)',
         'success': 'var(--success)',
         'warning': 'var(--warning)',
-        'fatal': 'var(--fatal)',
 
         'transparent': 'var(--transparent)',
         'counter': 'var(--counter)',
@@ -215,7 +214,6 @@ module.exports = {
         'download-banner-right': 'var(--download-banner-right)',
 
         'viewer-header-text': 'var(--viewer-header-text)',
-        'link-preview-icon': 'var(--link-preview-icon)',
 
         // Status Badge
         'status': 'var(--status)',

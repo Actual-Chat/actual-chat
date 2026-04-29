@@ -46,11 +46,11 @@
     @apply bottom-2.5;
 }
 
-.search-box.icon-alight-right i {
+.search-box.icon-align-right i {
     @apply right-0;
 }
 
-.search-box.icon-alight-right input {
+.search-box.icon-align-right input {
     @apply px-10;
 }
 .search-box:has(input:focus) input {
