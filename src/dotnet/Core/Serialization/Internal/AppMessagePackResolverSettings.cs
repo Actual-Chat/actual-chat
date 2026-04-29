@@ -9,6 +9,8 @@ using MessagePack.Resolvers;
 
 namespace ActualChat.Serialization.Internal;
 
+#pragma warning disable CA2227 // Make property read-only
+
 public sealed record AppMessagePackResolverSettings
 {
     public static Dictionary<Type, Type> Formatters { get; set; } = new() {
