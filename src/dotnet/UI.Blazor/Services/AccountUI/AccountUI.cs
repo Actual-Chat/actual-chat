@@ -19,6 +19,7 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
     private readonly Lock _postponeOnSignedInWorkflowTasksLock = new();
     private (string Schema, string DisplayName)[]? _cachedAuthSchemas;
     private List<Task>? _postponeOnSignedInWorkflowTasks;
+    private string? _pendingRegistrationToken;
 
     private IAccounts Accounts => Hub.Accounts;
 

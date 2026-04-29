@@ -25,13 +25,15 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 
     protected override void InjectServices(IServiceCollection services)
     {
+        var fusion = services.AddFusion();
+
         // System
         services.AddScoped<MauiWebViewPageContextTracker>(c => new MauiWebViewPageContextTracker(c));
         services.AddScoped<MauiSentryInitializer>();
 
         // Session & authentication
         services.AddSingleton(c => new MauiSession(c));
-        services.AddScoped<AccountUI>(c => new MauiAccountUI(c.UIHub()));
+        fusion.AddService<AccountUI, MauiAccountUI>(ServiceLifetime.Scoped);
 
         // UI
         services.AddSingleton<ScopedServicesAccessor>(_ => static () => TryGetScopedServices(out var c) ? c : null); // Scoped in WASM/SSB, singleton in MAUI
