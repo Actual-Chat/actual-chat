@@ -238,11 +238,11 @@ export class ChunkedFileUpload implements IFileUpload {
 function mapUploadError(e: unknown): unknown {
     if (e instanceof Error) {
         const typeName = (e as { typeName?: string }).typeName;
-        if (typeName === 'UploadNotFoundException')
+        if (typeName === 'ActualChat.UploadNotFoundException')
             return new UploadNotFoundError(e.message);
-        if (typeName === 'OffsetConflictException')
+        if (typeName === 'ActualChat.OffsetConflictException')
             return new OffsetConflictError(e.message);
-        if (typeName === 'UploadTransientException')
+        if (typeName === 'ActualChat.UploadTransientException')
             return new UploadTransientFailure(e.message);
     }
     return e;
