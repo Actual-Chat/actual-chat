@@ -257,6 +257,7 @@ export class AudioContextAction implements Disposable {
 export class AudioContextSource {
     // Private fields
     private readonly _traits = new Map<string, AudioContextTrait>();
+    private readonly _pendingAttachments = new Map<string, Promise<void>>();
     private readonly _refs = new Set<AudioContextRef>();
     private readonly _contextCreated$: Subject<AudioContext> = new Subject<AudioContext>();
     private readonly _contextClosed$: Subject<AudioContext> = new Subject<AudioContext>();
@@ -311,7 +312,7 @@ export class AudioContextSource {
     public addTrait(trait: AudioContextTrait): Promise<void> {
         if (this._traits.has(trait.name)) {
             debugLog?.log(`addTrait: trait '${trait.name}' already registered`);
-            return ResolvedPromise.Void;
+            return this._pendingAttachments.get(trait.name) ?? ResolvedPromise.Void;
         }
 
         debugLog?.log(`addTrait: registering trait '${trait.name}'`);
@@ -319,8 +320,13 @@ export class AudioContextSource {
 
         // If context is already ready, attach the trait immediately
         const context = this._context;
-        if (context && context.state !== 'closed')
-            return this.attachTrait(trait, context);
+        if (context && context.state !== 'closed') {
+            const p = this.attachTrait(trait, context).finally(() => {
+                this._pendingAttachments.delete(trait.name);
+            });
+            this._pendingAttachments.set(trait.name, p);
+            return p;
+        }
 
         return ResolvedPromise.Void;
     }
