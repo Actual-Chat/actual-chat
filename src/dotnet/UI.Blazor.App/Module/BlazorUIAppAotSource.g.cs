@@ -202,6 +202,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupEditor>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupEditorTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.CodeBlockMarkupView.CodeBlockMarkupView>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.HeaderMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.ListMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.MarkupSeqView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.MentionView>();
@@ -847,6 +848,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupEditor), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupEditorTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.CodeBlockMarkupView.CodeBlockMarkupView), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.HeaderMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.ListMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.MarkupSeqView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.MentionView), AotTypeKind.Component),
