@@ -548,6 +548,25 @@ body.wide .video-panel-content .video-track-player.pip-overlay {
        player. */
     contain: strict;
 }
+/* When the source aspect is known (Razor sets `aspect-ratio` inline from
+   StreamInfo.Format.SourceWidth/Height; render-backend-canvas updates it on
+   each canvas resize), let the focused tile fit the source instead of
+   filling the panel. The unset of `inset` (replaced by `inset: 0` on an
+   auto-sized absolute element + `margin: auto`) centers the tile in the
+   panel; max-w/h:100% keeps it within the panel; aspect-ratio sets shape.
+   Result: portrait source on a landscape panel becomes a portrait tile
+   centered with panel-bg margins, instead of a panel-wide tile with
+   in-canvas pillar bars. Containment downgrade to `layout paint style`
+   because we no longer have explicit `size` (intrinsic via aspect-ratio). */
+.video-panel-content .video-track-player.has-source-aspect.item-focused[style*="aspect-ratio"] {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    inset: 0;
+    margin: auto;
+    contain: layout paint style;
+}
 body.wide .video-panel-content .video-track-player.item-focused {
     @apply rounded-lg;
 }

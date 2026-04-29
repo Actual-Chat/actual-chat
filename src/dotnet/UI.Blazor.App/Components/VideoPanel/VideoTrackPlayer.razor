@@ -7,14 +7,23 @@
 
 @{
     var streamKindCls = StreamInfo.StreamKind == StreamKind.Screencast ? "screencast" : "";
-    var aspectRatioStyle = StreamInfo.Format is { Width: > 0, Height: > 0 } f
-        ? $"aspect-ratio: {f.Width} / {f.Height}"
-        : "";
+    // Prefer rotation-aware source dims over encoder dims: the encoder's W/H
+    // can be landscape at PushVideo time even when the source is portrait
+    // (the rotation reconcile in workers/video-processing.ts swaps encoder
+    // dims after the first frame, but VideoStreamInfo.Format is frozen at
+    // PushVideo). SourceWidth/Height are populated post-rotation. JS-side
+    // (render-backend-canvas.ts) overrides this on each canvas resize for
+    // mid-stream rotation.
+    var aspectRatioStyle = StreamInfo.Format switch {
+        { SourceWidth: > 0, SourceHeight: > 0 } f => $"aspect-ratio: {f.SourceWidth} / {f.SourceHeight}",
+        { Width: > 0, Height: > 0 } f             => $"aspect-ratio: {f.Width} / {f.Height}",
+        _                                         => "",
+    };
 }
-<div class="video-track-player remote-video-container @FocusedClass @streamKindCls">
+<div class="video-track-player remote-video-container has-source-aspect @FocusedClass @streamKindCls" style="@aspectRatioStyle">
     <canvas @ref="BgCanvasRef" class="remote-video-bg" aria-hidden="true"></canvas>
-    <canvas @ref="CanvasRef" class="remote-video" style="@aspectRatioStyle" data-stream-id="@StreamInfo.StreamId.Value" data-author-id="@StreamInfo.AuthorId.Value"></canvas>
-    <video @ref="VideoElRef" class="remote-video" style="@aspectRatioStyle" autoplay playsinline muted aria-hidden="true"></video>
+    <canvas @ref="CanvasRef" class="remote-video" data-stream-id="@StreamInfo.StreamId.Value" data-author-id="@StreamInfo.AuthorId.Value"></canvas>
+    <video @ref="VideoElRef" class="remote-video" autoplay playsinline muted aria-hidden="true"></video>
     @if (!string.IsNullOrEmpty(AuthorName)) {
         <div class="video-participant-label">
             <i class="icon-video"></i>
