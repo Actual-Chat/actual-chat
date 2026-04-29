@@ -361,3 +361,22 @@ swiper-container.media-swiper.navigation-visible::part(button-prev) {
     background-size: 32px 32px;
     background-position: 0 0, 16px 16px;
 }
+
+/* Inline media info panel (mobile only) */
+.media-info-panel {
+    @apply absolute bottom-0 left-0 right-0 z-20;
+    @apply hidden;
+    @apply py-6 px-4;
+    @apply bg-01;
+    @apply rounded-t-2xl;
+    @apply overflow-y-auto;
+    height: 50%;
+    transform: translateY(100%);
+    padding-bottom: calc(1.5rem + var(--safe-area-bottom));
+}
+body.narrow .media-info-panel {
+    @apply block;
+}
+.media-info-panel.is-open {
+    transform: translateY(0);
+}
