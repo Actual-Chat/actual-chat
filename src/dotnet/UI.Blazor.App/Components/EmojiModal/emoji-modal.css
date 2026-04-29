@@ -68,7 +68,7 @@ body.hoverable .emoji-modal .c-item:hover,
     @apply flex-y gap-1;
 }
 .emoji-modal .c-emoji-recent-list {
-    @apply flex-x justify-between gap-1;
+    @apply flex-x gap-1;
 }
 
 /* ── GIF tab ── */

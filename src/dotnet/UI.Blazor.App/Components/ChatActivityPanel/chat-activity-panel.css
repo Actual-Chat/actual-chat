@@ -170,6 +170,13 @@ body.narrow .layout-header:has(.video-streaming) {
 .layout-header.collapsed .c-film-strip::after {
     animation-play-state: paused;
 }
+/* Show film strip when video panel is minimized (swiped up on mobile) */
+.layout-header:has(.video-panel.minimized) .chat-activity-panel.watching .c-film-strip {
+    @apply opacity-100;
+}
+.layout-header:has(.video-panel.minimized) .chat-activity-panel.watching .c-film-strip::after {
+    animation-play-state: running;
+}
 @media (prefers-reduced-motion: reduce) {
     .c-film-strip {
         @apply hidden;

@@ -24,7 +24,7 @@
     if (m.HasRemoteStreams) cls += " video-streaming";
     if (!isParticipating)
         cls += " not-participating";
-    if (isWatchingHere && !m.IsVideoPanelCollapsed)
+    if (isWatchingHere)
         cls += " watching";
     var joinButtonText = "Join muted";
 }
@@ -122,8 +122,7 @@
         var isOwnVideoStreaming = ownStreamKind is not null;
         var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
         var isWatchingHere = chatId == watchingChatId;
-        var isVideoPanelCollapsed = isWatchingHere && await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
-        var model = new Model(chatId, audioState, isAnyoneTalking, hasRemoteStreams, isOwnVideoStreaming, isWatchingHere, isVideoPanelCollapsed);
+        var model = new Model(chatId, audioState, isAnyoneTalking, hasRemoteStreams, isOwnVideoStreaming, isWatchingHere);
         return model;
     }
 
@@ -193,8 +192,7 @@
         bool IsAnyoneTalking,
         bool HasRemoteStreams,
         bool IsOwnVideoStreaming,
-        bool IsWatchingHere,
-        bool IsVideoPanelCollapsed) {
+        bool IsWatchingHere) {
         public bool IsListening => AudioState.IsListening;
         public bool IsRecordingHere => AudioState.IsRecording;
     }
