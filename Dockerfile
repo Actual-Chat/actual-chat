@@ -95,10 +95,11 @@ RUN dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o /app ./s
 
 FROM dotnet-build AS migrations-build
 COPY ./ef-migrations.cmd ./ef-migrations.cmd
-# Migration projects declare <RuntimeIdentifier>linux-x64</RuntimeIdentifier>, so restore
-# automatically adds net10.0/linux-x64 to project.assets.json and build outputs to
-# artifacts/bin/<Proj>/debug_linux-x64/ — where `dotnet ef bundle --runtime linux-x64
-# --no-build` looks for deps.json.
+# Migration projects pick up <RuntimeIdentifier>$(NETCoreSdkRuntimeIdentifier)</RuntimeIdentifier>
+# from src/dotnet/Directory.Build.props (ProjectKind=Migration), so slnf restore/build
+# target the SDK host RID and outputs land at bin/<Proj>/debug_<rid>/ — where
+# `dotnet ef bundle --no-build` looks for deps.json. Bundle reads the project's
+# RuntimeIdentifier and self-contained-publishes for it, no --runtime arg needed.
 RUN dotnet restore ActualChat.Migrations.slnf
 RUN dotnet build ActualChat.Migrations.slnf --no-restore -nodeReuse:false
 # Bundle serially: each run warms up the shared .NET runtime publish cache,
@@ -106,13 +107,13 @@ RUN dotnet build ActualChat.Migrations.slnf --no-restore -nodeReuse:false
 # Parallel bundles contend on shared obj dirs and runtime extraction, making
 # each take ~630s regardless of core count — much worse than serial.
 RUN mkdir -p /src/artifacts \
- && ./ef-migrations.cmd Chat.Service bundle --runtime linux-x64 --output ./artifacts/Chat.Service.Migration.exe \
- && ./ef-migrations.cmd Contacts.Service bundle --runtime linux-x64 --output ./artifacts/Contacts.Service.Migration.exe \
- && ./ef-migrations.cmd Invite.Service bundle --runtime linux-x64 --output ./artifacts/Invite.Service.Migration.exe \
- && ./ef-migrations.cmd Media.Service bundle --runtime linux-x64 --output ./artifacts/Media.Service.Migration.exe \
- && ./ef-migrations.cmd MLSearch.Service bundle --runtime linux-x64 --output ./artifacts/MLSearch.Service.Migration.exe \
- && ./ef-migrations.cmd Notification.Service bundle --runtime linux-x64 --output ./artifacts/Notification.Service.Migration.exe \
- && ./ef-migrations.cmd Users.Service bundle --runtime linux-x64 --output ./artifacts/Users.Service.Migration.exe \
+ && ./ef-migrations.cmd Chat.Service bundle --output ./artifacts/Chat.Service.Migration.exe \
+ && ./ef-migrations.cmd Contacts.Service bundle --output ./artifacts/Contacts.Service.Migration.exe \
+ && ./ef-migrations.cmd Invite.Service bundle --output ./artifacts/Invite.Service.Migration.exe \
+ && ./ef-migrations.cmd Media.Service bundle --output ./artifacts/Media.Service.Migration.exe \
+ && ./ef-migrations.cmd MLSearch.Service bundle --output ./artifacts/MLSearch.Service.Migration.exe \
+ && ./ef-migrations.cmd Notification.Service bundle --output ./artifacts/Notification.Service.Migration.exe \
+ && ./ef-migrations.cmd Users.Service bundle --output ./artifacts/Users.Service.Migration.exe \
  && ls -lha /src/artifacts
 
 FROM runtime AS migrations-app

@@ -10,6 +10,10 @@
   <PropertyGroup Condition="'$(ProjectKind)' == 'Migration'">
     <!-- CA1861: Prefer 'static readonly' fields over constant array arguments ... -->
     <NoWarn>$(NoWarn);CA1861</NoWarn>
+    <!-- ef migrations bundle is a self-contained publish; its deps.json must match
+         build outputs at bin/<Proj>/<config>_<rid>/. Track the SDK host RID so
+         slnf-level restore/build land at the right path on any platform. -->
+    <RuntimeIdentifier>$(NETCoreSdkRuntimeIdentifier)</RuntimeIdentifier>
   </PropertyGroup>
   <PropertyGroup>
     <!-- MsgPack006: False positive error on open generic [MessagePackFormatter] types.
