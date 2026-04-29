@@ -350,6 +350,7 @@ export class AudioContextSource {
             }
         }
         context?._attachingTraits?.delete(trait.name);
+        this._pendingAttachments.delete(trait.name);
     }
 
     public hasRefWithDemandInteractiveUITrait(): boolean {
