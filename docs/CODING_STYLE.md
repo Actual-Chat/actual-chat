@@ -19,7 +19,6 @@ This document describes the coding conventions used in Voxt (formerly Actual Cha
 
 ## Key Differences from Default .NET Conventions
 
-
 ### File Organization
 
 #### File placement:
@@ -622,3 +621,37 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService
 Search for `<NoWarn>` to see the list of disabled warnings.
 
 See [`.editorconfig`](../.editorconfig) for the complete list of silenced analyzer warnings.
+
+## TypeScript
+
+TypeScript follows the same flow-control spacing rules as C#:
+- Never place a flow-control statement on the same line as its `if`, `for`,
+  `while`, or similar condition.
+- A `return`, `break`, `continue`, `throw`, or `yield` statement is typically
+  followed by a blank line unless it is the last statement in its enclosing block.
+- If the flow-control statement is the last statement in a nested block, put the
+  blank line after that block instead, unless the block is the whole method or
+  function body.
+
+TypeScript uses the same member-section comments as .NET:
+- Order class members similarly to .NET classes: static fields first, then
+  instance fields/properties, constructor-like setup, public methods,
+  protected/internal-style helpers, private methods, and nested/local types
+  or constants last when applicable.
+- Put private helper methods under a `// Private methods` section.
+- If protected/internal-style helpers are needed, use `// Protected/internal methods`
+  before them and keep `// Private methods` below that section.
+- Do not create ad hoc alternatives such as `// Helpers`, `// Utilities`, or
+  `// Internals` when the .NET section names apply.
+
+Example:
+```ts
+// Wrong
+if (Api._isDotNetRpcConnected === value) return;
+
+// Correct
+if (Api._isDotNetRpcConnected === value)
+    return;
+
+Api._isDotNetRpcConnected = value;
+```
