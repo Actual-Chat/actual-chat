@@ -83,7 +83,7 @@ export class VideoPanel {
         }, 1000);
 
         this.initGestures();
-        this.reparentDragHandle();
+        this.setupDragHandle();
         this.initInlineDrag();
 
         // Escape key handler
@@ -110,6 +110,8 @@ export class VideoPanel {
     }
 
     private handleObserver: MutationObserver | null = null;
+    private handleResizeObserver: ResizeObserver | null = null;
+    private handleResizeUnsubscribe: (() => void) | null = null;
 
     private setDragHandleVisible(visible: boolean): void {
         const handle = document.querySelector<HTMLElement>('.c-drag-handle');
@@ -117,34 +119,59 @@ export class VideoPanel {
             handle.style.display = visible ? '' : 'none';
     }
 
-    // Reparent drag handle to after layout-subheader (or layout-header).
-    // Watches for subheader changes so the handle always stays at the bottom.
-    private reparentDragHandle(): void {
+    // Move drag handle to document.body and position it via `style.top` below
+    // layout-subheader (or layout-header). Reparenting to body escapes any
+    // ancestor that creates a containing block (filter/transform/opacity), the
+    // same constraint setupIsland() handles for the panel itself.
+    //
+    // The previous implementation used a MutationObserver whose callback called
+    // Element.after(), which mutated the observed subtree and produced a
+    // feedback cascade under heavy SignalR DOM-diff traffic — the cause of the
+    // main-thread BusyHang. Here the callback only writes `style.top` on a node
+    // that lives outside the observed subtree, so no MutationRecord is enqueued
+    // by it and the cascade is structurally impossible.
+    private setupDragHandle(): void {
         const handle = this.videoPanel.querySelector<HTMLElement>('.c-drag-handle');
         if (!handle) return;
 
-        const positionHandle = () => {
-            const subheader = document.querySelector('.layout-subheader');
-            const header = document.querySelector('.layout-header');
-            const insertAfter = subheader ?? header;
-            if (insertAfter && handle.previousElementSibling !== insertAfter)
-                insertAfter.after(handle);
+        document.body.appendChild(handle);
+
+        const updateTop = () => {
+            const subheader = document.querySelector<HTMLElement>('.layout-subheader');
+            const header = document.querySelector<HTMLElement>('.layout-header');
+            const ref = (subheader && subheader.getBoundingClientRect().height > 0) ? subheader : header;
+            if (!ref) return;
+            handle.style.top = `${ref.getBoundingClientRect().bottom}px`;
         };
 
-        positionHandle();
+        updateTop();
 
-        // Watch for subheader appearing/disappearing/reordering
-        const layoutParent = document.querySelector('.layout-header')?.parentElement;
+        this.handleResizeObserver = new ResizeObserver(updateTop);
+        const subheader = document.querySelector('.layout-subheader');
+        const header = document.querySelector('.layout-header');
+        if (subheader) this.handleResizeObserver.observe(subheader);
+        if (header) this.handleResizeObserver.observe(header);
+
+        // Catches subheader appearing/disappearing. Callback only writes
+        // style.top — no DOM mutation in observed subtree → no cascade.
+        const layoutParent = header?.parentElement;
         if (layoutParent) {
-            this.handleObserver = new MutationObserver(positionHandle);
+            this.handleObserver = new MutationObserver(updateTop);
             this.handleObserver.observe(layoutParent, { childList: true });
         }
+
+        const onResize = () => updateTop();
+        window.addEventListener('resize', onResize);
+        this.handleResizeUnsubscribe = () => window.removeEventListener('resize', onResize);
     }
 
     private returnDragHandle(): void {
         this.handleObserver?.disconnect();
         this.handleObserver = null;
-        // Remove handle from layout; video-panel will be destroyed anyway
+        this.handleResizeObserver?.disconnect();
+        this.handleResizeObserver = null;
+        this.handleResizeUnsubscribe?.();
+        this.handleResizeUnsubscribe = null;
         document.querySelector('.c-drag-handle')?.remove();
     }
 

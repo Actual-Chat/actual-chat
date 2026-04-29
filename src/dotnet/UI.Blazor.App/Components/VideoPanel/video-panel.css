@@ -123,13 +123,14 @@ body.narrow .video-panel.minimized:not(.collapsed):not(.expanded) {
 .video-panel.minimized > .c-container {
     @apply hidden;
 }
-/* Drag handle — reparented to layout, sits between subheader and body */
+/* Drag handle — reparented to body, fixed-positioned below subheader/header. */
+/* JS sets `top` (see setupDragHandle in video-panel.ts). */
 .c-drag-handle {
-    @apply relative z-10;
-    @apply self-center;
+    @apply fixed z-10;
     @apply h-8 w-64;
-    @apply -mb-8;
     @apply cursor-grab;
+    left: 50%;
+    transform: translateX(-50%);
 }
 body.wide .c-drag-handle {
     @apply hidden;
