@@ -4,7 +4,7 @@ import { RecordingService, type RecordingConfig, type RecordingState } from '../
 import type { SpatialLayerConfig } from '../../Services/Video/workers/video-processing-worker-contract';
 import { detectSupportedCodecs, getDefaultCodec, getCodecCategory, probeConcurrentEncoders, type CodecInfo } from '../../Services/Video/codec-support';
 import { getExpectedBitrate } from '../../Services/Video/bitrate-table';
-import { hasHigherTopTier, maybeAugmentLadderForRunningBase } from './simulcast-ladder';
+import { hasHigherTopTier, buildLadderForSource } from './simulcast-ladder';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
 
@@ -325,14 +325,14 @@ export class VideoRecorder {
             infoLog?.log(
                 `setSimulcastLayers: keeping promoted ladder (${prevCount} layers, top=${this.simulcastLayers[this.simulcastLayers.length - 1].width}x${this.simulcastLayers[this.simulcastLayers.length - 1].height}) over incoming (${incoming.length} layers)`);
         }
-        // Wire-id monotonicity: hot setSpatialLayers leaves the base encoder running
-        // at its current resolution, so the wire layout is `[base, ...extras]`
-        // — and if the base is *bigger* than every incoming extra, the extras
-        // numbering doesn't reach the receiver-side filter's "top" (which sorts
-        // by spatial-id, not pixel count). Augment the ladder with a tier
-        // matching the running base so the worker creates an extra at the same
-        // resolution; the duplicate 1080p encoder costs bandwidth, but it gives
-        // the filter a spatial-id high enough to reach 1080p in delivery.
+        // Source-shaped ladder: rebuild the ladder dims from the running source
+        // dims rather than honoring the C#-pushed (W,H). C# only contributes
+        // `count` (the cap-driven layer count). JS owns dims because:
+        //   * The C# table is hardcoded landscape; portrait sources used to
+        //     produce a transposed ladder.
+        //   * The JS table can fold the source dims into the top tier so the
+        //     wire layout is monotonic in spatial-id without an augment-with-
+        //     duplicate trick.
         // Reads from getEncoderStats so a prior reconfigure() (server-driven
         // step-down) is reflected — RecordingConfig.width/height stays stale
         // because reconfigure() doesn't write back to it.
@@ -342,15 +342,20 @@ export class VideoRecorder {
             const runningW = stats?.configuredWidth ?? 0;
             const cfg = this.recordingService.getConfig();
             const codec = cfg.codecString ?? '';
-            const runningBase = runningH > 0
-                ? { width: runningW, height: runningH, bitrate: getExpectedBitrate(codec, runningH, cfg.mode) }
-                : null;
-            const augmented = maybeAugmentLadderForRunningBase(active, runningBase);
-            if (augmented.length > active.length) {
-                infoLog?.log(
-                    `setSimulcastLayers: augmented ladder with running base tier ${runningW}x${runningH} (running > incoming top ${active[active.length - 1].width}x${active[active.length - 1].height})`);
+            if (runningW > 0 && runningH > 0) {
+                const rebuilt = buildLadderForSource({
+                    count: active.length,
+                    srcWidth: runningW,
+                    srcHeight: runningH,
+                    bitrateFor: (h: number) => getExpectedBitrate(codec, h, cfg.mode),
+                });
+                if (rebuilt.length > 0) {
+                    infoLog?.log(
+                        `setSimulcastLayers: rebuilt ladder for source ${runningW}x${runningH}: ${
+                            rebuilt.map(l => `${l.width}x${l.height}`).join(', ')}`);
+                    active = rebuilt;
+                }
             }
-            active = augmented;
         }
         const newCount = active?.length ?? 0;
         this.simulcastLayers = active;
