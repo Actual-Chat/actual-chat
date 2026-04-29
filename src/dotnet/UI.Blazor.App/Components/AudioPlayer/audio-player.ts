@@ -226,10 +226,11 @@ export class AudioPlayer implements Resettable {
         // Run the playback action
         this.playingAction = this.contextRef.run(async () => {
             const attachedFeeder = this.contextRef!.getTrait<AttachedFeederNode>(this.feederNodeTrait);
-            if (attachedFeeder) {
-                await decoderWorker!.resume(this.internalId, rpcNoWait);
-                await attachedFeeder.feederNode.resume(preSkip);
-            }
+            if (!attachedFeeder)
+                throw new Error('Feeder node not attached');
+
+            await decoderWorker!.resume(this.internalId, rpcNoWait);
+            await attachedFeeder.feederNode.resume(preSkip);
         });
 
         // Wait for context to be ready
@@ -337,9 +338,10 @@ export class AudioPlayer implements Resettable {
         this.contextRef = audioContextSource.createRef(this.feederNodeTrait, DemandInteractiveUI.instance);
         this.playingAction = this.contextRef.run(async () => {
             const attachedFeeder = this.contextRef!.getTrait<AttachedFeederNode>(this.feederNodeTrait);
-            if (attachedFeeder) {
-                await attachedFeeder.feederNode.resume(0);
-            }
+            if (!attachedFeeder)
+                throw new Error('Feeder node not attached');
+
+            await attachedFeeder.feederNode.resume(0);
         });
         this.playbackState = 'paused';
 
