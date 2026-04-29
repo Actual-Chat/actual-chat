@@ -183,6 +183,11 @@ let streamingEnabled = false;
 let streamRecreations = 0;
 let streamStatus = 'idle';
 let lastStreamError = '';
+// Set true while a codec switch is tearing down the encoder and rebuilding it.
+// While set, the frame pump must drop incoming frames instead of feeding them
+// to a closed/transitioning encoder — every encode() call against a closed
+// encoder fires onError, which used to flood the log path and freeze the UI.
+let switchInProgress = false;
 
 // ─── Screencast heartbeat ──────────────────────────────────────────────────
 // getDisplayMedia is change-driven: a static screen produces zero frames. Without
@@ -490,6 +495,14 @@ function processOneFrame(frame: VideoFrame): void {
 
 async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
     if (!encoder || !processing || !encoderConfig) { frame.close(); return; }
+    // Drop frames during a codec switch — feeding a closed/transitioning
+    // encoder produces a per-frame InvalidStateError that floods the console
+    // and stalls the main thread. Re-enabled in switchCodec's finally.
+    if (switchInProgress) { frame.close(); return; }
+    // Cheap state guard: if the encoder isn't configured (still warming up,
+    // or closed by a real WebCodecs error) skip the encode call. The
+    // dead-encoder watchdog already escalates after framesWithoutOutput >= 30.
+    if (encoder.getState() !== 'configured') { frame.close(); return; }
 
     // Track the live VideoFrame reference at each pipeline stage so the catch
     // path can close whatever's still owned. Without this, an exception between
@@ -886,8 +899,33 @@ function deliverChunkToStream(
     }
 }
 
+// Yield a macrotask so the browser can release a previous HW codec slot before
+// a new one is allocated. Microtask alone is not enough — Chrome's WebCodecs
+// implementation releases NVENC/VA-API slots on the next task tick. Used in
+// places that close + (re)create encoders (codec switch, simulcast rebuild).
+async function awaitHwReleased(): Promise<void> {
+    await Promise.resolve();
+    await new Promise<void>(resolve => setTimeout(resolve, 0));
+}
+
+// Dedupe error logs by key within a 1 s window. Identical errors fired
+// per-frame (e.g. a closed encoder hit by a stuck frame pump) used to flood
+// the inspector pipe and freeze the main thread. The gate in
+// encodeProcessedFrame already prevents the per-frame case; this is a second
+// line of defence for real async error cascades.
+const ERROR_LOG_DEDUPE_WINDOW_MS = 1000;
+const errorLogLastSeenMs = new Map<string, number>();
+function shouldLogError(key: string): boolean {
+    const now = performance.now();
+    const last = errorLogLastSeenMs.get(key) ?? 0;
+    if (now - last < ERROR_LOG_DEDUPE_WINDOW_MS) return false;
+    errorLogLastSeenMs.set(key, now);
+    return true;
+}
+
 function onEncoderError(error: Error): void {
-    errorLog?.log('Encoder error:', error.name, error.message);
+    if (shouldLogError(`enc:${error.name}:${error.message}`))
+        errorLog?.log('Encoder error:', error.name, error.message);
     encoderErrorSeen = true;
     lastStreamError = `encoder: ${error.name} ${error.message}`;
 }
@@ -1574,57 +1612,71 @@ export const serverImpl: VideoProcessingWorker = {
         // old-codec frames that must NOT leak into the new stream
         const wasStreaming = streamingEnabled;
         streamingEnabled = false;
-
-        if (videoStream) {
-            videoStream.complete();
-            try { await videoStream.whenDisposed; } catch { /* ignore */ }
-            videoStream = null;
-        }
-        codecSettings = null; startTimestamp = undefined; pendingStreamFrames = []; storedDescriptionBytesByLayer.clear(); firstKeyframeDumpedByLayer.clear();
-        if (lastEncodedFrame) { lastEncodedFrame.close(); lastEncodedFrame = null; }
-        // Synchronous configure() failure inside switchCodec already surfaces via
-        // onEncoderError; the watchdog plus codec-exclusion list takes care of
-        // the next fallback. Don't let a sync throw break the worker RPC.
+        // Gate the frame pump for the duration of the switch. encodeProcessedFrame
+        // checks this and drops incoming frames so encode() is never called against
+        // the closed/transitioning encoder (the per-frame InvalidStateError flood
+        // was the root of the multi-minute UI freeze observed in production).
+        switchInProgress = true;
         let switchFailed = false;
-        try { await encoder.switchCodec(config); } catch { switchFailed = true; /* error already surfaced via onEncoderError */ }
-        // Drop old-codec simulcast extras; we rebuild them below with the new codec
-        // so the ladder survives the switch. Without this rebuild every codec
-        // switch permanently collapses the stream to base layer (regression
-        // observed on AV1→H.264 audience changes: receivers stuck at 640×360).
-        if (extraLayerEncoders.length > 0) {
-            const extras = extraLayerEncoders.slice();
-            extraLayerEncoders = [];
-            infoLog?.log(`switchCodec: tearing down ${extras.length} simulcast extras`);
-            for (const e of extras) {
-                try { await e.flush(); } catch { /* already closed elsewhere */ }
-                try { e.close(); } catch { /* already closed */ }
+        try {
+            if (videoStream) {
+                videoStream.complete();
+                try { await videoStream.whenDisposed; } catch { /* ignore */ }
+                videoStream = null;
             }
-        }
+            codecSettings = null; startTimestamp = undefined; pendingStreamFrames = []; storedDescriptionBytesByLayer.clear(); firstKeyframeDumpedByLayer.clear();
+            if (lastEncodedFrame) { lastEncodedFrame.close(); lastEncodedFrame = null; }
+            // Synchronous configure() failure inside switchCodec already surfaces via
+            // onEncoderError; the watchdog plus codec-exclusion list takes care of
+            // the next fallback. Don't let a sync throw break the worker RPC.
+            try { await encoder.switchCodec(config); } catch { switchFailed = true; /* error already surfaced via onEncoderError */ }
+            // Drop old-codec simulcast extras; we rebuild them below with the new codec
+            // so the ladder survives the switch. Without this rebuild every codec
+            // switch permanently collapses the stream to base layer (regression
+            // observed on AV1→H.264 audience changes: receivers stuck at 640×360).
+            if (extraLayerEncoders.length > 0) {
+                const extras = extraLayerEncoders.slice();
+                extraLayerEncoders = [];
+                infoLog?.log(`switchCodec: tearing down ${extras.length} simulcast extras`);
+                for (const e of extras) {
+                    try { await e.flush(); } catch { /* already closed elsewhere */ }
+                    try { e.close(); } catch { /* already closed */ }
+                }
+            }
 
-        encoderConfig = config; resizeCanvas = null; resizeCtx = null;
-        // Rebuild simulcast extras on the new codec and restore downscaler targets
-        // to match. If caller omits spatialLayers (P2P mode) we fall through to
-        // a single base target and stay single-layer.
-        const layers = spatialLayers ?? [];
-        for (let i = 0; i < layers.length; i++) {
-            const layer = layers[i];
-            const layerCfg: EncoderConfig = {
-                ...config,
-                width: layer.width,
-                height: layer.height,
-                bitrate: layer.bitrate,
-                scalabilityMode: layer.scalabilityMode ?? config.scalabilityMode,
-            };
-            const spatialId = i + 1;
-            const extra = new WebCodecsEncoder(layerCfg, onEncoderOutput, onEncoderError, spatialId);
-            try { extra.initialize(); } catch { /* error already surfaced via onEncoderError */ }
-            extraLayerEncoders.push(extra);
-            infoLog?.log(`Simulcast layer ${spatialId} (post-switch): ${layer.width}x${layer.height} @ ${(layer.bitrate / 1_000_000).toFixed(1)}Mbps`);
+            encoderConfig = config; resizeCanvas = null; resizeCtx = null;
+            // Rebuild simulcast extras on the new codec and restore downscaler targets
+            // to match. If caller omits spatialLayers (P2P mode) we fall through to
+            // a single base target and stay single-layer.
+            const layers = spatialLayers ?? [];
+            for (let i = 0; i < layers.length; i++) {
+                const layer = layers[i];
+                const layerCfg: EncoderConfig = {
+                    ...config,
+                    width: layer.width,
+                    height: layer.height,
+                    bitrate: layer.bitrate,
+                    scalabilityMode: layer.scalabilityMode ?? config.scalabilityMode,
+                };
+                const spatialId = i + 1;
+                // Yield a macrotask between successive HW encoder allocations.
+                // Creating N encoders in the same microtask exceeds platform
+                // HW slot release windows (NVENC/VA-API), and the second create
+                // returns OperationError 'Encoder creation error' even though
+                // the codec works fine in isolation. The yield is cheap and
+                // happens only on codec switch.
+                await awaitHwReleased();
+                const extra = new WebCodecsEncoder(layerCfg, onEncoderOutput, onEncoderError, spatialId);
+                try { extra.initialize(); } catch { /* error already surfaced via onEncoderError */ }
+                extraLayerEncoders.push(extra);
+                infoLog?.log(`Simulcast layer ${spatialId} (post-switch): ${layer.width}x${layer.height} @ ${(layer.bitrate / 1_000_000).toFixed(1)}Mbps`);
+            }
+            if (downscaler) downscaler.configure(currentDownscaleTargets());
+        } finally {
+            // Re-enable streaming and clear any frames that leaked during flush
+            streamingEnabled = wasStreaming;
+            switchInProgress = false;
         }
-        if (downscaler) downscaler.configure(currentDownscaleTargets());
-
-        // Re-enable streaming and clear any frames that leaked during flush
-        streamingEnabled = wasStreaming;
         // Diagnostic: explain what the encoder needs to resume streaming.
         // lastEncodedFrame is always null here (cleared above), so screencast
         // heartbeat can't fire until getDisplayMedia produces a new frame.

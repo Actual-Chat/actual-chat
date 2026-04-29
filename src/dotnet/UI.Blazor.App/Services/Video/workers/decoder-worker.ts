@@ -29,6 +29,43 @@ let currentDecoderConfig: DecoderConfig | null = null;
 let frameCount = 0;
 let lastRawDescription: ArrayBuffer | null = null;
 
+// Recovery rate-limit state. The recovery branch in decodeRawChunk creates a
+// fresh WebCodecsDecoder when the live one transitions to 'closed'. Without
+// limits, a flaky HW decoder loops "die → recover on next keyframe → die →
+// recover" every 2-3 s, burning a fresh HW slot each time. Cooldown blocks
+// recovery within 5 s of the previous attempt; the consecutive counter trips
+// at 3 to surface a stream-level failure instead of recreating forever.
+let lastRecoveryAtMs = 0;
+let consecutiveRecoveries = 0;
+const RECOVERY_COOLDOWN_MS = 5000;
+const RECOVERY_MAX_ATTEMPTS = 3;
+
+// Yield a macrotask so the platform can release a previous HW codec slot
+// before allocating a new one. close() is synchronous; the slot is freed on
+// the next task tick. Used between decoder close() → new WebCodecsDecoder()
+// to avoid back-to-back HW slot allocations that re-trigger driver errors.
+async function awaitHwReleased(): Promise<void> {
+    await Promise.resolve();
+    await new Promise<void>(resolve => setTimeout(resolve, 0));
+}
+
+// Dedupe error logs by key within a 1 s window. Prevents async error cascades
+// from the WebCodecs error callback flooding the inspector pipe.
+const ERROR_LOG_DEDUPE_WINDOW_MS = 1000;
+const errorLogLastSeenMs = new Map<string, number>();
+function shouldLogDecoderError(key: string): boolean {
+    const now = performance.now();
+    const last = errorLogLastSeenMs.get(key) ?? 0;
+    if (now - last < ERROR_LOG_DEDUPE_WINDOW_MS) return false;
+    errorLogLastSeenMs.set(key, now);
+    return true;
+}
+function decoderErrorKey(scope: string, error: unknown): string {
+    if (error instanceof Error) return `${scope}:${error.name}:${error.message}`;
+    if (error instanceof DOMException) return `${scope}:${error.name}:${error.message}`;
+    return `${scope}:${String(error)}`;
+}
+
 // Stream-based input reader loop promise (for cleanup)
 let streamReadLoopPromise: Promise<void> | null = null;
 
@@ -319,6 +356,10 @@ function decodeChunk(chunkData: EncodedChunkData): void {
  */
 function emitDecodedFrame(frame: VideoFrame): void {
     frameCount++;
+    // Successful decode → clear the recovery escalation counter. Cooldown
+    // (lastRecoveryAtMs) intentionally remains so we don't ping-pong fast.
+    if (consecutiveRecoveries !== 0)
+        consecutiveRecoveries = 0;
     if (mstgSelector) {
         mstgSelector.onDecoded(frame);
         return;
@@ -444,9 +485,10 @@ const serverImpl: DecoderWorker = {
                 { ...config, description: undefined },
                 emitDecodedFrame,
                 (error) => {
-                    errorLog?.log(`Decoder error (state=${decoder?.getState() ?? '?'}, ` +
-                        `lastChunkSeq=${lastChunkSeq}, lastChunkType=${lastChunkType}, ` +
-                        `lastChunkBytes=${lastChunkSize}, lastDescLen=${lastChunkDescLen}):`, error);
+                    if (shouldLogDecoderError(decoderErrorKey('initialize', error)))
+                        errorLog?.log(`Decoder error (state=${decoder?.getState() ?? '?'}, ` +
+                            `lastChunkSeq=${lastChunkSeq}, lastChunkType=${lastChunkType}, ` +
+                            `lastChunkBytes=${lastChunkSize}, lastDescLen=${lastChunkDescLen}):`, error);
                 }
             );
             // Don't call decoder.initialize() — keep state 'unconfigured' until
@@ -487,9 +529,10 @@ const serverImpl: DecoderWorker = {
                 { ...config, description: undefined },
                 emitDecodedFrame,
                 (error) => {
-                    errorLog?.log(`Decoder error (state=${decoder?.getState() ?? '?'}, ` +
-                        `lastChunkSeq=${lastChunkSeq}, lastChunkType=${lastChunkType}, ` +
-                        `lastChunkBytes=${lastChunkSize}, lastDescLen=${lastChunkDescLen}):`, error);
+                    if (shouldLogDecoderError(decoderErrorKey('initWithStreams', error)))
+                        errorLog?.log(`Decoder error (state=${decoder?.getState() ?? '?'}, ` +
+                            `lastChunkSeq=${lastChunkSeq}, lastChunkType=${lastChunkType}, ` +
+                            `lastChunkBytes=${lastChunkSize}, lastDescLen=${lastChunkDescLen}):`, error);
                 }
             );
             decoderConfigured = false;
@@ -545,6 +588,8 @@ const serverImpl: DecoderWorker = {
 
             processing = false;
             decoderConfigured = false;
+            lastRecoveryAtMs = 0;
+            consecutiveRecoveries = 0;
 
             if (pullActive) {
                 pullActive = false;
@@ -697,7 +742,6 @@ const serverImpl: DecoderWorker = {
      * Decode raw encoded bytes (used by video-player.ts for off-main-thread decoding).
      * Creates EncodedVideoChunk internally from raw bytes.
      */
-    // eslint-disable-next-line
     decodeRawChunk: async (
         timestamp: number,
         duration: number,
@@ -789,9 +833,10 @@ const serverImpl: DecoderWorker = {
                         freshConfig,
                         emitDecodedFrame,
                         (error) => {
-                            errorLog?.log(`Decoder error (fresh first-keyframe path, state=${decoder?.getState() ?? '?'}, ` +
-                                `lastChunkSeq=${lastChunkSeq}, lastChunkType=${lastChunkType}, ` +
-                                `lastChunkBytes=${lastChunkSize}, lastDescLen=${lastChunkDescLen}):`, error);
+                            if (shouldLogDecoderError(decoderErrorKey('first-kf', error)))
+                                errorLog?.log(`Decoder error (fresh first-keyframe path, state=${decoder?.getState() ?? '?'}, ` +
+                                    `lastChunkSeq=${lastChunkSeq}, lastChunkType=${lastChunkType}, ` +
+                                    `lastChunkBytes=${lastChunkSize}, lastDescLen=${lastChunkDescLen}):`, error);
                         }
                     );
                     decoder.initialize();
@@ -830,7 +875,8 @@ const serverImpl: DecoderWorker = {
                     currentDecoderConfig,
                     emitDecodedFrame,
                     (error) => {
-                        errorLog?.log(`Decoder error (recreate path, state=${decoder?.getState() ?? '?'}):`, error);
+                        if (shouldLogDecoderError(decoderErrorKey('recreate', error)))
+                            errorLog?.log(`Decoder error (recreate path, state=${decoder?.getState() ?? '?'}):`, error);
                     }
                 );
                 decoder.initialize();
@@ -862,18 +908,53 @@ const serverImpl: DecoderWorker = {
             // Check decoder state — recover from closed/error state on keyframe
             if (decoder.getState() !== 'configured') {
                 if (isKeyFrame && currentDecoderConfig) {
+                    // Recovery cooldown: skip recreation if we already attempted
+                    // one within RECOVERY_COOLDOWN_MS. Without this gate, a HW
+                    // decoder that fails every ~3 s would be rebuilt on every
+                    // keyframe — burning a fresh HW slot per attempt and
+                    // staying broken because the platform hasn't fully released
+                    // the previous slot yet.
+                    const nowMs = Date.now();
+                    if (nowMs - lastRecoveryAtMs < RECOVERY_COOLDOWN_MS) {
+                        warnLog?.log(`Recovery skipped (cooldown ${
+                            RECOVERY_COOLDOWN_MS}ms): seq=${sequenceNumber}, ` +
+                            `${nowMs - lastRecoveryAtMs}ms since last attempt`);
+                        return;
+                    }
+                    // After RECOVERY_MAX_ATTEMPTS consecutive failed recoveries,
+                    // surface a stream-level failure instead of recreating
+                    // forever. The receiver UI can re-pull cleanly via skipTo
+                    // (the existing app-layer recovery), and a clean failure
+                    // beats an endless decoder churn.
+                    if (consecutiveRecoveries >= RECOVERY_MAX_ATTEMPTS) {
+                        errorLog?.log(`Recovery gave up after ${consecutiveRecoveries} ` +
+                            `consecutive attempts; reporting stream end`);
+                        if (pullActive) {
+                            pullActive = false;
+                            void callbacks.onPullEnded(
+                                'decoder unrecoverable after retries',
+                                rpcNoWait);
+                        }
+                        return;
+                    }
+                    consecutiveRecoveries++;
+                    lastRecoveryAtMs = nowMs;
                     // HEVC/AVC require description on every configure() — recovery must re-apply
                     // the cached description, otherwise the next keyframe fails with
                     // "A key frame is required after configure()" DataError.
                     const recoveryDescription: ArrayBuffer | undefined = description && description.byteLength > 0
                         ? description
                         : (lastRawDescription ?? undefined);
-                    warnLog?.log(`Decoder in state '${decoder.getState()}', recovering on keyframe seq=${
+                    warnLog?.log(`Decoder in state '${decoder.getState()}', recovering (attempt ${
+                        consecutiveRecoveries}/${RECOVERY_MAX_ATTEMPTS}) on keyframe seq=${
                         sequenceNumber}, dataLen=${data.byteLength}, descLen=${
                         recoveryDescription?.byteLength ?? 0}, descHex=${
                         describeBytes(recoveryDescription)}, source=${
                         description && description.byteLength > 0 ? 'chunk' : 'cached'}`);
                     try {
+                        // Yield a macrotask so the platform can release the
+                        // previous HW slot before we allocate a new one.
+                        await awaitHwReleased();
                         const recoveryConfig: DecoderConfig = recoveryDescription
                             ? { ...currentDecoderConfig, description: recoveryDescription }
                             : { ...currentDecoderConfig, description: undefined };
@@ -881,7 +962,8 @@ const serverImpl: DecoderWorker = {
                             recoveryConfig,
                             emitDecodedFrame,
                             (error) => {
-                                errorLog?.log(`Decoder error (recovery path, state=${decoder?.getState() ?? '?'}):`, error);
+                                if (shouldLogDecoderError(decoderErrorKey('recovery', error)))
+                                    errorLog?.log(`Decoder error (recovery path, state=${decoder?.getState() ?? '?'}):`, error);
                             }
                         );
                         decoder.initialize();

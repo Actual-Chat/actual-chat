@@ -471,8 +471,7 @@ export class VideoPipeline implements IVideoPipeline {
         }, 1000);
 
         // Start 10s diagnostics timer
-        this.lastDiagTotalBytes = 0;
-        this.lastDiagEncodedFrames = 0;
+        this.resetDiagCounters();
         this.diagnosticsInterval = window.setInterval(() => {
             const s = this.currentStats.encoder;
             const bytesDelta = s.totalBytes - this.lastDiagTotalBytes;
@@ -712,7 +711,16 @@ export class VideoPipeline implements IVideoPipeline {
     private markStructuralChange(reason: string): void {
         this.lastStructuralChangeAt = performance.now();
         this.backpressureEma.reset();
+        // Encoder is replaced behind the scenes (worker rebuilds the underlying
+        // VideoEncoder) so the next 10 s window's stats start from 0. Reset
+        // diagnostic deltas so we don't compute `0 - prev = negative`.
+        this.resetDiagCounters();
         debugLog?.log(`Structural change (${reason}): backpressure cooldown ${this.postSwitchCooldownMs}ms armed`);
+    }
+
+    private resetDiagCounters(): void {
+        this.lastDiagTotalBytes = 0;
+        this.lastDiagEncodedFrames = 0;
     }
 
     async switchCodec(newCodecString: string, spatialLayers?: SpatialLayerConfig[]): Promise<void> {

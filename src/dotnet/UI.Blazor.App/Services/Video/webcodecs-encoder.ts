@@ -10,6 +10,28 @@ import { getCodecCategory, getCodecForCategory } from './codec-support';
 
 const { infoLog, warnLog, errorLog } = getLogs('VideoEncoder');
 
+// Yield a macrotask so the platform can release a previous HW codec slot
+// before allocating a new one. close() is synchronous; the slot is freed on
+// the next task tick. Used between encoder close() → new VideoEncoder() to
+// avoid OperationError 'Encoder creation error' on Chrome NVENC / VA-API.
+async function awaitHwReleased(): Promise<void> {
+    await Promise.resolve();
+    await new Promise<void>(resolve => setTimeout(resolve, 0));
+}
+
+// Dedupe error logs by key within a 1 s window. Defends against async error
+// cascades from the WebCodecs error callback when the platform fires errors
+// faster than the dead-encoder watchdog can react.
+const ERROR_LOG_DEDUPE_WINDOW_MS = 1000;
+const errorLogLastSeenMs = new Map<string, number>();
+function shouldLogEncoderError(key: string): boolean {
+    const now = performance.now();
+    const last = errorLogLastSeenMs.get(key) ?? 0;
+    if (now - last < ERROR_LOG_DEDUPE_WINDOW_MS) return false;
+    errorLogLastSeenMs.set(key, now);
+    return true;
+}
+
 // WebCodecs SVC metadata (svc.temporalLayerId) is not yet in TS typings
 function extractTemporalLayerId(metadata: EncodedVideoChunkMetadata | undefined): number | undefined {
     if (!metadata) return undefined;
@@ -208,8 +230,10 @@ export class WebCodecsEncoder {
             // Remove the start time and queue size since encode failed
             this.encodeStartTimes.pop();
             this.encodeQueueAtStart.pop();
-            errorLog?.log('Error encoding frame:', error);
-            this.onError(error as Error);
+            const e = error as Error;
+            if (shouldLogEncoderError(`enc-throw:${e.name}:${e.message}`))
+                errorLog?.log('Error encoding frame:', e.name, e.message);
+            this.onError(e);
         } finally {
             frame.close();
         }
@@ -276,6 +300,13 @@ export class WebCodecsEncoder {
             this.encoder.close();
         }
 
+        // Yield to the platform so the previous HW slot is fully released
+        // before allocating a new one. close() is synchronous and the slot is
+        // freed asynchronously; without this yield, `new VideoEncoder()` +
+        // `configure()` in the same microtask reproducibly returns
+        // OperationError 'Encoder creation error' on Chrome NVENC / VA-API.
+        await awaitHwReleased();
+
         // Update config
         this.config = newConfig;
 
@@ -330,7 +361,8 @@ export class WebCodecsEncoder {
                 this.onChunk(chunkData);
             },
             error: (e: DOMException) => {
-                errorLog?.log('Encoder error:', e.name, e.message);
+                if (shouldLogEncoderError(`enc-cb:${e.name}:${e.message}`))
+                    errorLog?.log('Encoder error:', e.name, e.message);
                 this.onError(e as unknown as Error);
             }
         });
