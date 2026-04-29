@@ -160,6 +160,23 @@ body.narrow .link-preview.compact .incut {
     @apply items-start;
     @apply h-full;
 }
+/* Blurred chat icon background */
+.link-preview.local-link > .c-bg {
+    @apply absolute inset-0;
+    @apply overflow-hidden;
+}
+.link-preview.local-link > .c-bg .pic-blurred {
+    @apply opacity-20;
+}
+body.device-ios .link-preview.local-link > .c-bg {
+    will-change: transform;
+    transform: translateZ(0);
+}
+.link-preview.local-link > .c-chat-icon,
+.link-preview.local-link > .c-info,
+.link-preview.local-link > .incut {
+    @apply relative z-10;
+}
 .link-preview.local-link .c-chat-icon {
     @apply p-2 pr-0;
 }
@@ -178,7 +195,11 @@ body.narrow .link-preview.compact .incut {
     @apply wrap-anywhere;
 }
 .link-preview.local-link .c-domain {
-    @apply py-1 mt-1;
+    @apply py-0 mt-1;
+}
+.link-preview.local-link .c-chat-meta {
+    @apply text-caption-6 text-03;
+    @apply line-clamp-1;
 }
 .local-link .image-wrapper {
     @apply h-32;

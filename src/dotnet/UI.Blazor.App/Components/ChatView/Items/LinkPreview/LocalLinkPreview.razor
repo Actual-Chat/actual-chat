@@ -1,34 +1,40 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Media
-@inherits FusionComponentBase<AppUIHub>
+@inherits ComputedStateComponent<AppUIHub, LocalLinkPreview.Model>
 @{
-    var m = Data;
-    if (!m.CanRender)
+    var m = State.Value;
+    var data = Data;
+    if (!data.CanRender)
         return;
 
-    var url = m.LocalUrl;
+    var url = data.LocalUrl;
     Chat? chat = null;
     Account? user = null;
     ChatEntry? entry = null;
     Author? author = null;
     Place? place = null;
-    if (Data is ChatLocalLinkInfo chatLocalLinkInfo) {
+    if (data is ChatLocalLinkInfo chatLocalLinkInfo) {
         chat = chatLocalLinkInfo.Chat;
         entry = chatLocalLinkInfo.Entry;
         author = chatLocalLinkInfo.Author;
         place = chatLocalLinkInfo.Place;
     }
-    else if (Data is UserLocalLinkInfo userLocalLinkInfo) {
+    else if (data is UserLocalLinkInfo userLocalLinkInfo) {
         user = userLocalLinkInfo.Account;
         chat = userLocalLinkInfo.Chat;
-    } else if (Data is PlaceLocalLinkInfo placeLocalLinkInfo) {
+    } else if (data is PlaceLocalLinkInfo placeLocalLinkInfo) {
         place = placeLocalLinkInfo.Place;
-
     }
     var cls = entry is not null ? " local-link-chat-entry" : " local-link-chat";
+    var showBg = chat is not null;
 }
 
 <div class="link-preview local-link unfocusable @cls">
+    @if (showBg) {
+        <div class="c-bg">
+            <ChatIcon Chat="@chat" Size="SquareSize.SizeFull" IsSquare="@true" IsBlurred="@true"/>
+        </div>
+    }
     <div class="c-chat-icon">
         @if (entry is not null) {
             <AuthorCircle
@@ -41,13 +47,13 @@
                 Size="@SquareSize.Size8" />
         }
         else if (chat is not null) {
-            <ChatIcon Chat="@chat" Size="SquareSize.Size8"/>
+            <ChatIcon Chat="@chat" Size="SquareSize.Size10"/>
         }
         else if (place is not null) {
             <Pic
                 Title="@place.Title"
                 Picture="@place.Picture.ToPicture()"
-                Size="@SquareSize.Size8"
+                Size="@SquareSize.Size10"
                 IsSquare="@true"
                 AvatarKind="@AvatarKind.Marble"
                 AvatarKey="@place.Id.Value"/>
@@ -104,16 +110,51 @@
                 <a class="text-primary" href="@Data.LocalUrl.Value" @onclick:preventDefault="true" @onclick="NavigateToUrl">@place.Title</a>
             }
         </span>
+        @if (chat is not null && chat.Kind is not ChatKind.Peer && entry is null && m.MemberCount > 0) {
+            var typeLabel = chat.Kind == ChatKind.Place
+                ? "Place"
+                : chat.IsPublic ? "Public" : "Private";
+            <span class="c-chat-meta">@typeLabel · @m.MemberCount @("member".Pluralize(m.MemberCount))</span>
+        }
     </div>
     <div class="incut"></div>
 </div>
 
 @code {
+    private IAuthors Authors => Hub.Authors;
+
     [Parameter, EditorRequired] public LocalLinkInfo Data { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Loading,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var data = Data;
+        if (data is not ChatLocalLinkInfo { Chat: { } chat, Entry: null })
+            return Model.Loading;
+
+        if (chat.Kind is ChatKind.Peer)
+            return Model.Loading;
+
+        var authorIds = await Authors.ListAuthorIds(Session, chat.Id, cancellationToken).ConfigureAwait(false);
+        return new Model { MemberCount = authorIds.Length };
+    }
 
     private void NavigateToUrl()
         => _ = History.NavigateTo(Data.LocalUrl);
 
     private void NavigateTo(string url)
         => _ = History.NavigateTo(url);
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model Loading = new();
+        public int MemberCount { get; init; }
+    }
 }
