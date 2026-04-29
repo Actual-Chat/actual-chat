@@ -59,7 +59,7 @@ public sealed class WebAudioPlaybackEngine(
 
         if (chatId != null) {
             _watchBufferEscalationStateCts = cancellationToken.CreateLinkedTokenSource();
-            _ = WatchBufferEscalationState(chatId, _watchBufferEscalationStateCts.Token);
+            _ = WatchBufferEscalationState(chatId, bufferEscalation, _watchBufferEscalationStateCts.Token);
         }
     }
 
@@ -118,19 +118,20 @@ public sealed class WebAudioPlaybackEngine(
 
     // Private methods
 
-    private async Task WatchBufferEscalationState(ChatId chatId, CancellationToken ct)
+    private async Task WatchBufferEscalationState(ChatId chatId, int initialEscalation, CancellationToken ct)
     {
         try {
             var computed = await Computed
                 .Capture(() => ChatAudioUI.GetPlaybackBufferEscalation(chatId, ct), ct)
                 .ConfigureAwait(false);
-            var escalation = computed.Value;
+            var lastEscalation = initialEscalation;
             await foreach (var (value, _) in computed.Changes(ct).ConfigureAwait(false)) {
-                if (value == escalation)
+                if (value == lastEscalation)
                     continue;
 
+                lastEscalation = value;
                 if (_jsRef != null)
-                    _ = _jsRef.InvokeVoidAsync("setBufferEscalation", ct, escalation);
+                    _ = _jsRef.InvokeVoidAsync("setBufferEscalation", ct, value);
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) {
