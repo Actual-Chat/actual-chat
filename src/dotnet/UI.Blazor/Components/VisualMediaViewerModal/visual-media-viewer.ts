@@ -39,6 +39,11 @@ export class VisualMediaViewer {
     private hideBlocked = false;
     private isDoubleClick = false;
     private isDraggingThumb = false;
+    // Swipe-to-dismiss state
+    private isDismissing = false;
+    private dismissStartY = 0;
+    private dismissStartX = 0;
+    private dismissLocked = false; // true = decided this is NOT a vertical swipe
 
     static create(imageViewer: HTMLElement, blazorRef: DotNet.DotNetObject): VisualMediaViewer {
         return new VisualMediaViewer(imageViewer, blazorRef);
@@ -93,7 +98,7 @@ export class VisualMediaViewer {
         // eslint-disable-next-line
         this.swiper.on('slideChange', async () => {
             // eslint-disable-next-line
-            this.onSlideChange(this.swiper);
+            void this.onSlideChange(this.swiper);
             await this.safeCenterThumb();
         });
 
@@ -141,6 +146,8 @@ export class VisualMediaViewer {
                 .subscribe(() => this.onHideTransitionEnd());
         }
 
+        this.initSwipeToDismiss();
+
         // Auto-hide after 3s if the user doesn't interact
         this.setInitialHideTimeout();
         this.updateVideoPlayback();
@@ -166,6 +173,189 @@ export class VisualMediaViewer {
 
         this.disposed$.next();
         this.disposed$.complete();
+    }
+
+    private initSwipeToDismiss() {
+        const dismissThreshold = 120;
+        const dragDeadzone = 15;
+        const modalFrame = this.overlay.querySelector<HTMLElement>('.modal-frame')!;
+        const swiperHost = this.swiperEl as HTMLElement;
+        const swiper = this.swiper as Swiper;
+        let lastDeltaY = 0;
+
+        const getSlideContent = (): HTMLElement | null => {
+            const activeSlide = swiperHost.querySelector<HTMLElement>('.swiper-slide-active');
+            return activeSlide?.querySelector<HTMLElement>('.swiper-zoom-container') ?? null;
+        };
+
+        const getVideoControl = (): HTMLElement | null => {
+            const activeSlide = swiperHost.querySelector<HTMLElement>('.swiper-slide-active');
+            return activeSlide?.querySelector<HTMLElement>('.video-control') ?? null;
+        };
+
+        const resetDismiss = () => {
+            this.isDismissing = false;
+            this.dismissLocked = false;
+            this.dismissStartY = 0;
+            this.dismissStartX = 0;
+            lastDeltaY = 0;
+        };
+
+        const restoreSwiper = () => {
+            swiper.allowTouchMove = true;
+        };
+
+        const clearStyles = () => {
+            const content = getSlideContent();
+            if (content) {
+                content.style.transition = '';
+                content.style.transform = '';
+            }
+            const vc = getVideoControl();
+            if (vc) {
+                vc.style.transition = '';
+                vc.style.transform = '';
+            }
+            modalFrame.style.transition = '';
+            modalFrame.style.opacity = '';
+        };
+
+        const onTouchStart = (e: TouchEvent) => {
+            if (swiper.zoom.scale > 1)
+                return;
+
+            if (e.touches.length > 1)
+                return;
+
+            const target = e.target as HTMLElement;
+            if (target.closest('.image-viewer-header')
+                || target.closest('.image-viewer-footer')
+                || target.closest('.video-control'))
+                return;
+
+            const touch = e.touches[0];
+            this.dismissStartY = touch.clientY;
+            this.dismissStartX = touch.clientX;
+            this.isDismissing = false;
+            this.dismissLocked = false;
+            lastDeltaY = 0;
+        };
+
+        const onTouchMove = (e: TouchEvent) => {
+            if (this.dismissStartY === 0 || this.dismissLocked)
+                return;
+
+            if (e.touches.length > 1) {
+                if (this.isDismissing) {
+                    restoreSwiper();
+                    clearStyles();
+                }
+                resetDismiss();
+                return;
+            }
+
+            const touch = e.touches[0];
+            const deltaY = touch.clientY - this.dismissStartY;
+            const deltaX = touch.clientX - this.dismissStartX;
+
+            if (!this.isDismissing) {
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    this.dismissLocked = true;
+                    return;
+                }
+                if (Math.abs(deltaY) < dragDeadzone)
+                    return;
+
+                this.isDismissing = true;
+                swiper.allowTouchMove = false;
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            lastDeltaY = deltaY;
+            const content = getSlideContent();
+            if (content)
+                content.style.transform = `translateY(${deltaY}px)`;
+            // Counter-translate video control so it stays in place
+            const vc = getVideoControl();
+            if (vc)
+                vc.style.transform = `translateY(${-deltaY}px)`;
+
+            const progress = Math.min(Math.abs(deltaY) / 300, 1);
+            modalFrame.style.opacity = `${1 - progress * 0.6}`;
+        };
+
+        const finishDismiss = (deltaY: number) => {
+            restoreSwiper();
+            const content = getSlideContent();
+            const vc = getVideoControl();
+
+            if (Math.abs(deltaY) >= dismissThreshold) {
+                // Animate out then close — don't clear styles before Close()
+                // to avoid flicker; modal removal will clean up the DOM
+                const targetY = deltaY > 0 ? window.innerHeight : -window.innerHeight;
+                if (content) {
+                    content.style.transition = 'transform 200ms ease-out';
+                    content.style.transform = `translateY(${targetY}px)`;
+                }
+                if (vc) {
+                    vc.style.transition = 'transform 200ms ease-out';
+                    vc.style.transform = `translateY(${-targetY}px)`;
+                }
+                modalFrame.style.transition = 'opacity 200ms ease-out';
+                modalFrame.style.opacity = '0';
+                // Close after animation — no style reset, modal disposal handles cleanup
+                setTimeout(() => {
+                    void this.blazorRef.invokeMethodAsync('Close');
+                }, 200);
+            } else {
+                // Snap back
+                if (content) {
+                    content.style.transition = 'transform 200ms ease-out';
+                    content.style.transform = '';
+                }
+                if (vc) {
+                    vc.style.transition = 'transform 200ms ease-out';
+                    vc.style.transform = '';
+                }
+                modalFrame.style.transition = 'opacity 200ms ease-out';
+                modalFrame.style.opacity = '';
+                setTimeout(() => clearStyles(), 250);
+            }
+
+            resetDismiss();
+        };
+
+        const onTouchEnd = (_e: TouchEvent) => {
+            if (!this.isDismissing) {
+                resetDismiss();
+                return;
+            }
+            finishDismiss(lastDeltaY);
+        };
+
+        const onTouchCancel = () => {
+            if (this.isDismissing) {
+                restoreSwiper();
+                clearStyles();
+            }
+            resetDismiss();
+        };
+
+        // Use touch events (not pointer events) — Swiper uses touch events internally,
+        // so preventDefault on touch events actually blocks Swiper from handling them.
+        this.overlay.addEventListener('touchstart', onTouchStart, { capture: true, passive: true });
+        this.overlay.addEventListener('touchmove', onTouchMove, { capture: true, passive: false });
+        this.overlay.addEventListener('touchend', onTouchEnd, { capture: true, passive: true });
+        this.overlay.addEventListener('touchcancel', onTouchCancel, { capture: true, passive: true });
+
+        this.disposed$.subscribe(() => {
+            this.overlay.removeEventListener('touchstart', onTouchStart, { capture: true });
+            this.overlay.removeEventListener('touchmove', onTouchMove, { capture: true });
+            this.overlay.removeEventListener('touchend', onTouchEnd, { capture: true });
+            this.overlay.removeEventListener('touchcancel', onTouchCancel, { capture: true });
+        });
     }
 
     private onHideTransitionEnd() {
@@ -450,6 +640,7 @@ export class VisualMediaViewer {
     }
 
     private onClick(event: PointerEvent | MouseEvent): void {
+        if (this.isDismissing) return;
         if (this.isDoubleClick) {
             this.isDoubleClick = false;
             return;
