@@ -14,6 +14,14 @@ public class AccountMigrationFlowSerializationTest(ITestOutputHelper @out)
     };
 }
 
+public class UserSignInFlowSerializationTest(ITestOutputHelper @out)
+    : FlowSerializationTestBase<UserSignInFlow>(@out)
+{
+    protected override UserSignInFlow CreatePopulated() => new() {
+        IsAvatarUpdated = true,
+    };
+}
+
 public class DigestFlowSerializationTest(ITestOutputHelper @out)
     : FlowSerializationTestBase<DigestFlow>(@out)
 {

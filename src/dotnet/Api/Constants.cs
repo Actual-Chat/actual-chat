@@ -101,6 +101,11 @@ public static partial class Constants
 
     public static class User
     {
+        public static class Claims
+        {
+            public const string GooglePicture = "google/picture";
+        }
+
         public static class Admin
         {
             public static readonly UserId UserId = UserId.Parse("VoxtAdmin"); // Should have no dash in it!

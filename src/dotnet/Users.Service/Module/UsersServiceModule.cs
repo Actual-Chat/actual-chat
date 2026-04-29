@@ -16,7 +16,6 @@ using ActualLab.Fusion.Server;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
-using Microsoft.AspNetCore.Authentication.OAuth.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders.Physical;
@@ -73,7 +72,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
                 // so the user's profile picture URL is captured for downstream use
                 // (e.g., seeding the avatar on first sign-in). Provider-scoped key
                 // ("google/picture") so future providers can carry their own.
-                options.ClaimActions.MapJsonKey("google/picture", "picture");
+                options.ClaimActions.MapJsonKey(Constants.User.Claims.GooglePicture, "picture");
             });
             authentication.AddApple(options => {
                 options.Events.OnCreatingTicket = context => {
@@ -209,8 +208,10 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         if (!isBackendClient) {
             services.AddSingleton<ContactGreeter>()
                 .AddHostedService(c => c.GetRequiredService<ContactGreeter>());
+            services.AddHttpClient(UserSignInFlow.HttpClientName);
 
             services.AddFlows()
+                .Add<UserSignInFlow>()
                 .Add<DigestFlow>()
                 .Add<AccountMigrationFlow>();
         }

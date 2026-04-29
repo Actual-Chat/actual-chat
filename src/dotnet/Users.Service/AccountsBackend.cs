@@ -269,6 +269,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
         // Emit UserSignedInEvent
         context.Operation.AddEvent(new UserSignedInEvent(userId, session));
+        context.Operation.AddEvent(FlowHub.NewResumeEvent<UserSignInFlow>(userId.Value));
 
         // Emit NewUserEvent if this is a new user
         if (isNew) {
