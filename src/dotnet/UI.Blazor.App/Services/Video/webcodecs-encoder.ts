@@ -248,7 +248,6 @@ export class WebCodecsEncoder {
         }
     }
 
-    // eslint-disable-next-line
     async reconfigure(params: { bitrate?: number; width?: number; height?: number }): Promise<void> {
         if (this.encoder.state !== 'configured') {
             throw new Error('Encoder is not configured');
@@ -280,44 +279,69 @@ export class WebCodecsEncoder {
             infoLog?.log(`Reconfigure codec string: ${this.config.codec} -> ${newCodec} (dims ${this.config.width}x${this.config.height} crosses level threshold)`);
             this.config.codec = newCodec;
         }
-        infoLog?.log(`Reconfigure: ${oldBitrate / 1_000_000}Mbps ${oldWidth}x${oldHeight} -> ${this.config.bitrate / 1_000_000}Mbps ${this.config.width}x${this.config.height}`);
-        this.encoder.configure(this.buildEncoderConfig());
+        const dimsChanged = oldWidth !== this.config.width || oldHeight !== this.config.height;
+        infoLog?.log(`Reconfigure: ${oldBitrate / 1_000_000}Mbps ${oldWidth}x${oldHeight} -> ${this.config.bitrate / 1_000_000}Mbps ${this.config.width}x${this.config.height} (dimsChanged=${dimsChanged})`);
 
-        // FIX: Force immediate keyframe on next frame by setting lastKeyFrame far enough in the past
-        // This ensures the condition (frameCount - lastKeyFrame >= keyframeInterval) will be true on next encode
+        if (dimsChanged) {
+            // Android Chrome's MediaCodec H.264 session reproducibly fails with
+            // OperationError "Encoding error." when configure() is called in-place
+            // for a smaller resolution mid-stream (prod log 1777558634013:
+            // avc1.4D4029, 720x1280 → 540x960 ✓ → 360x640 ✗). Likely cause:
+            // queued old-dim frames hit the new MediaCodec config. Replace the
+            // VideoEncoder instance entirely. Bitrate-only path below stays
+            // in-place — that's reliable on every platform we see.
+            await this.replaceUnderlyingEncoder();
+            this.encoder.configure(this.buildEncoderConfig());
+            // Restart the wall-clock keyframe floor so the new session emits a
+            // fresh IDR immediately on the next encode.
+            this.lastKeyFrameTimeMs = 0;
+        } else {
+            this.encoder.configure(this.buildEncoderConfig());
+        }
+        // Force immediate keyframe on next frame so the new config (dims or
+        // bitrate target) is honored without waiting for the next scheduled
+        // GOP boundary.
         this.lastKeyFrame = this.frameCount - this.config.keyframeInterval;
     }
 
     async switchCodec(newConfig: EncoderConfig): Promise<void> {
-        // Flush and close existing encoder
-        if (this.encoder.state === 'configured') {
-            try {
-                await this.encoder.flush();
-            } catch (error) {
-                errorLog?.log('Error flushing encoder during codec switch:', error);
-            }
-            this.encoder.close();
-        }
-
-        // Yield to the platform so the previous HW slot is fully released
-        // before allocating a new one. close() is synchronous and the slot is
-        // freed asynchronously; without this yield, `new VideoEncoder()` +
-        // `configure()` in the same microtask reproducibly returns
-        // OperationError 'Encoder creation error' on Chrome NVENC / VA-API.
-        await awaitHwReleased();
+        await this.replaceUnderlyingEncoder();
 
         // Update config
         this.config = newConfig;
 
-        // Reset counters to force immediate keyframe
+        // Reset counters to force immediate keyframe and restart sequencing —
+        // worker tears down the old videoStream around switchCodec, so receivers
+        // see this as a fresh stream starting at seq=0. (NB: reconfigure() does
+        // NOT reset; it preserves chunkSequence/frameCount because the stream
+        // continues unchanged.)
         this.reset();
-
-        // Create new encoder with same callbacks
-        this.encoder = this.createEncoder();
 
         // Configure with new codec
         this.initialize();
         infoLog?.log(`Codec switched to ${newConfig.codec}`);
+    }
+
+    // Flush in-flight encodes, close the current VideoEncoder session, wait
+    // for the platform to release the HW slot, then create a fresh
+    // VideoEncoder instance. Caller must follow up with configure() (or
+    // initialize()) and any bookkeeping for stale per-encode state.
+    private async replaceUnderlyingEncoder(): Promise<void> {
+        if (this.encoder.state === 'configured') {
+            try {
+                await this.encoder.flush();
+            } catch (error) {
+                warnLog?.log('Flush before encoder rebuild failed (non-fatal):', error);
+            }
+            this.encoder.close();
+        }
+        await awaitHwReleased();
+        this.encoder = this.createEncoder();
+        // Output callbacks for any encodes still in flight on the closed
+        // session never fire, so their start-time entries would otherwise sit
+        // in the queues forever and pair with unrelated future outputs.
+        this.encodeStartTimes.clear();
+        this.encodeQueueAtStart.clear();
     }
 
     private createEncoder(): VideoEncoder {
