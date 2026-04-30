@@ -8,18 +8,6 @@
     @apply w-full;
     @apply overflow-hidden;
 }
-.message-image-attachments .image-line:first-child .image-item:first-child {
-    @apply rounded-tl-xl;
-}
-.message-image-attachments .image-line:first-child .image-item:last-child {
-    @apply rounded-tr-xl;
-}
-.message-image-attachments .image-line:last-child .image-item:first-child {
-    @apply rounded-bl-xl;
-}
-.message-image-attachments .image-line:last-child .image-item:last-child {
-    @apply rounded-br-xl;
-}
 
 .image-line .image-item {
     @apply /*flex-1*/ flex-x;
