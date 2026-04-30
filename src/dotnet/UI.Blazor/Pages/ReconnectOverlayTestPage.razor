@@ -1,10 +1,9 @@
 @page "/test/reconnect-overlay"
 @using System.Text
-@layout BaseLayout
 
 <RequireAccount MustBeAdmin="true"/>
 
-<div class="flex-y gap-y-4 h-full text-lg">
+<div class="reconnect-overlay-test-page flex-y gap-y-4 h-full text-lg relative">
     <div>
         To call, to text, or
         to voice message?
@@ -87,9 +86,9 @@
             Big toast
         </Button>
     </div>
-</div>
 
-<ReconnectOverlay/>
+    <ReconnectOverlay/>
+</div>
 
 @code {
     [Inject] private UICommander UICommander { get; init; } = null!;

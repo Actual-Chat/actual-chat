@@ -41,7 +41,7 @@ public partial class PanelsUI : UIWorkerBase<UIHub>
             return;
 
         var url = new LocalUrl(transition.Item.Url);
-        if (!url.IsChatRoot()) {
+        if (!url.IsChatRoot() && !url.IsTestPage()) {
             if (url.IsChat(out var chatId, out long entryLid)) {
                 var oldUrl = new LocalUrl(transition.BaseItem.Url);
                 if (oldUrl.IsChat(out var oldChatId, out long oldEntryLid) && chatId == oldChatId) {
