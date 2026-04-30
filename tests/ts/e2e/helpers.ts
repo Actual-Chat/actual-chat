@@ -1,16 +1,7 @@
-/**
- * Shared helpers for E2E tests.
- *
- * - Browser connection: respects AC_E2E_BROWSER env var (auto/cdp/headless)
- * - Config: reads BASE_URL from .env (HostSettings__BaseUri)
- * - Page helpers: sign-in, cookie consent, onboarding, screenshots
- */
-
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
 import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
-// --- Configuration ---
 
 export const TEST_EMAIL = 'test-claude-agent@actual.chat';
 export const TEST_OTP = '111111';
@@ -37,21 +28,13 @@ export function screenshot(prefix: string, name: string): string {
     return path.join(tmpDir, `${prefix}-${name}.png`);
 }
 
-// --- Browser connection ---
-
 export interface BrowserConnection {
     browser: Browser;
     context: BrowserContext;
-    /** true when we launched headless Chromium (caller should close browser) */
     ownsBrowser: boolean;
 }
 
-/**
- * Connect to a browser based on AC_E2E_BROWSER env var:
- * - "auto" (default): try CDP, fall back to headless
- * - "cdp": force CDP — fail if Chrome isn't running
- * - "headless": force headless Chromium
- */
+/** AC_E2E_BROWSER: "auto" (CDP, fallback headless), "cdp", or "headless". */
 export async function connectBrowser(): Promise<BrowserConnection> {
     const mode = (process.env.AC_E2E_BROWSER ?? 'auto').toLowerCase();
 
@@ -64,7 +47,6 @@ export async function connectBrowser(): Promise<BrowserConnection> {
         return conn;
     }
 
-    // auto: try CDP, fall back to headless
     const conn = await tryCdp();
     if (conn) return conn;
     console.log('CDP not available, falling back to headless Chromium');
@@ -72,8 +54,7 @@ export async function connectBrowser(): Promise<BrowserConnection> {
 }
 
 async function tryCdp(): Promise<BrowserConnection | null> {
-    const hosts = getCdpHosts();
-    for (const host of hosts) {
+    for (const host of getCdpHosts()) {
         const endpoint = `http://${host}:9222`;
         try {
             const browser = await chromium.connectOverCDP(endpoint, { timeout: 3000 });
@@ -81,18 +62,13 @@ async function tryCdp(): Promise<BrowserConnection | null> {
             const context = contexts.length > 0 ? contexts[0] : await browser.newContext();
             console.log(`Connected to Chrome via CDP at ${endpoint}`);
             return { browser, context, ownsBrowser: false };
-        } catch {
-            // try next host
-        }
+        } catch { /* try next host */ }
     }
     return null;
 }
 
-/**
- * Hosts to try when reaching a service on the host machine.
- * On macOS Docker with --network host, `localhost` may resolve to ::1 while the
- * host service binds IPv4 only — fall back to host.docker.internal's resolved IP.
- */
+/** On macOS Docker with --network host, `localhost` may resolve to ::1 while the
+ *  host binds IPv4 only — fall back to host.docker.internal's resolved IP. */
 export function getLocalHosts(): string[] {
     const hosts = ['localhost'];
     if (process.env.AC_OS === 'Linux in Docker') {
@@ -102,9 +78,7 @@ export function getLocalHosts(): string[] {
                 timeout: 2000,
             }).trim();
             if (ip && ip !== 'localhost') hosts.push(ip);
-        } catch {
-            // not in Docker or getent not available
-        }
+        } catch { /* not in Docker */ }
     }
     return hosts;
 }
@@ -133,18 +107,7 @@ async function launchHeadless(): Promise<BrowserConnection> {
     }
 }
 
-// --- Page helpers ---
-
-/**
- * Wait until Blazor has hydrated and the app body has rendered.
- *
- * The Blazor host page shows a full-viewport `#web-splash` overlay while the
- * WASM/server bundles load. `page.goto(..., { waitUntil: 'domcontentloaded' })`
- * returns long before that — a fixed `waitForTimeout(3000)` is a race that CI
- * loses (cold .NET start, fresh DB, network variance). Instead, wait until at
- * least one app-level landmark is visible — any of these indicates that the
- * Blazor app has hydrated past the splash.
- */
+/** Wait past the #web-splash overlay until any Blazor landmark is visible. */
 export async function waitForAppReady(page: Page, timeout = 30_000) {
     await page.locator([
         '.chat-list',
@@ -159,10 +122,7 @@ export async function waitForAppReady(page: Page, timeout = 30_000) {
     ].join(', ')).first().waitFor({ state: 'visible', timeout });
 }
 
-/**
- * Wait until a chat page has settled into one of its terminal states:
- * an editable message input, a Join button, or a sign-in prompt.
- */
+/** Wait for a chat page to settle: editable input, Join button, or sign-in prompt. */
 export async function waitForChatReady(page: Page, timeout = 20_000) {
     await page.locator([
         '#message-input .editor-content[contenteditable="true"]',
@@ -174,23 +134,19 @@ export async function waitForChatReady(page: Page, timeout = 20_000) {
 }
 
 export async function dismissCookieConsent(page: Page, timeout = 10_000) {
-    // The consent banner can render slightly after the splash clears — wait for
-    // either button to show up, but don't fail if it never does (some entry points
-    // skip the banner when cookies are already accepted via localStorage).
-    // "Accept all cookies" and "Necessary cookies only" both dismiss it.
     const btn = page.locator(
         'button:has-text("Accept all cookies"), button:has-text("Necessary cookies only")',
     ).first();
     try {
         await btn.waitFor({ state: 'visible', timeout });
     } catch {
-        return; // banner never appeared — nothing to dismiss
+        return;
     }
     await btn.click();
-    // Wait for the banner to disappear before returning, so the sign-in button
-    // underneath is actually clickable without an intercepting overlay.
+    // Wait for the banner to disappear before returning so it doesn't intercept
+    // the next click (cookies-accepted entry points have no .cookie-settings wrapper).
     await page.locator('.cookie-settings').waitFor({ state: 'hidden', timeout: 5_000 })
-        .catch(() => { /* some pages don't use .cookie-settings wrapper */ });
+        .catch(() => { /* ignore */ });
     await page.waitForTimeout(200);
 }
 
@@ -202,29 +158,19 @@ export async function skipOnboarding(page: Page) {
             debugUI.resetOnboarding(false);
             debugUI.resetBubbles(false);
         }
-        // Force-hide any onboarding modal that's already mounted. resetOnboarding
-        // is a backend-only state change — it doesn't forcibly close the currently
-        // displayed OnboardingModal, whose <Stepper> keeps rendering its current
-        // step until the user clicks next. In headless CI the stepper-footer
-        // intercepts pointer events and we can't always find a button that
-        // actually advances past it. Hiding the overlay lets us reach the UI
-        // underneath; the modal will re-hide itself on next state observation.
+        // resetOnboarding is a backend-only state change — it doesn't unmount the
+        // currently rendered OnboardingModal, whose stepper-footer keeps intercepting
+        // pointer events. Hide the overlay so the UI underneath becomes clickable.
         document.querySelectorAll('[id^="Modal-OnboardingModal"]').forEach(el => {
             (el as HTMLElement).style.display = 'none';
             (el as HTMLElement).style.pointerEvents = 'none';
         });
         /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
     });
-    // debugUI.resetOnboarding/resetBubbles are fire-and-forget on the JS side — the backend
-    // call settles asynchronously, so the OnboardingModal (full-screen stepper) and bubble
-    // tooltips may still render momentarily. Dismiss anything that appears.
-    //
-    // The footer button text varies per Stepper step: "Skip"/"Decline" for skip, "Next" /
-    // "Enable Telemetry" / "Start messaging" / custom NextTitle for next. Match them all.
-    // The close (X) button is only shown when CanBeClosed=true, so we can't rely on it.
+    // resetOnboarding/resetBubbles are fire-and-forget — the modal/bubbles may
+    // still render briefly. The footer button text varies per step (Skip/Decline/
+    // Next/Start messaging/...), so match them all.
     for (let i = 0; i < 20; i++) {
-        // OnboardingModal — rendered as `<div class=" modal-overlay" id="Modal-OnboardingModal...">`
-        // and intercepts pointer events on everything behind it.
         const onboardingModal = page.locator('[id^="Modal-OnboardingModal"]').first();
         if (await onboardingModal.isVisible().catch(() => false)) {
             const footerBtn = onboardingModal.locator(
@@ -247,7 +193,6 @@ export async function skipOnboarding(page: Page) {
             continue;
         }
 
-        // Bubble tooltip
         const bubbleBtn = page.locator('.bubble-buttons button:has-text("Skip"), .bubble-buttons button:has-text("Ok")').first();
         if (await bubbleBtn.isVisible().catch(() => false)) {
             await bubbleBtn.click().catch(() => { /* ignore */ });
@@ -255,7 +200,7 @@ export async function skipOnboarding(page: Page) {
             continue;
         }
 
-        break; // nothing left to dismiss
+        break;
     }
 }
 
@@ -271,19 +216,11 @@ export async function isSignedIn(page: Page): Promise<boolean> {
 export async function signIn(page: Page) {
     const signInButton = page.locator('button.signin-button-group, button.signin-button').first();
     await signInButton.waitFor({ state: 'visible', timeout: 10000 });
-    // force: true — a stale OnboardingModal overlay can still intercept pointer
-    // events on a freshly-created context if the previous test's DOM leaked in
-    // via a dev-server re-render; the sign-in button itself is always safe to click.
+    // force: a stale OnboardingModal overlay can still intercept clicks on a fresh context.
     await signInButton.click({ force: true });
     await page.waitForTimeout(1000);
 
-    // Enter email — TextBox attaches an 800ms-debounced `input` listener via JSInterop
-    // in OnAfterRenderAsync. On cold first render the listener can attach *after* fill()
-    // dispatches its events, so the Blazor model never updates and submit stays disabled.
-    // pressSequentially simulates real typing: input events fire over ~1.4s, guaranteeing
-    // some arrive after the listener is attached.
     const emailInput = page.locator('input[type="email"], input[placeholder*="email" i]').first();
-    // Cold start in CI can delay the sign-in modal's first render well past 5s.
     try {
         await emailInput.waitFor({ timeout: 20000 });
     } catch (e) {
@@ -291,31 +228,28 @@ export async function signIn(page: Page) {
         throw e;
     }
     await emailInput.click();
+    // pressSequentially: TextBox attaches its 800ms-debounced input listener in
+    // OnAfterRenderAsync, so a single fill() can land before the listener exists.
     await emailInput.pressSequentially(TEST_EMAIL, { delay: 50 });
-    // Commit via Tab so Blazor's @onchange binder fires (change event on blur).
+    // Tab → fires Blazor's @onchange on blur.
     await emailInput.press('Tab');
 
-    // Submit — wait for the button to actually become enabled (past debounce + re-render).
     await page.locator('button[type="submit"]:not([disabled])').first().click({ timeout: 15_000 });
 
-    // Wait for the TOTP step to render. TotpInput renders 6 inputs with inputmode="numeric"
-    // and auto-verifies on completion (no separate "Verify" button — see TotpInput.razor).
-    // Cold start in CI can delay the TOTP step well past 10s.
+    // TotpInput auto-verifies when all 6 digits are entered — no separate verify button.
     const otpDigits = page.locator('.totp-input input[inputmode="numeric"]');
     await otpDigits.first().waitFor({ state: 'visible', timeout: 30_000 });
 
-    // Fill all 6 digits — fill() bypasses pointer events, so it works even if the
-    // "Register new account?" ConfirmModal has rendered on top of the TOTP step.
+    // fill() bypasses pointer events, so digits land even if the "Register new
+    // account?" ConfirmModal has already rendered on top of the TOTP step.
     for (let i = 0; i < 6; i++) {
         await otpDigits.nth(i).fill(TEST_OTP[i]);
         await page.waitForTimeout(50);
     }
 
-    // Handle "Register new account?" ConfirmModal that appears for unknown emails.
-    // For new accounts, AccountUI.MonitorPendingRegistration shows a ConfirmModal
-    // (title "Register new account?", confirm button "Register"). The TOTP completion
-    // triggers the registration prompt; we must click "Register" to actually create the account.
-    // For existing accounts, no modal appears and sign-in completes after TOTP verification.
+    // Unknown emails → AccountUI.MonitorPendingRegistration shows a ConfirmModal
+    // ("Register new account?"); confirm to create the account. Existing accounts
+    // skip the modal and sign-in completes directly.
     const registerModal = page.locator('[id^="Modal-ConfirmModal"]:has-text("Register new account")').first();
     const signedInLandmark = page.locator('.chat-list, .account-dropdown').first();
     await Promise.race([
@@ -325,13 +259,9 @@ export async function signIn(page: Page) {
                 await registerModal.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });
             }),
         signedInLandmark.waitFor({ state: 'visible', timeout: 30_000 }),
-    ]).catch(() => { /* one of them timed out — let the caller verify state */ });
+    ]).catch(() => { /* caller verifies */ });
 }
 
-/**
- * Navigate to BASE_URL, dismiss cookie consent, sign in if needed, skip onboarding.
- * Returns when the app is ready for interaction.
- */
 export async function ensureSignedIn(page: Page) {
     await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
     await waitForAppReady(page);
