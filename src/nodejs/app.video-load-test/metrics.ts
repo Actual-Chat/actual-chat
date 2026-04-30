@@ -17,6 +17,8 @@
 // the receive side, so producers don't have to thread an index through the
 // stream sender — only timing anchors are actually on the wire.
 
+import { int64ToNumber, type Int64 } from './service-defs.js';
+
 export interface MetricsConfig {
     chatCount: number;
     streamsPerChat: number;
@@ -69,8 +71,8 @@ export class Metrics {
 
     // --- Hot-path producer API ---
 
-    recordSent(chatIdx: number, prodIdx: number, offsetTicks: number, now = Date.now()): void {
-        const frameIdx = (offsetTicks / this.cfg.frameDurationTicks) | 0;
+    recordSent(chatIdx: number, prodIdx: number, offsetTicks: Int64, now = Date.now()): void {
+        const frameIdx = (int64ToNumber(offsetTicks) / this.cfg.frameDurationTicks) | 0;
         const idx = (chatIdx * this.cfg.streamsPerChat + prodIdx) * this.cfg.maxFramesPerStream + frameIdx;
         if (idx >= 0 && idx < this._sentAt.length)
             this._sentAt[idx] = now;
@@ -82,14 +84,14 @@ export class Metrics {
         chatIdx: number,
         consIdx: number,
         streamIdx: number,
-        offsetTicks: number,
+        offsetTicks: Int64,
         byteSize: number,
     ): void {
         const ci = (chatIdx * this.cfg.consumersPerChat + consIdx) * this.cfg.streamsPerChat + streamIdx;
         this._framesReceived[ci] = this._framesReceived[ci] + 1;
         this._bytesReceived[ci] = this._bytesReceived[ci] + byteSize;
 
-        const frameIdx = (offsetTicks / this.cfg.frameDurationTicks) | 0;
+        const frameIdx = (int64ToNumber(offsetTicks) / this.cfg.frameDurationTicks) | 0;
         const sentIdx = (chatIdx * this.cfg.streamsPerChat + streamIdx) * this.cfg.maxFramesPerStream + frameIdx;
         if (sentIdx >= 0 && sentIdx < this._sentAt.length) {
             const sentAt = this._sentAt[sentIdx];

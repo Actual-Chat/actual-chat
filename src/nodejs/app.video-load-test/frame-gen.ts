@@ -4,7 +4,7 @@
 // and wire format must stay identical to preserve apples-to-apples timings.
 
 import { randomBytes } from 'node:crypto';
-import type { VideoFrameDto } from './service-defs.js';
+import { toInt64, type VideoFrameDto } from './service-defs.js';
 
 export const FrameConfig = {
     GopSize: 30,
@@ -47,8 +47,8 @@ export function generateFrame(index: number): VideoFrameDto {
 
     const dto: VideoFrameDto = {
         Data: data,
-        Offset: FrameConfig.FrameDurationTicks * index,
-        Duration: FrameConfig.FrameDurationTicks,
+        Offset: toInt64(FrameConfig.FrameDurationTicks * index),
+        Duration: toInt64(FrameConfig.FrameDurationTicks),
         IsKeyFrame: isKeyFrame,
     };
     if (isKeyFrame) {

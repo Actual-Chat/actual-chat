@@ -9,6 +9,7 @@
 
 import { defineRpcService, RpcRemoteExecutionMode, RpcType, type RpcHub } from 'actuallab-rpc';
 import { Api, type ApiModule } from './api.js';
+import type { Moment } from './rpc-scalars.js';
 import { coreApi } from './core-api.js';
 
 // Streaming push calls: fire-and-forget.  AwaitForConnection lets us wait for the WS to
@@ -34,8 +35,8 @@ export const StreamServerDef = defineRpcService('IStreamServer', {
 // TimeSpan is serialized as int64 ticks (100ns units).
 export interface VideoFrameDto {
     Data: Uint8Array;
-    Offset: number;       // TimeSpan ticks (int64)
-    Duration: number;     // TimeSpan ticks (int64)
+    Offset: Moment;       // TimeSpan ticks (int64)
+    Duration: Moment;     // TimeSpan ticks (int64)
     IsKeyFrame: boolean;
     Width?: number;
     Height?: number;
@@ -89,14 +90,14 @@ export interface VideoLatencyReportDto {
 // TimeSpan is serialized as int64 ticks (100ns units).
 export interface AudioFrameDto {
     Data: Uint8Array;
-    Offset: number;       // TimeSpan ticks (int64)
-    Duration: number;     // TimeSpan ticks (int64)
+    Offset: Moment;       // TimeSpan ticks (int64)
+    Duration: Moment;     // TimeSpan ticks (int64)
     IsKeyFrame: boolean;  // always true for audio
 }
 
 // --- Typed proxy for IStreamServer calls on the client side. ---
 export interface StreamServerClient {
-    GetVideo(streamId: string, skipToTicks: number): Promise<AsyncIterable<VideoFrameDto>>;
+    GetVideo(streamId: string, skipToTicks: Moment): Promise<AsyncIterable<VideoFrameDto>>;
     PushVideo(
         session: string,
         chatId: string,

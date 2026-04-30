@@ -9,6 +9,7 @@
 
 import { defineRpcService, type RpcHub } from 'actuallab-rpc';
 import { Api, type ApiModule } from './api.js';
+import type { Int64 } from './rpc-scalars.js';
 
 // --- IUploads (chunked upload control + chunk push) ---
 // Both methods use RpcRemoteExecutionMode.Default (= AwaitForConnection
@@ -29,14 +30,14 @@ export const UploadsDef = defineRpcService('IUploads', {
 export interface UploadsAppendCommand {
     Session: string;
     UploadId: string;
-    Offset: number;
+    Offset: Int64;
     Chunk: Uint8Array;
 }
 
 /** Typed proxy for IUploads client calls. */
 export interface UploadsClient {
-    GetOffset(session: string, uploadId: string): Promise<number>;
-    OnAppend(command: UploadsAppendCommand): Promise<number>;
+    GetOffset(session: string, uploadId: string): Promise<Int64>;
+    OnAppend(command: UploadsAppendCommand): Promise<Int64>;
 }
 
 /** Uploads module — pass `uploadsApi` to `Api.init` to enable the typed client.

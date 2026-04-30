@@ -6,6 +6,16 @@
 
 import { defineRpcService, RpcRemoteExecutionMode, RpcType } from '../src/actuallab-rpc/index.js';
 
+export type Int64 = number | bigint;
+
+export function toInt64(value: number): bigint {
+    return BigInt(Math.trunc(value));
+}
+
+export function int64ToNumber(value: Int64): number {
+    return typeof value === 'bigint' ? Number(value) : value;
+}
+
 // --- IEmailAuth (commander-backed sign-in) ---
 // Server method:
 //   Task<bool> OnValidateTotp(EmailAuth_ValidateTotp command, CancellationToken ct);
@@ -47,8 +57,8 @@ export const LiveVideoStreamsDef = defineRpcService('ILiveVideoStreams', {
 
 export interface VideoFrameDto {
     Data: Uint8Array;
-    Offset: number;
-    Duration: number;
+    Offset: Int64;
+    Duration: Int64;
     IsKeyFrame: boolean;
     Width?: number;
     Height?: number;
@@ -74,7 +84,7 @@ export interface VideoStreamInfoDto {
 }
 
 export interface LiveVideoStreamsClient {
-    GetStream(session: string, streamId: string, skipToTicks: number): Promise<AsyncIterable<VideoFrameDto>>;
+    GetStream(session: string, streamId: string, skipToTicks: Int64): Promise<AsyncIterable<VideoFrameDto>>;
     List(session: string, chatId: string): Promise<VideoStreamInfoDto[]>;
 }
 

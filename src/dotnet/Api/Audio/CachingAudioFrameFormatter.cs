@@ -90,10 +90,10 @@ public sealed class CachingAudioFrameFormatter : IMessagePackFormatter<AudioFram
                     dataSlice = ReadBinSlice(ref reader);
                     break;
                 case "Offset":
-                    offsetTicks = reader.ReadInt64();
+                    offsetTicks = ReadInt64Compatible(ref reader);
                     break;
                 case "Duration":
-                    durationTicks = reader.ReadInt64();
+                    durationTicks = ReadInt64Compatible(ref reader);
                     break;
                 case "IsKeyFrame":
                     isKey = reader.ReadBoolean();
@@ -115,6 +115,20 @@ public sealed class CachingAudioFrameFormatter : IMessagePackFormatter<AudioFram
     }
 
     // Returns a ReadOnlyMemory that is a direct slice of the underlying single-segment buffer.
+    private static long ReadInt64Compatible(ref MessagePackReader reader)
+    {
+        if (reader.NextMessagePackType != MessagePackType.Float)
+            return reader.ReadInt64();
+
+        var value = reader.ReadDouble();
+        var ticks = checked((long)value);
+        // ReSharper disable once CompareOfFloatsByEqualityOperator
+        if (ticks != value)
+            throw new MessagePackSerializationException($"Expected an integer TimeSpan tick value, got {value}.");
+
+        return ticks;
+    }
+
     private static ReadOnlyMemory<byte> ReadBinSlice(ref MessagePackReader reader)
     {
         var seq = reader.ReadBytes();

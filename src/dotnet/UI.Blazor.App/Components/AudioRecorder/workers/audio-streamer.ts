@@ -6,7 +6,7 @@ import { EventHandlerSet } from 'event-handling';
 import { ObjectPool } from 'object-pool';
 import { delayAsync } from 'promises';
 import { RpcClientPeer, RpcConnectionState, RpcStream } from 'actuallab-rpc';
-import { Api, coreApi, streamingApi,
+import { Api, coreApi, streamingApi, toMoment,
     type ApiModule, type AudioFrameDto, type SessionTokenProvider } from 'api';
 import { ServerClock } from 'server-clock';
 import { WorkerConnectivityUI } from './worker-connectivity-ui';
@@ -161,8 +161,8 @@ export class AudioStream implements Disposable {
                                 try {
                                     yield {
                                         Data: frame,
-                                        Offset: frameIndex * FRAME_DURATION_TICKS,
-                                        Duration: FRAME_DURATION_TICKS,
+                                        Offset: toMoment(frameIndex * FRAME_DURATION_TICKS),
+                                        Duration: toMoment(FRAME_DURATION_TICKS),
                                         IsKeyFrame: true,
                                     };
                                     frameIndex++;

@@ -8,6 +8,7 @@
 export { Api, WorkerKind } from './api.js';
 export type { ApiConnectivityUI, ApiInitOptions, ApiModule, SessionTokenProvider } from './api.js';
 
+export * from './rpc-scalars.js';
 export * from './core-api.js';
 export * from './streaming-api.js';
 export * from './uploads-api.js';

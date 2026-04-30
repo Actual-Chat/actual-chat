@@ -1,5 +1,5 @@
 import { getLogs } from 'logging';
-import { Api, streamingApi, type VideoFrameDto } from 'api';
+import { Api, momentToSeconds, secondsToMoment, streamingApi, type VideoFrameDto } from 'api';
 import { ServerClock } from 'server-clock';
 import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
@@ -1431,7 +1431,7 @@ export class VideoPlayer {
         const abortController = new AbortController();
         this.pullAbortController = abortController;
 
-        const skipToTicks = Math.round(skipToMs * 10000); // ms → .NET TimeSpan ticks (must be integer for MessagePack int64)
+        const skipToTicks = secondsToMoment(skipToMs / 1000);
 
         warnLog?.log(`startPull [RPC]: stream=${streamId}, skipTo=${skipToMs}ms, skipToTicks=${skipToTicks}, retryCount=${this.pullRetryCount}`);
 
@@ -1492,8 +1492,8 @@ export class VideoPlayer {
 
     private processRpcFrame(frame: VideoFrameDto): void {
         try {
-            const offsetMs = frame.Offset / 10000;   // .NET ticks → ms
-            const durationMs = frame.Duration / 10000;
+            const offsetMs = momentToSeconds(frame.Offset) * 1000;   // .NET ticks -> ms
+            const durationMs = momentToSeconds(frame.Duration) * 1000;
             const isKeyFrame = frame.IsKeyFrame;
             const data = frame.Data;
             const description = frame.Description ?? undefined;

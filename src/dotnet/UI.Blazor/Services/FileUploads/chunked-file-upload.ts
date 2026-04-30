@@ -1,6 +1,6 @@
 import { getLogs } from 'logging';
 import { delayAsync, OperationCancelledError, PromiseSource } from 'promises';
-import { Api, uploadsApi } from 'api';
+import { Api, int64ToNumber, toInt64, uploadsApi } from 'api';
 import { ConnectivityUI } from '../ConnectivityUI/connectivity-ui';
 import { IFileUpload, IUploadStreamSource } from './web-uploads';
 
@@ -185,7 +185,7 @@ export class ChunkedFileUpload implements IFileUpload {
         try {
             const result = await uploadsApi.uploads.GetOffset(RPC_SESSION_DEFAULT, this.uploadId);
             debugLog?.log(`<- GetOffset(${this.uploadId}) = ${result} in ${(performance.now() - t0).toFixed(0)}ms`);
-            return result;
+            return int64ToNumber(result);
         } catch (e: unknown) {
             warnLog?.log(`<- GetOffset(${this.uploadId}) threw after ${(performance.now() - t0).toFixed(0)}ms:`, e);
             throw mapUploadError(e);
@@ -201,11 +201,11 @@ export class ChunkedFileUpload implements IFileUpload {
             const result = await uploadsApi.uploads.OnAppend({
                 Session: RPC_SESSION_DEFAULT,
                 UploadId: this.uploadId,
-                Offset: offset,
+                Offset: toInt64(offset),
                 Chunk: new Uint8Array(arrayBuffer),
             });
             debugLog?.log(`<- OnAppend(${this.uploadId}) = ${result} in ${(performance.now() - t0).toFixed(0)}ms`);
-            return result;
+            return int64ToNumber(result);
         } catch (e: unknown) {
             warnLog?.log(`<- OnAppend(${this.uploadId}) threw after ${(performance.now() - t0).toFixed(0)}ms:`, e);
             throw mapUploadError(e);

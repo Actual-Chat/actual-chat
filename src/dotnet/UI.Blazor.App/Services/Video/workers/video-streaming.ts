@@ -9,7 +9,7 @@ import Denque from 'denque';
 import { EventHandlerSet } from 'event-handling';
 import { getLogs } from 'logging';
 import { RpcStream } from 'actuallab-rpc';
-import { Api, streamingApi,
+import { Api, streamingApi, toMoment,
     type SessionTokenProvider, type StreamServerClient, type VideoFormatDto, type VideoFrameDto } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 
@@ -66,13 +66,13 @@ export function serverClockNow(ctx: StreamingContext): number {
  * expected by `.NET VideoFrame` (`[MessagePackObject(true)]` ⇒ PascalCase keys).
  */
 function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
-    // Math.trunc coerces to int64-safe integer. @msgpack/msgpack v3 encodes any
-    // non-integer number as float64 (0xCB), which the server's ReadInt64 on
-    // TimeSpan ticks rejects — tearing down the whole PushVideo stream.
+    // @msgpack/msgpack v3 emits large JS numbers as float64 once they exceed
+    // uint32. The server reads TimeSpan ticks as int64, so pass bigint to force
+    // an integer msgpack code for offsets past 429.4967295s.
     const dto: VideoFrameDto = {
         Data: frame.data,
-        Offset: Math.trunc(frame.offset),
-        Duration: Math.trunc(frame.duration),
+        Offset: toMoment(frame.offset),
+        Duration: toMoment(frame.duration),
         IsKeyFrame: frame.isKeyFrame,
     };
     if (frame.isKeyFrame) {

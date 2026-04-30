@@ -14,7 +14,7 @@ import { extractHVCC } from '../hevc-parser';
 import { getLogs } from 'logging';
 import { WorkerMstgSelector } from './worker-mstg-selector';
 import { BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS } from '../services/bg-canvas-settings';
-import { Api, streamingApi } from 'api';
+import { Api, momentToSeconds, secondsToMoment, streamingApi } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoDecoder');
@@ -393,7 +393,7 @@ function createDecoder(config: DecoderConfig): WebCodecsDecoder {
 async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
     const ac = new AbortController();
     pullAbortController = ac;
-    const skipToTicks = Math.round(skipToMs * 10000); // ms → .NET TimeSpan ticks
+    const skipToTicks = secondsToMoment(skipToMs / 1000);
     let pullFrameCount = 0;
     let lastArrivedOffsetMs = 0;
 
@@ -406,8 +406,8 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
             pullFrameCount++;
             pullRetryCount = 0;
 
-            const offsetMs = frame.Offset / 10000;
-            const durationMs = frame.Duration / 10000;
+            const offsetMs = momentToSeconds(frame.Offset) * 1000;
+            const durationMs = momentToSeconds(frame.Duration) * 1000;
             if (offsetMs > lastArrivedOffsetMs) lastArrivedOffsetMs = offsetMs;
 
             const data = frame.Data;
