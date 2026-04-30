@@ -171,6 +171,9 @@ export class VideoPlayer {
     // and main does no per-frame work. Set after a successful startPullInWorker.
     private offThreadPullActive = false;
     private offThreadSyncChannel: MessageChannel | null = null;
+    // DIAG: counts entries to delegatePullToWorker for this VideoPlayer instance.
+    // Used to confirm whether retry paths re-enter the off-thread setup.
+    private delegateEntryCount = 0;
     private connectivityHandlerOnline: EventHandler<boolean> | null = null;
     private connectivityHandlerConnected: EventHandler<boolean> | null = null;
 
@@ -1485,6 +1488,12 @@ export class VideoPlayer {
             return;
         }
 
+        warnLog?.log(
+            `startPull DIAG: streamId=${streamId}, skipToMs=${skipToMs.toFixed(0)}, ` +
+            `pullRetryCount=${this.pullRetryCount}, offThreadPullActive=${this.offThreadPullActive}, ` +
+            `bgOffscreenTransferred=${this.bgOffscreenTransferred}, renderBackend=${this.renderBackend.kind}, ` +
+            `isOffThread=${this.renderBackend.isOffThread}`);
+
         // Wait for the decoder worker to finish initialization before opening
         // the pull. Without this gate, frames arriving on the main-thread RPC
         // fallback path are dropped at `pushFrame` (`!this.decoderWorker`) —
@@ -1497,6 +1506,7 @@ export class VideoPlayer {
         // Off-thread path: hand the entire Fusion RPC pull to the decoder worker.
         // Main thread becomes silent on the per-frame path.
         if (this.renderBackend.isOffThread && !this.offThreadPullActive && this.decoderWorker) {
+            warnLog?.log(`startPull DIAG: entering delegatePullToWorker (first off-thread setup)`);
             const ok = await this.delegatePullToWorker(streamId, skipToMs);
             if (ok) return;
             // Worker rejected (no MSTG/VTG) — fall back to main-thread canvas + pull.
@@ -1511,6 +1521,17 @@ export class VideoPlayer {
             // start() was already called by Blazor before startPull, so isPlaying is true here.
             this.startRenderLoop();
             // Fall through to existing main-thread pull below.
+        }
+
+        // DIAG: warn if we are about to run a main-thread pull while the off-thread
+        // worker pull is still flagged active — indicates a retry path that bypasses
+        // the off-thread fast lane and risks rendering nowhere (drawFrame is a no-op
+        // on OffThreadRenderBackend).
+        if (this.offThreadPullActive && this.renderBackend.isOffThread) {
+            warnLog?.log(
+                `startPull DIAG: SUSPICIOUS — main-thread pull starting while ` +
+                `offThreadPullActive=true and renderBackend=${this.renderBackend.kind}. ` +
+                `Decoded frames may not reach the visible <video>.`);
         }
 
         // Cancel any existing pull
@@ -1692,6 +1713,13 @@ export class VideoPlayer {
     private async delegatePullToWorker(streamId: string, skipToMs: number): Promise<boolean> {
         if (!this.decoderWorker) return false;
 
+        this.delegateEntryCount++;
+        warnLog?.log(
+            `delegatePullToWorker DIAG: entry #${this.delegateEntryCount}, ` +
+            `streamId=${streamId}, skipToMs=${skipToMs.toFixed(0)}, ` +
+            `bgOffscreenTransferred=${this.bgOffscreenTransferred}, ` +
+            `renderBackend.kind=${this.renderBackend.kind}`);
+
         let mainGenerator: MediaStreamTrack | null = null;
         let mainWritable: WritableStream<VideoFrame> | undefined;
         const Ctor = (globalThis as unknown as {
@@ -1705,12 +1733,16 @@ export class VideoPlayer {
                 const backend = this.renderBackend as { onTrackReady?: (t: MediaStreamTrack) => void };
                 if (typeof backend.onTrackReady === 'function')
                     backend.onTrackReady(generator);
-                debugLog?.log('Tier 2: main-thread MSTG constructed, track attached');
+                warnLog?.log(
+                    `delegatePullToWorker DIAG: Tier 2 main-thread MSTG constructed, ` +
+                    `trackId=${generator.id}, attached via backend=${this.renderBackend.kind}`);
             } catch (e) {
                 warnLog?.log('Main-thread MSTG construct failed, falling back to worker tier:', e);
                 mainGenerator = null;
                 mainWritable = undefined;
             }
+        } else {
+            warnLog?.log(`delegatePullToWorker DIAG: Tier 2 unavailable (no globalThis.MediaStreamTrackGenerator), falling back to worker tier`);
         }
 
         const channel = new MessageChannel();
@@ -1728,9 +1760,15 @@ export class VideoPlayer {
             try {
                 bgOffscreen = this.bgCanvasEl.transferControlToOffscreen();
                 this.bgOffscreenTransferred = true;
+                warnLog?.log(`delegatePullToWorker DIAG: bgCanvas transferred to worker (first time)`);
             } catch (e) {
                 warnLog?.log('transferControlToOffscreen failed for bg canvas:', e);
             }
+        } else {
+            warnLog?.log(
+                `delegatePullToWorker DIAG: bgCanvas NOT transferred this call ` +
+                `(alreadyTransferred=${this.bgOffscreenTransferred}, ` +
+                `transferFn=${typeof (this.bgCanvasEl as { transferControlToOffscreen?: unknown }).transferControlToOffscreen})`);
         }
         try {
             await this.decoderWorker.startPullInWorker(

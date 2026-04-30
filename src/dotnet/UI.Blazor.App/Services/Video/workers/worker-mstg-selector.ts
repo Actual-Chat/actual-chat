@@ -37,6 +37,13 @@ export class WorkerMstgSelector {
     private lastWrittenTs = -1;
     private disposed = false;
     private lastBgDrawAtMs = 0;
+    // DIAG: throttled (~1 Hz) instrumentation to verify whether main-write and
+    // bg-paint paths fire together. Confirms hypothesis that bg keeps painting
+    // while main video freezes when the MSTG track downstream is broken.
+    private lastDiagAtMs = 0;
+    private bgPaintsSinceDiag = 0;
+    private mainWritesSinceDiag = 0;
+    private writeFailuresSinceDiag = 0;
 
     constructor(
         writable: WritableStream<VideoFrame>,
@@ -157,6 +164,7 @@ export class WorkerMstgSelector {
                     this.bgPainter.ctx.drawImage(eligible, 0, 0, BG_CANVAS_WIDTH, bgH);
                     bgBoxBlur(this.bgPainter.ctx, BG_CANVAS_WIDTH, bgH,
                         BG_BOX_BLUR_RADIUS, BG_BOX_BLUR_PASSES);
+                    this.bgPaintsSinceDiag++;
                 } catch (e) {
                     warnLog?.log('Bg paint failed:', e);
                 }
@@ -165,13 +173,30 @@ export class WorkerMstgSelector {
 
         this.writeInFlight = true;
         this.writer.write(eligible)
+            .then(() => { this.mainWritesSinceDiag++; })
             .catch((e: unknown) => {
+                this.writeFailuresSinceDiag++;
                 if (!this.disposed) warnLog?.log('MSTG worker write failed:', e);
             })
             .finally(() => {
                 this.writeInFlight = false;
                 if (!this.disposed && this.queue.length > 0) this.tick();
             });
+
+        // DIAG: emit a 1 Hz summary so we can correlate main-write activity vs bg-paint activity.
+        // If bg keeps incrementing but mainWrites stalls (or writeFailures climbs), we have
+        // evidence that the MSTG-side path is broken while the decoder + worker are healthy.
+        const diagNowMs = performance.now();
+        if (diagNowMs - this.lastDiagAtMs >= 1000) {
+            this.lastDiagAtMs = diagNowMs;
+            warnLog?.log(
+                `MstgSelector DIAG: queueDepth=${this.queue.length}, writeInFlight=${this.writeInFlight}, ` +
+                `bgPaints/s=${this.bgPaintsSinceDiag}, mainWrites/s=${this.mainWritesSinceDiag}, ` +
+                `writeFailures/s=${this.writeFailuresSinceDiag}, hasBgPainter=${!!this.bgPainter}`);
+            this.bgPaintsSinceDiag = 0;
+            this.mainWritesSinceDiag = 0;
+            this.writeFailuresSinceDiag = 0;
+        }
     }
 }
 

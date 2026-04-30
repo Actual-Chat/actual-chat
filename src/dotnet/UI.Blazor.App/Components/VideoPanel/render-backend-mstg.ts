@@ -46,14 +46,26 @@ export class OffThreadRenderBackend implements RenderBackend {
 
     onTrackReady(track: MediaStreamTrack): void {
         if (this.disposed) {
+            warnLog?.log(`onTrackReady DIAG: backend disposed, dropping track id=${track.id} readyState=${track.readyState}`);
             try { track.stop(); } catch { /* ignore */ }
             return;
         }
         if (this.trackAttached) {
-            warnLog?.log('onTrackReady called twice; ignoring second track');
+            const existingStream = this.videoEl.srcObject;
+            const existingTracks = existingStream instanceof MediaStream ? existingStream.getTracks() : [];
+            const existingIds = existingTracks.map(t => `${t.id}:${t.readyState}`).join(',');
+            warnLog?.log(
+                `onTrackReady called twice; ignoring second track. ` +
+                `DIAG: newTrack=${track.id}:${track.readyState}, existingTracks=[${existingIds}], ` +
+                `videoPaused=${this.videoEl.paused}, videoReadyState=${this.videoEl.readyState}, ` +
+                `videoCurrentTime=${this.videoEl.currentTime.toFixed(2)}s, ` +
+                `videoWidth=${this.videoEl.videoWidth}x${this.videoEl.videoHeight}`);
             try { track.stop(); } catch { /* ignore */ }
             return;
         }
+        warnLog?.log(
+            `onTrackReady DIAG: first attach, track=${track.id}:${track.readyState}, ` +
+            `srcObjectWasNull=${this.videoEl.srcObject === null}`);
         this.trackAttached = true;
         const stream = new MediaStream([track]);
         this.videoEl.srcObject = stream;
