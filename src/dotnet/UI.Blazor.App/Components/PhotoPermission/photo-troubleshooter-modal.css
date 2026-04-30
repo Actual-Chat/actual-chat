@@ -1,22 +1,3 @@
-.photo-troubleshooter-modal .modal-header-interactive {
-    @apply bg-bubble;
-    @apply max-h-none;
-    padding-top: calc(1rem + var(--safe-area-top-narrow));
-    @apply pb-4 text-06;
-}
-.photo-troubleshooter-modal .modal-header-interactive * {
-    @apply text-06;
-}
-.photo-troubleshooter-modal .modal-header-interactive .modal-title {
-    @apply text-06;
-    @apply text-title-1;
-}
-
-.photo-troubleshooter-modal .modal-header-interactive .btn .btn-content {
-    @apply text-06;
-    @apply text-title-1;
-}
-
 .photo-troubleshooter-modal .dialog-body {
     @apply gap-y-4;
 }
