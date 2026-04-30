@@ -92,7 +92,7 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
         var focusedIds = await _focusedSpeakerIds.Use(cancellationToken).ConfigureAwait(false);
         // Own-preview slot reflects any local source — webcam when active, else
         // screencast. VideoStreamingPreview picks the actual source per streamKind.
-        var isOwnRecording = await ChatVideoUI.IsOwnRecording(ChatId, cancellationToken).ConfigureAwait(false);
+        var isOwnRecording = await ChatVideoUI.IsOwnWebcamRecording(ChatId, cancellationToken).ConfigureAwait(false);
         var isOwnScreencasting = await ChatVideoUI.IsOwnScreencasting(ChatId, cancellationToken).ConfigureAwait(false);
         var hasOwnPreview = isOwnRecording || isOwnScreencasting;
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(ChatId, cancellationToken).ConfigureAwait(false);

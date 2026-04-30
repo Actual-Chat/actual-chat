@@ -326,7 +326,7 @@
         var isCollapsed = await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
 
         // Get centralized video state (for recording status)
-        var isOwnRecording = await ChatVideoUI.IsOwnRecording(chatId, cancellationToken).ConfigureAwait(false);
+        var isOwnRecording = await ChatVideoUI.IsOwnWebcamRecording(chatId, cancellationToken).ConfigureAwait(false);
         var isOwnScreencasting = await ChatVideoUI.IsOwnScreencasting(chatId, cancellationToken).ConfigureAwait(false);
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
 

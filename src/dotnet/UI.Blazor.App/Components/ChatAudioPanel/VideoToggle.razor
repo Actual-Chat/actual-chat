@@ -34,7 +34,7 @@
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var chatId = chat.Id;
-        return await ChatVideoUI.IsOwnRecording(chatId, cancellationToken).ConfigureAwait(false);
+        return await ChatVideoUI.IsOwnWebcamRecording(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     private void OnVideoClick(bool enable) {

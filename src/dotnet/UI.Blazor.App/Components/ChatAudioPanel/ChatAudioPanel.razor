@@ -5,20 +5,20 @@
     var audioState = m.AudioState;
     var isListening = audioState?.IsListening == true;
     var isRecording = audioState?.IsRecording == true;
-    var isOwnCameraStreaming = m.IsOwnRecording;
+    var isOwnWebcamRecording = m.IsOwnWebcamRecording;
     var isOwnScreencasting = m.IsOwnScreencasting;
-    var isOwnStreaming = isOwnCameraStreaming || isOwnScreencasting;
+    var isOwnVideoStreaming = isOwnWebcamRecording || isOwnScreencasting;
     var isAnyoneVideoStreaming = m.IsAnyoneVideoStreaming;
-    var showHeader = (isListening || isOwnCameraStreaming)
-        && (isRecording || isOwnCameraStreaming || isAnyoneVideoStreaming);
-    var showMainVideoControls = isRecording || isAnyoneVideoStreaming || isOwnStreaming;
+    var showHeaderVoiceSettings = isListening && isRecording;
+    var showVideoControls = isOwnVideoStreaming || isRecording || isAnyoneVideoStreaming;
+    var showHeader = showHeaderVoiceSettings || showVideoControls;
 }
 
 <div class="chat-audio-panel">
     @if (IsNarrow && showHeader) {
         <div class="audio-panel-header">
             <div class="c-left">
-                @if (isOwnCameraStreaming) {
+                @if (isOwnWebcamRecording) {
                     <ButtonRound Click="@OnSwitchCamera">
                         <i class="icon-camera-switch text-2xl"></i>
                     </ButtonRound>
@@ -34,7 +34,7 @@
         </div>
     }
     <div class="audio-panel-wrapper">
-        @if (!IsNarrow && showMainVideoControls) {
+        @if (!IsNarrow && showVideoControls) {
             <div class="@(isOwnScreencasting ? "screencast-on" : "screencast-off") screencast-wrapper">
                 <ButtonRound Click="@(() => OnScreencastClick(!isOwnScreencasting))"
                     Tooltip="@(isOwnScreencasting ? "Stop screen share" : "Share screen")"
@@ -93,12 +93,12 @@
         var chat = Chat;
         var audioState = await ChatAudioUI.GetState(chat.Id).ConfigureAwait(false);
         var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chat.Id, cancellationToken).ConfigureAwait(false);
-        var isOwnRecording = await ChatVideoUI.IsOwnRecording(chat.Id, cancellationToken).ConfigureAwait(false);
+        var isOwnWebcamRecording = await ChatVideoUI.IsOwnWebcamRecording(chat.Id, cancellationToken).ConfigureAwait(false);
         var isOwnScreencasting = await ChatVideoUI.IsOwnScreencasting(chat.Id, cancellationToken).ConfigureAwait(false);
         return new(
             audioState,
             isAnyoneVideoStreaming,
-            isOwnRecording,
+            isOwnWebcamRecording,
             isOwnScreencasting);
 
     }
@@ -108,6 +108,6 @@
     public sealed record Model(
         ChatAudioState? AudioState,
         bool IsAnyoneVideoStreaming,
-        bool IsOwnRecording,
+        bool IsOwnWebcamRecording,
         bool IsOwnScreencasting);
 }

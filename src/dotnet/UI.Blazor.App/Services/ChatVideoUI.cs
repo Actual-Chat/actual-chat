@@ -65,7 +65,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     /// <summary>
     /// Primary stream kind for a single-value UI surface. Screencast takes precedence
-    /// when both are active. Prefer <see cref="IsOwnRecording"/> / <see cref="IsOwnScreencasting"/>
+    /// when both are active. Prefer <see cref="IsOwnWebcamRecording"/> / <see cref="IsOwnScreencasting"/>
     /// for independent checks.
     /// </summary>
     [ComputeMethod]
@@ -73,13 +73,13 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     {
         if (await IsOwnScreencasting(chatId, cancellationToken).ConfigureAwait(false))
             return StreamKind.Screencast;
-        if (await IsOwnRecording(chatId, cancellationToken).ConfigureAwait(false))
+        if (await IsOwnWebcamRecording(chatId, cancellationToken).ConfigureAwait(false))
             return StreamKind.Webcam;
         return null;
     }
 
     [ComputeMethod]
-    public virtual async Task<bool> IsOwnRecording(ChatId chatId, CancellationToken cancellationToken = default)
+    public virtual async Task<bool> IsOwnWebcamRecording(ChatId chatId, CancellationToken cancellationToken = default)
     {
         var recordingChatId = await _recordingChatId.Use(cancellationToken).ConfigureAwait(false);
         return recordingChatId == chatId;

@@ -75,7 +75,7 @@
         if (_isSuspended)
             return _suspendedModel;
 
-        var isOwnRecording = await ChatVideoUI.IsOwnRecording(chatId, cancellationToken).ConfigureAwait(false);
+        var isOwnRecording = await ChatVideoUI.IsOwnWebcamRecording(chatId, cancellationToken).ConfigureAwait(false);
         var isOwnScreencasting = await ChatVideoUI.IsOwnScreencasting(chatId, cancellationToken).ConfigureAwait(false);
         var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
         var lastError = await ChatVideoUI.GetLastVideoRecorderError(cancellationToken).ConfigureAwait(false);
