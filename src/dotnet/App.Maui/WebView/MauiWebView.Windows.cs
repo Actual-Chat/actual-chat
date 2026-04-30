@@ -1,4 +1,3 @@
-using ActualChat.UI.Blazor.App.Services;
 using Microsoft.AspNetCore.Components.WebView;
 using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Maui.Platform;
@@ -114,11 +113,7 @@ public partial class MauiWebView
         var webView = WindowsWebView.CoreWebView2;
         var cookieName = Constants.Session.CookieName;
 
-        var cookie = webView.CookieManager.CreateCookie(cookieName, session.Id, MauiSettings.LocalHost, "/");
-        cookie.IsHttpOnly = true;
-        webView.CookieManager.AddOrUpdateCookie(cookie);
-
-        cookie = webView.CookieManager.CreateCookie(cookieName, session.Id, MauiSettings.Host, "/");
+        var cookie = webView.CookieManager.CreateCookie(cookieName, session.Id, MauiSettings.Host, "/");
         cookie.SameSite = CoreWebView2CookieSameSiteKind.None;
         cookie.IsHttpOnly = true;
         cookie.IsSecure = true;

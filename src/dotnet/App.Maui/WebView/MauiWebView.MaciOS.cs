@@ -78,30 +78,32 @@ public partial class MauiWebView
     private partial void OnLoaded(object? sender, EventArgs eventArgs)
         => WKWebView.UIDelegate = UIDelegate.Instance;
 
-    private partial async Task SetupSessionCookie(Session session)
+    private partial Task SetupSessionCookie(Session session)
     {
-        await SetCookie(WKWebView, MauiSettings.LocalHost, session).ConfigureAwait(true);
-        await SetCookie(WKWebView, MauiSettings.Host, session).ConfigureAwait(true);
-        return;
-
-        static Task SetCookie(WKWebView webView, string domain, Session session) {
-            var cookieName = Constants.Session.CookieName;
-            var properties = new NSDictionary(
-                NSHttpCookie.KeyName, cookieName,
-                NSHttpCookie.KeyValue, session.Id,
-                NSHttpCookie.KeyPath, "/",
-                NSHttpCookie.KeyDomain, domain,
-                NSHttpCookie.KeySameSitePolicy, "none",
-                NSHttpCookie.KeyVersion, "1", // Version 1 supports same site = none
-                NSHttpCookie.KeySecure, new NSString("1"),
-                new NSString("HttpOnly"), NSNumber.FromBoolean(true),
-                NSHttpCookie.KeyExpires, NSDate.FromTimeIntervalSinceNow(60 * 60 * 24 * 7));
-            var whenSetSource = TaskCompletionSourceExt.New();
-            webView.Configuration.WebsiteDataStore.HttpCookieStore.SetCookie(
-                new NSHttpCookie(properties),
-                () => whenSetSource.SetResult());
-            return whenSetSource.Task;
-        }
+        // It doesn't work on iOS. We use a workaround with SessionTokens. See
+        // - SessionTokens.AutoRefresh
+        // - sessionTokens.get() and api.getSessionToken() usages in TypeScript.
+#if false
+        WKWebView webView = WKWebView;
+        var cookieName = Constants.Session.CookieName;
+        var properties = new NSDictionary(
+            NSHttpCookie.KeyName, cookieName,
+            NSHttpCookie.KeyValue, session.Id,
+            NSHttpCookie.KeyPath, "/",
+            NSHttpCookie.KeyDomain, MauiSettings.Host,
+            NSHttpCookie.KeySameSitePolicy, "none",
+            NSHttpCookie.KeyVersion, "1", // Version 1 supports same site = none
+            NSHttpCookie.KeySecure, new NSString("1"),
+            new NSString("HttpOnly"), NSNumber.FromBoolean(true),
+            NSHttpCookie.KeyExpires, NSDate.FromTimeIntervalSinceNow(60 * 60 * 24 * 7));
+        var whenSetSource = TaskCompletionSourceExt.New();
+        webView.Configuration.WebsiteDataStore.HttpCookieStore.SetCookie(
+            new NSHttpCookie(properties),
+            () => whenSetSource.SetResult());
+        return whenSetSource.Task;
+#else
+        return Task.CompletedTask;
+#endif
     }
 
     // Nested types

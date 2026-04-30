@@ -52,18 +52,12 @@ public partial class MauiWebView
         // May be will be required https://stackoverflow.com/questions/2566485/webview-and-cookies-on-android
         cookieManager.SetAcceptCookie(true);
         cookieManager.SetAcceptThirdPartyCookies(AndroidWebView, true);
-        var sessionCookieValue = $"{cookieName}={session.Id}; path=/; secure; samesite=none; httponly";
- #pragma warning disable CA2025
-        await SetCookie(cookieManager, "https://" + MauiSettings.LocalHost, sessionCookieValue).ConfigureAwait(true);
-        await SetCookie(cookieManager, "https://" + MauiSettings.Host, sessionCookieValue).ConfigureAwait(true);
- #pragma warning restore CA2025
-        return;
-
-        static Task SetCookie(CookieManager cookieManager, string url, string value) {
-            var taskSource = TaskCompletionSourceExt.New();
-            cookieManager.SetCookie(url, value, new CookieSetValueCallback(taskSource));
-            return taskSource.Task;
-        }
+        var taskSource = TaskCompletionSourceExt.New();
+        cookieManager.SetCookie(
+            "https://" + MauiSettings.Host,
+            $"{cookieName}={session.Id}; path=/; secure; samesite=none; httponly",
+            new CookieSetValueCallback(taskSource));
+        await taskSource.Task.ConfigureAwait(true);
     }
 
     // Nested types
