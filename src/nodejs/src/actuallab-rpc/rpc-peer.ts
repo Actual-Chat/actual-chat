@@ -135,7 +135,8 @@ export const defaultConnectionUrlResolver: RpcConnectionUrlResolver = peer => {
     }
 };
 
-function scrubConnectionUrl(url: string): string {
+// eslint-disable-next-line prefer-const -- intentionally `let` so consumers can swap the implementation
+export let sanitizeUrl = (url: string): string => {
     try {
         const parsed = new URL(url);
         if (!parsed.searchParams.has('session'))
@@ -145,7 +146,7 @@ function scrubConnectionUrl(url: string): string {
     } catch {
         return url.replace(/([?&]session=)[^&]*/i, '$1<redacted>');
     }
-}
+};
 
 /** Extract the serialization format key from an `f=` query parameter, if any. */
 function parseFormatFromUrl(url: string): string | undefined {
@@ -771,7 +772,7 @@ export class RpcClientPeer extends RpcPeer {
                 try {
                     const connUrl = await this.connectionUrlResolver(this);
                     // Mirrors RpcClientPeer.cs:45 — "Connecting...".
-                    infoLog?.log(`'${this.ref}': Connecting to ${scrubConnectionUrl(connUrl)}`);
+                    infoLog?.log(`'${this.ref}': Connecting to ${sanitizeUrl(connUrl)}`);
                     const ws =
                         this.webSocketFactory?.(connUrl) ??
                         (new WebSocket(connUrl) as unknown as WebSocketLike);
