@@ -97,6 +97,17 @@ let encoderFailed = false;
 let encoderErrorSeen = false;
 let framesWithoutOutput = 0;
 let nextFrameIsKeyFrame = false;
+
+// Same-codec rebuild policy: on the first async OperationError we try to
+// resurrect the encoder once before declaring the codec dead. Many failures
+// are transient (MediaCodec reconfigure race, NVENC slot contention) and a
+// fresh VideoEncoder instance recovers cleanly. If the rebuild itself fails
+// or another error arrives within the cooldown, we fall through to the
+// standard codec-fallback chain.
+let encoderRebuildAttempted = false;
+let encoderRebuildInFlight = false;
+let lastEncoderRebuildAtMs = 0;
+const ENCODER_REBUILD_COOLDOWN_MS = 5000;
 // One-shot diagnostic gate: dump full description + first IDR bytes of the
 // first HEVC keyframe per spatial layer after every fresh encoder setup or
 // codec switch. Lets us diff the bytes between AV1→HEVC switch (broken on
@@ -973,16 +984,49 @@ function onEncoderError(error: Error): void {
 
     // Async error → primary encoder transitions to 'closed'. No further frames
     // will reach encode() (encodeProcessedFrame early-returns when state !=
-    // 'configured'), so the frame-count watchdog can't fire. Trigger the codec
-    // fallback directly when the primary is dead. Extras-only errors leave
-    // primary alive; this branch skips them and the regular watchdog stays in
-    // charge for primary-stalled-without-error scenarios.
-    if (!encoderFailed && encoder && encoderConfig && encoder.getState() === 'closed') {
-        encoderFailed = true;
-        const codec = encoderConfig.codec;
-        warnLog?.log(`Encoder dead from async error: ${codec} (${error.name}) — triggering fallback`);
-        void callbacks.onEncoderFailed(codec, rpcNoWait);
+    // 'configured'), so the frame-count watchdog can't fire. Extras-only errors
+    // leave primary alive; this branch skips them and the regular watchdog
+    // stays in charge for primary-stalled-without-error scenarios.
+    if (encoderFailed || !encoder || !encoderConfig || encoder.getState() !== 'closed') return;
+
+    const codec = encoderConfig.codec;
+    const now = performance.now();
+
+    // Same-codec rebuild path: try once per session before falling back.
+    // `encoderRebuildAttempted` resets on switchCodec / start; cooldown covers
+    // the multi-error storm that can come from one underlying failure (Chrome
+    // sometimes fires `error` twice during MediaCodec teardown).
+    if (!encoderRebuildAttempted
+        && !encoderRebuildInFlight
+        && (lastEncoderRebuildAtMs === 0 || now - lastEncoderRebuildAtMs > ENCODER_REBUILD_COOLDOWN_MS)) {
+        encoderRebuildAttempted = true;
+        encoderRebuildInFlight = true;
+        lastEncoderRebuildAtMs = now;
+        warnLog?.log(`Encoder ${codec} died (${error.name} ${error.message}); attempting same-codec rebuild`);
+        void encoder.rebuild()
+            .then(() => {
+                encoderRebuildInFlight = false;
+                infoLog?.log(`Encoder rebuild succeeded: ${codec}`);
+                // New session means fresh AVCC/HVCC description bytes on the
+                // next keyframe — drop the cached layer-0 entry so the worker
+                // re-emits the description for downstream consumers.
+                storedDescriptionBytesByLayer.delete(0);
+                firstKeyframeDumpedByLayer.delete(0);
+            })
+            .catch((rebuildErr: unknown) => {
+                encoderRebuildInFlight = false;
+                const e = rebuildErr instanceof Error ? rebuildErr : new Error(String(rebuildErr));
+                warnLog?.log(`Encoder rebuild failed: ${e.name} ${e.message} — triggering fallback`);
+                if (encoderFailed) return;
+                encoderFailed = true;
+                void callbacks.onEncoderFailed(codec, rpcNoWait);
+            });
+        return;
     }
+
+    encoderFailed = true;
+    warnLog?.log(`Encoder dead from async error: ${codec} (${error.name}) — triggering fallback`);
+    void callbacks.onEncoderFailed(codec, rpcNoWait);
 }
 
 // Try to reuse a pooled encoder. Returns true if reused. Match by codec
@@ -1748,6 +1792,8 @@ export const serverImpl: VideoProcessingWorker = {
         // synchronously, keep encoderErrorSeen=true so the watchdog fires again
         // for the new codec; otherwise clear it for a normal warmup window.
         encoderFailed = false; framesWithoutOutput = 0;
+        // New codec gets its own same-codec rebuild budget.
+        encoderRebuildAttempted = false; encoderRebuildInFlight = false; lastEncoderRebuildAtMs = 0;
         if (!switchFailed) {
             encoderErrorSeen = false; lastStreamError = '';
         }
@@ -1923,6 +1969,8 @@ export const serverImpl: VideoProcessingWorker = {
         videoStream = null; lastVideoStream = null; pendingStreamFrames = [];
         codecSettings = null; storedDescriptionBytesByLayer.clear();
         streamingEnabled = false; streamRecreations = 0; streamStatus = 'idle'; lastStreamError = '';
+        encoderFailed = false; encoderErrorSeen = false; framesWithoutOutput = 0;
+        encoderRebuildAttempted = false; encoderRebuildInFlight = false; lastEncoderRebuildAtMs = 0;
 
         infoLog?.log('Video processing worker stopped');
     },

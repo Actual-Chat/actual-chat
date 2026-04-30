@@ -359,6 +359,23 @@ export class WebCodecsEncoder {
         infoLog?.log(`Codec switched to ${newConfig.codec}`);
     }
 
+    // Resurrect a dead encoder with the same config: close (if still open),
+    // create a fresh VideoEncoder, and configure it. Called by the worker on
+    // the first OperationError so transient HW glitches (MediaCodec session
+    // hiccup, NVENC contention spike) don't blacklist the codec immediately.
+    // Caller is responsible for cooldown/limit policy. Throws if configure()
+    // fails synchronously — async errors after this returns will arrive via
+    // the `error` callback as usual.
+    async rebuild(): Promise<void> {
+        await this.replaceUnderlyingEncoder();
+        this.encoder.configure(this.buildEncoderConfig());
+        // chunkSequence/frameCount/totalBytes preserved — this is a recovery,
+        // not a stream restart. Force a fresh keyframe so receivers can resync
+        // immediately after the gap caused by the dead session.
+        this.lastKeyFrame = this.frameCount - this.config.keyframeInterval;
+        this.lastKeyFrameTimeMs = 0;
+    }
+
     // Flush in-flight encodes, close the current VideoEncoder session, wait
     // for the platform to release the HW slot, then create a fresh
     // VideoEncoder instance. Caller must follow up with configure() (or
