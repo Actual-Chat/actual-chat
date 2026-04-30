@@ -1771,13 +1771,30 @@ export class VideoPlayer {
             try { decoderStats = await this.decoderWorker.getStats(); } catch { /* ignore */ }
         }
 
-        // Compute incoming bitrate
-        const elapsedSec = this.firstFrameReceivedTime > 0
-            ? (performance.now() - this.firstFrameReceivedTime) / 1000
-            : 0;
-        const bitrateKbps = elapsedSec > 0
-            ? Math.round(this.receivedBytes * 8 / elapsedSec / 1000)
-            : 0;
+        // Compute incoming bitrate. In off-thread pull mode the worker owns
+        // the pull loop, so main-thread receivedBytes / receivedFrameCount /
+        // receivedKeyframeCount stay at 0 — read pull stats from the worker
+        // instead. Fall back to local counters for the main-thread pull path.
+        const workerPull = this.offThreadPullActive
+            && decoderStats?.pullReceivedFrameCount !== undefined
+            ? decoderStats : null;
+        let bitrateKbps: number;
+        let receivedFrameCount: number;
+        let receivedKeyframeCount: number;
+        if (workerPull) {
+            bitrateKbps = workerPull.pullBitrateKbps ?? 0;
+            receivedFrameCount = workerPull.pullReceivedFrameCount ?? 0;
+            receivedKeyframeCount = workerPull.pullReceivedKeyframeCount ?? 0;
+        } else {
+            const elapsedSec = this.firstFrameReceivedTime > 0
+                ? (performance.now() - this.firstFrameReceivedTime) / 1000
+                : 0;
+            bitrateKbps = elapsedSec > 0
+                ? Math.round(this.receivedBytes * 8 / elapsedSec / 1000)
+                : 0;
+            receivedFrameCount = this.receivedFrameCount;
+            receivedKeyframeCount = this.receivedKeyframeCount;
+        }
 
         // Compute A/V drift. In off-thread (mstg) mode the main-thread render
         // loop never runs, so `lastRenderedOffsetMs` stays at 0 and the
@@ -1809,8 +1826,8 @@ export class VideoPlayer {
             rttGradientMs: Math.round(this.rttGradientMs),
             playbackRate: this.playbackRate,
             bufferSize: this.pendingFrames.length,
-            receivedFrameCount: this.receivedFrameCount,
-            receivedKeyframeCount: this.receivedKeyframeCount,
+            receivedFrameCount,
+            receivedKeyframeCount,
             renderFrameCount: this.renderFrameCount,
             skipToLiveCount: this.skipToLiveCount,
             waitingForKeyframe: this.waitingForKeyframe,

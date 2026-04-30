@@ -147,8 +147,26 @@ const PULL_LATENCY_REPORT_INTERVAL_MS = 2000;
 let lastLatencyReportAt = 0;
 let apiInitialized = false;
 
+// Pull-loop stats. Populated only on the worker-owned pull path
+// (`runPullLoop`). Surfaced via `getDecoderStatsSnapshot` so VideoPlayer's
+// diagnostics can show bitrate / received frames in off-thread mode —
+// otherwise main-thread `processRpcFrame` is bypassed and those counters
+// stay at 0. Times use Date.now() because the worker and main-thread
+// `performance.now()` have different time origins.
+let pullReceivedBytes = 0;
+let pullReceivedFrameCount = 0;
+let pullReceivedKeyframeCount = 0;
+let pullFirstFrameAt = 0;
+
+function resetPullStats(): void {
+    pullReceivedBytes = 0;
+    pullReceivedFrameCount = 0;
+    pullReceivedKeyframeCount = 0;
+    pullFirstFrameAt = 0;
+}
+
 function getDecoderStatsSnapshot(): DecoderStats {
-    return decoder?.getStats() ?? {
+    const base: DecoderStats = decoder?.getStats() ?? {
         decodedFrames: 0,
         droppedFrames: 0,
         averageDecodeTime: 0,
@@ -159,6 +177,16 @@ function getDecoderStatsSnapshot(): DecoderStats {
         hardwareAcceleration: 'unknown',
         resolution: 'N/A'
     };
+    if (pullFirstFrameAt > 0) {
+        const elapsedSec = (Date.now() - pullFirstFrameAt) / 1000;
+        base.pullBitrateKbps = elapsedSec > 0
+            ? Math.round(pullReceivedBytes * 8 / elapsedSec / 1000)
+            : 0;
+        base.pullReceivedBytes = pullReceivedBytes;
+        base.pullReceivedFrameCount = pullReceivedFrameCount;
+        base.pullReceivedKeyframeCount = pullReceivedKeyframeCount;
+    }
+    return base;
 }
 
 function buildLatencyReport(streamOffsetMs: number): DecoderWorkerLatencyReport {
@@ -501,6 +529,10 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
             if (offsetMs > lastArrivedOffsetMs) lastArrivedOffsetMs = offsetMs;
 
             const data = frame.Data;
+            pullReceivedBytes += data.byteLength;
+            pullReceivedFrameCount++;
+            if (frame.IsKeyFrame) pullReceivedKeyframeCount++;
+            if (pullFirstFrameAt === 0) pullFirstFrameAt = Date.now();
             const dataBuffer = ownedArrayBuffer(data);
             let descBuffer: ArrayBuffer | undefined;
             const desc = frame.Description;
@@ -1313,6 +1345,7 @@ const serverImpl: DecoderWorker = {
         pullStartedAtMs = startedAtMs;
         pullActive = true;
         activePullStreamId = streamId;
+        resetPullStats();
         // Fire and forget — pull loop runs in background, ends via onPullEnded.
         void runPullLoop(streamId, skipToMs);
     },

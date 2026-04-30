@@ -32,6 +32,12 @@ export interface DecoderStats {
   backpressureDrops: number;
   hardwareAcceleration: string;
   resolution: string;
+  // Pull stats — populated only when the decoder worker owns the pull loop
+  // (off-thread pull). Main-thread pull tracks these in VideoPlayer directly.
+  pullBitrateKbps?: number;
+  pullReceivedBytes?: number;
+  pullReceivedFrameCount?: number;
+  pullReceivedKeyframeCount?: number;
 }
 
 export class WebCodecsDecoder {
