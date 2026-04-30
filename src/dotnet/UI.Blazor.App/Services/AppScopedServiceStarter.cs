@@ -116,8 +116,7 @@ public sealed class AppScopedServiceStarter
 
             // Starting less important UI services
             await Task.Delay(baseDelay, cancellationToken).ConfigureAwait(false);
-            if (hostKind.IsApp())
-                Hub.Services.GetRequiredService<SessionTokens>().Start();
+            Hub.Services.GetRequiredService<SessionTokens>().Start();
             Hub.Services.GetRequiredService<BackgroundActivityUI>().Start();
             Hub.Services.GetRequiredService<ConnectivityUI>().Start();
             Hub.Services.GetRequiredService<ReconnectUI>().Start();
