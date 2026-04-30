@@ -8,6 +8,11 @@
 //       mutationStorm: { enabled: true, threshold: 100, windowMs: 1000 },
 //       watchdog: { enabled: true, stallThresholdMs: 1000 },
 //   });
+//
+// Persistent kill switch (per browser session, survives reloads):
+//   logLevels.override('MainThreadDiagnostics', 1000) // 1000 = LogLevel.None
+//   logLevels.override('MainThreadDiagnostics', 2)    // 2 = Info — re-enable
+// init() detects None and skips installation, logging the fact via console.log.
 
 const LOAF_DEDUPE_WINDOW_MS = 5000;
 const MO_STORM_COOLDOWN_MS = 5000;
@@ -51,6 +56,14 @@ export class MainThreadDiagnostics {
     private static watchdogVisibilityHandler: (() => void) | null = null;
 
     public static init(options?: MainThreadDiagnosticsOptions): void {
+        // Persistent kill switch: if the scope is silenced (LogLevel.None — i.e.
+        // even errorLog is null), skip installation. Log directly via console
+        // since the regular log channels are off in this state.
+        if (!errorLog) {
+            console.log('[MainThreadDiagnostics] init: disabled (log level set to None)');
+            return;
+        }
+
         const o = options ?? {};
         if (o.longAnimationFrame?.enabled !== false)
             this.installLongAnimationFrameReporter(o.longAnimationFrame?.thresholdMs ?? 400);
