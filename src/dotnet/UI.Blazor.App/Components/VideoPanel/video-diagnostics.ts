@@ -1,5 +1,9 @@
 import { getActiveRecorder, type OwnStreamDiagnostics } from './video-recorder';
 import { getActivePlayers, type RemoteStreamDiagnostics } from './video-player';
+import {
+    getForceH264Only as getForceH264OnlyImpl,
+    setForceH264Only as setForceH264OnlyImpl,
+} from '../../Services/Video/codec-support';
 
 export interface OwnStreamDiagnosticsSnapshot {
     stream: OwnStreamDiagnostics | null;
@@ -16,4 +20,21 @@ export async function collectRemoteStreamDiagnostics(streamId: string): Promise<
     const player = getActivePlayers().get(streamId);
     if (!player) return null;
     return player.getDiagnosticsAsync();
+}
+
+// Diagnostic settings — toggleable from VideoDiagnosticsSettingsModal.
+// Backed by localStorage in codec-support.ts; takes effect on the next
+// codec detection pass (typically the next stream).
+export interface VideoDebugSettings {
+    forceH264Only: boolean;
+}
+
+export function getVideoDebugSettings(): VideoDebugSettings {
+    return {
+        forceH264Only: getForceH264OnlyImpl(),
+    };
+}
+
+export function setVideoDebugForceH264Only(enabled: boolean): void {
+    setForceH264OnlyImpl(enabled);
 }

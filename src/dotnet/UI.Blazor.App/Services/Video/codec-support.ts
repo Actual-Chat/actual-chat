@@ -61,6 +61,37 @@ const CODEC_PROFILES = {
 // at most once. Stores the in-flight Promise so concurrent callers share work.
 const encoderCodecCache = new Map<string, Promise<CodecInfo[]>>();
 
+// Debug flag: when true, codec detection only considers H.264. Persists in
+// localStorage so it survives page reloads. Toggled from VideoDiagnosticsSettingsModal.
+// Used to reproduce / debug AVC-only behaviour when other codecs cause issues.
+const FORCE_H264_ONLY_KEY = 'video.debug.forceH264Only';
+
+function readForceH264OnlyFromStorage(): boolean {
+    try {
+        return globalThis.localStorage.getItem(FORCE_H264_ONLY_KEY) === 'true';
+    } catch {
+        // localStorage access can throw in private mode / sandboxed contexts.
+        return false;
+    }
+}
+
+export function getForceH264Only(): boolean {
+    return readForceH264OnlyFromStorage();
+}
+
+export function setForceH264Only(enabled: boolean): void {
+    try {
+        if (enabled) globalThis.localStorage.setItem(FORCE_H264_ONLY_KEY, 'true');
+        else globalThis.localStorage.removeItem(FORCE_H264_ONLY_KEY);
+    } catch (e) {
+        warnLog?.log(`setForceH264Only: localStorage write failed: ${String(e)}`);
+    }
+    // Invalidate detection caches so the next stream re-probes with the new flag.
+    encoderCodecCache.clear();
+    decoderCodecCache = null;
+    warnLog?.log(`Debug: forceH264Only set to ${enabled}; codec detection caches cleared`);
+}
+
 export function detectSupportedCodecs(width = 1920, height = 1080): Promise<CodecInfo[]> {
     const key = `${width}x${height}`;
     let cached = encoderCodecCache.get(key);
@@ -85,8 +116,14 @@ const REPRESENTATIVE_CODECS: { category: CodecInfo['category']; name: string; co
 ];
 
 async function detectSupportedCodecsUncached(width: number, height: number): Promise<CodecInfo[]> {
+    const forceH264 = readForceH264OnlyFromStorage();
+    const probeList = forceH264
+        ? REPRESENTATIVE_CODECS.filter(c => c.category === 'h264')
+        : REPRESENTATIVE_CODECS;
+    if (forceH264)
+        warnLog?.log('Debug: forceH264Only=true → encoder detection limited to H.264');
     const results: CodecInfo[] = [];
-    for (const { category, name, codec } of REPRESENTATIVE_CODECS) {
+    for (const { category, name, codec } of probeList) {
         const { supported, hardwareAccelerated, scalabilityModes } = await isCodecSupported(codec, category, width, height);
         // Report with the profile string the encoder will actually use for this
         // category at the target resolution. getCodecForCategory may pick a
@@ -502,6 +539,11 @@ export function detectSupportedDecoderCodecs(): Promise<string[]> {
 
 async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
     const codecs: string[] = ['h264']; // H.264 always assumed supported
+
+    if (readForceH264OnlyFromStorage()) {
+        warnLog?.log('Debug: forceH264Only=true → decoder detection limited to H.264');
+        return codecs;
+    }
 
     // AV1 — TEMPORARILY DISABLED (mobile issues). Re-enable by restoring the probe block.
     warnLog?.log('Decoder AV1: temporarily disabled');

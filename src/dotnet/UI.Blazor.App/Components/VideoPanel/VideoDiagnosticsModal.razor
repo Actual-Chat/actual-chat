@@ -15,6 +15,7 @@
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Default"
     HasCloseButton="true">
     <Buttons>
+        <Button Class="btn-modal" Click="@OnSettingsClick">Settings</Button>
         <Button Class="btn-modal" Click="@OnCopyClick">Copy</Button>
     </Buttons>
     <Body>
@@ -445,6 +446,9 @@
 
     private string GetShowDetailsIndicator(bool show)
         => show ? ">---<" : "<->";
+
+    private void OnSettingsClick()
+        => _ = Hub.ModalUI.Show(new VideoDiagnosticsSettingsModal.Model());
 
     private async Task OnCopyClick() {
         var sb = new System.Text.StringBuilder();

@@ -1,0 +1,62 @@
+@namespace ActualChat.UI.Blazor.App.Components.VideoPanel
+@using ActualChat.UI.Blazor.App.Module
+@inherits ComponentBase<AppUIHub>
+@implements IModalView<VideoDiagnosticsSettingsModal.Model>
+
+<DialogFrame
+    Class="video-diagnostics-modal"
+    Title="Video Debug Settings"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.Default"
+    HasCloseButton="true">
+    <Body>
+        <div class="diag-section">
+            <div class="diag-section-header">Codec selection</div>
+            <Tile>
+                <TileItem Click="@OnForceH264OnlyClick">
+                    <Content>Force H.264 (AVC) only</Content>
+                    <Caption>
+                        Restrict codec detection to H.264 (AVC). AV1, HEVC and VP9
+                        are excluded for both encoder and decoder. Useful for
+                        reproducing AVC-only behaviour. Takes effect on the next
+                        stream — toggle, then re-join the call.
+                    </Caption>
+                    <Right>
+                        <Toggle IsChecked="@_forceH264Only"/>
+                    </Right>
+                </TileItem>
+            </Tile>
+            <div class="diag-row diag-dim">
+                <span class="diag-label">Storage key</span>
+                <span class="diag-value">localStorage["video.debug.forceH264Only"]</span>
+            </div>
+        </div>
+    </Body>
+</DialogFrame>
+
+@code {
+    private static readonly string JSGetMethod = $"{BlazorUIAppModule.ImportName}.getVideoDebugSettings";
+    private static readonly string JSSetForceH264OnlyMethod = $"{BlazorUIAppModule.ImportName}.setVideoDebugForceH264Only";
+
+    private bool _forceH264Only;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        var settings = await JS.InvokeAsync<VideoDebugSettings>(JSGetMethod);
+        _forceH264Only = settings.ForceH264Only;
+    }
+
+    private async Task OnForceH264OnlyClick() {
+        _forceH264Only = !_forceH264Only;
+        StateHasChanged();
+        await JS.InvokeVoidAsync(JSSetForceH264OnlyMethod, _forceH264Only);
+    }
+
+    // Mirrors `VideoDebugSettings` in `video-diagnostics.ts`. JSInterop uses
+    // System.Text.Json with web defaults (case-insensitive), so PascalCase
+    // properties match the camelCase JS object shape.
+    public sealed record VideoDebugSettings(bool ForceH264Only);
+
+    public sealed record Model;
+}
