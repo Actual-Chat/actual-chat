@@ -297,40 +297,35 @@ export async function signIn(page: Page) {
 
     // Submit — wait for the button to actually become enabled (past debounce + re-render).
     await page.locator('button[type="submit"]:not([disabled])').first().click({ timeout: 15_000 });
-    await page.waitForTimeout(2000);
 
-    // Handle "Account not found" → toggle "Register a new account" and resubmit
-    const accountError = page.locator('.c-account-error:has-text("Account not found")');
-    if (await accountError.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await page.locator('label:has-text("Register a new account")').click();
-        await page.waitForTimeout(300);
-        await page.locator('button[type="submit"]').first().click();
-        await page.waitForTimeout(2000);
+    // Wait for the TOTP step to render. TotpInput renders 6 inputs with inputmode="numeric"
+    // and auto-verifies on completion (no separate "Verify" button — see TotpInput.razor).
+    // Cold start in CI can delay the TOTP step well past 10s.
+    const otpDigits = page.locator('.totp-input input[inputmode="numeric"]');
+    await otpDigits.first().waitFor({ state: 'visible', timeout: 30_000 });
+
+    // Fill all 6 digits — fill() bypasses pointer events, so it works even if the
+    // "Register new account?" ConfirmModal has rendered on top of the TOTP step.
+    for (let i = 0; i < 6; i++) {
+        await otpDigits.nth(i).fill(TEST_OTP[i]);
+        await page.waitForTimeout(50);
     }
 
-    // Enter OTP — wait for any OTP input to render before deciding which layout to use.
-    // Registration on a cold CI server can take 20+ seconds before the TOTP step renders.
-    await page.locator('input[maxlength="1"], input[inputmode="numeric"], input[type="tel"]')
-        .first().waitFor({ timeout: 30000 });
-    const digitInputs = page.locator('input[maxlength="1"]');
-    const digitCount = await digitInputs.count();
-    if (digitCount >= 6) {
-        for (let i = 0; i < 6; i++) {
-            await digitInputs.nth(i).fill(TEST_OTP[i]);
-            await page.waitForTimeout(50);
-        }
-    } else {
-        const otpInput = page.locator('input[inputmode="numeric"], input[type="tel"]').first();
-        await otpInput.fill(TEST_OTP);
-    }
-    await page.waitForTimeout(500);
-
-    // Click verify if visible
-    const verifyButton = page.locator('button[type="submit"]').first();
-    if (await verifyButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await verifyButton.click();
-        await page.waitForTimeout(3000);
-    }
+    // Handle "Register new account?" ConfirmModal that appears for unknown emails.
+    // For new accounts, AccountUI.MonitorPendingRegistration shows a ConfirmModal
+    // (title "Register new account?", confirm button "Register"). The TOTP completion
+    // triggers the registration prompt; we must click "Register" to actually create the account.
+    // For existing accounts, no modal appears and sign-in completes after TOTP verification.
+    const registerModal = page.locator('[id^="Modal-ConfirmModal"]:has-text("Register new account")').first();
+    const signedInLandmark = page.locator('.chat-list, .account-dropdown').first();
+    await Promise.race([
+        registerModal.waitFor({ state: 'visible', timeout: 30_000 })
+            .then(async () => {
+                await registerModal.locator('button:has-text("Register")').click({ timeout: 5_000 });
+                await registerModal.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });
+            }),
+        signedInLandmark.waitFor({ state: 'visible', timeout: 30_000 }),
+    ]).catch(() => { /* one of them timed out — let the caller verify state */ });
 }
 
 /**
