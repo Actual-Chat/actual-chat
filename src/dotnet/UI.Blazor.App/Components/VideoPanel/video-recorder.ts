@@ -1084,12 +1084,10 @@ export class VideoRecorder {
         // system-level problem (no GPU / driver crash / camera revoked).
         // Continuing the cascade just stretches the freeze surface — each
         // switchCodec rebuilds the encoder + extras + WebGPU downscaler.
-        // Stop recording instead and surface the error.
         const now = performance.now();
         if (this.lastCodecSwitchAt > 0 && now - this.lastCodecSwitchAt < this.codecSwitchCooldownMs) {
-            errorLog?.log(`Codec switch within ${this.codecSwitchCooldownMs}ms cooldown — aborting recording (system-level encoder failure)`);
-            this.surfaceFatalEncoderFailure(`Video encoder failing repeatedly (last codec: ${category}); recording stopped`);
-            void this.stopRecording();
+            errorLog?.log(`Codec switch within ${this.codecSwitchCooldownMs}ms cooldown — surfacing error (system-level encoder failure)`);
+            this.surfaceFatalEncoderFailure(`Video codec '${category}' failed repeatedly. Broadcast stopped.`);
             return;
         }
         const next = this.pickFallbackCodec(category);
@@ -1098,8 +1096,7 @@ export class VideoRecorder {
                 ? this.audienceCodecs.join(', ')
                 : 'unknown';
             errorLog?.log(`No fallback codec available after '${category}' failed (audience=[${audience}], remainingEncoders=[${this.supportedEncoderCategories.join(', ')}])`);
-            this.surfaceFatalEncoderFailure(`Video codec '${category}' failed and no compatible alternative is available for the audience (${audience}); recording stopped`);
-            void this.stopRecording();
+            this.surfaceFatalEncoderFailure(`Video codec '${category}' failed. Broadcast stopped.`);
             return;
         }
         this.lastCodecSwitchAt = now;
@@ -1107,10 +1104,10 @@ export class VideoRecorder {
         void this.recordingService?.switchCodec(next);
     }
 
-    // Push a user-visible error to Blazor so ChatVideoUI.OnRecordingError can
-    // raise _errorMessage. Without this the recording silently stalls when
-    // pickFallbackCodec returns null or the cooldown trips, leaving the user
-    // wondering why their camera light is on but nobody sees them.
+    // Push a user-visible error to Blazor so VideoStreamingPreview shows the
+    // overlay banner. Deliberately does NOT stop recording — the caller wants
+    // the user to keep seeing their own preview (camera still live, encoder
+    // dead) with the error visible until they manually disable the camera.
     private surfaceFatalEncoderFailure(message: string): void {
         void this.blazorRef.invokeMethodAsync('OnRecordingError', message);
     }
