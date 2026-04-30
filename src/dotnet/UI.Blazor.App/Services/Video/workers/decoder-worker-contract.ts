@@ -156,6 +156,12 @@ export interface DecoderWorker {
      * @param skipToMs Initial skip-to offset in ms (forwarded as TimeSpan ticks)
      * @param apiUrl Fusion RPC websocket URL (e.g. wss://host/rpc/ws)
      * @param startedAtMs Stream start ms-since-epoch (server clock)
+     * @param serverClockOffsetMs `ServerClock.now() - Date.now()` snapshotted on
+     *                 main thread. Worker can derive server-aligned now via
+     *                 `Date.now() + serverClockOffsetMs`. Drives the
+     *                 wallclock-primary target in MstgSelector.tick(); without
+     *                 it the selector either drains the queue (sprint-ahead) or
+     *                 freezes when audio sync arrives behind it.
      * @param jitterBufferMs Initial jitter buffer in ms
      * @param syncPort MessagePort subscribed to AudioVideoSync (transferred)
      * @param writable Optional WritableStream<VideoFrame> from main-side MSTG
@@ -170,6 +176,7 @@ export interface DecoderWorker {
         skipToMs: number,
         apiUrl: string,
         startedAtMs: number,
+        serverClockOffsetMs: number,
         jitterBufferMs: number,
         syncPort: MessagePort,
         writable?: WritableStream<VideoFrame>,
@@ -188,6 +195,16 @@ export interface DecoderWorker {
      * one. No-op when no off-thread pull is active. Idempotent.
      */
     setBgPaintEnabled(enabled: boolean, noWait?: RpcNoWait): Promise<void>;
+
+    /**
+     * Returns the smoothed signed difference (ms) between the audio-anchored
+     * target and the wallclock-anchored target, as observed by the worker's
+     * MstgSelector. Positive → audio is ahead of video (video should speed up
+     * to converge). Negative → video is ahead of audio (slow down). 0 when
+     * no audio sync state is available. Used by main thread to set
+     * `videoEl.playbackRate` for ±2–5 % rate correction.
+     */
+    getDriftMs(): Promise<number>;
 
     /**
      * Forward connectivity state from main thread's ConnectivityUI to the

@@ -14,10 +14,21 @@ import { BG_BOX_BLUR_PASSES, BG_BOX_BLUR_RADIUS, BG_CANVAS_WIDTH, BG_DRAW_INTERV
 
 const { warnLog } = getLogs('VideoDecoder');
 
-const SOFT_CATCHUP_FRAMES = 15;
-const SOFT_CATCHUP_SPAN_MS = 600;
-const SOFT_CATCHUP_KEEP_MS = 300;
-const HARD_CAP_FRAMES = 30;
+// Buffer caps sized to absorb the audio playout pipeline's jitter buffer
+// (up to ~1 s on cold-start). Without that headroom the selector either
+// drains its queue (Rule 4 misfires) or soft-catchup drops the frames
+// that would have lined up with the audio target — both produce the
+// "video leads audio by ~600 ms" symptom we saw in DIAG.
+const SOFT_CATCHUP_FRAMES = 40;
+const SOFT_CATCHUP_SPAN_MS = 1500;
+const SOFT_CATCHUP_KEEP_MS = 1000;
+const HARD_CAP_FRAMES = 50;
+// Rule 4 force-write threshold: only force-write the oldest queued frame
+// when its ts is at least this far ahead of the current target — i.e.,
+// the queue is full of "future" content and waiting won't help converge.
+const RULE4_FORCE_WRITE_AHEAD_US = 1_000_000;
+// How many starved ticks before we emit a warn log (~1 s at 30 fps).
+const STARVATION_WARN_TICKS = 30;
 
 export interface BgPainter {
     canvas: OffscreenCanvas;
@@ -44,22 +55,51 @@ export class WorkerMstgSelector {
     private bgPaintsSinceDiag = 0;
     private mainWritesSinceDiag = 0;
     private writeFailuresSinceDiag = 0;
+    // A/V sync DIAG state — last-tick snapshot for the 1 Hz summary log.
+    // Lets us prove that audio-target tracks audio updates correctly, the
+    // wallclock target advances at 1×, drift settles to a small constant
+    // (≈ −audio-pipeline-latency), and the selector picks frames matching
+    // the audio target.
+    private lastTickAudioTgtMs = 0;
+    private lastTickWcTgtMs = 0;
+    private lastTickRawDriftUs = 0;
+    private lastTickAudioStateAgeMs = -1;        // -1 means no audio state seen
     // Whether to paint the blur backdrop. Off for sidebar/unfocused tiles —
     // bg canvas is hidden by CSS in those states, so painting wastes CPU on
     // a 64×N readback + 3-pass box blur every 100 ms. Toggled from main via
     // decoder-worker.setBgPaintEnabled.
     private bgPaintEnabled = true;
+    // Smoothed signed difference (us) between audio-anchored target and the
+    // wallclock-anchored target. Positive → audio ahead of video → speed up.
+    // Negative → audio behind → slow down. EMA over recent ticks.
+    private smoothedDriftUs = 0;
+    private hasObservedAudioState = false;
+    // Periodic tick fallback. Audio sync updates fire at ~5 Hz; onDecoded fires
+    // ~30 fps. Both can stop (silent author, decoder stall). A timer-driven
+    // tick guarantees the wallclock target keeps advancing during silence.
+    private periodicTimer: ReturnType<typeof setInterval> | null = null;
+    private static readonly PERIODIC_TICK_MS = 33;       // ~30 fps cadence
+    // Rate-correction state (maintained for getDriftMs() reporters).
+    private static readonly DRIFT_EMA_ALPHA = 0.15;
+    // Counts consecutive ticks where the queue was non-empty but no frame
+    // qualified AND Rule 4 chose to hold. Reset whenever a frame is written.
+    private starvedTicks = 0;
 
     constructor(
         writable: WritableStream<VideoFrame>,
         syncPort: MessagePort,
         private readonly startedAtMs: number,
+        private readonly serverClockOffsetMs: number,
         private jitterBufferMs: number,
         private readonly bgPainter?: BgPainter,
     ) {
         this.writer = writable.getWriter();
         // tick() on every audio sync update — covers steady-state queue + advancing audio
         this.syncClient = new AudioVideoSyncClient(syncPort, () => this.tick());
+        // tick() periodically to drive the wallclock target even if no audio
+        // updates arrive and no new frames decode (queue still has frames to
+        // play out from buffer).
+        this.periodicTimer = setInterval(() => this.tick(), WorkerMstgSelector.PERIODIC_TICK_MS);
     }
 
     onDecoded(frame: VideoFrame): void {
@@ -85,6 +125,15 @@ export class WorkerMstgSelector {
         this.bgPaintEnabled = enabled;
     }
 
+    // Returns smoothed audio-vs-wallclock drift in milliseconds, signed.
+    // Positive → audio is ahead of video → speed up to converge.
+    // Negative → video is ahead of audio → slow down. Zero before any audio
+    // sync state has been observed.
+    getDriftMs(): number {
+        if (!this.hasObservedAudioState) return 0;
+        return this.smoothedDriftUs / 1000;
+    }
+
     getBufferStats(): WorkerMstgBufferStats {
         const depth = this.queue.length;
         const spanMs = depth >= 2
@@ -96,6 +145,10 @@ export class WorkerMstgSelector {
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
+        if (this.periodicTimer !== null) {
+            clearInterval(this.periodicTimer);
+            this.periodicTimer = null;
+        }
         for (const f of this.queue) {
             try { f.close(); } catch { /* ignore */ }
         }
@@ -122,17 +175,65 @@ export class WorkerMstgSelector {
     private tick(): void {
         if (this.disposed || this.writeInFlight || this.queue.length === 0) return;
 
-        let targetUs: number;
+        // ── Rule 1: wallclock-anchored target (always) ──────────────────────
+        // Worker has no ServerClock; reconstruct it from the offset snapshot
+        // taken on main thread at startPullInWorker time. Drift over a typical
+        // call is < 50 ms — well within the ±100 ms correction band below.
+        const serverNowMs = Date.now() + this.serverClockOffsetMs;
+        const wallclockTargetUs = (serverNowMs - this.startedAtMs) * 1000;
+
+        // ── Rule 2: audio is a soft correction signal, not a target ─────────
+        // Compute audio-anchored target if state is available, derive drift,
+        // smooth, clamp, apply as offset to the wallclock target. We never
+        // jump backward when audio first appears — we instead start a slow
+        // convergence (Rule 3 nudges <video>.playbackRate from main thread).
+        //
+        // Audio-target derivation:
+        //   `state.recordedAtMs` is the audio TRACK ANCHOR — server-epoch ms
+        //   when the audio sample at offset 0 was recorded. Constant for the
+        //   whole audio session.
+        //   `interpolatePlayingAt()` returns current playback offset in seconds
+        //   since the track started.
+        //   audio_now_wall_clock_ms = recordedAtMs + interpolatedPlayingAt*1000
+        //   Map to video stream coordinates by subtracting `this.startedAtMs`.
+        //
+        //   ⚠ Earlier code computed `audioStartAtMs = recordedAtMs - playingAtSec*1000`
+        //   then added `interpolatePlayingAt()` back. That cancelled
+        //   `playingAtSec*1000` and left only `(perf.now() - capturedAt)*1000`,
+        //   making audio-target ≈ constant (`recordedAtMs - startedAtMs +
+        //   tiny`). Drift then grew linearly with wall-clock — visible in
+        //   logs as `driftMs=-10773 → -12792 → -14803 …` (Δ ≈ 2 s per 2 s
+        //   tick = the wall-clock advance). Don't subtract playingAtSec.
+        let correctionUs = 0;
         const state = this.syncClient.get();
+        // Snapshot for DIAG even if no state — keeps the log readable.
+        this.lastTickWcTgtMs = wallclockTargetUs / 1000;
+        this.lastTickAudioTgtMs = 0;
+        this.lastTickRawDriftUs = 0;
+        this.lastTickAudioStateAgeMs = -1;
         if (state) {
             const audioPlayingAtMs = this.syncClient.interpolatePlayingAt() * 1000;
-            const audioStartAtMs = state.recordedAtMs - state.playingAtSec * 1000;
-            const targetMs = (audioStartAtMs - this.startedAtMs) + audioPlayingAtMs;
-            targetUs = targetMs * 1000;
-        } else {
-            // No audio sync state → write the newest frame ASAP (wall-clock fallback).
-            targetUs = this.queue[this.queue.length - 1].timestamp;
+            const audioTargetMs = state.recordedAtMs - this.startedAtMs + audioPlayingAtMs;
+            const audioTargetUs = audioTargetMs * 1000;
+            const rawDriftUs = audioTargetUs - wallclockTargetUs;
+            const a = WorkerMstgSelector.DRIFT_EMA_ALPHA;
+            this.smoothedDriftUs = this.hasObservedAudioState
+                ? this.smoothedDriftUs * (1 - a) + rawDriftUs * a
+                : rawDriftUs; // first sample: jump directly so getDriftMs reports a sane value immediately
+            this.hasObservedAudioState = true;
+            // No clamp here. Audio's playout pipeline can sit ~500–1000 ms behind
+            // wallclock during cold-start (jitter buffer warming up). Clamping at
+            // ±100 ms made it impossible to track that lag — the visible result
+            // was video running up to 1 s ahead of the audio. We feed the full
+            // smoothed drift through; Rule 3 (main-thread playbackRate nudge)
+            // handles the slow convergence so the target shift isn't a jolt.
+            correctionUs = this.smoothedDriftUs;
+            this.lastTickAudioTgtMs = audioTargetMs;
+            this.lastTickRawDriftUs = rawDriftUs;
+            this.lastTickAudioStateAgeMs = performance.now() - state.capturedAt;
         }
+
+        const targetUs = wallclockTargetUs + correctionUs;
         const adjustedTargetUs = targetUs - this.jitterBufferMs * 1000;
 
         // Pick the latest eligible frame, dropping all earlier ones.
@@ -141,7 +242,39 @@ export class WorkerMstgSelector {
             if (eligible) eligible.close();
             eligible = this.queue.shift()!;
         }
+
+        // ── Rule 4: never freeze (but don't drain the queue either) ─────────
+        // Old behavior: write the oldest queued frame whenever none qualified.
+        // That fired every tick under steady-state when the audio target sits
+        // ~600 ms behind wallclock — newly-arrived frames are "future" relative
+        // to that target. Result: queue drained every tick, no buffer to absorb
+        // the audio lag, and video ended up running ~600 ms ahead of audio.
+        //
+        // New behavior: only force-write the oldest frame when it sits ≥1 s
+        // ahead of the target — the queue is full of "future" content that
+        // waiting won't help (target would have to advance ≥1 s to catch up,
+        // i.e., a real clock-skew situation). Otherwise hold off and let the
+        // queue accumulate until target catches up. Chromium starts marking
+        // tracks `muted` after ~2 s with no writes — STARVATION_WARN_TICKS
+        // (~1 s) is a comfortable margin to surface real stalls in the log.
+        if (!eligible && this.queue.length > 0) {
+            const oldestTs = this.queue[0].timestamp;
+            if (oldestTs > targetUs + RULE4_FORCE_WRITE_AHEAD_US) {
+                eligible = this.queue.shift()!;
+            } else {
+                this.starvedTicks++;
+                if (this.starvedTicks === STARVATION_WARN_TICKS) {
+                    warnLog?.log(
+                        `MstgSelector starved ${this.starvedTicks} ticks: ` +
+                        `queueDepth=${this.queue.length}, ` +
+                        `oldestAheadMs=${((oldestTs - targetUs) / 1000).toFixed(0)}, ` +
+                        `targetUs=${targetUs}`);
+                }
+                return;
+            }
+        }
         if (!eligible) return;
+        this.starvedTicks = 0;
         if (eligible.timestamp === this.lastWrittenTs) {
             eligible.close();
             return;
@@ -192,14 +325,40 @@ export class WorkerMstgSelector {
                 if (!this.disposed && this.queue.length > 0) this.tick();
             });
 
-        // DIAG: emit a 1 Hz summary so we can correlate main-write activity vs bg-paint activity.
-        // If bg keeps incrementing but mainWrites stalls (or writeFailures climbs), we have
-        // evidence that the MSTG-side path is broken while the decoder + worker are healthy.
+        // DIAG: emit a 1 Hz summary. Two purposes:
+        //   1) Correlate main-write activity vs bg-paint activity — if bg keeps
+        //      incrementing but mainWrites stalls (or writeFailures climbs),
+        //      the MSTG-side path is broken while the decoder + worker are
+        //      healthy.
+        //   2) Prove A/V sync. We log the audio target, wallclock target, the
+        //      raw and smoothed drift, the buffer span in ms, the actual
+        //      "render-side residual" (audioTgt − lastWrittenTs/1000), and how
+        //      fresh the audio state is (audioStateAge). With these values
+        //      anyone can re-derive drift externally and confirm the formula.
         const diagNowMs = performance.now();
         if (diagNowMs - this.lastDiagAtMs >= 1000) {
             this.lastDiagAtMs = diagNowMs;
+            const queueSpanMs = this.queue.length >= 2
+                ? (this.queue[this.queue.length - 1].timestamp - this.queue[0].timestamp) / 1000
+                : 0;
+            const lastWrittenMs = this.lastWrittenTs >= 0 ? this.lastWrittenTs / 1000 : 0;
+            // Render-side residual: how far ahead/behind the last frame we
+            // actually wrote sits relative to the audio target. This is the
+            // VISIBLE A/V mismatch — what a viewer would see/hear out of sync.
+            const lastLagMs = this.lastTickAudioStateAgeMs >= 0 && this.lastWrittenTs >= 0
+                ? this.lastTickAudioTgtMs - lastWrittenMs
+                : 0;
+            const audioTgtStr = this.lastTickAudioStateAgeMs >= 0
+                ? `audioTgtMs=${this.lastTickAudioTgtMs.toFixed(0)}, ` +
+                  `instantDriftMs=${(this.lastTickRawDriftUs / 1000).toFixed(0)}, ` +
+                  `smoothedDriftMs=${(this.smoothedDriftUs / 1000).toFixed(0)}, ` +
+                  `audioStateAgeMs=${this.lastTickAudioStateAgeMs.toFixed(0)}, ` +
+                  `lastLagMs=${lastLagMs.toFixed(0)}, `
+                : `audioTgt=NONE, `;
             warnLog?.log(
-                `MstgSelector DIAG: queueDepth=${this.queue.length}, writeInFlight=${this.writeInFlight}, ` +
+                `MstgSelector DIAG: queueDepth=${this.queue.length}, queueSpanMs=${queueSpanMs.toFixed(0)}, ` +
+                `wcTgtMs=${this.lastTickWcTgtMs.toFixed(0)}, ${audioTgtStr}` +
+                `lastWrittenMs=${lastWrittenMs.toFixed(0)}, writeInFlight=${this.writeInFlight}, ` +
                 `bgPaints/s=${this.bgPaintsSinceDiag}, mainWrites/s=${this.mainWritesSinceDiag}, ` +
                 `writeFailures/s=${this.writeFailuresSinceDiag}, hasBgPainter=${!!this.bgPainter}`);
             this.bgPaintsSinceDiag = 0;

@@ -1256,6 +1256,7 @@ const serverImpl: DecoderWorker = {
         skipToMs: number,
         apiUrl: string,
         startedAtMs: number,
+        serverClockOffsetMs: number,
         jitterBufferMs: number,
         syncPort: MessagePort,
         writable?: WritableStream<VideoFrame>,
@@ -1301,7 +1302,8 @@ const serverImpl: DecoderWorker = {
             }
         }
 
-        mstgSelector = new WorkerMstgSelector(selectorWritable, syncPort, startedAtMs, jitterBufferMs, bgPainter);
+        mstgSelector = new WorkerMstgSelector(
+            selectorWritable, syncPort, startedAtMs, serverClockOffsetMs, jitterBufferMs, bgPainter);
 
         // Idempotent — usually a no-op here because main calls prewarmRpc()
         // immediately after initialize(), starting the WS handshake in
@@ -1328,6 +1330,11 @@ const serverImpl: DecoderWorker = {
     // eslint-disable-next-line @typescript-eslint/require-await
     setBgPaintEnabled: async (enabled: boolean): Promise<void> => {
         if (mstgSelector) mstgSelector.setBgPaintEnabled(enabled);
+    },
+
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getDriftMs: async (): Promise<number> => {
+        return mstgSelector ? mstgSelector.getDriftMs() : 0;
     },
 
     // eslint-disable-next-line @typescript-eslint/require-await

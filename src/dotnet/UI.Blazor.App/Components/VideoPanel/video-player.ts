@@ -378,6 +378,47 @@ export class VideoPlayer {
         this.decoderReady = this.initDecoderWorker(codec, width, height, codecSettings);
     }
 
+    // Rule 3 — adaptive `<video>.playbackRate` to converge on the audio
+    // clock. Worker exposes a smoothed signed drift (audio target − wallclock
+    // target). Hysteresis: nudge to 1.05/0.95 when |drift| > 100 ms, snap back
+    // to 1.0 when |drift| < 30 ms. ±5 % is below the just-noticeable
+    // pitch-shift threshold for video and large enough to converge ~100 ms of
+    // drift in 2 s. Runs on the watchdog cadence (~2 s) — we don't need finer.
+    //
+    // Why thresholds widened from 50/20 to 100/30: the worker selector now
+    // tracks the full audio-pipeline lag (no ±100 ms clamp on correctionUs),
+    // so steady-state drift sits at ±20–50 ms naturally. Reserving rate
+    // correction for >100 ms avoids constant micro-flips during normal
+    // operation; it kicks in only on the cold-audio jump (~600 ms) where
+    // we genuinely need to reel video back over a few seconds.
+    private async adjustPlaybackRateForDrift(): Promise<void> {
+        if (!this.decoderWorker || this.renderBackend.kind !== 'mstg') return;
+        let driftMs: number;
+        try { driftMs = await this.decoderWorker.getDriftMs(); }
+        catch { return; }
+        if (!Number.isFinite(driftMs)) return;
+        const current = this.videoEl.playbackRate;
+        const ENTER = 100;  // start correcting when |drift| > 100 ms
+        const EXIT = 30;    // snap back to 1.0 when |drift| < 30 ms
+        let next = current;
+        if (driftMs > ENTER) next = 1.05;             // audio ahead → speed video up
+        else if (driftMs < -ENTER) next = 0.95;       // video ahead → slow video down
+        else if (Math.abs(driftMs) < EXIT) next = 1.0;
+        if (next !== current)
+            this.videoEl.playbackRate = next;
+        // Continuous A/V sync DIAG line — fires every watchdog tick (~2 s),
+        // not only on rate changes. Lets us see steady-state drift without
+        // requiring a rate change to surface it. `currentTime` is the visible
+        // playback head (off-thread mode). `playbackRate` shows whether
+        // Rule 3 is currently correcting; `→Y` part appears only on flips.
+        const rateStr = next !== current
+            ? `playbackRate=${current.toFixed(2)}→${next.toFixed(2)}`
+            : `playbackRate=${current.toFixed(2)}`;
+        warnLog?.log(
+            `AVSync DIAG: driftMs=${driftMs.toFixed(0)} ` +
+            `videoCurrentTime=${this.videoEl.currentTime.toFixed(3)}s ${rateStr}`);
+    }
+
     // Hide the inactive render surface via inline `style.display`. Razor doesn't
     // bind `style` on these elements, so Blazor's diff never overwrites it —
     // unlike a parent class toggle, which gets clobbered when `FocusedClass`
@@ -508,10 +549,14 @@ export class VideoPlayer {
             // it is wasted CPU. The mstg backend already observes parent class
             // for play() retries — piggyback on the same observer.
             if (this.renderBackend.kind === 'mstg') {
-                (this.renderBackend as OffThreadRenderBackend).onFocusedChange = (focused: boolean) => {
+                const mstgBackend = this.renderBackend as OffThreadRenderBackend;
+                mstgBackend.onFocusedChange = (focused: boolean) => {
                     if (!this.decoderWorker) return;
                     void this.decoderWorker.setBgPaintEnabled(focused, rpcNoWait);
                 };
+                // Rule 3: poll worker drift each watchdog tick (~2 s) and
+                // adjust <video>.playbackRate to converge audio + video.
+                mstgBackend.onWatchdogTick = () => { void this.adjustPlaybackRateForDrift(); };
             }
 
             if (this.useStreams) {
@@ -1734,14 +1779,21 @@ export class VideoPlayer {
             ? Math.round(this.receivedBytes * 8 / elapsedSec / 1000)
             : 0;
 
-        // Compute A/V drift
+        // Compute A/V drift. In off-thread (mstg) mode the main-thread render
+        // loop never runs, so `lastRenderedOffsetMs` stays at 0 and the
+        // resulting drift is meaningless (≈ −stream-elapsed). Substitute
+        // `videoEl.currentTime` — the MSTG element's clock IS the rendered
+        // video position. Unit: seconds → multiply by 1000 for ms.
         let avDriftMs: number | null = null;
         const audioState = AudioVideoSync.get(this.authorId);
         if (audioState) {
             const audioPlayingAtMs = AudioVideoSync.interpolatePlayingAt(audioState) * 1000;
             const targetVideoOffsetMs = (audioState.recordedAtMs - this.startedAtMs)
                 + audioPlayingAtMs - this.pipelineLatencyMs;
-            avDriftMs = Math.round(this.lastRenderedOffsetMs - targetVideoOffsetMs);
+            const renderedOffsetMs = this.renderBackend.kind === 'mstg'
+                ? this.videoEl.currentTime * 1000
+                : this.lastRenderedOffsetMs;
+            avDriftMs = Math.round(renderedOffsetMs - targetVideoOffsetMs);
         }
 
         return {
@@ -1839,15 +1891,20 @@ export class VideoPlayer {
                 `(alreadyTransferred=${this.bgOffscreenTransferred}, ` +
                 `transferFn=${typeof (this.bgCanvasEl as { transferControlToOffscreen?: unknown }).transferControlToOffscreen})`);
         }
+        // Snapshot ServerClock skew for the worker. Worker has no ServerClock;
+        // it reconstructs server-aligned now via `Date.now() + offset`. Drift
+        // over a typical call is < 50 ms, well within the ±100 ms drift-clamp
+        // applied inside MstgSelector.tick(). One snapshot is enough.
+        const serverClockOffsetMs = ServerClock.now() - Date.now();
         try {
             await this.decoderWorker.startPullInWorker(
                 streamId, skipToMs, apiUrl,
-                this.startedAtMs, this.jitterBufferMs,
+                this.startedAtMs, serverClockOffsetMs, this.jitterBufferMs,
                 channel.port2,
                 mainWritable,
                 bgOffscreen);
             this.offThreadPullActive = true;
-            debugLog?.log(`Off-thread pull started for ${streamId}, skipTo=${skipToMs}ms (tier ${mainWritable ? 2 : 1})`);
+            debugLog?.log(`Off-thread pull started for ${streamId}, skipTo=${skipToMs}ms (tier ${mainWritable ? 2 : 1}), serverClockOffsetMs=${serverClockOffsetMs.toFixed(0)}`);
             return true;
         } catch (e) {
             warnLog?.log('startPullInWorker rejected:', e);
