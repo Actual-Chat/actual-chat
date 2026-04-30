@@ -121,30 +121,40 @@ export class MainThreadDiagnostics {
                             ? `${topScript.sourceURL}:${topScript.sourceFunctionName}`
                             : '<no-script>';
                         if (!shouldReport(signature)) continue;
-                        warnLog?.log('long-animation-frame', {
-                            signature,
-                            duration: Math.round(e.duration),
-                            blockingDuration: Math.round(e.blockingDuration),
-                            renderStart: Math.round(e.renderStart - e.startTime),
-                            styleAndLayoutStart: Math.round(e.styleAndLayoutStart - e.startTime),
-                            scripts: e.scripts.map(s => ({
-                                invokerType: s.invokerType,
-                                invoker: s.invoker,
-                                sourceURL: s.sourceURL,
-                                sourceFunctionName: s.sourceFunctionName,
-                                sourceCharPosition: s.sourceCharPosition,
-                                duration: Math.round(s.duration),
-                                forcedStyleAndLayoutDuration: Math.round(s.forcedStyleAndLayoutDuration),
-                            })),
-                        });
+                        // Key fields go into the text message so they survive
+                        // Chrome's "Copy console" (which serializes object args
+                        // as just "Object"). Full structured payload stays as
+                        // the second arg for live DevTools inspection.
+                        warnLog?.log(
+                            `long-animation-frame ${signature} `
+                            + `dur=${Math.round(e.duration)}ms `
+                            + `block=${Math.round(e.blockingDuration)}ms`,
+                            {
+                                signature,
+                                duration: Math.round(e.duration),
+                                blockingDuration: Math.round(e.blockingDuration),
+                                renderStart: Math.round(e.renderStart - e.startTime),
+                                styleAndLayoutStart: Math.round(e.styleAndLayoutStart - e.startTime),
+                                scripts: e.scripts.map(s => ({
+                                    invokerType: s.invokerType,
+                                    invoker: s.invoker,
+                                    sourceURL: s.sourceURL,
+                                    sourceFunctionName: s.sourceFunctionName,
+                                    sourceCharPosition: s.sourceCharPosition,
+                                    duration: Math.round(s.duration),
+                                    forcedStyleAndLayoutDuration: Math.round(s.forcedStyleAndLayoutDuration),
+                                })),
+                            });
                     } else {
                         const signature = `longtask:${entry.name}`;
                         if (!shouldReport(signature)) continue;
-                        warnLog?.log('longtask', {
-                            duration: Math.round(entry.duration),
-                            startTime: Math.round(entry.startTime),
-                            name: entry.name,
-                        });
+                        warnLog?.log(
+                            `longtask ${entry.name} dur=${Math.round(entry.duration)}ms`,
+                            {
+                                duration: Math.round(entry.duration),
+                                startTime: Math.round(entry.startTime),
+                                name: entry.name,
+                            });
                     }
                 }
             });
@@ -182,8 +192,12 @@ export class MainThreadDiagnostics {
                     calls.shift();
                 if (calls.length >= threshold && now - lastReportedAt >= MO_STORM_COOLDOWN_MS) {
                     lastReportedAt = now;
+                    // First sample record summary inlined into the message so
+                    // "Copy console" preserves at least the offender's tag.
+                    const firstTarget = records.length ? describeNode(records[0].target) : '<no-records>';
                     errorLog?.log(
-                        `MutationObserver storm: ${calls.length} callbacks in ${windowMs}ms`,
+                        `MutationObserver storm: ${calls.length} callbacks in ${windowMs}ms `
+                        + `target=${firstTarget}`,
                         {
                             createdAt,
                             sampleRecords: records.slice(0, 3).map(r => ({
