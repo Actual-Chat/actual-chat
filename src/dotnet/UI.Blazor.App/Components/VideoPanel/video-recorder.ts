@@ -1088,17 +1088,31 @@ export class VideoRecorder {
         const now = performance.now();
         if (this.lastCodecSwitchAt > 0 && now - this.lastCodecSwitchAt < this.codecSwitchCooldownMs) {
             errorLog?.log(`Codec switch within ${this.codecSwitchCooldownMs}ms cooldown — aborting recording (system-level encoder failure)`);
+            this.surfaceFatalEncoderFailure(`Video encoder failing repeatedly (last codec: ${category}); recording stopped`);
             void this.stopRecording();
             return;
         }
         const next = this.pickFallbackCodec(category);
         if (!next) {
-            errorLog?.log(`No fallback codec available after '${category}' failed`);
+            const audience = this.audienceCodecs && this.audienceCodecs.length > 0
+                ? this.audienceCodecs.join(', ')
+                : 'unknown';
+            errorLog?.log(`No fallback codec available after '${category}' failed (audience=[${audience}], remainingEncoders=[${this.supportedEncoderCategories.join(', ')}])`);
+            this.surfaceFatalEncoderFailure(`Video codec '${category}' failed and no compatible alternative is available for the audience (${audience}); recording stopped`);
+            void this.stopRecording();
             return;
         }
         this.lastCodecSwitchAt = now;
         warnLog?.log(`Switching codec '${category}' → '${next}' after failure`);
         void this.recordingService?.switchCodec(next);
+    }
+
+    // Push a user-visible error to Blazor so ChatVideoUI.OnRecordingError can
+    // raise _errorMessage. Without this the recording silently stalls when
+    // pickFallbackCodec returns null or the cooldown trips, leaving the user
+    // wondering why their camera light is on but nobody sees them.
+    private surfaceFatalEncoderFailure(message: string): void {
+        void this.blazorRef.invokeMethodAsync('OnRecordingError', message);
     }
 
     /**
