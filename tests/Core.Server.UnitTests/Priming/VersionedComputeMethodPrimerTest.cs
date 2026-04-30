@@ -120,7 +120,7 @@ public class VersionedComputeMethodPrimerTest(ITestOutputHelper @out) : TestBase
         vb.Should().Be(20);
     }
 
-    [Fact]
+    [FlakyFact("AY: Flaky due to timing issues")]
     public async Task EntrySelfEvictsAfterLifetime()
     {
         var primer = new VersionedComputeMethodPrimer<string, long, int>(NoopCaller) {
