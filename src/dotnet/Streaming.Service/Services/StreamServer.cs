@@ -14,7 +14,6 @@ public class StreamServer(IServiceProvider services) : IStreamServer
     private IAudioStreamingBackend Backend { get; } = services.GetRequiredService<IAudioStreamingBackend>();
     private IVideoStreamingBackend VideoBackend { get; } = services.GetRequiredService<IVideoStreamingBackend>();
     private RemoteAudioStreamCache RemoteAudioCache { get; } = services.GetRequiredService<RemoteAudioStreamCache>();
-    private MomentClockSet Clocks { get; } = services.Clocks();
     private ILogger Log { get; } = services.LogFor<StreamServer>();
 
     public async Task<RpcStream<AudioFrame>?> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)
@@ -140,17 +139,15 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         await VideoBackend.RequestKeyFrame(sid, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<double> ReportVideoLatency(
+    public async Task<VideoLatencyReportResponse> ReportVideoLatency(
         string streamId,
         VideoLatencyReport report,
         CancellationToken cancellationToken)
     {
         var parsedStreamId = StreamId.Parse(streamId);
         var peerId = RpcInboundContext.Current?.Peer.Id.ToString() ?? "rpc-unknown";
-        await VideoBackend.ReportPeerLatency(parsedStreamId, peerId, report, cancellationToken)
+        return await VideoBackend.ReportPeerLatency(parsedStreamId, peerId, report, cancellationToken)
             .ConfigureAwait(false);
-
-        return Clocks.SystemClock.UtcNow.ToUnixTimeMilliseconds();
     }
 
     // Private methods

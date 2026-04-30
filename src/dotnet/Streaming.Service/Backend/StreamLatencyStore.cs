@@ -28,6 +28,17 @@ public sealed class StreamLatencyStore(IServiceProvider services)
             ? state.GetPeerMaxSpatialLayer(peerId)
             : int.MaxValue;
 
+    public void RecordPeerForwarded(StreamId streamId, string peerId, int layerId, int width, int height, int observedMax)
+    {
+        if (LatencyStates.TryGetValue(streamId, out var state))
+            state.RecordPeerForwarded(peerId, layerId, width, height, observedMax);
+    }
+
+    public StreamLatencyState.PeerForwardedSnapshot GetPeerForwarded(StreamId streamId, string peerId)
+        => LatencyStates.TryGetValue(streamId, out var state)
+            ? state.GetPeerForwarded(peerId)
+            : StreamLatencyState.PeerForwardedSnapshot.Empty;
+
     public int DecrementPeerEgressFallback(StreamId streamId, string peerId)
         => LatencyStates.TryGetValue(streamId, out var state)
             ? state.DecrementPeerEgressFallback(peerId)
@@ -145,6 +156,13 @@ public sealed class StreamLatencyStore(IServiceProvider services)
         // of uneventful delivery.
         public int EgressFallbackSpatialLayer { get; private set; } = int.MaxValue;
         public CpuTimestamp EgressFallbackSetAt { get; private set; }
+        // Last spatial layer + coded WxH actually forwarded to this peer by VideoStreamFilter.
+        // Surfaced back to the client via ReportVideoLatency response so the diagnostics modal
+        // can show the real delivered layer (not the sender's max). -1 = no frame yet forwarded.
+        public int ForwardedSpatialLayerId { get; private set; } = -1;
+        public int ForwardedWidth { get; private set; }
+        public int ForwardedHeight { get; private set; }
+        public int ObservedMaxSpatialLayer { get; private set; }
         // Client-declared tab visibility. When false (document.visibilityState ===
         // 'hidden'), the fan-out filter should suppress egress-stall handling —
         // the consumer simply isn't pulling, and skipping ahead or decrementing
@@ -312,6 +330,26 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                 EgressFallbackSpatialLayer = int.MaxValue;
             }
         }
+
+        internal void RecordForwarded(int layerId, int width, int height, int observedMax)
+        {
+            // Plain assignments — torn reads are tolerable here (consumed only by the
+            // diagnostics RPC response, which doesn't require atomic snapshot semantics).
+            ForwardedSpatialLayerId = layerId;
+            ForwardedWidth = width;
+            ForwardedHeight = height;
+            ObservedMaxSpatialLayer = observedMax;
+        }
+
+        internal void SetTestMaxSpatialLayer(int cap)
+        {
+            // Bypasses RecordLatency's warmup gate + slow-hysteresis so unit tests
+            // can seed an exact per-peer spatial cap (0/1/2/...). Production code
+            // never calls this — caps are computed from latency samples.
+            lock (_lock) {
+                MaxSpatialLayer = cap;
+            }
+        }
     }
 
     public sealed class StreamLatencyState(
@@ -410,6 +448,21 @@ public sealed class StreamLatencyStore(IServiceProvider services)
 
         public int GetPeerMaxSpatialLayer(string peerId)
             => _peers.TryGetValue(peerId, out var state) ? state.EffectiveMaxSpatial : int.MaxValue;
+
+        public void RecordPeerForwarded(string peerId, int layerId, int width, int height, int observedMax)
+        {
+            var peer = _peers.GetOrAdd(peerId, _ => new PeerLatencyState());
+            peer.RecordForwarded(layerId, width, height, observedMax);
+        }
+
+        public PeerForwardedSnapshot GetPeerForwarded(string peerId)
+            => _peers.TryGetValue(peerId, out var state)
+                ? new PeerForwardedSnapshot(
+                    state.ForwardedSpatialLayerId,
+                    state.ForwardedWidth,
+                    state.ForwardedHeight,
+                    state.ObservedMaxSpatialLayer)
+                : PeerForwardedSnapshot.Empty;
 
         // Test-only: inject a pre-warmed PeerLatencyState so RecordLatency doesn't
         // discard samples during warmup. Production code uses the default-ctor path
@@ -672,6 +725,17 @@ public sealed class StreamLatencyStore(IServiceProvider services)
                 if (withLayers != QualityPreset.Value)
                     QualityPreset.Value = withLayers;
             }
+        }
+
+        // Nested types
+
+        public readonly record struct PeerForwardedSnapshot(
+            int LayerId,
+            int Width,
+            int Height,
+            int ObservedMax)
+        {
+            public static readonly PeerForwardedSnapshot Empty = new(-1, 0, 0, 0);
         }
     }
 }

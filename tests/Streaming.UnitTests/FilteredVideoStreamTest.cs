@@ -268,7 +268,7 @@ public class FilteredVideoStreamTest(ILogger log)
         result.All(f => f.SpatialLayerId == 0).Should().BeTrue();
     }
 
-    [Fact(Skip = "Disabled until we restore simulcast support")]
+    [Fact]
     public async Task Spatial_MixedLayers_NoCap_JoinsAtTopLayer()
     {
         // Producer emits simulcast layers 0 and 1 at the same keyframe boundary.
@@ -296,7 +296,7 @@ public class FilteredVideoStreamTest(ILogger log)
         result.Should().HaveCount(3, "layer-1 KF bootstraps join + two layer-1 deltas; layer-0 deltas dropped");
     }
 
-    [Fact(Skip = "Disabled until we restore simulcast support")]
+    [Fact]
     public async Task Spatial_CapRestrictsSelection()
     {
         // Producer emits all 3 layers. Cap=1 allows layers 0-1. Filter selects 1,
@@ -315,7 +315,7 @@ public class FilteredVideoStreamTest(ILogger log)
         result.Should().NotContain(f => f.SpatialLayerId == 2);
     }
 
-    [Fact(Skip = "Disabled until we restore simulcast support")]
+    [Fact]
     public async Task Spatial_CapZero_ForcesBaseLayer()
     {
         // Cap=0 forces base-layer-only delivery even when producer emits higher layers.
@@ -331,7 +331,7 @@ public class FilteredVideoStreamTest(ILogger log)
         result.All(f => f.SpatialLayerId == 0).Should().BeTrue();
     }
 
-    [Fact(Skip = "Disabled until we restore simulcast support")]
+    [Fact]
     public async Task Spatial_DeltaOnHigherLayer_DoesNotTriggerSwitch()
     {
         // Deltas on a new spatial layer without a keyframe on that layer must NOT
@@ -356,7 +356,7 @@ public class FilteredVideoStreamTest(ILogger log)
     // lower layer" for "top layer disappeared" — that produced a 2→1→2 oscillation
     // on every burst, leaking demote+promote churn to the receiver.
 
-    [Fact(Skip = "Disabled until we restore simulcast support")]
+    [Fact]
     public async Task Spatial_NoSpuriousDemote_WhenBurstArrivesLowerFirst()
     {
         // Reproduces the bug from the 2026-04-25 logs:
@@ -396,7 +396,7 @@ public class FilteredVideoStreamTest(ILogger log)
         keyFrames.Select(f => f.KeyFrameNumber).Should().Equal(1, 2);
     }
 
-    [Fact(Skip = "Disabled until we restore simulcast support")]
+    [Fact]
     public async Task Spatial_GenuineLayerDrop_DemotesAfterBurstWindow()
     {
         // Sanity check that the burst-deferral does not block legitimate demotion:
@@ -455,10 +455,10 @@ public class FilteredVideoStreamTest(ILogger log)
         var latencyStore = services.GetRequiredService<StreamLatencyStore>();
         var backend = services.GetRequiredService<VideoStreamingBackend>();
         var streamId = StreamId.New(new NodeRef("test-node"), "test-local");
+        SeedPeerSpatialCap(latencyStore, streamId, "test-peer", maxSpatialCap);
 
         var filter = new VideoStreamFilter(
-            latencyStore.GetPeerMaxTemporalLayer,
-            (_, _) => maxSpatialCap,
+            latencyStore,
             (sid, ct) => Computed.Capture(() => backend.GetQualityPreset(sid, ct), ct),
             Log);
 
@@ -490,10 +490,10 @@ public class FilteredVideoStreamTest(ILogger log)
         var latencyStore = services.GetRequiredService<StreamLatencyStore>();
         var backend = services.GetRequiredService<VideoStreamingBackend>();
         var streamId = StreamId.New(new NodeRef("test-node"), "test-local");
+        SeedPeerSpatialCap(latencyStore, streamId, "test-peer", maxSpatialCap);
 
         var filter = new VideoStreamFilter(
-            latencyStore.GetPeerMaxTemporalLayer,
-            (_, _) => maxSpatialCap,
+            latencyStore,
             (sid, ct) => Computed.Capture(() => backend.GetQualityPreset(sid, ct), ct),
             Log,
             spatialStalenessWindow: spatialStalenessWindow,
@@ -503,6 +503,21 @@ public class FilteredVideoStreamTest(ILogger log)
         return await filter
             .Apply(streamId, "test-peer", TimeSpan.Zero, source, cancellationToken)
             .ToListAsync(cancellationToken);
+    }
+
+    // Test helper: seeds the per-peer spatial cap that the filter pulls from
+    // StreamLatencyStore. Mirrors what RecordPeerLatency would do under sustained
+    // load, but is deterministic — no warmup, no consecutive-slow hysteresis.
+    private static void SeedPeerSpatialCap(StreamLatencyStore store, StreamId streamId, string peerId, int cap)
+    {
+        if (cap == int.MaxValue)
+            return;
+        // Register the latency state if missing (RecordPeerForwarded is a no-op
+        // without it; cap seeding needs a state too).
+        store.RegisterStreamLatencyState(streamId, null!, default, new VideoFormat { Codec = "test" }, StreamKind.Webcam);
+        var state = store.LatencyStates[streamId];
+        var peer = state.GetOrAddWarmedPeerForTests(peerId);
+        peer.SetTestMaxSpatialLayer(cap);
     }
 
     private static async IAsyncEnumerable<VideoFrame> ToAsyncEnumerableTimed(

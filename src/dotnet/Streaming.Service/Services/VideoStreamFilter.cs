@@ -17,12 +17,9 @@ namespace ActualChat.Streaming.Services;
 /// the client renders the latest decoded frame and drops stale ones.</para>
 /// </remarks>
 public class VideoStreamFilter(
-    Func<StreamId, string, int> getMaxTemporalLayer,
-    Func<StreamId, string, int> getMaxSpatialLayer,
+    StreamLatencyStore latencyStore,
     Func<StreamId, CancellationToken, ValueTask<Computed<VideoQualityPreset>>> capturePreset,
     ILogger log,
-    VideoStreamFilter.EgressControl? egressControl = null,
-    Func<StreamId, string, bool>? isPeerVisible = null,
     TimeSpan? spatialStalenessWindow = null,
     TimeSpan? burstStabilizationWindow = null)
 {
@@ -38,22 +35,11 @@ public class VideoStreamFilter(
     private TimeSpan SpatialStalenessWindow { get; } = spatialStalenessWindow ?? DefaultSpatialStalenessWindow;
     private TimeSpan BurstStabilizationWindow { get; } = burstStabilizationWindow ?? DefaultBurstStabilizationWindow;
 
-    // Server-edge fast-reaction cap controls. Decrement is called when the filter
-    // detects a stall on write or walks past retention without finding a keyframe
-    // on the selected spatial layer. Restore is called after EgressRecoveryWindow
-    // of uneventful delivery at the reduced layer. Null in test scenarios where
-    // egress fallback is not exercised.
-    public sealed record EgressControl(
-        Action<StreamId, string> Decrement,
-        Action<StreamId, string> Restore,
-        Func<StreamId, string, bool> HasFallback,
-        Func<StreamId, string, CpuTimestamp> GetSetAt);
-
     // TEMP: simulcast disabled in dev. When true, the spatial-layer selection /
     // burst-stabilization / decay / egress-decrement logic below is bypassed
     // entirely — frames pass through with only KF-gap + pause + temporal
     // filtering. Flip to false to restore SFU-style spatial fan-out.
-    private const bool TempBypassSimulcastLogic = true;
+    private const bool TempBypassSimulcastLogic = false;
 
     public async IAsyncEnumerable<VideoFrame> Apply(
         StreamId streamId,
@@ -62,12 +48,12 @@ public class VideoStreamFilter(
         IAsyncEnumerable<VideoFrame> source,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+#pragma warning disable CS0162 // Unreachable code — TempBypassSimulcastLogic gate
         if (TempBypassSimulcastLogic) {
             await foreach (var f in ApplySimple(streamId, peerId, source, cancellationToken).ConfigureAwait(false))
                 yield return f;
             yield break;
         }
-#pragma warning disable CS0162 // Unreachable code — TempBypassSimulcastLogic gate
 
         // --- Quality preset: background task refreshes on invalidation ---
         var preset = VideoQualityPreset.High;
@@ -87,8 +73,8 @@ public class VideoStreamFilter(
         }, refreshToken);
 
         // --- Per-peer layer caps: cached locally, refreshed once per second ---
-        var maxTemporalLayer = getMaxTemporalLayer(streamId, peerId);
-        var maxSpatialLayer = getMaxSpatialLayer(streamId, peerId);
+        var maxTemporalLayer = latencyStore.GetPeerMaxTemporalLayer(streamId, peerId);
+        var maxSpatialLayer = latencyStore.GetPeerMaxSpatialLayer(streamId, peerId);
         var layerCapsUpdatedAt = CpuTimestamp.Now;
 
         // --- Spatial layer selection state ---
@@ -161,10 +147,10 @@ public class VideoStreamFilter(
                 //    catches up at the live edge. Do NOT decrement spatial cap
                 //    — sustained network slowness is caught by IsNetworkSlow on
                 //    the latency path, not here.
-                if (egressControl != null && yieldedCount > 0
+                if (yieldedCount > 0
                     && lastYieldAt.Elapsed > Constants.Video.EgressStallThreshold) {
                     if (!stallHandled) {
-                        var visible = isPeerVisible?.Invoke(streamId, peerId) ?? true;
+                        var visible = latencyStore.IsPeerVisible(streamId, peerId);
                         if (!visible) {
                             log.LogDebug(
                                 "VideoStreamFilter: egress stall ({ElapsedMs:F0}ms) for peer={PeerId} — hidden, suppressing",
@@ -186,20 +172,20 @@ public class VideoStreamFilter(
 
                 // 0b. Egress recovery: if we've been at reduced layer for > EgressRecoveryWindow
                 // with no new stall/gap bumping the timer, restore the cap.
-                if (egressControl != null && egressControl.HasFallback(streamId, peerId)) {
-                    var setAt = egressControl.GetSetAt(streamId, peerId);
+                if (latencyStore.HasPeerEgressFallback(streamId, peerId)) {
+                    var setAt = latencyStore.GetPeerEgressFallbackSetAt(streamId, peerId);
                     if (setAt.Elapsed > Constants.Video.EgressRecoveryWindow) {
                         log.LogInformation(
                             "VideoStreamFilter: egress recovery — restoring cap for peer={PeerId}",
                             peerId);
-                        egressControl.Restore(streamId, peerId);
+                        latencyStore.RestorePeerEgressFallback(streamId, peerId);
                     }
                 }
 
                 // 1. Layer-cap refresh — re-read per-peer caps once per second
                 if (layerCapsUpdatedAt.Elapsed.TotalSeconds >= 1) {
-                    maxTemporalLayer = getMaxTemporalLayer(streamId, peerId);
-                    maxSpatialLayer = getMaxSpatialLayer(streamId, peerId);
+                    maxTemporalLayer = latencyStore.GetPeerMaxTemporalLayer(streamId, peerId);
+                    maxSpatialLayer = latencyStore.GetPeerMaxSpatialLayer(streamId, peerId);
                     layerCapsUpdatedAt = CpuTimestamp.Now;
                 }
 
@@ -302,6 +288,8 @@ public class VideoStreamFilter(
                             peerId, selectedSpatialLayer, committed.KeyFrameNumber,
                             maxSpatialLayer == int.MaxValue ? "∞" : maxSpatialLayer.ToString(),
                             observedMaxSpatial);
+                        latencyStore.RecordPeerForwarded(streamId, peerId,
+                            committed.SpatialLayerId, committed.Width, committed.Height, observedMaxSpatial);
                         yield return committed;
                         lastYieldAt = CpuTimestamp.Now;
                         // If the current frame IS the committed KF, we're done with it.
@@ -337,6 +325,8 @@ public class VideoStreamFilter(
                         lastKeyFrameNumber = frame.KeyFrameNumber;
                         skippedCount = 0;
                         yieldedCount++;
+                        latencyStore.RecordPeerForwarded(streamId, peerId,
+                            frame.SpatialLayerId, frame.Width, frame.Height, observedMaxSpatial);
                         yield return frame;
                         lastYieldAt = CpuTimestamp.Now;
                         continue;
@@ -381,6 +371,8 @@ public class VideoStreamFilter(
                     skipping = false;
                     skippedCount = 0;
                     yieldedCount++;
+                    latencyStore.RecordPeerForwarded(streamId, peerId,
+                        frame.SpatialLayerId, frame.Width, frame.Height, observedMaxSpatial);
                     yield return frame;
                     lastYieldAt = CpuTimestamp.Now;
                 }
@@ -399,12 +391,12 @@ public class VideoStreamFilter(
                             lastKeyFrameNumber, frame.KeyFrameNumber);
                     }
                     skippedCount++;
-                    if (egressControl != null && skippedCount == Constants.Video.EgressGapFrameThreshold
+                    if (skippedCount == Constants.Video.EgressGapFrameThreshold
                         && selectedSpatialLayer > 0) {
                         log.LogInformation(
                             "VideoStreamFilter: egress gap exhausted ({Skipped} frames) for peer={PeerId}, decrementing",
                             skippedCount, peerId);
-                        egressControl.Decrement(streamId, peerId);
+                        latencyStore.DecrementPeerEgressFallback(streamId, peerId);
                     }
                 }
             }
@@ -451,7 +443,7 @@ public class VideoStreamFilter(
             }
         }, refreshToken);
 
-        var maxTemporalLayer = getMaxTemporalLayer(streamId, peerId);
+        var maxTemporalLayer = latencyStore.GetPeerMaxTemporalLayer(streamId, peerId);
         var layerCapsUpdatedAt = CpuTimestamp.Now;
         var lastKeyFrameNumber = -1L;
         var skipping = true;
@@ -462,7 +454,7 @@ public class VideoStreamFilter(
         try {
             await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 if (layerCapsUpdatedAt.Elapsed.TotalSeconds >= 1) {
-                    maxTemporalLayer = getMaxTemporalLayer(streamId, peerId);
+                    maxTemporalLayer = latencyStore.GetPeerMaxTemporalLayer(streamId, peerId);
                     layerCapsUpdatedAt = CpuTimestamp.Now;
                 }
 
@@ -488,6 +480,8 @@ public class VideoStreamFilter(
                     skipping = false;
                     skippedCount = 0;
                     yieldedCount++;
+                    latencyStore.RecordPeerForwarded(streamId, peerId,
+                        frame.SpatialLayerId, frame.Width, frame.Height, frame.SpatialLayerId);
                     yield return frame;
                 }
                 else if (!skipping && frame.KeyFrameNumber == lastKeyFrameNumber) {

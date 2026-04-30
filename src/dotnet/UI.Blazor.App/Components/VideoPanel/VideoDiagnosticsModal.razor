@@ -238,24 +238,35 @@
                             <span class="diag-value">@s.Info.Format.Codec</span>
                         </div>
                         <div class="diag-row">
-                            <span class="diag-label">Declared</span>
+                            <span class="diag-label">Sender max</span>
                             <span class="diag-value">@(s.Info.Format.Width)×@(s.Info.Format.Height)</span>
                         </div>
                         @{
-                            var encodedRes = _streamDiags.TryGetValue(sid, out var rdPeek)
-                                && rdPeek.ValueKind == JsonValueKind.Object
+                            var hasDiag = _streamDiags.TryGetValue(sid, out var rdPeek)
+                                && rdPeek.ValueKind == JsonValueKind.Object;
+                            var encodedRes = hasDiag
                                 && rdPeek.TryGetProperty("decoderStats", out var dsPeek)
                                 && dsPeek.ValueKind == JsonValueKind.Object
                                 ? GetStr(dsPeek, "resolution")
                                 : null;
-                            var peekBitrate = _streamDiags.TryGetValue(sid, out var rdBrPeek)
-                                && rdBrPeek.ValueKind == JsonValueKind.Object
-                                ? GetNum(rdBrPeek, "bitrateKbps")
+                            var peekBitrate = hasDiag
+                                ? GetNum(rdPeek, "bitrateKbps")
                                 : 0;
+                            JsonElement? fwdEl = hasDiag
+                                && rdPeek.TryGetProperty("forwarded", out var fwd)
+                                && fwd.ValueKind == JsonValueKind.Object
+                                ? fwd
+                                : null;
+                        }
+                        @if (fwdEl is { } f && GetNum(f, "ForwardedSpatialLayerId") >= 0) {
+                            <div class="diag-row">
+                                <span class="diag-label">Forwarded</span>
+                                <span class="diag-value">L@(GetNum(f, "ForwardedSpatialLayerId").ToString("0")) @(GetNum(f, "ForwardedWidth").ToString("0"))×@(GetNum(f, "ForwardedHeight").ToString("0")) (obsMax=@(GetNum(f, "ObservedMaxSpatialLayer").ToString("0")))</span>
+                            </div>
                         }
                         @if (!string.IsNullOrEmpty(encodedRes)) {
                             <div class="diag-row">
-                                <span class="diag-label">Encoded</span>
+                                <span class="diag-label">Decoded</span>
                                 <span class="diag-value">@encodedRes</span>
                             </div>
                         }
@@ -378,6 +389,13 @@
         await base.DisposeAsync();
     }
 
+    protected override void OnAfterRender(bool firstRender) {
+        // ComputeState may surface remote streams asynchronously after first render.
+        // Re-evaluate polling state on every render so the timer kicks in as soon as
+        // streams appear and disposes when the list empties.
+        EnsurePollingState();
+    }
+
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
             InitialValue = ComputedModel.Empty,
@@ -416,23 +434,28 @@
     }
 
     private void OnToggleStreamDetails(string streamId) {
-        if (!_expandedStreams.Remove(streamId)) {
+        if (!_expandedStreams.Remove(streamId))
             _expandedStreams.Add(streamId);
-        } else {
-            _streamDiags.Remove(streamId);
-        }
-        EnsurePollingState();
+        // Polling continues for all remote streams regardless of expand state —
+        // the always-visible "Forwarded" row needs fresh diagnostics. Don't drop
+        // _streamDiags here.
         StateHasChanged();
     }
 
     private void EnsurePollingState() {
-        var needsPolling = _showOwnStreamingDetails || _expandedStreams.Count > 0;
+        // Poll whenever the modal has any remote streams to show. We need diagnostics
+        // for ALL remote streams (not just expanded) because the always-visible
+        // "Forwarded" row reads `forwarded` out of _streamDiags. Cheap: 1 JS call per
+        // stream every 1.5s.
+        var hasRemoteStreams = State.Value.Streams.Any(s => !s.IsOwn);
+        var needsPolling = _showOwnStreamingDetails || hasRemoteStreams;
         if (needsPolling) {
             _pollTimer ??= new Timer(_1 => _ = PollJsDiagnostics(), null, TimeSpan.Zero, TimeSpan.FromMilliseconds(1500));
         } else {
             _pollTimer?.Dispose();
             _pollTimer = null;
             _ownDiag = null;
+            _streamDiags.Clear();
         }
     }
 
@@ -444,7 +467,9 @@
                 _ownDiag = await JS.InvokeAsync<JsonElement>(JSCollectOwnMethod, kind);
             }
 
-            foreach (var streamId in _expandedStreams) {
+            foreach (var entry in State.Value.Streams) {
+                if (entry.IsOwn) continue;
+                var streamId = entry.Info.StreamId.Value;
                 var diag = await JS.InvokeAsync<JsonElement>(JSCollectRemoteMethod, streamId);
                 if (diag.ValueKind == JsonValueKind.Object)
                     _streamDiags[streamId] = diag;
@@ -560,9 +585,16 @@
             sb.AppendLine($"  Kind: {(s.Info.StreamKind == StreamKind.Screencast ? "Screencast" : "Camera")}");
             sb.AppendLine($"  Started: {DateTimeConverter.ToLocalTime(s.Info.StartedAt):HH:mm:ss}");
             sb.AppendLine($"  Codec: {s.Info.Format.Codec}");
-            sb.AppendLine($"  Resolution: {s.Info.Format.Width}x{s.Info.Format.Height}");
+            sb.AppendLine($"  Sender max: {s.Info.Format.Width}x{s.Info.Format.Height}");
 
             if (_streamDiags.TryGetValue(sid, out var rd) && rd.ValueKind == JsonValueKind.Object) {
+                if (rd.TryGetProperty("forwarded", out var copyFwd)
+                    && copyFwd.ValueKind == JsonValueKind.Object
+                    && GetNum(copyFwd, "ForwardedSpatialLayerId") >= 0)
+                    sb.AppendLine(
+                        $"  Forwarded: L{GetNum(copyFwd, "ForwardedSpatialLayerId"):0} "
+                        + $"{GetNum(copyFwd, "ForwardedWidth"):0}x{GetNum(copyFwd, "ForwardedHeight"):0} "
+                        + $"(obsMax={GetNum(copyFwd, "ObservedMaxSpatialLayer"):0})");
                 // Decoder
                 sb.AppendLine("  -- Decoder --");
                 sb.AppendLine($"  Codec: {GetStr(rd, "codec")} ({GetStr(rd, "codecCategory")})");

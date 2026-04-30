@@ -84,6 +84,20 @@ export interface VideoLatencyReportDto {
     IsVisible?: boolean;
 }
 
+// --- VideoLatencyReportResponse TypeScript interface ---
+// Matches .NET VideoLatencyReportResponse via MessagePack [MessagePackObject(true)].
+// Returned from ReportVideoLatency; carries the SFU's currently-forwarded spatial
+// layer + its coded WxH for this peer, used by the diagnostics modal.
+export interface VideoLatencyReportResponseDto {
+    // -1 = no frame yet forwarded to this peer.
+    ForwardedSpatialLayerId: number;
+    // 0 = unknown (no frame seen yet).
+    ForwardedWidth: number;
+    ForwardedHeight: number;
+    // Highest layer the producer is currently emitting (for debugging).
+    ObservedMaxSpatialLayer: number;
+}
+
 // --- AudioFrame TypeScript interface ---
 // Matches .NET AudioFrame serialized via MessagePack with implicit string keys.
 // AudioFrame.cs is [MessagePackObject(true)] → PascalCase property names.
@@ -113,7 +127,7 @@ export interface StreamServerClient {
         preSkip: number,
         frameStreamRef: unknown): Promise<void>;
     RequestKeyFrame(streamId: string): Promise<void>;
-    ReportVideoLatency(streamId: string, report: VideoLatencyReportDto): Promise<number>;
+    ReportVideoLatency(streamId: string, report: VideoLatencyReportDto): Promise<VideoLatencyReportResponseDto>;
 }
 
 // Mirrors .NET VideoQualityLevel enum. Lower numeric value = higher quality.

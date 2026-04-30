@@ -34,7 +34,10 @@
         }
         <div @ref="_containerRef" class="@videoCls">
             <div class="video-frame">
-                <video class="camera-preview-video" autoplay playsinline muted></video>
+                <video class="camera-preview-video live-stream-video"
+                       autoplay playsinline muted aria-hidden="true"
+                       disablepictureinpicture disableremoteplayback
+                       controlslist="nodownload nofullscreen noremoteplayback"></video>
                 <canvas class="camera-preview"></canvas>
                 <span class="plug-text">@GetPlugText(effectiveCameraState)</span>
                 <div class="video-loading">

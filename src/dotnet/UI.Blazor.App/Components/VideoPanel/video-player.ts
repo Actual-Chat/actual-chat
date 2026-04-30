@@ -1,6 +1,6 @@
 import Denque from 'denque';
 import { getLogs } from 'logging';
-import { Api, momentToSeconds, secondsToMoment, streamingApi, type VideoFrameDto } from 'api';
+import { Api, momentToSeconds, secondsToMoment, streamingApi, type VideoFrameDto, type VideoLatencyReportResponseDto } from 'api';
 import { ServerClock } from 'server-clock';
 import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
@@ -72,6 +72,7 @@ export interface RemoteStreamDiagnostics {
     codecSlowTickCount: number;
     decoderStats: DecoderStats | null;
     avDriftMs: number | null;
+    forwarded: VideoLatencyReportResponseDto | null;
 }
 
 const { debugLog, warnLog, errorLog } = getLogs('VideoPlayer');
@@ -242,6 +243,10 @@ export class VideoPlayer {
     // the hint right away so the cap kicks in within ms, not seconds.
     private resizeObserver: ResizeObserver | null = null;
     private lastSentRenderQuality: number | null | undefined = undefined;
+    // Last server-reported forwarded layer (response of ReportVideoLatency).
+    // Surfaced to the diagnostics modal so it can show the actual delivered
+    // simulcast layer + its coded WxH for THIS peer.
+    private lastForwarded: VideoLatencyReportResponseDto | null = null;
 
     // Diagnostics counters for 10s delta reporting
     private lastDiagDecodedFrames = 0;
@@ -1532,7 +1537,8 @@ export class VideoPlayer {
             StreamOffsetMs: -1,
             RenderQuality: level,
             IsVisible: typeof document !== 'undefined' && document.visibilityState === 'visible',
-        }).catch((e: unknown) => warnLog?.log('Render-hint ReportVideoLatency error:', e));
+        }).then(r => { this.lastForwarded = r; })
+            .catch((e: unknown) => warnLog?.log('Render-hint ReportVideoLatency error:', e));
         return level;
     }
 
@@ -1835,6 +1841,7 @@ export class VideoPlayer {
             codecSlowTickCount: this.codecSlowTickCount,
             decoderStats,
             avDriftMs,
+            forwarded: this.lastForwarded,
         };
     }
 
@@ -1944,14 +1951,15 @@ export class VideoPlayer {
         const isVisible = !document.hidden;
         const renderLevel = this.computeRenderQualityLevel();
         try {
-            void streamingApi.streamServer.ReportVideoLatency(this.streamId, {
+            streamingApi.streamServer.ReportVideoLatency(this.streamId, {
                 StreamOffsetMs: streamOffsetMs,
                 MedianDecodeTimeMs: report.medianDecodeTimeMs,
                 BufferDepth: report.bufferDepth,
                 BufferSpanMs: report.bufferSpanMs,
                 RenderQuality: renderLevel,
                 IsVisible: isVisible,
-            });
+            }).then(r => { this.lastForwarded = r; })
+                .catch((e: unknown) => warnLog?.log('ReportVideoLatency failed:', e));
         } catch (e) {
             warnLog?.log('ReportVideoLatency failed:', e);
         }
@@ -1988,6 +1996,7 @@ export class VideoPlayer {
         this.lastSeekTime = 0;
         this.pullRetryCount = 0;
         this.lastLatencyReportTime = 0;
+        this.lastForwarded = null;
 
         // Remove visibility subscription
         if (this.visibilitySubscription) {
@@ -2154,7 +2163,8 @@ export class VideoPlayer {
                 StreamOffsetMs: streamOffsetMs,
                 RenderQuality: this.computeRenderQualityLevel(),
                 IsVisible: document.visibilityState === 'visible',
-            }).catch(() => { /* best-effort */ });
+            }).then(r => { this.lastForwarded = r; })
+                .catch(() => { /* best-effort */ });
 
             while (!this.pendingFrames.isEmpty())
                 this.pendingFrames.shift()!.close();
@@ -2280,7 +2290,8 @@ export class VideoPlayer {
                     BufferSpanMs: currentBufferSpanMs,
                     RenderQuality: this.computeRenderQualityLevel(),
                     IsVisible: document.visibilityState === 'visible',
-                }).then(() => {
+                }).then(r => {
+                    this.lastForwarded = r;
                     this.updateRttEstimate(performance.now() - sendTime);
                 }).catch((e: unknown) => {
                     warnLog?.log('ReportVideoLatency invoke error:', e);
@@ -2293,7 +2304,8 @@ export class VideoPlayer {
                 StreamOffsetMs: streamOffsetMs,
                 RenderQuality: this.computeRenderQualityLevel(),
                 IsVisible: document.visibilityState === 'visible',
-            }).then(() => {
+            }).then(r => {
+                this.lastForwarded = r;
                 this.updateRttEstimate(performance.now() - sendTime);
             }).catch((e: unknown) => {
                 warnLog?.log('ReportVideoLatency invoke error:', e);

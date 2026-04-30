@@ -20,7 +20,7 @@ public interface IVideoStreamingBackend : IComputeService, IRpcService, IBackend
 
     Task RequestKeyFrame(StreamId streamId, CancellationToken cancellationToken = default);
 
-    Task ReportPeerLatency(
+    Task<VideoLatencyReportResponse> ReportPeerLatency(
         StreamId streamId,
         string peerId,
         VideoLatencyReport report,

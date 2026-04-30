@@ -50,16 +50,9 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         }
 
         var filter = new VideoStreamFilter(
-            LatencyStore.GetPeerMaxTemporalLayer,
-            LatencyStore.GetPeerMaxSpatialLayer,
+            LatencyStore,
             (sid, ct) => Computed.Capture(() => GetQualityPreset(sid, ct), ct),
-            Log,
-            new VideoStreamFilter.EgressControl(
-                (sid, pid) => LatencyStore.DecrementPeerEgressFallback(sid, pid),
-                LatencyStore.RestorePeerEgressFallback,
-                LatencyStore.HasPeerEgressFallback,
-                LatencyStore.GetPeerEgressFallbackSetAt),
-            LatencyStore.IsPeerVisible);
+            Log);
         return new RpcStream<VideoFrame>(filter.Apply(streamId, peerId, skipTo, stream, cancellationToken)) {
             AckPeriod = Constants.Video.StreamAckPeriod,
             AckAdvance = Constants.Video.StreamAckAdvance,
@@ -156,14 +149,16 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         return Task.CompletedTask;
     }
 
-    public virtual Task ReportPeerLatency(
+    public virtual Task<VideoLatencyReportResponse> ReportPeerLatency(
         StreamId streamId,
         string peerId,
         VideoLatencyReport report,
         CancellationToken cancellationToken = default)
     {
         LatencyStore.ReportPeerLatency(streamId, peerId, report);
-        return Task.CompletedTask;
+        var snap = LatencyStore.GetPeerForwarded(streamId, peerId);
+        return Task.FromResult(new VideoLatencyReportResponse(
+            snap.LayerId, snap.Width, snap.Height, snap.ObservedMax));
     }
 
     // Private methods

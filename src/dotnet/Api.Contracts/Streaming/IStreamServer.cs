@@ -45,7 +45,7 @@ public interface IStreamServer : IRpcService
 
     Task RequestKeyFrame(string streamId, CancellationToken cancellationToken);
 
-    Task<double> ReportVideoLatency(
+    Task<VideoLatencyReportResponse> ReportVideoLatency(
         string streamId,
         VideoLatencyReport report,
         CancellationToken cancellationToken);

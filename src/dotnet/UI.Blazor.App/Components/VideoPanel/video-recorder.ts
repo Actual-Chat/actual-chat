@@ -308,7 +308,7 @@ export class VideoRecorder {
         // TEMP: simulcast disabled for dev-env stability troubleshooting. Force
         // single-encoder P2P on every push; ignore server-pushed ladders.
         // Flip TEMP_DISABLE_SIMULCAST = false to restore.
-        const TEMP_DISABLE_SIMULCAST = true;
+        const TEMP_DISABLE_SIMULCAST = false;
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (TEMP_DISABLE_SIMULCAST) {
             layers = null;
