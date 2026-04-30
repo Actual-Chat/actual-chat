@@ -412,10 +412,7 @@ body.narrow .chat-message-editor:not(.narrow-panel) .attachment-wrapper:has(.c-f
 }
 .attachment-wrapper.last-element {
     @apply flex items-center justify-center;
-    @apply min-w-34;
-}
-body.narrow .attachment-wrapper.last-element {
-    @apply min-w-30;
+    @apply min-w-16;
 }
 .narrow-panel .attachment-wrapper.last-element:has(.add-attachment) {
     @apply hidden;

@@ -140,6 +140,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             if (attachment is SourceAttachment source)
                 AttachmentsState.SetPreview(attachment.Id, AttachmentPreview.From(source.Preview));
             list.Add(attachment);
+            _ = EstimateAndUpdateLength(list, attachment);
             return true;
         }
         // NOTE: Start upload immediately after adding non-image attachments.
@@ -153,8 +154,9 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         if (!attachment.IsUploadPending)
             return;
 
-        if (preset != ImageQualityPreset.Original && attachment.FileProvider is WebFileProvider webFileProvider) {
-            var maxDimension = (int)preset;
+        var maxDimension = (int)preset;
+        if (attachment.FileProvider is WebFileProvider webFileProvider
+            && (attachment.Width > maxDimension || attachment.Height > maxDimension)) {
             var result = await webFileProvider.ResizeImage(maxDimension).ConfigureAwait(true);
             var newAttachment = attachment with {
                 Length = result.Size,
@@ -182,6 +184,32 @@ public class FileAttachments : UIServiceBase<AppUIHub>
     {
         foreach (var a in list.Items.Where(a => a.IsUploadPending).ToList())
             await ConfirmImageQuality(list, a, a.SelectedQuality);
+    }
+
+    private async Task EstimateAndUpdateLength(AttachmentList list, Attachment attachment)
+    {
+        if (attachment.FileProvider is not WebFileProvider webFileProvider)
+            return;
+
+        try {
+            var presets = new ImageResizePreset[] {
+                new((int)ImageQualityPreset.Maximum),
+                new((int)ImageQualityPreset.Medium),
+                new((int)ImageQualityPreset.Small),
+            };
+            var results = await webFileProvider.EstimateResizedSizes(presets).ConfigureAwait(true);
+            var current = list.Items.FirstOrDefault(a => a.Id == attachment.Id);
+            if (current is { IsUploadPending: true } && results.Length == 3) {
+                var updated = current with {
+                    Length = results[0].Size > 0 ? results[0].Size : current.Length,
+                    EstimatedSizes = [..results],
+                };
+                list.Replace(current, updated);
+            }
+        }
+        catch {
+            // Estimation failed — keep original length.
+        }
     }
 
     private async Task<Attachment> StartUpload(Attachment attachment, AttachmentList list)

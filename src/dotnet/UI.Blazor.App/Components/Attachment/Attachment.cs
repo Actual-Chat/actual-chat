@@ -1,13 +1,15 @@
+using System.Collections.Immutable;
 using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
 /// <summary>
 /// Quality preset for image resizing before upload.
+/// The int value represents the maximum dimension in pixels.
 /// </summary>
 public enum ImageQualityPreset
 {
-    Original = 0,
+    Maximum = 1920,
     Medium = 1280,
     Small = 640,
 }
@@ -26,8 +28,9 @@ public record Attachment(string FileName, string FileType, long Length, Size Siz
     public bool IsSupportedVideo => MediaTypeExt.IsSupportedVideo(FileType);
     public bool IsResizableImage => IsSupportedImage && !MediaTypeExt.IsGif(FileType) && !MediaTypeExt.IsSvg(FileType);
     public bool IsUploadPending { get; init; }
-    public ImageQualityPreset SelectedQuality { get; init; } = ImageQualityPreset.Original;
+    public ImageQualityPreset SelectedQuality { get; init; } = ImageQualityPreset.Maximum;
     public long OriginalLength { get; init; }
+    public ImmutableArray<ImageResizeResult>? EstimatedSizes { get; init; }
 
     public string DemandUploadSessionId()
         => !UploadSessionId.IsNullOrEmpty() ? UploadSessionId : throw new InvalidOperationException("Upload session not assigned");

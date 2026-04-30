@@ -43,14 +43,28 @@
 
         if (_lastAttachmentId != Attachment.Id) {
             _lastAttachmentId = Attachment.Id;
-            _options = [];
-            _estimatesLoaded = false;
+            if (Attachment.EstimatedSizes is { } cached && cached.Length == 3) {
+                _options = BuildOptions(cached[0], cached[1], cached[2]);
+                _estimatesLoaded = true;
+                _estimateTimer?.Dispose();
+                _estimateTimer = null;
+            }
+            else {
+                _options = [];
+                _estimatesLoaded = false;
+                _estimateTimer?.Dispose();
+                _estimateTimer = new Timer(
+                    _ => _ = InvokeAsync(() => _ = EstimateSizes()),
+                    null,
+                    TimeSpan.FromMilliseconds(300),
+                    System.Threading.Timeout.InfiniteTimeSpan);
+            }
+        }
+        else if (!_estimatesLoaded && Attachment.EstimatedSizes is { } lateCached && lateCached.Length == 3) {
+            _options = BuildOptions(lateCached[0], lateCached[1], lateCached[2]);
+            _estimatesLoaded = true;
             _estimateTimer?.Dispose();
-            _estimateTimer = new Timer(
-                _ => _ = InvokeAsync(() => _ = EstimateSizes()),
-                null,
-                TimeSpan.FromMilliseconds(300),
-                System.Threading.Timeout.InfiniteTimeSpan);
+            _estimateTimer = null;
         }
     }
 
@@ -58,19 +72,12 @@
         _estimateCts?.Cancel();
         _estimateCts = new CancellationTokenSource();
 
-        _options = [
-            new(ImageQualityPreset.Original, "Original", Attachment.Length),
-            new(ImageQualityPreset.Medium, "Medium", 0),
-            new(ImageQualityPreset.Small, "Small", 0),
-        ];
-        StateHasChanged();
-
         if (Attachment.FileProvider is not WebFileProvider webFileProvider)
             return;
 
         try {
             var presets = new ImageResizePreset[] {
-                new(0),
+                new((int)ImageQualityPreset.Maximum),
                 new((int)ImageQualityPreset.Medium),
                 new((int)ImageQualityPreset.Small),
             };
@@ -78,21 +85,26 @@
             if (_estimateCts.IsCancellationRequested)
                 return;
 
-            _options = [
-                new(ImageQualityPreset.Original, "Original", results[0].Size),
-                new(ImageQualityPreset.Medium, $"Medium ({results[1].Width}×{results[1].Height})", results[1].Size),
-                new(ImageQualityPreset.Small, $"Small ({results[2].Width}×{results[2].Height})", results[2].Size),
-            ];
-            // Hide presets that don't actually reduce size.
-            _options = _options.Where(o =>
-                o.Preset == ImageQualityPreset.Original || o.EstimatedSize < _options[0].EstimatedSize * 0.9
-            ).ToArray();
+            _options = BuildOptions(results[0], results[1], results[2]);
         }
         catch {
             // Estimation failed — show original only.
         }
         _estimatesLoaded = true;
         StateHasChanged();
+    }
+
+    private static QualityOption[] BuildOptions(
+        ImageResizeResult maximum, ImageResizeResult medium, ImageResizeResult small)
+    {
+        var options = new[] {
+            new QualityOption(ImageQualityPreset.Maximum, "Maximum", maximum.Size),
+            new QualityOption(ImageQualityPreset.Medium, "Medium", medium.Size),
+            new QualityOption(ImageQualityPreset.Small, "Small", small.Size),
+        };
+        return options.Where(o =>
+            o.Preset == ImageQualityPreset.Maximum || o.EstimatedSize < options[0].EstimatedSize * 0.9
+        ).ToArray();
     }
 
     private async Task SelectPreset(ImageQualityPreset preset) {
