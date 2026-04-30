@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @typeparam TItem
 
-<div class="image-line @Class @(Row.Tiles.Count == 1 ? "one-image" : "")" style="@Row.GetRowStyle()">
+<div class="image-line @Class @(Row.Tiles.Count == 1 && TotalItems <= 1 ? "one-image" : "")" style="@Row.GetRowStyle(TotalItems)">
     @foreach (var tile in Row.Tiles) {
         <div class="image-item" style="@Row.GetTileStyle(tile)">
             @ItemTemplate(tile.Item)
@@ -11,6 +11,7 @@
 
 @code {
     [Parameter, EditorRequired] public VisualMediaGalleryLine<TItem> Row { get; set; } = null!;
+    [Parameter] public int TotalItems { get; set; }
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public RenderFragment<TItem> ItemTemplate { get; set; } = null!;
 }

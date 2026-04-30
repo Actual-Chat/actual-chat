@@ -24,6 +24,7 @@
 .image-line .image-item {
     @apply /*flex-1*/ flex-x;
     @apply w-full;
+    @apply min-h-20;
     @apply overflow-hidden;
 }
 body.hoverable .image-line .image-item:hover {

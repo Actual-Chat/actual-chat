@@ -5,7 +5,7 @@
     @apply h-full w-full;
     @apply text-02 bg-02;
     @apply top-0 bottom-0;
-    @apply z-10;
+    @apply z-20;
     left: var(--safe-area-left);
     right: var(--safe-area-right);
     width: auto;

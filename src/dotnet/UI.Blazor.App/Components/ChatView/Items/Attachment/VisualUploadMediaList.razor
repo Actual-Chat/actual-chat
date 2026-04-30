@@ -2,7 +2,7 @@
 
 <div class="media-attachment-uploads message-image-attachments">
     @foreach (var row in _rows) {
-        <VisualMediaAttachmentLine Row="@row">
+        <VisualMediaAttachmentLine Row="@row" TotalItems="@MediaList.Length">
             <ItemTemplate>
                 <UploadAttachmentItem
                     @key="@context.Id"
