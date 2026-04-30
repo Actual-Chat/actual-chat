@@ -35,6 +35,21 @@ export class OffThreadRenderBackend implements RenderBackend {
     // dims still resolve to the same ratio.
     private lastAspectRatio = '';
     private resizeListener: (() => void) | null = null;
+    // DIAG: watchdog state — captures whether <video> playback is actually
+    // advancing. The blur backdrop is painted by the worker from the same
+    // decoded frames, so if mainWrites/s is healthy yet currentTime stays
+    // frozen, the bug is in <video srcObject> playback, not the pipeline.
+    private watchdogTimer: ReturnType<typeof setInterval> | null = null;
+    private lastWatchdogCurrentTime = 0;
+    private lastWatchdogAtMs = 0;
+    // F1: track consecutive stall ticks before re-calling play().
+    private consecutiveStallTicks = 0;
+    // F2: observe parent classList flips (item-x ↔ item-focused) — the
+    // user-confirmed trigger of a born-at-sidebar player going black.
+    // Promotion to focused doesn't auto-resume <video srcObject> playback,
+    // so we kick play() on every classList change.
+    private parentClassObserver: MutationObserver | null = null;
+    private lastObservedParentCls = '';
 
     constructor(private readonly videoEl: HTMLVideoElement) {}
 
@@ -69,6 +84,8 @@ export class OffThreadRenderBackend implements RenderBackend {
         this.trackAttached = true;
         const stream = new MediaStream([track]);
         this.videoEl.srcObject = stream;
+        // DIAG: start the playback watchdog now that a track is attached.
+        this.startWatchdog();
         // `resize` fires whenever videoWidth/videoHeight change — including the
         // initial attach (after `loadedmetadata`) and every mid-stream rotation
         // that flips the encoder dims (no Format republish, no Blazor
@@ -78,8 +95,20 @@ export class OffThreadRenderBackend implements RenderBackend {
         // First attach may already have dims if the metadata event landed
         // before the listener was registered; flush once eagerly.
         this.applyContainerAspect();
-        this.videoEl.play().catch((e: unknown) => warnLog?.log('video.play() rejected:', e));
+        this.tryPlay('initial');
+        this.startParentClassObserver();
         infoLog?.log('Off-thread track attached to <video srcObject>');
+    }
+
+    // F1+F2 helper: re-call play() and clear the stall counter so we don't
+    // call again immediately. Logs why it fired so production traces show
+    // recovery activity. Track is still live across these calls; this just
+    // nudges the <video> element to actually paint.
+    private tryPlay(reason: string): void {
+        if (this.disposed) return;
+        this.consecutiveStallTicks = 0;
+        this.videoEl.play().catch((e: unknown) =>
+            warnLog?.log(`video.play() rejected (${reason}):`, e));
     }
 
     drawFrame(_pf: PresentableFrame): void {
@@ -106,6 +135,8 @@ export class OffThreadRenderBackend implements RenderBackend {
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
+        this.stopWatchdog();
+        this.stopParentClassObserver();
         if (this.resizeListener) {
             try { this.videoEl.removeEventListener('resize', this.resizeListener); } catch { /* ignore */ }
             this.resizeListener = null;
@@ -117,5 +148,95 @@ export class OffThreadRenderBackend implements RenderBackend {
             }
         } catch { /* ignore */ }
         try { this.videoEl.srcObject = null; } catch { /* ignore */ }
+    }
+
+    // F2: when Blazor re-renders the parent's class attribute (e.g., layout
+    // flips item-x ↔ item-focused), Chromium can leave the <video> element
+    // paused after the brief layout transition even though the MSTG track
+    // is still feeding frames. Kick play() on every classList change.
+    // (Visibility itself is owned by inline `style.display` on the elements,
+    // set in video-player.ts applyBackendVisibility — so layout flips no
+    // longer hide the video; this observer only nudges playback.)
+    private startParentClassObserver(): void {
+        if (this.parentClassObserver !== null) return;
+        const parent = this.videoEl.parentElement;
+        if (!parent) return;
+        this.lastObservedParentCls = parent.className;
+        this.parentClassObserver = new MutationObserver(() => {
+            if (this.disposed) return;
+            const cls = parent.className;
+            if (cls === this.lastObservedParentCls) return;
+            this.lastObservedParentCls = cls;
+            warnLog?.log(`OffThreadBackend DIAG: parent classList changed → "${cls}", retrying play()`);
+            this.tryPlay('parent-classlist-change');
+        });
+        this.parentClassObserver.observe(parent, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    private stopParentClassObserver(): void {
+        if (this.parentClassObserver === null) return;
+        try { this.parentClassObserver.disconnect(); } catch { /* ignore */ }
+        this.parentClassObserver = null;
+    }
+
+    // DIAG: every 2s, capture whether currentTime is advancing and what the
+    // computed visual state of the <video> looks like. When the user reports
+    // "blur visible, no main video", these logs distinguish between:
+    //   - currentTime frozen   → playback stalled (track not feeding, or paused)
+    //   - currentTime advances → playback fine, so bug is layout/CSS/visibility
+    private startWatchdog(): void {
+        if (this.watchdogTimer !== null) return;
+        this.lastWatchdogCurrentTime = this.videoEl.currentTime;
+        this.lastWatchdogAtMs = performance.now();
+        this.watchdogTimer = setInterval(() => this.tickWatchdog(), 2000);
+    }
+
+    private stopWatchdog(): void {
+        if (this.watchdogTimer === null) return;
+        clearInterval(this.watchdogTimer);
+        this.watchdogTimer = null;
+    }
+
+    private tickWatchdog(): void {
+        if (this.disposed) return;
+        const nowMs = performance.now();
+        const nowCt = this.videoEl.currentTime;
+        const dtMs = nowMs - this.lastWatchdogAtMs;
+        const dCt = nowCt - this.lastWatchdogCurrentTime;
+        this.lastWatchdogAtMs = nowMs;
+        this.lastWatchdogCurrentTime = nowCt;
+        const stream = this.videoEl.srcObject;
+        const tracks = stream instanceof MediaStream ? stream.getTracks() : [];
+        const trackInfo = tracks.map(t => `${t.kind}:${t.readyState}:muted=${t.muted}:enabled=${t.enabled}`).join('|');
+        let cssInfo = '';
+        try {
+            const cs = globalThis.getComputedStyle(this.videoEl);
+            cssInfo = ` cssDisplay=${cs.display} opacity=${cs.opacity} zIndex=${cs.zIndex} visibility=${cs.visibility}`;
+        } catch { /* ignore */ }
+        const cls = this.videoEl.parentElement?.className ?? '';
+        // F1: detect playback stall and self-heal. dCt should grow ~dt/1000s
+        // each tick when the <video> is rendering. Threshold of 50 ms over
+        // a 2 s window is a generous buffer for slow ticks; a true stall
+        // sits at 0. Fire after two consecutive stalls so a single dropped
+        // tick (e.g. main-thread jank) doesn't trigger spurious play()
+        // calls in already-healthy state.
+        const isStalled = this.videoEl.paused || dCt < 0.05;
+        if (isStalled) {
+            this.consecutiveStallTicks++;
+            if (this.consecutiveStallTicks >= 2 && tracks.length > 0) {
+                warnLog?.log(
+                    `OffThreadBackend DIAG: stall detected (paused=${this.videoEl.paused}, ` +
+                    `dCt=${dCt.toFixed(3)}s, ticks=${this.consecutiveStallTicks}), retrying play()`);
+                this.tryPlay('watchdog-stall');
+            }
+        } else {
+            this.consecutiveStallTicks = 0;
+        }
+        warnLog?.log(
+            `OffThreadBackend DIAG: paused=${this.videoEl.paused} ` +
+            `currentTime=${nowCt.toFixed(3)}s dCt=${dCt.toFixed(3)}s dt=${dtMs.toFixed(0)}ms ` +
+            `videoWH=${this.videoEl.videoWidth}x${this.videoEl.videoHeight} ` +
+            `readyState=${this.videoEl.readyState} networkState=${this.videoEl.networkState} ` +
+            `tracks=[${trackInfo}]${cssInfo} parentCls="${cls}"`);
     }
 }

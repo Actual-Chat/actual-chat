@@ -422,73 +422,49 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
 
 /* ── Item-based layout ── */
 
-/* Canvas inside video-track-player: fill container, letterbox source */
-.video-track-player canvas {
-    @apply absolute inset-0;
-    @apply w-full h-full;
-    @apply bg-black;
-    @apply object-contain;
-}
-
-/* MSTG render backend: video element gets the same fill rules as canvas;
-   inactive surface is hidden so only the chosen backend paints. */
+/* Both render surfaces — `<canvas class="remote-video">` (canvas backend)
+   and `<video class="remote-video">` (MSTG backend) — share fill / aspect /
+   containment rules. Razor renders both unconditionally; JS picks one in
+   `pickRenderBackend()` and toggles visibility via inline `style.display`
+   on each element (see video-player.ts). We deliberately do NOT gate on a
+   parent class like `.backend-mstg`, because Blazor's class-attribute diff
+   would strip it on every re-render of the layout-driven `FocusedClass`,
+   producing the "black sidebar tile / blur-only focused" symptom.
+   §6.D + §6.E — `contain: size` decouples element layout from the per-frame
+   intrinsic dims of the source; aspect-ratio is pinned via inline style on
+   the parent so object-fit still letterboxes correctly. `will-change` +
+   `translateZ(0)` promote each surface to its own GraphicsLayer; without
+   them WebKit propagates style/layout invalidation up the ancestor chain
+   on every frame. `pointer-events: none` skips per-paint hit-test. */
+.video-track-player canvas.remote-video,
 .video-track-player video.remote-video {
-    @apply hidden;
-}
-.video-track-player.backend-mstg video.remote-video {
-    @apply block;
     @apply absolute inset-0;
     @apply w-full h-full;
-    @apply bg-transparent;
     @apply object-contain;
     z-index: 1;
+    contain: layout paint style size;
+    will-change: transform;
+    transform: translateZ(0);
+    pointer-events: none;
 }
-.video-track-player.backend-mstg canvas.remote-video {
-    @apply hidden;
+.video-track-player canvas.remote-video {
+    @apply bg-black;
+}
+.video-track-player video.remote-video {
+    @apply bg-transparent;
 }
 
-/* Blurred backdrop (§13): fills the letterbox/pillarbox bars. Worker
-   paints the latest VideoFrame onto a 64×N OffscreenCanvas with
-   `ctx.filter='blur(...)'` baked into the bitmap; CSS just upscales the
-   small texture via `object-fit: cover`. NO CSS `filter:` — the blur is
-   already baked into the canvas pixels, so the compositor only does a
-   bilinear sample instead of a per-frame Gaussian shader. Only visible
-   when the MSTG backend is active. */
+/* Blurred backdrop (§13): fills the letterbox/pillarbox bars. Worker paints
+   the latest VideoFrame onto a 64×N OffscreenCanvas with `ctx.filter='blur(...)'`
+   baked into the bitmap; CSS just upscales the small texture via `object-fit:
+   cover`. NO CSS `filter:` — the blur is already baked into the canvas pixels,
+   so the compositor only does a bilinear sample instead of a per-frame Gaussian
+   shader. Hidden by default; the focused tile rule below brings it in. The
+   canvas backend doesn't paint the bg canvas, so it stays transparent in that
+   path — no visual leakage. */
 .video-track-player canvas.remote-video-bg {
     @apply hidden;
-}
-.video-track-player.backend-mstg canvas.remote-video-bg {
-    @apply block;
-    @apply absolute inset-0;
-    @apply w-full h-full;
-    @apply bg-black;
-    @apply object-cover;
-    z-index: 0;
-    pointer-events: none;
-    /* Containment isolates the bg paint from ancestor invalidation. */
-    contain: layout paint style size;
-    /* Promote to its own composited layer so worker draws don't dirty
-       the document layer. */
-    will-change: transform;
-    transform: translateZ(0);
-}
-
-/* §6.D + §6.E — bound per-frame invalidations to the render surface element.
-   <video> (MSTG backend) and <canvas> (canvas backend) update at frame rate;
-   without containment WebKit propagates style/layout invalidation up the
-   ancestor chain on every frame (measured 17/sec recalc-styles + layout on
-   iPhone 13 Stage B → 13/sec after §6.D). `contain: size` decouples element
-   layout from intrinsic content (per-frame VideoFrame displayWidth/Height
-   no longer triggers element self-recalc); aspect-ratio is pinned via inline
-   style from StreamInfo.Format so object-fit cover/contain still letterboxes
-   correctly. `will-change` + `translateZ(0)` promote to own GraphicsLayer;
-   `pointer-events: none` skips per-paint hit-test. */
-.video-track-player canvas.remote-video,
-.video-track-player.backend-mstg video.remote-video {
-    contain: layout paint style size;
-    will-change: transform;
-    transform: translateZ(0);
-    pointer-events: none;
+    @apply bg-transparent;
 }
 
 /* Bound any descendant invalidation (overlays, labels) to the player box. */
@@ -498,10 +474,6 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
 
 /* Blurred background canvas — only visible inside focused container,
    fills the container behind the letterboxed main canvas. */
-.video-track-player canvas.remote-video-bg {
-    @apply hidden;
-    @apply bg-transparent;
-}
 .video-track-player.item-focused canvas.remote-video-bg {
     @apply z-0;
     @apply block;

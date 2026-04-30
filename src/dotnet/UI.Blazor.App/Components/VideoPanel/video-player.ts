@@ -127,6 +127,7 @@ export class VideoPlayer {
     private streamId: string;
     private authorId: string;
     private canvas: HTMLCanvasElement;
+    private videoEl: HTMLVideoElement;
     private bgCanvasEl: HTMLCanvasElement;
     private bgOffscreenTransferred = false;
     private renderBackend: RenderBackend;
@@ -298,15 +299,22 @@ export class VideoPlayer {
         this.authorId = authorId;
         this.startedAtMs = startedAtMs;
         this.canvas = canvas;
+        this.videoEl = videoEl;
         this.bgCanvasEl = bgCanvasEl;
         this.expectedDisplayWidth = width || 1280;
         this.expectedDisplayHeight = height || 720;
         this.renderBackend = pickRenderBackend(canvas, videoEl);
-        // Tag the parent container so CSS can hide the inactive surface.
+        // Hide the inactive surface via inline style on the element itself.
+        // Inline `style.display` survives Blazor re-renders of the parent's
+        // class attribute (Razor template binds parent.class via @FocusedClass,
+        // not these elements' style). Previously we toggled a `.backend-mstg`
+        // class on the parent and gated visibility via CSS — Blazor's class
+        // diff stripped it on layout flips, producing the "black sidebar tile
+        // / blur-only focused" symptom.
+        this.applyBackendVisibility(canvas, videoEl);
         const container = canvas.parentElement;
         if (container) {
             container.classList.add('output-unverified');
-            container.classList.add(`backend-${this.renderBackend.kind}`);
         }
         this.isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         this.useStreams = supportsTransferableStreams();
@@ -328,6 +336,21 @@ export class VideoPlayer {
         // Initialize decoder worker — store the promise so startPull can gate
         // on it (prevents pre-init frame drop on the main-thread RPC fallback).
         this.decoderReady = this.initDecoderWorker(codec, width, height, codecSettings);
+    }
+
+    // Hide the inactive render surface via inline `style.display`. Razor doesn't
+    // bind `style` on these elements, so Blazor's diff never overwrites it —
+    // unlike a parent class toggle, which gets clobbered when `FocusedClass`
+    // changes during a layout flip. Called once at construction and again on
+    // the mstg → canvas fallback in startPull().
+    private applyBackendVisibility(canvas: HTMLCanvasElement, videoEl: HTMLVideoElement): void {
+        if (this.renderBackend.kind === 'mstg') {
+            videoEl.style.display = 'block';
+            canvas.style.display = 'none';
+        } else {
+            canvas.style.display = 'block';
+            videoEl.style.display = 'none';
+        }
     }
 
     private async initDecoderWorker(codec: string, width: number, height: number, codecSettings: string): Promise<void> {
@@ -1513,11 +1536,8 @@ export class VideoPlayer {
             warnLog?.log('Off-thread pull unavailable in worker — falling back to canvas + main-thread pull');
             (this.renderBackend as { dispose: () => void }).dispose();
             this.renderBackend = new CanvasRenderBackend(this.canvas);
-            const container = this.canvas.parentElement;
-            if (container) {
-                container.classList.remove('backend-mstg');
-                container.classList.add('backend-canvas');
-            }
+            // Re-toggle inline display so canvas is visible and <video> is hidden.
+            this.applyBackendVisibility(this.canvas, this.videoEl);
             // start() was already called by Blazor before startPull, so isPlaying is true here.
             this.startRenderLoop();
             // Fall through to existing main-thread pull below.
