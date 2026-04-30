@@ -6,7 +6,6 @@ namespace ActualChat.App.Maui.Audio;
 public class PlayerNode : AudioNode, IDisposable
 {
     public AVAudioFormat Format { get; }
-    private readonly Lock _lock = new();
     private readonly ComputedState<bool> _isPlaying;
 
     public IState<bool> IsPlaying => _isPlaying;
@@ -27,7 +26,7 @@ public class PlayerNode : AudioNode, IDisposable
 
     public void Play()
     {
-        lock (_lock)
+        lock (Lock)
             if (!Node.Playing)
                 Node.Play();
         _isPlaying.Invalidate();
@@ -35,7 +34,7 @@ public class PlayerNode : AudioNode, IDisposable
 
     public void Pause()
     {
-        lock (_lock)
+        lock (Lock)
             if (Node.Playing)
                 Node.Pause();
         _isPlaying.Invalidate();
@@ -43,14 +42,14 @@ public class PlayerNode : AudioNode, IDisposable
 
     public void ScheduleBuffer(AVAudioPcmBuffer pcm, Action<AVAudioPlayerNodeCompletionCallbackType> callback)
     {
-        lock (_lock)
+        lock (Lock)
             Node.ScheduleBuffer(pcm, AVAudioPlayerNodeCompletionCallbackType.PlayedBack, callback);
     }
 
     public Task ScheduleFileAndWait(AVAudioFile audioFile, CancellationToken cancellationToken = default)
     {
         var whenPlayed = AsyncTaskMethodBuilderExt.New();
-        lock (_lock)
+        lock (Lock)
             // NOTE: ScheduleFileAsync seems to have a synchronous continuation and leads to deadlock
  #pragma warning disable CA1849
             Node.ScheduleFile(audioFile,
@@ -63,14 +62,14 @@ public class PlayerNode : AudioNode, IDisposable
 
     public void Stop()
     {
-        lock (_lock)
+        lock (Lock)
             Node.Stop();
         _isPlaying.Invalidate();
     }
 
     private Task<bool> GetIsPlaying(CancellationToken cancellationToken)
     {
-        lock (_lock)
+        lock (Lock)
             return Task.FromResult(Node.Playing);
     }
 }
