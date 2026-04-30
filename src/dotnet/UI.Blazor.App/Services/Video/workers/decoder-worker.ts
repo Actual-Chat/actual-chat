@@ -18,7 +18,8 @@ import type { EncodedChunkData } from '../webcodecs-encoder';
 import { extractHVCC } from '../hevc-parser';
 import { getLogs } from 'logging';
 import { WorkerMstgSelector } from './worker-mstg-selector';
-import { BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS } from '../services/bg-canvas-settings';
+import { BG_DRAW_INTERVAL_MS } from '../services/bg-canvas-settings';
+import { BgBlurRenderer } from '../webgpu-blur';
 import { Api, momentToSeconds, secondsToMoment, streamingApi } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 
@@ -1321,20 +1322,15 @@ const serverImpl: DecoderWorker = {
         }
 
         // Optional bg painter: low-res blurred canvas drawn from the same
-        // VideoFrames the selector picks. Blur is applied via a portable
-        // software box-blur in the selector — Safari OffscreenCanvas
-        // silently ignores ctx.filter on some versions, leaving the bg
-        // pixelated. Box blur on 64×N at 10 fps is microseconds.
-        let bgPainter: { canvas: OffscreenCanvas; ctx: OffscreenCanvasRenderingContext2D } | undefined;
+        // VideoFrames the selector picks. Blur is applied via a WebGPU
+        // dual-Kawase pipeline (see BgBlurRenderer) directly into the bg
+        // canvas — no CPU readback. The renderer self-initializes on first
+        // render() call; if WebGPU is unavailable in this worker context
+        // the renderer fails closed and the backdrop stays blank.
+        let bgPainter: { renderer: BgBlurRenderer } | undefined;
         if (bgCanvas) {
-            const ctx = bgCanvas.getContext('2d', { alpha: false });
-            if (ctx) {
-                ctx.imageSmoothingEnabled = false;
-                bgPainter = { canvas: bgCanvas, ctx };
-                infoLog?.log(`Bg painter armed: ${BG_CANVAS_WIDTH}px wide, every ${BG_DRAW_INTERVAL_MS}ms (software box blur)`);
-            } else {
-                warnLog?.log('Bg canvas getContext("2d") returned null — bg painter disabled');
-            }
+            bgPainter = { renderer: new BgBlurRenderer(bgCanvas) };
+            infoLog?.log(`Bg painter armed: WebGPU Kawase blur every ${BG_DRAW_INTERVAL_MS}ms`);
         }
 
         mstgSelector = new WorkerMstgSelector(

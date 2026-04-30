@@ -21,7 +21,10 @@
     };
 }
 <div class="video-track-player remote-video-container has-source-aspect @FocusedClass @streamKindCls" style="@aspectRatioStyle">
-    <canvas @ref="BgCanvasRef" class="remote-video-bg" aria-hidden="true"></canvas>
+    @* Low-res intrinsic resolution: WebGPU renders to a 64×64 swap chain
+       and CSS `object-cover` upscales to fill the focused tile. The heavy
+       bilinear upscale on top of the Kawase blur produces a soft backdrop. *@
+    <canvas @ref="BgCanvasRef" class="remote-video-bg" width="64" height="64" aria-hidden="true"></canvas>
     <canvas @ref="CanvasRef" class="remote-video" data-stream-id="@StreamInfo.StreamId.Value" data-author-id="@StreamInfo.AuthorId.Value"></canvas>
     <video @ref="VideoElRef" class="remote-video" autoplay playsinline muted aria-hidden="true"></video>
     @if (!string.IsNullOrEmpty(AuthorName)) {

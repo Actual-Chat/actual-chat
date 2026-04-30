@@ -850,13 +850,6 @@ function encodeBlurPasses(
 ): void {
     const { blurStrength, maskDirty, smoothingSource, smoothingAlpha } = opts;
 
-    // WebGPU spec: importExternalTexture creates a texture bound to THIS frame's
-    // GPU resource and is implicitly destroyed when the frame is closed or the
-    // browser advances. NEVER cache across frames — the cached texture would
-    // reference a freed resource and trigger GPU validation errors. Per-frame
-    // creation is correct.
-    const src = device!.importExternalTexture({ source: frame });
-
     // Merge temporal smoothing into this encoder (saves one queue.submit per frame)
     if (smoothingSource && smoothingAlpha !== undefined && maskDirty) {
         const maskSize = maskWidth * maskHeight;
@@ -870,6 +863,30 @@ function encodeBlurPasses(
     } else {
         maskTex = cachedMaskTexture;
     }
+
+    encodePyramidAndComposite(encoder, frame, maskTex, blurStrength, frameW, frameH, outW, outH, renderTargetView);
+}
+
+// Encodes the dual-Kawase pyramid + composite using a pre-built mask texture.
+// Shared between mask-aware blur (segmentation pipeline) and the no-mask
+// full-frame blur (BgBlurRenderer, which binds a constant-zero mask).
+function encodePyramidAndComposite(
+    encoder: GPUCommandEncoder,
+    frame: VideoFrame,
+    maskTex: GPUTexture,
+    blurStrength: number,
+    frameW: number,
+    frameH: number,
+    outW: number,
+    outH: number,
+    renderTargetView: GPUTextureView,
+): void {
+    // WebGPU spec: importExternalTexture creates a texture bound to THIS frame's
+    // GPU resource and is implicitly destroyed when the frame is closed or the
+    // browser advances. NEVER cache across frames — the cached texture would
+    // reference a freed resource and trigger GPU validation errors. Per-frame
+    // creation is correct.
+    const src = device!.importExternalTexture({ source: frame });
 
     const offsetMultiplier = 0.5;
     const levels = cachedLevels;
@@ -960,6 +977,131 @@ function encodeBlurPasses(
     }));
     compositePass.draw(4);
     compositePass.end();
+}
+
+// 1×1 mask texture filled with 0.0 → bgWeight() returns 1 for every sample
+// → existing mask-aware shaders behave as a uniform full-frame blur. Lets the
+// no-mask BgBlurRenderer reuse the same pipelines that the segmentation path
+// uses, no shader-level branching required.
+let zeroMaskTexture: GPUTexture | null = null;
+
+function getZeroMaskTexture(): GPUTexture {
+    if (zeroMaskTexture)
+        return zeroMaskTexture;
+
+    zeroMaskTexture = device!.createTexture({
+        size: { width: 1, height: 1 },
+        format: 'rgba8unorm',
+        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+    });
+    device!.queue.writeTexture(
+        { texture: zeroMaskTexture },
+        new Uint8Array([0, 0, 0, 255]),
+        { bytesPerRow: 4 },
+        { width: 1, height: 1 },
+    );
+    return zeroMaskTexture;
+}
+
+/**
+ * Render a full-frame Kawase blur of `frame` into `targetCtx`'s current canvas
+ * texture. No segmentation mask — every pixel is blurred uniformly. Caller
+ * owns `frame` and must close it after this returns; this function does NOT
+ * close the frame.
+ */
+export function applyFullFrameBlur(
+    frame: VideoFrame,
+    targetCtx: GPUCanvasContext,
+    blurStrength = 4,
+): void {
+    ensureInitialized();
+
+    if (blurStrength !== lastBlurStrength) {
+        clearMipmapCache();
+        for (const buf of offsetBufferCache.values()) buf.destroy();
+        offsetBufferCache.clear();
+        cachedLevels = blurStrength < 10 ? 2 : blurStrength < 20 ? 3 : 4;
+        lastBlurStrength = blurStrength;
+    }
+
+    const w = frame.displayWidth;
+    const h = frame.displayHeight;
+    if (w === 0 || h === 0)
+        return;
+
+    const target = targetCtx.getCurrentTexture();
+    const outW = target.width;
+    const outH = target.height;
+
+    const encoder = device!.createCommandEncoder();
+    encodePyramidAndComposite(
+        encoder, frame, getZeroMaskTexture(), blurStrength,
+        w, h, outW, outH, target.createView());
+    device!.queue.submit([encoder.finish()]);
+}
+
+/**
+ * Owns a target OffscreenCanvas + its GPUCanvasContext for full-frame blur.
+ * Self-initializes on first `render()` (fire-and-forget — first call may
+ * no-op while WebGPU init is in flight). Used by the worker MSTG selector to
+ * paint the focused tile's letterbox backdrop without CPU readback.
+ */
+export class BgBlurRenderer {
+    private readonly canvas: OffscreenCanvas;
+    private ctx: GPUCanvasContext | null = null;
+    private initStarted = false;
+    private initFailed = false;
+
+    constructor(canvas: OffscreenCanvas) {
+        this.canvas = canvas;
+    }
+
+    // Returns true if the blur ran, false if WebGPU isn't ready yet (or
+    // initialization failed permanently). Caller does NOT lose ownership of
+    // `frame`. Canvas drawing-buffer size is whatever the host set (default
+    // 300×150 if no width/height attributes); CSS scales the swap-chain
+    // bitmap to fill the parent via `object-fit: cover`.
+    render(frame: VideoFrame, blurStrength = 4): boolean {
+        if (this.initFailed)
+            return false;
+
+        if (!this.ctx) {
+            this.ensureInit();
+            return false;
+        }
+
+        try {
+            applyFullFrameBlur(frame, this.ctx, blurStrength);
+            return true;
+        } catch (e) {
+            warnLog?.log('BgBlurRenderer render failed:', e);
+            return false;
+        }
+    }
+
+    private ensureInit(): void {
+        if (this.initStarted) return;
+        this.initStarted = true;
+        void (async () => {
+            try {
+                await initBlurWebGPU();
+                const ctx = this.canvas.getContext('webgpu');
+                if (!ctx)
+                    throw new Error('webgpu canvas context unavailable');
+
+                ctx.configure({
+                    device: WebGPUManager.get(),
+                    format: FORMAT,
+                    alphaMode: 'opaque',
+                    usage: GPUTextureUsage.RENDER_ATTACHMENT,
+                });
+                this.ctx = ctx;
+            } catch (e) {
+                this.initFailed = true;
+                warnLog?.log('BgBlurRenderer init failed:', e);
+            }
+        })();
+    }
 }
 
 /**

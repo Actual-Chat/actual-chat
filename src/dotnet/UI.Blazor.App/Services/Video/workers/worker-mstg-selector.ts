@@ -10,7 +10,8 @@
 
 import { AudioVideoSyncClient } from 'audio-video-sync-client';
 import { getLogs } from 'logging';
-import { BG_BOX_BLUR_PASSES, BG_BOX_BLUR_RADIUS, BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS } from '../services/bg-canvas-settings';
+import { BG_BLUR_STRENGTH, BG_DRAW_INTERVAL_MS } from '../services/bg-canvas-settings';
+import type { BgBlurRenderer } from '../webgpu-blur';
 
 const { warnLog } = getLogs('VideoDecoder');
 
@@ -31,8 +32,7 @@ const RULE4_FORCE_WRITE_AHEAD_US = 1_000_000;
 const STARVATION_WARN_TICKS = 30;
 
 export interface BgPainter {
-    canvas: OffscreenCanvas;
-    ctx: OffscreenCanvasRenderingContext2D;
+    renderer: BgBlurRenderer;
 }
 
 export interface WorkerMstgBufferStats {
@@ -65,8 +65,8 @@ export class WorkerMstgSelector {
     private lastTickRawDriftUs = 0;
     private lastTickAudioStateAgeMs = -1;        // -1 means no audio state seen
     // Whether to paint the blur backdrop. Off for sidebar/unfocused tiles —
-    // bg canvas is hidden by CSS in those states, so painting wastes CPU on
-    // a 64×N readback + 3-pass box blur every 100 ms. Toggled from main via
+    // bg canvas is hidden by CSS in those states, so painting wastes GPU work
+    // and keeps the WebGPU pipeline hot. Toggled from main via
     // decoder-worker.setBgPaintEnabled.
     private bgPaintEnabled = true;
     // Smoothed signed difference (us) between audio-anchored target and the
@@ -284,29 +284,19 @@ export class WorkerMstgSelector {
 
         // Paint bg backdrop from the same VideoFrame, throttled to ~10 fps.
         // Drawing happens before writer.write so the frame is still readable
-        // — writer takes ownership when its promise resolves. Blur is applied
-        // via a portable software box-blur (see bgBoxBlur) — Safari
-        // OffscreenCanvas silently ignores ctx.filter on some versions, so
-        // we don't rely on it. Box blur on 64×N at 10 fps is microseconds.
+        // — writer takes ownership when its promise resolves. The renderer
+        // runs a WebGPU dual-Kawase blur directly into the bg canvas swap
+        // chain (no CPU readback). Canvas drawing-buffer size is left at
+        // whatever the host set; CSS upscales the swap-chain bitmap to fill
+        // the parent via `object-fit: cover`. On the first call WebGPU init
+        // is in flight and render() returns false; subsequent calls paint.
         if (this.bgPainter && this.bgPaintEnabled) {
             const nowMs = performance.now();
             if (nowMs - this.lastBgDrawAtMs >= BG_DRAW_INTERVAL_MS) {
                 this.lastBgDrawAtMs = nowMs;
                 try {
-                    const dw = eligible.displayWidth || 1;
-                    const dh = eligible.displayHeight || 1;
-                    const bgH = Math.max(1, Math.round(BG_CANVAS_WIDTH * dh / dw));
-                    if (this.bgPainter.canvas.width !== BG_CANVAS_WIDTH ||
-                        this.bgPainter.canvas.height !== bgH) {
-                        this.bgPainter.canvas.width = BG_CANVAS_WIDTH;
-                        this.bgPainter.canvas.height = bgH;
-                        // Canvas resize resets ctx state — re-apply smoothing.
-                        this.bgPainter.ctx.imageSmoothingEnabled = false;
-                    }
-                    this.bgPainter.ctx.drawImage(eligible, 0, 0, BG_CANVAS_WIDTH, bgH);
-                    bgBoxBlur(this.bgPainter.ctx, BG_CANVAS_WIDTH, bgH,
-                        BG_BOX_BLUR_RADIUS, BG_BOX_BLUR_PASSES);
-                    this.bgPaintsSinceDiag++;
+                    if (this.bgPainter.renderer.render(eligible, BG_BLUR_STRENGTH))
+                        this.bgPaintsSinceDiag++;
                 } catch (e) {
                     warnLog?.log('Bg paint failed:', e);
                 }
@@ -368,54 +358,3 @@ export class WorkerMstgSelector {
     }
 }
 
-// Portable separable box blur on an OffscreenCanvas 2D context. Multiple
-// passes approximate Gaussian (3 passes ≈ Gaussian σ ≈ radius). Operates
-// on a 64×N image at 10 fps — total ≈ 200k ops/draw, ~2M/s, microseconds.
-// Replaces ctx.filter='blur(...)' which Safari OffscreenCanvas silently
-// drops on iOS ≤17.3 / iPadOS, leaving the bg pixelated.
-function bgBoxBlur(
-    ctx: OffscreenCanvasRenderingContext2D,
-    w: number, h: number,
-    radius: number, passes: number,
-): void {
-    if (radius < 1 || passes < 1 || w < 1 || h < 1) return;
-    const imageData = ctx.getImageData(0, 0, w, h);
-    const data = imageData.data;
-    const tmp = new Uint8ClampedArray(data.length);
-    const wPx = w << 2;
-    for (let p = 0; p < passes; p++) {
-        // Horizontal pass: data → tmp
-        for (let y = 0; y < h; y++) {
-            const rowStart = y * wPx;
-            for (let x = 0; x < w; x++) {
-                let r = 0, g = 0, b = 0, n = 0;
-                const xMin = Math.max(0, x - radius);
-                const xMax = Math.min(w - 1, x + radius);
-                for (let xi = xMin; xi <= xMax; xi++) {
-                    const i = rowStart + (xi << 2);
-                    r += data[i]; g += data[i + 1]; b += data[i + 2];
-                    n++;
-                }
-                const i = rowStart + (x << 2);
-                tmp[i] = r / n; tmp[i + 1] = g / n; tmp[i + 2] = b / n; tmp[i + 3] = 255;
-            }
-        }
-        // Vertical pass: tmp → data
-        for (let x = 0; x < w; x++) {
-            const colStart = x << 2;
-            for (let y = 0; y < h; y++) {
-                let r = 0, g = 0, b = 0, n = 0;
-                const yMin = Math.max(0, y - radius);
-                const yMax = Math.min(h - 1, y + radius);
-                for (let yi = yMin; yi <= yMax; yi++) {
-                    const i = yi * wPx + colStart;
-                    r += tmp[i]; g += tmp[i + 1]; b += tmp[i + 2];
-                    n++;
-                }
-                const i = y * wPx + colStart;
-                data[i] = r / n; data[i + 1] = g / n; data[i + 2] = b / n; data[i + 3] = 255;
-            }
-        }
-    }
-    ctx.putImageData(imageData, 0, 0);
-}
