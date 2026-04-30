@@ -10,7 +10,7 @@
     Class="join-video-call-modal modal-sm"
     Title="@Title">
     <Body>
-    <FormBlock Class="">
+    <div class="c-container">
         @if (m.ShowActiveSessionInfo) {
             <div class="c-members">
                 <ChatActivities
@@ -121,7 +121,7 @@
                 </ButtonRound>
             </div>
         }
-    </FormBlock>
+    </div>
     </Body>
     <Buttons>
         @if (IsSettingsMode) {
