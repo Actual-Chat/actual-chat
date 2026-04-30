@@ -74,11 +74,12 @@ export class WorkerMstgSelector {
     // Negative → audio behind → slow down. EMA over recent ticks.
     private smoothedDriftUs = 0;
     private hasObservedAudioState = false;
-    // Periodic tick fallback. Audio sync updates fire at ~5 Hz; onDecoded fires
-    // ~30 fps. Both can stop (silent author, decoder stall). A timer-driven
-    // tick guarantees the wallclock target keeps advancing during silence.
-    private periodicTimer: ReturnType<typeof setInterval> | null = null;
-    private static readonly PERIODIC_TICK_MS = 33;       // ~30 fps cadence
+    // Idle tick fallback. Audio sync updates fire at ~5 Hz; onDecoded fires
+    // ~30 fps. Both can stop (silent author, decoder stall). A self-scheduling
+    // timeout keeps the wallclock target advancing during silence without
+    // burning a 30 Hz timer per peer when nothing else is firing.
+    private nextTickTimeout: ReturnType<typeof setTimeout> | null = null;
+    private static readonly MAX_IDLE_TICK_MS = 100;
     // Rate-correction state (maintained for getDriftMs() reporters).
     private static readonly DRIFT_EMA_ALPHA = 0.15;
     // Counts consecutive ticks where the queue was non-empty but no frame
@@ -99,7 +100,7 @@ export class WorkerMstgSelector {
         // tick() periodically to drive the wallclock target even if no audio
         // updates arrive and no new frames decode (queue still has frames to
         // play out from buffer).
-        this.periodicTimer = setInterval(() => this.tick(), WorkerMstgSelector.PERIODIC_TICK_MS);
+        this.scheduleNextTick(0);
     }
 
     onDecoded(frame: VideoFrame): void {
@@ -145,9 +146,9 @@ export class WorkerMstgSelector {
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
-        if (this.periodicTimer !== null) {
-            clearInterval(this.periodicTimer);
-            this.periodicTimer = null;
+        if (this.nextTickTimeout !== null) {
+            clearTimeout(this.nextTickTimeout);
+            this.nextTickTimeout = null;
         }
         for (const f of this.queue) {
             try { f.close(); } catch { /* ignore */ }
@@ -172,8 +173,25 @@ export class WorkerMstgSelector {
         }
     }
 
+    private scheduleNextTick(delayMs: number): void {
+        if (this.disposed) return;
+        if (this.nextTickTimeout !== null) clearTimeout(this.nextTickTimeout);
+        this.nextTickTimeout = setTimeout(() => {
+            this.nextTickTimeout = null;
+            this.tick();
+        }, delayMs);
+    }
+
+    private scheduleIdleTick(): void {
+        this.scheduleNextTick(WorkerMstgSelector.MAX_IDLE_TICK_MS);
+    }
+
     private tick(): void {
-        if (this.disposed || this.writeInFlight || this.queue.length === 0) return;
+        if (this.disposed) return;
+        if (this.writeInFlight || this.queue.length === 0) {
+            this.scheduleIdleTick();
+            return;
+        }
 
         // ── Rule 1: wallclock-anchored target (always) ──────────────────────
         // Worker has no ServerClock; reconstruct it from the offset snapshot
@@ -270,13 +288,18 @@ export class WorkerMstgSelector {
                         `oldestAheadMs=${((oldestTs - targetUs) / 1000).toFixed(0)}, ` +
                         `targetUs=${targetUs}`);
                 }
+                this.scheduleIdleTick();
                 return;
             }
         }
-        if (!eligible) return;
+        if (!eligible) {
+            this.scheduleIdleTick();
+            return;
+        }
         this.starvedTicks = 0;
         if (eligible.timestamp === this.lastWrittenTs) {
             eligible.close();
+            this.scheduleIdleTick();
             return;
         }
 
@@ -312,7 +335,9 @@ export class WorkerMstgSelector {
             })
             .finally(() => {
                 this.writeInFlight = false;
-                if (!this.disposed && this.queue.length > 0) this.tick();
+                if (this.disposed) return;
+                if (this.queue.length > 0) this.tick();
+                else this.scheduleIdleTick();
             });
 
         // DIAG: emit a 1 Hz summary. Two purposes:
