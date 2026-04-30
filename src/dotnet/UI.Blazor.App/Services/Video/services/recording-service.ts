@@ -178,6 +178,27 @@ export class RecordingService extends EventTarget {
         if (!this.pipeline) return;
         // Cache for next fresh start as well.
         this.config.simulcastLadder = ladder ?? undefined;
+
+        // If the new ladder's base dims/bitrate differ from the live encoder,
+        // reconfigure the base encoder first. Without this, mid-stream
+        // simulcast activation leaves the base at its original (often top-tier)
+        // dims while extras include the same dims — identical duplicate
+        // spatial layers, downscaler runs N identity slots.
+        if (ladder && ladder.length > 0) {
+            const base = ladder[0];
+            const stats = this.pipeline.getEncoderStats();
+            if (stats.configuredWidth !== base.width
+                || stats.configuredHeight !== base.height
+                || stats.configuredBitrate !== base.bitrate) {
+                infoLog?.log(
+                    `setSimulcastLadder: reconfiguring base ${stats.configuredWidth}x${stats.configuredHeight}@${(stats.configuredBitrate / 1_000_000).toFixed(2)}Mbps`
+                    + ` → ${base.width}x${base.height}@${(base.bitrate / 1_000_000).toFixed(2)}Mbps`);
+                await this.pipeline.reconfigure({
+                    width: base.width, height: base.height, bitrate: base.bitrate,
+                });
+            }
+        }
+
         // Strip base — pipeline.setSpatialLayers takes EXTRAS only (base lives
         // on encoderConfig). Empty/single-tier ladder → empty extras → P2P.
         const extras = ladder && ladder.length > 1 ? ladder.slice(1) : [];

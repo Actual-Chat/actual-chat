@@ -537,7 +537,11 @@ export class VideoRecorder {
                 : [{ width: targetSize.width, height: targetSize.height, bitrate: targetBitrate }];
             const isSimulcast = ladder.length >= 2;
             const topDim = ladder[ladder.length - 1];
-            if (topDim.width < 1920 && topDim.height < 1080) {
+            // TEMP: 720p cap while iOS thermal investigation is in flight.
+            // Set TEMP_CAP_720P = false to re-enable HW-gated 1080p promotion.
+            const TEMP_CAP_720P = true;
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            if (!TEMP_CAP_720P && topDim.width < 1920 && topDim.height < 1080) {
                 const tier1080: SpatialLayerConfig = {
                     width: 1920,
                     height: 1080,
@@ -865,8 +869,24 @@ export class VideoRecorder {
             [width, height] = [height, width];
 
         // Cap to actual camera resolution — upscaling wastes CPU for no quality gain
-        const cappedWidth = this.cameraWidth > 0 ? Math.min(width, this.cameraWidth) : width;
-        const cappedHeight = this.cameraHeight > 0 ? Math.min(height, this.cameraHeight) : height;
+        let cappedWidth = this.cameraWidth > 0 ? Math.min(width, this.cameraWidth) : width;
+        let cappedHeight = this.cameraHeight > 0 ? Math.min(height, this.cameraHeight) : height;
+
+        // TEMP: webcam-only 720p cap for iOS thermal investigation. Screencast
+        // keeps native preset bumps (1080p text legibility matters there).
+        // Aspect-preserving downscale: shrink the LONG side to 1280, derive
+        // the short side from incoming aspect to keep portrait/landscape.
+        const TEMP_CAP_720P = true;
+        const isWebcamMode = this.recordingService.getConfig().mode === 'webcam';
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (TEMP_CAP_720P && isWebcamMode) {
+            const longSide = Math.max(cappedWidth, cappedHeight);
+            if (longSide > 1280) {
+                const scale = 1280 / longSide;
+                cappedWidth = Math.round(cappedWidth * scale) & ~1;
+                cappedHeight = Math.round(cappedHeight * scale) & ~1;
+            }
+        }
 
         // Pick bitrate from the codec-aware table at the (possibly capped) height,
         // passing the current recording mode so screencast gets the higher-entropy
