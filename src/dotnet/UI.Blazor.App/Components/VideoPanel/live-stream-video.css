@@ -1,0 +1,23 @@
+/* Suppress all native video chrome on MSTG/VTG-fed <video> elements.
+   Targets WKWebView (iOS), WebView2 (Windows), Android WebView. */
+.live-stream-video::-webkit-media-controls,
+.live-stream-video::-webkit-media-controls-enclosure,
+.live-stream-video::-webkit-media-controls-panel,
+.live-stream-video::-webkit-media-controls-play-button,
+.live-stream-video::-webkit-media-controls-overlay-play-button,
+.live-stream-video::-webkit-media-controls-start-playback-button,
+.live-stream-video::-webkit-media-controls-fullscreen-button,
+.live-stream-video::-webkit-media-controls-mute-button,
+.live-stream-video::-webkit-media-controls-volume-slider,
+.live-stream-video::-webkit-media-controls-timeline,
+.live-stream-video::-webkit-media-controls-current-time-display,
+.live-stream-video::-webkit-media-controls-time-remaining-display {
+    display: none !important;
+    -webkit-appearance: none;
+    appearance: none;
+    pointer-events: none;
+}
+.live-stream-video {
+    -webkit-user-select: none;
+    user-select: none;
+}
