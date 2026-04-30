@@ -373,7 +373,7 @@ export class VisualMediaViewer {
             if (target.closest('.image-viewer-header')
                 || target.closest('.image-viewer-footer')
                 || target.closest('.video-control')
-                || target.closest('.media-info-panel'))
+                || (!this.isInfoOpen && target.closest('.media-info-panel')))
                 return;
 
             const touch = e.touches[0];
