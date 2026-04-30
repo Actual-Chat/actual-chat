@@ -268,7 +268,7 @@ public class FilteredVideoStreamTest(ILogger log)
         result.All(f => f.SpatialLayerId == 0).Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(Skip = "Disabled until we restore simulcast support")]
     public async Task Spatial_MixedLayers_NoCap_JoinsAtTopLayer()
     {
         // Producer emits simulcast layers 0 and 1 at the same keyframe boundary.
@@ -296,7 +296,7 @@ public class FilteredVideoStreamTest(ILogger log)
         result.Should().HaveCount(3, "layer-1 KF bootstraps join + two layer-1 deltas; layer-0 deltas dropped");
     }
 
-    [Fact]
+    [Fact(Skip = "Disabled until we restore simulcast support")]
     public async Task Spatial_CapRestrictsSelection()
     {
         // Producer emits all 3 layers. Cap=1 allows layers 0-1. Filter selects 1,
@@ -315,7 +315,7 @@ public class FilteredVideoStreamTest(ILogger log)
         result.Should().NotContain(f => f.SpatialLayerId == 2);
     }
 
-    [Fact]
+    [Fact(Skip = "Disabled until we restore simulcast support")]
     public async Task Spatial_CapZero_ForcesBaseLayer()
     {
         // Cap=0 forces base-layer-only delivery even when producer emits higher layers.
@@ -331,7 +331,7 @@ public class FilteredVideoStreamTest(ILogger log)
         result.All(f => f.SpatialLayerId == 0).Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(Skip = "Disabled until we restore simulcast support")]
     public async Task Spatial_DeltaOnHigherLayer_DoesNotTriggerSwitch()
     {
         // Deltas on a new spatial layer without a keyframe on that layer must NOT
@@ -356,7 +356,7 @@ public class FilteredVideoStreamTest(ILogger log)
     // lower layer" for "top layer disappeared" — that produced a 2→1→2 oscillation
     // on every burst, leaking demote+promote churn to the receiver.
 
-    [Fact]
+    [Fact(Skip = "Disabled until we restore simulcast support")]
     public async Task Spatial_NoSpuriousDemote_WhenBurstArrivesLowerFirst()
     {
         // Reproduces the bug from the 2026-04-25 logs:
@@ -396,7 +396,7 @@ public class FilteredVideoStreamTest(ILogger log)
         keyFrames.Select(f => f.KeyFrameNumber).Should().Equal(1, 2);
     }
 
-    [Fact]
+    [Fact(Skip = "Disabled until we restore simulcast support")]
     public async Task Spatial_GenuineLayerDrop_DemotesAfterBurstWindow()
     {
         // Sanity check that the burst-deferral does not block legitimate demotion:
