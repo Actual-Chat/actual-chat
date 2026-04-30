@@ -30,6 +30,12 @@ export interface DecoderStats {
   decodeQueueSize: number;
   /** Number of delta frames dropped due to backpressure */
   backpressureDrops: number;
+  /** Peak observed VideoDecoder.decodeQueueSize since last reset. */
+  peakDecodeQueueSize: number;
+  /** Duration of the most recent backpressure burst (ms from first drop to recovery keyframe). 0 if no burst observed yet. */
+  lastArtifactWindowMs: number;
+  /** Total number of backpressure-drop bursts observed since last reset. */
+  artifactWindowsCount: number;
   hardwareAcceleration: string;
   resolution: string;
   // Pull stats — populated only when the decoder worker owns the pull loop
@@ -50,6 +56,13 @@ export class WebCodecsDecoder {
     private pureDecodeTimeHistory: number[] = []; // Times when queue was 0 at start
     private lastResolution: { width: number; height: number } | null = null;
     private backpressureDrops = 0;
+    private peakDecodeQueueSize = 0;
+    private burstStartedAtMs = 0;
+    private burstStartedSeq = -1;
+    private burstDropCount = 0;
+    private deltasPassedDuringBurst = 0;
+    private lastArtifactWindowMs = 0;
+    private artifactWindowsCount = 0;
 
     constructor(
     private config: DecoderConfig,
@@ -85,6 +98,13 @@ export class WebCodecsDecoder {
                 }
 
                 this.frameCount++;
+
+                // Sample peak VideoDecoder queue depth so getStats() can show
+                // whether we're routinely sitting near BackpressureQueueLimit
+                // (the silent-delta-drop trigger). output() fires per decoded
+                // frame, so this is amortized cost-free.
+                const qSize = this.decoder.decodeQueueSize;
+                if (qSize > this.peakDecodeQueueSize) this.peakDecodeQueueSize = qSize;
 
                 // Track resolution changes
                 const currentResolution = { width: frame.displayWidth, height: frame.displayHeight };
@@ -161,7 +181,15 @@ export class WebCodecsDecoder {
         // Always pass keyframes through so the decoder can resync.
         if (this.decoder.decodeQueueSize > BackpressureQueueLimit && chunk.type !== 'key') {
             this.backpressureDrops++;
+            this.recordBackpressureDrop(chunk.timestamp);
             return;
+        }
+        // Burst tracking: a keyframe terminates the artifact window; deltas
+        // that pass the gate during a burst are counted to estimate how much
+        // of the GOP actually decoded between first drop and recovery.
+        if (this.burstDropCount > 0) {
+            if (chunk.type === 'key') this.closeArtifactWindow();
+            else this.deltasPassedDuringBurst++;
         }
         this.decodeStartTimes.push(performance.now());
         this.decodeQueueAtStart.push(this.decoder.decodeQueueSize);
@@ -194,7 +222,13 @@ export class WebCodecsDecoder {
         // Backpressure: drop delta chunks when decoder queue is saturated.
         if (this.decoder.decodeQueueSize > BackpressureQueueLimit && chunkData.type !== 'key') {
             this.backpressureDrops++;
+            this.recordBackpressureDrop(chunkData.timestamp, chunkData.sequenceNumber);
             return;
+        }
+        // Burst tracking: see decodeRaw() comment.
+        if (this.burstDropCount > 0) {
+            if (chunkData.type === 'key') this.closeArtifactWindow();
+            else this.deltasPassedDuringBurst++;
         }
 
         // Record start time and queue depth for async timing measurement
@@ -300,6 +334,9 @@ export class WebCodecsDecoder {
             pureMedianDecodeTime,
             decodeQueueSize,
             backpressureDrops: this.backpressureDrops,
+            peakDecodeQueueSize: this.peakDecodeQueueSize,
+            lastArtifactWindowMs: this.lastArtifactWindowMs,
+            artifactWindowsCount: this.artifactWindowsCount,
             hardwareAcceleration,
             resolution
         };
@@ -309,9 +346,46 @@ export class WebCodecsDecoder {
         this.frameCount = 0;
         this.droppedFrames = 0;
         this.backpressureDrops = 0;
+        this.peakDecodeQueueSize = 0;
+        this.burstStartedAtMs = 0;
+        this.burstStartedSeq = -1;
+        this.burstDropCount = 0;
+        this.deltasPassedDuringBurst = 0;
+        this.lastArtifactWindowMs = 0;
+        this.artifactWindowsCount = 0;
         this.decodeTimeHistory = [];
         this.decodeStartTimes = [];
         this.decodeQueueAtStart = [];
         this.pureDecodeTimeHistory = [];
+    }
+
+    private recordBackpressureDrop(mediaTimestamp: number, seq?: number): void {
+        if (this.burstStartedAtMs === 0) {
+            this.burstStartedAtMs = performance.now();
+            this.burstStartedSeq = seq ?? -1;
+            warnLog?.log(
+                `Backpressure drop START: seq=${seq ?? '?'}, ` +
+                `queueDepth=${this.decoder.decodeQueueSize}, ` +
+                `mediaTs=${mediaTimestamp}us, ` +
+                `peakQ=${this.peakDecodeQueueSize}`);
+        }
+        this.burstDropCount++;
+    }
+
+    private closeArtifactWindow(): void {
+        const windowMs = performance.now() - this.burstStartedAtMs;
+        this.lastArtifactWindowMs = Math.round(windowMs);
+        this.artifactWindowsCount++;
+        warnLog?.log(
+            `Backpressure drop END (recovery keyframe): ` +
+            `dropsInBurst=${this.burstDropCount}, ` +
+            `deltasPassed=${this.deltasPassedDuringBurst}, ` +
+            `windowMs=${this.lastArtifactWindowMs}, ` +
+            `firstDropSeq=${this.burstStartedSeq}, ` +
+            `totalArtifactWindows=${this.artifactWindowsCount}`);
+        this.burstStartedAtMs = 0;
+        this.burstStartedSeq = -1;
+        this.burstDropCount = 0;
+        this.deltasPassedDuringBurst = 0;
     }
 }

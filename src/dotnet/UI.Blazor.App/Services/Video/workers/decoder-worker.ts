@@ -174,6 +174,9 @@ function getDecoderStatsSnapshot(): DecoderStats {
         pureMedianDecodeTime: -1,
         decodeQueueSize: 0,
         backpressureDrops: 0,
+        peakDecodeQueueSize: 0,
+        lastArtifactWindowMs: 0,
+        artifactWindowsCount: 0,
         hardwareAcceleration: 'unknown',
         resolution: 'N/A'
     };

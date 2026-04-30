@@ -396,7 +396,7 @@ Safari lacks `MediaStreamTrackProcessor` and `MediaStreamTrackGenerator`. The pi
 | Frame rate | 30 fps |
 | Latency mode | `realtime` |
 | Hardware acceleration | `prefer-hardware` |
-| Keyframe interval | Every 1 second |
+| Keyframe interval | Webcam: count `framerate*3` frames or `maxKeyFrameIntervalMs=3000` (whichever fires first). Screencast: count `framerate*2` frames or `maxKeyFrameIntervalMs=10000` (long floor for static-content heartbeat). Source: `recording-service.ts:500-512`. |
 
 ### Background Blur / Segmentation
 

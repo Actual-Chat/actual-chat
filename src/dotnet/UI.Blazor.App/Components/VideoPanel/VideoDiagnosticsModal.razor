@@ -252,11 +252,15 @@
                                     </div>
                                     <div class="diag-row">
                                         <span class="diag-label">Queue</span>
-                                        <span class="diag-value">@(GetNum(ds, "decodeQueueSize").ToString("0"))</span>
+                                        <span class="diag-value">@(GetNum(ds, "decodeQueueSize").ToString("0")) (peak: @(GetNum(ds, "peakDecodeQueueSize").ToString("0")))</span>
                                     </div>
                                     <div class="diag-row">
                                         <span class="diag-label">Frames</span>
                                         <span class="diag-value">@(GetNum(ds, "decodedFrames").ToString("0")) dec, @(GetNum(ds, "droppedFrames").ToString("0")) drop, @(GetNum(ds, "backpressureDrops").ToString("0")) bp</span>
+                                    </div>
+                                    <div class="diag-row">
+                                        <span class="diag-label">Artifact window</span>
+                                        <span class="diag-value">last: @(GetNum(ds, "lastArtifactWindowMs").ToString("0"))ms, count: @(GetNum(ds, "artifactWindowsCount").ToString("0"))</span>
                                     </div>
                                     <div class="diag-row">
                                         <span class="diag-label">HW accel</span>
@@ -523,8 +527,9 @@
                 sb.AppendLine($"  Codec: {GetStr(rd, "codec")} ({GetStr(rd, "codecCategory")})");
                 if (rd.TryGetProperty("decoderStats", out var copyDs) && copyDs.ValueKind == JsonValueKind.Object) {
                     sb.AppendLine($"  Time: {GetNum(copyDs, "medianDecodeTime"):0.0}ms (pure: {GetNum(copyDs, "pureMedianDecodeTime"):0.0}ms)");
-                    sb.AppendLine($"  Queue: {GetNum(copyDs, "decodeQueueSize"):0}");
+                    sb.AppendLine($"  Queue: {GetNum(copyDs, "decodeQueueSize"):0} (peak: {GetNum(copyDs, "peakDecodeQueueSize"):0})");
                     sb.AppendLine($"  Frames: {GetNum(copyDs, "decodedFrames"):0} dec, {GetNum(copyDs, "droppedFrames"):0} drop, {GetNum(copyDs, "backpressureDrops"):0} bp");
+                    sb.AppendLine($"  Artifact window: last {GetNum(copyDs, "lastArtifactWindowMs"):0}ms, count {GetNum(copyDs, "artifactWindowsCount"):0}");
                     sb.AppendLine($"  HW accel: {GetStr(copyDs, "hardwareAcceleration")}");
                     sb.AppendLine($"  Resolution: {GetStr(copyDs, "resolution")}");
                 }
