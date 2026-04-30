@@ -489,11 +489,15 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     @apply z-0;
     @apply block;
     @apply object-cover;
-    /* Promote to its own composited layer so drawImage on this canvas
-       doesn't invalidate the whole #document layer (see CANVAS repaint hot path).
-       Blur + saturate are baked into the canvas bitmap itself — cheaper than CSS filter. */
+    /* Slight scale-up + saturate boost — common video-backdrop look (YouTube,
+       Apple, Netflix). Scale pushes Kawase edge-kernel artifacts offscreen so
+       the frame border doesn't bleed into the visible area; saturate gives
+       the backdrop more colour life. Both are GPU-composited filters — zero
+       cost on top of `will-change: transform`. Promote to its own layer so
+       canvas paints don't invalidate the #document layer. */
     will-change: transform;
-    transform: translateZ(0);
+    transform: scale(1.1) translateZ(0);
+    filter: saturate(1.2);
 }
 .video-track-player.item-focused canvas:not(.remote-video-bg) {
     @apply bg-transparent;
