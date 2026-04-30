@@ -19,6 +19,7 @@ export interface RenderBackend {
     // When true, VideoPlayer must NOT feed frames via drawFrame() and must NOT
     // run a main-thread render loop — the backend pulls frames in the worker.
     readonly isOffThread: boolean;
+    getOutputSize(): { width: number; height: number } | null;
     drawFrame(pf: PresentableFrame): void;
     dispose(): void;
 }

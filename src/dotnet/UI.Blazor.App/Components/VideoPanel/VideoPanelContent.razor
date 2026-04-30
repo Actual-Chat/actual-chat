@@ -9,9 +9,13 @@
     var isOwnCameraStreaming = m.IsOwnRecording;
     var isOwnScreencasting = m.IsOwnScreencasting;
     var isOwnStreaming = isOwnCameraStreaming || isOwnScreencasting;
+    var remoteStreamEndedIntentionally = ChatVideoUI.ConsumeRemoteStreamEndedIntentionally();
 
-    // Show "Connecting..." overlay when no remote streams and not recording;
-    // after 5s timeout, auto-close the panel if streams haven't appeared
+    // Show "Connecting..." overlay when remote streams briefly disappear;
+    // after 5s timeout, auto-close the panel if streams haven't appeared.
+    // A codec/quality switch can complete the old pull normally before the
+    // replacement stream is registered, so the reconnect grace period wins
+    // over the intentional-end signal once this panel has already seen streams.
     if (hasRemoteStreams) {
         _showConnecting = false;
         _noStreamsTimedOut = false;
@@ -19,11 +23,11 @@
     } else if (isOwnStreaming && !_hadRemoteStreams && !_noStreamsTimedOut) {
         // Recording solo, never had remote peers — show preview, not "Connecting..."
         _showConnecting = false;
-    } else if (ChatVideoUI.ConsumeRemoteStreamEndedIntentionally()) {
-        // Remote stream ended normally (sender hung up) — don't show "Connecting..."
-        _showConnecting = false;
     } else if (!_noStreamsTimedOut && _hadRemoteStreams) {
         _showConnecting = true;
+    } else if (remoteStreamEndedIntentionally) {
+        // Remote stream ended normally (sender hung up) — don't show "Connecting..."
+        _showConnecting = false;
     }
 
     if (m != Model.Loading && !isOwnStreaming && !hasRemoteStreams && !_showConnecting) {
@@ -216,6 +220,11 @@
         await base.OnParametersSetAsync();
         if (IsClosing && !_shouldStartClosing)
             _shouldStartClosing = true;
+        else if (!IsClosing) {
+            _shouldStartClosing = false;
+            if (JSRef is not null)
+                await JSRef.InvokeVoidAsync("cancelClosing");
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

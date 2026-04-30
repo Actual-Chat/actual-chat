@@ -66,6 +66,10 @@ export class VideoPanel {
     private islandOrigTop = 0;
     private islandResizeObserver: ResizeObserver | null = null;
     private islandTeardown$: Subject<void> | null = null;
+    private closeTimer = 0;
+    private closeContent: Element | null = null;
+    private closeComplete: (() => void) | null = null;
+    private closing = false;
 
     static create(videoPanel: HTMLElement, blazorRef: DotNet.DotNetObject): VideoPanel {
         return new VideoPanel(videoPanel, blazorRef);
@@ -1032,6 +1036,10 @@ export class VideoPanel {
     }
 
     public startClosing() {
+        if (this.closing)
+            return;
+
+        this.closing = true;
         this.setDragHandleVisible(false);
         this.videoPanel.classList.remove('first-time-open');
         this.videoPanel.classList.add('closing');
@@ -1039,16 +1047,39 @@ export class VideoPanel {
         const content = this.videoPanel.querySelector('.video-panel-content')!;
         let handled = false;
         const complete = () => {
-            if (handled)
+            if (handled || !this.closing)
                 return;
 
             handled = true;
+            this.closing = false;
+            this.closeTimer = 0;
+            this.closeContent = null;
+            this.closeComplete = null;
             content.removeEventListener('animationend', complete);
             void this.blazorRef.invokeMethodAsync('CloseVideoPanel');
         };
 
+        this.closeContent = content;
+        this.closeComplete = complete;
         content.addEventListener('animationend', complete);
-        setTimeout(complete, 500);
+        this.closeTimer = window.setTimeout(complete, 500);
+    }
+
+    public cancelClosing() {
+        if (!this.closing && !this.videoPanel.classList.contains('closing'))
+            return;
+
+        this.closing = false;
+        if (this.closeTimer !== 0) {
+            window.clearTimeout(this.closeTimer);
+            this.closeTimer = 0;
+        }
+        if (this.closeContent && this.closeComplete)
+            this.closeContent.removeEventListener('animationend', this.closeComplete);
+        this.closeContent = null;
+        this.closeComplete = null;
+        this.videoPanel.classList.remove('closing');
+        this.setDragHandleVisible(!this.videoPanel.classList.contains('expanded'));
     }
 
     // endregion

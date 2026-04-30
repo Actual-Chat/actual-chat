@@ -474,7 +474,8 @@ async function isDecoderCodecSupported(codec: string, width: number, height: num
     return false;
 }
 
-// Runtime codec exclusion — codecs that technically decode but can't sustain realtime throughput
+// Runtime codec exclusion — codecs that technically report support but fail at runtime
+// (for example, wrong decoded dimensions or sustained slow decode).
 const excludedDecoderCodecs = new Set<string>();
 
 /** Exclude a decoder codec category at runtime (persists for JS module lifetime). */
@@ -527,7 +528,7 @@ async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
         }
         if (hevcSupported) codecs.push('hevc');
     } else {
-        warnLog?.log(`Decoder HEVC: excluded at runtime (too slow for realtime)`);
+        warnLog?.log(`Decoder HEVC: excluded at runtime`);
     }
 
     // VP9 — TEMPORARILY DISABLED (selection disabled). Re-enable by restoring the probe block.

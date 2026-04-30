@@ -517,6 +517,11 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     @apply object-contain;
     z-index: 1;
 }
+.video-track-player.output-unverified canvas.remote-video,
+.video-track-player.output-unverified video.remote-video,
+.video-track-player.output-unverified canvas.remote-video-bg {
+    opacity: 0;
+}
 
 /* Hidden video-track-players (no item-* or pip-overlay class) — out of flow */
 .video-panel-content .video-track-player:not([class*="item-"]):not(.pip-overlay) {

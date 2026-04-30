@@ -12,9 +12,14 @@ export class CanvasRenderBackend implements RenderBackend {
     // touching `style.aspectRatio` triggers a re-flow even when the value is
     // identical.
     private lastAspectRatio = '';
+    private lastOutputSize: { width: number; height: number } | null = null;
 
     constructor(private readonly canvas: HTMLCanvasElement) {
         this.ctx = canvas.getContext('2d');
+    }
+
+    getOutputSize(): { width: number; height: number } | null {
+        return this.lastOutputSize;
     }
 
     drawFrame(pf: PresentableFrame): void {
@@ -26,6 +31,7 @@ export class CanvasRenderBackend implements RenderBackend {
                 debugLog?.log(`Canvas resized to ${pf.displayWidth}x${pf.displayHeight}`);
                 this.applyContainerAspect(pf.displayWidth, pf.displayHeight);
             }
+            this.lastOutputSize = { width: pf.displayWidth, height: pf.displayHeight };
             this.ctx.drawImage(pf.drawable as CanvasImageSource, 0, 0);
         } catch (error) {
             errorLog?.log('Error rendering frame:', error);

@@ -38,6 +38,12 @@ export class OffThreadRenderBackend implements RenderBackend {
 
     constructor(private readonly videoEl: HTMLVideoElement) {}
 
+    getOutputSize(): { width: number; height: number } | null {
+        const width = this.videoEl.videoWidth;
+        const height = this.videoEl.videoHeight;
+        return width > 0 && height > 0 ? { width, height } : null;
+    }
+
     onTrackReady(track: MediaStreamTrack): void {
         if (this.disposed) {
             try { track.stop(); } catch { /* ignore */ }

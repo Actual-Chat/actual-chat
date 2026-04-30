@@ -156,13 +156,13 @@
     }
 
     [JSInvokable]
-    public async Task OnCodecTooSlow(string codecCategory)
+    public async Task OnRequestCodecExclusion(string codecCategory)
     {
         Log.LogWarning(
-            "[VideoTrackPlayer #{StreamId}] OnCodecTooSlow: codec={Codec} — excluding from supported decoders",
+            "[VideoTrackPlayer #{StreamId}] OnRequestCodecExclusion: codec={Codec} — excluding from supported decoders",
             StreamInfo.StreamId, codecCategory);
         try {
-            // Exclude the codec and re-register with updated supported list
+            // Exclude the codec and re-register with updated supported list.
             await JS.InvokeVoidAsync($"{BlazorUIAppModule.ImportName}.excludeDecoderCodec", codecCategory);
             var decoderCodecs = await JS.InvokeAsync<string[]>(
                 $"{BlazorUIAppModule.ImportName}.detectSupportedDecoderCodecs");
@@ -174,7 +174,7 @@
         }
         catch (Exception ex) {
             Log.LogError(ex,
-                "[VideoTrackPlayer #{StreamId}] Failed to re-register after codec exclusion",
+                "[VideoTrackPlayer #{StreamId}] Failed to re-register after requested codec exclusion",
                 StreamInfo.StreamId);
         }
     }

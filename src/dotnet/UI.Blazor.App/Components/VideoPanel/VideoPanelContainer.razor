@@ -16,6 +16,9 @@
         _rendered = true;
         _chatIdToRender = chatId;
         _isClosing = false;
+    } else if (_rendered && isWatching) {
+        _chatIdToRender = chatId;
+        _isClosing = false;
     } else if (_rendered && !isWatching) {
         _isClosing = true;
     }

@@ -98,6 +98,8 @@ const CODEC_EXCLUSION_TICK_COUNT = 30;     // ~60s after quality reduction still
 // counting those samples against codec health triggers spurious exclusions.
 const SLOW_DECODE_WARMUP_MS = 5000;
 const LATENCY_REPORT_INTERVAL_MS = 2000; // Matches Constants.Video.LatencyReportInterval
+const OUTPUT_VERIFICATION_CHECK_INTERVAL_MS = 250;
+const OUTPUT_DIMENSION_MISMATCH_TOLERANCE_PX = 16;
 
 interface PendingFrame {
     drawable: VideoFrame | ImageBitmap;
@@ -125,6 +127,8 @@ export class VideoPlayer {
     private bgCanvasEl: HTMLCanvasElement;
     private bgOffscreenTransferred = false;
     private renderBackend: RenderBackend;
+    private readonly expectedDisplayWidth: number;
+    private readonly expectedDisplayHeight: number;
     // Decoder worker (off-main-thread decoding)
     private decoderWorkerInstance: Worker | null = null;
     private decoderWorker: (DecoderWorker & Disposable) | null = null;
@@ -241,6 +245,10 @@ export class VideoPlayer {
     private qualityReductionRequested = false;  // true after Phase 1 quality reduction was requested
     private codecCategory = '';         // 'av1', 'hevc', 'vp9', 'h264' — derived from codec string
     private decoderWarmupUntilMs = 0;          // performance.now() before this → skip SLOW_DECODE detector
+    private outputVerificationTimer: ReturnType<typeof globalThis.setInterval> | undefined;
+    private outputVerified = false;
+    private outputVerificationFailed = false;
+    private codecExclusionRequested = false;
 
     // Audio sync
     private startedAtMs: number;
@@ -285,10 +293,13 @@ export class VideoPlayer {
         this.startedAtMs = startedAtMs;
         this.canvas = canvas;
         this.bgCanvasEl = bgCanvasEl;
+        this.expectedDisplayWidth = width || 1280;
+        this.expectedDisplayHeight = height || 720;
         this.renderBackend = pickRenderBackend(canvas, videoEl);
         // Tag the parent container so CSS can hide the inactive surface.
         const container = canvas.parentElement;
         if (container) {
+            container.classList.add('output-unverified');
             container.classList.add(`backend-${this.renderBackend.kind}`);
         }
         this.isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
@@ -376,6 +387,7 @@ export class VideoPlayer {
                 hardwareAcceleration: bestAcceleration,
                 description,
             };
+            this.startOutputVerificationMonitor();
 
             // Create decoder worker
             const decoderWorkerPath = Versioning.mapPath('/dist/videoDecoderWorker.js');
@@ -1090,6 +1102,10 @@ export class VideoPlayer {
             this.bufferSize--;
             this.lastRenderedOffsetMs = frameToRender.timestamp / 1000;
             this.renderBackend.drawFrame(frameToRender);
+            if (this.checkOutputVerification('render-frame')) {
+                frameToRender.close();
+                return;
+            }
             frameToRender.close();
             this.consecutiveEmptyRenders = 0;
         } else if (this.pendingFrames.length > 0) {
@@ -1123,6 +1139,73 @@ export class VideoPlayer {
             this.lastReportedBufferLow = isBufferLow;
             void this.reportPlaying(0, isBufferLow);
         }
+    }
+
+    private startOutputVerificationMonitor(): void {
+        if (this.outputVerificationTimer !== undefined || this.outputVerified)
+            return;
+        this.outputVerificationTimer = globalThis.setInterval(
+            () => this.checkOutputVerification('timer'),
+            OUTPUT_VERIFICATION_CHECK_INTERVAL_MS);
+        globalThis.setTimeout(() => this.checkOutputVerification('startup'), 0);
+    }
+
+    private stopOutputVerificationMonitor(): void {
+        if (this.outputVerificationTimer === undefined)
+            return;
+        globalThis.clearInterval(this.outputVerificationTimer);
+        this.outputVerificationTimer = undefined;
+    }
+
+    private checkOutputVerification(reason: string): boolean {
+        if (this.outputVerified || !this.isPlaying)
+            return false;
+
+        const expectedWidth = this.expectedDisplayWidth;
+        const expectedHeight = this.expectedDisplayHeight;
+        if (expectedWidth <= 0 || expectedHeight <= 0)
+            return false;
+
+        const output = this.renderBackend.getOutputSize();
+        if (!output || output.width <= 0 || output.height <= 0)
+            return false;
+
+        const widthMismatch = Math.abs(output.width - expectedWidth) > OUTPUT_DIMENSION_MISMATCH_TOLERANCE_PX;
+        const heightMismatch = Math.abs(output.height - expectedHeight) > OUTPUT_DIMENSION_MISMATCH_TOLERANCE_PX;
+        if (!widthMismatch && !heightMismatch) {
+            this.markOutputVerified(reason, output.width, output.height);
+            return false;
+        }
+
+        if (!this.outputVerificationFailed) {
+            this.outputVerificationFailed = true;
+            warnLog?.log(
+                `OUTPUT_VERIFICATION_FAILED: decoded output ${output.width}x${output.height} ` +
+                `does not match stream ${expectedWidth}x${expectedHeight} (${reason}); codec=${this.codecCategory || 'unknown'}`);
+        }
+
+        if (this.shouldRequestCodecExclusion() && !this.codecExclusionRequested) {
+            this.codecExclusionRequested = true;
+            this.stopOutputVerificationMonitor();
+            warnLog?.log(`OUTPUT_VERIFICATION_FAILED: requesting codec exclusion for ${this.codecCategory}`);
+            void this.blazorRef.invokeMethodAsync('OnRequestCodecExclusion', this.codecCategory);
+            return true;
+        }
+        return false;
+    }
+
+    private markOutputVerified(reason: string, width: number, height: number): void {
+        this.outputVerified = true;
+        this.outputVerificationFailed = false;
+        this.stopOutputVerificationMonitor();
+        this.canvas.parentElement?.classList.remove('output-unverified');
+        debugLog?.log(`OUTPUT_VERIFIED: ${width}x${height} (${reason})`);
+    }
+
+    private shouldRequestCodecExclusion(): boolean {
+        return this.codecCategory !== ''
+            && this.codecCategory !== 'h264'
+            && this.codecCategory !== 'unknown';
     }
 
     public pushFrame(
@@ -1274,6 +1357,7 @@ export class VideoPlayer {
         if (this.isPlaying) return;
 
         this.isPlaying = true;
+        this.startOutputVerificationMonitor();
         // Off-thread MSTG path: the worker drives selection + writes; main
         // thread has no per-frame work. Skip the RAF loop entirely.
         if (!this.renderBackend.isOffThread)
@@ -1668,6 +1752,8 @@ export class VideoPlayer {
     }
 
     private onWorkerLatencyReport(streamOffsetMs: number): void {
+        if (this.checkOutputVerification('worker-latency'))
+            return;
         if (streamOffsetMs > this.lastArrivedOffsetMs)
             this.lastArrivedOffsetMs = streamOffsetMs;
         const isVisible = !document.hidden;
@@ -1694,6 +1780,7 @@ export class VideoPlayer {
 
         this.isPlaying = false;
         this.stopRenderLoop();
+        this.stopOutputVerificationMonitor();
         Api.releaseConnection(`VideoPlayer:${this.streamId}`);
         this.playbackStartTime = 0;
         this.lastRenderedOffsetMs = 0;
@@ -1909,6 +1996,8 @@ export class VideoPlayer {
         // Collect decoder diagnostics and send enriched latency report
         if (this.decoderWorker) {
             void this.decoderWorker.getStats().then(ds => {
+                if (this.checkOutputVerification('decoder-stats'))
+                    return;
                 const recvDelta = this.receivedFrameCount - this.lastDiagReceivedFrames;
                 const decodedDelta = ds.decodedFrames - this.lastDiagDecodedFrames;
                 this.lastDiagReceivedFrames = this.receivedFrameCount;
@@ -1967,9 +2056,9 @@ export class VideoPlayer {
                         // Phase 2: quality reduction didn't help — exclude codec entirely
                         warnLog?.log(
                             `SLOW_DECODE: codec ${this.codecCategory} too slow even after quality reduction ` +
-                            `(${this.codecSlowTickCount} more bad ticks), excluding codec`);
-                        void this.blazorRef.invokeMethodAsync('OnCodecTooSlow', this.codecCategory);
-                        void this.reportEnded('Codec too slow for realtime playback');
+                            `(${this.codecSlowTickCount} more bad ticks), requesting codec exclusion`);
+                        void this.blazorRef.invokeMethodAsync('OnRequestCodecExclusion', this.codecCategory);
+                        void this.reportEnded('Codec excluded after sustained slow decode');
                         return;
                     }
                 } else {
