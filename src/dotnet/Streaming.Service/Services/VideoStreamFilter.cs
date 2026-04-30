@@ -49,6 +49,12 @@ public class VideoStreamFilter(
         Func<StreamId, string, bool> HasFallback,
         Func<StreamId, string, CpuTimestamp> GetSetAt);
 
+    // TEMP: simulcast disabled in dev. When true, the spatial-layer selection /
+    // burst-stabilization / decay / egress-decrement logic below is bypassed
+    // entirely — frames pass through with only KF-gap + pause + temporal
+    // filtering. Flip to false to restore SFU-style spatial fan-out.
+    private const bool TempBypassSimulcastLogic = true;
+
     public async IAsyncEnumerable<VideoFrame> Apply(
         StreamId streamId,
         string peerId,
@@ -56,6 +62,13 @@ public class VideoStreamFilter(
         IAsyncEnumerable<VideoFrame> source,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        if (TempBypassSimulcastLogic) {
+            await foreach (var f in ApplySimple(streamId, peerId, source, cancellationToken).ConfigureAwait(false))
+                yield return f;
+            yield break;
+        }
+#pragma warning disable CS0162 // Unreachable code — TempBypassSimulcastLogic gate
+
         // --- Quality preset: background task refreshes on invalidation ---
         var preset = VideoQualityPreset.High;
         var refreshCts = cancellationToken.CreateLinkedTokenSource();
@@ -403,6 +416,99 @@ public class VideoStreamFilter(
             else if (yieldedCount == 0)
                 log.LogWarning(
                     "VideoStreamFilter: source completed, yielded 0 frames (all filtered by quality/temporal/gap)");
+        }
+        finally {
+            refreshCts.CancelAndDisposeSilently();
+            await refreshTask.SuppressCancellationAwait(false);
+        }
+#pragma warning restore CS0162
+    }
+
+    // TEMP: minimal pass-through filter for dev-env stability troubleshooting.
+    // No spatial layer selection, no burst stabilization, no decay, no egress
+    // decrement. Just KF-gap recovery + per-peer temporal cap + pause filter.
+    // Used while client-side simulcast is force-disabled — every frame arrives
+    // at SpatialLayerId=0 so the SFU fan-out logic is dead weight.
+    private async IAsyncEnumerable<VideoFrame> ApplySimple(
+        StreamId streamId,
+        string peerId,
+        IAsyncEnumerable<VideoFrame> source,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var preset = VideoQualityPreset.High;
+        var refreshCts = cancellationToken.CreateLinkedTokenSource();
+        var refreshToken = refreshCts.Token;
+        var refreshTask = BackgroundTask.Run(async () => {
+            try {
+                while (!refreshToken.IsCancellationRequested) {
+                    var computed = await capturePreset(streamId, refreshToken).ConfigureAwait(false);
+                    preset = computed.Value;
+                    await computed.WhenInvalidated(refreshToken).ConfigureAwait(false);
+                }
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                log.LogWarning(e, "VideoStreamFilter(simple): preset refresh loop failed for #{StreamId}", streamId);
+            }
+        }, refreshToken);
+
+        var maxTemporalLayer = getMaxTemporalLayer(streamId, peerId);
+        var layerCapsUpdatedAt = CpuTimestamp.Now;
+        var lastKeyFrameNumber = -1L;
+        var skipping = true;
+        var skippedCount = 0;
+        var joined = false;
+        var yieldedCount = 0;
+
+        try {
+            await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                if (layerCapsUpdatedAt.Elapsed.TotalSeconds >= 1) {
+                    maxTemporalLayer = getMaxTemporalLayer(streamId, peerId);
+                    layerCapsUpdatedAt = CpuTimestamp.Now;
+                }
+
+                if (frame.TemporalLayerId > maxTemporalLayer)
+                    continue;
+
+                if (preset.Level == VideoQualityLevel.Paused)
+                    continue;
+
+                if (frame.IsKeyFrame) {
+                    if (!joined) {
+                        log.LogDebug(
+                            "VideoStreamFilter(simple): joined from KF#{KeyFrameNumber} at offset {KfOffset}",
+                            frame.KeyFrameNumber, frame.Offset);
+                        joined = true;
+                    }
+                    else if (skipping && skippedCount > 0) {
+                        log.LogInformation(
+                            "VideoStreamFilter(simple): found keyframe (KF#{KeyFrameNumber}) after skipping {Skipped} frames",
+                            frame.KeyFrameNumber, skippedCount);
+                    }
+                    lastKeyFrameNumber = frame.KeyFrameNumber;
+                    skipping = false;
+                    skippedCount = 0;
+                    yieldedCount++;
+                    yield return frame;
+                }
+                else if (!skipping && frame.KeyFrameNumber == lastKeyFrameNumber) {
+                    yieldedCount++;
+                    yield return frame;
+                }
+                else {
+                    if (!skipping) {
+                        skipping = true;
+                        log.LogDebug(
+                            "VideoStreamFilter(simple): gap — expected KF#{Expected}, got KF#{Actual}, skipping to next keyframe",
+                            lastKeyFrameNumber, frame.KeyFrameNumber);
+                    }
+                    skippedCount++;
+                }
+            }
+
+            if (!joined)
+                log.LogWarning("VideoStreamFilter(simple): source completed without any keyframe");
+            else if (yieldedCount == 0)
+                log.LogWarning("VideoStreamFilter(simple): source completed, yielded 0 frames");
         }
         finally {
             refreshCts.CancelAndDisposeSilently();

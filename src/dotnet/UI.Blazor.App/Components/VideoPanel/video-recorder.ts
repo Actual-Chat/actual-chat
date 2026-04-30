@@ -296,6 +296,14 @@ export class VideoRecorder {
     // length < 2 disables simulcast. Screencast streams ignore the ladder
     // (single-encoder text legibility path).
     public setSimulcastLayers(layers: SpatialLayerConfig[] | null, force = false): void {
+        // TEMP: simulcast disabled for dev-env stability troubleshooting. Force
+        // single-encoder P2P on every push; ignore server-pushed ladders.
+        // Flip TEMP_DISABLE_SIMULCAST = false to restore.
+        const TEMP_DISABLE_SIMULCAST = true;
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (TEMP_DISABLE_SIMULCAST) {
+            layers = null;
+        }
         // Clamp incoming server-pushed ladders to MAX_SIMULCAST_TIERS — keep
         // the top tiers (slice from the tail; ladder is bottom-first, so
         // dropping the bottom preserves the highest reachable quality).
