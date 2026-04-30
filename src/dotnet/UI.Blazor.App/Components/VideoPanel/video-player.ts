@@ -9,7 +9,10 @@ import { Versioning } from 'versioning';
 import { type EventHandler } from 'event-handling';
 import { type Subscription } from 'rxjs';
 import { renderQualityLevelForWidth } from './render-quality';
-import type { DecoderWorker } from '../../Services/Video/workers/decoder-worker-contract';
+import type {
+    DecoderWorker,
+    DecoderWorkerLatencyReport,
+} from '../../Services/Video/workers/decoder-worker-contract';
 import type { DecoderConfig, DecoderStats } from '../../Services/Video/webcodecs-decoder';
 import {
     createInputChannel,
@@ -409,8 +412,8 @@ export class VideoPlayer {
                             try { track.stop(); } catch { /* ignore */ }
                         return Promise.resolve();
                     },
-                    onLatencyReport: (streamOffsetMs: number) => {
-                        this.onWorkerLatencyReport(streamOffsetMs);
+                    onLatencyReport: (report: DecoderWorkerLatencyReport) => {
+                        this.onWorkerLatencyReport(report);
                         return Promise.resolve();
                     },
                     onPullEnded: (errorMessage: string | null) => {
@@ -1751,9 +1754,10 @@ export class VideoPlayer {
         }
     }
 
-    private onWorkerLatencyReport(streamOffsetMs: number): void {
+    private onWorkerLatencyReport(report: DecoderWorkerLatencyReport): void {
         if (this.checkOutputVerification('worker-latency'))
             return;
+        const streamOffsetMs = report.streamOffsetMs;
         if (streamOffsetMs > this.lastArrivedOffsetMs)
             this.lastArrivedOffsetMs = streamOffsetMs;
         const isVisible = !document.hidden;
@@ -1761,6 +1765,9 @@ export class VideoPlayer {
         try {
             void streamingApi.streamServer.ReportVideoLatency(this.streamId, {
                 StreamOffsetMs: streamOffsetMs,
+                MedianDecodeTimeMs: report.medianDecodeTimeMs,
+                BufferDepth: report.bufferDepth,
+                BufferSpanMs: report.bufferSpanMs,
                 RenderQuality: renderLevel,
                 IsVisible: isVisible,
             });

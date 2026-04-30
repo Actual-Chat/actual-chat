@@ -11,6 +11,13 @@ import type { RawChunkMessage } from './stream-channel';
 // Re-export for convenience
 export type { RawChunkMessage };
 
+export interface DecoderWorkerLatencyReport {
+    streamOffsetMs: number;
+    medianDecodeTimeMs: number;
+    bufferDepth: number;
+    bufferSpanMs: number;
+}
+
 /**
  * Decoder Worker API
  * Represents the RECEIVER side of the video pipeline
@@ -209,10 +216,11 @@ export interface DecoderWorkerCallbacks {
 
     /**
      * Fired periodically (~every 2 s) by the worker pull loop with the most
-     * recent `streamOffsetMs` so the main side can call ReportVideoLatency on
-     * the server. Replaces the main-thread `reportLatencyTick`.
+     * recent stream offset and receiver-side pressure metrics so the main side
+     * can call ReportVideoLatency on the server. Replaces the main-thread
+     * `reportLatencyTick`.
      */
-    onLatencyReport(streamOffsetMs: number, noWait?: RpcNoWait): Promise<void>;
+    onLatencyReport(report: DecoderWorkerLatencyReport, noWait?: RpcNoWait): Promise<void>;
 
     /**
      * Fired when the worker's pull loop terminates (server ended, fatal error,

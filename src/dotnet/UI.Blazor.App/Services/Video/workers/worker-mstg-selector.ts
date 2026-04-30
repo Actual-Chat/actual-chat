@@ -24,6 +24,11 @@ export interface BgPainter {
     ctx: OffscreenCanvasRenderingContext2D;
 }
 
+export interface WorkerMstgBufferStats {
+    depth: number;
+    spanMs: number;
+}
+
 export class WorkerMstgSelector {
     private queue: VideoFrame[] = [];
     private readonly writer: WritableStreamDefaultWriter<VideoFrame>;
@@ -62,6 +67,14 @@ export class WorkerMstgSelector {
 
     setJitterBufferMs(ms: number): void {
         this.jitterBufferMs = ms;
+    }
+
+    getBufferStats(): WorkerMstgBufferStats {
+        const depth = this.queue.length;
+        const spanMs = depth >= 2
+            ? (this.queue[depth - 1].timestamp - this.queue[0].timestamp) / 1000
+            : 0;
+        return { depth, spanMs };
     }
 
     dispose(): void {

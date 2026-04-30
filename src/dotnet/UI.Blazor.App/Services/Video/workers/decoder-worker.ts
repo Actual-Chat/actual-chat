@@ -7,7 +7,12 @@
  */
 
 import { rpcClientServer, rpcNoWait } from 'rpc';
-import type { DecoderWorker, DecoderWorkerCallbacks, RawChunkMessage } from './decoder-worker-contract';
+import type {
+    DecoderWorker,
+    DecoderWorkerCallbacks,
+    DecoderWorkerLatencyReport,
+    RawChunkMessage,
+} from './decoder-worker-contract';
 import { type DecoderConfig, type DecoderStats, WebCodecsDecoder } from '../webcodecs-decoder';
 import type { EncodedChunkData } from '../webcodecs-encoder';
 import { extractHVCC } from '../hevc-parser';
@@ -84,6 +89,31 @@ let pullSequenceNumber = 0;
 const PULL_LATENCY_REPORT_INTERVAL_MS = 2000;
 let lastLatencyReportAt = 0;
 let apiInitialized = false;
+
+function getDecoderStatsSnapshot(): DecoderStats {
+    return decoder?.getStats() ?? {
+        decodedFrames: 0,
+        droppedFrames: 0,
+        averageDecodeTime: 0,
+        medianDecodeTime: 0,
+        pureMedianDecodeTime: -1,
+        decodeQueueSize: 0,
+        backpressureDrops: 0,
+        hardwareAcceleration: 'unknown',
+        resolution: 'N/A'
+    };
+}
+
+function buildLatencyReport(streamOffsetMs: number): DecoderWorkerLatencyReport {
+    const ds = getDecoderStatsSnapshot();
+    const selectorStats = mstgSelector?.getBufferStats();
+    return {
+        streamOffsetMs,
+        medianDecodeTimeMs: ds.pureMedianDecodeTime >= 0 ? ds.pureMedianDecodeTime : ds.medianDecodeTime,
+        bufferDepth: (selectorStats?.depth ?? 0) + ds.decodeQueueSize,
+        bufferSpanMs: selectorStats?.spanMs ?? -1,
+    };
+}
 
 function ensureApiInitialized(apiUrl: string): void {
     if (apiInitialized)
@@ -432,7 +462,7 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
             const now = performance.now();
             if (now - lastLatencyReportAt > PULL_LATENCY_REPORT_INTERVAL_MS) {
                 lastLatencyReportAt = now;
-                void callbacks.onLatencyReport(lastArrivedOffsetMs, rpcNoWait);
+                void callbacks.onLatencyReport(buildLatencyReport(lastArrivedOffsetMs), rpcNoWait);
             }
         }
 
@@ -1117,17 +1147,7 @@ const serverImpl: DecoderWorker = {
    */
     // eslint-disable-next-line
     getStats: async (): Promise<DecoderStats> => {
-        return decoder?.getStats() ?? {
-            decodedFrames: 0,
-            droppedFrames: 0,
-            averageDecodeTime: 0,
-            medianDecodeTime: 0,
-            pureMedianDecodeTime: -1,
-            decodeQueueSize: 0,
-            backpressureDrops: 0,
-            hardwareAcceleration: 'unknown',
-            resolution: 'N/A'
-        };
+        return getDecoderStatsSnapshot();
     },
 
     /**
