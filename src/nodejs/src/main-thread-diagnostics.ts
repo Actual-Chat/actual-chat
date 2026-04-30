@@ -123,12 +123,23 @@ export class MainThreadDiagnostics {
                         if (!shouldReport(signature)) continue;
                         // Key fields go into the text message so they survive
                         // Chrome's "Copy console" (which serializes object args
-                        // as just "Object"). Full structured payload stays as
-                        // the second arg for live DevTools inspection.
+                        // as just "Object") AND DevTools quirks where script
+                        // entries sometimes render as "No properties" when
+                        // expanded. Full structured payload still goes as the
+                        // second arg for live inspection.
+                        const scriptsSummary = e.scripts
+                            .map(s => {
+                                const inv = s.invoker
+                                    ? `(${s.invoker.length > 60 ? s.invoker.slice(0, 60) + '…' : s.invoker})`
+                                    : '';
+                                return `${s.invokerType || '?'}${inv}@${Math.round(s.duration)}ms`;
+                            })
+                            .join(',');
                         warnLog?.log(
                             `long-animation-frame ${signature} `
                             + `dur=${Math.round(e.duration)}ms `
-                            + `block=${Math.round(e.blockingDuration)}ms`,
+                            + `block=${Math.round(e.blockingDuration)}ms`
+                            + (scriptsSummary ? ` scripts=[${scriptsSummary}]` : ''),
                             {
                                 signature,
                                 duration: Math.round(e.duration),
