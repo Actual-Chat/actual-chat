@@ -48,6 +48,7 @@ export class MainThreadDiagnostics {
     private static loafObserver: PerformanceObserver | null = null;
     private static originalMutationObserver: typeof MutationObserver | null = null;
     private static watchdogIntervalId: number | null = null;
+    private static watchdogVisibilityHandler: (() => void) | null = null;
 
     public static init(options?: MainThreadDiagnosticsOptions): void {
         const o = options ?? {};
@@ -209,13 +210,46 @@ export class MainThreadDiagnostics {
         let lastTick = performance.now();
         let stallStart = 0;
 
+        // Hidden tabs throttle setInterval to ~1s. Without filtering, every
+        // throttled tick (delta ~1000-1100ms) would be reported as a stall.
+        // We only ignore deltas that fit the throttling profile; bigger deltas
+        // are real stalls on top of throttling and still get reported.
+        const HIDDEN_THROTTLE_FLOOR_MS = 1100;
+
+        // Re-baseline on visibility transitions: otherwise a stale lastTick
+        // from the previous regime (e.g. throttled hidden tick) would make
+        // the first tick of the new regime look like a stall.
+        const onVisibilityChange = () => {
+            const now = performance.now();
+            if (stallStart) {
+                warnLog?.log(`watchdog: recovered after ${Math.round(now - stallStart)}ms total stall (visibility change)`);
+                stallStart = 0;
+            }
+            lastTick = now;
+        };
+        if (typeof document !== 'undefined') {
+            this.watchdogVisibilityHandler = onVisibilityChange;
+            document.addEventListener('visibilitychange', onVisibilityChange);
+        }
+
         this.watchdogIntervalId = window.setInterval(() => {
             const now = performance.now();
             const delta = now - lastTick;
+            const isHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+            if (isHidden && delta < HIDDEN_THROTTLE_FLOOR_MS) {
+                if (stallStart) {
+                    warnLog?.log(`watchdog: recovered after ${Math.round(now - stallStart)}ms total stall (tab hidden)`);
+                    stallStart = 0;
+                }
+                lastTick = now;
+                return;
+            }
             if (delta > stallThresholdMs) {
                 if (!stallStart) {
                     stallStart = lastTick;
-                    errorLog?.log(`watchdog: main thread stalled for ${Math.round(delta)}ms`);
+                    errorLog?.log(
+                        `watchdog: main thread stalled for ${Math.round(delta)}ms`
+                        + (isHidden ? ' (tab hidden — throttling-adjusted)' : ''));
                 }
             } else if (stallStart) {
                 warnLog?.log(`watchdog: recovered after ${Math.round(now - stallStart)}ms total stall`);
@@ -236,6 +270,11 @@ export class MainThreadDiagnostics {
         if (this.watchdogIntervalId !== null) {
             clearInterval(this.watchdogIntervalId);
             this.watchdogIntervalId = null;
+        }
+        if (this.watchdogVisibilityHandler !== null) {
+            if (typeof document !== 'undefined')
+                document.removeEventListener('visibilitychange', this.watchdogVisibilityHandler);
+            this.watchdogVisibilityHandler = null;
         }
     }
 }
