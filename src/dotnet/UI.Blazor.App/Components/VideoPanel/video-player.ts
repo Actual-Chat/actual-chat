@@ -463,6 +463,17 @@ export class VideoPlayer {
             this.connectivityHandlerConnected = ConnectivityUI.isConnectedChanged.add(pushConnectivity);
             void ConnectivityUI.whenReady.then(pushConnectivity);
 
+            // Wire focused-state changes to the worker's blur-paint gate.
+            // Sidebar / unfocused tiles hide the bg canvas via CSS, so painting
+            // it is wasted CPU. The mstg backend already observes parent class
+            // for play() retries — piggyback on the same observer.
+            if (this.renderBackend.kind === 'mstg') {
+                (this.renderBackend as OffThreadRenderBackend).onFocusedChange = (focused: boolean) => {
+                    if (!this.decoderWorker) return;
+                    void this.decoderWorker.setBgPaintEnabled(focused, rpcNoWait);
+                };
+            }
+
             if (this.useStreams) {
                 // Stream mode: transfer input stream to worker, output via RPC callback
                 this.chunkInputChannel = createInputChannel<RawChunkMessage>(4);

@@ -182,6 +182,14 @@ export interface DecoderWorker {
     stopPullInWorker(noWait?: RpcNoWait): Promise<void>;
 
     /**
+     * Toggle the blur-backdrop paint inside the worker's MstgSelector. Off for
+     * sidebar / unfocused tiles (CSS hides the bg canvas anyway, no point spending
+     * CPU on box-blur every 100 ms); back on when the tile becomes the focused
+     * one. No-op when no off-thread pull is active. Idempotent.
+     */
+    setBgPaintEnabled(enabled: boolean, noWait?: RpcNoWait): Promise<void>;
+
+    /**
      * Forward connectivity state from main thread's ConnectivityUI to the
      * worker's WorkerConnectivityUI mirror. Same shape as the sender worker.
      */

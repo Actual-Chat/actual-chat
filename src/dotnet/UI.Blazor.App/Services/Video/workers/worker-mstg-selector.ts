@@ -44,6 +44,11 @@ export class WorkerMstgSelector {
     private bgPaintsSinceDiag = 0;
     private mainWritesSinceDiag = 0;
     private writeFailuresSinceDiag = 0;
+    // Whether to paint the blur backdrop. Off for sidebar/unfocused tiles —
+    // bg canvas is hidden by CSS in those states, so painting wastes CPU on
+    // a 64×N readback + 3-pass box blur every 100 ms. Toggled from main via
+    // decoder-worker.setBgPaintEnabled.
+    private bgPaintEnabled = true;
 
     constructor(
         writable: WritableStream<VideoFrame>,
@@ -74,6 +79,10 @@ export class WorkerMstgSelector {
 
     setJitterBufferMs(ms: number): void {
         this.jitterBufferMs = ms;
+    }
+
+    setBgPaintEnabled(enabled: boolean): void {
+        this.bgPaintEnabled = enabled;
     }
 
     getBufferStats(): WorkerMstgBufferStats {
@@ -146,7 +155,7 @@ export class WorkerMstgSelector {
         // via a portable software box-blur (see bgBoxBlur) — Safari
         // OffscreenCanvas silently ignores ctx.filter on some versions, so
         // we don't rely on it. Box blur on 64×N at 10 fps is microseconds.
-        if (this.bgPainter) {
+        if (this.bgPainter && this.bgPaintEnabled) {
             const nowMs = performance.now();
             if (nowMs - this.lastBgDrawAtMs >= BG_DRAW_INTERVAL_MS) {
                 this.lastBgDrawAtMs = nowMs;

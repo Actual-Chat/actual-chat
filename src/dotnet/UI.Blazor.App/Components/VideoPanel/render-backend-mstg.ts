@@ -50,6 +50,15 @@ export class OffThreadRenderBackend implements RenderBackend {
     // so we kick play() on every classList change.
     private parentClassObserver: MutationObserver | null = null;
     private lastObservedParentCls = '';
+    // Tracked focused state (parent has `item-focused`). Used to fire
+    // onFocusedChange only on edge transitions.
+    private lastObservedFocused: boolean | null = null;
+    /**
+     * Optional hook invoked whenever the parent's `item-focused` class flips.
+     * VideoPlayer uses this to disable the worker-side blur paint for sidebar
+     * tiles (CSS hides the bg canvas there anyway). Set externally after ctor.
+     */
+    onFocusedChange: ((focused: boolean) => void) | null = null;
 
     constructor(private readonly videoEl: HTMLVideoElement) {}
 
@@ -162,6 +171,10 @@ export class OffThreadRenderBackend implements RenderBackend {
         const parent = this.videoEl.parentElement;
         if (!parent) return;
         this.lastObservedParentCls = parent.className;
+        this.lastObservedFocused = parent.classList.contains('item-focused');
+        // Initial fire so consumers can sync state at startup (the player may
+        // be born already focused or not).
+        if (this.onFocusedChange) this.onFocusedChange(this.lastObservedFocused);
         this.parentClassObserver = new MutationObserver(() => {
             if (this.disposed) return;
             const cls = parent.className;
@@ -169,6 +182,11 @@ export class OffThreadRenderBackend implements RenderBackend {
             this.lastObservedParentCls = cls;
             warnLog?.log(`OffThreadBackend DIAG: parent classList changed → "${cls}", retrying play()`);
             this.tryPlay('parent-classlist-change');
+            const focused = parent.classList.contains('item-focused');
+            if (focused !== this.lastObservedFocused) {
+                this.lastObservedFocused = focused;
+                if (this.onFocusedChange) this.onFocusedChange(focused);
+            }
         });
         this.parentClassObserver.observe(parent, { attributes: true, attributeFilter: ['class'] });
     }

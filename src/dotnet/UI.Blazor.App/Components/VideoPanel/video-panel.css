@@ -440,12 +440,19 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
 .video-track-player video.remote-video {
     @apply absolute inset-0;
     @apply w-full h-full;
-    @apply object-contain;
+    /* Default: cover — small sidebar / PiP tiles look better cropped to fill
+       than letterboxed with bars. The focused tile overrides to contain so the
+       full frame is shown with the blur backdrop filling the letterbox bars. */
+    @apply object-cover;
     z-index: 1;
     contain: layout paint style size;
     will-change: transform;
     transform: translateZ(0);
     pointer-events: none;
+}
+.video-track-player.item-focused canvas.remote-video,
+.video-track-player.item-focused video.remote-video {
+    @apply object-contain;
 }
 .video-track-player canvas.remote-video {
     @apply bg-black;

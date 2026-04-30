@@ -1252,6 +1252,11 @@ const serverImpl: DecoderWorker = {
     },
 
     // eslint-disable-next-line @typescript-eslint/require-await
+    setBgPaintEnabled: async (enabled: boolean): Promise<void> => {
+        if (mstgSelector) mstgSelector.setBgPaintEnabled(enabled);
+    },
+
+    // eslint-disable-next-line @typescript-eslint/require-await
     onConnectivityUpdate: async (
         isOnline: boolean,
         isConnected: boolean,
