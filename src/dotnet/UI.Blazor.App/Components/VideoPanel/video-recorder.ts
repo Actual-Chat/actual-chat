@@ -899,6 +899,27 @@ export class VideoRecorder {
         else if (DeviceInfo.isMobile)
             cappedBitrate = Math.min(cappedBitrate, 2_000_000);
 
+        // Simulcast active — preset Width/Height is the new TOP tier. Rebuild
+        // via the source/2 rule so base = top/2. Without this, only the base
+        // encoder would reconfigure while extras stay at old dims, leaking a
+        // base==extra dimension collision (the recurring `[720, 720]` bug).
+        const isSimulcastActive = this.simulcastLayers !== null && this.simulcastLayers.length >= 2;
+        if (isSimulcastActive) {
+            const rebuilt = buildLadderForSource({
+                count: this.simulcastLayers!.length,
+                srcWidth: cappedWidth,
+                srcHeight: cappedHeight,
+                bitrateFor: (h: number) => getExpectedBitrate(currentCodec, h, mode),
+            });
+            if (rebuilt.length >= 2) {
+                infoLog?.log(`reconfigure (simulcast): rebuilt ladder [${rebuilt.map(l => `${l.width}x${l.height}`).join(', ')}]`);
+                this.simulcastLayers = [...rebuilt];
+                void this.recordingService.setSimulcastLadder(rebuilt).catch((e: unknown) =>
+                    warnLog?.log('reconfigure (simulcast): setSimulcastLadder failed:', e));
+                return;
+            }
+        }
+
         infoLog?.log(`reconfigure: ${cappedWidth}x${cappedHeight} @ ${cappedBitrate / 1_000_000}Mbps (codec=${currentCodec})`);
         void pipeline.reconfigure({ bitrate: cappedBitrate, width: cappedWidth, height: cappedHeight });
     }
