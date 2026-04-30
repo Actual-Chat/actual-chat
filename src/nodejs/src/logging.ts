@@ -49,6 +49,7 @@ export type LogScope =
     | 'Interactive'
     | 'Kvas'
     | 'KvasBackend'
+    | 'MainThreadDiagnostics'
     | 'MenuHost'
     | 'ModalHost'
     | 'OnDeviceAwake'
@@ -153,6 +154,7 @@ const defaults: Record<LogScope, LogLevel> = {
     Interactive: LogLevel.Warn,
     Kvas: LogLevel.Warn,
     KvasBackend: LogLevel.Warn,
+    MainThreadDiagnostics: LogLevel.Info,
     MenuHost: LogLevel.Warn,
     ModalHost: LogLevel.Warn,
     OnDeviceAwake: LogLevel.Warn,

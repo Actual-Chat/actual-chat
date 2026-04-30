@@ -6,6 +6,7 @@ import { EventHandlerSet } from 'event-handling';
 import { delayAsync, PromiseSource } from 'promises';
 import { AppKind, BrowserInfo, HostKind } from '../BrowserInfo/browser-info';
 import { getLogs } from 'logging';
+import { MainThreadDiagnostics } from 'main-thread-diagnostics';
 import { FirebaseApp, initializeApp } from 'firebase/app';
 import { Analytics, getAnalytics, setAnalyticsCollectionEnabled } from 'firebase/analytics';
 import { SessionTokens } from '../Security/session-tokens';
@@ -43,6 +44,8 @@ export class BrowserInit {
     ): void {
         try {
             infoLog?.log(`-> init, apiVersion: ${apiVersion}, baseUri: ${baseUri}, sessionHash: ${sessionHash}`);
+            if (!BrowserInit.isProdBaseUri(baseUri))
+                MainThreadDiagnostics.init();
             window.App?.markBlazorReady?.(); // It must be called no matter what at this point
             this.apiVersion = apiVersion;
             const documentBaseUri = new URL(document.baseURI);
@@ -366,6 +369,16 @@ export class BrowserInit {
         else {
             appConnectionStateDiv.innerHTML = '';
             appConnectionStateDiv.style.display = 'none';
+        }
+    }
+
+    private static isProdBaseUri(baseUri: string): boolean {
+        try {
+            const hostName = new URL(baseUri).hostname;
+            return hostName === 'voxt.ai' || hostName === 'actual.chat';
+        }
+        catch {
+            return false;
         }
     }
 }
