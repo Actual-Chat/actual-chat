@@ -850,6 +850,11 @@ function encodeBlurPasses(
 ): void {
     const { blurStrength, maskDirty, smoothingSource, smoothingAlpha } = opts;
 
+    // WebGPU spec: importExternalTexture creates a texture bound to THIS frame's
+    // GPU resource and is implicitly destroyed when the frame is closed or the
+    // browser advances. NEVER cache across frames — the cached texture would
+    // reference a freed resource and trigger GPU validation errors. Per-frame
+    // creation is correct.
     const src = device!.importExternalTexture({ source: frame });
 
     // Merge temporal smoothing into this encoder (saves one queue.submit per frame)

@@ -19,9 +19,47 @@ export interface AudioSyncState {
 // Wire-format messages pushed to subscribed worker ports.
 // Workers re-anchor capturedAt to their own performance.now() on receipt
 // because each worker has its own timeOrigin.
+//
+// Encoded as a flat tuple of primitives — avoids the structured-clone cost
+// of an object with named fields and an enum string. The sync update fires
+// at ~60 Hz per subscribed worker, so trimming the per-tick clone has a
+// measurable cumulative benefit on long calls.
+//
+// Tuple shape:
+//   [0]: kind         — 0 = clear, 1 = state
+//   [1]: playingAtSec
+//   [2]: capturedAt   (sender-side performance.now(); receiver re-anchors)
+//   [3]: recordedAtMs
+//   [4]: playbackState code — see AUDIO_PLAYBACK_STATE_CODES
+export const AUDIO_SYNC_KIND_CLEAR = 0;
+export const AUDIO_SYNC_KIND_STATE = 1;
+
+export const AUDIO_PLAYBACK_STATE_CODES = {
+    playing: 0,
+    paused: 1,
+    starving: 2,
+    // 'ended' is not sent — it triggers AUDIO_SYNC_KIND_CLEAR instead
+} as const satisfies Record<Exclude<AudioPlaybackState, 'ended'>, number>;
+
+const PLAYBACK_STATE_FROM_CODE: Record<number, AudioPlaybackState> = {
+    0: 'playing',
+    1: 'paused',
+    2: 'starving',
+};
+
+export function decodePlaybackState(code: number): AudioPlaybackState {
+    return PLAYBACK_STATE_FROM_CODE[code] ?? 'paused';
+}
+
 export type AudioSyncMessage =
-    | { kind: 'state'; state: AudioSyncState }
-    | { kind: 'clear' };
+    | readonly [kind: typeof AUDIO_SYNC_KIND_CLEAR]
+    | readonly [
+        kind: typeof AUDIO_SYNC_KIND_STATE,
+        playingAtSec: number,
+        capturedAt: number,
+        recordedAtMs: number,
+        playbackStateCode: number,
+    ];
 
 const registry = new Map<string, AudioSyncState>();
 const workerPorts = new Map<string, Set<MessagePort>>();
@@ -47,6 +85,15 @@ function broadcast(authorId: string, message: AudioSyncMessage): void {
     }
 }
 
+function encodeStateMessage(state: AudioSyncState): AudioSyncMessage {
+    // 'ended' never reaches broadcastState (handled by AudioVideoSync.update
+    // which routes to clear()); the cast is safe.
+    const code = AUDIO_PLAYBACK_STATE_CODES[
+        state.playbackState as Exclude<AudioPlaybackState, 'ended'>
+    ];
+    return [AUDIO_SYNC_KIND_STATE, state.playingAtSec, state.capturedAt, state.recordedAtMs, code];
+}
+
 function broadcastState(authorId: string, state: AudioSyncState): void {
     const now = state.capturedAt;
     const prevState = lastBroadcastState.get(authorId);
@@ -57,7 +104,7 @@ function broadcastState(authorId: string, state: AudioSyncState): void {
     }
     lastBroadcastAt.set(authorId, now);
     lastBroadcastState.set(authorId, state.playbackState);
-    broadcast(authorId, { kind: 'state', state });
+    broadcast(authorId, encodeStateMessage(state));
 }
 
 export class AudioVideoSync {
@@ -92,7 +139,7 @@ export class AudioVideoSync {
         registry.delete(authorId);
         lastBroadcastAt.delete(authorId);
         lastBroadcastState.delete(authorId);
-        broadcast(authorId, { kind: 'clear' });
+        broadcast(authorId, [AUDIO_SYNC_KIND_CLEAR]);
     }
 
     /** Called by VideoPlayer in render loop */
@@ -122,7 +169,7 @@ export class AudioVideoSync {
         const current = registry.get(authorId);
         if (current) {
             try {
-                port.postMessage({ kind: 'state', state: current } satisfies AudioSyncMessage);
+                port.postMessage(encodeStateMessage(current));
             } catch {
                 // ignore
             }

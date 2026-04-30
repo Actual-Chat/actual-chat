@@ -47,6 +47,14 @@ export class WebCodecsDecoder {
 
     constructor(
     private config: DecoderConfig,
+    /**
+     * Called once per decoded frame. **Caller MUST `frame.close()` exactly once**
+     * — either after rendering, after a postMessage transfer, or in an error
+     * path. Without close, the platform GCs the frame and (in dev builds) logs
+     * "VideoFrame was garbage-collected without being closed", and HW decoder
+     * pool slots leak. Errors thrown synchronously here will propagate up
+     * through `VideoDecoder.output` — wrap in try/finally if uncertain.
+     */
     private onFrame: (frame: VideoFrame) => void,
     private onError: (error: Error) => void
     ) {

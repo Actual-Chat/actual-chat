@@ -543,22 +543,45 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             // encoder. Encoders stamp SpatialLayerId on every emitted chunk via their
             // ctor-bound id, so the fan-out path tags frames automatically. The
             // extra encoders close their input in finally regardless of success.
-            if (extraLayerEncoders.length > 0) {
-                for (let i = 0; i < extraLayerEncoders.length; i++) {
-                    const extra = results[i + 1];
-                    try {
-                        extraLayerEncoders[i].encode(extra.frame, nextFrameIsKeyFrame);
-                    } catch (e) {
-                        errorLog?.log(`Extra layer ${i + 1} encode error:`, e);
-                        try { extra.frame.close(); } catch { /* already closed */ }
+            //
+            // Track ownership of each results[i] frame (i ≥ 1; results[0] is
+            // processedFrame, owned by liveFrame for the outer catch). `owned[i]
+            // === false` means the frame has already been closed or handed to an
+            // encoder that will close it. Any entry still `true` after the
+            // simulcast block must be closed in the finally — otherwise an
+            // exception escaping from the encode loop or the orphan cleanup
+            // (e.g., logging throw, async-microtask crash) would leak the frame.
+            const ownedExtras = new Array<boolean>(results.length).fill(true);
+            ownedExtras[0] = false; // results[0] = processedFrame, tracked via liveFrame
+            try {
+                if (extraLayerEncoders.length > 0) {
+                    for (let i = 0; i < extraLayerEncoders.length; i++) {
+                        const idx = i + 1;
+                        const extra = results[idx];
+                        try {
+                            extraLayerEncoders[i].encode(extra.frame, nextFrameIsKeyFrame);
+                            ownedExtras[idx] = false; // encoder owns + closes
+                        } catch (e) {
+                            errorLog?.log(`Extra layer ${i + 1} encode error:`, e);
+                            try { extra.frame.close(); } catch { /* already closed */ }
+                            ownedExtras[idx] = false;
+                        }
                     }
                 }
-            }
-            // Defensive cleanup: if `extras.length` is shorter than results - 1
-            // (transient mismatch during a reconfig), close any orphan downscale
-            // results so they don't get GC'd unclosed.
-            for (let i = extraLayerEncoders.length + 1; i < results.length; i++) {
-                try { results[i].frame.close(); } catch { /* already closed */ }
+                // Orphan cleanup: close any results beyond what extras consume
+                // (transient length mismatch during a reconfig).
+                for (let i = extraLayerEncoders.length + 1; i < results.length; i++) {
+                    try { results[i].frame.close(); } catch { /* already closed */ }
+                    ownedExtras[i] = false;
+                }
+            } finally {
+                // Belt-and-braces: close anything still owned. Normal flow
+                // leaves nothing here; this only fires if something above
+                // threw before the per-iter handler could mark the entry.
+                for (let i = 1; i < results.length; i++) {
+                    if (!ownedExtras[i]) continue;
+                    try { results[i].frame.close(); } catch { /* already closed */ }
+                }
             }
         } else {
             // CPU resize path (older browsers without WebGPU). Source ts is

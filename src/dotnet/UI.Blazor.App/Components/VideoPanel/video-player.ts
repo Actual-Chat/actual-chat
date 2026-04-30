@@ -1,3 +1,4 @@
+import Denque from 'denque';
 import { getLogs } from 'logging';
 import { Api, momentToSeconds, secondsToMoment, streamingApi, type VideoFrameDto } from 'api';
 import { ServerClock } from 'server-clock';
@@ -112,6 +113,40 @@ interface PendingFrame {
     close(): void;
 }
 
+// Extract an owned ArrayBuffer from a Uint8Array. msgpack-decoded byte fields
+// may be either fully-owned (whole buffer = view) or shared subarrays into a
+// larger decode buffer. Fast path: when the view spans the whole underlying
+// buffer, return it directly — zero alloc, zero copy. Otherwise slice() to get
+// an owned copy. The returned buffer is safe to detach (transfer across worker
+// boundary or pass into `new EncodedVideoChunk({ transfer: [...] })`).
+// Diagnostic counters: track how often the fast path (zero-alloc) fires vs the
+// slow path (slice). Logged every OWNED_ARRAY_BUFFER_LOG_INTERVAL invocations.
+// If slow dominates, msgpack returns shared subarrays and a buffer-pool tweak
+// might be worth it; if fast dominates, Phase A is sufficient on this hop.
+let ownedArrayBufferFastCount = 0;
+let ownedArrayBufferSlowCount = 0;
+const OWNED_ARRAY_BUFFER_LOG_INTERVAL = 300;
+function ownedArrayBuffer(view: Uint8Array): ArrayBuffer {
+    const isOwned = view.byteOffset === 0 && view.byteLength === view.buffer.byteLength;
+    if (isOwned) {
+        ownedArrayBufferFastCount++;
+    } else {
+        ownedArrayBufferSlowCount++;
+    }
+    const total = ownedArrayBufferFastCount + ownedArrayBufferSlowCount;
+    if (total % OWNED_ARRAY_BUFFER_LOG_INTERVAL === 0) {
+        const fastPct = (ownedArrayBufferFastCount / total * 100).toFixed(1);
+        warnLog?.log(`ownedArrayBuffer: fast=${ownedArrayBufferFastCount} ` +
+            `slow=${ownedArrayBufferSlowCount} (${fastPct}% fast)`);
+    }
+    if (isOwned) {
+        // msgpack-decoded byte fields are always plain ArrayBuffer (never
+        // SharedArrayBuffer); cast narrows the ArrayBufferLike union.
+        return view.buffer as ArrayBuffer;
+    }
+    return view.slice().buffer;
+}
+
 function arrayBufferEqual(a: AllowSharedBufferSource, b: AllowSharedBufferSource): boolean {
     const viewA = ArrayBuffer.isView(a) ? new Uint8Array(a.buffer, a.byteOffset, a.byteLength) : new Uint8Array(a);
     const viewB = ArrayBuffer.isView(b) ? new Uint8Array(b.buffer, b.byteOffset, b.byteLength) : new Uint8Array(b);
@@ -143,7 +178,12 @@ export class VideoPlayer {
     // worker is ready — otherwise pushFrame drops them at `!this.decoderWorker`
     // and the pre-init keyframe is lost, stalling startup until next IDR.
     private decoderReady: Promise<void> = Promise.resolve();
-    private pendingFrames: PendingFrame[] = [];
+    // Denque (deque) instead of plain array — `.shift()` and bulk-prefix removal
+    // are O(1) amortised vs. Array.shift / splice(0, n) which reindex every
+    // remaining element on each call. At up to ~150 frames buffered with
+    // backpressure-driven drops, the Array-based version was a measurable
+    // long-task source on slow receivers.
+    private pendingFrames = new Denque<PendingFrame>();
     private readonly isSafari: boolean;
     private conversionQueue: Promise<void> = Promise.resolve();
     private isPlaying = false;
@@ -854,13 +894,13 @@ export class VideoPlayer {
         // at 30fps, so only trigger when well above that (600ms = nearly double normal).
         if (this.pendingFrames.length > 15) {
             const bufferSpanMs = this.pendingFrames.length >= 2
-                ? (this.pendingFrames[this.pendingFrames.length - 1].timestamp - this.pendingFrames[0].timestamp) / 1000
+                ? (this.pendingFrames.peekBack()!.timestamp - this.pendingFrames.peekFront()!.timestamp) / 1000
                 : 0;
             if (bufferSpanMs > 600) {
                 const targetSpanUs = 300 * 1000; // keep ~300ms worth of frames
-                const cutoffTimestamp = this.pendingFrames[this.pendingFrames.length - 1].timestamp - targetSpanUs;
+                const cutoffTimestamp = this.pendingFrames.peekBack()!.timestamp - targetSpanUs;
                 let dropCount = 0;
-                while (this.pendingFrames.length > 1 && this.pendingFrames[0].timestamp < cutoffTimestamp) {
+                while (this.pendingFrames.length > 1 && this.pendingFrames.peekFront()!.timestamp < cutoffTimestamp) {
                     this.pendingFrames.shift()!.close();
                     this.bufferSize--;
                     dropCount++;
@@ -1001,9 +1041,9 @@ export class VideoPlayer {
             // buffered frames (stale audio state after SKIP_TO_LIVE), snap to
             // live edge to avoid permanent render starvation.
             if (this.pendingFrames.length > 0) {
-                const oldestBufferedMs = this.pendingFrames[0].timestamp / 1000;
+                const oldestBufferedMs = this.pendingFrames.peekFront()!.timestamp / 1000;
                 if (rawTargetVideoOffsetMs < 0 || targetVideoOffsetMs < oldestBufferedMs - 2000) {
-                    targetTimestamp = this.pendingFrames[this.pendingFrames.length - 1].timestamp;
+                    targetTimestamp = this.pendingFrames.peekBack()!.timestamp;
                 }
             }
 
@@ -1013,13 +1053,13 @@ export class VideoPlayer {
             // Safety cap: flush old frames if buffer span exceeds 2s even in audio-sync mode.
             // This prevents buffer bloat from bursty delivery causing unbounded latency growth.
             if (this.pendingFrames.length >= 2) {
-                const bufferSpanMs = (this.pendingFrames[this.pendingFrames.length - 1].timestamp
-                    - this.pendingFrames[0].timestamp) / 1000;
+                const bufferSpanMs = (this.pendingFrames.peekBack()!.timestamp
+                    - this.pendingFrames.peekFront()!.timestamp) / 1000;
                 if (bufferSpanMs > 2000) {
                     // Find the frame closest to target and drop everything before it
                     let flushIdx = 0;
                     for (let i = 0; i < this.pendingFrames.length; i++) {
-                        if (this.pendingFrames[i].timestamp <= targetTimestamp) {
+                        if (this.pendingFrames.peekAt(i)!.timestamp <= targetTimestamp) {
                             flushIdx = i;
                         } else {
                             break;
@@ -1027,10 +1067,9 @@ export class VideoPlayer {
                     }
                     if (flushIdx > 0) {
                         for (let i = 0; i < flushIdx; i++) {
-                            this.pendingFrames[i].close();
+                            this.pendingFrames.shift()!.close();
                             this.bufferSize--;
                         }
-                        this.pendingFrames.splice(0, flushIdx);
                         warnLog?.log(
                             `audioSync buffer flush: dropped ${flushIdx} frames, ` +
                             `bufferSpanMs=${bufferSpanMs.toFixed(0)}, remaining=${this.pendingFrames.length}`);
@@ -1063,7 +1102,7 @@ export class VideoPlayer {
             if (liveGapMs > LATE_JOIN_GAP_MS
                 && this.pendingFrames.length > 0
                 && (now - this.lastSeekTime) > this.seekCooldownMs) {
-                const latestTimestamp = this.pendingFrames[this.pendingFrames.length - 1].timestamp;
+                const latestTimestamp = this.pendingFrames.peekBack()!.timestamp;
                 this.playbackStartTime = now;
                 this.firstFrameTimestamp = latestTimestamp;
                 this.playbackRate = 1.0;
@@ -1076,13 +1115,13 @@ export class VideoPlayer {
             }
 
             if (this.pendingFrames.length >= 2) {
-                bufferSpanMs = (this.pendingFrames[this.pendingFrames.length - 1].timestamp
-                    - this.pendingFrames[0].timestamp) / 1000;
+                bufferSpanMs = (this.pendingFrames.peekBack()!.timestamp
+                    - this.pendingFrames.peekFront()!.timestamp) / 1000;
 
                 if (bufferSpanMs > this.seekThresholdMs
                     && (now - this.lastSeekTime) > this.seekCooldownMs) {
                     // Hard seek fallback: if >5s behind and cooldown elapsed, jump forward
-                    const latestTimestamp = this.pendingFrames[this.pendingFrames.length - 1].timestamp;
+                    const latestTimestamp = this.pendingFrames.peekBack()!.timestamp;
                     this.playbackStartTime = now;
                     this.firstFrameTimestamp = latestTimestamp;
                     this.playbackRate = 1.0;
@@ -1130,7 +1169,7 @@ export class VideoPlayer {
 
         // Find the latest frame due for presentation; drop earlier ones
         let frameToRender: PendingFrame | null = null;
-        while (this.pendingFrames.length > 0 && this.pendingFrames[0].timestamp <= adjustedTargetTimestamp) {
+        while (this.pendingFrames.length > 0 && this.pendingFrames.peekFront()!.timestamp <= adjustedTargetTimestamp) {
             if (frameToRender) {
                 frameToRender.close();
                 this.bufferSize--;
@@ -1155,7 +1194,7 @@ export class VideoPlayer {
                 // Anchor to actual buffer content — clock-based liveOffsetMs may be wrong
                 // (e.g., after sender reconnection where startedAtMs and frame offsets diverge)
                 this.playbackStartTime = performance.now();
-                this.firstFrameTimestamp = this.pendingFrames[0].timestamp;
+                this.firstFrameTimestamp = this.pendingFrames.peekFront()!.timestamp;
                 this.playbackRate = 1.0;
                 this.consecutiveEmptyRenders = 0;
             }
@@ -1338,10 +1377,9 @@ export class VideoPlayer {
 
                 // Flush old pending frames — they're from the old decoder at stale offsets.
                 // Keeping them creates a multi-second render stall (offset gap).
-                for (const frame of this.pendingFrames) {
-                    try { frame.close(); } catch { /* already closed */ }
+                while (!this.pendingFrames.isEmpty()) {
+                    try { this.pendingFrames.shift()!.close(); } catch { /* already closed */ }
                 }
-                this.pendingFrames = [];
                 this.bufferSize = 0;
             }
         }
@@ -1358,14 +1396,15 @@ export class VideoPlayer {
     ): void {
         if (!this.decoderWorker) return;
 
-        // Copy data to transferable ArrayBuffer
-        const dataBuffer = new ArrayBuffer(frameData.byteLength);
-        new Uint8Array(dataBuffer).set(frameData);
-
+        // Extract owned ArrayBuffers — fast path uses the underlying buffer
+        // directly when the Uint8Array view spans the whole buffer (msgpack
+        // returns owned buffers for top-level bin fields). On the cross-worker
+        // hop the RPC framework auto-detects trailing ArrayBuffer args and
+        // transfers them (zero-copy across the postMessage boundary).
+        const dataBuffer = ownedArrayBuffer(frameData);
         let descBuffer: ArrayBuffer | undefined;
         if (description && description.length > 0) {
-            descBuffer = new ArrayBuffer(description.byteLength);
-            new Uint8Array(descBuffer).set(description);
+            descBuffer = ownedArrayBuffer(description);
         }
 
         if (this.useStreams && this.chunkInputChannel) {
@@ -1476,10 +1515,9 @@ export class VideoPlayer {
 
         // Close pending decoded frames so the gated wait doesn't render stale
         // content while the next keyframe is in flight.
-        for (const frame of this.pendingFrames) {
-            try { frame.close(); } catch { /* already closed */ }
+        while (!this.pendingFrames.isEmpty()) {
+            try { this.pendingFrames.shift()!.close(); } catch { /* already closed */ }
         }
-        this.pendingFrames = [];
         this.bufferSize = 0;
 
         // Server-only skip architecture: keep the existing pull running, do
@@ -1911,14 +1949,13 @@ export class VideoPlayer {
         }
 
         // Close all pending frames
-        for (const frame of this.pendingFrames) {
+        while (!this.pendingFrames.isEmpty()) {
             try {
-                frame.close();
+                this.pendingFrames.shift()!.close();
             } catch {
                 // Ignore
             }
         }
-        this.pendingFrames = [];
         this.bufferSize = 0;
 
         // Close stream input channel
@@ -2020,9 +2057,8 @@ export class VideoPlayer {
                 warnLog?.log(
                     `GRADUATED_RECOVERY: frameAge ${frameAgeMs.toFixed(0)}ms > ${DROP_TO_KEYFRAME_MS}ms, dropping ${dropCount} oldest frames`);
                 for (let i = 0; i < dropCount; i++) {
-                    this.pendingFrames[i].close();
+                    this.pendingFrames.shift()!.close();
                 }
-                this.pendingFrames.splice(0, dropCount);
                 this.bufferSize = this.pendingFrames.length;
             }
         }
@@ -2046,9 +2082,8 @@ export class VideoPlayer {
                 IsVisible: document.visibilityState === 'visible',
             }).catch(() => { /* best-effort */ });
 
-            for (const pf of this.pendingFrames)
-                pf.close();
-            this.pendingFrames.length = 0;
+            while (!this.pendingFrames.isEmpty())
+                this.pendingFrames.shift()!.close();
             this.bufferSize = 0;
             this.pipelineLatencyMs = 0;
             this.playbackStartTime = 0;
@@ -2082,8 +2117,8 @@ export class VideoPlayer {
                 // Compute buffer span (time range of buffered frames)
                 let currentBufferSpanMs = 0;
                 if (this.pendingFrames.length >= 2) {
-                    currentBufferSpanMs = (this.pendingFrames[this.pendingFrames.length - 1].timestamp
-                        - this.pendingFrames[0].timestamp) / 1000;
+                    currentBufferSpanMs = (this.pendingFrames.peekBack()!.timestamp
+                        - this.pendingFrames.peekFront()!.timestamp) / 1000;
                 }
 
                 warnLog?.log(

@@ -1,4 +1,9 @@
-import type { AudioSyncMessage, AudioSyncState } from 'audio-video-sync';
+import {
+    AUDIO_SYNC_KIND_STATE,
+    decodePlaybackState,
+    type AudioSyncMessage,
+    type AudioSyncState,
+} from 'audio-video-sync';
 
 // Worker-side mirror of AudioVideoSync state. Receives updates over a
 // MessagePort opened by the main thread via AudioVideoSync.subscribeWorker.
@@ -14,8 +19,13 @@ export class AudioVideoSyncClient {
     constructor(port: MessagePort, onChange?: () => void) {
         port.onmessage = (ev: MessageEvent<AudioSyncMessage>): void => {
             const msg = ev.data;
-            if (msg.kind === 'state') {
-                this.state = { ...msg.state, capturedAt: performance.now() };
+            if (msg[0] === AUDIO_SYNC_KIND_STATE) {
+                this.state = {
+                    playingAtSec: msg[1],
+                    capturedAt: performance.now(),
+                    recordedAtMs: msg[3],
+                    playbackState: decodePlaybackState(msg[4]),
+                };
             } else {
                 this.state = null;
             }

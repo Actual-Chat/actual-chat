@@ -209,8 +209,17 @@ export interface DecoderWorkerCallbacks {
     getSessionToken(minLifespanMs?: number): Promise<string>;
 
     /**
-     * Called when a frame has been decoded (asynchronous event)
-     * @param frame Decoded VideoFrame (will be transferred)
+     * Called when a frame has been decoded (asynchronous event).
+     *
+     * Ownership: the VideoFrame is **transferred** to the main thread via the
+     * RPC framework's auto-transfer (VideoFrame is detected as Transferable in
+     * `getTransferables`). The main-thread implementer **MUST `frame.close()`
+     * exactly once** — after rendering, after a downstream transfer, or in an
+     * error path. Without close the platform GCs the frame and HW decoder
+     * pool slots leak; dev builds emit "VideoFrame was garbage-collected
+     * without being closed".
+     *
+     * @param frame Decoded VideoFrame (transferred — caller must close)
      * @param noWait Fire-and-forget flag (don't wait for response)
      */
     onDecodedFrame(frame: VideoFrame, noWait?: RpcNoWait): Promise<void>;

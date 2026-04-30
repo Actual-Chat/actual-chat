@@ -71,6 +71,63 @@ function decoderErrorKey(scope: string, error: unknown): string {
     return `${scope}:${String(error)}`;
 }
 
+// Extract an owned ArrayBuffer from a Uint8Array. msgpack-decoded byte fields
+// may be either fully-owned (whole buffer = view) or shared subarrays into a
+// larger decode buffer. Fast path: when the view spans the whole underlying
+// buffer, return it directly — zero alloc, zero copy. Otherwise slice() to get
+// an owned copy. The returned buffer is safe to detach (transfer or pass into
+// `new EncodedVideoChunk({ transfer: [...] })`).
+//
+// Diagnostic counters: fast/slow path counts logged every
+// OWNED_ARRAY_BUFFER_LOG_INTERVAL invocations to confirm msgpack ownership
+// behaviour in production. If `slow` dominates, the receiver pays an extra
+// ~16 KB alloc+copy per frame and a buffer-pool / msgpack tweak is worth it.
+let ownedArrayBufferFastCount = 0;
+let ownedArrayBufferSlowCount = 0;
+const OWNED_ARRAY_BUFFER_LOG_INTERVAL = 300;
+function ownedArrayBuffer(view: Uint8Array): ArrayBuffer {
+    const isOwned = view.byteOffset === 0 && view.byteLength === view.buffer.byteLength;
+    if (isOwned) {
+        ownedArrayBufferFastCount++;
+    } else {
+        ownedArrayBufferSlowCount++;
+    }
+    const total = ownedArrayBufferFastCount + ownedArrayBufferSlowCount;
+    if (total % OWNED_ARRAY_BUFFER_LOG_INTERVAL === 0) {
+        const fastPct = (ownedArrayBufferFastCount / total * 100).toFixed(1);
+        warnLog?.log(`ownedArrayBuffer: fast=${ownedArrayBufferFastCount} ` +
+            `slow=${ownedArrayBufferSlowCount} (${fastPct}% fast)`);
+    }
+    if (isOwned) {
+        // msgpack-decoded byte fields are always plain ArrayBuffer (never
+        // SharedArrayBuffer); cast narrows the ArrayBufferLike union.
+        return view.buffer as ArrayBuffer;
+    }
+    return view.slice().buffer;
+}
+
+// Stream id of the active in-worker pull (set by startPullInWorker, cleared
+// by stopPullInWorker). Used by `requestKeyframeOnDecoderError` so the
+// decoder error callbacks can ask the server for a fresh keyframe instead of
+// waiting for the next natural one — speeds up recovery from transient HW
+// decoder failures (e.g. iOS HEVC HW intermittent EncodingError).
+let activePullStreamId: string | null = null;
+
+// Throttle PLI: at most one server-side keyframe request every 2 s.
+const KEYFRAME_REQUEST_COOLDOWN_MS = 2000;
+let lastKeyframeRequestAtMs = 0;
+
+function requestKeyframeOnDecoderError(): void {
+    if (!activePullStreamId) return;
+    const now = performance.now();
+    if (now - lastKeyframeRequestAtMs < KEYFRAME_REQUEST_COOLDOWN_MS) return;
+    lastKeyframeRequestAtMs = now;
+    const sid = activePullStreamId;
+    warnLog?.log(`Decoder error: requesting server keyframe for ${sid}`);
+    streamingApi.streamServer.RequestKeyFrame(sid)
+        .catch((e: unknown) => warnLog?.log('RequestKeyFrame error:', e));
+}
+
 // Stream-based input reader loop promise (for cleanup)
 let streamReadLoopPromise: Promise<void> | null = null;
 
@@ -225,6 +282,7 @@ function handleCodecChange(chunkData: EncodedChunkData): void {
         emitDecodedFrame,
         (error) => {
             errorLog?.log('Decoder error:', error);
+            requestKeyframeOnDecoderError();
         }
     );
     decoder.initialize();
@@ -281,6 +339,7 @@ function decodeChunk(chunkData: EncodedChunkData): void {
                     emitDecodedFrame,
                     (error) => {
                         errorLog?.log('Decoder error:', error);
+                        requestKeyframeOnDecoderError();
                     }
                 );
 
@@ -412,6 +471,7 @@ function createDecoder(config: DecoderConfig): WebCodecsDecoder {
         emitDecodedFrame,
         (error) => {
             errorLog?.log('Decoder error:', error);
+            requestKeyframeOnDecoderError();
         }
     );
 }
@@ -441,13 +501,11 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
             if (offsetMs > lastArrivedOffsetMs) lastArrivedOffsetMs = offsetMs;
 
             const data = frame.Data;
-            const dataBuffer = new ArrayBuffer(data.byteLength);
-            new Uint8Array(dataBuffer).set(data);
+            const dataBuffer = ownedArrayBuffer(data);
             let descBuffer: ArrayBuffer | undefined;
             const desc = frame.Description;
             if (desc && desc.length > 0) {
-                descBuffer = new ArrayBuffer(desc.byteLength);
-                new Uint8Array(descBuffer).set(desc);
+                descBuffer = ownedArrayBuffer(desc);
             }
 
             await serverImpl.decodeRawChunk(
@@ -525,6 +583,7 @@ const serverImpl: DecoderWorker = {
                         errorLog?.log(`Decoder error (state=${decoder?.getState() ?? '?'}, ` +
                             `lastChunkSeq=${lastChunkSeq}, lastChunkType=${lastChunkType}, ` +
                             `lastChunkBytes=${lastChunkSize}, lastDescLen=${lastChunkDescLen}):`, error);
+                    requestKeyframeOnDecoderError();
                 }
             );
             // Don't call decoder.initialize() — keep state 'unconfigured' until
@@ -569,6 +628,7 @@ const serverImpl: DecoderWorker = {
                         errorLog?.log(`Decoder error (state=${decoder?.getState() ?? '?'}, ` +
                             `lastChunkSeq=${lastChunkSeq}, lastChunkType=${lastChunkType}, ` +
                             `lastChunkBytes=${lastChunkSize}, lastDescLen=${lastChunkDescLen}):`, error);
+                    requestKeyframeOnDecoderError();
                 }
             );
             decoderConfigured = false;
@@ -804,10 +864,13 @@ const serverImpl: DecoderWorker = {
         }
 
         // Diagnostic: snapshot what the decoder is about to be fed so the
-        // error callback can reference it.
+        // error callback can reference it. Capture `dataLen` before the
+        // EncodedVideoChunk constructor (which uses `transfer: [data]` and
+        // detaches the buffer — `data.byteLength` reads 0 after that).
+        const dataLen = data.byteLength;
         lastChunkSeq = sequenceNumber;
         lastChunkType = isKeyFrame ? 'key' : 'delta';
-        lastChunkSize = data.byteLength;
+        lastChunkSize = dataLen;
         lastChunkDescLen = description?.byteLength ?? 0;
 
         // Diagnostic: on the first keyframe of a fresh stream, log a side-by-side
@@ -839,7 +902,7 @@ const serverImpl: DecoderWorker = {
                 initVsChunk = initLen === 0 ? 'init-no-desc' : 'len-differ';
             }
             warnLog?.log(
-                `[FIRST_KF_DIAG] seq=${sequenceNumber}, dataLen=${data.byteLength}, ` +
+                `[FIRST_KF_DIAG] seq=${sequenceNumber}, dataLen=${dataLen}, ` +
                 `initDescLen=${initLen}, chunkDescLen=${chunkLen}, cmp=${initVsChunk}, ` +
                 `decoderState=${decoder.getState()}, decoderConfigured=${decoderConfigured}, ` +
                 `codec=${currentDecoderConfig?.codec}, hwAccel=${currentDecoderConfig?.hardwareAcceleration}`);
@@ -873,6 +936,7 @@ const serverImpl: DecoderWorker = {
                                 errorLog?.log(`Decoder error (fresh first-keyframe path, state=${decoder?.getState() ?? '?'}, ` +
                                     `lastChunkSeq=${lastChunkSeq}, lastChunkType=${lastChunkType}, ` +
                                     `lastChunkBytes=${lastChunkSize}, lastDescLen=${lastChunkDescLen}):`, error);
+                            requestKeyframeOnDecoderError();
                         }
                     );
                     decoder.initialize();
@@ -913,6 +977,7 @@ const serverImpl: DecoderWorker = {
                     (error) => {
                         if (shouldLogDecoderError(decoderErrorKey('recreate', error)))
                             errorLog?.log(`Decoder error (recreate path, state=${decoder?.getState() ?? '?'}):`, error);
+                        requestKeyframeOnDecoderError();
                     }
                 );
                 decoder.initialize();
@@ -928,18 +993,23 @@ const serverImpl: DecoderWorker = {
             }
 
             // Defense-in-depth: never feed empty data to the decoder
-            if (data.byteLength === 0) {
+            if (dataLen === 0) {
                 warnLog?.log(`Skipping chunk with empty data: seq=${sequenceNumber}, isKey=${isKeyFrame}`);
                 return;
             }
 
-            // Create EncodedVideoChunk from raw bytes
+            // Create EncodedVideoChunk from raw bytes. `transfer: [data]` detaches
+            // the source ArrayBuffer into the chunk — skips the constructor's
+            // implicit byte copy. Per WebCodecs 2023+; safe because `data` is
+            // not read after this point. The cast is needed because the TS
+            // dom lib hasn't yet added the `transfer` field.
             const chunk = new EncodedVideoChunk({
                 type: isKeyFrame ? 'key' : 'delta',
                 timestamp,
                 duration,
                 data,
-            });
+                transfer: [data],
+            } as EncodedVideoChunkInit & { transfer?: ArrayBuffer[] });
 
             // Check decoder state — recover from closed/error state on keyframe
             if (decoder.getState() !== 'configured') {
@@ -983,7 +1053,7 @@ const serverImpl: DecoderWorker = {
                         : (lastRawDescription ?? undefined);
                     warnLog?.log(`Decoder in state '${decoder.getState()}', recovering (attempt ${
                         consecutiveRecoveries}/${RECOVERY_MAX_ATTEMPTS}) on keyframe seq=${
-                        sequenceNumber}, dataLen=${data.byteLength}, descLen=${
+                        sequenceNumber}, dataLen=${dataLen}, descLen=${
                         recoveryDescription?.byteLength ?? 0}, descHex=${
                         describeBytes(recoveryDescription)}, source=${
                         description && description.byteLength > 0 ? 'chunk' : 'cached'}`);
@@ -1000,6 +1070,7 @@ const serverImpl: DecoderWorker = {
                             (error) => {
                                 if (shouldLogDecoderError(decoderErrorKey('recovery', error)))
                                     errorLog?.log(`Decoder error (recovery path, state=${decoder?.getState() ?? '?'}):`, error);
+                                requestKeyframeOnDecoderError();
                             }
                         );
                         decoder.initialize();
@@ -1020,7 +1091,7 @@ const serverImpl: DecoderWorker = {
             if (isKeyFrame) {
                 warnLog?.log(`[PRE_DECODE] Decoding keyframe: seq=${sequenceNumber}, ` +
                     `state=${decoder.getState()}, configured=${decoderConfigured}, ` +
-                    `descLen=${description?.byteLength ?? 0}, dataLen=${data.byteLength}, ` +
+                    `descLen=${description?.byteLength ?? 0}, dataLen=${dataLen}, ` +
                     `flagWasUsed=${!initialDescriptionApplied && sequenceNumber === 0 ? 'maybe' : 'n/a'}`);
             }
 
@@ -1099,6 +1170,7 @@ const serverImpl: DecoderWorker = {
                     emitDecodedFrame,
                     (error) => {
                         errorLog?.log('Decoder error:', error);
+                        requestKeyframeOnDecoderError();
                     }
                 );
                 decoder.initialize();
@@ -1238,12 +1310,14 @@ const serverImpl: DecoderWorker = {
 
         pullStartedAtMs = startedAtMs;
         pullActive = true;
+        activePullStreamId = streamId;
         // Fire and forget — pull loop runs in background, ends via onPullEnded.
         void runPullLoop(streamId, skipToMs);
     },
 
     stopPullInWorker: async (): Promise<void> => {
         pullActive = false;
+        activePullStreamId = null;
         if (pullAbortController) {
             pullAbortController.abort();
             pullAbortController = null;
