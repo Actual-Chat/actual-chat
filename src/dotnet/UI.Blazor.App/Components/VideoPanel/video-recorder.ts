@@ -24,6 +24,15 @@ export interface OwnStreamDiagnostics {
     medianEncodeTime: number;
     pureMedianEncodeTime: number;
     encoderHwAccel: string;
+    encoderState: string;
+    encoderReconfigureCount: number;
+    encoderReplaceCount: number;
+    encoderLastReconfigureSummary: string;
+    encoderLastReconfigureAgeMs: number;
+    encoderLastErrorName: string;
+    encoderLastErrorMessage: string;
+    encoderLastErrorAgeMs: number;
+    encoderErrorCount: number;
     duration: number;
     cameraLabel: string | null;
     blurEnabled: boolean;
@@ -1237,6 +1246,15 @@ export class VideoRecorder {
             medianEncodeTime: encoderStats?.medianEncodeTime ?? 0,
             pureMedianEncodeTime: encoderStats?.pureMedianEncodeTime ?? 0,
             encoderHwAccel: encoderStats?.hardwareAcceleration ?? 'unknown',
+            encoderState: encoderStats?.state ?? 'unconfigured',
+            encoderReconfigureCount: encoderStats?.reconfigureCount ?? 0,
+            encoderReplaceCount: encoderStats?.replaceCount ?? 0,
+            encoderLastReconfigureSummary: encoderStats?.lastReconfigureSummary ?? '',
+            encoderLastReconfigureAgeMs: encoderStats?.lastReconfigureAgeMs ?? -1,
+            encoderLastErrorName: encoderStats?.lastErrorName ?? '',
+            encoderLastErrorMessage: encoderStats?.lastErrorMessage ?? '',
+            encoderLastErrorAgeMs: encoderStats?.lastErrorAgeMs ?? -1,
+            encoderErrorCount: encoderStats?.errorCount ?? 0,
             duration,
             cameraLabel: inputTrack?.label ?? null,
             blurEnabled: this.isBlurEnabled,

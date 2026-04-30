@@ -1933,6 +1933,10 @@ export const serverImpl: VideoProcessingWorker = {
             encodedFrames: 0, droppedFrames: 0, keyFrames: 0, totalBytes: 0,
             averageEncodeTime: 0, medianEncodeTime: 0, pureMedianEncodeTime: -1,
             configuredWidth: 0, configuredHeight: 0, configuredBitrate: 0, hardwareAcceleration: 'unknown',
+            state: 'unconfigured' as CodecState,
+            reconfigureCount: 0, replaceCount: 0,
+            lastReconfigureSummary: '', lastReconfigureAgeMs: -1,
+            lastErrorName: '', lastErrorMessage: '', lastErrorAgeMs: -1, errorCount: 0,
         };
         // Fold simulcast extras into the headline counters. Without this the
         // diagnostics log compared base-only `totalBytes` (the bytes a 1.3 Mbps

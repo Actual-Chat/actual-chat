@@ -91,6 +91,33 @@
                         <span class="diag-label">Frames</span>
                         <span class="diag-value">@(GetNum(stream, "encodedFrames").ToString("0")) enc, @(GetNum(stream, "droppedFrames").ToString("0")) drop, @(GetNum(stream, "keyFrames").ToString("0")) key</span>
                     </div>
+                    @{
+                        var encState = GetStr(stream, "encoderState");
+                        var isEncDead = encState is "closed" or "unconfigured";
+                    }
+                    <div class="diag-row">
+                        <span class="diag-label">State</span>
+                        <span class="diag-value @(isEncDead ? "diag-error" : "")">@encState</span>
+                    </div>
+                    <div class="diag-row">
+                        <span class="diag-label">Lifecycle</span>
+                        <span class="diag-value">@(GetNum(stream, "encoderReconfigureCount").ToString("0")) reconfigure, @(GetNum(stream, "encoderReplaceCount").ToString("0")) replace</span>
+                    </div>
+                    @if (GetStr(stream, "encoderLastReconfigureSummary") is { Length: > 0 } reconfSummary) {
+                        <div class="diag-row">
+                            <span class="diag-label">Last reconfig</span>
+                            <span class="diag-value multiline">@reconfSummary @(GetNum(stream, "encoderLastReconfigureAgeMs") >= 0 ? $"({GetNum(stream, "encoderLastReconfigureAgeMs"):0}ms ago)" : "")</span>
+                        </div>
+                    }
+                    @if (GetNum(stream, "encoderErrorCount") > 0) {
+                        <div class="diag-row">
+                            <span class="diag-label">Encoder error</span>
+                            <div class="diag-value multiline">
+                                <span class="diag-error">@GetStr(stream, "encoderLastErrorName"): @GetStr(stream, "encoderLastErrorMessage")</span>
+                                <span class="diag-dim">(@(GetNum(stream, "encoderErrorCount").ToString("0")) total@(GetNum(stream, "encoderLastErrorAgeMs") >= 0 ? $", {GetNum(stream, "encoderLastErrorAgeMs"):0}ms ago" : ""))</span>
+                            </div>
+                        </div>
+                    }
                     @if (GetBool(stream, "blurEnabled")) {
                         <div class="diag-row">
                             <span class="diag-label">Blur</span>
@@ -483,6 +510,16 @@
             sb.AppendLine($"Encode time: {GetNum(ownStream, "medianEncodeTime"):0.0}ms (pure: {GetNum(ownStream, "pureMedianEncodeTime"):0.0}ms)");
             sb.AppendLine($"HW accel: {GetStr(ownStream, "encoderHwAccel")}");
             sb.AppendLine($"Frames: {GetNum(ownStream, "encodedFrames"):0} enc, {GetNum(ownStream, "droppedFrames"):0} drop, {GetNum(ownStream, "keyFrames"):0} key");
+            sb.AppendLine($"State: {GetStr(ownStream, "encoderState")}");
+            sb.AppendLine($"Lifecycle: {GetNum(ownStream, "encoderReconfigureCount"):0} reconfigure, {GetNum(ownStream, "encoderReplaceCount"):0} replace");
+            if (GetStr(ownStream, "encoderLastReconfigureSummary") is { Length: > 0 } copyReconfSummary) {
+                var ageMs = GetNum(ownStream, "encoderLastReconfigureAgeMs");
+                sb.AppendLine($"Last reconfig: {copyReconfSummary}{(ageMs >= 0 ? $" ({ageMs:0}ms ago)" : "")}");
+            }
+            if (GetNum(ownStream, "encoderErrorCount") > 0) {
+                var errAgeMs = GetNum(ownStream, "encoderLastErrorAgeMs");
+                sb.AppendLine($"Encoder error: {GetStr(ownStream, "encoderLastErrorName")}: {GetStr(ownStream, "encoderLastErrorMessage")} ({GetNum(ownStream, "encoderErrorCount"):0} total{(errAgeMs >= 0 ? $", {errAgeMs:0}ms ago" : "")})");
+            }
             if (GetBool(ownStream, "blurEnabled"))
                 sb.AppendLine($"Blur: {GetStr(ownStream, "segmentationBackend")} ({GetNum(ownStream, "segmentationAvgTime"):0.0}ms)");
             sb.AppendLine($"Available: {GetStrArray(ownStream, "supportedEncoderCategories")}");

@@ -99,6 +99,24 @@ export interface EncoderStats {
   configuredHeight: number;
   configuredBitrate: number;
   hardwareAcceleration: string;
+  /** Current state of the underlying WebCodecs VideoEncoder. */
+  state: CodecState;
+  /** How many times reconfigure() was invoked on this WebCodecsEncoder. */
+  reconfigureCount: number;
+  /** How many times the underlying VideoEncoder instance has been replaced
+   *  (close + new) — covers dim-change reconfigure and switchCodec paths. */
+  replaceCount: number;
+  /** Human-readable summary of the last reconfigure (e.g. "4Mbps 720x1280 -> 2Mbps 540x960"). */
+  lastReconfigureSummary: string;
+  /** Wall-clock ms since the last reconfigure() call. -1 if none yet. */
+  lastReconfigureAgeMs: number;
+  /** Last error reported by the encoder (sync throw or async `error` callback). */
+  lastErrorName: string;
+  lastErrorMessage: string;
+  /** Wall-clock ms since the last error. -1 if none. */
+  lastErrorAgeMs: number;
+  /** Total errors observed from this WebCodecsEncoder (pre-dedupe). */
+  errorCount: number;
 }
 
 export class WebCodecsEncoder {
@@ -114,6 +132,18 @@ export class WebCodecsEncoder {
     private encodeQueueAtStart = new Denque<number>(); // Queue size when encode was called (parallel to encodeStartTimes)
     private pureEncodeTimeHistory = new Denque<number>(); // Times when queue was 0 at start (actual codec cost)
     private chunkSequence = 0; // Track chunk sequence for proper ordering
+
+    // Diagnostics: track encoder lifecycle so the modal can distinguish
+    // "encoder is healthy and waiting for first frame" from "encoder died,
+    // pipeline silently keeps trying". Surfaced via getStats().
+    private reconfigureCount = 0;
+    private replaceCount = 0;
+    private lastReconfigureSummary = '';
+    private lastReconfigureAtMs = 0;
+    private lastErrorName = '';
+    private lastErrorMessage = '';
+    private lastErrorAtMs = 0;
+    private errorCount = 0;
 
     // Simulcast spatial layer ID this encoder instance is producing. 0 = base
     // (lowest-res) layer, 1+ = higher-res simulcast layers. Stamped onto every
@@ -154,6 +184,7 @@ export class WebCodecsEncoder {
             this.encoder.configure(encoderConfig);
         } catch (error) {
             errorLog?.log('Failed to configure encoder:', error);
+            this.recordError(error as Error);
             // Surface the synchronous configure() failure to onError so the
             // dead-encoder fallback fires immediately. (Async OperationError
             // from NVENC contention reaches onError via the encoder's `error`
@@ -168,8 +199,10 @@ export class WebCodecsEncoder {
     encode(frame: VideoFrame, forceKeyFrame = false): void {
         if (this.encoder.state !== 'configured') {
             this.droppedFrames++;
-            this.onError(new DOMException(
-                `Encoder state is '${this.encoder.state}'`, 'InvalidStateError'));
+            const stateError = new DOMException(
+                `Encoder state is '${this.encoder.state}'`, 'InvalidStateError');
+            this.recordError(stateError);
+            this.onError(stateError);
             frame.close();
             return;
         }
@@ -230,6 +263,7 @@ export class WebCodecsEncoder {
             this.encodeStartTimes.pop();
             this.encodeQueueAtStart.pop();
             const e = error as Error;
+            this.recordError(e);
             if (shouldLogEncoderError(`enc-throw:${e.name}:${e.message}`))
                 errorLog?.log('Error encoding frame:', e.name, e.message);
             this.onError(e);
@@ -280,7 +314,10 @@ export class WebCodecsEncoder {
             this.config.codec = newCodec;
         }
         const dimsChanged = oldWidth !== this.config.width || oldHeight !== this.config.height;
-        infoLog?.log(`Reconfigure: ${oldBitrate / 1_000_000}Mbps ${oldWidth}x${oldHeight} -> ${this.config.bitrate / 1_000_000}Mbps ${this.config.width}x${this.config.height} (dimsChanged=${dimsChanged})`);
+        this.reconfigureCount++;
+        this.lastReconfigureSummary = `${oldBitrate / 1_000_000}Mbps ${oldWidth}x${oldHeight} -> ${this.config.bitrate / 1_000_000}Mbps ${this.config.width}x${this.config.height}`;
+        this.lastReconfigureAtMs = performance.now();
+        infoLog?.log(`Reconfigure: ${this.lastReconfigureSummary} (dimsChanged=${dimsChanged})`);
 
         if (dimsChanged) {
             // Android Chrome's MediaCodec H.264 session reproducibly fails with
@@ -337,6 +374,7 @@ export class WebCodecsEncoder {
         }
         await awaitHwReleased();
         this.encoder = this.createEncoder();
+        this.replaceCount++;
         // Output callbacks for any encodes still in flight on the closed
         // session never fire, so their start-time entries would otherwise sit
         // in the queues forever and pair with unrelated future outputs.
@@ -384,6 +422,7 @@ export class WebCodecsEncoder {
                 this.onChunk(chunkData);
             },
             error: (e: DOMException) => {
+                this.recordError(e as unknown as Error);
                 if (shouldLogEncoderError(`enc-cb:${e.name}:${e.message}`))
                     errorLog?.log('Encoder error:', e.name, e.message);
                 this.onError(e as unknown as Error);
@@ -479,6 +518,7 @@ export class WebCodecsEncoder {
             hardwareAcceleration = 'unknown';
         }
 
+        const nowMs = performance.now();
         return {
             encodedFrames: this.frameCount,
             droppedFrames: this.droppedFrames,
@@ -490,7 +530,16 @@ export class WebCodecsEncoder {
             configuredWidth: this.config.width,
             configuredHeight: this.config.height,
             configuredBitrate: this.config.bitrate,
-            hardwareAcceleration
+            hardwareAcceleration,
+            state: this.encoder.state,
+            reconfigureCount: this.reconfigureCount,
+            replaceCount: this.replaceCount,
+            lastReconfigureSummary: this.lastReconfigureSummary,
+            lastReconfigureAgeMs: this.lastReconfigureAtMs > 0 ? Math.round(nowMs - this.lastReconfigureAtMs) : -1,
+            lastErrorName: this.lastErrorName,
+            lastErrorMessage: this.lastErrorMessage,
+            lastErrorAgeMs: this.lastErrorAtMs > 0 ? Math.round(nowMs - this.lastErrorAtMs) : -1,
+            errorCount: this.errorCount,
         };
     }
 
@@ -506,5 +555,15 @@ export class WebCodecsEncoder {
         this.encodeQueueAtStart = new Denque<number>();
         this.pureEncodeTimeHistory = new Denque<number>();
         this.chunkSequence = 0;
+        // Diagnostic counters intentionally NOT reset — they describe the
+        // lifetime of this WebCodecsEncoder instance, including switchCodec
+        // boundaries. The pool keeps the same wrapper across stop/start.
+    }
+
+    private recordError(error: Error): void {
+        this.errorCount++;
+        this.lastErrorName = error.name;
+        this.lastErrorMessage = error.message;
+        this.lastErrorAtMs = performance.now();
     }
 }
