@@ -17,10 +17,10 @@
                     Class="@GetTileItemClass(RenderModeKey.Auto)"
                     Click="@NoStateHasChanged.EventCallback(() => ChangeMode(RenderModeKey.Auto))">
                     <Icon>
-                        <FormRadio TValue="@RenderModeKey" Id="@_formModel.ServerModeFormId" Value="@RenderModeKey.Auto"/>
+                        <FormRadio TValue="@RenderModeKey" Id="@_formModel.AutoModeFormId" Value="@RenderModeKey.Auto"/>
                     </Icon>
                     <Content>
-                        <Label InputId="@_formModel.ServerModeFormId" Text="Auto" IsRequired="true"></Label>
+                        <Label InputId="@_formModel.AutoModeFormId" Text="Auto" IsRequired="true"></Label>
                     </Content>
                     <Caption>
                         Starts in Server-Side Rendering mode and loads WebAssembly Client in the background.

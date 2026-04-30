@@ -1,6 +1,7 @@
 @using ActualChat.Chat
 @using ActualChat.Hosting
 @using ActualChat.Security
+@using ActualChat.AspNetCore
 @using ActualChat.UI.Blazor.App
 @using ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.Services
@@ -400,6 +401,7 @@
 
     private async Task Initialize() {
         var cancellationToken = HttpContext.RequestAborted;
+        HttpContext.DisableResponseCaching(); // Just in case: this page definitely shouldn't be cached
         _url = new LocalUrl(HttpContext.Request.GetEncodedPathAndQuery());
         _authState = await AuthHelper.UpdateAuthState(HttpContext, cancellationToken);
         var session = SessionResolver.Session = _authState.Session;
@@ -423,4 +425,5 @@
                 : RenderModeEndpoint.GetRenderMode(HttpContext);
         }
     }
+
 }

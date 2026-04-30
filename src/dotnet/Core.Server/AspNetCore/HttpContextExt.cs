@@ -1,10 +1,20 @@
 using System.Net;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Net.Http.Headers;
 
 namespace ActualChat.AspNetCore;
 
 public static class HttpContextExt
 {
+    public static void DisableResponseCaching(this HttpContext context)
+        => context.Response.OnStarting(() => {
+            var headers = context.Response.Headers;
+            headers[HeaderNames.CacheControl] = "no-store, no-cache, must-revalidate";
+            headers[HeaderNames.Pragma] = "no-cache";
+            headers[HeaderNames.Expires] = "0";
+            return Task.CompletedTask;
+        });
+
     public static IPAddress? GetRemoteIPAddress(this HttpContext context, bool useForwardedForHeaders = true)
     {
         if (useForwardedForHeaders) {
