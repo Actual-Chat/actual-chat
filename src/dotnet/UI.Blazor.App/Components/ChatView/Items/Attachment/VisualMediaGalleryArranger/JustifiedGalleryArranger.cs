@@ -44,24 +44,19 @@ public class JustifiedGalleryArranger : IVisualMediaGalleryArranger
             }
         }
 
-        // Last incomplete row — merge orphan into previous row when possible
-        if (currentRow.Count > 0) {
-            if (currentRow.Count == 1 && lines.Count > 0) {
-                var prevLine = lines[^1];
-                if (prevLine.Tiles.Count < _maxPerRow) {
-                    // Merge into previous row
-                    var merged = new List<VisualMediaGalleryTile<TItem>>(prevLine.Tiles);
-                    merged.AddRange(currentRow);
-                    lines[^1] = new VisualMediaGalleryLine<TItem>(merged.ToArray());
-                }
-                else {
-                    // Previous row is full — add as capped-height row
-                    lines.Add(new VisualMediaGalleryLine<TItem>(currentRow.ToArray(), isOrphanRow: true));
-                }
-            }
-            else {
-                lines.Add(new VisualMediaGalleryLine<TItem>(currentRow.ToArray()));
-            }
+        if (currentRow.Count == 0)
+            return lines.ToArray();
+
+        var canMerge = currentRow.Count == 1
+            && lines.Count > 0
+            && lines[^1].Tiles.Count < _maxPerRow;
+        if (canMerge) {
+            var merged = lines[^1].Tiles.Concat(currentRow).ToArray();
+            lines[^1] = new VisualMediaGalleryLine<TItem>(merged);
+        }
+        else {
+            var isOrphan = currentRow.Count == 1 && lines.Count > 0;
+            lines.Add(new VisualMediaGalleryLine<TItem>(currentRow.ToArray(), isOrphan));
         }
 
         return lines.ToArray();
