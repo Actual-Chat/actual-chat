@@ -25,6 +25,9 @@ public static partial class LocalUrlExt
     public static bool IsDocs(this LocalUrl url)
         => url.Value.StartsWith("/docs/");
 
+    public static bool IsTestPage(this LocalUrl url)
+        => url.Value.StartsWith("/test/");
+
     public static bool IsChatOrChatRoot(this LocalUrl url)
         => url.IsChat() || url.IsChatRoot();
     public static bool IsChatRoot(this LocalUrl url)

@@ -672,6 +672,9 @@ body.wide .error-container {
     background-repeat: no-repeat;
     background-position: center;
 }
+.landing-test-page .web-splash {
+    @apply w-full h-full;
+}
 
 /* Colorized Fog */
 .header-colorized-fog {
