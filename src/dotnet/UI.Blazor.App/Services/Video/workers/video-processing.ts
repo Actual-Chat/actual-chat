@@ -1,25 +1,35 @@
 /**
  * Video processing implementation.
  * Core logic for segmentation, encoding, and streaming — used by video-processing-worker.ts.
+ *
+ * NOTE: image segmentation (via onnxruntime-web) is intentionally disabled in
+ * this release. The dead/unused-symbol warnings come from the segmentation
+ * code paths that are commented out below — re-enable along with the
+ * imports and function bodies when segmentation ships.
  */
+
+/* eslint-disable @typescript-eslint/no-unused-vars, prefer-const */
 
 import { rpcNoWait } from 'rpc';
 import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
-import Denque from 'denque';
-import * as ort from 'onnxruntime-web';
+// ONNX runtime is currently disabled in the video pipeline — image segmentation
+// is implemented but not yet wired into any UI flow, and onnxruntime-web is
+// heavy on low-end mobiles. Re-enable these imports (and the segmentation
+// function bodies below) when segmentation ships in a future release.
+// import * as ort from 'onnxruntime-web';
 import { initAppConstants } from 'app-constants';
 
 import { type EncoderConfig, type EncodedChunkData, WebCodecsEncoder } from '../webcodecs-encoder';
 import type { SegmentationConfig, SegmentationStats, ModelConfig, SpatialLayerConfig, VideoProcessingConfig, VideoProcessingWorker, VideoProcessingWorkerCallbacks, VideoProcessingStats, VideoProcessingStreamingStats, OrientationStats } from './video-processing-worker-contract';
 import { getModelConfig } from './video-processing-worker-contract';
-import {
-    initTensorWebGPU,
-    processDeferredCleanups,
-    returnPooledBuffer,
-    videoFrameToTensorFloat32,
-    videoFrameToTensorUint8,
-} from '../tensor-utils';
+// import {
+//     initTensorWebGPU,
+//     processDeferredCleanups,
+//     returnPooledBuffer,
+//     videoFrameToTensorFloat32,
+//     videoFrameToTensorUint8,
+// } from '../tensor-utils';
 import {
     applyBackgroundBlur,
     submitBlurI420,
@@ -41,7 +51,8 @@ import { Api } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 
 // Import the ONNX model so esbuild copies it to dist/assets/onnx/
-import SegmentationModelUrl from './selfie_segmentation_olive_webgpu.onnx';
+// Disabled with the rest of segmentation — re-enable when shipping.
+// import SegmentationModelUrl from './selfie_segmentation_olive_webgpu.onnx';
 
 // Type declarations for Insertable Streams API (may be available in worker scope on Safari 18+)
 declare class MediaStreamTrackProcessor<T = VideoFrame> {
@@ -133,11 +144,13 @@ const backpressureDropThreshold = 0.20;
 let backpressureNotified = false;
 
 // Segmentation
-let onnxSession: ort.InferenceSession | null = null;
+// ort.InferenceSession / ort.Tensor types replaced with `unknown` while
+// onnxruntime-web is disabled. Restore the original types when re-enabling.
+let onnxSession: unknown = null;
 let segConfig: SegmentationConfig | null = null;
 let resolvedModelConfig: ModelConfig | null = null;
 let outputGpuBuffer: GPUBuffer = null!;
-let outputTensor: ort.Tensor = null!;
+let outputTensor: unknown = null;
 let smoothedMaskBuffer: GPUBuffer = null!;
 let blurEnabled = false;
 let segInitialized = false;
@@ -152,7 +165,10 @@ let hasValidMask = false;
 let loggedBlurFormat = false;
 
 interface QueuedFrame { frame: VideoFrame; sequenceNumber: number; timestamp: number }
-let frameQueue: Denque<QueuedFrame> | null = null;
+// Replaceable slot ahead of segmentation/blur (target design: "raw video
+// processors" stage uses a size-1 slot, newer raw frame replaces a pending
+// one). See docs/video-pipeline.md.
+let pendingFrame: QueuedFrame | null = null;
 let processingFrame = false;
 let frameSequence = 0;
 
@@ -250,13 +266,13 @@ let inputTrack: MediaStreamTrack | null = null;
 
 // ─── Segmentation ───────────────────────────────────────────────────────────
 
-function initializeQueue(cfg: SegmentationConfig): void {
-    frameQueue = new Denque<QueuedFrame>();
-    infoLog?.log(`Segmentation frame queue initialized, maxSize=${cfg.maxQueueSize}`);
+function initializeQueue(_cfg: SegmentationConfig): void {
+    pendingFrame = null;
+    infoLog?.log('Segmentation pending-frame slot initialized');
 }
 
 function enqueueFrame(frame: VideoFrame): void {
-    if (!frameQueue || !segConfig) {
+    if (!segConfig) {
         void encodeProcessedFrame(frame);
         return;
     }
@@ -267,17 +283,13 @@ function enqueueFrame(frame: VideoFrame): void {
         timestamp: performance.now(),
     };
 
-    while (frameQueue.length >= segConfig.maxQueueSize) {
-        const dropped = frameQueue.shift();
-        if (dropped) {
-            debugLog?.log(`Dropping frame #${dropped.sequenceNumber} (queue full)`);
-            dropped.frame.close();
-            segDroppedFrames++;
-        }
+    if (pendingFrame) {
+        debugLog?.log(`Replacing pending frame #${pendingFrame.sequenceNumber} (slot occupied)`);
+        pendingFrame.frame.close();
+        segDroppedFrames++;
     }
-
-    frameQueue.push(queuedFrame);
-    if (!processingFrame) void processQueue();
+    pendingFrame = queuedFrame;
+    if (!processingFrame) void processPending();
 }
 
 function emitPreviewAndEncode(frame: VideoFrame): void {
@@ -309,14 +321,21 @@ function emitPreview(frame: VideoFrame): void {
     }
 }
 
-async function processQueue(): Promise<void> {
-    if (!frameQueue || !segConfig || processingFrame) return;
+// eslint-disable-next-line @typescript-eslint/require-await
+async function processPending(): Promise<void> {
+    // Segmentation disabled in this release — see file header. The body below
+    // is preserved for future re-enablement; while disabled, processPending is
+    // never reached because `segInitialized` stays false (callers gate on it).
+    return;
+
+    /*
+    if (!segConfig || processingFrame) return;
     processingFrame = true;
 
     try {
-        while (!frameQueue.isEmpty() && processing) {
-            const qf = frameQueue.shift();
-            if (!qf) break;
+        while (pendingFrame && processing) {
+            const qf = pendingFrame;
+            pendingFrame = null;
             segFrameCounter++;
 
             processDeferredCleanups();
@@ -413,9 +432,20 @@ async function processQueue(): Promise<void> {
     } finally {
         processingFrame = false;
     }
+    */
 }
 
-async function initializeSegmentation(config: SegmentationConfig): Promise<void> {
+// eslint-disable-next-line @typescript-eslint/require-await
+async function initializeSegmentation(_config: SegmentationConfig): Promise<void> {
+    // Segmentation is intentionally disabled in this release — onnxruntime-web
+    // is heavy on low-end mobiles and segmentation is not yet wired into the UI.
+    // `segInitialized` deliberately stays false so all gated call sites bypass
+    // the queue and emit raw frames straight through. Re-enable the body below
+    // when re-introducing background blur.
+    warnLog?.log('Segmentation disabled in this release; ignoring config.segmentation');
+    return;
+
+    /*
     segConfig = config;
     ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/';
     ort.env.wasm.numThreads = 1;
@@ -446,7 +476,8 @@ async function initializeSegmentation(config: SegmentationConfig): Promise<void>
 
     outputTensor = ort.Tensor.fromGpuBuffer(outputGpuBuffer, {
         dataType: 'float32', dims: [1, 1, config.inputHeight, config.inputWidth],
-        dispose: () => { /* managed by worker */ },
+        dispose: () => { // managed by worker
+        },
     });
 
     resolvedModelConfig = config.modelConfig ?? getModelConfig(modelUrl);
@@ -454,6 +485,7 @@ async function initializeSegmentation(config: SegmentationConfig): Promise<void>
 
     initializeQueue(config);
     segInitialized = true;
+    */
 }
 
 // ─── Encoding pipeline ──────────────────────────────────────────────────────
@@ -1922,7 +1954,7 @@ export const serverImpl: VideoProcessingWorker = {
             inputTrack = null;
         }
         try { await awaitAllPendingReadbacks(); } catch { /* ignore */ }
-        if (frameQueue) { while (!frameQueue.isEmpty()) { const qf = frameQueue.shift(); if (qf) qf.frame.close(); } frameQueue = null; }
+        if (pendingFrame) { try { pendingFrame.frame.close(); } catch { /* ignore */ } pendingFrame = null; }
         // Flush extras first (per-session simulcast — close fully). Primary
         // gets flushed and parked below for reuse on next start.
         // Snapshot + clear BEFORE awaiting flush — if switchCodec runs during

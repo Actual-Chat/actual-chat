@@ -47,6 +47,13 @@ All file paths are relative to the repo root.
   the current worker initialization hard-codes WebGPU execution; WebGL/WASM are
   detected/configured by surrounding code but are not actually selected in the
   worker's ONNX session today.
+  > **Disabled in the current release.** `onnxruntime-web` and the
+  > segmentation function bodies in `video-processing.ts` /
+  > `tensor-utils.ts` are commented out because segmentation is not yet
+  > wired into any UI flow and the runtime is heavy on low-end mobiles.
+  > `initializeSegmentation` is a no-op; `segInitialized` stays `false`,
+  > so all gated call sites bypass the queue. Re-enable by uncommenting
+  > the imports and function bodies.
 - **Background blur** — `src/dotnet/UI.Blazor.App/Services/Video/webgpu-blur.ts`,
   GPU mipmapped Gaussian pyramids + temporal mask EMA.
 - **Downscale** — `src/dotnet/UI.Blazor.App/Services/Video/webgpu-downscaler.ts`

@@ -1,9 +1,19 @@
 /**
  * Tensor Utilities for ONNX Runtime Web with WebGPU
  * Creates WebGPU buffer-backed tensors for zero-copy inference
+ *
+ * NOTE: ONNX runtime is currently disabled in the video pipeline because
+ * image segmentation is not yet wired into any UI flow and the runtime
+ * is heavy on low-end mobiles. The two `videoFrameToTensor*` helpers
+ * below are stubbed; re-enable the import and bodies when segmentation
+ * is shipped in a future release. The eslint-disable directives below
+ * suppress unused-symbol noise from the dead segmentation helpers — drop
+ * them when re-enabling.
  */
 
-import * as ort from 'onnxruntime-web';
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
+// import * as ort from 'onnxruntime-web';
 import { WebGPUManager } from './webgpu-manager.js';
 import { getLogs } from 'logging';
 
@@ -315,10 +325,15 @@ export function processDeferredCleanups(currentFrame: number = ++frameCounter): 
  * @returns WebGPU buffer-backed ONNX tensor with shape [1, height, width, 3] and uint8 values
  */
 export function videoFrameToTensorUint8(
-    frame: VideoFrame,
-    targetWidth: number,
-    targetHeight: number
-): Promise<ort.Tensor> {
+    _frame: VideoFrame,
+    _targetWidth: number,
+    _targetHeight: number
+): Promise<unknown> {
+    // ONNX runtime / segmentation disabled in this release — see file header.
+    // Original body preserved below for future re-enablement.
+    return Promise.reject(new Error('Segmentation disabled — videoFrameToTensorUint8 is a no-op'));
+
+    /*
     if (!device) {
     // CPU fallback path for non-WebGPU backends (e.g., WASM)
         const canvas = new OffscreenCanvas(targetWidth, targetHeight);
@@ -454,6 +469,7 @@ export function videoFrameToTensorUint8(
     });
 
     return Promise.resolve(tensor);
+    */
 }
 
 /**
@@ -468,10 +484,15 @@ export function videoFrameToTensorUint8(
  * @returns WebGPU buffer-backed ONNX tensor with shape [1, 3, height, width] and float32 values
  */
 export function videoFrameToTensorFloat32(
-    frame: VideoFrame,
-    targetWidth: number,
-    targetHeight: number
-): Promise<ort.Tensor> {
+    _frame: VideoFrame,
+    _targetWidth: number,
+    _targetHeight: number
+): Promise<unknown> {
+    // ONNX runtime / segmentation disabled in this release — see file header.
+    // Original body preserved below for future re-enablement.
+    return Promise.reject(new Error('Segmentation disabled — videoFrameToTensorFloat32 is a no-op'));
+
+    /*
     if (!device) {
     // CPU fallback path for non-WebGPU backends (e.g., WASM)
         const canvas = new OffscreenCanvas(targetWidth, targetHeight);
@@ -610,4 +631,5 @@ export function videoFrameToTensorFloat32(
     });
 
     return Promise.resolve(tensor);
+    */
 }
