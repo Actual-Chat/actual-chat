@@ -69,7 +69,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         stream = SkipTo(stream, skipTo, cancellationToken);
         return new RpcStream<AudioFrame>(stream) {
             AckPeriod = Constants.Audio.StreamAckPeriod,
-            AckAdvance = Constants.Audio.StreamAckAdvance,
+            BufferSize = Constants.Audio.StreamBufferSize,
         };
     }
 
@@ -80,7 +80,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         if (stream != null)
             return new RpcStream<TranscriptDiff>(stream) {
                 AckPeriod = Constants.Audio.StreamAckPeriod,
-                AckAdvance = Constants.Audio.StreamAckAdvance,
+                BufferSize = Constants.Audio.StreamBufferSize,
             };
 
         var language = streamId.Language;
@@ -92,7 +92,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
             stream = await _transcriptStreams.Get(streamId, true, cancellationToken).ConfigureAwait(false);
             return new RpcStream<TranscriptDiff>(stream!) { // Already translating
                 AckPeriod = Constants.Audio.StreamAckPeriod,
-                AckAdvance = Constants.Audio.StreamAckAdvance,
+                BufferSize = Constants.Audio.StreamBufferSize,
             };
         }
 
@@ -108,7 +108,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
             ? null
             : new RpcStream<TranscriptDiff>(stream) {
                 AckPeriod = Constants.Audio.StreamAckPeriod,
-                AckAdvance = Constants.Audio.StreamAckAdvance,
+                BufferSize = Constants.Audio.StreamBufferSize,
             };
     }
 

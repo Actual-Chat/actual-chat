@@ -85,7 +85,7 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
             : new RpcStream<VideoFrame>(remoteStream) {
                 AllowReconnect = false,
                 AckPeriod = Constants.Video.StreamAckPeriod,
-                AckAdvance = Constants.Video.StreamAckAdvance,
+                BufferSize = Constants.Video.StreamBufferSize,
             };
     }
 

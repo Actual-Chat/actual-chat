@@ -54,7 +54,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         return new RpcStream<LiveStreamItem>(stream) {
             AllowReconnect = false,
             AckPeriod = Constants.Audio.StreamAckPeriod,
-            AckAdvance = Constants.Audio.StreamAckAdvance,
+            BufferSize = Constants.Audio.StreamBufferSize,
         };
     }
 
@@ -98,7 +98,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         return new RpcStream<LiveStreamItem>(stream) {
             AllowReconnect = false,
             AckPeriod = Constants.Audio.StreamAckPeriod,
-            AckAdvance = Constants.Audio.StreamAckAdvance,
+            BufferSize = Constants.Audio.StreamBufferSize,
         };
     }
 

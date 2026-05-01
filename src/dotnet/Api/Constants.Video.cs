@@ -19,9 +19,9 @@ public static partial class Constants
         public static readonly TimeSpan ScreencastFrameSilenceTimeout = TimeSpan.FromMinutes(3);
 
         // RPC stream flow control for video (30fps, 33ms frames).
-        // Tuned for up to ~1s RTT: ackAdvance > ackPeriod + fps × RTT.
+        // Tuned for up to ~1s RTT: bufferSize > ackPeriod + fps × RTT.
         public const int StreamAckPeriod = 64;
-        public const int StreamAckAdvance = 192;
+        public const int StreamBufferSize = 192;
         // Bumped from 60 to absorb simulcast: a 3-layer sender produces 3× items per source
         // frame, so a 180-slot ring keeps the effective ~2s window per-layer. P2P single-
         // layer streams still retain ~6s of history under this size.

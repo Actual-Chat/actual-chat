@@ -4,7 +4,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>12.3.79</ActualLabFusionVersion>
+    <ActualLabFusionVersion>12.4.6</ActualLabFusionVersion>
     <AspNetCoreVersion>10.0.2</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>10.0.2</EntityFrameworkCoreVersion>
@@ -126,7 +126,7 @@
     <PackageVersion Include="AspNet.Security.OAuth.Apple" Version="9.3.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
     <PackageVersion Include="AspNet.Security.OAuth.GitHub" Version="6.0.14" />
-    <PackageVersion Include="Blake3" Version="2.0.0" />
+    <PackageVersion Include="Blake3" Version="2.2.1" />
     <PackageVersion Include="CommunityToolkit.HighPerformance" Version="8.4.0" />
     <PackageVersion Include="CommunityToolkit.Maui.Core" Version="12.3.0" />
     <PackageVersion Include="Deepgram" Version="6.6.0" />

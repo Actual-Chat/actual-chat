@@ -55,7 +55,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             Log);
         return new RpcStream<VideoFrame>(filter.Apply(streamId, peerId, skipTo, stream, cancellationToken)) {
             AckPeriod = Constants.Video.StreamAckPeriod,
-            AckAdvance = Constants.Video.StreamAckAdvance,
+            BufferSize = Constants.Video.StreamBufferSize,
         };
     }
 
@@ -69,7 +69,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         }
         return new RpcStream<VideoFrame>(stream) {
             AckPeriod = Constants.Video.StreamAckPeriod,
-            AckAdvance = Constants.Video.StreamAckAdvance,
+            BufferSize = Constants.Video.StreamBufferSize,
         };
     }
 

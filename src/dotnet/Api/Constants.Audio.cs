@@ -27,9 +27,9 @@ public static partial class Constants
         public static readonly TimeSpan FrameSilenceTimeout = TimeSpan.FromSeconds(2);
 
         // RPC stream flow control for audio (50fps, 20ms frames).
-        // Tuned for up to ~1s RTT: ackAdvance > ackPeriod + fps × RTT.
+        // Tuned for up to ~1s RTT: bufferSize > ackPeriod + fps × RTT.
         public const int StreamAckPeriod = 64;
-        public const int StreamAckAdvance = 192;
+        public const int StreamBufferSize = 192;
         public static readonly TimeSpan LowPlaybackBufferDuration = TimeSpan.FromSeconds(10);
         public static readonly TimeSpan StartPlaybackWhenBufferedDuration = TimeSpan.FromSeconds(0.1);
     }

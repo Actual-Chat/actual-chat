@@ -5,7 +5,7 @@ import { Api, type VideoFrameDto, type AudioFrameDto } from 'api';
 
 /**
  * Create a client-side RPC stream for pushing video frames to the server.
- * Real-time mode: isRealTime=true, allowReconnect=false, ackPeriod=5, ackAdvance=31.
+ * Real-time mode: isRealTime=true, allowReconnect=false, ackPeriod=5, bufferSize=31.
  *
  * Usage: pass `source` (an AsyncIterable of frames), then call `stream.toRef(peer)`
  * to get the ref for the RPC method argument. `toRef` registers the sender and
@@ -14,7 +14,7 @@ import { Api, type VideoFrameDto, type AudioFrameDto } from 'api';
 export function createVideoStream(source: AsyncIterable<VideoFrameDto>): { stream: RpcStream<VideoFrameDto>; ref: unknown } {
     const peer = Api.peer;
     const stream = new RpcStream<VideoFrameDto>(source, {
-        isRealTime: true, allowReconnect: false, ackPeriod: 5, ackAdvance: 31,
+        isRealTime: true, allowReconnect: false, ackPeriod: 5, bufferSize: 31,
         canSkipTo: (frame) => frame.IsKeyFrame,
     });
     return { stream, ref: stream.toRef(peer) };

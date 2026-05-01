@@ -147,7 +147,7 @@ server.
 | Policy | `RpcStream` | real-time |
 | `IsRealTime` | constant | `true` |
 | `CanSkipTo` | decoder-safe frame predicate | keyframe |
-| `AckAdvance` | `RpcStreamBufferSize` | 10 frames |
+| `BufferSize` | `RpcStreamBufferSize` | 10 frames |
 | `AckPeriod` | `RpcStreamAckPeriod` | 5 frames |
 
 ACK compaction happens only after ACK processing. If the `video sender` has an
@@ -201,7 +201,7 @@ appropriate simulcast layer per receiver.
 | Policy | `RpcStream` | real-time |
 | `IsRealTime` | constant | `true` |
 | `CanSkipTo` | decoder-safe frame predicate | keyframe |
-| `AckAdvance` | `RpcStreamBufferSize` | 10 frames |
+| `BufferSize` | `RpcStreamBufferSize` | 10 frames |
 | `AckPeriod` | `RpcStreamAckPeriod` | 5 frames |
 
 The `server video sender` should compact unsent backlog after ACKs in the same

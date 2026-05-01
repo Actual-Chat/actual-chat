@@ -30,7 +30,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         var cached = await GetOrFetchRemoteAudio(parsedStreamId, skipTo, cancellationToken).ConfigureAwait(false);
         return cached == null ? null : new RpcStream<AudioFrame>(cached) {
             AckPeriod = Constants.Audio.StreamAckPeriod,
-            AckAdvance = Constants.Audio.StreamAckAdvance,
+            BufferSize = Constants.Audio.StreamBufferSize,
         };
     }
 
@@ -44,7 +44,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
             : new RpcStream<VideoFrame>(remoteStream) {
                 AllowReconnect = false,
                 AckPeriod = Constants.Video.StreamAckPeriod,
-                AckAdvance = Constants.Video.StreamAckAdvance,
+                BufferSize = Constants.Video.StreamBufferSize,
             };
     }
 
@@ -68,7 +68,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
             .SuppressCancellation(cancellationToken);
         return new RpcStream<TranscriptDiff>(diffStream) {
             AckPeriod = Constants.Audio.StreamAckPeriod,
-            AckAdvance = Constants.Audio.StreamAckAdvance,
+            BufferSize = Constants.Audio.StreamBufferSize,
         };
     }
 

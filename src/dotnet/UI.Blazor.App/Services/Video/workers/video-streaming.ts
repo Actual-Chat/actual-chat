@@ -248,7 +248,7 @@ export class InternalVideoStream {
                 SourceHeight: this.config.sourceHeight,
             };
 
-            // Real-time video stream: isRealTime=true, allowReconnect=true, ackPeriod=5, ackAdvance=31.
+            // Real-time video stream: isRealTime=true, allowReconnect=true, ackPeriod=5, bufferSize=31.
             // With allowReconnect=true, a same-peer WS reconnect keeps the sender alive and the
             // real-time-skip-to-keyframe logic in Fusion's RpcSharedStream/Sender drives resume via
             // $sys.Ack(MustReset=true). On peer-change the sender is disposed via
@@ -272,7 +272,7 @@ export class InternalVideoStream {
                     }
                 })(),
                 {
-                    isRealTime: true, allowReconnect: true, ackPeriod: 5, ackAdvance: 31,
+                    isRealTime: true, allowReconnect: true, ackPeriod: 5, bufferSize: 31,
                     canSkipTo: (frame) => frame.IsKeyFrame,
                 },
             );
