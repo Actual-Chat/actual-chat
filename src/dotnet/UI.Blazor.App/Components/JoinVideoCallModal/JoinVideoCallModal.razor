@@ -13,7 +13,7 @@
     Title="@Title">
     <Body>
     <div class="c-container">
-        @if (m.ShowActiveSessionInfo) {
+        @if (m.HasActiveSession) {
             <div class="c-members">
                 <ChatActivities
                     @key="@ModalModel.Chat.Id.Value"
@@ -210,22 +210,23 @@
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     private string Title => IsSettingsMode ? "Video Settings"
-        : State.Value.ShowActiveSessionInfo ? "Join the video"
+        : State.Value.HasActiveSession ? "Join the video"
         : "Video preview";
 
     private string SubmitButtonText => IsSettingsMode ? "Apply"
-        : State.Value.ShowActiveSessionInfo ? "Join"
+        : State.Value.HasActiveSession ? "Join"
         : "Start video";
 
     // Submit conditions:
-    // - Video off (user toggled off): always allow — user is joining without video.
+    // - Video off: enabled iff remote streams exist (joining as viewer makes
+    //   sense only when someone else is already streaming).
     // - Video on: require both a resolved device and a settled camera state
-    //   (On = preview live, Unavailable = preview failed but user can still join).
-    //   Starting/Off mean we don't yet know if the camera works, so block submit.
-    private bool IsSubmitDisabled =>
-        _isVideoOn
-        && (_selectedDevice is null
-            || PreviewState is not (CameraState.On or CameraState.Unavailable));
+    //   (On = preview live, Unavailable = preview failed but user can still
+    //   join without a working camera). Starting/Off mean we don't yet know
+    //   if the camera works, so block submit.
+    private bool IsSubmitDisabled => _isVideoOn
+        ? _selectedDevice is null || PreviewState is not (CameraState.On or CameraState.Unavailable)
+        : !State.Value.HasActiveSession;
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
@@ -516,6 +517,7 @@
     private void OnJoinClick() {
         ModalModel.SelectedDeviceId = _selectedDevice?.DeviceId;
         ModalModel.IsBlurEnabled = _isBlurEnabled;
+        ModalModel.IsVideoOn = _isVideoOn;
         ModalModel.IsConfirmed = true;
 
         _ = CommitMirrorChoice();  // fire-and-forget — no need to block close on a settings write
@@ -747,7 +749,10 @@
         public bool IsConfirmed { get; set; }
         public string? SelectedDeviceId { get; set; }
         public bool IsBlurEnabled { get; set; }
+        // false = user toggled video off; the caller should join as a viewer
+        // (no recording, no streaming) instead of starting StartVideoStreaming.
+        public bool IsVideoOn { get; set; }
     }
 
-    public sealed record ComputedModel(bool ShowActiveSessionInfo, string? LastRecorderError);
+    public sealed record ComputedModel(bool HasActiveSession, string? LastRecorderError);
 }

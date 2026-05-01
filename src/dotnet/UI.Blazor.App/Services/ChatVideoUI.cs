@@ -286,6 +286,14 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             if (!model.IsConfirmed)
                 return;
 
+            if (!model.IsVideoOn) {
+                // Viewer join: only opening the panel — no recording / streaming.
+                // The Submit button is disabled in this branch unless remote
+                // streams are already there, so we can rely on something to watch.
+                OpenVideoPanel(chatId);
+                return;
+            }
+
             await LocalSettings.LocalAppSettings()
                 .Update(s => s with { SelectedCameraDeviceId = model.SelectedDeviceId }, cancellationToken).ConfigureAwait(true);
             StartVideoStreaming(chatId, model.SelectedDeviceId, model.IsBlurEnabled);
