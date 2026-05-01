@@ -141,7 +141,7 @@ export class ActiveRecordingSvg extends LitElement {
         });
         const getHeight = (power: number, maxPower: number) => Math.floor((translate(power, [0, 0.6*maxPower], [MIN_HEIGHT, MAX_HEIGHT]))) * 100 / MAX_HEIGHT;
         this.signalPowerChangedSubscription = signalPower$.subscribe(({ runningMax, runningEMA }) => {
-            if (!this._isRecording || !this.isVoiceActive)
+            if (!this._isRecording || !this.isVoiceActive || !this.isVisible)
                 return;
 
             const maxPower = runningMax.value;
