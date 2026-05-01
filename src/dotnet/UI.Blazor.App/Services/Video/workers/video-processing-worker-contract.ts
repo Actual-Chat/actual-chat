@@ -234,6 +234,13 @@ export interface VideoProcessingWorkerCallbacks {
         descriptionBytes?: ArrayBuffer, noWait?: RpcNoWait): Promise<void>;
     onBackpressure(dropRate: number, noWait?: RpcNoWait): Promise<void>;
     onEncoderFailed(codec: string, noWait?: RpcNoWait): Promise<void>;
+    /** Fired when the worker detects that streaming hasn't progressed for too
+     *  long even though the encoder is healthy and the connection is up — i.e.
+     *  the stream couldn't be created (e.g. missing codec description) or got
+     *  stuck recovering after a peer change. Connectivity-driven outages are
+     *  filtered out by the worker; receiving this means the user should know
+     *  their broadcast isn't reaching viewers. */
+    onStreamingStalled(reason: string, noWait?: RpcNoWait): Promise<void>;
     onDimensionReconciled(width: number, height: number, noWait?: RpcNoWait): Promise<void>;
     onPreviewFrame(frame: VideoFrame, noWait?: RpcNoWait): Promise<void>;
     /** Delivers the MediaStreamTrackGenerator output track once {@link VideoProcessingWorker.startPreviewWithTrack}

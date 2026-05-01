@@ -327,6 +327,15 @@ export class RecordingService extends EventTarget {
                 this.dispatchEvent(new CustomEvent('encoder-failure', { detail: category }));
             };
 
+            // Streaming stall surfacing — distinct from encoder failure
+            // because no codec switch will fix it. Recorder listens and
+            // pushes the message to Blazor through the same OnRecordingError
+            // path the encoder-fatal path uses.
+            this.pipeline.onStreamingFailure = (reason: string) => {
+                warnLog?.log(`Streaming stalled — emitting streaming-failure event: ${reason}`);
+                this.dispatchEvent(new CustomEvent('streaming-failure', { detail: reason }));
+            };
+
             // Track-end detection. Camera was unexpectedly revoked —
             // dispatch a user-visible error and stop the pipeline so callers
             // can decide whether to retry. Without this, the worker logged

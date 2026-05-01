@@ -210,6 +210,13 @@ export class VideoPipeline implements IVideoPipeline {
     // Encoder failure callback (set by recording-service for codec fallback)
     public onEncoderFailure: ((failedCodec: string) => void) | null = null;
 
+    // Streaming-stall callback (set by recording-service). Fires when the
+    // worker's streaming watchdog decides frames aren't reaching the wire
+    // even though the encoder is healthy and the connection is up. Distinct
+    // from `onEncoderFailure` because no codec switch will fix it — the
+    // pipeline simply needs to surface the situation to the user.
+    public onStreamingFailure: ((reason: string) => void) | null = null;
+
     // Camera-track-ended callback (set by recording-service). Fires when the
     // underlying MediaStreamTrack ends UNEXPECTEDLY — e.g. another browser tab
     // grabbed the same physical camera, the device was unplugged, or a privacy
@@ -297,6 +304,12 @@ export class VideoPipeline implements IVideoPipeline {
                 },
                 onEncoderFailed: (codec: string) => {
                     this.handleEncoderFailure(codec);
+                    return Promise.resolve();
+                },
+                onStreamingStalled: (reason: string) => {
+                    warnLog?.log(`Worker reported streaming stall: ${reason}`);
+                    if (this.onStreamingFailure)
+                        this.onStreamingFailure(reason);
                     return Promise.resolve();
                 },
                 onDimensionReconciled: (width: number, height: number) => {

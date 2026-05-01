@@ -1070,7 +1070,23 @@ export class VideoRecorder {
         recordingService.addEventListener('encoder-failure', ((event: CustomEvent<string>) => {
             this.onEncoderCodecFailed(event.detail);
         }) as EventListener);
+        recordingService.addEventListener('streaming-failure', ((event: CustomEvent<string>) => {
+            this.onStreamingFailure(event.detail);
+        }) as EventListener);
         return recordingService;
+    }
+
+    // Streaming-pipeline stall (e.g. stream creation stuck on a missing codec
+    // description, or a peer-change recovery that never produced a keyframe).
+    // The worker's watchdog already filters connectivity-driven outages — those
+    // have their own UI — so by the time we land here the user genuinely needs
+    // to see "your video isn't reaching viewers". Reuse the encoder-fatal
+    // overlay path: pushes the message to Blazor's OnRecordingError, which
+    // VideoStreamingPreview displays over the local preview without tearing
+    // recording down.
+    private onStreamingFailure(reason: string): void {
+        errorLog?.log(`Streaming failure surfaced: ${reason}`);
+        void this.blazorRef.invokeMethodAsync('OnRecordingError', reason);
     }
 
     /** Remove failed encoder codec and switch to the next one in priority order. */

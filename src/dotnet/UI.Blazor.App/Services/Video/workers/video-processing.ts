@@ -217,12 +217,59 @@ function applyStreamingConfig(config: VideoProcessingConfig): void {
     streamCtx.sessionTokenProvider = minLifespanMs => callbacks.getSessionToken(minLifespanMs);
     streamingEnabled = true;
     streamStatus = 'waiting for first frame';
+    streamProgressAt = 0;
+    streamingStallNotified = false;
+    startStreamingWatchdog();
     // Declare our intent to keep a connection up while we capture.
     // Actual attempts are still gated by `Api.isDotNetRpcConnected`.
     Api.requireConnection('VideoCapture');
 
     if (!streamCtx.apiUrl)
         warnLog?.log('streaming enabled but apiUrl is empty — push will fail at stream creation');
+}
+
+function startStreamingWatchdog(): void {
+    if (streamingWatchdogTimer !== null) return;
+    streamingWatchdogTimer = setInterval(checkStreamingStall, STREAMING_WATCHDOG_INTERVAL_MS);
+}
+
+function stopStreamingWatchdog(): void {
+    if (streamingWatchdogTimer === null) return;
+    clearInterval(streamingWatchdogTimer);
+    streamingWatchdogTimer = null;
+}
+
+function checkStreamingStall(): void {
+    if (streamingStallNotified) return;
+    if (!streamingEnabled || !processing) return;
+    // Encoder failures have their own surfacing path — let it own the UI.
+    if (encoderFailed) return;
+    // 'streaming' means frames are flowing onto the wire; refresh the
+    // progress timestamp and bail. Same for the brief codec-switch window
+    // (encoder torn down on purpose, will resume after the switch).
+    if (streamStatus === 'streaming') {
+        streamProgressAt = performance.now();
+        return;
+    }
+    if (switchInProgress) return;
+    // Encoder hasn't produced anything yet — nothing to stall on.
+    if (streamProgressAt === 0) return;
+    // Connection-driven outages have a separate UI surface. Skip while
+    // offline/disconnected, and give the just-reconnected case a grace
+    // window so the new keyframe + stream re-creation can complete before
+    // we accuse the pipeline of being stuck.
+    if (!WorkerConnectivityUI.isOnline) return;
+    if (!WorkerConnectivityUI.isConnected) return;
+    if (WorkerConnectivityUI.justBecameConnected(STREAMING_RECONNECT_GRACE_MS)) return;
+
+    const stallMs = performance.now() - streamProgressAt;
+    if (stallMs < STREAMING_STALL_TIMEOUT_MS) return;
+
+    streamingStallNotified = true;
+    stopStreamingWatchdog();
+    const reason = `Video isn't reaching viewers (stalled in '${streamStatus}'). Try toggling the camera off and on.`;
+    warnLog?.log(`Streaming watchdog: stall after ${stallMs.toFixed(0)}ms in '${streamStatus}', lastStreamError='${lastStreamError}' — notifying main thread`);
+    void callbacks.onStreamingStalled(reason, rpcNoWait);
 }
 let pendingStreamFrames: VideoStreamFrame[] = [];
 let codecSettings: string | null = null;
@@ -231,6 +278,19 @@ let streamingEnabled = false;
 let streamRecreations = 0;
 let streamStatus = 'idle';
 let lastStreamError = '';
+
+// ─── Streaming stall watchdog ───────────────────────────────────────────────
+// Fires `callbacks.onStreamingStalled` once when the encoder is producing
+// chunks but they aren't reaching the wire (stream creation stuck on a
+// missing codec description, peer-change stream not recovering, etc.). The
+// connectivity layer has its own UI for "we lost the connection" — that
+// case is filtered out here so we don't double-report it.
+let streamProgressAt = 0;
+let streamingStallNotified = false;
+let streamingWatchdogTimer: ReturnType<typeof setInterval> | null = null;
+const STREAMING_STALL_TIMEOUT_MS = 10_000;
+const STREAMING_WATCHDOG_INTERVAL_MS = 2_000;
+const STREAMING_RECONNECT_GRACE_MS = 20_000;
 // Set true while a codec switch is tearing down the encoder and rebuilding it.
 // While set, the frame pump must drop incoming frames instead of feeding them
 // to a closed/transitioning encoder — every encode() call against a closed
@@ -795,6 +855,12 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
 function onEncoderOutput(chunkData: EncodedChunkData): void {
     framesWithoutOutput = 0;
     encoderErrorSeen = false;
+    // First chunk after start anchors the streaming-stall watchdog. The
+    // watchdog won't fire while this is 0; the helper is also called below
+    // when the pipeline reaches the 'streaming' status to refresh the clock
+    // on healthy progress.
+    if (streamingEnabled && streamProgressAt === 0)
+        streamProgressAt = performance.now();
 
     // Drain pending encoder slot if base encoder freed up. Slot decisions
     // are gated on the base encoder's queue size only, so only base-layer
@@ -1019,6 +1085,7 @@ function deliverChunkToStream(
             pendingStreamFrames = [];
             videoStream.addFrame(frame);
             streamStatus = 'streaming';
+            streamProgressAt = performance.now();
             void callbacks.onStreamCreated(settings, rpcNoWait);
         } else {
             streamStatus = 'waiting for codec description';
@@ -1900,6 +1967,10 @@ export const serverImpl: VideoProcessingWorker = {
         // synchronously, keep encoderErrorSeen=true so the watchdog fires again
         // for the new codec; otherwise clear it for a normal warmup window.
         encoderFailed = false; framesWithoutOutput = 0;
+        // Reset streaming stall reference too — the new codec hasn't produced
+        // any chunks yet, and re-using the pre-switch timestamp would let the
+        // stall watchdog fire on the warmup window of a perfectly fine codec.
+        streamProgressAt = 0;
         // New codec gets its own same-codec rebuild budget.
         encoderRebuildAttempted = false; encoderRebuildInFlight = false; lastEncoderRebuildAtMs = 0;
         if (!switchFailed) {
@@ -2019,6 +2090,7 @@ export const serverImpl: VideoProcessingWorker = {
         processing = false;
         streamCtx.processing = false;
         stopScreencastHeartbeat();
+        stopStreamingWatchdog();
 
         if (streamReadLoopPromise) { try { await streamReadLoopPromise; } catch { /* ignore */ } streamReadLoopPromise = null; }
         if (previewWriter) {
@@ -2087,6 +2159,7 @@ export const serverImpl: VideoProcessingWorker = {
         videoStream = null; lastVideoStream = null; pendingStreamFrames = [];
         codecSettings = null; storedDescriptionBytesByLayer.clear();
         streamingEnabled = false; streamRecreations = 0; streamStatus = 'idle'; lastStreamError = '';
+        streamProgressAt = 0; streamingStallNotified = false;
         encoderFailed = false; encoderErrorSeen = false; framesWithoutOutput = 0;
         encoderRebuildAttempted = false; encoderRebuildInFlight = false; lastEncoderRebuildAtMs = 0;
 

@@ -78,6 +78,7 @@ export class BlurPreviewSession {
                 onSerializedChunk: () => Promise.resolve(),
                 onBackpressure: () => Promise.resolve(),
                 onEncoderFailed: () => Promise.resolve(),
+                onStreamingStalled: () => Promise.resolve(),
                 onDimensionReconciled: () => Promise.resolve(),
                 onStreamCreated: () => Promise.resolve(),
                 getSessionToken: (minLifespanMs?: number) => Api.getSessionToken(minLifespanMs),
