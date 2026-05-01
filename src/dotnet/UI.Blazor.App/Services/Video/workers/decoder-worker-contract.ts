@@ -5,7 +5,6 @@
 
 import { RpcNoWait, RpcTimeout } from 'rpc';
 import type { DecoderConfig, DecoderStats } from '../webcodecs-decoder';
-import type { EncodedChunkData } from '../webcodecs-encoder';
 import type { RawChunkMessage } from './stream-channel';
 import type { AppConstants } from 'app-constants';
 
@@ -64,12 +63,6 @@ export interface DecoderWorker {
      * Stop the decoder and clean up resources
      */
     stop(): Promise<void>;
-
-    /**
-     * Decode an encoded chunk (used by pipeline loopback path — kept for backwards compat)
-     * @param chunkData Encoded chunk data to decode
-     */
-    decodeChunk(chunkData: EncodedChunkData): Promise<void>;
 
     /**
      * Decode raw encoded bytes (used by video-player.ts).

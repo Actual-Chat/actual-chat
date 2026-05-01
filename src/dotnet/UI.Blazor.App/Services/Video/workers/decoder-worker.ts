@@ -14,8 +14,6 @@ import type {
     RawChunkMessage,
 } from './decoder-worker-contract';
 import { type DecoderConfig, type DecoderStats, WebCodecsDecoder } from '../webcodecs-decoder';
-import type { EncodedChunkData } from '../webcodecs-encoder';
-import { extractHVCC } from '../hevc-parser';
 import {
     type DecoderCodecSelection,
     getCodecCandidates,
@@ -30,13 +28,12 @@ import { Api, momentToSeconds, secondsToMoment, streamingApi } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 import { initAppConstants } from 'app-constants';
 
-const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoDecoder');
+const { infoLog, warnLog, errorLog } = getLogs('VideoDecoder');
 
 // Worker state
 let decoder: WebCodecsDecoder | null = null;
 let processing = false;
 let decoderConfigured = false;
-let pendingChunks: EncodedChunkData[] = [];
 let currentDecoderConfig: DecoderConfig | null = null;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 let frameCount = 0;
@@ -330,218 +327,9 @@ function describeBytes(buf: AllowSharedBufferSource | undefined, maxBytes = 24):
     return hex.join('');
 }
 
-// Chunk ordering state to prevent out-of-order decoding issues
-let nextExpectedSequence = 0;
-const reorderBuffer = new Map<number, EncodedChunkData>();
-let lastKeyframeSequence = -1;
-const MAX_REORDER_GAP = 5; // If we receive packets 5+ ahead, assume intermediate ones are lost
-let waitingForKeyframe = false; // Flag to indicate we're in error recovery mode
-
-// Process buffered chunks in sequence order
-function processBufferedChunks(): void {
-    while (reorderBuffer.has(nextExpectedSequence)) {
-        const chunk = reorderBuffer.get(nextExpectedSequence)!;
-        reorderBuffer.delete(nextExpectedSequence);
-        decodeChunk(chunk);
-        nextExpectedSequence++;
-    }
-}
-
-// Extract codec family prefix for comparison (e.g., 'avc1' from 'avc1.640028', 'av01' from 'av01.0.08M.08')
-function codecFamily(codec: string): string {
-    return codec.substring(0, 4);
-}
-
-// Handle codec change: flush+close old decoder, create new one with updated config
-function handleCodecChange(chunkData: EncodedChunkData): void {
-    const newCodec = chunkData.codec!;
-    const oldCodec = currentDecoderConfig!.codec;
-    infoLog?.log(`Codec change detected: ${oldCodec} -> ${newCodec}, reconfiguring decoder`);
-
-    // 1. Flush + close old decoder
-    if (decoder) {
-        try {
-            if (decoder.getState() === 'configured') {
-                // Can't await in sync context, just close
-                decoder.close();
-            }
-        } catch (error) {
-            warnLog?.log('Error closing old decoder during codec switch:', error);
-        }
-    }
-
-    // 2. Update config with new codec
-    currentDecoderConfig = { ...currentDecoderConfig!, codec: newCodec, description: undefined };
-
-    // 3. Create new decoder
-    decoder = new WebCodecsDecoder(
-        { ...currentDecoderConfig, description: undefined },
-        emitDecodedFrame,
-        (error) => {
-            errorLog?.log('Decoder error:', error);
-            requestKeyframeOnDecoderError();
-        }
-    );
-    decoder.initialize();
-
-    // 4. Reset state
-    decoderConfigured = false;
-    pendingChunks = [];
-    reorderBuffer.clear();
-    lastKeyframeSequence = -1;
-    waitingForKeyframe = false;
-    nextExpectedSequence = chunkData.sequenceNumber;
-
-    infoLog?.log(`Decoder reconfigured for codec ${newCodec}, resuming at sequence #${chunkData.sequenceNumber}`);
-}
-
-// Decode a single chunk (guaranteed to be in sequence order)
-function decodeChunk(chunkData: EncodedChunkData): void {
-    const seq = chunkData.sequenceNumber;
-
-    try {
-    // Auto-detect codec change from keyframe data
-        if (chunkData.type === 'key' && chunkData.codec && currentDecoderConfig) {
-            const incomingFamily = codecFamily(chunkData.codec);
-            const currentFamily = codecFamily(currentDecoderConfig.codec);
-            if (incomingFamily !== currentFamily) {
-                handleCodecChange(chunkData);
-                // Fall through to normal keyframe processing below
-            }
-        }
-
-        // Track keyframes for decoder recovery
-        if (chunkData.type === 'key') {
-            lastKeyframeSequence = seq;
-        }
-
-        // If decoder is closed and this is a keyframe, attempt recovery
-        if (decoder && decoder.getState() === 'closed' && chunkData.type === 'key') {
-            // HEVC/AVC require description on every configure() — bake it into the
-            // recovery config so the next keyframe doesn't fail with
-            // "A key frame is required after configure()" DataError.
-            const metadataDesc = chunkData.metadata?.decoderConfig?.description;
-            const recoveryDescription = metadataDesc
-                ?? lastRawDescription
-                ?? currentDecoderConfig?.description;
-            infoLog?.log(`Decoder closed, attempting recovery with keyframe #${seq} (descLen=${
-                recoveryDescription ? (recoveryDescription as ArrayBuffer).byteLength : 0})`);
-
-            try {
-                const recoveryConfig: DecoderConfig = recoveryDescription
-                    ? { ...currentDecoderConfig!, description: recoveryDescription }
-                    : { ...currentDecoderConfig!, description: undefined };
-                decoder = new WebCodecsDecoder(
-                    recoveryConfig,
-                    emitDecodedFrame,
-                    (error) => {
-                        errorLog?.log('Decoder error:', error);
-                        requestKeyframeOnDecoderError();
-                    }
-                );
-
-                decoder.initialize();
-                infoLog?.log(`Decoder recovered at keyframe #${seq}`);
-                decoderConfigured = !!recoveryDescription;
-                if (recoveryDescription)
-                    lastRawDescription = (recoveryDescription as ArrayBuffer).slice(0);
-            } catch (error) {
-                errorLog?.log('Failed to recover decoder:', error);
-                return;
-            }
-        }
-
-        // If decoder is still closed (not a keyframe or recovery failed), skip this chunk
-        if (decoder && decoder.getState() === 'closed') {
-            if (chunkData.type === 'key') {
-                infoLog?.log(`Decoder in error state, but received keyframe #${seq}`);
-            } else {
-                warnLog?.log(`Decoder in error state, dropping delta chunk #${seq}`);
-                return;
-            }
-        }
-
-        // Handle first keyframe with metadata
-        if (!decoderConfigured && chunkData.type === 'key') {
-            infoLog?.log(`First keyframe #${seq} received`);
-
-            let description: AllowSharedBufferSource | undefined;
-
-            // Try to get description from encoder metadata first
-            if (chunkData.metadata?.decoderConfig?.description) {
-                infoLog?.log('Using description from encoder metadata');
-                description = chunkData.metadata.decoderConfig.description;
-            }
-            // For HEVC, try manual HVCC extraction as fallback
-            else if (currentDecoderConfig?.codec.startsWith('hev1') || currentDecoderConfig?.codec.startsWith('hvc1')) {
-                infoLog?.log('Attempting manual HVCC extraction for HEVC');
-                const hvcc = extractHVCC(chunkData.chunk);
-                if (hvcc) {
-                    infoLog?.log('Successfully extracted HVCC from bitstream');
-                    description = hvcc;
-                } else {
-                    warnLog?.log('Failed to extract HVCC, decoder may fail');
-                }
-            } else {
-                infoLog?.log('No metadata description - decoder will auto-configure');
-            }
-
-            // Reconfigure decoder with description if available
-            if (description && decoder) {
-                infoLog?.log('Reconfiguring decoder with description');
-                decoder.updateDescription(description);
-            }
-
-            // Mark as configured so we start decoding
-            decoderConfigured = true;
-
-            // Decode the keyframe
-            if (decoder) {
-                decoder.decode(chunkData);
-                infoLog?.log(`First keyframe #${seq} decoded successfully`);
-            }
-
-            // Process any buffered chunks from before configuration
-            if (pendingChunks.length > 0) {
-                infoLog?.log('Processing', pendingChunks.length, 'buffered chunks');
-                for (const bufferedChunk of pendingChunks) {
-                    if (decoder) {
-                        decoder.decode(bufferedChunk);
-                    }
-                }
-                pendingChunks = [];
-            }
-
-            return;
-        }
-
-        // Check decoder state before attempting to decode
-        if (decoder && decoder.getState() === 'closed') {
-            if (chunkData.type === 'key') {
-                infoLog?.log(`Decoder in error state, but received keyframe #${seq}`);
-            } else {
-                warnLog?.log(`Decoder in error state, dropping delta chunk #${seq}`);
-                return;
-            }
-        }
-
-        // Decode chunks directly
-        if (decoderConfigured && decoder) {
-            decoder.decode(chunkData);
-        } else {
-            // Buffer until decoder is configured with first keyframe
-            debugLog?.log('Buffering chunk until configured');
-            pendingChunks.push(chunkData);
-        }
-    } catch (error) {
-        errorLog?.log(`Error decoding chunk #${seq}:`, error);
-
-        // If we have a recent keyframe, try to recover
-        if (lastKeyframeSequence >= 0 && reorderBuffer.has(lastKeyframeSequence)) {
-            infoLog?.log(`Attempting recovery from buffered keyframe #${lastKeyframeSequence}`);
-        }
-    }
-}
+// Recovery flag: set by resetDecoder / flagWaitingForKeyframe / decodeRawChunk
+// to drop incoming deltas until the next keyframe arrives.
+let waitingForKeyframe = false;
 
 /**
  * Emit a decoded frame to the appropriate output (stream or RPC callback).
@@ -842,13 +630,9 @@ const serverImpl: DecoderWorker = {
 
             // Reset state
             decoder = null;
-            pendingChunks = [];
             currentDecoderConfig = null;
             frameCount = 0;
             lastRawDescription = null;
-            nextExpectedSequence = 0;
-            reorderBuffer.clear();
-            lastKeyframeSequence = -1;
             firstKeyframeLogged = false;
             lastChunkSeq = -1;
             lastChunkType = '?';
@@ -859,96 +643,6 @@ const serverImpl: DecoderWorker = {
         } catch (error) {
             errorLog?.log('Failed to stop decoder:', error);
             throw error;
-        }
-    },
-
-    /**
-   * Decode an encoded chunk (legacy path — EncodedChunkData with EncodedVideoChunk)
-   */
-    // eslint-disable-next-line
-    decodeChunk: async (chunkData): Promise<void> => {
-        if (!processing) {
-            warnLog?.log('Dropping chunk - not processing');
-            return;
-        }
-
-        const seq = chunkData.sequenceNumber;
-
-        // If we're waiting for a keyframe due to packet loss, drop all non-keyframe chunks
-        if (waitingForKeyframe && chunkData.type !== 'key') {
-            return;
-        }
-
-        // If this is a keyframe and we were waiting for one, reset recovery mode
-        if (waitingForKeyframe && chunkData.type === 'key') {
-            infoLog?.log(`Recovery keyframe #${seq} received`);
-            waitingForKeyframe = false;
-            reorderBuffer.clear();
-            nextExpectedSequence = seq;
-            decodeChunk(chunkData);
-            nextExpectedSequence = seq + 1;
-            return;
-        }
-
-        // Handle out-of-order delivery: buffer chunks until we can process in sequence
-        if (seq !== -1 && seq !== nextExpectedSequence) {
-            const gap = seq - nextExpectedSequence;
-            debugLog?.log(`Out-of-order chunk #${seq} (expecting #${nextExpectedSequence}), gap:`, gap);
-            reorderBuffer.set(seq, chunkData);
-
-            if (gap >= MAX_REORDER_GAP) {
-                warnLog?.log(`Gap of ${gap} detected, packet #${nextExpectedSequence} is likely lost`);
-
-                let hasKeyframeInBuffer = false;
-                let firstKeyframeSeq = -1;
-                for (const [bufSeq, bufChunk] of reorderBuffer) {
-                    if (bufChunk.type === 'key' && bufSeq > nextExpectedSequence) {
-                        hasKeyframeInBuffer = true;
-                        firstKeyframeSeq = firstKeyframeSeq === -1 ? bufSeq : Math.min(firstKeyframeSeq, bufSeq);
-                    }
-                }
-
-                if (hasKeyframeInBuffer) {
-                    infoLog?.log(`Found keyframe #${firstKeyframeSeq} in buffer, skipping to it`);
-                    for (const [bufSeq] of reorderBuffer) {
-                        if (bufSeq < firstKeyframeSeq) {
-                            reorderBuffer.delete(bufSeq);
-                        }
-                    }
-                    nextExpectedSequence = firstKeyframeSeq;
-                    processBufferedChunks();
-                } else {
-                    warnLog?.log(`No keyframe in buffer after lost packet #${nextExpectedSequence}, entering recovery mode`);
-                    waitingForKeyframe = true;
-                    reorderBuffer.clear();
-                }
-                return;
-            }
-
-            if (chunkData.type === 'key') {
-                debugLog?.log(`Received keyframe #${seq} while waiting for #${nextExpectedSequence}`);
-                nextExpectedSequence = seq;
-                decodeChunk(chunkData);
-                nextExpectedSequence = seq + 1;
-                for (const [bufSeq] of reorderBuffer) {
-                    if (bufSeq < seq) {
-                        reorderBuffer.delete(bufSeq);
-                    }
-                }
-                processBufferedChunks();
-                return;
-            }
-
-            processBufferedChunks();
-            return;
-        }
-
-        // Process this chunk immediately (it's in order)
-        decodeChunk(chunkData);
-
-        if (seq !== -1) {
-            nextExpectedSequence = seq + 1;
-            processBufferedChunks();
         }
     },
 
