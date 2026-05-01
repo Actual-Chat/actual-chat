@@ -26,6 +26,13 @@ public static partial class Constants
         public static readonly TimeSpan ServerReplayTailDuration = TimeSpan.FromSeconds(1);
         public static readonly int ServerReplayTailSize = FrameRate; // 30
 
+        // Max simulcast tiers a sender may produce. Mirrors TS
+        // MAX_SIMULCAST_TIERS in src/dotnet/UI.Blazor.App/Components/VideoPanel/
+        // simulcast-ladder.ts — two HW encoder slots is the power/heat-bound
+        // limit on iOS Safari and the same value drives backend sizing of
+        // anything that scales with per-source-frame item rate.
+        public const int MaxSimulcastTiers = 2;
+
         public static readonly TimeSpan CancellationDelay = TimeSpan.FromSeconds(5);
         public static readonly TimeSpan StreamExpirationDelay = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan MaxLiveDuration = TimeSpan.FromHours(8);
@@ -47,11 +54,14 @@ public static partial class Constants
         // handles stalls by skipping to the latest decoder-safe frame.
         public const int RpcStreamAckPeriod = TargetBufferSize / 2; // 5
         public const int RpcStreamBufferSize = TargetBufferSize;    // 10
-        // Bumped from 60 to absorb simulcast: a 3-layer sender produces 3× items per source
-        // frame, so a 180-slot ring keeps the effective ~2s window per-layer. P2P single-
-        // layer streams still retain ~6s of history under this size.
-        public static readonly int RetentionBufferSize = 180;
-        public static readonly int ConsumerBufferSize = 300; // ~10s at 30fps before slow consumer disconnect
+        // Memoizer retention sized to the doc's "server stream store" replay
+        // tail — see docs/video-pipeline.md. ServerReplayTailSize is per
+        // source-frame; multiply by MaxSimulcastTiers so the tail covers
+        // ~ServerReplayTailDuration of source time even when the sender is
+        // producing every tier. P2P (single-layer) streams retain longer
+        // history under this size — harmless, the consumer-side
+        // SkipWhile(!isKeyFrame) trims to a decoder-safe start regardless.
+        public static readonly int RetentionBufferSize = ServerReplayTailSize * MaxSimulcastTiers; // 60
 
         // Latency measurement & quality adaptation
         public static readonly TimeSpan LatencyReportInterval = TimeSpan.FromSeconds(2);

@@ -31,7 +31,6 @@ partial record AppConstants
         public int RpcStreamAckPeriod { get; init; } = Constants.Video.RpcStreamAckPeriod;
         public int RpcStreamBufferSize { get; init; } = Constants.Video.RpcStreamBufferSize;
         public int RetentionBufferSize { get; init; } = Constants.Video.RetentionBufferSize;
-        public int ConsumerBufferSize { get; init; } = Constants.Video.ConsumerBufferSize;
         // Latency & quality adaptation
         public double LatencyReportIntervalMs { get; init; } = Constants.Video.LatencyReportInterval.TotalMilliseconds;
         public float HighLatencyThresholdMs { get; init; } = Constants.Video.HighLatencyThresholdMs;
