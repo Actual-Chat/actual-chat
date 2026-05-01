@@ -1,4 +1,3 @@
-import Denque from 'denque';
 import { getLogs } from 'logging';
 import { Api, momentToSeconds, secondsToMoment, streamingApi, type VideoFrameDto, type VideoLatencyReportResponseDto } from 'api';
 import { ServerClock } from 'server-clock';
@@ -115,6 +114,38 @@ interface PendingFrame {
     close(): void;
 }
 
+/**
+ * Decoded-frame holder shaped like Denque so existing call sites work
+ * unchanged. Capacity is fixed at 1: `push` closes any prior pending
+ * frame before storing the new one (replaceable slot per
+ * docs/video-pipeline.md). The encoded pre-decode buffer in
+ * decoder-worker.ts now owns playback latency, so multi-frame catch-up
+ * / hard-seek / playbackRate-chase paths in onRenderFrame become
+ * no-ops (length is always 0 or 1) — left in place for now; a
+ * follow-up commit removes that dead machinery.
+ */
+class SingleSlot<T extends { close(): void }> {
+    private slot: T | null = null;
+    get length(): number { return this.slot ? 1 : 0; }
+    isEmpty(): boolean { return this.slot === null; }
+    push(item: T): void {
+        if (this.slot) {
+            try { this.slot.close(); } catch { /* already closed */ }
+        }
+        this.slot = item;
+    }
+    shift(): T | undefined {
+        const v = this.slot ?? undefined;
+        this.slot = null;
+        return v;
+    }
+    peekFront(): T | undefined { return this.slot ?? undefined; }
+    peekBack(): T | undefined { return this.slot ?? undefined; }
+    peekAt(index: number): T | undefined {
+        return index === 0 ? (this.slot ?? undefined) : undefined;
+    }
+}
+
 // Extract an owned ArrayBuffer from a Uint8Array. msgpack-decoded byte fields
 // may be either fully-owned (whole buffer = view) or shared subarrays into a
 // larger decode buffer. Fast path: when the view spans the whole underlying
@@ -185,12 +216,12 @@ export class VideoPlayer {
     // worker is ready — otherwise pushFrame drops them at `!this.decoderWorker`
     // and the pre-init keyframe is lost, stalling startup until next IDR.
     private decoderReady: Promise<void> = Promise.resolve();
-    // Denque (deque) instead of plain array — `.shift()` and bulk-prefix removal
-    // are O(1) amortised vs. Array.shift / splice(0, n) which reindex every
-    // remaining element on each call. At up to ~150 frames buffered with
-    // backpressure-driven drops, the Array-based version was a measurable
-    // long-task source on slow receivers.
-    private pendingFrames = new Denque<PendingFrame>();
+    // Single decoded-frame slot. The encoded pre-decode buffer (in
+    // decoder-worker.ts) owns playback latency now; the canvas presentation
+    // path only needs the most-recent decoded frame. SingleSlot exposes a
+    // Denque-like API so the existing onRenderFrame / catchup code paths
+    // keep compiling — they reduce to no-ops because length is always 0 or 1.
+    private pendingFrames = new SingleSlot<PendingFrame>();
     private readonly isSafari: boolean;
     private conversionQueue: Promise<void> = Promise.resolve();
     private isPlaying = false;
