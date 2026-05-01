@@ -59,14 +59,14 @@ The pipeline distinguishes four concepts:
   dropping speech.
 - `recording RpcStream`: a non-realtime upload stream. It may temporarily hold
   unsent frames, but ACK handling must not compact or skip recorded audio.
-- `playback RpcStream`: a realtime presentation stream. It may compact unsent
-  frames after ACK processing when the receiver has fallen behind. For audio,
-  every frame is a valid playback compaction target.
+- `delivery RpcStream`: a non-realtime server-to-receiver stream. It sends all
+  audio frames to the receiver and does not perform server-side compaction.
+  Presentation skipping is a client audio-buffer decision.
 - `drop oldest`: a bounded replay/storage policy. When the storage exceeds its
   size, the oldest frames are removed first.
 
 Only `audio buffer` is allowed to intentionally hold playback latency. Only the
-playback side is allowed to intentionally skip audio frames.
+client playback side is allowed to intentionally skip audio frames.
 
 ## Big Parts
 
@@ -78,19 +78,21 @@ The pipeline has these conceptual stages:
 4. `audio sender`
 5. `server audio receiver`
 6. `server stream store`
-7. `server audio sender`
-8. `audio receiver`
-9. `audio buffer`
-10. `audio decoder`
-11. `audio renderer`
-12. `audio presentation`
+7. `server audio muxer`
+8. `server audio sender`
+9. `audio receiver`
+10. `audio demuxer`
+11. `audio buffer`
+12. `audio decoder`
+13. `audio renderer`
+14. `audio presentation`
 
 There is no control plane stage.
 
 ## Constants
 
 All buffering and stream-credit values should be derived from one shared policy.
-The target receive buffer is one tenth of a second, or 5 frames at 50 fps.
+The audio start buffer is one tenth of a second, or 5 frames at 50 fps.
 
 ```csharp
 public static partial class Constants
@@ -101,18 +103,15 @@ public static partial class Constants
         public static readonly TimeSpan FrameDuration =
             TimeSpan.FromSeconds(1d / FrameRate); // 20 ms
 
-        public const int TargetBufferSize = 5;
-        public static readonly TimeSpan TargetBufferDuration =
-            TimeSpan.FromSeconds((double)TargetBufferSize / FrameRate); // 100 ms
+        public const int StartBufferSize = 5;
+        public static readonly TimeSpan StartBufferDuration =
+            TimeSpan.FromSeconds((double)StartBufferSize / FrameRate); // 100 ms
 
         public const int BufferHysteresisSize = 3;
         public const int MinBufferSize =
-            TargetBufferSize - BufferHysteresisSize; // 2
-        public const int MaxBufferSize =
-            TargetBufferSize + BufferHysteresisSize; // 8
+            StartBufferSize - BufferHysteresisSize; // 2
 
-        public const int PlaybackRpcStreamBufferSize = 10; // 200 ms
-        public const int PlaybackRpcStreamAckPeriod = 5;   // 100 ms
+        public const int DeliveryRpcStreamAckPeriod = 5; // 100 ms
 
         // Recording upload is not realtime: it should drain quickly, but it
         // must not compact or skip speech frames.
@@ -129,7 +128,7 @@ public static partial class Constants
 }
 ```
 
-The audio target buffer is roughly one third of the video target buffer
+The audio start buffer is roughly one third of the video target buffer
 because audio has no decoder warmup, no keyframe wait, and no quality
 switching to absorb. When audio is paired with video from the same author,
 the audio buffer extends to match the video target delay (see Time Model).
@@ -145,9 +144,9 @@ The `audio buffer` is the only intentional live-audio buffer. Every other
 buffer exists only to absorb short fluctuations between adjacent pipeline
 components. Intermediate buffers should normally be empty or nearly empty.
 On the recording/upload path, intermediate buffers must not intentionally drop
-recorded speech. On the playback path, if a component must drop encoded frames,
-it drops the oldest frame and resumes immediately; there is no decoder-safety
-constraint to respect.
+recorded speech. On the server-to-receiver path, intermediate buffers also
+must not intentionally drop audio. Presentation drops belong in the client
+`audio buffer`, where they can use author/video timing information.
 
 The `raw audio processors` may keep one bounded pre-roll buffer at voice
 start; that is a feature of voice activity segmentation, not playback
@@ -259,33 +258,44 @@ bound while the stream is live.
 **Buffering:** Full retention until end-of-stream and expiration.
 
 Live presentation fan-out reads from the same retained stream. There is no
-separate "live replay tail" stored on the server: the size of the pre-roll
-a live joiner receives is determined by the offset the joiner asks for, not
-by a server-side cap. A live joiner should request at most
-`TargetBufferDuration` of pre-roll — enough to fill its `audio buffer` once,
-and no more — because anything beyond that becomes added playback latency
-that the receiver has to either tolerate or skip past.
+separate "live replay tail" stored on the server. The server does not decide
+which audio is too old for presentation and does not skip to the live edge on
+behalf of receivers.
 
-The store should not maintain per-receiver playback latency on behalf of
-live consumers; each consumer's `audio buffer` is its own responsibility.
+The store should not maintain per-receiver playback latency on behalf of live
+consumers. It should make audio available; each consumer's `audio buffer` is
+responsible for deciding whether to play all received audio, temporarily speed
+up, or skip.
+
+## `server audio muxer`
+
+The `server audio muxer` combines active server-side audio streams for a
+receiver into one inbound audio stream. It carries stream lifecycle items and
+audio frame items so the client can reconstruct per-author/per-stream audio on
+the other side.
+
+**Buffering:** None beyond stream implementation details.
+
+The muxer is not a presentation policy component. It must not skip frames,
+compact backlog, or choose a live-edge offset. Its job is to preserve what the
+server has decided to send and multiplex it into a single delivery stream.
 
 ## `server audio sender`
 
-The `server audio sender` fans encoded frames out to receivers.
+The `server audio sender` sends the muxed audio stream to receivers.
 
 **Buffering:**
 
 | Parameter | Formula | Actual value |
 |---|---:|---:|
-| Policy | `playback RpcStream` | real-time |
-| `IsRealTime` | constant | `true` |
-| `CanSkipTo` | predicate | always `true` |
-| `BufferSize` | `PlaybackRpcStreamBufferSize` | 10 frames |
-| `AckPeriod` | `PlaybackRpcStreamAckPeriod` | 5 frames |
+| Policy | `delivery RpcStream` | non-realtime |
+| `IsRealTime` | constant | `false` |
+| `CanSkipTo` | predicate | none |
+| `AckPeriod` | `DeliveryRpcStreamAckPeriod` | 5 frames |
 
-The `server audio sender` may compact unsent playback backlog after ACKs
-because this stream is for presentation, not recording upload. There is no
-per-receiver layer selection because audio has no simulcast layers.
+The `server audio sender` sends every muxed audio item it has for the receiver.
+It must not compact unsent backlog or skip frames to catch a receiver up.
+There is no per-receiver layer selection because audio has no simulcast layers.
 
 If a stream is muted at the server (for example a receiver-side mute toggle
 that suppresses delivery), the `server audio sender` should stop yielding
@@ -294,53 +304,87 @@ reclaimed.
 
 ## `audio receiver`
 
-The `audio receiver` consumes the server stream and drains encoded frames
-into the `audio buffer`.
+The `audio receiver` consumes the inbound server RPC stream and drains encoded
+items into the `audio demuxer`.
 
 **Buffering:**
 
 | Parameter | Formula | Actual value |
 |---|---:|---:|
-| Transport receive buffer | stream implementation detail | drain immediately |
+| Transport receive buffer | non-realtime RPC stream detail | drain immediately |
 
-The `audio receiver` should not contain a second independent playback
-buffer. If reconnect, realtime stream compaction, or video-driven sync skips
-forward, the `audio receiver` resumes from the next frame; no decoder-safety
-wait is needed.
+The `audio receiver` should not contain a second independent playback buffer.
+It does not decide what to skip; it just forwards received audio to the
+`audio demuxer`. If reconnect resumes delivery, the receiver continues
+draining from the next delivered item.
+
+## `audio demuxer`
+
+The `audio demuxer` splits the single inbound muxed audio stream back into
+per-stream audio flows.
+
+**Buffering:**
+
+| Parameter | Formula | Actual value |
+|---|---:|---:|
+| Policy | demux handoff | preserve and forward |
+
+The demuxer must read every item produced by the inbound RPC stream and must
+not skip, compact, or apply A/V sync policy. It forwards stream starts, stream
+ends, and audio frames to the appropriate per-stream `audio buffer`.
+
+Only after demuxing may playback decide to speed up or skip a specific
+author's audio stream, and that decision belongs to the corresponding
+`audio buffer`.
 
 ## `audio buffer`
 
-The `audio buffer` stores encoded frames before decode and owns the target
-receive buffer duration. Frame counts are policy equivalents at the nominal
-frame rate; health is measured by buffered media duration.
+The `audio buffer` stores encoded frames before decode and owns presentation
+readiness. Frame counts are policy equivalents at the nominal frame rate;
+health is measured by buffered media duration.
+
+Its behavior depends on whether video from the same author is currently
+driving the presentation timeline.
 
 **Buffering:**
 
 | Parameter | Formula | Actual value |
 |---|---:|---:|
-| Policy | intentional playback buffer | drop oldest on overflow |
-| Size | `TargetBufferSize` | 5 frames |
-| Duration | `TargetBufferDuration` | 100 ms |
+| Audio-only policy | intentional playback buffer | keep all received audio |
+| A/V policy | video-aligned playback buffer | speed up or skip when behind video |
+| Start size | `StartBufferSize` | 5 frames |
+| Start duration | `StartBufferDuration` | 100 ms |
 | Minimum healthy size | `MinBufferSize` | 2 frames |
-| Maximum healthy size | `MaxBufferSize` | 8 frames |
 | Hysteresis | `BufferHysteresisSize` | 3 frames |
 
-If the `audio buffer` grows above the maximum healthy duration, it should
-drop the oldest frames until it returns to the target duration. Because
-every audio frame is a valid resume point, there is no skip-to-keyframe
-constraint. If the `audio buffer` stays below the minimum healthy duration,
-the receiver is starving.
+When there is no paired video from the same author, the `audio buffer` does
+not have a fixed maximum size and does not drop just because it is large. If
+the server can deliver audio faster than the renderer consumes it, the buffer
+may temporarily hold a large amount of audio. That is intentional: audio-only
+playback should preserve the received stream rather than delete speech for a
+latency target.
 
-When the `audio buffer` underruns, the `audio renderer` emits silence until
-buffered duration reaches the target again. Repeated underruns may cause the
-buffer to grow its effective target (a self-tuning safety margin), but this
+When paired video from the same author is playing, the video timeline becomes
+the presentation reference. The `audio buffer` compares queued audio origin
+times with the video-aligned desired audio time and may correct drift in two
+ways:
+
+1. It can temporarily speed up audio by dropping a regular pattern of frames,
+   such as every fourth frame.
+2. It can hard-skip stale audio by dropping a whole chunk and resuming near
+   the desired origin time.
+
+The choice is based on how much correction is needed. Small corrections should
+use temporary speed-up when they can be absorbed within a short configured
+window. Large corrections should hard-skip. Because every audio frame is a
+valid resume point, there is no skip-to-keyframe constraint.
+
+If the `audio buffer` stays below the minimum healthy duration, the receiver
+is starving. When the `audio buffer` underruns, the `audio renderer` emits
+silence until buffered duration reaches the start threshold again. Repeated
+underruns may cause the buffer to grow its effective start threshold, but this
 should be a slow, hysteretic adjustment so a single network glitch does not
 permanently raise latency.
-
-When audio is paired with video from the same author, the `audio buffer`
-adopts the video target delay instead of `TargetBufferDuration` (see Time
-Model). If the buffer is behind the desired video-aligned presentation point,
-it catches up by either temporary speed-up frame dropping or a hard skip.
 
 ## `audio decoder`
 
@@ -406,17 +450,15 @@ author or media stream:
 origin media time -> local presentation time
 ```
 
-For audio-only streams, the `audio buffer` establishes the target
-presentation delay. The mapping is set once at stream start so that the
-first frame plays roughly `TargetBufferDuration` after it arrived.
-Subsequent corrections happen by adjusting the target buffer fill, never by
-shifting the mapping mid-playback.
+For audio-only streams, the `audio buffer` establishes the presentation
+mapping. It waits for the start threshold and then plays received audio in
+order. If delivery runs ahead of presentation, the buffer can grow; audio-only
+playback does not skip merely to reduce latency.
 
 For audio paired with video from the same author, the audio target delay
-matches the video target delay so audio and video stay synchronized. In this
-case the `audio buffer` may be deeper than `TargetBufferDuration` and the
-video pipeline establishes the shared delay because video is realtime and owns
-the A/V presentation point. Audio adopts that delay; it does not drive it.
+matches the video target delay so audio and video stay synchronized. The video
+pipeline establishes the shared delay because video is realtime and owns the
+A/V presentation point. Audio adopts that delay; it does not drive it.
 
 This matters when audio delivery and video delivery have different transport
 semantics. For example, a receiver may accumulate 30 seconds of audio from an
@@ -469,12 +511,13 @@ play out remaining buffered audio and then stop, not wait for more frames.
 
 ## Startup
 
-When a receiver joins a live audio stream, the receiver may request a short
-recent tail from the `server stream store` to pre-fill the `audio buffer`.
-The requested tail should not exceed `TargetBufferDuration`; anything more
-becomes added latency the receiver immediately has to skip past.
+When a receiver joins live audio, the server sends a muxed non-realtime
+inbound RPC stream. The receiver drains that stream, the demuxer splits it
+into per-stream flows, and each flow enters its `audio buffer`. The
+server-side muxer, inbound RPC stream, and client-side demuxer do not skip to
+the live edge on the receiver's behalf.
 
-Initial fill should reach `TargetBufferSize` before playback starts.
+Initial fill should reach `StartBufferSize` before playback starts.
 Because Opus has no decoder warmup beyond its pre-skip samples, playback
 can begin as soon as the buffer fills; there is no equivalent of a video
 keyframe wait.
