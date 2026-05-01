@@ -31,7 +31,7 @@ public static class AsyncMemoizer
 ///     <see cref="IDisposable.Dispose"/> only signals cancellation and returns
 ///     immediately, deferring cleanup to the Read task's natural exit.
 /// </summary>
-public sealed class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
+public class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
 {
     private IAsyncEnumerator<T>? _source;
     private readonly int _capacity;
