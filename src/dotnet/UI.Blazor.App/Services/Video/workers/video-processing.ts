@@ -135,13 +135,25 @@ let loggedI420Error = false;
 let loggedPreConvertSkipped = false;
 let loggedPreviewCloneError = false;
 
-// Backpressure
-let backpressureDrops = 0;
-let backpressureTotalFrames = 0;
-let lastBackpressureCheckTime = 0;
-const backpressureWindowMs = 5000;
-const backpressureDropThreshold = 0.20;
-let backpressureNotified = false;
+// Replaceable slot ahead of the encoder (target design: "video encoder"
+// stage holds at most one pending frame; newer raw frame replaces an older
+// pending one when the encoder is still busy). See docs/video-pipeline.md.
+let pendingEncoderFrame: VideoFrame | null = null;
+// "Encoder is busy" boundary used for slot decisions. Doc-pure 0 would idle
+// the encoder between 33ms frames at 30fps; iOS HW encoders are fragile so
+// a tighter threshold is used there.
+const ENCODER_BUSY_THRESHOLD = DeviceInfo.isIos ? 1 : 3;
+
+// Slot-replacement observability — counts arrivals where the slot was
+// already occupied (i.e. encoder couldn't keep up). Surfaced over a 5 s
+// window via onBackpressure(rate) so the main thread can react (e.g. drop
+// a simulcast layer or step bitrate down).
+let slotReplacements = 0;
+let slotArrivals = 0;
+let lastSlotCheckTime = 0;
+const slotWindowMs = 5000;
+const slotReplaceThreshold = 0.20;
+let slotPressureNotified = false;
 
 // Segmentation
 // ort.InferenceSession / ort.Tensor types replaced with `unknown` while
@@ -506,30 +518,44 @@ function processOneFrame(frame: VideoFrame): void {
 
     if (!encoderConfig) { frame.close(); return; }
 
-    const backpressureMaxQueue = DeviceInfo.isIos ? 1 : 3;
-    backpressureTotalFrames++;
-    if (encoder.getEncodeQueueSize() > backpressureMaxQueue) {
-        frame.close();
-        backpressureDrops++;
+    slotArrivals++;
+    if (encoder.getEncodeQueueSize() > ENCODER_BUSY_THRESHOLD) {
+        // Encoder busy: replace pending slot. Newer frame wins.
+        if (pendingEncoderFrame) {
+            try { pendingEncoderFrame.close(); } catch { /* already closed */ }
+            slotReplacements++;
+        }
+        pendingEncoderFrame = frame;
         const now = performance.now();
-        if (now - lastBackpressureCheckTime > backpressureWindowMs) {
-            const dropRate = backpressureDrops / backpressureTotalFrames;
-            if (dropRate > backpressureDropThreshold && !backpressureNotified) {
-                backpressureNotified = true;
-                warnLog?.log(`Sustained backpressure: dropRate=${(dropRate * 100).toFixed(1)}%`);
-                void callbacks.onBackpressure(dropRate, rpcNoWait);
+        if (now - lastSlotCheckTime > slotWindowMs) {
+            const replaceRate = slotReplacements / Math.max(1, slotArrivals);
+            if (replaceRate > slotReplaceThreshold && !slotPressureNotified) {
+                slotPressureNotified = true;
+                warnLog?.log(`Sustained encoder slot pressure: replaceRate=${(replaceRate * 100).toFixed(1)}%`);
+                void callbacks.onBackpressure(replaceRate, rpcNoWait);
             }
-            backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = now;
+            slotReplacements = 0; slotArrivals = 0; lastSlotCheckTime = now;
         }
         return;
     }
 
-    if (backpressureNotified && backpressureTotalFrames > 30) {
+    if (slotPressureNotified && slotArrivals > 30) {
         const now = performance.now();
-        if (now - lastBackpressureCheckTime > backpressureWindowMs) {
-            if (backpressureDrops / backpressureTotalFrames < 0.05) backpressureNotified = false;
-            backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = now;
+        if (now - lastSlotCheckTime > slotWindowMs) {
+            if (slotReplacements / Math.max(1, slotArrivals) < 0.05) slotPressureNotified = false;
+            slotReplacements = 0; slotArrivals = 0; lastSlotCheckTime = now;
         }
+    }
+
+    // Encoder ready: if a stale pending frame is still in the slot, prefer
+    // the latest arrival per the doc; close the stale one. Capture-then-clear
+    // in a single sync block — the frame must not survive into encode() with
+    // the slot still pointing at it (encoder closes input → slot would hold
+    // a closed VideoFrame).
+    if (pendingEncoderFrame) {
+        const stale = pendingEncoderFrame;
+        pendingEncoderFrame = null;
+        try { stale.close(); } catch { /* already closed */ }
     }
 
     if (blurEnabled && segInitialized) {
@@ -763,6 +789,20 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
 function onEncoderOutput(chunkData: EncodedChunkData): void {
     framesWithoutOutput = 0;
     encoderErrorSeen = false;
+
+    // Drain pending encoder slot if base encoder freed up. Slot decisions
+    // are gated on the base encoder's queue size only, so only base-layer
+    // outputs trigger a drain. Capture-then-clear before re-entering the
+    // pipeline so the frame is not double-owned.
+    if (chunkData.spatialLayerId === 0
+        && pendingEncoderFrame
+        && encoder
+        && encoder.getEncodeQueueSize() <= ENCODER_BUSY_THRESHOLD) {
+        const toEncode = pendingEncoderFrame;
+        pendingEncoderFrame = null;
+        if (blurEnabled && segInitialized) enqueueFrame(toEncode);
+        else void encodeProcessedFrame(toEncode);
+    }
 
     const chunkBuffer = new ArrayBuffer(chunkData.byteLength);
     chunkData.chunk.copyTo(new Uint8Array(chunkBuffer));
@@ -1763,6 +1803,7 @@ export const serverImpl: VideoProcessingWorker = {
             }
             codecSettings = null; startTimestamp = undefined; pendingStreamFrames = []; storedDescriptionBytesByLayer.clear(); firstKeyframeDumpedByLayer.clear();
             if (lastEncodedFrame) { lastEncodedFrame.close(); lastEncodedFrame = null; }
+            if (pendingEncoderFrame) { try { pendingEncoderFrame.close(); } catch { /* ignore */ } pendingEncoderFrame = null; }
             // Synchronous configure() failure inside switchCodec already surfaces via
             // onEncoderError; the watchdog plus codec-exclusion list takes care of
             // the next fallback. Don't let a sync throw break the worker RPC.
@@ -1824,7 +1865,7 @@ export const serverImpl: VideoProcessingWorker = {
             streamStatus = 'waiting for encoder output';
         pendingStreamFrames = [];
         startTimestamp = undefined;
-        backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;
+        slotReplacements = 0; slotArrivals = 0; lastSlotCheckTime = 0; slotPressureNotified = false;
         // Always reset encoderFailed and framesWithoutOutput on codec switch — the
         // new codec attempt deserves its own watchdog cycle. If switchCodec failed
         // synchronously, keep encoderErrorSeen=true so the watchdog fires again
@@ -1955,6 +1996,7 @@ export const serverImpl: VideoProcessingWorker = {
         }
         try { await awaitAllPendingReadbacks(); } catch { /* ignore */ }
         if (pendingFrame) { try { pendingFrame.frame.close(); } catch { /* ignore */ } pendingFrame = null; }
+        if (pendingEncoderFrame) { try { pendingEncoderFrame.close(); } catch { /* ignore */ } pendingEncoderFrame = null; }
         // Flush extras first (per-session simulcast — close fully). Primary
         // gets flushed and parked below for reuse on next start.
         // Snapshot + clear BEFORE awaiting flush — if switchCodec runs during
@@ -2000,7 +2042,7 @@ export const serverImpl: VideoProcessingWorker = {
         encoder = null; encoderConfig = null; encodersInitialized = false; onnxSession = null; segConfig = null; resolvedModelConfig = null;
         segInitialized = false; blurEnabled = false; resizeCanvas = null; resizeCtx = null;
         startTimestamp = undefined; lastLoggedFormat = '(unset)'; loggedI420Error = false; loggedPreConvertSkipped = false;
-        backpressureDrops = 0; backpressureTotalFrames = 0; lastBackpressureCheckTime = 0; backpressureNotified = false;
+        slotReplacements = 0; slotArrivals = 0; lastSlotCheckTime = 0; slotPressureNotified = false;
         dimensionsReconciled = false; needsRotation = false; orientationStats = null; sourceWidth = 0; sourceHeight = 0; vadSpeaking = true; vadRemoteStreamCount = 0; vadLastPassedFrameTime = 0;
         segFrameCounter = 0; hasValidMask = false; loggedBlurFormat = false; processingFrame = false; frameSequence = 0;
         segProcessedFrames = 0; segTotalInferenceTime = 0; segTotalBlurTime = 0; segTotalProcessingTime = 0; segDroppedFrames = 0;

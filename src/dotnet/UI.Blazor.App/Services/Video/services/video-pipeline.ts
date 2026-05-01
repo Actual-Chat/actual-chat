@@ -198,9 +198,9 @@ export class VideoPipeline implements IVideoPipeline {
     // state is healthy.
     private pipelineStartedAt = 0;
     private readonly pipelineWarmupMs = 12_000;
-    // EMA-smoothed drop rate across successive backpressure notifications.
-    // Each notification is a 5 s drop-rate window from the worker (see
-    // video-processing.ts:backpressureWindowMs). Step-down only fires when the
+    // EMA-smoothed slot-replacement rate across successive backpressure
+    // notifications. Each notification is a 5 s window from the worker (see
+    // video-processing.ts:slotWindowMs). Step-down only fires when the
     // EMA is sustained — a single transient spike (thermal blip, one slow GC)
     // no longer collapses resolution for the rest of the session. RunningEMA
     // uses a plain running average for the first `minSampleCount` samples
@@ -994,8 +994,8 @@ export class VideoPipeline implements IVideoPipeline {
     private handleEncoderBackpressure(dropRate: number): void {
         // Sustained-backpressure step-down with EMA smoothing.
         //
-        // Worker notifies once per 5 s drop-rate window (see video-processing.ts
-        // backpressureWindowMs). A SINGLE high-dropRate sample is noise — GPU
+        // Worker notifies once per 5 s slot-replacement window (see
+        // video-processing.ts slotWindowMs). A SINGLE high sample is noise — GPU
         // contention from a tab switch, a thermal blip, one GC. Step-down only
         // fires once the EMA stays elevated across multiple windows — the
         // signature of sustained encoder overload.
