@@ -1,7 +1,8 @@
 import { RpcNoWait, RpcTimeout } from 'rpc';
+import type { AppConstants } from 'app-constants';
 
 export interface OpusDecoderWorker {
-    create(artifactVersions: Map<string, string>, timeout?: RpcTimeout): Promise<void>;
+    create(appConstants: AppConstants, artifactVersions: Map<string, string>, timeout?: RpcTimeout): Promise<void>;
     init(streamId: string, feederWorkletPort: MessagePort): Promise<void>;
     resume(streamId: string, noWait?: RpcNoWait): Promise<void>;
     frame(streamId: string, buffer: ArrayBuffer, offset: number, length: number, noWait?: RpcNoWait): Promise<void>;

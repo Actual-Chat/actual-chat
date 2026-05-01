@@ -189,7 +189,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E72
 		src\nodejs\src\timeout.ts = src\nodejs\src\timeout.ts
 		src\nodejs\src\timerQueue.ts = src\nodejs\src\timerQueue.ts
 		src\nodejs\src\versioning.ts = src\nodejs\src\versioning.ts
-		src\nodejs\src\_constants.ts = src\nodejs\src\_constants.ts
 		src\nodejs\src\audio-video-sync.ts = src\nodejs\src\audio-video-sync.ts
 		src\nodejs\src\server-clock.ts = src\nodejs\src\server-clock.ts
 		src\nodejs\src\resilient-stream.ts = src\nodejs\src\resilient-stream.ts

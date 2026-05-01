@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/use-unknown-in-catch-callback-variable,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call */
 import { mp4, webm } from './media';
 import { getLogs } from 'logging';
-import { APP_NAME } from '_constants';
+import { AC } from 'app-constants';
 
 const { debugLog, warnLog, errorLog } = getLogs('NoSleep');
 // Detect iOS browsers < version 10
@@ -41,7 +41,7 @@ export class NoSleep {
             this.noSleepVideo = document.createElement('video');
 
             const noSleepVideo = this.noSleepVideo;
-            this.noSleepVideo.setAttribute('title', APP_NAME);
+            this.noSleepVideo.setAttribute('title', AC.appName);
             this.noSleepVideo.setAttribute('playsinline', '');
 
             this.addSourceToVideo(noSleepVideo, 'webm', webm);

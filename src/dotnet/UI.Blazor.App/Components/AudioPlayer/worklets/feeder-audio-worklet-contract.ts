@@ -1,7 +1,8 @@
 import { RpcNoWait } from 'rpc';
+import type { AppConstants } from 'app-constants';
 
 export interface FeederAudioWorklet {
-    init(id: string, workerPort: MessagePort): Promise<void>;
+    init(appConstants: AppConstants, id: string, workerPort: MessagePort): Promise<void>;
 
     // Commands
     frame(buffer: ArrayBuffer, offset: number, length: number, noWait?: RpcNoWait): Promise<void>;

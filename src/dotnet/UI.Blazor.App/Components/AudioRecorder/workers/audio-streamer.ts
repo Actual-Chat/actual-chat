@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { AUDIO_STREAMER as AS, AUDIO_ENCODER as AE } from '_constants';
+import { AUDIO } from 'app-constants';
 import Denque from 'denque';
 import { Disposable } from 'disposable';
 import { EventHandlerSet } from 'event-handling';
@@ -13,12 +13,10 @@ import { WorkerConnectivityUI } from './worker-connectivity-ui';
 import { getLogs } from 'logging';
 
 const { debugLog, infoLog, warnLog } = getLogs('AudioStreamer');
-const bufferPool: ObjectPool<ArrayBufferLike> = new ObjectPool<ArrayBufferLike>(
-    () => new ArrayBuffer(AE.FRAME_BUFFER_BYTES)
-).expandTo(20);
-
-/** 20ms in .NET TimeSpan ticks (100ns units). */
-const FRAME_DURATION_TICKS = AE.FRAME_DURATION_MS * 10_000;
+// bufferPool and FRAME_DURATION_TICKS depend on AUDIO and are initialized
+// lazily in AudioStreamer.init (which runs after initAppConstants).
+let bufferPool: ObjectPool<ArrayBufferLike> = null!;
+let FRAME_DURATION_TICKS = 0;
 
 /** Session.Default — resolved from the WebSocket connection context. */
 const RPC_SESSION_DEFAULT = '~';
@@ -46,7 +44,7 @@ export class AudioStream implements Disposable {
             try {
                 await this.stream();
             } catch { }
-            await delayAsync(AS.INTER_STREAM_DELAY * 1000);
+            await delayAsync(AUDIO.stream.interStreamDelayMs);
         })();
     }
 
@@ -91,9 +89,9 @@ export class AudioStream implements Disposable {
             frame.set(source as Uint8Array, 0);
 
         this.frames.push(frame);
-        while (this.frames.length > AS.MAX_BUFFERED_FRAMES) {
+        while (this.frames.length > AUDIO.stream.maxBufferedFrames) {
             const oldFrame = this.frames.shift()!;
-            if (oldFrame.buffer.byteLength === AE.FRAME_BUFFER_BYTES)
+            if (oldFrame.buffer.byteLength === AUDIO.encode.frameBufferBytes)
                 bufferPool.release(oldFrame.buffer);
         }
         this.frameAdded.trigger();
@@ -106,7 +104,7 @@ export class AudioStream implements Disposable {
         }
 
         // Wait for initial frames before starting the stream
-        while (!this.isCompleted && this.frames.length <= AS.DELAY_FRAMES)
+        while (!this.isCompleted && this.frames.length <= AUDIO.stream.delayFrames)
             await this.frameAdded.whenNext();
 
         if (this.isDisposed)
@@ -168,7 +166,7 @@ export class AudioStream implements Disposable {
                                     frameIndex++;
                                 } finally {
                                     // Release pooled buffer even on iterator.return()/throw
-                                    if (frame.buffer.byteLength === AE.FRAME_BUFFER_BYTES)
+                                    if (frame.buffer.byteLength === AUDIO.encode.frameBufferBytes)
                                         bufferPool.release(frame.buffer);
                                 }
                             } else if (self.isCompleted && self.frames.length === 0) {
@@ -237,6 +235,11 @@ export class AudioStreamer {
 
         debugLog?.log(`init`, apiUrl);
 
+        bufferPool = new ObjectPool<ArrayBufferLike>(
+            () => new ArrayBuffer(AUDIO.encode.frameBufferBytes)
+        ).expandTo(20);
+        FRAME_DURATION_TICKS = AUDIO.encode.frameDurationMs * 10_000;
+
         Api.init('AudioRecorder', {
             url: apiUrl,
             modules: [this._connectionStateTracker],
@@ -275,7 +278,7 @@ export class AudioStreamer {
 
     public static addStream(preSkip: number, chatId: string, repliedChatEntryId: string): AudioStream {
         let stream: AudioStream;
-        if (this.streams.length < AS.MAX_STREAMS) {
+        if (this.streams.length < AUDIO.stream.maxStreams) {
             stream = new AudioStream(preSkip, chatId, repliedChatEntryId, this.lastStream?.whenDisposed);
             this.lastStream = stream;
             this.streams.push(stream)

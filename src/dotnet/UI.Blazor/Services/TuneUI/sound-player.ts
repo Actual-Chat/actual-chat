@@ -2,7 +2,7 @@ import { PromiseSource, PromiseSourceWithTimeout } from 'promises';
 import { audioContextSource, AppAudioContext, AudioContextAction } from '../../../UI.Blazor.App/Services/audio-context-source';
 import { DestinationFallbackTrait } from '../../../UI.Blazor.App/Services/audio-context-traits';
 import { getLogs } from 'logging';
-import { AUDIO_PLAY as AP } from '_constants';
+import { AUDIO } from 'app-constants';
 
 const { debugLog, warnLog } = getLogs('SoundsPlayer');
 const DEFAULT_COOLDOWN = 3; // 3s
@@ -10,7 +10,7 @@ const SILENCE_URL = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAA
 
 export class SoundPlayer {
     private readonly buffers = new Map<string, AudioBuffer>();
-    private readonly offlineContext = new OfflineAudioContext(1, 5000 * AP.SAMPLES_PER_MS, AP.SAMPLE_RATE);
+    private readonly offlineContext = new OfflineAudioContext(1, 5000 * AUDIO.play.samplesPerMs, AUDIO.play.sampleRate);
     private readonly recentlyPlayedMap = new Map<string, number>;
     private static _instance?: SoundPlayer;
 
@@ -79,7 +79,7 @@ export class SoundPlayer {
 
             if (url === SILENCE_URL) {
                 // Avoid issues with CSP
-                const buffer = new AudioBuffer({ length: AP.SAMPLE_RATE, sampleRate: AP.SAMPLE_RATE });
+                const buffer = new AudioBuffer({ length: AUDIO.play.sampleRate, sampleRate: AUDIO.play.sampleRate });
                 this.buffers.set(url, buffer);
                 return buffer;
             }
@@ -94,6 +94,6 @@ export class SoundPlayer {
         } catch (e) {
             warnLog?.log('getSound: failed', e);
         }
-        return new AudioBuffer({ length: 0, sampleRate: AP.SAMPLE_RATE });
+        return new AudioBuffer({ length: 0, sampleRate: AUDIO.play.sampleRate });
     }
 }

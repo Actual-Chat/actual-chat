@@ -13,6 +13,7 @@ import { OpusDecoderWorker } from './workers/opus-decoder-worker-contract';
 import { catchErrors, PromiseSource } from 'promises';
 import { rpcClient, rpcNoWait, rpcSendNoWait } from 'rpc';
 import { Versioning } from 'versioning';
+import { AC, whenAppConstantsReady } from 'app-constants';
 import { Log, getLogs } from 'logging';
 import { ObjectPool } from 'object-pool';
 import { Resettable } from 'resettable';
@@ -162,7 +163,8 @@ export class AudioPlayer implements Resettable {
         }
         decoderWorker ??= rpcClient<OpusDecoderWorker>(`${logScope}.decoderWorker`, decoderWorkerInstance);
 
-        await decoderWorker.create(Versioning.assetMap, { type: 'rpc-timeout', timeoutMs: 20_000 });
+        await whenAppConstantsReady;
+        await decoderWorker.create(AC, Versioning.assetMap, { type: 'rpc-timeout', timeoutMs: 20_000 });
 
         this.whenInitialized.resolve(undefined);
     }

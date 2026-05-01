@@ -4,7 +4,7 @@ import codec, { Decoder, Codec } from '@actual-chat/codec';
 import codecWasm from '@actual-chat/codec/codec.wasm';
 // import codecWasmMap from '@actual-chat/codec/codec.wasm.map';
 
-import { AUDIO_PLAY as AP } from '_constants';
+import { AUDIO, AppConstants, initAppConstants } from 'app-constants';
 import { OpusDecoder } from './opus-decoder';
 import { OpusDecoderWorker } from './opus-decoder-worker-contract';
 import { RpcNoWait, rpcServer, RpcTimeout } from 'rpc';
@@ -22,18 +22,20 @@ let useSystemDecoder = false;
 
 const worker = self as unknown as Worker;
 const decoders = new Map<string, OpusDecoder>();
-const systemCodecConfig: AudioEncoderConfig = {
-    codec: 'opus',
-    numberOfChannels: 1,
-    sampleRate: AP.SAMPLE_RATE,
-};
+let systemCodecConfig: AudioEncoderConfig = null!; // set in create() after initAppConstants
 
 const serverImpl: OpusDecoderWorker = {
-    create: async (artifactVersions: Map<string, string>, _timeout?: RpcTimeout): Promise<void> => {
+    create: async (appConstants: AppConstants, artifactVersions: Map<string, string>, _timeout?: RpcTimeout): Promise<void> => {
         debugLog?.log(`-> init`);
         if (codecModule)
             return;
 
+        initAppConstants(appConstants);
+        systemCodecConfig = {
+            codec: 'opus',
+            numberOfChannels: 1,
+            sampleRate: AUDIO.play.sampleRate,
+        };
         Versioning.init(artifactVersions);
 
         if (!useSystemDecoder && globalThis.AudioDecoder) {
@@ -44,7 +46,7 @@ const serverImpl: OpusDecoderWorker = {
         if (!useSystemDecoder) {
             // Load & warm-up codec
             codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
-            const decoder = new codecModule.Decoder(AP.SAMPLE_RATE);
+            const decoder = new codecModule.Decoder(AUDIO.play.sampleRate as 48000 | 16000);
             decoder.delete();
         }
 
@@ -55,7 +57,7 @@ const serverImpl: OpusDecoderWorker = {
         debugLog?.log(`-> #${streamId}.create`);
         const decoder: Decoder | null = useSystemDecoder
             ? null
-            : new codecModule!.Decoder(AP.SAMPLE_RATE);
+            : new codecModule!.Decoder(AUDIO.play.sampleRate as 48000 | 16000);
         const opusDecoder = await OpusDecoder.create(streamId, decoder, feederWorkletPort);
         opusDecoder.init();
         decoders.set(streamId, opusDecoder);

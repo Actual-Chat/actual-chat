@@ -1,6 +1,6 @@
 // TODO: remove eslint-disables and fix errors
 /* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await */
-import { AUDIO_REC as AR } from '_constants';
+import { AUDIO, AppConstants, initAppConstants } from 'app-constants';
 import { Disposable } from 'disposable';
 import { ObjectPool } from 'object-pool';
 import { rpcClientServer, RpcNoWait, rpcNoWait } from 'rpc';
@@ -49,7 +49,8 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
         this.stateServer = rpcClientServer<RecorderStateServer>(`${logScope}.stateServer`, this.port, this);
     }
 
-    public async init(workerPort: MessagePort): Promise<void> {
+    public async init(appConstants: AppConstants, workerPort: MessagePort): Promise<void> {
+        initAppConstants(appConstants);
         this.worker = rpcClientServer<OpusEncoderWorker>(`${logScope}.worker`, workerPort, this);
         this.state = 'ready';
         this.samplesSinceLastReport = null;
@@ -117,9 +118,9 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
                 }
             }
 
-            this.samplesSinceLastReport ??= AR.SAMPLES_PER_RECORDING_IN_PROGRESS_CALL;
+            this.samplesSinceLastReport ??= AUDIO.rec.recordingInProgressReportSamples;
             this.samplesSinceLastReport += input[0].length;
-            if (this.samplesSinceLastReport >= AR.SAMPLES_PER_RECORDING_IN_PROGRESS_CALL) {
+            if (this.samplesSinceLastReport >= AUDIO.rec.recordingInProgressReportSamples) {
                 this.samplesSinceLastReport = 0;
                 void this.stateServer.microphoneIsCaptured(rpcNoWait);
             }

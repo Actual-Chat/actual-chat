@@ -26,7 +26,7 @@ import { CanvasRenderBackend } from './render-backend-canvas';
 import { OffThreadRenderBackend, isOffThreadPlausible } from './render-backend-mstg';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
-import { APP_CONSTANTS, VIDEO } from 'app-constants';
+import { AC, VIDEO, whenAppConstantsReady } from 'app-constants';
 
 // Backend selection: prefer the off-thread renderer wherever a generator API
 // (MediaStreamTrackGenerator on Chromium, VideoTrackGenerator on Safari) is
@@ -533,7 +533,8 @@ export class VideoPlayer {
 
             // Propagate app constants. Fire-and-forget: the message queues
             // ahead of `initialize` / `prewarmRpc` / any other RPC.
-            void this.decoderWorker.init(APP_CONSTANTS);
+            await whenAppConstantsReady;
+            void this.decoderWorker.init(AC);
 
             // Mirror main-thread ConnectivityUI → worker's WorkerConnectivityUI
             // so the worker's Api peer honours `isDotNetRpcConnected`.

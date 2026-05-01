@@ -1,6 +1,6 @@
 // TODO: remove eslint-disables and fix errors
 /* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await,@typescript-eslint/no-unsafe-assignment */
-import { AUDIO_PLAY as AP } from '_constants';
+import { AUDIO, AppConstants, initAppConstants } from 'app-constants';
 import Denque from 'denque';
 import { timerQueue } from 'timerQueue';
 import {
@@ -39,7 +39,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     private lastReportedState: FeederState;
     private isEnding = false;
     private bufferEscalation = 0;
-    private bufferSizeToStartPlayback = AP.BUFFER_TO_PLAY_DURATION;
+    private bufferSizeToStartPlayback!: number; // set in init() after initAppConstants
     private lastStarvingEventAt = 0;
 
     constructor(options: AudioWorkletNodeOptions) {
@@ -49,7 +49,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     }
 
     private get bufferedDuration(): number {
-        return this.bufferedSampleCount * AP.SAMPLE_DURATION;
+        return this.bufferedSampleCount * AUDIO.play.sampleDuration;
     }
 
     private get bufferedSampleCount(): number {
@@ -62,7 +62,9 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         return result;
     }
 
-    public async init(id: string, workerPort: MessagePort): Promise<void> {
+    public async init(appConstants: AppConstants, id: string, workerPort: MessagePort): Promise<void> {
+        initAppConstants(appConstants);
+        this.bufferSizeToStartPlayback = AUDIO.play.startBufferDuration;
         this.id = id;
         this.decoder = rpcClientServer<BufferHandler>(`${logScope}.worker`, workerPort, this);
         debugLog?.log(`#${this.id}.init`);
@@ -160,7 +162,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         const time = currentTime;
         if (this.buffer.samplesAvailable >= channel.length) {
             this.buffer.pull([channel])
-            this.playingAt += channel.length * AP.SAMPLE_DURATION;
+            this.playingAt += channel.length * AUDIO.play.sampleDuration;
             return true;
         }
 
@@ -173,13 +175,13 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
                 if (samplesAvailable) {
                     const channelChunk = new Float32Array(channel.buffer, 0, samplesAvailable);
                     this.buffer.pull([channelChunk]);
-                    this.playingAt += channelChunk.length * AP.SAMPLE_DURATION;
+                    this.playingAt += channelChunk.length * AUDIO.play.sampleDuration;
                 }
 
                 this.playbackState = 'starving';
                 if (time - this.lastStarvingEventAt > 1000)
                     // Increase buffer size to prevent starving if previous event has happened earlier than 1s before
-                    this.bufferSizeToStartPlayback += AP.BUFFER_TO_PLAY_DURATION_DELTA;
+                    this.bufferSizeToStartPlayback += AUDIO.play.startBufferGrowDuration;
                 this.lastStarvingEventAt = time;
                 this.stateHasChanged();
                 return true;
@@ -212,12 +214,12 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             }
         }
         this.buffer.pull([channel]);
-        this.playingAt += channel.length * AP.SAMPLE_DURATION;
+        this.playingAt += channel.length * AUDIO.play.sampleDuration;
         // Decrease buffer size when there were no starving events during last 5s
         if (time - this.lastStarvingEventAt > 5000) {
             const minBuffer = this.getMinBufferSize();
             this.bufferSizeToStartPlayback = Math.max(
-                this.bufferSizeToStartPlayback - AP.BUFFER_TO_PLAY_DURATION_DELTA,
+                this.bufferSizeToStartPlayback - AUDIO.play.startBufferGrowDuration,
                 minBuffer);
         }
         this.stateHasChanged();
@@ -229,7 +231,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         if (this.isEnding)
             this.bufferState = 'ok';
         else {
-            this.bufferState = bufferedDuration < AP.BUFFER_LOW_DURATION ? 'low' : 'ok';
+            this.bufferState = bufferedDuration < AUDIO.play.lowBufferDuration ? 'low' : 'ok';
         }
 
         const state: FeederState = {
@@ -242,7 +244,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             this.lastReportedState
             && state.playbackState === this.lastReportedState.playbackState
             && state.bufferState === this.lastReportedState.bufferState
-            && Math.abs(state.playingAt - this.lastReportedState.playingAt) < AP.STATE_UPDATE_PERIOD;
+            && Math.abs(state.playingAt - this.lastReportedState.playingAt) < AUDIO.play.stateUpdatePeriod;
         if (mustSkip)
             return;
 
@@ -263,8 +265,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     private getMinBufferSize()
     {
         return this.bufferEscalation > 0
-            ? AP.BUFFER_TO_PLAY_DURATION_WITH_VIDEO
-            : AP.BUFFER_TO_PLAY_DURATION;
+            ? AUDIO.play.startBufferDurationWithVideo
+            : AUDIO.play.startBufferDuration;
     }
 }
 

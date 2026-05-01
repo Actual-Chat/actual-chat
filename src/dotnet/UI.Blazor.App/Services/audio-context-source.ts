@@ -1,7 +1,7 @@
 // TODO: remove eslint-disables and fix errors
 /* eslint-disable @typescript-eslint/no-unnecessary-type-parameters,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/use-unknown-in-catch-callback-variable,@typescript-eslint/require-await */
-import { AUDIO_PLAY as AP, AUDIO_REC as AR } from '_constants';
-import { debounce, delayAsync, PromiseSource, ResolvedPromise, waitAsync, Cancelled } from 'promises';
+import { AUDIO, whenAppConstantsReady } from 'app-constants';
+import { debounce, delayAsync, PromiseSource, ResettableFunc, ResolvedPromise, waitAsync, Cancelled } from 'promises';
 import { Interactive } from 'interactive';
 import { InteractiveUI } from '../../UI.Blazor/Services/InteractiveUI/interactive-ui';
 import { OnDeviceAwake } from 'on-device-awake';
@@ -58,7 +58,19 @@ export function resetMediaSessionMetadata(): void {
     }
 }
 
-export const resetMediaSessionDebounced = debounce(() => resetMediaSessionMetadata(), AP.MEDIA_SESSION_RESET_DEBOUNCE_MS);
+// Lazily constructed once `AUDIO.play.mediaSessionResetDebounceMs` is available.
+// Pre-init invocations are silent no-ops (only user actions trigger this, and
+// those only fire after BrowserInit has completed).
+let _resetMediaSessionDebouncedImpl: ResettableFunc<() => void> | null = null;
+void whenAppConstantsReady.then(() => {
+    _resetMediaSessionDebouncedImpl = debounce(
+        () => resetMediaSessionMetadata(),
+        AUDIO.play.mediaSessionResetDebounceMs);
+});
+export const resetMediaSessionDebounced: ResettableFunc<() => void> = Object.assign(
+    () => { _resetMediaSessionDebouncedImpl?.(); },
+    { reset: () => { _resetMediaSessionDebouncedImpl?.reset(); } },
+);
 
 let nextRefId = 1;
 
@@ -708,7 +720,7 @@ export class AudioContextSource {
         const context: AppAudioContext = new AudioContext({
             latencyHint: 'balanced',
             sampleRate:
-                this.purpose === 'playback' ? AP.SAMPLE_RATE : DeviceInfo.isFirefox ? undefined : AR.SAMPLE_RATE, // FF doesn't support sample rate for microphone stream, we will use default
+                this.purpose === 'playback' ? AUDIO.play.sampleRate : DeviceInfo.isFirefox ? undefined : AUDIO.rec.sampleRate, // FF doesn't support sample rate for microphone stream, we will use default
         });
 
         if (shouldResume) await this.resume(context, true);
@@ -936,6 +948,7 @@ export class AudioContextSource {
     }
 
     private async maintain(): Promise<void> {
+        await whenAppConstantsReady; // AUDIO.* access below requires the full snapshot
         debugLog?.log('maintain: starting');
         this._isMaintained = true;
         let consecutiveCreateFailures = 0;
@@ -1039,7 +1052,7 @@ export class AudioContextSource {
     }
 
     private createSilenceBuffer(context: AudioContext): AudioBuffer {
-        return context.createBuffer(1, 1, this.purpose === 'playback' ? AP.SAMPLE_RATE : AR.SAMPLE_RATE);
+        return context.createBuffer(1, 1, this.purpose === 'playback' ? AUDIO.play.sampleRate : AUDIO.rec.sampleRate);
     }
 }
 

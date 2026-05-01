@@ -7,6 +7,7 @@ import {
 import { ResolvedPromise } from 'promises';
 import { rpcClientServer, RpcNoWait } from 'rpc';
 import { Log, getLogs } from 'logging';
+import { AC, whenAppConstantsReady } from 'app-constants';
 
 const { logScope, errorLog } = getLogs('FeederNode');
 
@@ -42,7 +43,8 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
         options?: AudioWorkletNodeOptions
     ): Promise<FeederAudioWorkletNode> {
         const node = new FeederAudioWorkletNode(id, context, name, options);
-        await node.worklet.init(id, decoderWorkerPort);
+        await whenAppConstantsReady;
+        await node.worklet.init(AC, id, decoderWorkerPort);
         return node;
     }
 

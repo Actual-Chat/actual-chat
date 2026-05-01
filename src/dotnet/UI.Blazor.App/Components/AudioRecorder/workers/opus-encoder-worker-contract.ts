@@ -1,9 +1,10 @@
 import { VoiceActivityChange } from './audio-vad-contract';
 import { AudioDiagnosticsState } from '../audio-recorder';
 import { RpcNoWait, RpcTimeout } from 'rpc';
+import type { AppConstants } from 'app-constants';
 
 export interface OpusEncoderWorker {
-    create(artifactVersions: Map<string, string>, apiUrl: string, timeout?: RpcTimeout): Promise<void>;
+    create(appConstants: AppConstants, artifactVersions: Map<string, string>, apiUrl: string, timeout?: RpcTimeout): Promise<void>;
     init(workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void>;
     start(chatId?: string, repliedChatEntryId?: string): Promise<void>;
     stop(): Promise<void>;

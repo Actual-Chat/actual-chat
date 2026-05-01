@@ -1,29 +1,25 @@
 namespace ActualChat;
 
+// ReSharper disable UnusedMember.Global
+
 partial record AppConstants
 {
     /// <summary>
     /// JS-interop snapshot of <see cref="Constants.Video"/>.
     /// Serialized to TS via BrowserInit and exposed there as the <c>VIDEO</c> field.
+    /// Derived values (frame durations, buffer sizes, ms↔frame conversions, etc.)
+    /// are computed TS-side in <c>initAppConstants</c> rather than shipped over the wire.
     /// </summary>
     public sealed record VideoConstants
     {
         // Frame rate / cadence
         public int FrameRate { get; init; } = Constants.Video.FrameRate;
-        public double FrameDurationMs { get; init; } = Constants.Video.FrameDuration.TotalMilliseconds;
         // Target playback buffer
         public int TargetBufferSize { get; init; } = Constants.Video.TargetBufferSize;
-        public double TargetBufferDurationMs { get; init; } = Constants.Video.TargetBufferDuration.TotalMilliseconds;
         // Keyframe cadence
         public double KeyFramePeriodMs { get; init; } = Constants.Video.KeyFramePeriod.TotalMilliseconds;
-        public int KeyFramePeriodSize { get; init; } = Constants.Video.KeyFramePeriodSize;
-        // Buffer hysteresis
-        public int BufferHysteresisSize { get; init; } = Constants.Video.BufferHysteresisSize;
-        public int MinBufferSize { get; init; } = Constants.Video.MinBufferSize;
-        public int MaxBufferSize { get; init; } = Constants.Video.MaxBufferSize;
         // Server replay tail
         public double ServerReplayTailDurationMs { get; init; } = Constants.Video.ServerReplayTailDuration.TotalMilliseconds;
-        public int ServerReplayTailSize { get; init; } = Constants.Video.ServerReplayTailSize;
         // Stream lifecycle
         public double CancellationDelayMs { get; init; } = Constants.Video.CancellationDelay.TotalMilliseconds;
         public double StreamExpirationDelayMs { get; init; } = Constants.Video.StreamExpirationDelay.TotalMilliseconds;

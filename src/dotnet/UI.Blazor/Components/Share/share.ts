@@ -1,4 +1,4 @@
-﻿import { APP_NAME, PROD_HOST } from '_constants';
+﻿import { AC } from 'app-constants';
 import { getLogs } from 'logging';
 
 const { infoLog } = getLogs('Share');
@@ -9,10 +9,10 @@ export class Share {
     public static init(backendRef1: DotNet.DotNetObject): void {
         const initResult: InitResult = {
             canShareText: this.canShare({
-                text: APP_NAME,
+                text: AC.appName,
             }),
             canShareLink: this.canShare({
-                url: `https://${PROD_HOST}/`,
+                url: `https://${AC.prodHost}/`,
             }),
         };
         infoLog?.log(`init:`, initResult);

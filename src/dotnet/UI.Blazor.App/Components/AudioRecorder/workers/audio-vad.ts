@@ -1,6 +1,6 @@
 // TODO: remove eslint-disables and fix errors
 /* eslint-disable @typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-enum-comparison,@typescript-eslint/no-explicit-any */
-import { AUDIO_REC as AR, AUDIO_VAD as AV } from '_constants';
+import { AUDIO } from 'app-constants';
 import { clamp, lerp, RunningUnitMedian, RunningEMA, approximateGain } from 'math';
 import { ResolvedPromise } from 'promises';
 // import * as ort from 'onnxruntime-web';
@@ -37,10 +37,10 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
         protected sampleRate: number,
         public lastActivityEvent: VoiceActivityChange = NO_VOICE_ACTIVITY,
     ) {
-        this.minSpeechSamples = sampleRate * AV.MIN_SPEECH;
-        this.maxSpeechSamples = sampleRate * AV.MAX_SPEECH;
-        this.maxPauseSamples = sampleRate * AV.MAX_PAUSE;
-        this.maxPauseCancelSamples = sampleRate * AV.MIN_SPEECH_TO_CANCEL_PAUSE;
+        this.minSpeechSamples = sampleRate * AUDIO.vad.minSpeech;
+        this.maxSpeechSamples = sampleRate * AUDIO.vad.maxSpeech;
+        this.maxPauseSamples = sampleRate * AUDIO.vad.maxPause;
+        this.maxPauseCancelSamples = sampleRate * AUDIO.vad.minSpeechToCancelPause;
     }
 
     public abstract init(): Promise<void>;
@@ -57,7 +57,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
 
     public async appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChange | number> {
         // Support batched input: length must be N * windowSamples
-        const windowSamples = this.isNeural ? AR.SAMPLES_PER_WINDOW_32 : AR.SAMPLES_PER_WINDOW_30;
+        const windowSamples = this.isNeural ? AUDIO.vad.neuralFrameSamples : AUDIO.vad.webrtcFrameSamples;
         if (monoPcm.length % windowSamples !== 0)
             throw new Error(`appendChunk() accepts ${windowSamples}*N sample audio windows only, but found ${monoPcm.length}.`);
 
@@ -66,7 +66,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
         this.sampleCount += monoPcm.length;
 
         const gain = approximateGain(monoPcm);
-        if (gain < AR.MIN_RECORDING_GAIN && currentEvent.kind === 'end') {
+        if (gain < AUDIO.rec.minRecordingGain && currentEvent.kind === 'end') {
             // do not try to check VAD at low gain input
             return gain;
         }
@@ -100,7 +100,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
                 const duration = offset - currentEvent.offset;
                 currentEvent = { kind: 'start', offset, speechProb: probEma, duration };
                 this.whenTalkingProbMedian = new RunningUnitMedian();
-                this.maxPauseSamples = this.sampleRate * AV.MAX_PAUSE;
+                this.maxPauseSamples = this.sampleRate * AUDIO.vad.maxPause;
             }
             else if (currentEvent.kind === 'start' && probEma < longProbEma && probEma < pauseProbTrigger) {
                 // pause start detected
@@ -157,15 +157,15 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
 
                 // adjust max pause for long speech - break more aggressively, but keep longer pauses for monologue
                 const isConversation = this.lastConversationSignalAtSample !== null
-                    && (this.sampleCount - this.lastConversationSignalAtSample) <= this.sampleRate * AV.CONV_DURATION;
-                const maxPause = isConversation ? AV.MAX_CONV_PAUSE : AV.MAX_PAUSE;
-                const maxPauseVariesFromSamples = this.sampleRate * AV.PAUSE_VARIES_FROM;
+                    && (this.sampleCount - this.lastConversationSignalAtSample) <= this.sampleRate * AUDIO.vad.convDuration;
+                const maxPause = isConversation ? AUDIO.vad.maxConvPause : AUDIO.vad.maxPause;
+                const maxPauseVariesFromSamples = this.sampleRate * AUDIO.vad.pauseVariesFrom;
                 let maxPauseAlpha =
                     (currentSpeechSamples - maxPauseVariesFromSamples) /
                     (this.maxSpeechSamples - maxPauseVariesFromSamples); // Always > 0
                 maxPauseAlpha = clamp(maxPauseAlpha, 0, 1);
-                maxPauseAlpha = Math.pow(maxPauseAlpha, AV.PAUSE_VARY_POWER);
-                const silenceThreshold = lerp(maxPause, AV.MIN_PAUSE, maxPauseAlpha);
+                maxPauseAlpha = Math.pow(maxPauseAlpha, AUDIO.vad.pauseVaryPower);
+                const silenceThreshold = lerp(maxPause, AUDIO.vad.minPause, maxPauseAlpha);
                 this.maxPauseSamples = Math.floor(this.sampleRate * silenceThreshold);
             }
 
@@ -198,7 +198,7 @@ export class WebRtcVoiceActivityDetector extends VoiceActivityDetectorBase {
     private lastSkippedAt = 0;
 
     constructor(private baseVad: WebRtcVad) {
-        super(false, AR.SAMPLE_RATE);
+        super(false, AUDIO.rec.sampleRate);
     }
 
     public override init(): Promise<void> {
@@ -206,18 +206,18 @@ export class WebRtcVoiceActivityDetector extends VoiceActivityDetectorBase {
     }
 
     protected override appendChunkInternal(monoPcm: Float32Array): Promise<number[] | null> {
-        if (monoPcm.length % AR.SAMPLES_PER_WINDOW_30 !== 0)
-            throw new Error(`appendChunk() accepts ${AR.SAMPLES_PER_WINDOW_30}*N sample audio windows only.`);
+        if (monoPcm.length % AUDIO.vad.webrtcFrameSamples !== 0)
+            throw new Error(`appendChunk() accepts ${AUDIO.vad.webrtcFrameSamples}*N sample audio windows only.`);
 
-        const frames = monoPcm.length / AR.SAMPLES_PER_WINDOW_30;
+        const frames = monoPcm.length / AUDIO.vad.webrtcFrameSamples;
         const probs: number[] = [];
         for (let i = 0; i < frames; i++) {
-            const frame = monoPcm.subarray(i * AR.SAMPLES_PER_WINDOW_30, (i + 1) * AR.SAMPLES_PER_WINDOW_30);
+            const frame = monoPcm.subarray(i * AUDIO.vad.webrtcFrameSamples, (i + 1) * AUDIO.vad.webrtcFrameSamples);
             // Emscripten interop requires Uint8Array or ArrayBuffer, so we need to pass Float32Array as Uint8Array
             // @ts-expect-error TODO(AK): fix the error
             const activity = this.baseVad.detect(new Uint8Array(frame.buffer, frame.byteOffset, frame.length * 4));
             const now = Date.now();
-            if (activity > 0 && (this.sampleCount / AR.SAMPLES_PER_MS < AV.SKIP_FIRST_RECORDING_MS || now - this.lastSkippedAt < 5)) {
+            if (activity > 0 && (this.sampleCount / AUDIO.rec.samplesPerMs < AUDIO.vad.skipFirstRecordingMs || now - this.lastSkippedAt < 5)) {
                 this.lastSkippedAt = now;
                 return Promise.resolve(null); // Skip triggering on microphone noise at the beginning of the first microphone stream
             }
@@ -246,10 +246,10 @@ export class NeuralVoiceActivityDetector extends VoiceActivityDetectorBase {
     private context: ort.Tensor;
 
     constructor(modelUri: URL, lastActivityEvent: VoiceActivityChange) {
-        super(true, AR.SAMPLE_RATE, lastActivityEvent);
+        super(true, AUDIO.rec.sampleRate, lastActivityEvent);
 
         this.modelUri = modelUri;
-        this.buffer = new Float32Array(AR.SAMPLES_PER_WINDOW_32 + AV.NN_VAD_CONTEXT_SAMPLES).fill(0);
+        this.buffer = new Float32Array(AUDIO.vad.neuralFrameSamples + AUDIO.vad.nnVadContextSamples).fill(0);
         this.resetInternal();
 
         // Multithreading requires Cross Origin Isolation, so we don't use it here. See:
@@ -284,12 +284,12 @@ export class NeuralVoiceActivityDetector extends VoiceActivityDetectorBase {
             return null;
         }
 
-        if (monoPcm.length % AR.SAMPLES_PER_WINDOW_32 !== 0) {
-            throw new Error(`appendChunk() accepts ${AR.SAMPLES_PER_WINDOW_32}*N sample audio windows only, but found ${monoPcm.length}.`);
+        if (monoPcm.length % AUDIO.vad.neuralFrameSamples !== 0) {
+            throw new Error(`appendChunk() accepts ${AUDIO.vad.neuralFrameSamples}*N sample audio windows only, but found ${monoPcm.length}.`);
         }
 
-        const frames = monoPcm.length / AR.SAMPLES_PER_WINDOW_32;
-        const inputTensor = new ort.Tensor(monoPcm, [frames, AR.SAMPLES_PER_WINDOW_32]);
+        const frames = monoPcm.length / AUDIO.vad.neuralFrameSamples;
+        const inputTensor = new ort.Tensor(monoPcm, [frames, AUDIO.vad.neuralFrameSamples]);
         const feeds = { input: inputTensor, state: state, context: context } as const;
         const result = await this.session.run(feeds);
         const { output, stateN, contextN } = result as any;
@@ -304,7 +304,7 @@ export class NeuralVoiceActivityDetector extends VoiceActivityDetectorBase {
 
     protected resetInternal(): void {
         this.state = new ort.Tensor(new Float32Array(2 * 1 * 128), [2, 1, 128]);
-        this.context = new ort.Tensor(new Float32Array(AV.NN_VAD_CONTEXT_SAMPLES), [1, AV.NN_VAD_CONTEXT_SAMPLES]);
+        this.context = new ort.Tensor(new Float32Array(AUDIO.vad.nnVadContextSamples), [1, AUDIO.vad.nnVadContextSamples]);
     }
 }
 

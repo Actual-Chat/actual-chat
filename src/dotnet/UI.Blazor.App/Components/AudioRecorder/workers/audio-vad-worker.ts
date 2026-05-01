@@ -2,7 +2,7 @@
 import webRtcVadModule, { WebRtcVadModule } from '@actual-chat/webrtc-vad';
 import WebRtcVadWasm from '@actual-chat/webrtc-vad/webrtc-vad.wasm';
 
-import { AUDIO_REC as AR } from '_constants';
+import { AUDIO, AppConstants, initAppConstants } from 'app-constants';
 import Denque from 'denque';
 import { delayAsync, PromiseSource, retry } from 'promises';
 import { Disposable } from 'disposable';
@@ -26,8 +26,8 @@ const { logScope, debugLog, infoLog, warnLog, errorLog } = getLogs('AudioVadWork
 
 const worker = globalThis as unknown as Worker;
 const queue = new Denque<ArrayBuffer>();
-const vadRingBuffer: AudioRingBuffer = new AudioRingBuffer(AR.SAMPLES_PER_WINDOW_32 * 10, 1);
-const vadBuffer = new Float32Array(AR.SAMPLES_PER_WINDOW_32 * 3).buffer;
+let vadRingBuffer: AudioRingBuffer = null!; // set in create() after initAppConstants
+let vadBuffer: ArrayBufferLike = null!;     // set in create() after initAppConstants
 
 let vadWorklet: AudioVadWorklet & Disposable;
 let encoderWorker: OpusEncoderWorker & Disposable;
@@ -64,7 +64,7 @@ class VadLoader {
             this.useNeuralVad = useNeuralVad;
             this.whenWebRtcVadReady = (async () => {
                 VadLoader.webRtcVadModule ??= await retry(3, () => webRtcVadModule(getWebRTCVadEmscriptenLoaderOptions()));
-                const baseVad = new VadLoader.webRtcVadModule.WebRtcVad(AR.SAMPLE_RATE, 0);
+                const baseVad = new VadLoader.webRtcVadModule.WebRtcVad(AUDIO.rec.sampleRate, 0);
                 const webRtcVad = new WebRtcVoiceActivityDetector(baseVad);
                 await webRtcVad.init();
                 this.webRtcVad = webRtcVad;
@@ -116,8 +116,11 @@ const resamplerLoader = new ResamplerLoader();
 //     void resamplerLoader.load();
 
 const serverImpl: AudioVadWorker = {
-    create: async (artifactVersions: Map<string, string>, canUseNNVad: boolean, _timeout?: RpcTimeout): Promise<void> => {
+    create: async (appConstants: AppConstants, artifactVersions: Map<string, string>, canUseNNVad: boolean, _timeout?: RpcTimeout): Promise<void> => {
         infoLog?.log(`create`, canUseNNVad, _timeout);
+        initAppConstants(appConstants);
+        vadRingBuffer = new AudioRingBuffer(AUDIO.vad.neuralFrameSamples * 10, 1);
+        vadBuffer = new Float32Array(AUDIO.vad.neuralFrameSamples * 3).buffer;
         Versioning.init(artifactVersions);
         queue.clear();
         void vads.load(canUseNNVad && isSimdSupported());
@@ -194,7 +197,7 @@ async function processQueue(): Promise<void> {
         return;
 
     const vad = vads.vad;
-    const expectedWindowSizeSamples = vads.windowSizeMs * AR.SAMPLES_PER_MS;
+    const expectedWindowSizeSamples = vads.windowSizeMs * AUDIO.rec.samplesPerMs;
     const expectedWindowSizeBytes = expectedWindowSizeSamples * 4;
     try {
         isProcessing = true;
@@ -208,7 +211,7 @@ async function processQueue(): Promise<void> {
             }
             else {
                 // Needs resampling
-                const expectedSampleRate = AR.SAMPLE_RATE;
+                const expectedSampleRate = AUDIO.rec.sampleRate;
                 const actualSampleRate = Math.floor(samplesBuffer.byteLength / 4 / vads.windowSizeMs * 1000 / 100) * 100;
                 const resampler = await resamplerLoader.getResampler(actualSampleRate, expectedSampleRate);
                 const samples = resampler.resample(samplesBuffer, new Float32Array(samplesBuffer, 0, expectedWindowSizeSamples));

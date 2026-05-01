@@ -173,6 +173,7 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
         Warmup(default(ElementReference));
         Warmup(default(SideNavSide));
         Warmup(new HashSet<string>() { "a" }); // BrowserInit.Initialize
+        Warmup(AppConstants.Instance); // BrowserInit.Initialize
         Warmup(KeyValuePair.Create("", new List<string>()));
         Warmup(KeyValuePair.Create(default(Tune), new TuneInfo([]))); // TuneUI
         Warmup(new Dictionary<Tune, TuneInfo> { [default] = new([]) }); // TuneUI

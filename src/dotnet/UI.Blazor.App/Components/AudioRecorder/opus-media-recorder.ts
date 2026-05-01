@@ -1,6 +1,6 @@
 // TODO: remove eslint-disables and fix errors
 /* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-explicit-any,@typescript-eslint/no-redundant-type-constituents,@typescript-eslint/no-unsafe-argument */
-import { AUDIO_REC as AR, AUDIO_RECORDER_HEARTBEAT as ARH } from '_constants';
+import { AUDIO, AC, whenAppConstantsReady } from 'app-constants';
 import { Disposable } from 'disposable';
 import { Versioning } from 'versioning';
 import { catchErrors, delayAsync, delayAsyncWith, PromiseSource, ResolvedPromise, retry } from 'promises';
@@ -82,6 +82,7 @@ class AttachedRecordingPipeline implements AttachedAudioContextTrait {
     }
 
     public async initialize(): Promise<void> {
+        await whenAppConstantsReady;
         const context = this.context;
         const recorder = this.recorder;
 
@@ -112,7 +113,7 @@ class AttachedRecordingPipeline implements AttachedAudioContextTrait {
             `${logScope}.encoderWorklet`,
             this.encoderWorkletInstance.port,
             recorder);
-        await this.encoderWorklet.init(encoderWorkerToWorkletChannel.port2);
+        await this.encoderWorklet.init(AC, encoderWorkerToWorkletChannel.port2);
         debugLog?.log(`AttachedRecordingPipeline.initialize(): encoder worklet init completed`);
 
         const vadWorkerChannel = new MessageChannel();
@@ -135,7 +136,7 @@ class AttachedRecordingPipeline implements AttachedAudioContextTrait {
             'audio-vad-worklet-processor',
             vadWorkletOptions);
         this.vadWorklet = rpcClient<AudioVadWorklet>(`${logScope}.vadWorklet`, this.vadWorkletInstance.port);
-        void this.vadWorklet.init(vadWorkerChannel.port2, rpcNoWait);
+        void this.vadWorklet.init(AC, vadWorkerChannel.port2, rpcNoWait);
         debugLog?.log(`AttachedRecordingPipeline.initialize(): vad worklet init completed`);
 
         await Promise.all([t1, t2]);
@@ -266,7 +267,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
             const constraints : MediaStreamConstraints & any = {
                 audio: {
                     channelCount: 1,
-                    sampleRate: DeviceInfo.isFirefox ? undefined : AR.SAMPLE_RATE, // FF doesn't support sample rate
+                    sampleRate: DeviceInfo.isFirefox ? undefined : AUDIO.rec.sampleRate, // FF doesn't support sample rate
                     sampleSize: 32,
                     echoCancellation: true,
                     autoGainControl: !(BrowserInfo.appKind === 'Android' || isAndroid), // Android auto gain delays recording and produces zeroes instead of signal
@@ -324,6 +325,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
         if (this.whenInitialized.isCompleted())
             return;
 
+        await whenAppConstantsReady;
+
         debugLog?.log(`init(): create encoder worker`);
         if (!this.encoderWorker) {
             const encoderWorkerPath = Versioning.mapPath('/dist/opusEncoderWorker.js');
@@ -348,6 +351,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
         const apiUrl = new URL('/rpc/ws', this.origin).toString().replace(/^http/, 'ws');
 
         await this.encoderWorker.create(
+            AC,
             Versioning.assetMap,
             apiUrl,
             { type: 'rpc-timeout', timeoutMs: 5_000 });
@@ -374,6 +378,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
             ConnectivityUI.isOnline, ConnectivityUI.isConnected, ConnectivityUI.isBlazorServer, rpcNoWait);
 
         await this.vadWorker.create(
+            AC,
             Versioning.assetMap,
             canUseNNVad,
             { type: 'rpc-timeout', timeoutMs: 5_000 });
@@ -564,7 +569,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
         };
         // Send the first heartbeat immediately so the worker doesn't have to wait a full interval after start().
         sendHeartbeat();
-        this.heartbeatTimerId = setInterval(sendHeartbeat, ARH.INTERVAL_MS);
+        this.heartbeatTimerId = setInterval(sendHeartbeat, AUDIO.rec.heartbeat.intervalMs);
     }
 
     private stopHeartbeat(): void {

@@ -1,6 +1,6 @@
 // TODO: remove eslint-disables and fix errors
 /* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await */
-import { AUDIO_REC as AR } from '_constants';
+import { AppConstants, initAppConstants } from 'app-constants';
 import { Disposable } from 'disposable';
 import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
 import { timerQueue } from 'timerQueue';
@@ -22,7 +22,7 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
     private readonly sampleRate: number;
 
     private state: 'running' | 'ready' | 'inactive' | 'terminated' = 'inactive';
-    private samplesPerWindow: number = AR.SAMPLES_PER_WINDOW_32;
+    private samplesPerWindow = 0; // overwritten by start(windowSizeMs)
     private bufferPool: ObjectPool<ArrayBuffer>;
     private server: Disposable;
     private worker: AudioVadWorker & Disposable;
@@ -38,7 +38,8 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
         this.server = rpcServer(`${logScope}.server`, this.port, this);
     }
 
-    public async init(workerPort: MessagePort): Promise<void> {
+    public async init(appConstants: AppConstants, workerPort: MessagePort): Promise<void> {
+        initAppConstants(appConstants);
         this.worker = rpcClientServer<AudioVadWorker>(`${logScope}.worker`, workerPort, this);
         this.state = 'ready';
         this.frameCount = 0;

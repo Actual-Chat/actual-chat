@@ -2,7 +2,7 @@ import { customElement, property } from 'lit/decorators.js';
 import { createRef, Ref, ref } from 'lit/directives/ref.js';
 import { html, LitElement, nothing } from 'lit';
 import { delayAsync } from 'promises';
-import { PROD_HOST } from '_constants';
+import { AC } from 'app-constants';
 
 type ImageState = 'none' | 'skeleton' | 'thumbnail' | 'original';
 
@@ -136,6 +136,6 @@ export class ImageSkeleton extends LitElement {
     }
 
     isSubDomain(url: string): boolean {
-        return url.includes(PROD_HOST);
+        return url.includes(AC.prodHost);
     }
 }

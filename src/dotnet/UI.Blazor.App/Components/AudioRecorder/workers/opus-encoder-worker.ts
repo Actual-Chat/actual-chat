@@ -3,7 +3,7 @@
 import codec, { Encoder, Codec } from '@actual-chat/codec';
 import codecWasm from '@actual-chat/codec/codec.wasm';
 // import codecWasmMap from '@actual-chat/codec/codec.wasm.map';
-import { AUDIO_REC as AR, AUDIO_ENCODER as AE, AUDIO_RECORDER_HEARTBEAT as ARH } from '_constants';
+import { AUDIO, AppConstants, initAppConstants } from 'app-constants';
 import Denque from 'denque';
 import { Disposable } from 'disposable';
 import { retry } from 'promises';
@@ -42,12 +42,7 @@ let codecModule: Codec | null = null;
 const queue = new Denque<ArrayBuffer>();
 const encodedAudioFrames = new Denque<TimestampedAudioFrame>();
 const worker = self as unknown as Worker;
-const systemCodecConfig: AudioEncoderConfig = {
-    codec: 'opus',
-    numberOfChannels: 1,
-    sampleRate: AR.SAMPLE_RATE,
-    bitrate: AE.BIT_RATE,
-};
+let systemCodecConfig: AudioEncoderConfig = null!; // set in create() after initAppConstants
 
 let state: 'initial' | 'created' | 'encoding' | 'ended' = 'initial';
 let isVoiceDetected = false;
@@ -69,11 +64,18 @@ const resamplerLoader = new ResamplerLoader();
 //     void resamplerLoader.load();
 
 const serverImpl: OpusEncoderWorker = {
-    create: async (artifactVersions: Map<string, string>, apiUrl: string, _timeout?: RpcTimeout): Promise<void> => {
+    create: async (appConstants: AppConstants, artifactVersions: Map<string, string>, apiUrl: string, _timeout?: RpcTimeout): Promise<void> => {
         if (state !== 'initial')
             return; // Already created
 
         debugLog?.log(`-> create`);
+        initAppConstants(appConstants);
+        systemCodecConfig = {
+            codec: 'opus',
+            numberOfChannels: 1,
+            sampleRate: AUDIO.rec.sampleRate,
+            bitrate: AUDIO.encode.bitrate,
+        };
         Versioning.init(artifactVersions);
         AudioStreamer.init(apiUrl, minLifespanMs => stateServer.getSessionToken(minLifespanMs));
         AudioStreamer.connectionStateChangedEvents.add(x => stateServer.onConnectionStateChanged(x, rpcNoWait));
@@ -96,7 +98,7 @@ const serverImpl: OpusEncoderWorker = {
             infoLog?.log(`create: will use WASM codec`);
             // Loading codec
             codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
-            encoder = new codecModule.Encoder(AR.SAMPLE_RATE, AE.BIT_RATE);
+            encoder = new codecModule.Encoder(AUDIO.rec.sampleRate as 48000 | 16000, AUDIO.encode.bitrate);
             debugLog?.log(`create: WASM codec is ready`);
         }
 
@@ -165,7 +167,7 @@ const serverImpl: OpusEncoderWorker = {
 
         debugLog?.log(`onEncoderWorkletSamples(${buffer.byteLength}):`, approximateGain(new Float32Array(buffer)));
         queue.push(buffer);
-        while (queue.length > AE.MAX_BUFFERED_FRAMES) {
+        while (queue.length > AUDIO.encode.maxBufferedFrames) {
             const samplesBuffer = queue.shift()!;
             void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
         }
@@ -226,7 +228,7 @@ function ensureAudioStream(): void {
     if (state === 'encoding' && isVoiceDetected && lastStartArguments) {
         lastRecoveryAt = now;
         warnLog?.log(`ensureAudioStream: stream disposed, recreating for recovery`);
-        const preSkip = encoder?.preSkip ?? AE.DEFAULT_PRE_SKIP;
+        const preSkip = encoder?.preSkip ?? AUDIO.encode.defaultPreSkip;
         audioStream = AudioStreamer.addStream(preSkip, lastStartArguments.chatId, '');
     } else {
         audioStream = null;
@@ -256,7 +258,7 @@ async function startRecording(): Promise<void> {
         await stopRecording();
 
     systemEncoder?.configure(systemCodecConfig);
-    const preSkip = encoder?.preSkip ?? AE.DEFAULT_PRE_SKIP;
+    const preSkip = encoder?.preSkip ?? AUDIO.encode.defaultPreSkip;
     audioStream = AudioStreamer.addStream(preSkip, chatId, repliedChatEntryId);
     // TODO(AK): fix eslint error
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -319,7 +321,7 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
         else if (!isVoiceDetected)
             return;
 
-        const expectedWindowSizeSamples = 20 * AR.SAMPLES_PER_MS;
+        const expectedWindowSizeSamples = 20 * AUDIO.rec.samplesPerMs;
         const expectedWindowSizeBytes = expectedWindowSizeSamples * 4;
 
         // debugLog?.log(`processQueue:`, fade);
@@ -331,7 +333,7 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
             }
             else {
                 // Needs resampling
-                const expectedSampleRate = AR.SAMPLE_RATE;
+                const expectedSampleRate = AUDIO.rec.sampleRate;
                 const actualSampleRate = Math.floor(samplesBuffer.byteLength / 4 / 20 * 1000 / 100) * 100;
                 const resampler = await resamplerLoader.getResampler(actualSampleRate, expectedSampleRate);
                 samples = resampler.resample(samplesBuffer, new Float32Array(samplesBuffer, 0, expectedWindowSizeSamples));
@@ -345,9 +347,9 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
             if (systemEncoder) {
                 const audioChunk = new AudioData({
                     format: 'f32-planar',
-                    sampleRate: AR.SAMPLE_RATE,
+                    sampleRate: AUDIO.rec.sampleRate,
                     numberOfChannels: 1,
-                    numberOfFrames: AE.FRAME_SAMPLES,
+                    numberOfFrames: AUDIO.encode.frameSamples,
                     timestamp: timestamp,
                     // @ts-expect-error TODO: fix error
                     data: samples,
@@ -399,17 +401,17 @@ function startHeartbeatWatchdog(): void {
     heartbeatCheckIntervalId = setInterval(() => {
         if (state !== 'encoding')
             return;
-        if (Date.now() - lastHeartbeatAt <= ARH.TIMEOUT_MS)
+        if (Date.now() - lastHeartbeatAt <= AUDIO.rec.heartbeat.timeoutMs)
             return;
 
-        warnLog?.log(`heartbeat watchdog: no main-thread heartbeat for ${ARH.TIMEOUT_MS}ms — shutting down pipeline`);
+        warnLog?.log(`heartbeat watchdog: no main-thread heartbeat for ${AUDIO.rec.heartbeat.timeoutMs}ms — shutting down pipeline`);
         state = 'ended';
         isVoiceDetected = false;
         stopHeartbeatWatchdog();
         void stopRecording().catch((e: unknown) => warnLog?.log('heartbeat watchdog: stopRecording failed:', e));
         // Notification sits in main-thread message queue until it wakes — then opusMediaRecorder.stop() cleans up locally.
         void stateServer.onRecorderShutdown('heartbeat-lost', rpcNoWait);
-    }, ARH.CHECK_INTERVAL_MS);
+    }, AUDIO.rec.heartbeat.checkIntervalMs);
 }
 
 function stopHeartbeatWatchdog(): void {

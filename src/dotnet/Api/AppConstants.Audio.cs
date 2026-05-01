@@ -1,41 +1,120 @@
 namespace ActualChat;
 
+// ReSharper disable UnusedMember.Global
+
 partial record AppConstants
 {
     /// <summary>
-    /// JS-interop snapshot of <see cref="Constants.Audio"/>.
+    /// JS-interop snapshot of audio-pipeline constants.
     /// Serialized to TS via BrowserInit and exposed there as the <c>AUDIO</c> field.
+    /// Derived values (sample counts, byte counts, second-unit aliases, etc.)
+    /// are computed TS-side in <c>initAppConstants</c> rather than shipped over the wire.
     /// </summary>
     public sealed record AudioConstants
     {
-        // Frame cadence
-        public int OpusFrameDurationMs { get; init; } = Constants.Audio.OpusFrameDurationMs;
-        public int VadFrameDurationMs { get; init; } = Constants.Audio.VadFrameDurationMs;
-        public int ApmFrameDurationMs { get; init; } = Constants.Audio.ApmFrameDurationMs;
-        // Sample rates
-        public int RecordingSampleRate { get; init; } = Constants.Audio.RecordingSampleRate;
-        public int PlaybackSampleRate { get; init; } = Constants.Audio.PlaybackSampleRate;
-        // Frame lengths (samples)
-        public int OpusFrameLength { get; init; } = Constants.Audio.OpusFrameLength;
-        public int VadFrameLength { get; init; } = Constants.Audio.VadFrameLength;
-        public int PcmFrameLength { get; init; } = Constants.Audio.PcmFrameLength;
-        // Codec
-        public int Bitrate { get; init; } = Constants.Audio.Bitrate;
-        public int Channels { get; init; } = Constants.Audio.Channels;
-        // Server channel buffering
-        public int StreamingChannelCapacity { get; init; } = Constants.Audio.StreamingChannelCapacity;
-        // Stream lifecycle / watchdogs
-        public double FrameSilenceTimeoutMs { get; init; } = Constants.Audio.FrameSilenceTimeout.TotalMilliseconds;
-        public double MaxRealtimeStreamDriftMs { get; init; } = Constants.Audio.MaxRealtimeStreamDrift.TotalMilliseconds;
-        public double MaxBeginsAtDriftMs { get; init; } = Constants.Audio.MaxBeginsAtDrift.TotalMilliseconds;
-        public double MaxStreamDurationMs { get; init; } = Constants.Audio.MaxStreamDuration.TotalMilliseconds;
-        public double ListeningDurationMs { get; init; } = Constants.Audio.ListeningDuration.TotalMilliseconds;
-        public double RecordingDurationMs { get; init; } = Constants.Audio.RecordingDuration.TotalMilliseconds;
-        // RPC stream flow control
-        public int StreamAckPeriod { get; init; } = Constants.Audio.StreamAckPeriod;
-        public int StreamBufferSize { get; init; } = Constants.Audio.StreamBufferSize;
-        // Playback buffer
-        public double LowPlaybackBufferDurationMs { get; init; } = Constants.Audio.LowPlaybackBufferDuration.TotalMilliseconds;
-        public double StartPlaybackWhenBufferedDurationMs { get; init; } = Constants.Audio.StartPlaybackWhenBufferedDuration.TotalMilliseconds;
+        public RecConstants Rec { get; init; } = new();
+        public PlayConstants Play { get; init; } = new();
+        public EncodeConstants Encode { get; init; } = new();
+        public StreamConstants Stream { get; init; } = new();
+        public VadConstants Vad { get; init; } = new();
+
+        public sealed record RecConstants
+        {
+            public int SampleRate { get; init; } = Constants.Audio.RecordingSampleRate;
+            public double MinRecordingGain { get; init; } = 0.0005;
+            public double MinMicrophoneGain { get; init; } = 0;
+            // Period at which the encoder worklet emits "recording in progress" signals
+            // back to the main thread (TS-only).
+            public int RecordingInProgressReportPeriodMs { get; init; } = 200;
+            public HeartbeatConstants Heartbeat { get; init; } = new();
+
+            public sealed record HeartbeatConstants
+            {
+                public int IntervalMs { get; init; } = 3000;
+                public int TimeoutMs { get; init; } = 5000;
+                public int CheckIntervalMs { get; init; } = 500;
+            }
+        }
+
+        public sealed record PlayConstants
+        {
+            public int SampleRate { get; init; } = Constants.Audio.PlaybackSampleRate;
+            // !DELAYER: How much to buffer before starting playback.
+            public int StartBufferDurationMs { get; init; } = 100;
+            // How much to grow the start-buffer threshold during starvation.
+            public int StartBufferGrowDurationMs { get; init; } = 100;
+            // !DELAYER: Larger start-buffer when video is active for A/V sync.
+            public int StartBufferDurationWithVideoMs { get; init; } = 500;
+            // Buffer is "low" while it's less than this.
+            public int LowBufferDurationMs { get; init; } = 10000;
+            // Period between feeder state-update signals.
+            public int StateUpdatePeriodMs { get; init; } = 200;
+            // Debounce window for resetting iOS media-session metadata.
+            public int MediaSessionResetDebounceMs { get; init; } = 5000;
+        }
+
+        public sealed record EncodeConstants
+        {
+            public int FrameDurationMs { get; init; } = Constants.Audio.OpusFrameDurationMs;
+            public int Bitrate { get; init; } = Constants.Audio.Bitrate;
+            public int Channels { get; init; } = Constants.Audio.Channels;
+            // Fade-in @ start and fade-out @ end of a recording, in encoder frames.
+            public int FadeFrames { get; init; } = 3;
+            // Encoder-internal output buffer cap, in frames.
+            public int MaxBufferedFrames { get; init; } = 50;
+            // Pre-skip / codec delay measured in samples — default for system encoder
+            // when it doesn't report its own.
+            public int DefaultPreSkip { get; init; } = 312;
+        }
+
+        public sealed record StreamConstants
+        {
+            public int MaxStreams { get; init; } = 3;
+            // Streamer won't start sending until this many frames are buffered.
+            public int DelayFrames { get; init; } = 3;
+            public int MinPackFrames { get; init; } = 3;
+            public int MaxPackFrames { get; init; } = 10;
+            public int MaxBufferedFrames { get; init; } = 1500;
+            // Max streaming speed relative to real-time.
+            public int MaxSpeed { get; init; } = 2;
+            public int InterStreamDelayMs { get; init; } = 100;
+            public int StreamErrorDelayMs { get; init; } = 1000;
+            public int ConnectErrorDelayMs { get; init; } = 1000;
+            // Debug switch — random disconnect period (0 = disabled).
+            public int DebugRandomDisconnectPeriodMs { get; init; } = 0;
+            // RPC stream flow control — formerly Constants.Audio.StreamAckPeriod / StreamBufferSize.
+            public int RpcAckPeriod { get; init; } = Constants.Audio.StreamAckPeriod;
+            public int RpcBufferSize { get; init; } = Constants.Audio.StreamBufferSize;
+        }
+
+        public sealed record VadConstants
+        {
+            // NN VAD frame duration (Silero etc.). Was Constants.Audio.VadFrameDurationMs.
+            public int NeuralFrameDurationMs { get; init; } = Constants.Audio.VadFrameDurationMs;
+            // Legacy WebRTC VAD frame duration.
+            public int WebrtcFrameDurationMs { get; init; } = 30;
+            public int ApmFrameDurationMs { get; init; } = Constants.Audio.ApmFrameDurationMs;
+            // When speech is detected, send at least this much.
+            public int MinSpeechMs { get; init; } = 500;
+            // Hard split if speech goes longer than this.
+            public int MaxSpeechMs { get; init; } = 120000;
+            // Min. speech to cancel a non-materialized pause.
+            public int MinSpeechToCancelPauseMs { get; init; } = 150;
+            public int MinPauseMs { get; init; } = 200;
+            public int MaxPauseMs { get; init; } = 2700;
+            public int MaxConvPauseMs { get; init; } = 650;
+            // Period from conversationSignal until VAD assumes the conversation ended.
+            public int ConvDurationMs { get; init; } = 30000;
+            // Speech duration at which pause starts to vary toward MinPause.
+            public int PauseVariesFromMs { get; init; } = 10000;
+            // Power used in: max_pause = lerp(MAX_PAUSE, MIN_PAUSE, alpha^THIS).
+            public double PauseVaryPower { get; init; } = 1.4142135623730951; // sqrt(2)
+            // Microphone stream begins with noise that triggers WebRTC VAD — skip this initial period.
+            public int SkipFirstRecordingMs { get; init; } = 300;
+            // Skip batch calls to VAD when calls are this close together.
+            public int SkipSequentialCallsMs { get; init; } = 5;
+            // NN VAD buffer "context" prefix copied from end of prev. buffer (samples).
+            public int NnVadContextSamples { get; init; } = 64;
+        }
     }
 }
