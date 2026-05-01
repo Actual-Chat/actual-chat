@@ -55,6 +55,14 @@ public class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
     { }
 
     public AsyncMemoizer(IAsyncEnumerable<T> source, int capacity, CancellationToken cancellationToken = default)
+        : this(source, capacity, true, cancellationToken)
+    { }
+
+    protected AsyncMemoizer(
+        IAsyncEnumerable<T> source,
+        int capacity,
+        bool mustStart,
+        CancellationToken cancellationToken = default)
         : base(cancellationToken.CreateLinkedTokenSource())
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(capacity);
@@ -62,7 +70,8 @@ public class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
         _capacity = capacity;
         _source = source.GetAsyncEnumerator(StopToken);
         _tail = _head = new Node(default!, 0); // Sentinel
-        this.Start();
+        if (mustStart)
+            this.Start();
     }
 
     protected override async Task DisposeAsyncCore()

@@ -39,11 +39,12 @@ public sealed class VideoStreamMemoizer : AsyncMemoizer<VideoFrame>
         IAsyncEnumerable<VideoFrame> source,
         TimeSpan targetDuration,
         CancellationToken cancellationToken = default)
-        : base(source, int.MaxValue, cancellationToken)
+        : base(source, int.MaxValue, mustStart: false, cancellationToken)
     {
         if (targetDuration <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(targetDuration), targetDuration, "Must be positive.");
         _targetDuration = targetDuration;
+        this.Start();
     }
 
     protected override void EvictIfNeeded(Node newNode)
