@@ -171,12 +171,30 @@ export class WebCodecsDecoder {
      * the new codec string too — this is required when the new keyframe's
      * description bytes carry a different tier/level/profile that changes the
      * derived codec string.
+     *
+     * `codedWidth` / `codedHeight` are required when the keyframe also carries
+     * a new resolution (mid-stream layer switch / rotation). Without updating
+     * them, Chromium's HEVC HW decoder keeps applying the *initial* SPS
+     * conformance window and produces frames whose `displayWidth/Height` lag
+     * the real picture — visible on Edge as a slight height shrink plus
+     * stride-padding artifacts at the bottom of the frame.
      */
-    updateDescription(description: AllowSharedBufferSource, codec?: string): void {
+    updateDescription(
+        description: AllowSharedBufferSource,
+        codec?: string,
+        codedWidth?: number,
+        codedHeight?: number,
+    ): void {
         if (this.decoder.state === 'closed') return;
         if (codec && codec !== this.config.codec) {
             infoLog?.log(`Decoder codec change: ${this.config.codec} -> ${codec}`);
             this.config = { ...this.config, codec };
+        }
+        if (codedWidth && codedWidth !== this.config.codedWidth) {
+            this.config = { ...this.config, codedWidth };
+        }
+        if (codedHeight && codedHeight !== this.config.codedHeight) {
+            this.config = { ...this.config, codedHeight };
         }
         this.decoder.configure({
             codec: this.config.codec,

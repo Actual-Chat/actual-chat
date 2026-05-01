@@ -21,6 +21,7 @@ import {
     getCodecCandidates,
     selectDecoderCodec,
 } from '../hevc-codec-selection';
+import { getCodecCategory } from '../codec-support';
 import { getLogs } from 'logging';
 import { WorkerMstgSelector } from './worker-mstg-selector';
 import { BG_DRAW_INTERVAL_MS } from '../services/bg-canvas-settings';
@@ -1139,7 +1140,19 @@ const serverImpl: DecoderWorker = {
                     } else {
                         // Same codec, only SPS bytes differ (minor variation,
                         // e.g. different VUI). In-place reconfigure is fine.
-                        decoder.updateDescription(description, selection.codec);
+                        // Forward the new dims so configure() picks up the new
+                        // SPS conformance window — without this, Chromium's
+                        // HEVC HW decoder keeps applying the old crop.
+                        decoder.updateDescription(description, selection.codec, width, height);
+                        if (width && height) {
+                            currentDecoderConfig = {
+                                ...currentDecoderConfig!,
+                                codedWidth: width,
+                                codedHeight: height,
+                            };
+                            currentCodedWidth = width;
+                            currentCodedHeight = height;
+                        }
                     }
                     lastRawDescription = description.slice(0);
                     infoLog?.log('Description changed, decoder reconfigured');
@@ -1200,6 +1213,42 @@ const serverImpl: DecoderWorker = {
                             `decoder adapts in-place`);
                         currentCodedWidth = width;
                         currentCodedHeight = height;
+                        currentDecoderConfig = {
+                            ...currentDecoderConfig!,
+                            codedWidth: width,
+                            codedHeight: height,
+                        };
+                        // HEVC HW decoder on Chromium (Edge/Chrome) reads the SPS
+                        // conformance window only at configure() time. Without an
+                        // explicit reconfigure here, it keeps applying the *initial*
+                        // crop after a layer-switch / rotation — output frames'
+                        // displayWidth/Height drift from the new picture, the canvas
+                        // resizes to the wrong height, and stale stride-padding rows
+                        // leak through at the bottom as vertical-line artifacts.
+                        // Force a fresh configure(): updateDescription if we have
+                        // bytes, otherwise close+recreate.
+                        const isHevc = getCodecCategory(currentDecoderConfig.codec) === 'hevc';
+                        if (description) {
+                            decoder.updateDescription(description, undefined, width, height);
+                            lastRawDescription = description.slice(0);
+                        } else if (isHevc) {
+                            await awaitHwReleased();
+                            if (decoder.getState() !== 'closed') decoder.close();
+                            const freshConfig: DecoderConfig = { ...currentDecoderConfig };
+                            decoder = new WebCodecsDecoder(
+                                freshConfig,
+                                emitDecodedFrame,
+                                (error) => {
+                                    if (shouldLogDecoderError(decoderErrorKey('dim-change-hevc', error)))
+                                        errorLog?.log(`Decoder error (HEVC dim-change rebuild path, state=${
+                                            decoder?.getState() ?? '?'}):`, error);
+                                    requestKeyframeOnDecoderError();
+                                }
+                            );
+                            decoder.initialize();
+                            warnLog?.log(`HEVC dim-change without description bytes; rebuilt decoder ` +
+                                `@ ${width}x${height} to refresh conformance window`);
+                        }
                     } else {
                         const oldCodec = currentDecoderConfig!.codec;
                         warnLog?.log(`Resolution change ${currentCodedWidth}x${currentCodedHeight} ` +
