@@ -26,9 +26,9 @@ const { warnLog } = getLogs('VideoDecoder');
 // least this far ahead of the current target — clock-skew safety so the
 // MSTG track doesn't go `muted` after ~2 s of no writes when audio target
 // can't catch up to decoded frames (rare; encoded drain usually handles).
-const RULE4_FORCE_WRITE_AHEAD_US = 1_000_000;
+// const RULE4_FORCE_WRITE_AHEAD_US = 1_000_000;
 // How many starved ticks before we emit a warn log (~1 s at 30 fps).
-const STARVATION_WARN_TICKS = 30;
+// const STARVATION_WARN_TICKS = 30;
 
 export interface BgPainter {
     renderer: BgBlurRenderer;
@@ -85,6 +85,10 @@ export class WorkerMstgSelector {
     // qualified AND Rule 4 chose to hold. Reset whenever a frame is written.
     private starvedTicks = 0;
 
+    resetPrimming(): void {
+        this.lastWrittenTs = -1;
+    }
+
     constructor(
         writable: WritableStream<VideoFrame>,
         syncPort: MessagePort,
@@ -99,7 +103,7 @@ export class WorkerMstgSelector {
         // tick() periodically to drive the wallclock target even if no audio
         // updates arrive and no new frames decode (queue still has frames to
         // play out from buffer).
-        this.scheduleNextTick(0);
+        // this.scheduleNextTick(0);
     }
 
     onDecoded(frame: VideoFrame): void {
@@ -107,10 +111,7 @@ export class WorkerMstgSelector {
             frame.close();
             return;
         }
-        // Single-slot replace. Older pending frame is stale by definition —
-        // the new decode is closer to the live edge and will line up better
-        // with any future audio target. Decoder runs in IPPP order, so the
-        // new frame's ts > pending's ts; no sort needed.
+        // Dumb as fuck mode: always replace and tick immediately.
         if (this.pending) {
             try { this.pending.close(); } catch { /* already closed */ }
         }
@@ -140,8 +141,13 @@ export class WorkerMstgSelector {
     // pre-decode buffer's drain loop to pace decoding to audio rate so
     // the single decoded slot doesn't race ahead of audio.
     getAudioTargetUs(): number | null {
+        // DISABLED AUDIO SYNC (TEMPORARY): always return wallclock target.
+        const serverNowMs = Date.now() + this.serverClockOffsetMs;
+        return (serverNowMs - this.startedAtMs) * 1000;
+        /*
         if (!this.hasObservedAudioState) return null;
         return this.lastTickAudioTgtMs * 1000;
+        */
     }
 
     getBufferStats(): WorkerMstgBufferStats {
@@ -174,111 +180,22 @@ export class WorkerMstgSelector {
     }
 
     private scheduleIdleTick(): void {
-        this.scheduleNextTick(WorkerMstgSelector.MAX_IDLE_TICK_MS);
+        // scheduleIdleTick disabled in dumb mode.
     }
 
     private tick(): void {
         if (this.disposed) return;
         if (this.writeInFlight || !this.pending) {
-            this.scheduleIdleTick();
             return;
         }
 
-        // ── Rule 1: wallclock-anchored target (always) ──────────────────────
-        // Worker has no ServerClock; reconstruct it from the offset snapshot
-        // taken on main thread at startPullInWorker time. Drift over a typical
-        // call is < 50 ms — well within the ±100 ms correction band below.
-        const serverNowMs = Date.now() + this.serverClockOffsetMs;
-        const wallclockTargetUs = (serverNowMs - this.startedAtMs) * 1000;
-
-        // ── Rule 2: audio is a soft correction signal, not a target ─────────
-        // Compute audio-anchored target if state is available, derive drift,
-        // smooth, clamp, apply as offset to the wallclock target. We never
-        // jump backward when audio first appears — we instead start a slow
-        // convergence (Rule 3 nudges <video>.playbackRate from main thread).
-        //
-        // Audio-target derivation:
-        //   `state.recordedAtMs` is the audio TRACK ANCHOR — server-epoch ms
-        //   when the audio sample at offset 0 was recorded. Constant for the
-        //   whole audio session.
-        //   `interpolatePlayingAt()` returns current playback offset in seconds
-        //   since the track started.
-        //   audio_now_wall_clock_ms = recordedAtMs + interpolatedPlayingAt*1000
-        //   Map to video stream coordinates by subtracting `this.startedAtMs`.
-        //
-        //   ⚠ Earlier code computed `audioStartAtMs = recordedAtMs - playingAtSec*1000`
-        //   then added `interpolatePlayingAt()` back. That cancelled
-        //   `playingAtSec*1000` and left only `(perf.now() - capturedAt)*1000`,
-        //   making audio-target ≈ constant (`recordedAtMs - startedAtMs +
-        //   tiny`). Drift then grew linearly with wall-clock — visible in
-        //   logs as `driftMs=-10773 → -12792 → -14803 …` (Δ ≈ 2 s per 2 s
-        //   tick = the wall-clock advance). Don't subtract playingAtSec.
-        let correctionUs = 0;
-        const state = this.syncClient.get();
-        // Snapshot for DIAG even if no state — keeps the log readable.
-        this.lastTickWcTgtMs = wallclockTargetUs / 1000;
-        this.lastTickAudioTgtMs = 0;
-        this.lastTickRawDriftUs = 0;
-        this.lastTickAudioStateAgeMs = -1;
-        if (state) {
-            const audioPlayingAtMs = this.syncClient.interpolatePlayingAt() * 1000;
-            const audioTargetMs = state.recordedAtMs - this.startedAtMs + audioPlayingAtMs;
-            const audioTargetUs = audioTargetMs * 1000;
-            const rawDriftUs = audioTargetUs - wallclockTargetUs;
-            const a = WorkerMstgSelector.DRIFT_EMA_ALPHA;
-            this.smoothedDriftUs = this.hasObservedAudioState
-                ? this.smoothedDriftUs * (1 - a) + rawDriftUs * a
-                : rawDriftUs; // first sample: jump directly so getDriftMs reports a sane value immediately
-            this.hasObservedAudioState = true;
-            // No clamp here. Audio's playout pipeline can sit ~500–1000 ms behind
-            // wallclock during cold-start (jitter buffer warming up). Clamping at
-            // ±100 ms made it impossible to track that lag — the visible result
-            // was video running up to 1 s ahead of the audio. We feed the full
-            // smoothed drift through; Rule 3 (main-thread playbackRate nudge)
-            // handles the slow convergence so the target shift isn't a jolt.
-            correctionUs = this.smoothedDriftUs;
-            this.lastTickAudioTgtMs = audioTargetMs;
-            this.lastTickRawDriftUs = rawDriftUs;
-            this.lastTickAudioStateAgeMs = performance.now() - state.capturedAt;
-        }
-
-        const targetUs = wallclockTargetUs + correctionUs;
-        // No jitter-buffer subtract here: encoded pre-decode buffer in
-        // decoder-worker now paces drain to audioTarget, so the single
-        // decoded slot already lines up with `targetUs`. Subtracting an
-        // extra margin would push pending past `adjustedTarget` again
-        // and starve the writer (slot is freshest decoded — never older
-        // than target by definition).
-        const adjustedTargetUs = targetUs;
-
-        // Single-slot pick. The early-return at the top of tick() guarantees
-        // `pending` is non-null here. If it's at or behind the audio target,
-        // write it. Otherwise hold — or force-write under Rule 4 (clock-skew
-        // safety) if it sits ≥1 s ahead so the MSTG track doesn't go `muted`
-        // after ~2 s of no writes. With the encoded pre-decode buffer pacing
-        // upstream this should be rare (decoder runs at audio rate); kept
-        // as defense against true clock skew.
-        const pending = this.pending;
-        let eligible: VideoFrame;
-        if (pending.timestamp <= adjustedTargetUs
-            || pending.timestamp > targetUs + RULE4_FORCE_WRITE_AHEAD_US) {
-            eligible = pending;
-            this.pending = null;
-        } else {
-            this.starvedTicks++;
-            if (this.starvedTicks === STARVATION_WARN_TICKS) {
-                warnLog?.log(
-                    `MstgSelector starved ${this.starvedTicks} ticks: ` +
-                    `pending held, aheadMs=${((pending.timestamp - targetUs) / 1000).toFixed(0)}, ` +
-                    `targetUs=${targetUs}`);
-            }
-            this.scheduleIdleTick();
-            return;
-        }
+        // Dumb as fuck mode: ignore all timing rules and just output what we have.
+        const eligible = this.pending;
+        this.pending = null;
         this.starvedTicks = 0;
+
         if (eligible.timestamp === this.lastWrittenTs) {
             eligible.close();
-            this.scheduleIdleTick();
             return;
         }
 
@@ -316,7 +233,6 @@ export class WorkerMstgSelector {
                 this.writeInFlight = false;
                 if (this.disposed) return;
                 if (this.pending) this.tick();
-                else this.scheduleIdleTick();
             });
 
         // DIAG: emit a 1 Hz summary. Two purposes:

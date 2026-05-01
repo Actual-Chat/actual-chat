@@ -490,7 +490,7 @@ const DRAIN_BACKOFF_MS = 5;
 // is non-zero, so we need a small lookahead to keep the slot full when
 // the next audio target arrives. Negative values would force the decoded
 // slot to lag the target — we want it just barely ahead.
-const DRAIN_AUDIO_LOOKAHEAD_US = 33_000;
+// const DRAIN_AUDIO_LOOKAHEAD_US = 50_000;
 
 let encodedBuffer: RingBuffer<EncodedChunkArgs> | null = null;
 let drainRunning = false;
@@ -570,21 +570,7 @@ async function drainEncodedBuffer(): Promise<void> {
             await new Promise<void>(r => setTimeout(r, DRAIN_BACKOFF_MS));
             continue;
         }
-        // Audio-target pacing. Without this, the decoder runs flat-out
-        // and the single decoded slot is always future-of-target — the
-        // selector / rAF check `pending.ts ≤ target` never passes and
-        // the playout track never receives a frame. With pacing, decode
-        // happens just-in-time so the slot's freshest frame lines up
-        // with the audio target. Falls through (no pacing) when audio
-        // hasn't been observed yet (e.g. cold start, canvas path).
-        const audioTargetUs = mstgSelector?.getAudioTargetUs() ?? null;
-        if (audioTargetUs !== null) {
-            const head = encodedBuffer.get(0);
-            if (head.timestamp > audioTargetUs + DRAIN_AUDIO_LOOKAHEAD_US) {
-                await new Promise<void>(r => setTimeout(r, DRAIN_BACKOFF_MS));
-                continue;
-            }
-        }
+        // Dumb as fuck mode: No audio-target pacing. Decode everything as soon as it arrives.
         const args = encodedBuffer.pullHead();
         try {
             await processEncodedChunk(
@@ -771,6 +757,7 @@ async function processEncodedChunk(
                         oldCodec} -> ${selection.codec}`);
                     await awaitHwReleased();
                     if (decoder.getState() !== 'closed') decoder.close();
+                    mstgSelector?.resetPrimming();
                     currentDecoderConfig = { ...currentDecoderConfig!, codec: selection.codec };
                     const freshConfig: DecoderConfig = { ...currentDecoderConfig, description };
                     decoder = new WebCodecsDecoder(
@@ -791,6 +778,7 @@ async function processEncodedChunk(
                     // SPS conformance window — without this, Chromium's
                     // HEVC HW decoder keeps applying the old crop.
                     decoder.updateDescription(description, selection.codec, width, height);
+                    mstgSelector?.resetPrimming();
                     if (width && height) {
                         currentDecoderConfig = {
                             ...currentDecoderConfig!,
@@ -877,10 +865,12 @@ async function processEncodedChunk(
                     const isHevc = getCodecCategory(currentDecoderConfig.codec) === 'hevc';
                     if (description) {
                         decoder.updateDescription(description, undefined, width, height);
+                        mstgSelector?.resetPrimming();
                         lastRawDescription = description.slice(0);
                     } else if (isHevc) {
                         await awaitHwReleased();
                         if (decoder.getState() !== 'closed') decoder.close();
+                        mstgSelector?.resetPrimming();
                         const freshConfig: DecoderConfig = { ...currentDecoderConfig };
                         decoder = new WebCodecsDecoder(
                             freshConfig,
@@ -914,6 +904,7 @@ async function processEncodedChunk(
                     }
                     await awaitHwReleased();
                     if (decoder.getState() !== 'closed') decoder.close();
+                    mstgSelector?.resetPrimming();
                     currentDecoderConfig = {
                         ...currentDecoderConfig!,
                         codec: selection.codec,
@@ -996,6 +987,7 @@ async function processEncodedChunk(
                 }
                 consecutiveRecoveries++;
                 lastRecoveryAtMs = nowMs;
+                mstgSelector?.resetPrimming();
                 // HEVC/AVC require description on every configure() — recovery must re-apply
                 // the cached description, otherwise the next keyframe fails with
                 // "A key frame is required after configure()" DataError.
