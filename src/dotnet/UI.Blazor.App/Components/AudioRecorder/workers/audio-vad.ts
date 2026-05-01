@@ -3,8 +3,7 @@
 import { AUDIO } from 'app-constants';
 import { clamp, lerp, RunningUnitMedian, RunningEMA, approximateGain } from 'math';
 import { ResolvedPromise } from 'promises';
-// import * as ort from 'onnxruntime-web';
-import * as ort from 'onnxruntime-web/wasm';
+import * as ort from 'onnxruntime-web';
 import ortMjs from './ort-wasm-simd.mjs'
 import ortWasm from './ort-wasm-simd.wasm'
 // import ortWasm from 'onnxruntime-web/dist/ort-wasm-simd-threaded.wasm'
@@ -240,7 +239,7 @@ export class NeuralVoiceActivityDetector extends VoiceActivityDetectorBase {
     private readonly modelUri: URL;
 
     private readonly buffer: Float32Array; // legacy buffer; not used with batched model
-     
+
     private session: ort.InferenceSession | null = null;
     private state: ort.Tensor;
     private context: ort.Tensor;

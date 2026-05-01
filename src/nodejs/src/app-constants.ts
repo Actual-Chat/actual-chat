@@ -212,7 +212,9 @@ let initialized = false;
 export function initAppConstants(appConstants: AppConstants): void {
     if (initialized)
         return;
-    if (!appConstants || !appConstants.video || !appConstants.audio)
+
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!appConstants?.video || !appConstants?.audio)
         throw new Error('Invalid app constants, "await whenAppConstantsReady" is missing?');
 
     AC = {
