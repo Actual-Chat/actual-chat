@@ -1064,11 +1064,33 @@ const serverImpl: DecoderWorker = {
                         return;
                     }
                     if (selection.codec !== currentDecoderConfig!.codec) {
-                        warnLog?.log(`Layer-switch codec swap: ${
-                            currentDecoderConfig!.codec} -> ${selection.codec}`);
+                        // Codec string changed (level / tier / profile escalation
+                        // from new SPS). Close + recreate — HW slots are pinned
+                        // to the original codec capability and in-place
+                        // configure() can't always cross that boundary cleanly.
+                        const oldCodec = currentDecoderConfig!.codec;
+                        warnLog?.log(`Layer-switch codec swap (close+recreate): ${
+                            oldCodec} -> ${selection.codec}`);
+                        await awaitHwReleased();
+                        if (decoder.getState() !== 'closed') decoder.close();
                         currentDecoderConfig = { ...currentDecoderConfig!, codec: selection.codec };
+                        const freshConfig: DecoderConfig = { ...currentDecoderConfig, description };
+                        decoder = new WebCodecsDecoder(
+                            freshConfig,
+                            emitDecodedFrame,
+                            (error) => {
+                                if (shouldLogDecoderError(decoderErrorKey('layer-switch', error)))
+                                    errorLog?.log(`Decoder error (layer-switch path, state=${
+                                        decoder?.getState() ?? '?'}):`, error);
+                                requestKeyframeOnDecoderError();
+                            }
+                        );
+                        decoder.initialize();
+                    } else {
+                        // Same codec, only SPS bytes differ (minor variation,
+                        // e.g. different VUI). In-place reconfigure is fine.
+                        decoder.updateDescription(description, selection.codec);
                     }
-                    decoder.updateDescription(description, selection.codec);
                     lastRawDescription = description.slice(0);
                     infoLog?.log('Description changed, decoder reconfigured');
                 }
