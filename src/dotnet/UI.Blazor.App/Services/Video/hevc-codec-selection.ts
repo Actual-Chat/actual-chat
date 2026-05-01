@@ -256,18 +256,23 @@ export function isAvcCDescription(description: ArrayBuffer): boolean {
     const bytes = new Uint8Array(description);
     // avcC configurationVersion must be 1
     if (bytes[0] !== 0x01) return false;
-    // avcC byte[4]: top 6 bits always 1 (reserved), bottom 2 = lengthSizeMinusOne
+    // byte[1] = AVCProfileIndication — valid H.264 profiles
+    const validProfiles = [66, 77, 88, 100, 110, 122, 244];
+    if (!validProfiles.includes(bytes[1])) return false;
+    // byte[4] = 0xFC | (lengthSizeMinusOne & 0x03) — top 6 bits must be set
     if ((bytes[4] & 0xFC) !== 0xFC) return false;
-    // avcC byte[5]: top 3 bits always 1 (reserved), bottom 5 = numSPS
+    // byte[5] = 0xE0 | (numOfSequenceParameterSets & 0x1F) — top 3 bits must be set
     if ((bytes[5] & 0xE0) !== 0xE0) return false;
     return true;
 }
 
 /**
  * Map a codec name + optional description to a WebCodecs codec string for
- * non-HEVC codecs. Mirrors `VideoPlayer.mapCodecToWebCodecs` for legacy paths.
+ * non-HEVC codecs. Used by `getCodecCandidates` for the non-HEVC path and by
+ * the main-thread RPC fallback in `VideoPlayer.pushFrame` to re-derive the
+ * codec string when a new keyframe description arrives.
  */
-function mapCodecToWebCodecs(codec: string, description?: ArrayBuffer): string {
+export function mapCodecToWebCodecs(codec: string, description?: ArrayBuffer): string {
     // Derive H.264 codec string from avcC description bytes
     if (description && description.byteLength >= 5 && isAvcCDescription(description)) {
         const bytes = new Uint8Array(description);

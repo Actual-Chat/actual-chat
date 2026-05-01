@@ -17,6 +17,11 @@ export interface DecoderConfig {
   optimizeForLatency: boolean;
   hardwareAcceleration: 'prefer-hardware' | 'prefer-software' | 'no-preference';
   description?: AllowSharedBufferSource;
+  // Stream dimensions — passed into VideoDecoder.isConfigSupported probes so
+  // codec candidates are validated against the real frame size, and re-probed
+  // when a mid-stream layer switch carries a new description.
+  codedWidth?: number;
+  codedHeight?: number;
 }
 
 export interface DecoderStats {
