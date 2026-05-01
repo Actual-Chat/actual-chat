@@ -158,20 +158,18 @@ export async function skipOnboarding(page: Page) {
             debugUI.resetOnboarding(false);
             debugUI.resetBubbles(false);
         }
-        // resetOnboarding is a backend-only state change — it doesn't unmount the
-        // currently rendered OnboardingModal, whose stepper-footer keeps intercepting
-        // pointer events. Hide the overlay so the UI underneath becomes clickable.
+        // resetOnboarding doesn't unmount the rendered modal — hide it so its overlay stops intercepting clicks.
         document.querySelectorAll('[id^="Modal-OnboardingModal"]').forEach(el => {
             (el as HTMLElement).style.display = 'none';
             (el as HTMLElement).style.pointerEvents = 'none';
         });
         /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
     });
-    // resetOnboarding/resetBubbles are fire-and-forget — the modal/bubbles may
-    // still render briefly. The footer button text varies per step (Skip/Decline/
-    // Next/Start messaging/...), so match them all.
+    // Reset is async — modal/bubbles may still render briefly; footer text varies per step.
     for (let i = 0; i < 20; i++) {
         const onboardingModal = page.locator('[id^="Modal-OnboardingModal"]').first();
+        const bubbleBtn = page.locator('.bubble-buttons button:has-text("Skip"), .bubble-buttons button:has-text("Ok")').first();
+
         if (await onboardingModal.isVisible().catch(() => false)) {
             const footerBtn = onboardingModal.locator(
                 '.onboarding-footer button:has-text("Start messaging"), ' +
@@ -193,14 +191,24 @@ export async function skipOnboarding(page: Page) {
             continue;
         }
 
-        const bubbleBtn = page.locator('.bubble-buttons button:has-text("Skip"), .bubble-buttons button:has-text("Ok")').first();
         if (await bubbleBtn.isVisible().catch(() => false)) {
             await bubbleBtn.click().catch(() => { /* ignore */ });
             await page.waitForTimeout(300);
             continue;
         }
 
-        break;
+        // Settle: a fresh modal can re-mount between this empty check and the caller's next click.
+        const settleStart = Date.now();
+        let reappeared = false;
+        while (Date.now() - settleStart < 500) {
+            await page.waitForTimeout(50);
+            if (await onboardingModal.isVisible().catch(() => false)
+                || await bubbleBtn.isVisible().catch(() => false)) {
+                reappeared = true;
+                break;
+            }
+        }
+        if (!reappeared) return;
     }
 }
 
