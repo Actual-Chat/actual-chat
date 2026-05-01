@@ -1011,7 +1011,6 @@ function deliverChunkToStream(
                 },
                 streamCtx,
                 lastVideoStream?.whenDisposed,
-                { onNeedKeyframe: () => { nextFrameIsKeyFrame = true; } },
             );
             lastVideoStream = videoStream;
             streamRecreations++;
@@ -2114,7 +2113,6 @@ export const serverImpl: VideoProcessingWorker = {
             sentFrames: videoStream?.getAddedFrameCount() ?? 0,
             pendingFrames: pendingStreamFrames.length,
             queueLength: videoStream?.getQueueLength() ?? 0,
-            queueDrops: videoStream?.getDroppedFrameCount() ?? 0,
             streamRecreations,
             status: streamStatus,
             lastError: streamError,

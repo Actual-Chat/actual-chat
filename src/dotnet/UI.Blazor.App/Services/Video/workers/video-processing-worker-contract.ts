@@ -173,14 +173,11 @@ export interface OrientationStats {
 export interface VideoProcessingStreamingStats {
     sentFrames: number;
     pendingFrames: number;
-    /** Encoded frames currently buffered in the producer queue, waiting to be
-     *  pumped over the Fusion RPC stream. Capped at MAX_QUEUE_LENGTH inside
-     *  InternalVideoStream — see {@link queueDrops} for overflow count. */
+    /** Encoded frames currently sitting in the producer/consumer rendezvous
+     *  between encoder output and the RpcStream source iterator. Not an
+     *  intentional buffer; should normally be near 0. Sustained growth means
+     *  the RpcStream is not pulling (peer reconnect, slow link). */
     queueLength: number;
-    /** Frames discarded by the producer because the queue was already at the
-     *  hard cap (server ACKs stalling, slow link). Non-keyframes are dropped
-     *  first; if only keyframes remain, a fresh keyframe is requested. */
-    queueDrops: number;
     streamRecreations: number;
     status: string;
     lastError: string;
