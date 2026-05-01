@@ -200,6 +200,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             services.AddScoped<IAudioRecorderEngine>(c => new WebRecorderEngine(c.AppUIHub()));
             services.AddScoped<IAudioPlaybackEngineFactory>(c => new WebAudioPlaybackEngineFactory(c));
             services.AddScoped<MicrophonePermissionHandler>(c => new WebMicrophonePermissionHandler(c.UIHub()));
+            services.AddScoped<CameraPermissionHandler>(c => new WebCameraPermissionHandler(c.UIHub()));
             services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
             services.AddScoped<IMediaMetadataUI>(_ => new WebMediaMetadataUI());
         }

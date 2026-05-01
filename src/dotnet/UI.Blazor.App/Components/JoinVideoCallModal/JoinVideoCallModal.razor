@@ -1,6 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, JoinVideoCallModal.ComputedModel>
 @implements IModalView<JoinVideoCallModal.Model>
+@using ActualChat.Hosting
+@using ActualChat.UI
 @using ActualChat.UI.Blazor.App.Module
 @{
     var m = State.Value;
@@ -20,117 +22,150 @@
                     IsListening="true"/>
             </div>
         }
-        @{
+        @if (_permission != CameraPermissionState.Granted) {
+            <div class="c-permission-block">
+                <i class="icon-video text-5xl text-03"></i>
+                @switch (_permission) {
+                    case CameraPermissionState.Denied:
+                        <div class="c-text">Camera access is blocked.</div>
+                        <div class="c-hint">
+                            @if (HostInfo.HostKind.IsMauiApp()) {
+                                <text>Open settings below and allow camera access for @CoreConstants.AppName, then click Request permission.</text>
+                            } else {
+                                <text>Click the camera or lock icon in your browser's address bar, set Camera to Allow, then click Request permission.</text>
+                            }
+                        </div>
+                        break;
+                    case CameraPermissionState.Prompt:
+                        <div class="c-text">We need access to your camera to start the video preview.</div>
+                        break;
+                    default:
+                        <div class="c-text">Checking camera access…</div>
+                        break;
+                }
+            </div>
+        } else {
             var effectiveCameraState = IsSettingsMode && !string.IsNullOrEmpty(m.LastRecorderError)
                 ? CameraState.Unavailable
                 : PreviewState;
-        }
-        @{
             var videoCls = "c-video";
             if (effectiveCameraState is CameraState.Starting)
                 videoCls += " camera-starting";
             if (!_isCameraMirrored)
                 videoCls += " no-mirror";
-        }
-        <div @ref="_containerRef" class="@videoCls">
-            <div class="video-frame">
-                <video class="camera-preview-video live-stream-video"
-                       autoplay playsinline muted aria-hidden="true"
-                       disablepictureinpicture disableremoteplayback
-                       controlslist="nodownload nofullscreen noremoteplayback"></video>
-                <canvas class="camera-preview"></canvas>
-                <span class="plug-text">@GetPlugText(effectiveCameraState)</span>
-                <div class="video-loading">
-                    <span class="spinner-icon-wrapper">
-                        <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
-                    </span>
-                </div>
-            </div>
-        </div>
-        @if (ScreenSize.IsWide()) {
-            @* Desktop toolbar *@
-            <div class="c-toolbar">
-                @* Camera pill with chevron + dropdown *@
-                <div class="camera-pill-wrapper">
-                    <div class="toolbar-pill @(_isVideoOn ? "active" : "")">
-                        <HeaderButton Class="pill-action" Click="OnVideoToggle">
-                            <i class="icon-video text-2xl"></i>
-                        </HeaderButton>
-                        <span class="pill-divider"></span>
-                        <HeaderButton Class="pill-chevron" Click="OnCameraDropdownToggle">
-                            <i class="icon-chevron-compact-down text-xl"></i>
-                        </HeaderButton>
+            <div @ref="_containerRef" class="@videoCls">
+                <div class="video-frame">
+                    <video class="camera-preview-video live-stream-video"
+                           autoplay playsinline muted aria-hidden="true"
+                           disablepictureinpicture disableremoteplayback
+                           controlslist="nodownload nofullscreen noremoteplayback"></video>
+                    <canvas class="camera-preview"></canvas>
+                    <span class="plug-text">@GetPlugText(effectiveCameraState)</span>
+                    <div class="video-loading">
+                        <span class="spinner-icon-wrapper">
+                            <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
+                        </span>
                     </div>
-                    @if (_isCameraDropdownOpen) {
-                        <div class="camera-dropdown-backdrop" @onclick="OnCameraDropdownToggle"></div>
-                        <div class="camera-dropdown">
-                            <div class="camera-dropdown-header">Select a camera</div>
-                            @foreach (var device in _videoDevices) {
-                                var isSelected = device == _selectedDevice;
-                                <div class="camera-dropdown-item"
-                                     @onclick="@(() => OnCameraSelected(device))">
-                                    @if (isSelected) {
-                                        <i class="icon-checkmark-simple text-primary text-lg"></i>
-                                    } else {
-                                        <span class="w-[18px]"></span>
-                                    }
-                                    <span class="truncate">@device.Label</span>
-                                </div>
-                            }
-                        </div>
-                    }
                 </div>
-
-                @* Mic button *@
-                <ButtonRound Class="@MicBtnClass()" Click="@OnMicToggle">
-                    @if (_isRecording) {
-                        <i class="icon-mic-2 text-2xl"></i>
-                    } else {
-                        <i class="icon-mic-off text-2xl"></i>
-                    }
-                </ButtonRound>
-
-                @* Mirror toggle *@
-                <ButtonRound Class="@MirrorBtnClass()" Click="@OnMirrorToggle" Tooltip="Mirror preview">
-                    <i class="icon-mirror-video text-2xl"></i>
-                </ButtonRound>
             </div>
-        } else {
-            @* Mobile toolbar *@
-            <div class="c-toolbar">
-                <ButtonRound Class="@VideoWrapperBtnClass()" Click="@OnVideoToggle">
-                    <i class="icon-video text-2xl"></i>
-                </ButtonRound>
+        }
+        @if (_permission == CameraPermissionState.Granted) {
+            if (ScreenSize.IsWide()) {
+                @* Desktop toolbar *@
+                <div class="c-toolbar">
+                    @* Camera pill with chevron + dropdown *@
+                    <div class="camera-pill-wrapper">
+                        <div class="toolbar-pill @(_isVideoOn ? "active" : "")">
+                            <HeaderButton Class="pill-action" Click="OnVideoToggle">
+                                <i class="icon-video text-2xl"></i>
+                            </HeaderButton>
+                            <span class="pill-divider"></span>
+                            <HeaderButton Class="pill-chevron" Click="OnCameraDropdownToggle">
+                                <i class="icon-chevron-compact-down text-xl"></i>
+                            </HeaderButton>
+                        </div>
+                        @if (_isCameraDropdownOpen) {
+                            <div class="camera-dropdown-backdrop" @onclick="OnCameraDropdownToggle"></div>
+                            <div class="camera-dropdown">
+                                <div class="camera-dropdown-header">Select a camera</div>
+                                @foreach (var device in _videoDevices) {
+                                    var isSelected = device == _selectedDevice;
+                                    <div class="camera-dropdown-item"
+                                         @onclick="@(() => OnCameraSelected(device))">
+                                        @if (isSelected) {
+                                            <i class="icon-checkmark-simple text-primary text-lg"></i>
+                                        } else {
+                                            <span class="w-[18px]"></span>
+                                        }
+                                        <span class="truncate">@device.Label</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
 
-                @* Mic button *@
-                <ButtonRound Class="@MicBtnClass()" Click="@OnMicToggle">
-                    @if (_isRecording) {
-                        <i class="icon-mic-2 text-2xl"></i>
-                    } else {
-                        <i class="icon-mic-off text-2xl"></i>
-                    }
-                </ButtonRound>
+                    @* Mic button *@
+                    <ButtonRound Class="@MicBtnClass()" Click="@OnMicToggle">
+                        @if (_isRecording) {
+                            <i class="icon-mic-2 text-2xl"></i>
+                        } else {
+                            <i class="icon-mic-off text-2xl"></i>
+                        }
+                    </ButtonRound>
 
-                <ButtonRound Click="@OnSwitchCamera">
-                    <i class="icon-camera-switch text-2xl"></i>
-                </ButtonRound>
+                    @* Mirror toggle *@
+                    <ButtonRound Class="@MirrorBtnClass()" Click="@OnMirrorToggle" Tooltip="Mirror preview">
+                        <i class="icon-mirror-video text-2xl"></i>
+                    </ButtonRound>
+                </div>
+            } else {
+                @* Mobile toolbar *@
+                <div class="c-toolbar">
+                    <ButtonRound Class="@VideoWrapperBtnClass()" Click="@OnVideoToggle">
+                        <i class="icon-video text-2xl"></i>
+                    </ButtonRound>
 
-                @* Mirror toggle *@
-                <ButtonRound Class="@MirrorBtnClass()" Click="@OnMirrorToggle" Tooltip="Mirror preview">
-                    <i class="icon-mirror-video text-2xl"></i>
-                </ButtonRound>
-            </div>
+                    @* Mic button *@
+                    <ButtonRound Class="@MicBtnClass()" Click="@OnMicToggle">
+                        @if (_isRecording) {
+                            <i class="icon-mic-2 text-2xl"></i>
+                        } else {
+                            <i class="icon-mic-off text-2xl"></i>
+                        }
+                    </ButtonRound>
+
+                    <ButtonRound Click="@OnSwitchCamera">
+                        <i class="icon-camera-switch text-2xl"></i>
+                    </ButtonRound>
+
+                    @* Mirror toggle *@
+                    <ButtonRound Class="@MirrorBtnClass()" Click="@OnMirrorToggle" Tooltip="Mirror preview">
+                        <i class="icon-mirror-video text-2xl"></i>
+                    </ButtonRound>
+                </div>
+            }
         }
     </div>
     </Body>
     <Buttons>
         @if (IsSettingsMode) {
-            <Button Class="btn-modal btn-primary" Click="@OnCloseSettingsClick">Close</Button>
+            var closeBtnClass = _permission == CameraPermissionState.Granted
+                ? "btn-modal btn-primary"
+                : "btn-modal";
+            <Button Class="@closeBtnClass" Click="@OnCloseSettingsClick">Close</Button>
         } else {
             <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
-            <Button Class="btn-modal btn-primary"
-                    Click="@OnJoinClick"
-                    IsDisabled="@IsSubmitDisabled">@SubmitButtonText</Button>
+            @if (_permission == CameraPermissionState.Granted) {
+                <Button Class="btn-modal btn-primary"
+                        Click="@OnJoinClick"
+                        IsDisabled="@IsSubmitDisabled">@SubmitButtonText</Button>
+            }
+        }
+        @if (_permission is CameraPermissionState.Prompt or CameraPermissionState.Denied) {
+            @if (_permission == CameraPermissionState.Denied && HostInfo.HostKind.IsMauiApp()) {
+                <Button Class="btn-modal" Click="@OnOpenSettingsClick">Open settings</Button>
+            }
+            <Button Class="btn-modal btn-primary" Click="@OnAllowCameraClick">Request permission</Button>
         }
     </Buttons>
 </DialogFrame>
@@ -142,6 +177,7 @@
     private DotNetObjectReference<JoinVideoCallModal>? _blazorRef;
     private IJSObjectReference? _jsRef;
     private IVideoSession? _session;
+    private readonly CancellationTokenSource _disposeCts = new();
 
     private bool _isInitialized;
     private bool _isVideoOn = true;
@@ -149,6 +185,7 @@
     private bool _isCameraMirrored = true;
     private bool _isCameraDropdownOpen;
     private bool _isRecording;
+    private CameraPermissionState _permission = CameraPermissionState.Unknown;
     private List<VideoDevice> _videoDevices = new();
     private VideoDevice? _selectedDevice;
     private string? _currentDeviceId;
@@ -162,6 +199,8 @@
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private CameraPermissionHandler CameraPermission => field ??= Hub.Services.GetRequiredService<CameraPermissionHandler>();
+    private SystemSettingsUI SystemSettingsUI => field ??= Hub.Services.GetRequiredService<SystemSettingsUI>();
     private bool IsSettingsMode => ModalModel.Mode is VideoCallMode.Settings;
     private CameraState PreviewState => _session?.State ?? CameraState.Off;
     private ILogger Log => field ??= Hub.LogFor(GetType());
@@ -207,11 +246,32 @@
         _isBlurEnabled = settings.IsBackgroundBlurEnabledOrDefault;
         var recordingChatId = await ChatAudioUI.GetRecordingChatId();
         _isRecording = recordingChatId == ModalModel.Chat.Id;
+
+        // Resolve camera permission before the first render so the body picks
+        // either the permission block or the video container — JS-side init
+        // depends on the container element being present.
+        var cached = await CameraPermission.Check(_disposeCts.Token);
+        _permission = ToPermissionState(cached);
+
+        // Auto-recover when the user grants access externally (browser UI,
+        // OS dialog) — flip from Prompt/Denied → Granted without re-opening.
+        _ = BackgroundTask.Run(WatchPermissionChanges, Log,
+            "JoinVideoCallModal permission watcher failed", CancellationToken.None);
+        _ = BackgroundTask.Run(PollPermissionWhileNotGranted, Log,
+            "JoinVideoCallModal permission poller failed", CancellationToken.None);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (!firstRender)
+        if (_isInitialized || _permission != CameraPermissionState.Granted)
             return;
+
+        await InitializeCamera();
+    }
+
+    private async Task InitializeCamera() {
+        // Set early to keep multiple OnAfterRenderAsync invocations from
+        // racing into duplicate JS module + session creation.
+        _isInitialized = true;
 
         await LoadVideoDevices();
         var lastSelectedDeviceId = await _getLastSelectedDeviceIdTask;
@@ -223,23 +283,86 @@
         _session = CreateSession(_jsRef);
         _session.StateChanged += OnSessionStateChanged;
 
-        _isInitialized = true;
         StateHasChanged();
-
 
         // Fire-and-forget: on Windows (unpackaged NativeAOT) getUserMedia may never resolve
         // because camera permission isn't declared in the app manifest. Awaiting the JS call
         // from OnAfterRenderAsync blocks the Blazor render dispatcher and prevents any
         // subsequent click (e.g. Join/Cancel) from running DisposeAsync, so the whole app
         // hangs. OnFirstFrameRendered (JSInvokable) updates CameraState.On when it arrives.
-        _ = BackgroundTask.Run(StartPreview, Hub.LogFor(GetType()),
+        _ = BackgroundTask.Run(StartPreview, Log,
             "JoinVideoCallModal preview start failed");
         return;
 
         async Task StartPreview() {
-            await _session.Start();
+            await _session!.Start();
             await InvokeAsync(StateHasChanged);
         }
+    }
+
+    private async Task WatchPermissionChanges() {
+        try {
+            await foreach (var c in CameraPermission.Cached.Computed.Changes(_disposeCts.Token).ConfigureAwait(false)) {
+                var next = ToPermissionState(c.Value);
+                if (next == _permission)
+                    continue;
+                _permission = next;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    // Browsers don't fire any signal when the user toggles a site's camera
+    // permission via the address-bar icon or chrome://settings, so we re-query
+    // the Permissions API every few seconds while we're not Granted. Once we
+    // hit Granted the loop just sleeps — Cached.Computed.Changes drives the UI.
+    private async Task PollPermissionWhileNotGranted() {
+        try {
+            while (!_disposeCts.Token.IsCancellationRequested) {
+                await Task.Delay(TimeSpan.FromSeconds(2), _disposeCts.Token).ConfigureAwait(false);
+                if (_permission == CameraPermissionState.Granted)
+                    continue;
+                await CameraPermission.Check(_disposeCts.Token).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private static CameraPermissionState ToPermissionState(bool? cached)
+        => cached switch {
+            true => CameraPermissionState.Granted,
+            false => CameraPermissionState.Denied,
+            null => CameraPermissionState.Prompt,
+        };
+
+    private Task OnOpenSettingsClick()
+        => SystemSettingsUI.Open();
+
+    private async Task OnAllowCameraClick() {
+        // CheckOrRequest will prompt only when state is Prompt; for Denied the
+        // browser silently refuses (no dialog), but we still re-check so the
+        // user can recover after they unblock the site in browser settings.
+        var wasDenied = _permission == CameraPermissionState.Denied;
+        var granted = await CameraPermission.CheckOrRequest(
+            mustRequest: true, mustTroubleshoot: false, _disposeCts.Token);
+        _permission = granted
+            ? CameraPermissionState.Granted
+            : CameraPermissionState.Denied;
+        StateHasChanged();
+        // The browser silently rejected our request because the site is
+        // already blocked at the browser/OS level. Surface that explicitly —
+        // a dead click would leave the user thinking the button is broken.
+        // We only toast for Denied → Denied; Prompt → Denied is a fresh
+        // user choice (native dialog), where the visible state change speaks
+        // for itself.
+        if (!granted && wasDenied) {
+            var toastText = HostInfo.HostKind.IsMauiApp()
+                ? "Camera is still blocked. Please allow camera access in system settings first."
+                : "Camera is still blocked. Please allow camera access in your browser settings first.";
+            ToastUI.Show(toastText, "icon-alert-circle", ToastDismissDelay.Long);
+        }
+        // OnAfterRenderAsync will pick this up once the video container renders.
     }
 
     private IVideoSession CreateSession(IJSObjectReference jsRef)
@@ -248,6 +371,7 @@
             : new LocalVideoSession(jsRef, () => _selectedDevice?.DeviceId, () => _isBlurEnabled);
 
     public override async ValueTask DisposeAsync() {
+        _disposeCts.CancelAndDisposeSilently();
         if (_session is not null) {
             _session.StateChanged -= OnSessionStateChanged;
             _session = null;
@@ -622,6 +746,7 @@
     }
 
     public enum CameraState { Off, Starting, On, Unavailable }
+    public enum CameraPermissionState { Unknown, Prompt, Granted, Denied }
     public enum VideoCallMode { Join, Settings }
 
     // JSON DTO returned by the JS `getCurrentCameraInfo` method.

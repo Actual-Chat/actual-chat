@@ -127,6 +127,7 @@ export type LogScope =
     | 'VideoDecoder'
     | 'VideoSegmentation'
     | 'BlurPreviewSession'
+    | 'CameraPermission'
     | 'VisualMediaViewer'
     | 'WebAuth'
     | 'WebFileProvider';
@@ -233,6 +234,7 @@ const defaults: Record<LogScope, LogLevel> = {
     VideoDecoder: LogLevel.Warn,
     VideoSegmentation: LogLevel.Warn,
     BlurPreviewSession: LogLevel.Warn,
+    CameraPermission: LogLevel.Warn,
     VisualMediaViewer: LogLevel.Warn,
     WebAuth: LogLevel.Warn,
     WebFileProvider: LogLevel.Warn,

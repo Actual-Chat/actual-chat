@@ -55,6 +55,20 @@
 .join-video-call-modal .c-video.no-mirror .video-frame .camera-preview-video {
     transform: none;
 }
+.join-video-call-modal .c-permission-block {
+    @apply flex-y items-center justify-center gap-y-3;
+    @apply min-h-56 max-h-64;
+    @apply px-6 py-4;
+    @apply rounded-2xl;
+    @apply bg-03;
+}
+.join-video-call-modal .c-permission-block .c-text {
+    @apply text-center text-headline-1 text-02;
+}
+.join-video-call-modal .c-permission-block .c-hint {
+    @apply text-center text-caption-1 text-03;
+    @apply max-w-xs;
+}
 .join-video-call-modal .c-members {
     @apply flex-x items-center gap-x-4;
 }
