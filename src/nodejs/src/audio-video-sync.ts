@@ -67,6 +67,26 @@ const lastBroadcastAt = new Map<string, number>();
 const lastBroadcastState = new Map<string, AudioPlaybackState>();
 let lastLogTime = 0;
 
+// A/V sync is opt-in. When disabled, AudioVideoSync.update() is a no-op,
+// so registry stays empty and consumers fall back to wall-clock targeting.
+// Toggled from VideoDiagnosticsSettingsModal; persisted in localStorage.
+const AV_SYNC_ENABLED_KEY = 'video.debug.avSyncEnabled';
+let isEnabledCached: boolean | null = null;
+
+function readEnabledFromStorage(): boolean {
+    try {
+        return globalThis.localStorage.getItem(AV_SYNC_ENABLED_KEY) === 'true';
+    } catch {
+        // localStorage access can throw in private mode / sandboxed contexts.
+        return false;
+    }
+}
+
+function getEnabled(): boolean {
+    isEnabledCached ??= readEnabledFromStorage();
+    return isEnabledCached;
+}
+
 // Coalesce broadcasts to subscribed worker ports — at most one per 16 ms
 // (≈ 60 Hz) per author. Workers interpolate playingAtSec themselves, so missing
 // intermediate samples doesn't degrade A/V sync. State transitions
@@ -108,8 +128,37 @@ function broadcastState(authorId: string, state: AudioSyncState): void {
 }
 
 export class AudioVideoSync {
+    /** Whether A/V sync is currently active. Off by default; opt in via diagnostics. */
+    static get isEnabled(): boolean {
+        return getEnabled();
+    }
+
+    /**
+     * Enable/disable A/V sync globally. Persists to localStorage.
+     * On disable, drops all sync state and broadcasts CLEAR to subscribed
+     * workers so the wall-clock fallback engages immediately.
+     */
+    static setEnabled(value: boolean): void {
+        if (getEnabled() === value) return;
+        isEnabledCached = value;
+        try {
+            if (value) globalThis.localStorage.setItem(AV_SYNC_ENABLED_KEY, 'true');
+            else globalThis.localStorage.removeItem(AV_SYNC_ENABLED_KEY);
+        } catch (e) {
+            debugLog?.log(`setEnabled: localStorage write failed: ${String(e)}`);
+        }
+        debugLog?.log(`setEnabled: ${value}`);
+        if (!value) {
+            for (const authorId of [...registry.keys()]) {
+                this.clear(authorId);
+            }
+        }
+    }
+
     /** Called by AudioPlayer on every feeder state change, and from C# AudioTrackPlayer on MAUI */
     static update(authorId: string, playingAtSec: number, recordedAtMs: number, playbackState: string): void {
+        if (!getEnabled()) return;
+
         // Terminal states — clear sync data so video falls back to wall-clock timing
         if (playbackState === 'ended') {
             this.clear(authorId);

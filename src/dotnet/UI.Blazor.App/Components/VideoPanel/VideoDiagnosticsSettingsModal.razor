@@ -30,14 +30,36 @@
                 <span class="diag-value">localStorage["video.debug.forceH264Only"]</span>
             </div>
         </div>
+        <div class="diag-section">
+            <div class="diag-section-header">A/V synchronization</div>
+            <Tile>
+                <TileItem Click="@OnAvSyncEnabledClick">
+                    <Content>Enable A/V sync</Content>
+                    <Caption>
+                        Drive video frame selection from the audio clock for tighter
+                        lip-sync. When off, video uses a wall-clock target.
+                        Takes effect immediately for the current call.
+                    </Caption>
+                    <Right>
+                        <Toggle IsChecked="@_avSyncEnabled"/>
+                    </Right>
+                </TileItem>
+            </Tile>
+            <div class="diag-row diag-dim">
+                <span class="diag-label">Storage key</span>
+                <span class="diag-value">localStorage["video.debug.avSyncEnabled"]</span>
+            </div>
+        </div>
     </Body>
 </DialogFrame>
 
 @code {
     private static readonly string JSGetMethod = $"{BlazorUIAppModule.ImportName}.getVideoDebugSettings";
     private static readonly string JSSetForceH264OnlyMethod = $"{BlazorUIAppModule.ImportName}.setVideoDebugForceH264Only";
+    private static readonly string JSSetAvSyncEnabledMethod = $"{BlazorUIAppModule.ImportName}.setVideoDebugAvSyncEnabled";
 
     private bool _forceH264Only;
+    private bool _avSyncEnabled;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -45,6 +67,7 @@
     protected override async Task OnInitializedAsync() {
         var settings = await JS.InvokeAsync<VideoDebugSettings>(JSGetMethod);
         _forceH264Only = settings.ForceH264Only;
+        _avSyncEnabled = settings.AvSyncEnabled;
     }
 
     private async Task OnForceH264OnlyClick() {
@@ -53,10 +76,16 @@
         await JS.InvokeVoidAsync(JSSetForceH264OnlyMethod, _forceH264Only);
     }
 
+    private async Task OnAvSyncEnabledClick() {
+        _avSyncEnabled = !_avSyncEnabled;
+        StateHasChanged();
+        await JS.InvokeVoidAsync(JSSetAvSyncEnabledMethod, _avSyncEnabled);
+    }
+
     // Mirrors `VideoDebugSettings` in `video-diagnostics.ts`. JSInterop uses
     // System.Text.Json with web defaults (case-insensitive), so PascalCase
     // properties match the camelCase JS object shape.
-    public sealed record VideoDebugSettings(bool ForceH264Only);
+    public sealed record VideoDebugSettings(bool ForceH264Only, bool AvSyncEnabled);
 
     public sealed record Model;
 }

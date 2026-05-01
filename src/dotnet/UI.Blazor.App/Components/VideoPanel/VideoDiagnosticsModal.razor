@@ -15,7 +15,9 @@
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Default"
     HasCloseButton="true">
     <Buttons>
-        <Button Class="btn-modal" Click="@OnSettingsClick">Settings</Button>
+        @if (m.IsAdmin) {
+            <Button Class="btn-modal" Click="@OnSettingsClick">Settings</Button>
+        }
         <Button Class="btn-modal" Click="@OnCopyClick">Copy</Button>
     </Buttons>
     <Body>
@@ -422,7 +424,8 @@
             streams[i] = new StreamEntry(info, author?.Avatar.Name ?? info.AuthorId.Value, ownAuthor?.Id == info.AuthorId);
         }
 
-        return new ComputedModel(ownStreamKind, streams, memberCount);
+        var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken);
+        return new ComputedModel(ownStreamKind, streams, memberCount, account.IsAdmin);
     }
 
     private void OnToggleOwnStreamingDetails() {
@@ -639,8 +642,9 @@
     public sealed record ComputedModel(
         StreamKind? OwnStreamingKind,
         StreamEntry[] Streams,
-        int MemberCount
+        int MemberCount,
+        bool IsAdmin
     ) {
-        public static readonly ComputedModel Empty = new(null, [], 0);
+        public static readonly ComputedModel Empty = new(null, [], 0, false);
     }
 }
