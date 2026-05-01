@@ -79,8 +79,21 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     [ComputeMethod]
+    public virtual async Task<bool> IsVideoEnabled(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        // Regular users get video only in peer chats; admins get it everywhere.
+        if (chatId.Kind == ChatKind.Peer)
+            return true;
+        var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        return account.IsAdmin;
+    }
+
+    [ComputeMethod]
     public virtual async Task<bool> IsOwnWebcamRecording(ChatId chatId, CancellationToken cancellationToken = default)
     {
+        if (!await IsVideoEnabled(chatId, cancellationToken).ConfigureAwait(false))
+            return false;
+
         var recordingChatId = await _recordingChatId.Use(cancellationToken).ConfigureAwait(false);
         return recordingChatId == chatId;
     }
@@ -88,6 +101,9 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     [ComputeMethod]
     public virtual async Task<bool> IsOwnScreencasting(ChatId chatId, CancellationToken cancellationToken = default)
     {
+        if (!await IsVideoEnabled(chatId, cancellationToken).ConfigureAwait(false))
+            return false;
+
         var screencastChatId = await _screencastChatId.Use(cancellationToken).ConfigureAwait(false);
         return screencastChatId == chatId;
     }
@@ -134,6 +150,9 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public void StartScreenCasting(ChatId chatId)
     {
+        if (!IsVideoEnabledNonComputed(chatId))
+            return;
+
         // Additive: does not stop webcam.
         _screencastChatId.Value = chatId;
         OpenVideoPanel(chatId);
@@ -182,7 +201,11 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         => SetWatching(null);
 
     public void OpenVideoPanel(ChatId chatId)
-        => SetWatching(chatId);
+    {
+        if (!IsVideoEnabledNonComputed(chatId))
+            return;
+        SetWatching(chatId);
+    }
 
     public bool HasJoinedVideoCall(ChatId chatId)
         => _watchingChatId.Value == chatId && _lastRecordingChatId.Value == chatId;
@@ -204,6 +227,9 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public void ResumeVideoStreaming(ChatId chatId)
     {
+        if (!IsVideoEnabledNonComputed(chatId))
+            return;
+
         // Resume recording without overwriting camera/blur settings preserved from the previous recording
         _recordingChatId.Value = chatId;
         OpenVideoPanel(chatId);
@@ -271,6 +297,9 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public void JoinVideoSession(ChatId chatId)
     {
+        if (!IsVideoEnabledNonComputed(chatId))
+            return;
+
         _ = JoinInternal();
         return;
 
@@ -302,6 +331,9 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public void ChangeVideoSessionSettings(ChatId chatId)
     {
+        if (!IsVideoEnabledNonComputed(chatId))
+            return;
+
         _ = ChangeInternal();
         return;
 
@@ -329,15 +361,25 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     [ComputeMethod]
     public virtual async Task<ApiArray<VideoStreamInfo>> GetActiveVideoStreams(ChatId chatId, CancellationToken cancellationToken = default)
-        => await LiveVideoStreams
+    {
+        if (!await IsVideoEnabled(chatId, cancellationToken).ConfigureAwait(false))
+            return [];
+
+        return await LiveVideoStreams
             .List(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
+    }
 
     [ComputeMethod]
     public virtual async Task<int> GetVideoStreamMemberCount(ChatId chatId, CancellationToken cancellationToken = default)
-        => await LiveVideoStreams
+    {
+        if (!await IsVideoEnabled(chatId, cancellationToken).ConfigureAwait(false))
+            return 0;
+
+        return await LiveVideoStreams
             .GetMemberCount(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
+    }
 
     [ComputeMethod]
     public virtual async Task<VideoStreamInfo[]> GetRemoteStreams(ChatId chatId, CancellationToken cancellationToken = default)
@@ -384,6 +426,9 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _isBackgroundBlurEnabled.Value = isBackgroundBlurEnabled;
         OpenVideoPanel(chatId);
     }
+
+    private bool IsVideoEnabledNonComputed(ChatId chatId)
+        => chatId.Kind == ChatKind.Peer || Hub.AccountUI.OwnAccount.Value.IsAdmin;
 }
 
 // ReSharper disable once ClassNeverInstantiated.Global — instantiated via JS interop deserialization

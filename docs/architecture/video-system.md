@@ -8,6 +8,7 @@ Real-time video streaming in ActualChat using a custom SignalR-based pipeline (n
 - **Sharded backend** using ActualLab Mesh (`HostRole.VideoBackend`)
 - **Adaptive quality** — sender quality stepping, per-peer skip-to-live, codec negotiation
 - **VAD-based adaptive framerate** — reduces fps when speaker is silent in group calls
+- **Per-chat access gate** (`ChatVideoUI.IsVideoEnabled`): regular users only in peer chats; admins everywhere
 
 ## Architecture
 
