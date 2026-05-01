@@ -37,27 +37,35 @@ All file paths are relative to the repo root.
 
 **Now:** all inside `src/dotnet/UI.Blazor.App/Services/Video/workers/video-processing.ts`
 (2 054 lines, the big one). Stages that run before encode:
-- **Frame queue** — `Denque<QueuedFrame>` of raw `VideoFrame`s pulled from the
-  `MediaStreamTrackProcessor` reader. `processingFrame` flag serialises one at
-  a time; backpressure is measured as a 5-second drop ratio
-  (`backpressureDropThreshold = 0.20`).
+- **Frame queue** — when blur/segmentation is enabled, `Denque<QueuedFrame>`
+  holds raw `VideoFrame`s pulled from the `MediaStreamTrackProcessor` reader.
+  `processingFrame` flag serialises one at a time; backpressure is measured as
+  a 5-second drop ratio (`backpressureDropThreshold = 0.20`). Without blur,
+  frames bypass this queue and go straight into the encode/downscale path.
 - **Segmentation** — ONNX selfie-segmentation model (`selfie_segmentation_olive_webgpu.onnx`)
-  via `onnxruntime-web`, WebGPU-preferred, with WebGL/WASM fallback.
+  via `onnxruntime-web`. The config type still names `webgpu/webgl/wasm`, but
+  the current worker initialization hard-codes WebGPU execution; WebGL/WASM are
+  detected/configured by surrounding code but are not actually selected in the
+  worker's ONNX session today.
 - **Background blur** — `src/dotnet/UI.Blazor.App/Services/Video/webgpu-blur.ts`,
   GPU mipmapped Gaussian pyramids + temporal mask EMA.
 - **Downscale** — `src/dotnet/UI.Blazor.App/Services/Video/webgpu-downscaler.ts`
   produces base + simulcast layers from a single source frame.
 - **YUV conversion** — `src/dotnet/UI.Blazor.App/Services/Video/webgpu-yuv-converter.ts`
-  (RGBA → I420 on GPU) for codec ingest.
+  exists and is used by the GPU blur path (`submitBlurI420`) to produce I420,
+  but the normal WebGPU downscaler path generally feeds GPU-resident RGBA
+  frames to the hardware encoder. `preConvertYuv` is optional and currently
+  skipped when the WebGPU downscaler is active to avoid GPU→CPU→GPU round-trips.
 - **Rotation reconcile** — first-frame check that adjusts `senderRotationDeg` to
   match what the platform actually delivers.
 
 **vs. doc:**
 - The doc prescribes a **single replaceable slot** between capture and the
-  next stage; current code uses a **proper Denque + backpressure ratio** with
-  internal drop accounting. In practice, when GPU is healthy the queue stays
-  near-empty, but the data structure itself is not a 1-slot replaceable — it
-  can hold several frames briefly under burst.
+  next stage. Current code has two behaviours: no-blur frames bypass the
+  segmentation queue, while blur frames use a bounded Denque (`maxQueueSize`
+  5 by default, 3 on mobile) with internal drop accounting. In practice, when
+  GPU is healthy the queue stays near-empty, but the structure is not a 1-slot
+  replaceable handoff.
 - Backpressure is metric-driven (5 s window, 20 % drop ratio surfaces a
   callback). The doc's contract is structural ("newer frame replaces pending
   frame").
@@ -71,9 +79,10 @@ All file paths are relative to the repo root.
   plus an array `extraLayerEncoders[]` for simulcast layers when
   `VideoProcessingConfig.spatialLayers` is non-empty. Encoders are pooled
   (`POOL_TTL_MS = 30 s`) so an HW slot survives across short stop/start.
-- Per-frame work: rotate → optional blur → downscale to N targets → YUV →
-  feed each `WebCodecsEncoder.encode()`. `nextFrameIsKeyFrame` flag forces an
-  IDR when the control plane requests one.
+- Per-frame work: rotate → optional blur → downscale to N targets → optionally
+  convert to I420 on the blur/`preConvertYuv` paths → feed each
+  `WebCodecsEncoder.encode()`. `nextFrameIsKeyFrame` flag forces an IDR when
+  the control plane requests one.
 - `src/dotnet/UI.Blazor.App/Services/Video/codec-support.ts` — runtime probe
   for HW acceleration (priority: AV1 HW > H.264 HW High > H.264 HW > H.264 SW).
 - `src/dotnet/UI.Blazor.App/Services/Video/hevc-parser.ts` — parses HVCC
@@ -81,10 +90,10 @@ All file paths are relative to the repo root.
 
 **vs. doc:**
 - Doc: **one replaceable slot**, drop or replace if encoder slow. Current code
-  serialises with a `processingFrame` flag and the upstream Denque absorbs
-  one or two frames; under sustained encoder slowness, the backpressure
-  metric trips and the segmentation step starts dropping frames first. There
-  is no explicit "replace pending frame on arrival" semantic.
+  relies on WebCodecs `encodeQueueSize` checks (`> 3`, or `> 1` on iOS) and
+  simply drops new raw frames when the encoder is backed up. If blur is active,
+  the upstream segmentation Denque can also absorb/drop a few frames. There is
+  no explicit "replace pending frame on arrival" semantic.
 - Simulcast / spatial-layer multiplexing already exists and is more elaborate
   than the doc explicitly calls for (the doc calls out simulcast in passing).
 
@@ -225,13 +234,14 @@ All file paths are relative to the repo root.
   `VideoPlayer.startPull(streamId, skipToMs)` → `streamingApi.streamServer.GetVideo(...)`
   via Fusion RPC.
 - Two paths:
-  - **In-worker pull** (preferred when transferable streams are supported):
-    the decoder worker owns the `RpcStream<VideoFrame>` directly via a
-    `MessageChannel`; main thread does no per-frame work.
+  - **In-worker pull** (preferred when the off-thread MSTG/VTG render backend
+    is selected): the decoder worker owns the `RpcStream<VideoFrame>`
+    directly; main thread does no per-frame work.
   - **Main-thread fallback**: VideoPlayer reads the RPC stream and forwards
     encoded chunks to `DecoderWorker` over the worker RPC channel.
 - Each arriving `VideoFrameDto` is converted into a `RawChunkMessage`
-  (codec init payload + encoded bytes) and pushed to the decoder.
+  (codec init payload + encoded bytes) and pushed to the decoder; in-worker
+  pull does this conversion inside the decoder worker.
 - VideoPlayer also: chooses a render backend, resolves `decoderReady` so
   startPull awaits worker init, manages reconnect/retry on
   `pullAbortController` cancellation.
@@ -246,9 +256,10 @@ All file paths are relative to the repo root.
 ## 9. `video buffer`
 
 **Now (this is structurally different from the doc):**
-- `VideoPlayer.pendingFrames` — `Denque<PendingFrame>` of **decoded**
-  frames, not encoded. `maxBufferSize = 20`.
-- `enqueuePendingFrame` is the entry point. It:
+- **Canvas/main-thread path:** `VideoPlayer.pendingFrames` —
+  `Denque<PendingFrame>` of **decoded** frames, not encoded.
+  `maxBufferSize = 20`.
+- `enqueuePendingFrame` is the canvas-path entry point. It:
   - Measures inter-frame arrival jitter (`jitterEstimateMs`, EMA α=0.1);
     sets `jitterBufferMs = clamp(jitterEstimateMs * 2, 20, 120)`.
   - Recomputes `pipelineLatencyMs` (asymmetric EMA: α=0.2 up, α=0.15 down).
@@ -262,17 +273,25 @@ All file paths are relative to the repo root.
   5 s cooldown.
 - Late-join catchup: if `liveGapMs = lastArrivedOffsetMs - lastRenderedOffsetMs
   > LATE_JOIN_GAP_MS (1500)`, jumps to the latest buffered frame.
+- **MSTG/off-thread path:** `src/dotnet/UI.Blazor.App/Services/Video/workers/worker-mstg-selector.ts`
+  owns a second decoded-frame queue inside the decoder worker. It soft-catches
+  up when `queue.length > 40` and span exceeds 1500 ms, keeps ~1000 ms, and
+  hard-caps at 50 decoded frames. This is the preferred path when off-thread
+  rendering is available, so `VideoPlayer.pendingFrames` is not the only
+  current playback buffer.
 
 **vs. doc:**
 - **Buffer is post-decode, not pre-decode.** The doc expects the playback
   buffer to hold encoded frames so quality skips can be keyframe-aware.
-  Current code makes those decisions on already-decoded frames, where the
-  doc says "it is too late to make keyframe-aware encoded-frame skip
-  decisions" — which is exactly the case here.
+  Both current buffers (`VideoPlayer.pendingFrames` and `WorkerMstgSelector.queue`)
+  hold already-decoded frames, where the doc says "it is too late to make
+  keyframe-aware encoded-frame skip decisions" — which is exactly the case
+  here.
 - **Sizes differ.** Doc: `TargetBufferSize = 10` (333 ms), min/max 5/15.
-  Current: `maxBufferSize = 20`, with an adaptive `jitterBufferMs` of 20–120
-  ms layered on top, a soft 600 ms catchup trigger, and a 5 s hard-seek
-  threshold.
+  Current: canvas path `maxBufferSize = 20`, with an adaptive `jitterBufferMs`
+  of 20–120 ms layered on top, a soft 600 ms catchup trigger, and a 5 s
+  hard-seek threshold. MSTG path is larger still (40/50-frame soft/hard caps)
+  because it was sized to absorb audio playout jitter.
 - **Playback timing differs.** Doc: timing should not chase short
   fluctuations. Current code adjusts `videoEl.playbackRate` between 1.0,
   1.05, and 1.15 (or 0.95) and rebases timing anchors when it does.
@@ -290,17 +309,22 @@ All file paths are relative to the repo root.
   (`webcodecs-decoder.ts`).
 - Receives `RawChunkMessage` over a transferable stream or RPC, builds an
   `EncodedVideoChunk`, calls `decoder.decode(chunk)`.
-- On output: posts decoded `VideoFrame` back to main (transferable). Tracks
+- On output: either posts decoded `VideoFrame` back to main (canvas path) or
+  routes it directly into `WorkerMstgSelector` (off-thread MSTG path). Tracks
   `medianDecodeTimeMs` and decoder queue depth — these end up in the latency
   report.
 - Description / SPS handling: buffers chunks until a keyframe with
   description arrives (H.264 / HEVC); uses `hevc-parser.ts` to package an
   HVCC descriptor.
+- Also has small encoded-chunk buffers for decoder configuration, sequence
+  recovery, and out-of-order/lost-packet handling. Those are recovery buffers,
+  not the intentional playback buffer described by the target doc.
 
 **vs. doc:**
-- Doc says "no buffering, immediately hand to renderer". Current code matches
-  that contract on the worker side — but the buffering moves to the main
-  thread (the `pendingFrames` Denque, see §9).
+- Doc says "no buffering, immediately hand to renderer". Current code gets
+  close only in the happy path; recovery/configuration buffers exist in the
+  decoder worker, and the intentional decoded-frame buffer lives either on
+  main (`pendingFrames`) or in `WorkerMstgSelector` (see §9).
 
 ## 11. `video renderer`
 
@@ -317,10 +341,11 @@ All file paths are relative to the repo root.
   fall back to canvas. URL flag `?renderBackend=mstg|canvas` overrides.
 
 **vs. doc:**
-- Roughly aligned: thin layer that draws/submits a frame. The MSTG path
-  even fits the doc's "renderer should not own presentation timing" ideal —
-  the platform does it. Canvas path mixes renderer + presentation timing
-  via the rAF loop (no clean separation).
+- Canvas rendering is roughly aligned as a thin `drawImage` backend, but its
+  caller (`VideoPlayer.renderTick`) owns timing. The MSTG backend is thin on
+  main, but presentation timing is not purely delegated to the platform:
+  `WorkerMstgSelector` selects decoded frames and writes them to the generator
+  based on wall-clock/audio timing.
 
 ## 12. `video presentation`
 
@@ -329,7 +354,7 @@ All file paths are relative to the repo root.
   target timestamp per refresh and picks the latest pending frame whose
   timestamp ≤ target. Older frames are closed and dropped.
 - For the MSTG backend: presentation is delegated to the `<video>` element;
-  `MstgSelector` (in the worker) writes one frame at a time via the
+  `WorkerMstgSelector` (in the worker) writes one frame at a time via the
   `WritableStream<VideoFrame>` and adjusts `videoEl.playbackRate` to
   converge with audio drift.
 
@@ -338,14 +363,16 @@ All file paths are relative to the repo root.
   one, no queue. Current canvas backend does this in spirit (`while
   (pendingFrames.peekFront().timestamp <= adjustedTarget) … frameToRender =
   shift()`), but the upstream `pendingFrames` Denque is not a 1-slot
-  semantic.
+  semantic. MSTG is farther from the target here because its worker-side
+  selector intentionally keeps a decoded-frame queue.
 
 ## 13. `control plane`
 
 This is where the gap is largest. The current implementation does not have a
 "control plane" abstraction — control logic is woven into the data path,
 spread across at least eight files, and uses three different transports
-(per-frame fields, dedicated RPC methods, and `Computed<T>` invalidations).
+(per-frame fields, dedicated RPC methods, and `Computed<T>` invalidations)
+plus several purely local browser-side loops.
 Below is a complete walkthrough of how the existing control plane works.
 
 ### 13.1 State containers
@@ -423,11 +450,14 @@ Below is a complete walkthrough of how the existing control plane works.
 | Should-pause for a stream | `ChatState.EvaluatePriority` (kicked on register/unregister) | `[ComputeMethod] ShouldPause` invalidation across shards | `VideoStreamingBackend.GetQualityPreset` cross-service RPC |
 | Egress stall (data-plane signal) | `VideoStreamFilter` measures `lastYieldAt.Elapsed > 500 ms` | direct method call to `LatencyStore.DecrementPeerEgressFallback` | `PeerLatencyState.EgressFallbackSpatialLayer` |
 | Egress recovery | `VideoStreamFilter` after 10 s of clean delivery | direct method call to `LatencyStore.RestorePeerEgressFallback` | same |
+| Sender encode backpressure | `video-processing.ts` drops raw frames when `VideoEncoder.encodeQueueSize` stays high; 5 s drop-rate window | worker callback `onBackpressure(dropRate)` | `VideoPipeline.handleEncoderBackpressure` locally reconfigures or falls back codec |
+| Local VAD/silence | `RecorderStateHub` voice activity + remote stream count | local TS subscription; worker `setVadState` | `VideoPipeline` lowers bitrate, reduces frame rate, and may drop top simulcast extra during silence |
+| Audience codec set | `LiveVideoBackend.ChatState.RecomputeCodecs` from registered members | `[ComputeMethod] GetSupportedCodecs` invalidation | `VideoRecorder.SubscribeToSupportedDecoderCodecs` → JS codec switch/fallback |
 
 ### 13.3 Decision loops
 
-There are **three** decision loops, running on three different cadences, in
-two places:
+There are **at least six** decision loops, running on different cadences in
+both server and browser code:
 
 1. **`PeerLatencyState.RecordLatency`** (called per latency report, every 2 s
    per receiver) computes `IsNetworkSlow/Fast`, updates `BaselineLatencyMs`
@@ -464,6 +494,25 @@ two places:
      `[ComputeMethod] ShouldPause(chatId, streamId)` for the affected stream
      so the per-stream `GetQualityPreset` recomputes.
 
+4. **`VideoPipeline.handleEncoderBackpressure`** (browser-local, driven by
+   worker backpressure callbacks) smooths the worker's 5 s drop-rate windows
+   with an EMA, ignores hidden-tab / startup / post-switch samples, then steps
+   down along a fixed 1080p → 720p → 540p → 360p ladder after sustained
+   overload. If already at the bottom tier, it asks the recorder to fall back
+   to another codec.
+
+5. **VAD adaptive send control** (browser-local, from `RecorderStateHub`):
+   after silence in a group call, `VideoPipeline` reduces bitrate, tells the
+   worker to lower effective frame rate, and may remove the top simulcast
+   extra. Speech resumes restore bitrate/layers and force a keyframe. This is
+   independent of server latency decisions.
+
+6. **Codec compatibility control** (chat-level server state, browser-applied):
+   `LiveVideoBackend.ChatState` computes the intersection of viewers'
+   supported decoder codecs with a 10 s upgrade hysteresis. The publisher
+   subscribes to `LiveVideoStreams.GetSupportedCodecs` and can switch encoder
+   codec locally. Encoder hard failures also feed the same JS fallback path.
+
 ### 13.4 How a directive reaches the publisher
 
 The publisher subscribes via Fusion `Computed.Capture`:
@@ -485,6 +534,13 @@ So one `MutableState<VideoQualityPreset>` carries **five distinct
 directives** in one record: target preset, keyframe request, viewer count
 (arms simulcast), aggregated spatial cap, aggregated temporal cap. The
 publisher demultiplexes them on each change.
+
+There is a second publisher-side subscription for supported decoder codecs:
+`VideoRecorder.SubscribeToSupportedDecoderCodecs` watches
+`LiveVideoStreams.GetSupportedCodecs(...)` and calls JS
+`updateSupportedDecoderCodecs`. That path is separate from
+`VideoQualityPreset`, but it can still trigger an encoder codec switch and is
+therefore part of the effective send-quality control plane.
 
 ### 13.5 How layer-selection happens per receiver
 
@@ -561,6 +617,14 @@ axis:
    flips A/V sync to be audio-driven (audio leads, video follows) instead
    of video-driven (doc's model).
 
+9. **Sender-side control is split between server and client.** Doc calls out
+   sender backlog/ACK lag and encode cost as explicit sender signals. Current
+   implementation partly covers encode cost locally (`encodeQueueSize` →
+   drop-rate EMA → resolution/codec step-down) and partly covers send pressure
+   indirectly through latency/egress logic. VAD bitrate/layer drops are another
+   local sender policy, not visible to the server except through changed frame
+   bytes/layers.
+
 ### 13.7 Hardest control-plane refactorings
 
 In rough order of difficulty:
@@ -575,10 +639,12 @@ In rough order of difficulty:
 
 2. **Move the playback buffer from decoded to encoded.** This is not
    strictly control-plane, but it unblocks the doc's "skip at decoder-safe
-   points" model. Today the `pendingFrames` Denque holds `VideoFrame /
-   ImageBitmap`; the rAF loop and `AudioVideoSync` integration are built
-   on its decoded-time semantics. Switching to an encoded-frame buffer
-   means rebuilding pacing, jitter measurement, and A/V sync all at once.
+   points" model. Today there are two decoded buffers:
+   `VideoPlayer.pendingFrames` for canvas and `WorkerMstgSelector.queue` for
+   off-thread MSTG. Their rAF/selector timing and `AudioVideoSync`
+   integrations are built on decoded-time semantics. Switching to an
+   encoded-frame buffer means rebuilding pacing, jitter measurement, and A/V
+   sync all at once.
 
 3. **Replace the rule-engine `VideoStreamFilter` with budget-driven layer
    selection.** Burst stabilisation, decay, egress fallback, gap recovery,
@@ -596,13 +662,15 @@ In rough order of difficulty:
    metrics, and `ForwardedSpatialLayerId` round-trip all read those raw
    numbers today.
 
-5. **Consolidate the quality decision loop.** Three loops on three
-   cadences (`RecordLatency` per-report, `EvaluateQuality` every 2 s,
-   `EvaluatePriority` on register events) all touch `VideoQualityPreset`
-   indirectly. Doc has one cadence (3–5 s aggregation, slow upgrades,
-   fast downgrades). Merging them while preserving the priority-pause
-   semantics needs careful unwinding because pause currently rides the
-   same `Paused` enum value through `VideoStreamFilter`.
+5. **Consolidate the quality decision loops.** Server loops
+   (`RecordLatency` per-report, `EvaluateQuality` every 2 s,
+   `EvaluatePriority` on register events) and browser-local loops
+   (backpressure EMA, VAD send reduction, codec fallback) all affect the
+   produced or forwarded quality. Doc has one conceptual cadence (3–5 s
+   aggregation, slow upgrades, fast downgrades) plus explicit sender
+   constraints. Merging them while preserving priority-pause, codec
+   compatibility, and silence reduction needs careful unwinding because pause
+   currently rides the same `Paused` enum value through `VideoStreamFilter`.
 
 6. **Drop the producer-side 60-frame Denque on top of the RpcStream and
    shrink the RPC buffer to the doc's 10/5.** Looks small, but the current
