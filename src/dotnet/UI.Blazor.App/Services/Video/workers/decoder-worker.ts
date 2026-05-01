@@ -58,19 +58,54 @@ const RECOVERY_MAX_ATTEMPTS = 3;
 // Cleared on stream change (`stop` / `configureDecoder`).
 const failedCandidates = new Set<string>();
 
+// Track the dimensions the current decoder was last (re)configured against.
+// When a keyframe arrives with larger / smaller dims, we probe whether the
+// current codec string still supports the new size — only recreate the
+// decoder when isConfigSupported() says no. Codec `level_idc` defines a
+// max picture size, not an exact one; most layer changes within the level's
+// envelope can be handled in-place by the browser decoder.
+let currentCodedWidth = 0;
+let currentCodedHeight = 0;
+
 // Re-derive the codec string for a new keyframe description and pick the best
 // HW-supported candidate. Returns null when no remaining candidate is HW-
 // supported for the description (caller must end the stream). Skips candidates
 // already known to fail this stream.
 async function reselectCodecForDescription(
     description: ArrayBuffer,
+    overrideDims?: { width: number; height: number },
 ): Promise<DecoderCodecSelection | null> {
     if (!currentDecoderConfig) return null;
     const candidates = getCodecCandidates(currentDecoderConfig.codec, description);
-    const dims = (currentDecoderConfig.codedWidth && currentDecoderConfig.codedHeight)
-        ? { width: currentDecoderConfig.codedWidth, height: currentDecoderConfig.codedHeight }
-        : undefined;
+    const dims = overrideDims
+        ?? ((currentDecoderConfig.codedWidth && currentDecoderConfig.codedHeight)
+            ? { width: currentDecoderConfig.codedWidth, height: currentDecoderConfig.codedHeight }
+            : undefined);
     return selectDecoderCodec(candidates, description, dims, failedCandidates);
+}
+
+// Probe whether the current decoder codec accepts the new frame dimensions.
+// Cheap (~1 ms): VideoDecoder.isConfigSupported is the authoritative check —
+// no need to hand-roll level_idc → max-pixel tables. Returns true when the
+// codec string's level / profile envelope still covers the new size on this
+// HW; returns false when we must reselect (escalate level) and recreate.
+async function isCurrentCodecCompatible(
+    width: number,
+    height: number,
+    description?: ArrayBuffer,
+): Promise<boolean> {
+    if (!currentDecoderConfig) return false;
+    try {
+        const config: VideoDecoderConfig = {
+            codec: currentDecoderConfig.codec,
+            hardwareAcceleration: 'prefer-hardware',
+            codedWidth: width,
+            codedHeight: height,
+        };
+        if (description) config.description = description;
+        const { supported } = await VideoDecoder.isConfigSupported(config);
+        return supported === true;
+    } catch { return false; }
 }
 
 // Yield a macrotask so the platform can release a previous HW codec slot
@@ -576,6 +611,8 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
                 durationMs * 1000,
                 frame.IsKeyFrame,
                 pullSequenceNumber++,
+                frame.Width,
+                frame.Height,
                 dataBuffer,
                 descBuffer,
             );
@@ -637,6 +674,8 @@ const serverImpl: DecoderWorker = {
                     : 'none');
 
             currentDecoderConfig = config;
+            currentCodedWidth = config.codedWidth ?? 0;
+            currentCodedHeight = config.codedHeight ?? 0;
 
             // Defer decoder.configure() to the first keyframe. iOS Safari HEVC HW
             // decoder loses state during the idle gap between init's configure()
@@ -663,6 +702,7 @@ const serverImpl: DecoderWorker = {
             warnLog?.log(`[INIT_DEFERRED] Decoder created, configure() deferred to first keyframe, ` +
                 `codec=${config.codec}, hwAccel=${config.hardwareAcceleration}, ` +
                 `descLen=${config.description ? config.description.byteLength : 0}, ` +
+                `dims=${currentCodedWidth}x${currentCodedHeight}, ` +
                 `decoderState=${decoder.getState()}`);
         } catch (error) {
             errorLog?.log('Failed to initialize decoder:', error);
@@ -682,6 +722,8 @@ const serverImpl: DecoderWorker = {
             infoLog?.log('Initializing decoder (stream input, RPC output) for codec:', config.codec);
 
             currentDecoderConfig = config;
+            currentCodedWidth = config.codedWidth ?? 0;
+            currentCodedHeight = config.codedHeight ?? 0;
 
             // Output goes via RPC callback (onDecodedFrame) — no stream output writer.
             // Cross-worker VideoFrame transfer via postMessage+transfer works correctly,
@@ -723,6 +765,8 @@ const serverImpl: DecoderWorker = {
                             value.duration,
                             value.isKeyFrame,
                             value.sequenceNumber,
+                            value.width,
+                            value.height,
                             value.data,
                             value.description
                         );
@@ -755,6 +799,8 @@ const serverImpl: DecoderWorker = {
             lastRecoveryAtMs = 0;
             consecutiveRecoveries = 0;
             failedCandidates.clear();
+            currentCodedWidth = 0;
+            currentCodedHeight = 0;
 
             if (pullActive) {
                 pullActive = false;
@@ -912,6 +958,8 @@ const serverImpl: DecoderWorker = {
         duration: number,
         isKeyFrame: boolean,
         sequenceNumber: number,
+        width: number | undefined,
+        height: number | undefined,
         data: ArrayBuffer,
         description?: ArrayBuffer
     ): Promise<void> => {
@@ -1125,6 +1173,78 @@ const serverImpl: DecoderWorker = {
                 }
             }
 
+            // Resolution-change handling. Fires on keyframes that carry
+            // VideoFrameDto.Width/Height (any codec — AVC Annex B, AV1, VP9
+            // and HEVC streams alike). The codec's `level_idc` defines a max
+            // picture size; rotation, simulcast layer changes, or screencast
+            // window resizes commonly stay within that envelope and the
+            // browser decoder adapts internally — no need to recreate.
+            //
+            // Probe authority: `VideoDecoder.isConfigSupported(codec, dims, desc?)`
+            // tells us directly whether the current codec config still accepts
+            // the new size. Only when it returns false do we reselect (escalate
+            // level / profile) and close+create a fresh decoder.
+            if (isKeyFrame && width && height) {
+                if (currentCodedWidth === 0 || currentCodedHeight === 0) {
+                    // First keyframe with dims after init — just track. Decoder
+                    // was already (re)built above with the init-time codec.
+                    currentCodedWidth = width;
+                    currentCodedHeight = height;
+                } else if (width !== currentCodedWidth || height !== currentCodedHeight) {
+                    const compatible = await isCurrentCodecCompatible(width, height, description);
+                    if (compatible) {
+                        infoLog?.log(`Resolution change ${currentCodedWidth}x${currentCodedHeight} ` +
+                            `-> ${width}x${height}; codec ${currentDecoderConfig?.codec} compatible, ` +
+                            `decoder adapts in-place`);
+                        currentCodedWidth = width;
+                        currentCodedHeight = height;
+                    } else {
+                        const oldCodec = currentDecoderConfig!.codec;
+                        warnLog?.log(`Resolution change ${currentCodedWidth}x${currentCodedHeight} ` +
+                            `-> ${width}x${height} incompatible with ${oldCodec}; reselecting`);
+                        const candidates = getCodecCandidates(oldCodec, description);
+                        const selection = await selectDecoderCodec(
+                            candidates, description, { width, height }, failedCandidates);
+                        if (!selection) {
+                            errorLog?.log(`No HW-supported codec for ${width}x${height}; ending stream`);
+                            if (pullActive) {
+                                pullActive = false;
+                                void callbacks.onPullEnded(
+                                    'codec not supported for new dims', rpcNoWait);
+                            }
+                            return;
+                        }
+                        await awaitHwReleased();
+                        if (decoder.getState() !== 'closed') decoder.close();
+                        currentDecoderConfig = {
+                            ...currentDecoderConfig!,
+                            codec: selection.codec,
+                            codedWidth: width,
+                            codedHeight: height,
+                        };
+                        const freshConfig: DecoderConfig = description
+                            ? { ...currentDecoderConfig, description }
+                            : { ...currentDecoderConfig, description: undefined };
+                        decoder = new WebCodecsDecoder(
+                            freshConfig,
+                            emitDecodedFrame,
+                            (error) => {
+                                if (shouldLogDecoderError(decoderErrorKey('dim-change', error)))
+                                    errorLog?.log(`Decoder error (dim-change path, state=${
+                                        decoder?.getState() ?? '?'}):`, error);
+                                requestKeyframeOnDecoderError();
+                            }
+                        );
+                        decoder.initialize();
+                        currentCodedWidth = width;
+                        currentCodedHeight = height;
+                        if (description) lastRawDescription = description.slice(0);
+                        warnLog?.log(`Dim-change rebuild: ${oldCodec} -> ${selection.codec} ` +
+                            `@ ${width}x${height}`);
+                    }
+                }
+            }
+
             // Defense-in-depth: never feed empty data to the decoder
             if (dataLen === 0) {
                 warnLog?.log(`Skipping chunk with empty data: seq=${sequenceNumber}, isKey=${isKeyFrame}`);
@@ -1316,6 +1436,8 @@ const serverImpl: DecoderWorker = {
         try {
             infoLog?.log('Configuring decoder with:', config.codec);
             currentDecoderConfig = config;
+            currentCodedWidth = config.codedWidth ?? 0;
+            currentCodedHeight = config.codedHeight ?? 0;
             // New stream description → forget any candidate failures from the
             // previous stream; the new bitstream may accept what the old one
             // rejected (different encoder, different SPS, etc.).

@@ -28,6 +28,11 @@ export interface RawChunkMessage {
     sequenceNumber: number;
     data: ArrayBuffer;
     description?: ArrayBuffer;
+    // Source frame dimensions, populated by the sender per VideoFrameDto.
+    // Keyframe-only typically. Used by the decoder worker to detect resolution
+    // changes that need decoder-config probe / recreate.
+    width?: number;
+    height?: number;
 }
 
 // --- Feature detection ---

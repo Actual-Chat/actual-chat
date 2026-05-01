@@ -1091,7 +1091,9 @@ export class VideoPlayer {
         timestampMs: number,
         durationMs: number,
         isKeyFrame: boolean,
-        description?: Uint8Array
+        description?: Uint8Array,
+        width?: number,
+        height?: number,
     ): void {
         if (!this.isPlaying || !this.decoderWorker) {
             return;
@@ -1143,7 +1145,7 @@ export class VideoPlayer {
                 }
 
                 // Send keyframe to decoder worker
-                this.sendToDecoderWorker(frameData, timestampMs, durationMs, isKeyFrame, description);
+                this.sendToDecoderWorker(frameData, timestampMs, durationMs, isKeyFrame, description, width, height);
             }
             // Drop delta frames while waiting for keyframe
             return;
@@ -1183,7 +1185,7 @@ export class VideoPlayer {
             }
         }
 
-        this.sendToDecoderWorker(frameData, timestampMs, durationMs, isKeyFrame, description);
+        this.sendToDecoderWorker(frameData, timestampMs, durationMs, isKeyFrame, description, width, height);
     }
 
     private sendToDecoderWorker(
@@ -1191,7 +1193,9 @@ export class VideoPlayer {
         timestampMs: number,
         durationMs: number,
         isKeyFrame: boolean,
-        description?: Uint8Array
+        description?: Uint8Array,
+        width?: number,
+        height?: number,
     ): void {
         if (!this.decoderWorker) return;
 
@@ -1215,6 +1219,8 @@ export class VideoPlayer {
                 sequenceNumber: this.sequenceNumber++,
                 data: dataBuffer,
                 description: descBuffer,
+                width,
+                height,
             });
         } else {
             // RPC fallback: send raw bytes to worker
@@ -1223,6 +1229,8 @@ export class VideoPlayer {
                 durationMs * 1000,  // ms → μs
                 isKeyFrame,
                 this.sequenceNumber++,
+                width,
+                height,
                 dataBuffer,
                 descBuffer,
                 rpcNoWait
@@ -1503,7 +1511,7 @@ export class VideoPlayer {
                     `serverNow=${nowMs.toFixed(0)}, impliedLatency=${impliedLatency.toFixed(0)}ms, isKey=${isKeyFrame}`);
             }
 
-            this.pushFrame(data, offsetMs, durationMs, isKeyFrame, description);
+            this.pushFrame(data, offsetMs, durationMs, isKeyFrame, description, frame.Width, frame.Height);
         } catch (error) {
             errorLog?.log('Error processing received frame:', error);
         }

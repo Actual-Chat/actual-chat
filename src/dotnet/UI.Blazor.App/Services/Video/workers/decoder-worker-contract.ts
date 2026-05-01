@@ -66,11 +66,15 @@ export interface DecoderWorker {
      * Decode raw encoded bytes (used by video-player.ts).
      * The worker creates EncodedVideoChunk internally from the raw bytes.
      * ArrayBuffer args are placed last (before noWait) so RPC's getTransferables()
-     * scanning from the end can zero-copy transfer them.
+     * scanning from the end can zero-copy transfer them. Numeric `width`/`height`
+     * sit before the buffers — they're not transferable, so they don't disturb
+     * the trailing-transferable scan.
      * @param timestamp Timestamp in microseconds
      * @param duration Duration in microseconds
      * @param isKeyFrame Whether this is a keyframe
      * @param sequenceNumber Chunk sequence number for ordering
+     * @param width Source frame width (keyframe only, undefined if unknown)
+     * @param height Source frame height (keyframe only, undefined if unknown)
      * @param data Raw encoded bytes (transferred, zero-copy)
      * @param description Optional codec description bytes (transferred, zero-copy)
      * @param noWait Fire-and-forget flag (don't wait for response)
@@ -80,6 +84,8 @@ export interface DecoderWorker {
         duration: number,
         isKeyFrame: boolean,
         sequenceNumber: number,
+        width: number | undefined,
+        height: number | undefined,
         data: ArrayBuffer,
         description?: ArrayBuffer,
         noWait?: RpcNoWait
