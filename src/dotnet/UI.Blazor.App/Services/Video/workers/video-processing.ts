@@ -1204,7 +1204,7 @@ function setupEncoders(config: VideoProcessingConfig): void {
 
     const layers = config.spatialLayers ?? [];
     for (let i = 0; i < layers.length; i++) {
-        const layer = layers[i];
+        const layer = alignLayerToEncoderOrientation(layers[i]);
         const layerCfg: EncoderConfig = {
             ...config.encoder,
             width: layer.width,
@@ -1250,6 +1250,24 @@ function ladderMaxDims(): { width: number; height: number } {
     return { width: w, height: h };
 }
 
+// Map a layer's (w, h) onto the base encoder's current orientation. The ladder
+// is built from camera-sensor dims (always landscape on iOS — see
+// media-capture.ts comment) so a portrait-oriented sender receives landscape
+// extras unless we transpose. Mirrors the reconfigure RPC handler's swap
+// (search "Preserve encoder orientation"). Bitrate stays put — it's a function
+// of pixel count, which is rotation-invariant. Returns the same shape so
+// callers can use the result interchangeably with the input layer.
+function alignLayerToEncoderOrientation(layer: SpatialLayerConfig): SpatialLayerConfig {
+    if (!encoderConfig) return layer;
+    const inSmall = Math.min(layer.width, layer.height);
+    const inLarge = Math.max(layer.width, layer.height);
+    const isPortrait = encoderConfig.height > encoderConfig.width;
+    const w = (isPortrait ? inSmall : inLarge) & ~1;
+    const h = (isPortrait ? inLarge : inSmall) & ~1;
+    if (w === layer.width && h === layer.height) return layer;
+    return { ...layer, width: w, height: h };
+}
+
 // Cheap structural match: same length AND identical (w, h, bitrate) per index.
 // Used by setSpatialLayers to skip a no-op rebuild — repeated server pushes of
 // the same ladder are common and we don't want to drain the encoder pipeline
@@ -1258,7 +1276,7 @@ function extraLayerCountMatches(layers: SpatialLayerConfig[]): boolean {
     if (layers.length !== extraLayerEncoders.length) return false;
     for (let i = 0; i < layers.length; i++) {
         const live = extraLayerEncoders[i].getStats();
-        const want = layers[i];
+        const want = alignLayerToEncoderOrientation(layers[i]);
         if (live.configuredWidth !== want.width
             || live.configuredHeight !== want.height
             || live.configuredBitrate !== want.bitrate) return false;
@@ -1835,8 +1853,9 @@ export const serverImpl: VideoProcessingWorker = {
             encoderConfig = config; resizeCanvas = null; resizeCtx = null;
             // Rebuild simulcast extras on the new codec and restore downscaler targets
             // to match. If caller omits spatialLayers (P2P mode) we fall through to
-            // a single base target and stay single-layer.
-            const layers = spatialLayers ?? [];
+            // a single base target and stay single-layer. Same orientation alignment
+            // as setupEncoders / setSpatialLayers — see alignLayerToEncoderOrientation.
+            const layers = (spatialLayers ?? []).map(alignLayerToEncoderOrientation);
             for (let i = 0; i < layers.length; i++) {
                 const layer = layers[i];
                 const layerCfg: EncoderConfig = {
@@ -1914,14 +1933,23 @@ export const serverImpl: VideoProcessingWorker = {
             }
         }
 
+        // Align ladder dims to the base encoder's orientation BEFORE per-layer
+        // setup. The C# / video-recorder ladder is built from sensor dims
+        // (always landscape on iOS) — without the swap a portrait-oriented
+        // sender ends up with portrait base + landscape extras, which makes
+        // the WebGPU downscaler emit mixed-orientation frames and the receiver
+        // per-keyframe verification fail (1920x1080 transmitted dims vs
+        // 720x1280 decoded output on iOS Safari MSTG).
+        const alignedLayers = layers.map(alignLayerToEncoderOrientation);
+
         // If base codec is avc1.* and incoming extras need a higher AVC level
         // than the current string admits, bump it. Without this, hot-adding a
         // 720p extra to a base whose codec was auto-corrected to avc1.64001e
         // (Level 3.0, max 720×576) would fail with NotSupportedError.
-        if (encoderConfig.codec.startsWith('avc1.') && layers.length > 0) {
+        if (encoderConfig.codec.startsWith('avc1.') && alignedLayers.length > 0) {
             let maxW = encoderConfig.width;
             let maxH = encoderConfig.height;
-            for (const l of layers) {
+            for (const l of alignedLayers) {
                 if (l.width > maxW) maxW = l.width;
                 if (l.height > maxH) maxH = l.height;
             }
@@ -1935,8 +1963,8 @@ export const serverImpl: VideoProcessingWorker = {
         }
 
         const baseCodec = encoderConfig.codec;
-        for (let i = 0; i < layers.length; i++) {
-            const layer = layers[i];
+        for (let i = 0; i < alignedLayers.length; i++) {
+            const layer = alignedLayers[i];
             const layerCfg: EncoderConfig = {
                 ...encoderConfig,
                 width: layer.width,
