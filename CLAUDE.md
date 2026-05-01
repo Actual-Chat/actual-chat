@@ -140,9 +140,46 @@ c wt feature1    # Creates ActualLab.Fusion-feature1 if it doesn't exist and run
 
 The worktree is created using `git worktree add` from the main project directory.
 
-# Type Catalog
+# Type Catalog — Reuse Existing Abstractions (CRITICAL)
 
-Use `docs/api-index.md` to discover existing abstractions before writing new code. It lists key public types across all non-test projects, organized by project. For the complete list, see `docs/api-index-full.md`.
+This codebase is large and mature. **Reusing what already exists is far more
+important than writing something new.** A new helper that duplicates an
+existing one is a defect, not a feature: it splinters the codebase, drifts
+out of sync, and makes future changes harder. **Always look first.**
+
+**Indexes** (read these before writing or planning new code):
+- [`docs/api-index.md`](docs/api-index.md) — condensed, curated overview of
+  the most important .NET types, organized by project.
+- [`docs/api-index-full.md`](docs/api-index-full.md) — complete .NET type list.
+- [`docs/api-index-ts.md`](docs/api-index-ts.md) — TypeScript exports across
+  `src/nodejs/` and `src/dotnet/UI.Blazor*/`.
+
+## Planning rule (mandatory)
+
+**Every implementation plan MUST include a "Reuse" section** with two parts:
+
+1. **Existing abstractions to reuse.** Research first. List the concrete
+   types/functions you intend to call from the indexes above (or from the
+   sibling `ActualLab.Fusion` project). If you cannot find a fit, say so
+   explicitly — silence is not acceptable.
+
+2. **Reusability of new components.** For every new component the plan
+   introduces, ask: *is this likely useful elsewhere?* If yes, the plan
+   **must list an option to put it in a shared project** instead of the
+   feature-specific one:
+   - **C#**: `ActualChat.Core` (no server/UI deps) or
+     `ActualChat.Core.Server` (server-side, no UI deps).
+   - **TypeScript**: `src/nodejs/src/` (under `actuallab-core`,
+     `actuallab-rpc`, or a shared subfolder), not buried inside a single
+     component's folder.
+
+   The plan should compare the local-vs-shared placement and recommend
+   one. Default to shared when in doubt — promoting later is harder than
+   placing correctly the first time.
+
+If the work is small enough that you skip a written plan, you still owe
+yourself the "look first" step: search the indexes for keywords related
+to what you're about to write.
 
 # Architecture Docs
 

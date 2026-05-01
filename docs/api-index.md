@@ -2,7 +2,7 @@
 
 A condensed reference of the most important types in ActualChat.
 Use this to find existing abstractions before writing new code.
-See also: [Full API Index](api-index-full.md).
+See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-index-ts.md).
 
 
 ## Core (`ActualChat.Core`)
@@ -56,6 +56,12 @@ See also: [Full API Index](api-index-full.md).
 - `TrueSessionResolver` — session resolution
 
 
+## Core Audio (`ActualChat.Core.Audio`)
+
+- `AudioProcessingModule` — Web Audio API audio processing wrapper
+- `VoiceActivityDetector`, `OnnxVoiceActivityDetector` — VAD implementations
+
+
 ## Database (`ActualChat.Db`)
 
 - `IDbEntity` — database entity marker
@@ -67,7 +73,22 @@ See also: [Full API Index](api-index-full.md).
 
 - `RedisModule` — Redis module configuration
 - `RedisMeshLocks` — Redis-based distributed locks
-- `RedisTokenBucketRateLimiter` — rate limiting
+- `RedisTokenBucketRateLimiter`, `RedisSlidingWindowRateLimiter` — rate limiting
+
+
+## Kubernetes (`ActualChat.Kubernetes`)
+
+- `KubernetesModule` — Kubernetes integration module
+- `KubeMeshLocks` — Kubernetes lease-based distributed locks
+- `KubeServices` — Kubernetes service discovery
+- `KubeLeaseClient` — leader-election leases
+- `IKubeInfo`, `KubeInfo` — cluster info
+
+
+## Backend Markers (`ActualChat.Backend`)
+
+- `IRequiresThisNode`, `IRequiresRandomShard`, `IRequiresZeroShard` — service shard placement markers
+- `ShardScheme`, `ShardSchemeFlags` — sharding scheme configuration
 
 
 ## API Types (`ActualChat.Api`)
@@ -146,12 +167,12 @@ See also: [Full API Index](api-index-full.md).
 ## Backend Contracts (`*.Contracts`)
 
 Backend interfaces follow the pattern `I{Service}Backend` for internal service communication:
-- `IChatsBackend`, `IAuthorsBackend`, `IPlacesBackend` — chat backends
-- `IAccountsBackend`, `IAvatarsBackend` — user backends
+- `IChatsBackend`, `IAuthorsBackend`, `IPlacesBackend`, `IChatThreadsBackend`, `IChatEntryLanguagesBackend` — chat backends
+- `IAccountsBackend`, `IAvatarsBackend`, `ISessionTemporalsBackend`, `UserScopedKvasBackend` — user backends
 - `IContactsBackend` — contact backend
-- `IMediaBackend`, `IUploadsBackend` — media backends
+- `IMediaBackend`, `IMediaProgressBackend`, `IUploadsBackend` — media backends
 - `INotificationsBackend` — notification backend
-- `IStreamingBackend` — streaming backend
+- `IStreamingBackend`, `ILiveBackend`, `ILiveAudioBackend`, `ILiveVideoBackend`, `IVideoStreamingBackend` — streaming backends
 
 
 ## Server Infrastructure (`ActualChat.Core.Server`)
@@ -188,6 +209,10 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 - `IUploadProcessor` — processes uploaded files
 - `IMediaProcessor` — processes media content
 - `IContentSaver` — saves content to blob storage
+
+### AI Helpers
+- `IAnthropicClient` — Anthropic Claude API client
+- `IPromptHelpers`, `PromptTemplate` — reusable prompt templates
 
 
 ## UI Core (`ActualChat.UI`)
@@ -258,6 +283,38 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 - `EditMembersUI` — member editing utilities
 
 
+## ML / AI Services
+
+### Chat ML (`ActualChat.Chat.ML`)
+- `IConversationSummarizer`, `ConversationSummarizer` — AI conversation summarization
+- `IChatDigestSummarizer` — chat digest summarization
+- `IThreadInsightExtractor` — thread insight extraction
+- `IEmbeddingsCalculator` — text embeddings
+- `IEntryGroupExtractor`, `EntryGroupBuilder` — group entries for ML
+- `RateLimitedChatCompletionService` — rate-limited LLM calls
+- `OpenAITranscriber` — OpenAI-based ASR
+- `TokenEstimator` — token-count estimator
+
+### ML Search (`ActualChat.MLSearch.Service`)
+- `Search`, `SearchBackend` — OpenSearch-backed implementations of `ISearch`/`ISearchBackend`
+- `OpenSearchSettings`, `OpenSearchConfigurator` — OpenSearch client setup
+- `EntryIndexingFlow`, `AccountIndexingFlow`, `PlaceIndexingFlow`, `UserContactIndexingFlow`, `PlaceContactIndexingFlow`, `GroupIndexingFlow` — indexing flows
+
+### ASR (`ActualChat.Asr`)
+- `ParakeetModel`, `ParakeetModelDownloader` — NVIDIA Parakeet ASR
+- `TdtDecoder` — Token-and-Duration Transducer decoder
+- `ProgressiveStreamingHandler` — progressive ASR streaming
+
+### Flows (`ActualChat.Flows.Service`)
+- `FlowBackend`, `FlowsServiceModule` — flow execution backend
+
+
+## Email Templates (`ActualChat.Mjml.Blazor`, `ActualChat.Users.Templates`)
+
+- `Mjml*` Blazor components — MJML email-template builder
+- `BlazorRenderer`, `DigestArgs` — render user-facing email templates
+
+
 ## Server Application (`ActualChat.App.Server`)
 
 - `AppHost` — main application host
@@ -265,6 +322,33 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 - `HostSettings` — host configuration settings
 - `AggregateDbInitializer` — orchestrates database initialization
 - `ReadinessHealthCheck`, `LivelinessHealthCheck` — Kubernetes health checks
+
+
+## Other App Hosts
+
+- `ActualChat.App.Wasm` — Blazor WebAssembly client host
+- `ActualChat.App.AspireHost` — .NET Aspire orchestrated dev host
+- `ActualChat.App.ConsoleClient` — diagnostic CLI client
+- `ActualChat.App.VideoLoadTest` — video pipeline load tester
+- `ActualChat.App.AotHelper` — generates AOT-friendly type "keeps" for trimming
+- `ActualChat.UI.App` — `AppServerInstanceSelector`, `IncomingShareSuggestions`, `VideoTranscoder`
+- `ActualChat.UI.Blazor.AppPack` — `WebApp` packaging glue
+
+
+## MAUI Shared (`ActualChat.Maui`)
+
+- `MauiModule`, `MauiSettings`, `MauiPreferences`, `MauiDiagnostics`, `MauiHostNameRemapper`, `MauiBackgroundState`
+- `SQLiteBatchingKvasBackend`, `SQLiteRemoteComputedCache` — SQLite-backed KVAS/cache
+- Platform-specific extensions for Android (`Android*`) and iOS (`Ios*`, `OSLog*`, `*Ext` for AVFoundation/UIKit)
+
+
+## iOS Share Extension (`ActualChat.App.Maui.IosShareExt`)
+
+Standalone iOS share-extension app:
+- `ShareExtensionApplication`, `ShareViewController` — extension entry points
+- `IosHub`, `IosShareExtensionModule`, `SessionInitializer` — DI / session
+- `ShareView`, `SignInView`, `ContactSelectionView`, `UploadProgressView`, etc. — extension UI
+- `IStatefulView<T>`, `ComputedStateView<T>` — Fusion-style stateful UIKit views
 
 
 ## MAUI Application (`ActualChat.App.Maui`)

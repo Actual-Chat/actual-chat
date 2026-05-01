@@ -1,7 +1,7 @@
 # API Index (Full)
 
-This document lists all public types with XML documentation in ActualChat projects.
-See also: [Condensed API Index](api-index.md).
+This document lists notable public types in ActualChat .NET projects.
+See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-ts.md).
 
 
 ## ActualChat.Core
@@ -221,8 +221,26 @@ See also: [Condensed API Index](api-index.md).
 - `AliasInfo` (record) - Alias information.
 
 
+## ActualChat.Core.Audio
+
+- `AudioProcessingModule` - Web audio API audio processing module wrapper.
+- `AudioProcessingModuleConfig` - Configuration for audio processing module.
+- `ProcessingConfig` - Audio processing pipeline configuration.
+- `DownmixMethod` (enum) - Methods for downmixing audio channels.
+- `GainControlMode` (enum) - Gain control modes for APM.
+- `NoiseSuppressionLevel` (enum) - Noise suppression intensity levels.
+- `VoiceActivityDetector` - Voice activity detection wrapper.
+- `NoopVoiceActivityDetector` - No-op voice activity detector.
+- `OnnxVoiceActivityDetector` - ONNX-based voice activity detector.
+- `VoiceActivityKind` (enum) - Types of voice activity (Start, End).
+
+
 ## ActualChat.Core.Server
 
+- `IAnthropicClient` - Anthropic Claude API client wrapper.
+- `IPromptHelpers` - Prompt-template helper service.
+- `PromptTemplate` (record) - Reusable prompt template with named variables.
+- `PromptHelpersExt` (static class) - Extensions for IPromptHelpers.
 - `BackendServiceDef` (record) - Defines a backend service with hosting role and service mode.
 - `BackendServiceDefs` (sealed class) - Registry of all backend service definitions.
 - `Content` - Content information.
@@ -302,6 +320,16 @@ See also: [Condensed API Index](api-index.md).
 - `UploadedStreamFile` - Uploaded stream file.
 - `UploadedTempFile` - Uploaded temp file.
 - `IHealthState` - Health state.
+
+
+## ActualChat.Backend
+
+- `IRequiresRandomShard` - Marker interface indicating a service requires a random shard.
+- `IRequiresThisNode` - Marker interface indicating a service must run on the current node.
+- `IRequiresZeroShard` - Marker interface indicating a service requires the zero shard.
+- `ShardScheme` - Sharding scheme configuration.
+- `ShardSchemeFlags` (enum) - Flags configuring a shard scheme's behavior.
+- `ServerHashInputExt` (static class) - Server-side hash input extensions.
 
 
 ## ActualChat.Db
@@ -624,8 +652,11 @@ See also: [Condensed API Index](api-index.md).
 - `IChatUsagesBackend` - Backend service for tracking chat usage statistics.
 - `IEmailsBackend` - Backend service for email operations.
 - `ISessionsBackend` - Backend service for managing user sessions.
+- `ISessionTemporalsBackend` - Backend service for transient/temporal session data.
+- `SessionTemporalsBackend` - Implementation of ISessionTemporalsBackend.
 - `IUserPresencesBackend` - Backend service for user presence tracking.
 - `IServerKvasBackend` - Backend service for server-side key-value store.
+- `UserScopedKvasBackend` - User-scoped wrapper around IServerKvasBackend.
 - `ServerKvasBackendExt` (static class) - Extension methods for IServerKvasBackend.
 - `AccountsBackendExt` (static class) - Extension methods for IAccountsBackend.
 
@@ -649,6 +680,7 @@ See also: [Condensed API Index](api-index.md).
 - `IGrabStatusesBackend` - Backend service for tracking link preview grab statuses.
 - `ILinkPreviewsBackend` - Backend service for link preview generation and caching.
 - `IMediaBackend` - Backend service for media management.
+- `IMediaProgressBackend` - Backend service for tracking media processing progress.
 - `IUploadsBackend` - Backend service for file upload handling.
 - `GrabStatusesBackendExt` (static class) - Extension methods for IGrabStatusesBackend.
 
@@ -664,6 +696,9 @@ See also: [Condensed API Index](api-index.md).
 
 - `AudioRecord` (record) - Represents a recorded audio segment with metadata.
 - `ILiveBackend` - Backend service for live audio streaming.
+- `ILiveAudioBackend` - Backend service for live audio sessions.
+- `ILiveVideoBackend` - Backend service for live video sessions.
+- `IVideoStreamingBackend` - Backend service for video streaming operations.
 - `IStreamingBackend` - Backend service for audio streaming operations.
 - `ITranscriber` - Interface for audio transcription.
 - `ITranscriberFactory` - Factory for creating transcriber instances.
@@ -672,6 +707,26 @@ See also: [Condensed API Index](api-index.md).
 ## ActualChat.Search.Contracts
 
 - `ISearchBackend` - Backend service for full-text search operations.
+
+
+## ActualChat.MLSearch.Contracts
+
+(Marker contract project — types are defined in `ActualChat.Search.Contracts` and `ActualChat.MLSearch.Service`.)
+
+
+## ActualChat.Transcription.Contracts
+
+(Marker contract project — transcription contracts are defined alongside `ActualChat.Streaming.Contracts`.)
+
+
+## ActualChat.Asr
+
+- `ParakeetModel` - NVIDIA Parakeet ASR model wrapper.
+- `ParakeetModelDownloader` - Downloads Parakeet model files.
+- `ProgressiveStreamingHandler` - Streams ASR results progressively.
+- `TdtDecoder` - Token-and-Duration Transducer decoder.
+- `TranscriptionResult` - Result of ASR transcription.
+- `Vocabulary` - ASR model vocabulary.
 
 
 ## ActualChat.Users.Service
@@ -735,29 +790,77 @@ See also: [Condensed API Index](api-index.md).
 
 - `Invites` - Implementation of IInvites for invitation management.
 - `InvitesBackend` - Implementation of IInvitesBackend.
+- `LegacyInvites` - Legacy invite handling for backward compatibility.
+- `DbActivationKey` - Database entity for activation keys.
+- `DbInvite` - Database entity for invites.
+- `InviteDbContext` - EF Core context for invites.
+- `InviteDbInitializer` - Database initializer for invites.
+- `InviteServiceModule` - DI module for Invite service.
 
 
 ## ActualChat.Media.Service
 
-- `GrabStatusesBackend` - Implementation of IGrabStatusesBackend.
-- `LinkPreviewsBackend` - Implementation of ILinkPreviewsBackend.
 - `MediaBackend` - Implementation of IMediaBackend.
+- `MediaService` - Service for media operations.
+- `MediaSaver` - Saves processed media files.
+- `MediaUploader` - Handles file uploads for media.
 - `MediaLinkPreviews` - Implementation of IMediaLinkPreviews.
+- `MediaProgressBackend` - Implementation of IMediaProgressBackend.
 - `Uploads` - Implementation of IUploads for file upload handling.
 - `UploadsBackend` - Implementation of IUploadsBackend.
+- `UploadsStorage` - Storage layer for uploaded files.
+- `LinkPreviewsBackend` - Implementation of ILinkPreviewsBackend.
+- `GrabStatusesBackend` - Implementation of IGrabStatusesBackend.
+- `ContentController` - API controller for media content retrieval.
+- `Crawler` - Web page crawler for metadata.
+- `EgressGuard` - Guards against egress to forbidden domains.
+- `Gifs` - Animated GIF handling.
+- `HostWildcard` - Wildcard hostname matcher.
+- `ICrawlingHandler` - Interface for crawling handlers.
+- `ImageGrabber` - Grabs images from URLs.
+- `ImageLinkHandler` - Handler for image links.
+- `OpenGraphParser` - Parses Open Graph metadata.
+- `Resource` - Resource loader for media service.
+- `RobotsFiles` - Robots.txt file handler.
+- `SpecialAddresses` - Special address handling.
+- `WebSiteHandler` - Handler for general websites.
+- `LinkPreviewFlow` - Flow for generating link previews.
+- `PreviewThumbnailUpdateFlow` - Flow for updating preview thumbnails.
+- `UploadProcessingFlow` - Flow for processing uploads.
+- `MediaSettings` - Media service settings.
+- `MetadataSerializer` - Serializer for media metadata.
+- `DbGrabStatus` - Database entity for grab status.
+- `DbLinkPreview` - Database entity for link previews.
+- `DbMedia` - Database entity for media.
+- `DbMediaProgress` - Database entity for media processing progress.
+- `MediaDbContext` - EF Core context for media.
+- `MediaDbInitializer` - Database initializer for media.
+- `MediaServiceModule` - DI module for Media service.
 
 
 ## ActualChat.Notification.Service
 
 - `Notifications` - Implementation of INotifications for push notifications.
 - `NotificationsBackend` - Implementation of INotificationsBackend.
+- `NotificationFlow` - Flow for sending notifications.
+- `NotificationHelper` - Helper utilities for notifications.
+- `FirebaseMessagingClient` - Firebase Cloud Messaging client.
+- `DbDevice` - Database entity for notification devices.
+- `DbExplicitNotification` - Database entity for explicit notifications.
+- `DbNotification` - Database entity for notifications.
+- `NotificationDbContext` - EF Core context for notifications.
+- `NotificationDbInitializer` - Database initializer for notifications.
+- `NotificationServiceModule` - DI module for Notification service.
 
 
 ## ActualChat.Streaming.Service
 
 - `FlowBackend` - Implementation of IFlowBackend.
 - `LiveBackend` - Implementation of ILiveBackend.
+- `LiveAudioBackend` - Implementation of ILiveAudioBackend.
+- `LiveVideoBackend` - Implementation of ILiveVideoBackend.
 - `StreamingBackend` - Implementation of IStreamingBackend.
+- `VideoStreamingBackend` - Implementation of IVideoStreamingBackend.
 - `TranscriberFactory` - Implementation of ITranscriberFactory.
 
 
@@ -765,6 +868,74 @@ See also: [Condensed API Index](api-index.md).
 
 - `Search` - Implementation of ISearch.
 - `SearchBackend` - Implementation of ISearchBackend.
+
+
+## ActualChat.MLSearch.Service
+
+- `MLSearchServiceModule` - DI module for ML search service.
+- `MLSearchSettings` - ML search configuration.
+- `OpenSearchSettings` - OpenSearch-specific settings.
+- `MLSearchDbContext` - EF Core context for ML search.
+- `MLSearchDbInitializer` - Database initializer for ML search.
+- `MLSearchInstruments` - Diagnostics instruments for ML search.
+- `OpenSearchConfigurator` - Configures OpenSearch client.
+- `OpenSearchTypeInfoResolver` - Custom type info resolver for OpenSearch.
+- `HighlightsConverter` - OpenSearch highlights converter.
+- `Search` - Implementation of ISearch using ML search.
+- `SearchBackend` - Implementation of ISearchBackend.
+- `IIndexedUserMinimalUpsert` - Minimal user upsert interface.
+- `IIndexedUserUpsertForPlacesOnly` - Place-only user upsert interface.
+- `IIndexedUserUpsertWithoutPlaces` - User upsert without places interface.
+- `IndexedUserContact` - Indexed contact document.
+- `AccountIndexingFlow` - Flow for indexing accounts.
+- `EntryIndexingFlow` - Flow for indexing entries.
+- `EntryIndexingMasterFlow` - Master flow for entry indexing.
+- `GroupIndexingFlow` - Flow for indexing entry groups.
+- `PlaceContactIndexingFlow` - Flow for indexing place contacts.
+- `PlaceIndexingFlow` - Flow for indexing places.
+- `UserContactIndexingFlow` - Flow for indexing user contacts.
+- `AccountExt` (static class) - Account extensions for search.
+- `ChatExt` (static class) - Chat extensions for search.
+- `ChatEntryExt` (static class) - Chat entry extensions for search.
+- `ContactExt` (static class) - Contact extensions for search.
+- `ContactSearchQueryExt` (static class) - Contact search query extensions.
+- `EntrySearchQueryExt` (static class) - Entry search query extensions.
+- `PlaceExt` (static class) - Place extensions for search.
+- `UriAttribute` (attribute) - URI validation attribute.
+
+
+## ActualChat.Flows.Service
+
+- `FlowBackend` - Backend implementation for flows.
+- `FlowsServiceModule` - DI module for Flows service.
+- `DbFlow` - Database entity for flows.
+- `FlowsDbContext` - EF Core context for flows.
+- `FlowsDbInitializer` - Database initializer for flows.
+
+
+## ActualChat.Chat.ML
+
+- `IChatDigestSummarizer` - Interface for chat digest summarization.
+- `ChatDigestSummarizer` - Summarizes chat digests with AI.
+- `ChatDigestSummarizerStub` - Stub implementation for chat digest summarization.
+- `IConversationSummarizer` - Interface for conversation summarization.
+- `ConversationSummarizer` - Summarizes conversations with AI.
+- `ConversationSummarizerStub` - Stub implementation for conversation summarization.
+- `IChatDialogFormatter` - Interface for chat dialog formatting.
+- `ChatDialogFormatterExt` (static class) - Extensions for chat dialog formatting.
+- `IThreadInsightExtractor` - Interface for thread insight extraction.
+- `ThreadInsightExtractor` - Extracts insights from thread messages.
+- `IEntryGroupExtractor` - Interface for entry group extraction.
+- `EntryGroupExtractor` - Extracts groups from chat entries.
+- `EntryGroupBuilder` - Builds groups of chat entries.
+- `EntryGroupLimit` (enum) - Limits for entry grouping.
+- `IEmbeddingsCalculator` - Interface for embeddings calculation.
+- `EmbeddingsCalculator` - Calculates embeddings for text.
+- `EmbeddingSettings` - Configuration for embeddings.
+- `RateLimitedChatCompletionService` - Rate-limited chat completion wrapper.
+- `ChatCompletionServiceExt` (static class) - Extensions for chat completion service.
+- `OpenAITranscriber` - Transcriber using OpenAI API.
+- `TokenEstimator` - Estimates token counts for prompts.
 
 
 ## ActualChat.UI
@@ -830,6 +1001,53 @@ See also: [Condensed API Index](api-index.md).
 - `SendingMessages` - Message sending with retry logic.
 
 
+## ActualChat.UI.App
+
+- `AppServerInstanceSelector` - Selects which app server instance to connect to.
+- `IncomingShareSuggestions` - Handles OS-level incoming share suggestions.
+- `VideoTranscoder` - Transcodes video files for upload/playback.
+
+
+## ActualChat.UI.Blazor.AppPack
+
+- `WebApp` - Web app entry point and packaging glue (used by ILRepack).
+
+
+## ActualChat.Mjml.Blazor
+
+Blazor components for building MJML email templates. Each MJML element has a corresponding component, plus enum types and `*Ext` helpers for property values.
+
+- `Mjml`, `MjmlAccordion`, `MjmlAccordionElement`, `MjmlAccordionText`, `MjmlAccordionTitle`, `MjmlAll`, `MjmlAttributes`, `MjmlBody`, `MjmlBreakpoint`, `MjmlButton`, `MjmlCarousel`, `MjmlCarouselImage`, `MjmlClass`, `MjmlColumn`, `MjmlDivider`, `MjmlFont`, `MjmlGroup`, `MjmlHead`, `MjmlHero`, `MjmlHtmlAttribute`, `MjmlHtmlAttributes`, `MjmlImage`, `MjmlInclude`, `MjmlNavbar`, `MjmlNavbarLink`, `MjmlPreview`, `MjmlRaw`, `MjmlSection`, `MjmlSelector`, `MjmlSocial`, `MjmlSocialElement`, `MjmlSpacer`, `MjmlStyle`, `MjmlTable`, `MjmlText`, `MjmlTitle`, `MjmlWrapper` — Blazor components for MJML email template building.
+- Enum/extension pairs (`MjmlButtonAlign`, `MjmlSectionDirection`, `MjmlSocialMode`, `MjmlStyleInline`, etc.) typed property values for the components above.
+
+
+## ActualChat.Users.Templates
+
+- `BlazorRenderer` - Renders user-facing email templates with Blazor.
+- `DigestArgs` - Arguments for the digest email template.
+
+
+## ActualChat.Kubernetes
+
+- `KubernetesModule` - DI module for Kubernetes integration.
+- `KubernetesSettings` - Kubernetes integration settings.
+- `IKubeInfo` - Interface for cluster info.
+- `KubeInfo` - Kubernetes cluster information accessor.
+- `KubeLeaseClient` - Client for Kubernetes leader-election leases.
+- `KubeMeshLocks` - Kubernetes-based distributed locks via leases.
+- `KubeServices` - Kubernetes service discovery.
+- `KubeToken` - Kubernetes auth token holder.
+- `EndpointDiscoveryWorker` - Worker that discovers service endpoints.
+- `Annotations` (static class) - Kubernetes annotation key constants.
+- `Labels` (static class) - Kubernetes label key constants.
+- `ChangeType` (enum) - Types of Kubernetes resource changes.
+- `ServiceProtocol` (enum) - Kubernetes service protocol types.
+- `KubeServiceProtocol` (enum) - Service protocol enumeration.
+- `MicroTimeJsonConverter` - JSON converter for Kubernetes MicroTime.
+- `NullableMicroTimeJsonConverter` - JSON converter for nullable MicroTime.
+- `ServiceProviderExt` (static class) - Service-provider extensions for Kubernetes.
+
+
 ## ActualChat.App.Server
 
 - `AppHost` - Main application host.
@@ -876,3 +1094,105 @@ See also: [Condensed API Index](api-index.md).
 - `SafeJSObjectReference` - Safe JS object reference.
 - `SafeJSRuntime` - JS runtime with disconnection handling.
 - `PhoneParser` - Phone number parsing with LibPhoneNumbers.
+
+
+## ActualChat.Maui
+
+Cross-MAUI-app shared utilities (used by App.Maui and IosShareExt).
+
+- `MauiModule` - DI module for MAUI shared services.
+- `MauiSettings` - MAUI application settings.
+- `MauiPreferences` - MAUI preferences storage.
+- `MauiDiagnostics` - MAUI diagnostics utilities.
+- `MauiHostNameRemapper` - Remaps hostnames for MAUI environments.
+- `MauiBackgroundState` - MAUI app background/foreground state tracking.
+- `WebAuth` - Web authentication settings for MAUI.
+- `IconUI` - Icon UI management.
+- `IconQueryExt` (static class) - Icon query extensions.
+- `SQLiteBatchingKvasBackend` - SQLite-based batching KVAS backend.
+- `SQLiteRemoteComputedCache` - SQLite-based remote computed cache.
+- `AndroidIncomingShareSuggestions` - Android incoming share suggestions.
+- `AndroidTaggedLogSink` - Android-specific Serilog sink with tags.
+- `AndroidFirebaseCrashlyticsSink` - Firebase Crashlytics Serilog sink.
+- `LoggerConfigurationXamarinExtensions` (static class) - Xamarin logger configuration extensions.
+- `IosIncomingShareSuggestions` - iOS incoming share suggestions.
+- `IosSharedSecureStorage` - iOS secure storage implementation.
+- `IosVideoTranscoder` - iOS video transcoding.
+- `OSLogLogger`, `OSLogLoggerProvider`, `AppleUnifiedLogSink` - iOS unified logging.
+- `LoadInPlaceResultExt`, `AVAssetImageGeneratorExt`, `AVAssetTrackExt`, `CGSizeExt`, `CMTimeExt`, `NSErrorExt`, `NSItemProviderExt` (static classes) - iOS framework extensions.
+- `LoggerConfigurationExtensions`, `LoggingBuilderExt` (static classes) - iOS logger configuration.
+- `SentryExt` (static class) - Sentry integration extensions.
+
+
+## ActualChat.App.Maui.IosShareExt
+
+Standalone iOS share extension app and views.
+
+- `ShareExtensionApplication` - Share extension app host (main entry).
+- `ShareViewController` - Main share view controller.
+- `ClientStartup` - iOS share extension client startup.
+- `IosHub` - Main iOS hub for the share extension.
+- `IosHubExt` (static class) - Extensions for IosHub.
+- `IosShareExtensionModule` - iOS share extension DI module.
+- `SessionInitializer` - Initializes session for the share extension.
+- `ShareInputs` - Input handling for share data.
+- `ShareStep` (enum) - Steps in the share workflow.
+- `ShareUI` - Share UI state management.
+- `ShareView` - Main share interface view.
+- `SignInView` - Sign-in screen for the share extension.
+- `SuccessView` - Success confirmation view.
+- `ErrorView` - Error display view.
+- `ContactView`, `ContactListView`, `ContactSelectionView`, `ContactIconView` - Contact display and selection views.
+- `PlaceView`, `PlaceListView` - Place display views.
+- `UploadProgressView` - Upload progress view.
+- `IStatefulView`, `IStatefulView<T>`, `StatefulView`, `StatefulView<T>` - Stateful view abstractions.
+- `ComputedStateView`, `ComputedStateView<T>`, `ComputedStateViewState<T>`, `CreateDefaultStateOptionsFactory<T>` - Computed-state view helpers.
+- `NSId`, `NSId<TId>`, `NSHasId<T, TId>` - NSObject ID wrappers.
+- `FusionBuilderExt`, `ServiceProviderExt`, `UICollectionViewCellRegistrationExt`, `UIKitExt`, `NSItemProviderExt` (static classes) - DI/UIKit/Fusion extensions.
+
+
+## ActualChat.App.AotHelper
+
+Tooling that emits AOT-friendly type "keeps" so MessagePack/STJ trimming-safe.
+
+- `AotTypeGenerator` - Generates AOT type test code.
+- `AotTypeTester` (abstract class) - Base tester for AOT type discovery.
+- `IAotTypeTester` - Interface for AOT type testers.
+- `ApiTypeTester` - Tests API-related types for AOT.
+- `ComponentTypeTester` - Tests component types for AOT.
+- `SerializableTypeTester` - Tests serializable types for AOT.
+- `MessagePackByteSerializerDiscovery` - Discovers MessagePack byte serializers.
+- `MessagePackFormatterDiscovery` - Discovers MessagePack formatters.
+- `StjConverterDiscovery` - Discovers System.Text.Json converters.
+- `StjKeepsGenerator` - Generates System.Text.Json converter keeps.
+
+
+## ActualChat.App.Wasm
+
+Blazor WebAssembly host shell for the client app. (Mostly bootstrap glue — no dedicated public types beyond `Program`.)
+
+
+## ActualChat.App.AspireHost
+
+.NET Aspire host for orchestrated local development. (Aspire app-host bootstrap — no dedicated public types beyond `Program`.)
+
+
+## ActualChat.App.ConsoleClient
+
+Console-based client used for diagnostics and integration testing. (CLI bootstrap — no dedicated public types beyond `Program`.)
+
+
+## ActualChat.App.VideoLoadTest
+
+Standalone load-testing tool for the video pipeline. (CLI bootstrap — no dedicated public types beyond `Program`.)
+
+
+## ActualChat.Asr.Demo
+
+Standalone demo app exercising `ActualChat.Asr`. (CLI bootstrap — no dedicated public types beyond `Program`.)
+
+
+## ActualChat.MLSearch
+
+(Empty marker project — no public types; implementation lives in `ActualChat.MLSearch.Service`.)
+
