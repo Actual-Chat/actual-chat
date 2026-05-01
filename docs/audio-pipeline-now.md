@@ -91,12 +91,12 @@ All file paths are relative to the repo root.
   queue.
 
 **vs. doc:**
-- The doc prescribes a `replaceable slot` (size-1) at this stage; current web
-  code uses a `Denque` capped at 50 with drop-oldest semantics, which is the
-  opposite drop direction. In normal operation the encoder is fast enough that
-  the queue stays near-empty, so the choice is rarely visible — but under
-  CPU pressure dropping oldest samples is exactly what the doc forbids
-  ("newer frame replaces pending frame").
+- The doc prescribes a short lossless handoff at this stage; current web code
+  uses a `Denque` capped at 50 with drop-oldest semantics. In normal operation
+  the encoder is fast enough that the queue stays near-empty. Under CPU
+  pressure, however, dropping oldest samples is still a recording-side data
+  loss point. The updated target forbids intentional speech drops before the
+  server because the same audio is used for transcription and persistence.
 - MAUI is closer in spirit (no queue), though the upstream platform ring
   buffers can hide several seconds of backlog.
 
@@ -126,22 +126,24 @@ All file paths are relative to the repo root.
   backpressures while active and drains-then-discards on completion.
 
 **vs. doc:**
-- Direction is wrong on multiple axes:
-  - The doc says one `RpcStream` with `isRealTime: true` and `canSkipTo: true`
-    is the only sender-side buffer; current code has a 1500-frame Denque
-    layered **on top of** a non-realtime `RpcStream`, with eager pre-emptive
-    drop-oldest at the producer rather than ACK-driven compaction.
-  - Doc's `BufferSize = 10`, `AckPeriod = 5`. Current `RpcStream` falls
-    through to defaults for these (server-side `GetAudio` returns streams
-    with `BufferSize = 192`, `AckPeriod = 64`; `PushAudio` is symmetric but
-    set on the producer's RpcStream defaults).
+- The non-realtime `RpcStream` direction is conceptually correct for
+  recording upload: sender-to-server audio should not be compacted or skipped,
+  because the server transcribes and persists it.
+- The major mismatch is the producer-side `Denque` with `MAX_BUFFERED_FRAMES =
+  1500` and drop-oldest overflow. If the sender ever falls behind for long
+  enough, audio can be deleted before the server sees it. That is acceptable
+  for realtime playback, but not for recording upload.
+- The web sender also has a smaller PCM queue earlier in the encoder worker
+  that can drop oldest PCM frames before encoding. That is another
+  transcription-visible loss point.
+- The target still wants short ACK periods and aggressive draining, but not
+  realtime ACK compaction on the upload stream.
 - The 60 ms startup delay (`DELAY_FRAMES = 3`) is essentially the doc's
   per-stream startup fill, but it is implemented as "wait for N frames in
   the producer queue" rather than as a property of the RPC stream itself.
-- The "send unsent as a new stream on peer-change" contract is unique to
-  audio because audio doesn't have keyframe semantics; the doc's `canSkipTo:
-  true` (any frame is a valid resume point) makes the same property fall
-  out naturally without retry-as-new-stream gymnastics.
+- The "send unsent as a new stream on peer-change" contract leaks transport
+  failure into recording/chat-entry semantics. A peer-change can split one
+  utterance into multiple server-side entries.
 
 ## 5. `server audio receiver`
 
@@ -191,14 +193,19 @@ All file paths are relative to the repo root.
   runs.
 
 **vs. doc:**
-- Doc: `ServerReplayTailSize = 10 frames` (~200 ms), `drop oldest`. Current
-  retention is **unbounded** and replay is **unbounded** — late consumers
-  get the entire stream from offset 0.
+- Doc: the store retains the complete recording stream (matching current
+  behavior, which transcription and persistence depend on); there is **no**
+  separate server-side cap on live fan-out. A live joiner controls its own
+  pre-roll by asking for a recent offset (at most `TargetBufferDuration` =
+  100 ms). Current code matches the retention half but has no convention
+  for the join offset — `LiveStreamMuxer` instead picks the offset on the
+  client's behalf using `MaxCatchUpLag = 3 s`.
 - The downstream skip logic (`SkipTo` in `AudioStreamingBackend`,
-  `MaxCatchUpLag` in `LiveStreamMuxer`) papers over this by skipping forward
-  before yielding to the receiver. The store itself never bounds the live
-  tail. This is the single largest deviation from the target on the server
-  side — it directly shapes the rest of the catch-up logic.
+  `MaxCatchUpLag` in `LiveStreamMuxer`) substitutes for the missing
+  receiver-driven pre-roll request: the server picks "live edge minus 3 s"
+  rather than letting the receiver ask for "live edge minus 100 ms." The
+  store itself is correct; the gap is in who decides where a live joiner
+  starts reading.
 
 ## 7. `server audio sender`
 
@@ -228,8 +235,10 @@ All file paths are relative to the repo root.
 **vs. doc:**
 - Doc target: `RpcStream` with `BufferSize = 10`, `AckPeriod = 5`,
   `isRealTime: true`, `canSkipTo: always true`. Current is non-realtime with
-  `BufferSize = 192`, `AckPeriod = 64`; the absence of real-time semantics is
-  the reason `LiveStreamMuxer` has to do its own skip-to-live computation.
+  `BufferSize = 192`, `AckPeriod = 64`; the absence of real-time semantics on
+  the presentation fan-out stream is the reason `LiveStreamMuxer` has to do
+  its own skip-to-live computation. This is separate from sender-to-server
+  recording upload, which should remain non-realtime/loss-preserving.
 - Doc says the server sender's only job (besides actual fan-out) is layer
   selection — N/A for audio. Current `LiveStreamMuxer` instead owns
   per-author exclusivity, catch-up, eviction debouncing, and three distinct
@@ -308,8 +317,11 @@ All file paths are relative to the repo root.
   still means decode work happens for samples that may then be dropped, and
   the buffer can't make encoded-stream-aware decisions.
 - **No upper bound.** The doc's `MaxBufferSize = 8 frames (~160 ms)` triggers
-  forward-skip; current code has no upper bound and relies on the .NET-side
-  push throttle to avoid runaway growth.
+  playback catch-up; current code has no upper bound and relies on the
+  .NET-side push throttle to avoid runaway growth. The updated target makes
+  this catch-up video-aware: small A/V drift can be corrected by temporarily
+  dropping a regular frame pattern to speed up audio, while large drift
+  hard-skips to the video-aligned presentation point.
 - **Two competing playback buffers.** The .NET-side `AudioTrackPlayer` pacing
   and the JS-side worklet start threshold both regulate playback start, with
   no shared notion of "target buffer duration." The doc consolidates this
@@ -415,6 +427,12 @@ All file paths are relative to the repo root.
   raises the audio start threshold when video is present, but it is audio
   that publishes timing and video that adapts. Reversing this requires
   unwiring `AudioVideoSync` consumption from the video side.
+- The updated target also expects late video pairing to force audio catch-up.
+  For example, if 30 seconds of audio accumulated while video was unavailable
+  and video then resumes in realtime, the receiver should align audio to the
+  video presentation point. It should either temporarily speed up audio by
+  dropping a regular frame pattern, or hard-skip the stale audio region when
+  the correction is too large.
 
 ## Stream Lifecycle
 
@@ -466,6 +484,10 @@ All file paths are relative to the repo root.
   delay is reached. Current code raises the start threshold to 500 ms when
   video is detected (`BUFFER_TO_PLAY_DURATION_WITH_VIDEO`), which is a
   fixed-value approximation rather than a synchronized join.
+- The updated target adds a second startup case: video may appear after audio
+  has already queued. Current code has no explicit decision between
+  speed-up-by-frame-dropping and hard-skip-to-video-time; it only has fixed
+  buffer escalation and the existing server/client skip points.
 
 ## Hardest Refactorings
 
@@ -490,22 +512,25 @@ In rough order of difficulty:
    20 ms quantum, so this is actually simpler than the video equivalent),
    and re-deriving the JS buffer-low signal that `AudioTrackPlayer` waits on.
 
-3. **Make `StreamStore<AudioFrame>` actually bounded.** Today both retention
-   (`AsyncMemoizer` capacity = `int.MaxValue`) and replay (`ReplayTailSize`
-   = `int.MaxValue`) are unbounded. Bounding to `ServerReplayTailSize = 10`
-   with `drop oldest` semantics is small in code but cascades:
+3. **Move live-join pre-roll choice from server to receiver.** Full
+   server-side retention stays — transcription and persistence need it.
+   What changes is who picks where a live joiner starts reading. Today
+   `LiveStreamMuxer` computes `skipTo = lag - MaxCatchUpLag` (3 s) and
+   `AudioStreamingBackend.SkipTo` applies it; the receiver never sees a
+   choice. The target inverts this: the receiver asks for at most
+   `TargetBufferDuration` (~100 ms) of pre-roll, and the server simply
+   serves from the requested offset forward. Cascades:
    `LiveStreamMuxer.MaxCatchUpLag` becomes redundant, `SkipTo` simplifies,
    and `RemoteAudioStreamCache` retention assumptions need to be revisited.
 
-4. **Switch the producer-side `RpcStream` to `isRealTime: true` with
-   `canSkipTo: () => true` and remove the producer-side 1500-frame Denque.**
-   The current Denque + non-realtime stream pattern is what video used
-   before its (in-progress) realtime conversion — but for audio the change
-   is simpler because every frame is a valid skip target, so ACK compaction
-   can run without any decoder-safety predicate. The hard part is the
-   "send-as-new-stream on peer-change" contract: today peer-change starts a
-   new chat entry; under real-time semantics with `allowReconnect`, the same
-   logical stream should resume.
+4. **Make sender upload loss-preserving while removing silent producer drops.**
+   The producer-side `RpcStream` should remain non-realtime for recording
+   upload, because ACK compaction would delete transcribed audio. The hard
+   part is removing or changing the current drop-oldest queues
+   (`AE.MAX_BUFFERED_FRAMES` before encode and `AS.MAX_BUFFERED_FRAMES` after
+   encode) without allowing unlimited memory growth. Overload should become
+   backpressure or an observable recording-quality failure, not silent speech
+   deletion.
 
 5. **Invert A/V sync direction.** Today audio publishes its `playingAt`
    through `AudioVideoSync` and video chases it. The doc has video establish
@@ -513,8 +538,10 @@ In rough order of difficulty:
    (move the `update`/`get` polarity), but the implications are large: the
    audio buffer needs to extend on demand to match the video target delay,
    the worklet's `bufferSizeToStartPlayback` becomes a function of paired
-   video state, and `AudioVideoSync.bufferEscalation` (currently a fixed
-   0.5 s flag) becomes a continuous video-driven delay target.
+   video state, `AudioVideoSync.bufferEscalation` (currently a fixed 0.5 s
+   flag) becomes a continuous video-driven delay target, and late video
+   pairing needs an explicit choice between speed-up-by-frame-dropping and
+   hard skip.
 
 6. **Consolidate the three skip points into one client-side mapping.** Once
    offsets are preserved end-to-end (refactor 1) and the server replay tail
