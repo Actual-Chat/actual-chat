@@ -202,7 +202,11 @@
     private CameraPermissionHandler CameraPermission => field ??= Hub.Services.GetRequiredService<CameraPermissionHandler>();
     private SystemSettingsUI SystemSettingsUI => field ??= Hub.Services.GetRequiredService<SystemSettingsUI>();
     private bool IsSettingsMode => ModalModel.Mode is VideoCallMode.Settings;
-    private CameraState PreviewState => _session?.State ?? CameraState.Off;
+    // Default to Starting (not Off) until the session exists: InitializeCamera
+    // sets `_isInitialized = true` early and then awaits several JS interop calls
+    // before assigning `_session`, during which we want the Submit button to stay
+    // disabled instead of flashing enabled.
+    private CameraState PreviewState => _session?.State ?? CameraState.Starting;
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     private string Title => IsSettingsMode ? "Video Settings"
@@ -213,9 +217,15 @@
         : State.Value.ShowActiveSessionInfo ? "Join"
         : "Start video";
 
-    // Disable submit while the camera is being acquired. If the user turned
-    // video off intentionally (CameraState.Off), submit stays enabled.
-    private bool IsSubmitDisabled => PreviewState is CameraState.Starting || !_isInitialized;
+    // Submit conditions:
+    // - Video off (user toggled off): always allow — user is joining without video.
+    // - Video on: require both a resolved device and a settled camera state
+    //   (On = preview live, Unavailable = preview failed but user can still join).
+    //   Starting/Off mean we don't yet know if the camera works, so block submit.
+    private bool IsSubmitDisabled =>
+        _isVideoOn
+        && (_selectedDevice is null
+            || PreviewState is not (CameraState.On or CameraState.Unavailable));
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
@@ -415,6 +425,11 @@
             _currentDeviceId = info?.DeviceId;
             _currentFacingMode = info?.FacingMode;
         }
+        // First-run case: no SelectedCameraDeviceId in settings, so the browser
+        // auto-picked a device. Bind _selectedDevice to whatever is actually
+        // live so Start (which requires _selectedDevice != null) gets enabled.
+        if (_selectedDevice is null && !string.IsNullOrEmpty(_currentDeviceId) && _videoDevices.Count > 0)
+            _selectedDevice = _videoDevices.FirstOrDefault(d => d.DeviceId == _currentDeviceId);
         var settings = await LocalSettings.LocalAppSettings().Get();
         _isCameraMirrored = settings
             .ResolveIsCameraMirrored(_currentDeviceId, _currentFacingMode, Hub.BrowserInfo.IsMobile);
@@ -554,13 +569,14 @@
         => _isBlurEnabled ? "blur-btn active" : "blur-btn";
 
     private string GetPlugText(CameraState cameraState) {
-        if (!_isInitialized)
-            return "Initializing...";
+        if (!_isVideoOn)
+            return "Camera is off";
         return cameraState switch {
-            CameraState.Off => "Camera is off",
-            CameraState.Starting => "Camera is starting...",
+            CameraState.On => "",
             CameraState.Unavailable => "Camera is unavailable",
-            _ => ""
+            // Off here means the session has not been created yet — the only
+            // user-driven Off path is _isVideoOn == false, handled above.
+            _ => "Camera is starting...",
         };
     }
 
