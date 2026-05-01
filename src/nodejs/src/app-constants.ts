@@ -202,6 +202,7 @@ export let AC: AppConstants = {
 } as AppConstants;
 export let VIDEO: VideoConstants = undefined!;
 export let AUDIO: AudioConstants = undefined!;
+
 const _whenAppConstantsReady = new PromiseSource<void>();
 export const whenAppConstantsReady: Promise<void> = _whenAppConstantsReady;
 let initialized = false;
@@ -211,6 +212,8 @@ let initialized = false;
 export function initAppConstants(appConstants: AppConstants): void {
     if (initialized)
         return;
+    if (!appConstants || !appConstants.video || !appConstants.audio)
+        throw new Error('Invalid app constants, "await whenAppConstantsReady" is missing?');
 
     AC = {
         ...appConstants,
