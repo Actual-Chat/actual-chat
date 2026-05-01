@@ -1,630 +1,534 @@
-# Current Audio Pipeline
-
-This document describes the current ActualChat audio pipeline end-to-end: from capture on the sending device, through RPC/server processing, to presentation on the receiving device. It focuses on buffering, frame dropping, skipping, replay, and catch-up behavior.
-
-The description is intentionally a snapshot of the current implementation. It does not propose the redesign yet.
-
-## Frame Model And Contracts
-
-Audio transport is centered on `AudioFrame`:
-
-- [`AudioFrame`](../src/dotnet/Api/Audio/AudioFrame.cs) inherits from `MediaFrame`.
-- `Data` contains the encoded frame bytes.
-- `Offset` is the frame offset within the stream.
-- `Duration` defaults to `Constants.Audio.OpusFrameDuration`, which is 20ms.
-- `IsKeyFrame` defaults to `true`.
-- `SerializedData` caches MessagePack-serialized data for forwarding.
-
-Unlike video, audio has no keyframe dependency in practice: every audio frame is treated as a keyframe. Skipping audio frames can still cause audible discontinuities and timing drift, but it does not create the same "missing keyframe corrupts following frames" failure mode as video.
-
-The main RPC contract is [`IStreamServer`](../src/dotnet/Api.Contracts/Streaming/IStreamServer.cs):
-
-- `GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)` returns `RpcStream<AudioFrame>?`.
-- `PushAudio(Session session, string chatId, string? repliedChatEntryId, double clientStartOffset, int preSkip, RpcStream<AudioFrame> frameStream, CancellationToken cancellationToken)` uploads a live recording segment.
-
-`PushAudio` is configured with:
-
-- `RemoteExecutionMode.AwaitForConnection`
-- `RemoteExecutionMode.AllowReconnect`
-
-It does not use `AllowResend`.
-
-Audio stream ACK behavior is configured by constants in [`Constants.Audio`](../src/dotnet/Api/Constants.Audio.cs):
-
-- `StreamAckPeriod = 64`
-- `StreamAckAdvance = 192`
-
-Those ACK settings provide RPC-level flow-control behavior, but the audio pipeline also has many additional local buffers and skip/drop policies around the stream.
-
-## Important Constants
-
-Shared .NET constants are in [`Constants.Audio`](../src/dotnet/Api/Constants.Audio.cs):
-
-- Opus frame duration: 20ms.
-- Recording sample rate: 16 kHz.
-- Playback sample rate: 48 kHz.
-- Bit rate: 32 kbps.
-- Streaming channel capacity: 1024 frames.
-- Recording duration: 30 seconds.
-- Max realtime stream drift: 3 seconds.
-- Max stream duration: 3 minutes.
-- Frame silence timeout: 2 seconds.
-- Low playback buffer duration: 10 seconds.
-- Start playback when buffered duration: 0.1 seconds.
-
-Browser-side constants are in [`_constants.ts`](../src/nodejs/src/_constants.ts):
-
-- Recorder frame duration: 20ms.
-- Recorder VAD window: 32ms.
-- Audio encoder max buffered frames: 50, about 1 second.
-- Audio streamer delay frames: 3, about 60ms.
-- Audio streamer max buffered frames: 1500, about 30 seconds.
-- Audio playback start buffer: 0.1 seconds.
-- Audio playback start buffer with video: 0.5 seconds.
-- Low playback buffer: 10 seconds.
-
-## Web Sender Pipeline
-
-### Blazor Entry Point
-
-Recording is initiated by Blazor UI state:
-
-1. [`ChatAudioUI.StateSync`](../src/dotnet/UI.Blazor.App/Services/ChatAudioUI.StateSync.cs) observes active chat state and starts/stops recording.
-2. [`AudioRecorder`](../src/dotnet/UI.Blazor.App/Components/AudioRecorder/AudioRecorder.cs) coordinates server time sync, recording state, and audio focus.
-3. [`WebRecorderEngine`](../src/dotnet/UI.Blazor.App/Components/AudioRecorder/WebRecorderEngine.cs) calls into JavaScript.
-4. [`audio-recorder.ts`](../src/dotnet/UI.Blazor.App/Components/AudioRecorder/audio-recorder.ts) owns the browser-side `AudioRecorder`.
-
-Before mic capture starts, the UI can play a begin tune. After that, the web recorder starts the Opus media recording pipeline.
-
-### Browser Capture Graph
-
-The main browser capture implementation is [`opus-media-recorder.ts`](../src/dotnet/UI.Blazor.App/Components/AudioRecorder/opus-media-recorder.ts).
-
-The intended graph is:
-
-```text
-Microphone
-  -> VAD AudioWorklet
-  -> VAD Worker
-  -> Encoder Worker
-
-Microphone
-  -> Encoder AudioWorklet
-  -> Encoder Worker
-  -> AudioStreamer
-  -> RPC PushAudio
-```
-
-`getUserMedia` requests mono audio with echo cancellation and noise suppression. Auto gain control is disabled on Android. The requested sample rate is normally 16 kHz, except for Firefox-specific handling.
-
-The `AttachedRecordingPipeline` creates:
-
-- an encoder worker,
-- a VAD worker,
-- an encoder audio worklet,
-- a VAD audio worklet,
-- message channels between them.
-
-The microphone source is connected to both worklets.
-
-### Encoder Worklet
-
-[`opus-encoder-worklet-processor.ts`](../src/dotnet/UI.Blazor.App/Components/AudioRecorder/worklets/opus-encoder-worklet-processor.ts) receives browser render quanta, typically 128 samples at the current `AudioContext` sample rate.
-
-It uses:
-
-- `AudioRingBuffer(8192, 1)`,
-- a 20ms `samplesPerWindow`,
-- a small pool of reusable buffers.
-
-The worklet pushes incoming samples into the ring buffer. Whenever there are enough samples for one 20ms frame, it pulls a frame and sends the PCM buffer to the encoder worker.
-
-This is a buffering point, but not normally a drop point. The ring buffer implementation throws on overwrite rather than silently dropping.
-
-### VAD Worklet And Worker
-
-The VAD worklet batches microphone audio into VAD-sized windows and sends them to [`audio-vad-worker.ts`](../src/dotnet/UI.Blazor.App/Components/AudioRecorder/workers/audio-vad-worker.ts).
-
-The VAD worker uses:
-
-- a queue of incoming buffers,
-- a ring buffer for VAD input,
-- WebRTC VAD initially,
-- neural VAD after it loads.
-
-When neural VAD becomes available, the worker clears pending queued input and restarts the worklet with the neural VAD window size. That is an explicit data discard point for VAD analysis. It affects detection timing, not already-encoded audio.
-
-The VAD worker sends voice activity changes to the encoder worker.
-
-### Encoder Worker
-
-[`opus-encoder-worker.ts`](../src/dotnet/UI.Blazor.App/Components/AudioRecorder/workers/opus-encoder-worker.ts) is the main sender-side audio decision point.
-
-It receives PCM frames from the encoder worklet and appends them to a queue. If the queue grows beyond `AUDIO_ENCODER.MAX_BUFFERED_FRAMES`, currently 50 frames / about 1 second, it drops the oldest PCM frames.
-
-The worker waits for VAD before starting a recording stream. On voice start:
-
-1. It creates an Opus encoder, either system `AudioEncoder` or WASM Opus.
-2. It creates an `AudioStream` through `AudioStreamer.addStream(...)`.
-3. It processes the queued pre-roll frames.
-
-Pre-roll processing trims leading low-gain/silent frames before encoding. This is an intentional skip/drop point at voice start. The implementation keeps a small amount of context so speech is not cut too aggressively.
-
-On voice end:
-
-1. It processes fade-out data.
-2. It flushes the encoder.
-3. It completes the `AudioStream`.
-4. It resets VAD/encoder state and clears queued PCM.
-
-### AudioStreamer
-
-[`audio-streamer.ts`](../src/dotnet/UI.Blazor.App/Components/AudioRecorder/workers/audio-streamer.ts) converts encoded Opus packets into an RPC `RpcStream<AudioFrameDto>`.
-
-Each `AudioStream` has:
-
-- a queue of encoded frames,
-- a first-frame timestamp based on `ServerClock.now()`,
-- a frame pool for buffer reuse,
-- an `isCompleted` flag.
-
-When an encoded packet is added:
-
-- it is copied into a pooled buffer,
-- pushed onto the queue,
-- and, if the queue exceeds `AUDIO_STREAMER.MAX_BUFFERED_FRAMES`, currently 1500 / about 30 seconds, the oldest encoded packet is dropped.
-
-Before sending starts, the stream waits until more than `AUDIO_STREAMER.DELAY_FRAMES` are queued. The current delay is 3 frames, about 60ms. This is an intentional startup buffer.
-
-For each `PushAudio` attempt, `AudioStreamer` constructs a new `RpcStream` whose enumerator yields:
-
-- `Data`: encoded packet bytes,
-- `Offset`: `frameIndex * 20ms`,
-- `Duration`: 20ms,
-- `IsKeyFrame`: `true`.
-
-`frameIndex` is local to the current `PushAudio` call. On peer change/retry, a new `PushAudio` call starts with a fresh frame index. Packets still in the `AudioStream` queue can be sent by the new call, but packets already handed to the old RPC stream and not delivered may be lost because `PushAudio` allows reconnect but does not allow resend.
-
-## Native / MAUI Sender Pipeline
-
-MAUI recording uses [`MauiRecorderEngine`](../src/dotnet/App.Maui/Services/Recording/MauiRecorderEngine.cs).
-
-The engine captures platform PCM audio, runs VAD, encodes Opus, and sends `PushAudio`, similar to the browser pipeline but with different buffering.
-
-### Platform Capture
-
-Android capture is in [`AndroidAudioCapture`](../src/dotnet/App.Maui/Platforms/Android/Audio/AndroidAudioCapture.cs):
-
-- Uses Android `AudioRecord`.
-- Captures mono 16 kHz `PCM_FLOAT`.
-- Writes captured data into a 10-second `BlockRingBuffer<float>`.
-- Writes are fire-and-forget. If the buffer cannot accept data, samples can be dropped.
-- The async enumerator yields 20ms frames.
-
-Windows capture is in [`WindowsAudioCapture`](../src/dotnet/App.Maui/Platforms/Windows/Audio/WindowsAudioCapture.cs):
-
-- Uses WinRT `AudioGraph` for microphone capture.
-- Uses WebRTC audio processing for echo cancellation, noise suppression, AGC, and high-pass filtering.
-- Uses microphone, loopback, and output ring buffers.
-- Adds a 40ms microphone delay to align with loopback for echo cancellation.
-- Writes processed output into a 10-second ring buffer.
-- If buffers fill, samples can be dropped.
-- The async enumerator yields 20ms frames.
-
-iOS capture is in [`IosAudioCapture`](../src/dotnet/App.Maui/Platforms/iOS/Audio/IosAudioCapture.cs):
-
-- Uses `AVAudioEngine`.
-- Enables voice processing.
-- Resamples to the voice recording format.
-- Writes into a 10-second ring buffer.
-- If there is insufficient remaining capacity, it logs and drops samples.
-- The async enumerator yields 20ms frames.
-
-### MAUI Recorder Processing
-
-`MauiRecorderEngine.AudioStreamProcessor` keeps:
-
-- a 2-second VAD buffer,
-- a 500ms encoding pre-roll buffer,
-- a current `AudioStream` channel,
-- a VAD state machine.
-
-For each captured PCM frame:
-
-1. It writes data into the VAD buffer.
-2. It writes data into the encoding pre-roll buffer.
-3. If voice is not active and the encoding buffer is full, it discards oldest 20ms frames to keep bounded pre-roll.
-4. It processes VAD in batches of 3 * 32ms, about 96ms.
-
-On VAD start:
-
-1. It trims the pre-roll buffer using gain analysis.
-2. It creates a bounded audio stream channel.
-3. It starts Opus encoding and sending.
-
-On VAD end:
-
-1. It stops the encode/send worker.
-2. It completes the stream.
-
-The MAUI send channel is bounded with `Constants.Audio.StreamingChannelCapacity`, currently 1024 frames. The channel uses backpressure rather than dropping while active. On completion, the code drains remaining frames, so unsent frames can be discarded at stream end.
-
-The MAUI retry behavior is similar to web: a retry creates a new `PushAudio` stream over the remaining channel data.
-
-## Server Ingress And Live Publication
-
-### PushAudio
-
-[`StreamServer.PushAudio`](../src/dotnet/Streaming.Service/Services/StreamServer.cs) receives uploaded audio.
-
-It:
-
-1. Parses chat and reply IDs.
-2. Creates a new stream ID.
-3. Creates an `AudioRecord`.
-4. Wraps the incoming `RpcStream<AudioFrame>`.
-5. Calls `AudioStreamingBackend.ProcessAudio(...)`.
-6. Disconnects the incoming stream in `finally`.
-
-Each `PushAudio` call corresponds to a server-side audio stream/recording segment. Because browser and MAUI recording are VAD-segmented, one user speech sequence can become multiple `PushAudio` calls if VAD starts/stops multiple times.
-
-### Backend Processing
-
-[`AudioStreamingBackend.ProcessAudio`](../src/dotnet/Streaming.Service/Backend/AudioStreamingBackend.ProcessAudio.cs) handles validation, live publication, transcription, and persistence.
-
-Important behavior:
-
-- It wraps incoming frames with a frame silence watchdog. If no frame arrives for `Constants.Audio.FrameSilenceTimeout`, currently 2 seconds, processing is cancelled.
-- It validates permissions and author identity.
-- It computes `beginsAt` from `clientStartOffset`.
-- If client/server drift is too large, it falls back to server time.
-- It creates an `AudioSource` from the incoming frames.
-- It creates an Opus header frame at offset `-1ms`.
-- It prepends the header to the audio frame stream.
-- If voice streaming is enabled for the chat, it registers the stream in `LiveAudioBackend`.
-- It publishes live frames into `StreamStore<AudioFrame>`.
-- It starts transcription.
-- Once transcript text is available, it creates a chat entry.
-- When the audio stream completes, it saves the audio blob/media and unregisters the live stream.
-
-### AudioSource And Memoization
-
-[`AudioSource`](../src/dotnet/Api/Audio/AudioSource.cs) applies `skipTo` by skipping frames whose offset is lower than the requested position, then normalizing offsets by subtracting `skipTo`.
-
-`AudioSource` inherits from [`MediaSource`](../src/dotnet/Api/Media/MediaSource.cs), which memoizes the frame stream:
-
-```text
-source frames -> AsyncMemoizer -> replayable frame stream
-```
-
-[`AsyncMemoizer`](../src/dotnet/Core/Async/AsyncMemoizer.cs) stores items in a linked list. Unless a capacity is specified, replay is effectively unbounded for the lifetime of the memoizer.
-
-### StreamStore
-
-[`StreamStore<T>`](../src/dotnet/Streaming.Service/Services/StreamStore.cs) is the live in-memory stream sharing layer.
-
-For audio:
-
-- The backend publishes the live frame stream into a `StreamStore<AudioFrame>`.
-- `Publish` memoizes the stream.
-- `ReplayTailSize` defaults to `int.MaxValue`.
-- `Get` waits briefly for a stream to be published.
-- While the memoizer is running, expiration is extended in the background.
-
-This is one of the largest live buffering layers. A late consumer can replay from the memoized stream unless later `skipTo` logic skips forward.
-
-### GetAudio And SkipTo
-
-[`AudioStreamingBackend.GetAudio`](../src/dotnet/Streaming.Service/Backend/AudioStreamingBackend.cs) fetches a stream from `StreamStore` and applies `SkipTo`.
-
-`SkipTo` preserves the header frame if present, then skips data frames while `frame.Offset < skipTo`.
-
-For remote streams, `StreamServer.GetAudio` can fetch audio from a remote backend and store it locally in `RemoteAudioStreamCache`, then apply local skip. That remote path adds another memoized/cache layer before delivery.
-
-## Live Audio Metadata
-
-[`LiveAudioBackend`](../src/dotnet/Streaming.Service/Backend/LiveAudioBackend.cs) does not carry audio bytes. It stores active live stream metadata in Redis:
-
-- chat ID,
-- author ID,
-- stream ID,
-- begin time,
-- audio format,
-- TTL/expiration state.
-
-It also evicts stale streams for the same author when registering a new one.
-
-## Live Receive Pipeline
-
-### LiveAudioStreams
-
-The receiving client does not usually call `IStreamServer.GetAudio` directly for live listening. It calls [`ILiveAudioStreams.GetStream`](../src/dotnet/Api.Contracts/Streaming/ILiveAudioStreams.cs), implemented by [`LiveAudioStreams`](../src/dotnet/Streaming.Service/Services/LiveAudioStreams.cs).
-
-`LiveAudioStreams.GetStream`:
-
-1. Creates or replaces a per-session/per-chat `LiveStreamMuxer`.
-2. Returns `RpcStream<LiveStreamItem>`.
-3. Uses audio ACK period/advance constants.
-4. Sets `AllowReconnect = false` for the returned stream.
-
-The client wraps this in a resilient stream on the UI side.
-
-### LiveStreamMuxer
-
-[`LiveStreamMuxer`](../src/dotnet/Streaming.Service/Services/LiveStreamMuxer.cs) multiplexes active live audio streams in a chat.
-
-It:
-
-1. Watches `LiveAudioBackend.List(chatId)`.
-2. Starts one processing task per active stream.
-3. Ensures only one stream per author is active.
-4. Cancels older same-author streams when newer streams appear.
-5. Calls `StreamServer.GetAudio(streamId, skipTo, ...)`.
-6. Emits `LiveStreamStart`.
-7. Emits `LiveAudioFrame` items.
-8. Emits `LiveStreamEnd`.
-
-The muxer has an important catch-up rule:
-
-```text
-lag = now - streamInfo.BeginsAt
-skipTo = max(lag - MaxCatchUpLag, 0)
-```
-
-`MaxCatchUpLag` is 3 seconds. If the receiver starts late, the muxer skips toward the live edge rather than replaying the entire live stream.
-
-The muxer output channel is an unbounded fan-in channel.
-
-### LiveStreamProcessor And Demuxer
-
-The Blazor client uses [`LiveStreamProcessor`](../src/dotnet/UI.Blazor.App/Services/Streaming/LiveStreamProcessor.cs), which wraps `ILiveAudioStreams.GetStream(...)` in a resilient stream and feeds [`LiveStreamDemuxer`](../src/dotnet/UI.Blazor.App/Services/Streaming/LiveStreamDemuxer.cs).
-
-The demuxer:
-
-- creates an unbounded channel per live stream,
-- raises `StreamStarted`,
-- writes incoming frame data into the matching channel,
-- completes the channel on stream end,
-- flushes all channels on `LiveStreamReset`.
-
-Important detail: `LiveAudioFrame` carries an `Offset`, but the demuxer writes only `frame.Data` to the per-stream channel. The offset is ignored by the client playback path.
-
-### ChatListener
-
-[`ChatListener`](../src/dotnet/UI.Blazor.App/Services/Playback/ChatListener.cs) receives demuxed live streams.
-
-For each stream:
-
-1. It skips local user's own audio unless debug playback is enabled.
-2. It computes `playAt`.
-3. It computes `skipTo = max(playAt - streamInfo.BeginsAt, 0)`.
-4. It reconstructs frame offsets by frame index: `i * 20ms`.
-5. It skips frames while the reconstructed offset is below `skipTo`.
-6. It creates an `AudioSource`.
-7. It enqueues the source into playback.
-
-Because `LiveStreamMuxer` may already have skipped at the server and because the demuxer discards original frame offsets, the client performs another index-based skip over a reconstructed timeline. This is a notable interaction point.
-
-## Playback Pipeline
-
-### .NET Playback Layer
-
-Playback is coordinated by:
-
-- [`Playback`](../src/dotnet/Api/MediaPlayback/Playback.cs)
-- [`TrackPlayer`](../src/dotnet/Api/MediaPlayback/TrackPlayer.cs)
-- [`AudioTrackPlayer`](../src/dotnet/UI.Blazor.App/Components/AudioPlayer/AudioTrackPlayer.cs)
-- [`WebAudioPlaybackEngine`](../src/dotnet/UI.Blazor.App/Components/AudioPlayer/WebAudioPlaybackEngine.cs)
-
-`TrackPlayer` has a bounded command queue with `DropOldest`. This applies to playback commands, not audio frames.
-
-`AudioTrackPlayer` pushes frames to the JS playback engine. It has an initial pacing period of 150ms. After that, it waits for JS buffer-low feedback:
-
-- if JS reports buffer low, .NET continues pushing;
-- if JS reports buffer not low, .NET waits;
-- if feedback does not arrive within a timeout, it resumes.
-
-This is a managed-side playback throttle layered on top of the JS audio buffer.
-
-### JavaScript AudioPlayer
-
-[`audio-player.ts`](../src/dotnet/UI.Blazor.App/Components/AudioPlayer/audio-player.ts) owns browser playback.
-
-It:
-
-1. Creates an `AudioContext`.
-2. Creates a feeder audio worklet.
-3. Initializes the Opus decoder worker.
-4. Sends encoded Opus frames to the decoder worker.
-5. Receives feeder state changes and reports playback state to .NET.
-
-`audio-player.ts` has a direct frame drop point: if the audio context exists but is not ready, incoming `frame(bytes)` calls return without forwarding the frame to the decoder.
-
-### Decoder Worker
-
-The decoder worker is implemented by:
-
-- [`opus-decoder-worker.ts`](../src/dotnet/UI.Blazor.App/Components/AudioPlayer/workers/opus-decoder-worker.ts)
-- [`opus-decoder.ts`](../src/dotnet/UI.Blazor.App/Components/AudioPlayer/workers/opus-decoder.ts)
-
-It decodes Opus packets into PCM using either:
-
-- system `AudioDecoder`, or
-- WASM Opus decoder.
-
-The decoder has an async processor queue. On abort/end, the queue can be cleared.
-
-### Feeder Worklet
-
-[`feeder-audio-worklet-processor.ts`](../src/dotnet/UI.Blazor.App/Components/AudioPlayer/worklets/feeder-audio-worklet-processor.ts) is the final browser audio buffer.
-
-It has:
-
-- a queue of decoded PCM chunks,
-- an `AudioRingBuffer(8192, 1)`,
-- a start-buffer threshold,
-- starvation detection,
-- codec pre-skip handling,
-- buffer-low reporting.
-
-Startup buffer behavior:
-
-- normally starts after 0.1 seconds buffered,
-- starts after 0.5 seconds when `bufferEscalation > 0`, which is used when remote video streams are present,
-- can grow after starvation by 0.1 seconds,
-- can shrink after a stable period without starvation.
-
-During processing:
-
-- if not playing, it emits silence;
-- if the ring buffer has enough PCM, it pulls audio;
-- if the ring is low, it pulls chunks into the ring;
-- if no chunks are available, it emits silence and reports starvation;
-- on `end`, it emits silence, marks ended, and releases remaining buffers;
-- it discards `preSkip` samples at stream start for Opus decoder correctness.
-
-This is the final and most user-visible buffering/starvation layer.
-
-## Replay Pipeline
-
-Historical playback uses:
-
-- [`ChatReplayer`](../src/dotnet/UI.Blazor.App/Services/Playback/ChatReplayer.cs)
-- [`ReplayStreamProcessor`](../src/dotnet/UI.Blazor.App/Services/Streaming/ReplayStreamProcessor.cs)
-- [`ReplayStreamMuxer`](../src/dotnet/Streaming.Service/Services/ReplayStreamMuxer.cs)
-
-`ReplayStreamMuxer` reads historical chat entries, resolves the replay start position, downloads audio blobs, and emits `LiveStreamItem` objects similar to live playback.
-
-Replay-specific skip behavior:
-
-- It can skip to the resolved start position.
-- It adjusts gaps between entries.
-- At playback speeds greater than 1.0, it explicitly skips audio frames. It computes a skip interval and skips every Nth frame.
-
-That speed-based frame skipping is destructive and applies to replay, not normal live listening.
-
-## Saved Audio And Conversion
-
-Saved audio is handled by source converters such as:
-
-- [`ActualOpusStreamConverter`](../src/dotnet/Api/Audio/ActualOpusStreamConverter.cs)
-- [`WebMStreamConverter`](../src/dotnet/Api/Audio/WebMStreamConverter.cs)
-
-Actual Opus and WebM conversion can group frames into chunks while saving or reading media. This is buffering for persistence/conversion, not live catch-up logic.
-
-## Legacy SignalR Path
-
-[`StreamHub`](../src/dotnet/Streaming.Service/Services/StreamHub.cs) contains an obsolete SignalR audio upload path. It converts byte chunks into `AudioFrame`s with offsets based on `i * 20ms` and then calls the same backend.
-
-It is marked obsolete in favor of `IStreamServer.PushAudio` via RPC, so it should not be treated as the main path for current clients.
-
-## Buffering, Dropping, And Skipping Inventory
-
-### Sender-Side Web
-
-1. Browser and `AudioContext` introduce implicit capture/render buffering.
-2. Encoder worklet has an 8192-sample ring buffer.
-3. VAD worklet has an 8192-sample ring buffer.
-4. Encoder worker PCM queue is capped at about 1 second and drops oldest PCM frames when full.
-5. VAD worker can clear queued VAD input when switching VAD implementation.
-6. Voice-start pre-roll trimming discards leading low-gain/silent frames.
-7. `AudioStream` encoded packet queue is capped at about 30 seconds and drops oldest encoded frames when full.
-8. `AudioStream` waits about 60ms before starting to send.
-9. RPC reconnect can preserve queued unsent packets, but packets already handed to a failed stream may be lost on peer change.
-
-### Sender-Side MAUI
-
-1. Platform capture ring buffers are commonly 10 seconds.
-2. Platform capture writes can drop samples when buffers are full.
-3. Windows adds APM and a 40ms mic delay for echo cancellation.
-4. Recorder VAD buffer is 2 seconds.
-5. Recorder encoding pre-roll buffer is 500ms.
-6. When not voice-active, oldest pre-roll samples are discarded to keep the pre-roll bounded.
-7. VAD start trims the pre-roll again.
-8. The send channel is bounded at 1024 frames and backpressures while active.
-9. Stream completion drains/discards remaining unsent channel frames.
-
-### Server-Side
-
-1. RPC stream ACK period/advance creates RPC-level flow control.
-2. `AudioSource` memoizes frame streams.
-3. `StreamStore<AudioFrame>` memoizes live streams and defaults to replaying the full tail.
-4. `AudioStreamingBackend.SkipTo` skips data frames before `skipTo` while preserving the header frame.
-5. `LiveStreamMuxer` skips toward the live edge if lag exceeds 3 seconds.
-6. `LiveStreamMuxer` cancels/replaces older streams from the same author.
-7. Remote audio fetching can cache/memoize a remote stream before applying local skip.
-8. The frame silence watchdog cancels streams with no frames for 2 seconds.
-
-### Receiver-Side Live
-
-1. `LiveStreamProcessor` wraps live streams in a resilient stream.
-2. `LiveStreamDemuxer` uses unbounded per-stream channels.
-3. `LiveStreamDemuxer` flushes all active channels on reset.
-4. `LiveStreamDemuxer` drops original `LiveAudioFrame.Offset` information.
-5. `ChatListener` reconstructs offsets by frame index.
-6. `ChatListener` may apply another `skipTo` over the reconstructed offset timeline.
-7. `AudioSource` memoizes playback frames.
-
-### Receiver-Side Playback
-
-1. `TrackPlayer` command queue is bounded and drops oldest commands when full.
-2. `AudioTrackPlayer` has a 150ms initial pacing period.
-3. `AudioTrackPlayer` throttles based on JS buffer-low feedback.
-4. `audio-player.ts` drops incoming frames if the audio context is not ready.
-5. Decoder worker queues encoded frames for async decoding.
-6. Decoder queue can be cleared on abort.
-7. Feeder worklet queues decoded PCM chunks.
-8. Feeder worklet has an 8192-sample ring buffer.
-9. Feeder worklet waits for 0.1 seconds buffered before normal playback start.
-10. Feeder worklet waits for 0.5 seconds buffered when playback buffer escalation is active.
-11. Feeder worklet grows its start buffer after starvation.
-12. Feeder worklet discards Opus `preSkip` samples.
-13. Feeder worklet emits silence during pauses, startup, starvation, and after end.
-
-### Replay
-
-1. Replay start resolution can skip into the first selected audio entry.
-2. Replay adjusts gaps between entries.
-3. Replay speed greater than 1.0 explicitly skips every Nth frame.
-
-## Current Interaction Risks
-
-The current audio pipeline has multiple independent mechanisms that can each decide to buffer, skip, drop, or replay:
-
-- sender-side VAD segmentation,
-- sender-side PCM and encoded queues,
-- RPC stream flow control,
-- server-side memoization,
-- server-side live catch-up skip,
-- client-side resilient reset,
-- client-side offset reconstruction,
-- playback buffer-low throttling,
-- JS feeder starvation recovery.
-
-Because these mechanisms are not controlled by one policy, they can interact in surprising ways.
-
-The most notable interaction is in the live path:
-
-1. The server muxer may call `GetAudio(..., skipTo)` to start near the live edge.
-2. `GetAudio` applies skip based on original audio frame offsets.
-3. `LiveAudioFrame.Offset` is then sent to the client.
-4. The client demuxer ignores that offset and forwards only bytes.
-5. `ChatListener` reconstructs offsets by frame index.
-6. `ChatListener` can apply its own `skipTo` over the reconstructed timeline.
-
-That means live playback timing no longer fully reflects the original server-side frame offsets after demuxing.
-
-Another major point is `StreamStore<AudioFrame>`: it memoizes live frames with a default full replay tail. Late consumers are then corrected by later skip logic rather than by a single live/realtime stream policy.
-
-## Initial Simplification Targets
-
-These are not redesign decisions, but they are the places most likely to matter when simplifying the pipeline:
-
-1. Decide which layer owns live-edge catch-up for audio.
-2. Revisit whether `StreamStore<AudioFrame>` should replay an unbounded live tail.
-3. Preserve or intentionally discard `LiveAudioFrame.Offset`; avoid accidental offset reconstruction if server offsets matter.
-4. Consolidate sender-side drop policy between encoder queue, encoded packet queue, and RPC stream behavior.
-5. Revisit JS playback buffering so .NET pacing, JS buffer-low feedback, and feeder starvation recovery do not compete.
-6. Treat replay speed-based frame skipping separately from live audio behavior.
-7. Check whether audio RPC streams should use a realtime stream mode/flag directly rather than relying on surrounding custom buffering.
-
+# Audio Pipeline — Current State vs. Target
+
+This document maps every conceptual stage from `docs/audio-pipeline.md` to the
+matching piece (or pieces) of the current implementation, briefly describes how
+it works today, and calls out the major differences from the target design.
+Sections at the end cover the cross-cutting concerns (Time Model, Stream
+Lifecycle, Startup) and the hardest expected refactorings.
+
+All file paths are relative to the repo root.
+
+---
+
+## 1. `raw audio source`
+
+**Now:**
+- Web: `getUserMedia` is requested in
+  `src/dotnet/UI.Blazor.App/Components/AudioRecorder/opus-media-recorder.ts`
+  with mono, AEC and noise suppression on, AGC on (off on Android), 16 kHz
+  preferred. The `MediaStream` feeds two `AudioWorkletNode`s in parallel — one
+  for the encoder, one for VAD — both connected to the same `AudioContext`.
+- MAUI capture lives under `src/dotnet/App.Maui/Platforms/{Android,Windows,iOS}/Audio/`:
+  - `AndroidAudioCapture.cs` uses `AudioRecord` and writes mono 16 kHz
+    `PCM_FLOAT` into a `BlockRingBuffer<float>` sized for ~10 s.
+  - `WindowsAudioCapture.cs` uses `AudioGraph`, runs WebRTC APM (AEC/NS/AGC/HPF),
+    and routes microphone, loopback, and processed-output through three ~10 s
+    ring buffers. Adds a 40 ms mic delay (`MicDelaySamples = 16000 * 40 / 1000`)
+    to align with loopback for echo cancellation.
+  - `IosAudioCapture.cs` uses `AVAudioEngine` with voice processing enabled and
+    resamples into a ~10 s ring buffer.
+- All MAUI captures yield 20 ms PCM frames asynchronously and may drop samples
+  silently if the ring fills.
+
+**vs. doc:**
+- Doc treats this stage as "no buffering, immediately pass to next." Web
+  matches — the worklet drains `AudioContext` render quanta as they arrive.
+- MAUI does **not** match. Each platform inserts a 10-second platform ring
+  buffer between capture and the rest of the pipeline. That buffer exists for
+  schedule-jitter reasons but it is far above the doc's "no intermediate
+  buffer." Worse, when full it drops oldest samples silently rather than
+  surfacing pressure.
+
+## 2. `raw audio processors`
+
+**Now:**
+- Web encoder worklet:
+  `src/dotnet/UI.Blazor.App/Components/AudioRecorder/worklets/opus-encoder-worklet-processor.ts`
+  uses `AudioRingBuffer(8192, 1)` to assemble the ~128-sample render quanta
+  into 20 ms frames (`samplesPerWindow`). Throws on overrun rather than
+  silently dropping.
+- Web VAD worklet + worker
+  (`worklets/audio-vad-worklet-processor.ts`,
+  `workers/audio-vad-worker.ts`): batches 32 ms windows; runs WebRTC VAD
+  initially, swaps to neural VAD after model load. The neural-VAD swap
+  **clears any queued VAD input** — an explicit data discard point that
+  affects detection timing only.
+- Pre-roll trimming on voice start happens inside
+  `workers/opus-encoder-worker.ts` (~lines 290-310): before encoding starts,
+  the head of the queued PCM is analyzed by gain and low-gain leading frames
+  are dropped.
+- MAUI: `MauiRecorderEngine.AudioStreamProcessor` keeps a 2 s VAD buffer and
+  a 500 ms encoding pre-roll buffer. While voice is inactive, oldest 20 ms
+  pre-roll frames are evicted to keep the buffer bounded. VAD runs in
+  batches of `3 × 32 ms ≈ 96 ms`. On VAD start the pre-roll is trimmed
+  again by gain analysis.
+- WebRTC APM (AEC, NS, AGC, HPF) runs inside `WindowsAudioCapture`; on
+  Android/iOS it relies on platform APM. The browser side relies on the
+  browser's built-in AEC/NS via `getUserMedia` constraints.
+
+**vs. doc:**
+- The doc's pre-roll is a single bounded `drop oldest` buffer at this stage.
+  Both web and MAUI roughly match this shape, though sizes differ (web's
+  encoder PCM queue plus a separate VAD queue; MAUI's 2 s VAD buffer is
+  larger than `VoiceStartPreRollSize = 200 ms`).
+- The doc says all other processors operate per-block without queuing.
+  `WindowsAudioCapture` adds a 40 ms intentional mic delay for AEC alignment
+  — that is an inherent cost of host-side AEC and effectively becomes
+  capture-side latency the rest of the pipeline cannot recover.
+
+## 3. `audio encoder`
+
+**Now:**
+- Web: `workers/opus-encoder-worker.ts` keeps a `Denque<ArrayBuffer>` of
+  incoming PCM frames. On each `encode` call it dequeues and encodes either
+  through the system `AudioEncoder` or the WASM Opus encoder.
+- The PCM queue is bounded by `AE.MAX_BUFFERED_FRAMES = 50` (~1 s). When
+  exceeded, oldest PCM frames are dropped (`while (queue.length > MAX) queue.shift()`).
+- Encoder pre-skip is either reported by the system encoder or set to
+  `AE.DEFAULT_PRE_SKIP = 312` samples for the WASM encoder; this value is
+  later forwarded as the `preSkip` parameter of `PushAudio`.
+- MAUI: `IAudioCodec` wraps Opus; encoding is synchronous per frame. No
+  queue.
+
+**vs. doc:**
+- The doc prescribes a `replaceable slot` (size-1) at this stage; current web
+  code uses a `Denque` capped at 50 with drop-oldest semantics, which is the
+  opposite drop direction. In normal operation the encoder is fast enough that
+  the queue stays near-empty, so the choice is rarely visible — but under
+  CPU pressure dropping oldest samples is exactly what the doc forbids
+  ("newer frame replaces pending frame").
+- MAUI is closer in spirit (no queue), though the upstream platform ring
+  buffers can hide several seconds of backlog.
+
+## 4. `audio sender`
+
+**Now:**
+- `workers/audio-streamer.ts` → `class AudioStream`. Encoded packets are
+  pushed into a `Denque<Uint8Array>` (`this.frames`). On overflow the
+  oldest frame is dropped: `while (frames.length > AS.MAX_BUFFERED_FRAMES)`,
+  where `MAX_BUFFERED_FRAMES = 1500` (~30 s).
+- Before sending starts, the sender waits for `frames.length > AS.DELAY_FRAMES = 3`
+  (~60 ms) — an intentional startup buffer.
+- The sender constructs an `RpcStream<AudioFrameDto>` whose generator yields
+  `{ Data, Offset = frameIndex * 20ms, Duration = 20ms, IsKeyFrame: true }`
+  and calls `streamServer.PushAudio(session, chatId, repliedChatEntryId,
+  clientStartOffset, preSkip, stream.toRef(peer))`.
+- The `RpcStream` is constructed with **no real-time options** (no
+  `isRealTime: true`, no `canSkipTo`, no explicit `bufferSize` /
+  `ackPeriod`). Stream behavior falls back to default RPC stream semantics.
+- On peer-change, the in-flight `PushAudio` is aborted (frames already handed
+  to the failed stream are lost — `PushAudio` allows reconnect but not
+  resend). The retry loop creates a brand-new `PushAudio` over whatever
+  frames remain in the producer queue, with `frameIndex` reset to 0 (i.e. a
+  new server-side chat entry).
+- MAUI sender uses `Channel<IMemoryOwner<byte>>` bounded at
+  `Constants.Audio.StreamingChannelCapacity = 1024` (~20 s). It
+  backpressures while active and drains-then-discards on completion.
+
+**vs. doc:**
+- Direction is wrong on multiple axes:
+  - The doc says one `RpcStream` with `isRealTime: true` and `canSkipTo: true`
+    is the only sender-side buffer; current code has a 1500-frame Denque
+    layered **on top of** a non-realtime `RpcStream`, with eager pre-emptive
+    drop-oldest at the producer rather than ACK-driven compaction.
+  - Doc's `BufferSize = 10`, `AckPeriod = 5`. Current `RpcStream` falls
+    through to defaults for these (server-side `GetAudio` returns streams
+    with `BufferSize = 192`, `AckPeriod = 64`; `PushAudio` is symmetric but
+    set on the producer's RpcStream defaults).
+- The 60 ms startup delay (`DELAY_FRAMES = 3`) is essentially the doc's
+  per-stream startup fill, but it is implemented as "wait for N frames in
+  the producer queue" rather than as a property of the RPC stream itself.
+- The "send unsent as a new stream on peer-change" contract is unique to
+  audio because audio doesn't have keyframe semantics; the doc's `canSkipTo:
+  true` (any frame is a valid resume point) makes the same property fall
+  out naturally without retry-as-new-stream gymnastics.
+
+## 5. `server audio receiver`
+
+**Now:**
+- `src/dotnet/Streaming.Service/Services/StreamServer.cs` →
+  `PushAudio(Session, chatId, repliedChatEntryId, clientStartOffset, preSkip,
+  RpcStream<AudioFrame> frameStream, ct)` parses chat/reply IDs, mints a
+  fresh `StreamId` on the local node, builds an `AudioRecord`, wraps the
+  inbound RPC stream, and calls `AudioStreamingBackend.ProcessAudio(...)`.
+- `src/dotnet/Streaming.Service/Backend/AudioStreamingBackend.ProcessAudio.cs`
+  performs:
+  - Frame silence watchdog (`Constants.Audio.FrameSilenceTimeout = 2 s`).
+  - Permission/author checks.
+  - `clientStartOffset → BeginsAt` mapping; if drift exceeds
+    `Constants.Audio.MaxBeginsAtDrift = 5 s`, falls back to server time.
+  - Builds an `AudioSource` that prepends an Opus header frame at offset
+    `-1 ms`.
+  - Publishes the frame stream to `_audioStreams.Publish(streamId, source)`.
+  - Optionally registers in `LiveAudioBackend`, kicks off transcription, and
+    eventually creates a chat entry and saves the audio blob.
+- RPC ACK tuning is set on the producer side via `Constants.Audio.StreamAckPeriod = 64`
+  and `Constants.Audio.StreamBufferSize = 192`.
+
+**vs. doc:**
+- Doc: "no buffering, validate & forward." Current code does that but **also**
+  does several non-receiver responsibilities on the data path: header
+  injection, transcription kickoff, chat-entry creation, audio-blob save,
+  drift correction. The doc's `server audio receiver` should not own any of
+  those; they are persistence concerns layered onto the live path.
+- The header injection at offset `-1 ms` is an artifact of how `AudioSource`
+  is later replayed. In the doc model, codec setup is the receiver's job
+  once, not a synthetic frame in the live stream.
+
+## 6. `server stream store`
+
+**Now:**
+- `src/dotnet/Streaming.Service/Services/StreamStore.cs` —
+  `StreamStore<AudioFrame>`. Inbound stream is wrapped with `stream.Memoize()`,
+  which calls `new AsyncMemoizer(source, int.MaxValue, ...)` — the memoizer
+  is **unbounded** for the stream's lifetime.
+- `ReplayTailSize` defaults to `int.MaxValue` and is **not overridden** when
+  `_audioStreams` is constructed in `AudioStreamingBackend.cs:43`. So
+  `Get()` calls `memoizer.Replay(int.MaxValue, ct)` — the entire memoized
+  history is re-emitted to every consumer.
+- Expiration: `ExpirationDelay = AudioSettings.StreamExpirationDelay`, and
+  background expiration bumping keeps the entry alive while the memoizer
+  runs.
+
+**vs. doc:**
+- Doc: `ServerReplayTailSize = 10 frames` (~200 ms), `drop oldest`. Current
+  retention is **unbounded** and replay is **unbounded** — late consumers
+  get the entire stream from offset 0.
+- The downstream skip logic (`SkipTo` in `AudioStreamingBackend`,
+  `MaxCatchUpLag` in `LiveStreamMuxer`) papers over this by skipping forward
+  before yielding to the receiver. The store itself never bounds the live
+  tail. This is the single largest deviation from the target on the server
+  side — it directly shapes the rest of the catch-up logic.
+
+## 7. `server audio sender`
+
+**Now:**
+- `AudioStreamingBackend.GetAudio(streamId, skipTo, ct)`
+  (`src/dotnet/Streaming.Service/Backend/AudioStreamingBackend.cs:63-74`):
+  fetches the memoized stream from `_audioStreams`, applies `SkipTo(stream,
+  skipTo, ct)` (preserves the header frame, drops data frames whose `Offset
+  < skipTo`), and wraps the result in an `RpcStream<AudioFrame>` with
+  `AckPeriod = 64`, `BufferSize = 192` (~3.8 s of credit at 50 fps).
+- The actual "fan-out" surface used by live listeners is
+  `LiveAudioStreams.GetStream` (which clients call instead of `GetAudio`),
+  backed by `LiveStreamMuxer` (covered below). `LiveStreamMuxer.ProcessStream`
+  computes `lag = SystemClock.Now - streamInfo.BeginsAt; skipTo = (lag -
+  MaxCatchUpLag).Positive()` where `MaxCatchUpLag = 3 s`, then calls
+  `StreamServer.GetAudio(streamId, skipTo, ...)`. So the catch-up policy
+  lives in the muxer, the skip itself lives in the backend's `GetAudio`,
+  and the actual data pull lives in the per-stream RPC stream.
+- `LiveStreamMuxer` also implements per-author exclusivity: when a fresher
+  same-author stream registers, the older `StreamEntry.StopTokenSource` is
+  cancelled. After end, an `EvictionDelay = 4 s` (`MaxCatchUpLag + 1 s`)
+  prevents duplicate enlistment via `LiveBackend.List`.
+- The output channel is `ChannelExt.Create<LiveStreamItem>(UnboundedFanInOptions)`
+  — unbounded fan-in. Items are `LiveStreamStart`, `LiveAudioFrame`,
+  `LiveStreamEnd`.
+
+**vs. doc:**
+- Doc target: `RpcStream` with `BufferSize = 10`, `AckPeriod = 5`,
+  `isRealTime: true`, `canSkipTo: always true`. Current is non-realtime with
+  `BufferSize = 192`, `AckPeriod = 64`; the absence of real-time semantics is
+  the reason `LiveStreamMuxer` has to do its own skip-to-live computation.
+- Doc says the server sender's only job (besides actual fan-out) is layer
+  selection — N/A for audio. Current `LiveStreamMuxer` instead owns
+  per-author exclusivity, catch-up, eviction debouncing, and three distinct
+  item types; effectively a bespoke control surface that the doc replaces
+  with a real-time stream contract.
+- Unbounded fan-in output channel duplicates retention work already done by
+  `StreamStore` and adds another place where backlog can hide.
+
+## 8. `audio receiver`
+
+**Now:**
+- Live listening goes through
+  `src/dotnet/UI.Blazor.App/Services/Streaming/LiveStreamProcessor.cs`,
+  which wraps `ILiveAudioStreams.GetStream(...)` in a resilient stream and
+  feeds `LiveStreamDemuxer`.
+- `LiveStreamDemuxer` (`Services/Streaming/LiveStreamDemuxer.cs`):
+  - One unbounded `Channel<ReadOnlyMemory<byte>>` per active stream.
+  - On `LiveStreamStart`, creates the channel and raises `StreamStarted`
+    with `(LiveStreamInfo, PlaysAt, asyncEnumerable)`.
+  - On `LiveAudioFrame`, writes only `frame.Data` to the matching channel
+    — the original `frame.Offset` from the server is discarded.
+  - On `LiveStreamEnd`, completes the channel.
+  - On `LiveStreamReset`, completes all channels and clears them.
+- `ChatListener.OnStreamStarted` (`Services/Playback/ChatListener.cs:64-128`):
+  - Computes `playAt = Moment.Max(minPlayAt, streamInfo.BeginsAt)` and
+    `skipTo = (playAt - streamInfo.BeginsAt).Positive()`.
+  - Reconstructs frame offsets by index:
+    `Offset = TimeSpan.FromMilliseconds(i * Constants.Audio.OpusFrameDurationMs)`.
+  - Skips while `offset < skipTo`, then subtracts `skipTo` from remaining
+    offsets.
+  - Wraps the result in an `AudioSource` and enqueues it for playback.
+
+**vs. doc:**
+- Doc: receiver should not contain a second independent playback buffer and
+  should resume from the next frame after a skip. Current path has multiple
+  buffers and skip stages and three transports (RPC frames carry `Offset`,
+  demuxer drops `Offset` and forwards bytes, listener reconstructs `Offset`
+  from index).
+- The most damaging deviation is the **offset round-trip**: the server
+  computed correct frame offsets, the muxer already applied a `skipTo`, then
+  the demuxer threw the offsets away, then the listener fabricated new
+  offsets from index 0 and applied another `skipTo` over the fabricated
+  timeline. The doc's "carry origin capture time end-to-end" model collapses
+  all three into one mapping and one skip decision.
+
+## 9. `audio buffer`
+
+**Now (this is structurally different from the doc):**
+- The intentional playback buffer lives **inside the feeder worklet**, not
+  before the decoder. It holds **decoded PCM**, not encoded Opus.
+- `feeder-audio-worklet-processor.ts`:
+  - `chunks: Denque<Float32Array | 'end'>` — decoded PCM chunks waiting for
+    the ring buffer.
+  - `buffer = new AudioRingBuffer(8192, 1)` — the inner ring (~170 ms at
+    48 kHz, mono).
+  - Total `bufferedDuration` = ring + chunks queue.
+  - Start threshold (`bufferSizeToStartPlayback`): `AP.BUFFER_TO_PLAY_DURATION = 0.1 s`,
+    or `AP.BUFFER_TO_PLAY_DURATION_WITH_VIDEO = 0.5 s` when
+    `bufferEscalation > 0` (set when remote video streams are present).
+  - On starvation, `bufferSizeToStartPlayback` grows by
+    `AP.BUFFER_TO_PLAY_DURATION_DELTA = 0.1 s` each event; shrinks again
+    after a stable period.
+  - There is no maximum-size cap — `chunks` is an unbounded `Denque`.
+- Above the worklet there is a `.NET → JS push throttle`: `AudioTrackPlayer.ProcessMediaFrame`
+  (`Components/AudioPlayer/AudioTrackPlayer.cs:121-155`) paces frames at
+  real-time for the first `PacingDuration = 150 ms`, then waits for JS
+  buffer-low feedback (timeout 10 s). This is a managed-side throttle on top
+  of the worklet buffer.
+- Above that, `RemoteAudioStreamCache` may cache an entire remote-streamed
+  audio source between server hops.
+
+**vs. doc:**
+- **Buffer is post-decode, not pre-decode.** The doc puts the playback buffer
+  before the decoder so the receiver can skip encoded frames cheaply. For
+  audio this matters less than for video (no keyframe constraint), but it
+  still means decode work happens for samples that may then be dropped, and
+  the buffer can't make encoded-stream-aware decisions.
+- **No upper bound.** The doc's `MaxBufferSize = 8 frames (~160 ms)` triggers
+  forward-skip; current code has no upper bound and relies on the .NET-side
+  push throttle to avoid runaway growth.
+- **Two competing playback buffers.** The .NET-side `AudioTrackPlayer` pacing
+  and the JS-side worklet start threshold both regulate playback start, with
+  no shared notion of "target buffer duration." The doc consolidates this
+  into a single `audio buffer` owned by one component.
+- **Adaptive start threshold drifts upward.** `bufferSizeToStartPlayback`
+  grows on starvation and only shrinks after a stable window. Repeated
+  starvation can permanently raise startup latency until the player is torn
+  down. The doc allows a self-tuning safety margin but expects it to be
+  hysteretic and bounded.
+
+## 10. `audio decoder`
+
+**Now:**
+- `src/dotnet/UI.Blazor.App/Components/AudioPlayer/workers/opus-decoder-worker.ts`
+  — runs in a Web Worker, holds a `Map<string, OpusDecoder>` (decoder per
+  stream).
+- Each `OpusDecoder` (`workers/opus-decoder.ts`) wraps either system
+  `AudioDecoder` or a WASM Opus decoder. Decoding is async; the worker
+  schedules `decode(buffer, offset, length)` calls and posts decoded
+  `Float32Array` chunks to the feeder worklet via the worker port.
+- On abort/end, the pending decode queue can be cleared.
+- `audio-player.ts` is the main-thread bridge: it accepts encoded frames and
+  posts them to the worker. It silently drops frames if the `AudioContext`
+  is not yet ready (`if (!this.context.state ...) return;`).
+
+**vs. doc:**
+- Doc: "no buffering, immediately hand decoded samples to renderer." Current
+  code is reasonably close in steady state, but:
+  - The async processor queue inside `OpusDecoder` is an unintentional
+    micro-buffer.
+  - The main-thread `audio-player.ts` silent-drop on `context not ready` is a
+    decoder-input-side discard that the doc does not anticipate (the doc's
+    model assumes the audio buffer absorbs startup).
+
+## 11. `audio renderer`
+
+**Now:**
+- `feeder-audio-worklet-processor.ts.process(inputs, outputs, parameters)` is
+  the renderer. It runs at audio-thread priority every render quantum (~128
+  samples ≈ 2.67 ms at 48 kHz), pulling from the inner `AudioRingBuffer` into
+  the output channel.
+- During startup it discards `skipSamples` (Opus pre-skip) at stream start
+  for decoder correctness.
+- On underrun (ring empty and chunks empty) it emits silence and reports
+  `bufferState = 'starving'` upstream.
+- On `end`, it emits silence, marks itself ended, and releases buffers.
+
+**vs. doc:**
+- The renderer matches the doc's intent: it is the platform-output handoff,
+  emits silence on underrun, and does not rate-shift. The deviation is only
+  that the `audio buffer` (stage 9) is **inside** the renderer (the same
+  worklet), so the boundary between buffer and renderer is not a clean
+  handoff — they share state.
+
+## 12. `audio presentation`
+
+**Now:**
+- Web: the `AudioWorkletNode` is connected through the `AudioContext`
+  destination; the platform clock owns presentation timing. There is no
+  rate-shifting in audio.
+- MAUI: `IAudioOutput` per-platform plays the rendered samples through the
+  device clock similarly.
+- A/V sync: `nodejs/src/audio-video-sync.ts` is the cross-thread broadcast
+  hub. `AudioTrackPlayer.OnPlaying` (`AudioTrackPlayer.cs:44-59`) calls
+  `blazorApp.AudioVideoSync.update(authorId, offset, recordedAtMs, state)`
+  on the JS side. The audio-video-sync module coalesces broadcasts to
+  ~60 Hz (`BROADCAST_MIN_INTERVAL_MS = 16`) and clears state on `'ended'`.
+  Subscribed video workers (decoder workers / MSTG selectors) re-anchor
+  `capturedAt` to their own `performance.now()`.
+
+**vs. doc:**
+- Audio presentation itself matches: no rate-shifting, platform clock-driven.
+- A/V sync is **inverted vs. doc**. The doc says video establishes the shared
+  delay and audio adopts it. Current code: audio publishes its `playingAt`
+  via `AudioVideoSync` and **video pulls and chases it** (the video
+  pipeline's `WorkerMstgSelector.queue` and `VideoPlayer.renderTick` both
+  read `AudioVideoSync` to compute their target timestamp). The relationship
+  is the reverse of what the doc prescribes.
+
+## Time Model
+
+**Now:**
+- Origin time is partially preserved on the server: each `AudioFrame.Offset`
+  is computed from `frameIndex * 20ms` in the producer; `LiveStreamInfo.BeginsAt`
+  carries the server-side stream start.
+- On the live path, the muxer skips encoded frames according to wall-clock
+  lag, the demuxer drops frame offsets entirely, and the listener
+  reconstructs synthetic offsets from the post-skip frame index. Audio
+  presentation timing is then driven by the platform audio clock once
+  playback starts.
+- A/V sync uses `AudioVideoSync` as the shared time-source — but it only
+  carries audio's `playingAt`; video chases.
+
+**vs. doc:**
+- The doc requires every frame to carry origin capture time end-to-end and
+  the receiver to build one `origin -> local` mapping per author. Current
+  audio path satisfies this on the wire (frame.Offset, BeginsAt) but
+  destroys it inside the demuxer. A unified mapping does not exist — there
+  are at least three independent skip points (`GetAudio.SkipTo`,
+  `LiveStreamMuxer.skipTo`, `ChatListener.skipTo`).
+- The doc requires audio to adopt the video target delay when paired.
+  Current code does the opposite — `BUFFER_TO_PLAY_DURATION_WITH_VIDEO = 0.5`
+  raises the audio start threshold when video is present, but it is audio
+  that publishes timing and video that adapts. Reversing this requires
+  unwiring `AudioVideoSync` consumption from the video side.
+
+## Stream Lifecycle
+
+**Now:**
+- VAD-driven segmentation matches the doc in spirit: voice-start creates a
+  new `AudioStream` on the producer, voice-end completes it. A new
+  `PushAudio` is also created on peer-change retry, which produces an
+  additional server-side chat entry boundary unrelated to VAD.
+- Each `PushAudio` becomes one chat entry on the server, transcribed and
+  persisted independently.
+- `LiveAudioBackend` (`Streaming.Service/Backend/LiveAudioBackend.cs`) tracks
+  active streams in Redis with `StreamTtl = Constants.Audio.MaxStreamDuration = 3 min`
+  and per-author eviction of stale registrations.
+- On the receiver, end-of-stream is propagated through `LiveStreamMuxer` →
+  `LiveStreamDemuxer` → `ChatListener`, but the per-stream channels are
+  unbounded and there is no overlap with the next stream from the same
+  author.
+
+**vs. doc:**
+- Doc-aligned overall, with two friction points:
+  1. Peer-change creates a new server entry mid-utterance, which is a
+     transport detail leaking into chat-entry semantics. The doc treats stream
+     lifecycle as a recording concern; reconnection should resume the same
+     logical stream where possible.
+  2. The doc allows the receiver to overlap the tail of one stream with the
+     head of the next when origin timestamps abut, so listeners do not hear a
+     gap. Current `ChatListener` enqueues sequentially with no overlap logic.
+
+## Startup
+
+**Now:**
+- Receiver-side startup is split between `LiveStreamMuxer.skipTo` (server
+  drops everything older than `MaxCatchUpLag = 3 s`), `ChatListener.skipTo`
+  (client further skips by `playAt - BeginsAt`), and `feeder-audio-worklet-processor.tryBeginPlaying`
+  (waits until `bufferedDuration >= bufferSizeToStartPlayback`, default
+  100 ms or 500 ms with video).
+- The Opus header frame at `Offset = -1 ms` is preserved through `SkipTo` so
+  the decoder can configure regardless of where the receiver joined.
+- `AudioTrackPlayer.PacingDuration = 150 ms` adds a sender-paced ramp on top
+  of the JS-side fill threshold.
+
+**vs. doc:**
+- Doc: the receiver requests a recent tail not exceeding `TargetBufferDuration`
+  and starts playing as soon as the buffer fills. Current behavior overshoots
+  in two ways: the server may emit up to 3 s of catch-up tail (much larger
+  than 100 ms target), and the JS start threshold can grow unboundedly on
+  repeated starvation.
+- Doc: when paired with video, defer audio start until the shared A/V target
+  delay is reached. Current code raises the start threshold to 500 ms when
+  video is detected (`BUFFER_TO_PLAY_DURATION_WITH_VIDEO`), which is a
+  fixed-value approximation rather than a synchronized join.
+
+## Hardest Refactorings
+
+In rough order of difficulty:
+
+1. **Stop reconstructing offsets in the demuxer/listener pipeline.** Today
+   `LiveStreamDemuxer` writes only `frame.Data` to its per-stream channels
+   and `ChatListener` rebuilds offsets by index. Preserving `frame.Offset`
+   end-to-end and using it for the single client-side `skipTo` requires
+   touching the demuxer contract, every consumer, the playback enqueue path,
+   and the speed-based replay skip in `ReplayStreamMuxer`. The replay path
+   currently leans on offset reconstruction to skip every Nth frame at
+   speed > 1.
+
+2. **Move the playback buffer from inside the feeder worklet to before the
+   decoder.** This is structurally identical to the same refactor in video.
+   Today the start threshold, starvation detection, escalation-with-video
+   logic, and decoder-output handling all live in
+   `feeder-audio-worklet-processor.ts`. Splitting the encoded `audio buffer`
+   from the decoder + render handoff requires rebuilding the start-threshold
+   and starvation logic on encoded frames (where each frame is a uniform
+   20 ms quantum, so this is actually simpler than the video equivalent),
+   and re-deriving the JS buffer-low signal that `AudioTrackPlayer` waits on.
+
+3. **Make `StreamStore<AudioFrame>` actually bounded.** Today both retention
+   (`AsyncMemoizer` capacity = `int.MaxValue`) and replay (`ReplayTailSize`
+   = `int.MaxValue`) are unbounded. Bounding to `ServerReplayTailSize = 10`
+   with `drop oldest` semantics is small in code but cascades:
+   `LiveStreamMuxer.MaxCatchUpLag` becomes redundant, `SkipTo` simplifies,
+   and `RemoteAudioStreamCache` retention assumptions need to be revisited.
+
+4. **Switch the producer-side `RpcStream` to `isRealTime: true` with
+   `canSkipTo: () => true` and remove the producer-side 1500-frame Denque.**
+   The current Denque + non-realtime stream pattern is what video used
+   before its (in-progress) realtime conversion — but for audio the change
+   is simpler because every frame is a valid skip target, so ACK compaction
+   can run without any decoder-safety predicate. The hard part is the
+   "send-as-new-stream on peer-change" contract: today peer-change starts a
+   new chat entry; under real-time semantics with `allowReconnect`, the same
+   logical stream should resume.
+
+5. **Invert A/V sync direction.** Today audio publishes its `playingAt`
+   through `AudioVideoSync` and video chases it. The doc has video establish
+   the shared delay and audio adopt it. The mechanical changes are small
+   (move the `update`/`get` polarity), but the implications are large: the
+   audio buffer needs to extend on demand to match the video target delay,
+   the worklet's `bufferSizeToStartPlayback` becomes a function of paired
+   video state, and `AudioVideoSync.bufferEscalation` (currently a fixed
+   0.5 s flag) becomes a continuous video-driven delay target.
+
+6. **Consolidate the three skip points into one client-side mapping.** Once
+   offsets are preserved end-to-end (refactor 1) and the server replay tail
+   is bounded (refactor 3), `AudioStreamingBackend.SkipTo` and
+   `LiveStreamMuxer.skipTo` become unnecessary — the receiver alone decides
+   how much of the (already short) tail to consume to fill its `audio
+   buffer`. Removing them requires unwinding the assumption baked into
+   `LiveStreamMuxer.ProcessStream` that early skip is a server responsibility.
+
+7. **Untangle MAUI platform ring buffers.** Each platform interposes a
+   ~10 s ring buffer between capture and the rest of the pipeline, plus
+   Windows adds a 40 ms intentional mic delay. Aligning with the doc's
+   "no intermediate buffer" intent requires pushing capture-side
+   backpressure into the platform layer (or accepting samples being dropped
+   loudly rather than silently). The 40 ms AEC delay is hardware-imposed and
+   cannot be removed; it just becomes a documented capture-side latency
+   floor for Windows.
