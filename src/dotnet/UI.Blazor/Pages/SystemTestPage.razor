@@ -7,6 +7,7 @@
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>System Test Page</MainHeader>
 
+<div class="test-page-wrapper">
 <p>HostId: <b>@(HostId)</b></p>
 <p>App kind: <b>@(HostInfo.HostKind)</b></p>
 <p>Host roles: <b>@(HostInfo.Roles.ToDelimitedString())</b></p>
@@ -30,6 +31,7 @@
 <p>
     <Button Click="@OnThrowException">Throw Exception</Button>
 </p>
+</div>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;

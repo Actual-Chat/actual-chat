@@ -4,6 +4,7 @@
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Markup Editor Test Page</MainHeader>
 
+<div class="test-page-wrapper">
 <EditForm Model="@this" class="flex-y gap-y-4">
     <div>
         <Button Click="OnGetMarkupClick">Get markup</Button>
@@ -30,6 +31,7 @@
         </MentionListManager>
     </div>
 </EditForm>
+</div>
 
 @code{
     private MarkupEditor _editorRef = null!;

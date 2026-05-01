@@ -1,11 +1,14 @@
 @page "/test/web-splash"
 @using ActualChat.UI.Blazor.Services
-@layout BaseLayout
 
 <RequireAccount MustBeAdmin="true"/>
 
+<MainHeader>Web Splash Test Page</MainHeader>
+
+<div class="test-page-wrapper">
 <div class="web-splash">
     <splash-page-skeleton isRightPanelVisible="@_isRightPanelVisible"/>
+</div>
 </div>
 
 @code {

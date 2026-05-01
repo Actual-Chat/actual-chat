@@ -10,6 +10,7 @@
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Email templates</MainHeader>
 
+<div class="test-page-wrapper">
 <Form Model="@_form">
     <FormBlock>
         <FormSection
@@ -39,6 +40,7 @@
 }
 
 <MjmlHtmlPreview ComponentType="@(_model.SelectedTemplate.ComponentType)"/>
+</div>
 
 @code {
     private Model _model = null!;

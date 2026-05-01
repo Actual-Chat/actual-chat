@@ -3,6 +3,7 @@
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>ErrorBarrier Test Page</MainHeader>
 
+<div class="test-page-wrapper">
 <div class="flex-x justify-start items-center">
     <ErrorBarrier Name="Test-Full" Kind="ErrorBarrierKind.Full" MustAutoReload="false">
         <FailingTestTimer Modulo="1000" Boundary="1000"/>
@@ -35,4 +36,5 @@
         <b>3:&nbsp;</b>
         <FailingTestTimer Modulo="55_000" Boundary="1000"/>
     </ErrorBarrier>
+</div>
 </div>

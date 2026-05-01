@@ -3,8 +3,9 @@
 
 <RequireAccount MustBeAdmin="true"/>
 
-<h2>Blazor Test Page</h2>
+<MainHeader>Blazor Test Page</MainHeader>
 
+<div class="test-page-wrapper">
 <p>Counter: @_counter</p>
 <p>
     <Button Click="@(() => _counter++)">Counter++</Button>
@@ -27,6 +28,7 @@
     </RenderAtDepth>
     <BlazorTestNode @key="@renderKey" Name="Root" ChildProbability="2"/>
 </p>
+</div>
 
 @code {
     private int _counter;

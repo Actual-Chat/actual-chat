@@ -8,6 +8,7 @@
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Video Transcoding Test</MainHeader>
 
+<div class="test-page-wrapper">
 @{
     var m = State.LastNonErrorValue;
     if (m is null)
@@ -80,6 +81,7 @@
         }
     </ul>
 }
+</div>
 
 @code {
     private FileUploadPicker _picker = null!;

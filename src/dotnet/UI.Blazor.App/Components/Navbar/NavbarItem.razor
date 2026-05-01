@@ -2,13 +2,14 @@
 @inherits ComponentBase<AppUIHub>
 @implements IDisposable
 @{
-    var activeClass = IsSelected ? "active" : "inactive";
     _isCurrent = CalculateIsCurrent();
+    var activeClass = (IsSelected || _isCurrent) ? "active" : "inactive";
     var dataAttributes = _isCurrent
         ? new Dictionary<string, object>()
         : new() {
             ["data-href"] = Url,
             ["data-replace-on-prefix"] = ReplaceOnPrefix,
+            ["data-replace-on-prefix-except"] = ReplaceOnPrefixExcept,
             ["data-href-tune"] = Tune.SelectNavbarItem.ToString(),
         };
 }
@@ -35,6 +36,7 @@
     [Parameter] public bool IsSelected { get; set; }
     [Parameter] public string Url { get; set; } = "";
     [Parameter] public string ReplaceOnPrefix { get; set; } = "";
+    [Parameter] public string ReplaceOnPrefixExcept { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Ending { get; set; }
     [Parameter(CaptureUnmatchedValues = true)]

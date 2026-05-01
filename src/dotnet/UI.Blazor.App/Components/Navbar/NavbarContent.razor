@@ -20,50 +20,14 @@
             <ChatListNavbarWidget PlaceId="@placeId" />
         }
         else if (isTestPages && m.IsAdmin) {
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/logs">Logs</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/virtual-list">Virtual List</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/audio-player">Audio Player</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/audio-recorder">Audio Recorder</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/render-slot">Render Slot</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/ui-colors">UI Colors</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/landing-background">Landing Background</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/place-info">Place Info</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/discover">Discover</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/error-barrier">Error Barrier</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/toasts">Toasts</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/emojis">Emojis</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/dive-in-modal-test">Dive-in Modal</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/incoming-share-modal-test">Incoming Share Modal</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/reconnect-overlay">Reconnect Overlay</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/svg-cats">SVG Cats</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/web-splash">Web Splash</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/mic-permission-guides">Mic Permission Guides</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/photo-permission">Photo Permission</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/skeletons">Skeletons</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/requirements">Requirements</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/features">Features</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/compute-state">Compute State</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/markup-editor">Markup Editor</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/auth">Authentication</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/blazor">Blazor</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/js">JavaScript</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/embedded">Embedded</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/totp">Totp</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/copy-chat2place">Copy chat to place</NavbarItem>
-            @if (HostInfo.HostKind != HostKind.MauiApp && HostInfo.IsDevelopmentInstance) {
-                <NavbarItem ReplaceOnPrefix="/test/" Url="/test/external-contacts">External Contacts</NavbarItem>
+            var tp = "/test/";
+            var tpHome = Links.TestPageHome.Value;
+            var isNarrow = ScreenSize.IsNarrow();
+            @foreach (var page in GetTestPages()) {
+                if (page.DesktopOnly && isNarrow)
+                    continue;
+                <NavbarItem ReplaceOnPrefix="@tp" ReplaceOnPrefixExcept="@tpHome" Url="@(page.Url)">@(page.Title)</NavbarItem>
             }
-            @if (HostInfo.HostKind == HostKind.MauiApp) {
-                <NavbarItem ReplaceOnPrefix="/test/" Url="/test/maui">Maui</NavbarItem>
-            }
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/system">System</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/mesh">Mesh</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/video-transcoding">Video Transcoding</NavbarItem>
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/video-input">Video Input Devices</NavbarItem>
-            @if (HostInfo.HostKind != HostKind.MauiApp && HostInfo.IsDevelopmentInstance) {
-                <NavbarItem ReplaceOnPrefix="/test/" Url="/test/email-templates">Email templates</NavbarItem>
-            }
-            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/digest">Digest</NavbarItem>
         }
     </div>
 </div>
@@ -72,6 +36,8 @@
     private EventHandler<NavbarGroupChangedEventArgs> _navbarUIOnSelectedGroupChanged = null!;
 
     private NavbarUI NavbarUI => field ??= Hub.Services.GetRequiredService<NavbarUI>();
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override void OnInitialized() {
         _navbarUIOnSelectedGroupChanged = NavbarUIOnSelectedGroupChanged;
@@ -85,4 +51,55 @@
 
     private void NavbarUIOnSelectedGroupChanged(object? sender, NavbarGroupChangedEventArgs e)
         => StateHasChanged();
+
+    private IEnumerable<TestPageEntry> GetTestPages() {
+        var hostKind = HostInfo.HostKind;
+        var isDev = HostInfo.IsDevelopmentInstance;
+        var pages = new List<TestPageEntry> {
+            new("/test/audio-player", "Audio Player"),
+            new("/test/audio-recorder", "Audio Recorder"),
+            new("/test/auth", "Authentication"),
+            new("/test/blazor", "Blazor"),
+            new("/test/compute-state", "Compute State"),
+            new("/test/copy-chat2place", "Copy Chat to Place"),
+            new("/test/digest", "Digest"),
+            new("/test/discover", "Discover", DesktopOnly: true),
+            new("/test/dive-in-modal-test", "Dive-in Modal"),
+            new("/test/emojis", "Emojis"),
+            new("/test/embedded", "Embedded"),
+            new("/test/error-barrier", "Error Barrier"),
+            new("/test/features", "Features"),
+            new("/test/incoming-share-modal-test", "Incoming Share Modal"),
+            new("/test/js", "JavaScript"),
+            new("/test/landing-background", "Landing Background", DesktopOnly: true),
+            new("/test/markup-editor", "Markup Editor"),
+            new("/test/mesh", "Mesh"),
+            new("/test/mic-permission-guides", "Mic Permission Guides"),
+            new("/test/photo-permission", "Photo Permission"),
+            new("/test/place-info", "Place Info", DesktopOnly: true),
+            new("/test/reconnect-overlay", "Reconnect Overlay", DesktopOnly: true),
+            new("/test/render-slot", "Render Slot"),
+            new("/test/requirements", "Requirements"),
+            new("/test/skeletons", "Skeletons"),
+            new("/test/svg-cats", "SVG Cats"),
+            new("/test/system", "System"),
+            new("/test/toasts", "Toasts"),
+            new("/test/totp", "TOTP"),
+            new("/test/ui-colors", "UI Colors"),
+            new("/test/video-input", "Video Input Devices"),
+            new("/test/video-transcoding", "Video Transcoding"),
+            new("/test/virtual-list", "Virtual List"),
+            new("/test/web-splash", "Web Splash", DesktopOnly: true),
+        };
+        if (hostKind != HostKind.MauiApp && isDev)
+            pages.Add(new("/test/email-templates", "Email Templates"));
+        if (hostKind != HostKind.MauiApp && isDev)
+            pages.Add(new("/test/external-contacts", "External Contacts"));
+        if (hostKind == HostKind.MauiApp)
+            pages.Add(new("/test/maui", "Maui"));
+        pages.Sort(static (a, b) => StringComparer.Ordinal.Compare(a.Title, b.Title));
+        return pages;
+    }
+
+    private sealed record TestPageEntry(string Url, string Title, bool DesktopOnly = false);
 }

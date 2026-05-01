@@ -3,8 +3,10 @@
 @inherits ComponentBase<AppUIHub>
 
 <RequireAccount MustBeAdmin="true"/>
-<h2>JavaScript Test Page</h2>
 
+<MainHeader>JavaScript Test Page</MainHeader>
+
+<div class="test-page-wrapper">
 <p class="pt-4">Actions:</p>
 <p>
     <Button Click="@(() => InvokeMember("serialized"))">serialized()</Button>
@@ -31,6 +33,7 @@
 </p>
 
 <p class="pt-4">Check out the output in JS console.</p>
+</div>
 
 @code {
     protected override async Task OnInitializedAsync()

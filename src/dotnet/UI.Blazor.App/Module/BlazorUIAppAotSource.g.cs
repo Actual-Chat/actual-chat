@@ -428,7 +428,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Landing.LandingVideoModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Landing.PremiumFeaturesModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Landing.PremiumFeaturesModalCard>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.LogsTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.MeshTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.MicPermissionTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.SettingsPage>();
@@ -1075,7 +1074,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Landing.LandingVideoModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Landing.PremiumFeaturesModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Landing.PremiumFeaturesModalCard), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Pages.LogsTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.MeshTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.MicPermissionTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.SettingsPage), AotTypeKind.Component),

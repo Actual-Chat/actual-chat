@@ -1,7 +1,12 @@
 @page "/test/discover"
-@layout DiscoverLayout
 
 <RequireAccount MustBeAdmin="true"/>
+<MainHeader>Discover Test Page</MainHeader>
 
-<DiscoverPage/>
-
+<div class="test-page-wrapper">
+    <div class="discover-test-content">
+        <DiscoverWideLeftPanel/>
+        <DiscoverCenter/>
+        <DiscoverRightPanel/>
+    </div>
+</div>

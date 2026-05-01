@@ -75,7 +75,7 @@ public class LeftPanel : IDisposable
         if (localUrl.IsDocsOrDocsRoot())
             return true; // This panel isn't used in narrow mode in /docs
 
-        return !localUrl.IsChatRoot() && !localUrl.IsTestPage();
+        return !localUrl.IsChatRoot();
     }
 
     // Nested types

@@ -11,6 +11,7 @@
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Authentication Test Page</MainHeader>
 
+<div class="test-page-wrapper">
 @if (error != null) {
     <ErrorToast Class="mb-3">@error.Message</ErrorToast>
 }
@@ -78,6 +79,7 @@
     <h3 class="section">Sign in</h3>
     <SignInButton/>
 }
+</div>
 
 @code {
     private IAccounts Accounts => Hub.Accounts;

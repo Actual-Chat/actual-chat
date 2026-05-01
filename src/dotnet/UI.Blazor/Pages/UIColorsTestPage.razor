@@ -3,6 +3,7 @@
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>UI Colors Test Page</MainHeader>
 
+<div class="test-page-wrapper">
 <details>
     <summary class="flex-x items-center gap-4 bg-03">
         <i class="icon-chevron-up rotate-180"></i>
@@ -515,6 +516,7 @@
 
 <input placeholder="Placeholder"/>
 <TextBox @bind-Value="@_textBox"></TextBox>
+</div>
 
 @code {
     private string _textBox = "Test TextBox";
