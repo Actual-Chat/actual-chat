@@ -16,7 +16,7 @@ public sealed class RemoteVideoStreamCache : IDisposable
         var latencyStore = services.GetRequiredService<StreamLatencyStore>();
         Store = new StreamStore<VideoFrame> {
             ExpirationDelay = Constants.Video.StreamExpirationDelay,
-            ReplayTailSize = Constants.Video.ReplayBufferSize,
+            ReplayTailSize = Constants.Video.ServerReplayTailSize,
             OnStreamExpire = latencyStore.OnStreamExpire,
             Log = services.LogFor($"{GetType().FullName}.Store"),
         };

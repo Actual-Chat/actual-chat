@@ -7,6 +7,7 @@ import { RpcNoWait, RpcTimeout } from 'rpc';
 import type { DecoderConfig, DecoderStats } from '../webcodecs-decoder';
 import type { EncodedChunkData } from '../webcodecs-encoder';
 import type { RawChunkMessage } from './stream-channel';
+import type { AppConstants } from 'app-constants';
 
 // Re-export for convenience
 export type { RawChunkMessage };
@@ -24,6 +25,10 @@ export interface DecoderWorkerLatencyReport {
  * This interface is implemented by the worker and called from the main thread
  */
 export interface DecoderWorker {
+    // Propagates app-wide constants from the main thread (sets CONSTANTS / VIDEO).
+    // Called once per worker, before any other RPC. First call wins.
+    init(appConstants: AppConstants): Promise<void>;
+
     /**
      * Initialize the decoder with configuration (RPC fallback path).
      * Use decodeRawChunk() to send chunks one by one.

@@ -12,6 +12,7 @@ import { RpcNoWait, RpcTimeout } from 'rpc';
 import type { EncoderConfig, EncoderStats } from '../webcodecs-encoder';
 import { getLogs } from 'logging';
 import type { SpatialLayerConfig } from '../../../Components/VideoPanel/simulcast-ladder';
+import type { AppConstants } from 'app-constants';
 
 export type { SpatialLayerConfig };
 
@@ -195,6 +196,10 @@ export interface VideoProcessingStats {
 }
 
 export interface VideoProcessingWorker {
+    // Propagates app-wide constants from the main thread (sets CONSTANTS / VIDEO).
+    // First call wins; subsequent calls are no-ops (the shared worker may be
+    // acquired multiple times).
+    init(appConstants: AppConstants): Promise<void>;
     startWithStream(config: VideoProcessingConfig, frameInputStream: ReadableStream<VideoFrame>, timeout?: RpcTimeout): Promise<void>;
     startWithTrack(config: VideoProcessingConfig, track: MediaStreamTrack, timeout?: RpcTimeout): Promise<void>;
     /** Preview-only mode with worker-internal MSTP→processing→MSTG pipeline.

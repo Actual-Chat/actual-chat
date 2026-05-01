@@ -43,8 +43,8 @@ public class StreamServer(IServiceProvider services) : IStreamServer
             ? null
             : new RpcStream<VideoFrame>(remoteStream) {
                 AllowReconnect = false,
-                AckPeriod = Constants.Video.StreamAckPeriod,
-                BufferSize = Constants.Video.StreamBufferSize,
+                AckPeriod = Constants.Video.RpcStreamAckPeriod,
+                BufferSize = Constants.Video.RpcStreamBufferSize,
             };
     }
 

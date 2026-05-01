@@ -194,6 +194,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E72
 		src\nodejs\src\server-clock.ts = src\nodejs\src\server-clock.ts
 		src\nodejs\src\resilient-stream.ts = src\nodejs\src\resilient-stream.ts
 		src\nodejs\src\emoji-preview.ts = src\nodejs\src\emoji-preview.ts
+		src\nodejs\src\audio-video-sync-client.ts = src\nodejs\src\audio-video-sync-client.ts
+		src\nodejs\src\main-thread-diagnostics.ts = src\nodejs\src\main-thread-diagnostics.ts
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "worklets", "worklets", "{DBDAA2CE-FEAF-46AE-9EBD-808C191E1A78}"

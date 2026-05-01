@@ -12,6 +12,7 @@ import { RpcStream } from 'actuallab-rpc';
 import { Api, streamingApi, toMoment,
     type SessionTokenProvider, type StreamServerClient, type VideoFormatDto, type VideoFrameDto } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
+import { VIDEO } from 'app-constants';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
@@ -272,7 +273,10 @@ export class InternalVideoStream {
                     }
                 })(),
                 {
-                    isRealTime: true, allowReconnect: true, ackPeriod: 5, bufferSize: 31,
+                    isRealTime: true,
+                    allowReconnect: true,
+                    ackPeriod: VIDEO.rpcStreamAckPeriod,
+                    bufferSize: VIDEO.rpcStreamBufferSize,
                     canSkipTo: (frame) => frame.IsKeyFrame,
                 },
             );

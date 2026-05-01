@@ -46,6 +46,7 @@ public sealed class AppScopedServiceStarter
                 ApiConstants.VersionString,
                 baseUri,
                 sessionHash,
+                AppConstants.Instance,
                 browserInfo.BlazorRef,
                 browserInfo.ClipboardHandlersRef);
             var rightPanelStoredState = Hub.Services.GetRequiredService<RightPanelStoredState>();

@@ -31,7 +31,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             StreamIdValidator = ValidateStreamId,
             StreamCount = AppMeters.VideoStreamCount,
             ExpirationDelay = Constants.Video.StreamExpirationDelay,
-            ReplayTailSize = Constants.Video.ReplayBufferSize,
+            ReplayTailSize = Constants.Video.ServerReplayTailSize,
             OnStreamExpire = OnVideoStreamExpire,
             Log = services.LogFor($"{typeFullName}.VideoStreams"),
         };
@@ -54,8 +54,8 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             (sid, ct) => Computed.Capture(() => GetQualityPreset(sid, ct), ct),
             Log);
         return new RpcStream<VideoFrame>(filter.Apply(streamId, peerId, skipTo, stream, cancellationToken)) {
-            AckPeriod = Constants.Video.StreamAckPeriod,
-            BufferSize = Constants.Video.StreamBufferSize,
+            AckPeriod = Constants.Video.RpcStreamAckPeriod,
+            BufferSize = Constants.Video.RpcStreamBufferSize,
         };
     }
 
@@ -68,8 +68,8 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             return null;
         }
         return new RpcStream<VideoFrame>(stream) {
-            AckPeriod = Constants.Video.StreamAckPeriod,
-            BufferSize = Constants.Video.StreamBufferSize,
+            AckPeriod = Constants.Video.RpcStreamAckPeriod,
+            BufferSize = Constants.Video.RpcStreamBufferSize,
         };
     }
 

@@ -18,6 +18,7 @@ public sealed class BrowserInit(UIHub hub) : UIServiceBase<UIHub>(hub)
         string apiVersion,
         string baseUri,
         string sessionHash,
+        AppConstants appConstants,
         DotNetObjectReference<IBrowserInfoBackend> browserInfoBlazorRef,
         DotNetObjectReference<IClipboardHandlers>? clipboardHandlersRef = null)
     {
@@ -32,6 +33,7 @@ public sealed class BrowserInit(UIHub hub) : UIServiceBase<UIHub>(hub)
                     baseUri,
                     HostInfo.GetHosts(),
                     sessionHash,
+                    appConstants,
                     browserInfoBlazorRef,
                     clipboardHandlersRef)
                 .ConfigureAwait(false);

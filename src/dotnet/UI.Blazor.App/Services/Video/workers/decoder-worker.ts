@@ -22,6 +22,7 @@ import { BG_DRAW_INTERVAL_MS } from '../services/bg-canvas-settings';
 import { BgBlurRenderer } from '../webgpu-blur';
 import { Api, momentToSeconds, secondsToMoment, streamingApi } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
+import { initAppConstants } from 'app-constants';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoDecoder');
 
@@ -593,6 +594,11 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
 
 // RPC Server Implementation
 const serverImpl: DecoderWorker = {
+    init: (appConstants): Promise<void> => {
+        initAppConstants(appConstants);
+        return Promise.resolve();
+    },
+
     /**
    * Initialize the decoder
    */

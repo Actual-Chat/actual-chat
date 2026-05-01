@@ -31,6 +31,7 @@ import { DeviceInfo } from 'device-info';
 import { ServerClock } from 'server-clock';
 import type { Subscription } from 'rxjs';
 import { RecorderStateHub } from '../../../Components/AudioRecorder/recorder-state-hub';
+import { APP_CONSTANTS } from 'app-constants';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
@@ -326,6 +327,10 @@ export class VideoPipeline implements IVideoPipeline {
                 },
             } as VideoProcessingWorkerCallbacks,
         );
+
+        // Propagate app constants to the worker. First call wins, so re-acquiring
+        // the shared worker is safe; the message queues ahead of any operational RPC.
+        void this.worker.init(APP_CONSTANTS);
 
         // Mirror `ConnectivityUI` → worker's `WorkerConnectivityUI` → Api
         // so the worker's peer honors `isDotNetRpcConnected`. Same pattern as

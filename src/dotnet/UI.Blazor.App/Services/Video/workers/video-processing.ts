@@ -8,6 +8,7 @@ import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 import Denque from 'denque';
 import * as ort from 'onnxruntime-web';
+import { initAppConstants } from 'app-constants';
 
 import { type EncoderConfig, type EncodedChunkData, WebCodecsEncoder } from '../webcodecs-encoder';
 import type { SegmentationConfig, SegmentationStats, ModelConfig, SpatialLayerConfig, VideoProcessingConfig, VideoProcessingWorker, VideoProcessingWorkerCallbacks, VideoProcessingStats, VideoProcessingStreamingStats, OrientationStats } from './video-processing-worker-contract';
@@ -1480,6 +1481,11 @@ function stopScreencastHeartbeat(): void {
 // ─── Server implementation ──────────────────────────────────────────────────
 
 export const serverImpl: VideoProcessingWorker = {
+
+    init: (appConstants): Promise<void> => {
+        initAppConstants(appConstants);
+        return Promise.resolve();
+    },
 
     startWithStream: async (config, frameInputStream): Promise<void> => {
         try {

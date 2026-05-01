@@ -26,6 +26,7 @@ import { CanvasRenderBackend } from './render-backend-canvas';
 import { OffThreadRenderBackend, isOffThreadPlausible } from './render-backend-mstg';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
+import { APP_CONSTANTS, VIDEO } from 'app-constants';
 
 // Backend selection: prefer the off-thread renderer wherever a generator API
 // (MediaStreamTrackGenerator on Chromium, VideoTrackGenerator on Safari) is
@@ -77,10 +78,8 @@ export interface RemoteStreamDiagnostics {
 
 const { debugLog, warnLog, errorLog } = getLogs('VideoPlayer');
 
-// Skip-to-live: client detects high latency and re-requests stream from next keyframe
-const SKIP_TO_LIVE_THRESHOLD_MS = 3000; // Matches Constants.Video.SkipToLiveThresholdMs
-
-// Graduated recovery thresholds — escalating response to growing latency
+// Graduated recovery thresholds — escalating response to growing latency.
+// (SKIP_TO_LIVE / LATENCY_REPORT / SLOW_DECODE thresholds now read from VIDEO.*)
 const CATCHUP_GENTLE_MS = 300;        // Start gentle 1.05x catch-up
 const CATCHUP_AGGRESSIVE_MS = 1000;   // Increase to 1.15x catch-up
 const DROP_TO_KEYFRAME_MS = 2000;     // Drop non-keyframes from buffer, advance to next keyframe
@@ -93,8 +92,6 @@ const DROP_TO_KEYFRAME_MS = 2000;     // Drop non-keyframes from buffer, advance
 const LATE_JOIN_GAP_MS = 1500;
 
 // Decode performance thresholds — if exceeded on consecutive ticks, trigger quality reduction / codec exclusion
-const SLOW_DECODE_TIME_THRESHOLD_MS = 100; // 3x the 33ms/frame budget at 30fps
-const SLOW_DECODE_QUEUE_THRESHOLD = 10;    // Normal is 0-1; 10+ means decoder is ~300ms behind
 const QUALITY_REDUCTION_TICK_COUNT = 5;    // ~10s of sustained bad performance → request quality reduction
 const CODEC_EXCLUSION_TICK_COUNT = 30;     // ~60s after quality reduction still bad → exclude codec
 // SLOW_DECODE warmup: skip the first window of samples after decoder init / codec
@@ -102,7 +99,6 @@ const CODEC_EXCLUSION_TICK_COUNT = 30;     // ~60s after quality reduction still
 // exceed the per-frame budget (200–600 ms) before steady-state hits the sub-ms median;
 // counting those samples against codec health triggers spurious exclusions.
 const SLOW_DECODE_WARMUP_MS = 5000;
-const LATENCY_REPORT_INTERVAL_MS = 2000; // Matches Constants.Video.LatencyReportInterval
 const OUTPUT_VERIFICATION_CHECK_INTERVAL_MS = 250;
 const OUTPUT_DIMENSION_MISMATCH_TOLERANCE_PX = 16;
 
@@ -534,6 +530,10 @@ export class VideoPlayer {
                     },
                 }
             );
+
+            // Propagate app constants. Fire-and-forget: the message queues
+            // ahead of `initialize` / `prewarmRpc` / any other RPC.
+            void this.decoderWorker.init(APP_CONSTANTS);
 
             // Mirror main-thread ConnectivityUI → worker's WorkerConnectivityUI
             // so the worker's Api peer honours `isDotNetRpcConnected`.
@@ -1256,7 +1256,7 @@ export class VideoPlayer {
 
         // Report latency from RAF — naturally pauses when tab is hidden,
         // preventing stale reports that trigger server-side skip-to-live
-        if (now - this.lastLatencyReportTime >= LATENCY_REPORT_INTERVAL_MS) {
+        if (now - this.lastLatencyReportTime >= VIDEO.latencyReportIntervalMs) {
             this.lastLatencyReportTime = now;
             this.reportLatencyTick();
         }
@@ -2131,7 +2131,7 @@ export class VideoPlayer {
         // Graduated recovery: when rendered-frame age is high, buffered frames are
         // stale. Dropping the oldest half helps the renderer reach live without
         // ratcheting through aged content. Uses frameAgeMs (render-domain signal).
-        if (frameAgeMs > DROP_TO_KEYFRAME_MS && frameAgeMs <= SKIP_TO_LIVE_THRESHOLD_MS) {
+        if (frameAgeMs > DROP_TO_KEYFRAME_MS && frameAgeMs <= VIDEO.skipToLiveThresholdMs) {
             // Phase 2: Drop oldest frames to catch up quickly.
             // PendingFrame (decoded VideoFrame/ImageBitmap) lacks isKeyFrame metadata,
             // so we can't do keyframe-aware dropping — drop the oldest half instead.
@@ -2150,14 +2150,14 @@ export class VideoPlayer {
         // pacing on a perfectly healthy link, and re-requesting the stream would
         // be pointless churn. Arrival latency only grows when the stream is actually
         // stalled server-side or the network is congested.
-        else if (latencyMs > SKIP_TO_LIVE_THRESHOLD_MS) {
+        else if (latencyMs > VIDEO.skipToLiveThresholdMs) {
             // Server-only skip architecture: don't issue a fresh GetVideo
             // (which would skip server-side and destroy frames between
             // currentOffset and now). Notify the server of the latency, ask
             // for a keyframe, and gate deltas at the worker until it arrives.
             this.skipToLiveCount++;
             warnLog?.log(
-                `SKIP_TO_LIVE: latency ${latencyMs.toFixed(0)}ms > ${SKIP_TO_LIVE_THRESHOLD_MS}ms, gating until next keyframe (count=${this.skipToLiveCount})`);
+                `SKIP_TO_LIVE: latency ${latencyMs.toFixed(0)}ms > ${VIDEO.skipToLiveThresholdMs}ms, gating until next keyframe (count=${this.skipToLiveCount})`);
 
             streamingApi.streamServer.ReportVideoLatency(this.streamId, {
                 StreamOffsetMs: streamOffsetMs,
@@ -2225,8 +2225,8 @@ export class VideoPlayer {
                 const inWarmup = performance.now() < this.decoderWarmupUntilMs;
                 const tabHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
                 const isBadTick = !inWarmup && !tabHidden
-                    && (ds.medianDecodeTime > SLOW_DECODE_TIME_THRESHOLD_MS
-                        || ds.decodeQueueSize > SLOW_DECODE_QUEUE_THRESHOLD);
+                    && (ds.medianDecodeTime > VIDEO.highDecodeTimeThresholdMs
+                        || ds.decodeQueueSize > VIDEO.highBufferDepthThreshold);
                 if (inWarmup || tabHidden) {
                     if (this.codecSlowTickCount > 0) {
                         debugLog?.log(

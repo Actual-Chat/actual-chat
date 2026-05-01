@@ -11,6 +11,7 @@ import { FirebaseApp, initializeApp } from 'firebase/app';
 import { Analytics, getAnalytics, setAnalyticsCollectionEnabled } from 'firebase/analytics';
 import { SessionTokens } from '../Security/session-tokens';
 import { Versioning } from 'versioning';
+import { initAppConstants, AppConstants } from 'app-constants';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('BrowserInit');
 const IsAnalyticsEnabledSetting = 'isAnalyticsEnabled';
@@ -39,11 +40,13 @@ export class BrowserInit {
         baseUri: string,
         supportedHosts: string[],
         sessionHash: string,
+        appConstants: AppConstants,
         browserInfoBackendRef: DotNet.DotNetObject,
         clipboardInteropRef: DotNet.DotNetObject | null,
     ): void {
         try {
             infoLog?.log(`-> init, apiVersion: ${apiVersion}, baseUri: ${baseUri}, sessionHash: ${sessionHash}`);
+            initAppConstants(appConstants);
             if (!BrowserInit.isProdBaseUri(baseUri))
                 MainThreadDiagnostics.init();
             window.App?.markBlazorReady?.(); // It must be called no matter what at this point

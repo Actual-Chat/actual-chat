@@ -4,6 +4,28 @@ public static partial class Constants
 {
     public static class Video
     {
+        // Frame rate / cadence — derived everywhere downstream.
+        public const int FrameRate = 30;
+        public static readonly TimeSpan FrameDuration = TimeSpan.FromSeconds(1d / FrameRate); // 33.333 ms
+
+        // Target playback buffer (the only intentional live-video buffer).
+        public const int TargetBufferSize = 10;
+        public static readonly TimeSpan TargetBufferDuration =
+            TimeSpan.FromSeconds((double)TargetBufferSize / FrameRate); // 333.333 ms
+
+        // Keyframe cadence.
+        public static readonly TimeSpan KeyFramePeriod = TimeSpan.FromSeconds(3);
+        public const int KeyFramePeriodSize = FrameRate * 3; // 90
+
+        // Buffer hysteresis around TargetBufferSize.
+        public const int BufferHysteresisSize = TargetBufferSize / 2; // 5
+        public const int MinBufferSize = TargetBufferSize - BufferHysteresisSize; // 5
+        public const int MaxBufferSize = TargetBufferSize + BufferHysteresisSize; // 15
+
+        // Server replay tail — short live replay window for late join / reconnect / fan-out.
+        public static readonly TimeSpan ServerReplayTailDuration = TimeSpan.FromSeconds(1);
+        public static readonly int ServerReplayTailSize = FrameRate; // 30
+
         public static readonly TimeSpan CancellationDelay = TimeSpan.FromSeconds(5);
         public static readonly TimeSpan StreamExpirationDelay = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan MaxLiveDuration = TimeSpan.FromHours(8);
@@ -20,13 +42,13 @@ public static partial class Constants
 
         // RPC stream flow control for video (30fps, 33ms frames).
         // Tuned for up to ~1s RTT: bufferSize > ackPeriod + fps × RTT.
-        public const int StreamAckPeriod = 64;
-        public const int StreamBufferSize = 192;
+        // NOTE: doc target values are 5/10; current values stay until a behavior step lands.
+        public const int RpcStreamAckPeriod = 64;
+        public const int RpcStreamBufferSize = 192;
         // Bumped from 60 to absorb simulcast: a 3-layer sender produces 3× items per source
         // frame, so a 180-slot ring keeps the effective ~2s window per-layer. P2P single-
         // layer streams still retain ~6s of history under this size.
         public static readonly int RetentionBufferSize = 180;
-        public static readonly int ReplayBufferSize = 30;   // ~1s at 30fps — bounded replay channel per consumer
         public static readonly int ConsumerBufferSize = 300; // ~10s at 30fps before slow consumer disconnect
 
         // Latency measurement & quality adaptation
