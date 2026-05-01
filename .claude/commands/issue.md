@@ -31,6 +31,12 @@ Split the argument on ` -- ` (space-dash-dash-space):
 
 Use standard prefixes when intent is clear: `fix:`, `feat:`, `refactor:`, `chore:`. If the user already provided a short title, keep it as-is.
 
+### 1b. Craft the body
+
+An issue describes the **problem**, not the solution. Cover the symptom (what's broken, with concrete evidence — logs, crash reports, repro steps) and, when known, the root cause (why). **Do not include a fix, a recommended approach, or a list of files to change** — those belong in the PR. The team picks the approach; the issue tracks the problem.
+
+Same laconic register as the title: short sections, no filler. Skip "Open follow-ups" / "Future work" sections unless the user asked for them — separate issues are better than to-do lists tucked inside one.
+
 ### 2. Check for similar issues
 
 Before creating, search for existing issues that might be duplicates or related. Use `mcp__github__search_issues` with key words from the title:
@@ -51,6 +57,8 @@ Use `mcp__github__get_me` to get the authenticated user's login.
 
 ### 4. Create the issue
 
+Pick the org-level **issue type** (not labels — labels are ignored in this repo). Try `mcp__github__list_issue_types` with `owner: "Actual-Chat"` to get valid values. If the call returns 403 (PAT can't read org issue types), ask the user which type to use rather than guessing.
+
 Use `mcp__github__issue_write` with:
 - `method`: `"create"`
 - `owner`: `"Actual-Chat"`
@@ -58,6 +66,9 @@ Use `mcp__github__issue_write` with:
 - `title`: from arguments
 - `body`: from arguments (if provided)
 - `assignees`: `[current_user_login]`
+- `type`: org issue type name (e.g. `Bug` for defects)
+
+Do **not** pass `labels` — this repo doesn't use them for triage.
 
 Record the created issue number from the response.
 
