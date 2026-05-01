@@ -481,10 +481,16 @@ interface EncodedChunkArgs {
 
 // Mirror of webcodecs-decoder's BackpressureQueueLimit. Keep in sync.
 const DRAIN_DECODE_QUEUE_LIMIT = 4;
-// How long to back off when the decoder's internal queue is full. One
-// frame at 30 fps is ~33 ms; 5 ms gives the decoder a chance to drain
-// without busy-spinning.
+// How long to back off when the decoder's internal queue is full or when
+// the next encoded chunk is not yet due relative to the audio target.
+// One frame at 30 fps is ~33 ms; 5 ms keeps polling responsive without
+// busy-spinning.
 const DRAIN_BACKOFF_MS = 5;
+// How far ahead of the audio target we let the decoder run. Decode time
+// is non-zero, so we need a small lookahead to keep the slot full when
+// the next audio target arrives. Negative values would force the decoded
+// slot to lag the target — we want it just barely ahead.
+const DRAIN_AUDIO_LOOKAHEAD_US = 33_000;
 
 let encodedBuffer: RingBuffer<EncodedChunkArgs> | null = null;
 let drainRunning = false;
@@ -563,6 +569,21 @@ async function drainEncodedBuffer(): Promise<void> {
         if (dec && dec.getDecodeQueueSize() >= DRAIN_DECODE_QUEUE_LIMIT) {
             await new Promise<void>(r => setTimeout(r, DRAIN_BACKOFF_MS));
             continue;
+        }
+        // Audio-target pacing. Without this, the decoder runs flat-out
+        // and the single decoded slot is always future-of-target — the
+        // selector / rAF check `pending.ts ≤ target` never passes and
+        // the playout track never receives a frame. With pacing, decode
+        // happens just-in-time so the slot's freshest frame lines up
+        // with the audio target. Falls through (no pacing) when audio
+        // hasn't been observed yet (e.g. cold start, canvas path).
+        const audioTargetUs = mstgSelector?.getAudioTargetUs() ?? null;
+        if (audioTargetUs !== null) {
+            const head = encodedBuffer.get(0);
+            if (head.timestamp > audioTargetUs + DRAIN_AUDIO_LOOKAHEAD_US) {
+                await new Promise<void>(r => setTimeout(r, DRAIN_BACKOFF_MS));
+                continue;
+            }
         }
         const args = encodedBuffer.pullHead();
         try {

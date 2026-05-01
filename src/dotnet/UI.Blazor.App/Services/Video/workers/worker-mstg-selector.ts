@@ -135,6 +135,15 @@ export class WorkerMstgSelector {
         return this.smoothedDriftUs / 1000;
     }
 
+    // Latest audio-anchored target in microseconds (frame-stream coords),
+    // or null if no audio state has been observed. Used by the encoded
+    // pre-decode buffer's drain loop to pace decoding to audio rate so
+    // the single decoded slot doesn't race ahead of audio.
+    getAudioTargetUs(): number | null {
+        if (!this.hasObservedAudioState) return null;
+        return this.lastTickAudioTgtMs * 1000;
+    }
+
     getBufferStats(): WorkerMstgBufferStats {
         // Single-slot selector — depth ∈ {0, 1}, span always 0. Real
         // playback buffer is the encoded ring buffer in decoder-worker.
@@ -234,7 +243,13 @@ export class WorkerMstgSelector {
         }
 
         const targetUs = wallclockTargetUs + correctionUs;
-        const adjustedTargetUs = targetUs - this.jitterBufferMs * 1000;
+        // No jitter-buffer subtract here: encoded pre-decode buffer in
+        // decoder-worker now paces drain to audioTarget, so the single
+        // decoded slot already lines up with `targetUs`. Subtracting an
+        // extra margin would push pending past `adjustedTarget` again
+        // and starve the writer (slot is freshest decoded — never older
+        // than target by definition).
+        const adjustedTargetUs = targetUs;
 
         // Single-slot pick. The early-return at the top of tick() guarantees
         // `pending` is non-null here. If it's at or behind the audio target,
