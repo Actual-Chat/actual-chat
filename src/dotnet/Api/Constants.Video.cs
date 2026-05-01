@@ -40,11 +40,13 @@ public static partial class Constants
         // this timeout only trips if the client itself is stuck/gone.
         public static readonly TimeSpan ScreencastFrameSilenceTimeout = TimeSpan.FromMinutes(3);
 
-        // RPC stream flow control for video (30fps, 33ms frames).
-        // Tuned for up to ~1s RTT: bufferSize > ackPeriod + fps × RTT.
-        // NOTE: doc target values are 5/10; current values stay until a behavior step lands.
-        public const int RpcStreamAckPeriod = 64;
-        public const int RpcStreamBufferSize = 192;
+        // RPC stream flow control for video — doc-target values from
+        // docs/video-pipeline.md "Constants" block: derived from TargetBufferSize.
+        // 5-frame ack cadence (~165ms @ 30fps), 10-frame credit window
+        // (~333ms outstanding). Real-time canSkipTo=isKeyFrame compaction
+        // handles stalls by skipping to the latest decoder-safe frame.
+        public const int RpcStreamAckPeriod = TargetBufferSize / 2; // 5
+        public const int RpcStreamBufferSize = TargetBufferSize;    // 10
         // Bumped from 60 to absorb simulcast: a 3-layer sender produces 3× items per source
         // frame, so a 180-slot ring keeps the effective ~2s window per-layer. P2P single-
         // layer streams still retain ~6s of history under this size.
