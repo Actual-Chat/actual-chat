@@ -134,15 +134,6 @@ export class JoinVideoCallModal {
         return success;
     }
 
-    /**
-     * Get the actual device ID of the currently-previewing camera.
-     * Returns the device ID resolved by getUserMedia, which may differ
-     * from what was originally requested (e.g., when no device was specified).
-     */
-    public getActualDeviceId(): string | null {
-        return this.selectedDeviceId;
-    }
-
     // Returns deviceId + facingMode for the modal's own preview track (Join mode).
     // Consumed by Blazor to resolve per-camera display preferences (mirror).
     public getCurrentCameraInfo(): { deviceId: string | null; facingMode: string | null } {

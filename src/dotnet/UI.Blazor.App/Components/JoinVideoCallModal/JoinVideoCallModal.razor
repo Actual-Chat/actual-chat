@@ -285,8 +285,11 @@
 
         await LoadVideoDevices();
         var lastSelectedDeviceId = await _getLastSelectedDeviceIdTask;
-        if (!lastSelectedDeviceId.IsNullOrEmpty() && _videoDevices.Count > 0)
+        if (!lastSelectedDeviceId.IsNullOrEmpty())
             _selectedDevice = _videoDevices.FirstOrDefault(d => d.DeviceId == lastSelectedDeviceId);
+        // Always work with a device from the enumerated list — fall back to the
+        // first one when nothing is saved (or the saved id no longer exists).
+        _selectedDevice ??= _videoDevices.FirstOrDefault();
 
         _blazorRef = DotNetObjectReference.Create(this);
         _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _containerRef, _blazorRef);
@@ -425,11 +428,6 @@
             _currentDeviceId = info?.DeviceId;
             _currentFacingMode = info?.FacingMode;
         }
-        // First-run case: no SelectedCameraDeviceId in settings, so the browser
-        // auto-picked a device. Bind _selectedDevice to whatever is actually
-        // live so Start (which requires _selectedDevice != null) gets enabled.
-        if (_selectedDevice is null && !string.IsNullOrEmpty(_currentDeviceId) && _videoDevices.Count > 0)
-            _selectedDevice = _videoDevices.FirstOrDefault(d => d.DeviceId == _currentDeviceId);
         var settings = await LocalSettings.LocalAppSettings().Get();
         _isCameraMirrored = settings
             .ResolveIsCameraMirrored(_currentDeviceId, _currentFacingMode, Hub.BrowserInfo.IsMobile);
@@ -515,26 +513,8 @@
         Modal.Close();
     }
 
-    private async Task OnJoinClick() {
-        // Ideally we'd query `getActualDeviceId` from JS — the browser can pick a
-        // different camera than what was originally requested (e.g. front camera when
-        // no device ID was specified). BUT: if the preview is still hanging on an
-        // unresolved getUserMedia (common on Windows NativeAOT without cam permission),
-        // the JS event loop is busy and our call would wait forever, freezing the UI.
-        // So we use the selected device id + fire a best-effort lookup in the background
-        // to update the model later.
-        var selectedDeviceId = _selectedDevice?.DeviceId;
-        try {
-            if (_jsRef is { } jsRef) {
-                var deviceId = await jsRef.InvokeAsync<string?>("getActualDeviceId");
-                if (!string.IsNullOrEmpty(deviceId))
-                    selectedDeviceId = deviceId;
-            }
-        }
-        catch {
-            // Best effort — ignore
-        }
-        ModalModel.SelectedDeviceId = selectedDeviceId;
+    private void OnJoinClick() {
+        ModalModel.SelectedDeviceId = _selectedDevice?.DeviceId;
         ModalModel.IsBlurEnabled = _isBlurEnabled;
         ModalModel.IsConfirmed = true;
 
@@ -621,10 +601,6 @@
         /// stream. Settings mode: no-op (the recorder owns the pipeline).</summary>
         Task SetVideoEnabled(bool enabled);
 
-        /// <summary>Resolved device ID for the Join-mode commit payload. Null in
-        /// Settings mode — the Close button never reads it.</summary>
-        Task<string?> GetActualDeviceId();
-
         /// <summary>Called by the component when the JS layer reports the first
         /// rendered frame. Advances state from <c>Starting</c> to <c>On</c>.</summary>
         void NotifyFirstFrameRendered();
@@ -656,7 +632,6 @@
         public abstract Task ChangeCamera(string deviceId);
         public abstract Task SetBlurEnabled(bool enabled);
         public abstract Task SetVideoEnabled(bool enabled);
-        public abstract Task<string?> GetActualDeviceId();
 
         public virtual void NotifyFirstFrameRendered() {
             // The JS layer fires first-frame events on every (re)attach. Only
@@ -693,9 +668,6 @@
                 SetState(CameraState.Off);
             }
         }
-
-        public override async Task<string?> GetActualDeviceId()
-            => await jsRef.InvokeAsync<string?>("getActualDeviceId");
 
         private async Task StartPreview() {
             SetState(CameraState.Starting);
@@ -756,9 +728,6 @@
             }
             return Task.CompletedTask;
         }
-
-        // Not consumed by the Settings flow — the Close button never reads this.
-        public override Task<string?> GetActualDeviceId() => Task.FromResult<string?>(null);
     }
 
     public enum CameraState { Off, Starting, On, Unavailable }
