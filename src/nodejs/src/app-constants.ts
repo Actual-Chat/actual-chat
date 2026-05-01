@@ -31,8 +31,6 @@ export interface VideoConstants {
     readonly maxLiveDurationMs: number;
     readonly webcamFrameSilenceTimeoutMs: number;
     readonly screencastFrameSilenceTimeoutMs: number;
-    readonly rpcStreamAckPeriod: number;
-    readonly rpcStreamBufferSize: number;
     readonly latencyReportIntervalMs: number;
     readonly highLatencyThresholdMs: number;
     readonly lowLatencyThresholdMs: number;
@@ -69,17 +67,24 @@ export interface VideoConstants {
     readonly minBufferSize: number;              // targetBufferSize - bufferHysteresisSize
     readonly maxBufferSize: number;              // targetBufferSize + bufferHysteresisSize
     readonly serverReplayTailSize: number;       // frameRate * serverReplayTailDurationMs / 1000
+    readonly rpcStreamAckPeriod: number;         // bufferHysteresisSize
+    readonly rpcStreamBufferSize: number;        // targetBufferSize
 }
 
 // AudioConstants: base fields come from .NET (camelCased nested records);
 // derived fields (sample counts, byte counts, second-unit aliases) are
 // computed in `initAppConstants` so we don't ship them over the wire.
 export interface AudioConstants {
+    // Audio-wide cadence
+    readonly frameRate: number;
     readonly rec: AudioRecConstants;
     readonly play: AudioPlayConstants;
     readonly encode: AudioEncodeConstants;
     readonly stream: AudioStreamConstants;
     readonly vad: AudioVadConstants;
+    // Derived in TS
+    readonly frameDurationMs: number;            // 1000 / frameRate
+    readonly frameDurationTicks: number;         // .NET ticks per frame (10_000 per ms)
 }
 
 export interface AudioRecConstants {
@@ -104,31 +109,39 @@ export interface AudioRecHeartbeatConstants {
 export interface AudioPlayConstants {
     // From .NET
     readonly sampleRate: number;
-    readonly startBufferDurationMs: number;
+    readonly startBufferSize: number;
+    readonly bufferHysteresisSize: number;
     readonly startBufferGrowDurationMs: number;
     readonly startBufferDurationWithVideoMs: number;
     readonly lowBufferDurationMs: number;
     readonly stateUpdatePeriodMs: number;
     readonly mediaSessionResetDebounceMs: number;
+    readonly playbackHardSkipThresholdMs: number;
+    readonly playbackMaxSpeedUpDurationMs: number;
+    readonly playbackSpeedUpDropEveryNFrames: number;
     // Derived in TS
+    readonly startBufferDurationMs: number;           // startBufferSize * 1000 / frameRate
+    readonly minBufferSize: number;                   // startBufferSize - bufferHysteresisSize
     readonly samplesPerMs: number;
-    readonly samplesPerWindow: number;     // samples per encoder frame at playback rate
-    readonly sampleDuration: number;       // seconds per sample
-    readonly startBufferDuration: number;  // seconds
+    readonly samplesPerWindow: number;                // samples per encoder frame at playback rate
+    readonly sampleDuration: number;                  // seconds per sample
+    readonly startBufferDuration: number;             // seconds
     readonly startBufferGrowDuration: number;
     readonly startBufferDurationWithVideo: number;
     readonly lowBufferDuration: number;
     readonly stateUpdatePeriod: number;
+    readonly playbackHardSkipThreshold: number;       // seconds
+    readonly playbackMaxSpeedUpDuration: number;      // seconds
 }
 
 export interface AudioEncodeConstants {
     // From .NET
-    readonly frameDurationMs: number;
     readonly bitrate: number;
     readonly channels: number;
     readonly fadeFrames: number;
     readonly maxBufferedFrames: number;
     readonly defaultPreSkip: number;
+    readonly voiceStartPreRollSize: number;
     // Derived in TS
     readonly byteRate: number;
     readonly frameSamples: number;
@@ -240,18 +253,25 @@ function expandVideo(video: VideoConstants): VideoConstants {
         minBufferSize: targetBufferSize - bufferHysteresisSize,
         maxBufferSize: targetBufferSize + bufferHysteresisSize,
         serverReplayTailSize: Math.round(frameRate * serverReplayTailDurationMs / 1000),
+        rpcStreamAckPeriod: bufferHysteresisSize,
+        rpcStreamBufferSize: targetBufferSize,
     };
 }
 
 // Computes derived audio fields from the .NET-supplied base values.
 // Kept module-private — consumers see the expanded `AudioConstants` shape via `AUDIO`.
 function expandAudio(audio: AudioConstants): AudioConstants {
+    const frameRate = audio.frameRate;
+    const frameDurationMs = 1000 / frameRate;
     const recSamplesPerMs = audio.rec.sampleRate / 1000;
     const playSamplesPerMs = audio.play.sampleRate / 1000;
-    const frameDurationMs = audio.encode.frameDurationMs;
     const bitrate = audio.encode.bitrate;
     const frameBytes = Math.round(bitrate * frameDurationMs / 1000 / 8);
+    const startBufferDurationMs = audio.play.startBufferSize * 1000 / frameRate;
     return {
+        ...audio,
+        frameDurationMs,
+        frameDurationTicks: frameDurationMs * 10_000,
         rec: {
             ...audio.rec,
             samplesPerMs: recSamplesPerMs,
@@ -260,14 +280,18 @@ function expandAudio(audio: AudioConstants): AudioConstants {
         },
         play: {
             ...audio.play,
+            startBufferDurationMs,
+            minBufferSize: audio.play.startBufferSize - audio.play.bufferHysteresisSize,
             samplesPerMs: playSamplesPerMs,
             samplesPerWindow: playSamplesPerMs * frameDurationMs,
             sampleDuration: 0.001 / playSamplesPerMs,
-            startBufferDuration: audio.play.startBufferDurationMs / 1000,
+            startBufferDuration: startBufferDurationMs / 1000,
             startBufferGrowDuration: audio.play.startBufferGrowDurationMs / 1000,
             startBufferDurationWithVideo: audio.play.startBufferDurationWithVideoMs / 1000,
             lowBufferDuration: audio.play.lowBufferDurationMs / 1000,
             stateUpdatePeriod: audio.play.stateUpdatePeriodMs / 1000,
+            playbackHardSkipThreshold: audio.play.playbackHardSkipThresholdMs / 1000,
+            playbackMaxSpeedUpDuration: audio.play.playbackMaxSpeedUpDurationMs / 1000,
         },
         encode: {
             ...audio.encode,

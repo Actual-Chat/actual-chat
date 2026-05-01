@@ -12,6 +12,9 @@ partial record AppConstants
     /// </summary>
     public sealed record AudioConstants
     {
+        // Audio-wide cadence — every audio frame is 20 ms / 50 fps.
+        public int FrameRate { get; init; } = Constants.Audio.FrameRate;
+
         public RecConstants Rec { get; init; } = new();
         public PlayConstants Play { get; init; } = new();
         public EncodeConstants Encode { get; init; } = new();
@@ -39,8 +42,11 @@ partial record AppConstants
         public sealed record PlayConstants
         {
             public int SampleRate { get; init; } = Constants.Audio.PlaybackSampleRate;
-            // !DELAYER: How much to buffer before starting playback.
-            public int StartBufferDurationMs { get; init; } = 100;
+            // Doc-target playback buffer sizing (audio-pipeline.md "Constants" block).
+            // StartBufferSize is the input; StartBufferDurationMs (= size / frameRate)
+            // and MinBufferSize (= size - hysteresis) are derived TS-side.
+            public int StartBufferSize { get; init; } = Constants.Audio.StartBufferSize;
+            public int BufferHysteresisSize { get; init; } = Constants.Audio.BufferHysteresisSize;
             // How much to grow the start-buffer threshold during starvation.
             public int StartBufferGrowDurationMs { get; init; } = 100;
             // !DELAYER: Larger start-buffer when video is active for A/V sync.
@@ -51,11 +57,19 @@ partial record AppConstants
             public int StateUpdatePeriodMs { get; init; } = 200;
             // Debounce window for resetting iOS media-session metadata.
             public int MediaSessionResetDebounceMs { get; init; } = 5000;
+            // Audio buffer playback catch-up policy (used when paired with video
+            // from the same author; a separate step will wire these in).
+            public int PlaybackHardSkipThresholdMs { get; init; } =
+                (int)Constants.Audio.PlaybackHardSkipThreshold.TotalMilliseconds;
+            public int PlaybackMaxSpeedUpDurationMs { get; init; } =
+                (int)Constants.Audio.PlaybackMaxSpeedUpDuration.TotalMilliseconds;
+            public int PlaybackSpeedUpDropEveryNFrames { get; init; } =
+                Constants.Audio.PlaybackSpeedUpDropEveryNFrames;
         }
 
         public sealed record EncodeConstants
         {
-            public int FrameDurationMs { get; init; } = Constants.Audio.OpusFrameDurationMs;
+            // FrameDurationMs is derived from audio.frameRate TS-side.
             public int Bitrate { get; init; } = Constants.Audio.Bitrate;
             public int Channels { get; init; } = Constants.Audio.Channels;
             // Fade-in @ start and fade-out @ end of a recording, in encoder frames.
@@ -65,6 +79,10 @@ partial record AppConstants
             // Pre-skip / codec delay measured in samples — default for system encoder
             // when it doesn't report its own.
             public int DefaultPreSkip { get; init; } = 312;
+            // Voice-start pre-roll — bounded ring of recent encoder-frame-equivalent
+            // PCM kept while voice activity is inactive; prepended to the first
+            // encoded frame on voice start so leading consonants survive.
+            public int VoiceStartPreRollSize { get; init; } = Constants.Audio.VoiceStartPreRollSize;
         }
 
         public sealed record StreamConstants
@@ -82,7 +100,10 @@ partial record AppConstants
             public int ConnectErrorDelayMs { get; init; } = 1000;
             // Debug switch — random disconnect period (0 = disabled).
             public int DebugRandomDisconnectPeriodMs { get; init; } = 0;
-            // RPC stream flow control — formerly Constants.Audio.StreamAckPeriod / StreamBufferSize.
+            // RPC stream flow control. Today the producer-side RpcStream uses RPC
+            // defaults; these fields mirror the legacy combined Constants.Audio.StreamAckPeriod
+            // / StreamBufferSize. To be replaced by Constants.Audio.RecordingRpcStreamAckPeriod
+            // when the recording-vs-delivery split lands.
             public int RpcAckPeriod { get; init; } = Constants.Audio.StreamAckPeriod;
             public int RpcBufferSize { get; init; } = Constants.Audio.StreamBufferSize;
         }

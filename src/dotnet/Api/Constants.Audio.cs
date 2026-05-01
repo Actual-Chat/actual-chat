@@ -4,8 +4,43 @@ public static partial class Constants
 {
     public static class Audio
     {
-        public const int StreamingChannelCapacity = 1024;
-        public const int OpusFrameDurationMs = 20;
+        // Frame rate / cadence — every audio frame is independently decodable
+        // (Opus has no keyframe dependency). Frame rate is derived from the
+        // 20 ms Opus frame size, so FrameDuration is the canonical TimeSpan name
+        // and OpusFrameDuration / OpusFrameDurationMs are aliases kept for
+        // backwards compatibility with widely-used Opus-flavored call sites.
+        public const int FrameRate = 50;
+        public const int FrameDurationMs = 1000 / FrameRate; // 20
+        public static readonly TimeSpan FrameDuration = TimeSpan.FromMilliseconds(FrameDurationMs);
+        public const int OpusFrameDurationMs = FrameDurationMs;
+        public static readonly TimeSpan OpusFrameDuration = FrameDuration;
+
+        // Audio buffer (intentional playback buffer, before decode).
+        // Doc-target values from docs/audio-pipeline.md "Constants" block.
+        public const int StartBufferSize = 5;
+        public static readonly TimeSpan StartBufferDuration =
+            TimeSpan.FromSeconds((double)StartBufferSize / FrameRate); // 100 ms
+        public const int BufferHysteresisSize = 3;
+        public const int MinBufferSize = StartBufferSize - BufferHysteresisSize; // 2
+
+        // Voice-start pre-roll — bounded ring of recent encoded-frame-equivalent
+        // PCM kept while voice activity is inactive, prepended to the first
+        // encoded frame on voice start so leading consonants survive.
+        public const int VoiceStartPreRollSize = 10; // 200 ms
+
+        // RPC stream flow control — split into recording (client→server upload,
+        // must not skip recorded speech) and delivery (server→client, must not
+        // skip frames on receiver's behalf). Doc-target values.
+        public const int DeliveryRpcStreamAckPeriod = 5; // 100 ms @ 50 fps
+        public const int RecordingRpcStreamAckPeriod = 5; // 100 ms @ 50 fps
+
+        // Audio buffer playback catch-up policy (used when paired with video
+        // from the same author; a separate step will wire these in).
+        public static readonly TimeSpan PlaybackHardSkipThreshold = TimeSpan.FromSeconds(2);
+        public static readonly TimeSpan PlaybackMaxSpeedUpDuration = TimeSpan.FromSeconds(5);
+        public const int PlaybackSpeedUpDropEveryNFrames = 4;
+
+        // Other audio frame characteristics
         public const int VadFrameDurationMs = 32;
         public const int ApmFrameDurationMs = 10;
         public const int OpusFrameLength = RecordingSampleRate / 1000 * OpusFrameDurationMs;
@@ -15,7 +50,9 @@ public static partial class Constants
         public const int Channels = 1;
         public const int RecordingSampleRate = 16000;
         public const int PlaybackSampleRate = 48000;
-        public static readonly TimeSpan OpusFrameDuration = TimeSpan.FromMilliseconds(OpusFrameDurationMs);
+
+        // Streaming / channel sizing
+        public const int StreamingChannelCapacity = 1024;
         public static readonly TimeSpan ListeningDuration = TimeSpan.FromSeconds(60);
         public static readonly TimeSpan RecordingDuration = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan MaxRealtimeStreamDrift = TimeSpan.FromSeconds(3);
@@ -26,11 +63,21 @@ public static partial class Constants
         // Opus frames are 20 ms; 2 s of silence means the producer is pathologically stalled.
         public static readonly TimeSpan FrameSilenceTimeout = TimeSpan.FromSeconds(2);
 
-        // RPC stream flow control for audio (50fps, 20ms frames).
-        // Tuned for up to ~1s RTT: bufferSize > ackPeriod + fps × RTT.
+        // Legacy single-direction RPC stream flow control. Used today for the
+        // server→client delivery path (AudioStreamingBackend.GetAudio,
+        // LiveAudioStreams.GetStream/GetReplayStream, GetTranscript) and as the
+        // client-side RPC defaults when the recording stream doesn't override
+        // them. To be replaced by DeliveryRpcStreamAckPeriod /
+        // RecordingRpcStreamAckPeriod in a follow-up step that splits the two
+        // directions and adopts the doc-target 5-frame ACK cadence.
         public const int StreamAckPeriod = 64;
         public const int StreamBufferSize = 192;
+
+        // Used by MAUI playback engines to decide when "buffer is low" and as a
+        // start-playback minimum for the Windows engine. Not part of the doc's
+        // target Constants block; will be reconsidered when the audio-buffer
+        // refactor unifies start-threshold semantics across web and MAUI.
         public static readonly TimeSpan LowPlaybackBufferDuration = TimeSpan.FromSeconds(10);
-        public static readonly TimeSpan StartPlaybackWhenBufferedDuration = TimeSpan.FromSeconds(0.1);
+        public static readonly TimeSpan StartPlaybackWhenBufferedDuration = StartBufferDuration;
     }
 }

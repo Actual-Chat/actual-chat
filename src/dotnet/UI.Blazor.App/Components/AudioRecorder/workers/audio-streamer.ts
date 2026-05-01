@@ -13,10 +13,9 @@ import { WorkerConnectivityUI } from './worker-connectivity-ui';
 import { getLogs } from 'logging';
 
 const { debugLog, infoLog, warnLog } = getLogs('AudioStreamer');
-// bufferPool and FRAME_DURATION_TICKS depend on AUDIO and are initialized
-// lazily in AudioStreamer.init (which runs after initAppConstants).
+// bufferPool depends on AUDIO and is initialized lazily in
+// AudioStreamer.init (which runs after initAppConstants).
 let bufferPool: ObjectPool<ArrayBufferLike> = null!;
-let FRAME_DURATION_TICKS = 0;
 
 /** Session.Default — resolved from the WebSocket connection context. */
 const RPC_SESSION_DEFAULT = '~';
@@ -159,8 +158,8 @@ export class AudioStream implements Disposable {
                                 try {
                                     yield {
                                         Data: frame,
-                                        Offset: toMoment(frameIndex * FRAME_DURATION_TICKS),
-                                        Duration: toMoment(FRAME_DURATION_TICKS),
+                                        Offset: toMoment(frameIndex * AUDIO.frameDurationTicks),
+                                        Duration: toMoment(AUDIO.frameDurationTicks),
                                         IsKeyFrame: true,
                                     };
                                     frameIndex++;
@@ -238,7 +237,6 @@ export class AudioStreamer {
         bufferPool = new ObjectPool<ArrayBufferLike>(
             () => new ArrayBuffer(AUDIO.encode.frameBufferBytes)
         ).expandTo(20);
-        FRAME_DURATION_TICKS = AUDIO.encode.frameDurationMs * 10_000;
 
         Api.init('AudioRecorder', {
             url: apiUrl,

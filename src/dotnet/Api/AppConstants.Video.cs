@@ -27,9 +27,6 @@ partial record AppConstants
         // Frame silence watchdogs
         public double WebcamFrameSilenceTimeoutMs { get; init; } = Constants.Video.WebcamFrameSilenceTimeout.TotalMilliseconds;
         public double ScreencastFrameSilenceTimeoutMs { get; init; } = Constants.Video.ScreencastFrameSilenceTimeout.TotalMilliseconds;
-        // RPC stream flow control
-        public int RpcStreamAckPeriod { get; init; } = Constants.Video.RpcStreamAckPeriod;
-        public int RpcStreamBufferSize { get; init; } = Constants.Video.RpcStreamBufferSize;
         // Latency & quality adaptation
         public double LatencyReportIntervalMs { get; init; } = Constants.Video.LatencyReportInterval.TotalMilliseconds;
         public float HighLatencyThresholdMs { get; init; } = Constants.Video.HighLatencyThresholdMs;

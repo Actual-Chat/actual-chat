@@ -13,18 +13,18 @@ public static partial class Constants
         public static readonly TimeSpan TargetBufferDuration =
             TimeSpan.FromSeconds((double)TargetBufferSize / FrameRate); // 333.333 ms
 
-        // Keyframe cadence.
+        // Keyframe cadence — KeyFramePeriod is the input; KeyFramePeriodSize is derived.
         public static readonly TimeSpan KeyFramePeriod = TimeSpan.FromSeconds(3);
-        public const int KeyFramePeriodSize = FrameRate * 3; // 90
+        public static readonly int KeyFramePeriodSize = (int)(FrameRate * KeyFramePeriod.TotalSeconds); // 90
 
         // Buffer hysteresis around TargetBufferSize.
         public const int BufferHysteresisSize = TargetBufferSize / 2; // 5
         public const int MinBufferSize = TargetBufferSize - BufferHysteresisSize; // 5
         public const int MaxBufferSize = TargetBufferSize + BufferHysteresisSize; // 15
 
-        // Server replay tail — short live replay window for late join / reconnect / fan-out.
+        // Server replay tail — duration is the input; size is derived.
         public static readonly TimeSpan ServerReplayTailDuration = TimeSpan.FromSeconds(1);
-        public static readonly int ServerReplayTailSize = FrameRate; // 30
+        public static readonly int ServerReplayTailSize = (int)(FrameRate * ServerReplayTailDuration.TotalSeconds); // 30
 
         // Max simulcast tiers a sender may produce. Mirrors TS
         // MAX_SIMULCAST_TIERS in src/dotnet/UI.Blazor.App/Components/VideoPanel/
