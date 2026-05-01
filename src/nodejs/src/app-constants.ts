@@ -1,12 +1,13 @@
 // Mirror of .NET `AppConstants` (single source of truth: `Constants.*`).
 // Populated once at app startup via BrowserInit and propagated to every worker
-// via its `init(...)` RPC. Reading `APP_CONSTANTS.*` / `VIDEO.*` before init
-// throws TypeError on undefined access — intentional, fail-loud behavior.
+// via its `init(...)` RPC. Reading `APP_CONSTANTS.*` / `VIDEO.*` / `AUDIO.*`
+// before init throws TypeError on undefined access — intentional, fail-loud behavior.
 
-// Top-level snapshot. Currently holds only video constants; audio, presence,
-// etc. join later as separate fields rather than flattening into the root.
+// Top-level snapshot. Holds per-pipeline sections as separate fields rather
+// than flattening into the root.
 export interface AppConstants {
     readonly video: VideoConstants;
+    readonly audio: AudioConstants;
 }
 
 export interface VideoConstants {
@@ -76,12 +77,45 @@ export interface VideoConstants {
     readonly silenceGracePeriodMs: number;
 }
 
+export interface AudioConstants {
+    // Frame cadence
+    readonly opusFrameDurationMs: number;
+    readonly vadFrameDurationMs: number;
+    readonly apmFrameDurationMs: number;
+    // Sample rates
+    readonly recordingSampleRate: number;
+    readonly playbackSampleRate: number;
+    // Frame lengths (samples)
+    readonly opusFrameLength: number;
+    readonly vadFrameLength: number;
+    readonly pcmFrameLength: number;
+    // Codec
+    readonly bitrate: number;
+    readonly channels: number;
+    // Server channel buffering
+    readonly streamingChannelCapacity: number;
+    // Stream lifecycle / watchdogs
+    readonly frameSilenceTimeoutMs: number;
+    readonly maxRealtimeStreamDriftMs: number;
+    readonly maxBeginsAtDriftMs: number;
+    readonly maxStreamDurationMs: number;
+    readonly listeningDurationMs: number;
+    readonly recordingDurationMs: number;
+    // RPC stream flow control
+    readonly streamAckPeriod: number;
+    readonly streamBufferSize: number;
+    // Playback buffer
+    readonly lowPlaybackBufferDurationMs: number;
+    readonly startPlaybackWhenBufferedDurationMs: number;
+}
+
 // Module-local mutable holders. Each ES module instance (main thread + each
 // worker) has its own copy and must be init'd separately via initAppConstants.
 // Typed as defined; undefined at runtime until init runs — accessing
-// APP_CONSTANTS.* / VIDEO.* before init throws TypeError naturally.
+// APP_CONSTANTS.* / VIDEO.* / AUDIO.* before init throws TypeError naturally.
 export let APP_CONSTANTS: AppConstants = undefined!;
 export let VIDEO: VideoConstants = undefined!;
+export let AUDIO: AudioConstants = undefined!;
 let initialized = false;
 
 // First call wins. Subsequent calls are silently ignored so a redundant init
@@ -92,5 +126,6 @@ export function initAppConstants(appConstants: AppConstants): void {
 
     APP_CONSTANTS = appConstants;
     VIDEO = appConstants.video;
+    AUDIO = appConstants.audio;
     initialized = true;
 }
