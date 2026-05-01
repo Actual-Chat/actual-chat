@@ -15,18 +15,16 @@ import type { BgBlurRenderer } from '../webgpu-blur';
 
 const { warnLog } = getLogs('VideoDecoder');
 
-// Buffer caps sized to absorb the audio playout pipeline's jitter buffer
-// (up to ~1 s on cold-start). Without that headroom the selector either
-// drains its queue (Rule 4 misfires) or soft-catchup drops the frames
-// that would have lined up with the audio target — both produce the
-// "video leads audio by ~600 ms" symptom we saw in DIAG.
-const SOFT_CATCHUP_FRAMES = 40;
-const SOFT_CATCHUP_SPAN_MS = 1500;
-const SOFT_CATCHUP_KEEP_MS = 1000;
-const HARD_CAP_FRAMES = 50;
-// Rule 4 force-write threshold: only force-write the oldest queued frame
-// when its ts is at least this far ahead of the current target — i.e.,
-// the queue is full of "future" content and waiting won't help converge.
+// Single decoded-frame slot. Jitter absorption + audio-target pacing now
+// happen upstream in the decoder worker's encoded pre-decode buffer
+// (the doc's `video buffer`); the decoder pulls at audio rate. Once a
+// frame is decoded it's the most-recent presentation candidate — older
+// pending frames are stale by definition. New decode replaces pending.
+//
+// Rule 4 force-write threshold: write the held frame when its ts is at
+// least this far ahead of the current target — clock-skew safety so the
+// MSTG track doesn't go `muted` after ~2 s of no writes when audio target
+// can't catch up to decoded frames (rare; encoded drain usually handles).
 const RULE4_FORCE_WRITE_AHEAD_US = 1_000_000;
 // How many starved ticks before we emit a warn log (~1 s at 30 fps).
 const STARVATION_WARN_TICKS = 30;
@@ -41,7 +39,7 @@ export interface WorkerMstgBufferStats {
 }
 
 export class WorkerMstgSelector {
-    private queue: VideoFrame[] = [];
+    private pending: VideoFrame | null = null;
     private readonly writer: WritableStreamDefaultWriter<VideoFrame>;
     private readonly syncClient: AudioVideoSyncClient;
     private writeInFlight = false;
@@ -108,13 +106,14 @@ export class WorkerMstgSelector {
             frame.close();
             return;
         }
-        // Insert keeping queue sorted by timestamp (decoder may emit out-of-order
-        // around B-frames, though we run in IPPP… so usually a no-op append).
-        const ts = frame.timestamp;
-        let i = this.queue.length;
-        while (i > 0 && this.queue[i - 1].timestamp > ts) i--;
-        this.queue.splice(i, 0, frame);
-        this.applyBackpressure();
+        // Single-slot replace. Older pending frame is stale by definition —
+        // the new decode is closer to the live edge and will line up better
+        // with any future audio target. Decoder runs in IPPP order, so the
+        // new frame's ts > pending's ts; no sort needed.
+        if (this.pending) {
+            try { this.pending.close(); } catch { /* already closed */ }
+        }
+        this.pending = frame;
         this.tick();
     }
 
@@ -136,11 +135,9 @@ export class WorkerMstgSelector {
     }
 
     getBufferStats(): WorkerMstgBufferStats {
-        const depth = this.queue.length;
-        const spanMs = depth >= 2
-            ? (this.queue[depth - 1].timestamp - this.queue[0].timestamp) / 1000
-            : 0;
-        return { depth, spanMs };
+        // Single-slot selector — depth ∈ {0, 1}, span always 0. Real
+        // playback buffer is the encoded ring buffer in decoder-worker.
+        return { depth: this.pending ? 1 : 0, spanMs: 0 };
     }
 
     dispose(): void {
@@ -150,27 +147,11 @@ export class WorkerMstgSelector {
             clearTimeout(this.nextTickTimeout);
             this.nextTickTimeout = null;
         }
-        for (const f of this.queue) {
-            try { f.close(); } catch { /* ignore */ }
+        if (this.pending) {
+            try { this.pending.close(); } catch { /* ignore */ }
+            this.pending = null;
         }
-        this.queue = [];
         try { void this.writer.close(); } catch { /* ignore */ }
-    }
-
-    private applyBackpressure(): void {
-        // Soft catchup: drop oldest frames when buffer span exceeds 600 ms.
-        if (this.queue.length > SOFT_CATCHUP_FRAMES) {
-            const spanMs = (this.queue[this.queue.length - 1].timestamp - this.queue[0].timestamp) / 1000;
-            if (spanMs > SOFT_CATCHUP_SPAN_MS) {
-                const cutoffUs = this.queue[this.queue.length - 1].timestamp - SOFT_CATCHUP_KEEP_MS * 1000;
-                while (this.queue.length > 1 && this.queue[0].timestamp < cutoffUs) {
-                    this.queue.shift()!.close();
-                }
-            }
-        }
-        while (this.queue.length > HARD_CAP_FRAMES) {
-            this.queue.shift()!.close();
-        }
     }
 
     private scheduleNextTick(delayMs: number): void {
@@ -188,7 +169,7 @@ export class WorkerMstgSelector {
 
     private tick(): void {
         if (this.disposed) return;
-        if (this.writeInFlight || this.queue.length === 0) {
+        if (this.writeInFlight || !this.pending) {
             this.scheduleIdleTick();
             return;
         }
@@ -254,45 +235,27 @@ export class WorkerMstgSelector {
         const targetUs = wallclockTargetUs + correctionUs;
         const adjustedTargetUs = targetUs - this.jitterBufferMs * 1000;
 
-        // Pick the latest eligible frame, dropping all earlier ones.
-        let eligible: VideoFrame | null = null;
-        while (this.queue.length > 0 && this.queue[0].timestamp <= adjustedTargetUs) {
-            if (eligible) eligible.close();
-            eligible = this.queue.shift()!;
-        }
-
-        // ── Rule 4: never freeze (but don't drain the queue either) ─────────
-        // Old behavior: write the oldest queued frame whenever none qualified.
-        // That fired every tick under steady-state when the audio target sits
-        // ~600 ms behind wallclock — newly-arrived frames are "future" relative
-        // to that target. Result: queue drained every tick, no buffer to absorb
-        // the audio lag, and video ended up running ~600 ms ahead of audio.
-        //
-        // New behavior: only force-write the oldest frame when it sits ≥1 s
-        // ahead of the target — the queue is full of "future" content that
-        // waiting won't help (target would have to advance ≥1 s to catch up,
-        // i.e., a real clock-skew situation). Otherwise hold off and let the
-        // queue accumulate until target catches up. Chromium starts marking
-        // tracks `muted` after ~2 s with no writes — STARVATION_WARN_TICKS
-        // (~1 s) is a comfortable margin to surface real stalls in the log.
-        if (!eligible && this.queue.length > 0) {
-            const oldestTs = this.queue[0].timestamp;
-            if (oldestTs > targetUs + RULE4_FORCE_WRITE_AHEAD_US) {
-                eligible = this.queue.shift()!;
-            } else {
-                this.starvedTicks++;
-                if (this.starvedTicks === STARVATION_WARN_TICKS) {
-                    warnLog?.log(
-                        `MstgSelector starved ${this.starvedTicks} ticks: ` +
-                        `queueDepth=${this.queue.length}, ` +
-                        `oldestAheadMs=${((oldestTs - targetUs) / 1000).toFixed(0)}, ` +
-                        `targetUs=${targetUs}`);
-                }
-                this.scheduleIdleTick();
-                return;
+        // Single-slot pick. The early-return at the top of tick() guarantees
+        // `pending` is non-null here. If it's at or behind the audio target,
+        // write it. Otherwise hold — or force-write under Rule 4 (clock-skew
+        // safety) if it sits ≥1 s ahead so the MSTG track doesn't go `muted`
+        // after ~2 s of no writes. With the encoded pre-decode buffer pacing
+        // upstream this should be rare (decoder runs at audio rate); kept
+        // as defense against true clock skew.
+        const pending = this.pending;
+        let eligible: VideoFrame;
+        if (pending.timestamp <= adjustedTargetUs
+            || pending.timestamp > targetUs + RULE4_FORCE_WRITE_AHEAD_US) {
+            eligible = pending;
+            this.pending = null;
+        } else {
+            this.starvedTicks++;
+            if (this.starvedTicks === STARVATION_WARN_TICKS) {
+                warnLog?.log(
+                    `MstgSelector starved ${this.starvedTicks} ticks: ` +
+                    `pending held, aheadMs=${((pending.timestamp - targetUs) / 1000).toFixed(0)}, ` +
+                    `targetUs=${targetUs}`);
             }
-        }
-        if (!eligible) {
             this.scheduleIdleTick();
             return;
         }
@@ -336,7 +299,7 @@ export class WorkerMstgSelector {
             .finally(() => {
                 this.writeInFlight = false;
                 if (this.disposed) return;
-                if (this.queue.length > 0) this.tick();
+                if (this.pending) this.tick();
                 else this.scheduleIdleTick();
             });
 
@@ -353,9 +316,6 @@ export class WorkerMstgSelector {
         const diagNowMs = performance.now();
         if (diagNowMs - this.lastDiagAtMs >= 1000) {
             this.lastDiagAtMs = diagNowMs;
-            const queueSpanMs = this.queue.length >= 2
-                ? (this.queue[this.queue.length - 1].timestamp - this.queue[0].timestamp) / 1000
-                : 0;
             const lastWrittenMs = this.lastWrittenTs >= 0 ? this.lastWrittenTs / 1000 : 0;
             // Render-side residual: how far ahead/behind the last frame we
             // actually wrote sits relative to the audio target. This is the
@@ -371,7 +331,7 @@ export class WorkerMstgSelector {
                   `lastLagMs=${lastLagMs.toFixed(0)}, `
                 : `audioTgt=NONE, `;
             warnLog?.log(
-                `MstgSelector DIAG: queueDepth=${this.queue.length}, queueSpanMs=${queueSpanMs.toFixed(0)}, ` +
+                `MstgSelector DIAG: ` +
                 `wcTgtMs=${this.lastTickWcTgtMs.toFixed(0)}, ${audioTgtStr}` +
                 `lastWrittenMs=${lastWrittenMs.toFixed(0)}, writeInFlight=${this.writeInFlight}, ` +
                 `bgPaints/s=${this.bgPaintsSinceDiag}, mainWrites/s=${this.mainWritesSinceDiag}, ` +
