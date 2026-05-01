@@ -141,6 +141,8 @@ export class WebCodecsDecoder {
             if (this.config.description) {
                 decoderConfig.description = this.config.description;
             }
+            if (this.config.codedWidth) decoderConfig.codedWidth = this.config.codedWidth;
+            if (this.config.codedHeight) decoderConfig.codedHeight = this.config.codedHeight;
 
             // Safari-specific optimizations for H.264 decoding
             const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
@@ -162,19 +164,31 @@ export class WebCodecsDecoder {
         }
     }
 
-    updateDescription(description: AllowSharedBufferSource): void {
-    // Update decoder with new description (e.g., from encoder metadata)
-        if (this.decoder.state !== 'closed') {
-            this.decoder.configure({
-                codec: this.config.codec,
-                optimizeForLatency: this.config.optimizeForLatency,
-                hardwareAcceleration: this.config.hardwareAcceleration,
-                description
-            });
-            this.decodeStartTimes = []; // flush stale timings — configure() aborts pending decodes
-            this.decodeQueueAtStart = [];
-            infoLog?.log('Decoder reconfigured with description');
+    /**
+     * Reconfigure the decoder with a new description (typically a new keyframe's
+     * SPS/PPS after a simulcast layer switch). When `codec` is provided and
+     * differs from the current config codec, the decoder is reconfigured with
+     * the new codec string too — this is required when the new keyframe's
+     * description bytes carry a different tier/level/profile that changes the
+     * derived codec string.
+     */
+    updateDescription(description: AllowSharedBufferSource, codec?: string): void {
+        if (this.decoder.state === 'closed') return;
+        if (codec && codec !== this.config.codec) {
+            infoLog?.log(`Decoder codec change: ${this.config.codec} -> ${codec}`);
+            this.config = { ...this.config, codec };
         }
+        this.decoder.configure({
+            codec: this.config.codec,
+            optimizeForLatency: this.config.optimizeForLatency,
+            hardwareAcceleration: this.config.hardwareAcceleration,
+            description,
+            ...(this.config.codedWidth ? { codedWidth: this.config.codedWidth } : {}),
+            ...(this.config.codedHeight ? { codedHeight: this.config.codedHeight } : {}),
+        });
+        this.decodeStartTimes = []; // flush stale timings — configure() aborts pending decodes
+        this.decodeQueueAtStart = [];
+        infoLog?.log('Decoder reconfigured with description');
     }
 
     decodeRaw(chunk: EncodedVideoChunk): void {
