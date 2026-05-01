@@ -134,8 +134,10 @@ class DataHrefGesture extends Gesture {
             if (replaceOnPrefix) {
                 const url = new URL(location.href);
                 const path = url.pathname;
-                if (path.startsWith(replaceOnPrefix) && path.length > replaceOnPrefix.length)
-                    mustReplace = true;
+                if (path.startsWith(replaceOnPrefix) && path.length > replaceOnPrefix.length) {
+                    const except = element.dataset.replaceOnPrefixExcept;
+                    mustReplace = !except || path !== except;
+                }
             }
             void History.navigateTo(href, mustReplace); // Internal URL
         }

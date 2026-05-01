@@ -5,6 +5,22 @@
     scrollbar-width: none;
 }
 
+/* Test Page */
+.discover-test-content {
+    @apply flex-x flex-1;
+    @apply h-full;
+    @apply overflow-hidden;
+}
+.discover-test-content > .discover-right {
+    @apply shrink-0;
+    @apply border-l border-bg-05;
+}
+.discover-test-content > .c-wide {
+    @apply shrink-0;
+    @apply max-w-[30%];
+    @apply border-r border-bg-05;
+}
+
 /* Header */
 .discover-header {
     @apply ordinary-header;

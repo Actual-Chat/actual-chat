@@ -5,6 +5,7 @@
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Copy chat to place</MainHeader>
 
+<div class="test-page-wrapper">
 <Form Class="h-full" @ref="@_formRef" Model="@_form">
     <FormBlock>
         <DataAnnotationsValidator/>
@@ -29,7 +30,7 @@
     <Button Type="@ButtonType.Button" Click="@(() => CopyChatToPlace())">Copy chat to place</Button>
     <Button Type="@ButtonType.Button" Click="@(() => PublishCopiedChat())">Publish copied chat</Button>
 </Form>
-
+</div>
 
 @code {
     private Form? _formRef;

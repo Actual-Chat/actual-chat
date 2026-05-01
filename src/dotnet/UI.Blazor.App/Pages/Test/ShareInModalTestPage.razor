@@ -3,9 +3,11 @@
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Incoming Share Test Page</MainHeader>
 
-<Button Class="btn-primary" Click="ShowIncomingShareTextModal">
-    Show Incoming Share Modal
-</Button>
+<div class="test-page-wrapper">
+    <Button Class="btn-primary" Click="ShowIncomingShareTextModal">
+        Show Incoming Share Modal
+    </Button>
+</div>
 
 @code {
     [Inject] private IncomingShareUI IncomingShareUI { get; init; } = null!;

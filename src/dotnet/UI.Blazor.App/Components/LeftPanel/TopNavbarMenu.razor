@@ -71,6 +71,7 @@
     private async Task OnTestPagesClick() {
         await WhenClosed;
         NavbarUI.SelectGroup(NavbarGroupIds.TestPages, true);
+        _ = History.NavigateTo(Links.TestPageHome);
         _ = TuneUI.Play(Tune.SelectNavbarItem).SilentAwait();
     }
 

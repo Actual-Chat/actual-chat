@@ -1,20 +1,18 @@
 @page "/test/place-info"
-@layout DiscoverLayout
 @inherits ComputedStateComponent<AppUIHub, PlaceInfoTestPage.Model>
 @{
     var m = State.Value;
 }
 
 <RequireAccount MustBeAdmin="true"/>
+<MainHeader>Place Info Test Page</MainHeader>
 
-<RenderIntoSlot Name="@LayoutSlots.MainLeftDrawer">
-    <div class="discover-left">
-        <LeftPanelButtons/>
+<div class="test-page-wrapper">
+    <div class="place-info-test-content">
         <PlaceInfoWideLeftPanel Data="@m" OnClick="@OnPlaceClick"/>
+        <PlaceInfo PlaceId="@m.SelectedPlaceId"/>
     </div>
-</RenderIntoSlot>
-
-<PlaceInfo PlaceId="@m.SelectedPlaceId"/>
+</div>
 
 @code {
     private PlaceId? _selectedPlaceId;

@@ -5,6 +5,8 @@
 
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Mesh Diagnostic Page</MainHeader>
+
+<div class="test-page-wrapper">
 @{
     var m = State.Value;
     if (m is null) {
@@ -43,6 +45,7 @@
         </div>
     </div>
 }
+</div>
 @{
     RenderFragment RenderNodeMeshInfo(MeshDiagInfo nodeInfo) =>
         @<div>

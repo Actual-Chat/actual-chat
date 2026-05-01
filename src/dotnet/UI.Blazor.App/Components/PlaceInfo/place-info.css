@@ -109,9 +109,15 @@ body.narrow .place-info {
     @apply mb-14;
 }
 
+.place-info-test-content {
+    @apply flex-x flex-1;
+    @apply h-full;
+    @apply overflow-hidden;
+}
 .place-info-wide-left-panel {
     @apply flex-y;
     @apply w-80;
+    @apply shrink-0;
     @apply p-4;
-    @apply bg-03;
+    @apply border-r border-bg-05;
 }

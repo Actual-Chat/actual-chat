@@ -8,10 +8,12 @@
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Features Test Page</MainHeader>
 
+<div class="test-page-wrapper">
 <p>Server time: @(m.ServerTime)</p>
 <p>Client user: @(m.ClientAccount?.Name ?? "n/a")</p>
 <p>Enable incomplete UI: @(m.EnableIncompleteUI)</p>
 <p>Environment: @(m.Environment)</p>
+</div>
 
 @code {
     protected override ComputedState<Model>.Options GetStateOptions()

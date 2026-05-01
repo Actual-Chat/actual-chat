@@ -602,6 +602,19 @@ body.wide .error-container {
     @apply hidden;
 }
 
+.page-with-header-and-footer .layout-body > .test-page-wrapper {
+    @apply flex-y flex-1 gap-2;
+    @apply m-2 p-2;
+    @apply bg-03;
+    @apply overflow-y-auto;
+    border-radius: 0.75rem;
+}
+.page-with-header-and-footer .layout-body:has(.test-page-wrapper) {
+    @apply p-0;
+}
+body.narrow .page-with-header-and-footer:has(.side-nav-left[data-side-nav="open"]):has(.test-page-wrapper) .layout-header {
+    @apply hidden;
+}
 .page-with-header-and-footer .layout-body .test-page-text {
     @apply flex-y gap-y-4;
     @apply h-full;

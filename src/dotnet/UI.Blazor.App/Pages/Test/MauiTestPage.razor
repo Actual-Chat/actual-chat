@@ -2,8 +2,10 @@
 @using ActualChat.Hosting
 
 <RequireAccount MustBeAdmin="true"/>
-<h2>MAUI Test Page</h2>
 
+<MainHeader>MAUI Test Page</MainHeader>
+
+<div class="test-page-wrapper">
 <BackendStatusTest />
 <ExternalImageTest />
 
@@ -12,6 +14,7 @@
     @if (Hub.HostInfo.AppKind == AppKind.Android) {
         <Button Click="OnSimulateActivityDestroyClicked">Simulate Activity Destroy</Button>
     }
+</div>
 </div>
 
 @code {

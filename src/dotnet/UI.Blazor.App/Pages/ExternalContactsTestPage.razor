@@ -2,9 +2,13 @@
 
 <RequireAccount MustBeAdmin="true"/>
 
-<Button Class="btn-primary" Click="@(_ => OnGenerateClick())">
-    Generate contacts
-</Button>
+<MainHeader>External Contacts Test Page</MainHeader>
+
+<div class="test-page-wrapper">
+    <Button Class="btn-primary" Click="@(_ => OnGenerateClick())">
+        Generate contacts
+    </Button>
+</div>
 
 @code {
     [Inject] private FakeDeviceContacts FakeDeviceContacts { get; init; } = null!;
