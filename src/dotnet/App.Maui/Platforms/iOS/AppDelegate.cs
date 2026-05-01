@@ -45,7 +45,10 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
 
     public override void DidEnterBackground(UIApplication application)
     {
-        SetBackgroundState(true);
+        // Hold the assertion until suspend handlers (incl. SQLite WAL checkpoint) finish;
+        // otherwise iOS suspends us with file locks held -> 0xdead10cc.
+        using (application.BeginBackgroundTaskScope("ActualChat.Suspend"))
+            SetBackgroundState(true);
         base.DidEnterBackground(application);
     }
 
@@ -88,7 +91,7 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
             break;
         case "com.apple.corespotlightitem":
             if (userActivity.UserInfo?.ContainsKey(CSSearchableItem.ActivityIdentifier) == true)
-                url = userActivity.UserInfo.ObjectForKey(CSSearchableItem.ActivityIdentifier).ToString();
+                url = userActivity.UserInfo.ObjectForKey(CSSearchableItem.ActivityIdentifier)!.ToString();
             break;
         default:
             if (userActivity.UserInfo?.ContainsKey(new NSString("link")) == true)

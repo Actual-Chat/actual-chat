@@ -35,7 +35,7 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
 
         var hostInfo = services.HostInfo();
         if (hostInfo.AppKind is AppKind.Ios or AppKind.MacOS)
-            MauiBackgroundState.IsBackground.Updated += OnIsBackgroundUpdated;
+            MauiBackgroundState.RegisterSuspendHandler(Suspend);
     }
 
     public ValueTask<byte[]?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
@@ -218,20 +218,6 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
                 delayMs *= 2;
             }
         }
-    }
-
-    private void OnIsBackgroundUpdated(State state, StateEventKind stateEventKind)
-    {
-        if (!MauiBackgroundState.IsBackground.Value)
-            return;
-
-        // iOS requires apps to release all file locks in 5s after backgrounding
-        var suspendDelay = TimeSpan.FromSeconds(3);
-        _ = Task.Delay(suspendDelay, CancellationToken.None)
-            .ContinueWith(_ => {
-                if (MauiBackgroundState.IsBackground.Value)
-                    Suspend();
-            }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
 
     private void Suspend()
