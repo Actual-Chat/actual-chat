@@ -26,7 +26,8 @@ import { BG_DRAW_INTERVAL_MS } from '../services/bg-canvas-settings';
 import { BgBlurRenderer } from '../webgpu-blur';
 import { Api, momentToSeconds, secondsToMoment, streamingApi } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
-import { initAppConstants } from 'app-constants';
+import { initAppConstants, VIDEO } from 'app-constants';
+import { RingBuffer } from 'actuallab-core';
 
 const { infoLog, warnLog, errorLog } = getLogs('VideoDecoder');
 
@@ -446,13 +447,104 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
     }
 }
 
+// ─── Encoded pre-decode buffer ──────────────────────────────────────────────
+// The doc's `video buffer` (docs/video-pipeline.md) — encoded chunks held
+// before the decoder. Encoded chunks are tiny (~16 KB) so we can hold many
+// without the GPU/CPU memory cost of decoded frames. This is the only
+// intentional playback latency on the receive side.
+
+interface EncodedChunkArgs {
+    timestamp: number;
+    duration: number;
+    isKeyFrame: boolean;
+    sequenceNumber: number;
+    width: number | undefined;
+    height: number | undefined;
+    data: ArrayBuffer;
+    description?: ArrayBuffer;
+}
+
+// Mirror of webcodecs-decoder's BackpressureQueueLimit. Keep in sync.
+const DRAIN_DECODE_QUEUE_LIMIT = 4;
+// How long to back off when the decoder's internal queue is full. One
+// frame at 30 fps is ~33 ms; 5 ms gives the decoder a chance to drain
+// without busy-spinning.
+const DRAIN_BACKOFF_MS = 5;
+
+let encodedBuffer: RingBuffer<EncodedChunkArgs> | null = null;
+let drainRunning = false;
+
+function getEncodedBuffer(): RingBuffer<EncodedChunkArgs> {
+    if (encodedBuffer) return encodedBuffer;
+    // Hard cap = 2× max so a sustained burst can momentarily exceed `max`
+    // before keyframe-aware eviction trims it back. Lazy because VIDEO is
+    // populated only after the init RPC arrives.
+    encodedBuffer = new RingBuffer<EncodedChunkArgs>(VIDEO.maxBufferSize * 2);
+    return encodedBuffer;
+}
+
+function clearEncodedBuffer(): void {
+    encodedBuffer?.clear();
+}
+
+// Skip-to-newest-keyframe trim. Only safe to drop chunks before a
+// keyframe — the decoder needs that keyframe to resume cleanly.
+function trimToNewestKeyframe(buf: RingBuffer<EncodedChunkArgs>): void {
+    let kfIdx = -1;
+    for (let i = buf.count - 1; i >= 0; i--) {
+        if (buf.get(i).isKeyFrame) { kfIdx = i; break; }
+    }
+    if (kfIdx > 0) buf.moveHead(kfIdx);
+}
+
+function pushEncodedChunk(args: EncodedChunkArgs): void {
+    const buf = getEncodedBuffer();
+    // Soft trim: above maxBufferSize → trim to newest keyframe so playback
+    // latency stays bounded. Decoder hygiene preserved (KF-aware skip).
+    if (buf.count >= VIDEO.maxBufferSize) {
+        trimToNewestKeyframe(buf);
+    }
+    if (buf.isFull) {
+        // Hard cap reached even after KF trim (no KF in buffer, or KF is at
+        // head). Drop oldest as a defensive backstop — the decoder may emit
+        // artifacts until the next keyframe arrives, and `waitingForKeyframe`
+        // already guards against this in processEncodedChunk.
+        buf.pullHead();
+    }
+    buf.pushTail(args);
+    triggerDrain();
+}
+
+function triggerDrain(): void {
+    if (drainRunning) return;
+    drainRunning = true;
+    void drainEncodedBuffer().finally(() => { drainRunning = false; });
+}
+
+async function drainEncodedBuffer(): Promise<void> {
+    while (encodedBuffer && encodedBuffer.count > 0) {
+        const dec = decoder;
+        if (dec && dec.getDecodeQueueSize() >= DRAIN_DECODE_QUEUE_LIMIT) {
+            await new Promise<void>(r => setTimeout(r, DRAIN_BACKOFF_MS));
+            continue;
+        }
+        const args = encodedBuffer.pullHead();
+        try {
+            await processEncodedChunk(
+                args.timestamp, args.duration, args.isKeyFrame, args.sequenceNumber,
+                args.width, args.height, args.data, args.description);
+        } catch (e) {
+            errorLog?.log('Drain decode failed:', e);
+        }
+    }
+}
+
 /**
  * Decode raw encoded bytes (used by video-player.ts for off-main-thread decoding).
  * Creates EncodedVideoChunk internally from raw bytes.
  *
- * Top-level function so the same code path is reachable from both the
- * decodeRawChunk RPC entry and the upcoming in-worker encoded-frame
- * buffer drain loop (Step E of the receiver-buffer cleanup).
+ * Called from both the decodeRawChunk RPC entry (via pushEncodedChunk) and
+ * the in-worker drain loop. Module-scoped state is shared.
  */
 async function processEncodedChunk(
     timestamp: number,
@@ -1125,6 +1217,7 @@ const serverImpl: DecoderWorker = {
             lastChunkDescLen = 0;
             waitingForKeyframe = false;
             initialDescriptionApplied = false;
+            clearEncodedBuffer();
         } catch (error) {
             errorLog?.log('Failed to stop decoder:', error);
             throw error;
@@ -1133,13 +1226,15 @@ const serverImpl: DecoderWorker = {
 
     /**
      * Decode raw encoded bytes (used by video-player.ts for off-main-thread decoding).
-     * Creates EncodedVideoChunk internally from raw bytes.
      *
-     * Thin wrapper over processEncodedChunk so the same code path is
-     * reachable from both the RPC entry and the upcoming in-worker
-     * encoded-frame buffer drain loop.
+     * Pushes the chunk into the encoded pre-decode buffer. The drain loop
+     * pulls from the buffer at the decoder's actual throughput, gated by
+     * VideoDecoder.decodeQueueSize. Returns immediately so back-pressure
+     * from a slow decoder absorbs into the buffer (with KF-aware eviction)
+     * rather than blocking the producer.
      */
-    decodeRawChunk: (
+    // eslint-disable-next-line @typescript-eslint/require-await
+    decodeRawChunk: async (
         timestamp: number,
         duration: number,
         isKeyFrame: boolean,
@@ -1148,8 +1243,13 @@ const serverImpl: DecoderWorker = {
         height: number | undefined,
         data: ArrayBuffer,
         description?: ArrayBuffer
-    ): Promise<void> => processEncodedChunk(
-        timestamp, duration, isKeyFrame, sequenceNumber, width, height, data, description),
+    ): Promise<void> => {
+        if (!processing) return;
+        pushEncodedChunk({
+            timestamp, duration, isKeyFrame, sequenceNumber,
+            width, height, data, description,
+        });
+    },
 
     // eslint-disable-next-line @typescript-eslint/require-await
     flagWaitingForKeyframe: async (): Promise<void> => {
@@ -1189,6 +1289,9 @@ const serverImpl: DecoderWorker = {
                 // chunk from the pre-reset stream can race the new decoder and
                 // trigger "A key frame is required after configure()".
                 waitingForKeyframe = true;
+                // Drop any chunks queued in the encoded buffer behind the old
+                // decoder — they belong to the pre-reset stream's GOP.
+                clearEncodedBuffer();
                 infoLog?.log('Decoder reset complete');
             }
         } catch (error) {
@@ -1211,6 +1314,8 @@ const serverImpl: DecoderWorker = {
             // previous stream; the new bitstream may accept what the old one
             // rejected (different encoder, different SPS, etc.).
             failedCandidates.clear();
+            // Pre-decode buffer holds chunks from the OLD config — drop them.
+            clearEncodedBuffer();
 
             if (decoder && decoder.getState() !== 'closed') {
                 decoder.close();

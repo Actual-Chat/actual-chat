@@ -310,6 +310,20 @@ export class WebCodecsDecoder {
         return this.decoder.state;
     }
 
+    /**
+     * Current VideoDecoder.decodeQueueSize, or 0 if the decoder isn't
+     * configured / safe to read. Used by the encoded pre-decode buffer's
+     * drain loop to gate input rate so the decoded-frame backlog doesn't
+     * grow unbounded inside the platform decoder.
+     */
+    getDecodeQueueSize(): number {
+        try {
+            if (this.decoder.state === 'configured')
+                return this.decoder.decodeQueueSize;
+        } catch { /* ignore */ }
+        return 0;
+    }
+
     getStats(): DecoderStats {
         const averageDecodeTime = this.decodeTimeHistory.length > 0
             ? this.decodeTimeHistory.reduce((a, b) => a + b, 0) / this.decodeTimeHistory.length
