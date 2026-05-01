@@ -96,6 +96,12 @@ interface PrimaryPoolEntry {
     codec: string;
     width: number;
     height: number;
+    // Cached HVCC/AVCC description from the pooled encoder's first keyframe.
+    // Chrome's VideoEncoder.configure() on an already-configured encoder is a
+    // reconfigure and does not re-emit the description on subsequent keyframes,
+    // so without this stash the next session can't build the stream's
+    // codecSettings and frames pile up unsent. Same NVENC session → same bytes.
+    description: Uint8Array | null;
 }
 let pooledPrimary: PrimaryPoolEntry | null = null;
 let poolExpireTimer: ReturnType<typeof setTimeout> | null = null;
@@ -967,23 +973,22 @@ function deliverChunkToStream(
     const isAvcAnnexB = encoderConfig!.codec.startsWith('avc1');
     if (isKeyFrame && !isAvcAnnexB) {
         const layerId = spatialLayerId ?? 0;
+        let descBytes: Uint8Array | null = null;
         if (descriptionBytes && descriptionBytes.byteLength > 0) {
-            const descBytes = new Uint8Array(descriptionBytes);
-            frame.description = descBytes;
+            descBytes = new Uint8Array(descriptionBytes);
             storedDescriptionBytesByLayer.set(layerId, descBytes);
-
-            if (!codecSettings) {
+        } else {
+            descBytes = storedDescriptionBytesByLayer.get(layerId) ?? null;
+            if (!descBytes)
+                warnLog?.log(`Keyframe for layer ${layerId} has no description and no cached entry`);
+        }
+        if (descBytes) {
+            frame.description = descBytes;
+            if (layerId === 0 && !codecSettings) {
                 let binary = '';
                 for (const byte of descBytes) binary += String.fromCharCode(byte);
                 codecSettings = btoa(binary);
                 debugLog?.log(`Captured codec description for layer ${layerId}: ${descBytes.length} bytes`);
-            }
-        } else {
-            const cached = storedDescriptionBytesByLayer.get(layerId);
-            if (cached) {
-                frame.description = cached;
-            } else {
-                warnLog?.log(`Keyframe for layer ${layerId} has no description and no cached entry`);
             }
         }
     }
@@ -1130,6 +1135,11 @@ function tryAdoptPooledPrimary(targetCodec: string): boolean {
     infoLog?.log(`Encoder pool: reusing primary (${pooledPrimary.codec} ${pooledPrimary.width}x${pooledPrimary.height} → ${targetCodec})`);
     encoder = pooledPrimary.encoder;
     encoder.reset();
+    // Restore the previously emitted description so we can build codecSettings
+    // immediately on the first reused-session keyframe (Chrome won't re-emit it).
+    if (pooledPrimary.description) {
+        storedDescriptionBytesByLayer.set(0, pooledPrimary.description);
+    }
     pooledPrimary = null;
     return true;
 }
@@ -1147,6 +1157,7 @@ function parkPrimaryEncoder(): void {
             codec: encoderConfig.codec,
             width: encoderConfig.width,
             height: encoderConfig.height,
+            description: storedDescriptionBytesByLayer.get(0) ?? null,
         };
         infoLog?.log(`Encoder pool: parked primary (${encoderConfig.codec} ${encoderConfig.width}x${encoderConfig.height}), TTL ${POOL_TTL_MS}ms`);
         encoder = null;
