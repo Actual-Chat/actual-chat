@@ -21,6 +21,19 @@ import { getLogs } from 'logging';
 
 const { infoLog, warnLog, errorLog } = getLogs('MainThreadDiagnostics');
 
+// Compact JSON serializer for diagnostic payloads. Inlines the payload into
+// the log message text so it survives "Copy console", log uploaders, and
+// DevTools quirks where structured args render as just "Object". Drops
+// zero/empty/null fields and truncates long strings to keep lines manageable
+// while staying machine-parseable via JSON.parse.
+function compactJson(payload: unknown): string {
+    return JSON.stringify(payload, (_k: string, v: unknown) => {
+        if (v === 0 || v === '' || v == null) return undefined;
+        if (typeof v === 'string' && v.length > 200) return v.slice(0, 200) + '…';
+        return v;
+    });
+}
+
 interface ScriptTiming {
     name: string;
     invoker: string;
@@ -121,12 +134,12 @@ export class MainThreadDiagnostics {
                             ? `${topScript.sourceURL}:${topScript.sourceFunctionName}`
                             : '<no-script>';
                         if (!shouldReport(signature)) continue;
-                        // Key fields go into the text message so they survive
-                        // Chrome's "Copy console" (which serializes object args
-                        // as just "Object") AND DevTools quirks where script
-                        // entries sometimes render as "No properties" when
-                        // expanded. Full structured payload still goes as the
-                        // second arg for live inspection.
+                        // Full payload is inlined as JSON into the message via
+                        // compactJson(): survives "Copy console", log
+                        // uploaders, and DevTools rendering quirks. The
+                        // human-readable summary stays first so the line is
+                        // still scannable; payload= tail is for post-hoc
+                        // inspection (JSON.parse the substring after "payload=").
                         const scriptsSummary = e.scripts
                             .map(s => {
                                 const inv = s.invoker
@@ -135,37 +148,40 @@ export class MainThreadDiagnostics {
                                 return `${s.invokerType || '?'}${inv}@${Math.round(s.duration)}ms`;
                             })
                             .join(',');
+                        const payload = {
+                            signature,
+                            duration: Math.round(e.duration),
+                            blockingDuration: Math.round(e.blockingDuration),
+                            renderStart: Math.round(e.renderStart - e.startTime),
+                            styleAndLayoutStart: Math.round(e.styleAndLayoutStart - e.startTime),
+                            scripts: e.scripts.map(s => ({
+                                invokerType: s.invokerType,
+                                invoker: s.invoker,
+                                sourceURL: s.sourceURL,
+                                sourceFunctionName: s.sourceFunctionName,
+                                sourceCharPosition: s.sourceCharPosition,
+                                duration: Math.round(s.duration),
+                                forcedStyleAndLayoutDuration: Math.round(s.forcedStyleAndLayoutDuration),
+                                pauseDuration: Math.round(s.pauseDuration),
+                            })),
+                        };
                         warnLog?.log(
                             `long-animation-frame ${signature} `
                             + `dur=${Math.round(e.duration)}ms `
                             + `block=${Math.round(e.blockingDuration)}ms`
-                            + (scriptsSummary ? ` scripts=[${scriptsSummary}]` : ''),
-                            {
-                                signature,
-                                duration: Math.round(e.duration),
-                                blockingDuration: Math.round(e.blockingDuration),
-                                renderStart: Math.round(e.renderStart - e.startTime),
-                                styleAndLayoutStart: Math.round(e.styleAndLayoutStart - e.startTime),
-                                scripts: e.scripts.map(s => ({
-                                    invokerType: s.invokerType,
-                                    invoker: s.invoker,
-                                    sourceURL: s.sourceURL,
-                                    sourceFunctionName: s.sourceFunctionName,
-                                    sourceCharPosition: s.sourceCharPosition,
-                                    duration: Math.round(s.duration),
-                                    forcedStyleAndLayoutDuration: Math.round(s.forcedStyleAndLayoutDuration),
-                                })),
-                            });
+                            + (scriptsSummary ? ` scripts=[${scriptsSummary}]` : '')
+                            + ` payload=${compactJson(payload)}`);
                     } else {
                         const signature = `longtask:${entry.name}`;
                         if (!shouldReport(signature)) continue;
+                        const payload = {
+                            duration: Math.round(entry.duration),
+                            startTime: Math.round(entry.startTime),
+                            name: entry.name,
+                        };
                         warnLog?.log(
-                            `longtask ${entry.name} dur=${Math.round(entry.duration)}ms`,
-                            {
-                                duration: Math.round(entry.duration),
-                                startTime: Math.round(entry.startTime),
-                                name: entry.name,
-                            });
+                            `longtask ${entry.name} dur=${Math.round(entry.duration)}ms`
+                            + ` payload=${compactJson(payload)}`);
                     }
                 }
             });
@@ -203,22 +219,23 @@ export class MainThreadDiagnostics {
                     calls.shift();
                 if (calls.length >= threshold && now - lastReportedAt >= MO_STORM_COOLDOWN_MS) {
                     lastReportedAt = now;
-                    // First sample record summary inlined into the message so
-                    // "Copy console" preserves at least the offender's tag.
+                    // Full payload (createdAt stack + sample records) inlined
+                    // as JSON via compactJson() — see LoAF comment above.
                     const firstTarget = records.length ? describeNode(records[0].target) : '<no-records>';
+                    const payload = {
+                        createdAt,
+                        sampleRecords: records.slice(0, 3).map(r => ({
+                            type: r.type,
+                            target: describeNode(r.target),
+                            added: Array.from(r.addedNodes).slice(0, 3).map(describeNode),
+                            removed: Array.from(r.removedNodes).slice(0, 3).map(describeNode),
+                            attributeName: r.attributeName,
+                        })),
+                    };
                     errorLog?.log(
                         `MutationObserver storm: ${calls.length} callbacks in ${windowMs}ms `
-                        + `target=${firstTarget}`,
-                        {
-                            createdAt,
-                            sampleRecords: records.slice(0, 3).map(r => ({
-                                type: r.type,
-                                target: describeNode(r.target),
-                                added: Array.from(r.addedNodes).slice(0, 3).map(describeNode),
-                                removed: Array.from(r.removedNodes).slice(0, 3).map(describeNode),
-                                attributeName: r.attributeName,
-                            })),
-                        });
+                        + `target=${firstTarget}`
+                        + ` payload=${compactJson(payload)}`);
                 }
                 callback(records, observer);
             };
