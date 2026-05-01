@@ -1,8 +1,9 @@
 // Worker-side audio-clock-driven frame selector for the MSTG render path.
-// Owns the decoded VideoFrame queue, picks the frame matching the audio
-// clock, and writes it to a MediaStreamTrackGenerator's writable transferred
-// from the main thread. Drops late frames; holds early frames; never bounces
-// VideoFrames to main.
+// Holds a single decoded VideoFrame slot (the doc's `video presentation`
+// replaceable slot — docs/video-pipeline.md), picks it for the writer when
+// it's at or behind the audio target, and writes it to a
+// MediaStreamTrackGenerator's writable transferred from the main thread.
+// Drops late frames; holds early frames; never bounces VideoFrames to main.
 //
 // Counterpart on main: VideoPlayer creates the MSTG, attaches its track to
 // <video srcObject>, transfers writable + sync MessagePort here, then stops

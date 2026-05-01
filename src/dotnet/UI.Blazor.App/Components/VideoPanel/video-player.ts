@@ -126,14 +126,13 @@ interface PendingFrame {
 }
 
 /**
- * Decoded-frame holder shaped like Denque so existing call sites work
- * unchanged. Capacity is fixed at 1: `push` closes any prior pending
- * frame before storing the new one (replaceable slot per
- * docs/video-pipeline.md). The encoded pre-decode buffer in
- * decoder-worker.ts now owns playback latency, so multi-frame catch-up
- * / hard-seek / playbackRate-chase paths in onRenderFrame become
- * no-ops (length is always 0 or 1) — left in place for now; a
- * follow-up commit removes that dead machinery.
+ * Decoded-frame replaceable slot (capacity 1). `push` closes any prior
+ * pending frame before storing the new one — implements the doc's
+ * `video presentation` replaceable slot (docs/video-pipeline.md). The
+ * encoded pre-decode buffer in decoder-worker.ts owns playback latency;
+ * the canvas presentation path only needs the most-recent decoded
+ * frame. Exposes a Denque-like API for the few peekFront/peekBack
+ * call sites in onRenderFrame.
  */
 class SingleSlot<T extends { close(): void }> {
     private slot: T | null = null;
@@ -227,11 +226,9 @@ export class VideoPlayer {
     // worker is ready — otherwise pushFrame drops them at `!this.decoderWorker`
     // and the pre-init keyframe is lost, stalling startup until next IDR.
     private decoderReady: Promise<void> = Promise.resolve();
-    // Single decoded-frame slot. The encoded pre-decode buffer (in
-    // decoder-worker.ts) owns playback latency now; the canvas presentation
-    // path only needs the most-recent decoded frame. SingleSlot exposes a
-    // Denque-like API so the existing onRenderFrame / catchup code paths
-    // keep compiling — they reduce to no-ops because length is always 0 or 1.
+    // Single decoded-frame slot — the doc's `video presentation` replaceable
+    // slot. Encoded pre-decode buffer in decoder-worker.ts owns playback
+    // latency, so this path only needs the most-recent decoded frame.
     private pendingFrames = new SingleSlot<PendingFrame>();
     private readonly isSafari: boolean;
     private conversionQueue: Promise<void> = Promise.resolve();
