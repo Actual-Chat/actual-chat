@@ -8,6 +8,7 @@ namespace ActualChat.Maui.Services;
 public static class MauiBackgroundState
 {
     private static readonly Lock Lock = new();
+    private static readonly List<Action> SuspendHandlers = [];
     private static readonly MutableState<bool> IsBackgroundMutable
         = StateFactory.Default.NewMutable(
             initialValue: false,
@@ -16,9 +17,26 @@ public static class MauiBackgroundState
     // ReSharper disable once InconsistentlySynchronizedField
     public static IState<bool> IsBackground => IsBackgroundMutable;
 
-    public static void Set(bool isBackground)
+    // Handlers run synchronously inside Set(true) so platform callbacks can wait.
+    public static void RegisterSuspendHandler(Action handler)
     {
         lock (Lock)
+            SuspendHandlers.Add(handler);
+    }
+
+    public static void Set(bool isBackground)
+    {
+        Action[] handlersToRun;
+        lock (Lock) {
             IsBackgroundMutable.Value = isBackground;
+            handlersToRun = isBackground ? SuspendHandlers.ToArray() : [];
+        }
+        foreach (var handler in handlersToRun)
+            try {
+                handler();
+            }
+            catch {
+                // ignored
+            }
     }
 }
