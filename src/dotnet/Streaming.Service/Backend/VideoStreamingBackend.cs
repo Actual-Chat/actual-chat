@@ -49,6 +49,8 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             return null;
         }
 
+        stream = stream.SkipWhile(f => !f.IsKeyFrame);
+
         var filter = new VideoStreamFilter(
             LatencyStore,
             (sid, ct) => Computed.Capture(() => GetQualityPreset(sid, ct), ct),
@@ -67,6 +69,9 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             Log.LogWarning("GetVideoRaw: #{StreamId} not found in StreamStore", streamId);
             return null;
         }
+
+        stream = stream.SkipWhile(f => !f.IsKeyFrame);
+
         return new RpcStream<VideoFrame>(stream) {
             AckPeriod = Constants.Video.RpcStreamAckPeriod,
             BufferSize = Constants.Video.RpcStreamBufferSize,
