@@ -168,6 +168,11 @@ export class VideoPlayer {
     private bgCanvasEl: HTMLCanvasElement;
     private bgOffscreenTransferred = false;
     private renderBackend: RenderBackend;
+    // Stream-creation-time dims from VideoFormat metadata. Used as a
+    // canvas-size hint and aspect-ratio target for the container — NOT
+    // a verification reference (resolution adapts mid-stream; the
+    // sender's per-keyframe dims are the source of truth, captured into
+    // lastKeyframeWidth / lastKeyframeHeight).
     private readonly expectedDisplayWidth: number;
     private readonly expectedDisplayHeight: number;
     // Decoder worker (off-main-thread decoding)
@@ -302,6 +307,13 @@ export class VideoPlayer {
     private outputVerified = false;
     private outputVerificationFailed = false;
     private codecExclusionRequested = false;
+    // Latest keyframe's transmitted dims (VideoFrameDto.Width / Height).
+    // The reference for output verification — see
+    // feedback_video_dim_verification_per_frame.md. Stream-metadata
+    // dims (expectedDisplayWidth / Height) are NOT a verification
+    // reference because resolution adapts mid-stream.
+    private lastKeyframeWidth = 0;
+    private lastKeyframeHeight = 0;
 
     // Audio sync
     private startedAtMs: number;
@@ -1039,17 +1051,29 @@ export class VideoPlayer {
         if (this.outputVerified || !this.isPlaying)
             return false;
 
-        const expectedWidth = this.expectedDisplayWidth;
-        const expectedHeight = this.expectedDisplayHeight;
-        if (expectedWidth <= 0 || expectedHeight <= 0)
+        // Reference dims = the LATEST keyframe the sender declared
+        // (VideoFrameDto.Width / Height). Stream-metadata dims
+        // (expectedDisplayWidth / Height) are a snapshot from stream
+        // creation and CANNOT be the reference: resolution adapts
+        // mid-stream (orientation, simulcast layer switch, screencast
+        // resize, quality preset bump). See
+        // feedback_video_dim_verification_per_frame.md.
+        const refW = this.lastKeyframeWidth;
+        const refH = this.lastKeyframeHeight;
+        if (refW <= 0 || refH <= 0) {
+            // No keyframe with dims yet — wait. Off-thread mode learns
+            // these via the worker latency report (~2 s cadence);
+            // main-thread RPC mode learns them on every keyframe
+            // pushFrame call.
             return false;
+        }
 
         const output = this.renderBackend.getOutputSize();
         if (!output || output.width <= 0 || output.height <= 0)
             return false;
 
-        const widthMismatch = Math.abs(output.width - expectedWidth) > OUTPUT_DIMENSION_MISMATCH_TOLERANCE_PX;
-        const heightMismatch = Math.abs(output.height - expectedHeight) > OUTPUT_DIMENSION_MISMATCH_TOLERANCE_PX;
+        const widthMismatch = Math.abs(output.width - refW) > OUTPUT_DIMENSION_MISMATCH_TOLERANCE_PX;
+        const heightMismatch = Math.abs(output.height - refH) > OUTPUT_DIMENSION_MISMATCH_TOLERANCE_PX;
         if (!widthMismatch && !heightMismatch) {
             this.markOutputVerified(reason, output.width, output.height);
             return false;
@@ -1058,8 +1082,9 @@ export class VideoPlayer {
         if (!this.outputVerificationFailed) {
             this.outputVerificationFailed = true;
             warnLog?.log(
-                `OUTPUT_VERIFICATION_FAILED: decoded output ${output.width}x${output.height} ` +
-                `does not match stream ${expectedWidth}x${expectedHeight} (${reason}); codec=${this.codecCategory || 'unknown'}`);
+                `OUTPUT_VERIFICATION_FAILED: decoded ${output.width}x${output.height} ` +
+                `does not match latest keyframe ${refW}x${refH} ` +
+                `(${reason}); codec=${this.codecCategory || 'unknown'}`);
         }
 
         if (this.shouldRequestCodecExclusion() && !this.codecExclusionRequested) {
@@ -1097,6 +1122,13 @@ export class VideoPlayer {
     ): void {
         if (!this.isPlaying || !this.decoderWorker) {
             return;
+        }
+        // Main-thread RPC mode: capture the keyframe's transmitted dims
+        // for output verification. (Off-thread mode reads them from the
+        // worker's latency report instead.)
+        if (isKeyFrame && width && height) {
+            this.lastKeyframeWidth = width;
+            this.lastKeyframeHeight = height;
         }
 
         // After tab restore: skip stale encoded frames arriving from the RPC stream
@@ -1700,6 +1732,13 @@ export class VideoPlayer {
     }
 
     private onWorkerLatencyReport(report: DecoderWorkerLatencyReport): void {
+        // Refresh the output-verification reference BEFORE running the
+        // check below — off-thread mode learns latest keyframe dims via
+        // this report, not via pushFrame.
+        if (report.lastKeyframeWidth && report.lastKeyframeHeight) {
+            this.lastKeyframeWidth = report.lastKeyframeWidth;
+            this.lastKeyframeHeight = report.lastKeyframeHeight;
+        }
         if (this.checkOutputVerification('worker-latency'))
             return;
         const streamOffsetMs = report.streamOffsetMs;

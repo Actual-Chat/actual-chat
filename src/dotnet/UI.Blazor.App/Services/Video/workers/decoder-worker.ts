@@ -263,6 +263,8 @@ function buildLatencyReport(streamOffsetMs: number): DecoderWorkerLatencyReport 
         medianDecodeTimeMs: ds.pureMedianDecodeTime >= 0 ? ds.pureMedianDecodeTime : ds.medianDecodeTime,
         bufferDepth: (selectorStats?.depth ?? 0) + ds.decodeQueueSize,
         bufferSpanMs: selectorStats?.spanMs ?? -1,
+        lastKeyframeWidth: currentCodedWidth || undefined,
+        lastKeyframeHeight: currentCodedHeight || undefined,
     };
 }
 

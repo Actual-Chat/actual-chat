@@ -17,6 +17,15 @@ export interface DecoderWorkerLatencyReport {
     medianDecodeTimeMs: number;
     bufferDepth: number;
     bufferSpanMs: number;
+    // Last keyframe's transmitted dims (VideoFrameDto.Width/Height tracked
+    // by the worker on each keyframe). Surfaced to main so output
+    // verification can compare decoded dims against this fresh reference
+    // — never against the stream-creation-time VideoFormat metadata,
+    // which goes stale on resolution change (rotation, simulcast layer
+    // switch, screencast resize). 0 / undefined when no keyframe with
+    // dims has been seen yet.
+    lastKeyframeWidth?: number;
+    lastKeyframeHeight?: number;
 }
 
 /**
