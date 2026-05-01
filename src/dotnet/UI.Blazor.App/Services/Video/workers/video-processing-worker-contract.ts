@@ -62,7 +62,6 @@ export interface SegmentationConfig {
     inputHeight: number;
     maskThreshold: number;
     frameSkipInterval?: number;
-    maxQueueSize: number;
     temporalSmoothingFactor?: number;
     outputWidth?: number;
     outputHeight?: number;
@@ -83,7 +82,6 @@ export const DEFAULT_SEGMENTATION_CONFIG = {
     inputWidth: 256,
     inputHeight: 256,
     maskThreshold: 0.45,
-    maxQueueSize: 5,
     frameSkipInterval: 1,
     temporalSmoothingFactor: 0.8,
 } as const;
@@ -121,7 +119,7 @@ export function createAdaptiveSegmentationConfig(backend: SegmentationConfig['ba
     debugLog?.log('Using mobile-optimized segmentation config');
     return {
         backend, blurEnabled: true, ...DEFAULT_SEGMENTATION_CONFIG,
-        blurRadius: 10, frameSkipInterval: 3, maxQueueSize: 3, temporalSmoothingFactor: 0.25,
+        blurRadius: 10, frameSkipInterval: 3, temporalSmoothingFactor: 0.25,
     };
 }
 
