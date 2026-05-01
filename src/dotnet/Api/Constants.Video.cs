@@ -54,14 +54,9 @@ public static partial class Constants
         // handles stalls by skipping to the latest decoder-safe frame.
         public const int RpcStreamAckPeriod = TargetBufferSize / 2; // 5
         public const int RpcStreamBufferSize = TargetBufferSize;    // 10
-        // Memoizer retention sized to the doc's "server stream store" replay
-        // tail — see docs/video-pipeline.md. ServerReplayTailSize is per
-        // source-frame; multiply by MaxSimulcastTiers so the tail covers
-        // ~ServerReplayTailDuration of source time even when the sender is
-        // producing every tier. P2P (single-layer) streams retain longer
-        // history under this size — harmless, the consumer-side
-        // SkipWhile(!isKeyFrame) trims to a decoder-safe start regardless.
-        public static readonly int RetentionBufferSize = ServerReplayTailSize * MaxSimulcastTiers; // 60
+        // Memoizer retention is now duration-tracked, keyframe-span eviction
+        // (VideoStreamMemoizer in Streaming.Service) bounded by
+        // ServerReplayTailDuration — no count-based ceiling.
 
         // Latency measurement & quality adaptation
         public static readonly TimeSpan LatencyReportInterval = TimeSpan.FromSeconds(2);

@@ -279,8 +279,15 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             // VideoFrame.SerializedData is a plain GC-managed byte[], released automatically
             // when all consumers (including lagging ones via the linked-list AsyncMemoizer)
             // release their references — no eviction callback / pooled-buffer lifecycle needed.
-            var memoizer = ProcessFrames(videoFrames).Memoize(
-                Constants.Video.RetentionBufferSize,
+            //
+            // Per-layer keyframe-span retention bounded by ServerReplayTailDuration
+            // (see docs/video-pipeline.md "Server stream store"). Replaces the
+            // previous count-based RetentionBufferSize policy: duration-tracked
+            // eviction drops complete keyframe-anchored spans rather than
+            // individual frames, so deltas are never orphaned in retention.
+            var memoizer = new VideoStreamMemoizer(
+                ProcessFrames(videoFrames),
+                Constants.Video.ServerReplayTailDuration,
                 cancellationToken);
             await _videoStreams.Publish(record.StreamId, memoizer).ConfigureAwait(false);
         }

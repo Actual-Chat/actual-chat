@@ -38,6 +38,9 @@ public sealed class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
 
     // Shared head: sentinel whose .Next is the oldest readable item.
     // In bounded mode, _head advances forward when capacity is exceeded.
+    // Subclasses access these via the CurrentHead/CurrentTail/TryAdvanceHead
+    // members; direct field access stays private to keep the invariant
+    // "single-writer producer" enforceable.
     private volatile Node _head;
     private volatile Node _tail;
 
@@ -182,25 +185,58 @@ public sealed class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
         var oldTail = _tail;
         var newNode = new Node(item, oldTail.Index + 1);
 
-        // Bounded eviction: drop oldest by advancing _head and severing the evicted link.
-        // Lagging consumers detect this via Index and jump to the current bounded window.
-        if (_capacity != int.MaxValue) {
-            while (newNode.Index - _head.Index > _capacity) {
-                var oldHead = _head;
-                var nextHead = oldHead.Next;
-                if (nextHead == null)
-                    break;
-
-                _head = nextHead;
-                oldHead.Next = null;
-            }
-        }
+        EvictIfNeeded(newNode);
 
         // Publish: set Next first (so any waiter that wakes up sees a non-null Next),
         // advance the producer's tail, then trip the TCS to wake waiters.
         oldTail.Next = newNode;
         _tail = newNode;
         oldTail.TrySetResult();
+    }
+
+    /// <summary>
+    /// Bounded-capacity eviction hook. Default implementation drops the oldest
+    /// item(s) by advancing <see cref="CurrentHead"/> until the chain length
+    /// is within <see cref="Capacity"/>. Subclasses may override to implement
+    /// alternative policies (e.g. duration-based or keyframe-span eviction).
+    /// </summary>
+    /// <remarks>
+    /// Called from the single-writer producer task before a new node is
+    /// linked into the chain. Implementations may freely use
+    /// <see cref="TryAdvanceHead"/> and inspect <see cref="CurrentHead"/> /
+    /// <see cref="CurrentTail"/>; no concurrency precautions are needed.
+    /// </remarks>
+    protected virtual void EvictIfNeeded(Node newNode)
+    {
+        if (_capacity == int.MaxValue)
+            return;
+        while (newNode.Index - _head.Index > _capacity) {
+            if (!TryAdvanceHead())
+                break;
+        }
+    }
+
+    /// <summary>Current chain head (sentinel; oldest readable item is <c>CurrentHead.Next</c>).</summary>
+    protected Node CurrentHead => _head;
+
+    /// <summary>Current chain tail (most recently appended item).</summary>
+    protected Node CurrentTail => _tail;
+
+    /// <summary>
+    /// Advance <see cref="CurrentHead"/> by one node and sever the evicted
+    /// link. Returns false if the chain has no further nodes (head is at tail).
+    /// Single-writer: only call from the producer task (i.e. inside an
+    /// <see cref="EvictIfNeeded"/> override).
+    /// </summary>
+    protected bool TryAdvanceHead()
+    {
+        var oldHead = _head;
+        var nextHead = oldHead.Next;
+        if (nextHead == null)
+            return false;
+        _head = nextHead;
+        oldHead.Next = null;
+        return true;
     }
 
     private void Complete(Exception completion)
@@ -218,7 +254,7 @@ public sealed class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
     // - Index = 0 for the initial sentinel; Index = N for the N-th item (1-based).
     // - Next is set by the producer (single Read task), then TrySetResult is called.
     // - Completion is set by the producer on the final node alongside TrySetResult.
-    private sealed class Node(T value, int index, Exception? completion = null)
+    protected internal sealed class Node(T value, int index, Exception? completion = null)
         : TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)
     {
         public readonly T Value = value;

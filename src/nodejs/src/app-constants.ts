@@ -33,8 +33,6 @@ export interface VideoConstants {
     readonly screencastFrameSilenceTimeoutMs: number;
     readonly rpcStreamAckPeriod: number;
     readonly rpcStreamBufferSize: number;
-    readonly retentionBufferSize: number;
-    readonly consumerBufferSize: number;
     readonly latencyReportIntervalMs: number;
     readonly highLatencyThresholdMs: number;
     readonly lowLatencyThresholdMs: number;
