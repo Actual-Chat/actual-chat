@@ -488,6 +488,11 @@ const DRAIN_BACKOFF_MS = 5;
 
 let encodedBuffer: RingBuffer<EncodedChunkArgs> | null = null;
 let drainRunning = false;
+// Set when buffer eviction had to discard the GOP we were holding (no
+// usable downstream KF). Subsequent deltas are dropped at push until
+// the next keyframe arrives — a delta whose anchor we just dropped
+// would only orphan more chunks downstream and force decoder artifacts.
+let bufferWaitingForKeyframe = false;
 
 function getEncodedBuffer(): RingBuffer<EncodedChunkArgs> {
     if (encodedBuffer) return encodedBuffer;
@@ -500,6 +505,7 @@ function getEncodedBuffer(): RingBuffer<EncodedChunkArgs> {
 
 function clearEncodedBuffer(): void {
     encodedBuffer?.clear();
+    bufferWaitingForKeyframe = false;
 }
 
 // Skip-to-newest-keyframe trim. Only safe to drop chunks before a
@@ -514,18 +520,33 @@ function trimToNewestKeyframe(buf: RingBuffer<EncodedChunkArgs>): void {
 
 function pushEncodedChunk(args: EncodedChunkArgs): void {
     const buf = getEncodedBuffer();
-    // Soft trim: above maxBufferSize → trim to newest keyframe so playback
-    // latency stays bounded. Decoder hygiene preserved (KF-aware skip).
+    // Soft trim: above maxBufferSize → drop everything before the newest
+    // keyframe in buffer. KF-aware skip is decoder hygiene — never drop
+    // an isolated delta, that would orphan downstream chunks.
     if (buf.count >= VIDEO.maxBufferSize) {
         trimToNewestKeyframe(buf);
     }
     if (buf.isFull) {
-        // Hard cap reached even after KF trim (no KF in buffer, or KF is at
-        // head). Drop oldest as a defensive backstop — the decoder may emit
-        // artifacts until the next keyframe arrives, and `waitingForKeyframe`
-        // already guards against this in processEncodedChunk.
-        buf.pullHead();
+        // Hard cap reached AFTER a soft-trim attempt — meaning the buffer
+        // contains either zero keyframes or a single GOP we can't shrink
+        // further without orphaning deltas. Two sub-cases:
+        //  - Incoming is a keyframe: it's the next valid resume point.
+        //    Discard the stale (un-anchored or about-to-be-stranded) GOP
+        //    we hold and accept the keyframe.
+        //  - Incoming is a delta: refuse it. Any delta we drop in
+        //    isolation would orphan its successors and force decoder
+        //    artifacts. Mark the buffer as waiting for a keyframe so
+        //    further deltas drop too, and PLI to accelerate recovery.
+        if (args.isKeyFrame) {
+            buf.clear();
+        } else {
+            bufferWaitingForKeyframe = true;
+            requestKeyframeOnDecoderError();
+            return;
+        }
     }
+    if (bufferWaitingForKeyframe && !args.isKeyFrame) return;
+    bufferWaitingForKeyframe = false;
     buf.pushTail(args);
     triggerDrain();
 }
