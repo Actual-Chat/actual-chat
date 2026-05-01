@@ -190,8 +190,9 @@ All file paths are relative to the repo root.
 - `src/dotnet/Streaming.Service/Backend/VideoStreamingBackend.cs:43` →
   `GetVideo(streamId, skipTo, peerId, ct)`.
 - Wraps the memoizer in `new VideoStreamFilter(...).Apply(streamId, peerId,
-  skipTo, source, ct)` and returns it as
-  `RpcStream<VideoFrame> { AckPeriod = 64, BufferSize = 192 }`.
+  skipTo, source, ct)` and returns it as `RpcStream<VideoFrame>` with
+  `AckPeriod = Constants.Video.RpcStreamAckPeriod` (5) and
+  `BufferSize = Constants.Video.RpcStreamBufferSize` (10).
 - `VideoStreamFilter` (`src/dotnet/Streaming.Service/Services/VideoStreamFilter.cs`)
   is the per-consumer fan-out filter. It does **all** of:
   1. **Quality preset refresh** — background task subscribes to
@@ -202,9 +203,12 @@ All file paths are relative to the repo root.
   3. **Egress back-pressure detection** — if consumer hasn't pulled within
      `EgressStallThreshold = 500 ms`, marks `skipping = true` (force a
      keyframe-anchored resume). If hidden tab, suppresses skip.
-  4. **Spatial layer selection** — buffers initial-join keyframe burst (up to
-     50 ms or first delta) so the receiver decoder configures with the
-     highest layer the cap permits, not the first one seen.
+  4. **Spatial layer selection** — `joinPendingKF` holds at most one
+     keyframe for up to 50 ms (or until the first delta arrives) so the
+     receiver decoder configures with the highest layer the cap permits,
+     not the first one seen. **This is the doc's `replaceable slot` at
+     this stage** — capacity 1, newest higher-layer keyframe replaces the
+     pending one until the burst stabilises.
   5. **Burst stabilisation + decay** — if observed top spatial layer hasn't
      produced a keyframe within `SpatialStalenessWindow = 6 s`, demotes only
      after a 1.5 s confirmation window so an out-of-order base keyframe
@@ -220,15 +224,12 @@ All file paths are relative to the repo root.
   There is also an `ApplySimple()` fallback gated on a hard-coded
   `TempBypassSimulcastLogic = false` flag — minimal pass-through for
   troubleshooting.
-- Per-stream RPC stream: `BufferSize = 192`, `AckPeriod = 64` (about 6 s of
-  delivery credit at 30 fps).
+- Per-stream RPC stream: `BufferSize = 10`, `AckPeriod = 5` — doc-aligned.
 
 **vs. doc:**
-- Doc target: `BufferSize = 10`, `AckPeriod = 5`. Current is **~20× larger**.
-  Side effect: the "real-time skip-to-decoder-safe-frame on ACK compaction"
-  semantic the doc relies on rarely fires, because a 192-slot window almost
-  never fills up in practice — the filter does its own back-pressure
-  detection at the application layer instead (`EgressStallThreshold`).
+- RPC stream sizing matches the doc (`BufferSize = 10`, `AckPeriod = 5`).
+- The `joinPendingKF` slot is the doc's `replaceable slot` at this stage
+  (1-frame capacity, newest replaces pending), so it is doc-compliant.
 - Doc: `server video sender` simply selects a simulcast layer per receiver.
   Current `VideoStreamFilter` is a **dense rule engine** that owns layer
   selection, gap recovery, egress fallback, pause, and join stabilisation
