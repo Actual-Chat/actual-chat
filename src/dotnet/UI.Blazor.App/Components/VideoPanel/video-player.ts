@@ -82,11 +82,22 @@ export interface RemoteStreamDiagnostics {
 
 const { debugLog, warnLog, errorLog } = getLogs('VideoPlayer');
 
-// Graduated recovery thresholds — escalating response to growing latency.
-// (SKIP_TO_LIVE / LATENCY_REPORT / SLOW_DECODE thresholds now read from VIDEO.*)
-const CATCHUP_GENTLE_MS = 300;        // Start gentle 1.05x catch-up
-const CATCHUP_AGGRESSIVE_MS = 1000;   // Increase to 1.15x catch-up
-const DROP_TO_KEYFRAME_MS = 2000;     // Drop non-keyframes from buffer, advance to next keyframe
+// Graduated recovery thresholds for the latency-tick path. Used by
+// reportLatencyTick to escalate response to growing render-frame age:
+//   < CATCHUP_GENTLE_MS:   normal
+//   ≥ CATCHUP_GENTLE_MS:   shrink pipelineLatencyMs to advance audio target
+//   ≥ DROP_TO_KEYFRAME_MS: also clear the decoded slot (forces a fresh pick
+//                          on the next render tick)
+//   ≥ VIDEO.skipToLiveThresholdMs: SKIP_TO_LIVE
+// (SKIP_TO_LIVE / LATENCY_REPORT / SLOW_DECODE thresholds read from VIDEO.*)
+const CATCHUP_GENTLE_MS = 300;
+const DROP_TO_KEYFRAME_MS = 2000;
+
+// Fixed presentation-side jitter margin. Encoded pre-decode buffer in the
+// decoder worker absorbs the bulk of network jitter; this is just a small
+// margin that lets a fast-arriving frame replace a pending one before the
+// render tick consumes it.
+const JITTER_BUFFER_MS = 40;
 
 // Late-join catchup: when the rendered frame is much older than the newest
 // arrived frame (receiver joined mid-stream, or the sender went through a
@@ -235,10 +246,10 @@ export class VideoPlayer {
     private waitingForKeyframe = true;
     private lastDescription: ArrayBuffer | null = null;
 
-    // Buffering state
-    private bufferSize = 0;
-    private readonly maxBufferSize = 20; // frames
-    private lastSoftCatchupLogTime = 0;
+    // Decoded-slot health flag (true ⇒ pendingFrames empty). Surfaced to the
+    // server via reportPlaying so it can detect render starvation. Real
+    // network jitter signal lives on the encoded pre-decode buffer in the
+    // decoder worker.
     private lastReportedBufferLow = true;
 
     // Video pull — Fusion RPC with abort controller for cancellation
@@ -307,27 +318,18 @@ export class VideoPlayer {
     // the server step down quality on a perfectly healthy local link.
     private lastArrivedOffsetMs = 0;
 
-    // Adaptive jitter buffer — absorbs network jitter by delaying rendering
-    private jitterBufferMs = 40;                   // Current target delay (ms)
-    private readonly minJitterBufferMs = 20;
-    private readonly maxJitterBufferMs = 120;
-    private jitterEstimateMs = 0;                  // Smoothed inter-frame arrival jitter
-    private lastFrameArrivalTime = 0;              // For jitter measurement
+    // (Adaptive jitter / inter-frame measurement removed — encoded pre-decode
+    // buffer in the decoder worker is the real jitter absorber. Presentation
+    // uses the fixed JITTER_BUFFER_MS margin.)
 
     // RTT measurement for proactive congestion detection
     private smoothedRttMs = 0;
     private previousRttMs = 0;
     private rttGradientMs = 0;
-    private lastFrameArrivalInterval = 0;          // Previous inter-frame interval
 
-    // Adaptive catch-up playback state (wall-clock path only)
-    private playbackRate = 1.0;
-    private readonly catchUpStartMs = 300;       // start speed-up when buffer > 300ms
-    private readonly catchUpTargetMs = 150;       // target buffer level to settle at
-    private readonly maxPlaybackRate = 1.15;      // max speed (barely noticeable for video)
-    private readonly seekThresholdMs = 5000;      // hard seek fallback when >5s behind
-    private lastSeekTime = 0;                     // cooldown for hard seek
-    private readonly seekCooldownMs = 5000;       // min interval between hard seeks
+    // Late-join catchup cooldown (wall-clock fallback path).
+    private lastSeekTime = 0;
+    private readonly seekCooldownMs = 5000;
 
     // Decode performance tracking (Phase 1 & 2: quality reduction / codec exclusion)
     private codecSlowTickCount = 0;            // consecutive bad decode ticks (each tick = 2s)
@@ -696,24 +698,10 @@ export class VideoPlayer {
     }
 
     private enqueuePendingFrame(pf: PendingFrame): void {
-        // Measure inter-frame arrival jitter for adaptive jitter buffer
-        const arrivalTime = performance.now();
-        if (this.lastFrameArrivalTime > 0) {
-            const interval = arrivalTime - this.lastFrameArrivalTime;
-            if (this.lastFrameArrivalInterval > 0) {
-                const jitter = Math.abs(interval - this.lastFrameArrivalInterval);
-                // Exponential moving average, α=0.1 for stability
-                this.jitterEstimateMs = 0.9 * this.jitterEstimateMs + 0.1 * jitter;
-                // Adapt buffer: target = 2× estimated jitter, clamped
-                this.jitterBufferMs = Math.max(this.minJitterBufferMs,
-                    Math.min(this.maxJitterBufferMs, this.jitterEstimateMs * 2));
-            }
-            this.lastFrameArrivalInterval = interval;
-        }
-        this.lastFrameArrivalTime = arrivalTime;
-
+        // Single-slot replace (push closes any prior frame). Multi-frame
+        // soft-catchup / hard-cap dropped — encoded pre-decode buffer in
+        // decoder-worker.ts owns playback latency now.
         this.pendingFrames.push(pf);
-        this.bufferSize++;
         this.wakeRenderLoop();
 
         // Update pipeline latency estimate from this fresh frame
@@ -729,39 +717,6 @@ export class VideoPlayer {
             // to prevent ratchet effect where bursty delivery inflates the estimate permanently
             const alpha = cappedLatencyMs > this.pipelineLatencyMs ? 0.2 : 0.15;
             this.pipelineLatencyMs = this.pipelineLatencyMs * (1 - alpha) + cappedLatencyMs * alpha;
-        }
-
-        // Soft catchup: when buffer is significantly backed up, drop oldest frames
-        // to keep only the most recent ~300ms. Normal steady-state buffer span is ~330ms
-        // at 30fps, so only trigger when well above that (600ms = nearly double normal).
-        if (this.pendingFrames.length > 15) {
-            const bufferSpanMs = this.pendingFrames.length >= 2
-                ? (this.pendingFrames.peekBack()!.timestamp - this.pendingFrames.peekFront()!.timestamp) / 1000
-                : 0;
-            if (bufferSpanMs > 600) {
-                const targetSpanUs = 300 * 1000; // keep ~300ms worth of frames
-                const cutoffTimestamp = this.pendingFrames.peekBack()!.timestamp - targetSpanUs;
-                let dropCount = 0;
-                while (this.pendingFrames.length > 1 && this.pendingFrames.peekFront()!.timestamp < cutoffTimestamp) {
-                    this.pendingFrames.shift()!.close();
-                    this.bufferSize--;
-                    dropCount++;
-                }
-                if (dropCount > 0) {
-                    const now = performance.now();
-                    if (now - this.lastSoftCatchupLogTime > 1000) {
-                        this.lastSoftCatchupLogTime = now;
-                        debugLog?.log(`Soft catchup: dropped ${dropCount} frames, bufferSpanMs was ${bufferSpanMs.toFixed(0)}`);
-                    }
-                }
-            }
-        }
-
-        // Hard cap: drop oldest frames if buffer still exceeds max.
-        while (this.pendingFrames.length > this.maxBufferSize) {
-            const dropped = this.pendingFrames.shift()!;
-            dropped.close();
-            this.bufferSize--;
         }
     }
 
@@ -892,33 +847,6 @@ export class VideoPlayer {
             this.playbackStartTime = now;
             this.firstFrameTimestamp = targetTimestamp;
 
-            // Safety cap: flush old frames if buffer span exceeds 2s even in audio-sync mode.
-            // This prevents buffer bloat from bursty delivery causing unbounded latency growth.
-            if (this.pendingFrames.length >= 2) {
-                const bufferSpanMs = (this.pendingFrames.peekBack()!.timestamp
-                    - this.pendingFrames.peekFront()!.timestamp) / 1000;
-                if (bufferSpanMs > 2000) {
-                    // Find the frame closest to target and drop everything before it
-                    let flushIdx = 0;
-                    for (let i = 0; i < this.pendingFrames.length; i++) {
-                        if (this.pendingFrames.peekAt(i)!.timestamp <= targetTimestamp) {
-                            flushIdx = i;
-                        } else {
-                            break;
-                        }
-                    }
-                    if (flushIdx > 0) {
-                        for (let i = 0; i < flushIdx; i++) {
-                            this.pendingFrames.shift()!.close();
-                            this.bufferSize--;
-                        }
-                        warnLog?.log(
-                            `audioSync buffer flush: dropped ${flushIdx} frames, ` +
-                            `bufferSpanMs=${bufferSpanMs.toFixed(0)}, remaining=${this.pendingFrames.length}`);
-                    }
-                }
-            }
-
             if (now - this.lastSyncLogTime > 1000) {
                 this.lastSyncLogTime = now;
                 const driftMs = this.lastRenderedOffsetMs - targetVideoOffsetMs;
@@ -930,16 +858,12 @@ export class VideoPlayer {
                     `driftMs=${driftMs.toFixed(0)}, pending=${this.pendingFrames.length}`);
             }
         } else {
-            // Adaptive catch-up: measure buffer depth and adjust playback rate
-            let newRate = 1.0;
-            let bufferSpanMs = 0;
-
-            // Late-join catchup (screencast-friendly): compare the rendered frame's
-            // offset against the newest arrived frame. Buffer-span alone doesn't
-            // catch this — on sparse heartbeat streams (1 fps static screen) the
-            // buffer never accumulates even when we're 2s behind live because
-            // frames arrive and get consumed at matched cadence. The gap between
-            // rendered and arrived is the real signal.
+            // Wall-clock fallback (no audio sync). Late-join catchup uses the
+            // gap between newest arrived and newest rendered offsets — works
+            // on sparse-heartbeat streams (e.g. static screencast) where the
+            // single-slot decoded queue never accumulates even when we're
+            // behind live. With encoded buffer pacing upstream there is no
+            // bufferSpan-based hard-seek or playbackRate chase to perform.
             const liveGapMs = this.lastArrivedOffsetMs - this.lastRenderedOffsetMs;
             if (liveGapMs > LATE_JOIN_GAP_MS
                 && this.pendingFrames.length > 0
@@ -947,7 +871,6 @@ export class VideoPlayer {
                 const latestTimestamp = this.pendingFrames.peekBack()!.timestamp;
                 this.playbackStartTime = now;
                 this.firstFrameTimestamp = latestTimestamp;
-                this.playbackRate = 1.0;
                 this.lastSeekTime = now;
                 warnLog?.log(
                     `Late-join catchup: jumped to live edge, ` +
@@ -956,45 +879,12 @@ export class VideoPlayer {
                     `gapMs=${liveGapMs.toFixed(0)}`);
             }
 
-            if (this.pendingFrames.length >= 2) {
-                bufferSpanMs = (this.pendingFrames.peekBack()!.timestamp
-                    - this.pendingFrames.peekFront()!.timestamp) / 1000;
-
-                if (bufferSpanMs > this.seekThresholdMs
-                    && (now - this.lastSeekTime) > this.seekCooldownMs) {
-                    // Hard seek fallback: if >5s behind and cooldown elapsed, jump forward
-                    const latestTimestamp = this.pendingFrames.peekBack()!.timestamp;
-                    this.playbackStartTime = now;
-                    this.firstFrameTimestamp = latestTimestamp;
-                    this.playbackRate = 1.0;
-                    this.lastSeekTime = now;
-                    warnLog?.log(
-                        `Wall-clock hard seek: bufferSpan=${bufferSpanMs.toFixed(0)}ms, ` +
-                        `pending=${this.pendingFrames.length}`);
-                } else if (bufferSpanMs >= CATCHUP_AGGRESSIVE_MS) {
-                    // Graduated recovery: aggressive catch-up at 1.15x
-                    newRate = 1.15;
-                } else if (bufferSpanMs >= CATCHUP_GENTLE_MS) {
-                    // Graduated recovery: gentle catch-up at 1.05x
-                    newRate = 1.05;
-                }
-            }
-
-            // Rebase timing anchor when rate changes to avoid sudden jump
-            if (Math.abs(newRate - this.playbackRate) > 0.005) {
-                this.firstFrameTimestamp += (now - this.playbackStartTime) * 1000 * this.playbackRate;
-                this.playbackStartTime = now;
-                this.playbackRate = newRate;
-            }
-
-            const elapsedUs = (now - this.playbackStartTime) * 1000 * this.playbackRate;
+            const elapsedUs = (now - this.playbackStartTime) * 1000;
             targetTimestamp = this.firstFrameTimestamp + elapsedUs;
 
             if (now - this.lastSyncLogTime > 2000) {
                 this.lastSyncLogTime = now;
-                debugLog?.log(
-                    `wallClock: authorId=${this.authorId}, rate=${this.playbackRate.toFixed(3)}, ` +
-                    `pending=${this.pendingFrames.length}, bufferSpanMs=${bufferSpanMs.toFixed(0)}`);
+                debugLog?.log(`wallClock: authorId=${this.authorId}, pending=${this.pendingFrames.length}`);
             }
         }
 
@@ -1004,23 +894,20 @@ export class VideoPlayer {
                 `pendingFrames=${this.pendingFrames.length}`);
         }
 
-        // Apply jitter buffer: subtract buffer from target so fewer frames are eligible
-        // for presentation, effectively delaying rendering to absorb network jitter
-        const jitterBufferUs = this.jitterBufferMs * 1000;
-        const adjustedTargetTimestamp = targetTimestamp - jitterBufferUs;
+        // Apply small jitter buffer: render decoded frames slightly behind
+        // target so fast-arriving frames have a chance to replace pending
+        // ones before presentation. Encoded buffer absorbs the bulk of
+        // jitter upstream — keep this as a small fixed margin (40 ms).
+        const adjustedTargetTimestamp = targetTimestamp - JITTER_BUFFER_MS * 1000;
 
-        // Find the latest frame due for presentation; drop earlier ones
+        // Single-slot pick: render pending if it's at or behind the target.
         let frameToRender: PendingFrame | null = null;
-        while (this.pendingFrames.length > 0 && this.pendingFrames.peekFront()!.timestamp <= adjustedTargetTimestamp) {
-            if (frameToRender) {
-                frameToRender.close();
-                this.bufferSize--;
-            }
+        const front = this.pendingFrames.peekFront();
+        if (front && front.timestamp <= adjustedTargetTimestamp) {
             frameToRender = this.pendingFrames.shift()!;
         }
 
         if (frameToRender) {
-            this.bufferSize--;
             this.lastRenderedOffsetMs = frameToRender.timestamp / 1000;
             this.renderBackend.drawFrame(frameToRender);
             if (this.checkOutputVerification('render-frame')) {
@@ -1029,15 +916,14 @@ export class VideoPlayer {
             }
             frameToRender.close();
             this.consecutiveEmptyRenders = 0;
-        } else if (this.pendingFrames.length > 0) {
+        } else if (front) {
             this.consecutiveEmptyRenders++;
             if (this.consecutiveEmptyRenders >= 60) {
                 warnLog?.log(`Render stuck for ${this.consecutiveEmptyRenders} frames, resetting timing anchor`);
                 // Anchor to actual buffer content — clock-based liveOffsetMs may be wrong
                 // (e.g., after sender reconnection where startedAtMs and frame offsets diverge)
                 this.playbackStartTime = performance.now();
-                this.firstFrameTimestamp = this.pendingFrames.peekFront()!.timestamp;
-                this.playbackRate = 1.0;
+                this.firstFrameTimestamp = front.timestamp;
                 this.consecutiveEmptyRenders = 0;
             }
         } else {
@@ -1055,7 +941,10 @@ export class VideoPlayer {
     }
 
     private updateBufferState(): void {
-        const isBufferLow = this.bufferSize < 3;
+        // Decoded slot is single-frame; "low" means nothing pending. Real
+        // jitter signal lives on the encoded pre-decode buffer in the
+        // decoder worker.
+        const isBufferLow = this.pendingFrames.isEmpty();
         if (isBufferLow !== this.lastReportedBufferLow) {
             this.lastReportedBufferLow = isBufferLow;
             void this.reportPlaying(0, isBufferLow);
@@ -1244,7 +1133,6 @@ export class VideoPlayer {
                 while (!this.pendingFrames.isEmpty()) {
                     try { this.pendingFrames.shift()!.close(); } catch { /* already closed */ }
                 }
-                this.bufferSize = 0;
             }
         }
 
@@ -1389,7 +1277,6 @@ export class VideoPlayer {
         while (!this.pendingFrames.isEmpty()) {
             try { this.pendingFrames.shift()!.close(); } catch { /* already closed */ }
         }
-        this.bufferSize = 0;
 
         // Server-only skip architecture: keep the existing pull running, do
         // NOT call startPull (which forces a forward jump on the server and
@@ -1402,7 +1289,6 @@ export class VideoPlayer {
 
         // Reset timing anchor so playback re-syncs on next rendered frame
         this.playbackStartTime = 0;
-        this.playbackRate = 1.0;
         this.lastSeekTime = 0;
         this.rebufferDelayMs = 300;
         this.lastRenderedOffsetMs = 0;
@@ -1646,12 +1532,15 @@ export class VideoPlayer {
             codecCategory: this.codecCategory,
             bitrateKbps,
             pipelineLatencyMs: Math.round(this.pipelineLatencyMs),
-            jitterBufferMs: Math.round(this.jitterBufferMs),
-            jitterEstimateMs: Math.round(this.jitterEstimateMs),
+            jitterBufferMs: JITTER_BUFFER_MS,
+            jitterEstimateMs: 0,
             smoothedRttMs: Math.round(this.smoothedRttMs),
             rttGradientMs: Math.round(this.rttGradientMs),
-            playbackRate: this.playbackRate,
-            bufferSize: this.pendingFrames.length,
+            playbackRate: 1.0,
+            // Encoded pre-decode buffer depth (the doc's `video buffer`),
+            // surfaced from the decoder worker's getStats. Decoded slot is
+            // single-frame so its own depth is uninteresting.
+            bufferSize: decoderStats?.encodedBufferDepth ?? 0,
             receivedFrameCount,
             receivedKeyframeCount,
             renderFrameCount: this.renderFrameCount,
@@ -1743,7 +1632,7 @@ export class VideoPlayer {
         try {
             await this.decoderWorker.startPullInWorker(
                 streamId, skipToMs, apiUrl,
-                this.startedAtMs, serverClockOffsetMs, this.jitterBufferMs,
+                this.startedAtMs, serverClockOffsetMs, JITTER_BUFFER_MS,
                 channel.port2,
                 mainWritable,
                 bgOffscreen);
@@ -1819,7 +1708,6 @@ export class VideoPlayer {
         this.lastDiagDecodedFrames = 0;
         this.lastDiagReceivedFrames = 0;
         this.consecutiveEmptyRenders = 0;
-        this.playbackRate = 1.0;
         this.lastSeekTime = 0;
         this.pullRetryCount = 0;
         this.lastLatencyReportTime = 0;
@@ -1866,7 +1754,6 @@ export class VideoPlayer {
                 // Ignore
             }
         }
-        this.bufferSize = 0;
 
         // Close stream input channel
         if (this.chunkInputChannel) {
@@ -1969,7 +1856,6 @@ export class VideoPlayer {
                 for (let i = 0; i < dropCount; i++) {
                     this.pendingFrames.shift()!.close();
                 }
-                this.bufferSize = this.pendingFrames.length;
             }
         }
         // SKIP_TO_LIVE triggers on NETWORK latency (latencyMs = arrival vs sender),
@@ -1995,17 +1881,12 @@ export class VideoPlayer {
 
             while (!this.pendingFrames.isEmpty())
                 this.pendingFrames.shift()!.close();
-            this.bufferSize = 0;
             this.pipelineLatencyMs = 0;
             this.playbackStartTime = 0;
             this.lastRenderedOffsetMs = 0;
             this.lastArrivedOffsetMs = 0;
             this.lastSkipToLiveTime = performance.now();
             // Stale arrival times from before the gate are meaningless
-            this.jitterEstimateMs = 0;
-            this.jitterBufferMs = this.minJitterBufferMs;
-            this.lastFrameArrivalTime = 0;
-            this.lastFrameArrivalInterval = 0;
 
             if (this.decoderWorker) {
                 void this.decoderWorker.flagWaitingForKeyframe();

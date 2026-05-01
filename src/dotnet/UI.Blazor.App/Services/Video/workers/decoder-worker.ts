@@ -251,17 +251,32 @@ function getDecoderStatsSnapshot(): DecoderStats {
         base.pullReceivedFrameCount = pullReceivedFrameCount;
         base.pullReceivedKeyframeCount = pullReceivedKeyframeCount;
     }
+    if (encodedBuffer) {
+        base.encodedBufferDepth = encodedBuffer.count;
+        if (encodedBuffer.count >= 2) {
+            const first = encodedBuffer.get(0);
+            const last = encodedBuffer.get(encodedBuffer.count - 1);
+            base.encodedBufferSpanMs = (last.timestamp - first.timestamp) / 1000;
+        } else {
+            base.encodedBufferSpanMs = 0;
+        }
+    } else {
+        base.encodedBufferDepth = 0;
+        base.encodedBufferSpanMs = 0;
+    }
     return base;
 }
 
 function buildLatencyReport(streamOffsetMs: number): DecoderWorkerLatencyReport {
     const ds = getDecoderStatsSnapshot();
-    const selectorStats = mstgSelector?.getBufferStats();
     return {
         streamOffsetMs,
         medianDecodeTimeMs: ds.pureMedianDecodeTime >= 0 ? ds.pureMedianDecodeTime : ds.medianDecodeTime,
-        bufferDepth: (selectorStats?.depth ?? 0) + ds.decodeQueueSize,
-        bufferSpanMs: selectorStats?.spanMs ?? -1,
+        // Encoded pre-decode buffer is the receive-side jitter signal now;
+        // decoded slot is single-frame, so adding it would just inflate
+        // the depth by a constant 0–1.
+        bufferDepth: ds.encodedBufferDepth ?? 0,
+        bufferSpanMs: ds.encodedBufferSpanMs ?? 0,
         lastKeyframeWidth: currentCodedWidth || undefined,
         lastKeyframeHeight: currentCodedHeight || undefined,
     };

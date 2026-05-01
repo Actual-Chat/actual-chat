@@ -49,6 +49,12 @@ export interface DecoderStats {
   pullReceivedBytes?: number;
   pullReceivedFrameCount?: number;
   pullReceivedKeyframeCount?: number;
+  // Encoded pre-decode buffer (the doc's `video buffer`). Lives in
+  // decoder-worker.ts and is the receiver-side jitter absorber. Filled
+  // by decoder-worker.getStats; the WebCodecsDecoder itself doesn't
+  // populate these.
+  encodedBufferDepth?: number;
+  encodedBufferSpanMs?: number;
 }
 
 export class WebCodecsDecoder {
