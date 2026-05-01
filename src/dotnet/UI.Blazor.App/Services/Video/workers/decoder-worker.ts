@@ -16,6 +16,11 @@ import type {
 import { type DecoderConfig, type DecoderStats, WebCodecsDecoder } from '../webcodecs-decoder';
 import type { EncodedChunkData } from '../webcodecs-encoder';
 import { extractHVCC } from '../hevc-parser';
+import {
+    type DecoderCodecSelection,
+    getCodecCandidates,
+    selectDecoderCodec,
+} from '../hevc-codec-selection';
 import { getLogs } from 'logging';
 import { WorkerMstgSelector } from './worker-mstg-selector';
 import { BG_DRAW_INTERVAL_MS } from '../services/bg-canvas-settings';
@@ -46,6 +51,27 @@ let lastRecoveryAtMs = 0;
 let consecutiveRecoveries = 0;
 const RECOVERY_COOLDOWN_MS = 5000;
 const RECOVERY_MAX_ATTEMPTS = 3;
+
+// Codec strings that have already failed `decoder.configure()` for the
+// current stream. Recovery passes this set to `selectDecoderCodec` so we never
+// pick a candidate we already know rejects against this stream's bitstream.
+// Cleared on stream change (`stop` / `configureDecoder`).
+const failedCandidates = new Set<string>();
+
+// Re-derive the codec string for a new keyframe description and pick the best
+// HW-supported candidate. Returns null when no remaining candidate is HW-
+// supported for the description (caller must end the stream). Skips candidates
+// already known to fail this stream.
+async function reselectCodecForDescription(
+    description: ArrayBuffer,
+): Promise<DecoderCodecSelection | null> {
+    if (!currentDecoderConfig) return null;
+    const candidates = getCodecCandidates(currentDecoderConfig.codec, description);
+    const dims = (currentDecoderConfig.codedWidth && currentDecoderConfig.codedHeight)
+        ? { width: currentDecoderConfig.codedWidth, height: currentDecoderConfig.codedHeight }
+        : undefined;
+    return selectDecoderCodec(candidates, description, dims, failedCandidates);
+}
 
 // Yield a macrotask so the platform can release a previous HW codec slot
 // before allocating a new one. close() is synchronous; the slot is freed on
@@ -728,6 +754,7 @@ const serverImpl: DecoderWorker = {
             decoderConfigured = false;
             lastRecoveryAtMs = 0;
             consecutiveRecoveries = 0;
+            failedCandidates.clear();
 
             if (pullActive) {
                 pullActive = false;
@@ -969,6 +996,27 @@ const serverImpl: DecoderWorker = {
                     if (decoder.getState() !== 'closed') {
                         decoder.close();
                     }
+                    // Re-derive codec from THIS keyframe's description (ground
+                    // truth from the bitstream). Init-time codec was a hint; the
+                    // keyframe SPS may say a different tier/level/profile that
+                    // forces a different codec string.
+                    const selection = await reselectCodecForDescription(description);
+                    if (!selection) {
+                        errorLog?.log(`No HW-supported codec for first keyframe ` +
+                            `description (descLen=${description.byteLength}, ` +
+                            `hex=${describeBytes(description)}); ending stream`);
+                        if (pullActive) {
+                            pullActive = false;
+                            void callbacks.onPullEnded(
+                                'codec not supported for stream description', rpcNoWait);
+                        }
+                        return;
+                    }
+                    if (selection.codec !== currentDecoderConfig!.codec) {
+                        warnLog?.log(`First keyframe codec swap: ${
+                            currentDecoderConfig!.codec} -> ${selection.codec}`);
+                        currentDecoderConfig = { ...currentDecoderConfig!, codec: selection.codec };
+                    }
                     const freshConfig: DecoderConfig = { ...currentDecoderConfig!, description };
                     decoder = new WebCodecsDecoder(
                         freshConfig,
@@ -985,6 +1033,7 @@ const serverImpl: DecoderWorker = {
                     lastRawDescription = description.slice(0);
                     initialDescriptionApplied = false;
                     warnLog?.log(`[FIRST_KF_FRESH] built fresh decoder for first keyframe, ` +
+                        `codec=${currentDecoderConfig!.codec}, ` +
                         `descLen=${description.byteLength}, decoderState=${decoder.getState()}`);
                 } else if (initialDescriptionApplied) {
                     // Decoder was already configured with description at init/configure path —
@@ -999,7 +1048,27 @@ const serverImpl: DecoderWorker = {
                     warnLog?.log(`updateDescription firing: lastRawDesc=${
                         lastRawDescription ? lastRawDescription.byteLength : 'null'} bytes, ` +
                         `chunkDesc=${description.byteLength} bytes, decoderState=${decoder.getState()}`);
-                    decoder.updateDescription(description);
+                    // Re-derive codec from the new description — simulcast layer
+                    // switches carry a new SPS with different tier/level. If the
+                    // codec string changes, swap it atomically with the new
+                    // description.
+                    const selection = await reselectCodecForDescription(description);
+                    if (!selection) {
+                        errorLog?.log(`No HW-supported codec for new keyframe ` +
+                            `description (layer switch?); ending stream`);
+                        if (pullActive) {
+                            pullActive = false;
+                            void callbacks.onPullEnded(
+                                'codec not supported for new stream description', rpcNoWait);
+                        }
+                        return;
+                    }
+                    if (selection.codec !== currentDecoderConfig!.codec) {
+                        warnLog?.log(`Layer-switch codec swap: ${
+                            currentDecoderConfig!.codec} -> ${selection.codec}`);
+                        currentDecoderConfig = { ...currentDecoderConfig!, codec: selection.codec };
+                    }
+                    decoder.updateDescription(description, selection.codec);
                     lastRawDescription = description.slice(0);
                     infoLog?.log('Description changed, decoder reconfigured');
                 }
@@ -1093,11 +1162,38 @@ const serverImpl: DecoderWorker = {
                     const recoveryDescription: ArrayBuffer | undefined = description && description.byteLength > 0
                         ? description
                         : (lastRawDescription ?? undefined);
+                    // Mark the codec that just failed as exhausted for this
+                    // stream, then re-select against the recovery description.
+                    // Without this, recovery would loop on the same broken codec
+                    // string until RECOVERY_MAX_ATTEMPTS trips and the stream
+                    // ends — even though a different candidate (e.g. opposite
+                    // tier) would have configured cleanly.
+                    const failedCodec = currentDecoderConfig.codec;
+                    failedCandidates.add(failedCodec);
+                    let recoveryCodec = failedCodec;
+                    if (recoveryDescription) {
+                        const selection = await reselectCodecForDescription(recoveryDescription);
+                        if (!selection) {
+                            errorLog?.log(`Recovery: no remaining HW-supported codec ` +
+                                `(failed=[${[...failedCandidates].join(', ')}]); ending stream`);
+                            if (pullActive) {
+                                pullActive = false;
+                                void callbacks.onPullEnded(
+                                    'codec exhausted', rpcNoWait);
+                            }
+                            return;
+                        }
+                        recoveryCodec = selection.codec;
+                        if (recoveryCodec !== failedCodec) {
+                            warnLog?.log(`Recovery codec swap: ${failedCodec} -> ${recoveryCodec}`);
+                            currentDecoderConfig = { ...currentDecoderConfig, codec: recoveryCodec };
+                        }
+                    }
                     warnLog?.log(`Decoder in state '${decoder.getState()}', recovering (attempt ${
                         consecutiveRecoveries}/${RECOVERY_MAX_ATTEMPTS}) on keyframe seq=${
                         sequenceNumber}, dataLen=${dataLen}, descLen=${
                         recoveryDescription?.byteLength ?? 0}, descHex=${
-                        describeBytes(recoveryDescription)}, source=${
+                        describeBytes(recoveryDescription)}, codec=${recoveryCodec}, source=${
                         description && description.byteLength > 0 ? 'chunk' : 'cached'}`);
                     try {
                         // Yield a macrotask so the platform can release the
@@ -1198,6 +1294,10 @@ const serverImpl: DecoderWorker = {
         try {
             infoLog?.log('Configuring decoder with:', config.codec);
             currentDecoderConfig = config;
+            // New stream description → forget any candidate failures from the
+            // previous stream; the new bitstream may accept what the old one
+            // rejected (different encoder, different SPS, etc.).
+            failedCandidates.clear();
 
             if (decoder && decoder.getState() !== 'closed') {
                 decoder.close();
