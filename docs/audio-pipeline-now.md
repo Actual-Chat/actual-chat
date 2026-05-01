@@ -202,7 +202,7 @@ All file paths are relative to the repo root.
   on the client's behalf using `MaxCatchUpLag = 3 s`, and
   `AudioStreamingBackend.SkipTo` applies that server-side skip.
 
-## 7. `server audio muxer` / `server audio sender`
+## 7-8. `server audio muxer` / `server audio sender`
 
 **Now:**
 - `AudioStreamingBackend.GetAudio(streamId, skipTo, ct)`
@@ -244,7 +244,7 @@ All file paths are relative to the repo root.
 - Unbounded fan-in output channel duplicates retention work already done by
   `StreamStore` and adds another place where backlog can hide.
 
-## 8. `audio receiver` / `audio demuxer`
+## 9-10. `audio receiver` / `audio demuxer`
 
 **Now:**
 - Live listening goes through
@@ -286,7 +286,7 @@ All file paths are relative to the repo root.
   timeline. The doc's "carry origin capture time end-to-end" model moves the
   presentation decision into the `audio buffer`, where it can use video state.
 
-## 9. `audio buffer`
+## 11. `audio buffer`
 
 **Now (this is structurally different from the doc):**
 - The intentional playback buffer lives **inside the feeder worklet**, not
@@ -313,17 +313,23 @@ All file paths are relative to the repo root.
   audio source between server hops.
 
 **vs. doc:**
-- **Buffer is post-decode, not pre-decode.** The doc puts the playback buffer
-  before the decoder so the receiver can skip encoded frames or chunks before
-  doing decode work. For audio this matters less than for video (no keyframe
-  constraint), but it still means decode work happens for samples that may
-  then be dropped, and the buffer can't make encoded-stream-aware decisions.
-- **Unbounded buffering is partly aligned.** The target now allows the audio
-  buffer to grow when no paired video from the same author is playing. Current
-  `chunks` is unbounded, so the shape is closer for audio-only playback.
-  What is missing is the video-aware policy: when paired video is playing, the
-  buffer should decide between temporary frame-drop speed-up and hard skipping
-  stale chunks to align with the video presentation point.
+- **The decision-making buffer is in the wrong place.** The doc puts the
+  intentional playback buffer before the decoder, owned by a dedicated
+  component that sees encoded frames and per-author timing. Current code
+  puts it after decode, inside the audio worklet, holding decoded
+  `Float32Array` chunks. That placement is structurally wrong for what the
+  target needs the buffer to do: the worklet has no per-author origin time,
+  no notion of paired video, and no way to make a frame-pattern speed-up
+  vs. hard-skip decision — those decisions belong to a buffer that sits
+  before decode, knows about author identity, and can read video state.
+  The decoder also wastes work on samples that may be skipped.
+  A small post-decode smoothing buffer (~100 ms of decoded PCM) will still
+  remain inside the renderer to absorb scheduling jitter — but it is purely
+  a smoothing buffer with no skip semantics: whatever reaches it plays.
+- **Unbounded buffering is partly aligned.** The target now allows the
+  audio-only buffer to grow without an upper bound; current `chunks` is
+  unbounded, so the shape is right for the audio-only case. What is missing
+  is the video-aware policy.
 - **Two competing playback buffers.** The .NET-side `AudioTrackPlayer` pacing
   and the JS-side worklet start threshold both regulate playback start, with
   no shared notion of start threshold or video-aligned presentation policy.
@@ -335,7 +341,7 @@ All file paths are relative to the repo root.
   down. The doc allows a self-tuning safety margin but expects it to be
   hysteretic and bounded.
 
-## 10. `audio decoder`
+## 12. `audio decoder`
 
 **Now:**
 - `src/dotnet/UI.Blazor.App/Components/AudioPlayer/workers/opus-decoder-worker.ts`
@@ -359,7 +365,7 @@ All file paths are relative to the repo root.
     decoder-input-side discard that the doc does not anticipate (the doc's
     model assumes the audio buffer absorbs startup).
 
-## 11. `audio renderer`
+## 13. `audio renderer`
 
 **Now:**
 - `feeder-audio-worklet-processor.ts.process(inputs, outputs, parameters)` is
@@ -373,13 +379,19 @@ All file paths are relative to the repo root.
 - On `end`, it emits silence, marks itself ended, and releases buffers.
 
 **vs. doc:**
-- The renderer matches the doc's intent: it is the platform-output handoff,
-  emits silence on underrun, and does not rate-shift. The deviation is only
-  that the `audio buffer` (stage 9) is **inside** the renderer (the same
-  worklet), so the boundary between buffer and renderer is not a clean
-  handoff — they share state.
+- The renderer largely matches the doc's intent: it is the platform-output
+  handoff, emits silence on underrun, and does not rate-shift. The
+  worklet's inner `AudioRingBuffer(8192, 1)` (~170 ms at 48 kHz) is
+  essentially the small smoothing buffer the doc allows here, slightly
+  above the doc's ~100 ms cap.
+- What deviates is that the larger decision-making `audio buffer`
+  (stage 11) lives inside the same worklet and shares state with the
+  smoothing ring, so there is no clean separation between "skip/speed-up
+  decisions happen here" and "playback is committed to play here." Once
+  the `audio buffer` is moved pre-decode, this worklet is left as the
+  pure smoothing buffer the doc describes.
 
-## 12. `audio presentation`
+## 14. `audio presentation`
 
 **Now:**
 - Web: the `AudioWorkletNode` is connected through the `AudioContext`
@@ -506,14 +518,18 @@ In rough order of difficulty:
    speed > 1.
 
 2. **Move the playback buffer from inside the feeder worklet to before the
-   decoder.** This is structurally identical to the same refactor in video.
-   Today the start threshold, starvation detection, escalation-with-video
-   logic, and decoder-output handling all live in
-   `feeder-audio-worklet-processor.ts`. Splitting the encoded `audio buffer`
-   from the decoder + render handoff requires rebuilding the start-threshold
-   and starvation logic on encoded frames (where each frame is a uniform
-   20 ms quantum, so this is actually simpler than the video equivalent),
-   and re-deriving the JS buffer-low signal that `AudioTrackPlayer` waits on.
+   decoder.** This is aligned in direction with the analogous video refactor
+   — both move the playback buffer to a dedicated pre-decode component —
+   but it is **not structurally identical**. The audio version is simpler in
+   several ways: every audio frame is a uniform 20 ms quantum, there is no
+   keyframe-aware trim policy, and the audio-only case explicitly allows
+   unbounded growth, so the encoded-frame buffer mostly just owns the
+   start-threshold, the A/V-paired catch-up decision (frame-drop speed-up
+   vs. hard skip), and the JS buffer-low signal that `AudioTrackPlayer`
+   waits on. Today the start threshold, starvation detection,
+   escalation-with-video logic, and decoder-output handling all live in
+   `feeder-audio-worklet-processor.ts`; this refactor pulls them out and
+   puts them on the encoded-frame side.
 
 3. **Remove server-side live catch-up skipping.** Full server-side retention
    stays — transcription and persistence need it. What changes is who decides

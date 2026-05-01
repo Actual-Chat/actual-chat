@@ -1,7 +1,7 @@
 # Video Pipeline
 
 This document describes the target high-level design of the live video pipeline.
-It is intentionally conceptual: it names the big parts of the pipeline and the
+It is intentionally conceptual: it names the pipeline components and the
 buffering responsibilities between them, without tying the design to current
 files, classes, or implementation details.
 
@@ -33,7 +33,7 @@ The pipeline distinguishes three concepts:
 
 Only `video buffer` is allowed to intentionally hold playback latency.
 
-## Big Parts
+## Pipeline Components
 
 The pipeline has these conceptual stages:
 
@@ -50,6 +50,25 @@ The pipeline has these conceptual stages:
 11. `video renderer`
 12. `video presentation`
 13. `control plane`
+
+## Buffering and Skipping Points
+
+Every place in the pipeline that intentionally holds a frame, drops a frame, or
+compacts unsent frames:
+
+| Where | Policy | What it does |
+|---|---|---|
+| `raw video processors` | `replaceable slot` | Newer raw frame replaces a pending one if the processors are still working on the previous frame. |
+| `video encoder` | `replaceable slot` | Newer raw frame replaces a pending one if the encoder is still working on the previous frame. |
+| `video sender` | `RpcStream` (real-time) | Sends encoded frames to the server; on ACK, compacts unsent backlog by skipping forward to the latest decoder-safe frame. |
+| `server stream store` | `drop oldest keyframe span` | Bounded short replay tail for late join; evicts oldest keyframe-anchored span when full. |
+| `server video sender` | `RpcStream` (real-time) | Fans frames out to a receiver; same ACK-compaction-to-keyframe semantics as the client sender. |
+| `video buffer` | intentional playback buffer | The only intentional playback latency; trims to a keyframe when above maximum healthy duration; signals starvation when below minimum. |
+| `video presentation` | `replaceable slot` | Newer decoded frame replaces a pending one while the presentation step is waiting for the next screen refresh. |
+
+Other stages — `raw video source`, `server video receiver`, `video receiver`,
+`video decoder`, `video renderer` — should not buffer or drop frames; they
+forward each frame as soon as it arrives.
 
 ## Constants
 

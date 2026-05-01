@@ -1,7 +1,7 @@
 # Audio Pipeline
 
 This document describes the target high-level design of the live audio pipeline.
-It is intentionally conceptual: it names the big parts of the pipeline and the
+It is intentionally conceptual: it names the pipeline components and the
 buffering responsibilities between them, without tying the design to current
 files, classes, or implementation details.
 
@@ -68,7 +68,7 @@ The pipeline distinguishes four concepts:
 Only `audio buffer` is allowed to intentionally hold playback latency. Only the
 client playback side is allowed to intentionally skip audio frames.
 
-## Big Parts
+## Pipeline Components
 
 The pipeline has these conceptual stages:
 
@@ -88,6 +88,27 @@ The pipeline has these conceptual stages:
 14. `audio presentation`
 
 There is no control plane stage.
+
+## Buffering and Skipping Points
+
+Every place in the pipeline that intentionally holds an audio frame, drops a
+frame, or compacts unsent frames:
+
+| Where | Policy | What it does |
+|---|---|---|
+| `raw audio processors` (pre-roll) | `drop oldest` | While voice is inactive, keeps a bounded pre-roll of recent PCM (~200 ms) so leading consonants survive when speech starts. |
+| `raw audio processors` / `audio encoder` (handoff) | `lossless handoff` | Short queues between processing stages; never intentionally skip recorded speech, surface backpressure on overload. |
+| `audio sender` | `recording RpcStream` (non-realtime) | Uploads encoded frames to the server; never compacts or skips, because the server uses this stream for transcription and persistence. |
+| `server stream store` | full retention | Keeps the complete recording stream until end-of-stream and expiration; no live-tail truncation. |
+| `server audio sender` | `delivery RpcStream` (non-realtime) | Sends every muxed audio item to the receiver; never compacts or skips on the receiver's behalf. |
+| `audio buffer` (audio-only) | intentional playback buffer, no upper bound | Plays received audio in order; can grow if delivery runs ahead, does not skip merely to reduce latency. |
+| `audio buffer` (paired with video) | speed-up or hard-skip | Drops a regular pattern of frames (small drift) or hard-skips stale audio (large drift) to align with the video presentation point. |
+| `audio renderer` | small smoothing buffer | Holds up to ~100 ms of decoded PCM so the platform output never underruns due to short scheduling jitter. Whatever reaches the renderer plays — no skip decisions are made here. Emits silence on underrun rather than a discontinuity. |
+
+Other stages — `raw audio source`, `server audio receiver`, `server audio
+muxer`, `audio receiver`, `audio demuxer`, `audio decoder`, `audio
+presentation` — should not buffer or drop frames; they forward each frame as
+soon as it arrives.
 
 ## Constants
 
@@ -412,13 +433,20 @@ audio output mechanism (typically an audio worklet or system audio queue).
 
 | Parameter | Formula | Actual value |
 |---|---:|---:|
-| Policy | platform output handoff | just-in-time fill |
+| Policy | small smoothing buffer | bounded decoded PCM, no skip |
+| Maximum size | platform-specific | up to ~100 ms of decoded PCM |
 
 The platform audio output pulls samples at a fixed rate dictated by the
-audio clock. The `audio renderer` keeps the platform's output queue filled
-just enough to avoid underrun between successive `audio buffer` pulls. This
-is a thin handoff, not an intentional buffer; any sustained accumulation
-here is a bug.
+audio clock. The `audio renderer` keeps a small bounded buffer of decoded
+PCM (up to ~100 ms) so the platform output never underruns due to short
+scheduling jitter between the decoder and the audio thread.
+
+This buffer is intentional but small. It is purely a smoothing buffer:
+once decoded PCM reaches the renderer it is committed to play. The
+renderer does not skip, drop, or otherwise revisit playback decisions —
+those happen in the `audio buffer` before decode. If the renderer's
+smoothing buffer keeps growing toward its cap, the upstream `audio buffer`
+is over-feeding and that is a bug.
 
 When the `audio buffer` cannot supply samples in time, the `audio renderer`
 emits silence to keep the audio clock running. Silence is preferable to a
