@@ -446,6 +446,491 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
     }
 }
 
+/**
+ * Decode raw encoded bytes (used by video-player.ts for off-main-thread decoding).
+ * Creates EncodedVideoChunk internally from raw bytes.
+ *
+ * Top-level function so the same code path is reachable from both the
+ * decodeRawChunk RPC entry and the upcoming in-worker encoded-frame
+ * buffer drain loop (Step E of the receiver-buffer cleanup).
+ */
+async function processEncodedChunk(
+    timestamp: number,
+    duration: number,
+    isKeyFrame: boolean,
+    sequenceNumber: number,
+    width: number | undefined,
+    height: number | undefined,
+    data: ArrayBuffer,
+    description?: ArrayBuffer
+): Promise<void> {
+    if (!decoder || !processing) {
+        return;
+    }
+
+    // Gate after reset/recovery: drop deltas until first keyframe arrives.
+    // resetDecoder sets waitingForKeyframe=true; without this gate an
+    // in-flight chunk from the prior stream feeds the fresh decoder and
+    // triggers "A key frame is required after configure()" — pixelation
+    // until the next IDR.
+    if (waitingForKeyframe) {
+        if (!isKeyFrame) {
+            return;
+        }
+        infoLog?.log(`Recovery keyframe received: seq=${sequenceNumber}`);
+        waitingForKeyframe = false;
+    }
+
+    // Diagnostic: snapshot what the decoder is about to be fed so the
+    // error callback can reference it. Capture `dataLen` before the
+    // EncodedVideoChunk constructor (which uses `transfer: [data]` and
+    // detaches the buffer — `data.byteLength` reads 0 after that).
+    const dataLen = data.byteLength;
+    lastChunkSeq = sequenceNumber;
+    lastChunkType = isKeyFrame ? 'key' : 'delta';
+    lastChunkSize = dataLen;
+    lastChunkDescLen = description?.byteLength ?? 0;
+
+    // Diagnostic: on the first keyframe of a fresh stream, log a side-by-side
+    // comparison of the description from VideoStreamInfo metadata (used at
+    // initialize) vs the description on this keyframe. iOS Safari HEVC HW
+    // decoder errors implicate a possible mismatch — confirm or rule out.
+    if (isKeyFrame && !firstKeyframeLogged) {
+        firstKeyframeLogged = true;
+        const initDesc = currentDecoderConfig?.description;
+        const initLen = initDesc?.byteLength ?? 0;
+        const chunkLen = description?.byteLength ?? 0;
+        const initHex = describeBytes(initDesc);
+        const chunkHex = describeBytes(description);
+        const dataHex = describeBytes(data);
+        let initVsChunk: string;
+        if (initLen === chunkLen && initDesc && description) {
+            let initAsArrayBuffer: ArrayBuffer;
+            if (initDesc instanceof ArrayBuffer) {
+                initAsArrayBuffer = initDesc;
+            } else if (ArrayBuffer.isView(initDesc)) {
+                const v = initDesc as ArrayBufferView;
+                initAsArrayBuffer = (v.buffer as ArrayBuffer).slice(
+                    v.byteOffset, v.byteOffset + v.byteLength);
+            } else {
+                initAsArrayBuffer = new ArrayBuffer(0);
+            }
+            initVsChunk = bufferEqual(initAsArrayBuffer, description) ? 'EQUAL' : 'DIFFER';
+        } else {
+            initVsChunk = initLen === 0 ? 'init-no-desc' : 'len-differ';
+        }
+        warnLog?.log(
+            `[FIRST_KF_DIAG] seq=${sequenceNumber}, dataLen=${dataLen}, ` +
+            `initDescLen=${initLen}, chunkDescLen=${chunkLen}, cmp=${initVsChunk}, ` +
+            `decoderState=${decoder.getState()}, decoderConfigured=${decoderConfigured}, ` +
+            `codec=${currentDecoderConfig?.codec}, hwAccel=${currentDecoderConfig?.hardwareAcceleration}`);
+        warnLog?.log(`[FIRST_KF_DIAG] initDescHex=${initHex}`);
+        warnLog?.log(`[FIRST_KF_DIAG] chunkDescHex=${chunkHex}`);
+        warnLog?.log(`[FIRST_KF_DIAG] dataHex=${dataHex}`);
+    }
+
+    try {
+        // If we have a description and it's a keyframe, reconfigure the decoder only if description changed
+        if (isKeyFrame && description && description.byteLength > 0) {
+            if (!decoderConfigured) {
+                // First keyframe of a fresh stream. The VideoDecoder built at
+                // initialize() has been sitting unconfigured for hundreds of ms
+                // while RPC handshake + GetVideo roundtripped; on iOS Safari
+                // HEVC HW that stale instance can no longer be configured into
+                // a working state — first decode fails with
+                // "EncodingError: Decoder failure" even though state reads
+                // 'configured'. Recovery branch below already proves
+                // fresh-decoder + initialize(description) + decode() is
+                // reliable; mirror it here.
+                if (decoder.getState() !== 'closed') {
+                    decoder.close();
+                }
+                // Re-derive codec from THIS keyframe's description (ground
+                // truth from the bitstream). Init-time codec was a hint; the
+                // keyframe SPS may say a different tier/level/profile that
+                // forces a different codec string.
+                const selection = await reselectCodecForDescription(description);
+                if (!selection) {
+                    errorLog?.log(`No HW-supported codec for first keyframe ` +
+                        `description (descLen=${description.byteLength}, ` +
+                        `hex=${describeBytes(description)}); ending stream`);
+                    if (pullActive) {
+                        pullActive = false;
+                        void callbacks.onPullEnded(
+                            'codec not supported for stream description', rpcNoWait);
+                    }
+                    return;
+                }
+                if (selection.codec !== currentDecoderConfig!.codec) {
+                    warnLog?.log(`First keyframe codec swap: ${
+                        currentDecoderConfig!.codec} -> ${selection.codec}`);
+                    currentDecoderConfig = { ...currentDecoderConfig!, codec: selection.codec };
+                }
+                const freshConfig: DecoderConfig = { ...currentDecoderConfig!, description };
+                decoder = new WebCodecsDecoder(
+                    freshConfig,
+                    emitDecodedFrame,
+                    (error) => {
+                        if (shouldLogDecoderError(decoderErrorKey('first-kf', error)))
+                            errorLog?.log(`Decoder error (fresh first-keyframe path, state=${decoder?.getState() ?? '?'}, ` +
+                                `lastChunkSeq=${lastChunkSeq}, lastChunkType=${lastChunkType}, ` +
+                                `lastChunkBytes=${lastChunkSize}, lastDescLen=${lastChunkDescLen}):`, error);
+                        requestKeyframeOnDecoderError();
+                    }
+                );
+                decoder.initialize();
+                lastRawDescription = description.slice(0);
+                initialDescriptionApplied = false;
+                warnLog?.log(`[FIRST_KF_FRESH] built fresh decoder for first keyframe, ` +
+                    `codec=${currentDecoderConfig!.codec}, ` +
+                    `descLen=${description.byteLength}, decoderState=${decoder.getState()}`);
+            } else if (initialDescriptionApplied) {
+                // Decoder was already configured with description at init/configure path —
+                // skip the redundant decoder.configure() that iOS Safari HEVC HW
+                // rejects with EncodingError even when bytes are identical.
+                initialDescriptionApplied = false;
+                lastRawDescription = description.slice(0);
+                warnLog?.log(`[FLAG_PATH] First keyframe: skipped redundant configure, ` +
+                    `seeded lastRawDescription (${description.byteLength} bytes), ` +
+                    `decoderState=${decoder.getState()}`);
+            } else if (!lastRawDescription || !bufferEqual(lastRawDescription, description)) {
+                warnLog?.log(`updateDescription firing: lastRawDesc=${
+                    lastRawDescription ? lastRawDescription.byteLength : 'null'} bytes, ` +
+                    `chunkDesc=${description.byteLength} bytes, decoderState=${decoder.getState()}`);
+                // Re-derive codec from the new description — simulcast layer
+                // switches carry a new SPS with different tier/level. If the
+                // codec string changes, swap it atomically with the new
+                // description.
+                const selection = await reselectCodecForDescription(description);
+                if (!selection) {
+                    errorLog?.log(`No HW-supported codec for new keyframe ` +
+                        `description (layer switch?); ending stream`);
+                    if (pullActive) {
+                        pullActive = false;
+                        void callbacks.onPullEnded(
+                            'codec not supported for new stream description', rpcNoWait);
+                    }
+                    return;
+                }
+                if (selection.codec !== currentDecoderConfig!.codec) {
+                    // Codec string changed (level / tier / profile escalation
+                    // from new SPS). Close + recreate — HW slots are pinned
+                    // to the original codec capability and in-place
+                    // configure() can't always cross that boundary cleanly.
+                    const oldCodec = currentDecoderConfig!.codec;
+                    warnLog?.log(`Layer-switch codec swap (close+recreate): ${
+                        oldCodec} -> ${selection.codec}`);
+                    await awaitHwReleased();
+                    if (decoder.getState() !== 'closed') decoder.close();
+                    currentDecoderConfig = { ...currentDecoderConfig!, codec: selection.codec };
+                    const freshConfig: DecoderConfig = { ...currentDecoderConfig, description };
+                    decoder = new WebCodecsDecoder(
+                        freshConfig,
+                        emitDecodedFrame,
+                        (error) => {
+                            if (shouldLogDecoderError(decoderErrorKey('layer-switch', error)))
+                                errorLog?.log(`Decoder error (layer-switch path, state=${
+                                    decoder?.getState() ?? '?'}):`, error);
+                            requestKeyframeOnDecoderError();
+                        }
+                    );
+                    decoder.initialize();
+                } else {
+                    // Same codec, only SPS bytes differ (minor variation,
+                    // e.g. different VUI). In-place reconfigure is fine.
+                    // Forward the new dims so configure() picks up the new
+                    // SPS conformance window — without this, Chromium's
+                    // HEVC HW decoder keeps applying the old crop.
+                    decoder.updateDescription(description, selection.codec, width, height);
+                    if (width && height) {
+                        currentDecoderConfig = {
+                            ...currentDecoderConfig!,
+                            codedWidth: width,
+                            codedHeight: height,
+                        };
+                        currentCodedWidth = width;
+                        currentCodedHeight = height;
+                    }
+                }
+                lastRawDescription = description.slice(0);
+                infoLog?.log('Description changed, decoder reconfigured');
+            }
+            decoderConfigured = true;
+        } else if (isKeyFrame && !decoderConfigured && currentDecoderConfig?.description) {
+            // Recreate decoder with description to avoid double-configure.
+            // Handles skipTo jumping past the first keyframe with per-frame SPS/PPS.
+            warnLog?.log(`Recreating decoder with initial description for skipTo keyframe, ` +
+                `descLen=${currentDecoderConfig.description.byteLength}, ` +
+                `descHex=${describeBytes(currentDecoderConfig.description)}`);
+            if (decoder.getState() !== 'closed') {
+                decoder.close();
+            }
+            decoder = new WebCodecsDecoder(
+                currentDecoderConfig,
+                emitDecodedFrame,
+                (error) => {
+                    if (shouldLogDecoderError(decoderErrorKey('recreate', error)))
+                        errorLog?.log(`Decoder error (recreate path, state=${decoder?.getState() ?? '?'}):`, error);
+                    requestKeyframeOnDecoderError();
+                }
+            );
+            decoder.initialize();
+            decoderConfigured = true;
+        }
+
+        // For AV1, we don't need a description — mark as configured on first keyframe
+        if (isKeyFrame && !decoderConfigured) {
+            const isAV1 = currentDecoderConfig?.codec.startsWith('av01');
+            if (isAV1 || !currentDecoderConfig?.description) {
+                decoderConfigured = true;
+            }
+        }
+
+        // Resolution-change handling. Fires on keyframes that carry
+        // VideoFrameDto.Width/Height (any codec — AVC Annex B, AV1, VP9
+        // and HEVC streams alike). The codec's `level_idc` defines a max
+        // picture size; rotation, simulcast layer changes, or screencast
+        // window resizes commonly stay within that envelope and the
+        // browser decoder adapts internally — no need to recreate.
+        //
+        // Probe authority: `VideoDecoder.isConfigSupported(codec, dims, desc?)`
+        // tells us directly whether the current codec config still accepts
+        // the new size. Only when it returns false do we reselect (escalate
+        // level / profile) and close+create a fresh decoder.
+        if (isKeyFrame && width && height) {
+            if (currentCodedWidth === 0 || currentCodedHeight === 0) {
+                // First keyframe with dims after init — just track. Decoder
+                // was already (re)built above with the init-time codec.
+                currentCodedWidth = width;
+                currentCodedHeight = height;
+            } else if (width !== currentCodedWidth || height !== currentCodedHeight) {
+                const compatible = await isCurrentCodecCompatible(width, height, description);
+                if (compatible) {
+                    infoLog?.log(`Resolution change ${currentCodedWidth}x${currentCodedHeight} ` +
+                        `-> ${width}x${height}; codec ${currentDecoderConfig?.codec} compatible, ` +
+                        `decoder adapts in-place`);
+                    currentCodedWidth = width;
+                    currentCodedHeight = height;
+                    currentDecoderConfig = {
+                        ...currentDecoderConfig!,
+                        codedWidth: width,
+                        codedHeight: height,
+                    };
+                    // HEVC HW decoder on Chromium (Edge/Chrome) reads the SPS
+                    // conformance window only at configure() time. Without an
+                    // explicit reconfigure here, it keeps applying the *initial*
+                    // crop after a layer-switch / rotation — output frames'
+                    // displayWidth/Height drift from the new picture, the canvas
+                    // resizes to the wrong height, and stale stride-padding rows
+                    // leak through at the bottom as vertical-line artifacts.
+                    // Force a fresh configure(): updateDescription if we have
+                    // bytes, otherwise close+recreate.
+                    const isHevc = getCodecCategory(currentDecoderConfig.codec) === 'hevc';
+                    if (description) {
+                        decoder.updateDescription(description, undefined, width, height);
+                        lastRawDescription = description.slice(0);
+                    } else if (isHevc) {
+                        await awaitHwReleased();
+                        if (decoder.getState() !== 'closed') decoder.close();
+                        const freshConfig: DecoderConfig = { ...currentDecoderConfig };
+                        decoder = new WebCodecsDecoder(
+                            freshConfig,
+                            emitDecodedFrame,
+                            (error) => {
+                                if (shouldLogDecoderError(decoderErrorKey('dim-change-hevc', error)))
+                                    errorLog?.log(`Decoder error (HEVC dim-change rebuild path, state=${
+                                        decoder?.getState() ?? '?'}):`, error);
+                                requestKeyframeOnDecoderError();
+                            }
+                        );
+                        decoder.initialize();
+                        warnLog?.log(`HEVC dim-change without description bytes; rebuilt decoder ` +
+                            `@ ${width}x${height} to refresh conformance window`);
+                    }
+                } else {
+                    const oldCodec = currentDecoderConfig!.codec;
+                    warnLog?.log(`Resolution change ${currentCodedWidth}x${currentCodedHeight} ` +
+                        `-> ${width}x${height} incompatible with ${oldCodec}; reselecting`);
+                    const candidates = getCodecCandidates(oldCodec, description);
+                    const selection = await selectDecoderCodec(
+                        candidates, description, { width, height }, failedCandidates);
+                    if (!selection) {
+                        errorLog?.log(`No HW-supported codec for ${width}x${height}; ending stream`);
+                        if (pullActive) {
+                            pullActive = false;
+                            void callbacks.onPullEnded(
+                                'codec not supported for new dims', rpcNoWait);
+                        }
+                        return;
+                    }
+                    await awaitHwReleased();
+                    if (decoder.getState() !== 'closed') decoder.close();
+                    currentDecoderConfig = {
+                        ...currentDecoderConfig!,
+                        codec: selection.codec,
+                        codedWidth: width,
+                        codedHeight: height,
+                    };
+                    const freshConfig: DecoderConfig = description
+                        ? { ...currentDecoderConfig, description }
+                        : { ...currentDecoderConfig, description: undefined };
+                    decoder = new WebCodecsDecoder(
+                        freshConfig,
+                        emitDecodedFrame,
+                        (error) => {
+                            if (shouldLogDecoderError(decoderErrorKey('dim-change', error)))
+                                errorLog?.log(`Decoder error (dim-change path, state=${
+                                    decoder?.getState() ?? '?'}):`, error);
+                            requestKeyframeOnDecoderError();
+                        }
+                    );
+                    decoder.initialize();
+                    currentCodedWidth = width;
+                    currentCodedHeight = height;
+                    if (description) lastRawDescription = description.slice(0);
+                    warnLog?.log(`Dim-change rebuild: ${oldCodec} -> ${selection.codec} ` +
+                        `@ ${width}x${height}`);
+                }
+            }
+        }
+
+        // Defense-in-depth: never feed empty data to the decoder
+        if (dataLen === 0) {
+            warnLog?.log(`Skipping chunk with empty data: seq=${sequenceNumber}, isKey=${isKeyFrame}`);
+            return;
+        }
+
+        // Create EncodedVideoChunk from raw bytes. `transfer: [data]` detaches
+        // the source ArrayBuffer into the chunk — skips the constructor's
+        // implicit byte copy. Per WebCodecs 2023+; safe because `data` is
+        // not read after this point. The cast is needed because the TS
+        // dom lib hasn't yet added the `transfer` field.
+        const chunk = new EncodedVideoChunk({
+            type: isKeyFrame ? 'key' : 'delta',
+            timestamp,
+            duration,
+            data,
+            transfer: [data],
+        } as EncodedVideoChunkInit & { transfer?: ArrayBuffer[] });
+
+        // Check decoder state — recover from closed/error state on keyframe
+        if (decoder.getState() !== 'configured') {
+            if (isKeyFrame && currentDecoderConfig) {
+                // Recovery cooldown: skip recreation if we already attempted
+                // one within RECOVERY_COOLDOWN_MS. Without this gate, a HW
+                // decoder that fails every ~3 s would be rebuilt on every
+                // keyframe — burning a fresh HW slot per attempt and
+                // staying broken because the platform hasn't fully released
+                // the previous slot yet.
+                const nowMs = Date.now();
+                if (nowMs - lastRecoveryAtMs < RECOVERY_COOLDOWN_MS) {
+                    warnLog?.log(`Recovery skipped (cooldown ${
+                        RECOVERY_COOLDOWN_MS}ms): seq=${sequenceNumber}, ` +
+                        `${nowMs - lastRecoveryAtMs}ms since last attempt`);
+                    return;
+                }
+                // After RECOVERY_MAX_ATTEMPTS consecutive failed recoveries,
+                // surface a stream-level failure instead of recreating
+                // forever. The receiver UI can re-pull cleanly via skipTo
+                // (the existing app-layer recovery), and a clean failure
+                // beats an endless decoder churn.
+                if (consecutiveRecoveries >= RECOVERY_MAX_ATTEMPTS) {
+                    errorLog?.log(`Recovery gave up after ${consecutiveRecoveries} ` +
+                        `consecutive attempts; reporting stream end`);
+                    if (pullActive) {
+                        pullActive = false;
+                        void callbacks.onPullEnded(
+                            'decoder unrecoverable after retries',
+                            rpcNoWait);
+                    }
+                    return;
+                }
+                consecutiveRecoveries++;
+                lastRecoveryAtMs = nowMs;
+                // HEVC/AVC require description on every configure() — recovery must re-apply
+                // the cached description, otherwise the next keyframe fails with
+                // "A key frame is required after configure()" DataError.
+                const recoveryDescription: ArrayBuffer | undefined = description && description.byteLength > 0
+                    ? description
+                    : (lastRawDescription ?? undefined);
+                // Mark the codec that just failed as exhausted for this
+                // stream, then re-select against the recovery description.
+                // Without this, recovery would loop on the same broken codec
+                // string until RECOVERY_MAX_ATTEMPTS trips and the stream
+                // ends — even though a different candidate (e.g. opposite
+                // tier) would have configured cleanly.
+                const failedCodec = currentDecoderConfig.codec;
+                failedCandidates.add(failedCodec);
+                let recoveryCodec = failedCodec;
+                if (recoveryDescription) {
+                    const selection = await reselectCodecForDescription(recoveryDescription);
+                    if (!selection) {
+                        errorLog?.log(`Recovery: no remaining HW-supported codec ` +
+                            `(failed=[${[...failedCandidates].join(', ')}]); ending stream`);
+                        if (pullActive) {
+                            pullActive = false;
+                            void callbacks.onPullEnded(
+                                'codec exhausted', rpcNoWait);
+                        }
+                        return;
+                    }
+                    recoveryCodec = selection.codec;
+                    if (recoveryCodec !== failedCodec) {
+                        warnLog?.log(`Recovery codec swap: ${failedCodec} -> ${recoveryCodec}`);
+                        currentDecoderConfig = { ...currentDecoderConfig, codec: recoveryCodec };
+                    }
+                }
+                warnLog?.log(`Decoder in state '${decoder.getState()}', recovering (attempt ${
+                    consecutiveRecoveries}/${RECOVERY_MAX_ATTEMPTS}) on keyframe seq=${
+                    sequenceNumber}, dataLen=${dataLen}, descLen=${
+                    recoveryDescription?.byteLength ?? 0}, descHex=${
+                    describeBytes(recoveryDescription)}, codec=${recoveryCodec}, source=${
+                    description && description.byteLength > 0 ? 'chunk' : 'cached'}`);
+                try {
+                    // Yield a macrotask so the platform can release the
+                    // previous HW slot before we allocate a new one.
+                    await awaitHwReleased();
+                    const recoveryConfig: DecoderConfig = recoveryDescription
+                        ? { ...currentDecoderConfig, description: recoveryDescription }
+                        : { ...currentDecoderConfig, description: undefined };
+                    decoder = new WebCodecsDecoder(
+                        recoveryConfig,
+                        emitDecodedFrame,
+                        (error) => {
+                            if (shouldLogDecoderError(decoderErrorKey('recovery', error)))
+                                errorLog?.log(`Decoder error (recovery path, state=${decoder?.getState() ?? '?'}):`, error);
+                            requestKeyframeOnDecoderError();
+                        }
+                    );
+                    decoder.initialize();
+                    decoderConfigured = true;
+                    if (recoveryDescription) {
+                        lastRawDescription = recoveryDescription.slice(0);
+                    }
+                } catch (recoveryError) {
+                    errorLog?.log('Decoder recovery failed:', recoveryError);
+                    return;
+                }
+            } else {
+                // Can't recover on delta frame — need keyframe
+                return;
+            }
+        }
+
+        if (isKeyFrame) {
+            warnLog?.log(`[PRE_DECODE] Decoding keyframe: seq=${sequenceNumber}, ` +
+                `state=${decoder.getState()}, configured=${decoderConfigured}, ` +
+                `descLen=${description?.byteLength ?? 0}, dataLen=${dataLen}, ` +
+                `flagWasUsed=${!initialDescriptionApplied && sequenceNumber === 0 ? 'maybe' : 'n/a'}`);
+        }
+
+        // Decode using the WebCodecsDecoder wrapper (tracks timing for diagnostics)
+        decoder.decodeRaw(chunk);
+    } catch (error) {
+        errorLog?.log('Error decoding raw chunk:', error);
+    }
+}
+
 // RPC Server Implementation
 const serverImpl: DecoderWorker = {
     init: (appConstants): Promise<void> => {
@@ -649,8 +1134,12 @@ const serverImpl: DecoderWorker = {
     /**
      * Decode raw encoded bytes (used by video-player.ts for off-main-thread decoding).
      * Creates EncodedVideoChunk internally from raw bytes.
+     *
+     * Thin wrapper over processEncodedChunk so the same code path is
+     * reachable from both the RPC entry and the upcoming in-worker
+     * encoded-frame buffer drain loop.
      */
-    decodeRawChunk: async (
+    decodeRawChunk: (
         timestamp: number,
         duration: number,
         isKeyFrame: boolean,
@@ -659,473 +1148,8 @@ const serverImpl: DecoderWorker = {
         height: number | undefined,
         data: ArrayBuffer,
         description?: ArrayBuffer
-    ): Promise<void> => {
-        if (!decoder || !processing) {
-            return;
-        }
-
-        // Gate after reset/recovery: drop deltas until first keyframe arrives.
-        // resetDecoder sets waitingForKeyframe=true; without this gate an
-        // in-flight chunk from the prior stream feeds the fresh decoder and
-        // triggers "A key frame is required after configure()" — pixelation
-        // until the next IDR.
-        if (waitingForKeyframe) {
-            if (!isKeyFrame) {
-                return;
-            }
-            infoLog?.log(`Recovery keyframe received: seq=${sequenceNumber}`);
-            waitingForKeyframe = false;
-        }
-
-        // Diagnostic: snapshot what the decoder is about to be fed so the
-        // error callback can reference it. Capture `dataLen` before the
-        // EncodedVideoChunk constructor (which uses `transfer: [data]` and
-        // detaches the buffer — `data.byteLength` reads 0 after that).
-        const dataLen = data.byteLength;
-        lastChunkSeq = sequenceNumber;
-        lastChunkType = isKeyFrame ? 'key' : 'delta';
-        lastChunkSize = dataLen;
-        lastChunkDescLen = description?.byteLength ?? 0;
-
-        // Diagnostic: on the first keyframe of a fresh stream, log a side-by-side
-        // comparison of the description from VideoStreamInfo metadata (used at
-        // initialize) vs the description on this keyframe. iOS Safari HEVC HW
-        // decoder errors implicate a possible mismatch — confirm or rule out.
-        if (isKeyFrame && !firstKeyframeLogged) {
-            firstKeyframeLogged = true;
-            const initDesc = currentDecoderConfig?.description;
-            const initLen = initDesc?.byteLength ?? 0;
-            const chunkLen = description?.byteLength ?? 0;
-            const initHex = describeBytes(initDesc);
-            const chunkHex = describeBytes(description);
-            const dataHex = describeBytes(data);
-            let initVsChunk: string;
-            if (initLen === chunkLen && initDesc && description) {
-                let initAsArrayBuffer: ArrayBuffer;
-                if (initDesc instanceof ArrayBuffer) {
-                    initAsArrayBuffer = initDesc;
-                } else if (ArrayBuffer.isView(initDesc)) {
-                    const v = initDesc as ArrayBufferView;
-                    initAsArrayBuffer = (v.buffer as ArrayBuffer).slice(
-                        v.byteOffset, v.byteOffset + v.byteLength);
-                } else {
-                    initAsArrayBuffer = new ArrayBuffer(0);
-                }
-                initVsChunk = bufferEqual(initAsArrayBuffer, description) ? 'EQUAL' : 'DIFFER';
-            } else {
-                initVsChunk = initLen === 0 ? 'init-no-desc' : 'len-differ';
-            }
-            warnLog?.log(
-                `[FIRST_KF_DIAG] seq=${sequenceNumber}, dataLen=${dataLen}, ` +
-                `initDescLen=${initLen}, chunkDescLen=${chunkLen}, cmp=${initVsChunk}, ` +
-                `decoderState=${decoder.getState()}, decoderConfigured=${decoderConfigured}, ` +
-                `codec=${currentDecoderConfig?.codec}, hwAccel=${currentDecoderConfig?.hardwareAcceleration}`);
-            warnLog?.log(`[FIRST_KF_DIAG] initDescHex=${initHex}`);
-            warnLog?.log(`[FIRST_KF_DIAG] chunkDescHex=${chunkHex}`);
-            warnLog?.log(`[FIRST_KF_DIAG] dataHex=${dataHex}`);
-        }
-
-        try {
-            // If we have a description and it's a keyframe, reconfigure the decoder only if description changed
-            if (isKeyFrame && description && description.byteLength > 0) {
-                if (!decoderConfigured) {
-                    // First keyframe of a fresh stream. The VideoDecoder built at
-                    // initialize() has been sitting unconfigured for hundreds of ms
-                    // while RPC handshake + GetVideo roundtripped; on iOS Safari
-                    // HEVC HW that stale instance can no longer be configured into
-                    // a working state — first decode fails with
-                    // "EncodingError: Decoder failure" even though state reads
-                    // 'configured'. Recovery branch below already proves
-                    // fresh-decoder + initialize(description) + decode() is
-                    // reliable; mirror it here.
-                    if (decoder.getState() !== 'closed') {
-                        decoder.close();
-                    }
-                    // Re-derive codec from THIS keyframe's description (ground
-                    // truth from the bitstream). Init-time codec was a hint; the
-                    // keyframe SPS may say a different tier/level/profile that
-                    // forces a different codec string.
-                    const selection = await reselectCodecForDescription(description);
-                    if (!selection) {
-                        errorLog?.log(`No HW-supported codec for first keyframe ` +
-                            `description (descLen=${description.byteLength}, ` +
-                            `hex=${describeBytes(description)}); ending stream`);
-                        if (pullActive) {
-                            pullActive = false;
-                            void callbacks.onPullEnded(
-                                'codec not supported for stream description', rpcNoWait);
-                        }
-                        return;
-                    }
-                    if (selection.codec !== currentDecoderConfig!.codec) {
-                        warnLog?.log(`First keyframe codec swap: ${
-                            currentDecoderConfig!.codec} -> ${selection.codec}`);
-                        currentDecoderConfig = { ...currentDecoderConfig!, codec: selection.codec };
-                    }
-                    const freshConfig: DecoderConfig = { ...currentDecoderConfig!, description };
-                    decoder = new WebCodecsDecoder(
-                        freshConfig,
-                        emitDecodedFrame,
-                        (error) => {
-                            if (shouldLogDecoderError(decoderErrorKey('first-kf', error)))
-                                errorLog?.log(`Decoder error (fresh first-keyframe path, state=${decoder?.getState() ?? '?'}, ` +
-                                    `lastChunkSeq=${lastChunkSeq}, lastChunkType=${lastChunkType}, ` +
-                                    `lastChunkBytes=${lastChunkSize}, lastDescLen=${lastChunkDescLen}):`, error);
-                            requestKeyframeOnDecoderError();
-                        }
-                    );
-                    decoder.initialize();
-                    lastRawDescription = description.slice(0);
-                    initialDescriptionApplied = false;
-                    warnLog?.log(`[FIRST_KF_FRESH] built fresh decoder for first keyframe, ` +
-                        `codec=${currentDecoderConfig!.codec}, ` +
-                        `descLen=${description.byteLength}, decoderState=${decoder.getState()}`);
-                } else if (initialDescriptionApplied) {
-                    // Decoder was already configured with description at init/configure path —
-                    // skip the redundant decoder.configure() that iOS Safari HEVC HW
-                    // rejects with EncodingError even when bytes are identical.
-                    initialDescriptionApplied = false;
-                    lastRawDescription = description.slice(0);
-                    warnLog?.log(`[FLAG_PATH] First keyframe: skipped redundant configure, ` +
-                        `seeded lastRawDescription (${description.byteLength} bytes), ` +
-                        `decoderState=${decoder.getState()}`);
-                } else if (!lastRawDescription || !bufferEqual(lastRawDescription, description)) {
-                    warnLog?.log(`updateDescription firing: lastRawDesc=${
-                        lastRawDescription ? lastRawDescription.byteLength : 'null'} bytes, ` +
-                        `chunkDesc=${description.byteLength} bytes, decoderState=${decoder.getState()}`);
-                    // Re-derive codec from the new description — simulcast layer
-                    // switches carry a new SPS with different tier/level. If the
-                    // codec string changes, swap it atomically with the new
-                    // description.
-                    const selection = await reselectCodecForDescription(description);
-                    if (!selection) {
-                        errorLog?.log(`No HW-supported codec for new keyframe ` +
-                            `description (layer switch?); ending stream`);
-                        if (pullActive) {
-                            pullActive = false;
-                            void callbacks.onPullEnded(
-                                'codec not supported for new stream description', rpcNoWait);
-                        }
-                        return;
-                    }
-                    if (selection.codec !== currentDecoderConfig!.codec) {
-                        // Codec string changed (level / tier / profile escalation
-                        // from new SPS). Close + recreate — HW slots are pinned
-                        // to the original codec capability and in-place
-                        // configure() can't always cross that boundary cleanly.
-                        const oldCodec = currentDecoderConfig!.codec;
-                        warnLog?.log(`Layer-switch codec swap (close+recreate): ${
-                            oldCodec} -> ${selection.codec}`);
-                        await awaitHwReleased();
-                        if (decoder.getState() !== 'closed') decoder.close();
-                        currentDecoderConfig = { ...currentDecoderConfig!, codec: selection.codec };
-                        const freshConfig: DecoderConfig = { ...currentDecoderConfig, description };
-                        decoder = new WebCodecsDecoder(
-                            freshConfig,
-                            emitDecodedFrame,
-                            (error) => {
-                                if (shouldLogDecoderError(decoderErrorKey('layer-switch', error)))
-                                    errorLog?.log(`Decoder error (layer-switch path, state=${
-                                        decoder?.getState() ?? '?'}):`, error);
-                                requestKeyframeOnDecoderError();
-                            }
-                        );
-                        decoder.initialize();
-                    } else {
-                        // Same codec, only SPS bytes differ (minor variation,
-                        // e.g. different VUI). In-place reconfigure is fine.
-                        // Forward the new dims so configure() picks up the new
-                        // SPS conformance window — without this, Chromium's
-                        // HEVC HW decoder keeps applying the old crop.
-                        decoder.updateDescription(description, selection.codec, width, height);
-                        if (width && height) {
-                            currentDecoderConfig = {
-                                ...currentDecoderConfig!,
-                                codedWidth: width,
-                                codedHeight: height,
-                            };
-                            currentCodedWidth = width;
-                            currentCodedHeight = height;
-                        }
-                    }
-                    lastRawDescription = description.slice(0);
-                    infoLog?.log('Description changed, decoder reconfigured');
-                }
-                decoderConfigured = true;
-            } else if (isKeyFrame && !decoderConfigured && currentDecoderConfig?.description) {
-                // Recreate decoder with description to avoid double-configure.
-                // Handles skipTo jumping past the first keyframe with per-frame SPS/PPS.
-                warnLog?.log(`Recreating decoder with initial description for skipTo keyframe, ` +
-                    `descLen=${currentDecoderConfig.description.byteLength}, ` +
-                    `descHex=${describeBytes(currentDecoderConfig.description)}`);
-                if (decoder.getState() !== 'closed') {
-                    decoder.close();
-                }
-                decoder = new WebCodecsDecoder(
-                    currentDecoderConfig,
-                    emitDecodedFrame,
-                    (error) => {
-                        if (shouldLogDecoderError(decoderErrorKey('recreate', error)))
-                            errorLog?.log(`Decoder error (recreate path, state=${decoder?.getState() ?? '?'}):`, error);
-                        requestKeyframeOnDecoderError();
-                    }
-                );
-                decoder.initialize();
-                decoderConfigured = true;
-            }
-
-            // For AV1, we don't need a description — mark as configured on first keyframe
-            if (isKeyFrame && !decoderConfigured) {
-                const isAV1 = currentDecoderConfig?.codec.startsWith('av01');
-                if (isAV1 || !currentDecoderConfig?.description) {
-                    decoderConfigured = true;
-                }
-            }
-
-            // Resolution-change handling. Fires on keyframes that carry
-            // VideoFrameDto.Width/Height (any codec — AVC Annex B, AV1, VP9
-            // and HEVC streams alike). The codec's `level_idc` defines a max
-            // picture size; rotation, simulcast layer changes, or screencast
-            // window resizes commonly stay within that envelope and the
-            // browser decoder adapts internally — no need to recreate.
-            //
-            // Probe authority: `VideoDecoder.isConfigSupported(codec, dims, desc?)`
-            // tells us directly whether the current codec config still accepts
-            // the new size. Only when it returns false do we reselect (escalate
-            // level / profile) and close+create a fresh decoder.
-            if (isKeyFrame && width && height) {
-                if (currentCodedWidth === 0 || currentCodedHeight === 0) {
-                    // First keyframe with dims after init — just track. Decoder
-                    // was already (re)built above with the init-time codec.
-                    currentCodedWidth = width;
-                    currentCodedHeight = height;
-                } else if (width !== currentCodedWidth || height !== currentCodedHeight) {
-                    const compatible = await isCurrentCodecCompatible(width, height, description);
-                    if (compatible) {
-                        infoLog?.log(`Resolution change ${currentCodedWidth}x${currentCodedHeight} ` +
-                            `-> ${width}x${height}; codec ${currentDecoderConfig?.codec} compatible, ` +
-                            `decoder adapts in-place`);
-                        currentCodedWidth = width;
-                        currentCodedHeight = height;
-                        currentDecoderConfig = {
-                            ...currentDecoderConfig!,
-                            codedWidth: width,
-                            codedHeight: height,
-                        };
-                        // HEVC HW decoder on Chromium (Edge/Chrome) reads the SPS
-                        // conformance window only at configure() time. Without an
-                        // explicit reconfigure here, it keeps applying the *initial*
-                        // crop after a layer-switch / rotation — output frames'
-                        // displayWidth/Height drift from the new picture, the canvas
-                        // resizes to the wrong height, and stale stride-padding rows
-                        // leak through at the bottom as vertical-line artifacts.
-                        // Force a fresh configure(): updateDescription if we have
-                        // bytes, otherwise close+recreate.
-                        const isHevc = getCodecCategory(currentDecoderConfig.codec) === 'hevc';
-                        if (description) {
-                            decoder.updateDescription(description, undefined, width, height);
-                            lastRawDescription = description.slice(0);
-                        } else if (isHevc) {
-                            await awaitHwReleased();
-                            if (decoder.getState() !== 'closed') decoder.close();
-                            const freshConfig: DecoderConfig = { ...currentDecoderConfig };
-                            decoder = new WebCodecsDecoder(
-                                freshConfig,
-                                emitDecodedFrame,
-                                (error) => {
-                                    if (shouldLogDecoderError(decoderErrorKey('dim-change-hevc', error)))
-                                        errorLog?.log(`Decoder error (HEVC dim-change rebuild path, state=${
-                                            decoder?.getState() ?? '?'}):`, error);
-                                    requestKeyframeOnDecoderError();
-                                }
-                            );
-                            decoder.initialize();
-                            warnLog?.log(`HEVC dim-change without description bytes; rebuilt decoder ` +
-                                `@ ${width}x${height} to refresh conformance window`);
-                        }
-                    } else {
-                        const oldCodec = currentDecoderConfig!.codec;
-                        warnLog?.log(`Resolution change ${currentCodedWidth}x${currentCodedHeight} ` +
-                            `-> ${width}x${height} incompatible with ${oldCodec}; reselecting`);
-                        const candidates = getCodecCandidates(oldCodec, description);
-                        const selection = await selectDecoderCodec(
-                            candidates, description, { width, height }, failedCandidates);
-                        if (!selection) {
-                            errorLog?.log(`No HW-supported codec for ${width}x${height}; ending stream`);
-                            if (pullActive) {
-                                pullActive = false;
-                                void callbacks.onPullEnded(
-                                    'codec not supported for new dims', rpcNoWait);
-                            }
-                            return;
-                        }
-                        await awaitHwReleased();
-                        if (decoder.getState() !== 'closed') decoder.close();
-                        currentDecoderConfig = {
-                            ...currentDecoderConfig!,
-                            codec: selection.codec,
-                            codedWidth: width,
-                            codedHeight: height,
-                        };
-                        const freshConfig: DecoderConfig = description
-                            ? { ...currentDecoderConfig, description }
-                            : { ...currentDecoderConfig, description: undefined };
-                        decoder = new WebCodecsDecoder(
-                            freshConfig,
-                            emitDecodedFrame,
-                            (error) => {
-                                if (shouldLogDecoderError(decoderErrorKey('dim-change', error)))
-                                    errorLog?.log(`Decoder error (dim-change path, state=${
-                                        decoder?.getState() ?? '?'}):`, error);
-                                requestKeyframeOnDecoderError();
-                            }
-                        );
-                        decoder.initialize();
-                        currentCodedWidth = width;
-                        currentCodedHeight = height;
-                        if (description) lastRawDescription = description.slice(0);
-                        warnLog?.log(`Dim-change rebuild: ${oldCodec} -> ${selection.codec} ` +
-                            `@ ${width}x${height}`);
-                    }
-                }
-            }
-
-            // Defense-in-depth: never feed empty data to the decoder
-            if (dataLen === 0) {
-                warnLog?.log(`Skipping chunk with empty data: seq=${sequenceNumber}, isKey=${isKeyFrame}`);
-                return;
-            }
-
-            // Create EncodedVideoChunk from raw bytes. `transfer: [data]` detaches
-            // the source ArrayBuffer into the chunk — skips the constructor's
-            // implicit byte copy. Per WebCodecs 2023+; safe because `data` is
-            // not read after this point. The cast is needed because the TS
-            // dom lib hasn't yet added the `transfer` field.
-            const chunk = new EncodedVideoChunk({
-                type: isKeyFrame ? 'key' : 'delta',
-                timestamp,
-                duration,
-                data,
-                transfer: [data],
-            } as EncodedVideoChunkInit & { transfer?: ArrayBuffer[] });
-
-            // Check decoder state — recover from closed/error state on keyframe
-            if (decoder.getState() !== 'configured') {
-                if (isKeyFrame && currentDecoderConfig) {
-                    // Recovery cooldown: skip recreation if we already attempted
-                    // one within RECOVERY_COOLDOWN_MS. Without this gate, a HW
-                    // decoder that fails every ~3 s would be rebuilt on every
-                    // keyframe — burning a fresh HW slot per attempt and
-                    // staying broken because the platform hasn't fully released
-                    // the previous slot yet.
-                    const nowMs = Date.now();
-                    if (nowMs - lastRecoveryAtMs < RECOVERY_COOLDOWN_MS) {
-                        warnLog?.log(`Recovery skipped (cooldown ${
-                            RECOVERY_COOLDOWN_MS}ms): seq=${sequenceNumber}, ` +
-                            `${nowMs - lastRecoveryAtMs}ms since last attempt`);
-                        return;
-                    }
-                    // After RECOVERY_MAX_ATTEMPTS consecutive failed recoveries,
-                    // surface a stream-level failure instead of recreating
-                    // forever. The receiver UI can re-pull cleanly via skipTo
-                    // (the existing app-layer recovery), and a clean failure
-                    // beats an endless decoder churn.
-                    if (consecutiveRecoveries >= RECOVERY_MAX_ATTEMPTS) {
-                        errorLog?.log(`Recovery gave up after ${consecutiveRecoveries} ` +
-                            `consecutive attempts; reporting stream end`);
-                        if (pullActive) {
-                            pullActive = false;
-                            void callbacks.onPullEnded(
-                                'decoder unrecoverable after retries',
-                                rpcNoWait);
-                        }
-                        return;
-                    }
-                    consecutiveRecoveries++;
-                    lastRecoveryAtMs = nowMs;
-                    // HEVC/AVC require description on every configure() — recovery must re-apply
-                    // the cached description, otherwise the next keyframe fails with
-                    // "A key frame is required after configure()" DataError.
-                    const recoveryDescription: ArrayBuffer | undefined = description && description.byteLength > 0
-                        ? description
-                        : (lastRawDescription ?? undefined);
-                    // Mark the codec that just failed as exhausted for this
-                    // stream, then re-select against the recovery description.
-                    // Without this, recovery would loop on the same broken codec
-                    // string until RECOVERY_MAX_ATTEMPTS trips and the stream
-                    // ends — even though a different candidate (e.g. opposite
-                    // tier) would have configured cleanly.
-                    const failedCodec = currentDecoderConfig.codec;
-                    failedCandidates.add(failedCodec);
-                    let recoveryCodec = failedCodec;
-                    if (recoveryDescription) {
-                        const selection = await reselectCodecForDescription(recoveryDescription);
-                        if (!selection) {
-                            errorLog?.log(`Recovery: no remaining HW-supported codec ` +
-                                `(failed=[${[...failedCandidates].join(', ')}]); ending stream`);
-                            if (pullActive) {
-                                pullActive = false;
-                                void callbacks.onPullEnded(
-                                    'codec exhausted', rpcNoWait);
-                            }
-                            return;
-                        }
-                        recoveryCodec = selection.codec;
-                        if (recoveryCodec !== failedCodec) {
-                            warnLog?.log(`Recovery codec swap: ${failedCodec} -> ${recoveryCodec}`);
-                            currentDecoderConfig = { ...currentDecoderConfig, codec: recoveryCodec };
-                        }
-                    }
-                    warnLog?.log(`Decoder in state '${decoder.getState()}', recovering (attempt ${
-                        consecutiveRecoveries}/${RECOVERY_MAX_ATTEMPTS}) on keyframe seq=${
-                        sequenceNumber}, dataLen=${dataLen}, descLen=${
-                        recoveryDescription?.byteLength ?? 0}, descHex=${
-                        describeBytes(recoveryDescription)}, codec=${recoveryCodec}, source=${
-                        description && description.byteLength > 0 ? 'chunk' : 'cached'}`);
-                    try {
-                        // Yield a macrotask so the platform can release the
-                        // previous HW slot before we allocate a new one.
-                        await awaitHwReleased();
-                        const recoveryConfig: DecoderConfig = recoveryDescription
-                            ? { ...currentDecoderConfig, description: recoveryDescription }
-                            : { ...currentDecoderConfig, description: undefined };
-                        decoder = new WebCodecsDecoder(
-                            recoveryConfig,
-                            emitDecodedFrame,
-                            (error) => {
-                                if (shouldLogDecoderError(decoderErrorKey('recovery', error)))
-                                    errorLog?.log(`Decoder error (recovery path, state=${decoder?.getState() ?? '?'}):`, error);
-                                requestKeyframeOnDecoderError();
-                            }
-                        );
-                        decoder.initialize();
-                        decoderConfigured = true;
-                        if (recoveryDescription) {
-                            lastRawDescription = recoveryDescription.slice(0);
-                        }
-                    } catch (recoveryError) {
-                        errorLog?.log('Decoder recovery failed:', recoveryError);
-                        return;
-                    }
-                } else {
-                    // Can't recover on delta frame — need keyframe
-                    return;
-                }
-            }
-
-            if (isKeyFrame) {
-                warnLog?.log(`[PRE_DECODE] Decoding keyframe: seq=${sequenceNumber}, ` +
-                    `state=${decoder.getState()}, configured=${decoderConfigured}, ` +
-                    `descLen=${description?.byteLength ?? 0}, dataLen=${dataLen}, ` +
-                    `flagWasUsed=${!initialDescriptionApplied && sequenceNumber === 0 ? 'maybe' : 'n/a'}`);
-            }
-
-            // Decode using the WebCodecsDecoder wrapper (tracks timing for diagnostics)
-            decoder.decodeRaw(chunk);
-        } catch (error) {
-            errorLog?.log('Error decoding raw chunk:', error);
-        }
-    },
+    ): Promise<void> => processEncodedChunk(
+        timestamp, duration, isKeyFrame, sequenceNumber, width, height, data, description),
 
     // eslint-disable-next-line @typescript-eslint/require-await
     flagWaitingForKeyframe: async (): Promise<void> => {
