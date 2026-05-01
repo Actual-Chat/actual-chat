@@ -34,6 +34,38 @@ function compactJson(payload: unknown): string {
     });
 }
 
+// performance.memory is non-standard (Chromium-only) and absent from lib.dom.
+interface PerformanceMemory {
+    usedJSHeapSize: number;
+    totalJSHeapSize: number;
+    jsHeapSizeLimit: number;
+}
+function getMemory(): PerformanceMemory | undefined {
+    return (performance as Performance & { memory?: PerformanceMemory }).memory;
+}
+
+// Total WebAssembly.Memory bytes for the Blazor/Mono runtime instance.
+// Includes both managed (Mono GC heap) and unmanaged native allocations —
+// any growth indicates allocation pressure inside .NET. HEAPU8 is the
+// view; its byteLength tracks the underlying Memory's current size and
+// is updated by Emscripten on memory.grow.
+function getWasmMemoryBytes(): number | undefined {
+    try {
+        const rt = (globalThis as { getDotnetRuntime?: (id: number) => { Module?: { HEAPU8?: Uint8Array } } | undefined })
+            .getDotnetRuntime?.(0);
+        return rt?.Module?.HEAPU8?.byteLength;
+    } catch {
+        return undefined;
+    }
+}
+
+interface HeapSample {
+    t: number;     // performance.now() at sample, rounded to ms
+    used: number;  // V8 usedJSHeapSize, bytes
+    total: number; // V8 totalJSHeapSize, bytes
+    wasm?: number; // WebAssembly.Memory byteLength (Blazor/Mono), bytes
+}
+
 interface ScriptTiming {
     name: string;
     invoker: string;
@@ -60,6 +92,7 @@ export interface MainThreadDiagnosticsOptions {
     longAnimationFrame?: { enabled?: boolean; thresholdMs?: number };
     mutationStorm?: { enabled?: boolean; threshold?: number; windowMs?: number };
     watchdog?: { enabled?: boolean; stallThresholdMs?: number };
+    heapSampler?: { enabled?: boolean; periodMs?: number; maxSamples?: number };
 }
 
 export class MainThreadDiagnostics {
@@ -67,6 +100,9 @@ export class MainThreadDiagnostics {
     private static originalMutationObserver: typeof MutationObserver | null = null;
     private static watchdogIntervalId: number | null = null;
     private static watchdogVisibilityHandler: (() => void) | null = null;
+    private static heapSamplerIntervalId: number | null = null;
+    private static heapSamples: HeapSample[] = [];
+    private static heapSamplesMax = 0;
 
     public static init(options?: MainThreadDiagnosticsOptions): void {
         // Persistent kill switch: if the scope is silenced (LogLevel.None — i.e.
@@ -84,12 +120,19 @@ export class MainThreadDiagnostics {
             this.installMutationObserverStormDetector(
                 o.mutationStorm?.threshold ?? 100,
                 o.mutationStorm?.windowMs ?? 1000);
+        // Heap sampler must be installed before watchdog so a stall report has
+        // at least the steady-state trajectory available to dump.
+        if (o.heapSampler?.enabled !== false)
+            this.installHeapSampler(
+                o.heapSampler?.periodMs ?? 10000,
+                o.heapSampler?.maxSamples ?? 30);
         if (o.watchdog?.enabled !== false)
             this.installFrameWatchdog(o.watchdog?.stallThresholdMs ?? 1000);
 
         const enabled = [
             this.loafObserver ? 'longAnimationFrame' : null,
             this.originalMutationObserver ? 'mutationStorm' : null,
+            this.heapSamplerIntervalId !== null ? 'heapSampler' : null,
             this.watchdogIntervalId !== null ? 'watchdog' : null,
         ].filter(Boolean);
         infoLog?.log(`init: enabled monitors: ${enabled.length ? enabled.join(', ') : 'none'}`);
@@ -250,6 +293,43 @@ export class MainThreadDiagnostics {
             + `(threshold=${threshold}/${windowMs}ms, cooldown=${MO_STORM_COOLDOWN_MS}ms)`);
     }
 
+    public static installHeapSampler(periodMs = 10000, maxSamples = 30): void {
+        if (this.heapSamplerIntervalId !== null) return;
+        if (typeof setInterval === 'undefined') {
+            infoLog?.log('installHeapSampler: skipped — setInterval not available');
+            return;
+        }
+        // performance.memory is Chromium-only and may be missing under
+        // privacy extensions, certain Permissions-Policy headers, or in
+        // non-Chromium engines. Warn (not info) so the absence is obvious in
+        // logs when later watchdog reports lack heap data.
+        if (!getMemory()) {
+            warnLog?.log('installHeapSampler: skipped — performance.memory not available; '
+                + 'heap trajectory will be missing from stall reports');
+            return;
+        }
+
+        this.heapSamplesMax = maxSamples;
+        const sample = (): void => {
+            const m = getMemory();
+            if (!m) return;
+            const wasm = getWasmMemoryBytes();
+            this.heapSamples.push({
+                t: Math.round(performance.now()),
+                used: m.usedJSHeapSize,
+                total: m.totalJSHeapSize,
+                ...(wasm !== undefined ? { wasm } : {}),
+            });
+            // Drop oldest entries past the cap. shift() in a loop handles the
+            // case where maxSamples was reduced between calls.
+            while (this.heapSamples.length > this.heapSamplesMax)
+                this.heapSamples.shift();
+        };
+        sample(); // baseline
+        this.heapSamplerIntervalId = window.setInterval(sample, periodMs);
+        infoLog?.log(`installHeapSampler: installed (period=${periodMs}ms, max=${maxSamples})`);
+    }
+
     public static installFrameWatchdog(stallThresholdMs = 1000): void {
         if (this.watchdogIntervalId !== null) return;
         if (typeof setInterval === 'undefined') {
@@ -302,9 +382,35 @@ export class MainThreadDiagnostics {
             if (delta > stallThresholdMs) {
                 if (!stallStart) {
                     stallStart = lastTick;
+                    // Capture a fresh post-recovery sample so the trajectory
+                    // shows used/total *right after* the stall — typically the
+                    // most informative datapoint when GC or memory pressure is
+                    // suspected. The sampler's own setInterval was frozen
+                    // during the stall, so the buffer otherwise jumps from
+                    // pre-stall to >stallThresholdMs later.
+                    const m = getMemory();
+                    if (m) {
+                        const wasm = getWasmMemoryBytes();
+                        this.heapSamples.push({
+                            t: Math.round(now),
+                            used: m.usedJSHeapSize,
+                            total: m.totalJSHeapSize,
+                            ...(wasm !== undefined ? { wasm } : {}),
+                        });
+                        while (this.heapSamples.length > this.heapSamplesMax)
+                            this.heapSamples.shift();
+                    }
+                    // Always emit a heap= marker so the absence (vs. empty
+                    // buffer vs. unavailable API) is unambiguous in logs.
+                    const heapTail = this.heapSamples.length
+                        ? ` heap=${compactJson(this.heapSamples)}`
+                        : (this.heapSamplerIntervalId !== null
+                            ? ' heap=[] (sampler installed but buffer empty)'
+                            : ' heap=unavailable');
                     errorLog?.log(
                         `watchdog: main thread stalled for ${Math.round(delta)}ms`
-                        + (isHidden ? ' (tab hidden — throttling-adjusted)' : ''));
+                        + (isHidden ? ' (tab hidden — throttling-adjusted)' : '')
+                        + heapTail);
                 }
             } else if (stallStart) {
                 warnLog?.log(`watchdog: recovered after ${Math.round(now - stallStart)}ms total stall`);
@@ -331,6 +437,12 @@ export class MainThreadDiagnostics {
                 document.removeEventListener('visibilitychange', this.watchdogVisibilityHandler);
             this.watchdogVisibilityHandler = null;
         }
+        if (this.heapSamplerIntervalId !== null) {
+            clearInterval(this.heapSamplerIntervalId);
+            this.heapSamplerIntervalId = null;
+        }
+        this.heapSamples = [];
+        this.heapSamplesMax = 0;
     }
 }
 
