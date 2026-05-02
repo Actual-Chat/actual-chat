@@ -97,6 +97,12 @@ export class WorkerMstgSelector {
         return { depth: this.pending ? 1 : 0, spanMs: 0 };
     }
 
+    getLastWrittenOffsetMs(): number | undefined {
+        return this.lastWrittenTs >= 0
+            ? this.lastWrittenTs / 1000
+            : undefined;
+    }
+
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;

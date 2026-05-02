@@ -1543,6 +1543,10 @@ export class VideoPlayer {
         const streamOffsetMs = report.streamOffsetMs;
         if (streamOffsetMs > this.lastArrivedOffsetMs)
             this.lastArrivedOffsetMs = streamOffsetMs;
+        if (report.presentedOffsetMs !== undefined) {
+            this.lastRenderedOffsetMs = report.presentedOffsetMs;
+            this.reportPresentationLag(report.presentedOffsetMs, 'worker-latency-report');
+        }
         // Latency reports formerly went to streamServer.ReportVideoLatency; the
         // playback quality controller (Step 10) now consumes equivalent signals
         // via ChangePlaybackQuality. This handler still updates lastArrivedOffsetMs
@@ -1678,8 +1682,7 @@ export class VideoPlayer {
         // streams only — screencast lag is filtered out by the .NET handler.
         const sysNow = Date.now();
         const presentationLagMs = sysNow - renderedAtMs;
-        void this.blazorRef.invokeMethodAsync('OnPresentationLag', presentationLagMs)
-            .catch(() => { /* ignore */ });
+        this.reportPresentationLag(this.lastRenderedOffsetMs, 'canvas-latency-report', presentationLagMs);
         infoLog?.log(
             `reportLatencyTick: authorId=${this.authorId}, streamId=${this.streamId}, ` +
             `now=${nowMs.toFixed(0)}, arrivedAt=${arrivedAtMs.toFixed(0)} ` +
@@ -1833,6 +1836,12 @@ export class VideoPlayer {
                 // when the new flow lands.
             });
         }
+    }
+
+    private reportPresentationLag(renderedOffsetMs: number, source: string, presentationLagMs?: number): void {
+        const lagMs = presentationLagMs ?? Date.now() - (this.startedAtMs + renderedOffsetMs);
+        void this.blazorRef.invokeMethodAsync('OnPresentationLag', lagMs)
+            .catch(() => { /* ignore */ });
     }
 
     // Maps this player's current render size to a VideoQualityLevel hint for the

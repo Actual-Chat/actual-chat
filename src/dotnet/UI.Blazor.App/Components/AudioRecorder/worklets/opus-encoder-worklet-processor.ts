@@ -22,6 +22,7 @@ export interface OpusEncoderProcessorOptions {
 export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implements OpusEncoderWorklet {
     private static allowedTimeSlice = [20, 40, 60, 80];
     private readonly samplesPerWindow: number;
+    private readonly sampleRate: number;
     private readonly buffer: AudioRingBuffer;
     private readonly bufferPool: ObjectPool<ArrayBuffer>;
 
@@ -43,6 +44,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
             throw new Error(`OpusEncoderWorkletProcessor supports only ${ allowedTimeSliceJson } options as timeSlice argument.`);
         }
 
+        this.sampleRate = sampleRate;
         this.samplesPerWindow = Math.ceil(timeSlice * sampleRate / 1000);
         this.buffer = new AudioRingBuffer(8192, 1);
         this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(this.samplesPerWindow * 4)).expandTo(4);
@@ -104,13 +106,15 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
             const input = inputs[0];
             this.buffer.push(input);
             if (this.buffer.samplesAvailable >= this.samplesPerWindow) {
+                const capturedAtMs = Date.now()
+                    - this.buffer.samplesAvailable / this.sampleRate * 1000;
                 const audioArrayBuffer = this.bufferPool.get();
                 const audioArray = new Float32Array(audioArrayBuffer, 0, this.samplesPerWindow)
 
                 if (this.buffer.pull([audioArray])) {
                     if (this.worker != null)
                         this.promiseQueue = this.promiseQueue.then(() =>
-                            this.worker.onEncoderWorkletSamples(audioArrayBuffer, rpcNoWait));
+                            this.worker.onEncoderWorkletSamples(audioArrayBuffer, capturedAtMs, rpcNoWait));
                     else
                         warnLog?.log('process: worklet port is still undefined!');
                 } else {

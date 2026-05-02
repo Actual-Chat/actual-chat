@@ -9,13 +9,14 @@ export interface FeederAudioWorklet {
         buffer: ArrayBuffer,
         offset: number,
         length: number,
+        sourceRecordedAtMs: number,
         sourceOffsetMs: number,
         presentationLagMs: number,
         noWait?: RpcNoWait): Promise<void>;
     pause(noWait?: RpcNoWait): Promise<void>;
     resume(preSkip: number): Promise<void>;
     end(mustAbort: boolean, noWait?: RpcNoWait): Promise<void>;
-    setBufferEscalation(value: number, noWait?: RpcNoWait): Promise<void>;
+    setBufferEscalation(value: number, audioContextLatencyMs: number, noWait?: RpcNoWait): Promise<void>;
 }
 
 export interface FeederAudioWorkletEventHandler {

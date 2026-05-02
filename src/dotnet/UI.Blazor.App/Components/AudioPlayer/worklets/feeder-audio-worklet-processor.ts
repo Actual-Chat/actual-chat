@@ -19,9 +19,11 @@ import { AudioRingBuffer } from '../../AudioRecorder/audio-ring-buffer';
 
 const { logScope, debugLog, warnLog } = getLogs('FeederProcessor');
 const FEEDER_TARGET_BUFFER_FRAMES = 2;
+const MIN_DECODER_TARGET_DURATION_MS = 30;
 
 interface DecodedChunk {
     samples: Float32Array;
+    sourceRecordedAtMs: number;
     sourceOffsetMs: number;
     presentationLagMs: number;
 }
@@ -46,10 +48,13 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     private lastReportedState: FeederState;
     private isEnding = false;
     private bufferEscalation = 0;
+    private audioContextLatencyMs = 0;
     private bufferSizeToStartPlayback!: number; // set in init() after initAppConstants
     private lastStarvingEventAt = 0;
     private frameRequestPending = false;
     private presentationLagMs: number | null = null;
+    private bufferHeadSourceOffsetMs: number | null = null;
+    private bufferSourceRecordedAtMs: number | null = null;
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
@@ -85,6 +90,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         buffer: ArrayBuffer,
         offset: number,
         length: number,
+        sourceRecordedAtMs: number,
         sourceOffsetMs: number,
         presentationLagMs: number,
         noWait?: RpcNoWait): Promise<void> {
@@ -98,6 +104,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
 
         this.chunks.push({
             samples: new Float32Array(buffer, offset, length),
+            sourceRecordedAtMs,
             sourceOffsetMs,
             presentationLagMs,
         });
@@ -151,8 +158,9 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         this.chunks.push('end');
     }
 
-    public setBufferEscalation(value: number, _noWait?: RpcNoWait): Promise<void> {
+    public setBufferEscalation(value: number, audioContextLatencyMs: number, _noWait?: RpcNoWait): Promise<void> {
         this.bufferEscalation = value;
+        this.audioContextLatencyMs = Math.max(0, audioContextLatencyMs);
         debugLog?.log(`#${this.id}.process: got 'setBufferEscalation:' ${value}`);
         this.bufferSizeToStartPlayback = this.feederTargetDuration;
         void this.decoder.setTargetBufferDuration(this.decoderTargetDurationMs, rpcNoWait);
@@ -185,9 +193,9 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         // @ts-expect-error - accessible from the AudioWorkletGlobalScope
         const time = currentTime;
         if (this.buffer.samplesAvailable >= channel.length) {
-            this.buffer.pull([channel])
-            this.playingAt += channel.length * AUDIO.play.sampleDuration;
+            this.pullBufferedSamples(channel);
             this.requestFrameIfLow();
+            this.stateHasChanged();
             return true;
         }
 
@@ -216,6 +224,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
                 this.playbackState = 'ended';
                 this.playingAt = 0;
                 this.buffer.reset();
+                this.bufferHeadSourceOffsetMs = null;
+                this.bufferSourceRecordedAtMs = null;
                 while (chunk) {
                     chunk = this.chunks.shift();
                     if (chunk !== 'end' && chunk)
@@ -227,21 +237,43 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
                 // Keep worklet up and running even in ended state for reuse
                 return true;
             }
-            this.presentationLagMs = chunk.presentationLagMs;
+            if (this.buffer.samplesAvailable === 0) {
+                this.bufferHeadSourceOffsetMs = chunk.sourceOffsetMs;
+                this.bufferSourceRecordedAtMs = chunk.sourceRecordedAtMs;
+            }
             this.buffer.push([chunk.samples]);
             // @ts-expect-error TODO(AK): fix error
             void this.decoder.releaseBuffer(chunk.samples.buffer, rpcNoWait);
             if (this.skipSamples) {
                 const skipSamples = Math.min(this.skipSamples, this.buffer.samplesAvailable);
                 this.buffer.pull([new Float32Array(skipSamples)]);
+                this.advanceBufferHead(skipSamples);
                 this.skipSamples -= skipSamples;
             }
         }
-        this.buffer.pull([channel]);
-        this.playingAt += channel.length * AUDIO.play.sampleDuration;
+        this.pullBufferedSamples(channel);
         this.requestFrameIfLow();
         this.stateHasChanged();
         return true;
+    }
+
+    private pullBufferedSamples(channel: Float32Array): void {
+        const outputSourceOffsetMs = this.bufferHeadSourceOffsetMs;
+        const sourceRecordedAtMs = this.bufferSourceRecordedAtMs;
+        this.buffer.pull([channel]);
+        if (outputSourceOffsetMs !== null && sourceRecordedAtMs !== null)
+            this.presentationLagMs = Date.now() - (sourceRecordedAtMs + outputSourceOffsetMs);
+        this.advanceBufferHead(channel.length);
+        this.playingAt += channel.length * AUDIO.play.sampleDuration;
+    }
+
+    private advanceBufferHead(sampleCount: number): void {
+        if (this.bufferHeadSourceOffsetMs !== null)
+            this.bufferHeadSourceOffsetMs += sampleCount * AUDIO.play.sampleDuration * 1000;
+        if (this.buffer.samplesAvailable === 0) {
+            this.bufferHeadSourceOffsetMs = null;
+            this.bufferSourceRecordedAtMs = null;
+        }
     }
 
     private stateHasChanged() {
@@ -300,9 +332,12 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     }
 
     private get decoderTargetDurationMs(): number {
-        return this.bufferEscalation > 0
+        const configuredTargetMs = this.bufferEscalation > 0
             ? AUDIO.play.decoderTargetBufferDurationWithVideoMs
             : AUDIO.play.decoderTargetBufferDurationMs;
+        return Math.max(
+            MIN_DECODER_TARGET_DURATION_MS,
+            configuredTargetMs - this.feederTargetDelayMs - this.audioContextLatencyMs);
     }
 }
 

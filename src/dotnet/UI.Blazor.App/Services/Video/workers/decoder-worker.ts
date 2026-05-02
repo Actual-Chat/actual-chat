@@ -207,7 +207,6 @@ let pullAbortController: AbortController | null = null;
 let pullStartedAtMs = 0;
 let pullRetryCount = 0;
 let pullSequenceNumber = 0;
-const PULL_LATENCY_REPORT_INTERVAL_MS = 2000;
 let lastLatencyReportAt = 0;
 let apiInitialized = false;
 
@@ -267,6 +266,7 @@ function buildLatencyReport(streamOffsetMs: number): DecoderWorkerLatencyReport 
     const ds = getDecoderStatsSnapshot();
     return {
         streamOffsetMs,
+        presentedOffsetMs: mstgSelector?.getLastWrittenOffsetMs(),
         medianDecodeTimeMs: ds.pureMedianDecodeTime >= 0 ? ds.pureMedianDecodeTime : ds.medianDecodeTime,
         // Encoded pre-decode buffer is the receive-side jitter signal now;
         // decoded slot is single-frame, so adding it would just inflate
@@ -421,7 +421,7 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
             );
 
             const now = performance.now();
-            if (now - lastLatencyReportAt > PULL_LATENCY_REPORT_INTERVAL_MS) {
+            if (now - lastLatencyReportAt > VIDEO.latencyReportIntervalMs) {
                 lastLatencyReportAt = now;
                 void callbacks.onLatencyReport(buildLatencyReport(lastArrivedOffsetMs), rpcNoWait);
             }

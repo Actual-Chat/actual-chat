@@ -20,10 +20,15 @@ let bufferPool: ObjectPool<ArrayBufferLike> = null!;
 /** Session.Default — resolved from the WebSocket connection context. */
 const RPC_SESSION_DEFAULT = '~';
 
+interface AudioStreamFrame {
+    data: Uint8Array;
+    capturedAtMs?: number;
+}
+
 export class AudioStream implements Disposable {
     public static totalCount = 0;
 
-    private readonly frames = new Denque<Uint8Array>();
+    private readonly frames = new Denque<AudioStreamFrame>();
     private readonly frameAdded = new EventHandlerSet<void>();
     private firstFrameTimestamp: number | null = null;
 
@@ -68,11 +73,11 @@ export class AudioStream implements Disposable {
         this.frameAdded.trigger();
     }
 
-    public addFrame(source: Uint8Array | EncodedAudioChunk, isEncodedAudioChunk = false): void {
+    public addFrame(source: Uint8Array | EncodedAudioChunk, isEncodedAudioChunk = false, capturedAtMs?: number): void {
         if (!source || source.byteLength == 0 || this.isCompleted)
             return;
 
-        this.firstFrameTimestamp ??= ServerClock.now();
+        this.firstFrameTimestamp ??= capturedAtMs ?? ServerClock.now();
 
         const buffer = bufferPool.get();
         let frame: Uint8Array;
@@ -87,11 +92,11 @@ export class AudioStream implements Disposable {
         else
             frame.set(source as Uint8Array, 0);
 
-        this.frames.push(frame);
+        this.frames.push({ data: frame, capturedAtMs });
         while (this.frames.length > AUDIO.stream.maxBufferedFrames) {
             const oldFrame = this.frames.shift()!;
-            if (oldFrame.buffer.byteLength === AUDIO.encode.frameBufferBytes)
-                bufferPool.release(oldFrame.buffer);
+            if (oldFrame.data.buffer.byteLength === AUDIO.encode.frameBufferBytes)
+                bufferPool.release(oldFrame.data.buffer);
         }
         this.frameAdded.trigger();
     }
@@ -101,10 +106,6 @@ export class AudioStream implements Disposable {
             await this.streamAfter;
             this.streamAfter = undefined;
         }
-
-        // Wait for initial frames before starting the stream
-        while (!this.isCompleted && this.frames.length <= AUDIO.stream.delayFrames)
-            await this.frameAdded.whenNext();
 
         if (this.isDisposed)
             return;
@@ -157,7 +158,8 @@ export class AudioStream implements Disposable {
                 const stream = new RpcStream<AudioFrameDto>(
                     (async function* () {
                         for (;;) {
-                            const frame = self.frames.shift();
+                            const item = self.frames.shift();
+                            const frame = item?.data;
                             if (frame) {
                                 try {
                                     yield {

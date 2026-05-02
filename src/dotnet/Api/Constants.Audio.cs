@@ -42,6 +42,7 @@ public static partial class Constants
         // Below this |audioLag - videoLag| the policy returns Zero so the filter
         // doesn't oscillate on small jitter.
         public static readonly TimeSpan AudioCatchUpDeadband = TimeSpan.FromMilliseconds(200);
+        public static readonly TimeSpan AudioCatchUpBaselineDelta = TimeSpan.FromMilliseconds(-100);
         // Per-stream presentation-lag updates older than this are ignored when
         // aggregating per-author lag. Covers paused video, hidden tabs, and
         // stopped streams — all map to "no signal → desired = 0".
@@ -86,8 +87,10 @@ public static partial class Constants
         // refactor unifies start-threshold semantics across web and MAUI.
         public static readonly TimeSpan LowPlaybackBufferDuration = TimeSpan.FromSeconds(10);
         public static readonly TimeSpan StartPlaybackWhenBufferedDuration = StartBufferDuration;
-        public static readonly TimeSpan DecoderTargetBufferDuration = TimeSpan.FromMilliseconds(30);
-        public static readonly TimeSpan DecoderTargetBufferDurationWithVideo = TimeSpan.FromMilliseconds(30);
+        public static readonly TimeSpan DecoderTargetBufferDuration
+            = TimeSpan.FromMilliseconds(0); // It will be min. possible size
+        public static readonly TimeSpan DecoderTargetBufferDurationWithVideo
+            = TimeSpan.FromMilliseconds(120); // Somehow it roughly corresponds to 333ms of video buffer size
         public static readonly TimeSpan PlaybackCatchUpCommandCooldown = TimeSpan.FromSeconds(1);
     }
 }

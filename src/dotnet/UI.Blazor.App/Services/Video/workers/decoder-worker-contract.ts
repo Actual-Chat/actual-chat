@@ -13,6 +13,7 @@ export type { RawChunkMessage };
 
 export interface DecoderWorkerLatencyReport {
     streamOffsetMs: number;
+    presentedOffsetMs?: number;
     medianDecodeTimeMs: number;
     bufferDepth: number;
     bufferSpanMs: number;

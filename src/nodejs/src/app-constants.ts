@@ -156,7 +156,6 @@ export interface AudioEncodeConstants {
 export interface AudioStreamConstants {
     // From .NET
     readonly maxStreams: number;
-    readonly delayFrames: number;
     readonly minPackFrames: number;
     readonly maxPackFrames: number;
     readonly maxBufferedFrames: number;

@@ -93,7 +93,10 @@ public sealed class ChatListener : ChatPlayer
                     state.SyncedSleepDuration = sleepDuration;
                 }
 
-                var playAt = Moment.Max(minPlayAt, streamInfo.BeginsAt);
+                var playAt = MomentExt.Max(
+                    minPlayAt,
+                    streamInfo.BeginsAt,
+                    serverClock.Now - Constants.Audio.DecoderTargetBufferDurationWithVideo);
                 if (playAt >= streamInfo.BeginsAt + Constants.Chat.MaxEntryDuration)
                     return;
 
@@ -118,7 +121,7 @@ public sealed class ChatListener : ChatPlayer
                 DebugLog?.LogDebug("Play: enqueuing stream #{StreamId} @ {SkipTo}",
                     streamInfo.StreamId, skipTo.ToShortString());
 
-                await EnqueueAudioSource(playback, streamInfo, audioSource, playAt, cancellationToken)
+                await EnqueueAudioSource(playback, streamInfo, audioSource, playAt, skipTo, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
@@ -146,7 +149,7 @@ public sealed class ChatListener : ChatPlayer
             });
 
         return new AudioSource(
-            streamInfo.BeginsAt,
+            streamInfo.BeginsAt + skipTo,
             format,
             frameStream,
             TimeSpan.Zero,
@@ -159,6 +162,7 @@ public sealed class ChatListener : ChatPlayer
         LiveStreamInfo streamInfo,
         AudioSource audioSource,
         Moment playAt,
+        TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
         // Get chat and author info for track metadata
@@ -175,8 +179,9 @@ public sealed class ChatListener : ChatPlayer
         var sourceRecordedAt = streamInfo.SourceBeginsAt != default
             ? streamInfo.SourceBeginsAt
             : streamInfo.BeginsAt;
+        sourceRecordedAt += skipTo;
         var trackInfo = new ChatAudioTrackInfo(ChatId, null, chat, author) {
-            RecordedAt = streamInfo.BeginsAt,
+            RecordedAt = streamInfo.BeginsAt + skipTo,
             SourceRecordedAt = sourceRecordedAt,
         };
 

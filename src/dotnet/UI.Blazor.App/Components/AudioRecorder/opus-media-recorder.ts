@@ -273,7 +273,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
                     echoCancellation: true,
                     autoGainControl: !(BrowserInfo.appKind === 'Android' || isAndroid), // Android auto gain delays recording and produces zeroes instead of signal
                     noiseSuppression: true,
-                    latency: 20,
+                    // MediaTrackConstraints.latency is in seconds, not milliseconds.
+                    latency: 0.02,
                 },
                 video: false,
             };

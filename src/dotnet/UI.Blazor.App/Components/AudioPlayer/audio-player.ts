@@ -232,13 +232,22 @@ export class AudioPlayer implements Resettable {
 
         // Run the playback action
         const whenPlaybackStarted = new PromiseSource<void>();
-        this.playingAction = this.contextRef.run(async () => {
+        this.playingAction = this.contextRef.run(async (context) => {
             try {
                 const attachedFeeder = this.contextRef!.getTrait<AttachedFeederNode>(this.feederNodeTrait);
                 if (!attachedFeeder)
                     throw new Error('Feeder node not attached');
 
-                await attachedFeeder.feederNode.setBufferEscalation(this.bufferEscalation, rpcNoWait);
+                const outputLatency = (context as AudioContext & { outputLatency?: number }).outputLatency;
+                infoLog?.log(
+                    `#${this.internalId}.audioContextLatency: ` +
+                    `base=${(context.baseLatency * 1000).toFixed(0)}ms, ` +
+                    `output=${outputLatency === undefined ? 'n/a' : `${(outputLatency * 1000).toFixed(0)}ms`}, ` +
+                    `sampleRate=${context.sampleRate}, state=${context.state}`);
+                await attachedFeeder.feederNode.setBufferEscalation(
+                    this.bufferEscalation,
+                    this.getAudioContextLatencyMs(),
+                    rpcNoWait);
                 await decoderWorker!.resume(this.internalId, this.recordedAtMs);
                 await attachedFeeder.feederNode.resume(preSkip);
                 whenPlaybackStarted.resolve(undefined);
@@ -307,7 +316,10 @@ export class AudioPlayer implements Resettable {
         this.bufferEscalation = value;
         const attachedFeeder = this.contextRef?.getTrait<AttachedFeederNode>(this.feederNodeTrait);
         if (attachedFeeder)
-            void attachedFeeder.feederNode.setBufferEscalation(value, rpcNoWait);
+            void attachedFeeder.feederNode.setBufferEscalation(
+                value,
+                this.getAudioContextLatencyMs(),
+                rpcNoWait);
     }
 
     /** Called by Blazor */
@@ -318,6 +330,15 @@ export class AudioPlayer implements Resettable {
     /** Called by Blazor */
     public speedUpUntil(sourceOffsetMs: number, dropEveryNFrames: number): void {
         void decoderWorker!.speedUpUntil(this.internalId, sourceOffsetMs, dropEveryNFrames, rpcNoWait);
+    }
+
+    private getAudioContextLatencyMs(): number {
+        const context = this.contextRef?.context;
+        if (!context)
+            return 0;
+
+        const outputLatency = (context as AudioContext & { outputLatency?: number }).outputLatency ?? 0;
+        return (context.baseLatency + outputLatency) * 1000;
     }
 
     /** Called by Blazor */
@@ -428,7 +449,9 @@ export class AudioPlayer implements Resettable {
                     && sysNow - this.lastLagReportTime >= AudioPlayer.LagReportIntervalMs
                 ) {
                     this.lastLagReportTime = sysNow;
-                    void this.blazorRef.invokeMethodAsync('OnPresentationLag', state.presentationLagMs)
+                    void this.blazorRef.invokeMethodAsync(
+                        'OnPresentationLag',
+                        state.presentationLagMs + this.getAudioContextLatencyMs())
                         .catch(() => { /* ignore */ });
                 }
                 const serverNow = ServerClock.now();

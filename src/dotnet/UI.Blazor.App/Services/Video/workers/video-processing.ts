@@ -45,7 +45,7 @@ import { isAvcCDescription, deriveAvcCodecFromDescription, pickAvcLevelByte, res
 import { getCodecCategory } from '../codec-support';
 import {
     type VideoStreamFrame, type StreamingContext,
-    microsecondsToTicks, InternalVideoStream,
+    microsecondsToTicks, InternalVideoStream, serverClockNow,
 } from './video-streaming';
 import { Api } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
@@ -136,6 +136,7 @@ let resizeCtx: OffscreenCanvasRenderingContext2D | null = null;
 let downscaler: WebGpuDownscaler | null = null;
 let senderRotationDeg = 0;
 let startTimestamp: number | undefined = undefined;
+let sourceStartedAtMs: number | undefined = undefined;
 let lastLoggedFormat: string | null = '(unset)';
 let loggedI420Error = false;
 let loggedPreConvertSkipped = false;
@@ -716,7 +717,8 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
     try {
         if (startTimestamp === undefined) {
             startTimestamp = frame.timestamp;
-            infoLog?.log(`Start timestamp set to ${startTimestamp}μs`);
+            sourceStartedAtMs = serverClockNow(streamCtx);
+            infoLog?.log(`Start timestamp set to ${startTimestamp}μs, sourceStartedAtMs=${sourceStartedAtMs.toFixed(0)}`);
         }
 
         // Source frames carry their original (non-rebased) timestamps through
@@ -1068,6 +1070,7 @@ function deliverChunkToStream(
         warnLog?.log('VideoStream disposed — will recreate on next keyframe');
         videoStream = null;
         startTimestamp = undefined;
+        sourceStartedAtMs = undefined;
         streamStatus = 'reconnecting: waiting for keyframe';
     }
 
@@ -1152,6 +1155,7 @@ function deliverChunkToStream(
                     codecSettings: settings,
                 },
                 streamCtx,
+                sourceStartedAtMs ?? serverClockNow(streamCtx),
                 lastVideoStream?.whenDisposed,
             );
             lastVideoStream = videoStream;
@@ -1975,7 +1979,7 @@ export const serverImpl: VideoProcessingWorker = {
                 try { await videoStream.whenDisposed; } catch { /* ignore */ }
                 videoStream = null;
             }
-            codecSettings = null; startTimestamp = undefined; pendingStreamFrames = []; storedDescriptionBytesByLayer.clear(); firstKeyframeDumpedByLayer.clear();
+            codecSettings = null; startTimestamp = undefined; sourceStartedAtMs = undefined; pendingStreamFrames = []; storedDescriptionBytesByLayer.clear(); firstKeyframeDumpedByLayer.clear();
             if (lastEncodedFrame) { lastEncodedFrame.close(); lastEncodedFrame = null; }
             if (pendingEncoderFrame) { try { pendingEncoderFrame.close(); } catch { /* ignore */ } pendingEncoderFrame = null; }
             // Synchronous configure() failure inside switchCodec already surfaces via
@@ -2040,6 +2044,7 @@ export const serverImpl: VideoProcessingWorker = {
             streamStatus = 'waiting for encoder output';
         pendingStreamFrames = [];
         startTimestamp = undefined;
+        sourceStartedAtMs = undefined;
         slotReplacements = 0; slotArrivals = 0; lastSlotCheckTime = 0; slotPressureNotified = false;
         // Always reset encoderFailed and framesWithoutOutput on codec switch — the
         // new codec attempt deserves its own watchdog cycle. If switchCodec failed
@@ -2231,7 +2236,7 @@ export const serverImpl: VideoProcessingWorker = {
         // Reset all state
         encoder = null; encoderConfig = null; encodersInitialized = false; onnxSession = null; segConfig = null; resolvedModelConfig = null;
         segInitialized = false; blurEnabled = false; resizeCanvas = null; resizeCtx = null;
-        startTimestamp = undefined; lastLoggedFormat = '(unset)'; loggedI420Error = false; loggedPreConvertSkipped = false;
+        startTimestamp = undefined; sourceStartedAtMs = undefined; lastLoggedFormat = '(unset)'; loggedI420Error = false; loggedPreConvertSkipped = false;
         slotReplacements = 0; slotArrivals = 0; lastSlotCheckTime = 0; slotPressureNotified = false;
         dimensionsReconciled = false; needsRotation = false; orientationStats = null; sourceWidth = 0; sourceHeight = 0; vadSpeaking = true; vadRemoteStreamCount = 0; vadLastPassedFrameTime = 0;
         segFrameCounter = 0; hasValidMask = false; loggedBlurFormat = false; processingFrame = false; frameSequence = 0;

@@ -167,6 +167,7 @@ export class InternalVideoStream {
             codecSettings: string;
         },
         private readonly ctx: StreamingContext,
+        private readonly sourceStartedAtMs: number,
         streamAfter?: Promise<void>,
     ) {
         this.whenDisposed = this.stream(streamAfter);
@@ -209,8 +210,9 @@ export class InternalVideoStream {
             const liveVideoStreams = this.ctx.rpcLiveVideoStreams!;
             const peer = Api.peer;
 
-            const clientStartOffset = serverClockNow(this.ctx) / 1000;
-            infoLog?.log(`stream: clientStartOffset=${clientStartOffset.toFixed(3)}s`);
+            const clientStartOffset = this.sourceStartedAtMs / 1000;
+            infoLog?.log(`stream: clientStartOffset=${clientStartOffset.toFixed(3)}s ` +
+                `(sourceStartedAtMs=${this.sourceStartedAtMs.toFixed(0)})`);
 
             infoLog?.log(`stream: PushStream codec=${this.config.codec}, ` +
                 `${this.config.width}x${this.config.height} ` +

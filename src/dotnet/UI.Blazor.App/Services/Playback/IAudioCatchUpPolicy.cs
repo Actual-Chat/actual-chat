@@ -27,34 +27,88 @@ public interface IAudioCatchUpPolicy
 /// </summary>
 public sealed class LiveAudioCatchUpPolicy(IServiceProvider services) : IAudioCatchUpPolicy
 {
+    private static readonly bool IsDiagnosticLogEnabled = false;
+    private const long DiagnosticLogPeriodMs = 2_000;
+
+    private readonly ConcurrentDictionary<AuthorId, long> _lastDiagnosticLogAtMs = new();
+
     private IServiceProvider Services { get; } = services;
     private PlaybackLagTracker PlaybackLagTracker => field ??= Services.GetRequiredService<PlaybackLagTracker>();
     private ILogger Log => field ??= Services.LogFor<LiveAudioCatchUpPolicy>();
 
     public Task<TimeSpan> GetDesiredCatchUp(AuthorId authorId, CancellationToken cancellationToken)
     {
-        var video = PlaybackLagTracker.GetVideoLag(authorId);
-        if (video is null)
+        var snapshot = PlaybackLagTracker.GetSnapshot(authorId);
+        var video = snapshot.VideoLag;
+        if (video is null) {
+            LogMissingSignal(authorId, "video", snapshot);
             return Task.FromResult(TimeSpan.Zero);
+        }
 
-        var audio = PlaybackLagTracker.GetAudioLag(authorId);
-        if (audio is null)
+        var audio = snapshot.AudioLag;
+        if (audio is null) {
+            LogMissingSignal(authorId, "audio", snapshot);
             return Task.FromResult(TimeSpan.Zero);
+        }
 
         var desired = audio.Value - video.Value;
-        var desiredCatchUp = desired < Constants.Audio.AudioCatchUpDeadband
+        var baseline = Constants.Audio.AudioCatchUpBaselineDelta;
+        var syncError = desired - baseline;
+        var desiredCatchUp = syncError < Constants.Audio.AudioCatchUpDeadband
             ? TimeSpan.Zero
-            : desired;
-        Log.LogWarning(
-            "Audio/video latency delta for {AuthorId}: "
-            + "audio = {AudioLagMs:F0}ms, video = {VideoLagMs:F0}ms, delta = {DeltaMs:F0}ms, "
-            + "desired catch-up = {DesiredCatchUpMs:F0}ms, deadband = {DeadbandMs:F0}ms",
-            authorId,
-            audio.Value.TotalMilliseconds,
-            video.Value.TotalMilliseconds,
-            desired.TotalMilliseconds,
-            desiredCatchUp.TotalMilliseconds,
-            Constants.Audio.AudioCatchUpDeadband.TotalMilliseconds);
+            : syncError;
+        if (IsDiagnosticLogEnabled)
+            Log.LogWarning(
+                "Audio/video latency delta for {AuthorId}: "
+                + "audio = {AudioLagMs:F0}ms, video = {VideoLagMs:F0}ms, delta = {DeltaMs:F0}ms, "
+                + "baseline = {BaselineDeltaMs}ms, sync error = {SyncErrorMs:F0}ms, "
+                + "desired catch-up = {DesiredCatchUpMs:F0}ms, deadband = {DeadbandMs:F0}ms",
+                authorId,
+                audio.Value.TotalMilliseconds,
+                video.Value.TotalMilliseconds,
+                desired.TotalMilliseconds,
+                baseline.TotalMilliseconds,
+                syncError.TotalMilliseconds,
+                desiredCatchUp.TotalMilliseconds,
+                Constants.Audio.AudioCatchUpDeadband.TotalMilliseconds);
         return Task.FromResult(desiredCatchUp);
     }
+
+    private void LogMissingSignal(AuthorId authorId, string missingSignal, PlaybackLagSnapshot snapshot)
+    {
+        if (IsDiagnosticLogEnabled && !ShouldLogDiagnostic(authorId))
+            return;
+
+        Log.LogWarning(
+            "Audio/video latency delta skipped for {AuthorId}: missing fresh {MissingSignal} lag. "
+            + "audioLag = {AudioLagMs}ms, videoLag = {VideoLagMs}ms, "
+            + "freshAudioStreams = {FreshAudioStreamCount}, staleAudioStreams = {StaleAudioStreamCount}, "
+            + "freshVideoStreams = {FreshVideoStreamCount}, staleVideoStreams = {StaleVideoStreamCount}, "
+            + "freshestAudioAge = {FreshestAudioAgeMs}ms, freshestVideoAge = {FreshestVideoAgeMs}ms, staleAfter = {StaleAfterMs}ms",
+            authorId,
+            missingSignal,
+            ToMilliseconds(snapshot.AudioLag),
+            ToMilliseconds(snapshot.VideoLag),
+            snapshot.FreshAudioStreamCount,
+            snapshot.StaleAudioStreamCount,
+            snapshot.FreshVideoStreamCount,
+            snapshot.StaleVideoStreamCount,
+            ToMilliseconds(snapshot.FreshestAudioAge),
+            ToMilliseconds(snapshot.FreshestVideoAge),
+            Constants.Audio.PlaybackLagStaleAfter.TotalMilliseconds);
+    }
+
+    private bool ShouldLogDiagnostic(AuthorId authorId)
+    {
+        var nowMs = Environment.TickCount64;
+        var lastMs = _lastDiagnosticLogAtMs.GetOrAdd(authorId, 0);
+        if (nowMs - lastMs < DiagnosticLogPeriodMs)
+            return false;
+
+        _lastDiagnosticLogAtMs[authorId] = nowMs;
+        return true;
+    }
+
+    private static double? ToMilliseconds(TimeSpan? value)
+        => value?.TotalMilliseconds;
 }

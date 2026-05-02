@@ -92,8 +92,6 @@ partial record AppConstants
         public sealed record StreamConstants
         {
             public int MaxStreams { get; init; } = 3;
-            // Streamer won't start sending until this many frames are buffered.
-            public int DelayFrames { get; init; } = 3;
             public int MinPackFrames { get; init; } = 3;
             public int MaxPackFrames { get; init; } = 10;
             public int MaxBufferedFrames { get; init; } = 1500;

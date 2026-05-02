@@ -37,6 +37,23 @@ public sealed class PlaybackLagTracker : IDisposable
     public TimeSpan? GetAudioLag(AuthorId authorId) => GetMinLag(_audio, authorId);
     public TimeSpan? GetVideoLag(AuthorId authorId) => GetMinLag(_video, authorId);
 
+    public PlaybackLagSnapshot GetSnapshot(AuthorId authorId)
+    {
+        var now = _clocks.SystemClock.Now;
+        var threshold = now - Constants.Audio.PlaybackLagStaleAfter;
+        var audio = Scan(_audio, authorId, now, threshold);
+        var video = Scan(_video, authorId, now, threshold);
+        return new PlaybackLagSnapshot(
+            audio.Lag,
+            video.Lag,
+            audio.FreshCount,
+            audio.StaleCount,
+            video.FreshCount,
+            video.StaleCount,
+            audio.FreshestAge,
+            video.FreshestAge);
+    }
+
     public void Dispose() => _cleanupTimer.Dispose();
 
     private void Update(ConcurrentDictionary<string, Entry> store,
@@ -69,6 +86,31 @@ public sealed class PlaybackLagTracker : IDisposable
         return min;
     }
 
+    private static ScanResult Scan(ConcurrentDictionary<string, Entry> store, AuthorId authorId, Moment now, Moment threshold)
+    {
+        TimeSpan? min = null;
+        Moment? freshestAt = null;
+        var freshCount = 0;
+        var staleCount = 0;
+        foreach (var kv in store) {
+            var e = kv.Value;
+            if (e.AuthorId != authorId)
+                continue;
+
+            if (freshestAt is null || e.UpdatedAt > freshestAt.Value)
+                freshestAt = e.UpdatedAt;
+            if (e.UpdatedAt < threshold) {
+                staleCount++;
+                continue;
+            }
+
+            freshCount++;
+            if (min is null || e.Lag < min.Value)
+                min = e.Lag;
+        }
+        return new ScanResult(min, freshCount, staleCount, freshestAt is null ? null : now - freshestAt.Value);
+    }
+
     private void Cleanup()
     {
         var threshold = _clocks.SystemClock.Now - CleanupRetention;
@@ -84,4 +126,19 @@ public sealed class PlaybackLagTracker : IDisposable
     }
 
     private readonly record struct Entry(AuthorId AuthorId, TimeSpan Lag, Moment UpdatedAt);
+    private readonly record struct ScanResult(
+        TimeSpan? Lag,
+        int FreshCount,
+        int StaleCount,
+        TimeSpan? FreshestAge);
 }
+
+public readonly record struct PlaybackLagSnapshot(
+    TimeSpan? AudioLag,
+    TimeSpan? VideoLag,
+    int FreshAudioStreamCount,
+    int StaleAudioStreamCount,
+    int FreshVideoStreamCount,
+    int StaleVideoStreamCount,
+    TimeSpan? FreshestAudioAge,
+    TimeSpan? FreshestVideoAge);

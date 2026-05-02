@@ -330,6 +330,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
                     samples.buffer,
                     samples.byteOffset,
                     samples.length,
+                    this.sourceRecordedAtMs,
                     timing.sourceOffsetMs,
                     timing.presentationLagMs,
                     rpcNoWait);
@@ -358,6 +359,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
             samples.buffer,
             samples.byteOffset,
             samples.length,
+            this.sourceRecordedAtMs,
             timing.sourceOffsetMs,
             timing.presentationLagMs,
             rpcNoWait);

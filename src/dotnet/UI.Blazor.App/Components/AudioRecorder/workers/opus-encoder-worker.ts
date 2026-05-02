@@ -29,6 +29,12 @@ const { logScope, debugLog, infoLog, warnLog, errorLog } = getLogs('OpusEncoderW
 interface TimestampedAudioFrame {
     frame: ArrayBuffer;
     timestamp: number;
+    capturedAtMs: number;
+}
+
+interface TimestampedAudioSamples {
+    buffer: ArrayBuffer;
+    capturedAtMs: number;
 }
 
 /// #if MEM_LEAK_DETECTION
@@ -39,7 +45,7 @@ debugLog?.log(`MEM_LEAK_DETECTION == true`);
 
 let codecModule: Codec | null = null;
 /** buffer or callbackId: number of `end` message */
-const queue = new Denque<ArrayBuffer>();
+const queue = new Denque<TimestampedAudioSamples>();
 const encodedAudioFrames = new Denque<TimestampedAudioFrame>();
 const worker = self as unknown as Worker;
 let systemCodecConfig: AudioEncoderConfig = null!; // set in create() after initAppConstants
@@ -166,14 +172,14 @@ const serverImpl: OpusEncoderWorker = {
         return diagnosticsState;
     },
 
-    onEncoderWorkletSamples: async (buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void> => {
+    onEncoderWorkletSamples: async (buffer: ArrayBuffer, capturedAtMs: number, _noWait?: RpcNoWait): Promise<void> => {
         if (buffer.byteLength === 0 || state !== 'encoding')
             return;
 
         debugLog?.log(`onEncoderWorkletSamples(${buffer.byteLength}):`, approximateGain(new Float32Array(buffer)));
-        queue.push(buffer);
+        queue.push({ buffer, capturedAtMs: capturedAtMs + ServerClock.offsetMs });
         while (queue.length > AUDIO.encode.maxBufferedFrames) {
-            const samplesBuffer = queue.shift()!;
+            const { buffer: samplesBuffer } = queue.shift()!;
             void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
         }
         // TODO(AK): fix eslint error
@@ -242,14 +248,16 @@ function ensureAudioStream(): void {
 
 function onSystemEncoderChunk(output: EncodedAudioChunk, metadata: EncodedAudioChunkMetadata): void {
     const timestamp  = output.timestamp;
+    let capturedAtMs: number | undefined;
     while (encodedAudioFrames.length && encodedAudioFrames.peekFront()!.timestamp <= timestamp) {
         // release encoded buffers
-        const { frame } = encodedAudioFrames.shift()!;
+        const { frame, capturedAtMs: frameCapturedAtMs } = encodedAudioFrames.shift()!;
+        capturedAtMs = frameCapturedAtMs;
         void encoderWorklet.releaseBuffer(frame, rpcNoWait);
     }
 
     ensureAudioStream();
-    audioStream?.addFrame(output, true);
+    audioStream?.addFrame(output, true, capturedAtMs);
 }
 
 async function startRecording(): Promise<void> {
@@ -303,7 +311,7 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
             const gains = new Float32Array(queue.length).fill(0);
             if (gains.length) {
                 for (let i = 0; i < queue.length; i++) {
-                    const samplesBuffer = queue.peekAt(i)!;
+                    const { buffer: samplesBuffer } = queue.peekAt(i)!;
                     const samples = new Float32Array(samplesBuffer);
                     gains[i] = approximateGain(samples);
                 }
@@ -318,7 +326,7 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
                 let framesToShift = clamp(startIndex - 1, 0, queue.length - 5); // Keep at least 4 frames
                 debugLog?.log(`processQueue(in): gains: `, gains, framesToShift);
                 while (framesToShift-- > 0)            {
-                    const samplesBuffer = queue.shift()!;
+                    const { buffer: samplesBuffer } = queue.shift()!;
                     void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
                 }
             }
@@ -331,7 +339,7 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
 
         // debugLog?.log(`processQueue:`, fade);
         while (!queue.isEmpty()) {
-            const samplesBuffer = queue.shift()!;
+            const { buffer: samplesBuffer, capturedAtMs } = queue.shift()!;
             let samples: Float32Array;
             if (samplesBuffer.byteLength === expectedWindowSizeBytes) {
                 samples = new Float32Array(samplesBuffer, 0, expectedWindowSizeSamples);
@@ -360,7 +368,7 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
                     data: samples,
                 });
                 systemEncoder.encode(audioChunk);
-                encodedAudioFrames.push({ frame: samplesBuffer, timestamp: timestamp });
+                encodedAudioFrames.push({ frame: samplesBuffer, timestamp: timestamp, capturedAtMs });
             }
             else if (encoder) {
                 // frameView is a typed_memory_view to Decoder internal buffer, so we have to copy it
@@ -368,7 +376,7 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
                 // @ts-expect-error TODO: fix error
                 const frameView = encoder.encode(new Uint8Array(samples.buffer, 0, samples.length * 4));
                 ensureAudioStream();
-                audioStream?.addFrame(frameView);
+                audioStream?.addFrame(frameView, false, capturedAtMs);
                 void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
             }
 
@@ -387,7 +395,7 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
 
 function clearQueue(): void {
     while(queue.length) {
-        const samplesBuffer = queue.shift()!;
+        const { buffer: samplesBuffer } = queue.shift()!;
         // release queued buffers
         void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
     }
