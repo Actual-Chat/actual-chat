@@ -50,7 +50,7 @@ internal sealed class AndroidAudioPlaybackEngine(
         var chatId = (info as ChatAudioTrackInfo)?.Chat?.Id;
         var bufferEscalation = chatId is null
             ? 0
-            : await ChatAudioUI.GetPlaybackBufferEscalation(chatId.Value, cancellationToken).ConfigureAwait(false);
+            : await ChatAudioUI.GetPlaybackBufferEscalation(chatId, cancellationToken).ConfigureAwait(false);
         _frames.SetTargetDuration(Constants.Audio.GetDecoderTargetBufferDuration(bufferEscalation));
 
         // Configure AudioTrack for float32 PCM mono at playback sample rate
@@ -107,7 +107,7 @@ internal sealed class AndroidAudioPlaybackEngine(
         NotifyPlaying(0); // Initial report that we're ready to play
         if (chatId is not null) {
             _watchBufferEscalationStateCts = cancellationToken.CreateLinkedTokenSource();
-            _ = WatchBufferEscalationState(chatId.Value, bufferEscalation, _watchBufferEscalationStateCts.Token);
+            _ = WatchBufferEscalationState(chatId, bufferEscalation, _watchBufferEscalationStateCts.Token);
         }
     }
 
@@ -177,9 +177,7 @@ internal sealed class AndroidAudioPlaybackEngine(
 
     public Task End(bool mustAbort, CancellationToken cancellationToken)
     {
-        var enqueuedSampleCount = _frames.Reader.CanCount
-            ? _frames.Reader.Count
-            : -1;
+        var enqueuedSampleCount =_frames.Count;
         Log.LogDebug(
             "End called: id={Id} abort={Abort} enqueued={Frames} fed={FeedSampleCount}",
             info.TrackId, mustAbort, enqueuedSampleCount, _fedSampleCount);

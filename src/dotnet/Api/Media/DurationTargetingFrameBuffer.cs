@@ -1,31 +1,22 @@
 namespace ActualChat.Media;
 
-public sealed class DurationTargetingFrameBuffer<TFrame>
+public sealed class DurationTargetingFrameBuffer<TFrame>(
+    Func<TFrame, TimeSpan> getOffset,
+    Func<TFrame, TimeSpan> getDuration,
+    TimeSpan targetDuration = default)
     where TFrame : class
 {
     private readonly Lock _lock = new();
     private readonly Queue<TFrame> _frames = new();
-    private readonly Func<TFrame, TimeSpan> _getOffset;
-    private readonly Func<TFrame, TimeSpan> _getDuration;
 
     private TaskCompletionSource? _whenChanged;
     private TFrame? _lastFrame;
-    private TimeSpan _targetDuration;
+    private TimeSpan _targetDuration = targetDuration.Positive();
     private TimeSpan _skipUntil;
     private TimeSpan _speedUpUntil;
     private int _speedUpDropEveryNFrames;
     private int _speedUpFrameCounter;
     private bool _isCompleted;
-
-    public DurationTargetingFrameBuffer(
-        Func<TFrame, TimeSpan> getOffset,
-        Func<TFrame, TimeSpan> getDuration,
-        TimeSpan targetDuration = default)
-    {
-        _getOffset = getOffset;
-        _getDuration = getDuration;
-        _targetDuration = targetDuration.Positive();
-    }
 
     public int Count {
         get {
@@ -140,7 +131,7 @@ public sealed class DurationTargetingFrameBuffer<TFrame>
                 if (frame is null)
                     return false;
 
-                if (_getOffset(frame) >= _skipUntil)
+                if (getOffset(frame) >= _skipUntil)
                     _skipUntil = TimeSpan.Zero;
                 if (!CanReleaseUnsafe())
                     return false;
@@ -188,12 +179,12 @@ public sealed class DurationTargetingFrameBuffer<TFrame>
         if (first is null || _lastFrame is null)
             return TimeSpan.Zero;
 
-        return (_getOffset(_lastFrame) + _getDuration(_lastFrame) - _getOffset(first)).Positive();
+        return (getOffset(_lastFrame) + getDuration(_lastFrame) - getOffset(first)).Positive();
     }
 
     private void DropSkippedFramesUnsafe()
     {
-        while (PeekUnsafe() is { } frame && _getOffset(frame) < _skipUntil)
+        while (PeekUnsafe() is { } frame && getOffset(frame) < _skipUntil)
             DequeueUnsafe();
     }
 
@@ -201,7 +192,7 @@ public sealed class DurationTargetingFrameBuffer<TFrame>
     {
         if (_speedUpDropEveryNFrames <= 0)
             return false;
-        if (_getOffset(frame) >= _speedUpUntil) {
+        if (getOffset(frame) >= _speedUpUntil) {
             ClearSpeedUpUnsafe();
             return false;
         }
