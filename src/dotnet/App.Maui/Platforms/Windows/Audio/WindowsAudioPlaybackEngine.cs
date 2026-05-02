@@ -64,7 +64,7 @@ internal sealed class WindowsAudioPlaybackEngine(
         var chatId = (info as ChatAudioTrackInfo)?.Chat?.Id;
         var bufferEscalation = chatId is null
             ? 0
-            : await ChatAudioUI.GetPlaybackBufferEscalation(chatId.Value, cancellationToken).ConfigureAwait(false);
+            : await ChatAudioUI.GetPlaybackBufferEscalation(chatId, cancellationToken).ConfigureAwait(false);
         _packetBuffer.SetTargetDuration(Constants.Audio.GetDecoderTargetBufferDuration(bufferEscalation));
 
         // Configure Float32 mono PCM at our sample rate
@@ -102,7 +102,7 @@ internal sealed class WindowsAudioPlaybackEngine(
         _delayedPlayTask = StartWhenBuffered(_pauseCts.Token);
         if (chatId is not null) {
             _watchBufferEscalationStateCts = cancellationToken.CreateLinkedTokenSource();
-            _ = WatchBufferEscalationState(chatId.Value, bufferEscalation, _watchBufferEscalationStateCts.Token);
+            _ = WatchBufferEscalationState(chatId, bufferEscalation, _watchBufferEscalationStateCts.Token);
         }
     }
 
