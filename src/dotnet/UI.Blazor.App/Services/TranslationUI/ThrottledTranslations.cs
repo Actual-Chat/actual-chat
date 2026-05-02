@@ -70,7 +70,9 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
             || await TranslationUI.IsEnabled(itemVisibility.ChatId, cancellationToken).ConfigureAwait(false) != true)
             return null;
 
-        var targetLanguage = await TranslationUI.GetTargetLanguage(itemVisibility.ChatId, cancellationToken).ConfigureAwait(false);
+        var targetLanguage = await TranslationUI
+            .GetTranslationLanguage(itemVisibility.ChatId, cancellationToken)
+            .ConfigureAwait(false);
         return new(itemVisibility, targetLanguage);
     }
 

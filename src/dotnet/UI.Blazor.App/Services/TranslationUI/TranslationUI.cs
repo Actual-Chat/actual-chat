@@ -1,13 +1,11 @@
-using ActualChat.Users;
-
 namespace ActualChat.UI.Blazor.App.Services;
 
 public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
 {
-    private readonly ILruCache<ChatId, Unit> _mustSuggestCache;
+    private readonly ILruCache<ChatId, Unit> _mustSuggestTranslationCache;
 
     public TranslationUI(AppUIHub hub) : base(hub)
-        => _mustSuggestCache = new ThreadSafeLruCache<ChatId, Unit>(50, evictionHandler: InvalidateMustSuggestCache);
+        => _mustSuggestTranslationCache = new ThreadSafeLruCache<ChatId, Unit>(50, evictionHandler: InvalidateMustSuggestCache);
 
     private ThrottledTranslations Translations => field ??= Hub.Services.GetRequiredService<ThrottledTranslations>();
     private ChatUI ChatUI => Hub.ChatUI;
@@ -21,10 +19,10 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
             return isVisible.Value;
 
         // Keep the header visible if it was suggested to show before during the app session.
-        if (await GetStoredMustSuggest(chatId, cancellationToken).ConfigureAwait(false))
+        if (await GetStoredMustSuggestTranslation(chatId, cancellationToken).ConfigureAwait(false))
             return true;
 
-        return await MustSuggest(chatId, cancellationToken).ConfigureAwait(false);
+        return await MustSuggestTranslation(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
@@ -40,7 +38,7 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
             .Get(x => x.MustTranslateOwnMessages ?? true, cancellationToken);
 
     [ComputeMethod]
-    public virtual async Task<Language> GetTargetLanguage(ChatId chatId, CancellationToken cancellationToken = default)
+    public virtual async Task<Language> GetTranslationLanguage(ChatId chatId, CancellationToken cancellationToken = default)
     {
         chatId = GetTranslationSettingsTargetChatId(chatId);
         var settings = await UserSettingsUI.ChatUserSettings(chatId).Get(cancellationToken).ConfigureAwait(false);
@@ -54,11 +52,11 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
         if (await IsEnabled(entry.ChatId, cancellationToken).ConfigureAwait(false) != true)
             return false;
 
-        return await NeedsTranslate(entry, isForStreaming, cancellationToken).ConfigureAwait(false);
+        return await NeedsTranslation(entry, isForStreaming, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
-    public virtual async Task<bool> NeedsTranslate(ChatEntry entry, bool isForStreaming, CancellationToken cancellationToken)
+    public virtual async Task<bool> NeedsTranslation(ChatEntry entry, bool isForStreaming, CancellationToken cancellationToken)
     {
         if (!entry.SupportsTranslation(isForStreaming))
             return false;
@@ -124,7 +122,7 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
     }
 
     [ComputeMethod]
-   protected virtual async Task<bool> MustSuggest(ChatId chatId, CancellationToken cancellationToken)
+   protected virtual async Task<bool> MustSuggestTranslation(ChatId chatId, CancellationToken cancellationToken)
    {
        const int minForeignCount = 3;
        const double minForeignRatio = 0.3;
@@ -140,7 +138,7 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
 
        var foreignCount = 0;
        foreach (var entryId in visibleEntryIds) {
-           if (await IsForeignEntry(entryId, true, cancellationToken).ConfigureAwait(false) == true)
+           if (await IsForeignEntry(entryId, false, cancellationToken).ConfigureAwait(false) == true)
                foreignCount++;
        }
 
@@ -153,11 +151,14 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
    }
 
    [ComputeMethod]
-   protected virtual Task<bool> GetStoredMustSuggest(ChatId chatId, CancellationToken cancellationToken)
-       => Task.FromResult(_mustSuggestCache.TryGetValue(chatId, out _));
+   protected virtual Task<bool> GetStoredMustSuggestTranslation(ChatId chatId, CancellationToken cancellationToken)
+       => Task.FromResult(_mustSuggestTranslationCache.TryGetValue(chatId, out _));
 
    [ComputeMethod]
-   protected virtual async Task<bool?> IsForeignEntry(ChatEntryId entryId, bool useOnlyTargetLanguage, CancellationToken cancellationToken = default)
+   protected virtual async Task<bool?> IsForeignEntry(
+       ChatEntryId entryId,
+       bool expectTranslationLanguageOnly,
+       CancellationToken cancellationToken = default)
    {
        var entry = await ChatUI.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
        if (entry is null)
@@ -177,13 +178,16 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
        if (entryLanguage.Languages.Length == 0)
            return false; // No languages can be detected - e.g., empty message or just numbers
 
-       if (useOnlyTargetLanguage) {
-           var targetLanguage = await GetTargetLanguage(entryId.ChatId, cancellationToken).ConfigureAwait(false);
-           return entryLanguage.Languages.All(x => x != targetLanguage);
-       }
+       var translationLanguage = await GetTranslationLanguage(entryId.ChatId, cancellationToken).ConfigureAwait(false);
+       var isOnTranslationLanguage = entryLanguage.Languages.All(x => x != translationLanguage);
+       if (expectTranslationLanguageOnly)
+           return isOnTranslationLanguage;
+
+       if (!isOnTranslationLanguage)
+           return false;
 
        var spokenLanguages = await LanguageUI.ListSpoken(cancellationToken).ConfigureAwait(false);
-       return entryLanguage.Languages.Any(x => !spokenLanguages.Contains(x));
+       return !entryLanguage.Languages.Any(x => x == translationLanguage || spokenLanguages.Contains(x));
    }
 
    public Task SetIsSubHeaderVisible(ChatId chatId, bool isVisible, CancellationToken cancellationToken = default)
@@ -208,10 +212,11 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
        => UserSettingsUI.ChatUserSettings(GetTranslationSettingsTargetChatId(chatId))
            .Get(x => x.IsTranslationSubHeaderVisible, cancellationToken);
 
-   private async Task<TranslationId> ToTranslationId(TranslationSourceId translationSourceId, CancellationToken cancellationToken)
+   private async Task<TranslationId> ToTranslationId(
+       TranslationSourceId translationSourceId, CancellationToken cancellationToken)
    {
-       var targetLanguage = await GetTargetLanguage(translationSourceId.ChatId, cancellationToken).ConfigureAwait(false);
-       return TranslationId.New(translationSourceId, targetLanguage);
+       var translationLanguage = await GetTranslationLanguage(translationSourceId.ChatId, cancellationToken).ConfigureAwait(false);
+       return TranslationId.New(translationSourceId, translationLanguage);
    }
 
    private static ChatId GetTranslationSettingsTargetChatId(ChatId chatId)
@@ -219,7 +224,7 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
 
    private void StoreMustSuggest(ChatId chatId)
    {
-       if (!_mustSuggestCache.TryAdd(chatId, Unit.Default))
+       if (!_mustSuggestTranslationCache.TryAdd(chatId, Unit.Default))
            return;
 
        InvalidateMustSuggestCache(chatId);
@@ -228,6 +233,6 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
    private void InvalidateMustSuggestCache(ChatId chatId, Unit _1 = default)
    {
        using (Invalidation.Begin())
-           _ = GetStoredMustSuggest(chatId, default);
+           _ = GetStoredMustSuggestTranslation(chatId, default);
    }
 }

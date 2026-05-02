@@ -31,8 +31,10 @@ public class TranscriptUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompute
             return null;
 
         var sourceStreamId = StreamId.Parse(contentStreamId);
-        var language = await TranslationUI.GetTargetLanguage(id.ChatId, cancellationToken).ConfigureAwait(false);
-        var streamId = StreamId.New(sourceStreamId, language);
+        var translationLanguage = await TranslationUI
+            .GetTranslationLanguage(id.ChatId, cancellationToken)
+            .ConfigureAwait(false);
+        var streamId = StreamId.New(sourceStreamId, translationLanguage);
         return new StreamingState(streamId, entry.Content, IsTranslation: true); // We can start ad-hoc translation stream.
     }
 

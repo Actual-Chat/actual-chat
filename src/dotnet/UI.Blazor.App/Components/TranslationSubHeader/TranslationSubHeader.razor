@@ -13,7 +13,7 @@
         <div class="c-center">
             <div class="c-text">
                 Translate to
-                <span class="c-language" @onclick="@OnLanguageClick">@m?.TargetLanguage.Title</span>
+                <span class="c-language" @onclick="@OnLanguageClick">@m?.TranslationLanguage.Title</span>
             </div>
             <div class="c-toggle" @onclick="@OnToggleClick">
                 <Toggle IsChecked="@(m?.IsOn ?? false)"/>
@@ -40,8 +40,10 @@
             return null;
 
         var isOn = await TranslationUI.IsEnabled(chat.Id, cancellationToken).ConfigureAwait(false);
-        var targetLanguage = await TranslationUI.GetTargetLanguage(chat.Id, cancellationToken).ConfigureAwait(false);
-        return new(isOn ?? false, targetLanguage, chat);
+        var translationLanguage = await TranslationUI
+            .GetTranslationLanguage(chat.Id, cancellationToken)
+            .ConfigureAwait(false);
+        return new(isOn ?? false, translationLanguage, chat);
     }
 
     private Task OnToggleClick()
@@ -63,6 +65,6 @@
 
     public sealed record Model(
         bool IsOn,
-        Language TargetLanguage,
+        Language TranslationLanguage,
         Chat Chat);
 }
