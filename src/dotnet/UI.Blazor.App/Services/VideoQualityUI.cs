@@ -194,4 +194,136 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
         int NewTargetLayerCount,
         bool Changed,
         RecordingQualityReason Reason);
+
+    // --- Playback branch (Step 10.4) ---
+
+    public sealed record PlaybackThresholds(
+        int BufferDurationMsBadBelow,
+        int BufferDurationMsGoodAbove,
+        int KeyframeSkipsBadAtOrAbove,
+        long MinCapacityBytesPerSec,
+        long ColdStartCapacityBytesPerSec,
+        double ClimbCap,
+        double BackoffFactor)
+    {
+        public static PlaybackThresholds Defaults => new(
+            BufferDurationMsBadBelow: 100,
+            BufferDurationMsGoodAbove: 400,
+            KeyframeSkipsBadAtOrAbove: 1,
+            MinCapacityBytesPerSec: 50_000,
+            ColdStartCapacityBytesPerSec: 1_500_000,
+            ClimbCap: 1.4142135623730951,   // √2
+            BackoffFactor: 0.7);
+    }
+
+    /// <summary>
+    /// Pure per-stream classifier: -1 (bad), 0 (neutral), +1 (good)
+    /// based on buffer span and keyframe skip count.
+    /// </summary>
+    public static class PlaybackVerdictClassifier
+    {
+        public static int Classify(int bufferDurationMsP50, int keyframeSkipsInWindow, PlaybackThresholds t)
+        {
+            if (keyframeSkipsInWindow >= t.KeyframeSkipsBadAtOrAbove)
+                return -1;
+            if (bufferDurationMsP50 < t.BufferDurationMsBadBelow)
+                return -1;
+            if (bufferDurationMsP50 >= t.BufferDurationMsGoodAbove)
+                return 1;
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Byte-weighted aggregate of per-stream verdicts. A single small lagging
+    /// stream paired with a healthy big stream stays near 0 (most bandwidth
+    /// is healthy); a big lagging stream paired with a small healthy one
+    /// trends to -1 (most bandwidth is unhealthy).
+    /// </summary>
+    public static class AggregateHealth
+    {
+        public static double Compute(IReadOnlyList<(long Rate, int Verdict)> streamSignals)
+        {
+            if (streamSignals.Count == 0)
+                return 0;
+            long totalRate = 0;
+            double weighted = 0;
+            foreach (var (rate, verdict) in streamSignals) {
+                var w = rate <= 0 ? 1 : rate;
+                totalRate += w;
+                weighted += w * verdict;
+            }
+            return totalRate <= 0 ? 0 : weighted / totalRate;
+        }
+    }
+
+    /// <summary>
+    /// AIMD-style capacity estimator. On overall good aggregate (≥ +0.5),
+    /// climb the capacity ceiling toward sqrt(2)× of the actual incoming rate.
+    /// On overall bad aggregate (≤ -0.5), back off to 0.7× of the current
+    /// capacity. Otherwise hold.
+    /// </summary>
+    public sealed class CapacityEstimator(PlaybackThresholds thresholds)
+    {
+        private long _capacity = thresholds.ColdStartCapacityBytesPerSec;
+
+        public long Capacity => _capacity;
+
+        public void Reset()
+            => _capacity = thresholds.ColdStartCapacityBytesPerSec;
+
+        public long Step(double aggregateHealth, long sumIncomingBytesPerSec)
+        {
+            const double goodThreshold = 0.5;
+            const double badThreshold = -0.5;
+            if (aggregateHealth <= badThreshold) {
+                _capacity = (long)(_capacity * thresholds.BackoffFactor);
+            }
+            else if (aggregateHealth >= goodThreshold && sumIncomingBytesPerSec > 0) {
+                var climbCeiling = (long)(sumIncomingBytesPerSec * thresholds.ClimbCap);
+                if (climbCeiling > _capacity)
+                    _capacity = climbCeiling;
+            }
+            if (_capacity < thresholds.MinCapacityBytesPerSec)
+                _capacity = thresholds.MinCapacityBytesPerSec;
+            return _capacity;
+        }
+    }
+
+    public sealed record StreamRequest(string StreamId, long PredictedRateAtBase, long PredictedRateAtTop);
+
+    /// <summary>
+    /// Greedy budget allocator: primaries get top spatial first, in their
+    /// list order; secondaries fill the remainder in their list order.
+    /// Streams that don't fit at the base layer are dropped from the result —
+    /// the caller maps that to <see cref="ReceiveQuality.Lowest"/>.
+    /// </summary>
+    public static class Allocator
+    {
+        public static IReadOnlyDictionary<string, ReceiveQuality> Allocate(
+            long budgetBytesPerSec,
+            IReadOnlyList<StreamRequest> primaries,
+            IReadOnlyList<StreamRequest> secondaries)
+        {
+            var result = new Dictionary<string, ReceiveQuality>();
+            var remaining = budgetBytesPerSec;
+            foreach (var req in primaries) {
+                if (remaining >= req.PredictedRateAtTop) {
+                    result[req.StreamId] = ReceiveQuality.Default;
+                    remaining -= req.PredictedRateAtTop;
+                }
+                else if (remaining >= req.PredictedRateAtBase) {
+                    result[req.StreamId] = new ReceiveQuality(0, int.MaxValue);
+                    remaining -= req.PredictedRateAtBase;
+                }
+            }
+            foreach (var req in secondaries) {
+                if (remaining >= req.PredictedRateAtBase) {
+                    result[req.StreamId] = new ReceiveQuality(0, int.MaxValue);
+                    remaining -= req.PredictedRateAtBase;
+                }
+            }
+            return result;
+        }
+    }
 }

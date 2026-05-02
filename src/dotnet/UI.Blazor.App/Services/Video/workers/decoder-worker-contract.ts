@@ -148,7 +148,7 @@ export interface DecoderWorker {
      * MediaStreamTrackGenerator (Chromium) or VideoTrackGenerator (Safari)
      * locally, owns the writable, runs audio-clock-driven selection, ships
      * the resulting MediaStreamTrack back to main via onOffThreadTrackReady,
-     * AND iterates `streamingApi.streamServer.GetVideo(streamId, skipToTicks)`
+     * AND iterates `streamingApi.liveVideoStreams.GetStream(session, streamId, skipToTicks)`
      * — feeding chunks directly into its own decoder. Main does no per-frame
      * work on this path.
      *
