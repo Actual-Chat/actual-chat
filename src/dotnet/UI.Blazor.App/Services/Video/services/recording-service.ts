@@ -266,6 +266,21 @@ export class RecordingService extends EventTarget {
                 }
             }
 
+            // For webcam: cap source to 720p (top tier of always-on simulcast
+            // ladder). Cameras may return 1080p despite a 720p request — without
+            // capping, encoders configured for the 720p ladder top see oversized
+            // source frames and dim-mismatch the input. Aspect-preserving:
+            // scale by min(maxW/W, maxH/H) so portrait sources also fit.
+            if (this.config.mode === 'webcam') {
+                const maxWidth = 1280;
+                const maxHeight = 720;
+                if (actualWidth > maxWidth || actualHeight > maxHeight) {
+                    const scale = Math.min(maxWidth / actualWidth, maxHeight / actualHeight);
+                    actualWidth = Math.round(actualWidth * scale) & ~1;
+                    actualHeight = Math.round(actualHeight * scale) & ~1;
+                }
+            }
+
             infoLog?.log(`Actual video dimensions: ${actualWidth}x${actualHeight}`);
 
             this.setState({ status: 'initializing-pipeline' });
