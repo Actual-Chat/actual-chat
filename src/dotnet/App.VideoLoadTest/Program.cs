@@ -742,17 +742,17 @@ async Task RunParticipant(int chatIdx, int partIdx, ApiArray<VideoStreamInfo> st
     }
 }
 
-// --- RPC-based producer: pushes VideoFrame objects directly via IStreamServer ---
+// --- RPC-based producer: pushes VideoFrame objects directly via ILiveVideoStreams ---
 async Task RunProducerRpc(int chatIdx, int prodIdx, CancellationToken ct)
 {
     try {
-        var ownStreamServer = producerHubs[chatIdx, prodIdx].GetRequiredService<IStreamServer>();
+        var ownLiveVideoStreams = producerHubs[chatIdx, prodIdx].GetRequiredService<ILiveVideoStreams>();
         var prodSession = producerSessions[prodIdx];
         var clientStartOffset = CpuClock.Instance.Now.EpochOffset.TotalSeconds;
         producerClientOffsets[(chatIdx, prodIdx)] = clientStartOffset;
         var format = new VideoFormat { Codec = Codec, Width = FrameWidth, Height = FrameHeight };
         var frameStream = RpcStream.New(PushFramesRpc(chatIdx, prodIdx, ct));
-        await ownStreamServer.PushVideo(
+        await ownLiveVideoStreams.PushStream(
             prodSession, chatIds[chatIdx].Value, clientStartOffset,
             format, frameStream, StreamKind.Webcam, ct
             ).ConfigureAwait(false);
@@ -818,13 +818,12 @@ async Task RunConsumerRpc(int chatIdx, int consumerIdx, int streamIdx, StreamId 
     }
 }
 
-// --- RPC Backend consumer: calls IVideoStreamingBackend.GetVideo() directly, bypassing API layer ---
+// --- RPC Backend consumer: calls IVideoStreamingBackend.GetVideoRaw() directly, bypassing API layer ---
 async Task RunConsumerRpcBackend(int chatIdx, int consumerIdx, int streamIdx, StreamId streamId, CancellationToken ct)
 {
     try {
         var videoBackend = services.GetRequiredService<IVideoStreamingBackend>();
-        var peerId = $"loadtest-{chatIdx}-{consumerIdx}";
-        var rpcStream = await videoBackend.GetVideo(streamId, TimeSpan.Zero, peerId, ct).ConfigureAwait(false);
+        var rpcStream = await videoBackend.GetVideoRaw(streamId, ct).ConfigureAwait(false);
         if (rpcStream == null) {
             Error.WriteLine($"ConsumerRpcBackend[chat={chatIdx},cons={consumerIdx},stream={streamIdx}] stream not found");
             return;
