@@ -39,6 +39,13 @@ public static partial class Constants
         public static readonly TimeSpan PlaybackHardSkipThreshold = TimeSpan.FromSeconds(2);
         public static readonly TimeSpan PlaybackMaxSpeedUpDuration = TimeSpan.FromSeconds(5);
         public const int PlaybackSpeedUpDropEveryNFrames = 4;
+        // Below this |audioLag - videoLag| the policy returns Zero so the filter
+        // doesn't oscillate on small jitter.
+        public static readonly TimeSpan AudioCatchUpDeadband = TimeSpan.FromMilliseconds(200);
+        // Per-stream presentation-lag updates older than this are ignored when
+        // aggregating per-author lag. Covers paused video, hidden tabs, and
+        // stopped streams — all map to "no signal → desired = 0".
+        public static readonly TimeSpan PlaybackLagStaleAfter = TimeSpan.FromMilliseconds(1500);
 
         // Other audio frame characteristics
         public const int VadFrameDurationMs = 32;

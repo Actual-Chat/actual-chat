@@ -144,6 +144,8 @@ export class AudioPlayer implements Resettable {
     private authorId: string | null = null;
     private recordedAtMs = 0;
     private lastLatencyLogTime = 0;
+    private lastLagReportTime = 0;
+    private static readonly LagReportIntervalMs = 500;
 
     public static get isInitialized() {
         return AudioPlayer.whenInitialized.isCompleted();
@@ -256,6 +258,7 @@ export class AudioPlayer implements Resettable {
         this.authorId = null;
         this.recordedAtMs = 0;
         this.lastLatencyLogTime = 0;
+        this.lastLagReportTime = 0;
         this.playbackState = 'ended';
         this.playingAction?.dispose();
         this.playingAction = undefined;
@@ -390,16 +393,28 @@ export class AudioPlayer implements Resettable {
         }
         else {
             if (this.authorId && state.playbackState === 'playing') {
-                const now = ServerClock.now();
-                if (now - this.lastLatencyLogTime > 10_000) {
-                    this.lastLatencyLogTime = now;
-                    const recordedAtMs = this.recordedAtMs + state.playingAt * 1000;
-                    const latencyMs = now - recordedAtMs;
+                // Lag at the speaker = wall-clock - source-time of the frame
+                // currently going out. Source-time = recordedAtMs (= source's
+                // SourceBeginsAt, server-stamped from the client's claimed
+                // start) + playingAt offset.
+                const sysNow = Date.now();
+                const recordedAtMs = this.recordedAtMs + state.playingAt * 1000;
+                const lagMs = sysNow - recordedAtMs;
+                if (this.blazorRef && sysNow - this.lastLagReportTime >= AudioPlayer.LagReportIntervalMs) {
+                    this.lastLagReportTime = sysNow;
+                    void this.blazorRef.invokeMethodAsync('OnPresentationLag', lagMs)
+                        .catch(() => { /* ignore */ });
+                }
+                const serverNow = ServerClock.now();
+                if (serverNow - this.lastLatencyLogTime > 10_000) {
+                    this.lastLatencyLogTime = serverNow;
+                    const serverRecordedAtMs = this.recordedAtMs + state.playingAt * 1000;
+                    const serverLatencyMs = serverNow - serverRecordedAtMs;
                     warnLog?.log(
                         `LATENCY: authorId=${this.authorId}, ` +
-                        `now=${now.toFixed(0)}, recorded=${recordedAtMs.toFixed(0)} ` +
+                        `now=${serverNow.toFixed(0)}, recorded=${serverRecordedAtMs.toFixed(0)} ` +
                         `(recordedAt=${this.recordedAtMs.toFixed(0)}+playingAt=${(state.playingAt * 1000).toFixed(0)}), ` +
-                        `latency=${latencyMs.toFixed(0)}ms`);
+                        `latency=${serverLatencyMs.toFixed(0)}ms`);
                 }
             }
             const isPaused = state.playbackState === 'paused';

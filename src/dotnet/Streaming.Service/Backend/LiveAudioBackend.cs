@@ -129,6 +129,7 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
                     AuthorId = entry.AuthorId,
                     StreamId = liveAudio.StreamId,
                     BeginsAt = entry.BeginsAt,
+                    SourceBeginsAt = entry.BeginsAt,
                 };
                 byStreamId.TryAdd(streamInfo.StreamId, streamInfo);
             }

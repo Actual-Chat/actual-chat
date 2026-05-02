@@ -18,11 +18,37 @@ public interface IAudioCatchUpPolicy
 
 /// <summary>
 /// Default no-op policy. Always reports "no correction". A real implementation
-/// will compare audio's current playing offset with the video pipeline's
-/// target presentation point.
+/// compares audio's current playing offset with the video pipeline's target
+/// presentation point.
 /// </summary>
 public sealed class NoCatchUpPolicy : IAudioCatchUpPolicy
 {
     public Task<TimeSpan> GetDesiredCatchUp(AuthorId authorId, CancellationToken cancellationToken)
         => Task.FromResult(TimeSpan.Zero);
+}
+
+/// <summary>
+/// Aligns audio playback to video presentation by reading per-author lag
+/// samples published by the JS audio and video playback paths. Returns
+/// max(0, audioLag - videoLag) when both signals are present; returns Zero
+/// when video is paused, hidden, or the chat is audio-only — in which case
+/// the audio buffer keeps playing at its natural rate.
+/// </summary>
+public sealed class LiveAudioCatchUpPolicy(PlaybackLagTracker tracker) : IAudioCatchUpPolicy
+{
+    public Task<TimeSpan> GetDesiredCatchUp(AuthorId authorId, CancellationToken cancellationToken)
+    {
+        var video = tracker.GetVideoLag(authorId);
+        if (video is null)
+            return Task.FromResult(TimeSpan.Zero);
+
+        var audio = tracker.GetAudioLag(authorId);
+        if (audio is null)
+            return Task.FromResult(TimeSpan.Zero);
+
+        var desired = audio.Value - video.Value;
+        return Task.FromResult(desired < Constants.Audio.AudioCatchUpDeadband
+            ? TimeSpan.Zero
+            : desired);
+    }
 }

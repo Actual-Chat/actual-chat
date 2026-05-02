@@ -55,6 +55,7 @@
 
     private ILogger Log => field ??= Services.LogFor<VideoTrackPlayer>();
     private ILiveVideoStreams LiveVideoStreams => field ??= Services.GetRequiredService<ILiveVideoStreams>();
+    private PlaybackLagTracker LagTracker => field ??= Services.GetRequiredService<PlaybackLagTracker>();
 
     private ElementReference CanvasRef { get; set; }
     private ElementReference VideoElRef { get; set; }
@@ -133,6 +134,16 @@
         DebugLog?.LogDebug(
             "[VideoTrackPlayer #{StreamId}] OnPlaying: {Offset}, buffer: {IsBufferLow}",
             StreamInfo.StreamId, offset, isBufferLow ? "low" : "ok");
+    }
+
+    [JSInvokable]
+    public void OnPresentationLag(double lagMs)
+    {
+        // Webcam-only: screencast pacing is too uneven to be a useful A/V sync target.
+        if (StreamInfo.StreamKind != StreamKind.Webcam)
+            return;
+
+        LagTracker.UpdateVideo(StreamInfo.AuthorId, StreamInfo.StreamId.Value, TimeSpan.FromMilliseconds(lagMs));
     }
 
     [JSInvokable]

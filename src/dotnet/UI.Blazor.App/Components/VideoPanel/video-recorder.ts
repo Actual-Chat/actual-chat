@@ -1,6 +1,7 @@
 import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 import { RecordingService, type RecordingConfig, type RecordingState } from '../../Services/Video/services/recording-service';
+import type { RecorderHealthSnapshotJs } from '../../Services/Video/services/video-pipeline';
 import type { SpatialLayerConfig } from '../../Services/Video/workers/video-processing-worker-contract';
 import { detectSupportedCodecs, getDefaultCodec, getCodecCategory, probeConcurrentEncoders, type CodecInfo } from '../../Services/Video/codec-support';
 import { getExpectedBitrate } from '../../Services/Video/bitrate-table';
@@ -1063,7 +1064,23 @@ export class VideoRecorder {
         recordingService.addEventListener('streaming-failure', ((event: CustomEvent<string>) => {
             this.onStreamingFailure(event.detail);
         }) as EventListener);
+        recordingService.addEventListener('recorder-health', ((event: CustomEvent<RecorderHealthSnapshotJs>) => {
+            this.onRecorderHealthSnapshot(event.detail);
+        }) as EventListener);
         return recordingService;
+    }
+
+    private onRecorderHealthSnapshot(snapshot: RecorderHealthSnapshotJs): void {
+        void this.blazorRef.invokeMethodAsync(
+            'OnRecorderHealthSnapshot',
+            snapshot.encodeRatioP50,
+            snapshot.encodeRatioP90,
+            snapshot.slotReplacementRate,
+            snapshot.senderBacklogP90Ms,
+            snapshot.senderSkipsPerWindow,
+            snapshot.lastAckAgeMs,
+            snapshot.isConnected,
+        );
     }
 
     // Streaming-pipeline stall (e.g. stream creation stuck on a missing codec

@@ -20,4 +20,8 @@ public sealed partial record LiveStreamInfo
     public AudioFormat? Format { get; init; }
     [DataMember(Order = 5), MemoryPackOrder(5), Key(5)]
     public ChatEntryId? EntryId { get; init; }
+    // Source's claimed wall-clock at stream start, never overridden by the server.
+    // Used by the client A/V catch-up policy. Falls back to BeginsAt when default.
+    [DataMember(Order = 6), MemoryPackOrder(6), Key(6)]
+    public Moment SourceBeginsAt { get; init; }
 }

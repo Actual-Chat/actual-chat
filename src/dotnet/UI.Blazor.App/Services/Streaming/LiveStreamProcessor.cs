@@ -1,3 +1,4 @@
+using ActualChat.Audio;
 using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualLab.Resilience;
@@ -20,7 +21,7 @@ public sealed class LiveStreamProcessor : WorkerBase
     public ChatId ChatId { get; }
     public LiveStreamSettings Settings { get; }
 
-    public event Action<LiveStreamInfo, TimeSpan, IAsyncEnumerable<ReadOnlyMemory<byte>>>? StreamStarted;
+    public event Action<LiveStreamInfo, TimeSpan, IAsyncEnumerable<AudioFrame>>? StreamStarted;
 
     public LiveStreamProcessor(IServiceProvider services,
         Session session,

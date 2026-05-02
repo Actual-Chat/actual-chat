@@ -61,7 +61,8 @@ public partial class AudioStreamingBackend
         // Use client's server-synced clock (same as video) for consistent A/V timing.
         // Avoids adding client→server transit time to the timestamp, which would put
         // audio recordedAtMs on a different clock base than video startedAtMs.
-        var beginsAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
+        var sourceBeginsAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
+        var beginsAt = sourceBeginsAt;
         var serverNow = Clocks.ServerClock.Now;
         var clockDelta = serverNow - beginsAt;
         if (Math.Abs(clockDelta.TotalSeconds) > Constants.Audio.MaxBeginsAtDrift.TotalSeconds) {
@@ -112,6 +113,7 @@ public partial class AudioStreamingBackend
                 AuthorId = author.Id,
                 StreamId = openSegment.StreamId.Value,
                 BeginsAt = beginsAt,
+                SourceBeginsAt = sourceBeginsAt,
                 Format = audio.Format,
             };
             await LiveBackend.Register(chatId, streamInfo, cancellationToken).ConfigureAwait(false);

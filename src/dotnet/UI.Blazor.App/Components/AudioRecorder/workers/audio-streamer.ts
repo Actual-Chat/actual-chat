@@ -142,9 +142,13 @@ export class AudioStream implements Disposable {
 
                 // frameIndex and clientStartOffset are per-PushAudio (per chat entry on the
                 // server); each retry iteration is a fresh entry, so both reset.
+                // debugOffsetMs is a DebugUI knob that lets us bias the source-time stamp
+                // forwards/backwards to simulate drift; in production it's always 0.
                 let frameIndex = 0;
-                const clientStartOffset = (this.firstFrameTimestamp ?? ServerClock.now()) / 1000;
-                infoLog?.log(`${this.name}: PushAudio clientStartOffset=${clientStartOffset.toFixed(3)}s`);
+                const baseStartMs = this.firstFrameTimestamp ?? ServerClock.now();
+                const clientStartOffset = (baseStartMs + AudioStreamer.debugOffsetMs) / 1000;
+                infoLog?.log(`${this.name}: PushAudio clientStartOffset=${clientStartOffset.toFixed(3)}s ` +
+                    `(debugOffsetMs=${AudioStreamer.debugOffsetMs})`);
 
                 // Plain AsyncIterable — matches .NET MauiRecorderEngine.SendAudio's IAsyncEnumerable
                 // pattern. Termination is driven by iterator.return() from RpcStreamSender.disconnect()
@@ -202,6 +206,10 @@ export class AudioStreamer {
     public static readonly streams = new Array<AudioStream>();
     public static lastStream: AudioStream | null = null;
     public static connectionStateChangedEvents = new EventHandlerSet<boolean>()
+    /** Debug-only: ms added to the recorder's reported clientStartOffset on
+     *  every new PushStream. Set via DebugUI.setAudioRecorderOffset to simulate
+     *  audio drift relative to real time. Default 0. */
+    public static debugOffsetMs = 0;
 
     private static _initialized = false;
 

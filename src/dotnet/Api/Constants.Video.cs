@@ -58,8 +58,10 @@ public static partial class Constants
         // (VideoStreamMemoizer in Streaming.Service) bounded by
         // ServerReplayTailDuration — no count-based ceiling.
 
-        // Latency measurement & quality adaptation
-        public static readonly TimeSpan LatencyReportInterval = TimeSpan.FromSeconds(2);
+        // Latency measurement & quality adaptation. Cadence drives the per-stream
+        // lag samples that feed PlaybackLagTracker (audio catch-up); 500 ms keeps
+        // the policy responsive to drift without spamming JS↔.NET interop.
+        public static readonly TimeSpan LatencyReportInterval = TimeSpan.FromMilliseconds(500);
         // Absolute-latency fallbacks — used only before the per-peer baseline is
         // established (during warmup). Once BaselineLatencyMs is set, the delta-from-
         // baseline logic takes over so cross-continent peers with permanently high

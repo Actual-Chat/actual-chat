@@ -152,6 +152,17 @@ public sealed class VideoRecorder : IAsyncDisposable
         return _jsRef.InvokeVoidAsync("setSimulcastLayers", cancellationToken, (object?)arg, force).AsTask();
     }
 
+    public Task SetTargetLayerCount(int layerCount, CancellationToken cancellationToken)
+    {
+        if (Kind != StreamKind.Webcam)
+            return Task.CompletedTask;
+
+        var layers = layerCount <= 1
+            ? null
+            : BuildSimulcastLadder().Take(layerCount).ToArray();
+        return SetSimulcastLayers(layers, cancellationToken, force: true);
+    }
+
     public async ValueTask DisposeAsync()
     {
         _maintenanceCts.CancelAndDisposeSilently();
@@ -179,6 +190,9 @@ public sealed class VideoRecorder : IAsyncDisposable
         _maintenanceCts.CancelSilently();
         _whenStoppedTaskCompletionSource.TrySetResult();
     }
+
+    private Task OnRecorderHealthSnapshot(RecorderHealthSnapshot snapshot)
+        => Hub.VideoQualityUI.PushRecorderHealth(Kind, snapshot, this, CancellationToken.None);
 
     private async Task RunMaintenance(Task startTrigger, CancellationToken cancellationToken)
     {
@@ -472,5 +486,23 @@ public sealed class VideoRecorder : IAsyncDisposable
             if (kind == StreamKind.Webcam)
                 owner.OnWebcamTrackSettings(deviceId, facingMode);
         }
+
+        [JSInvokable]
+        public Task OnRecorderHealthSnapshot(
+            double encodeRatioP50,
+            double encodeRatioP90,
+            double slotReplacementRate,
+            double senderBacklogP90Ms,
+            int senderSkipsPerWindow,
+            double lastAckAgeMs,
+            bool isConnected)
+            => videoRecorder.OnRecorderHealthSnapshot(new RecorderHealthSnapshot(
+                encodeRatioP50,
+                encodeRatioP90,
+                slotReplacementRate,
+                senderBacklogP90Ms,
+                senderSkipsPerWindow,
+                lastAckAgeMs,
+                isConnected));
     }
 }

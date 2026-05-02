@@ -87,7 +87,7 @@ public sealed class ChatReplayer : ChatPlayer
         Playback playback,
         LiveStreamInfo streamInfo,
         TimeSpan playsAt,
-        IAsyncEnumerable<ReadOnlyMemory<byte>> audioFrames,
+        IAsyncEnumerable<AudioFrame> audioFrames,
         double speed,
         CpuTimestamp playbackStartedAt,
         TimeSpan sleepDurationAtStart,
@@ -178,17 +178,12 @@ public sealed class ChatReplayer : ChatPlayer
 
     private AudioSource CreateAudioSource(
         LiveStreamInfo streamInfo,
-        IAsyncEnumerable<ReadOnlyMemory<byte>> audioFrames,
+        IAsyncEnumerable<AudioFrame> audioFrames,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
         var format = streamInfo.Format ?? AudioSource.DefaultFormat;
         var frameStream = audioFrames
-            .Select((data, i) => new AudioFrame {
-                Data = data,
-                Offset = TimeSpan.FromMilliseconds(i * Constants.Audio.OpusFrameDurationMs),
-                Duration = Constants.Audio.OpusFrameDuration,
-            })
             .SkipWhile(f => f.Offset < skipTo)
             .Select(f => new AudioFrame {
                 Data = f.Data,

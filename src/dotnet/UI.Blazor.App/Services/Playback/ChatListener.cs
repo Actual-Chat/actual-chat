@@ -65,7 +65,7 @@ public sealed class ChatListener : ChatPlayer
         Playback playback,
         PlayState state,
         LiveStreamInfo streamInfo,
-        IAsyncEnumerable<ReadOnlyMemory<byte>> audioFrames,
+        IAsyncEnumerable<AudioFrame> audioFrames,
         CancellationToken cancellationToken)
     {
         _ = BackgroundTask.Run(async () => {
@@ -134,18 +134,13 @@ public sealed class ChatListener : ChatPlayer
 
     private AudioSource CreateAudioSource(
         LiveStreamInfo streamInfo,
-        IAsyncEnumerable<ReadOnlyMemory<byte>> audioFrames,
+        IAsyncEnumerable<AudioFrame> audioFrames,
         TimeSpan skipTo,
         IAudioCatchUpPolicy catchUpPolicy,
         CancellationToken cancellationToken)
     {
         var format = streamInfo.Format ?? AudioSource.DefaultFormat;
         var frameStream = audioFrames
-            .Select((data, i) => new AudioFrame {
-                Data = data,
-                Offset = TimeSpan.FromMilliseconds(i * Constants.Audio.OpusFrameDurationMs),
-                Duration = Constants.Audio.OpusFrameDuration,
-            })
             .SkipWhile(f => f.Offset < skipTo)
             .Select(f => new AudioFrame {
                 Data = f.Data,
@@ -177,10 +172,16 @@ public sealed class ChatListener : ChatPlayer
         if (chat == null)
             return;
 
-        // Create track info for live stream (no entry ID available yet)
+        // ClientSideRecordedAt routes through to JS as recordedAtMs and feeds the
+        // audio-side presentation-lag callback. Use SourceBeginsAt (raw client
+        // claim) so the audio side's lag is identical to video's lag; fall back
+        // to BeginsAt on legacy/replay streams that don't carry SourceBeginsAt.
+        var clientSideRecordedAt = streamInfo.SourceBeginsAt != default
+            ? streamInfo.SourceBeginsAt
+            : streamInfo.BeginsAt;
         var trackInfo = new ChatAudioTrackInfo(ChatId, null, chat, author) {
             RecordedAt = streamInfo.BeginsAt,
-            ClientSideRecordedAt = streamInfo.BeginsAt,
+            ClientSideRecordedAt = clientSideRecordedAt,
         };
 
         playback.Play(trackInfo, audioSource, playAt, cancellationToken);

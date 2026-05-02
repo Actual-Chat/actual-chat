@@ -169,6 +169,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
                 AuthorId = entry.AuthorId,
                 StreamId = audio.StreamId.NullIfEmpty() ?? blobId,
                 BeginsAt = entry.BeginsAt + skipTo,
+                SourceBeginsAt = entry.BeginsAt + skipTo,
                 Format = audioSource.Format,
                 EntryId = entry.Id,
             };

@@ -335,6 +335,9 @@ export class RecordingService extends EventTarget {
                 warnLog?.log(`Streaming stalled — emitting streaming-failure event: ${reason}`);
                 this.dispatchEvent(new CustomEvent('streaming-failure', { detail: reason }));
             };
+            this.pipeline.recorderHealthSnapshotHandler = (snapshot) => {
+                this.dispatchEvent(new CustomEvent('recorder-health', { detail: snapshot }));
+            };
 
             // Track-end detection. Camera was unexpectedly revoked —
             // dispatch a user-visible error and stop the pipeline so callers

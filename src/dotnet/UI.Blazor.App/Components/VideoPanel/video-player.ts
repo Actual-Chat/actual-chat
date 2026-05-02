@@ -1672,6 +1672,14 @@ export class VideoPlayer {
         const renderedAtMs = this.startedAtMs + this.lastRenderedOffsetMs;
         const latencyMs = nowMs - arrivedAtMs;
         const frameAgeMs = nowMs - renderedAtMs;
+        // Presentation lag at the canvas, in source-time terms (startedAtMs is
+        // the source's claimed start time). Audio catch-up policy compares this
+        // against the audio-side equivalent measured at the speaker. Webcam
+        // streams only — screencast lag is filtered out by the .NET handler.
+        const sysNow = Date.now();
+        const presentationLagMs = sysNow - renderedAtMs;
+        void this.blazorRef.invokeMethodAsync('OnPresentationLag', presentationLagMs)
+            .catch(() => { /* ignore */ });
         warnLog?.log(
             `LATENCY: authorId=${this.authorId}, streamId=${this.streamId}, ` +
             `now=${nowMs.toFixed(0)}, arrivedAt=${arrivedAtMs.toFixed(0)} ` +

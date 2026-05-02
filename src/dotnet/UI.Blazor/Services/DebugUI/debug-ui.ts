@@ -21,6 +21,7 @@ interface BlazorGlobal {
 export class DebugUI {
     private static backendRef: DotNet.DotNetObject = null!;
     private static _eventSnifferInstalled = false;
+    private static _audioRecorderOffsetHandler: ((offsetMs: number) => void) | null = null;
 
     public static init(backendRef1: DotNet.DotNetObject): void {
         infoLog?.log(`init`);
@@ -105,6 +106,25 @@ export class DebugUI {
      *  receive-quality changes); verify via server logs. */
     public static testVideoPlaybackQualityChange(period = 30): void {
         void this.backendRef.invokeMethodAsync('TestVideoPlaybackQualityChange', period);
+    }
+
+    /** OpusMediaRecorder registers a handler at init time. Stored here so
+     *  DebugUI doesn't need to import the higher-level recorder module. */
+    public static registerAudioRecorderOffsetHandler(handler: (offsetMs: number) => void): void {
+        this._audioRecorderOffsetHandler = handler;
+    }
+
+    /** Debug-only: forces the audio recorder to add `offsetMs` ms to the
+     *  source-time stamp (`clientStartOffset` / `BeginsAt`) it sends with
+     *  every new PushStream. Lets us simulate audio drift for the catch-up
+     *  policy. Pass 0 to clear. */
+    public static setAudioRecorderOffset(offsetMs: number): void {
+        infoLog?.log(`setAudioRecorderOffset: ${offsetMs}ms`);
+        if (this._audioRecorderOffsetHandler === null) {
+            console.warn('setAudioRecorderOffset: handler not registered yet');
+            return;
+        }
+        this._audioRecorderOffsetHandler(offsetMs);
     }
 
     public static clearSvgCache(): void {

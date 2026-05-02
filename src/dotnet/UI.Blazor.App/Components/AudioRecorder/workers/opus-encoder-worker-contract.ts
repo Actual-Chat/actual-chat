@@ -13,6 +13,11 @@ export interface OpusEncoderWorker {
     /** Debug-only: force-remove the worker's RPC peer from the hub. The reconnect
      *  loop will re-create it. Invoked by {@link DebugUI.disconnectApi}. */
     disconnectApi(noWait?: RpcNoWait): Promise<void>;
+    /** Debug-only: bias the recorder's reported `clientStartOffset` (= source's
+     *  `BeginsAt`) by `offsetMs` ms on every new PushStream. Used to simulate
+     *  audio drift relative to real time so the audio catch-up policy can be
+     *  exercised end-to-end. Invoked by {@link DebugUI.setAudioRecorderOffset}. */
+    setRecorderOffset(offsetMs: number, noWait?: RpcNoWait): Promise<void>;
     runDiagnostics(diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState>;
 
     onEncoderWorkletSamples(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void>;

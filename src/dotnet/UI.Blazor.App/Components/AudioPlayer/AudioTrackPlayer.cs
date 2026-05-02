@@ -23,6 +23,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private IServiceProvider Services { get; }
 
     private IMediaMetadataUI MediaMetadataUI => field ??= Services.GetRequiredService<IMediaMetadataUI>();
+    private PlaybackLagTracker LagTracker => field ??= Services.GetRequiredService<PlaybackLagTracker>();
     private IAudioPlaybackEngineFactory Factory { get; }
 
     public AudioTrackPlayer(
@@ -45,6 +46,16 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             _id, offset, isPaused ? "paused" : "playing", isBufferLow ? "low" : "ok");
         UpdateBufferState(isBufferLow);
         SetPlaybackState(TimeSpan.FromSeconds(offset * TrackInfo.Speed), isPaused);
+    }
+
+    [JSInvokable]
+    public void OnPresentationLag(double lagMs)
+    {
+        var authorId = (TrackInfo as ChatAudioTrackInfo)?.Author?.Id;
+        if (authorId is null)
+            return;
+
+        LagTracker.UpdateAudio(authorId, _id, TimeSpan.FromMilliseconds(lagMs));
     }
 
     [JSInvokable]

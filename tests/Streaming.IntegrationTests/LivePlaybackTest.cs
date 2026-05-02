@@ -122,8 +122,12 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
                     Format = AudioSource.DefaultFormat,
                 },
             },
-            new LiveAudioFrame { StreamIndex = 1, Data = new byte[]{1, 2, 3, 4} },
-            new LiveAudioFrame { StreamIndex = 1, Data = new byte[]{5, 6, 7, 8} },
+            new LiveAudioFrame { StreamIndex = 1, Data = new byte[]{1, 2, 3, 4}, Offset = TimeSpan.Zero },
+            new LiveAudioFrame {
+                StreamIndex = 1,
+                Data = new byte[]{5, 6, 7, 8},
+                Offset = Constants.Audio.OpusFrameDuration,
+            },
             new LiveStreamEnd { StreamIndex = 1 },
         };
 
@@ -166,15 +170,15 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     private static async Task CollectFrames(
-        IAsyncEnumerable<ReadOnlyMemory<byte>> audioFrames,
+        IAsyncEnumerable<AudioFrame> audioFrames,
         List<ReadOnlyMemory<byte>> receivedFrames,
         TaskCompletionSource frameCollectionTcs,
         ILogger log)
     {
         try {
             await foreach (var frame in audioFrames.ConfigureAwait(false)) {
-                log.LogInformation("Received frame: {Length} bytes", frame.Length);
-                receivedFrames.Add(frame);
+                log.LogInformation("Received frame: {Length} bytes", frame.Data.Length);
+                receivedFrames.Add(frame.Data);
             }
             log.LogInformation("Finished collecting frames, total: {Count}", receivedFrames.Count);
         }

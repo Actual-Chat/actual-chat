@@ -128,7 +128,8 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         using var watchdogCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cancellationToken = watchdogCts.Token;
 
-        var beginsAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
+        var sourceStartedAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
+        var beginsAt = sourceStartedAt;
         var rules = await Chats.GetRules(record.Session, record.ChatId, cancellationToken)
             .ConfigureAwait(false);
         rules.Require(ChatPermissions.Write);
@@ -158,7 +159,8 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             author.Id,
             record.Format,
             beginsAt,
-            record.StreamKind);
+            record.StreamKind,
+            sourceStartedAt);
 
         // Cross-service RPC call — properly shard-routed via ILiveVideoBackend
         await LiveVideoBackend.Register(record.ChatId, streamInfo, cancellationToken)

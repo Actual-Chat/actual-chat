@@ -1,3 +1,4 @@
+using ActualChat.Audio;
 using ActualChat.Live;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -13,13 +14,13 @@ public sealed class LiveStreamDemuxer(
     : WorkerBase(stopTokenSource)
 {
     private static bool DebugMode => Constants.DebugMode.LiveStreaming;
-    private readonly ConcurrentDictionary<int, Channel<ReadOnlyMemory<byte>>> _streams = new();
+    private readonly ConcurrentDictionary<int, Channel<AudioFrame>> _streams = new();
 
     private IAsyncEnumerable<LiveStreamItem> Input { get; } = input;
     private ILogger? Log { get; } = log;
     private ILogger? DebugLog { get; } = DebugMode ? log : null;
 
-    public event Action<LiveStreamInfo, TimeSpan, IAsyncEnumerable<ReadOnlyMemory<byte>>>? StreamStarted;
+    public event Action<LiveStreamInfo, TimeSpan, IAsyncEnumerable<AudioFrame>>? StreamStarted;
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
@@ -39,7 +40,7 @@ public sealed class LiveStreamDemuxer(
                         continue;
                     }
                     DebugLog?.LogDebug("StreamStart N{StreamIndex}: stream #{StreamId}", start.StreamIndex, start.StreamInfo.StreamId);
-                    startChannel = Channel.CreateUnbounded<ReadOnlyMemory<byte>>(ChannelExt.UnboundedPipeOptions);
+                    startChannel = Channel.CreateUnbounded<AudioFrame>(ChannelExt.UnboundedPipeOptions);
                     _streams[start.StreamIndex] = startChannel;
 
                     // Note: We don't use StopToken here because the audio frames should remain
@@ -52,7 +53,15 @@ public sealed class LiveStreamDemuxer(
                     var frameChannel = _streams.GetValueOrDefault(frame.StreamIndex);
                     if (frameChannel is null)
                         continue;
-                    if (!frameChannel.Writer.TryWrite(frame.Data))
+                    if (frame.Offset < TimeSpan.Zero)
+                        continue;
+
+                    var audioFrame = new AudioFrame {
+                        Data = frame.Data,
+                        Offset = frame.Offset,
+                        Duration = Constants.Audio.OpusFrameDuration,
+                    };
+                    if (!frameChannel.Writer.TryWrite(audioFrame))
                         Log?.LogWarning("Failed to write frame for stream {StreamIndex}", frame.StreamIndex);
                     continue;
                 case LiveStreamEnd end:
@@ -86,8 +95,8 @@ public sealed class LiveStreamDemuxer(
         _streams.Clear();
     }
 
-    private static async IAsyncEnumerable<ReadOnlyMemory<byte>> ToAsyncEnumerable(
-        ChannelReader<ReadOnlyMemory<byte>> reader,
+    private static async IAsyncEnumerable<AudioFrame> ToAsyncEnumerable(
+        ChannelReader<AudioFrame> reader,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await foreach (var item in reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))

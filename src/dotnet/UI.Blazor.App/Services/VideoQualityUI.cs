@@ -37,7 +37,11 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
     /// (JS-side aggregator in <c>video-processing.ts</c>). Triggers a
     /// classification + aggregation step for the matching <see cref="StreamKind"/>.
     /// </summary>
-    public void PushRecorderHealth(StreamKind kind, RecorderHealthSnapshot snapshot)
+    public async Task PushRecorderHealth(
+        StreamKind kind,
+        RecorderHealthSnapshot snapshot,
+        VideoRecorder recorder,
+        CancellationToken cancellationToken)
     {
         _lastHealth = snapshot;
         if (!_recordingByKind.TryGetValue(kind, out var aggregator))
@@ -51,12 +55,14 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
         if (!decision.Changed)
             return;
 
+        await recorder.SetTargetLayerCount(decision.NewTargetLayerCount, cancellationToken).ConfigureAwait(false);
+
         var info = new RecordingQualityInfo(decision.Reason, snapshot);
-        _ = LiveVideoStreams.ChangeRecordingQuality(
+        _ = await LiveVideoStreams.ChangeRecordingQuality(
             Session,
             aggregator.Snapshot(),
             info,
-            CancellationToken.None);
+            cancellationToken).ConfigureAwait(false);
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
@@ -234,7 +240,7 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
             LastAckGoodMs: 500,
             SkipsBadCount: 5,
             MinTargetLayerCount: 1,
-            MaxTargetLayerCount: 4,
+            MaxTargetLayerCount: Constants.Video.MaxSimulcastTiers,
             ConsecutiveGoodForClimb: 5,
             CooldownTicksAfterBackoff: 5);
     }

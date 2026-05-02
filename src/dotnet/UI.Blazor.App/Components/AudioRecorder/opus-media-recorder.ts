@@ -8,6 +8,7 @@ import { rpcClient, rpcClientServer, RpcNoWait, rpcNoWait } from 'rpc';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
+import { DebugUI } from '../../../UI.Blazor/Services/DebugUI/debug-ui';
 import { Api, WorkerKind } from 'api';
 import { audioContextSource, recordingAudioContextSource, AppAudioContext, AudioContextRef, AudioContextAction } from '../../Services/audio-context-source';
 import { AudioContextTrait, AttachedAudioContextTrait } from '../../Services/audio-context-traits';
@@ -334,6 +335,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
             this.encoderWorker = rpcClientServer<OpusEncoderWorker>(`${logScope}.encoderWorker`, this.encoderWorkerInstance, this);
             Api.onDisconnectRequested(WorkerKind.Recording)
                 .add(() => void this.encoderWorker?.disconnectApi(rpcNoWait));
+            DebugUI.registerAudioRecorderOffsetHandler(offsetMs =>
+                void this.encoderWorker?.setRecorderOffset(offsetMs, rpcNoWait));
         }
 
         debugLog?.log(`init(): create vad worker`);

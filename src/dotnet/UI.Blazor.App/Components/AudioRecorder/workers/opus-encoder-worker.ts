@@ -154,6 +154,11 @@ const serverImpl: OpusEncoderWorker = {
         }
     },
 
+    setRecorderOffset: async (offsetMs: number, _noWait?: RpcNoWait): Promise<void> => {
+        warnLog?.log(`setRecorderOffset (debug): ${offsetMs}ms`);
+        AudioStreamer.debugOffsetMs = offsetMs;
+    },
+
     runDiagnostics: async (diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState> => {
         diagnosticsState.isConnected = AudioStreamer.isConnected;
         diagnosticsState.lastVadFrameProcessedAt = lastFrameProcessedAt;
