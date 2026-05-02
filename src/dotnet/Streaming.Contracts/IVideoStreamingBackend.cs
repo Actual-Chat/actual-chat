@@ -8,7 +8,7 @@ namespace ActualChat.Streaming;
 
 [BackendService(nameof(HostRole.StreamingBackend), ServiceMode.Distributed)]
 [BackendShardScheme(nameof(ShardScheme.StreamingBackend))]
-public interface IVideoStreamingBackend : IComputeService, IRpcService, IBackendService
+public interface IVideoStreamingBackend : IComputeService, IBackendService
 {
     Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, string peerId, CancellationToken cancellationToken);
     Task<RpcStream<VideoFrame>?> GetVideoRaw(StreamId streamId, CancellationToken cancellationToken);
