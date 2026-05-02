@@ -507,7 +507,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
     public async runDiagnostics(diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState> {
         diagnosticsState.isRecorderInitialized = this.whenInitialized?.isCompleted();
         diagnosticsState.hasMicrophoneStream = this.stream != null;
-        warnLog?.log('runDiagnostics: ', diagnosticsState);
+        infoLog?.log('runDiagnostics: ', diagnosticsState);
 
         const timeout = 500;
         const pipeline = this.recordingContextRef?.getTrait<AttachedRecordingPipeline>(this.recordingPipelineTrait);
@@ -558,7 +558,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
     // worker watchdog can fire. Used by DebugUI.suspendAudioRecorderHeartbeat to simulate a hung main thread.
     public suspendHeartbeat(durationMs: number): void {
         this.heartbeatSuspendedUntil = Date.now() + durationMs;
-        warnLog?.log(`suspendHeartbeat: heartbeats paused for ${durationMs}ms`);
+        infoLog?.log(`suspendHeartbeat: heartbeats paused for ${durationMs}ms`);
     }
 
     // Private/Internal methods

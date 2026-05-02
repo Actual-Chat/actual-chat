@@ -210,9 +210,9 @@ export class InternalVideoStream {
             const peer = Api.peer;
 
             const clientStartOffset = serverClockNow(this.ctx) / 1000;
-            warnLog?.log(`TIMING_ANCHOR: clientStartOffset=${clientStartOffset.toFixed(3)}s`);
+            infoLog?.log(`stream: clientStartOffset=${clientStartOffset.toFixed(3)}s`);
 
-            infoLog?.log(`PushVideo: codec=${this.config.codec}, ` +
+            infoLog?.log(`stream: PushStream codec=${this.config.codec}, ` +
                 `${this.config.width}x${this.config.height} ` +
                 `(source ${this.config.sourceWidth}x${this.config.sourceHeight}), ` +
                 `settings=${this.config.codecSettings.length} chars`);

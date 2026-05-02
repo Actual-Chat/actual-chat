@@ -493,7 +493,7 @@ async function processPending(): Promise<void> {
                             { blurStrength: segConfig.blurRadius, maskDirty: false,
                                 outputWidth: segConfig.outputWidth, outputHeight: segConfig.outputHeight },
                             (result) => {
-                                if (!loggedBlurFormat) { loggedBlurFormat = true; warnLog?.log(`I420 path: GPU compute shader, frame format: ${result.frame.format}`); }
+                                if (!loggedBlurFormat) { loggedBlurFormat = true; infoLog?.log(`I420 path: GPU compute shader, frame format: ${result.frame.format}`); }
                                 segProcessedFrames++;
                                 emitPreviewAndEncode(result.frame);
                             }
@@ -583,7 +583,7 @@ async function initializeSegmentation(_config: SegmentationConfig): Promise<void
     // `segInitialized` deliberately stays false so all gated call sites bypass
     // the queue and emit raw frames straight through. Re-enable the body below
     // when re-introducing background blur.
-    warnLog?.log('Segmentation disabled in this release; ignoring config.segmentation');
+    infoLog?.log('Segmentation disabled in this release; ignoring config.segmentation');
     return;
 
     /*
@@ -867,7 +867,7 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
 
         if (processedFrame.format !== lastLoggedFormat) {
             lastLoggedFormat = processedFrame.format;
-            warnLog?.log(`Frame format: ${processedFrame.format}, ${processedFrame.codedWidth}x${processedFrame.codedHeight}`);
+            infoLog?.log(`Frame format: ${processedFrame.format}, ${processedFrame.codedWidth}x${processedFrame.codedHeight}`);
         }
 
         // Frames carry source-timeline timestamps; primary + simulcast extras
@@ -995,13 +995,13 @@ function onEncoderOutput(chunkData: EncodedChunkData): void {
             const dataPreview = Math.min(128, dataLen);
             const dataHex = Array.from(new Uint8Array(chunkBuffer, 0, dataPreview))
                 .map(b => b.toString(16).padStart(2, '0')).join('');
-            warnLog?.log(`[FIRST_KF_DUMP] codec=${actualCodec}, ` +
+            infoLog?.log(`onEncoderOutput: first-keyframe,codec=${actualCodec}, ` +
                 `seq=${chunkData.sequenceNumber}, ` +
                 `spatial=${chunkData.spatialLayerId ?? 0}, temporal=${chunkData.temporalLayerId ?? 0}, ` +
                 `dims=${chunkData.width}x${chunkData.height}, ` +
                 `descLen=${descLen}, dataLen=${dataLen}`);
-            warnLog?.log(`[FIRST_KF_DUMP] descHex=${descHex}`);
-            warnLog?.log(`[FIRST_KF_DUMP] dataHex(first ${dataPreview})=${dataHex}`);
+            infoLog?.log(`onEncoderOutput: first-keyframe,descHex=${descHex}`);
+            infoLog?.log(`onEncoderOutput: first-keyframe,dataHex(first ${dataPreview})=${dataHex}`);
         }
     }
 
@@ -1156,7 +1156,7 @@ function deliverChunkToStream(
             );
             lastVideoStream = videoStream;
             streamRecreations++;
-            warnLog?.log(`TIMING_ANCHOR: startTimestamp=${((startTimestamp ?? 0) / 1000).toFixed(0)}ms, firstChunkOffsetMs=${(timestamp / 1000).toFixed(0)}`);
+            infoLog?.log(`deliverChunkToStream: startTimestamp=${((startTimestamp ?? 0) / 1000).toFixed(0)}ms, firstChunkOffsetMs=${(timestamp / 1000).toFixed(0)}`);
             for (const buffered of pendingStreamFrames) videoStream.addFrame(buffered);
             pendingStreamFrames = [];
             videoStream.addFrame(frame);
@@ -1543,7 +1543,7 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                 const codedH = rawFrame.codedHeight;
                 sourceWidth = frameW;
                 sourceHeight = frameH;
-                warnLog?.log(`DIMENSIONS: display=${frameW}x${frameH}, coded=${codedW}x${codedH}, config=${encoderConfig.width}x${encoderConfig.height}, rotation=${frameRotation ?? 'N/A'}`);
+                infoLog?.log(`streamReadLoop: dimensions, display=${frameW}x${frameH}, coded=${codedW}x${codedH}, config=${encoderConfig.width}x${encoderConfig.height}, rotation=${frameRotation ?? 'N/A'}`);
                 // Detect rotation: display dims are transposed vs encoder config
                 // (MSTP gives raw sensor dims as displayWidth/Height)
                 const isRotated = frameW === encoderConfig.height && frameH === encoderConfig.width
@@ -2313,7 +2313,7 @@ export const serverImpl: VideoProcessingWorker = {
     disconnectApi: async (): Promise<void> => {
         // Debug-only path — invoked by DebugUI.disconnectApi(WorkerKind.VideoCapture).
         // Closes the WS connection; the peer's reconnect loop reopens it.
-        warnLog?.log(`disconnectApi (debug): disconnecting peer`);
+        infoLog?.log(`disconnectApi (debug): disconnecting peer`);
         try {
             if (Api.hub.defaultPeerUrl !== undefined)
                 Api.hub.peers.get(Api.hub.defaultPeerUrl)?.disconnect();

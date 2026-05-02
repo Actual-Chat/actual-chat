@@ -532,15 +532,15 @@ export class VideoPipeline implements IVideoPipeline {
             const actualMbps = (bytesDelta * 8 / 10_000_000).toFixed(2);
             const cfgMbps = (s.configuredBitrate / 1_000_000).toFixed(1);
             const codec = this.config.encoderConfig.codec;
-            warnLog?.log(
-                `VIDEO_ENCODE: codec=${codec} median=${s.medianEncodeTime.toFixed(1)}ms avg=${s.averageEncodeTime.toFixed(1)}ms ` +
+            infoLog?.log(
+                `start: encoder stats, codec=${codec} median=${s.medianEncodeTime.toFixed(1)}ms avg=${s.averageEncodeTime.toFixed(1)}ms ` +
                 `cfg=${s.configuredWidth}x${s.configuredHeight}@${cfgMbps}Mbps actual=${actualMbps}Mbps ` +
                 `enc=${framesDelta} drop=${s.droppedFrames} kf=${s.keyFrames} hw=${s.hardwareAcceleration}`);
 
             const seg = this.currentStats.segmentation;
             if (seg) {
-                warnLog?.log(
-                    `VIDEO_SEG: infer=${seg.averageInferenceTime.toFixed(1)}ms blur=${seg.averageBlurTime.toFixed(1)}ms ` +
+                infoLog?.log(
+                    `start: segmentation stats, infer=${seg.averageInferenceTime.toFixed(1)}ms blur=${seg.averageBlurTime.toFixed(1)}ms ` +
                     `total=${seg.averageTotalTime.toFixed(1)}ms drop=${seg.droppedFrames} backend=${seg.backend}`);
             }
         }, 10_000);
@@ -958,7 +958,7 @@ export class VideoPipeline implements IVideoPipeline {
 
             if (!this.isSpeaking) {
                 this.isSpeaking = true;
-                debugLog?.log('VAD: speech resumed');
+                debugLog?.log('setVadActive: speech resumed');
 
                 void this.worker.reconfigure({
                     bitrate: this.savedBitrate,
@@ -972,7 +972,7 @@ export class VideoPipeline implements IVideoPipeline {
                 if (this.vadDroppedLayer && this.processing) {
                     const restored = [...(this.config.spatialLayers ?? []), this.vadDroppedLayer];
                     this.config.spatialLayers = restored;
-                    debugLog?.log(`VAD: restoring dropped layer ${this.vadDroppedLayer.width}x${this.vadDroppedLayer.height}`);
+                    debugLog?.log(`setVadActive: restoring dropped layer ${this.vadDroppedLayer.width}x${this.vadDroppedLayer.height}`);
                     this.vadDroppedLayer = null;
                     void this.worker.setSpatialLayers(restored);
                 }
@@ -988,7 +988,7 @@ export class VideoPipeline implements IVideoPipeline {
 
                     const ratio = this.config.adaptiveFramerate?.reducedBitrateRatio ?? 0.25;
                     const reducedBitrate = Math.round(this.savedBitrate * ratio);
-                    debugLog?.log(`VAD: silence, reducing bitrate to ${reducedBitrate}`);
+                    debugLog?.log(`setVadActive: silence, reducing bitrate to ${reducedBitrate}`);
 
                     void this.worker.reconfigure({
                         bitrate: reducedBitrate,
@@ -1010,7 +1010,7 @@ export class VideoPipeline implements IVideoPipeline {
                         const remaining = extras.slice(0, -1);
                         this.vadDroppedLayer = dropped;
                         this.config.spatialLayers = remaining;
-                        debugLog?.log(`VAD: dropping top layer ${dropped.width}x${dropped.height} (${extras.length} → ${remaining.length} extras)`);
+                        debugLog?.log(`setVadActive: dropping top layer ${dropped.width}x${dropped.height} (${extras.length} → ${remaining.length} extras)`);
                         void this.worker.setSpatialLayers(remaining);
                     }
                     void this.worker.setVadState(false, this.remoteStreamCount);

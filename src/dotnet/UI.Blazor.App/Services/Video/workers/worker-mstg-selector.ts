@@ -12,7 +12,7 @@ import { getLogs } from 'logging';
 import { BG_BLUR_STRENGTH, BG_DRAW_INTERVAL_MS } from '../services/bg-canvas-settings';
 import type { BgBlurRenderer } from '../webgpu-blur';
 
-const { warnLog } = getLogs('VideoDecoder');
+const { infoLog, warnLog } = getLogs('VideoDecoder');
 
 // Single decoded-frame slot. Jitter absorption + pacing happen upstream in
 // the decoder worker's encoded pre-decode buffer (the doc's `video buffer`);
@@ -165,8 +165,8 @@ export class WorkerMstgSelector {
         if (diagNowMs - this.lastDiagAtMs >= 1000) {
             this.lastDiagAtMs = diagNowMs;
             const lastWrittenMs = this.lastWrittenTs >= 0 ? this.lastWrittenTs / 1000 : 0;
-            warnLog?.log(
-                `MstgSelector DIAG: ` +
+            infoLog?.log(
+                `tick: ` +
                 `lastWrittenMs=${lastWrittenMs.toFixed(0)}, writeInFlight=${this.writeInFlight}, ` +
                 `bgPaints/s=${this.bgPaintsSinceDiag}, mainWrites/s=${this.mainWritesSinceDiag}, ` +
                 `writeFailures/s=${this.writeFailuresSinceDiag}, hasBgPainter=${!!this.bgPainter}`);

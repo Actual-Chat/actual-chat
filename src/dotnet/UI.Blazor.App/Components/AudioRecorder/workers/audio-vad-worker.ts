@@ -176,7 +176,7 @@ const serverImpl: AudioVadWorker = {
         diagnosticsState.lastVadEvent = vad.lastActivityEvent;
         diagnosticsState.lastVadFrameProcessedAt = lastVadEventProcessedAt;
 
-        warnLog?.log('runDiagnostics: ', diagnosticsState);
+        infoLog?.log('runDiagnostics: ', diagnosticsState);
         return diagnosticsState;
     },
 

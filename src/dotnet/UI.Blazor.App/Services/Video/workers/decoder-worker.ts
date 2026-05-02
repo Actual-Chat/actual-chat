@@ -159,7 +159,7 @@ function ownedArrayBuffer(view: Uint8Array): ArrayBuffer {
     const total = ownedArrayBufferFastCount + ownedArrayBufferSlowCount;
     if (total % OWNED_ARRAY_BUFFER_LOG_INTERVAL === 0) {
         const fastPct = (ownedArrayBufferFastCount / total * 100).toFixed(1);
-        warnLog?.log(`ownedArrayBuffer: fast=${ownedArrayBufferFastCount} ` +
+        infoLog?.log(`ownedArrayBuffer: fast=${ownedArrayBufferFastCount} ` +
             `slow=${ownedArrayBufferSlowCount} (${fastPct}% fast)`);
     }
     if (isOwned) {
@@ -656,14 +656,14 @@ async function processEncodedChunk(
         } else {
             initVsChunk = initLen === 0 ? 'init-no-desc' : 'len-differ';
         }
-        warnLog?.log(
-            `[FIRST_KF_DIAG] seq=${sequenceNumber}, dataLen=${dataLen}, ` +
+        infoLog?.log(
+            `processEncodedChunk: first-keyframe seq=${sequenceNumber}, dataLen=${dataLen}, ` +
             `initDescLen=${initLen}, chunkDescLen=${chunkLen}, cmp=${initVsChunk}, ` +
             `decoderState=${decoder.getState()}, decoderConfigured=${decoderConfigured}, ` +
             `codec=${currentDecoderConfig?.codec}, hwAccel=${currentDecoderConfig?.hardwareAcceleration}`);
-        warnLog?.log(`[FIRST_KF_DIAG] initDescHex=${initHex}`);
-        warnLog?.log(`[FIRST_KF_DIAG] chunkDescHex=${chunkHex}`);
-        warnLog?.log(`[FIRST_KF_DIAG] dataHex=${dataHex}`);
+        infoLog?.log(`processEncodedChunk: first-keyframe initDescHex=${initHex}`);
+        infoLog?.log(`processEncodedChunk: first-keyframe chunkDescHex=${chunkHex}`);
+        infoLog?.log(`processEncodedChunk: first-keyframe dataHex=${dataHex}`);
     }
 
     try {
@@ -718,7 +718,7 @@ async function processEncodedChunk(
                 decoder.initialize();
                 lastRawDescription = description.slice(0);
                 initialDescriptionApplied = false;
-                warnLog?.log(`[FIRST_KF_FRESH] built fresh decoder for first keyframe, ` +
+                warnLog?.log(`processEncodedChunk: built fresh decoder for first keyframe, ` +
                     `codec=${currentDecoderConfig!.codec}, ` +
                     `descLen=${description.byteLength}, decoderState=${decoder.getState()}`);
             } else if (initialDescriptionApplied) {
@@ -1061,7 +1061,7 @@ async function processEncodedChunk(
         }
 
         if (isKeyFrame) {
-            warnLog?.log(`[PRE_DECODE] Decoding keyframe: seq=${sequenceNumber}, ` +
+            infoLog?.log(`processEncodedChunk: pre-decode keyframe seq=${sequenceNumber}, ` +
                 `state=${decoder.getState()}, configured=${decoderConfigured}, ` +
                 `descLen=${description?.byteLength ?? 0}, dataLen=${dataLen}, ` +
                 `flagWasUsed=${!initialDescriptionApplied && sequenceNumber === 0 ? 'maybe' : 'n/a'}`);
@@ -1118,7 +1118,7 @@ const serverImpl: DecoderWorker = {
             initialDescriptionApplied = false;
 
             processing = true;
-            warnLog?.log(`[INIT_DEFERRED] Decoder created, configure() deferred to first keyframe, ` +
+            infoLog?.log(`processEncodedChunk: decoder created, configure() deferred to first keyframe, ` +
                 `codec=${config.codec}, hwAccel=${config.hardwareAcceleration}, ` +
                 `descLen=${config.description ? config.description.byteLength : 0}, ` +
                 `dims=${currentCodedWidth}x${currentCodedHeight}, ` +
@@ -1162,7 +1162,7 @@ const serverImpl: DecoderWorker = {
             );
             decoderConfigured = false;
             initialDescriptionApplied = false;
-            warnLog?.log(`[INIT_DEFERRED] Decoder created (stream), configure() deferred to first keyframe, ` +
+            infoLog?.log(`processEncodedChunk: decoder created (stream), configure() deferred to first keyframe, ` +
                 `codec=${config.codec}, descLen=${config.description ? config.description.byteLength : 0}, ` +
                 `decoderState=${decoder.getState()}`);
 

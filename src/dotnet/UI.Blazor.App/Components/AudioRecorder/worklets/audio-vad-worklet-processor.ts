@@ -11,7 +11,7 @@ import { AudioVadWorklet } from './audio-vad-worklet-contract';
 import { AudioDiagnosticsState } from '../audio-recorder';
 import { getLogs } from 'logging';
 
-const { logScope, warnLog } = getLogs('AudioVadWorkletProcessor');
+const { logScope, infoLog, warnLog } = getLogs('AudioVadWorkletProcessor');
 
 export interface AudioVadProcessorOptions {
     sampleRate: number;
@@ -116,7 +116,7 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
     public async runDiagnostics(diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState> {
         diagnosticsState.vadWorkletState = this.state;
         diagnosticsState.lastVadWorkletFrameProcessedAt = this.lastFrameProcessedAt;
-        warnLog?.log('runDiagnostics: ', diagnosticsState);
+        infoLog?.log('runDiagnostics: ', diagnosticsState);
         return diagnosticsState;
     }
 }

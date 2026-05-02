@@ -70,7 +70,7 @@ export class OffThreadRenderBackend implements RenderBackend {
 
     onTrackReady(track: MediaStreamTrack): void {
         if (this.disposed) {
-            warnLog?.log(`onTrackReady DIAG: backend disposed, dropping track id=${track.id} readyState=${track.readyState}`);
+            warnLog?.log(`onTrackReady: backend disposed, dropping track id=${track.id} readyState=${track.readyState}`);
             try { track.stop(); } catch { /* ignore */ }
             return;
         }
@@ -79,16 +79,16 @@ export class OffThreadRenderBackend implements RenderBackend {
             const existingTracks = existingStream instanceof MediaStream ? existingStream.getTracks() : [];
             const existingIds = existingTracks.map(t => `${t.id}:${t.readyState}`).join(',');
             warnLog?.log(
-                `onTrackReady called twice; ignoring second track. ` +
-                `DIAG: newTrack=${track.id}:${track.readyState}, existingTracks=[${existingIds}], ` +
+                `onTrackReady: called twice; ignoring second track. ` +
+                `newTrack=${track.id}:${track.readyState}, existingTracks=[${existingIds}], ` +
                 `videoPaused=${this.videoEl.paused}, videoReadyState=${this.videoEl.readyState}, ` +
                 `videoCurrentTime=${this.videoEl.currentTime.toFixed(2)}s, ` +
                 `videoWidth=${this.videoEl.videoWidth}x${this.videoEl.videoHeight}`);
             try { track.stop(); } catch { /* ignore */ }
             return;
         }
-        warnLog?.log(
-            `onTrackReady DIAG: first attach, track=${track.id}:${track.readyState}, ` +
+        infoLog?.log(
+            `onTrackReady: first attach, track=${track.id}:${track.readyState}, ` +
             `srcObjectWasNull=${this.videoEl.srcObject === null}`);
         this.trackAttached = true;
         const stream = new MediaStream([track]);
@@ -180,7 +180,7 @@ export class OffThreadRenderBackend implements RenderBackend {
             const cls = parent.className;
             if (cls === this.lastObservedParentCls) return;
             this.lastObservedParentCls = cls;
-            warnLog?.log(`OffThreadBackend DIAG: parent classList changed → "${cls}", retrying play()`);
+            warnLog?.log(`startParentClassObserver: parent classList changed → "${cls}", retrying play()`);
             this.tryPlay('parent-classlist-change');
             const focused = parent.classList.contains('item-focused');
             if (focused !== this.lastObservedFocused) {
@@ -243,15 +243,15 @@ export class OffThreadRenderBackend implements RenderBackend {
             this.consecutiveStallTicks++;
             if (this.consecutiveStallTicks >= 2 && tracks.length > 0) {
                 warnLog?.log(
-                    `OffThreadBackend DIAG: stall detected (paused=${this.videoEl.paused}, ` +
+                    `tickWatchdog: stall detected (paused=${this.videoEl.paused}, ` +
                     `dCt=${dCt.toFixed(3)}s, ticks=${this.consecutiveStallTicks}), retrying play()`);
                 this.tryPlay('watchdog-stall');
             }
         } else {
             this.consecutiveStallTicks = 0;
         }
-        warnLog?.log(
-            `OffThreadBackend DIAG: paused=${this.videoEl.paused} ` +
+        infoLog?.log(
+            `tickWatchdog: paused=${this.videoEl.paused} ` +
             `currentTime=${nowCt.toFixed(3)}s dCt=${dCt.toFixed(3)}s dt=${dtMs.toFixed(0)}ms ` +
             `videoWH=${this.videoEl.videoWidth}x${this.videoEl.videoHeight} ` +
             `readyState=${this.videoEl.readyState} networkState=${this.videoEl.networkState} ` +

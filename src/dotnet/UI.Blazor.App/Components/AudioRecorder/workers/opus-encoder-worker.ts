@@ -145,7 +145,7 @@ const serverImpl: OpusEncoderWorker = {
     disconnectApi: async (_noWait?: RpcNoWait): Promise<void> => {
         // Debug-only path — invoked by DebugUI.disconnectApi(WorkerKind.Recording).
         // Closes the WS connection; the peer's reconnect loop reopens it.
-        warnLog?.log(`disconnectApi (debug): disconnecting peer`);
+        infoLog?.log(`disconnectApi (debug): disconnecting peer`);
         try {
             if (Api.hub.defaultPeerUrl !== undefined)
                 Api.hub.peers.get(Api.hub.defaultPeerUrl)?.disconnect();
@@ -155,14 +155,14 @@ const serverImpl: OpusEncoderWorker = {
     },
 
     setRecorderOffset: async (offsetMs: number, _noWait?: RpcNoWait): Promise<void> => {
-        warnLog?.log(`setRecorderOffset (debug): ${offsetMs}ms`);
+        infoLog?.log(`setRecorderOffset (debug): ${offsetMs}ms`);
         AudioStreamer.debugOffsetMs = offsetMs;
     },
 
     runDiagnostics: async (diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState> => {
         diagnosticsState.isConnected = AudioStreamer.isConnected;
         diagnosticsState.lastVadFrameProcessedAt = lastFrameProcessedAt;
-        warnLog?.log('runDiagnostics: ', diagnosticsState);
+        infoLog?.log('runDiagnostics: ', diagnosticsState);
         return diagnosticsState;
     },
 
@@ -186,7 +186,7 @@ const serverImpl: OpusEncoderWorker = {
         if (isVoiceDetected === nextIsVoiceDetected)
             return;
 
-        warnLog?.log(`onVoiceActivityChange: ${change.kind}, isVoiceDetected=${nextIsVoiceDetected}, state=${state}`);
+        infoLog?.log(`onVoiceActivityChange: ${change.kind}, isVoiceDetected=${nextIsVoiceDetected}, state=${state}`);
         isVoiceDetected = nextIsVoiceDetected;
         if (state !== 'encoding')
             return;
@@ -271,7 +271,7 @@ async function startRecording(): Promise<void> {
 }
 
 async function stopRecording(): Promise<void> {
-    warnLog?.log(`stopRecording: encodedFrames=${encodedFrameCount}, hasStream=${audioStream !== null}, state=${state}`);
+    infoLog?.log(`stopRecording: encodedFrames=${encodedFrameCount}, hasStream=${audioStream !== null}, state=${state}`);
     // TODO(AK): fix eslint error
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     processQueue('out');

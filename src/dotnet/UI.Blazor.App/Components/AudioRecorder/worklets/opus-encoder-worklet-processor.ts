@@ -12,7 +12,7 @@ import { OpusEncoderWorker } from '../workers/opus-encoder-worker-contract';
 import { RecorderStateServer } from '../opus-media-recorder-contracts';
 import { getLogs } from 'logging';
 
-const { logScope, debugLog, warnLog, errorLog } = getLogs('OpusEncoderWorkletProcessor');
+const { logScope, debugLog, infoLog, warnLog, errorLog } = getLogs('OpusEncoderWorkletProcessor');
 
 export interface OpusEncoderProcessorOptions {
     timeSlice: number;
@@ -135,7 +135,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
     public async runDiagnostics(diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState> {
         diagnosticsState.encoderWorkletState = this.state;
         diagnosticsState.lastEncoderWorkletFrameProcessedAt = this.lastFrameProcessedAt;
-        warnLog?.log('runDiagnostics: ', diagnosticsState);
+        infoLog?.log('runDiagnostics: ', diagnosticsState);
         return diagnosticsState;
     }
 }

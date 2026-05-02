@@ -80,7 +80,7 @@ export interface RemoteStreamDiagnostics {
     avDriftMs: number | null;
 }
 
-const { debugLog, warnLog, errorLog } = getLogs('VideoPlayer');
+const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPlayer');
 
 // Graduated recovery thresholds for the latency-tick path. Used by
 // reportLatencyTick to escalate response to growing render-frame age:
@@ -179,7 +179,7 @@ function ownedArrayBuffer(view: Uint8Array): ArrayBuffer {
     const total = ownedArrayBufferFastCount + ownedArrayBufferSlowCount;
     if (total % OWNED_ARRAY_BUFFER_LOG_INTERVAL === 0) {
         const fastPct = (ownedArrayBufferFastCount / total * 100).toFixed(1);
-        warnLog?.log(`ownedArrayBuffer: fast=${ownedArrayBufferFastCount} ` +
+        infoLog?.log(`ownedArrayBuffer: fast=${ownedArrayBufferFastCount} ` +
             `slow=${ownedArrayBufferSlowCount} (${fastPct}% fast)`);
     }
     if (isOwned) {
@@ -402,7 +402,7 @@ export class VideoPlayer {
         this.isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         this.useStreams = supportsTransferableStreams();
         if (this.isSafari)
-            warnLog?.log('Safari detected — will convert VideoFrame to ImageBitmap for canvas rendering');
+            infoLog?.log('Safari detected — will convert VideoFrame to ImageBitmap for canvas rendering');
 
         // Set canvas size
         canvas.width = width || 1280;
@@ -414,7 +414,7 @@ export class VideoPlayer {
 
         // Register in global diagnostics registry
         activePlayers.set(streamId, this);
-        warnLog?.log(`VideoPlayer registry: added ${streamId}, active=${activePlayers.size}`);
+        infoLog?.log(`VideoPlayer registry: added ${streamId}, active=${activePlayers.size}`);
 
         // Initialize decoder worker — store the promise so startPull can gate
         // on it (prevents pre-init frame drop on the main-thread RPC fallback).
@@ -911,7 +911,7 @@ export class VideoPlayer {
         if (!this.outputVerificationFailed) {
             this.outputVerificationFailed = true;
             warnLog?.log(
-                `OUTPUT_VERIFICATION_FAILED: decoded ${output.width}x${output.height} ` +
+                `checkOutputVerification: failed, decoded ${output.width}x${output.height} ` +
                 `does not match latest keyframe ${refW}x${refH} ` +
                 `(${reason}); codec=${this.codecCategory || 'unknown'}`);
         }
@@ -919,7 +919,7 @@ export class VideoPlayer {
         if (this.shouldRequestCodecExclusion() && !this.codecExclusionRequested) {
             this.codecExclusionRequested = true;
             this.stopOutputVerificationMonitor();
-            warnLog?.log(`OUTPUT_VERIFICATION_FAILED: requesting codec exclusion for ${this.codecCategory}`);
+            warnLog?.log(`checkOutputVerification: requesting codec exclusion for ${this.codecCategory}`);
             void this.blazorRef.invokeMethodAsync('OnRequestCodecExclusion', this.codecCategory);
             return true;
         }
@@ -931,7 +931,7 @@ export class VideoPlayer {
         this.outputVerificationFailed = false;
         this.stopOutputVerificationMonitor();
         this.canvas.parentElement?.classList.remove('output-unverified');
-        debugLog?.log(`OUTPUT_VERIFIED: ${width}x${height} (${reason})`);
+        debugLog?.log(`checkOutputVerification: ok, ${width}x${height} (${reason})`);
     }
 
     private shouldRequestCodecExclusion(): boolean {
@@ -1155,7 +1155,7 @@ export class VideoPlayer {
             return;
         this.lastKeyFrameRequestTime = now;
 
-        warnLog?.log(`PLI: requesting keyframe for stream ${this.streamId}`);
+        infoLog?.log(`requestKeyFrame: stream=${this.streamId}`);
         streamingApi.liveVideoStreams.RequestKeyFrame(RPC_SESSION_DEFAULT, this.streamId)
             .catch((e: unknown) => warnLog?.log('RequestKeyFrame error:', e));
     }
@@ -1205,7 +1205,7 @@ export class VideoPlayer {
         this.firstFrameReceivedTime = 0;
 
         this.pipelineLatencyMs = 0;
-        warnLog?.log(
+        infoLog?.log(
             `Tab restored: flushed ${pendingCount} pending frames, gating deltas until next keyframe`);
     }
 
@@ -1216,8 +1216,8 @@ export class VideoPlayer {
             return;
         }
 
-        warnLog?.log(
-            `startPull DIAG: streamId=${streamId}, skipToMs=${skipToMs.toFixed(0)}, ` +
+        infoLog?.log(
+            `startPull:streamId=${streamId}, skipToMs=${skipToMs.toFixed(0)}, ` +
             `pullRetryCount=${this.pullRetryCount}, offThreadPullActive=${this.offThreadPullActive}, ` +
             `bgOffscreenTransferred=${this.bgOffscreenTransferred}, renderBackend=${this.renderBackend.kind}, ` +
             `isOffThread=${this.renderBackend.isOffThread}`);
@@ -1234,7 +1234,7 @@ export class VideoPlayer {
         // Off-thread path: hand the entire Fusion RPC pull to the decoder worker.
         // Main thread becomes silent on the per-frame path.
         if (this.renderBackend.isOffThread && !this.offThreadPullActive && this.decoderWorker) {
-            warnLog?.log(`startPull DIAG: entering delegatePullToWorker (first off-thread setup)`);
+            infoLog?.log(`startPull:entering delegatePullToWorker (first off-thread setup)`);
             const ok = await this.delegatePullToWorker(streamId, skipToMs);
             if (ok) return;
             // Worker rejected (no MSTG/VTG) — fall back to main-thread canvas + pull.
@@ -1254,7 +1254,7 @@ export class VideoPlayer {
         // on OffThreadRenderBackend).
         if (this.offThreadPullActive && this.renderBackend.isOffThread) {
             warnLog?.log(
-                `startPull DIAG: SUSPICIOUS — main-thread pull starting while ` +
+                `startPull:SUSPICIOUS — main-thread pull starting while ` +
                 `offThreadPullActive=true and renderBackend=${this.renderBackend.kind}. ` +
                 `Decoded frames may not reach the visible <video>.`);
         }
@@ -1266,12 +1266,12 @@ export class VideoPlayer {
 
         const skipToTicks = secondsToMoment(skipToMs / 1000);
 
-        warnLog?.log(`startPull [RPC]: stream=${streamId}, skipTo=${skipToMs}ms, skipToTicks=${skipToTicks}, retryCount=${this.pullRetryCount}`);
+        infoLog?.log(`startPull:stream=${streamId}, skipTo=${skipToMs}ms, skipToTicks=${skipToTicks}, retryCount=${this.pullRetryCount}`);
 
         try {
-            warnLog?.log(`startPull [RPC]: calling GetStream(${streamId}, ${skipToTicks})`);
+            infoLog?.log(`startPull:calling GetStream(${streamId}, ${skipToTicks})`);
             const stream = await streamingApi.liveVideoStreams.GetStream(RPC_SESSION_DEFAULT, streamId, skipToTicks);
-            warnLog?.log(`startPull [RPC]: GetStream returned, starting iteration`);
+            infoLog?.log(`startPull:GetStream returned, starting iteration`);
             let pullFrameCount = 0;
 
             for await (const frame of stream) {
@@ -1284,7 +1284,7 @@ export class VideoPlayer {
             if (!abortController.signal.aborted && this._isPlayingNow) {
                 if (pullFrameCount > 0) {
                     // Normal completion with frames — sender intentionally ended the stream
-                    warnLog?.log(
+                    infoLog?.log(
                         `Pull stream completed normally after ${pullFrameCount} frames — treating as intentional end`);
                     void this.reportEnded();
                 } else {
@@ -1307,7 +1307,7 @@ export class VideoPlayer {
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             const stack = err instanceof Error ? err.stack : '';
-            warnLog?.log(`startPull [RPC] ERROR: ${message}`, stack);
+            warnLog?.log(`startPull: error,${message}`, stack);
             if (abortController.signal.aborted || !this._isPlayingNow) return;
             this.pullRetryCount++;
             const delay = Math.min(1000 * this.pullRetryCount, 5000);
@@ -1354,7 +1354,7 @@ export class VideoPlayer {
             if (this.receivedFrameCount <= 5 || this.receivedFrameCount % 300 === 0 || isHighLatency) {
                 if (isHighLatency) this.lastHighLatencyLogTime = performance.now();
                 warnLog?.log(
-                    `FRAME_RECV: #${this.receivedFrameCount} offsetMs=${offsetMs.toFixed(0)}, ` +
+                    `processRpcFrame: #${this.receivedFrameCount} offsetMs=${offsetMs.toFixed(0)}, ` +
                     `startedAt=${this.startedAtMs.toFixed(0)}, impliedCaptureAt=${impliedCaptureAt.toFixed(0)}, ` +
                     `serverNow=${nowMs.toFixed(0)}, impliedLatency=${impliedLatency.toFixed(0)}ms, isKey=${isKeyFrame}`);
             }
@@ -1454,8 +1454,8 @@ export class VideoPlayer {
         if (!this.decoderWorker) return false;
 
         this.delegateEntryCount++;
-        warnLog?.log(
-            `delegatePullToWorker DIAG: entry #${this.delegateEntryCount}, ` +
+        infoLog?.log(
+            `delegatePullToWorker:entry #${this.delegateEntryCount}, ` +
             `streamId=${streamId}, skipToMs=${skipToMs.toFixed(0)}, ` +
             `bgOffscreenTransferred=${this.bgOffscreenTransferred}, ` +
             `renderBackend.kind=${this.renderBackend.kind}`);
@@ -1473,8 +1473,8 @@ export class VideoPlayer {
                 const backend = this.renderBackend as { onTrackReady?: (t: MediaStreamTrack) => void };
                 if (typeof backend.onTrackReady === 'function')
                     backend.onTrackReady(generator);
-                warnLog?.log(
-                    `delegatePullToWorker DIAG: Tier 2 main-thread MSTG constructed, ` +
+                infoLog?.log(
+                    `delegatePullToWorker:Tier 2 main-thread MSTG constructed, ` +
                     `trackId=${generator.id}, attached via backend=${this.renderBackend.kind}`);
             } catch (e) {
                 warnLog?.log('Main-thread MSTG construct failed, falling back to worker tier:', e);
@@ -1482,7 +1482,7 @@ export class VideoPlayer {
                 mainWritable = undefined;
             }
         } else {
-            warnLog?.log(`delegatePullToWorker DIAG: Tier 2 unavailable (no globalThis.MediaStreamTrackGenerator), falling back to worker tier`);
+            infoLog?.log(`delegatePullToWorker:Tier 2 unavailable (no globalThis.MediaStreamTrackGenerator), falling back to worker tier`);
         }
 
         const apiUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
@@ -1497,13 +1497,13 @@ export class VideoPlayer {
             try {
                 bgOffscreen = this.bgCanvasEl.transferControlToOffscreen();
                 this.bgOffscreenTransferred = true;
-                warnLog?.log(`delegatePullToWorker DIAG: bgCanvas transferred to worker (first time)`);
+                infoLog?.log(`delegatePullToWorker:bgCanvas transferred to worker (first time)`);
             } catch (e) {
                 warnLog?.log('transferControlToOffscreen failed for bg canvas:', e);
             }
         } else {
-            warnLog?.log(
-                `delegatePullToWorker DIAG: bgCanvas NOT transferred this call ` +
+            infoLog?.log(
+                `delegatePullToWorker:bgCanvas NOT transferred this call ` +
                 `(alreadyTransferred=${this.bgOffscreenTransferred}, ` +
                 `transferFn=${typeof (this.bgCanvasEl as { transferControlToOffscreen?: unknown }).transferControlToOffscreen})`);
         }
@@ -1552,11 +1552,11 @@ export class VideoPlayer {
     public async stop(): Promise<void> {
         if (!this.isPlaying) return;
 
-        warnLog?.log(`VideoPlayer stop() called for stream ${this.streamId}, rendered=${this.renderFrameCount} frames, received=${this.receivedFrameCount}`);
+        infoLog?.log(`VideoPlayer stop() called for stream ${this.streamId}, rendered=${this.renderFrameCount} frames, received=${this.receivedFrameCount}`);
 
         // Unregister from global diagnostics registry
         activePlayers.delete(this.streamId);
-        warnLog?.log(`VideoPlayer registry: removed ${this.streamId}, active=${activePlayers.size}`);
+        infoLog?.log(`VideoPlayer registry: removed ${this.streamId}, active=${activePlayers.size}`);
 
         this.isPlaying = false;
         this.stopRenderLoop();
@@ -1658,7 +1658,7 @@ export class VideoPlayer {
             return;
 
         if (this.lastRenderedOffsetMs <= 0) {
-            warnLog?.log(`reportLatencyTick: skip — lastRendered=${this.lastRenderedOffsetMs.toFixed(0)}`);
+            infoLog?.log(`reportLatencyTick: skip — lastRendered=${this.lastRenderedOffsetMs.toFixed(0)}`);
             return;
         }
         const nowMs = ServerClock.now();
@@ -1680,8 +1680,8 @@ export class VideoPlayer {
         const presentationLagMs = sysNow - renderedAtMs;
         void this.blazorRef.invokeMethodAsync('OnPresentationLag', presentationLagMs)
             .catch(() => { /* ignore */ });
-        warnLog?.log(
-            `LATENCY: authorId=${this.authorId}, streamId=${this.streamId}, ` +
+        infoLog?.log(
+            `reportLatencyTick: authorId=${this.authorId}, streamId=${this.streamId}, ` +
             `now=${nowMs.toFixed(0)}, arrivedAt=${arrivedAtMs.toFixed(0)} ` +
             `(startedAt=${this.startedAtMs.toFixed(0)}+arrivedOffset=${this.lastArrivedOffsetMs.toFixed(0)}), ` +
             `latency=${latencyMs.toFixed(0)}ms, frameAge=${frameAgeMs.toFixed(0)}ms ` +
@@ -1696,7 +1696,7 @@ export class VideoPlayer {
             if (this.pipelineLatencyMs > reductionMs) {
                 this.pipelineLatencyMs -= reductionMs;
                 warnLog?.log(
-                    `CATCHUP: frameAge ${frameAgeMs.toFixed(0)}ms, reducing pipelineLatencyMs by ${reductionMs.toFixed(1)}ms to ${this.pipelineLatencyMs.toFixed(0)}ms`);
+                    `reportLatencyTick: catchup, frameAge=${frameAgeMs.toFixed(0)}ms, reducing pipelineLatencyMs by ${reductionMs.toFixed(1)}ms to ${this.pipelineLatencyMs.toFixed(0)}ms`);
             }
         }
 
@@ -1714,7 +1714,7 @@ export class VideoPlayer {
             const dropCount = Math.floor(this.pendingFrames.length / 2);
             if (dropCount > 0) {
                 warnLog?.log(
-                    `GRADUATED_RECOVERY: frameAge ${frameAgeMs.toFixed(0)}ms > ${DROP_TO_KEYFRAME_MS}ms, dropping ${dropCount} oldest frames`);
+                    `reportLatencyTick: graduated recovery, frameAge=${frameAgeMs.toFixed(0)}ms > ${DROP_TO_KEYFRAME_MS}ms, dropping ${dropCount} oldest frames`);
                 for (let i = 0; i < dropCount; i++) {
                     this.pendingFrames.shift()!.close();
                 }
@@ -1732,7 +1732,7 @@ export class VideoPlayer {
             // for a keyframe, and gate deltas at the worker until it arrives.
             this.skipToLiveCount++;
             warnLog?.log(
-                `SKIP_TO_LIVE: latency ${latencyMs.toFixed(0)}ms > ${VIDEO.skipToLiveThresholdMs}ms, gating until next keyframe (count=${this.skipToLiveCount})`);
+                `reportLatencyTick: skip-to-live, latency=${latencyMs.toFixed(0)}ms > ${VIDEO.skipToLiveThresholdMs}ms, gating until next keyframe (count=${this.skipToLiveCount})`);
 
             while (!this.pendingFrames.isEmpty())
                 this.pendingFrames.shift()!.close();
@@ -1768,8 +1768,8 @@ export class VideoPlayer {
                         - this.pendingFrames.peekFront()!.timestamp) / 1000;
                 }
 
-                warnLog?.log(
-                    `VIDEO_DECODE: codec=${this.decoderConfig?.codec ?? 'unknown'} ` +
+                infoLog?.log(
+                    `reportLatencyTick: decode, codec=${this.decoderConfig?.codec ?? 'unknown'} ` +
                     `decode=${ds.pureMedianDecodeTime >= 0 ? ds.pureMedianDecodeTime.toFixed(1) : 'N/A'}ms ` +
                     `queueWait=${ds.medianDecodeTime.toFixed(1)}ms ` +
                     `queueDepth=${ds.decodeQueueSize} bpDrops=${ds.backpressureDrops} ` +
@@ -1793,7 +1793,7 @@ export class VideoPlayer {
                 if (inWarmup || tabHidden) {
                     if (this.codecSlowTickCount > 0) {
                         debugLog?.log(
-                            `SLOW_DECODE: ${inWarmup ? 'warmup' : 'hidden tab'} — ` +
+                            `reportLatencyTick: slow-decode (${inWarmup ? 'warmup' : 'hidden tab'}) — ` +
                             `resetting tick count (was ${this.codecSlowTickCount})`);
                         this.codecSlowTickCount = 0;
                     }
@@ -1803,7 +1803,7 @@ export class VideoPlayer {
                     if (!this.qualityReductionRequested && this.codecSlowTickCount >= QUALITY_REDUCTION_TICK_COUNT) {
                         // Phase 1: request quality reduction from the sender
                         warnLog?.log(
-                            `SLOW_DECODE: ${this.codecSlowTickCount} consecutive bad ticks for ${this.codecCategory}, ` +
+                            `reportLatencyTick: slow-decode, ${this.codecSlowTickCount} consecutive bad ticks for ${this.codecCategory}, ` +
                             `requesting quality reduction (medianDecode=${ds.medianDecodeTime.toFixed(1)}ms, ` +
                             `queueDepth=${ds.decodeQueueSize})`);
                         this.qualityReductionRequested = true;
@@ -1813,7 +1813,7 @@ export class VideoPlayer {
                         && this.codecCategory !== 'h264' && this.codecCategory !== 'unknown') {
                         // Phase 2: quality reduction didn't help — exclude codec entirely
                         warnLog?.log(
-                            `SLOW_DECODE: codec ${this.codecCategory} too slow even after quality reduction ` +
+                            `reportLatencyTick: slow-decode, codec ${this.codecCategory} too slow even after quality reduction ` +
                             `(${this.codecSlowTickCount} more bad ticks), requesting codec exclusion`);
                         void this.blazorRef.invokeMethodAsync('OnRequestCodecExclusion', this.codecCategory);
                         void this.reportEnded('Codec excluded after sustained slow decode');
@@ -1821,7 +1821,7 @@ export class VideoPlayer {
                     }
                 } else {
                     if (this.codecSlowTickCount > 0) {
-                        debugLog?.log(`SLOW_DECODE: reset — good tick after ${this.codecSlowTickCount} bad ticks`);
+                        debugLog?.log(`reportLatencyTick: slow-decode reset — good tick after ${this.codecSlowTickCount} bad ticks`);
                     }
                     this.codecSlowTickCount = 0;
                     this.qualityReductionRequested = false;
@@ -1852,7 +1852,7 @@ export class VideoPlayer {
         // Proactive congestion detection: RTT increasing rapidly
         if (this.rttGradientMs > 50 && this.smoothedRttMs > 100) {
             warnLog?.log(
-                `RTT_GRADIENT: rtt=${this.smoothedRttMs.toFixed(0)}ms, gradient=${this.rttGradientMs.toFixed(0)}ms — congestion detected`);
+                `updateRttEstimate: rtt-gradient, rtt=${this.smoothedRttMs.toFixed(0)}ms, gradient=${this.rttGradientMs.toFixed(0)}ms — congestion detected`);
             // Proactively request quality reduction before latency threshold is hit
             if (!this.qualityReductionRequested && this.codecCategory) {
                 void this.blazorRef.invokeMethodAsync('OnRequestQualityReduction', this.codecCategory);

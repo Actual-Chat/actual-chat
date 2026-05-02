@@ -55,6 +55,15 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
         if (!decision.Changed)
             return;
 
+        Log.LogWarning(
+            "RecordingQuality changed: kind={Kind} target={Target} reason={Reason} signal={Signal} "
+            + "encodeP50={EncP50:F2} encodeP90={EncP90:F2} slotRate={SlotRate:F2} "
+            + "backlogMs={Backlog:F0} skips={Skips} ackAgeMs={Ack:F0} connected={Connected}",
+            kind, decision.NewTargetLayerCount, decision.Reason, signal,
+            snapshot.EncodeRatioP50, snapshot.EncodeRatioP90, snapshot.SlotReplacementRate,
+            snapshot.SenderBacklogP90Ms, snapshot.SenderSkipsPerWindow, snapshot.LastAckAgeMs,
+            snapshot.IsConnected);
+
         await recorder.SetTargetLayerCount(decision.NewTargetLayerCount, cancellationToken).ConfigureAwait(false);
 
         var info = new RecordingQualityInfo(decision.Reason, snapshot);
@@ -146,15 +155,19 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
             var phase = (elapsed.TotalSeconds % period.TotalSeconds) / period.TotalSeconds;
             var signal = TestSignal(phase);
             var decision = aggregator.Step(signal);
-            Log.LogInformation(
-                "RecordingQualityTest: phase={Phase:F2} signal={Signal} target={Target} reason={Reason}",
-                phase, signal, aggregator.TargetLayerCount, decision.Reason);
             if (decision.Changed) {
+                Log.LogWarning(
+                    "RecordingQualityTest changed: phase={Phase:F2} signal={Signal} target={Target} reason={Reason}",
+                    phase, signal, aggregator.TargetLayerCount, decision.Reason);
                 var fakeHealth = new RecorderHealthSnapshot(0, 0, 0, 0, 0, 0, IsConnected: true);
                 var info = new RecordingQualityInfo(decision.Reason, fakeHealth);
                 _ = LiveVideoStreams.ChangeRecordingQuality(
                     Session, aggregator.Snapshot(), info, CancellationToken.None);
             }
+            else
+                Log.LogInformation(
+                    "RecordingQualityTest: phase={Phase:F2} signal={Signal} target={Target} reason={Reason}",
+                    phase, signal, aggregator.TargetLayerCount, decision.Reason);
             try {
                 await Task.Delay(TimeSpan.FromSeconds(1), ct).ConfigureAwait(false);
             }
@@ -182,10 +195,10 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
                 > 0 => PlaybackQualityReason.Climb,
                 _ => PlaybackQualityReason.Stable,
             };
-            Log.LogInformation(
-                "PlaybackQualityTest: phase={Phase:F2} signal={Signal} capacity={Capacity}",
-                phase, signal, capacity);
             if (capacity != lastCapacity) {
+                Log.LogWarning(
+                    "PlaybackQualityTest changed: phase={Phase:F2} signal={Signal} capacity={Capacity} reason={Reason}",
+                    phase, signal, capacity, reason);
                 var info = new PlaybackQualityInfo(
                     capacity,
                     AggregateHealth: signal,
@@ -196,6 +209,10 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
                     Session, requestedQuality: null, info, CancellationToken.None);
                 lastCapacity = capacity;
             }
+            else
+                Log.LogInformation(
+                    "PlaybackQualityTest: phase={Phase:F2} signal={Signal} capacity={Capacity} reason={Reason}",
+                    phase, signal, capacity, reason);
             try {
                 await Task.Delay(TimeSpan.FromSeconds(1), ct).ConfigureAwait(false);
             }

@@ -21,7 +21,7 @@ import { AudioInitializer } from '../../Services/audio-initializer';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { ServerClock } from 'server-clock';
 
-const { logScope, debugLog, warnLog } = getLogs('AudioPlayer');
+const { logScope, debugLog, infoLog, warnLog } = getLogs('AudioPlayer');
 
 const EnableFrequentDebugLog = false;
 
@@ -300,7 +300,7 @@ export class AudioPlayer implements Resettable {
         if (this.playbackState === 'ended')
             return;
 
-        warnLog?.log(`#${this.internalId}.end, mustAbort:`, mustAbort);
+        infoLog?.log(`#${this.internalId}.end, mustAbort:`, mustAbort);
 
         // Wait for context to be ready
         if (this.contextRef && !this.contextRef.isReady) {
@@ -410,8 +410,8 @@ export class AudioPlayer implements Resettable {
                     this.lastLatencyLogTime = serverNow;
                     const serverRecordedAtMs = this.recordedAtMs + state.playingAt * 1000;
                     const serverLatencyMs = serverNow - serverRecordedAtMs;
-                    warnLog?.log(
-                        `LATENCY: authorId=${this.authorId}, ` +
+                    infoLog?.log(
+                        `onFeederStateChanged: authorId=${this.authorId}, ` +
                         `now=${serverNow.toFixed(0)}, recorded=${serverRecordedAtMs.toFixed(0)} ` +
                         `(recordedAt=${this.recordedAtMs.toFixed(0)}+playingAt=${(state.playingAt * 1000).toFixed(0)}), ` +
                         `latency=${serverLatencyMs.toFixed(0)}ms`);

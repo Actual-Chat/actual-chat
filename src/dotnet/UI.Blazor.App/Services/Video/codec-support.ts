@@ -6,7 +6,7 @@
 import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 
-const { debugLog, warnLog, errorLog } = getLogs('VideoPipeline');
+const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
 export interface CodecInfo {
     name: string;
@@ -89,7 +89,7 @@ export function setForceH264Only(enabled: boolean): void {
     // Invalidate detection caches so the next stream re-probes with the new flag.
     encoderCodecCache.clear();
     decoderCodecCache = null;
-    warnLog?.log(`Debug: forceH264Only set to ${enabled}; codec detection caches cleared`);
+    infoLog?.log(`Debug: forceH264Only set to ${enabled}; codec detection caches cleared`);
 }
 
 export function detectSupportedCodecs(width = 1920, height = 1080): Promise<CodecInfo[]> {
@@ -121,7 +121,7 @@ async function detectSupportedCodecsUncached(width: number, height: number): Pro
         ? REPRESENTATIVE_CODECS.filter(c => c.category === 'h264')
         : REPRESENTATIVE_CODECS;
     if (forceH264)
-        warnLog?.log('Debug: forceH264Only=true → encoder detection limited to H.264');
+        infoLog?.log('Debug: forceH264Only=true → encoder detection limited to H.264');
     const results: CodecInfo[] = [];
     for (const { category, name, codec } of probeList) {
         const { supported, hardwareAccelerated, scalabilityModes } = await isCodecSupported(codec, category, width, height);
@@ -141,7 +141,7 @@ async function detectSupportedCodecsUncached(width: number, height: number): Pro
         });
     }
     const supported = results.filter(c => c.supported);
-    warnLog?.log(`ENCODER_CODECS: ${supported.map(c =>
+    infoLog?.log(`detectSupportedCodecsUncached: ${supported.map(c =>
         `${c.codec}(${c.hardwareAccelerated ? 'hw' : 'sw'})`).join(', ') || 'none'}`);
     return results;
 }
@@ -541,12 +541,12 @@ async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
     const codecs: string[] = ['h264']; // H.264 always assumed supported
 
     if (readForceH264OnlyFromStorage()) {
-        warnLog?.log('Debug: forceH264Only=true → decoder detection limited to H.264');
+        infoLog?.log('Debug: forceH264Only=true → decoder detection limited to H.264');
         return codecs;
     }
 
     // AV1 — TEMPORARILY DISABLED (mobile issues). Re-enable by restoring the probe block.
-    warnLog?.log('Decoder AV1: temporarily disabled');
+    infoLog?.log('Decoder AV1: temporarily disabled');
 
     // HEVC — try multiple codec strings
     if (!excludedDecoderCodecs.has('hevc')) {
@@ -559,11 +559,11 @@ async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
         ]) {
             try {
                 if (await isDecoderCodecSupported(hevcCodec, 1280, 720)) {
-                    warnLog?.log(`Decoder HEVC (${hevcCodec}): supported=true`);
+                    infoLog?.log(`Decoder HEVC (${hevcCodec}): supported=true`);
                     hevcSupported = true;
                     break;
                 }
-                warnLog?.log(`Decoder HEVC (${hevcCodec}): supported=false`);
+                infoLog?.log(`Decoder HEVC (${hevcCodec}): supported=false`);
             } catch (e) {
                 warnLog?.log(`Decoder HEVC (${hevcCodec}): error=${e}`);
             }
@@ -574,8 +574,8 @@ async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
     }
 
     // VP9 — TEMPORARILY DISABLED (selection disabled). Re-enable by restoring the probe block.
-    warnLog?.log('Decoder VP9: temporarily disabled');
+    infoLog?.log('Decoder VP9: temporarily disabled');
 
-    warnLog?.log(`DECODER_CODECS: [${codecs.join(', ')}]${excludedDecoderCodecs.size > 0 ? ` (excluded: [${[...excludedDecoderCodecs].join(', ')}])` : ''}`);
+    infoLog?.log(`detectSupportedDecoderCodecsUncached: [${codecs.join(', ')}]${excludedDecoderCodecs.size > 0 ? ` (excluded: [${[...excludedDecoderCodecs].join(', ')}])` : ''}`);
     return codecs;
 }

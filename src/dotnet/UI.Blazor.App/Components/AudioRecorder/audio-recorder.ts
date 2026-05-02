@@ -11,7 +11,7 @@ import { WebMicrophonePermissionHandler } from './web-microphone-permission-hand
 import { RecorderStateHub } from './recorder-state-hub';
 import { Subscription } from 'rxjs';
 
-const { debugLog, warnLog, errorLog } = getLogs('AudioRecorder');
+const { debugLog, infoLog, warnLog, errorLog } = getLogs('AudioRecorder');
 
 export class AudioDiagnosticsState {
     public isPlayerInitialized?: boolean;
@@ -144,7 +144,7 @@ export class AudioRecorder {
 
         diagnosticsState.isAudioContextSourceMaintained = recordingAudioContextSource.isMaintained;
         diagnosticsState.isAudioContextRunning = recordingAudioContextSource.isContextRunning;
-        warnLog?.log('runDiagnostics: ', diagnosticsState);
+        infoLog?.log('runDiagnostics: ', diagnosticsState);
         return await opusMediaRecorder.runDiagnostics(diagnosticsState);
     }
 

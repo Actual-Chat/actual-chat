@@ -173,7 +173,7 @@ export class AudioStream implements Disposable {
                                         bufferPool.release(frame.buffer);
                                 }
                             } else if (self.isCompleted && self.frames.length === 0) {
-                                warnLog?.log(`${self.name}: stream completed, ${frameIndex} frames sent`);
+                                infoLog?.log(`${self.name}: stream completed, ${frameIndex} frames sent`);
                                 return;
                             } else {
                                 await self.frameAdded.whenNext();
