@@ -394,8 +394,8 @@ export class AudioPlayer implements Resettable {
         else {
             if (this.authorId && state.playbackState === 'playing') {
                 // The decoder reports presentation lag from the source offset
-                // of the decoded frame it handed to the feeder, assuming the
-                // feeder will present it after its 40 ms smoothing reserve.
+                // of the decoded frame it handed to the feeder, using the
+                // feeder's current target buffer delay.
                 const sysNow = Date.now();
                 if (
                     this.blazorRef

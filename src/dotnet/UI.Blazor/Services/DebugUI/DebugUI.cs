@@ -14,8 +14,10 @@ public sealed class DebugUI : UIServiceBase<UIHub>, IDisposable
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.DebugUI.init";
 
     private DotNetObjectReference<DebugUI>? _blazorRef;
+    private volatile bool _disableAudioSync;
 
     public Task WhenReady { get; }
+    public bool IsAudioSyncDisabled => _disableAudioSync;
 
     public DebugUI(UIHub hub) : base(hub)
     {
@@ -108,6 +110,17 @@ public sealed class DebugUI : UIServiceBase<UIHub>, IDisposable
         var bubbleUI = Services.GetRequiredService<BubbleUI>();
         await bubbleUI.ResetBubbles(enable).ConfigureAwait(false);
         Log.LogInformation("ResetBubbles({Enable}): done", enable);
+    }
+
+    [JSInvokable]
+    public bool GetDisableAudioSync()
+        => _disableAudioSync;
+
+    [JSInvokable]
+    public void DisableAudioSync(bool disable)
+    {
+        _disableAudioSync = disable;
+        Log.LogInformation("DisableAudioSync({Disable}): done", disable);
     }
 
     public Func<Task>? ShowMicTroubleshooterHandler { get; set; }

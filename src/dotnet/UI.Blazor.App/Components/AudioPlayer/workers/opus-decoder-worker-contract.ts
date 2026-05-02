@@ -18,6 +18,6 @@ export interface OpusDecoderWorker {
 }
 
 export interface BufferHandler {
-    requestFrame(noWait?: RpcNoWait): Promise<void>;
+    requestFrame(targetDelayMs: number, noWait?: RpcNoWait): Promise<void>;
     releaseBuffer(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void>;
 }

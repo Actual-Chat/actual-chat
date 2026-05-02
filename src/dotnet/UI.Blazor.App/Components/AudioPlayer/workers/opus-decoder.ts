@@ -18,7 +18,7 @@ import Denque from 'denque';
 
 const { logScope, debugLog, warnLog, errorLog } = getLogs('OpusDecoder');
 const enableFrequentDebugLog = false;
-const FEEDER_TARGET_DELAY_MS = 40;
+const DEFAULT_FEEDER_TARGET_DELAY_MS = 40;
 
 interface EncodedFrame {
     data: Uint8Array;
@@ -44,6 +44,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
     private readonly systemDecodeTimings = new Denque<DecodeTiming>();
     private mustAbort = false;
     private frameRequested = false;
+    private feederTargetDelayMs = DEFAULT_FEEDER_TARGET_DELAY_MS;
     private chunkTimeOffset = 0;
     private sourceRecordedAtMs = 0;
 
@@ -79,6 +80,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
     public init(sourceRecordedAtMs = this.sourceRecordedAtMs): void {
         this.mustAbort = false;
         this.frameRequested = false;
+        this.feederTargetDelayMs = DEFAULT_FEEDER_TARGET_DELAY_MS;
         this.chunkTimeOffset = 0;
         this.sourceRecordedAtMs = sourceRecordedAtMs;
         this.encodedFrames.clear();
@@ -120,10 +122,11 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
         this.flushDecodeDemand();
     }
 
-    public async requestFrame(_noWait?: RpcNoWait): Promise<void> {
+    public async requestFrame(targetDelayMs: number, _noWait?: RpcNoWait): Promise<void> {
         if (this.mustAbort)
             return;
 
+        this.feederTargetDelayMs = targetDelayMs;
         this.frameRequested = true;
         this.flushDecodeDemand();
     }
@@ -228,7 +231,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
     private createDecodeTiming(sourceOffsetMs: number): DecodeTiming {
         return {
             sourceOffsetMs,
-            presentationLagMs: Date.now() + FEEDER_TARGET_DELAY_MS - (this.sourceRecordedAtMs + sourceOffsetMs),
+            presentationLagMs: Date.now() + this.feederTargetDelayMs - (this.sourceRecordedAtMs + sourceOffsetMs),
         };
     }
 }

@@ -77,6 +77,14 @@ export class DebugUI {
         void this.backendRef.invokeMethodAsync('ResetBubbles', enable);
     };
 
+    public static async getDisableAudioSync(): Promise<boolean> {
+        return await this.backendRef.invokeMethodAsync('GetDisableAudioSync') as boolean;
+    }
+
+    public static disableAudioSync(disable: boolean): void {
+        void this.backendRef.invokeMethodAsync('DisableAudioSync', disable);
+    };
+
     public static showMicTroubleshooter(): void {
         void this.backendRef.invokeMethodAsync('ShowMicTroubleshooter');
     };

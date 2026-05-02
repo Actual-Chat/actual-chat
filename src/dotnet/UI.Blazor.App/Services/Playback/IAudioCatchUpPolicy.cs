@@ -1,3 +1,5 @@
+using ActualChat.UI.Blazor.Services;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
@@ -17,32 +19,28 @@ public interface IAudioCatchUpPolicy
 }
 
 /// <summary>
-/// Default no-op policy. Always reports "no correction". A real implementation
-/// compares audio's current playing offset with the video pipeline's target
-/// presentation point.
-/// </summary>
-public sealed class NoCatchUpPolicy : IAudioCatchUpPolicy
-{
-    public Task<TimeSpan> GetDesiredCatchUp(AuthorId authorId, CancellationToken cancellationToken)
-        => Task.FromResult(TimeSpan.Zero);
-}
-
-/// <summary>
 /// Aligns audio playback to video presentation by reading per-author lag
 /// samples published by the JS audio and video playback paths. Returns
 /// max(0, audioLag - videoLag) when both signals are present; returns Zero
 /// when video is paused, hidden, or the chat is audio-only — in which case
 /// the audio buffer keeps playing at its natural rate.
 /// </summary>
-public sealed class LiveAudioCatchUpPolicy(PlaybackLagTracker tracker) : IAudioCatchUpPolicy
+public sealed class LiveAudioCatchUpPolicy(IServiceProvider services) : IAudioCatchUpPolicy
 {
+    private IServiceProvider Services { get; } = services;
+    private PlaybackLagTracker PlaybackLagTracker => field ??= Services.GetRequiredService<PlaybackLagTracker>();
+    private DebugUI DebugUI => field ??= Services.GetRequiredService<DebugUI>();
+
     public Task<TimeSpan> GetDesiredCatchUp(AuthorId authorId, CancellationToken cancellationToken)
     {
-        var video = tracker.GetVideoLag(authorId);
+        if (DebugUI.IsAudioSyncDisabled)
+            return Task.FromResult(TimeSpan.Zero);
+
+        var video = PlaybackLagTracker.GetVideoLag(authorId);
         if (video is null)
             return Task.FromResult(TimeSpan.Zero);
 
-        var audio = tracker.GetAudioLag(authorId);
+        var audio = PlaybackLagTracker.GetAudioLag(authorId);
         if (audio is null)
             return Task.FromResult(TimeSpan.Zero);
 

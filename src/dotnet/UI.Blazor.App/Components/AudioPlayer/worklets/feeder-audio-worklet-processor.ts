@@ -19,6 +19,7 @@ import { AudioRingBuffer } from '../../AudioRecorder/audio-ring-buffer';
 
 const { logScope, debugLog, warnLog } = getLogs('FeederProcessor');
 const FEEDER_TARGET_BUFFER_FRAMES = 2;
+const ESCALATED_FEEDER_TARGET_DURATION = 0.3;
 
 interface DecodedChunk {
     samples: Float32Array;
@@ -285,11 +286,17 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             return;
 
         this.frameRequestPending = true;
-        void this.decoder.requestFrame(rpcNoWait);
+        void this.decoder.requestFrame(this.feederTargetDelayMs, rpcNoWait);
     }
 
     private get feederTargetDuration(): number {
-        return FEEDER_TARGET_BUFFER_FRAMES / AUDIO.frameRate;
+        return this.bufferEscalation > 0
+            ? ESCALATED_FEEDER_TARGET_DURATION
+            : FEEDER_TARGET_BUFFER_FRAMES / AUDIO.frameRate;
+    }
+
+    private get feederTargetDelayMs(): number {
+        return this.feederTargetDuration * 1000;
     }
 }
 
