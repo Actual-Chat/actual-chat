@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Globalization;
+using ActualChat.Module;
 using ActualChat.UI.Blazor.Services;
 using AVFoundation;
 using Foundation;
@@ -78,32 +79,28 @@ public partial class MauiWebView
     private partial void OnLoaded(object? sender, EventArgs eventArgs)
         => WKWebView.UIDelegate = UIDelegate.Instance;
 
-    private partial Task SetupSessionCookie(Session session)
+    private partial Task SetupCookies(Session session)
     {
-        // It doesn't work on iOS. We use a workaround with SessionTokens. See
-        // - SessionTokens.AutoRefresh
-        // - sessionTokens.get() and api.getSessionToken() usages in TypeScript.
-#if false
-        WKWebView webView = WKWebView;
-        var cookieName = Constants.Session.CookieName;
-        var properties = new NSDictionary(
-            NSHttpCookie.KeyName, cookieName,
-            NSHttpCookie.KeyValue, session.Id,
-            NSHttpCookie.KeyPath, "/",
-            NSHttpCookie.KeyDomain, MauiSettings.Host,
-            NSHttpCookie.KeySameSitePolicy, "none",
-            NSHttpCookie.KeyVersion, "1", // Version 1 supports same site = none
-            NSHttpCookie.KeySecure, new NSString("1"),
-            new NSString("HttpOnly"), NSNumber.FromBoolean(true),
-            NSHttpCookie.KeyExpires, NSDate.FromTimeIntervalSinceNow(60 * 60 * 24 * 7));
-        var whenSetSource = TaskCompletionSourceExt.New();
-        webView.Configuration.WebsiteDataStore.HttpCookieStore.SetCookie(
-            new NSHttpCookie(properties),
-            () => whenSetSource.SetResult());
-        return whenSetSource.Task;
-#else
-        return Task.CompletedTask;
-#endif
+        // Session cookie is not set here on iOS — we use a SessionTokens workaround instead.
+        // See SessionTokens.AutoRefresh and api.getSessionToken() usages in TypeScript.
+        // GCLB cookie is set so WebView WebSocket upgrades land on the same backend as the native HTTP/WS layer.
+        var cookieStore = WKWebView.Configuration.WebsiteDataStore.HttpCookieStore;
+        return SetCookie("GCLB", $"\"{AppLoadBalancerSettings.Instance.RouteId}\"");
+
+        Task SetCookie(string name, string value) {
+            var properties = new NSDictionary(
+                NSHttpCookie.KeyName, name,
+                NSHttpCookie.KeyValue, value,
+                NSHttpCookie.KeyPath, "/",
+                NSHttpCookie.KeyDomain, MauiSettings.Host,
+                NSHttpCookie.KeySameSitePolicy, "none",
+                NSHttpCookie.KeyVersion, "1", // Version 1 supports same site = none
+                NSHttpCookie.KeySecure, new NSString("1"),
+                NSHttpCookie.KeyExpires, NSDate.FromTimeIntervalSinceNow(60 * 60 * 24 * 7));
+            var whenSetSource = TaskCompletionSourceExt.New();
+            cookieStore.SetCookie(new NSHttpCookie(properties), () => whenSetSource.SetResult());
+            return whenSetSource.Task;
+        }
     }
 
     // Nested types

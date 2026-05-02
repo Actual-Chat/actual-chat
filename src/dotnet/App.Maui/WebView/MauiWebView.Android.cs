@@ -1,3 +1,4 @@
+using ActualChat.Module;
 using Android.Webkit;
 using Microsoft.AspNetCore.Components.WebView;
 using Microsoft.Maui.Platform;
@@ -40,24 +41,30 @@ public partial class MauiWebView
 
     private partial void OnLoaded(object? sender, EventArgs eventArgs) { }
 
-    private partial async Task SetupSessionCookie(Session session)
+    private partial async Task SetupCookies(Session session)
     {
         using var webView = AndroidWebView.Hold();
         if (!webView.IsValid)
             return;
 
         var cookieManager = CookieManager.Instance!;
-        var cookieName = Constants.Session.CookieName;
-
+        var url = "https://" + MauiSettings.Host;
         // May be will be required https://stackoverflow.com/questions/2566485/webview-and-cookies-on-android
         cookieManager.SetAcceptCookie(true);
         cookieManager.SetAcceptThirdPartyCookies(AndroidWebView, true);
-        var taskSource = TaskCompletionSourceExt.New();
-        cookieManager.SetCookie(
-            "https://" + MauiSettings.Host,
-            $"{cookieName}={session.Id}; path=/; secure; samesite=none; httponly",
-            new CookieSetValueCallback(taskSource));
-        await taskSource.Task.ConfigureAwait(true);
+
+        await SetCookie(Constants.Session.CookieName, session.Id, isHttpOnly: true).ConfigureAwait(true);
+        await SetCookie("GCLB", $"\"{AppLoadBalancerSettings.Instance.RouteId}\"", isHttpOnly: false).ConfigureAwait(true);
+        return;
+
+        Task SetCookie(string name, string value, bool isHttpOnly) {
+            var attributes = isHttpOnly
+                ? "path=/; secure; samesite=none; httponly"
+                : "path=/; secure; samesite=none";
+            var taskSource = TaskCompletionSourceExt.New();
+            cookieManager.SetCookie(url, $"{name}={value}; {attributes}", new CookieSetValueCallback(taskSource));
+            return taskSource.Task;
+        }
     }
 
     // Nested types

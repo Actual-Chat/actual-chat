@@ -92,7 +92,7 @@ public sealed partial class MauiWebView
             BlazorAppServices = scopedServices;
         }
         return isSessionChanged
-            ? SetupSessionCookie(session)
+            ? SetupCookies(session)
             : Task.CompletedTask;
     }
 
@@ -141,7 +141,7 @@ public sealed partial class MauiWebView
     private partial void OnInitializing(object? sender, BlazorWebViewInitializingEventArgs eventArgs);
     private partial void OnInitialized(object? sender, BlazorWebViewInitializedEventArgs eventArgs);
     private partial void OnLoaded(object? sender, EventArgs eventArgs);
-    private partial Task SetupSessionCookie(Session session);
+    private partial Task SetupCookies(Session session);
 
     public bool HasDisconnected { get; private set; }
 
