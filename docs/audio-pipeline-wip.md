@@ -158,26 +158,77 @@ Outcome: the wire format ships only essential inputs. Adding a new
 derived value going forward is a single-line addition in
 `expandAudio` / `expandVideo`, never a .NET schema change.
 
+### Step 5 — .NET-side audio catch-up on the listener path
+
+After studying the playback pipeline more closely, the audio buffer that
+the doc describes is implemented on **the .NET listener path**, not as a
+new pre-decode buffer in JS. The reasons:
+
+- `ChatListener.OnStreamStarted` already iterates the demuxer's
+  per-author byte stream and constructs `AudioSource` from it. That
+  iteration is the natural place to drop or skip frames.
+- `AudioTrackPlayer.ProcessMediaFrame` already paces frames to JS via
+  the `_whenBufferLowSource` flow-control gate, so when .NET drops
+  frames the JS side simply receives a thinner stream and the existing
+  feeder worklet handles it without changes.
+- Replay (`ChatReplayer`) is paced by wall-clock and does not need
+  catch-up; keeping the transform on the listener path leaves replay
+  semantics untouched.
+
+What this step adds:
+
+- `IAudioCatchUpPolicy` (`src/dotnet/UI.Blazor.App/Services/Playback/IAudioCatchUpPolicy.cs`).
+  `GetDesiredCatchUp(AuthorId, ct)` returns a `TimeSpan`: positive =
+  audio should advance by that much (drop or hard-skip); ≤ 0 = no
+  correction. The current implementation `NoCatchUpPolicy` always
+  returns `TimeSpan.Zero`. Registered as a singleton.
+- `AudioFramesExt.ApplyCatchUp(...)`
+  (`src/dotnet/UI.Blazor.App/Services/Playback/AudioFramesExt.cs`).
+  Extension on `IAsyncEnumerable<AudioFrame>`. State machine
+  (Idle / SpeedUp / HardSkip) re-samples the policy every 10 frames
+  (~200 ms) and acts on the doc's thresholds:
+  `Constants.Audio.PlaybackHardSkipThreshold = 2 s`,
+  `Constants.Audio.PlaybackMaxSpeedUpDuration = 5 s`,
+  `Constants.Audio.PlaybackSpeedUpDropEveryNFrames = 4`.
+  - `desired ≥ 2 s` → hard-skip: drop frames whose offset is below
+    `currentFrame.Offset + desired`.
+  - `0 < desired < 2 s` → speed-up: drop every 4th frame, with a 5 s
+    safety cap on how long a single speed-up window can run.
+  - `desired ≤ 0` → pass-through.
+- `ChatListener.CreateAudioSource` now takes an `IAudioCatchUpPolicy`
+  and links the transform after the existing `skipTo` shift.
+  `ChatReplayer` is unchanged.
+
+With the stub policy returning zero, runtime behavior is identical to
+before this step — the transform is a pass-through. The wiring is in
+place so a follow-up step can swap in a real signal source.
+
+**Out of scope for this step:**
+
+- Wiring the actual signal (a future step will compute "audio is X ms
+  ahead of the video target" inside `ChatVideoUI` or a sibling service
+  and provide it through `IAudioCatchUpPolicy`).
+- Inverting the existing audio→video sync direction.
+- Touching the JS feeder buffer.
+- Deduping `CreateAudioSource` between `ChatListener` and `ChatReplayer`
+  — they look similar but the replay path will diverge further as it
+  doesn't gain catch-up logic.
+
 ## Next steps (proposed)
 
-After Steps 3–4, the natural next buffer-focused steps — in the order
-that keeps each commit small and reviewable — are:
+After Step 5, the remaining buffer-focused steps — in the order that
+keeps each commit small and reviewable — are:
 
-1. **Preserve `frame.Offset` end-to-end through the demuxer.** Today
-   `LiveStreamDemuxer` writes only `frame.Data` to its per-stream
-   channels and `ChatListener` reconstructs offsets by index. Carry the
-   server-supplied `Offset` through, drop the index-based reconstruction
-   in `ChatListener.CreateAudioSource`. Prepares the ground for a single
-   client-side skip decision.
-2. **Move the playback buffer pre-decode**, mirroring video Step E.1.
-   Introduce an encoded-frame `audio buffer` component that owns the
-   start threshold, hysteresis, starvation handling, and (later)
-   speed-up / hard-skip; collapse the feeder worklet to the doc's
-   small smoothing buffer (~100 ms of decoded PCM, no skip semantics).
-   With Offset preserved end-to-end this buffer can start with the
-   audio-only policy (keep all received audio) and pick up the
-   video-aligned policy in a later commit.
+1. **Wire the catch-up signal.** Implement a real `IAudioCatchUpPolicy`
+   that compares the audio's currently-presenting offset (per author)
+   against a desired target supplied by the video pipeline. Until A/V
+   sync direction is inverted, this can only react to audio-vs-server-clock
+   drift; full A/V alignment is the inversion step's job.
+2. **Preserve `frame.Offset` end-to-end through the demuxer** so the
+   catch-up transform has access to true origin time instead of the
+   index-based offsets `ChatListener.CreateAudioSource` synthesizes
+   today.
 3. **Remove server-side live catch-up.** Drop `LiveStreamMuxer`'s
    `MaxCatchUpLag = 3 s` skip and `AudioStreamingBackend.SkipTo`'s
-   live-catch-up role for audio. Once the client buffer owns the
+   live-catch-up role for audio. Once the client transform owns the
    decision, the server stops second-guessing it.

@@ -192,6 +192,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
 
         // Audio
         services.AddScoped<ITrackPlayerFactory>(c => new AudioTrackPlayerFactory(c));
+        services.AddScoped<IAudioCatchUpPolicy>(_ => new NoCatchUpPolicy());
         services.AddScoped<AudioRecorder>(c => new AudioRecorder(c.AppUIHub()));
         services.AddScoped<IAudioRecorderBackend>(c => c.GetRequiredService<AudioRecorder>());
         services.AddScoped<RecorderStateHub>(c => new RecorderStateHub(c.UIHub()));

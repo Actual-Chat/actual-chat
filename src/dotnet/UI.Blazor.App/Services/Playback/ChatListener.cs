@@ -107,9 +107,14 @@ public sealed class ChatListener : ChatPlayer
                 var latency = serverClock.Now - streamInfo.BeginsAt;
                 _ = Hub.StreamClient.ReportAudioLatency(latency, cancellationToken).ConfigureAwait(false);
 
-                // Create AudioSource from the stream frames
+                // Create AudioSource from the stream frames; the catch-up
+                // policy lets the listener path drop every N-th frame or
+                // hard-skip a chunk to align with a separate presentation
+                // timeline (currently a no-op; future steps will drive it
+                // from the video pipeline).
                 var skipTo = (playAt - streamInfo.BeginsAt).Positive();
-                var audioSource = CreateAudioSource(streamInfo, audioFrames, skipTo, cancellationToken);
+                var audioSource = CreateAudioSource(
+                    streamInfo, audioFrames, skipTo, Hub.AudioCatchUpPolicy, cancellationToken);
 
                 // Enqueue for playback
                 DebugLog?.LogDebug("Play: enqueuing stream #{StreamId} @ {SkipTo}",
@@ -131,6 +136,7 @@ public sealed class ChatListener : ChatPlayer
         LiveStreamInfo streamInfo,
         IAsyncEnumerable<ReadOnlyMemory<byte>> audioFrames,
         TimeSpan skipTo,
+        IAudioCatchUpPolicy catchUpPolicy,
         CancellationToken cancellationToken)
     {
         var format = streamInfo.Format ?? AudioSource.DefaultFormat;
@@ -145,7 +151,8 @@ public sealed class ChatListener : ChatPlayer
                 Data = f.Data,
                 Offset = f.Offset - skipTo,
                 Duration = f.Duration,
-            });
+            })
+            .ApplyCatchUp(streamInfo.AuthorId, catchUpPolicy, DebugLog, cancellationToken);
 
         return new AudioSource(
             streamInfo.BeginsAt,
