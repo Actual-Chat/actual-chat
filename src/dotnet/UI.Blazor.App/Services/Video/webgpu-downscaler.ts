@@ -1,6 +1,6 @@
 import { getLogs } from 'logging';
 
-const { infoLog } = getLogs('VideoPipeline');
+const { infoLog, warnLog } = getLogs('VideoPipeline');
 
 export interface DownscaleTarget {
     width: number;
@@ -147,6 +147,13 @@ export class WebGpuDownscaler {
     private loggedFirstFrame = false;
     private loggedIdentitySkip = false;
     private loggedAllIdentitySkip = false;
+    private loggedRewrapFail = false;
+    private loggedCanvasNormalize = false;
+    // Reused for the canvas-normalize fallback when visibleRect re-wrap can't
+    // bring `coded` down to match Plane0 (e.g. Chrome MSTP frames whose buffer
+    // is internally scaled below codedWidth/Height). One allocation per dim.
+    private normalizeCanvas: OffscreenCanvas | null = null;
+    private normalizeCtx: OffscreenCanvasRenderingContext2D | null = null;
 
     constructor(device: GPUDevice) {
         this.device = device;
@@ -249,32 +256,82 @@ export class WebGpuDownscaler {
             );
         }
 
-        // Normalize visibleRect so Chrome's importExternalTexture sees a crop
-        // that fits Plane0 (see comment above on coded/display divergence).
+        // Normalize the source so importExternalTexture's cropSize default
+        // (= source.visibleRect) fits the actual Plane0 buffer. Chrome's MSTP
+        // can deliver frames where codedWidth/Height > Plane0 buffer dim
+        // (resizeMode='crop-and-scale' surface, or sensor-side scaling that
+        // bypasses our resizeMode='none' constraint). Two-step normalization:
+        //   1. Try visibleRect re-wrap (zero-copy, just tags a new visibleRect).
+        //   2. On failure (or no improvement on re-wrap), draw the source onto
+        //      an OffscreenCanvas at (srcW, srcH) and wrap the canvas as a
+        //      fresh VideoFrame — guaranteed coded == Plane0.
         // Capture timestamp/duration before any potential close — VideoFrame
         // attributes return 0/null after close().
         const timestamp = source.timestamp;
         const duration = source.duration ?? undefined;
         let input = source;
         if (source.codedWidth > srcW || source.codedHeight > srcH) {
+            let rewrapped: VideoFrame | null = null;
             try {
-                input = new VideoFrame(source, {
+                rewrapped = new VideoFrame(source, {
                     visibleRect: { x: 0, y: 0, width: srcW, height: srcH },
                 });
-                source.close();
             }
-            catch {
-                input = source;
+            catch (e) {
+                if (!this.loggedRewrapFail) {
+                    this.loggedRewrapFail = true;
+                    warnLog?.log(
+                        `Downscaler: visibleRect re-wrap failed (coded=${source.codedWidth}x${source.codedHeight},`
+                        + ` display=${srcW}x${srcH}):`, e);
+                }
+            }
+            if (rewrapped) {
+                source.close();
+                input = rewrapped;
+            } else {
+                // Canvas-normalize fallback: draw source onto a (srcW, srcH)
+                // offscreen canvas; the canvas-backed VideoFrame is guaranteed
+                // to have coded == Plane0. Per-frame 2D copy — only fires when
+                // re-wrap is unavailable (rare on modern Chrome).
+                if (this.normalizeCanvas?.width !== srcW
+                    || this.normalizeCanvas.height !== srcH) {
+                    this.normalizeCanvas = new OffscreenCanvas(srcW, srcH);
+                    this.normalizeCtx = this.normalizeCanvas.getContext('2d');
+                }
+                if (this.normalizeCtx) {
+                    if (!this.loggedCanvasNormalize) {
+                        this.loggedCanvasNormalize = true;
+                        infoLog?.log(
+                            `Downscaler: canvas-normalize fallback engaged (coded=${source.codedWidth}x${source.codedHeight}, display=${srcW}x${srcH})`);
+                    }
+                    this.normalizeCtx.drawImage(source as unknown as CanvasImageSource, 0, 0, srcW, srcH);
+                    source.close();
+                    input = new VideoFrame(this.normalizeCanvas, { timestamp, duration });
+                } else {
+                    input = source;
+                }
             }
         }
 
-        // Identity slot = output dims match source AND rotation is zero. We
-        // skip the render entirely and clone the input frame; saves a render
-        // pass and (when ALL slots are identity) the importExternalTexture
-        // upload too — meaningful on Safari iOS where the import is not
-        // free.
+        // Identity slot = output dims match source AND rotation is zero AND
+        // there's no coded/display divergence. We skip the render entirely and
+        // clone the input frame; saves a render pass and (when ALL slots are
+        // identity) the importExternalTexture upload too — meaningful on
+        // Safari iOS where the import is not free.
+        //
+        // Coded/display divergence guard: Chrome's MSTP can deliver frames
+        // whose codedWidth/Height report the camera's native sensor dim
+        // (e.g. 1920x1080) while the actual plane0 buffer is internally scaled
+        // to displayWidth/Height (e.g. 1280x720 / 640x360). `clone()` preserves
+        // codedWidth — the downstream encoder dim-mismatch guard then drops
+        // every frame because frame.codedWidth (1920) != encoder.config.width
+        // (640). Force a render in that case so the result is a fresh
+        // canvas-backed VideoFrame whose codedWidth matches its plane0.
+        const codedMatchesDisplay =
+            source.codedWidth === srcW && source.codedHeight === srcH;
         const isIdentity = (slot: TargetSlot): boolean =>
             rotationIdx === 0
+            && codedMatchesDisplay
             && slot.target.width === srcW
             && slot.target.height === srcH;
 
