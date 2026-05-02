@@ -87,7 +87,7 @@ public static partial class Constants
         public static readonly TimeSpan LowPlaybackBufferDuration = TimeSpan.FromSeconds(10);
         public static readonly TimeSpan StartPlaybackWhenBufferedDuration = StartBufferDuration;
         public static readonly TimeSpan DecoderTargetBufferDuration = TimeSpan.FromMilliseconds(30);
-        public static readonly TimeSpan DecoderTargetBufferDurationWithVideo = TimeSpan.FromMilliseconds(200);
+        public static readonly TimeSpan DecoderTargetBufferDurationWithVideo = TimeSpan.FromMilliseconds(30);
         public static readonly TimeSpan PlaybackCatchUpCommandCooldown = TimeSpan.FromSeconds(1);
     }
 }

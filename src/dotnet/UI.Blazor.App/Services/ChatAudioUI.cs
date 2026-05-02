@@ -9,7 +9,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// <summary>
 /// Manages audio listening and recording state for chats in the UI.
 /// </summary>
-public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
+public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized, IDebugAudioSync
 {
     private static bool DebugMode => Constants.DebugMode.ChatAudioUI;
 
@@ -36,12 +36,12 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private Moment ServerNow => Clocks.ServerClock.Now;
     private new ILogger? DebugLog => DebugMode ? Log : null;
 
+    public bool IsAudioSyncEnabled { get; set; } = true;
     public SyncedState<UserReplaySettings> ReplaySettings { get; init; }
     public IState<ReplayState?> ReplayState => _replayState;
     public IState<Moment?> StopRecordingAt => _stopRecordingAt; // CPU time
     public IState<NextBeepState?> NextBeep => _nextBeep;
     public Task WhenEnabled => _whenEnabledSource.Task;
-    public bool EnableAudioSync { get; set; } = true;
 
     public ChatAudioUI(AppUIHub hub) : base(hub)
     {

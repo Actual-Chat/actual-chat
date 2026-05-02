@@ -29,13 +29,10 @@ public sealed class LiveAudioCatchUpPolicy(IServiceProvider services) : IAudioCa
 {
     private IServiceProvider Services { get; } = services;
     private PlaybackLagTracker PlaybackLagTracker => field ??= Services.GetRequiredService<PlaybackLagTracker>();
-    private DebugUI DebugUI => field ??= Services.GetRequiredService<DebugUI>();
+    private ILogger Log => field ??= Services.LogFor<LiveAudioCatchUpPolicy>();
 
     public Task<TimeSpan> GetDesiredCatchUp(AuthorId authorId, CancellationToken cancellationToken)
     {
-        if (DebugUI.IsAudioSyncDisabled)
-            return Task.FromResult(TimeSpan.Zero);
-
         var video = PlaybackLagTracker.GetVideoLag(authorId);
         if (video is null)
             return Task.FromResult(TimeSpan.Zero);
@@ -45,8 +42,19 @@ public sealed class LiveAudioCatchUpPolicy(IServiceProvider services) : IAudioCa
             return Task.FromResult(TimeSpan.Zero);
 
         var desired = audio.Value - video.Value;
-        return Task.FromResult(desired < Constants.Audio.AudioCatchUpDeadband
+        var desiredCatchUp = desired < Constants.Audio.AudioCatchUpDeadband
             ? TimeSpan.Zero
-            : desired);
+            : desired;
+        Log.LogWarning(
+            "Audio/video latency delta for {AuthorId}: "
+            + "audio = {AudioLagMs:F0}ms, video = {VideoLagMs:F0}ms, delta = {DeltaMs:F0}ms, "
+            + "desired catch-up = {DesiredCatchUpMs:F0}ms, deadband = {DeadbandMs:F0}ms",
+            authorId,
+            audio.Value.TotalMilliseconds,
+            video.Value.TotalMilliseconds,
+            desired.TotalMilliseconds,
+            desiredCatchUp.TotalMilliseconds,
+            Constants.Audio.AudioCatchUpDeadband.TotalMilliseconds);
+        return Task.FromResult(desiredCatchUp);
     }
 }

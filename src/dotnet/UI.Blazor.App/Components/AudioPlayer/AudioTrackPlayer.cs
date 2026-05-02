@@ -162,7 +162,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 
     private async ValueTask ApplyAudioSync(AudioFrame frame, CancellationToken cancellationToken)
     {
-        if (!ChatAudioUI.EnableAudioSync)
+        if (!ChatAudioUI.IsAudioSyncEnabled)
             return;
         if (TrackInfo is not ChatAudioTrackInfo { Author.Id: { } authorId })
             return;

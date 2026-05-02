@@ -231,18 +231,33 @@ export class AudioPlayer implements Resettable {
         this.contextRef = audioContextSource.createRef(this.feederNodeTrait, DemandInteractiveUI.instance);
 
         // Run the playback action
+        const whenPlaybackStarted = new PromiseSource<void>();
         this.playingAction = this.contextRef.run(async () => {
-            const attachedFeeder = this.contextRef!.getTrait<AttachedFeederNode>(this.feederNodeTrait);
-            if (!attachedFeeder)
-                throw new Error('Feeder node not attached');
+            try {
+                const attachedFeeder = this.contextRef!.getTrait<AttachedFeederNode>(this.feederNodeTrait);
+                if (!attachedFeeder)
+                    throw new Error('Feeder node not attached');
 
-            await attachedFeeder.feederNode.setBufferEscalation(this.bufferEscalation, rpcNoWait);
-            await decoderWorker!.resume(this.internalId, this.recordedAtMs, rpcNoWait);
-            await attachedFeeder.feederNode.resume(preSkip);
+                await attachedFeeder.feederNode.setBufferEscalation(this.bufferEscalation, rpcNoWait);
+                await decoderWorker!.resume(this.internalId, this.recordedAtMs);
+                await attachedFeeder.feederNode.resume(preSkip);
+                whenPlaybackStarted.resolve(undefined);
+            }
+            catch (e) {
+                whenPlaybackStarted.reject(e);
+                throw e;
+            }
         });
 
-        // Wait for context to be ready
-        await this.contextRef.whenReady();
+        // Wait until the decoder and feeder have actually resumed before C#
+        // starts pushing frames; otherwise a late decoder resume can clear them.
+        await Promise.race([
+            whenPlaybackStarted,
+            this.playingAction.whenDone.then(() => {
+                if (!whenPlaybackStarted.isCompleted())
+                    throw new Error('Audio playback startup action completed before feeder resume');
+            }),
+        ]);
 
         this.setMediaSession(title, album);
         debugLog?.log(`#${this.internalId} <- startPlayback()`);
