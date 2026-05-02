@@ -9,32 +9,61 @@ namespace ActualChat.App.Maui.Audio;
 
 public class IosAudioPlaybackEngine(
     string playerId,
+    TrackInfo info,
     IAudioPlayerBackend backend,
     AppUIHub hub
     ) : IAudioPlaybackEngine
 {
+    private readonly DurationTargetingFrameBuffer<AudioFrame> _frames = new(
+        static frame => frame.Offset,
+        static frame => frame.Duration);
+    private readonly CancellationTokenSource _decodeFeedCts = new();
+
     private VoicePlayer _voicePlayer = null!;
     private FuncWorker _processFeederWorker = null!;
     private OpusDecoder _decoder = null!;
+    private CancellationTokenSource? _watchBufferEscalationStateCts;
+    private Task? _decodeFeedTask;
+    private int _endedReported;
 
+    private ChatAudioUI ChatAudioUI => field ??= hub.Services.GetRequiredService<ChatAudioUI>();
     private ILogger Log => field ??= hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.NativeAudioPlayer);
 
     public async ValueTask DisposeAsync()
     {
+        _decodeFeedCts.CancelAndDisposeSilently();
+        _watchBufferEscalationStateCts.CancelAndDisposeSilently();
+        await _decodeFeedTask.SilentAwait().ConfigureAwait(false);
         await _processFeederWorker.DisposeSilentlyAsync().ConfigureAwait(false);
         _voicePlayer.DisposeSilently();
         _decoder.DisposeSilently();
+        _watchBufferEscalationStateCts = null;
+        _decodeFeedTask = null;
     }
 
-    public Task Play(CancellationToken cancellationToken)
+    public async Task Play(CancellationToken cancellationToken)
     {
         DebugLog?.LogInformation("#{PlayerId}.Play", playerId);
+        var chatId = (info as ChatAudioTrackInfo)?.Chat?.Id;
+        var bufferEscalation = chatId is null
+            ? 0
+            : await ChatAudioUI.GetPlaybackBufferEscalation(chatId.Value, cancellationToken).ConfigureAwait(false);
+        _frames.SetTargetDuration(Constants.Audio.GetDecoderTargetBufferDuration(bufferEscalation));
+
         _voicePlayer = new VoicePlayer(playerId, hub);
         _processFeederWorker = FuncWorker.Start(MonitorPlayer);
         _decoder = Opus.CreateDecoder();
+        _decodeFeedTask = BackgroundTask.Run(
+            () => DecodeAndFeed(_decodeFeedCts.Token),
+            Log,
+            "Failed to decode/feed iOS audio",
+            _decodeFeedCts.Token);
         _voicePlayer.Play();
-        return Task.CompletedTask;
+        if (chatId is not null) {
+            _watchBufferEscalationStateCts = cancellationToken.CreateLinkedTokenSource();
+            _ = WatchBufferEscalationState(chatId.Value, bufferEscalation, _watchBufferEscalationStateCts.Token);
+        }
     }
 
     public Task Pause(CancellationToken cancellationToken)
@@ -51,33 +80,41 @@ public class IosAudioPlaybackEngine(
         return Task.CompletedTask;
     }
 
-    public async Task End(bool abort, CancellationToken cancellationToken)
+    public Task End(bool abort, CancellationToken cancellationToken)
     {
         DebugLog?.LogInformation("#{PlayerId}.End({abort})", playerId, abort);
         if (abort) {
+            _frames.Complete();
+            _decodeFeedCts.CancelAndDisposeSilently();
             _voicePlayer.Abort();
-            backend.OnEnded(null);
+            TryReportEnded(null);
         }
         else
-            _ = BackgroundTask.Run(async () => {
-                    await _voicePlayer.Complete(cancellationToken).ConfigureAwait(false);
-                    backend.OnEnded(null);
-                },
-                cancellationToken);
+            _frames.Complete();
+        return Task.CompletedTask;
     }
 
     public ValueTask PushFrame(AudioFrame frame, CancellationToken cancellationToken)
     {
         DebugLog?.LogTrace("#{PlayerId}.PushFrame", playerId);
-        var data = _decoder.Decode(frame.Data.ToArray());
-        return _voicePlayer.Feed(data, cancellationToken);
+        if (frame.Data.Length == 0)
+            return ValueTask.CompletedTask;
+
+        _frames.Push(frame);
+        return ValueTask.CompletedTask;
     }
 
     public ValueTask SkipUntil(TimeSpan sourceOffset, CancellationToken cancellationToken)
-        => ValueTask.CompletedTask;
+    {
+        _frames.SkipUntil(sourceOffset);
+        return ValueTask.CompletedTask;
+    }
 
     public ValueTask SpeedUpUntil(TimeSpan sourceOffset, int dropEveryNFrames, CancellationToken cancellationToken)
-        => ValueTask.CompletedTask;
+    {
+        _frames.SpeedUpUntil(sourceOffset, dropEveryNFrames);
+        return ValueTask.CompletedTask;
+    }
 
     private async Task MonitorPlayer(CancellationToken cancellationToken)
     {
@@ -85,5 +122,52 @@ public class IosAudioPlaybackEngine(
             backend.OnPlaying(cPosition.Value.Position.TotalSeconds,
                 !cPosition.Value.IsPlaying,
                 cPosition.Value.IsBufferLow);
+    }
+
+    private async Task DecodeAndFeed(CancellationToken cancellationToken)
+    {
+        try {
+            await foreach (var frame in _frames.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
+                var data = _decoder.Decode(frame.Data.ToArray());
+                await _voicePlayer.Feed(data, cancellationToken).ConfigureAwait(false);
+            }
+            await _voicePlayer.Complete(cancellationToken).ConfigureAwait(false);
+            TryReportEnded(null);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+            // Expected on abort/dispose
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Decode/feed loop failed");
+            TryReportEnded(e.Message);
+        }
+    }
+
+    private async Task WatchBufferEscalationState(ChatId chatId, int initialEscalation, CancellationToken ct)
+    {
+        try {
+            var computed = await Computed
+                .Capture(() => ChatAudioUI.GetPlaybackBufferEscalation(chatId, ct), ct)
+                .ConfigureAwait(false);
+            var lastEscalation = initialEscalation;
+            await foreach (var (value, _) in computed.Changes(ct).ConfigureAwait(false)) {
+                if (value == lastEscalation)
+                    continue;
+
+                lastEscalation = value;
+                _frames.SetTargetDuration(Constants.Audio.GetDecoderTargetBufferDuration(value));
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) {
+            // Expected on dispose
+        }
+    }
+
+    private void TryReportEnded(string? message)
+    {
+        if (Interlocked.Exchange(ref _endedReported, 1) != 0)
+            return;
+
+        backend.OnEnded(message);
     }
 }

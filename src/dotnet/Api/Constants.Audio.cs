@@ -92,5 +92,10 @@ public static partial class Constants
         public static readonly TimeSpan DecoderTargetBufferDurationWithVideo
             = TimeSpan.FromMilliseconds(120); // Somehow it roughly corresponds to 333ms of video buffer size
         public static readonly TimeSpan PlaybackCatchUpCommandCooldown = TimeSpan.FromSeconds(1);
+
+        public static TimeSpan GetDecoderTargetBufferDuration(int playbackBufferEscalation)
+            => playbackBufferEscalation > 0
+                ? DecoderTargetBufferDurationWithVideo
+                : DecoderTargetBufferDuration;
     }
 }

@@ -7,6 +7,7 @@ using Windows.Media.MediaProperties;
 using ActualChat.Audio;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App.Components;
+using ActualChat.UI.Blazor.App.Services;
 using AudioFrame = Windows.Media.AudioFrame;
 
 namespace  ActualChat.App.Maui.Audio;
@@ -19,16 +20,15 @@ internal sealed class WindowsAudioPlaybackEngine(
     IServiceProvider services
     ) : IAudioPlaybackEngine
 {
-    private readonly Channel<ActualChat.Audio.AudioFrame> _packetChannel = Channel.CreateUnbounded<ActualChat.Audio.AudioFrame>(new UnboundedChannelOptions {
-        SingleReader = true,
-        SingleWriter = true,
-        AllowSynchronousContinuations = false,
-    });
+    private readonly DurationTargetingFrameBuffer<ActualChat.Audio.AudioFrame> _packetBuffer = new(
+        static frame => frame.Offset,
+        static frame => frame.Duration);
 
     private readonly BlockRingBuffer<float> _decodeBuffer = new(Constants.Audio.PlaybackSampleRate * 20); // 20-seconds buffer
     private readonly CancellationTokenSource _decodeCts = new();
 
     private CancellationTokenSource? _pauseCts;
+    private CancellationTokenSource? _watchBufferEscalationStateCts;
 
     // According to Opus spec, the decoder output must skip the first PreSkip samples at 48 kHz
     // We track how many samples remain to be skipped and drop them in the decode loop.
@@ -44,8 +44,10 @@ internal sealed class WindowsAudioPlaybackEngine(
     private volatile bool _isPaused;
     private DateTime _lastReportAt = DateTime.MinValue;
     private int _endedReported;
+    private int _decodeCompleted;
 
     private IAudioCodec AudioCodec => field ??= services.GetRequiredService<IAudioCodec>();
+    private ChatAudioUI ChatAudioUI => field ??= services.GetRequiredService<ChatAudioUI>();
 
     private MomentClockSet Clocks => field ??= services.GetRequiredService<MomentClockSet>();
 
@@ -59,6 +61,11 @@ internal sealed class WindowsAudioPlaybackEngine(
         var audioSource = (AudioSource)source;
         // Initialize pre-skip samples to drop from the beginning of decoded PCM
         _remainingPreSkip = audioSource.Format.PreSkip;
+        var chatId = (info as ChatAudioTrackInfo)?.Chat?.Id;
+        var bufferEscalation = chatId is null
+            ? 0
+            : await ChatAudioUI.GetPlaybackBufferEscalation(chatId.Value, cancellationToken).ConfigureAwait(false);
+        _packetBuffer.SetTargetDuration(Constants.Audio.GetDecoderTargetBufferDuration(bufferEscalation));
 
         // Configure Float32 mono PCM at our sample rate
         var encoding = AudioEncodingProperties.CreatePcm(
@@ -93,6 +100,10 @@ internal sealed class WindowsAudioPlaybackEngine(
         // Wait until we have enough decoded samples buffered before starting playback
         _pauseCts = new CancellationTokenSource();
         _delayedPlayTask = StartWhenBuffered(_pauseCts.Token);
+        if (chatId is not null) {
+            _watchBufferEscalationStateCts = cancellationToken.CreateLinkedTokenSource();
+            _ = WatchBufferEscalationState(chatId.Value, bufferEscalation, _watchBufferEscalationStateCts.Token);
+        }
     }
 
     public Task Pause(CancellationToken cancellationToken)
@@ -125,7 +136,7 @@ internal sealed class WindowsAudioPlaybackEngine(
     {
         if (!mustAbort) {
             // Normal end: indicate no more input packets; let decode/playback drain and finish naturally
-            _packetChannel.Writer.TryComplete();
+            _packetBuffer.Complete();
             return Task.CompletedTask;
         }
 
@@ -134,7 +145,7 @@ internal sealed class WindowsAudioPlaybackEngine(
             _frameInput?.Stop();
             _graph?.Stop();
         } catch { /* Ignore */ }
-        _packetChannel.Writer.TryComplete();
+        _packetBuffer.Complete();
         _decodeBuffer.Clear();
         _decodeCts.CancelAndDisposeSilently();
         _pauseCts?.CancelAndDisposeSilently();
@@ -150,21 +161,28 @@ internal sealed class WindowsAudioPlaybackEngine(
         if (data.Length == 0)
             return ValueTask.CompletedTask;
 
-        _packetChannel.Writer.TryWrite(frame);
+        _packetBuffer.Push(frame);
         return ValueTask.CompletedTask;
     }
 
     public ValueTask SkipUntil(TimeSpan sourceOffset, CancellationToken cancellationToken)
-        => ValueTask.CompletedTask;
+    {
+        _packetBuffer.SkipUntil(sourceOffset);
+        return ValueTask.CompletedTask;
+    }
 
     public ValueTask SpeedUpUntil(TimeSpan sourceOffset, int dropEveryNFrames, CancellationToken cancellationToken)
-        => ValueTask.CompletedTask;
+    {
+        _packetBuffer.SpeedUpUntil(sourceOffset, dropEveryNFrames);
+        return ValueTask.CompletedTask;
+    }
 
     public ValueTask DisposeAsync()
     {
         try {
             _decodeCts.CancelAndDisposeSilently();
             _pauseCts.CancelAndDisposeSilently();
+            _watchBufferEscalationStateCts.CancelAndDisposeSilently();
         }
         catch (OperationCanceledException) { }
         catch (Exception e) {
@@ -180,6 +198,7 @@ internal sealed class WindowsAudioPlaybackEngine(
         _graph = null;
         _deviceOutput = null;
         _frameInput = null;
+        _watchBufferEscalationStateCts = null;
         _decodeTask = null;
         _delayedPlayTask = null;
         return ValueTask.CompletedTask;
@@ -236,7 +255,7 @@ internal sealed class WindowsAudioPlaybackEngine(
     private async Task DecodeAndFeed(CancellationToken cancellationToken)
     {
         try {
-            var input = _packetChannel.Reader.ReadAllAsync(cancellationToken);
+            var input = _packetBuffer.ReadAllAsync(cancellationToken);
             await foreach (var pcmOwner in AudioCodec.Decode(input, cancellationToken).ConfigureAwait(false)) {
                 using var _ = pcmOwner;
                 var pcm = pcmOwner.Memory;
@@ -269,6 +288,9 @@ internal sealed class WindowsAudioPlaybackEngine(
             Log.LogError(e, "Decode/Feed loop failed");
             TryReportEnded(e.Message);
         }
+        finally {
+            Interlocked.Exchange(ref _decodeCompleted, 1);
+        }
     }
 
     private void OnQuantumStarted(AudioFrameInputNode sender, FrameInputNodeQuantumStartedEventArgs args)
@@ -295,8 +317,7 @@ internal sealed class WindowsAudioPlaybackEngine(
             }
             else {
                 hasData = false;
-                var isCompleted = _packetChannel.Reader.Completion.IsCompleted;
-                if (isCompleted) {
+                if (Volatile.Read(ref _decodeCompleted) != 0) {
                     _ = End(true, CancellationToken.None);
                     return;
                 }
@@ -342,6 +363,26 @@ internal sealed class WindowsAudioPlaybackEngine(
         }
         catch {
             // Ignore
+        }
+    }
+
+    private async Task WatchBufferEscalationState(ChatId chatId, int initialEscalation, CancellationToken ct)
+    {
+        try {
+            var computed = await Computed
+                .Capture(() => ChatAudioUI.GetPlaybackBufferEscalation(chatId, ct), ct)
+                .ConfigureAwait(false);
+            var lastEscalation = initialEscalation;
+            await foreach (var (value, _) in computed.Changes(ct).ConfigureAwait(false)) {
+                if (value == lastEscalation)
+                    continue;
+
+                lastEscalation = value;
+                _packetBuffer.SetTargetDuration(Constants.Audio.GetDecoderTargetBufferDuration(value));
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) {
+            // Expected on dispose
         }
     }
 
