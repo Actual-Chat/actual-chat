@@ -5,7 +5,6 @@ namespace ActualChat.Streaming;
 
 public interface ILiveVideoStreams : IComputeService
 {
-    [LegacyName("GetVideo", "2.6.9999")]
     Task<RpcStream<VideoFrame>?> GetStream(
         Session session,
         StreamId streamId,
@@ -13,33 +12,23 @@ public interface ILiveVideoStreams : IComputeService
         CancellationToken cancellationToken);
 
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
-    [LegacyName("ListActiveStreams", "2.6.9999")]
     Task<ApiArray<VideoStreamInfo>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
-    [LegacyName("GetVideoStreamMemberCount", "2.6.9999")]
     Task<int> GetMemberCount(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
-    [LegacyName("GetSupportedDecoderCodecs", "2.6.9999")]
     Task<ApiArray<string>> GetSupportedCodecs(Session session, ChatId chatId, CancellationToken cancellationToken);
 
-    // Publisher-facing keyframe-request signal. The old quality-adaptation model
-    // is replaced by ChangeRecordingQuality / ChangePlaybackQuality, but this
-    // method remains as the propagation path for RequestKeyFrame: the publisher
+    // Remains as the propagation path for RequestKeyFrame: the publisher
     // observes IsKeyFrameRequested = true and forces the next frame to be a KF.
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<VideoQualityPreset> GetQualityPreset(Session session, StreamId streamId, CancellationToken cancellationToken);
 
-    [LegacyName("RegisterVideoStreamMember", "2.6.9999")]
     Task RegisterMember(
-        Session session,
-        ChatId chatId,
-        ApiArray<string> supportedDecoderCodecs,
-        CancellationToken cancellationToken);
-
-    [LegacyName("UnregisterVideoStreamMember", "2.6.9999")]
-    Task UnregisterMember(Session session, ChatId chatId, CancellationToken cancellationToken);
+        Session session, ChatId chatId, ApiArray<string> supportedDecoderCodecs, CancellationToken cancellationToken);
+    Task UnregisterMember(
+        Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [RpcMethod(RemoteExecutionMode = RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect)]
     Task PushStream(

@@ -9,7 +9,7 @@ namespace ActualChat.Streaming;
 /// must use <see cref="ILiveAudioStreams"/> / <see cref="ILiveVideoStreams"/>;
 /// this interface stays only to keep installed v2.6 apps working.
 /// </summary>
-[Obsolete("2026.05: Use ILiveAudioStreams / ILiveVideoStreams. Kept for v2.6 client compat only.")]
+[Obsolete("2026.05: Use ILiveAudioStreams / ILiveVideoStreams. Kept for v2.7 client compat only.")]
 public interface IStreamServer : IRpcService
 {
     Task<RpcStream<AudioFrame>?> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken);

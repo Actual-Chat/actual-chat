@@ -39,7 +39,7 @@ public interface ILiveAudioStreams : IComputeService
 
     Task ReportAudioLatency(Session session, TimeSpan latency, CancellationToken cancellationToken);
 
-    [LegacyName("GetStream", "2.6.9999")]
+    [LegacyName("GetStream", "2.7.9999")]
     [LegacyName("GetLiveStream", "2.6.9999")]
     Task<RpcStream<LiveStreamItem>> LegacyGetStream(
         Session session,

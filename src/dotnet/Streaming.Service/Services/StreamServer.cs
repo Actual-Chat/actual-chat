@@ -6,6 +6,7 @@ namespace ActualChat.Streaming.Services;
 
 #pragma warning disable CS0618 // IStreamServer is obsolete; this is the v2.6 compat impl
 
+[Obsolete("2026.05: Use ILiveAudioStreams / ILiveVideoStreams. Kept for v2.7 client compat only.")]
 public class StreamServer(IServiceProvider services) : IStreamServer
 {
     private ILiveAudioStreams LiveAudioStreams { get; } = services.GetRequiredService<ILiveAudioStreams>();
