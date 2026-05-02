@@ -19,7 +19,6 @@ import { ObjectPool } from 'object-pool';
 import { Resettable } from 'resettable';
 import { AudioInitializer } from '../../Services/audio-initializer';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
-import { AudioVideoSync } from 'audio-video-sync';
 import { ServerClock } from 'server-clock';
 
 const { logScope, debugLog, warnLog } = getLogs('AudioPlayer');
@@ -249,8 +248,6 @@ export class AudioPlayer implements Resettable {
 
     public reset(): void {
         debugLog?.log(`#${this.internalId} reset()`);
-        if (this.authorId)
-            AudioVideoSync.clear(this.authorId);
         const attachedFeeder = this.contextRef?.getTrait<AttachedFeederNode>(this.feederNodeTrait);
         if (attachedFeeder) {
             void attachedFeeder.feederNode.pause(rpcNoWait);
@@ -377,8 +374,6 @@ export class AudioPlayer implements Resettable {
         this.playbackState = state.playbackState;
         if (this.playbackState === 'ended') {
             try {
-                if (this.authorId)
-                    AudioVideoSync.clear(this.authorId);
                 await this.reportEnded();
             }
             finally {
@@ -394,21 +389,17 @@ export class AudioPlayer implements Resettable {
             }
         }
         else {
-            if (this.authorId) {
-                AudioVideoSync.update(this.authorId, state.playingAt, this.recordedAtMs, state.playbackState);
-
-                if (state.playbackState === 'playing') {
-                    const now = ServerClock.now();
-                    if (now - this.lastLatencyLogTime > 10_000) {
-                        this.lastLatencyLogTime = now;
-                        const recordedAtMs = this.recordedAtMs + state.playingAt * 1000;
-                        const latencyMs = now - recordedAtMs;
-                        warnLog?.log(
-                            `LATENCY: authorId=${this.authorId}, ` +
-                            `now=${now.toFixed(0)}, recorded=${recordedAtMs.toFixed(0)} ` +
-                            `(recordedAt=${this.recordedAtMs.toFixed(0)}+playingAt=${(state.playingAt * 1000).toFixed(0)}), ` +
-                            `latency=${latencyMs.toFixed(0)}ms`);
-                    }
+            if (this.authorId && state.playbackState === 'playing') {
+                const now = ServerClock.now();
+                if (now - this.lastLatencyLogTime > 10_000) {
+                    this.lastLatencyLogTime = now;
+                    const recordedAtMs = this.recordedAtMs + state.playingAt * 1000;
+                    const latencyMs = now - recordedAtMs;
+                    warnLog?.log(
+                        `LATENCY: authorId=${this.authorId}, ` +
+                        `now=${now.toFixed(0)}, recorded=${recordedAtMs.toFixed(0)} ` +
+                        `(recordedAt=${this.recordedAtMs.toFixed(0)}+playingAt=${(state.playingAt * 1000).toFixed(0)}), ` +
+                        `latency=${latencyMs.toFixed(0)}ms`);
                 }
             }
             const isPaused = state.playbackState === 'paused';

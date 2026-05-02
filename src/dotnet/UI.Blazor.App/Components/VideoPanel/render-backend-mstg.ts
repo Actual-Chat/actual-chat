@@ -59,13 +59,6 @@ export class OffThreadRenderBackend implements RenderBackend {
      * tiles (CSS hides the bg canvas there anyway). Set externally after ctor.
      */
     onFocusedChange: ((focused: boolean) => void) | null = null;
-    /**
-     * Optional hook invoked once per watchdog tick (~2 s) so the main-thread
-     * VideoPlayer can poll the worker's audio-vs-wallclock drift and adjust
-     * `videoEl.playbackRate` for Rule 3 rate adaptation. Set externally
-     * after ctor; this backend just provides the cadence.
-     */
-    onWatchdogTick: (() => void) | null = null;
 
     constructor(private readonly videoEl: HTMLVideoElement) {}
 
@@ -263,9 +256,5 @@ export class OffThreadRenderBackend implements RenderBackend {
             `videoWH=${this.videoEl.videoWidth}x${this.videoEl.videoHeight} ` +
             `readyState=${this.videoEl.readyState} networkState=${this.videoEl.networkState} ` +
             `tracks=[${trackInfo}]${cssInfo} parentCls="${cls}"`);
-        // Rule 3 hook — VideoPlayer reads worker drift and adjusts playbackRate.
-        if (this.onWatchdogTick) {
-            try { this.onWatchdogTick(); } catch (e) { warnLog?.log('onWatchdogTick threw:', e); }
-        }
     }
 }

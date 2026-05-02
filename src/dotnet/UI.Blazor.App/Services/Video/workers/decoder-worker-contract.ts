@@ -172,13 +172,10 @@ export interface DecoderWorker {
      * @param serverClockOffsetMs `ServerClock.now() - Date.now()` snapshotted on
      *                 main thread. Worker can derive server-aligned now via
      *                 `Date.now() + serverClockOffsetMs`. Drives the
-     *                 wallclock-primary target in MstgSelector.tick(); without
-     *                 it the selector either drains the queue (sprint-ahead) or
-     *                 freezes when audio sync arrives behind it.
+     *                 wallclock target in MstgSelector.tick().
      * @param jitterBufferMs Initial jitter buffer in ms
-     * @param syncPort MessagePort subscribed to AudioVideoSync (transferred)
      * @param writable Optional WritableStream<VideoFrame> from main-side MSTG
-     *                 (transferred — when present, tier 2). MUST trail syncPort.
+     *                 (transferred — when present, tier 2).
      * @param bgCanvas Optional OffscreenCanvas for the blurred letterbox-fill
      *                 backdrop (§13). Worker draws the latest VideoFrame at
      *                 64×N with `ctx.filter='blur(...)'` baked into the bitmap,
@@ -191,7 +188,6 @@ export interface DecoderWorker {
         startedAtMs: number,
         serverClockOffsetMs: number,
         jitterBufferMs: number,
-        syncPort: MessagePort,
         writable?: WritableStream<VideoFrame>,
         bgCanvas?: OffscreenCanvas,
     ): Promise<void>;
@@ -208,16 +204,6 @@ export interface DecoderWorker {
      * one. No-op when no off-thread pull is active. Idempotent.
      */
     setBgPaintEnabled(enabled: boolean, noWait?: RpcNoWait): Promise<void>;
-
-    /**
-     * Returns the smoothed signed difference (ms) between the audio-anchored
-     * target and the wallclock-anchored target, as observed by the worker's
-     * MstgSelector. Positive → audio is ahead of video (video should speed up
-     * to converge). Negative → video is ahead of audio (slow down). 0 when
-     * no audio sync state is available. Used by main thread to set
-     * `videoEl.playbackRate` for ±2–5 % rate correction.
-     */
-    getDriftMs(): Promise<number>;
 
     /**
      * Forward connectivity state from main thread's ConnectivityUI to the

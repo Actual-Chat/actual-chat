@@ -46,27 +46,54 @@ Outcome: the pipe for shared audio constants exists end-to-end, so any
 follow-up step that introduces a target value can land it in one .NET
 file and reach every consumer.
 
-### Step 2 — A/V sync disabled by default (cross-pipeline)
+### Step 2 — Removed legacy `AudioVideoSync` (cross-pipeline)
 
-Not strictly an audio-side refactor, but it removes a structural coupling
-that the audio pipeline target rejects (audio publishing its `playingAt`
-and video chasing it).
+Originally this step only flipped the `AudioVideoSync` enable flag to
+`false` by default; it has since been extended to delete the entire
+audio-leads-video sync hub and its consumers, since the doc-target
+direction is the reverse and `IAudioCatchUpPolicy` is the new seam for
+the inverted signal.
 
-- `AudioVideoSync.isEnabled` defaults to `false`; reads/writes are gated
-  on a `localStorage` flag toggleable from the video diagnostics modal.
-  When disabled, `AudioVideoSync.update()` is a no-op and
-  `AudioVideoSync.get(authorId)` returns nothing. Source:
-  `src/nodejs/src/audio-video-sync.ts`.
-- `AudioTrackPlayer` (`src/dotnet/UI.Blazor.App/Components/AudioPlayer/`)
-  still calls `AudioVideoSync.update(...)` on each playback tick, but the
-  call is now a no-op for normal users. The audio side is therefore not
-  doing any presentation work it would not do in a target-aligned world,
-  even though the publishing API has not been removed yet.
+What was removed:
 
-Outcome: in the default configuration today, audio playback is no longer
-the timing source for video. This makes the target's "video establishes
-the shared delay; audio adopts it" model the only cross-pipeline behavior
-we need to design for, when A/V sync work is taken on later.
+- `src/nodejs/src/audio-video-sync.ts` and
+  `src/nodejs/src/audio-video-sync-client.ts` (the JS hub + worker-side
+  mirror). The `AudioVideoSync` log channel and its export from
+  `exports.ts` are gone too.
+- Audio-side publishers:
+  `src/dotnet/UI.Blazor.App/Components/AudioPlayer/audio-player.ts`
+  no longer calls `AudioVideoSync.update / .clear`;
+  `AudioTrackPlayer.OnPlaying` / `OnEnded` no longer invokes
+  `blazorApp.AudioVideoSync.update / .clear` on the MAUI host.
+  `_authorId`, `_recordedAtMs`, `_reportSyncToJs` deleted from
+  `AudioTrackPlayer`. The JS side keeps `authorId` / `recordedAtMs` only
+  for its own `LATENCY` diagnostic log.
+- Video-side consumers:
+  `video-player.ts` lost all three `AudioVideoSync.get / interpolatePlayingAt`
+  call sites and the `MessageChannel` it wired into the worker via
+  `subscribeWorker / unsubscribeWorker`. The `targetTimestamp`
+  computation is now wall-clock-only; the audio-vs-wallclock drift used
+  for `videoEl.playbackRate` chase (`adjustPlaybackRateForDrift` +
+  `getDriftMs`) is gone — that hook will be re-introduced from the
+  inverted direction in a follow-up step.
+- `WorkerMstgSelector` lost its `AudioVideoSyncClient`, `syncPort`
+  parameter, audio-target DIAG state, and the smoothed-drift logic.
+  `getAudioTargetUs()` now always returns the wallclock target;
+  `getDriftMs()` was deleted along with its plumbing through
+  `decoder-worker(-contract).ts` and `render-backend-mstg.onWatchdogTick`.
+- `VideoDiagnosticsSettingsModal` lost the "Enable A/V sync" toggle and
+  the `AvSyncEnabled` field on `VideoDebugSettings`. Stale comment in
+  `AudioStreamingBackend.ProcessAudio.cs` (about preserving the clock
+  base for "AudioVideoSync calculations") was rewritten.
+
+Outcome: the audio-leads-video coupling is gone end-to-end. Video falls
+back to wall-clock pacing in all paths it used to consult audio for; the
+inverted, doc-target direction will arrive through `IAudioCatchUpPolicy`
+in a later step. The `bufferEscalation` mechanism (audio's start buffer
+grows to 500 ms when `ChatVideoUI.HasRemoteStreams` is true) is left in
+place — it doesn't go through `AudioVideoSync`, and removing it without
+a replacement could regress real-world A/V experience while the new
+catch-up signal is still stubbed.
 
 ---
 

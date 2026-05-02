@@ -117,7 +117,6 @@ export type LogScope =
     | 'TooltipHost'
     | 'UserInterface'
     | 'VideoPanel'
-    | 'AudioVideoSync'
     | 'JoinVideoCallModal'
     | 'VideoPlayer'
     | 'VideoRecorder'
@@ -224,7 +223,6 @@ const defaults: Record<LogScope, LogLevel> = {
     UserInterface: LogLevel.Warn,
     // Video — Debug for latency troubleshooting (preserved from old reset())
     VideoPanel: LogLevel.Debug,
-    AudioVideoSync: LogLevel.Debug,
     JoinVideoCallModal: LogLevel.Info,
     VideoPlayer: LogLevel.Debug,
     VideoRecorder: LogLevel.Warn,

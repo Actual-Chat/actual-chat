@@ -59,9 +59,8 @@ public partial class AudioStreamingBackend
         var session = record.Session;
         var chatId = record.ChatId;
         // Use client's server-synced clock (same as video) for consistent A/V timing.
-        // Previously used Clocks.SystemClock.Now which added client→server transit time
-        // to the timestamp, causing audio recordedAtMs to be on a different clock base
-        // than video startedAtMs and breaking AudioVideoSync calculations.
+        // Avoids adding client→server transit time to the timestamp, which would put
+        // audio recordedAtMs on a different clock base than video startedAtMs.
         var beginsAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
         var serverNow = Clocks.ServerClock.Now;
         var clockDelta = serverNow - beginsAt;

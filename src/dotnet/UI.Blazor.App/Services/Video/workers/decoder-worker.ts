@@ -1467,7 +1467,6 @@ const serverImpl: DecoderWorker = {
         startedAtMs: number,
         serverClockOffsetMs: number,
         jitterBufferMs: number,
-        syncPort: MessagePort,
         writable?: WritableStream<VideoFrame>,
         bgCanvas?: OffscreenCanvas,
     ): Promise<void> => {
@@ -1486,7 +1485,6 @@ const serverImpl: DecoderWorker = {
             // Tier 1: try to construct generator inside this worker.
             const gen = tryCreateOffThreadGenerator();
             if (!gen) {
-                try { syncPort.close(); } catch { /* ignore */ }
                 throw new Error('Off-thread renderer unsupported: neither MediaStreamTrackGenerator nor VideoTrackGenerator is available in worker context');
             }
             selectorWritable = gen.writable;
@@ -1507,7 +1505,7 @@ const serverImpl: DecoderWorker = {
         }
 
         mstgSelector = new WorkerMstgSelector(
-            selectorWritable, syncPort, startedAtMs, serverClockOffsetMs, jitterBufferMs, bgPainter);
+            selectorWritable, startedAtMs, serverClockOffsetMs, jitterBufferMs, bgPainter);
 
         // Idempotent — usually a no-op here because main calls prewarmRpc()
         // immediately after initialize(), starting the WS handshake in
@@ -1535,11 +1533,6 @@ const serverImpl: DecoderWorker = {
     // eslint-disable-next-line @typescript-eslint/require-await
     setBgPaintEnabled: async (enabled: boolean): Promise<void> => {
         if (mstgSelector) mstgSelector.setBgPaintEnabled(enabled);
-    },
-
-    // eslint-disable-next-line @typescript-eslint/require-await
-    getDriftMs: async (): Promise<number> => {
-        return mstgSelector ? mstgSelector.getDriftMs() : 0;
     },
 
     // eslint-disable-next-line @typescript-eslint/require-await

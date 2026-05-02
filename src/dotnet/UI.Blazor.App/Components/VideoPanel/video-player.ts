@@ -3,7 +3,6 @@ import { Api, momentToSeconds, secondsToMoment, streamingApi, type VideoFrameDto
 import { ServerClock } from 'server-clock';
 import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
-import { AudioVideoSync } from 'audio-video-sync';
 import { DocumentEvents } from 'event-handling';
 import { Versioning } from 'versioning';
 import { type EventHandler } from 'event-handling';
@@ -257,7 +256,6 @@ export class VideoPlayer {
     // Off-thread mode: when true, the decoder worker owns the Fusion RPC pull
     // and main does no per-frame work. Set after a successful startPullInWorker.
     private offThreadPullActive = false;
-    private offThreadSyncChannel: MessageChannel | null = null;
     // DIAG: counts entries to delegatePullToWorker for this VideoPlayer instance.
     // Used to confirm whether retry paths re-enter the off-thread setup.
     private delegateEntryCount = 0;
@@ -426,47 +424,6 @@ export class VideoPlayer {
         this.decoderReady = this.initDecoderWorker(codec, width, height, codecSettings);
     }
 
-    // Rule 3 — adaptive `<video>.playbackRate` to converge on the audio
-    // clock. Worker exposes a smoothed signed drift (audio target − wallclock
-    // target). Hysteresis: nudge to 1.05/0.95 when |drift| > 100 ms, snap back
-    // to 1.0 when |drift| < 30 ms. ±5 % is below the just-noticeable
-    // pitch-shift threshold for video and large enough to converge ~100 ms of
-    // drift in 2 s. Runs on the watchdog cadence (~2 s) — we don't need finer.
-    //
-    // Why thresholds widened from 50/20 to 100/30: the worker selector now
-    // tracks the full audio-pipeline lag (no ±100 ms clamp on correctionUs),
-    // so steady-state drift sits at ±20–50 ms naturally. Reserving rate
-    // correction for >100 ms avoids constant micro-flips during normal
-    // operation; it kicks in only on the cold-audio jump (~600 ms) where
-    // we genuinely need to reel video back over a few seconds.
-    private async adjustPlaybackRateForDrift(): Promise<void> {
-        if (!this.decoderWorker || this.renderBackend.kind !== 'mstg') return;
-        let driftMs: number;
-        try { driftMs = await this.decoderWorker.getDriftMs(); }
-        catch { return; }
-        if (!Number.isFinite(driftMs)) return;
-        const current = this.videoEl.playbackRate;
-        const ENTER = 100;  // start correcting when |drift| > 100 ms
-        const EXIT = 30;    // snap back to 1.0 when |drift| < 30 ms
-        let next = current;
-        if (driftMs > ENTER) next = 1.05;             // audio ahead → speed video up
-        else if (driftMs < -ENTER) next = 0.95;       // video ahead → slow video down
-        else if (Math.abs(driftMs) < EXIT) next = 1.0;
-        if (next !== current)
-            this.videoEl.playbackRate = next;
-        // Continuous A/V sync DIAG line — fires every watchdog tick (~2 s),
-        // not only on rate changes. Lets us see steady-state drift without
-        // requiring a rate change to surface it. `currentTime` is the visible
-        // playback head (off-thread mode). `playbackRate` shows whether
-        // Rule 3 is currently correcting; `→Y` part appears only on flips.
-        const rateStr = next !== current
-            ? `playbackRate=${current.toFixed(2)}→${next.toFixed(2)}`
-            : `playbackRate=${current.toFixed(2)}`;
-        warnLog?.log(
-            `AVSync DIAG: driftMs=${driftMs.toFixed(0)} ` +
-            `videoCurrentTime=${this.videoEl.currentTime.toFixed(3)}s ${rateStr}`);
-    }
-
     // Hide the inactive render surface via inline `style.display`. Razor doesn't
     // bind `style` on these elements, so Blazor's diff never overwrites it —
     // unlike a parent class toggle, which gets clobbered when `FocusedClass`
@@ -598,9 +555,6 @@ export class VideoPlayer {
                     if (!this.decoderWorker) return;
                     void this.decoderWorker.setBgPaintEnabled(focused, rpcNoWait);
                 };
-                // Rule 3: poll worker drift each watchdog tick (~2 s) and
-                // adjust <video>.playbackRate to converge audio + video.
-                mstgBackend.onWatchdogTick = () => { void this.adjustPlaybackRateForDrift(); };
             }
 
             if (this.useStreams) {
@@ -817,72 +771,33 @@ export class VideoPlayer {
 
         this.renderFrameCount++;
 
-        // Compute target — audio-driven when available, wall-clock fallback
-        let targetTimestamp: number;
-        const audioState = AudioVideoSync.get(this.authorId);
-        if (audioState) {
-            const audioPlayingAtMs = AudioVideoSync.interpolatePlayingAt(audioState) * 1000;
-            const audioStartAtMs = audioState.recordedAtMs - audioState.playingAtSec * 1000;
-            const rawTargetVideoOffsetMs = (audioStartAtMs - this.startedAtMs) + audioPlayingAtMs;
-            // Audio sync already accounts for end-to-end latency through audioState.recordedAtMs —
-            // subtracting pipelineLatencyMs would double-count, making the target too conservative
-            // and causing buffer bloat → render stall → SKIP_TO_LIVE spiral.
-            const targetVideoOffsetMs = rawTargetVideoOffsetMs;
-            targetTimestamp = targetVideoOffsetMs * 1000;
-
-            // When audio sync targets a time before this video stream started
-            // (e.g., new stream created after codec switch), or far behind the
-            // buffered frames (stale audio state after SKIP_TO_LIVE), snap to
-            // live edge to avoid permanent render starvation.
-            if (this.pendingFrames.length > 0) {
-                const oldestBufferedMs = this.pendingFrames.peekFront()!.timestamp / 1000;
-                if (rawTargetVideoOffsetMs < 0 || targetVideoOffsetMs < oldestBufferedMs - 2000) {
-                    targetTimestamp = this.pendingFrames.peekBack()!.timestamp;
-                }
-            }
-
+        // Wall-clock pacing. Late-join catchup uses the gap between newest
+        // arrived and newest rendered offsets — works on sparse-heartbeat
+        // streams (e.g. static screencast) where the single-slot decoded
+        // queue never accumulates even when we're behind live. With encoded
+        // buffer pacing upstream there is no bufferSpan-based hard-seek or
+        // playbackRate chase to perform.
+        const liveGapMs = this.lastArrivedOffsetMs - this.lastRenderedOffsetMs;
+        if (liveGapMs > LATE_JOIN_GAP_MS
+            && this.pendingFrames.length > 0
+            && (now - this.lastSeekTime) > this.seekCooldownMs) {
+            const latestTimestamp = this.pendingFrames.peekBack()!.timestamp;
             this.playbackStartTime = now;
-            this.firstFrameTimestamp = targetTimestamp;
+            this.firstFrameTimestamp = latestTimestamp;
+            this.lastSeekTime = now;
+            warnLog?.log(
+                `Late-join catchup: jumped to live edge, ` +
+                `lastArrivedMs=${this.lastArrivedOffsetMs.toFixed(0)}, ` +
+                `lastRenderedMs=${this.lastRenderedOffsetMs.toFixed(0)}, ` +
+                `gapMs=${liveGapMs.toFixed(0)}`);
+        }
 
-            if (now - this.lastSyncLogTime > 1000) {
-                this.lastSyncLogTime = now;
-                const driftMs = this.lastRenderedOffsetMs - targetVideoOffsetMs;
-                debugLog?.log(
-                    `audioSync: rawTargetMs=${rawTargetVideoOffsetMs.toFixed(0)}, ` +
-                    `pipelineMs=${this.pipelineLatencyMs.toFixed(0)}, ` +
-                    `targetMs=${targetVideoOffsetMs.toFixed(0)}, ` +
-                    `renderedMs=${this.lastRenderedOffsetMs.toFixed(0)}, ` +
-                    `driftMs=${driftMs.toFixed(0)}, pending=${this.pendingFrames.length}`);
-            }
-        } else {
-            // Wall-clock fallback (no audio sync). Late-join catchup uses the
-            // gap between newest arrived and newest rendered offsets — works
-            // on sparse-heartbeat streams (e.g. static screencast) where the
-            // single-slot decoded queue never accumulates even when we're
-            // behind live. With encoded buffer pacing upstream there is no
-            // bufferSpan-based hard-seek or playbackRate chase to perform.
-            const liveGapMs = this.lastArrivedOffsetMs - this.lastRenderedOffsetMs;
-            if (liveGapMs > LATE_JOIN_GAP_MS
-                && this.pendingFrames.length > 0
-                && (now - this.lastSeekTime) > this.seekCooldownMs) {
-                const latestTimestamp = this.pendingFrames.peekBack()!.timestamp;
-                this.playbackStartTime = now;
-                this.firstFrameTimestamp = latestTimestamp;
-                this.lastSeekTime = now;
-                warnLog?.log(
-                    `Late-join catchup: jumped to live edge, ` +
-                    `lastArrivedMs=${this.lastArrivedOffsetMs.toFixed(0)}, ` +
-                    `lastRenderedMs=${this.lastRenderedOffsetMs.toFixed(0)}, ` +
-                    `gapMs=${liveGapMs.toFixed(0)}`);
-            }
+        const elapsedUs = (now - this.playbackStartTime) * 1000;
+        const targetTimestamp = this.firstFrameTimestamp + elapsedUs;
 
-            const elapsedUs = (now - this.playbackStartTime) * 1000;
-            targetTimestamp = this.firstFrameTimestamp + elapsedUs;
-
-            if (now - this.lastSyncLogTime > 2000) {
-                this.lastSyncLogTime = now;
-                debugLog?.log(`wallClock: authorId=${this.authorId}, pending=${this.pendingFrames.length}`);
-            }
+        if (now - this.lastSyncLogTime > 2000) {
+            this.lastSyncLogTime = now;
+            debugLog?.log(`wallClock: authorId=${this.authorId}, pending=${this.pendingFrames.length}`);
         }
 
         if (this.renderFrameCount % 60 === 0) {
@@ -1505,22 +1420,10 @@ export class VideoPlayer {
             receivedKeyframeCount = this.receivedKeyframeCount;
         }
 
-        // Compute A/V drift. In off-thread (mstg) mode the main-thread render
-        // loop never runs, so `lastRenderedOffsetMs` stays at 0 and the
-        // resulting drift is meaningless (≈ −stream-elapsed). Substitute
-        // `videoEl.currentTime` — the MSTG element's clock IS the rendered
-        // video position. Unit: seconds → multiply by 1000 for ms.
-        let avDriftMs: number | null = null;
-        const audioState = AudioVideoSync.get(this.authorId);
-        if (audioState) {
-            const audioPlayingAtMs = AudioVideoSync.interpolatePlayingAt(audioState) * 1000;
-            const targetVideoOffsetMs = (audioState.recordedAtMs - this.startedAtMs)
-                + audioPlayingAtMs - this.pipelineLatencyMs;
-            const renderedOffsetMs = this.renderBackend.kind === 'mstg'
-                ? this.videoEl.currentTime * 1000
-                : this.lastRenderedOffsetMs;
-            avDriftMs = Math.round(renderedOffsetMs - targetVideoOffsetMs);
-        }
+        // A/V drift was computed against AudioVideoSync; the hub has been
+        // removed, so report null until the new video-driven catch-up signal
+        // is wired (see docs/audio-pipeline-wip.md).
+        const avDriftMs: number | null = null;
 
         return {
             streamId: this.streamId,
@@ -1596,9 +1499,6 @@ export class VideoPlayer {
             warnLog?.log(`delegatePullToWorker DIAG: Tier 2 unavailable (no globalThis.MediaStreamTrackGenerator), falling back to worker tier`);
         }
 
-        const channel = new MessageChannel();
-        AudioVideoSync.subscribeWorker(this.authorId, channel.port1);
-        this.offThreadSyncChannel = channel;
         const apiUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
         // Hand the bg canvas to the worker so it can paint a low-res blurred
         // backdrop directly (see §13). transferControlToOffscreen() can be
@@ -1630,7 +1530,6 @@ export class VideoPlayer {
             await this.decoderWorker.startPullInWorker(
                 streamId, skipToMs, apiUrl,
                 this.startedAtMs, serverClockOffsetMs, JITTER_BUFFER_MS,
-                channel.port2,
                 mainWritable,
                 bgOffscreen);
             this.offThreadPullActive = true;
@@ -1641,9 +1540,6 @@ export class VideoPlayer {
             if (mainGenerator) {
                 try { mainGenerator.stop(); } catch { /* ignore */ }
             }
-            AudioVideoSync.unsubscribeWorker(this.authorId, channel.port1);
-            try { channel.port1.close(); } catch { /* ignore */ }
-            this.offThreadSyncChannel = null;
             return false;
         }
     }
@@ -1728,11 +1624,6 @@ export class VideoPlayer {
         if (this.offThreadPullActive && this.decoderWorker) {
             try { void this.decoderWorker.stopPullInWorker(rpcNoWait); } catch { /* ignore */ }
             this.offThreadPullActive = false;
-        }
-        if (this.offThreadSyncChannel) {
-            AudioVideoSync.unsubscribeWorker(this.authorId, this.offThreadSyncChannel.port1);
-            try { this.offThreadSyncChannel.port1.close(); } catch { /* ignore */ }
-            this.offThreadSyncChannel = null;
         }
         if (this.connectivityHandlerOnline) {
             ConnectivityUI.isOnlineChanged.remove(this.connectivityHandlerOnline);
@@ -1967,23 +1858,6 @@ export class VideoPlayer {
                     }
                     this.codecSlowTickCount = 0;
                     this.qualityReductionRequested = false;
-                }
-
-                // A/V sync diagnostics
-                const audioState = AudioVideoSync.get(this.authorId);
-                if (audioState) {
-                    const audioPlayingAtMs = AudioVideoSync.interpolatePlayingAt(audioState) * 1000;
-                    const targetVideoOffsetMs = (audioState.recordedAtMs - this.startedAtMs)
-                        + audioPlayingAtMs - this.pipelineLatencyMs;
-                    const avDriftMs = this.lastRenderedOffsetMs - targetVideoOffsetMs;
-                    warnLog?.log(
-                        `AV_SYNC: drift=${avDriftMs.toFixed(0)}ms ` +
-                        `(videoOffset=${this.lastRenderedOffsetMs.toFixed(0)}ms, ` +
-                        `targetOffset=${targetVideoOffsetMs.toFixed(0)}ms, ` +
-                        `audioPlayingAt=${audioPlayingAtMs.toFixed(0)}ms, ` +
-                        `audioState=${audioState.playbackState})`);
-                } else {
-                    warnLog?.log(`AV_SYNC: no audio state for authorId=${this.authorId}`);
                 }
 
                 // Send enriched latency report with diagnostics + RTT measurement
