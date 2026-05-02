@@ -265,3 +265,204 @@ Smaller updates that didn't change wire/data structures but kept the
   follower path are off by default; admins can re-enable from
   diagnostics settings while the doc-target "video establishes the
   presentation delay" model is being designed.
+
+## Planned next steps — quality control rewrite
+
+Three-step rewrite of recording and playback quality control. Both
+controllers move to the client; `LiveVideoStreams` becomes the single
+quality-control API and the server-side filter becomes a thin layer-cap
+clamp. See `docs/video-pipeline.md` §"Recording Quality Control",
+§"Playback Quality Control", and §"API Surface" for the target design.
+
+### Step 8 — API restructure + server architecture move (no controllers yet)
+
+Lands the new per-media service split (`ILiveVideoStreams` /
+`ILiveAudioStreams`), retires `IStreamServer`'s video surface,
+introduces the thin server-side filter, and rebinds the TS facade. No
+quality controllers yet — every active stream serves at a fixed
+default. Controllers come in Steps 9–10.
+
+#### 8.1 — `ILiveAudioStreams`: new audio surface + transcript move
+
+- **New `ILiveAudioStreams`** with `Session` as the first arg of
+  every method:
+  - `PushAudio(Session, AudioRecord, RpcStream<AudioFrame>, ct)` —
+    moved from `IStreamServer.PushAudio`.
+  - `GetStream(Session, streamId, skipTo, ct)` — moved from
+    `IStreamServer.GetAudio`. Renamed to `GetStream` for symmetry
+    with `ILiveVideoStreams`.
+  - `GetTranscriptStream(Session, streamId, ct)` — moved from
+    `IStreamServer.GetTranscript`.
+  - `ReportAudioLatency(Session, …, ct) → Task<RpcNoWait>` — moved
+    from `IStreamServer.ReportAudioLatency`. Shape unchanged (audio
+    quality control is not being redesigned in this pass).
+- **`IStreamServer` audio + transcript methods** become thin proxies
+  that forward to `ILiveAudioStreams`, passing `Session.Default` (a
+  local in-process call; the value is not meaningfully populated but
+  the implementation ignores it).
+
+#### 8.2 — `ILiveVideoStreams`: video write path
+
+- **New methods on `ILiveVideoStreams`** with `Session` first arg:
+  - `PushVideo(Session, VideoRecord, RpcStream<VideoFrame>, ct)` —
+    moved from `IStreamServer.PushVideo`.
+  - `RequestKeyFrame(Session, streamId, ct) → Task<RpcNoWait>` —
+    moved from `IStreamServer.RequestKeyFrame`. Return type changed
+    from `Task` to `Task<RpcNoWait>` (fire-and-forget at wire level).
+- **`IStreamServer` video methods removed entirely** (no proxy):
+  `PushVideo`, `GetVideo`, `RequestKeyFrame`, `ReportVideoLatency`.
+  Old ActualChat builds cannot push or consume video, so removing
+  these is safe.
+- **`IStreamServer` marked `[Obsolete]`** at the type level. New
+  TypeScript code never calls it.
+
+#### 8.3 — `ILiveVideoStreams`: video read + thin filter
+
+- **New `ReceiveQuality` DTO**: `(MaxSpatialLayer, MaxTemporalLayer)`
+  in `Api/`.
+- **New `ReceiveQualityFilter`** (replaces `VideoStreamFilter`):
+  - Reads current `ReceiveQuality` from a per-(session, stream)
+    store.
+  - Drops frames where `SpatialLayerId > maxSpatial` or
+    `TemporalLayerId > maxTemporal`.
+  - Skip-until-keyframe on cap change.
+  - Skip-until-keyframe on `KeyFrameNumber` gap (decoder safety,
+    inherited from today's filter).
+  - That's the whole filter — ~50 lines vs today's ~280.
+- **New `ILiveVideoStreams.GetStream(Session, streamId, skipTo, ct)`**:
+  calls `IVideoStreamingBackend.GetVideoRaw` and wraps in
+  `ReceiveQualityFilter`. `RpcStream<VideoFrame>` returned with
+  `AckPeriod=5`, `BufferSize=10` as today.
+- **Per-session quality store** on `LiveVideoStreams` (sticky routing
+  keeps state local to one API server). Seeded with a fixed default
+  `(MaxSpatial=2, MaxTemporal=int.MaxValue)` until Step 10 wires
+  `ChangePlaybackQuality`.
+
+#### 8.4 — TS `streaming-api` rebind
+
+The TS facade module stays. It rebinds onto the per-media services:
+
+| Service | Methods exposed in TS |
+|---|---|
+| `liveVideoStreams` | `PushVideo`, `GetStream`, `RequestKeyFrame`, `ChangeRecordingQuality` (stub-targeted), `ChangePlaybackQuality` (stub-targeted) |
+| `liveAudioStreams` | `PushAudio`, `GetStream`, `GetTranscriptStream`, `ReportAudioLatency` |
+
+- All callsites pass `'~'` (= `RPC_SESSION_DEFAULT`) as the `session`
+  parameter; server-side middleware resolves it from the WS
+  `?session=` URL param (same pattern `PushVideo` uses today).
+- Concrete TS callsite swaps:
+  - `streamServer.GetVideo(...)` → `liveVideoStreams.GetStream('~', ...)`
+    in `decoder-worker.ts:393` and `video-player.ts:1371`.
+  - `streamServer.PushVideo(...)` → `liveVideoStreams.PushVideo('~', ...)`
+    in `video-streaming.ts:246`.
+  - `streamServer.RequestKeyFrame(...)` → `liveVideoStreams.RequestKeyFrame('~', ...)`
+    wherever video PLI is requested.
+  - Audio + transcript callsites swap analogously.
+  - `streamServer.ReportVideoLatency(...)` callsites are deleted —
+    no longer needed; replaced by the controller pushes in Steps
+    9–10.
+
+#### 8.5 — Deletions
+
+No longer reachable after the new surface lands:
+
+- `Streaming.Service/Services/VideoStreamFilter.cs`.
+- `Streaming.Service/Backend/LiveVideoBackend.ChatState.cs`
+  priority/pause logic (`EvaluatePriority`, `_pausedStreamIds`,
+  `MaxWebcamStreamsPerChat`, `SilenceGracePeriod`,
+  `PriorityActivationThreshold`). Codec-set tracking stays.
+- `StreamLatencyStore.RecordFrameBytes` and the throughput logic
+  above it (`_totalBytesReceived`, `_bytesAtLastCheck`,
+  `_consecutiveHighThroughputChecks`, `EvaluateQuality`'s
+  over-delivery branch).
+- `VideoQualityPreset.Paused` enum value and the publisher-side
+  pause branch in `VideoRecorder`.
+- `VideoStreamingBackend.GetVideo` (the version that wraps
+  `VideoStreamFilter`). `GetVideoRaw` stays.
+
+#### 8.6 — End state
+
+After Step 8 every active video stream serves at
+`(spatial=2, all temporal)` regardless of conditions — coarser than
+today but predictable. The pipeline is ready for the controllers.
+`IStreamServer` survives only for legacy audio + transcript reads from
+old client builds; new TS code uses the per-media services
+exclusively.
+
+### Step 9 — Recording quality controller
+
+- **`RpcStream` API additions** (item-agnostic, in `ActualLab.Rpc`):
+  - `int UnackedCount { get; }`
+  - `TimeSpan OldestUnackedAge { get; }` (Zero when buffer empty)
+  - `long TotalSent / TotalAcked / TotalSkipped { get; }`
+  - `int MaxAllowedSkipsPerWindow { get; init; } = int.MaxValue`
+  - `event Action? OnAck` — fired post-ACK, post-compaction.
+- **Worker `RecorderHealth` DTO + 1 Hz aggregation** in
+  `video-processing.ts`:
+  - `encodeRatio.p50/p90`, `slotReplacements/framesProduced`,
+    `senderBacklog.p90`, `senderSkipsPerWindow`, `lastAckAgeMs`.
+  - Posted to `.NET` via `DotNetObjectReference` callback every
+    1 s.
+- **`ILiveVideoStreams.ChangeRecordingQuality(Session, state?, info?)`
+  server stub**: accepts and discards (Trace-logged). Pure metrics
+  surface for later.
+- **`VideoQualityUI` service** (new sibling of `ChatVideoUI`):
+  - Owns the recorder branch — per-`StreamKind` `targetLayerCount`
+    state across reconnects.
+  - 1 Hz tick, gated by `ConnectivityUI.IsConnected`.
+  - Ternary classifier per signal `{-1, 0, +1}` with neutral band.
+  - AIMD aggregation: any `-1` → step down + K-window cooldown;
+    all `+1` for K windows → step up.
+  - Initial `targetLayerCount = 2`. Floor = 1 (sticky).
+  - On reconnect: keep last state, wipe windows, 2 s cold-start
+    grace.
+  - On every decision and on a 5 s heartbeat (decision resets the
+    timer): apply via `VideoRecorder.SetSimulcastLayers(...)` and
+    push `ChangeRecordingQuality` with `(state, info)` or
+    `(null, info)`.
+
+### Step 10 — Playback quality controller
+
+- **`PlaybackHealth` per-stream DTO + sampling** in `decoder-worker.ts`:
+  - `bufferDuration` (encoded buffer span ms, p50),
+    `incomingByteRate`, `keyframeSkipsInWindow`,
+    `decoderQueue.p90`. Posted to `.NET` per stream, 1 Hz.
+- **`ReceiveQuality` per-stream record + `ApiMap` payload** types
+  in shared `Api/`.
+- **`PlaybackQualityInfo` + `PlaybackStreamInfo`**: capacity estimate,
+  byte-weighted aggregate, reason, cold-start flag, per-stream
+  observed signals + currently-served caps.
+- **`ILiveVideoStreams.ChangePlaybackQuality(Session, requestedQuality?, info?)`
+  server impl**:
+  - Replaces the per-session quality store seed from Step 8.
+  - Applies safety cap: count entries with
+    `(MaxSpatial > 0 || MaxTemporal > 0)`, demote surplus to
+    `(0, 0)` ordering Secondary-before-Primary, then by request
+    order. Cap = `ServerCap = 9`.
+  - Atomically replaces the stored map. Active filters pick up on
+    next iteration; cap changes apply at next keyframe on the
+    affected layer.
+- **Playback branch of `VideoQualityUI`**:
+  - Single client-wide controller across all chats and active
+    streams.
+  - Per-stream ternary verdict from `bufferDuration` and
+    `keyframeSkips`.
+  - Byte-weighted aggregate; capacity estimate updated √2-bounded
+    on the climb, ×0.7 on backoff.
+  - Greedy primary-first allocator: top quality for primaries,
+    secondaries default `(maxSpatial=1, maxTemporal=0)`.
+  - Cadence: 2 s ticks while
+    `min(oldStreamCount, newStreamCount) ≤ 3`, else 5 s; cold
+    start lasts 10 s of stable active set.
+  - Primary-promotion path: immediate sub-cycle push.
+  - Reconnect: re-push last-known map immediately on
+    `ConnectivityUI.IsConnected → true`.
+- **Priority signal source**: rebind today's `RenderQuality`
+  per-canvas-width hint (already client-driven, sent via
+  `ResizeObserver`) as the Primary/Secondary classifier — focused
+  tile = Primary, sidebar = Secondary.
+- **Stream subscription policy**: in chats with > 8 webcams the
+  client picks which streams to subscribe to (top by recent audio
+  activity from the existing audio-activity broadcast). The server
+  no longer enforces "max webcams per chat" — if no client
+  subscribes, no server work happens.
