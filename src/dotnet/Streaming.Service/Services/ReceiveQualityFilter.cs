@@ -4,10 +4,11 @@ namespace ActualChat.Streaming.Services;
 
 /// <summary>
 /// Per-consumer video filter that clamps a raw stream to the client-requested
-/// spatial and temporal caps. Forwards exactly one spatial layer (highest
-/// available not exceeding MaxSpatialLayer) and drops frames above the
-/// MaxTemporalLayer cap. Skip-until-keyframe on cap change and on
-/// keyframe-number gaps for decoder safety.
+/// spatial and temporal caps. Picks the spatial layer per keyframe by clamping
+/// the consumer's <see cref="ReceiveQuality.MaxSpatialLayer"/> into the
+/// producer-declared range <c>[MinSpatialLayerId, MaxSpatialLayerId]</c> on
+/// the frame itself; only switches layers on a keyframe so a producer-side
+/// ladder change mid-GOP triggers skip-until-next-keyframe, not torn output.
 /// </summary>
 public static class ReceiveQualityFilter
 {
@@ -20,47 +21,53 @@ public static class ReceiveQualityFilter
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         _ = log;
-        var maxSpatial = -1;
-        var maxTemporal = int.MaxValue;
-        var observedMaxSpatial = 0;
+        var consumerMaxSpatial = -1;
+        var consumerMaxTemporal = int.MaxValue;
         var selectedLayer = -1;
         var lastKeyFrameNumber = -1L;
         var skipping = true;
         var capRefreshAt = CpuTimestamp.Now;
 
         await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-            if (maxSpatial < 0 || capRefreshAt.Elapsed >= CapRefreshInterval) {
+            if (consumerMaxSpatial < 0 || capRefreshAt.Elapsed >= CapRefreshInterval) {
                 var q = getQuality();
-                if (q.MaxSpatialLayer != maxSpatial || q.MaxTemporalLayer != maxTemporal) {
-                    maxSpatial = q.MaxSpatialLayer;
-                    maxTemporal = q.MaxTemporalLayer;
-                    skipping = true;
-                }
+                consumerMaxSpatial = q.MaxSpatialLayer;
+                consumerMaxTemporal = q.MaxTemporalLayer;
                 capRefreshAt = CpuTimestamp.Now;
             }
 
-            if (frame.IsKeyFrame && frame.SpatialLayerId > observedMaxSpatial)
-                observedMaxSpatial = frame.SpatialLayerId;
-
-            var desiredLayer = Math.Min(maxSpatial, observedMaxSpatial);
-
-            if (frame.TemporalLayerId > maxTemporal)
+            if (frame.TemporalLayerId > consumerMaxTemporal)
                 continue;
 
-            if (frame.IsKeyFrame && frame.SpatialLayerId == desiredLayer) {
-                selectedLayer = desiredLayer;
-                lastKeyFrameNumber = frame.KeyFrameNumber;
-                skipping = false;
-                yield return frame;
+            int producerMin = frame.MinSpatialLayerId;
+            int producerMax = frame.MaxSpatialLayerId;
+            int desiredLayer = consumerMaxSpatial < producerMin ? producerMin
+                : consumerMaxSpatial > producerMax ? producerMax
+                : consumerMaxSpatial;
+
+            if (frame.IsKeyFrame) {
+                // Lock onto the desired layer on each matching keyframe; other-layer
+                // keyframes (sibling simulcast bursts) get skipped.
+                if (frame.SpatialLayerId == desiredLayer) {
+                    selectedLayer = desiredLayer;
+                    lastKeyFrameNumber = frame.KeyFrameNumber;
+                    skipping = false;
+                    yield return frame;
+                }
                 continue;
             }
 
             if (skipping || selectedLayer < 0)
                 continue;
-
+            // Producer dropped our layer mid-GOP — wait for the next keyframe to re-select.
+            if (selectedLayer < producerMin || selectedLayer > producerMax) {
+                skipping = true;
+                continue;
+            }
             if (frame.SpatialLayerId != selectedLayer)
                 continue;
-
+            // Bounded-replay channel may have evicted intervening frames; gap means
+            // the GOP is broken and we have to wait for the next keyframe.
             if (frame.KeyFrameNumber != lastKeyFrameNumber) {
                 skipping = true;
                 continue;

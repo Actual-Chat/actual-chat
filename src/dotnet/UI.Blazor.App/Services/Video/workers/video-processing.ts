@@ -1078,6 +1078,13 @@ function deliverChunkToStream(
     const frameWidth = chunkWidth ?? encoderConfig!.width;
     const frameHeight = chunkHeight ?? encoderConfig!.height;
 
+    // Active encoder ladder snapshot: base encoder is always present (id=0),
+    // extras occupy ids 1..N where N = extraLayerEncoders.length. The receiver
+    // uses [min, max] to know the full layer range without having to observe
+    // every one. Constant across the burst on a given keyframe boundary.
+    const minSpatialLayerId = 0;
+    const maxSpatialLayerId = extraLayerEncoders.length;
+
     const frame: VideoStreamFrame = {
         offset: microsecondsToTicks(Math.round(timestamp)),
         duration: microsecondsToTicks(Math.round(duration)),
@@ -1086,6 +1093,8 @@ function deliverChunkToStream(
         data: chunkData, codec: isKeyFrame ? codec : undefined,
         temporalLayerId: temporalLayerId,
         spatialLayerId: spatialLayerId,
+        minSpatialLayerId,
+        maxSpatialLayerId,
         // Source dims piggybacked on keyframes only — server uses them to
         // recompute its max-quality ceiling when the window is resized mid-stream.
         sourceWidth: isKeyFrame ? sourceWidth : undefined,
