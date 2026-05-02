@@ -19,7 +19,6 @@ import { AudioRingBuffer } from '../../AudioRecorder/audio-ring-buffer';
 
 const { logScope, debugLog, warnLog } = getLogs('FeederProcessor');
 const FEEDER_TARGET_BUFFER_FRAMES = 2;
-const ESCALATED_FEEDER_TARGET_DURATION = 0.3;
 
 interface DecodedChunk {
     samples: Float32Array;
@@ -78,6 +77,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         this.bufferSizeToStartPlayback = this.feederTargetDuration;
         this.id = id;
         this.decoder = rpcClientServer<BufferHandler>(`${logScope}.worker`, workerPort, this);
+        void this.decoder.setTargetBufferDuration(this.decoderTargetDurationMs, rpcNoWait);
         debugLog?.log(`#${this.id}.init`);
     }
 
@@ -155,6 +155,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         this.bufferEscalation = value;
         debugLog?.log(`#${this.id}.process: got 'setBufferEscalation:' ${value}`);
         this.bufferSizeToStartPlayback = this.feederTargetDuration;
+        void this.decoder.setTargetBufferDuration(this.decoderTargetDurationMs, rpcNoWait);
+        this.requestFrameIfLow();
         return ResolvedPromise.Void;
     }
 
@@ -290,13 +292,17 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     }
 
     private get feederTargetDuration(): number {
-        return this.bufferEscalation > 0
-            ? ESCALATED_FEEDER_TARGET_DURATION
-            : FEEDER_TARGET_BUFFER_FRAMES / AUDIO.frameRate;
+        return FEEDER_TARGET_BUFFER_FRAMES / AUDIO.frameRate;
     }
 
     private get feederTargetDelayMs(): number {
         return this.feederTargetDuration * 1000;
+    }
+
+    private get decoderTargetDurationMs(): number {
+        return this.bufferEscalation > 0
+            ? AUDIO.play.decoderTargetBufferDurationWithVideoMs
+            : AUDIO.play.decoderTargetBufferDurationMs;
     }
 }
 

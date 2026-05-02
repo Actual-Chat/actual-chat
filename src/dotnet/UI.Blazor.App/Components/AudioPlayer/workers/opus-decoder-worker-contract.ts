@@ -12,12 +12,15 @@ export interface OpusDecoderWorker {
         length: number,
         sourceOffsetMs: number,
         noWait?: RpcNoWait): Promise<void>;
+    skipUntil(streamId: string, sourceOffsetMs: number, noWait?: RpcNoWait): Promise<void>;
+    speedUpUntil(streamId: string, sourceOffsetMs: number, dropEveryNFrames: number, noWait?: RpcNoWait): Promise<void>;
     end(streamId: string, mustAbort: boolean): Promise<void>;
     close(streamId: string, noWait?: RpcNoWait): Promise<void>;
     releaseBuffer(streamId: string, buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void>;
 }
 
 export interface BufferHandler {
+    setTargetBufferDuration(targetDurationMs: number, noWait?: RpcNoWait): Promise<void>;
     requestFrame(targetDelayMs: number, noWait?: RpcNoWait): Promise<void>;
     releaseBuffer(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void>;
 }

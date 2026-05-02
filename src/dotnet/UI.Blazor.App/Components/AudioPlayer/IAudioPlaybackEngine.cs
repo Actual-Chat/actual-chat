@@ -9,4 +9,6 @@ public interface IAudioPlaybackEngine : IAsyncDisposable
     Task Resume(CancellationToken cancellationToken);
     Task End(bool mustAbort, CancellationToken cancellationToken);
     ValueTask PushFrame(AudioFrame frame, CancellationToken cancellationToken);
+    ValueTask SkipUntil(TimeSpan sourceOffset, CancellationToken cancellationToken);
+    ValueTask SpeedUpUntil(TimeSpan sourceOffset, int dropEveryNFrames, CancellationToken cancellationToken);
 }

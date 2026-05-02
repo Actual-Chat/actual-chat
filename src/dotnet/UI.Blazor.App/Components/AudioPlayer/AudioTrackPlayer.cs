@@ -12,6 +12,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     // flow control takes over after that.
     private static readonly TimeSpan PacingHeadStartDuration = TimeSpan.FromMilliseconds(30);
     private static readonly TimeSpan PacingDuration = TimeSpan.FromMilliseconds(200);
+    private const int AudioSyncPolicySamplePeriodFrames = 10;
 
     private static bool DebugMode => Constants.DebugMode.AudioTrackPlayer;
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -21,11 +22,15 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private volatile TaskCompletionSource _whenBufferLowSource = TaskCompletionSourceExt.New();
     private CpuTimestamp _playStartedAt;
     private TimeSpan _playDuration;
+    private TimeSpan _audioSyncSuppressedUntil;
+    private int _audioSyncSampleIn;
 
     private IServiceProvider Services { get; }
 
     private IMediaMetadataUI MediaMetadataUI => field ??= Services.GetRequiredService<IMediaMetadataUI>();
     private PlaybackLagTracker LagTracker => field ??= Services.GetRequiredService<PlaybackLagTracker>();
+    private ChatAudioUI ChatAudioUI => field ??= Services.GetRequiredService<ChatAudioUI>();
+    private IAudioCatchUpPolicy AudioCatchUpPolicy => field ??= Services.GetRequiredService<IAudioCatchUpPolicy>();
     private IAudioPlaybackEngineFactory Factory { get; }
 
     public AudioTrackPlayer(
@@ -131,7 +136,9 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             }
 
             _playDuration += frame.Duration;
-            await _playbackEngine.PushFrame((AudioFrame)frame, cancellationToken).ConfigureAwait(false);
+            var audioFrame = (AudioFrame)frame;
+            await ApplyAudioSync(audioFrame, cancellationToken).ConfigureAwait(false);
+            await _playbackEngine.PushFrame(audioFrame, cancellationToken).ConfigureAwait(false);
             await _whenBufferLowSource.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
         }
         catch (TimeoutException e) {
@@ -151,6 +158,57 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         finally {
             await _playbackEngine.DisposeSilentlyAsync().ConfigureAwait(false);
         }
+    }
+
+    private async ValueTask ApplyAudioSync(AudioFrame frame, CancellationToken cancellationToken)
+    {
+        if (!ChatAudioUI.EnableAudioSync)
+            return;
+        if (TrackInfo is not ChatAudioTrackInfo { Author.Id: { } authorId })
+            return;
+        if (frame.Offset < _audioSyncSuppressedUntil)
+            return;
+
+        if (_audioSyncSampleIn > 0) {
+            _audioSyncSampleIn--;
+            return;
+        }
+        _audioSyncSampleIn = AudioSyncPolicySamplePeriodFrames;
+
+        var desired = TimeSpan.Zero;
+        try {
+            desired = await AudioCatchUpPolicy.GetDesiredCatchUp(authorId, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Audio catch-up policy failed for {AuthorId}", authorId);
+        }
+        if (desired <= TimeSpan.Zero || _playbackEngine == null)
+            return;
+
+        var cooldown = Constants.Audio.PlaybackCatchUpCommandCooldown;
+        if (desired >= Constants.Audio.PlaybackHardSkipThreshold) {
+            var skipUntil = frame.Offset + desired;
+            DebugLog?.LogDebug("Audio sync: skip until {SkipUntil} for {AuthorId}", skipUntil, authorId);
+            await _playbackEngine.SkipUntil(skipUntil, cancellationToken).ConfigureAwait(false);
+            _audioSyncSuppressedUntil = skipUntil + cooldown;
+            _audioSyncSampleIn = 0;
+            return;
+        }
+
+        var dropEveryN = Constants.Audio.PlaybackSpeedUpDropEveryNFrames;
+        var speedUpTicks = Math.Min(
+            desired.Ticks * dropEveryN,
+            Constants.Audio.PlaybackMaxSpeedUpDuration.Ticks);
+        var speedUpUntil = frame.Offset + TimeSpan.FromTicks(speedUpTicks);
+        DebugLog?.LogDebug(
+            "Audio sync: speed-up until {SpeedUpUntil}, drop every {DropEveryN} frames for {AuthorId}",
+            speedUpUntil, dropEveryN, authorId);
+        await _playbackEngine.SpeedUpUntil(speedUpUntil, dropEveryN, cancellationToken).ConfigureAwait(false);
+        _audioSyncSuppressedUntil = speedUpUntil + cooldown;
+        _audioSyncSampleIn = 0;
     }
 
     private void UpdateBufferState(bool isBufferLow)

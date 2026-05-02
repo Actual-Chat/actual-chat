@@ -109,6 +109,19 @@ const serverImpl: OpusDecoderWorker = {
         getDecoder(streamId).decode(buffer, offset, length, sourceOffsetMs);
     },
 
+    skipUntil: async (streamId: string, sourceOffsetMs: number, _noWait?: RpcNoWait): Promise<void> => {
+        getDecoder(streamId).skipUntil(sourceOffsetMs);
+    },
+
+    speedUpUntil: async (
+        streamId: string,
+        sourceOffsetMs: number,
+        dropEveryNFrames: number,
+        _noWait?: RpcNoWait,
+    ): Promise<void> => {
+        getDecoder(streamId).speedUpUntil(sourceOffsetMs, dropEveryNFrames);
+    },
+
     releaseBuffer: async(streamId: string, buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void>  => {
         await getDecoder(streamId).releaseBuffer(buffer, _noWait);
     }

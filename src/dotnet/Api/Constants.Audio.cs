@@ -86,5 +86,8 @@ public static partial class Constants
         // refactor unifies start-threshold semantics across web and MAUI.
         public static readonly TimeSpan LowPlaybackBufferDuration = TimeSpan.FromSeconds(10);
         public static readonly TimeSpan StartPlaybackWhenBufferedDuration = StartBufferDuration;
+        public static readonly TimeSpan DecoderTargetBufferDuration = TimeSpan.FromMilliseconds(30);
+        public static readonly TimeSpan DecoderTargetBufferDurationWithVideo = TimeSpan.FromMilliseconds(200);
+        public static readonly TimeSpan PlaybackCatchUpCommandCooldown = TimeSpan.FromSeconds(1);
     }
 }

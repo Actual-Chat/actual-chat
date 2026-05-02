@@ -154,6 +154,12 @@ internal sealed class WindowsAudioPlaybackEngine(
         return ValueTask.CompletedTask;
     }
 
+    public ValueTask SkipUntil(TimeSpan sourceOffset, CancellationToken cancellationToken)
+        => ValueTask.CompletedTask;
+
+    public ValueTask SpeedUpUntil(TimeSpan sourceOffset, int dropEveryNFrames, CancellationToken cancellationToken)
+        => ValueTask.CompletedTask;
+
     public ValueTask DisposeAsync()
     {
         try {

@@ -107,6 +107,28 @@ public sealed class WebAudioPlaybackEngine(
         return ValueTask.CompletedTask;
     }
 
+    public ValueTask SkipUntil(TimeSpan sourceOffset, CancellationToken cancellationToken)
+    {
+        if (_jsRef == null)
+            throw StandardError.StateTransition(GetType(), "Can't skip before initialization.");
+
+        _ = _jsRef.InvokeVoidAsync("skipUntil", cancellationToken, sourceOffset.TotalMilliseconds);
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask SpeedUpUntil(TimeSpan sourceOffset, int dropEveryNFrames, CancellationToken cancellationToken)
+    {
+        if (_jsRef == null)
+            throw StandardError.StateTransition(GetType(), "Can't speed up before initialization.");
+
+        _ = _jsRef.InvokeVoidAsync(
+            "speedUpUntil",
+            cancellationToken,
+            sourceOffset.TotalMilliseconds,
+            dropEveryNFrames);
+        return ValueTask.CompletedTask;
+    }
+
     public async ValueTask DisposeAsync()
     {
         _watchBufferEscalationStateCts.CancelAndDisposeSilently();

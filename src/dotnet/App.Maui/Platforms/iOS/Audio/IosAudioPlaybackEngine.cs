@@ -73,6 +73,12 @@ public class IosAudioPlaybackEngine(
         return _voicePlayer.Feed(data, cancellationToken);
     }
 
+    public ValueTask SkipUntil(TimeSpan sourceOffset, CancellationToken cancellationToken)
+        => ValueTask.CompletedTask;
+
+    public ValueTask SpeedUpUntil(TimeSpan sourceOffset, int dropEveryNFrames, CancellationToken cancellationToken)
+        => ValueTask.CompletedTask;
+
     private async Task MonitorPlayer(CancellationToken cancellationToken)
     {
         await foreach (var cPosition in _voicePlayer.PlaybackState.Computed.Changes(cancellationToken).ConfigureAwait(false))

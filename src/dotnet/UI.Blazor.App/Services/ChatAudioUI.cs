@@ -41,6 +41,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public IState<Moment?> StopRecordingAt => _stopRecordingAt; // CPU time
     public IState<NextBeepState?> NextBeep => _nextBeep;
     public Task WhenEnabled => _whenEnabledSource.Task;
+    public bool EnableAudioSync { get; set; } = true;
 
     public ChatAudioUI(AppUIHub hub) : base(hub)
     {

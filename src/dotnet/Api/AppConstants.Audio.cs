@@ -51,6 +51,10 @@ partial record AppConstants
             public int StartBufferGrowDurationMs { get; init; } = 100;
             // !DELAYER: Larger start-buffer when video is active for A/V sync.
             public int StartBufferDurationWithVideoMs { get; init; } = 500;
+            public int DecoderTargetBufferDurationMs { get; init; } =
+                (int)Constants.Audio.DecoderTargetBufferDuration.TotalMilliseconds;
+            public int DecoderTargetBufferDurationWithVideoMs { get; init; } =
+                (int)Constants.Audio.DecoderTargetBufferDurationWithVideo.TotalMilliseconds;
             // Buffer is "low" while it's less than this.
             public int LowBufferDurationMs { get; init; } = 10000;
             // Period between feeder state-update signals.

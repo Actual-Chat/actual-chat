@@ -296,6 +296,16 @@ export class AudioPlayer implements Resettable {
     }
 
     /** Called by Blazor */
+    public skipUntil(sourceOffsetMs: number): void {
+        void decoderWorker!.skipUntil(this.internalId, sourceOffsetMs, rpcNoWait);
+    }
+
+    /** Called by Blazor */
+    public speedUpUntil(sourceOffsetMs: number, dropEveryNFrames: number): void {
+        void decoderWorker!.speedUpUntil(this.internalId, sourceOffsetMs, dropEveryNFrames, rpcNoWait);
+    }
+
+    /** Called by Blazor */
     public async end(mustAbort: boolean): Promise<void> {
         if (this.playbackState === 'ended')
             return;

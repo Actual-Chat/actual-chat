@@ -30,6 +30,138 @@ interface DecodeTiming {
     presentationLagMs: number;
 }
 
+class EncodedFrameBuffer {
+    private readonly frames = new Denque<EncodedFrame | 'end'>();
+    private targetDurationMs = 0;
+    private skipUntilMs = 0;
+    private speedUpUntilMs = 0;
+    private speedUpDropEveryNFrames = 0;
+    private speedUpFrameCounter = 0;
+
+    get length(): number { return this.frames.length; }
+
+    setTargetDuration(targetDurationMs: number): void {
+        this.targetDurationMs = Math.max(0, targetDurationMs);
+    }
+
+    push(frame: EncodedFrame): void {
+        this.frames.push(frame);
+    }
+
+    end(): void {
+        this.frames.push('end');
+    }
+
+    clear(): void {
+        this.frames.clear();
+        this.skipUntilMs = 0;
+        this.clearSpeedUp();
+    }
+
+    skipUntil(sourceOffsetMs: number): void {
+        this.skipUntilMs = Math.max(this.skipUntilMs, sourceOffsetMs);
+        this.clearSpeedUp();
+        this.dropSkippedFrames();
+    }
+
+    private dropSkippedFrames(): void {
+        while (true) {
+            const frame = this.frames.peekFront();
+            if (!frame || frame === 'end' || frame.sourceOffsetMs >= this.skipUntilMs)
+                return;
+            this.frames.shift();
+        }
+    }
+
+    speedUpUntil(sourceOffsetMs: number, dropEveryNFrames: number): void {
+        if (dropEveryNFrames <= 1 || sourceOffsetMs <= 0) {
+            this.clearSpeedUp();
+            return;
+        }
+
+        this.speedUpUntilMs = sourceOffsetMs;
+        this.speedUpDropEveryNFrames = dropEveryNFrames;
+        this.speedUpFrameCounter = 0;
+    }
+
+    shiftReady(): EncodedFrame | 'end' | undefined {
+        while (true) {
+            this.dropSkippedFrames();
+            const frame = this.frames.peekFront();
+            if (!frame)
+                return undefined;
+            if (frame === 'end')
+                return this.frames.shift();
+            if (frame.sourceOffsetMs >= this.skipUntilMs)
+                this.skipUntilMs = 0;
+            if (!this.canRelease())
+                return undefined;
+            if (this.shouldDropForSpeedUp(frame)) {
+                this.frames.shift();
+                continue;
+            }
+
+            return this.frames.shift();
+        }
+    }
+
+    private canRelease(): boolean {
+        if (this.targetDurationMs <= 0 || this.hasEnd())
+            return true;
+
+        return this.durationMs() >= this.targetDurationMs;
+    }
+
+    private durationMs(): number {
+        const first = this.firstFrame();
+        const last = this.lastFrame();
+        if (!first || !last)
+            return 0;
+
+        return Math.max(0, last.sourceOffsetMs + AUDIO.frameDurationMs - first.sourceOffsetMs);
+    }
+
+    private hasEnd(): boolean {
+        return this.frames.peekBack() === 'end';
+    }
+
+    private shouldDropForSpeedUp(frame: EncodedFrame): boolean {
+        if (this.speedUpDropEveryNFrames <= 0)
+            return false;
+        if (frame.sourceOffsetMs >= this.speedUpUntilMs) {
+            this.clearSpeedUp();
+            return false;
+        }
+
+        this.speedUpFrameCounter++;
+        return this.speedUpFrameCounter % this.speedUpDropEveryNFrames === 0;
+    }
+
+    private clearSpeedUp(): void {
+        this.speedUpUntilMs = 0;
+        this.speedUpDropEveryNFrames = 0;
+        this.speedUpFrameCounter = 0;
+    }
+
+    private firstFrame(): EncodedFrame | undefined {
+        for (let i = 0; i < this.frames.length; i++) {
+            const frame = this.frames.peekAt(i);
+            if (frame && frame !== 'end')
+                return frame;
+        }
+        return undefined;
+    }
+
+    private lastFrame(): EncodedFrame | undefined {
+        for (let i = this.frames.length - 1; i >= 0; i--) {
+            const frame = this.frames.peekAt(i);
+            if (frame && frame !== 'end')
+                return frame;
+        }
+        return undefined;
+    }
+}
+
 /// #if MEM_LEAK_DETECTION
 debugLog?.log(`MEM_LEAK_DETECTION == true`);
 /// #endif
@@ -40,7 +172,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
     private readonly feederWorklet: FeederAudioWorklet & Disposable;
     private readonly bufferPool: ObjectPool<ArrayBuffer>;
     private readonly largeBufferPool: ObjectPool<ArrayBuffer>;
-    private readonly encodedFrames = new Denque<EncodedFrame | 'end'>();
+    private readonly encodedFrames = new EncodedFrameBuffer();
     private readonly systemDecodeTimings = new Denque<DecodeTiming>();
     private mustAbort = false;
     private frameRequested = false;
@@ -106,6 +238,21 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
         this.flushDecodeDemand();
     }
 
+    public async setTargetBufferDuration(targetDurationMs: number, _noWait?: RpcNoWait): Promise<void> {
+        this.encodedFrames.setTargetDuration(targetDurationMs);
+        this.flushDecodeDemand();
+    }
+
+    public skipUntil(sourceOffsetMs: number): void {
+        this.encodedFrames.skipUntil(sourceOffsetMs);
+        this.flushDecodeDemand();
+    }
+
+    public speedUpUntil(sourceOffsetMs: number, dropEveryNFrames: number): void {
+        this.encodedFrames.speedUpUntil(sourceOffsetMs, dropEveryNFrames);
+        this.flushDecodeDemand();
+    }
+
     public async end(mustAbort: boolean): Promise<void> {
         debugLog?.log(`#${this.streamId}.end: mustAbort:`, mustAbort);
         if (mustAbort) {
@@ -118,7 +265,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
             return;
         }
 
-        this.encodedFrames.push('end');
+        this.encodedFrames.end();
         this.flushDecodeDemand();
     }
 
@@ -220,7 +367,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
         if (!this.frameRequested)
             return;
 
-        const item = this.encodedFrames.shift();
+        const item = this.encodedFrames.shiftReady();
         if (item === undefined)
             return;
 

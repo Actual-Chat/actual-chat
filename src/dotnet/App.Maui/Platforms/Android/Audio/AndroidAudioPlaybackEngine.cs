@@ -211,6 +211,12 @@ internal sealed class AndroidAudioPlaybackEngine(
         return ValueTask.CompletedTask;
     }
 
+    public ValueTask SkipUntil(TimeSpan sourceOffset, CancellationToken cancellationToken)
+        => ValueTask.CompletedTask;
+
+    public ValueTask SpeedUpUntil(TimeSpan sourceOffset, int dropEveryNFrames, CancellationToken cancellationToken)
+        => ValueTask.CompletedTask;
+
     // Private methods
 
     private async Task DecodeAndFeed()
