@@ -78,7 +78,7 @@ export class DebugUI {
     };
 
     public static async getDisableAudioSync(): Promise<boolean> {
-        return await this.backendRef.invokeMethodAsync('GetDisableAudioSync') as boolean;
+        return await this.backendRef.invokeMethodAsync('GetDisableAudioSync');
     }
 
     public static disableAudioSync(disable: boolean): void {
