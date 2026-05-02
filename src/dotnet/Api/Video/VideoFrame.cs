@@ -38,30 +38,21 @@ public partial class VideoFrame : MediaFrame
     public string? Codec { get; init; }
 
     /// <summary>
-    /// SVC temporal layer ID. 0 = base layer, 1+ = enhancement layers.
-    /// </summary>
-    [DataMember(Order = 8), MemoryPackOrder(8), Key(8)]
-    public int TemporalLayerId { get; init; }
-
-    /// <summary>
-    /// Native capture source dimensions (pre-downscale). Sent on keyframes only —
-    /// lets the server track live source resolution changes (e.g. a screencast
-    /// window resized from 1280x768 to full-screen 4K) and unlock the matching
-    /// quality-preset ceiling. Zero when the sender doesn't populate them
-    /// (legacy peers, non-keyframe deltas).
-    /// </summary>
-    [DataMember(Order = 9), MemoryPackOrder(9), Key(9)]
-    public int SourceWidth { get; init; }
-
-    [DataMember(Order = 10), MemoryPackOrder(10), Key(10)]
-    public int SourceHeight { get; init; }
-
-    /// <summary>
     /// SVC spatial layer ID. 0 = base (lowest-res) layer, 1+ = higher-res simulcast layers.
     /// Always 0 on single-encoder (P2P) streams.
     /// </summary>
+    [DataMember(Order = 8), MemoryPackOrder(8), Key(8)]
+    public byte SpatialLayerId { get; init; }
+    [DataMember(Order = 9), MemoryPackOrder(9), Key(9)]
+    public byte MinSpatialLayerId { get; init; }
+    [DataMember(Order = 10), MemoryPackOrder(10), Key(10)]
+    public byte MaxSpatialLayerId { get; init; }
+
+    /// <summary>
+    /// SVC temporal layer ID. 0 = base layer, 1+ = enhancement layers.
+    /// </summary>
     [DataMember(Order = 11), MemoryPackOrder(11), Key(11)]
-    public int SpatialLayerId { get; init; }
+    public byte TemporalLayerId { get; init; }
 
     /// <summary>
     /// Monotonically increasing keyframe sequence number. Assigned server-side in ProcessFrames.
@@ -70,6 +61,18 @@ public partial class VideoFrame : MediaFrame
     /// </summary>
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public long KeyFrameNumber { get; set; }
+
+    /// <summary>
+    /// Native capture source dimensions (pre-downscale). Sent on keyframes only —
+    /// lets the server track live source resolution changes (e.g. a screencast
+    /// window resized from 1280x768 to full-screen 4K) and unlock the matching
+    /// quality-preset ceiling. Zero when the sender doesn't populate them
+    /// (legacy peers, non-keyframe deltas).
+    /// </summary>
+    [DataMember(Order = 12), MemoryPackOrder(12), Key(12)]
+    public int SourceWidth { get; init; }
+    [DataMember(Order = 13), MemoryPackOrder(13), Key(13)]
+    public int SourceHeight { get; init; }
 
     /// <summary>
     /// Cached serialized bytes for zero-copy forwarding and serialize-once fan-out.

@@ -34,10 +34,11 @@ namespace ActualChat.Video;
 /// element to this formatter, so <see cref="VideoFrame"/>[] batches hit the cache too.
 /// </para>
 /// <para>
-/// Wire format: a 12-entry MessagePack map with PascalCase string keys — Data (bin),
+/// Wire format: a 14-entry MessagePack map with PascalCase string keys — Data (bin),
 /// Offset (int64 ticks), Duration (int64 ticks), IsKeyFrame (bool), Width (int32),
-/// Height (int32), Description (bin or nil), Codec (str or nil), TemporalLayerId (int32),
-/// SourceWidth (int32), SourceHeight (int32), SpatialLayerId (int32).
+/// Height (int32), Description (bin or nil), Codec (str or nil), SpatialLayerId (uint8),
+/// MinSpatialLayerId (uint8), MaxSpatialLayerId (uint8), TemporalLayerId (uint8),
+/// SourceWidth (int32), SourceHeight (int32).
 /// </para>
 /// </remarks>
 public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFrame?>
@@ -93,8 +94,10 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
         var height = 0;
         var sourceWidth = 0;
         var sourceHeight = 0;
-        var temporalLayerId = 0;
-        var spatialLayerId = 0;
+        byte temporalLayerId = 0;
+        byte spatialLayerId = 0;
+        byte minSpatialLayerId = 0;
+        byte maxSpatialLayerId = 0;
         var dataSlice = default(ReadOnlyMemory<byte>);
         var descriptionSlice = default(ReadOnlyMemory<byte>);
         string? codec = null;
@@ -126,17 +129,23 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
                 case "Codec":
                     codec = reader.TryReadNil() ? null : reader.ReadString();
                     break;
+                case "SpatialLayerId":
+                    spatialLayerId = reader.ReadByte();
+                    break;
+                case "MinSpatialLayerId":
+                    minSpatialLayerId = reader.ReadByte();
+                    break;
+                case "MaxSpatialLayerId":
+                    maxSpatialLayerId = reader.ReadByte();
+                    break;
                 case "TemporalLayerId":
-                    temporalLayerId = reader.ReadInt32();
+                    temporalLayerId = reader.ReadByte();
                     break;
                 case "SourceWidth":
                     sourceWidth = reader.ReadInt32();
                     break;
                 case "SourceHeight":
                     sourceHeight = reader.ReadInt32();
-                    break;
-                case "SpatialLayerId":
-                    spatialLayerId = reader.ReadInt32();
                     break;
                 default:
                     // Forward-compat: tolerate unknown fields.
@@ -153,10 +162,12 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
             Height = height,
             Description = descriptionSlice,         // slice of bytes (may be empty)
             Codec = codec,
+            SpatialLayerId = spatialLayerId,
+            MinSpatialLayerId = minSpatialLayerId,
+            MaxSpatialLayerId = maxSpatialLayerId,
             TemporalLayerId = temporalLayerId,
             SourceWidth = sourceWidth,
             SourceHeight = sourceHeight,
-            SpatialLayerId = spatialLayerId,
             SerializedData = bytes,
         };
     }
@@ -193,7 +204,7 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
 
     private static void WriteFrame(ref MessagePackWriter writer, VideoFrame v)
     {
-        writer.WriteMapHeader(12);
+        writer.WriteMapHeader(14);
 
         writer.Write("Data");
         writer.Write(v.Data.Span);
@@ -225,6 +236,15 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
         else
             writer.Write(v.Codec);
 
+        writer.Write("SpatialLayerId");
+        writer.Write(v.SpatialLayerId);
+
+        writer.Write("MinSpatialLayerId");
+        writer.Write(v.MinSpatialLayerId);
+
+        writer.Write("MaxSpatialLayerId");
+        writer.Write(v.MaxSpatialLayerId);
+
         writer.Write("TemporalLayerId");
         writer.Write(v.TemporalLayerId);
 
@@ -233,8 +253,5 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
 
         writer.Write("SourceHeight");
         writer.Write(v.SourceHeight);
-
-        writer.Write("SpatialLayerId");
-        writer.Write(v.SpatialLayerId);
     }
 }

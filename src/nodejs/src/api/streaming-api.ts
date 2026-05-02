@@ -64,10 +64,15 @@ export interface VideoFrameDto {
     Height?: number;
     Description?: Uint8Array | null;
     Codec?: string | null;
-    TemporalLayerId?: number;
-    // SVC spatial layer ID. 0 = base (lowest-res) layer, 1+ = higher-res simulcast
-    // layers. Always 0 on single-encoder (P2P) streams. Maps to .NET VideoFrame.SpatialLayerId (int).
+    // SVC spatial layer ID (uint8 on wire). 0 = base (lowest-res) layer,
+    // 1+ = higher-res simulcast layers. Always 0 on single-encoder (P2P) streams.
     SpatialLayerId?: number;
+    // Min/max spatial layer this frame covers (uint8 on wire). Used by the
+    // server forwarder to clamp simulcast fan-out per consumer.
+    MinSpatialLayerId?: number;
+    MaxSpatialLayerId?: number;
+    // SVC temporal layer ID (uint8 on wire). 0 = base, 1+ = enhancement.
+    TemporalLayerId?: number;
     // Native source dimensions, keyframe only. Lets server track source-resolution
     // growth (e.g. screencast window resize) and unlock higher quality tiers mid-stream.
     SourceWidth?: number;
