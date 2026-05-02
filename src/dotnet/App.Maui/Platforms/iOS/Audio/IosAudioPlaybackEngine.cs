@@ -34,7 +34,7 @@ public class IosAudioPlaybackEngine(
     {
         _decodeFeedCts.CancelAndDisposeSilently();
         _watchBufferEscalationStateCts.CancelAndDisposeSilently();
-        await _decodeFeedTask.SilentAwait().ConfigureAwait(false);
+        await _decodeFeedTask.SilentAwait();
         await _processFeederWorker.DisposeSilentlyAsync().ConfigureAwait(false);
         _voicePlayer.DisposeSilently();
         _decoder.DisposeSilently();
@@ -48,7 +48,7 @@ public class IosAudioPlaybackEngine(
         var chatId = (info as ChatAudioTrackInfo)?.Chat?.Id;
         var bufferEscalation = chatId is null
             ? 0
-            : await ChatAudioUI.GetPlaybackBufferEscalation(chatId.Value, cancellationToken).ConfigureAwait(false);
+            : await ChatAudioUI.GetPlaybackBufferEscalation(chatId, cancellationToken).ConfigureAwait(false);
         _frames.SetTargetDuration(Constants.Audio.GetDecoderTargetBufferDuration(bufferEscalation));
 
         _voicePlayer = new VoicePlayer(playerId, hub);
@@ -62,7 +62,7 @@ public class IosAudioPlaybackEngine(
         _voicePlayer.Play();
         if (chatId is not null) {
             _watchBufferEscalationStateCts = cancellationToken.CreateLinkedTokenSource();
-            _ = WatchBufferEscalationState(chatId.Value, bufferEscalation, _watchBufferEscalationStateCts.Token);
+            _ = WatchBufferEscalationState(chatId, bufferEscalation, _watchBufferEscalationStateCts.Token);
         }
     }
 
