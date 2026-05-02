@@ -129,13 +129,6 @@ public static partial class Constants
         // ~5s at 30fps — covers up to 5 missed 1s-cadence keyframes.
         public static readonly int EgressGapFrameThreshold = 150;
 
-        // Minimum total participant count (sender + remote peers) at which simulcast
-        // activates. Below this, sender uses single-encoder P2P path. Translates to
-        // "remote stream count >= MinMembersForSimulcast - 1" in VideoRecorder.
-        // ViewerCount path can also arm simulcast asymmetrically (peer pushes, no
-        // one pushes back — server reports viewer count, sender activates).
-        public static readonly int MinMembersForSimulcast = 3;
-
         // Stream count limits
         public static readonly int MaxWebcamStreamsPerChat = 8;
         public static readonly int PriorityActivationThreshold = 6;

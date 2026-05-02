@@ -58,8 +58,7 @@ partial record AppConstants
         public double EgressStallThresholdMs { get; init; } = Constants.Video.EgressStallThreshold.TotalMilliseconds;
         public double EgressRecoveryWindowMs { get; init; } = Constants.Video.EgressRecoveryWindow.TotalMilliseconds;
         public int EgressGapFrameThreshold { get; init; } = Constants.Video.EgressGapFrameThreshold;
-        // Simulcast & stream management
-        public int MinMembersForSimulcast { get; init; } = Constants.Video.MinMembersForSimulcast;
+        // Stream management
         public int MaxWebcamStreamsPerChat { get; init; } = Constants.Video.MaxWebcamStreamsPerChat;
         public int PriorityActivationThreshold { get; init; } = Constants.Video.PriorityActivationThreshold;
         public double SilenceGracePeriodMs { get; init; } = Constants.Video.SilenceGracePeriod.TotalMilliseconds;

@@ -55,7 +55,6 @@ export interface VideoConstants {
     readonly egressStallThresholdMs: number;
     readonly egressRecoveryWindowMs: number;
     readonly egressGapFrameThreshold: number;
-    readonly minMembersForSimulcast: number;
     readonly maxWebcamStreamsPerChat: number;
     readonly priorityActivationThreshold: number;
     readonly silenceGracePeriodMs: number;
