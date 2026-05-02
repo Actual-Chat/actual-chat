@@ -55,14 +55,6 @@ public partial class VideoFrame : MediaFrame
     public byte TemporalLayerId { get; init; }
 
     /// <summary>
-    /// Monotonically increasing keyframe sequence number. Assigned server-side in ProcessFrames.
-    /// Incremented on each keyframe; non-keyframes inherit the current value.
-    /// Used for gap detection when frames are dropped by bounded replay channels.
-    /// </summary>
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public long KeyFrameNumber { get; set; }
-
-    /// <summary>
     /// Native capture source dimensions (pre-downscale). Sent on keyframes only —
     /// lets the server track live source resolution changes (e.g. a screencast
     /// window resized from 1280x768 to full-screen 4K) and unlock the matching
@@ -73,6 +65,16 @@ public partial class VideoFrame : MediaFrame
     public int SourceWidth { get; init; }
     [DataMember(Order = 13), MemoryPackOrder(13), Key(13)]
     public int SourceHeight { get; init; }
+
+    // NB: The properties below this line aren't serialized!
+
+    /// <summary>
+    /// Monotonically increasing keyframe sequence number. Assigned server-side in ProcessFrames.
+    /// Incremented on each keyframe; non-keyframes inherit the current value.
+    /// Used for gap detection when frames are dropped by bounded replay channels.
+    /// </summary>
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public long KeyFrameNumber { get; set; }
 
     /// <summary>
     /// Cached serialized bytes for zero-copy forwarding and serialize-once fan-out.
