@@ -310,25 +310,36 @@ export class VideoRecorder {
         let active: SpatialLayerConfig[] | null = (clamped && clamped.length >= 2) ? clamped : null;
         const prevCount = this.simulcastLayers?.length ?? 0;
         // Source-shaped rebuild: take only the layer count from C#, derive
-        // dims from the running encoder so portrait/cap-stepped sources produce
-        // a correct ladder. Reads getEncoderStats so a prior reconfigure() is
-        // reflected (RecordingConfig.width/height stays stale).
+        // dims by re-deriving from the previously-active ladder's TOP. The
+        // top tier always equals the captured source dim — that's what we
+        // want as `topWidth/topHeight` for buildLadder. Reading from
+        // `getEncoderStats()` gives the BASE encoder dim instead, which
+        // would shrink the ladder by half on every rebuild (180p → 90p →
+        // 45p ...). Falls back to camera dim if no prior ladder cached.
         if (active !== null && this.recordingService) {
-            const stats = this.recordingService.getPipeline()?.getEncoderStats();
-            const runningH = stats?.configuredHeight ?? 0;
-            const runningW = stats?.configuredWidth ?? 0;
             const cfg = this.recordingService.getConfig();
             const codec = cfg.codecString ?? '';
-            if (runningW > 0 && runningH > 0) {
+            const prevLadder = this.simulcastLayers;
+            let topW = 0;
+            let topH = 0;
+            if (prevLadder && prevLadder.length > 0) {
+                const top = prevLadder[prevLadder.length - 1];
+                topW = top.width;
+                topH = top.height;
+            } else if (this.cameraWidth > 0 && this.cameraHeight > 0) {
+                topW = this.cameraWidth;
+                topH = this.cameraHeight;
+            }
+            if (topW > 0 && topH > 0) {
                 const rebuilt = buildLadder({
-                    topWidth: runningW,
-                    topHeight: runningH,
+                    topWidth: topW,
+                    topHeight: topH,
                     tierCount: active.length,
                     bitrateFor: (h: number) => getExpectedBitrate(codec, h, cfg.mode),
                 });
                 if (rebuilt.length > 0) {
                     infoLog?.log(
-                        `setSimulcastLayers: rebuilt ladder for source ${runningW}x${runningH}: ${
+                        `setSimulcastLayers: rebuilt ladder (top=${topW}x${topH}, tiers=${active.length}): ${
                             rebuilt.map(l => `${l.width}x${l.height}`).join(', ')}`);
                     active = rebuilt;
                 }
@@ -835,25 +846,17 @@ export class VideoRecorder {
         else if (DeviceInfo.isMobile)
             cappedBitrate = Math.min(cappedBitrate, 2_000_000);
 
-        // Simulcast active — preset Width/Height is the new TOP tier. Rebuild
-        // via the source/2 rule so base = top/2. Without this, only the base
-        // encoder would reconfigure while extras stay at old dims, leaking a
-        // base==extra dimension collision (the recurring `[720, 720]` bug).
+        // When simulcast is active, the ladder TOP dim is the source cap
+        // (camera ∩ mode cap), fixed for the recording session. Quality
+        // control reshapes the ladder via MaxSpatialLayer (tier count),
+        // NOT via preset W/H — feeding preset W/H into buildLadder would
+        // halve the ladder per call (180p → 90p → 45p ...). So skip
+        // ladder reshape in this branch entirely; let setSimulcastLayers
+        // handle tier-count changes from the server.
         const isSimulcastActive = this.simulcastLayers !== null && this.simulcastLayers.length >= 2;
         if (isSimulcastActive) {
-            const rebuilt = buildLadder({
-                topWidth: cappedWidth,
-                topHeight: cappedHeight,
-                tierCount: this.simulcastLayers!.length,
-                bitrateFor: (h: number) => getExpectedBitrate(currentCodec, h, mode),
-            });
-            if (rebuilt.length >= 2) {
-                infoLog?.log(`reconfigure (simulcast): rebuilt ladder [${rebuilt.map(l => `${l.width}x${l.height}`).join(', ')}]`);
-                this.simulcastLayers = [...rebuilt];
-                void this.recordingService.setSimulcastLadder(rebuilt).catch((e: unknown) =>
-                    warnLog?.log('reconfigure (simulcast): setSimulcastLadder failed:', e));
-                return;
-            }
+            infoLog?.log(`reconfigure (simulcast): preset ${cappedWidth}x${cappedHeight} ignored — ladder top fixed by source cap`);
+            return;
         }
 
         infoLog?.log(`reconfigure: ${cappedWidth}x${cappedHeight} @ ${cappedBitrate / 1_000_000}Mbps (codec=${currentCodec})`);
