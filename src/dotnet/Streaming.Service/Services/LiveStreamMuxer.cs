@@ -11,8 +11,8 @@ namespace ActualChat.Streaming.Services;
 public sealed class LiveStreamMuxer : WorkerBase
 {
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(1);
-    private static readonly TimeSpan MaxCatchUpLag = TimeSpan.FromSeconds(3);
-    private static readonly TimeSpan EvictionDelay = MaxCatchUpLag + TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan StaleAudioTrimWindow = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan EvictionDelay = StaleAudioTrimWindow + TimeSpan.FromSeconds(1);
 
     private readonly Channel<LiveStreamItem> _output;
     private volatile LiveStreamSettings _settings;
@@ -61,9 +61,9 @@ public sealed class LiveStreamMuxer : WorkerBase
         // 1) A stream's playback ended, but it's still listed as active — the
         //    producer's LiveBackend.Unregister runs after its audio blob save,
         //    which can take seconds for long messages. Fixed by two things:
-        //    skip-to-now rewind in ProcessStream (so a restart replays nothing
-        //    audible) and the EvictionDelay on pruning below (so the common
-        //    case doesn't restart in the first place).
+        //    coarse stale-audio trimming in ProcessStream (so a restart replays
+        //    at most a short tail) and the EvictionDelay on pruning below (so
+        //    the common case doesn't restart in the first place).
         // 2) One author pushes several streams effectively at once — typically
         //    an offline backlog flushed on reconnect. They aren't ordered by
         //    length, and we have no duration until each stream ends, so we
@@ -130,11 +130,12 @@ public sealed class LiveStreamMuxer : WorkerBase
             if (!TryRegister(streamEntry))
                 return; // See `finally` block below
 
-            // If we're starting late, skip ahead to the live edge so consumers
-            // don't hear buffered audio replayed. For a fresh stream lag ≈ 0 and
-            // skipTo is 0 — no frames are dropped.
+            // Coarse server-side stale-audio trim. This keeps reconnect/backlog
+            // bursts and late joins from streaming long-past speech just so the
+            // client can drop it. Fine A/V alignment still belongs to the client
+            // audio buffer; this only caps how much old audio we send.
             var lag = SystemClock.Now - streamInfo.BeginsAt;
-            var skipTo = (lag - MaxCatchUpLag).Positive();
+            var skipTo = (lag - StaleAudioTrimWindow).Positive();
             var rpcStream = await StreamServer
                 .GetAudio(streamId, skipTo, streamStopToken)
                 .ConfigureAwait(false);

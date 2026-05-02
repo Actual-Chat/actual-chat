@@ -196,11 +196,10 @@ All file paths are relative to the repo root.
 - Doc: the store retains the complete recording stream, matching current
   behavior and the needs of transcription/persistence. There is **no**
   server-side live replay cap in the target.
-- The gap is server-side presentation skipping. The target says the server
-  makes audio available and sends it; it does not decide which audio is too old
-  for presentation. Current `LiveStreamMuxer` still picks a live-start offset
-  on the client's behalf using `MaxCatchUpLag = 3 s`, and
-  `AudioStreamingBackend.SkipTo` applies that server-side skip.
+- The server also does a coarse stale-audio trim before fan-out. That is
+  intentional for reconnect/backlog bursts and late joins: the server avoids
+  sending long-past speech that the client would immediately drop. Fine
+  playback and A/V catch-up still belong to the client.
 
 ## 7-8. `server audio muxer` / `server audio sender`
 
@@ -215,13 +214,13 @@ All file paths are relative to the repo root.
   `LiveAudioStreams.GetStream` (which clients call instead of `GetAudio`),
   backed by `LiveStreamMuxer` (covered below). `LiveStreamMuxer.ProcessStream`
   computes `lag = SystemClock.Now - streamInfo.BeginsAt; skipTo = (lag -
-  MaxCatchUpLag).Positive()` where `MaxCatchUpLag = 3 s`, then calls
-  `StreamServer.GetAudio(streamId, skipTo, ...)`. So the catch-up policy
-  lives in the muxer, the skip itself lives in the backend's `GetAudio`,
-  and the actual data pull lives in the per-stream RPC stream.
+  StaleAudioTrimWindow).Positive()` where `StaleAudioTrimWindow = 3 s`, then
+  calls `StreamServer.GetAudio(streamId, skipTo, ...)`. The skip itself lives
+  in the backend's `GetAudio`, and the actual data pull lives in the
+  per-stream RPC stream.
 - `LiveStreamMuxer` also implements per-author exclusivity: when a fresher
   same-author stream registers, the older `StreamEntry.StopTokenSource` is
-  cancelled. After end, an `EvictionDelay = 4 s` (`MaxCatchUpLag + 1 s`)
+  cancelled. After end, an `EvictionDelay = 4 s` (`StaleAudioTrimWindow + 1 s`)
   prevents duplicate enlistment via `LiveBackend.List`.
 - The output channel is `ChannelExt.Create<LiveStreamItem>(UnboundedFanInOptions)`
   — unbounded fan-in. Items are `LiveStreamStart`, `LiveAudioFrame`,
@@ -232,15 +231,12 @@ All file paths are relative to the repo root.
   inbound RPC stream that sends every audio item. Current RPC stream
   construction is directionally aligned with that because it does not use
   `isRealTime`/`canSkipTo`, and the broad mux/demux shape already exists.
-- The mismatch is the extra server-side catch-up logic around that stream:
-  `LiveStreamMuxer` computes `skipTo = lag - MaxCatchUpLag`, and
-  `AudioStreamingBackend.GetAudio` applies it. In the target, this
-  presentation decision belongs to the client `audio buffer`, especially when
-  video from the same author is playing.
-- `LiveStreamMuxer` also owns per-author exclusivity, catch-up, eviction
+- The stale-audio trim is deliberately coarse and audio-friendly (3 s). The
+  client-side audio buffer still owns precise A/V catch-up, including whether
+  to speed up or hard-skip the frames that survived server trim.
+- `LiveStreamMuxer` also owns per-author exclusivity, stale trim, eviction
   debouncing, and three distinct item types. Some of that may remain as stream
-  lifecycle fan-out, but catch-up should not live there. The muxer should
-  multiplex; it should not skip.
+  lifecycle fan-out, but fine catch-up should not live there.
 - Unbounded fan-in output channel duplicates retention work already done by
   `StreamStore` and adds another place where backlog can hide.
 
@@ -480,7 +476,7 @@ All file paths are relative to the repo root.
 
 **Now:**
 - Receiver-side startup is split between `LiveStreamMuxer.skipTo` (server
-  drops everything older than `MaxCatchUpLag = 3 s`), `ChatListener.skipTo`
+  drops everything older than `StaleAudioTrimWindow = 3 s`), `ChatListener.skipTo`
   (client further skips by `playAt - BeginsAt`), and `feeder-audio-worklet-processor.tryBeginPlaying`
   (waits until `bufferedDuration >= bufferSizeToStartPlayback`, default
   100 ms or 500 ms with video).
@@ -490,11 +486,9 @@ All file paths are relative to the repo root.
   of the JS-side fill threshold.
 
 **vs. doc:**
-- Doc: the server sends audio through a non-realtime inbound RPC stream and
-  the receiver drains it into the `audio buffer`; the server should not skip
-  to the live edge on the receiver's behalf. Current behavior still has
-  server-side catch-up: the muxer drops everything older than
-  `MaxCatchUpLag = 3 s`, and then the client may skip again.
+- The server keeps a coarse 3 s stale-audio trim to avoid replaying deep-past
+  reconnect/backlog audio. The client may still skip again for precise
+  playback start or A/V catch-up.
 - Doc: when paired with video, defer audio start until the shared A/V target
   delay is reached. Current code raises the start threshold to 500 ms when
   video is detected (`BUFFER_TO_PLAY_DURATION_WITH_VIDEO`), which is a
@@ -531,16 +525,12 @@ In rough order of difficulty:
    `feeder-audio-worklet-processor.ts`; this refactor pulls them out and
    puts them on the encoded-frame side.
 
-3. **Remove server-side live catch-up skipping.** Full server-side retention
-   stays — transcription and persistence need it. What changes is who decides
-   what is too old to present. Today `LiveStreamMuxer` computes
-   `skipTo = lag - MaxCatchUpLag` (3 s) and `AudioStreamingBackend.SkipTo`
-   applies it; the receiver never sees the skipped audio. The target moves
-   that decision into the client `audio buffer`, which can use video state to
-   choose between playing everything, temporary speed-up, and hard skip.
-   Cascades: `LiveStreamMuxer.MaxCatchUpLag` becomes redundant for live audio
-   presentation, `SkipTo` simplifies, and `RemoteAudioStreamCache` assumptions
-   need to be revisited.
+3. **Keep stale trim coarse and client catch-up precise.** Full server-side
+   retention stays — transcription and persistence need it. Live fan-out keeps
+   a short 3 s trim so reconnect/backlog bursts do not stream deep-past speech
+   to audio-only listeners. The client `audio buffer` handles fine A/V catch-up
+   over the frames that remain, choosing between playing everything, temporary
+   speed-up, and hard skip.
 
 4. **Make sender upload loss-preserving while removing silent producer drops.**
    The producer-side `RpcStream` should remain non-realtime for recording
@@ -562,16 +552,12 @@ In rough order of difficulty:
    pairing needs an explicit choice between speed-up-by-frame-dropping and
    hard skip.
 
-6. **Consolidate the three skip points into one client-side mapping.** Once
-   offsets are preserved end-to-end (refactor 1) and server-side live catch-up
-   is removed (refactor 3), `AudioStreamingBackend.SkipTo`,
-   `LiveStreamMuxer.skipTo`, and `ChatListener.skipTo` become unnecessary for
-   normal live playback. The `audio buffer` alone decides whether to play
-   received audio as-is, speed up by dropping frames, or hard-skip stale
-   chunks. The muxer, inbound RPC stream, and demuxer should read and forward
-   all audio items. Removing the skip points requires unwinding the assumption
-   baked into `LiveStreamMuxer.ProcessStream` that early skip is a server
-   responsibility.
+6. **Keep skip decisions layered.** `LiveStreamMuxer.skipTo` /
+   `AudioStreamingBackend.SkipTo` should remain a coarse 3 s stale-audio trim
+   for reconnect/backlog bursts and late joins. `ChatListener.skipTo` and the
+   decoder-side audio buffer own the local presentation mapping: play as-is,
+   speed up by dropping frames, or hard-skip stale chunks based on video state
+   and playback lag.
 
 7. **Untangle MAUI platform ring buffers.** Each platform interposes a
    ~10 s ring buffer between capture and the rest of the pipeline, plus

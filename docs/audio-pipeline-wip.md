@@ -144,9 +144,9 @@ existing call sites working.
 
 Outcome: every later audio-buffer step (preserving `frame.Offset`
 end-to-end, moving the playback buffer pre-decode, splitting the
-recording vs. delivery RPC stream parameters, removing server-side live
-catch-up) can change one constant's value or read a target-named field
-without re-touching the constants pipe.
+recording vs. delivery RPC stream parameters, and tuning the coarse
+server stale-audio trim) can change one constant's value or read a
+target-named field without re-touching the constants pipe.
 
 ### Step 4 — Drop derived fields from the .NET→TS wire format (cross-pipeline)
 
@@ -255,7 +255,8 @@ keeps each commit small and reviewable — are:
    catch-up transform has access to true origin time instead of the
    index-based offsets `ChatListener.CreateAudioSource` synthesizes
    today.
-3. **Remove server-side live catch-up.** Drop `LiveStreamMuxer`'s
-   `MaxCatchUpLag = 3 s` skip and `AudioStreamingBackend.SkipTo`'s
-   live-catch-up role for audio. Once the client transform owns the
-   decision, the server stops second-guessing it.
+3. **Keep server trim coarse, client sync fine.** `LiveStreamMuxer`
+   keeps a short 3 s stale-audio trim so reconnect/backlog bursts and
+   late joins don't ship long-past speech. The client decoder buffer owns
+   fine A/V catch-up and any larger skip decisions after receiving the
+   remaining source-timestamped frames.

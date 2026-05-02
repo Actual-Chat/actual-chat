@@ -141,9 +141,9 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         if (skipTo <= TimeSpan.Zero)
             return stream;
 
-        // First frame is the header (Offset < 0), always keep it.
-        // Skip data frames whose Offset is before skipTo.
-        // We can call SplitHead as the stream is stored at unbounded StreamStore
+        // Preserve the stream header and original frame offsets while trimming
+        // stale data frames. The client still sees source-time offsets for the
+        // frames that remain and can perform fine playback/A-V catch-up locally.
         var (headerTask, dataStream) = stream.SplitHead(cancellationToken);
         return dataStream
             .SkipWhile(f => f.Offset < skipTo)
