@@ -13,8 +13,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
 {
     private readonly Dictionary<StreamKind, RecordingAggregator> _recordingByKind = new() {
-        [StreamKind.Webcam] = new RecordingAggregator(RecordingThresholds.Defaults),
-        [StreamKind.Screencast] = new RecordingAggregator(RecordingThresholds.Defaults),
+        [StreamKind.Webcam] = new RecordingAggregator(RecordingThresholds.ForKind(StreamKind.Webcam)),
+        [StreamKind.Screencast] = new RecordingAggregator(RecordingThresholds.ForKind(StreamKind.Screencast)),
     };
     private RecorderHealthSnapshot? _lastHealth;
     private bool _wasConnected = true;
@@ -50,7 +50,8 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
             _coldStartTicksRemaining--;
             return;
         }
-        var signal = RecordingClassifier.Classify(snapshot, RecordingThresholds.Defaults);
+        var thresholds = RecordingThresholds.ForKind(kind);
+        var signal = RecordingClassifier.Classify(snapshot, thresholds);
         var decision = aggregator.Step(signal);
         if (!decision.Changed)
             return;
@@ -248,7 +249,10 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
         int ConsecutiveGoodForClimb,
         int CooldownTicksAfterBackoff)
     {
-        public static RecordingThresholds Defaults => new(
+        public static RecordingThresholds Defaults => ForKind(StreamKind.Webcam);
+
+        public static RecordingThresholds ForKind(StreamKind kind)
+            => new(
             EncodeRatioBadAbove: 0.8,
             EncodeRatioGoodBelow: 0.5,
             BacklogBadMs: 200,
@@ -257,7 +261,9 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
             LastAckGoodMs: 500,
             SkipsBadCount: 5,
             MinTargetLayerCount: 1,
-            MaxTargetLayerCount: Constants.Video.MaxSimulcastTiers,
+            MaxTargetLayerCount: kind == StreamKind.Webcam
+                ? Constants.Video.WebcamMaxSimulcastTiers
+                : Constants.Video.ScreencastMaxSimulcastTiers,
             ConsecutiveGoodForClimb: 5,
             CooldownTicksAfterBackoff: 5);
     }

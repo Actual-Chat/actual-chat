@@ -1081,12 +1081,10 @@ function deliverChunkToStream(
     const frameWidth = chunkWidth ?? encoderConfig!.width;
     const frameHeight = chunkHeight ?? encoderConfig!.height;
 
-    // Active encoder ladder snapshot: base encoder is always present (id=0),
-    // extras occupy ids 1..N where N = extraLayerEncoders.length. The receiver
-    // uses [min, max] to know the full layer range without having to observe
-    // every one. Constant across the burst on a given keyframe boundary.
-    const minSpatialLayerId = 0;
-    const maxSpatialLayerId = extraLayerEncoders.length;
+    // Active encoder ladder snapshot: base encoder is always id=0, extras
+    // occupy ids 1..N. Publish the top id + dimensions so receivers don't have
+    // to infer stream shape from observed frames.
+    const topLayer = topSpatialLayerInfo();
 
     const frame: VideoStreamFrame = {
         offset: microsecondsToTicks(Math.round(timestamp)),
@@ -1096,8 +1094,9 @@ function deliverChunkToStream(
         data: chunkData, codec: isKeyFrame ? codec : undefined,
         temporalLayerId: temporalLayerId,
         spatialLayerId: spatialLayerId,
-        minSpatialLayerId,
-        maxSpatialLayerId,
+        maxSpatialLayerId: topLayer.id,
+        maxSpatialLayerWidth: topLayer.width,
+        maxSpatialLayerHeight: topLayer.height,
         // Source dims piggybacked on keyframes only — server uses them to
         // recompute its max-quality ceiling when the window is resized mid-stream.
         sourceWidth: isKeyFrame ? sourceWidth : undefined,
@@ -1152,6 +1151,9 @@ function deliverChunkToStream(
                     height: encoderConfig!.height,
                     sourceWidth: sourceWidth || encoderConfig!.width,
                     sourceHeight: sourceHeight || encoderConfig!.height,
+                    maxSpatialLayerId: topLayer.id,
+                    maxSpatialLayerWidth: topLayer.width,
+                    maxSpatialLayerHeight: topLayer.height,
                     codecSettings: settings,
                 },
                 streamCtx,
@@ -1395,6 +1397,23 @@ function ladderMaxDims(): { width: number; height: number } {
         if (s.configuredHeight > h) h = s.configuredHeight;
     }
     return { width: w, height: h };
+}
+
+function topSpatialLayerInfo(): { id: number; width: number; height: number } {
+    if (extraLayerEncoders.length === 0)
+        return {
+            id: 0,
+            width: encoderConfig?.width ?? 0,
+            height: encoderConfig?.height ?? 0,
+        };
+
+    const id = extraLayerEncoders.length;
+    const top = extraLayerEncoders[id - 1].getStats();
+    return {
+        id,
+        width: top.configuredWidth,
+        height: top.configuredHeight,
+    };
 }
 
 // Map a layer's (w, h) onto the base encoder's current orientation. The ladder

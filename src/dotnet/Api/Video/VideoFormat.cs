@@ -16,6 +16,9 @@ public partial record VideoFormat : MediaFormat
     // Legacy peers that don't populate these send 0 — server falls back to Width/Height.
     [DataMember(Order = 14), MemoryPackOrder(14), Key(14)] public int SourceWidth { get; init; }
     [DataMember(Order = 15), MemoryPackOrder(15), Key(15)] public int SourceHeight { get; init; }
+    [DataMember(Order = 16), MemoryPackOrder(16), Key(16)] public byte MaxSpatialLayerId { get; init; }
+    [DataMember(Order = 17), MemoryPackOrder(17), Key(17)] public int MaxSpatialLayerWidth { get; init; }
+    [DataMember(Order = 18), MemoryPackOrder(18), Key(18)] public int MaxSpatialLayerHeight { get; init; }
 
     public override byte[] Serialize(int index = 0)
         => CodecSettings.IsNullOrEmpty() ? [] : Convert.FromBase64String(CodecSettings);

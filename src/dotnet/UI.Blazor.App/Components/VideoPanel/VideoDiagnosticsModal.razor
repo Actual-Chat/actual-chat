@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components.VideoPanel
 @using ActualChat.Streaming
 @using ActualChat.UI.Blazor.App.Module
+@using ActualChat.Video
 @using System.Text.Json
 @inherits ComputedStateComponent<AppUIHub, VideoDiagnosticsModal.ComputedModel>
 @implements IModalView<VideoDiagnosticsModal.Model>
@@ -241,7 +242,7 @@
                         </div>
                         <div class="diag-row">
                             <span class="diag-label">Sender max</span>
-                            <span class="diag-value">@(s.Info.Format.Width)×@(s.Info.Format.Height)</span>
+                            <span class="diag-value">@SenderMax(s.Info.Format)</span>
                         </div>
                         @{
                             var hasDiag = _streamDiags.TryGetValue(sid, out var rdPeek)
@@ -499,6 +500,11 @@
         return string.Join(", ", v.EnumerateArray().Select(x => x.GetString()));
     }
 
+    private static string SenderMax(VideoFormat format)
+        => format.MaxSpatialLayerWidth > 0 && format.MaxSpatialLayerHeight > 0
+            ? $"{format.MaxSpatialLayerWidth}x{format.MaxSpatialLayerHeight}"
+            : $"{format.Width}x{format.Height}";
+
     private string GetShowDetailsIndicator(bool show)
         => show ? ">---<" : "<->";
 
@@ -588,7 +594,7 @@
             sb.AppendLine($"  Kind: {(s.Info.StreamKind == StreamKind.Screencast ? "Screencast" : "Camera")}");
             sb.AppendLine($"  Started: {DateTimeConverter.ToLocalTime(s.Info.StartedAt):HH:mm:ss}");
             sb.AppendLine($"  Codec: {s.Info.Format.Codec}");
-            sb.AppendLine($"  Sender max: {s.Info.Format.Width}x{s.Info.Format.Height}");
+            sb.AppendLine($"  Sender max: {SenderMax(s.Info.Format)}");
 
             if (_streamDiags.TryGetValue(sid, out var rd) && rd.ValueKind == JsonValueKind.Object) {
                 if (rd.TryGetProperty("forwarded", out var copyFwd)

@@ -33,12 +33,11 @@ export interface VideoStreamFrame {
     // SVC spatial layer (simulcast): 0 = base (lowest-res), 1+ = higher-res layers.
     // Always 0 for single-encoder (P2P) streams.
     spatialLayerId?: number;
-    // Range of spatial layers currently produced by the encoder ladder, set by
-    // the recorder per frame. Lets the receiver know "this stream has layers
-    // [min..max] available right now" without having to wait to observe each
-    // one. P2P/single-encoder streams emit min == max == 0.
-    minSpatialLayerId?: number;
+    // Spatial layers currently produced by the encoder ladder. The minimum is
+    // always 0; max + top dimensions describe the available range.
     maxSpatialLayerId?: number;
+    maxSpatialLayerWidth?: number;
+    maxSpatialLayerHeight?: number;
     // Native source dimensions, populated on keyframes only. Sent to server so
     // it can track source-resolution growth (window resize, camera swap) and
     // unlock higher quality presets mid-stream without a full stream restart.
@@ -96,11 +95,11 @@ function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
         dto.TemporalLayerId = frame.temporalLayerId;
     if (frame.spatialLayerId !== undefined && frame.spatialLayerId > 0)
         dto.SpatialLayerId = frame.spatialLayerId;
-    // Always emit the producer's current ladder range; the server's
-    // ReceiveQualityFilter clamps the consumer cap into [min, max] per frame
-    // without observing layers over time.
-    dto.MinSpatialLayerId = frame.minSpatialLayerId ?? 0;
+    // Always emit the producer's current ladder top; the server's
+    // ReceiveQualityFilter clamps the consumer cap into [0, max] per frame.
     dto.MaxSpatialLayerId = frame.maxSpatialLayerId ?? 0;
+    dto.MaxSpatialLayerWidth = frame.maxSpatialLayerWidth ?? frame.width;
+    dto.MaxSpatialLayerHeight = frame.maxSpatialLayerHeight ?? frame.height;
     return dto;
 }
 
@@ -164,6 +163,9 @@ export class InternalVideoStream {
             height: number;
             sourceWidth: number;
             sourceHeight: number;
+            maxSpatialLayerId: number;
+            maxSpatialLayerWidth: number;
+            maxSpatialLayerHeight: number;
             codecSettings: string;
         },
         private readonly ctx: StreamingContext,
@@ -226,6 +228,9 @@ export class InternalVideoStream {
                 CodecSettings: this.config.codecSettings,
                 SourceWidth: this.config.sourceWidth,
                 SourceHeight: this.config.sourceHeight,
+                MaxSpatialLayerId: this.config.maxSpatialLayerId,
+                MaxSpatialLayerWidth: this.config.maxSpatialLayerWidth,
+                MaxSpatialLayerHeight: this.config.maxSpatialLayerHeight,
             };
 
             // Real-time video stream: isRealTime=true, allowReconnect=true, ackPeriod=5, bufferSize=31.

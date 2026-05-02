@@ -80,6 +80,11 @@ export async function runRpcProducer(
             Width: FrameConfig.Width,
             Height: FrameConfig.Height,
             CodecSettings: '',
+            SourceWidth: FrameConfig.Width,
+            SourceHeight: FrameConfig.Height,
+            MaxSpatialLayerId: 0,
+            MaxSpatialLayerWidth: FrameConfig.Width,
+            MaxSpatialLayerHeight: FrameConfig.Height,
         };
         const clientStartOffsetSec = Date.now() / 1000;
 

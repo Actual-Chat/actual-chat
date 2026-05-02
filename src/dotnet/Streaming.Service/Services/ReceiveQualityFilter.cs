@@ -6,9 +6,9 @@ namespace ActualChat.Streaming.Services;
 /// Per-consumer video filter that clamps a raw stream to the client-requested
 /// spatial and temporal caps. Picks the spatial layer per keyframe by clamping
 /// the consumer's <see cref="ReceiveQuality.MaxSpatialLayer"/> into the
-/// producer-declared range <c>[MinSpatialLayerId, MaxSpatialLayerId]</c> on
-/// the frame itself; only switches layers on a keyframe so a producer-side
-/// ladder change mid-GOP triggers skip-until-next-keyframe, not torn output.
+/// producer-declared range <c>[0, MaxSpatialLayerId]</c> on the frame itself;
+/// only switches layers on a keyframe so a producer-side ladder change mid-GOP
+/// triggers skip-until-next-keyframe, not torn output.
 /// </summary>
 public static class ReceiveQualityFilter
 {
@@ -39,9 +39,8 @@ public static class ReceiveQualityFilter
             if (frame.TemporalLayerId > consumerMaxTemporal)
                 continue;
 
-            int producerMin = frame.MinSpatialLayerId;
             int producerMax = frame.MaxSpatialLayerId;
-            int desiredLayer = consumerMaxSpatial < producerMin ? producerMin
+            int desiredLayer = consumerMaxSpatial < 0 ? 0
                 : consumerMaxSpatial > producerMax ? producerMax
                 : consumerMaxSpatial;
 
@@ -60,7 +59,7 @@ public static class ReceiveQualityFilter
             if (skipping || selectedLayer < 0)
                 continue;
             // Producer dropped our layer mid-GOP — wait for the next keyframe to re-select.
-            if (selectedLayer < producerMin || selectedLayer > producerMax) {
+            if (selectedLayer > producerMax) {
                 skipping = true;
                 continue;
             }

@@ -72,6 +72,11 @@ export interface VideoFormatDto {
     Width: number;
     Height: number;
     CodecSettings: string;
+    SourceWidth: number;
+    SourceHeight: number;
+    MaxSpatialLayerId: number;
+    MaxSpatialLayerWidth: number;
+    MaxSpatialLayerHeight: number;
 }
 
 export interface VideoStreamInfoDto {

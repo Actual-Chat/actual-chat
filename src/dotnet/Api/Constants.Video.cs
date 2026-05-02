@@ -26,13 +26,11 @@ public static partial class Constants
         public static readonly TimeSpan ServerReplayTailDuration = TimeSpan.FromSeconds(1);
         public static readonly int ServerReplayTailSize = (int)(FrameRate * ServerReplayTailDuration.TotalSeconds); // 30
 
-        // Max simulcast tiers a sender may produce. Mirrors TS
-        // MAX_SIMULCAST_TIERS in src/dotnet/UI.Blazor.App/Components/VideoPanel/
-        // simulcast-ladder.ts — webcam ceiling at 3 tiers (720p/360p/180p,
-        // each ¼ pixels of the previous). iOS Safari HW-encoder budget is
-        // preserved via a probe-gated 3rd webcam tier (drops to 2 on probe-
-        // fail). Screencast is a separate fixed 2-tier ladder (1080p/540p).
-        public const int MaxSimulcastTiers = 3;
+        // Max simulcast tiers by stream kind. Mirrors TS constants in
+        // src/dotnet/UI.Blazor.App/Components/VideoPanel/simulcast-ladder.ts.
+        // Webcam: up to 3 tiers (720p/360p/180p). Screencast: top + half-size.
+        public const int WebcamMaxSimulcastTiers = 3;
+        public const int ScreencastMaxSimulcastTiers = 2;
 
         public static readonly TimeSpan CancellationDelay = TimeSpan.FromSeconds(5);
         public static readonly TimeSpan StreamExpirationDelay = TimeSpan.FromSeconds(30);

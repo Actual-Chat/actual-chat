@@ -138,6 +138,10 @@ public sealed class VideoRecorder : IAsyncDisposable
 
     public Task SetTargetLayerCount(int layerCount, CancellationToken cancellationToken)
     {
+        var maxLayerCount = Kind == StreamKind.Webcam
+            ? Constants.Video.WebcamMaxSimulcastTiers
+            : Constants.Video.ScreencastMaxSimulcastTiers;
+        layerCount = Math.Min(layerCount, maxLayerCount);
         var layers = layerCount <= 1
             ? null
             : BuildLadder(Kind).Take(layerCount).ToArray();

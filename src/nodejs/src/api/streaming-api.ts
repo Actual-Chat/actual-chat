@@ -67,10 +67,11 @@ export interface VideoFrameDto {
     // SVC spatial layer ID (uint8 on wire). 0 = base (lowest-res) layer,
     // 1+ = higher-res simulcast layers. Always 0 on single-encoder (P2P) streams.
     SpatialLayerId?: number;
-    // Min/max spatial layer this frame covers (uint8 on wire). Used by the
-    // server forwarder to clamp simulcast fan-out per consumer.
-    MinSpatialLayerId?: number;
+    // Max spatial layer this stream currently produces. Spatial IDs are always
+    // zero-based, so the available range is 0..MaxSpatialLayerId.
     MaxSpatialLayerId?: number;
+    MaxSpatialLayerWidth?: number;
+    MaxSpatialLayerHeight?: number;
     // SVC temporal layer ID (uint8 on wire). 0 = base, 1+ = enhancement.
     TemporalLayerId?: number;
     // Native source dimensions, keyframe only. Lets server track source-resolution
@@ -88,6 +89,9 @@ export interface VideoFormatDto {
     CodecSettings: string;
     SourceWidth: number;
     SourceHeight: number;
+    MaxSpatialLayerId: number;
+    MaxSpatialLayerWidth: number;
+    MaxSpatialLayerHeight: number;
 }
 
 // --- AudioFrame TypeScript interface ---

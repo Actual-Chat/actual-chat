@@ -5,7 +5,11 @@ import type { RecorderHealthSnapshotJs } from '../../Services/Video/services/vid
 import type { SpatialLayerConfig } from '../../Services/Video/workers/video-processing-worker-contract';
 import { detectSupportedCodecs, getDefaultCodec, getCodecCategory, probeConcurrentEncoders, type CodecInfo } from '../../Services/Video/codec-support';
 import { getExpectedBitrate } from '../../Services/Video/bitrate-table';
-import { buildLadder, MAX_SIMULCAST_TIERS } from './simulcast-ladder';
+import {
+    buildLadder,
+    SCREENCAST_MAX_SIMULCAST_TIERS,
+    WEBCAM_MAX_SIMULCAST_TIERS,
+} from './simulcast-ladder';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
 
@@ -154,6 +158,7 @@ export class VideoRecorder {
     // indices are enhancement layers. Sent by C# VideoRecorder in response to
     // VideoQualityPreset.MaxSpatialLayer aggregate changes.
     private simulcastLayers: SpatialLayerConfig[] | null = null;
+    private fullSimulcastLadder: SpatialLayerConfig[] | null = null;
 
     // Blur preview frame subscribers. When blur is active, the pipeline produces
     // `VideoFrame`s that we dispatch to every listener before the frame is closed
@@ -304,46 +309,17 @@ export class VideoRecorder {
     // encoder (cap=0 case). Layers are rebuilt against running source dims so
     // portrait/cap-stepped sources produce correct ladder shape.
     public setSimulcastLayers(layers: SpatialLayerConfig[] | null): void {
-        const clamped = (layers && layers.length > MAX_SIMULCAST_TIERS)
-            ? layers.slice(-MAX_SIMULCAST_TIERS)
+        const maxTiers = this.isScreencasting ? SCREENCAST_MAX_SIMULCAST_TIERS : WEBCAM_MAX_SIMULCAST_TIERS;
+        const clamped = (layers && layers.length > maxTiers)
+            ? layers.slice(-maxTiers)
             : layers;
+        const requestedCount = clamped?.length ?? 0;
         let active: SpatialLayerConfig[] | null = (clamped && clamped.length >= 2) ? clamped : null;
         const prevCount = this.simulcastLayers?.length ?? 0;
-        // Source-shaped rebuild: take only the layer count from C#, derive
-        // dims by re-deriving from the previously-active ladder's TOP. The
-        // top tier always equals the captured source dim — that's what we
-        // want as `topWidth/topHeight` for buildLadder. Reading from
-        // `getEncoderStats()` gives the BASE encoder dim instead, which
-        // would shrink the ladder by half on every rebuild (180p → 90p →
-        // 45p ...). Falls back to camera dim if no prior ladder cached.
-        if (active !== null && this.recordingService) {
-            const cfg = this.recordingService.getConfig();
-            const codec = cfg.codecString ?? '';
-            const prevLadder = this.simulcastLayers;
-            let topW = 0;
-            let topH = 0;
-            if (prevLadder && prevLadder.length > 0) {
-                const top = prevLadder[prevLadder.length - 1];
-                topW = top.width;
-                topH = top.height;
-            } else if (this.cameraWidth > 0 && this.cameraHeight > 0) {
-                topW = this.cameraWidth;
-                topH = this.cameraHeight;
-            }
-            if (topW > 0 && topH > 0) {
-                const rebuilt = buildLadder({
-                    topWidth: topW,
-                    topHeight: topH,
-                    tierCount: active.length,
-                    bitrateFor: (h: number) => getExpectedBitrate(codec, h, cfg.mode),
-                });
-                if (rebuilt.length > 0) {
-                    infoLog?.log(
-                        `setSimulcastLayers: rebuilt ladder (top=${topW}x${topH}, tiers=${active.length}): ${
-                            rebuilt.map(l => `${l.width}x${l.height}`).join(', ')}`);
-                    active = rebuilt;
-                }
-            }
+        if (active !== null && this.fullSimulcastLadder) {
+            active = this.fullSimulcastLadder.slice(0, Math.min(requestedCount, this.fullSimulcastLadder.length));
+            if (active.length < 2)
+                active = null;
         }
         const newCount = active?.length ?? 0;
         this.simulcastLayers = active;
@@ -484,6 +460,7 @@ export class VideoRecorder {
                 topWidth: targetSize.width,
                 topHeight: targetSize.height,
                 tierCount: 3,
+                maxTierCount: WEBCAM_MAX_SIMULCAST_TIERS,
                 bitrateFor: (h: number) => getExpectedBitrate(initialPick, h),
             });
             let bestCodecString = await this.pickSimulcastCodec(
@@ -496,6 +473,7 @@ export class VideoRecorder {
                     topWidth: 640,
                     topHeight: 360,
                     tierCount: 2,
+                    maxTierCount: WEBCAM_MAX_SIMULCAST_TIERS,
                     bitrateFor: (h: number) => getExpectedBitrate(initialPick, h),
                 });
                 infoLog?.log(`3-tier probe failed for all codecs — falling back to 2-tier @ 360p (drop 720p top)`);
@@ -519,6 +497,7 @@ export class VideoRecorder {
                 topWidth: ladder[ladder.length - 1].width,
                 topHeight: ladder[ladder.length - 1].height,
                 tierCount: ladder.length,
+                maxTierCount: WEBCAM_MAX_SIMULCAST_TIERS,
                 bitrateFor: (h: number) => getExpectedBitrate(bestCodecString, h),
             });
             const base = ladder[0];
@@ -528,6 +507,7 @@ export class VideoRecorder {
             const captureBitrate = top.bitrate;
             const simulcastLadder: SpatialLayerConfig[] = ladder;
             this.simulcastLayers = simulcastLadder.length >= 2 ? [...simulcastLadder] : null;
+            this.fullSimulcastLadder = this.simulcastLayers ? [...this.simulcastLayers] : null;
             infoLog?.log(`Initial codec selection: ${codecCategory} (${bestCodecString}), hw=${bestCodecInfo?.hardwareAccelerated ?? false}, top=${captureWidth}x${captureHeight}@${captureBitrate / 1_000_000}Mbps`);
             infoLog?.log(`Capture ladder (bottom-first): [${ladder.map(l => `${l.width}x${l.height}`).join(', ')}], capture ${captureWidth}x${captureHeight}, base ${base.width}x${base.height}`);
 
@@ -562,6 +542,10 @@ export class VideoRecorder {
 
             // Start recording (this initializes the video-pipeline)
             await this.recordingService.start();
+            this.fullSimulcastLadder = this.recordingService.getConfig().simulcastLadder ?? null;
+            this.simulcastLayers = this.fullSimulcastLadder && this.fullSimulcastLadder.length >= 2
+                ? [...this.fullSimulcastLadder]
+                : null;
 
             this.previewTrack = this.recordingService.getInputTrack();
             // If the camera track ends externally (permission revoked, camera
@@ -661,11 +645,13 @@ export class VideoRecorder {
                 topWidth: targetSize.width,
                 topHeight: targetSize.height,
                 tierCount: 2,
+                maxTierCount: SCREENCAST_MAX_SIMULCAST_TIERS,
                 bitrateFor: (h: number) => getExpectedBitrate(bestCodecString, h, 'screen'),
             });
             const screencastBase = screencastLadder[0];
             const screencastTop = screencastLadder[screencastLadder.length - 1];
             this.simulcastLayers = [...screencastLadder];
+            this.fullSimulcastLadder = [...screencastLadder];
             infoLog?.log(`Screencast ladder (bottom-first): [${screencastLadder.map(l => `${l.width}x${l.height}`).join(', ')}], capture ${screencastTop.width}x${screencastTop.height}, base ${screencastBase.width}x${screencastBase.height}`);
             const config: RecordingConfig = {
                 mode: 'screen',
@@ -689,6 +675,10 @@ export class VideoRecorder {
 
             // Start recording — getDisplayMedia will prompt the user to pick a screen
             await this.recordingService.start();
+            this.fullSimulcastLadder = this.recordingService.getConfig().simulcastLadder ?? null;
+            this.simulcastLayers = this.fullSimulcastLadder && this.fullSimulcastLadder.length >= 2
+                ? [...this.fullSimulcastLadder]
+                : null;
 
             // Get the screen track for preview and track-ended detection
             const screenTrack = this.recordingService.getInputTrack();
@@ -751,6 +741,8 @@ export class VideoRecorder {
             this.cleanupPreviewTrack();
             this.isRecording = false;
             this.isScreencasting = false;
+            this.simulcastLayers = null;
+            this.fullSimulcastLadder = null;
             this.lastCodecSwitchAt = 0;
             this.setRecordingState('stopped');
             this.unregister();
