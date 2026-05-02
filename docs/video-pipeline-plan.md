@@ -285,6 +285,8 @@ interop.
 ### Files involved
 
 - `src/dotnet/Api.Contracts/Streaming/ILiveAudioStreams.cs`
+- `src/dotnet/Api.Contracts/Streaming/IStreamClient.cs`
+- `src/dotnet/Api.Contracts/Streaming/StreamClient.cs`
 - `src/dotnet/Api.Contracts/Streaming/IStreamServer.cs`
 - `src/dotnet/Streaming.Service/Services/LiveAudioStreams.cs` (new — or
   use existing if present)
@@ -319,7 +321,7 @@ on it so RPC compat survives.
 ```csharp
 // Audio frames push/pull (moved from IStreamServer)
 [RpcMethod(RemoteExecutionMode = RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect)]
-Task PushAudio(
+Task PushStream(
     Session session,
     string chatId,
     string? repliedChatEntryId,
@@ -358,6 +360,11 @@ legacy WS path. Confirmed by user — "it's going to be a local call, but
 it's fine for now, coz it's unused in the impl. anyway, we just want
 to prepare for the future".
 
+Update `StreamClient.PushAudio` to call `ILiveAudioStreams.PushStream`
+instead of `IStreamServer.PushAudio`. Keep `IStreamClient.PushAudio` as
+the local facade method name unless/until its public API is renamed
+separately.
+
 ### IStreamServer marking
 
 Mark `IStreamServer` `[Obsolete]` at the type level. Not just
@@ -369,7 +376,7 @@ deprecated in comments — actual `[Obsolete]` attribute.
 
 ```csharp
 [RpcMethod(RemoteExecutionMode = RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect)]
-Task PushVideo(
+Task PushStream(
     Session session,
     string chatId,
     double clientStartOffset,
@@ -404,8 +411,12 @@ Task<RpcNoWait> ChangePlaybackQuality(
   `LegacyObserveSupportedDecoderCodecs`,
   `LegacyObserveStreamQualityRequests`) — these are video-only legacy
   shims and v2.6 clients don't speak video.
-- `GetQualityPreset` — it's the old quality model. Replaced by
-  `ChangePlaybackQuality` flow. Remove from the interface.
+- Keep `GetQualityPreset` for now as the publisher-facing keyframe
+  request signal. The old quality adaptation model is replaced by
+  `ChangeRecordingQuality` / `ChangePlaybackQuality`, but
+  `RequestKeyFrame` must still propagate immediately to the recorder by
+  invalidating `GetQualityPreset` so the publisher observes
+  `IsKeyFrameRequested = true`.
 
 ### What to keep on ILiveVideoStreams
 
@@ -417,6 +428,11 @@ Everything else with its `[LegacyName]` attribute intact:
 - `UnregisterMember` / `[LegacyName("UnregisterVideoStreamMember", ...)]`
 
 These are non-video-frame methods; v2.6 clients hit them.
+
+Update `StreamClient.PushVideo` to call `ILiveVideoStreams.PushStream`
+instead of `IStreamServer.PushVideo`. Keep `IStreamClient.PushVideo` as
+the local facade method name unless/until its public API is renamed
+separately.
 
 ### IStreamServer video removal
 
@@ -434,6 +450,21 @@ Change `Task → Task<RpcNoWait>` on the new
 `ILiveVideoStreams.RequestKeyFrame`. The implementation already has
 fire-and-forget semantics (just sets a flag); the type makes that
 explicit at the wire level.
+
+Implementation detail: `ILiveVideoStreams.RequestKeyFrame` should route
+through the same immediate publisher signal path as today:
+
+1. Store a pending keyframe request for the target stream, with the
+   existing cooldown/collapse semantics.
+2. Invalidate `GetQualityPreset(streamId)` immediately.
+3. `GetQualityPreset` consumes the pending flag and returns the current
+   preset with `IsKeyFrameRequested = true`.
+4. `VideoRecorder` keeps its `GetQualityPreset` subscription for this
+   signal and calls `forceKeyFrame` when the flag is observed.
+
+This keeps keyframe recovery independent from playback quality control.
+Later, if a dedicated publisher-control stream replaces
+`GetQualityPreset`, move this path there in one deliberate change.
 
 ## Step 8.3 — `GetStream` impl using `GetVideoRaw` + `ReceiveQualityFilter`
 
@@ -479,7 +510,7 @@ adaptation) but predictable.
   line 1371 — same swap.
 - `src/dotnet/UI.Blazor.App/Services/Video/workers/video-streaming.ts`
   line 246 — `streamServer.PushVideo(...)` →
-  `liveVideoStreams.PushVideo('~', ...)`. The constant
+  `liveVideoStreams.PushStream('~', ...)`. The constant
   `RPC_SESSION_DEFAULT = '~'` is already defined at line 21 of that
   same file.
 - All `streamServer.RequestKeyFrame(...)` call sites — find with
@@ -489,7 +520,8 @@ adaptation) but predictable.
   `ChangePlaybackQuality` info payloads (Steps 9 and 10).
 - All audio + transcript callsites (`streamServer.PushAudio`,
   `GetAudio`, `GetTranscript`, `ReportAudioLatency`) — swap to
-  `liveAudioStreams` equivalents. `GetAudio` becomes
+  `liveAudioStreams` equivalents. `PushAudio` becomes
+  `liveAudioStreams.PushStream`; `GetAudio` becomes
   `liveAudioStreams.GetStream`. `GetTranscript` becomes
   `liveAudioStreams.GetTranscriptStream`.
 
@@ -497,7 +529,7 @@ adaptation) but predictable.
 
 JS passes `'~'` (= `RPC_SESSION_DEFAULT`) for the `session` parameter;
 the server-side middleware resolves it from the WS `?session=` URL
-parameter. This is the same pattern `streamServer.PushVideo` uses
+parameter. This is the same pattern the existing stream push calls use
 today. Both `decoder-worker.ts:21` and `audio-streamer.ts:21` already
 define a local `RPC_SESSION_DEFAULT = '~'` constant; reuse them or
 hoist to a shared module if convenient.
@@ -511,9 +543,12 @@ After 8.3 lands, the following code is dead and must go:
 - `src/dotnet/Streaming.Service/Backend/VideoStreamingBackend.cs`:
   - `GetVideo(...)` method (the version that wraps `VideoStreamFilter`).
     Keep `GetVideoRaw`.
-  - `GetQualityPreset(...)` method.
-  - `RequestKeyFrame(...)` server method (replaced by the new
-    `ILiveVideoStreams.RequestKeyFrame` impl).
+  - Old quality adaptation inside `GetQualityPreset(...)`, but keep the
+    method itself as the keyframe-request propagation path until a
+    dedicated publisher-control channel exists.
+  - Keep `RequestKeyFrame(...)` semantics (pending flag + cooldown +
+    `GetQualityPreset` invalidation), exposed through the new
+    `ILiveVideoStreams.RequestKeyFrame` method.
   - `ReportPeerLatency(...)` method.
   - The `LatencyStore.RecordFrameBytes(...)` call inside
     `PushVideoInternal.ProcessFrames` — drop the line.
@@ -524,9 +559,11 @@ After 8.3 lands, the following code is dead and must go:
     (`_totalBytesReceived`, `_bytesAtLastCheck`,
     `_consecutiveHighThroughputChecks`).
   - `EvaluateQuality` over-delivery branch.
-  - Eventually the whole `StreamLatencyStore` becomes dead — confirm
-    via Grep before deleting the file. Per-peer egress fallback,
-    forwarded layer tracking, etc. all go.
+  - Do not delete the whole `StreamLatencyStore` until the
+    keyframe-request fields (`KeyFrameRequests`,
+    `LastKeyFrameRequestTime`) are moved to a smaller store or otherwise
+    preserved. Per-peer egress fallback, forwarded layer tracking, etc.
+    all go.
 - `src/dotnet/Streaming.Service/Backend/LiveVideoBackend.ChatState.cs`:
   - `EvaluatePriority` method.
   - `_pausedStreamIds` field and all reads.
@@ -536,9 +573,11 @@ After 8.3 lands, the following code is dead and must go:
   - **Keep**: codec-set tracking (`_currentSupportedDecoderCodecs`,
     `RecomputeCodecs`).
 - `VideoQualityPreset.Paused` enum value (in `Api/Video/`).
-- Publisher-side pause handling in
+- Publisher-side pause / old quality handling in
   `src/dotnet/UI.Blazor.App/Services/VideoRecorder.cs` — find the
-  branch that responds to `Paused` preset and remove.
+  branch that responds to `Paused` preset and remove. Keep the
+  `GetQualityPreset` subscription path that observes
+  `IsKeyFrameRequested` and calls `forceKeyFrame`.
 - `src/dotnet/Api/Video/VideoLatencyReport.cs` and
   `VideoLatencyReportResponse.cs` — likely entirely dead after `ReportVideoLatency`
   removal. Verify with Grep.
@@ -553,28 +592,39 @@ the fixed default cap from 8.3.
 
 ### 9.1 — RpcStream API additions
 
-`src/dotnet/ActualLab.Rpc` (sibling project — confirm path with Glob).
-Search for `class RpcStream<` to find the file. Add:
+There is no in-repo `src/dotnet/ActualLab.Rpc` project in this
+workspace; the .NET side comes from the `ActualLab.Rpc` package. For
+the browser video recording path, edit the local TypeScript RPC copy:
 
-```csharp
-public int UnackedCount { get; }
-public TimeSpan OldestUnackedAge { get; }   // Zero when buffer empty
-public long TotalSent { get; }
-public long TotalAcked { get; }
-public long TotalSkipped { get; }
-public int MaxAllowedSkipsPerWindow { get; init; } = int.MaxValue;
-public event Action? OnAck;                 // post-ACK, post-compaction
+- `src/nodejs/src/actuallab-rpc/rpc-stream.ts`
+- `src/nodejs/src/actuallab-rpc/rpc-stream-sender.ts`
+
+Add sender-side metrics / controls:
+
+```ts
+readonly unackedCount: number;
+readonly oldestUnackedAgeMs: number;       // 0 when buffer empty
+readonly totalSent: number;
+readonly totalAcked: number;
+readonly totalSkipped: number;
+maxAllowedSkipsPerWindow: number;          // default Number.MAX_SAFE_INTEGER
+onAck?: () => void;                        // post-ACK, post-compaction
 ```
 
 These are item-agnostic — handler args carry no `T`. The recorder's
-controller reads state via the properties on its own 1 Hz tick; `OnAck`
-just bumps a `lastAckAt = CpuTimestamp.Now` so the controller can tell
+controller reads state via the properties on its own 1 Hz tick; `onAck`
+just bumps a `lastAckAt = performance.now()` so the controller can tell
 "stuck" (no ACK for > N seconds) from "throttled" (ACK flowing).
 
-Compact-skip semantics: the `MaxAllowedSkipsPerWindow` config knob
+Compact-skip semantics: the `maxAllowedSkipsPerWindow` config knob
 governs how many items the existing real-time `canSkipTo` compaction
-may drop per ACK window. `int.MaxValue` keeps current behaviour;
-controller can set to 0 to opt out of compaction entirely.
+may drop per ACK window. `Number.MAX_SAFE_INTEGER` keeps current
+behaviour; the controller can set it to 0 to opt out of compaction
+entirely while the stream is alive.
+
+If this repository later vendors or exposes the .NET `ActualLab.Rpc`
+sources, mirror the same counters there for non-browser senders, but do
+not block the web recording controller on that package change.
 
 ### 9.2 — Worker-side `RecorderHealth` aggregation
 
@@ -872,7 +922,8 @@ For grep convenience, all files this plan references:
 src/dotnet/Api.Contracts/Streaming/IStreamServer.cs
 src/dotnet/Api.Contracts/Streaming/ILiveAudioStreams.cs
 src/dotnet/Api.Contracts/Streaming/ILiveVideoStreams.cs
-src/dotnet/Api.Contracts/Streaming/IStreamClient.cs           (read for context)
+src/dotnet/Api.Contracts/Streaming/IStreamClient.cs           (update StreamClient facade as needed)
+src/dotnet/Api.Contracts/Streaming/StreamClient.cs            (PushAudio/PushVideo move to live services)
 src/dotnet/Api.Contracts/Streaming/Quality/ReceiveQuality.cs       (DONE)
 src/dotnet/Api.Contracts/Streaming/Quality/RecordingQuality.cs     (DONE)
 src/dotnet/Api.Contracts/Streaming/Quality/PlaybackQuality.cs      (DONE)
@@ -912,8 +963,10 @@ tests/UI.Blazor.App.UnitTests/VideoQualityUI/                       (NEW directo
 4. **Step 8.3** — rewrite `LiveVideoStreams.GetStream` to use
    `GetVideoRaw` + `ReceiveQualityFilter`. Add stub impls for
    `ChangeRecordingQuality` (logs, discards) and `ChangePlaybackQuality`
-   (atomic store, safety cap). Add stub for `PushVideo` and
-   `RequestKeyFrame` that delegate to the backend. Build.
+   (atomic store, safety cap). Add stub for `PushStream` and
+   `RequestKeyFrame` that delegate to the backend and immediately
+   invalidate `GetQualityPreset` so publishers receive the keyframe
+   request. Build.
 5. **Step 8.4** — rebind TS callsites. After this the .NET project
    builds with the old `IStreamServer` video methods removed AND the
    TS code still works.
