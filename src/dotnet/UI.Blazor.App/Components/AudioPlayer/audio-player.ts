@@ -263,7 +263,7 @@ export class AudioPlayer implements Resettable {
         debugLog?.log(`#${this.internalId} <- startPlayback()`);
     }
 
-    public reset(): void {
+    public async reset(): Promise<void> {
         debugLog?.log(`#${this.internalId} reset()`);
         const attachedFeeder = this.contextRef?.getTrait<AttachedFeederNode>(this.feederNodeTrait);
         if (attachedFeeder) {
@@ -280,7 +280,7 @@ export class AudioPlayer implements Resettable {
         this.contextRef?.dispose();
         this.contextRef = undefined;
         // Remove the feeder node trait so it can be re-registered and re-attached on next play
-        audioContextSource.removeTrait(this.feederNodeTrait);
+        await audioContextSource.removeTrait(this.feederNodeTrait);
         this.whenEnded?.resolve(undefined);
         resetMediaSessionDebounced();
     }

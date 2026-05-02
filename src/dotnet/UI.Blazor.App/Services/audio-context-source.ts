@@ -344,12 +344,16 @@ export class AudioContextSource {
         return ResolvedPromise.Void;
     }
 
-    public removeTrait(trait: AudioContextTrait): void {
+    public async removeTrait(trait: AudioContextTrait): Promise<void> {
         if (!this._traits.has(trait.name))
             return;
 
         debugLog?.log(`removeTrait: removing trait '${trait.name}'`);
         this._traits.delete(trait.name);
+        const pendingAttachment = this._pendingAttachments.get(trait.name);
+        this._pendingAttachments.delete(trait.name);
+        if (pendingAttachment)
+            await pendingAttachment;
 
         // Also remove from the live context's attached traits
         const context = this._context;
@@ -357,13 +361,11 @@ export class AudioContextSource {
             const attached = context.traits.get(trait.name);
             context.traits.delete(trait.name);
             if (attached?.onClosed) {
-                void Promise.resolve(attached.onClosed()).catch((e) =>
-                    warnLog?.log(`removeTrait: onClosed failed for '${trait.name}':`, e),
-                );
+                await Promise.resolve(attached.onClosed()).catch((e) =>
+                    warnLog?.log(`removeTrait: onClosed failed for '${trait.name}':`, e));
             }
         }
         context?._attachingTraits?.delete(trait.name);
-        this._pendingAttachments.delete(trait.name);
     }
 
     public hasRefWithDemandInteractiveUITrait(): boolean {
@@ -604,6 +606,11 @@ export class AudioContextSource {
         try {
             debugLog?.log(`attachTrait: attaching '${trait.name}' to context`, Log.ref(context));
             const attached = await trait.attach(context);
+            if (this._traits.get(trait.name) !== trait) {
+                await Promise.resolve(attached.onClosed?.()).catch((e) =>
+                    warnLog?.log(`attachTrait: onClosed failed for removed trait '${trait.name}':`, e));
+                return;
+            }
 
             context.traits ??= new Map();
             context.traits.set(trait.name, attached);
