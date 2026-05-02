@@ -92,6 +92,21 @@ export class DebugUI {
         OnDeviceAwake.fakeSleep(duration * 1000);
     }
 
+    /** Drives the recording quality controller through a synthetic
+     *  -1 / 0 / +1 signal sweep over `period` seconds. ~10% of time at
+     *  neutral, 45% at "drop", 45% at "raise". Verify via server logs:
+     *  ChangeRecordingQuality calls should walk min↔max layer count. */
+    public static testVideoRecordingQualityChange(period = 30): void {
+        void this.backendRef.invokeMethodAsync('TestVideoRecordingQualityChange', period);
+    }
+
+    /** Drives the playback CapacityEstimator through the same -1 / 0 / +1
+     *  sweep. Pushes ChangePlaybackQuality info-only payloads (no actual
+     *  receive-quality changes); verify via server logs. */
+    public static testVideoPlaybackQualityChange(period = 30): void {
+        void this.backendRef.invokeMethodAsync('TestVideoPlaybackQualityChange', period);
+    }
+
     public static clearSvgCache(): void {
         SvgCache.clear();
         infoLog?.log('clearSvgCache: done');

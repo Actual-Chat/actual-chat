@@ -19,6 +19,8 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
     private RecorderHealthSnapshot? _lastHealth;
     private bool _wasConnected = true;
     private int _coldStartTicksRemaining;
+    private CancellationTokenSource? _recordingTestCts;
+    private CancellationTokenSource? _playbackTestCts;
 
     private ConnectivityUI ConnectivityUI => Hub.ConnectivityUI;
     private ILiveVideoStreams LiveVideoStreams
@@ -73,6 +75,140 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
     }
 
     private const int ColdStartTicks = 2; // ~2 s of grace at 1 Hz
+
+    // --- Debug / test entry points ---
+
+    /// <summary>
+    /// Drives the recording quality controller with a synthetic ternary signal
+    /// for <paramref name="periodSeconds"/> seconds. Signal pattern per cycle:
+    /// 5% at 0 → 45% at -1 → 5% at 0 → 45% at +1 (10% total at neutral).
+    /// Uses a fresh aggregator with fast thresholds (no cooldown, K=1) so the
+    /// target layer count walks the full range within the period. Pushes
+    /// <see cref="ILiveVideoStreams.ChangeRecordingQuality"/> on each step.
+    /// </summary>
+    public void BeginRecordingQualityTest(int periodSeconds)
+    {
+        var period = TimeSpan.FromSeconds(Math.Max(1, periodSeconds));
+        var oldCts = Interlocked.Exchange(ref _recordingTestCts, new CancellationTokenSource(period));
+        oldCts.CancelAndDisposeSilently();
+        var ct = _recordingTestCts.Token;
+        Log.LogWarning("BeginRecordingQualityTest: period={Period}s", period.TotalSeconds);
+        _ = BackgroundTask.Run(
+            () => RunRecordingTest(period, ct),
+            Log,
+            "BeginRecordingQualityTest failed",
+            CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Drives the playback capacity estimator with a synthetic ternary signal
+    /// (same pattern as the recording test). Pushes
+    /// <see cref="ILiveVideoStreams.ChangePlaybackQuality"/> with info-only
+    /// payloads (requestedQuality = null) so the test never affects live
+    /// stream allocation.
+    /// </summary>
+    public void BeginPlaybackQualityTest(int periodSeconds)
+    {
+        var period = TimeSpan.FromSeconds(Math.Max(1, periodSeconds));
+        var oldCts = Interlocked.Exchange(ref _playbackTestCts, new CancellationTokenSource(period));
+        oldCts.CancelAndDisposeSilently();
+        var ct = _playbackTestCts.Token;
+        Log.LogWarning("BeginPlaybackQualityTest: period={Period}s", period.TotalSeconds);
+        _ = BackgroundTask.Run(
+            () => RunPlaybackTest(period, ct),
+            Log,
+            "BeginPlaybackQualityTest failed",
+            CancellationToken.None);
+    }
+
+    // Private methods
+
+    private async Task RunRecordingTest(TimeSpan period, CancellationToken ct)
+    {
+        // Fast thresholds: no cooldown, K=1 — every -1 steps down, every +1
+        // steps up. The aggregator's floor / ceiling guards still hold.
+        var thresholds = RecordingThresholds.Defaults with {
+            ConsecutiveGoodForClimb = 1,
+            CooldownTicksAfterBackoff = 0,
+        };
+        var aggregator = new RecordingAggregator(thresholds);
+        var startedAt = CpuTimestamp.Now;
+        while (!ct.IsCancellationRequested) {
+            var elapsed = startedAt.Elapsed;
+            if (elapsed >= period)
+                break;
+            var phase = (elapsed.TotalSeconds % period.TotalSeconds) / period.TotalSeconds;
+            var signal = TestSignal(phase);
+            var decision = aggregator.Step(signal);
+            Log.LogInformation(
+                "RecordingQualityTest: phase={Phase:F2} signal={Signal} target={Target} reason={Reason}",
+                phase, signal, aggregator.TargetLayerCount, decision.Reason);
+            if (decision.Changed) {
+                var fakeHealth = new RecorderHealthSnapshot(0, 0, 0, 0, 0, 0, IsConnected: true);
+                var info = new RecordingQualityInfo(decision.Reason, fakeHealth);
+                _ = LiveVideoStreams.ChangeRecordingQuality(
+                    Session, aggregator.Snapshot(), info, CancellationToken.None);
+            }
+            try {
+                await Task.Delay(TimeSpan.FromSeconds(1), ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                break;
+            }
+        }
+        Log.LogWarning("RecordingQualityTest: done");
+    }
+
+    private async Task RunPlaybackTest(TimeSpan period, CancellationToken ct)
+    {
+        var estimator = new CapacityEstimator(PlaybackThresholds.Defaults);
+        var startedAt = CpuTimestamp.Now;
+        var lastCapacity = -1L;
+        while (!ct.IsCancellationRequested) {
+            var elapsed = startedAt.Elapsed;
+            if (elapsed >= period)
+                break;
+            var phase = (elapsed.TotalSeconds % period.TotalSeconds) / period.TotalSeconds;
+            var signal = TestSignal(phase);
+            var capacity = estimator.Step(signal, sumIncomingBytesPerSec: 1_000_000);
+            var reason = signal switch {
+                < 0 => PlaybackQualityReason.Backoff,
+                > 0 => PlaybackQualityReason.Climb,
+                _ => PlaybackQualityReason.Stable,
+            };
+            Log.LogInformation(
+                "PlaybackQualityTest: phase={Phase:F2} signal={Signal} capacity={Capacity}",
+                phase, signal, capacity);
+            if (capacity != lastCapacity) {
+                var info = new PlaybackQualityInfo(
+                    capacity,
+                    AggregateHealth: signal,
+                    Reason: reason,
+                    IsColdStart: false,
+                    Streams: new ApiMap<string, PlaybackStreamInfo>());
+                _ = LiveVideoStreams.ChangePlaybackQuality(
+                    Session, requestedQuality: null, info, CancellationToken.None);
+                lastCapacity = capacity;
+            }
+            try {
+                await Task.Delay(TimeSpan.FromSeconds(1), ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                break;
+            }
+        }
+        Log.LogWarning("PlaybackQualityTest: done");
+    }
+
+    // Synthetic signal — produces [0, -1, ..., -1, 0, +1, ..., +1] over a
+    // single cycle. ~10% of time is spent at neutral (5% at each polarity flip).
+    internal static int TestSignal(double phase)
+    {
+        if (phase < 0.05) return 0;
+        if (phase < 0.50) return -1;
+        if (phase < 0.55) return 0;
+        return 1;
+    }
 
     // Nested types
 

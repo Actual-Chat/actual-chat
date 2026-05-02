@@ -113,6 +113,8 @@ public sealed class DebugUI : UIServiceBase<UIHub>, IDisposable
     public Func<Task>? ShowMicTroubleshooterHandler { get; set; }
     public Func<Task>? ShowPhotoTroubleshooterHandler { get; set; }
     public Func<Task>? ShowIncomingShareModalHandler { get; set; }
+    public Action<int>? TestVideoRecordingQualityChangeHandler { get; set; }
+    public Action<int>? TestVideoPlaybackQualityChangeHandler { get; set; }
 
     [JSInvokable]
     public async Task ShowMicTroubleshooter()
@@ -136,5 +138,19 @@ public sealed class DebugUI : UIServiceBase<UIHub>, IDisposable
         if (ShowIncomingShareModalHandler is { } handler)
             await handler().ConfigureAwait(false);
         Log.LogInformation("ShowIncomingShareModal: done");
+    }
+
+    [JSInvokable]
+    public void TestVideoRecordingQualityChange(int periodSeconds = 30)
+    {
+        TestVideoRecordingQualityChangeHandler?.Invoke(periodSeconds);
+        Log.LogInformation("TestVideoRecordingQualityChange({Period}s): done", periodSeconds);
+    }
+
+    [JSInvokable]
+    public void TestVideoPlaybackQualityChange(int periodSeconds = 30)
+    {
+        TestVideoPlaybackQualityChangeHandler?.Invoke(periodSeconds);
+        Log.LogInformation("TestVideoPlaybackQualityChange({Period}s): done", periodSeconds);
     }
 }

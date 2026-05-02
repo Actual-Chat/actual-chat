@@ -221,6 +221,10 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             debugUI.ShowMicTroubleshooterHandler = () => hub.ModalUI.Show(new RecordingTroubleshooterModal.Model());
             debugUI.ShowPhotoTroubleshooterHandler = () => hub.ModalUI.Show(new PhotoTroubleshooterModal.Model());
             debugUI.ShowIncomingShareModalHandler = () => hub.ModalUI.Show(new IncomingShareModal.Model("Test shared text"));
+            debugUI.TestVideoRecordingQualityChangeHandler = period =>
+                c.GetRequiredService<VideoQualityUI>().BeginRecordingQualityTest(period);
+            debugUI.TestVideoPlaybackQualityChangeHandler = period =>
+                c.GetRequiredService<VideoQualityUI>().BeginPlaybackQualityTest(period);
             return debugUI;
         });
 
