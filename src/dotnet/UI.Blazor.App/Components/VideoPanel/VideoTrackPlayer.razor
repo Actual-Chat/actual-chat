@@ -91,14 +91,17 @@
                 TimeSpan.FromSeconds(30),
                 TimeSpan.FromSeconds(30));
 
-            // Ensure server clock is synced before using startedAtMs
+            // Ensure server clock is synced before JS compares its clock to the stream origin.
             // ServerTimeSync is only registered on client platforms (WASM/MAUI), not on Server
             var serverTimeSync = Services.GetService<ServerTimeSync>();
             if (serverTimeSync != null)
                 await serverTimeSync.EnsureSynced(_disposeCts.Token);
 
             var format = StreamInfo.Format;
-            var startedAtMs = StreamInfo.StartedAt.EpochOffset.TotalMilliseconds;
+            var sourceStartedAt = StreamInfo.SourceStartedAt != default
+                ? StreamInfo.SourceStartedAt
+                : StreamInfo.StartedAt;
+            var startedAtMs = sourceStartedAt.EpochOffset.TotalMilliseconds;
             Log.LogDebug(
                 "[VideoTrackPlayer #{StreamId}] Creating JS player: authorId={AuthorId}, startedAtMs={StartedAtMs}, format={Format}",
                 StreamInfo.StreamId, StreamInfo.AuthorId, startedAtMs, format);

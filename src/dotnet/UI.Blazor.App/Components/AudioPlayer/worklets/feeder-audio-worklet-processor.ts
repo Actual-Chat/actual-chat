@@ -18,10 +18,17 @@ import { BufferHandler } from '../workers/opus-decoder-worker-contract';
 import { AudioRingBuffer } from '../../AudioRecorder/audio-ring-buffer';
 
 const { logScope, debugLog, warnLog } = getLogs('FeederProcessor');
+const FEEDER_TARGET_BUFFER_FRAMES = 2;
+
+interface DecodedChunk {
+    samples: Float32Array;
+    sourceOffsetMs: number;
+    presentationLagMs: number;
+}
 
 /** Part of the feeder that lives in [AudioWorkletGlobalScope]{@link https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletGlobalScope} */
 class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements FeederAudioWorklet {
-    private readonly chunks = new Denque<Float32Array | 'end'>();
+    private readonly chunks = new Denque<DecodedChunk | 'end'>();
     private readonly buffer: AudioRingBuffer;
     /**
      * 128 samples at 48 kHz ~= 2.67 ms
@@ -41,6 +48,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     private bufferEscalation = 0;
     private bufferSizeToStartPlayback!: number; // set in init() after initAppConstants
     private lastStarvingEventAt = 0;
+    private frameRequestPending = false;
+    private presentationLagMs: number | null = null;
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
@@ -57,29 +66,42 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         let result = buffer.samplesAvailable;
         for (let i = 0; i <  chunks.length; ++i) {
             const chunk = chunks.peekAt(i);
-            result += chunk!.length;
+            if (chunk !== 'end')
+                result += chunk!.samples.length;
         }
         return result;
     }
 
     public async init(appConstants: AppConstants, id: string, workerPort: MessagePort): Promise<void> {
         initAppConstants(appConstants);
-        this.bufferSizeToStartPlayback = AUDIO.play.startBufferDuration;
+        this.bufferSizeToStartPlayback = this.feederTargetDuration;
         this.id = id;
         this.decoder = rpcClientServer<BufferHandler>(`${logScope}.worker`, workerPort, this);
         debugLog?.log(`#${this.id}.init`);
     }
 
-    public frame(buffer: ArrayBuffer, offset: number, length: number, noWait?: RpcNoWait): Promise<void> {
+    public frame(
+        buffer: ArrayBuffer,
+        offset: number,
+        length: number,
+        sourceOffsetMs: number,
+        presentationLagMs: number,
+        noWait?: RpcNoWait): Promise<void> {
         // debugLog?.log(`#${this.id} -> frame()`);
+        this.frameRequestPending = false;
         if (this.playbackState === 'ended' || this.isEnding) {
             // Send buffer back
             void this.decoder.releaseBuffer(buffer, rpcNoWait);
             return ResolvedPromise.Void;
         }
 
-        this.chunks.push(new Float32Array(buffer, offset, length));
+        this.chunks.push({
+            samples: new Float32Array(buffer, offset, length),
+            sourceOffsetMs,
+            presentationLagMs,
+        });
         this.tryBeginPlaying();
+        this.requestFrameIfLow();
         // debugLog?.log(`#${this.id} <- frame()`);
         return ResolvedPromise.Void;
     }
@@ -106,6 +128,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             ? 'paused'
             : 'playing';
         this.stateHasChanged();
+        this.requestFrameIfLow();
         return ResolvedPromise.Void;
     }
 
@@ -130,9 +153,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     public setBufferEscalation(value: number, _noWait?: RpcNoWait): Promise<void> {
         this.bufferEscalation = value;
         debugLog?.log(`#${this.id}.process: got 'setBufferEscalation:' ${value}`);
-        const minBuffer = this.getMinBufferSize();
-        if (this.bufferSizeToStartPlayback < minBuffer)
-            this.bufferSizeToStartPlayback = minBuffer;
+        this.bufferSizeToStartPlayback = this.feederTargetDuration;
         return ResolvedPromise.Void;
     }
 
@@ -163,6 +184,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         if (this.buffer.samplesAvailable >= channel.length) {
             this.buffer.pull([channel])
             this.playingAt += channel.length * AUDIO.play.sampleDuration;
+            this.requestFrameIfLow();
             return true;
         }
 
@@ -170,6 +192,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             const samplesAvailable = this.buffer.samplesAvailable;
             let chunk = this.chunks.shift();
             if (chunk === undefined) {
+                this.requestFrameIfLow();
                 // Not enough data to continue playing => starving
                 channel.fill(0);
                 if (samplesAvailable) {
@@ -179,9 +202,6 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
                 }
 
                 this.playbackState = 'starving';
-                if (time - this.lastStarvingEventAt > 1000)
-                    // Increase buffer size to prevent starving if previous event has happened earlier than 1s before
-                    this.bufferSizeToStartPlayback += AUDIO.play.startBufferGrowDuration;
                 this.lastStarvingEventAt = time;
                 this.stateHasChanged();
                 return true;
@@ -197,16 +217,17 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
                     chunk = this.chunks.shift();
                     if (chunk !== 'end' && chunk)
                         // @ts-expect-error TODO(AK): fix error
-                        void this.decoder.releaseBuffer(chunk.buffer, rpcNoWait);
+                        void this.decoder.releaseBuffer(chunk.samples.buffer, rpcNoWait);
                 }
                 this.chunks.clear();
                 this.stateHasChanged();
                 // Keep worklet up and running even in ended state for reuse
                 return true;
             }
-            this.buffer.push([chunk]);
+            this.presentationLagMs = chunk.presentationLagMs;
+            this.buffer.push([chunk.samples]);
             // @ts-expect-error TODO(AK): fix error
-            void this.decoder.releaseBuffer(chunk.buffer, rpcNoWait);
+            void this.decoder.releaseBuffer(chunk.samples.buffer, rpcNoWait);
             if (this.skipSamples) {
                 const skipSamples = Math.min(this.skipSamples, this.buffer.samplesAvailable);
                 this.buffer.pull([new Float32Array(skipSamples)]);
@@ -215,13 +236,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         }
         this.buffer.pull([channel]);
         this.playingAt += channel.length * AUDIO.play.sampleDuration;
-        // Decrease buffer size when there were no starving events during last 5s
-        if (time - this.lastStarvingEventAt > 5000) {
-            const minBuffer = this.getMinBufferSize();
-            this.bufferSizeToStartPlayback = Math.max(
-                this.bufferSizeToStartPlayback - AUDIO.play.startBufferGrowDuration,
-                minBuffer);
-        }
+        this.requestFrameIfLow();
         this.stateHasChanged();
         return true;
     }
@@ -231,13 +246,14 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         if (this.isEnding)
             this.bufferState = 'ok';
         else {
-            this.bufferState = bufferedDuration < AUDIO.play.lowBufferDuration ? 'low' : 'ok';
+            this.bufferState = bufferedDuration < this.feederTargetDuration ? 'low' : 'ok';
         }
 
         const state: FeederState = {
             playbackState: this.playbackState,
             bufferState: this.bufferState,
             playingAt: this.playingAt,
+            presentationLagMs: this.presentationLagMs,
             bufferedDuration: bufferedDuration,
         };
         const mustSkip =
@@ -262,11 +278,18 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         this.stateHasChanged();
     }
 
-    private getMinBufferSize()
-    {
-        return this.bufferEscalation > 0
-            ? AUDIO.play.startBufferDurationWithVideo
-            : AUDIO.play.startBufferDuration;
+    private requestFrameIfLow(): void {
+        if (!this.decoder || this.frameRequestPending || this.playbackState === 'ended' || this.isEnding)
+            return;
+        if (this.bufferedDuration >= this.feederTargetDuration)
+            return;
+
+        this.frameRequestPending = true;
+        void this.decoder.requestFrame(rpcNoWait);
+    }
+
+    private get feederTargetDuration(): number {
+        return FEEDER_TARGET_BUFFER_FRAMES / AUDIO.frameRate;
     }
 }
 

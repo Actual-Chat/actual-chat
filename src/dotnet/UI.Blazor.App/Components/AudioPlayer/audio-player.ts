@@ -237,7 +237,7 @@ export class AudioPlayer implements Resettable {
                 throw new Error('Feeder node not attached');
 
             await attachedFeeder.feederNode.setBufferEscalation(this.bufferEscalation, rpcNoWait);
-            await decoderWorker!.resume(this.internalId, rpcNoWait);
+            await decoderWorker!.resume(this.internalId, this.recordedAtMs, rpcNoWait);
             await attachedFeeder.feederNode.resume(preSkip);
         });
 
@@ -271,7 +271,7 @@ export class AudioPlayer implements Resettable {
     }
 
     /** Called by Blazor without awaiting the result, so a call can be in the middle of appendAudio  */
-    public frame(bytes: Uint8Array): void {
+    public frame(bytes: Uint8Array, sourceOffsetMs: number): void {
         if (this.playbackState === 'ended')
             return;
         if (this.contextRef && !this.contextRef.isReady)
@@ -283,7 +283,7 @@ export class AudioPlayer implements Resettable {
         rpcSendNoWait(
             decoderWorkerInstance!,
             'frame',
-            [this.internalId, buf, bytes.byteOffset, bytes.length],
+            [this.internalId, buf, bytes.byteOffset, bytes.length, sourceOffsetMs],
             [buf]);
     }
 
@@ -393,16 +393,17 @@ export class AudioPlayer implements Resettable {
         }
         else {
             if (this.authorId && state.playbackState === 'playing') {
-                // Lag at the speaker = wall-clock - source-time of the frame
-                // currently going out. Source-time = recordedAtMs (= source's
-                // SourceBeginsAt, server-stamped from the client's claimed
-                // start) + playingAt offset.
+                // The decoder reports presentation lag from the source offset
+                // of the decoded frame it handed to the feeder, assuming the
+                // feeder will present it after its 40 ms smoothing reserve.
                 const sysNow = Date.now();
-                const recordedAtMs = this.recordedAtMs + state.playingAt * 1000;
-                const lagMs = sysNow - recordedAtMs;
-                if (this.blazorRef && sysNow - this.lastLagReportTime >= AudioPlayer.LagReportIntervalMs) {
+                if (
+                    this.blazorRef
+                    && state.presentationLagMs !== null
+                    && sysNow - this.lastLagReportTime >= AudioPlayer.LagReportIntervalMs
+                ) {
                     this.lastLagReportTime = sysNow;
-                    void this.blazorRef.invokeMethodAsync('OnPresentationLag', lagMs)
+                    void this.blazorRef.invokeMethodAsync('OnPresentationLag', state.presentationLagMs)
                         .catch(() => { /* ignore */ });
                 }
                 const serverNow = ServerClock.now();

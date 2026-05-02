@@ -168,7 +168,7 @@ export interface DecoderWorker {
      * @param streamId Server stream id
      * @param skipToMs Initial skip-to offset in ms (forwarded as TimeSpan ticks)
      * @param apiUrl Fusion RPC websocket URL (e.g. wss://host/rpc/ws)
-     * @param startedAtMs Stream start ms-since-epoch (server clock)
+     * @param startedAtMs Stream source start ms-since-epoch
      * @param serverClockOffsetMs `ServerClock.now() - Date.now()` snapshotted on
      *                 main thread. Worker can derive server-aligned now via
      *                 `Date.now() + serverClockOffsetMs`. Drives the

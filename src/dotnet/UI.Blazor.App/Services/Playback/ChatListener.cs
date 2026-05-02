@@ -172,16 +172,16 @@ public sealed class ChatListener : ChatPlayer
         if (chat == null)
             return;
 
-        // ClientSideRecordedAt routes through to JS as recordedAtMs and feeds the
+        // SourceRecordedAt routes through to JS as recordedAtMs and feeds the
         // audio-side presentation-lag callback. Use SourceBeginsAt (raw client
         // claim) so the audio side's lag is identical to video's lag; fall back
         // to BeginsAt on legacy/replay streams that don't carry SourceBeginsAt.
-        var clientSideRecordedAt = streamInfo.SourceBeginsAt != default
+        var sourceRecordedAt = streamInfo.SourceBeginsAt != default
             ? streamInfo.SourceBeginsAt
             : streamInfo.BeginsAt;
         var trackInfo = new ChatAudioTrackInfo(ChatId, null, chat, author) {
             RecordedAt = streamInfo.BeginsAt,
-            ClientSideRecordedAt = clientSideRecordedAt,
+            SourceRecordedAt = sourceRecordedAt,
         };
 
         playback.Play(trackInfo, audioSource, playAt, cancellationToken);

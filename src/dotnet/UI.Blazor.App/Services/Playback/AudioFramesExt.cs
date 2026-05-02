@@ -32,7 +32,7 @@ internal static class AudioFramesExt
         var sampleIn = 0; // frames remaining until next policy sample
 
         await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-            if (sampleIn <= 0) {
+            if (mode != CatchUpMode.HardSkip && sampleIn <= 0) {
                 var desired = TimeSpan.Zero;
                 try {
                     desired = await policy.GetDesiredCatchUp(authorId, cancellationToken).ConfigureAwait(false);
@@ -66,13 +66,15 @@ internal static class AudioFramesExt
 
                 sampleIn = PolicySamplePeriodFrames;
             }
-            sampleIn--;
+            if (mode != CatchUpMode.HardSkip)
+                sampleIn--;
 
             switch (mode) {
             case CatchUpMode.HardSkip:
                 if (frame.Offset < skipUntilOffset)
                     continue; // drop
                 mode = CatchUpMode.Idle;
+                sampleIn = 0;
                 break;
             case CatchUpMode.SpeedUp:
                 // Safety bound: don't sustain speed-up indefinitely. Re-sampling

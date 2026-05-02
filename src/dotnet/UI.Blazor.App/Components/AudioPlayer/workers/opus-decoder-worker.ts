@@ -64,14 +64,14 @@ const serverImpl: OpusDecoderWorker = {
         debugLog?.log(`<- #${streamId}.create`);
     },
 
-    resume: async  (streamId: string, _noWait?: RpcNoWait): Promise<void> => {
+    resume: async  (streamId: string, sourceRecordedAtMs: number, _noWait?: RpcNoWait): Promise<void> => {
         const opusDecoder = getDecoder(streamId, false);
         if (!opusDecoder) {
             errorLog?.log(`#${streamId}.resume() has failed - decoder does not exist`)
             return;
         }
 
-        opusDecoder.init();
+        opusDecoder.init(sourceRecordedAtMs);
     },
 
     close: async (streamId: string, _noWait?: RpcNoWait): Promise<void> => {
@@ -102,10 +102,11 @@ const serverImpl: OpusDecoderWorker = {
         buffer: ArrayBuffer,
         offset: number,
         length: number,
+        sourceOffsetMs: number,
         _noWait?: RpcNoWait,
     ): Promise<void> => {
         // debugLog?.log(`#${streamId}.onFrame`);
-        getDecoder(streamId).decode(buffer, offset, length);
+        getDecoder(streamId).decode(buffer, offset, length, sourceOffsetMs);
     },
 
     releaseBuffer: async(streamId: string, buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void>  => {

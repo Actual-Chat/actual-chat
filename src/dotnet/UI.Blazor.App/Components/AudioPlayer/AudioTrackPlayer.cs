@@ -6,13 +6,15 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 {
+    // Pacing: push the first PacingHeadStartDuration of media instantly so JS
+    // has a small backlog to start with, then pace the remaining frames at
+    // real-time (until cumulative media reaches PacingDuration). Buffer-based
+    // flow control takes over after that.
+    private static readonly TimeSpan PacingHeadStartDuration = TimeSpan.FromMilliseconds(30);
+    private static readonly TimeSpan PacingDuration = TimeSpan.FromMilliseconds(200);
+
     private static bool DebugMode => Constants.DebugMode.AudioTrackPlayer;
     private ILogger? DebugLog => DebugMode ? Log : null;
-
-    // Pacing: during the initial PacingDuration, push frames at real-time pace
-    // so the JS audio pipeline has time to initialize (attachTrait + resume).
-    // After PacingDuration, switch to buffer-based flow control.
-    private static readonly TimeSpan PacingDuration = TimeSpan.FromMilliseconds(150);
 
     private readonly string _id;
     private IAudioPlaybackEngine? _playbackEngine;
@@ -122,8 +124,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 _playStartedAt = CpuTimestamp.Now;
 
             if (_playDuration < PacingDuration) {
-                // Wait until this frame's expected play time (minus one frame duration)
-                var framePushMoment = (_playDuration - frame.Duration).Positive();
+                var framePushMoment = (_playDuration - frame.Duration - PacingHeadStartDuration).Positive();
                 var delay = framePushMoment - _playStartedAt.Elapsed;
                 if (delay > TimeSpan.Zero)
                     await Task.Delay(delay, cancellationToken).ConfigureAwait(false);

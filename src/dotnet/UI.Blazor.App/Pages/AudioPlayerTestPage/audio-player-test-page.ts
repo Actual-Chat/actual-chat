@@ -20,6 +20,7 @@ export class AudioPlayerTestPage {
     };
     private readonly player: AudioPlayer;
     private readonly codecModule: Codec;
+    private sourceOffsetMs = 0;
 
     constructor(blazorRef: DotNet.DotNetObject, player: AudioPlayer, codecModule: Codec) {
         this.stats.constructorStartTime = new Date().getTime();
@@ -60,7 +61,8 @@ export class AudioPlayerTestPage {
     }
 
     public frame(byteArray: Uint8Array) {
-        this.player.frame(byteArray);
+        this.player.frame(byteArray, this.sourceOffsetMs);
+        this.sourceOffsetMs += 20;
     }
 
     public end(): Promise<void> {

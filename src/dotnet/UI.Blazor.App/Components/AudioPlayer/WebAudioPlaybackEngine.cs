@@ -37,7 +37,10 @@ public sealed class WebAudioPlaybackEngine(
         var audioSource = (AudioSource)source;
         var preSkip = audioSource.Format.PreSkip;
         var authorId = author?.Id.Value;
-        var recordedAtMs = trackInfo.RecordedAt.EpochOffset.TotalMilliseconds;
+        var sourceRecordedAt = trackInfo.SourceRecordedAt != default
+            ? trackInfo.SourceRecordedAt
+            : trackInfo.RecordedAt;
+        var recordedAtMs = sourceRecordedAt.EpochOffset.TotalMilliseconds;
 
         var chatId = chat?.Id;
         var bufferEscalation = 0;
@@ -99,7 +102,7 @@ public sealed class WebAudioPlaybackEngine(
             throw StandardError.StateTransition(GetType(), "Can't process media frame before initialization.");
 
         var chunk = frame.Data.ToArray(); // JS interop requires byte[] (System.Text.Json)
-        _ = _jsRef.InvokeVoidAsync("frame", cancellationToken, chunk);
+        _ = _jsRef.InvokeVoidAsync("frame", cancellationToken, chunk, frame.Offset.TotalMilliseconds);
 
         return ValueTask.CompletedTask;
     }

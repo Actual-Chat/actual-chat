@@ -127,12 +127,12 @@ public sealed class ChatReplayer : ChatPlayer
                 var trackInfo = audioEntry != null
                     ? new ChatAudioTrackInfo(audioEntry, chat, author!) {
                         RecordedAt = streamInfo.BeginsAt,
-                        ClientSideRecordedAt = streamInfo.BeginsAt,
+                        SourceRecordedAt = streamInfo.BeginsAt,
                         Speed = speed,
                     }
                     : new ChatAudioTrackInfo(ChatId, streamInfo.EntryId, chat, author) {
                         RecordedAt = streamInfo.BeginsAt,
-                        ClientSideRecordedAt = streamInfo.BeginsAt,
+                        SourceRecordedAt = streamInfo.BeginsAt,
                         Speed = speed,
                     };
                 var playAt = Clocks.CpuClock.Now;

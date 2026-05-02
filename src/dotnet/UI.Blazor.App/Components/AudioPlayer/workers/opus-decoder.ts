@@ -14,9 +14,21 @@ import { FeederAudioWorklet } from '../worklets/feeder-audio-worklet-contract';
 import { ObjectPool } from 'object-pool';
 import { getLogs } from 'logging';
 import { BufferHandler } from './opus-decoder-worker-contract';
+import Denque from 'denque';
 
 const { logScope, debugLog, warnLog, errorLog } = getLogs('OpusDecoder');
 const enableFrequentDebugLog = false;
+const FEEDER_TARGET_DELAY_MS = 40;
+
+interface EncodedFrame {
+    data: Uint8Array;
+    sourceOffsetMs: number;
+}
+
+interface DecodeTiming {
+    sourceOffsetMs: number;
+    presentationLagMs: number;
+}
 
 /// #if MEM_LEAK_DETECTION
 debugLog?.log(`MEM_LEAK_DETECTION == true`);
@@ -24,12 +36,16 @@ debugLog?.log(`MEM_LEAK_DETECTION == true`);
 
 export class OpusDecoder implements BufferHandler, AsyncDisposable {
     private readonly streamId: string;
-    private readonly processor: AsyncProcessor<ArrayBufferView | 'end'>;
+    private readonly processor: AsyncProcessor<EncodedFrame | 'end'>;
     private readonly feederWorklet: FeederAudioWorklet & Disposable;
     private readonly bufferPool: ObjectPool<ArrayBuffer>;
     private readonly largeBufferPool: ObjectPool<ArrayBuffer>;
+    private readonly encodedFrames = new Denque<EncodedFrame | 'end'>();
+    private readonly systemDecodeTimings = new Denque<DecodeTiming>();
     private mustAbort = false;
+    private frameRequested = false;
     private chunkTimeOffset = 0;
+    private sourceRecordedAtMs = 0;
 
     private decoder: Decoder | null;
     private systemDecoder: AudioDecoder | null;
@@ -41,7 +57,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
     /** accepts fully initialized decoder only, use the factory method `create` to construct an object */
     private constructor(streamId: string, decoder: Decoder | null, feederWorkletPort: MessagePort) {
         this.streamId = streamId;
-        this.processor = new AsyncProcessor<Uint8Array | 'end'>('OpusDecoder', item => this.process(item));
+        this.processor = new AsyncProcessor<EncodedFrame | 'end'>('OpusDecoder', item => this.process(item));
         this.feederWorklet = rpcClientServer<FeederAudioWorklet>(`${logScope}.feederNode`, feederWorkletPort, this);
         this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(AUDIO.play.samplesPerWindow * 4)).expandTo(4);
         this.largeBufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(AUDIO.play.samplesPerWindow * 4 * 3)).expandTo(2);
@@ -60,8 +76,14 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
         }
     }
 
-    public init(): void {
+    public init(sourceRecordedAtMs = this.sourceRecordedAtMs): void {
         this.mustAbort = false;
+        this.frameRequested = false;
+        this.chunkTimeOffset = 0;
+        this.sourceRecordedAtMs = sourceRecordedAtMs;
+        this.encodedFrames.clear();
+        this.systemDecodeTimings.clear();
+        this.processor.clearQueue();
     }
 
     public async disposeAsync(): Promise<void> {
@@ -75,27 +97,35 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
         this.mustAbort = true;
     }
 
-    public decode(buffer: ArrayBuffer, offset: number, length: number,): void {
+    public decode(buffer: ArrayBuffer, offset: number, length: number, sourceOffsetMs: number): void {
         warnLog?.assert(buffer.byteLength > 0, `#${this.streamId}.decode: got zero length buffer!`);
         const bufferView = new Uint8Array(buffer, offset, length);
-        this.processor.enqueue(bufferView, false);
+        this.encodedFrames.push({ data: bufferView, sourceOffsetMs });
+        this.flushDecodeDemand();
     }
 
     public async end(mustAbort: boolean): Promise<void> {
         debugLog?.log(`#${this.streamId}.end: mustAbort:`, mustAbort);
-        if (!this.processor.isRunning) {
-            // Special case: processor is already stopped by prev. 'end' command
-            if (mustAbort && !this.mustAbort) {
-                this.mustAbort = true;
-                void this.feederWorklet.end(mustAbort, rpcNoWait);
-            }
+        if (mustAbort) {
+            this.mustAbort = true;
+            this.frameRequested = false;
+            this.encodedFrames.clear();
+            this.systemDecodeTimings.clear();
+            this.processor.clearQueue();
+            void this.feederWorklet.end(true, rpcNoWait);
             return;
         }
 
-        this.mustAbort ||= mustAbort;
+        this.encodedFrames.push('end');
+        this.flushDecodeDemand();
+    }
+
+    public async requestFrame(_noWait?: RpcNoWait): Promise<void> {
         if (this.mustAbort)
-            this.processor.clearQueue();
-        this.processor.enqueue('end', false);
+            return;
+
+        this.frameRequested = true;
+        this.flushDecodeDemand();
     }
 
     public async releaseBuffer(buffer: ArrayBuffer, _rpcNoWait?: RpcNoWait): Promise<void> {
@@ -105,7 +135,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
             this.largeBufferPool.release(buffer);
     }
 
-    private async process(item: Uint8Array | 'end'): Promise<boolean> {
+    private async process(item: EncodedFrame | 'end'): Promise<boolean> {
         try {
             if (item === 'end') {
                 debugLog?.log(`#${this.streamId}.process: got 'end'`, this.mustAbort);
@@ -116,8 +146,10 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
             }
 
             if (this.systemDecoder) {
+                const timing = this.createDecodeTiming(item.sourceOffsetMs);
+                this.systemDecodeTimings.push(timing);
                 const chunk = new EncodedAudioChunk({
-                    data: item,
+                    data: item.data,
                     type: 'key',
                     duration: 20000, // 20ms
                     timestamp: this.chunkTimeOffset,
@@ -127,7 +159,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
             }
             else if (this.decoder) {
                 // typedViewSamples is a typed_memory_view to Decoder internal buffer - so you have to copy data
-                const typedViewSamples = this.decoder.decode(item);
+                const typedViewSamples = this.decoder.decode(item.data);
                 if (typedViewSamples == null || typedViewSamples.length === 0) {
                     warnLog?.log(`#${this.streamId}.process: decoder returned empty result`);
                     return true;
@@ -141,9 +173,16 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
 
                 if (enableFrequentDebugLog)
                     debugLog?.log(
-                        `#${this.streamId}.process: decoded ${item.byteLength} byte(s) into ` +
+                        `#${this.streamId}.process: decoded ${item.data.byteLength} byte(s) into ` +
                         `${samples.byteLength} byte(s) / ${samples.length} samples`);
-                void this.feederWorklet.frame(samples.buffer, samples.byteOffset, samples.length, rpcNoWait);
+                const timing = this.createDecodeTiming(item.sourceOffsetMs);
+                void this.feederWorklet.frame(
+                    samples.buffer,
+                    samples.byteOffset,
+                    samples.length,
+                    timing.sourceOffsetMs,
+                    timing.presentationLagMs,
+                    rpcNoWait);
             }
         }
         catch (e) {
@@ -158,12 +197,38 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
     }
 
     private onDecodedAudioChunk = (output: AudioData): void => {
+        const timing = this.systemDecodeTimings.shift() ?? this.createDecodeTiming(0);
         const samplesBuffer = output.numberOfFrames == AUDIO.play.samplesPerWindow
             ? this.bufferPool.get()
             : this.largeBufferPool.get();
         const samples = new Float32Array(samplesBuffer, 0, output.numberOfFrames);
         output.copyTo(samples, { planeIndex: 0, format: 'f32-planar' })
 
-        void this.feederWorklet.frame(samples.buffer, samples.byteOffset, samples.length, rpcNoWait);
+        void this.feederWorklet.frame(
+            samples.buffer,
+            samples.byteOffset,
+            samples.length,
+            timing.sourceOffsetMs,
+            timing.presentationLagMs,
+            rpcNoWait);
+    }
+
+    private flushDecodeDemand(): void {
+        if (!this.frameRequested)
+            return;
+
+        const item = this.encodedFrames.shift();
+        if (item === undefined)
+            return;
+
+        this.frameRequested = false;
+        this.processor.enqueue(item, false);
+    }
+
+    private createDecodeTiming(sourceOffsetMs: number): DecodeTiming {
+        return {
+            sourceOffsetMs,
+            presentationLagMs: Date.now() + FEEDER_TARGET_DELAY_MS - (this.sourceRecordedAtMs + sourceOffsetMs),
+        };
     }
 }
