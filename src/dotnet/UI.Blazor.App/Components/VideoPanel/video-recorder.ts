@@ -868,16 +868,6 @@ export class VideoRecorder {
         const pipeline = this.recordingService.getPipeline();
         if (!pipeline) return;
 
-        // Handle server-driven pause
-        if (level === 'Paused') {
-            infoLog?.log('reconfigure: server paused this stream');
-            pipeline.pauseEncoding();
-            return;
-        }
-
-        // Resume if we were paused
-        pipeline.resumeEncoding();
-
         // Transpose preset if camera orientation doesn't match (e.g., portrait camera, landscape preset)
         infoLog?.log(`reconfigure: level=${level}, size=${width}x${height}, cameraSize=${this.cameraWidth}x${this.cameraHeight}`);
         const cameraIsPortrait = this.cameraWidth > 0 && this.cameraHeight > 0 && this.cameraHeight > this.cameraWidth;

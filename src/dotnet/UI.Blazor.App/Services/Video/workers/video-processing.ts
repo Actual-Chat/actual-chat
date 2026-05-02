@@ -198,7 +198,7 @@ const streamCtx: StreamingContext = {
     processing: false,
     apiUrl: null,
     sessionTokenProvider: undefined,
-    rpcStreamServer: null,
+    rpcLiveVideoStreams: null,
 };
 let videoStream: InternalVideoStream | null = null;
 let lastVideoStream: InternalVideoStream | null = null;
@@ -2143,7 +2143,7 @@ export const serverImpl: VideoProcessingWorker = {
             lastVideoStream = null;
         }
         Api.releaseConnection('VideoCapture');
-        streamCtx.rpcStreamServer = null;
+        streamCtx.rpcLiveVideoStreams = null;
         if (segInitialized) { try { outputGpuBuffer.destroy(); } catch { /* ignore */ } try { smoothedMaskBuffer.destroy(); } catch { /* ignore */ } }
 
         if (downscaler) { try { downscaler.dispose(); } catch { /* ignore */ } downscaler = null; }

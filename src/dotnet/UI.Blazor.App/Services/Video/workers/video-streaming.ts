@@ -1,8 +1,8 @@
 /**
  * In-worker video streaming over Fusion RPC binary transport.
  *
- * Sends encoded frames to the server via `IStreamServer.PushVideo`, using an
- * `RpcStreamSender<VideoFrameDto>` to stream typed frame objects.
+ * Sends encoded frames to the server via `ILiveVideoStreams.PushStream`, using
+ * an `RpcStreamSender<VideoFrameDto>` to stream typed frame objects.
  */
 
 import Denque from 'denque';
@@ -10,13 +10,13 @@ import { EventHandlerSet } from 'event-handling';
 import { getLogs } from 'logging';
 import { RpcStream } from 'actuallab-rpc';
 import { Api, streamingApi, toMoment,
-    type SessionTokenProvider, type StreamServerClient, type VideoFormatDto, type VideoFrameDto } from 'api';
+    type LiveVideoStreamsClient, type SessionTokenProvider, type VideoFormatDto, type VideoFrameDto } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 import { VIDEO } from 'app-constants';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
-/** Session token used by PushVideo — `'~'` = Session.Default, resolved from the
+/** Session token used by PushStream — `'~'` = Session.Default, resolved from the
  *  WebSocket connection context (same trick as the pull side GetStream call). */
 const RPC_SESSION_DEFAULT = '~';
 
@@ -53,9 +53,9 @@ export interface StreamingContext {
      *  push via {@link ensureRpcPush}. */
     apiUrl: string | null;
     sessionTokenProvider?: SessionTokenProvider;
-    /** Lazily-constructed `IStreamServer` RPC client, bound to the hub's
+    /** Lazily-constructed `ILiveVideoStreams` RPC client, bound to the hub's
      *  default peer. */
-    rpcStreamServer: StreamServerClient | null;
+    rpcLiveVideoStreams: LiveVideoStreamsClient | null;
 }
 
 export function serverClockNow(ctx: StreamingContext): number {
@@ -95,12 +95,12 @@ function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
 
 /**
  * Lazily initialise the Fusion RPC push peer for the worker context by
- * configuring the shared `Api.hub`'s default peer. The `IStreamServer` client
- * is cached on the `StreamingContext` so every `InternalVideoStream` instance
- * shares the same WebSocket for the life of the worker.
+ * configuring the shared `Api.hub`'s default peer. The `ILiveVideoStreams`
+ * client is cached on the `StreamingContext` so every `InternalVideoStream`
+ * instance shares the same WebSocket for the life of the worker.
  */
 export function ensureRpcPush(ctx: StreamingContext): void {
-    if (ctx.rpcStreamServer)
+    if (ctx.rpcLiveVideoStreams)
         return;
 
     if (!ctx.apiUrl)
@@ -112,7 +112,7 @@ export function ensureRpcPush(ctx: StreamingContext): void {
         connectivityUI: WorkerConnectivityUI,
         sessionTokenProvider: ctx.sessionTokenProvider,
     });
-    ctx.rpcStreamServer = streamingApi.streamServer;
+    ctx.rpcLiveVideoStreams = streamingApi.liveVideoStreams;
 }
 
 /**
@@ -187,7 +187,7 @@ export class InternalVideoStream {
             if (!this.ctx.processing) return;
 
             ensureRpcPush(this.ctx);
-            const streamServer = this.ctx.rpcStreamServer!;
+            const liveVideoStreams = this.ctx.rpcLiveVideoStreams!;
             const peer = Api.peer;
 
             const clientStartOffset = serverClockNow(this.ctx) / 1000;
@@ -242,12 +242,12 @@ export class InternalVideoStream {
             // Fire-and-forget: server awaits the frameStream completion. Any
             // rejection is logged but shouldn't cancel the pump loop since the
             // sender owns the lifetime of the stream.
-            void streamServer
-                .PushVideo(RPC_SESSION_DEFAULT, this.ctx.chatId, clientStartOffset, format, stream.toRef(peer), this.ctx.streamKind)
+            void liveVideoStreams
+                .PushStream(RPC_SESSION_DEFAULT, this.ctx.chatId, clientStartOffset, format, stream.toRef(peer), this.ctx.streamKind)
                 .catch((err: unknown) => {
                     const msg = err instanceof Error ? err.message : String(err);
-                    warnLog?.log('PushVideo rejected:', err);
-                    this.lastError = `PushVideo rejected: ${msg}`;
+                    warnLog?.log('PushStream rejected:', err);
+                    this.lastError = `PushStream rejected: ${msg}`;
                 })
                 .finally(() => stream.disconnect());
 

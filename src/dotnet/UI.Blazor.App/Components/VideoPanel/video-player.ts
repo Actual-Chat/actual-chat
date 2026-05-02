@@ -1,5 +1,7 @@
 import { getLogs } from 'logging';
-import { Api, momentToSeconds, secondsToMoment, streamingApi, type VideoFrameDto, type VideoLatencyReportResponseDto } from 'api';
+import { Api, momentToSeconds, secondsToMoment, streamingApi, type VideoFrameDto } from 'api';
+
+const RPC_SESSION_DEFAULT = '~';
 import { ServerClock } from 'server-clock';
 import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
@@ -76,7 +78,6 @@ export interface RemoteStreamDiagnostics {
     codecSlowTickCount: number;
     decoderStats: DecoderStats | null;
     avDriftMs: number | null;
-    forwarded: VideoLatencyReportResponseDto | null;
 }
 
 const { debugLog, warnLog, errorLog } = getLogs('VideoPlayer');
@@ -286,10 +287,6 @@ export class VideoPlayer {
     // the hint right away so the cap kicks in within ms, not seconds.
     private resizeObserver: ResizeObserver | null = null;
     private lastSentRenderQuality: number | null | undefined = undefined;
-    // Last server-reported forwarded layer (response of ReportVideoLatency).
-    // Surfaced to the diagnostics modal so it can show the actual delivered
-    // simulcast layer + its coded WxH for THIS peer.
-    private lastForwarded: VideoLatencyReportResponseDto | null = null;
 
     // Diagnostics counters for 10s delta reporting
     private lastDiagDecodedFrames = 0;
@@ -1140,25 +1137,15 @@ export class VideoPlayer {
         void this.reportPlaying(0, true);
     }
 
-    // Sends a render-hint-only ReportVideoLatency if the canvas-derived quality
-    // level has changed since the last send. Idempotent across repeat fires from
-    // the ResizeObserver. Returns the level that was sent (or undefined if
-    // suppressed because nothing changed).
+    // Tracks the canvas-derived quality level so Step 10.4 can rebind this signal
+    // to the Primary/Secondary playback-priority callback. Until that lands the
+    // function only logs the transition.
     private maybeSendRenderHint(): number | null | undefined {
         const level = this.computeRenderQualityLevel();
         if (level === this.lastSentRenderQuality) return undefined;
         this.lastSentRenderQuality = level;
-        if (level === null) return level; // canvas not laid out yet — wait
+        if (level === null) return level;
         debugLog?.log(`RenderQuality hint: level=${level} (canvas=${this.canvas.clientWidth}x${this.canvas.clientHeight})`);
-        // Hint-only mode: StreamOffsetMs=-1 tells the server to apply just the
-        // render hint + visibility flag without recording a latency sample
-        // (we haven't rendered a frame yet, no offset to report).
-        streamingApi.streamServer.ReportVideoLatency(this.streamId, {
-            StreamOffsetMs: -1,
-            RenderQuality: level,
-            IsVisible: typeof document !== 'undefined' && document.visibilityState === 'visible',
-        }).then(r => { this.lastForwarded = r; })
-            .catch((e: unknown) => warnLog?.log('Render-hint ReportVideoLatency error:', e));
         return level;
     }
 
@@ -1169,7 +1156,7 @@ export class VideoPlayer {
         this.lastKeyFrameRequestTime = now;
 
         warnLog?.log(`PLI: requesting keyframe for stream ${this.streamId}`);
-        streamingApi.streamServer.RequestKeyFrame(this.streamId)
+        streamingApi.liveVideoStreams.RequestKeyFrame(RPC_SESSION_DEFAULT, this.streamId)
             .catch((e: unknown) => warnLog?.log('RequestKeyFrame error:', e));
     }
 
@@ -1282,8 +1269,8 @@ export class VideoPlayer {
         warnLog?.log(`startPull [RPC]: stream=${streamId}, skipTo=${skipToMs}ms, skipToTicks=${skipToTicks}, retryCount=${this.pullRetryCount}`);
 
         try {
-            warnLog?.log(`startPull [RPC]: calling GetVideo(${streamId}, ${skipToTicks})`);
-            const stream = await streamingApi.streamServer.GetVideo(streamId, skipToTicks);
+            warnLog?.log(`startPull [RPC]: calling GetStream(${streamId}, ${skipToTicks})`);
+            const stream = await streamingApi.liveVideoStreams.GetStream(RPC_SESSION_DEFAULT, streamId, skipToTicks);
             warnLog?.log(`startPull [RPC]: GetStream returned, starting iteration`);
             let pullFrameCount = 0;
 
@@ -1450,7 +1437,6 @@ export class VideoPlayer {
             codecSlowTickCount: this.codecSlowTickCount,
             decoderStats,
             avDriftMs,
-            forwarded: this.lastForwarded,
         };
     }
 
@@ -1557,21 +1543,10 @@ export class VideoPlayer {
         const streamOffsetMs = report.streamOffsetMs;
         if (streamOffsetMs > this.lastArrivedOffsetMs)
             this.lastArrivedOffsetMs = streamOffsetMs;
-        const isVisible = !document.hidden;
-        const renderLevel = this.computeRenderQualityLevel();
-        try {
-            streamingApi.streamServer.ReportVideoLatency(this.streamId, {
-                StreamOffsetMs: streamOffsetMs,
-                MedianDecodeTimeMs: report.medianDecodeTimeMs,
-                BufferDepth: report.bufferDepth,
-                BufferSpanMs: report.bufferSpanMs,
-                RenderQuality: renderLevel,
-                IsVisible: isVisible,
-            }).then(r => { this.lastForwarded = r; })
-                .catch((e: unknown) => warnLog?.log('ReportVideoLatency failed:', e));
-        } catch (e) {
-            warnLog?.log('ReportVideoLatency failed:', e);
-        }
+        // Latency reports formerly went to streamServer.ReportVideoLatency; the
+        // playback quality controller (Step 10) now consumes equivalent signals
+        // via ChangePlaybackQuality. This handler still updates lastArrivedOffsetMs
+        // and other local state read by the render loop.
     }
 
     public async stop(): Promise<void> {
@@ -1604,7 +1579,6 @@ export class VideoPlayer {
         this.lastSeekTime = 0;
         this.pullRetryCount = 0;
         this.lastLatencyReportTime = 0;
-        this.lastForwarded = null;
 
         // Remove visibility subscription
         if (this.visibilitySubscription) {
@@ -1687,14 +1661,6 @@ export class VideoPlayer {
             warnLog?.log(`reportLatencyTick: skip — lastRendered=${this.lastRenderedOffsetMs.toFixed(0)}`);
             return;
         }
-        // streamOffsetMs is what we send to the server for its latency computation
-        // (ServerClock.Now - (StartedAt + streamOffsetMs) = network+relay transit).
-        // Use the newest arrived offset, NOT the rendered one — the render lags by
-        // pipelineLatencyMs (jitter buffer) which is our local choice, not congestion.
-        // Conflating them trips the server's "baseline + 200ms + 30%" step-down on a
-        // healthy link once the buffer stabilizes.
-        const streamOffsetMs = Math.max(this.lastArrivedOffsetMs, this.lastRenderedOffsetMs);
-
         const nowMs = ServerClock.now();
         // Two metrics with distinct semantics:
         // - latencyMs (newest arrived frame vs now) = true sender→receiver transit.
@@ -1759,13 +1725,6 @@ export class VideoPlayer {
             this.skipToLiveCount++;
             warnLog?.log(
                 `SKIP_TO_LIVE: latency ${latencyMs.toFixed(0)}ms > ${VIDEO.skipToLiveThresholdMs}ms, gating until next keyframe (count=${this.skipToLiveCount})`);
-
-            streamingApi.streamServer.ReportVideoLatency(this.streamId, {
-                StreamOffsetMs: streamOffsetMs,
-                RenderQuality: this.computeRenderQualityLevel(),
-                IsVisible: document.visibilityState === 'visible',
-            }).then(r => { this.lastForwarded = r; })
-                .catch(() => { /* best-effort */ });
 
             while (!this.pendingFrames.isEmpty())
                 this.pendingFrames.shift()!.close();
@@ -1860,34 +1819,10 @@ export class VideoPlayer {
                     this.qualityReductionRequested = false;
                 }
 
-                // Send enriched latency report with diagnostics + RTT measurement
-                const sendTime = performance.now();
-                streamingApi.streamServer.ReportVideoLatency(this.streamId, {
-                    StreamOffsetMs: streamOffsetMs,
-                    MedianDecodeTimeMs: ds.pureMedianDecodeTime >= 0 ? ds.pureMedianDecodeTime : ds.medianDecodeTime,
-                    BufferDepth: this.pendingFrames.length,
-                    BufferSpanMs: currentBufferSpanMs,
-                    RenderQuality: this.computeRenderQualityLevel(),
-                    IsVisible: document.visibilityState === 'visible',
-                }).then(r => {
-                    this.lastForwarded = r;
-                    this.updateRttEstimate(performance.now() - sendTime);
-                }).catch((e: unknown) => {
-                    warnLog?.log('ReportVideoLatency invoke error:', e);
-                });
-            });
-        } else {
-            // No decoder worker — send basic report without diagnostics + RTT measurement
-            const sendTime = performance.now();
-            streamingApi.streamServer.ReportVideoLatency(this.streamId, {
-                StreamOffsetMs: streamOffsetMs,
-                RenderQuality: this.computeRenderQualityLevel(),
-                IsVisible: document.visibilityState === 'visible',
-            }).then(r => {
-                this.lastForwarded = r;
-                this.updateRttEstimate(performance.now() - sendTime);
-            }).catch((e: unknown) => {
-                warnLog?.log('ReportVideoLatency invoke error:', e);
+                // ReportVideoLatency removed in Step 8.4. The playback quality
+                // controller (Step 10) consumes equivalent decoder + buffer
+                // signals via ChangePlaybackQuality. RTT measurement returns
+                // when the new flow lands.
             });
         }
     }

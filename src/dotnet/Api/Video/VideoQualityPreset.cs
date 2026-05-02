@@ -1,8 +1,8 @@
 namespace ActualChat.Video;
 
-// Numeric order: lower value = higher quality. Preserved so `level < maxQuality`
-// comparisons in StreamLatencyStore express "is this better than the cap".
-public enum VideoQualityLevel { Ultra = 0, Full = 1, High = 2, Medium = 3, Low = 4, Paused = 5 }
+// Numeric order: lower value = higher quality. Pause was removed in Step 8.5;
+// pausing is now expressed via ReceiveQuality.Lowest on the playback side.
+public enum VideoQualityLevel { Ultra = 0, Full = 1, High = 2, Medium = 3, Low = 4 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record VideoQualityPreset(
@@ -32,7 +32,6 @@ public sealed partial record VideoQualityPreset(
     public static readonly VideoQualityPreset High   = new(VideoQualityLevel.High,   1280,  720);
     public static readonly VideoQualityPreset Medium = new(VideoQualityLevel.Medium,  960,  540);
     public static readonly VideoQualityPreset Low    = new(VideoQualityLevel.Low,     640,  360);
-    public static readonly VideoQualityPreset Paused = new(VideoQualityLevel.Paused, 0, 0);
 
     public static VideoQualityPreset ForLevel(VideoQualityLevel level)
         => level switch {
@@ -41,7 +40,6 @@ public sealed partial record VideoQualityPreset(
             VideoQualityLevel.High => High,
             VideoQualityLevel.Medium => Medium,
             VideoQualityLevel.Low => Low,
-            VideoQualityLevel.Paused => Paused,
             _ => High,
         };
 

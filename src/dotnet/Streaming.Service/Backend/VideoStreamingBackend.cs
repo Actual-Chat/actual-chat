@@ -1,7 +1,6 @@
 using ActualChat.Diagnostics;
 using ActualChat.Streaming.Services;
 using ActualChat.Video;
-using ActualLab.Diagnostics;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
@@ -15,7 +14,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private ILiveVideoBackend LiveVideoBackend => field ??= Services.GetRequiredService<ILiveVideoBackend>();
-    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
     private IServiceProvider Services { get; }
     private StreamLatencyStore LatencyStore { get; }
@@ -39,27 +37,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
     public void Dispose()
         => _videoStreams.Dispose();
-
-    public virtual async Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, string peerId, CancellationToken cancellationToken)
-    {
-        Log.LogInformation("GetVideo: #{StreamId}, SkipTo={SkipTo}, PeerId={PeerId}", streamId, skipTo, peerId);
-        var stream = await _videoStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
-        if (stream == null) {
-            Log.LogWarning("GetVideo: #{StreamId} not found in StreamStore", streamId);
-            return null;
-        }
-
-        stream = stream.SkipWhile(f => !f.IsKeyFrame);
-
-        var filter = new VideoStreamFilter(
-            LatencyStore,
-            (sid, ct) => Computed.Capture(() => GetQualityPreset(sid, ct), ct),
-            Log);
-        return new RpcStream<VideoFrame>(filter.Apply(streamId, peerId, skipTo, stream, cancellationToken)) {
-            AckPeriod = Constants.Video.RpcStreamAckPeriod,
-            BufferSize = Constants.Video.RpcStreamBufferSize,
-        };
-    }
 
     public virtual async Task<RpcStream<VideoFrame>?> GetVideoRaw(StreamId streamId, CancellationToken cancellationToken)
     {
@@ -103,38 +80,22 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         }
     }
 
-    // Quality control — stream-local state
-
-    // [ComputeMethod]
-    public virtual async Task<VideoQualityPreset> GetQualityPreset(StreamId streamId, CancellationToken cancellationToken)
+    // [ComputeMethod] — publisher-facing keyframe-request signal. The old
+    // quality-adaptation logic was removed in Step 8.5; this method now only
+    // surfaces pending keyframe requests. RequestKeyFrame stores the flag and
+    // invalidates this Computed; the publisher's subscription re-reads it,
+    // observes IsKeyFrameRequested=true, and forces the next frame to be a KF.
+    public virtual Task<VideoQualityPreset> GetQualityPreset(StreamId streamId, CancellationToken cancellationToken)
     {
-        if (!LatencyStore.LatencyStates.TryGetValue(streamId, out var latencyState))
-            return VideoQualityPreset.High;
-
-        // Check if this stream is paused by the priority evaluator (cross-service RPC to ChatId shard)
-        // Skip pause check for remote-cached streams that have no ChatId
-        var isPaused = await LiveVideoBackend
-            .ShouldPause(latencyState.ChatId, streamId, cancellationToken)
-            .ConfigureAwait(false);
-        if (isPaused)
-            return VideoQualityPreset.Paused;
-
-        var preset = await latencyState.QualityPreset.Use(cancellationToken).ConfigureAwait(false);
-
-        // Consume any pending keyframe request (atomic: only first caller gets it)
+        _ = cancellationToken;
+        var preset = VideoQualityPreset.High;
         if (LatencyStore.KeyFrameRequests.TryRemove(streamId, out _))
             preset = preset with { IsKeyFrameRequested = true };
-
-        return preset;
+        return Task.FromResult(preset);
     }
 
     public virtual Task RequestKeyFrame(StreamId streamId, CancellationToken cancellationToken = default)
     {
-        if (!LatencyStore.LatencyStates.ContainsKey(streamId)) {
-            Log.LogDebug("RequestKeyFrame: streamId={StreamId} — ignored, stream not known locally", streamId);
-            return Task.CompletedTask;
-        }
-
         // Rate-limit PLI: collapse multiple receivers' requests into one per cooldown window
         var now = CpuTimestamp.Now;
         var lastTime = LatencyStore.LastKeyFrameRequestTime.GetOrAdd(streamId, now);
@@ -152,18 +113,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             _ = GetQualityPreset(streamId, default);
 
         return Task.CompletedTask;
-    }
-
-    public virtual Task<VideoLatencyReportResponse> ReportPeerLatency(
-        StreamId streamId,
-        string peerId,
-        VideoLatencyReport report,
-        CancellationToken cancellationToken = default)
-    {
-        LatencyStore.ReportPeerLatency(streamId, peerId, report);
-        var snap = LatencyStore.GetPeerForwarded(streamId, peerId);
-        return Task.FromResult(new VideoLatencyReportResponse(
-            snap.LayerId, snap.Width, snap.Height, snap.ObservedMax));
     }
 
     // Private methods
@@ -215,8 +164,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         await LiveVideoBackend.Register(record.ChatId, streamInfo, cancellationToken)
             .ConfigureAwait(false);
 
-        LatencyStore.RegisterStreamLatencyState(record.StreamId, record.ChatId, beginsAt, record.Format, record.StreamKind);
-
         try {
             // Publish video stream for real-time viewing
             // No processing - just forward to StreamStore for memoization
@@ -249,21 +196,9 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                     if (frame.IsKeyFrame) {
                         keyFrameNumberByLayer.TryGetValue(layerId, out var current);
                         keyFrameNumberByLayer[layerId] = current + 1;
-                        // Keyframes carry current source dimensions — lets the server
-                        // track mid-stream source growth (e.g. screencast window resize)
-                        // and unlock the matching quality-preset ceiling.
-                        if (frame.SourceWidth > 0 && frame.SourceHeight > 0)
-                            LatencyStore.UpdateMaxQuality(record.StreamId, frame.SourceWidth, frame.SourceHeight);
                     }
                     keyFrameNumberByLayer.TryGetValue(layerId, out var layerKf);
                     frame.KeyFrameNumber = layerKf;
-
-                    // Track throughput for quality adaptation (same node, direct call).
-                    // Pass SpatialLayerId so the store can detect simulcast-active and
-                    // skip OVER-DELIVERY (multi-encoder bytes legitimately sum past target).
-                    LatencyStore.RecordFrameBytes(record.StreamId,
-                        !frame.SerializedData.IsEmpty ? frame.SerializedData.Length : frame.Data.Length,
-                        frame.SpatialLayerId);
 
                     if (lastHeartbeat.Elapsed >= heartbeatInterval) {
                         lastHeartbeat = CpuTimestamp.Now;

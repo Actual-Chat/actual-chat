@@ -5,7 +5,6 @@ namespace ActualChat.Streaming;
 
 public interface ILiveVideoStreams : IComputeService
 {
-    [Obsolete("2026.04: Use IStreamServer.GetVideo via RPC")]
     [LegacyName("GetVideo", "2.6.9999")]
     Task<RpcStream<VideoFrame>?> GetStream(
         Session session,
@@ -25,6 +24,10 @@ public interface ILiveVideoStreams : IComputeService
     [LegacyName("GetSupportedDecoderCodecs", "2.6.9999")]
     Task<ApiArray<string>> GetSupportedCodecs(Session session, ChatId chatId, CancellationToken cancellationToken);
 
+    // Publisher-facing keyframe-request signal. The old quality-adaptation model
+    // is replaced by ChangeRecordingQuality / ChangePlaybackQuality, but this
+    // method remains as the propagation path for RequestKeyFrame: the publisher
+    // observes IsKeyFrameRequested = true and forces the next frame to be a KF.
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<VideoQualityPreset> GetQualityPreset(Session session, StreamId streamId, CancellationToken cancellationToken);
 
@@ -38,19 +41,27 @@ public interface ILiveVideoStreams : IComputeService
     [LegacyName("UnregisterVideoStreamMember", "2.6.9999")]
     Task UnregisterMember(Session session, ChatId chatId, CancellationToken cancellationToken);
 
-    // Legacy v2.6 compatibility methods
+    [RpcMethod(RemoteExecutionMode = RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect)]
+    Task PushStream(
+        Session session,
+        string chatId,
+        double clientStartOffset,
+        VideoFormat format,
+        RpcStream<VideoFrame> frameStream,
+        StreamKind streamKind,
+        CancellationToken cancellationToken);
 
-    [ComputeMethod]
-    [Obsolete("2026.03: Use List and extract AuthorIds client-side")]
-    [LegacyName("GetVideoStreamingAuthorIds", "2.6.9999")]
-    Task<ApiArray<AuthorId>> LegacyGetVideoStreamingAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<RpcNoWait> RequestKeyFrame(Session session, string streamId, CancellationToken cancellationToken);
 
-    [RpcMethod(LocalExecutionMode = RpcLocalExecutionMode.Unconstrained)]
-    [Obsolete("2026.03: Use GetSupportedCodecs instead")]
-    [LegacyName("ObserveSupportedDecoderCodecs", "2.6.9999")]
-    Task<RpcStream<ApiArray<string>>> LegacyObserveSupportedDecoderCodecs(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<RpcNoWait> ChangeRecordingQuality(
+        Session session,
+        RecordingQualityState? state,
+        RecordingQualityInfo? info,
+        CancellationToken cancellationToken);
 
-    [Obsolete("2026.03: Use GetQualityPreset instead")]
-    [LegacyName("ObserveStreamQualityRequests", "2.6.9999")]
-    Task<RpcStream<VideoQualityPreset>> LegacyObserveStreamQualityRequests(Session session, StreamId streamId, CancellationToken cancellationToken);
+    Task<RpcNoWait> ChangePlaybackQuality(
+        Session session,
+        ApiMap<string, ReceiveQuality>? requestedQuality,
+        PlaybackQualityInfo? info,
+        CancellationToken cancellationToken);
 }

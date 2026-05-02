@@ -31,6 +31,8 @@ import { RingBuffer } from 'actuallab-core';
 
 const { infoLog, warnLog, errorLog } = getLogs('VideoDecoder');
 
+const RPC_SESSION_DEFAULT = '~';
+
 // Worker state
 let decoder: WebCodecsDecoder | null = null;
 let processing = false;
@@ -186,7 +188,7 @@ function requestKeyframeOnDecoderError(): void {
     lastKeyframeRequestAtMs = now;
     const sid = activePullStreamId;
     warnLog?.log(`Decoder error: requesting server keyframe for ${sid}`);
-    streamingApi.streamServer.RequestKeyFrame(sid)
+    streamingApi.liveVideoStreams.RequestKeyFrame(RPC_SESSION_DEFAULT, sid)
         .catch((e: unknown) => warnLog?.log('RequestKeyFrame error:', e));
 }
 
@@ -198,7 +200,7 @@ let streamReadLoopPromise: Promise<void> | null = null;
 let mstgSelector: WorkerMstgSelector | null = null;
 
 // In-worker Fusion RPC pull state (§9). When pullActive, the worker iterates
-// `streamingApi.streamServer.GetVideo(...)` itself and feeds chunks into the
+// `streamingApi.liveVideoStreams.GetStream(...)` itself and feeds chunks into the
 // decoder — main never sees per-frame work on this path.
 let pullActive = false;
 let pullAbortController: AbortController | null = null;
@@ -377,7 +379,7 @@ function createDecoder(config: DecoderConfig): WebCodecsDecoder {
     );
 }
 
-// In-worker pull loop. Iterates `streamingApi.streamServer.GetVideo(...)`,
+// In-worker pull loop. Iterates `streamingApi.liveVideoStreams.GetStream(...)`,
 // feeds each frame into `serverImpl.decodeRawChunk` (which handles codec
 // change, reorder, and decode), and retries with backoff on empty / error.
 // Mirror of the main-thread `startPull` from video-player.ts:1265-1334.
@@ -389,8 +391,8 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
     let lastArrivedOffsetMs = 0;
 
     try {
-        infoLog?.log(`pull: GetVideo(${streamId}, skipTo=${skipToMs}ms)`);
-        const stream = await streamingApi.streamServer.GetVideo(streamId, skipToTicks);
+        infoLog?.log(`pull: GetStream(${streamId}, skipTo=${skipToMs}ms)`);
+        const stream = await streamingApi.liveVideoStreams.GetStream(RPC_SESSION_DEFAULT, streamId, skipToTicks);
 
         for await (const frame of stream) {
             if (ac.signal.aborted || !pullActive) break;

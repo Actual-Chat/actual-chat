@@ -1,39 +1,9 @@
 using ActualChat.Video;
-using static ActualChat.Streaming.StreamLatencyStore;
 
 namespace ActualChat.Streaming.UnitTests;
 
-public class QualityPresetTest(ILogger log)
+public class QualityPresetTest
 {
-    private ILogger Log { get; } = log;
-
-    // --- Initial QualityPreset by stream kind ------------------------------
-
-    [Fact]
-    public void Webcam_StartsAtHigh()
-    {
-        var state = NewStreamLatencyState(kind: StreamKind.Webcam);
-        state.QualityPreset.Value.Level.Should().Be(VideoQualityLevel.High);
-    }
-
-    [Fact]
-    public void Screencast_StartsAtFull()
-    {
-        // Screencast starts at Full so text is readable from the first keyframe.
-        var state = NewStreamLatencyState(kind: StreamKind.Screencast);
-        state.QualityPreset.Value.Level.Should().Be(VideoQualityLevel.Full);
-    }
-
-    [Fact]
-    public void QualityPreset_IsMutable()
-    {
-        var state = NewStreamLatencyState();
-        state.QualityPreset.Should().NotBeNull();
-
-        state.QualityPreset.Value = VideoQualityPreset.ForLevel(VideoQualityLevel.Medium);
-        state.QualityPreset.Value.Level.Should().Be(VideoQualityLevel.Medium);
-    }
-
     // --- VideoQualityPreset.ForLevel ---------------------------------------
 
     [Theory]
@@ -42,7 +12,6 @@ public class QualityPresetTest(ILogger log)
     [InlineData(VideoQualityLevel.High, 1280, 720)]
     [InlineData(VideoQualityLevel.Medium, 960, 540)]
     [InlineData(VideoQualityLevel.Low, 640, 360)]
-    [InlineData(VideoQualityLevel.Paused, 0, 0)]
     public void ForLevel_ReturnsExpectedDimensions(VideoQualityLevel level, int expectedW, int expectedH)
     {
         var preset = VideoQualityPreset.ForLevel(level);
@@ -105,38 +74,9 @@ public class QualityPresetTest(ILogger log)
     [Fact]
     public void EnumOrder_LowerValueIsHigherQuality()
     {
-        // StreamLatencyStore's step-up guard uses `stepped.Level < _maxQuality`
-        // which relies on this numeric ordering being preserved after we added
-        // Ultra as a higher-quality tier than Full. This test protects against
-        // an accidental renumber that would invert the semantics.
         ((int)VideoQualityLevel.Ultra).Should().BeLessThan((int)VideoQualityLevel.Full);
         ((int)VideoQualityLevel.Full).Should().BeLessThan((int)VideoQualityLevel.High);
         ((int)VideoQualityLevel.High).Should().BeLessThan((int)VideoQualityLevel.Medium);
         ((int)VideoQualityLevel.Medium).Should().BeLessThan((int)VideoQualityLevel.Low);
     }
-
-    // --- UpdateMaxQuality (runtime ceiling growth) -------------------------
-
-    [Fact]
-    public void UpdateMaxQuality_DoesNotThrow_OnSourceGrowth()
-    {
-        // Smoke test: worker reports larger source dims via keyframe piggyback;
-        // server's StreamLatencyState updates its ceiling. Observable side
-        // effect (step-up after quality eval) is exercised in integration tests.
-        var state = NewStreamLatencyState(new VideoFormat { Width = 1280, Height = 720 });
-        var act = () => state.UpdateMaxQuality(3840, 2088);
-        act.Should().NotThrow();
-    }
-
-    // -----------------------------------------------------------------------
-
-    private StreamLatencyState NewStreamLatencyState(
-        VideoFormat? format = null,
-        StreamKind kind = StreamKind.Webcam)
-        => new(default!,
-            CpuClock.Instance.Now,
-            format ?? new VideoFormat { Width = 1280, Height = 720 },
-            kind,
-            StateFactory.Default,
-            Log);
 }

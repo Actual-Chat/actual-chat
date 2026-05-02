@@ -1,17 +1,18 @@
 using ActualChat.Audio;
 using ActualChat.Transcription;
-using ActualChat.Video;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
 /// <summary>
-/// RPC service for streaming audio and transcripts from server.
+/// Legacy v2.6 RPC surface for audio and transcript streaming. New clients
+/// must use <see cref="ILiveAudioStreams"/> / <see cref="ILiveVideoStreams"/>;
+/// this interface stays only to keep installed v2.6 apps working.
 /// </summary>
+[Obsolete("2026.05: Use ILiveAudioStreams / ILiveVideoStreams. Kept for v2.6 client compat only.")]
 public interface IStreamServer : IRpcService
 {
     Task<RpcStream<AudioFrame>?> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken);
-    Task<RpcStream<VideoFrame>?> GetVideo(string streamId, TimeSpan skipTo, CancellationToken cancellationToken);
     Task<RpcStream<TranscriptDiff>?> GetTranscript(string streamId, CancellationToken cancellationToken);
     Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken);
 
@@ -22,7 +23,7 @@ public interface IStreamServer : IRpcService
     //   handler running, replies "I know it" and the client doesn't resend. The stream
     //   itself resumes via $sys.Ack with MustReset=true.
     // - No AllowResend: on reconnect to a different peer, the call + stream are failed;
-    //   the caller is expected to start a fresh PushAudio/PushVideo with a new stream.
+    //   the caller is expected to start a fresh PushAudio with a new stream.
     [RpcMethod(RemoteExecutionMode = RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect)]
     Task PushAudio(
         Session session,
@@ -31,22 +32,5 @@ public interface IStreamServer : IRpcService
         double clientStartOffset,
         int preSkip,
         RpcStream<AudioFrame> frameStream,
-        CancellationToken cancellationToken);
-
-    [RpcMethod(RemoteExecutionMode = RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect)]
-    Task PushVideo(
-        Session session,
-        string chatId,
-        double clientStartOffset,
-        VideoFormat format,
-        RpcStream<VideoFrame> frameStream,
-        StreamKind streamKind,
-        CancellationToken cancellationToken);
-
-    Task RequestKeyFrame(string streamId, CancellationToken cancellationToken);
-
-    Task<VideoLatencyReportResponse> ReportVideoLatency(
-        string streamId,
-        VideoLatencyReport report,
         CancellationToken cancellationToken);
 }

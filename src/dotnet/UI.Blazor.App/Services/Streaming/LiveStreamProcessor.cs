@@ -46,7 +46,7 @@ public sealed class LiveStreamProcessor : WorkerBase
         var itemStream = new ResilientStream<LiveStreamItem> {
             Provider = async ct => {
                 DebugLog?.LogInformation("-> LiveStreams.GetLiveStream({ChatId})", ChatId);
-                var stream = await liveStreams.GetStream(Session, ChatId, Settings, ct).ConfigureAwait(false);
+                var stream = await liveStreams.LegacyGetStream(Session, ChatId, Settings, ct).ConfigureAwait(false);
                 DebugLog?.LogInformation("<- LiveStreams.GetLiveStream({ChatId})", ChatId);
                 return stream;
             },

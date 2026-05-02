@@ -41,7 +41,7 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         var settings = LiveStreamSettings.Default;
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-        var liveStreamTask = liveStreams.GetStream(session, chat.Id, settings, cts.Token);
+        var liveStreamTask = liveStreams.LegacyGetStream(session, chat.Id, settings, cts.Token);
         var liveStream = await liveStreamTask;
 
         // Collect items in background

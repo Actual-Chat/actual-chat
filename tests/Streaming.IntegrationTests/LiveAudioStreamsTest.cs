@@ -28,7 +28,7 @@ public class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelper @out
         var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
         var config = LiveStreamSettings.Default;
 
-        var stream = await liveStreams.GetStream(session, chat.Id, config, CancellationToken.None);
+        var stream = await liveStreams.LegacyGetStream(session, chat.Id, config, CancellationToken.None);
 
         stream.Should().NotBeNull();
     }
@@ -55,7 +55,7 @@ public class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelper @out
         var config = LiveStreamSettings.Default;
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        var stream = await liveStreams.GetStream(session, chat.Id, config, cts.Token);
+        var stream = await liveStreams.LegacyGetStream(session, chat.Id, config, cts.Token);
 
         // Stream should not throw when enumerated (even if empty)
         var items = new List<LiveStreamItem>();

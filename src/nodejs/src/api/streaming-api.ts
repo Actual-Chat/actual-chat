@@ -1,11 +1,11 @@
-// Streaming RPC module — service contract (IStreamServer), DTO types,
-// the `StreamingApi` module class, and a typed `streamingApi.streamServer`
-// accessor on its singleton instance. A module file conventionally colocates
-// its types, service defs, and registration.
+// Streaming RPC module — service contracts (ILiveAudioStreams, ILiveVideoStreams,
+// IStreamServer for v2.6 compat), DTO types, the `StreamingApi` module class,
+// and typed `streamingApi.{liveAudioStreams,liveVideoStreams,streamServer}`
+// accessors on its singleton instance.
 //
 // Usage:
 //     Api.init('Example', { url, modules: [streamingApi] });
-//     await streamingApi.streamServer.PushVideo(...);
+//     await streamingApi.liveVideoStreams.PushStream(...);
 
 import { defineRpcService, RpcRemoteExecutionMode, RpcType, type RpcHub } from 'actuallab-rpc';
 import { Api, type ApiModule } from './api.js';
@@ -16,16 +16,38 @@ import { coreApi } from './core-api.js';
 // come up before initial send; AllowReconnect makes the $sys.Reconnect protocol skip the
 // call on same-peer reconnect (server still has the handler, stream resumes via ACK).
 // We deliberately DO NOT set AllowResend: on peer change the call + stream fail, and
-// the caller recreates them.  Mirror of [RpcMethod] on IStreamServer in .NET.
+// the caller recreates them.  Mirror of [RpcMethod] on the .NET interfaces.
 const StreamPushMode = RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect;
 
-// --- IStreamServer (stream push/pull + control) ---
+// --- ILiveVideoStreams (per-stream video push/pull + quality control) ---
+export const LiveVideoStreamsDef = defineRpcService('ILiveVideoStreams', {
+    GetStream: { args: ['session', 'streamId', 'skipTo'], returns: RpcType.stream },
+    PushStream: {
+        args: ['session', 'chatId', 'clientStartOffset', 'format', 'frameStream', 'streamKind'],
+        remoteExecutionMode: StreamPushMode,
+    },
+    RequestKeyFrame: { args: ['session', 'streamId'] },
+    ChangeRecordingQuality: { args: ['session', 'state', 'info'] },
+    ChangePlaybackQuality: { args: ['session', 'requestedQuality', 'info'] },
+});
+
+// --- ILiveAudioStreams (per-stream audio push/pull + transcripts) ---
+export const LiveAudioStreamsDef = defineRpcService('ILiveAudioStreams', {
+    GetStream: { args: ['session', 'streamId', 'skipTo'], returns: RpcType.stream },
+    GetTranscriptStream: { args: ['session', 'streamId'], returns: RpcType.stream },
+    PushStream: {
+        args: ['session', 'chatId', 'repliedChatEntryId', 'clientStartOffset', 'preSkip', 'frameStream'],
+        remoteExecutionMode: StreamPushMode,
+    },
+    ReportAudioLatency: { args: ['session', 'latency'] },
+});
+
+// --- IStreamServer (v2.6 client compat — audio + transcript only) ---
 export const StreamServerDef = defineRpcService('IStreamServer', {
-    GetVideo: { args: ['streamId', 'skipTo'], returns: RpcType.stream },
-    PushVideo: { args: ['session', 'chatId', 'clientStartOffset', 'format', 'frameStream', 'streamKind'], remoteExecutionMode: StreamPushMode },
-    PushAudio: { args: ['session', 'chatId', 'repliedChatEntryId', 'clientStartOffset', 'preSkip', 'frameStream'], remoteExecutionMode: StreamPushMode },
-    RequestKeyFrame: { args: ['streamId'] },
-    ReportVideoLatency: { args: ['streamId', 'report'] },
+    PushAudio: {
+        args: ['session', 'chatId', 'repliedChatEntryId', 'clientStartOffset', 'preSkip', 'frameStream'],
+        remoteExecutionMode: StreamPushMode,
+    },
 });
 
 // --- VideoFrame TypeScript interface ---
@@ -54,7 +76,6 @@ export interface VideoFrameDto {
 
 // --- VideoFormat TypeScript interface ---
 // Matches .NET VideoFormat serialized via MessagePack with implicit string keys.
-// VideoFormat.cs is [MessagePackObject(true)] → PascalCase property names.
 export interface VideoFormatDto {
     Codec: string;
     Width: number;
@@ -64,61 +85,101 @@ export interface VideoFormatDto {
     SourceHeight: number;
 }
 
-// --- VideoLatencyReport TypeScript interface ---
-// Matches .NET VideoLatencyReport serialized via MessagePack with implicit
-// string keys — [MessagePackObject(true)] → PascalCase wire keys.
-// All metric fields default to sentinel values server-side (-1 / null) when
-// absent, so clients can omit fields they haven't measured this tick.
-export interface VideoLatencyReportDto {
-    StreamOffsetMs: number;
-    // -1 = not measured this tick.
-    MedianDecodeTimeMs?: number;
-    // -1 = not measured.
-    BufferDepth?: number;
-    // -1 = not measured.
-    BufferSpanMs?: number;
-    // null = no render-size hint; numeric = VideoQualityLevel ordinal.
-    // Server maps non-null via StreamLatencyStore.MapRenderLevelToSpatialLayer.
-    RenderQuality?: number | null;
-    // document.visibilityState === 'visible'. Defaults to true server-side.
-    IsVisible?: boolean;
-}
-
-// --- VideoLatencyReportResponse TypeScript interface ---
-// Matches .NET VideoLatencyReportResponse via MessagePack [MessagePackObject(true)].
-// Returned from ReportVideoLatency; carries the SFU's currently-forwarded spatial
-// layer + its coded WxH for this peer, used by the diagnostics modal.
-export interface VideoLatencyReportResponseDto {
-    // -1 = no frame yet forwarded to this peer.
-    ForwardedSpatialLayerId: number;
-    // 0 = unknown (no frame seen yet).
-    ForwardedWidth: number;
-    ForwardedHeight: number;
-    // Highest layer the producer is currently emitting (for debugging).
-    ObservedMaxSpatialLayer: number;
-}
-
 // --- AudioFrame TypeScript interface ---
 // Matches .NET AudioFrame serialized via MessagePack with implicit string keys.
-// AudioFrame.cs is [MessagePackObject(true)] → PascalCase property names.
-// TimeSpan is serialized as int64 ticks (100ns units).
 export interface AudioFrameDto {
     Data: Uint8Array;
-    Offset: Moment;       // TimeSpan ticks (int64)
-    Duration: Moment;     // TimeSpan ticks (int64)
-    IsKeyFrame: boolean;  // always true for audio
+    Offset: Moment;
+    Duration: Moment;
+    IsKeyFrame: boolean;
 }
 
-// --- Typed proxy for IStreamServer calls on the client side. ---
-export interface StreamServerClient {
-    GetVideo(streamId: string, skipToTicks: Moment): Promise<AsyncIterable<VideoFrameDto>>;
-    PushVideo(
+// --- ReceiveQuality / RecordingQuality / PlaybackQuality DTOs ---
+// Match the new .NET quality control records under
+// ActualChat.Streaming (Api.Contracts/Streaming/Quality/*.cs) — all use
+// MessagePack with explicit numeric Key(N), so wire keys are integers.
+
+export interface ReceiveQualityDto {
+    0: number;  // MaxSpatialLayer
+    1: number;  // MaxTemporalLayer
+}
+
+export interface RecordingQualityStateDto {
+    0: number;  // TargetLayerCount
+    1: number;  // EffectiveLayerCount
+}
+
+export interface RecorderHealthSnapshotDto {
+    0: number;   // EncodeRatioP50
+    1: number;   // EncodeRatioP90
+    2: number;   // SlotReplacementRate
+    3: number;   // SenderBacklogP90Ms
+    4: number;   // SenderSkipsPerWindow
+    5: number;   // LastAckAgeMs
+    6: boolean;  // IsConnected
+}
+
+export interface RecordingQualityInfoDto {
+    0: number;                       // RecordingQualityReason (enum ordinal)
+    1: RecorderHealthSnapshotDto;    // Health
+}
+
+export interface PlaybackStreamInfoDto {
+    0: number;   // IncomingByteRate
+    1: number;   // BufferDurationMsP50
+    2: number;   // KeyframeSkipsInWindow
+    3: number;   // DecoderQueueDepthP90
+    4: number;   // CurrentMaxSpatial
+    5: number;   // CurrentMaxTemporal
+    6: number;   // PlaybackStreamPriority (0=Secondary, 1=Primary)
+    7: number;   // Verdict (-1, 0, +1)
+}
+
+export interface PlaybackQualityInfoDto {
+    0: number;                                  // EstimatedCapacityBytesPerSec
+    1: number;                                  // AggregateHealth
+    2: number;                                  // PlaybackQualityReason (enum ordinal)
+    3: boolean;                                 // IsColdStart
+    4: Map<string, PlaybackStreamInfoDto>;      // Streams (ApiMap → MessagePack Map)
+}
+
+// --- Typed client interfaces ---
+
+export interface LiveVideoStreamsClient {
+    GetStream(session: string, streamId: string, skipToTicks: Moment): Promise<AsyncIterable<VideoFrameDto>>;
+    PushStream(
         session: string,
         chatId: string,
         clientStartOffset: number,
         format: VideoFormatDto,
         frameStreamRef: unknown,
         streamKind: number): Promise<void>;
+    RequestKeyFrame(session: string, streamId: string): Promise<void>;
+    ChangeRecordingQuality(
+        session: string,
+        state: RecordingQualityStateDto | null,
+        info: RecordingQualityInfoDto | null): Promise<void>;
+    ChangePlaybackQuality(
+        session: string,
+        requestedQuality: Map<string, ReceiveQualityDto> | null,
+        info: PlaybackQualityInfoDto | null): Promise<void>;
+}
+
+export interface LiveAudioStreamsClient {
+    GetStream(session: string, streamId: string, skipToTicks: Moment): Promise<AsyncIterable<AudioFrameDto>>;
+    GetTranscriptStream(session: string, streamId: string): Promise<AsyncIterable<unknown>>;
+    PushStream(
+        session: string,
+        chatId: string,
+        repliedChatEntryId: string | null,
+        clientStartOffset: number,
+        preSkip: number,
+        frameStreamRef: unknown): Promise<void>;
+    ReportAudioLatency(session: string, latencyTicks: Moment): Promise<void>;
+}
+
+// --- Typed proxy for IStreamServer (v2.6 audio path only) ---
+export interface StreamServerClient {
     PushAudio(
         session: string,
         chatId: string,
@@ -126,39 +187,36 @@ export interface StreamServerClient {
         clientStartOffset: number,
         preSkip: number,
         frameStreamRef: unknown): Promise<void>;
-    RequestKeyFrame(streamId: string): Promise<void>;
-    ReportVideoLatency(streamId: string, report: VideoLatencyReportDto): Promise<VideoLatencyReportResponseDto>;
 }
 
-// Mirrors .NET VideoQualityLevel enum. Lower numeric value = higher quality.
-// Used as the `RenderQuality` field on VideoLatencyReportDto — pick the
-// smallest level whose nominal dims meet or approximately match the
-// consumer's actual render size. Server maps Low/Medium→spatial 1,
-// High→2, Full/Ultra→uncapped (producer's observedMaxSpatial decides).
-// Use `null` for "not hinted" (server applies no render cap); using a
-// number forces server-side interpretation of that level.
-export const VideoQualityLevelUltra = 0;
-export const VideoQualityLevelFull = 1;
-export const VideoQualityLevelHigh = 2;
-export const VideoQualityLevelMedium = 3;
-export const VideoQualityLevelLow = 4;
-
 /** Streaming module — pass the `streamingApi` singleton (below) to `Api.init`
- *  and reach typed services through it, e.g. `streamingApi.streamServer.PushVideo(...)`.
- *  The class is intentionally not exported; use `typeof streamingApi` if you
- *  need the type. */
+ *  and reach typed services through it, e.g.
+ *  `streamingApi.liveVideoStreams.PushStream(...)`. */
 class StreamingApi implements ApiModule {
     readonly deps = [coreApi];
     register(hub: RpcHub): void {
         // Pre-populate the method registry so compact-format hash resolution
-        // works from the very first outbound message. (`hub.addClient` will
-        // also register, but lazy — this keeps startup deterministic.)
+        // works from the very first outbound message.
+        hub.registry.registerService(LiveVideoStreamsDef.name, LiveVideoStreamsDef.methods);
+        hub.registry.registerService(LiveAudioStreamsDef.name, LiveAudioStreamsDef.methods);
         hub.registry.registerService(StreamServerDef.name, StreamServerDef.methods);
     }
 
+    private _liveVideoStreams: LiveVideoStreamsClient | undefined;
+    get liveVideoStreams(): LiveVideoStreamsClient {
+        return this._liveVideoStreams
+            ??= Api.hub.addClient<LiveVideoStreamsClient>(Api.peer, LiveVideoStreamsDef);
+    }
+
+    private _liveAudioStreams: LiveAudioStreamsClient | undefined;
+    get liveAudioStreams(): LiveAudioStreamsClient {
+        return this._liveAudioStreams
+            ??= Api.hub.addClient<LiveAudioStreamsClient>(Api.peer, LiveAudioStreamsDef);
+    }
+
     private _streamServer: StreamServerClient | undefined;
-    /** Typed `IStreamServer` client bound to the shared default peer. Lazy —
-     *  created on first access, then cached for the lifetime of the module. */
+    /** Typed `IStreamServer` client bound to the shared default peer. v2.6 path
+     *  only — new code should use `liveAudioStreams` / `liveVideoStreams`. */
     get streamServer(): StreamServerClient {
         return this._streamServer
             ??= Api.hub.addClient<StreamServerClient>(Api.peer, StreamServerDef);

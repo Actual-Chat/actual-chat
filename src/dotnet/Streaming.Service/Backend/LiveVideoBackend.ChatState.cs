@@ -1,6 +1,3 @@
-using System.Collections.Frozen;
-using ActualChat.Live;
-
 namespace ActualChat.Streaming;
 
 public partial class LiveVideoBackend
@@ -13,10 +10,6 @@ public partial class LiveVideoBackend
         private ApiArray<string> _currentSupportedDecoderCodecs = new(["av1", "hevc", "vp9", "h264"]);
         private CpuTimestamp _lastCodecDowngradeAt;
 
-        // Priority queue state (in-memory, not Redis)
-        private readonly Dictionary<AuthorId, Moment> _lastAudioActivityAt = new();
-        private volatile FrozenSet<string> _pausedStreamIds = FrozenSet<string>.Empty;
-
         public LiveVideoBackend Owner { get; } = owner;
         public ChatId ChatId { get; } = chatId;
 
@@ -27,28 +20,10 @@ public partial class LiveVideoBackend
             }
         }
 
-        // Lock-free: reads an immutable FrozenSet snapshot
-        public bool ShouldPause(StreamId streamId)
-            => _pausedStreamIds.Contains(streamId.Value);
-
         public void RecomputeCodecs(Dictionary<string, ApiArray<string>> members)
         {
             lock (_codecLock)
                 RecomputeSupportedDecoderCodecs(members);
-        }
-
-        public void EvaluatePriority(
-            ApiArray<VideoStreamInfo> videoStreams,
-            ApiArray<LiveStreamInfo> audioStreams,
-            MomentClockSet clocks)
-        {
-            List<string> changedIds;
-            lock (_codecLock)
-                changedIds = EvaluatePriorityLocked(videoStreams, audioStreams, clocks);
-
-            // Invalidate OUTSIDE lock — no longer blocks ShouldPause readers
-            foreach (var id in changedIds)
-                Owner.InvalidateShouldPause(ChatId, StreamId.Parse(id));
         }
 
         // Private methods
@@ -107,77 +82,6 @@ public partial class LiveVideoBackend
             if (allSupportVp9) result.Add("vp9");
             result.Add("h264"); // always available
             return new ApiArray<string>(result.ToArray());
-        }
-
-        // Returns list of changed stream IDs for invalidation (done outside lock by caller)
-        private List<string> EvaluatePriorityLocked(
-            ApiArray<VideoStreamInfo> videoStreams,
-            ApiArray<LiveStreamInfo> audioStreams,
-            MomentClockSet clocks)
-        {
-            var webcamStreams = videoStreams.Where(s => s.StreamKind == StreamKind.Webcam).ToList();
-            var currentPaused = _pausedStreamIds;
-
-            // Below threshold — unpause all
-            if (webcamStreams.Count < Constants.Video.PriorityActivationThreshold) {
-                if (currentPaused.Count == 0)
-                    return [];
-
-                var toInvalidate = currentPaused.ToList();
-                _pausedStreamIds = FrozenSet<string>.Empty;
-                return toInvalidate;
-            }
-
-            // Build set of currently speaking author IDs
-            var speakingAuthorIds = audioStreams.Select(s => s.AuthorId).ToHashSet();
-
-            // Update last-activity timestamps for authors currently speaking
-            var now = clocks.ServerClock.Now;
-            foreach (var stream in webcamStreams)
-                if (speakingAuthorIds.Contains(stream.AuthorId))
-                    _lastAudioActivityAt[stream.AuthorId] = now;
-                else
-                    _lastAudioActivityAt.TryAdd(stream.AuthorId, default);
-
-            // Rank: currently speaking first, then by recency of last speech
-            var ranked = webcamStreams
-                .OrderByDescending(s => speakingAuthorIds.Contains(s.AuthorId) ? 1 : 0)
-                .ThenByDescending(s => _lastAudioActivityAt.GetValueOrDefault(s.AuthorId))
-                .ToList();
-
-            // Compute new paused set
-            var newPaused = new HashSet<string>(StringComparer.Ordinal);
-            for (var i = 0; i < ranked.Count; i++) {
-                if (i < Constants.Video.PriorityActivationThreshold)
-                    continue; // Always active
-
-                if (i >= Constants.Video.MaxWebcamStreamsPerChat) {
-                    newPaused.Add(ranked[i].StreamId.Value);
-                    continue;
-                }
-
-                // Between threshold and cap: pause if not speaking and grace expired
-                var isSpeaking = speakingAuthorIds.Contains(ranked[i].AuthorId);
-                if (isSpeaking)
-                    continue;
-
-                var lastActivity = _lastAudioActivityAt.GetValueOrDefault(ranked[i].AuthorId);
-                var withinGrace = lastActivity != default
-                    && (now - lastActivity) < Constants.Video.SilenceGracePeriod;
-                if (!withinGrace)
-                    newPaused.Add(ranked[i].StreamId.Value);
-            }
-
-            // Collect streams whose pause state changed
-            var changedIds = newPaused
-                .Where(id => !currentPaused.Contains(id)) // newly paused
-                .Concat(currentPaused.Where(id => !newPaused.Contains(id)))  // newly unpaused
-                .ToList();
-
-            // Atomic swap — ShouldPause readers see old or new, never torn
-            _pausedStreamIds = newPaused.ToFrozenSet(StringComparer.Ordinal);
-
-            return changedIds;
         }
     }
 }

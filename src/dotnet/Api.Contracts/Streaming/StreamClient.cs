@@ -6,6 +6,8 @@ using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
+#pragma warning disable CS0618 // IStreamServer is obsolete but still used for v2.6 audio flow
+
 public class StreamClient(IServiceProvider services) : IStreamClient
 {
     private static readonly int StreamBufferSize = 32;
@@ -13,6 +15,8 @@ public class StreamClient(IServiceProvider services) : IStreamClient
     private IServiceProvider Services { get; } = services;
 
     private IStreamServer StreamServer => field ??= Services.GetRequiredService<IStreamServer>();
+    private ILiveVideoStreams LiveVideoStreams => field ??= Services.GetRequiredService<ILiveVideoStreams>();
+    private ILiveAudioStreams LiveAudioStreams => field ??= Services.GetRequiredService<ILiveAudioStreams>();
     private ILogger AudioSourceLog => field ??= Services.LogFor<AudioSource>();
     private ILogger Log => field ??= Services.LogFor(GetType());
 
@@ -74,7 +78,7 @@ public class StreamClient(IServiceProvider services) : IStreamClient
         CancellationToken cancellationToken)
     {
         var rpcStream = RpcStream.New(frameStream);
-        return StreamServer.PushAudio(
+        return LiveAudioStreams.PushStream(
             session,
             chatId,
             repliedChatEntryId,
@@ -94,7 +98,7 @@ public class StreamClient(IServiceProvider services) : IStreamClient
         CancellationToken cancellationToken)
     {
         var rpcStream = RpcStream.New(frameStream);
-        return StreamServer.PushVideo(
+        return LiveVideoStreams.PushStream(
             session,
             chatId,
             clientStartOffset,

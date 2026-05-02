@@ -137,7 +137,7 @@ export class AudioStream implements Disposable {
                 if (this.isDisposed)
                     return;
 
-                const streamServer = streamingApi.streamServer;
+                const liveAudioStreams = streamingApi.liveAudioStreams;
                 const peer = Api.peer;
 
                 // frameIndex and clientStartOffset are per-PushAudio (per chat entry on the
@@ -178,10 +178,10 @@ export class AudioStream implements Disposable {
                     })(),
                 );
 
-                void streamServer
-                    .PushAudio(RPC_SESSION_DEFAULT, this.chatId, this.repliedChatEntryId ?? null,
+                void liveAudioStreams
+                    .PushStream(RPC_SESSION_DEFAULT, this.chatId, this.repliedChatEntryId ?? null,
                         clientStartOffset, this.preSkip, stream.toRef(peer))
-                    .catch((err: unknown) => warnLog?.log(`${this.name}: PushAudio rejected:`, err))
+                    .catch((err: unknown) => warnLog?.log(`${this.name}: PushStream rejected:`, err))
                     .finally(() => stream.disconnect());
 
                 // repliedChatEntryId is only meaningful for the very first segment of the

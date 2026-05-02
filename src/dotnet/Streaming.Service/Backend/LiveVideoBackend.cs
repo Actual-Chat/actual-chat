@@ -123,8 +123,6 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
             return;
 
         await primer.Prime(new ApiArray<VideoStreamInfo>(next), cancellationToken).ConfigureAwait(false);
-
-        _ = BackgroundTask.Run(() => EvaluateStreamPriority(chatId, CancellationToken.None), CancellationToken.None);
     }
 
     public virtual async Task Unregister(ChatId chatId, StreamId streamId, CancellationToken cancellationToken)
@@ -145,8 +143,6 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
             return;
 
         await primer.Prime(next, cancellationToken).ConfigureAwait(false);
-
-        _ = BackgroundTask.Run(() => EvaluateStreamPriority(chatId, CancellationToken.None), CancellationToken.None);
     }
 
     // [ComputeMethod]
@@ -159,15 +155,6 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         var chatState = GetChatState(chatId);
         chatState.RecomputeCodecs(activeMembers);
         return chatState.CurrentSupportedDecoderCodecs;
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<bool> ShouldPause(ChatId chatId, StreamId streamId, CancellationToken cancellationToken)
-    {
-        await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
-
-        var chatState = GetChatState(chatId);
-        return chatState.ShouldPause(streamId);
     }
 
     public virtual async Task RegisterMember(ChatId chatId, string sessionId, ApiArray<string> supportedDecoderCodecs, CancellationToken cancellationToken)
@@ -212,14 +199,6 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     }
 
     // Private methods
-
-    private async Task EvaluateStreamPriority(ChatId chatId, CancellationToken cancellationToken)
-    {
-        var videoStreams = await List(chatId, cancellationToken).ConfigureAwait(false);
-        var audioStreams = await LiveAudioBackend.List(chatId, cancellationToken).ConfigureAwait(false);
-        var chatState = GetChatState(chatId);
-        chatState.EvaluatePriority(videoStreams, audioStreams, Clocks);
-    }
 
     private static readonly TimeSpan MemberStalenessThreshold = TimeSpan.FromSeconds(90);
 
@@ -297,12 +276,6 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         InvalidateListActiveStreams(entry.Key);
         InvalidateGetVideoStreamMemberCount(entry.Key);
         InvalidateGetSupportedDecoderCodecs(entry.Key);
-    }
-
-    internal void InvalidateShouldPause(ChatId chatId, StreamId streamId)
-    {
-        using (Invalidation.Begin())
-            _ = ShouldPause(chatId, streamId, default);
     }
 
     private void InvalidateListActiveStreams(ChatId chatId)
