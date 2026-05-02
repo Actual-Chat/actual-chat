@@ -67,6 +67,16 @@ const failedCandidates = new Set<string>();
 // envelope can be handled in-place by the browser decoder.
 let currentCodedWidth = 0;
 let currentCodedHeight = 0;
+// Dim of the GOP currently being decoded — captured from decoder OUTPUT at
+// emit time (`emitDecodedFrame`), not from chunk arrival. Verifier on the
+// main thread compares the <video> element's videoWidth/Height to this; both
+// are sourced from the same decoded frame, so they stay aligned across
+// simulcast layer switches and HEVC dim-change rebuilds. Using arrival-side
+// `currentCodedWidth/Height` instead would race the decoder during a tier
+// change and produce false "decoded does not match latest keyframe" warnings
+// that get blamed on the codec.
+let lastDecodedFrameWidth = 0;
+let lastDecodedFrameHeight = 0;
 
 // Re-derive the codec string for a new keyframe description and pick the best
 // HW-supported candidate. Returns null when no remaining candidate is HW-
@@ -273,8 +283,8 @@ function buildLatencyReport(streamOffsetMs: number): DecoderWorkerLatencyReport 
         // the depth by a constant 0–1.
         bufferDepth: ds.encodedBufferDepth ?? 0,
         bufferSpanMs: ds.encodedBufferSpanMs ?? 0,
-        lastKeyframeWidth: currentCodedWidth || undefined,
-        lastKeyframeHeight: currentCodedHeight || undefined,
+        lastKeyframeWidth: lastDecodedFrameWidth || undefined,
+        lastKeyframeHeight: lastDecodedFrameHeight || undefined,
     };
 }
 
@@ -348,6 +358,15 @@ let waitingForKeyframe = false;
  */
 function emitDecodedFrame(frame: VideoFrame): void {
     frameCount++;
+    // Capture decoder's actual output dim — the GOP currently being rendered.
+    // Reported back to main thread via DecoderWorkerLatencyReport for output
+    // verification. Tracks transitions atomically (decoder rebuilds, simulcast
+    // tier swaps): the <video> element's videoWidth follows the same emit, so
+    // verifier's two sides stay aligned.
+    if (frame.codedWidth > 0 && frame.codedHeight > 0) {
+        lastDecodedFrameWidth = frame.codedWidth;
+        lastDecodedFrameHeight = frame.codedHeight;
+    }
     // Successful decode → clear the recovery escalation counter. Cooldown
     // (lastRecoveryAtMs) intentionally remains so we don't ping-pong fast.
     if (consecutiveRecoveries !== 0)
