@@ -77,6 +77,7 @@ export class BlurPreviewSession {
                 },
                 onSerializedChunk: () => Promise.resolve(),
                 onBackpressure: () => Promise.resolve(),
+                onRecorderHealthSnapshot: () => Promise.resolve(),
                 onEncoderFailed: () => Promise.resolve(),
                 onStreamingStalled: () => Promise.resolve(),
                 onDimensionReconciled: () => Promise.resolve(),

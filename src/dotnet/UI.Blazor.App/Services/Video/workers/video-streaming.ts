@@ -8,7 +8,7 @@
 import Denque from 'denque';
 import { EventHandlerSet } from 'event-handling';
 import { getLogs } from 'logging';
-import { RpcStream } from 'actuallab-rpc';
+import { RpcStream, type RpcStreamSender } from 'actuallab-rpc';
 import { Api, streamingApi, toMoment,
     type LiveVideoStreamsClient, type SessionTokenProvider, type VideoFormatDto, type VideoFrameDto } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
@@ -132,11 +132,19 @@ export class InternalVideoStream {
     private readonly frames = new Denque<VideoStreamFrame>();
     private readonly frameAdded = new EventHandlerSet<void>();
     private addedFrameCount = 0;
+    private _stream: RpcStream<VideoFrameDto> | null = null;
 
     public isCompleted = false;
     public isDisposed = false;
     public lastError = '';
     public readonly whenDisposed: Promise<void>;
+
+    /** RpcStreamSender stats — populated once `stream()` has called `toRef()`.
+     *  Returns null until then or after the stream is disposed. */
+    get senderStats(): RpcStreamSender<VideoFrameDto> | null {
+        const stream = this._stream;
+        return stream?.sender ?? null;
+    }
 
     constructor(
         private readonly config: {
@@ -238,6 +246,7 @@ export class InternalVideoStream {
                     canSkipTo: (frame) => frame.IsKeyFrame,
                 },
             );
+            this._stream = stream;
 
             // Fire-and-forget: server awaits the frameStream completion. Any
             // rejection is logged but shouldn't cancel the pump loop since the

@@ -161,6 +161,17 @@ const slotWindowMs = 5000;
 const slotReplaceThreshold = 0.20;
 let slotPressureNotified = false;
 
+// Recorder-health 1 Hz aggregator (Step 9.2). Surfaces encoder load, slot
+// pressure, and RpcStreamSender backlog/skip/ACK signals to .NET via
+// `callbacks.onRecorderHealthSnapshot`. VideoQualityUI's recording branch
+// (Step 9.4) consumes the snapshot to drive simulcast layer decisions.
+const recorderHealthIntervalMs = 1000;
+const encodeQueueSamples: number[] = [];
+let lastSenderTotalSkipped = 0;
+let lastSenderAckAtMs = 0;
+let recorderHealthIntervalHandle: ReturnType<typeof setInterval> | null = null;
+let recorderHealthSenderHooked: object | null = null;
+
 // Segmentation
 // ort.InferenceSession / ort.Tensor types replaced with `unknown` while
 // onnxruntime-web is disabled. Restore the original types when re-enabling.
@@ -183,6 +194,58 @@ let hasValidMask = false;
 let loggedBlurFormat = false;
 
 interface QueuedFrame { frame: VideoFrame; sequenceNumber: number; timestamp: number }
+function startRecorderHealthAggregator(): void {
+    if (recorderHealthIntervalHandle) return;
+    lastSenderTotalSkipped = 0;
+    lastSenderAckAtMs = 0;
+    recorderHealthSenderHooked = null;
+    encodeQueueSamples.length = 0;
+    recorderHealthIntervalHandle = setInterval(emitRecorderHealthSnapshot, recorderHealthIntervalMs);
+}
+
+function stopRecorderHealthAggregator(): void {
+    if (!recorderHealthIntervalHandle) return;
+    clearInterval(recorderHealthIntervalHandle);
+    recorderHealthIntervalHandle = null;
+    encodeQueueSamples.length = 0;
+    recorderHealthSenderHooked = null;
+}
+
+function emitRecorderHealthSnapshot(): void {
+    const now = performance.now();
+    const samples = encodeQueueSamples.slice();
+    encodeQueueSamples.length = 0;
+    samples.sort((a, b) => a - b);
+    const pickAt = (q: number): number => {
+        if (samples.length === 0) return 0;
+        const idx = Math.min(Math.floor(samples.length * q), samples.length - 1);
+        return samples[idx] ?? 0;
+    };
+    const norm = (queueDepth: number): number =>
+        Math.max(0, queueDepth) / Math.max(1, ENCODER_BUSY_THRESHOLD);
+    const encodeRatioP50 = norm(pickAt(0.5));
+    const encodeRatioP90 = norm(pickAt(0.9));
+
+    const slotRate = slotReplacements / Math.max(1, slotArrivals);
+
+    const sender = videoStream?.senderStats ?? null;
+    if (sender && recorderHealthSenderHooked !== sender) {
+        sender.onAckProcessed = () => { lastSenderAckAtMs = performance.now(); };
+        recorderHealthSenderHooked = sender;
+    }
+    const senderBacklogP90Ms = sender?.oldestUnackedAgeMs ?? 0;
+    const senderTotalSkipped = sender?.totalSkipped ?? 0;
+    const senderSkipsPerWindow = Math.max(0, senderTotalSkipped - lastSenderTotalSkipped);
+    lastSenderTotalSkipped = senderTotalSkipped;
+
+    const lastAckAgeMs = lastSenderAckAtMs > 0 ? now - lastSenderAckAtMs : -1;
+
+    void callbacks.onRecorderHealthSnapshot(
+        encodeRatioP50, encodeRatioP90,
+        slotRate, senderBacklogP90Ms, senderSkipsPerWindow,
+        lastAckAgeMs, WorkerConnectivityUI.isConnected, rpcNoWait);
+}
+
 // Replaceable slot ahead of segmentation/blur (target design: "raw video
 // processors" stage uses a size-1 slot, newer raw frame replaces a pending
 // one). See docs/video-pipeline.md.
@@ -828,6 +891,10 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
         // success/throw — drop our live-tracking now so the catch below doesn't
         // try to close an already-closed frame.
         liveFrame = null;
+        // Sample the encoder's queue depth right before the call — used by the
+        // 1 Hz recorder-health aggregator (encodeRatioP50/P90).
+        if (recorderHealthIntervalHandle)
+            encodeQueueSamples.push(encoder.getEncodeQueueSize());
         encoder.encode(processedFrame, forceKf);
         framesWithoutOutput++;
 
@@ -1682,6 +1749,7 @@ export const serverImpl: VideoProcessingWorker = {
 
             processing = true;
             streamCtx.processing = true;
+            startRecorderHealthAggregator();
             dimensionsReconciled = false;
             needsRotation = false;
             orientationStats = null;
@@ -1770,6 +1838,7 @@ export const serverImpl: VideoProcessingWorker = {
 
             processing = true;
             streamCtx.processing = true;
+            startRecorderHealthAggregator();
             dimensionsReconciled = false;
             needsRotation = false;
             orientationStats = null;
@@ -1819,6 +1888,7 @@ export const serverImpl: VideoProcessingWorker = {
 
             processing = true;
             streamCtx.processing = true;
+            startRecorderHealthAggregator();
 
             infoLog?.log(`Video processing worker started (${isPreviewOnly ? 'preview-only' : 'RPC'} mode)`);
         } catch (error) {
@@ -2089,6 +2159,7 @@ export const serverImpl: VideoProcessingWorker = {
         infoLog?.log('Stopping video processing worker...');
         processing = false;
         streamCtx.processing = false;
+        stopRecorderHealthAggregator();
         stopScreencastHeartbeat();
         stopStreamingWatchdog();
 

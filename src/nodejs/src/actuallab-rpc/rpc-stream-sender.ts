@@ -66,6 +66,40 @@ export class RpcStreamSender<T> implements IRpcObject {
     private _abortController = new AbortController();
     private _iterator: AsyncIterator<T> | null = null;
 
+    // -- Recorder-controller metrics (Step 9.1) --
+    /** performance.now() of when the current oldest-unacked window was opened.
+     *  null when the sender is fully caught up (`_nextIndex == _lastAckedIndex`). */
+    private _oldestUnackedSentAtMs: number | null = null;
+    /** Total skipped via real-time `canSkipTo` compaction. */
+    private _totalSkipped = 0;
+    /** Maximum items the real-time `canSkipTo` compaction may drop per ACK
+     *  window. Default keeps current behaviour; set to 0 to opt out entirely. */
+    maxAllowedSkipsPerWindow: number = Number.MAX_SAFE_INTEGER;
+    /** Fires after a $sys.Ack has been processed (post-compaction). The
+     *  recorder's quality controller uses this to bump a "last ACK at"
+     *  watchdog so it can distinguish "stuck" (no ACK > N s) from
+     *  "throttled" (ACKs flowing). */
+    onAckProcessed?: () => void;
+
+    get unackedCount(): number {
+        const diff = this._nextIndex - this._lastAckedIndex;
+        return diff < 0 ? 0 : diff;
+    }
+    get oldestUnackedAgeMs(): number {
+        if (this._oldestUnackedSentAtMs === null) return 0;
+        const age = performance.now() - this._oldestUnackedSentAtMs;
+        return age < 0 ? 0 : age;
+    }
+    get totalSent(): number {
+        return this._nextIndex;
+    }
+    get totalAcked(): number {
+        return this._lastAckedIndex;
+    }
+    get totalSkipped(): number {
+        return this._totalSkipped;
+    }
+
     // -- ACK queue (analog of .NET's Channel<(long, bool)>) --
     private _acks: { nextIndex: number; mustReset: boolean }[] = [];
     private _whenAckReady: PromiseSource<void> | null = null;
@@ -138,6 +172,7 @@ export class RpcStreamSender<T> implements IRpcObject {
                 conn, this.peer.serializationFormat, this.id.localId, this._nextIndex, item,
             );
         }
+        this._oldestUnackedSentAtMs ??= performance.now();
         this._nextIndex++;
     }
 
@@ -150,6 +185,7 @@ export class RpcStreamSender<T> implements IRpcObject {
                 conn, this.peer.serializationFormat, this.id.localId, this._nextIndex, items,
             );
         }
+        this._oldestUnackedSentAtMs ??= performance.now();
         this._nextIndex += items.length;
     }
 
@@ -343,8 +379,13 @@ export class RpcStreamSender<T> implements IRpcObject {
                         && this._acks.length === 0) {
                         await bufferNext(false, true);
                     }
-                    if (ack.nextIndex > 0)
-                        bufferIndex = _compactBufferedUnsentSuffix(buffer, bufferIndex, this.canSkipTo);
+                    if (ack.nextIndex > 0 && this.maxAllowedSkipsPerWindow > 0) {
+                        const result = _compactBufferedUnsentSuffix(
+                            buffer, bufferIndex, this.canSkipTo, this.maxAllowedSkipsPerWindow);
+                        bufferIndex = result.newIndex;
+                        if (result.skipped > 0)
+                            this._totalSkipped += result.skipped;
+                    }
 
                     // Bail out so step 1 can process a mustReset ACK immediately.
                     if (this._acks.length > 0) break;
@@ -390,6 +431,17 @@ export class RpcStreamSender<T> implements IRpcObject {
                 this._nextIndex = a.nextIndex;
             }
         }
+        // Reset the oldest-unacked anchor: caught up if the ACK matched
+        // _nextIndex; otherwise restart the clock from now (we no longer know
+        // when the new oldest item was sent — conservative upper bound).
+        const lastAcked = last?.nextIndex ?? this._lastAckedIndex;
+        if (lastAcked >= this._nextIndex)
+            this._oldestUnackedSentAtMs = null;
+        else
+            this._oldestUnackedSentAtMs = performance.now();
+        try {
+            this.onAckProcessed?.();
+        } catch { /* listener errors don't break the pump */ }
         return last;
     }
 
@@ -472,11 +524,15 @@ function _compactBufferedUnsentSuffix<T>(
     buffer: RingBuffer<_StreamItem<T>>,
     firstUnsentIndex: number,
     canSkipTo: (item: T) => boolean,
-): number {
+    maxSkips: number,
+): { newIndex: number; skipped: number } {
     // Keep items that have already been assigned RPC stream indexes, then
     // collapse the unsent suffix to the latest buffered restart point. The
     // surviving suffix is intentionally sent under fresh RPC stream indexes;
     // item-level timestamps/frame indexes are the caller's responsibility.
+    // `maxSkips` clamps the number of dropped items per call: when collapsing
+    // would exceed it, advance only by maxSkips items toward the latest skip
+    // target.
     let skipToIndex = -1;
     for (let i = firstUnsentIndex; i < buffer.count; i++) {
         const item = buffer.get(i);
@@ -484,13 +540,20 @@ function _compactBufferedUnsentSuffix<T>(
             skipToIndex = i;
     }
     if (skipToIndex <= firstUnsentIndex)
-        return firstUnsentIndex;
+        return { newIndex: firstUnsentIndex, skipped: 0 };
+
+    const desiredSkip = skipToIndex - firstUnsentIndex;
+    const skip = desiredSkip > maxSkips ? maxSkips : desiredSkip;
+    if (skip <= 0)
+        return { newIndex: firstUnsentIndex, skipped: 0 };
+    const cutFrom = firstUnsentIndex;
+    const cutTo = firstUnsentIndex + skip;
 
     const items = buffer.toArray();
     buffer.clear();
-    for (let i = 0; i < firstUnsentIndex; i++)
+    for (let i = 0; i < cutFrom; i++)
         buffer.pushTail(items[i]);
-    for (let i = skipToIndex; i < items.length; i++)
+    for (let i = cutTo; i < items.length; i++)
         buffer.pushTail(items[i]);
-    return firstUnsentIndex;
+    return { newIndex: firstUnsentIndex, skipped: skip };
 }

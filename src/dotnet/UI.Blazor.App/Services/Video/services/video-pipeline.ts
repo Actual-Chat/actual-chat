@@ -145,6 +145,16 @@ export interface IVideoPipeline {
     forceKeyFrame(): Promise<void>;
 }
 
+export interface RecorderHealthSnapshotJs {
+    encodeRatioP50: number;
+    encodeRatioP90: number;
+    slotReplacementRate: number;
+    senderBacklogP90Ms: number;
+    senderSkipsPerWindow: number;
+    lastAckAgeMs: number;
+    isConnected: boolean;
+}
+
 export class VideoPipeline implements IVideoPipeline {
     private readonly workerInstance: Worker;
     private readonly worker: (VideoProcessingWorker & Disposable);
@@ -216,6 +226,11 @@ export class VideoPipeline implements IVideoPipeline {
     // from `onEncoderFailure` because no codec switch will fix it — the
     // pipeline simply needs to surface the situation to the user.
     public onStreamingFailure: ((reason: string) => void) | null = null;
+
+    // 1 Hz recorder-health snapshot, forwarded from the worker. Set by
+    // VideoRecorder so VideoQualityUI's recording branch (Step 9.4) can drive
+    // simulcast layer decisions from encoder load + sender backlog signals.
+    public recorderHealthSnapshotHandler: ((snapshot: RecorderHealthSnapshotJs) => void) | null = null;
 
     // Camera-track-ended callback (set by recording-service). Fires when the
     // underlying MediaStreamTrack ends UNEXPECTEDLY — e.g. another browser tab
@@ -300,6 +315,16 @@ export class VideoPipeline implements IVideoPipeline {
                 },
                 onBackpressure: (dropRate: number) => {
                     this.handleEncoderBackpressure(dropRate);
+                    return Promise.resolve();
+                },
+                onRecorderHealthSnapshot: (
+                    encodeRatioP50, encodeRatioP90, slotReplacementRate,
+                    senderBacklogP90Ms, senderSkipsPerWindow, lastAckAgeMs, isConnected,
+                ) => {
+                    this.recorderHealthSnapshotHandler?.({
+                        encodeRatioP50, encodeRatioP90, slotReplacementRate,
+                        senderBacklogP90Ms, senderSkipsPerWindow, lastAckAgeMs, isConnected,
+                    });
                     return Promise.resolve();
                 },
                 onEncoderFailed: (codec: string) => {

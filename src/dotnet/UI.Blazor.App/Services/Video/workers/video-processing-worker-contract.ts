@@ -233,6 +233,18 @@ export interface VideoProcessingWorkerCallbacks {
         isKeyFrame: boolean, codec: string, sequenceNumber: number,
         descriptionBytes?: ArrayBuffer, noWait?: RpcNoWait): Promise<void>;
     onBackpressure(dropRate: number, noWait?: RpcNoWait): Promise<void>;
+    /** 1 Hz recorder-health snapshot — feeds VideoQualityUI's recording branch.
+     *  Fields mirror `RecorderHealthSnapshot` (Api.Contracts/Streaming/Quality/RecordingQuality.cs);
+     *  passed positionally to keep the wire compact. */
+    onRecorderHealthSnapshot(
+        encodeRatioP50: number,
+        encodeRatioP90: number,
+        slotReplacementRate: number,
+        senderBacklogP90Ms: number,
+        senderSkipsPerWindow: number,
+        lastAckAgeMs: number,
+        isConnected: boolean,
+        noWait?: RpcNoWait): Promise<void>;
     onEncoderFailed(codec: string, noWait?: RpcNoWait): Promise<void>;
     /** Fired when the worker detects that streaming hasn't progressed for too
      *  long even though the encoder is healthy and the connection is up — i.e.
