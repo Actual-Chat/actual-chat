@@ -27,7 +27,7 @@ import { BgBlurRenderer } from '../webgpu-blur';
 import { Api, momentToSeconds, secondsToMoment, streamingApi } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 import { initAppConstants, VIDEO } from 'app-constants';
-import { RingBuffer } from 'actuallab-core';
+import Denque from 'denque';
 
 const { infoLog, warnLog, errorLog } = getLogs('VideoDecoder');
 
@@ -255,13 +255,7 @@ function getDecoderStatsSnapshot(): DecoderStats {
     }
     if (encodedBuffer) {
         base.encodedBufferDepth = encodedBuffer.count;
-        if (encodedBuffer.count >= 2) {
-            const first = encodedBuffer.get(0);
-            const last = encodedBuffer.get(encodedBuffer.count - 1);
-            base.encodedBufferSpanMs = (last.timestamp - first.timestamp) / 1000;
-        } else {
-            base.encodedBufferSpanMs = 0;
-        }
+        base.encodedBufferSpanMs = encodedBuffer.durationMs;
     } else {
         base.encodedBufferDepth = 0;
         base.encodedBufferSpanMs = 0;
@@ -481,81 +475,112 @@ interface EncodedChunkArgs {
     description?: ArrayBuffer;
 }
 
+class EncodedChunkBuffer {
+    private readonly chunks = new Denque<EncodedChunkArgs>();
+
+    get count(): number { return this.chunks.length; }
+    get durationUs(): number { return this.getDurationUs(); }
+    get durationMs(): number { return this.durationUs / 1000; }
+
+    clear(): void {
+        this.chunks.clear();
+    }
+
+    push(args: EncodedChunkArgs): void {
+        this.chunks.push(args);
+        this.trimExcess();
+    }
+
+    shiftReady(): EncodedChunkArgs | undefined {
+        if (this.getDurationUs() < getTargetBufferDurationUs())
+            return undefined;
+        return this.chunks.shift();
+    }
+
+    private trimExcess(): void {
+        if (this.getDurationUs() <= getTargetBufferDurationUs())
+            return;
+
+        const dropCount = this.findSkippablePrefixSize();
+        if (dropCount > 0)
+            this.chunks.remove(0, dropCount);
+    }
+
+    private findSkippablePrefixSize(): number {
+        const count = this.chunks.length;
+        if (count < 2)
+            return 0;
+
+        const last = this.chunks.peekBack();
+        if (!last)
+            return 0;
+
+        const targetUs = getTargetBufferDurationUs();
+        const endUs = getChunkEndUs(last);
+        let bestDropCount = 0;
+
+        // Safe catch-up point: the first kept chunk must be a keyframe, and
+        // the remaining media duration must still cover the target buffer.
+        for (let i = 1; i < count; i++) {
+            const chunk = this.chunks.peekAt(i);
+            if (!chunk?.isKeyFrame)
+                continue;
+
+            if (endUs - chunk.timestamp > targetUs)
+                bestDropCount = i;
+        }
+
+        return bestDropCount;
+    }
+
+    private getDurationUs(): number {
+        const first = this.chunks.peekFront();
+        const last = this.chunks.peekBack();
+        if (!first || !last)
+            return 0;
+
+        return Math.max(0, getChunkEndUs(last) - first.timestamp);
+    }
+}
+
+function getTargetBufferDurationUs(): number {
+    return VIDEO.targetBufferDurationMs * 1000;
+}
+
+function getChunkEndUs(chunk: EncodedChunkArgs): number {
+    return chunk.timestamp + getChunkDurationUs(chunk);
+}
+
+function getChunkDurationUs(chunk: EncodedChunkArgs): number {
+    return chunk.duration > 0
+        ? chunk.duration
+        : VIDEO.frameDurationMs * 1000;
+}
+
 // Mirror of webcodecs-decoder's BackpressureQueueLimit. Keep in sync.
 const DRAIN_DECODE_QUEUE_LIMIT = 4;
-// How long to back off when the decoder's internal queue is full or when
-// the next encoded chunk is not yet due relative to the audio target.
+// How long to back off when the decoder's internal queue is full.
 // One frame at 30 fps is ~33 ms; 5 ms keeps polling responsive without
 // busy-spinning.
 const DRAIN_BACKOFF_MS = 5;
-// How far ahead of the audio target we let the decoder run. Decode time
-// is non-zero, so we need a small lookahead to keep the slot full when
-// the next audio target arrives. Negative values would force the decoded
-// slot to lag the target — we want it just barely ahead.
-// const DRAIN_AUDIO_LOOKAHEAD_US = 50_000;
 
-let encodedBuffer: RingBuffer<EncodedChunkArgs> | null = null;
+let encodedBuffer: EncodedChunkBuffer | null = null;
 let drainRunning = false;
-// Set when buffer eviction had to discard the GOP we were holding (no
-// usable downstream KF). Subsequent deltas are dropped at push until
-// the next keyframe arrives — a delta whose anchor we just dropped
-// would only orphan more chunks downstream and force decoder artifacts.
-let bufferWaitingForKeyframe = false;
 
-function getEncodedBuffer(): RingBuffer<EncodedChunkArgs> {
+function getEncodedBuffer(): EncodedChunkBuffer {
     if (encodedBuffer) return encodedBuffer;
-    // Hard cap = 2× max so a sustained burst can momentarily exceed `max`
-    // before keyframe-aware eviction trims it back. Lazy because VIDEO is
-    // populated only after the init RPC arrives.
-    encodedBuffer = new RingBuffer<EncodedChunkArgs>(VIDEO.maxBufferSize * 2);
+    // Lazy because VIDEO is populated only after the init RPC arrives.
+    encodedBuffer = new EncodedChunkBuffer();
     return encodedBuffer;
 }
 
 function clearEncodedBuffer(): void {
     encodedBuffer?.clear();
-    bufferWaitingForKeyframe = false;
-}
-
-// Skip-to-newest-keyframe trim. Only safe to drop chunks before a
-// keyframe — the decoder needs that keyframe to resume cleanly.
-function trimToNewestKeyframe(buf: RingBuffer<EncodedChunkArgs>): void {
-    let kfIdx = -1;
-    for (let i = buf.count - 1; i >= 0; i--) {
-        if (buf.get(i).isKeyFrame) { kfIdx = i; break; }
-    }
-    if (kfIdx > 0) buf.moveHead(kfIdx);
 }
 
 function pushEncodedChunk(args: EncodedChunkArgs): void {
     const buf = getEncodedBuffer();
-    // Soft trim: above maxBufferSize → drop everything before the newest
-    // keyframe in buffer. KF-aware skip is decoder hygiene — never drop
-    // an isolated delta, that would orphan downstream chunks.
-    if (buf.count >= VIDEO.maxBufferSize) {
-        trimToNewestKeyframe(buf);
-    }
-    if (buf.isFull) {
-        // Hard cap reached AFTER a soft-trim attempt — meaning the buffer
-        // contains either zero keyframes or a single GOP we can't shrink
-        // further without orphaning deltas. Two sub-cases:
-        //  - Incoming is a keyframe: it's the next valid resume point.
-        //    Discard the stale (un-anchored or about-to-be-stranded) GOP
-        //    we hold and accept the keyframe.
-        //  - Incoming is a delta: refuse it. Any delta we drop in
-        //    isolation would orphan its successors and force decoder
-        //    artifacts. Mark the buffer as waiting for a keyframe so
-        //    further deltas drop too, and PLI to accelerate recovery.
-        if (args.isKeyFrame) {
-            buf.clear();
-        } else {
-            bufferWaitingForKeyframe = true;
-            requestKeyframeOnDecoderError();
-            return;
-        }
-    }
-    if (bufferWaitingForKeyframe && !args.isKeyFrame) return;
-    bufferWaitingForKeyframe = false;
-    buf.pushTail(args);
+    buf.push(args);
     triggerDrain();
 }
 
@@ -572,8 +597,10 @@ async function drainEncodedBuffer(): Promise<void> {
             await new Promise<void>(r => setTimeout(r, DRAIN_BACKOFF_MS));
             continue;
         }
-        // Dumb as fuck mode: No audio-target pacing. Decode everything as soon as it arrives.
-        const args = encodedBuffer.pullHead();
+        const args = encodedBuffer.shiftReady();
+        if (!args)
+            return;
+
         try {
             await processEncodedChunk(
                 args.timestamp, args.duration, args.isKeyFrame, args.sequenceNumber,

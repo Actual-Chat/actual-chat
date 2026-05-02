@@ -358,7 +358,8 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
 
     public sealed record PlaybackThresholds(
         int BufferDurationMsBadBelow,
-        int BufferDurationMsGoodAbove,
+        int BufferDurationMsTooHighAbove,
+        int StartupGraceMs,
         int KeyframeSkipsBadAtOrAbove,
         long MinCapacityBytesPerSec,
         long ColdStartCapacityBytesPerSec,
@@ -366,8 +367,9 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
         double BackoffFactor)
     {
         public static PlaybackThresholds Defaults => new(
-            BufferDurationMsBadBelow: 100,
-            BufferDurationMsGoodAbove: 400,
+            BufferDurationMsBadBelow: (int)Math.Round(Constants.Video.TargetBufferDuration.TotalMilliseconds),
+            BufferDurationMsTooHighAbove: 400,
+            StartupGraceMs: 1000,
             KeyframeSkipsBadAtOrAbove: 1,
             MinCapacityBytesPerSec: 50_000,
             ColdStartCapacityBytesPerSec: 1_500_000,
@@ -377,17 +379,24 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
 
     /// <summary>
     /// Pure per-stream classifier: -1 (bad), 0 (neutral), +1 (good)
-    /// based on buffer span and keyframe skip count.
+    /// based on buffer span and keyframe skip count. The ramp-up band is the
+    /// intentional decoder buffer target up to the "too much buffered" ceiling.
+    /// Low buffer is ignored during initial startup grace; over-buffering is
+    /// neutral because it indicates playback/decoder lag, not low bandwidth.
     /// </summary>
     public static class PlaybackVerdictClassifier
     {
-        public static int Classify(int bufferDurationMsP50, int keyframeSkipsInWindow, PlaybackThresholds t)
+        public static int Classify(
+            int bufferDurationMsP50,
+            int keyframeSkipsInWindow,
+            PlaybackThresholds t,
+            int streamAgeMs = int.MaxValue)
         {
             if (keyframeSkipsInWindow >= t.KeyframeSkipsBadAtOrAbove)
                 return -1;
             if (bufferDurationMsP50 < t.BufferDurationMsBadBelow)
-                return -1;
-            if (bufferDurationMsP50 >= t.BufferDurationMsGoodAbove)
+                return streamAgeMs < t.StartupGraceMs ? 0 : -1;
+            if (bufferDurationMsP50 <= t.BufferDurationMsTooHighAbove)
                 return 1;
             return 0;
         }

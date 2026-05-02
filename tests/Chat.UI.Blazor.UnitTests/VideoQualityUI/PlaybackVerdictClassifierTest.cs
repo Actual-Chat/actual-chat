@@ -9,24 +9,35 @@ public class PlaybackVerdictClassifierTest
     private static readonly PlaybackThresholds T = PlaybackThresholds.Defaults;
 
     [Fact]
-    public void HealthyBuffer_NoSkips_ReturnsGood()
-        => PlaybackVerdictClassifier.Classify(T.BufferDurationMsGoodAbove, 0, T).Should().Be(1);
+    public void TargetBuffer_NoSkips_ReturnsGood()
+        => PlaybackVerdictClassifier.Classify(T.BufferDurationMsBadBelow, 0, T).Should().Be(1);
 
     [Fact]
-    public void LowBuffer_ReturnsBad()
-        => PlaybackVerdictClassifier.Classify(T.BufferDurationMsBadBelow - 1, 0, T).Should().Be(-1);
-
-    [Fact]
-    public void KeyframeSkip_ReturnsBad()
-        => PlaybackVerdictClassifier.Classify(T.BufferDurationMsGoodAbove + 100, T.KeyframeSkipsBadAtOrAbove, T)
+    public void LowBuffer_AfterStartupGrace_ReturnsBad()
+        => PlaybackVerdictClassifier
+            .Classify(T.BufferDurationMsBadBelow - 1, 0, T, T.StartupGraceMs)
             .Should().Be(-1);
 
     [Fact]
-    public void MidBuffer_NoSkips_ReturnsNeutral()
-    {
-        var mid = (T.BufferDurationMsBadBelow + T.BufferDurationMsGoodAbove) / 2;
-        PlaybackVerdictClassifier.Classify(mid, 0, T).Should().Be(0);
-    }
+    public void LowBuffer_DuringStartupGrace_ReturnsNeutral()
+        => PlaybackVerdictClassifier
+            .Classify(T.BufferDurationMsBadBelow - 1, 0, T, T.StartupGraceMs - 1)
+            .Should().Be(0);
+
+    [Fact]
+    public void TooMuchBuffer_ReturnsNeutral()
+        => PlaybackVerdictClassifier
+            .Classify(T.BufferDurationMsTooHighAbove + 1, 0, T)
+            .Should().Be(0);
+
+    [Fact]
+    public void KeyframeSkip_ReturnsBad()
+        => PlaybackVerdictClassifier.Classify(T.BufferDurationMsBadBelow, T.KeyframeSkipsBadAtOrAbove, T)
+            .Should().Be(-1);
+
+    [Fact]
+    public void TooHighBoundary_NoSkips_ReturnsGood()
+        => PlaybackVerdictClassifier.Classify(T.BufferDurationMsTooHighAbove, 0, T).Should().Be(1);
 }
 
 public class AggregateHealthTest
