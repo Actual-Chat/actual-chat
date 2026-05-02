@@ -76,7 +76,9 @@ public sealed class LiveAudioCatchUpPolicy(IServiceProvider services) : IAudioCa
 
     private void LogMissingSignal(AuthorId authorId, string missingSignal, PlaybackLagSnapshot snapshot)
     {
-        if (IsDiagnosticLogEnabled && !ShouldLogDiagnostic(authorId))
+        if (!IsDiagnosticLogEnabled)
+            return;
+        if (!ShouldLogDiagnostic(authorId))
             return;
 
         Log.LogWarning(
