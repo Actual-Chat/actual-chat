@@ -28,10 +28,11 @@ public static partial class Constants
 
         // Max simulcast tiers a sender may produce. Mirrors TS
         // MAX_SIMULCAST_TIERS in src/dotnet/UI.Blazor.App/Components/VideoPanel/
-        // simulcast-ladder.ts — two HW encoder slots is the power/heat-bound
-        // limit on iOS Safari and the same value drives backend sizing of
-        // anything that scales with per-source-frame item rate.
-        public const int MaxSimulcastTiers = 2;
+        // simulcast-ladder.ts — webcam ceiling at 3 tiers (720p/360p/180p,
+        // each ¼ pixels of the previous). iOS Safari HW-encoder budget is
+        // preserved via a probe-gated 3rd webcam tier (drops to 2 on probe-
+        // fail). Screencast is a separate fixed 2-tier ladder (1080p/540p).
+        public const int MaxSimulcastTiers = 3;
 
         public static readonly TimeSpan CancellationDelay = TimeSpan.FromSeconds(5);
         public static readonly TimeSpan StreamExpirationDelay = TimeSpan.FromSeconds(30);
