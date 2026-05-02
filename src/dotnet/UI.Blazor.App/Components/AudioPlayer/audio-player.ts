@@ -28,6 +28,10 @@ const EnableFrequentDebugLog = false;
 let decoderWorkerInstance: Worker | undefined;
 let decoderWorker: OpusDecoderWorker & Disposable | undefined;
 
+interface AudioContextOutputLatency {
+    readonly outputLatency?: number;
+}
+
 /** Trait that manages the FeederAudioWorkletNode lifecycle for audio playback */
 class FeederNodeTrait implements AudioContextTrait {
     public readonly name: string;
@@ -238,7 +242,7 @@ export class AudioPlayer implements Resettable {
                 if (!attachedFeeder)
                     throw new Error('Feeder node not attached');
 
-                const outputLatency = (context as AudioContext & { outputLatency?: number }).outputLatency;
+                const outputLatency = (context as AudioContextOutputLatency).outputLatency;
                 infoLog?.log(
                     `#${this.internalId}.audioContextLatency: ` +
                     `base=${(context.baseLatency * 1000).toFixed(0)}ms, ` +
@@ -337,7 +341,7 @@ export class AudioPlayer implements Resettable {
         if (!context)
             return 0;
 
-        const outputLatency = (context as AudioContext & { outputLatency?: number }).outputLatency ?? 0;
+        const outputLatency = (context as AudioContextOutputLatency).outputLatency ?? 0;
         return (context.baseLatency + outputLatency) * 1000;
     }
 
