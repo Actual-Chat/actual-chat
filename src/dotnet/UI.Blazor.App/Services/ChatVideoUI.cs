@@ -1,6 +1,5 @@
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Module;
-using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -40,10 +39,10 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     /// </summary>
     public event Action<bool>? SuspendOwnStreamingPreview;
 
-    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
-    public ILiveVideoStreams LiveVideoStreams => field ??= Services.GetRequiredService<ILiveVideoStreams>();
+    private ILiveVideoStreams LiveVideoStreams => Hub.LiveVideoStreams;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
 
     public ChatVideoUI(AppUIHub hub) : base(hub)
     {

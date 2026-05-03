@@ -1,10 +1,8 @@
 using ActualChat.Audio;
-using ActualChat.UI.Blazor.App.Components;
 using ActualChat.Contacts;
 using ActualChat.Invite;
 using ActualChat.MediaPlayback;
 using ActualChat.Notification;
-using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualChat.UI.App.Services;
 
@@ -31,6 +29,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public INotifications Notifications => field ??= Services.GetRequiredService<INotifications>();
     public ITranslations Translations => field ??= Services.GetRequiredService<ITranslations>();
     public ILiveAudioStreams LiveAudioStreams => field ??= Services.GetRequiredService<ILiveAudioStreams>();
+    public ILiveVideoStreams LiveVideoStreams => field ??= Services.GetRequiredService<ILiveVideoStreams>();
     public IMedia Media => field ??= Services.GetRequiredService<IMedia>();
     public IGifs Gifs => field ??= Services.GetRequiredService<IGifs>();
     public VideoTranscoder VideoTranscoder => field ??= Services.GetRequiredService<VideoTranscoder>();
@@ -50,6 +49,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public ChatAudioUI ChatAudioUI => field ??= Services.GetRequiredService<ChatAudioUI>();
     public ChatVideoUI ChatVideoUI => field ??= Services.GetRequiredService<ChatVideoUI>();
     public VideoQualityUI VideoQualityUI => field ??= Services.GetRequiredService<VideoQualityUI>();
+    public LiveStreamUI LiveStreamUI => field ??= Services.GetRequiredService<LiveStreamUI>();
     public new NotificationUI NotificationUI => field ??= Services.GetRequiredService<NotificationUI>();
     public LanguageUI LanguageUI => field ??= Services.GetRequiredService<LanguageUI>();
     public EditMembersUI EditMembersUI => field ??= Services.GetRequiredService<EditMembersUI>();
@@ -60,10 +60,8 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public TranscriptUI TranscriptUI => field ??= Services.GetRequiredService<TranscriptUI>();
     public LinkPreviewUI LinkPreviewUI => field ??= Services.GetRequiredService<LinkPreviewUI>();
 
-    public LiveStreamUI LiveStreamUI => field ??= Services.GetRequiredService<LiveStreamUI>();
     public AudioSettings AudioSettings => field ??= Services.GetRequiredService<AudioSettings>();
     public AudioRecorder AudioRecorder => field ??= Services.GetRequiredService<AudioRecorder>();
-    public IAudioCatchUpPolicy AudioCatchUpPolicy => field ??= Services.GetRequiredService<IAudioCatchUpPolicy>();
     public IAudioInitializer AudioInitializer => field ??= Services.GetRequiredService<IAudioInitializer>();
     public IPlaybackFactory PlaybackFactory => field ??= Services.GetRequiredService<IPlaybackFactory>();
     public ActivePlaybackInfo ActivePlaybackInfo => field ??= Services.GetRequiredService<ActivePlaybackInfo>();

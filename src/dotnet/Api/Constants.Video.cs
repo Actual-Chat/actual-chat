@@ -132,5 +132,10 @@ public static partial class Constants
         public static readonly int MaxWebcamStreamsPerChat = 8;
         public static readonly int PriorityActivationThreshold = 6;
         public static readonly TimeSpan SilenceGracePeriod = TimeSpan.FromSeconds(30);
+
+        // Video session idle monitor (ChatVideoUI.IdleMonitor)
+        public static readonly TimeSpan SessionInactivityTimeout = TimeSpan.FromMinutes(15);
+        public static readonly TimeSpan SessionConfirmInterval = TimeSpan.FromMinutes(60);
+        public static readonly TimeSpan SessionConfirmModalTimeout = TimeSpan.FromMinutes(1);
     }
 }

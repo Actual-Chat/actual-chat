@@ -12,6 +12,7 @@ public partial class ChatVideoUI
         var baseChains = new[] {
             AsyncChain.From(SyncWebcamLifecycle),
             AsyncChain.From(SyncScreencastLifecycle),
+            AsyncChain.From(MonitorVideoIdleness),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         await (

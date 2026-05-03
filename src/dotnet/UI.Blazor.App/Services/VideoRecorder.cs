@@ -31,17 +31,14 @@ public sealed class VideoRecorder : IAsyncDisposable
     private int _lastMaxSpatial = int.MaxValue;
 
     private AppUIHub Hub { get; }
-    public StreamKind Kind { get; }
-    // Last server-aggregated MaxSpatialLayer applied to the JS ladder.
-    // int.MaxValue = uncapped (full ladder). Read by diagnostics UI.
-    public int MaxSpatialCap => _lastMaxSpatial;
     private Session Session => Hub.Session;
     private IJSRuntime JS => Hub.JS;
     private IAuthors Authors => Hub.Authors;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
-    private ILiveVideoStreams LiveVideoStreams => ChatVideoUI.LiveVideoStreams;
+    private ILiveVideoStreams LiveVideoStreams => Hub.LiveVideoStreams;
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
+    public StreamKind Kind { get; }
     public Task WhenStopped => _whenStoppedTaskCompletionSource.Task;
 
     public static async Task<VideoRecorder> Create(AppUIHub hub, StreamKind kind = StreamKind.Webcam)

@@ -18,6 +18,9 @@
     var btnText = ModalModel.ConfirmButtonText;
     if (btnText.IsNullOrEmpty())
         btnText = isDestructive ? "Discard" : "Confirm";
+    var cancelText = ModalModel.CancelButtonText;
+    if (cancelText.IsNullOrEmpty())
+        cancelText = "Cancel";
     var cls = $"confirm-modal modal-sm {ModalModel.Class}";
 }
 
@@ -41,7 +44,7 @@
     }
     </Body>
     <Buttons>
-        <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
+        <Button Class="btn-modal" Click="@(_ => Modal.Close())">@cancelText</Button>
         <Button Class="@btnCls" Click="OnConfirm">@btnText</Button>
     </Buttons>
 </DialogFrame>
@@ -58,6 +61,7 @@
     public sealed record Model(bool IsDestructive, string Text, Action Confirm) {
         public string Title { get; init; } = "";
         public string ConfirmButtonText { get; init; } = "";
+        public string CancelButtonText { get; init; } = "";
         public MarkupString MarkupTitle { get; init; } = default;
         public string AdditionalContent { get; init; } = "";
         public string Class { get; init; } = "";

@@ -440,15 +440,23 @@ public partial class ChatAudioUI
             var cActivity = await Computed
                 .Capture(() => LiveStreamUI.GetLastActivityServerTime(chatId, ct), ct)
                 .ConfigureAwait(false);
+            var cIsWatching = await Computed
+                .Capture(() => ChatVideoUI.IsWatching(chatId, ct), ct)
+                .ConfigureAwait(false);
 
             while (!ct.IsCancellationRequested) {
                 var lastActivityTime = cActivity.Value;
-                if (lastActivityTime == null) {
-                    // Activity ongoing — no timer
+                var isWatching = cIsWatching.Value;
+                if (lastActivityTime == null || isWatching) {
+                    // Activity ongoing or video being watched — no timer
                     SetStopListeningAt(chatId, null);
-                    cActivity = await cActivity
-                        .When(x => x != null, ct)
-                        .ConfigureAwait(false);
+                    using var waitCts = ct.CreateLinkedTokenSource();
+                    var whenActivityChange = cActivity.WhenInvalidated(waitCts.Token);
+                    var whenWatchingChange = cIsWatching.WhenInvalidated(waitCts.Token);
+                    await Task.WhenAny(whenActivityChange, whenWatchingChange).ConfigureAwait(false);
+                    waitCts.CancelAndDisposeSilently();
+                    cActivity = await cActivity.Update(ct).ConfigureAwait(false);
+                    cIsWatching = await cIsWatching.Update(ct).ConfigureAwait(false);
                     continue;
                 }
 
@@ -465,18 +473,20 @@ public partial class ChatAudioUI
 
                 SetStopListeningAt(chatId, stopAt.Convert(serverClock, cpuClock));
 
-                // Wait for either: activity resumes, or idle timeout expires
+                // Wait for either: activity resumes, watching toggles, or idle timeout expires
                 using var delayCts = ct.CreateLinkedTokenSource();
                 var whenActivityChanges = cActivity.WhenInvalidated(ct);
+                var whenWatchingChanges = cIsWatching.WhenInvalidated(ct);
                 var whenTimeout = Task.Delay(remaining, delayCts.Token);
-                await Task.WhenAny(whenActivityChanges, whenTimeout).ConfigureAwait(false);
+                await Task.WhenAny(whenActivityChanges, whenWatchingChanges, whenTimeout).ConfigureAwait(false);
                 delayCts.CancelAndDisposeSilently();
 
                 if (whenTimeout.IsCompletedSuccessfully)
                     return; // Idle timeout expired — stop listening
 
-                // Activity state changed — update and loop
+                // Activity / watching state changed — refresh and loop
                 cActivity = await cActivity.Update(ct).ConfigureAwait(false);
+                cIsWatching = await cIsWatching.Update(ct).ConfigureAwait(false);
             }
         }
     }
