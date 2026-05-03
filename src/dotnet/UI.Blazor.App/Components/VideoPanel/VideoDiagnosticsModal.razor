@@ -718,7 +718,7 @@
         => $"replaceRate={health.SlotReplacementRate:F2}";
 
     private static string FormatRecordingSenderSignal(RecorderHealthSnapshot health)
-        => $"backlogP90={health.SenderBacklogP90Ms:0}ms, skips={health.SenderSkipsPerWindow}, "
+        => $"dropRatio={health.SenderFrameDropRatio:F2}, "
             + $"ackAge={FormatAckAge(health.LastAckAgeMs)}, connected={(health.IsConnected ? "yes" : "no")}";
 
     private static string FormatAckAge(double ageMs)

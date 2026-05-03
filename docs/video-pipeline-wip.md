@@ -400,7 +400,7 @@ exclusively.
 - **Worker `RecorderHealth` DTO + 1 Hz aggregation** in
   `video-processing.ts`:
   - `encodeRatio.avg/p90`, `slotReplacements/framesProduced`,
-    `senderBacklog.p90`, `senderSkipsPerWindow`, `lastAckAgeMs`.
+    `senderFrameDropRatio`, `lastAckAgeMs`.
   - Posted to `.NET` via `DotNetObjectReference` callback every
     1 s.
 - **`ILiveVideoStreams.ChangeRecordingQuality(Session, state?, info?)`

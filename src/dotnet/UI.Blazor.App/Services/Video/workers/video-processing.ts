@@ -20,7 +20,7 @@ import { sharedSettingsWorker } from 'shared-settings-worker';
 // heavy on low-end mobiles. Re-enable these imports (and the segmentation
 // function bodies below) when segmentation ships in a future release.
 // import * as ort from 'onnxruntime-web';
-import { initAppConstants } from 'app-constants';
+import { initAppConstants, VIDEO } from 'app-constants';
 
 import { type EncoderConfig, type EncodedChunkData, WebCodecsEncoder } from '../webcodecs-encoder';
 import type { SegmentationConfig, SegmentationStats, ModelConfig, SpatialLayerConfig, VideoProcessingConfig, VideoProcessingWorker, VideoProcessingWorkerCallbacks, VideoProcessingStats, VideoProcessingStreamingStats, OrientationStats } from './video-processing-worker-contract';
@@ -170,15 +170,15 @@ const slotReplaceThreshold = 0.20;
 let slotPressureNotified = false;
 
 // Recorder-health 1 Hz aggregator (Step 9.2). Surfaces max per-frame encode
-// cost across spatial layers, slot pressure, and RpcStreamSender backlog/skip
-// / ACK signals to .NET via `callbacks.onRecorderHealthSnapshot`.
+// cost across spatial layers, slot pressure, RpcStreamSender dropped-frame
+// count, and ACK signals to .NET via `callbacks.onRecorderHealthSnapshot`.
 // VideoQualityUI's recording branch consumes the snapshot to drive simulcast
 // layer decisions.
 const recorderHealthIntervalMs = 1000;
 const recorderHealthFrameBudgetMs = 1000 / 30;
 const encodeCostRatioSamples: number[] = [];
 const pendingEncodeFrameCosts = new Map<number, PendingEncodeFrameCost>();
-let lastSenderTotalSkipped = 0;
+let lastSenderTotalDroppedFrames = 0;
 let lastSenderAckAtMs = 0;
 let recorderHealthIntervalHandle: ReturnType<typeof setInterval> | null = null;
 let recorderHealthSenderHooked: object | null = null;
@@ -213,7 +213,7 @@ let loggedBlurFormat = false;
 interface QueuedFrame { frame: VideoFrame; sequenceNumber: number; timestamp: number }
 function startRecorderHealthAggregator(): void {
     if (recorderHealthIntervalHandle) return;
-    lastSenderTotalSkipped = 0;
+    lastSenderTotalDroppedFrames = 0;
     lastSenderAckAtMs = 0;
     recorderHealthSenderHooked = null;
     encodeCostRatioSamples.length = 0;
@@ -253,16 +253,18 @@ function emitRecorderHealthSnapshot(): void {
         sender.onAckProcessed = () => { lastSenderAckAtMs = performance.now(); };
         recorderHealthSenderHooked = sender;
     }
-    const senderBacklogP90Ms = sender?.oldestUnackedAgeMs ?? 0;
-    const senderTotalSkipped = sender?.totalSkipped ?? 0;
-    const senderSkipsPerWindow = Math.max(0, senderTotalSkipped - lastSenderTotalSkipped);
-    lastSenderTotalSkipped = senderTotalSkipped;
+    const senderTotalDroppedFrames = sender?.totalSkipped ?? 0;
+    const senderDroppedFramesPerSecond = Math.max(
+        0,
+        senderTotalDroppedFrames - lastSenderTotalDroppedFrames);
+    lastSenderTotalDroppedFrames = senderTotalDroppedFrames;
+    const senderFrameDropRatio = senderDroppedFramesPerSecond / Math.max(1, VIDEO.frameRate);
 
     const lastAckAgeMs = lastSenderAckAtMs > 0 ? now - lastSenderAckAtMs : -1;
 
     void callbacks.onRecorderHealthSnapshot(
         encodeRatioAvg, encodeRatioP90,
-        slotRate, senderBacklogP90Ms, senderSkipsPerWindow,
+        slotRate, senderFrameDropRatio,
         lastAckAgeMs, WorkerConnectivityUI.isConnected, rpcNoWait);
 }
 

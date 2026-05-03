@@ -354,12 +354,11 @@ Two families of signal, sampled by the recording worker and the sender's
 | `encodeRatio.avg` | encoder + downscaler timing in the recording worker, normalised to frame duration | < 0.33 |
 | `encodeRatio.p90` | same timing distribution, retained for diagnostics | observed only |
 | `slotReplacementRate` | encoder slot replacement count / frames produced | < 1 % |
-| `senderBacklog.p90` | oldest-unacked age on the sender's `RpcStream`, p90 over window | < 50 ms |
-| `senderSkipsPerWindow` | `RpcStream`'s ACK-driven compaction count | 0 |
+| `senderFrameDropRatio` | `RpcStream` ACK-driven drops in the last 1 s divided by `Constants.Video.FrameRate` | `<= 0.20` |
 | `lastAckAge` | time since the most recent ACK on the sender's `RpcStream` | < 0.5 s |
 | `isConnected` | client-wide peer connectivity | true |
 
-The first two cover the encoder/hardware budget. The next three cover
+The first two cover the encoder/hardware budget. The next two cover
 outgoing network capacity. The last gates the entire controller: a
 disconnected peer freezes classification.
 

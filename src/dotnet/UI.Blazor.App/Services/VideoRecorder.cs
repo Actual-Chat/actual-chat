@@ -406,16 +406,14 @@ public sealed class VideoRecorder : IAsyncDisposable
             double encodeRatioAvg,
             double encodeRatioP90,
             double slotReplacementRate,
-            double senderBacklogP90Ms,
-            int senderSkipsPerWindow,
+            double senderFrameDropRatio,
             double lastAckAgeMs,
             bool isConnected)
             => videoRecorder.OnRecorderHealthSnapshot(new RecorderHealthSnapshot(
                 encodeRatioAvg,
                 encodeRatioP90,
                 slotReplacementRate,
-                senderBacklogP90Ms,
-                senderSkipsPerWindow,
+                senderFrameDropRatio,
                 lastAckAgeMs,
                 isConnected));
     }

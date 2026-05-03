@@ -247,8 +247,7 @@ export interface VideoProcessingWorkerCallbacks {
         encodeRatioAvg: number,
         encodeRatioP90: number,
         slotReplacementRate: number,
-        senderBacklogP90Ms: number,
-        senderSkipsPerWindow: number,
+        senderFrameDropRatio: number,
         lastAckAgeMs: number,
         isConnected: boolean,
         noWait?: RpcNoWait): Promise<void>;

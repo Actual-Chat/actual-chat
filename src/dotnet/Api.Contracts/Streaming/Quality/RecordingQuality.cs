@@ -21,7 +21,7 @@ public sealed partial record RecordingQualityState(
 
 /// <summary>
 /// Per-second snapshot of recorder-side health signals: encode cost vs frame
-/// budget, slot pressure, sender backlog, and ACK age. Drives the recording
+/// budget, slot pressure, sender drops, and ACK age. Drives the recording
 /// quality controller; also forwarded to the server as a metric.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
@@ -29,10 +29,9 @@ public sealed partial record RecorderHealthSnapshot(
     [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] double EncodeRatioAvg,
     [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] double EncodeRatioP90,
     [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] double SlotReplacementRate,
-    [property: DataMember(Order = 3), MemoryPackOrder(3), Key(3)] double SenderBacklogP90Ms,
-    [property: DataMember(Order = 4), MemoryPackOrder(4), Key(4)] int SenderSkipsPerWindow,
-    [property: DataMember(Order = 5), MemoryPackOrder(5), Key(5)] double LastAckAgeMs,
-    [property: DataMember(Order = 6), MemoryPackOrder(6), Key(6)] bool IsConnected);
+    [property: DataMember(Order = 3), MemoryPackOrder(3), Key(3)] double SenderFrameDropRatio,
+    [property: DataMember(Order = 4), MemoryPackOrder(4), Key(4)] double LastAckAgeMs,
+    [property: DataMember(Order = 5), MemoryPackOrder(5), Key(5)] bool IsConnected);
 
 /// <summary>
 /// Diagnostic payload accompanying a recording quality decision: the reason

@@ -123,10 +123,9 @@ export interface RecorderHealthSnapshotDto {
     0: number;   // EncodeRatioAvg
     1: number;   // EncodeRatioP90
     2: number;   // SlotReplacementRate
-    3: number;   // SenderBacklogP90Ms
-    4: number;   // SenderSkipsPerWindow
-    5: number;   // LastAckAgeMs
-    6: boolean;  // IsConnected
+    3: number;   // SenderFrameDropRatio
+    4: number;   // LastAckAgeMs
+    5: boolean;  // IsConnected
 }
 
 export interface RecordingQualityInfoDto {

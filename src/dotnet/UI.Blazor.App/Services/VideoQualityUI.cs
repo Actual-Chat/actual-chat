@@ -79,10 +79,10 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             Log.LogWarning(
                 "RecordingQuality changed: kind={Kind} target={Target} reason={Reason} signal={Signal} "
                 + "encodeAvg={EncAvg:F2} encodeP90={EncP90:F2} slotRate={SlotRate:F2} "
-                + "backlogMs={Backlog:F0} skips={Skips} ackAgeMs={Ack:F0} connected={Connected}",
+                + "senderDropRatio={DropRatio:F2} ackAgeMs={Ack:F0} connected={Connected}",
                 kind, decision.NewTargetLayerCount, decision.Reason, signal,
                 snapshot.EncodeRatioAvg, snapshot.EncodeRatioP90, snapshot.SlotReplacementRate,
-                snapshot.SenderBacklogP90Ms, snapshot.SenderSkipsPerWindow, snapshot.LastAckAgeMs,
+                snapshot.SenderFrameDropRatio, snapshot.LastAckAgeMs,
                 snapshot.IsConnected);
 
         await ApplyRecordingQuality(
@@ -97,6 +97,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
 
     public Task PushPlaybackHealth(
         StreamId streamId,
+        StreamKind streamKind,
         PlaybackHealthSnapshot snapshot,
         CancellationToken cancellationToken)
     {
@@ -108,7 +109,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             snapshot.DecoderQueueDepthP90,
             snapshot.QualityReductionRequested);
         lock (_playbackLock)
-            _playbackByStream[streamId] = new PlaybackHealthState(snapshot, verdict, CpuTimestamp.Now);
+            _playbackByStream[streamId] = new PlaybackHealthState(streamKind, snapshot, verdict, CpuTimestamp.Now);
         var reason = verdict switch {
             < 0 => PlaybackQualityReason.Backoff,
             > 0 => PlaybackQualityReason.Climb,
@@ -117,7 +118,10 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         return RecomputePlaybackQuality(reason, cancellationToken);
     }
 
-    public Task RequestPlaybackQualityReduction(StreamId streamId, CancellationToken cancellationToken)
+    public Task RequestPlaybackQualityReduction(
+        StreamId streamId,
+        StreamKind streamKind,
+        CancellationToken cancellationToken)
     {
         lock (_playbackLock) {
             if (_playbackByStream.TryGetValue(streamId, out var state)) {
@@ -130,6 +134,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             }
             else {
                 _playbackByStream[streamId] = new PlaybackHealthState(
+                    streamKind,
                     new PlaybackHealthSnapshot(
                         IncomingByteRate: 0,
                         BufferDurationMsP50: 0,
@@ -467,10 +472,15 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             var baseRate = currentSpatial <= 0 ? top : Math.Max(1, top / (currentSpatial + 1));
             var maxSpatialLayer = entry.Value.Snapshot.QualityReductionRequested
                 ? 0
-                : (int?)null;
+                : DefaultPlaybackMaxSpatialLayer(entry.Value.StreamKind);
             return new StreamRequest(entry.Key.Value, baseRate, top, maxSpatialLayer);
         }
     }
+
+    private static int DefaultPlaybackMaxSpatialLayer(StreamKind streamKind)
+        => streamKind == StreamKind.Screencast
+            ? Constants.Video.ScreencastMaxSimulcastTiers - 1
+            : Math.Max(0, Constants.Video.WebcamMaxSimulcastTiers - 2);
 
     private List<KeyValuePair<StreamId, PlaybackHealthState>> GetFreshPlaybackEntries()
     {
@@ -595,7 +605,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                 Log.LogWarning(
                     "RecordingQualityTest changed: phase={Phase:F2} signal={Signal} target={Target} reason={Reason}",
                     phase, signal, aggregator.TargetLayerCount, decision.Reason);
-                var fakeHealth = new RecorderHealthSnapshot(0, 0, 0, 0, 0, 0, IsConnected: true);
+                var fakeHealth = new RecorderHealthSnapshot(0, 0, 0, 0, 0, IsConnected: true);
                 var info = new RecordingQualityInfo(decision.Reason, fakeHealth);
                 _ = LiveVideoStreams.ChangeRecordingQuality(
                     Session, aggregator.Snapshot(), info, CancellationToken.None).SuppressExceptions();
@@ -702,24 +712,20 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     public sealed record RecordingThresholds(
         double EncodeRatioBadAbove,
         double EncodeRatioGoodBelow,
-        double BacklogBadMs,
-        double BacklogGoodMs,
         double LastAckBadMs,
         double LastAckGoodMs,
-        double SkipsBadCount,
+        double SenderFrameDropRatioBadAbove,
         int MinTargetLayerCount,
         int MaxTargetLayerCount,
         int ConsecutiveGoodForClimb,
         int CooldownTicksAfterBackoff)
     {
         public static RecordingThresholds Defaults => new(
-            EncodeRatioBadAbove: 0.99,
+            EncodeRatioBadAbove: 1.0,
             EncodeRatioGoodBelow: 0.33,
-            BacklogBadMs: 200,
-            BacklogGoodMs: 50,
             LastAckBadMs: 2000,
             LastAckGoodMs: 500,
-            SkipsBadCount: 5,
+            SenderFrameDropRatioBadAbove: 0.20,
             MinTargetLayerCount: 1,
             MaxTargetLayerCount: Constants.Video.WebcamMaxSimulcastTiers,
             ConsecutiveGoodForClimb: 5,
@@ -739,17 +745,15 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
 
             var anyBad =
                 h.EncodeRatioAvg > t.EncodeRatioBadAbove
-                || h.SenderBacklogP90Ms > t.BacklogBadMs
                 || (h.LastAckAgeMs >= 0 && h.LastAckAgeMs > t.LastAckBadMs)
-                || h.SenderSkipsPerWindow >= t.SkipsBadCount;
+                || h.SenderFrameDropRatio > t.SenderFrameDropRatioBadAbove;
             if (anyBad)
                 return -1;
 
             var allGood =
                 h.EncodeRatioAvg < t.EncodeRatioGoodBelow
-                && h.SenderBacklogP90Ms < t.BacklogGoodMs
                 && (h.LastAckAgeMs < 0 || h.LastAckAgeMs < t.LastAckGoodMs)
-                && h.SenderSkipsPerWindow == 0;
+                && h.SenderFrameDropRatio == 0;
             return allGood ? 1 : 0;
         }
     }
@@ -999,6 +1003,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         bool QualityReductionRequested = false);
 
     private sealed record PlaybackHealthState(
+        StreamKind StreamKind,
         PlaybackHealthSnapshot Snapshot,
         int Verdict,
         CpuTimestamp LastSeen);

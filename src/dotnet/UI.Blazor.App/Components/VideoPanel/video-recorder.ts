@@ -968,8 +968,7 @@ export class VideoRecorder {
             snapshot.encodeRatioAvg,
             snapshot.encodeRatioP90,
             snapshot.slotReplacementRate,
-            snapshot.senderBacklogP90Ms,
-            snapshot.senderSkipsPerWindow,
+            snapshot.senderFrameDropRatio,
             snapshot.lastAckAgeMs,
             snapshot.isConnected,
         );

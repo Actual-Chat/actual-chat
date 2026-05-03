@@ -12,17 +12,22 @@ public class RecordingClassifierTest
         double encodeAvg = 0,
         double? encodeP90 = null,
         double slotRate = 0,
-        double backlogMs = 0,
-        int skips = 0,
+        double senderFrameDropRatio = 0,
         double lastAckMs = 0,
         bool isConnected = true)
-        => new(encodeAvg, encodeP90 ?? encodeAvg, slotRate, backlogMs, skips, lastAckMs, isConnected);
+        => new(
+            encodeAvg,
+            encodeP90 ?? encodeAvg,
+            slotRate,
+            senderFrameDropRatio,
+            lastAckMs,
+            isConnected);
 
     [Fact]
     public void AllGoodSignal_ReturnsPlusOne()
     {
         // arrange
-        var h = Snapshot(encodeAvg: 0.2, backlogMs: 10, skips: 0, lastAckMs: 100);
+        var h = Snapshot(encodeAvg: 0.2, senderFrameDropRatio: 0, lastAckMs: 100);
 
         // act
         var result = RecordingClassifier.Classify(h, T);
@@ -41,15 +46,22 @@ public class RecordingClassifierTest
     [Fact]
     public void HighP90WithGoodAverage_ReturnsGood()
     {
-        var h = Snapshot(encodeAvg: 0.2, encodeP90: 1.1, backlogMs: 10, skips: 0, lastAckMs: 100);
+        var h = Snapshot(encodeAvg: 0.2, encodeP90: 1.1, senderFrameDropRatio: 0, lastAckMs: 100);
         RecordingClassifier.Classify(h, T).Should().Be(1);
     }
 
     [Fact]
-    public void HighBacklog_ReturnsBad()
+    public void HighSenderFrameDropRatio_ReturnsBad()
     {
-        var h = Snapshot(backlogMs: T.BacklogBadMs + 1);
+        var h = Snapshot(senderFrameDropRatio: T.SenderFrameDropRatioBadAbove + 0.01);
         RecordingClassifier.Classify(h, T).Should().Be(-1);
+    }
+
+    [Fact]
+    public void SenderFrameDropRatioAtThreshold_ReturnsNeutral()
+    {
+        var h = Snapshot(senderFrameDropRatio: T.SenderFrameDropRatioBadAbove);
+        RecordingClassifier.Classify(h, T).Should().Be(0);
     }
 
     [Fact]
@@ -60,17 +72,10 @@ public class RecordingClassifierTest
     }
 
     [Fact]
-    public void ManySkips_ReturnsBad()
-    {
-        var h = Snapshot(skips: (int)T.SkipsBadCount);
-        RecordingClassifier.Classify(h, T).Should().Be(-1);
-    }
-
-    [Fact]
     public void Disconnected_ReturnsNeutral()
     {
         // Even with otherwise-bad signals, disconnected = no decision (neutral).
-        var h = Snapshot(encodeAvg: 1.1, backlogMs: 5000, isConnected: false);
+        var h = Snapshot(encodeAvg: 1.1, senderFrameDropRatio: 1, isConnected: false);
         RecordingClassifier.Classify(h, T).Should().Be(0);
     }
 
@@ -86,7 +91,7 @@ public class RecordingClassifierTest
     public void LastAckUnknown_StillCanReturnGood()
     {
         // lastAckMs == -1 is the sentinel for "never seen an ACK yet".
-        var h = Snapshot(encodeAvg: 0.2, lastAckMs: -1, backlogMs: 10);
+        var h = Snapshot(encodeAvg: 0.2, lastAckMs: -1, senderFrameDropRatio: 0);
         RecordingClassifier.Classify(h, T).Should().Be(1);
     }
 }

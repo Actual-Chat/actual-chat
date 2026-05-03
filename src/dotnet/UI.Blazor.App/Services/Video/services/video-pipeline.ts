@@ -151,8 +151,7 @@ export interface RecorderHealthSnapshotJs {
     encodeRatioAvg: number;
     encodeRatioP90: number;
     slotReplacementRate: number;
-    senderBacklogP90Ms: number;
-    senderSkipsPerWindow: number;
+    senderFrameDropRatio: number;
     lastAckAgeMs: number;
     isConnected: boolean;
 }
@@ -322,11 +321,11 @@ export class VideoPipeline implements IVideoPipeline {
                 },
                 onRecorderHealthSnapshot: (
                     encodeRatioAvg, encodeRatioP90, slotReplacementRate,
-                    senderBacklogP90Ms, senderSkipsPerWindow, lastAckAgeMs, isConnected,
+                    senderFrameDropRatio, lastAckAgeMs, isConnected,
                 ) => {
                     this.recorderHealthSnapshotHandler?.({
                         encodeRatioAvg, encodeRatioP90, slotReplacementRate,
-                        senderBacklogP90Ms, senderSkipsPerWindow, lastAckAgeMs, isConnected,
+                        senderFrameDropRatio, lastAckAgeMs, isConnected,
                     });
                     return Promise.resolve();
                 },

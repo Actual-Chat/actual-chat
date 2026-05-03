@@ -118,10 +118,9 @@ public partial record RecorderHealthSnapshot(
     [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] double EncodeRatioAvg,
     [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] double EncodeRatioP90,
     [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] double SlotReplacementRate,
-    [property: DataMember(Order = 3), MemoryPackOrder(3), Key(3)] double SenderBacklogP90Ms,
-    [property: DataMember(Order = 4), MemoryPackOrder(4), Key(4)] int SenderSkipsPerWindow,
-    [property: DataMember(Order = 5), MemoryPackOrder(5), Key(5)] double LastAckAgeMs,
-    [property: DataMember(Order = 6), MemoryPackOrder(6), Key(6)] bool IsConnected);
+    [property: DataMember(Order = 3), MemoryPackOrder(3), Key(3)] double SenderFrameDropRatio,
+    [property: DataMember(Order = 4), MemoryPackOrder(4), Key(4)] double LastAckAgeMs,
+    [property: DataMember(Order = 5), MemoryPackOrder(5), Key(5)] bool IsConnected);
 
 [DataContract, MemoryPackable, MessagePackObject]
 public partial record RecordingQualityInfo(
@@ -637,12 +636,7 @@ defined in `Api.Contracts/Streaming/Quality/RecordingQuality.cs`):
   encode time / `frameDurationMs` (where `frameDurationMs = 1000 / VIDEO.frameRate`).
 - `slotReplacementRate` = `slotReplacements / framesProduced` over the
   last 1 s.
-- `senderBacklog.p90` — sourced from the sender's `RpcStream` (after 9.1
-  adds `OldestUnackedAge`). The worker doesn't own the stream directly —
-  the worker emits chunks to the main-thread service which holds the
-  `InternalVideoStream`. So either expose `OldestUnackedAge` back through
-  the worker contract or aggregate on the .NET side.
-- `senderSkipsPerWindow` = `Δ totalSkipped` over 1 s (also from 9.1).
+- `senderFrameDropRatio` = `Δ totalSkipped` over 1 s divided by `Constants.Video.FrameRate` (from 9.1).
 - `lastAckAgeMs` = `Date.now() - lastAckAt`.
 
 Posted to `.NET` once per second via a `DotNetObjectReference` callback
@@ -724,8 +718,7 @@ public sealed class VideoQualityUI
     public sealed record RecordingThresholds(
         double EncodeRatioBadAbove,    // 1.0
         double EncodeRatioGoodBelow,   // 0.33
-        double BacklogBadMs,            // 200
-        double BacklogGoodMs,           // 50
+        double SenderFrameDropRatioBadAbove, // 0.20
         double LastAckBadMs,            // 2000
         double LastAckGoodMs,           // 500
         // …
@@ -883,14 +876,11 @@ number.
    audio-frame `GetStream` collides. Recommended: rename existing back
    to `GetLiveStream` (its old name per `[LegacyName]`). Confirm before
    doing it.
-2. **Whether `RecorderHealthSnapshot.SenderBacklogP90Ms` should source
-   from the worker or the .NET side.** The `RpcStream` is owned on the
-   .NET side via `InternalVideoStream`; the worker can't see
-   `OldestUnackedAge` directly. Either pipe it down to the worker via
-   the contract, or aggregate the snapshot on the .NET side from a
-   mix of worker-posted signals + .NET-side `RpcStream` reads.
-   Recommended: aggregate on .NET side. The worker posts its half
-   (encode ratios, slot replacements); .NET fills the rest.
+2. **Whether `RecorderHealthSnapshot.SenderFrameDropRatio` should remain
+   worker-owned.** The worker owns `InternalVideoStream` and can read
+   `RpcStreamSender.totalSkipped`, so it computes the 1 Hz delta locally.
+   If ownership moves, keep the metric as `dropped frames in last health
+   window / Constants.Video.FrameRate`.
 3. **Whether `StreamLatencyStore` becomes fully dead** after 8.5. Grep
    carefully — if there's any non-quality-related use (metrics, etc.)
    keep what's needed.
