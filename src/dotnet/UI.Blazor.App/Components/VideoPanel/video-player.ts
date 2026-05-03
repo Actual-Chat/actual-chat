@@ -1424,6 +1424,18 @@ export class VideoPlayer {
         const streamAgeMs = this.firstFrameReceivedTime > 0
             ? Math.round(performance.now() - this.firstFrameReceivedTime)
             : 0;
+        const forwardedSpatialLayerId = this.forwardedSpatialLayerId >= 0
+            ? this.forwardedSpatialLayerId
+            : decoderStats?.pullForwardedSpatialLayerId ?? -1;
+        const forwardedWidth = this.forwardedSpatialLayerId >= 0
+            ? this.forwardedWidth
+            : decoderStats?.pullForwardedWidth ?? 0;
+        const forwardedHeight = this.forwardedSpatialLayerId >= 0
+            ? this.forwardedHeight
+            : decoderStats?.pullForwardedHeight ?? 0;
+        const observedMaxSpatialLayer = this.observedMaxSpatialLayer >= 0
+            ? this.observedMaxSpatialLayer
+            : decoderStats?.pullObservedMaxSpatialLayer ?? -1;
 
         return {
             streamId: this.streamId,
@@ -1450,11 +1462,11 @@ export class VideoPlayer {
             codecSlowTickCount: this.codecSlowTickCount,
             decoderStats,
             avDriftMs,
-            forwarded: this.forwardedSpatialLayerId >= 0 ? {
-                ForwardedSpatialLayerId: this.forwardedSpatialLayerId,
-                ForwardedWidth: this.forwardedWidth,
-                ForwardedHeight: this.forwardedHeight,
-                ObservedMaxSpatialLayer: this.observedMaxSpatialLayer,
+            forwarded: forwardedSpatialLayerId >= 0 ? {
+                ForwardedSpatialLayerId: forwardedSpatialLayerId,
+                ForwardedWidth: forwardedWidth,
+                ForwardedHeight: forwardedHeight,
+                ObservedMaxSpatialLayer: observedMaxSpatialLayer,
             } : null,
             requestedReceiveQuality: requested,
             streamAgeMs,

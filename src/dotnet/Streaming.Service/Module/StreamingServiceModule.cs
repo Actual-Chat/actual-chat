@@ -42,7 +42,9 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
             services.AddScoped<StreamHub>();
         }
 
+#pragma warning disable CS0618 // Type or member is obsolete
         rpcHost.AddApi<IStreamServer, StreamServer>();
+#pragma warning restore CS0618 // Type or member is obsolete
         rpcHost.AddApi<ILiveAudioStreams, LiveAudioStreams>();
         rpcHost.AddApi<ILiveVideoStreams, LiveVideoStreams>();
         rpcHost.AddBackend<IAudioStreamingBackend, AudioStreamingBackend>();
