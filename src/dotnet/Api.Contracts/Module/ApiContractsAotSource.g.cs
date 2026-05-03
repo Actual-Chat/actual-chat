@@ -113,6 +113,12 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Notification.Notifications_NotifyMembers>();
         CodeKeeper.KeepSerializable<global::ActualChat.Notification.Notifications_NotifyMentionedMembers>();
         CodeKeeper.KeepSerializable<global::ActualChat.Notification.Notifications_RegisterDevice>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Streaming.PlaybackQualityInfo>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Streaming.PlaybackStreamInfo>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Streaming.ReceiveQuality>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Streaming.RecorderHealthSnapshot>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Streaming.RecordingQualityInfo>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Streaming.RecordingQualityState>();
         CodeKeeper.KeepSerializable<global::ActualChat.Users.Accounts_CancelRegister>();
         CodeKeeper.KeepSerializable<global::ActualChat.Users.Accounts_ConfirmRegister>();
         CodeKeeper.KeepSerializable<global::ActualChat.Users.Accounts_CreateApiKey>();
@@ -152,6 +158,9 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Audio.AudioFormat>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Audio.AudioFormat>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Audio.AudioFormat>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Audio.AudioFrame>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Audio.AudioFrame>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Audio.AudioFrame>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.AuthorId>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.AuthorId>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.AuthorId>>>>();
@@ -620,6 +629,9 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Mathematics.LinearMap>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Mathematics.LinearMap>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Mathematics.LinearMap>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Mathematics.LinearMapDiff>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Mathematics.LinearMapDiff>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Mathematics.LinearMapDiff>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Mathematics.Range<global::ActualLab.Time.Moment>>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Mathematics.Range<global::ActualLab.Time.Moment>>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Mathematics.Range<global::ActualLab.Time.Moment>>>>>();
@@ -683,6 +695,9 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Media.Media_UpdateProgress>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Media.Media_UpdateProgress>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Media.Media_UpdateProgress>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Media.Size2D>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Media.Size2D>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Media.Size2D>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Media.Uploads_Append>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Media.Uploads_Append>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Media.Uploads_Append>>>>();
@@ -806,6 +821,33 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.StreamId>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.StreamId>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.StreamId>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.PlaybackQualityInfo>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.PlaybackQualityInfo>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.PlaybackQualityInfo>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.PlaybackQualityReason>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.PlaybackQualityReason>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.PlaybackQualityReason>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.PlaybackStreamInfo>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.PlaybackStreamInfo>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.PlaybackStreamInfo>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.PlaybackStreamPriority>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.PlaybackStreamPriority>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.PlaybackStreamPriority>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.ReceiveQuality>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.ReceiveQuality>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.ReceiveQuality>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.RecorderHealthSnapshot>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.RecorderHealthSnapshot>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.RecorderHealthSnapshot>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.RecordingQualityInfo>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.RecordingQualityInfo>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.RecordingQualityInfo>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.RecordingQualityReason>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.RecordingQualityReason>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.RecordingQualityReason>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.RecordingQualityState>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.RecordingQualityState>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.RecordingQualityState>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.StreamKind>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.StreamKind>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.StreamKind>>>>();
@@ -824,6 +866,12 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ThreadChatId[]>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ThreadChatId[]>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ThreadChatId[]>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Transcription.StringDiff>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Transcription.StringDiff>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Transcription.StringDiff>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Transcription.TranscriptDiff>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Transcription.TranscriptDiff>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Transcription.TranscriptDiff>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.TranslationId>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.TranslationId>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.TranslationId>>>>();
@@ -986,6 +1034,9 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Video.VideoFormat>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Video.VideoFormat>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Video.VideoFormat>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Video.VideoFormat[]>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Video.VideoFormat[]>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Video.VideoFormat[]>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Video.VideoFrame>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Video.VideoFrame>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Video.VideoFrame>>>>();
@@ -995,9 +1046,6 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Video.VideoQualityPreset>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Video.VideoQualityPreset>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Video.VideoQualityPreset>>>>();
-        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiArray<global::ActualChat.AuthorId>>>();
-        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiArray<global::ActualChat.AuthorId>>>>();
-        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiArray<global::ActualChat.AuthorId>>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiArray<global::ActualChat.Live.LiveStreamInfo>>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiArray<global::ActualChat.Live.LiveStreamInfo>>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiArray<global::ActualChat.Live.LiveStreamInfo>>>>>();
@@ -1010,6 +1058,12 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiList<global::ActualChat.Users.SessionInfo>>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiList<global::ActualChat.Users.SessionInfo>>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiList<global::ActualChat.Users.SessionInfo>>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiMap<global::System.String, global::ActualChat.Streaming.PlaybackStreamInfo>>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiMap<global::System.String, global::ActualChat.Streaming.PlaybackStreamInfo>>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiMap<global::System.String, global::ActualChat.Streaming.PlaybackStreamInfo>>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiMap<global::System.String, global::ActualChat.Streaming.ReceiveQuality>>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiMap<global::System.String, global::ActualChat.Streaming.ReceiveQuality>>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiMap<global::System.String, global::ActualChat.Streaming.ReceiveQuality>>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiMap<global::System.String, global::System.String>>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiMap<global::System.String, global::System.String>>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Api.ApiMap<global::System.String, global::System.String>>>>>();
@@ -1124,18 +1178,18 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream<global::ActualChat.Audio.AudioFrame>>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream<global::ActualChat.Audio.AudioFrame>>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream<global::ActualChat.Audio.AudioFrame>>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream<global::ActualChat.Live.LiveStreamItem>>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream<global::ActualChat.Live.LiveStreamItem>>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream<global::ActualChat.Live.LiveStreamItem>>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream<global::ActualChat.Transcription.TranscriptDiff>>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream<global::ActualChat.Transcription.TranscriptDiff>>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream<global::ActualChat.Transcription.TranscriptDiff>>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream<global::ActualChat.Video.VideoFrame>>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream<global::ActualChat.Video.VideoFrame>>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream<global::ActualChat.Video.VideoFrame>>>>>();
-        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream<global::ActualChat.Video.VideoQualityPreset>>>();
-        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream<global::ActualChat.Video.VideoQualityPreset>>>>();
-        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream<global::ActualChat.Video.VideoQualityPreset>>>>>();
-        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream<global::ActualLab.Api.ApiArray<global::System.String>>>>();
-        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream<global::ActualLab.Api.ApiArray<global::System.String>>>>>();
-        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Rpc.RpcStream<global::ActualLab.Api.ApiArray<global::System.String>>>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Serialization.ExceptionInfo>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Serialization.ExceptionInfo>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualLab.Serialization.ExceptionInfo>>>>();
@@ -1157,6 +1211,24 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Byte[]>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Byte[]>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Byte[]>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::ActualChat.Streaming.PlaybackStreamInfo>>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::ActualChat.Streaming.PlaybackStreamInfo>>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::ActualChat.Streaming.PlaybackStreamInfo>>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::ActualChat.Streaming.PlaybackStreamInfo>.KeyCollection>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::ActualChat.Streaming.PlaybackStreamInfo>.KeyCollection>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::ActualChat.Streaming.PlaybackStreamInfo>.KeyCollection>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::ActualChat.Streaming.PlaybackStreamInfo>.ValueCollection>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::ActualChat.Streaming.PlaybackStreamInfo>.ValueCollection>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::ActualChat.Streaming.PlaybackStreamInfo>.ValueCollection>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::ActualChat.Streaming.ReceiveQuality>>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::ActualChat.Streaming.ReceiveQuality>>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::ActualChat.Streaming.ReceiveQuality>>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::ActualChat.Streaming.ReceiveQuality>.KeyCollection>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::ActualChat.Streaming.ReceiveQuality>.KeyCollection>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::ActualChat.Streaming.ReceiveQuality>.KeyCollection>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::ActualChat.Streaming.ReceiveQuality>.ValueCollection>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::ActualChat.Streaming.ReceiveQuality>.ValueCollection>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::ActualChat.Streaming.ReceiveQuality>.ValueCollection>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::System.String>>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::System.String>>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.Dictionary<global::System.String, global::System.String>>>>>();
@@ -1187,6 +1259,12 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.IReadOnlyList<global::ActualLab.Text.Symbol>>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.IReadOnlyList<global::ActualLab.Text.Symbol>>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.IReadOnlyList<global::ActualLab.Text.Symbol>>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.KeyValuePair<global::System.String, global::ActualChat.Streaming.PlaybackStreamInfo>>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.KeyValuePair<global::System.String, global::ActualChat.Streaming.PlaybackStreamInfo>>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.KeyValuePair<global::System.String, global::ActualChat.Streaming.PlaybackStreamInfo>>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.KeyValuePair<global::System.String, global::ActualChat.Streaming.ReceiveQuality>>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.KeyValuePair<global::System.String, global::ActualChat.Streaming.ReceiveQuality>>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.KeyValuePair<global::System.String, global::ActualChat.Streaming.ReceiveQuality>>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.KeyValuePair<global::System.String, global::System.String>>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.KeyValuePair<global::System.String, global::System.String>>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.Collections.Generic.KeyValuePair<global::System.String, global::System.String>>>>>();
@@ -1255,6 +1333,7 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::System.ValueTuple<global::System.String, global::System.String>>>>>();
 
         // MessagePack formatter types for serializable root types (auto-discovered)
+        CodeKeeper.Keep("ActualChat.Audio.CachingAudioFrameFormatter, ActualChat.Api");
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.AliasId, ActualChat.Api]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.AuthorId, ActualChat.Api]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.ChatEntryId, ActualChat.Api]], ActualChat.Core");
@@ -1281,6 +1360,7 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.UserDeviceId, ActualChat.Api]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.UserId, ActualChat.Api]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Internal.StringLikeMessagePackFormatter`1[[ActualChat.Users.UserIdentity, ActualChat.Api]], ActualChat.Core");
+        CodeKeeper.Keep("ActualChat.Mathematics.Internal.LinearMapDiffMessagePackFormatter, ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Mathematics.Internal.LinearMapMessagePackFormatter, ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Search.ContactSearchResult+ContactSearchResultFormatter, ActualChat.Api");
         CodeKeeper.Keep("ActualChat.Search.EntrySearchResult+EntrySearchResultFormatter, ActualChat.Api");
@@ -1315,10 +1395,8 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep("ActualChat.Serialization.Internal.RangeMessagePackFormatter`1[[System.Int64, System.Private.CoreLib]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Serialization.Internal.SetDiffMessagePackFormatter`2[[ActualChat.AuthorId[], ActualChat.Api],[ActualChat.AuthorId, ActualChat.Api]], ActualChat.Core");
         CodeKeeper.Keep("ActualChat.Video.CachingVideoFrameFormatter, ActualChat.Api");
-        CodeKeeper.Keep("ActualLab.Api.Internal.ApiArrayMessagePackFormatter`1[[ActualChat.AuthorId, ActualChat.Api]], ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Api.Internal.ApiArrayMessagePackFormatter`1[[ActualChat.Live.LiveStreamInfo, ActualChat.Api]], ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Api.Internal.ApiArrayMessagePackFormatter`1[[ActualChat.Streaming.VideoStreamInfo, ActualChat.Api]], ActualLab.Core");
-        CodeKeeper.Keep("ActualLab.Api.Internal.ApiArrayMessagePackFormatter`1[[ActualLab.Api.ApiArray`1[[ActualChat.AuthorId, ActualChat.Api]], ActualLab.Core]], ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Api.Internal.ApiArrayMessagePackFormatter`1[[ActualLab.Api.ApiArray`1[[ActualChat.Live.LiveStreamInfo, ActualChat.Api]], ActualLab.Core]], ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Api.Internal.ApiArrayMessagePackFormatter`1[[ActualLab.Api.ApiArray`1[[ActualChat.Streaming.VideoStreamInfo, ActualChat.Api]], ActualLab.Core]], ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Api.Internal.ApiArrayMessagePackFormatter`1[[ActualLab.Api.ApiArray`1[[System.String, System.Private.CoreLib]], ActualLab.Core]], ActualLab.Core");
@@ -1384,21 +1462,22 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep("ActualLab.Serialization.Internal.UnitMessagePackFormatter, ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Text.Internal.SymbolMessagePackFormatter, ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Time.Internal.MomentMessagePackFormatter, ActualLab.Core");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Chat_LegacyChatEntryFormatter2, MessagePack.Resolvers.DynamicObjectResolver");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Chat_LegacyChatNewsFormatter1, MessagePack.Resolvers.DynamicObjectResolver");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Chat_LegacyChatTileFormatter6, MessagePack.Resolvers.DynamicObjectResolver");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Chat_LegacyChats_UpsertEntryFormatter7, MessagePack.Resolvers.DynamicObjectResolver");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Chat_LegacyMembersChangedOptionFormatter4, MessagePack.Resolvers.DynamicObjectResolver");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Chat_LegacyNotifyMembersOptionFormatter5, MessagePack.Resolvers.DynamicObjectResolver");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Chat_LegacySystemEntryFormatter3, MessagePack.Resolvers.DynamicObjectResolver");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Invite_LegacyChatInviteOptionFormatter10, MessagePack.Resolvers.DynamicObjectResolver");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Invite_LegacyInviteDetailsFormatter9, MessagePack.Resolvers.DynamicObjectResolver");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Invite_LegacyInviteFormatter8, MessagePack.Resolvers.DynamicObjectResolver");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Invite_LegacyInvites_GenerateFormatter13, MessagePack.Resolvers.DynamicObjectResolver");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Invite_LegacyInvites_RevokeFormatter15, MessagePack.Resolvers.DynamicObjectResolver");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Invite_LegacyInvites_UseFormatter14, MessagePack.Resolvers.DynamicObjectResolver");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Invite_LegacyPlaceInviteOptionFormatter12, MessagePack.Resolvers.DynamicObjectResolver");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Invite_LegacyUserInviteOptionFormatter11, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Chat_LegacyChatEntryFormatter3, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Chat_LegacyChatNewsFormatter2, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Chat_LegacyChatTileFormatter7, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Chat_LegacyChats_UpsertEntryFormatter8, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Chat_LegacyMembersChangedOptionFormatter5, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Chat_LegacyNotifyMembersOptionFormatter6, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Chat_LegacySystemEntryFormatter4, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Invite_LegacyChatInviteOptionFormatter11, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Invite_LegacyInviteDetailsFormatter10, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Invite_LegacyInviteFormatter9, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Invite_LegacyInvites_GenerateFormatter14, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Invite_LegacyInvites_RevokeFormatter16, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Invite_LegacyInvites_UseFormatter15, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Invite_LegacyPlaceInviteOptionFormatter13, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Invite_LegacyUserInviteOptionFormatter12, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Media_Size2DFormatter1, MessagePack.Resolvers.DynamicObjectResolver");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.AuthorId, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Chat.Author, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Chat.AuthorReadPosition, ActualChat.Api]], MessagePack");
@@ -1435,15 +1514,20 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.UserId, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Users.DigestPreviewChat, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Users.TimeZone, ActualChat.Api]], MessagePack");
+        CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Video.VideoFormat, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualLab.Collections.Internal.PropertyBagItem, ActualLab.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualLab.Result`1[[ActualChat.Contacts.ExternalContactFull, ActualChat.Api]], ActualLab.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualLab.Text.Symbol, ActualLab.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[System.Type, System.Private.CoreLib]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ByteArrayFormatter, MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ByteReadOnlyMemoryFormatter, MessagePack");
+        CodeKeeper.Keep("MessagePack.Formatters.DictionaryFormatter`2[[System.String, System.Private.CoreLib],[ActualChat.Streaming.PlaybackStreamInfo, ActualChat.Api.Contracts]], MessagePack");
+        CodeKeeper.Keep("MessagePack.Formatters.DictionaryFormatter`2[[System.String, System.Private.CoreLib],[ActualChat.Streaming.ReceiveQuality, ActualChat.Api.Contracts]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.DictionaryFormatter`2[[System.String, System.Private.CoreLib],[System.String, System.Private.CoreLib]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericCollectionFormatter`2[[ActualChat.Users.SessionInfo, ActualChat.Api],[ActualLab.Api.ApiList`1[[ActualChat.Users.SessionInfo, ActualChat.Api]], ActualLab.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericCollectionFormatter`2[[System.String, System.Private.CoreLib],[ActualLab.Api.ApiSet`1[[System.String, System.Private.CoreLib]], ActualLab.Core]], MessagePack");
+        CodeKeeper.Keep("MessagePack.Formatters.GenericDictionaryFormatter`3[[System.String, System.Private.CoreLib],[ActualChat.Streaming.PlaybackStreamInfo, ActualChat.Api.Contracts],[ActualLab.Api.ApiMap`2[[System.String, System.Private.CoreLib],[ActualChat.Streaming.PlaybackStreamInfo, ActualChat.Api.Contracts]], ActualLab.Core]], MessagePack");
+        CodeKeeper.Keep("MessagePack.Formatters.GenericDictionaryFormatter`3[[System.String, System.Private.CoreLib],[ActualChat.Streaming.ReceiveQuality, ActualChat.Api.Contracts],[ActualLab.Api.ApiMap`2[[System.String, System.Private.CoreLib],[ActualChat.Streaming.ReceiveQuality, ActualChat.Api.Contracts]], ActualLab.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericDictionaryFormatter`3[[System.String, System.Private.CoreLib],[System.String, System.Private.CoreLib],[ActualLab.Api.ApiMap`2[[System.String, System.Private.CoreLib],[System.String, System.Private.CoreLib]], ActualLab.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.CompatibilityLevel, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.GenericEnumFormatter`1[[ActualChat.Notification.DeviceType, ActualChat.Api]], MessagePack");
@@ -1489,6 +1573,8 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.Formatters.InterfaceReadOnlyListFormatter`1[[ActualChat.NotificationId, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.InterfaceReadOnlyListFormatter`1[[ActualChat.RoleId, ActualChat.Api]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.InterfaceReadOnlyListFormatter`1[[ActualLab.Text.Symbol, ActualLab.Core]], MessagePack");
+        CodeKeeper.Keep("MessagePack.Formatters.KeyValuePairFormatter`2[[System.String, System.Private.CoreLib],[ActualChat.Streaming.PlaybackStreamInfo, ActualChat.Api.Contracts]], MessagePack");
+        CodeKeeper.Keep("MessagePack.Formatters.KeyValuePairFormatter`2[[System.String, System.Private.CoreLib],[ActualChat.Streaming.ReceiveQuality, ActualChat.Api.Contracts]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.KeyValuePairFormatter`2[[System.String, System.Private.CoreLib],[ActualLab.Serialization.NewtonsoftJsonSerialized`1[[System.Object, System.Private.CoreLib]], ActualLab.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.KeyValuePairFormatter`2[[System.String, System.Private.CoreLib],[System.String, System.Private.CoreLib]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ListFormatter`1[[ActualChat.Users.SessionInfo, ActualChat.Api]], MessagePack");
@@ -1633,8 +1719,19 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Search+EntrySearchQueryFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Search+EntrySearchResultPageFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Search+SearchScopeFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Streaming+PlaybackQualityInfoFormatter, ActualChat.Api.Contracts");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Streaming+PlaybackQualityReasonFormatter, ActualChat.Api.Contracts");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Streaming+PlaybackStreamInfoFormatter, ActualChat.Api.Contracts");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Streaming+PlaybackStreamPriorityFormatter, ActualChat.Api.Contracts");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Streaming+ReceiveQualityFormatter, ActualChat.Api.Contracts");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Streaming+RecorderHealthSnapshotFormatter, ActualChat.Api.Contracts");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Streaming+RecordingQualityInfoFormatter, ActualChat.Api.Contracts");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Streaming+RecordingQualityReasonFormatter, ActualChat.Api.Contracts");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Streaming+RecordingQualityStateFormatter, ActualChat.Api.Contracts");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Streaming+StreamKindFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Streaming+VideoStreamInfoFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Transcription+StringDiffFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Transcription+TranscriptDiffFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+AccountFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+AccountFullFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Users+AccountStatusFormatter, ActualChat.Api");
@@ -1682,10 +1779,10 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualLab+Collections+Internal+PropertyBagItemFormatter, ActualLab.Core");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualLab+Collections+PropertyBagFormatter, ActualLab.Core");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualLab+Rpc+Infrastructure+RpcObjectIdFormatter, ActualLab.Rpc");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualLab+Rpc+RpcStreamFormatter`1[[ActualChat.Audio.AudioFrame, ActualChat.Api]], ActualLab.Rpc");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualLab+Rpc+RpcStreamFormatter`1[[ActualChat.Live.LiveStreamItem, ActualChat.Api]], ActualLab.Rpc");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualLab+Rpc+RpcStreamFormatter`1[[ActualChat.Transcription.TranscriptDiff, ActualChat.Api]], ActualLab.Rpc");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualLab+Rpc+RpcStreamFormatter`1[[ActualChat.Video.VideoFrame, ActualChat.Api]], ActualLab.Rpc");
-        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualLab+Rpc+RpcStreamFormatter`1[[ActualChat.Video.VideoQualityPreset, ActualChat.Api]], ActualLab.Rpc");
-        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualLab+Rpc+RpcStreamFormatter`1[[ActualLab.Api.ApiArray`1[[System.String, System.Private.CoreLib]], ActualLab.Core]], ActualLab.Rpc");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualLab+Serialization+ExceptionInfoFormatter, ActualLab.Core");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualLab+Serialization+NewtonsoftJsonSerializedFormatter`1[[System.Object, System.Private.CoreLib]], ActualLab.Core");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualLab+Serialization+TextSerializedFormatter`1[[System.Object, System.Private.CoreLib]], ActualLab.Core");
@@ -1793,6 +1890,12 @@ internal partial class ApiContractsAotSource : IAotSource
             (typeof(global::ActualChat.Notification.Notifications_NotifyMembers), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Notification.Notifications_NotifyMentionedMembers), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Notification.Notifications_RegisterDevice), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Streaming.PlaybackQualityInfo), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Streaming.PlaybackStreamInfo), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Streaming.ReceiveQuality), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Streaming.RecorderHealthSnapshot), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Streaming.RecordingQualityInfo), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Streaming.RecordingQualityState), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Users.Accounts_CancelRegister), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Users.Accounts_ConfirmRegister), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Users.Accounts_CreateApiKey), AotTypeKind.Serializable),

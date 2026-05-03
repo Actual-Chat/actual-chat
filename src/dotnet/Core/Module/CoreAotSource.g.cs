@@ -30,6 +30,7 @@ internal partial class CoreAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Mathematics.Internal.OldLinearMap>();
         CodeKeeper.KeepSerializable<global::ActualChat.Mathematics.LinearMap>();
         CodeKeeper.KeepSerializable<global::ActualChat.Mathematics.LinearMapDiff>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Media.Size2D>();
         CodeKeeper.KeepSerializable<global::ActualChat.NodeRef>();
         CodeKeeper.KeepSerializable<global::ActualChat.Search.SearchMatch>();
         CodeKeeper.KeepSerializable<global::ActualChat.Search.SearchMatchPart>();
@@ -91,6 +92,9 @@ internal partial class CoreAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Mathematics.Range<global::System.Int32>>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Mathematics.Range<global::System.Int32>>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Mathematics.Range<global::System.Int32>>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Media.Size2D>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Media.Size2D>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Media.Size2D>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.NodeRef>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.NodeRef>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.NodeRef>>>>();
@@ -220,6 +224,7 @@ internal partial class CoreAotSource : IAotSource
         CodeKeeper.Keep("ActualLab.Serialization.Internal.UnitMessagePackFormatter, ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Text.Internal.SymbolMessagePackFormatter, ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Time.Internal.MomentMessagePackFormatter, ActualLab.Core");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Media_Size2DFormatter1, MessagePack.Resolvers.DynamicObjectResolver");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Search.SearchMatchPart, ActualChat.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[System.Type, System.Private.CoreLib]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[System.ValueTuple`2[[System.String, System.Private.CoreLib],[System.Byte[], System.Private.CoreLib]], System.Private.CoreLib]], MessagePack");
@@ -278,6 +283,7 @@ internal partial class CoreAotSource : IAotSource
             (typeof(global::ActualChat.Mathematics.Internal.OldLinearMap), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Mathematics.LinearMap), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Mathematics.LinearMapDiff), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Media.Size2D), AotTypeKind.Serializable),
             (typeof(global::ActualChat.NodeRef), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Search.SearchMatch), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Search.SearchMatchPart), AotTypeKind.Serializable),
