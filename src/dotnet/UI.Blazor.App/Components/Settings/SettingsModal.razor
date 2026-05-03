@@ -41,7 +41,7 @@
             <AppSettings/>
         </SettingsTab>
 
-        @if (showMyAccount && m.EnableIncompleteUI) {
+        @if (showMyAccount) {
             <SettingsTab @key="5" TabIndex="5" Title="Sessions" Id="@SettingsTabId.Sessions" IconClass="icon-lock">
                 <SessionSettings/>
             </SettingsTab>
@@ -93,10 +93,8 @@
         var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var tabId = ModalModel.TabId;
         var showLogViewer = await Hub.LogUI.IsEnabled.Use(cancellationToken).ConfigureAwait(false);
-        var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         return new ComputedModel(account, tabId) {
             ShowLogViewer = showLogViewer,
-            EnableIncompleteUI = enableIncompleteUI,
         };
     }
 
@@ -107,7 +105,6 @@
 
     public sealed record ComputedModel(AccountFull AccountFull, string? TabId) {
         public bool ShowLogViewer { get; init; }
-        public bool EnableIncompleteUI { get; init; }
     }
 
     public sealed record Model(string? TabId = null) {

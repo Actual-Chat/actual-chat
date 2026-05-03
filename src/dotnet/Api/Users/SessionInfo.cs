@@ -14,6 +14,8 @@ public partial record SessionInfo(
     [DataMember(Order = 7), MemoryPackOrder(7), Key(7)] public UserId? UserId { get; init; }
     [DataMember(Order = 8), MemoryPackOrder(8), Key(8)] public string Description { get; init; } = "";
     [DataMember(Order = 9), MemoryPackOrder(9), Key(9)] public string IPAddress { get => field ?? ""; init; } = "";
+    // Order 12 — avoids collision with SessionInfoFull's 10/11.
+    [DataMember(Order = 12), MemoryPackOrder(12), Key(12)] public bool IsCurrent { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore, IgnoreMember]
     public SessionKind Kind => IdPrefix.StartsWith(CoreConstants.Session.ApiKeyPrefix)

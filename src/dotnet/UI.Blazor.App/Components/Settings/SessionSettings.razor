@@ -1,16 +1,15 @@
 @inherits ComputedStateComponent<AppUIHub, SessionSettings.Model>
 @{
     var m = State.Value;
-    var ownPrefix = Session.IdPrefix;
     var now = ServerClock.Now;
-    var currentSession = m.Sessions.FirstOrDefault(s => s.IdPrefix == ownPrefix);
-    var otherSessions = m.Sessions.Where(s => s.IdPrefix != ownPrefix).OrderByDescending(s => s.LastSeenAt).ToList();
+    var currentSession = m.Sessions.FirstOrDefault(s => s.IsCurrent);
+    var otherSessions = m.Sessions.Where(s => !s.IsCurrent).OrderByDescending(s => s.LastSeenAt).ToList();
 }
 
-<TileTopic Topic="Current Session"/>
+@if (currentSession != null) {
+    <TileTopic Topic="Current Session"/>
 
-<Tile>
-    @if (currentSession != null) {
+    <Tile>
         <TileItem IsHoverable="false" Class="sessions-tile-item">
             <Content>
                 <span class="c-description">@currentSession.Description</span>
@@ -24,8 +23,8 @@
                 </span>
             </Right>
         </TileItem>
-    }
-</Tile>
+    </Tile>
+}
 
 <TileTopic Topic="Sessions"/>
 

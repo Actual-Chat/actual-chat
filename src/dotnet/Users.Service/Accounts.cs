@@ -90,7 +90,7 @@ public class Accounts(IServiceProvider services) : IAccounts
             if (sessionInfo is null || !sessionInfo.IsActive)
                 continue;
 
-            var info = sessionInfo.ToSessionInfo()!;
+            var info = sessionInfo.ToSessionInfo()! with { IsCurrent = s == session };
             if (s.Kind is SessionKind.Session) {
                 var userAgent = FormatUserAgent(info.Description);
                 var location = await FormatLocation(info.IPAddress).ConfigureAwait(false);
