@@ -194,7 +194,7 @@ export class RecordingService extends EventTarget {
         // spatial layers, downscaler runs N identity slots.
         if (ladder && ladder.length > 0) {
             const base = ladder[0];
-            const stats = this.pipeline.getEncoderStats();
+            const stats = this.pipeline.getSpatialLayerStats()[0] ?? this.pipeline.getEncoderStats();
             if (stats.configuredWidth !== base.width
                 || stats.configuredHeight !== base.height
                 || stats.configuredBitrate !== base.bitrate) {

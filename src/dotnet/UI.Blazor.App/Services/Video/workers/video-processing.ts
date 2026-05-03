@@ -2265,28 +2265,20 @@ export const serverImpl: VideoProcessingWorker = {
             lastReconfigureSummary: '', lastReconfigureAgeMs: -1,
             lastErrorName: '', lastErrorMessage: '', lastErrorAgeMs: -1, errorCount: 0,
         };
-        // Fold simulcast extras into the headline counters. Without this the
-        // diagnostics log compared base-only `totalBytes` (the bytes a 1.3 Mbps
-        // base layer emits) to the SUM of all configured caps (base + extras),
-        // producing nonsense like `actual=10Mbps cfg=1.3Mbps`. Per-encoder
-        // dims and HW acceleration still reflect the base — there's only one
-        // headline number for those.
-        let extraBytes = 0, extraEncoded = 0, extraDropped = 0, extraKey = 0, extraBitrate = 0;
-        for (const e of extraLayerEncoders) {
-            const s = e.getStats();
-            extraBytes += s.totalBytes;
-            extraEncoded += s.encodedFrames;
-            extraDropped += s.droppedFrames;
-            extraKey += s.keyFrames;
-            extraBitrate += s.configuredBitrate;
-        }
+        // Keep legacy aggregate counters for existing callers, but publish the
+        // real per-layer encoder stats separately so diagnostics don't treat L0
+        // as the whole stream.
+        const spatialLayers = [
+            { spatialLayerId: 0, ...baseStats },
+            ...extraLayerEncoders.map((e, i) => ({ spatialLayerId: i + 1, ...e.getStats() })),
+        ];
         const encoderStats = {
             ...baseStats,
-            totalBytes: baseStats.totalBytes + extraBytes,
-            encodedFrames: baseStats.encodedFrames + extraEncoded,
-            droppedFrames: baseStats.droppedFrames + extraDropped,
-            keyFrames: baseStats.keyFrames + extraKey,
-            configuredBitrate: baseStats.configuredBitrate + extraBitrate,
+            totalBytes: spatialLayers.reduce((sum, s) => sum + s.totalBytes, 0),
+            encodedFrames: spatialLayers.reduce((sum, s) => sum + s.encodedFrames, 0),
+            droppedFrames: spatialLayers.reduce((sum, s) => sum + s.droppedFrames, 0),
+            keyFrames: spatialLayers.reduce((sum, s) => sum + s.keyFrames, 0),
+            configuredBitrate: spatialLayers.reduce((sum, s) => sum + s.configuredBitrate, 0),
         };
         const segStats: SegmentationStats | null = segInitialized ? {
             processedFrames: segProcessedFrames,
@@ -2306,7 +2298,7 @@ export const serverImpl: VideoProcessingWorker = {
             status: streamStatus,
             lastError: streamError,
         } : null;
-        return { encoder: encoderStats, segmentation: segStats, orientation: orientationStats ? { ...orientationStats } : null, streaming: streamStats };
+        return { encoder: encoderStats, spatialLayers, segmentation: segStats, orientation: orientationStats ? { ...orientationStats } : null, streaming: streamStats };
     },
 
     // eslint-disable-next-line @typescript-eslint/require-await

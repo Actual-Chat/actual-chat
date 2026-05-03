@@ -18,7 +18,7 @@ import { BrowserInit } from '../../../../UI.Blazor/Services/BrowserInit/browser-
 import { ConnectivityUI } from '../../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 import { Api, WorkerKind } from 'api';
 import type { EncoderConfig, EncoderStats } from '../webcodecs-encoder';
-import type { SegmentationConfig, SegmentationStats, OrientationStats, SpatialLayerConfig, VideoProcessingStreamingStats } from '../workers/video-processing-worker-contract';
+import type { SegmentationConfig, SegmentationStats, OrientationStats, SpatialLayerConfig, SpatialLayerEncoderStats, VideoProcessingStreamingStats } from '../workers/video-processing-worker-contract';
 import type {
     VideoProcessingWorker,
     VideoProcessingWorkerCallbacks,
@@ -138,6 +138,7 @@ export interface IVideoPipeline {
      *  has resolved. Consumers attach to a `<video srcObject>`. */
     getProcessedTrack(): MediaStreamTrack | null;
     getEncoderStats(): EncoderStats;
+    getSpatialLayerStats(): SpatialLayerEncoderStats[];
     getSegmentationStats(): SegmentationStats | null;
     getOrientationStats(): OrientationStats | null;
     getStreamingStats(): VideoProcessingStreamingStats | null;
@@ -278,6 +279,7 @@ export class VideoPipeline implements IVideoPipeline {
             lastReconfigureSummary: '', lastReconfigureAgeMs: -1,
             lastErrorName: '', lastErrorMessage: '', lastErrorAgeMs: -1, errorCount: 0,
         },
+        spatialLayers: [],
         segmentation: null,
         orientation: null,
         streaming: null,
@@ -829,6 +831,10 @@ export class VideoPipeline implements IVideoPipeline {
 
     getEncoderStats(): EncoderStats {
         return { ...this.currentStats.encoder };
+    }
+
+    getSpatialLayerStats(): SpatialLayerEncoderStats[] {
+        return this.currentStats.spatialLayers.map(s => ({ ...s }));
     }
 
     getSegmentationStats(): SegmentationStats | null {

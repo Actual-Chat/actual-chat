@@ -26,6 +26,7 @@ export interface OwnStreamDiagnostics {
     encodedFrames: number;
     droppedFrames: number;
     keyFrames: number;
+    spatialLayers: OwnSpatialLayerDiagnostics[];
     medianEncodeTime: number;
     pureMedianEncodeTime: number;
     encoderHwAccel: string;
@@ -66,6 +67,28 @@ export interface OwnStreamDiagnostics {
         layerCount: number;
         layers: { width: number; height: number; bitrate: number; scalabilityMode?: string }[];
     } | null;
+}
+
+export interface OwnSpatialLayerDiagnostics {
+    spatialLayerId: number;
+    outputResolution: string;
+    configuredBitrate: number;
+    actualBitrateKbps: number;
+    encodedFrames: number;
+    droppedFrames: number;
+    keyFrames: number;
+    medianEncodeTime: number;
+    pureMedianEncodeTime: number;
+    encoderHwAccel: string;
+    encoderState: string;
+    encoderReconfigureCount: number;
+    encoderReplaceCount: number;
+    encoderLastReconfigureSummary: string;
+    encoderLastReconfigureAgeMs: number;
+    encoderLastErrorName: string;
+    encoderLastErrorMessage: string;
+    encoderLastErrorAgeMs: number;
+    encoderErrorCount: number;
 }
 
 export interface VideoDevice {
@@ -1127,6 +1150,38 @@ export class VideoRecorder {
         const trackSettings = inputTrack?.getSettings();
 
         const duration = state?.duration ?? 0;
+        const rawSpatialLayers = pipeline?.getSpatialLayerStats() ?? [];
+        const spatialStats = rawSpatialLayers.length > 0
+            ? rawSpatialLayers
+            : encoderStats
+                ? [{ spatialLayerId: 0, ...encoderStats }]
+                : [];
+        const spatialLayers: OwnSpatialLayerDiagnostics[] = spatialStats.map(s => {
+            const actualLayerBitrateKbps = duration > 0
+                ? (s.totalBytes * 8) / duration / 1000
+                : 0;
+            return {
+                spatialLayerId: s.spatialLayerId,
+                outputResolution: `${s.configuredWidth}x${s.configuredHeight}`,
+                configuredBitrate: s.configuredBitrate,
+                actualBitrateKbps: Math.round(actualLayerBitrateKbps),
+                encodedFrames: s.encodedFrames,
+                droppedFrames: s.droppedFrames,
+                keyFrames: s.keyFrames,
+                medianEncodeTime: s.medianEncodeTime,
+                pureMedianEncodeTime: s.pureMedianEncodeTime,
+                encoderHwAccel: s.hardwareAcceleration,
+                encoderState: s.state,
+                encoderReconfigureCount: s.reconfigureCount,
+                encoderReplaceCount: s.replaceCount,
+                encoderLastReconfigureSummary: s.lastReconfigureSummary,
+                encoderLastReconfigureAgeMs: s.lastReconfigureAgeMs,
+                encoderLastErrorName: s.lastErrorName,
+                encoderLastErrorMessage: s.lastErrorMessage,
+                encoderLastErrorAgeMs: s.lastErrorAgeMs,
+                encoderErrorCount: s.errorCount,
+            };
+        });
         const actualBitrateKbps = duration > 0 && encoderStats
             ? (encoderStats.totalBytes * 8) / duration / 1000
             : 0;
@@ -1146,6 +1201,7 @@ export class VideoRecorder {
             encodedFrames: encoderStats?.encodedFrames ?? 0,
             droppedFrames: encoderStats?.droppedFrames ?? 0,
             keyFrames: encoderStats?.keyFrames ?? 0,
+            spatialLayers,
             medianEncodeTime: encoderStats?.medianEncodeTime ?? 0,
             pureMedianEncodeTime: encoderStats?.pureMedianEncodeTime ?? 0,
             encoderHwAccel: encoderStats?.hardwareAcceleration ?? 'unknown',
