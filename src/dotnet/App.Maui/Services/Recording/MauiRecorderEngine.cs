@@ -557,7 +557,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         private Moment TrimPreRollBuffer()
         {
             const int frameLen = Constants.Audio.OpusFrameLength; // 320 samples = 20ms
-            const int minKeepFrames = 5; // Keep at least 100ms before speech
+            const int preRollFrameCount = Constants.Audio.VoiceStartPreRollFrameCount;
 
             var bufferedSamples = _encodingBuffer.Count;
             var fallbackCapturedAt = engine.Clocks.ServerClock.Now
@@ -585,8 +585,8 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 gains[i] = AudioExt.ApproximateGain(frameSpan);
             }
 
-            // Calculate average speech gain from last 5 frames (the speech onset region)
-            var speechFrames = Math.Min(5, frameCount);
+            // Calculate average speech gain from the pre-roll-sized speech onset region.
+            var speechFrames = Math.Min(preRollFrameCount, frameCount);
             double speechGain = 0;
             for (int i = frameCount - speechFrames; i < frameCount; i++)
                 speechGain += gains[i];
@@ -601,10 +601,10 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 startIndex--;
             }
 
-            // Discard frames before startIndex, but keep at least minKeepFrames
+            // Discard frames before startIndex, but keep the configured pre-roll.
             var framesToDiscard = Math.Max(0, startIndex - 1);
             var framesToKeep = frameCount - framesToDiscard;
-            framesToKeep = Math.Max(framesToKeep, Math.Min(minKeepFrames, frameCount));
+            framesToKeep = Math.Max(framesToKeep, Math.Min(preRollFrameCount, frameCount));
             framesToDiscard = frameCount - framesToKeep;
 
             // Write remaining frames back to encoding buffer

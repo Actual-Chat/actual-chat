@@ -315,7 +315,8 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
                     const samples = new Float32Array(samplesBuffer);
                     gains[i] = approximateGain(samples);
                 }
-                const speechGain = average(gains.slice(-5));
+                const preRollFrameCount = AUDIO.encode.voiceStartPreRollFrameCount;
+                const speechGain = average(gains.slice(-preRollFrameCount));
                 let startIndex = queue.length - 2;
                 while (startIndex > 0) {
                     const gain = gains[startIndex];
@@ -323,7 +324,7 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
                         break;
                     startIndex--;
                 }
-                let framesToShift = clamp(startIndex - 1, 0, queue.length - 5); // Keep at least 4 frames
+                let framesToShift = clamp(startIndex - 1, 0, queue.length - preRollFrameCount);
                 debugLog?.log(`processQueue(in): gains: `, gains, framesToShift);
                 while (framesToShift-- > 0)            {
                     const { buffer: samplesBuffer } = queue.shift()!;

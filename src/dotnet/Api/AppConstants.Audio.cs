@@ -88,10 +88,10 @@ partial record AppConstants
             // Pre-skip / codec delay measured in samples — default for system encoder
             // when it doesn't report its own.
             public int DefaultPreSkip { get; init; } = 312;
-            // Voice-start pre-roll — bounded ring of recent encoder-frame-equivalent
+            // Voice-start pre-roll - bounded ring of recent encoder-frame-equivalent
             // PCM kept while voice activity is inactive; prepended to the first
             // encoded frame on voice start so leading consonants survive.
-            public int VoiceStartPreRollSize { get; init; } = Constants.Audio.VoiceStartPreRollSize;
+            public int VoiceStartPreRollFrameCount { get; init; } = Constants.Audio.VoiceStartPreRollFrameCount;
         }
 
         public sealed record StreamConstants

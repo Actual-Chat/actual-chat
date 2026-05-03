@@ -114,7 +114,7 @@ existing call sites working.
   doc-target names: `FrameRate = 50`, `FrameDuration` /
   `FrameDurationMs` (canonical), `StartBufferSize = 5`,
   `StartBufferDuration = 100 ms`, `BufferHysteresisSize = 3`,
-  `MinBufferSize = 2`, `VoiceStartPreRollSize = 10`,
+  `MinBufferSize = 2`, `VoiceStartPreRollFrameCount = 5`,
   `DeliveryRpcStreamAckPeriod = 5`, `RecordingRpcStreamAckPeriod = 5`,
   `PlaybackHardSkipThreshold = 2 s`,
   `PlaybackMaxSpeedUpDuration = 5 s`,
@@ -133,7 +133,7 @@ existing call sites working.
   exposes the new fields to TS: top-level `FrameRate`; in `Play`,
   `StartBufferSize`, `BufferHysteresisSize`, `MinBufferSize`,
   `PlaybackHardSkipThresholdMs`, `PlaybackMaxSpeedUpDurationMs`,
-  `PlaybackSpeedUpDropEveryNFrames`; in `Encode`, `VoiceStartPreRollSize`.
+  `PlaybackSpeedUpDropEveryNFrames`; in `Encode`, `VoiceStartPreRollFrameCount`.
 - `app-constants.ts` (`src/nodejs/src/app-constants.ts`) mirrors the
   schema, derives `frameDurationMs = 1000 / frameRate`, and exposes
   seconds aliases (`playbackHardSkipThreshold`,

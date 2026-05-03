@@ -143,7 +143,7 @@ export interface AudioEncodeConstants {
     readonly fadeFrames: number;
     readonly maxBufferedFrames: number;
     readonly defaultPreSkip: number;
-    readonly voiceStartPreRollSize: number;
+    readonly voiceStartPreRollFrameCount: number;
     // Derived in TS
     readonly byteRate: number;
     readonly frameSamples: number;

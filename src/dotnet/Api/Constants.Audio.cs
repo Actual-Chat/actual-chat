@@ -23,10 +23,10 @@ public static partial class Constants
         public const int BufferHysteresisSize = 3;
         public const int MinBufferSize = StartBufferSize - BufferHysteresisSize; // 2
 
-        // Voice-start pre-roll — bounded ring of recent encoded-frame-equivalent
+        // Voice-start pre-roll - bounded ring of recent encoded-frame-equivalent
         // PCM kept while voice activity is inactive, prepended to the first
         // encoded frame on voice start so leading consonants survive.
-        public const int VoiceStartPreRollSize = 10; // 200 ms
+        public const int VoiceStartPreRollFrameCount = 5; // 100 ms
 
         // RPC stream flow control — split into recording (client→server upload,
         // must not skip recorded speech) and delivery (server→client, must not
