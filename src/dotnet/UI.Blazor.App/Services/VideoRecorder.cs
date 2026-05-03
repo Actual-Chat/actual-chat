@@ -31,7 +31,10 @@ public sealed class VideoRecorder : IAsyncDisposable
     private int _lastMaxSpatial = int.MaxValue;
 
     private AppUIHub Hub { get; }
-    private StreamKind Kind { get; }
+    public StreamKind Kind { get; }
+    // Last server-aggregated MaxSpatialLayer applied to the JS ladder.
+    // int.MaxValue = uncapped (full ladder). Read by diagnostics UI.
+    public int MaxSpatialCap => _lastMaxSpatial;
     private Session Session => Hub.Session;
     private IJSRuntime JS => Hub.JS;
     private IAuthors Authors => Hub.Authors;
@@ -314,7 +317,7 @@ public sealed class VideoRecorder : IAsyncDisposable
     // Webcam: 3-tier 720p/360p/180p. Screencast: 2-tier 1080p/540p. Bitrates are
     // C# seed defaults — JS rebuilds against the running source codec/dim via
     // setSimulcastLayers, only the tier count is honored.
-    private static IReadOnlyList<SpatialLayerSpec> BuildLadder(StreamKind kind)
+    public static IReadOnlyList<SpatialLayerSpec> BuildLadder(StreamKind kind)
         => kind == StreamKind.Webcam
             ? new SpatialLayerSpec[] {
                 new(320, 180, 300_000),

@@ -191,6 +191,81 @@
                             </div>
                         }
                     }
+
+                    @* Simulcast *@
+                    @if (stream.TryGetProperty("simulcast", out var simulcast) && simulcast.ValueKind == JsonValueKind.Object
+                         && simulcast.TryGetProperty("layers", out var simLayers) && simLayers.ValueKind == JsonValueKind.Array) {
+                        <div class="diag-group-header">Simulcast</div>
+                        <div class="diag-row">
+                            <span class="diag-label">Layers</span>
+                            <span class="diag-value">@(GetNum(simulcast, "layerCount").ToString("0"))</span>
+                        </div>
+                        @foreach (var (layer, layerIdx) in simLayers.EnumerateArray().Select((l, i) => (l, i))) {
+                            <div class="diag-row">
+                                <span class="diag-label">L@(layerIdx)</span>
+                                <span class="diag-value">@(GetNum(layer, "width").ToString("0"))×@(GetNum(layer, "height").ToString("0")) @@ @((GetNum(layer, "bitrate") / 1000).ToString("0")) kbps</span>
+                            </div>
+                        }
+                    }
+
+                    @* Quality Control (sender) *@
+                    @{
+                        var ownKind = m.OwnStreamingKind ?? StreamKind.Webcam;
+                        var qcSnap = m.RecordingSnapshots.FirstOrDefault(s => s.Kind == ownKind);
+                    }
+                    @if (qcSnap is not null) {
+                        <div class="diag-group-header">Quality Control</div>
+                        <div class="diag-row">
+                            <span class="diag-label">Target</span>
+                            <span class="diag-value">@(qcSnap.AggregatorTargetLayerCount) / @(qcSnap.MaxLayerCount) (effective: @(qcSnap.EffectiveLayerCount))</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Reason</span>
+                            <span class="diag-value">@qcSnap.LastReason (signal: @(SignalText(qcSnap.LastSignal)))</span>
+                        </div>
+                        @if (qcSnap.Cap is { } cap) {
+                            <div class="diag-row">
+                                <span class="diag-label">Cap</span>
+                                <span class="diag-value">@cap (override active)</span>
+                            </div>
+                        }
+                        <div class="diag-row">
+                            <span class="diag-label">Server max spatial</span>
+                            <span class="diag-value">@(qcSnap.ServerMaxSpatialLayer == int.MaxValue ? "uncapped" : qcSnap.ServerMaxSpatialLayer.ToString())</span>
+                        </div>
+                        @if (qcSnap.ColdStartTicksRemaining > 0) {
+                            <div class="diag-row">
+                                <span class="diag-label">Cold start</span>
+                                <span class="diag-value">@(qcSnap.ColdStartTicksRemaining) ticks remaining</span>
+                            </div>
+                        }
+                        @if (qcSnap.LastHealth is { } h) {
+                            <div class="diag-row">
+                                <span class="diag-label">EncodeRatio</span>
+                                <span class="diag-value">P50=@(h.EncodeRatioP50.ToString("F2")) P90=@(h.EncodeRatioP90.ToString("F2"))</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Backlog P90</span>
+                                <span class="diag-value">@(h.SenderBacklogP90Ms.ToString("F0")) ms</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Skips/window</span>
+                                <span class="diag-value">@(h.SenderSkipsPerWindow)</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Last ACK age</span>
+                                <span class="diag-value">@(h.LastAckAgeMs.ToString("F0")) ms</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Slot replace</span>
+                                <span class="diag-value">@(h.SlotReplacementRate.ToString("F2"))</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Connected</span>
+                                <span class="diag-value">@(h.IsConnected ? "yes" : "no")</span>
+                            </div>
+                        }
+                    }
                 </div>
             }
         </div>
@@ -359,12 +434,67 @@
                                         <span class="diag-value">reduction requested (slow ticks: @(GetNum(rd, "codecSlowTickCount").ToString("0")))</span>
                                     </div>
                                 }
+
+                                @* Quality Control (receiver, this stream) *@
+                                <div class="diag-group-header">Quality Control</div>
+                                @if (rd.TryGetProperty("forwarded", out var fwdQc) && fwdQc.ValueKind == JsonValueKind.Object) {
+                                    <div class="diag-row">
+                                        <span class="diag-label">Forwarded</span>
+                                        <span class="diag-value">L@(GetNum(fwdQc, "ForwardedSpatialLayerId").ToString("0")) @(GetNum(fwdQc, "ForwardedWidth").ToString("0"))×@(GetNum(fwdQc, "ForwardedHeight").ToString("0")) (obsMax=@(GetNum(fwdQc, "ObservedMaxSpatialLayer").ToString("0")))</span>
+                                    </div>
+                                }
+                                else {
+                                    <div class="diag-row">
+                                        <span class="diag-label">Forwarded</span>
+                                        <span class="diag-value diag-dim">no frames yet</span>
+                                    </div>
+                                }
+                                @{
+                                    int? verdictForStream = m.PlaybackVerdicts.TryGetValue(sid, out var v) ? v : null;
+                                }
+                                @if (verdictForStream is { } verdict) {
+                                    <div class="diag-row">
+                                        <span class="diag-label">Verdict</span>
+                                        <span class="diag-value">@(SignalText(verdict))</span>
+                                    </div>
+                                }
+                                @if (rd.TryGetProperty("requestedReceiveQuality", out var reqQ) && reqQ.ValueKind == JsonValueKind.Object) {
+                                    <div class="diag-row">
+                                        <span class="diag-label">Requested</span>
+                                        <span class="diag-value">maxSpatial=@(GetNum(reqQ, "maxSpatialLayer").ToString("0")) maxTemporal=@(FormatMaxTemporal(GetNum(reqQ, "maxTemporalLayer")))</span>
+                                    </div>
+                                }
+                                else {
+                                    <div class="diag-row">
+                                        <span class="diag-label">Requested</span>
+                                        <span class="diag-value diag-dim">default (server-driven)</span>
+                                    </div>
+                                }
                             </div>
                         }
                     </div>
                 }
             }
         </div>
+
+        @* Quality Control (aggregate) *@
+        @if (m.Streams.Any(s => !s.IsOwn)) {
+            <div class="diag-section">
+                <div class="diag-section-header">Quality Control (aggregate)</div>
+                <div class="diag-row">
+                    <span class="diag-label">Capacity</span>
+                    <span class="diag-value">@((m.PlaybackCapacityBytesPerSec * 8 / 1000).ToString("0")) kbps</span>
+                </div>
+                <div class="diag-row">
+                    <span class="diag-label">Aggregate health</span>
+                    <span class="diag-value">@(m.PlaybackAggregateHealth.ToString("F2"))</span>
+                </div>
+                <div class="diag-row">
+                    <span class="diag-label">Playback override</span>
+                    <span class="diag-value">@m.PlaybackOverride</span>
+                </div>
+            </div>
+        }
     </Body>
 </DialogFrame>
 
@@ -380,7 +510,17 @@
     private bool _showOwnStreamingDetails;
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private VideoQualityUI VideoQualityUI => Hub.VideoQualityUI;
     private IAuthors Authors => Hub.Authors;
+
+    private static string SignalText(int signal) => signal switch {
+        > 0 => "+1 (good)",
+        < 0 => "-1 (bad)",
+        _ => "0 (neutral)",
+    };
+
+    private static string FormatMaxTemporal(double v)
+        => v >= int.MaxValue / 2.0 ? "∞" : v.ToString("0");
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -426,7 +566,18 @@
         }
 
         var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken);
-        return new ComputedModel(ownStreamKind, streams, memberCount, account.IsAdmin);
+        var recordingSnapshots = VideoQualityUI.GetRecordingSnapshots();
+        var playbackSnap = VideoQualityUI.GetPlaybackSnapshot();
+        return new ComputedModel(
+            ownStreamKind,
+            streams,
+            memberCount,
+            account.IsAdmin,
+            recordingSnapshots,
+            playbackSnap.EstimatedCapacityBytesPerSec,
+            playbackSnap.AggregateHealth,
+            playbackSnap.Verdicts,
+            VideoQualityUI.PlaybackOverride);
     }
 
     private void OnToggleOwnStreamingDetails() {
@@ -471,13 +622,22 @@
                 _ownDiag = await JS.InvokeAsync<JsonElement>(JSCollectOwnMethod, kind);
             }
 
+            var samples = new List<VideoQualityUI.PlaybackStreamInfoLite>();
             foreach (var entry in State.Value.Streams) {
                 if (entry.IsOwn) continue;
                 var streamId = entry.Info.StreamId.Value;
                 var diag = await JS.InvokeAsync<JsonElement>(JSCollectRemoteMethod, streamId);
-                if (diag.ValueKind == JsonValueKind.Object)
+                if (diag.ValueKind == JsonValueKind.Object) {
                     _streamDiags[streamId] = diag;
+                    var bitrateBytesPerSec = (long)(GetNum(diag, "bitrateKbps") * 1000.0 / 8.0);
+                    var bufMs = (int)GetNum(diag, "pipelineLatencyMs");
+                    var keyframeSkips = (int)GetNum(diag, "skipToLiveCount");
+                    var streamAgeMs = (int)GetNum(diag, "streamAgeMs");
+                    samples.Add(new VideoQualityUI.PlaybackStreamInfoLite(
+                        streamId, bitrateBytesPerSec, bufMs, keyframeSkips, streamAgeMs));
+                }
             }
+            VideoQualityUI.TickPlayback(samples);
 
             await InvokeAsync(StateHasChanged);
         } catch {
@@ -649,8 +809,17 @@
         StreamKind? OwnStreamingKind,
         StreamEntry[] Streams,
         int MemberCount,
-        bool IsAdmin
+        bool IsAdmin,
+        IReadOnlyList<VideoQualityUI.RecordingQualitySnapshot> RecordingSnapshots,
+        long PlaybackCapacityBytesPerSec,
+        double PlaybackAggregateHealth,
+        IReadOnlyDictionary<string, int> PlaybackVerdicts,
+        VideoQualityUI.PlaybackOverrideMode PlaybackOverride
     ) {
-        public static readonly ComputedModel Empty = new(null, [], 0, false);
+        public static readonly ComputedModel Empty = new(
+            null, [], 0, false, [],
+            0, 0,
+            new Dictionary<string, int>(),
+            VideoQualityUI.PlaybackOverrideMode.Off);
     }
 }

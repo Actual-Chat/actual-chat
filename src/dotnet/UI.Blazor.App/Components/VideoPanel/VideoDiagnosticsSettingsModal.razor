@@ -1,5 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components.VideoPanel
+@using ActualChat.Streaming
 @using ActualChat.UI.Blazor.App.Module
+@using ActualChat.UI.Blazor.App.Services
 @inherits ComponentBase<AppUIHub>
 @implements IModalView<VideoDiagnosticsSettingsModal.Model>
 
@@ -30,14 +32,66 @@
                 <span class="diag-value">localStorage["video.debug.forceH264Only"]</span>
             </div>
         </div>
+
+        <div class="diag-section">
+            <div class="diag-section-header">Sender layer-count cap</div>
+            <div class="diag-row diag-dim">
+                Upper bound on simulcast layers per kind. The AIMD aggregator still
+                runs; the cap clamps its decision from above. None = no cap.
+                Cap = 1 collapses to single-encoder (simulcast off).
+                Session-only — resets on reload.
+            </div>
+            <div class="diag-row">
+                <span class="diag-label">Webcam</span>
+                <select class="diag-select" @onchange="@(e => OnCapChanged(StreamKind.Webcam, e.Value as string))">
+                    <option value="" selected="@(_webcamCap is null)">None</option>
+                    <option value="1" selected="@(_webcamCap == 1)">1</option>
+                    <option value="2" selected="@(_webcamCap == 2)">2</option>
+                    <option value="3" selected="@(_webcamCap == 3)">3</option>
+                </select>
+            </div>
+            <div class="diag-row">
+                <span class="diag-label">Screencast</span>
+                <select class="diag-select" @onchange="@(e => OnCapChanged(StreamKind.Screencast, e.Value as string))">
+                    <option value="" selected="@(_screencastCap is null)">None</option>
+                    <option value="1" selected="@(_screencastCap == 1)">1</option>
+                    <option value="2" selected="@(_screencastCap == 2)">2</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="diag-section">
+            <div class="diag-section-header">Playback override (global)</div>
+            <div class="diag-row diag-dim">
+                Forces ReceiveQuality on every remote stream. Off = server-driven
+                (default). Degrade = base layer only (Lowest). Keep = pin to
+                currently-forwarded layer per stream. Upgrade = top layer (Default).
+                Session-only — resets on reload.
+            </div>
+            <div class="diag-row">
+                <span class="diag-label">Mode</span>
+                <select class="diag-select" @onchange="@(e => OnPlaybackModeChanged(e.Value as string))">
+                    <option value="Off" selected="@(_playbackOverride == VideoQualityUI.PlaybackOverrideMode.Off)">Off</option>
+                    <option value="Degrade" selected="@(_playbackOverride == VideoQualityUI.PlaybackOverrideMode.Degrade)">Degrade</option>
+                    <option value="Keep" selected="@(_playbackOverride == VideoQualityUI.PlaybackOverrideMode.Keep)">Keep</option>
+                    <option value="Upgrade" selected="@(_playbackOverride == VideoQualityUI.PlaybackOverrideMode.Upgrade)">Upgrade</option>
+                </select>
+            </div>
+        </div>
     </Body>
 </DialogFrame>
 
 @code {
     private static readonly string JSGetMethod = $"{BlazorUIAppModule.ImportName}.getVideoDebugSettings";
     private static readonly string JSSetForceH264OnlyMethod = $"{BlazorUIAppModule.ImportName}.setVideoDebugForceH264Only";
+    private static readonly string JSCollectStreamHintsMethod = $"{BlazorUIAppModule.ImportName}.collectActiveStreamHints";
 
     private bool _forceH264Only;
+    private int? _webcamCap;
+    private int? _screencastCap;
+    private VideoQualityUI.PlaybackOverrideMode _playbackOverride = VideoQualityUI.PlaybackOverrideMode.Off;
+
+    private VideoQualityUI VideoQualityUI => Hub.VideoQualityUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -45,6 +99,9 @@
     protected override async Task OnInitializedAsync() {
         var settings = await JS.InvokeAsync<VideoDebugSettings>(JSGetMethod);
         _forceH264Only = settings.ForceH264Only;
+        _webcamCap = VideoQualityUI.GetRecordingCap(StreamKind.Webcam);
+        _screencastCap = VideoQualityUI.GetRecordingCap(StreamKind.Screencast);
+        _playbackOverride = VideoQualityUI.PlaybackOverride;
     }
 
     private async Task OnForceH264OnlyClick() {
@@ -52,6 +109,39 @@
         StateHasChanged();
         await JS.InvokeVoidAsync(JSSetForceH264OnlyMethod, _forceH264Only);
     }
+
+    private static string CapAsString(int? cap) => cap?.ToString() ?? "";
+
+    private async Task OnCapChanged(StreamKind kind, string? value) {
+        int? cap = string.IsNullOrEmpty(value) ? null : int.Parse(value);
+        if (kind == StreamKind.Webcam) _webcamCap = cap;
+        else _screencastCap = cap;
+        StateHasChanged();
+        await VideoQualityUI.SetRecordingCap(kind, cap, CancellationToken.None);
+    }
+
+    private async Task OnPlaybackModeChanged(string? value) {
+        if (!Enum.TryParse<VideoQualityUI.PlaybackOverrideMode>(value, out var mode))
+            mode = VideoQualityUI.PlaybackOverrideMode.Off;
+        _playbackOverride = mode;
+        StateHasChanged();
+        var hints = await CollectStreamHints();
+        await VideoQualityUI.SetPlaybackOverride(mode, hints, CancellationToken.None);
+    }
+
+    private async Task<IReadOnlyList<VideoQualityUI.PlaybackOverrideStreamHint>> CollectStreamHints() {
+        // Collect every active player + its currently-forwarded spatial layer
+        // (so Keep mode pins correctly). Reads JS-side getActivePlayers()
+        // registry directly — no chatId dependency, works even before the
+        // diagnostics modal has run a poll cycle.
+        var raw = await JS.InvokeAsync<JsHint[]>(JSCollectStreamHintsMethod);
+        var hints = new List<VideoQualityUI.PlaybackOverrideStreamHint>(raw.Length);
+        foreach (var h in raw)
+            hints.Add(new VideoQualityUI.PlaybackOverrideStreamHint(h.streamId, h.currentSpatialLayerId));
+        return hints;
+    }
+
+    private sealed record JsHint(string streamId, int currentSpatialLayerId);
 
     // Mirrors `VideoDebugSettings` in `video-diagnostics.ts`. JSInterop uses
     // System.Text.Json with web defaults (case-insensitive), so PascalCase

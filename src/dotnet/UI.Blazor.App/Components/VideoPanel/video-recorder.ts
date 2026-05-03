@@ -62,6 +62,10 @@ export interface OwnStreamDiagnostics {
         status: string;
         lastError: string;
     } | null;
+    simulcast: {
+        layerCount: number;
+        layers: { width: number; height: number; bitrate: number; scalabilityMode?: string }[];
+    } | null;
 }
 
 export interface VideoDevice {
@@ -1177,6 +1181,15 @@ export class VideoRecorder {
                 streamRecreations: streamStats.streamRecreations,
                 status: streamStats.status,
                 lastError: streamStats.lastError,
+            } : null,
+            simulcast: this.simulcastLayers && this.simulcastLayers.length > 0 ? {
+                layerCount: this.simulcastLayers.length,
+                layers: this.simulcastLayers.map(l => ({
+                    width: l.width,
+                    height: l.height,
+                    bitrate: l.bitrate,
+                    scalabilityMode: l.scalabilityMode,
+                })),
             } : null,
         };
     }

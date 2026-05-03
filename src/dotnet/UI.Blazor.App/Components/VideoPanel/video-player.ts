@@ -56,6 +56,22 @@ export function getActivePlayers(): ReadonlyMap<string, VideoPlayer> {
     return activePlayers;
 }
 
+// Most recent ReceiveQuality requested from the server, keyed by streamId.
+// Updated by the playback override push path; read by getDiagnosticsAsync so
+// the modal can show what the client is actively asking for. Cleared entries
+// (set null) mean "no client-driven request".
+const requestedReceiveQuality = new Map<string, { maxSpatialLayer: number; maxTemporalLayer: number } | null>();
+
+export function recordRequestedReceiveQuality(
+    streamId: string,
+    quality: { maxSpatialLayer: number; maxTemporalLayer: number } | null
+): void {
+    if (quality === null)
+        requestedReceiveQuality.delete(streamId);
+    else
+        requestedReceiveQuality.set(streamId, quality);
+}
+
 export interface RemoteStreamDiagnostics {
     streamId: string;
     authorId: string;
@@ -78,6 +94,17 @@ export interface RemoteStreamDiagnostics {
     codecSlowTickCount: number;
     decoderStats: DecoderStats | null;
     avDriftMs: number | null;
+    forwarded: {
+        ForwardedSpatialLayerId: number;
+        ForwardedWidth: number;
+        ForwardedHeight: number;
+        ObservedMaxSpatialLayer: number;
+    } | null;
+    requestedReceiveQuality: {
+        maxSpatialLayer: number;
+        maxTemporalLayer: number;
+    } | null;
+    streamAgeMs: number;
 }
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPlayer');
@@ -339,6 +366,13 @@ export class VideoPlayer {
     // reference because resolution adapts mid-stream.
     private lastKeyframeWidth = 0;
     private lastKeyframeHeight = 0;
+    // Server-forwarded SVC layer info — captured from each main-thread RPC
+    // frame. Powers the diagnostics modal's "Forwarded" row + the playback
+    // override "Keep" mode (pin to current layer).
+    private forwardedSpatialLayerId = -1;
+    private forwardedWidth = 0;
+    private forwardedHeight = 0;
+    private observedMaxSpatialLayer = -1;
 
     // Audio sync
     private startedAtMs: number;
@@ -1333,6 +1367,18 @@ export class VideoPlayer {
 
             this.receivedFrameCount++;
             this.receivedBytes += data.byteLength;
+            // Capture SVC layer info from each frame for diagnostics + the
+            // "Keep" playback override mode. Width/Height are present on
+            // keyframes only; track each non-zero update.
+            if (frame.SpatialLayerId !== undefined)
+                this.forwardedSpatialLayerId = frame.SpatialLayerId;
+            if (frame.MaxSpatialLayerId !== undefined
+                && frame.MaxSpatialLayerId > this.observedMaxSpatialLayer)
+                this.observedMaxSpatialLayer = frame.MaxSpatialLayerId;
+            if (frame.Width !== undefined && frame.Width > 0)
+                this.forwardedWidth = frame.Width;
+            if (frame.Height !== undefined && frame.Height > 0)
+                this.forwardedHeight = frame.Height;
             if (this.firstFrameReceivedTime === 0)
                 this.firstFrameReceivedTime = performance.now();
             if (offsetMs > this.lastArrivedOffsetMs)
@@ -1412,6 +1458,10 @@ export class VideoPlayer {
         // is wired (see docs/audio-pipeline-wip.md).
         const avDriftMs: number | null = null;
 
+        const requested = requestedReceiveQuality.get(this.streamId) ?? null;
+        const streamAgeMs = this.firstFrameReceivedTime > 0
+            ? Math.round(performance.now() - this.firstFrameReceivedTime)
+            : 0;
         return {
             streamId: this.streamId,
             authorId: this.authorId,
@@ -1437,6 +1487,14 @@ export class VideoPlayer {
             codecSlowTickCount: this.codecSlowTickCount,
             decoderStats,
             avDriftMs,
+            forwarded: this.forwardedSpatialLayerId >= 0 ? {
+                ForwardedSpatialLayerId: this.forwardedSpatialLayerId,
+                ForwardedWidth: this.forwardedWidth,
+                ForwardedHeight: this.forwardedHeight,
+                ObservedMaxSpatialLayer: this.observedMaxSpatialLayer,
+            } : null,
+            requestedReceiveQuality: requested,
+            streamAgeMs,
         };
     }
 
