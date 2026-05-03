@@ -16,6 +16,17 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     private const int ColdStartTicks = 2; // ~2 s of grace at 1 Hz
     private static readonly TimeSpan PlaybackHealthTtl = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan PlaybackQualityKeepAlivePeriod = TimeSpan.FromMinutes(1);
+
+    // Per-stream peak-rate decay. Allocator's `PredictedRateAtTop` reads the
+    // peak observed incoming byte rate so it doesn't underestimate top-tier
+    // cost when the receiver is currently subscribed to a lower simulcast
+    // tier (current rate ≈ baseRate then, but the real top rate is many
+    // times higher — without peak tracking, allocator climbs prematurely
+    // and oscillates). Peak decays slowly so a sender that genuinely
+    // lowered its top bitrate is eventually forgiven; 0.97/s halves in
+    // ~23 s, allowing a probe-back-to-top roughly every minute when the
+    // capacity estimator catches up.
+    private const double PeakDecayPerSecond = 0.97;
     private static readonly string JSGetDebugSettingsMethod = $"{BlazorUIAppModule.ImportName}.getVideoDebugSettings";
 
     private readonly Dictionary<StreamKind, RecordingAggregator> _recordingByKind = new() {
@@ -108,8 +119,12 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             snapshot.StreamAgeMs,
             snapshot.DecoderQueueDepthP90,
             snapshot.QualityReductionRequested);
-        lock (_playbackLock)
-            _playbackByStream[streamId] = new PlaybackHealthState(streamKind, snapshot, verdict, CpuTimestamp.Now);
+        lock (_playbackLock) {
+            var prev = _playbackByStream.GetValueOrDefault(streamId);
+            var peak = ComputeDecayedPeak(prev, snapshot.IncomingByteRate);
+            _playbackByStream[streamId] = new PlaybackHealthState(
+                streamKind, snapshot, verdict, CpuTimestamp.Now, peak);
+        }
         var reason = verdict switch {
             < 0 => PlaybackQualityReason.Backoff,
             > 0 => PlaybackQualityReason.Climb,
@@ -146,7 +161,8 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                         StreamAgeMs: int.MaxValue,
                         QualityReductionRequested: true),
                     Verdict: -1,
-                    LastSeen: CpuTimestamp.Now);
+                    LastSeen: CpuTimestamp.Now,
+                    PeakIncomingByteRate: 0);
             }
         }
         return RecomputePlaybackQuality(PlaybackQualityReason.Backoff, cancellationToken);
@@ -468,14 +484,31 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
 
         static StreamRequest ToStreamRequest(KeyValuePair<StreamId, PlaybackHealthState> entry)
         {
-            var top = Math.Max(1, entry.Value.Snapshot.IncomingByteRate);
+            var current = Math.Max(1, entry.Value.Snapshot.IncomingByteRate);
+            // Peak observed rate is the realistic top-tier cost: when this
+            // receiver is currently subscribed to a lower simulcast tier the
+            // current rate is the lower-tier rate, but the top tier costs
+            // many times more. Using `current` for both produced false-positive
+            // climbs (capacity ≈ baseRate × √2 always exceeds baseRate)
+            // → endless tier oscillation.
+            var top = Math.Max(current, entry.Value.PeakIncomingByteRate);
             var currentSpatial = Math.Max(0, entry.Value.Snapshot.CurrentMaxSpatial);
-            var baseRate = currentSpatial <= 0 ? top : Math.Max(1, top / (currentSpatial + 1));
+            var baseRate = currentSpatial <= 0 ? current : Math.Max(1, current / (currentSpatial + 1));
             var maxSpatialLayer = entry.Value.Snapshot.QualityReductionRequested
                 ? 0
                 : DefaultPlaybackMaxSpatialLayer(entry.Value.StreamKind);
             return new StreamRequest(entry.Key.Value, baseRate, top, maxSpatialLayer);
         }
+    }
+
+    private static long ComputeDecayedPeak(PlaybackHealthState? prev, long currentRate)
+    {
+        var current = Math.Max(0, currentRate);
+        if (prev is null)
+            return current;
+        var elapsedSec = Math.Max(0, prev.LastSeen.Elapsed.TotalSeconds);
+        var decayed = (long)(prev.PeakIncomingByteRate * Math.Pow(PeakDecayPerSecond, elapsedSec));
+        return Math.Max(decayed, current);
     }
 
     private static int DefaultPlaybackMaxSpatialLayer(StreamKind streamKind)
@@ -1008,5 +1041,6 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         StreamKind StreamKind,
         PlaybackHealthSnapshot Snapshot,
         int Verdict,
-        CpuTimestamp LastSeen);
+        CpuTimestamp LastSeen,
+        long PeakIncomingByteRate);
 }
