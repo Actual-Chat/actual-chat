@@ -129,18 +129,12 @@ let encoderRebuildAttempted = false;
 let encoderRebuildInFlight = false;
 let lastEncoderRebuildAtMs = 0;
 const ENCODER_REBUILD_COOLDOWN_MS = 5000;
-// One-shot diagnostic gate: dump full description + first IDR bytes of the
-// first HEVC keyframe per spatial layer after every fresh encoder setup or
-// codec switch. Lets us diff the bytes between AV1→HEVC switch (broken on
-// iOS/Edge HEVC HW) vs HEVC-from-start (works) without hex-truncation.
-const firstKeyframeDumpedByLayer = new Map<number, boolean>();
 let resizeCanvas: OffscreenCanvas | null = null;
 let resizeCtx: OffscreenCanvasRenderingContext2D | null = null;
 let downscaler: WebGpuDownscaler | null = null;
 let senderRotationDeg = 0;
 let startTimestamp: number | undefined = undefined;
 let sourceStartedAtMs: number | undefined = undefined;
-let lastLoggedFormat: string | null = '(unset)';
 let loggedI420Error = false;
 let loggedPreConvertSkipped = false;
 let loggedPreviewCloneError = false;
@@ -220,7 +214,6 @@ let segTotalProcessingTime = 0;
 let segDroppedFrames = 0;
 let segFrameCounter = 0;
 let hasValidMask = false;
-let loggedBlurFormat = false;
 
 interface QueuedFrame { frame: VideoFrame; sequenceNumber: number; timestamp: number }
 function startRecorderHealthAggregator(): void {
@@ -593,7 +586,6 @@ async function processPending(): Promise<void> {
                             { blurStrength: segConfig.blurRadius, maskDirty: false,
                                 outputWidth: segConfig.outputWidth, outputHeight: segConfig.outputHeight },
                             (result) => {
-                                if (!loggedBlurFormat) { loggedBlurFormat = true; infoLog?.log(`I420 path: GPU compute shader, frame format: ${result.frame.format}`); }
                                 segProcessedFrames++;
                                 emitPreviewAndEncode(result.frame);
                             }
@@ -644,7 +636,6 @@ async function processPending(): Promise<void> {
                         { blurStrength: segConfig.blurRadius, smoothingSource: gpuBuffer, smoothingAlpha,
                             outputWidth: segConfig.outputWidth, outputHeight: segConfig.outputHeight },
                         (result) => {
-                            if (!loggedBlurFormat) { loggedBlurFormat = true; warnLog?.log(`I420 path: GPU compute shader, frame format: ${result.frame.format}`); }
                             segProcessedFrames++;
                             emitPreviewAndEncode(result.frame);
                         }
@@ -962,11 +953,6 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             }
         }
 
-        if (processedFrame.format !== lastLoggedFormat) {
-            lastLoggedFormat = processedFrame.format;
-            infoLog?.log(`Frame format: ${processedFrame.format}, ${processedFrame.codedWidth}x${processedFrame.codedHeight}`);
-        }
-
         // Frames carry source-timeline timestamps; primary + simulcast extras
         // share one timeline here. Rebase to recording-anchor offsets happens
         // post-encode in onEncoderOutput.
@@ -1073,36 +1059,6 @@ function onEncoderOutput(chunkData: EncodedChunkData): void {
         }
     }
 
-    // [FIRST_KF_DUMP] One-shot diagnostic for HEVC: full description + first
-    // 128 bytes of bitstream on the first keyframe per spatial layer after a
-    // fresh setup or codec switch. Compare these bytes between AV1→HEVC switch
-    // (broken on iOS/Edge HEVC HW) vs HEVC-from-start (works) to determine
-    // whether the bitstream/description differ structurally or whether the
-    // problem is purely codec-string mismatch.
-    if (chunkData.type === 'key'
-        && (actualCodec.startsWith('hev1') || actualCodec.startsWith('hvc1'))) {
-        const layerId = chunkData.spatialLayerId ?? 0;
-        if (!firstKeyframeDumpedByLayer.get(layerId)) {
-            firstKeyframeDumpedByLayer.set(layerId, true);
-            const descLen = descBuffer ? descBuffer.byteLength : 0;
-            const dataLen = chunkBuffer.byteLength;
-            const descHex = descBuffer
-                ? Array.from(new Uint8Array(descBuffer))
-                    .map(b => b.toString(16).padStart(2, '0')).join('')
-                : '<none>';
-            const dataPreview = Math.min(128, dataLen);
-            const dataHex = Array.from(new Uint8Array(chunkBuffer, 0, dataPreview))
-                .map(b => b.toString(16).padStart(2, '0')).join('');
-            infoLog?.log(`onEncoderOutput: first-keyframe,codec=${actualCodec}, ` +
-                `seq=${chunkData.sequenceNumber}, ` +
-                `spatial=${chunkData.spatialLayerId ?? 0}, temporal=${chunkData.temporalLayerId ?? 0}, ` +
-                `dims=${chunkData.width}x${chunkData.height}, ` +
-                `descLen=${descLen}, dataLen=${dataLen}`);
-            infoLog?.log(`onEncoderOutput: first-keyframe,descHex=${descHex}`);
-            infoLog?.log(`onEncoderOutput: first-keyframe,dataHex(first ${dataPreview})=${dataHex}`);
-        }
-    }
-
     // Rebase chunk timestamp from source-camera timeline onto recording-anchor
     // (startTimestamp, set on first source frame). Math.round keeps ticks
     // int64-safe — sub-µs fractions on MSTP-wrapped getUserMedia would
@@ -1199,10 +1155,6 @@ function deliverChunkToStream(
         sourceWidth: isKeyFrame ? sourceWidth : undefined,
         sourceHeight: isKeyFrame ? sourceHeight : undefined,
     };
-
-    if (isKeyFrame) {
-        infoLog?.log(`Streaming keyframe: spatial=${spatialLayerId ?? 0}, temporal=${temporalLayerId ?? 0}, seq=${sequenceNumber}, ${frameWidth}x${frameHeight}, offsetMs=${(timestamp / 1000).toFixed(0)}, ${(chunkData.length / 1024).toFixed(2)} KB`);
-    }
 
     // Description handling:
     // - AVC AnnexB: SPS/PPS embedded inline in every keyframe → skip description entirely.
@@ -1331,7 +1283,6 @@ function onEncoderError(error: Error): void {
                 // next keyframe — drop the cached layer-0 entry so the worker
                 // re-emits the description for downstream consumers.
                 storedDescriptionBytesByLayer.delete(0);
-                firstKeyframeDumpedByLayer.delete(0);
             })
             .catch((rebuildErr: unknown) => {
                 encoderRebuildInFlight = false;
@@ -1427,7 +1378,6 @@ function setupEncoders(config: VideoProcessingConfig): void {
     // Fresh encoder instances emit fresh HVCC/AVCC on their first keyframe — drop
     // any cached descriptions from prior encoder generation to avoid stale bytes.
     storedDescriptionBytesByLayer.clear();
-    firstKeyframeDumpedByLayer.clear();
     // Reuse pooled encoder if codec matches — keeps NVENC session held across
     // stop/start, avoiding `OperationError: Encoder initialization error` from
     // the previous session's slow async release.
@@ -1654,7 +1604,6 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                     && codedW === frameH && codedH === frameW && codedW !== frameW;
                 let detection: OrientationStats['rotationDetection'] = 'none';
                 if (isRotated || isRotatedByCoded) {
-                    warnLog?.log(`Frame ${frameW}x${frameH} (coded: ${codedW}x${codedH}) is rotated vs config ${encoderConfig.width}x${encoderConfig.height}`);
                     needsRotation = true;
                     detection = isRotated ? 'dimensions' : 'coded';
                     // Keep encoder config at portrait dimensions — resizeFrame() rotate90 will
@@ -2077,7 +2026,7 @@ export const serverImpl: VideoProcessingWorker = {
                 try { await videoStream.whenDisposed; } catch { /* ignore */ }
                 videoStream = null;
             }
-            codecSettings = null; startTimestamp = undefined; sourceStartedAtMs = undefined; pendingStreamFrames = []; storedDescriptionBytesByLayer.clear(); firstKeyframeDumpedByLayer.clear();
+            codecSettings = null; startTimestamp = undefined; sourceStartedAtMs = undefined; pendingStreamFrames = []; storedDescriptionBytesByLayer.clear();
             if (lastEncodedFrame) { lastEncodedFrame.close(); lastEncodedFrame = null; }
             pendingEncoderFrame.clear();
             // Synchronous configure() failure inside switchCodec already surfaces via
@@ -2336,10 +2285,10 @@ export const serverImpl: VideoProcessingWorker = {
         // Reset all state
         encoder = null; encoderConfig = null; encodersInitialized = false; onnxSession = null; segConfig = null; resolvedModelConfig = null;
         segInitialized = false; blurEnabled = false; resizeCanvas = null; resizeCtx = null;
-        startTimestamp = undefined; sourceStartedAtMs = undefined; lastLoggedFormat = '(unset)'; loggedI420Error = false; loggedPreConvertSkipped = false;
+        startTimestamp = undefined; sourceStartedAtMs = undefined; loggedI420Error = false; loggedPreConvertSkipped = false;
         slotReplacements = 0; slotArrivals = 0; lastSlotCheckTime = 0; slotPressureNotified = false;
         dimensionsReconciled = false; needsRotation = false; orientationStats = null; sourceWidth = 0; sourceHeight = 0; vadSpeaking = true; vadRemoteStreamCount = 0; vadLastPassedFrameTime = 0;
-        segFrameCounter = 0; hasValidMask = false; loggedBlurFormat = false; processingFrame = false; frameSequence = 0;
+        segFrameCounter = 0; hasValidMask = false; processingFrame = false; frameSequence = 0;
         segProcessedFrames = 0; segTotalInferenceTime = 0; segTotalBlurTime = 0; segTotalProcessingTime = 0; segDroppedFrames = 0;
         videoStream = null; lastVideoStream = null; pendingStreamFrames = [];
         codecSettings = null; storedDescriptionBytesByLayer.clear();
