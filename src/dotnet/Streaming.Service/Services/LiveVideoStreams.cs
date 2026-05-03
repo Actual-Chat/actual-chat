@@ -215,10 +215,11 @@ public class LiveVideoStreams : ILiveVideoStreams
             AppMeters.VideoReceiveCapacityBps.Record(info.EstimatedCapacityBytesPerSec);
             AppMeters.VideoReceiveAggregateHealth.Record(info.AggregateHealth);
             foreach (var (_, s) in info.Streams) {
-                AppMeters.VideoLatency.Record(s.BufferDurationMsP50);
+                var priorityTag = PriorityTag(s.Priority);
+                AppMeters.VideoLatency.Record(s.BufferDurationMsP50, priorityTag);
                 if (s.KeyframeSkipsInWindow > 0)
-                    AppMeters.VideoReceiveKeyframeSkips.Add(s.KeyframeSkipsInWindow);
-                AppMeters.VideoReceiveDecoderQueue.Record(s.DecoderQueueDepthP90);
+                    AppMeters.VideoReceiveKeyframeSkips.Add(s.KeyframeSkipsInWindow, priorityTag);
+                AppMeters.VideoReceiveDecoderQueue.Record(s.DecoderQueueDepthP90, priorityTag);
             }
         }
 
@@ -297,6 +298,9 @@ public class LiveVideoStreams : ILiveVideoStreams
             return streamInfo.Priority == PlaybackStreamPriority.Primary ? 1 : 0;
         }
     }
+
+    private static KeyValuePair<string, object?> PriorityTag(PlaybackStreamPriority priority)
+        => new("priority", priority == PlaybackStreamPriority.Primary ? "primary" : "secondary");
 
     // Nested types
 
