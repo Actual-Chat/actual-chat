@@ -32,6 +32,9 @@ import { OffThreadRenderBackend, isOffThreadPlausible } from './render-backend-m
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 import { AC, VIDEO, whenAppConstantsReady } from 'app-constants';
+import { OwnedArrayBufferTracker, ReplaceableSlot } from 'buffers';
+import { SharedSettings } from 'shared-settings';
+import { SharedSettingsWorkerSync } from 'shared-settings-worker';
 
 // Backend selection: prefer the off-thread renderer wherever a generator API
 // (MediaStreamTrackGenerator on Chromium, VideoTrackGenerator on Safari) is
@@ -56,22 +59,6 @@ export function getActivePlayers(): ReadonlyMap<string, VideoPlayer> {
     return activePlayers;
 }
 
-// Most recent ReceiveQuality requested from the server, keyed by streamId.
-// Updated by the playback override push path; read by getDiagnosticsAsync so
-// the modal can show what the client is actively asking for. Cleared entries
-// (set null) mean "no client-driven request".
-const requestedReceiveQuality = new Map<string, { maxSpatialLayer: number; maxTemporalLayer: number } | null>();
-
-export function recordRequestedReceiveQuality(
-    streamId: string,
-    quality: { maxSpatialLayer: number; maxTemporalLayer: number } | null
-): void {
-    if (quality === null)
-        requestedReceiveQuality.delete(streamId);
-    else
-        requestedReceiveQuality.set(streamId, quality);
-}
-
 export interface RemoteStreamDiagnostics {
     streamId: string;
     authorId: string;
@@ -94,17 +81,6 @@ export interface RemoteStreamDiagnostics {
     codecSlowTickCount: number;
     decoderStats: DecoderStats | null;
     avDriftMs: number | null;
-    forwarded: {
-        ForwardedSpatialLayerId: number;
-        ForwardedWidth: number;
-        ForwardedHeight: number;
-        ObservedMaxSpatialLayer: number;
-    } | null;
-    requestedReceiveQuality: {
-        maxSpatialLayer: number;
-        maxTemporalLayer: number;
-    } | null;
-    streamAgeMs: number;
 }
 
 interface PlaybackHealthSnapshot {
@@ -168,79 +144,15 @@ interface PendingFrame {
     close(): void;
 }
 
-/**
- * Decoded-frame replaceable slot (capacity 1). `push` closes any prior
- * pending frame before storing the new one — implements the doc's
- * `video presentation` replaceable slot (docs/video-pipeline.md). The
- * encoded pre-decode buffer in decoder-worker.ts owns playback latency;
- * the canvas presentation path only needs the most-recent decoded
- * frame. Exposes a Denque-like API for the few peekFront/peekBack
- * call sites in onRenderFrame.
- */
-class SingleSlot<T extends { close(): void }> {
-    private slot: T | null = null;
-    get length(): number { return this.slot ? 1 : 0; }
-    isEmpty(): boolean { return this.slot === null; }
-    push(item: T): void {
-        if (this.slot) {
-            try { this.slot.close(); } catch { /* already closed */ }
-        }
-        this.slot = item;
-    }
-    shift(): T | undefined {
-        const v = this.slot ?? undefined;
-        this.slot = null;
-        return v;
-    }
-    peekFront(): T | undefined { return this.slot ?? undefined; }
-    peekBack(): T | undefined { return this.slot ?? undefined; }
-    peekAt(index: number): T | undefined {
-        return index === 0 ? (this.slot ?? undefined) : undefined;
-    }
-}
-
-function maxSpatialForRenderQualityLevel(level: number | null): number {
-    if (level === null)
-        return DEFAULT_MAX_SPATIAL_LAYER;
-    if (level >= 4)
-        return 0;
-    if (level >= 3)
-        return 1;
-    return DEFAULT_MAX_SPATIAL_LAYER;
-}
-
-// Extract an owned ArrayBuffer from a Uint8Array. msgpack-decoded byte fields
-// may be either fully-owned (whole buffer = view) or shared subarrays into a
-// larger decode buffer. Fast path: when the view spans the whole underlying
-// buffer, return it directly — zero alloc, zero copy. Otherwise slice() to get
-// an owned copy. The returned buffer is safe to detach (transfer across worker
-// boundary or pass into `new EncodedVideoChunk({ transfer: [...] })`).
-// Diagnostic counters: track how often the fast path (zero-alloc) fires vs the
-// slow path (slice). Logged every OWNED_ARRAY_BUFFER_LOG_INTERVAL invocations.
-// If slow dominates, msgpack returns shared subarrays and a buffer-pool tweak
-// might be worth it; if fast dominates, Phase A is sufficient on this hop.
-let ownedArrayBufferFastCount = 0;
-let ownedArrayBufferSlowCount = 0;
+const ownedArrayBufferTracker = new OwnedArrayBufferTracker();
 const OWNED_ARRAY_BUFFER_LOG_INTERVAL = 300;
-function ownedArrayBuffer(view: Uint8Array): ArrayBuffer {
-    const isOwned = view.byteOffset === 0 && view.byteLength === view.buffer.byteLength;
-    if (isOwned) {
-        ownedArrayBufferFastCount++;
-    } else {
-        ownedArrayBufferSlowCount++;
-    }
-    const total = ownedArrayBufferFastCount + ownedArrayBufferSlowCount;
-    if (total % OWNED_ARRAY_BUFFER_LOG_INTERVAL === 0) {
-        const fastPct = (ownedArrayBufferFastCount / total * 100).toFixed(1);
-        infoLog?.log(`ownedArrayBuffer: fast=${ownedArrayBufferFastCount} ` +
-            `slow=${ownedArrayBufferSlowCount} (${fastPct}% fast)`);
-    }
-    if (isOwned) {
-        // msgpack-decoded byte fields are always plain ArrayBuffer (never
-        // SharedArrayBuffer); cast narrows the ArrayBufferLike union.
-        return view.buffer as ArrayBuffer;
-    }
-    return view.slice().buffer;
+function getOwnedArrayBuffer(view: Uint8Array): ArrayBuffer {
+    const result = ownedArrayBufferTracker.get(view);
+    const stats = ownedArrayBufferTracker.stats;
+    if (stats.totalCount % OWNED_ARRAY_BUFFER_LOG_INTERVAL === 0)
+        infoLog?.log(`ownedArrayBuffer: fast=${stats.fastCount} ` +
+            `slow=${stats.slowCount} (${(stats.fastRatio * 100).toFixed(1)}% fast)`);
+    return result;
 }
 
 function arrayBufferEqual(a: AllowSharedBufferSource, b: AllowSharedBufferSource): boolean {
@@ -282,7 +194,11 @@ export class VideoPlayer {
     // Single decoded-frame slot — the doc's `video presentation` replaceable
     // slot. Encoded pre-decode buffer in decoder-worker.ts owns playback
     // latency, so this path only needs the most-recent decoded frame.
-    private pendingFrames = new SingleSlot<PendingFrame>();
+    private pendingFrames = new ReplaceableSlot<PendingFrame>({
+        dispose: frame => {
+            try { frame.close(); } catch { /* already closed */ }
+        },
+    });
     private readonly isSafari: boolean;
     private conversionQueue: Promise<void> = Promise.resolve();
     private isPlaying = false;
@@ -315,6 +231,7 @@ export class VideoPlayer {
     private delegateEntryCount = 0;
     private connectivityHandlerOnline: EventHandler<boolean> | null = null;
     private connectivityHandlerConnected: EventHandler<boolean> | null = null;
+    private sharedSettingsRegistration: Disposable | null = null;
 
     // Frame pacing state
     private playbackStartTime = 0;     // wall-clock ms (performance.now) when first frame rendered
@@ -394,13 +311,6 @@ export class VideoPlayer {
     // reference because resolution adapts mid-stream.
     private lastKeyframeWidth = 0;
     private lastKeyframeHeight = 0;
-    // Server-forwarded SVC layer info — captured from each main-thread RPC
-    // frame. Powers the diagnostics modal's "Forwarded" row + the playback
-    // override "Keep" mode (pin to current layer).
-    private forwardedSpatialLayerId = -1;
-    private forwardedWidth = 0;
-    private forwardedHeight = 0;
-    private observedMaxSpatialLayer = -1;
 
     // Audio sync
     private startedAtMs: number;
@@ -588,7 +498,8 @@ export class VideoPlayer {
             // Propagate app constants. Fire-and-forget: the message queues
             // ahead of `initialize` / `prewarmRpc` / any other RPC.
             await whenAppConstantsReady;
-            void this.decoderWorker.init(AC);
+            void this.decoderWorker.init(AC, SharedSettings.all);
+            this.sharedSettingsRegistration = SharedSettingsWorkerSync.register(this.decoderWorker);
 
             // Mirror main-thread ConnectivityUI → worker's WorkerConnectivityUI
             // so the worker's Api peer honours `isDotNetRpcConnected`.
@@ -638,6 +549,7 @@ export class VideoPlayer {
             // chunk delivery inside startPullInWorker — adds visible delay to
             // the rotating-indicator window on iOS.
             const apiUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
+            SharedSettings.update({ apiUrl });
             void this.decoderWorker.prewarmRpc(apiUrl, rpcNoWait);
 
             // Off-thread renderer activation now happens inside `startPull`,
@@ -1126,10 +1038,10 @@ export class VideoPlayer {
         // returns owned buffers for top-level bin fields). On the cross-worker
         // hop the RPC framework auto-detects trailing ArrayBuffer args and
         // transfers them (zero-copy across the postMessage boundary).
-        const dataBuffer = ownedArrayBuffer(frameData);
+        const dataBuffer = getOwnedArrayBuffer(frameData);
         let descBuffer: ArrayBuffer | undefined;
         if (description && description.length > 0) {
-            descBuffer = ownedArrayBuffer(description);
+            descBuffer = getOwnedArrayBuffer(description);
         }
 
         if (this.useStreams && this.chunkInputChannel) {
@@ -1395,18 +1307,6 @@ export class VideoPlayer {
 
             this.receivedFrameCount++;
             this.receivedBytes += data.byteLength;
-            // Capture SVC layer info from each frame for diagnostics + the
-            // "Keep" playback override mode. Width/Height are present on
-            // keyframes only; track each non-zero update.
-            if (frame.SpatialLayerId !== undefined)
-                this.forwardedSpatialLayerId = frame.SpatialLayerId;
-            if (frame.MaxSpatialLayerId !== undefined
-                && frame.MaxSpatialLayerId > this.observedMaxSpatialLayer)
-                this.observedMaxSpatialLayer = frame.MaxSpatialLayerId;
-            if (frame.Width !== undefined && frame.Width > 0)
-                this.forwardedWidth = frame.Width;
-            if (frame.Height !== undefined && frame.Height > 0)
-                this.forwardedHeight = frame.Height;
             if (this.firstFrameReceivedTime === 0)
                 this.firstFrameReceivedTime = performance.now();
             if (offsetMs > this.lastArrivedOffsetMs)
@@ -1486,10 +1386,6 @@ export class VideoPlayer {
         // is wired (see docs/audio-pipeline-wip.md).
         const avDriftMs: number | null = null;
 
-        const requested = requestedReceiveQuality.get(this.streamId) ?? null;
-        const streamAgeMs = this.firstFrameReceivedTime > 0
-            ? Math.round(performance.now() - this.firstFrameReceivedTime)
-            : 0;
         return {
             streamId: this.streamId,
             authorId: this.authorId,
@@ -1515,14 +1411,6 @@ export class VideoPlayer {
             codecSlowTickCount: this.codecSlowTickCount,
             decoderStats,
             avDriftMs,
-            forwarded: this.forwardedSpatialLayerId >= 0 ? {
-                ForwardedSpatialLayerId: this.forwardedSpatialLayerId,
-                ForwardedWidth: this.forwardedWidth,
-                ForwardedHeight: this.forwardedHeight,
-                ObservedMaxSpatialLayer: this.observedMaxSpatialLayer,
-            } : null,
-            requestedReceiveQuality: requested,
-            streamAgeMs,
         };
     }
 
@@ -1572,6 +1460,7 @@ export class VideoPlayer {
         }
 
         const apiUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
+        SharedSettings.update({ apiUrl });
         // Hand the bg canvas to the worker so it can paint a low-res blurred
         // backdrop directly (see §13). transferControlToOffscreen() can be
         // called only once per element across the lifetime of the document —
@@ -1593,19 +1482,14 @@ export class VideoPlayer {
                 `(alreadyTransferred=${this.bgOffscreenTransferred}, ` +
                 `transferFn=${typeof (this.bgCanvasEl as { transferControlToOffscreen?: unknown }).transferControlToOffscreen})`);
         }
-        // Snapshot ServerClock skew for the worker. Worker has no ServerClock;
-        // it reconstructs server-aligned now via `Date.now() + offset`. Drift
-        // over a typical call is < 50 ms, well within the ±100 ms drift-clamp
-        // applied inside MstgSelector.tick(). One snapshot is enough.
-        const serverClockOffsetMs = ServerClock.now() - Date.now();
         try {
             await this.decoderWorker.startPullInWorker(
                 streamId, skipToMs, apiUrl,
-                this.startedAtMs, serverClockOffsetMs, JITTER_BUFFER_MS,
+                this.startedAtMs, JITTER_BUFFER_MS,
                 mainWritable,
                 bgOffscreen);
             this.offThreadPullActive = true;
-            debugLog?.log(`Off-thread pull started for ${streamId}, skipTo=${skipToMs}ms (tier ${mainWritable ? 2 : 1}), serverClockOffsetMs=${serverClockOffsetMs.toFixed(0)}`);
+            debugLog?.log(`Off-thread pull started for ${streamId}, skipTo=${skipToMs}ms (tier ${mainWritable ? 2 : 1})`);
             return true;
         } catch (e) {
             warnLog?.log('startPullInWorker rejected:', e);
@@ -1697,6 +1581,10 @@ export class VideoPlayer {
             ConnectivityUI.isConnectedChanged.remove(this.connectivityHandlerConnected);
             this.connectivityHandlerConnected = null;
         }
+        if (this.sharedSettingsRegistration) {
+            this.sharedSettingsRegistration.dispose();
+            this.sharedSettingsRegistration = null;
+        }
 
         // Close all pending frames
         while (!this.pendingFrames.isEmpty()) {
@@ -1766,7 +1654,7 @@ export class VideoPlayer {
         // the source's claimed start time). Audio catch-up policy compares this
         // against the audio-side equivalent measured at the speaker. Webcam
         // streams only — screencast lag is filtered out by the .NET handler.
-        const sysNow = Date.now();
+        const sysNow = ServerClock.now();
         const presentationLagMs = sysNow - renderedAtMs;
         this.reportPresentationLag(this.lastRenderedOffsetMs, 'canvas-latency-report', presentationLagMs);
         infoLog?.log(
@@ -1927,7 +1815,7 @@ export class VideoPlayer {
     }
 
     private reportPresentationLag(renderedOffsetMs: number, source: string, presentationLagMs?: number): void {
-        const lagMs = presentationLagMs ?? Date.now() - (this.startedAtMs + renderedOffsetMs);
+        const lagMs = presentationLagMs ?? ServerClock.now() - (this.startedAtMs + renderedOffsetMs);
         void this.blazorRef.invokeMethodAsync('OnPresentationLag', lagMs)
             .catch(() => { /* ignore */ });
     }
@@ -2007,4 +1895,14 @@ export class VideoPlayer {
             warnLog?.log('reportEnded error:', e);
         }
     }
+}
+
+function maxSpatialForRenderQualityLevel(level: number | null): number {
+    if (level === null)
+        return DEFAULT_MAX_SPATIAL_LAYER;
+    if (level >= 4)
+        return 0;
+    if (level >= 3)
+        return 1;
+    return DEFAULT_MAX_SPATIAL_LAYER;
 }

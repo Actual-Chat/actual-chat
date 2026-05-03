@@ -293,7 +293,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         ChatId chatId,
         ChatEntryId? repliedChatEntryId,
         int preSkip,
-        Moment firstFrameCapturedAt,
+        Moment firstFrameSourceCapturedAt,
         ChannelReader<IMemoryOwner<byte>> packetReader,
         CancellationToken cancellationToken)
     {
@@ -308,14 +308,13 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         // the next iteration picks them up. Frames that were in the stream sender's
         // un-ACKed window at peer-change are lost (the old server-side entry ends there);
         // everything in the channel is preserved.
-        var serverClock = Clocks.ServerClock;
         var session = _hub.Session;
 
         while (!cancellationToken.IsCancellationRequested) {
             // Per-call state: each iteration is a fresh PushAudio = fresh chat entry,
-            // so packetIndex (→ frame Offset) and clientStartOffset reset.
+            // so packetIndex (→ frame Offset) and sourceStartOffset reset.
             var packetIndex = 0;
-            var clientStartOffset = firstFrameCapturedAt.EpochOffset.TotalSeconds;
+            var sourceStartOffsetSeconds = firstFrameSourceCapturedAt.EpochOffset.TotalSeconds;
 
             async IAsyncEnumerable<AudioFrame> BuildFrames(
                 [EnumeratorCancellation] CancellationToken callCancellationToken = default)
@@ -333,13 +332,13 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 }
             }
 
-            var frameStream = BuildFrames().SuppressCancellation(cancellationToken);
+            var frameStream = BuildFrames(cancellationToken).SuppressCancellation(cancellationToken);
             try {
                 await StreamClient.PushAudio(
                     session,
                     chatId.Value,
                     repliedChatEntryId?.Value,
-                    clientStartOffset,
+                    sourceStartOffsetSeconds,
                     preSkip,
                     frameStream,
                     cancellationToken).ConfigureAwait(false);
@@ -364,7 +363,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         }
     }
 
-    private async Task<ChannelWriter<IMemoryOwner<byte>>?> CreateAudioStream(Moment firstFrameCapturedAt, CancellationToken cancellationToken)
+    private async Task<ChannelWriter<IMemoryOwner<byte>>?> CreateAudioStream(Moment firstFrameSourceCapturedAt, CancellationToken cancellationToken)
     {
         ChatId? chatId;
         ChatEntryId? repliedChatEntryId;
@@ -389,7 +388,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             });
 
         // TODO(AK): Specify PreSkip
-        _sendTask = SendAudio(chatId, repliedChatEntryId, 0, firstFrameCapturedAt, stream.Reader, cancellationToken);
+        _sendTask = SendAudio(chatId, repliedChatEntryId, 0, firstFrameSourceCapturedAt, stream.Reader, cancellationToken);
         lock (_sync) {
             _currentStream = stream;
             _repliedChatEntryId = null; // Clear so it's only used once
@@ -417,7 +416,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
         private readonly BlockRingBuffer<float> _vadBuffer = new (Constants.Audio.RecordingSampleRate * 2); // 2s
         private readonly BlockRingBuffer<float> _encodingBuffer = new (Constants.Audio.RecordingSampleRate / 2); // 500ms
-        private readonly Queue<Moment> _encodingFrameCapturedAts = new();
+        private readonly Queue<Moment> _encodingFrameSourceCapturedAts = new();
 
         private FuncWorker? _encodeSendWorker;
         private bool _voiceActive;
@@ -473,7 +472,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             // Push frame to buffers
             var data = frame.Span;
             var isVoiceActive = _voiceActive;
-            var capturedAt = engine.Clocks.ServerClock.Now
+            var sourceCapturedAt = engine.Clocks.ServerClock.Now
                 - TimeSpan.FromSeconds((double)data.Length / Constants.Audio.RecordingSampleRate);
 
             // Push to VAD buffer (fire-and-forget: drop if full)
@@ -482,7 +481,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             // Push to encoding buffer
             if (isVoiceActive) {
                 if (_encodingBuffer.TryWrite(data))
-                    _encodingFrameCapturedAts.Enqueue(capturedAt);
+                    _encodingFrameSourceCapturedAts.Enqueue(sourceCapturedAt);
             }
             else {
                 if (!_encodingBuffer.TryWrite(data)) {
@@ -493,15 +492,15 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                     while (!pushed && retryCount++ < 32) {
                         if (!_encodingBuffer.TryRead(skipBuf, out _))
                             break;
-                        _encodingFrameCapturedAts.TryDequeue(out _);
+                        _encodingFrameSourceCapturedAts.TryDequeue(out _);
 
                         pushed = _encodingBuffer.TryWrite(data);
                     }
                     if (pushed)
-                        _encodingFrameCapturedAts.Enqueue(capturedAt);
+                        _encodingFrameSourceCapturedAts.Enqueue(sourceCapturedAt);
                 }
                 else
-                    _encodingFrameCapturedAts.Enqueue(capturedAt);
+                    _encodingFrameSourceCapturedAts.Enqueue(sourceCapturedAt);
             }
             return Task.CompletedTask;
         }
@@ -530,9 +529,9 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 if (_voiceActive) return;
 
                 // Trim pre-roll: read all buffered audio, find speech onset, keep only from there
-                var firstFrameCapturedAt = TrimPreRollBuffer();
+                var firstFrameSourceCapturedAt = TrimPreRollBuffer();
 
-                var stream = await engine.CreateAudioStream(firstFrameCapturedAt, cancellationToken).ConfigureAwait(false);
+                var stream = await engine.CreateAudioStream(firstFrameSourceCapturedAt, cancellationToken).ConfigureAwait(false);
                 if (stream == null) return;
 
                 _encodeSendWorker = FuncWorker.Start(ct => EncodeAndSend(stream, ct), cancellationToken);
@@ -552,7 +551,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         /// <summary>
         /// Trims the encoding buffer pre-roll by discarding silent frames before speech onset.
         /// Mirrors the Web's opus-encoder-worker processQueue('in') trimming logic.
-        /// Returns the capture timestamp of the first frame remaining in the buffer after trimming.
+        /// Returns the source timestamp of the first frame remaining in the buffer after trimming.
         /// </summary>
         private Moment TrimPreRollBuffer()
         {
@@ -560,28 +559,28 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             const int preRollFrameCount = Constants.Audio.VoiceStartPreRollFrameCount;
 
             var bufferedSamples = _encodingBuffer.Count;
-            var fallbackCapturedAt = engine.Clocks.ServerClock.Now
+            var fallbackSourceCapturedAt = engine.Clocks.ServerClock.Now
                 - TimeSpan.FromSeconds((double)bufferedSamples / Constants.Audio.RecordingSampleRate);
             if (bufferedSamples < frameLen)
-                return _encodingFrameCapturedAts.TryPeek(out var capturedAt)
-                    ? capturedAt
-                    : fallbackCapturedAt;
+                return _encodingFrameSourceCapturedAts.TryPeek(out var sourceCapturedAt)
+                    ? sourceCapturedAt
+                    : fallbackSourceCapturedAt;
 
             // Read all buffered audio into a temporary array
             var frameCount = bufferedSamples / frameLen;
             var totalSamples = frameCount * frameLen;
             var tempBuffer = new float[totalSamples];
             var gains = new double[frameCount];
-            var capturedAts = new Moment[frameCount];
+            var sourceCapturedAts = new Moment[frameCount];
 
             // Read frame by frame and compute gains
             for (int i = 0; i < frameCount; i++) {
                 var frameSpan = tempBuffer.AsSpan(i * frameLen, frameLen);
                 if (!_encodingBuffer.TryRead(frameSpan, out _))
                     break;
-                capturedAts[i] = _encodingFrameCapturedAts.TryDequeue(out var capturedAt)
-                    ? capturedAt
-                    : fallbackCapturedAt + TimeSpan.FromMilliseconds(i * Constants.Audio.OpusFrameDurationMs);
+                sourceCapturedAts[i] = _encodingFrameSourceCapturedAts.TryDequeue(out var sourceCapturedAt)
+                    ? sourceCapturedAt
+                    : fallbackSourceCapturedAt + TimeSpan.FromMilliseconds(i * Constants.Audio.OpusFrameDurationMs);
                 gains[i] = AudioExt.ApproximateGain(frameSpan);
             }
 
@@ -613,11 +612,11 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             var keepLength = framesToKeep * frameLen;
             _encodingBuffer.TryWrite(tempBuffer.AsSpan(keepStart, keepLength));
             for (var i = framesToDiscard; i < frameCount; i++)
-                _encodingFrameCapturedAts.Enqueue(capturedAts[i]);
+                _encodingFrameSourceCapturedAts.Enqueue(sourceCapturedAts[i]);
 
-            return _encodingFrameCapturedAts.TryPeek(out var firstCapturedAt)
-                ? firstCapturedAt
-                : fallbackCapturedAt;
+            return _encodingFrameSourceCapturedAts.TryPeek(out var firstSourceCapturedAt)
+                ? firstSourceCapturedAt
+                : fallbackSourceCapturedAt;
         }
 
         private Task StopEncodeSendWorker()
@@ -637,7 +636,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                     await whenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
                     continue;
                 }
-                _encodingFrameCapturedAts.TryDequeue(out _);
+                _encodingFrameSourceCapturedAts.TryDequeue(out _);
                 yield return owner;
             }
         }

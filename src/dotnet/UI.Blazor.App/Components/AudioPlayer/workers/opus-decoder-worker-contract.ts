@@ -1,8 +1,10 @@
 import { RpcNoWait, RpcTimeout } from 'rpc';
 import type { AppConstants } from 'app-constants';
+import type { SharedSettingsSnapshot } from 'shared-settings';
+import type { SharedSettingsWorker } from 'shared-settings-worker';
 
-export interface OpusDecoderWorker {
-    create(appConstants: AppConstants, artifactVersions: Map<string, string>, timeout?: RpcTimeout): Promise<void>;
+export interface OpusDecoderWorker extends SharedSettingsWorker {
+    create(appConstants: AppConstants, artifactVersions: Map<string, string>, sharedSettings: SharedSettingsSnapshot, timeout?: RpcTimeout): Promise<void>;
     init(streamId: string, feederWorkletPort: MessagePort): Promise<void>;
     resume(streamId: string, sourceRecordedAtMs: number, noWait?: RpcNoWait): Promise<void>;
     setTargetBufferSize(streamId: string, targetBufferSizeMs: number, noWait?: RpcNoWait): Promise<void>;

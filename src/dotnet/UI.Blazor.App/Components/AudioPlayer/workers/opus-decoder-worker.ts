@@ -11,6 +11,8 @@ import { RpcNoWait, rpcServer, RpcTimeout } from 'rpc';
 import { retry } from 'promises';
 import { Versioning } from 'versioning';
 import { getLogs } from 'logging';
+import { type SharedSettingsSnapshot } from 'shared-settings';
+import { sharedSettingsWorker } from 'shared-settings-worker';
 
 const { logScope, debugLog, errorLog } = getLogs('OpusDecoderWorker');
 
@@ -25,11 +27,14 @@ const decoders = new Map<string, OpusDecoder>();
 let systemCodecConfig: AudioEncoderConfig = null!; // set in create() after initAppConstants
 
 const serverImpl: OpusDecoderWorker = {
-    create: async (appConstants: AppConstants, artifactVersions: Map<string, string>, _timeout?: RpcTimeout): Promise<void> => {
+    ...sharedSettingsWorker,
+
+    create: async (appConstants: AppConstants, artifactVersions: Map<string, string>, sharedSettings: SharedSettingsSnapshot, _timeout?: RpcTimeout): Promise<void> => {
         debugLog?.log(`-> init`);
         if (codecModule)
             return;
 
+        await sharedSettingsWorker.updateSharedSettings(sharedSettings);
         initAppConstants(appConstants);
         systemCodecConfig = {
             codec: 'opus',

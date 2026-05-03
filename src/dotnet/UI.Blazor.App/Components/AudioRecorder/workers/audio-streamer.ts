@@ -22,7 +22,6 @@ const RPC_SESSION_DEFAULT = '~';
 
 interface AudioStreamFrame {
     data: Uint8Array;
-    capturedAtMs?: number;
 }
 
 export class AudioStream implements Disposable {
@@ -30,7 +29,7 @@ export class AudioStream implements Disposable {
 
     private readonly frames = new Denque<AudioStreamFrame>();
     private readonly frameAdded = new EventHandlerSet<void>();
-    private firstFrameTimestamp: number | null = null;
+    private sourceStartedAtMs: number | null = null;
 
     public readonly name: string;
     public isCompleted = false;
@@ -73,11 +72,11 @@ export class AudioStream implements Disposable {
         this.frameAdded.trigger();
     }
 
-    public addFrame(source: Uint8Array | EncodedAudioChunk, isEncodedAudioChunk = false, capturedAtMs?: number): void {
+    public addFrame(source: Uint8Array | EncodedAudioChunk, isEncodedAudioChunk = false, sourceCapturedAtMs?: number): void {
         if (!source || source.byteLength == 0 || this.isCompleted)
             return;
 
-        this.firstFrameTimestamp ??= capturedAtMs ?? ServerClock.now();
+        this.sourceStartedAtMs ??= sourceCapturedAtMs ?? ServerClock.now();
 
         const buffer = bufferPool.get();
         let frame: Uint8Array;
@@ -92,7 +91,7 @@ export class AudioStream implements Disposable {
         else
             frame.set(source as Uint8Array, 0);
 
-        this.frames.push({ data: frame, capturedAtMs });
+        this.frames.push({ data: frame });
         while (this.frames.length > AUDIO.stream.maxBufferedFrames) {
             const oldFrame = this.frames.shift()!;
             if (oldFrame.data.buffer.byteLength === AUDIO.encode.frameBufferBytes)
@@ -141,15 +140,16 @@ export class AudioStream implements Disposable {
                 const liveAudioStreams = streamingApi.liveAudioStreams;
                 const peer = Api.peer;
 
-                // frameIndex and clientStartOffset are per-PushAudio (per chat entry on the
+                // frameIndex and sourceStartedAt are per-PushAudio (per chat entry on the
                 // server); each retry iteration is a fresh entry, so both reset.
                 // debugOffsetMs is a DebugUI knob that lets us bias the source-time stamp
                 // forwards/backwards to simulate drift; in production it's always 0.
                 let frameIndex = 0;
-                const baseStartMs = this.firstFrameTimestamp ?? ServerClock.now();
-                const clientStartOffset = (baseStartMs + AudioStreamer.debugOffsetMs) / 1000;
-                infoLog?.log(`${this.name}: PushAudio clientStartOffset=${clientStartOffset.toFixed(3)}s ` +
-                    `(debugOffsetMs=${AudioStreamer.debugOffsetMs})`);
+                const sourceStartedAtMs = this.sourceStartedAtMs ?? ServerClock.now();
+                const sourceStartOffsetSeconds = (sourceStartedAtMs + AudioStreamer.debugOffsetMs) / 1000;
+                infoLog?.log(`${this.name}: PushAudio sourceStartOffset=${sourceStartOffsetSeconds.toFixed(3)}s ` +
+                    `(sourceStartedAtMs=${sourceStartedAtMs.toFixed(0)}, ` +
+                    `debugOffsetMs=${AudioStreamer.debugOffsetMs})`);
 
                 // Plain AsyncIterable — matches .NET MauiRecorderEngine.SendAudio's IAsyncEnumerable
                 // pattern. Termination is driven by iterator.return() from RpcStreamSender.disconnect()
@@ -186,7 +186,7 @@ export class AudioStream implements Disposable {
 
                 void liveAudioStreams
                     .PushStream(RPC_SESSION_DEFAULT, this.chatId, this.repliedChatEntryId ?? null,
-                        clientStartOffset, this.preSkip, stream.toRef(peer))
+                        sourceStartOffsetSeconds, this.preSkip, stream.toRef(peer))
                     .catch((err: unknown) => warnLog?.log(`${this.name}: PushStream rejected:`, err))
                     .finally(() => stream.disconnect());
 
@@ -208,9 +208,9 @@ export class AudioStreamer {
     public static readonly streams = new Array<AudioStream>();
     public static lastStream: AudioStream | null = null;
     public static connectionStateChangedEvents = new EventHandlerSet<boolean>()
-    /** Debug-only: ms added to the recorder's reported clientStartOffset on
-     *  every new PushStream. Set via DebugUI.setAudioRecorderOffset to simulate
-     *  audio drift relative to real time. Default 0. */
+    /** Debug-only: ms added to the recorder's reported source start timestamp
+     *  on every new PushStream. Set via DebugUI.setAudioRecorderOffset to
+     *  simulate audio drift relative to real time. Default 0. */
     public static debugOffsetMs = 0;
 
     private static _initialized = false;

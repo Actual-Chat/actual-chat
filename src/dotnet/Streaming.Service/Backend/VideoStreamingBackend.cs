@@ -128,7 +128,10 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         using var watchdogCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cancellationToken = watchdogCts.Token;
 
-        var sourceStartedAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
+        // Compatibility note: VideoRecord.ClientStartOffset is the legacy RPC/record
+        // name. The value itself is source time on the server-synced clock.
+        var sourceStartOffsetSeconds = record.ClientStartOffset;
+        var sourceStartedAt = default(Moment) + TimeSpan.FromSeconds(sourceStartOffsetSeconds);
         var beginsAt = sourceStartedAt;
         var rules = await Chats.GetRules(record.Session, record.ChatId, cancellationToken)
             .ConfigureAwait(false);
@@ -139,12 +142,12 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             .EnsureJoined(record.Session, record.ChatId, cancellationToken)
             .ConfigureAwait(false);
 
-        // Guard against client clock skew: if clientStartOffset is too far from server time,
+        // Guard against source clock skew: if sourceStartedAt is too far from server time,
         // override with server time to prevent false latency reports and quality step-downs.
         var serverNow = Clocks.ServerClock.Now;
         var clockDelta = serverNow - beginsAt;
         if (Math.Abs(clockDelta.TotalSeconds) > 5) {
-            Log.LogWarning("TIMING_ANCHOR: StreamId={StreamId}, client clock skew={ClockDeltaMs:F0}ms, overriding clientStartOffset with server time",
+            Log.LogWarning("TIMING_ANCHOR: StreamId={StreamId}, source clock skew={ClockDeltaMs:F0}ms, overriding sourceStartedAt with server time",
                 record.StreamId, clockDelta.TotalMilliseconds);
             beginsAt = serverNow;
         }

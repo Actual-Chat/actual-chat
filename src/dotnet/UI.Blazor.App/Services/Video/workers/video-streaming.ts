@@ -10,9 +10,10 @@ import { EventHandlerSet } from 'event-handling';
 import { getLogs } from 'logging';
 import { RpcStream, type RpcStreamSender } from 'actuallab-rpc';
 import { Api, streamingApi, toMoment,
-    type LiveVideoStreamsClient, type SessionTokenProvider, type Size2D, type VideoFormat, type VideoFrameDto } from 'api';
+    type LiveVideoStreamsClient, type SessionTokenProvider, type VideoFormatDto, type VideoFrameDto } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 import { VIDEO } from 'app-constants';
+import { ServerClock } from 'server-clock';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
@@ -24,7 +25,8 @@ export interface VideoStreamFrame {
     offset: number;
     duration: number;
     isKeyFrame: boolean;
-    size: Size2D;
+    width: number;
+    height: number;
     data: Uint8Array;
     description?: Uint8Array;
     codec?: string;
@@ -32,17 +34,17 @@ export interface VideoStreamFrame {
     // SVC spatial layer (simulcast): 0 = base (lowest-res), 1+ = higher-res layers.
     // Always 0 for single-encoder (P2P) streams.
     spatialLayerId?: number;
-    // Producer's current pyramid top — id + dims of the highest-res spatial
-    // layer currently encoded. Lets the receiver size canvas/decoder for the
-    // best layer it might ever get without having to observe a top-tier
-    // keyframe first. P2P/single-encoder streams emit 0 / { 0, 0 }.
+    // Range of spatial layers currently produced by the encoder ladder, set by
+    // the recorder per frame. Lets the receiver know "this stream has layers
+    // [min..max] available right now" without having to wait to observe each
+    // one. P2P/single-encoder streams emit min == max == 0.
     minSpatialLayerId?: number;
     maxSpatialLayerId?: number;
-    maxSpatialLayerSize?: Size2D;
     // Native source dimensions, populated on keyframes only. Sent to server so
     // it can track source-resolution growth (window resize, camera swap) and
     // unlock higher quality presets mid-stream without a full stream restart.
-    sourceSize?: Size2D;
+    sourceWidth?: number;
+    sourceHeight?: number;
 }
 
 export function microsecondsToTicks(microseconds: number): number {
@@ -63,8 +65,8 @@ export interface StreamingContext {
     rpcLiveVideoStreams: LiveVideoStreamsClient | null;
 }
 
-export function serverClockNow(ctx: StreamingContext): number {
-    return Date.now() + ctx.serverClockOffsetMs;
+export function serverClockNow(_ctx: StreamingContext): number {
+    return ServerClock.now();
 }
 
 /**
@@ -82,11 +84,11 @@ function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
         IsKeyFrame: frame.isKeyFrame,
     };
     if (frame.isKeyFrame) {
-        dto.Width = frame.size.Width;
-        dto.Height = frame.size.Height;
-        if (frame.sourceSize?.Width && frame.sourceSize.Height) {
-            dto.SourceWidth = frame.sourceSize.Width;
-            dto.SourceHeight = frame.sourceSize.Height;
+        dto.Width = frame.width;
+        dto.Height = frame.height;
+        if (frame.sourceWidth && frame.sourceHeight) {
+            dto.SourceWidth = frame.sourceWidth;
+            dto.SourceHeight = frame.sourceHeight;
         }
     }
     if (frame.description) dto.Description = frame.description;
@@ -159,12 +161,11 @@ export class InternalVideoStream {
     constructor(
         private readonly config: {
             codec: string;
-            size: Size2D;
-            sourceSize: Size2D;
+            width: number;
+            height: number;
+            sourceWidth: number;
+            sourceHeight: number;
             codecSettings: string;
-            spatialLayerId?: number;
-            maxSpatialLayerId?: number;
-            maxSpatialLayerSize?: Size2D;
         },
         private readonly ctx: StreamingContext,
         private readonly sourceStartedAtMs: number,
@@ -210,21 +211,22 @@ export class InternalVideoStream {
             const liveVideoStreams = this.ctx.rpcLiveVideoStreams!;
             const peer = Api.peer;
 
-            const clientStartOffset = this.sourceStartedAtMs / 1000;
-            infoLog?.log(`stream: clientStartOffset=${clientStartOffset.toFixed(3)}s ` +
+            const sourceStartOffsetSeconds = this.sourceStartedAtMs / 1000;
+            infoLog?.log(`stream: sourceStartOffset=${sourceStartOffsetSeconds.toFixed(3)}s ` +
                 `(sourceStartedAtMs=${this.sourceStartedAtMs.toFixed(0)})`);
 
             infoLog?.log(`stream: PushStream codec=${this.config.codec}, ` +
-                `${this.config.size.Width}x${this.config.size.Height} ` +
-                `(source ${this.config.sourceSize.Width}x${this.config.sourceSize.Height}), ` +
+                `${this.config.width}x${this.config.height} ` +
+                `(source ${this.config.sourceWidth}x${this.config.sourceHeight}), ` +
                 `settings=${this.config.codecSettings.length} chars`);
 
-            const format: VideoFormat = {
+            const format: VideoFormatDto = {
                 Codec: this.config.codec,
+                Width: this.config.width,
+                Height: this.config.height,
                 CodecSettings: this.config.codecSettings,
-                SpatialLayerId: this.config.spatialLayerId ?? 0,
-                Size: this.config.size,
-                SourceSize: this.config.sourceSize,
+                SourceWidth: this.config.sourceWidth,
+                SourceHeight: this.config.sourceHeight,
             };
 
             // Real-time video stream: isRealTime=true, allowReconnect=true, ackPeriod=5, bufferSize=31.
@@ -264,7 +266,7 @@ export class InternalVideoStream {
             // rejection is logged but shouldn't cancel the pump loop since the
             // sender owns the lifetime of the stream.
             void liveVideoStreams
-                .PushStream(RPC_SESSION_DEFAULT, this.ctx.chatId, clientStartOffset, format, stream.toRef(peer), this.ctx.streamKind)
+                .PushStream(RPC_SESSION_DEFAULT, this.ctx.chatId, sourceStartOffsetSeconds, format, stream.toRef(peer), this.ctx.streamKind)
                 .catch((err: unknown) => {
                     const msg = err instanceof Error ? err.message : String(err);
                     warnLog?.log('PushStream rejected:', err);

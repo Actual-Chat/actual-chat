@@ -7,6 +7,8 @@ import { RpcNoWait, RpcTimeout } from 'rpc';
 import type { DecoderConfig, DecoderStats } from '../webcodecs-decoder';
 import type { RawChunkMessage } from './stream-channel';
 import type { AppConstants } from 'app-constants';
+import type { SharedSettingsSnapshot } from 'shared-settings';
+import type { SharedSettingsWorker } from 'shared-settings-worker';
 
 // Re-export for convenience
 export type { RawChunkMessage };
@@ -33,10 +35,10 @@ export interface DecoderWorkerLatencyReport {
  * Represents the RECEIVER side of the video pipeline
  * This interface is implemented by the worker and called from the main thread
  */
-export interface DecoderWorker {
+export interface DecoderWorker extends SharedSettingsWorker {
     // Propagates app-wide constants from the main thread (sets CONSTANTS / VIDEO).
     // Called once per worker, before any other RPC. First call wins.
-    init(appConstants: AppConstants): Promise<void>;
+    init(appConstants: AppConstants, sharedSettings: SharedSettingsSnapshot): Promise<void>;
 
     /**
      * Initialize the decoder with configuration (RPC fallback path).
@@ -170,10 +172,6 @@ export interface DecoderWorker {
      * @param skipToMs Initial skip-to offset in ms (forwarded as TimeSpan ticks)
      * @param apiUrl Fusion RPC websocket URL (e.g. wss://host/rpc/ws)
      * @param startedAtMs Stream source start ms-since-epoch
-     * @param serverClockOffsetMs `ServerClock.now() - Date.now()` snapshotted on
-     *                 main thread. Worker can derive server-aligned now via
-     *                 `Date.now() + serverClockOffsetMs`. Drives the
-     *                 wallclock target in MstgSelector.tick().
      * @param jitterBufferMs Initial jitter buffer in ms
      * @param writable Optional WritableStream<VideoFrame> from main-side MSTG
      *                 (transferred — when present, tier 2).
@@ -187,7 +185,6 @@ export interface DecoderWorker {
         skipToMs: number,
         apiUrl: string,
         startedAtMs: number,
-        serverClockOffsetMs: number,
         jitterBufferMs: number,
         writable?: WritableStream<VideoFrame>,
         bgCanvas?: OffscreenCanvas,

@@ -51,6 +51,12 @@ body.wide .video-diagnostics-modal {
     font-size: 0.75rem;
 }
 
+.diag-select {
+    @apply bg-02 text-01 border border-separator rounded px-2 py-1;
+    min-width: 7rem;
+    font-size: 0.75rem;
+}
+
 .diag-group-header {
     @apply text-04 font-medium;
     font-size: 0.6875rem;

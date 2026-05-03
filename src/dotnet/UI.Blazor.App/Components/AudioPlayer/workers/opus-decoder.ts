@@ -15,6 +15,7 @@ import { ObjectPool } from 'object-pool';
 import { getLogs } from 'logging';
 import { BufferHandler } from './opus-decoder-worker-contract';
 import Denque from 'denque';
+import { ServerClock } from 'server-clock';
 
 const { logScope, debugLog, warnLog, errorLog } = getLogs('OpusDecoder');
 const enableFrequentDebugLog = false;
@@ -388,7 +389,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
     private createDecodeTiming(sourceOffsetMs: number): DecodeTiming {
         return {
             sourceOffsetMs,
-            presentationLagMs: Date.now() + this.feederTargetDelayMs - (this.sourceRecordedAtMs + sourceOffsetMs),
+            presentationLagMs: ServerClock.now() + this.feederTargetDelayMs - (this.sourceRecordedAtMs + sourceOffsetMs),
         };
     }
 }

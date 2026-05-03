@@ -11,6 +11,8 @@
 import { getLogs } from 'logging';
 import { BG_BLUR_STRENGTH, BG_DRAW_INTERVAL_MS } from '../services/bg-canvas-settings';
 import type { BgBlurRenderer } from '../webgpu-blur';
+import { ReplaceableSlot } from 'buffers';
+import { ServerClock } from 'server-clock';
 
 const { infoLog, warnLog } = getLogs('VideoDecoder');
 
@@ -30,7 +32,11 @@ export interface WorkerMstgBufferStats {
 }
 
 export class WorkerMstgSelector {
-    private pending: VideoFrame | null = null;
+    private readonly pending = new ReplaceableSlot<VideoFrame>({
+        dispose: frame => {
+            try { frame.close(); } catch { /* already closed */ }
+        },
+    });
     private readonly writer: WritableStreamDefaultWriter<VideoFrame>;
     private writeInFlight = false;
     private lastWrittenTs = -1;
@@ -56,7 +62,6 @@ export class WorkerMstgSelector {
     constructor(
         writable: WritableStream<VideoFrame>,
         private readonly startedAtMs: number,
-        private readonly serverClockOffsetMs: number,
         private jitterBufferMs: number,
         private readonly bgPainter?: BgPainter,
     ) {
@@ -68,11 +73,8 @@ export class WorkerMstgSelector {
             frame.close();
             return;
         }
-        // Dumb as fuck mode: always replace and tick immediately.
-        if (this.pending) {
-            try { this.pending.close(); } catch { /* already closed */ }
-        }
-        this.pending = frame;
+        // Always replace and tick immediately.
+        this.pending.push(frame);
         this.tick();
     }
 
@@ -87,14 +89,13 @@ export class WorkerMstgSelector {
     // Wallclock target in microseconds (frame-stream coords). Used by the
     // encoded pre-decode buffer's drain loop to pace decoding.
     getAudioTargetUs(): number | null {
-        const serverNowMs = Date.now() + this.serverClockOffsetMs;
-        return (serverNowMs - this.startedAtMs) * 1000;
+        return (ServerClock.now() - this.startedAtMs) * 1000;
     }
 
     getBufferStats(): WorkerMstgBufferStats {
         // Single-slot selector — depth ∈ {0, 1}, span always 0. Real
         // playback buffer is the encoded ring buffer in decoder-worker.
-        return { depth: this.pending ? 1 : 0, spanMs: 0 };
+        return { depth: this.pending.length, spanMs: 0 };
     }
 
     getLastWrittenOffsetMs(): number | undefined {
@@ -106,22 +107,18 @@ export class WorkerMstgSelector {
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
-        if (this.pending) {
-            try { this.pending.close(); } catch { /* ignore */ }
-            this.pending = null;
-        }
+        this.pending.clear();
         try { void this.writer.close(); } catch { /* ignore */ }
     }
 
     private tick(): void {
         if (this.disposed) return;
-        if (this.writeInFlight || !this.pending) {
+        if (this.writeInFlight || this.pending.isEmpty()) {
             return;
         }
 
-        // Dumb as fuck mode: ignore all timing rules and just output what we have.
-        const eligible = this.pending;
-        this.pending = null;
+        // Ignore all timing rules and just output what we have.
+        const eligible = this.pending.take()!;
 
         if (eligible.timestamp === this.lastWrittenTs) {
             eligible.close();
@@ -161,7 +158,7 @@ export class WorkerMstgSelector {
             .finally(() => {
                 this.writeInFlight = false;
                 if (this.disposed) return;
-                if (this.pending) this.tick();
+                if (!this.pending.isEmpty()) this.tick();
             });
 
         // DIAG: emit a 1 Hz summary of main-write activity vs bg-paint activity.

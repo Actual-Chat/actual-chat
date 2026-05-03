@@ -32,14 +32,14 @@ public class StreamHub(IServiceProvider services) : Hub
     [Obsolete("2026.04: Use IStreamServer.PushAudio via RPC")]
     public Task ProcessAudioChunks(
         string sessionToken, string? chatId, string? repliedChatEntryId,
-        double clientStartOffset, int preSkip,
+        double sourceStartOffsetSeconds, int preSkip,
         IAsyncEnumerable<byte[][]> audioStream)
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
         => ProcessAudio(
             sessionToken,
             chatId,
             repliedChatEntryId,
-            clientStartOffset,
+            sourceStartOffsetSeconds,
             preSkip,
             audioStream.SelectMany(c => c.AsAsyncEnumerable()));
 
@@ -49,7 +49,7 @@ public class StreamHub(IServiceProvider services) : Hub
         string sessionToken,
         string? chatId,
         string? repliedEntryId,
-        double clientStartOffset,
+        double sourceStartOffsetSeconds,
         int preSkip,
         IAsyncEnumerable<byte[]> audioStream)
     {
@@ -66,7 +66,7 @@ public class StreamHub(IServiceProvider services) : Hub
 
         stopCts.CancelAfter(Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5));
         var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
-        var audioRecord = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedEntryIdTyped);
+        var audioRecord = new AudioRecord(streamId, session, chatIdTyped, sourceStartOffsetSeconds, repliedEntryIdTyped);
 
         Log.LogInformation("ProcessAudio: {AudioRecord}", audioRecord);
         var frames = audioStream

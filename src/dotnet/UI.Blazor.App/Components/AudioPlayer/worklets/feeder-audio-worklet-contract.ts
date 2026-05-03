@@ -1,8 +1,10 @@
 import { RpcNoWait } from 'rpc';
 import type { AppConstants } from 'app-constants';
+import type { SharedSettingsSnapshot } from 'shared-settings';
+import type { SharedSettingsWorker } from 'shared-settings-worker';
 
-export interface FeederAudioWorklet {
-    init(appConstants: AppConstants, id: string, workerPort: MessagePort): Promise<void>;
+export interface FeederAudioWorklet extends SharedSettingsWorker {
+    init(appConstants: AppConstants, sharedSettings: SharedSettingsSnapshot, id: string, workerPort: MessagePort): Promise<void>;
 
     // Commands
     frame(

@@ -72,7 +72,7 @@ public class StreamClient(IServiceProvider services) : IStreamClient
         Session session,
         string chatId,
         string? repliedChatEntryId,
-        double clientStartOffset,
+        double sourceStartOffsetSeconds,
         int preSkip,
         IAsyncEnumerable<AudioFrame> frameStream,
         CancellationToken cancellationToken)
@@ -82,7 +82,7 @@ public class StreamClient(IServiceProvider services) : IStreamClient
             session,
             chatId,
             repliedChatEntryId,
-            clientStartOffset,
+            sourceStartOffsetSeconds,
             preSkip,
             rpcStream,
             cancellationToken);
@@ -91,7 +91,7 @@ public class StreamClient(IServiceProvider services) : IStreamClient
     public Task PushVideo(
         Session session,
         string chatId,
-        double clientStartOffset,
+        double sourceStartOffsetSeconds,
         VideoFormat format,
         IAsyncEnumerable<VideoFrame> frameStream,
         StreamKind streamKind,
@@ -101,7 +101,7 @@ public class StreamClient(IServiceProvider services) : IStreamClient
         return LiveVideoStreams.PushStream(
             session,
             chatId,
-            clientStartOffset,
+            sourceStartOffsetSeconds,
             format,
             rpcStream,
             streamKind,

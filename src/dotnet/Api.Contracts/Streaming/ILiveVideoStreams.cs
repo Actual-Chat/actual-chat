@@ -30,6 +30,7 @@ public interface ILiveVideoStreams : IComputeService
     Task UnregisterMember(
         Session session, ChatId chatId, CancellationToken cancellationToken);
 
+    // `clientStartOffset` is the legacy RPC name; the value is sourceStartOffsetSeconds on the server-synced clock.
     [RpcMethod(RemoteExecutionMode = RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect)]
     Task PushStream(
         Session session,

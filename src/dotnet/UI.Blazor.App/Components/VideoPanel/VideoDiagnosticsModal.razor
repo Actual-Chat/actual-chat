@@ -1,15 +1,13 @@
 @namespace ActualChat.UI.Blazor.App.Components.VideoPanel
+@using ActualChat.Media
 @using ActualChat.Streaming
 @using ActualChat.UI.Blazor.App.Module
-@using ActualChat.UI.Blazor.App.Services
 @using System.Text.Json
 @inherits ComputedStateComponent<AppUIHub, VideoDiagnosticsModal.ComputedModel>
 @implements IModalView<VideoDiagnosticsModal.Model>
 @{
     var m = State.Value;
     var own = _ownDiag;
-    var playbackSnap = Hub.VideoQualityUI.GetPlaybackSnapshot();
-    var playbackOverride = Hub.VideoQualityUI.PlaybackOverride;
 }
 
 <DialogFrame
@@ -193,74 +191,6 @@
                             </div>
                         }
                     }
-
-                    @* Simulcast *@
-                    @if (stream.TryGetProperty("simulcast", out var simulcast) && simulcast.ValueKind == JsonValueKind.Object
-                         && simulcast.TryGetProperty("layers", out var simLayers) && simLayers.ValueKind == JsonValueKind.Array) {
-                        <div class="diag-row">
-                            <span class="diag-label">Resolutions</span>
-                            <span class="diag-value">@FormatJsonSimulcastLayerSizes(simLayers)</span>
-                        </div>
-                    }
-
-                    @* Quality Control (sender) *@
-                    @{
-                        var ownKind = m.OwnStreamingKind ?? StreamKind.Webcam;
-                        var qcSnap = m.RecordingSnapshots.FirstOrDefault(s => s.Kind == ownKind);
-                    }
-                    @if (qcSnap is not null) {
-                        <div class="diag-group-header">Quality Control</div>
-                        <div class="diag-row">
-                            <span class="diag-label">Target</span>
-                            <span class="diag-value">@(qcSnap.AggregatorTargetLayerCount) / @(qcSnap.MaxLayerCount) (effective: @(qcSnap.EffectiveLayerCount))</span>
-                        </div>
-                        <div class="diag-row">
-                            <span class="diag-label">Reason</span>
-                            <span class="diag-value">@qcSnap.LastReason (signal: @(SignalText(qcSnap.LastSignal)))</span>
-                        </div>
-                        @if (qcSnap.Cap is { } cap) {
-                            <div class="diag-row">
-                                <span class="diag-label">Cap</span>
-                                <span class="diag-value">@cap (override active)</span>
-                            </div>
-                        }
-                        <div class="diag-row">
-                            <span class="diag-label">Server max spatial</span>
-                            <span class="diag-value">@(qcSnap.ServerMaxSpatialLayer == int.MaxValue ? "uncapped" : qcSnap.ServerMaxSpatialLayer.ToString())</span>
-                        </div>
-                        @if (qcSnap.ColdStartTicksRemaining > 0) {
-                            <div class="diag-row">
-                                <span class="diag-label">Cold start</span>
-                                <span class="diag-value">@(qcSnap.ColdStartTicksRemaining) ticks remaining</span>
-                            </div>
-                        }
-                        @if (qcSnap.LastHealth is { } h) {
-                            <div class="diag-row">
-                                <span class="diag-label">EncodeRatio</span>
-                                <span class="diag-value">P50=@(h.EncodeRatioP50.ToString("F2")) P90=@(h.EncodeRatioP90.ToString("F2"))</span>
-                            </div>
-                            <div class="diag-row">
-                                <span class="diag-label">Backlog P90</span>
-                                <span class="diag-value">@(h.SenderBacklogP90Ms.ToString("F0")) ms</span>
-                            </div>
-                            <div class="diag-row">
-                                <span class="diag-label">Skips/window</span>
-                                <span class="diag-value">@(h.SenderSkipsPerWindow)</span>
-                            </div>
-                            <div class="diag-row">
-                                <span class="diag-label">Last ACK age</span>
-                                <span class="diag-value">@(h.LastAckAgeMs.ToString("F0")) ms</span>
-                            </div>
-                            <div class="diag-row">
-                                <span class="diag-label">Slot replace</span>
-                                <span class="diag-value">@(h.SlotReplacementRate.ToString("F2"))</span>
-                            </div>
-                            <div class="diag-row">
-                                <span class="diag-label">Connected</span>
-                                <span class="diag-value">@(h.IsConnected ? "yes" : "no")</span>
-                            </div>
-                        }
-                    }
                 </div>
             }
         </div>
@@ -306,21 +236,13 @@
                             <span class="diag-label">Author</span>
                             <span class="diag-value">@s.Author</span>
                         </div>
-                        @{
-                            var formats = s.Info.Formats;
-                            var topFmt = formats.LastOrDefault();
-                            // Codec is the same across all simulcast layers; pick the top
-                            // tier so the displayed value lines up with the published ladder.
-                            var senderCodec = topFmt?.Codec ?? "";
-                            var simulcastLayers = FormatSimulcastLayerSizes(formats);
-                        }
                         <div class="diag-row">
                             <span class="diag-label">Codec</span>
-                            <span class="diag-value">@senderCodec</span>
+                            <span class="diag-value">@(s.Info.Formats.LastOrDefault()?.Codec ?? "?")</span>
                         </div>
                         <div class="diag-row">
-                            <span class="diag-label">Resolutions</span>
-                            <span class="diag-value">@simulcastLayers</span>
+                            <span class="diag-label">Sender max</span>
+                            <span class="diag-value">@FormatSize(s.Info.Formats.LastOrDefault()?.Size)</span>
                         </div>
                         @{
                             var hasDiag = _streamDiags.TryGetValue(sid, out var rdPeek)
@@ -359,12 +281,6 @@
                         }
                         @if (isExpanded && _streamDiags.TryGetValue(sid, out var rd) && rd.ValueKind == JsonValueKind.Object) {
                             <div class="diag-js-details">
-                                @* Simulcast layers — sender-published pyramid from VideoStreamInfo.Formats *@
-                                <div class="diag-row">
-                                    <span class="diag-label">Resolutions</span>
-                                    <span class="diag-value">@FormatSimulcastLayerSizes(formats)</span>
-                                </div>
-
                                 @* Decoder *@
                                 <div class="diag-group-header">Decoder</div>
                                 <div class="diag-row">
@@ -443,80 +359,12 @@
                                         <span class="diag-value">reduction requested (slow ticks: @(GetNum(rd, "codecSlowTickCount").ToString("0")))</span>
                                     </div>
                                 }
-
                             </div>
                         }
                     </div>
                 }
             }
         </div>
-
-        @* Quality Control (inbound) *@
-        @if (m.Streams.Any(s => !s.IsOwn)) {
-            <div class="diag-section">
-                <div class="diag-section-header">Quality Control (inbound)</div>
-                <div class="diag-row">
-                    <span class="diag-label">Capacity</span>
-                    <span class="diag-value">@((playbackSnap.EstimatedCapacityBytesPerSec * 8 / 1000).ToString("0")) kbps</span>
-                </div>
-                <div class="diag-row">
-                    <span class="diag-label">Aggregate health</span>
-                    <span class="diag-value">@(playbackSnap.AggregateHealth.ToString("F2"))</span>
-                </div>
-                <div class="diag-row">
-                    <span class="diag-label">Playback override</span>
-                    <span class="diag-value">@playbackOverride</span>
-                </div>
-                @foreach (var s in m.Streams.Where(s => !s.IsOwn)) {
-                    var sid = s.Info.StreamId.Value;
-                    var hasDiag = _streamDiags.TryGetValue(sid, out var rd)
-                        && rd.ValueKind == JsonValueKind.Object;
-                    int? verdict = playbackSnap.Verdicts.TryGetValue(sid, out var v) ? v : null;
-                    <div class="diag-stream">
-                        <div class="diag-stream-header">
-                            <span>@s.Info.StreamId</span>
-                            <span class="diag-stream-kind ml-auto">@s.Info.StreamKind</span>
-                        </div>
-                        <div class="diag-row">
-                            <span class="diag-label">Author</span>
-                            <span class="diag-value">@s.Author</span>
-                        </div>
-                        <div class="diag-row">
-                            <span class="diag-label">Verdict</span>
-                            <span class="diag-value">@(verdict is { } signal ? SignalText(signal) : "n/a")</span>
-                        </div>
-                        @if (hasDiag) {
-                            <div class="diag-row">
-                                <span class="diag-label">Forwarded</span>
-                                <span class="diag-value">@FormatForwarded(rd)</span>
-                            </div>
-                            <div class="diag-row">
-                                <span class="diag-label">Requested</span>
-                                <span class="diag-value">@FormatRequestedReceiveQuality(rd)</span>
-                            </div>
-                            <div class="diag-row">
-                                <span class="diag-label">Signal inputs</span>
-                                <span class="diag-value">rate=@(GetNum(rd, "bitrateKbps").ToString("0"))kbps, buf=@(GetNum(rd, "pipelineLatencyMs").ToString("0"))ms, skips=@(GetNum(rd, "skipToLiveCount").ToString("0"))</span>
-                            </div>
-                            <div class="diag-row">
-                                <span class="diag-label">Stream age</span>
-                                <span class="diag-value">@(GetNum(rd, "streamAgeMs").ToString("0"))ms</span>
-                            </div>
-                            <div class="diag-row">
-                                <span class="diag-label">Decode quality</span>
-                                <span class="diag-value">@FormatDecodeQualitySignal(rd)</span>
-                            </div>
-                        }
-                        else {
-                            <div class="diag-row">
-                                <span class="diag-label">Signals</span>
-                                <span class="diag-value diag-dim">waiting for diagnostics</span>
-                            </div>
-                        }
-                    </div>
-                }
-            </div>
-        }
     </Body>
 </DialogFrame>
 
@@ -532,17 +380,7 @@
     private bool _showOwnStreamingDetails;
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
-    private VideoQualityUI VideoQualityUI => Hub.VideoQualityUI;
     private IAuthors Authors => Hub.Authors;
-
-    private static string SignalText(int signal) => signal switch {
-        > 0 => "+1 (good)",
-        < 0 => "-1 (bad)",
-        _ => "0 (neutral)",
-    };
-
-    private static string FormatMaxTemporal(double v)
-        => v >= int.MaxValue / 2.0 ? "∞" : v.ToString("0");
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -584,24 +422,11 @@
         for (var i = 0; i < activeStreams.Count; i++) {
             var info = activeStreams[i];
             var author = await Authors.Get(Session, chatId, info.AuthorId, cancellationToken);
-            streams[i] = new StreamEntry(info,
-                author?.Avatar.Name ?? info.AuthorId.Value,
-                ownAuthor?.Id == info.AuthorId);
+            streams[i] = new StreamEntry(info, author?.Avatar.Name ?? info.AuthorId.Value, ownAuthor?.Id == info.AuthorId);
         }
 
         var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken);
-        var recordingSnapshots = VideoQualityUI.GetRecordingSnapshots();
-        var playbackSnap = VideoQualityUI.GetPlaybackSnapshot();
-        return new ComputedModel(
-            ownStreamKind,
-            streams,
-            memberCount,
-            account.IsAdmin,
-            recordingSnapshots,
-            playbackSnap.EstimatedCapacityBytesPerSec,
-            playbackSnap.AggregateHealth,
-            playbackSnap.Verdicts,
-            VideoQualityUI.PlaybackOverride);
+        return new ComputedModel(ownStreamKind, streams, memberCount, account.IsAdmin);
     }
 
     private void OnToggleOwnStreamingDetails() {
@@ -646,22 +471,13 @@
                 _ownDiag = await JS.InvokeAsync<JsonElement>(JSCollectOwnMethod, kind);
             }
 
-            var samples = new List<VideoQualityUI.PlaybackStreamInfoLite>();
             foreach (var entry in State.Value.Streams) {
                 if (entry.IsOwn) continue;
                 var streamId = entry.Info.StreamId.Value;
                 var diag = await JS.InvokeAsync<JsonElement>(JSCollectRemoteMethod, streamId);
-                if (diag.ValueKind == JsonValueKind.Object) {
+                if (diag.ValueKind == JsonValueKind.Object)
                     _streamDiags[streamId] = diag;
-                    var bitrateBytesPerSec = (long)(GetNum(diag, "bitrateKbps") * 1000.0 / 8.0);
-                    var bufMs = (int)GetNum(diag, "pipelineLatencyMs");
-                    var keyframeSkips = (int)GetNum(diag, "skipToLiveCount");
-                    var streamAgeMs = (int)GetNum(diag, "streamAgeMs");
-                    samples.Add(new VideoQualityUI.PlaybackStreamInfoLite(
-                        streamId, bitrateBytesPerSec, bufMs, keyframeSkips, streamAgeMs));
-                }
             }
-            VideoQualityUI.TickPlayback(samples);
 
             await InvokeAsync(StateHasChanged);
         } catch {
@@ -678,56 +494,14 @@
     private static bool GetBool(JsonElement el, string prop)
         => el.TryGetProperty(prop, out var v) && v.ValueKind is JsonValueKind.True or JsonValueKind.False && v.GetBoolean();
 
-    private static string FormatForwarded(JsonElement rd) {
-        if (!rd.TryGetProperty("forwarded", out var forwarded)
-            || forwarded.ValueKind != JsonValueKind.Object
-            || GetNum(forwarded, "ForwardedSpatialLayerId") < 0)
-            return "no frames yet";
-
-        return $"L{GetNum(forwarded, "ForwardedSpatialLayerId"):0} "
-            + $"{GetNum(forwarded, "ForwardedWidth"):0}×{GetNum(forwarded, "ForwardedHeight"):0} "
-            + $"(obsMax={GetNum(forwarded, "ObservedMaxSpatialLayer"):0})";
-    }
-
-    private static string FormatRequestedReceiveQuality(JsonElement rd) {
-        if (!rd.TryGetProperty("requestedReceiveQuality", out var requested)
-            || requested.ValueKind != JsonValueKind.Object)
-            return "default (server-driven)";
-
-        return $"maxSpatial={GetNum(requested, "maxSpatialLayer"):0} "
-            + $"maxTemporal={FormatMaxTemporal(GetNum(requested, "maxTemporalLayer"))}";
-    }
-
-    private static string FormatDecodeQualitySignal(JsonElement rd)
-        => GetBool(rd, "qualityReductionRequested")
-            ? $"reduction requested (slow ticks: {GetNum(rd, "codecSlowTickCount"):0})"
-            : $"ok (slow ticks: {GetNum(rd, "codecSlowTickCount"):0})";
-
-    private static string FormatSimulcastLayerSizes(IEnumerable<ActualChat.Video.VideoFormat> formats, string separator = "×") {
-        var items = formats
-            .OrderBy(f => f.SpatialLayerId)
-            .Where(f => f.Size.Width > 0 && f.Size.Height > 0)
-            .Select(f => $"L{f.SpatialLayerId} {f.Size.Width}{separator}{f.Size.Height}");
-        return string.Join(", ", items).NullIfEmpty() ?? "n/a";
-    }
-
-    private static string FormatJsonSimulcastLayerSizes(JsonElement layers) {
-        var items = layers.EnumerateArray()
-            .Select((layer, index) => new {
-                Index = index,
-                Width = GetNum(layer, "width"),
-                Height = GetNum(layer, "height"),
-            })
-            .Where(x => x.Width > 0 && x.Height > 0)
-            .Select(x => $"L{x.Index} {x.Width:0}×{x.Height:0}");
-        return string.Join(", ", items).NullIfEmpty() ?? "n/a";
-    }
-
     private static string GetStrArray(JsonElement el, string prop) {
         if (!el.TryGetProperty(prop, out var v) || v.ValueKind != JsonValueKind.Array)
             return "";
         return string.Join(", ", v.EnumerateArray().Select(x => x.GetString()));
     }
+
+    private static string FormatSize(Size2D? size)
+        => size is { IsEmpty: false } s ? $"{s.Width}×{s.Height}" : "?";
 
     private string GetShowDetailsIndicator(bool show)
         => show ? ">---<" : "<->";
@@ -738,8 +512,6 @@
     private async Task OnCopyClick() {
         var sb = new System.Text.StringBuilder();
         var m = State.Value;
-        var playbackSnap = VideoQualityUI.GetPlaybackSnapshot();
-        var playbackOverride = VideoQualityUI.PlaybackOverride;
 
         sb.AppendLine("=== Video Diagnostics ===");
         sb.AppendLine();
@@ -819,10 +591,8 @@
             sb.AppendLine($"[{sid}] {s.Author}{(s.IsOwn ? " (Own)" : "")}");
             sb.AppendLine($"  Kind: {(s.Info.StreamKind == StreamKind.Screencast ? "Screencast" : "Camera")}");
             sb.AppendLine($"  Started: {DateTimeConverter.ToLocalTime(s.Info.StartedAt):HH:mm:ss}");
-            var copyFormats = s.Info.Formats;
-            var copyTop = copyFormats.LastOrDefault();
-            sb.AppendLine($"  Codec: {copyTop?.Codec ?? "?"}");
-            sb.AppendLine($"  Resolutions: {FormatSimulcastLayerSizes(copyFormats, "x")}");
+            sb.AppendLine($"  Codec: {s.Info.Formats.LastOrDefault()?.Codec ?? "?"}");
+            sb.AppendLine($"  Sender max: {FormatSize(s.Info.Formats.LastOrDefault()?.Size)}");
 
             if (_streamDiags.TryGetValue(sid, out var rd) && rd.ValueKind == JsonValueKind.Object) {
                 if (rd.TryGetProperty("forwarded", out var copyFwd)
@@ -861,30 +631,6 @@
             }
         }
 
-        if (m.Streams.Any(s => !s.IsOwn)) {
-            sb.AppendLine();
-            sb.AppendLine("-- Quality Control (inbound) --");
-            sb.AppendLine($"Capacity: {playbackSnap.EstimatedCapacityBytesPerSec * 8 / 1000:0} kbps");
-            sb.AppendLine($"Aggregate health: {playbackSnap.AggregateHealth:F2}");
-            sb.AppendLine($"Playback override: {playbackOverride}");
-            foreach (var s in m.Streams.Where(s => !s.IsOwn)) {
-                var sid = s.Info.StreamId.Value;
-                int? verdict = playbackSnap.Verdicts.TryGetValue(sid, out var v) ? v : null;
-                sb.AppendLine();
-                sb.AppendLine($"[{sid}] {s.Author}");
-                sb.AppendLine($"  Verdict: {(verdict is { } signal ? SignalText(signal) : "n/a")}");
-                if (_streamDiags.TryGetValue(sid, out var rd) && rd.ValueKind == JsonValueKind.Object) {
-                    sb.AppendLine($"  Forwarded: {FormatForwarded(rd)}");
-                    sb.AppendLine($"  Requested: {FormatRequestedReceiveQuality(rd)}");
-                    sb.AppendLine($"  Signal inputs: rate={GetNum(rd, "bitrateKbps"):0}kbps, buf={GetNum(rd, "pipelineLatencyMs"):0}ms, skips={GetNum(rd, "skipToLiveCount"):0}");
-                    sb.AppendLine($"  Stream age: {GetNum(rd, "streamAgeMs"):0}ms");
-                    sb.AppendLine($"  Decode quality: {FormatDecodeQualitySignal(rd)}");
-                }
-                else
-                    sb.AppendLine("  Signals: waiting for diagnostics");
-            }
-        }
-
         await Hub.ClipboardUI.WriteText(sb.ToString());
     }
 
@@ -901,17 +647,8 @@
         StreamKind? OwnStreamingKind,
         StreamEntry[] Streams,
         int MemberCount,
-        bool IsAdmin,
-        IReadOnlyList<VideoQualityUI.RecordingQualitySnapshot> RecordingSnapshots,
-        long PlaybackCapacityBytesPerSec,
-        double PlaybackAggregateHealth,
-        IReadOnlyDictionary<string, int> PlaybackVerdicts,
-        VideoQualityUI.PlaybackOverrideMode PlaybackOverride
+        bool IsAdmin
     ) {
-        public static readonly ComputedModel Empty = new(
-            null, [], 0, false, [],
-            0, 0,
-            new Dictionary<string, int>(),
-            VideoQualityUI.PlaybackOverrideMode.Off);
+        public static readonly ComputedModel Empty = new(null, [], 0, false);
     }
 }

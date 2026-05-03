@@ -152,8 +152,8 @@ WriteLine("Producer users joined all chats.");
 // --- Metrics ---
 // Key: (chatIndex, producerIndex, offsetTicks) → sendTimestamp
 var sentTimestamps = new ConcurrentDictionary<(int Chat, int Producer, long Offset), long>();
-// Producer's clientStartOffset — used to correlate discovered StreamId back to prodIdx.
-var producerClientOffsets = new ConcurrentDictionary<(int Chat, int Producer), double>();
+// Producer's sourceStartOffset — used to correlate discovered StreamId back to prodIdx.
+var producerSourceStartOffsets = new ConcurrentDictionary<(int Chat, int Producer), double>();
 // Filled after discovery: StreamId.Value → (chatIdx, prodIdx).
 var streamToProd = new Dictionary<Symbol, (int Chat, int Producer)>();
 // Key: (chatIndex, consumerIndex, streamIndex) → metrics
@@ -237,7 +237,7 @@ await Task.WhenAll(discoveryTasks).ConfigureAwait(false);
 WriteLine($"All {totalStreams} streams discovered across {chatCount} chats.");
 
 // --- Map discovered StreamId → (chatIdx, prodIdx) for latency correlation ---
-// Producer's clientStartOffset becomes VideoStreamInfo.StartedAt on the server
+// Producer's sourceStartOffset becomes VideoStreamInfo.StartedAt on the server
 // (server: beginsAt = default(Moment) + FromSeconds(ClientStartOffset)). We match
 // against the closest producer offset within the same chat.
 for (var ci = 0; ci < chatCount; ci++) {
@@ -248,7 +248,7 @@ for (var ci = 0; ci < chatCount; ci++) {
         var bestProd = -1;
         var bestDiff = double.MaxValue;
         for (var pi = 0; pi < streamsPerChat; pi++) {
-            if (!producerClientOffsets.TryGetValue((ci, pi), out var prodOffset))
+            if (!producerSourceStartOffsets.TryGetValue((ci, pi), out var prodOffset))
                 continue;
             var diff = Math.Abs(prodOffset - startedAtSec);
             if (diff < bestDiff) { bestDiff = diff; bestProd = pi; }
@@ -598,13 +598,13 @@ async Task RunProducer(int chatIdx, int prodIdx, CancellationToken ct)
         var connection = CreateHubConnection(hubUrl);
         await using var _ = connection.ConfigureAwait(false);
         await connection.StartAsync(ct).ConfigureAwait(false);
-        var clientStartOffset = CpuClock.Instance.Now.EpochOffset.TotalSeconds;
+        var sourceStartOffsetSeconds = CpuClock.Instance.Now.EpochOffset.TotalSeconds;
 
         var method = useMem ? "PushVideoMem" : "PushVideo";
         await connection.SendAsync(
             method,
             sessionToken, chatIds[chatIdx].Value, Codec, FrameWidth, FrameHeight, "",
-            clientStartOffset, 0, // 0 = Webcam
+            sourceStartOffsetSeconds, 0, // 0 = Webcam
             PushFrames(chatIdx, prodIdx, ct), ct
             ).ConfigureAwait(false);
 
@@ -705,13 +705,13 @@ async Task RunParticipant(int chatIdx, int partIdx, ApiArray<VideoStreamInfo> st
         var connection = CreateHubConnection(hubUrl);
         await using var _ = connection.ConfigureAwait(false);
         await connection.StartAsync(ct).ConfigureAwait(false);
-        var clientStartOffset = CpuClock.Instance.Now.EpochOffset.TotalSeconds;
+        var sourceStartOffsetSeconds = CpuClock.Instance.Now.EpochOffset.TotalSeconds;
 
         // Start push (fire-and-forget on this connection)
         var pushMethod = useMem ? "PushVideoMem" : "PushVideo";
         var pushTask = connection.SendAsync(pushMethod,
             sessionToken, chatIds[chatIdx].Value, Codec, FrameWidth, FrameHeight, "",
-            clientStartOffset, 0, // 0 = Webcam
+            sourceStartOffsetSeconds, 0, // 0 = Webcam
             PushFrames(chatIdx, partIdx, ct), ct);
 
         // Start all pulls concurrently on the same connection
@@ -748,12 +748,12 @@ async Task RunProducerRpc(int chatIdx, int prodIdx, CancellationToken ct)
     try {
         var ownLiveVideoStreams = producerHubs[chatIdx, prodIdx].GetRequiredService<ILiveVideoStreams>();
         var prodSession = producerSessions[prodIdx];
-        var clientStartOffset = CpuClock.Instance.Now.EpochOffset.TotalSeconds;
-        producerClientOffsets[(chatIdx, prodIdx)] = clientStartOffset;
-        var format = new VideoFormat { Codec = Codec, Size = new Size2D(FrameWidth, FrameHeight) };
+        var sourceStartOffsetSeconds = CpuClock.Instance.Now.EpochOffset.TotalSeconds;
+        producerSourceStartOffsets[(chatIdx, prodIdx)] = sourceStartOffsetSeconds;
+        var format = new VideoFormat { Codec = Codec, Width = FrameWidth, Height = FrameHeight };
         var frameStream = RpcStream.New(PushFramesRpc(chatIdx, prodIdx, ct));
         await ownLiveVideoStreams.PushStream(
-            prodSession, chatIds[chatIdx].Value, clientStartOffset,
+            prodSession, chatIds[chatIdx].Value, sourceStartOffsetSeconds,
             format, frameStream, StreamKind.Webcam, ct
             ).ConfigureAwait(false);
         try { await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, ct).ConfigureAwait(false); }

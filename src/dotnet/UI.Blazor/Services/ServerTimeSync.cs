@@ -94,7 +94,7 @@ public class ServerTimeSync : WorkerBase
 
         try {
             var serverNowMs = Clocks.ServerClock.Now.EpochOffset.TotalMilliseconds;
-            await JS.InvokeVoidAsync("ServerClock.updateOffset", cancellationToken, serverNowMs)
+            await JS.InvokeVoidAsync("SharedSettings.updateServerClockOffset", cancellationToken, serverNowMs)
                 .ConfigureAwait(false);
         }
         catch (Exception e) when (e is JSDisconnectedException or ObjectDisposedException) {

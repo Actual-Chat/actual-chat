@@ -22,14 +22,14 @@ public class StreamServer(IServiceProvider services) : IStreamServer
 
     public Task PushAudio(
         Session session, string chatId, string? repliedChatEntryId,
-        double clientStartOffset, int preSkip,
+        double sourceStartOffsetSeconds, int preSkip,
         RpcStream<AudioFrame> frameStream,
         CancellationToken cancellationToken)
         => LiveAudioStreams.PushStream(
             session,
             chatId,
             repliedChatEntryId,
-            clientStartOffset,
+            sourceStartOffsetSeconds,
             preSkip,
             frameStream,
             cancellationToken);
