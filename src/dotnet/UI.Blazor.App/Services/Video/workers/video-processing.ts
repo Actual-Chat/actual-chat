@@ -182,6 +182,18 @@ let lastSenderTotalDroppedFrames = 0;
 let lastSenderAckAtMs = 0;
 let recorderHealthIntervalHandle: ReturnType<typeof setInterval> | null = null;
 let recorderHealthSenderHooked: object | null = null;
+// Wall-clock time of the most recent recorder-health metrics reset. Reset
+// is triggered when the encoder pipeline shape changes — encoder replace,
+// codec switch, simulcast ladder reshape, recording start. The first 1–2
+// frames produced after such a reset are dominated by encoder warmup (cold
+// IDR, codec init, NVENC slot adoption, fresh extra-layer cold start) and
+// their encode-time samples spike to many frame durations. Without a settle
+// window, the AIMD aggregator immediately reverts the climb to N+1 layers
+// and oscillates indefinitely between N and N+1 tier ladders. During the
+// settle window the aggregator emits 0/0 ratios so the classifier produces
+// neutral signals.
+let lastRecorderHealthResetAtMs = 0;
+const RECORDER_HEALTH_RESET_SETTLE_MS = 3000;
 interface PendingEncodeFrameCost {
     expectedLayerCount: number;
     seenLayerIds: Set<number>;
@@ -216,9 +228,25 @@ function startRecorderHealthAggregator(): void {
     lastSenderTotalDroppedFrames = 0;
     lastSenderAckAtMs = 0;
     recorderHealthSenderHooked = null;
+    // Reset the metrics on aggregator start so the first cold-start ticks
+    // (codec configure + first IDR + simulcast extras coming online) don't
+    // pollute the encode-time distribution.
+    resetRecorderHealthMetrics();
+    recorderHealthIntervalHandle = setInterval(emitRecorderHealthSnapshot, recorderHealthIntervalMs);
+}
+
+// Discards accumulated encode-cost samples and the pending per-frame cost
+// trackers, and arms a short settle window during which the aggregator
+// reports neutral (0/0) ratios. Called on encoder replace, codec switch,
+// simulcast ladder reshape, and recording start — events that produce real
+// encoder warmup activity but no sustained overload. Without the reset, the
+// freshly-added encoder's cold-start spikes (driver/HW init on first encode
+// submission) would be classified as overload and trigger a pointless
+// AIMD backoff.
+function resetRecorderHealthMetrics(): void {
+    lastRecorderHealthResetAtMs = performance.now();
     encodeCostRatioSamples.length = 0;
     pendingEncodeFrameCosts.clear();
-    recorderHealthIntervalHandle = setInterval(emitRecorderHealthSnapshot, recorderHealthIntervalMs);
 }
 
 function stopRecorderHealthAggregator(): void {
@@ -233,6 +261,8 @@ function stopRecorderHealthAggregator(): void {
 function emitRecorderHealthSnapshot(): void {
     const now = performance.now();
     flushStaleEncodeFrameCosts(now);
+    const inResetSettleWindow = lastRecorderHealthResetAtMs > 0
+        && now - lastRecorderHealthResetAtMs < RECORDER_HEALTH_RESET_SETTLE_MS;
     const samples = encodeCostRatioSamples.slice();
     encodeCostRatioSamples.length = 0;
     samples.sort((a, b) => a - b);
@@ -241,10 +271,15 @@ function emitRecorderHealthSnapshot(): void {
         const idx = Math.min(Math.floor(samples.length * q), samples.length - 1);
         return samples[idx] ?? 0;
     };
-    const encodeRatioAvg = samples.length === 0
+    // While the post-reset settle window is open, emit 0/0 so the .NET
+    // classifier returns a neutral signal — neither a backoff nor a climb
+    // candidate. Without this gate, a freshly-added top simulcast tier's
+    // cold-start spikes (driver/HW init on first encode call) would falsely
+    // classify as overload and cause endless N⇌N+1 oscillation.
+    const encodeRatioAvg = inResetSettleWindow || samples.length === 0
         ? 0
         : samples.reduce((sum, x) => sum + x, 0) / samples.length;
-    const encodeRatioP90 = pickAt(0.9);
+    const encodeRatioP90 = inResetSettleWindow ? 0 : pickAt(0.9);
 
     const slotRate = slotReplacements / Math.max(1, slotArrivals);
 
@@ -2018,6 +2053,7 @@ export const serverImpl: VideoProcessingWorker = {
         if (segConfig && blurEnabled) { segConfig.outputWidth = params.width; segConfig.outputHeight = params.height; }
         // Drop cached heartbeat frame — its dimensions no longer match the encoder.
         if (lastEncodedFrame) { lastEncodedFrame.close(); lastEncodedFrame = null; }
+        resetRecorderHealthMetrics();
     },
 
     switchCodec: async (config: EncoderConfig, spatialLayers?: SpatialLayerConfig[]): Promise<void> => {
@@ -2122,6 +2158,7 @@ export const serverImpl: VideoProcessingWorker = {
         if (!switchFailed) {
             encoderErrorSeen = false; lastStreamError = '';
         }
+        resetRecorderHealthMetrics();
         infoLog?.log(`Codec switched ${switchFailed ? 'with error' : 'successfully'} (${extraLayerEncoders.length} simulcast extras rearmed)`);
     },
 
@@ -2200,6 +2237,7 @@ export const serverImpl: VideoProcessingWorker = {
         // Force a keyframe so subscribers can latch onto any newly-armed layer
         // without waiting for the next encoder-driven keyframe interval.
         nextFrameIsKeyFrame = true;
+        resetRecorderHealthMetrics();
     },
 
     toggleBlur: async (enabled, segCfg?): Promise<void> => {
