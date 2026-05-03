@@ -116,6 +116,10 @@ interface PlaybackHealthSnapshot {
     priority: number;
     streamAgeMs: number;
     qualityReductionRequested: boolean;
+    /** Smoothed end-to-end latency, ms: server-clock now − frame's effective
+     *  capture wall-clock at the moment the frame entered the playback
+     *  pipeline. Source for app.video.latency. */
+    latencyMsP50: number;
 }
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPlayer');
@@ -1938,6 +1942,7 @@ export class VideoPlayer {
                 : PLAYBACK_PRIORITY_SECONDARY,
             streamAgeMs: Math.max(0, Math.round(performance.now() - this.createdAtMs)),
             qualityReductionRequested: this.qualityReductionRequested,
+            latencyMsP50: Math.max(0, Math.round(this.pipelineLatencyMs)),
         };
         void this.blazorRef.invokeMethodAsync('OnPlaybackHealth', snapshot)
             .catch((e: unknown) => warnLog?.log('reportPlaybackHealth error:', e));

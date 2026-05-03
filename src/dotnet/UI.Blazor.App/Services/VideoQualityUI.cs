@@ -443,7 +443,8 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                 requestedQuality.MaxSpatialLayer,
                 requestedQuality.MaxTemporalLayer,
                 state.Snapshot.Priority,
-                state.Verdict);
+                state.Verdict,
+                state.Snapshot.LatencyMsP50);
         }
         var info = new PlaybackQualityInfo(
             capacity,
@@ -1000,7 +1001,8 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         int CurrentMaxTemporal,
         PlaybackStreamPriority Priority,
         int StreamAgeMs,
-        bool QualityReductionRequested = false);
+        bool QualityReductionRequested = false,
+        int LatencyMsP50 = 0);
 
     private sealed record PlaybackHealthState(
         StreamKind StreamKind,

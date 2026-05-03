@@ -209,14 +209,17 @@ public class LiveVideoStreams : ILiveVideoStreams
         DebugLog?.LogDebug("ChangePlaybackQuality: session={Session}, streams={Count}, info={Info}",
             session, qualityByStream.Count, info);
 
-        // Buffered media duration ahead of decode is the doc's primary playback
-        // health signal and a direct latency proxy — feed app.video.latency.
         if (info is not null) {
             AppMeters.VideoReceiveCapacityBps.Record(info.EstimatedCapacityBytesPerSec);
             AppMeters.VideoReceiveAggregateHealth.Record(info.AggregateHealth);
             foreach (var (_, s) in info.Streams) {
                 var priorityTag = PriorityTag(s.Priority);
-                AppMeters.VideoLatency.Record(s.BufferDurationMsP50, priorityTag);
+                // Capture-to-presentation latency, server-clock-corrected by
+                // the receiver. Skip the default-0 sample from clients still
+                // on the old wire format — recording 0 ms would skew the
+                // histogram toward an unrealistic floor.
+                if (s.LatencyMsP50 > 0)
+                    AppMeters.VideoLatency.Record(s.LatencyMsP50, priorityTag);
                 if (s.KeyframeSkipsInWindow > 0)
                     AppMeters.VideoReceiveKeyframeSkips.Add(s.KeyframeSkipsInWindow, priorityTag);
                 AppMeters.VideoReceiveDecoderQueue.Record(s.DecoderQueueDepthP90, priorityTag);

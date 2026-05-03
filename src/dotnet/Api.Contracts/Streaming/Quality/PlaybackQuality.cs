@@ -20,6 +20,8 @@ public enum PlaybackStreamPriority
 /// <summary>
 /// Per-stream playback health sample plus the controller's classification:
 /// rate, buffer, decoder load, currently-applied caps, and a -1/0/+1 verdict.
+/// `LatencyMsP50` is the receiver-measured capture-to-presentation latency
+/// (server-clock-corrected), the canonical input for app.video.latency.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record PlaybackStreamInfo(
@@ -30,7 +32,8 @@ public sealed partial record PlaybackStreamInfo(
     [property: DataMember(Order = 4), MemoryPackOrder(4), Key(4)] int CurrentMaxSpatial,
     [property: DataMember(Order = 5), MemoryPackOrder(5), Key(5)] int CurrentMaxTemporal,
     [property: DataMember(Order = 6), MemoryPackOrder(6), Key(6)] PlaybackStreamPriority Priority,
-    [property: DataMember(Order = 7), MemoryPackOrder(7), Key(7)] int Verdict);
+    [property: DataMember(Order = 7), MemoryPackOrder(7), Key(7)] int Verdict,
+    [property: DataMember(Order = 8), MemoryPackOrder(8), Key(8)] int LatencyMsP50 = 0);
 
 /// <summary>
 /// Aggregate playback health + per-stream details accompanying a playback
