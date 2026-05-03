@@ -83,6 +83,17 @@ export interface RemoteStreamDiagnostics {
     avDriftMs: number | null;
 }
 
+interface PlaybackHealthSnapshot {
+    incomingByteRate: number;
+    bufferDurationMsP50: number;
+    keyframeSkipsInWindow: number;
+    decoderQueueDepthP90: number;
+    currentMaxSpatial: number;
+    currentMaxTemporal: number;
+    priority: number;
+    streamAgeMs: number;
+}
+
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPlayer');
 
 // Graduated recovery thresholds for the latency-tick path. Used by
@@ -101,6 +112,10 @@ const DROP_TO_KEYFRAME_MS = 2000;
 // margin that lets a fast-arriving frame replace a pending one before the
 // render tick consumes it.
 const JITTER_BUFFER_MS = 40;
+const DEFAULT_MAX_SPATIAL_LAYER = 2;
+const MAX_TEMPORAL_LAYER = 2147483647;
+const PLAYBACK_PRIORITY_SECONDARY = 0;
+const PLAYBACK_PRIORITY_PRIMARY = 1;
 
 // Late-join catchup: when the rendered frame is much older than the newest
 // arrived frame (receiver joined mid-stream, or the sender went through a
@@ -257,6 +272,8 @@ export class VideoPlayer {
     private consecutiveEmptyRenders = 0; // Safety net: count consecutive RAFs with no frame rendered
     private lastHighLatencyLogTime = 0;  // Throttle high-latency FRAME_RECV logs
     private skipToLiveCount = 0;          // Number of skip-to-live events
+    private lastQualitySkipToLiveCount = 0;
+    private readonly createdAtMs = performance.now();
     // Offset of the newest frame that arrived at this receiver. Used for server
     // latency reporting so the signal reflects pure network+relay transit —
     // NOT pipelineLatencyMs (the intentional jitter buffer). Reporting
@@ -1726,6 +1743,8 @@ export class VideoPlayer {
                     currentBufferSpanMs = (this.pendingFrames.peekBack()!.timestamp
                         - this.pendingFrames.peekFront()!.timestamp) / 1000;
                 }
+                const bufferDurationMs = Math.round(ds.encodedBufferSpanMs ?? currentBufferSpanMs);
+                this.reportPlaybackHealth(ds, bufferDurationMs);
 
                 infoLog?.log(
                     `reportLatencyTick: decode, codec=${this.decoderConfig?.codec ?? 'unknown'} ` +
@@ -1826,6 +1845,38 @@ export class VideoPlayer {
         }
     }
 
+    private reportPlaybackHealth(ds: DecoderStats, bufferDurationMs: number): void {
+        const workerPull = this.offThreadPullActive && ds.pullReceivedFrameCount !== undefined ? ds : null;
+        let bitrateKbps: number;
+        if (workerPull) {
+            bitrateKbps = workerPull.pullBitrateKbps ?? 0;
+        } else {
+            const elapsedSec = this.firstFrameReceivedTime > 0
+                ? (performance.now() - this.firstFrameReceivedTime) / 1000
+                : 0;
+            bitrateKbps = elapsedSec > 0
+                ? Math.round(this.receivedBytes * 8 / elapsedSec / 1000)
+                : 0;
+        }
+        const renderLevel = this.computeRenderQualityLevel();
+        const skipDelta = Math.max(0, this.skipToLiveCount - this.lastQualitySkipToLiveCount);
+        this.lastQualitySkipToLiveCount = this.skipToLiveCount;
+        const snapshot: PlaybackHealthSnapshot = {
+            incomingByteRate: Math.round(bitrateKbps * 1000 / 8),
+            bufferDurationMsP50: Math.max(0, bufferDurationMs),
+            keyframeSkipsInWindow: skipDelta,
+            decoderQueueDepthP90: ds.decodeQueueSize,
+            currentMaxSpatial: maxSpatialForRenderQualityLevel(renderLevel),
+            currentMaxTemporal: MAX_TEMPORAL_LAYER,
+            priority: renderLevel === null || renderLevel <= 2
+                ? PLAYBACK_PRIORITY_PRIMARY
+                : PLAYBACK_PRIORITY_SECONDARY,
+            streamAgeMs: Math.max(0, Math.round(performance.now() - this.createdAtMs)),
+        };
+        void this.blazorRef.invokeMethodAsync('OnPlaybackHealth', snapshot)
+            .catch(e => warnLog?.log('reportPlaybackHealth error:', e));
+    }
+
     private async reportPlaying(offsetMs: number, isBufferLow: boolean): Promise<void> {
         try {
             await this.blazorRef.invokeMethodAsync('OnPlaying', offsetMs, isBufferLow);
@@ -1842,4 +1893,14 @@ export class VideoPlayer {
             warnLog?.log('reportEnded error:', e);
         }
     }
+}
+
+function maxSpatialForRenderQualityLevel(level: number | null): number {
+    if (level === null)
+        return DEFAULT_MAX_SPATIAL_LAYER;
+    if (level >= 4)
+        return 0;
+    if (level >= 3)
+        return 1;
+    return DEFAULT_MAX_SPATIAL_LAYER;
 }

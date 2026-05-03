@@ -149,10 +149,29 @@ public class AllocatorTest
     }
 
     [Fact]
+    public void PrimaryFitsAtTop_WithSpatialCap_GetsCappedQuality()
+    {
+        var primaries = new[] { Req("p1", 100_000, 500_000) };
+        var result = Allocator.Allocate(1_000_000, primaries, [], maxSpatialLayer: 1);
+
+        result["p1"].MaxSpatialLayer.Should().Be(1);
+        result["p1"].MaxTemporalLayer.Should().Be(int.MaxValue);
+    }
+
+    [Fact]
     public void PrimaryFitsOnlyAtBase_GetsBaseQuality()
     {
         var primaries = new[] { Req("p1", 100_000, 500_000) };
         var result = Allocator.Allocate(150_000, primaries, []);
+
+        result["p1"].MaxSpatialLayer.Should().Be(0);
+    }
+
+    [Fact]
+    public void PrimaryFitsAtTop_WithBaseOnlyCap_GetsBaseQuality()
+    {
+        var primaries = new[] { Req("p1", 100_000, 500_000) };
+        var result = Allocator.Allocate(1_000_000, primaries, [], maxSpatialLayer: 0);
 
         result["p1"].MaxSpatialLayer.Should().Be(0);
     }

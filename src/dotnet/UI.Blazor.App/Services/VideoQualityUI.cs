@@ -1,4 +1,5 @@
 using ActualChat.Streaming;
+using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 
@@ -10,13 +11,24 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// to the server via <see cref="ILiveVideoStreams.ChangeRecordingQuality"/>
 /// and <see cref="ILiveVideoStreams.ChangePlaybackQuality"/>.
 /// </summary>
-public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
+public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), INotifyInitialized
 {
+    private const int ColdStartTicks = 2; // ~2 s of grace at 1 Hz
+    private static readonly TimeSpan PlaybackHealthTtl = TimeSpan.FromSeconds(10);
+    private static readonly string JSGetDebugSettingsMethod = $"{BlazorUIAppModule.ImportName}.getVideoDebugSettings";
+
     private readonly Dictionary<StreamKind, RecordingAggregator> _recordingByKind = new() {
         [StreamKind.Webcam] = new RecordingAggregator(RecordingThresholds.Defaults),
         [StreamKind.Screencast] = new RecordingAggregator(RecordingThresholds.Defaults),
     };
-    private RecorderHealthSnapshot? _lastHealth;
+    private readonly Dictionary<StreamKind, VideoRecorder> _recordersByKind = new();
+    private readonly Dictionary<StreamKind, RecorderHealthSnapshot> _lastRecordingHealthByKind = new();
+    private readonly Dictionary<StreamKind, RecordingQualityState> _lastRecordingStateByKind = new();
+    private readonly Dictionary<StreamId, PlaybackHealthState> _playbackByStream = new();
+    private readonly CapacityEstimator _playbackEstimator = new(PlaybackThresholds.Defaults);
+    private readonly Lock _playbackLock = new();
+    private int? _debugMaxRecordingLayerCount;
+    private int? _debugMaxPlaybackLayerCount;
     private bool _wasConnected = true;
     private int _coldStartTicksRemaining;
     private CancellationTokenSource? _recordingTestCts;
@@ -25,9 +37,7 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
     private ConnectivityUI ConnectivityUI => Hub.ConnectivityUI;
     private ILiveVideoStreams LiveVideoStreams
         => field ??= Services.GetRequiredService<ILiveVideoStreams>();
-    private Session Session => Hub.Session;
-
-    public VideoQualityUI(AppUIHub hub) : base(hub) { }
+    private new Session Session => Hub.Session;
 
     public void Initialized()
         => this.Start();
@@ -43,7 +53,8 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
         VideoRecorder recorder,
         CancellationToken cancellationToken)
     {
-        _lastHealth = snapshot;
+        _recordersByKind[kind] = recorder;
+        _lastRecordingHealthByKind[kind] = snapshot;
         if (!_recordingByKind.TryGetValue(kind, out var aggregator))
             return;
         if (_coldStartTicksRemaining > 0) {
@@ -52,44 +63,82 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
         }
         var signal = RecordingClassifier.Classify(snapshot, RecordingThresholds.Defaults);
         var decision = aggregator.Step(signal);
-        if (!decision.Changed)
+        if (!decision.Changed && _debugMaxRecordingLayerCount is null)
             return;
 
-        Log.LogWarning(
-            "RecordingQuality changed: kind={Kind} target={Target} reason={Reason} signal={Signal} "
-            + "encodeP50={EncP50:F2} encodeP90={EncP90:F2} slotRate={SlotRate:F2} "
-            + "backlogMs={Backlog:F0} skips={Skips} ackAgeMs={Ack:F0} connected={Connected}",
-            kind, decision.NewTargetLayerCount, decision.Reason, signal,
-            snapshot.EncodeRatioP50, snapshot.EncodeRatioP90, snapshot.SlotReplacementRate,
-            snapshot.SenderBacklogP90Ms, snapshot.SenderSkipsPerWindow, snapshot.LastAckAgeMs,
-            snapshot.IsConnected);
+        if (decision.Changed)
+            Log.LogWarning(
+                "RecordingQuality changed: kind={Kind} target={Target} reason={Reason} signal={Signal} "
+                + "encodeP50={EncP50:F2} encodeP90={EncP90:F2} slotRate={SlotRate:F2} "
+                + "backlogMs={Backlog:F0} skips={Skips} ackAgeMs={Ack:F0} connected={Connected}",
+                kind, decision.NewTargetLayerCount, decision.Reason, signal,
+                snapshot.EncodeRatioP50, snapshot.EncodeRatioP90, snapshot.SlotReplacementRate,
+                snapshot.SenderBacklogP90Ms, snapshot.SenderSkipsPerWindow, snapshot.LastAckAgeMs,
+                snapshot.IsConnected);
 
-        await recorder.SetTargetLayerCount(decision.NewTargetLayerCount, cancellationToken).ConfigureAwait(false);
-
-        var info = new RecordingQualityInfo(decision.Reason, snapshot);
-        _ = await LiveVideoStreams.ChangeRecordingQuality(
-            Session,
-            aggregator.Snapshot(),
-            info,
+        await ApplyRecordingQuality(
+            kind,
+            aggregator,
+            recorder,
+            decision.Reason,
+            snapshot,
+            force: decision.Changed,
             cancellationToken).ConfigureAwait(false);
     }
 
-    protected override async Task OnRun(CancellationToken cancellationToken)
+    public Task PushPlaybackHealth(
+        StreamId streamId,
+        PlaybackHealthSnapshot snapshot,
+        CancellationToken cancellationToken)
     {
-        // Watch ConnectivityUI transitions to apply cold-start grace on
-        // false→true edges (signal windows wiped on reconnect).
-        var cState = ConnectivityUI.IsConnected.Computed;
-        await foreach (var (isConnected, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
-            if (!_wasConnected && isConnected) {
-                foreach (var aggregator in _recordingByKind.Values)
-                    aggregator.Reset();
-                _coldStartTicksRemaining = ColdStartTicks;
-            }
-            _wasConnected = isConnected;
+        var verdict = PlaybackVerdictClassifier.Classify(
+            snapshot.BufferDurationMsP50,
+            snapshot.KeyframeSkipsInWindow,
+            PlaybackThresholds.Defaults,
+            snapshot.StreamAgeMs);
+        lock (_playbackLock)
+            _playbackByStream[streamId] = new PlaybackHealthState(snapshot, verdict, CpuTimestamp.Now);
+        var reason = verdict switch {
+            < 0 => PlaybackQualityReason.Backoff,
+            > 0 => PlaybackQualityReason.Climb,
+            _ => PlaybackQualityReason.Stable,
+        };
+        return RecomputePlaybackQuality(reason, cancellationToken);
+    }
+
+    public async Task SetDebugMaxRecordingLayerCount(int? layerCount, CancellationToken cancellationToken)
+    {
+        layerCount = NormalizeLayerCount(layerCount);
+        if (_debugMaxRecordingLayerCount == layerCount)
+            return;
+
+        _debugMaxRecordingLayerCount = layerCount;
+        foreach (var (kind, aggregator) in _recordingByKind) {
+            if (!_recordersByKind.TryGetValue(kind, out var recorder))
+                continue;
+            if (!_lastRecordingHealthByKind.TryGetValue(kind, out var snapshot))
+                continue;
+
+            await ApplyRecordingQuality(
+                kind,
+                aggregator,
+                recorder,
+                RecordingQualityReason.Stable,
+                snapshot,
+                force: true,
+                cancellationToken).ConfigureAwait(false);
         }
     }
 
-    private const int ColdStartTicks = 2; // ~2 s of grace at 1 Hz
+    public async Task SetDebugMaxPlaybackLayerCount(int? layerCount, CancellationToken cancellationToken)
+    {
+        layerCount = NormalizeLayerCount(layerCount);
+        if (_debugMaxPlaybackLayerCount == layerCount)
+            return;
+
+        _debugMaxPlaybackLayerCount = layerCount;
+        await RecomputePlaybackQuality(PlaybackQualityReason.ActiveSetChanged, cancellationToken).ConfigureAwait(false);
+    }
 
     // --- Debug / test entry points ---
 
@@ -136,7 +185,152 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
             CancellationToken.None);
     }
 
+    // Protected methods
+
+    protected override async Task OnRun(CancellationToken cancellationToken)
+    {
+        await LoadDebugSettings(cancellationToken).ConfigureAwait(false);
+        // Watch ConnectivityUI transitions to apply cold-start grace on
+        // false→true edges (signal windows wiped on reconnect).
+        var cState = ConnectivityUI.IsConnected.Computed;
+        await foreach (var (isConnected, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+            if (!_wasConnected && isConnected) {
+                foreach (var aggregator in _recordingByKind.Values)
+                    aggregator.Reset();
+                _coldStartTicksRemaining = ColdStartTicks;
+                _playbackEstimator.Reset();
+            }
+            _wasConnected = isConnected;
+        }
+    }
+
     // Private methods
+
+    private async Task LoadDebugSettings(CancellationToken cancellationToken)
+    {
+        try {
+            var settings = await Hub.JS.InvokeAsync<VideoDebugSettings>(
+                    JSGetDebugSettingsMethod,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            _debugMaxRecordingLayerCount = NormalizeLayerCount(settings.MaxOutboundLayerCount);
+            _debugMaxPlaybackLayerCount = NormalizeLayerCount(settings.MaxInboundLayerCount);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception e) {
+            Log.LogDebug(e, "LoadDebugSettings failed");
+        }
+    }
+
+    private async Task ApplyRecordingQuality(
+        StreamKind kind,
+        RecordingAggregator aggregator,
+        VideoRecorder recorder,
+        RecordingQualityReason reason,
+        RecorderHealthSnapshot snapshot,
+        bool force,
+        CancellationToken cancellationToken)
+    {
+        var targetLayerCount = aggregator.TargetLayerCount;
+        var effectiveLayerCount = ApplyLayerCountConstraint(targetLayerCount, _debugMaxRecordingLayerCount);
+        var state = aggregator.Snapshot(effectiveLayerCount);
+        var oldState = _lastRecordingStateByKind.GetValueOrDefault(kind);
+        if (!force && oldState == state)
+            return;
+
+        if (force || oldState?.EffectiveLayerCount != effectiveLayerCount)
+            await recorder.SetTargetLayerCount(effectiveLayerCount, cancellationToken).ConfigureAwait(false);
+
+        _lastRecordingStateByKind[kind] = state;
+        var info = new RecordingQualityInfo(reason, snapshot);
+        _ = await LiveVideoStreams.ChangeRecordingQuality(
+            Session,
+            state,
+            info,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task RecomputePlaybackQuality(PlaybackQualityReason reason, CancellationToken cancellationToken)
+    {
+        var entries = GetFreshPlaybackEntries();
+        if (entries.Count == 0)
+            return;
+
+        var signals = entries
+            .Select(x => (x.Value.Snapshot.IncomingByteRate, x.Value.Verdict))
+            .ToArray();
+        var aggregateHealth = AggregateHealth.Compute(signals);
+        var sumIncomingBytesPerSec = entries.Sum(x => Math.Max(0, x.Value.Snapshot.IncomingByteRate));
+        var capacity = _playbackEstimator.Step(aggregateHealth, sumIncomingBytesPerSec);
+        var primaries = entries
+            .Where(x => x.Value.Snapshot.Priority == PlaybackStreamPriority.Primary)
+            .Select(ToStreamRequest)
+            .ToArray();
+        var secondaries = entries
+            .Where(x => x.Value.Snapshot.Priority != PlaybackStreamPriority.Primary)
+            .Select(ToStreamRequest)
+            .ToArray();
+        var maxSpatialLayer = _debugMaxPlaybackLayerCount is { } maxLayerCount
+            ? maxLayerCount - 1
+            : (int?)null;
+        var requested = Allocator.Allocate(capacity, primaries, secondaries, maxSpatialLayer);
+        var requestedMap = new ApiMap<string, ReceiveQuality>();
+        foreach (var (streamId, _) in entries)
+            requestedMap[streamId.Value] = requested.GetValueOrDefault(streamId.Value, ReceiveQuality.Lowest);
+        var streamInfoMap = new ApiMap<string, PlaybackStreamInfo>();
+        foreach (var (streamId, state) in entries) {
+            var requestedQuality = requestedMap[streamId.Value];
+            streamInfoMap[streamId.Value] = new PlaybackStreamInfo(
+                state.Snapshot.IncomingByteRate,
+                state.Snapshot.BufferDurationMsP50,
+                state.Snapshot.KeyframeSkipsInWindow,
+                state.Snapshot.DecoderQueueDepthP90,
+                requestedQuality.MaxSpatialLayer,
+                requestedQuality.MaxTemporalLayer,
+                state.Snapshot.Priority,
+                state.Verdict);
+        }
+        var info = new PlaybackQualityInfo(
+            capacity,
+            aggregateHealth,
+            reason,
+            IsColdStart: false,
+            streamInfoMap);
+        _ = await LiveVideoStreams.ChangePlaybackQuality(
+            Session,
+            requestedMap,
+            info,
+            cancellationToken).ConfigureAwait(false);
+
+        return;
+
+        static StreamRequest ToStreamRequest(KeyValuePair<StreamId, PlaybackHealthState> entry)
+        {
+            var top = Math.Max(1, entry.Value.Snapshot.IncomingByteRate);
+            var currentSpatial = Math.Max(0, entry.Value.Snapshot.CurrentMaxSpatial);
+            var baseRate = currentSpatial <= 0 ? top : Math.Max(1, top / (currentSpatial + 1));
+            return new StreamRequest(entry.Key.Value, baseRate, top);
+        }
+    }
+
+    private List<KeyValuePair<StreamId, PlaybackHealthState>> GetFreshPlaybackEntries()
+    {
+        lock (_playbackLock) {
+            var staleStreamIds = _playbackByStream
+                .Where(x => x.Value.LastSeen.Elapsed > PlaybackHealthTtl)
+                .Select(x => x.Key)
+                .ToArray();
+            foreach (var streamId in staleStreamIds)
+                _playbackByStream.Remove(streamId);
+            return _playbackByStream.ToList();
+        }
+    }
+
+    private static int? NormalizeLayerCount(int? layerCount)
+        => layerCount is >= 1 and <= 3 ? layerCount : null;
+
+    private static int ApplyLayerCountConstraint(int layerCount, int? maxLayerCount)
+        => maxLayerCount is { } max ? Math.Clamp(layerCount, 1, max) : layerCount;
 
     private async Task RunRecordingTest(TimeSpan period, CancellationToken ct)
     {
@@ -223,6 +417,8 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
         Log.LogWarning("PlaybackQualityTest: done");
     }
 
+    // Nested types
+
     // Synthetic signal — produces [0, -1, ..., -1, 0, +1, ..., +1] over a
     // single cycle. ~10% of time is spent at neutral (5% at each polarity flip).
     internal static int TestSignal(double phase)
@@ -233,7 +429,10 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
         return 1;
     }
 
-    // Nested types
+    public sealed record VideoDebugSettings(
+        bool ForceH264Only,
+        int? MaxOutboundLayerCount,
+        int? MaxInboundLayerCount);
 
     public sealed record RecordingThresholds(
         double EncodeRatioBadAbove,
@@ -345,8 +544,8 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
             return new RecordingDecision(_targetLayerCount, false, RecordingQualityReason.Stable);
         }
 
-        public RecordingQualityState Snapshot()
-            => new(_targetLayerCount, _targetLayerCount);
+        public RecordingQualityState Snapshot(int? effectiveLayerCount = null)
+            => new(_targetLayerCount, effectiveLayerCount ?? _targetLayerCount);
     }
 
     public sealed record RecordingDecision(
@@ -471,13 +670,17 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
         public static IReadOnlyDictionary<string, ReceiveQuality> Allocate(
             long budgetBytesPerSec,
             IReadOnlyList<StreamRequest> primaries,
-            IReadOnlyList<StreamRequest> secondaries)
+            IReadOnlyList<StreamRequest> secondaries,
+            int? maxSpatialLayer = null)
         {
             var result = new Dictionary<string, ReceiveQuality>();
             var remaining = budgetBytesPerSec;
+            var topQuality = maxSpatialLayer is { } max
+                ? new ReceiveQuality(Math.Max(0, max), int.MaxValue)
+                : ReceiveQuality.Default;
             foreach (var req in primaries) {
                 if (remaining >= req.PredictedRateAtTop) {
-                    result[req.StreamId] = ReceiveQuality.Default;
+                    result[req.StreamId] = topQuality;
                     remaining -= req.PredictedRateAtTop;
                 }
                 else if (remaining >= req.PredictedRateAtBase) {
@@ -494,4 +697,19 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
             return result;
         }
     }
+
+    public sealed record PlaybackHealthSnapshot(
+        long IncomingByteRate,
+        int BufferDurationMsP50,
+        int KeyframeSkipsInWindow,
+        int DecoderQueueDepthP90,
+        int CurrentMaxSpatial,
+        int CurrentMaxTemporal,
+        PlaybackStreamPriority Priority,
+        int StreamAgeMs);
+
+    private sealed record PlaybackHealthState(
+        PlaybackHealthSnapshot Snapshot,
+        int Verdict,
+        CpuTimestamp LastSeen);
 }

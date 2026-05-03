@@ -30,14 +30,68 @@
                 <span class="diag-value">localStorage["video.debug.forceH264Only"]</span>
             </div>
         </div>
+        <div class="diag-section">
+            <div class="diag-section-header">Quality control</div>
+            <Tile>
+                <TileItem IsHoverable="false">
+                    <Content>Outbound layer cap</Content>
+                    <Caption>
+                        Caps the recording quality controller for your own webcam stream.
+                        Default leaves the controller uncapped.
+                    </Caption>
+                    <Right>
+                        <select
+                            class="diag-select"
+                            value="@FormatLayerCount(_maxOutboundLayerCount)"
+                            @onchange="@OnMaxOutboundLayerCountChange">
+                            <option value="">Default</option>
+                            <option value="1">Up to 1</option>
+                            <option value="2">Up to 2</option>
+                            <option value="3">Up to 3</option>
+                        </select>
+                    </Right>
+                </TileItem>
+                <TileItem IsHoverable="false">
+                    <Content>Inbound layer cap</Content>
+                    <Caption>
+                        Caps the playback quality controller requests for active remote streams.
+                        Default leaves the controller uncapped.
+                    </Caption>
+                    <Right>
+                        <select
+                            class="diag-select"
+                            value="@FormatLayerCount(_maxInboundLayerCount)"
+                            @onchange="@OnMaxInboundLayerCountChange">
+                            <option value="">Default</option>
+                            <option value="1">Up to 1</option>
+                            <option value="2">Up to 2</option>
+                            <option value="3">Up to 3</option>
+                        </select>
+                    </Right>
+                </TileItem>
+            </Tile>
+            <div class="diag-row diag-dim">
+                <span class="diag-label">Storage keys</span>
+                <span class="diag-value multiline">
+                    video.debug.maxOutboundLayerCount,
+                    video.debug.maxInboundLayerCount
+                </span>
+            </div>
+        </div>
     </Body>
 </DialogFrame>
 
 @code {
     private static readonly string JSGetMethod = $"{BlazorUIAppModule.ImportName}.getVideoDebugSettings";
     private static readonly string JSSetForceH264OnlyMethod = $"{BlazorUIAppModule.ImportName}.setVideoDebugForceH264Only";
+    private static readonly string JSSetMaxOutboundLayerCountMethod =
+        $"{BlazorUIAppModule.ImportName}.setVideoDebugMaxOutboundLayerCount";
+    private static readonly string JSSetMaxInboundLayerCountMethod =
+        $"{BlazorUIAppModule.ImportName}.setVideoDebugMaxInboundLayerCount";
 
     private bool _forceH264Only;
+    private int? _maxOutboundLayerCount;
+    private int? _maxInboundLayerCount;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -45,6 +99,10 @@
     protected override async Task OnInitializedAsync() {
         var settings = await JS.InvokeAsync<VideoDebugSettings>(JSGetMethod);
         _forceH264Only = settings.ForceH264Only;
+        _maxOutboundLayerCount = settings.MaxOutboundLayerCount;
+        _maxInboundLayerCount = settings.MaxInboundLayerCount;
+        await Hub.VideoQualityUI.SetDebugMaxRecordingLayerCount(_maxOutboundLayerCount, CancellationToken.None);
+        await Hub.VideoQualityUI.SetDebugMaxPlaybackLayerCount(_maxInboundLayerCount, CancellationToken.None);
     }
 
     private async Task OnForceH264OnlyClick() {
@@ -53,10 +111,33 @@
         await JS.InvokeVoidAsync(JSSetForceH264OnlyMethod, _forceH264Only);
     }
 
+    private async Task OnMaxOutboundLayerCountChange(ChangeEventArgs e) {
+        _maxOutboundLayerCount = ParseLayerCount(e.Value?.ToString());
+        await JS.InvokeVoidAsync(JSSetMaxOutboundLayerCountMethod, _maxOutboundLayerCount);
+        await Hub.VideoQualityUI.SetDebugMaxRecordingLayerCount(_maxOutboundLayerCount, CancellationToken.None);
+    }
+
+    private async Task OnMaxInboundLayerCountChange(ChangeEventArgs e) {
+        _maxInboundLayerCount = ParseLayerCount(e.Value?.ToString());
+        await JS.InvokeVoidAsync(JSSetMaxInboundLayerCountMethod, _maxInboundLayerCount);
+        await Hub.VideoQualityUI.SetDebugMaxPlaybackLayerCount(_maxInboundLayerCount, CancellationToken.None);
+    }
+
+    private static string FormatLayerCount(int? layerCount)
+        => layerCount?.ToString() ?? "";
+
+    private static int? ParseLayerCount(string? value)
+        => int.TryParse(value, out var layerCount) && layerCount is >= 1 and <= 3
+            ? layerCount
+            : null;
+
     // Mirrors `VideoDebugSettings` in `video-diagnostics.ts`. JSInterop uses
     // System.Text.Json with web defaults (case-insensitive), so PascalCase
     // properties match the camelCase JS object shape.
-    public sealed record VideoDebugSettings(bool ForceH264Only);
+    public sealed record VideoDebugSettings(
+        bool ForceH264Only,
+        int? MaxOutboundLayerCount,
+        int? MaxInboundLayerCount);
 
     public sealed record Model;
 }

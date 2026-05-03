@@ -27,14 +27,63 @@ export async function collectRemoteStreamDiagnostics(streamId: string): Promise<
 // detection pass (typically the next stream).
 export interface VideoDebugSettings {
     forceH264Only: boolean;
+    maxOutboundLayerCount: number | null;
+    maxInboundLayerCount: number | null;
 }
 
 export function getVideoDebugSettings(): VideoDebugSettings {
     return {
         forceH264Only: getForceH264OnlyImpl(),
+        maxOutboundLayerCount: getLayerCount(OUTBOUND_LAYER_COUNT_KEY),
+        maxInboundLayerCount: getLayerCount(INBOUND_LAYER_COUNT_KEY),
     };
 }
 
 export function setVideoDebugForceH264Only(enabled: boolean): void {
     setForceH264OnlyImpl(enabled);
+}
+
+export function setVideoDebugMaxOutboundLayerCount(layerCount: number | null): void {
+    setLayerCount(OUTBOUND_LAYER_COUNT_KEY, layerCount);
+}
+
+export function setVideoDebugMaxInboundLayerCount(layerCount: number | null): void {
+    setLayerCount(INBOUND_LAYER_COUNT_KEY, layerCount);
+}
+
+const OUTBOUND_LAYER_COUNT_KEY = 'video.debug.maxOutboundLayerCount';
+const INBOUND_LAYER_COUNT_KEY = 'video.debug.maxInboundLayerCount';
+
+function getLayerCount(key: string): number | null {
+    try {
+        const raw = globalThis.localStorage.getItem(key);
+        if (raw === null)
+            return null;
+
+        return normalizeLayerCount(Number(raw));
+    } catch {
+        return null;
+    }
+}
+
+function setLayerCount(key: string, layerCount: number | null): void {
+    try {
+        const normalized = normalizeLayerCount(layerCount);
+        if (normalized === null) {
+            globalThis.localStorage.removeItem(key);
+            return;
+        }
+
+        globalThis.localStorage.setItem(key, String(normalized));
+    } catch {
+        // Debug-only setting; ignore storage failures in private/sandboxed contexts.
+    }
+}
+
+function normalizeLayerCount(layerCount: number | null): number | null {
+    if (typeof layerCount !== 'number' || !Number.isInteger(layerCount))
+        return null;
+    if (layerCount < 1 || layerCount > 3)
+        return null;
+    return layerCount;
 }

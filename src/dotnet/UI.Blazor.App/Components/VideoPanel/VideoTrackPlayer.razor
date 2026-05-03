@@ -140,6 +140,22 @@
     }
 
     [JSInvokable]
+    public async Task OnPlaybackHealth(VideoQualityUI.PlaybackHealthSnapshot snapshot)
+    {
+        if (_isDisposed)
+            return;
+
+        try {
+            await Hub.VideoQualityUI
+                .PushPlaybackHealth(StreamInfo.StreamId, snapshot, CancellationToken.None)
+                .ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "[VideoTrackPlayer #{StreamId}] OnPlaybackHealth failed", StreamInfo.StreamId);
+        }
+    }
+
+    [JSInvokable]
     public void OnPresentationLag(double lagMs)
     {
         // Webcam-only: screencast pacing is too uneven to be a useful A/V sync target.
