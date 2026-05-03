@@ -513,8 +513,8 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
 
     private static int DefaultPlaybackMaxSpatialLayer(StreamKind streamKind)
         => streamKind == StreamKind.Screencast
-            ? Constants.Video.ScreencastMaxSimulcastTiers - 1
-            : Math.Max(0, Constants.Video.WebcamMaxSimulcastTiers - 2);
+            ? Constants.Video.ScreencastMaxSimulcastTiers - 1 // Top for screencast
+            : Constants.Video.WebcamMaxSimulcastTiers - 2;    // Top-1 for webcam
 
     private List<KeyValuePair<StreamId, PlaybackHealthState>> GetFreshPlaybackEntries()
     {
@@ -755,13 +755,13 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         int CooldownTicksAfterBackoff)
     {
         public static RecordingThresholds Defaults => new(
-            EncodeRatioBadAbove: 1.0,
-            EncodeRatioGoodBelow: 0.33,
+            EncodeRatioBadAbove: 1.333, // < 20fps
+            EncodeRatioGoodBelow: 0.333, // > 90fps
             LastAckBadMs: 2000,
             LastAckGoodMs: 500,
             SenderFrameDropRatioBadAbove: 0.20,
             MinTargetLayerCount: 1,
-            MaxTargetLayerCount: Constants.Video.WebcamMaxSimulcastTiers,
+            MaxTargetLayerCount: Constants.Video.MaxSimulcastTiers,
             ConsecutiveGoodForClimb: 5,
             CooldownTicksAfterBackoff: 5);
     }

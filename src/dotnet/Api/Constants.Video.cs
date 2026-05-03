@@ -31,6 +31,7 @@ public static partial class Constants
         // Webcam: up to 3 tiers (720p/360p/180p). Screencast: top + half-size.
         public const int WebcamMaxSimulcastTiers = 3;
         public const int ScreencastMaxSimulcastTiers = 2;
+        public const int MaxSimulcastTiers = 3;
 
         public static readonly TimeSpan CancellationDelay = TimeSpan.FromSeconds(5);
         public static readonly TimeSpan StreamExpirationDelay = TimeSpan.FromSeconds(30);

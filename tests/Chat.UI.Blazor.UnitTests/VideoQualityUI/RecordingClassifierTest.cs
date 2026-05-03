@@ -1,8 +1,7 @@
 using ActualChat.Streaming;
-using ActualChat.UI.Blazor.App.Services;
 using static ActualChat.UI.Blazor.App.Services.VideoQualityUI;
 
-namespace ActualChat.Chat.UI.Blazor.UnitTests.VideoQualityUITests;
+namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
 public class RecordingClassifierTest
 {
@@ -39,7 +38,7 @@ public class RecordingClassifierTest
     [Fact]
     public void HighEncodeRatio_ReturnsBad()
     {
-        var h = Snapshot(encodeAvg: 1.1);
+        var h = Snapshot(encodeAvg: 1.5);
         RecordingClassifier.Classify(h, T).Should().Be(-1);
     }
 

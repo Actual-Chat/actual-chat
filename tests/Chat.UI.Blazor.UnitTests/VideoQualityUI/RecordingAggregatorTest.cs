@@ -1,8 +1,7 @@
 using ActualChat.Streaming;
-using ActualChat.UI.Blazor.App.Services;
 using static ActualChat.UI.Blazor.App.Services.VideoQualityUI;
 
-namespace ActualChat.Chat.UI.Blazor.UnitTests.VideoQualityUITests;
+namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
 public class RecordingAggregatorTest
 {
