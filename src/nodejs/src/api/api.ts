@@ -41,7 +41,9 @@ import {
     RpcMessagePackCompactSerializationFormat,
     RpcClientPeer,
     defaultConnectionUrlResolver,
+    type RpcStreamOptions,
 } from 'actuallab-rpc';
+import { AUDIO, VIDEO } from 'app-constants';
 import { getLogs } from 'logging';
 
 import { ApiReconnectDelayer } from './api-reconnect-delayer.js';
@@ -85,6 +87,42 @@ export type SessionTokenProvider = (minLifespanMs?: number) => Promise<string>;
 export interface ApiConnectivityUI {
     readonly isConnected: boolean;
     readonly isConnectedChanged: { add(handler: (v: boolean) => void): unknown };
+}
+
+type KeyFrameLike = { readonly IsKeyFrame: boolean };
+
+export class MediaRpcStreamOptions {
+    static videoRealtime<T extends KeyFrameLike>(): RpcStreamOptions<T>;
+    static videoRealtime<T>(canSkipTo: (item: T) => boolean): RpcStreamOptions<T>;
+    static videoRealtime<T>(canSkipTo?: (item: T) => boolean): RpcStreamOptions<T> {
+        return {
+            isRealTime: true,
+            allowReconnect: true,
+            ackPeriod: VIDEO.rpcStreamAckPeriod,
+            bufferSize: VIDEO.rpcStreamBufferSize,
+            canSkipTo: canSkipTo ?? ((item) => (item as KeyFrameLike).IsKeyFrame),
+        };
+    }
+
+    static audioRecording<T>(): RpcStreamOptions<T> {
+        return {
+            isRealTime: false,
+            allowReconnect: true,
+            ackPeriod: AUDIO.stream.recordingRpcStreamAckPeriod,
+        };
+    }
+
+    static audioDelivery<T>(): RpcStreamOptions<T> {
+        return {
+            isRealTime: false,
+            allowReconnect: true,
+            ackPeriod: AUDIO.stream.deliveryRpcStreamAckPeriod,
+        };
+    }
+
+    static transcriptDelivery<T>(): RpcStreamOptions<T> {
+        return MediaRpcStreamOptions.audioDelivery<T>();
+    }
 }
 
 export interface ApiInitOptions {

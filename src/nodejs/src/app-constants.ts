@@ -162,6 +162,8 @@ export interface AudioStreamConstants {
     readonly streamErrorDelayMs: number;
     readonly connectErrorDelayMs: number;
     readonly debugRandomDisconnectPeriodMs: number;
+    readonly recordingRpcStreamAckPeriod: number;
+    readonly deliveryRpcStreamAckPeriod: number;
     readonly rpcAckPeriod: number;
     readonly rpcBufferSize: number;
     // Derived in TS (seconds aliases)

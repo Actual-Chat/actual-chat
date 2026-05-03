@@ -5,7 +5,7 @@
 //     Api.init('Example', { url: 'wss://host/rpc/ws', modules: [streamingApi] });
 //     await streamServer().RequestKeyFrame(streamId);
 
-export { Api, WorkerKind } from './api.js';
+export { Api, MediaRpcStreamOptions, WorkerKind } from './api.js';
 export type { ApiConnectivityUI, ApiInitOptions, ApiModule, SessionTokenProvider } from './api.js';
 
 export * from './rpc-scalars.js';

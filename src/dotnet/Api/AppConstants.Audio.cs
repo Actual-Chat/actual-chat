@@ -107,10 +107,9 @@ partial record AppConstants
             public int ConnectErrorDelayMs { get; init; } = 1000;
             // Debug switch — random disconnect period (0 = disabled).
             public int DebugRandomDisconnectPeriodMs { get; init; } = 0;
-            // RPC stream flow control. Today the producer-side RpcStream uses RPC
-            // defaults; these fields mirror the legacy combined Constants.Audio.StreamAckPeriod
-            // / StreamBufferSize. To be replaced by Constants.Audio.RecordingRpcStreamAckPeriod
-            // when the recording-vs-delivery split lands.
+            public int RecordingRpcStreamAckPeriod { get; init; } = Constants.Audio.RecordingRpcStreamAckPeriod;
+            public int DeliveryRpcStreamAckPeriod { get; init; } = Constants.Audio.DeliveryRpcStreamAckPeriod;
+            // Legacy aliases kept for older TS call sites.
             public int RpcAckPeriod { get; init; } = Constants.Audio.StreamAckPeriod;
             public int RpcBufferSize { get; init; } = Constants.Audio.StreamBufferSize;
         }
