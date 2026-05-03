@@ -177,6 +177,17 @@ public class LiveVideoStreams : ILiveVideoStreams
         CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("ChangeRecordingQuality: session={Session}, state={State}, info={Info}", session, state, info);
+
+        if (info?.Health is { } h) {
+            AppMeters.VideoSendEncodeRatio.Record(h.EncodeRatioP90);
+            AppMeters.VideoSendDropRatio.Record(h.SenderFrameDropRatio);
+            // -1 marks "no ACK observed yet" — don't pollute the histogram with a sentinel.
+            if (h.LastAckAgeMs >= 0)
+                AppMeters.VideoSendAckAgeMs.Record(h.LastAckAgeMs);
+        }
+        if (state is not null)
+            AppMeters.VideoSendLayerCount.Record(state.EffectiveLayerCount);
+
         return RpcNoWait.Tasks.Completed;
     }
 
@@ -201,8 +212,14 @@ public class LiveVideoStreams : ILiveVideoStreams
         // Buffered media duration ahead of decode is the doc's primary playback
         // health signal and a direct latency proxy — feed app.video.latency.
         if (info is not null) {
-            foreach (var (_, s) in info.Streams)
+            AppMeters.VideoReceiveCapacityBps.Record(info.EstimatedCapacityBytesPerSec);
+            AppMeters.VideoReceiveAggregateHealth.Record(info.AggregateHealth);
+            foreach (var (_, s) in info.Streams) {
                 AppMeters.VideoLatency.Record(s.BufferDurationMsP50);
+                if (s.KeyframeSkipsInWindow > 0)
+                    AppMeters.VideoReceiveKeyframeSkips.Add(s.KeyframeSkipsInWindow);
+                AppMeters.VideoReceiveDecoderQueue.Record(s.DecoderQueueDepthP90);
+            }
         }
 
         var keyFrameRequests = GetLoweredStreams(prevState?.QualityByStream, qualityByStream)
