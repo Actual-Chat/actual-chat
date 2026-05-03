@@ -18,7 +18,7 @@ public partial class AudioStreamingBackend
         RpcStream<AudioFrame> frames,
         CancellationToken cancellationToken)
     {
-        Log.LogTrace(nameof(ProcessAudio) + ": record #{StreamId} = {Record}", record.StreamId, record);
+        DebugLog?.LogDebug(nameof(ProcessAudio) + ": record #{StreamId} = {Record}", record.StreamId, record);
         var delayedCts = cancellationToken.CreateDelayedTokenSource(Constants.Transcription.CancellationDelay);
         var delayedCancellationToken = delayedCts.Token;
         try {

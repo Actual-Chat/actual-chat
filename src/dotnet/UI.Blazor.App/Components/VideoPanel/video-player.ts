@@ -1576,6 +1576,11 @@ export class VideoPlayer {
             this.lastRenderedOffsetMs = report.presentedOffsetMs;
             this.reportPresentationLag(report.presentedOffsetMs, 'worker-latency-report');
         }
+        if (this.offThreadPullActive && this.decoderWorker) {
+            void this.decoderWorker.getStats()
+                .then(ds => this.reportPlaybackHealth(ds, Math.max(0, report.bufferSpanMs)))
+                .catch(e => warnLog?.log('onWorkerLatencyReport getStats error:', e));
+        }
         // Latency reports formerly went to streamServer.ReportVideoLatency; the
         // playback quality controller (Step 10) now consumes equivalent signals
         // via ChangePlaybackQuality. This handler still updates lastArrivedOffsetMs

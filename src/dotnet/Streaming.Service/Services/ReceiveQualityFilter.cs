@@ -12,8 +12,6 @@ namespace ActualChat.Streaming.Services;
 /// </summary>
 public static class ReceiveQualityFilter
 {
-    private static readonly TimeSpan CapRefreshInterval = TimeSpan.FromMilliseconds(500);
-
     public static async IAsyncEnumerable<VideoFrame> Apply(
         IAsyncEnumerable<VideoFrame> source,
         Func<ReceiveQuality> getQuality,
@@ -26,14 +24,15 @@ public static class ReceiveQualityFilter
         var selectedLayer = -1;
         var lastKeyFrameNumber = -1L;
         var skipping = true;
-        var capRefreshAt = CpuTimestamp.Now;
 
         await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-            if (consumerMaxSpatial < 0 || frame.IsKeyFrame || capRefreshAt.Elapsed >= CapRefreshInterval) {
-                var q = getQuality();
+            var q = getQuality();
+            if (q.MaxSpatialLayer != consumerMaxSpatial || q.MaxTemporalLayer != consumerMaxTemporal) {
                 consumerMaxSpatial = q.MaxSpatialLayer;
                 consumerMaxTemporal = q.MaxTemporalLayer;
-                capRefreshAt = CpuTimestamp.Now;
+                selectedLayer = -1;
+                lastKeyFrameNumber = -1;
+                skipping = true;
             }
 
             if (frame.TemporalLayerId > consumerMaxTemporal)

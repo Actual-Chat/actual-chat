@@ -125,7 +125,10 @@
         _maxOutboundLayerCount = settings.MaxOutboundLayerCount;
         _maxInboundLayerCount = settings.MaxInboundLayerCount;
         await Hub.VideoQualityUI.SetDebugMaxRecordingLayerCount(_maxOutboundLayerCount, CancellationToken.None);
-        await Hub.VideoQualityUI.SetDebugMaxPlaybackLayerCount(_maxInboundLayerCount, CancellationToken.None);
+        await Hub.VideoQualityUI.SetDebugMaxPlaybackLayerCount(
+            _maxInboundLayerCount,
+            await CollectStreamHints(),
+            CancellationToken.None);
         _playbackOverride = Hub.VideoQualityUI.PlaybackOverride;
     }
 
@@ -144,7 +147,10 @@
     private async Task OnMaxInboundLayerCountChange(ChangeEventArgs e) {
         _maxInboundLayerCount = ParseLayerCount(e.Value?.ToString());
         await JS.InvokeVoidAsync(JSSetMaxInboundLayerCountMethod, _maxInboundLayerCount);
-        await Hub.VideoQualityUI.SetDebugMaxPlaybackLayerCount(_maxInboundLayerCount, CancellationToken.None);
+        await Hub.VideoQualityUI.SetDebugMaxPlaybackLayerCount(
+            _maxInboundLayerCount,
+            await CollectStreamHints(),
+            CancellationToken.None);
     }
 
     private static string FormatLayerCount(int? layerCount)

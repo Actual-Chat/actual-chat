@@ -9,6 +9,8 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 {
     private readonly StreamStore<VideoFrame> _videoStreams;
 
+    private static bool DebugMode => Constants.DebugMode.LiveStreaming;
+
     private MeshNode ThisNode => field ??= Services.MeshWatcher().ThisNode;
     private IChats Chats => field ??= Services.GetRequiredService<IChats>();
     private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
@@ -18,6 +20,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     private IServiceProvider Services { get; }
     private StreamLatencyStore LatencyStore { get; }
     private ILogger Log { get; }
+    private ILogger? DebugLog => DebugMode ? Log : null;
 
     public VideoStreamingBackend(IServiceProvider services)
     {
@@ -60,7 +63,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         RpcStream<VideoFrame> videoStream,
         CancellationToken cancellationToken)
     {
-        Log.LogTrace(nameof(PushVideo) + ": record #{StreamId} = {Record}", record.StreamId, record);
+        DebugLog?.LogDebug(nameof(PushVideo) + ": record #{StreamId} = {Record}", record.StreamId, record);
         var delayedCts = cancellationToken.CreateDelayedTokenSource(Constants.Video.CancellationDelay);
         var delayedCancellationToken = delayedCts.Token;
         try {

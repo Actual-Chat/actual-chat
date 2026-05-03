@@ -27,6 +27,27 @@ public class ReceiveQualityFilterTest
         result.Select(x => x.SpatialLayerId).Should().Equal((byte)2, (byte)2, (byte)0, (byte)0);
     }
 
+    [Fact]
+    public async Task LoweredCapStopsForwardingCurrentLayerUntilKeyframe()
+    {
+        var quality = ReceiveQuality.Default;
+        var frames = Frames(
+            Key(2, 1),
+            Delta(2, 1),
+            Mutate(() => quality = ReceiveQuality.Lowest),
+            Delta(2, 1),
+            Delta(0, 1),
+            Key(0, 2),
+            Delta(0, 2));
+
+        var result = new List<VideoFrame>();
+        await foreach (var frame in ReceiveQualityFilter
+                           .Apply(frames, () => quality, NullLogger.Instance, CancellationToken.None))
+            result.Add(frame);
+
+        result.Select(x => x.SpatialLayerId).Should().Equal((byte)2, (byte)2, (byte)0, (byte)0);
+    }
+
     private static VideoFrame Key(byte spatial, long keyFrameNumber)
         => Frame(spatial, keyFrameNumber, isKeyFrame: true);
 

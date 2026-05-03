@@ -18,6 +18,7 @@ import { coreApi } from './core-api.js';
 // We deliberately DO NOT set AllowResend: on peer change the call + stream fail, and
 // the caller recreates them.  Mirror of [RpcMethod] on the .NET interfaces.
 const StreamPushMode = RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect;
+const StreamControlMode = RpcRemoteExecutionMode.AwaitForConnection;
 
 // `clientStartOffset` is the legacy RPC argument name. New caller code should
 // treat it as sourceStartOffsetSeconds: the source start timestamp on the
@@ -30,9 +31,9 @@ export const LiveVideoStreamsDef = defineRpcService('ILiveVideoStreams', {
         args: ['session', 'chatId', 'clientStartOffset', 'format', 'frameStream', 'streamKind'],
         remoteExecutionMode: StreamPushMode,
     },
-    RequestKeyFrame: { args: ['session', 'streamId'] },
-    ChangeRecordingQuality: { args: ['session', 'state', 'info'] },
-    ChangePlaybackQuality: { args: ['session', 'requestedQuality', 'info'] },
+    RequestKeyFrame: { args: ['session', 'streamId'], remoteExecutionMode: StreamControlMode },
+    ChangeRecordingQuality: { args: ['session', 'state', 'info'], remoteExecutionMode: StreamControlMode },
+    ChangePlaybackQuality: { args: ['session', 'qualityByStream', 'info'], remoteExecutionMode: StreamControlMode },
 });
 
 // --- ILiveAudioStreams (per-stream audio push/pull + transcripts) ---
@@ -170,7 +171,7 @@ export interface LiveVideoStreamsClient {
         info: RecordingQualityInfoDto | null): Promise<void>;
     ChangePlaybackQuality(
         session: string,
-        requestedQuality: Map<string, ReceiveQualityDto> | null,
+        qualityByStream: Map<string, ReceiveQualityDto> | null,
         info: PlaybackQualityInfoDto | null): Promise<void>;
 }
 

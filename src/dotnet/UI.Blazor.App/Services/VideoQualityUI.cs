@@ -171,13 +171,44 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     }
 
     public async Task SetDebugMaxPlaybackLayerCount(int? layerCount, CancellationToken cancellationToken)
+        => await SetDebugMaxPlaybackLayerCount(layerCount, [], cancellationToken).ConfigureAwait(false);
+
+    public async Task SetDebugMaxPlaybackLayerCount(
+        int? layerCount,
+        IReadOnlyList<PlaybackOverrideStreamHint> streamHints,
+        CancellationToken cancellationToken)
     {
         layerCount = NormalizeLayerCount(layerCount);
-        if (_debugMaxPlaybackLayerCount == layerCount)
+        var changed = _debugMaxPlaybackLayerCount != layerCount;
+        _debugMaxPlaybackLayerCount = layerCount;
+
+        if (_playbackOverride != PlaybackOverrideMode.Off)
             return;
 
-        _debugMaxPlaybackLayerCount = layerCount;
-        await RecomputePlaybackQuality(PlaybackQualityReason.ActiveSetChanged, cancellationToken).ConfigureAwait(false);
+        if (GetFreshPlaybackEntries().Count != 0) {
+            await RecomputePlaybackQuality(PlaybackQualityReason.ActiveSetChanged, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        if (streamHints.Count == 0) {
+            if (changed)
+                _playbackSnapshot = PlaybackQualitySnapshot.Empty;
+            return;
+        }
+
+        var requested = BuildLayerCapQuality(layerCount, streamHints);
+        var info = new PlaybackQualityInfo(
+            EstimatedCapacityBytesPerSec: _playbackSnapshot.EstimatedCapacityBytesPerSec,
+            AggregateHealth: _playbackSnapshot.AggregateHealth,
+            Reason: PlaybackQualityReason.ActiveSetChanged,
+            IsColdStart: false,
+            Streams: new ApiMap<string, PlaybackStreamInfo>());
+        _ = LiveVideoStreams.ChangePlaybackQuality(
+            Session, requested, info, cancellationToken).SuppressExceptions();
+        if (layerCount is null)
+            await ClearRequestedReceiveQualityRegistry(streamHints, cancellationToken).ConfigureAwait(false);
+        else
+            await UpdateRequestedReceiveQualityRegistry(streamHints, requested, cancellationToken).ConfigureAwait(false);
     }
 
     public PlaybackOverrideMode PlaybackOverride => _playbackOverride;
@@ -207,10 +238,9 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         IReadOnlyList<PlaybackOverrideStreamHint> streamHints,
         CancellationToken cancellationToken)
     {
-        var changed = _playbackOverride != mode;
         _playbackOverride = mode;
         Log.LogWarning("SetPlaybackOverride: mode={Mode} streams={Count}", mode, streamHints.Count);
-        return PushPlaybackOverride(streamHints, changed && mode == PlaybackOverrideMode.Off, cancellationToken);
+        return PushPlaybackOverride(streamHints, cancellationToken);
     }
 
     public Task RepushPlaybackOverride(
@@ -220,7 +250,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         if (_playbackOverride == PlaybackOverrideMode.Off)
             return Task.CompletedTask;
 
-        return PushPlaybackOverride(streamHints, releaseAfter: false, cancellationToken);
+        return PushPlaybackOverride(streamHints, cancellationToken);
     }
 
     // --- Debug / test entry points ---
@@ -251,7 +281,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     /// Drives the playback capacity estimator with a synthetic ternary signal
     /// (same pattern as the recording test). Pushes
     /// <see cref="ILiveVideoStreams.ChangePlaybackQuality"/> with info-only
-    /// payloads (requestedQuality = null) so the test never affects live
+    /// payloads (qualityByStream = null) so the test never affects live
     /// stream allocation.
     /// </summary>
     public void BeginPlaybackQualityTest(int periodSeconds)
@@ -327,11 +357,11 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         _lastRecordingStateByKind[kind] = state;
         _lastRecordingReasonByKind[kind] = reason;
         var info = new RecordingQualityInfo(reason, snapshot);
-        _ = await LiveVideoStreams.ChangeRecordingQuality(
+        _ = LiveVideoStreams.ChangeRecordingQuality(
             Session,
             state,
             info,
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken).SuppressExceptions();
     }
 
     private async Task RecomputePlaybackQuality(PlaybackQualityReason reason, CancellationToken cancellationToken)
@@ -388,11 +418,11 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             reason,
             IsColdStart: false,
             streamInfoMap);
-        _ = await LiveVideoStreams.ChangePlaybackQuality(
+        _ = LiveVideoStreams.ChangePlaybackQuality(
             Session,
             requestedMap,
             info,
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken).SuppressExceptions();
         await UpdateRequestedReceiveQualityRegistry(
             entries
                 .Select(x => new PlaybackOverrideStreamHint(x.Key.Value, x.Value.Snapshot.CurrentMaxSpatial))
@@ -432,7 +462,6 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
 
     private async Task PushPlaybackOverride(
         IReadOnlyList<PlaybackOverrideStreamHint> streamHints,
-        bool releaseAfter,
         CancellationToken cancellationToken)
     {
         var mode = _playbackOverride;
@@ -445,14 +474,9 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             Reason: PlaybackQualityReason.ActiveSetChanged,
             IsColdStart: false,
             Streams: new ApiMap<string, PlaybackStreamInfo>());
-        _ = await LiveVideoStreams.ChangePlaybackQuality(
-            Session, requested, info, cancellationToken).ConfigureAwait(false);
+        _ = LiveVideoStreams.ChangePlaybackQuality(
+            Session, requested, info, cancellationToken).SuppressExceptions();
         await UpdateRequestedReceiveQualityRegistry(streamHints, requested, cancellationToken).ConfigureAwait(false);
-        if (releaseAfter) {
-            _ = await LiveVideoStreams.ChangePlaybackQuality(
-                Session, requestedQuality: null, info, cancellationToken).ConfigureAwait(false);
-            await ClearRequestedReceiveQualityRegistry(streamHints, cancellationToken).ConfigureAwait(false);
-        }
     }
 
     private async Task UpdateRequestedReceiveQualityRegistry(
@@ -506,6 +530,19 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         return map;
     }
 
+    private static ApiMap<string, ReceiveQuality> BuildLayerCapQuality(
+        int? layerCount,
+        IReadOnlyList<PlaybackOverrideStreamHint> hints)
+    {
+        var map = new ApiMap<string, ReceiveQuality>();
+        var quality = layerCount is { } count
+            ? new ReceiveQuality(Math.Max(0, count - 1), int.MaxValue)
+            : ReceiveQuality.Default;
+        foreach (var hint in hints)
+            map[hint.StreamId] = quality;
+        return map;
+    }
+
     private static int ApplyLayerCountConstraint(int layerCount, int? maxLayerCount)
         => maxLayerCount is { } max ? Math.Clamp(layerCount, 1, max) : layerCount;
 
@@ -533,7 +570,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                 var fakeHealth = new RecorderHealthSnapshot(0, 0, 0, 0, 0, 0, IsConnected: true);
                 var info = new RecordingQualityInfo(decision.Reason, fakeHealth);
                 _ = LiveVideoStreams.ChangeRecordingQuality(
-                    Session, aggregator.Snapshot(), info, CancellationToken.None);
+                    Session, aggregator.Snapshot(), info, CancellationToken.None).SuppressExceptions();
             }
             else
                 Log.LogInformation(
@@ -577,7 +614,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                     IsColdStart: false,
                     Streams: new ApiMap<string, PlaybackStreamInfo>());
                 _ = LiveVideoStreams.ChangePlaybackQuality(
-                    Session, requestedQuality: null, info, CancellationToken.None);
+                    Session, qualityByStream: null, info, CancellationToken.None).SuppressExceptions();
                 lastCapacity = capacity;
             }
             else

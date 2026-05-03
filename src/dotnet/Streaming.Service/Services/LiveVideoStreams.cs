@@ -5,15 +5,16 @@ namespace ActualChat.Streaming.Services;
 
 public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
 {
+    private static bool DebugMode => Constants.DebugMode.LiveStreaming;
+
     private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
     private ILiveVideoBackend Backend { get; } = services.GetRequiredService<ILiveVideoBackend>();
     private IVideoStreamingBackend VideoStreamingBackend { get; } = services.GetRequiredService<IVideoStreamingBackend>();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
     private ILogger Log => field ??= services.LogFor(GetType());
+    private ILogger? DebugLog => DebugMode ? Log : null;
 
-    // Per-session per-stream ReceiveQuality. Replaced atomically by
-    // ChangePlaybackQuality. Sticky routing keeps state node-local.
-    private readonly ConcurrentDictionary<Session, ApiMap<string, ReceiveQuality>> _receiveQuality = new();
+    private readonly ConcurrentDictionary<Session, ApiMap<string, ReceiveQuality>> _qualityBySession = new();
 
     // [ComputeMethod]
     public virtual async Task<ApiArray<VideoStreamInfo>> List(
@@ -137,57 +138,56 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         }
     }
 
-    public Task<RpcNoWait> RequestKeyFrame(Session session, string streamId, CancellationToken cancellationToken)
+    public Task RequestKeyFrame(Session session, string streamId, CancellationToken cancellationToken)
     {
         _ = session;
         var sid = StreamId.Parse(streamId);
         return RpcNoWait.Tasks.From(VideoStreamingBackend.RequestKeyFrame(sid, cancellationToken));
     }
 
-    public Task<RpcNoWait> ChangeRecordingQuality(
+    public Task ChangeRecordingQuality(
         Session session,
         RecordingQualityState? state,
         RecordingQualityInfo? info,
         CancellationToken cancellationToken)
     {
-        _ = cancellationToken;
-        Log.LogTrace("ChangeRecordingQuality: session={Session}, state={State}, info={Info}",
-            session, state, info);
+        DebugLog?.LogDebug("ChangeRecordingQuality: session={Session}, state={State}, info={Info}", session, state, info);
         return RpcNoWait.Tasks.Completed;
     }
 
-    public Task<RpcNoWait> ChangePlaybackQuality(
+    public async Task ChangePlaybackQuality(
         Session session,
-        ApiMap<string, ReceiveQuality>? requestedQuality,
+        ApiMap<string, ReceiveQuality>? qualityByStream,
         PlaybackQualityInfo? info,
         CancellationToken cancellationToken)
     {
-        if (requestedQuality is null) {
-            Log.LogTrace("ChangePlaybackQuality: session={Session}, info={Info} (no-op)", session, info);
-            return RpcNoWait.Tasks.Completed;
+        if (qualityByStream is null) {
+            _qualityBySession.TryRemove(session, out _);
+            DebugLog?.LogDebug("ChangePlaybackQuality: session={Session}, info={Info} (cleared)", session, info);
+            return;
         }
 
-        var capped = ApplyServerCap(requestedQuality, info);
-        _receiveQuality.TryGetValue(session, out var previous);
-        _receiveQuality[session] = capped;
-        Log.LogTrace("ChangePlaybackQuality: session={Session}, streams={Count}, info={Info}",
-            session, capped.Count, info);
-        var keyFrameRequests = GetLoweredStreams(previous, capped)
+        qualityByStream = ApplyStreamCountCap(qualityByStream, info);
+        _qualityBySession.TryGetValue(session, out var prevQualityByStreamId);
+        _qualityBySession[session] = qualityByStream;
+        DebugLog?.LogDebug("ChangePlaybackQuality: session={Session}, streams={Count}, info={Info}",
+            session, qualityByStream.Count, info);
+
+        var keyFrameRequests = GetLoweredStreams(prevQualityByStreamId, qualityByStream)
             .Select(x => VideoStreamingBackend.RequestKeyFrame(StreamId.Parse(x), cancellationToken))
             .ToArray();
-        return keyFrameRequests.Length == 0
-            ? RpcNoWait.Tasks.Completed
-            : RpcNoWait.Tasks.From(Task.WhenAll(keyFrameRequests));
+        if (keyFrameRequests.Length != 0)
+            await Task.WhenAll(keyFrameRequests).ConfigureAwait(false);
     }
 
     // Private methods
 
     private ReceiveQuality GetReceiveQuality(Session session, string streamId)
-    {
-        if (!_receiveQuality.TryGetValue(session, out var map))
-            return ReceiveQuality.Default;
-        return map.TryGetValue(streamId, out var quality) ? quality : ReceiveQuality.Lowest;
-    }
+        => _qualityBySession.TryGetValue(session, out var streamMap)
+            ? streamMap.TryGetValue(streamId, out var quality)
+                ? quality
+                : ReceiveQuality.Lowest
+            : ReceiveQuality.Default;
 
     private static IEnumerable<string> GetLoweredStreams(
         ApiMap<string, ReceiveQuality>? previous,
@@ -203,41 +203,33 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         }
     }
 
-    private static ApiMap<string, ReceiveQuality> ApplyServerCap(
-        ApiMap<string, ReceiveQuality> requested,
+    private static ApiMap<string, ReceiveQuality> ApplyStreamCountCap(
+        ApiMap<string, ReceiveQuality> qualityByStream,
         PlaybackQualityInfo? info)
     {
         const int serverCap = 9;
-        var aboveLowest = new List<KeyValuePair<string, ReceiveQuality>>();
-        foreach (var kv in requested) {
-            if (!kv.Value.IsLowest)
-                aboveLowest.Add(kv);
-        }
+        var aboveLowest = qualityByStream.Where(kv => !kv.Value.IsLowest).ToList();
         if (aboveLowest.Count <= serverCap)
-            return requested;
+            return qualityByStream;
+
+        var demotedStreamIds = aboveLowest
+            .Select((kv, index) => (kv, rank: PriorityRank(kv.Key), index))
+            .OrderBy(x => (x.rank, x.index))
+            .Take(aboveLowest.Count - serverCap)
+            .Select(kv => kv.kv.Key)
+            .ToHashSet();
+
+        var result = new ApiMap<string, ReceiveQuality>();
+        foreach (var (streamId, quality) in qualityByStream)
+            result[streamId] = demotedStreamIds.Contains(streamId) ? ReceiveQuality.Lowest : quality;
+        return result;
 
         // Demote secondaries before primaries; preserve request order otherwise.
         // info.Streams[streamId].Priority cross-reference falls back to Secondary.
-        int PriorityRank(string streamId)
-        {
+        int PriorityRank(string streamId) {
             if (info is null || !info.Streams.TryGetValue(streamId, out var streamInfo))
                 return 0; // Secondary
             return streamInfo.Priority == PlaybackStreamPriority.Primary ? 1 : 0;
         }
-        var ordered = aboveLowest
-            .Select((kv, idx) => (kv, rank: PriorityRank(kv.Key), idx))
-            .OrderBy(x => x.rank)
-            .ThenBy(x => x.idx)
-            .ToList();
-
-        var demoteCount = aboveLowest.Count - serverCap;
-        var demoted = new HashSet<string>();
-        for (var i = 0; i < demoteCount; i++)
-            demoted.Add(ordered[i].kv.Key);
-
-        var result = new ApiMap<string, ReceiveQuality>();
-        foreach (var kv in requested)
-            result[kv.Key] = demoted.Contains(kv.Key) ? ReceiveQuality.Lowest : kv.Value;
-        return result;
     }
 }
