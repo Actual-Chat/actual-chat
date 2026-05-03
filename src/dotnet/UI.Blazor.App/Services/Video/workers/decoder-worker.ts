@@ -725,26 +725,35 @@ async function processEncodedChunk(
                 lastRawDescription = description.slice(0);
             } else if (!lastRawDescription || !bufferEqual(lastRawDescription, description)) {
                 infoLog?.log('Decoder description updated');
-                // Re-derive codec from the new description — simulcast layer
-                // switches carry a new SPS with different tier/level. If the
-                // codec string changes, swap it atomically with the new
-                // description.
-                const selection = await reselectCodecForDescription(description);
-                if (!selection) {
-                    errorLog?.log(`No HW-supported codec for new keyframe ` +
-                        `description (layer switch?); ending stream`);
-                    if (pullActive) {
-                        pullActive = false;
-                        void callbacks.onPullEnded(
-                            'codec not supported for new stream description', rpcNoWait);
+                // Layer switches carry a new SPS — typically a different level
+                // (e.g. HEVC L4.0 ↔ L4.1) for the same profile. If the current
+                // decoder still accepts the new dims+description, an in-place
+                // updateDescription is enough; close+recreate is reserved for
+                // a true codec-family change (e.g. AV1 → H.264) or a level
+                // escalation that pushes past current HW capability.
+                const probeW = width ?? currentCodedWidth ?? currentDecoderConfig!.codedWidth ?? 0;
+                const probeH = height ?? currentCodedHeight ?? currentDecoderConfig!.codedHeight ?? 0;
+                const currentCompatible = probeW > 0 && probeH > 0
+                    ? await isCurrentCodecCompatible(probeW, probeH, description)
+                    : false;
+                let selection: DecoderCodecSelection | null = null;
+                if (!currentCompatible) {
+                    selection = await reselectCodecForDescription(description);
+                    if (!selection) {
+                        errorLog?.log(`No HW-supported codec for new keyframe ` +
+                            `description (layer switch?); ending stream`);
+                        if (pullActive) {
+                            pullActive = false;
+                            void callbacks.onPullEnded(
+                                'codec not supported for new stream description', rpcNoWait);
+                        }
+                        return;
                     }
-                    return;
                 }
-                if (selection.codec !== currentDecoderConfig!.codec) {
-                    // Codec string changed (level / tier / profile escalation
-                    // from new SPS). Close + recreate — HW slots are pinned
-                    // to the original codec capability and in-place
-                    // configure() can't always cross that boundary cleanly.
+                if (selection !== null && selection.codec !== currentDecoderConfig!.codec) {
+                    // Codec string changed and current decoder cannot handle
+                    // the new description — close + recreate. HW slots are
+                    // pinned to the original codec capability.
                     const oldCodec = currentDecoderConfig!.codec;
                     warnLog?.log(`Layer-switch codec swap (close+recreate): ${
                         oldCodec} -> ${selection.codec}`);
@@ -765,12 +774,11 @@ async function processEncodedChunk(
                     );
                     decoder.initialize();
                 } else {
-                    // Same codec, only SPS bytes differ (minor variation,
-                    // e.g. different VUI). In-place reconfigure is fine.
+                    // Current decoder still handles the new description.
                     // Forward the new dims so configure() picks up the new
                     // SPS conformance window — without this, Chromium's
                     // HEVC HW decoder keeps applying the old crop.
-                    decoder.updateDescription(description, selection.codec, width, height);
+                    decoder.updateDescription(description, currentDecoderConfig!.codec, width, height);
                     mstgSelector?.resetPrimming();
                     if (width && height) {
                         currentDecoderConfig = {
