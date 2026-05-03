@@ -8,6 +8,8 @@
 @{
     var m = State.Value;
     var own = _ownDiag;
+    var playbackSnap = Hub.VideoQualityUI.PlaybackSnapshot;
+    var playbackOverride = Hub.VideoQualityUI.PlaybackOverride;
 }
 
 <DialogFrame
@@ -359,12 +361,81 @@
                                         <span class="diag-value">reduction requested (slow ticks: @(GetNum(rd, "codecSlowTickCount").ToString("0")))</span>
                                     </div>
                                 }
+                                <div class="diag-row">
+                                    <span class="diag-label">Requested</span>
+                                    <span class="diag-value">@FormatRequestedReceiveQuality(rd)</span>
+                                </div>
                             </div>
                         }
                     </div>
                 }
             }
         </div>
+        @if (m.Streams.Any(s => !s.IsOwn)) {
+            <div class="diag-section">
+                <div class="diag-section-header">Quality Control (inbound)</div>
+                <div class="diag-row">
+                    <span class="diag-label">Capacity</span>
+                    <span class="diag-value">@((playbackSnap.EstimatedCapacityBytesPerSec * 8 / 1000).ToString("0")) kbps</span>
+                </div>
+                <div class="diag-row">
+                    <span class="diag-label">Aggregate health</span>
+                    <span class="diag-value">@(playbackSnap.AggregateHealth.ToString("F2"))</span>
+                </div>
+                <div class="diag-row">
+                    <span class="diag-label">Playback override</span>
+                    <span class="diag-value">@playbackOverride</span>
+                </div>
+                @foreach (var s in m.Streams.Where(s => !s.IsOwn)) {
+                    var sid = s.Info.StreamId.Value;
+                    var hasDiag = _streamDiags.TryGetValue(sid, out var rd)
+                        && rd.ValueKind == JsonValueKind.Object;
+                    int? verdict = playbackSnap.Verdicts.TryGetValue(sid, out var v) ? v : null;
+                    <div class="diag-stream">
+                        <div class="diag-stream-header">
+                            <span>@s.Info.StreamId</span>
+                            <span class="diag-stream-kind ml-auto">@s.Info.StreamKind</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Author</span>
+                            <span class="diag-value">@s.Author</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Verdict</span>
+                            <span class="diag-value">@(verdict is { } signal ? SignalText(signal) : "n/a")</span>
+                        </div>
+                        @if (hasDiag) {
+                            <div class="diag-row">
+                                <span class="diag-label">Forwarded</span>
+                                <span class="diag-value">@FormatForwarded(rd)</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Requested</span>
+                                <span class="diag-value">@FormatRequestedReceiveQuality(rd)</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Signal inputs</span>
+                                <span class="diag-value">rate=@(GetNum(rd, "bitrateKbps").ToString("0"))kbps, buf=@(GetNum(rd, "pipelineLatencyMs").ToString("0"))ms, skips=@(GetNum(rd, "skipToLiveCount").ToString("0"))</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Stream age</span>
+                                <span class="diag-value">@(GetNum(rd, "streamAgeMs").ToString("0"))ms</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Decode quality</span>
+                                <span class="diag-value">@FormatDecodeQualitySignal(rd)</span>
+                            </div>
+                        }
+                        else {
+                            <div class="diag-row">
+                                <span class="diag-label">Signals</span>
+                                <span class="diag-value diag-dim">waiting for diagnostics</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
     </Body>
 </DialogFrame>
 
@@ -502,6 +573,41 @@
 
     private static string FormatSize(Size2D? size)
         => size is { IsEmpty: false } s ? $"{s.Width}×{s.Height}" : "?";
+
+    private static string FormatForwarded(JsonElement rd) {
+        if (!rd.TryGetProperty("forwarded", out var forwarded)
+            || forwarded.ValueKind != JsonValueKind.Object
+            || GetNum(forwarded, "ForwardedSpatialLayerId") < 0)
+            return "no frames yet";
+
+        return $"L{GetNum(forwarded, "ForwardedSpatialLayerId"):0} "
+            + $"{GetNum(forwarded, "ForwardedWidth"):0}×{GetNum(forwarded, "ForwardedHeight"):0} "
+            + $"(obsMax={GetNum(forwarded, "ObservedMaxSpatialLayer"):0})";
+    }
+
+    private static string FormatRequestedReceiveQuality(JsonElement rd) {
+        if (!rd.TryGetProperty("requestedReceiveQuality", out var requested)
+            || requested.ValueKind != JsonValueKind.Object)
+            return "default (server-driven)";
+
+        return $"maxSpatial={GetNum(requested, "maxSpatialLayer"):0} "
+            + $"maxTemporal={FormatMaxTemporal(GetNum(requested, "maxTemporalLayer"))}";
+    }
+
+    private static string FormatDecodeQualitySignal(JsonElement rd)
+        => GetBool(rd, "qualityReductionRequested")
+            ? $"reduction requested (slow ticks: {GetNum(rd, "codecSlowTickCount"):0})"
+            : $"ok (slow ticks: {GetNum(rd, "codecSlowTickCount"):0})";
+
+    private static string FormatMaxTemporal(double value)
+        => value >= int.MaxValue / 2d ? "inf" : value.ToString("0");
+
+    private static string SignalText(int signal)
+        => signal switch {
+            < 0 => $"{signal} (bad)",
+            > 0 => $"+{signal} (good)",
+            _ => "0 (neutral)",
+        };
 
     private string GetShowDetailsIndicator(bool show)
         => show ? ">---<" : "<->";

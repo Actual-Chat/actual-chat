@@ -27,6 +27,8 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     private readonly Dictionary<StreamId, PlaybackHealthState> _playbackByStream = new();
     private readonly CapacityEstimator _playbackEstimator = new(PlaybackThresholds.Defaults);
     private readonly Lock _playbackLock = new();
+    private PlaybackQualitySnapshot _playbackSnapshot = PlaybackQualitySnapshot.Empty;
+    private PlaybackOverrideMode _playbackOverride = PlaybackOverrideMode.Off;
     private int? _debugMaxRecordingLayerCount;
     private int? _debugMaxPlaybackLayerCount;
     private bool _wasConnected = true;
@@ -172,6 +174,31 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         await RecomputePlaybackQuality(PlaybackQualityReason.ActiveSetChanged, cancellationToken).ConfigureAwait(false);
     }
 
+    public PlaybackOverrideMode PlaybackOverride => _playbackOverride;
+
+    public PlaybackQualitySnapshot PlaybackSnapshot => _playbackSnapshot;
+
+    public Task SetPlaybackOverride(
+        PlaybackOverrideMode mode,
+        IReadOnlyList<PlaybackOverrideStreamHint> streamHints,
+        CancellationToken cancellationToken)
+    {
+        var changed = _playbackOverride != mode;
+        _playbackOverride = mode;
+        Log.LogWarning("SetPlaybackOverride: mode={Mode} streams={Count}", mode, streamHints.Count);
+        return PushPlaybackOverride(streamHints, changed && mode == PlaybackOverrideMode.Off, cancellationToken);
+    }
+
+    public Task RepushPlaybackOverride(
+        IReadOnlyList<PlaybackOverrideStreamHint> streamHints,
+        CancellationToken cancellationToken)
+    {
+        if (_playbackOverride == PlaybackOverrideMode.Off)
+            return Task.CompletedTask;
+
+        return PushPlaybackOverride(streamHints, releaseAfter: false, cancellationToken);
+    }
+
     // --- Debug / test entry points ---
 
     /// <summary>
@@ -285,8 +312,10 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     private async Task RecomputePlaybackQuality(PlaybackQualityReason reason, CancellationToken cancellationToken)
     {
         var entries = GetFreshPlaybackEntries();
-        if (entries.Count == 0)
+        if (entries.Count == 0) {
+            _playbackSnapshot = PlaybackQualitySnapshot.Empty;
             return;
+        }
 
         var signals = entries
             .Select(x => (x.Value.Snapshot.IncomingByteRate, x.Value.Verdict))
@@ -294,6 +323,12 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         var aggregateHealth = AggregateHealth.Compute(signals);
         var sumIncomingBytesPerSec = entries.Sum(x => Math.Max(0, x.Value.Snapshot.IncomingByteRate));
         var capacity = _playbackEstimator.Step(aggregateHealth, sumIncomingBytesPerSec);
+        var verdicts = entries.ToDictionary(x => x.Key.Value, x => x.Value.Verdict);
+        _playbackSnapshot = new PlaybackQualitySnapshot(capacity, aggregateHealth, verdicts);
+
+        if (_playbackOverride != PlaybackOverrideMode.Off)
+            return;
+
         var primaries = entries
             .Where(x => x.Value.Snapshot.Priority == PlaybackStreamPriority.Primary)
             .Select(ToStreamRequest)
@@ -333,6 +368,12 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             requestedMap,
             info,
             cancellationToken).ConfigureAwait(false);
+        await UpdateRequestedReceiveQualityRegistry(
+            entries
+                .Select(x => new PlaybackOverrideStreamHint(x.Key.Value, x.Value.Snapshot.CurrentMaxSpatial))
+                .ToArray(),
+            requestedMap,
+            cancellationToken).ConfigureAwait(false);
 
         return;
 
@@ -363,6 +404,82 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
 
     private static int? NormalizeLayerCount(int? layerCount)
         => layerCount is >= 1 and <= 3 ? layerCount : null;
+
+    private async Task PushPlaybackOverride(
+        IReadOnlyList<PlaybackOverrideStreamHint> streamHints,
+        bool releaseAfter,
+        CancellationToken cancellationToken)
+    {
+        var mode = _playbackOverride;
+        var requested = mode == PlaybackOverrideMode.Off
+            ? null
+            : BuildRequestedQuality(mode, streamHints);
+        var info = new PlaybackQualityInfo(
+            EstimatedCapacityBytesPerSec: _playbackSnapshot.EstimatedCapacityBytesPerSec,
+            AggregateHealth: _playbackSnapshot.AggregateHealth,
+            Reason: PlaybackQualityReason.ActiveSetChanged,
+            IsColdStart: false,
+            Streams: new ApiMap<string, PlaybackStreamInfo>());
+        _ = await LiveVideoStreams.ChangePlaybackQuality(
+            Session, requested, info, cancellationToken).ConfigureAwait(false);
+        await UpdateRequestedReceiveQualityRegistry(streamHints, requested, cancellationToken).ConfigureAwait(false);
+        if (releaseAfter) {
+            _ = await LiveVideoStreams.ChangePlaybackQuality(
+                Session, requestedQuality: null, info, cancellationToken).ConfigureAwait(false);
+            await ClearRequestedReceiveQualityRegistry(streamHints, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task UpdateRequestedReceiveQualityRegistry(
+        IReadOnlyList<PlaybackOverrideStreamHint> streamHints,
+        ApiMap<string, ReceiveQuality>? requested,
+        CancellationToken cancellationToken)
+    {
+        var jsMethod = $"{BlazorUIAppModule.ImportName}.setRequestedReceiveQuality";
+        foreach (var hint in streamHints) {
+            if (requested is not null && requested.TryGetValue(hint.StreamId, out var q)) {
+                await Hub.JS.InvokeVoidAsync(
+                    jsMethod, cancellationToken, hint.StreamId, q.MaxSpatialLayer, q.MaxTemporalLayer)
+                    .ConfigureAwait(false);
+            }
+            else {
+                await Hub.JS.InvokeVoidAsync(
+                    jsMethod, cancellationToken, hint.StreamId, (object?)null, (object?)null)
+                    .ConfigureAwait(false);
+            }
+        }
+    }
+
+    private async Task ClearRequestedReceiveQualityRegistry(
+        IReadOnlyList<PlaybackOverrideStreamHint> streamHints,
+        CancellationToken cancellationToken)
+    {
+        var jsMethod = $"{BlazorUIAppModule.ImportName}.setRequestedReceiveQuality";
+        foreach (var hint in streamHints) {
+            await Hub.JS.InvokeVoidAsync(
+                jsMethod, cancellationToken, hint.StreamId, (object?)null, (object?)null)
+                .ConfigureAwait(false);
+        }
+    }
+
+    private static ApiMap<string, ReceiveQuality> BuildRequestedQuality(
+        PlaybackOverrideMode mode,
+        IReadOnlyList<PlaybackOverrideStreamHint> hints)
+    {
+        var map = new ApiMap<string, ReceiveQuality>();
+        foreach (var hint in hints) {
+            ReceiveQuality q = mode switch {
+                PlaybackOverrideMode.Degrade => ReceiveQuality.Lowest,
+                PlaybackOverrideMode.Upgrade => ReceiveQuality.Default,
+                PlaybackOverrideMode.Keep => new ReceiveQuality(
+                    Math.Max(0, hint.CurrentSpatialLayerId),
+                    int.MaxValue),
+                _ => ReceiveQuality.Default,
+            };
+            map[hint.StreamId] = q;
+        }
+        return map;
+    }
 
     private static int ApplyLayerCountConstraint(int layerCount, int? maxLayerCount)
         => maxLayerCount is { } max ? Math.Clamp(layerCount, 1, max) : layerCount;
@@ -468,6 +585,21 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         bool ForceH264Only,
         int? MaxOutboundLayerCount,
         int? MaxInboundLayerCount);
+
+    public sealed record PlaybackQualitySnapshot(
+        long EstimatedCapacityBytesPerSec,
+        double AggregateHealth,
+        IReadOnlyDictionary<string, int> Verdicts)
+    {
+        public static readonly PlaybackQualitySnapshot Empty = new(
+            EstimatedCapacityBytesPerSec: 0,
+            AggregateHealth: 0,
+            Verdicts: new Dictionary<string, int>());
+    }
+
+    public enum PlaybackOverrideMode { Off, Degrade, Keep, Upgrade }
+
+    public sealed record PlaybackOverrideStreamHint(string StreamId, int CurrentSpatialLayerId);
 
     public sealed record RecordingThresholds(
         double EncodeRatioBadAbove,
