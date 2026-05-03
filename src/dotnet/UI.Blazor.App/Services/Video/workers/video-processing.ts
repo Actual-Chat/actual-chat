@@ -49,6 +49,7 @@ import {
 } from './video-streaming';
 import { Api } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
+import { ReplaceableSlot } from 'buffers';
 
 // Import the ONNX model so esbuild copies it to dist/assets/onnx/
 // Disabled with the rest of segmentation — re-enable when shipping.
@@ -145,7 +146,11 @@ let loggedPreviewCloneError = false;
 // Replaceable slot ahead of the encoder (target design: "video encoder"
 // stage holds at most one pending frame; newer raw frame replaces an older
 // pending one when the encoder is still busy). See docs/video-pipeline.md.
-let pendingEncoderFrame: VideoFrame | null = null;
+const pendingEncoderFrame = new ReplaceableSlot<VideoFrame>({
+    dispose: frame => {
+        try { frame.close(); } catch { /* already closed */ }
+    },
+});
 // "Encoder is busy" boundary used for slot decisions. Doc-pure 0 would idle
 // the encoder between 33ms frames at 30fps; iOS HW encoders are fragile so
 // a tighter threshold is used there.
@@ -250,7 +255,11 @@ function emitRecorderHealthSnapshot(): void {
 // Replaceable slot ahead of segmentation/blur (target design: "raw video
 // processors" stage uses a size-1 slot, newer raw frame replaces a pending
 // one). See docs/video-pipeline.md.
-let pendingFrame: QueuedFrame | null = null;
+const pendingFrame = new ReplaceableSlot<QueuedFrame>({
+    dispose: qf => {
+        try { qf.frame.close(); } catch { /* already closed */ }
+    },
+});
 let processingFrame = false;
 let frameSequence = 0;
 
@@ -409,7 +418,7 @@ let inputTrack: MediaStreamTrack | null = null;
 // ─── Segmentation ───────────────────────────────────────────────────────────
 
 function initializeQueue(_cfg: SegmentationConfig): void {
-    pendingFrame = null;
+    pendingFrame.clear();
     infoLog?.log('Segmentation pending-frame slot initialized');
 }
 
@@ -425,12 +434,11 @@ function enqueueFrame(frame: VideoFrame): void {
         timestamp: performance.now(),
     };
 
-    if (pendingFrame) {
-        debugLog?.log(`Replacing pending frame #${pendingFrame.sequenceNumber} (slot occupied)`);
-        pendingFrame.frame.close();
+    if (pendingFrame.hasValue) {
+        debugLog?.log(`Replacing pending frame #${pendingFrame.value!.sequenceNumber} (slot occupied)`);
         segDroppedFrames++;
     }
-    pendingFrame = queuedFrame;
+    pendingFrame.push(queuedFrame);
     if (!processingFrame) void processPending();
 }
 
@@ -475,9 +483,8 @@ async function processPending(): Promise<void> {
     processingFrame = true;
 
     try {
-        while (pendingFrame && processing) {
-            const qf = pendingFrame;
-            pendingFrame = null;
+        while (pendingFrame.hasValue && processing) {
+            const qf = pendingFrame.take()!;
             segFrameCounter++;
 
             processDeferredCleanups();
@@ -651,11 +658,9 @@ function processOneFrame(frame: VideoFrame): void {
     slotArrivals++;
     if (encoder.getEncodeQueueSize() > ENCODER_BUSY_THRESHOLD) {
         // Encoder busy: replace pending slot. Newer frame wins.
-        if (pendingEncoderFrame) {
-            try { pendingEncoderFrame.close(); } catch { /* already closed */ }
+        if (pendingEncoderFrame.hasValue)
             slotReplacements++;
-        }
-        pendingEncoderFrame = frame;
+        pendingEncoderFrame.push(frame);
         const now = performance.now();
         if (now - lastSlotCheckTime > slotWindowMs) {
             const replaceRate = slotReplacements / Math.max(1, slotArrivals);
@@ -682,11 +687,7 @@ function processOneFrame(frame: VideoFrame): void {
     // in a single sync block — the frame must not survive into encode() with
     // the slot still pointing at it (encoder closes input → slot would hold
     // a closed VideoFrame).
-    if (pendingEncoderFrame) {
-        const stale = pendingEncoderFrame;
-        pendingEncoderFrame = null;
-        try { stale.close(); } catch { /* already closed */ }
-    }
+    pendingEncoderFrame.clear();
 
     if (blurEnabled && segInitialized) {
         enqueueFrame(frame);
@@ -936,11 +937,10 @@ function onEncoderOutput(chunkData: EncodedChunkData): void {
     // outputs trigger a drain. Capture-then-clear before re-entering the
     // pipeline so the frame is not double-owned.
     if (chunkData.spatialLayerId === 0
-        && pendingEncoderFrame
+        && pendingEncoderFrame.hasValue
         && encoder
         && encoder.getEncodeQueueSize() <= ENCODER_BUSY_THRESHOLD) {
-        const toEncode = pendingEncoderFrame;
-        pendingEncoderFrame = null;
+        const toEncode = pendingEncoderFrame.take()!;
         if (blurEnabled && segInitialized) enqueueFrame(toEncode);
         else void encodeProcessedFrame(toEncode);
     }
@@ -1981,7 +1981,7 @@ export const serverImpl: VideoProcessingWorker = {
             }
             codecSettings = null; startTimestamp = undefined; sourceStartedAtMs = undefined; pendingStreamFrames = []; storedDescriptionBytesByLayer.clear(); firstKeyframeDumpedByLayer.clear();
             if (lastEncodedFrame) { lastEncodedFrame.close(); lastEncodedFrame = null; }
-            if (pendingEncoderFrame) { try { pendingEncoderFrame.close(); } catch { /* ignore */ } pendingEncoderFrame = null; }
+            pendingEncoderFrame.clear();
             // Synchronous configure() failure inside switchCodec already surfaces via
             // onEncoderError; the watchdog plus codec-exclusion list takes care of
             // the next fallback. Don't let a sync throw break the worker RPC.
@@ -2190,8 +2190,8 @@ export const serverImpl: VideoProcessingWorker = {
             inputTrack = null;
         }
         try { await awaitAllPendingReadbacks(); } catch { /* ignore */ }
-        if (pendingFrame) { try { pendingFrame.frame.close(); } catch { /* ignore */ } pendingFrame = null; }
-        if (pendingEncoderFrame) { try { pendingEncoderFrame.close(); } catch { /* ignore */ } pendingEncoderFrame = null; }
+        pendingFrame.clear();
+        pendingEncoderFrame.clear();
         // Flush extras first (per-session simulcast — close fully). Primary
         // gets flushed and parked below for reuse on next start.
         // Snapshot + clear BEFORE awaiting flush — if switchCodec runs during

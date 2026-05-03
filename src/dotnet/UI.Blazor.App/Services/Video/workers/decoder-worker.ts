@@ -28,6 +28,7 @@ import { Api, momentToSeconds, secondsToMoment, streamingApi } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 import { initAppConstants, VIDEO } from 'app-constants';
 import Denque from 'denque';
+import { OwnedArrayBufferTracker } from 'buffers';
 
 const { infoLog, warnLog, errorLog } = getLogs('VideoDecoder');
 
@@ -135,39 +136,15 @@ function decoderErrorKey(scope: string, error: unknown): string {
     return `${scope}:${String(error)}`;
 }
 
-// Extract an owned ArrayBuffer from a Uint8Array. msgpack-decoded byte fields
-// may be either fully-owned (whole buffer = view) or shared subarrays into a
-// larger decode buffer. Fast path: when the view spans the whole underlying
-// buffer, return it directly — zero alloc, zero copy. Otherwise slice() to get
-// an owned copy. The returned buffer is safe to detach (transfer or pass into
-// `new EncodedVideoChunk({ transfer: [...] })`).
-//
-// Diagnostic counters: fast/slow path counts logged every
-// OWNED_ARRAY_BUFFER_LOG_INTERVAL invocations to confirm msgpack ownership
-// behaviour in production. If `slow` dominates, the receiver pays an extra
-// ~16 KB alloc+copy per frame and a buffer-pool / msgpack tweak is worth it.
-let ownedArrayBufferFastCount = 0;
-let ownedArrayBufferSlowCount = 0;
+const ownedArrayBufferTracker = new OwnedArrayBufferTracker();
 const OWNED_ARRAY_BUFFER_LOG_INTERVAL = 300;
-function ownedArrayBuffer(view: Uint8Array): ArrayBuffer {
-    const isOwned = view.byteOffset === 0 && view.byteLength === view.buffer.byteLength;
-    if (isOwned) {
-        ownedArrayBufferFastCount++;
-    } else {
-        ownedArrayBufferSlowCount++;
-    }
-    const total = ownedArrayBufferFastCount + ownedArrayBufferSlowCount;
-    if (total % OWNED_ARRAY_BUFFER_LOG_INTERVAL === 0) {
-        const fastPct = (ownedArrayBufferFastCount / total * 100).toFixed(1);
-        infoLog?.log(`ownedArrayBuffer: fast=${ownedArrayBufferFastCount} ` +
-            `slow=${ownedArrayBufferSlowCount} (${fastPct}% fast)`);
-    }
-    if (isOwned) {
-        // msgpack-decoded byte fields are always plain ArrayBuffer (never
-        // SharedArrayBuffer); cast narrows the ArrayBufferLike union.
-        return view.buffer as ArrayBuffer;
-    }
-    return view.slice().buffer;
+function getOwnedArrayBuffer(view: Uint8Array): ArrayBuffer {
+    const result = ownedArrayBufferTracker.get(view);
+    const stats = ownedArrayBufferTracker.stats;
+    if (stats.totalCount % OWNED_ARRAY_BUFFER_LOG_INTERVAL === 0)
+        infoLog?.log(`ownedArrayBuffer: fast=${stats.fastCount} ` +
+            `slow=${stats.slowCount} (${(stats.fastRatio * 100).toFixed(1)}% fast)`);
+    return result;
 }
 
 // Stream id of the active in-worker pull (set by startPullInWorker, cleared
@@ -402,11 +379,11 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
             pullReceivedFrameCount++;
             if (frame.IsKeyFrame) pullReceivedKeyframeCount++;
             if (pullFirstFrameAt === 0) pullFirstFrameAt = Date.now();
-            const dataBuffer = ownedArrayBuffer(data);
+            const dataBuffer = getOwnedArrayBuffer(data);
             let descBuffer: ArrayBuffer | undefined;
             const desc = frame.Description;
             if (desc && desc.length > 0) {
-                descBuffer = ownedArrayBuffer(desc);
+                descBuffer = getOwnedArrayBuffer(desc);
             }
 
             await serverImpl.decodeRawChunk(
