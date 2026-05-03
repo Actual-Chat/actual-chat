@@ -145,7 +145,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
 
     public async end(mustAbort: boolean, _noWait?: RpcNoWait): Promise<void> {
         if (this.playbackState === 'ended') {
-            warnLog?.log(`#${this.id}.end, but playback is already ended`);
+            if (!mustAbort)
+                debugLog?.log(`#${this.id}.end, but playback is already ended`);
             return;
         }
 
