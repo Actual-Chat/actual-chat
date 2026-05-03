@@ -13,67 +13,97 @@ export interface SpatialLayerConfig {
     scalabilityMode?: string;
 }
 
-// Returns true when the incoming ladder's top tier is taller than the existing
-// one — used to decide whether to replace the existing ladder. Compares by
-// height (matches the height-based bitrate table). The ladder-persistence path
-// uses this to accept upgrades while rejecting same- or lower-quality pushes
-// from C#.
-export function hasHigherTopTier(
-    incoming: readonly SpatialLayerConfig[],
-    existing: readonly SpatialLayerConfig[],
-): boolean {
-    if (incoming.length === 0 || existing.length === 0) return false;
-    const incomingTop = incoming[incoming.length - 1];
-    const existingTop = existing[existing.length - 1];
-    return incomingTop.height > existingTop.height;
-}
-
-// Cap on simulcast tier count. Caps at 2 because each additional tier costs
-// another concurrent HW encoder slot + another `new VideoFrame(canvas)`
-// implicit GPU sync per source frame in the WebGPU downscaler — both scarce
-// on iOS Safari. Two tiers gives a clean 2× drop ratio with one identity
-// (top = source, no canvas ctor) and one rendered (source/2).
-export const MAX_SIMULCAST_TIERS = 2;
+// Mode-specific caps. Webcam gets up to 3 tiers (720p/360p/180p), screencast
+// gets up to 2 (top + half-size) to keep text legibility and encoder cost sane.
+export const WEBCAM_MAX_SIMULCAST_TIERS = 3;
+export const SCREENCAST_MAX_SIMULCAST_TIERS = 2;
+export const MIN_SIMULCAST_SMALL_AXIS = 150;
 
 export interface LadderBuildInput {
-    /** Layer count requested by the server (caps via MaxSpatialLayer). */
-    count: number;
-    /** Source dims as the running encoder sees them. */
-    srcWidth: number;
-    srcHeight: number;
+    /** Top-tier width — the largest tier in the ladder. */
+    topWidth: number;
+    /** Top-tier height — the largest tier in the ladder. */
+    topHeight: number;
+    /** Requested tier count. Higher count = more layers below the top. */
+    tierCount: number;
+    /** Mode-specific maximum tier count. */
+    maxTierCount: number;
+    /** Drop derived lower tiers whose smaller axis would be below this threshold. */
+    minSmallAxis?: number;
     /** Bitrate provider — caller injects the codec/mode-aware lookup. */
     bitrateFor: (height: number) => number;
 }
 
-// Builds a simulcast ladder shaped to the source. Top tier is the source
-// itself (becomes the downscaler's identity slot — `clone()` instead of a
-// canvas-backed VideoFrame, no GPU sync). Second tier is source/2 with even-
-// rounded dims so encoders accept them. Result is bottom-first.
+// Builds a simulcast ladder. Top tier is `(topWidth, topHeight)` — the
+// caller's chosen source dim (becomes the downscaler's identity slot:
+// `clone()` instead of a canvas-backed VideoFrame, no GPU sync). Each lower
+// tier is ½ width × ½ height (¼ pixels) of the next, even-rounded so encoders
+// accept them. Result is bottom-first.
 //
-// Capped to MAX_SIMULCAST_TIERS regardless of `count` — the cap is the
-// power/heat-bound limit, not a server-side knob.
-export function buildLadderForSource(input: LadderBuildInput): SpatialLayerConfig[] {
-    const { count, srcWidth, srcHeight, bitrateFor } = input;
-    if (count <= 0 || srcWidth <= 0 || srcHeight <= 0)
+// Examples:
+//  - Webcam 3-tier @ 720p: (1280,720,3) → [320×180, 640×360, 1280×720]
+//  - Webcam 2-tier dropTop @ 360p: (640,360,2) → [320×180, 640×360]
+//  - Screencast 2-tier @ 1080p: (1920,1080,2) → [960×540, 1920×1080]
+//
+// Capped to maxTierCount regardless of `tierCount`.
+export function buildLadder(input: LadderBuildInput): SpatialLayerConfig[] {
+    const { topWidth, topHeight, tierCount, maxTierCount, bitrateFor } = input;
+    if (tierCount <= 0 || topWidth <= 0 || topHeight <= 0)
         return [];
 
-    const top: SpatialLayerConfig = {
-        width: srcWidth,
-        height: srcHeight,
-        bitrate: bitrateFor(srcHeight),
-    };
+    const effectiveCount = Math.min(tierCount, maxTierCount);
+    const minSmallAxis = input.minSmallAxis ?? MIN_SIMULCAST_SMALL_AXIS;
+    const ladder: SpatialLayerConfig[] = [];
+    // Build top-down then reverse to keep the bottom-first invariant.
+    let w = topWidth;
+    let h = topHeight;
+    for (let i = 0; i < effectiveCount; i++) {
+        // Always keep the top layer; prune only lower derived layers that are
+        // too small to be useful as simulcast alternatives.
+        if (i > 0 && Math.min(w, h) < minSmallAxis)
+            break;
+        ladder.push({ width: w, height: h, bitrate: bitrateFor(h) });
+        w = roundToEven(w / 2);
+        h = roundToEven(h / 2);
+    }
+    return ladder.reverse();
+}
 
-    const effectiveCount = Math.min(count, MAX_SIMULCAST_TIERS);
-    if (effectiveCount === 1) return [top];
+export function fitWithin(width: number, height: number, maxWidth: number, maxHeight: number): Size {
+    if (width <= 0 || height <= 0 || maxWidth <= 0 || maxHeight <= 0)
+        return { width: 0, height: 0 };
+    if (width <= maxWidth && height <= maxHeight)
+        return { width: roundToEven(width), height: roundToEven(height) };
 
-    const halfW = roundToEven(srcWidth / 2);
-    const halfH = roundToEven(srcHeight / 2);
-    const bottom: SpatialLayerConfig = {
-        width: halfW,
-        height: halfH,
-        bitrate: bitrateFor(halfH),
+    const scale = Math.min(maxWidth / width, maxHeight / height);
+    return {
+        width: roundToEven(width * scale),
+        height: roundToEven(height * scale),
     };
-    return [bottom, top];
+}
+
+export function webcamTopSize(width: number, height: number): Size {
+    if (width <= 0 || height <= 0)
+        return { width: 0, height: 0 };
+
+    const maxWidth = 1280;
+    const maxHeight = 720;
+    const aspect = maxWidth / maxHeight;
+    let topW = Math.min(width, maxWidth);
+    let topH = topW / aspect;
+    if (topH > height) {
+        topH = Math.min(height, maxHeight);
+        topW = topH * aspect;
+    }
+    return {
+        width: roundToEven(topW),
+        height: roundToEven(topH),
+    };
+}
+
+interface Size {
+    width: number;
+    height: number;
 }
 
 function roundToEven(value: number): number {

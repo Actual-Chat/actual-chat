@@ -96,7 +96,7 @@ public sealed class ChatListener : ChatPlayer
                 var playAt = MomentExt.Max(
                     minPlayAt,
                     streamInfo.BeginsAt,
-                    serverClock.Now - Constants.Audio.DecoderTargetBufferDurationWithVideo);
+                    serverClock.Now - Constants.Audio.PlaybackTargetBufferSizeWithVideo);
                 if (playAt >= streamInfo.BeginsAt + Constants.Chat.MaxEntryDuration)
                     return;
 
@@ -180,9 +180,13 @@ public sealed class ChatListener : ChatPlayer
             ? streamInfo.SourceBeginsAt
             : streamInfo.BeginsAt;
         sourceRecordedAt += skipTo;
+        var targetBufferSize = await Hub.ChatAudioUI
+            .GetPlaybackTargetBufferSize(ChatId, cancellationToken)
+            .ConfigureAwait(false);
         var trackInfo = new ChatAudioTrackInfo(ChatId, null, chat, author) {
             RecordedAt = streamInfo.BeginsAt + skipTo,
             SourceRecordedAt = sourceRecordedAt,
+            TargetBufferSize = targetBufferSize,
         };
 
         playback.Play(trackInfo, audioSource, playAt, cancellationToken);

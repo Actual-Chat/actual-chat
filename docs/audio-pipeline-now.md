@@ -70,7 +70,7 @@ All file paths are relative to the repo root.
 - The doc's pre-roll is a single bounded `drop oldest` buffer at this stage.
   Both web and MAUI roughly match this shape, though sizes differ (web's
   encoder PCM queue plus a separate VAD queue; MAUI's 2 s VAD buffer is
-  larger than `VoiceStartPreRollSize = 200 ms`).
+  larger than `VoicePreRollFrameLimit = 100 ms`).
 - The doc says all other processors operate per-block without queuing.
   `WindowsAudioCapture` adds a 40 ms intentional mic delay for AEC alignment
   — that is an inherent cost of host-side AEC and effectively becomes

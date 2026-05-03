@@ -346,7 +346,7 @@ public class IconSvgToPngMigrationFlowTest(AppHostFixture fixture, ITestOutputHe
             contentType,
             blobBytes.Length,
             () => Task.FromResult<Stream>(new MemoryStream(blobBytes)));
-        var mediaRef = await MediaSaver.Save(mediaId, file, new Size(width, height), kind, CancellationToken.None);
+        var mediaRef = await MediaSaver.Save(mediaId, file, new Size2D(width, height), kind, CancellationToken.None);
         if (deleteBlob)
             await BlobStorage.Delete(mediaRef.BlobId, CancellationToken.None);
         return (mediaId, mediaRef.BlobId);

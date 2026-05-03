@@ -26,12 +26,11 @@ public static partial class Constants
         public static readonly TimeSpan ServerReplayTailDuration = TimeSpan.FromSeconds(1);
         public static readonly int ServerReplayTailSize = (int)(FrameRate * ServerReplayTailDuration.TotalSeconds); // 30
 
-        // Max simulcast tiers a sender may produce. Mirrors TS
-        // MAX_SIMULCAST_TIERS in src/dotnet/UI.Blazor.App/Components/VideoPanel/
-        // simulcast-ladder.ts — two HW encoder slots is the power/heat-bound
-        // limit on iOS Safari and the same value drives backend sizing of
-        // anything that scales with per-source-frame item rate.
-        public const int MaxSimulcastTiers = 2;
+        // Max simulcast tiers by stream kind. Mirrors TS constants in
+        // src/dotnet/UI.Blazor.App/Components/VideoPanel/simulcast-ladder.ts.
+        // Webcam: up to 3 tiers (720p/360p/180p). Screencast: top + half-size.
+        public const int WebcamMaxSimulcastTiers = 3;
+        public const int ScreencastMaxSimulcastTiers = 2;
 
         public static readonly TimeSpan CancellationDelay = TimeSpan.FromSeconds(5);
         public static readonly TimeSpan StreamExpirationDelay = TimeSpan.FromSeconds(30);
@@ -127,13 +126,6 @@ public static partial class Constants
         // Max frames skipped on the selected spatial layer before egress falls back.
         // ~5s at 30fps — covers up to 5 missed 1s-cadence keyframes.
         public static readonly int EgressGapFrameThreshold = 150;
-
-        // Minimum total participant count (sender + remote peers) at which simulcast
-        // activates. Below this, sender uses single-encoder P2P path. Translates to
-        // "remote stream count >= MinMembersForSimulcast - 1" in VideoRecorder.
-        // ViewerCount path can also arm simulcast asymmetrically (peer pushes, no
-        // one pushes back — server reports viewer count, sender activates).
-        public static readonly int MinMembersForSimulcast = 3;
 
         // Stream count limits
         public static readonly int MaxWebcamStreamsPerChat = 8;

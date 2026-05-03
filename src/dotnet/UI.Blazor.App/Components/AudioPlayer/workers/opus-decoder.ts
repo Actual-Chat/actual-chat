@@ -239,8 +239,16 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
         this.flushDecodeDemand();
     }
 
-    public async setTargetBufferDuration(targetDurationMs: number, _noWait?: RpcNoWait): Promise<void> {
-        this.encodedFrames.setTargetDuration(targetDurationMs);
+    /**
+     * Sizes the encoded (pre-decoder) buffer from the total target playback delay:
+     *   encoded = max(MinEncodeBufferSize, target - DefaultDecodedBufferSize - DefaultAudioEnginePlaybackLatency)
+     */
+    public setTargetBufferSize(targetBufferSizeMs: number): void {
+        const min = AUDIO.play.minEncodeBufferSizeMs;
+        const decoded = AUDIO.play.defaultDecodedBufferSizeMs;
+        const engine = AUDIO.play.defaultAudioEnginePlaybackLatencyMs;
+        const encoded = Math.max(min, targetBufferSizeMs - decoded - engine);
+        this.encodedFrames.setTargetDuration(encoded);
         this.flushDecodeDemand();
     }
 

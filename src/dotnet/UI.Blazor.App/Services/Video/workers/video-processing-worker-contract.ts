@@ -18,6 +18,10 @@ import type { SharedSettingsWorker } from 'shared-settings-worker';
 
 export type { SpatialLayerConfig };
 
+export interface SpatialLayerEncoderStats extends EncoderStats {
+    spatialLayerId: number;
+}
+
 const { debugLog, warnLog } = getLogs('VideoSegmentation');
 
 // ─── Segmentation config types ──────────────────────────────────────────────
@@ -186,7 +190,9 @@ export interface VideoProcessingStreamingStats {
 }
 
 export interface VideoProcessingStats {
+    // Aggregate across all live encoders. Per-layer stats are in spatialLayers.
     encoder: EncoderStats;
+    spatialLayers: SpatialLayerEncoderStats[];
     segmentation: SegmentationStats | null;
     orientation: OrientationStats | null;
     streaming: VideoProcessingStreamingStats | null;

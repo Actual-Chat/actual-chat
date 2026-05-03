@@ -67,10 +67,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
             return null;
 
         stream = SkipTo(stream, skipTo, cancellationToken);
-        return new RpcStream<AudioFrame>(stream) {
-            AckPeriod = Constants.Audio.StreamAckPeriod,
-            BufferSize = Constants.Audio.StreamBufferSize,
-        };
+        return MediaRpcStreamOptions.AudioDelivery(stream);
     }
 
     public virtual async Task<RpcStream<TranscriptDiff>?> GetTranscript(StreamId streamId, CancellationToken cancellationToken)
@@ -78,10 +75,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         DebugLog?.LogDebug("GetTranscript: #{StreamId}", streamId);
         var stream = await _transcriptStreams.Get(streamId, false, cancellationToken).ConfigureAwait(false);
         if (stream != null)
-            return new RpcStream<TranscriptDiff>(stream) {
-                AckPeriod = Constants.Audio.StreamAckPeriod,
-                BufferSize = Constants.Audio.StreamBufferSize,
-            };
+            return MediaRpcStreamOptions.TranscriptDelivery(stream);
 
         var language = streamId.Language;
         if (language == null)
@@ -90,10 +84,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         var originalStreamId = StreamId.New(streamId.NodeRef, streamId.LocalId);
         if (!_translatingStreams.TryAdd(streamId, originalStreamId)) {
             stream = await _transcriptStreams.Get(streamId, true, cancellationToken).ConfigureAwait(false);
-            return new RpcStream<TranscriptDiff>(stream!) { // Already translating
-                AckPeriod = Constants.Audio.StreamAckPeriod,
-                BufferSize = Constants.Audio.StreamBufferSize,
-            };
+            return MediaRpcStreamOptions.TranscriptDelivery(stream!); // Already translating
         }
 
         DebugLog?.LogDebug("GetTranscript: #{StreamId} - Translate stream", streamId);
@@ -106,10 +97,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         DebugLog?.LogDebug("GetTranscript: #{StreamId} - Return stream", streamId);
         return stream == null
             ? null
-            : new RpcStream<TranscriptDiff>(stream) {
-                AckPeriod = Constants.Audio.StreamAckPeriod,
-                BufferSize = Constants.Audio.StreamBufferSize,
-            };
+            : MediaRpcStreamOptions.TranscriptDelivery(stream);
     }
 
     public async Task PushTranscript(StreamId streamId, RpcStream<TranscriptDiff> diffStream, CancellationToken cancellationToken)

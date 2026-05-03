@@ -7,19 +7,19 @@ namespace ActualChat.Uploads;
 public static class UploadProcessorHelper
 {
     private static readonly ILogger Log = StaticLog.For(typeof(UploadProcessorHelper));
-    private static readonly Size FullHd = new(1920, 1080);
+    private static readonly Size2D FullHd = new(1920, 1080);
 
-    public static Size GetEffectiveSize(VideoStream video)
+    public static Size2D GetEffectiveSize(VideoStream video)
         => video.Rotation is 90 or 270 or -90 or -270
-            ? new Size(video.Height, video.Width)
-            : new Size(video.Width, video.Height);
+            ? new Size2D(video.Height, video.Width)
+            : new Size2D(video.Width, video.Height);
 
     public static T EnsureMp4Extension<T>(T file) where T : UploadedFile
         => string.Equals(file.FileName.Extension, ".mp4", StringComparison.OrdinalIgnoreCase)
             ? file
             : file with { FileName = Path.ChangeExtension(file.FileName, ".mp4"), ContentType = "video/mp4" };
 
-    public static (Size Size, TimeSpan Duration, double FrameRate) AnalyzeVideo(VideoStream videoStream)
+    public static (Size2D Size, TimeSpan Duration, double FrameRate) AnalyzeVideo(VideoStream videoStream)
     {
         var size = GetEffectiveSize(videoStream);
         return (size, videoStream.Duration, videoStream.AvgFrameRate);
@@ -38,25 +38,25 @@ public static class UploadProcessorHelper
     public static bool MustConvertVideo(MediaFormat mediaFormat)
         => !IsMp4Container(mediaFormat);
 
-    public static bool ExceedsFullHd(Size size)
+    public static bool ExceedsFullHd(Size2D size)
     {
         var longSide = Math.Max(size.Width, size.Height);
         var shortSide = Math.Min(size.Width, size.Height);
         return longSide > FullHd.Width || shortSide > FullHd.Height;
     }
 
-    public static Size ScaleToFullHd(Size size)
+    public static Size2D ScaleToFullHd(Size2D size)
     {
         if (!ExceedsFullHd(size))
             return size;
 
         var isPortrait = size.Height > size.Width;
-        var limit = isPortrait ? new Size(FullHd.Height, FullHd.Width) : FullHd;
+        var limit = isPortrait ? new Size2D(FullHd.Height, FullHd.Width) : FullHd;
         var scale = Math.Min((double)limit.Width / size.Width, (double)limit.Height / size.Height);
         // Round to even numbers (required by most video codecs)
         var w = (int)(size.Width * scale) & ~1;
         var h = (int)(size.Height * scale) & ~1;
-        return new Size(w, h);
+        return new Size2D(w, h);
     }
 
     public static Task<UploadedTempFile?> Snapshot(

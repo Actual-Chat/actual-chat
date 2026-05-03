@@ -9,6 +9,8 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 {
     private readonly StreamStore<VideoFrame> _videoStreams;
 
+    private static bool DebugMode => Constants.DebugMode.LiveStreaming;
+
     private MeshNode ThisNode => field ??= Services.MeshWatcher().ThisNode;
     private IChats Chats => field ??= Services.GetRequiredService<IChats>();
     private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
@@ -18,6 +20,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     private IServiceProvider Services { get; }
     private StreamLatencyStore LatencyStore { get; }
     private ILogger Log { get; }
+    private ILogger? DebugLog => DebugMode ? Log : null;
 
     public VideoStreamingBackend(IServiceProvider services)
     {
@@ -60,7 +63,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         RpcStream<VideoFrame> videoStream,
         CancellationToken cancellationToken)
     {
-        Log.LogTrace(nameof(PushVideo) + ": record #{StreamId} = {Record}", record.StreamId, record);
+        DebugLog?.LogDebug(nameof(PushVideo) + ": record #{StreamId} = {Record}", record.StreamId, record);
         var delayedCts = cancellationToken.CreateDelayedTokenSource(Constants.Video.CancellationDelay);
         var delayedCancellationToken = delayedCts.Token;
         try {
@@ -155,12 +158,15 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             Log.LogInformation("TIMING_ANCHOR: StreamId={StreamId}, ClockDelta={ClockDeltaMs:F0}ms (OK)",
                 record.StreamId, clockDelta.TotalMilliseconds);
 
-        // Register stream for real-time signaling
+        // Register stream for real-time signaling. Initially we only know the
+        // format the producer pushed at registration time — the base layer.
+        // Higher spatial layers will surface as their keyframes flow through
+        // (each frame carries SpatialLayerId + dims); see Formats[] update path.
         var streamInfo = new VideoStreamInfo(
             record.StreamId,
             record.ChatId,
             author.Id,
-            record.Format,
+            [record.Format],
             beginsAt,
             record.StreamKind,
             sourceStartedAt);

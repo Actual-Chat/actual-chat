@@ -43,8 +43,6 @@ public partial class VideoFrame : MediaFrame
     /// </summary>
     [DataMember(Order = 8), MemoryPackOrder(8), Key(8)]
     public byte SpatialLayerId { get; init; }
-    [DataMember(Order = 9), MemoryPackOrder(9), Key(9)]
-    public byte MinSpatialLayerId { get; init; }
     [DataMember(Order = 10), MemoryPackOrder(10), Key(10)]
     public byte MaxSpatialLayerId { get; init; }
 
@@ -65,6 +63,10 @@ public partial class VideoFrame : MediaFrame
     public int SourceWidth { get; init; }
     [DataMember(Order = 13), MemoryPackOrder(13), Key(13)]
     public int SourceHeight { get; init; }
+    [DataMember(Order = 14), MemoryPackOrder(14), Key(14)]
+    public int MaxSpatialLayerWidth { get; init; }
+    [DataMember(Order = 15), MemoryPackOrder(15), Key(15)]
+    public int MaxSpatialLayerHeight { get; init; }
 
     // NB: The properties below this line aren't serialized!
 

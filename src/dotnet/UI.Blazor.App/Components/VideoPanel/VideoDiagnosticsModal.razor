@@ -1,12 +1,19 @@
 @namespace ActualChat.UI.Blazor.App.Components.VideoPanel
+@using ActualChat.Media
 @using ActualChat.Streaming
 @using ActualChat.UI.Blazor.App.Module
+@using ActualChat.UI.Blazor.App.Services
 @using System.Text.Json
 @inherits ComputedStateComponent<AppUIHub, VideoDiagnosticsModal.ComputedModel>
 @implements IModalView<VideoDiagnosticsModal.Model>
 @{
     var m = State.Value;
     var own = _ownDiag;
+    var playbackSnap = Hub.VideoQualityUI.PlaybackSnapshot;
+    var playbackOverride = Hub.VideoQualityUI.PlaybackOverride;
+    var recordingSnap = m.OwnStreamingKind is { } ownKind
+        ? Hub.VideoQualityUI.GetRecordingSnapshot(ownKind)
+        : null;
 }
 
 <DialogFrame
@@ -73,53 +80,6 @@
                         <span class="diag-label">Codec</span>
                         <span class="diag-value">@GetStr(stream, "codec") (@GetStr(stream, "codecCategory"), @(GetBool(stream, "hardwareAccelerated") ? "HW" : "SW"))</span>
                     </div>
-                    <div class="diag-row">
-                        <span class="diag-label">Output</span>
-                        <span class="diag-value">@GetStr(stream, "outputResolution")</span>
-                    </div>
-                    <div class="diag-row">
-                        <span class="diag-label">Bitrate</span>
-                        <span class="diag-value">@(GetNum(stream, "actualBitrateKbps").ToString("0")) kbps (cfg: @((GetNum(stream, "configuredBitrate") / 1000).ToString("0")) kbps)</span>
-                    </div>
-                    <div class="diag-row">
-                        <span class="diag-label">Encode time</span>
-                        <span class="diag-value">@(GetNum(stream, "medianEncodeTime").ToString("0.0"))ms (pure: @(GetNum(stream, "pureMedianEncodeTime").ToString("0.0"))ms)</span>
-                    </div>
-                    <div class="diag-row">
-                        <span class="diag-label">HW accel</span>
-                        <span class="diag-value">@GetStr(stream, "encoderHwAccel")</span>
-                    </div>
-                    <div class="diag-row">
-                        <span class="diag-label">Frames</span>
-                        <span class="diag-value">@(GetNum(stream, "encodedFrames").ToString("0")) enc, @(GetNum(stream, "droppedFrames").ToString("0")) drop, @(GetNum(stream, "keyFrames").ToString("0")) key</span>
-                    </div>
-                    @{
-                        var encState = GetStr(stream, "encoderState");
-                        var isEncDead = encState is "closed" or "unconfigured";
-                    }
-                    <div class="diag-row">
-                        <span class="diag-label">State</span>
-                        <span class="diag-value @(isEncDead ? "diag-error" : "")">@encState</span>
-                    </div>
-                    <div class="diag-row">
-                        <span class="diag-label">Lifecycle</span>
-                        <span class="diag-value">@(GetNum(stream, "encoderReconfigureCount").ToString("0")) reconfigure, @(GetNum(stream, "encoderReplaceCount").ToString("0")) replace</span>
-                    </div>
-                    @if (GetStr(stream, "encoderLastReconfigureSummary") is { Length: > 0 } reconfSummary) {
-                        <div class="diag-row">
-                            <span class="diag-label">Last reconfig</span>
-                            <span class="diag-value multiline">@reconfSummary @(GetNum(stream, "encoderLastReconfigureAgeMs") >= 0 ? $"({GetNum(stream, "encoderLastReconfigureAgeMs"):0}ms ago)" : "")</span>
-                        </div>
-                    }
-                    @if (GetNum(stream, "encoderErrorCount") > 0) {
-                        <div class="diag-row">
-                            <span class="diag-label">Encoder error</span>
-                            <div class="diag-value multiline">
-                                <span class="diag-error">@GetStr(stream, "encoderLastErrorName"): @GetStr(stream, "encoderLastErrorMessage")</span>
-                                <span class="diag-dim">(@(GetNum(stream, "encoderErrorCount").ToString("0")) total@(GetNum(stream, "encoderLastErrorAgeMs") >= 0 ? $", {GetNum(stream, "encoderLastErrorAgeMs"):0}ms ago" : ""))</span>
-                            </div>
-                        </div>
-                    }
                     @if (GetBool(stream, "blurEnabled")) {
                         <div class="diag-row">
                             <span class="diag-label">Blur</span>
@@ -130,6 +90,72 @@
                         <span class="diag-label">Available</span>
                         <span class="diag-value">@GetStrArray(stream, "supportedEncoderCategories")</span>
                     </div>
+
+                    @* Selected spatial layer *@
+                    @{
+                        var spatialLayers = GetArray(stream, "spatialLayers")
+                            .OrderBy(GetSpatialLayerId)
+                            .ToArray();
+                        var selectedLayer = SelectOwnSpatialLayer(spatialLayers);
+                    }
+                    @if (selectedLayer is { } layer) {
+                        var layerId = GetSpatialLayerId(layer);
+                        var layerState = GetStr(layer, "encoderState");
+                        var isLayerDead = layerState is "closed" or "unconfigured";
+                        <div class="diag-group-header">Layer</div>
+                        <div class="diag-row">
+                            <span class="diag-label">Layer</span>
+                            <span class="diag-value diag-layer-picker">
+                                @foreach (var l in spatialLayers) {
+                                    var id = GetSpatialLayerId(l);
+                                    <button type="button" class="diag-layer-link @(id == layerId ? "active" : "")" @onclick="() => OnSelectOwnSpatialLayer(id)">L@(id)</button>
+                                }
+                            </span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Output</span>
+                            <span class="diag-value">@GetStr(layer, "outputResolution")</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Bitrate</span>
+                            <span class="diag-value">@(GetNum(layer, "actualBitrateKbps").ToString("0")) kbps (cfg: @((GetNum(layer, "configuredBitrate") / 1000).ToString("0")) kbps)</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Encode time</span>
+                            <span class="diag-value">@(GetNum(layer, "medianEncodeTime").ToString("0.0"))ms (pure: @(GetNum(layer, "pureMedianEncodeTime").ToString("0.0"))ms)</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">HW accel</span>
+                            <span class="diag-value">@GetStr(layer, "encoderHwAccel")</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Frames</span>
+                            <span class="diag-value">@(GetNum(layer, "encodedFrames").ToString("0")) enc, @(GetNum(layer, "droppedFrames").ToString("0")) drop, @(GetNum(layer, "keyFrames").ToString("0")) key</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">State</span>
+                            <span class="diag-value @(isLayerDead ? "diag-error" : "")">@layerState</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Lifecycle</span>
+                            <span class="diag-value">@(GetNum(layer, "encoderReconfigureCount").ToString("0")) reconfigure, @(GetNum(layer, "encoderReplaceCount").ToString("0")) replace</span>
+                        </div>
+                        @if (GetStr(layer, "encoderLastReconfigureSummary") is { Length: > 0 } reconfSummary) {
+                            <div class="diag-row">
+                                <span class="diag-label">Last reconfig</span>
+                                <span class="diag-value multiline">@reconfSummary @(GetNum(layer, "encoderLastReconfigureAgeMs") >= 0 ? $"({GetNum(layer, "encoderLastReconfigureAgeMs"):0}ms ago)" : "")</span>
+                            </div>
+                        }
+                        @if (GetNum(layer, "encoderErrorCount") > 0) {
+                            <div class="diag-row">
+                                <span class="diag-label">Encoder error</span>
+                                <div class="diag-value multiline">
+                                    <span class="diag-error">@GetStr(layer, "encoderLastErrorName"): @GetStr(layer, "encoderLastErrorMessage")</span>
+                                    <span class="diag-dim">(@(GetNum(layer, "encoderErrorCount").ToString("0")) total@(GetNum(layer, "encoderLastErrorAgeMs") >= 0 ? $", {GetNum(layer, "encoderLastErrorAgeMs"):0}ms ago" : ""))</span>
+                                </div>
+                            </div>
+                        }
+                    }
 
                     @* Orientation *@
                     @if (stream.TryGetProperty("orientation", out var orient) && orient.ValueKind == JsonValueKind.Object) {
@@ -190,6 +216,49 @@
                             </div>
                         }
                     }
+
+                    @* Quality control *@
+                    @if (recordingSnap is { } outboundQc) {
+                        <div class="diag-group-header">Quality Control (outbound)</div>
+                        <div class="diag-row">
+                            <span class="diag-label">Target</span>
+                            <span class="diag-value">@FormatRecordingQualityState(outboundQc)</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Verdict</span>
+                            <span class="diag-value">@SignalText(outboundQc.Signal)</span>
+                        </div>
+                        @if (ShouldShowRecordingAction(outboundQc.Reason)) {
+                            <div class="diag-row">
+                                <span class="diag-label">Action</span>
+                                <span class="diag-value">@outboundQc.Reason</span>
+                            </div>
+                        }
+                        <div class="diag-row">
+                            <span class="diag-label">Layer cap</span>
+                            <span class="diag-value">@FormatLayerCap(outboundQc.DebugMaxLayerCount)</span>
+                        </div>
+                        @if (outboundQc.Health is { } health) {
+                            <div class="diag-row">
+                                <span class="diag-label">Encode cost</span>
+                                <span class="diag-value">@FormatRecordingEncodeCostSignal(health)</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Frame slots</span>
+                                <span class="diag-value">@FormatRecordingSlotSignal(health)</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Sender</span>
+                                <span class="diag-value multiline">@FormatRecordingSenderSignal(health)</span>
+                            </div>
+                        }
+                        else {
+                            <div class="diag-row">
+                                <span class="diag-label">Signals</span>
+                                <span class="diag-value diag-dim">no health sample yet</span>
+                            </div>
+                        }
+                    }
                 </div>
             }
         </div>
@@ -235,13 +304,21 @@
                             <span class="diag-label">Author</span>
                             <span class="diag-value">@s.Author</span>
                         </div>
+                        @{
+                            var formats = s.Info.Formats;
+                            var topFmt = formats.LastOrDefault();
+                            // Codec is the same across all simulcast layers; pick the top
+                            // tier so the displayed value lines up with the published ladder.
+                            var senderCodec = topFmt?.Codec ?? "";
+                            var simulcastLayers = FormatSimulcastLayerSizes(formats);
+                        }
                         <div class="diag-row">
                             <span class="diag-label">Codec</span>
-                            <span class="diag-value">@s.Info.Format.Codec</span>
+                            <span class="diag-value">@senderCodec</span>
                         </div>
                         <div class="diag-row">
-                            <span class="diag-label">Sender max</span>
-                            <span class="diag-value">@(s.Info.Format.Width)×@(s.Info.Format.Height)</span>
+                            <span class="diag-label">Resolutions</span>
+                            <span class="diag-value">@simulcastLayers</span>
                         </div>
                         @{
                             var hasDiag = _streamDiags.TryGetValue(sid, out var rdPeek)
@@ -280,6 +357,11 @@
                         }
                         @if (isExpanded && _streamDiags.TryGetValue(sid, out var rd) && rd.ValueKind == JsonValueKind.Object) {
                             <div class="diag-js-details">
+                                <div class="diag-row">
+                                    <span class="diag-label">Resolutions</span>
+                                    <span class="diag-value">@FormatSimulcastLayerSizes(formats)</span>
+                                </div>
+
                                 @* Decoder *@
                                 <div class="diag-group-header">Decoder</div>
                                 <div class="diag-row">
@@ -358,12 +440,81 @@
                                         <span class="diag-value">reduction requested (slow ticks: @(GetNum(rd, "codecSlowTickCount").ToString("0")))</span>
                                     </div>
                                 }
+                                <div class="diag-row">
+                                    <span class="diag-label">Requested</span>
+                                    <span class="diag-value">@FormatRequestedReceiveQuality(rd)</span>
+                                </div>
                             </div>
                         }
                     </div>
                 }
             }
         </div>
+        @if (m.Streams.Any(s => !s.IsOwn)) {
+            <div class="diag-section">
+                <div class="diag-section-header">Quality Control (inbound)</div>
+                <div class="diag-row">
+                    <span class="diag-label">Capacity</span>
+                    <span class="diag-value">@((playbackSnap.EstimatedCapacityBytesPerSec * 8 / 1000).ToString("0")) kbps</span>
+                </div>
+                <div class="diag-row">
+                    <span class="diag-label">Aggregate health</span>
+                    <span class="diag-value">@(playbackSnap.AggregateHealth.ToString("F2"))</span>
+                </div>
+                <div class="diag-row">
+                    <span class="diag-label">Playback override</span>
+                    <span class="diag-value">@playbackOverride</span>
+                </div>
+                @foreach (var s in m.Streams.Where(s => !s.IsOwn)) {
+                    var sid = s.Info.StreamId.Value;
+                    var hasDiag = _streamDiags.TryGetValue(sid, out var rd)
+                        && rd.ValueKind == JsonValueKind.Object;
+                    int? verdict = playbackSnap.Verdicts.TryGetValue(sid, out var v) ? v : null;
+                    <div class="diag-stream">
+                        <div class="diag-stream-header">
+                            <span>@s.Info.StreamId</span>
+                            <span class="diag-stream-kind ml-auto">@s.Info.StreamKind</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Author</span>
+                            <span class="diag-value">@s.Author</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Verdict</span>
+                            <span class="diag-value">@(verdict is { } signal ? SignalText(signal) : "n/a")</span>
+                        </div>
+                        @if (hasDiag) {
+                            <div class="diag-row">
+                                <span class="diag-label">Forwarded</span>
+                                <span class="diag-value">@FormatForwarded(rd)</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Requested</span>
+                                <span class="diag-value">@FormatRequestedReceiveQuality(rd)</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Signal inputs</span>
+                                <span class="diag-value">rate=@(GetNum(rd, "bitrateKbps").ToString("0"))kbps, buf=@(GetNum(rd, "pipelineLatencyMs").ToString("0"))ms, skips=@(GetNum(rd, "skipToLiveCount").ToString("0"))</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Stream age</span>
+                                <span class="diag-value">@(GetNum(rd, "streamAgeMs").ToString("0"))ms</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Decode quality</span>
+                                <span class="diag-value">@FormatDecodeQualitySignal(rd)</span>
+                            </div>
+                        }
+                        else {
+                            <div class="diag-row">
+                                <span class="diag-label">Signals</span>
+                                <span class="diag-value diag-dim">waiting for diagnostics</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
     </Body>
 </DialogFrame>
 
@@ -377,6 +528,7 @@
     private readonly HashSet<string> _expandedStreams = new();
     private bool _isDisposed;
     private bool _showOwnStreamingDetails;
+    private int? _selectedOwnSpatialLayerId;
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private IAuthors Authors => Hub.Authors;
@@ -493,10 +645,101 @@
     private static bool GetBool(JsonElement el, string prop)
         => el.TryGetProperty(prop, out var v) && v.ValueKind is JsonValueKind.True or JsonValueKind.False && v.GetBoolean();
 
+    private static JsonElement[] GetArray(JsonElement el, string prop)
+        => el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.Array
+            ? v.EnumerateArray().ToArray()
+            : [];
+
+    private static int GetSpatialLayerId(JsonElement layer)
+        => (int)GetNum(layer, "spatialLayerId");
+
+    private JsonElement? SelectOwnSpatialLayer(JsonElement[] layers) {
+        if (layers.Length == 0)
+            return null;
+        if (_selectedOwnSpatialLayerId is { } selected) {
+            foreach (var layer in layers)
+                if (GetSpatialLayerId(layer) == selected)
+                    return layer;
+        }
+        return layers[^1];
+    }
+
+    private void OnSelectOwnSpatialLayer(int layerId) {
+        _selectedOwnSpatialLayerId = layerId;
+        StateHasChanged();
+    }
+
     private static string GetStrArray(JsonElement el, string prop) {
         if (!el.TryGetProperty(prop, out var v) || v.ValueKind != JsonValueKind.Array)
             return "";
         return string.Join(", ", v.EnumerateArray().Select(x => x.GetString()));
+    }
+
+    private static string FormatForwarded(JsonElement rd) {
+        if (!rd.TryGetProperty("forwarded", out var forwarded)
+            || forwarded.ValueKind != JsonValueKind.Object
+            || GetNum(forwarded, "ForwardedSpatialLayerId") < 0)
+            return "no frames yet";
+
+        return $"L{GetNum(forwarded, "ForwardedSpatialLayerId"):0} "
+            + $"{GetNum(forwarded, "ForwardedWidth"):0}×{GetNum(forwarded, "ForwardedHeight"):0} "
+            + $"(obsMax={GetNum(forwarded, "ObservedMaxSpatialLayer"):0})";
+    }
+
+    private static string FormatRequestedReceiveQuality(JsonElement rd) {
+        if (!rd.TryGetProperty("requestedReceiveQuality", out var requested)
+            || requested.ValueKind != JsonValueKind.Object)
+            return "default (server-driven)";
+
+        return $"maxSpatial={GetNum(requested, "maxSpatialLayer"):0} "
+            + $"maxTemporal={FormatMaxTemporal(GetNum(requested, "maxTemporalLayer"))}";
+    }
+
+    private static string FormatDecodeQualitySignal(JsonElement rd)
+        => GetBool(rd, "qualityReductionRequested")
+            ? $"reduction requested (slow ticks: {GetNum(rd, "codecSlowTickCount"):0})"
+            : $"ok (slow ticks: {GetNum(rd, "codecSlowTickCount"):0})";
+
+    private static string FormatRecordingQualityState(VideoQualityUI.RecordingQualitySnapshot snapshot)
+        => snapshot.State is { } state
+            ? $"target={state.TargetLayerCount}, effective={state.EffectiveLayerCount}"
+            : "no controller state yet";
+
+    private static bool ShouldShowRecordingAction(RecordingQualityReason reason)
+        => reason != RecordingQualityReason.Stable;
+
+    private static string FormatLayerCap(int? layerCount)
+        => layerCount is { } count ? $"{count} layers" : "none";
+
+    private static string FormatRecordingEncodeCostSignal(RecorderHealthSnapshot health)
+        => $"p50={health.EncodeRatioP50:F2}x budget, p90={health.EncodeRatioP90:F2}x";
+
+    private static string FormatRecordingSlotSignal(RecorderHealthSnapshot health)
+        => $"replaceRate={health.SlotReplacementRate:F2}";
+
+    private static string FormatRecordingSenderSignal(RecorderHealthSnapshot health)
+        => $"backlogP90={health.SenderBacklogP90Ms:0}ms, skips={health.SenderSkipsPerWindow}, "
+            + $"ackAge={FormatAckAge(health.LastAckAgeMs)}, connected={(health.IsConnected ? "yes" : "no")}";
+
+    private static string FormatAckAge(double ageMs)
+        => ageMs >= 0 ? $"{ageMs:0}ms" : "n/a";
+
+    private static string FormatMaxTemporal(double value)
+        => value >= int.MaxValue / 2d ? "inf" : value.ToString("0");
+
+    private static string SignalText(int signal)
+        => signal switch {
+            < 0 => $"{signal} (bad)",
+            > 0 => $"+{signal} (good)",
+            _ => "0 (neutral)",
+        };
+
+    private static string FormatSimulcastLayerSizes(IEnumerable<ActualChat.Video.VideoFormat> formats, string separator = "×") {
+        var items = formats
+            .OrderBy(f => f.SpatialLayerId)
+            .Where(f => f.Size.Width > 0 && f.Size.Height > 0)
+            .Select(f => $"L{f.SpatialLayerId} {f.Size.Width}{separator}{f.Size.Height}");
+        return string.Join(", ", items).NullIfEmpty() ?? "n/a";
     }
 
     private string GetShowDetailsIndicator(bool show)
@@ -533,24 +776,32 @@
             sb.AppendLine();
             sb.AppendLine("-- Encoder --");
             sb.AppendLine($"Codec: {GetStr(ownStream, "codec")} ({GetStr(ownStream, "codecCategory")}, {(GetBool(ownStream, "hardwareAccelerated") ? "HW" : "SW")})");
-            sb.AppendLine($"Output: {GetStr(ownStream, "outputResolution")}");
-            sb.AppendLine($"Bitrate: {GetNum(ownStream, "actualBitrateKbps"):0} kbps (cfg: {GetNum(ownStream, "configuredBitrate") / 1000:0} kbps)");
-            sb.AppendLine($"Encode time: {GetNum(ownStream, "medianEncodeTime"):0.0}ms (pure: {GetNum(ownStream, "pureMedianEncodeTime"):0.0}ms)");
-            sb.AppendLine($"HW accel: {GetStr(ownStream, "encoderHwAccel")}");
-            sb.AppendLine($"Frames: {GetNum(ownStream, "encodedFrames"):0} enc, {GetNum(ownStream, "droppedFrames"):0} drop, {GetNum(ownStream, "keyFrames"):0} key");
-            sb.AppendLine($"State: {GetStr(ownStream, "encoderState")}");
-            sb.AppendLine($"Lifecycle: {GetNum(ownStream, "encoderReconfigureCount"):0} reconfigure, {GetNum(ownStream, "encoderReplaceCount"):0} replace");
-            if (GetStr(ownStream, "encoderLastReconfigureSummary") is { Length: > 0 } copyReconfSummary) {
-                var ageMs = GetNum(ownStream, "encoderLastReconfigureAgeMs");
-                sb.AppendLine($"Last reconfig: {copyReconfSummary}{(ageMs >= 0 ? $" ({ageMs:0}ms ago)" : "")}");
-            }
-            if (GetNum(ownStream, "encoderErrorCount") > 0) {
-                var errAgeMs = GetNum(ownStream, "encoderLastErrorAgeMs");
-                sb.AppendLine($"Encoder error: {GetStr(ownStream, "encoderLastErrorName")}: {GetStr(ownStream, "encoderLastErrorMessage")} ({GetNum(ownStream, "encoderErrorCount"):0} total{(errAgeMs >= 0 ? $", {errAgeMs:0}ms ago" : "")})");
-            }
             if (GetBool(ownStream, "blurEnabled"))
                 sb.AppendLine($"Blur: {GetStr(ownStream, "segmentationBackend")} ({GetNum(ownStream, "segmentationAvgTime"):0.0}ms)");
             sb.AppendLine($"Available: {GetStrArray(ownStream, "supportedEncoderCategories")}");
+
+            var copyLayers = GetArray(ownStream, "spatialLayers").OrderBy(GetSpatialLayerId).ToArray();
+            if (copyLayers.Length > 0) {
+                sb.AppendLine();
+                sb.AppendLine("-- Encoder Layers --");
+                foreach (var layer in copyLayers) {
+                    var layerId = GetSpatialLayerId(layer);
+                    sb.AppendLine($"L{layerId}: {GetStr(layer, "outputResolution")} @ {GetNum(layer, "actualBitrateKbps"):0} kbps (cfg: {GetNum(layer, "configuredBitrate") / 1000:0} kbps)");
+                    sb.AppendLine($"  Encode time: {GetNum(layer, "medianEncodeTime"):0.0}ms (pure: {GetNum(layer, "pureMedianEncodeTime"):0.0}ms)");
+                    sb.AppendLine($"  HW accel: {GetStr(layer, "encoderHwAccel")}");
+                    sb.AppendLine($"  Frames: {GetNum(layer, "encodedFrames"):0} enc, {GetNum(layer, "droppedFrames"):0} drop, {GetNum(layer, "keyFrames"):0} key");
+                    sb.AppendLine($"  State: {GetStr(layer, "encoderState")}");
+                    sb.AppendLine($"  Lifecycle: {GetNum(layer, "encoderReconfigureCount"):0} reconfigure, {GetNum(layer, "encoderReplaceCount"):0} replace");
+                    if (GetStr(layer, "encoderLastReconfigureSummary") is { Length: > 0 } copyReconfSummary) {
+                        var ageMs = GetNum(layer, "encoderLastReconfigureAgeMs");
+                        sb.AppendLine($"  Last reconfig: {copyReconfSummary}{(ageMs >= 0 ? $" ({ageMs:0}ms ago)" : "")}");
+                    }
+                    if (GetNum(layer, "encoderErrorCount") > 0) {
+                        var errAgeMs = GetNum(layer, "encoderLastErrorAgeMs");
+                        sb.AppendLine($"  Encoder error: {GetStr(layer, "encoderLastErrorName")}: {GetStr(layer, "encoderLastErrorMessage")} ({GetNum(layer, "encoderErrorCount"):0} total{(errAgeMs >= 0 ? $", {errAgeMs:0}ms ago" : "")})");
+                    }
+                }
+            }
 
             // Orientation
             if (ownStream.TryGetProperty("orientation", out var orient) && orient.ValueKind == JsonValueKind.Object) {
@@ -577,6 +828,23 @@
                     sb.AppendLine($"Last Error: {copyStreamError}");
             }
         }
+        if (m.OwnStreamingKind is { } ownCopyKind) {
+            var copyRecordingSnap = Hub.VideoQualityUI.GetRecordingSnapshot(ownCopyKind);
+            sb.AppendLine();
+            sb.AppendLine("-- Quality Control (outbound) --");
+            sb.AppendLine($"Target: {FormatRecordingQualityState(copyRecordingSnap)}");
+            sb.AppendLine($"Verdict: {SignalText(copyRecordingSnap.Signal)}");
+            if (ShouldShowRecordingAction(copyRecordingSnap.Reason))
+                sb.AppendLine($"Action: {copyRecordingSnap.Reason}");
+            sb.AppendLine($"Layer cap: {FormatLayerCap(copyRecordingSnap.DebugMaxLayerCount)}");
+            if (copyRecordingSnap.Health is { } copyHealth) {
+                sb.AppendLine($"Encode cost: {FormatRecordingEncodeCostSignal(copyHealth)}");
+                sb.AppendLine($"Frame slots: {FormatRecordingSlotSignal(copyHealth)}");
+                sb.AppendLine($"Sender: {FormatRecordingSenderSignal(copyHealth)}");
+            }
+            else
+                sb.AppendLine("Signals: no health sample yet");
+        }
         sb.AppendLine();
 
         // Streams
@@ -587,8 +855,10 @@
             sb.AppendLine($"[{sid}] {s.Author}{(s.IsOwn ? " (Own)" : "")}");
             sb.AppendLine($"  Kind: {(s.Info.StreamKind == StreamKind.Screencast ? "Screencast" : "Camera")}");
             sb.AppendLine($"  Started: {DateTimeConverter.ToLocalTime(s.Info.StartedAt):HH:mm:ss}");
-            sb.AppendLine($"  Codec: {s.Info.Format.Codec}");
-            sb.AppendLine($"  Sender max: {s.Info.Format.Width}x{s.Info.Format.Height}");
+            var copyFormats = s.Info.Formats;
+            var copyTop = copyFormats.LastOrDefault();
+            sb.AppendLine($"  Codec: {copyTop?.Codec ?? "?"}");
+            sb.AppendLine($"  Resolutions: {FormatSimulcastLayerSizes(copyFormats, "x")}");
 
             if (_streamDiags.TryGetValue(sid, out var rd) && rd.ValueKind == JsonValueKind.Object) {
                 if (rd.TryGetProperty("forwarded", out var copyFwd)

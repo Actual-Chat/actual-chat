@@ -323,5 +323,5 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
 
     private sealed record UsedMedia(string EntityId, MediaId MediaId, bool IsBackground);
 
-    private sealed record PngBlobInfo(string BlobId, Size Size, long Length);
+    private sealed record PngBlobInfo(string BlobId, Size2D Size, long Length);
 }

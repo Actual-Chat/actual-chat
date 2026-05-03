@@ -75,6 +75,7 @@ export interface EncodedChunkData {
   type: 'key' | 'delta';
   byteLength: number;
   sequenceNumber: number; // Added for chunk ordering to prevent out-of-order delivery issues
+  encodeTimeMs: number;
   temporalLayerId?: number; // SVC temporal layer: 0 = base, 1+ = enhancement
   // Simulcast spatial layer: 0 = base (lowest-res) layer, 1+ = higher-res layers.
   // Always 0 for single-encoder (P2P) streams; set by encoder instance in multi-encoder mode.
@@ -404,8 +405,10 @@ export class WebCodecsEncoder {
             output: (chunk: EncodedVideoChunk, metadata?: EncodedVideoChunkMetadata) => {
                 const startTime = this.encodeStartTimes.shift();
                 const queueAtStart = this.encodeQueueAtStart.shift();
+                const encodeTime = startTime !== undefined
+                    ? performance.now() - startTime
+                    : 0;
                 if (startTime !== undefined) {
-                    const encodeTime = performance.now() - startTime;
                     this.encodeTimeHistory.push(encodeTime);
                     if (this.encodeTimeHistory.length > 100) {
                         this.encodeTimeHistory.shift();
@@ -425,6 +428,7 @@ export class WebCodecsEncoder {
                     type: chunk.type,
                     byteLength: chunk.byteLength,
                     sequenceNumber: this.chunkSequence++,
+                    encodeTimeMs: encodeTime,
                     temporalLayerId: extractTemporalLayerId(metadata),
                     spatialLayerId: this.spatialLayerId,
                     width: this.config.width,

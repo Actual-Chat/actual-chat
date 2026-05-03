@@ -556,7 +556,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         private Moment TrimPreRollBuffer()
         {
             const int frameLen = Constants.Audio.OpusFrameLength; // 320 samples = 20ms
-            const int minKeepFrames = 5; // Keep at least 100ms before speech
+            const int preRollFrameCount = Constants.Audio.VoicePreRollFrameLimit;
 
             var bufferedSamples = _encodingBuffer.Count;
             var fallbackSourceCapturedAt = engine.Clocks.ServerClock.Now
@@ -584,27 +584,32 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 gains[i] = AudioExt.ApproximateGain(frameSpan);
             }
 
-            // Calculate average speech gain from last 5 frames (the speech onset region)
-            var speechFrames = Math.Min(5, frameCount);
+            // Calculate average speech gain from the speech-confirmed tail of the pre-roll window.
+            var retainedFrameLimit = Math.Min(preRollFrameCount, frameCount);
+            var speechFrames = Math.Max(
+                1,
+                Math.Min(retainedFrameLimit, (int)Math.Ceiling(preRollFrameCount / 3d)));
             double speechGain = 0;
             for (int i = frameCount - speechFrames; i < frameCount; i++)
                 speechGain += gains[i];
             speechGain /= speechFrames;
 
-            // Scan backward from end to find where gain drops below speechGain/20
+            // Scan backward within the pre-roll window to find where gain drops below speechGain/20.
             var threshold = speechGain / 20;
-            var startIndex = frameCount - 2;
-            while (startIndex > 0) {
+            var minStartIndex = frameCount - retainedFrameLimit;
+            var startIndex = frameCount - speechFrames - 1;
+            while (startIndex >= minStartIndex) {
                 if (gains[startIndex] < threshold)
                     break;
                 startIndex--;
             }
 
-            // Discard frames before startIndex, but keep at least minKeepFrames
-            var framesToDiscard = Math.Max(0, startIndex - 1);
+            // Discard older frames, but retain no more than the configured pre-roll window.
+            var framesToDiscard = startIndex >= minStartIndex
+                ? startIndex - 1
+                : minStartIndex;
+            framesToDiscard = Math.Clamp(framesToDiscard, minStartIndex, frameCount - speechFrames);
             var framesToKeep = frameCount - framesToDiscard;
-            framesToKeep = Math.Max(framesToKeep, Math.Min(minKeepFrames, frameCount));
-            framesToDiscard = frameCount - framesToKeep;
 
             // Write remaining frames back to encoding buffer
             _encodingBuffer.Clear();

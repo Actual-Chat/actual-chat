@@ -707,16 +707,16 @@ public interface ILiveVideoStreams
     Task PushVideo(
         Session session, VideoRecord record,
         RpcStream<VideoFrame> stream, CancellationToken ct);
-    Task<RpcNoWait> RequestKeyFrame(
+    Task RequestKeyFrame(
         Session session, string streamId, CancellationToken ct);
 
     // Quality control — client-driven; server applies/records
-    Task<RpcNoWait> ChangeRecordingQuality(
+    Task ChangeRecordingQuality(
         Session session,
         RecordingQualityState? state,
         RecordingQualityInfo? info,
         CancellationToken ct);
-    Task<RpcNoWait> ChangePlaybackQuality(
+    Task ChangePlaybackQuality(
         Session session,
         ApiMap<string /* StreamId */, ReceiveQuality>? requestedQuality,
         PlaybackQualityInfo? info,
@@ -768,7 +768,7 @@ public interface ILiveAudioStreams
 
     // Audio metrics — stays in current shape; audio quality control
     // is not being redesigned in this pass.
-    Task<RpcNoWait> ReportAudioLatency(
+    Task ReportAudioLatency(
         Session session, /* …current shape… */ CancellationToken ct);
 
     // Existing query methods stay.

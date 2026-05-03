@@ -5,6 +5,10 @@
 // Usage:
 //     Api.init('Example', { url, modules: [coreApi] });
 //     const info = await coreApi.systemProperties.GetServerApiInfo('');
+//
+// Naming: wire types use the bare C# record name; the `Dto` suffix is added
+// only for disambiguation against browser globals or in-scope name clashes.
+// See api.ts for the rationale.
 
 import { defineRpcService, type RpcHub } from 'actuallab-rpc';
 import { Api, type ApiModule } from './api.js';
@@ -18,7 +22,7 @@ export const SystemPropertiesDef = defineRpcService('ISystemProperties', {
 });
 
 /** Matches .NET ServerApiInfo: [MessagePackObject(true)] → PascalCase keys. */
-export interface ServerApiInfoDto {
+export interface ServerApiInfo {
     CompatibilityLevel: number;
     VersionString: string;
     FullVersionString: string;
@@ -27,7 +31,7 @@ export interface ServerApiInfoDto {
 
 /** Typed proxy for ISystemProperties client calls. */
 export interface SystemPropertiesClient {
-    GetServerApiInfoNC(expectedVersion: string): Promise<ServerApiInfoDto>;
+    GetServerApiInfoNC(expectedVersion: string): Promise<ServerApiInfo>;
 }
 
 /** Core module — pass `coreApi` to `Api.init` to enable shared services.

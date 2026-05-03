@@ -22,7 +22,6 @@ import { sharedSettingsWorker } from 'shared-settings-worker';
 
 const { logScope, debugLog, warnLog } = getLogs('FeederProcessor');
 const FEEDER_TARGET_BUFFER_FRAMES = 2;
-const MIN_DECODER_TARGET_DURATION_MS = 30;
 
 interface DecodedChunk {
     samples: Float32Array;
@@ -53,8 +52,6 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     private bufferState: BufferState = 'ok';
     private lastReportedState: FeederState;
     private isEnding = false;
-    private bufferEscalation = 0;
-    private audioContextLatencyMs = 0;
     private bufferSizeToStartPlayback!: number; // set in init() after initAppConstants
     private lastStarvingEventAt = 0;
     private frameRequestPending = false;
@@ -89,7 +86,6 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         this.bufferSizeToStartPlayback = this.feederTargetDuration;
         this.id = id;
         this.decoder = rpcClientServer<BufferHandler>(`${logScope}.worker`, workerPort, this);
-        void this.decoder.setTargetBufferDuration(this.decoderTargetDurationMs, rpcNoWait);
         debugLog?.log(`#${this.id}.init`);
     }
 
@@ -163,16 +159,6 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             this.buffer.reset();
         }
         this.chunks.push('end');
-    }
-
-    public setBufferEscalation(value: number, audioContextLatencyMs: number, _noWait?: RpcNoWait): Promise<void> {
-        this.bufferEscalation = value;
-        this.audioContextLatencyMs = Math.max(0, audioContextLatencyMs);
-        debugLog?.log(`#${this.id}.process: got 'setBufferEscalation:' ${value}`);
-        this.bufferSizeToStartPlayback = this.feederTargetDuration;
-        void this.decoder.setTargetBufferDuration(this.decoderTargetDurationMs, rpcNoWait);
-        this.requestFrameIfLow();
-        return ResolvedPromise.Void;
     }
 
     public process(
@@ -336,15 +322,6 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
 
     private get feederTargetDelayMs(): number {
         return this.feederTargetDuration * 1000;
-    }
-
-    private get decoderTargetDurationMs(): number {
-        const configuredTargetMs = this.bufferEscalation > 0
-            ? AUDIO.play.decoderTargetBufferDurationWithVideoMs
-            : AUDIO.play.decoderTargetBufferDurationMs;
-        return Math.max(
-            MIN_DECODER_TARGET_DURATION_MS,
-            configuredTargetMs - this.feederTargetDelayMs - this.audioContextLatencyMs);
     }
 }
 

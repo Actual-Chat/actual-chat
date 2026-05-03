@@ -3,7 +3,7 @@ namespace ActualChat.Uploads;
 /// <summary>
 /// Result of processing an uploaded file, including optional thumbnail.
 /// </summary>
-public sealed record ProcessedFile(UploadedFile File, Size? Size, UploadedFile? Thumbnail = null) : IDisposable
+public sealed record ProcessedFile(UploadedFile File, Size2D? Size, UploadedFile? Thumbnail = null) : IDisposable
 {
     public Action? OnDispose { get; init; }
 

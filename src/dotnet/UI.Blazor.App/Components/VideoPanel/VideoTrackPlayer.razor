@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components.VideoPanel
 @using ActualChat.Streaming
 @using ActualChat.UI.Blazor.App.Module
+@using ActualChat.Video
 @inherits ComponentBase<AppUIHub>
 @implements IVideoPlayerBackend
 @implements IAsyncDisposable
@@ -10,14 +11,19 @@
     // Prefer rotation-aware source dims over encoder dims: the encoder's W/H
     // can be landscape at PushVideo time even when the source is portrait
     // (the rotation reconcile in workers/video-processing.ts swaps encoder
-    // dims after the first frame, but VideoStreamInfo.Format is frozen at
-    // PushVideo). SourceWidth/Height are populated post-rotation. JS-side
+    // dims after the first frame, but VideoStreamInfo.Formats is frozen at
+    // PushVideo). SourceSize is populated post-rotation. JS-side
     // (render-backend-canvas.ts) overrides this on each canvas resize for
     // mid-stream rotation.
-    var aspectRatioStyle = StreamInfo.Format switch {
-        { SourceWidth: > 0, SourceHeight: > 0 } f => $"aspect-ratio: {f.SourceWidth} / {f.SourceHeight}",
-        { Width: > 0, Height: > 0 } f             => $"aspect-ratio: {f.Width} / {f.Height}",
-        _                                         => "",
+    // Pyramid: Formats[0] = base/smallest, Formats[^1] = top/largest. All
+    // layers derive from the same source, so any layer's SourceSize matches —
+    // pick the top tier to size the canvas for the highest layer the receiver
+    // might ever decode.
+    var topFormat = StreamInfo.Formats.LastOrDefault();
+    var aspectRatioStyle = topFormat switch {
+        { SourceSize.Width: > 0, SourceSize.Height: > 0 } f => $"aspect-ratio: {f.SourceSize.Width} / {f.SourceSize.Height}",
+        { Size.Width: > 0, Size.Height: > 0 } f             => $"aspect-ratio: {f.Size.Width} / {f.Size.Height}",
+        _                                                   => "",
     };
 }
 <div class="video-track-player remote-video-container has-source-aspect @FocusedClass @streamKindCls" style="@aspectRatioStyle">
@@ -97,7 +103,11 @@
             if (serverTimeSync != null)
                 await serverTimeSync.EnsureSynced(_disposeCts.Token);
 
-            var format = StreamInfo.Format;
+            // Use the top layer (last format = highest SpatialLayerId) for the JS player init —
+            // canvas dims, codec settings (SPS/PPS), and starting resolution all align to the
+            // best tier the receiver may ever decode. The decoder reconfigures at keyframe
+            // boundaries if the actual forwarded layer is lower.
+            var format = StreamInfo.Formats.LastOrDefault() ?? new VideoFormat();
             var sourceStartedAt = StreamInfo.SourceStartedAt != default
                 ? StreamInfo.SourceStartedAt
                 : StreamInfo.StartedAt;
@@ -115,8 +125,8 @@
                 StreamInfo.StreamId.Value,
                 StreamInfo.AuthorId.Value,
                 format.Codec,
-                format.Width,
-                format.Height,
+                format.Size.Width,
+                format.Size.Height,
                 format.CodecSettings,
                 startedAtMs);
 
@@ -177,18 +187,14 @@
     }
 
     [JSInvokable]
-    public void OnRequestQualityReduction(string codecCategory)
+    public async Task OnRequestQualityReduction(string codecCategory)
     {
-        // Informational only. The server reads MedianDecodeTimeMs/BufferDepth from
-        // the per-2s ReportVideoLatency stream and runs its own receiver-bound
-        // step-down in StreamLatencyState.EvaluateQuality. This callback fires
-        // ~10s after JS detects sustained slow decode; by then the server has
-        // received 5 latency reports and (if the condition persists) applied a
-        // step-down on its own clock. Log retained for client-side diagnostics
-        // and to flag JS↔server threshold drift.
         Log.LogWarning(
-            "[VideoTrackPlayer #{StreamId}] OnRequestQualityReduction: codec={Codec} — decode too slow (server-side step-down handles via latency reports)",
+            "[VideoTrackPlayer #{StreamId}] OnRequestQualityReduction: codec={Codec} — decode too slow, requesting base playback layer",
             StreamInfo.StreamId, codecCategory);
+        await Hub.VideoQualityUI
+            .RequestPlaybackQualityReduction(StreamInfo.StreamId, CancellationToken.None)
+            .ConfigureAwait(false);
     }
 
     [JSInvokable]

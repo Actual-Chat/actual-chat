@@ -148,7 +148,7 @@ export class AudioPlayer implements Resettable {
     private whenEnded?: PromiseSource<void>;
 
     private playbackState: PlaybackState = 'paused';
-    private bufferEscalation = 0;
+    private targetBufferSizeMs = 0;
     private authorId: string | null = null;
     private recordedAtMs = 0;
     private lastLatencyLogTime = 0;
@@ -204,11 +204,11 @@ export class AudioPlayer implements Resettable {
         album: string,
         authorId: string | null,
         recordedAtMs: number,
-        bufferEscalation: number,
+        targetBufferSizeMs: number,
     ): Promise<AudioPlayer> {
         await AudioPlayer.init();
         const player = AudioPlayer.pool.get();
-        await player.startPlayback(blazorRef, id, preSkip, title, album, authorId, recordedAtMs, bufferEscalation);
+        await player.startPlayback(blazorRef, id, preSkip, title, album, authorId, recordedAtMs, targetBufferSizeMs);
         return player;
     }
 
@@ -226,15 +226,15 @@ export class AudioPlayer implements Resettable {
         album: string,
         authorId: string | null,
         recordedAtMs: number,
-        bufferEscalation: number): Promise<void> {
+        targetBufferSizeMs: number): Promise<void> {
 
         debugLog?.log(
             `#${this.internalId} -> startPlayback(): authorId=${authorId}, ` +
-            `recordedAtMs=${recordedAtMs.toFixed(0)}, bufferEscalation=${bufferEscalation}`);
+            `recordedAtMs=${recordedAtMs.toFixed(0)}, targetBufferSizeMs=${targetBufferSizeMs}`);
         this.blazorRef = blazorRef;
         this.authorId = authorId;
         this.recordedAtMs = recordedAtMs;
-        this.bufferEscalation = bufferEscalation;
+        this.targetBufferSizeMs = targetBufferSizeMs;
         this.playbackState = 'paused';
         this.whenEnded = new PromiseSource<void>();
 
@@ -255,10 +255,7 @@ export class AudioPlayer implements Resettable {
                     `base=${(context.baseLatency * 1000).toFixed(0)}ms, ` +
                     `output=${outputLatency === undefined ? 'n/a' : `${(outputLatency * 1000).toFixed(0)}ms`}, ` +
                     `sampleRate=${context.sampleRate}, state=${context.state}`);
-                await attachedFeeder.feederNode.setBufferEscalation(
-                    this.bufferEscalation,
-                    this.getAudioContextLatencyMs(),
-                    rpcNoWait);
+                await decoderWorker!.setTargetBufferSize(this.internalId, this.targetBufferSizeMs, rpcNoWait);
                 await decoderWorker!.resume(this.internalId, this.recordedAtMs);
                 await attachedFeeder.feederNode.resume(preSkip);
                 whenPlaybackStarted.resolve(undefined);
@@ -320,17 +317,6 @@ export class AudioPlayer implements Resettable {
             'frame',
             [this.internalId, buf, bytes.byteOffset, bytes.length, sourceOffsetMs],
             [buf]);
-    }
-
-    /** Called by Blazor */
-    public setBufferEscalation(value: number): void {
-        this.bufferEscalation = value;
-        const attachedFeeder = this.contextRef?.getTrait<AttachedFeederNode>(this.feederNodeTrait);
-        if (attachedFeeder)
-            void attachedFeeder.feederNode.setBufferEscalation(
-                value,
-                this.getAudioContextLatencyMs(),
-                rpcNoWait);
     }
 
     /** Called by Blazor */

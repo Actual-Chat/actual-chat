@@ -52,10 +52,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
             return await Backend.GetAudio(parsedStreamId, skipTo, cancellationToken).ConfigureAwait(false);
 
         var cached = await GetOrFetchRemoteAudio(parsedStreamId, skipTo, cancellationToken).ConfigureAwait(false);
-        return cached == null ? null : new RpcStream<AudioFrame>(cached) {
-            AckPeriod = Constants.Audio.StreamAckPeriod,
-            BufferSize = Constants.Audio.StreamBufferSize,
-        };
+        return cached == null ? null : MediaRpcStreamOptions.AudioDelivery(cached);
     }
 
     public async Task<RpcStream<TranscriptDiff>?> GetTranscriptStream(
@@ -80,10 +77,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         var diffStream = diffs
             .SuppressException<TranscriptDiff, RpcReconnectFailedException>(cancellationToken)
             .SuppressCancellation(cancellationToken);
-        return new RpcStream<TranscriptDiff>(diffStream) {
-            AckPeriod = Constants.Audio.StreamAckPeriod,
-            BufferSize = Constants.Audio.StreamBufferSize,
-        };
+        return MediaRpcStreamOptions.TranscriptDelivery(diffStream);
     }
 
     public async Task PushStream(
@@ -143,11 +137,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         }
 
         var stream = ToLiveAsyncEnumerable(key, muxer, muxer.Output, cancellationToken);
-        return new RpcStream<LiveStreamItem>(stream) {
-            AllowReconnect = false,
-            AckPeriod = Constants.Audio.StreamAckPeriod,
-            BufferSize = Constants.Audio.StreamBufferSize,
-        };
+        return MediaRpcStreamOptions.AudioDelivery(stream, allowReconnect: false);
     }
 
     public async Task ChangeSettings(
@@ -187,11 +177,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         }
 
         var stream = ToReplayAsyncEnumerable(key, muxer, muxer.Output, cancellationToken);
-        return new RpcStream<LiveStreamItem>(stream) {
-            AllowReconnect = false,
-            AckPeriod = Constants.Audio.StreamAckPeriod,
-            BufferSize = Constants.Audio.StreamBufferSize,
-        };
+        return MediaRpcStreamOptions.AudioDelivery(stream, allowReconnect: false);
     }
 
     // Private methods

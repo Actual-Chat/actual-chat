@@ -11,6 +11,14 @@ import { createDefaultSegmentationConfig, createAdaptiveSegmentationConfig } fro
 import { MediaCapture } from './media-capture';
 import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
+import { getExpectedBitrate } from '../bitrate-table';
+import {
+    buildLadder,
+    fitWithin,
+    SCREENCAST_MAX_SIMULCAST_TIERS,
+    WEBCAM_MAX_SIMULCAST_TIERS,
+    webcamTopSize,
+} from '../../../Components/VideoPanel/simulcast-ladder';
 
 const { infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
@@ -186,7 +194,7 @@ export class RecordingService extends EventTarget {
         // spatial layers, downscaler runs N identity slots.
         if (ladder && ladder.length > 0) {
             const base = ladder[0];
-            const stats = this.pipeline.getEncoderStats();
+            const stats = this.pipeline.getSpatialLayerStats()[0] ?? this.pipeline.getEncoderStats();
             if (stats.configuredWidth !== base.width
                 || stats.configuredHeight !== base.height
                 || stats.configuredBitrate !== base.bitrate) {
@@ -253,17 +261,20 @@ export class RecordingService extends EventTarget {
             actualHeight &= ~1;
 
             // For screencast: cap initial resolution to 1080p to avoid sending 4K keyframes
-            // before the quality preset arrives (~1s). Floor at 720p for text readability.
+            // before the quality preset arrives (~1s). Preserve source aspect.
             if (this.config.mode === 'screen') {
-                const maxInitialWidth = 1920;
-                const maxInitialHeight = 1080;
-                const minWidth = 1280;
-                const minHeight = 720;
-                if (actualWidth > maxInitialWidth || actualHeight > maxInitialHeight) {
-                    const scale = Math.min(maxInitialWidth / actualWidth, maxInitialHeight / actualHeight);
-                    actualWidth = Math.max(minWidth, Math.round(actualWidth * scale));
-                    actualHeight = Math.max(minHeight, Math.round(actualHeight * scale));
-                }
+                const capped = fitWithin(actualWidth, actualHeight, 1920, 1080);
+                actualWidth = capped.width;
+                actualHeight = capped.height;
+            }
+
+            // For webcam: output a 16:9 cover-cropped top tier capped at 720p.
+            // The downscaler's centerCrop path performs the crop; the configured
+            // encoder dimensions stay at the target 16:9 output size.
+            if (this.config.mode === 'webcam') {
+                const capped = webcamTopSize(actualWidth, actualHeight);
+                actualWidth = capped.width;
+                actualHeight = capped.height;
             }
 
             infoLog?.log(`Actual video dimensions: ${actualWidth}x${actualHeight}`);
@@ -283,24 +294,21 @@ export class RecordingService extends EventTarget {
             let encH = actualHeight;
             let encBitrate = this.config.bitrate;
             if (ladder && ladder.length > 0) {
-                // Ladder is bottom-first: ladder[0] = base, ladder[last] = top.
-                // Clamp by filtering out tiers the camera can't realize; order
-                // preserved (filter is stable, camera can only cap the top end).
-                const fits = ladder.filter(l =>
-                    l.width <= actualWidth && l.height <= actualHeight);
-                let clamped: SpatialLayerConfig[];
-                if (fits.length === 0) {
-                    // Camera below every ladder tier — substitute a single tier
-                    // at actual dims, inheriting the base tier's bitrate budget.
-                    const fallbackBitrate = ladder[0].bitrate;
-                    clamped = [{ width: actualWidth, height: actualHeight, bitrate: fallbackBitrate }];
-                    warnLog?.log(`Camera ${actualWidth}x${actualHeight} below every ladder tier — using single encoder at camera dims`);
-                } else {
-                    clamped = fits;
-                    if (clamped.length !== ladder.length)
-                        infoLog?.log(`Clamped ladder to camera: [${clamped.map(l => `${l.width}x${l.height}`).join(', ')}]`);
-                }
-                ladder = clamped;
+                const maxTierCount = this.config.mode === 'screen'
+                    ? SCREENCAST_MAX_SIMULCAST_TIERS
+                    : WEBCAM_MAX_SIMULCAST_TIERS;
+                ladder = buildLadder({
+                    topWidth: actualWidth,
+                    topHeight: actualHeight,
+                    tierCount: ladder.length,
+                    maxTierCount,
+                    bitrateFor: (h: number) => getExpectedBitrate(
+                        this.config.codecString ?? '',
+                        h,
+                        this.config.mode === 'screen' ? 'screen' : 'webcam'),
+                });
+                this.config.simulcastLadder = ladder;
+                infoLog?.log(`Rebuilt source ladder: [${ladder.map(l => `${l.width}x${l.height}`).join(', ')}]`);
 
                 const base = ladder[0];
                 encW = base.width;

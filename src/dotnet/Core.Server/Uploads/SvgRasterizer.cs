@@ -11,7 +11,7 @@ namespace ActualChat.Uploads;
 /// </summary>
 public class SvgRasterizer(ILogger<SvgRasterizer> log)
 {
-    public Size RasterizeToPng(Stream svgStream, Stream pngStream, int size)
+    public Size2D RasterizeToPng(Stream svgStream, Stream pngStream, int size)
     {
         var inputLength = svgStream.CanSeek ? svgStream.Length : -1;
         log.LogDebug("Rasterizing SVG ({InputLength} bytes) to PNG (target size: {Size})", inputLength, size);
@@ -47,10 +47,10 @@ public class SvgRasterizer(ILogger<SvgRasterizer> log)
             "Rasterized SVG to PNG ({TargetWidth}x{TargetHeight}, {ByteCount}B)",
             targetWidth, targetHeight, data.Size);
 
-        return new Size(targetWidth, targetHeight);
+        return new Size2D(targetWidth, targetHeight);
     }
 
-    public (MemoryStream Stream, Size Size) RasterizeToPng(Stream svgStream, int size)
+    public (MemoryStream Stream, Size2D Size) RasterizeToPng(Stream svgStream, int size)
     {
         var pngStream = new MemoryStream();
         var pngSize = RasterizeToPng(svgStream, pngStream, size);

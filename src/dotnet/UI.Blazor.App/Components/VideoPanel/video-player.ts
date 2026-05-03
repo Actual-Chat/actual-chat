@@ -59,6 +59,18 @@ export function getActivePlayers(): ReadonlyMap<string, VideoPlayer> {
     return activePlayers;
 }
 
+const requestedReceiveQuality = new Map<string, { maxSpatialLayer: number; maxTemporalLayer: number } | null>();
+
+export function recordRequestedReceiveQuality(
+    streamId: string,
+    quality: { maxSpatialLayer: number; maxTemporalLayer: number } | null
+): void {
+    if (quality === null)
+        requestedReceiveQuality.delete(streamId);
+    else
+        requestedReceiveQuality.set(streamId, quality);
+}
+
 export interface RemoteStreamDiagnostics {
     streamId: string;
     authorId: string;
@@ -81,6 +93,17 @@ export interface RemoteStreamDiagnostics {
     codecSlowTickCount: number;
     decoderStats: DecoderStats | null;
     avDriftMs: number | null;
+    forwarded: {
+        ForwardedSpatialLayerId: number;
+        ForwardedWidth: number;
+        ForwardedHeight: number;
+        ObservedMaxSpatialLayer: number;
+    } | null;
+    requestedReceiveQuality: {
+        maxSpatialLayer: number;
+        maxTemporalLayer: number;
+    } | null;
+    streamAgeMs: number;
 }
 
 interface PlaybackHealthSnapshot {
@@ -92,6 +115,7 @@ interface PlaybackHealthSnapshot {
     currentMaxTemporal: number;
     priority: number;
     streamAgeMs: number;
+    qualityReductionRequested: boolean;
 }
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPlayer');
@@ -244,6 +268,10 @@ export class VideoPlayer {
     private firstFrameReceivedTime = 0;  // performance.now() when first frame arrived
     private lastSyncLogTime = 0;        // throttle sync logging
     private sequenceNumber = 0;         // sequence number for chunks sent to decoder worker
+    private forwardedSpatialLayerId = -1;
+    private forwardedWidth = 0;
+    private forwardedHeight = 0;
+    private observedMaxSpatialLayer = -1;
 
     // PLI: receiver-requested keyframe
     private lastKeyFrameRequestTime = 0;
@@ -1306,6 +1334,14 @@ export class VideoPlayer {
 
             this.receivedFrameCount++;
             this.receivedBytes += data.byteLength;
+            if (frame.SpatialLayerId !== undefined)
+                this.forwardedSpatialLayerId = frame.SpatialLayerId;
+            if (frame.MaxSpatialLayerId !== undefined && frame.MaxSpatialLayerId > this.observedMaxSpatialLayer)
+                this.observedMaxSpatialLayer = frame.MaxSpatialLayerId;
+            if (frame.Width !== undefined && frame.Width > 0)
+                this.forwardedWidth = frame.Width;
+            if (frame.Height !== undefined && frame.Height > 0)
+                this.forwardedHeight = frame.Height;
             if (this.firstFrameReceivedTime === 0)
                 this.firstFrameReceivedTime = performance.now();
             if (offsetMs > this.lastArrivedOffsetMs)
@@ -1384,6 +1420,22 @@ export class VideoPlayer {
         // removed, so report null until the new video-driven catch-up signal
         // is wired (see docs/audio-pipeline-wip.md).
         const avDriftMs: number | null = null;
+        const requested = requestedReceiveQuality.get(this.streamId) ?? null;
+        const streamAgeMs = this.firstFrameReceivedTime > 0
+            ? Math.round(performance.now() - this.firstFrameReceivedTime)
+            : 0;
+        const forwardedSpatialLayerId = this.forwardedSpatialLayerId >= 0
+            ? this.forwardedSpatialLayerId
+            : decoderStats?.pullForwardedSpatialLayerId ?? -1;
+        const forwardedWidth = this.forwardedSpatialLayerId >= 0
+            ? this.forwardedWidth
+            : decoderStats?.pullForwardedWidth ?? 0;
+        const forwardedHeight = this.forwardedSpatialLayerId >= 0
+            ? this.forwardedHeight
+            : decoderStats?.pullForwardedHeight ?? 0;
+        const observedMaxSpatialLayer = this.observedMaxSpatialLayer >= 0
+            ? this.observedMaxSpatialLayer
+            : decoderStats?.pullObservedMaxSpatialLayer ?? -1;
 
         return {
             streamId: this.streamId,
@@ -1410,6 +1462,14 @@ export class VideoPlayer {
             codecSlowTickCount: this.codecSlowTickCount,
             decoderStats,
             avDriftMs,
+            forwarded: forwardedSpatialLayerId >= 0 ? {
+                ForwardedSpatialLayerId: forwardedSpatialLayerId,
+                ForwardedWidth: forwardedWidth,
+                ForwardedHeight: forwardedHeight,
+                ObservedMaxSpatialLayer: observedMaxSpatialLayer,
+            } : null,
+            requestedReceiveQuality: requested,
+            streamAgeMs,
         };
     }
 
@@ -1515,6 +1575,11 @@ export class VideoPlayer {
         if (report.presentedOffsetMs !== undefined) {
             this.lastRenderedOffsetMs = report.presentedOffsetMs;
             this.reportPresentationLag(report.presentedOffsetMs, 'worker-latency-report');
+        }
+        if (this.offThreadPullActive && this.decoderWorker) {
+            void this.decoderWorker.getStats()
+                .then(ds => this.reportPlaybackHealth(ds, Math.max(0, report.bufferSpanMs)))
+                .catch(e => warnLog?.log('onWorkerLatencyReport getStats error:', e));
         }
         // Latency reports formerly went to streamServer.ReportVideoLatency; the
         // playback quality controller (Step 10) now consumes equivalent signals
@@ -1872,6 +1937,7 @@ export class VideoPlayer {
                 ? PLAYBACK_PRIORITY_PRIMARY
                 : PLAYBACK_PRIORITY_SECONDARY,
             streamAgeMs: Math.max(0, Math.round(performance.now() - this.createdAtMs)),
+            qualityReductionRequested: this.qualityReductionRequested,
         };
         void this.blazorRef.invokeMethodAsync('OnPlaybackHealth', snapshot)
             .catch(e => warnLog?.log('reportPlaybackHealth error:', e));

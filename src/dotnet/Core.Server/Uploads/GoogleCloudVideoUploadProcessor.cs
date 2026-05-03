@@ -40,7 +40,7 @@ public sealed class GoogleCloudVideoUploadProcessor(
         var signedUrl = await GenerateSignedReadUrl(blobFile.BlobPath).ConfigureAwait(false);
 
         // 1. Video info — from saved state or by analyzing
-        Size size;
+        Size2D size;
         TimeSpan duration;
         double frameRate;
         bool mustConvert;
@@ -49,7 +49,7 @@ public sealed class GoogleCloudVideoUploadProcessor(
         if (savedState != null) {
             Log.LogDebug("Resuming transcoder job '{JobName}' for '{FileName}'",
                 savedState.JobName, upload.FileName);
-            size = new Size(savedState.VideoWidth, savedState.VideoHeight);
+            size = new Size2D(savedState.VideoWidth, savedState.VideoHeight);
             duration = TimeSpan.FromSeconds(savedState.Duration);
             frameRate = 0; // Not important since we're resuming a job.
             mustConvert = true;
@@ -179,7 +179,7 @@ public sealed class GoogleCloudVideoUploadProcessor(
 
     private async Task<Job> CreateTranscoderJob(
         string inputGcsUri, string outputGcsUri,
-        Size size, double frameRate, bool hasAudio,
+        Size2D size, double frameRate, bool hasAudio,
         CancellationToken cancellationToken)
     {
         var client = await TranscoderServiceClient.CreateAsync(cancellationToken).ConfigureAwait(false);
@@ -276,7 +276,7 @@ public sealed class GoogleCloudVideoUploadProcessor(
         return stream;
     }
 
-    private static int EstimateVideoBitrate(Size size, double frameRate)
+    private static int EstimateVideoBitrate(Size2D size, double frameRate)
     {
         // Estimate a reasonable bitrate based on resolution and frame rate.
         // ~8 Mbps for 1080p@30, ~5 Mbps for 720p@30, ~1.5 Mbps for 480p@30.
@@ -324,7 +324,7 @@ public sealed class GoogleCloudVideoUploadProcessor(
 
     private async Task WriteState(
         string stateObjectName, string jobName, string outputPrefix,
-        Size size, TimeSpan duration,
+        Size2D size, TimeSpan duration,
         CancellationToken cancellationToken)
     {
         var state = new TranscoderState(jobName, outputPrefix, size.Width, size.Height, duration.TotalSeconds);

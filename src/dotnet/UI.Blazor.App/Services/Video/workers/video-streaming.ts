@@ -9,10 +9,9 @@ import Denque from 'denque';
 import { EventHandlerSet } from 'event-handling';
 import { getLogs } from 'logging';
 import { RpcStream, type RpcStreamSender } from 'actuallab-rpc';
-import { Api, streamingApi, toMoment,
+import { Api, MediaRpcStreamOptions, streamingApi, toMoment,
     type LiveVideoStreamsClient, type SessionTokenProvider, type VideoFormatDto, type VideoFrameDto } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
-import { VIDEO } from 'app-constants';
 import { ServerClock } from 'server-clock';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
@@ -229,7 +228,7 @@ export class InternalVideoStream {
                 SourceHeight: this.config.sourceHeight,
             };
 
-            // Real-time video stream: isRealTime=true, allowReconnect=true, ackPeriod=5, bufferSize=31.
+            // Real-time video stream: isRealTime=true, allowReconnect=true, keyframe-safe compaction.
             // With allowReconnect=true, a same-peer WS reconnect keeps the sender alive and the
             // real-time-skip-to-keyframe logic in Fusion's RpcSharedStream/Sender drives resume via
             // $sys.Ack(MustReset=true). On peer-change the sender is disposed via
@@ -252,13 +251,7 @@ export class InternalVideoStream {
                         await self.frameAdded.whenNextVoid();
                     }
                 })(),
-                {
-                    isRealTime: true,
-                    allowReconnect: true,
-                    ackPeriod: VIDEO.rpcStreamAckPeriod,
-                    bufferSize: VIDEO.rpcStreamBufferSize,
-                    canSkipTo: (frame) => frame.IsKeyFrame,
-                },
+                MediaRpcStreamOptions.videoRealtime<VideoFrameDto>(),
             );
             this._stream = stream;
 

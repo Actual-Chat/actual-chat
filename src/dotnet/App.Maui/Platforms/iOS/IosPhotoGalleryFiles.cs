@@ -3,7 +3,6 @@ using ActualLab.Generators;
 using ActualLab.IO;
 using Foundation;
 using PhotosUI;
-using Size = ActualChat.Media.Size;
 
 namespace ActualChat.App.Maui;
 
@@ -155,7 +154,7 @@ public sealed class IosPhotoGalleryFiles(IServiceProvider services) : ProcessorB
             loadStartedAt.Elapsed.ToShortString(), copyStartedAt.Elapsed.ToShortString());
     }
 
-    private static Size? GetImageSize(FilePath path)
+    private static Size2D? GetImageSize(FilePath path)
     {
         using var source = ImageIO.CGImageSource.FromUrl(NSUrl.CreateFileUrl(path));
         if (source == null)
@@ -167,7 +166,7 @@ public sealed class IosPhotoGalleryFiles(IServiceProvider services) : ProcessorB
 
         return properties[ImageIO.CGImageProperties.PixelWidth] is NSNumber width
             && properties[ImageIO.CGImageProperties.PixelHeight] is NSNumber height
-                ? new Size(width.Int32Value, height.Int32Value)
+                ? new Size2D(width.Int32Value, height.Int32Value)
                 : null;
     }
 

@@ -71,6 +71,16 @@ const failedCandidates = new Set<string>();
 // envelope can be handled in-place by the browser decoder.
 let currentCodedWidth = 0;
 let currentCodedHeight = 0;
+// Dim of the GOP currently being decoded — captured from decoder OUTPUT at
+// emit time (`emitDecodedFrame`), not from chunk arrival. Verifier on the
+// main thread compares the <video> element's videoWidth/Height to this; both
+// are sourced from the same decoded frame, so they stay aligned across
+// simulcast layer switches and HEVC dim-change rebuilds. Using arrival-side
+// `currentCodedWidth/Height` instead would race the decoder during a tier
+// change and produce false "decoded does not match latest keyframe" warnings
+// that get blamed on the codec.
+let lastDecodedFrameWidth = 0;
+let lastDecodedFrameHeight = 0;
 
 // Re-derive the codec string for a new keyframe description and pick the best
 // HW-supported candidate. Returns null when no remaining candidate is HW-
@@ -200,12 +210,20 @@ let pullReceivedBytes = 0;
 let pullReceivedFrameCount = 0;
 let pullReceivedKeyframeCount = 0;
 let pullFirstFrameAt = 0;
+let pullForwardedSpatialLayerId = -1;
+let pullForwardedWidth = 0;
+let pullForwardedHeight = 0;
+let pullObservedMaxSpatialLayer = -1;
 
 function resetPullStats(): void {
     pullReceivedBytes = 0;
     pullReceivedFrameCount = 0;
     pullReceivedKeyframeCount = 0;
     pullFirstFrameAt = 0;
+    pullForwardedSpatialLayerId = -1;
+    pullForwardedWidth = 0;
+    pullForwardedHeight = 0;
+    pullObservedMaxSpatialLayer = -1;
 }
 
 function getDecoderStatsSnapshot(): DecoderStats {
@@ -231,6 +249,10 @@ function getDecoderStatsSnapshot(): DecoderStats {
         base.pullReceivedBytes = pullReceivedBytes;
         base.pullReceivedFrameCount = pullReceivedFrameCount;
         base.pullReceivedKeyframeCount = pullReceivedKeyframeCount;
+        base.pullForwardedSpatialLayerId = pullForwardedSpatialLayerId;
+        base.pullForwardedWidth = pullForwardedWidth;
+        base.pullForwardedHeight = pullForwardedHeight;
+        base.pullObservedMaxSpatialLayer = pullObservedMaxSpatialLayer;
     }
     if (encodedBuffer) {
         base.encodedBufferDepth = encodedBuffer.count;
@@ -253,8 +275,8 @@ function buildLatencyReport(streamOffsetMs: number): DecoderWorkerLatencyReport 
         // the depth by a constant 0–1.
         bufferDepth: ds.encodedBufferDepth ?? 0,
         bufferSpanMs: ds.encodedBufferSpanMs ?? 0,
-        lastKeyframeWidth: currentCodedWidth || undefined,
-        lastKeyframeHeight: currentCodedHeight || undefined,
+        lastKeyframeWidth: lastDecodedFrameWidth || undefined,
+        lastKeyframeHeight: lastDecodedFrameHeight || undefined,
     };
 }
 
@@ -328,6 +350,15 @@ let waitingForKeyframe = false;
  */
 function emitDecodedFrame(frame: VideoFrame): void {
     frameCount++;
+    // Capture decoder's actual output dim — the GOP currently being rendered.
+    // Reported back to main thread via DecoderWorkerLatencyReport for output
+    // verification. Tracks transitions atomically (decoder rebuilds, simulcast
+    // tier swaps): the <video> element's videoWidth follows the same emit, so
+    // verifier's two sides stay aligned.
+    if (frame.codedWidth > 0 && frame.codedHeight > 0) {
+        lastDecodedFrameWidth = frame.codedWidth;
+        lastDecodedFrameHeight = frame.codedHeight;
+    }
     // Successful decode → clear the recovery escalation counter. Cooldown
     // (lastRecoveryAtMs) intentionally remains so we don't ping-pong fast.
     if (consecutiveRecoveries !== 0)
@@ -382,6 +413,13 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
             pullReceivedFrameCount++;
             if (frame.IsKeyFrame) pullReceivedKeyframeCount++;
             if (pullFirstFrameAt === 0) pullFirstFrameAt = Date.now();
+            pullForwardedSpatialLayerId = frame.SpatialLayerId ?? 0;
+            if (frame.MaxSpatialLayerId !== undefined && frame.MaxSpatialLayerId > pullObservedMaxSpatialLayer)
+                pullObservedMaxSpatialLayer = frame.MaxSpatialLayerId;
+            if (frame.Width !== undefined && frame.Width > 0)
+                pullForwardedWidth = frame.Width;
+            if (frame.Height !== undefined && frame.Height > 0)
+                pullForwardedHeight = frame.Height;
             const dataBuffer = getOwnedArrayBuffer(data);
             let descBuffer: ArrayBuffer | undefined;
             const desc = frame.Description;
@@ -862,21 +900,17 @@ async function processEncodedChunk(
                         codedWidth: width,
                         codedHeight: height,
                     };
-                    // HEVC HW decoder on Chromium (Edge/Chrome) reads the SPS
-                    // conformance window only at configure() time. Without an
-                    // explicit reconfigure here, it keeps applying the *initial*
-                    // crop after a layer-switch / rotation — output frames'
-                    // displayWidth/Height drift from the new picture, the canvas
-                    // resizes to the wrong height, and stale stride-padding rows
-                    // leak through at the bottom as vertical-line artifacts.
-                    // Force a fresh configure(): updateDescription if we have
-                    // bytes, otherwise close+recreate.
-                    const isHevc = getCodecCategory(currentDecoderConfig.codec) === 'hevc';
+                    // Some browser decoders keep the previous coded/display
+                    // size across an Annex-B layer switch even though the
+                    // keyframe carries the new SPS in-band. Force a fresh
+                    // configure on every no-description dimension change:
+                    // updateDescription if we have bytes, otherwise rebuild
+                    // with the new codedWidth/codedHeight before feeding this KF.
                     if (description) {
                         decoder.updateDescription(description, undefined, width, height);
                         mstgSelector?.resetPrimming();
                         lastRawDescription = description.slice(0);
-                    } else if (isHevc) {
+                    } else {
                         await awaitHwReleased();
                         if (decoder.getState() !== 'closed') decoder.close();
                         mstgSelector?.resetPrimming();
@@ -892,8 +926,8 @@ async function processEncodedChunk(
                             }
                         );
                         decoder.initialize();
-                        warnLog?.log(`HEVC dim-change without description bytes; rebuilt decoder ` +
-                            `@ ${width}x${height} to refresh conformance window`);
+                        warnLog?.log(`Dim-change without description bytes; rebuilt decoder ` +
+                            `@ ${width}x${height} to refresh coded size`);
                     }
                 } else {
                     const oldCodec = currentDecoderConfig!.codec;

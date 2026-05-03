@@ -169,16 +169,25 @@ const slotWindowMs = 5000;
 const slotReplaceThreshold = 0.20;
 let slotPressureNotified = false;
 
-// Recorder-health 1 Hz aggregator (Step 9.2). Surfaces encoder load, slot
-// pressure, and RpcStreamSender backlog/skip/ACK signals to .NET via
-// `callbacks.onRecorderHealthSnapshot`. VideoQualityUI's recording branch
-// (Step 9.4) consumes the snapshot to drive simulcast layer decisions.
+// Recorder-health 1 Hz aggregator (Step 9.2). Surfaces max per-frame encode
+// cost across spatial layers, slot pressure, and RpcStreamSender backlog/skip
+// / ACK signals to .NET via `callbacks.onRecorderHealthSnapshot`.
+// VideoQualityUI's recording branch consumes the snapshot to drive simulcast
+// layer decisions.
 const recorderHealthIntervalMs = 1000;
-const encodeQueueSamples: number[] = [];
+const recorderHealthFrameBudgetMs = 1000 / 30;
+const encodeCostRatioSamples: number[] = [];
+const pendingEncodeFrameCosts = new Map<number, PendingEncodeFrameCost>();
 let lastSenderTotalSkipped = 0;
 let lastSenderAckAtMs = 0;
 let recorderHealthIntervalHandle: ReturnType<typeof setInterval> | null = null;
 let recorderHealthSenderHooked: object | null = null;
+interface PendingEncodeFrameCost {
+    expectedLayerCount: number;
+    seenLayerIds: Set<number>;
+    maxEncodeTimeMs: number;
+    startedAtMs: number;
+}
 
 // Segmentation
 // ort.InferenceSession / ort.Tensor types replaced with `unknown` while
@@ -207,7 +216,8 @@ function startRecorderHealthAggregator(): void {
     lastSenderTotalSkipped = 0;
     lastSenderAckAtMs = 0;
     recorderHealthSenderHooked = null;
-    encodeQueueSamples.length = 0;
+    encodeCostRatioSamples.length = 0;
+    pendingEncodeFrameCosts.clear();
     recorderHealthIntervalHandle = setInterval(emitRecorderHealthSnapshot, recorderHealthIntervalMs);
 }
 
@@ -215,24 +225,24 @@ function stopRecorderHealthAggregator(): void {
     if (!recorderHealthIntervalHandle) return;
     clearInterval(recorderHealthIntervalHandle);
     recorderHealthIntervalHandle = null;
-    encodeQueueSamples.length = 0;
+    encodeCostRatioSamples.length = 0;
+    pendingEncodeFrameCosts.clear();
     recorderHealthSenderHooked = null;
 }
 
 function emitRecorderHealthSnapshot(): void {
     const now = performance.now();
-    const samples = encodeQueueSamples.slice();
-    encodeQueueSamples.length = 0;
+    flushStaleEncodeFrameCosts(now);
+    const samples = encodeCostRatioSamples.slice();
+    encodeCostRatioSamples.length = 0;
     samples.sort((a, b) => a - b);
     const pickAt = (q: number): number => {
         if (samples.length === 0) return 0;
         const idx = Math.min(Math.floor(samples.length * q), samples.length - 1);
         return samples[idx] ?? 0;
     };
-    const norm = (queueDepth: number): number =>
-        Math.max(0, queueDepth) / Math.max(1, ENCODER_BUSY_THRESHOLD);
-    const encodeRatioP50 = norm(pickAt(0.5));
-    const encodeRatioP90 = norm(pickAt(0.9));
+    const encodeRatioP50 = pickAt(0.5);
+    const encodeRatioP90 = pickAt(0.9);
 
     const slotRate = slotReplacements / Math.max(1, slotArrivals);
 
@@ -252,6 +262,47 @@ function emitRecorderHealthSnapshot(): void {
         encodeRatioP50, encodeRatioP90,
         slotRate, senderBacklogP90Ms, senderSkipsPerWindow,
         lastAckAgeMs, WorkerConnectivityUI.isConnected, rpcNoWait);
+}
+
+function registerEncodeFrameCost(timestamp: number, expectedLayerCount: number): void {
+    if (!recorderHealthIntervalHandle)
+        return;
+
+    pendingEncodeFrameCosts.set(timestamp, {
+        expectedLayerCount: Math.max(1, expectedLayerCount),
+        seenLayerIds: new Set<number>(),
+        maxEncodeTimeMs: 0,
+        startedAtMs: performance.now(),
+    });
+}
+
+function recordEncodeLayerCost(timestamp: number, spatialLayerId: number, encodeTimeMs: number): void {
+    if (!recorderHealthIntervalHandle)
+        return;
+
+    const frameCost = pendingEncodeFrameCosts.get(timestamp);
+    if (!frameCost)
+        return;
+
+    frameCost.seenLayerIds.add(spatialLayerId);
+    frameCost.maxEncodeTimeMs = Math.max(frameCost.maxEncodeTimeMs, encodeTimeMs);
+    if (frameCost.seenLayerIds.size >= frameCost.expectedLayerCount)
+        completeEncodeFrameCost(timestamp, frameCost);
+}
+
+function flushStaleEncodeFrameCosts(nowMs: number): void {
+    for (const [timestamp, frameCost] of pendingEncodeFrameCosts) {
+        if (nowMs - frameCost.startedAtMs >= recorderHealthIntervalMs)
+            completeEncodeFrameCost(timestamp, frameCost);
+    }
+}
+
+function completeEncodeFrameCost(timestamp: number, frameCost: PendingEncodeFrameCost): void {
+    pendingEncodeFrameCosts.delete(timestamp);
+    if (frameCost.seenLayerIds.size === 0)
+        return;
+
+    encodeCostRatioSamples.push(frameCost.maxEncodeTimeMs / recorderHealthFrameBudgetMs);
 }
 
 // Replaceable slot ahead of segmentation/blur (target design: "raw video
@@ -758,6 +809,8 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             const ownedExtras = new Array<boolean>(results.length).fill(true);
             ownedExtras[0] = false; // results[0] = processedFrame, tracked via liveFrame
             try {
+                const expectedEncodeLayerCount = 1 + extraLayerEncoders.length;
+                registerEncodeFrameCost(processedFrame.timestamp, expectedEncodeLayerCount);
                 if (extraLayerEncoders.length > 0) {
                     for (let i = 0; i < extraLayerEncoders.length; i++) {
                         const idx = i + 1;
@@ -896,10 +949,8 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
         // success/throw — drop our live-tracking now so the catch below doesn't
         // try to close an already-closed frame.
         liveFrame = null;
-        // Sample the encoder's queue depth right before the call — used by the
-        // 1 Hz recorder-health aggregator (encodeRatioP50/P90).
-        if (recorderHealthIntervalHandle)
-            encodeQueueSamples.push(encoder.getEncodeQueueSize());
+        if (!downscaler)
+            registerEncodeFrameCost(processedFrame.timestamp, 1);
         encoder.encode(processedFrame, forceKf);
         framesWithoutOutput++;
 
@@ -927,6 +978,10 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
 function onEncoderOutput(chunkData: EncodedChunkData): void {
     framesWithoutOutput = 0;
     encoderErrorSeen = false;
+    recordEncodeLayerCost(
+        chunkData.timestamp,
+        chunkData.spatialLayerId ?? 0,
+        chunkData.encodeTimeMs);
     // First chunk after start anchors the streaming-stall watchdog. The
     // watchdog won't fire while this is 0; the helper is also called below
     // when the pipeline reaches the 'streaming' status to refresh the clock
@@ -2265,28 +2320,20 @@ export const serverImpl: VideoProcessingWorker = {
             lastReconfigureSummary: '', lastReconfigureAgeMs: -1,
             lastErrorName: '', lastErrorMessage: '', lastErrorAgeMs: -1, errorCount: 0,
         };
-        // Fold simulcast extras into the headline counters. Without this the
-        // diagnostics log compared base-only `totalBytes` (the bytes a 1.3 Mbps
-        // base layer emits) to the SUM of all configured caps (base + extras),
-        // producing nonsense like `actual=10Mbps cfg=1.3Mbps`. Per-encoder
-        // dims and HW acceleration still reflect the base — there's only one
-        // headline number for those.
-        let extraBytes = 0, extraEncoded = 0, extraDropped = 0, extraKey = 0, extraBitrate = 0;
-        for (const e of extraLayerEncoders) {
-            const s = e.getStats();
-            extraBytes += s.totalBytes;
-            extraEncoded += s.encodedFrames;
-            extraDropped += s.droppedFrames;
-            extraKey += s.keyFrames;
-            extraBitrate += s.configuredBitrate;
-        }
+        // Keep legacy aggregate counters for existing callers, but publish the
+        // real per-layer encoder stats separately so diagnostics don't treat L0
+        // as the whole stream.
+        const spatialLayers = [
+            { spatialLayerId: 0, ...baseStats },
+            ...extraLayerEncoders.map((e, i) => ({ spatialLayerId: i + 1, ...e.getStats() })),
+        ];
         const encoderStats = {
             ...baseStats,
-            totalBytes: baseStats.totalBytes + extraBytes,
-            encodedFrames: baseStats.encodedFrames + extraEncoded,
-            droppedFrames: baseStats.droppedFrames + extraDropped,
-            keyFrames: baseStats.keyFrames + extraKey,
-            configuredBitrate: baseStats.configuredBitrate + extraBitrate,
+            totalBytes: spatialLayers.reduce((sum, s) => sum + s.totalBytes, 0),
+            encodedFrames: spatialLayers.reduce((sum, s) => sum + s.encodedFrames, 0),
+            droppedFrames: spatialLayers.reduce((sum, s) => sum + s.droppedFrames, 0),
+            keyFrames: spatialLayers.reduce((sum, s) => sum + s.keyFrames, 0),
+            configuredBitrate: spatialLayers.reduce((sum, s) => sum + s.configuredBitrate, 0),
         };
         const segStats: SegmentationStats | null = segInitialized ? {
             processedFrames: segProcessedFrames,
@@ -2306,7 +2353,7 @@ export const serverImpl: VideoProcessingWorker = {
             status: streamStatus,
             lastError: streamError,
         } : null;
-        return { encoder: encoderStats, segmentation: segStats, orientation: orientationStats ? { ...orientationStats } : null, streaming: streamStats };
+        return { encoder: encoderStats, spatialLayers, segmentation: segStats, orientation: orientationStats ? { ...orientationStats } : null, streaming: streamStats };
     },
 
     // eslint-disable-next-line @typescript-eslint/require-await

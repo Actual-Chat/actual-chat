@@ -5,7 +5,11 @@ import type { RecorderHealthSnapshotJs } from '../../Services/Video/services/vid
 import type { SpatialLayerConfig } from '../../Services/Video/workers/video-processing-worker-contract';
 import { detectSupportedCodecs, getDefaultCodec, getCodecCategory, probeConcurrentEncoders, type CodecInfo } from '../../Services/Video/codec-support';
 import { getExpectedBitrate } from '../../Services/Video/bitrate-table';
-import { hasHigherTopTier, buildLadderForSource, MAX_SIMULCAST_TIERS } from './simulcast-ladder';
+import {
+    buildLadder,
+    SCREENCAST_MAX_SIMULCAST_TIERS,
+    WEBCAM_MAX_SIMULCAST_TIERS,
+} from './simulcast-ladder';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
 
@@ -22,6 +26,7 @@ export interface OwnStreamDiagnostics {
     encodedFrames: number;
     droppedFrames: number;
     keyFrames: number;
+    spatialLayers: OwnSpatialLayerDiagnostics[];
     medianEncodeTime: number;
     pureMedianEncodeTime: number;
     encoderHwAccel: string;
@@ -58,6 +63,32 @@ export interface OwnStreamDiagnostics {
         status: string;
         lastError: string;
     } | null;
+    simulcast: {
+        layerCount: number;
+        layers: { width: number; height: number; bitrate: number; scalabilityMode?: string }[];
+    } | null;
+}
+
+export interface OwnSpatialLayerDiagnostics {
+    spatialLayerId: number;
+    outputResolution: string;
+    configuredBitrate: number;
+    actualBitrateKbps: number;
+    encodedFrames: number;
+    droppedFrames: number;
+    keyFrames: number;
+    medianEncodeTime: number;
+    pureMedianEncodeTime: number;
+    encoderHwAccel: string;
+    encoderState: string;
+    encoderReconfigureCount: number;
+    encoderReplaceCount: number;
+    encoderLastReconfigureSummary: string;
+    encoderLastReconfigureAgeMs: number;
+    encoderLastErrorName: string;
+    encoderLastErrorMessage: string;
+    encoderLastErrorAgeMs: number;
+    encoderErrorCount: number;
 }
 
 export interface VideoDevice {
@@ -154,6 +185,7 @@ export class VideoRecorder {
     // indices are enhancement layers. Sent by C# VideoRecorder in response to
     // VideoQualityPreset.MaxSpatialLayer aggregate changes.
     private simulcastLayers: SpatialLayerConfig[] | null = null;
+    private fullSimulcastLadder: SpatialLayerConfig[] | null = null;
 
     // Blur preview frame subscribers. When blur is active, the pipeline produces
     // `VideoFrame`s that we dispatch to every listener before the frame is closed
@@ -295,91 +327,26 @@ export class VideoRecorder {
         infoLog?.log('Background blur enabled:', enabled);
     }
 
-    // Stores the simulcast ladder. Applied immediately to a running pipeline
-    // via hot encoder reconfig (Option C: see RecordingService.setSimulcastLadder
-    // → VideoPipeline.setSpatialLayers → worker.setSpatialLayers). The hot
-    // path swaps extras without restarting the base encoder or the RPC
-    // PushVideo stream, so other peers don't see this peer's stream churn —
-    // avoiding the cascading stop/start loop documented in commit 2de3f2617.
-    // The cache is also picked up by the next fresh startRecording so a stop
-    // → start cycle preserves the latest ladder. Passing null or a list of
-    // length < 2 disables simulcast. Screencast streams ignore the ladder
-    // (single-encoder text legibility path).
-    public setSimulcastLayers(layers: SpatialLayerConfig[] | null, force = false): void {
-        // TEMP: simulcast disabled for dev-env stability troubleshooting. Force
-        // single-encoder P2P on every push; ignore server-pushed ladders.
-        // Flip TEMP_DISABLE_SIMULCAST = false to restore.
-        const TEMP_DISABLE_SIMULCAST = false;
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (TEMP_DISABLE_SIMULCAST) {
-            layers = null;
-        }
-        // Clamp incoming server-pushed ladders to MAX_SIMULCAST_TIERS — keep
-        // the top tiers (slice from the tail; ladder is bottom-first, so
-        // dropping the bottom preserves the highest reachable quality).
-        const clamped = (layers && layers.length > MAX_SIMULCAST_TIERS)
-            ? layers.slice(-MAX_SIMULCAST_TIERS)
+    // Updates the simulcast ladder on a running pipeline (server-driven cap
+    // shrink/restore via VideoQualityPreset.MaxSpatialLayer). Hot-applied via
+    // RecordingService.setSimulcastLadder → VideoPipeline.setSpatialLayers →
+    // worker.setSpatialLayers, swapping extras without restarting the base
+    // encoder or RPC PushVideo stream. The ladder is cached so a stop/start
+    // cycle preserves it. Passing null or a length-1 list collapses to single-
+    // encoder (cap=0 case). Layers are rebuilt against running source dims so
+    // portrait/cap-stepped sources produce correct ladder shape.
+    public setSimulcastLayers(layers: SpatialLayerConfig[] | null): void {
+        const maxTiers = this.isScreencasting ? SCREENCAST_MAX_SIMULCAST_TIERS : WEBCAM_MAX_SIMULCAST_TIERS;
+        const clamped = (layers && layers.length > maxTiers)
+            ? layers.slice(-maxTiers)
             : layers;
-        const incoming = (clamped && clamped.length >= 2) ? clamped : null;
+        const requestedCount = clamped?.length ?? 0;
+        let active: SpatialLayerConfig[] | null = (clamped && clamped.length >= 2) ? clamped : null;
         const prevCount = this.simulcastLayers?.length ?? 0;
-        // Ladder persistence: don't downgrade a probe-promoted ladder. C#'s default ladder
-        // tops out at 720p; the JS-side startRecording probe may have promoted
-        // it to 1080p. If C# later pushes its default 720p-cap ladder
-        // (e.g. SyncRemoteStreamCount activating), we'd lose the 1080p tier.
-        // Only accept the incoming ladder when it's null (deactivate), strictly
-        // longer than ours, OR has a strictly higher top tier.
-        //
-        // `force = true` bypasses this guard. Used by C#-side cap-driven shrinks
-        // (G1: server's MaxSpatialLayer aggregate dropped because all viewers
-        // want low/mid). Intent is explicit, downgrade is the policy.
-        let active: SpatialLayerConfig[] | null;
-        if (incoming === null) {
-            active = null;
-        } else if (force
-            || this.simulcastLayers === null
-            || incoming.length > this.simulcastLayers.length
-            || hasHigherTopTier(incoming, this.simulcastLayers)) {
-            active = incoming;
-            if (force && this.simulcastLayers !== null && incoming.length < this.simulcastLayers.length) {
-                infoLog?.log(
-                    `setSimulcastLayers: force-shrink ${this.simulcastLayers.length} → ${incoming.length} layer(s)`);
-            }
-        } else {
-            active = this.simulcastLayers;
-            infoLog?.log(
-                `setSimulcastLayers: keeping promoted ladder (${prevCount} layers, top=${this.simulcastLayers[this.simulcastLayers.length - 1].width}x${this.simulcastLayers[this.simulcastLayers.length - 1].height}) over incoming (${incoming.length} layers)`);
-        }
-        // Source-shaped ladder: rebuild the ladder dims from the running source
-        // dims rather than honoring the C#-pushed (W,H). C# only contributes
-        // `count` (the cap-driven layer count). JS owns dims because:
-        //   * The C# table is hardcoded landscape; portrait sources used to
-        //     produce a transposed ladder.
-        //   * The JS table can fold the source dims into the top tier so the
-        //     wire layout is monotonic in spatial-id without an augment-with-
-        //     duplicate trick.
-        // Reads from getEncoderStats so a prior reconfigure() (server-driven
-        // step-down) is reflected — RecordingConfig.width/height stays stale
-        // because reconfigure() doesn't write back to it.
-        if (active !== null && this.recordingService) {
-            const stats = this.recordingService.getPipeline()?.getEncoderStats();
-            const runningH = stats?.configuredHeight ?? 0;
-            const runningW = stats?.configuredWidth ?? 0;
-            const cfg = this.recordingService.getConfig();
-            const codec = cfg.codecString ?? '';
-            if (runningW > 0 && runningH > 0) {
-                const rebuilt = buildLadderForSource({
-                    count: active.length,
-                    srcWidth: runningW,
-                    srcHeight: runningH,
-                    bitrateFor: (h: number) => getExpectedBitrate(codec, h, cfg.mode),
-                });
-                if (rebuilt.length > 0) {
-                    infoLog?.log(
-                        `setSimulcastLayers: rebuilt ladder for source ${runningW}x${runningH}: ${
-                            rebuilt.map(l => `${l.width}x${l.height}`).join(', ')}`);
-                    active = rebuilt;
-                }
-            }
+        if (active !== null && this.fullSimulcastLadder) {
+            active = this.fullSimulcastLadder.slice(0, Math.min(requestedCount, this.fullSimulcastLadder.length));
+            if (active.length < 2)
+                active = null;
         }
         const newCount = active?.length ?? 0;
         this.simulcastLayers = active;
@@ -387,13 +354,14 @@ export class VideoRecorder {
             infoLog?.log(`setSimulcastLayers: ${prevCount} -> ${newCount} layer(s)`);
         }
         if (this.recordingService) {
-            // Hot apply to the running pipeline. Failures are non-fatal — the
-            // ladder remains cached and applies at the next fresh start.
             void this.recordingService.setSimulcastLadder(active).catch((e: unknown) =>
                 warnLog?.log('setSimulcastLayers: hot reconfig failed:', e));
         }
     }
 
+    // Forward remote stream count to the pipeline for VAD-driven top-extra drop
+    // (drops top simulcast extra during silence in group calls). Independent of
+    // simulcast activation — that's now always-on.
     public setRemoteStreamCount(count: number): void {
         this.recordingService?.getPipeline()?.setRemoteStreamCount(count);
     }
@@ -491,13 +459,14 @@ export class VideoRecorder {
         infoLog?.log(`Starting video recording... audienceCodecs=[${audienceCodecs?.join(', ') ?? '(none)'}]`);
 
         try {
-            // Capture at 720p on all platforms — lower resolutions may select the wrong
-            // camera on Android and produce aspect-ratio mismatches.
+            // Hard webcam cap. Top tier of the simulcast ladder; lower tiers are
+            // ¼ pixels each. 720p selected on all platforms — lower resolutions
+            // may select the wrong camera on Android and produce aspect-ratio
+            // mismatches.
             const targetSize = { width: 1280, height: 720 };
             const targetFramerate = 30;
 
-            // Detect supported encoder codecs — use target resolution to avoid
-            // false negatives on mobile (e.g. Android HEVC encoders may not support 1080p)
+            // Detect supported encoder codecs at the top tier dim.
             const supportedCodecs = await detectSupportedCodecs(targetSize.width, targetSize.height);
             this.supportedCodecs = supportedCodecs;
 
@@ -505,105 +474,69 @@ export class VideoRecorder {
             this.supportedEncoderCategories = this.extractEncoderCategories(supportedCodecs);
             infoLog?.log(`Supported encoder categories: [${this.supportedEncoderCategories.join(', ')}]`);
 
-            // Pick initial codec: if audience codecs are known, pick the best encoder
-            // codec that the audience can decode — avoids mid-stream codec switches.
-            // For simulcast, also probe the candidate codec for N-concurrent-encoder
-            // feasibility along the [av1, hevc, vp9, h264] priority chain — first
-            // PASS wins. Avoids picking AV1/HEVC for sessions whose HW can encode a
-            // single AV1 stream but not 3 in parallel (common on mid-range mobile).
-            let bestCodecString = this.pickInitialCodec(supportedCodecs, audienceCodecs, targetSize);
-            const candidateLadder = this.simulcastLayers && this.simulcastLayers.length >= 2
-                ? this.simulcastLayers
-                : null;
-            if (candidateLadder) {
-                const simulcastPick = await this.pickSimulcastCodec(
-                    supportedCodecs, audienceCodecs, candidateLadder);
-                if (simulcastPick && simulcastPick !== bestCodecString) {
-                    infoLog?.log(`Simulcast probe override: ${bestCodecString} → ${simulcastPick}`);
-                    bestCodecString = simulcastPick;
+            // Always-on simulcast: build a 3-tier ladder @ 720p (720p / 360p /
+            // 180p, each ¼ pixels of the previous) and pick the best codec that
+            // can run all three concurrent encoders within the per-frame budget.
+            // On full failure (no codec passes the 3-tier probe — typically iOS
+            // Safari HW-encoder budget exhausted), drop the 720p top and retry
+            // at 2-tier @ 360p (180p + 360p). This is the user-specified iOS
+            // fallback — see plan: probe-fail keeps the ¼-ratio shape but caps
+            // at 360p instead of upgrading the lowest tier to be the new top.
+            const initialPick = this.pickInitialCodec(supportedCodecs, audienceCodecs, targetSize);
+            const ladder3 = buildLadder({
+                topWidth: targetSize.width,
+                topHeight: targetSize.height,
+                tierCount: 3,
+                maxTierCount: WEBCAM_MAX_SIMULCAST_TIERS,
+                bitrateFor: (h: number) => getExpectedBitrate(initialPick, h),
+            });
+            let bestCodecString = await this.pickSimulcastCodec(
+                supportedCodecs, audienceCodecs, ladder3);
+            let ladder: SpatialLayerConfig[] = ladder3;
+            if (!bestCodecString) {
+                // 3-tier probe failed across all candidate codecs. Drop the
+                // 720p top, retry at 2-tier @ 360p with same priority chain.
+                const ladder2 = buildLadder({
+                    topWidth: 640,
+                    topHeight: 360,
+                    tierCount: 2,
+                    maxTierCount: WEBCAM_MAX_SIMULCAST_TIERS,
+                    bitrateFor: (h: number) => getExpectedBitrate(initialPick, h),
+                });
+                infoLog?.log(`3-tier probe failed for all codecs — falling back to 2-tier @ 360p (drop 720p top)`);
+                const codec2 = await this.pickSimulcastCodec(
+                    supportedCodecs, audienceCodecs, ladder2);
+                if (codec2) {
+                    bestCodecString = codec2;
+                } else {
+                    // Both ladders failed — accept the static initial pick at
+                    // 2-tier and let backpressure-driven step-down handle the rest.
+                    warnLog?.log(`Both 3-tier and 2-tier probes failed — proceeding with ${initialPick} at 2-tier`);
+                    bestCodecString = initialPick;
                 }
-            } else {
-                // P2P / single-encoder mode: probe the picked codec at base dim
-                // to catch a degraded HW encoder (e.g. previous HEVC session's HW
-                // lock not yet released by the OS). Without this gate, we'd start
-                // with the broken codec and waste ~3s × N codecs in the
-                // dead-encoder fallback chain (91 frames per attempt).
-                bestCodecString = await this.preflightSingleCodec(
-                    supportedCodecs, audienceCodecs, targetSize, bestCodecString);
+                ladder = ladder2;
             }
             const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
             const codecCategory = getCodecCategory(bestCodecString);
-            const targetBitrate = getExpectedBitrate(bestCodecString, targetSize.height);
-            infoLog?.log(`Initial codec selection: ${codecCategory} (${bestCodecString}), hw=${bestCodecInfo?.hardwareAccelerated ?? false}, bitrate=${targetBitrate / 1_000_000}Mbps`);
-
-            // Unified ladder: even in single-encoder (P2P / solo) mode we build a
-            // one-tier ladder so the same camera-capture-and-clamp path in
-            // recording-service handles both cases. The C#-pushed simulcast
-            // layers (top-first) become the multi-tier base; if absent, the
-            // ladder collapses to a single top tier.
-            //
-            // HW-gated 1080p promotion: probe the selected codec for N+1
-            // concurrent encoders (N = current top tier count, +1 for the new
-            // 1080p tier; a single-encoder P2P probe is 1×1080p). Ladder is
-            // bottom-first (index 0 = base, last = top). On pass, append
-            // 1920x1080 as the new top. On fail, keep 720p cap.
-            // recording-service re-clamps the ladder against the camera's
-            // actual output so an unrealized 1080p tier gets dropped without
-            // upscaling.
-            let ladder: SpatialLayerConfig[] = this.simulcastLayers && this.simulcastLayers.length >= 2
-                ? [...this.simulcastLayers]
-                : [{ width: targetSize.width, height: targetSize.height, bitrate: targetBitrate }];
-            const isSimulcast = ladder.length >= 2;
-            const topDim = ladder[ladder.length - 1];
-            // TEMP: 720p cap while iOS thermal investigation is in flight.
-            // Set TEMP_CAP_720P = false to re-enable HW-gated 1080p promotion.
-            const TEMP_CAP_720P = true;
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-            if (!TEMP_CAP_720P && topDim.width < 1920 && topDim.height < 1080) {
-                const tier1080: SpatialLayerConfig = {
-                    width: 1920,
-                    height: 1080,
-                    bitrate: getExpectedBitrate(bestCodecString, 1080),
-                };
-                // Simulcast: append 1080p as a new TOP on top of the existing
-                // ladder (probe for N+1 concurrent encoders). Single-encoder:
-                // REPLACE the existing single tier with 1080p (probe 1 encoder
-                // only) — otherwise the downscaler would do 1080p→720p on
-                // every frame despite the HW being perfectly capable of
-                // encoding native 1080p directly, burning GPU time and
-                // triggering backpressure step-down.
-                const promoted: SpatialLayerConfig[] = isSimulcast
-                    ? [...ladder, tier1080].slice(-MAX_SIMULCAST_TIERS)
-                    : [tier1080];
-                // Budget: a single 1080p encoder needs more per-frame headroom
-                // than the per-layer cost of concurrent simulcast extras
-                // (lower layers finish fast and lift the median). 24ms leaves
-                // iGPU HW a realistic chance at real-time single-encoder 1080p
-                // (~25% headroom under the 33ms/30fps frame budget); 12ms is
-                // right for multi-encoder concurrency gates. Bumped from 18 to
-                // 24 after observing HW-capable iGPUs rejected at ~20 ms median.
-                const budgetMs = isSimulcast ? 12 : 24;
-                const probe = await probeConcurrentEncoders(bestCodecString, promoted, 8, budgetMs);
-                if (probe.supported) {
-                    infoLog?.log(`1080p promotion accepted: probe median=${probe.medianEncodeMs.toFixed(1)}ms (layers=${promoted.length}, budget=${budgetMs}ms)`);
-                    ladder = promoted;
-                } else {
-                    infoLog?.log(`1080p promotion declined: probe median=${probe.medianEncodeMs.toFixed(1)}ms (stage=${probe.failedStage ?? 'timing'}, layers=${promoted.length}, budget=${budgetMs}ms)`);
-                }
-            }
+            // Rebuild ladder bitrates against the chosen codec (initial pick may
+            // differ from final pick).
+            ladder = buildLadder({
+                topWidth: ladder[ladder.length - 1].width,
+                topHeight: ladder[ladder.length - 1].height,
+                tierCount: ladder.length,
+                maxTierCount: WEBCAM_MAX_SIMULCAST_TIERS,
+                bitrateFor: (h: number) => getExpectedBitrate(bestCodecString, h),
+            });
             const base = ladder[0];
             const top = ladder[ladder.length - 1];
             const captureWidth = top.width;
             const captureHeight = top.height;
             const captureBitrate = top.bitrate;
             const simulcastLadder: SpatialLayerConfig[] = ladder;
-            // Persist the promoted ladder so a subsequent C# setSimulcastLayers
-            // call (e.g. SyncRemoteStreamCount activating simulcast) doesn't
-            // clobber our locally-promoted ladder with a stale C# default.
-            // Compared against in setSimulcastLayers below — we keep ours when
-            // the incoming ladder is a strict subset (shorter / no top tier).
             this.simulcastLayers = simulcastLadder.length >= 2 ? [...simulcastLadder] : null;
-            infoLog?.log(`Capture ladder (pre-clamp, bottom-first): [${ladder.map(l => `${l.width}x${l.height}`).join(', ')}], capture ${captureWidth}x${captureHeight}, primary ${base.width}x${base.height}`);
+            this.fullSimulcastLadder = this.simulcastLayers ? [...this.simulcastLayers] : null;
+            infoLog?.log(`Initial codec selection: ${codecCategory} (${bestCodecString}), hw=${bestCodecInfo?.hardwareAccelerated ?? false}, top=${captureWidth}x${captureHeight}@${captureBitrate / 1_000_000}Mbps`);
+            infoLog?.log(`Capture ladder (bottom-first): [${ladder.map(l => `${l.width}x${l.height}`).join(', ')}], capture ${captureWidth}x${captureHeight}, base ${base.width}x${base.height}`);
 
             // Create recording service with streaming config (uses video-pipeline internally)
             const config: RecordingConfig = {
@@ -636,6 +569,10 @@ export class VideoRecorder {
 
             // Start recording (this initializes the video-pipeline)
             await this.recordingService.start();
+            this.fullSimulcastLadder = this.recordingService.getConfig().simulcastLadder ?? null;
+            this.simulcastLayers = this.fullSimulcastLadder && this.fullSimulcastLadder.length >= 2
+                ? [...this.fullSimulcastLadder]
+                : null;
 
             this.previewTrack = this.recordingService.getInputTrack();
             // If the camera track ends externally (permission revoked, camera
@@ -722,32 +659,53 @@ export class VideoRecorder {
             const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
             const codecCategory = getCodecCategory(bestCodecString);
 
-            // Screencast config: start at 1080p cap, quality preset will adjust.
-            // No adaptiveFramerate — screencast has no voice-activity semantics;
-            // cutting bitrate to 25% during silence would destroy text fidelity.
-            // Framerate 15 matches the getDisplayMedia cap in captureScreencast
-            // and gives the encoder ~2x bits-per-frame vs 30 fps at same bitrate.
+            // Screencast config: 2-tier simulcast @ 1080p (1080p / 540p, ¼-pixel
+            // ratio). Quality preset adjusts top dim; ladder rebuilds against
+            // the new top in setSimulcastLayers. No adaptiveFramerate —
+            // screencast has no voice-activity semantics; cutting bitrate to
+            // 25% during silence would destroy text fidelity. Framerate 15
+            // matches the getDisplayMedia cap in captureScreencast and gives
+            // the encoder ~2x bits-per-frame vs 30 fps at same bitrate. No
+            // probe — 15 fps + long keyframe interval keep 2-encoder HW
+            // contention rare.
+            const screencastLadder = buildLadder({
+                topWidth: targetSize.width,
+                topHeight: targetSize.height,
+                tierCount: 2,
+                maxTierCount: SCREENCAST_MAX_SIMULCAST_TIERS,
+                bitrateFor: (h: number) => getExpectedBitrate(bestCodecString, h, 'screen'),
+            });
+            const screencastBase = screencastLadder[0];
+            const screencastTop = screencastLadder[screencastLadder.length - 1];
+            this.simulcastLayers = [...screencastLadder];
+            this.fullSimulcastLadder = [...screencastLadder];
+            infoLog?.log(`Screencast ladder (bottom-first): [${screencastLadder.map(l => `${l.width}x${l.height}`).join(', ')}], capture ${screencastTop.width}x${screencastTop.height}, base ${screencastBase.width}x${screencastBase.height}`);
             const config: RecordingConfig = {
                 mode: 'screen',
                 codec: codecCategory,
                 codecString: bestCodecString,
                 hardwareAccelerated: bestCodecInfo?.hardwareAccelerated ?? false,
                 scalabilityModes: bestCodecInfo?.scalabilityModes,
-                width: targetSize.width,
-                height: targetSize.height,
-                bitrate: getExpectedBitrate(bestCodecString, targetSize.height, 'screen'),
+                width: screencastTop.width,
+                height: screencastTop.height,
+                bitrate: screencastTop.bitrate,
                 framerate: 15,
                 backgroundBlur: { enabled: false },
                 streaming: {
                     enabled: true,
                     chatId: this.chatId,
                 },
+                simulcastLadder: screencastLadder,
             };
 
             this.recordingService = this.createRecordingService(config);
 
             // Start recording — getDisplayMedia will prompt the user to pick a screen
             await this.recordingService.start();
+            this.fullSimulcastLadder = this.recordingService.getConfig().simulcastLadder ?? null;
+            this.simulcastLayers = this.fullSimulcastLadder && this.fullSimulcastLadder.length >= 2
+                ? [...this.fullSimulcastLadder]
+                : null;
 
             // Get the screen track for preview and track-ended detection
             const screenTrack = this.recordingService.getInputTrack();
@@ -810,6 +768,8 @@ export class VideoRecorder {
             this.cleanupPreviewTrack();
             this.isRecording = false;
             this.isScreencasting = false;
+            this.simulcastLayers = null;
+            this.fullSimulcastLadder = null;
             this.lastCodecSwitchAt = 0;
             this.setRecordingState('stopped');
             this.unregister();
@@ -880,14 +840,12 @@ export class VideoRecorder {
         let cappedWidth = this.cameraWidth > 0 ? Math.min(width, this.cameraWidth) : width;
         let cappedHeight = this.cameraHeight > 0 ? Math.min(height, this.cameraHeight) : height;
 
-        // TEMP: webcam-only 720p cap for iOS thermal investigation. Screencast
-        // keeps native preset bumps (1080p text legibility matters there).
+        // Webcam hard cap @ 720p (top tier of always-on simulcast ladder).
+        // Screencast keeps native preset bumps up to 1080p — text legibility
+        // matters there and the 2-tier ladder tops out at 1080p anyway.
         // Aspect-preserving downscale: shrink the LONG side to 1280, derive
         // the short side from incoming aspect to keep portrait/landscape.
-        const TEMP_CAP_720P = true;
-        const isWebcamMode = this.recordingService.getConfig().mode === 'webcam';
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (TEMP_CAP_720P && isWebcamMode) {
+        if (this.recordingService.getConfig().mode === 'webcam') {
             const longSide = Math.max(cappedWidth, cappedHeight);
             if (longSide > 1280) {
                 const scale = 1280 / longSide;
@@ -907,25 +865,17 @@ export class VideoRecorder {
         else if (DeviceInfo.isMobile)
             cappedBitrate = Math.min(cappedBitrate, 2_000_000);
 
-        // Simulcast active — preset Width/Height is the new TOP tier. Rebuild
-        // via the source/2 rule so base = top/2. Without this, only the base
-        // encoder would reconfigure while extras stay at old dims, leaking a
-        // base==extra dimension collision (the recurring `[720, 720]` bug).
+        // When simulcast is active, the ladder TOP dim is the source cap
+        // (camera ∩ mode cap), fixed for the recording session. Quality
+        // control reshapes the ladder via MaxSpatialLayer (tier count),
+        // NOT via preset W/H — feeding preset W/H into buildLadder would
+        // halve the ladder per call (180p → 90p → 45p ...). So skip
+        // ladder reshape in this branch entirely; let setSimulcastLayers
+        // handle tier-count changes from the server.
         const isSimulcastActive = this.simulcastLayers !== null && this.simulcastLayers.length >= 2;
         if (isSimulcastActive) {
-            const rebuilt = buildLadderForSource({
-                count: this.simulcastLayers!.length,
-                srcWidth: cappedWidth,
-                srcHeight: cappedHeight,
-                bitrateFor: (h: number) => getExpectedBitrate(currentCodec, h, mode),
-            });
-            if (rebuilt.length >= 2) {
-                infoLog?.log(`reconfigure (simulcast): rebuilt ladder [${rebuilt.map(l => `${l.width}x${l.height}`).join(', ')}]`);
-                this.simulcastLayers = [...rebuilt];
-                void this.recordingService.setSimulcastLadder(rebuilt).catch((e: unknown) =>
-                    warnLog?.log('reconfigure (simulcast): setSimulcastLadder failed:', e));
-                return;
-            }
+            infoLog?.log(`reconfigure (simulcast): preset ${cappedWidth}x${cappedHeight} ignored — ladder top fixed by source cap`);
+            return;
         }
 
         infoLog?.log(`reconfigure: ${cappedWidth}x${cappedHeight} @ ${cappedBitrate / 1_000_000}Mbps (codec=${currentCodec})`);
@@ -972,64 +922,6 @@ export class VideoRecorder {
             infoLog?.log(`pickSimulcastCodec: ${category} (${codecInfo.codec}) FAIL — median=${probe.medianEncodeMs.toFixed(1)}ms, stage=${probe.failedStage ?? 'timing'}`);
         }
         return null;
-    }
-
-    // Probe the single picked codec at the actual capture dim. On FAIL
-    // (configure fail or timing way over budget), exclude that category and
-    // re-pick. Repeats up to N-1 times along the supported-category list.
-    // Budget is generous (50 ms per frame) — we're catching frank brokenness,
-    // not steady-state throughput. Cached per (codec, dim, layers).
-    private async preflightSingleCodec(
-        supportedCodecs: CodecInfo[],
-        audienceCodecs: string[] | undefined,
-        size: Size,
-        initialPick: string,
-    ): Promise<string> {
-        let pick = initialPick;
-        const ladder: SpatialLayerConfig[] = [{
-            width: size.width, height: size.height,
-            bitrate: getExpectedBitrate(pick, size.height),
-        }];
-        for (let i = 0; i < 4; i++) {
-            const probe = await probeConcurrentEncoders(pick, ladder, 4, 50);
-            // Configure-stage failure = encoder refuses the config right now
-            // (HW lock leak, codec unavailable). Timing failure (encode stage
-            // or median-over-budget with no stage) = encoder configures fine
-            // but probes slow on cold start. Real encoder warms up; the 4-frame
-            // probe median is too noisy to permanently drop an audience-compatible
-            // codec. Only exclude on hard configure failure.
-            if (probe.supported || probe.failedStage !== 'configure') {
-                if (!probe.supported)
-                    infoLog?.log(`Preflight: ${pick} timing-only fail (median=${probe.medianEncodeMs.toFixed(1)}ms) — proceeding anyway`);
-                else if (i > 0)
-                    infoLog?.log(`Preflight: ${pick} PASS at attempt ${i + 1}`);
-                return pick;
-            }
-            const failed = getCodecCategory(pick);
-            warnLog?.log(`Preflight: ${failed} (${pick}) FAIL — stage=configure, excluding and re-picking`);
-            const idx = this.supportedEncoderCategories.indexOf(failed);
-            if (idx >= 0) this.supportedEncoderCategories.splice(idx, 1);
-            const codecsByRemaining = supportedCodecs.filter(c =>
-                c.supported && this.supportedEncoderCategories.includes(c.category));
-            if (codecsByRemaining.length === 0) {
-                warnLog?.log(`Preflight: all codecs excluded, falling back to original pick ${pick}`);
-                return pick;
-            }
-            // Don't break the audience contract: if the remaining codecs don't
-            // intersect the audience, returning here would force the unfiltered
-            // pickInitialCodec branch which picks AV1 against an iOS audience.
-            // Better to fail with the originally-picked audience-compatible codec.
-            if (audienceCodecs && audienceCodecs.length > 0) {
-                const stillAudienceCompatible = codecsByRemaining.some(c => audienceCodecs.includes(c.category));
-                if (!stillAudienceCompatible) {
-                    warnLog?.log(`Preflight: no remaining codec intersects audience [${audienceCodecs.join(', ')}] — falling back to initial pick ${initialPick}`);
-                    return initialPick;
-                }
-            }
-            pick = this.pickInitialCodec(codecsByRemaining, audienceCodecs, size);
-            ladder[0].bitrate = getExpectedBitrate(pick, size.height);
-        }
-        return pick;
     }
 
     private pickInitialCodec(supportedCodecs: CodecInfo[], audienceCodecs: string[] | undefined, size: Size) {
@@ -1258,6 +1150,38 @@ export class VideoRecorder {
         const trackSettings = inputTrack?.getSettings();
 
         const duration = state?.duration ?? 0;
+        const rawSpatialLayers = pipeline?.getSpatialLayerStats() ?? [];
+        const spatialStats = rawSpatialLayers.length > 0
+            ? rawSpatialLayers
+            : encoderStats
+                ? [{ spatialLayerId: 0, ...encoderStats }]
+                : [];
+        const spatialLayers: OwnSpatialLayerDiagnostics[] = spatialStats.map(s => {
+            const actualLayerBitrateKbps = duration > 0
+                ? (s.totalBytes * 8) / duration / 1000
+                : 0;
+            return {
+                spatialLayerId: s.spatialLayerId,
+                outputResolution: `${s.configuredWidth}x${s.configuredHeight}`,
+                configuredBitrate: s.configuredBitrate,
+                actualBitrateKbps: Math.round(actualLayerBitrateKbps),
+                encodedFrames: s.encodedFrames,
+                droppedFrames: s.droppedFrames,
+                keyFrames: s.keyFrames,
+                medianEncodeTime: s.medianEncodeTime,
+                pureMedianEncodeTime: s.pureMedianEncodeTime,
+                encoderHwAccel: s.hardwareAcceleration,
+                encoderState: s.state,
+                encoderReconfigureCount: s.reconfigureCount,
+                encoderReplaceCount: s.replaceCount,
+                encoderLastReconfigureSummary: s.lastReconfigureSummary,
+                encoderLastReconfigureAgeMs: s.lastReconfigureAgeMs,
+                encoderLastErrorName: s.lastErrorName,
+                encoderLastErrorMessage: s.lastErrorMessage,
+                encoderLastErrorAgeMs: s.lastErrorAgeMs,
+                encoderErrorCount: s.errorCount,
+            };
+        });
         const actualBitrateKbps = duration > 0 && encoderStats
             ? (encoderStats.totalBytes * 8) / duration / 1000
             : 0;
@@ -1277,6 +1201,7 @@ export class VideoRecorder {
             encodedFrames: encoderStats?.encodedFrames ?? 0,
             droppedFrames: encoderStats?.droppedFrames ?? 0,
             keyFrames: encoderStats?.keyFrames ?? 0,
+            spatialLayers,
             medianEncodeTime: encoderStats?.medianEncodeTime ?? 0,
             pureMedianEncodeTime: encoderStats?.pureMedianEncodeTime ?? 0,
             encoderHwAccel: encoderStats?.hardwareAcceleration ?? 'unknown',
@@ -1312,6 +1237,15 @@ export class VideoRecorder {
                 streamRecreations: streamStats.streamRecreations,
                 status: streamStats.status,
                 lastError: streamStats.lastError,
+            } : null,
+            simulcast: this.simulcastLayers && this.simulcastLayers.length > 0 ? {
+                layerCount: this.simulcastLayers.length,
+                layers: this.simulcastLayers.map(l => ({
+                    width: l.width,
+                    height: l.height,
+                    bitrate: l.bitrate,
+                    scalabilityMode: l.scalabilityMode,
+                })),
             } : null,
         };
     }

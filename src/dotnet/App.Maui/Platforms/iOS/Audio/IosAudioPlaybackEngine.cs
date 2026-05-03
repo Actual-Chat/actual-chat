@@ -22,34 +22,26 @@ public class IosAudioPlaybackEngine(
     private VoicePlayer _voicePlayer = null!;
     private FuncWorker _processFeederWorker = null!;
     private OpusDecoder _decoder = null!;
-    private CancellationTokenSource? _watchBufferEscalationStateCts;
     private Task? _decodeFeedTask;
     private int _endedReported;
 
-    private ChatAudioUI ChatAudioUI => field ??= hub.Services.GetRequiredService<ChatAudioUI>();
     private ILogger Log => field ??= hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.NativeAudioPlayer);
 
     public async ValueTask DisposeAsync()
     {
         _decodeFeedCts.CancelAndDisposeSilently();
-        _watchBufferEscalationStateCts.CancelAndDisposeSilently();
         await _decodeFeedTask.SilentAwait();
         await _processFeederWorker.DisposeSilentlyAsync().ConfigureAwait(false);
         _voicePlayer.DisposeSilently();
         _decoder.DisposeSilently();
-        _watchBufferEscalationStateCts = null;
         _decodeFeedTask = null;
     }
 
-    public async Task Play(CancellationToken cancellationToken)
+    public Task Play(CancellationToken cancellationToken)
     {
         DebugLog?.LogInformation("#{PlayerId}.Play", playerId);
-        var chatId = (info as ChatAudioTrackInfo)?.Chat?.Id;
-        var bufferEscalation = chatId is null
-            ? 0
-            : await ChatAudioUI.GetPlaybackBufferEscalation(chatId, cancellationToken).ConfigureAwait(false);
-        _frames.SetTargetDuration(Constants.Audio.GetDecoderTargetBufferDuration(bufferEscalation));
+        _frames.SetTargetDuration(GetEncodedBufferDuration(info.TargetBufferSize));
 
         _voicePlayer = new VoicePlayer(playerId, hub);
         _processFeederWorker = FuncWorker.Start(MonitorPlayer);
@@ -60,10 +52,7 @@ public class IosAudioPlaybackEngine(
             "Failed to decode/feed iOS audio",
             _decodeFeedCts.Token);
         _voicePlayer.Play();
-        if (chatId is not null) {
-            _watchBufferEscalationStateCts = cancellationToken.CreateLinkedTokenSource();
-            _ = WatchBufferEscalationState(chatId, bufferEscalation, _watchBufferEscalationStateCts.Token);
-        }
+        return Task.CompletedTask;
     }
 
     public Task Pause(CancellationToken cancellationToken)
@@ -143,24 +132,10 @@ public class IosAudioPlaybackEngine(
         }
     }
 
-    private async Task WatchBufferEscalationState(ChatId chatId, int initialEscalation, CancellationToken ct)
+    private static TimeSpan GetEncodedBufferDuration(TimeSpan targetBufferSize)
     {
-        try {
-            var computed = await Computed
-                .Capture(() => ChatAudioUI.GetPlaybackBufferEscalation(chatId, ct), ct)
-                .ConfigureAwait(false);
-            var lastEscalation = initialEscalation;
-            await foreach (var (value, _) in computed.Changes(ct).ConfigureAwait(false)) {
-                if (value == lastEscalation)
-                    continue;
-
-                lastEscalation = value;
-                _frames.SetTargetDuration(Constants.Audio.GetDecoderTargetBufferDuration(value));
-            }
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested) {
-            // Expected on dispose
-        }
+        var encoded = targetBufferSize - Constants.Audio.DefaultDecodedBufferSize - Constants.Audio.DefaultAudioEnginePlaybackLatency;
+        return encoded > Constants.Audio.MinEncodeBufferSize ? encoded : Constants.Audio.MinEncodeBufferSize;
     }
 
     private void TryReportEnded(string? message)

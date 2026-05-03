@@ -224,7 +224,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                     attachEntry.FileName,
                     attachEntry.FileType,
                     attachEntry.FileLength,
-                    new Size(attachEntry.Width, attachEntry.Height)) {
+                    new Size2D(attachEntry.Width, attachEntry.Height)) {
                     UploadSessionId = uploadSessionId,
                 };
                 attachment.Cleanups.Add(new AttachmentCleanup(AttachmentCleanupKind.PersistedPostMessageRequest, CleanupRequest));

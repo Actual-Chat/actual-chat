@@ -51,10 +51,15 @@ partial record AppConstants
             public int StartBufferGrowDurationMs { get; init; } = 100;
             // !DELAYER: Larger start-buffer when video is active for A/V sync.
             public int StartBufferDurationWithVideoMs { get; init; } = 500;
-            public int DecoderTargetBufferDurationMs { get; init; } =
-                (int)Constants.Audio.DecoderTargetBufferDuration.TotalMilliseconds;
-            public int DecoderTargetBufferDurationWithVideoMs { get; init; } =
-                (int)Constants.Audio.DecoderTargetBufferDurationWithVideo.TotalMilliseconds;
+            // Pre-decoder buffer formula inputs — used TS-side by the OpusDecoder
+            // to size its encoded-frame buffer from TrackInfo.TargetBufferSize:
+            //   encoded = max(MinEncodeBuffer, target - DefaultDecodedBuffer - DefaultAudioEnginePlaybackLatency)
+            public int MinEncodeBufferSizeMs { get; init; } =
+                (int)Constants.Audio.MinEncodeBufferSize.TotalMilliseconds;
+            public int DefaultDecodedBufferSizeMs { get; init; } =
+                (int)Constants.Audio.DefaultDecodedBufferSize.TotalMilliseconds;
+            public int DefaultAudioEnginePlaybackLatencyMs { get; init; } =
+                (int)Constants.Audio.DefaultAudioEnginePlaybackLatency.TotalMilliseconds;
             // Buffer is "low" while it's less than this.
             public int LowBufferDurationMs { get; init; } = 10000;
             // Period between feeder state-update signals.
@@ -83,10 +88,10 @@ partial record AppConstants
             // Pre-skip / codec delay measured in samples — default for system encoder
             // when it doesn't report its own.
             public int DefaultPreSkip { get; init; } = 312;
-            // Voice-start pre-roll — bounded ring of recent encoder-frame-equivalent
+            // Voice-start pre-roll - bounded ring of recent encoder-frame-equivalent
             // PCM kept while voice activity is inactive; prepended to the first
             // encoded frame on voice start so leading consonants survive.
-            public int VoiceStartPreRollSize { get; init; } = Constants.Audio.VoiceStartPreRollSize;
+            public int VoicePreRollFrameLimit { get; init; } = Constants.Audio.VoicePreRollFrameLimit;
         }
 
         public sealed record StreamConstants
@@ -102,10 +107,9 @@ partial record AppConstants
             public int ConnectErrorDelayMs { get; init; } = 1000;
             // Debug switch — random disconnect period (0 = disabled).
             public int DebugRandomDisconnectPeriodMs { get; init; } = 0;
-            // RPC stream flow control. Today the producer-side RpcStream uses RPC
-            // defaults; these fields mirror the legacy combined Constants.Audio.StreamAckPeriod
-            // / StreamBufferSize. To be replaced by Constants.Audio.RecordingRpcStreamAckPeriod
-            // when the recording-vs-delivery split lands.
+            public int RecordingRpcStreamAckPeriod { get; init; } = Constants.Audio.RecordingRpcStreamAckPeriod;
+            public int DeliveryRpcStreamAckPeriod { get; init; } = Constants.Audio.DeliveryRpcStreamAckPeriod;
+            // Legacy aliases kept for older TS call sites.
             public int RpcAckPeriod { get; init; } = Constants.Audio.StreamAckPeriod;
             public int RpcBufferSize { get; init; } = Constants.Audio.StreamBufferSize;
         }

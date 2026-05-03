@@ -6,6 +6,10 @@
 //     Api.init('Example', { url, modules: [uploadsApi] });
 //     const offset = await uploadsApi.uploads.GetOffset('~', uploadId);
 //     await uploadsApi.uploads.OnAppend({ Session: '~', UploadId, Offset, Chunk });
+//
+// Naming: wire types use the bare C# record name; the `Dto` suffix is added
+// only for disambiguation against browser globals or in-scope name clashes.
+// See api.ts for the rationale.
 
 import { defineRpcService, type RpcHub } from 'actuallab-rpc';
 import { Api, type ApiModule } from './api.js';

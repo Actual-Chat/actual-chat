@@ -345,7 +345,7 @@
         var focusedName = await GetFocusedParticipantName(chatId, layout, remoteStreams, cancellationToken).ConfigureAwait(false);
 
         Log.LogWarning("[VideoPanelContent] ComputeState: remoteStreams=[{Streams}], isOwnRecording={IsOwnRecording}, isOwnScreencasting={IsOwnScreencasting}",
-            string.Join(", ", remoteStreams.Select(s => $"{s.StreamId}({s.Format.Codec})")),
+            string.Join(", ", remoteStreams.Select(s => $"{s.StreamId}({(s.Formats.LastOrDefault()?.Codec ?? "?")})")),
             isOwnRecording,
             isOwnScreencasting);
 

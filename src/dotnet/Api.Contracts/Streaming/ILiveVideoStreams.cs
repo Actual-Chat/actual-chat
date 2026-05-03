@@ -41,17 +41,20 @@ public interface ILiveVideoStreams : IComputeService
         StreamKind streamKind,
         CancellationToken cancellationToken);
 
-    Task<RpcNoWait> RequestKeyFrame(Session session, string streamId, CancellationToken cancellationToken);
+    [RpcMethod(RemoteExecutionMode = RpcRemoteExecutionMode.AwaitForConnection, ConnectTimeout = 10)]
+    Task RequestKeyFrame(Session session, string streamId, CancellationToken cancellationToken);
 
-    Task<RpcNoWait> ChangeRecordingQuality(
+    [RpcMethod(RemoteExecutionMode = RpcRemoteExecutionMode.AwaitForConnection, ConnectTimeout = 10)]
+    Task ChangeRecordingQuality(
         Session session,
         RecordingQualityState? state,
         RecordingQualityInfo? info,
         CancellationToken cancellationToken);
 
-    Task<RpcNoWait> ChangePlaybackQuality(
+    [RpcMethod(RemoteExecutionMode = RpcRemoteExecutionMode.AwaitForConnection, ConnectTimeout = 10)]
+    Task ChangePlaybackQuality(
         Session session,
-        ApiMap<string, ReceiveQuality>? requestedQuality,
+        ApiMap<string, ReceiveQuality>? qualityByStream,
         PlaybackQualityInfo? info,
         CancellationToken cancellationToken);
 }

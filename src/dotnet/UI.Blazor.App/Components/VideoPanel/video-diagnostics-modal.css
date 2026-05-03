@@ -51,6 +51,13 @@ body.wide .video-diagnostics-modal {
     font-size: 0.75rem;
 }
 
+.diag-value.multiline {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+}
+
 .diag-select {
     @apply bg-02 text-01 border border-separator rounded px-2 py-1;
     min-width: 7rem;
@@ -96,4 +103,22 @@ div.diag-value.multiline .diag-value {
 .diag-js-details {
     @apply flex flex-col gap-0.5 mt-1 pl-3;
     border-left: 2px solid var(--primary);
+}
+
+.diag-layer-picker {
+    @apply flex justify-end items-center gap-1;
+}
+
+.diag-layer-link {
+    @apply text-04 font-mono px-1 py-0.5 rounded;
+    font-size: 0.75rem;
+}
+
+.diag-layer-link.active {
+    @apply text-01 bg-03;
+}
+
+.diag-select {
+    @apply bg-02 text-01 px-1.5 py-0.5 rounded border border-separator font-mono;
+    font-size: 0.75rem;
 }

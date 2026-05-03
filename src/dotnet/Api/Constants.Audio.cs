@@ -23,10 +23,10 @@ public static partial class Constants
         public const int BufferHysteresisSize = 3;
         public const int MinBufferSize = StartBufferSize - BufferHysteresisSize; // 2
 
-        // Voice-start pre-roll — bounded ring of recent encoded-frame-equivalent
+        // Voice-start pre-roll - bounded ring of recent encoded-frame-equivalent
         // PCM kept while voice activity is inactive, prepended to the first
         // encoded frame on voice start so leading consonants survive.
-        public const int VoiceStartPreRollSize = 10; // 200 ms
+        public const int VoicePreRollFrameLimit = 15; // 300 ms
 
         // RPC stream flow control — split into recording (client→server upload,
         // must not skip recorded speech) and delivery (server→client, must not
@@ -87,15 +87,17 @@ public static partial class Constants
         // refactor unifies start-threshold semantics across web and MAUI.
         public static readonly TimeSpan LowPlaybackBufferDuration = TimeSpan.FromSeconds(10);
         public static readonly TimeSpan StartPlaybackWhenBufferedDuration = StartBufferDuration;
-        public static readonly TimeSpan DecoderTargetBufferDuration
-            = TimeSpan.FromMilliseconds(0); // It will be min. possible size
-        public static readonly TimeSpan DecoderTargetBufferDurationWithVideo
-            = TimeSpan.FromMilliseconds(120); // Somehow it roughly corresponds to 333ms of video buffer size
         public static readonly TimeSpan PlaybackCatchUpCommandCooldown = TimeSpan.FromSeconds(1);
 
-        public static TimeSpan GetDecoderTargetBufferDuration(int playbackBufferEscalation)
-            => playbackBufferEscalation > 0
-                ? DecoderTargetBufferDurationWithVideo
-                : DecoderTargetBufferDuration;
+        // Pre-decoder (encoded frame) buffer sizing. The engine's pre-decoder
+        // buffer target is computed as
+        //   max(MinEncodeBufferSize, TrackInfo.TargetBufferSize - DefaultDecodedBufferSize - DefaultAudioEnginePlaybackLatency)
+        // by the code that owns the pre-decoder buffer (TS decoder + MAUI engines).
+        public static readonly TimeSpan MinEncodeBufferSize = TimeSpan.FromMilliseconds(30); // 2 frames
+        public static readonly TimeSpan DefaultDecodedBufferSize = TimeSpan.FromMilliseconds(40); // 2 frames
+        public static readonly TimeSpan DefaultAudioEnginePlaybackLatency = TimeSpan.FromMilliseconds(40);
+
+        // Total target playback buffer when video from the same author is paired.
+        public static readonly TimeSpan PlaybackTargetBufferSizeWithVideo = TimeSpan.FromMilliseconds(120);
     }
 }

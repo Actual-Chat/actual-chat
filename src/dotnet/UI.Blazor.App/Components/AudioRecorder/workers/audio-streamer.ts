@@ -6,7 +6,7 @@ import { EventHandlerSet } from 'event-handling';
 import { ObjectPool } from 'object-pool';
 import { delayAsync } from 'promises';
 import { RpcClientPeer, RpcConnectionState, RpcStream } from 'actuallab-rpc';
-import { Api, coreApi, streamingApi, toMoment,
+import { Api, MediaRpcStreamOptions, streamingApi, toMoment,
     type ApiModule, type AudioFrameDto, type SessionTokenProvider } from 'api';
 import { ServerClock } from 'server-clock';
 import { WorkerConnectivityUI } from './worker-connectivity-ui';
@@ -151,8 +151,8 @@ export class AudioStream implements Disposable {
                     `(sourceStartedAtMs=${sourceStartedAtMs.toFixed(0)}, ` +
                     `debugOffsetMs=${AudioStreamer.debugOffsetMs})`);
 
-                // Plain AsyncIterable — matches .NET MauiRecorderEngine.SendAudio's IAsyncEnumerable
-                // pattern. Termination is driven by iterator.return() from RpcStreamSender.disconnect()
+                // Recording RPC stream: non-realtime, no compaction, explicit ACK cadence.
+                // Termination is driven by iterator.return() from RpcStreamSender.disconnect()
                 // (peer-change or final stop); the try/finally below ensures the pooled buffer is
                 // returned even if the generator is force-closed during a yield.
                 const stream = new RpcStream<AudioFrameDto>(
@@ -182,6 +182,7 @@ export class AudioStream implements Disposable {
                             }
                         }
                     })(),
+                    MediaRpcStreamOptions.audioRecording<AudioFrameDto>(),
                 );
 
                 void liveAudioStreams

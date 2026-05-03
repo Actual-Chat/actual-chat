@@ -138,7 +138,7 @@ public static partial class Constants
         // must not compact or skip speech frames.
         public const int RecordingRpcStreamAckPeriod = 5; // 100 ms
 
-        public const int VoiceStartPreRollSize = 10; // 200 ms
+        public const int VoicePreRollFrameLimit = 15; // 300 ms
 
         public static readonly TimeSpan PlaybackHardSkipThreshold =
             TimeSpan.FromSeconds(2);
@@ -199,7 +199,7 @@ encoder-sized frames.
 |---|---:|---:|
 | Per-stage handoff | `lossless handoff` | short queue, drain immediately |
 | Voice-start pre-roll | `drop oldest` | bounded recent history |
-| Pre-roll size | `VoiceStartPreRollSize` | 10 frames (200 ms) |
+| Pre-roll frame count | `VoicePreRollFrameLimit` | 5 frames (100 ms) |
 
 Most processors operate on a single sample block at a time and pass the
 result forward immediately. They do not queue.
