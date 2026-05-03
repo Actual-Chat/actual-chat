@@ -25,7 +25,7 @@ public sealed class LiveStreamMuxer : WorkerBase
     private IServiceProvider Services { get; }
     private ChatId ChatId { get; }
     private ILiveAudioBackend LiveBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
-    private IStreamServer StreamServer => field ??= Services.GetRequiredService<IStreamServer>();
+    private ILiveAudioStreams LiveAudioStreams => field ??= Services.GetRequiredService<ILiveAudioStreams>();
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private MomentClock SystemClock => Clocks.SystemClock;
     private ILogger Log => field ??= Services.LogFor<LiveStreamMuxer>();
@@ -136,8 +136,8 @@ public sealed class LiveStreamMuxer : WorkerBase
             // audio buffer; this only caps how much old audio we send.
             var lag = SystemClock.Now - streamInfo.BeginsAt;
             var skipTo = (lag - StaleAudioTrimWindow).Positive();
-            var rpcStream = await StreamServer
-                .GetAudio(streamId, skipTo, streamStopToken)
+            var rpcStream = await LiveAudioStreams
+                .GetStream(Session.Default, streamId, skipTo, streamStopToken)
                 .ConfigureAwait(false);
             if (rpcStream == null) {
                 Log.LogWarning("ProcessStream: Stream #{StreamId} not found", streamId);
