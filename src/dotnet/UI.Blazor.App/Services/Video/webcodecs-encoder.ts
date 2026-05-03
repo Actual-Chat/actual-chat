@@ -124,6 +124,9 @@ export class WebCodecsEncoder {
     private encoder: VideoEncoder;
     private frameCount = 0;
     private droppedFrames = 0;
+    // Latches when a dims-mismatch drop happens, clears on next accepted frame.
+    // Coalesces the per-frame warn into one log per reconfigure-race burst.
+    private inDimsMismatchBurst = false;
     private keyFrameCount = 0;
     private lastKeyFrame = 0;
     private lastKeyFrameTimeMs = 0;
@@ -220,12 +223,16 @@ export class WebCodecsEncoder {
         // boundary are invisible; a multi-second crop is not.
         if (frame.codedWidth !== this.config.width || frame.codedHeight !== this.config.height) {
             this.droppedFrames++;
-            warnLog?.log(
-                `Encoder dims mismatch: frame=${frame.codedWidth}x${frame.codedHeight}, `
-                + `config=${this.config.width}x${this.config.height} — dropping frame`);
+            if (!this.inDimsMismatchBurst) {
+                this.inDimsMismatchBurst = true;
+                warnLog?.log(
+                    `Encoder dims mismatch: frame=${frame.codedWidth}x${frame.codedHeight}, `
+                    + `config=${this.config.width}x${this.config.height} — dropping frame(s) until match`);
+            }
             frame.close();
             return;
         }
+        this.inDimsMismatchBurst = false;
 
         // Record start time and queue size for async timing measurement
         this.encodeStartTimes.push(performance.now());
@@ -252,7 +259,6 @@ export class WebCodecsEncoder {
         if (shouldBeKeyFrame) {
             this.lastKeyFrame = this.frameCount;
             this.lastKeyFrameTimeMs = nowMs;
-            infoLog?.log(`Keyframe #${this.keyFrameCount + 1} at frame ${this.frameCount}`);
         }
 
         try {
@@ -567,6 +573,7 @@ export class WebCodecsEncoder {
     reset(): void {
         this.frameCount = 0;
         this.droppedFrames = 0;
+        this.inDimsMismatchBurst = false;
         this.keyFrameCount = 0;
         this.lastKeyFrame = 0;
         this.lastKeyFrameTimeMs = 0;
