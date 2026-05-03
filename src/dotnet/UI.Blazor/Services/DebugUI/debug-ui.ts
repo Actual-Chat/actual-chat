@@ -119,9 +119,8 @@ export class DebugUI {
     }
 
     /** Debug-only: forces the audio recorder to add `offsetMs` ms to the
-     *  source-time stamp (`clientStartOffset` / `BeginsAt`) it sends with
-     *  every new PushStream. Lets us simulate audio drift for the catch-up
-     *  policy. Pass 0 to clear. */
+     *  source timestamp it sends with every new PushStream. Lets us simulate
+     *  audio drift for the catch-up policy. Pass 0 to clear. */
     public static setAudioRecorderOffset(offsetMs: number): void {
         infoLog?.log(`setAudioRecorderOffset: ${offsetMs}ms`);
         if (this._audioRecorderOffsetHandler === null) {

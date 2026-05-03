@@ -210,8 +210,8 @@ export class InternalVideoStream {
             const liveVideoStreams = this.ctx.rpcLiveVideoStreams!;
             const peer = Api.peer;
 
-            const clientStartOffset = this.sourceStartedAtMs / 1000;
-            infoLog?.log(`stream: clientStartOffset=${clientStartOffset.toFixed(3)}s ` +
+            const sourceStartOffsetSeconds = this.sourceStartedAtMs / 1000;
+            infoLog?.log(`stream: sourceStartOffset=${sourceStartOffsetSeconds.toFixed(3)}s ` +
                 `(sourceStartedAtMs=${this.sourceStartedAtMs.toFixed(0)})`);
 
             infoLog?.log(`stream: PushStream codec=${this.config.codec}, ` +
@@ -265,7 +265,7 @@ export class InternalVideoStream {
             // rejection is logged but shouldn't cancel the pump loop since the
             // sender owns the lifetime of the stream.
             void liveVideoStreams
-                .PushStream(RPC_SESSION_DEFAULT, this.ctx.chatId, clientStartOffset, format, stream.toRef(peer), this.ctx.streamKind)
+                .PushStream(RPC_SESSION_DEFAULT, this.ctx.chatId, sourceStartOffsetSeconds, format, stream.toRef(peer), this.ctx.streamKind)
                 .catch((err: unknown) => {
                     const msg = err instanceof Error ? err.message : String(err);
                     warnLog?.log('PushStream rejected:', err);

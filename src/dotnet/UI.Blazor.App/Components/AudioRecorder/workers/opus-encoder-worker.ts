@@ -29,12 +29,12 @@ const { logScope, debugLog, infoLog, warnLog, errorLog } = getLogs('OpusEncoderW
 interface TimestampedAudioFrame {
     frame: ArrayBuffer;
     timestamp: number;
-    capturedAtMs: number;
+    sourceCapturedAtMs: number;
 }
 
 interface TimestampedAudioSamples {
     buffer: ArrayBuffer;
-    capturedAtMs: number;
+    sourceCapturedAtMs: number;
 }
 
 /// #if MEM_LEAK_DETECTION
@@ -177,7 +177,8 @@ const serverImpl: OpusEncoderWorker = {
             return;
 
         debugLog?.log(`onEncoderWorkletSamples(${buffer.byteLength}):`, approximateGain(new Float32Array(buffer)));
-        queue.push({ buffer, capturedAtMs: capturedAtMs + ServerClock.offsetMs });
+        const sourceCapturedAtMs = capturedAtMs + ServerClock.offsetMs;
+        queue.push({ buffer, sourceCapturedAtMs });
         while (queue.length > AUDIO.encode.maxBufferedFrames) {
             const { buffer: samplesBuffer } = queue.shift()!;
             void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
@@ -248,16 +249,16 @@ function ensureAudioStream(): void {
 
 function onSystemEncoderChunk(output: EncodedAudioChunk, metadata: EncodedAudioChunkMetadata): void {
     const timestamp  = output.timestamp;
-    let capturedAtMs: number | undefined;
+    let sourceCapturedAtMs: number | undefined;
     while (encodedAudioFrames.length && encodedAudioFrames.peekFront()!.timestamp <= timestamp) {
         // release encoded buffers
-        const { frame, capturedAtMs: frameCapturedAtMs } = encodedAudioFrames.shift()!;
-        capturedAtMs = frameCapturedAtMs;
+        const { frame, sourceCapturedAtMs: frameSourceCapturedAtMs } = encodedAudioFrames.shift()!;
+        sourceCapturedAtMs = frameSourceCapturedAtMs;
         void encoderWorklet.releaseBuffer(frame, rpcNoWait);
     }
 
     ensureAudioStream();
-    audioStream?.addFrame(output, true, capturedAtMs);
+    audioStream?.addFrame(output, true, sourceCapturedAtMs);
 }
 
 async function startRecording(): Promise<void> {
@@ -339,7 +340,7 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
 
         // debugLog?.log(`processQueue:`, fade);
         while (!queue.isEmpty()) {
-            const { buffer: samplesBuffer, capturedAtMs } = queue.shift()!;
+            const { buffer: samplesBuffer, sourceCapturedAtMs } = queue.shift()!;
             let samples: Float32Array;
             if (samplesBuffer.byteLength === expectedWindowSizeBytes) {
                 samples = new Float32Array(samplesBuffer, 0, expectedWindowSizeSamples);
@@ -368,7 +369,7 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
                     data: samples,
                 });
                 systemEncoder.encode(audioChunk);
-                encodedAudioFrames.push({ frame: samplesBuffer, timestamp: timestamp, capturedAtMs });
+                encodedAudioFrames.push({ frame: samplesBuffer, timestamp: timestamp, sourceCapturedAtMs });
             }
             else if (encoder) {
                 // frameView is a typed_memory_view to Decoder internal buffer, so we have to copy it
@@ -376,7 +377,7 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
                 // @ts-expect-error TODO: fix error
                 const frameView = encoder.encode(new Uint8Array(samples.buffer, 0, samples.length * 4));
                 ensureAudioStream();
-                audioStream?.addFrame(frameView, false, capturedAtMs);
+                audioStream?.addFrame(frameView, false, sourceCapturedAtMs);
                 void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
             }
 

@@ -19,6 +19,10 @@ import { coreApi } from './core-api.js';
 // the caller recreates them.  Mirror of [RpcMethod] on the .NET interfaces.
 const StreamPushMode = RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect;
 
+// `clientStartOffset` is the legacy RPC argument name. New caller code should
+// treat it as sourceStartOffsetSeconds: the source start timestamp on the
+// server-synced clock, expressed as seconds since Moment.EpochStart.
+
 // --- ILiveVideoStreams (per-stream video push/pull + quality control) ---
 export const LiveVideoStreamsDef = defineRpcService('ILiveVideoStreams', {
     GetStream: { args: ['session', 'streamId', 'skipTo'], returns: RpcType.stream },
@@ -155,7 +159,7 @@ export interface LiveVideoStreamsClient {
     PushStream(
         session: string,
         chatId: string,
-        clientStartOffset: number,
+        sourceStartOffsetSeconds: number,
         format: VideoFormatDto,
         frameStreamRef: unknown,
         streamKind: number): Promise<void>;
@@ -177,7 +181,7 @@ export interface LiveAudioStreamsClient {
         session: string,
         chatId: string,
         repliedChatEntryId: string | null,
-        clientStartOffset: number,
+        sourceStartOffsetSeconds: number,
         preSkip: number,
         frameStreamRef: unknown): Promise<void>;
     ReportAudioLatency(session: string, latencyTicks: Moment): Promise<void>;
@@ -189,7 +193,7 @@ export interface StreamServerClient {
         session: string,
         chatId: string,
         repliedChatEntryId: string | null,
-        clientStartOffset: number,
+        sourceStartOffsetSeconds: number,
         preSkip: number,
         frameStreamRef: unknown): Promise<void>;
 }

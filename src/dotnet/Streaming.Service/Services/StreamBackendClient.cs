@@ -26,7 +26,7 @@ public sealed class StreamBackendClient : IStreamClient
 
     public Task PushAudio(
         Session session, string chatId, string? repliedChatEntryId,
-        double clientStartOffset, int preSkip,
+        double sourceStartOffsetSeconds, int preSkip,
         IAsyncEnumerable<AudioFrame> frameStream,
         CancellationToken cancellationToken)
     {
@@ -34,7 +34,7 @@ public sealed class StreamBackendClient : IStreamClient
         var chatIdTyped = ChatId.Parse(chatId);
         var repliedEntryIdTyped = ChatEntryId.ParseNullable(repliedChatEntryId);
         var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
-        var record = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedEntryIdTyped);
+        var record = new AudioRecord(streamId, session, chatIdTyped, sourceStartOffsetSeconds, repliedEntryIdTyped);
         var rpcStream = RpcStream.New(frameStream);
         return Backend.ProcessAudio(record, preSkip, rpcStream, cancellationToken);
     }
@@ -98,7 +98,7 @@ public sealed class StreamBackendClient : IStreamClient
 
     public Task PushVideo(
         Session session, string chatId,
-        double clientStartOffset,
+        double sourceStartOffsetSeconds,
         VideoFormat format,
         IAsyncEnumerable<VideoFrame> frameStream,
         StreamKind streamKind,
@@ -106,7 +106,7 @@ public sealed class StreamBackendClient : IStreamClient
     {
         var chatIdTyped = ChatId.Parse(chatId);
         var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
-        var record = new VideoRecord(streamId, session, chatIdTyped, clientStartOffset, format, streamKind);
+        var record = new VideoRecord(streamId, session, chatIdTyped, sourceStartOffsetSeconds, format, streamKind);
         var rpcStream = RpcStream.New(frameStream);
         return VideoBackend.PushVideo(record, rpcStream, cancellationToken);
     }

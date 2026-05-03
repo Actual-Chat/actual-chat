@@ -58,22 +58,25 @@ public partial class AudioStreamingBackend
 
         var session = record.Session;
         var chatId = record.ChatId;
-        // Use client's server-synced clock (same as video) for consistent A/V timing.
+        // Compatibility note: AudioRecord.ClientStartOffset is the legacy RPC/record
+        // name. The value itself is source time on the server-synced clock.
+        var sourceStartOffsetSeconds = record.ClientStartOffset;
+        // Use source's server-synced clock (same as video) for consistent A/V timing.
         // Avoids adding client→server transit time to the timestamp, which would put
         // audio recordedAtMs on a different clock base than video startedAtMs.
-        var sourceBeginsAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
+        var sourceBeginsAt = default(Moment) + TimeSpan.FromSeconds(sourceStartOffsetSeconds);
         var beginsAt = sourceBeginsAt;
         var serverNow = Clocks.ServerClock.Now;
         var clockDelta = serverNow - beginsAt;
         if (Math.Abs(clockDelta.TotalSeconds) > Constants.Audio.MaxBeginsAtDrift.TotalSeconds) {
             Log.LogWarning(
-                "ProcessAudio: client clock skew {ClockDeltaMs:F0}ms for chat {ChatId}, using server clock",
+                "ProcessAudio: source clock skew {ClockDeltaMs:F0}ms for chat {ChatId}, using server clock",
                 clockDelta.TotalMilliseconds, chatId);
             beginsAt = serverNow;
         }
         Log.LogInformation(
-            "ProcessAudio: chatId={ChatId}, clientStartOffset={ClientStartOffset:F3}s, delta={DeltaMs:F0}ms",
-            chatId, record.ClientStartOffset, clockDelta.TotalMilliseconds);
+            "ProcessAudio: chatId={ChatId}, sourceStartOffset={SourceStartOffset:F3}s, delta={DeltaMs:F0}ms",
+            chatId, sourceStartOffsetSeconds, clockDelta.TotalMilliseconds);
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         rules.Require(ChatPermissions.Write);
         rules.Require(ChatPermissions.WriteAudio);
@@ -90,7 +93,7 @@ public partial class AudioStreamingBackend
             .ConfigureAwait(false);
         var mustStreamVoice = chatVoiceMode.VoiceMode.HasVoice();
 
-        var recordedAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
+        var recordedAt = default(Moment) + TimeSpan.FromSeconds(sourceStartOffsetSeconds);
         using var audio = new AudioSource(
             new Moment(recordedAt),
             AudioSource.DefaultFormat with { PreSkip = preSkip },

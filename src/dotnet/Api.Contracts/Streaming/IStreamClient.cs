@@ -17,7 +17,7 @@ public interface IStreamClient
         Session session,
         string chatId,
         string? repliedChatEntryId,
-        double clientStartOffset,
+        double sourceStartOffsetSeconds,
         int preSkip,
         IAsyncEnumerable<AudioFrame> frameStream,
         CancellationToken cancellationToken);
@@ -25,7 +25,7 @@ public interface IStreamClient
     Task PushVideo(
         Session session,
         string chatId,
-        double clientStartOffset,
+        double sourceStartOffsetSeconds,
         VideoFormat format,
         IAsyncEnumerable<VideoFrame> frameStream,
         StreamKind streamKind,

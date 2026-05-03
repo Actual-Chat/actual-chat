@@ -24,6 +24,7 @@ public interface IStreamServer : IRpcService
     //   itself resumes via $sys.Ack with MustReset=true.
     // - No AllowResend: on reconnect to a different peer, the call + stream are failed;
     //   the caller is expected to start a fresh PushAudio with a new stream.
+    // `clientStartOffset` is the legacy RPC name; the value is sourceStartOffsetSeconds on the server-synced clock.
     [RpcMethod(RemoteExecutionMode = RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect)]
     Task PushAudio(
         Session session,
