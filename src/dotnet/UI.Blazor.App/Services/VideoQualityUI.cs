@@ -15,6 +15,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
 {
     private const int ColdStartTicks = 2; // ~2 s of grace at 1 Hz
     private static readonly TimeSpan PlaybackHealthTtl = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan PlaybackQualityKeepAlivePeriod = TimeSpan.FromMinutes(1);
     private static readonly string JSGetDebugSettingsMethod = $"{BlazorUIAppModule.ImportName}.getVideoDebugSettings";
 
     private readonly Dictionary<StreamKind, RecordingAggregator> _recordingByKind = new() {
@@ -303,6 +304,12 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         await LoadDebugSettings(cancellationToken).ConfigureAwait(false);
+        _ = BackgroundTask.Run(
+            () => RunPlaybackQualityKeepAlive(cancellationToken),
+            Log,
+            "Video playback quality keep-alive failed",
+            cancellationToken);
+
         // Watch ConnectivityUI transitions to apply cold-start grace on
         // false→true edges (signal windows wiped on reconnect).
         var cState = ConnectivityUI.IsConnected.Computed;
@@ -319,6 +326,21 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
 
     // Private methods
 
+    private async Task RunPlaybackQualityKeepAlive(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested) {
+            await Task.Delay(PlaybackQualityKeepAlivePeriod, cancellationToken).ConfigureAwait(false);
+            var entries = GetFreshPlaybackEntries();
+            if (entries.Count == 0)
+                continue;
+
+            if (_playbackOverride == PlaybackOverrideMode.Off)
+                await RecomputePlaybackQuality(PlaybackQualityReason.Stable, cancellationToken).ConfigureAwait(false);
+            else
+                await PushPlaybackOverride(ToStreamHints(entries), cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     private async Task LoadDebugSettings(CancellationToken cancellationToken)
     {
         try {
@@ -334,6 +356,12 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             Log.LogDebug(e, "LoadDebugSettings failed");
         }
     }
+
+    private static IReadOnlyList<PlaybackOverrideStreamHint> ToStreamHints(
+        IReadOnlyList<KeyValuePair<StreamId, PlaybackHealthState>> entries)
+        => entries
+            .Select(x => new PlaybackOverrideStreamHint(x.Key.Value, x.Value.Snapshot.CurrentMaxSpatial))
+            .ToArray();
 
     private async Task ApplyRecordingQuality(
         StreamKind kind,

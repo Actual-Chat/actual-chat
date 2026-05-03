@@ -1,20 +1,44 @@
 using ActualChat.Video;
 using ActualLab.Rpc;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Streaming.Services;
 
-public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
+public class LiveVideoStreams : ILiveVideoStreams
 {
     private static bool DebugMode => Constants.DebugMode.LiveStreaming;
+    private static readonly TimeSpan ReceiveQualityRetention = TimeSpan.FromMinutes(3);
+    private static readonly TimeSpan ReceiveQualityCleanupPeriod = TimeSpan.FromMinutes(5);
 
-    private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
-    private ILiveVideoBackend Backend { get; } = services.GetRequiredService<ILiveVideoBackend>();
-    private IVideoStreamingBackend VideoStreamingBackend { get; } = services.GetRequiredService<IVideoStreamingBackend>();
-    private IChats Chats { get; } = services.GetRequiredService<IChats>();
-    private ILogger Log => field ??= services.LogFor(GetType());
+    private IServiceProvider Services { get; }
+    private MeshWatcher MeshWatcher { get; }
+    private IHostApplicationLifetime HostLifetime { get; }
+    private ILiveVideoBackend Backend { get; }
+    private IVideoStreamingBackend VideoStreamingBackend { get; }
+    private IChats Chats { get; }
+    private MomentClock SystemClock { get; }
+    private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
 
-    private readonly ConcurrentDictionary<Session, ApiMap<string, ReceiveQuality>> _qualityBySession = new();
+    private readonly ConcurrentDictionary<Session, ReceiveQualityState> _qualityBySession = new();
+    // ReSharper disable once NotAccessedField.Local
+    private readonly Task _qualityBySessionCleanupTask;
+
+    public LiveVideoStreams(IServiceProvider services)
+    {
+        Services = services;
+        Log = Services.LogFor(GetType());
+        MeshWatcher = services.MeshWatcher();
+        HostLifetime = services.HostLifetime();
+        Backend = services.GetRequiredService<ILiveVideoBackend>();
+        VideoStreamingBackend = services.GetRequiredService<IVideoStreamingBackend>();
+        Chats = services.GetRequiredService<IChats>();
+        SystemClock = Services.Clocks().SystemClock;
+
+        _qualityBySessionCleanupTask = BackgroundTask.Run(
+            () => RunQualityCleanup(HostLifetime.ApplicationStopping),
+            Log, "LiveVideoStreams quality cleanup failed", HostLifetime.ApplicationStopping);
+    }
 
     // [ComputeMethod]
     public virtual async Task<ApiArray<VideoStreamInfo>> List(
@@ -168,12 +192,12 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         }
 
         qualityByStream = ApplyStreamCountCap(qualityByStream, info);
-        _qualityBySession.TryGetValue(session, out var prevQualityByStreamId);
-        _qualityBySession[session] = qualityByStream;
+        _qualityBySession.TryGetValue(session, out var prevState);
+        _qualityBySession[session] = new ReceiveQualityState(qualityByStream, SystemClock.Now);
         DebugLog?.LogDebug("ChangePlaybackQuality: session={Session}, streams={Count}, info={Info}",
             session, qualityByStream.Count, info);
 
-        var keyFrameRequests = GetLoweredStreams(prevQualityByStreamId, qualityByStream)
+        var keyFrameRequests = GetLoweredStreams(prevState?.QualityByStream, qualityByStream)
             .Select(x => VideoStreamingBackend.RequestKeyFrame(StreamId.Parse(x), cancellationToken))
             .ToArray();
         if (keyFrameRequests.Length != 0)
@@ -182,9 +206,25 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
 
     // Private methods
 
+    private async Task RunQualityCleanup(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested) {
+            await Task.Delay(ReceiveQualityCleanupPeriod, cancellationToken).ConfigureAwait(false);
+            CleanupQualityBySession();
+        }
+        return;
+
+        void CleanupQualityBySession() {
+            var threshold = SystemClock.Now - ReceiveQualityRetention;
+            foreach (var kv in _qualityBySession)
+                if (kv.Value.UpdatedAt < threshold)
+                    _qualityBySession.TryRemove(kv);
+        }
+    }
+
     private ReceiveQuality GetReceiveQuality(Session session, string streamId)
-        => _qualityBySession.TryGetValue(session, out var streamMap)
-            ? streamMap.TryGetValue(streamId, out var quality)
+        => _qualityBySession.TryGetValue(session, out var state)
+            ? state.QualityByStream.TryGetValue(streamId, out var quality)
                 ? quality
                 : ReceiveQuality.Lowest
             : ReceiveQuality.Default;
@@ -232,4 +272,10 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
             return streamInfo.Priority == PlaybackStreamPriority.Primary ? 1 : 0;
         }
     }
+
+    // Nested types
+
+    private sealed record ReceiveQualityState(
+        ApiMap<string, ReceiveQuality> QualityByStream,
+        Moment UpdatedAt);
 }
