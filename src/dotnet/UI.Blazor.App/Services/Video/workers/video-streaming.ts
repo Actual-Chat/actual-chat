@@ -10,7 +10,7 @@ import { EventHandlerSet } from 'event-handling';
 import { getLogs } from 'logging';
 import { RpcStream, type RpcStreamSender } from 'actuallab-rpc';
 import { Api, streamingApi, toMoment,
-    type LiveVideoStreamsClient, type SessionTokenProvider, type VideoFormatDto, type VideoFrameDto } from 'api';
+    type LiveVideoStreamsClient, type SessionTokenProvider, type Size2D, type VideoFormat, type VideoFrameDto } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 import { VIDEO } from 'app-constants';
 
@@ -24,8 +24,7 @@ export interface VideoStreamFrame {
     offset: number;
     duration: number;
     isKeyFrame: boolean;
-    width: number;
-    height: number;
+    size: Size2D;
     data: Uint8Array;
     description?: Uint8Array;
     codec?: string;
@@ -36,16 +35,14 @@ export interface VideoStreamFrame {
     // Producer's current pyramid top — id + dims of the highest-res spatial
     // layer currently encoded. Lets the receiver size canvas/decoder for the
     // best layer it might ever get without having to observe a top-tier
-    // keyframe first. P2P/single-encoder streams emit 0/0/0.
+    // keyframe first. P2P/single-encoder streams emit 0 / { 0, 0 }.
     minSpatialLayerId?: number;
     maxSpatialLayerId?: number;
-    maxSpatialLayerWidth?: number;
-    maxSpatialLayerHeight?: number;
+    maxSpatialLayerSize?: Size2D;
     // Native source dimensions, populated on keyframes only. Sent to server so
     // it can track source-resolution growth (window resize, camera swap) and
     // unlock higher quality presets mid-stream without a full stream restart.
-    sourceWidth?: number;
-    sourceHeight?: number;
+    sourceSize?: Size2D;
 }
 
 export function microsecondsToTicks(microseconds: number): number {
@@ -85,11 +82,11 @@ function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
         IsKeyFrame: frame.isKeyFrame,
     };
     if (frame.isKeyFrame) {
-        dto.Width = frame.width;
-        dto.Height = frame.height;
-        if (frame.sourceWidth && frame.sourceHeight) {
-            dto.SourceWidth = frame.sourceWidth;
-            dto.SourceHeight = frame.sourceHeight;
+        dto.Width = frame.size.Width;
+        dto.Height = frame.size.Height;
+        if (frame.sourceSize?.Width && frame.sourceSize.Height) {
+            dto.SourceWidth = frame.sourceSize.Width;
+            dto.SourceHeight = frame.sourceSize.Height;
         }
     }
     if (frame.description) dto.Description = frame.description;
@@ -162,15 +159,12 @@ export class InternalVideoStream {
     constructor(
         private readonly config: {
             codec: string;
-            width: number;
-            height: number;
-            sourceWidth: number;
-            sourceHeight: number;
+            size: Size2D;
+            sourceSize: Size2D;
             codecSettings: string;
             spatialLayerId?: number;
             maxSpatialLayerId?: number;
-            maxSpatialLayerWidth?: number;
-            maxSpatialLayerHeight?: number;
+            maxSpatialLayerSize?: Size2D;
         },
         private readonly ctx: StreamingContext,
         private readonly sourceStartedAtMs: number,
@@ -221,16 +215,16 @@ export class InternalVideoStream {
                 `(sourceStartedAtMs=${this.sourceStartedAtMs.toFixed(0)})`);
 
             infoLog?.log(`stream: PushStream codec=${this.config.codec}, ` +
-                `${this.config.width}x${this.config.height} ` +
-                `(source ${this.config.sourceWidth}x${this.config.sourceHeight}), ` +
+                `${this.config.size.Width}x${this.config.size.Height} ` +
+                `(source ${this.config.sourceSize.Width}x${this.config.sourceSize.Height}), ` +
                 `settings=${this.config.codecSettings.length} chars`);
 
-            const format: VideoFormatDto = {
+            const format: VideoFormat = {
                 Codec: this.config.codec,
                 CodecSettings: this.config.codecSettings,
                 SpatialLayerId: this.config.spatialLayerId ?? 0,
-                Size: { Width: this.config.width, Height: this.config.height },
-                SourceSize: { Width: this.config.sourceWidth, Height: this.config.sourceHeight },
+                Size: this.config.size,
+                SourceSize: this.config.sourceSize,
             };
 
             // Real-time video stream: isRealTime=true, allowReconnect=true, ackPeriod=5, bufferSize=31.

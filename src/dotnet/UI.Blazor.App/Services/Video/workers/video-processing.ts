@@ -1090,17 +1090,17 @@ function deliverChunkToStream(
         offset: microsecondsToTicks(Math.round(timestamp)),
         duration: microsecondsToTicks(Math.round(duration)),
         isKeyFrame,
-        width: frameWidth, height: frameHeight,
+        size: { Width: frameWidth, Height: frameHeight },
         data: chunkData, codec: isKeyFrame ? codec : undefined,
         temporalLayerId: temporalLayerId,
         spatialLayerId: spatialLayerId,
         maxSpatialLayerId: topLayer.id,
-        maxSpatialLayerWidth: topLayer.width,
-        maxSpatialLayerHeight: topLayer.height,
+        maxSpatialLayerSize: { Width: topLayer.width, Height: topLayer.height },
         // Source dims piggybacked on keyframes only — server uses them to
         // recompute its max-quality ceiling when the window is resized mid-stream.
-        sourceWidth: isKeyFrame ? sourceWidth : undefined,
-        sourceHeight: isKeyFrame ? sourceHeight : undefined,
+        sourceSize: isKeyFrame && sourceWidth && sourceHeight
+            ? { Width: sourceWidth, Height: sourceHeight }
+            : undefined,
     };
 
     if (isKeyFrame) {
@@ -1147,13 +1147,13 @@ function deliverChunkToStream(
             videoStream = new InternalVideoStream(
                 {
                     codec: encoderConfig!.codec,
-                    width: encoderConfig!.width,
-                    height: encoderConfig!.height,
-                    sourceWidth: sourceWidth || encoderConfig!.width,
-                    sourceHeight: sourceHeight || encoderConfig!.height,
+                    size: { Width: encoderConfig!.width, Height: encoderConfig!.height },
+                    sourceSize: {
+                        Width: sourceWidth || encoderConfig!.width,
+                        Height: sourceHeight || encoderConfig!.height,
+                    },
                     maxSpatialLayerId: topLayer.id,
-                    maxSpatialLayerWidth: topLayer.width,
-                    maxSpatialLayerHeight: topLayer.height,
+                    maxSpatialLayerSize: { Width: topLayer.width, Height: topLayer.height },
                     codecSettings: settings,
                 },
                 streamCtx,

@@ -8,7 +8,7 @@ public class MediaProcessorTest
     public async Task ProcessUpload_MatchingProcessor_DelegatesToIt()
     {
         var input = CreateUploadedFile("video.mp4", "video/mp4");
-        var expectedResult = new ProcessedFile(input, new Size(100, 100));
+        var expectedResult = new ProcessedFile(input, new Size2D(100, 100));
 
         var processor = new Mock<IUploadProcessor>(MockBehavior.Strict);
         processor.Setup(p => p.Supports("video/mp4", It.IsAny<MediaKind>())).Returns(true);
@@ -43,7 +43,7 @@ public class MediaProcessorTest
     public async Task ProcessUpload_FirstMatchWins()
     {
         var input = CreateUploadedFile("video.mp4", "video/mp4");
-        var expectedResult = new ProcessedFile(input, new Size(200, 200));
+        var expectedResult = new ProcessedFile(input, new Size2D(200, 200));
 
         var first = CreateProcessor();
         first.Setup(p => p.Supports("video/mp4", It.IsAny<MediaKind>())).Returns(true);
@@ -68,7 +68,7 @@ public class MediaProcessorTest
         var processor = CreateProcessor();
         processor.Setup(p => p.Supports("video/mp4", It.IsAny<MediaKind>())).Returns(true);
         processor.Setup(p => p.Process(input, It.IsAny<IProgress<double>?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ProcessedFile(input, new Size(100, 100)));
+            .ReturnsAsync(new ProcessedFile(input, new Size2D(100, 100)));
 
         var progress = CreateProgress();
         var mediaProcessor = CreateMediaProcessor(processor.Object);

@@ -7,8 +7,9 @@
 //     const offset = await uploadsApi.uploads.GetOffset('~', uploadId);
 //     await uploadsApi.uploads.OnAppend({ Session: '~', UploadId, Offset, Chunk });
 //
-// Naming: every wire DTO interface in this file ends in `Dto` (see api.ts
-// for the rationale). New DTOs MUST follow the same convention.
+// Naming: wire types use the bare C# record name; the `Dto` suffix is added
+// only for disambiguation against browser globals or in-scope name clashes.
+// See api.ts for the rationale.
 
 import { defineRpcService, type RpcHub } from 'actuallab-rpc';
 import { Api, type ApiModule } from './api.js';
@@ -30,7 +31,7 @@ export const UploadsDef = defineRpcService('IUploads', {
 
 /** Matches .NET Uploads_Append: AppMessagePackKeylessResolver serializes
  *  members by name (PascalCase) regardless of [Key(N)]. */
-export interface UploadsAppendCommandDto {
+export interface UploadsAppendCommand {
     Session: string;
     UploadId: string;
     Offset: Int64;
@@ -40,7 +41,7 @@ export interface UploadsAppendCommandDto {
 /** Typed proxy for IUploads client calls. */
 export interface UploadsClient {
     GetOffset(session: string, uploadId: string): Promise<Int64>;
-    OnAppend(command: UploadsAppendCommandDto): Promise<Int64>;
+    OnAppend(command: UploadsAppendCommand): Promise<Int64>;
 }
 
 /** Uploads module — pass `uploadsApi` to `Api.init` to enable the typed client.

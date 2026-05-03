@@ -11,5 +11,5 @@ namespace ActualChat.UI.Blazor.App.Module;
     GenerationMode = JsonSourceGenerationMode.Default)]
 // JS interop return types
 [JsonSerializable(typeof(AudioRecorder.AudioDiagnosticsState))]
-[JsonSerializable(typeof(Size))]
+[JsonSerializable(typeof(Size2D))]
 public partial class BlazorUIAppJsonContext : JsonSerializerContext;

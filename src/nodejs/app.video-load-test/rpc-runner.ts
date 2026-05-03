@@ -24,8 +24,8 @@ import {
     type LiveVideoStreamsClient,
     type StreamServerClient,
     type VideoFrameDto,
-    type VideoFormatDto,
-    type VideoStreamInfoDto,
+    type VideoFormat,
+    type VideoStreamInfo,
 } from './service-defs.js';
 
 const RPC_SERIALIZATION_FORMAT = 'msgpack6';
@@ -75,7 +75,7 @@ export async function runRpcProducer(
 ): Promise<void> {
     try {
         const { streamServer } = bundle;
-        const format: VideoFormatDto = {
+        const format: VideoFormat = {
             Codec: FrameConfig.Codec,
             CodecSettings: '',
             SpatialLayerId: 0,
@@ -177,7 +177,7 @@ export async function discoverStreams(
                 try {
                     const streams = await client.List('~', chatIds[ci]);
                     if (Array.isArray(streams) && streams.length >= expected) {
-                        result[ci] = streams.map((s: VideoStreamInfoDto) => s.StreamId);
+                        result[ci] = streams.map((s: VideoStreamInfo) => s.StreamId);
                         pending.delete(ci);
                     }
                     consecErrors = 0;

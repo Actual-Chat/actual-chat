@@ -3,7 +3,7 @@ namespace ActualChat.Media;
 [StructLayout(LayoutKind.Auto)]
 [DataContract, MemoryPackable, MessagePackObject]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, SerializationConstructor]
-public readonly partial record struct Size(
+public readonly partial record struct Size2D(
     [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] int Width,
     [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] int Height)
 {
@@ -16,5 +16,5 @@ public readonly partial record struct Size(
 
     // Conversion
 
-    public static implicit operator Size((int Width, int Height) tuple) => new(tuple.Width, tuple.Height);
+    public static implicit operator Size2D((int Width, int Height) tuple) => new(tuple.Width, tuple.Height);
 }

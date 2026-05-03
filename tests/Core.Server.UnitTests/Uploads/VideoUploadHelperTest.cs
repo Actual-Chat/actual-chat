@@ -16,7 +16,7 @@ public class VideoUploadHelperTest
     {
         var video = new VideoStream { Rotation = rotation, Width = width, Height = height };
         var result = UploadProcessorHelper.GetEffectiveSize(video);
-        result.Should().Be(new Size(expectedW, expectedH));
+        result.Should().Be(new Size2D(expectedW, expectedH));
     }
 
     [Theory]

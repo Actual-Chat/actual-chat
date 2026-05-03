@@ -70,7 +70,7 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
     }
 
     public Task<MediaRef> Save(
-        MediaId mediaId, UploadedFile file, Size? size, MediaKind kind,
+        MediaId mediaId, UploadedFile file, Size2D? size, MediaKind kind,
         CancellationToken cancellationToken)
         => Save(mediaId, new ProcessedFile(file, size, null), false, kind, cancellationToken);
 
@@ -91,7 +91,7 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
         MediaId mediaId,
         string blobId,
         UploadedFile file,
-        Size? size,
+        Size2D? size,
         MediaId? thumbnailMediaId,
         bool isUpdate,
         MediaKind kind,

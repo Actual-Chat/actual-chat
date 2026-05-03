@@ -67,31 +67,31 @@ export interface VideoFrameDto {
     TemporalLayerId?: number;
 }
 
-export interface SizeDto {
+export interface Size2D {
     Width: number;
     Height: number;
 }
 
-export interface VideoFormatDto {
+export interface VideoFormat {
     Codec: string;
     CodecSettings: string;
     SpatialLayerId: number;
-    Size: SizeDto;
-    SourceSize: SizeDto;
+    Size: Size2D;
+    SourceSize: Size2D;
 }
 
-export interface VideoStreamInfoDto {
+export interface VideoStreamInfo {
     StreamId: string;
     ChatId: string;
     AuthorId: string;
-    Formats: VideoFormatDto[];
+    Formats: VideoFormat[];
     StartedAt: unknown;
     StreamKind?: number;
 }
 
 export interface LiveVideoStreamsClient {
     GetStream(session: string, streamId: string, skipToTicks: Int64): Promise<AsyncIterable<VideoFrameDto>>;
-    List(session: string, chatId: string): Promise<VideoStreamInfoDto[]>;
+    List(session: string, chatId: string): Promise<VideoStreamInfo[]>;
 }
 
 // --- IStreamServer (push) ---
@@ -109,7 +109,7 @@ export interface StreamServerClient {
         session: string,
         chatId: string,
         clientStartOffset: number,
-        format: VideoFormatDto,
+        format: VideoFormat,
         frameStreamRef: unknown,
         streamKind: number,
     ): Promise<void>;

@@ -5,6 +5,6 @@ namespace ActualChat.Uploads;
 /// </summary>
 public interface IMediaSaver
 {
-    Task<MediaRef> Save(MediaId mediaId, UploadedFile file, Size? size, MediaKind kind, CancellationToken cancellationToken);
+    Task<MediaRef> Save(MediaId mediaId, UploadedFile file, Size2D? size, MediaKind kind, CancellationToken cancellationToken);
     Task<MediaRef> Save(MediaId mediaId, ProcessedFile file, bool isUpdate, MediaKind kind, CancellationToken cancellationToken);
 }

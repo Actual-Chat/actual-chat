@@ -21,13 +21,13 @@ public class FilePreviews(IJSRuntime js, ILogger<FilePreviews> log)
         return preview with { Dimensions = size };
     }
 
-    private async Task<Size?> GetSize(string previewUrl, string fileType)
+    private async Task<Size2D?> GetSize(string previewUrl, string fileType)
     {
         if (!MediaTypeExt.IsVisualMedia(fileType))
             return null;
 
         try {
-            return await js.InvokeAsync<Size>(JSGetDimensions, previewUrl, fileType).ConfigureAwait(false);
+            return await js.InvokeAsync<Size2D>(JSGetDimensions, previewUrl, fileType).ConfigureAwait(false);
         }
         catch (Exception e) {
             log.LogWarning(e, "Failed to get visual media dimensions: '{PreviewUrl}', '{FileType}'", previewUrl, fileType);

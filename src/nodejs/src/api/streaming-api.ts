@@ -7,8 +7,9 @@
 //     Api.init('Example', { url, modules: [streamingApi] });
 //     await streamingApi.liveVideoStreams.PushStream(...);
 //
-// Naming: every wire DTO interface in this file ends in `Dto` (see api.ts
-// for the rationale). New DTOs MUST follow the same convention.
+// Naming: wire types use the bare C# record name; the `Dto` suffix appears
+// only on `VideoFrameDto` / `AudioFrameDto` to disambiguate from the
+// browser's WebCodecs `VideoFrame`. See api.ts for the full rationale.
 
 import { defineRpcService, RpcRemoteExecutionMode, RpcType, type RpcHub } from 'actuallab-rpc';
 import { Api, type ApiModule } from './api.js';
@@ -82,24 +83,6 @@ export interface VideoFrameDto {
     SourceHeight?: number;
 }
 
-// --- Size TypeScript interface ---
-// Matches .NET ActualChat.Media.Size serialized via MessagePack with implicit
-// string keys (it has [MessagePackObject] without [Key] attrs on properties).
-export interface SizeDto {
-    Width: number;
-    Height: number;
-}
-
-// --- VideoFormat TypeScript interface ---
-// Matches .NET VideoFormat serialized via MessagePack with implicit string keys.
-export interface VideoFormatDto {
-    Codec: string;
-    CodecSettings: string;
-    SpatialLayerId: number;
-    Size: SizeDto;
-    SourceSize: SizeDto;
-}
-
 // --- AudioFrame TypeScript interface ---
 // Matches .NET AudioFrame serialized via MessagePack with implicit string keys.
 export interface AudioFrameDto {
@@ -109,22 +92,40 @@ export interface AudioFrameDto {
     IsKeyFrame: boolean;
 }
 
+// --- VideoFormat TypeScript interface ---
+// Matches .NET VideoFormat serialized via MessagePack with implicit string keys.
+export interface VideoFormat {
+    Codec: string;
+    CodecSettings: string;
+    SpatialLayerId: number;
+    Size: Size2D;
+    SourceSize: Size2D;
+}
+
+// --- Size TypeScript interface ---
+// Matches .NET ActualChat.Media.Size serialized via MessagePack with implicit
+// string keys (it has [MessagePackObject] without [Key] attrs on properties).
+export interface Size2D {
+    Width: number;
+    Height: number;
+}
+
 // --- ReceiveQuality / RecordingQuality / PlaybackQuality DTOs ---
 // Match the new .NET quality control records under
 // ActualChat.Streaming (Api.Contracts/Streaming/Quality/*.cs) — all use
 // MessagePack with explicit numeric Key(N), so wire keys are integers.
 
-export interface ReceiveQualityDto {
+export interface ReceiveQuality {
     0: number;  // MaxSpatialLayer
     1: number;  // MaxTemporalLayer
 }
 
-export interface RecordingQualityStateDto {
+export interface RecordingQualityState {
     0: number;  // TargetLayerCount
     1: number;  // EffectiveLayerCount
 }
 
-export interface RecorderHealthSnapshotDto {
+export interface RecorderHealthSnapshot {
     0: number;   // EncodeRatioP50
     1: number;   // EncodeRatioP90
     2: number;   // SlotReplacementRate
@@ -134,12 +135,12 @@ export interface RecorderHealthSnapshotDto {
     6: boolean;  // IsConnected
 }
 
-export interface RecordingQualityInfoDto {
+export interface RecordingQualityInfo {
     0: number;                       // RecordingQualityReason (enum ordinal)
-    1: RecorderHealthSnapshotDto;    // Health
+    1: RecorderHealthSnapshot;    // Health
 }
 
-export interface PlaybackStreamInfoDto {
+export interface PlaybackStreamInfo {
     0: number;   // IncomingByteRate
     1: number;   // BufferDurationMsP50
     2: number;   // KeyframeSkipsInWindow
@@ -150,12 +151,12 @@ export interface PlaybackStreamInfoDto {
     7: number;   // Verdict (-1, 0, +1)
 }
 
-export interface PlaybackQualityInfoDto {
+export interface PlaybackQualityInfo {
     0: number;                                  // EstimatedCapacityBytesPerSec
     1: number;                                  // AggregateHealth
     2: number;                                  // PlaybackQualityReason (enum ordinal)
     3: boolean;                                 // IsColdStart
-    4: Map<string, PlaybackStreamInfoDto>;      // Streams (ApiMap → MessagePack Map)
+    4: Map<string, PlaybackStreamInfo>;      // Streams (ApiMap → MessagePack Map)
 }
 
 // --- Typed client interfaces ---
@@ -166,18 +167,18 @@ export interface LiveVideoStreamsClient {
         session: string,
         chatId: string,
         clientStartOffset: number,
-        format: VideoFormatDto,
+        format: VideoFormat,
         frameStreamRef: unknown,
         streamKind: number): Promise<void>;
     RequestKeyFrame(session: string, streamId: string): Promise<void>;
     ChangeRecordingQuality(
         session: string,
-        state: RecordingQualityStateDto | null,
-        info: RecordingQualityInfoDto | null): Promise<void>;
+        state: RecordingQualityState | null,
+        info: RecordingQualityInfo | null): Promise<void>;
     ChangePlaybackQuality(
         session: string,
-        requestedQuality: Map<string, ReceiveQualityDto> | null,
-        info: PlaybackQualityInfoDto | null): Promise<void>;
+        requestedQuality: Map<string, ReceiveQuality> | null,
+        info: PlaybackQualityInfo | null): Promise<void>;
 }
 
 export interface LiveAudioStreamsClient {

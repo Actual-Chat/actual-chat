@@ -40,7 +40,7 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
             streamId,
             chatId,
             bobAuthor!.Id,
-            new[] { new VideoFormat { Codec = "avc1", Size = new Size(640, 480) } },
+            new[] { new VideoFormat { Codec = "avc1", Size = new Size2D(640, 480) } },
             Clocks.SystemClock.Now);
 
         await backend.Register(chatId, streamInfo, CancellationToken.None);
@@ -83,7 +83,7 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
             streamId,
             chatId,
             bobAuthor!.Id,
-            new[] { new VideoFormat { Codec = "avc1", Size = new Size(640, 480) } },
+            new[] { new VideoFormat { Codec = "avc1", Size = new Size2D(640, 480) } },
             Clocks.SystemClock.Now);
 
         await backend.Register(chatId, streamInfo, CancellationToken.None);
@@ -145,7 +145,7 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
             streamId,
             chatId,
             bobAuthor!.Id,
-            new[] { new VideoFormat { Codec = "avc1", Size = new Size(640, 480) } },
+            new[] { new VideoFormat { Codec = "avc1", Size = new Size2D(640, 480) } },
             Clocks.SystemClock.Now);
         await backend.Register(chatId, streamInfo, CancellationToken.None);
 

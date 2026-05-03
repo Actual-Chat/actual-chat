@@ -91,7 +91,7 @@ public class IconSvgToPngMigrationFlowStressTest(AppHostFixture fixture, ITestOu
         // Kind is Unknown (the default 0 in the DB) to mimic the legacy
         // production rows the migration is built for: old media records
         // were written before MediaKind existed and have Kind = Unknown.
-        await MediaSaver.Save(mediaId, file, new Size(100, 100), MediaKind.Unknown, CancellationToken.None);
+        await MediaSaver.Save(mediaId, file, new Size2D(100, 100), MediaKind.Unknown, CancellationToken.None);
         return mediaId;
     }
 
