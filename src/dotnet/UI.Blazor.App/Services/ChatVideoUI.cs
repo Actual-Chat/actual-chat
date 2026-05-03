@@ -238,9 +238,12 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     // JS callback handlers (called from VideoPanel)
 
     public void OnRecordingStarted(ChatId chatId, StreamKind kind)
+    {
         // Clear any previous error (e.g. the user cycled past a failing camera
         // and landed on a working one) so VideoStreamingPreview drops the overlay.
-        => _errorMessage.Value = null;
+        _errorMessage.Value = null;
+        Hub.AnalyticEvents.RaiseVideoStreamStarted(kind);
+    }
 
     public void OnRecordingStopped(StreamKind kind)
     {

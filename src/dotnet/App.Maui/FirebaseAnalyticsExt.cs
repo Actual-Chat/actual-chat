@@ -46,6 +46,7 @@ public static class FirebaseAnalyticsExt
             analyticEvents.MessagedPosted += OnMessagePosted;
             analyticEvents.RecordingStarted += OnRecordingStarted;
             analyticEvents.RecordingCompleted += OnRecordingCompleted;
+            analyticEvents.VideoStreamStarted += OnVideoStreamStarted;
         }
 
         private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -88,6 +89,13 @@ public static class FirebaseAnalyticsExt
             var parameters = CreateBaseParameters();
             parameters.Add("duration_ms", e.DurationInMs);
             LogEvent("recording_completed", parameters);
+        }
+
+        private void OnVideoStreamStarted(object? sender, AnalyticEvents.VideoStreamStartedEventArgs e)
+        {
+            var parameters = CreateBaseParameters();
+            parameters.Add("stream_kind", e.StreamKind.ToString());
+            LogEvent("video_stream_started", parameters);
         }
 
         private void LogEvent(string eventName, IDictionary<string, object> parameters)
