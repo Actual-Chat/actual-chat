@@ -67,23 +67,24 @@ export interface VideoFrameDto {
     TemporalLayerId?: number;
 }
 
-export interface VideoFormatDto {
-    Codec: string;
+export interface SizeDto {
     Width: number;
     Height: number;
+}
+
+export interface VideoFormatDto {
+    Codec: string;
     CodecSettings: string;
-    SourceWidth: number;
-    SourceHeight: number;
-    MaxSpatialLayerId: number;
-    MaxSpatialLayerWidth: number;
-    MaxSpatialLayerHeight: number;
+    SpatialLayerId: number;
+    Size: SizeDto;
+    SourceSize: SizeDto;
 }
 
 export interface VideoStreamInfoDto {
     StreamId: string;
     ChatId: string;
     AuthorId: string;
-    Format: VideoFormatDto;
+    Formats: VideoFormatDto[];
     StartedAt: unknown;
     StreamKind?: number;
 }

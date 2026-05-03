@@ -5,6 +5,9 @@
 // Usage:
 //     Api.init('Example', { url, modules: [coreApi] });
 //     const info = await coreApi.systemProperties.GetServerApiInfo('');
+//
+// Naming: every wire DTO interface in this file ends in `Dto` (see api.ts
+// for the rationale). New DTOs MUST follow the same convention.
 
 import { defineRpcService, type RpcHub } from 'actuallab-rpc';
 import { Api, type ApiModule } from './api.js';

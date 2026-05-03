@@ -152,12 +152,15 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             Log.LogInformation("TIMING_ANCHOR: StreamId={StreamId}, ClockDelta={ClockDeltaMs:F0}ms (OK)",
                 record.StreamId, clockDelta.TotalMilliseconds);
 
-        // Register stream for real-time signaling
+        // Register stream for real-time signaling. Initially we only know the
+        // format the producer pushed at registration time — the base layer.
+        // Higher spatial layers will surface as their keyframes flow through
+        // (each frame carries SpatialLayerId + dims); see Formats[] update path.
         var streamInfo = new VideoStreamInfo(
             record.StreamId,
             record.ChatId,
             author.Id,
-            record.Format,
+            [record.Format],
             beginsAt,
             record.StreamKind,
             sourceStartedAt);

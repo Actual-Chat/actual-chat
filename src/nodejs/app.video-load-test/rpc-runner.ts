@@ -77,14 +77,10 @@ export async function runRpcProducer(
         const { streamServer } = bundle;
         const format: VideoFormatDto = {
             Codec: FrameConfig.Codec,
-            Width: FrameConfig.Width,
-            Height: FrameConfig.Height,
             CodecSettings: '',
-            SourceWidth: FrameConfig.Width,
-            SourceHeight: FrameConfig.Height,
-            MaxSpatialLayerId: 0,
-            MaxSpatialLayerWidth: FrameConfig.Width,
-            MaxSpatialLayerHeight: FrameConfig.Height,
+            SpatialLayerId: 0,
+            Size: { Width: FrameConfig.Width, Height: FrameConfig.Height },
+            SourceSize: { Width: FrameConfig.Width, Height: FrameConfig.Height },
         };
         const clientStartOffsetSec = Date.now() / 1000;
 

@@ -6,6 +6,9 @@
 // Usage:
 //     Api.init('Example', { url, modules: [streamingApi] });
 //     await streamingApi.liveVideoStreams.PushStream(...);
+//
+// Naming: every wire DTO interface in this file ends in `Dto` (see api.ts
+// for the rationale). New DTOs MUST follow the same convention.
 
 import { defineRpcService, RpcRemoteExecutionMode, RpcType, type RpcHub } from 'actuallab-rpc';
 import { Api, type ApiModule } from './api.js';
@@ -67,11 +70,10 @@ export interface VideoFrameDto {
     // SVC spatial layer ID (uint8 on wire). 0 = base (lowest-res) layer,
     // 1+ = higher-res simulcast layers. Always 0 on single-encoder (P2P) streams.
     SpatialLayerId?: number;
-    // Max spatial layer this stream currently produces. Spatial IDs are always
-    // zero-based, so the available range is 0..MaxSpatialLayerId.
+    // Min/max spatial layer this frame covers (uint8 on wire). Used by the
+    // server forwarder to clamp simulcast fan-out per consumer.
+    MinSpatialLayerId?: number;
     MaxSpatialLayerId?: number;
-    MaxSpatialLayerWidth?: number;
-    MaxSpatialLayerHeight?: number;
     // SVC temporal layer ID (uint8 on wire). 0 = base, 1+ = enhancement.
     TemporalLayerId?: number;
     // Native source dimensions, keyframe only. Lets server track source-resolution
@@ -80,18 +82,22 @@ export interface VideoFrameDto {
     SourceHeight?: number;
 }
 
+// --- Size TypeScript interface ---
+// Matches .NET ActualChat.Media.Size serialized via MessagePack with implicit
+// string keys (it has [MessagePackObject] without [Key] attrs on properties).
+export interface SizeDto {
+    Width: number;
+    Height: number;
+}
+
 // --- VideoFormat TypeScript interface ---
 // Matches .NET VideoFormat serialized via MessagePack with implicit string keys.
 export interface VideoFormatDto {
     Codec: string;
-    Width: number;
-    Height: number;
     CodecSettings: string;
-    SourceWidth: number;
-    SourceHeight: number;
-    MaxSpatialLayerId: number;
-    MaxSpatialLayerWidth: number;
-    MaxSpatialLayerHeight: number;
+    SpatialLayerId: number;
+    Size: SizeDto;
+    SourceSize: SizeDto;
 }
 
 // --- AudioFrame TypeScript interface ---

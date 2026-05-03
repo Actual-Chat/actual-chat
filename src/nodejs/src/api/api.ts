@@ -2,6 +2,21 @@
 // shared `RpcHub` and its default `RpcClientPeer`, and initializes them via
 // `Api.init(source, { ... })`.
 //
+// Naming convention — wire DTO types declared in *-api.ts modules MUST end in
+// `Dto`. The suffix marks a type as "this mirrors a .NET record on the wire",
+// which:
+//   1. Distinguishes it from same-named browser globals (`VideoFrame`,
+//      `AudioData`, `Size`) and same-named local interfaces, avoiding silent
+//      shadowing in modules that touch both worlds.
+//   2. Signals to readers that field shapes are dictated by the .NET side
+//      (PascalCase keys, MessagePack key numbering / `[MessagePackObject]`
+//      mode) and shouldn't be renamed casually.
+//   3. Keeps callers honest: typing a JS-side helper as `VideoFrameDto`
+//      forces the author to think about whether the value is the wire DTO
+//      or the WebCodecs `VideoFrame` it eventually decodes into.
+// Apply this to every public exported `interface` in api.ts and *-api.ts,
+// plus the load-test's `service-defs.ts` which mirrors a subset.
+//
 // Until `Api.init(...)` is called, `Api.hub` and `Api.peer` both throw.
 // After it's called:
 //   - `Api.hub` is the single shared hub for this module graph (main thread,

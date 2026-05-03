@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components.VideoPanel
 @using ActualChat.Streaming
 @using ActualChat.UI.Blazor.App.Module
-@using ActualChat.Video
+@using ActualChat.UI.Blazor.App.Services
 @using System.Text.Json
 @inherits ComputedStateComponent<AppUIHub, VideoDiagnosticsModal.ComputedModel>
 @implements IModalView<VideoDiagnosticsModal.Model>
@@ -195,15 +195,16 @@
                     @* Simulcast *@
                     @if (stream.TryGetProperty("simulcast", out var simulcast) && simulcast.ValueKind == JsonValueKind.Object
                          && simulcast.TryGetProperty("layers", out var simLayers) && simLayers.ValueKind == JsonValueKind.Array) {
-                        <div class="diag-group-header">Simulcast</div>
+                        <div class="diag-group-header">Simulcast (Spatial Layers)</div>
                         <div class="diag-row">
-                            <span class="diag-label">Layers</span>
+                            <span class="diag-label">Layer count</span>
                             <span class="diag-value">@(GetNum(simulcast, "layerCount").ToString("0"))</span>
                         </div>
                         @foreach (var (layer, layerIdx) in simLayers.EnumerateArray().Select((l, i) => (l, i))) {
+                            var simSm = GetStr(layer, "scalabilityMode");
                             <div class="diag-row">
                                 <span class="diag-label">L@(layerIdx)</span>
-                                <span class="diag-value">@(GetNum(layer, "width").ToString("0"))×@(GetNum(layer, "height").ToString("0")) @@ @((GetNum(layer, "bitrate") / 1000).ToString("0")) kbps</span>
+                                <span class="diag-value">@(GetNum(layer, "width").ToString("0"))×@(GetNum(layer, "height").ToString("0")) @@ @((GetNum(layer, "bitrate") / 1000).ToString("0")) kbps@(simSm.Length > 0 ? $" ({simSm})" : "")</span>
                             </div>
                         }
                     }
@@ -311,14 +312,40 @@
                             <span class="diag-label">Author</span>
                             <span class="diag-value">@s.Author</span>
                         </div>
+                        @{
+                            var formats = s.Info.Formats;
+                            var baseFmt = formats.FirstOrDefault();
+                            var topFmt = formats.LastOrDefault() ?? baseFmt;
+                            // Codec is the same across all simulcast layers; pick the top
+                            // tier so the displayed value lines up with "Sender max" dims.
+                            var senderCodec = topFmt?.Codec ?? "";
+                            var senderMax = topFmt is { SourceSize: { Width: > 0, Height: > 0 } ss }
+                                ? $"{ss.Width}×{ss.Height}"
+                                : topFmt is { Size: { Width: > 0 } sz }
+                                    ? $"{sz.Width}×{sz.Height}"
+                                    : "n/a";
+                            var senderBase = baseFmt is { Size.Width: > 0 } b
+                                ? $"{b.Size.Width}×{b.Size.Height}"
+                                : "n/a";
+                        }
                         <div class="diag-row">
                             <span class="diag-label">Codec</span>
-                            <span class="diag-value">@s.Info.Format.Codec</span>
+                            <span class="diag-value">@senderCodec</span>
                         </div>
                         <div class="diag-row">
                             <span class="diag-label">Sender max</span>
-                            <span class="diag-value">@SenderMax(s.Info.Format)</span>
+                            <span class="diag-value">@senderMax</span>
                         </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Sender base</span>
+                            <span class="diag-value">@senderBase</span>
+                        </div>
+                        @if (formats.Length > 1) {
+                            <div class="diag-row">
+                                <span class="diag-label">Spatial layers</span>
+                                <span class="diag-value">@(formats.Length) (@(string.Join(", ", formats.Select(f => $"L{f.SpatialLayerId} {f.Size.Width}×{f.Size.Height}"))))</span>
+                            </div>
+                        }
                         @{
                             var hasDiag = _streamDiags.TryGetValue(sid, out var rdPeek)
                                 && rdPeek.ValueKind == JsonValueKind.Object;
@@ -356,6 +383,23 @@
                         }
                         @if (isExpanded && _streamDiags.TryGetValue(sid, out var rd) && rd.ValueKind == JsonValueKind.Object) {
                             <div class="diag-js-details">
+                                @* Simulcast (Spatial Layers) — sender-published pyramid from VideoStreamInfo.Formats *@
+                                <div class="diag-group-header">Simulcast (Spatial Layers)</div>
+                                <div class="diag-row">
+                                    <span class="diag-label">Layer count</span>
+                                    <span class="diag-value">@formats.Length</span>
+                                </div>
+                                @foreach (var fmt in formats) {
+                                    var fmtSrc = fmt.SourceSize.Width > 0 && fmt.SourceSize.Height > 0
+                                        ? $", source {fmt.SourceSize.Width}×{fmt.SourceSize.Height}"
+                                        : "";
+                                    var fmtCs = fmt.CodecSettings?.Length ?? 0;
+                                    <div class="diag-row">
+                                        <span class="diag-label">L@(fmt.SpatialLayerId)</span>
+                                        <span class="diag-value">@(fmt.Size.Width)×@(fmt.Size.Height) (@fmt.Codec@(fmtSrc), settings: @(fmtCs)b)</span>
+                                    </div>
+                                }
+
                                 @* Decoder *@
                                 <div class="diag-group-header">Decoder</div>
                                 <div class="diag-row">
@@ -562,7 +606,9 @@
         for (var i = 0; i < activeStreams.Count; i++) {
             var info = activeStreams[i];
             var author = await Authors.Get(Session, chatId, info.AuthorId, cancellationToken);
-            streams[i] = new StreamEntry(info, author?.Avatar.Name ?? info.AuthorId.Value, ownAuthor?.Id == info.AuthorId);
+            streams[i] = new StreamEntry(info,
+                author?.Avatar.Name ?? info.AuthorId.Value,
+                ownAuthor?.Id == info.AuthorId);
         }
 
         var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken);
@@ -660,11 +706,6 @@
         return string.Join(", ", v.EnumerateArray().Select(x => x.GetString()));
     }
 
-    private static string SenderMax(VideoFormat format)
-        => format.MaxSpatialLayerWidth > 0 && format.MaxSpatialLayerHeight > 0
-            ? $"{format.MaxSpatialLayerWidth}x{format.MaxSpatialLayerHeight}"
-            : $"{format.Width}x{format.Height}";
-
     private string GetShowDetailsIndicator(bool show)
         => show ? ">---<" : "<->";
 
@@ -753,8 +794,30 @@
             sb.AppendLine($"[{sid}] {s.Author}{(s.IsOwn ? " (Own)" : "")}");
             sb.AppendLine($"  Kind: {(s.Info.StreamKind == StreamKind.Screencast ? "Screencast" : "Camera")}");
             sb.AppendLine($"  Started: {DateTimeConverter.ToLocalTime(s.Info.StartedAt):HH:mm:ss}");
-            sb.AppendLine($"  Codec: {s.Info.Format.Codec}");
-            sb.AppendLine($"  Sender max: {SenderMax(s.Info.Format)}");
+            var copyFormats = s.Info.Formats;
+            var copyBase = copyFormats.FirstOrDefault();
+            var copyTop = copyFormats.LastOrDefault() ?? copyBase;
+            sb.AppendLine($"  Codec: {copyTop?.Codec ?? "?"}");
+            var copySenderMax = copyTop is { SourceSize: { Width: > 0, Height: > 0 } cts }
+                ? $"{cts.Width}x{cts.Height}"
+                : copyTop is { Size.Width: > 0 } ct
+                    ? $"{ct.Size.Width}x{ct.Size.Height}"
+                    : "n/a";
+            var copySenderBase = copyBase is { Size.Width: > 0 } cb
+                ? $"{cb.Size.Width}x{cb.Size.Height}"
+                : "n/a";
+            sb.AppendLine($"  Sender max: {copySenderMax}");
+            sb.AppendLine($"  Sender base: {copySenderBase}");
+            if (copyFormats.Length > 0) {
+                sb.AppendLine($"  -- Spatial Layers ({copyFormats.Length}) --");
+                foreach (var f in copyFormats) {
+                    var fSrc = f.SourceSize.Width > 0 && f.SourceSize.Height > 0
+                        ? $", source {f.SourceSize.Width}x{f.SourceSize.Height}"
+                        : "";
+                    var fCs = f.CodecSettings?.Length ?? 0;
+                    sb.AppendLine($"    L{f.SpatialLayerId}: {f.Size.Width}x{f.Size.Height} ({f.Codec}{fSrc}, settings: {fCs}b)");
+                }
+            }
 
             if (_streamDiags.TryGetValue(sid, out var rd) && rd.ValueKind == JsonValueKind.Object) {
                 if (rd.TryGetProperty("forwarded", out var copyFwd)
