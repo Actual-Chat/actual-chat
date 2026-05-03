@@ -31,7 +31,9 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         ConfigureFusionClients(fusion);
 
         // Audio & Video Streaming
+#pragma warning disable CS0618 // Type or member is obsolete
         rpc.AddClient<IStreamServer>();
+#pragma warning restore CS0618 // Type or member is obsolete
         services.AddSingleton<IStreamClient>(c => new StreamClient(c));
         fusion.AddClient<ILiveAudioStreams>();
         fusion.AddClient<ILiveVideoStreams>();

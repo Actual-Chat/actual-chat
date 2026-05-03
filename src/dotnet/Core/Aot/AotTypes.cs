@@ -8,7 +8,9 @@ namespace ActualChat.Aot;
 public static class AotTypes
 {
     private static readonly List<IAotSource> Sources = new();
+#pragma warning disable CA1823 // Unused field
     private static readonly List<IJsonTypeInfoResolver> JsonTypeInfoResolverStore = new();
+#pragma warning restore CA1823
 
     public static IDictionary<Type, AotTypeKind> All {
         get {
