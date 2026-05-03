@@ -29,7 +29,7 @@ public static class ReceiveQualityFilter
         var capRefreshAt = CpuTimestamp.Now;
 
         await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-            if (consumerMaxSpatial < 0 || capRefreshAt.Elapsed >= CapRefreshInterval) {
+            if (consumerMaxSpatial < 0 || frame.IsKeyFrame || capRefreshAt.Elapsed >= CapRefreshInterval) {
                 var q = getQuality();
                 consumerMaxSpatial = q.MaxSpatialLayer;
                 consumerMaxTemporal = q.MaxTemporalLayer;

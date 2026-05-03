@@ -30,7 +30,10 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
     private readonly Dictionary<StreamKind, VideoRecorder> _activeRecorderByKind = new();
     // Capacity estimator + last aggregate snapshot for the receiver-side panel.
     // Driven by Tick() which the diagnostics modal calls each poll cycle.
+    private static readonly TimeSpan PlaybackHealthTtl = TimeSpan.FromSeconds(10);
     private readonly CapacityEstimator _capacityEstimator = new(PlaybackThresholds.Defaults);
+    private readonly Dictionary<StreamId, PlaybackHealthState> _playbackByStream = new();
+    private readonly Lock _playbackLock = new();
     private PlaybackQualitySnapshot _playbackSnapshot = PlaybackQualitySnapshot.Empty;
     private PlaybackOverrideMode _playbackOverride = PlaybackOverrideMode.Off;
     private RecorderHealthSnapshot? _lastHealth;
@@ -156,6 +159,55 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
         return recorder.SetTargetLayerCount(effective, cancellationToken);
     }
 
+    public Task PushPlaybackHealth(StreamId streamId, PlaybackHealthSnapshot snapshot, CancellationToken cancellationToken)
+    {
+        var verdict = PlaybackVerdictClassifier.Classify(
+            snapshot.BufferDurationMsP50,
+            snapshot.KeyframeSkipsInWindow,
+            PlaybackThresholds.Defaults,
+            snapshot.StreamAgeMs,
+            snapshot.DecoderQueueDepthP90,
+            snapshot.QualityReductionRequested);
+        lock (_playbackLock)
+            _playbackByStream[streamId] = new PlaybackHealthState(snapshot, verdict, CpuTimestamp.Now);
+        var reason = verdict switch {
+            < 0 => PlaybackQualityReason.Backoff,
+            > 0 => PlaybackQualityReason.Climb,
+            _ => PlaybackQualityReason.Stable,
+        };
+        return RecomputePlaybackQuality(reason, cancellationToken);
+    }
+
+    public Task RequestPlaybackQualityReduction(StreamId streamId, CancellationToken cancellationToken)
+    {
+        lock (_playbackLock) {
+            if (_playbackByStream.TryGetValue(streamId, out var state)) {
+                var snapshot = state.Snapshot with { QualityReductionRequested = true };
+                _playbackByStream[streamId] = state with {
+                    Snapshot = snapshot,
+                    Verdict = -1,
+                    LastSeen = CpuTimestamp.Now,
+                };
+            }
+            else {
+                _playbackByStream[streamId] = new PlaybackHealthState(
+                    new PlaybackHealthSnapshot(
+                        IncomingByteRate: 0,
+                        BufferDurationMsP50: 0,
+                        KeyframeSkipsInWindow: 0,
+                        DecoderQueueDepthP90: Constants.Video.HighBufferDepthThreshold + 1,
+                        CurrentMaxSpatial: 2,
+                        CurrentMaxTemporal: int.MaxValue,
+                        Priority: PlaybackStreamPriority.Primary,
+                        StreamAgeMs: int.MaxValue,
+                        QualityReductionRequested: true),
+                    Verdict: -1,
+                    LastSeen: CpuTimestamp.Now);
+            }
+        }
+        return RecomputePlaybackQuality(PlaybackQualityReason.Backoff, cancellationToken);
+    }
+
     public PlaybackOverrideMode PlaybackOverride => _playbackOverride;
 
     public PlaybackQualitySnapshot GetPlaybackSnapshot()
@@ -221,6 +273,7 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
                 foreach (var aggregator in _recordingByKind.Values)
                     aggregator.Reset();
                 _coldStartTicksRemaining = ColdStartTicks;
+                _capacityEstimator.Reset();
             }
             _wasConnected = isConnected;
         }
@@ -351,6 +404,96 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
     }
 
     // Private methods
+
+    private async Task RecomputePlaybackQuality(PlaybackQualityReason reason, CancellationToken cancellationToken)
+    {
+        var entries = GetFreshPlaybackEntries();
+        if (entries.Count == 0) {
+            _playbackSnapshot = PlaybackQualitySnapshot.Empty;
+            return;
+        }
+
+        var signals = entries
+            .Select(x => (x.Value.Snapshot.IncomingByteRate, x.Value.Verdict))
+            .ToArray();
+        var aggregateHealth = AggregateHealth.Compute(signals);
+        var sumIncomingBytesPerSec = entries.Sum(x => Math.Max(0, x.Value.Snapshot.IncomingByteRate));
+        var capacity = _capacityEstimator.Step(aggregateHealth, sumIncomingBytesPerSec);
+        var verdicts = entries.ToDictionary(x => x.Key.Value, x => x.Value.Verdict);
+        _playbackSnapshot = new PlaybackQualitySnapshot(capacity, aggregateHealth, verdicts);
+
+        if (_playbackOverride != PlaybackOverrideMode.Off)
+            return;
+
+        var primaries = entries
+            .Where(x => x.Value.Snapshot.Priority == PlaybackStreamPriority.Primary)
+            .Select(ToStreamRequest)
+            .ToArray();
+        var secondaries = entries
+            .Where(x => x.Value.Snapshot.Priority != PlaybackStreamPriority.Primary)
+            .Select(ToStreamRequest)
+            .ToArray();
+        var requested = Allocator.Allocate(capacity, primaries, secondaries);
+        var requestedMap = new ApiMap<string, ReceiveQuality>();
+        foreach (var (streamId, _) in entries)
+            requestedMap[streamId.Value] = requested.GetValueOrDefault(streamId.Value, ReceiveQuality.Lowest);
+        var streamInfoMap = new ApiMap<string, PlaybackStreamInfo>();
+        foreach (var (streamId, state) in entries) {
+            var requestedQuality = requestedMap[streamId.Value];
+            streamInfoMap[streamId.Value] = new PlaybackStreamInfo(
+                state.Snapshot.IncomingByteRate,
+                state.Snapshot.BufferDurationMsP50,
+                state.Snapshot.KeyframeSkipsInWindow,
+                state.Snapshot.DecoderQueueDepthP90,
+                requestedQuality.MaxSpatialLayer,
+                requestedQuality.MaxTemporalLayer,
+                state.Snapshot.Priority,
+                state.Verdict);
+        }
+        var info = new PlaybackQualityInfo(
+            capacity,
+            aggregateHealth,
+            reason,
+            IsColdStart: false,
+            streamInfoMap);
+        _ = await LiveVideoStreams.ChangePlaybackQuality(
+            Session,
+            requestedMap,
+            info,
+            cancellationToken).ConfigureAwait(false);
+        await UpdateRequestedReceiveQualityRegistry(
+            entries
+                .Select(x => new PlaybackOverrideStreamHint(x.Key.Value, x.Value.Snapshot.CurrentMaxSpatial))
+                .ToArray(),
+            requestedMap,
+            cancellationToken).ConfigureAwait(false);
+
+        return;
+
+        static StreamRequest ToStreamRequest(KeyValuePair<StreamId, PlaybackHealthState> entry)
+        {
+            var top = Math.Max(1, entry.Value.Snapshot.IncomingByteRate);
+            var currentSpatial = Math.Max(0, entry.Value.Snapshot.CurrentMaxSpatial);
+            var baseRate = currentSpatial <= 0 ? top : Math.Max(1, top / (currentSpatial + 1));
+            var maxSpatialLayer = entry.Value.Snapshot.QualityReductionRequested
+                ? 0
+                : (int?)null;
+            return new StreamRequest(entry.Key.Value, baseRate, top, maxSpatialLayer);
+        }
+    }
+
+    private List<KeyValuePair<StreamId, PlaybackHealthState>> GetFreshPlaybackEntries()
+    {
+        lock (_playbackLock) {
+            var staleStreamIds = _playbackByStream
+                .Where(x => x.Value.LastSeen.Elapsed > PlaybackHealthTtl)
+                .Select(x => x.Key)
+                .ToArray();
+            foreach (var streamId in staleStreamIds)
+                _playbackByStream.Remove(streamId);
+            return _playbackByStream.ToList();
+        }
+    }
 
     private async Task RunRecordingTest(TimeSpan period, CancellationToken ct)
     {
@@ -627,6 +770,7 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
         int BufferDurationMsTooHighAbove,
         int StartupGraceMs,
         int KeyframeSkipsBadAtOrAbove,
+        int DecoderQueueDepthBadAbove,
         long MinCapacityBytesPerSec,
         long ColdStartCapacityBytesPerSec,
         double ClimbCap,
@@ -637,6 +781,7 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
             BufferDurationMsTooHighAbove: 400,
             StartupGraceMs: 1000,
             KeyframeSkipsBadAtOrAbove: 1,
+            DecoderQueueDepthBadAbove: Constants.Video.HighBufferDepthThreshold,
             MinCapacityBytesPerSec: 50_000,
             ColdStartCapacityBytesPerSec: 1_500_000,
             ClimbCap: 1.4142135623730951,   // √2
@@ -656,9 +801,15 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
             int bufferDurationMsP50,
             int keyframeSkipsInWindow,
             PlaybackThresholds t,
-            int streamAgeMs = int.MaxValue)
+            int streamAgeMs = int.MaxValue,
+            int decoderQueueDepthP90 = 0,
+            bool qualityReductionRequested = false)
         {
+            if (qualityReductionRequested)
+                return -1;
             if (keyframeSkipsInWindow >= t.KeyframeSkipsBadAtOrAbove)
+                return -1;
+            if (decoderQueueDepthP90 > t.DecoderQueueDepthBadAbove)
                 return -1;
             if (bufferDurationMsP50 < t.BufferDurationMsBadBelow)
                 return streamAgeMs < t.StartupGraceMs ? 0 : -1;
@@ -724,7 +875,11 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
         }
     }
 
-    public sealed record StreamRequest(string StreamId, long PredictedRateAtBase, long PredictedRateAtTop);
+    public sealed record StreamRequest(
+        string StreamId,
+        long PredictedRateAtBase,
+        long PredictedRateAtTop,
+        int? MaxSpatialLayer = null);
 
     /// <summary>
     /// Greedy budget allocator: primaries get top spatial first, in their
@@ -737,14 +892,22 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
         public static IReadOnlyDictionary<string, ReceiveQuality> Allocate(
             long budgetBytesPerSec,
             IReadOnlyList<StreamRequest> primaries,
-            IReadOnlyList<StreamRequest> secondaries)
+            IReadOnlyList<StreamRequest> secondaries,
+            int? maxSpatialLayer = null)
         {
             var result = new Dictionary<string, ReceiveQuality>();
             var remaining = budgetBytesPerSec;
             foreach (var req in primaries) {
-                if (remaining >= req.PredictedRateAtTop) {
-                    result[req.StreamId] = ReceiveQuality.Default;
-                    remaining -= req.PredictedRateAtTop;
+                var effectiveMaxSpatial = MinSpatialLayer(maxSpatialLayer, req.MaxSpatialLayer);
+                var topQuality = effectiveMaxSpatial is { } max
+                    ? new ReceiveQuality(Math.Max(0, max), int.MaxValue)
+                    : ReceiveQuality.Default;
+                var predictedTopRate = effectiveMaxSpatial is <= 0
+                    ? req.PredictedRateAtBase
+                    : req.PredictedRateAtTop;
+                if (remaining >= predictedTopRate) {
+                    result[req.StreamId] = topQuality;
+                    remaining -= predictedTopRate;
                 }
                 else if (remaining >= req.PredictedRateAtBase) {
                     result[req.StreamId] = new ReceiveQuality(0, int.MaxValue);
@@ -758,6 +921,29 @@ public sealed class VideoQualityUI : UIWorkerBase<AppUIHub>, INotifyInitialized
                 }
             }
             return result;
+
+            static int? MinSpatialLayer(int? globalMax, int? streamMax)
+                => (globalMax, streamMax) switch {
+                    ({ } g, { } s) => Math.Min(g, s),
+                    ({ } g, null) => g,
+                    (null, { } s) => s,
+                    _ => null,
+                };
         }
     }
+    public sealed record PlaybackHealthSnapshot(
+        long IncomingByteRate,
+        int BufferDurationMsP50,
+        int KeyframeSkipsInWindow,
+        int DecoderQueueDepthP90,
+        int CurrentMaxSpatial,
+        int CurrentMaxTemporal,
+        PlaybackStreamPriority Priority,
+        int StreamAgeMs,
+        bool QualityReductionRequested = false);
+
+    private sealed record PlaybackHealthState(
+        PlaybackHealthSnapshot Snapshot,
+        int Verdict,
+        CpuTimestamp LastSeen);
 }

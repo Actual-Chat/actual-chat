@@ -36,6 +36,26 @@ public class PlaybackVerdictClassifierTest
             .Should().Be(-1);
 
     [Fact]
+    public void DecoderQueueTooDeep_ReturnsBad()
+        => PlaybackVerdictClassifier
+            .Classify(
+                T.BufferDurationMsBadBelow,
+                0,
+                T,
+                decoderQueueDepthP90: T.DecoderQueueDepthBadAbove + 1)
+            .Should().Be(-1);
+
+    [Fact]
+    public void QualityReductionRequested_ReturnsBad()
+        => PlaybackVerdictClassifier
+            .Classify(
+                T.BufferDurationMsBadBelow,
+                0,
+                T,
+                qualityReductionRequested: true)
+            .Should().Be(-1);
+
+    [Fact]
     public void TooHighBoundary_NoSkips_ReturnsGood()
         => PlaybackVerdictClassifier.Classify(T.BufferDurationMsTooHighAbove, 0, T).Should().Be(1);
 }
@@ -153,6 +173,24 @@ public class AllocatorTest
     {
         var primaries = new[] { Req("p1", 100_000, 500_000) };
         var result = Allocator.Allocate(150_000, primaries, []);
+
+        result["p1"].MaxSpatialLayer.Should().Be(0);
+    }
+
+    [Fact]
+    public void PrimaryFitsAtTop_WithBaseOnlyCap_GetsBaseQuality()
+    {
+        var primaries = new[] { Req("p1", 100_000, 500_000) };
+        var result = Allocator.Allocate(1_000_000, primaries, [], maxSpatialLayer: 0);
+
+        result["p1"].MaxSpatialLayer.Should().Be(0);
+    }
+
+    [Fact]
+    public void PrimaryFitsAtTop_WithPerStreamBaseCap_GetsBaseQuality()
+    {
+        var primaries = new[] { new StreamRequest("p1", 100_000, 500_000, MaxSpatialLayer: 0) };
+        var result = Allocator.Allocate(1_000_000, primaries, []);
 
         result["p1"].MaxSpatialLayer.Should().Be(0);
     }

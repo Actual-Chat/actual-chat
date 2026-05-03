@@ -150,6 +150,22 @@
     }
 
     [JSInvokable]
+    public async Task OnPlaybackHealth(VideoQualityUI.PlaybackHealthSnapshot snapshot)
+    {
+        if (_isDisposed)
+            return;
+
+        try {
+            await Hub.VideoQualityUI
+                .PushPlaybackHealth(StreamInfo.StreamId, snapshot, CancellationToken.None)
+                .ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "[VideoTrackPlayer #{StreamId}] OnPlaybackHealth failed", StreamInfo.StreamId);
+        }
+    }
+
+    [JSInvokable]
     public void OnPresentationLag(double lagMs)
     {
         // Webcam-only: screencast pacing is too uneven to be a useful A/V sync target.
@@ -171,18 +187,14 @@
     }
 
     [JSInvokable]
-    public void OnRequestQualityReduction(string codecCategory)
+    public async Task OnRequestQualityReduction(string codecCategory)
     {
-        // Informational only. The server reads MedianDecodeTimeMs/BufferDepth from
-        // the per-2s ReportVideoLatency stream and runs its own receiver-bound
-        // step-down in StreamLatencyState.EvaluateQuality. This callback fires
-        // ~10s after JS detects sustained slow decode; by then the server has
-        // received 5 latency reports and (if the condition persists) applied a
-        // step-down on its own clock. Log retained for client-side diagnostics
-        // and to flag JS↔server threshold drift.
         Log.LogWarning(
-            "[VideoTrackPlayer #{StreamId}] OnRequestQualityReduction: codec={Codec} — decode too slow (server-side step-down handles via latency reports)",
+            "[VideoTrackPlayer #{StreamId}] OnRequestQualityReduction: codec={Codec} — decode too slow, requesting base playback layer",
             StreamInfo.StreamId, codecCategory);
+        await Hub.VideoQualityUI
+            .RequestPlaybackQualityReduction(StreamInfo.StreamId, CancellationToken.None)
+            .ConfigureAwait(false);
     }
 
     [JSInvokable]

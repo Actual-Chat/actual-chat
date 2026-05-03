@@ -162,17 +162,22 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         PlaybackQualityInfo? info,
         CancellationToken cancellationToken)
     {
-        _ = cancellationToken;
         if (requestedQuality is null) {
             Log.LogTrace("ChangePlaybackQuality: session={Session}, info={Info} (no-op)", session, info);
             return RpcNoWait.Tasks.Completed;
         }
 
         var capped = ApplyServerCap(requestedQuality, info);
+        _receiveQuality.TryGetValue(session, out var previous);
         _receiveQuality[session] = capped;
         Log.LogTrace("ChangePlaybackQuality: session={Session}, streams={Count}, info={Info}",
             session, capped.Count, info);
-        return RpcNoWait.Tasks.Completed;
+        var keyFrameRequests = GetLoweredStreams(previous, capped)
+            .Select(x => VideoStreamingBackend.RequestKeyFrame(StreamId.Parse(x), cancellationToken))
+            .ToArray();
+        return keyFrameRequests.Length == 0
+            ? RpcNoWait.Tasks.Completed
+            : RpcNoWait.Tasks.From(Task.WhenAll(keyFrameRequests));
     }
 
     // Private methods
@@ -182,6 +187,20 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         if (!_receiveQuality.TryGetValue(session, out var map))
             return ReceiveQuality.Default;
         return map.TryGetValue(streamId, out var quality) ? quality : ReceiveQuality.Lowest;
+    }
+
+    private static IEnumerable<string> GetLoweredStreams(
+        ApiMap<string, ReceiveQuality>? previous,
+        ApiMap<string, ReceiveQuality> current)
+    {
+        foreach (var (streamId, quality) in current) {
+            var oldQuality = previous is not null && previous.TryGetValue(streamId, out var old)
+                ? old
+                : ReceiveQuality.Default;
+            if (quality.MaxSpatialLayer < oldQuality.MaxSpatialLayer
+                || quality.MaxTemporalLayer < oldQuality.MaxTemporalLayer)
+                yield return streamId;
+        }
     }
 
     private static ApiMap<string, ReceiveQuality> ApplyServerCap(
