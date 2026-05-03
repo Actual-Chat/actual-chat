@@ -1,3 +1,4 @@
+using ActualChat.Diagnostics;
 using ActualChat.Video;
 using ActualLab.Rpc;
 using Microsoft.Extensions.Hosting;
@@ -196,6 +197,13 @@ public class LiveVideoStreams : ILiveVideoStreams
         _qualityBySession[session] = new ReceiveQualityState(qualityByStream, SystemClock.Now);
         DebugLog?.LogDebug("ChangePlaybackQuality: session={Session}, streams={Count}, info={Info}",
             session, qualityByStream.Count, info);
+
+        // Buffered media duration ahead of decode is the doc's primary playback
+        // health signal and a direct latency proxy — feed app.video.latency.
+        if (info is not null) {
+            foreach (var (_, s) in info.Streams)
+                AppMeters.VideoLatency.Record(s.BufferDurationMsP50);
+        }
 
         var keyFrameRequests = GetLoweredStreams(prevState?.QualityByStream, qualityByStream)
             .Select(x => VideoStreamingBackend.RequestKeyFrame(StreamId.Parse(x), cancellationToken))
