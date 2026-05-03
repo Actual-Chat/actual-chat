@@ -556,7 +556,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         private Moment TrimPreRollBuffer()
         {
             const int frameLen = Constants.Audio.OpusFrameLength; // 320 samples = 20ms
-            const int preRollFrameCount = Constants.Audio.VoicePreRollFrameLimit;
+            const int preRollFrameLimit = Constants.Audio.VoicePreRollFrameLimit;
 
             var bufferedSamples = _encodingBuffer.Count;
             var fallbackSourceCapturedAt = engine.Clocks.ServerClock.Now
@@ -585,17 +585,17 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             }
 
             // Calculate average speech gain from the speech-confirmed tail of the pre-roll window.
-            var retainedFrameLimit = Math.Min(preRollFrameCount, frameCount);
+            var retainedFrameLimit = Math.Min(preRollFrameLimit, frameCount);
             var speechFrames = Math.Max(
                 1,
-                Math.Min(retainedFrameLimit, (int)Math.Ceiling(preRollFrameCount / 3d)));
+                Math.Min(retainedFrameLimit, (int)Math.Ceiling(preRollFrameLimit / 3d)));
             double speechGain = 0;
             for (int i = frameCount - speechFrames; i < frameCount; i++)
                 speechGain += gains[i];
             speechGain /= speechFrames;
 
-            // Scan backward within the pre-roll window to find where gain drops below speechGain/20.
-            var threshold = speechGain / 20;
+            // Scan backward within the pre-roll window to find where gain drops below speechGain/10.
+            var threshold = speechGain / 10;
             var minStartIndex = frameCount - retainedFrameLimit;
             var startIndex = frameCount - speechFrames - 1;
             while (startIndex >= minStartIndex) {
