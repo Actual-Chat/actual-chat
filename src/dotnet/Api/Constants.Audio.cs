@@ -26,7 +26,7 @@ public static partial class Constants
         // Voice-start pre-roll - bounded ring of recent encoded-frame-equivalent
         // PCM kept while voice activity is inactive, prepended to the first
         // encoded frame on voice start so leading consonants survive.
-        public const int VoicePreRollFrameLimit = 5; // 100 ms
+        public const int VoicePreRollFrameLimit = 15; // 300 ms
 
         // RPC stream flow control — split into recording (client→server upload,
         // must not skip recorded speech) and delivery (server→client, must not
