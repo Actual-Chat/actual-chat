@@ -124,16 +124,21 @@ public sealed class ChatReplayer : ChatPlayer
                     audioEntry = await entryReader.Get(entryId.LocalId, cancellationToken).ConfigureAwait(false);
                 }
 
+                var targetBufferSize = await Hub.ChatAudioUI
+                    .GetPlaybackTargetBufferSize(ChatId, cancellationToken)
+                    .ConfigureAwait(false);
                 var trackInfo = audioEntry != null
                     ? new ChatAudioTrackInfo(audioEntry, chat, author!) {
                         RecordedAt = streamInfo.BeginsAt,
                         SourceRecordedAt = streamInfo.BeginsAt,
                         Speed = speed,
+                        TargetBufferSize = targetBufferSize,
                     }
                     : new ChatAudioTrackInfo(ChatId, streamInfo.EntryId, chat, author) {
                         RecordedAt = streamInfo.BeginsAt,
                         SourceRecordedAt = streamInfo.BeginsAt,
                         Speed = speed,
+                        TargetBufferSize = targetBufferSize,
                     };
                 var playAt = Clocks.CpuClock.Now;
                 var process = playback.Play(trackInfo, audioSource, playAt, cancellationToken);

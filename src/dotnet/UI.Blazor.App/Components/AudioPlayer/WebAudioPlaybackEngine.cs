@@ -19,10 +19,8 @@ public sealed class WebAudioPlaybackEngine(
 
     private IJSObjectReference? _jsRef;
     private Task? _whenPlayerCreated;
-    private CancellationTokenSource? _watchBufferEscalationStateCts;
 
     private Dispatcher Dispatcher => field ??= services.GetRequiredService<Dispatcher>();
-    private ChatAudioUI ChatAudioUI => field ??= services.GetRequiredService<ChatAudioUI>();
 
     private ILogger Log => field ??= services.LogFor<WebAudioPlaybackEngine>();
 
@@ -42,28 +40,20 @@ public sealed class WebAudioPlaybackEngine(
             : trackInfo.RecordedAt;
         var recordedAtMs = sourceRecordedAt.EpochOffset.TotalMilliseconds;
 
-        var chatId = chat?.Id;
-        var bufferEscalation = 0;
-        if (chatId != null)
-            bufferEscalation = await ChatAudioUI.GetPlaybackBufferEscalation(chatId, cancellationToken).ConfigureAwait(false);
+        var targetBufferSizeMs = trackInfo.TargetBufferSize.TotalMilliseconds;
 
         Log.LogDebug(
-            "[WebAudioPlaybackEngine #{AudioTrackPlayerId}] Play: authorId={AuthorId}, recordedAtMs={RecordedAtMs}, bufferEscalation={BufferEscalation}",
-            id, authorId, recordedAtMs, bufferEscalation);
+            "[WebAudioPlaybackEngine #{AudioTrackPlayerId}] Play: authorId={AuthorId}, recordedAtMs={RecordedAtMs}, targetBufferSizeMs={TargetBufferSizeMs}",
+            id, authorId, recordedAtMs, targetBufferSizeMs);
 
         var js = services.JSRuntime();
         var title = author?.Avatar.Name ?? "";
         var album = chat?.Title ?? "";
         var whenPlayerCreated = js.InvokeAsync<IJSObjectReference>(JSCreateMethod,
             CancellationToken.None,
-            _blazorRef, id, preSkip, title, album, authorId, recordedAtMs, bufferEscalation);
+            _blazorRef, id, preSkip, title, album, authorId, recordedAtMs, targetBufferSizeMs);
         _whenPlayerCreated = whenPlayerCreated.AsTask();
         _jsRef = await whenPlayerCreated.ConfigureAwait(false);
-
-        if (chatId != null) {
-            _watchBufferEscalationStateCts = cancellationToken.CreateLinkedTokenSource();
-            _ = WatchBufferEscalationState(chatId, bufferEscalation, _watchBufferEscalationStateCts.Token);
-        }
     }
 
     public async Task Pause(CancellationToken cancellationToken)
@@ -131,8 +121,6 @@ public sealed class WebAudioPlaybackEngine(
 
     public async ValueTask DisposeAsync()
     {
-        _watchBufferEscalationStateCts.CancelAndDisposeSilently();
-        _watchBufferEscalationStateCts = null;
         var (jsRef, blazorRef) = (_jsRef, _blazorRef);
         _jsRef = null;
         await InvokeAsync(async () => {
@@ -142,27 +130,6 @@ public sealed class WebAudioPlaybackEngine(
     }
 
     // Private methods
-
-    private async Task WatchBufferEscalationState(ChatId chatId, int initialEscalation, CancellationToken ct)
-    {
-        try {
-            var computed = await Computed
-                .Capture(() => ChatAudioUI.GetPlaybackBufferEscalation(chatId, ct), ct)
-                .ConfigureAwait(false);
-            var lastEscalation = initialEscalation;
-            await foreach (var (value, _) in computed.Changes(ct).ConfigureAwait(false)) {
-                if (value == lastEscalation)
-                    continue;
-
-                lastEscalation = value;
-                if (_jsRef != null)
-                    _ = _jsRef.InvokeVoidAsync("setBufferEscalation", ct, value);
-            }
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested) {
-            // Expected on dispose
-        }
-    }
 
     private Task InvokeAsync(Func<Task> workItem)
         => InvokeAsync(async () => { await workItem().ConfigureAwait(false); return true; });

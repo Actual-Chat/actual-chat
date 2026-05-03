@@ -112,8 +112,9 @@ export interface AudioPlayConstants {
     readonly bufferHysteresisSize: number;
     readonly startBufferGrowDurationMs: number;
     readonly startBufferDurationWithVideoMs: number;
-    readonly decoderTargetBufferDurationMs: number;
-    readonly decoderTargetBufferDurationWithVideoMs: number;
+    readonly minEncodeBufferSizeMs: number;
+    readonly defaultDecodedBufferSizeMs: number;
+    readonly defaultAudioEnginePlaybackLatencyMs: number;
     readonly lowBufferDurationMs: number;
     readonly stateUpdatePeriodMs: number;
     readonly mediaSessionResetDebounceMs: number;
@@ -129,8 +130,6 @@ export interface AudioPlayConstants {
     readonly startBufferDuration: number;             // seconds
     readonly startBufferGrowDuration: number;
     readonly startBufferDurationWithVideo: number;
-    readonly decoderTargetBufferDuration: number;
-    readonly decoderTargetBufferDurationWithVideo: number;
     readonly lowBufferDuration: number;
     readonly stateUpdatePeriod: number;
     readonly playbackHardSkipThreshold: number;       // seconds
@@ -290,8 +289,6 @@ function expandAudio(audio: AudioConstants): AudioConstants {
             startBufferDuration: startBufferDurationMs / 1000,
             startBufferGrowDuration: audio.play.startBufferGrowDurationMs / 1000,
             startBufferDurationWithVideo: audio.play.startBufferDurationWithVideoMs / 1000,
-            decoderTargetBufferDuration: audio.play.decoderTargetBufferDurationMs / 1000,
-            decoderTargetBufferDurationWithVideo: audio.play.decoderTargetBufferDurationWithVideoMs / 1000,
             lowBufferDuration: audio.play.lowBufferDurationMs / 1000,
             stateUpdatePeriod: audio.play.stateUpdatePeriodMs / 1000,
             playbackHardSkipThreshold: audio.play.playbackHardSkipThresholdMs / 1000,

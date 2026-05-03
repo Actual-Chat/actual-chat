@@ -51,10 +51,15 @@ partial record AppConstants
             public int StartBufferGrowDurationMs { get; init; } = 100;
             // !DELAYER: Larger start-buffer when video is active for A/V sync.
             public int StartBufferDurationWithVideoMs { get; init; } = 500;
-            public int DecoderTargetBufferDurationMs { get; init; } =
-                (int)Constants.Audio.DecoderTargetBufferDuration.TotalMilliseconds;
-            public int DecoderTargetBufferDurationWithVideoMs { get; init; } =
-                (int)Constants.Audio.DecoderTargetBufferDurationWithVideo.TotalMilliseconds;
+            // Pre-decoder buffer formula inputs — used TS-side by the OpusDecoder
+            // to size its encoded-frame buffer from TrackInfo.TargetBufferSize:
+            //   encoded = max(MinEncodeBuffer, target - DefaultDecodedBuffer - DefaultAudioEnginePlaybackLatency)
+            public int MinEncodeBufferSizeMs { get; init; } =
+                (int)Constants.Audio.MinEncodeBufferSize.TotalMilliseconds;
+            public int DefaultDecodedBufferSizeMs { get; init; } =
+                (int)Constants.Audio.DefaultDecodedBufferSize.TotalMilliseconds;
+            public int DefaultAudioEnginePlaybackLatencyMs { get; init; } =
+                (int)Constants.Audio.DefaultAudioEnginePlaybackLatency.TotalMilliseconds;
             // Buffer is "low" while it's less than this.
             public int LowBufferDurationMs { get; init; } = 10000;
             // Period between feeder state-update signals.

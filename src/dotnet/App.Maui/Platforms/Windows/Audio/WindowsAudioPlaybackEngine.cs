@@ -28,7 +28,6 @@ internal sealed class WindowsAudioPlaybackEngine(
     private readonly CancellationTokenSource _decodeCts = new();
 
     private CancellationTokenSource? _pauseCts;
-    private CancellationTokenSource? _watchBufferEscalationStateCts;
 
     // According to Opus spec, the decoder output must skip the first PreSkip samples at 48 kHz
     // We track how many samples remain to be skipped and drop them in the decode loop.
@@ -47,7 +46,6 @@ internal sealed class WindowsAudioPlaybackEngine(
     private int _decodeCompleted;
 
     private IAudioCodec AudioCodec => field ??= services.GetRequiredService<IAudioCodec>();
-    private ChatAudioUI ChatAudioUI => field ??= services.GetRequiredService<ChatAudioUI>();
 
     private MomentClockSet Clocks => field ??= services.GetRequiredService<MomentClockSet>();
 
@@ -61,11 +59,7 @@ internal sealed class WindowsAudioPlaybackEngine(
         var audioSource = (AudioSource)source;
         // Initialize pre-skip samples to drop from the beginning of decoded PCM
         _remainingPreSkip = audioSource.Format.PreSkip;
-        var chatId = (info as ChatAudioTrackInfo)?.Chat?.Id;
-        var bufferEscalation = chatId is null
-            ? 0
-            : await ChatAudioUI.GetPlaybackBufferEscalation(chatId, cancellationToken).ConfigureAwait(false);
-        _packetBuffer.SetTargetDuration(Constants.Audio.GetDecoderTargetBufferDuration(bufferEscalation));
+        _packetBuffer.SetTargetDuration(GetEncodedBufferDuration(info.TargetBufferSize));
 
         // Configure Float32 mono PCM at our sample rate
         var encoding = AudioEncodingProperties.CreatePcm(
@@ -100,10 +94,6 @@ internal sealed class WindowsAudioPlaybackEngine(
         // Wait until we have enough decoded samples buffered before starting playback
         _pauseCts = new CancellationTokenSource();
         _delayedPlayTask = StartWhenBuffered(_pauseCts.Token);
-        if (chatId is not null) {
-            _watchBufferEscalationStateCts = cancellationToken.CreateLinkedTokenSource();
-            _ = WatchBufferEscalationState(chatId, bufferEscalation, _watchBufferEscalationStateCts.Token);
-        }
     }
 
     public Task Pause(CancellationToken cancellationToken)
@@ -182,7 +172,6 @@ internal sealed class WindowsAudioPlaybackEngine(
         try {
             _decodeCts.CancelAndDisposeSilently();
             _pauseCts.CancelAndDisposeSilently();
-            _watchBufferEscalationStateCts.CancelAndDisposeSilently();
         }
         catch (OperationCanceledException) { }
         catch (Exception e) {
@@ -198,7 +187,6 @@ internal sealed class WindowsAudioPlaybackEngine(
         _graph = null;
         _deviceOutput = null;
         _frameInput = null;
-        _watchBufferEscalationStateCts = null;
         _decodeTask = null;
         _delayedPlayTask = null;
         return ValueTask.CompletedTask;
@@ -366,24 +354,10 @@ internal sealed class WindowsAudioPlaybackEngine(
         }
     }
 
-    private async Task WatchBufferEscalationState(ChatId chatId, int initialEscalation, CancellationToken ct)
+    private static TimeSpan GetEncodedBufferDuration(TimeSpan targetBufferSize)
     {
-        try {
-            var computed = await Computed
-                .Capture(() => ChatAudioUI.GetPlaybackBufferEscalation(chatId, ct), ct)
-                .ConfigureAwait(false);
-            var lastEscalation = initialEscalation;
-            await foreach (var (value, _) in computed.Changes(ct).ConfigureAwait(false)) {
-                if (value == lastEscalation)
-                    continue;
-
-                lastEscalation = value;
-                _packetBuffer.SetTargetDuration(Constants.Audio.GetDecoderTargetBufferDuration(value));
-            }
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested) {
-            // Expected on dispose
-        }
+        var encoded = targetBufferSize - Constants.Audio.DefaultDecodedBufferSize - Constants.Audio.DefaultAudioEnginePlaybackLatency;
+        return encoded > Constants.Audio.MinEncodeBufferSize ? encoded : Constants.Audio.MinEncodeBufferSize;
     }
 
     private readonly struct ByteArrayMemoryOwner(byte[] buffer) : IMemoryOwner<byte>

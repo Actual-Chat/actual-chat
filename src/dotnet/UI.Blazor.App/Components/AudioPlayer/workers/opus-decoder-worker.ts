@@ -74,6 +74,14 @@ const serverImpl: OpusDecoderWorker = {
         opusDecoder.init(sourceRecordedAtMs);
     },
 
+    setTargetBufferSize: async (streamId: string, targetBufferSizeMs: number, _noWait?: RpcNoWait): Promise<void> => {
+        const opusDecoder = getDecoder(streamId, false);
+        if (!opusDecoder)
+            return;
+
+        opusDecoder.setTargetBufferSize(targetBufferSizeMs);
+    },
+
     close: async (streamId: string, _noWait?: RpcNoWait): Promise<void> => {
         debugLog?.log(`#${streamId}.close`);
         const opusDecoder = getDecoder(streamId, false);

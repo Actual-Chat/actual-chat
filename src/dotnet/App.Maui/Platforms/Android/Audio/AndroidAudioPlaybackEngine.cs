@@ -23,7 +23,6 @@ internal sealed class AndroidAudioPlaybackEngine(
         static frame => frame.Duration);
 
     private CancellationTokenSource? _pauseEndTokenSource;
-    private CancellationTokenSource? _watchBufferEscalationStateCts;
     private volatile AudioTrack? _audioTrack;
     private volatile PlayPositionListener? _positionListener;
     private volatile Task? _decodeAndFeedTask;
@@ -36,7 +35,6 @@ internal sealed class AndroidAudioPlaybackEngine(
     private int _isEnded;
 
     private IAudioCodec AudioCodec => field ??= services.GetRequiredService<IAudioCodec>();
-    private ChatAudioUI ChatAudioUI => field ??= services.GetRequiredService<ChatAudioUI>();
     private ILogger Log => field ??= services.LogFor<AndroidAudioPlaybackEngine>();
 
     public async Task Play(CancellationToken cancellationToken)
@@ -47,11 +45,7 @@ internal sealed class AndroidAudioPlaybackEngine(
 
         var audioSource = (AudioSource)source;
         _remainingPreSkip = audioSource.Format.PreSkip;
-        var chatId = (info as ChatAudioTrackInfo)?.Chat?.Id;
-        var bufferEscalation = chatId is null
-            ? 0
-            : await ChatAudioUI.GetPlaybackBufferEscalation(chatId, cancellationToken).ConfigureAwait(false);
-        _frames.SetTargetDuration(Constants.Audio.GetDecoderTargetBufferDuration(bufferEscalation));
+        _frames.SetTargetDuration(GetEncodedBufferDuration(info.TargetBufferSize));
 
         // Configure AudioTrack for float32 PCM mono at playback sample rate
         var sampleRate = Constants.Audio.PlaybackSampleRate;
@@ -105,17 +99,10 @@ internal sealed class AndroidAudioPlaybackEngine(
 
         audioTrack.Play();
         NotifyPlaying(0); // Initial report that we're ready to play
-        if (chatId is not null) {
-            _watchBufferEscalationStateCts = cancellationToken.CreateLinkedTokenSource();
-            _ = WatchBufferEscalationState(chatId, bufferEscalation, _watchBufferEscalationStateCts.Token);
-        }
     }
 
     protected override async Task DisposeAsyncCore()
     {
-        _watchBufferEscalationStateCts.CancelAndDisposeSilently();
-        _watchBufferEscalationStateCts = null;
-
         // This method starts inside lock (Lock)
         if (_decodeAndFeedTask is not null) {
             await _decodeAndFeedTask.SilentAwait();
@@ -361,24 +348,10 @@ internal sealed class AndroidAudioPlaybackEngine(
         cancellationToken.ThrowIfCancellationRequested();
     }
 
-    private async Task WatchBufferEscalationState(ChatId chatId, int initialEscalation, CancellationToken ct)
+    private static TimeSpan GetEncodedBufferDuration(TimeSpan targetBufferSize)
     {
-        try {
-            var computed = await Computed
-                .Capture(() => ChatAudioUI.GetPlaybackBufferEscalation(chatId, ct), ct)
-                .ConfigureAwait(false);
-            var lastEscalation = initialEscalation;
-            await foreach (var (value, _) in computed.Changes(ct).ConfigureAwait(false)) {
-                if (value == lastEscalation)
-                    continue;
-
-                lastEscalation = value;
-                _frames.SetTargetDuration(Constants.Audio.GetDecoderTargetBufferDuration(value));
-            }
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested) {
-            // Expected on dispose
-        }
+        var encoded = targetBufferSize - Constants.Audio.DefaultDecodedBufferSize - Constants.Audio.DefaultAudioEnginePlaybackLatency;
+        return encoded > Constants.Audio.MinEncodeBufferSize ? encoded : Constants.Audio.MinEncodeBufferSize;
     }
 
     // Nested types

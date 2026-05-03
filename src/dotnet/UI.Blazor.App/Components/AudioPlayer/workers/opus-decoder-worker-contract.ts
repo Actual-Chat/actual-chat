@@ -5,6 +5,7 @@ export interface OpusDecoderWorker {
     create(appConstants: AppConstants, artifactVersions: Map<string, string>, timeout?: RpcTimeout): Promise<void>;
     init(streamId: string, feederWorkletPort: MessagePort): Promise<void>;
     resume(streamId: string, sourceRecordedAtMs: number, noWait?: RpcNoWait): Promise<void>;
+    setTargetBufferSize(streamId: string, targetBufferSizeMs: number, noWait?: RpcNoWait): Promise<void>;
     frame(
         streamId: string,
         buffer: ArrayBuffer,
@@ -20,7 +21,6 @@ export interface OpusDecoderWorker {
 }
 
 export interface BufferHandler {
-    setTargetBufferDuration(targetDurationMs: number, noWait?: RpcNoWait): Promise<void>;
     requestFrame(targetDelayMs: number, noWait?: RpcNoWait): Promise<void>;
     releaseBuffer(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void>;
 }
