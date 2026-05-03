@@ -750,7 +750,7 @@ async Task RunProducerRpc(int chatIdx, int prodIdx, CancellationToken ct)
         var prodSession = producerSessions[prodIdx];
         var sourceStartOffsetSeconds = CpuClock.Instance.Now.EpochOffset.TotalSeconds;
         producerSourceStartOffsets[(chatIdx, prodIdx)] = sourceStartOffsetSeconds;
-        var format = new VideoFormat { Codec = Codec, Width = FrameWidth, Height = FrameHeight };
+        var format = new VideoFormat { Codec = Codec, Size = (FrameWidth, FrameHeight) };
         var frameStream = RpcStream.New(PushFramesRpc(chatIdx, prodIdx, ct));
         await ownLiveVideoStreams.PushStream(
             prodSession, chatIds[chatIdx].Value, sourceStartOffsetSeconds,
