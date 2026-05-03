@@ -16,8 +16,8 @@ const hevcBitrate = (height: number): number => {
     if (height >= 1080) return 3_250_000;
     if (height >= 720) return 2_000_000;
     if (height >= 540) return 1_250_000;
-    if (height >= 360) return 800_000;
-    return 400_000;
+    if (height >= 360) return 650_000;
+    return 162_500;
 };
 
 const dims = (ladder: SpatialLayerConfig[]): string[] =>
@@ -108,10 +108,10 @@ describe('buildLadder — quarter-pixel ratio', () => {
         });
         // Top tier: 720 → 2_000_000
         expect(result[2].bitrate).toBe(2_000_000);
-        // Mid tier: 360 → 800_000
-        expect(result[1].bitrate).toBe(800_000);
-        // Base tier: 180 → 400_000
-        expect(result[0].bitrate).toBe(400_000);
+        // Mid tier: 360 → 650_000
+        expect(result[1].bitrate).toBe(650_000);
+        // Base tier: 180 → 162_500
+        expect(result[0].bitrate).toBe(162_500);
     });
 
     it('odd source dims: top is source-as-is, lower tiers even-rounded', () => {

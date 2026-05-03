@@ -336,8 +336,8 @@ The recording controller adjusts a single integer:
 
 Each value maps to a curated simulcast ladder shape. Platform caps clamp the
 upper bound (e.g. iOS = 2, mobile = 3, desktop = 4). The encoder produces
-exactly that many simulcast layers; the bottom layer is always 360p-class,
-each higher layer doubles in pixel area, and the top layer matches the
+exactly that many simulcast layers; the bottom layer can be 180p-class,
+each higher layer quadruples in pixel area, and the top layer matches the
 source resolution at `targetLayerCount = 4`.
 
 The controller is one shared state per `StreamKind` (webcam, screencast),

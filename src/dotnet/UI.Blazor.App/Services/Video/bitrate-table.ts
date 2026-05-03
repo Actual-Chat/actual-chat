@@ -1,6 +1,6 @@
 import { getCodecCategory } from './codec-support';
 
-type Tier = 2160 | 1080 | 720 | 540 | 360;
+type Tier = 2160 | 1080 | 720 | 540 | 360 | 180;
 type Category = 'h264' | 'hevc' | 'vp9' | 'av1';
 export type StreamMode = 'webcam' | 'screen';
 
@@ -8,10 +8,10 @@ export type StreamMode = 'webcam' | 'screen';
 // the 1080p base — 4K has 4x pixels, but screen content is mostly static, so
 // full 4x bandwidth isn't needed. Keep in sync with VideoBitrateTable.cs.
 const BITRATE_TABLE: Record<Category, Record<Tier, number>> = {
-    h264: { 2160: 13_000_000, 1080: 6_500_000, 720: 4_000_000, 540: 2_500_000, 360: 1_250_000 },
-    hevc: { 2160:  6_500_000, 1080: 3_250_000, 720: 2_000_000, 540: 1_250_000, 360:   650_000 },
-    vp9:  { 2160:  5_500_000, 1080: 2_750_000, 720: 1_600_000, 540: 1_050_000, 360:   550_000 },
-    av1:  { 2160:  4_500_000, 1080: 2_250_000, 720: 1_400_000, 540: 1_000_000, 360:   500_000 },
+    h264: { 2160: 13_000_000, 1080: 6_500_000, 720: 4_000_000, 540: 2_500_000, 360: 1_250_000, 180: 312_500 },
+    hevc: { 2160:  6_500_000, 1080: 3_250_000, 720: 2_000_000, 540: 1_250_000, 360:   650_000, 180: 162_500 },
+    vp9:  { 2160:  5_500_000, 1080: 2_750_000, 720: 1_600_000, 540: 1_050_000, 360:   550_000, 180: 137_500 },
+    av1:  { 2160:  4_500_000, 1080: 2_250_000, 720: 1_400_000, 540: 1_000_000, 360:   500_000, 180: 125_000 },
 };
 
 // Screen content (IDE text, UI chrome) has much higher spatial entropy than
@@ -30,5 +30,6 @@ function pickTier(height: number): Tier {
     if (height >= 1080) return 1080;
     if (height >= 720) return 720;
     if (height >= 540) return 540;
-    return 360;
+    if (height >= 360) return 360;
+    return 180;
 }
