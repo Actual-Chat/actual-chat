@@ -731,8 +731,10 @@ async function processEncodedChunk(
                 // updateDescription is enough; close+recreate is reserved for
                 // a true codec-family change (e.g. AV1 → H.264) or a level
                 // escalation that pushes past current HW capability.
-                const probeW = width ?? currentCodedWidth ?? currentDecoderConfig!.codedWidth ?? 0;
-                const probeH = height ?? currentCodedHeight ?? currentDecoderConfig!.codedHeight ?? 0;
+                const probeW = width
+                    ?? (currentCodedWidth !== 0 ? currentCodedWidth : currentDecoderConfig!.codedWidth ?? 0);
+                const probeH = height
+                    ?? (currentCodedHeight !== 0 ? currentCodedHeight : currentDecoderConfig!.codedHeight ?? 0);
                 const currentCompatible = probeW > 0 && probeH > 0
                     ? await isCurrentCodecCompatible(probeW, probeH, description)
                     : false;
