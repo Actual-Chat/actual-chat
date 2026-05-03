@@ -222,6 +222,18 @@ export class RunningEMA implements RunningCounter {
             this._value =  last + this.smoothingFactor! * (value - last);
         }
     }
+
+    /**
+     * Force the smoothed value to the given number — useful when an out-of-band
+     * event proves the true value differs from the EMA's estimate (e.g. an
+     * audio-sync catch-up that explicitly lowers a latency tracker). Subsequent
+     * `appendSample` calls continue smoothing from the new baseline.
+     */
+    public setValue(value: number): void {
+        this._value = value;
+        if (this._sampleCount < this.minSampleCount)
+            this._sampleCount = this.minSampleCount;
+    }
 }
 
 export class RunningMax implements RunningCounter {

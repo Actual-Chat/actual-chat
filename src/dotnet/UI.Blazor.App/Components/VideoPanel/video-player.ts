@@ -1,5 +1,6 @@
 import { getLogs } from 'logging';
 import { Api, momentToSeconds, secondsToMoment, streamingApi, type VideoFrameDto } from 'api';
+import { RunningEMA } from 'math';
 
 const RPC_SESSION_DEFAULT = '~';
 import { ServerClock } from 'server-clock';
@@ -296,7 +297,12 @@ export class VideoPlayer {
     // Latency measurement
     private lastRenderedOffsetMs = 0;   // offset of the latest decoded frame (ms from stream start)
     private lastLatencyReportTime = 0;
-    private pipelineLatencyMs = 0;      // Smoothed video pipeline latency estimate (ms)
+    // Smoothed video pipeline latency estimate (ms). Cached value of
+    // `pipelineLatencyEma.value` — refreshed wherever the EMA is mutated.
+    // Source for app.video.latency, audio-sync target derivation, and
+    // diagnostics. Smoothing factor 0.2 ≈ 90% convergence in ~10 samples.
+    private pipelineLatencyMs = 0;
+    private readonly pipelineLatencyEma = new RunningEMA(0, 1, 0.2);
     private lastSkipToLiveTime = 0;     // Cooldown: prevent rapid SKIP_TO_LIVE cascading
     private skipFramesBelowOffsetMs = 0; // After tab restore, skip decoded frames below this offset
     private skippedBacklogFrames = 0;
@@ -663,14 +669,8 @@ export class VideoPlayer {
         const currentLatencyMs = ServerClock.now() - capturedAtMs;
         // Safety cap at 10s to prevent absurd values from clock drift.
         const cappedLatencyMs = Math.min(Math.max(currentLatencyMs, 0), 10000);
-        if (this.pipelineLatencyMs === 0) {
-            this.pipelineLatencyMs = cappedLatencyMs;
-        } else {
-            // Asymmetric EMA: moderate response to increases (α=0.2), faster decay (α=0.15)
-            // to prevent ratchet effect where bursty delivery inflates the estimate permanently
-            const alpha = cappedLatencyMs > this.pipelineLatencyMs ? 0.2 : 0.15;
-            this.pipelineLatencyMs = this.pipelineLatencyMs * (1 - alpha) + cappedLatencyMs * alpha;
-        }
+        this.pipelineLatencyEma.appendSample(cappedLatencyMs);
+        this.pipelineLatencyMs = this.pipelineLatencyEma.value;
     }
 
     private onFrameDecoded(frame: VideoFrame): void {
@@ -1040,6 +1040,7 @@ export class VideoPlayer {
                     void this.decoderWorker.configureDecoder(newConfig);
                 }
                 this.playbackStartTime = 0;
+                this.pipelineLatencyEma.reset();
                 this.pipelineLatencyMs = 0; // stale value causes render stall after reconfigure
 
                 // Flush old pending frames — they're from the old decoder at stale offsets.
@@ -1209,6 +1210,7 @@ export class VideoPlayer {
         this.receivedBytes = 0;
         this.firstFrameReceivedTime = 0;
 
+        this.pipelineLatencyEma.reset();
         this.pipelineLatencyMs = 0;
         infoLog?.log(
             `Tab restored: flushed ${pendingCount} pending frames, gating deltas until next keyframe`);
@@ -1612,6 +1614,7 @@ export class VideoPlayer {
         this.receivedKeyframeCount = 0;
         this.receivedBytes = 0;
         this.firstFrameReceivedTime = 0;
+        this.pipelineLatencyEma.reset();
         this.pipelineLatencyMs = 0;
         this.skipFramesBelowOffsetMs = 0;
         this.skippedBacklogFrames = 0;
@@ -1739,7 +1742,10 @@ export class VideoPlayer {
             const excessMs = frameAgeMs - CATCHUP_GENTLE_MS;
             const reductionMs = Math.min(excessMs * 0.3, 20); // Reduce by up to 20ms per tick
             if (this.pipelineLatencyMs > reductionMs) {
-                this.pipelineLatencyMs -= reductionMs;
+                // Out-of-band override: lower the EMA's smoothed estimate so
+                // subsequent samples blend forward from the new baseline.
+                this.pipelineLatencyEma.setValue(this.pipelineLatencyMs - reductionMs);
+                this.pipelineLatencyMs = this.pipelineLatencyEma.value;
                 warnLog?.log(
                     `reportLatencyTick: catchup, frameAge=${frameAgeMs.toFixed(0)}ms, reducing pipelineLatencyMs by ${reductionMs.toFixed(1)}ms to ${this.pipelineLatencyMs.toFixed(0)}ms`);
             }
@@ -1781,6 +1787,7 @@ export class VideoPlayer {
 
             while (!this.pendingFrames.isEmpty())
                 this.pendingFrames.shift()!.close();
+            this.pipelineLatencyEma.reset();
             this.pipelineLatencyMs = 0;
             this.playbackStartTime = 0;
             this.lastRenderedOffsetMs = 0;
