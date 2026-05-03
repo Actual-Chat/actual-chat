@@ -1937,11 +1937,14 @@ export class VideoPlayer {
         const renderLevel = this.computeRenderQualityLevel();
         const skipDelta = Math.max(0, this.skipToLiveCount - this.lastQualitySkipToLiveCount);
         this.lastQualitySkipToLiveCount = this.skipToLiveCount;
+        // Every numeric field below maps to a C# Int32/Int64 — round before
+        // serialising so System.Text.Json's strict integer parse doesn't reject
+        // a float value (bufferDurationMs in particular arrives as a float).
         const snapshot: PlaybackHealthSnapshot = {
             incomingByteRate: Math.round(bitrateKbps * 1000 / 8),
-            bufferDurationMsP50: Math.max(0, bufferDurationMs),
+            bufferDurationMsP50: Math.max(0, Math.round(bufferDurationMs)),
             keyframeSkipsInWindow: skipDelta,
-            decoderQueueDepthP90: ds.decodeQueueSize,
+            decoderQueueDepthP90: Math.max(0, Math.round(ds.decodeQueueSize)),
             currentMaxSpatial: maxSpatialForRenderQualityLevel(renderLevel),
             currentMaxTemporal: MAX_TEMPORAL_LAYER,
             priority: renderLevel === null || renderLevel <= 2
