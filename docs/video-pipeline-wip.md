@@ -399,7 +399,7 @@ exclusively.
   - `event Action? OnAck` — fired post-ACK, post-compaction.
 - **Worker `RecorderHealth` DTO + 1 Hz aggregation** in
   `video-processing.ts`:
-  - `encodeRatio.p50/p90`, `slotReplacements/framesProduced`,
+  - `encodeRatio.avg/p90`, `slotReplacements/framesProduced`,
     `senderBacklog.p90`, `senderSkipsPerWindow`, `lastAckAgeMs`.
   - Posted to `.NET` via `DotNetObjectReference` callback every
     1 s.

@@ -403,7 +403,7 @@ public sealed class VideoRecorder : IAsyncDisposable
 
         [JSInvokable]
         public Task OnRecorderHealthSnapshot(
-            double encodeRatioP50,
+            double encodeRatioAvg,
             double encodeRatioP90,
             double slotReplacementRate,
             double senderBacklogP90Ms,
@@ -411,7 +411,7 @@ public sealed class VideoRecorder : IAsyncDisposable
             double lastAckAgeMs,
             bool isConnected)
             => videoRecorder.OnRecorderHealthSnapshot(new RecorderHealthSnapshot(
-                encodeRatioP50,
+                encodeRatioAvg,
                 encodeRatioP90,
                 slotReplacementRate,
                 senderBacklogP90Ms,

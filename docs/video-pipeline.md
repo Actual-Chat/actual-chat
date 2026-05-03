@@ -351,7 +351,8 @@ Two families of signal, sampled by the recording worker and the sender's
 
 | Signal | Source | Healthy band |
 |---|---|---|
-| `encodeRatio.p90` | encoder + downscaler timing in the recording worker, normalised to frame duration | < 0.5 |
+| `encodeRatio.avg` | encoder + downscaler timing in the recording worker, normalised to frame duration | < 0.33 |
+| `encodeRatio.p90` | same timing distribution, retained for diagnostics | observed only |
 | `slotReplacementRate` | encoder slot replacement count / frames produced | < 1 % |
 | `senderBacklog.p90` | oldest-unacked age on the sender's `RpcStream`, p90 over window | < 50 ms |
 | `senderSkipsPerWindow` | `RpcStream`'s ACK-driven compaction count | 0 |

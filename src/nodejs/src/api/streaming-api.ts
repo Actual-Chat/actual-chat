@@ -120,7 +120,7 @@ export interface RecordingQualityStateDto {
 }
 
 export interface RecorderHealthSnapshotDto {
-    0: number;   // EncodeRatioP50
+    0: number;   // EncodeRatioAvg
     1: number;   // EncodeRatioP90
     2: number;   // SlotReplacementRate
     3: number;   // SenderBacklogP90Ms

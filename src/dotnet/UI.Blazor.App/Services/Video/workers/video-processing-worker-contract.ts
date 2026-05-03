@@ -244,7 +244,7 @@ export interface VideoProcessingWorkerCallbacks {
      *  Fields mirror `RecorderHealthSnapshot` (Api.Contracts/Streaming/Quality/RecordingQuality.cs);
      *  passed positionally to keep the wire compact. */
     onRecorderHealthSnapshot(
-        encodeRatioP50: number,
+        encodeRatioAvg: number,
         encodeRatioP90: number,
         slotReplacementRate: number,
         senderBacklogP90Ms: number,

@@ -241,7 +241,9 @@ function emitRecorderHealthSnapshot(): void {
         const idx = Math.min(Math.floor(samples.length * q), samples.length - 1);
         return samples[idx] ?? 0;
     };
-    const encodeRatioP50 = pickAt(0.5);
+    const encodeRatioAvg = samples.length === 0
+        ? 0
+        : samples.reduce((sum, x) => sum + x, 0) / samples.length;
     const encodeRatioP90 = pickAt(0.9);
 
     const slotRate = slotReplacements / Math.max(1, slotArrivals);
@@ -259,7 +261,7 @@ function emitRecorderHealthSnapshot(): void {
     const lastAckAgeMs = lastSenderAckAtMs > 0 ? now - lastSenderAckAtMs : -1;
 
     void callbacks.onRecorderHealthSnapshot(
-        encodeRatioP50, encodeRatioP90,
+        encodeRatioAvg, encodeRatioP90,
         slotRate, senderBacklogP90Ms, senderSkipsPerWindow,
         lastAckAgeMs, WorkerConnectivityUI.isConnected, rpcNoWait);
 }

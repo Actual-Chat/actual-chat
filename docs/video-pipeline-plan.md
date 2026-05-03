@@ -115,7 +115,7 @@ public partial record RecordingQualityState(
 
 [DataContract, MemoryPackable, MessagePackObject]
 public partial record RecorderHealthSnapshot(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] double EncodeRatioP50,
+    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] double EncodeRatioAvg,
     [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] double EncodeRatioP90,
     [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] double SlotReplacementRate,
     [property: DataMember(Order = 3), MemoryPackOrder(3), Key(3)] double SenderBacklogP90Ms,
@@ -632,7 +632,7 @@ not block the web recording controller on that package change.
 Add a 1 Hz aggregator that produces a `RecorderHealthSnapshot` (already
 defined in `Api.Contracts/Streaming/Quality/RecordingQuality.cs`):
 
-- `encodeRatio.p50/p90` — already partially tracked via `slotWindowMs`
+- `encodeRatio.avg/p90` — already partially tracked via `slotWindowMs`
   and the existing `slotReplacements/Arrivals` counters; sample per-frame
   encode time / `frameDurationMs` (where `frameDurationMs = 1000 / VIDEO.frameRate`).
 - `slotReplacementRate` = `slotReplacements / framesProduced` over the
@@ -722,8 +722,8 @@ public sealed class VideoQualityUI
         RecordingQualityReason Reason);
 
     public sealed record RecordingThresholds(
-        double EncodeRatioBadAbove,    // 0.8
-        double EncodeRatioGoodBelow,   // 0.5
+        double EncodeRatioBadAbove,    // 1.0
+        double EncodeRatioGoodBelow,   // 0.33
         double BacklogBadMs,            // 200
         double BacklogGoodMs,           // 50
         double LastAckBadMs,            // 2000

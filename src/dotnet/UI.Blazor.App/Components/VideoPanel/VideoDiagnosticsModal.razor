@@ -712,7 +712,7 @@
         => layerCount is { } count ? $"{count} layers" : "none";
 
     private static string FormatRecordingEncodeCostSignal(RecorderHealthSnapshot health)
-        => $"p50={health.EncodeRatioP50:F2}x budget, p90={health.EncodeRatioP90:F2}x";
+        => $"avg={health.EncodeRatioAvg:F2}x budget, p90={health.EncodeRatioP90:F2}x";
 
     private static string FormatRecordingSlotSignal(RecorderHealthSnapshot health)
         => $"replaceRate={health.SlotReplacementRate:F2}";

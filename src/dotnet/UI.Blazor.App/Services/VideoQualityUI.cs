@@ -78,10 +78,10 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         if (decision.Changed)
             Log.LogWarning(
                 "RecordingQuality changed: kind={Kind} target={Target} reason={Reason} signal={Signal} "
-                + "encodeP50={EncP50:F2} encodeP90={EncP90:F2} slotRate={SlotRate:F2} "
+                + "encodeAvg={EncAvg:F2} encodeP90={EncP90:F2} slotRate={SlotRate:F2} "
                 + "backlogMs={Backlog:F0} skips={Skips} ackAgeMs={Ack:F0} connected={Connected}",
                 kind, decision.NewTargetLayerCount, decision.Reason, signal,
-                snapshot.EncodeRatioP50, snapshot.EncodeRatioP90, snapshot.SlotReplacementRate,
+                snapshot.EncodeRatioAvg, snapshot.EncodeRatioP90, snapshot.SlotReplacementRate,
                 snapshot.SenderBacklogP90Ms, snapshot.SenderSkipsPerWindow, snapshot.LastAckAgeMs,
                 snapshot.IsConnected);
 
@@ -713,8 +713,8 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         int CooldownTicksAfterBackoff)
     {
         public static RecordingThresholds Defaults => new(
-            EncodeRatioBadAbove: 0.8,
-            EncodeRatioGoodBelow: 0.5,
+            EncodeRatioBadAbove: 0.99,
+            EncodeRatioGoodBelow: 0.33,
             BacklogBadMs: 200,
             BacklogGoodMs: 50,
             LastAckBadMs: 2000,
@@ -738,7 +738,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                 return 0;
 
             var anyBad =
-                h.EncodeRatioP90 > t.EncodeRatioBadAbove
+                h.EncodeRatioAvg > t.EncodeRatioBadAbove
                 || h.SenderBacklogP90Ms > t.BacklogBadMs
                 || (h.LastAckAgeMs >= 0 && h.LastAckAgeMs > t.LastAckBadMs)
                 || h.SenderSkipsPerWindow >= t.SkipsBadCount;
@@ -746,7 +746,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                 return -1;
 
             var allGood =
-                h.EncodeRatioP90 < t.EncodeRatioGoodBelow
+                h.EncodeRatioAvg < t.EncodeRatioGoodBelow
                 && h.SenderBacklogP90Ms < t.BacklogGoodMs
                 && (h.LastAckAgeMs < 0 || h.LastAckAgeMs < t.LastAckGoodMs)
                 && h.SenderSkipsPerWindow == 0;

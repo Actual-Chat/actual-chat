@@ -9,19 +9,20 @@ public class RecordingClassifierTest
     private static readonly RecordingThresholds T = RecordingThresholds.Defaults;
 
     private static RecorderHealthSnapshot Snapshot(
-        double encodeP90 = 0,
+        double encodeAvg = 0,
+        double? encodeP90 = null,
         double slotRate = 0,
         double backlogMs = 0,
         int skips = 0,
         double lastAckMs = 0,
         bool isConnected = true)
-        => new(encodeP90, encodeP90, slotRate, backlogMs, skips, lastAckMs, isConnected);
+        => new(encodeAvg, encodeP90 ?? encodeAvg, slotRate, backlogMs, skips, lastAckMs, isConnected);
 
     [Fact]
     public void AllGoodSignal_ReturnsPlusOne()
     {
         // arrange
-        var h = Snapshot(encodeP90: 0.2, backlogMs: 10, skips: 0, lastAckMs: 100);
+        var h = Snapshot(encodeAvg: 0.2, backlogMs: 10, skips: 0, lastAckMs: 100);
 
         // act
         var result = RecordingClassifier.Classify(h, T);
@@ -33,8 +34,15 @@ public class RecordingClassifierTest
     [Fact]
     public void HighEncodeRatio_ReturnsBad()
     {
-        var h = Snapshot(encodeP90: 0.9);
+        var h = Snapshot(encodeAvg: 1.1);
         RecordingClassifier.Classify(h, T).Should().Be(-1);
+    }
+
+    [Fact]
+    public void HighP90WithGoodAverage_ReturnsGood()
+    {
+        var h = Snapshot(encodeAvg: 0.2, encodeP90: 1.1, backlogMs: 10, skips: 0, lastAckMs: 100);
+        RecordingClassifier.Classify(h, T).Should().Be(1);
     }
 
     [Fact]
@@ -62,15 +70,15 @@ public class RecordingClassifierTest
     public void Disconnected_ReturnsNeutral()
     {
         // Even with otherwise-bad signals, disconnected = no decision (neutral).
-        var h = Snapshot(encodeP90: 0.99, backlogMs: 5000, isConnected: false);
+        var h = Snapshot(encodeAvg: 1.1, backlogMs: 5000, isConnected: false);
         RecordingClassifier.Classify(h, T).Should().Be(0);
     }
 
     [Fact]
     public void BetweenThresholds_ReturnsNeutral()
     {
-        // encode ratio 0.6 is between GoodBelow (0.5) and BadAbove (0.8)
-        var h = Snapshot(encodeP90: 0.6);
+        // encode ratio 0.6 is between GoodBelow (0.33) and BadAbove (1.0)
+        var h = Snapshot(encodeAvg: 0.6);
         RecordingClassifier.Classify(h, T).Should().Be(0);
     }
 
@@ -78,7 +86,7 @@ public class RecordingClassifierTest
     public void LastAckUnknown_StillCanReturnGood()
     {
         // lastAckMs == -1 is the sentinel for "never seen an ACK yet".
-        var h = Snapshot(encodeP90: 0.2, lastAckMs: -1, backlogMs: 10);
+        var h = Snapshot(encodeAvg: 0.2, lastAckMs: -1, backlogMs: 10);
         RecordingClassifier.Classify(h, T).Should().Be(1);
     }
 }
