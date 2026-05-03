@@ -149,14 +149,8 @@ function decoderErrorKey(scope: string, error: unknown): string {
 }
 
 const ownedArrayBufferTracker = new OwnedArrayBufferTracker();
-const OWNED_ARRAY_BUFFER_LOG_INTERVAL = 300;
 function getOwnedArrayBuffer(view: Uint8Array): ArrayBuffer {
-    const result = ownedArrayBufferTracker.get(view);
-    const stats = ownedArrayBufferTracker.stats;
-    if (stats.totalCount % OWNED_ARRAY_BUFFER_LOG_INTERVAL === 0)
-        infoLog?.log(`ownedArrayBuffer: fast=${stats.fastCount} ` +
-            `slow=${stats.slowCount} (${(stats.fastRatio * 100).toFixed(1)}% fast)`);
-    return result;
+    return ownedArrayBufferTracker.get(view);
 }
 
 // Stream id of the active in-worker pull (set by startPullInWorker, cleared
@@ -309,7 +303,6 @@ let lastChunkSeq = -1;
 let lastChunkType: 'key' | 'delta' | '?' = '?';
 let lastChunkSize = 0;
 let lastChunkDescLen = 0;
-let firstKeyframeLogged = false;
 
 // Set in `initialize`/`initializeWithStreams`/`configureDecoder` whenever the
 // decoder is configured with a description. Consumed by decodeRawChunk on the
@@ -672,44 +665,6 @@ async function processEncodedChunk(
     lastChunkSize = dataLen;
     lastChunkDescLen = description?.byteLength ?? 0;
 
-    // Diagnostic: on the first keyframe of a fresh stream, log a side-by-side
-    // comparison of the description from VideoStreamInfo metadata (used at
-    // initialize) vs the description on this keyframe. iOS Safari HEVC HW
-    // decoder errors implicate a possible mismatch — confirm or rule out.
-    if (isKeyFrame && !firstKeyframeLogged) {
-        firstKeyframeLogged = true;
-        const initDesc = currentDecoderConfig?.description;
-        const initLen = initDesc?.byteLength ?? 0;
-        const chunkLen = description?.byteLength ?? 0;
-        const initHex = describeBytes(initDesc);
-        const chunkHex = describeBytes(description);
-        const dataHex = describeBytes(data);
-        let initVsChunk: string;
-        if (initLen === chunkLen && initDesc && description) {
-            let initAsArrayBuffer: ArrayBuffer;
-            if (initDesc instanceof ArrayBuffer) {
-                initAsArrayBuffer = initDesc;
-            } else if (ArrayBuffer.isView(initDesc)) {
-                const v = initDesc as ArrayBufferView;
-                initAsArrayBuffer = (v.buffer as ArrayBuffer).slice(
-                    v.byteOffset, v.byteOffset + v.byteLength);
-            } else {
-                initAsArrayBuffer = new ArrayBuffer(0);
-            }
-            initVsChunk = bufferEqual(initAsArrayBuffer, description) ? 'EQUAL' : 'DIFFER';
-        } else {
-            initVsChunk = initLen === 0 ? 'init-no-desc' : 'len-differ';
-        }
-        infoLog?.log(
-            `processEncodedChunk: first-keyframe seq=${sequenceNumber}, dataLen=${dataLen}, ` +
-            `initDescLen=${initLen}, chunkDescLen=${chunkLen}, cmp=${initVsChunk}, ` +
-            `decoderState=${decoder.getState()}, decoderConfigured=${decoderConfigured}, ` +
-            `codec=${currentDecoderConfig?.codec}, hwAccel=${currentDecoderConfig?.hardwareAcceleration}`);
-        infoLog?.log(`processEncodedChunk: first-keyframe initDescHex=${initHex}`);
-        infoLog?.log(`processEncodedChunk: first-keyframe chunkDescHex=${chunkHex}`);
-        infoLog?.log(`processEncodedChunk: first-keyframe dataHex=${dataHex}`);
-    }
-
     try {
         // If we have a description and it's a keyframe, reconfigure the decoder only if description changed
         if (isKeyFrame && description && description.byteLength > 0) {
@@ -762,22 +717,14 @@ async function processEncodedChunk(
                 decoder.initialize();
                 lastRawDescription = description.slice(0);
                 initialDescriptionApplied = false;
-                warnLog?.log(`processEncodedChunk: built fresh decoder for first keyframe, ` +
-                    `codec=${currentDecoderConfig!.codec}, ` +
-                    `descLen=${description.byteLength}, decoderState=${decoder.getState()}`);
             } else if (initialDescriptionApplied) {
                 // Decoder was already configured with description at init/configure path —
                 // skip the redundant decoder.configure() that iOS Safari HEVC HW
                 // rejects with EncodingError even when bytes are identical.
                 initialDescriptionApplied = false;
                 lastRawDescription = description.slice(0);
-                warnLog?.log(`[FLAG_PATH] First keyframe: skipped redundant configure, ` +
-                    `seeded lastRawDescription (${description.byteLength} bytes), ` +
-                    `decoderState=${decoder.getState()}`);
             } else if (!lastRawDescription || !bufferEqual(lastRawDescription, description)) {
-                warnLog?.log(`updateDescription firing: lastRawDesc=${
-                    lastRawDescription ? lastRawDescription.byteLength : 'null'} bytes, ` +
-                    `chunkDesc=${description.byteLength} bytes, decoderState=${decoder.getState()}`);
+                infoLog?.log('Decoder description updated');
                 // Re-derive codec from the new description — simulcast layer
                 // switches carry a new SPS with different tier/level. If the
                 // codec string changes, swap it atomically with the new
@@ -1100,13 +1047,6 @@ async function processEncodedChunk(
             }
         }
 
-        if (isKeyFrame) {
-            infoLog?.log(`processEncodedChunk: pre-decode keyframe seq=${sequenceNumber}, ` +
-                `state=${decoder.getState()}, configured=${decoderConfigured}, ` +
-                `descLen=${description?.byteLength ?? 0}, dataLen=${dataLen}, ` +
-                `flagWasUsed=${!initialDescriptionApplied && sequenceNumber === 0 ? 'maybe' : 'n/a'}`);
-        }
-
         // Decode using the WebCodecsDecoder wrapper (tracks timing for diagnostics)
         decoder.decodeRaw(chunk);
     } catch (error) {
@@ -1303,7 +1243,6 @@ const serverImpl: DecoderWorker = {
             currentDecoderConfig = null;
             frameCount = 0;
             lastRawDescription = null;
-            firstKeyframeLogged = false;
             lastChunkSeq = -1;
             lastChunkType = '?';
             lastChunkSize = 0;
