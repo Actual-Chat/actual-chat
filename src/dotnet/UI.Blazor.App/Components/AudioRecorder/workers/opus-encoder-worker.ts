@@ -317,18 +317,27 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
                     const samples = new Float32Array(samplesBuffer);
                     gains[i] = approximateGain(samples);
                 }
-                const preRollFrameCount = AUDIO.encode.voiceStartPreRollFrameCount;
-                const speechGain = average(gains.slice(-preRollFrameCount));
-                let startIndex = queue.length - 2;
-                while (startIndex > 0) {
+                const preRollFrameLimit = AUDIO.encode.voicePreRollFrameLimit;
+                const preRollFrameCount = Math.min(preRollFrameLimit, queue.length);
+                const speechFrameCount = Math.max(
+                    1,
+                    Math.min(preRollFrameCount, Math.ceil(preRollFrameLimit / 3)));
+                const speechGain = average(gains.slice(-speechFrameCount));
+                const minStartIndex = queue.length - preRollFrameCount;
+                let startIndex = queue.length - speechFrameCount - 1;
+                while (startIndex >= minStartIndex) {
                     const gain = gains[startIndex];
-                    if (gain < speechGain/20)
+                    if (gain < speechGain/10)
                         break;
+
                     startIndex--;
                 }
-                let framesToShift = clamp(startIndex - 1, 0, queue.length - preRollFrameCount);
-                debugLog?.log(`processQueue(in): gains: `, gains, framesToShift);
-                while (framesToShift-- > 0)            {
+                let framesToShift = startIndex >= minStartIndex
+                    ? startIndex - 1
+                    : minStartIndex;
+                framesToShift = clamp(framesToShift, minStartIndex, queue.length - speechFrameCount);
+                debugLog?.log(`processQueue(in): gains: `, gains, framesToShift, speechFrameCount);
+                while (framesToShift-- > 0) {
                     const { buffer: samplesBuffer } = queue.shift()!;
                     void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
                 }

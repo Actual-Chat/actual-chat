@@ -91,7 +91,7 @@ partial record AppConstants
             // Voice-start pre-roll - bounded ring of recent encoder-frame-equivalent
             // PCM kept while voice activity is inactive; prepended to the first
             // encoded frame on voice start so leading consonants survive.
-            public int VoiceStartPreRollFrameCount { get; init; } = Constants.Audio.VoiceStartPreRollFrameCount;
+            public int VoicePreRollFrameLimit { get; init; } = Constants.Audio.VoicePreRollFrameLimit;
         }
 
         public sealed record StreamConstants
