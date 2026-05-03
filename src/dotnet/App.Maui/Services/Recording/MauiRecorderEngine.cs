@@ -4,6 +4,7 @@ using ActualChat.Streaming;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.Services;
+using ActualLab.Rpc;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace ActualChat.App.Maui.Services.Recording;
@@ -26,14 +27,14 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     private bool _isVoiceActive;
     private readonly UIHub _hub;
 
-    private IStreamClient StreamClient => field ??= _hub.Services.GetRequiredService<IStreamClient>();
-    private MicrophonePermissionHandler MicrophonePermissionHandler => field ??= _hub.Services.GetRequiredService<MicrophonePermissionHandler>();
     private IAudioCapture AudioCapture => field ??= _hub.Services.GetRequiredService<IAudioCapture>();
+    private ILiveAudioStreams LiveAudioStreams => field ??= _hub.Services.GetRequiredService<ILiveAudioStreams>();
     private VoiceActivityDetector VoiceActivityDetector => field ??= _hub.Services.GetRequiredService<VoiceActivityDetector>();
     private IAudioRecorderBackend AudioRecorderBackend => field ??= _hub.Services.GetRequiredService<IAudioRecorderBackend>();
     private IAudioCodec AudioCodec => field ??= _hub.Services.GetRequiredService<IAudioCodec>();
     private RecorderStateHub RecorderStateHub => field ??= _hub.Services.GetRequiredService<RecorderStateHub>();
     private ConnectivityUI ConnectivityUI => field ??= _hub.Services.GetRequiredService<ConnectivityUI>();
+    private MicrophonePermissionHandler MicrophonePermissionHandler => field ??= _hub.Services.GetRequiredService<MicrophonePermissionHandler>();
     private MomentClockSet Clocks => field ??= _hub.Clocks;
     private ILogger Log => field ??= _hub.LogFor<MauiRecorderEngine>();
 
@@ -298,7 +299,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         CancellationToken cancellationToken)
     {
         // Mirrors the TS AudioStream.stream() retry loop: PushAudio is configured with
-        // RpcRemoteExecutionMode.AwaitForConnection | AllowReconnect (see IStreamServer.cs),
+        // RpcRemoteExecutionMode.AwaitForConnection | AllowReconnect (see ILiveAudioStreams.cs),
         // so same-peer WS reconnects resume transparently via $sys.Reconnect. On peer-change
         // the sender is disposed and PushAudio throws; we create a new PushAudio call (a new
         // server-side chat entry) and continue draining the channel from where we stopped.
@@ -334,13 +335,14 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
             var frameStream = BuildFrames(cancellationToken).SuppressCancellation(cancellationToken);
             try {
-                await StreamClient.PushAudio(
+                var rpcStream = RpcStream.New(frameStream);
+                await LiveAudioStreams.PushStream(
                     session,
                     chatId.Value,
                     repliedChatEntryId?.Value,
                     sourceStartOffsetSeconds,
                     preSkip,
-                    frameStream,
+                    rpcStream,
                     cancellationToken).ConfigureAwait(false);
                 // Natural completion: channel writer was completed (CompleteAudioStream),
                 // reader drained, BuildFrames returned, PushAudio finished cleanly.

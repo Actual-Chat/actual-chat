@@ -54,7 +54,6 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         services.AddSingleton<StreamLatencyStore>();
         services.AddSingleton<RemoteVideoStreamCache>();
         services.AddSingleton<RemoteAudioStreamCache>();
-        services.AddSingleton<IStreamClient, StreamBackendClient>(); // Client for IAudioStreamingBackend
         services.TryAddSingleton<AudioSettings>(); // AudioSettings are not configured now
         if (isBackendClient)
             return;

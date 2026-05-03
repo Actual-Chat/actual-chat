@@ -108,7 +108,7 @@ public sealed class ChatListener : ChatPlayer
 
                 // Report end-to-end audio latency
                 var latency = serverClock.Now - streamInfo.BeginsAt;
-                _ = Hub.StreamClient.ReportAudioLatency(latency, cancellationToken).ConfigureAwait(false);
+                _ = Hub.LiveAudioStreams.ReportAudioLatency(Hub.Session, latency, cancellationToken).ConfigureAwait(false);
 
                 // Create AudioSource from the stream frames. Audio/video sync is
                 // applied later by AudioTrackPlayer via playback-engine commands,

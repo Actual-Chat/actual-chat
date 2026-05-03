@@ -1,10 +1,6 @@
 using ActualChat.Audio;
-using ActualChat.Chat;
-using ActualChat.IO;
-using ActualChat.Kvas;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
-using ActualChat.Users;
 using ActualLab.IO;
 using ActualLab.Rpc;
 
@@ -26,7 +22,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
 
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
         var backend = services.GetRequiredService<IAudioStreamingBackend>();
-        var client = services.GetRequiredService<IStreamClient>();
+        var client = services.GetRequiredService<ILiveAudioStreams>();
         if (mustSetUserLanguageSettings) {
             var userLanguageSettings = new UserLanguageSettings() { Primary = Languages.Main };
             await userSettingsUI.UserLanguageSettings().Set(userLanguageSettings, CancellationToken.None);
@@ -59,7 +55,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
 
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
         var backend = services.GetRequiredService<IAudioStreamingBackend>();
-        var client = services.GetRequiredService<IStreamClient>();
+        var client = services.GetRequiredService<ILiveAudioStreams>();
         var log = services.LogFor<StreamingBackendTest>();
         await userSettingsUI.UserLanguageSettings().Set(
             new UserLanguageSettings {
@@ -108,7 +104,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
 
         var backend = services.GetRequiredService<IAudioStreamingBackend>();
-        var client = services.GetRequiredService<IStreamClient>();
+        var client = services.GetRequiredService<ILiveAudioStreams>();
         var chats = services.GetRequiredService<IChatsBackend>();
         var log = services.LogFor<StreamingBackendTest>();
         var userSettingsUI = services.UserSettingsUI(session);
@@ -177,7 +173,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
 
         var backend = services.GetRequiredService<IAudioStreamingBackend>();
-        var client = services.GetRequiredService<IStreamClient>();
+        var client = services.GetRequiredService<ILiveAudioStreams>();
         var chats = services.GetRequiredService<IChatsBackend>();
         var log = services.LogFor<StreamingBackendTest>();
         var userSettingsUI = services.UserSettingsUI(session);
@@ -248,7 +244,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
 
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
         var backend = services.GetRequiredService<IAudioStreamingBackend>();
-        var client = services.GetRequiredService<IStreamClient>();
+        var client = services.GetRequiredService<ILiveAudioStreams>();
         var log = services.LogFor<StreamingBackendTest>();
         var userSettingsUI = services.UserSettingsUI(session);
 
@@ -292,7 +288,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
 
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
         var backend = services.GetRequiredService<IAudioStreamingBackend>();
-        var client = services.GetRequiredService<IStreamClient>();
+        var client = services.GetRequiredService<ILiveAudioStreams>();
         var log = services.LogFor<StreamingBackendTest>();
         var userSettingsUI = services.UserSettingsUI(session);
 
@@ -327,15 +323,17 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
     }
 
     private async Task<int> ReadTranscriptStream(
-        IStreamClient client,
+        ILiveAudioStreams client,
         AudioRecord audioRecord)
     {
         var audioStreamId = OpenAudioSegment.GetStreamId(audioRecord, 0);
         var transcriptStreamId = audioStreamId;
-        var diffs = client.GetTranscript(transcriptStreamId.Value, CancellationToken.None);
+        var rpcStream = await client.GetTranscriptStream(audioRecord.Session, transcriptStreamId.Value, CancellationToken.None);
         var transcript = Transcript.Empty;
         var length = 0;
-        await foreach (var diff in diffs) {
+        if (rpcStream == null)
+            return length;
+        await foreach (var diff in rpcStream) {
             transcript += diff;
             WriteLine($"TextDiff: {diff.TextDiff}");
             WriteLine($"Transcript: {transcript}");
@@ -345,16 +343,18 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
     }
 
     private static async Task<int> ReadAudio(
-        IStreamClient client,
+        ILiveAudioStreams client,
         AudioRecord audioRecord,
         TimeSpan skip = default,
         CancellationToken cancellationToken = default)
     {
         var streamId = OpenAudioSegment.GetStreamId(audioRecord, 0);
-        var audio = await client.GetAudio(streamId.Value, skip, cancellationToken);
+        var rpcStream = await client.GetStream(audioRecord.Session, streamId.Value, skip, cancellationToken);
+        if (rpcStream == null)
+            return 0;
 
         var sum = 0;
-        await foreach (var audioFrame in audio.GetFrames(default))
+        await foreach (var audioFrame in rpcStream.WithCancellation(cancellationToken))
             sum += audioFrame.Data.Length;
 
         return sum;

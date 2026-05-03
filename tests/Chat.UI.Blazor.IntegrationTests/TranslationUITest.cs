@@ -17,7 +17,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     private BlazorTester BobTester => field ??= AppHost.NewBlazorTester(Out);
     private BlazorTester AliceTester => field ??= AppHost.NewBlazorTester(Out);
     private AppUIHub Hub => field ??= BobTester.ScopedAppServices.AppUIHub();
-    private IStreamClient StreamClient => Hub.StreamClient;
+    private ILiveAudioStreams LiveAudioStreams => Hub.LiveAudioStreams;
     private TranslationUI TranslationUI => Hub.TranslationUI;
     private ThrottledTranslations ThrottledTranslations => Hub.Services.GetRequiredService<ThrottledTranslations>();
     private TranscriptUI TranscriptUI => Hub.TranscriptUI;
@@ -258,7 +258,10 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         var streamingState = await AssertIsStreaming(entry, true).Require();
 
         // act
-        var diffs = await StreamClient.GetTranscript(streamingState.StreamId.Value, cancellationToken).ToListAsync(cancellationToken);
+        var rpcStream = await LiveAudioStreams.GetTranscriptStream(Hub.Session, streamingState.StreamId.Value, cancellationToken);
+        var diffs = rpcStream is null
+            ? new List<TranscriptDiff>()
+            : await ((IAsyncEnumerable<TranscriptDiff>)rpcStream).ToListAsync(cancellationToken);
 
         // assert
         diffs.Should().HaveCountGreaterThan(10);

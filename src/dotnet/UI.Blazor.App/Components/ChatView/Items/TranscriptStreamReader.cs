@@ -1,6 +1,7 @@
 using ActualChat.Streaming;
 using ActualChat.Transcription;
 using ActualChat.UI.Blazor.App.Services;
+using ActualLab.Rpc;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
@@ -9,7 +10,7 @@ public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
     private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.25, 2);
 
     private TranscriptUI TranscriptUI => hub.TranscriptUI;
-    private IStreamClient StreamClient => hub.StreamClient;
+    private ILiveAudioStreams LiveAudioStreams => hub.LiveAudioStreams;
     private MomentClockSet Clocks => hub.Clocks;
     private ILogger Log => field ??= hub.LogFor(GetType());
 
@@ -89,7 +90,11 @@ public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
         var (streamId, content, isTranslation) = streamingState;
         var lastText = "";
         try {
-            var diffs = StreamClient.GetTranscript(streamId.Value, cancellationToken);
+            var rpcStream = await LiveAudioStreams.GetTranscriptStream(hub.Session, streamId.Value, cancellationToken)
+                .ConfigureAwait(false);
+            var diffs = rpcStream is null
+                ? AsyncEnumerable.Empty<TranscriptDiff>()
+                : rpcStream.SuppressException<TranscriptDiff, RpcReconnectFailedException>(cancellationToken);
             var transcripts = diffs.ToTranscripts();
 
             // Optimization state:
