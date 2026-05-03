@@ -19,7 +19,6 @@ import {
     getCodecCandidates,
     selectDecoderCodec,
 } from '../hevc-codec-selection';
-import { getCodecCategory } from '../codec-support';
 import { getLogs } from 'logging';
 import { WorkerMstgSelector } from './worker-mstg-selector';
 import { BG_DRAW_INTERVAL_MS } from '../services/bg-canvas-settings';

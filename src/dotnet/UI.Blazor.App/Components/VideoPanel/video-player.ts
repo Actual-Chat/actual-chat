@@ -1579,7 +1579,7 @@ export class VideoPlayer {
         if (this.offThreadPullActive && this.decoderWorker) {
             void this.decoderWorker.getStats()
                 .then(ds => this.reportPlaybackHealth(ds, Math.max(0, report.bufferSpanMs)))
-                .catch(e => warnLog?.log('onWorkerLatencyReport getStats error:', e));
+                .catch((e: unknown) => warnLog?.log('onWorkerLatencyReport getStats error:', e));
         }
         // Latency reports formerly went to streamServer.ReportVideoLatency; the
         // playback quality controller (Step 10) now consumes equivalent signals
@@ -1940,7 +1940,7 @@ export class VideoPlayer {
             qualityReductionRequested: this.qualityReductionRequested,
         };
         void this.blazorRef.invokeMethodAsync('OnPlaybackHealth', snapshot)
-            .catch(e => warnLog?.log('reportPlaybackHealth error:', e));
+            .catch((e: unknown) => warnLog?.log('reportPlaybackHealth error:', e));
     }
 
     private async reportPlaying(offsetMs: number, isBufferLow: boolean): Promise<void> {

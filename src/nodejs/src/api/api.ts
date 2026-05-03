@@ -89,7 +89,9 @@ export interface ApiConnectivityUI {
     readonly isConnectedChanged: { add(handler: (v: boolean) => void): unknown };
 }
 
-type KeyFrameLike = { readonly IsKeyFrame: boolean };
+interface KeyFrameLike {
+    readonly IsKeyFrame: boolean;
+}
 
 export class MediaRpcStreamOptions {
     static videoRealtime<T extends KeyFrameLike>(): RpcStreamOptions<T>;
