@@ -13,6 +13,7 @@ import { Api, streamingApi, toMoment,
     type LiveVideoStreamsClient, type SessionTokenProvider, type VideoFormatDto, type VideoFrameDto } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 import { VIDEO } from 'app-constants';
+import { ServerClock } from 'server-clock';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
@@ -64,8 +65,8 @@ export interface StreamingContext {
     rpcLiveVideoStreams: LiveVideoStreamsClient | null;
 }
 
-export function serverClockNow(ctx: StreamingContext): number {
-    return Date.now() + ctx.serverClockOffsetMs;
+export function serverClockNow(_ctx: StreamingContext): number {
+    return ServerClock.now();
 }
 
 /**

@@ -33,6 +33,8 @@ import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-ini
 import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 import { AC, VIDEO, whenAppConstantsReady } from 'app-constants';
 import { OwnedArrayBufferTracker, ReplaceableSlot } from 'buffers';
+import { SharedSettings } from 'shared-settings';
+import { SharedSettingsWorkerSync } from 'shared-settings-worker';
 
 // Backend selection: prefer the off-thread renderer wherever a generator API
 // (MediaStreamTrackGenerator on Chromium, VideoTrackGenerator on Safari) is
@@ -213,6 +215,7 @@ export class VideoPlayer {
     private delegateEntryCount = 0;
     private connectivityHandlerOnline: EventHandler<boolean> | null = null;
     private connectivityHandlerConnected: EventHandler<boolean> | null = null;
+    private sharedSettingsRegistration: Disposable | null = null;
 
     // Frame pacing state
     private playbackStartTime = 0;     // wall-clock ms (performance.now) when first frame rendered
@@ -477,7 +480,8 @@ export class VideoPlayer {
             // Propagate app constants. Fire-and-forget: the message queues
             // ahead of `initialize` / `prewarmRpc` / any other RPC.
             await whenAppConstantsReady;
-            void this.decoderWorker.init(AC);
+            void this.decoderWorker.init(AC, SharedSettings.all);
+            this.sharedSettingsRegistration = SharedSettingsWorkerSync.register(this.decoderWorker);
 
             // Mirror main-thread ConnectivityUI → worker's WorkerConnectivityUI
             // so the worker's Api peer honours `isDotNetRpcConnected`.
@@ -527,6 +531,7 @@ export class VideoPlayer {
             // chunk delivery inside startPullInWorker — adds visible delay to
             // the rotating-indicator window on iOS.
             const apiUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
+            SharedSettings.update({ apiUrl });
             void this.decoderWorker.prewarmRpc(apiUrl, rpcNoWait);
 
             // Off-thread renderer activation now happens inside `startPull`,
@@ -1437,6 +1442,7 @@ export class VideoPlayer {
         }
 
         const apiUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
+        SharedSettings.update({ apiUrl });
         // Hand the bg canvas to the worker so it can paint a low-res blurred
         // backdrop directly (see §13). transferControlToOffscreen() can be
         // called only once per element across the lifetime of the document —
@@ -1458,19 +1464,14 @@ export class VideoPlayer {
                 `(alreadyTransferred=${this.bgOffscreenTransferred}, ` +
                 `transferFn=${typeof (this.bgCanvasEl as { transferControlToOffscreen?: unknown }).transferControlToOffscreen})`);
         }
-        // Snapshot ServerClock skew for the worker. Worker has no ServerClock;
-        // it reconstructs server-aligned now via `Date.now() + offset`. Drift
-        // over a typical call is < 50 ms, well within the ±100 ms drift-clamp
-        // applied inside MstgSelector.tick(). One snapshot is enough.
-        const serverClockOffsetMs = ServerClock.now() - Date.now();
         try {
             await this.decoderWorker.startPullInWorker(
                 streamId, skipToMs, apiUrl,
-                this.startedAtMs, serverClockOffsetMs, JITTER_BUFFER_MS,
+                this.startedAtMs, JITTER_BUFFER_MS,
                 mainWritable,
                 bgOffscreen);
             this.offThreadPullActive = true;
-            debugLog?.log(`Off-thread pull started for ${streamId}, skipTo=${skipToMs}ms (tier ${mainWritable ? 2 : 1}), serverClockOffsetMs=${serverClockOffsetMs.toFixed(0)}`);
+            debugLog?.log(`Off-thread pull started for ${streamId}, skipTo=${skipToMs}ms (tier ${mainWritable ? 2 : 1})`);
             return true;
         } catch (e) {
             warnLog?.log('startPullInWorker rejected:', e);
@@ -1562,6 +1563,10 @@ export class VideoPlayer {
             ConnectivityUI.isConnectedChanged.remove(this.connectivityHandlerConnected);
             this.connectivityHandlerConnected = null;
         }
+        if (this.sharedSettingsRegistration) {
+            this.sharedSettingsRegistration.dispose();
+            this.sharedSettingsRegistration = null;
+        }
 
         // Close all pending frames
         while (!this.pendingFrames.isEmpty()) {
@@ -1631,7 +1636,7 @@ export class VideoPlayer {
         // the source's claimed start time). Audio catch-up policy compares this
         // against the audio-side equivalent measured at the speaker. Webcam
         // streams only — screencast lag is filtered out by the .NET handler.
-        const sysNow = Date.now();
+        const sysNow = ServerClock.now();
         const presentationLagMs = sysNow - renderedAtMs;
         this.reportPresentationLag(this.lastRenderedOffsetMs, 'canvas-latency-report', presentationLagMs);
         infoLog?.log(
@@ -1790,7 +1795,7 @@ export class VideoPlayer {
     }
 
     private reportPresentationLag(renderedOffsetMs: number, source: string, presentationLagMs?: number): void {
-        const lagMs = presentationLagMs ?? Date.now() - (this.startedAtMs + renderedOffsetMs);
+        const lagMs = presentationLagMs ?? ServerClock.now() - (this.startedAtMs + renderedOffsetMs);
         void this.blazorRef.invokeMethodAsync('OnPresentationLag', lagMs)
             .catch(() => { /* ignore */ });
     }

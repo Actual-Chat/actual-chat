@@ -8,12 +8,15 @@ import { ResolvedPromise } from 'promises';
 import { rpcClientServer, RpcNoWait } from 'rpc';
 import { Log, getLogs } from 'logging';
 import { AC, whenAppConstantsReady } from 'app-constants';
+import { SharedSettings } from 'shared-settings';
+import { SharedSettingsWorkerSync } from 'shared-settings-worker';
 
 const { logScope, errorLog } = getLogs('FeederNode');
 
 /** Part of the feeder that lives in main global scope. It's the counterpart of FeederAudioWorkletProcessor */
 export class FeederAudioWorkletNode extends AudioWorkletNode {
     private readonly worklet: FeederAudioWorklet & Disposable;
+    private sharedSettingsRegistration: Disposable | null = null;
 
     public onStateChanged?: (state: FeederState) => void;
 
@@ -44,7 +47,8 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
     ): Promise<FeederAudioWorkletNode> {
         const node = new FeederAudioWorkletNode(id, context, name, options);
         await whenAppConstantsReady;
-        await node.worklet.init(AC, id, decoderWorkerPort);
+        await node.worklet.init(AC, SharedSettings.all, id, decoderWorkerPort);
+        node.sharedSettingsRegistration = SharedSettingsWorkerSync.register(node.worklet);
         return node;
     }
 
@@ -58,6 +62,12 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
 
     public resume(preSkip: number): Promise<void> {
         return this.worklet.resume(preSkip);
+    }
+
+    public dispose(): void {
+        this.sharedSettingsRegistration?.dispose();
+        this.sharedSettingsRegistration = null;
+        this.worklet.dispose();
     }
 
     private onProcessorError = (ev: Event) => {

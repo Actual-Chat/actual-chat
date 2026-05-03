@@ -2,9 +2,11 @@ import { VoiceActivityChange } from './audio-vad-contract';
 import { AudioDiagnosticsState } from '../audio-recorder';
 import { RpcNoWait, RpcTimeout } from 'rpc';
 import type { AppConstants } from 'app-constants';
+import type { SharedSettingsSnapshot } from 'shared-settings';
+import type { SharedSettingsWorker } from 'shared-settings-worker';
 
-export interface OpusEncoderWorker {
-    create(appConstants: AppConstants, artifactVersions: Map<string, string>, apiUrl: string, timeout?: RpcTimeout): Promise<void>;
+export interface OpusEncoderWorker extends SharedSettingsWorker {
+    create(appConstants: AppConstants, artifactVersions: Map<string, string>, sharedSettings: SharedSettingsSnapshot, apiUrl: string, timeout?: RpcTimeout): Promise<void>;
     init(workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void>;
     start(chatId?: string, repliedChatEntryId?: string): Promise<void>;
     stop(): Promise<void>;
@@ -24,5 +26,4 @@ export interface OpusEncoderWorker {
     onEncoderWorkletSamples(buffer: ArrayBuffer, capturedAtMs: number, noWait?: RpcNoWait): Promise<void>;
     onVoiceActivityChange(change: VoiceActivityChange, noWait?: RpcNoWait): Promise<void>;
     onConnectivityUpdate(isOnline: boolean, isConnected: boolean, isBlazorServer: boolean, noWait?: RpcNoWait): Promise<void>;
-    updateServerClockOffset(offsetMs: number, noWait?: RpcNoWait): Promise<void>;
 }

@@ -28,10 +28,11 @@ import type {
 import { Versioning } from 'versioning';
 import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
-import { ServerClock } from 'server-clock';
 import type { Subscription } from 'rxjs';
 import { RecorderStateHub } from '../../../Components/AudioRecorder/recorder-state-hub';
 import { AC, whenAppConstantsReady } from 'app-constants';
+import { SharedSettings } from 'shared-settings';
+import { SharedSettingsWorkerSync } from 'shared-settings-worker';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
@@ -256,7 +257,7 @@ export class VideoPipeline implements IVideoPipeline {
     private reconfigureLastFiredAt = 0;
 
     // Server clock sync
-    private clockUnsubscribe: (() => void) | null = null;
+    private sharedSettingsRegistration: Disposable | null = null;
 
     // Screen-orientation change listener — supplies senderRotationDeg to worker
     // when VideoFrame.rotation is not populated by the platform (e.g. Safari iOS).
@@ -370,7 +371,7 @@ export class VideoPipeline implements IVideoPipeline {
         // the shared worker is safe; the message queues ahead of any operational RPC.
         // The constructor can't await, so chain on `whenAppConstantsReady` —
         // operational RPCs are issued later, after the main thread is ready.
-        void whenAppConstantsReady.then(() => this.worker.init(AC));
+        void whenAppConstantsReady.then(() => this.worker.init(AC, SharedSettings.all));
 
         // Mirror `ConnectivityUI` → worker's `WorkerConnectivityUI` → Api
         // so the worker's peer honors `isDotNetRpcConnected`. Same pattern as
@@ -417,6 +418,7 @@ export class VideoPipeline implements IVideoPipeline {
         // Fusion RPC WebSocket URL — worker pushes frames via
         // `IStreamServer.PushVideo` over this connection.
         const apiUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
+        SharedSettings.update({ apiUrl });
         // Screencast: screen buffer is already in display orientation regardless
         // of device rotation. Applying camera-sensor rotation compensation here
         // rotates the encoded frames 90° on desktop (angle=0 → rotation=90) which
@@ -444,7 +446,7 @@ export class VideoPipeline implements IVideoPipeline {
             streaming: {
                 apiUrl,
                 chatId: this.config.streaming?.chatId ?? '',
-                serverClockOffsetMs: ServerClock.offsetMs,
+                serverClockOffsetMs: SharedSettings.all.serverClockOffsetMs,
                 streamKind: this.config.streaming?.streamKind ?? 0,
             },
             senderRotationDeg: initialSenderRotation,
@@ -474,10 +476,7 @@ export class VideoPipeline implements IVideoPipeline {
             await this.startRpcFallbackMode(videoTrack, workerConfig);
         }
 
-        // Subscribe to server clock offset changes
-        this.clockUnsubscribe = ServerClock.onOffsetChanged((offsetMs) => {
-            void this.worker.updateServerClockOffset(offsetMs);
-        });
+        this.sharedSettingsRegistration = SharedSettingsWorkerSync.register(this.worker);
 
         // Subscribe to screen-orientation changes — push rotation to worker so the
         // GPU downscaler can rotate correctly on platforms where VideoFrame.rotation
@@ -630,9 +629,9 @@ export class VideoPipeline implements IVideoPipeline {
         this.isSpeaking = true;
 
         // Unsubscribe from clock
-        if (this.clockUnsubscribe) {
-            this.clockUnsubscribe();
-            this.clockUnsubscribe = null;
+        if (this.sharedSettingsRegistration) {
+            this.sharedSettingsRegistration.dispose();
+            this.sharedSettingsRegistration = null;
         }
 
         // Unsubscribe from orientation change

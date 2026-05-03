@@ -3,10 +3,12 @@ import { Interactive } from 'interactive';
 import { Gestures } from 'gestures';
 import { EmojiPreview } from 'emoji-preview';
 import { ServerClock } from 'server-clock';
+import { SharedSettings } from 'shared-settings';
 import { ServiceWorker } from 'service-worker';
 import { BrowserInit } from '../../dotnet/UI.Blazor/Services/BrowserInit/browser-init';
 
 globalThis.ServerClock = ServerClock;
+globalThis.SharedSettings = SharedSettings;
 globalThis.EmojiPreview = EmojiPreview;
 DeviceInfo.updateBodyClasses();
 Interactive.init();

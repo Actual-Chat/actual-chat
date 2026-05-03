@@ -21,6 +21,8 @@ import OnnxModel from './vad_batched.ort';
 import { getLogs } from 'logging';
 import { ResamplerLoader } from './resampler-loader';
 import { AudioRingBuffer } from '../audio-ring-buffer';
+import { type SharedSettingsSnapshot } from 'shared-settings';
+import { sharedSettingsWorker } from 'shared-settings-worker';
 
 const { logScope, debugLog, infoLog, warnLog, errorLog } = getLogs('AudioVadWorker');
 
@@ -116,8 +118,11 @@ const resamplerLoader = new ResamplerLoader();
 //     void resamplerLoader.load();
 
 const serverImpl: AudioVadWorker = {
-    create: async (appConstants: AppConstants, artifactVersions: Map<string, string>, canUseNNVad: boolean, _timeout?: RpcTimeout): Promise<void> => {
+    ...sharedSettingsWorker,
+
+    create: async (appConstants: AppConstants, artifactVersions: Map<string, string>, sharedSettings: SharedSettingsSnapshot, canUseNNVad: boolean, _timeout?: RpcTimeout): Promise<void> => {
         infoLog?.log(`create`, canUseNNVad, _timeout);
+        await sharedSettingsWorker.updateSharedSettings(sharedSettings);
         initAppConstants(appConstants);
         vadRingBuffer = new AudioRingBuffer(AUDIO.vad.neuralFrameSamples * 10, 1);
         vadBuffer = new Float32Array(AUDIO.vad.neuralFrameSamples * 3).buffer;

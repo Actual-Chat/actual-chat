@@ -16,6 +16,9 @@ import { ResolvedPromise } from 'promises';
 import { getLogs } from 'logging';
 import { BufferHandler } from '../workers/opus-decoder-worker-contract';
 import { AudioRingBuffer } from '../../AudioRecorder/audio-ring-buffer';
+import { ServerClock } from 'server-clock';
+import { type SharedSettingsSnapshot } from 'shared-settings';
+import { sharedSettingsWorker } from 'shared-settings-worker';
 
 const { logScope, debugLog, warnLog } = getLogs('FeederProcessor');
 const FEEDER_TARGET_BUFFER_FRAMES = 2;
@@ -30,6 +33,9 @@ interface DecodedChunk {
 
 /** Part of the feeder that lives in [AudioWorkletGlobalScope]{@link https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletGlobalScope} */
 class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements FeederAudioWorklet {
+    public updateSharedSettings = (settings: SharedSettingsSnapshot, noWait?: RpcNoWait): Promise<void> =>
+        sharedSettingsWorker.updateSharedSettings(settings, noWait);
+
     private readonly chunks = new Denque<DecodedChunk | 'end'>();
     private readonly buffer: AudioRingBuffer;
     /**
@@ -77,7 +83,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         return result;
     }
 
-    public async init(appConstants: AppConstants, id: string, workerPort: MessagePort): Promise<void> {
+    public async init(appConstants: AppConstants, sharedSettings: SharedSettingsSnapshot, id: string, workerPort: MessagePort): Promise<void> {
+        await sharedSettingsWorker.updateSharedSettings(sharedSettings);
         initAppConstants(appConstants);
         this.bufferSizeToStartPlayback = this.feederTargetDuration;
         this.id = id;
@@ -262,7 +269,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         const sourceRecordedAtMs = this.bufferSourceRecordedAtMs;
         this.buffer.pull([channel]);
         if (outputSourceOffsetMs !== null && sourceRecordedAtMs !== null)
-            this.presentationLagMs = Date.now() - (sourceRecordedAtMs + outputSourceOffsetMs);
+            this.presentationLagMs = ServerClock.now() - (sourceRecordedAtMs + outputSourceOffsetMs);
         this.advanceBufferHead(channel.length);
         this.playingAt += channel.length * AUDIO.play.sampleDuration;
     }

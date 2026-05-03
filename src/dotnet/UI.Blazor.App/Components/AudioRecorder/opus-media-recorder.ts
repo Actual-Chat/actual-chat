@@ -25,7 +25,8 @@ import { Interactive } from 'interactive';
 import { DeviceInfo } from 'device-info';
 import { AudioVadProcessorOptions } from './worklets/audio-vad-worklet-processor';
 import { RecorderStateHub } from './recorder-state-hub';
-import { ServerClock } from 'server-clock';
+import { SharedSettings } from 'shared-settings';
+import { SharedSettingsWorkerSync } from 'shared-settings-worker';
 
 /*
 ┌─────────────────────────────────┐  ┌──────────────────────┐
@@ -353,20 +354,17 @@ export class OpusMediaRecorder implements RecorderStateServer {
         }
         debugLog?.log(`init(): call create on workers`);
         const apiUrl = new URL('/rpc/ws', this.origin).toString().replace(/^http/, 'ws');
+        SharedSettings.update({ apiUrl });
 
         await this.encoderWorker.create(
             AC,
             Versioning.assetMap,
+            SharedSettings.all,
             apiUrl,
             { type: 'rpc-timeout', timeoutMs: 5_000 });
         debugLog?.log(`init(): encoderWorker created`);
 
-        // Forward server clock offset to encoder worker (runs in web worker)
-        if (ServerClock.offsetMs !== 0)
-            void this.encoderWorker.updateServerClockOffset(ServerClock.offsetMs, rpcNoWait);
-        ServerClock.onOffsetChanged((offset) => {
-            void this.encoderWorker?.updateServerClockOffset(offset, rpcNoWait);
-        });
+        SharedSettingsWorkerSync.register(this.encoderWorker);
 
         const updateWorkerConnectivityUI = () => {
             void this.encoderWorker?.onConnectivityUpdate(
@@ -384,9 +382,11 @@ export class OpusMediaRecorder implements RecorderStateServer {
         await this.vadWorker.create(
             AC,
             Versioning.assetMap,
+            SharedSettings.all,
             canUseNNVad,
             { type: 'rpc-timeout', timeoutMs: 5_000 });
         debugLog?.log(`init(): vadWorker created`);
+        SharedSettingsWorkerSync.register(this.vadWorker);
 
         // Register the trait with the recording context source
         void recordingAudioContextSource.addTrait(this.recordingPipelineTrait);

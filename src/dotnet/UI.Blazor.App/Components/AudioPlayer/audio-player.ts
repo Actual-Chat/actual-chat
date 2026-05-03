@@ -20,6 +20,8 @@ import { Resettable } from 'resettable';
 import { AudioInitializer } from '../../Services/audio-initializer';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { ServerClock } from 'server-clock';
+import { SharedSettings } from 'shared-settings';
+import { SharedSettingsWorkerSync } from 'shared-settings-worker';
 
 const { logScope, debugLog, infoLog, warnLog } = getLogs('AudioPlayer');
 
@@ -27,6 +29,7 @@ const EnableFrequentDebugLog = false;
 
 let decoderWorkerInstance: Worker | undefined;
 let decoderWorker: OpusDecoderWorker & Disposable | undefined;
+let decoderWorkerSharedSettingsRegistration: Disposable | undefined;
 
 interface AudioContextOutputLatency {
     readonly outputLatency?: number;
@@ -126,6 +129,7 @@ class AttachedFeederNode implements AttachedAudioContextTrait {
         await catchErrors(
             () => this.feederNode.disconnect(),
             e => warnLog?.log(`#${this.internalId}.onClosed feederNode.disconnect error:`, e));
+        this.feederNode.dispose();
     }
 }
 
@@ -169,7 +173,8 @@ export class AudioPlayer implements Resettable {
         decoderWorker ??= rpcClient<OpusDecoderWorker>(`${logScope}.decoderWorker`, decoderWorkerInstance);
 
         await whenAppConstantsReady;
-        await decoderWorker.create(AC, Versioning.assetMap, { type: 'rpc-timeout', timeoutMs: 20_000 });
+        await decoderWorker.create(AC, Versioning.assetMap, SharedSettings.all, { type: 'rpc-timeout', timeoutMs: 20_000 });
+        decoderWorkerSharedSettingsRegistration ??= SharedSettingsWorkerSync.register(decoderWorker);
 
         this.whenInitialized.resolve(undefined);
     }
@@ -182,6 +187,8 @@ export class AudioPlayer implements Resettable {
     }
 
     public static terminate(): void {
+        decoderWorkerSharedSettingsRegistration?.dispose();
+        decoderWorkerSharedSettingsRegistration = undefined;
         decoderWorkerInstance?.terminate();
         AudioPlayer.whenInitialized = new PromiseSource<void>();
         AudioInitializer.isPlayerInitialized = false;

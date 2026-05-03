@@ -29,6 +29,9 @@ import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/
 import { initAppConstants, VIDEO } from 'app-constants';
 import Denque from 'denque';
 import { OwnedArrayBufferTracker } from 'buffers';
+import { ServerClock } from 'server-clock';
+import { type SharedSettingsSnapshot } from 'shared-settings';
+import { sharedSettingsWorker } from 'shared-settings-worker';
 
 const { infoLog, warnLog, errorLog } = getLogs('VideoDecoder');
 
@@ -417,7 +420,7 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
             warnLog?.log(`pull: empty stream, retry #${pullRetryCount} in ${delay}ms`);
             setTimeout(() => {
                 if (!pullActive) return;
-                const retrySkipToMs = Math.max(0, Date.now() - pullStartedAtMs);
+                const retrySkipToMs = Math.max(0, ServerClock.now() - pullStartedAtMs);
                 void runPullLoop(streamId, retrySkipToMs);
             }, delay);
         }
@@ -429,7 +432,7 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
         warnLog?.log(`pull: error (retry #${pullRetryCount} in ${delay}ms): ${message}`);
         setTimeout(() => {
             if (!pullActive) return;
-            const retrySkipToMs = Math.max(0, Date.now() - pullStartedAtMs);
+            const retrySkipToMs = Math.max(0, ServerClock.now() - pullStartedAtMs);
             void runPullLoop(streamId, retrySkipToMs);
         }, delay);
     }
@@ -1080,9 +1083,11 @@ async function processEncodedChunk(
 
 // RPC Server Implementation
 const serverImpl: DecoderWorker = {
-    init: (appConstants): Promise<void> => {
+    ...sharedSettingsWorker,
+
+    init: async (appConstants, sharedSettings: SharedSettingsSnapshot): Promise<void> => {
+        await sharedSettingsWorker.updateSharedSettings(sharedSettings);
         initAppConstants(appConstants);
-        return Promise.resolve();
     },
 
     /**
@@ -1471,7 +1476,6 @@ const serverImpl: DecoderWorker = {
         skipToMs: number,
         apiUrl: string,
         startedAtMs: number,
-        serverClockOffsetMs: number,
         jitterBufferMs: number,
         writable?: WritableStream<VideoFrame>,
         bgCanvas?: OffscreenCanvas,
@@ -1511,7 +1515,7 @@ const serverImpl: DecoderWorker = {
         }
 
         mstgSelector = new WorkerMstgSelector(
-            selectorWritable, startedAtMs, serverClockOffsetMs, jitterBufferMs, bgPainter);
+            selectorWritable, startedAtMs, jitterBufferMs, bgPainter);
 
         // Idempotent — usually a no-op here because main calls prewarmRpc()
         // immediately after initialize(), starting the WS handshake in

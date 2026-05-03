@@ -23,6 +23,8 @@ import { AudioDiagnosticsState } from '../audio-recorder';
 import { ResamplerLoader } from './resampler-loader';
 import { WorkerConnectivityUI } from './worker-connectivity-ui';
 import { getLogs } from 'logging';
+import { type SharedSettingsSnapshot } from 'shared-settings';
+import { sharedSettingsWorker } from 'shared-settings-worker';
 
 const { logScope, debugLog, infoLog, warnLog, errorLog } = getLogs('OpusEncoderWorker');
 
@@ -70,11 +72,14 @@ const resamplerLoader = new ResamplerLoader();
 //     void resamplerLoader.load();
 
 const serverImpl: OpusEncoderWorker = {
-    create: async (appConstants: AppConstants, artifactVersions: Map<string, string>, apiUrl: string, _timeout?: RpcTimeout): Promise<void> => {
+    ...sharedSettingsWorker,
+
+    create: async (appConstants: AppConstants, artifactVersions: Map<string, string>, sharedSettings: SharedSettingsSnapshot, apiUrl: string, _timeout?: RpcTimeout): Promise<void> => {
         if (state !== 'initial')
             return; // Already created
 
         debugLog?.log(`-> create`);
+        await sharedSettingsWorker.updateSharedSettings(sharedSettings);
         initAppConstants(appConstants);
         systemCodecConfig = {
             codec: 'opus',
@@ -206,10 +211,6 @@ const serverImpl: OpusEncoderWorker = {
 
     onConnectivityUpdate: async (isOnline: boolean, isConnected: boolean, isBlazorServer: boolean, _noWait?: RpcNoWait): Promise<void> => {
         WorkerConnectivityUI.update(isOnline, isConnected, isBlazorServer);
-    },
-
-    updateServerClockOffset: async (offsetMs: number, _noWait?: RpcNoWait): Promise<void> => {
-        ServerClock.updateOffset(Date.now() + offsetMs);
     },
 }
 const stateServer = rpcClientServer<RecorderStateServer>(`${logScope}.stateServer`, worker, serverImpl);

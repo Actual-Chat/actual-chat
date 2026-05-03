@@ -13,6 +13,8 @@
 import { rpcNoWait } from 'rpc';
 import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
+import { type SharedSettingsSnapshot } from 'shared-settings';
+import { sharedSettingsWorker } from 'shared-settings-worker';
 // ONNX runtime is currently disabled in the video pipeline — image segmentation
 // is implemented but not yet wired into any UI flow, and onnxruntime-web is
 // heavy on low-end mobiles. Re-enable these imports (and the segmentation
@@ -1728,10 +1730,11 @@ function stopScreencastHeartbeat(): void {
 // ─── Server implementation ──────────────────────────────────────────────────
 
 export const serverImpl: VideoProcessingWorker = {
+    ...sharedSettingsWorker,
 
-    init: (appConstants): Promise<void> => {
+    init: async (appConstants, sharedSettings: SharedSettingsSnapshot): Promise<void> => {
+        await sharedSettingsWorker.updateSharedSettings(sharedSettings);
         initAppConstants(appConstants);
-        return Promise.resolve();
     },
 
     startWithStream: async (config, frameInputStream): Promise<void> => {
@@ -2305,9 +2308,6 @@ export const serverImpl: VideoProcessingWorker = {
         } : null;
         return { encoder: encoderStats, segmentation: segStats, orientation: orientationStats ? { ...orientationStats } : null, streaming: streamStats };
     },
-
-    // eslint-disable-next-line @typescript-eslint/require-await
-    updateServerClockOffset: async (offsetMs): Promise<void> => { streamCtx.serverClockOffsetMs = offsetMs; },
 
     // eslint-disable-next-line @typescript-eslint/require-await
     onConnectivityUpdate: async (isOnline, isConnected, isBlazorServer): Promise<void> => {

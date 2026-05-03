@@ -4,15 +4,16 @@ import { getLogs } from 'logging';
 import { rpcNoWait, type RpcNoWait } from 'rpc';
 import { SharedSettings, type SharedSettingsSnapshot } from 'shared-settings';
 
-const { warnLog } = getLogs('SharedSettingsWorkerSync');
+const { warnLog } = getLogs('default');
 
 export interface SharedSettingsWorker {
     updateSharedSettings(settings: SharedSettingsSnapshot, noWait?: RpcNoWait): Promise<void>;
 }
 
 export const sharedSettingsWorker: SharedSettingsWorker = {
-    updateSharedSettings: async (settings: SharedSettingsSnapshot, _noWait?: RpcNoWait): Promise<void> => {
+    updateSharedSettings: (settings: SharedSettingsSnapshot, _noWait?: RpcNoWait): Promise<void> => {
         SharedSettings.update(settings);
+        return Promise.resolve();
     },
 };
 
@@ -23,7 +24,7 @@ export class SharedSettingsWorkerSync {
     public static register(target: SharedSettingsWorker): Disposable {
         this.targets.add(target);
         this.ensureSubscribed();
-        this.push(target, SharedSettings.current);
+        this.push(target, SharedSettings.all);
         return Disposables.fromAction(() => {
             this.targets.delete(target);
             if (this.targets.size === 0) {
@@ -34,14 +35,14 @@ export class SharedSettingsWorkerSync {
     }
 
     private static ensureSubscribed(): void {
-        this.changedHandler ??= SharedSettings.changed.add(settings => {
+        this.changedHandler ??= SharedSettings.changed.add(_settings => {
             for (const target of this.targets)
-                this.push(target, settings);
+                this.push(target, SharedSettings.all);
         });
     }
 
     private static push(target: SharedSettingsWorker, settings: SharedSettingsSnapshot): void {
         target.updateSharedSettings(settings, rpcNoWait)
-            .catch(error => warnLog?.log('updateSharedSettings failed:', error));
+            .catch((error: unknown) => warnLog?.log('updateSharedSettings failed:', error));
     }
 }
