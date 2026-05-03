@@ -601,25 +601,19 @@ the browser video recording path, edit the local TypeScript RPC copy:
 Add sender-side metrics / controls:
 
 ```ts
-readonly unackedCount: number;
-readonly oldestUnackedAgeMs: number;       // 0 when buffer empty
-readonly totalSent: number;
-readonly totalAcked: number;
-readonly totalSkipped: number;
-maxAllowedSkipsPerWindow: number;          // default Number.MAX_SAFE_INTEGER
-onAck?: () => void;                        // post-ACK, post-compaction
+readonly nextIndex: number;
+readonly lastAckIndex: number;
+readonly skipCount: number;
+onAckProcessed?: () => void;               // post-ACK, post-compaction
 ```
 
 These are item-agnostic — handler args carry no `T`. The recorder's
-controller reads state via the properties on its own 1 Hz tick; `onAck`
+controller reads state via the properties on its own 1 Hz tick; `onAckProcessed`
 just bumps a `lastAckAt = performance.now()` so the controller can tell
 "stuck" (no ACK for > N seconds) from "throttled" (ACK flowing).
 
-Compact-skip semantics: the `maxAllowedSkipsPerWindow` config knob
-governs how many items the existing real-time `canSkipTo` compaction
-may drop per ACK window. `Number.MAX_SAFE_INTEGER` keeps current
-behaviour; the controller can set it to 0 to opt out of compaction
-entirely while the stream is alive.
+Compact-skip semantics: real-time `canSkipTo` compaction collapses the
+already-buffered unsent suffix to the latest buffered restart point.
 
 If this repository later vendors or exposes the .NET `ActualLab.Rpc`
 sources, mirror the same counters there for non-browser senders, but do
@@ -636,7 +630,7 @@ defined in `Api.Contracts/Streaming/Quality/RecordingQuality.cs`):
   encode time / `frameDurationMs` (where `frameDurationMs = 1000 / VIDEO.frameRate`).
 - `slotReplacementRate` = `slotReplacements / framesProduced` over the
   last 1 s.
-- `senderFrameDropRatio` = `Δ totalSkipped` over 1 s divided by `Constants.Video.FrameRate` (from 9.1).
+- `senderFrameDropRatio` = `Δ skipCount` over 1 s divided by `Constants.Video.FrameRate` (from 9.1).
 - `lastAckAgeMs` = `Date.now() - lastAckAt`.
 
 Posted to `.NET` once per second via a `DotNetObjectReference` callback
@@ -878,7 +872,7 @@ number.
    doing it.
 2. **Whether `RecorderHealthSnapshot.SenderFrameDropRatio` should remain
    worker-owned.** The worker owns `InternalVideoStream` and can read
-   `RpcStreamSender.totalSkipped`, so it computes the 1 Hz delta locally.
+   `RpcStreamSender.skipCount`, so it computes the 1 Hz delta locally.
    If ownership moves, keep the metric as `dropped frames in last health
    window / Constants.Video.FrameRate`.
 3. **Whether `StreamLatencyStore` becomes fully dead** after 8.5. Grep

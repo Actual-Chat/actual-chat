@@ -281,7 +281,7 @@ function emitRecorderHealthSnapshot(): void {
         sender.onAckProcessed = () => { lastSenderAckAtMs = performance.now(); };
         recorderHealthSenderHooked = sender;
     }
-    const senderTotalDroppedFrames = sender?.totalSkipped ?? 0;
+    const senderTotalDroppedFrames = sender?.skipCount ?? 0;
     const senderDroppedFramesPerSecond = Math.max(
         0,
         senderTotalDroppedFrames - lastSenderTotalDroppedFrames);

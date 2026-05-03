@@ -176,9 +176,7 @@ export class RpcStream<T> implements AsyncIterable<T>, IRpcObject {
     }
 
     /** Local sender backing this stream after `toRef()` has been called.
-     *  `undefined` for remote streams or before `toRef()`. The recorder's
-     *  quality controller reads {@link RpcStreamSender.unackedCount},
-     *  {@link RpcStreamSender.oldestUnackedAgeMs}, etc. through this. */
+     *  `undefined` for remote streams or before `toRef()`. */
     get sender(): RpcStreamSender<T> | undefined {
         return this._sender;
     }
