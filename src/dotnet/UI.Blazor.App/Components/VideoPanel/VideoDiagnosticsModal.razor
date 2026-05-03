@@ -2,6 +2,7 @@
 @using ActualChat.Media
 @using ActualChat.Streaming
 @using ActualChat.UI.Blazor.App.Module
+@using ActualChat.UI.Blazor.App.Services
 @using System.Text.Json
 @inherits ComputedStateComponent<AppUIHub, VideoDiagnosticsModal.ComputedModel>
 @implements IModalView<VideoDiagnosticsModal.Model>
@@ -10,6 +11,9 @@
     var own = _ownDiag;
     var playbackSnap = Hub.VideoQualityUI.PlaybackSnapshot;
     var playbackOverride = Hub.VideoQualityUI.PlaybackOverride;
+    var recordingSnap = m.OwnStreamingKind is { } ownKind
+        ? Hub.VideoQualityUI.GetRecordingSnapshot(ownKind)
+        : null;
 }
 
 <DialogFrame
@@ -209,6 +213,49 @@
                                 <div class="diag-value multiline">
                                     <span class="diag-error">@streamError</span>
                                 </div>
+                            </div>
+                        }
+                    }
+
+                    @* Quality control *@
+                    @if (recordingSnap is { } outboundQc) {
+                        <div class="diag-group-header">Quality Control (outbound)</div>
+                        <div class="diag-row">
+                            <span class="diag-label">Target</span>
+                            <span class="diag-value">@FormatRecordingQualityState(outboundQc)</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Verdict</span>
+                            <span class="diag-value">@SignalText(outboundQc.Signal)</span>
+                        </div>
+                        @if (ShouldShowRecordingAction(outboundQc.Reason)) {
+                            <div class="diag-row">
+                                <span class="diag-label">Action</span>
+                                <span class="diag-value">@outboundQc.Reason</span>
+                            </div>
+                        }
+                        <div class="diag-row">
+                            <span class="diag-label">Layer cap</span>
+                            <span class="diag-value">@FormatLayerCap(outboundQc.DebugMaxLayerCount)</span>
+                        </div>
+                        @if (outboundQc.Health is { } health) {
+                            <div class="diag-row">
+                                <span class="diag-label">Encode cost</span>
+                                <span class="diag-value">@FormatRecordingEncodeCostSignal(health)</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Frame slots</span>
+                                <span class="diag-value">@FormatRecordingSlotSignal(health)</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Sender</span>
+                                <span class="diag-value multiline">@FormatRecordingSenderSignal(health)</span>
+                            </div>
+                        }
+                        else {
+                            <div class="diag-row">
+                                <span class="diag-label">Signals</span>
+                                <span class="diag-value diag-dim">no health sample yet</span>
                             </div>
                         }
                     }
@@ -653,6 +700,30 @@
             ? $"reduction requested (slow ticks: {GetNum(rd, "codecSlowTickCount"):0})"
             : $"ok (slow ticks: {GetNum(rd, "codecSlowTickCount"):0})";
 
+    private static string FormatRecordingQualityState(VideoQualityUI.RecordingQualitySnapshot snapshot)
+        => snapshot.State is { } state
+            ? $"target={state.TargetLayerCount}, effective={state.EffectiveLayerCount}"
+            : "no controller state yet";
+
+    private static bool ShouldShowRecordingAction(RecordingQualityReason reason)
+        => reason != RecordingQualityReason.Stable;
+
+    private static string FormatLayerCap(int? layerCount)
+        => layerCount is { } count ? $"{count} layers" : "none";
+
+    private static string FormatRecordingEncodeCostSignal(RecorderHealthSnapshot health)
+        => $"p50={health.EncodeRatioP50:F2}x budget, p90={health.EncodeRatioP90:F2}x";
+
+    private static string FormatRecordingSlotSignal(RecorderHealthSnapshot health)
+        => $"replaceRate={health.SlotReplacementRate:F2}";
+
+    private static string FormatRecordingSenderSignal(RecorderHealthSnapshot health)
+        => $"backlogP90={health.SenderBacklogP90Ms:0}ms, skips={health.SenderSkipsPerWindow}, "
+            + $"ackAge={FormatAckAge(health.LastAckAgeMs)}, connected={(health.IsConnected ? "yes" : "no")}";
+
+    private static string FormatAckAge(double ageMs)
+        => ageMs >= 0 ? $"{ageMs:0}ms" : "n/a";
+
     private static string FormatMaxTemporal(double value)
         => value >= int.MaxValue / 2d ? "inf" : value.ToString("0");
 
@@ -756,6 +827,23 @@
                 if (GetStr(copyStreaming, "lastError") is { Length: > 0 } copyStreamError)
                     sb.AppendLine($"Last Error: {copyStreamError}");
             }
+        }
+        if (m.OwnStreamingKind is { } ownCopyKind) {
+            var copyRecordingSnap = Hub.VideoQualityUI.GetRecordingSnapshot(ownCopyKind);
+            sb.AppendLine();
+            sb.AppendLine("-- Quality Control (outbound) --");
+            sb.AppendLine($"Target: {FormatRecordingQualityState(copyRecordingSnap)}");
+            sb.AppendLine($"Verdict: {SignalText(copyRecordingSnap.Signal)}");
+            if (ShouldShowRecordingAction(copyRecordingSnap.Reason))
+                sb.AppendLine($"Action: {copyRecordingSnap.Reason}");
+            sb.AppendLine($"Layer cap: {FormatLayerCap(copyRecordingSnap.DebugMaxLayerCount)}");
+            if (copyRecordingSnap.Health is { } copyHealth) {
+                sb.AppendLine($"Encode cost: {FormatRecordingEncodeCostSignal(copyHealth)}");
+                sb.AppendLine($"Frame slots: {FormatRecordingSlotSignal(copyHealth)}");
+                sb.AppendLine($"Sender: {FormatRecordingSenderSignal(copyHealth)}");
+            }
+            else
+                sb.AppendLine("Signals: no health sample yet");
         }
         sb.AppendLine();
 

@@ -24,6 +24,8 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     private readonly Dictionary<StreamKind, VideoRecorder> _recordersByKind = new();
     private readonly Dictionary<StreamKind, RecorderHealthSnapshot> _lastRecordingHealthByKind = new();
     private readonly Dictionary<StreamKind, RecordingQualityState> _lastRecordingStateByKind = new();
+    private readonly Dictionary<StreamKind, int> _lastRecordingSignalByKind = new();
+    private readonly Dictionary<StreamKind, RecordingQualityReason> _lastRecordingReasonByKind = new();
     private readonly Dictionary<StreamId, PlaybackHealthState> _playbackByStream = new();
     private readonly CapacityEstimator _playbackEstimator = new(PlaybackThresholds.Defaults);
     private readonly Lock _playbackLock = new();
@@ -61,10 +63,14 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             return;
         if (_coldStartTicksRemaining > 0) {
             _coldStartTicksRemaining--;
+            _lastRecordingSignalByKind[kind] = 0;
+            _lastRecordingReasonByKind[kind] = RecordingQualityReason.ColdStartTick;
             return;
         }
         var signal = RecordingClassifier.Classify(snapshot, RecordingThresholds.Defaults);
         var decision = aggregator.Step(signal);
+        _lastRecordingSignalByKind[kind] = signal;
+        _lastRecordingReasonByKind[kind] = decision.Reason;
         if (!decision.Changed && _debugMaxRecordingLayerCount is null)
             return;
 
@@ -177,6 +183,24 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     public PlaybackOverrideMode PlaybackOverride => _playbackOverride;
 
     public PlaybackQualitySnapshot PlaybackSnapshot => _playbackSnapshot;
+
+    public RecordingQualitySnapshot GetRecordingSnapshot(StreamKind kind)
+    {
+        var state = _lastRecordingStateByKind.GetValueOrDefault(kind);
+        if (state is null && _recordingByKind.TryGetValue(kind, out var aggregator)) {
+            var effectiveLayerCount = ApplyLayerCountConstraint(
+                aggregator.TargetLayerCount,
+                _debugMaxRecordingLayerCount);
+            state = aggregator.Snapshot(effectiveLayerCount);
+        }
+        return new(
+            kind,
+            state,
+            _lastRecordingHealthByKind.GetValueOrDefault(kind),
+            _lastRecordingSignalByKind.GetValueOrDefault(kind),
+            _lastRecordingReasonByKind.GetValueOrDefault(kind),
+            _debugMaxRecordingLayerCount);
+    }
 
     public Task SetPlaybackOverride(
         PlaybackOverrideMode mode,
@@ -301,6 +325,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             await recorder.SetTargetLayerCount(effectiveLayerCount, cancellationToken).ConfigureAwait(false);
 
         _lastRecordingStateByKind[kind] = state;
+        _lastRecordingReasonByKind[kind] = reason;
         var info = new RecordingQualityInfo(reason, snapshot);
         _ = await LiveVideoStreams.ChangeRecordingQuality(
             Session,
@@ -596,6 +621,14 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             AggregateHealth: 0,
             Verdicts: new Dictionary<string, int>());
     }
+
+    public sealed record RecordingQualitySnapshot(
+        StreamKind Kind,
+        RecordingQualityState? State,
+        RecorderHealthSnapshot? Health,
+        int Signal,
+        RecordingQualityReason Reason,
+        int? DebugMaxLayerCount);
 
     public enum PlaybackOverrideMode { Off, Degrade, Keep, Upgrade }
 

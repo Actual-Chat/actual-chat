@@ -20,9 +20,9 @@ public sealed partial record RecordingQualityState(
     [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] int EffectiveLayerCount);
 
 /// <summary>
-/// Per-second snapshot of recorder-side health signals: encoder load, slot
-/// pressure, sender backlog, and ACK age. Drives the recording quality
-/// controller; also forwarded to the server as a metric.
+/// Per-second snapshot of recorder-side health signals: encode cost vs frame
+/// budget, slot pressure, sender backlog, and ACK age. Drives the recording
+/// quality controller; also forwarded to the server as a metric.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record RecorderHealthSnapshot(

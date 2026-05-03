@@ -51,6 +51,13 @@ body.wide .video-diagnostics-modal {
     font-size: 0.75rem;
 }
 
+.diag-value.multiline {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+}
+
 .diag-select {
     @apply bg-02 text-01 border border-separator rounded px-2 py-1;
     min-width: 7rem;
