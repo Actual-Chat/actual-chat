@@ -8,6 +8,8 @@
 @{
     var m = State.Value;
     var own = _ownDiag;
+    var playbackSnap = Hub.VideoQualityUI.GetPlaybackSnapshot();
+    var playbackOverride = Hub.VideoQualityUI.PlaybackOverride;
 }
 
 <DialogFrame
@@ -442,41 +444,6 @@
                                     </div>
                                 }
 
-                                @* Quality Control (receiver, this stream) *@
-                                <div class="diag-group-header">Quality Control</div>
-                                @if (rd.TryGetProperty("forwarded", out var fwdQc) && fwdQc.ValueKind == JsonValueKind.Object) {
-                                    <div class="diag-row">
-                                        <span class="diag-label">Forwarded</span>
-                                        <span class="diag-value">L@(GetNum(fwdQc, "ForwardedSpatialLayerId").ToString("0")) @(GetNum(fwdQc, "ForwardedWidth").ToString("0"))×@(GetNum(fwdQc, "ForwardedHeight").ToString("0")) (obsMax=@(GetNum(fwdQc, "ObservedMaxSpatialLayer").ToString("0")))</span>
-                                    </div>
-                                }
-                                else {
-                                    <div class="diag-row">
-                                        <span class="diag-label">Forwarded</span>
-                                        <span class="diag-value diag-dim">no frames yet</span>
-                                    </div>
-                                }
-                                @{
-                                    int? verdictForStream = m.PlaybackVerdicts.TryGetValue(sid, out var v) ? v : null;
-                                }
-                                @if (verdictForStream is { } verdict) {
-                                    <div class="diag-row">
-                                        <span class="diag-label">Verdict</span>
-                                        <span class="diag-value">@(SignalText(verdict))</span>
-                                    </div>
-                                }
-                                @if (rd.TryGetProperty("requestedReceiveQuality", out var reqQ) && reqQ.ValueKind == JsonValueKind.Object) {
-                                    <div class="diag-row">
-                                        <span class="diag-label">Requested</span>
-                                        <span class="diag-value">maxSpatial=@(GetNum(reqQ, "maxSpatialLayer").ToString("0")) maxTemporal=@(FormatMaxTemporal(GetNum(reqQ, "maxTemporalLayer")))</span>
-                                    </div>
-                                }
-                                else {
-                                    <div class="diag-row">
-                                        <span class="diag-label">Requested</span>
-                                        <span class="diag-value diag-dim">default (server-driven)</span>
-                                    </div>
-                                }
                             </div>
                         }
                     </div>
@@ -484,22 +451,70 @@
             }
         </div>
 
-        @* Quality Control (aggregate) *@
+        @* Quality Control (inbound) *@
         @if (m.Streams.Any(s => !s.IsOwn)) {
             <div class="diag-section">
-                <div class="diag-section-header">Quality Control (aggregate)</div>
+                <div class="diag-section-header">Quality Control (inbound)</div>
                 <div class="diag-row">
                     <span class="diag-label">Capacity</span>
-                    <span class="diag-value">@((m.PlaybackCapacityBytesPerSec * 8 / 1000).ToString("0")) kbps</span>
+                    <span class="diag-value">@((playbackSnap.EstimatedCapacityBytesPerSec * 8 / 1000).ToString("0")) kbps</span>
                 </div>
                 <div class="diag-row">
                     <span class="diag-label">Aggregate health</span>
-                    <span class="diag-value">@(m.PlaybackAggregateHealth.ToString("F2"))</span>
+                    <span class="diag-value">@(playbackSnap.AggregateHealth.ToString("F2"))</span>
                 </div>
                 <div class="diag-row">
                     <span class="diag-label">Playback override</span>
-                    <span class="diag-value">@m.PlaybackOverride</span>
+                    <span class="diag-value">@playbackOverride</span>
                 </div>
+                @foreach (var s in m.Streams.Where(s => !s.IsOwn)) {
+                    var sid = s.Info.StreamId.Value;
+                    var hasDiag = _streamDiags.TryGetValue(sid, out var rd)
+                        && rd.ValueKind == JsonValueKind.Object;
+                    int? verdict = playbackSnap.Verdicts.TryGetValue(sid, out var v) ? v : null;
+                    <div class="diag-stream">
+                        <div class="diag-stream-header">
+                            <span>@s.Info.StreamId</span>
+                            <span class="diag-stream-kind ml-auto">@s.Info.StreamKind</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Author</span>
+                            <span class="diag-value">@s.Author</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Verdict</span>
+                            <span class="diag-value">@(verdict is { } signal ? SignalText(signal) : "n/a")</span>
+                        </div>
+                        @if (hasDiag) {
+                            <div class="diag-row">
+                                <span class="diag-label">Forwarded</span>
+                                <span class="diag-value">@FormatForwarded(rd)</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Requested</span>
+                                <span class="diag-value">@FormatRequestedReceiveQuality(rd)</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Signal inputs</span>
+                                <span class="diag-value">rate=@(GetNum(rd, "bitrateKbps").ToString("0"))kbps, buf=@(GetNum(rd, "pipelineLatencyMs").ToString("0"))ms, skips=@(GetNum(rd, "skipToLiveCount").ToString("0"))</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Stream age</span>
+                                <span class="diag-value">@(GetNum(rd, "streamAgeMs").ToString("0"))ms</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Decode quality</span>
+                                <span class="diag-value">@FormatDecodeQualitySignal(rd)</span>
+                            </div>
+                        }
+                        else {
+                            <div class="diag-row">
+                                <span class="diag-label">Signals</span>
+                                <span class="diag-value diag-dim">waiting for diagnostics</span>
+                            </div>
+                        }
+                    </div>
+                }
             </div>
         }
     </Body>
@@ -663,6 +678,31 @@
     private static bool GetBool(JsonElement el, string prop)
         => el.TryGetProperty(prop, out var v) && v.ValueKind is JsonValueKind.True or JsonValueKind.False && v.GetBoolean();
 
+    private static string FormatForwarded(JsonElement rd) {
+        if (!rd.TryGetProperty("forwarded", out var forwarded)
+            || forwarded.ValueKind != JsonValueKind.Object
+            || GetNum(forwarded, "ForwardedSpatialLayerId") < 0)
+            return "no frames yet";
+
+        return $"L{GetNum(forwarded, "ForwardedSpatialLayerId"):0} "
+            + $"{GetNum(forwarded, "ForwardedWidth"):0}×{GetNum(forwarded, "ForwardedHeight"):0} "
+            + $"(obsMax={GetNum(forwarded, "ObservedMaxSpatialLayer"):0})";
+    }
+
+    private static string FormatRequestedReceiveQuality(JsonElement rd) {
+        if (!rd.TryGetProperty("requestedReceiveQuality", out var requested)
+            || requested.ValueKind != JsonValueKind.Object)
+            return "default (server-driven)";
+
+        return $"maxSpatial={GetNum(requested, "maxSpatialLayer"):0} "
+            + $"maxTemporal={FormatMaxTemporal(GetNum(requested, "maxTemporalLayer"))}";
+    }
+
+    private static string FormatDecodeQualitySignal(JsonElement rd)
+        => GetBool(rd, "qualityReductionRequested")
+            ? $"reduction requested (slow ticks: {GetNum(rd, "codecSlowTickCount"):0})"
+            : $"ok (slow ticks: {GetNum(rd, "codecSlowTickCount"):0})";
+
     private static string FormatSimulcastLayerSizes(IEnumerable<ActualChat.Video.VideoFormat> formats, string separator = "×") {
         var items = formats
             .OrderBy(f => f.SpatialLayerId)
@@ -698,6 +738,8 @@
     private async Task OnCopyClick() {
         var sb = new System.Text.StringBuilder();
         var m = State.Value;
+        var playbackSnap = VideoQualityUI.GetPlaybackSnapshot();
+        var playbackOverride = VideoQualityUI.PlaybackOverride;
 
         sb.AppendLine("=== Video Diagnostics ===");
         sb.AppendLine();
@@ -816,6 +858,30 @@
                     sb.AppendLine($"  A/V drift: {copyDriftEl.GetDouble():0}ms");
                 if (GetBool(rd, "qualityReductionRequested"))
                     sb.AppendLine($"  Quality: reduction requested (slow ticks: {GetNum(rd, "codecSlowTickCount"):0})");
+            }
+        }
+
+        if (m.Streams.Any(s => !s.IsOwn)) {
+            sb.AppendLine();
+            sb.AppendLine("-- Quality Control (inbound) --");
+            sb.AppendLine($"Capacity: {playbackSnap.EstimatedCapacityBytesPerSec * 8 / 1000:0} kbps");
+            sb.AppendLine($"Aggregate health: {playbackSnap.AggregateHealth:F2}");
+            sb.AppendLine($"Playback override: {playbackOverride}");
+            foreach (var s in m.Streams.Where(s => !s.IsOwn)) {
+                var sid = s.Info.StreamId.Value;
+                int? verdict = playbackSnap.Verdicts.TryGetValue(sid, out var v) ? v : null;
+                sb.AppendLine();
+                sb.AppendLine($"[{sid}] {s.Author}");
+                sb.AppendLine($"  Verdict: {(verdict is { } signal ? SignalText(signal) : "n/a")}");
+                if (_streamDiags.TryGetValue(sid, out var rd) && rd.ValueKind == JsonValueKind.Object) {
+                    sb.AppendLine($"  Forwarded: {FormatForwarded(rd)}");
+                    sb.AppendLine($"  Requested: {FormatRequestedReceiveQuality(rd)}");
+                    sb.AppendLine($"  Signal inputs: rate={GetNum(rd, "bitrateKbps"):0}kbps, buf={GetNum(rd, "pipelineLatencyMs"):0}ms, skips={GetNum(rd, "skipToLiveCount"):0}");
+                    sb.AppendLine($"  Stream age: {GetNum(rd, "streamAgeMs"):0}ms");
+                    sb.AppendLine($"  Decode quality: {FormatDecodeQualitySignal(rd)}");
+                }
+                else
+                    sb.AppendLine("  Signals: waiting for diagnostics");
             }
         }
 
