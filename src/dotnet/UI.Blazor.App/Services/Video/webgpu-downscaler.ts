@@ -1,7 +1,20 @@
 import { getLogs } from 'logging';
+import { DeviceInfo } from 'device-info';
 import { WebGPUManager } from './webgpu-manager';
 
 const { infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
+
+// Per-frame `await device.queue.onSubmittedWorkDone()` is needed on iOS
+// Safari to drain GPU work before constructing canvas-backed VideoFrames —
+// each `new VideoFrame(canvas)` otherwise blocks the JS thread on an
+// implicit per-canvas swap-chain sync. On Chromium-based browsers WebGPU
+// pipelines submissions, so the per-frame drain only adds a round-trip
+// without preventing a stall. Keeping it everywhere lets the GPU process
+// queue grow unbounded under multi-encoder simulcast load (the Edge freeze
+// regression). Drain only on iOS Safari; gate concurrent submissions with
+// MAX_ACTIVE_SUBMISSIONS elsewhere so we still bound queue depth.
+const NEEDS_PER_FRAME_DRAIN = DeviceInfo.isIos && DeviceInfo.isWebKit;
+const MAX_ACTIVE_SUBMISSIONS = 2;
 
 export interface DownscaleTarget {
     width: number;
@@ -279,7 +292,8 @@ export class WebGpuDownscaler {
                 + ` display=${source.displayWidth}x${source.displayHeight}`
                 + ` targets=${slots.map(s => `${s.target.width}x${s.target.height}`).join(',')}`
                 + ` rotationIdx=${rotationIdx}`
-                + ` slotStride=${this.slotStride}`,
+                + ` slotStride=${this.slotStride}`
+                + ` gpuSync=${NEEDS_PER_FRAME_DRAIN ? 'per-frame-drain' : `cap-at-${MAX_ACTIVE_SUBMISSIONS}`}`,
             );
         }
 
@@ -423,16 +437,24 @@ export class WebGpuDownscaler {
                 pass.end();
                 drawIdx++;
             }
+            // Soft cap on in-flight submissions. On non-Safari we skip the
+            // per-frame drain, so backpressure is needed to keep the GPU
+            // command queue from running away under sustained input.
+            if (!NEEDS_PER_FRAME_DRAIN && this.activeSubmissions >= MAX_ACTIVE_SUBMISSIONS) {
+                try {
+                    await this.device.queue.onSubmittedWorkDone();
+                } catch {
+                    // Fall through — the catch below handles invalidation.
+                }
+            }
             this.activeSubmissions++;
             try {
                 this.device.queue.submit([encoder.finish()]);
-                // Drain GPU once before constructing VideoFrames from canvases.
-                // Each `new VideoFrame(canvas)` otherwise blocks the JS thread on
-                // an implicit per-canvas swap-chain sync — N tiers = N stalls.
-                // Awaiting here yields the JS thread while the GPU runs;
-                // subsequent constructors see drained work and return without spin.
-                // iOS Safari power-drain mitigation.
-                await this.device.queue.onSubmittedWorkDone();
+                // iOS Safari per-canvas swap-chain sync mitigation — see
+                // NEEDS_PER_FRAME_DRAIN comment. On Chromium we let the GPU
+                // pipeline absorb the submission and rely on the soft cap above.
+                if (NEEDS_PER_FRAME_DRAIN)
+                    await this.device.queue.onSubmittedWorkDone();
             } catch (e) {
                 // Submit / onSubmittedWorkDone throws when the device has died.
                 // Mark invalid so the next frame fails fast instead of repeating
