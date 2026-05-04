@@ -1702,10 +1702,21 @@ function extraLayerCountMatches(layers: SpatialLayerConfig[]): boolean {
     return true;
 }
 
+// Startup-time downscaler target list. Aligns extras to the base encoder's
+// orientation — without this, on a portrait-pre-transposed iOS sender the
+// downscaler boots with mixed-orientation slots (base portrait + extras still
+// landscape from config), causing slotKey-based reuse to feed the base
+// encoder a landscape frame and triggering a persistent
+// `Encoder dims mismatch` drop. `alignLayerToEncoderOrientation` reads the
+// global `encoderConfig`; `setupEncoders` sets it just before this runs, so
+// at that point it's the post-`wantPortraitAtStart` source of truth.
 function collectDownscaleTargets(config: VideoProcessingConfig): DownscaleTarget[] {
     return [
         { width: config.encoder.width, height: config.encoder.height },
-        ...(config.spatialLayers ?? []).map(l => ({ width: l.width, height: l.height })),
+        ...(config.spatialLayers ?? []).map(l => {
+            const aligned = alignLayerToEncoderOrientation(l);
+            return { width: aligned.width, height: aligned.height };
+        }),
     ];
 }
 
