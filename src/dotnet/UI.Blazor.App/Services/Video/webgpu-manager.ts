@@ -1,26 +1,27 @@
 import { getLogs } from 'logging';
 
-const { warnLog } = getLogs('VideoSegmentation');
+const { infoLog, warnLog, errorLog } = getLogs('VideoWebGPU');
+
+export type DeviceLostListener = (info: GPUDeviceLostInfo) => void;
 
 /**
  * Centralized WebGPU device ownership shared between ONNX Runtime, tensor utilities,
- * and blur pipelines. Ensures a single GPUDevice and shared sampler instance.
+ * blur, and downscaler pipelines. Ensures a single GPUDevice and shared sampler.
+ * Watches device.lost so consumers can fail-fast instead of submitting work to a
+ * dead device (which surfaces as per-frame OperationError storms on Edge).
  */
 export class WebGPUManager {
     private static device: GPUDevice | null = null;
     private static sampler: GPUSampler | null = null;
     private static initPromise: Promise<GPUDevice> | null = null;
+    private static lostListeners = new Set<DeviceLostListener>();
+    private static lastLostInfo: GPUDeviceLostInfo | null = null;
 
-    /**
-     * Initialize the shared GPUDevice. ONNX Runtime should pass its device here to
-     * eliminate duplicate device creation. Falls back to requesting a device if needed.
-     */
     static async init(externalDevice?: GPUDevice): Promise<GPUDevice> {
         const existingDevice = this.device;
         if (existingDevice) {
-            if (externalDevice && externalDevice !== existingDevice) {
+            if (externalDevice && externalDevice !== existingDevice)
                 warnLog?.log('Ignoring secondary device initialization request');
-            }
             return existingDevice;
         }
 
@@ -31,14 +32,12 @@ export class WebGPUManager {
 
         this.initPromise ??= (async () => {
             const navigatorRef = globalThis.navigator as Navigator | undefined;
-            if (!navigatorRef?.gpu) {
+            if (!navigatorRef?.gpu)
                 throw new Error('WebGPU not available in this environment');
-            }
 
             const adapter = await navigatorRef.gpu.requestAdapter();
-            if (!adapter) {
+            if (!adapter)
                 throw new Error('Failed to acquire WebGPU adapter');
-            }
 
             const createdDevice = await adapter.requestDevice();
             this.attachDevice(createdDevice);
@@ -50,23 +49,15 @@ export class WebGPUManager {
         return this.initPromise;
     }
 
-    /**
-     * Returns the shared GPUDevice. Throws if init() has not been called yet.
-     */
     static get(): GPUDevice {
-        if (!this.device) {
+        if (!this.device)
             throw new Error('WebGPUManager not initialized. Call WebGPUManager.init() first.');
-        }
         return this.device;
     }
 
-    /**
-     * Exposes the default linear sampler created alongside the shared GPUDevice.
-     */
     static getSampler(): GPUSampler {
-        if (!this.sampler) {
+        if (!this.sampler)
             throw new Error('WebGPUManager sampler not initialized.');
-        }
         return this.sampler;
     }
 
@@ -74,8 +65,83 @@ export class WebGPUManager {
         return this.device !== null;
     }
 
+    static getLastLostInfo(): GPUDeviceLostInfo | null {
+        return this.lastLostInfo;
+    }
+
+    // Subscribe to device-lost notifications. Listener is invoked synchronously
+    // after the device.lost promise settles and AFTER the manager nulls out
+    // its device/sampler refs — consumers can read hasDevice() to confirm.
+    // Returns a disposer that unregisters the listener.
+    static addLostListener(listener: DeviceLostListener): () => void {
+        this.lostListeners.add(listener);
+        return () => { this.lostListeners.delete(listener); };
+    }
+
+    // Private methods
+
     private static attachDevice(device: GPUDevice): void {
         this.device = device;
         this.sampler = device.createSampler({ magFilter: 'linear', minFilter: 'linear' });
+        this.lastLostInfo = null;
+
+        // D1: device baseline so a later freeze report has device context.
+        try {
+            const features = Array.from(device.features).join(',');
+            const limits = device.limits;
+            infoLog?.log(
+                `GPUDevice attached: features=[${features}] `
+                + `maxBufferSize=${limits.maxBufferSize} `
+                + `maxTextureDim2D=${limits.maxTextureDimension2D} `
+                + `maxBindGroups=${limits.maxBindGroups}`);
+        } catch (e) {
+            warnLog?.log('attachDevice: feature/limit dump failed:', e);
+        }
+
+        // Surface async GPU validation errors that would otherwise be silent
+        // (Chrome/Edge log them to the console with no JS-readable signal).
+        try {
+            device.addEventListener('uncapturederror', (event: Event) => {
+                const err = (event as GPUUncapturedErrorEvent).error;
+                errorLog?.log(`GPUDevice uncapturederror: ${err.constructor.name}: ${err.message}`);
+            });
+        } catch (e) {
+            warnLog?.log('attachDevice: uncapturederror listener failed:', e);
+        }
+
+        // device.lost is a Promise<GPUDeviceLostInfo> — settles exactly once
+        // when the device is permanently dead. Reasons: 'destroyed' (we
+        // called destroy()), 'unknown' (driver crash, GPU process killed,
+        // OS reset). After this, any work submitted surfaces OperationError.
+        void device.lost.then((info: GPUDeviceLostInfo) => {
+            this.onDeviceLost(device, info);
+        }).catch((e: unknown) => {
+            warnLog?.log('device.lost promise rejected unexpectedly:', e);
+        });
+    }
+
+    private static onDeviceLost(device: GPUDevice, info: GPUDeviceLostInfo): void {
+        // Ignore stale notifications from a previously-replaced device.
+        if (this.device !== device) {
+            warnLog?.log(
+                `GPUDevice lost (stale, already replaced): reason=${info.reason} `
+                + `message=${info.message}`);
+            return;
+        }
+
+        errorLog?.log(`GPUDevice lost: reason=${info.reason} message=${info.message}`);
+        this.device = null;
+        this.sampler = null;
+        this.lastLostInfo = info;
+
+        // Snapshot listeners — handlers may dispose themselves and mutate the set.
+        const listeners = Array.from(this.lostListeners);
+        for (const listener of listeners) {
+            try {
+                listener(info);
+            } catch (e) {
+                warnLog?.log('device-lost listener threw:', e);
+            }
+        }
     }
 }
