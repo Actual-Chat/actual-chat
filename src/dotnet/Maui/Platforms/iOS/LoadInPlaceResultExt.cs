@@ -8,11 +8,6 @@ public static class LoadInPlaceResultExt
     {
         public FilePath Path => representation.FileUrl.Path!;
 
-        public string ImplyMimeType(NSItemProvider itemProvider)
-            => MediaMimeTypes.TryGetMimeType(representation.Path.FileName, out var mimeType)
-                ? mimeType
-                : itemProvider.ImplyMimeType();
-
         public FilePath GetSuggestedFileName(NSItemProvider item)
         {
             FilePath fileName = item.SuggestedName.NullIfEmpty() ?? representation.Path.FileNameWithoutExtension;
