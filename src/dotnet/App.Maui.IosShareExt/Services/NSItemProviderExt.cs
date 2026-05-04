@@ -35,53 +35,37 @@ public static class NSItemProviderExt
                 + string.Join(", ", item.RegisteredContentTypes));
         }
 
-        public string ImplyMimeType()
-        {
-            foreach (var utType in item.RegisteredContentTypes) {
-                var ext = utType.PreferredFilenameExtension;
-                if (!ext.IsNullOrEmpty() && MediaMimeTypes.TryGetMimeType("." + ext, out var mimeType))
-                    return mimeType;
-
-                var preferredMimeType = utType.PreferredMimeType;
-                if (!preferredMimeType.IsNullOrEmpty() && MediaMimeTypes.TryGetExtension(preferredMimeType, out _))
-                    return preferredMimeType;
-            }
-
-            return "application/octet-stream";
-        }
-
         public async Task<T> Read<T>(UTType contentType)
             where T : NSObject
             => (T)await item.LoadItemAsync(contentType.Identifier, null).ConfigureAwait(false);
 
         public async Task<UploadSource> ToUploadSource()
         {
-            var source = await item.GetSourceFromInMemoryImage().ConfigureAwait(false);
+            var contentType = item.PickMainContentType();
+            var source = await item.GetSourceFromInMemoryImage(contentType).ConfigureAwait(false);
             if (source is not null)
                 return source;
 
-            var inPlaceResult = await item.LoadInPlaceFileRepresentationAsync(UTTypes.Item.Identifier).ConfigureAwait(false);
+            var inPlaceResult = await item.LoadInPlaceFileRepresentationAsync(contentType.Identifier).ConfigureAwait(false);
             var fileName = inPlaceResult.GetSuggestedFileName(item);
             var filePath = inPlaceResult.Path;
-            var metadata = new UploadSourceMetadata(
-                inPlaceResult.ImplyMimeType(item),
-                filePath.FileSize,
-                fileName);
+            var mimeType = contentType.PreferredMimeType.RequireNonEmpty();
+            var metadata = new UploadSourceMetadata(mimeType, filePath.FileSize, fileName);
             return new UploadSource(metadata, new FileUploadSource(filePath));
         }
 
         private bool IsInMemoryImage()
             => item.HasItemConformingTo(UTTypes.Image.Identifier) && !item.HasItemConformingTo(UTTypes.FileUrl.Identifier);
 
-        private async Task<UploadSource?> GetSourceFromInMemoryImage()
+        private async Task<UploadSource?> GetSourceFromInMemoryImage(UTType contentType)
         {
             if (!item.IsInMemoryImage())
                 return null;
 
-            using var loadedItem = await item.LoadItemAsync(item.RegisteredContentTypes[0].Identifier, null).ConfigureAwait(false);
+            using var loadedItem = await item.LoadItemAsync(contentType.Identifier, null).ConfigureAwait(false);
             switch (loadedItem) {
             case NSData data: {
-                var ext = item.RegisteredContentTypes[0].PreferredFilenameExtension.NullIfEmpty() ?? ".png";
+                var ext = "." + (contentType.PreferredFilenameExtension.NullIfEmpty() ?? "png");
                 return SaveToTempFile(item, () => data, ext);
             }
             case UIImage image:

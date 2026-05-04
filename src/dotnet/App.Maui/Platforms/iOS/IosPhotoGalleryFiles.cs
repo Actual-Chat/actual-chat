@@ -3,6 +3,7 @@ using ActualLab.Generators;
 using ActualLab.IO;
 using Foundation;
 using PhotosUI;
+using UniformTypeIdentifiers;
 
 namespace ActualChat.App.Maui;
 
@@ -26,15 +27,14 @@ public sealed class IosPhotoGalleryFiles(IServiceProvider services) : ProcessorB
     public MauiFileProvider Enqueue(PHPickerResult pickerResult)
     {
         var itemProvider = pickerResult.ItemProvider;
+        var contentType = itemProvider.PickMainContentType();
+        var fileType = contentType.PreferredMimeType.NullIfEmpty().RequireNonEmpty();
+
         FilePath fileName = itemProvider.SuggestedName.NullIfEmpty() ?? RandomStringGenerator.Default.Next(10);
-        var fileType = itemProvider.ImplyMimeType();
-        var ext = MediaMimeTypes.TryGetExtension(fileType, out var ext1)
-            ? ext1
-            : throw StandardError.Internal($"Failed to identify ext for asset '{pickerResult.AssetIdentifier}', file '{fileName}'");
-        fileName = fileName.EnsureExt(ext);
+        fileName = fileName.EnsureExt(contentType.PreferredFilenameExtension.RequireNonEmpty());
         var targetPath = AttachmentsDir | fileName.ToUnique();
 
-        var pendingItem = new PendingItem(targetPath, itemProvider);
+        var pendingItem = new PendingItem(targetPath, itemProvider, contentType);
         _items[targetPath] = pendingItem;
 
         Log.LogDebug("Enqueued file '{TargetPath}' for background loading", targetPath);
@@ -89,7 +89,7 @@ public sealed class IosPhotoGalleryFiles(IServiceProvider services) : ProcessorB
             item.SetPreview(preview);
 
             // Phase 2: Load main file
-            await LoadMainFile(item.TargetPath, item.ItemProvider, cancellationToken).ConfigureAwait(false);
+            await LoadMainFile(item, cancellationToken).ConfigureAwait(false);
             item.SetFileReady();
         }
         catch (Exception e) {
@@ -132,16 +132,18 @@ public sealed class IosPhotoGalleryFiles(IServiceProvider services) : ProcessorB
         return null;
     }
 
-    private async Task LoadMainFile(
-        FilePath targetPath,
-        NSItemProvider itemProvider,
-        CancellationToken cancellationToken)
+    private async Task LoadMainFile(PendingItem item, CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(AttachmentsDir);
-        var contentType = itemProvider.RegisteredContentTypes[0];
+        var targetPath = item.TargetPath;
+        Log.LogDebug(
+            "Loading '{FileName}' as '{ContentType}' (registered: [{RegisteredTypes}])",
+            targetPath.FileName, item.ContentType.Identifier,
+            string.Join(", ", item.ItemProvider.RegisteredContentTypes.Select(t => t.Identifier)));
+
         var loadStartedAt = CpuTimestamp.Now;
-        var representation = await itemProvider
-            .LoadInPlaceFileRepresentationAsync(contentType.Identifier)
+        var representation = await item.ItemProvider
+            .LoadInPlaceFileRepresentationAsync(item.ContentType.Identifier)
             .ConfigureAwait(false);
         var sourcePath = representation.Path;
 
@@ -172,13 +174,14 @@ public sealed class IosPhotoGalleryFiles(IServiceProvider services) : ProcessorB
 
     // Nested types
 
-    private sealed class PendingItem(FilePath targetPath, NSItemProvider itemProvider)
+    private sealed class PendingItem(FilePath targetPath, NSItemProvider itemProvider, UTType contentType)
     {
         private readonly TaskCompletionSource<FilePreview?> _previewTcs = TaskCompletionSourceExt.New<FilePreview?>();
         private readonly TaskCompletionSource _fileTcs = TaskCompletionSourceExt.New();
 
         public FilePath TargetPath => targetPath;
         public NSItemProvider ItemProvider => itemProvider;
+        public UTType ContentType => contentType;
 
         public Task<FilePreview?> PreviewTask => _previewTcs.Task;
         public Task FileTask => _fileTcs.Task;

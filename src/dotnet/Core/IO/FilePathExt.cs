@@ -45,7 +45,7 @@ public static class FilePathExt
     }
 
     public static FilePath EnsureExt(this FilePath path, string ext)
-        => path.HasExtension && path.Extension == ext ? path : path.ChangeExtension(ext);
+        => path.HasExtension(ext) ? path : path.ChangeExtension(ext);
 
     public static async Task CopyFile(this FilePath sourcePath, FilePath targetPath, CancellationToken cancellationToken = default)
     {
