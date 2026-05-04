@@ -12,7 +12,6 @@ import { getLogs } from 'logging';
 import { BG_BLUR_STRENGTH, BG_DRAW_INTERVAL_MS } from '../services/bg-canvas-settings';
 import type { BgBlurRenderer } from '../webgpu-blur';
 import { ReplaceableSlot } from 'buffers';
-import { ServerClock } from 'server-clock';
 
 const { infoLog, warnLog } = getLogs('VideoDecoder');
 
@@ -61,7 +60,6 @@ export class WorkerMstgSelector {
 
     constructor(
         writable: WritableStream<VideoFrame>,
-        private readonly startedAtMs: number,
         private jitterBufferMs: number,
         private readonly bgPainter?: BgPainter,
     ) {
@@ -84,12 +82,6 @@ export class WorkerMstgSelector {
 
     setBgPaintEnabled(enabled: boolean): void {
         this.bgPaintEnabled = enabled;
-    }
-
-    // Wallclock target in microseconds (frame-stream coords). Used by the
-    // encoded pre-decode buffer's drain loop to pace decoding.
-    getAudioTargetUs(): number | null {
-        return (ServerClock.now() - this.startedAtMs) * 1000;
     }
 
     getBufferStats(): WorkerMstgBufferStats {

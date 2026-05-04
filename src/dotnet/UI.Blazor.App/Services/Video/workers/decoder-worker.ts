@@ -496,14 +496,16 @@ class EncodedChunkBuffer {
         this.chunks.clear();
     }
 
+    peekFront(): EncodedChunkArgs | undefined {
+        return this.chunks.peekFront();
+    }
+
     push(args: EncodedChunkArgs): void {
         this.chunks.push(args);
         this.trimExcess();
     }
 
-    shiftReady(): EncodedChunkArgs | undefined {
-        if (this.getDurationUs() < getTargetBufferDurationUs())
-            return undefined;
+    shift(): EncodedChunkArgs | undefined {
         return this.chunks.shift();
     }
 
@@ -575,7 +577,24 @@ const DRAIN_DECODE_QUEUE_LIMIT = 4;
 const DRAIN_BACKOFF_MS = 5;
 
 let encodedBuffer: EncodedChunkBuffer | null = null;
-let drainRunning = false;
+
+// Wallclock-anchored decode pacing. The encoded buffer is the receive-side
+// jitter cushion — its span is the canonical "buffer low" signal. Decode is
+// driven by an anchor `(sourceAnchorUs, wallclockAnchorMs)` captured the very
+// first time the buffer fills to target: from then on, each chunk is decoded
+// when its wallclock target time `(chunk.ts - sourceAnchorUs)/1000 +
+// wallclockAnchorMs` arrives. The decoder doesn't drain the buffer faster
+// than wallclock — so even on a network burst, span stays at ~target and
+// the low signal isn't washed out. See the design discussion above the
+// matching constants and the dev's walkthrough in chat history.
+let sourceAnchorUs = -1;
+let wallclockAnchorMs = -1;
+let nextDecodeTimer: ReturnType<typeof setTimeout> | null = null;
+// Wiggle: tolerate up to this much lateness on a frame's target wallclock
+// before we drop it (decoder fell behind, prefer fresher frames).
+function getDecodeWiggleMs(): number {
+    return VIDEO.targetBufferDurationMs / 5;
+}
 
 function getEncodedBuffer(): EncodedChunkBuffer {
     if (encodedBuffer) return encodedBuffer;
@@ -586,39 +605,101 @@ function getEncodedBuffer(): EncodedChunkBuffer {
 
 function clearEncodedBuffer(): void {
     encodedBuffer?.clear();
+    resetDecodeAnchor();
+}
+
+// Reset on any event that changes the frame stream's identity: explicit
+// decoder reset, codec/resolution switch, simulcast layer change, pull-loop
+// restart. Bootstrap restarts: the next time `buffer.span ≥ target` we
+// re-anchor on the new stream's timing.
+function resetDecodeAnchor(): void {
+    sourceAnchorUs = -1;
+    wallclockAnchorMs = -1;
+    if (nextDecodeTimer !== null) {
+        clearTimeout(nextDecodeTimer);
+        nextDecodeTimer = null;
+    }
 }
 
 function pushEncodedChunk(args: EncodedChunkArgs): void {
     const buf = getEncodedBuffer();
     buf.push(args);
-    triggerDrain();
+    scheduleNextDecode();
 }
 
-function triggerDrain(): void {
-    if (drainRunning) return;
-    drainRunning = true;
-    void drainEncodedBuffer().finally(() => { drainRunning = false; });
+// Iterate the buffer head: drop late frames, decode due frames, schedule a
+// timer for the next future frame. Re-entered from the timer, from chunk
+// arrivals, and from the bootstrap path itself.
+function scheduleNextDecode(): void {
+    if (!encodedBuffer) return;
+    if (nextDecodeTimer !== null) return; // a deferred wake will re-enter
+    drainEligible();
 }
 
-async function drainEncodedBuffer(): Promise<void> {
-    while (encodedBuffer && encodedBuffer.count > 0) {
-        const dec = decoder;
-        if (dec && dec.getDecodeQueueSize() >= DRAIN_DECODE_QUEUE_LIMIT) {
-            await new Promise<void>(r => setTimeout(r, DRAIN_BACKOFF_MS));
+function drainEligible(): void {
+    if (!encodedBuffer) return;
+    const targetUs = getTargetBufferDurationUs();
+    const wiggleMs = getDecodeWiggleMs();
+
+    while (encodedBuffer.count > 0) {
+        // Backpressure: decoder's own queue saturated — wait, don't burst.
+        if (decoder && decoder.getDecodeQueueSize() >= DRAIN_DECODE_QUEUE_LIMIT) {
+            armTimer(DRAIN_BACKOFF_MS);
+            return;
+        }
+
+        // Bootstrap: no anchor yet. Wait until buffer has filled to target,
+        // then decode the oldest frame and capture the anchor at that
+        // instant — that frame is presented immediately, defining the
+        // session's wallclock-vs-source mapping for everything after.
+        if (sourceAnchorUs < 0) {
+            if (encodedBuffer.durationUs < targetUs)
+                return;
+            const first = encodedBuffer.shift();
+            if (!first) return;
+            sourceAnchorUs = first.timestamp;
+            wallclockAnchorMs = performance.now();
+            decodeNow(first);
             continue;
         }
-        const args = encodedBuffer.shiftReady();
-        if (!args)
-            return;
 
-        try {
-            await processEncodedChunk(
-                args.timestamp, args.duration, args.isKeyFrame, args.sequenceNumber,
-                args.width, args.height, args.data, args.description);
-        } catch (e) {
-            errorLog?.log('Drain decode failed:', e);
+        // Steady state: head's target wallclock is fixed by the anchor.
+        const front = encodedBuffer.peekFront();
+        if (!front) return;
+        const targetMs = wallclockAnchorMs + (front.timestamp - sourceAnchorUs) / 1000;
+        const now = performance.now();
+        if (targetMs < now - wiggleMs) {
+            // Late beyond wiggle — drop. A fresher frame is (or will be)
+            // ready; presenting this one would just hold the screen on a
+            // stale image.
+            encodedBuffer.shift();
+            continue;
         }
+        if (targetMs <= now) {
+            // Due now (within wiggle).
+            const ready = encodedBuffer.shift();
+            if (!ready) return;
+            decodeNow(ready);
+            continue;
+        }
+        // Future — sleep until exactly its target wallclock.
+        armTimer(targetMs - now);
+        return;
     }
+}
+
+function armTimer(delayMs: number): void {
+    nextDecodeTimer = setTimeout(() => {
+        nextDecodeTimer = null;
+        drainEligible();
+    }, Math.max(0, delayMs));
+}
+
+function decodeNow(args: EncodedChunkArgs): void {
+    void processEncodedChunk(
+        args.timestamp, args.duration, args.isKeyFrame, args.sequenceNumber,
+        args.width, args.height, args.data, args.description)
+        .catch((e: unknown) => errorLog?.log('Decode failed:', e));
 }
 
 /**
@@ -1497,7 +1578,7 @@ const serverImpl: DecoderWorker = {
         }
 
         mstgSelector = new WorkerMstgSelector(
-            selectorWritable, startedAtMs, jitterBufferMs, bgPainter);
+            selectorWritable, jitterBufferMs, bgPainter);
 
         // Idempotent — usually a no-op here because main calls prewarmRpc()
         // immediately after initialize(), starting the WS handshake in
@@ -1508,6 +1589,9 @@ const serverImpl: DecoderWorker = {
         pullActive = true;
         activePullStreamId = streamId;
         resetPullStats();
+        // New stream → previous wallclock anchor is meaningless. The first
+        // chunk of this pull will re-bootstrap.
+        resetDecodeAnchor();
         // Fire and forget — pull loop runs in background, ends via onPullEnded.
         void runPullLoop(streamId, skipToMs);
     },
@@ -1515,6 +1599,7 @@ const serverImpl: DecoderWorker = {
     stopPullInWorker: async (): Promise<void> => {
         pullActive = false;
         activePullStreamId = null;
+        resetDecodeAnchor();
         if (pullAbortController) {
             pullAbortController.abort();
             pullAbortController = null;
