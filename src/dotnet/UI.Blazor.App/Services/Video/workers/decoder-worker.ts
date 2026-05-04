@@ -413,15 +413,40 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
     const skipToTicks = secondsToMoment(skipToMs / 1000);
     let pullFrameCount = 0;
     let lastArrivedOffsetMs = 0;
+    // D6 — replay-burst detector. Counts chunks arriving in a 500 ms window
+    // and logs once per-pull when the count crosses BURST_THRESHOLD. Server
+    // RPC reconnect that re-emits buffered chunks shows up as N chunks
+    // landing immediately at pull start; without this signal a replay is
+    // invisible in the log unless it produces a stall downstream.
+    const BURST_WINDOW_MS = 500;
+    const BURST_THRESHOLD = 30;
+    let burstCount = 0;
+    let burstWindowStart = 0;
+    let burstReported = false;
 
     try {
-        infoLog?.log(`pull: GetStream(${streamId}, skipTo=${skipToMs}ms)`);
+        infoLog?.log(`pull: GetStream(${streamId}, skipTo=${skipToMs}ms, retry=${pullRetryCount})`);
         const stream = await streamingApi.liveVideoStreams.GetStream(RPC_SESSION_DEFAULT, streamId, skipToTicks);
 
         for await (const frame of stream) {
             if (ac.signal.aborted || !pullActive) break;
             pullFrameCount++;
             pullRetryCount = 0;
+            if (!burstReported) {
+                const now = performance.now();
+                if (now - burstWindowStart > BURST_WINDOW_MS) {
+                    burstWindowStart = now;
+                    burstCount = 0;
+                }
+                burstCount++;
+                if (burstCount >= BURST_THRESHOLD) {
+                    burstReported = true;
+                    warnLog?.log(
+                        `pull: replay-burst detected — ${burstCount} chunks in `
+                        + `${Math.round(performance.now() - burstWindowStart)}ms `
+                        + `(streamId=${streamId})`);
+                }
+            }
 
             const offsetMs = momentToSeconds(frame.Offset) * 1000;
             const durationMs = momentToSeconds(frame.Duration) * 1000;
