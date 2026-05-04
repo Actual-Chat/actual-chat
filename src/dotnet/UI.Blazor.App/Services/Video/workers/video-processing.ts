@@ -223,6 +223,26 @@ let segFrameCounter = 0;
 let hasValidMask = false;
 
 interface QueuedFrame { frame: VideoFrame; sequenceNumber: number; timestamp: number }
+
+// Listener bound once: on every reconnect (connectivity false→true), drop the
+// stale ACK timestamp so the first post-reconnect health snapshot reports
+// `lastAckAgeMs = -1` (the "no ACK yet" sentinel). Without this, the C# side
+// classifier sees `now − oldAckMs` (often many seconds because no ACKs flowed
+// during the disconnect), returns -1, and the aggregator backs off right out
+// of the cold-start grace — taking ~30-60 s to climb back through AIMD.
+let recorderHealthConnectivityListenerBound = false;
+function ensureRecorderHealthConnectivityListener(): void {
+    if (recorderHealthConnectivityListenerBound) return;
+    recorderHealthConnectivityListenerBound = true;
+    WorkerConnectivityUI.isConnectedChanged.add(isConnected => {
+        if (!isConnected) return;
+        lastSenderAckAtMs = 0;
+        // Also flush in-flight encode-cost samples — the disconnect window's
+        // late ACKs/spikes shouldn't dominate the first post-reconnect tick.
+        resetRecorderHealthMetrics();
+    });
+}
+
 function startRecorderHealthAggregator(): void {
     if (recorderHealthIntervalHandle) return;
     lastSenderTotalDroppedFrames = 0;
@@ -232,6 +252,7 @@ function startRecorderHealthAggregator(): void {
     // (codec configure + first IDR + simulcast extras coming online) don't
     // pollute the encode-time distribution.
     resetRecorderHealthMetrics();
+    ensureRecorderHealthConnectivityListener();
     recorderHealthIntervalHandle = setInterval(emitRecorderHealthSnapshot, recorderHealthIntervalMs);
 }
 
