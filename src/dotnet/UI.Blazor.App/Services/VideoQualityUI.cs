@@ -158,7 +158,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                 streamKind, snapshot, verdict, CpuTimestamp.Now, peak,
                 requestedMaxSpatial);
             isFirstTick = prev is null;
-            if (isFirstTick)
+            if (isFirstTick || !_playbackStartedAt.ContainsKey(streamId))
                 _playbackStartedAt[streamId] = CpuTimestamp.Now;
         }
         // First tick always emits the initial cap (StartupSpatialLayer).
