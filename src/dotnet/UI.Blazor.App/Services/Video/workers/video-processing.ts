@@ -590,6 +590,11 @@ function stopPipelineCountersLogger(): void {
 
 // Pipeline
 let processing = false;
+// Most recent VideoProcessingConfig — captured at startProcessing/encode/etc.
+// so the in-flight downscaler-recreate path can re-derive targets and re-init
+// the downscaler with a fresh GPUDevice after a device.lost event without
+// having to thread the config through every error site.
+let lastProcessingConfig: VideoProcessingConfig | null = null;
 // Set when an unrecoverable downstream failure (downscaler invalid, GPU device
 // lost, repeated OperationError storm) requires the read loop to stop. Cleared
 // only by a fresh stream start. Keeps the encoder pipeline from feeding frames
@@ -600,6 +605,15 @@ const DOWNSCALER_FAIL_LIMIT = 5;
 const DOWNSCALER_FAIL_WINDOW_MS = 2000;
 let downscalerFailCount = 0;
 let downscalerFailWindowStart = 0;
+// Bounded auto-recovery: after the first downscaler failure storm trips, try
+// to recreate the GPUDevice + downscaler in-place rather than halting the
+// pipeline outright. Caps recreate attempts so a permanent driver failure
+// can't loop forever — falls through to the original halt behavior.
+const DOWNSCALER_RECREATE_MAX_ATTEMPTS = 3;
+const DOWNSCALER_RECREATE_WINDOW_MS = 60_000;
+let downscalerRecreateCount = 0;
+let downscalerRecreateWindowStart = 0;
+let downscalerRecreateInFlight = false;
 const PIPELINE_ERROR_DEDUPE_MS = 1000;
 const pipelineErrorLogLastSeenMs = new Map<string, number>();
 function shouldLogPipelineError(key: string): boolean {
@@ -1183,20 +1197,29 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
                 downscalerFailCount = 0;
             }
             downscalerFailCount++;
-            if (downscalerFailCount >= DOWNSCALER_FAIL_LIMIT) {
-                pipelineFailedReason = 'downscaler-fail';
-                errorLog?.log(
-                    `Pipeline halt: ${downscalerFailCount} downscaler failures in `
-                    + `${Math.round(now - downscalerFailWindowStart)}ms — disposing downscaler `
-                    + `and stopping encoder feed. WebGPUManager.hasDevice=${WebGPUManager.hasDevice()}`);
-                if (downscaler) {
-                    try { downscaler.dispose(); } catch { /* ignore */ }
-                    downscaler = null;
-                }
-                if (!encoderFailed) {
-                    encoderFailed = true;
-                    void callbacks.onEncoderFailed(activeEncoderConfig.codec, rpcNoWait);
-                }
+            if (downscalerFailCount >= DOWNSCALER_FAIL_LIMIT && !downscalerRecreateInFlight) {
+                warnLog?.log(
+                    `Downscaler failure storm: ${downscalerFailCount} fails in `
+                    + `${Math.round(now - downscalerFailWindowStart)}ms — attempting in-place `
+                    + `device + downscaler recreate (WebGPUManager.hasDevice=${WebGPUManager.hasDevice()})`);
+                // Snapshot the codec for the halt branch — activeEncoderConfig
+                // might be reconciled away while the recreate awaits.
+                const codecAtHalt = activeEncoderConfig.codec;
+                void tryRecreateDownscalerAsync().then(recovered => {
+                    if (recovered) return;
+                    if (pipelineFailedReason !== null) return;
+                    pipelineFailedReason = 'downscaler-fail';
+                    errorLog?.log(
+                        'Pipeline halt: downscaler recreate exhausted — stopping encoder feed');
+                    if (downscaler) {
+                        try { downscaler.dispose(); } catch { /* ignore */ }
+                        downscaler = null;
+                    }
+                    if (!encoderFailed) {
+                        encoderFailed = true;
+                        void callbacks.onEncoderFailed(codecAtHalt, rpcNoWait);
+                    }
+                });
             }
         }
     }
@@ -1705,9 +1728,13 @@ function currentDownscaleTargets(): DownscaleTarget[] {
 // Returns null if WebGPU is unavailable — caller then relies on the legacy canvas
 // resizeFrame path (which only covers the primary layer; simulcast requires WebGPU).
 async function initDownscaler(config: VideoProcessingConfig): Promise<void> {
+    lastProcessingConfig = config;
     pipelineFailedReason = null;
     downscalerFailCount = 0;
     downscalerFailWindowStart = 0;
+    downscalerRecreateCount = 0;
+    downscalerRecreateWindowStart = 0;
+    downscalerRecreateInFlight = false;
     pipelineErrorLogLastSeenMs.clear();
     const targets = collectDownscaleTargets(config);
     if (downscaler && !downscaler.isInvalid) {
@@ -1726,6 +1753,56 @@ async function initDownscaler(config: VideoProcessingConfig): Promise<void> {
     } catch (e) {
         warnLog?.log('WebGPU downscaler unavailable, falling back to canvas resize:', e);
         downscaler = null;
+    }
+}
+
+// Async in-place recovery from downscaler failure storm. WebGPUManager nulls
+// its device + sampler on device.lost; init() then requests a fresh device.
+// Disposes the invalid downscaler, attaches a new one against the new device,
+// and re-applies targets. Bounded: gives up after MAX_ATTEMPTS within
+// WINDOW_MS so a stuck driver / repeating device-loss can't loop forever.
+async function tryRecreateDownscalerAsync(): Promise<boolean> {
+    if (downscalerRecreateInFlight) return false;
+    if (!lastProcessingConfig) return false;
+    if (!processing) return false;
+    const now = performance.now();
+    if (now - downscalerRecreateWindowStart > DOWNSCALER_RECREATE_WINDOW_MS) {
+        downscalerRecreateWindowStart = now;
+        downscalerRecreateCount = 0;
+    }
+    if (downscalerRecreateCount >= DOWNSCALER_RECREATE_MAX_ATTEMPTS) {
+        warnLog?.log(
+            `Downscaler recreate giving up: ${downscalerRecreateCount} attempts in `
+            + `${Math.round(now - downscalerRecreateWindowStart)}ms — falling through to halt`);
+        return false;
+    }
+    downscalerRecreateCount++;
+    downscalerRecreateInFlight = true;
+    const attempt = downscalerRecreateCount;
+    infoLog?.log(`Downscaler recreate: attempt ${attempt}/${DOWNSCALER_RECREATE_MAX_ATTEMPTS} starting`);
+    try {
+        if (downscaler) {
+            try { downscaler.dispose(); } catch { /* ignore */ }
+            downscaler = null;
+        }
+        const targets = collectDownscaleTargets(lastProcessingConfig);
+        const device = await WebGPUManager.init();
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (!processing) return false;
+        downscaler = new WebGpuDownscaler(device);
+        downscaler.configure(targets);
+        // Reset the failure counter so the next OperationError storm gets its
+        // own fresh window — without this, a single recreate would burn the
+        // budget for the rest of the recording session.
+        downscalerFailCount = 0;
+        downscalerFailWindowStart = 0;
+        infoLog?.log(`Downscaler recreate: attempt ${attempt} succeeded`);
+        return true;
+    } catch (e) {
+        warnLog?.log(`Downscaler recreate: attempt ${attempt} failed:`, e);
+        return false;
+    } finally {
+        downscalerRecreateInFlight = false;
     }
 }
 
