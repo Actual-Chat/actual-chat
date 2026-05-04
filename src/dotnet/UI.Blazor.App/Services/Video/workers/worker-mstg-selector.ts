@@ -13,7 +13,7 @@ import { BG_BLUR_STRENGTH, BG_DRAW_INTERVAL_MS } from '../services/bg-canvas-set
 import type { BgBlurRenderer } from '../webgpu-blur';
 import { ReplaceableSlot } from 'buffers';
 
-const { infoLog, warnLog } = getLogs('VideoDecoder');
+const { warnLog } = getLogs('VideoDecoder');
 
 // Single decoded-frame slot. Jitter absorption + pacing happen upstream in
 // the decoder worker's encoded pre-decode buffer (the doc's `video buffer`);
