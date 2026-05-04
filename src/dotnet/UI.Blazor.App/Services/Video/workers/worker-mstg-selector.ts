@@ -39,6 +39,14 @@ export class WorkerMstgSelector {
     private readonly writer: WritableStreamDefaultWriter<VideoFrame>;
     private writeInFlight = false;
     private lastWrittenTs = -1;
+    // Coded dims of the last frame whose writer.write resolved. This is the
+    // dim the downstream MSTG track has actually consumed, so it lines up
+    // with `<video>.videoWidth/Height` once the element renders the frame.
+    // Surfaced via getLastWrittenSize() and used as the verification
+    // reference (instead of the just-emitted decoder dim, which races video
+    // element propagation by ≥1 frame during simulcast tier swaps).
+    private lastWrittenWidth = 0;
+    private lastWrittenHeight = 0;
     private disposed = false;
     private lastBgDrawAtMs = 0;
     // DIAG: throttled (~1 Hz) instrumentation to verify whether main-write and
@@ -96,6 +104,12 @@ export class WorkerMstgSelector {
             : undefined;
     }
 
+    getLastWrittenSize(): { width: number; height: number } | null {
+        return this.lastWrittenWidth > 0 && this.lastWrittenHeight > 0
+            ? { width: this.lastWrittenWidth, height: this.lastWrittenHeight }
+            : null;
+    }
+
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
@@ -141,8 +155,19 @@ export class WorkerMstgSelector {
         }
 
         this.writeInFlight = true;
+        // Capture coded dims BEFORE writer.write — write transfers ownership
+        // (the writer closes the frame), so reading codedWidth after the
+        // call may hit a closed frame.
+        const writtenW = eligible.codedWidth;
+        const writtenH = eligible.codedHeight;
         this.writer.write(eligible)
-            .then(() => { this.mainWritesSinceDiag++; })
+            .then(() => {
+                this.mainWritesSinceDiag++;
+                if (writtenW > 0 && writtenH > 0) {
+                    this.lastWrittenWidth = writtenW;
+                    this.lastWrittenHeight = writtenH;
+                }
+            })
             .catch((e: unknown) => {
                 this.writeFailuresSinceDiag++;
                 if (!this.disposed) warnLog?.log('MSTG worker write failed:', e);

@@ -286,6 +286,14 @@ function getDecoderStatsSnapshot(): DecoderStats {
 
 function buildLatencyReport(streamOffsetMs: number): DecoderWorkerLatencyReport {
     const ds = getDecoderStatsSnapshot();
+    // Prefer the LAST-WRITTEN frame dim (i.e. the frame the MSTG track
+    // already consumed) over the most-recently-emitted-from-decoder dim.
+    // The latter races `<video>.videoWidth` propagation by ≥1 frame during
+    // simulcast tier swaps, producing transient mismatches that the verifier
+    // misclassifies as broken codec output.
+    const lastWritten = mstgSelector?.getLastWrittenSize();
+    const refW = lastWritten?.width ?? lastDecodedFrameWidth;
+    const refH = lastWritten?.height ?? lastDecodedFrameHeight;
     return {
         streamOffsetMs,
         presentedOffsetMs: mstgSelector?.getLastWrittenOffsetMs(),
@@ -295,8 +303,8 @@ function buildLatencyReport(streamOffsetMs: number): DecoderWorkerLatencyReport 
         // the depth by a constant 0–1.
         bufferDepth: ds.encodedBufferDepth ?? 0,
         bufferSpanMs: ds.encodedBufferSpanMs ?? 0,
-        lastKeyframeWidth: lastDecodedFrameWidth || undefined,
-        lastKeyframeHeight: lastDecodedFrameHeight || undefined,
+        lastKeyframeWidth: refW || undefined,
+        lastKeyframeHeight: refH || undefined,
     };
 }
 

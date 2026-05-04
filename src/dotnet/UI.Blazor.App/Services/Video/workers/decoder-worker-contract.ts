@@ -19,13 +19,17 @@ export interface DecoderWorkerLatencyReport {
     medianDecodeTimeMs: number;
     bufferDepth: number;
     bufferSpanMs: number;
-    // Last keyframe's transmitted dims (VideoFrameDto.Width/Height tracked
-    // by the worker on each keyframe). Surfaced to main so output
-    // verification can compare decoded dims against this fresh reference
-    // — never against the stream-creation-time VideoFormat metadata,
-    // which goes stale on resolution change (rotation, simulcast layer
-    // switch, screencast resize). 0 / undefined when no keyframe with
-    // dims has been seen yet.
+    // Coded dims of the last frame the MSTG track has actually consumed
+    // (post writer.write resolve). Falls back to the most-recent
+    // emit-from-decoder dim when no MSTG selector exists. This is the
+    // verification reference — it lines up with `<video>.videoWidth/Height`
+    // once the element renders the frame, so it doesn't false-positive on
+    // simulcast tier swaps or HEVC dim-change rebuilds. Never compare
+    // against stream-creation-time VideoFormat metadata, which goes stale
+    // on resolution change (rotation, simulcast switch, screencast resize).
+    // 0 / undefined when no frame has been written / decoded yet. The
+    // field name is kept for back-compat; semantically it's "last consumed
+    // frame dim", not the last keyframe per se.
     lastKeyframeWidth?: number;
     lastKeyframeHeight?: number;
 }

@@ -163,6 +163,13 @@ const CODEC_EXCLUSION_TICK_COUNT = 30;     // ~60s after quality reduction still
 const SLOW_DECODE_WARMUP_MS = 5000;
 const OUTPUT_VERIFICATION_CHECK_INTERVAL_MS = 250;
 const OUTPUT_DIMENSION_MISMATCH_TOLERANCE_PX = 16;
+// Consecutive-mismatch threshold before requesting codec exclusion. Single
+// mismatches are racy: simulcast tier swaps and HEVC dim-change rebuilds
+// can leave the verifier's two sides (worker-reported decoded dim, video
+// element's videoWidth) out of sync by ≥1 frame transiently. Requiring
+// repeated mismatches over time filters those transients while still
+// catching genuinely broken codec output (where mismatch persists).
+const OUTPUT_VERIFICATION_MISMATCH_THRESHOLD = 3;
 
 interface PendingFrame {
     drawable: VideoFrame | ImageBitmap;
@@ -347,6 +354,7 @@ export class VideoPlayer {
     private outputVerificationTimer: ReturnType<typeof globalThis.setInterval> | undefined;
     private outputVerified = false;
     private outputVerificationFailed = false;
+    private outputVerificationMismatchCount = 0;
     private codecExclusionRequested = false;
     // Latest keyframe's transmitted dims (VideoFrameDto.Width / Height).
     // The reference for output verification — see
@@ -887,6 +895,8 @@ export class VideoPlayer {
     private startOutputVerificationMonitor(): void {
         if (this.outputVerificationTimer !== undefined || this.outputVerified)
             return;
+        this.outputVerificationFailed = false;
+        this.outputVerificationMismatchCount = 0;
         this.outputVerificationTimer = globalThis.setInterval(
             () => this.checkOutputVerification('timer'),
             OUTPUT_VERIFICATION_CHECK_INTERVAL_MS);
@@ -943,18 +953,24 @@ export class VideoPlayer {
             return false;
         }
 
+        this.outputVerificationMismatchCount++;
         if (!this.outputVerificationFailed) {
             this.outputVerificationFailed = true;
             warnLog?.log(
-                `checkOutputVerification: failed, decoded ${output.width}x${output.height} ` +
-                `does not match latest keyframe ${refW}x${refH} ` +
-                `(${reason}); codec=${this.codecCategory || 'unknown'}`);
+                `checkOutputVerification: mismatch #${this.outputVerificationMismatchCount}, ` +
+                `decoded ${output.width}x${output.height} does not match latest keyframe ` +
+                `${refW}x${refH} (${reason}); codec=${this.codecCategory || 'unknown'}`);
         }
+
+        if (this.outputVerificationMismatchCount < OUTPUT_VERIFICATION_MISMATCH_THRESHOLD)
+            return false;
 
         if (this.shouldRequestCodecExclusion() && !this.codecExclusionRequested) {
             this.codecExclusionRequested = true;
             this.stopOutputVerificationMonitor();
-            warnLog?.log(`checkOutputVerification: requesting codec exclusion for ${this.codecCategory}`);
+            warnLog?.log(
+                `checkOutputVerification: requesting codec exclusion for ${this.codecCategory} ` +
+                `after ${this.outputVerificationMismatchCount} consecutive mismatches`);
             void this.blazorRef.invokeMethodAsync('OnRequestCodecExclusion', this.codecCategory);
             return true;
         }
@@ -964,6 +980,7 @@ export class VideoPlayer {
     private markOutputVerified(reason: string, width: number, height: number): void {
         this.outputVerified = true;
         this.outputVerificationFailed = false;
+        this.outputVerificationMismatchCount = 0;
         this.stopOutputVerificationMonitor();
         this.canvas.parentElement?.classList.remove('output-unverified');
         debugLog?.log(`checkOutputVerification: ok, ${width}x${height} (${reason})`);
