@@ -496,6 +496,17 @@ const STREAMING_RECONNECT_GRACE_MS = 20_000;
 // to a closed/transitioning encoder — every encode() call against a closed
 // encoder fires onError, which used to flood the log path and freeze the UI.
 let switchInProgress = false;
+let encoderTransitionDepth = 0;
+
+function beginEncoderTransition(): void {
+    encoderTransitionDepth++;
+    switchInProgress = true;
+}
+
+function endEncoderTransition(): void {
+    encoderTransitionDepth = Math.max(0, encoderTransitionDepth - 1);
+    switchInProgress = encoderTransitionDepth > 0;
+}
 
 // ─── Screencast heartbeat ──────────────────────────────────────────────────
 // getDisplayMedia is change-driven: a static screen produces zero frames. Without
@@ -864,6 +875,12 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
                 fallbackRotationDeg: senderRotationDeg,
             });
             sourceFrame = null;
+            if (!encoder || !processing || !encoderConfig || switchInProgress || encoder.getState() !== 'configured') {
+                for (const result of results)
+                    try { result.frame.close(); } catch { /* already closed */ }
+                liveFrame = null;
+                return;
+            }
             processedFrame = results[0].frame;
             liveFrame = processedFrame;
             // Simulcast extras — feed each additional downscale result to its layer
@@ -998,6 +1015,11 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
         // Frames carry source-timeline timestamps; primary + simulcast extras
         // share one timeline here. Rebase to recording-anchor offsets happens
         // post-encode in onEncoderOutput.
+        if (!encoder || !processing || !encoderConfig || switchInProgress || encoder.getState() !== 'configured') {
+            liveFrame = null;
+            processedFrame.close();
+            return;
+        }
 
         // Let the encoder decide keyframes based on its keyframeInterval config
         // (set by recording-service.ts: ~2s screencast, ~3s webcam)
@@ -2023,24 +2045,27 @@ export const serverImpl: VideoProcessingWorker = {
         const isPortrait = encoderConfig.height > encoderConfig.width;
         params.width = (isPortrait ? inSmall : inLarge) & ~1;
         params.height = (isPortrait ? inLarge : inSmall) & ~1;
+        const dimsChanged = params.width !== encoderConfig.width || params.height !== encoderConfig.height;
         infoLog?.log(`Reconfigure: ${params.bitrate / 1_000_000}Mbps, ${params.width}x${params.height}`);
-        encoderConfig.bitrate = params.bitrate; encoderConfig.width = params.width; encoderConfig.height = params.height;
-        resizeCanvas = null; resizeCtx = null;
-        // Order matters. `encoder.reconfigure` has an `await` boundary, so the
-        // stream-read loop can interleave a frame between the downscaler and
-        // encoder config updates. We reconfigure the downscaler FIRST (sync)
-        // so subsequent frames immediately land at the new target dims. Any
-        // frame that still sneaks through while the encoder is mid-reconfigure
-        // hits the dims-mismatch guard in `WebCodecsEncoder.encode` and is
-        // dropped — preferable to letting Chrome's HW encoder silently
-        // top-left-crop an old-dim frame against the new config.
-        if (downscaler) {
-            // Preserve simulcast extras when reconfiguring the primary layer.
-            // Extras stay at their initial dims — per-layer reconfigure is a
-            // later-stage feature driven by VideoQualityPreset.MaxSpatialLayer.
-            downscaler.configure(currentDownscaleTargets());
+        if (dimsChanged)
+            beginEncoderTransition();
+        try {
+            encoderConfig.bitrate = params.bitrate; encoderConfig.width = params.width; encoderConfig.height = params.height;
+            resizeCanvas = null; resizeCtx = null;
+            // Order matters. `encoder.reconfigure` has an `await` boundary, so
+            // pause frame handoff for dimension changes while the downscaler and
+            // encoder move to the new shape together.
+            if (downscaler) {
+                // Preserve simulcast extras when reconfiguring the primary layer.
+                // Extras stay at their initial dims — per-layer reconfigure is a
+                // later-stage feature driven by VideoQualityPreset.MaxSpatialLayer.
+                downscaler.configure(currentDownscaleTargets());
+            }
+            await encoder.reconfigure(params);
+        } finally {
+            if (dimsChanged)
+                endEncoderTransition();
         }
-        await encoder.reconfigure(params);
         if (segConfig && blurEnabled) { segConfig.outputWidth = params.width; segConfig.outputHeight = params.height; }
         // Drop cached heartbeat frame — its dimensions no longer match the encoder.
         if (lastEncodedFrame) { lastEncodedFrame.close(); lastEncodedFrame = null; }
@@ -2060,7 +2085,7 @@ export const serverImpl: VideoProcessingWorker = {
         // checks this and drops incoming frames so encode() is never called against
         // the closed/transitioning encoder (the per-frame InvalidStateError flood
         // was the root of the multi-minute UI freeze observed in production).
-        switchInProgress = true;
+        beginEncoderTransition();
         let switchFailed = false;
         try {
             if (videoStream) {
@@ -2121,7 +2146,7 @@ export const serverImpl: VideoProcessingWorker = {
         } finally {
             // Re-enable streaming and clear any frames that leaked during flush
             streamingEnabled = wasStreaming;
-            switchInProgress = false;
+            endEncoderTransition();
         }
         // Diagnostic: explain what the encoder needs to resume streaming.
         // lastEncodedFrame is always null here (cleared above), so screencast
