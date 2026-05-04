@@ -466,7 +466,7 @@ body.narrow .narrow-panel .attachment-filename {
     @apply bg-05;
     @apply rounded-full;
     @apply overflow-hidden;
-    transition: all 150ms ease-in-out;
+    transition: width 150ms ease-in-out, background-color 150ms ease-in-out;
 }
 .narrow-panel .attachment-upload-progress {
     @apply bottom-0;
