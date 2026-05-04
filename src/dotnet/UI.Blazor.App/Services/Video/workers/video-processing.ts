@@ -531,6 +531,51 @@ let lastEncodedFrameAt = 0; // performance.now() of the last encoder.encode() we
 let lastEncodedTimestampUs = 0; // μs timestamp of the last frame fed to encoder (real or heartbeat)
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
+// Pipeline counters — logged every D4_INTERVAL_MS so a freeze report tells
+// us which counter froze (e.g. framesIn != 0 but framesEncoded == 0 → encoder
+// hung; framesDropped spikes alongside encoder transitions, etc.).
+const D4_INTERVAL_MS = 30_000;
+interface PipelineCounters {
+    framesIn: number;
+    framesEncoded: number;
+    framesDroppedTransition: number;
+    framesDroppedVad: number;
+    framesDroppedNotConfigured: number;
+    downscalerErrors: number;
+    encoderErrors: number;
+}
+function newPipelineCounters(): PipelineCounters {
+    return {
+        framesIn: 0, framesEncoded: 0,
+        framesDroppedTransition: 0, framesDroppedVad: 0, framesDroppedNotConfigured: 0,
+        downscalerErrors: 0, encoderErrors: 0,
+    };
+}
+let pipelineCounters = newPipelineCounters();
+let pipelineCountersTimer: ReturnType<typeof setInterval> | null = null;
+function startPipelineCountersLogger(): void {
+    if (pipelineCountersTimer) return;
+    pipelineCounters = newPipelineCounters();
+    pipelineCountersTimer = setInterval(() => {
+        const c = pipelineCounters;
+        // Skip log if the pipeline produced nothing AND saw nothing — quiet idle state.
+        if (c.framesIn === 0 && c.framesEncoded === 0 && c.downscalerErrors === 0 && c.encoderErrors === 0)
+            return;
+        infoLog?.log(
+            `pipeline counters (last ${Math.round(D4_INTERVAL_MS / 1000)}s): `
+            + `in=${c.framesIn} enc=${c.framesEncoded} `
+            + `drop[transition=${c.framesDroppedTransition},vad=${c.framesDroppedVad},notCfg=${c.framesDroppedNotConfigured}] `
+            + `err[downscaler=${c.downscalerErrors},encoder=${c.encoderErrors}] `
+            + `pipelineFailedReason=${pipelineFailedReason ?? 'none'}`);
+        pipelineCounters = newPipelineCounters();
+    }, D4_INTERVAL_MS);
+}
+function stopPipelineCountersLogger(): void {
+    if (!pipelineCountersTimer) return;
+    clearInterval(pipelineCountersTimer);
+    pipelineCountersTimer = null;
+}
+
 // Pipeline
 let processing = false;
 // Set when an unrecoverable downstream failure (downscaler invalid, GPU device
@@ -809,6 +854,7 @@ async function initializeSegmentation(_config: SegmentationConfig): Promise<void
 // ─── Encoding pipeline ──────────────────────────────────────────────────────
 
 function processOneFrame(frame: VideoFrame): void {
+    pipelineCounters.framesIn++;
     if (!processing) { frame.close(); return; }
 
     // Preview-only mode (no encoder): route through segmentation only
@@ -874,7 +920,10 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
     // Cheap state guard: if the encoder isn't configured (still warming up,
     // or closed by a real WebCodecs error) skip the encode call. The
     // dead-encoder watchdog already escalates after framesWithoutOutput >= 30.
-    if (encoder.getState() !== 'configured') { frame.close(); return; }
+    if (encoder.getState() !== 'configured') {
+        pipelineCounters.framesDroppedNotConfigured++;
+        frame.close(); return;
+    }
     const activeEncoder = encoder;
     const activeEncoderConfig = encoderConfig;
 
@@ -914,6 +963,7 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
                 || encoder !== activeEncoder
                 || encoderConfig !== activeEncoderConfig
                 || activeEncoder.getState() !== 'configured') {
+                pipelineCounters.framesDroppedTransition++;
                 for (const result of results)
                     try { result.frame.close(); } catch { /* already closed */ }
                 liveFrame = null;
@@ -944,6 +994,7 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
                         const extra = results[idx];
                         try {
                             extraLayerEncoders[i].encode(extra.frame, nextFrameIsKeyFrame);
+                            pipelineCounters.framesEncoded++;
                             ownedExtras[idx] = false; // encoder owns + closes
                         } catch (e) {
                             errorLog?.log(`Extra layer ${i + 1} encode error:`, e);
@@ -1057,6 +1108,7 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             || encoder !== activeEncoder
             || encoderConfig !== activeEncoderConfig
             || activeEncoder.getState() !== 'configured') {
+            pipelineCounters.framesDroppedTransition++;
             liveFrame = null;
             processedFrame.close();
             return;
@@ -1082,6 +1134,7 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
         if (!downscaler)
             registerEncodeFrameCost(processedFrame.timestamp, 1);
         activeEncoder.encode(processedFrame, forceKf);
+        pipelineCounters.framesEncoded++;
         framesWithoutOutput++;
 
         // Detect dead encoder: error seen + 30 frames (~1s @ 30fps) with zero
@@ -1105,6 +1158,11 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
         // GC-without-close warnings.
         if (liveFrame) {
             try { liveFrame.close(); } catch { /* already closed */ }
+        }
+        if (isDownscalerFailure(error)) {
+            pipelineCounters.downscalerErrors++;
+        } else {
+            pipelineCounters.encoderErrors++;
         }
         if (isDownscalerFailure(error) && pipelineFailedReason === null) {
             const now = performance.now();
@@ -1859,7 +1917,10 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
 
             if (!vadSpeaking && vadRemoteStreamCount >= 2) {
                 const now = performance.now();
-                if (now - vadLastPassedFrameTime < vadReducedFrameIntervalMs) { frame.close(); continue; }
+                if (now - vadLastPassedFrameTime < vadReducedFrameIntervalMs) {
+                    pipelineCounters.framesDroppedVad++;
+                    frame.close(); continue;
+                }
                 vadLastPassedFrameTime = now;
             }
 
@@ -1955,6 +2016,7 @@ export const serverImpl: VideoProcessingWorker = {
             processing = true;
             streamCtx.processing = true;
             startRecorderHealthAggregator();
+            startPipelineCountersLogger();
             dimensionsReconciled = false;
             needsRotation = false;
             orientationStats = null;
@@ -2044,6 +2106,7 @@ export const serverImpl: VideoProcessingWorker = {
             processing = true;
             streamCtx.processing = true;
             startRecorderHealthAggregator();
+            startPipelineCountersLogger();
             dimensionsReconciled = false;
             needsRotation = false;
             orientationStats = null;
@@ -2094,6 +2157,7 @@ export const serverImpl: VideoProcessingWorker = {
             processing = true;
             streamCtx.processing = true;
             startRecorderHealthAggregator();
+            startPipelineCountersLogger();
 
             infoLog?.log(`Video processing worker started (${isPreviewOnly ? 'preview-only' : 'RPC'} mode)`);
         } catch (error) {
@@ -2372,6 +2436,7 @@ export const serverImpl: VideoProcessingWorker = {
         processing = false;
         streamCtx.processing = false;
         stopRecorderHealthAggregator();
+        stopPipelineCountersLogger();
         stopScreencastHeartbeat();
         stopStreamingWatchdog();
 
