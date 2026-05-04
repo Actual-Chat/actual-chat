@@ -3,6 +3,15 @@ import type { PresentableFrame, RenderBackend } from './render-backend';
 
 const { debugLog, infoLog, warnLog } = getLogs('VideoPlayer');
 
+export interface OffThreadPlaybackStallReport {
+    reason: string;
+    currentTime: number;
+    readyState: number;
+    videoWidth: number;
+    videoHeight: number;
+    tracks: string;
+}
+
 // Off-thread support: the generator may live in main (Chromium MSTG) and/or
 // worker (Safari VTG, Chromium MSTG). We can't probe worker globals from main,
 // so we try off-thread on browsers where SOMETHING is plausible — Safari and
@@ -44,6 +53,8 @@ export class OffThreadRenderBackend implements RenderBackend {
     private lastWatchdogAtMs = 0;
     // F1: track consecutive stall ticks before re-calling play().
     private consecutiveStallTicks = 0;
+    private startupNoOutputTicks = 0;
+    private startupNoOutputReported = false;
     // F2: observe parent classList flips (item-x ↔ item-focused) — the
     // user-confirmed trigger of a born-at-sidebar player going black.
     // Promotion to focused doesn't auto-resume <video srcObject> playback,
@@ -59,6 +70,7 @@ export class OffThreadRenderBackend implements RenderBackend {
      * tiles (CSS hides the bg canvas there anyway). Set externally after ctor.
      */
     onFocusedChange: ((focused: boolean) => void) | null = null;
+    onPlaybackStalled: ((report: OffThreadPlaybackStallReport) => void) | null = null;
 
     constructor(private readonly videoEl: HTMLVideoElement) {}
 
@@ -247,6 +259,31 @@ export class OffThreadRenderBackend implements RenderBackend {
             }
         } else {
             this.consecutiveStallTicks = 0;
+        }
+        const hasLiveTrack = tracks.some(t => t.readyState === 'live');
+        const startupHasNoOutput =
+            hasLiveTrack &&
+            nowCt < 0.05 &&
+            this.videoEl.videoWidth <= 0 &&
+            this.videoEl.videoHeight <= 0 &&
+            this.videoEl.readyState === 0;
+        if (startupHasNoOutput)
+            this.startupNoOutputTicks++;
+        else
+            this.startupNoOutputTicks = 0;
+        if (!this.startupNoOutputReported && this.startupNoOutputTicks >= 4) {
+            this.startupNoOutputReported = true;
+            warnLog?.log(
+                `tickWatchdog: startup MSTG output never appeared ` +
+                `(ticks=${this.startupNoOutputTicks}, tracks=[${trackInfo}]), requesting fallback`);
+            this.onPlaybackStalled?.({
+                reason: 'startup-no-output',
+                currentTime: nowCt,
+                readyState: this.videoEl.readyState,
+                videoWidth: this.videoEl.videoWidth,
+                videoHeight: this.videoEl.videoHeight,
+                tracks: trackInfo,
+            });
         }
         infoLog?.log(
             `tickWatchdog: paused=${this.videoEl.paused} ` +

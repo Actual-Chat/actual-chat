@@ -1757,9 +1757,14 @@ const serverImpl: DecoderWorker = {
         activePullStreamId = null;
         skipFramesBeforeUs = 0;
         resetDecodeAnchor();
+        clearEncodedBuffer();
         if (pullAbortController) {
             pullAbortController.abort();
             pullAbortController = null;
+        }
+        if (mstgSelector) {
+            mstgSelector.dispose();
+            mstgSelector = null;
         }
         await Promise.resolve();
     },

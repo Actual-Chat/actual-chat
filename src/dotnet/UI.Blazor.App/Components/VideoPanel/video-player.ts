@@ -262,6 +262,7 @@ export class VideoPlayer {
     // Off-thread mode: when true, the decoder worker owns the Fusion RPC pull
     // and main does no per-frame work. Set after a successful startPullInWorker.
     private offThreadPullActive = false;
+    private mstgFallbackInProgress = false;
     // DIAG: counts entries to delegatePullToWorker for this VideoPlayer instance.
     // Used to confirm whether retry paths re-enter the off-thread setup.
     private delegateEntryCount = 0;
@@ -576,6 +577,11 @@ export class VideoPlayer {
                 mstgBackend.onFocusedChange = (focused: boolean) => {
                     if (!this.decoderWorker) return;
                     void this.decoderWorker.setBgPaintEnabled(focused, rpcNoWait);
+                };
+                mstgBackend.onPlaybackStalled = report => {
+                    void this.fallbackFromMstgToCanvas(
+                        `watchdog:${report.reason}, readyState=${report.readyState}, ` +
+                        `videoWH=${report.videoWidth}x${report.videoHeight}, tracks=[${report.tracks}]`);
                 };
             }
 
@@ -1654,6 +1660,39 @@ export class VideoPlayer {
                 try { mainGenerator.stop(); } catch { /* ignore */ }
             }
             return false;
+        }
+    }
+
+    private async fallbackFromMstgToCanvas(reason: string): Promise<void> {
+        if (this.mstgFallbackInProgress || !this.isPlaying || this.renderBackend.kind !== 'mstg')
+            return;
+
+        this.mstgFallbackInProgress = true;
+        warnLog?.log(`fallbackFromMstgToCanvas: ${reason}`);
+        try {
+            if (this.offThreadPullActive && this.decoderWorker) {
+                try { await this.decoderWorker.stopPullInWorker(); }
+                catch (e) { warnLog?.log('fallbackFromMstgToCanvas: stopPullInWorker failed:', e); }
+                this.offThreadPullActive = false;
+            }
+
+            this.renderBackend.dispose();
+            this.renderBackend = new CanvasRenderBackend(this.canvas);
+            this.applyBackendVisibility(this.canvas, this.videoEl);
+            this.startRenderLoop();
+
+            this.playbackStartTime = 0;
+            this.lastRenderedOffsetMs = 0;
+            this.lastArrivedOffsetMs = 0;
+            this.pipelineLatencyEma.reset();
+            this.bufferDurationMsEma.reset();
+            this.decoderQueueDepthEma.reset();
+            this.pipelineLatencyMs = 0;
+
+            const liveOffsetMs = Math.max(0, ServerClock.now() - this.startedAtMs);
+            await this.startPull(this.streamId, liveOffsetMs);
+        } finally {
+            this.mstgFallbackInProgress = false;
         }
     }
 
