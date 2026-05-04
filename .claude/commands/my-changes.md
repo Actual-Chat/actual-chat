@@ -255,19 +255,47 @@ No commits by <user> in <window>.
 
 Don't pad with empty sections, and don't invent activity.
 
-### 8. LOC footer
+### 8. Footer
 
-End the report with a single trailing line summarizing total lines of code
-added and removed across all commits included in the report:
+End the report with this exact two-line footer (and nothing after it):
 
 ```
-LOCs: +<added>/-<removed>
+**Window:** **<N> commits** in `<repo>` (<branch summary>)[ + **<M> commits** in `<sibling-repo>` (<branch summary>)], starting at `<short-sha>` and covering a timespan of **<duration>**.
+**LOCs:** `+<added>`, `-<removed>`
 ```
 
-Compute by summing `--numstat` rows from the same `git log` invocation(s)
-used in step 3 (and step 6 for the sibling repo). Combine both repos into
-the single total. Skip binary rows (where numstat reports `-` for both
-columns). Example:
+Concrete example:
+
+```
+**Window:** **15 commits** in `ActualChat` (all on `dev`) + **3 commits** in `ActualLab.Fusion` (all on `main`), starting at `c0f1ac45` and covering a timespan of **6 hours**.
+**LOCs:** `+1297`, `-561`
+```
+
+Rules:
+
+- **Counts.** `<N>` and `<M>` are the deduped commit counts from steps 3
+  and 6. Bold them. Drop the sibling clause entirely if the sibling repo
+  contributed nothing (or isn't present).
+- **Repo names.** Use the directory basename (`ActualChat`,
+  `ActualLab.Fusion`, …) wrapped in backticks.
+- **Branch summary.** If every commit in a repo lives on a single branch,
+  write `all on \`<branch>\``. If they span multiple branches, write
+  `across \`<a>\`, \`<b>\`, …` with branches in the same priority order
+  used in the body (feature branches first, then `dev`/`main`/`master`).
+- **Starting SHA.** Use the oldest commit in the report's combined set
+  (across both repos), short-form (≥ 7 chars, whatever `git rev-parse
+  --short` returns), in backticks. If the user passed `starting from <sha>`
+  literally, use that SHA instead — it's what they anchored on.
+- **Timespan.** Wallclock distance from the oldest commit's author date to
+  the newest commit's author date across both repos. Round to a friendly
+  unit: minutes (< 1 h), hours (< 1 d, rounded to nearest hour),
+  days (< 14 d, rounded to nearest day), weeks otherwise. Bold it.
+  If only one commit, write `**a single commit**` instead of a duration.
+- **LOCs.** Sum `--numstat` rows across both repos, skipping binary
+  rows (where numstat reports `-` for both columns). Wrap each side in
+  backticks: `` `+1297` `` and `` `-561` ``.
+
+Compute LOCs from the same `git log` invocations used in steps 3 and 6:
 
 ```bash
 git log <range_or_since> --no-merges \
@@ -276,11 +304,11 @@ git log <range_or_since> --no-merges \
   | awk '$1 != "-" { add += $1; del += $2 } END { print add, del }'
 ```
 
-If the sibling repo contributed commits, run the same against it with
-`-C /proj/ActualLab.Fusion` and add its totals before printing the line.
+Run the same against `/proj/ActualLab.Fusion` with `-C` and add the totals
+before printing the footer.
 
-Place the `LOCs:` line on its own at the very bottom of the output, after
-any window/summary sentence — it's the last thing the user sees.
+The footer is the last thing in the output — no closing prose, no
+trailing summary sentence after it.
 
 ## Constraints
 
