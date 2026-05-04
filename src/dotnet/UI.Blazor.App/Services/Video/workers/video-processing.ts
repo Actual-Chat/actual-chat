@@ -464,8 +464,11 @@ function checkStreamingStall(): void {
 
     streamingStallNotified = true;
     stopStreamingWatchdog();
-    const reason = `Video isn't reaching viewers (stalled in '${streamStatus}'). Try toggling the camera off and on.`;
-    warnLog?.log(`Streaming watchdog: stall after ${stallMs.toFixed(0)}ms in '${streamStatus}', lastStreamError='${lastStreamError}' — notifying main thread`);
+    const streamError = videoStream?.lastError || lastVideoStream?.lastError || lastStreamError;
+    const reason = streamError.length > 0
+        ? `Video isn't reaching viewers (stalled in '${streamStatus}'): ${streamError}`
+        : `Video isn't reaching viewers (stalled in '${streamStatus}'). Try toggling the camera off and on.`;
+    warnLog?.log(`Streaming watchdog: stall after ${stallMs.toFixed(0)}ms in '${streamStatus}', streamError='${streamError}' — notifying main thread`);
     void callbacks.onStreamingStalled(reason, rpcNoWait);
 }
 let pendingStreamFrames: VideoStreamFrame[] = [];

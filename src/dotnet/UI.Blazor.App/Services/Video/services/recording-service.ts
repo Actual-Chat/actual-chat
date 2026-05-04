@@ -347,11 +347,19 @@ export class RecordingService extends EventTarget {
                 this.dispatchEvent(new CustomEvent('recorder-health', { detail: snapshot }));
             };
 
-            // Track-end detection. Camera was unexpectedly revoked —
+            // Track-end detection. Webcam end is unexpected (device contention,
+            // unplug, revoked permission). Screencast end is normally the user
+            // pressing the browser's "Stop sharing" control; video-recorder.ts
+            // owns that graceful stop path via the track's onended handler.
             // dispatch a user-visible error and stop the pipeline so callers
             // can decide whether to retry. Without this, the worker logged
             // `Stream input ended` and the pipeline died silently.
             this.pipeline.onTrackEnded = () => {
+                if (this.config.mode === 'screen') {
+                    infoLog?.log('Screen sharing track ended — waiting for owner to stop without recorder error');
+                    return;
+                }
+
                 warnLog?.log('Camera track ended unexpectedly — stopping recording');
                 this.setState({ status: 'error: Camera was disconnected (another app may have taken it)' });
                 this.dispatchEvent(new CustomEvent('error', {
@@ -429,12 +437,6 @@ export class RecordingService extends EventTarget {
             this.durationInterval = null;
         }
 
-        // Stop input track
-        if (this.inputTrack) {
-            this.inputTrack.stop();
-            this.inputTrack = null;
-        }
-
         // Stop pipeline to tear down streaming and unregister backend stream
         try {
             await this.pipeline.stop();
@@ -442,6 +444,13 @@ export class RecordingService extends EventTarget {
             warnLog?.log('Pipeline stop error:', error);
         }
         this.pipeline = null;
+
+        // Stop input track after pipeline.stop() detaches the ended listener.
+        // Otherwise our own deliberate stop is reported as device loss.
+        if (this.inputTrack) {
+            this.inputTrack.stop();
+            this.inputTrack = null;
+        }
 
         this.setState({
             isRecording: false,

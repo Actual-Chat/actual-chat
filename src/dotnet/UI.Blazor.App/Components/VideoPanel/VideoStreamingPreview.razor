@@ -81,7 +81,7 @@
         var isOwnScreencasting = StreamKind == StreamKind.Screencast
             && await ChatVideoUI.IsOwnScreencasting(chatId, cancellationToken).ConfigureAwait(false);
         var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
-        var lastError = await ChatVideoUI.GetLastVideoRecorderError(cancellationToken).ConfigureAwait(false);
+        var lastError = await ChatVideoUI.GetLastVideoRecorderError(StreamKind, cancellationToken).ConfigureAwait(false);
         var isMirrored = await ChatVideoUI.GetIsCameraMirrored(cancellationToken).ConfigureAwait(false);
         return new Model(isOwnRecording, isOwnScreencasting, !hasRemoteStreams, lastError, isMirrored);
     }

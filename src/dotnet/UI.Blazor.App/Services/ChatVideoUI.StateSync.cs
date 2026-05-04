@@ -92,7 +92,7 @@ public partial class ChatVideoUI
 
                 if (recorder is null) {
                     try {
-                        _errorMessage.Value = null;
+                        ClearRecordingError(kind);
                         recorder = await VideoRecorder.Create(Hub, kind).ConfigureAwait(false);
                         var serverTimeSync = Hub.Services.GetService<ServerTimeSync>();
                         if (serverTimeSync != null)
@@ -146,7 +146,7 @@ public partial class ChatVideoUI
         // Clear any stale error so VideoStreamingPreview shows the loading spinner
         // (via the .starting class driven by !hasError) instead of the previous
         // failure message while the new camera is being acquired.
-        _errorMessage.Value = null;
+        ClearRecordingError(StreamKind.Webcam);
         await recorder.SwitchCamera(intent.CameraDeviceId ?? "", ct).ConfigureAwait(false);
         await recorder.ToggleBlur(intent.BlurEnabled, ct).ConfigureAwait(false);
     }

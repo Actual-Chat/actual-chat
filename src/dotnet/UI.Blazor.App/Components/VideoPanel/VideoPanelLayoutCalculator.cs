@@ -128,7 +128,9 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
                         ?? focusedScreencast
                         ?? screencastAuthorIds[0];
                     SetFocused(next);
+#pragma warning disable CA1849 // Use async overload
                     _focusDebounceCts?.Cancel();
+#pragma warning restore CA1849
                     _focusDebounceCts = null;
                     _pendingFocusCandidate = null;
                     continue;
@@ -420,8 +422,10 @@ public record VideoPanelLayout(
 {
     public static readonly VideoPanelLayout New = new("", "", [], []);
 
+#pragma warning disable CA1822 // Member can be static
     public string LayoutClass
         => "video-panel-layout__sidebar";
+#pragma warning restore CA1822
 
     public string GetRemoteStreamPlayerClass(StreamId streamId)
         => RemoteStreamPlayerClasses.FirstOrDefault(c => c.StreamId == streamId.Value)?.Class ?? "";

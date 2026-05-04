@@ -125,7 +125,13 @@ public sealed class PlaybackLagTracker : IDisposable
                 store.TryRemove(kv);
     }
 
-    private readonly record struct Entry(AuthorId AuthorId, TimeSpan Lag, Moment UpdatedAt);
+    [StructLayout(LayoutKind.Auto)]
+    private readonly record struct Entry(
+        AuthorId AuthorId,
+        TimeSpan Lag,
+        Moment UpdatedAt);
+
+    [StructLayout(LayoutKind.Auto)]
     private readonly record struct ScanResult(
         TimeSpan? Lag,
         int FreshCount,
@@ -133,6 +139,7 @@ public sealed class PlaybackLagTracker : IDisposable
         TimeSpan? FreshestAge);
 }
 
+[StructLayout(LayoutKind.Auto)]
 public readonly record struct PlaybackLagSnapshot(
     TimeSpan? AudioLag,
     TimeSpan? VideoLag,

@@ -167,6 +167,7 @@ const OUTPUT_DIMENSION_MISMATCH_TOLERANCE_PX = 16;
 interface PendingFrame {
     drawable: VideoFrame | ImageBitmap;
     timestamp: number;
+    receivedAtMs: number;
     displayWidth: number;
     displayHeight: number;
     close(): void;
@@ -313,6 +314,7 @@ export class VideoPlayer {
     private skippedBacklogFrames = 0;
     private rebufferDelayMs = 0;         // After tab restore, delay rendering to let buffer accumulate
     private consecutiveEmptyRenders = 0; // Safety net: count consecutive RAFs with no frame rendered
+    private pendingNotDueSinceMs = 0;     // First time the one-slot decoded queue became blocked by presentation timing
     private lastHighLatencyLogTime = 0;  // Throttle high-latency FRAME_RECV logs
     private skipToLiveCount = 0;          // Number of skip-to-live events
     private lastQualitySkipToLiveCount = 0;
@@ -625,17 +627,18 @@ export class VideoPlayer {
         return 'unknown';
     }
 
-    private wrapFrame(frame: VideoFrame): PendingFrame {
+    private wrapFrame(frame: VideoFrame, receivedAtMs: number): PendingFrame {
         return {
             drawable: frame,
             timestamp: frame.timestamp,
+            receivedAtMs,
             displayWidth: frame.displayWidth,
             displayHeight: frame.displayHeight,
             close() { frame.close(); },
         };
     }
 
-    private async convertToBitmap(frame: VideoFrame): Promise<PendingFrame> {
+    private async convertToBitmap(frame: VideoFrame, receivedAtMs: number): Promise<PendingFrame> {
         const ts = frame.timestamp;
         const dw = frame.displayWidth;
         const dh = frame.displayHeight;
@@ -645,6 +648,7 @@ export class VideoPlayer {
             return {
                 drawable: bitmap,
                 timestamp: ts,
+                receivedAtMs,
                 displayWidth: dw,
                 displayHeight: dh,
                 close() { bitmap.close(); },
@@ -654,6 +658,7 @@ export class VideoPlayer {
             return {
                 drawable: frame,
                 timestamp: ts,
+                receivedAtMs,
                 displayWidth: dw,
                 displayHeight: dh,
                 close() { frame.close(); },
@@ -679,6 +684,7 @@ export class VideoPlayer {
     }
 
     private onFrameDecoded(frame: VideoFrame): void {
+        const receivedAtMs = performance.now();
         // Live gate: skip old frames from decoder's internal backlog.
         if (this.skipFramesBelowOffsetMs > 0) {
             const frameOffsetMs = frame.timestamp / 1000; // μs → ms
@@ -705,13 +711,13 @@ export class VideoPlayer {
         if (this.isSafari && this.renderBackend.kind === 'canvas') {
             this.conversionQueue = this.conversionQueue.then(async () => {
                 if (!this.isPlaying) { frame.close(); return; }
-                const pf = await this.convertToBitmap(frame);
+                const pf = await this.convertToBitmap(frame, receivedAtMs);
                 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                 if (!this.isPlaying) { pf.close(); return; }
                 this.enqueuePendingFrame(pf);
             });
         } else {
-            this.enqueuePendingFrame(this.wrapFrame(frame));
+            this.enqueuePendingFrame(this.wrapFrame(frame, receivedAtMs));
         }
     }
 
@@ -827,26 +833,34 @@ export class VideoPlayer {
         }
 
         if (frameToRender) {
-            this.lastRenderedOffsetMs = frameToRender.timestamp / 1000;
-            this.renderBackend.drawFrame(frameToRender);
-            if (this.checkOutputVerification('render-frame')) {
-                frameToRender.close();
+            if (this.presentFrame(frameToRender, 'render-frame'))
                 return;
-            }
-            frameToRender.close();
-            this.consecutiveEmptyRenders = 0;
         } else if (front) {
-            this.consecutiveEmptyRenders++;
-            if (this.consecutiveEmptyRenders >= 60) {
-                warnLog?.log(`Render stuck for ${this.consecutiveEmptyRenders} frames, resetting timing anchor`);
-                // Anchor to actual buffer content — clock-based liveOffsetMs may be wrong
-                // (e.g., after sender reconnection where startedAtMs and frame offsets diverge)
-                this.playbackStartTime = performance.now();
+            if (this.pendingNotDueSinceMs === 0)
+                this.pendingNotDueSinceMs = front.receivedAtMs;
+            const deadlineMs = this.pendingNotDueSinceMs + VIDEO.targetBufferDurationMs + VIDEO.frameDurationMs;
+            if (now >= deadlineMs) {
+                const earlyByMs = Math.max(0, (front.timestamp - adjustedTargetTimestamp) / 1000);
+                const waitMs = now - this.pendingNotDueSinceMs;
+                warnLog?.log(
+                    `Render deadline reached after ${waitMs.toFixed(0)}ms, ` +
+                    `presenting pending frame early by ${earlyByMs.toFixed(0)}ms`);
+                // Single decoded slot: if we are stuck on the only available
+                // frame, the wall-clock anchor is wrong for this stream segment.
+                // Present it now and re-anchor so the next arrival is paced from
+                // the frame we actually showed rather than from a stale live-edge
+                // estimate.
+                this.playbackStartTime = now - JITTER_BUFFER_MS;
                 this.firstFrameTimestamp = front.timestamp;
-                this.consecutiveEmptyRenders = 0;
+                frameToRender = this.pendingFrames.shift()!;
+                if (this.presentFrame(frameToRender, 'render-stuck'))
+                    return;
             }
+            else
+                this.consecutiveEmptyRenders++;
         } else {
             this.consecutiveEmptyRenders = 0;
+            this.pendingNotDueSinceMs = 0;
         }
 
         this.updateBufferState();
@@ -886,19 +900,30 @@ export class VideoPlayer {
         this.outputVerificationTimer = undefined;
     }
 
-    private checkOutputVerification(reason: string): boolean {
+    private presentFrame(frameToRender: PendingFrame, verificationReason: string): boolean {
+        this.lastRenderedOffsetMs = frameToRender.timestamp / 1000;
+        this.renderBackend.drawFrame(frameToRender);
+        const shouldStop = this.checkOutputVerification(verificationReason, {
+            width: frameToRender.displayWidth,
+            height: frameToRender.displayHeight,
+        });
+        frameToRender.close();
+        this.consecutiveEmptyRenders = 0;
+        this.pendingNotDueSinceMs = 0;
+        return shouldStop;
+    }
+
+    private checkOutputVerification(reason: string, reference?: { width: number; height: number }): boolean {
         if (this.outputVerified || !this.isPlaying)
             return false;
 
-        // Reference dims = the LATEST keyframe the sender declared
-        // (VideoFrameDto.Width / Height). Stream-metadata dims
-        // (expectedDisplayWidth / Height) are a snapshot from stream
-        // creation and CANNOT be the reference: resolution adapts
-        // mid-stream (orientation, simulcast layer switch, screencast
-        // resize, quality preset bump). See
-        // feedback_video_dim_verification_per_frame.md.
-        const refW = this.lastKeyframeWidth;
-        const refH = this.lastKeyframeHeight;
+        // Reference dims are either the just-presented decoded frame (canvas
+        // path) or the worker-reported decoded output (MSTG path). Fall back to
+        // the latest keyframe only for startup/timer probes before a frame-
+        // specific reference is available. Stream-metadata dims are just a
+        // creation-time snapshot; resolution adapts mid-stream.
+        const refW = reference?.width ?? this.lastKeyframeWidth;
+        const refH = reference?.height ?? this.lastKeyframeHeight;
         if (refW <= 0 || refH <= 0) {
             // No keyframe with dims yet — wait. Off-thread mode learns
             // these via the worker latency report (~2 s cadence);

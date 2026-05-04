@@ -20,7 +20,8 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<string?> _selectedCameraDeviceId;
     private readonly MutableState<bool> _isBackgroundBlurEnabled;
     private readonly MutableState<bool> _isCameraMirrored;
-    private readonly MutableState<string?> _errorMessage;
+    private readonly MutableState<string?> _webcamErrorMessage;
+    private readonly MutableState<string?> _screencastErrorMessage;
 
     // Tracks which chat the user is currently watching video in (in-memory, resets on reload)
     private readonly MutableState<ChatId?> _watchingChatId;
@@ -53,7 +54,8 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _selectedCameraDeviceId = StateFactory.NewMutable((string?)null);
         _isBackgroundBlurEnabled = StateFactory.NewMutable(false);
         _isCameraMirrored = StateFactory.NewMutable(true);
-        _errorMessage = StateFactory.NewMutable((string?)null);
+        _webcamErrorMessage = StateFactory.NewMutable((string?)null);
+        _screencastErrorMessage = StateFactory.NewMutable((string?)null);
         _watchingChatId = StateFactory.NewMutable((ChatId?)null);
         _isVideoPanelCollapsed = StateFactory.NewMutable(false);
     }
@@ -94,6 +96,11 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 #endif
     }
 
+#pragma warning disable CA1822 // Can be static
+    public bool IsVideoEnabledNonComputed(ChatId chatId)
+        => true;
+#pragma warning restore CA1822
+
     [ComputeMethod]
     public virtual async Task<bool> IsOwnWebcamRecording(ChatId chatId, CancellationToken cancellationToken = default)
     {
@@ -116,7 +123,11 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     [ComputeMethod]
     public virtual async Task<string?> GetLastVideoRecorderError(CancellationToken cancellationToken = default)
-        => await _errorMessage.Use(cancellationToken).ConfigureAwait(false);
+        => await _webcamErrorMessage.Use(cancellationToken).ConfigureAwait(false);
+
+    [ComputeMethod]
+    public virtual async Task<string?> GetLastVideoRecorderError(StreamKind kind, CancellationToken cancellationToken = default)
+        => await GetErrorState(kind).Use(cancellationToken).ConfigureAwait(false);
 
     [ComputeMethod]
     public virtual async Task<ChatId?> GetWatchingChatId(CancellationToken cancellationToken = default)
@@ -140,19 +151,27 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     {
         _recordingChatId.Value = null;
         _screencastChatId.Value = null;
+        ClearRecordingError(StreamKind.Webcam);
+        ClearRecordingError(StreamKind.Screencast);
     }
 
     /// <summary>
     /// Stops the webcam stream only. Screencast (if any) keeps running.
     /// </summary>
     public void StopRecording()
-        => _recordingChatId.Value = null;
+    {
+        _recordingChatId.Value = null;
+        ClearRecordingError(StreamKind.Webcam);
+    }
 
     /// <summary>
     /// Stops the screencast stream only. Webcam (if any) keeps running.
     /// </summary>
     public void StopScreenCasting()
-        => _screencastChatId.Value = null;
+    {
+        _screencastChatId.Value = null;
+        ClearRecordingError(StreamKind.Screencast);
+    }
 
     public void StartScreenCasting(ChatId chatId)
     {
@@ -164,13 +183,15 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     private async Task StartScreenCastingInternal(ChatId chatId, CancellationToken cancellationToken = default)
     {
-        if (_screencastChatId.Value == chatId)
+        if (_screencastChatId.Value == chatId) {
+            await ShowScreencastAlreadyActiveModal(cancellationToken).ConfigureAwait(true);
             return;
+        }
 
         try {
             var activeStreams = await GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(true);
             if (activeStreams.Any(s => s.StreamKind == StreamKind.Screencast)) {
-                await ModalUI.Show(new ScreencastAlreadyActiveModal.Model(), cancellationToken).ConfigureAwait(true);
+                await ShowScreencastAlreadyActiveModal(cancellationToken).ConfigureAwait(true);
                 return;
             }
         }
@@ -266,7 +287,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     {
         // Clear any previous error (e.g. the user cycled past a failing camera
         // and landed on a working one) so VideoStreamingPreview drops the overlay.
-        _errorMessage.Value = null;
+        ClearRecordingError(kind);
         Hub.AnalyticEvents.RaiseVideoStreamStarted(kind);
     }
 
@@ -280,7 +301,14 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public void OnRecordingError(string error, StreamKind kind)
     {
-        _errorMessage.Value = error;
+        if (kind == StreamKind.Screencast && IsScreencastAlreadyActiveError(error)) {
+            ClearRecordingError(StreamKind.Screencast);
+            _screencastChatId.Value = null;
+            _ = ShowScreencastAlreadyActiveModal(CancellationToken.None);
+            return;
+        }
+
+        GetErrorState(kind).Value = error;
         // Webcam keeps the session alive — the user can cycle cameras to recover
         // (see VideoRecorder.switchCamera — it restarts from the interrupted state).
         // Screencast has no such retry path: a failed getDisplayMedia (user cancel,
@@ -455,8 +483,19 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         OpenVideoPanel(chatId);
     }
 
-    private bool IsVideoEnabledNonComputed(ChatId chatId)
-        => chatId.Kind == ChatKind.Peer || Hub.AccountUI.OwnAccount.Value.IsAdmin;
+    private async Task ShowScreencastAlreadyActiveModal(CancellationToken cancellationToken)
+        => await ModalUI.Show(new ScreencastAlreadyActiveModal.Model(), cancellationToken).ConfigureAwait(true);
+
+    private MutableState<string?> GetErrorState(StreamKind kind)
+        => kind == StreamKind.Screencast ? _screencastErrorMessage : _webcamErrorMessage;
+
+    private void ClearRecordingError(StreamKind kind)
+        => GetErrorState(kind).Value = null;
+
+    private static bool IsScreencastAlreadyActiveError(string error)
+        => error.Contains("Another screencast is already active", StringComparison.OrdinalIgnoreCase)
+            || error.Contains("screen sharing is already active", StringComparison.OrdinalIgnoreCase)
+            || error.Contains("screen share is already active", StringComparison.OrdinalIgnoreCase);
 }
 
 // ReSharper disable once ClassNeverInstantiated.Global — instantiated via JS interop deserialization

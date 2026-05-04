@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, JoinVideoCallModal.ComputedModel>
 @implements IModalView<JoinVideoCallModal.Model>
+@using ActualChat.Streaming
 @using ActualChat.Hosting
 @using ActualChat.UI
 @using ActualChat.UI.Blazor.App.Module
@@ -241,7 +242,7 @@
             // Show "Camera is unavailable" when the live recorder reports an error
             // (e.g. ghost camera). The recorder clears the error on a successful
             // switch so the state recovers automatically.
-            var lastError = await ChatVideoUI.GetLastVideoRecorderError(cancellationToken).ConfigureAwait(false);
+            var lastError = await ChatVideoUI.GetLastVideoRecorderError(StreamKind.Webcam, cancellationToken).ConfigureAwait(false);
             return new ComputedModel(false, lastError);
         }
 

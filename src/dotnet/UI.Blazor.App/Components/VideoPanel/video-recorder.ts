@@ -150,6 +150,7 @@ export class VideoRecorder {
     // Video recording service (using video-pipeline)
     private recordingService: RecordingService | null = null;
     private isRecording = false;
+    private isStoppingRecording = false;
     // True when we were asked to record but currently have no active pipeline
     // (e.g. the user switched to a camera that failed to start). The next
     // switchCamera call restarts from this state.
@@ -756,11 +757,12 @@ export class VideoRecorder {
      * Stop video recording
      */
     public async stopRecording(): Promise<void> {
-        if (!this.isRecording || !this.recordingService) {
+        if (this.isStoppingRecording || !this.isRecording || !this.recordingService) {
             return;
         }
 
         infoLog?.log('Stopping video recording...');
+        this.isStoppingRecording = true;
 
         try {
             await this.recordingService.stop();
@@ -779,6 +781,8 @@ export class VideoRecorder {
             infoLog?.log('Video recording stopped');
         } catch (error) {
             errorLog?.log('Failed to stop recording:', error);
+        } finally {
+            this.isStoppingRecording = false;
         }
     }
 
