@@ -72,7 +72,7 @@ public class ReceiveQualityFilterTest
     [Fact]
     public async Task UpgradedTemporalCapWaitsForNextKeyframe()
     {
-        var quality = ReceiveQuality.Lowest;
+        var quality = new ReceiveQuality(2, 0);
         var frames = Frames(
             Key(2, 1),
             Delta(2, 1),
