@@ -590,6 +590,7 @@ let encodedBuffer: EncodedChunkBuffer | null = null;
 let sourceAnchorUs = -1;
 let wallclockAnchorMs = -1;
 let nextDecodeTimer: ReturnType<typeof setTimeout> | null = null;
+let decodeInFlight = false;
 // Wiggle: tolerate up to this much lateness on a frame's target wallclock
 // before we drop it (decoder fell behind, prefer fresher frames).
 function getDecodeWiggleMs(): number {
@@ -632,12 +633,14 @@ function pushEncodedChunk(args: EncodedChunkArgs): void {
 // arrivals, and from the bootstrap path itself.
 function scheduleNextDecode(): void {
     if (!encodedBuffer) return;
+    if (decodeInFlight) return;
     if (nextDecodeTimer !== null) return; // a deferred wake will re-enter
     drainEligible();
 }
 
 function drainEligible(): void {
     if (!encodedBuffer) return;
+    if (decodeInFlight) return;
     const targetUs = getTargetBufferDurationUs();
     const wiggleMs = getDecodeWiggleMs();
 
@@ -660,7 +663,7 @@ function drainEligible(): void {
             sourceAnchorUs = first.timestamp;
             wallclockAnchorMs = performance.now();
             decodeNow(first);
-            continue;
+            return;
         }
 
         // Steady state: head's target wallclock is fixed by the anchor.
@@ -691,14 +694,14 @@ function drainEligible(): void {
             sourceAnchorUs = ready.timestamp;
             wallclockAnchorMs = now;
             decodeNow(ready);
-            continue;
+            return;
         }
         if (targetMs <= now) {
             // Due now (within wiggle).
             const ready = encodedBuffer.shift();
             if (!ready) return;
             decodeNow(ready);
-            continue;
+            return;
         }
         // Future — sleep until exactly its target wallclock.
         armTimer(targetMs - now);
@@ -714,10 +717,15 @@ function armTimer(delayMs: number): void {
 }
 
 function decodeNow(args: EncodedChunkArgs): void {
+    decodeInFlight = true;
     void processEncodedChunk(
         args.timestamp, args.duration, args.isKeyFrame, args.sequenceNumber,
         args.width, args.height, args.data, args.description)
-        .catch((e: unknown) => errorLog?.log('Decode failed:', e));
+        .catch((e: unknown) => errorLog?.log('Decode failed:', e))
+        .finally(() => {
+            decodeInFlight = false;
+            scheduleNextDecode();
+        });
 }
 
 /**
