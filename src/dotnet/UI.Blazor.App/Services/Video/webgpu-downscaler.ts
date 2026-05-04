@@ -144,6 +144,9 @@ export class WebGpuDownscaler {
     private uniformBufferCapacity = 0;
     private uniformStaging: Uint8Array | null = null;
     private slots: TargetSlot[] = [];
+    private activeSubmissions = 0;
+    private deferredSlotDisposals: TargetSlot[] = [];
+    private deferredBufferDisposals: GPUBuffer[] = [];
     private loggedFirstFrame = false;
     private loggedIdentitySkip = false;
     private loggedAllIdentitySkip = false;
@@ -208,7 +211,7 @@ export class WebGpuDownscaler {
         let disposed = 0;
         for (const slot of this.slots) {
             if (kept.has(slot)) continue;
-            try { slot.ctx.unconfigure(); } catch { /* ignore */ }
+            this.disposeSlot(slot);
             disposed++;
         }
         this.slots = newSlots;
@@ -224,6 +227,10 @@ export class WebGpuDownscaler {
     }): Promise<DownscaleResult[]> {
         if (!this.pipeline || !this.uniformBuffer || !this.bindGroupLayout || this.slots.length === 0)
             throw new Error('WebGpuDownscaler.process: not configured');
+        const slots = this.slots.slice();
+        const pipeline = this.pipeline;
+        const uniformBuffer = this.uniformBuffer;
+        const bindGroupLayout = this.bindGroupLayout;
 
         // Prefer display dims over coded dims. Chrome's getUserMedia with
         // `resizeMode: 'crop-and-scale'` returns VideoFrames whose codedWidth/Height
@@ -250,7 +257,7 @@ export class WebGpuDownscaler {
                 + ` fallback=${opts?.fallbackRotationDeg ?? 'none'}`
                 + ` coded=${source.codedWidth}x${source.codedHeight}`
                 + ` display=${source.displayWidth}x${source.displayHeight}`
-                + ` targets=${this.slots.map(s => `${s.target.width}x${s.target.height}`).join(',')}`
+                + ` targets=${slots.map(s => `${s.target.width}x${s.target.height}`).join(',')}`
                 + ` rotationIdx=${rotationIdx}`
                 + ` slotStride=${this.slotStride}`,
             );
@@ -336,7 +343,7 @@ export class WebGpuDownscaler {
             && slot.target.height === srcH;
 
         let renderingCount = 0;
-        for (const slot of this.slots) {
+        for (const slot of slots) {
             if (!isIdentity(slot)) renderingCount++;
         }
 
@@ -350,7 +357,7 @@ export class WebGpuDownscaler {
                 this.uniformStaging = new Uint8Array(totalBytes);
             const staging = this.uniformStaging.subarray(0, totalBytes);
             let writeIdx = 0;
-            for (const slot of this.slots) {
+            for (const slot of slots) {
                 if (isIdentity(slot)) continue;
                 const off = writeIdx * this.slotStride;
                 const f32 = new Float32Array(staging.buffer, staging.byteOffset + off, 4);
@@ -362,24 +369,24 @@ export class WebGpuDownscaler {
                 writeIdx++;
             }
             this.device.queue.writeBuffer(
-                this.uniformBuffer, 0, staging.buffer, staging.byteOffset, totalBytes,
+                uniformBuffer, 0, staging.buffer, staging.byteOffset, totalBytes,
             );
 
             // One bind group per frame (externalTex changes each frame; uniform
             // buffer is shared via dynamic offset).
             const bindGroup = this.device.createBindGroup({
-                layout: this.bindGroupLayout,
+                layout: bindGroupLayout,
                 entries: [
                     { binding: 0, resource: this.sampler },
                     { binding: 1, resource: externalTex },
-                    { binding: 2, resource: { buffer: this.uniformBuffer, offset: 0, size: UNIFORM_BYTES } },
+                    { binding: 2, resource: { buffer: uniformBuffer, offset: 0, size: UNIFORM_BYTES } },
                 ],
             });
 
             // Single command encoder + single submit batches all render passes.
             const encoder = this.device.createCommandEncoder();
             let drawIdx = 0;
-            for (const slot of this.slots) {
+            for (const slot of slots) {
                 if (isIdentity(slot)) continue;
                 const view = slot.ctx.getCurrentTexture().createView();
                 const pass = encoder.beginRenderPass({
@@ -390,7 +397,7 @@ export class WebGpuDownscaler {
                         clearValue: { r: 0, g: 0, b: 0, a: 1 },
                     }],
                 });
-                pass.setPipeline(this.pipeline);
+                pass.setPipeline(pipeline);
                 pass.setBindGroup(0, bindGroup, [drawIdx * this.slotStride]);
                 pass.draw(3);
                 pass.end();
@@ -403,7 +410,13 @@ export class WebGpuDownscaler {
             // here yields the JS thread to the event loop while the GPU runs;
             // subsequent constructors see drained work and return without spin.
             // iOS Safari power-drain mitigation.
-            await this.device.queue.onSubmittedWorkDone();
+            this.activeSubmissions++;
+            try {
+                await this.device.queue.onSubmittedWorkDone();
+            } finally {
+                this.activeSubmissions--;
+                this.flushDeferredDisposals();
+            }
         }
         else if (!this.loggedAllIdentitySkip) {
             this.loggedAllIdentitySkip = true;
@@ -416,7 +429,7 @@ export class WebGpuDownscaler {
         // timeline happens at chunk emission, not per VideoFrame.
         const results: DownscaleResult[] = [];
         let identityHits = 0;
-        for (const slot of this.slots) {
+        for (const slot of slots) {
             if (isIdentity(slot)) {
                 results.push({ frame: input.clone(), target: slot.target });
                 identityHits++;
@@ -428,7 +441,7 @@ export class WebGpuDownscaler {
 
         if (identityHits > 0 && !this.loggedIdentitySkip) {
             this.loggedIdentitySkip = true;
-            infoLog?.log(`Downscaler: ${identityHits}/${this.slots.length} slot(s) identity short-circuit`);
+            infoLog?.log(`Downscaler: ${identityHits}/${slots.length} slot(s) identity short-circuit`);
         }
 
         input.close();
@@ -437,7 +450,8 @@ export class WebGpuDownscaler {
 
     dispose(): void {
         this.disposeSlots();
-        this.uniformBuffer?.destroy();
+        if (this.uniformBuffer)
+            this.disposeBuffer(this.uniformBuffer);
         this.uniformBuffer = null;
         this.uniformBufferCapacity = 0;
         this.uniformStaging = null;
@@ -478,7 +492,8 @@ export class WebGpuDownscaler {
     private ensureUniformCapacity(slotCount: number): void {
         const neededBytes = Math.max(slotCount, 1) * this.slotStride;
         if (this.uniformBuffer && this.uniformBufferCapacity >= neededBytes) return;
-        this.uniformBuffer?.destroy();
+        if (this.uniformBuffer)
+            this.disposeBuffer(this.uniformBuffer);
         this.uniformBuffer = this.device.createBuffer({
             size: neededBytes,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
@@ -488,8 +503,34 @@ export class WebGpuDownscaler {
 
     private disposeSlots(): void {
         for (const slot of this.slots) {
-            try { slot.ctx.unconfigure(); } catch { /* ignore */ }
+            this.disposeSlot(slot);
         }
         this.slots = [];
+    }
+
+    private disposeSlot(slot: TargetSlot): void {
+        if (this.activeSubmissions > 0) {
+            this.deferredSlotDisposals.push(slot);
+            return;
+        }
+        try { slot.ctx.unconfigure(); } catch { /* ignore */ }
+    }
+
+    private disposeBuffer(buffer: GPUBuffer): void {
+        if (this.activeSubmissions > 0) {
+            this.deferredBufferDisposals.push(buffer);
+            return;
+        }
+        buffer.destroy();
+    }
+
+    private flushDeferredDisposals(): void {
+        if (this.activeSubmissions > 0) return;
+        for (const slot of this.deferredSlotDisposals)
+            try { slot.ctx.unconfigure(); } catch { /* ignore */ }
+        this.deferredSlotDisposals = [];
+        for (const buffer of this.deferredBufferDisposals)
+            buffer.destroy();
+        this.deferredBufferDisposals = [];
     }
 }
