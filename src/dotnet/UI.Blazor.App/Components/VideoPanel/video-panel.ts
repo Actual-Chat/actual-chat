@@ -1081,6 +1081,9 @@ export class VideoPanel {
             this.closeContent = null;
             this.closeComplete = null;
             content.removeEventListener('animationend', complete);
+            // Hide immediately so Blazor re-render can't flash the panel
+            // (re-render overwrites class attr, dropping JS-added "closing" → fill lost)
+            this.videoPanel.style.visibility = 'hidden';
             void this.blazorRef.invokeMethodAsync('CloseVideoPanel');
         };
 
