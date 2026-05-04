@@ -226,7 +226,14 @@ public class LiveVideoStreams : ILiveVideoStreams
             }
         }
 
-        var keyFrameRequests = GetLoweredStreams(prevState?.QualityByStream, qualityByStream)
+        // Request a fresh keyframe whenever a stream's quality envelope CHANGES,
+        // not just on lowering. On upgrades, the new spatial/temporal layer
+        // can't be decoded by the receiver until the next keyframe of that
+        // layer arrives — periodic keyframes are 3s apart, so without this we
+        // get up to 3s of stuck-on-old-quality after every upgrade. The
+        // VideoStreamingBackend.RequestKeyFrame path is throttled (≥5 s gap),
+        // so this won't burst even if many receivers change at once.
+        var keyFrameRequests = GetChangedStreams(prevState?.QualityByStream, qualityByStream)
             .Select(x => VideoStreamingBackend.RequestKeyFrame(StreamId.Parse(x), cancellationToken))
             .ToArray();
         if (keyFrameRequests.Length != 0)
@@ -258,7 +265,7 @@ public class LiveVideoStreams : ILiveVideoStreams
                 : ReceiveQuality.Lowest
             : ReceiveQuality.Default;
 
-    private static IEnumerable<string> GetLoweredStreams(
+    private static IEnumerable<string> GetChangedStreams(
         ApiMap<string, ReceiveQuality>? previous,
         ApiMap<string, ReceiveQuality> current)
     {
@@ -266,8 +273,8 @@ public class LiveVideoStreams : ILiveVideoStreams
             var oldQuality = previous is not null && previous.TryGetValue(streamId, out var old)
                 ? old
                 : ReceiveQuality.Default;
-            if (quality.MaxSpatialLayer < oldQuality.MaxSpatialLayer
-                || quality.MaxTemporalLayer < oldQuality.MaxTemporalLayer)
+            if (quality.MaxSpatialLayer != oldQuality.MaxSpatialLayer
+                || quality.MaxTemporalLayer != oldQuality.MaxTemporalLayer)
                 yield return streamId;
         }
     }
