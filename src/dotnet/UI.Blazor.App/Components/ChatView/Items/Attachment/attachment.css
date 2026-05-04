@@ -28,6 +28,7 @@ body.hoverable .image-line .image-item:hover {
 .image-line.one-image {
     @apply w-auto;
     @apply max-h-96 max-w-full;
+    @apply rounded-xl overflow-hidden;
 }
 .image-line.one-image image-skeleton::part(image) {
     object-fit: contain;
