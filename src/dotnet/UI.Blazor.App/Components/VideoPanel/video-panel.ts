@@ -187,8 +187,22 @@ export class VideoPanel {
         return this.videoPanel.querySelector<HTMLElement>('.remote-video-container.item-focused.screencast');
     }
 
-    private getScreencastCanvas(): HTMLCanvasElement | null {
-        return this.getScreencastContainer()?.querySelector<HTMLCanvasElement>('canvas.remote-video') ?? null;
+    // Returns the visible render surface — canvas when canvas backend is active,
+    // video element when MSTG backend is active (canvas is display:none in that case).
+    private getScreencastSurface(): HTMLElement | null {
+        const container = this.getScreencastContainer();
+        if (!container)
+            return null;
+
+        const canvas = container.querySelector<HTMLCanvasElement>('canvas.remote-video');
+        if (canvas && canvas.style.display !== 'none')
+            return canvas;
+
+        const video = container.querySelector<HTMLVideoElement>('video.remote-video');
+        if (video && video.style.display !== 'none')
+            return video;
+
+        return canvas; // fallback
     }
 
     private isOnVideo(target: HTMLElement): boolean {
@@ -201,14 +215,25 @@ export class VideoPanel {
         return target.closest('.remote-video-container.screencast') != null;
     }
 
-    private getContentRect(container: HTMLElement): { offsetX: number; offsetY: number; width: number; height: number } {
+    // Returns the intrinsic content dimensions of the screencast source.
+    private getSourceDims(container: HTMLElement): { width: number; height: number } | null {
+        const video = container.querySelector<HTMLVideoElement>('video.remote-video');
+        if (video && video.style.display !== 'none' && video.videoWidth > 0 && video.videoHeight > 0)
+            return { width: video.videoWidth, height: video.videoHeight };
         const canvas = container.querySelector<HTMLCanvasElement>('canvas.remote-video');
+        if (canvas && canvas.width > 0 && canvas.height > 0)
+            return { width: canvas.width, height: canvas.height };
+        return null;
+    }
+
+    private getContentRect(container: HTMLElement): { offsetX: number; offsetY: number; width: number; height: number } {
         const rect = container.getBoundingClientRect();
-        if (!canvas?.width || !canvas.height)
+        const dims = this.getSourceDims(container);
+        if (!dims)
             return { offsetX: 0, offsetY: 0, width: rect.width, height: rect.height };
 
         const containerAR = rect.width / rect.height;
-        const videoAR = canvas.width / canvas.height;
+        const videoAR = dims.width / dims.height;
 
         if (videoAR > containerAR) {
             const contentHeight = rect.width / videoAR;
@@ -606,33 +631,33 @@ export class VideoPanel {
     }
 
     private applyTransform(animate = false): void {
-        const canvas = this.getScreencastCanvas();
+        const surface = this.getScreencastSurface();
         const container = this.getScreencastContainer();
-        if (!canvas || !container)
+        if (!surface || !container)
             return;
 
         if (animate) {
-            canvas.style.transition = `transform ${ZOOM_TRANSITION_MS}ms ease-out`;
+            surface.style.transition = `transform ${ZOOM_TRANSITION_MS}ms ease-out`;
             const cleanup = () => {
-                canvas.style.transition = '';
-                canvas.removeEventListener('transitionend', cleanup);
+                surface.style.transition = '';
+                surface.removeEventListener('transitionend', cleanup);
             };
-            canvas.addEventListener('transitionend', cleanup);
+            surface.addEventListener('transitionend', cleanup);
             setTimeout(cleanup, ZOOM_TRANSITION_MS + 50);
         }
 
         if (this.zoomScale <= 1) {
-            canvas.style.transform = '';
-            canvas.style.transformOrigin = '';
+            surface.style.transform = '';
+            surface.style.transformOrigin = '';
             return;
         }
 
-        // Use px to avoid % being relative to canvas size (not container)
+        // Use px to avoid % being relative to element size (not container)
         const rect = container.getBoundingClientRect();
         const tx = this.panX * rect.width;
         const ty = this.panY * rect.height;
-        canvas.style.transformOrigin = '0 0';
-        canvas.style.transform = `translate(${tx}px, ${ty}px) scale(${this.zoomScale})`;
+        surface.style.transformOrigin = '0 0';
+        surface.style.transform = `translate(${tx}px, ${ty}px) scale(${this.zoomScale})`;
     }
 
     private resetZoom(): void {
