@@ -159,6 +159,7 @@ export class WebGpuDownscaler {
     private uniformStaging: Uint8Array | null = null;
     private slots: TargetSlot[] = [];
     private activeSubmissions = 0;
+    private pendingSubmissionDrains: Promise<void>[] = [];
     private deferredSlotDisposals: TargetSlot[] = [];
     private deferredBufferDisposals: GPUBuffer[] = [];
     private loggedFirstFrame = false;
@@ -453,42 +454,27 @@ export class WebGpuDownscaler {
                 pass.end();
                 drawIdx++;
             }
-            // Soft cap on in-flight submissions. On non-Safari we skip the
-            // per-frame drain, so backpressure is needed to keep the GPU
-            // command queue from running away under sustained input.
-            if (!NEEDS_PER_FRAME_DRAIN && this.activeSubmissions >= MAX_ACTIVE_SUBMISSIONS) {
-                this.capHits++;
-                try {
-                    await this.device.queue.onSubmittedWorkDone();
-                } catch {
-                    // Fall through — the catch below handles invalidation.
-                }
-            }
-            this.activeSubmissions++;
             try {
+                // Soft cap on in-flight submissions. On non-Safari we skip the
+                // per-frame drain, so backpressure is needed to keep the GPU
+                // command queue from running away under sustained input.
+                if (!NEEDS_PER_FRAME_DRAIN)
+                    await this.waitForSubmissionSlot();
                 this.device.queue.submit([encoder.finish()]);
+                const drain = this.trackSubmissionDrain(slots.length);
                 // iOS Safari per-canvas swap-chain sync mitigation — see
                 // NEEDS_PER_FRAME_DRAIN comment. On Chromium we let the GPU
                 // pipeline absorb the submission and rely on the soft cap above.
                 if (NEEDS_PER_FRAME_DRAIN)
-                    await this.device.queue.onSubmittedWorkDone();
+                    await drain;
             } catch (e) {
                 // Submit / onSubmittedWorkDone throws when the device has died.
                 // Mark invalid so the next frame fails fast instead of repeating
                 // the same OperationError; the caller's catch-and-halt logic
                 // (video-processing.ts) then disposes us.
-                this.invalid = true;
-                if (!this.firstErrorLogged) {
-                    this.firstErrorLogged = true;
-                    const err = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
-                    errorLog?.log(
-                        `Downscaler GPU submit failed (invalidating): ${err} `
-                        + `activeSubmissions=${this.activeSubmissions} slots=${slots.length}`);
-                }
-                throw e;
-            } finally {
-                this.activeSubmissions--;
+                this.invalidateFromGpuError(e, slots.length);
                 this.flushDeferredDisposals();
+                throw e;
             }
         }
         else if (!this.loggedAllIdentitySkip) {
@@ -535,6 +521,46 @@ export class WebGpuDownscaler {
         this.pipeline = null;
         this.bindGroupLayout = null;
         this.invalid = true;
+    }
+
+    private async waitForSubmissionSlot(): Promise<void> {
+        while (this.pendingSubmissionDrains.length >= MAX_ACTIVE_SUBMISSIONS) {
+            this.capHits++;
+            await this.pendingSubmissionDrains[0];
+        }
+    }
+
+    private trackSubmissionDrain(slotsLength: number): Promise<void> {
+        this.activeSubmissions++;
+        let drain: Promise<void>;
+        drain = this.device.queue.onSubmittedWorkDone()
+            .catch((e: unknown) => {
+                this.invalidateFromGpuError(e, slotsLength);
+                throw e;
+            })
+            .finally(() => {
+                this.activeSubmissions--;
+                const index = this.pendingSubmissionDrains.indexOf(drain);
+                if (index >= 0)
+                    this.pendingSubmissionDrains.splice(index, 1);
+                this.flushDeferredDisposals();
+            });
+        this.pendingSubmissionDrains.push(drain);
+        // Non-Safari does not await the drain on the current frame, so attach a
+        // handler to keep asynchronous device-loss rejections observed.
+        void drain.catch(() => { /* observed by invalidateFromGpuError */ });
+        return drain;
+    }
+
+    private invalidateFromGpuError(error: unknown, slotsLength: number): void {
+        this.invalid = true;
+        if (this.firstErrorLogged)
+            return;
+        this.firstErrorLogged = true;
+        const err = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+        errorLog?.log(
+            `Downscaler GPU submit failed (invalidating): ${err} `
+            + `activeSubmissions=${this.activeSubmissions} slots=${slotsLength}`);
     }
 
     private ensurePipeline(): void {
