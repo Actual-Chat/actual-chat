@@ -165,6 +165,10 @@ async function awaitHwReleased(): Promise<void> {
     await new Promise<void>(resolve => setTimeout(resolve, 0));
 }
 
+function canConfigureWithoutDescription(codec: string): boolean {
+    return codec.startsWith('avc1') || codec.startsWith('av01');
+}
+
 // Dedupe error logs by key within a 1 s window. Prevents async error cascades
 // from the WebCodecs error callback flooding the inspector pipe.
 const ERROR_LOG_DEDUPE_WINDOW_MS = 1000;
@@ -1044,14 +1048,59 @@ async function processEncodedChunk(
             );
             decoder.initialize();
             decoderConfigured = true;
-        }
+        } else if (
+            isKeyFrame
+            && !decoderConfigured
+            && currentDecoderConfig
+            && !currentDecoderConfig.description
+            && canConfigureWithoutDescription(currentDecoderConfig.codec)
+        ) {
+            const codedWidth = width !== undefined && width > 0
+                ? width
+                : currentDecoderConfig.codedWidth;
+            const codedHeight = height !== undefined && height > 0
+                ? height
+                : currentDecoderConfig.codedHeight;
+            const freshConfig: DecoderConfig = {
+                ...currentDecoderConfig,
+                description: undefined,
+                codedWidth,
+                codedHeight,
+            };
 
-        // For AV1, we don't need a description — mark as configured on first keyframe
-        if (isKeyFrame && !decoderConfigured) {
-            const isAV1 = currentDecoderConfig?.codec.startsWith('av01');
-            if (isAV1 || !currentDecoderConfig?.description) {
-                decoderConfigured = true;
+            if (decoder.getState() !== 'closed') {
+                decoder.close();
+                await awaitHwReleased();
             }
+            currentDecoderConfig = freshConfig;
+            decoder = new WebCodecsDecoder(
+                freshConfig,
+                emitDecodedFrame,
+                (error) => {
+                    if (shouldLogDecoderError(decoderErrorKey('first-kf-no-desc', error)))
+                        errorLog?.log(`Decoder error (first keyframe no-description path, state=${
+                            decoder?.getState() ?? '?'}, lastChunkSeq=${lastChunkSeq}, ` +
+                            `lastChunkType=${lastChunkType}, lastChunkBytes=${lastChunkSize}, ` +
+                            `lastDescLen=${lastChunkDescLen}):`, error);
+                    requestKeyframeOnDecoderError();
+                }
+            );
+            decoder.initialize();
+            decoderConfigured = true;
+            initialDescriptionApplied = false;
+            lastRawDescription = null;
+            if (
+                codedWidth !== undefined
+                && codedHeight !== undefined
+                && codedWidth > 0
+                && codedHeight > 0
+            ) {
+                currentCodedWidth = codedWidth;
+                currentCodedHeight = codedHeight;
+            }
+            infoLog?.log(`processEncodedChunk: first keyframe no-description configure, ` +
+                `codec=${freshConfig.codec}, dims=${codedWidth ?? 0}x${codedHeight ?? 0}, ` +
+                `seq=${sequenceNumber}`);
         }
 
         // Resolution-change handling. Fires on keyframes that carry
@@ -1522,7 +1571,7 @@ const serverImpl: DecoderWorker = {
     ): Promise<void> => {
         if (!processing) return;
         if (skipFramesBeforeUs > 0) {
-            if (!isKeyFrame || (timestamp >= 0 && timestamp < skipFramesBeforeUs)) {
+            if (!isKeyFrame || timestamp < skipFramesBeforeUs) {
                 return;
             }
             infoLog?.log(
@@ -1544,9 +1593,9 @@ const serverImpl: DecoderWorker = {
     flagWaitingForKeyframe: async (): Promise<void> => {
         // Drop buffered/arriving deltas until the next keyframe arrives.
         // Does NOT touch the decoder — keeps it alive so it can consume the
-        // recovery keyframe normally. This is keyframe-only: frame offsets may
-        // be in a shifted/negative source domain, so live-edge thresholding here
-        // can permanently stall playback.
+        // recovery keyframe normally. This is keyframe-only because the caller
+        // only needs a GOP boundary; live-edge thresholding belongs to the
+        // explicit live catch-up paths.
         waitForNextKeyframe('flagWaitingForKeyframe');
         infoLog?.log('flagWaitingForKeyframe: waiting for next keyframe');
     },
