@@ -558,15 +558,27 @@ function startPipelineCountersLogger(): void {
     pipelineCounters = newPipelineCounters();
     pipelineCountersTimer = setInterval(() => {
         const c = pipelineCounters;
+        const gpuCapHits = downscaler?.getCapHitsAndReset() ?? 0;
         // Skip log if the pipeline produced nothing AND saw nothing — quiet idle state.
-        if (c.framesIn === 0 && c.framesEncoded === 0 && c.downscalerErrors === 0 && c.encoderErrors === 0)
+        if (c.framesIn === 0 && c.framesEncoded === 0
+            && c.downscalerErrors === 0 && c.encoderErrors === 0 && gpuCapHits === 0)
             return;
+        const capHitRatio = c.framesIn > 0 ? gpuCapHits / c.framesIn : 0;
         infoLog?.log(
             `pipeline counters (last ${Math.round(D4_INTERVAL_MS / 1000)}s): `
             + `in=${c.framesIn} enc=${c.framesEncoded} `
             + `drop[transition=${c.framesDroppedTransition},vad=${c.framesDroppedVad},notCfg=${c.framesDroppedNotConfigured}] `
             + `err[downscaler=${c.downscalerErrors},encoder=${c.encoderErrors}] `
+            + `gpuCapHits=${gpuCapHits} (${(capHitRatio * 100).toFixed(0)}% of in) `
             + `pipelineFailedReason=${pipelineFailedReason ?? 'none'}`);
+        // Strong GPU pressure: cap-hits dominate the input rate. Warn-level
+        // signal so post-mortems surface it. Doesn't itself drop tiers — that
+        // remains the .NET RecordingClassifier's job (encodeRatioEma threshold);
+        // a follow-up wires this metric into the snapshot.
+        if (c.framesIn >= 30 && capHitRatio > 0.5)
+            warnLog?.log(
+                `GPU saturation: downscaler hit submission cap on ${(capHitRatio * 100).toFixed(0)}% `
+                + `of frames (${gpuCapHits}/${c.framesIn}) — sustained means GPU process is the bottleneck`);
         pipelineCounters = newPipelineCounters();
     }, D4_INTERVAL_MS);
 }

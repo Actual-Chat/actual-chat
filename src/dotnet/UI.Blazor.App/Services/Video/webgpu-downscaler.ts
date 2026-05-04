@@ -179,6 +179,14 @@ export class WebGpuDownscaler {
     private invalid = false;
     private lostListenerDispose: (() => void) | null = null;
     private firstErrorLogged = false;
+    // Counts how many times the soft submission cap forced us to await a
+    // prior submission before the current frame could submit. Sustained
+    // non-zero values mean the GPU process is the bottleneck — i.e. we're
+    // already on the path that, unmitigated, leads to the device-lost
+    // freeze. Surfaced through the sender pipeline-counters log (D4) so
+    // freeze post-mortems show whether GPU pressure was rising before
+    // the cascade. Reset by getCapHitsAndReset().
+    private capHits = 0;
 
     constructor(device: GPUDevice) {
         this.device = device;
@@ -195,6 +203,12 @@ export class WebGpuDownscaler {
     }
 
     get isInvalid(): boolean { return this.invalid; }
+
+    getCapHitsAndReset(): number {
+        const v = this.capHits;
+        this.capHits = 0;
+        return v;
+    }
 
     configure(targets: DownscaleTarget[]): void {
         if (targets.length === 0)
@@ -441,6 +455,7 @@ export class WebGpuDownscaler {
             // per-frame drain, so backpressure is needed to keep the GPU
             // command queue from running away under sustained input.
             if (!NEEDS_PER_FRAME_DRAIN && this.activeSubmissions >= MAX_ACTIVE_SUBMISSIONS) {
+                this.capHits++;
                 try {
                     await this.device.queue.onSubmittedWorkDone();
                 } catch {
