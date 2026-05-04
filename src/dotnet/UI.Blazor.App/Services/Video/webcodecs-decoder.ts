@@ -76,6 +76,8 @@ export class WebCodecsDecoder {
     private burstStartedSeq = -1;
     private burstDropCount = 0;
     private deltasPassedDuringBurst = 0;
+    // Once any encoded chunk is discarded, later deltas may reference missing
+    // decoder state. Gate deltas until the next keyframe re-establishes the GOP.
     private dropDeltasUntilKeyframe = false;
     private lastArtifactWindowMs = 0;
     private artifactWindowsCount = 0;
@@ -135,6 +137,7 @@ export class WebCodecsDecoder {
             },
             error: (e: DOMException) => {
                 errorLog?.log('Decoder error:', e);
+                this.gateAfterDroppedChunk();
                 this.onError(e as unknown as Error);
             }
         });
@@ -220,9 +223,14 @@ export class WebCodecsDecoder {
         infoLog?.log('Decoder reconfigured with description');
     }
 
+    private gateAfterDroppedChunk(): void {
+        this.dropDeltasUntilKeyframe = true;
+    }
+
     decodeRaw(chunk: EncodedVideoChunk): void {
         if (this.decoder.state !== 'configured') {
             this.droppedFrames++;
+            this.gateAfterDroppedChunk();
             return;
         }
         if (this.dropDeltasUntilKeyframe) {
@@ -238,7 +246,7 @@ export class WebCodecsDecoder {
         if (this.decoder.decodeQueueSize > BackpressureQueueLimit && chunk.type !== 'key') {
             this.backpressureDrops++;
             this.recordBackpressureDrop(chunk.timestamp);
-            this.dropDeltasUntilKeyframe = true;
+            this.gateAfterDroppedChunk();
             return;
         }
         // Burst tracking: a keyframe terminates the artifact window; deltas
@@ -256,6 +264,7 @@ export class WebCodecsDecoder {
             this.droppedFrames++;
             this.decodeStartTimes.pop();
             this.decodeQueueAtStart.pop();
+            this.gateAfterDroppedChunk();
             this.onError(error as Error);
         }
     }
@@ -267,12 +276,14 @@ export class WebCodecsDecoder {
         if (currentState === 'closed') {
             this.droppedFrames++;
             errorLog?.log('Decoder is closed, cannot decode', chunkData.type, 'chunk');
+            this.gateAfterDroppedChunk();
             return;
         }
 
         if (currentState !== 'configured') {
             this.droppedFrames++;
             warnLog?.log(`Decoder not ready (state: ${currentState}), dropping ${chunkData.type} chunk`);
+            this.gateAfterDroppedChunk();
             return;
         }
         if (this.dropDeltasUntilKeyframe) {
@@ -288,7 +299,7 @@ export class WebCodecsDecoder {
         if (this.decoder.decodeQueueSize > BackpressureQueueLimit && chunkData.type !== 'key') {
             this.backpressureDrops++;
             this.recordBackpressureDrop(chunkData.timestamp, chunkData.sequenceNumber);
-            this.dropDeltasUntilKeyframe = true;
+            this.gateAfterDroppedChunk();
             return;
         }
         // Burst tracking: see decodeRaw() comment.
@@ -314,6 +325,7 @@ export class WebCodecsDecoder {
             // Remove the start time and queue depth since decode failed
             this.decodeStartTimes.pop();
             this.decodeQueueAtStart.pop();
+            this.gateAfterDroppedChunk();
             errorLog?.log(`Error decoding ${chunkData.type} chunk at timestamp ${chunkData.timestamp}:`, error);
             this.onError(error as Error);
         }

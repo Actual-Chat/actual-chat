@@ -630,6 +630,12 @@ function waitForLiveKeyframe(reason: string, minimumOffsetUs = getLiveTargetOffs
     requestKeyframe(reason);
 }
 
+function gateAfterDroppedEncodedChunk(reason: string): void {
+    waitingForKeyframe = true;
+    mstgSelector?.resetPrimming();
+    requestKeyframe(reason);
+}
+
 // Reset on any event that changes the frame stream's identity: explicit
 // decoder reset, codec/resolution switch, simulcast layer change, pull-loop
 // restart. Bootstrap restarts: the next time `buffer.span ≥ target` we
@@ -690,17 +696,23 @@ function drainEligible(): void {
         // Steady state: head's target wallclock is fixed by the anchor.
         const front = encodedBuffer.peekFront();
         if (!front) return;
+
+        if (waitingForKeyframe && !front.isKeyFrame) {
+            encodedBuffer.shift();
+            continue;
+        }
+
         const targetMs = wallclockAnchorMs + (front.timestamp - sourceAnchorUs) / 1000;
         const now = performance.now();
         const isLate = targetMs < now - wiggleMs;
 
         if (isLate && !front.isKeyFrame) {
-            // Late delta — drop. The GOP is broken anyway once we skip a
-            // delta; the next keyframe will re-sync. Do NOT gate the whole
-            // GOP here: a single late delta can happen from timer jitter, and
-            // waiting for the next keyframe creates the visible ~3 s freeze
-            // cadence this path was meant to avoid.
+            // Late delta — drop. Once any delta in a GOP is skipped, all
+            // following deltas may reference missing state; continuing to feed
+            // them can produce "motion over black/stale reference" corruption.
+            // Gate until a fresh keyframe and request one immediately.
             encodedBuffer.shift();
+            gateAfterDroppedEncodedChunk('late delta drop');
             continue;
         }
         if (front.isKeyFrame && isLate) {
@@ -766,6 +778,8 @@ async function processEncodedChunk(
     description?: ArrayBuffer
 ): Promise<void> {
     if (!decoder || !processing) {
+        if (processing)
+            gateAfterDroppedEncodedChunk('decoder missing chunk drop');
         return;
     }
 
@@ -1063,6 +1077,7 @@ async function processEncodedChunk(
         // Defense-in-depth: never feed empty data to the decoder
         if (dataLen === 0) {
             warnLog?.log(`Skipping chunk with empty data: seq=${sequenceNumber}, isKey=${isKeyFrame}`);
+            gateAfterDroppedEncodedChunk('empty chunk drop');
             return;
         }
 
@@ -1180,6 +1195,7 @@ async function processEncodedChunk(
                 }
             } else {
                 // Can't recover on delta frame — need keyframe
+                gateAfterDroppedEncodedChunk('decoder not ready delta drop');
                 return;
             }
         }
@@ -1188,6 +1204,7 @@ async function processEncodedChunk(
         decoder.decodeRaw(chunk);
     } catch (error) {
         errorLog?.log('Error decoding raw chunk:', error);
+        gateAfterDroppedEncodedChunk('raw chunk decode exception');
     }
 }
 

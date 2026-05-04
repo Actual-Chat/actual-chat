@@ -972,6 +972,7 @@ export class VideoPlayer {
 
         // Live gate: skip stale encoded frames arriving from the RPC stream.
         if (this.skipFramesBelowOffsetMs > 0 && timestampMs < this.skipFramesBelowOffsetMs) {
+            this.waitingForKeyframe = true;
             return;
         }
 
@@ -1094,6 +1095,10 @@ export class VideoPlayer {
                 description: descBuffer,
                 width,
                 height,
+            }).catch((e: unknown) => {
+                if (!this.isPlaying) return;
+                warnLog?.log('Decoder input stream write failed:', e);
+                this.armLiveKeyframeGate('decoder-input-write-failed', timestampMs);
             });
         } else {
             // RPC fallback: send raw bytes to worker
@@ -1107,7 +1112,11 @@ export class VideoPlayer {
                 dataBuffer,
                 descBuffer,
                 rpcNoWait
-            );
+            ).catch((e: unknown) => {
+                if (!this.isPlaying) return;
+                warnLog?.log('Decoder input RPC failed:', e);
+                this.armLiveKeyframeGate('decoder-input-rpc-failed', timestampMs);
+            });
         }
     }
 
