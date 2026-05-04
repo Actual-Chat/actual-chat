@@ -20,7 +20,13 @@ public static partial class Constants
         // noise around the steady-state buffer can't flip the verdict.
         public static readonly double BufferDurationTooLowMs = TargetBufferDurationMs / 3;
         public static readonly double BufferDurationTooHighMs = TargetBufferDurationMs * 1.5;
-        public static readonly double StartupGraceMs = 1000;
+        // Wide enough to cover initial L2 keyframe wait (~3 s) plus EMA(10)
+        // convergence time over a freshly-filling buffer. With StartupGrace
+        // = 1 s, the very first eval after the QC cooldown sees a still-low
+        // bufferDurationMsEma, classifies bad, and the resulting capacity
+        // backoff combined with the high observed peak traps the allocator
+        // at L0 for ~60 s on lossy mobile links until the peak decays.
+        public static readonly double StartupGraceMs = 5000;
 
         // Recording verdict thresholds — sender-ack age bands.
         public static readonly double LastAckBadMs = 2000;
