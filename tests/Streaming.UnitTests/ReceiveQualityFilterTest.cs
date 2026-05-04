@@ -69,13 +69,71 @@ public class ReceiveQualityFilterTest
         result.Select(x => x.SpatialLayerId).Should().Equal((byte)0, (byte)0, (byte)0, (byte)2, (byte)2);
     }
 
+    [Fact]
+    public async Task UpgradedTemporalCapWaitsForNextKeyframe()
+    {
+        var quality = ReceiveQuality.Lowest;
+        var frames = Frames(
+            Key(2, 1),
+            Delta(2, 1),
+            Delta(2, 1, temporal: 1),
+            Mutate(() => quality = ReceiveQuality.Default),
+            Delta(2, 1, temporal: 1),
+            Delta(2, 1),
+            Key(2, 2),
+            Delta(2, 2, temporal: 1));
+
+        var result = new List<VideoFrame>();
+        await foreach (var frame in ReceiveQualityFilter
+                           .Apply(frames, () => quality, NullLogger.Instance, CancellationToken.None))
+            result.Add(frame);
+
+        result.Select(x => (x.KeyFrameNumber, x.TemporalLayerId)).Should().Equal(
+            (1L, (byte)0),
+            (1L, (byte)0),
+            (1L, (byte)0),
+            (2L, (byte)0),
+            (2L, (byte)1));
+    }
+
+    [Fact]
+    public async Task LoweredTemporalCapDoesNotReUpgradeBeforeKeyframe()
+    {
+        var quality = ReceiveQuality.Default;
+        var frames = Frames(
+            Key(2, 1),
+            Delta(2, 1, temporal: 1),
+            Mutate(() => quality = ReceiveQuality.Lowest),
+            Delta(2, 1, temporal: 1),
+            Delta(2, 1),
+            Mutate(() => quality = ReceiveQuality.Default),
+            Delta(2, 1, temporal: 1),
+            Key(2, 2),
+            Delta(2, 2, temporal: 1));
+
+        var result = new List<VideoFrame>();
+        await foreach (var frame in ReceiveQualityFilter
+                           .Apply(frames, () => quality, NullLogger.Instance, CancellationToken.None))
+            result.Add(frame);
+
+        result.Select(x => (x.KeyFrameNumber, x.TemporalLayerId)).Should().Equal(
+            (1L, (byte)0),
+            (1L, (byte)1),
+            (1L, (byte)0),
+            (2L, (byte)0),
+            (2L, (byte)1));
+    }
+
     private static VideoFrame Key(byte spatial, long keyFrameNumber)
         => Frame(spatial, keyFrameNumber, isKeyFrame: true);
 
     private static VideoFrame Delta(byte spatial, long keyFrameNumber)
-        => Frame(spatial, keyFrameNumber, isKeyFrame: false);
+        => Delta(spatial, keyFrameNumber, temporal: 0);
 
-    private static VideoFrame Frame(byte spatial, long keyFrameNumber, bool isKeyFrame)
+    private static VideoFrame Delta(byte spatial, long keyFrameNumber, byte temporal)
+        => Frame(spatial, keyFrameNumber, isKeyFrame: false, temporal);
+
+    private static VideoFrame Frame(byte spatial, long keyFrameNumber, bool isKeyFrame, byte temporal = 0)
         => new(isKeyFrame) {
             Width = spatial switch {
                 0 => 320,
@@ -89,7 +147,7 @@ public class ReceiveQualityFilterTest
             },
             SpatialLayerId = spatial,
             MaxSpatialLayerId = 2,
-            TemporalLayerId = 0,
+            TemporalLayerId = temporal,
             KeyFrameNumber = keyFrameNumber,
         };
 

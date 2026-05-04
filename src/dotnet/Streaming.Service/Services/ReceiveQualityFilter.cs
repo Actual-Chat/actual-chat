@@ -9,7 +9,9 @@ namespace ActualChat.Streaming.Services;
 /// producer-declared range <c>[0, MaxSpatialLayerId]</c> on the frame itself;
 /// only switches layers on a keyframe. A quality change keeps forwarding the
 /// currently selected layer until the requested layer's keyframe arrives, so we
-/// don't manufacture delta-frame gaps while QC is settling.
+/// don't manufacture delta-frame gaps while QC is settling. Temporal increases
+/// are also delayed until a keyframe: once we skip an enhancement-layer delta,
+/// later deltas from that temporal chain are not safe to resume mid-GOP.
 /// </summary>
 public static class ReceiveQualityFilter
 {
@@ -23,6 +25,7 @@ public static class ReceiveQualityFilter
         var consumerMaxSpatial = -1;
         var consumerMaxTemporal = int.MaxValue;
         var selectedLayer = -1;
+        var selectedMaxTemporal = int.MaxValue;
         var lastKeyFrameNumber = -1L;
         var skipping = true;
 
@@ -31,10 +34,9 @@ public static class ReceiveQualityFilter
             if (q.MaxSpatialLayer != consumerMaxSpatial || q.MaxTemporalLayer != consumerMaxTemporal) {
                 consumerMaxSpatial = q.MaxSpatialLayer;
                 consumerMaxTemporal = q.MaxTemporalLayer;
+                if (!skipping && selectedLayer >= 0 && consumerMaxTemporal < selectedMaxTemporal)
+                    selectedMaxTemporal = consumerMaxTemporal;
             }
-
-            if (frame.TemporalLayerId > consumerMaxTemporal)
-                continue;
 
             int producerMax = frame.MaxSpatialLayerId;
             int desiredLayer = consumerMaxSpatial < 0 ? 0
@@ -45,7 +47,12 @@ public static class ReceiveQualityFilter
                 // Lock onto the desired layer on each matching keyframe; other-layer
                 // keyframes (sibling simulcast bursts) get skipped.
                 if (frame.SpatialLayerId == desiredLayer) {
+                    if (frame.TemporalLayerId > consumerMaxTemporal) {
+                        skipping = true;
+                        continue;
+                    }
                     selectedLayer = desiredLayer;
+                    selectedMaxTemporal = consumerMaxTemporal;
                     lastKeyFrameNumber = frame.KeyFrameNumber;
                     skipping = false;
                     yield return frame;
@@ -68,6 +75,8 @@ public static class ReceiveQualityFilter
                 skipping = true;
                 continue;
             }
+            if (frame.TemporalLayerId > selectedMaxTemporal)
+                continue;
 
             yield return frame;
         }
