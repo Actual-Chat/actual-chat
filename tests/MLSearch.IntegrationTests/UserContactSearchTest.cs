@@ -75,6 +75,26 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     }
 
     [Fact]
+    public async Task ShouldFindUsersThatAreOtherUsersFriends()
+    {
+        var alice = await Tester.SignInAsUniqueAlice();
+        var accounts = await CreateAccounts(3);
+        foreach (var other in accounts)
+            await Tester.CreatePeerContact(alice, other);
+
+        // wait until Alice's contacts are indexed
+        await Find("TestUser", true, null, accounts.Length);
+
+        // act: Bob is unrelated to Alice and these accounts — non-contact search must still find them
+        var bob = await Tester.SignInAsUniqueBob();
+        var expected = bob.BuildSearchResults(accounts);
+        var searchResults = await Find("TestUser", false, null, expected.Count);
+
+        // assert
+        searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
+    }
+
+    [Fact]
     public async Task ShouldFindUsers()
     {
         // arrange
