@@ -27,9 +27,9 @@ export interface DecoderCodecSelection {
 
 /**
  * Build an ordered list of codec string candidates for decoder configuration.
- * For HEVC: tries SPS-derived (ground truth from bitstream), then HVCC header,
- * then opposite-tier fallbacks, then sender's declared codec, then a hardcoded
- * Level 4.0 default.
+ * For HEVC: tries high-enough candidates using the SPS tier (ground truth from
+ * bitstream), then SPS-derived, HVCC header, opposite-tier, and declared
+ * fallbacks.
  * For other codecs: returns a single candidate from the legacy mapping.
  */
 export function getCodecCandidates(codec: string, description?: ArrayBuffer): string[] {
@@ -56,28 +56,32 @@ export function getCodecCandidates(codec: string, description?: ArrayBuffer): st
         //   codec-string level vs description level), but `decode()` then
         //   silently drops chunks whose bitstream level exceeds the
         //   declared one — surfacing as `0 frames decoded` and a stuck
-        //   `<video>`. Always probe the highest-known level first so the
-        //   chosen codec admits the entire ladder.
-        // 1. Sender's declared codec string (carries the ladder-top level).
-        const lc = codec.toLowerCase();
-        if (lc.startsWith('hev1.') || lc.startsWith('hvc1.')) {
-            addCandidate(codec);
-        }
-        // 2. Hardcoded Level 4.0 fallback (admits up to 1080p).
-        addCandidate(`hev1.${generalProfileIdc}.6.${tierStr}120.B0`);
-        addCandidate(`hvc1.${generalProfileIdc}.6.${tierStr}120.B0`);
-        // 3. Derived from HVCC binary description (ground truth for THIS
-        //    layer) — both hev1 and hvc1 prefixes.
-        // Read the actual tier_flag from the SPS NAL inside HVCC: Chrome's
-        // HEVC encoder emits SPS with tier=High while writing tier=Low
-        // into the HVCC header byte[1], so a codec string built off the
-        // HVCC header alone mismatches the real bitstream — iOS HEVC HW
-        // rejects with "EncodingError: Decoder failure" and Edge/Chrome
-        // HEVC HW silently stall. Adding both tier variants lets
-        // WebCodecs pick whichever matches the SPS the decoder actually
-        // parses.
+        //   `<video>`. Always probe a high-enough level first so the chosen
+        //   codec admits the entire ladder.
+        //
+        //   Tier still has to come from SPS when available. Chrome's HEVC
+        //   encoder can write HVCC tier=Low while the SPS says tier=High; iOS
+        //   HEVC HW rejects that mismatch and Edge/Chrome HW can silently stall.
+        //   So the first candidates keep the larger declared/default level but
+        //   normalize tier to SPS.
         const spsTier = extractHvccSpsTierFlag(bytes);
         const spsTierStr: 'H' | 'L' | undefined = spsTier === 1 ? 'H' : (spsTier === 0 ? 'L' : undefined);
+        const preferredTier = spsTierStr ?? tierStr;
+
+        // 1. Sender's declared codec string carries the ladder-top level; use
+        //    it only after reconciling tier against SPS.
+        const lc = codec.toLowerCase();
+        if (lc.startsWith('hev1.') || lc.startsWith('hvc1.')) {
+            addCandidate(replaceHevcTier(codec, preferredTier));
+        }
+
+        // 2. Hardcoded Level 4.0 fallback (admits up to 1080p), still using
+        //    the SPS tier when available.
+        addCandidate(`hev1.${generalProfileIdc}.6.${preferredTier}120.B0`);
+        addCandidate(`hvc1.${generalProfileIdc}.6.${preferredTier}120.B0`);
+
+        // 3. Derived from HVCC binary description (ground truth for THIS
+        //    layer) — both hev1 and hvc1 prefixes.
         if (spsTierStr) {
             addCandidate(deriveHevcCodecString('hev1', bytes, spsTierStr));
             addCandidate(deriveHevcCodecString('hvc1', bytes, spsTierStr));
@@ -91,6 +95,8 @@ export function getCodecCandidates(codec: string, description?: ArrayBuffer): st
         addCandidate(deriveHevcCodecString('hvc1', bytes, 'H'));
         addCandidate(deriveHevcCodecString('hev1', bytes, 'L'));
         addCandidate(deriveHevcCodecString('hvc1', bytes, 'L'));
+        if (lc.startsWith('hev1.') || lc.startsWith('hvc1.'))
+            addCandidate(codec);
 
         const declaredLower = codec.toLowerCase();
         if (!declaredLower.startsWith('hev1') && !declaredLower.startsWith('hvc1')
@@ -103,6 +109,10 @@ export function getCodecCandidates(codec: string, description?: ArrayBuffer): st
 
     // Non-HEVC codecs: single candidate from legacy mapping
     return [mapCodecToWebCodecs(codec, description)];
+}
+
+function replaceHevcTier(codec: string, tier: 'H' | 'L'): string {
+    return codec.replace(/\.([HL])(\d+)(?=\.|$)/i, `.${tier}$2`);
 }
 
 /**
