@@ -1948,10 +1948,13 @@ export class VideoPlayer {
     // Medium→1, High/Full/Ultra→2.
     private computeRenderQualityLevel(): number | null {
         const parent = this.canvas.parentElement;
-        const width = this.canvas.clientWidth
-            || parent?.clientWidth
-            || parent?.getBoundingClientRect().width
-            || 0;
+        const canvasWidth = this.canvas.clientWidth;
+        const parentWidth = parent?.clientWidth ?? 0;
+        const parentRectWidth = parent?.getBoundingClientRect().width ?? 0;
+        const width = canvasWidth > 0 ? canvasWidth
+            : parentWidth > 0 ? parentWidth
+                : parentRectWidth > 0 ? parentRectWidth
+                    : 0;
         const level = renderQualityLevelForWidth(width);
         if (level !== null)
             return level;
