@@ -53,7 +53,7 @@ const getMipmapTexture = (w: number, h: number): GPUTexture => {
 // Clear mipmap cache when blur strength changes
 const clearMipmapCache = () => {
     for (const texture of mipmapTextureCache.values()) {
-        texture.destroy();
+        deferTextureDestroy(texture);
     }
     mipmapTextureCache.clear();
     pyramidViewCache.clear();
@@ -109,6 +109,28 @@ function registerBlurDeferredCleanup(cleanupFn: () => void): void {
     const cleanups = blurCleanupQueue.get(cleanupFrame) ?? [];
     cleanups.push(cleanupFn);
     blurCleanupQueue.set(cleanupFrame, cleanups);
+}
+
+function deferTextureDestroy(texture: GPUTexture | null): void {
+    if (!texture) return;
+    registerBlurDeferredCleanup(() => texture.destroy());
+}
+
+function deferBufferDestroy(buffer: GPUBuffer | null): void {
+    if (!buffer) return;
+    registerBlurDeferredCleanup(() => buffer.destroy());
+}
+
+function deferFrameClose(frame: VideoFrame): void {
+    registerBlurDeferredCleanup(() => {
+        try { frame.close(); } catch { /* already closed */ }
+    });
+}
+
+function clearOffsetBufferCache(): void {
+    for (const buf of offsetBufferCache.values())
+        deferBufferDestroy(buf);
+    offsetBufferCache.clear();
 }
 
 /**
@@ -610,13 +632,13 @@ function uploadMaskFromBuffer(
     // Always invalidate upscaled mask cache when using buffer path
     // (We can't easily hash the GPU buffer content)
     if (cachedUpscaledMask) {
-        cachedUpscaledMask.destroy();
+        deferTextureDestroy(cachedUpscaledMask);
         cachedUpscaledMask = null;
     }
 
     // Create or reuse mask texture if dimensions match
     if (!cachedMaskTexture || lastMaskW !== w || lastMaskH !== h) {
-        if (cachedMaskTexture) cachedMaskTexture.destroy();
+        deferTextureDestroy(cachedMaskTexture);
 
         cachedMaskTexture = device!.createTexture({
             size: { width: w, height: h },
@@ -761,6 +783,7 @@ export function applyBackgroundBlur(
     blurStrengthOrOptions: number | BlurOptions = 12
 ): VideoFrame {
     ensureInitialized();
+    processBlurDeferredCleanups();
 
     // Parse options
     let blurStrength = 12;
@@ -784,8 +807,7 @@ export function applyBackgroundBlur(
     // Clear caches on blur strength change
     if (blurStrength !== lastBlurStrength) {
         clearMipmapCache();
-        for (const buf of offsetBufferCache.values()) buf.destroy();
-        offsetBufferCache.clear();
+        clearOffsetBufferCache();
         cachedLevels = blurStrength < 10 ? 2 : blurStrength < 20 ? 3 : 4;
         lastBlurStrength = blurStrength;
     }
@@ -819,7 +841,7 @@ export function applyBackgroundBlur(
     // No GPU sync needed: WebGPU guarantees command ordering within the same queue,
     // and new VideoFrame(offscreenCanvas) implicitly waits for render completion.
     const timestamp = frame.timestamp;
-    frame.close();
+    deferFrameClose(frame);
 
     return new VideoFrame(offscreenCanvas, { timestamp });
 }
@@ -1015,11 +1037,11 @@ export function applyFullFrameBlur(
     blurStrength = 4,
 ): void {
     ensureInitialized();
+    processBlurDeferredCleanups();
 
     if (blurStrength !== lastBlurStrength) {
         clearMipmapCache();
-        for (const buf of offsetBufferCache.values()) buf.destroy();
-        offsetBufferCache.clear();
+        clearOffsetBufferCache();
         cachedLevels = blurStrength < 10 ? 2 : blurStrength < 20 ? 3 : 4;
         lastBlurStrength = blurStrength;
     }
@@ -1033,11 +1055,18 @@ export function applyFullFrameBlur(
     const outW = target.width;
     const outH = target.height;
 
-    const encoder = device!.createCommandEncoder();
-    encodePyramidAndComposite(
-        encoder, frame, getZeroMaskTexture(), blurStrength,
-        w, h, outW, outH, target.createView());
-    device!.queue.submit([encoder.finish()]);
+    const source = frame.clone();
+    try {
+        const encoder = device!.createCommandEncoder();
+        encodePyramidAndComposite(
+            encoder, source, getZeroMaskTexture(), blurStrength,
+            w, h, outW, outH, target.createView());
+        device!.queue.submit([encoder.finish()]);
+        deferFrameClose(source);
+    } catch (e) {
+        source.close();
+        throw e;
+    }
 }
 
 /**
@@ -1126,6 +1155,7 @@ export async function submitBlurI420(
     onFrameReady: (result: BlurI420Result) => void,
 ): Promise<void> {
     ensureInitialized();
+    processBlurDeferredCleanups();
 
     // Parse options
     let blurStrength = 12;
@@ -1149,8 +1179,7 @@ export async function submitBlurI420(
     // Clear caches on blur strength change
     if (blurStrength !== lastBlurStrength) {
         clearMipmapCache();
-        for (const buf of offsetBufferCache.values()) buf.destroy();
-        offsetBufferCache.clear();
+        clearOffsetBufferCache();
         cachedLevels = blurStrength < 10 ? 2 : blurStrength < 20 ? 3 : 4;
         lastBlurStrength = blurStrength;
     }
@@ -1183,7 +1212,7 @@ export async function submitBlurI420(
 
     const timestamp = frame.timestamp;
     const duration = frame.duration ?? undefined;
-    frame.close();
+    deferFrameClose(frame);
 
     // Fire-and-forget: callback fires when mapAsync resolves
     startReadbackWithCallback(outW, outH, timestamp, duration, (videoFrame) => {
