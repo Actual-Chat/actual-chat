@@ -504,9 +504,15 @@ export class RecordingService extends EventTarget {
             codecString = getCodecForCategory(this.config.codec, width, height);
         }
 
-        // Temporal SVC (L1T2/L1T3) disabled — Chrome HEVC HW + L1T2 raises async
-        // OperationError on some HW. Single-layer configure is universally supported.
-        const scalabilityMode: string | undefined = undefined;
+        // Two temporal layers when the codec supports them: T0 = 15 fps,
+        // T0+T1 = 30 fps. Lets the receiver/egress drop T1 to halve framerate
+        // without re-encoding (and without the spatial-resolution cliff).
+        // HEVC HW + L1T2 has historically raised async OperationError on some
+        // platforms, so hardware-accelerated HEVC stays single-layer.
+        const supportedScalability = this.config.scalabilityModes ?? [];
+        const isHevcHw = this.config.codec === 'hevc' && this.config.hardwareAccelerated === true;
+        const scalabilityMode: string | undefined =
+            !isHevcHw && supportedScalability.includes('L1T2') ? 'L1T2' : undefined;
 
         infoLog?.log('Using codec string:', codecString, 'for', this.config.codec);
 
