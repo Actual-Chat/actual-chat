@@ -95,14 +95,29 @@ export interface MainThreadDiagnosticsOptions {
     heapSampler?: { enabled?: boolean; periodMs?: number; maxSamples?: number };
 }
 
+// Snapshot of subsystem state at watchdog-stall time. Returning an empty
+// object skips the entry; throws are caught and logged. Providers must run
+// fast (no async, no IO) — the watchdog is already firing because main is
+// stalled, so these are sampled inline on the very first tick after recovery.
+export type StallSnapshotProvider = () => Record<string, unknown>;
+
 export class MainThreadDiagnostics {
     private static loafObserver: PerformanceObserver | null = null;
     private static originalMutationObserver: typeof MutationObserver | null = null;
+    private static stallSnapshotProviders = new Map<string, StallSnapshotProvider>();
     private static watchdogIntervalId: number | null = null;
     private static watchdogVisibilityHandler: (() => void) | null = null;
     private static heapSamplerIntervalId: number | null = null;
     private static heapSamples: HeapSample[] = [];
     private static heapSamplesMax = 0;
+
+    // Register a function that returns a small JSON-friendly object describing
+    // the caller subsystem's state. Called inline from the watchdog stall log.
+    // The name is used as the JSON key and to deduplicate registrations.
+    public static addStallSnapshotProvider(name: string, provider: StallSnapshotProvider): () => void {
+        this.stallSnapshotProviders.set(name, provider);
+        return () => { this.stallSnapshotProviders.delete(name); };
+    }
 
     public static init(options?: MainThreadDiagnosticsOptions): void {
         // Persistent kill switch: if the scope is silenced (LogLevel.None — i.e.
@@ -407,10 +422,24 @@ export class MainThreadDiagnostics {
                         : (this.heapSamplerIntervalId !== null
                             ? ' heap=[] (sampler installed but buffer empty)'
                             : ' heap=unavailable');
+                    const snapshots: Record<string, unknown> = {};
+                    for (const [name, provider] of this.stallSnapshotProviders) {
+                        try {
+                            const snap = provider();
+                            if (Object.keys(snap).length > 0)
+                                snapshots[name] = snap;
+                        } catch (e) {
+                            snapshots[name] = { error: e instanceof Error ? e.message : String(e) };
+                        }
+                    }
+                    const snapTail = Object.keys(snapshots).length
+                        ? ` snapshots=${compactJson(snapshots)}`
+                        : '';
                     errorLog?.log(
                         `watchdog: main thread stalled for ${Math.round(delta)}ms`
                         + (isHidden ? ' (tab hidden — throttling-adjusted)' : '')
-                        + heapTail);
+                        + heapTail
+                        + snapTail);
                 }
             } else if (stallStart) {
                 warnLog?.log(`watchdog: recovered after ${Math.round(now - stallStart)}ms total stall`);
