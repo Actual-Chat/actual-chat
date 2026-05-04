@@ -646,6 +646,7 @@ let vadRemoteStreamCount = 0;
 let vadReducedFrameIntervalMs = 1000 / 5;
 let vadLastPassedFrameTime = 0;
 let streamReadLoopPromise: Promise<void> | null = null;
+let activeInputReader: ReadableStreamDefaultReader<VideoFrame> | null = null;
 
 // Preview-track output (MSTG path). When set, processed frames are written to
 // `previewWriter` instead of being copied across the RPC boundary as VideoFrames.
@@ -1865,6 +1866,8 @@ async function previewReadLoop(inputReader: ReadableStreamDefaultReader<VideoFra
     } catch (e) {
         errorLog?.log('previewReadLoop error:', e);
     } finally {
+        if (activeInputReader === inputReader)
+            activeInputReader = null;
         try { inputReader.releaseLock(); } catch { /* ignore */ }
     }
 }
@@ -2029,6 +2032,8 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
     } catch (error) {
         if (processing) errorLog?.log('Stream read error:', error);
     } finally {
+        if (activeInputReader === inputReader)
+            activeInputReader = null;
         try { inputReader.releaseLock(); } catch { /* ignore */ }
     }
 }
@@ -2122,6 +2127,7 @@ export const serverImpl: VideoProcessingWorker = {
             orientationStats = null;
 
             const inputReader = frameInputStream.getReader();
+            activeInputReader = inputReader;
             streamReadLoopPromise = streamReadLoop(inputReader);
             startScreencastHeartbeat();
 
@@ -2159,6 +2165,7 @@ export const serverImpl: VideoProcessingWorker = {
 
             const processor = new MediaStreamTrackProcessor({ track });
             const inputReader = processor.readable.getReader();
+            activeInputReader = inputReader;
             streamReadLoopPromise = previewReadLoop(inputReader);
 
             infoLog?.log('Preview-only worker started (MSTG mode)');
@@ -2214,6 +2221,7 @@ export const serverImpl: VideoProcessingWorker = {
 
             const processor = new MediaStreamTrackProcessor({ track });
             const inputReader = processor.readable.getReader();
+            activeInputReader = inputReader;
             streamReadLoopPromise = streamReadLoop(inputReader);
             startScreencastHeartbeat();
 
@@ -2540,17 +2548,20 @@ export const serverImpl: VideoProcessingWorker = {
         stopScreencastHeartbeat();
         stopStreamingWatchdog();
 
+        if (inputTrack) {
+            // Break pending MSTP reads before awaiting the read loop. Safari can
+            // otherwise leave reader.read() parked until the RPC stop times out.
+            try { inputTrack.stop(); } catch { /* ignore */ }
+            inputTrack = null;
+        }
+        if (activeInputReader) {
+            try { await activeInputReader.cancel(); } catch { /* ignore */ }
+        }
         if (streamReadLoopPromise) { try { await streamReadLoopPromise; } catch { /* ignore */ } streamReadLoopPromise = null; }
         if (previewWriter) {
             previewWriterClosed = true;
             try { await previewWriter.close(); } catch { /* writer may already be in error state */ }
             previewWriter = null;
-        }
-        if (inputTrack) {
-            // Stop the cloned camera track explicitly — releases the camera light
-            // immediately rather than waiting for MSTP/processor GC.
-            try { inputTrack.stop(); } catch { /* ignore */ }
-            inputTrack = null;
         }
         try { await awaitAllPendingReadbacks(); } catch { /* ignore */ }
         pendingFrame.clear();

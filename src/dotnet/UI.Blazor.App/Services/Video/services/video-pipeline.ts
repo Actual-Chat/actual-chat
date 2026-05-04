@@ -632,17 +632,20 @@ export class VideoPipeline implements IVideoPipeline {
             this.frameReader = null;
         }
 
-        // Stop worker (handles encoder, segmentation, RPC cleanup internally)
-        await this.worker.stop();
-        infoLog?.log('Worker stopped');
-
-        // Cleanup
-        if (this._disconnectApiHandler) {
-            Api.onDisconnectRequested(WorkerKind.VideoCapture).remove(this._disconnectApiHandler);
-            this._disconnectApiHandler = null;
+        // Stop worker (handles encoder, segmentation, RPC cleanup internally).
+        // Even if Safari stalls long enough for the RPC to time out, tear down
+        // the proxy and worker so the old capture pipeline cannot leak.
+        try {
+            await this.worker.stop();
+            infoLog?.log('Worker stopped');
+        } finally {
+            if (this._disconnectApiHandler) {
+                Api.onDisconnectRequested(WorkerKind.VideoCapture).remove(this._disconnectApiHandler);
+                this._disconnectApiHandler = null;
+            }
+            this.worker.dispose();
+            this.workerInstance.terminate();
         }
-        this.worker.dispose();
-        this.workerInstance.terminate();
 
         infoLog?.log('Pipeline stopped');
     }
