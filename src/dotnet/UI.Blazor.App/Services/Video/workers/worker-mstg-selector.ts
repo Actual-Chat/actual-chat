@@ -185,7 +185,7 @@ export class WorkerMstgSelector {
         if (diagNowMs - this.lastDiagAtMs >= 1000) {
             this.lastDiagAtMs = diagNowMs;
             const lastWrittenMs = this.lastWrittenTs >= 0 ? this.lastWrittenTs / 1000 : 0;
-            infoLog?.log(
+            warnLog?.log(
                 `tick: ` +
                 `lastWrittenMs=${lastWrittenMs.toFixed(0)}, writeInFlight=${this.writeInFlight}, ` +
                 `bgPaints/s=${this.bgPaintsSinceDiag}, mainWrites/s=${this.mainWritesSinceDiag}, ` +
