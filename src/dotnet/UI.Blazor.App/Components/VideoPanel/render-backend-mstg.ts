@@ -180,7 +180,7 @@ export class OffThreadRenderBackend implements RenderBackend {
             const cls = parent.className;
             if (cls === this.lastObservedParentCls) return;
             this.lastObservedParentCls = cls;
-            warnLog?.log(`startParentClassObserver: parent classList changed → "${cls}", retrying play()`);
+            debugLog?.log(`startParentClassObserver: parent classList changed → "${cls}", retrying play()`);
             this.tryPlay('parent-classlist-change');
             const focused = parent.classList.contains('item-focused');
             if (focused !== this.lastObservedFocused) {
@@ -200,8 +200,8 @@ export class OffThreadRenderBackend implements RenderBackend {
     // DIAG: every 2s, capture whether currentTime is advancing and what the
     // computed visual state of the <video> looks like. When the user reports
     // "blur visible, no main video", these logs distinguish between:
-    //   - currentTime frozen   → playback stalled (track not feeding, or paused)
-    //   - currentTime advances → playback fine, so bug is layout/CSS/visibility
+    //   - currentTime frozen   -> playback stalled (track not feeding, or paused)
+    //   - currentTime advances -> playback fine, so bug is layout/CSS/visibility
     private startWatchdog(): void {
         if (this.watchdogTimer !== null) return;
         this.lastWatchdogCurrentTime = this.videoEl.currentTime;

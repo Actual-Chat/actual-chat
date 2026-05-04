@@ -199,7 +199,8 @@
     [JSInvokable]
     public void OnEnded(string? errorMessage)
     {
-        Log.LogWarning("[VideoTrackPlayer #{StreamId}] OnEnded: {Error}", StreamInfo.StreamId, errorMessage ?? "(no error)");
+        if (errorMessage is not null)
+            Log.LogWarning("[VideoTrackPlayer #{StreamId}] OnEnded: {Error}", StreamInfo.StreamId, errorMessage);
         if (errorMessage is null) {
             // Normal completion — sender intentionally ended the stream
             Hub.ChatVideoUI.NotifyRemoteStreamEndedIntentionally();
@@ -247,7 +248,7 @@
         if (_isDisposed)
             return;
 
-        Log.LogWarning("[VideoTrackPlayer #{StreamId}] DisposeAsync called", StreamInfo.StreamId);
+        Log.LogDebug("[VideoTrackPlayer #{StreamId}] DisposeAsync called", StreamInfo.StreamId);
 
         _isDisposed = true;
 

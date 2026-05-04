@@ -798,7 +798,7 @@ export class VideoPlayer {
             this.playbackStartTime = now;
             this.firstFrameTimestamp = latestTimestamp;
             this.lastSeekTime = now;
-            warnLog?.log(
+            infoLog?.log(
                 `Late-join catchup: jumped to live edge, ` +
                 `lastArrivedMs=${this.lastArrivedOffsetMs.toFixed(0)}, ` +
                 `lastRenderedMs=${this.lastRenderedOffsetMs.toFixed(0)}, ` +
@@ -1428,15 +1428,22 @@ export class VideoPlayer {
                     `durationMs=${durationMs.toFixed(1)}, dataLen=${data.length}`);
             }
 
-            // Diagnostic: log implied latency for first 5 frames, every 300th, and during high latency
+            // Diagnostic: keep routine arrival-latency samples at debug level;
+            // only high-latency samples are warning-worthy.
             const nowMs = ServerClock.now();
             const impliedCaptureAt = this.startedAtMs + offsetMs;
             const impliedLatency = nowMs - impliedCaptureAt;
             const isHighLatency = impliedLatency > 2000
                 && (performance.now() - this.lastHighLatencyLogTime > 1000);
-            if (this.receivedFrameCount <= 5 || this.receivedFrameCount % 300 === 0 || isHighLatency) {
+            if (isHighLatency) {
                 if (isHighLatency) this.lastHighLatencyLogTime = performance.now();
                 warnLog?.log(
+                    `processRpcFrame: #${this.receivedFrameCount} offsetMs=${offsetMs.toFixed(0)}, ` +
+                    `startedAt=${this.startedAtMs.toFixed(0)}, impliedCaptureAt=${impliedCaptureAt.toFixed(0)}, ` +
+                    `serverNow=${nowMs.toFixed(0)}, impliedLatency=${impliedLatency.toFixed(0)}ms, isKey=${isKeyFrame}`);
+            }
+            else if (this.receivedFrameCount <= 5 || this.receivedFrameCount % 300 === 0) {
+                debugLog?.log(
                     `processRpcFrame: #${this.receivedFrameCount} offsetMs=${offsetMs.toFixed(0)}, ` +
                     `startedAt=${this.startedAtMs.toFixed(0)}, impliedCaptureAt=${impliedCaptureAt.toFixed(0)}, ` +
                     `serverNow=${nowMs.toFixed(0)}, impliedLatency=${impliedLatency.toFixed(0)}ms, isKey=${isKeyFrame}`);
@@ -1816,7 +1823,7 @@ export class VideoPlayer {
                 // subsequent samples blend forward from the new baseline.
                 this.pipelineLatencyEma.setValue(this.pipelineLatencyMs - reductionMs);
                 this.pipelineLatencyMs = this.pipelineLatencyEma.value;
-                warnLog?.log(
+                infoLog?.log(
                     `reportLatencyTick: catchup, frameAge=${frameAgeMs.toFixed(0)}ms, reducing pipelineLatencyMs by ${reductionMs.toFixed(1)}ms to ${this.pipelineLatencyMs.toFixed(0)}ms`);
             }
         }

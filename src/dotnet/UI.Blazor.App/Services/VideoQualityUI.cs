@@ -562,7 +562,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         var requestedMap = new ApiMap<string, ReceiveQuality>();
         foreach (var (streamId, _) in entries)
             requestedMap[streamId.Value] = requested.GetValueOrDefault(streamId.Value, ReceiveQuality.Lowest);
-        Log.LogWarning(
+        Log.LogInformation(
             "PlaybackQuality: reason={Reason} capacity={Capacity} aggHealth={AggHealth:F2} "
             + "streams=[{Streams}]",
             reason, capacity, aggregateHealth,
