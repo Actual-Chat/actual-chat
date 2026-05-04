@@ -1,6 +1,7 @@
 import { getLogs } from 'logging';
+import { WebGPUManager } from './webgpu-manager';
 
-const { infoLog, warnLog } = getLogs('VideoPipeline');
+const { infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
 export interface DownscaleTarget {
     width: number;
@@ -157,6 +158,14 @@ export class WebGpuDownscaler {
     // is internally scaled below codedWidth/Height). One allocation per dim.
     private normalizeCanvas: OffscreenCanvas | null = null;
     private normalizeCtx: OffscreenCanvasRenderingContext2D | null = null;
+    // Set when device.lost fires or when a submit/onSubmittedWorkDone throws.
+    // Once invalid the downscaler refuses further process() calls — every later
+    // frame would otherwise re-throw the same OperationError and produce the
+    // per-frame "external Instance reference no longer exists" log storm we
+    // saw on Edge under multi-encoder simulcast load.
+    private invalid = false;
+    private lostListenerDispose: (() => void) | null = null;
+    private firstErrorLogged = false;
 
     constructor(device: GPUDevice) {
         this.device = device;
@@ -165,7 +174,14 @@ export class WebGpuDownscaler {
         // Dynamic-offset uniform regions must align to device limit (typically 256).
         const align = device.limits.minUniformBufferOffsetAlignment;
         this.slotStride = Math.max(align, UNIFORM_BYTES);
+        this.lostListenerDispose = WebGPUManager.addLostListener(() => {
+            if (this.invalid) return;
+            this.invalid = true;
+            warnLog?.log('Downscaler invalidated by device.lost');
+        });
     }
+
+    get isInvalid(): boolean { return this.invalid; }
 
     configure(targets: DownscaleTarget[]): void {
         if (targets.length === 0)
@@ -225,6 +241,10 @@ export class WebGpuDownscaler {
     async process(source: VideoFrame, opts?: {
         fallbackRotationDeg?: number;
     }): Promise<DownscaleResult[]> {
+        if (this.invalid) {
+            try { source.close(); } catch { /* already closed */ }
+            throw new Error('WebGpuDownscaler.process: invalid (device lost or submit failed)');
+        }
         if (!this.pipeline || !this.uniformBuffer || !this.bindGroupLayout || this.slots.length === 0)
             throw new Error('WebGpuDownscaler.process: not configured');
         const slots = this.slots.slice();
@@ -403,16 +423,30 @@ export class WebGpuDownscaler {
                 pass.end();
                 drawIdx++;
             }
-            this.device.queue.submit([encoder.finish()]);
-            // Drain GPU once before constructing VideoFrames from canvases. Each
-            // `new VideoFrame(canvas)` otherwise blocks the JS thread on an
-            // implicit per-canvas swap-chain sync — N tiers = N stalls. Awaiting
-            // here yields the JS thread to the event loop while the GPU runs;
-            // subsequent constructors see drained work and return without spin.
-            // iOS Safari power-drain mitigation.
             this.activeSubmissions++;
             try {
+                this.device.queue.submit([encoder.finish()]);
+                // Drain GPU once before constructing VideoFrames from canvases.
+                // Each `new VideoFrame(canvas)` otherwise blocks the JS thread on
+                // an implicit per-canvas swap-chain sync — N tiers = N stalls.
+                // Awaiting here yields the JS thread while the GPU runs;
+                // subsequent constructors see drained work and return without spin.
+                // iOS Safari power-drain mitigation.
                 await this.device.queue.onSubmittedWorkDone();
+            } catch (e) {
+                // Submit / onSubmittedWorkDone throws when the device has died.
+                // Mark invalid so the next frame fails fast instead of repeating
+                // the same OperationError; the caller's catch-and-halt logic
+                // (video-processing.ts) then disposes us.
+                this.invalid = true;
+                if (!this.firstErrorLogged) {
+                    this.firstErrorLogged = true;
+                    const err = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+                    errorLog?.log(
+                        `Downscaler GPU submit failed (invalidating): ${err} `
+                        + `activeSubmissions=${this.activeSubmissions} slots=${slots.length}`);
+                }
+                throw e;
             } finally {
                 this.activeSubmissions--;
                 this.flushDeferredDisposals();
@@ -449,6 +483,10 @@ export class WebGpuDownscaler {
     }
 
     dispose(): void {
+        if (this.lostListenerDispose) {
+            this.lostListenerDispose();
+            this.lostListenerDispose = null;
+        }
         this.disposeSlots();
         if (this.uniformBuffer)
             this.disposeBuffer(this.uniformBuffer);
@@ -457,6 +495,7 @@ export class WebGpuDownscaler {
         this.uniformStaging = null;
         this.pipeline = null;
         this.bindGroupLayout = null;
+        this.invalid = true;
     }
 
     private ensurePipeline(): void {

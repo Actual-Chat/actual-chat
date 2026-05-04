@@ -533,6 +533,35 @@ let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
 // Pipeline
 let processing = false;
+// Set when an unrecoverable downstream failure (downscaler invalid, GPU device
+// lost, repeated OperationError storm) requires the read loop to stop. Cleared
+// only by a fresh stream start. Keeps the encoder pipeline from feeding frames
+// into a dead device — that's the "external Instance reference no longer
+// exists" log storm we saw on Edge under multi-encoder simulcast load.
+let pipelineFailedReason: string | null = null;
+const DOWNSCALER_FAIL_LIMIT = 5;
+const DOWNSCALER_FAIL_WINDOW_MS = 2000;
+let downscalerFailCount = 0;
+let downscalerFailWindowStart = 0;
+const PIPELINE_ERROR_DEDUPE_MS = 1000;
+const pipelineErrorLogLastSeenMs = new Map<string, number>();
+function shouldLogPipelineError(key: string): boolean {
+    const now = performance.now();
+    const last = pipelineErrorLogLastSeenMs.get(key) ?? 0;
+    if (now - last < PIPELINE_ERROR_DEDUPE_MS) return false;
+    pipelineErrorLogLastSeenMs.set(key, now);
+    return true;
+}
+function isDownscalerFailure(error: unknown): boolean {
+    if (!error) return false;
+    if (downscaler?.isInvalid) return true;
+    if (error instanceof Error) {
+        if (error.name === 'OperationError') return true;
+        if (error.message.includes('external Instance')) return true;
+        if (error.message.includes('invalid (device lost')) return true;
+    }
+    return false;
+}
 let dimensionsReconciled = false;
 let needsRotation = false;
 let orientationStats: OrientationStats | null = null;
@@ -1067,11 +1096,38 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
             void callbacks.onEncoderFailed(codec, rpcNoWait);
         }
     } catch (error) {
-        errorLog?.log('Error encoding frame:', error);
+        const errKey = error instanceof Error
+            ? `encode:${error.name}:${error.message.slice(0, 80)}`
+            : `encode:${String(error).slice(0, 80)}`;
+        if (shouldLogPipelineError(errKey))
+            errorLog?.log('Error encoding frame:', error);
         // Whichever stage we got to, close the still-owned frame to avoid
         // GC-without-close warnings.
         if (liveFrame) {
             try { liveFrame.close(); } catch { /* already closed */ }
+        }
+        if (isDownscalerFailure(error) && pipelineFailedReason === null) {
+            const now = performance.now();
+            if (now - downscalerFailWindowStart > DOWNSCALER_FAIL_WINDOW_MS) {
+                downscalerFailWindowStart = now;
+                downscalerFailCount = 0;
+            }
+            downscalerFailCount++;
+            if (downscalerFailCount >= DOWNSCALER_FAIL_LIMIT) {
+                pipelineFailedReason = 'downscaler-fail';
+                errorLog?.log(
+                    `Pipeline halt: ${downscalerFailCount} downscaler failures in `
+                    + `${Math.round(now - downscalerFailWindowStart)}ms — disposing downscaler `
+                    + `and stopping encoder feed. WebGPUManager.hasDevice=${WebGPUManager.hasDevice()}`);
+                if (downscaler) {
+                    try { downscaler.dispose(); } catch { /* ignore */ }
+                    downscaler = null;
+                }
+                if (!encoderFailed) {
+                    encoderFailed = true;
+                    void callbacks.onEncoderFailed(activeEncoderConfig.codec, rpcNoWait);
+                }
+            }
         }
     }
 }
@@ -1579,10 +1635,18 @@ function currentDownscaleTargets(): DownscaleTarget[] {
 // Returns null if WebGPU is unavailable — caller then relies on the legacy canvas
 // resizeFrame path (which only covers the primary layer; simulcast requires WebGPU).
 async function initDownscaler(config: VideoProcessingConfig): Promise<void> {
+    pipelineFailedReason = null;
+    downscalerFailCount = 0;
+    downscalerFailWindowStart = 0;
+    pipelineErrorLogLastSeenMs.clear();
     const targets = collectDownscaleTargets(config);
-    if (downscaler) {
+    if (downscaler && !downscaler.isInvalid) {
         downscaler.configure(targets);
         return;
+    }
+    if (downscaler?.isInvalid) {
+        try { downscaler.dispose(); } catch { /* ignore */ }
+        downscaler = null;
     }
     try {
         const device = await WebGPUManager.init();
@@ -1654,6 +1718,12 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
         while (processing) {
             const { done, value: rawFrame } = await inputReader.read();
             if (done) { infoLog?.log('Stream input ended'); break; }
+
+            if (pipelineFailedReason) {
+                rawFrame.close();
+                infoLog?.log(`streamReadLoop: stopping (reason=${pipelineFailedReason})`);
+                break;
+            }
 
             if (!encoder || !processing || !encoderConfig) { // eslint-disable-line @typescript-eslint/no-unnecessary-condition
                 rawFrame.close(); continue;
