@@ -48,19 +48,37 @@ export function getCodecCandidates(codec: string, description?: ArrayBuffer): st
             }
         };
 
-        // 1. Derived from HVCC binary description (ground truth from encoder) — both hev1 and hvc1 prefixes.
-        // Read the actual tier_flag from the SPS NAL inside HVCC: Chrome's HEVC
-        // encoder emits SPS with tier=High while writing tier=Low into the HVCC
-        // header byte[1], so a codec string built off the HVCC header alone
-        // mismatches the real bitstream — iOS HEVC HW rejects with
-        // "EncodingError: Decoder failure" and Edge/Chrome HEVC HW silently
-        // stall. Adding both tier variants lets WebCodecs pick whichever
-        // matches the SPS the decoder actually parses.
+        // Ordering rationale:
+        //   In simulcast each layer ships its own HVCC, and the per-layer
+        //   `level_idc` reflects that layer's dims (e.g. 360p base → L63
+        //   = Level 2.1). Configuring the decoder with a low level
+        //   succeeds (Chrome's `isConfigSupported` does NOT cross-check
+        //   codec-string level vs description level), but `decode()` then
+        //   silently drops chunks whose bitstream level exceeds the
+        //   declared one — surfacing as `0 frames decoded` and a stuck
+        //   `<video>`. Always probe the highest-known level first so the
+        //   chosen codec admits the entire ladder.
+        // 1. Sender's declared codec string (carries the ladder-top level).
+        const lc = codec.toLowerCase();
+        if (lc.startsWith('hev1.') || lc.startsWith('hvc1.')) {
+            addCandidate(codec);
+        }
+        // 2. Hardcoded Level 4.0 fallback (admits up to 1080p).
+        addCandidate(`hev1.${generalProfileIdc}.6.${tierStr}120.B0`);
+        addCandidate(`hvc1.${generalProfileIdc}.6.${tierStr}120.B0`);
+        // 3. Derived from HVCC binary description (ground truth for THIS
+        //    layer) — both hev1 and hvc1 prefixes.
+        // Read the actual tier_flag from the SPS NAL inside HVCC: Chrome's
+        // HEVC encoder emits SPS with tier=High while writing tier=Low
+        // into the HVCC header byte[1], so a codec string built off the
+        // HVCC header alone mismatches the real bitstream — iOS HEVC HW
+        // rejects with "EncodingError: Decoder failure" and Edge/Chrome
+        // HEVC HW silently stall. Adding both tier variants lets
+        // WebCodecs pick whichever matches the SPS the decoder actually
+        // parses.
         const spsTier = extractHvccSpsTierFlag(bytes);
         const spsTierStr: 'H' | 'L' | undefined = spsTier === 1 ? 'H' : (spsTier === 0 ? 'L' : undefined);
         if (spsTierStr) {
-            // Highest priority: SPS-derived codec string (matches what the
-            // bitstream actually says).
             addCandidate(deriveHevcCodecString('hev1', bytes, spsTierStr));
             addCandidate(deriveHevcCodecString('hvc1', bytes, spsTierStr));
         }
@@ -73,17 +91,6 @@ export function getCodecCandidates(codec: string, description?: ArrayBuffer): st
         addCandidate(deriveHevcCodecString('hvc1', bytes, 'H'));
         addCandidate(deriveHevcCodecString('hev1', bytes, 'L'));
         addCandidate(deriveHevcCodecString('hvc1', bytes, 'L'));
-
-        // 2. Stream metadata codec string (sender's declared codec, if it's a full HEVC string)
-        const lc = codec.toLowerCase();
-        if (lc.startsWith('hev1.') || lc.startsWith('hvc1.')) {
-            addCandidate(codec);
-        }
-
-        // 3. Hardcoded Level 4.0 fallback (safe default for buggy HW encoders
-        //    that write incorrect levels causing Chrome SW decode fallback) — both prefixes
-        addCandidate(`hev1.${generalProfileIdc}.6.${tierStr}120.B0`);
-        addCandidate(`hvc1.${generalProfileIdc}.6.${tierStr}120.B0`);
 
         const declaredLower = codec.toLowerCase();
         if (!declaredLower.startsWith('hev1') && !declaredLower.startsWith('hvc1')
