@@ -103,7 +103,7 @@ export interface DecoderWorker extends SharedSettingsWorker {
     resetDecoder(): Promise<void>;
 
     /**
-     * Tell the worker to drop incoming deltas until the next keyframe.
+     * Tell the worker to drop buffered/arriving chunks until the next live keyframe.
      * Used on tab-visibility restore and SKIP_TO_LIVE — server keeps the
      * existing pull running, client just waits for the PLI keyframe to
      * appear in-band. Does NOT close, recreate, or reconfigure the decoder.

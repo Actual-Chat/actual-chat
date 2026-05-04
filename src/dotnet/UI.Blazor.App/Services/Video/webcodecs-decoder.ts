@@ -76,6 +76,7 @@ export class WebCodecsDecoder {
     private burstStartedSeq = -1;
     private burstDropCount = 0;
     private deltasPassedDuringBurst = 0;
+    private dropDeltasUntilKeyframe = false;
     private lastArtifactWindowMs = 0;
     private artifactWindowsCount = 0;
 
@@ -224,11 +225,20 @@ export class WebCodecsDecoder {
             this.droppedFrames++;
             return;
         }
+        if (this.dropDeltasUntilKeyframe) {
+            if (chunk.type !== 'key') {
+                this.droppedFrames++;
+                return;
+            }
+            this.dropDeltasUntilKeyframe = false;
+            this.closeArtifactWindow();
+        }
         // Backpressure: drop delta chunks when decoder queue is saturated.
         // Always pass keyframes through so the decoder can resync.
         if (this.decoder.decodeQueueSize > BackpressureQueueLimit && chunk.type !== 'key') {
             this.backpressureDrops++;
             this.recordBackpressureDrop(chunk.timestamp);
+            this.dropDeltasUntilKeyframe = true;
             return;
         }
         // Burst tracking: a keyframe terminates the artifact window; deltas
@@ -265,11 +275,20 @@ export class WebCodecsDecoder {
             warnLog?.log(`Decoder not ready (state: ${currentState}), dropping ${chunkData.type} chunk`);
             return;
         }
+        if (this.dropDeltasUntilKeyframe) {
+            if (chunkData.type !== 'key') {
+                this.droppedFrames++;
+                return;
+            }
+            this.dropDeltasUntilKeyframe = false;
+            this.closeArtifactWindow();
+        }
 
         // Backpressure: drop delta chunks when decoder queue is saturated.
         if (this.decoder.decodeQueueSize > BackpressureQueueLimit && chunkData.type !== 'key') {
             this.backpressureDrops++;
             this.recordBackpressureDrop(chunkData.timestamp, chunkData.sequenceNumber);
+            this.dropDeltasUntilKeyframe = true;
             return;
         }
         // Burst tracking: see decodeRaw() comment.
@@ -412,6 +431,7 @@ export class WebCodecsDecoder {
         this.burstStartedSeq = -1;
         this.burstDropCount = 0;
         this.deltasPassedDuringBurst = 0;
+        this.dropDeltasUntilKeyframe = false;
         this.lastArtifactWindowMs = 0;
         this.artifactWindowsCount = 0;
         this.decodeTimeHistory = [];
@@ -434,6 +454,9 @@ export class WebCodecsDecoder {
     }
 
     private closeArtifactWindow(): void {
+        if (this.burstStartedAtMs === 0)
+            return;
+
         const windowMs = performance.now() - this.burstStartedAtMs;
         this.lastArtifactWindowMs = Math.round(windowMs);
         this.artifactWindowsCount++;

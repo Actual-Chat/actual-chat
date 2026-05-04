@@ -165,14 +165,7 @@ const KEYFRAME_REQUEST_COOLDOWN_MS = 2000;
 let lastKeyframeRequestAtMs = 0;
 
 function requestKeyframeOnDecoderError(): void {
-    if (!activePullStreamId) return;
-    const now = performance.now();
-    if (now - lastKeyframeRequestAtMs < KEYFRAME_REQUEST_COOLDOWN_MS) return;
-    lastKeyframeRequestAtMs = now;
-    const sid = activePullStreamId;
-    warnLog?.log(`Decoder error: requesting server keyframe for ${sid}`);
-    streamingApi.liveVideoStreams.RequestKeyFrame(RPC_SESSION_DEFAULT, sid)
-        .catch((e: unknown) => warnLog?.log('RequestKeyFrame error:', e));
+    requestKeyframe('Decoder error');
 }
 
 // Stream-based input reader loop promise (for cleanup)
@@ -577,6 +570,7 @@ const DRAIN_DECODE_QUEUE_LIMIT = 4;
 const DRAIN_BACKOFF_MS = 5;
 
 let encodedBuffer: EncodedChunkBuffer | null = null;
+let skipFramesBeforeUs = 0;
 
 // Wallclock-anchored decode pacing. The encoded buffer is the receive-side
 // jitter cushion — its span is the canonical "buffer low" signal. Decode is
@@ -607,6 +601,33 @@ function getEncodedBuffer(): EncodedChunkBuffer {
 function clearEncodedBuffer(): void {
     encodedBuffer?.clear();
     resetDecodeAnchor();
+}
+
+function getLiveTargetOffsetUs(): number {
+    if (pullStartedAtMs <= 0)
+        return 0;
+
+    const liveOffsetMs = Math.max(0, ServerClock.now() - pullStartedAtMs);
+    return Math.max(0, liveOffsetMs - VIDEO.targetBufferDurationMs) * 1000;
+}
+
+function requestKeyframe(reason: string): void {
+    if (!activePullStreamId) return;
+    const now = performance.now();
+    if (now - lastKeyframeRequestAtMs < KEYFRAME_REQUEST_COOLDOWN_MS) return;
+    lastKeyframeRequestAtMs = now;
+    const sid = activePullStreamId;
+    warnLog?.log(`${reason}: requesting server keyframe for ${sid}`);
+    streamingApi.liveVideoStreams.RequestKeyFrame(RPC_SESSION_DEFAULT, sid)
+        .catch((e: unknown) => warnLog?.log('RequestKeyFrame error:', e));
+}
+
+function waitForLiveKeyframe(reason: string, minimumOffsetUs = getLiveTargetOffsetUs()): void {
+    skipFramesBeforeUs = Math.max(skipFramesBeforeUs, minimumOffsetUs);
+    waitingForKeyframe = true;
+    clearEncodedBuffer();
+    mstgSelector?.resetPrimming();
+    requestKeyframe(reason);
 }
 
 // Reset on any event that changes the frame stream's identity: explicit
@@ -675,12 +696,16 @@ function drainEligible(): void {
 
         if (isLate && !front.isKeyFrame) {
             // Late delta — drop. The GOP is broken anyway once we skip a
-            // delta; the next keyframe will re-sync. Keyframes themselves
-            // are NEVER dropped: losing a keyframe leaves the decoder with
-            // no fresh reference for an entire keyframe period (~3 s),
-            // producing the "deltas on black" artifact and a 3 s freeze
-            // cadence on every periodic keyframe that's even slightly late.
+            // delta, so gate the rest of this GOP until a keyframe arrives.
+            // Feeding later deltas after a missing reference produces the
+            // exact smear/block artifacts seen when webcam startup briefly
+            // steals decode/encode resources. Keyframes themselves are NEVER
+            // dropped: losing a keyframe leaves the decoder with no fresh
+            // reference for an entire keyframe period (~3 s), producing the
+            // "deltas on black" artifact and a 3 s freeze cadence on every
+            // periodic keyframe that's even slightly late.
             encodedBuffer.shift();
+            waitForLiveKeyframe('late delta drop', front.timestamp);
             continue;
         }
         if (front.isKeyFrame && isLate) {
@@ -1366,6 +1391,7 @@ const serverImpl: DecoderWorker = {
             lastChunkDescLen = 0;
             waitingForKeyframe = false;
             initialDescriptionApplied = false;
+            skipFramesBeforeUs = 0;
             clearEncodedBuffer();
         } catch (error) {
             errorLog?.log('Failed to stop decoder:', error);
@@ -1394,6 +1420,16 @@ const serverImpl: DecoderWorker = {
         description?: ArrayBuffer
     ): Promise<void> => {
         if (!processing) return;
+        if (skipFramesBeforeUs > 0) {
+            if (timestamp < skipFramesBeforeUs || !isKeyFrame) {
+                return;
+            }
+            infoLog?.log(
+                `Live keyframe gate cleared at ${(timestamp / 1000).toFixed(0)}ms ` +
+                `(threshold ${(skipFramesBeforeUs / 1000).toFixed(0)}ms)`);
+            skipFramesBeforeUs = 0;
+            clearEncodedBuffer();
+        }
         pushEncodedChunk({
             timestamp, duration, isKeyFrame, sequenceNumber,
             width, height, data, description,
@@ -1402,11 +1438,13 @@ const serverImpl: DecoderWorker = {
 
     // eslint-disable-next-line @typescript-eslint/require-await
     flagWaitingForKeyframe: async (): Promise<void> => {
-        // Drop incoming deltas at decodeRawChunk's gate until the next key
-        // arrives in the existing stream. Does NOT touch the decoder — keeps
-        // it alive so it can consume the recovery keyframe normally.
-        waitingForKeyframe = true;
-        infoLog?.log('flagWaitingForKeyframe: gate armed');
+        // Drop buffered/arriving chunks until the next live keyframe arrives.
+        // Does NOT touch the decoder — keeps it alive so it can consume the
+        // recovery keyframe normally.
+        waitForLiveKeyframe('flagWaitingForKeyframe');
+        infoLog?.log(
+            `flagWaitingForKeyframe: gate armed, ` +
+            `threshold=${(skipFramesBeforeUs / 1000).toFixed(0)}ms`);
     },
 
     /**
@@ -1618,6 +1656,17 @@ const serverImpl: DecoderWorker = {
         // New stream → previous wallclock anchor is meaningless. The first
         // chunk of this pull will re-bootstrap.
         resetDecodeAnchor();
+        if (skipToMs > VIDEO.targetBufferDurationMs) {
+            const minimumOffsetUs = Math.max(0, skipToMs - VIDEO.targetBufferDurationMs) * 1000;
+            waitForLiveKeyframe('startPullInWorker', minimumOffsetUs);
+            infoLog?.log(
+                `startPullInWorker: live-join gate armed, ` +
+                `skipTo=${skipToMs.toFixed(0)}ms, ` +
+                `threshold=${(minimumOffsetUs / 1000).toFixed(0)}ms`);
+        } else {
+            skipFramesBeforeUs = 0;
+            waitingForKeyframe = false;
+        }
         // Fire and forget — pull loop runs in background, ends via onPullEnded.
         void runPullLoop(streamId, skipToMs);
     },
@@ -1625,6 +1674,7 @@ const serverImpl: DecoderWorker = {
     stopPullInWorker: async (): Promise<void> => {
         pullActive = false;
         activePullStreamId = null;
+        skipFramesBeforeUs = 0;
         resetDecodeAnchor();
         if (pullAbortController) {
             pullAbortController.abort();

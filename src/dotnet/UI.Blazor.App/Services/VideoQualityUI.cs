@@ -145,6 +145,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             snapshot.BufferDurationMsEma,
             snapshot.KeyframeSkipsInWindow,
             PlaybackThresholds.Defaults,
+            snapshot.StreamAgeMs,
             snapshot.DecoderQueueDepthEma,
             snapshot.QualityReductionRequested);
         bool isFirstTick;
@@ -551,20 +552,35 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         static StreamRequest ToStreamRequest(KeyValuePair<StreamId, PlaybackHealthState> entry)
         {
             var current = Math.Max(1, entry.Value.Snapshot.IncomingByteRate);
-            // Peak observed rate is the realistic top-tier cost: when this
-            // receiver is currently subscribed to a lower simulcast tier the
-            // current rate is the lower-tier rate, but the top tier costs
-            // many times more. Using `current` for both produced false-positive
-            // climbs (capacity ≈ baseRate × √2 always exceeds baseRate)
-            // → endless tier oscillation.
-            var top = Math.Max(current, entry.Value.PeakIncomingByteRate);
-            var currentSpatial = Math.Max(0, entry.Value.Snapshot.CurrentMaxSpatial);
-            var baseRate = currentSpatial <= 0 ? current : Math.Max(1, current / (currentSpatial + 1));
             var maxSpatialLayer = entry.Value.Snapshot.QualityReductionRequested
                 ? 0
                 : entry.Value.RequestedMaxSpatial;
+            var (baseRate, top) = EstimateLayerRates(entry.Value, current, maxSpatialLayer);
             return new StreamRequest(entry.Key.Value, baseRate, top, maxSpatialLayer);
         }
+    }
+
+    private static (long BaseRate, long TopRate) EstimateLayerRates(
+        PlaybackHealthState state,
+        long currentRate,
+        int maxSpatialLayer)
+    {
+        var ladder = VideoRecorder.BuildLadder(state.StreamKind);
+        var currentSpatial = Math.Clamp(state.Snapshot.CurrentMaxSpatial, 0, ladder.Count - 1);
+        var targetSpatial = Math.Clamp(maxSpatialLayer, 0, ladder.Count - 1);
+        var currentLayerBitrate = Math.Max(1, ladder[currentSpatial].Bitrate);
+        var baseLayerBitrate = Math.Max(1, ladder[0].Bitrate);
+        var targetLayerBitrate = Math.Max(baseLayerBitrate, ladder[targetSpatial].Bitrate);
+
+        var baseRate = Math.Max(1, (long)(currentRate * ((double)baseLayerBitrate / currentLayerBitrate)));
+        var ladderTopRate = Math.Max(baseRate, (long)(baseRate * ((double)targetLayerBitrate / baseLayerBitrate)));
+        // Peak protects against underestimating rich content after subscribing
+        // to a lower layer, but keyframes / startup bursts can inflate it. Bound
+        // it to the same 2.5x over-delivery margin used by video QC elsewhere.
+        var cappedPeak = Math.Min(
+            state.PeakIncomingByteRate,
+            (long)(ladderTopRate * Constants.Video.ThroughputOverDeliveryRatio));
+        return (baseRate, Math.Max(ladderTopRate, cappedPeak));
     }
 
     private static long ComputeDecayedPeak(PlaybackHealthState? prev, long currentRate)
@@ -957,6 +973,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     public sealed record PlaybackThresholds(
         double BufferDurationTooLowMs,
         double BufferDurationTooHighMs,
+        int StartupGraceMs,
         int KeyframeSkipsBadAtOrAbove,
         int DecoderQueueDepthBadAbove,
         long MinCapacityBytesPerSec,
@@ -967,6 +984,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         public static PlaybackThresholds Defaults => new (
             BufferDurationTooLowMs: Constants.Video.BufferDurationTooLowMs,
             BufferDurationTooHighMs: Constants.Video.BufferDurationTooHighMs,
+            StartupGraceMs: (int)QcStartupCooldown.TotalMilliseconds,
             KeyframeSkipsBadAtOrAbove: 1,
             DecoderQueueDepthBadAbove: Constants.Video.HighBufferDepthThreshold,
             MinCapacityBytesPerSec: 50_000,
@@ -988,6 +1006,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             double bufferDurationMsEma,
             int keyframeSkipsInWindow,
             PlaybackThresholds t,
+            int streamAgeMs = int.MaxValue,
             double decoderQueueDepthEma = 0,
             bool qualityReductionRequested = false)
         {
@@ -998,7 +1017,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             if (decoderQueueDepthEma > t.DecoderQueueDepthBadAbove)
                 return -1;
             if (bufferDurationMsEma < t.BufferDurationTooLowMs)
-                return -1;
+                return streamAgeMs < t.StartupGraceMs ? 0 : -1;
             if (bufferDurationMsEma <= t.BufferDurationTooHighMs)
                 return 1;
             return 0;
@@ -1137,9 +1156,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         CpuTimestamp LastSeen,
         long PeakIncomingByteRate,
         // Per-stream max spatial layer requested for this allocation cycle.
-        // Initial tick uses StartupSpatialLayer(streamKind) — top for
-        // screencast, top-1 for webcam — so we don't bid for the heavy tier
-        // before the link has been observed at all. Subsequent ticks lift the
-        // cap to top so the allocator/capacity estimator can promote freely.
+        // Initial tick uses StartupSpatialLayer(streamKind); subsequent ticks
+        // lift the cap to top so the allocator/capacity estimator can promote freely.
         int RequestedMaxSpatial);
 }

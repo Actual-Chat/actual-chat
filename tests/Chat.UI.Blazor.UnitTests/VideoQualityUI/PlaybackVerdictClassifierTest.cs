@@ -18,6 +18,12 @@ public class PlaybackVerdictClassifierTest
             .Should().Be(-1);
 
     [Fact]
+    public void LowBuffer_DuringStartupGrace_ReturnsNeutral()
+        => PlaybackVerdictClassifier
+            .Classify(T.BufferDurationTooLowMs - 1, 0, T, T.StartupGraceMs - 1)
+            .Should().Be(0);
+
+    [Fact]
     public void TooMuchBuffer_ReturnsNeutral()
         => PlaybackVerdictClassifier
             .Classify(T.BufferDurationTooHighMs + 1, 0, T)
