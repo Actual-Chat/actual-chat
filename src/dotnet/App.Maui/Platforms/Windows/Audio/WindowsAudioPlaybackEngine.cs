@@ -73,13 +73,13 @@ internal sealed class WindowsAudioPlaybackEngine(
             DesiredSamplesPerQuantum = Constants.Audio.RecordingSampleRate / 1000 * Constants.Audio.OpusFrameDurationMs,
         };
 
-        var graphCreate = await AudioGraph.CreateAsync(settings).AsTask(cancellationToken).ConfigureAwait(true);
+        var graphCreate = await AudioGraph.CreateAsync(settings).AsTask(cancellationToken).ConfigureAwait(false);
         if (graphCreate.Status != AudioGraphCreationStatus.Success || graphCreate.Graph is null)
             throw new InvalidOperationException($"AudioGraph creation failed: {graphCreate.Status}");
 
         _graph = graphCreate.Graph;
 
-        var deviceOutputResult = await _graph.CreateDeviceOutputNodeAsync().AsTask(cancellationToken).ConfigureAwait(true);
+        var deviceOutputResult = await _graph.CreateDeviceOutputNodeAsync().AsTask(cancellationToken).ConfigureAwait(false);
         if (deviceOutputResult.Status != AudioDeviceNodeCreationStatus.Success || deviceOutputResult.DeviceOutputNode is null)
             throw new InvalidOperationException($"AudioGraph device output creation failed: {deviceOutputResult.Status}");
         _deviceOutput = deviceOutputResult.DeviceOutputNode;
@@ -208,15 +208,15 @@ internal sealed class WindowsAudioPlaybackEngine(
                             var remaining = minSamples - count;
                             await Clocks.CoarseSystemClock
                                 .Delay(remaining * 1000 / Constants.Audio.PlaybackSampleRate, cancellationToken)
-                                .ConfigureAwait(true);
+                                .ConfigureAwait(false);
                         }
                         else {
                             // Buffer is empty; wait for data without consuming
                             var whenReady = _decodeBuffer.WhenReadyToRead();
                             if (whenReady != null)
-                                await whenReady.WaitAsync(cancellationToken).ConfigureAwait(true);
+                                await whenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
                             else
-                                await Task.Delay(1, cancellationToken).ConfigureAwait(true);
+                                await Task.Delay(1, cancellationToken).ConfigureAwait(false);
                         }
                     }
                     catch (OperationCanceledException) {
