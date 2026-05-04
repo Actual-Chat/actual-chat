@@ -330,6 +330,8 @@ export class WebGpuDownscaler {
             try {
                 rewrapped = new VideoFrame(source, {
                     visibleRect: { x: 0, y: 0, width: srcW, height: srcH },
+                    timestamp,
+                    duration,
                 });
             }
             catch (e) {

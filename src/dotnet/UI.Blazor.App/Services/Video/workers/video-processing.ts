@@ -136,6 +136,8 @@ let downscaler: WebGpuDownscaler | null = null;
 let senderRotationDeg = 0;
 let startTimestamp: number | undefined = undefined;
 let sourceStartedAtMs: number | undefined = undefined;
+const NEGATIVE_REBASED_TIMESTAMP_GRACE_US = 1000;
+let negativeRebasedTimestampDropCount = 0;
 let loggedI420Error = false;
 let loggedPreConvertSkipped = false;
 let loggedPreviewCloneError = false;
@@ -1300,7 +1302,24 @@ function onEncoderOutput(chunkData: EncodedChunkData): void {
         debugLog?.log('Dropping in-flight chunk: recording anchor not set (reset in progress)');
         return;
     }
-    const rebasedTs = Math.round(chunkData.chunk.timestamp - startTimestamp);
+    let rebasedTs = Math.round(chunkData.chunk.timestamp - startTimestamp);
+    if (rebasedTs < 0) {
+        const ageUs = -rebasedTs;
+        if (ageUs > NEGATIVE_REBASED_TIMESTAMP_GRACE_US) {
+            negativeRebasedTimestampDropCount++;
+            if (negativeRebasedTimestampDropCount <= 3 || negativeRebasedTimestampDropCount % 30 === 0) {
+                warnLog?.log(
+                    `Dropping encoded chunk with negative rebased timestamp #${negativeRebasedTimestampDropCount}: ` +
+                    `rebased=${(rebasedTs / 1000).toFixed(0)}ms, ` +
+                    `chunkTs=${(chunkData.chunk.timestamp / 1000).toFixed(0)}ms, ` +
+                    `startTs=${(startTimestamp / 1000).toFixed(0)}ms, ` +
+                    `layer=${chunkData.spatialLayerId ?? 0}, seq=${chunkData.sequenceNumber}, ` +
+                    `type=${chunkData.type}`);
+            }
+            return;
+        }
+        rebasedTs = 0;
+    }
 
     if (streamingEnabled) {
         deliverChunkToStream(chunkBuffer, rebasedTs, chunkData.chunk.duration ?? 0,
