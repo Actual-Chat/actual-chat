@@ -217,7 +217,7 @@ export abstract class RpcPeer {
     protected _isConnected = false;
     protected _connectionState: RpcConnectionState = RpcConnectionState.Disconnected;
     protected _pendingSends: RpcOutboundCall[] = [];
-    private _reconnectFlushInProgress = false;
+    protected _reconnectFlushInProgress = false;
     private _keepAliveTimer: ReturnType<typeof setInterval> | undefined;
     private _keepAliveWatchdog: ReturnType<typeof setTimeout> | undefined;
     /** Wall-clock time of the last inbound `$sys.KeepAlive`, or 0 if none yet
