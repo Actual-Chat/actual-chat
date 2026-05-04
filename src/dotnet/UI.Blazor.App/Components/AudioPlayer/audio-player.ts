@@ -154,6 +154,17 @@ export class AudioPlayer implements Resettable {
     private lastLatencyLogTime = 0;
     private lastLagReportTime = 0;
     private static readonly LagReportIntervalMs = 500;
+    // Dedup state: feeder onStateChanged fires at audio-block rate (≈50 Hz)
+    // so without a guard reportPlaying calls Blazor invokeMethodAsync 50×/s
+    // even when nothing material changed — and during a SignalR disconnect
+    // each call throws synchronously and adds to the warn-log churn that
+    // co-occurred with the Edge freeze. Compare against the last dispatched
+    // tuple; only call Blazor when something user-visible changed.
+    private lastReportedPlayingAt: number | null = null;
+    private lastReportedIsPaused: boolean | null = null;
+    private lastReportedIsBufferLow: boolean | null = null;
+    private lastReportSentAtMs = 0;
+    private static readonly ReportPlayingMaxIntervalMs = 1000;
 
     public static get isInitialized() {
         return AudioPlayer.whenInitialized.isCompleted();
@@ -236,6 +247,10 @@ export class AudioPlayer implements Resettable {
         this.recordedAtMs = recordedAtMs;
         this.targetBufferSizeMs = targetBufferSizeMs;
         this.playbackState = 'paused';
+        this.lastReportedPlayingAt = null;
+        this.lastReportedIsPaused = null;
+        this.lastReportedIsBufferLow = null;
+        this.lastReportSentAtMs = 0;
         this.whenEnded = new PromiseSource<void>();
 
         // Create a ref with the feeder node trait
@@ -506,6 +521,21 @@ export class AudioPlayer implements Resettable {
     // Backend invocation methods
 
     private reportPlaying = async (playingAt: number, isPaused: boolean, isBufferLow: boolean) => {
+        // Skip if nothing material changed since the last successful dispatch,
+        // unless ReportPlayingMaxIntervalMs has elapsed (heartbeat so the server
+        // knows we're still alive). playingAt advances continuously; quantize to
+        // 100 ms so micro-jitter doesn't defeat the dedup.
+        const playingAtBucket = Math.round(playingAt * 10);
+        const lastBucket = this.lastReportedPlayingAt === null
+            ? null
+            : Math.round(this.lastReportedPlayingAt * 10);
+        const nowMs = performance.now();
+        const heartbeatDue = nowMs - this.lastReportSentAtMs >= AudioPlayer.ReportPlayingMaxIntervalMs;
+        const stateChanged = isPaused !== this.lastReportedIsPaused
+            || isBufferLow !== this.lastReportedIsBufferLow
+            || playingAtBucket !== lastBucket;
+        if (!stateChanged && !heartbeatDue)
+            return;
         try {
             const stateText = isPaused ? 'paused' : 'playing';
             const bufferText = isBufferLow ? 'low' : 'ok';
@@ -514,6 +544,10 @@ export class AudioPlayer implements Resettable {
             if (EnableFrequentDebugLog)
                 debugLog?.log(`#${this.internalId}.reportPlaying: ${stateText} @ ${playingAt}, buffer: ${bufferText}`);
             await this.blazorRef?.invokeMethodAsync('OnPlaying', playingAt, isPaused, isBufferLow);
+            this.lastReportedPlayingAt = playingAt;
+            this.lastReportedIsPaused = isPaused;
+            this.lastReportedIsBufferLow = isBufferLow;
+            this.lastReportSentAtMs = nowMs;
         }
         catch (e) {
             warnLog?.log(`#${this.internalId}.reportPlaying: unhandled error:`, e);
