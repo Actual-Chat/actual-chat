@@ -7,8 +7,9 @@ namespace ActualChat.Streaming.Services;
 /// spatial and temporal caps. Picks the spatial layer per keyframe by clamping
 /// the consumer's <see cref="ReceiveQuality.MaxSpatialLayer"/> into the
 /// producer-declared range <c>[0, MaxSpatialLayerId]</c> on the frame itself;
-/// only switches layers on a keyframe so a producer-side ladder change mid-GOP
-/// triggers skip-until-next-keyframe, not torn output.
+/// only switches layers on a keyframe. A quality change keeps forwarding the
+/// currently selected layer until the requested layer's keyframe arrives, so we
+/// don't manufacture delta-frame gaps while QC is settling.
 /// </summary>
 public static class ReceiveQualityFilter
 {
@@ -30,9 +31,6 @@ public static class ReceiveQualityFilter
             if (q.MaxSpatialLayer != consumerMaxSpatial || q.MaxTemporalLayer != consumerMaxTemporal) {
                 consumerMaxSpatial = q.MaxSpatialLayer;
                 consumerMaxTemporal = q.MaxTemporalLayer;
-                selectedLayer = -1;
-                lastKeyFrameNumber = -1;
-                skipping = true;
             }
 
             if (frame.TemporalLayerId > consumerMaxTemporal)

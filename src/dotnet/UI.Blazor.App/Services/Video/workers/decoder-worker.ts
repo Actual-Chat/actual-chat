@@ -706,25 +706,20 @@ function drainEligible(): void {
         const now = performance.now();
         const isLate = targetMs < now - wiggleMs;
 
-        if (isLate && !front.isKeyFrame) {
-            // Late delta — drop. Once any delta in a GOP is skipped, all
-            // following deltas may reference missing state; continuing to feed
-            // them can produce "motion over black/stale reference" corruption.
-            // Gate until a fresh keyframe and request one immediately.
-            encodedBuffer.shift();
-            gateAfterDroppedEncodedChunk('late delta drop');
-            continue;
-        }
-        if (front.isKeyFrame && isLate) {
-            // Late keyframe — encoder/transit overhead pushed it past wiggle
-            // (keyframes are ~10× a delta in size). Decode immediately and
-            // re-anchor so subsequent deltas in this GOP pace from the
-            // keyframe's actual delivery time, not the original (now stale)
-            // anchor.
+        if (isLate) {
+            // Late frame — decode immediately. Lateness is not frame loss; if
+            // the decoder can't keep up, the pre-decode queue growth will feed
+            // QC and lower the requested layer. Dropping a delta here would
+            // break the GOP and force keyframe-only playback until recovery.
             const ready = encodedBuffer.shift();
             if (!ready) return;
-            sourceAnchorUs = ready.timestamp;
-            wallclockAnchorMs = now;
+            if (ready.isKeyFrame) {
+                // Keyframes are large and often arrive past the small wiggle
+                // window. Re-anchor on them so this fresh GOP paces from the
+                // actual delivery time instead of the stale old wall-clock.
+                sourceAnchorUs = ready.timestamp;
+                wallclockAnchorMs = now;
+            }
             decodeNow(ready);
             return;
         }

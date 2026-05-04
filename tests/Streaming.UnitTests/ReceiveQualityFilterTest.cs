@@ -28,7 +28,7 @@ public class ReceiveQualityFilterTest
     }
 
     [Fact]
-    public async Task LoweredCapStopsForwardingCurrentLayerUntilKeyframe()
+    public async Task LoweredCapKeepsForwardingCurrentLayerUntilKeyframe()
     {
         var quality = ReceiveQuality.Default;
         var frames = Frames(
@@ -45,7 +45,28 @@ public class ReceiveQualityFilterTest
                            .Apply(frames, () => quality, NullLogger.Instance, CancellationToken.None))
             result.Add(frame);
 
-        result.Select(x => x.SpatialLayerId).Should().Equal((byte)2, (byte)2, (byte)0, (byte)0);
+        result.Select(x => x.SpatialLayerId).Should().Equal((byte)2, (byte)2, (byte)2, (byte)0, (byte)0);
+    }
+
+    [Fact]
+    public async Task UpgradedCapKeepsForwardingCurrentLayerUntilKeyframe()
+    {
+        var quality = ReceiveQuality.Lowest;
+        var frames = Frames(
+            Key(0, 1),
+            Delta(0, 1),
+            Mutate(() => quality = ReceiveQuality.Default),
+            Delta(0, 1),
+            Delta(2, 1),
+            Key(2, 2),
+            Delta(2, 2));
+
+        var result = new List<VideoFrame>();
+        await foreach (var frame in ReceiveQualityFilter
+                           .Apply(frames, () => quality, NullLogger.Instance, CancellationToken.None))
+            result.Add(frame);
+
+        result.Select(x => x.SpatialLayerId).Should().Equal((byte)0, (byte)0, (byte)0, (byte)2, (byte)2);
     }
 
     private static VideoFrame Key(byte spatial, long keyFrameNumber)

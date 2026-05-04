@@ -1941,12 +1941,27 @@ export class VideoPlayer {
     }
 
     // Maps this player's current render size to a VideoQualityLevel hint for the
-    // server's simulcast fan-out. Uses canvas.clientWidth (actual layout pixels)
-    // rather than canvas.width (decoder output resolution). Server maps Low→spatial
-    // layer 0, Medium→1, High/Full/Ultra→2. Returns null when the canvas has no
-    // layout yet (detached or hidden) so the server applies no render cap.
+    // server's simulcast fan-out. Uses CSS layout pixels rather than canvas.width
+    // (decoder output resolution). Server maps Low→spatial layer 0,
+    // Medium→1, High/Full/Ultra→2.
     private computeRenderQualityLevel(): number | null {
-        return renderQualityLevelForWidth(this.canvas.clientWidth);
+        const parent = this.canvas.parentElement;
+        const width = this.canvas.clientWidth
+            || parent?.clientWidth
+            || parent?.getBoundingClientRect().width
+            || 0;
+        const level = renderQualityLevelForWidth(width);
+        if (level !== null)
+            return level;
+
+        // During tab restore / layout transitions a small tile can briefly
+        // report 0px width. Do not let that become "unknown/top quality":
+        // PIP/sidebar webcam tiles are secondary and should stay at base layer.
+        if (parent?.classList.contains('pip-overlay') || parent?.classList.contains('item-x'))
+            return 4;
+
+        // Focused or detached: leave uncapped until layout reports real size.
+        return null;
     }
 
     private updateRttEstimate(rttMs: number): void {
