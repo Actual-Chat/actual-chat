@@ -49,9 +49,9 @@ export class OffThreadRenderBackend implements RenderBackend {
     // Promotion to focused doesn't auto-resume <video srcObject> playback,
     // so we kick play() on every classList change.
     private parentClassObserver: MutationObserver | null = null;
-    private lastObservedParentCls = '';
-    // Tracked focused state (parent has `item-focused`). Used to fire
-    // onFocusedChange only on edge transitions.
+    // Tracked focused state (parent has `item-focused`). Used as the gate for
+    // both tryPlay() and onFocusedChange — observer fires on any class
+    // mutation but we only act on actual focus flips.
     private lastObservedFocused: boolean | null = null;
     /**
      * Optional hook invoked whenever the parent's `item-focused` class flips.
@@ -159,10 +159,13 @@ export class OffThreadRenderBackend implements RenderBackend {
         try { this.videoEl.srcObject = null; } catch { /* ignore */ }
     }
 
-    // F2: when Blazor re-renders the parent's class attribute (e.g., layout
-    // flips item-x ↔ item-focused), Chromium can leave the <video> element
-    // paused after the brief layout transition even though the MSTG track
-    // is still feeding frames. Kick play() on every classList change.
+    // F2: when Blazor re-renders the parent's class attribute and item-focused
+    // flips (item-x ↔ item-focused), Chromium can leave the <video> element
+    // paused after the brief layout transition even though the MSTG track is
+    // still feeding frames. Kick play() on focus flips. The observer fires on
+    // any class mutation but we early-exit when item-focused didn't change —
+    // sidebar-position renumbering (item-x item-1 ↔ item-x item-0) and other
+    // class flips don't pause the video.
     // (Visibility itself is owned by inline `style.display` on the elements,
     // set in video-player.ts applyBackendVisibility — so layout flips no
     // longer hide the video; this observer only nudges playback.)
@@ -170,23 +173,18 @@ export class OffThreadRenderBackend implements RenderBackend {
         if (this.parentClassObserver !== null) return;
         const parent = this.videoEl.parentElement;
         if (!parent) return;
-        this.lastObservedParentCls = parent.className;
         this.lastObservedFocused = parent.classList.contains('item-focused');
         // Initial fire so consumers can sync state at startup (the player may
         // be born already focused or not).
         if (this.onFocusedChange) this.onFocusedChange(this.lastObservedFocused);
         this.parentClassObserver = new MutationObserver(() => {
             if (this.disposed) return;
-            const cls = parent.className;
-            if (cls === this.lastObservedParentCls) return;
-            this.lastObservedParentCls = cls;
-            debugLog?.log(`startParentClassObserver: parent classList changed → "${cls}", retrying play()`);
-            this.tryPlay('parent-classlist-change');
             const focused = parent.classList.contains('item-focused');
-            if (focused !== this.lastObservedFocused) {
-                this.lastObservedFocused = focused;
-                if (this.onFocusedChange) this.onFocusedChange(focused);
-            }
+            if (focused === this.lastObservedFocused) return;
+            this.lastObservedFocused = focused;
+            debugLog?.log(`startParentClassObserver: focused → ${focused}, retrying play()`);
+            this.tryPlay('parent-classlist-change');
+            if (this.onFocusedChange) this.onFocusedChange(focused);
         });
         this.parentClassObserver.observe(parent, { attributes: true, attributeFilter: ['class'] });
     }
