@@ -138,6 +138,12 @@ let startTimestamp: number | undefined = undefined;
 let sourceStartedAtMs: number | undefined = undefined;
 const NEGATIVE_REBASED_TIMESTAMP_GRACE_US = 1000;
 let negativeRebasedTimestampDropCount = 0;
+// True until the first encoder output is observed for the current stream.
+// Reset alongside startTimestamp on stream restarts. Used to detect the
+// iOS Safari encoder timestamp-domain mismatch (first keyframe arrives BEFORE
+// the source-frame anchor by tens of seconds) and re-anchor instead of
+// dropping the entire recording.
+let awaitingFirstEncoderOutput = true;
 let loggedI420Error = false;
 let loggedPreConvertSkipped = false;
 let loggedPreviewCloneError = false;
@@ -1305,7 +1311,22 @@ function onEncoderOutput(chunkData: EncodedChunkData): void {
     let rebasedTs = Math.round(chunkData.chunk.timestamp - startTimestamp);
     if (rebasedTs < 0) {
         const ageUs = -rebasedTs;
-        if (ageUs > NEGATIVE_REBASED_TIMESTAMP_GRACE_US) {
+        // iOS Safari VideoEncoder emits chunks with timestamps from a DIFFERENT
+        // time domain than the input VideoFrame.timestamp (camera CMSampleBuffer
+        // host clock vs internal VTCompressionSession clock). The first source
+        // frame anchors `startTimestamp` in the input domain, but every chunk
+        // arrives BEFORE that anchor in the output domain — we'd drop the entire
+        // recording. On the first encoder output, re-anchor to the chunk clock so
+        // subsequent chunks rebase to non-negative offsets.
+        if (awaitingFirstEncoderOutput && ageUs > NEGATIVE_REBASED_TIMESTAMP_GRACE_US) {
+            warnLog?.log(
+                `onEncoderOutput: encoder timestamp domain mismatch on first chunk ` +
+                `(layer=${chunkData.spatialLayerId ?? 0}, type=${chunkData.type}, seq=${chunkData.sequenceNumber}); ` +
+                `re-anchoring startTimestamp ${(startTimestamp / 1000).toFixed(0)}ms -> ` +
+                `${(chunkData.chunk.timestamp / 1000).toFixed(0)}ms`);
+            startTimestamp = chunkData.chunk.timestamp;
+            rebasedTs = 0;
+        } else if (ageUs > NEGATIVE_REBASED_TIMESTAMP_GRACE_US) {
             negativeRebasedTimestampDropCount++;
             if (negativeRebasedTimestampDropCount <= 3 || negativeRebasedTimestampDropCount % 30 === 0) {
                 warnLog?.log(
@@ -1317,9 +1338,11 @@ function onEncoderOutput(chunkData: EncodedChunkData): void {
                     `type=${chunkData.type}`);
             }
             return;
+        } else {
+            rebasedTs = 0;
         }
-        rebasedTs = 0;
     }
+    awaitingFirstEncoderOutput = false;
 
     if (streamingEnabled) {
         deliverChunkToStream(chunkBuffer, rebasedTs, chunkData.chunk.duration ?? 0,
@@ -1368,6 +1391,7 @@ function deliverChunkToStream(
         videoStream = null;
         startTimestamp = undefined;
         sourceStartedAtMs = undefined;
+        awaitingFirstEncoderOutput = true;
         streamStatus = 'reconnecting: waiting for keyframe';
     }
 
@@ -2366,7 +2390,7 @@ export const serverImpl: VideoProcessingWorker = {
                 try { await videoStream.whenDisposed; } catch { /* ignore */ }
                 videoStream = null;
             }
-            codecSettings = null; startTimestamp = undefined; sourceStartedAtMs = undefined; pendingStreamFrames = []; storedDescriptionBytesByLayer.clear();
+            codecSettings = null; startTimestamp = undefined; sourceStartedAtMs = undefined; awaitingFirstEncoderOutput = true; pendingStreamFrames = []; storedDescriptionBytesByLayer.clear();
             if (lastEncodedFrame) { lastEncodedFrame.close(); lastEncodedFrame = null; }
             pendingEncoderFrame.clear();
             // Synchronous configure() failure inside switchCodec already surfaces via
@@ -2432,6 +2456,7 @@ export const serverImpl: VideoProcessingWorker = {
         pendingStreamFrames = [];
         startTimestamp = undefined;
         sourceStartedAtMs = undefined;
+        awaitingFirstEncoderOutput = true;
         slotReplacements = 0; slotArrivals = 0; lastSlotCheckTime = 0; slotPressureNotified = false;
         // Always reset encoderFailed and framesWithoutOutput on codec switch — the
         // new codec attempt deserves its own watchdog cycle. If switchCodec failed
@@ -2629,7 +2654,7 @@ export const serverImpl: VideoProcessingWorker = {
         // Reset all state
         encoder = null; encoderConfig = null; encodersInitialized = false; onnxSession = null; segConfig = null; resolvedModelConfig = null;
         segInitialized = false; blurEnabled = false; resizeCanvas = null; resizeCtx = null;
-        startTimestamp = undefined; sourceStartedAtMs = undefined; loggedI420Error = false; loggedPreConvertSkipped = false;
+        startTimestamp = undefined; sourceStartedAtMs = undefined; awaitingFirstEncoderOutput = true; loggedI420Error = false; loggedPreConvertSkipped = false;
         slotReplacements = 0; slotArrivals = 0; lastSlotCheckTime = 0; slotPressureNotified = false;
         dimensionsReconciled = false; needsRotation = false; orientationStats = null; sourceWidth = 0; sourceHeight = 0; vadSpeaking = true; vadRemoteStreamCount = 0; vadLastPassedFrameTime = 0;
         segFrameCounter = 0; hasValidMask = false; processingFrame = false; frameSequence = 0;
