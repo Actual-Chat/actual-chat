@@ -127,8 +127,8 @@ export class WebCodecsDecoder {
                 // Track resolution changes
                 const currentResolution = { width: frame.displayWidth, height: frame.displayHeight };
                 if (!this.lastResolution ||
-            this.lastResolution.width !== currentResolution.width ||
-            this.lastResolution.height !== currentResolution.height) {
+                    this.lastResolution.width !== currentResolution.width ||
+                    this.lastResolution.height !== currentResolution.height) {
                     infoLog?.log(`Resolution changed: ${this.lastResolution ? `${this.lastResolution.width}x${this.lastResolution.height}` : 'initial'} -> ${currentResolution.width}x${currentResolution.height}`);
                     this.lastResolution = currentResolution;
                 }
