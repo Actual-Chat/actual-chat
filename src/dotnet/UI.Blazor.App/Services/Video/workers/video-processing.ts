@@ -508,6 +508,10 @@ function endEncoderTransition(): void {
     switchInProgress = encoderTransitionDepth > 0;
 }
 
+function isEncoderTransitionActive(): boolean {
+    return switchInProgress;
+}
+
 // ─── Screencast heartbeat ──────────────────────────────────────────────────
 // getDisplayMedia is change-driven: a static screen produces zero frames. Without
 // traffic, (a) the server's frame-silence watchdog reaps the stream, and (b) the
@@ -842,6 +846,8 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
     // or closed by a real WebCodecs error) skip the encode call. The
     // dead-encoder watchdog already escalates after framesWithoutOutput >= 30.
     if (encoder.getState() !== 'configured') { frame.close(); return; }
+    const activeEncoder = encoder;
+    const activeEncoderConfig = encoderConfig;
 
     // Track the live VideoFrame reference at each pipeline stage so the catch
     // path can close whatever's still owned. Without this, an exception between
@@ -875,7 +881,10 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
                 fallbackRotationDeg: senderRotationDeg,
             });
             sourceFrame = null;
-            if (!encoder || !processing || !encoderConfig || switchInProgress || encoder.getState() !== 'configured') {
+            if (isEncoderTransitionActive()
+                || encoder !== activeEncoder
+                || encoderConfig !== activeEncoderConfig
+                || activeEncoder.getState() !== 'configured') {
                 for (const result of results)
                     try { result.frame.close(); } catch { /* already closed */ }
                 liveFrame = null;
@@ -1015,7 +1024,10 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
         // Frames carry source-timeline timestamps; primary + simulcast extras
         // share one timeline here. Rebase to recording-anchor offsets happens
         // post-encode in onEncoderOutput.
-        if (!encoder || !processing || !encoderConfig || switchInProgress || encoder.getState() !== 'configured') {
+        if (isEncoderTransitionActive()
+            || encoder !== activeEncoder
+            || encoderConfig !== activeEncoderConfig
+            || activeEncoder.getState() !== 'configured') {
             liveFrame = null;
             processedFrame.close();
             return;
@@ -1040,7 +1052,7 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
         liveFrame = null;
         if (!downscaler)
             registerEncodeFrameCost(processedFrame.timestamp, 1);
-        encoder.encode(processedFrame, forceKf);
+        activeEncoder.encode(processedFrame, forceKf);
         framesWithoutOutput++;
 
         // Detect dead encoder: error seen + 30 frames (~1s @ 30fps) with zero
