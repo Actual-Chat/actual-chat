@@ -338,7 +338,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                         ? q => q.Match(m => m.Field(x => x.PlaceIds).Query(query.PlaceId.Value))
                         : null)
                 .MustNot(
-                    qc => qc.HasChild<IndexedUserContact>(c => c.Query(q => q.MatchAll())),
+                    qc => qc.HasChild<IndexedUserContact>(c => c.Query(q => q.Match(m => m.Field(x => x.OwnerId).Query(userId.Value)))),
                     qc => qc.Match(m => m.Field(x => x.Id).Query(userId.Value)));
 
         ContactSearchResult ToSearchResult(IHit<IndexedUser> hit)
