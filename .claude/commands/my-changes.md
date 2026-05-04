@@ -255,6 +255,33 @@ No commits by <user> in <window>.
 
 Don't pad with empty sections, and don't invent activity.
 
+### 8. LOC footer
+
+End the report with a single trailing line summarizing total lines of code
+added and removed across all commits included in the report:
+
+```
+LOCs: +<added>/-<removed>
+```
+
+Compute by summing `--numstat` rows from the same `git log` invocation(s)
+used in step 3 (and step 6 for the sibling repo). Combine both repos into
+the single total. Skip binary rows (where numstat reports `-` for both
+columns). Example:
+
+```bash
+git log <range_or_since> --no-merges \
+  --author="<login>" --author="<name>" --author="<email>" \
+  --numstat --format= \
+  | awk '$1 != "-" { add += $1; del += $2 } END { print add, del }'
+```
+
+If the sibling repo contributed commits, run the same against it with
+`-C /proj/ActualLab.Fusion` and add its totals before printing the line.
+
+Place the `LOCs:` line on its own at the very bottom of the output, after
+any window/summary sentence — it's the last thing the user sees.
+
 ## Constraints
 
 - **Read-only.** No `git push`, no `git fetch`, no checkouts, no commits, no
