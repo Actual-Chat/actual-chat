@@ -381,6 +381,13 @@ let waitingForKeyframe = false;
  */
 function emitDecodedFrame(frame: VideoFrame): void {
     frameCount++;
+    if (frameCount === 1 || frameCount % 60 === 0) {
+        infoLog?.log(
+            `emitDecodedFrame #${frameCount}: ts=${(frame.timestamp / 1000).toFixed(0)}ms ` +
+            `codedSize=${frame.codedWidth}x${frame.codedHeight} ` +
+            `displaySize=${frame.displayWidth}x${frame.displayHeight} ` +
+            `mstgSelector=${mstgSelector ? 'yes' : 'no'}`);
+    }
     // Capture decoder's actual output dim — the GOP currently being rendered.
     // Reported back to main thread via DecoderWorkerLatencyReport for output
     // verification. Tracks transitions atomically (decoder rebuilds, simulcast
@@ -434,7 +441,6 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
     let burstCount = 0;
     let burstWindowStart = 0;
     let burstReported = false;
-    let negativeOffsetReceiveCount = 0;
 
     try {
         infoLog?.log(`pull: GetStream(${streamId}, skipTo=${skipToMs}ms, retry=${pullRetryCount})`);
@@ -462,17 +468,6 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
 
             const offsetMs = momentToSeconds(frame.Offset) * 1000;
             const durationMs = momentToSeconds(frame.Duration) * 1000;
-            if (offsetMs < 0) {
-                negativeOffsetReceiveCount++;
-                if (negativeOffsetReceiveCount <= 3 || negativeOffsetReceiveCount % 30 === 0) {
-                    warnLog?.log(
-                        `runPullLoop: received negative frame offset #${negativeOffsetReceiveCount}: ` +
-                        `offset=${offsetMs.toFixed(0)}ms, ticks=${String(frame.Offset)}, ` +
-                        `duration=${durationMs.toFixed(0)}ms, key=${frame.IsKeyFrame}, ` +
-                        `layer=${frame.SpatialLayerId ?? 0}, temporal=${frame.TemporalLayerId ?? 0}, ` +
-                        `pullFrame=${pullFrameCount}, streamId=${streamId}`);
-                }
-            }
             if (offsetMs > lastArrivedOffsetMs) lastArrivedOffsetMs = offsetMs;
 
             const data = frame.Data;
@@ -652,7 +647,17 @@ const DRAIN_DECODE_QUEUE_LIMIT = 4;
 const DRAIN_BACKOFF_MS = 5;
 
 let encodedBuffer: EncodedChunkBuffer | null = null;
-let skipFramesBeforeUs = 0;
+// Live keyframe gate diagnostics: count chunks dropped at decodeRawChunk
+// while the gate is armed, plus a watchdog that warns if the gate stays
+// armed for an unreasonable time (a permanent freeze symptom — added for
+// the iOS HEVC tab-background stall reported after commit 5bc5768f).
+let gateArmedAtMs = 0;
+let gateDropCount = 0;
+let gateDropFirstTs = 0;
+let gateDropLastTs = 0;
+let gateLastReason = '';
+let gateWatchdogTimer: ReturnType<typeof setTimeout> | null = null;
+const GATE_WATCHDOG_MS = 4000;
 
 // Wallclock-anchored decode pacing. The encoded buffer is the receive-side
 // jitter cushion — its span is the canonical "buffer low" signal. Decode is
@@ -685,14 +690,6 @@ function clearEncodedBuffer(): void {
     resetDecodeAnchor();
 }
 
-function getLiveTargetOffsetUs(): number {
-    if (pullStartedAtMs <= 0)
-        return 0;
-
-    const liveOffsetMs = Math.max(0, ServerClock.now() - pullStartedAtMs);
-    return Math.max(0, liveOffsetMs - VIDEO.targetBufferDurationMs) * 1000;
-}
-
 function requestKeyframe(reason: string): void {
     if (!activePullStreamId) return;
     const now = performance.now();
@@ -704,20 +701,66 @@ function requestKeyframe(reason: string): void {
         .catch((e: unknown) => warnLog?.log('RequestKeyFrame error:', e));
 }
 
-function waitForLiveKeyframe(reason: string, minimumOffsetUs = getLiveTargetOffsetUs()): void {
-    skipFramesBeforeUs = Math.max(skipFramesBeforeUs, minimumOffsetUs);
+// Gate the decoder until the next keyframe arrives. Only drops non-keyframe
+// chunks — never compares chunk timestamps against a live-offset threshold,
+// because chunk.timestamp is in encoder/recording-anchor units while
+// live-offset is server-wallclock units. A previous version mixed those
+// timelines and stalled forever when iOS source frames went non-monotonic
+// (camera restart / tab background→foreground). See commit 5bc5768f.
+function waitForLiveKeyframe(reason: string): void {
+    const wasArmed = waitingForKeyframe;
     waitingForKeyframe = true;
     clearEncodedBuffer();
     mstgSelector?.resetPrimming();
     requestKeyframe(reason);
+    armGateWatchdog(reason, wasArmed);
 }
 
-function waitForNextKeyframe(reason: string): void {
-    skipFramesBeforeUs = 0;
-    waitingForKeyframe = true;
-    clearEncodedBuffer();
-    mstgSelector?.resetPrimming();
-    requestKeyframe(reason);
+function armGateWatchdog(reason: string, wasArmed: boolean): void {
+    if (gateWatchdogTimer === null) {
+        gateArmedAtMs = performance.now();
+        gateDropCount = 0;
+        gateDropFirstTs = 0;
+        gateDropLastTs = 0;
+    }
+    gateLastReason = reason;
+    if (!wasArmed) {
+        infoLog?.log(
+            `Gate armed (${reason}): live=${ServerClock.now().toFixed(0)} - ` +
+            `pullStarted=${pullStartedAtMs.toFixed(0)} = liveOffset=${(ServerClock.now() - pullStartedAtMs).toFixed(0)}ms`);
+    }
+    if (gateWatchdogTimer !== null) clearTimeout(gateWatchdogTimer);
+    gateWatchdogTimer = setTimeout(checkGateWatchdog, GATE_WATCHDOG_MS);
+}
+
+function checkGateWatchdog(): void {
+    gateWatchdogTimer = null;
+    if (!waitingForKeyframe) return;
+    const armedMs = performance.now() - gateArmedAtMs;
+    warnLog?.log(
+        `Gate watchdog: still armed after ${armedMs.toFixed(0)}ms ` +
+        `(reason="${gateLastReason}", dropped=${gateDropCount} chunks ts=[` +
+        `${(gateDropFirstTs / 1000).toFixed(0)}ms..${(gateDropLastTs / 1000).toFixed(0)}ms], ` +
+        `pullActive=${pullActive}, streamId=${activePullStreamId ?? 'null'}, ` +
+        `decodeQueueSize=${decoder?.getDecodeQueueSize() ?? -1})`);
+    requestKeyframe('gate watchdog');
+    gateWatchdogTimer = setTimeout(checkGateWatchdog, GATE_WATCHDOG_MS);
+}
+
+function clearGateWatchdog(): void {
+    if (gateWatchdogTimer !== null) {
+        clearTimeout(gateWatchdogTimer);
+        gateWatchdogTimer = null;
+    }
+    if (gateDropCount > 0) {
+        const armedMs = performance.now() - gateArmedAtMs;
+        infoLog?.log(
+            `Gate cleared: armed=${armedMs.toFixed(0)}ms, dropped=${gateDropCount} chunks ` +
+            `ts=[${(gateDropFirstTs / 1000).toFixed(0)}ms..${(gateDropLastTs / 1000).toFixed(0)}ms]`);
+    }
+    gateDropCount = 0;
+    gateDropFirstTs = 0;
+    gateDropLastTs = 0;
 }
 
 function gateAfterDroppedEncodedChunk(reason: string): void {
@@ -1047,6 +1090,24 @@ async function processEncodedChunk(
             );
             decoder.initialize();
             decoderConfigured = true;
+            // Cache the description so the recovery branch can re-apply it
+            // when this decoder errors later. iOS HEVC sender ships
+            // descLen=0 on subsequent keyframes (in-band parameter sets),
+            // and Chrome HEVC HW decoder requires the HVCC description on
+            // every configure() — without this cache, recovery rebuilds
+            // the decoder without description and Chrome rejects every
+            // chunk with "A key frame is required after configure(). If
+            // you're using HEVC formatted H.265 you must fill out the
+            // description field".
+            const initDesc = currentDecoderConfig.description;
+            if (initDesc instanceof ArrayBuffer) {
+                lastRawDescription = initDesc.slice(0);
+            } else if (ArrayBuffer.isView(initDesc)) {
+                const view = new Uint8Array(initDesc.buffer, initDesc.byteOffset, initDesc.byteLength);
+                const copy = new Uint8Array(view.byteLength);
+                copy.set(view);
+                lastRawDescription = copy.buffer;
+            }
         } else if (
             isKeyFrame
             && !decoderConfigured
@@ -1120,7 +1181,15 @@ async function processEncodedChunk(
                 currentCodedWidth = width;
                 currentCodedHeight = height;
             } else if (width !== currentCodedWidth || height !== currentCodedHeight) {
-                const compatible = await isCurrentCodecCompatible(width, height, description);
+                // Probe with the chunk's description if present, else fall back to the cached
+                // HVCC. Without bytes, isConfigSupported(codec, dims) skips level enforcement
+                // — Chrome accepts a low-level codec (e.g. L63) at top-tier dims (720×1280)
+                // and decode() then silently fails. Carrying ANY HVCC (even the prior layer's)
+                // forces the level check; if it rejects, we drop into the reselect branch and
+                // pick a higher-level candidate.
+                const probeDescription: ArrayBuffer | undefined = description
+                    ?? (lastRawDescription ?? undefined);
+                const compatible = await isCurrentCodecCompatible(width, height, probeDescription);
                 if (compatible) {
                     infoLog?.log(`Resolution change ${currentCodedWidth}x${currentCodedHeight} ` +
                         `-> ${width}x${height}; codec ${currentDecoderConfig?.codec} compatible, ` +
@@ -1163,11 +1232,16 @@ async function processEncodedChunk(
                     }
                 } else {
                     const oldCodec = currentDecoderConfig!.codec;
+                    // Reselect against the cached HVCC if the chunk doesn't carry one
+                    // — see probeDescription above for the same reason.
+                    const reselectDescription: ArrayBuffer | undefined = description
+                        ?? (lastRawDescription ?? undefined);
                     warnLog?.log(`Resolution change ${currentCodedWidth}x${currentCodedHeight} ` +
-                        `-> ${width}x${height} incompatible with ${oldCodec}; reselecting`);
-                    const candidates = getCodecCandidates(oldCodec, description);
+                        `-> ${width}x${height} incompatible with ${oldCodec}; reselecting ` +
+                        `(descSource=${description ? 'chunk' : (lastRawDescription ? 'cached' : 'none')})`);
+                    const candidates = getCodecCandidates(oldCodec, reselectDescription);
                     const selection = await selectDecoderCodec(
-                        candidates, description, { width, height }, failedCandidates);
+                        candidates, reselectDescription, { width, height }, failedCandidates);
                     if (!selection) {
                         errorLog?.log(`No HW-supported codec for ${width}x${height}; ending stream`);
                         if (pullActive) {
@@ -1186,8 +1260,8 @@ async function processEncodedChunk(
                         codedWidth: width,
                         codedHeight: height,
                     };
-                    const freshConfig: DecoderConfig = description
-                        ? { ...currentDecoderConfig, description }
+                    const freshConfig: DecoderConfig = reselectDescription
+                        ? { ...currentDecoderConfig, description: reselectDescription }
                         : { ...currentDecoderConfig, description: undefined };
                     decoder = new WebCodecsDecoder(
                         freshConfig,
@@ -1232,6 +1306,25 @@ async function processEncodedChunk(
         // Check decoder state — recover from closed/error state on keyframe
         if (decoder.getState() !== 'configured') {
             if (isKeyFrame && currentDecoderConfig) {
+                // After RECOVERY_MAX_ATTEMPTS consecutive failed recoveries,
+                // surface a stream-level failure instead of recreating
+                // forever. The receiver UI can re-pull cleanly via skipTo
+                // (the existing app-layer recovery), and a clean failure
+                // beats an endless decoder churn. Checked BEFORE the cooldown
+                // gate — otherwise an exhausted decoder receiving keyframes
+                // within RECOVERY_COOLDOWN_MS would silently loop on
+                // "Recovery skipped" without ever ending the stream.
+                if (consecutiveRecoveries >= RECOVERY_MAX_ATTEMPTS) {
+                    errorLog?.log(`Recovery gave up after ${consecutiveRecoveries} ` +
+                        `consecutive attempts; reporting stream end`);
+                    if (pullActive) {
+                        pullActive = false;
+                        void callbacks.onPullEnded(
+                            'decoder unrecoverable after retries',
+                            rpcNoWait);
+                    }
+                    return;
+                }
                 // Recovery cooldown: skip recreation if we already attempted
                 // one within RECOVERY_COOLDOWN_MS. Without this gate, a HW
                 // decoder that fails every ~3 s would be rebuilt on every
@@ -1243,22 +1336,6 @@ async function processEncodedChunk(
                     warnLog?.log(`Recovery skipped (cooldown ${
                         RECOVERY_COOLDOWN_MS}ms): seq=${sequenceNumber}, ` +
                         `${nowMs - lastRecoveryAtMs}ms since last attempt`);
-                    return;
-                }
-                // After RECOVERY_MAX_ATTEMPTS consecutive failed recoveries,
-                // surface a stream-level failure instead of recreating
-                // forever. The receiver UI can re-pull cleanly via skipTo
-                // (the existing app-layer recovery), and a clean failure
-                // beats an endless decoder churn.
-                if (consecutiveRecoveries >= RECOVERY_MAX_ATTEMPTS) {
-                    errorLog?.log(`Recovery gave up after ${consecutiveRecoveries} ` +
-                        `consecutive attempts; reporting stream end`);
-                    if (pullActive) {
-                        pullActive = false;
-                        void callbacks.onPullEnded(
-                            'decoder unrecoverable after retries',
-                            rpcNoWait);
-                    }
                     return;
                 }
                 consecutiveRecoveries++;
@@ -1540,7 +1617,7 @@ const serverImpl: DecoderWorker = {
             lastChunkDescLen = 0;
             waitingForKeyframe = false;
             initialDescriptionApplied = false;
-            skipFramesBeforeUs = 0;
+            clearGateWatchdog();
             clearEncodedBuffer();
         } catch (error) {
             errorLog?.log('Failed to stop decoder:', error);
@@ -1569,19 +1646,16 @@ const serverImpl: DecoderWorker = {
         description?: ArrayBuffer
     ): Promise<void> => {
         if (!processing) return;
-        if (skipFramesBeforeUs > 0) {
-            if (!isKeyFrame || timestamp < skipFramesBeforeUs) {
-                return;
-            }
-            infoLog?.log(
-                `Live keyframe gate cleared at ${(timestamp / 1000).toFixed(0)}ms ` +
-                `(threshold ${(skipFramesBeforeUs / 1000).toFixed(0)}ms)`);
-            skipFramesBeforeUs = 0;
-            clearEncodedBuffer();
-        }
-        if (waitingForKeyframe && !isKeyFrame) {
-            return;
-        }
+        // Note: no early gate here. The receive-side `waitingForKeyframe`
+        // gate runs at `processEncodedChunk` (after buffer drain), where
+        // it has the decoder + description context to handle first-key
+        // bootstrap correctly. Dropping at this RPC entry would also
+        // discard keyframes when buffered chunks have stale/negative
+        // timestamps (iOS MSTP timestamp regression on tab background→
+        // foreground), since the previous version compared chunk
+        // timestamp against a live-offset threshold from a different
+        // timeline. Buffer everything; the drain path drops what it
+        // can't decode.
         pushEncodedChunk({
             timestamp, duration, isKeyFrame, sequenceNumber,
             width, height, data, description,
@@ -1590,13 +1664,11 @@ const serverImpl: DecoderWorker = {
 
     // eslint-disable-next-line @typescript-eslint/require-await
     flagWaitingForKeyframe: async (): Promise<void> => {
-        // Drop buffered/arriving deltas until the next keyframe arrives.
+        // Drop buffered/arriving chunks until the next live keyframe arrives.
         // Does NOT touch the decoder — keeps it alive so it can consume the
-        // recovery keyframe normally. This is keyframe-only because the caller
-        // only needs a GOP boundary; live-edge thresholding belongs to the
-        // explicit live catch-up paths.
-        waitForNextKeyframe('flagWaitingForKeyframe');
-        infoLog?.log('flagWaitingForKeyframe: waiting for next keyframe');
+        // recovery keyframe normally.
+        waitForLiveKeyframe('flagWaitingForKeyframe');
+        infoLog?.log('flagWaitingForKeyframe: gate armed');
     },
 
     /**
@@ -1809,15 +1881,12 @@ const serverImpl: DecoderWorker = {
         // chunk of this pull will re-bootstrap.
         resetDecodeAnchor();
         if (skipToMs > VIDEO.targetBufferDurationMs) {
-            const minimumOffsetUs = Math.max(0, skipToMs - VIDEO.targetBufferDurationMs) * 1000;
-            waitForLiveKeyframe('startPullInWorker', minimumOffsetUs);
+            waitForLiveKeyframe('startPullInWorker');
             infoLog?.log(
-                `startPullInWorker: live-join gate armed, ` +
-                `skipTo=${skipToMs.toFixed(0)}ms, ` +
-                `threshold=${(minimumOffsetUs / 1000).toFixed(0)}ms`);
+                `startPullInWorker: live-join gate armed, skipTo=${skipToMs.toFixed(0)}ms`);
         } else {
-            skipFramesBeforeUs = 0;
             waitingForKeyframe = false;
+            clearGateWatchdog();
         }
         // Fire and forget — pull loop runs in background, ends via onPullEnded.
         void runPullLoop(streamId, skipToMs);
@@ -1826,16 +1895,12 @@ const serverImpl: DecoderWorker = {
     stopPullInWorker: async (): Promise<void> => {
         pullActive = false;
         activePullStreamId = null;
-        skipFramesBeforeUs = 0;
-        resetDecodeAnchor();
+        waitingForKeyframe = false;
+        clearGateWatchdog();
         clearEncodedBuffer();
         if (pullAbortController) {
             pullAbortController.abort();
             pullAbortController = null;
-        }
-        if (mstgSelector) {
-            mstgSelector.dispose();
-            mstgSelector = null;
         }
         await Promise.resolve();
     },

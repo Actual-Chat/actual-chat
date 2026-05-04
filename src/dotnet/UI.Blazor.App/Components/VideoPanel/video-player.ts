@@ -542,6 +542,23 @@ export class VideoPlayer {
                         return Promise.resolve();
                     },
                     onPullEnded: (errorMessage: string | null) => {
+                        // Worker signals decoder gave up (all codec candidates failed,
+                        // or recovery exhausted RECOVERY_MAX_ATTEMPTS without producing
+                        // a frame). The output-verification + slow-decode exclusion
+                        // paths require the decoder to actually decode — neither fires
+                        // when zero frames came out. Request codec exclusion here so
+                        // the sender drops to H.264 instead of looping on dead HEVC.
+                        const isDecoderFailure = errorMessage === 'codec exhausted'
+                            || errorMessage === 'decoder unrecoverable after retries';
+                        if (isDecoderFailure
+                            && this.shouldRequestCodecExclusion()
+                            && !this.codecExclusionRequested) {
+                            this.codecExclusionRequested = true;
+                            warnLog?.log(
+                                `onPullEnded: requesting codec exclusion for ${this.codecCategory} ` +
+                                `(reason: ${errorMessage})`);
+                            void this.blazorRef.invokeMethodAsync('OnRequestCodecExclusion', this.codecCategory);
+                        }
                         void this.reportEnded(errorMessage ?? undefined);
                         return Promise.resolve();
                     },

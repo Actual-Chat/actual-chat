@@ -223,8 +223,29 @@ export class WebCodecsDecoder {
         infoLog?.log('Decoder reconfigured with description');
     }
 
+    private dropDeltasGateArmedAtMs = 0;
+    private dropDeltasGateDropCount = 0;
+
     private gateAfterDroppedChunk(): void {
+        if (!this.dropDeltasUntilKeyframe) {
+            this.dropDeltasGateArmedAtMs = performance.now();
+            this.dropDeltasGateDropCount = 0;
+            warnLog?.log(
+                `dropDeltasUntilKeyframe armed: decodeQueueSize=${this.decoder.decodeQueueSize}, ` +
+                `state=${this.decoder.state}`);
+        }
         this.dropDeltasUntilKeyframe = true;
+    }
+
+    private clearDropDeltasGate(): void {
+        if (this.dropDeltasUntilKeyframe) {
+            const armedMs = performance.now() - this.dropDeltasGateArmedAtMs;
+            warnLog?.log(
+                `dropDeltasUntilKeyframe cleared: armed=${armedMs.toFixed(0)}ms, ` +
+                `dropped=${this.dropDeltasGateDropCount} deltas`);
+        }
+        this.dropDeltasUntilKeyframe = false;
+        this.dropDeltasGateDropCount = 0;
     }
 
     decodeRaw(chunk: EncodedVideoChunk): void {
@@ -236,9 +257,10 @@ export class WebCodecsDecoder {
         if (this.dropDeltasUntilKeyframe) {
             if (chunk.type !== 'key') {
                 this.droppedFrames++;
+                this.dropDeltasGateDropCount++;
                 return;
             }
-            this.dropDeltasUntilKeyframe = false;
+            this.clearDropDeltasGate();
             this.closeArtifactWindow();
         }
         // Backpressure: drop delta chunks when decoder queue is saturated.
@@ -289,9 +311,10 @@ export class WebCodecsDecoder {
         if (this.dropDeltasUntilKeyframe) {
             if (chunkData.type !== 'key') {
                 this.droppedFrames++;
+                this.dropDeltasGateDropCount++;
                 return;
             }
-            this.dropDeltasUntilKeyframe = false;
+            this.clearDropDeltasGate();
             this.closeArtifactWindow();
         }
 
