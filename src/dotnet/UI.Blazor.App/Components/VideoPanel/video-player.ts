@@ -1159,15 +1159,17 @@ export class VideoPlayer {
         void this.reportPlaying(0, true);
     }
 
-    // Tracks the canvas-derived quality level so Step 10.4 can rebind this signal
-    // to the Primary/Secondary playback-priority callback. Until that lands the
-    // function only logs the transition.
     private maybeSendRenderHint(): number | null | undefined {
         const level = this.computeRenderQualityLevel();
         if (level === this.lastSentRenderQuality) return undefined;
         this.lastSentRenderQuality = level;
-        if (level === null) return level;
-        debugLog?.log(`RenderQuality hint: level=${level} (canvas=${this.canvas.clientWidth}x${this.canvas.clientHeight})`);
+        const currentMaxSpatial = maxSpatialForRenderQualityLevel(level);
+        const priority = priorityForRenderQualityLevel(level);
+        void this.blazorRef.invokeMethodAsync('OnPlaybackRenderHint', currentMaxSpatial, priority)
+            .catch((e: unknown) => warnLog?.log('OnPlaybackRenderHint error:', e));
+        debugLog?.log(
+            `RenderQuality hint: level=${level ?? 'uncapped'} maxSpatial=${currentMaxSpatial} ` +
+            `priority=${priority} (canvas=${this.canvas.clientWidth}x${this.canvas.clientHeight})`);
         return level;
     }
 
@@ -2009,9 +2011,7 @@ export class VideoPlayer {
             decoderQueueDepthEma: this.decoderQueueDepthEma.value,
             currentMaxSpatial: maxSpatialForRenderQualityLevel(renderLevel),
             currentMaxTemporal: MAX_TEMPORAL_LAYER,
-            priority: renderLevel === null || renderLevel <= 2
-                ? PLAYBACK_PRIORITY_PRIMARY
-                : PLAYBACK_PRIORITY_SECONDARY,
+            priority: priorityForRenderQualityLevel(renderLevel),
             streamAgeMs: Math.max(0, Math.round(performance.now() - this.createdAtMs)),
             qualityReductionRequested: this.qualityReductionRequested,
             latencyMsEma: Math.max(0, this.pipelineLatencyMs),
@@ -2046,4 +2046,10 @@ function maxSpatialForRenderQualityLevel(level: number | null): number {
     if (level >= 3)
         return 1;
     return DEFAULT_MAX_SPATIAL_LAYER;
+}
+
+function priorityForRenderQualityLevel(level: number | null): number {
+    return level === null || level <= 2
+        ? PLAYBACK_PRIORITY_PRIMARY
+        : PLAYBACK_PRIORITY_SECONDARY;
 }

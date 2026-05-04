@@ -218,6 +218,61 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         return RecomputePlaybackQuality(PlaybackQualityReason.Backoff, cancellationToken);
     }
 
+    public Task PushPlaybackRenderHint(
+        StreamId streamId,
+        StreamKind streamKind,
+        int currentMaxSpatial,
+        PlaybackStreamPriority priority,
+        CancellationToken cancellationToken)
+    {
+        lock (_playbackLock) {
+            if (!_playbackStartedAt.ContainsKey(streamId))
+                _playbackStartedAt[streamId] = CpuTimestamp.Now;
+            if (_playbackByStream.TryGetValue(streamId, out var state)) {
+                var startedAt = _playbackStartedAt.GetValueOrDefault(streamId);
+                var snapshot = state.Snapshot with {
+                    CurrentMaxSpatial = currentMaxSpatial,
+                    Priority = priority,
+                    StreamAgeMs = Math.Max(
+                        state.Snapshot.StreamAgeMs,
+                        (int)startedAt.Elapsed.TotalMilliseconds),
+                };
+                var verdict = PlaybackVerdictClassifier.Classify(
+                    snapshot.BufferDurationMsEma,
+                    snapshot.KeyframeSkipsInWindow,
+                    PlaybackThresholds.Defaults,
+                    snapshot.StreamAgeMs,
+                    snapshot.DecoderQueueDepthEma,
+                    snapshot.QualityReductionRequested);
+                _playbackByStream[streamId] = state with {
+                    StreamKind = streamKind,
+                    Snapshot = snapshot,
+                    Verdict = verdict,
+                    LastSeen = CpuTimestamp.Now,
+                };
+            }
+            else {
+                _playbackByStream[streamId] = new PlaybackHealthState(
+                    streamKind,
+                    new PlaybackHealthSnapshot(
+                        IncomingByteRate: 0,
+                        BufferDurationMsEma: 0,
+                        KeyframeSkipsInWindow: 0,
+                        DecoderQueueDepthEma: 0,
+                        CurrentMaxSpatial: currentMaxSpatial,
+                        CurrentMaxTemporal: int.MaxValue,
+                        Priority: priority,
+                        StreamAgeMs: 0),
+                    Verdict: 0,
+                    LastSeen: CpuTimestamp.Now,
+                    PeakIncomingByteRate: 0,
+                    RequestedMaxSpatial: StartupSpatialLayer(streamKind));
+            }
+            _playbackLastEvalAt[streamId] = CpuTimestamp.Now;
+        }
+        return RecomputePlaybackQuality(PlaybackQualityReason.ActiveSetChanged, cancellationToken);
+    }
+
     public async Task SetDebugMaxRecordingLayerCount(int? layerCount, CancellationToken cancellationToken)
     {
         layerCount = NormalizeLayerCount(layerCount);

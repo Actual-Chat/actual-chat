@@ -166,6 +166,27 @@
     }
 
     [JSInvokable]
+    public async Task OnPlaybackRenderHint(int currentMaxSpatial, int priority)
+    {
+        if (_isDisposed)
+            return;
+
+        try {
+            await Hub.VideoQualityUI
+                .PushPlaybackRenderHint(
+                    StreamInfo.StreamId,
+                    StreamInfo.StreamKind,
+                    currentMaxSpatial,
+                    (PlaybackStreamPriority)priority,
+                    CancellationToken.None)
+                .ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "[VideoTrackPlayer #{StreamId}] OnPlaybackRenderHint failed", StreamInfo.StreamId);
+        }
+    }
+
+    [JSInvokable]
     public void OnPresentationLag(double lagMs)
     {
         // Webcam-only: screencast pacing is too uneven to be a useful A/V sync target.
