@@ -70,7 +70,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
                 continue;
             }
 
-            await ConvertBatch(items, cancellationToken).ConfigureAwait(false);
+            var convertedInBatch = await ConvertBatch(items, cancellationToken).ConfigureAwait(false);
 
             Console.Log($"Phase {Phase}: {ConvertedCount} converted, {SkippedCount} skipped, {FailedCount} failed");
 
@@ -79,6 +79,8 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
                 LastProcessedEntityId = null;
                 continue;
             }
+            if (convertedInBatch == 0)
+                continue;
 
             Runtime.StageResumeIn(BatchDelay.Next());
             return;
@@ -178,8 +180,9 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
 
     // Private methods - conversion
 
-    private async Task ConvertBatch(List<UsedMedia> items, CancellationToken cancellationToken)
+    private async Task<long> ConvertBatch(List<UsedMedia> items, CancellationToken cancellationToken)
     {
+        var convertedBefore = ConvertedCount;
         foreach (var item in items)
             try {
                 var converted = await ProcessOne(item, cancellationToken).ConfigureAwait(false);
@@ -196,6 +199,7 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
             }
 
         LastProcessedEntityId = items[^1].EntityId;
+        return ConvertedCount - convertedBefore;
     }
 
     private async Task<bool> ProcessOne(UsedMedia item, CancellationToken cancellationToken)
