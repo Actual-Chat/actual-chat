@@ -84,13 +84,13 @@ export class MediaCapture {
         const requestedSmall = options.width && options.height
             ? Math.min(options.width, options.height)
             : 0;
-        const targetLarge = Math.max(requestedLarge, 1920);
-        const targetSmall = Math.max(requestedSmall, 1080);
+        const targetLarge = Math.max(requestedLarge, 1280);
+        const targetSmall = Math.max(requestedSmall, 720);
         const minLarge = 1280;
         const minSmall = 720;
         const max = targetLarge * 2;
         const landscape: CameraConstraintCandidate = {
-            name: 'native 1080p landscape',
+            name: 'native 720p landscape',
             constraints: MediaCapture.buildCameraConstraints(options, {
                 width: { min: minLarge, ideal: targetLarge, max },
                 height: { min: minSmall, ideal: targetSmall, max },
@@ -99,7 +99,7 @@ export class MediaCapture {
             fallbackOnFailure: true,
         };
         const portrait: CameraConstraintCandidate = {
-            name: 'native 1080p portrait',
+            name: 'native 720p portrait',
             constraints: MediaCapture.buildCameraConstraints(options, {
                 width: { min: minSmall, ideal: targetSmall, max },
                 height: { min: minLarge, ideal: targetLarge, max },
@@ -113,7 +113,7 @@ export class MediaCapture {
         return [
             ...strictCandidates,
             {
-                name: 'permissive native 1080p',
+                name: 'permissive native 720p',
                 constraints: MediaCapture.buildCameraConstraints(options, {
                     width: { ideal: targetLarge, max },
                     height: { ideal: targetSmall, max },
