@@ -55,6 +55,15 @@ let lastRecoveryAtMs = 0;
 let consecutiveRecoveries = 0;
 const RECOVERY_COOLDOWN_MS = 5000;
 const RECOVERY_MAX_ATTEMPTS = 3;
+// After a recovery attempt block scheduleNextDecode/drainEligible re-entry for
+// this many ms. Stops the burst-replay finally → schedule → drain microtask
+// hop chain (mapped Mi → Qs → $s in minified worker traces) — under WS
+// reconnect the server replays N buffered chunks; without this gate each
+// chunk's processEncodedChunk.finally re-enters drainEligible immediately,
+// turning the worker into a microtask-saturated mush for the duration of the
+// burst.
+const POST_RECOVERY_COOLDOWN_MS = 250;
+let nextDecodeAllowedAtMs = 0;
 
 // Codec strings that have already failed `decoder.configure()` for the
 // current stream. Recovery passes this set to `selectDecoderCodec` so we never
@@ -662,6 +671,11 @@ function scheduleNextDecode(): void {
     if (!encodedBuffer) return;
     if (decodeInFlight) return;
     if (nextDecodeTimer !== null) return; // a deferred wake will re-enter
+    const cooldown = nextDecodeAllowedAtMs - performance.now();
+    if (cooldown > 0) {
+        armTimer(cooldown);
+        return;
+    }
     drainEligible();
 }
 
@@ -1123,6 +1137,7 @@ async function processEncodedChunk(
                 }
                 consecutiveRecoveries++;
                 lastRecoveryAtMs = nowMs;
+                nextDecodeAllowedAtMs = performance.now() + POST_RECOVERY_COOLDOWN_MS;
                 mstgSelector?.resetPrimming();
                 // HEVC/AVC require description on every configure() — recovery must re-apply
                 // the cached description, otherwise the next keyframe fails with
@@ -1348,6 +1363,7 @@ const serverImpl: DecoderWorker = {
             decoderConfigured = false;
             lastRecoveryAtMs = 0;
             consecutiveRecoveries = 0;
+            nextDecodeAllowedAtMs = 0;
             failedCandidates.clear();
             currentCodedWidth = 0;
             currentCodedHeight = 0;
