@@ -34,6 +34,31 @@ import { sharedSettingsWorker } from 'shared-settings-worker';
 
 const { infoLog, warnLog, errorLog } = getLogs('VideoDecoder');
 
+// Worker-side stall detector — see notes in video-processing-worker.ts.
+// Catches the burst-replay microtask saturation pattern (Mi/Qs/$s in
+// minified traces) by detecting when this worker's setInterval can't fire
+// for STALL_THRESHOLD_MS.
+(() => {
+    const STALL_THRESHOLD_MS = 250;
+    const CHECK_PERIOD_MS = 100;
+    let lastTick = performance.now();
+    let stallStart = 0;
+    setInterval(() => {
+        const now = performance.now();
+        const delta = now - lastTick;
+        if (delta > STALL_THRESHOLD_MS) {
+            if (!stallStart) {
+                stallStart = lastTick;
+                warnLog?.log(`worker stall: ${Math.round(delta)}ms (threshold ${STALL_THRESHOLD_MS}ms)`);
+            }
+        } else if (stallStart) {
+            warnLog?.log(`worker stall recovered after ${Math.round(now - stallStart)}ms total`);
+            stallStart = 0;
+        }
+        lastTick = now;
+    }, CHECK_PERIOD_MS);
+})();
+
 const RPC_SESSION_DEFAULT = '~';
 
 // Worker state
