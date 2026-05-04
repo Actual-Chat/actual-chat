@@ -1436,7 +1436,7 @@ export class VideoPlayer {
             const isHighLatency = impliedLatency > 2000
                 && (performance.now() - this.lastHighLatencyLogTime > 1000);
             if (isHighLatency) {
-                if (isHighLatency) this.lastHighLatencyLogTime = performance.now();
+                this.lastHighLatencyLogTime = performance.now();
                 warnLog?.log(
                     `processRpcFrame: #${this.receivedFrameCount} offsetMs=${offsetMs.toFixed(0)}, ` +
                     `startedAt=${this.startedAtMs.toFixed(0)}, impliedCaptureAt=${impliedCaptureAt.toFixed(0)}, ` +

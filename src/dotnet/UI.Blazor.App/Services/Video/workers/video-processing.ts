@@ -464,7 +464,7 @@ function checkStreamingStall(): void {
 
     streamingStallNotified = true;
     stopStreamingWatchdog();
-    const streamError = videoStream?.lastError || lastVideoStream?.lastError || lastStreamError;
+    const streamError = videoStream?.lastError ?? lastVideoStream?.lastError ?? lastStreamError;
     const reason = streamError.length > 0
         ? `Video isn't reaching viewers (stalled in '${streamStatus}'): ${streamError}`
         : `Video isn't reaching viewers (stalled in '${streamStatus}'). Try toggling the camera off and on.`;
