@@ -20,6 +20,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     private ChatEntryId? _repliedChatEntryId;
     private Channel<IMemoryOwner<byte>>? _currentStream;
     private CancellationTokenSource? _recordingCts;
+    private Task? _processTask;
     private Task? _sendTask;
     private bool _isRecording;
     private bool _isConnected;
@@ -60,12 +61,24 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         await SetConnected(true).ConfigureAwait(false);
 
         // Create a new recording context
-        _recordingCts = cancellationToken.CreateLinkedTokenSource();
-        var recordingToken = _recordingCts.Token;
+        var recordingCts = cancellationToken.CreateLinkedTokenSource();
+        _recordingCts = recordingCts;
+        var recordingToken = recordingCts.Token;
 
-        var microphoneStream = await AudioCapture.Capture(recordingToken).ConfigureAwait(false);
+        // Native capture setup can be non-trivial, and Start is usually called from
+        // the Blazor/MAUI UI path. Keep it away from the main thread from the first
+        // platform call, not only once frame processing begins.
+        var microphoneStream = await BackgroundTask.Run(
+                () => AudioCapture.Capture(recordingToken),
+                Log,
+                "Failed to initialize microphone capture",
+                recordingToken)
+            .ConfigureAwait(false);
         if (microphoneStream is null) {
             Log.LogWarning("Microphone stream is unavailable");
+            var releasedCts = Interlocked.CompareExchange(ref _recordingCts, null, recordingCts);
+            if (ReferenceEquals(releasedCts, recordingCts))
+                recordingCts.CancelAndDisposeSilently();
             await SetRecording(false).ConfigureAwait(false);
             return false;
         }
@@ -77,16 +90,38 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         await InitializeRecordingState().ConfigureAwait(false);
 
         // Start processing in the background
-        _ = BackgroundTask.Run(
+        _processTask = BackgroundTask.Run(
             () => ProcessAudioStream(microphoneStream, recordingToken),
-            Log, "Failed to process microphone stream", recordingToken);
+            Log,
+            "Failed to process microphone stream",
+            recordingToken);
         return true;
     }
 
     public async Task<bool> Stop(CancellationToken cancellationToken = default)
+        => await Stop(true, cancellationToken).ConfigureAwait(false);
+
+    private async Task<bool> Stop(bool waitForProcessTask, CancellationToken cancellationToken)
     {
         var recordingCts = Interlocked.Exchange(ref _recordingCts, null);
-        recordingCts.CancelAndDisposeSilently();
+        if (recordingCts is not null)
+            try {
+                await recordingCts.CancelAsync().ConfigureAwait(false);
+            }
+            catch {
+                // Best effort: Stop must proceed to draining the tasks.
+            }
+
+        var processTask = Interlocked.Exchange(ref _processTask, null);
+        if (waitForProcessTask && processTask is not null)
+            try {
+                await processTask.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception e) {
+                Log.LogError(e, "Failed to process audio stream");
+                throw;
+            }
 
         var sendTask = Interlocked.Exchange(ref _sendTask, null);
         if (sendTask != null)
@@ -103,6 +138,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
         await ResetRecordingState().ConfigureAwait(false);
         _noSignalDetectedDebouncer.Reset();
+        recordingCts.DisposeSilently();
         return true;
     }
 
@@ -269,7 +305,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 return;
 
             if (chatId is null) {
-                await Stop(cancellationToken).ConfigureAwait(false);
+                await Stop(false, cancellationToken).ConfigureAwait(false);
                 return;
             }
 
@@ -277,11 +313,11 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             if (backendRecording)
                 return;
 
-            await Stop(cancellationToken).ConfigureAwait(false);
+            await Stop(false, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to run recording heartbeat");
-            await Stop(cancellationToken).ConfigureAwait(false);
+            await Stop(false, cancellationToken).ConfigureAwait(false);
             throw;
         }
     }
