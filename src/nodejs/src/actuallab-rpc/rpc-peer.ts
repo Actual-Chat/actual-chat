@@ -456,7 +456,11 @@ export abstract class RpcPeer {
                 if ((i + 1) % YIELD_BATCH === 0 && i + 1 < calls.length)
                     await yieldToEventLoop();
             }
-        } while (this._pendingSends.length > 0 && this._connection !== undefined);
+        } while (
+            this._pendingSends.length > 0
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- _connection can change while awaiting yieldToEventLoop().
+            && this._connection !== undefined
+        );
     }
 
     /** Send pre-serialized wire data through the current connection. */

@@ -532,8 +532,7 @@ export class WebGpuDownscaler {
 
     private trackSubmissionDrain(slotsLength: number): Promise<void> {
         this.activeSubmissions++;
-        let drain: Promise<void>;
-        drain = this.device.queue.onSubmittedWorkDone()
+        const drain = this.device.queue.onSubmittedWorkDone()
             .catch((e: unknown) => {
                 this.invalidateFromGpuError(e, slotsLength);
                 throw e;
@@ -542,7 +541,7 @@ export class WebGpuDownscaler {
                 this.activeSubmissions--;
                 const index = this.pendingSubmissionDrains.indexOf(drain);
                 if (index >= 0)
-                    this.pendingSubmissionDrains.splice(index, 1);
+                    void this.pendingSubmissionDrains.splice(index, 1);
                 this.flushDeferredDisposals();
             });
         this.pendingSubmissionDrains.push(drain);
