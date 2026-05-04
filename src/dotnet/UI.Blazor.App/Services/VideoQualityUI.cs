@@ -19,8 +19,10 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     // Stream-age-tiered evaluation cadence for both rec and playback QC.
     // Health snapshots arrive at 1 Hz; we throttle the controller's
     // decide+push step on top of that to avoid thrash while a fresh stream
-    // is still settling and to cut steady-state traffic later.
-    private static readonly TimeSpan QcStartupCooldown = TimeSpan.FromSeconds(1);
+    // is still settling and to cut steady-state traffic later. The 5 s
+    // startup cooldown covers the L2-keyframe wait (~3 s) plus EMA(10)
+    // ramp-up so the first eval lands on a settled buffer signal.
+    private static readonly TimeSpan QcStartupCooldown = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan QcSettlingInterval = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan QcSettlingDuration = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan QcSteadyInterval = TimeSpan.FromSeconds(5);
@@ -143,7 +145,6 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             snapshot.BufferDurationMsEma,
             snapshot.KeyframeSkipsInWindow,
             PlaybackThresholds.Defaults,
-            snapshot.StreamAgeMs,
             snapshot.DecoderQueueDepthEma,
             snapshot.QualityReductionRequested);
         bool isFirstTick;
@@ -954,7 +955,6 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     public sealed record PlaybackThresholds(
         double BufferDurationTooLowMs,
         double BufferDurationTooHighMs,
-        double StartupGraceMs,
         int KeyframeSkipsBadAtOrAbove,
         int DecoderQueueDepthBadAbove,
         long MinCapacityBytesPerSec,
@@ -965,7 +965,6 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         public static PlaybackThresholds Defaults => new (
             BufferDurationTooLowMs: Constants.Video.BufferDurationTooLowMs,
             BufferDurationTooHighMs: Constants.Video.BufferDurationTooHighMs,
-            StartupGraceMs: Constants.Video.StartupGraceMs,
             KeyframeSkipsBadAtOrAbove: 1,
             DecoderQueueDepthBadAbove: Constants.Video.HighBufferDepthThreshold,
             MinCapacityBytesPerSec: 50_000,
@@ -987,7 +986,6 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             double bufferDurationMsEma,
             int keyframeSkipsInWindow,
             PlaybackThresholds t,
-            int streamAgeMs = int.MaxValue,
             double decoderQueueDepthEma = 0,
             bool qualityReductionRequested = false)
         {
@@ -998,7 +996,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             if (decoderQueueDepthEma > t.DecoderQueueDepthBadAbove)
                 return -1;
             if (bufferDurationMsEma < t.BufferDurationTooLowMs)
-                return streamAgeMs < t.StartupGraceMs ? 0 : -1;
+                return -1;
             if (bufferDurationMsEma <= t.BufferDurationTooHighMs)
                 return 1;
             return 0;

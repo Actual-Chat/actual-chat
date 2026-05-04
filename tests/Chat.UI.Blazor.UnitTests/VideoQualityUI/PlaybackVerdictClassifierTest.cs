@@ -12,16 +12,10 @@ public class PlaybackVerdictClassifierTest
         => PlaybackVerdictClassifier.Classify(T.BufferDurationTooLowMs, 0, T).Should().Be(1);
 
     [Fact]
-    public void LowBuffer_AfterStartupGrace_ReturnsBad()
+    public void LowBuffer_ReturnsBad()
         => PlaybackVerdictClassifier
-            .Classify(T.BufferDurationTooLowMs - 1, 0, T, (int)T.StartupGraceMs)
+            .Classify(T.BufferDurationTooLowMs - 1, 0, T)
             .Should().Be(-1);
-
-    [Fact]
-    public void LowBuffer_DuringStartupGrace_ReturnsNeutral()
-        => PlaybackVerdictClassifier
-            .Classify(T.BufferDurationTooLowMs - 1, 0, T, (int)T.StartupGraceMs - 1)
-            .Should().Be(0);
 
     [Fact]
     public void TooMuchBuffer_ReturnsNeutral()
