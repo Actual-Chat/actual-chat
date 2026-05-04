@@ -68,7 +68,7 @@ body.wide .video-panel.collapsed > .c-container {
     animation: smoothShowVideoPanel 0.3s ease-in-out forwards;
 }
 .video-panel.closing {
-    animation: smoothHideVideoPanel 0.35s ease-in-out forwards;
+    /* No outer animation — content shrink handles the visual close */
 }
 
 .video-panel.expanded,
