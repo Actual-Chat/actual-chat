@@ -127,7 +127,7 @@ export async function runRpcConsumer(
     streamId: string,
 ): Promise<void> {
     try {
-        const stream = await bundle.liveVideoStreams.GetStream('~', streamId, 0);
+        const stream = await bundle.liveVideoStreams.GetStream('~', streamId);
 
         for await (const frame of stream) {
             if (ctx.abort.aborted) break;

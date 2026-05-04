@@ -104,13 +104,9 @@ public class LiveVideoStreams : ILiveVideoStreams
     public async Task<RpcStream<VideoFrame>?> GetStream(
         Session session,
         StreamId streamId,
-        TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
         // Stream-level access is gated upstream via List/RegisterMember.
-        // skipTo is currently unused — GetVideoRaw already starts at the first
-        // available keyframe; the consumer's player advances from there.
-        _ = skipTo;
         var streamIdValue = streamId.Value;
         var rawStream = await VideoStreamingBackend.GetVideoRaw(streamId, cancellationToken).ConfigureAwait(false);
         if (rawStream is null)

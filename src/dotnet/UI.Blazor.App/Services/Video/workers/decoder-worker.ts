@@ -23,7 +23,7 @@ import { getLogs } from 'logging';
 import { WorkerMstgSelector } from './worker-mstg-selector';
 import { BG_DRAW_INTERVAL_MS } from '../services/bg-canvas-settings';
 import { BgBlurRenderer } from '../webgpu-blur';
-import { Api, momentToSeconds, secondsToMoment, streamingApi } from 'api';
+import { Api, momentToSeconds, streamingApi } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 import { initAppConstants, VIDEO } from 'app-constants';
 import Denque from 'denque';
@@ -422,7 +422,6 @@ function createDecoder(config: DecoderConfig): WebCodecsDecoder {
 async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
     const ac = new AbortController();
     pullAbortController = ac;
-    const skipToTicks = secondsToMoment(skipToMs / 1000);
     let pullFrameCount = 0;
     let lastArrivedOffsetMs = 0;
     // D6 — replay-burst detector. Counts chunks arriving in a 500 ms window
@@ -439,7 +438,7 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
 
     try {
         infoLog?.log(`pull: GetStream(${streamId}, skipTo=${skipToMs}ms, retry=${pullRetryCount})`);
-        const stream = await streamingApi.liveVideoStreams.GetStream(RPC_SESSION_DEFAULT, streamId, skipToTicks);
+        const stream = await streamingApi.liveVideoStreams.GetStream(RPC_SESSION_DEFAULT, streamId);
 
         for await (const frame of stream) {
             if (ac.signal.aborted || !pullActive) break;

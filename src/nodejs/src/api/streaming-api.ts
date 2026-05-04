@@ -26,7 +26,7 @@ const StreamControlMode = RpcRemoteExecutionMode.AwaitForConnection;
 
 // --- ILiveVideoStreams (per-stream video push/pull + quality control) ---
 export const LiveVideoStreamsDef = defineRpcService('ILiveVideoStreams', {
-    GetStream: { args: ['session', 'streamId', 'skipTo'], returns: RpcType.stream },
+    GetStream: { args: ['session', 'streamId'], returns: RpcType.stream },
     PushStream: {
         args: ['session', 'chatId', 'clientStartOffset', 'format', 'frameStream', 'streamKind'],
         remoteExecutionMode: StreamPushMode,
@@ -155,7 +155,7 @@ export interface PlaybackQualityInfoDto {
 // --- Typed client interfaces ---
 
 export interface LiveVideoStreamsClient {
-    GetStream(session: string, streamId: string, skipToTicks: Moment): Promise<AsyncIterable<VideoFrameDto>>;
+    GetStream(session: string, streamId: string): Promise<AsyncIterable<VideoFrameDto>>;
     PushStream(
         session: string,
         chatId: string,

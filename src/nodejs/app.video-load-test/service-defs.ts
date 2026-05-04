@@ -51,7 +51,7 @@ export interface EmailAuthClient {
 // one-shot polling query the server-side `SendResult()` still fires so we
 // get the value back on $sys.Ok like any other call.
 export const LiveVideoStreamsDef = defineRpcService('ILiveVideoStreams', {
-    GetStream: { args: ['session', 'streamId', 'skipTo'], returns: RpcType.stream },
+    GetStream: { args: ['session', 'streamId'], returns: RpcType.stream },
     List: { args: ['session', 'chatId'], callTypeId: 1 },
 });
 
@@ -90,7 +90,7 @@ export interface VideoStreamInfo {
 }
 
 export interface LiveVideoStreamsClient {
-    GetStream(session: string, streamId: string, skipToTicks: Int64): Promise<AsyncIterable<VideoFrameDto>>;
+    GetStream(session: string, streamId: string): Promise<AsyncIterable<VideoFrameDto>>;
     List(session: string, chatId: string): Promise<VideoStreamInfo[]>;
 }
 

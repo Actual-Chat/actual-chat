@@ -787,7 +787,7 @@ async Task RunConsumerRpc(int chatIdx, int consumerIdx, int streamIdx, StreamId 
 {
     try {
         var ownLiveVideoStreams = consumerHubs[chatIdx, consumerIdx].GetRequiredService<ILiveVideoStreams>();
-        var rpcStream = await ownLiveVideoStreams.GetStream(session, streamId, TimeSpan.Zero, ct).ConfigureAwait(false);
+        var rpcStream = await ownLiveVideoStreams.GetStream(session, streamId, ct).ConfigureAwait(false);
         if (rpcStream == null) {
             Error.WriteLine($"ConsumerRpc[chat={chatIdx},cons={consumerIdx},stream={streamIdx}] stream not found");
             return;

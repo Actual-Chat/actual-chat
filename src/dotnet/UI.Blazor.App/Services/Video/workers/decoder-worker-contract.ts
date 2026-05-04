@@ -155,7 +155,7 @@ export interface DecoderWorker extends SharedSettingsWorker {
      * MediaStreamTrackGenerator (Chromium) or VideoTrackGenerator (Safari)
      * locally, owns the writable, runs audio-clock-driven selection, ships
      * the resulting MediaStreamTrack back to main via onOffThreadTrackReady,
-     * AND iterates `streamingApi.liveVideoStreams.GetStream(session, streamId, skipToTicks)`
+     * AND iterates `streamingApi.liveVideoStreams.GetStream(session, streamId)`
      * — feeding chunks directly into its own decoder. Main does no per-frame
      * work on this path.
      *
@@ -173,7 +173,7 @@ export interface DecoderWorker extends SharedSettingsWorker {
      *     `writable` carries the transferred stream; track is already attached.
      *
      * @param streamId Server stream id
-     * @param skipToMs Initial skip-to offset in ms (forwarded as TimeSpan ticks)
+     * @param skipToMs Initial live offset in ms (used for local live-edge gating)
      * @param apiUrl Fusion RPC websocket URL (e.g. wss://host/rpc/ws)
      * @param startedAtMs Stream source start ms-since-epoch
      * @param jitterBufferMs Initial jitter buffer in ms

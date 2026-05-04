@@ -8,7 +8,6 @@ public interface ILiveVideoStreams : IComputeService
     Task<RpcStream<VideoFrame>?> GetStream(
         Session session,
         StreamId streamId,
-        TimeSpan skipTo,
         CancellationToken cancellationToken);
 
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]

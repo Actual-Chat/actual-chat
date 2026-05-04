@@ -504,7 +504,7 @@ adaptation) but predictable.
 - `src/nodejs/src/api/streaming-api.ts` — main facade, rebind shape.
 - `src/dotnet/UI.Blazor.App/Services/Video/workers/decoder-worker.ts`
   line 393 — `streamServer.GetVideo(streamId, skipToTicks)` →
-  `liveVideoStreams.GetStream('~', streamId, skipToTicks)`.
+  `liveVideoStreams.GetStream('~', streamId)`.
 - `src/dotnet/UI.Blazor.App/Components/VideoPanel/video-player.ts`
   line 1371 — same swap.
 - `src/dotnet/UI.Blazor.App/Services/Video/workers/video-streaming.ts`

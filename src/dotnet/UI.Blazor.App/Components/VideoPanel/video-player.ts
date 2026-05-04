@@ -1,5 +1,5 @@
 import { getLogs } from 'logging';
-import { Api, momentToSeconds, secondsToMoment, streamingApi, type VideoFrameDto } from 'api';
+import { Api, momentToSeconds, streamingApi, type VideoFrameDto } from 'api';
 import { RunningEMA } from 'math';
 
 const RPC_SESSION_DEFAULT = '~';
@@ -1362,13 +1362,11 @@ export class VideoPlayer {
         const abortController = new AbortController();
         this.pullAbortController = abortController;
 
-        const skipToTicks = secondsToMoment(skipToMs / 1000);
-
-        infoLog?.log(`startPull:stream=${streamId}, skipTo=${skipToMs}ms, skipToTicks=${skipToTicks}, retryCount=${this.pullRetryCount}`);
+        infoLog?.log(`startPull:stream=${streamId}, skipTo=${skipToMs}ms, retryCount=${this.pullRetryCount}`);
 
         try {
-            infoLog?.log(`startPull:calling GetStream(${streamId}, ${skipToTicks})`);
-            const stream = await streamingApi.liveVideoStreams.GetStream(RPC_SESSION_DEFAULT, streamId, skipToTicks);
+            infoLog?.log(`startPull:calling GetStream(${streamId})`);
+            const stream = await streamingApi.liveVideoStreams.GetStream(RPC_SESSION_DEFAULT, streamId);
             infoLog?.log(`startPull:GetStream returned, starting iteration`);
             let pullFrameCount = 0;
 
