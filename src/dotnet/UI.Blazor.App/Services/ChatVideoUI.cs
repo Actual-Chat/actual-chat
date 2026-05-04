@@ -1,4 +1,5 @@
 using ActualChat.Streaming;
+using ActualChat.UI.Blazor.App.Components.VideoPanel;
 using ActualChat.UI.Blazor.App.Module;
 using ActualLab.Interception;
 
@@ -157,6 +158,25 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     {
         if (!IsVideoEnabledNonComputed(chatId))
             return;
+
+        _ = StartScreenCastingInternal(chatId);
+    }
+
+    private async Task StartScreenCastingInternal(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        if (_screencastChatId.Value == chatId)
+            return;
+
+        try {
+            var activeStreams = await GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(true);
+            if (activeStreams.Any(s => s.StreamKind == StreamKind.Screencast)) {
+                await ModalUI.Show(new ScreencastAlreadyActiveModal.Model(), cancellationToken).ConfigureAwait(true);
+                return;
+            }
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "Failed to check active screencast before starting screen share");
+        }
 
         // Additive: does not stop webcam.
         _screencastChatId.Value = chatId;

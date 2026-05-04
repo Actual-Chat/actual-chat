@@ -162,8 +162,19 @@
                         Class="pip-overlay" />
                 }
             }
-            @if (isOwnStreaming) {
-                <VideoStreamingPreview ChatId="@ChatId" Class="@(layout.OwnStreamingPreviewClass)" />
+            @if (isOwnScreencasting) {
+                <VideoStreamingPreview
+                    @key="@("own-screen-" + ChatId.Value)"
+                    ChatId="@ChatId"
+                    StreamKind="@StreamKind.Screencast"
+                    Class="@(layout.OwnScreencastPreviewClass)" />
+            }
+            @if (isOwnCameraStreaming) {
+                <VideoStreamingPreview
+                    @key="@("own-webcam-" + ChatId.Value)"
+                    ChatId="@ChatId"
+                    StreamKind="@StreamKind.Webcam"
+                    Class="@(layout.OwnWebcamPreviewClass)" />
             }
         </div>
         @if (_isExpanded && isChatVisible && !ScreenSize.IsNarrow() && _lastChat is { } chat) {
@@ -359,7 +370,7 @@
         CancellationToken cancellationToken)
     {
         const string focusedCls = "item-focused";
-        if (layout.OwnStreamingPreviewClass.Contains(focusedCls))
+        if (layout.OwnScreencastPreviewClass.Contains(focusedCls) || layout.OwnWebcamPreviewClass.Contains(focusedCls))
             return "You";
 
         var focused = layout.RemoteStreamPlayerClasses.FirstOrDefault(c => c.Class.Contains(focusedCls));

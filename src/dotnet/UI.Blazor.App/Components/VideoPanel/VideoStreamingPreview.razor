@@ -4,11 +4,8 @@
 @inherits ComputedStateComponent<AppUIHub, VideoStreamingPreview.Model>
 @{
     var m = State.Value;
-    // Self-preview prefers webcam. With only screencast active, the slot shows
-    // the screencast feed so the user sees what they're sharing.
     var isRecording = m.IsOwnRecording;
     var isScreencasting = m.IsOwnScreencasting;
-    var isOwnStreaming = isRecording || isScreencasting;
     var recordingCls = isRecording ? "recording" : "";
     var screencastCls = !isRecording && isScreencasting ? "screencast" : "";
     // Mirror only for webcam. Screencast is never mirrored.
@@ -57,6 +54,7 @@
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; }
     [Parameter] public string Class { get; set; } = "";
+    [Parameter, EditorRequired] public StreamKind StreamKind { get; set; }
 
     public override async ValueTask DisposeAsync() {
         ChatVideoUI.SuspendOwnStreamingPreview -= OnSuspendOwnStreamingPreview;
@@ -78,8 +76,10 @@
         if (_isSuspended)
             return _suspendedModel;
 
-        var isOwnRecording = await ChatVideoUI.IsOwnWebcamRecording(chatId, cancellationToken).ConfigureAwait(false);
-        var isOwnScreencasting = await ChatVideoUI.IsOwnScreencasting(chatId, cancellationToken).ConfigureAwait(false);
+        var isOwnRecording = StreamKind == StreamKind.Webcam
+            && await ChatVideoUI.IsOwnWebcamRecording(chatId, cancellationToken).ConfigureAwait(false);
+        var isOwnScreencasting = StreamKind == StreamKind.Screencast
+            && await ChatVideoUI.IsOwnScreencasting(chatId, cancellationToken).ConfigureAwait(false);
         var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
         var lastError = await ChatVideoUI.GetLastVideoRecorderError(cancellationToken).ConfigureAwait(false);
         var isMirrored = await ChatVideoUI.GetIsCameraMirrored(cancellationToken).ConfigureAwait(false);
@@ -90,7 +90,7 @@
         if (!firstRender)
             return;
 
-        JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+        JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, (int)StreamKind);
         ChatVideoUI.SuspendOwnStreamingPreview += OnSuspendOwnStreamingPreview;
     }
 

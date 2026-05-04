@@ -1,0 +1,20 @@
+@namespace ActualChat.UI.Blazor.App.Components.VideoPanel
+@implements IModalView<ScreencastAlreadyActiveModal.Model>
+
+<DialogFrame Title="Screen sharing is already active" Class="modal-sm">
+    <Body>
+    <FormBlock>
+        <p>There is already a screen share in this chat. Only one screen can be shared at a time.</p>
+    </FormBlock>
+    </Body>
+    <Buttons>
+        <Button Class="btn-modal btn-primary" Click="@(_ => Modal.Close())">OK</Button>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public sealed record Model;
+}

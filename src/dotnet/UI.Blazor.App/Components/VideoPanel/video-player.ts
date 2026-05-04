@@ -309,7 +309,7 @@ export class VideoPlayer {
     private readonly bufferDurationMsEma = new RunningEMA(0, 10);
     private readonly decoderQueueDepthEma = new RunningEMA(0, 10);
     private lastSkipToLiveTime = 0;     // Cooldown: prevent rapid SKIP_TO_LIVE cascading
-    private skipFramesBelowOffsetMs = 0; // After tab restore, skip decoded frames below this offset
+    private skipFramesBelowOffsetMs = 0; // Live gate: skip decoded frames below this offset
     private skippedBacklogFrames = 0;
     private rebufferDelayMs = 0;         // After tab restore, delay rendering to let buffer accumulate
     private consecutiveEmptyRenders = 0; // Safety net: count consecutive RAFs with no frame rendered
@@ -679,7 +679,7 @@ export class VideoPlayer {
     }
 
     private onFrameDecoded(frame: VideoFrame): void {
-        // After tab restore, skip old frames from decoder's internal backlog
+        // Live gate: skip old frames from decoder's internal backlog.
         if (this.skipFramesBelowOffsetMs > 0) {
             const frameOffsetMs = frame.timestamp / 1000; // μs → ms
             if (frameOffsetMs < this.skipFramesBelowOffsetMs) {
@@ -970,7 +970,7 @@ export class VideoPlayer {
             this.lastKeyframeHeight = height;
         }
 
-        // After tab restore: skip stale encoded frames arriving from the RPC stream
+        // Live gate: skip stale encoded frames arriving from the RPC stream.
         if (this.skipFramesBelowOffsetMs > 0 && timestampMs < this.skipFramesBelowOffsetMs) {
             return;
         }
@@ -983,7 +983,7 @@ export class VideoPlayer {
             }
             const needsDescription = !!this.decoderConfig?.description;
             if (isKeyFrame && (!needsDescription || (description && description.length > 0))) {
-                // After tab restore: skip keyframes that are too old
+                // Live gate: skip keyframes that are too old.
                 if (this.skipFramesBelowOffsetMs > 0 && timestampMs < this.skipFramesBelowOffsetMs) {
                     debugLog?.log(`Skipping old keyframe at offset ${timestampMs.toFixed(0)}ms ` +
                         `(threshold=${this.skipFramesBelowOffsetMs.toFixed(0)}ms)`);
@@ -1173,38 +1173,56 @@ export class VideoPlayer {
             .catch((e: unknown) => warnLog?.log('RequestKeyFrame error:', e));
     }
 
-    private onVisibilityRestored(): void {
-        if (!this.decoderWorker) return;
-        void this.restartAfterVisibilityChange();
+    private armLiveKeyframeGate(reason: string, minimumOffsetMs: number): void {
+        const thresholdMs = Math.max(0, minimumOffsetMs);
+        this.skippedBacklogFrames = 0;
+        this.skipFramesBelowOffsetMs = Math.max(this.skipFramesBelowOffsetMs, thresholdMs);
+        this.waitingForKeyframe = true;
+
+        while (!this.pendingFrames.isEmpty()) {
+            try { this.pendingFrames.shift()!.close(); } catch { /* already closed */ }
+        }
+
+        this.playbackStartTime = 0;
+        this.lastSeekTime = 0;
+        this.lastRenderedOffsetMs = 0;
+        this.lastArrivedOffsetMs = 0;
+        this.pipelineLatencyEma.reset();
+        this.bufferDurationMsEma.reset();
+        this.decoderQueueDepthEma.reset();
+        this.pipelineLatencyMs = 0;
+
+        if (this.decoderWorker) {
+            void this.decoderWorker.flagWaitingForKeyframe()
+                .catch((e: unknown) => warnLog?.log('flagWaitingForKeyframe error:', e));
+        }
+        this.requestKeyFrame();
+        infoLog?.log(
+            `armLiveKeyframeGate(${reason}): threshold=${this.skipFramesBelowOffsetMs.toFixed(0)}ms`);
     }
 
-    private async restartAfterVisibilityChange(): Promise<void> {
+    private onVisibilityRestored(): void {
+        if (!this.decoderWorker) return;
+        this.restartAfterVisibilityChange();
+    }
+
+    private restartAfterVisibilityChange(): void {
         if (!this.decoderWorker) return;
 
         this.skippedBacklogFrames = 0;
         const pendingCount = this.pendingFrames.length;
 
-        // Close pending decoded frames so the gated wait doesn't render stale
-        // content while the next keyframe is in flight.
-        while (!this.pendingFrames.isEmpty()) {
-            try { this.pendingFrames.shift()!.close(); } catch { /* already closed */ }
-        }
-
         // Server-only skip architecture: keep the existing pull running, do
         // NOT call startPull (which forces a forward jump on the server and
         // destroys frames between currentOffset and now). Just gate deltas
-        // at the worker decoder until the PLI keyframe arrives in-band.
-        try { await this.decoderWorker.flagWaitingForKeyframe(); }
-        catch { /* ignore */ }
-        this.waitingForKeyframe = true;
-        this.requestKeyFrame();
+        // until the PLI keyframe arrives in-band.
+        const liveOffsetMs = Math.max(0, ServerClock.now() - this.startedAtMs);
+        this.armLiveKeyframeGate(
+            'visibility-restore',
+            Math.max(0, liveOffsetMs - VIDEO.targetBufferDurationMs));
 
         // Reset timing anchor so playback re-syncs on next rendered frame
-        this.playbackStartTime = 0;
-        this.lastSeekTime = 0;
         this.rebufferDelayMs = 300;
-        this.lastRenderedOffsetMs = 0;
-        this.lastArrivedOffsetMs = 0;
 
         // Chrome may have throttled the decoder while hidden — give it a
         // warmup window before SLOW_DECODE thresholds re-arm.
@@ -1273,6 +1291,11 @@ export class VideoPlayer {
                 `startPull:SUSPICIOUS — main-thread pull starting while ` +
                 `offThreadPullActive=true and renderBackend=${this.renderBackend.kind}. ` +
                 `Decoded frames may not reach the visible <video>.`);
+        }
+
+        if (!this.renderBackend.isOffThread && skipToMs > VIDEO.targetBufferDurationMs) {
+            const minimumOffsetMs = Math.max(0, skipToMs - VIDEO.targetBufferDurationMs);
+            this.armLiveKeyframeGate('startPull-canvas', minimumOffsetMs);
         }
 
         // Cancel any existing pull

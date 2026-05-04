@@ -36,44 +36,16 @@ import { SharedSettingsWorkerSync } from 'shared-settings-worker';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
-// Shared video processing worker holder. Each VideoPipeline acquires the worker
-// on construction and releases it on stop(). Terminate is deferred for
-// SHARED_WORKER_IDLE_TERMINATE_MS so the worker-side encoder pool can keep
-// NVENC sessions held across stop/start cycles. The pool inside the worker has
-// its own (shorter) TTL — this idle period just keeps the worker (and its
-// pooled encoders) reachable for a quick restart.
-const SHARED_WORKER_IDLE_TERMINATE_MS = 60_000;
-let sharedWorker: Worker | null = null;
-let sharedWorkerRefCount = 0;
-let sharedWorkerIdleTimer: ReturnType<typeof setTimeout> | null = null;
-
-function acquireSharedWorker(): Worker {
-    if (sharedWorkerIdleTimer !== null) {
-        clearTimeout(sharedWorkerIdleTimer);
-        sharedWorkerIdleTimer = null;
-    }
-    if (!sharedWorker) {
-        const workerPath = Versioning.mapPath('/dist/videoProcessingWorker.js');
-        infoLog?.log('Creating shared video processing worker from:', workerPath);
-        sharedWorker = new Worker(workerPath, { type: 'module' });
-        sharedWorker.onerror = (e) => errorLog?.log('Video processing worker error:', e);
-    }
-    sharedWorkerRefCount++;
-    return sharedWorker;
-}
-
-function releaseSharedWorker(): void {
-    sharedWorkerRefCount = Math.max(0, sharedWorkerRefCount - 1);
-    if (sharedWorkerRefCount > 0) return;
-    if (sharedWorkerIdleTimer !== null) clearTimeout(sharedWorkerIdleTimer);
-    sharedWorkerIdleTimer = setTimeout(() => {
-        sharedWorkerIdleTimer = null;
-        if (sharedWorkerRefCount === 0 && sharedWorker) {
-            infoLog?.log('Shared video processing worker terminated after idle');
-            sharedWorker.terminate();
-            sharedWorker = null;
-        }
-    }, SHARED_WORKER_IDLE_TERMINATE_MS);
+// The video-processing worker is stateful: encoder, stream, preview writer, and
+// streaming context live as module-level variables in the worker. A webcam and
+// screencast can run at the same time, so each VideoPipeline needs its own worker
+// instance; otherwise the second pipeline overwrites the first one's state.
+function createProcessingWorker(): Worker {
+    const workerPath = Versioning.mapPath('/dist/videoProcessingWorker.js');
+    infoLog?.log('Creating video processing worker from:', workerPath);
+    const worker = new Worker(workerPath, { type: 'module' });
+    worker.onerror = (e) => errorLog?.log('Video processing worker error:', e);
+    return worker;
 }
 
 export interface PipelineConfig {
@@ -300,10 +272,7 @@ export class VideoPipeline implements IVideoPipeline {
         const mode = this.useStreams ? 'stream' : this.useTrackTransfer ? 'track transfer' : 'RPC fallback';
         infoLog?.log(`Frame delivery mode: ${mode}`);
 
-        // Acquire shared video processing worker (created lazily, terminated
-        // after a longer idle period so the worker-side encoder pool keeps
-        // NVENC sessions held across stop/start cycles).
-        this.workerInstance = acquireSharedWorker();
+        this.workerInstance = createProcessingWorker();
 
         // Create RPC proxy with callbacks
         this.worker = rpcClientServer<VideoProcessingWorker>(
@@ -673,9 +642,7 @@ export class VideoPipeline implements IVideoPipeline {
             this._disconnectApiHandler = null;
         }
         this.worker.dispose();
-        // Don't terminate the shared worker — let it survive for the idle
-        // window so the next pipeline.start() can adopt the pooled encoder.
-        releaseSharedWorker();
+        this.workerInstance.terminate();
 
         infoLog?.log('Pipeline stopped');
     }

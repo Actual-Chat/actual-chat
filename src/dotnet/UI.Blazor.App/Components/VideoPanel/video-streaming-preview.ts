@@ -5,11 +5,11 @@ export class VideoStreamingPreview {
     private readonly view: RecorderPreviewView;
     private disposed = false;
 
-    static create(element: HTMLElement): VideoStreamingPreview {
-        return new VideoStreamingPreview(element);
+    static create(element: HTMLElement, streamKind: number): VideoStreamingPreview {
+        return new VideoStreamingPreview(element, streamKind);
     }
 
-    constructor(element: HTMLElement) {
+    constructor(element: HTMLElement, streamKind: number) {
         this.element = element;
         const canvas = this.element.querySelector<HTMLCanvasElement>('.call-video')!;
         const bgCanvas = this.element.querySelector<HTMLCanvasElement>('.remote-video-bg') ?? undefined;
@@ -19,9 +19,7 @@ export class VideoStreamingPreview {
             canvas,
             videoEl,
             bgCanvas,
-            // Prefer webcam (0); fall back to screencast (1) so the slot shows
-            // the shared screen when the user is only screencasting.
-            streamKinds: [0, 1],
+            streamKinds: [streamKind],
             onFirstFrame: () => {
                 this.element.classList.add('has-video');
             },

@@ -696,16 +696,11 @@ function drainEligible(): void {
 
         if (isLate && !front.isKeyFrame) {
             // Late delta — drop. The GOP is broken anyway once we skip a
-            // delta, so gate the rest of this GOP until a keyframe arrives.
-            // Feeding later deltas after a missing reference produces the
-            // exact smear/block artifacts seen when webcam startup briefly
-            // steals decode/encode resources. Keyframes themselves are NEVER
-            // dropped: losing a keyframe leaves the decoder with no fresh
-            // reference for an entire keyframe period (~3 s), producing the
-            // "deltas on black" artifact and a 3 s freeze cadence on every
-            // periodic keyframe that's even slightly late.
+            // delta; the next keyframe will re-sync. Do NOT gate the whole
+            // GOP here: a single late delta can happen from timer jitter, and
+            // waiting for the next keyframe creates the visible ~3 s freeze
+            // cadence this path was meant to avoid.
             encodedBuffer.shift();
-            waitForLiveKeyframe('late delta drop', front.timestamp);
             continue;
         }
         if (front.isKeyFrame && isLate) {
