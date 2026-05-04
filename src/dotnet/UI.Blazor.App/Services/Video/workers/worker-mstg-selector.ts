@@ -49,6 +49,13 @@ export class WorkerMstgSelector {
     private lastWrittenHeight = 0;
     private disposed = false;
     private lastBgDrawAtMs = 0;
+    // DIAG: throttled (~1 Hz) instrumentation to verify whether main-write and
+    // bg-paint paths fire together. Confirms hypothesis that bg keeps painting
+    // while main video freezes when the MSTG track downstream is broken.
+    private lastDiagAtMs = 0;
+    private bgPaintsSinceDiag = 0;
+    private mainWritesSinceDiag = 0;
+    private writeFailuresSinceDiag = 0;
     // Whether to paint the blur backdrop. Off for sidebar/unfocused tiles —
     // bg canvas is hidden by CSS in those states, so painting wastes GPU work
     // and keeps the WebGPU pipeline hot. Toggled from main via
@@ -139,7 +146,8 @@ export class WorkerMstgSelector {
             if (nowMs - this.lastBgDrawAtMs >= BG_DRAW_INTERVAL_MS) {
                 this.lastBgDrawAtMs = nowMs;
                 try {
-                    this.bgPainter.renderer.render(eligible, BG_BLUR_STRENGTH);
+                    if (this.bgPainter.renderer.render(eligible, BG_BLUR_STRENGTH))
+                        this.bgPaintsSinceDiag++;
                 } catch (e) {
                     warnLog?.log('Bg paint failed:', e);
                 }
@@ -154,12 +162,14 @@ export class WorkerMstgSelector {
         const writtenH = eligible.codedHeight;
         this.writer.write(eligible)
             .then(() => {
+                this.mainWritesSinceDiag++;
                 if (writtenW > 0 && writtenH > 0) {
                     this.lastWrittenWidth = writtenW;
                     this.lastWrittenHeight = writtenH;
                 }
             })
             .catch((e: unknown) => {
+                this.writeFailuresSinceDiag++;
                 if (!this.disposed) warnLog?.log('MSTG worker write failed:', e);
             })
             .finally(() => {
@@ -167,5 +177,22 @@ export class WorkerMstgSelector {
                 if (this.disposed) return;
                 if (!this.pending.isEmpty()) this.tick();
             });
+
+        // DIAG: emit a 1 Hz summary of main-write activity vs bg-paint activity.
+        // If bg keeps incrementing but mainWrites stalls (or writeFailures climbs),
+        // the MSTG-side path is broken while the decoder + worker are healthy.
+        const diagNowMs = performance.now();
+        if (diagNowMs - this.lastDiagAtMs >= 1000) {
+            this.lastDiagAtMs = diagNowMs;
+            const lastWrittenMs = this.lastWrittenTs >= 0 ? this.lastWrittenTs / 1000 : 0;
+            warnLog?.log(
+                `tick: ` +
+                `lastWrittenMs=${lastWrittenMs.toFixed(0)}, writeInFlight=${this.writeInFlight}, ` +
+                `bgPaints/s=${this.bgPaintsSinceDiag}, mainWrites/s=${this.mainWritesSinceDiag}, ` +
+                `writeFailures/s=${this.writeFailuresSinceDiag}, hasBgPainter=${!!this.bgPainter}`);
+            this.bgPaintsSinceDiag = 0;
+            this.mainWritesSinceDiag = 0;
+            this.writeFailuresSinceDiag = 0;
+        }
     }
 }
