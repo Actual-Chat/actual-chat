@@ -213,5 +213,17 @@ function reset(minLevels: Map<string, LogLevel>): void {
     // minLevels.set('rpc.RpcPeer', LogLevel.Debug);
     // minLevels.set('fusion.Computed', LogLevel.Debug);
 
+    // Video pipeline scopes default to Warn — Info-level traffic from the
+    // decoder/encoder/player paths is high-volume (per-frame, per-tick) and
+    // overwhelms the console during normal playback. Flip individual scopes
+    // back to Debug/Info via `logLevels.override(...)` when investigating.
+    minLevels.set('VideoPlayer', LogLevel.Warn);
+    minLevels.set('VideoPipeline', LogLevel.Warn);
+    minLevels.set('VideoDecoder', LogLevel.Warn);
+    minLevels.set('VideoEncoder', LogLevel.Warn);
+    minLevels.set('VideoRecorder', LogLevel.Warn);
+    minLevels.set('VideoSegmentation', LogLevel.Warn);
+    minLevels.set('BlurPreviewSession', LogLevel.Warn);
+
     persist(minLevels);
 }
