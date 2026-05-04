@@ -107,7 +107,7 @@ export class MediaCapture {
             minimumSize: { large: minLarge, small: minSmall },
             fallbackOnFailure: true,
         };
-        const strictCandidates = DeviceInfo.isMobile
+        const strictCandidates = MediaCapture.preferPortraitConstraint()
             ? [portrait, landscape]
             : [landscape, portrait];
         return [
@@ -154,6 +154,20 @@ export class MediaCapture {
             return true;
         return Math.max(settings.width, settings.height) >= minimumSize.large
             && Math.min(settings.width, settings.height) >= minimumSize.small;
+    }
+
+    // iOS Safari MSTP: never request portrait. Sensor is physically landscape and
+    // VideoFrame.rotation is left null — the rotation reconcile in
+    // workers/video-processing.ts streamReadLoop (isRotated / isRotatedByCoded)
+    // and webgpu-downscaler.ts fallbackRotationDeg path only work with
+    // sensor-landscape frames. Asking iOS for portrait causes the encoder to
+    // flip to landscape mid-startup, producing mis-oriented encoded output.
+    // Android Chrome populates VideoFrame.rotation correctly, so portrait
+    // capture in portrait orientation is safe there.
+    private static preferPortraitConstraint(): boolean {
+        if (DeviceInfo.isIos) return false;
+        if (!DeviceInfo.isMobile) return false;
+        return screen.orientation.type.startsWith('portrait');
     }
 
     static async captureScreencast(): Promise<MediaStreamTrack> {
