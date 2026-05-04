@@ -100,6 +100,16 @@ import { IncreasingSeqCompressor } from './increasing-seq-compressor.js';
 import { base64Decode, base64Encode } from './base64.js';
 
 /** WebSocket close code sent by the server when the client's serialization format is unsupported. */
+// Yields to the event loop. Used by the reconnect path to chunk large
+// reconnect-resend / pending-flush bursts so they don't spike main-thread
+// time post-handshake. setTimeout(0) is a macrotask (queueMicrotask would
+// not yield to other tasks); 0 ms still gets bumped to 4 ms by the browser
+// for nested setTimeouts but the slack is fine — we want a yield, not zero
+// latency.
+function yieldToEventLoop(): Promise<void> {
+    return new Promise<void>(resolve => setTimeout(resolve, 0));
+}
+
 export const RPC_CLOSE_CODE_UNSUPPORTED_FORMAT = 4001;
 
 /** Maximum time to wait for the server's handshake response after opening the socket. */
@@ -427,14 +437,23 @@ export abstract class RpcPeer {
     }
 
     /** Send any messages buffered while disconnected. Call after connection + handshake are ready. */
-    protected _flushPendingSends(): void {
+    protected async _flushPendingSends(): Promise<void> {
         if (this._pendingSends.length === 0 || this._connection === undefined)
             return;
-        for (const call of this._pendingSends) {
-            this.outboundCalls.register(call);
-            this._sendWireData(call.serializedWireData);
+        // Yield to the event loop every YIELD_BATCH sends. After a long
+        // disconnect there can be 100+ buffered calls; firing them all in a
+        // tight synchronous loop spikes the main thread right after handshake
+        // — visible as a stretch of `Worker.onmessage`/`DOMWebSocket.onmessage`
+        // entries inside one long-animation frame in the Edge freeze report.
+        const YIELD_BATCH = 20;
+        const calls = this._pendingSends;
+        this._pendingSends = [];
+        for (let i = 0; i < calls.length; i++) {
+            this.outboundCalls.register(calls[i]);
+            this._sendWireData(calls[i].serializedWireData);
+            if ((i + 1) % YIELD_BATCH === 0 && i + 1 < calls.length)
+                await yieldToEventLoop();
         }
-        this._pendingSends.length = 0;
     }
 
     /** Send pre-serialized wire data through the current connection. */
@@ -1005,6 +1024,10 @@ export class RpcClientPeer extends RpcPeer {
             unknownIds = await this._reconcileReconnect(eligible, closedSignal);
         }
 
+        // Yield-batched resend — see _flushPendingSends comment. Eligible can
+        // be hundreds after a long disconnect; this prevents a sync spike.
+        const YIELD_BATCH = 20;
+        let resentSinceYield = 0;
         for (const call of eligible) {
             if (!call.removeOnOk && call.result.isCompleted) {
                 // Stage-3 compute call: always self-invalidate to force a
@@ -1021,10 +1044,15 @@ export class RpcClientPeer extends RpcPeer {
                 continue;
             }
             this._sendWireData(call.serializedWireData);
+            resentSinceYield++;
+            if (resentSinceYield >= YIELD_BATCH) {
+                resentSinceYield = 0;
+                await yieldToEventLoop();
+            }
         }
 
         // Flush calls buffered while disconnected
-        this._flushPendingSends();
+        await this._flushPendingSends();
     }
 
     /**
