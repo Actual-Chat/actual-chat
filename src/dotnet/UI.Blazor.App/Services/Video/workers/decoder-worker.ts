@@ -668,11 +668,29 @@ function drainEligible(): void {
         if (!front) return;
         const targetMs = wallclockAnchorMs + (front.timestamp - sourceAnchorUs) / 1000;
         const now = performance.now();
-        if (targetMs < now - wiggleMs) {
-            // Late beyond wiggle — drop. A fresher frame is (or will be)
-            // ready; presenting this one would just hold the screen on a
-            // stale image.
+        const isLate = targetMs < now - wiggleMs;
+
+        if (isLate && !front.isKeyFrame) {
+            // Late delta — drop. The GOP is broken anyway once we skip a
+            // delta; the next keyframe will re-sync. Keyframes themselves
+            // are NEVER dropped: losing a keyframe leaves the decoder with
+            // no fresh reference for an entire keyframe period (~3 s),
+            // producing the "deltas on black" artifact and a 3 s freeze
+            // cadence on every periodic keyframe that's even slightly late.
             encodedBuffer.shift();
+            continue;
+        }
+        if (front.isKeyFrame && isLate) {
+            // Late keyframe — encoder/transit overhead pushed it past wiggle
+            // (keyframes are ~10× a delta in size). Decode immediately and
+            // re-anchor so subsequent deltas in this GOP pace from the
+            // keyframe's actual delivery time, not the original (now stale)
+            // anchor.
+            const ready = encodedBuffer.shift();
+            if (!ready) return;
+            sourceAnchorUs = ready.timestamp;
+            wallclockAnchorMs = now;
+            decodeNow(ready);
             continue;
         }
         if (targetMs <= now) {
