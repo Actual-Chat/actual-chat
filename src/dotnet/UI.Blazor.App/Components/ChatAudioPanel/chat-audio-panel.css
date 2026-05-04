@@ -197,20 +197,18 @@ body.narrow .chat-audio-panel .recorder-wrapper {
 
 /* ::before ring */
 .chat-audio-panel .recorder-wrapper::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border: 1px solid var(--recorder-on-middle);
-    border-radius: 50%;
-    opacity: 0;
-    transform: rotate(0deg);
-    transition: opacity 100ms ease-out;
-    z-index: -1;
-    box-shadow:
-        -1px 0 0 0 var(--recorder-on-top),
-        0 -1px 0 0 var(--recorder-on-top),
-        1px 0 0 0 var(--recorder-on-bottom),
-        0 1px 0 0 var(--recorder-on-bottom);
+    @apply content-empty;
+    @apply absolute inset-0;
+    @apply rounded-full;
+    @apply opacity-0;
+    @apply z-minus;
+    @apply transition-opacity duration-100 ease-out;
+    background: conic-gradient(
+        var(--recorder-on-top),
+        var(--recorder-on-bottom) 50%,
+        var(--recorder-on-top));
+    -webkit-mask: radial-gradient(circle closest-side at calc(50% - 0.5px) 50%, transparent calc(100% - 2px), black calc(100% - 1px));
+    mask: radial-gradient(circle closest-side at calc(50% - 0.5px) 50%, transparent calc(100% - 2px), black calc(100% - 1px));
 }
 body.narrow .narrow-panel .recorder-wrapper::before,
 body.narrow .text-mode .recorder-wrapper::before,
@@ -551,7 +549,7 @@ body.narrow .to-thin .chat-audio-panel .language-wrapper {
     @apply w-20 h-10;
 }
 body.narrow .to-thin.smooth .chat-audio-panel .language-wrapper {
-    transition: all 150ms ease-in-out;
+    transition: width 150ms ease-in-out, height 150ms ease-in-out;
 }
 
 /* Language button group */
@@ -922,45 +920,11 @@ body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .volume-settings
     }
 }
 @keyframes rotate-ring {
-    0% {
+    from {
         transform: rotate(0deg);
-        box-shadow:
-            -2px 0 0 0 var(--recorder-on-top),
-            0 -1px 0 0 var(--recorder-on-top),
-            1px 0 0 0 var(--recorder-on-bottom),
-            0 1px 0 0 var(--recorder-on-bottom);
     }
-    25% {
-        transform: rotate(90deg);
-        box-shadow:
-            -1px 0 0 0 var(--recorder-on-top),
-            0 -2px 0 0 var(--recorder-on-top),
-            1px 0 0 0 var(--recorder-on-bottom),
-            0 1px 0 0 var(--recorder-on-bottom);
-    }
-    50% {
-        transform: rotate(180deg);
-        box-shadow:
-            -1px 0 0 0 var(--recorder-on-top),
-            0 -1px 0 0 var(--recorder-on-top),
-            2px 0 0 0 var(--recorder-on-bottom),
-            0 1px 0 0 var(--recorder-on-bottom);
-    }
-    75% {
-        transform: rotate(270deg);
-        box-shadow:
-            -1px 0 0 0 var(--recorder-on-top),
-            0 -1px 0 0 var(--recorder-on-top),
-            1px 0 0 0 var(--recorder-on-bottom),
-            0 2px 0 0 var(--recorder-on-bottom);
-    }
-    100% {
+    to {
         transform: rotate(360deg);
-        box-shadow:
-            -2px 0 0 0 var(--recorder-on-top),
-            0 -1px 0 0 var(--recorder-on-top),
-            1px 0 0 0 var(--recorder-on-bottom),
-            0 1px 0 0 var(--recorder-on-bottom);
     }
 }
 @keyframes show-big-record-button {

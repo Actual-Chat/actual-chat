@@ -262,11 +262,26 @@ When an animated element is hidden (e.g., via `opacity: 0` or a state class), pa
 
 Always pair `opacity: 0` (or `visibility: hidden`) with `animation-play-state: paused` on the animated child.
 
-### Prefer `transform` and `opacity`
+### Prefer Composited Properties (mandatory)
 
-Only `transform` and `opacity` can be animated on the compositor thread without triggering layout or paint. Avoid animating `width`, `height`, `top`, `left`, `margin`, `padding`, `box-shadow`, or `border` in tight loops — use `transform: scale()` / `translate()` instead.
+Always choose the cheapest animation technique that achieves the desired visual effect. The hierarchy from cheapest to most expensive:
 
-When animating `box-shadow` is unavoidable (e.g., the rotating glow on author circles), make sure the element has `will-change: transform` + `contain` so the repaint scope is limited to that layer.
+1. **`opacity`** — composited, zero repaint
+2. **`transform`** (`translate`, `scale`, `rotate`) — composited, zero repaint
+3. **`clip-path`** — composited in modern browsers, good for reveal/hide effects that need to preserve `border-radius`
+4. **`filter`** (`blur`, `brightness`, `drop-shadow`) — GPU-accelerated but heavier than transform/opacity
+5. **`background-color`**, **`border-color`** — repaint (no layout, but still non-composited)
+6. **`box-shadow`**, **`outline`**, **`border-radius`** — repaint, can be expensive with blur
+7. **`width`**, **`height`**, **`top`**, **`left`**, **`margin`**, **`padding`** — layout + repaint, the most expensive
+
+**Rule:** never use levels 5-7 for infinite or long-running animations. For one-shot animations (e.g., modal open, 0.3s forwards), levels 5-6 are acceptable. Level 7 should be avoided even for one-shot animations — use `transform: scale()` / `translate()` or `clip-path: inset()` instead.
+
+Common replacements:
+- `width`/`height` animation → `clip-path: inset(… round …)` (preserves border-radius) or `transform: scale()` (distorts content)
+- `left`/`top` animation → `transform: translate()`
+- `box-shadow` glow → `::after` with fixed `box-shadow` + `opacity` animation
+- `background-color` pulse → fixed `background-color` + `opacity` animation
+- `background-position` scroll → `transform: translateX()` on the element or pseudo-element
 
 ### Respect `prefers-reduced-motion`
 

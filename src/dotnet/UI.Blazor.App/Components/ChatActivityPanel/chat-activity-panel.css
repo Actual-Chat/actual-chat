@@ -64,7 +64,18 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
     @apply justify-start gap-x-1;
 }
 .chat-activity-panel > .author-circle-group .author-circle {
-    animation: rotate-box-shadow 2s linear infinite;
+    @apply overflow-visible;
+}
+.chat-activity-panel > .author-circle-group .author-circle::before {
+    @apply content-empty absolute inset-[-1px] rounded-full;
+    z-index: 0;
+    background: conic-gradient(
+        var(--recorder-off-bottom),
+        var(--recorder-off-middle),
+        var(--recorder-off-top),
+        var(--recorder-off-middle),
+        var(--recorder-off-bottom));
+    animation: rotate-border-gradient 2s linear infinite;
 }
 
 /* Activity placeholder when no one is talking */
@@ -128,13 +139,13 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
     height: var(--film-h);
     width: 300%;
     opacity: 0.08;
-    transform: translateY(-50%) rotate(-15deg);
     background-image: url("images/film-strip.svg");
     background-repeat: repeat-x;
     background-size: var(--film-tile-w) var(--film-h);
     -webkit-mask-image: linear-gradient(to right, transparent, black 20%, black 80%, transparent);
     mask-image: linear-gradient(to right, transparent, black 20%, black 80%, transparent);
     animation: film-scroll 30s linear infinite;
+    will-change: transform;
 }
 body.wide .c-film-strip::after {
     --film-h: 3rem;
@@ -144,8 +155,12 @@ body.wide .c-film-strip::after {
     opacity: 0.05;
 }
 @keyframes film-scroll {
-    from { background-position-x: 0; }
-    to { background-position-x: var(--film-tile-w); }
+    from {
+        transform: translateY(-50%) rotate(-15deg) translateX(0);
+    }
+    to {
+        transform: translateY(-50%) rotate(-15deg) translateX(var(--film-tile-w));
+    }
 }
 /* Narrow: extend film strip through header */
 body.narrow .chat-activity-panel.video-streaming:not(.not-participating) {
@@ -362,10 +377,12 @@ body.narrow .chat-activity-panel.listening:after {
 }
 .equalizer.active .bar.bar-1,
 .equalizer.active .bar.bar-3 {
+    @apply h-3.5;
     background: linear-gradient(to bottom, var(--violet-70), var(--indigo-70));
     animation: equalize-active-1 0.6s infinite ease-in-out;
 }
 .equalizer.active .bar.bar-2 {
+    @apply h-5;
     background: linear-gradient(to bottom, var(--violet-70), var(--indigo-70));
     animation: equalize-active-2 0.6s infinite ease-in-out;
 }
@@ -382,59 +399,18 @@ body.narrow .chat-activity-panel.listening:after {
     animation-delay: 0.2s;
 }
 
-@keyframes rotate-box-shadow {
-    0% {
-        box-shadow:
-            -1px 0 0 0 var(--recorder-off-middle),
-            0 -1px 0 0 var(--recorder-off-bottom),
-            1px 0 0 0 var(--recorder-off-middle),
-            0 1px 0 0 var(--recorder-off-top);
-    }
-    25% {
-        box-shadow:
-            -1px 0 0 0 var(--recorder-off-top),
-            0 -1px 0 0 var(--recorder-off-middle),
-            1px 0 0 0 var(--recorder-off-bottom),
-            0 1px 0 0 var(--recorder-off-middle);
-    }
-    50% {
-        box-shadow:
-            -1px 0 0 0 var(--recorder-off-middle),
-            0 -1px 0 0 var(--recorder-off-top),
-            1px 0 0 0 var(--recorder-off-middle),
-            0 1px 0 0 var(--recorder-off-bottom);
-    }
-    75% {
-        box-shadow:
-            -1px 0 0 0 var(--recorder-off-bottom),
-            0 -1px 0 0 var(--recorder-off-middle),
-            1px 0 0 0 var(--recorder-off-top),
-            0 1px 0 0 var(--recorder-off-middle);
-    }
-    100% {
-        box-shadow:
-            -1px 0 0 0 var(--recorder-off-middle),
-            0 -1px 0 0 var(--recorder-off-bottom),
-            1px 0 0 0 var(--recorder-off-middle),
-            0 1px 0 0 var(--recorder-off-top);
-    }
+@keyframes rotate-border-gradient {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 @keyframes equalize-active-1 {
-    0%, 100% {
-        height: 6px;
-    }
-    50% {
-        height: 14px;
-    }
+    0%, 100% { clip-path: inset(28.57% 0 round 9999px); } /* shows 6px of 14px */
+    50% { clip-path: inset(0 round 9999px); } /* shows full 14px */
 }
 @keyframes equalize-active-2 {
-    0%, 100% {
-        height: 8px;
-    }
-    50% {
-        height: 20px;
-    }
+    0%, 100% { clip-path: inset(30% 0 round 9999px); } /* shows 8px of 20px */
+    50% { clip-path: inset(0 round 9999px); } /* shows full 20px */
 }
 @keyframes equalize-inactive {
     0%, 50%, 100% {
@@ -478,10 +454,11 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
     mask-image: none;
 }
 
-.layout-header.collapsed .header-activity-panel-wrapper .chat-activity-panel {
+/* Block background clicks on activity panel, keep only buttons clickable */
+.header-activity-panel-wrapper .chat-activity-panel {
     @apply pointer-events-none;
 }
-.layout-header.collapsed .header-activity-panel-wrapper .chat-activity-panel > * {
+.header-activity-panel-wrapper .chat-activity-panel > .c-buttons {
     @apply pointer-events-auto;
 }
 

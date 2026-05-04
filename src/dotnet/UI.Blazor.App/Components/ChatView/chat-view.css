@@ -384,7 +384,7 @@ body.hoverable .chat-message-quote:hover,
     @apply relative;
     @apply flex-y gap-y-1;
     @apply w-full;
-    @apply pr-4;
+    @apply py-1 pr-4;
     @apply overflow-hidden;
 }
 .conversation-message .message-attachments {
@@ -746,7 +746,7 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
     @apply overflow-hidden;
 }
 .upload-plug-icons .c-icon {
-    @apply absolute top-0;
+    @apply absolute top-0 left-0;
     @apply flex items-center justify-center;
     @apply w-5 h-5;
     @apply rounded-full;
@@ -772,15 +772,16 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
 
 @keyframes move {
     0% {
-        left: 0;
-        transform: scale(0);
+        transform: translateX(0) scale(0);
     }
-    20%, 40% {
-        transform: scale(1);
+    20% {
+        transform: translateX(33.33%) scale(1);
+    }
+    40% {
+        transform: translateX(66.67%) scale(1);
     }
     60%, 100% {
-        left: calc(100% - 1.25rem);
-        transform: scale(0);
+        transform: translateX(100%) scale(0);
     }
 }
 @keyframes plugPulse {
