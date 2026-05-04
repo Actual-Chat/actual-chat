@@ -8,8 +8,9 @@
 //   const { debugLog, warnLog } = getLogs('AudioPlayer');
 //
 // Runtime overrides are still available via the dev-console controller:
-//   logLevels.override('AudioPlayer', 1)        // Debug
-//   logLevels.overrideAll('Audio', 1)           // every scope starting with 'Audio'
+//   logLevels.override('AudioPlayer', 1)        // exact: Debug for one scope
+//   logLevels.override('Audio*', 1)             // prefix: every Audio* scope
+//   logLevels.override('*Video*', 1)            // contains: every scope with 'Video'
 //   logLevels.dump()                            // table of every known scope
 //   logLevels.reset()                           // back to package defaults
 //

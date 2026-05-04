@@ -9,9 +9,10 @@
 // initLogging() is idempotent and called automatically on the first Log.get().
 //
 // Runtime override examples (paste into browser dev console):
-//   logLevels.override('rpc.RpcPeer', 1)        // set Debug for one scope
-//   logLevels.overrideAll('rpc.', 1)            // set Debug for all rpc.* scopes
-//   logLevels.overrideAll('fusion.', 2)         // set Info for all fusion.* scopes
+//   logLevels.override('rpc.RpcPeer', 1)        // exact: one scope to Debug
+//   logLevels.override('rpc.*', 1)              // prefix: all rpc.* scopes
+//   logLevels.override('*Video*', 1)            // contains: every scope with 'Video'
+//   logLevels.override('*Decoder', 1)           // suffix: every scope ending in 'Decoder'
 //   logLevels.reset()                           // reset to package defaults
 //   logLevels.clear()                           // clear all overrides
 
@@ -134,25 +135,32 @@ export class LogLevelController {
         );
     }
 
-    /** Override the level for a single scope.  Persisted to sessionStorage. */
-    public override(scope: string, newLevel: LogLevel): void {
-        this.minLevels.set(scope, newLevel);
-        persist(this.minLevels);
-    }
-
-    /** Override the level for every scope whose name starts with scopePrefix
-     *  (e.g. 'rpc.' to enable verbose RPC logging).  Persisted. */
-    public overrideAll(scopePrefix: string, newLevel: LogLevel): void {
-        // Capture all currently-known scopes (both user overrides and package
-        // defaults) that match the prefix, then apply.  Package defaults live
-        // in Log.scopeDefaults; this method also accounts for them so calling
-        // overrideAll('rpc.', Debug) flips every scope the rpc package
-        // registered, not only the ones already overridden.
+    /** Override the level for every scope matching a glob-like pattern.
+     *  `*` matches any sequence of characters; everything else is literal.
+     *  Examples:
+     *    override('VideoPlayer', 1)   // exact — one scope to Debug
+     *    override('Video*',     1)    // prefix — every scope starting with 'Video'
+     *    override('*Video*',    1)    // contains — every scope with 'Video' in it
+     *    override('*Decoder',   1)    // suffix — every scope ending with 'Decoder'
+     *  Matches scopes that are user-overridden, package-registered (defaults),
+     *  or have ever been requested via Log.get().  If the pattern has no `*`
+     *  and nothing known matches, the literal scope is set anyway — so an
+     *  exact-name override placed before its scope is loaded still applies.
+     *  Persisted to sessionStorage. */
+    public override(pattern: string, newLevel: LogLevel): void {
         const matched = new Set<string>();
-        for (const [scope] of this.minLevels)
-            if (scope.startsWith(scopePrefix)) matched.add(scope);
-        for (const [scope] of Log.scopeDefaults)
-            if (scope.startsWith(scopePrefix)) matched.add(scope);
+        if (pattern.includes('*')) {
+            const re = patternToRegExp(pattern);
+            for (const [scope] of this.minLevels)
+                if (re.test(scope)) matched.add(scope);
+            for (const [scope] of Log.scopeDefaults)
+                if (re.test(scope)) matched.add(scope);
+            for (const scope of Log.knownScopes)
+                if (re.test(scope)) matched.add(scope);
+        }
+        else {
+            matched.add(pattern);
+        }
         for (const scope of matched)
             this.minLevels.set(scope, newLevel);
         persist(this.minLevels);
@@ -171,6 +179,12 @@ export class LogLevelController {
             this.minLevels.set('default', defaultLevel);
         persist(this.minLevels);
     }
+}
+
+function patternToRegExp(pattern: string): RegExp {
+    // Escape regex metacharacters except `*`, then turn each `*` into `.*`.
+    const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+    return new RegExp(`^${escaped}$`);
 }
 
 function restore(minLevels: Map<string, LogLevel>): boolean {
