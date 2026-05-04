@@ -965,10 +965,10 @@ export class VideoRecorder {
     private onRecorderHealthSnapshot(snapshot: RecorderHealthSnapshotJs): void {
         void this.blazorRef.invokeMethodAsync(
             'OnRecorderHealthSnapshot',
-            snapshot.encodeRatioAvg,
+            snapshot.encodeRatioEma,
             snapshot.encodeRatioP90,
-            snapshot.slotReplacementRate,
-            snapshot.senderFrameDropRatio,
+            snapshot.slotReplacementRateEma,
+            snapshot.senderFrameDropRatioEma,
             snapshot.lastAckAgeMs,
             snapshot.isConnected,
         );

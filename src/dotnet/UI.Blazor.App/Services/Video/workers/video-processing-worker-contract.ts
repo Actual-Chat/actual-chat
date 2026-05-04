@@ -244,10 +244,10 @@ export interface VideoProcessingWorkerCallbacks {
      *  Fields mirror `RecorderHealthSnapshot` (Api.Contracts/Streaming/Quality/RecordingQuality.cs);
      *  passed positionally to keep the wire compact. */
     onRecorderHealthSnapshot(
-        encodeRatioAvg: number,
+        encodeRatioEma: number,
         encodeRatioP90: number,
-        slotReplacementRate: number,
-        senderFrameDropRatio: number,
+        slotReplacementRateEma: number,
+        senderFrameDropRatioEma: number,
         lastAckAgeMs: number,
         isConnected: boolean,
         noWait?: RpcNoWait): Promise<void>;

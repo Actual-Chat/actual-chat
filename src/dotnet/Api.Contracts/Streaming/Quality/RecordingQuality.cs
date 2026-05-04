@@ -26,10 +26,10 @@ public sealed partial record RecordingQualityState(
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record RecorderHealthSnapshot(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] double EncodeRatioAvg,
+    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] double EncodeRatioEma,
     [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] double EncodeRatioP90,
-    [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] double SlotReplacementRate,
-    [property: DataMember(Order = 3), MemoryPackOrder(3), Key(3)] double SenderFrameDropRatio,
+    [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] double SlotReplacementRateEma,
+    [property: DataMember(Order = 3), MemoryPackOrder(3), Key(3)] double SenderFrameDropRatioEma,
     [property: DataMember(Order = 4), MemoryPackOrder(4), Key(4)] double LastAckAgeMs,
     [property: DataMember(Order = 5), MemoryPackOrder(5), Key(5)] bool IsConnected);
 

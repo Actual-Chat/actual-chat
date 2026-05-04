@@ -713,8 +713,8 @@ public sealed class VideoQualityUI
         double EncodeRatioBadAbove,    // 1.0
         double EncodeRatioGoodBelow,   // 0.33
         double SenderFrameDropRatioBadAbove, // 0.20
-        double LastAckBadMs,            // 2000
-        double LastAckGoodMs,           // 500
+        double LastAckBadMs,             // 2000
+        double LastAckGoodMs,            // 500
         // …
         int K)                          // 5
     {

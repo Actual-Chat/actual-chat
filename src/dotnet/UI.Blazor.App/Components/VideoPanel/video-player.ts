@@ -109,9 +109,9 @@ export interface RemoteStreamDiagnostics {
 
 interface PlaybackHealthSnapshot {
     incomingByteRate: number;
-    bufferDurationMsP50: number;
+    bufferDurationMsEma: number;
     keyframeSkipsInWindow: number;
-    decoderQueueDepthP90: number;
+    decoderQueueDepthEma: number;
     currentMaxSpatial: number;
     currentMaxTemporal: number;
     priority: number;
@@ -120,7 +120,7 @@ interface PlaybackHealthSnapshot {
     /** Smoothed end-to-end latency, ms: server-clock now − frame's effective
      *  capture wall-clock at the moment the frame entered the playback
      *  pipeline. Source for app.video.latency. */
-    latencyMsP50: number;
+    latencyMsEma: number;
 }
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPlayer');
@@ -303,6 +303,11 @@ export class VideoPlayer {
     // diagnostics. Smoothing factor 0.2 ≈ 90% convergence in ~10 samples.
     private pipelineLatencyMs = 0;
     private readonly pipelineLatencyEma = new RunningEMA(0, 1, 0.2);
+    // EMAs over the per-tick playback-health samples. 10-sample window
+    // (α = 2/(N+1) ≈ 0.182); reset alongside pipelineLatencyEma on stream
+    // restart so the verdict isn't biased by the previous session's tail.
+    private readonly bufferDurationMsEma = new RunningEMA(0, 10);
+    private readonly decoderQueueDepthEma = new RunningEMA(0, 10);
     private lastSkipToLiveTime = 0;     // Cooldown: prevent rapid SKIP_TO_LIVE cascading
     private skipFramesBelowOffsetMs = 0; // After tab restore, skip decoded frames below this offset
     private skippedBacklogFrames = 0;
@@ -1041,6 +1046,8 @@ export class VideoPlayer {
                 }
                 this.playbackStartTime = 0;
                 this.pipelineLatencyEma.reset();
+                this.bufferDurationMsEma.reset();
+                this.decoderQueueDepthEma.reset();
                 this.pipelineLatencyMs = 0; // stale value causes render stall after reconfigure
 
                 // Flush old pending frames — they're from the old decoder at stale offsets.
@@ -1211,6 +1218,8 @@ export class VideoPlayer {
         this.firstFrameReceivedTime = 0;
 
         this.pipelineLatencyEma.reset();
+        this.bufferDurationMsEma.reset();
+        this.decoderQueueDepthEma.reset();
         this.pipelineLatencyMs = 0;
         infoLog?.log(
             `Tab restored: flushed ${pendingCount} pending frames, gating deltas until next keyframe`);
@@ -1615,6 +1624,8 @@ export class VideoPlayer {
         this.receivedBytes = 0;
         this.firstFrameReceivedTime = 0;
         this.pipelineLatencyEma.reset();
+        this.bufferDurationMsEma.reset();
+        this.decoderQueueDepthEma.reset();
         this.pipelineLatencyMs = 0;
         this.skipFramesBelowOffsetMs = 0;
         this.skippedBacklogFrames = 0;
@@ -1788,6 +1799,8 @@ export class VideoPlayer {
             while (!this.pendingFrames.isEmpty())
                 this.pendingFrames.shift()!.close();
             this.pipelineLatencyEma.reset();
+            this.bufferDurationMsEma.reset();
+            this.decoderQueueDepthEma.reset();
             this.pipelineLatencyMs = 0;
             this.playbackStartTime = 0;
             this.lastRenderedOffsetMs = 0;
@@ -1937,14 +1950,16 @@ export class VideoPlayer {
         const renderLevel = this.computeRenderQualityLevel();
         const skipDelta = Math.max(0, this.skipToLiveCount - this.lastQualitySkipToLiveCount);
         this.lastQualitySkipToLiveCount = this.skipToLiveCount;
-        // Every numeric field below maps to a C# Int32/Int64 — round before
-        // serialising so System.Text.Json's strict integer parse doesn't reject
-        // a float value (bufferDurationMs in particular arrives as a float).
+        this.bufferDurationMsEma.appendSample(Math.max(0, bufferDurationMs));
+        this.decoderQueueDepthEma.appendSample(Math.max(0, ds.decodeQueueSize));
+        // Wire fields are doubles on the C# side — no rounding needed; keep
+        // sub-ms precision so the receiver-side classifier sees the smoothed
+        // signal exactly as computed here.
         const snapshot: PlaybackHealthSnapshot = {
             incomingByteRate: Math.round(bitrateKbps * 1000 / 8),
-            bufferDurationMsP50: Math.max(0, Math.round(bufferDurationMs)),
+            bufferDurationMsEma: this.bufferDurationMsEma.value,
             keyframeSkipsInWindow: skipDelta,
-            decoderQueueDepthP90: Math.max(0, Math.round(ds.decodeQueueSize)),
+            decoderQueueDepthEma: this.decoderQueueDepthEma.value,
             currentMaxSpatial: maxSpatialForRenderQualityLevel(renderLevel),
             currentMaxTemporal: MAX_TEMPORAL_LAYER,
             priority: renderLevel === null || renderLevel <= 2
@@ -1952,7 +1967,7 @@ export class VideoPlayer {
                 : PLAYBACK_PRIORITY_SECONDARY,
             streamAgeMs: Math.max(0, Math.round(performance.now() - this.createdAtMs)),
             qualityReductionRequested: this.qualityReductionRequested,
-            latencyMsP50: Math.max(0, Math.round(this.pipelineLatencyMs)),
+            latencyMsEma: Math.max(0, this.pipelineLatencyMs),
         };
         void this.blazorRef.invokeMethodAsync('OnPlaybackHealth', snapshot)
             .catch((e: unknown) => warnLog?.log('reportPlaybackHealth error:', e));

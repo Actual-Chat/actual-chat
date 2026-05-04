@@ -120,10 +120,10 @@ export interface RecordingQualityStateDto {
 }
 
 export interface RecorderHealthSnapshotDto {
-    0: number;   // EncodeRatioAvg
+    0: number;   // EncodeRatioEma
     1: number;   // EncodeRatioP90
-    2: number;   // SlotReplacementRate
-    3: number;   // SenderFrameDropRatio
+    2: number;   // SlotReplacementRateEma
+    3: number;   // SenderFrameDropRatioEma
     4: number;   // LastAckAgeMs
     5: boolean;  // IsConnected
 }
@@ -135,9 +135,9 @@ export interface RecordingQualityInfoDto {
 
 export interface PlaybackStreamInfoDto {
     0: number;   // IncomingByteRate
-    1: number;   // BufferDurationMsP50
+    1: number;   // BufferDurationMsEma
     2: number;   // KeyframeSkipsInWindow
-    3: number;   // DecoderQueueDepthP90
+    3: number;   // DecoderQueueDepthEma
     4: number;   // CurrentMaxSpatial
     5: number;   // CurrentMaxTemporal
     6: number;   // PlaybackStreamPriority (0=Secondary, 1=Primary)

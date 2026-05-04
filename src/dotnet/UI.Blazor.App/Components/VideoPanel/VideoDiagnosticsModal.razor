@@ -712,13 +712,13 @@
         => layerCount is { } count ? $"{count} layers" : "none";
 
     private static string FormatRecordingEncodeCostSignal(RecorderHealthSnapshot health)
-        => $"avg={health.EncodeRatioAvg:F2}x budget, p90={health.EncodeRatioP90:F2}x";
+        => $"ema={health.EncodeRatioEma:F2}x budget, p90={health.EncodeRatioP90:F2}x";
 
     private static string FormatRecordingSlotSignal(RecorderHealthSnapshot health)
-        => $"replaceRate={health.SlotReplacementRate:F2}";
+        => $"replaceRateEma={health.SlotReplacementRateEma:F2}";
 
     private static string FormatRecordingSenderSignal(RecorderHealthSnapshot health)
-        => $"dropRatio={health.SenderFrameDropRatio:F2}, "
+        => $"dropRatioEma={health.SenderFrameDropRatioEma:F2}, "
             + $"ackAge={FormatAckAge(health.LastAckAgeMs)}, connected={(health.IsConnected ? "yes" : "no")}";
 
     private static string FormatAckAge(double ageMs)

@@ -12,6 +12,19 @@ public static partial class Constants
         public const int TargetBufferSize = 10;
         public static readonly TimeSpan TargetBufferDuration =
             TimeSpan.FromSeconds((double)TargetBufferSize / FrameRate); // 333.333 ms
+        public static readonly double TargetBufferDurationMs = TargetBufferDuration.TotalMilliseconds;
+
+        // Playback verdict thresholds (compared against per-tick EMAs of the
+        // same `double Ms` type — direct comparison, no TimeSpan conversion).
+        // BufferDurationTooLowMs sits at ⅓ of target so per-tick rounding
+        // noise around the steady-state buffer can't flip the verdict.
+        public static readonly double BufferDurationTooLowMs = TargetBufferDurationMs / 3;
+        public static readonly double BufferDurationTooHighMs = TargetBufferDurationMs * 1.5;
+        public static readonly double StartupGraceMs = 1000;
+
+        // Recording verdict thresholds — sender-ack age bands.
+        public static readonly double LastAckBadMs = 2000;
+        public static readonly double LastAckGoodMs = 500;
 
         // Keyframe cadence — KeyFramePeriod is the input; KeyFramePeriodSize is derived.
         public static readonly TimeSpan KeyFramePeriod = TimeSpan.FromSeconds(3);

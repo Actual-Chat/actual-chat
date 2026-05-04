@@ -16,6 +16,14 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     private const int ColdStartTicks = 2; // ~2 s of grace at 1 Hz
     private static readonly TimeSpan PlaybackHealthTtl = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan PlaybackQualityKeepAlivePeriod = TimeSpan.FromMinutes(1);
+    // Stream-age-tiered evaluation cadence for both rec and playback QC.
+    // Health snapshots arrive at 1 Hz; we throttle the controller's
+    // decide+push step on top of that to avoid thrash while a fresh stream
+    // is still settling and to cut steady-state traffic later.
+    private static readonly TimeSpan QcStartupCooldown = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan QcSettlingInterval = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan QcSettlingDuration = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan QcSteadyInterval = TimeSpan.FromSeconds(5);
 
     // Per-stream peak-rate decay. Allocator's `PredictedRateAtTop` reads the
     // peak observed incoming byte rate so it doesn't underestimate top-tier
@@ -38,6 +46,14 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     private readonly Dictionary<StreamKind, RecordingQualityState> _lastRecordingStateByKind = new();
     private readonly Dictionary<StreamKind, int> _lastRecordingSignalByKind = new();
     private readonly Dictionary<StreamKind, RecordingQualityReason> _lastRecordingReasonByKind = new();
+    // Stream-age-aware throttle on QC decisions: cooldown for the first
+    // StartupCooldown, then evaluate at SettlingInterval until SettlingDuration
+    // of stream age, then SteadyInterval. Prevents premature thrash and keeps
+    // steady-state ChangeQuality traffic low.
+    private readonly Dictionary<StreamKind, CpuTimestamp> _recordingStartedAt = new();
+    private readonly Dictionary<StreamKind, CpuTimestamp> _recordingLastEvalAt = new();
+    private readonly Dictionary<StreamId, CpuTimestamp> _playbackStartedAt = new();
+    private readonly Dictionary<StreamId, CpuTimestamp> _playbackLastEvalAt = new();
     private readonly Dictionary<StreamId, PlaybackHealthState> _playbackByStream = new();
     private readonly CapacityEstimator _playbackEstimator = new(PlaybackThresholds.Defaults);
     private readonly Lock _playbackLock = new();
@@ -80,8 +96,19 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             return;
         }
         var signal = RecordingClassifier.Classify(snapshot, RecordingThresholds.Defaults);
-        var decision = aggregator.Step(signal);
         _lastRecordingSignalByKind[kind] = signal;
+        // Stream-age-tiered eval gate. We still record the classifier signal
+        // for diagnostics, but the AIMD step only advances on eligible ticks
+        // — so the controller doesn't react to single-tick noise during
+        // startup or thrash in steady state.
+        if (!_recordingStartedAt.ContainsKey(kind))
+            _recordingStartedAt[kind] = CpuTimestamp.Now;
+        if (!IsEvaluationDue(_recordingStartedAt[kind], _recordingLastEvalAt.GetValueOrDefault(kind))) {
+            _lastRecordingReasonByKind[kind] = RecordingQualityReason.Stable;
+            return;
+        }
+        _recordingLastEvalAt[kind] = CpuTimestamp.Now;
+        var decision = aggregator.Step(signal);
         _lastRecordingReasonByKind[kind] = decision.Reason;
         if (!decision.Changed && _debugMaxRecordingLayerCount is null)
             return;
@@ -89,11 +116,11 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         if (decision.Changed)
             Log.LogWarning(
                 "RecordingQuality changed: kind={Kind} target={Target} reason={Reason} signal={Signal} "
-                + "encodeAvg={EncAvg:F2} encodeP90={EncP90:F2} slotRate={SlotRate:F2} "
-                + "senderDropRatio={DropRatio:F2} ackAgeMs={Ack:F0} connected={Connected}",
+                + "encodeEma={EncEma:F2} encodeP90={EncP90:F2} slotRateEma={SlotRateEma:F2} "
+                + "senderDropRatioEma={DropRatioEma:F2} ackAgeMs={Ack:F0} connected={Connected}",
                 kind, decision.NewTargetLayerCount, decision.Reason, signal,
-                snapshot.EncodeRatioAvg, snapshot.EncodeRatioP90, snapshot.SlotReplacementRate,
-                snapshot.SenderFrameDropRatio, snapshot.LastAckAgeMs,
+                snapshot.EncodeRatioEma, snapshot.EncodeRatioP90, snapshot.SlotReplacementRateEma,
+                snapshot.SenderFrameDropRatioEma, snapshot.LastAckAgeMs,
                 snapshot.IsConnected);
 
         await ApplyRecordingQuality(
@@ -113,18 +140,38 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         CancellationToken cancellationToken)
     {
         var verdict = PlaybackVerdictClassifier.Classify(
-            snapshot.BufferDurationMsP50,
+            snapshot.BufferDurationMsEma,
             snapshot.KeyframeSkipsInWindow,
             PlaybackThresholds.Defaults,
             snapshot.StreamAgeMs,
-            snapshot.DecoderQueueDepthP90,
+            snapshot.DecoderQueueDepthEma,
             snapshot.QualityReductionRequested);
+        bool isFirstTick;
         lock (_playbackLock) {
             var prev = _playbackByStream.GetValueOrDefault(streamId);
             var peak = ComputeDecayedPeak(prev, snapshot.IncomingByteRate);
+            var requestedMaxSpatial = prev is null
+                ? StartupSpatialLayer(streamKind)
+                : TopSpatialLayer(streamKind);
             _playbackByStream[streamId] = new PlaybackHealthState(
-                streamKind, snapshot, verdict, CpuTimestamp.Now, peak);
+                streamKind, snapshot, verdict, CpuTimestamp.Now, peak,
+                requestedMaxSpatial);
+            isFirstTick = prev is null;
+            if (isFirstTick)
+                _playbackStartedAt[streamId] = CpuTimestamp.Now;
         }
+        // First tick always emits the initial cap (StartupSpatialLayer).
+        // Subsequent health-driven recomputes are gated by stream-age cadence
+        // so we don't thrash during startup or in steady state. Manual paths
+        // — override, debug, keep-alive, reduction request — bypass the gate
+        // and call RecomputePlaybackQuality directly.
+        if (!isFirstTick) {
+            var startedAt = _playbackStartedAt.GetValueOrDefault(streamId);
+            var lastEvalAt = _playbackLastEvalAt.GetValueOrDefault(streamId);
+            if (!IsEvaluationDue(startedAt, lastEvalAt))
+                return Task.CompletedTask;
+        }
+        _playbackLastEvalAt[streamId] = CpuTimestamp.Now;
         var reason = verdict switch {
             < 0 => PlaybackQualityReason.Backoff,
             > 0 => PlaybackQualityReason.Climb,
@@ -152,9 +199,9 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                     streamKind,
                     new PlaybackHealthSnapshot(
                         IncomingByteRate: 0,
-                        BufferDurationMsP50: 0,
+                        BufferDurationMsEma: 0,
                         KeyframeSkipsInWindow: 0,
-                        DecoderQueueDepthP90: Constants.Video.HighBufferDepthThreshold + 1,
+                        DecoderQueueDepthEma: Constants.Video.HighBufferDepthThreshold + 1,
                         CurrentMaxSpatial: 2,
                         CurrentMaxTemporal: int.MaxValue,
                         Priority: PlaybackStreamPriority.Primary,
@@ -162,7 +209,8 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                         QualityReductionRequested: true),
                     Verdict: -1,
                     LastSeen: CpuTimestamp.Now,
-                    PeakIncomingByteRate: 0);
+                    PeakIncomingByteRate: 0,
+                    RequestedMaxSpatial: 0);
             }
         }
         return RecomputePlaybackQuality(PlaybackQualityReason.Backoff, cancellationToken);
@@ -340,6 +388,15 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                     aggregator.Reset();
                 _coldStartTicksRemaining = ColdStartTicks;
                 _playbackEstimator.Reset();
+                // Reconnect = effectively a fresh stream from the QC's
+                // perspective: re-arm the per-kind/per-stream cooldown so
+                // the first decisions after reconnect aren't a thrash burst.
+                _recordingStartedAt.Clear();
+                _recordingLastEvalAt.Clear();
+                lock (_playbackLock) {
+                    _playbackStartedAt.Clear();
+                    _playbackLastEvalAt.Clear();
+                }
             }
             _wasConnected = isConnected;
         }
@@ -448,19 +505,27 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         var requestedMap = new ApiMap<string, ReceiveQuality>();
         foreach (var (streamId, _) in entries)
             requestedMap[streamId.Value] = requested.GetValueOrDefault(streamId.Value, ReceiveQuality.Lowest);
+        Log.LogWarning(
+            "PlaybackQuality: reason={Reason} capacity={Capacity} aggHealth={AggHealth:F2} "
+            + "streams=[{Streams}]",
+            reason, capacity, aggregateHealth,
+            string.Join(", ", entries.Select(x =>
+                $"{x.Key.Value}:v{x.Value.Verdict}/req=L{requestedMap[x.Key.Value].MaxSpatialLayer}/cur=L{x.Value.Snapshot.CurrentMaxSpatial}"
+                + $"/rate={x.Value.Snapshot.IncomingByteRate}/peak={x.Value.PeakIncomingByteRate}"
+                + $"/buf={x.Value.Snapshot.BufferDurationMsEma:F0}ms")));
         var streamInfoMap = new ApiMap<string, PlaybackStreamInfo>();
         foreach (var (streamId, state) in entries) {
             var requestedQuality = requestedMap[streamId.Value];
             streamInfoMap[streamId.Value] = new PlaybackStreamInfo(
                 state.Snapshot.IncomingByteRate,
-                state.Snapshot.BufferDurationMsP50,
+                state.Snapshot.BufferDurationMsEma,
                 state.Snapshot.KeyframeSkipsInWindow,
-                state.Snapshot.DecoderQueueDepthP90,
+                state.Snapshot.DecoderQueueDepthEma,
                 requestedQuality.MaxSpatialLayer,
                 requestedQuality.MaxTemporalLayer,
                 state.Snapshot.Priority,
                 state.Verdict,
-                state.Snapshot.LatencyMsP50);
+                state.Snapshot.LatencyMsEma);
         }
         var info = new PlaybackQualityInfo(
             capacity,
@@ -496,7 +561,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             var baseRate = currentSpatial <= 0 ? current : Math.Max(1, current / (currentSpatial + 1));
             var maxSpatialLayer = entry.Value.Snapshot.QualityReductionRequested
                 ? 0
-                : DefaultPlaybackMaxSpatialLayer(entry.Value.StreamKind);
+                : entry.Value.RequestedMaxSpatial;
             return new StreamRequest(entry.Key.Value, baseRate, top, maxSpatialLayer);
         }
     }
@@ -511,10 +576,35 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         return Math.Max(decayed, current);
     }
 
-    private static int DefaultPlaybackMaxSpatialLayer(StreamKind streamKind)
+    // True if the controller may make a new decision for a stream that began
+    // at `startedAt` and last evaluated at `lastEvalAt`. Cooldown for the
+    // first QcStartupCooldown of life; QcSettlingInterval cadence until
+    // QcSettlingDuration of age; QcSteadyInterval thereafter. Default
+    // `lastEvalAt` (= zero CpuTimestamp) lets the first eligible eval fire
+    // as soon as cooldown ends.
+    private static bool IsEvaluationDue(CpuTimestamp startedAt, CpuTimestamp lastEvalAt)
+    {
+        var age = startedAt.Elapsed;
+        if (age < QcStartupCooldown)
+            return false;
+        var sinceLast = lastEvalAt.Elapsed;
+        var required = age < QcSettlingDuration ? QcSettlingInterval : QcSteadyInterval;
+        return sinceLast >= required;
+    }
+
+    // Top reachable simulcast layer per stream kind. Both kinds may eventually
+    // reach their top; webcam isn't capped at top-1 anymore.
+    private static int TopSpatialLayer(StreamKind streamKind)
         => streamKind == StreamKind.Screencast
-            ? Constants.Video.ScreencastMaxSimulcastTiers - 1 // Top for screencast
-            : Constants.Video.WebcamMaxSimulcastTiers - 2;    // Top-1 for webcam
+            ? Constants.Video.ScreencastMaxSimulcastTiers - 1
+            : Constants.Video.WebcamMaxSimulcastTiers - 1;
+
+    // Initial layer for a stream's first allocation cycle. Both kinds start
+    // at their top tier — receivers ask for full quality immediately and the
+    // capacity estimator / allocator step them down later if the link can't
+    // sustain it.
+    private static int StartupSpatialLayer(StreamKind streamKind)
+        => TopSpatialLayer(streamKind);
 
     private List<KeyValuePair<StreamId, PlaybackHealthState>> GetFreshPlaybackEntries()
     {
@@ -523,8 +613,11 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                 .Where(x => x.Value.LastSeen.Elapsed > PlaybackHealthTtl)
                 .Select(x => x.Key)
                 .ToArray();
-            foreach (var streamId in staleStreamIds)
+            foreach (var streamId in staleStreamIds) {
                 _playbackByStream.Remove(streamId);
+                _playbackStartedAt.Remove(streamId);
+                _playbackLastEvalAt.Remove(streamId);
+            }
             return _playbackByStream.ToList();
         }
     }
@@ -757,8 +850,8 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         public static RecordingThresholds Defaults => new(
             EncodeRatioBadAbove: 1.333, // < 20fps
             EncodeRatioGoodBelow: 0.333, // > 90fps
-            LastAckBadMs: 2000,
-            LastAckGoodMs: 500,
+            LastAckBadMs: Constants.Video.LastAckBadMs,
+            LastAckGoodMs: Constants.Video.LastAckGoodMs,
             SenderFrameDropRatioBadAbove: 0.20,
             MinTargetLayerCount: 1,
             MaxTargetLayerCount: Constants.Video.MaxSimulcastTiers,
@@ -778,16 +871,16 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                 return 0;
 
             var anyBad =
-                h.EncodeRatioAvg > t.EncodeRatioBadAbove
+                h.EncodeRatioEma > t.EncodeRatioBadAbove
                 || (h.LastAckAgeMs >= 0 && h.LastAckAgeMs > t.LastAckBadMs)
-                || h.SenderFrameDropRatio > t.SenderFrameDropRatioBadAbove;
+                || h.SenderFrameDropRatioEma > t.SenderFrameDropRatioBadAbove;
             if (anyBad)
                 return -1;
 
             var allGood =
-                h.EncodeRatioAvg < t.EncodeRatioGoodBelow
+                h.EncodeRatioEma < t.EncodeRatioGoodBelow
                 && (h.LastAckAgeMs < 0 || h.LastAckAgeMs < t.LastAckGoodMs)
-                && h.SenderFrameDropRatio == 0;
+                && h.SenderFrameDropRatioEma == 0;
             return allGood ? 1 : 0;
         }
     }
@@ -859,9 +952,9 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     // --- Playback branch (Step 10.4) ---
 
     public sealed record PlaybackThresholds(
-        int BufferDurationMsBadBelow,
-        int BufferDurationMsTooHighAbove,
-        int StartupGraceMs,
+        double BufferDurationTooLowMs,
+        double BufferDurationTooHighMs,
+        double StartupGraceMs,
         int KeyframeSkipsBadAtOrAbove,
         int DecoderQueueDepthBadAbove,
         long MinCapacityBytesPerSec,
@@ -869,10 +962,10 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         double ClimbCap,
         double BackoffFactor)
     {
-        public static PlaybackThresholds Defaults => new(
-            BufferDurationMsBadBelow: (int)Math.Round(Constants.Video.TargetBufferDuration.TotalMilliseconds),
-            BufferDurationMsTooHighAbove: 400,
-            StartupGraceMs: 1000,
+        public static PlaybackThresholds Defaults => new (
+            BufferDurationTooLowMs: Constants.Video.BufferDurationTooLowMs,
+            BufferDurationTooHighMs: Constants.Video.BufferDurationTooHighMs,
+            StartupGraceMs: Constants.Video.StartupGraceMs,
             KeyframeSkipsBadAtOrAbove: 1,
             DecoderQueueDepthBadAbove: Constants.Video.HighBufferDepthThreshold,
             MinCapacityBytesPerSec: 50_000,
@@ -891,22 +984,22 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     public static class PlaybackVerdictClassifier
     {
         public static int Classify(
-            int bufferDurationMsP50,
+            double bufferDurationMsEma,
             int keyframeSkipsInWindow,
             PlaybackThresholds t,
             int streamAgeMs = int.MaxValue,
-            int decoderQueueDepthP90 = 0,
+            double decoderQueueDepthEma = 0,
             bool qualityReductionRequested = false)
         {
             if (qualityReductionRequested)
                 return -1;
             if (keyframeSkipsInWindow >= t.KeyframeSkipsBadAtOrAbove)
                 return -1;
-            if (decoderQueueDepthP90 > t.DecoderQueueDepthBadAbove)
+            if (decoderQueueDepthEma > t.DecoderQueueDepthBadAbove)
                 return -1;
-            if (bufferDurationMsP50 < t.BufferDurationMsBadBelow)
+            if (bufferDurationMsEma < t.BufferDurationTooLowMs)
                 return streamAgeMs < t.StartupGraceMs ? 0 : -1;
-            if (bufferDurationMsP50 <= t.BufferDurationMsTooHighAbove)
+            if (bufferDurationMsEma <= t.BufferDurationTooHighMs)
                 return 1;
             return 0;
         }
@@ -1027,20 +1120,26 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
 
     public sealed record PlaybackHealthSnapshot(
         long IncomingByteRate,
-        int BufferDurationMsP50,
+        double BufferDurationMsEma,
         int KeyframeSkipsInWindow,
-        int DecoderQueueDepthP90,
+        double DecoderQueueDepthEma,
         int CurrentMaxSpatial,
         int CurrentMaxTemporal,
         PlaybackStreamPriority Priority,
         int StreamAgeMs,
         bool QualityReductionRequested = false,
-        int LatencyMsP50 = 0);
+        double LatencyMsEma = 0);
 
     private sealed record PlaybackHealthState(
         StreamKind StreamKind,
         PlaybackHealthSnapshot Snapshot,
         int Verdict,
         CpuTimestamp LastSeen,
-        long PeakIncomingByteRate);
+        long PeakIncomingByteRate,
+        // Per-stream max spatial layer requested for this allocation cycle.
+        // Initial tick uses StartupSpatialLayer(streamKind) — top for
+        // screencast, top-1 for webcam — so we don't bid for the heavy tier
+        // before the link has been observed at all. Subsequent ticks lift the
+        // cap to top so the allocator/capacity estimator can promote freely.
+        int RequestedMaxSpatial);
 }

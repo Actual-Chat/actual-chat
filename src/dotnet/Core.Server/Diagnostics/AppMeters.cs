@@ -23,7 +23,7 @@ public static class AppMeters
     public static readonly Histogram<long> VideoReceiveCapacityBps;
     public static readonly Histogram<double> VideoReceiveAggregateHealth;
     public static readonly Counter<long> VideoReceiveKeyframeSkips;
-    public static readonly Histogram<int> VideoReceiveDecoderQueue;
+    public static readonly Histogram<double> VideoReceiveDecoderQueue;
 
     static AppMeters()
     {
@@ -49,7 +49,7 @@ public static class AppMeters
             "app.video.receive.aggregate_health", "ratio", "Byte-weighted aggregate playback health verdict (-1..+1)");
         VideoReceiveKeyframeSkips = m.CreateCounter<long>(
             "app.video.receive.keyframe_skips", "events", "Keyframe-anchored evictions in the receive buffer");
-        VideoReceiveDecoderQueue = m.CreateHistogram<int>(
-            "app.video.receive.decoder_queue", "depth", "P90 decoder queue depth on the receiving client");
+        VideoReceiveDecoderQueue = m.CreateHistogram<double>(
+            "app.video.receive.decoder_queue", "depth", "EMA decoder queue depth on the receiving client");
     }
 }

@@ -180,7 +180,7 @@ public class LiveVideoStreams : ILiveVideoStreams
 
         if (info?.Health is { } h) {
             AppMeters.VideoSendEncodeRatio.Record(h.EncodeRatioP90);
-            AppMeters.VideoSendDropRatio.Record(h.SenderFrameDropRatio);
+            AppMeters.VideoSendDropRatio.Record(h.SenderFrameDropRatioEma);
             // -1 marks "no ACK observed yet" — don't pollute the histogram with a sentinel.
             if (h.LastAckAgeMs >= 0)
                 AppMeters.VideoSendAckAgeMs.Record(h.LastAckAgeMs);
@@ -218,11 +218,11 @@ public class LiveVideoStreams : ILiveVideoStreams
                 // the receiver. Skip the default-0 sample from clients still
                 // on the old wire format — recording 0 ms would skew the
                 // histogram toward an unrealistic floor.
-                if (s.LatencyMsP50 > 0)
-                    AppMeters.VideoLatency.Record(s.LatencyMsP50, priorityTag);
+                if (s.LatencyMsEma > 0)
+                    AppMeters.VideoLatency.Record(s.LatencyMsEma, priorityTag);
                 if (s.KeyframeSkipsInWindow > 0)
                     AppMeters.VideoReceiveKeyframeSkips.Add(s.KeyframeSkipsInWindow, priorityTag);
-                AppMeters.VideoReceiveDecoderQueue.Record(s.DecoderQueueDepthP90, priorityTag);
+                AppMeters.VideoReceiveDecoderQueue.Record(s.DecoderQueueDepthEma, priorityTag);
             }
         }
 

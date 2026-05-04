@@ -52,6 +52,7 @@ import {
 import { Api } from 'api';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 import { ReplaceableSlot } from 'buffers';
+import { RunningEMA } from 'math';
 
 // Import the ONNX model so esbuild copies it to dist/assets/onnx/
 // Disabled with the rest of segmentation — re-enable when shipping.
@@ -172,6 +173,12 @@ const recorderHealthIntervalMs = 1000;
 const recorderHealthFrameBudgetMs = 1000 / 30;
 const encodeCostRatioSamples: number[] = [];
 const pendingEncodeFrameCosts = new Map<number, PendingEncodeFrameCost>();
+// 10-tick EMAs over the per-tick aggregates pushed at recorderHealthIntervalMs
+// (1 Hz). Smooth out transient single-tick spikes so the recording classifier
+// only fires on sustained signals. Reset on aggregator start/stop.
+const encodeRatioEma = new RunningEMA(0, 10);
+const slotReplacementRateEma = new RunningEMA(0, 10);
+const senderFrameDropRatioEma = new RunningEMA(0, 10);
 let lastSenderTotalDroppedFrames = 0;
 let lastSenderAckAtMs = 0;
 let recorderHealthIntervalHandle: ReturnType<typeof setInterval> | null = null;
@@ -240,6 +247,9 @@ function resetRecorderHealthMetrics(): void {
     lastRecorderHealthResetAtMs = performance.now();
     encodeCostRatioSamples.length = 0;
     pendingEncodeFrameCosts.clear();
+    encodeRatioEma.reset();
+    slotReplacementRateEma.reset();
+    senderFrameDropRatioEma.reset();
 }
 
 function stopRecorderHealthAggregator(): void {
@@ -248,6 +258,9 @@ function stopRecorderHealthAggregator(): void {
     recorderHealthIntervalHandle = null;
     encodeCostRatioSamples.length = 0;
     pendingEncodeFrameCosts.clear();
+    encodeRatioEma.reset();
+    slotReplacementRateEma.reset();
+    senderFrameDropRatioEma.reset();
     recorderHealthSenderHooked = null;
 }
 
@@ -264,17 +277,18 @@ function emitRecorderHealthSnapshot(): void {
         const idx = Math.min(Math.floor(samples.length * q), samples.length - 1);
         return samples[idx] ?? 0;
     };
-    // While the post-reset settle window is open, emit 0/0 so the .NET
-    // classifier returns a neutral signal — neither a backoff nor a climb
-    // candidate. Without this gate, a freshly-added top simulcast tier's
-    // cold-start spikes (driver/HW init on first encode call) would falsely
-    // classify as overload and cause endless N⇌N+1 oscillation.
-    const encodeRatioAvg = inResetSettleWindow || samples.length === 0
+    // While the post-reset settle window is open, push 0 into the EMAs and
+    // emit 0 verbatim so the .NET classifier returns a neutral signal —
+    // neither a backoff nor a climb candidate. Without this gate, a
+    // freshly-added top simulcast tier's cold-start spikes (driver/HW init on
+    // first encode call) would falsely classify as overload and cause
+    // endless N⇌N+1 oscillation.
+    const encodeRatioTick = inResetSettleWindow || samples.length === 0
         ? 0
         : samples.reduce((sum, x) => sum + x, 0) / samples.length;
     const encodeRatioP90 = inResetSettleWindow ? 0 : pickAt(0.9);
 
-    const slotRate = slotReplacements / Math.max(1, slotArrivals);
+    const slotRateTick = slotReplacements / Math.max(1, slotArrivals);
 
     const sender = videoStream?.senderStats ?? null;
     if (sender && recorderHealthSenderHooked !== sender) {
@@ -286,13 +300,17 @@ function emitRecorderHealthSnapshot(): void {
         0,
         senderTotalDroppedFrames - lastSenderTotalDroppedFrames);
     lastSenderTotalDroppedFrames = senderTotalDroppedFrames;
-    const senderFrameDropRatio = senderDroppedFramesPerSecond / Math.max(1, VIDEO.frameRate);
+    const senderFrameDropRatioTick = senderDroppedFramesPerSecond / Math.max(1, VIDEO.frameRate);
+
+    encodeRatioEma.appendSample(encodeRatioTick);
+    slotReplacementRateEma.appendSample(slotRateTick);
+    senderFrameDropRatioEma.appendSample(senderFrameDropRatioTick);
 
     const lastAckAgeMs = lastSenderAckAtMs > 0 ? now - lastSenderAckAtMs : -1;
 
     void callbacks.onRecorderHealthSnapshot(
-        encodeRatioAvg, encodeRatioP90,
-        slotRate, senderFrameDropRatio,
+        encodeRatioEma.value, encodeRatioP90,
+        slotReplacementRateEma.value, senderFrameDropRatioEma.value,
         lastAckAgeMs, WorkerConnectivityUI.isConnected, rpcNoWait);
 }
 
