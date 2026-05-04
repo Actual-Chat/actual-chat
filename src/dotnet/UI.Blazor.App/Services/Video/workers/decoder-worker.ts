@@ -697,6 +697,14 @@ function waitForLiveKeyframe(reason: string, minimumOffsetUs = getLiveTargetOffs
     requestKeyframe(reason);
 }
 
+function waitForNextKeyframe(reason: string): void {
+    skipFramesBeforeUs = 0;
+    waitingForKeyframe = true;
+    clearEncodedBuffer();
+    mstgSelector?.resetPrimming();
+    requestKeyframe(reason);
+}
+
 function gateAfterDroppedEncodedChunk(reason: string): void {
     waitingForKeyframe = true;
     mstgSelector?.resetPrimming();
@@ -1502,7 +1510,7 @@ const serverImpl: DecoderWorker = {
     ): Promise<void> => {
         if (!processing) return;
         if (skipFramesBeforeUs > 0) {
-            if (timestamp < skipFramesBeforeUs || !isKeyFrame) {
+            if (!isKeyFrame || (timestamp >= 0 && timestamp < skipFramesBeforeUs)) {
                 return;
             }
             infoLog?.log(
@@ -1510,6 +1518,9 @@ const serverImpl: DecoderWorker = {
                 `(threshold ${(skipFramesBeforeUs / 1000).toFixed(0)}ms)`);
             skipFramesBeforeUs = 0;
             clearEncodedBuffer();
+        }
+        if (waitingForKeyframe && !isKeyFrame) {
+            return;
         }
         pushEncodedChunk({
             timestamp, duration, isKeyFrame, sequenceNumber,
@@ -1519,13 +1530,13 @@ const serverImpl: DecoderWorker = {
 
     // eslint-disable-next-line @typescript-eslint/require-await
     flagWaitingForKeyframe: async (): Promise<void> => {
-        // Drop buffered/arriving chunks until the next live keyframe arrives.
+        // Drop buffered/arriving deltas until the next keyframe arrives.
         // Does NOT touch the decoder — keeps it alive so it can consume the
-        // recovery keyframe normally.
-        waitForLiveKeyframe('flagWaitingForKeyframe');
-        infoLog?.log(
-            `flagWaitingForKeyframe: gate armed, ` +
-            `threshold=${(skipFramesBeforeUs / 1000).toFixed(0)}ms`);
+        // recovery keyframe normally. This is keyframe-only: frame offsets may
+        // be in a shifted/negative source domain, so live-edge thresholding here
+        // can permanently stall playback.
+        waitForNextKeyframe('flagWaitingForKeyframe');
+        infoLog?.log('flagWaitingForKeyframe: waiting for next keyframe');
     },
 
     /**
