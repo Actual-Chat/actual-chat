@@ -78,13 +78,19 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     [ComputeMethod]
-    public virtual async Task<bool> IsVideoEnabled(ChatId chatId, CancellationToken cancellationToken = default)
+    // ReSharper disable once AsyncMethodWithoutAwait
+    public virtual Task<bool> IsVideoEnabled(ChatId chatId, CancellationToken cancellationToken = default)
     {
-        // Regular users get video only in peer chats; admins get it everywhere.
+#if false
         if (chatId.Kind == ChatKind.Peer)
             return true;
+
         var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         return account.IsAdmin;
+#else
+        // NOTE(AY): Let's try to enable it in all chats
+        return ActualLab.Async.TaskExt.TrueTask;
+#endif
     }
 
     [ComputeMethod]
