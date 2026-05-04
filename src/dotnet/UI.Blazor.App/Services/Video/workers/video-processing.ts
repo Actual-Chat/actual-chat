@@ -1309,7 +1309,7 @@ function onEncoderOutput(chunkData: EncodedChunkData): void {
             negativeRebasedTimestampDropCount++;
             if (negativeRebasedTimestampDropCount <= 3 || negativeRebasedTimestampDropCount % 30 === 0) {
                 warnLog?.log(
-                    `Dropping encoded chunk with negative rebased timestamp #${negativeRebasedTimestampDropCount}: ` +
+                    `onEncoderOutput: dropping encoded chunk with negative rebased timestamp before send #${negativeRebasedTimestampDropCount}: ` +
                     `rebased=${(rebasedTs / 1000).toFixed(0)}ms, ` +
                     `chunkTs=${(chunkData.chunk.timestamp / 1000).toFixed(0)}ms, ` +
                     `startTs=${(startTimestamp / 1000).toFixed(0)}ms, ` +

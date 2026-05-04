@@ -431,6 +431,7 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
     let burstCount = 0;
     let burstWindowStart = 0;
     let burstReported = false;
+    let negativeOffsetReceiveCount = 0;
 
     try {
         infoLog?.log(`pull: GetStream(${streamId}, skipTo=${skipToMs}ms, retry=${pullRetryCount})`);
@@ -458,6 +459,17 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
 
             const offsetMs = momentToSeconds(frame.Offset) * 1000;
             const durationMs = momentToSeconds(frame.Duration) * 1000;
+            if (offsetMs < 0) {
+                negativeOffsetReceiveCount++;
+                if (negativeOffsetReceiveCount <= 3 || negativeOffsetReceiveCount % 30 === 0) {
+                    warnLog?.log(
+                        `runPullLoop: received negative frame offset #${negativeOffsetReceiveCount}: ` +
+                        `offset=${offsetMs.toFixed(0)}ms, ticks=${String(frame.Offset)}, ` +
+                        `duration=${durationMs.toFixed(0)}ms, key=${frame.IsKeyFrame}, ` +
+                        `layer=${frame.SpatialLayerId ?? 0}, temporal=${frame.TemporalLayerId ?? 0}, ` +
+                        `pullFrame=${pullFrameCount}, streamId=${streamId}`);
+                }
+            }
             if (offsetMs > lastArrivedOffsetMs) lastArrivedOffsetMs = offsetMs;
 
             const data = frame.Data;

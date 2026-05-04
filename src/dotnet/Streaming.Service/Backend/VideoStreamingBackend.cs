@@ -190,6 +190,9 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             // == lastYieldedKf" invariant correct for the filter's selected
             // layer. Small key = int (spatialLayerId, typically 0..2).
             var keyFrameNumberByLayer = new Dictionary<int, long>();
+            var startedLayers = new HashSet<int>();
+            var negativeOffsetDropCount = 0;
+            var preKeyframeDeltaDropCount = 0;
             var lastHeartbeat = CpuTimestamp.Now;
             var heartbeatInterval = TimeSpan.FromMinutes(2.5); // Half of LiveVideoBackend.ChatStateTtl
             var silenceTimeout = record.StreamKind == StreamKind.Screencast
@@ -204,6 +207,43 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                     watchdogCts.CancelAfter(silenceTimeout);
 
                     var layerId = frame.SpatialLayerId;
+                    if (frame.Offset < TimeSpan.Zero) {
+                        negativeOffsetDropCount++;
+                        if (negativeOffsetDropCount <= 3 || negativeOffsetDropCount % 30 == 0)
+                            Log.LogWarning(
+                                "ProcessFrames: dropping frame with negative offset #{DropCount} for stream #{StreamId}: " +
+                                "offset={OffsetMs:F0}ms, key={IsKeyFrame}, layer={SpatialLayerId}, temporal={TemporalLayerId}, " +
+                                "dims={Width}x{Height}",
+                                negativeOffsetDropCount,
+                                record.StreamId,
+                                frame.Offset.TotalMilliseconds,
+                                frame.IsKeyFrame,
+                                layerId,
+                                frame.TemporalLayerId,
+                                frame.Width,
+                                frame.Height);
+                        continue;
+                    }
+
+                    if (frame.IsKeyFrame)
+                        startedLayers.Add(layerId);
+                    else if (!startedLayers.Contains(layerId)) {
+                        preKeyframeDeltaDropCount++;
+                        if (preKeyframeDeltaDropCount <= 3 || preKeyframeDeltaDropCount % 30 == 0)
+                            Log.LogWarning(
+                                "ProcessFrames: dropping delta before first keyframe #{DropCount} for stream #{StreamId}: " +
+                                "offset={OffsetMs:F0}ms, layer={SpatialLayerId}, temporal={TemporalLayerId}, " +
+                                "dims={Width}x{Height}",
+                                preKeyframeDeltaDropCount,
+                                record.StreamId,
+                                frame.Offset.TotalMilliseconds,
+                                layerId,
+                                frame.TemporalLayerId,
+                                frame.Width,
+                                frame.Height);
+                        continue;
+                    }
+
                     if (frame.IsKeyFrame) {
                         keyFrameNumberByLayer.TryGetValue(layerId, out var current);
                         keyFrameNumberByLayer[layerId] = current + 1;
