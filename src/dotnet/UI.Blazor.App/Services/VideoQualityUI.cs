@@ -843,6 +843,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         double LastAckBadMs,
         double LastAckGoodMs,
         double SenderFrameDropRatioBadAbove,
+        double SenderFrameDropRatioGoodBelow,
         int MinTargetLayerCount,
         int MaxTargetLayerCount,
         int ConsecutiveGoodForClimb,
@@ -854,6 +855,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             LastAckBadMs: Constants.Video.LastAckBadMs,
             LastAckGoodMs: Constants.Video.LastAckGoodMs,
             SenderFrameDropRatioBadAbove: 0.20,
+            SenderFrameDropRatioGoodBelow: 0.10, // (30 - 27) / 30 = 0.1: 27 FPS is still OK
             MinTargetLayerCount: 1,
             MaxTargetLayerCount: Constants.Video.MaxSimulcastTiers,
             ConsecutiveGoodForClimb: 5,
@@ -881,7 +883,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             var allGood =
                 h.EncodeRatioEma < t.EncodeRatioGoodBelow
                 && (h.LastAckAgeMs < 0 || h.LastAckAgeMs < t.LastAckGoodMs)
-                && h.SenderFrameDropRatioEma == 0;
+                && h.SenderFrameDropRatioEma < t.SenderFrameDropRatioGoodBelow;
             return allGood ? 1 : 0;
         }
     }

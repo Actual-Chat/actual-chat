@@ -64,6 +64,26 @@ public class RecordingClassifierTest
     }
 
     [Fact]
+    public void SenderFrameDropRatioBelowGoodThreshold_ReturnsGood()
+    {
+        var h = Snapshot(
+            encodeRatio: 0.2,
+            senderFrameDropRatio: T.SenderFrameDropRatioGoodBelow - 0.01,
+            lastAckMs: 100);
+        RecordingClassifier.Classify(h, T).Should().Be(1);
+    }
+
+    [Fact]
+    public void SenderFrameDropRatioAtGoodThreshold_ReturnsNeutral()
+    {
+        var h = Snapshot(
+            encodeRatio: 0.2,
+            senderFrameDropRatio: T.SenderFrameDropRatioGoodBelow,
+            lastAckMs: 100);
+        RecordingClassifier.Classify(h, T).Should().Be(0);
+    }
+
+    [Fact]
     public void HighLastAckAge_ReturnsBad()
     {
         var h = Snapshot(lastAckMs: T.LastAckBadMs + 1);
