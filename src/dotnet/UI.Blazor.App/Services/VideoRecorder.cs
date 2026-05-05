@@ -242,8 +242,10 @@ public sealed class VideoRecorder : IAsyncDisposable
                         lastAppliedPreset = preset;
                     }
                 }
-                if (preset.IsKeyFrameRequested)
+                if (preset.IsKeyFrameRequested) {
+                    Log.LogInformation("PLI: invoking forceKeyFrame interop for stream {StreamId}", ownStreamId);
                     await _jsRef.InvokeVoidAsync("forceKeyFrame", cancellationToken).ConfigureAwait(false);
+                }
                 // G1: server-aggregated spatial cap. Server's EvaluateQuality
                 // reports max-across-peers EffectiveMaxSpatial — the highest
                 // layer any subscriber currently needs. When this drops below

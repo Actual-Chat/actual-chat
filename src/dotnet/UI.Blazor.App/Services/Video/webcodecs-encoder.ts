@@ -136,6 +136,10 @@ export class WebCodecsEncoder {
     private encodeQueueAtStart = new Denque<number>(); // Queue size when encode was called (parallel to encodeStartTimes)
     private pureEncodeTimeHistory = new Denque<number>(); // Times when queue was 0 at start (actual codec cost)
     private chunkSequence = 0; // Track chunk sequence for proper ordering
+    // PLI diagnostics: timestamp set when encode() is called with forceKeyFrame=true,
+    // cleared when the next 'key' chunk comes out of the encoder. Lets us measure
+    // encoder request→output latency for forced keyframes.
+    private pendingForcedKfStartMs = 0;
 
     // Diagnostics: track encoder lifecycle so the modal can distinguish
     // "encoder is healthy and waiting for first frame" from "encoder died,
@@ -275,6 +279,12 @@ export class WebCodecsEncoder {
         if (shouldBeKeyFrame) {
             this.lastKeyFrame = this.frameCount;
             this.lastKeyFrameTimeMs = nowMs;
+        }
+
+        if (forceKeyFrame) {
+            this.pendingForcedKfStartMs = nowMs;
+            infoLog?.log(
+                `PLI: encode() forced KF requested (${this.config.codec}, layer=${this.spatialLayerId}, frame=${this.frameCount}, queue=${this.encoder.encodeQueueSize})`);
         }
 
         try {
@@ -460,6 +470,13 @@ export class WebCodecsEncoder {
                 this.totalBytes += chunk.byteLength;
                 if (chunk.type === 'key') {
                     this.keyFrameCount++;
+                    if (this.pendingForcedKfStartMs > 0) {
+                        const elapsedMs = performance.now() - this.pendingForcedKfStartMs;
+                        infoLog?.log(
+                            `PLI: encoder OUTPUT forced KF in ${elapsedMs.toFixed(0)}ms ` +
+                            `(${this.config.codec}, layer=${this.spatialLayerId}, bytes=${chunk.byteLength})`);
+                        this.pendingForcedKfStartMs = 0;
+                    }
                 }
 
                 // Rotation diagnostics: on each keyframe, parse the chunk's

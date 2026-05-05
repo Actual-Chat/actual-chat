@@ -50,7 +50,27 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             return null;
         }
 
-        stream = stream.SkipWhile(f => !f.IsKeyFrame);
+        // SkipWhile diagnostics: counts non-KF chunks dropped at the head of the
+        // returned stream and logs the wait until the first decodable KF surfaces.
+        // SkipCount > 0 is direct evidence that the Replay window handed us only
+        // deltas — the late-subscriber-wait classic case (e.g. ServerReplayTailSize
+        // too narrow for the active simulcast tier count).
+        var subscribeAt = CpuTimestamp.Now;
+        var skipCount = 0;
+        var firstKfLogged = false;
+        stream = stream.SkipWhile(f => {
+            if (f.IsKeyFrame) {
+                if (!firstKfLogged) {
+                    firstKfLogged = true;
+                    Log.LogInformation(
+                        "GetVideoRaw: #{StreamId} first decodable KF after dropping {SkipCount} non-KF chunks in {ElapsedMs:F0}ms",
+                        streamId, skipCount, subscribeAt.Elapsed.TotalMilliseconds);
+                }
+                return false;
+            }
+            skipCount++;
+            return true;
+        });
 
         return new RpcStream<VideoFrame>(stream) {
             AckPeriod = Constants.Video.RpcStreamAckPeriod,
@@ -92,8 +112,12 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     {
         _ = cancellationToken;
         var preset = VideoQualityPreset.High;
-        if (LatencyStore.KeyFrameRequests.TryRemove(streamId, out _))
+        var hadKeyFrameRequest = LatencyStore.KeyFrameRequests.TryRemove(streamId, out _);
+        if (hadKeyFrameRequest)
             preset = preset with { IsKeyFrameRequested = true };
+        Log.LogInformation(
+            "GetQualityPreset: streamId={StreamId} returning IsKeyFrameRequested={IsKeyFrameRequested}",
+            streamId, hadKeyFrameRequest);
         return Task.FromResult(preset);
     }
 
@@ -109,6 +133,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         }
         LatencyStore.LastKeyFrameRequestTime[streamId] = now;
         LatencyStore.KeyFrameRequests[streamId] = true;
+        LatencyStore.PendingPliRequest[streamId] = now;
         Log.LogInformation("RequestKeyFrame: streamId={StreamId}", streamId);
 
         // Invalidate GetQualityPreset so computed consumers re-evaluate reactively
@@ -226,6 +251,10 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                     }
 
                     if (frame.IsKeyFrame) {
+                        if (LatencyStore.PendingPliRequest.TryRemove(record.StreamId, out var pliTime))
+                            Log.LogInformation(
+                                "PLI→KF: stream #{StreamId} layer={SpatialLayerId} arrived in {ElapsedMs:F0}ms",
+                                record.StreamId, layerId, pliTime.Elapsed.TotalMilliseconds);
                         if (startedLayers.Add(layerId))
                             Log.LogWarning(
                                 "ProcessFrames: first keyframe for stream #{StreamId} layer={SpatialLayerId} dims={Width}x{Height} (DIAG: simulcast probe)",
