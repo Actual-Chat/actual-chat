@@ -20,6 +20,7 @@
  */
 
 import { getLogs } from 'logging';
+import { WebGPUManager } from './webgpu-manager';
 
 const { infoLog, warnLog } = getLogs('VideoSegmentation');
 
@@ -104,14 +105,29 @@ let cachedYuvBindGroup: GPUBindGroup | null = null;
 let yPackedSize = 0;
 let uvPackedSize = 0;
 
+// Lost-listener disposer. Subscribes in initYUVConverter so a GPU device-lost
+// nulls the cached pipeline + storage/staging buffers before another call
+// dereferences them. Replaced when initYUVConverter is called against a
+// different device; cleared by the handler when it fires.
+let lostDispose: (() => void) | null = null;
+
 // ── Public API ──────────────────────────────────────────────────────────────────
 
 /**
  * Initialize the YUV converter pipeline.
  * Must be called after the WebGPU device is available (from initBlurWebGPU).
+ *
+ * Idempotent on the same device — repeated calls (e.g. from initBlurWebGPU
+ * being re-invoked) early-return without recreating the pipeline. On a
+ * different device (post device-lost recovery) the prior lost-listener is
+ * disposed and a fresh subscription is installed against the new device.
  */
 export function initYUVConverter(gpuDevice: GPUDevice): void {
+    if (device === gpuDevice) return;
+
+    lostDispose?.();
     device = gpuDevice;
+    lostDispose = WebGPUManager.addLostListener(onYuvDeviceLost);
 
     const module = device.createShaderModule({ code: RGBA_TO_I420_WGSL });
     yuvPipeline = device.createComputePipeline({
@@ -120,6 +136,31 @@ export function initYUVConverter(gpuDevice: GPUDevice): void {
     });
 
     infoLog?.log('WebGPU YUV converter initialized (packed byte output)');
+}
+
+// Drop every module-scope GPU ref so the next initYUVConverter call against
+// a fresh device re-arms cleanly. No .destroy() — handles already dead.
+// stagingReadyPromises reset to resolved so the next encode path doesn't
+// hang waiting on a buffer mapAsync that will never settle.
+function onYuvDeviceLost(): void {
+    warnLog?.log('YUV converter invalidated by device.lost');
+    device = null;
+    yuvPipeline = null;
+    compositeTexture = null;
+    compositeTextureView = null;
+    compositeKey = '';
+    bufferKey = '';
+    yStorageBuf = null;
+    uStorageBuf = null;
+    vStorageBuf = null;
+    stagingBufs = [null, null];
+    stagingReadyPromises = [Promise.resolve(), Promise.resolve()];
+    currentStagingIdx = 0;
+    paramsBuf = null;
+    cachedYuvBindGroup = null;
+    yPackedSize = 0;
+    uvPackedSize = 0;
+    lostDispose = null;
 }
 
 /**
