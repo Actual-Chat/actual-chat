@@ -75,7 +75,15 @@ while ($true) {
 
     # Step 1: npm-build
     Write-LoopLog "Step 1/3 (npm-build): npm run build:Debug -> $npmBuildLog"
-    & npm run build:Debug *> $npmBuildLog
+    # On Windows `npm` is a `.cmd` wrapper. PowerShell's `&` + `*>` does not
+    # reliably propagate exit codes or capture all output from .cmd files, so
+    # tsc errors silently dropped the loop into a "passed" state. Run via
+    # `cmd /c` and redirect inside cmd to capture both streams faithfully.
+    if ($IsWindows) {
+        & cmd /c "npm run build:Debug > `"$npmBuildLog`" 2>&1"
+    } else {
+        & npm run build:Debug *> $npmBuildLog
+    }
     if ($LASTEXITCODE -ne 0) {
         $failureMessage = "Step 1 (npm-build) failed with exit code $LASTEXITCODE. See '$npmBuildLog'."
     }

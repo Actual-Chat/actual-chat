@@ -135,8 +135,12 @@ services:
       - sh
       - -c
       - |
+        # Chrome's /json/version rejects Host headers that aren't localhost or
+        # an IP literal, so resolve host.docker.internal to IPv4 here.
+        HOST_IP=$$(getent ahosts host.docker.internal | awk '$$1 ~ /\./ { print $$1; exit }')
+        echo "Resolved host.docker.internal -> $$HOST_IP"
         exec npx -y supergateway \
-          --stdio "npx -y chrome-devtools-mcp@0.20.0 --browserUrl http://host.docker.internal:9222 --acceptInsecureCerts" \
+          --stdio "npx -y chrome-devtools-mcp@0.20.0 --browserUrl http://$$HOST_IP:9222 --acceptInsecureCerts" \
           --outputTransport streamableHttp \
           --port 8765 \
           --healthEndpoint /healthz \
