@@ -211,6 +211,22 @@ export class WebCodecsEncoder {
             return;
         }
 
+        // Rotation diagnostics: log encoder INPUT frame metadata on first
+        // frame and every 300th (~10s @ 30fps). Confirms whether downscaler
+        // baked rotation into pixels (frame.rotation null/0, dims match
+        // portrait config) or left it for the encoder to tag (frame.rotation
+        // non-zero) — bitstream rotation tag is what makes Edge HEVC HW
+        // disagree with Chrome on decoded display dims.
+        if (this.frameCount === 0 || this.frameCount % 300 === 0) {
+            const rot = (frame as VideoFrame & { rotation?: number | null }).rotation ?? null;
+            infoLog?.log(
+                `encode #${this.frameCount} (${this.config.codec}, layer=${this.spatialLayerId}): `
+                + `display=${frame.displayWidth}x${frame.displayHeight} `
+                + `coded=${frame.codedWidth}x${frame.codedHeight} `
+                + `rotation=${rot ?? 'null'} `
+                + `config=${this.config.width}x${this.config.height}`);
+        }
+
         // Dims-mismatch guard. Chrome's HW encoders (HEVC, H.264, AV1) silently
         // crop from the top-left corner when `frame.codedWidth/Height` exceeds
         // the configured dims instead of scaling — producing a visible
@@ -444,6 +460,27 @@ export class WebCodecsEncoder {
                 this.totalBytes += chunk.byteLength;
                 if (chunk.type === 'key') {
                     this.keyFrameCount++;
+                }
+
+                // Rotation diagnostics: on each keyframe, parse the chunk's
+                // decoderConfig (when present) to confirm bitstream codedWidth/
+                // codedHeight matches the encoder config. Mismatch means the
+                // encoder embedded a rotation/transform — receivers with
+                // different HEVC HW drivers will then report different
+                // displayWidth/displayHeight, which is the Edge vs Chrome
+                // divergence we're hunting.
+                if (chunk.type === 'key') {
+                    const dc = metadata?.decoderConfig as (VideoDecoderConfig & {
+                        codedWidth?: number; codedHeight?: number;
+                        displayAspectWidth?: number; displayAspectHeight?: number;
+                    }) | undefined;
+                    if (dc) {
+                        infoLog?.log(
+                            `chunk KF (${this.config.codec}, layer=${this.spatialLayerId}): `
+                            + `decoderConfig coded=${dc.codedWidth}x${dc.codedHeight} `
+                            + `displayAspect=${dc.displayAspectWidth ?? 'n/a'}x${dc.displayAspectHeight ?? 'n/a'} `
+                            + `descBytes=${dc.description ? (dc.description as ArrayBuffer | Uint8Array).byteLength : 'none'}`);
+                    }
                 }
 
                 this.onChunk(chunkData);
