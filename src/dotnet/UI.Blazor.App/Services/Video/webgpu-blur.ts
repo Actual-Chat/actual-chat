@@ -14,6 +14,13 @@ const { infoLog, warnLog } = getLogs('VideoSegmentation');
 let device: GPUDevice | null = null;
 let sampler: GPUSampler;
 
+// Lost-listener disposer. Subscribes in initBlurWebGPU so a GPU device-lost
+// nulls all module-scope GPU refs before another consumer dereferences them.
+// Unsubscribed only when initBlurWebGPU re-runs against a different device
+// (re-arms against the new one) or when the lost handler itself fires
+// (handler clears the disposer slot).
+let lostDispose: (() => void) | null = null;
+
 let downsample2dPipeline: GPURenderPipeline; // For downsampling texture_2d
 let compositePipeline: GPURenderPipeline;
 let mipmapDownsamplePipeline: GPURenderPipeline;
@@ -502,13 +509,52 @@ export async function initBlurWebGPU(gpuDevice?: GPUDevice): Promise<void> {
         infoLog?.log('Reinitializing blur with new shared device');
     }
 
+    // Drop prior subscription before re-arming. Either the previous device
+    // is the live one we just compared against (and we're switching), or
+    // the previous handler already fired and cleared the slot (no-op).
+    lostDispose?.();
     device = sharedDevice;
+    lostDispose = WebGPUManager.addLostListener(onBlurDeviceLost);
 
     // Initialize GPU resources with the provided device
     initializeGpuResources();
 
     // Initialize YUV converter for I420 output
     initYUVConverter(device);
+}
+
+// Drop every module-scope GPU ref so the next call after device.lost re-arms
+// cleanly against a fresh device. Cannot .destroy() the cached
+// textures/buffers — handles are already dead and dereffing them re-triggers
+// the same Dawn "external Instance reference no longer exists" path that
+// crashes the renderer. Maps are .clear()ed; pools are length-zeroed.
+function onBlurDeviceLost(): void {
+    warnLog?.log('Blur invalidated by device.lost');
+    device = null;
+    sampler = null!;
+    canvasCtx = null!;
+    downsample2dPipeline = null!;
+    compositePipeline = null!;
+    mipmapDownsamplePipeline = null!;
+    mipmapUpsamplePipeline = null!;
+    maskBufferToTexturePipeline = null;
+    temporalSmoothingPipeline = null;
+    mipmapTextureCache.clear();
+    pyramidViewCache.clear();
+    cachedPyramidTexture = null;
+    offsetBufferCache.clear();
+    uniform8BufferPool.length = 0;
+    cachedMaskTexture = null;
+    cachedUpscaledMask = null;
+    cachedMaskTextureView = null;
+    cachedMaskTextureForView = null;
+    lastMaskW = 0;
+    lastMaskH = 0;
+    lastBlurStrength = -1;
+    // Drop deferred cleanups — their closures hold .destroy() calls against
+    // dead GPU handles. Running them after lost would re-trigger the crash.
+    blurCleanupQueue.clear();
+    lostDispose = null;
 }
 
 // Ensure device is initialized (must call initBlurWebGPU first)
