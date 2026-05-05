@@ -15,6 +15,7 @@
 
     private ElementReference _ref;
     private IJSObjectReference _jsRef = null!;
+    private string _lastCopyText = "";
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Tooltip { get; set; } = "Copy";
@@ -24,10 +25,15 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender)
+        if (firstRender) {
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(
                 JSCreateMethod,
                 _ref, CopyText, Tooltip, CopyTextSourceRef, CopyTextFormatString);
+            _lastCopyText = CopyText;
+        } else if (CopyText != _lastCopyText) {
+            _lastCopyText = CopyText;
+            await _jsRef.InvokeVoidAsync("setCopyText", CopyText);
+        }
     }
 
     public async ValueTask DisposeAsync() {
