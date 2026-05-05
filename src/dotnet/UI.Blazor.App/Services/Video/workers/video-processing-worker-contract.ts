@@ -172,7 +172,7 @@ export interface OrientationStats {
     configuredWidth: number;
     configuredHeight: number;
     needsRotation: boolean;
-    rotationDetection: 'none' | 'dimensions' | 'coded' | 'metadata';
+    rotationDetection: 'none' | 'dimensions' | 'coded' | 'orientation' | 'metadata';
     framesSeen: number;
 }
 

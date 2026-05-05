@@ -1945,17 +1945,37 @@ async function streamReadLoop(inputReader: ReadableStreamDefaultReader<VideoFram
                 sourceHeight = frameH;
                 infoLog?.log(`streamReadLoop: dimensions, display=${frameW}x${frameH}, coded=${codedW}x${codedH}, config=${encoderConfig.width}x${encoderConfig.height}, rotation=${frameRotation ?? 'N/A'}`);
                 // Detect rotation: display dims are transposed vs encoder config
-                // (MSTP gives raw sensor dims as displayWidth/Height)
+                // (MSTP gives raw sensor dims as displayWidth/Height). Exact dim
+                // equality only catches the no-downscale case.
                 const isRotated = frameW === encoderConfig.height && frameH === encoderConfig.width
                     && frameW !== encoderConfig.width;
                 // Detect rotation: Safari sets display dims to post-rotation (portrait) but pixel
                 // buffer stays in sensor orientation (landscape) — coded dims reveal true pixel layout
                 const isRotatedByCoded = !isRotated
                     && codedW === frameH && codedH === frameW && codedW !== frameW;
+                // Aspect-orientation fallback: a simulcast pipeline downscales source
+                // frames to a smaller config, so exact dim equality misses the
+                // common case (e.g., source 1280x720 landscape → encoder 360x640
+                // portrait base layer). Compare landscape-vs-portrait orientation
+                // directly. Use coded dims when they disagree with display
+                // (Safari sensor-orientation case): coded reflects the real pixel
+                // buffer the encoder will receive pre-rotation.
+                const refW = (codedW > 0 && codedH > 0 && (codedW !== frameW || codedH !== frameH))
+                    ? codedW : frameW;
+                const refH = (codedW > 0 && codedH > 0 && (codedW !== frameW || codedH !== frameH))
+                    ? codedH : frameH;
+                const frameLandscape = refW > refH;
+                const framePortrait = refW < refH;
+                const configLandscape = encoderConfig.width > encoderConfig.height;
+                const configPortrait = encoderConfig.width < encoderConfig.height;
+                const isRotatedByOrientation = !isRotated && !isRotatedByCoded
+                    && ((frameLandscape && configPortrait) || (framePortrait && configLandscape));
                 let detection: OrientationStats['rotationDetection'] = 'none';
-                if (isRotated || isRotatedByCoded) {
+                if (isRotated || isRotatedByCoded || isRotatedByOrientation) {
                     needsRotation = true;
-                    detection = isRotated ? 'dimensions' : 'coded';
+                    detection = isRotated ? 'dimensions'
+                        : isRotatedByCoded ? 'coded'
+                            : 'orientation';
                     // Keep encoder config at portrait dimensions — resizeFrame() rotate90 will
                     // rotate landscape frames into portrait before encoding
                 } else if (frameW !== encoderConfig.width || frameH !== encoderConfig.height) {
