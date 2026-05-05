@@ -132,6 +132,10 @@ let lastEncoderRebuildAtMs = 0;
 const ENCODER_REBUILD_COOLDOWN_MS = 5000;
 let resizeCanvas: OffscreenCanvas | null = null;
 let resizeCtx: OffscreenCanvasRenderingContext2D | null = null;
+// Per-extra-layer resize-canvas cache for the CPU-fanout simulcast path
+// (active when downscaler is null). Index aligns with extraLayerEncoders.
+// Reset whenever extraLayerEncoders is rebuilt (setupEncoders, setSpatialLayers).
+let extraResizeCaches: { canvas: OffscreenCanvas | null; ctx: OffscreenCanvasRenderingContext2D | null }[] = [];
 let downscaler: WebGpuDownscaler | null = null;
 let senderRotationDeg = 0;
 let startTimestamp: number | undefined = undefined;
@@ -1054,9 +1058,44 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
                 }
             }
         } else {
-            // CPU resize path (older browsers without WebGPU). Source ts is
-            // preserved through resizeFrame; chunk-level rebase handles
-            // recording-anchor offset.
+            // CPU resize path. Used when the WebGPU downscaler is null (older
+            // browsers, or the WebGPU-disable freeze probe). Multi-layer fan-out:
+            // for each extra encoder, clone the source (zero-copy ref bump),
+            // resize that clone to the layer's configured dims via a per-layer
+            // cached OffscreenCanvas, and feed the resized frame to the layer
+            // encoder. Then resize+consume the original source for the base.
+            // Source ts is preserved through resizeFrame; chunk-level rebase
+            // happens in onEncoderOutput.
+            if (extraLayerEncoders.length > 0) {
+                const expectedEncodeLayerCount = 1 + extraLayerEncoders.length;
+                registerEncodeFrameCost(sourceFrame.timestamp, expectedEncodeLayerCount);
+                // Pad the cache array if missing (e.g. first frame after rebuild).
+                while (extraResizeCaches.length < extraLayerEncoders.length)
+                    extraResizeCaches.push({ canvas: null, ctx: null });
+                for (let i = 0; i < extraLayerEncoders.length; i++) {
+                    const enc = extraLayerEncoders[i];
+                    const stats = enc.getStats();
+                    const layerW = stats.configuredWidth;
+                    const layerH = stats.configuredHeight;
+                    let clone: VideoFrame;
+                    try {
+                        clone = new VideoFrame(sourceFrame, { timestamp: sourceFrame.timestamp });
+                    } catch (e) {
+                        errorLog?.log(`CPU simulcast clone failed for layer ${i + 1}:`, e);
+                        continue;
+                    }
+                    const cache = extraResizeCaches[i];
+                    const r = resizeFrame(clone, layerW, layerH, cache.canvas, cache.ctx, needsRotation);
+                    extraResizeCaches[i] = { canvas: r.canvas, ctx: r.ctx };
+                    try {
+                        enc.encode(r.frame, nextFrameIsKeyFrame);
+                        pipelineCounters.framesEncoded++;
+                    } catch (e) {
+                        errorLog?.log(`Extra layer ${i + 1} CPU encode error:`, e);
+                        try { r.frame.close(); } catch { /* already closed */ }
+                    }
+                }
+            }
             const resized = resizeFrame(sourceFrame, encoderConfig.width, encoderConfig.height, resizeCanvas, resizeCtx, needsRotation);
             // resizeFrame closes its input when it produces a new frame; the
             // returned `frame` is the live one.
@@ -1166,7 +1205,9 @@ async function encodeProcessedFrame(frame: VideoFrame): Promise<void> {
         // success/throw — drop our live-tracking now so the catch below doesn't
         // try to close an already-closed frame.
         liveFrame = null;
-        if (!downscaler)
+        // CPU multi-layer fan-out path already registered the full layer count
+        // (1 + extras) before fan-out; only register here in the single-layer case.
+        if (!downscaler && extraLayerEncoders.length === 0)
             registerEncodeFrameCost(processedFrame.timestamp, 1);
         activeEncoder.encode(processedFrame, forceKf);
         pipelineCounters.framesEncoded++;
@@ -1663,6 +1704,7 @@ function setupEncoders(config: VideoProcessingConfig): void {
         try { e.close(); } catch { /* already closed */ }
     }
     extraLayerEncoders = [];
+    extraResizeCaches = [];
 
     const layers = config.spatialLayers ?? [];
     for (let i = 0; i < layers.length; i++) {
@@ -2369,6 +2411,7 @@ export const serverImpl: VideoProcessingWorker = {
         try {
             encoderConfig.bitrate = params.bitrate; encoderConfig.width = params.width; encoderConfig.height = params.height;
             resizeCanvas = null; resizeCtx = null;
+            extraResizeCaches = extraResizeCaches.map(() => ({ canvas: null, ctx: null }));
             // Order matters. `encoder.reconfigure` has an `await` boundary, so
             // pause frame handoff for dimension changes while the downscaler and
             // encoder move to the new shape together.
@@ -2424,6 +2467,7 @@ export const serverImpl: VideoProcessingWorker = {
             if (extraLayerEncoders.length > 0) {
                 const extras = extraLayerEncoders.slice();
                 extraLayerEncoders = [];
+                extraResizeCaches = [];
                 infoLog?.log(`switchCodec: tearing down ${extras.length} simulcast extras`);
                 for (const e of extras) {
                     try { await e.flush(); } catch { /* already closed elsewhere */ }
@@ -2515,6 +2559,7 @@ export const serverImpl: VideoProcessingWorker = {
         if (extraLayerEncoders.length > 0) {
             const extras = extraLayerEncoders.slice();
             extraLayerEncoders = [];
+            extraResizeCaches = [];
             for (const e of extras) {
                 try { await e.flush(); } catch { /* already closed */ }
                 try { e.close(); } catch { /* already closed */ }
@@ -2673,7 +2718,7 @@ export const serverImpl: VideoProcessingWorker = {
 
         // Reset all state
         encoder = null; encoderConfig = null; encodersInitialized = false; onnxSession = null; segConfig = null; resolvedModelConfig = null;
-        segInitialized = false; blurEnabled = false; resizeCanvas = null; resizeCtx = null;
+        segInitialized = false; blurEnabled = false; resizeCanvas = null; resizeCtx = null; extraResizeCaches = [];
         startTimestamp = undefined; sourceStartedAtMs = undefined; awaitingFirstEncoderOutput = true; loggedI420Error = false; loggedPreConvertSkipped = false;
         slotReplacements = 0; slotArrivals = 0; lastSlotCheckTime = 0; slotPressureNotified = false;
         dimensionsReconciled = false; needsRotation = false; orientationStats = null; sourceWidth = 0; sourceHeight = 0; vadSpeaking = true; vadRemoteStreamCount = 0; vadLastPassedFrameTime = 0;

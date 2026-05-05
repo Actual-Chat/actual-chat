@@ -44,7 +44,9 @@ export async function detectGPUBackends(): Promise<GPUBackendSupport> {
                     && typeof GPUDevice.prototype.importExternalTexture === 'function';
                 if (hasImportExternalTexture) {
                     support.webgpu = true;
-                    support.details.webgpu = 'Browser WebGPU available (importExternalTexture supported)';
+                    const hasBgra8Storage = adapter.features.has('bgra8unorm-storage');
+                    support.details.webgpu =
+                        `Browser WebGPU available (importExternalTexture supported, bgra8unorm-storage=${hasBgra8Storage})`;
                 } else {
                     support.details.webgpu = 'WebGPU adapter available but importExternalTexture not supported';
                 }

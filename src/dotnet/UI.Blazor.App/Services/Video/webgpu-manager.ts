@@ -39,7 +39,16 @@ export class WebGPUManager {
             if (!adapter)
                 throw new Error('Failed to acquire WebGPU adapter');
 
-            const createdDevice = await adapter.requestDevice();
+            // Opt into bgra8unorm-storage when the adapter has it. Lets the
+            // simulcast downscaler write directly into canvas swap-chain
+            // textures from a compute shader (BGRA is the preferred canvas
+            // format on Chrome/Safari). No-op if unsupported — downscaler
+            // automatically falls back to its render-pass path.
+            const requiredFeatures: GPUFeatureName[] = [];
+            if (adapter.features.has('bgra8unorm-storage'))
+                requiredFeatures.push('bgra8unorm-storage');
+
+            const createdDevice = await adapter.requestDevice({ requiredFeatures });
             this.attachDevice(createdDevice);
             return createdDevice;
         })().finally(() => {
@@ -47,6 +56,10 @@ export class WebGPUManager {
         });
 
         return this.initPromise;
+    }
+
+    static hasFeature(name: GPUFeatureName): boolean {
+        return this.device?.features.has(name) ?? false;
     }
 
     static get(): GPUDevice {

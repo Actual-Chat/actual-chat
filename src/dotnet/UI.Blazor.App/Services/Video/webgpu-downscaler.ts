@@ -32,6 +32,12 @@ interface TargetSlot {
     canvas: OffscreenCanvas;
     ctx: GPUCanvasContext;
     key: string;
+    // Intermediate storage texture for the compute path. Allocated only when
+    // useStoragePath is active. Compute writes here; result is copied into
+    // the canvas swap-chain via copyTextureToTexture (advances the swap chain
+    // the way a render pass would).
+    storageTex?: GPUTexture | null;
+    storageView?: GPUTextureView | null;
 }
 
 const SHADER_WGSL = `
@@ -140,6 +146,118 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
 
 const UNIFORM_BYTES = 32;
 
+// Compute-path WGSL: single dispatch writes up to 3 differently-sized layers
+// into canvas swap-chain storage textures. Replaces the 3-render-pass loop on
+// devices where the canvas format supports STORAGE_BINDING (bgra8unorm-storage
+// feature on Chromium/Safari, or core rgba8unorm). The format placeholder is
+// substituted at module-build time so the same shader source covers both.
+//
+// Uniforms layout (std140-compatible, all members 16-byte aligned):
+//   layers: array<LayerU, 3>  // 3 × 32 = 96 bytes
+//   cfg:    vec4<u32>          // 16 bytes
+// Total: 112 bytes (round up to 16 for buffer size).
+//
+// LayerU:
+//   dims:  vec4<f32>  [srcW, srcH, dstW, dstH]
+//   flags: vec4<u32>  [rotation 0..3, doCrop 0/1, enabled 0/1, _pad]
+//
+// cfg:
+//   [maxDstW, maxDstH, layerCount, _pad]  — used to bound the dispatch and skip layers.
+//   (`meta` is a reserved keyword in WGSL — using `cfg` instead.)
+const COMPUTE_WGSL = (fmt: string) => `
+struct LayerU {
+    dims: vec4<f32>,
+    flags: vec4<u32>,
+};
+struct Uniforms {
+    layers: array<LayerU, 3>,
+    cfg: vec4<u32>,
+};
+@group(0) @binding(0) var linSampler: sampler;
+@group(0) @binding(1) var srcTex: texture_external;
+@group(0) @binding(2) var<uniform> u: Uniforms;
+@group(0) @binding(3) var out0: texture_storage_2d<${fmt}, write>;
+@group(0) @binding(4) var out1: texture_storage_2d<${fmt}, write>;
+@group(0) @binding(5) var out2: texture_storage_2d<${fmt}, write>;
+
+fn sampleLayer(L: LayerU, gid: vec2<u32>) -> vec4<f32> {
+    let rot = L.flags.x;
+    let doCrop = L.flags.y != 0u;
+
+    var dispW = L.dims.x;
+    var dispH = L.dims.y;
+    if (rot == 1u || rot == 3u) {
+        dispW = L.dims.y;
+        dispH = L.dims.x;
+    }
+    let dstW = L.dims.z;
+    let dstH = L.dims.w;
+    let srcAspect = dispW / dispH;
+    let dstAspect = dstW / dstH;
+    let orientMatch = (srcAspect >= 1.0) == (dstAspect >= 1.0);
+
+    var uv = vec2<f32>(
+        (f32(gid.x) + 0.5) / dstW,
+        (f32(gid.y) + 0.5) / dstH,
+    );
+    var letterbox = false;
+    if (doCrop && orientMatch) {
+        if (srcAspect > dstAspect) {
+            uv.x = 0.5 + (uv.x - 0.5) * (dstAspect / srcAspect);
+        } else if (srcAspect < dstAspect) {
+            uv.y = 0.5 + (uv.y - 0.5) * (srcAspect / dstAspect);
+        }
+    } else if (doCrop) {
+        if (srcAspect > dstAspect) {
+            uv.y = 0.5 + (uv.y - 0.5) * (srcAspect / dstAspect);
+        } else if (srcAspect < dstAspect) {
+            uv.x = 0.5 + (uv.x - 0.5) * (dstAspect / srcAspect);
+        }
+        letterbox = true;
+    }
+    if (letterbox && (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)) {
+        return vec4<f32>(0.0, 0.0, 0.0, 1.0);
+    }
+
+    var src: vec2<f32>;
+    if (rot == 0u) { src = uv; }
+    else if (rot == 1u) { src = vec2<f32>(uv.y, 1.0 - uv.x); }
+    else if (rot == 2u) { src = vec2<f32>(1.0 - uv.x, 1.0 - uv.y); }
+    else               { src = vec2<f32>(1.0 - uv.y, uv.x); }
+    return textureSampleBaseClampToEdge(srcTex, linSampler, src);
+}
+
+@compute @workgroup_size(8, 8, 1)
+fn cs(@builtin(global_invocation_id) gid: vec3<u32>) {
+    if (gid.x >= u.cfg.x || gid.y >= u.cfg.y) { return; }
+    let n = u.cfg.z;
+    if (n > 0u && u.layers[0].flags.z == 1u) {
+        let dW = u32(u.layers[0].dims.z);
+        let dH = u32(u.layers[0].dims.w);
+        if (gid.x < dW && gid.y < dH) {
+            textureStore(out0, vec2<i32>(gid.xy), sampleLayer(u.layers[0], gid.xy));
+        }
+    }
+    if (n > 1u && u.layers[1].flags.z == 1u) {
+        let dW = u32(u.layers[1].dims.z);
+        let dH = u32(u.layers[1].dims.w);
+        if (gid.x < dW && gid.y < dH) {
+            textureStore(out1, vec2<i32>(gid.xy), sampleLayer(u.layers[1], gid.xy));
+        }
+    }
+    if (n > 2u && u.layers[2].flags.z == 1u) {
+        let dW = u32(u.layers[2].dims.z);
+        let dH = u32(u.layers[2].dims.w);
+        if (gid.x < dW && gid.y < dH) {
+            textureStore(out2, vec2<i32>(gid.xy), sampleLayer(u.layers[2], gid.xy));
+        }
+    }
+}
+`;
+
+const COMPUTE_UNIFORM_BYTES = 16 * 8; // 3 LayerU (3*32=96) + meta (16) = 112, round up to 128
+const MAX_COMPUTE_LAYERS = 3;
+
 function slotKey(t: DownscaleTarget): string {
     return `${t.width}x${t.height}:${t.centerCrop === false ? 0 : 1}`;
 }
@@ -189,6 +307,24 @@ export class WebGpuDownscaler {
     // the cascade. Reset by getCapHitsAndReset().
     private capHits = 0;
 
+    // Compute-path (single-dispatch multi-storage-texture) state. Active when
+    // the canvas format is storage-bindable (rgba8unorm core; bgra8unorm via
+    // the `bgra8unorm-storage` feature). Falls back to the render-pass path
+    // when the shader/pipeline fails async validation at init time. See
+    // COMPUTE_WGSL for the shader.
+    private useStoragePath = false;
+    private computePipelineFailed = false;
+    private computePipelinePromise: Promise<void> | null = null;
+    private computePipeline: GPUComputePipeline | null = null;
+    private computeBgLayout: GPUBindGroupLayout | null = null;
+    private computeUniformBuffer: GPUBuffer | null = null;
+    private computeUniformStaging: ArrayBuffer | null = null;
+    // Three separate 1×1 dummies — WebGPU forbids aliasing the same texture
+    // across multiple write-only storage entries in one bind group, even if
+    // the shader gates writes via uniforms and never actually executes them.
+    private dummyStorageTexs: (GPUTexture | null)[] = [null, null, null];
+    private dummyStorageViews: (GPUTextureView | null)[] = [null, null, null];
+
     constructor(device: GPUDevice) {
         this.device = device;
         this.sampler = device.createSampler({ magFilter: 'linear', minFilter: 'linear' });
@@ -196,6 +332,14 @@ export class WebGpuDownscaler {
         // Dynamic-offset uniform regions must align to device limit (typically 256).
         const align = device.limits.minUniformBufferOffsetAlignment;
         this.slotStride = Math.max(align, UNIFORM_BYTES);
+        // Compute-path eligibility: rgba8unorm is storage-bindable in core
+        // WebGPU; bgra8unorm requires the `bgra8unorm-storage` feature opted
+        // into at device init (see WebGPUManager.init).
+        if (this.format === 'rgba8unorm') {
+            this.useStoragePath = true;
+        } else if (this.format === 'bgra8unorm' && WebGPUManager.hasFeature('bgra8unorm-storage')) {
+            this.useStoragePath = true;
+        }
         this.lostListenerDispose = WebGPUManager.addLostListener(() => {
             if (this.invalid) return;
             this.invalid = true;
@@ -244,12 +388,32 @@ export class WebGpuDownscaler {
             const ctx = canvas.getContext('webgpu');
             if (!ctx)
                 throw new Error('Failed to get webgpu context on OffscreenCanvas');
+            // RENDER_ATTACHMENT for the render-path; COPY_DST so the
+            // compute-path can copyTextureToTexture from its intermediate
+            // storage texture into the swap-chain. We don't use STORAGE_BINDING
+            // on the canvas itself because Chrome's canvas presenter doesn't
+            // reliably advance the swap chain on STORAGE-only writes — produces
+            // visible-black output despite the texture having content.
+            const usage = GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST;
             ctx.configure({
                 device: this.device,
                 format: this.format,
                 alphaMode: 'opaque',
+                usage,
             });
-            newSlots.push({ target, canvas, ctx, key });
+            const slot: TargetSlot = { target, canvas, ctx, key };
+            // Allocate intermediate storage texture for the compute path.
+            // Sized to the slot's target dims; compute writes here, then we
+            // copyTextureToTexture into the canvas swap-chain.
+            if (this.useStoragePath) {
+                slot.storageTex = this.device.createTexture({
+                    size: [target.width, target.height],
+                    format: this.format,
+                    usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC,
+                });
+                slot.storageView = slot.storageTex.createView();
+            }
+            newSlots.push(slot);
         }
 
         let disposed = 0;
@@ -308,6 +472,7 @@ export class WebGpuDownscaler {
                 + ` targets=${slots.map(s => `${s.target.width}x${s.target.height}`).join(',')}`
                 + ` rotationIdx=${rotationIdx}`
                 + ` slotStride=${this.slotStride}`
+                + ` path=${this.useStoragePath ? 'compute-storage' : 'render-pass'}`
                 + ` gpuSync=${NEEDS_PER_FRAME_DRAIN ? 'per-frame-drain' : `cap-at-${MAX_ACTIVE_SUBMISSIONS}`}`,
             );
         }
@@ -399,82 +564,18 @@ export class WebGpuDownscaler {
         }
 
         if (renderingCount > 0) {
-            const externalTex = this.device.importExternalTexture({ source: input });
-
-            // Pack uniforms for all rendering slots into one staging buffer;
-            // single writeBuffer call replaces N small writes.
-            const totalBytes = renderingCount * this.slotStride;
-            if (!this.uniformStaging || this.uniformStaging.byteLength < totalBytes)
-                this.uniformStaging = new Uint8Array(totalBytes);
-            const staging = this.uniformStaging.subarray(0, totalBytes);
-            let writeIdx = 0;
-            for (const slot of slots) {
-                if (isIdentity(slot)) continue;
-                const off = writeIdx * this.slotStride;
-                const f32 = new Float32Array(staging.buffer, staging.byteOffset + off, 4);
-                const u32 = new Uint32Array(staging.buffer, staging.byteOffset + off + 16, 4);
-                f32[0] = srcW; f32[1] = srcH;
-                f32[2] = slot.target.width; f32[3] = slot.target.height;
-                u32[0] = rotationIdx;
-                u32[1] = slot.target.centerCrop === false ? 0 : 1;
-                writeIdx++;
-            }
-            this.device.queue.writeBuffer(
-                uniformBuffer, 0, staging.buffer, staging.byteOffset, totalBytes,
-            );
-
-            // One bind group per frame (externalTex changes each frame; uniform
-            // buffer is shared via dynamic offset).
-            const bindGroup = this.device.createBindGroup({
-                layout: bindGroupLayout,
-                entries: [
-                    { binding: 0, resource: this.sampler },
-                    { binding: 1, resource: externalTex },
-                    { binding: 2, resource: { buffer: uniformBuffer, offset: 0, size: UNIFORM_BYTES } },
-                ],
-            });
-
-            // Single command encoder + single submit batches all render passes.
-            const encoder = this.device.createCommandEncoder();
-            let drawIdx = 0;
-            for (const slot of slots) {
-                if (isIdentity(slot)) continue;
-                const view = slot.ctx.getCurrentTexture().createView();
-                const pass = encoder.beginRenderPass({
-                    colorAttachments: [{
-                        view,
-                        loadOp: 'clear',
-                        storeOp: 'store',
-                        clearValue: { r: 0, g: 0, b: 0, a: 1 },
-                    }],
-                });
-                pass.setPipeline(pipeline);
-                pass.setBindGroup(0, bindGroup, [drawIdx * this.slotStride]);
-                pass.draw(3);
-                pass.end();
-                drawIdx++;
-            }
-            try {
-                // Soft cap on in-flight submissions. On non-Safari we skip the
-                // per-frame drain, so backpressure is needed to keep the GPU
-                // command queue from running away under sustained input.
-                if (!NEEDS_PER_FRAME_DRAIN)
-                    await this.waitForSubmissionSlot();
-                this.device.queue.submit([encoder.finish()]);
-                const drain = this.trackSubmissionDrain(slots.length);
-                // iOS Safari per-canvas swap-chain sync mitigation — see
-                // NEEDS_PER_FRAME_DRAIN comment. On Chromium we let the GPU
-                // pipeline absorb the submission and rely on the soft cap above.
-                if (NEEDS_PER_FRAME_DRAIN)
-                    await drain;
-            } catch (e) {
-                // Submit / onSubmittedWorkDone throws when the device has died.
-                // Mark invalid so the next frame fails fast instead of repeating
-                // the same OperationError; the caller's catch-and-halt logic
-                // (video-processing.ts) then disposes us.
-                this.invalidateFromGpuError(e, slots.length);
-                this.flushDeferredDisposals();
-                throw e;
+            // Lazy-init compute pipeline on first frame. Validates via error
+            // scope; on failure flips to render path forever for this instance.
+            if (this.useStoragePath && !this.computePipeline && !this.computePipelineFailed)
+                await this.ensureComputePipelineLazy();
+            if (this.useStoragePath && this.computePipeline && this.computeBgLayout
+                && this.computeUniformBuffer && this.computeUniformStaging
+                && this.dummyStorageViews[0] && this.dummyStorageViews[1]
+                && this.dummyStorageViews[2]) {
+                await this.runComputePath(slots, isIdentity, input, srcW, srcH, rotationIdx);
+            } else {
+                await this.runRenderPath(slots, isIdentity, input, srcW, srcH, rotationIdx,
+                    pipeline, uniformBuffer, bindGroupLayout);
             }
         }
         else if (!this.loggedAllIdentitySkip) {
@@ -520,7 +621,217 @@ export class WebGpuDownscaler {
         this.uniformStaging = null;
         this.pipeline = null;
         this.bindGroupLayout = null;
+        if (this.computeUniformBuffer)
+            this.disposeBuffer(this.computeUniformBuffer);
+        this.computeUniformBuffer = null;
+        this.computeUniformStaging = null;
+        for (let i = 0; i < this.dummyStorageTexs.length; i++) {
+            const d = this.dummyStorageTexs[i];
+            if (d) try { d.destroy(); } catch { /* ignore */ }
+            this.dummyStorageTexs[i] = null;
+            this.dummyStorageViews[i] = null;
+        }
+        this.computePipeline = null;
+        this.computeBgLayout = null;
         this.invalid = true;
+    }
+
+    private async runRenderPath(
+        slots: TargetSlot[],
+        isIdentity: (slot: TargetSlot) => boolean,
+        input: VideoFrame,
+        srcW: number,
+        srcH: number,
+        rotationIdx: number,
+        pipeline: GPURenderPipeline,
+        uniformBuffer: GPUBuffer,
+        bindGroupLayout: GPUBindGroupLayout,
+    ): Promise<void> {
+        const externalTex = this.device.importExternalTexture({ source: input });
+
+        // Pack uniforms for all rendering slots into one staging buffer;
+        // single writeBuffer call replaces N small writes.
+        let renderingCount = 0;
+        for (const slot of slots) if (!isIdentity(slot)) renderingCount++;
+        const totalBytes = renderingCount * this.slotStride;
+        if (!this.uniformStaging || this.uniformStaging.byteLength < totalBytes)
+            this.uniformStaging = new Uint8Array(totalBytes);
+        const staging = this.uniformStaging.subarray(0, totalBytes);
+        let writeIdx = 0;
+        for (const slot of slots) {
+            if (isIdentity(slot)) continue;
+            const off = writeIdx * this.slotStride;
+            const f32 = new Float32Array(staging.buffer, staging.byteOffset + off, 4);
+            const u32 = new Uint32Array(staging.buffer, staging.byteOffset + off + 16, 4);
+            f32[0] = srcW; f32[1] = srcH;
+            f32[2] = slot.target.width; f32[3] = slot.target.height;
+            u32[0] = rotationIdx;
+            u32[1] = slot.target.centerCrop === false ? 0 : 1;
+            writeIdx++;
+        }
+        this.device.queue.writeBuffer(
+            uniformBuffer, 0, staging.buffer, staging.byteOffset, totalBytes,
+        );
+
+        // One bind group per frame (externalTex changes each frame; uniform
+        // buffer is shared via dynamic offset).
+        const bindGroup = this.device.createBindGroup({
+            layout: bindGroupLayout,
+            entries: [
+                { binding: 0, resource: this.sampler },
+                { binding: 1, resource: externalTex },
+                { binding: 2, resource: { buffer: uniformBuffer, offset: 0, size: UNIFORM_BYTES } },
+            ],
+        });
+
+        // Single command encoder + single submit batches all render passes.
+        const encoder = this.device.createCommandEncoder();
+        let drawIdx = 0;
+        for (const slot of slots) {
+            if (isIdentity(slot)) continue;
+            const view = slot.ctx.getCurrentTexture().createView();
+            const pass = encoder.beginRenderPass({
+                colorAttachments: [{
+                    view,
+                    loadOp: 'clear',
+                    storeOp: 'store',
+                    clearValue: { r: 0, g: 0, b: 0, a: 1 },
+                }],
+            });
+            pass.setPipeline(pipeline);
+            pass.setBindGroup(0, bindGroup, [drawIdx * this.slotStride]);
+            pass.draw(3);
+            pass.end();
+            drawIdx++;
+        }
+        try {
+            if (!NEEDS_PER_FRAME_DRAIN)
+                await this.waitForSubmissionSlot();
+            this.device.queue.submit([encoder.finish()]);
+            const drain = this.trackSubmissionDrain(slots.length);
+            if (NEEDS_PER_FRAME_DRAIN)
+                await drain;
+        } catch (e) {
+            this.invalidateFromGpuError(e, slots.length);
+            this.flushDeferredDisposals();
+            throw e;
+        }
+    }
+
+    private async runComputePath(
+        slots: TargetSlot[],
+        isIdentity: (slot: TargetSlot) => boolean,
+        input: VideoFrame,
+        srcW: number,
+        srcH: number,
+        rotationIdx: number,
+    ): Promise<void> {
+        const computePipeline = this.computePipeline!;
+        const computeBgLayout = this.computeBgLayout!;
+        const computeUniformBuffer = this.computeUniformBuffer!;
+        const stagingBuf = this.computeUniformStaging!;
+        const dummyViews = this.dummyStorageViews;
+
+        // Pack uniforms: 3 LayerU entries (unused = enabled:0) + meta vec4.
+        // Layer N occupies bytes [N*32, N*32+32). meta sits at byte 96.
+        // Uniform layout (4-byte words):
+        //   layer 0: f32[0..3]=dims, u32[4..7]=flags  (words 0..7)
+        //   layer 1: words 8..15
+        //   layer 2: words 16..23
+        //   meta:    words 24..27
+        const f32 = new Float32Array(stagingBuf);
+        const u32 = new Uint32Array(stagingBuf);
+        for (let w = 0; w < f32.length; w++) f32[w] = 0;
+
+        let maxW = 0, maxH = 0;
+        let layerIdx = 0;
+        const slotByLayer: number[] = [-1, -1, -1];
+        for (let i = 0; i < slots.length; i++) {
+            const slot = slots[i];
+            if (isIdentity(slot)) continue;
+            if (layerIdx >= MAX_COMPUTE_LAYERS) break;
+            const off = layerIdx * 8;
+            f32[off + 0] = srcW;
+            f32[off + 1] = srcH;
+            f32[off + 2] = slot.target.width;
+            f32[off + 3] = slot.target.height;
+            u32[off + 4] = rotationIdx;
+            u32[off + 5] = slot.target.centerCrop === false ? 0 : 1;
+            u32[off + 6] = 1; // enabled
+            // u32[off + 7] = 0 (pad — zeroed above)
+            if (slot.target.width > maxW) maxW = slot.target.width;
+            if (slot.target.height > maxH) maxH = slot.target.height;
+            slotByLayer[layerIdx] = i;
+            layerIdx++;
+        }
+        u32[24] = maxW;
+        u32[25] = maxH;
+        u32[26] = layerIdx;
+        // u32[27] = 0 (pad)
+        this.device.queue.writeBuffer(computeUniformBuffer, 0, stagingBuf, 0, COMPUTE_UNIFORM_BYTES);
+
+        const externalTex = this.device.importExternalTexture({ source: input });
+        // Each binding slot gets a DISTINCT texture view, even when unused —
+        // WebGPU validation rejects two write-only storage entries aliasing
+        // the same texture. Hence per-slot dummy textures.
+        const views: GPUTextureView[] = [
+            dummyViews[0]!, dummyViews[1]!, dummyViews[2]!,
+        ];
+        for (let n = 0; n < layerIdx; n++) {
+            const slot = slots[slotByLayer[n]];
+            // storageView is allocated in configure() when useStoragePath is on.
+            // If somehow missing (e.g. configure was called before the path was
+            // armed), bail to render path by demoting.
+            if (!slot.storageView) {
+                this.markComputeFailed('compute path slot missing storageView');
+                throw new Error('runComputePath: missing storageView');
+            }
+            views[n] = slot.storageView;
+        }
+        const bindGroup = this.device.createBindGroup({
+            layout: computeBgLayout,
+            entries: [
+                { binding: 0, resource: this.sampler },
+                { binding: 1, resource: externalTex },
+                { binding: 2, resource: { buffer: computeUniformBuffer } },
+                { binding: 3, resource: views[0] },
+                { binding: 4, resource: views[1] },
+                { binding: 5, resource: views[2] },
+            ],
+        });
+
+        const encoder = this.device.createCommandEncoder();
+        const pass = encoder.beginComputePass();
+        pass.setPipeline(computePipeline);
+        pass.setBindGroup(0, bindGroup);
+        pass.dispatchWorkgroups(Math.ceil(maxW / 8), Math.ceil(maxH / 8), 1);
+        pass.end();
+
+        // Copy each intermediate storage texture into its canvas swap-chain.
+        // Cheaper than a render pass, and properly marks the canvas as
+        // "presented" so the new VideoFrame(canvas) sees fresh content.
+        for (let n = 0; n < layerIdx; n++) {
+            const slot = slots[slotByLayer[n]];
+            const dstTex = slot.ctx.getCurrentTexture();
+            encoder.copyTextureToTexture(
+                { texture: slot.storageTex! },
+                { texture: dstTex },
+                [slot.target.width, slot.target.height, 1],
+            );
+        }
+
+        try {
+            if (!NEEDS_PER_FRAME_DRAIN)
+                await this.waitForSubmissionSlot();
+            this.device.queue.submit([encoder.finish()]);
+            const drain = this.trackSubmissionDrain(slots.length);
+            if (NEEDS_PER_FRAME_DRAIN)
+                await drain;
+        } catch (e) {
+            this.invalidateFromGpuError(e, slots.length);
+            this.flushDeferredDisposals();
+            throw e;
+        }
     }
 
     private async waitForSubmissionSlot(): Promise<void> {
@@ -563,33 +874,135 @@ export class WebGpuDownscaler {
     }
 
     private ensurePipeline(): void {
-        if (this.pipeline) return;
-
-        const module = this.device.createShaderModule({ code: SHADER_WGSL });
-        this.bindGroupLayout = this.device.createBindGroupLayout({
-            entries: [
-                { binding: 0, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
-                { binding: 1, visibility: GPUShaderStage.FRAGMENT, externalTexture: {} },
-                {
-                    binding: 2,
-                    visibility: GPUShaderStage.FRAGMENT,
-                    buffer: { type: 'uniform', hasDynamicOffset: true, minBindingSize: UNIFORM_BYTES },
+        if (!this.pipeline) {
+            const module = this.device.createShaderModule({ code: SHADER_WGSL });
+            this.bindGroupLayout = this.device.createBindGroupLayout({
+                entries: [
+                    { binding: 0, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
+                    { binding: 1, visibility: GPUShaderStage.FRAGMENT, externalTexture: {} },
+                    {
+                        binding: 2,
+                        visibility: GPUShaderStage.FRAGMENT,
+                        buffer: { type: 'uniform', hasDynamicOffset: true, minBindingSize: UNIFORM_BYTES },
+                    },
+                ],
+            });
+            const pipelineLayout = this.device.createPipelineLayout({
+                bindGroupLayouts: [this.bindGroupLayout],
+            });
+            this.pipeline = this.device.createRenderPipeline({
+                layout: pipelineLayout,
+                vertex: { module, entryPoint: 'vs' },
+                fragment: {
+                    module,
+                    entryPoint: 'fs',
+                    targets: [{ format: this.format }],
                 },
-            ],
-        });
-        const pipelineLayout = this.device.createPipelineLayout({
-            bindGroupLayouts: [this.bindGroupLayout],
-        });
-        this.pipeline = this.device.createRenderPipeline({
-            layout: pipelineLayout,
-            vertex: { module, entryPoint: 'vs' },
-            fragment: {
-                module,
-                entryPoint: 'fs',
-                targets: [{ format: this.format }],
-            },
-            primitive: { topology: 'triangle-list' },
-        });
+                primitive: { topology: 'triangle-list' },
+            });
+        }
+
+    }
+
+    // Lazy + validated compute-pipeline init. First call wraps creation in a
+    // validation error scope and awaits the result; on validation error
+    // (e.g. storage-format/feature mismatch on this device), `computePipelineFailed`
+    // sticks and process() falls through to the render path. Subsequent calls
+    // are a no-op once the pipeline is good or known-bad.
+    private ensureComputePipelineLazy(): Promise<void> {
+        if (this.computePipeline || this.computePipelineFailed)
+            return Promise.resolve();
+        if (!this.useStoragePath)
+            return Promise.resolve();
+        if (this.computePipelinePromise)
+            return this.computePipelinePromise;
+
+        this.computePipelinePromise = (async () => {
+            this.device.pushErrorScope('validation');
+            let createdShader: GPUShaderModule | null = null;
+            let createdLayout: GPUBindGroupLayout | null = null;
+            let createdPipeline: GPUComputePipeline | null = null;
+            let createdBuffer: GPUBuffer | null = null;
+            const createdDummies: (GPUTexture | null)[] = [null, null, null];
+            try {
+                createdShader = this.device.createShaderModule({ code: COMPUTE_WGSL(this.format) });
+                createdLayout = this.device.createBindGroupLayout({
+                    entries: [
+                        { binding: 0, visibility: GPUShaderStage.COMPUTE, sampler: {} },
+                        { binding: 1, visibility: GPUShaderStage.COMPUTE, externalTexture: {} },
+                        {
+                            binding: 2,
+                            visibility: GPUShaderStage.COMPUTE,
+                            buffer: { type: 'uniform', minBindingSize: COMPUTE_UNIFORM_BYTES },
+                        },
+                        {
+                            binding: 3,
+                            visibility: GPUShaderStage.COMPUTE,
+                            storageTexture: { access: 'write-only', format: this.format, viewDimension: '2d' },
+                        },
+                        {
+                            binding: 4,
+                            visibility: GPUShaderStage.COMPUTE,
+                            storageTexture: { access: 'write-only', format: this.format, viewDimension: '2d' },
+                        },
+                        {
+                            binding: 5,
+                            visibility: GPUShaderStage.COMPUTE,
+                            storageTexture: { access: 'write-only', format: this.format, viewDimension: '2d' },
+                        },
+                    ],
+                });
+                const computePipelineLayout = this.device.createPipelineLayout({
+                    bindGroupLayouts: [createdLayout],
+                });
+                createdPipeline = this.device.createComputePipeline({
+                    layout: computePipelineLayout,
+                    compute: { module: createdShader, entryPoint: 'cs' },
+                });
+                createdBuffer = this.device.createBuffer({
+                    size: COMPUTE_UNIFORM_BYTES,
+                    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+                });
+                for (let i = 0; i < MAX_COMPUTE_LAYERS; i++) {
+                    createdDummies[i] = this.device.createTexture({
+                        size: [1, 1],
+                        format: this.format,
+                        usage: GPUTextureUsage.STORAGE_BINDING,
+                    });
+                }
+            } catch (e) {
+                // Sync throws (very rare — most validation errors are async).
+                // Pop the scope to keep the device clean and demote.
+                void this.device.popErrorScope().catch(() => { /* ignore */ });
+                this.markComputeFailed(`compute pipeline creation threw: ${String(e)}`);
+                for (const d of createdDummies)
+                    if (d) try { d.destroy(); } catch { /* ignore */ }
+                if (createdBuffer) try { createdBuffer.destroy(); } catch { /* ignore */ }
+                return;
+            }
+            const err = await this.device.popErrorScope();
+            if (err) {
+                this.markComputeFailed(`compute pipeline rejected at init: ${err.message}`);
+                for (const d of createdDummies)
+                    if (d) try { d.destroy(); } catch { /* ignore */ }
+                try { createdBuffer.destroy(); } catch { /* ignore */ }
+                return;
+            }
+            this.computeBgLayout = createdLayout;
+            this.computePipeline = createdPipeline;
+            this.computeUniformBuffer = createdBuffer;
+            this.computeUniformStaging = new ArrayBuffer(COMPUTE_UNIFORM_BYTES);
+            this.dummyStorageTexs = createdDummies.slice();
+            this.dummyStorageViews = createdDummies.map(d => d!.createView());
+            infoLog?.log(`Downscaler compute path armed (format=${this.format})`);
+        })();
+        return this.computePipelinePromise;
+    }
+
+    private markComputeFailed(reason: string): void {
+        this.useStoragePath = false;
+        this.computePipelineFailed = true;
+        warnLog?.log(`Downscaler ${reason} — using render path`);
     }
 
     private ensureUniformCapacity(slotCount: number): void {
@@ -617,6 +1030,11 @@ export class WebGpuDownscaler {
             return;
         }
         try { slot.ctx.unconfigure(); } catch { /* ignore */ }
+        if (slot.storageTex) {
+            try { slot.storageTex.destroy(); } catch { /* ignore */ }
+            slot.storageTex = null;
+            slot.storageView = null;
+        }
     }
 
     private disposeBuffer(buffer: GPUBuffer): void {
@@ -629,8 +1047,14 @@ export class WebGpuDownscaler {
 
     private flushDeferredDisposals(): void {
         if (this.activeSubmissions > 0) return;
-        for (const slot of this.deferredSlotDisposals)
+        for (const slot of this.deferredSlotDisposals) {
             try { slot.ctx.unconfigure(); } catch { /* ignore */ }
+            if (slot.storageTex) {
+                try { slot.storageTex.destroy(); } catch { /* ignore */ }
+                slot.storageTex = null;
+                slot.storageView = null;
+            }
+        }
         this.deferredSlotDisposals = [];
         for (const buffer of this.deferredBufferDisposals)
             buffer.destroy();

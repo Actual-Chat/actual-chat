@@ -225,8 +225,12 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                         continue;
                     }
 
-                    if (frame.IsKeyFrame)
-                        startedLayers.Add(layerId);
+                    if (frame.IsKeyFrame) {
+                        if (startedLayers.Add(layerId))
+                            Log.LogWarning(
+                                "ProcessFrames: first keyframe for stream #{StreamId} layer={SpatialLayerId} dims={Width}x{Height} (DIAG: simulcast probe)",
+                                record.StreamId, layerId, frame.Width, frame.Height);
+                    }
                     else if (!startedLayers.Contains(layerId)) {
                         preKeyframeDeltaDropCount++;
                         if (preKeyframeDeltaDropCount <= 3 || preKeyframeDeltaDropCount % 30 == 0)
