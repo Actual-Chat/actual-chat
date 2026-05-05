@@ -127,11 +127,33 @@ public class LiveVideoStreams : ILiveVideoStreams
             () => GetReceiveQuality(session, streamIdValue),
             Log,
             cancellationToken);
-        return new RpcStream<VideoFrame>(filtered) {
+
+        // Diagnostic: time from GetStream entry to the first frame the
+        // server-side RpcStream actually yields. A large gap here means
+        // either the upstream (memoizer) is slow to surface a frame or
+        // the receive-quality filter dropped everything until a matching
+        // frame appeared. Pairs with the receiver-side first-frame log
+        // to localize post-visibility-restore stalls.
+        var subscribedAt = CpuTimestamp.Now;
+        return new RpcStream<VideoFrame>(LogFirstFrame()) {
             AllowReconnect = false,
             AckPeriod = Constants.Video.RpcStreamAckPeriod,
             BufferSize = Constants.Video.RpcStreamBufferSize,
         };
+
+        async IAsyncEnumerable<VideoFrame> LogFirstFrame()
+        {
+            var first = true;
+            await foreach (var f in filtered.ConfigureAwait(false)) {
+                if (first) {
+                    first = false;
+                    Log.LogInformation(
+                        "GetStream: first frame yielded to RpcStream session={Session} streamId={StreamId} in {ElapsedMs:F0}ms",
+                        session, streamIdValue, subscribedAt.Elapsed.TotalMilliseconds);
+                }
+                yield return f;
+            }
+        }
     }
 
     // [ComputeMethod]

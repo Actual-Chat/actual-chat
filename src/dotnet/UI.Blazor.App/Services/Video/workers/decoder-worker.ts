@@ -445,10 +445,24 @@ async function runPullLoop(streamId: string, skipToMs: number): Promise<void> {
 
     try {
         infoLog?.log(`pull: GetStream(${streamId}, skipTo=${skipToMs}ms, retry=${pullRetryCount})`);
+        const getStreamStart = performance.now();
         const stream = await streamingApi.liveVideoStreams.GetStream(RPC_SESSION_DEFAULT, streamId);
+        const getStreamMs = performance.now() - getStreamStart;
+        // PLI-stall diagnostics: time the RPC call itself took. Large value =
+        // server held the GetStream RPC; small value paired with a large
+        // first-frame delay below = chunks held in delivery path (WS, RpcStream
+        // credit, browser throttling).
+        infoLog?.log(`pull: GetStream returned in ${getStreamMs.toFixed(0)}ms, entering for-await`);
 
+        let firstFrameReportedAt: number | null = null;
         for await (const frame of stream) {
             if (ac.signal.aborted || !pullActive) break;
+            if (firstFrameReportedAt === null) {
+                firstFrameReportedAt = performance.now() - getStreamStart;
+                infoLog?.log(
+                    `pull: first frame received ${firstFrameReportedAt.toFixed(0)}ms after GetStream call ` +
+                    `(streamId=${streamId})`);
+            }
             pullFrameCount++;
             pullRetryCount = 0;
             if (!burstReported) {
