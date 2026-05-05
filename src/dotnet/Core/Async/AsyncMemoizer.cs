@@ -90,7 +90,7 @@ public class AsyncMemoizer<T> : WorkerBase, IAsyncMemoizer<T>
     public IAsyncEnumerable<T> Replay(CancellationToken cancellationToken = default)
         => Replay(int.MaxValue, cancellationToken);
 
-    public async IAsyncEnumerable<T> Replay(
+    public virtual async IAsyncEnumerable<T> Replay(
         int tailSize,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {

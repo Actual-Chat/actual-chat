@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using ActualChat.Video;
 
 namespace ActualChat.Streaming;
@@ -34,6 +35,11 @@ public sealed class VideoStreamMemoizer : AsyncMemoizer<VideoFrame>
     private readonly Dictionary<int, Queue<TimeSpan>> _kfOffsetsByLayer = new();
     // Most recent (Offset + Duration) appended for each layer.
     private readonly Dictionary<int, TimeSpan> _latestEndByLayer = new();
+    // Per-layer latest keyframe offset. Read by the Replay override from the
+    // consumer thread to anchor the start position; written from the producer
+    // thread inside EvictIfNeeded. Never evicted: eviction requires
+    // kfs.Count >= 2, so the newest entry is always retained.
+    private readonly ConcurrentDictionary<int, TimeSpan> _latestKfByLayer = new();
 
     public VideoStreamMemoizer(
         IAsyncEnumerable<VideoFrame> source,
@@ -47,6 +53,61 @@ public sealed class VideoStreamMemoizer : AsyncMemoizer<VideoFrame>
         this.Start();
     }
 
+    /// <summary>
+    /// Replay starts from the oldest of the per-layer latest keyframes —
+    /// MIN across layers so every active layer's freshest keyframe stays in
+    /// the yielded prefix and the downstream per-layer filter
+    /// (ReceiveQualityFilter) can pick any layer without waiting for the
+    /// next natural KF. <paramref name="tailSize"/> is ignored: the keyframe
+    /// anchor drives the start position. A count-based limit is meaningless
+    /// under simulcast where multiple spatial layers share one chain
+    /// (3 × 30 fps = 90 fps for webcam).
+    /// </summary>
+    /// <remarks>
+    /// Cold path: when no keyframe has arrived yet, <c>_latestKfByLayer</c>
+    /// is empty and we fall through to yielding from the chain head — the
+    /// caller's <c>SkipWhile(!IsKeyFrame)</c> safety net (in
+    /// <c>VideoStreamingBackend.GetVideoRaw</c>) handles the pre-keyframe
+    /// span.
+    /// </remarks>
+    public override async IAsyncEnumerable<VideoFrame> Replay(
+        int tailSize,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        _ = tailSize;
+        TimeSpan? startOffset = _latestKfByLayer.IsEmpty
+            ? null
+            : _latestKfByLayer.Values.Min();
+
+        var current = CurrentHead;
+        while (true) {
+            cancellationToken.ThrowIfCancellationRequested();
+            var head = CurrentHead;
+            if (current.Index < head.Index) {
+                current = head;
+                continue;
+            }
+
+            var next = current.Next;
+            if (next != null) {
+                current = next;
+                if (startOffset is { } so && current.Value.Offset < so)
+                    continue;
+                yield return current.Value;
+                continue;
+            }
+            var completion = current.Completion;
+            if (completion != null) {
+                if (completion is ChannelClosedException)
+                    yield break;
+                ExceptionDispatchInfo.Capture(completion).Throw();
+            }
+            await current.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    // Protected methods
+
     protected override void EvictIfNeeded(Node newNode)
     {
         var frame = newNode.Value;
@@ -59,6 +120,7 @@ public sealed class VideoStreamMemoizer : AsyncMemoizer<VideoFrame>
 
         // Track this keyframe in its layer's ordered queue.
         if (frame.IsKeyFrame) {
+            _latestKfByLayer[layer] = frame.Offset;
             if (!_kfOffsetsByLayer.TryGetValue(layer, out var kfQueue)) {
                 kfQueue = new Queue<TimeSpan>();
                 _kfOffsetsByLayer[layer] = kfQueue;
@@ -106,6 +168,14 @@ public sealed class VideoStreamMemoizer : AsyncMemoizer<VideoFrame>
                     && q.Count > 0
                     && q.Peek() == oldest.Value.Offset) {
                     q.Dequeue();
+                    // If this layer just lost its last in-chain KF, drop its
+                    // latest-KF entry too — otherwise a paused layer's stale
+                    // offset would anchor Replay's start to a frame that no
+                    // longer exists in the chain (Replay would skip every
+                    // remaining frame's Offset < stale-offset check trivially
+                    // and fall back to chain-head replay, regressing latency).
+                    if (q.Count == 0)
+                        _latestKfByLayer.TryRemove(oldest.Value.SpatialLayerId, out _);
                 }
                 if (!TryAdvanceHead())
                     break;
