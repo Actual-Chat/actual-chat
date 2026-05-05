@@ -1,8 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components.VideoPanel
-@using ActualChat.Media
 @using ActualChat.Streaming
 @using ActualChat.UI.Blazor.App.Module
-@using ActualChat.UI.Blazor.App.Services
+@using System.Text
 @using System.Text.Json
 @inherits ComputedStateComponent<AppUIHub, VideoDiagnosticsModal.ComputedModel>
 @implements IModalView<VideoDiagnosticsModal.Model>
@@ -14,6 +13,7 @@
     var recordingSnap = m.OwnStreamingKind is { } ownKind
         ? Hub.VideoQualityUI.GetRecordingSnapshot(ownKind)
         : null;
+    var copyText = BuildDiagnosticsText(m);
 }
 
 <DialogFrame
@@ -25,7 +25,9 @@
         @if (m.IsAdmin) {
             <Button Class="btn-modal" Click="@OnSettingsClick">Settings</Button>
         }
-        <Button Class="btn-modal" Click="@OnCopyClick">Copy</Button>
+        <CopyTrigger CopyText="@copyText" Tooltip="Copy diagnostics">
+            <Button Class="btn-modal">Copy</Button>
+        </CopyTrigger>
     </Buttons>
     <Body>
         @* Own streaming *@
@@ -748,9 +750,8 @@
     private void OnSettingsClick()
         => _ = Hub.ModalUI.Show(new VideoDiagnosticsSettingsModal.Model());
 
-    private async Task OnCopyClick() {
-        var sb = new System.Text.StringBuilder();
-        var m = State.Value;
+    private string BuildDiagnosticsText(ComputedModel m) {
+        var sb = new StringBuilder();
 
         sb.AppendLine("=== Video Diagnostics ===");
         sb.AppendLine();
@@ -897,7 +898,7 @@
             }
         }
 
-        await Hub.ClipboardUI.WriteText(sb.ToString());
+        return sb.ToString();
     }
 
     // Nested types

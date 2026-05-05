@@ -5,7 +5,7 @@ const { errorLog } = getLogs('CopyTrigger');
 
 export class CopyTrigger {
     private readonly triggerElementRef: HTMLElement;
-    private readonly copyText: string;
+    private copyText: string;
     private readonly copyTextFormatString: string;
     private readonly tooltip: string;
     private readonly copyTextSourceRef: HTMLInputElement | null;
@@ -42,6 +42,10 @@ export class CopyTrigger {
 
         this.disposed$.next();
         this.disposed$.complete();
+    }
+
+    public setCopyText(text: string) {
+        this.copyText = text;
     }
 
     private async copy() {
