@@ -25,8 +25,8 @@ public static class MauiSettings
     public const string AppScheme = IsDevApp ? "voxt-dev" : "voxt";
     public const string DefaultHost =
         UseLocalhost
-            ? Constants.Hosts.LocalVoxt :
-            IsDevApp
+            ? Constants.Hosts.LocalVoxt
+            : IsDevApp
                 ? Constants.Hosts.DevVoxt
                 : Constants.Hosts.Voxt;
     public static readonly string Host;
