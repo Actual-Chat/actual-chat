@@ -40,7 +40,15 @@ public static partial class Constants
         // enough to surface it). 10% margin over KeyFramePeriod absorbs minor
         // jitter in the sender's keyframe cadence.
         public static readonly TimeSpan ServerReplayTailDuration = TimeSpan.FromSeconds(KeyFramePeriod.TotalSeconds * 1.1);
-        public static readonly int ServerReplayTailSize = (int)(FrameRate * ServerReplayTailDuration.TotalSeconds); // 99
+        // Simulcast streams interleave MaxSimulcastTiers spatial layers into one
+        // chain at MaxSimulcastTiers × FrameRate frames per second. Without the
+        // layer multiplier the count cap clipped the Replay window to ~1.1 s of
+        // wall-time, excluding the keyframe anchor VideoStreamMemoizer preserves
+        // at the chain head and forcing GetVideoRaw's SkipWhile to drain
+        // hundreds of deltas before the next live KF arrives.
+        public static readonly int ServerReplayTailSize =
+            MaxSimulcastTiers * FrameRate * (int)Math.Ceiling(ServerReplayTailDuration.TotalSeconds);
+        // = 3 × 30 × 4 = 360 frames (~4 s wall-time per layer at full cadence)
 
         // Max simulcast tiers by stream kind. Mirrors TS constants in
         // src/dotnet/UI.Blazor.App/Components/VideoPanel/simulcast-ladder.ts.
