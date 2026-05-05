@@ -9,7 +9,7 @@ namespace ActualChat.App.Server.Module;
 /// </summary>
 public static class EndpointsExt
 {
-    public const string HealthPathPrefix = "/health";
+    public const string HealthPathPrefix = "/health"; // NB: "/healthz" endpoint below matches this prefix too
     public const string PrometheusPathPrefix = "/metrics";
     public const string BackendPathPrefix = "/backend";
 
@@ -17,7 +17,7 @@ public static class EndpointsExt
     {
         foreach (var tag in new[] { HealthTags.Live, HealthTags.Ready })
             endpoints.MapHealthChecks(
-                $"/healthz/{tag}",
+                $"/healthz/{tag}", // NB: It starts with HealthPathPrefix too
                 new HealthCheckOptions {
                     Predicate = healthCheck => healthCheck.Tags.Contains(tag),
                 });

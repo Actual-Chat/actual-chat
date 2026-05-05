@@ -1,6 +1,5 @@
 using ActualChat.App.Server.Module;
 using ActualChat.Hosting;
-using ActualChat.Redis.Module;
 using static System.Console;
 
 namespace ActualChat.App.Server;
