@@ -191,19 +191,23 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         if (stream != null)
             return AudioStreamingBackend.SkipTo(stream, skipTo, cancellationToken);
 
+        // CT.None deliberately: detaches the cached source from this viewer's
+        // lifetime so V1 disconnect cannot tear down the cached stream for
+        // V2..VN. Cache entry expiry handles cleanup of unowned streams.
         var rawRpcStream = await Backend
-            .GetAudio(streamId, TimeSpan.Zero, cancellationToken)
+            .GetAudio(streamId, TimeSpan.Zero, CancellationToken.None)
             .ConfigureAwait(false);
         if (rawRpcStream == null)
             return null;
 
         Log.LogInformation("GetOrFetchRemoteAudio: caching #{StreamId} locally", streamId);
-        // Publish returns memoizer.WriteTask which only completes when the source
-        // stream ends — do NOT await it here, or every remote peer will block until
-        // the speaker stops talking. The memoizer is registered in the store
-        // synchronously before Publish returns, so the subsequent Get succeeds
-        // immediately.
-        _ = BackgroundTask.Run(() => store.Publish(streamId, (IAsyncEnumerable<AudioFrame>)rawRpcStream), Log, "Error caching #{StreamId} locally", cancellationToken);
+        var memoizer = ((IAsyncEnumerable<AudioFrame>)rawRpcStream).Memoize();
+        if (!store.Publish(streamId, memoizer))
+            // Lost the registration race to a concurrent first-viewer. Dispose
+            // our memoizer so its Read loop tears down and the duplicate
+            // cross-shard RPC closes immediately.
+            await memoizer.DisposeAsync().ConfigureAwait(false);
+
         stream = await store.Get(streamId, true, cancellationToken).ConfigureAwait(false);
         return stream == null ? null : AudioStreamingBackend.SkipTo(stream, skipTo, cancellationToken);
     }

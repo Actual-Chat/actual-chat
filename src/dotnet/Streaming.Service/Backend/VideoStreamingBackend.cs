@@ -308,7 +308,10 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 ProcessFrames(videoFrames),
                 Constants.Video.ServerReplayTailDuration,
                 cancellationToken);
-            await _videoStreams.Publish(record.StreamId, memoizer).ConfigureAwait(false);
+            if (_videoStreams.Publish(record.StreamId, memoizer))
+                await (memoizer.WhenRunning ?? Task.CompletedTask).ConfigureAwait(false);
+            else
+                await memoizer.DisposeAsync().ConfigureAwait(false);
         }
         finally {
             // Unregister stream when it ends — cross-service RPC call

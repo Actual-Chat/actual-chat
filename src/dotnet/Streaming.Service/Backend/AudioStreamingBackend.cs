@@ -104,7 +104,11 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     {
         try {
             ValidateStreamId(streamId);
-            await _transcriptStreams.Publish(streamId, diffStream).ConfigureAwait(false);
+            var memoizer = ((IAsyncEnumerable<TranscriptDiff>)diffStream).Memoize(cancellationToken);
+            if (_transcriptStreams.Publish(streamId, memoizer))
+                await (memoizer.WhenRunning ?? Task.CompletedTask).ConfigureAwait(false);
+            else
+                await memoizer.DisposeAsync().ConfigureAwait(false);
         }
         finally {
             // Release the producer's sender — see PushAudio/PushVideo.

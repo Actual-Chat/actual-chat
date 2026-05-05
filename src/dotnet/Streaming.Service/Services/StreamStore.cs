@@ -56,21 +56,26 @@ public class StreamStore<TItem> : ProcessorBase
         }
     }
 
-    public Task Publish(StreamId streamId, IAsyncEnumerable<TItem> stream)
-        => Publish(streamId, stream.Memoize());
-    public Task Publish(StreamId streamId, AsyncMemoizer<TItem> memoizer)
+    /// <summary>
+    /// Tries to register <paramref name="memoizer"/> as the cached stream for
+    /// <paramref name="streamId"/>. Returns <c>true</c> iff this call won the
+    /// registration; on <c>false</c> the caller is responsible for disposing
+    /// <paramref name="memoizer"/> so its source enumerator is released.
+    /// Callers that need to wait until the source stream ends should
+    /// <c>await (memoizer.WhenRunning ?? Task.CompletedTask)</c>.
+    /// </summary>
+    public bool Publish(StreamId streamId, AsyncMemoizer<TItem> memoizer)
     {
         StreamIdValidator.Invoke(streamId);
         StopToken.ThrowIfCancellationRequested();
 
-        // No need to wait for write completion here, it's enough to just register the stream
-        StreamCount?.Add(1);
         var entry = GetOrAddStream(streamId);
         if (!entry.Value.TrySetResult(memoizer)) {
             Log?.LogWarning("Publish(#{StreamId}): already exists", streamId);
-            return Task.CompletedTask;
+            return false;
         }
 
+        StreamCount?.Add(1);
         Log?.LogInformation("Publish(#{StreamId}): stream registered", streamId);
 
         var whenMemoizerRunning = memoizer.WhenRunning ?? Task.CompletedTask;
@@ -83,7 +88,7 @@ public class StreamStore<TItem> : ProcessorBase
                     return;
             }
         }, CancellationToken.None);
-        return whenMemoizerRunning;
+        return true;
     }
 
     // Protected methods

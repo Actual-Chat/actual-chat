@@ -129,13 +129,18 @@ public partial class AudioStreamingBackend
         var audioStream = openSegment.Source
             .GetFrames(cancellationToken)
             .Prepend(headerFrame);
-        var publishAudioTask = mustStreamVoice
-            ? BackgroundTask.Run(
-                () => _audioStreams.Publish(openSegment.StreamId, audioStream),
-                Log,
-                "Failed to publish audio stream",
-                cancellationToken)
-            : null;
+        Task? publishAudioTask = null;
+        if (mustStreamVoice) {
+            var audioMemoizer = audioStream.Memoize(cancellationToken);
+            if (_audioStreams.Publish(openSegment.StreamId, audioMemoizer))
+                publishAudioTask = BackgroundTask.Run(
+                    () => audioMemoizer.WhenRunning ?? Task.CompletedTask,
+                    Log,
+                    "Failed to publish audio stream",
+                    cancellationToken);
+            else
+                await audioMemoizer.DisposeAsync().ConfigureAwait(false);
+        }
 
         // Pass streamId for Audio.StreamId during live phase; audio MediaId resolved after save
         var liveStreamId = mustStreamVoice ? openSegment.StreamId.Value : null;
@@ -317,7 +322,13 @@ public partial class AudioStreamingBackend
                     .ToTranscriptDiffs()
                     .Memoize(cancellationToken);
 #pragma warning disable CA2025 // transcriptDiffStream must be disposed after publishTranscriptStreamTask completes
-                var publishTranscriptStreamTask = _transcriptStreams.Publish(transcriptStreamId, transcriptDiffStream);
+                Task publishTranscriptStreamTask;
+                if (_transcriptStreams.Publish(transcriptStreamId, transcriptDiffStream))
+                    publishTranscriptStreamTask = transcriptDiffStream.WhenRunning ?? Task.CompletedTask;
+                else {
+                    await transcriptDiffStream.DisposeAsync().ConfigureAwait(false);
+                    publishTranscriptStreamTask = Task.CompletedTask;
+                }
 #pragma warning restore CA2025
 
                 // Wait 0.1s for publishTranscriptStreamTask to publish the stream.
