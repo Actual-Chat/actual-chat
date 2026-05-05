@@ -26,7 +26,7 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
         => DispatchToMainThread(() => ReactivateUnsafe(mode));
 
     public Task EnsureCorrectOutputRoute()
-        => DispatchToMainThread(() => EnsureCorrectOutputRouteUnsafe());
+        => DispatchToMainThread(EnsureCorrectOutputRouteUnsafe);
 
     private void ReactivateUnsafe(AudioFocusMode mode)
     {
@@ -36,7 +36,10 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
         if (!session.SetActive(true, out var error)) {
             Log.LogWarning("Failed to re-activate audio session: {Error}", error.LocalizedDescription);
             // Deactivate and retry
-            session.SetActive(false, AVAudioSessionSetActiveOptions.NotifyOthersOnDeactivation, out _);
+            var deactivateOptions = mode is AudioFocusMode.Tune
+                ? AVAudioSessionSetActiveOptions.NotifyOthersOnDeactivation
+                : 0;
+            session.SetActive(false, deactivateOptions, out _);
             session.SetActive(true, out error);
             error.Assert("Failed to re-activate audio session after retry");
         }
@@ -45,7 +48,10 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
     private void ReconfigureUnsafe(AudioFocusMode minMode)
     {
         var session = AVAudioSession.SharedInstance();
-        session.SetActive(false, AVAudioSessionSetActiveOptions.NotifyOthersOnDeactivation).Assert("Failed to deactivate session");
+        var deactivateOptions = minMode is AudioFocusMode.Tune
+            ? AVAudioSessionSetActiveOptions.NotifyOthersOnDeactivation
+            : 0;
+        session.SetActive(false, deactivateOptions).Assert("Failed to deactivate session");
         ConfigureUnsafe(session, minMode);
         session.SetActive(true).Assert("Failed to activate session");
     }
@@ -53,8 +59,8 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
     private void EnsureCorrectOutputRouteUnsafe()
     {
         var session = AVAudioSession.SharedInstance();
-        var outputs = session.CurrentRoute?.Outputs;
-        if (outputs == null || outputs.Length == 0) {
+        var outputs = session.CurrentRoute.Outputs;
+        if (outputs.Length == 0) {
             Log.LogWarning("EnsureCorrectOutputRoute: no output ports found");
             return;
         }
@@ -71,8 +77,7 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
         foreach (var output in outputs) {
             if (output.PortType == AVAudioSession.PortBuiltInReceiver) {
                 Log.LogInformation("EnsureCorrectOutputRoute: receiver detected, overriding to speaker");
-                session.OverrideOutputAudioPort(AVAudioSessionPortOverride.Speaker, out var error);
-                if (error != null)
+                if (!session.OverrideOutputAudioPort(AVAudioSessionPortOverride.Speaker, out var error))
                     Log.LogWarning("EnsureCorrectOutputRoute: override failed: {Error}", error.LocalizedDescription);
                 return;
             }
