@@ -124,12 +124,20 @@ export class WebCodecsDecoder {
                 const qSize = this.decoder.decodeQueueSize;
                 if (qSize > this.peakDecodeQueueSize) this.peakDecodeQueueSize = qSize;
 
-                // Track resolution changes
+                // Track resolution changes. Log both coded and display dims —
+                // when they disagree the bitstream carries a transform (HEVC
+                // SPS default_display_window, SAR SEI, etc.) and the decoder
+                // applied it. After the displayAspect=coded fix in
+                // initialize(), they should match for portrait HEVC streams
+                // on every browser (Edge included).
                 const currentResolution = { width: frame.displayWidth, height: frame.displayHeight };
                 if (!this.lastResolution ||
                     this.lastResolution.width !== currentResolution.width ||
                     this.lastResolution.height !== currentResolution.height) {
-                    infoLog?.log(`Resolution changed: ${this.lastResolution ? `${this.lastResolution.width}x${this.lastResolution.height}` : 'initial'} -> ${currentResolution.width}x${currentResolution.height}`);
+                    infoLog?.log(
+                        `Resolution changed: ${this.lastResolution ? `${this.lastResolution.width}x${this.lastResolution.height}` : 'initial'} `
+                        + `-> display=${currentResolution.width}x${currentResolution.height} `
+                        + `coded=${frame.codedWidth}x${frame.codedHeight}`);
                     this.lastResolution = currentResolution;
                 }
 
@@ -157,6 +165,19 @@ export class WebCodecsDecoder {
             }
             if (this.config.codedWidth) decoderConfig.codedWidth = this.config.codedWidth;
             if (this.config.codedHeight) decoderConfig.codedHeight = this.config.codedHeight;
+            // Force display = coded by stamping 1:1 PAR via the coded dims as
+            // displayAspectWidth/Height. Per WebCodecs spec, when both fields
+            // are set the decoder derives display dims via the standard
+            // visualWidth/Height algorithm — overriding any HEVC SPS
+            // default_display_window or SAR SEI the bitstream might carry.
+            // Without this Edge's HEVC HW driver returns swapped portrait
+            // display dims (1280×720) for a 720×1280 coded portrait stream;
+            // Chrome returns the matching 720×1280. Setting the aspect ratio
+            // makes both browsers agree on display = coded.
+            if (this.config.codedWidth && this.config.codedHeight) {
+                decoderConfig.displayAspectWidth = this.config.codedWidth;
+                decoderConfig.displayAspectHeight = this.config.codedHeight;
+            }
 
             // Safari-specific optimizations for H.264 decoding
             const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
@@ -171,7 +192,11 @@ export class WebCodecsDecoder {
             }
 
             this.decoder.configure(decoderConfig);
-            infoLog?.log('Decoder initialized:', this.decoder.state);
+            infoLog?.log(
+                `Decoder configured: codec=${decoderConfig.codec} `
+                + `coded=${decoderConfig.codedWidth ?? 'n/a'}x${decoderConfig.codedHeight ?? 'n/a'} `
+                + `displayAspect=${decoderConfig.displayAspectWidth ?? 'n/a'}x${decoderConfig.displayAspectHeight ?? 'n/a'} `
+                + `state=${this.decoder.state}`);
         } catch (error) {
             errorLog?.log('Failed to configure decoder:', error);
             throw error;
@@ -210,6 +235,12 @@ export class WebCodecsDecoder {
         if (codedHeight && codedHeight !== this.config.codedHeight) {
             this.config = { ...this.config, codedHeight };
         }
+        // Carry displayAspect = coded forward on every reconfigure for the
+        // same reason as initialize() — keeps Edge HEVC HW from returning
+        // swapped portrait display dims after a layer / description change.
+        const aspect = this.config.codedWidth && this.config.codedHeight
+            ? { displayAspectWidth: this.config.codedWidth, displayAspectHeight: this.config.codedHeight }
+            : {};
         this.decoder.configure({
             codec: this.config.codec,
             optimizeForLatency: this.config.optimizeForLatency,
@@ -217,10 +248,14 @@ export class WebCodecsDecoder {
             description,
             ...(this.config.codedWidth ? { codedWidth: this.config.codedWidth } : {}),
             ...(this.config.codedHeight ? { codedHeight: this.config.codedHeight } : {}),
+            ...aspect,
         });
         this.decodeStartTimes = []; // flush stale timings — configure() aborts pending decodes
         this.decodeQueueAtStart = [];
-        infoLog?.log('Decoder reconfigured with description');
+        infoLog?.log(
+            `Decoder reconfigured: codec=${this.config.codec} `
+            + `coded=${this.config.codedWidth ?? 'n/a'}x${this.config.codedHeight ?? 'n/a'} `
+            + `displayAspect=${this.config.codedWidth ?? 'n/a'}x${this.config.codedHeight ?? 'n/a'}`);
     }
 
     private dropDeltasGateArmedAtMs = 0;
