@@ -16,6 +16,7 @@ public class LiveVideoStreams : ILiveVideoStreams
     private IHostApplicationLifetime HostLifetime { get; }
     private ILiveVideoBackend Backend { get; }
     private IVideoStreamingBackend VideoStreamingBackend { get; }
+    private RemoteVideoStreamCache RemoteVideoCache { get; }
     private IChats Chats { get; }
     private MomentClock SystemClock { get; }
     private ILogger Log { get; }
@@ -33,6 +34,7 @@ public class LiveVideoStreams : ILiveVideoStreams
         HostLifetime = services.HostLifetime();
         Backend = services.GetRequiredService<ILiveVideoBackend>();
         VideoStreamingBackend = services.GetRequiredService<IVideoStreamingBackend>();
+        RemoteVideoCache = services.GetRequiredService<RemoteVideoStreamCache>();
         Chats = services.GetRequiredService<IChats>();
         SystemClock = Services.Clocks().SystemClock;
 
@@ -108,7 +110,15 @@ public class LiveVideoStreams : ILiveVideoStreams
     {
         // Stream-level access is gated upstream via List/RegisterMember.
         var streamIdValue = streamId.Value;
-        var rawStream = await VideoStreamingBackend.GetVideoRaw(streamId, cancellationToken).ConfigureAwait(false);
+        var isLocal = streamId.NodeRef == MeshWatcher.ThisNode.Ref;
+
+        // Local: backend's per-shard StreamStore already memoizes; double-caching
+        // here would just waste memory. Remote: fan out via RemoteVideoStreamCache
+        // so N viewers across this API server collapse to one cross-shard pull.
+        var rawStream = isLocal
+            ? (IAsyncEnumerable<VideoFrame>?)
+              await VideoStreamingBackend.GetVideoRaw(streamId, cancellationToken).ConfigureAwait(false)
+            : await GetOrFetchRemoteVideo(streamId, cancellationToken).ConfigureAwait(false);
         if (rawStream is null)
             return null;
 
@@ -269,6 +279,47 @@ public class LiveVideoStreams : ILiveVideoStreams
     }
 
     // Private methods
+
+    private async Task<IAsyncEnumerable<VideoFrame>?> GetOrFetchRemoteVideo(
+        StreamId streamId, CancellationToken cancellationToken)
+    {
+        var store = RemoteVideoCache.Store;
+
+        // Cache hit fast-path: replay from existing memoizer. The replay tail
+        // can begin mid-GOP, so SkipWhile drops deltas until the next keyframe
+        // — matches GetVideoRaw's keyframe-anchor semantics on the backend.
+        var stream = await store.Get(streamId, false, cancellationToken).ConfigureAwait(false);
+        if (stream != null)
+            return stream.SkipWhile(f => !f.IsKeyFrame);
+
+        // Miss: pull once from the publisher's shard, cache for siblings.
+        // CT.None deliberately: detaches the cached source from this viewer's
+        // lifetime so V1 disconnect cannot tear the cached stream down for
+        // V2..VN. Cache entry's idle expiry handles cleanup of unowned streams.
+        var rawRpcStream = await VideoStreamingBackend
+            .GetVideoRaw(streamId, CancellationToken.None)
+            .ConfigureAwait(false);
+        if (rawRpcStream == null)
+            return null;
+
+        Log.LogInformation("GetOrFetchRemoteVideo: caching #{StreamId} locally", streamId);
+        // Bounded memoizer: per-spatial-layer keyframe-span eviction caps
+        // retained content at ~ServerReplayTailDuration per layer, regardless
+        // of stream duration. Without this, an 8-hour call would grow the
+        // chain to millions of nodes.
+        var memoizer = new VideoStreamMemoizer(
+            (IAsyncEnumerable<VideoFrame>)rawRpcStream,
+            Constants.Video.ServerReplayTailDuration,
+            CancellationToken.None);
+        if (!store.Publish(streamId, memoizer))
+            // Lost the registration race to a concurrent first-viewer. Dispose
+            // our memoizer so its Read loop tears down and the duplicate
+            // cross-shard RPC closes immediately.
+            await memoizer.DisposeAsync().ConfigureAwait(false);
+
+        var shared = await store.Get(streamId, true, cancellationToken).ConfigureAwait(false);
+        return shared?.SkipWhile(f => !f.IsKeyFrame);
+    }
 
     private async Task RunQualityCleanup(CancellationToken cancellationToken)
     {
