@@ -978,6 +978,18 @@ async function processEncodedChunk(
                         currentDecoderConfig!.codec} -> ${selection.codec}`);
                     currentDecoderConfig = { ...currentDecoderConfig!, codec: selection.codec };
                 }
+                // Stamp coded dims from the first keyframe so the decoder
+                // config carries them — needed for the displayAspect=coded
+                // override in webcodecs-decoder.ts initialize() to fire.
+                if (width && height) {
+                    currentDecoderConfig = {
+                        ...currentDecoderConfig!,
+                        codedWidth: width,
+                        codedHeight: height,
+                    };
+                    currentCodedWidth = width;
+                    currentCodedHeight = height;
+                }
                 const freshConfig: DecoderConfig = { ...currentDecoderConfig!, description };
                 decoder = new WebCodecsDecoder(
                     freshConfig,
@@ -1039,6 +1051,17 @@ async function processEncodedChunk(
                     if (decoder.getState() !== 'closed') decoder.close();
                     mstgSelector?.resetPrimming();
                     currentDecoderConfig = { ...currentDecoderConfig!, codec: selection.codec };
+                    // Carry the new keyframe's dims forward so displayAspect
+                    // gets re-stamped on this re-create path.
+                    if (width && height) {
+                        currentDecoderConfig = {
+                            ...currentDecoderConfig,
+                            codedWidth: width,
+                            codedHeight: height,
+                        };
+                        currentCodedWidth = width;
+                        currentCodedHeight = height;
+                    }
                     const freshConfig: DecoderConfig = { ...currentDecoderConfig, description };
                     decoder = new WebCodecsDecoder(
                         freshConfig,
