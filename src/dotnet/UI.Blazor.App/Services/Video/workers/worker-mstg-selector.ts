@@ -39,9 +39,10 @@ export class WorkerMstgSelector {
     private readonly writer: WritableStreamDefaultWriter<VideoFrame>;
     private writeInFlight = false;
     private lastWrittenTs = -1;
-    // Coded dims of the last frame whose writer.write resolved. This is the
-    // dim the downstream MSTG track has actually consumed, so it lines up
-    // with `<video>.videoWidth/Height` once the element renders the frame.
+    // Display dims of the last frame whose writer.write resolved. Must be
+    // displayWidth/Height (not coded) — `<video>.videoWidth` exposes the
+    // post-rotation/crop display dim, and on iOS HEVC HW with a rotation
+    // transform `coded ≠ display`, so coded would false-positive the verifier.
     // Surfaced via getLastWrittenSize() and used as the verification
     // reference (instead of the just-emitted decoder dim, which races video
     // element propagation by ≥1 frame during simulcast tier swaps).
@@ -155,11 +156,12 @@ export class WorkerMstgSelector {
         }
 
         this.writeInFlight = true;
-        // Capture coded dims BEFORE writer.write — write transfers ownership
-        // (the writer closes the frame), so reading codedWidth after the
-        // call may hit a closed frame.
-        const writtenW = eligible.codedWidth;
-        const writtenH = eligible.codedHeight;
+        // Capture display dims BEFORE writer.write — write transfers ownership
+        // (the writer closes the frame), so reading display* after the call
+        // may hit a closed frame. Display, not coded: matches what
+        // `<video>.videoWidth` exposes downstream.
+        const writtenW = eligible.displayWidth;
+        const writtenH = eligible.displayHeight;
         this.writer.write(eligible)
             .then(() => {
                 this.mainWritesSinceDiag++;

@@ -104,11 +104,12 @@ const failedCandidates = new Set<string>();
 // envelope can be handled in-place by the browser decoder.
 let currentCodedWidth = 0;
 let currentCodedHeight = 0;
-// Dim of the GOP currently being decoded — captured from decoder OUTPUT at
-// emit time (`emitDecodedFrame`), not from chunk arrival. Verifier on the
-// main thread compares the <video> element's videoWidth/Height to this; both
-// are sourced from the same decoded frame, so they stay aligned across
-// simulcast layer switches and HEVC dim-change rebuilds. Using arrival-side
+// Display dim of the GOP currently being decoded — captured from decoder
+// OUTPUT at emit time (`emitDecodedFrame`), not from chunk arrival. Verifier
+// on the main thread compares the <video> element's videoWidth/Height (= the
+// VideoFrame's displayWidth/Height) to this, so we MUST capture display, not
+// coded. They differ on iOS HEVC HW when the bitstream carries a rotation
+// transform — coded would false-positive the verifier. Using arrival-side
 // `currentCodedWidth/Height` instead would race the decoder during a tier
 // change and produce false "decoded does not match latest keyframe" warnings
 // that get blamed on the codec.
@@ -388,14 +389,15 @@ function emitDecodedFrame(frame: VideoFrame): void {
             `displaySize=${frame.displayWidth}x${frame.displayHeight} ` +
             `mstgSelector=${mstgSelector ? 'yes' : 'no'}`);
     }
-    // Capture decoder's actual output dim — the GOP currently being rendered.
-    // Reported back to main thread via DecoderWorkerLatencyReport for output
-    // verification. Tracks transitions atomically (decoder rebuilds, simulcast
-    // tier swaps): the <video> element's videoWidth follows the same emit, so
-    // verifier's two sides stay aligned.
-    if (frame.codedWidth > 0 && frame.codedHeight > 0) {
-        lastDecodedFrameWidth = frame.codedWidth;
-        lastDecodedFrameHeight = frame.codedHeight;
+    // Capture decoder's actual DISPLAY output dim — the GOP currently being
+    // rendered. Reported back to main thread via DecoderWorkerLatencyReport
+    // for output verification. Tracks transitions atomically (decoder rebuilds,
+    // simulcast tier swaps): the <video> element's videoWidth follows the
+    // same emit, so verifier's two sides stay aligned. Must be display, not
+    // coded — iOS HEVC HW with rotation transform produces `coded ≠ display`.
+    if (frame.displayWidth > 0 && frame.displayHeight > 0) {
+        lastDecodedFrameWidth = frame.displayWidth;
+        lastDecodedFrameHeight = frame.displayHeight;
     }
     // Successful decode → clear the recovery escalation counter. Cooldown
     // (lastRecoveryAtMs) intentionally remains so we don't ping-pong fast.

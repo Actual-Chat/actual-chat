@@ -1,5 +1,6 @@
 import { getLogs } from 'logging';
 import { Api, momentToSeconds, streamingApi, type VideoFrameDto } from 'api';
+import { DeviceInfo } from 'device-info';
 import { RunningEMA } from 'math';
 
 const RPC_SESSION_DEFAULT = '~';
@@ -37,10 +38,10 @@ import { OwnedArrayBufferTracker, ReplaceableSlot } from 'buffers';
 import { SharedSettings } from 'shared-settings';
 import { SharedSettingsWorkerSync } from 'shared-settings-worker';
 
-// Backend selection: prefer the off-thread renderer wherever a generator API
-// (MediaStreamTrackGenerator on Chromium, VideoTrackGenerator on Safari) is
-// plausibly available. The worker probes the real APIs; if neither exists,
-// it rejects setupWorker() and we swap to canvas at runtime.
+// Backend selection: MSTG everywhere except Firefox (the only target that
+// lacks both MediaStreamTrackGenerator and VideoTrackGenerator). Canvas is
+// kept exclusively for Firefox — it has known render gaps on Chromium/Safari
+// and silent demotion to it produces "blur only" symptoms at the receiver.
 // ?renderBackend=mstg|canvas overrides for diagnostics.
 function pickRenderBackend(canvas: HTMLCanvasElement, videoEl: HTMLVideoElement): RenderBackend {
     let flag: string | null = null;
@@ -716,6 +717,14 @@ export class VideoPlayer {
 
     private onFrameDecoded(frame: VideoFrame): void {
         const receivedAtMs = performance.now();
+        // Capture display dims for output verification — must be display, not
+        // coded, because the canvas backend's lastOutputSize is set from the
+        // same VideoFrame's displayWidth/Height at draw time. Display, not
+        // coded: iOS HEVC HW with rotation transform produces coded ≠ display.
+        if (frame.displayWidth > 0 && frame.displayHeight > 0) {
+            this.lastKeyframeWidth = frame.displayWidth;
+            this.lastKeyframeHeight = frame.displayHeight;
+        }
         // Live gate: skip old frames from decoder's internal backlog.
         if (this.skipFramesBelowOffsetMs > 0) {
             const frameOffsetMs = frame.timestamp / 1000; // μs → ms
@@ -981,7 +990,7 @@ export class VideoPlayer {
             this.outputVerificationFailed = true;
             warnLog?.log(
                 `checkOutputVerification: mismatch #${this.outputVerificationMismatchCount}, ` +
-                `decoded ${output.width}x${output.height} does not match latest keyframe ` +
+                `output ${output.width}x${output.height} does not match decoded reference ` +
                 `${refW}x${refH} (${reason}); codec=${this.codecCategory || 'unknown'}`);
         }
 
@@ -1027,13 +1036,10 @@ export class VideoPlayer {
         if (!this.isPlaying || !this.decoderWorker) {
             return;
         }
-        // Main-thread RPC mode: capture the keyframe's transmitted dims
-        // for output verification. (Off-thread mode reads them from the
-        // worker's latency report instead.)
-        if (isKeyFrame && width && height) {
-            this.lastKeyframeWidth = width;
-            this.lastKeyframeHeight = height;
-        }
+        // Output-verification dims are captured post-decode in onFrameDecoded
+        // (see frame.displayWidth/Height capture there). Sender-stamped chunk
+        // dims are coded, not display — using them here would false-positive
+        // the verifier on iOS HEVC HW (rotation transform makes coded ≠ display).
 
         // Live gate: skip stale encoded frames arriving from the RPC stream.
         if (this.skipFramesBelowOffsetMs > 0 && timestampMs < this.skipFramesBelowOffsetMs) {
@@ -1681,6 +1687,16 @@ export class VideoPlayer {
     private async fallbackFromMstgToCanvas(reason: string): Promise<void> {
         if (this.mstgFallbackInProgress || !this.isPlaying || this.renderBackend.kind !== 'mstg')
             return;
+
+        // Canvas backend has known render gaps on Chromium/Safari ("blur only"
+        // at the receiver). Demote to canvas only on Firefox, where MSTG/VTG
+        // is absent and canvas is the only rendering option. On every other
+        // browser, surface the stall as diagnostics — the real fix lives in
+        // the MSTG-stall path, not in silent demotion to a broken renderer.
+        if (!DeviceInfo.isFirefox) {
+            warnLog?.log(`fallbackFromMstgToCanvas: stall observed (${reason}), not demoting on non-Firefox`);
+            return;
+        }
 
         this.mstgFallbackInProgress = true;
         warnLog?.log(`fallbackFromMstgToCanvas: ${reason}`);

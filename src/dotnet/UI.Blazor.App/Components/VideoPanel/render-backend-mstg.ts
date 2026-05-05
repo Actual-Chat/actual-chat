@@ -1,3 +1,4 @@
+import { DeviceInfo } from 'device-info';
 import { getLogs } from 'logging';
 import type { PresentableFrame, RenderBackend } from './render-backend';
 
@@ -12,19 +13,13 @@ export interface OffThreadPlaybackStallReport {
     tracks: string;
 }
 
-// Off-thread support: the generator may live in main (Chromium MSTG) and/or
-// worker (Safari VTG, Chromium MSTG). We can't probe worker globals from main,
-// so we try off-thread on browsers where SOMETHING is plausible — Safari and
-// any context exposing MediaStreamTrackGenerator on main — and let the worker
-// throw on failure. Caller falls back to canvas on rejection.
+// Off-thread support: only Firefox lacks MSTG/VTG. Every other browser we
+// target (Chromium, Safari) exposes a generator either in main (MSTG) or
+// inside a worker (VTG). The canvas backend is broken on Chromium/Safari, so
+// negative-gate on Firefox rather than positive-probe APIs that may be hidden
+// behind worker globals we can't reach from main.
 export function isOffThreadPlausible(): boolean {
-    if (typeof globalThis === 'undefined') return false;
-    const g = globalThis as { MediaStreamTrackGenerator?: unknown };
-    if (typeof g.MediaStreamTrackGenerator === 'function') return true;
-    // Safari probably has VideoTrackGenerator only inside workers.
-    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
-    if (/^((?!chrome|android).)*safari/i.test(ua)) return true;
-    return false;
+    return !DeviceInfo.isFirefox;
 }
 
 // Off-thread renderer: just an HTMLVideoElement adapter. The decoder worker
