@@ -265,6 +265,7 @@ function applySnapshot(minLevels: Map<string, LogLevel>, snapshot: PersistedLogL
 
     minLevels.clear();
     for (const entry of snapshot.entries) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!Array.isArray(entry) || entry.length !== 2)
             return false;
         const [key, value] = entry;

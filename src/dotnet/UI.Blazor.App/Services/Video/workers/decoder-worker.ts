@@ -66,7 +66,6 @@ let decoder: WebCodecsDecoder | null = null;
 let processing = false;
 let decoderConfigured = false;
 let currentDecoderConfig: DecoderConfig | null = null;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 let frameCount = 0;
 let lastRawDescription: ArrayBuffer | null = null;
 
