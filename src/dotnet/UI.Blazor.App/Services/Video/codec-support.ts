@@ -212,7 +212,7 @@ async function isCodecSupported(
     }
 }
 
-export interface ConcurrentEncoderProbeResult {
+export interface EncoderProbeResult {
     supported: boolean;
     medianEncodeMs: number;
     failedStage: 'configure' | 'encode' | null;
@@ -220,102 +220,99 @@ export interface ConcurrentEncoderProbeResult {
 
 interface ProbeLayer { width: number; height: number; bitrate: number }
 
-// Cache results per (codec, layer-count, top-layer-dims) — layer count and top
-// dims dominate throughput, lower tiers are cheap-by-comparison and don't move
-// the bottleneck meaningfully for gating decisions. Ladders are bottom-first
-// (index 0 = base, last = top) so we key on `layers[layers.length - 1]`.
-const concurrentEncoderProbeCache = new Map<string, Promise<ConcurrentEncoderProbeResult>>();
+// Cache results per (codec, top-layer-dims, layer-count). The probe itself
+// only exercises the top-tier encoder, so top dims drive the result; layer
+// count is kept in the key so a future move to multi-encoder probing
+// re-invalidates cleanly. Ladders are bottom-first (index 0 = base, last =
+// top) so we key on `layers[layers.length - 1]`.
+const encoderProbeCache = new Map<string, Promise<EncoderProbeResult>>();
 
-// Default budget = 30fps frame interval (33.3ms). Probe is a real-time
-// sanity check — "can the encoder keep up with one frame per tick" — not
-// a search for the optimal codec. Steady-state encode is ~5–20ms on
-// hardware capable of simulcast, so 33ms is a generous ceiling that lets
-// borderline-but-workable codecs pass and trust runtime backpressure to
-// step down if reality diverges. The previous 12ms budget rejected
-// codecs that real-time was perfectly happy with.
+// Single-encoder probe of the top simulcast layer. Default budget = 30fps
+// frame interval (33.3ms) — "can one top-tier encoder keep up with one
+// frame per tick". Not a search for the optimal codec, not a simulcast
+// concurrency test. Steady-state encode is ~5–20ms on hardware capable
+// of simulcast, so 33ms is a generous ceiling that lets borderline-but-
+// workable codecs pass and trusts runtime backpressure (step-down +
+// onEncoderFailure → pickFallbackCodec → switchCodec) to recover if
+// reality diverges.
 //
-// Default frameCount = 4 (1 warmup discarded + 3 steady). Smaller sample
-// counts let the cascade complete in ~100ms per codec instead of ~600ms.
-// The first frame is a keyframe and pays codec init cost — discarding
-// one is enough; more samples don't materially reduce variance for a
-// pass/fail gate.
-export function probeConcurrentEncoders(
+// Default frameCount = 8 (3 warmup discarded + 5 steady). The first
+// frame is a keyframe and pays codec init cost — discarding the cold-
+// start samples gives the steady-state median that matters.
+export function probeEncoder(
     codec: string,
     layers: readonly ProbeLayer[],
-    frameCount = 4,
+    frameCount = 8,
     budgetMs = 33,
-): Promise<ConcurrentEncoderProbeResult> {
+): Promise<EncoderProbeResult> {
     if (layers.length === 0)
         return Promise.resolve({ supported: false, medianEncodeMs: 0, failedStage: 'configure' });
     const top = layers[layers.length - 1];
     const key = `${codec}@${top.width}x${top.height}×${layers.length}`;
-    let cached = concurrentEncoderProbeCache.get(key);
+    let cached = encoderProbeCache.get(key);
     if (!cached) {
-        cached = probeConcurrentEncodersUncached(codec, layers, frameCount, budgetMs);
-        concurrentEncoderProbeCache.set(key, cached);
+        cached = probeEncoderUncached(codec, layers, frameCount, budgetMs);
+        encoderProbeCache.set(key, cached);
     }
     return cached;
 }
 
-async function probeConcurrentEncodersUncached(
+async function probeEncoderUncached(
     codec: string,
     layers: readonly ProbeLayer[],
     frameCount: number,
     budgetMs: number,
-): Promise<ConcurrentEncoderProbeResult> {
+): Promise<EncoderProbeResult> {
+    // Probe ONLY the top-tier encoder with a single VideoEncoder. Spinning
+    // up N concurrent encoders here creates cold-start GPU/CPU contention
+    // that does not exist at runtime (where encoders are warm and frame
+    // submission is paced), so concurrent probes produced false-fails on
+    // hardware that ran the same simulcast cleanly. The top-tier encoder
+    // dominates simulcast cost; lower tiers are cheap-by-comparison and
+    // any divergence is caught by the runtime backpressure step-down +
+    // onEncoderFailure → pickFallbackCodec → switchCodec path.
+    if (layers.length === 0)
+        return { supported: false, medianEncodeMs: 0, failedStage: 'configure' };
     const category = getCodecCategory(codec);
-    const encoders: VideoEncoder[] = [];
-    const outputCounters: number[] = layers.map(() => 0);
-    const pendingResolvers: ((() => void) | null)[] = layers.map(() => null);
+    const top = layers[layers.length - 1];
+    let pendingResolver: (() => void) | null = null;
+    let encoder: VideoEncoder | null = null;
 
     try {
-        for (let i = 0; i < layers.length; i++) {
-            const layer = layers[i];
-            const config: VideoEncoderConfig = {
-                codec,
-                width: layer.width,
-                height: layer.height,
-                bitrate: layer.bitrate,
-                framerate: 30,
-                latencyMode: 'realtime',
-                hardwareAcceleration: 'prefer-hardware',
-            };
-            if (category === 'h264')
-                config.avc = { format: 'avc' };
-            const support = await VideoEncoder.isConfigSupported(config);
-            if (!support.supported) {
-                debugLog?.log(`probeConcurrentEncoders: configure fail for ${codec} at ${layer.width}x${layer.height}`);
-                return { supported: false, medianEncodeMs: 0, failedStage: 'configure' };
-            }
-            const idx = i;
-            const enc = new VideoEncoder({
-                output: () => {
-                    outputCounters[idx]++;
-                    const resolve = pendingResolvers[idx];
-                    if (resolve) {
-                        pendingResolvers[idx] = null;
-                        resolve();
-                    }
-                },
-                error: e => errorLog?.log(`probeConcurrentEncoders[${idx}] error`, e),
-            });
-            enc.configure(config);
-            encoders.push(enc);
+        const config: VideoEncoderConfig = {
+            codec,
+            width: top.width,
+            height: top.height,
+            bitrate: top.bitrate,
+            framerate: 30,
+            latencyMode: 'realtime',
+            hardwareAcceleration: 'prefer-hardware',
+        };
+        if (category === 'h264')
+            config.avc = { format: 'avc' };
+        const support = await VideoEncoder.isConfigSupported(config);
+        if (!support.supported) {
+            debugLog?.log(`probeEncoder: configure fail for ${codec} at ${top.width}x${top.height}`);
+            return { supported: false, medianEncodeMs: 0, failedStage: 'configure' };
         }
+        encoder = new VideoEncoder({
+            output: () => {
+                const resolve = pendingResolver;
+                if (resolve) {
+                    pendingResolver = null;
+                    resolve();
+                }
+            },
+            error: e => errorLog?.log(`probeEncoder error`, e),
+        });
+        encoder.configure(config);
 
-        // Shared synthetic source — one canvas at top-tier dims, smaller
-        // encoders resize internally (Chrome's VideoEncoder accepts mismatched
-        // input and scales to configured dims). Feeding the same top-res frame
-        // to all is conservative — production downscales upstream, so per-tier
-        // encode cost is no higher than what we measure here.
-        // A 1920×1080 BGRA canvas is ~8 MB, allocated once.
-        const top = layers[layers.length - 1];
         const srcW = top.width;
         const srcH = top.height;
         const canvas = new OffscreenCanvas(srcW, srcH);
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-            warnLog?.log('probeConcurrentEncoders: 2D context unavailable on OffscreenCanvas');
+            warnLog?.log('probeEncoder: 2D context unavailable on OffscreenCanvas');
             return { supported: false, medianEncodeMs: 0, failedStage: 'configure' };
         }
 
@@ -328,29 +325,19 @@ async function probeConcurrentEncodersUncached(
             ctx.fillRect(0, 0, srcW, srcH);
             const srcFrame = new VideoFrame(canvas, { timestamp: f * frameDurationUs });
 
-            const waits = encoders.map((_, i) => new Promise<void>(resolve => {
-                pendingResolvers[i] = resolve;
-            }));
+            const wait = new Promise<void>(resolve => {
+                pendingResolver = resolve;
+            });
             const t0 = performance.now();
             try {
-                for (let i = 0; i < encoders.length; i++) {
-                    // Narrow the frame dims per encoder by creating a cropped view —
-                    // cheap ref bump, no pixel copy. Encoders that need resizing
-                    // handle it themselves.
-                    const copy = srcFrame.clone();
-                    try {
-                        encoders[i].encode(copy, { keyFrame: f === 0 });
-                    } catch (e) {
-                        copy.close();
-                        errorLog?.log(`probeConcurrentEncoders[${i}] encode threw`, e);
-                        return { supported: false, medianEncodeMs: 0, failedStage: 'encode' };
-                    }
-                    copy.close();
-                }
-            } finally {
+                encoder.encode(srcFrame, { keyFrame: f === 0 });
+            } catch (e) {
                 srcFrame.close();
+                errorLog?.log(`probeEncoder encode threw`, e);
+                return { supported: false, medianEncodeMs: 0, failedStage: 'encode' };
             }
-            await Promise.all(waits);
+            srcFrame.close();
+            await wait;
             timings.push(performance.now() - t0);
         }
 
@@ -360,20 +347,20 @@ async function probeConcurrentEncodersUncached(
         // HW-capable machines that just need a few ms more for warmup (e.g.
         // 1080p single-encoder probes failing at ~20 ms median because the
         // warmup samples dragged the median above an 18 ms budget).
-        // 6+ frames: drop 2 warmup; 3-5 frames: drop 1; <3: drop none.
-        const warmupCount = frameCount >= 6 ? 2 : (frameCount >= 3 ? 1 : 0);
+        // 6+ frames: drop 3 warmup; 3-5 frames: drop 2; <3: drop none.
+        const warmupCount = frameCount >= 6 ? 3 : (frameCount >= 3 ? 2 : 0);
         const steadyTimings = timings.slice(warmupCount);
         steadyTimings.sort((a, b) => a - b);
         const median = steadyTimings[Math.floor(steadyTimings.length / 2)];
         const supported = median <= budgetMs;
-        debugLog?.log(`probeConcurrentEncoders: ${codec} × ${layers.length} @ ${top.width}x${top.height} — median=${median.toFixed(1)}ms (warmup=${warmupCount}, steady=${steadyTimings.length}), budget=${budgetMs}ms, ${supported ? 'PASS' : 'FAIL'}`);
+        debugLog?.log(`probeEncoder: ${codec} (top-layer solo) @ ${top.width}x${top.height} — median=${median.toFixed(1)}ms (warmup=${warmupCount}, steady=${steadyTimings.length}), budget=${budgetMs}ms, ${supported ? 'PASS' : 'FAIL'}`);
         return { supported, medianEncodeMs: median, failedStage: supported ? null : 'encode' };
     } catch (error) {
-        errorLog?.log('probeConcurrentEncoders: unexpected error', error);
+        errorLog?.log('probeEncoder: unexpected error', error);
         return { supported: false, medianEncodeMs: 0, failedStage: 'configure' };
     } finally {
-        for (const enc of encoders) {
-            try { enc.close(); } catch { /* already closed */ }
+        if (encoder) {
+            try { encoder.close(); } catch { /* already closed */ }
         }
     }
 }

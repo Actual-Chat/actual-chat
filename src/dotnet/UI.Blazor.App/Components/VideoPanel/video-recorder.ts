@@ -3,7 +3,7 @@ import { DeviceInfo } from 'device-info';
 import { RecordingService, type RecordingConfig, type RecordingState } from '../../Services/Video/services/recording-service';
 import type { RecorderHealthSnapshotJs } from '../../Services/Video/services/video-pipeline';
 import type { SpatialLayerConfig } from '../../Services/Video/workers/video-processing-worker-contract';
-import { detectSupportedCodecs, getDefaultCodec, getCodecCategory, probeConcurrentEncoders, type CodecInfo } from '../../Services/Video/codec-support';
+import { detectSupportedCodecs, getDefaultCodec, getCodecCategory, probeEncoder, type CodecInfo } from '../../Services/Video/codec-support';
 import { getExpectedBitrate } from '../../Services/Video/bitrate-table';
 import {
     buildLadder,
@@ -476,13 +476,18 @@ export class VideoRecorder {
             infoLog?.log(`Supported encoder categories: [${this.supportedEncoderCategories.join(', ')}]`);
 
             // Always-on simulcast: build a 3-tier ladder @ 720p (720p / 360p /
-            // 180p, each ¼ pixels of the previous) and pick the best codec that
-            // can run all three concurrent encoders within the per-frame budget.
-            // On full failure (no codec passes the 3-tier probe — typically iOS
-            // Safari HW-encoder budget exhausted), drop the 720p top and retry
-            // at 2-tier @ 360p (180p + 360p). This is the user-specified iOS
-            // fallback — see plan: probe-fail keeps the ¼-ratio shape but caps
-            // at 360p instead of upgrading the lowest tier to be the new top.
+            // 180p, each ¼ pixels of the previous) and pick the best codec
+            // whose top-tier encoder runs within the per-frame budget. The
+            // probe is a single-encoder solo measurement of the top layer —
+            // running multiple encoders concurrently here produced cold-start
+            // contention that doesn't exist at runtime, so simulcast headroom
+            // is left to runtime backpressure step-down to enforce.
+            // On full failure (top-tier solo too slow on every codec —
+            // typically iOS Safari HW-encoder budget exhausted), drop the
+            // 720p top and retry at 2-tier @ 360p (180p + 360p). This is the
+            // user-specified iOS fallback — see plan: probe-fail keeps the
+            // ¼-ratio shape but caps at 360p instead of upgrading the lowest
+            // tier to be the new top.
             const initialPick = this.pickInitialCodec(supportedCodecs, audienceCodecs, targetSize);
             const ladder3 = buildLadder({
                 topWidth: targetSize.width,
@@ -921,9 +926,9 @@ export class VideoRecorder {
             const codecInfo = supportedCodecs.find(c => c.category === category && c.supported && c.hardwareAccelerated)
                 ?? supportedCodecs.find(c => c.category === category && c.supported);
             if (!codecInfo) continue;
-            const probe = await probeConcurrentEncoders(codecInfo.codec, ladder);
+            const probe = await probeEncoder(codecInfo.codec, ladder);
             if (probe.supported) {
-                infoLog?.log(`pickSimulcastCodec: ${category} (${codecInfo.codec}) PASS — median=${probe.medianEncodeMs.toFixed(1)}ms over ${ladder.length} layer(s)`);
+                infoLog?.log(`pickSimulcastCodec: ${category} (${codecInfo.codec}) PASS — top-layer median=${probe.medianEncodeMs.toFixed(1)}ms (ladder=${ladder.length} layer(s))`);
                 return codecInfo.codec;
             }
             infoLog?.log(`pickSimulcastCodec: ${category} (${codecInfo.codec}) FAIL — median=${probe.medianEncodeMs.toFixed(1)}ms, stage=${probe.failedStage ?? 'timing'}`);
