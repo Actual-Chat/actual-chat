@@ -903,8 +903,11 @@ export class VideoRecorder {
     // and accepts the risk of backpressure-driven step-down.
     //
     // Filters by `audienceCodecs` (if provided) and `supportedEncoderCategories`
-    // — same constraints as `pickFallbackCodec`. Probe budget 12ms matches the
-    // simulcast concurrency gate used in 1080p promotion.
+    // — same constraints as `pickFallbackCodec`. Probe is a cheap real-time
+    // sanity check (default 4 frames, 33ms = frame interval); a probe FAIL
+    // rules out a codec for the requested ladder. A probe PASS commits to
+    // the codec; runtime backpressure step-down + onEncoderFailure handle
+    // any divergence (see handleEncoderBackpressure / pickFallbackCodec).
     private async pickSimulcastCodec(
         supportedCodecs: CodecInfo[],
         audienceCodecs: string[] | undefined,
@@ -918,7 +921,7 @@ export class VideoRecorder {
             const codecInfo = supportedCodecs.find(c => c.category === category && c.supported && c.hardwareAccelerated)
                 ?? supportedCodecs.find(c => c.category === category && c.supported);
             if (!codecInfo) continue;
-            const probe = await probeConcurrentEncoders(codecInfo.codec, ladder, 8, 12);
+            const probe = await probeConcurrentEncoders(codecInfo.codec, ladder);
             if (probe.supported) {
                 infoLog?.log(`pickSimulcastCodec: ${category} (${codecInfo.codec}) PASS — median=${probe.medianEncodeMs.toFixed(1)}ms over ${ladder.length} layer(s)`);
                 return codecInfo.codec;

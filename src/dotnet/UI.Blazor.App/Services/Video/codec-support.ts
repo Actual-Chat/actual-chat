@@ -226,11 +226,24 @@ interface ProbeLayer { width: number; height: number; bitrate: number }
 // (index 0 = base, last = top) so we key on `layers[layers.length - 1]`.
 const concurrentEncoderProbeCache = new Map<string, Promise<ConcurrentEncoderProbeResult>>();
 
+// Default budget = 30fps frame interval (33.3ms). Probe is a real-time
+// sanity check — "can the encoder keep up with one frame per tick" — not
+// a search for the optimal codec. Steady-state encode is ~5–20ms on
+// hardware capable of simulcast, so 33ms is a generous ceiling that lets
+// borderline-but-workable codecs pass and trust runtime backpressure to
+// step down if reality diverges. The previous 12ms budget rejected
+// codecs that real-time was perfectly happy with.
+//
+// Default frameCount = 4 (1 warmup discarded + 3 steady). Smaller sample
+// counts let the cascade complete in ~100ms per codec instead of ~600ms.
+// The first frame is a keyframe and pays codec init cost — discarding
+// one is enough; more samples don't materially reduce variance for a
+// pass/fail gate.
 export function probeConcurrentEncoders(
     codec: string,
     layers: readonly ProbeLayer[],
-    frameCount = 8,
-    budgetMs = 12,
+    frameCount = 4,
+    budgetMs = 33,
 ): Promise<ConcurrentEncoderProbeResult> {
     if (layers.length === 0)
         return Promise.resolve({ supported: false, medianEncodeMs: 0, failedStage: 'configure' });
@@ -347,7 +360,8 @@ async function probeConcurrentEncodersUncached(
         // HW-capable machines that just need a few ms more for warmup (e.g.
         // 1080p single-encoder probes failing at ~20 ms median because the
         // warmup samples dragged the median above an 18 ms budget).
-        const warmupCount = Math.min(2, Math.max(0, frameCount - 4));
+        // 6+ frames: drop 2 warmup; 3-5 frames: drop 1; <3: drop none.
+        const warmupCount = frameCount >= 6 ? 2 : (frameCount >= 3 ? 1 : 0);
         const steadyTimings = timings.slice(warmupCount);
         steadyTimings.sort((a, b) => a - b);
         const median = steadyTimings[Math.floor(steadyTimings.length / 2)];
