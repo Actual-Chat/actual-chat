@@ -38,15 +38,31 @@ function Test-WindowsTerminal {
 }
 $hasWindowsTerminal = Test-WindowsTerminal
 
-# Chrome remote debugging port (standard)
-$ChromeDebugPort = 9222
+# Chrome remote debugging port (standard) and multi-instance defaults.
+# The `chrome` command supports `chrome[:PORT][*N]` (N=1..9). When `*N` is
+# given, each instance gets its own anonymous profile so cookies don't bleed
+# across them — useful for testing multi-user flows.
+$ChromeDebugPort           = 9222     # legacy single-port default (also exported to Docker for the chrome-devtools MCP)
+$ChromeDebugStartPort      = $ChromeDebugPort
+$ChromeInstanceCount       = 1
+$ChromeUseAnonymousProfile = $false
+$ChromeArgPattern          = '^chrome(?:[:*]\d+){0,2}$'
+
+# Edge mirrors the Chrome shape but defaults to a different start port so the
+# two can run side by side without the firewall/port-collision dance.
+$EdgeDebugPort             = 9322
+$EdgeDebugStartPort        = $EdgeDebugPort
+$EdgeInstanceCount         = 1
+$EdgeUseAnonymousProfile   = $false
+$EdgeArgPattern            = '^edge(?:[:*]\d+){0,2}$'
 
 # On Windows, if not already in Windows Terminal, relaunch in wt
 # WT_SESSION is set by Windows Terminal when running inside it
 # Exception: chrome command runs directly without terminal relaunch
 $currentOS = Get-CurrentOS
-$hasChrome = $args -contains "chrome"
-if ($currentOS -eq "Windows" -and $hasWindowsTerminal -and -not $env:WT_SESSION -and -not $hasChrome) {
+$hasChrome = ($args | Where-Object { $_ -match $ChromeArgPattern }).Count -gt 0
+$hasEdge   = ($args | Where-Object { $_ -match $EdgeArgPattern   }).Count -gt 0
+if ($currentOS -eq "Windows" -and $hasWindowsTerminal -and -not $env:WT_SESSION -and -not $hasChrome -and -not $hasEdge) {
     $scriptPath = $MyInvocation.MyCommand.Path
     $workDir = (Get-Location).Path
     # Keep terminal open for build, dry-run, debug, or help (only auto-close when actually running Claude)
@@ -240,7 +256,11 @@ function Show-Help {
     Write-Host "  c rwt feature1     Remove feature1 worktree and clean up"
     Write-Host "  c os fwt feature1  Run on host OS in feature worktree"
     Write-Host "  c os bwt issue1    Run on host OS in bugfix worktree"
-    Write-Host "  c chrome           Start Chrome with remote debugging"
+    Write-Host "  c chrome           Start Chrome with remote debugging (default profile, port 9222)"
+    Write-Host "  c chrome:50000     Start Chrome on port 50000 (default profile)"
+    Write-Host "  c chrome*3         Start 3 Chrome instances on 9222..9224 (anonymous profiles)"
+    Write-Host "  c chrome*3:50000   Start 3 Chrome instances on 50000..50002 (anonymous profiles)"
+    Write-Host "  c edge[:PORT][*N]  Same as chrome, for Microsoft Edge (default port 9322)"
     Write-Host "  c audio            Setup/start PulseAudio for voice mode (macOS only)"
     Write-Host "  c build            Build Docker image"
     Write-Host "  c --resume abc     Pass --resume abc to Claude"
@@ -256,8 +276,46 @@ while ($argIndex -lt $args.Count) {
     $currentArg = $args[$argIndex]
 
     # Check for mode commands
-    if ($currentArg -in "wsl", "os", "build", "chrome", "audio" -and $mode -eq "docker") {
+    if ($currentArg -in "wsl", "os", "build", "audio" -and $mode -eq "docker") {
         $mode = $currentArg
+        $argIndex++
+        continue
+    }
+
+    # Chrome command: `chrome`, `chrome:PORT`, `chrome*N`, `chrome:PORT*N`, `chrome*N:PORT`
+    if ($currentArg -match $ChromeArgPattern -and $mode -eq "docker") {
+        $mode = "chrome"
+        if ([regex]::Match($currentArg, ':(\d+)').Success) {
+            $ChromeDebugStartPort = [int][regex]::Match($currentArg, ':(\d+)').Groups[1].Value
+        }
+        if ([regex]::Match($currentArg, '\*(\d+)').Success) {
+            $n = [int][regex]::Match($currentArg, '\*(\d+)').Groups[1].Value
+            if ($n -lt 1 -or $n -gt 9) {
+                Write-Error "chrome: instance count must be between 1 and 9 (got $n)"
+                exit 1
+            }
+            $ChromeInstanceCount = $n
+            $ChromeUseAnonymousProfile = $true
+        }
+        $argIndex++
+        continue
+    }
+
+    # Edge command: same shape as chrome (`edge`, `edge:PORT`, `edge*N`, `edge:PORT*N`, `edge*N:PORT`).
+    if ($currentArg -match $EdgeArgPattern -and $mode -eq "docker") {
+        $mode = "edge"
+        if ([regex]::Match($currentArg, ':(\d+)').Success) {
+            $EdgeDebugStartPort = [int][regex]::Match($currentArg, ':(\d+)').Groups[1].Value
+        }
+        if ([regex]::Match($currentArg, '\*(\d+)').Success) {
+            $n = [int][regex]::Match($currentArg, '\*(\d+)').Groups[1].Value
+            if ($n -lt 1 -or $n -gt 9) {
+                Write-Error "edge: instance count must be between 1 and 9 (got $n)"
+                exit 1
+            }
+            $EdgeInstanceCount = $n
+            $EdgeUseAnonymousProfile = $true
+        }
         $argIndex++
         continue
     }
@@ -1136,6 +1194,99 @@ if ($env:AC_GITHUB_TOKEN -and -not $env:GH_TOKEN) {
     $env:GH_TOKEN = $env:AC_GITHUB_TOKEN
 }
 
+# Shared helpers used by the `chrome` and `edge` modes below.
+function Test-DebugPort {
+    param([int]$Port)
+    if ($currentOS -eq "Windows") {
+        return $null -ne (netstat -an | Select-String ":$Port\s+.*LISTENING")
+    }
+    bash -c "lsof -i :$Port -sTCP:LISTEN 2>/dev/null || nc -z localhost $Port 2>/dev/null" | Out-Null
+    return $LASTEXITCODE -eq 0
+}
+
+function Ensure-FirewallRule {
+    param([int]$Port, [string]$BrowserName)
+    if ($currentOS -ne "Windows") { return }
+    $ruleName = "$BrowserName Remote Debugging (Claude) port $Port"
+    netsh advfirewall firewall show rule name="$ruleName" 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) { return }
+
+    Write-Host "Creating firewall rule for port $Port..." -ForegroundColor Cyan
+    $result = netsh advfirewall firewall add rule `
+        name="$ruleName" `
+        dir=in action=allow protocol=tcp `
+        localport=$Port profile=private `
+        description="Allow $BrowserName remote debugging connections from WSL/Docker" 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        if ($result -match "requires elevation|Access is denied|administrator") {
+            Write-Host ""
+            Write-Host "Failed to create firewall rule - administrator privileges required." -ForegroundColor Yellow
+            Write-Host "Run this in an elevated PowerShell, or re-run as Administrator:" -ForegroundColor Yellow
+            Write-Host "  netsh advfirewall firewall add rule name=`"$ruleName`" dir=in action=allow protocol=tcp localport=$Port profile=private" -ForegroundColor White
+            exit 1
+        }
+        Write-Host "Warning: Failed to create firewall rule for port $Port`: $result" -ForegroundColor Yellow
+    }
+}
+
+# Launches one or more debug-enabled browser instances. Caller supplies the
+# OS-specific executable path, the default and anonymous profile-dir bases,
+# and the browser name (used for log/firewall messages).
+function Start-DebugBrowsers {
+    param(
+        [string]$BrowserName,
+        [string]$ExePath,
+        [string]$DefaultProfileDir,
+        [string]$AnonProfileBase,
+        [int]   $StartPort,
+        [int]   $Count,
+        [bool]  $UseAnonymous
+    )
+    Write-Host "$BrowserName path: $ExePath"
+    for ($i = 0; $i -lt $Count; $i++) {
+        $port = $StartPort + $i
+        $profileDir = if ($UseAnonymous) { "$AnonProfileBase-$port" } else { $DefaultProfileDir }
+
+        Ensure-FirewallRule -Port $port -BrowserName $BrowserName
+
+        if (Test-DebugPort -Port $port) {
+            Write-Host "$BrowserName already running on port $port — skipping" -ForegroundColor Yellow
+            continue
+        }
+
+        $label = if ($UseAnonymous) { "anonymous" } else { "default" }
+        Write-Host "Starting $BrowserName on port $port ($label profile: $profileDir)..." -ForegroundColor Cyan
+        # Pass the project URL as a positional arg so the browser opens it as
+        # its first tab — otherwise an anonymous profile shows the "Sign in
+        # to Chrome" / "Welcome to Edge" greeter and you have to navigate
+        # manually.
+        Start-Process -FilePath $ExePath -ArgumentList @(
+            "--remote-debugging-port=$port",
+            "--remote-debugging-address=0.0.0.0",
+            "--user-data-dir=`"$profileDir`"",
+            "--remote-allow-origins=*",
+            "https://local.voxt.ai/"
+        )
+
+        $maxWait = 30; $waited = 0; $printedWaiting = $false
+        while (-not (Test-DebugPort -Port $port) -and $waited -lt $maxWait) {
+            Start-Sleep -Seconds 1; $waited++
+            if ($waited -gt 2 -and -not $printedWaiting) {
+                Write-Host "  waiting for port $port`: " -NoNewline
+                $printedWaiting = $true
+            }
+            if ($printedWaiting) { Write-Host "." -NoNewline }
+        }
+        if ($printedWaiting) { Write-Host "" }
+
+        if (Test-DebugPort -Port $port) {
+            Write-Host "  ready on port $port" -ForegroundColor Green
+        } else {
+            Write-Host "  timed out waiting for port $port" -ForegroundColor Yellow
+        }
+    }
+}
+
 switch ($mode) {
     "build" {
         # Build Docker image
@@ -1541,143 +1692,74 @@ switch ($mode) {
     }
 
     "chrome" {
-        # Start Chrome with remote debugging enabled
-
-        # On Windows, ensure firewall rule exists for remote debugging port
         if ($currentOS -eq "Windows") {
-            $firewallRuleName = "Chrome Remote Debugging (Claude)"
-
-            # Check if firewall rule exists
-            $ruleExists = $false
-            try {
-                $existingRule = netsh advfirewall firewall show rule name="$firewallRuleName" 2>$null
-                $ruleExists = $LASTEXITCODE -eq 0 -and $existingRule
-            } catch {
-                $ruleExists = $false
-            }
-
-            if (-not $ruleExists) {
-                Write-Host "Creating firewall rule for Chrome remote debugging (port $ChromeDebugPort)..." -ForegroundColor Cyan
-
-                # Try to add the firewall rule
-                $result = netsh advfirewall firewall add rule `
-                    name="$firewallRuleName" `
-                    dir=in `
-                    action=allow `
-                    protocol=tcp `
-                    localport=$ChromeDebugPort `
-                    profile=private `
-                    description="Allow Chrome remote debugging connections from WSL/Docker" 2>&1
-
-                if ($LASTEXITCODE -ne 0) {
-                    # Check if it's a permission error
-                    if ($result -match "requires elevation|Access is denied|administrator") {
-                        Write-Host ""
-                        Write-Host "Failed to create firewall rule - administrator privileges required." -ForegroundColor Yellow
-                        Write-Host "Please run this command in an elevated PowerShell:" -ForegroundColor Yellow
-                        Write-Host ""
-                        Write-Host "  netsh advfirewall firewall add rule name=`"$firewallRuleName`" dir=in action=allow protocol=tcp localport=$ChromeDebugPort profile=private" -ForegroundColor White
-                        Write-Host ""
-                        Write-Host "Or re-run 'c chrome' as Administrator." -ForegroundColor Yellow
-                        exit 1
-                    } else {
-                        Write-Host "Warning: Failed to create firewall rule: $result" -ForegroundColor Yellow
-                        Write-Host "Connections from WSL/Docker may not work." -ForegroundColor Yellow
-                    }
-                } else {
-                    Write-Host "Firewall rule created successfully." -ForegroundColor Green
-                }
-            }
-        }
-
-        # Helper to check if debug port is open
-        function Test-DebugPort {
-            if ($currentOS -eq "Windows") {
-                $listening = netstat -an | Select-String ":$ChromeDebugPort\s+.*LISTENING"
-                return $null -ne $listening
-            } else {
-                # Unix/macOS: use lsof or nc
-                $result = bash -c "lsof -i :$ChromeDebugPort -sTCP:LISTEN 2>/dev/null || nc -z localhost $ChromeDebugPort 2>/dev/null"
-                return $LASTEXITCODE -eq 0
-            }
-        }
-
-        # Check if Chrome is already running with debug port
-        if (Test-DebugPort) {
-            Write-Host "Chrome is already running with remote debugging on port $ChromeDebugPort" -ForegroundColor Yellow
-            exit 0
-        }
-
-        # Find Chrome executable and user data dir based on OS
-        if ($currentOS -eq "Windows") {
-            $chromePaths = @(
+            $exePaths = @(
                 "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
                 "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
                 "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe"
             )
-            $debugUserDataDir = "$env:LOCALAPPDATA\Google\Chrome\Playwright"
+            $defaultProfileDir = "$env:LOCALAPPDATA\Google\Chrome\Playwright"
+            $anonProfileBase   = "$env:LOCALAPPDATA\Google\Chrome\Playwright-anon"
         } elseif ($currentOS -eq "macOS") {
-            $chromePaths = @(
-                "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-            )
-            $debugUserDataDir = "$env:HOME/Library/Application Support/Google/Chrome Playwright"
+            $exePaths = @("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
+            $defaultProfileDir = "$env:HOME/Library/Application Support/Google/Chrome Playwright"
+            $anonProfileBase   = "$env:HOME/Library/Application Support/Google/Chrome Playwright-anon"
         } else {
-            # Linux
-            $chromePaths = @(
-                "/usr/bin/google-chrome",
-                "/usr/bin/google-chrome-stable",
-                "/usr/bin/chromium-browser",
-                "/usr/bin/chromium"
+            $exePaths = @(
+                "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable",
+                "/usr/bin/chromium-browser", "/usr/bin/chromium"
             )
-            $debugUserDataDir = "$env:HOME/.config/google-chrome-playwright"
+            $defaultProfileDir = "$env:HOME/.config/google-chrome-playwright"
+            $anonProfileBase   = "$env:HOME/.config/google-chrome-playwright-anon"
         }
-
-        $chromePath = $null
-        foreach ($path in $chromePaths) {
-            if (Test-Path $path) {
-                $chromePath = $path
-                break
-            }
-        }
-
-        if (-not $chromePath) {
+        $exePath = $exePaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+        if (-not $exePath) {
             Write-Error "Chrome not found. Please install Google Chrome."
             exit 1
         }
+        Start-DebugBrowsers `
+            -BrowserName "Chrome" `
+            -ExePath $exePath `
+            -DefaultProfileDir $defaultProfileDir `
+            -AnonProfileBase $anonProfileBase `
+            -StartPort $ChromeDebugStartPort `
+            -Count $ChromeInstanceCount `
+            -UseAnonymous $ChromeUseAnonymousProfile
+    }
 
-        Write-Host "Starting Chrome with remote debugging on port $ChromeDebugPort..." -ForegroundColor Cyan
-        Write-Host "Chrome path: $chromePath"
-
-        # Use a separate user data dir to force a new Chrome instance (otherwise Chrome reuses existing process and ignores debug flag)
-        # Start Chrome with remote debugging in a new process
-        # --remote-debugging-address=0.0.0.0 allows connections from WSL/Docker (not just localhost)
-        Start-Process -FilePath $chromePath -ArgumentList "--remote-debugging-port=$ChromeDebugPort", "--remote-debugging-address=0.0.0.0", "--user-data-dir=`"$debugUserDataDir`"", "--remote-allow-origins=*"
-
-        # Wait for debug port to open (check once per second, max 30 seconds)
-        # First 2 checks are silent, then show waiting message
-        $maxWait = 30
-        $waited = 0
-        $printedWaiting = $false
-        while (-not (Test-DebugPort) -and $waited -lt $maxWait) {
-            Start-Sleep -Seconds 1
-            $waited++
-            if ($waited -gt 2 -and -not $printedWaiting) {
-                Write-Host "Waiting for the debug port to open: " -NoNewline
-                $printedWaiting = $true
-            }
-            if ($printedWaiting) {
-                Write-Host "." -NoNewline
-            }
-        }
-        if ($printedWaiting) {
-            Write-Host ""
-        }
-
-        if (Test-DebugPort) {
-            Write-Host "Chrome started with remote debugging on port $ChromeDebugPort" -ForegroundColor Green
-            Write-Host "Note: This uses a separate profile (Playwright)" -ForegroundColor DarkGray
+    "edge" {
+        if ($currentOS -eq "Windows") {
+            $exePaths = @(
+                "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe",
+                "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe",
+                "$env:LOCALAPPDATA\Microsoft\Edge\Application\msedge.exe"
+            )
+            $defaultProfileDir = "$env:LOCALAPPDATA\Microsoft\Edge\Playwright"
+            $anonProfileBase   = "$env:LOCALAPPDATA\Microsoft\Edge\Playwright-anon"
+        } elseif ($currentOS -eq "macOS") {
+            $exePaths = @("/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge")
+            $defaultProfileDir = "$env:HOME/Library/Application Support/Microsoft Edge Playwright"
+            $anonProfileBase   = "$env:HOME/Library/Application Support/Microsoft Edge Playwright-anon"
         } else {
-            Write-Host "Timed out waiting for Chrome debug port." -ForegroundColor Yellow
+            $exePaths = @(
+                "/usr/bin/microsoft-edge", "/usr/bin/microsoft-edge-stable",
+                "/usr/bin/microsoft-edge-beta", "/usr/bin/microsoft-edge-dev"
+            )
+            $defaultProfileDir = "$env:HOME/.config/microsoft-edge-playwright"
+            $anonProfileBase   = "$env:HOME/.config/microsoft-edge-playwright-anon"
         }
+        $exePath = $exePaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+        if (-not $exePath) {
+            Write-Error "Microsoft Edge not found. Please install Microsoft Edge."
+            exit 1
+        }
+        Start-DebugBrowsers `
+            -BrowserName "Edge" `
+            -ExePath $exePath `
+            -DefaultProfileDir $defaultProfileDir `
+            -AnonProfileBase $anonProfileBase `
+            -StartPort $EdgeDebugStartPort `
+            -Count $EdgeInstanceCount `
+            -UseAnonymous $EdgeUseAnonymousProfile
     }
 }

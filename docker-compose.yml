@@ -3,6 +3,38 @@ include:
   - ./services/aspire/docker-compose.yaml
   - ./services/embeddings/docker-compose.yaml
   - ./services/opensearch/docker-compose.yaml
+
+# Shared base for the chrome-devtools-mcp-* services. Each instance reads its
+# target Chrome debug port from $CHROME_DEBUG_PORT, so callers control the
+# binding via the environment override on the service (or the .env file) — not
+# baked into the compose definition. Listens on port 8765 internally; the
+# instance maps it to a unique host port.
+x-chrome-devtools-mcp-base: &chrome-devtools-mcp-base
+  image: node:20-alpine
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  command:
+    - sh
+    - -c
+    - |
+      # Chrome's /json/version rejects Host headers that aren't localhost or
+      # an IP literal, so resolve host.docker.internal to IPv4 here.
+      HOST_IP=$$(getent ahosts host.docker.internal | awk '$$1 ~ /\./ { print $$1; exit }')
+      echo "Resolved host.docker.internal -> $$HOST_IP, target Chrome :$$CHROME_DEBUG_PORT"
+      exec npx -y supergateway \
+        --stdio "npx -y chrome-devtools-mcp@0.20.0 --browserUrl http://$$HOST_IP:$$CHROME_DEBUG_PORT --acceptInsecureCerts" \
+        --outputTransport streamableHttp \
+        --stateful \
+        --port 8765 \
+        --healthEndpoint /healthz \
+        --logLevel info
+  healthcheck:
+    test: ["CMD-SHELL", "wget -qO- http://localhost:8765/healthz >/dev/null 2>&1 || exit 1"]
+    interval: 15s
+    timeout: 5s
+    retries: 5
+    start_period: 60s
+
 services:
   redis:
     image: "valkey/valkey:9.0.3-alpine3.23"
@@ -118,36 +150,22 @@ services:
       - ACCEPT_EULA=Y
       - SEQ_FIRSTRUN_NOAUTHENTICATION=true
 #    restart: unless-stopped
-  chrome-devtools-mcp:
-    # Bridges stdio chrome-devtools-mcp to streamable HTTP via supergateway,
-    # so MCP clients running in any container (e.g. the Claude container)
-    # can reach it at http://localhost:8765/mcp without depending on a
-    # locally-spawned wrapper script. Targets host Chrome started with
-    # remote debugging on :9222 (e.g. via `c.ps1 chrome`).
-    image: node:20-alpine
+  # Chrome DevTools MCP instances. Each bridges stdio chrome-devtools-mcp to
+  # streamable HTTP via supergateway. Two instances let us drive two Chromes
+  # with separate cookie jars (e.g. `c chrome*2`) for multi-user UI tests.
+  # Override CHROME_DEBUG_PORT_{1,2} in the environment or `.env` to rebind.
+  chrome-devtools-mcp-1:
+    <<: *chrome-devtools-mcp-base
     ports:
       - "8765:8765"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     environment:
-      - CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS=1
-    command:
-      - sh
-      - -c
-      - |
-        # Chrome's /json/version rejects Host headers that aren't localhost or
-        # an IP literal, so resolve host.docker.internal to IPv4 here.
-        HOST_IP=$$(getent ahosts host.docker.internal | awk '$$1 ~ /\./ { print $$1; exit }')
-        echo "Resolved host.docker.internal -> $$HOST_IP"
-        exec npx -y supergateway \
-          --stdio "npx -y chrome-devtools-mcp@0.20.0 --browserUrl http://$$HOST_IP:9222 --acceptInsecureCerts" \
-          --outputTransport streamableHttp \
-          --port 8765 \
-          --healthEndpoint /healthz \
-          --logLevel info
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8765/healthz >/dev/null 2>&1 || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 60s
+      CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS: "1"
+      CHROME_DEBUG_PORT: "${CHROME_DEBUG_PORT_1:-9222}"
+
+  chrome-devtools-mcp-2:
+    <<: *chrome-devtools-mcp-base
+    ports:
+      - "8766:8765"
+    environment:
+      CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS: "1"
+      CHROME_DEBUG_PORT: "${CHROME_DEBUG_PORT_2:-9223}"
