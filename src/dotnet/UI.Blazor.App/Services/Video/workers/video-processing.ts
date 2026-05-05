@@ -2545,14 +2545,14 @@ export const serverImpl: VideoProcessingWorker = {
     // simulcast mid-recording when a second peer joins (or to drop it when the
     // call collapses to P2P), without the stop/start cascade documented in
     // commit 2de3f2617. No-op when the requested ladder matches the live one.
-    setSpatialLayers: async (layers): Promise<void> => {
+    setSpatialLayers: async (layers): Promise<boolean> => {
         if (!encoder || !encoderConfig) {
             warnLog?.log('Cannot set spatial layers: not active');
-            return;
+            return false;
         }
         if (extraLayerCountMatches(layers)) {
             debugLog?.log(`setSpatialLayers: no-op, ${extraLayerEncoders.length} extras already match request`);
-            return;
+            return false;
         }
 
         infoLog?.log(`setSpatialLayers: rebuilding ${extraLayerEncoders.length} → ${layers.length} extra(s)`);
@@ -2617,6 +2617,7 @@ export const serverImpl: VideoProcessingWorker = {
         // without waiting for the next encoder-driven keyframe interval.
         nextFrameIsKeyFrame = true;
         resetRecorderHealthMetrics();
+        return true;
     },
 
     toggleBlur: async (enabled, segCfg?): Promise<void> => {

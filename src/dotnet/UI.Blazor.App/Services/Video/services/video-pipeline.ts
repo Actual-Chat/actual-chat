@@ -723,9 +723,14 @@ export class VideoPipeline implements IVideoPipeline {
             debugLog?.log(`setSpatialLayers: not running, cached ${prevCount} → ${nextCount} for next start`);
             return;
         }
-        infoLog?.log(`setSpatialLayers: ${prevCount} → ${nextCount} layer(s) live`);
-        this.markStructuralChange('setSpatialLayers');
-        await this.worker.setSpatialLayers(next);
+        debugLog?.log(`setSpatialLayers: requesting ${prevCount} → ${nextCount} extra(s)`);
+        const rebuilt = await this.worker.setSpatialLayers(next);
+        if (rebuilt) {
+            infoLog?.log(`setSpatialLayers: rebuilt (${prevCount} → ${nextCount} extra(s) live)`);
+            this.markStructuralChange('setSpatialLayers');
+        } else {
+            debugLog?.log(`setSpatialLayers: no-op (${nextCount} extra(s) already match)`);
+        }
     }
 
     private markStructuralChange(reason: string): void {
