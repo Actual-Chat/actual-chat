@@ -647,6 +647,13 @@ export class WebGpuDownscaler {
         uniformBuffer: GPUBuffer,
         bindGroupLayout: GPUBindGroupLayout,
     ): Promise<void> {
+        // Wait for submission cap BEFORE acquiring any swap-chain textures.
+        // Yielding after getCurrentTexture() risks the canvas being unconfigured
+        // by a concurrent reconfigure(), destroying the texture and producing
+        // "Destroyed texture used in submit" validation errors.
+        if (!NEEDS_PER_FRAME_DRAIN)
+            await this.waitForSubmissionSlot();
+
         const externalTex = this.device.importExternalTexture({ source: input });
 
         // Pack uniforms for all rendering slots into one staging buffer;
@@ -705,8 +712,6 @@ export class WebGpuDownscaler {
             drawIdx++;
         }
         try {
-            if (!NEEDS_PER_FRAME_DRAIN)
-                await this.waitForSubmissionSlot();
             this.device.queue.submit([encoder.finish()]);
             const drain = this.trackSubmissionDrain(slots.length);
             if (NEEDS_PER_FRAME_DRAIN)
@@ -731,6 +736,11 @@ export class WebGpuDownscaler {
         const computeUniformBuffer = this.computeUniformBuffer!;
         const stagingBuf = this.computeUniformStaging!;
         const dummyViews = this.dummyStorageViews;
+
+        // Wait for submission cap BEFORE acquiring any swap-chain textures.
+        // Same reason as runRenderPath — must not yield after getCurrentTexture.
+        if (!NEEDS_PER_FRAME_DRAIN)
+            await this.waitForSubmissionSlot();
 
         // Pack uniforms: 3 LayerU entries (unused = enabled:0) + meta vec4.
         // Layer N occupies bytes [N*32, N*32+32). meta sits at byte 96.
@@ -821,8 +831,6 @@ export class WebGpuDownscaler {
         }
 
         try {
-            if (!NEEDS_PER_FRAME_DRAIN)
-                await this.waitForSubmissionSlot();
             this.device.queue.submit([encoder.finish()]);
             const drain = this.trackSubmissionDrain(slots.length);
             if (NEEDS_PER_FRAME_DRAIN)
