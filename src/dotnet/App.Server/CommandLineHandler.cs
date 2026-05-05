@@ -26,12 +26,16 @@ public static class CommandLineHandler
         { "2", [HostRole.OneApiServer, HostRole.OneBackendServer] },
     };
 
+    private static int _isKeyboardWatcherStarted;
+
     private static bool UseKeyboard { get; set; }
     private static bool ForceDistributed { get; set; }
     private static Symbol RoleGroupName { get; set; } = "1";
     private static int OwnRoleIndex { get; set; } = -1;
     private static HostRole[] RoleGroup => AllRoleGroups[RoleGroupName];
     private static HostRole OwnRole => RoleGroup[OwnRoleIndex];
+
+    public static AppHost? AppHost { get; set; }
 
     public static void Process(string[] args)
     {
@@ -94,7 +98,11 @@ public static class CommandLineHandler
             Environment.SetEnvironmentVariable(UrlsEnvVar, ownUrl);
             Environment.SetEnvironmentVariable(ServerRoleEnvVar, OwnRole.Value);
             StartKeyboardWatcher();
+            return;
         }
+
+        // No role argument: start keyboard watcher anyway so '-kb' alone enables 's' (stop) support.
+        StartKeyboardWatcher();
     }
 
     // Private methods
@@ -146,9 +154,12 @@ public static class CommandLineHandler
     private static void StartKeyboardWatcher() {
         if (!UseKeyboard)
             return;
+        if (Interlocked.Exchange(ref _isKeyboardWatcherStarted, 1) != 0)
+            return;
 
         var (host, defaultPort) = GetDefaultHostAndPort();
         var port = defaultPort + RoleGroup.Length;
+        WriteLine("Keyboard: 's' = stop the server, '0..9' = launch role group host.");
         _ = Task.Run(async () => {
             while (true) {
                 if (!KeyAvailable) {
@@ -157,6 +168,10 @@ public static class CommandLineHandler
                 }
 
                 var key = ReadKey(true).KeyChar;
+                if (key is 's' or 'S' or 'x' or 'X') {
+                    StopServer();
+                    return;
+                }
                 if (key is < '0' or > '9')
                     continue;
 
@@ -166,7 +181,16 @@ public static class CommandLineHandler
 
                 LaunchAppHost(role, host, port++);
             }
-            // ReSharper disable once FunctionNeverReturns
         }, CancellationToken.None);
+    }
+
+    private static void StopServer()
+    {
+        if (AppHost?.Services.GetService<IHostApplicationLifetime>() is not { } appLifetime) {
+            WriteLine("Stop requested, but IHostApplicationLifetime isn't available yet.");
+            return;
+        }
+        WriteLine("Stopping the server...");
+        appLifetime.StopApplication();
     }
 }

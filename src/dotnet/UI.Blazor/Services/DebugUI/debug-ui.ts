@@ -56,6 +56,14 @@ export class DebugUI {
         void this.backendRef.invokeMethodAsync('DisconnectRpc');
     };
 
+    // Local-dev-only: stops the running server. Mirrors the HTTP /health/stop
+    // endpoint and the 's' keyboard shortcut from CommandLineHandler.
+    // Enforcement lives on the server (DebugUI.StopServer); no client-side check.
+    public static stopServer(): void {
+        infoLog?.log(`stopServer: stopping the server...`);
+        void this.backendRef.invokeMethodAsync('StopServer');
+    };
+
     /** Debug-only: force-disconnect the RPC peer for one target — see
      *  {@link Api.disconnect}. Pass `'All'` (or omit) to disconnect every
      *  {@link WorkerKind}. */

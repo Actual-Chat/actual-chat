@@ -118,3 +118,32 @@ services:
       - ACCEPT_EULA=Y
       - SEQ_FIRSTRUN_NOAUTHENTICATION=true
 #    restart: unless-stopped
+  chrome-devtools-mcp:
+    # Bridges stdio chrome-devtools-mcp to streamable HTTP via supergateway,
+    # so MCP clients running in any container (e.g. the Claude container)
+    # can reach it at http://localhost:8765/mcp without depending on a
+    # locally-spawned wrapper script. Targets host Chrome started with
+    # remote debugging on :9222 (e.g. via `c.ps1 chrome`).
+    image: node:20-alpine
+    ports:
+      - "8765:8765"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS=1
+    command:
+      - sh
+      - -c
+      - |
+        exec npx -y supergateway \
+          --stdio "npx -y chrome-devtools-mcp@0.20.0 --browserUrl http://host.docker.internal:9222 --acceptInsecureCerts" \
+          --outputTransport streamableHttp \
+          --port 8765 \
+          --healthEndpoint /healthz \
+          --logLevel info
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8765/healthz >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s

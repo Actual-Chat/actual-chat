@@ -3,6 +3,7 @@ using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Module;
 using ActualLab.Fusion.Diagnostics;
 using ActualLab.Rpc;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -92,6 +93,21 @@ public sealed class DebugUI : UIServiceBase<UIHub>, IDisposable
         var rpcHub = Services.RpcHub();
         var clientPeer = rpcHub.GetClientPeer(RpcPeerRef.Default);
         _ = clientPeer.Disconnect();
+    }
+
+    [JSInvokable]
+    public void StopServer()
+    {
+        // Local-dev-only: same check as the HTTP /health/stop endpoint.
+        if (HostInfo is not { IsDevelopmentInstance: true, BaseUrlKind: BaseUrlKind.Local })
+            throw StandardError.Unauthorized("StopServer works on local-dev server instances only.");
+
+        Log.LogInformation("StopServer requested via DebugUI");
+        if (Services.GetService<IHostApplicationLifetime>() is not { } appLifetime) {
+            Log.LogWarning("StopServer: IHostApplicationLifetime is unavailable");
+            return;
+        }
+        appLifetime.StopApplication();
     }
 
     [JSInvokable]

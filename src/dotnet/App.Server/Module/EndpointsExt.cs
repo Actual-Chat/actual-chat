@@ -1,5 +1,6 @@
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using IResult = Microsoft.AspNetCore.Http.IResult;
 
 namespace ActualChat.App.Server.Module;
 
@@ -21,6 +22,7 @@ public static class EndpointsExt
                     Predicate = healthCheck => healthCheck.Tags.Contains(tag),
                 });
 
+        endpoints.Map($"{HealthPathPrefix}/stop", StopServerEndpoint);
         return endpoints;
     }
 
@@ -29,5 +31,18 @@ public static class EndpointsExt
         var host = Environment.GetEnvironmentVariable("POD_IP") ?? Constants.Hosts.LocalVoxt;
         endpoints.MapPrometheusScrapingEndpoint().RequireHost("localhost", host);
         return endpoints;
+    }
+
+    // Private methods
+
+    private static IResult StopServerEndpoint(HttpContext ctx, HostInfo hostInfo, IHostApplicationLifetime lifetime)
+    {
+        // Local-dev-only: allowed only when the request's Host header is local.voxt.ai (or equivalent).
+        if (hostInfo is not { IsDevelopmentInstance: true, BaseUrlKind: BaseUrlKind.Local })
+            return Results.NotFound();
+
+        Console.WriteLine($"HTTP {HealthPathPrefix}/stop received - stopping the server...");
+        lifetime.StopApplication();
+        return Results.Text("stopping\n");
     }
 }

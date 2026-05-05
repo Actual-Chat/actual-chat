@@ -63,11 +63,22 @@ internal static class Program
             var loggerFactory = c.GetRequiredService<ILoggerFactory>();
             Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(loggerFactory, parameterLoggingEnabled: true);
         }
+        CommandLineHandler.AppHost = appHost;
 
-        await appHost.RunInitializers().ConfigureAwait(false);
-
-        await appHost.Run().ConfigureAwait(false);
-        return 0;
+        // Exit-code contract:
+        //   0 - stop-style termination (StopApplication / Ctrl+C / SIGTERM / 's' key / /health/stop / debugUI.stopServer)
+        //   non-zero - start failure (exception during initializers or host startup)
+        try {
+            await appHost.RunInitializers().ConfigureAwait(false);
+            await appHost.Run().ConfigureAwait(false);
+            return 0;
+        }
+        catch (Exception ex) {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"Server failed to start. Exception: {ex}");
+            Console.ResetColor();
+            return 2;
+        }
 
         // We preserve default thread pool settings only if they are higher than our minimums
         static void AdjustThreadPool()

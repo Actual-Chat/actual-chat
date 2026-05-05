@@ -1,7 +1,8 @@
 {
   "mcpServers": {
     "chrome-devtools": {
-      "command": "tools/chrome-devtools-mcp-wrapper"
+      "type": "http",
+      "url": "http://localhost:8765/mcp"
     },
     "github": {
       "type": "http",
