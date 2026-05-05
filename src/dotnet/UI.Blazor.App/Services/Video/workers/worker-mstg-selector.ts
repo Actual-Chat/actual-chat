@@ -116,6 +116,10 @@ export class WorkerMstgSelector {
         this.disposed = true;
         this.pending.clear();
         try { void this.writer.close(); } catch { /* ignore */ }
+        // Release the BgBlurRenderer's WebGPUManager.addLostListener
+        // subscription. Without this, a new selector per pull would leak
+        // a listener every cycle.
+        try { this.bgPainter?.renderer.dispose(); } catch { /* ignore */ }
     }
 
     private tick(): void {

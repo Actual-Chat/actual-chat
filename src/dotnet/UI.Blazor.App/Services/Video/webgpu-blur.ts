@@ -1126,9 +1126,35 @@ export class BgBlurRenderer {
     private ctx: GPUCanvasContext | null = null;
     private initStarted = false;
     private initFailed = false;
+    // Subscribed in the constructor; cleared by dispose() or by the lost
+    // handler itself when it fires. Without this, after a GPU device-lost
+    // the cached `ctx` keeps a dead device reference; next render() would
+    // submit work to a dead Dawn handle and crash the renderer.
+    private lostDispose: (() => void) | null = null;
 
     constructor(canvas: OffscreenCanvas) {
         this.canvas = canvas;
+        this.lostDispose = WebGPUManager.addLostListener(() => {
+            warnLog?.log('BgBlurRenderer invalidated by device.lost');
+            // Drop the dead ctx; do NOT call ctx.unconfigure() — that
+            // dereferences the dead device. Letting GC reclaim it is fine
+            // because the canvas itself is JS-owned.
+            this.ctx = null;
+            // Allow ensureInit to re-run once a new device is up. initFailed
+            // stays false because device.lost is recoverable, not permanent.
+            this.initStarted = false;
+            this.lostDispose = null;
+        });
+    }
+
+    // Releases the lost-listener subscription. Call this when the hosting
+    // selector is disposed (e.g. peer leaves call) so the listener Set in
+    // WebGPUManager doesn't leak across pulls.
+    dispose(): void {
+        this.lostDispose?.();
+        this.lostDispose = null;
+        this.ctx = null;
+        this.initStarted = false;
     }
 
     // Returns true if the blur ran, false if WebGPU isn't ready yet (or
