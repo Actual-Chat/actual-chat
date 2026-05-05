@@ -112,6 +112,16 @@ public class LiveVideoStreams : ILiveVideoStreams
         if (rawStream is null)
             return null;
 
+        // Defense in depth: the memoizer cache normally serves an instant
+        // first frame from the latest keyframe anchor; PLI primes a fresher
+        // keyframe in parallel for the cases where the cached anchor is near
+        // KeyFramePeriod old or the cache is empty (subscribed before first
+        // KF). RequestKeyFrame is internally rate-limited via
+        // KeyFrameRequestCooldown so concurrent joiners collapse to one PLI.
+        // Token is None: a viewer disconnect must not void a PLI that may
+        // benefit other viewers.
+        _ = VideoStreamingBackend.RequestKeyFrame(streamId, CancellationToken.None);
+
         var filtered = ReceiveQualityFilter.Apply(
             rawStream,
             () => GetReceiveQuality(session, streamIdValue),

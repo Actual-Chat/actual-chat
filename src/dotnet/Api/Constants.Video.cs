@@ -34,9 +34,13 @@ public static partial class Constants
         public const int MinBufferSize = TargetBufferSize - BufferHysteresisSize; // 5
         public const int MaxBufferSize = TargetBufferSize + BufferHysteresisSize; // 15
 
-        // Server replay tail — duration is the input; size is derived.
-        public static readonly TimeSpan ServerReplayTailDuration = TimeSpan.FromSeconds(1);
-        public static readonly int ServerReplayTailSize = (int)(FrameRate * ServerReplayTailDuration.TotalSeconds); // 30
+        // Server replay tail — must span at least one keyframe interval so a
+        // late subscriber's Replay window contains the latest keyframe anchor
+        // (memoizer eviction preserves the anchor; Replay just has to be wide
+        // enough to surface it). 10% margin over KeyFramePeriod absorbs minor
+        // jitter in the sender's keyframe cadence.
+        public static readonly TimeSpan ServerReplayTailDuration = TimeSpan.FromSeconds(KeyFramePeriod.TotalSeconds * 1.1);
+        public static readonly int ServerReplayTailSize = (int)(FrameRate * ServerReplayTailDuration.TotalSeconds); // 99
 
         // Max simulcast tiers by stream kind. Mirrors TS constants in
         // src/dotnet/UI.Blazor.App/Components/VideoPanel/simulcast-ladder.ts.
@@ -122,8 +126,10 @@ public static partial class Constants
         // QualityHysteresisWindow (5s) so we don't oscillate at the boundary.
         public static readonly int LatencyStepDownConsecutiveChecks = 2;
 
-        // PLI rate limiting
-        public static readonly TimeSpan KeyFrameRequestCooldown = TimeSpan.FromSeconds(5);
+        // PLI rate limiting — one fresh keyframe per natural keyframe cadence.
+        // Two viewers joining within a sender's keyframe window can both prime
+        // a fresh KF if needed; further joiners ride the cached anchor.
+        public static readonly TimeSpan KeyFrameRequestCooldown = KeyFramePeriod;
 
         // Warmup
         public static readonly TimeSpan PeerWarmupDuration = TimeSpan.FromSeconds(10);
