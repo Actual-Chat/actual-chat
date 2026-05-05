@@ -13,3 +13,5 @@ const wakeUpCheck = () => {
 
 setInterval(wakeUpCheck, CheckIntervalMs);
 onmessage = () => wakeUpCheck();
+
+export {};

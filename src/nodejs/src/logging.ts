@@ -16,7 +16,7 @@
 //
 // To force a scope to Debug for development, change its entry in `defaults`
 // below — that's the package-default; user overrides via logLevels.override
-// take precedence and persist in sessionStorage.
+// take precedence and persist in localStorage + IndexedDB.
 
 import {
     createLogProvider,

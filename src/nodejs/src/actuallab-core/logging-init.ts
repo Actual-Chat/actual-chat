@@ -2,7 +2,8 @@
 //
 // The Log class uses a single Map<string, LogLevel> to determine the minimum
 // level for each scope.  This module is responsible for:
-//   - Persisting the map across page reloads via sessionStorage.
+//   - Persisting the map across page reloads via localStorage on the main
+//     thread, and via IndexedDB for workers.
 //   - Exposing a globally accessible LogLevelController so developers can tweak
 //     levels at runtime from the browser dev console (globalThis.logLevels).
 //
@@ -22,10 +23,12 @@ const GlobalThisKey = 'logLevels';
 const StorageKey = 'logLevels';
 const DateStorageKey = `${StorageKey}.date`;
 const MaxStorageAge = 86_400_000 * 3; // 3 days
+const IndexedDbName = 'ActualChat.Logging';
+const IndexedDbStore = 'settings';
+const IndexedDbKey = 'logLevels';
 
-const sessionStorage: Storage | null = (typeof globalThis !== 'undefined' && 'sessionStorage' in globalThis)
-    ? (globalThis as { sessionStorage: Storage }).sessionStorage
-    : null;
+const localStorage: Storage | null = tryGetStorage('localStorage');
+const legacySessionStorage: Storage | null = tryGetStorage('sessionStorage');
 
 // Workers, worklets, and service workers run in separate JS realms with
 // their own globalThis.  Within one realm, esbuild can also produce multiple
@@ -64,6 +67,26 @@ export function initLogging(): void {
             console.log('Logging: logLevels are reset');
         reset(minLevels);
     }
+}
+
+/** Worker bootstrap path: await this before dynamically importing any module
+ *  that may call getLogs() at top level. */
+export async function initWorkerLogging(): Promise<void> {
+    Log.defaultMinLevel = LogLevel.Warn;
+    const minLevels = Log.minLevels;
+    const g = globalThis as Record<string, unknown>;
+    const existing = g[GlobalThisKey] as LogLevelController | undefined;
+
+    if (existing !== undefined) {
+        for (const [k, v] of existing.getMinLevels())
+            minLevels.set(k, v);
+        return;
+    }
+
+    g[GlobalThisKey] = new LogLevelController(minLevels);
+    const wasRestored = await restoreFromIndexedDb(minLevels);
+    if (!wasRestored)
+        reset(minLevels, false);
 }
 
 export class LogLevelController {
@@ -146,7 +169,7 @@ export class LogLevelController {
      *  or have ever been requested via Log.get().  If the pattern has no `*`
      *  and nothing known matches, the literal scope is set anyway — so an
      *  exact-name override placed before its scope is loaded still applies.
-     *  Persisted to sessionStorage. */
+     *  Persisted to localStorage + IndexedDB. */
     public override(pattern: string, newLevel: LogLevel): void {
         const matched = new Set<string>();
         if (pattern.includes('*')) {
@@ -169,7 +192,6 @@ export class LogLevelController {
     /** Reset all overrides; package defaults take effect again.  Persisted. */
     public reset(): void {
         reset(this.minLevels);
-        persist(this.minLevels);
     }
 
     /** Clear all overrides (no global default unless `defaultLevel` is given). */
@@ -187,39 +209,166 @@ function patternToRegExp(pattern: string): RegExp {
     return new RegExp(`^${escaped}$`);
 }
 
+interface PersistedLogLevels {
+    date: number;
+    entries: [string, LogLevel][];
+}
+
 function restore(minLevels: Map<string, LogLevel>): boolean {
-    if (!sessionStorage)
+    const snapshot = readFromStorage(localStorage)
+        ?? readFromStorage(legacySessionStorage);
+
+    if (!snapshot)
         return false;
 
-    const dateJson = sessionStorage.getItem(DateStorageKey);
-    if (!dateJson)
-        return false;
-    if (Date.now() - (JSON.parse(dateJson) as number) > MaxStorageAge)
+    if (!applySnapshot(minLevels, snapshot))
         return false;
 
-    const readJson = sessionStorage.getItem(StorageKey);
-    if (!readJson)
+    persist(minLevels);
+    return true;
+}
+
+async function restoreFromIndexedDb(minLevels: Map<string, LogLevel>): Promise<boolean> {
+    const snapshot = await readFromIndexedDb();
+    if (!snapshot)
         return false;
 
-    const readMinLevels = new Map(JSON.parse(readJson) as [string, LogLevel][]);
-    if (typeof readMinLevels.size !== 'number')
+    return applySnapshot(minLevels, snapshot);
+}
+
+function readFromStorage(storage: Storage | null): PersistedLogLevels | null {
+    if (!storage)
+        return null;
+
+    try {
+        const dateJson = storage.getItem(DateStorageKey);
+        const entriesJson = storage.getItem(StorageKey);
+        if (!dateJson || !entriesJson)
+            return null;
+
+        return {
+            date: JSON.parse(dateJson) as number,
+            entries: JSON.parse(entriesJson) as [string, LogLevel][],
+        };
+    } catch {
+        return null;
+    }
+}
+
+function applySnapshot(minLevels: Map<string, LogLevel>, snapshot: PersistedLogLevels): boolean {
+    if (typeof snapshot.date !== 'number')
+        return false;
+    if (Date.now() - snapshot.date > MaxStorageAge)
+        return false;
+    if (!Array.isArray(snapshot.entries))
         return false;
 
     minLevels.clear();
-    readMinLevels.forEach((value, key) => minLevels.set(key, value));
+    for (const entry of snapshot.entries) {
+        if (!Array.isArray(entry) || entry.length !== 2)
+            return false;
+        const [key, value] = entry;
+        if (typeof key !== 'string' || typeof value !== 'number')
+            return false;
+        minLevels.set(key, value);
+    }
+
     return true;
 }
 
 function persist(minLevels: Map<string, LogLevel>): boolean {
-    if (!sessionStorage)
-        return false;
+    const snapshot = createSnapshot(minLevels);
+    let wasPersisted = false;
 
-    sessionStorage.setItem(DateStorageKey, JSON.stringify(Date.now()));
-    sessionStorage.setItem(StorageKey, JSON.stringify(Array.from(minLevels.entries())));
-    return true;
+    if (localStorage) {
+        try {
+            localStorage.setItem(DateStorageKey, JSON.stringify(snapshot.date));
+            localStorage.setItem(StorageKey, JSON.stringify(snapshot.entries));
+            wasPersisted = true;
+        } catch {
+            // Storage may be unavailable in private / sandboxed contexts.
+        }
+    }
+
+    void writeToIndexedDb(snapshot);
+    return wasPersisted;
 }
 
-function reset(minLevels: Map<string, LogLevel>): void {
+function createSnapshot(minLevels: Map<string, LogLevel>): PersistedLogLevels {
+    return {
+        date: Date.now(),
+        entries: Array.from(minLevels.entries()),
+    };
+}
+
+function tryGetStorage(name: 'localStorage' | 'sessionStorage'): Storage | null {
+    if (typeof globalThis === 'undefined' || !(name in globalThis))
+        return null;
+
+    try {
+        return (globalThis as unknown as Record<typeof name, Storage>)[name];
+    } catch {
+        return null;
+    }
+}
+
+async function openLoggingDb(): Promise<IDBDatabase | null> {
+    if (typeof indexedDB === 'undefined')
+        return null;
+
+    return new Promise(resolve => {
+        const request = indexedDB.open(IndexedDbName, 1);
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(IndexedDbStore))
+                db.createObjectStore(IndexedDbStore);
+        };
+        request.onerror = () => resolve(null);
+        request.onblocked = () => resolve(null);
+        request.onsuccess = () => resolve(request.result);
+    });
+}
+
+async function readFromIndexedDb(): Promise<PersistedLogLevels | null> {
+    const db = await openLoggingDb();
+    if (!db)
+        return null;
+
+    return new Promise(resolve => {
+        const tx = db.transaction(IndexedDbStore, 'readonly');
+        const request = tx.objectStore(IndexedDbStore).get(IndexedDbKey);
+        request.onerror = () => resolve(null);
+        request.onsuccess = () => resolve(request.result as PersistedLogLevels | null);
+        tx.oncomplete = () => db.close();
+        tx.onerror = () => db.close();
+        tx.onabort = () => db.close();
+    });
+}
+
+async function writeToIndexedDb(snapshot: PersistedLogLevels): Promise<void> {
+    const db = await openLoggingDb();
+    if (!db)
+        return;
+
+    await new Promise<void>(resolve => {
+        const tx = db.transaction(IndexedDbStore, 'readwrite');
+        tx.objectStore(IndexedDbStore).put(snapshot, IndexedDbKey);
+        tx.oncomplete = () => {
+            db.close();
+            resolve();
+        };
+        tx.onerror = () => {
+            db.close();
+            resolve();
+        };
+        tx.onabort = () => {
+            db.close();
+            resolve();
+        };
+    });
+}
+
+function reset(minLevels: Map<string, LogLevel>, mustPersist = true): void {
     minLevels.clear();
     // Add per-scope defaults here for development.
     // Use prefix conventions: 'rpc.', 'fusion.', 'app.', etc.
@@ -239,5 +388,6 @@ function reset(minLevels: Map<string, LogLevel>): void {
     minLevels.set('VideoSegmentation', LogLevel.Warn);
     minLevels.set('BlurPreviewSession', LogLevel.Warn);
 
-    persist(minLevels);
+    if (mustPersist)
+        persist(minLevels);
 }
