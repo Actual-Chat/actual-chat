@@ -14,7 +14,11 @@ const { infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 // regression). Drain only on iOS Safari; gate concurrent submissions with
 // MAX_ACTIVE_SUBMISSIONS elsewhere so we still bound queue depth.
 const NEEDS_PER_FRAME_DRAIN = DeviceInfo.isIos && DeviceInfo.isWebKit;
-const MAX_ACTIVE_SUBMISSIONS = 2;
+// iOS Safari awaits the drain per frame so 1 in-flight submission suffices;
+// other browsers pipeline submissions but cap=2 keeps CrGpuMain from
+// saturating under multi-encoder simulcast load. Profile-tested: cap=3
+// saturated CrGpuMain to ~101% on Chromium; cap=2 holds it at ~35%.
+const MAX_ACTIVE_SUBMISSIONS = NEEDS_PER_FRAME_DRAIN ? 1 : 2;
 
 export interface DownscaleTarget {
     width: number;
