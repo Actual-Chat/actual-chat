@@ -521,10 +521,27 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             await _vad.EnsureInitialized(cancellationToken).ConfigureAwait(false);
             _vad.Reset();
             var samplesSinceLastReport = samplesPerRecordingInProgressCall;
+            // Cadence on the Process loop body itself: if iterations stall >60ms,
+            // the bottleneck is upstream of the encoder (encoder logs already show
+            // queue=0, encode-call ≤3ms — so it waits on us). Localizes whether
+            // UI-hub awaits / VAD inference / heartbeat are blocking the pipeline.
+            var lastIterStamp = 0L;
+            var lastIterLogStamp = Stopwatch.GetTimestamp();
+            var iterGapsInWindow = 0;
+            var iterMaxGapMs = 0.0;
             try {
                 await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                     using var _1 = frame;
                     var memory = frame.Memory;
+                    var iterStamp = Stopwatch.GetTimestamp();
+                    if (lastIterStamp != 0) {
+                        var deltaMs = Stopwatch.GetElapsedTime(lastIterStamp, iterStamp).TotalMilliseconds;
+                        if (deltaMs > 60.0) {
+                            iterGapsInWindow++;
+                            if (deltaMs > iterMaxGapMs)
+                                iterMaxGapMs = deltaMs;
+                        }
+                    }
 
                     // Notify that microphone is captured
                     samplesSinceLastReport += memory.Length;
@@ -548,6 +565,17 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
                     // Heartbeat check
                     await engine.RecordingHeartbeat(cancellationToken).ConfigureAwait(false);
+
+                    lastIterStamp = iterStamp;
+                    if (Stopwatch.GetElapsedTime(lastIterLogStamp, iterStamp).TotalSeconds >= 1.0) {
+                        if (iterGapsInWindow > 0)
+                            log.LogWarning(
+                                "process-cadence: {Gaps} iter(s) >60ms in last second; max gap {MaxMs:F0}ms",
+                                iterGapsInWindow, iterMaxGapMs);
+                        iterGapsInWindow = 0;
+                        iterMaxGapMs = 0;
+                        lastIterLogStamp = iterStamp;
+                    }
                 }
             }
             finally {
