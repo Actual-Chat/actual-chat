@@ -5,7 +5,7 @@ partial class SendingMessages
     private async Task StartStoredPostRequests()
     {
         DebugLog?.LogDebug("StartStoredPostRequests");
-        var cancellationToken = CancellationToken.None;
+        var cancellationToken = _cancellationTokenSource.Token;
         var entries = await _requestsRepo.GetStored(cancellationToken).ConfigureAwait(false);
         var chatIds = new HashSet<ChatId>();
         foreach (var (uuid, entry) in entries) {
@@ -33,7 +33,7 @@ partial class SendingMessages
                 try {
                     _ = await resultSource.Task.ConfigureAwait(false);
                 }
-                catch (Exception e) {
+                catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                     Log.LogError(e, "Failed to post stored post request");
                 }
             }, cancellationToken);

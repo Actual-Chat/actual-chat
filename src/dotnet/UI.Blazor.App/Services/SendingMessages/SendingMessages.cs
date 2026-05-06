@@ -44,9 +44,10 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         _requestsRepo = new SendMessageRequestsRepo(hub);
         _triggers = Services.GetRequiredService<ChatSendingMessagesTriggers>();
         _mediaUploadsUI = new MediaUploadsUI(_triggers);
-        _whenStoredRequestsProcessed = BackgroundTask.Run(StartStoredPostRequests);
-        var cancellationToken = hub.BlazorAppLifecycle.StopToken;
-        _cancellationTokenSource = cancellationToken.CreateLinkedTokenSource();
+        var lifetimeToken = hub.BlazorAppLifecycle.StopToken;
+        _cancellationTokenSource = lifetimeToken.CreateLinkedTokenSource();
+        var serviceToken = _cancellationTokenSource.Token;
+        _whenStoredRequestsProcessed = BackgroundTask.Run(StartStoredPostRequests, serviceToken);
         _messageProcessor = new MessageProcessor<PostMessageQueueItem>(ProcessQueueItem, _cancellationTokenSource) {
             QueueSize = 100,
             QueueFullMode = BoundedChannelFullMode.Wait,
@@ -57,7 +58,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             .RetryForever(RetryDelaySeq.Exp(0.5, 3), Log)
             .AppendDelay(Interval)
             .CycleForever()
-            .RunIsolated(cancellationToken);
+            .RunIsolated(serviceToken);
     }
 
     public async Task<FilesUploadHandle?> Upload(ImmutableArray<Attachment> attachments, string mediaScope = "")
@@ -106,17 +107,34 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
         var uploads = await CreateAttachmentUploads(entry, filesUpload?.Attachments).ConfigureAwait(false);
         var requestInternal = CreatePostMessageRequestInternal(entry, uploads, false);
+        // Link the caller's CT with the service lifetime so this work is cancelled on dispose.
+        var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _cancellationTokenSource.Token);
         _ = BackgroundTask.Run(async () => {
-            DebugLog?.LogDebug("About to post internal '{Text}'", cmd.Text.ToPrivate());
-            await PostInternal(requestInternal, resultSource, cancellationToken).ConfigureAwait(false);
-        }, cancellationToken);
+            try {
+                DebugLog?.LogDebug("About to post internal '{Text}'", cmd.Text.ToPrivate());
+                await PostInternal(requestInternal, resultSource, linkedCts.Token).ConfigureAwait(false);
+            }
+            finally {
+                linkedCts.Dispose();
+            }
+        }, linkedCts.Token);
         return resultSource.Task;
     }
 
     public async ValueTask DisposeAsync()
     {
-        await _messageProcessor.DisposeAsync().ConfigureAwait(false);
-        _cancellationTokenSource.Dispose();
+        // Cancel ASAP so all in-flight background tasks (Send, StartStoredRequests, prune chain)
+        // unwind before we await the message processor.
+        _cancellationTokenSource.CancelAndDisposeSilently();
+        try {
+            await _messageProcessor.DisposeAsync().AsTask()
+                .WaitAsync(CoreConstants.DisposeTimeout).ConfigureAwait(false);
+        }
+        catch (TimeoutException) {
+            Log.LogWarning(
+                "{Type}: message processor didn't dispose in {Timeout}, proceeding",
+                GetType().GetName(), CoreConstants.DisposeTimeout);
+        }
     }
 
     private static PostMessageRequestInternal CreatePostMessageRequestInternal(SendMessageRequestEntry entry,
@@ -493,11 +511,18 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
         chatSendingMessages.ConfirmMessageAttachmentsHaveSent(sendingMessage, chatEntry1, Now);
         // Delete upload info with delay to avoid flickering in the UI.
+        // Linked to service lifetime so it's cancelled on dispose instead of running against a disposed scope.
+        var serviceToken = _cancellationTokenSource.Token;
         _ = BackgroundTask.Run(async () => {
-                await Task.Delay(TimeSpan.FromMinutes(1), CancellationToken.None).ConfigureAwait(false);
-                _mediaUploadsUI.Delete(sendingMessage);
+                try {
+                    await Task.Delay(TimeSpan.FromMinutes(1), serviceToken).ConfigureAwait(false);
+                    _mediaUploadsUI.Delete(sendingMessage);
+                }
+                catch (OperationCanceledException) {
+                    // Service is being disposed - skip cleanup.
+                }
             },
-            CancellationToken.None);
+            serviceToken);
         return chatEntry1;
     }
 
