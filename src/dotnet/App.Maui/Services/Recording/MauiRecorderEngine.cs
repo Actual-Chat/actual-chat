@@ -529,6 +529,10 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             var lastIterLogStamp = Stopwatch.GetTimestamp();
             var iterGapsInWindow = 0;
             var iterMaxGapMs = 0.0;
+            // Heartbeat throttle: 1Hz instead of 50Hz. The heartbeat checks if the
+            // backend still expects this recording to be active — sub-second
+            // resolution is fine and we save 49 awaits/sec on the audio hot path.
+            var lastHeartbeatStamp = Stopwatch.GetTimestamp();
             try {
                 await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                     using var _1 = frame;
@@ -543,28 +547,35 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                         }
                     }
 
-                    // Notify that microphone is captured
+                    // Notify that microphone is captured (UI-only, fire-and-forget JS interop:
+                    // awaiting it through BlazorWebView's bridge serialises onto the WebView's
+                    // main JS thread, which is contended by the video pipeline).
                     samplesSinceLastReport += memory.Length;
                     if (samplesSinceLastReport >= samplesPerRecordingInProgressCall) {
                         samplesSinceLastReport = 0;
-                        await engine.MicrophoneIsCaptured().ConfigureAwait(false);
+                        _ = engine.MicrophoneIsCaptured();
                     }
 
-                    // Process the audio frame
+                    // Process the audio frame (sync — returns Task.CompletedTask)
                     await ProcessAudioFrame(memory, cancellationToken).ConfigureAwait(false);
 
-                    // Throttle microphone capture notifications by 32ms * 3 = 96ms
+                    // Audio level meter update — fire-and-forget for the same reason as above.
+                    // gainBuffer self-throttles to ~96ms (32ms * 3), so it's not 50Hz here.
                     gainBuffer.TryWrite(memory.Span);
                     if (gainBuffer.TryRead(gainFrameOwner.Span, out _)) {
                         var gain = AudioExt.ApproximateGain(gainFrameOwner.Span);
-                        await engine.OnAudioPowerChange(gain).ConfigureAwait(false);
+                        _ = engine.OnAudioPowerChange(gain);
                     }
 
-                    // Process VAD events
+                    // Process VAD events (must stay awaited — drives encode start/end)
                     await ProcessVadEvents(cancellationToken).ConfigureAwait(false);
 
-                    // Heartbeat check
-                    await engine.RecordingHeartbeat(cancellationToken).ConfigureAwait(false);
+                    // Heartbeat — throttled to ~1Hz. Loss of <1s reactivity to backend
+                    // requesting stop is acceptable for an audio-quality tradeoff.
+                    if (Stopwatch.GetElapsedTime(lastHeartbeatStamp, iterStamp).TotalSeconds >= 1.0) {
+                        lastHeartbeatStamp = iterStamp;
+                        await engine.RecordingHeartbeat(cancellationToken).ConfigureAwait(false);
+                    }
 
                     lastIterStamp = iterStamp;
                     if (Stopwatch.GetElapsedTime(lastIterLogStamp, iterStamp).TotalSeconds >= 1.0) {

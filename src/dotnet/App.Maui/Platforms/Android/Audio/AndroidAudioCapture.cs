@@ -50,18 +50,31 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
         }
 
         var buffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
-        _ = BackgroundTask.Run(Producer, cancellationToken);
+        // Dedicated high-priority thread instead of ThreadPool. Two reasons:
+        //   1) AudioRecord.Read() is a blocking JNI call; running it on a ThreadPool
+        //      worker means each read holds a worker for ~40ms and resumption after
+        //      it depends on the pool not being saturated by WebView/video tasks.
+        //   2) THREAD_PRIORITY_URGENT_AUDIO is the standard Android scheduler hint
+        //      for AudioRecord loops — keeps us above the WebView's normal threads
+        //      so the OS scheduler doesn't deschedule us under contention. Without
+        //      this, capture-cadence stalls of 400+ms cause kernel-side AudioRecord
+        //      buffer overflow → silent sample loss before our pipeline sees it.
+        var captureThread = new Thread(Producer) {
+            Name = "audio-capture",
+            IsBackground = true,
+        };
+        captureThread.Start();
         // Return enumerator
         return Task.FromResult<IAsyncEnumerable<IMemoryOwner<float>>?>(Enumerate(cancellationToken));
 
-        async Task Producer()
+        void Producer()
         {
+            Android.OS.Process.SetThreadPriority(Android.OS.ThreadPriority.UrgentAudio);
+
             var floatReadBuffer = ArrayBuffer<float>.Lease(false, frameSamples * 4);
-            // Cadence tracking: each ReadAsync requests `frameSamples * 2` floats
+            // Cadence tracking: each Read requests `frameSamples * 2` floats
             // (= 40ms at 16kHz mono). Anything >80ms means at least one expected
-            // window was missed — pinpoints whether AudioRecord itself stalls vs.
-            // upstream (encode/send) stages. GC counts are process-wide; surfacing
-            // them per stage lets cross-cadence correlations confirm GC-pause culprits.
+            // window was missed. GC counts surface GC-pause culprits across stages.
             var lastReadStamp = 0L;
             var lastReadLogStamp = Stopwatch.GetTimestamp();
             var readGapsInWindow = 0;
@@ -69,20 +82,30 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
             var readGen0Start = GC.CollectionCount(0);
             var readGen1Start = GC.CollectionCount(1);
             var readGen2Start = GC.CollectionCount(2);
+
+            // Make the blocking Read() return when cancellation fires: Stop() is
+            // safe to call from a different thread; the active read returns with
+            // whatever was already in the kernel buffer.
+            using var stopOnCancel = cancellationToken.Register(() => {
+                try {
+                    if (recorder!.RecordingState == RecordState.Recording)
+                        recorder.Stop();
+                }
+                catch { /* Ignore */ }
+            });
+
             try {
                 recorder!.StartRecording();
 
                 while (!cancellationToken.IsCancellationRequested) {
                     int readCount;
                     try {
-                        // Use async read of float samples; cancel via WaitAsync
-                        // readMode: 0 = blocking, 1 = non-blocking (constants per Android API)
-                        readCount = await recorder
-                            .ReadAsync(floatReadBuffer.Buffer, 0, frameSamples * 2, 0)
-                            .WaitAsync(cancellationToken)
-                            .ConfigureAwait(false);
+                        // readMode = 0 == AudioRecord.READ_BLOCKING (per Android API).
+                        // ReadAsync overload was used previously with the same int sentinel.
+                        readCount = recorder.Read(
+                            floatReadBuffer.Buffer, 0, frameSamples * 2, 0);
                     }
-                    catch (OperationCanceledException) {
+                    catch (Exception) {
                         break;
                     }
 
