@@ -57,6 +57,18 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
         async Task Producer()
         {
             var floatReadBuffer = ArrayBuffer<float>.Lease(false, frameSamples * 4);
+            // Cadence tracking: each ReadAsync requests `frameSamples * 2` floats
+            // (= 40ms at 16kHz mono). Anything >80ms means at least one expected
+            // window was missed — pinpoints whether AudioRecord itself stalls vs.
+            // upstream (encode/send) stages. GC counts are process-wide; surfacing
+            // them per stage lets cross-cadence correlations confirm GC-pause culprits.
+            var lastReadStamp = 0L;
+            var lastReadLogStamp = Stopwatch.GetTimestamp();
+            var readGapsInWindow = 0;
+            var readMaxGapMs = 0.0;
+            var readGen0Start = GC.CollectionCount(0);
+            var readGen1Start = GC.CollectionCount(1);
+            var readGen2Start = GC.CollectionCount(2);
             try {
                 recorder!.StartRecording();
 
@@ -83,6 +95,31 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
 
                     // Push to ring buffer (fire-and-forget: drop if full)
                     buffer.TryWrite(floatReadBuffer.Buffer.AsSpan(0, readCount));
+
+                    var nowStamp = Stopwatch.GetTimestamp();
+                    if (lastReadStamp != 0) {
+                        var deltaMs = Stopwatch.GetElapsedTime(lastReadStamp, nowStamp).TotalMilliseconds;
+                        if (deltaMs > 80.0) {
+                            readGapsInWindow++;
+                            if (deltaMs > readMaxGapMs)
+                                readMaxGapMs = deltaMs;
+                        }
+                    }
+                    lastReadStamp = nowStamp;
+
+                    if (Stopwatch.GetElapsedTime(lastReadLogStamp, nowStamp).TotalSeconds >= 1.0) {
+                        var gen0 = GC.CollectionCount(0) - readGen0Start;
+                        var gen1 = GC.CollectionCount(1) - readGen1Start;
+                        var gen2 = GC.CollectionCount(2) - readGen2Start;
+                        if (readGapsInWindow > 0)
+                            Log.LogWarning(
+                                "audio-capture-cadence: {Gaps} gap(s) >80ms in last second; max gap {MaxMs:F0}ms; gc 0/1/2={Gen0}/{Gen1}/{Gen2}",
+                                readGapsInWindow, readMaxGapMs, gen0, gen1, gen2);
+                        readGapsInWindow = 0;
+                        readMaxGapMs = 0;
+                        readGen0Start += gen0; readGen1Start += gen1; readGen2Start += gen2;
+                        lastReadLogStamp = nowStamp;
+                    }
                 }
             }
             catch (Exception ex) {

@@ -54,6 +54,8 @@ public partial class AudioStreamingBackend
     {
         using var watchdogCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cancellationToken = watchdogCts.Token;
+        // Cadence first so it observes raw inbound timing, before the silence watchdog can short-circuit it.
+        frames = WithIngressCadenceLog(record.StreamId.Value, frames, Log, cancellationToken);
         frames = WithFrameSilenceWatchdog(record.StreamId.Value, Constants.Audio.FrameSilenceTimeout, frames, watchdogCts, cancellationToken);
 
         var session = record.Session;
@@ -215,6 +217,45 @@ public partial class AudioStreamingBackend
         watchdogCts.CancelAfter(silenceTimeout);
         await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
             watchdogCts.CancelAfter(silenceTimeout);
+            yield return frame;
+        }
+    }
+
+    private static async IAsyncEnumerable<AudioFrame> WithIngressCadenceLog(
+        string streamId,
+        IAsyncEnumerable<AudioFrame> source,
+        ILogger log,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        // Wall-clock cadence of inbound audio frames per stream. Compared against the
+        // client-side `send-cadence` log this isolates whether bursty arrival is the
+        // sender's CPU contention vs. transport buffering between client and server.
+        // Threshold mirrors the client side (>60ms = at least 3 missed 20ms slots).
+        var lastFrameStamp = 0L;
+        var lastLogStamp = Stopwatch.GetTimestamp();
+        var gapsInWindow = 0;
+        var maxGapMs = 0.0;
+        await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            var nowStamp = Stopwatch.GetTimestamp();
+            if (lastFrameStamp != 0) {
+                var deltaMs = Stopwatch.GetElapsedTime(lastFrameStamp, nowStamp).TotalMilliseconds;
+                if (deltaMs > 60.0) {
+                    gapsInWindow++;
+                    if (deltaMs > maxGapMs)
+                        maxGapMs = deltaMs;
+                }
+            }
+            lastFrameStamp = nowStamp;
+
+            if (Stopwatch.GetElapsedTime(lastLogStamp, nowStamp).TotalSeconds >= 1.0) {
+                if (gapsInWindow > 0)
+                    log.LogWarning(
+                        "audio-ingress-cadence: stream #{StreamId} {Gaps} gap(s) >60ms in last second; max gap {MaxMs:F0}ms",
+                        streamId, gapsInWindow, maxGapMs);
+                gapsInWindow = 0;
+                maxGapMs = 0;
+                lastLogStamp = nowStamp;
+            }
             yield return frame;
         }
     }

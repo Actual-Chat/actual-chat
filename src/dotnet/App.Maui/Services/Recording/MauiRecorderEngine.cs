@@ -353,18 +353,68 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             var packetIndex = 0;
             var sourceStartOffsetSeconds = firstFrameSourceCapturedAt.EpochOffset.TotalSeconds;
 
+            // Cadence tracking: warn when wall-clock between successful yields drifts
+            // above 60ms (3+ frames of expected 20ms pace). Bursty send → all listeners
+            // hear simultaneous "кваканье" on the live path; replay stays clean because
+            // server stores frames with correct packetIndex*20ms offsets.
+            // Also track:
+            //   - max channel queue depth (`packetReader.Count`) sampled at yield time:
+            //     queue grows under encode-faster-than-send (RPC stalls); queue near-zero
+            //     while cadence gaps → encoder is the bottleneck, not send.
+            //   - GC collections per window: gen0/1/2 deltas surface GC-pause culprits.
+            var lastSendStamp = 0L;
+            var lastSendLogStamp = Stopwatch.GetTimestamp();
+            var sendGapsInWindow = 0;
+            var sendMaxGapMs = 0.0;
+            var sendMaxQueueDepth = 0;
+            var canCount = packetReader.CanCount;
+            var sendGen0Start = GC.CollectionCount(0);
+            var sendGen1Start = GC.CollectionCount(1);
+            var sendGen2Start = GC.CollectionCount(2);
+
             async IAsyncEnumerable<AudioFrame> BuildFrames(
                 [EnumeratorCancellation] CancellationToken callCancellationToken = default)
             {
                 while (await packetReader.WaitToReadAsync(callCancellationToken).ConfigureAwait(false)) {
                     while (packetReader.TryRead(out var packet)) {
                         using var _ = packet;
+                        if (canCount) {
+                            var depth = packetReader.Count;
+                            if (depth > sendMaxQueueDepth)
+                                sendMaxQueueDepth = depth;
+                        }
                         yield return new AudioFrame {
                             Data = packet.Memory.ToArray(),
                             Offset = TimeSpan.FromMilliseconds(packetIndex * Constants.Audio.OpusFrameDurationMs),
                             Duration = Constants.Audio.OpusFrameDuration,
                         };
                         packetIndex++;
+
+                        var nowStamp = Stopwatch.GetTimestamp();
+                        if (lastSendStamp != 0) {
+                            var deltaMs = Stopwatch.GetElapsedTime(lastSendStamp, nowStamp).TotalMilliseconds;
+                            if (deltaMs > 60.0) {
+                                sendGapsInWindow++;
+                                if (deltaMs > sendMaxGapMs)
+                                    sendMaxGapMs = deltaMs;
+                            }
+                        }
+                        lastSendStamp = nowStamp;
+
+                        if (Stopwatch.GetElapsedTime(lastSendLogStamp, nowStamp).TotalSeconds >= 1.0) {
+                            var gen0 = GC.CollectionCount(0) - sendGen0Start;
+                            var gen1 = GC.CollectionCount(1) - sendGen1Start;
+                            var gen2 = GC.CollectionCount(2) - sendGen2Start;
+                            if (sendGapsInWindow > 0)
+                                Log.LogWarning(
+                                    "send-cadence: {Gaps} gap(s) >60ms in last second; max gap {MaxMs:F0}ms; max queue depth {QueueDepth}; gc 0/1/2={Gen0}/{Gen1}/{Gen2}",
+                                    sendGapsInWindow, sendMaxGapMs, sendMaxQueueDepth, gen0, gen1, gen2);
+                            sendGapsInWindow = 0;
+                            sendMaxGapMs = 0;
+                            sendMaxQueueDepth = 0;
+                            sendGen0Start += gen0; sendGen1Start += gen1; sendGen2Start += gen2;
+                            lastSendLogStamp = nowStamp;
+                        }
                     }
                 }
             }

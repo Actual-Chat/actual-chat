@@ -1,6 +1,7 @@
 using System.Buffers;
 using ActualChat.Audio;
 using ActualChat.UI.Blazor.App.Components;
+using Microsoft.Extensions.Logging;
 
 #if WINDOWS || ANDROID
 using OpusSharp.Core.Extensions;
@@ -8,7 +9,7 @@ using OpusSharp.Core.Extensions;
 
 namespace ActualChat.App.Maui.Services.Recording;
 
-public sealed class OpusAudioCodec : IAudioCodec
+public sealed class OpusAudioCodec(ILogger<OpusAudioCodec> log) : IAudioCodec
 {
     public IAsyncEnumerable<IMemoryOwner<byte>> Encode(
         IAsyncEnumerable<IMemoryOwner<float>> lpcmFrames,
@@ -45,6 +46,23 @@ public sealed class OpusAudioCodec : IAudioCodec
                     encoder.SetPredictionDisabled(false);
                     var skipFrames = encoder.GetLookahead();
 
+                    // Cadence tracking: warn when wall-clock between successful encode-outputs
+                    // drifts above 60ms (= 3 frames worth of expected 20ms pace), aggregated
+                    // per 1s window. Also tracks max per-call encode latency (CPU-bound work)
+                    // and GC collections within the window. Together these distinguish:
+                    //   - encoder itself slow (encodeMaxCallMs spikes)
+                    //   - encoder fast but downstream backpressured (encodeMaxCallMs low,
+                    //     but cadence gaps + WriteAsync stalls)
+                    //   - GC-induced pauses (gen0/1/2 deltas non-zero in gap windows).
+                    var lastEncodeStamp = 0L;
+                    var lastLogStamp = Stopwatch.GetTimestamp();
+                    var encodeGapsInWindow = 0;
+                    var encodeMaxGapMs = 0.0;
+                    var encodeMaxCallMs = 0.0;
+                    var gen0Start = GC.CollectionCount(0);
+                    var gen1Start = GC.CollectionCount(1);
+                    var gen2Start = GC.CollectionCount(2);
+
                     await foreach (var frame in lpcmFrames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                         using var _ = frame;
                         var pcm = frame.Memory.Span;
@@ -53,6 +71,7 @@ public sealed class OpusAudioCodec : IAudioCodec
 
                         var rented = ArrayPools.SharedBytePool.LeaseArrayOwner(maxOpusPacketSize);
                         int encodedSize;
+                        var encodeCallStart = Stopwatch.GetTimestamp();
                         try {
                             var outSpan = rented.Span;
                             encodedSize = encoder.Encode(pcm, Constants.Audio.OpusFrameLength, outSpan, maxOpusPacketSize);
@@ -61,6 +80,9 @@ public sealed class OpusAudioCodec : IAudioCodec
                             rented.Dispose();
                             throw;
                         }
+                        var encodeCallMs = Stopwatch.GetElapsedTime(encodeCallStart).TotalMilliseconds;
+                        if (encodeCallMs > encodeMaxCallMs)
+                            encodeMaxCallMs = encodeCallMs;
 
                         if (encodedSize > 0)
                             await channel.Writer
@@ -68,6 +90,32 @@ public sealed class OpusAudioCodec : IAudioCodec
                                 .ConfigureAwait(false);
                         else
                             rented.Dispose();
+
+                        var nowStamp = Stopwatch.GetTimestamp();
+                        if (lastEncodeStamp != 0) {
+                            var deltaMs = Stopwatch.GetElapsedTime(lastEncodeStamp, nowStamp).TotalMilliseconds;
+                            if (deltaMs > 60.0) {
+                                encodeGapsInWindow++;
+                                if (deltaMs > encodeMaxGapMs)
+                                    encodeMaxGapMs = deltaMs;
+                            }
+                        }
+                        lastEncodeStamp = nowStamp;
+
+                        if (Stopwatch.GetElapsedTime(lastLogStamp, nowStamp).TotalSeconds >= 1.0) {
+                            var gen0 = GC.CollectionCount(0) - gen0Start;
+                            var gen1 = GC.CollectionCount(1) - gen1Start;
+                            var gen2 = GC.CollectionCount(2) - gen2Start;
+                            if (encodeGapsInWindow > 0)
+                                log.LogWarning(
+                                    "opus-encode-cadence: {Gaps} gap(s) >60ms in last second; max gap {MaxMs:F0}ms; max encode-call {MaxCallMs:F1}ms; gc 0/1/2={Gen0}/{Gen1}/{Gen2}",
+                                    encodeGapsInWindow, encodeMaxGapMs, encodeMaxCallMs, gen0, gen1, gen2);
+                            encodeGapsInWindow = 0;
+                            encodeMaxGapMs = 0;
+                            encodeMaxCallMs = 0;
+                            gen0Start += gen0; gen1Start += gen1; gen2Start += gen2;
+                            lastLogStamp = nowStamp;
+                        }
                     }
                 }
                 catch (OperationCanceledException) {
