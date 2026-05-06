@@ -13,8 +13,8 @@ namespace ActualChat.UI.Blazor;
 // AppUIHub extends this type, and its instance is actually used
 public class UIHub : CircuitHub, IDispatcherResolver
 {
-    private readonly List<Task> _tasks = new();
-    private readonly List<object> _disposables = new();
+    private readonly List<(string Name, Task Task)> _tasks = new();
+    private readonly List<(string Name, object DisposableOrAction)> _disposables = new();
 
     public ComponentBase RootComponent {
         get => field ?? throw Errors.NotInitialized();
@@ -123,18 +123,46 @@ public class UIHub : CircuitHub, IDispatcherResolver
         if (!OSInfo.IsWebAssembly)
             Log.LogInformation("[-] #{Id}", Id.Format());
 
-        // This type is used in UI scopes - that's why SilentAwait(true)
-        await Task.WhenAll(_tasks).SilentAwait();
-        for (var i = _disposables.Count - 1; i >= 0; i--)
-            await DisposeOne(_disposables[i]).SilentAwait();
+        var timeout = CoreConstants.DisposeTimeout;
+        // This type is used in UI scopes - that's why we never throw from dispose;
+        // instead, we time out individual awaits and log so subsequent dispose stages still run.
+        try {
+            await Task.WhenAll(_tasks.Select(static x => x.Task)).WaitAsync(timeout).ConfigureAwait(false);
+        }
+        catch (TimeoutException) {
+            var stuck = _tasks
+                .Where(x => !x.Task.IsCompleted)
+                .Select(x => x.Name)
+                .ToList();
+            Log.LogWarning(
+                "DisposeAsyncCore: {StuckCount} awaitable(s) didn't complete in {Timeout}: {StuckNames}",
+                stuck.Count, timeout, string.Join(", ", stuck));
+        }
+        catch {
+            // Faulted/cancelled awaitables are intentionally ignored — they shouldn't block dispose.
+        }
+        for (var i = _disposables.Count - 1; i >= 0; i--) {
+            var (name, item) = _disposables[i];
+            try {
+                await DisposeOne(item).AsTask().WaitAsync(timeout).ConfigureAwait(false);
+            }
+            catch (TimeoutException) {
+                Log.LogWarning(
+                    "DisposeAsyncCore: disposable '{Name}' didn't dispose in {Timeout}, skipping",
+                    name, timeout);
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "DisposeAsyncCore: disposable '{Name}' threw while disposing", name);
+            }
+        }
         return;
 
         static ValueTask DisposeOne(object? disposableOrAction) {
             switch (disposableOrAction) {
             case IAsyncDisposable ad:
-                return ad.DisposeSilentlyAsync();
+                return ad.DisposeAsync();
             case IDisposable d:
-                d.DisposeSilently();
+                d.Dispose();
                 break;
             case Func<ValueTask> f:
                 return f.Invoke();
@@ -171,22 +199,24 @@ public class UIHub : CircuitHub, IDispatcherResolver
         }
     }
 
-    public void RegisterAwaitable(Task task)
+    public void RegisterAwaitable(Task task, [CallerArgumentExpression(nameof(task))] string name = "")
     {
         lock (_tasks) {
             StopToken.ThrowIfCancellationRequested();
-            _tasks.Add(task);
+            _tasks.Add((name, task));
         }
     }
 
-    public void RegisterDisposable(object disposableOrAction)
+    public void RegisterDisposable(
+        object disposableOrAction,
+        [CallerArgumentExpression(nameof(disposableOrAction))] string name = "")
     {
         var isDisposed = false;
         lock (_tasks) {
             if (IsDisposed)
                 isDisposed = true;
             else
-                _disposables.Add(disposableOrAction);
+                _disposables.Add((name, disposableOrAction));
         }
         if (isDisposed)
             _ = DisposableExt.DisposeUnknownSilently(disposableOrAction);
