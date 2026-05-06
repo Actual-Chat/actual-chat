@@ -8,6 +8,8 @@ public static partial class CoreConstants
     public const string AppName = "Voxt";
     public static readonly string Copyright = $"© 2022–{Moment.Now.ToDateTimeOffset().Year} Actual Chat, Inc. All rights reserved.";
 
+    public static readonly TimeSpan DisposeTimeout = TimeSpan.FromSeconds(10);
+
     public static class Hosts
     {
         public const string Prod = "voxt.ai"; // NOTE: keep lowercase

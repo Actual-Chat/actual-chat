@@ -15,6 +15,7 @@ public partial class SharedResourcePool<TKey, TResource>
         public SharedResourcePool<TKey, TResource> Pool { get; }
         public TKey Key { get; }
         public TResource Resource => _resourceTask!.GetAwaiter().GetResult();
+
         public bool IsRented {
             get {
                 lock (_lock)
@@ -73,7 +74,32 @@ public partial class SharedResourcePool<TKey, TResource>
         internal void Initialize(CancellationToken cancellationToken)
         {
             lock (_lock)
-                _resourceTask ??= Pool.ResourceFactory.Invoke(Key, cancellationToken);
+                _resourceTask ??= InvokeFactory(cancellationToken);
+        }
+
+        internal bool TryTakeCompletedResourceForPoolDispose(out TResource resource)
+        {
+            lock (_lock) {
+                var task = _resourceTask;
+                if (task is not { IsCompletedSuccessfully: true }) {
+                    resource = default!;
+                    return false;
+                }
+
+                _endRentDelayTokenSource.CancelAndDisposeSilently();
+                _endRentDelayTokenSource = null;
+                _endRentTask = Task.CompletedTask;
+                resource = task.Result;
+                return true;
+            }
+        }
+
+        private async Task<TResource> InvokeFactory(CancellationToken cancellationToken)
+        {
+            // Linked with Pool.DisposeToken so an in-flight factory is cancelled on pool disposal.
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken, Pool.DisposeToken);
+            return await Pool.ResourceFactory.Invoke(Key, linkedCts.Token).ConfigureAwait(false);
         }
 
         internal async ValueTask<Task?> BeginRent(CancellationToken cancellationToken)
