@@ -81,6 +81,37 @@ export class DebugUI {
         void this.backendRef.invokeMethodAsync('ResetOnboarding', enable);
     };
 
+    /** Local-dev-only: scripts the sign-in flow on the server (send + validate
+     *  TOTP, confirm pending registration if `register`, and optionally clear
+     *  onboarding/bubbles). Uses dev-bypass TOTPs — `111111` for emails matching
+     *  `test-*@actual.chat`, `111111` for the predefined phone numbers
+     *  `+1 555 555 5550..5555`. Other inputs will fail TOTP validation. */
+    public static signIn(
+        phoneOrEmail: string,
+        options?: { register?: boolean; skipOnboarding?: boolean; skipBubbles?: boolean },
+    ): Promise<void> {
+        const o = options ?? {};
+        return this.backendRef.invokeMethodAsync(
+            'SignIn',
+            phoneOrEmail,
+            o.register ?? true,
+            o.skipOnboarding ?? true,
+            o.skipBubbles ?? true,
+        ) as unknown as Promise<void>;
+    };
+
+    public static signOut(): Promise<void> {
+        return this.backendRef.invokeMethodAsync('SignOut') as unknown as Promise<void>;
+    };
+
+    /** Resolves with the signed-in user's UserId. Also logs it to the console
+     *  so it can be grabbed off-hand during interactive debugging. */
+    public static async getUserId(): Promise<string> {
+        const id = (await this.backendRef.invokeMethodAsync('GetUserId')) as string;
+        console.log(`getUserId:`, id);
+        return id;
+    };
+
     public static resetBubbles(enable: boolean): void {
         void this.backendRef.invokeMethodAsync('ResetBubbles', enable);
     };

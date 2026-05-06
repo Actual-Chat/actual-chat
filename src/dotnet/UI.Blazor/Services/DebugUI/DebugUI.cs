@@ -16,6 +16,11 @@ public sealed class DebugUI : UIServiceBase<UIHub>, IDisposable
 
     private DotNetObjectReference<DebugUI>? _blazorRef;
 
+    public Func<Task>? ShowMicTroubleshooterHandler { get; set; }
+    public Func<Task>? ShowPhotoTroubleshooterHandler { get; set; }
+    public Func<Task>? ShowIncomingShareModalHandler { get; set; }
+    public Action<int>? TestVideoRecordingQualityChangeHandler { get; set; }
+    public Action<int>? TestVideoPlaybackQualityChangeHandler { get; set; }
     public Task WhenReady { get; }
 
     public DebugUI(UIHub hub) : base(hub)
@@ -113,16 +118,14 @@ public sealed class DebugUI : UIServiceBase<UIHub>, IDisposable
     [JSInvokable]
     public void ResetOnboarding(bool enable)
     {
-        var onboardingUI = Services.GetRequiredService<IOnboardingUI>();
-        onboardingUI.ResetOnboarding(enable);
+        Hub.OnboardingUI.ResetOnboarding(enable);
         Log.LogInformation("ResetOnboarding({Enable}): done", enable);
     }
 
     [JSInvokable]
     public async Task ResetBubbles(bool enable)
     {
-        var bubbleUI = Services.GetRequiredService<BubbleUI>();
-        await bubbleUI.ResetBubbles(enable).ConfigureAwait(false);
+        await Hub.BubbleUI.ResetBubbles(enable).ConfigureAwait(false);
         Log.LogInformation("ResetBubbles({Enable}): done", enable);
     }
 
@@ -133,11 +136,86 @@ public sealed class DebugUI : UIServiceBase<UIHub>, IDisposable
         Log.LogInformation("EnableAudioSync({Enable}): done", enable);
     }
 
-    public Func<Task>? ShowMicTroubleshooterHandler { get; set; }
-    public Func<Task>? ShowPhotoTroubleshooterHandler { get; set; }
-    public Func<Task>? ShowIncomingShareModalHandler { get; set; }
-    public Action<int>? TestVideoRecordingQualityChangeHandler { get; set; }
-    public Action<int>? TestVideoPlaybackQualityChangeHandler { get; set; }
+    [JSInvokable]
+    public async Task SignIn(string phoneOrEmail, bool register = true, bool skipOnboarding = true, bool skipBubbles = true)
+    {
+        if (HostInfo is not { IsDevelopmentInstance: true, BaseUrlKind: BaseUrlKind.Local })
+            throw StandardError.Unauthorized("SignIn works on local-dev server instances only.");
+
+        var session = Hub.Session;
+        var commander = Hub.Commander;
+        var input = (phoneOrEmail ?? "").Trim();
+        if (input.Length == 0)
+            throw StandardError.Constraint("phoneOrEmail must be non-empty.");
+
+        if (input.Contains('@')) {
+            var email = Email.Parse(input);
+            await commander.Call(new EmailAuth_SendTotp(session, email)).ConfigureAwait(false);
+            var ok = await commander.Call(new EmailAuth_ValidateTotp(session, email, 111111)).ConfigureAwait(false);
+            if (!ok)
+                throw StandardError.Internal($"EmailAuth.ValidateTotp failed for '{email}'.");
+        }
+        else {
+            var phone = await Hub.Phones.ParseWithCountryFallback(session, input, default).ConfigureAwait(false)
+                ?? throw StandardError.Constraint($"Cannot parse phone '{input}'.");
+            await commander.Call(new PhoneAuth_SendTotp(session, phone)).ConfigureAwait(false);
+            var ok = await commander.Call(new PhoneAuth_ValidateTotp(session, phone, 111111)).ConfigureAwait(false);
+            if (!ok)
+                throw StandardError.Internal(
+                    $"PhoneAuth.ValidateTotp failed for '{phone}'.");
+        }
+
+        if (register) {
+            var json = await Hub.SessionTemporals
+                .Get(session, Constants.SessionTemporals.PendingRegistrationKey, default)
+                .ConfigureAwait(false);
+            if (PendingRegistrationInfo.TryParseJson(json) is { } info)
+                await commander.Call(new Accounts_ConfirmRegister(session, info.Token)).ConfigureAwait(false);
+        }
+
+        // Wait for the client-side AccountUI to observe the new (non-guest)
+        // account before mutating onboarding/bubble state — those rely on
+        // OwnAccount being settled. 5s is generous; locally it's typically <1s.
+        using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5))) {
+            try {
+                await Hub.AccountUI.OwnAccount.Computed
+                    .When(x => !x.IsGuest, cts.Token)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cts.IsCancellationRequested) {
+                throw StandardError.Internal("SignIn timed out waiting for AccountUI.OwnAccount to become non-guest after 5s.");
+            }
+        }
+
+        // Onboarding/bubble UIs render Blazor components on completion — must
+        // run on the Dispatcher because the awaits above have already migrated
+        // off it via the Commander/RPC pipeline.
+        if (skipOnboarding) {
+            await Hub.Dispatcher.InvokeAsync(() =>
+                Hub.OnboardingUI.ResetOnboarding(false))
+                .ConfigureAwait(false);
+        }
+        if (skipBubbles) {
+            await Hub.Dispatcher.InvokeAsync(() =>
+                Hub.BubbleUI.ResetBubbles(false))
+                .ConfigureAwait(false);
+        }
+
+        Log.LogInformation(
+            "SignIn('{Input}', register={Register}, skipOnboarding={SkipOnboarding}, skipBubbles={SkipBubbles}): done",
+            input, register, skipOnboarding, skipBubbles);
+    }
+
+    [JSInvokable]
+    public async Task SignOut()
+    {
+        await Hub.AccountUI.SignOut().ConfigureAwait(false);
+        Log.LogInformation("SignOut: done");
+    }
+
+    [JSInvokable]
+    public Task<string> GetUserId()
+        => Task.FromResult(Hub.AccountUI.OwnAccount.Value.Id.Value);
 
     [JSInvokable]
     public async Task ShowMicTroubleshooter()
