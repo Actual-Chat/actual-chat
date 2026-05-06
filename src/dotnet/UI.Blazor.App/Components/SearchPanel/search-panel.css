@@ -60,7 +60,8 @@
 .search-input {
     @apply flex-1;
     @apply max-h-10;
-    @apply rounded-full border border-transparent;
+    @apply rounded-full;
+    box-shadow: inset 0 0 0 1px transparent;
 }
 .search-input label {
     @apply relative;
@@ -106,7 +107,7 @@
     @apply text-transparent;
 }
 .search-input:has(input:focus) {
-    @apply border-primary;
+    box-shadow: inset 0 0 0 1px theme(colors.primary);
 }
 
 .search-input.icon-align-right i {

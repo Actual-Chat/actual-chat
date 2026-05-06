@@ -13,6 +13,7 @@ class SubHeaderLit extends LitElement {
             align-items: center;
             column-gap: 0.5rem;
             min-height: 2.5rem;
+            min-width: 0;
         }
         @media (min-width: 820px) {
             .subheader-item {
@@ -25,7 +26,8 @@ class SubHeaderLit extends LitElement {
             display: flex;
             flex-direction: row;
             align-items: center;
-            column-gap: 0.75rem;
+            column-gap: 0.5rem;
+            min-width: 0;
             transform-origin: top;
         }
         .enter .c-wrapper {

@@ -37,6 +37,9 @@ export class SubHeader {
     }
 
     public setHeight() {
+        if (this.subHeaderLit.classList.contains('replay-subheader'))
+            return;
+
         const h = this.subHeaderLit.offsetHeight;
         this.subHeaderLit.style.setProperty('--subheader-height', h + 'px');
     }

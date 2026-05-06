@@ -41,9 +41,9 @@
 }
 .left-chat-search-input .c-place-badge {
     @apply hidden;
-    @apply flex-none items-center;
+    @apply flex-none items-center self-center;
     @apply h-8;
-    @apply ml-1 mt-1 px-2;
+    @apply ml-1 px-2 py-1.5;
     @apply rounded-full;
     @apply bg-05;
     @apply text-02 text-caption-1 tracking-wider;
@@ -60,7 +60,7 @@
     @apply text-transparent;
 }
 .left-chat-search-input .search-input {
-    transition: border-color 0.3s ease-in;
+    transition: box-shadow 0.3s ease-in;
 }
 .left-chat-search-input .search-input input {
     @apply px-4;
@@ -69,7 +69,6 @@
     @apply relative;
     @apply bg-input;
     @apply overflow-hidden;
-    backdrop-filter: blur(4px);
 }
 .left-chat-search-input.place .search-input:after {
     @apply content-empty;
