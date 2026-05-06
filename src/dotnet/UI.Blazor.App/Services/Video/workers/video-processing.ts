@@ -1822,9 +1822,17 @@ function currentDownscaleTargets(): DownscaleTarget[] {
 }
 
 // Init WebGPU downscaler for the full simulcast target list (base + any extras).
-// Returns null if WebGPU is unavailable — caller then relies on the legacy canvas
-// resizeFrame path (which only covers the primary layer; simulcast requires WebGPU).
-async function initDownscaler(config: VideoProcessingConfig): Promise<void> {
+// Default resize path is the OffscreenCanvas drawImage fallback (covers base
+// + simulcast extras via per-layer cached canvases — see encodeProcessedFrame
+// !downscaler branch). The WebGPU downscaler doesn't reduce encoder
+// backpressure (verified by trace: encoder dropRate identical between
+// WebGPU and canvas resize at ~48% on the middle simulcast tier), and it
+// adds 8% net more compute (worker + GPU process combined) plus a Dawn
+// device-lost recovery surface. Disabled for now; module + dead state in
+// this file (downscalerFail*, downscalerRecreate*, tryRecreateDownscalerAsync,
+// currentDownscaleTargets) is kept for the next cleanup pass so the diff
+// stays reviewable.
+function initDownscaler(config: VideoProcessingConfig): Promise<void> {
     lastProcessingConfig = config;
     pipelineFailedReason = null;
     downscalerFailCount = 0;
@@ -1833,24 +1841,11 @@ async function initDownscaler(config: VideoProcessingConfig): Promise<void> {
     downscalerRecreateWindowStart = 0;
     downscalerRecreateInFlight = false;
     pipelineErrorLogLastSeenMs.clear();
-    const targets = collectDownscaleTargets(config);
-    if (downscaler && !downscaler.isInvalid) {
-        downscaler.configure(targets);
-        return;
-    }
-    if (downscaler?.isInvalid) {
+    if (downscaler) {
         try { downscaler.dispose(); } catch { /* ignore */ }
         downscaler = null;
     }
-    try {
-        const device = await WebGPUManager.init();
-        downscaler = new WebGpuDownscaler(device);
-        downscaler.configure(targets);
-        infoLog?.log(`Downscaler initialized with ${targets.length} target(s)`);
-    } catch (e) {
-        warnLog?.log('WebGPU downscaler unavailable, falling back to canvas resize:', e);
-        downscaler = null;
-    }
+    return Promise.resolve();
 }
 
 // Async in-place recovery from downscaler failure storm. WebGPUManager nulls

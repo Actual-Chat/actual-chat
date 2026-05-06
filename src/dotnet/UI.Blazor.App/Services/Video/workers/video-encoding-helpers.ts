@@ -48,6 +48,15 @@ export function deriveAvcCodecFromDescription(desc: ArrayBuffer, minLevelByte = 
  * Resize (and optionally rotate 90° CW) a frame to target dimensions.
  * Returns { frame, canvas, ctx } so caller can cache the canvas.
  *
+ * OffscreenCanvas 2D drawImage with {alpha:false, desynchronized:true} +
+ * imageSmoothingQuality='medium'. Per-trace comparison (encoder backpressure
+ * stayed ~49% in all approaches — encoder, not scaler, is the bottleneck):
+ *  | approach | worker CPU | GPU process | total |
+ *  | canvas {alpha:false,desync:true} (this) | 6.4% | 40% | 46% ← lowest |
+ *  | canvas defaults (no opts) | 17.5% | 47% | 64.5% |
+ *  | WebGPU compute downscaler | 9% | 63% | 72% |
+ *  | createImageBitmap+bitmaprenderer | 85% | 67% | 152% (bitmap path is CPU) |
+ *
  * @param rotate90 When true, applies 90° clockwise rotation before drawing.
  *   Used for iOS portrait where the camera sensor gives landscape frames (1280x720)
  *   but the encoder expects portrait (720x1280).
@@ -71,7 +80,19 @@ export function resizeFrame(
     if (canvas?.width !== targetWidth || canvas.height !== targetHeight) {
         infoLog?.log(`Creating resize canvas: ${targetWidth}x${targetHeight}${rotate90 ? ' (with rotation)' : ''}`);
         canvas = new OffscreenCanvas(targetWidth, targetHeight);
-        ctx = canvas.getContext('2d');
+        // alpha:false skips per-pixel alpha compositing — video is opaque.
+        // desynchronized:true is a Chrome perf hint; lets the canvas present
+        // without round-tripping through compositor sync. willReadFrequently
+        // stays at default (false) so Chrome keeps the canvas GPU-backed.
+        // willReadFrequently:false (default) keeps the canvas GPU-backed.
+        // Tested willReadFrequently:true and it forced CPU rasterization —
+        // worker CPU shot from 6.4% to 54% with no compensating gain.
+        ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+        if (ctx) {
+            // 'medium' = bilinear; default 'low' is nearest-neighbor-ish and
+            // produces visibly muddy output on big downscales (1280→320).
+            ctx.imageSmoothingQuality = 'medium';
+        }
     }
 
     if (!ctx) {
