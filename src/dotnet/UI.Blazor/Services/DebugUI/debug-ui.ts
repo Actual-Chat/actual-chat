@@ -86,7 +86,7 @@ export class DebugUI {
     };
 
     public static async getUserId(): Promise<string> {
-        const id = (await this.backendRef.invokeMethodAsync('GetUserId')) as string;
+        const id = await this.backendRef.invokeMethodAsync<string>('GetUserId');
         console.log(`getUserId:`, id);
         return id;
     };
