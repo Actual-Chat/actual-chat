@@ -46,8 +46,16 @@ public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
     protected override async Task DisposeAsyncCore()
     {
-        using var releaser = await _stateLock.Lock().ConfigureAwait(false);
-        releaser.MarkLockedLocally();
+        using var cts = new CancellationTokenSource(CoreConstants.DisposeTimeout);
+        try {
+            using var releaser = await _stateLock.Lock(cts.Token).ConfigureAwait(false);
+            releaser.MarkLockedLocally();
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested) {
+            Log.LogWarning(
+                "{Type}: state lock wasn't released in {Timeout}; proceeding without it",
+                GetType().GetName(), CoreConstants.DisposeTimeout);
+        }
     }
 
     public async Task StartRecording(
