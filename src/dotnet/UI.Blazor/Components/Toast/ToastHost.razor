@@ -39,8 +39,8 @@
 }
 
 @code {
+    private readonly Dictionary<string, FailureGroup> _failureGroups = new();
     private LocalUrl _lastUrl;
-    private Dictionary<string, FailureGroup> _failureGroups = new();
     private int _lastFailureOrder;
     private bool _suppressOnFailuresChanged;
 
