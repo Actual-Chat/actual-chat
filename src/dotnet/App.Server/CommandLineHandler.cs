@@ -13,12 +13,19 @@ public static class CommandLineHandler
     private const string RoleArgPrefix = "-role:";
     private const string KeyboardArg = "-kb";
     private const string ForceDistributedArg = "-distributed";
+    private const string FakeAiServicesArg = "-fake-ai-services";
     private const string MultiHostRoleArgPrefix = "-multihost-role:";
     private const string RoleGroupDelimiter = ":";
     private const string UrlsEnvVar = "URLS";
     private const string ServerRoleEnvVar = "HostSettings__ServerRole";
     private const string MeshLockSubspaceEnvVar = "HostSettings__MeshLockSubspace";
     private const string MeshLockOptionsPresetEnvVar = "HostSettings__MeshLockOptionsPreset";
+
+    // Env. vars set by -fake-ai-services. Add new fakes here as they're introduced.
+    private static readonly (string Name, string Value)[] FakeAiServiceEnvVars = [
+        ("StreamingSettings__UseFakeTranscriber", "true"),
+        ("ChatSettings__UseFakeLanguageDetection", "true"),
+    ];
 
     private static readonly Dictionary<Symbol, HostRole[]> AllRoleGroups = new() {
         { "1", [HostRole.OneServer] },
@@ -43,6 +50,15 @@ public static class CommandLineHandler
         // -distributed argument
         ForceDistributed = HostRolesExt.ForceDistributedModeForServerModeServices
             = args.Any(x => x == ForceDistributedArg);
+
+        // -fake-ai-services argument: enable every UseFake* setting
+        if (args.Any(x => x == FakeAiServicesArg)) {
+            WriteLine("Fake AI services enabled — setting:");
+            foreach (var (name, value) in FakeAiServiceEnvVars) {
+                WriteLine($"  {name}={value}");
+                Environment.SetEnvironmentVariable(name, value);
+            }
+        }
 
         // -url:<url> argument
         var urlOverride = args

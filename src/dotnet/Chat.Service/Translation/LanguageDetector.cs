@@ -33,6 +33,9 @@ public class LanguageDetector(IServiceProvider services)
         if (content.IsNullOrWhiteSpace() || !content.Any(char.IsLetter))
             return [];
 
+        if (Settings.UseFakeLanguageDetection)
+            return AlphabetLanguageDetector.Detect(content);
+
         var executionSettings = new OpenAIPromptExecutionSettings {
             Temperature = 0,
             ChatSystemPrompt = Prompt.Trim(),

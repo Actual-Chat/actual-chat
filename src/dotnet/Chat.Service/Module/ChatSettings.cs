@@ -8,6 +8,7 @@ public sealed class ChatSettings
     public string OpenAIModel { get; set; } = "o4-mini";
     public string OpenAIProxy { get; set; } = "";
     public bool IsTranslationEnabled { get; set; }
+    public bool UseFakeLanguageDetection { get; set; }
     public TranslationSettings Translation { get; set; } = new ();
     public LanguageDetectionSettings LanguageDetection { get; set; } = new ();
     public bool IsSummarizationEnabled { get; set; }
