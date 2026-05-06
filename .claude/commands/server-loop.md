@@ -9,16 +9,22 @@ Use this when the user has started `server-loop.cmd` (or `server-loop.ps1`)
 in another terminal and wants to know where it is, why it stalled, or
 whether the server is reachable.
 
+For browser-side interaction (sign-in flows, debugUI helpers, multi-Chrome
+setup), see `/debug-ui` — `server-loop` and the chrome-devtools MCP rig
+are typically running together.
+
 **Do NOT use `/server-start`, `/server-restart`, or `/server-stop` while
 `server-loop` is running** — the loop owns the dotnet process and will
 fight you. To restart the running .NET server, use one of:
 
-- `s` keypress in the loop terminal (only works on the host running the loop)
-- `curl -X POST https://local.voxt.ai/health/stop`
-- `debugUI.stopServer()` from the browser console
+- `s` or `x` keypress in the loop terminal — the loop forwards it to
+  `/health/stop` (works from any environment).
+- `curl https://local.voxt.ai/health/stop` (it's a **GET**, not POST —
+  POST returns 400 from antiforgery).
+- `debugUI.stopServer()` from the browser console.
 
 A clean stop makes the loop rebuild and relaunch automatically. A
-**failed start** (e.g. port in use, DB unreachable) parks the loop —
+**failed start** (port in use, DB unreachable, etc.) parks the loop —
 the marker line `Last step failed, remove this file to restart the loop.`
 is the last line of `tmp/server-loop.log`. To unstick, delete that file
 or press a key in the loop terminal.
@@ -31,55 +37,45 @@ Observation through log files still works (`tmp/` is shared) — and the
 HTTP `/health/stop` and `debugUI.stopServer()` paths are reachable from
 any environment that can hit `https://local.voxt.ai`.
 
-## Sign-in for tests (phone + TOTP)
+## Sign-in for tests
 
-On a local-dev server with no Twilio/SMSTo configured, phone sign-in
-uses `LogOnlyTextMessageSender`: instead of an SMS, the TOTP is
-written to the server log as a warning like
-`!!! Text message to +15550001234: Your code is 482917`.
+Two paths, in increasing convenience:
 
-**Two ways in:**
+1. **`debugUI.signIn(phoneOrEmail)` from the browser console** — the
+   fastest. Local-dev-only; auto-uses the dev-bypass TOTP `111111`. See
+   `/debug-ui` for the full details and option object.
 
-1. **Any test number, e.g. `+1 555 000 1234`** — request the code, then
-   grep the server log for the digits and type them into the UI.
-   Two log files have it (the writes are duplicated by the logging
-   pipeline):
-   - `tmp/server-run.log` (server's `ActualChat_DevLog`)
-   - `tmp/server-loop-server-run.log` (loop's stdout capture)
+2. **The modal flow with predefined phones** — `+1 555 555 5550..5555`
+   accept TOTP `111111`. `server-loop.ps1` exports
+   `UsersSettings__PredefinedTotps__<digits>` env vars; no SMS is sent.
+   The predefined codes are wired up only when `server-loop` is the one
+   launching the server — `/server-start` and friends don't set them.
+
+3. **Any other test number** (e.g. `+1 555 000 1234`) — request the
+   code, then grep the server log for the digits and type them into the
+   UI:
 
    ```bash
-   grep -E "Text message to" tmp/server-run.log | tail -5
+   grep -E "Text message to" tmp/server-loop-server-run.log | tail -5
    ```
 
-2. **Predefined numbers `+1 555 555 5550..5555`** — `server-loop.ps1`
-   exports `UsersSettings__PredefinedTotps__<digits>` env vars. No SMS
-   is sent (and no log line is produced). All six numbers accept
-   TOTP `000000`.
+   The TOTP is also written to the DevLog (`tmp/server-loop-server-run.log`,
+   yes the *same* base name; see file table below).
 
-The predefined codes are wired up only when `server-loop` is the one
-launching the server — `/server-start` and friends don't set them.
-
-## Chrome on the host (likely already running)
+## Chrome on the host
 
 When the user is running `server-loop`, they're almost certainly also
-running `c.ps1 chrome` (or `c chrome`) on the host — that opens Chrome
-with remote debugging on port `9222`, pointing at the local site.
+running Chrome with remote debugging — most likely launched via
+`c chrome` (one instance, default profile, port 9222) or `c chrome*2`
+(two anonymous-profile instances, ports 9222/9223 — what you want for
+multi-user tests).
 
-**Prefer the `chrome-devtools` MCP for any browser-side inspection or
-control** (console logs, network, screenshots, DOM snapshots, script
-evaluation). Use it to:
-
-- Read console errors after editing — much faster than reproducing them
-  in a new Playwright session.
-- Trigger a server stop without leaving Claude: evaluate
-  `debugUI.stopServer()` in the page context. The loop will rebuild
-  and relaunch automatically.
-- Verify a fix landed: take a screenshot or read the DOM after the
-  loop reports `Step 3/3 (server-run): ...`.
-
-If `chrome-devtools` MCP isn't available, fall back to Playwright with
-`chromium.connectOverCDP('http://localhost:9222')` — same Chrome, same
-session, the user sees what you do.
+**Prefer the `chrome-devtools` MCP for any browser-side work.** Two MCP
+services are wired up in `docker-compose.yml`
+(`chrome-devtools-mcp-1` → `localhost:8765` → Chrome :9222 and
+`chrome-devtools-mcp-2` → `localhost:8766` → Chrome :9223). Tools land
+in Claude as `mcp__chrome-devtools-1__*` / `mcp__chrome-devtools-2__*`.
+Setup details and usage live in `/debug-ui`.
 
 ## Where to look
 
@@ -88,12 +84,17 @@ session, the user sees what you do.
 | `tmp/server-loop.log` | Stage transitions + failure marker (the "what's happening" view) |
 | `tmp/server-loop-npm-build.log` | Step 1 stdout/stderr (npm run build:Debug) |
 | `tmp/server-loop-dotnet-build.log` | Step 2 stdout/stderr (dotnet build) |
-| `tmp/server-loop-server-run.log` | Step 3 stdout/stderr (dotnet run -- -kb) |
-| `tmp/server-run.log` | Server's `ActualChat_DevLog` (structured app diagnostics) |
+| `tmp/server-loop-server-run.out` | Step 3 — `dotnet run` stdout |
+| `tmp/server-loop-server-run.err` | Step 3 — `dotnet run` stderr (empty on a healthy run) |
+| `tmp/server-loop-server-run.log` | Server's `ActualChat_DevLog` — the structured app diagnostics, richer than stdout |
 
-All five files are wiped at the start of each loop iteration. Their
-absence means either (a) `server-loop` is not running, or (b) it's
-between iterations and hasn't reached step 1 yet (rare/brief).
+All six files are wiped at the start of each loop iteration. The loop
+banner-prints these paths once at startup and never again, so per-step
+log lines stay terse — `[hh:mm:ss] Step N/3 (name)`.
+
+The `.log` (DevLog) is usually the one you want; the `.out` is mostly
+ASP.NET startup banner + bootstrap warnings, and `.err` is empty unless
+the process actually crashed.
 
 ## Reachability — two URLs to know
 
@@ -115,7 +116,9 @@ overrides the defaults:
 | `CoreSettings__Instance=<name>` | Instance name (used elsewhere) | `dev` |
 
 So a worktree's `.env` might point to `https://wt1.local.voxt.ai` on
-port `7081`. Pick those up before probing.
+port `7081`. Pick those up before probing. The loop reads the same
+`.env` to address the right server when forwarding keypresses to
+`/health/stop`.
 
 ## Bash implementation
 
@@ -137,9 +140,11 @@ pwsh -NoProfile -c "
     \$tmp = Join-Path '$PROJECT_PATH' 'tmp'
     \$loopLog = Join-Path \$tmp 'server-loop.log'
     \$logs = @{
-        'npm-build'    = Join-Path \$tmp 'server-loop-npm-build.log'
-        'dotnet-build' = Join-Path \$tmp 'server-loop-dotnet-build.log'
-        'server-run'   = Join-Path \$tmp 'server-loop-server-run.log'
+        'npm-build'      = Join-Path \$tmp 'server-loop-npm-build.log'
+        'dotnet-build'   = Join-Path \$tmp 'server-loop-dotnet-build.log'
+        'server-run.out' = Join-Path \$tmp 'server-loop-server-run.out'
+        'server-run.err' = Join-Path \$tmp 'server-loop-server-run.err'
+        'server-run.log' = Join-Path \$tmp 'server-loop-server-run.log'
     }
 
     Write-Host '=== server-loop state ==='
@@ -159,13 +164,13 @@ pwsh -NoProfile -c "
 
     Write-Host ''
     Write-Host '=== step log sizes ==='
-    foreach (\$k in 'npm-build','dotnet-build','server-run') {
+    foreach (\$k in 'npm-build','dotnet-build','server-run.out','server-run.err','server-run.log') {
         \$f = \$logs[\$k]
         if (Test-Path \$f) {
             \$len = (Get-Item \$f).Length
-            Write-Host (\"  {0,-13} {1,10} bytes  {2}\" -f \$k, \$len, \$f)
+            Write-Host (\"  {0,-15} {1,10} bytes  {2}\" -f \$k, \$len, \$f)
         } else {
-            Write-Host (\"  {0,-13}   (absent)\" -f \$k)
+            Write-Host (\"  {0,-15}   (absent)\" -f \$k)
         }
     }
 
@@ -186,18 +191,27 @@ pwsh -NoProfile -c "
 
 ## Interpreting the result
 
-- **Loop log shows `Step 3/3 (server-run): ...` as the latest line and
-  both URLs are up:** healthy run state. Edit code, then trigger a
-  stop (one of the three methods above) — the loop rebuilds.
+- **Loop log shows `Step 3/3 (server-run)` as the latest line and both
+  URLs are up:** healthy run state. Edit code, then trigger a stop (any
+  of the three methods above) — the loop rebuilds.
 - **Loop log ends with `Last step failed, remove this file to restart`:**
-  open the corresponding `server-loop-<step>.log` for the actual error.
-  Fix the code, then unstick the loop (delete the loop log file).
+  open the corresponding `server-loop-<step>.log` (or `.out`/`.err`) for
+  the actual error. Fix the code, then unstick the loop (delete the
+  loop log file).
 - **NGINX URL down but backend up:** check that NGINX is running on the
-  host (it lives outside the loop). The `/health/stop` and
-  `debugUI.stopServer()` paths require NGINX.
+  host (it lives outside the loop, in `docker-compose.yml`). The
+  `/health/stop` and `debugUI.stopServer()` paths require NGINX.
 - **Both URLs down while loop is on step 3:** the server crashed between
-  startup and now. `server-loop-server-run.log` and `tmp/server-run.log`
-  have the details.
+  startup and now. `server-loop-server-run.err` and
+  `server-loop-server-run.log` (DevLog) have the details.
 - **No loop log at all:** the user didn't actually start `server-loop`,
-  or they started it from a different working directory. Ask before
-  guessing.
+  or they started it from a different working directory (worktrees!).
+  Ask before guessing.
+
+## Picking up script edits
+
+`server-loop.ps1` is loaded once when the loop starts — PowerShell does
+not hot-reload. After editing the script (renaming log files, changing
+env vars, etc.), the host needs to **restart the loop** for the changes
+to take effect. C# / TypeScript changes are picked up by the next
+rebuild and don't need a loop restart.

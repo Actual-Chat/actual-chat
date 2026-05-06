@@ -29,12 +29,12 @@ export class DebugUI {
         globalThis.debugUI = this;
     }
 
-    public static startFusionMonitor(): void {
-        void this.backendRef.invokeMethodAsync('StartFusionMonitor');
-    };
-
-    public static startTaskMonitor(): void {
-        void this.backendRef.invokeMethodAsync('StartTaskMonitor');
+    // Local-dev-only: stops the running server. Mirrors the HTTP /health/stop
+    // endpoint and the 's' keyboard shortcut from CommandLineHandler.
+    // Enforcement lives on the server (DebugUI.StopServer); no client-side check.
+    public static stopServer(): void {
+        infoLog?.log(`stopServer: stopping the server...`);
+        void this.backendRef.invokeMethodAsync('StopServer');
     };
 
     public static async getThreadPoolSettings(): Promise<string> {
@@ -48,20 +48,12 @@ export class DebugUI {
         return await this.getThreadPoolSettings();
     };
 
-    public static navigateTo(url: string): void {
-        void this.backendRef.invokeMethodAsync('NavigateTo', url);
-    };
-
     public static disconnectBlazorRpc(): void {
         void this.backendRef.invokeMethodAsync('DisconnectRpc');
     };
 
-    // Local-dev-only: stops the running server. Mirrors the HTTP /health/stop
-    // endpoint and the 's' keyboard shortcut from CommandLineHandler.
-    // Enforcement lives on the server (DebugUI.StopServer); no client-side check.
-    public static stopServer(): void {
-        infoLog?.log(`stopServer: stopping the server...`);
-        void this.backendRef.invokeMethodAsync('StopServer');
+    public static navigateTo(url: string): void {
+        void this.backendRef.invokeMethodAsync('NavigateTo', url);
     };
 
     /** Debug-only: force-disconnect the RPC peer for one target — see
@@ -77,15 +69,28 @@ export class DebugUI {
         }
     };
 
+    public static fakeSleep(duration = 5): void {
+        OnDeviceAwake.fakeSleep(duration * 1000);
+    }
+
     public static resetOnboarding(enable: boolean): void {
         void this.backendRef.invokeMethodAsync('ResetOnboarding', enable);
     };
 
-    /** Local-dev-only: scripts the sign-in flow on the server (send + validate
-     *  TOTP, confirm pending registration if `register`, and optionally clear
-     *  onboarding/bubbles). Uses dev-bypass TOTPs — `111111` for emails matching
-     *  `test-*@actual.chat`, `111111` for the predefined phone numbers
-     *  `+1 555 555 5550..5555`. Other inputs will fail TOTP validation. */
+    public static resetBubbles(enable: boolean): void {
+        void this.backendRef.invokeMethodAsync('ResetBubbles', enable);
+    };
+
+    public static enableAudioSync(enable = true): void {
+        void this.backendRef.invokeMethodAsync('EnableAudioSync', enable);
+    };
+
+    public static async getUserId(): Promise<string> {
+        const id = (await this.backendRef.invokeMethodAsync('GetUserId')) as string;
+        console.log(`getUserId:`, id);
+        return id;
+    };
+
     public static signIn(
         phoneOrEmail: string,
         options?: { register?: boolean; skipOnboarding?: boolean; skipBubbles?: boolean },
@@ -104,20 +109,18 @@ export class DebugUI {
         return this.backendRef.invokeMethodAsync('SignOut') as unknown as Promise<void>;
     };
 
-    /** Resolves with the signed-in user's UserId. Also logs it to the console
-     *  so it can be grabbed off-hand during interactive debugging. */
-    public static async getUserId(): Promise<string> {
-        const id = (await this.backendRef.invokeMethodAsync('GetUserId')) as string;
-        console.log(`getUserId:`, id);
-        return id;
+    /** Returns the current effective render mode. Reads the `app-server` /
+     *  `app-wasm` class that BrowserInfo writes onto `<body>` based on the
+     *  resolved HostKind — that's the same source the rest of the app uses,
+     *  so it stays correct after Auto's prerender → WASM upgrade. Returns
+     *  `'s'` if the body class hasn't been written yet (i.e. still in the
+     *  initial server-prerender phase). */
+    public static getCurrentRenderMode(): 's' | 'w' {
+        return document.body.classList.contains('app-wasm') ? 'w' : 's';
     };
 
-    public static resetBubbles(enable: boolean): void {
-        void this.backendRef.invokeMethodAsync('ResetBubbles', enable);
-    };
-
-    public static enableAudioSync(enable = true): void {
-        void this.backendRef.invokeMethodAsync('EnableAudioSync', enable);
+    public static setRenderMode(mode: 'a' | 's' | 'w'): Promise<void> {
+        return this.backendRef.invokeMethodAsync('SetRenderMode', mode) as unknown as Promise<void>;
     };
 
     public static showMicTroubleshooter(): void {
@@ -131,10 +134,6 @@ export class DebugUI {
     public static showIncomingShareModal(): void {
         void this.backendRef.invokeMethodAsync('ShowIncomingShareModal');
     };
-
-    public static fakeSleep(duration = 5): void {
-        OnDeviceAwake.fakeSleep(duration * 1000);
-    }
 
     /** Drives the recording quality controller through a synthetic
      *  -1 / 0 / +1 signal sweep over `period` seconds. ~10% of time at
@@ -183,6 +182,14 @@ export class DebugUI {
             cl.add('hide-safe-areas');
         infoLog?.log(`showSafeAreas: ${show ?? 'default'}`);
     }
+
+    public static startFusionMonitor(): void {
+        void this.backendRef.invokeMethodAsync('StartFusionMonitor');
+    };
+
+    public static startTaskMonitor(): void {
+        void this.backendRef.invokeMethodAsync('StartTaskMonitor');
+    };
 
     public static startDOMEventSniffer(): void {
         if (this._eventSnifferInstalled) {

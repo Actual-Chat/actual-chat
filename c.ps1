@@ -47,6 +47,7 @@ $ChromeDebugStartPort      = $ChromeDebugPort
 $ChromeInstanceCount       = 1
 $ChromeUseAnonymousProfile = $false
 $ChromeArgPattern          = '^chrome(?:[:*]\d+){0,2}$'
+$ChromeExtraArgs           = @()
 
 # Edge mirrors the Chrome shape but defaults to a different start port so the
 # two can run side by side without the firewall/port-collision dance.
@@ -55,6 +56,7 @@ $EdgeDebugStartPort        = $EdgeDebugPort
 $EdgeInstanceCount         = 1
 $EdgeUseAnonymousProfile   = $false
 $EdgeArgPattern            = '^edge(?:[:*]\d+){0,2}$'
+$EdgeExtraArgs             = @()
 
 # On Windows, if not already in Windows Terminal, relaunch in wt
 # WT_SESSION is set by Windows Terminal when running inside it
@@ -260,6 +262,8 @@ function Show-Help {
     Write-Host "  c chrome:50000     Start Chrome on port 50000 (default profile)"
     Write-Host "  c chrome*3         Start 3 Chrome instances on 9222..9224 (anonymous profiles)"
     Write-Host "  c chrome*3:50000   Start 3 Chrome instances on 50000..50002 (anonymous profiles)"
+    Write-Host "  c chrome --mute-audio --window-size=1280,720"
+    Write-Host "                     Any args after chrome[*N][:PORT] are forwarded to the browser"
     Write-Host "  c edge[:PORT][*N]  Same as chrome, for Microsoft Edge (default port 9322)"
     Write-Host "  c audio            Setup/start PulseAudio for voice mode (macOS only)"
     Write-Host "  c build            Build Docker image"
@@ -283,6 +287,8 @@ while ($argIndex -lt $args.Count) {
     }
 
     # Chrome command: `chrome`, `chrome:PORT`, `chrome*N`, `chrome:PORT*N`, `chrome*N:PORT`
+    # Any further args (e.g. `--mute-audio`, `--window-size=...`) are forwarded
+    # verbatim to the launched browser process.
     if ($currentArg -match $ChromeArgPattern -and $mode -eq "docker") {
         $mode = "chrome"
         if ([regex]::Match($currentArg, ':(\d+)').Success) {
@@ -298,10 +304,15 @@ while ($argIndex -lt $args.Count) {
             $ChromeUseAnonymousProfile = $true
         }
         $argIndex++
+        if ($argIndex -lt $args.Count) {
+            $ChromeExtraArgs = $args[$argIndex..($args.Count - 1)]
+            $argIndex = $args.Count
+        }
         continue
     }
 
     # Edge command: same shape as chrome (`edge`, `edge:PORT`, `edge*N`, `edge:PORT*N`, `edge*N:PORT`).
+    # Any further args are forwarded to the browser process, same as chrome.
     if ($currentArg -match $EdgeArgPattern -and $mode -eq "docker") {
         $mode = "edge"
         if ([regex]::Match($currentArg, ':(\d+)').Success) {
@@ -317,6 +328,10 @@ while ($argIndex -lt $args.Count) {
             $EdgeUseAnonymousProfile = $true
         }
         $argIndex++
+        if ($argIndex -lt $args.Count) {
+            $EdgeExtraArgs = $args[$argIndex..($args.Count - 1)]
+            $argIndex = $args.Count
+        }
         continue
     }
 
@@ -1240,7 +1255,8 @@ function Start-DebugBrowsers {
         [string]$AnonProfileBase,
         [int]   $StartPort,
         [int]   $Count,
-        [bool]  $UseAnonymous
+        [bool]  $UseAnonymous,
+        [string[]]$ExtraArgs = @()
     )
     Write-Host "$BrowserName path: $ExePath"
     for ($i = 0; $i -lt $Count; $i++) {
@@ -1256,17 +1272,46 @@ function Start-DebugBrowsers {
 
         $label = if ($UseAnonymous) { "anonymous" } else { "default" }
         Write-Host "Starting $BrowserName on port $port ($label profile: $profileDir)..." -ForegroundColor Cyan
+        # Permission / capture policy for the debug profile:
+        #   --disable-notifications              deny Notification API without prompting
+        #                                        (the "Allow notifications?" popup blocks the UI otherwise)
+        #   --use-fake-ui-for-media-stream       auto-accept mic/camera (no permission prompt)
+        #   --use-fake-device-for-media-stream   feed synthetic streams instead of real devices
+        #                                        (required for the --use-file-for-fake-* flags to take
+        #                                        effect — without it Chrome uses real cam/mic)
+        #   --use-file-for-fake-video-capture    feed mjpeg as the camera stream
+        #   --use-file-for-fake-audio-capture    feed wav as the mic stream
+        #   --auto-select-desktop-capture-source auto-pick a Voxt-titled window for getDisplayMedia
+        #                                        (skips the share-screen picker; matches Voxt's page
+        #                                        title — see <PageTitle>@CoreConstants.AppName).
+        #                                        Tab-only is a separate flag if window-mode picks a
+        #                                        sibling instance: --auto-select-tab-capture-source-by-title=Voxt
+        #   --test-type                          quiet "controlled by automated test software" infobar
+        $fakeVideo = Join-Path $ScriptDir "lib/data/test-video-1.mjpeg"
+        $fakeAudio = Join-Path $ScriptDir "lib/data/test-audio-1.wav"
         # Pass the project URL as a positional arg so the browser opens it as
         # its first tab — otherwise an anonymous profile shows the "Sign in
         # to Chrome" / "Welcome to Edge" greeter and you have to navigate
         # manually.
-        Start-Process -FilePath $ExePath -ArgumentList @(
+        # Built-in flags first, caller's pass-through next, then the URL —
+        # later flags override earlier ones, so user-supplied args win.
+        $cmdArgs = @(
             "--remote-debugging-port=$port",
             "--remote-debugging-address=0.0.0.0",
             "--user-data-dir=`"$profileDir`"",
             "--remote-allow-origins=*",
-            "https://local.voxt.ai/"
-        )
+            "--disable-notifications",
+            "--use-fake-ui-for-media-stream",
+            "--use-fake-device-for-media-stream",
+            "--use-file-for-fake-video-capture=`"$fakeVideo`"",
+            "--use-file-for-fake-audio-capture=`"$fakeAudio`"",
+            "--auto-select-desktop-capture-source=Voxt",
+            "--test-type"
+        ) + $ExtraArgs + @("https://local.voxt.ai/")
+        if ($ExtraArgs.Count -gt 0) {
+            Write-Host "  extra args: $($ExtraArgs -join ' ')" -ForegroundColor DarkGray
+        }
+        Start-Process -FilePath $ExePath -ArgumentList $cmdArgs
 
         $maxWait = 30; $waited = 0; $printedWaiting = $false
         while (-not (Test-DebugPort -Port $port) -and $waited -lt $maxWait) {
@@ -1724,7 +1769,8 @@ switch ($mode) {
             -AnonProfileBase $anonProfileBase `
             -StartPort $ChromeDebugStartPort `
             -Count $ChromeInstanceCount `
-            -UseAnonymous $ChromeUseAnonymousProfile
+            -UseAnonymous $ChromeUseAnonymousProfile `
+            -ExtraArgs $ChromeExtraArgs
     }
 
     "edge" {
@@ -1760,6 +1806,7 @@ switch ($mode) {
             -AnonProfileBase $anonProfileBase `
             -StartPort $EdgeDebugStartPort `
             -Count $EdgeInstanceCount `
-            -UseAnonymous $EdgeUseAnonymousProfile
+            -UseAnonymous $EdgeUseAnonymousProfile `
+            -ExtraArgs $EdgeExtraArgs
     }
 }
