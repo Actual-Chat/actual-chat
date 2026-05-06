@@ -1,3 +1,5 @@
+using ActualLab.Rpc;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 partial class SendingMessages
@@ -118,10 +120,15 @@ partial class SendingMessages
     }
 
     private static bool IsTransientError(Exception e)
-    {
-        var inner = e.GetBaseException();
-        return inner is not (NotFoundException or UnauthorizedAccessException or System.Security.SecurityException);
-    }
+        // Transient errors that are possible here:
+        // - TimeoutException is thrown by Errors.ConnectTimeout when the peer is unreachable.
+        // - OperationCanceledException covers possible server-side cancellations
+        //   and ProcessCommandTimeout.
+        // Anything else (validation, business constraints, etc.) must fail so the user sees the error.
+        // Note that:
+        // - RpcRerouteException shouldn't be thrown here, but it's still covered by OperationCanceledException
+        // - RpcReconnectFailedException also shouldn't be thrown here.
+        => e is OperationCanceledException or TimeoutException;
 
     // Nested types
     public record PostMessageQueueItem(PostMessageRequestInternal Request);
