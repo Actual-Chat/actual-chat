@@ -1,4 +1,5 @@
-﻿using ActualChat.Transcription;
+﻿using ActualChat.Streaming.Module;
+using ActualChat.Transcription;
 
 namespace ActualChat.Streaming.Services.Transcribers;
 
@@ -7,9 +8,16 @@ namespace ActualChat.Streaming.Services.Transcribers;
 /// </summary>
 public class TranscriberFactory(IServiceProvider services) : ITranscriberFactory
 {
+    private StreamingSettings Settings { get; } = services.GetRequiredService<StreamingSettings>();
+
     public ITranscriber Get(TranscriptionEngine engine)
-        => engine switch {
+    {
+        if (Settings.UseFakeTranscriber)
+            return services.GetRequiredService<FakeTranscriber>();
+
+        return engine switch {
             TranscriptionEngine.Deepgram => services.GetRequiredService<DeepgramTranscriber>(),
             _ => services.GetRequiredService<GoogleTranscriber>(),
         };
+    }
 }
