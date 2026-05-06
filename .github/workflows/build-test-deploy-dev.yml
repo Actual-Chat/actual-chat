@@ -560,7 +560,7 @@ jobs:
     steps:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: 26.4
+          xcode-version: 26.4.1
 
       - name: Checkout
         uses: actions/checkout@v4
