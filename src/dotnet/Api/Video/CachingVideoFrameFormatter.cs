@@ -34,11 +34,12 @@ namespace ActualChat.Video;
 /// element to this formatter, so <see cref="VideoFrame"/>[] batches hit the cache too.
 /// </para>
 /// <para>
-/// Wire format: a 15-entry MessagePack map with PascalCase string keys — Data (bin),
-/// Offset (int64 ticks), Duration (int64 ticks), IsKeyFrame (bool), Width (int32),
-/// Height (int32), Description (bin or nil), Codec (str or nil), SpatialLayerId (uint8),
-/// MaxSpatialLayerId (uint8), TemporalLayerId (uint8), SourceWidth (int32),
-/// SourceHeight (int32), MaxSpatialLayerWidth (int32), MaxSpatialLayerHeight (int32).
+/// Wire format: a 16-entry MessagePack map with PascalCase string keys — Data (bin),
+/// Offset (int64 ticks), OffsetEpoch (int32), Duration (int64 ticks), IsKeyFrame (bool),
+/// Width (int32), Height (int32), Description (bin or nil), Codec (str or nil),
+/// SpatialLayerId (uint8), MaxSpatialLayerId (uint8), TemporalLayerId (uint8),
+/// SourceWidth (int32), SourceHeight (int32), MaxSpatialLayerWidth (int32),
+/// MaxSpatialLayerHeight (int32).
 /// </para>
 /// </remarks>
 public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFrame?>
@@ -89,6 +90,7 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
         var mapLen = reader.ReadMapHeader();
 
         long offsetTicks = 0, durationTicks = 0;
+        var offsetEpoch = 0;
         var isKey = false;
         var width = 0;
         var height = 0;
@@ -111,6 +113,9 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
                     break;
                 case "Offset":
                     offsetTicks = reader.ReadInt64();
+                    break;
+                case "OffsetEpoch":
+                    offsetEpoch = reader.ReadInt32();
                     break;
                 case "Duration":
                     durationTicks = reader.ReadInt64();
@@ -164,6 +169,7 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
         return new VideoFrame(isKey) {
             Data = dataSlice,                       // slice of bytes
             Offset = new TimeSpan(offsetTicks),
+            OffsetEpoch = offsetEpoch,
             Duration = new TimeSpan(durationTicks),
             Width = width,
             Height = height,
@@ -212,13 +218,16 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
 
     private static void WriteFrame(ref MessagePackWriter writer, VideoFrame v)
     {
-        writer.WriteMapHeader(15);
+        writer.WriteMapHeader(16);
 
         writer.Write("Data");
         writer.Write(v.Data.Span);
 
         writer.Write("Offset");
         writer.Write(v.Offset.Ticks);
+
+        writer.Write("OffsetEpoch");
+        writer.Write(v.OffsetEpoch);
 
         writer.Write("Duration");
         writer.Write(v.Duration.Ticks);

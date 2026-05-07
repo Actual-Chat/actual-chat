@@ -48,6 +48,8 @@ export class OffThreadRenderBackend implements RenderBackend {
     private lastWatchdogAtMs = 0;
     // F1: track consecutive stall ticks before re-calling play().
     private consecutiveStallTicks = 0;
+    private consecutivePlayRetries = 0;
+    private intermittentStallScore = 0;
     private startupNoOutputTicks = 0;
     private startupNoOutputReported = false;
     // F2: observe parent classList flips (item-x ↔ item-focused) — the
@@ -246,14 +248,49 @@ export class OffThreadRenderBackend implements RenderBackend {
         const isStalled = this.videoEl.paused || dCt < 0.05;
         if (isStalled) {
             this.consecutiveStallTicks++;
+            if (!this.videoEl.paused && tracks.length > 0 && nowCt > 0.05)
+                this.intermittentStallScore++;
             if (this.consecutiveStallTicks >= 2 && tracks.length > 0) {
+                this.consecutivePlayRetries++;
                 warnLog?.log(
                     `tickWatchdog: stall detected (paused=${this.videoEl.paused}, ` +
-                    `dCt=${dCt.toFixed(3)}s, ticks=${this.consecutiveStallTicks}), retrying play()`);
+                    `dCt=${dCt.toFixed(3)}s, ticks=${this.consecutiveStallTicks}, ` +
+                    `playRetries=${this.consecutivePlayRetries}), retrying play()`);
+                if (!this.videoEl.paused && this.consecutivePlayRetries >= 3) {
+                    warnLog?.log(
+                        `tickWatchdog: live MSTG playback remained stalled after ` +
+                        `${this.consecutivePlayRetries} play retries, requesting fallback`);
+                    this.onPlaybackStalled?.({
+                        reason: 'live-playback-stall',
+                        currentTime: nowCt,
+                        readyState: this.videoEl.readyState,
+                        videoWidth: this.videoEl.videoWidth,
+                        videoHeight: this.videoEl.videoHeight,
+                        tracks: trackInfo,
+                    });
+                    return;
+                }
                 this.tryPlay('watchdog-stall');
             }
         } else {
             this.consecutiveStallTicks = 0;
+            this.consecutivePlayRetries = 0;
+            this.intermittentStallScore = Math.max(0, this.intermittentStallScore - 0.25);
+        }
+        if (!this.videoEl.paused && this.intermittentStallScore >= 2 && tracks.length > 0) {
+            warnLog?.log(
+                `tickWatchdog: intermittent MSTG playback stalls detected ` +
+                `(score=${this.intermittentStallScore.toFixed(1)}, currentTime=${nowCt.toFixed(3)}s), ` +
+                `requesting fallback`);
+            this.onPlaybackStalled?.({
+                reason: 'intermittent-live-playback-stall',
+                currentTime: nowCt,
+                readyState: this.videoEl.readyState,
+                videoWidth: this.videoEl.videoWidth,
+                videoHeight: this.videoEl.videoHeight,
+                tracks: trackInfo,
+            });
+            return;
         }
         const hasLiveTrack = tracks.some(t => t.readyState === 'live');
         const startupHasNoOutput =

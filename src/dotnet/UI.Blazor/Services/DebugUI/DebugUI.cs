@@ -52,6 +52,11 @@ public sealed partial class DebugUI : UIServiceBase<UIHub>, IDisposable
             return;
         }
         appLifetime.StopApplication();
+        // Same hard-exit watchdog the HTTP /health/stop endpoint uses.
+        // Without it a hung disposer leaves the process running while
+        // the loop sits on Step 3/3 forever.
+        HardExit.Schedule(TimeSpan.FromSeconds(15),
+            "DebugUI.StopServer: graceful shutdown didn't finish within 15s");
     }
 
     [JSInvokable]

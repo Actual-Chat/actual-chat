@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { ServerClock } from 'server-clock';
+import { ServerClock } from 'clocks';
 import { SharedSettings } from 'shared-settings';
 import { SharedSettingsWorkerSync, type SharedSettingsWorker } from 'shared-settings-worker';
 

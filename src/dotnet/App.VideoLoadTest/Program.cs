@@ -237,8 +237,8 @@ await Task.WhenAll(discoveryTasks).ConfigureAwait(false);
 WriteLine($"All {totalStreams} streams discovered across {chatCount} chats.");
 
 // --- Map discovered StreamId → (chatIdx, prodIdx) for latency correlation ---
-// Producer's sourceStartOffset becomes VideoStreamInfo.StartedAt on the server
-// (server: beginsAt = default(Moment) + FromSeconds(ClientStartOffset)). We match
+// Producer's clientStartAt becomes VideoStreamInfo.StartedAt on the server
+// (server: beginsAt = default(Moment) + FromSeconds(ClientStartAt)). We match
 // against the closest producer offset within the same chat.
 for (var ci = 0; ci < chatCount; ci++) {
     var streams = chatStreams[ci];

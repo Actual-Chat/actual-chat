@@ -1,5 +1,6 @@
 import { PromiseSource } from 'promises';
 import { getLogs } from 'logging';
+import { SharedSettings } from 'shared-settings';
 
 const { debugLog } = getLogs('SessionTokens');
 
@@ -35,5 +36,10 @@ export class SessionTokens {
 
         this.whenChanged.resolve(undefined);
         this.whenChanged = new PromiseSource<void>();
+
+        // Push into SharedSettings so workers (which can't reach
+        // `SessionTokens` directly across the worker boundary) get the
+        // fresh token via the existing SharedSettingsWorkerSync bridge.
+        SharedSettings.update({ sessionToken: token });
     }
 }

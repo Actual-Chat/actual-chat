@@ -1,6 +1,5 @@
 import { getLogs } from 'logging';
 import { MediaCapture } from '../../Services/Video/services/media-capture';
-import { BlurPreviewSession } from '../../Services/Video/services/blur-preview-session';
 import { RecorderPreviewView } from '../../Services/Video/services/recorder-preview-view';
 
 const { infoLog, warnLog, errorLog } = getLogs('JoinVideoCallModal');
@@ -20,9 +19,11 @@ export class JoinVideoCallModal {
     // without coordinating directly with each other.
     private recorderView: RecorderPreviewView | null = null;
 
-    // Blur preview state (Join mode only — Settings mode gets blurred frames
-    // directly from the recorder's pipeline via RecorderPreviewView).
-    private blurSession: BlurPreviewSession | null = null;
+    // Blur preview was wired through the legacy `videoProcessingWorker`'s
+    // preview-only mode, which the new pipeline doesn't support. The Join
+    // modal now shows the raw camera track in both blurred and unblurred
+    // states; blur kicks in once recording actually starts.
+    // TODO Phase 7.x: re-introduce a preview-only path in the new pipeline.
     private isBlurActive = false;
     private disposed = false;
 
@@ -182,33 +183,18 @@ export class JoinVideoCallModal {
         }
     }
 
-    private async startBlurPreview(): Promise<void> {
-        if (!this.track || this.isBlurActive) return;
-
-        try {
-            this.blurSession = await BlurPreviewSession.create({ track: this.track });
-            // Swap <video>.srcObject to the blurred MSTG output track. Camera
-            // <video> stays as-is in the DOM; only its source changes.
-            this.videoEl.srcObject = new MediaStream([this.blurSession.previewTrack]);
-            this.isBlurActive = true;
-        } catch (error) {
-            errorLog?.log('Failed to start blur preview:', error);
-            await this.stopBlurPreview();
-        }
+    private startBlurPreview(): Promise<void> {
+        // Preview-only blur is unsupported in the new pipeline. We
+        // mark the toggle as active for UI bookkeeping but the actual
+        // blur kicks in once recording starts.
+        this.isBlurActive = true;
+        infoLog?.log('startBlurPreview: preview-only blur unsupported; raw track stays visible.');
+        return Promise.resolve();
     }
 
-    private async stopBlurPreview(): Promise<void> {
-        // No-op when blur was never active. Skipping avoids reassigning srcObject
-        // + play() in the dispose path, which races stopPreview's srcObject=null
-        // and produces unhandled AbortError("play() interrupted by new load").
-        if (!this.isBlurActive && !this.blurSession) return;
-
+    private stopBlurPreview(): Promise<void> {
+        if (!this.isBlurActive) return Promise.resolve();
         this.isBlurActive = false;
-
-        if (this.blurSession) {
-            await this.blurSession.stop();
-            this.blurSession = null;
-        }
 
         // Restore the raw camera track on <video> so the user keeps seeing
         // themselves once blur is off.
@@ -217,6 +203,7 @@ export class JoinVideoCallModal {
             // .catch swallows AbortError when srcObject is cleared mid-play (dispose race).
             this.videoEl.play().catch(() => { /* benign */ });
         }
+        return Promise.resolve();
     }
 
     // ---------- Teardown ----------------------------------------------------

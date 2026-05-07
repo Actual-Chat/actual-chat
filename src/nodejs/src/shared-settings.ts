@@ -1,11 +1,17 @@
 import { EventHandlerSet } from 'event-handling';
 import { AC, initAppConstants, type AppConstants } from 'app-constants';
-import { ServerClock } from 'server-clock';
+import { ServerClock } from 'clocks';
 
 export interface SharedSettingsSnapshot {
     serverClockOffsetMs: number;
     apiUrl?: string;
     appConstants?: AppConstants;
+    /** Session token for worker-side RPC peer auth. Mirrors what
+     *  `Api.getSessionToken()` returns on the main thread. Workers
+     *  observe updates via {@link SharedSettings.changed} and pass
+     *  this string into the `?s=` query parameter when dialing the
+     *  RPC WebSocket — no per-request round-trip needed. */
+    sessionToken?: string;
 }
 
 let current: SharedSettingsSnapshot = {

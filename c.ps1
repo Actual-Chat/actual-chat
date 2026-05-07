@@ -1295,6 +1295,15 @@ function Start-DebugBrowsers {
         # manually.
         # Built-in flags first, caller's pass-through next, then the URL —
         # later flags override earlier ones, so user-supplied args win.
+        # TEMP: dropped `--use-file-for-fake-video-capture=...mjpeg` — under
+        # Chromium 147 the fake-device pipeline silently stops producing
+        # frames after ~1 second of MJPEG content (verified: track stays
+        # `live` but `<video>.currentTime` never advances and rVFC
+        # never fires). Without the flag Chrome falls back to its
+        # built-in synthetic moving-color-bars fake, which is supposed
+        # to keep producing frames indefinitely.
+        # If this works, the next step is to convert the test mjpeg
+        # to Y4M and put the flag back with that file.
         $cmdArgs = @(
             "--remote-debugging-port=$port",
             "--remote-debugging-address=0.0.0.0",
@@ -1303,7 +1312,7 @@ function Start-DebugBrowsers {
             "--disable-notifications",
             "--use-fake-ui-for-media-stream",
             "--use-fake-device-for-media-stream",
-            "--use-file-for-fake-video-capture=`"$fakeVideo`"",
+            # "--use-file-for-fake-video-capture=`"$fakeVideo`"",
             "--use-file-for-fake-audio-capture=`"$fakeAudio`"",
             "--auto-select-desktop-capture-source=Voxt",
             "--test-type"

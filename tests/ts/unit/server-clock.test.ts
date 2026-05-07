@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ServerClock } from 'server-clock';
+import { ServerClock } from 'clocks';
 
 describe('ServerClock', () => {
     it('should default to zero offset', () => {

@@ -156,9 +156,9 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         using var watchdogCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cancellationToken = watchdogCts.Token;
 
-        // Compatibility note: VideoRecord.ClientStartOffset is the legacy RPC/record
+        // Compatibility note: VideoRecord.ClientStartAt is the legacy RPC/record
         // name. The value itself is source time on the server-synced clock.
-        var sourceStartOffsetSeconds = record.ClientStartOffset;
+        var sourceStartOffsetSeconds = record.ClientStartAt;
         var sourceStartedAt = default(Moment) + TimeSpan.FromSeconds(sourceStartOffsetSeconds);
         var beginsAt = sourceStartedAt;
         var rules = await Chats.GetRules(record.Session, record.ChatId, cancellationToken)

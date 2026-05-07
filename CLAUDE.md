@@ -90,7 +90,7 @@ Build artifacts are stored in `artifacts/claude-docker/` to avoid permission con
 
 The user starts Chrome with remote debugging via `c chrome` command (port 9222). On Windows, this also creates a firewall rule to allow connections from WSL/Docker.
 
-**chrome-devtools MCP (preferred)**: If the `chrome-devtools` MCP server is available (configured in `.mcp.json`), prefer using it over Playwright for browser inspection, debugging, and interaction. It provides direct access to Chrome DevTools capabilities — taking screenshots/snapshots, clicking elements, filling forms, evaluating scripts, reading console messages, and more. The MCP server connects to host Chrome automatically via `tools/chrome-devtools-mcp-wrapper`.
+**chrome-devtools MCP (preferred over Playwright)**: Up to three `chrome-devtools` MCP servers may be wired up on ports `8765`–`8767`, each bound to its own host Chrome. When they're available (look for `mcp__chrome-devtools-{1,2,3}__*` tools), prefer them over Playwright — and pair them with the `/debug-ui` and `/server-loop` skills if those are available too. Both skills describe the rest.
 
 **Playwright**: Playwright and Chromium are also pre-installed in the Docker image. Use Playwright when you need to write automated test scripts or when the chrome-devtools MCP is not available. When the user asks you to "use host Chrome", connect Playwright to Chrome on the host:
 

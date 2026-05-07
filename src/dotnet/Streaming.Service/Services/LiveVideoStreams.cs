@@ -176,7 +176,7 @@ public class LiveVideoStreams : ILiveVideoStreams
     public async Task PushStream(
         Session session,
         string chatId,
-        double sourceStartOffsetSeconds,
+        double clientStartAt, // Unix epoch (seconds, double)
         VideoFormat format,
         RpcStream<VideoFrame> frameStream,
         StreamKind streamKind,
@@ -189,7 +189,7 @@ public class LiveVideoStreams : ILiveVideoStreams
         try {
             var chatIdTyped = ChatId.Parse(chatId);
             var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
-            var videoRecord = new VideoRecord(streamId, session, chatIdTyped, sourceStartOffsetSeconds, format, streamKind);
+            var videoRecord = new VideoRecord(streamId, session, chatIdTyped, clientStartAt, format, streamKind);
             Log.LogInformation("PushStream: {VideoRecord}", videoRecord);
 
             var newFrameStream = RpcStream.New(frameStream);

@@ -15,33 +15,42 @@ public partial class VideoFrame : MediaFrame
 
     [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
     public override TimeSpan Offset { get; init; }
+    /// <summary>
+    /// Increments every time the sender's monotonic capture clock is resynced
+    /// (sleep/wake, NTP step). The receiver uses an epoch change as the
+    /// trigger to reset its decode-side anchors and re-bootstrap pacing.
+    /// Senders that don't track this leave it at 0; receivers treat 0 as
+    /// "no epoch information" (no-op).
+    /// </summary>
     [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
-    public override TimeSpan Duration { get; init; }
+    public int OffsetEpoch { get; init; }
     [DataMember(Order = 3), MemoryPackOrder(3), Key(3)]
-    public override bool IsKeyFrame { get; init; }
+    public override TimeSpan Duration { get; init; }
     [DataMember(Order = 4), MemoryPackOrder(4), Key(4)]
-    public int Width { get; init; }
+    public override bool IsKeyFrame { get; init; }
     [DataMember(Order = 5), MemoryPackOrder(5), Key(5)]
+    public int Width { get; init; }
+    [DataMember(Order = 6), MemoryPackOrder(6), Key(6)]
     public int Height { get; init; }
 
     /// <summary>
     /// Codec-specific data (SPS/PPS for H.264). Only present on keyframes.
     /// ReadOnlyMemory&lt;byte&gt; for zero-copy slicing and reduced GC pressure.
     /// </summary>
-    [DataMember(Order = 6), MemoryPackOrder(6), Key(6)]
+    [DataMember(Order = 7), MemoryPackOrder(7), Key(7)]
     public ReadOnlyMemory<byte> Description { get; init; }
 
     /// <summary>
     /// Codec identifier (e.g., "avc1" for H.264). Only present on keyframes.
     /// </summary>
-    [DataMember(Order = 7), MemoryPackOrder(7), Key(7)]
+    [DataMember(Order = 8), MemoryPackOrder(8), Key(8)]
     public string? Codec { get; init; }
 
     /// <summary>
     /// SVC spatial layer ID. 0 = base (lowest-res) layer, 1+ = higher-res simulcast layers.
     /// Always 0 on single-encoder (P2P) streams.
     /// </summary>
-    [DataMember(Order = 8), MemoryPackOrder(8), Key(8)]
+    [DataMember(Order = 9), MemoryPackOrder(9), Key(9)]
     public byte SpatialLayerId { get; init; }
     [DataMember(Order = 10), MemoryPackOrder(10), Key(10)]
     public byte MaxSpatialLayerId { get; init; }

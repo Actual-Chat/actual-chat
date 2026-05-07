@@ -265,6 +265,9 @@ function applySnapshot(minLevels: Map<string, LogLevel>, snapshot: PersistedLogL
 
     minLevels.clear();
     for (const entry of snapshot.entries) {
+        // Runtime guard for JSON-parsed input — types claim it's a tuple, but
+        // localStorage may carry corrupted data. eslint flags the length check
+        // as always-false against the static type; that's the point.
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!Array.isArray(entry) || entry.length !== 2)
             return false;

@@ -59,3 +59,25 @@ export class CanvasRenderBackend implements RenderBackend {
         // Canvas element ownership stays with Blazor; nothing to release.
     }
 }
+
+export class TransferableCanvasRenderBackend implements RenderBackend {
+    readonly kind = 'canvas' as const;
+    readonly isOffThread = false;
+
+    constructor(private readonly canvas: HTMLCanvasElement) {}
+
+    getOutputSize(): { width: number; height: number } | null {
+        if (this.canvas.width <= 0 || this.canvas.height <= 0)
+            return null;
+        return { width: this.canvas.width, height: this.canvas.height };
+    }
+
+    drawFrame(pf: PresentableFrame): void {
+        const disposable = pf.drawable as unknown as { close?: () => void };
+        try { disposable.close?.(); } catch { /* ignore */ }
+    }
+
+    dispose(): void {
+        // Canvas element ownership stays with Blazor; nothing to release.
+    }
+}

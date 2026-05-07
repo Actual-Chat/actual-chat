@@ -19,7 +19,7 @@ import { ObjectPool } from 'object-pool';
 import { Resettable } from 'resettable';
 import { AudioInitializer } from '../../Services/audio-initializer';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
-import { ServerClock } from 'server-clock';
+import { ServerClock } from 'clocks';
 import { SharedSettings } from 'shared-settings';
 import { SharedSettingsWorkerSync } from 'shared-settings-worker';
 

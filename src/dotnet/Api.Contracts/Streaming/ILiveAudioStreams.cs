@@ -27,13 +27,12 @@ public interface ILiveAudioStreams : IComputeService
         string streamId,
         CancellationToken cancellationToken);
 
-    // `clientStartOffset` is the legacy RPC name; the value is sourceStartOffsetSeconds on the server-synced clock.
     [RpcMethod(RemoteExecutionMode = RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect)]
     Task PushStream(
         Session session,
         string chatId,
         string? repliedChatEntryId,
-        double clientStartOffset,
+        double clientStartAt, // Unix epoch (seconds, double)
         int preSkip,
         RpcStream<AudioFrame> frameStream,
         CancellationToken cancellationToken);

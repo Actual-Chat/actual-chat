@@ -8,7 +8,7 @@ import { delayAsync } from 'promises';
 import { RpcClientPeer, RpcConnectionState, RpcStream } from 'actuallab-rpc';
 import { Api, MediaRpcStreamOptions, streamingApi, toMoment,
     type ApiModule, type AudioFrameDto, type SessionTokenProvider } from 'api';
-import { ServerClock } from 'server-clock';
+import { ServerClock } from 'clocks';
 import { WorkerConnectivityUI } from './worker-connectivity-ui';
 import { getLogs } from 'logging';
 

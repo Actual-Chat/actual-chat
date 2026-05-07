@@ -16,7 +16,7 @@ import { ResolvedPromise } from 'promises';
 import { getLogs } from 'logging';
 import { BufferHandler } from '../workers/opus-decoder-worker-contract';
 import { AudioRingBuffer } from '../../AudioRecorder/audio-ring-buffer';
-import { ServerClock } from 'server-clock';
+import { ServerClock } from 'clocks';
 import { type SharedSettingsSnapshot } from 'shared-settings';
 import { sharedSettingsWorker } from 'shared-settings-worker';
 

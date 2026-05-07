@@ -84,6 +84,15 @@ The bridge is `supergateway --stateful --outputTransport streamableHttp`
 wrapping `chrome-devtools-mcp` (which is stdio-only). Stateful is what
 keeps `take_snapshot` → `click(uid)` working across calls.
 
+The image is built from `services/chrome-devtools-mcp/` with both packages
+baked in (no `npx` at runtime). Its entrypoint runs a supervisor loop and
+a Chrome watcher: when host Chrome becomes unreachable for ~10 s the
+watcher kills supergateway, the loop waits for Chrome to come back, then
+starts a fresh supergateway. Combined with `restart: unless-stopped`,
+restarting host Chrome no longer requires recreating the compose service —
+clients just need to re-issue `take_snapshot` after the recycle, since
+the previous snapshot UIDs are tied to the dead Chrome session.
+
 ### Bring it up (host)
 
 ```pwsh
@@ -124,6 +133,57 @@ Each `chrome-devtools-mcp` instance is hard-bound to one Chrome via
 session, so two independent Voxt logins → two Chromes → two MCPs. The
 `isolatedContext` parameter on `new_page` does **not** isolate cookies
 when MCP is connected to an existing Chrome — verified empirically.
+
+### Combine the MCP with Playwright when you need richer data
+
+The `chrome-devtools` MCP is convenient — `take_snapshot`, `click(uid)`,
+`evaluate_script`, request lists — but its `list_console_messages` is
+paginated, type-filtered, and (in practice) misses some entries. When
+you need ALL of a page's output (every `console.*` level, every page
+error, every unhandled rejection, network failures) **it's totally OK
+to attach Playwright via CDP in parallel**, just for that.
+
+Use Playwright **alongside** the MCP, not as a replacement:
+
+- **MCP**: continues to drive the UI (snapshot/click/evaluate). It's
+  ergonomic for one-off interactions and exploratory poking.
+- **Playwright**: a tiny script connects via `chromium.connectOverCDP`,
+  attaches `page.on('console' | 'pageerror' | 'crash')`, and streams
+  every event to a log file. Read the file as needed.
+
+The reverse direction also works: Playwright is also great for
+**long predictable UI sequences** (e.g. "sign in, navigate to chat,
+start audio + video, wait 60s, stop, re-enter") that you want to
+re-run multiple times without retyping. MCP is poor for that — every
+step is a separate evaluate.
+
+Sketch (`tmp/console-tap.mjs`):
+
+```js
+import { chromium } from 'playwright';
+const port = Number(process.argv[2] ?? 9222);
+const browser = await chromium.connectOverCDP(`http://localhost:${port}`);
+const ctx = browser.contexts()[0];
+const page = ctx.pages().find(p => p.url().includes('local.voxt.ai')) ?? ctx.pages()[0];
+page.on('console',   m => process.stdout.write(`[${m.type()}] ${m.text()}\n`));
+page.on('pageerror', e => process.stdout.write(`[PERR] ${e.stack ?? e.message}\n`));
+page.on('crash',     () => process.stdout.write(`[CRASH]\n`));
+await new Promise(() => {}); // keep alive; SIGINT to stop
+```
+
+Run with `node tmp/console-tap.mjs 9222 > tmp/console.log 2>&1 &`
+(or via the harness's `run_in_background` Bash flag), then drive the
+page from the MCP as usual. Tail / grep the log file when something
+mysterious happens.
+
+**Caveats:**
+- Playwright connects via CDP to the same Chrome — don't try to take
+  exclusive control (no `browser.close()` until you're done with MCP
+  too). Just attach listeners.
+- Same realm, same cookies. Playwright sees what the MCP sees; this
+  isn't isolation, it's an extra observer.
+- `connectOverCDP` works because `c chrome` already starts Chrome
+  with `--remote-debugging-port=...`. Same flag the MCP uses.
 
 ## 2. The debugUI helpers (browser console)
 
@@ -215,6 +275,49 @@ debugUI.getCurrentRenderMode();   // 'w'
 `Auto` first prerenders server, then upgrades to WASM — that's why
 `getCurrentRenderMode` may return `'s'` on the very first paint of an
 `'a'` selection and `'w'` once the runtime is up.
+
+### Hard-reload after WASM-affecting changes
+
+After a server restart, a plain reload is enough when render mode is
+`'s'` (Server). When the page is in `'w'` (WASM) or `'a'` (Auto,
+which generally upgrades to WASM), the SW keeps serving the stale
+hashed `bundle.<hash>.js` and the cached `_framework` payload — your
+fix won't take. You need a hard reload with caches cleared whenever:
+
+- you edited any `.ts` / `.css` (the bundle filename gets a new
+  fingerprint), **OR**
+- you edited any `.cs` that runs in WASM (`UI.Blazor.App`,
+  `UI.Blazor`, `Core`, etc., as opposed to server-only assemblies).
+
+One-liner:
+
+```js
+const regs = await navigator.serviceWorker.getRegistrations();
+for (const r of regs) await r.unregister();
+const cks = await caches.keys();
+for (const k of cks) await caches.delete(k);
+location.reload();
+```
+
+From the chrome-devtools MCP, `navigate_page` with `type:"reload"` and
+`ignoreCache:true` does the same, but the SW unregister is what makes
+the reload actually pick up the new hashed bundle.
+
+**Recommended workflow for an edit-and-test loop:**
+
+1. `await debugUI.setRenderMode('s')` once at the start of the
+   session. Server-render reloads are noticeably cheaper — no WASM
+   runtime to re-download, no service-worker dance — so iteration is
+   tighter.
+2. Run all your scenarios. If any fail, fix and retry under `'s'`.
+3. When everything passes under `'s'`, switch with `await
+   debugUI.setRenderMode('w')` and re-run the same scenarios end to
+   end. This is the final confirmation that the WASM build behaves
+   the same.
+
+Mixing in `'a'` (Auto) muddies the picture — the same session ends up
+running partly server-rendered, partly WASM, and "is this a
+server-only bug or a WASM bug?" gets harder to localize.
 
 ### Stop the server from the browser
 
@@ -405,23 +508,33 @@ the initiator paying the transcription cost.
 
 ### Stop recording the moment the test isn't about transcription
 
-**Transcription costs money** (per-second metered against the speech
-provider). When the user asks you to "test video", treat audio recording as
-a startup tax — turn it off as soon as everyone you need is connected and
-seeing each other. The video continues, the transcription stops.
+**Treat audio recording as resource consumption — not a default-on
+state.** Every second of recording bills against the speech-recognition
+provider. The rule:
 
-To stop recording: click the **big record button** again. It's now glowing
-red/pink; clicking it returns it to its idle state. The active video tiles
-keep streaming.
+- Don't turn it on unless the test actually needs it.
+- The instant you don't need it any longer, turn it off — even if
+  you're "about to use it again in a minute". You can always
+  re-enable later with the same record button. Cost during off-time
+  is zero.
+- **Before any longer edit / read / investigation cycle, stop
+  recording first.** A long edit pass with a mic still hot is the
+  most expensive shape of "Claude is thinking" — and it's pure
+  waste, since transcription continues regardless of whether the
+  assistant is actively driving the UI.
 
-You can also stop recording chat-by-chat from the **Active Chats** strip
-that appeared in the bottom-left when recording started — each entry has a
-mic icon you can click to mute that chat specifically.
+To stop recording: click the **big record button** again. It's now
+glowing red/pink; clicking it returns it to its idle state. **The
+active video tiles keep streaming** — stopping audio doesn't drop
+video calls, so there's no penalty for being aggressive about it.
 
-If you forget, the **idle video monitor** stops recording (and the call)
-after **15 minutes of inactivity**. So tests that run for the next hour
-without speaking will go silent on their own — fine for cleanup, not
-something to rely on for "this should still be running".
+You can also stop recording chat-by-chat from the **Active Chats**
+strip that appeared in the bottom-left when recording started — each
+entry has a mic icon you can click to mute that chat specifically.
+
+If you forget, the **idle video monitor** stops recording (and the
+call) after **15 minutes of inactivity**. Don't rely on this — it's a
+cleanup safety net, not a substitute for stopping deliberately.
 
 ### Screencast
 

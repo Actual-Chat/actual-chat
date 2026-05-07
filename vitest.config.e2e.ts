@@ -17,7 +17,7 @@ export default defineConfig({
             'rpc': src('rpc'),
             'math': src('math'),
             'object-pool': src('object-pool'),
-            'server-clock': src('server-clock'),
+            'clocks': src('clocks'),
             'async-processor': src('async-processor'),
         },
     },

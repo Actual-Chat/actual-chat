@@ -20,15 +20,13 @@ import { coreApi } from './core-api.js';
 const StreamPushMode = RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect;
 const StreamControlMode = RpcRemoteExecutionMode.AwaitForConnection;
 
-// `clientStartOffset` is the legacy RPC argument name. New caller code should
-// treat it as sourceStartOffsetSeconds: the source start timestamp on the
-// server-synced clock, expressed as seconds since Moment.EpochStart.
+// `clientStartAt` is the source's Unix-epoch capture timestamp (seconds, double).
 
 // --- ILiveVideoStreams (per-stream video push/pull + quality control) ---
 export const LiveVideoStreamsDef = defineRpcService('ILiveVideoStreams', {
     GetStream: { args: ['session', 'streamId'], returns: RpcType.stream },
     PushStream: {
-        args: ['session', 'chatId', 'clientStartOffset', 'format', 'frameStream', 'streamKind'],
+        args: ['session', 'chatId', 'clientStartAt', 'format', 'frameStream', 'streamKind'],
         remoteExecutionMode: StreamPushMode,
     },
     RequestKeyFrame: { args: ['session', 'streamId'], remoteExecutionMode: StreamControlMode },
@@ -41,7 +39,7 @@ export const LiveAudioStreamsDef = defineRpcService('ILiveAudioStreams', {
     GetStream: { args: ['session', 'streamId', 'skipTo'], returns: RpcType.stream },
     GetTranscriptStream: { args: ['session', 'streamId'], returns: RpcType.stream },
     PushStream: {
-        args: ['session', 'chatId', 'repliedChatEntryId', 'clientStartOffset', 'preSkip', 'frameStream'],
+        args: ['session', 'chatId', 'repliedChatEntryId', 'clientStartAt', 'preSkip', 'frameStream'],
         remoteExecutionMode: StreamPushMode,
     },
     ReportAudioLatency: { args: ['session', 'latency'] },
@@ -50,7 +48,7 @@ export const LiveAudioStreamsDef = defineRpcService('ILiveAudioStreams', {
 // --- IStreamServer (v2.6 client compat — audio + transcript only) ---
 export const StreamServerDef = defineRpcService('IStreamServer', {
     PushAudio: {
-        args: ['session', 'chatId', 'repliedChatEntryId', 'clientStartOffset', 'preSkip', 'frameStream'],
+        args: ['session', 'chatId', 'repliedChatEntryId', 'clientStartAt', 'preSkip', 'frameStream'],
         remoteExecutionMode: StreamPushMode,
     },
 });
@@ -63,6 +61,9 @@ export const StreamServerDef = defineRpcService('IStreamServer', {
 export interface VideoFrameDto {
     Data: Uint8Array;
     Offset: Moment;       // TimeSpan ticks (int64)
+    /** Sender's MonotonicClock epoch at capture. Increments on sleep/wake or
+     *  NTP step. Receiver resets decode-side anchors when this changes. */
+    OffsetEpoch?: number;
     Duration: Moment;     // TimeSpan ticks (int64)
     IsKeyFrame: boolean;
     Width?: number;
@@ -84,15 +85,26 @@ export interface VideoFrameDto {
     SourceHeight?: number;
 }
 
-// --- VideoFormat TypeScript interface ---
-// Matches .NET VideoFormat serialized via MessagePack with implicit string keys.
+// --- Size2D / VideoFormat TypeScript interfaces ---
+// Match .NET ActualChat.Media.Size2D and ActualChat.Video.VideoFormat
+// over MessagePack. Both use [Key(N)] attributes — MessagePack serializes
+// these as PascalCase property keys when string-key resolvers are in
+// play (ActualLab's RPC pipeline uses `MessagePackByteSerializer` which
+// derives keys from the property names regardless of the [Key] index).
+//
+// Important: `Width`/`Height`/`SourceWidth`/`SourceHeight` are NOT
+// flat fields on `VideoFormat` — they live nested under `Size` and
+// `SourceSize`. Sending them flat (the older shape) leaves the server's
+// `VideoFormat.Size` defaulted to (0, 0), which breaks downstream
+// width/height filters even though the call dispatches.
+export interface Size2DDto { Width: number; Height: number }
+
 export interface VideoFormatDto {
     Codec: string;
-    Width: number;
-    Height: number;
     CodecSettings: string;
-    SourceWidth: number;
-    SourceHeight: number;
+    SpatialLayerId?: number;
+    Size: Size2DDto;
+    SourceSize: Size2DDto;
 }
 
 // --- AudioFrame TypeScript interface ---

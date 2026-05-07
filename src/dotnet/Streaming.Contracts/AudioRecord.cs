@@ -9,7 +9,7 @@ public sealed partial record AudioRecord(
     [property: DataMember, MemoryPackOrder(0), Key(0)] StreamId StreamId, // Ignored on upload
     [property: DataMember, MemoryPackOrder(1), Key(1)] Session Session,
     [property: DataMember, MemoryPackOrder(2), Key(2)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] double ClientStartOffset,
+    [property: DataMember, MemoryPackOrder(3), Key(3)] double ClientStartAt, // Unix epoch (seconds, double)
     [property: DataMember, MemoryPackOrder(4), Key(4)] ChatEntryId? RepliedEntryId
     ) : IHasId<StreamId>, IHasNodeRef
 {

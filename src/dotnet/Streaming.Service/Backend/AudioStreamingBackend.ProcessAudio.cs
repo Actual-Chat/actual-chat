@@ -60,9 +60,8 @@ public partial class AudioStreamingBackend
 
         var session = record.Session;
         var chatId = record.ChatId;
-        // Compatibility note: AudioRecord.ClientStartOffset is the legacy RPC/record
-        // name. The value itself is source time on the server-synced clock.
-        var sourceStartOffsetSeconds = record.ClientStartOffset;
+        // ClientStartAt is the source's Unix-epoch capture timestamp (seconds).
+        var sourceStartOffsetSeconds = record.ClientStartAt;
         // Use source's server-synced clock (same as video) for consistent A/V timing.
         // Avoids adding client→server transit time to the timestamp, which would put
         // audio recordedAtMs on a different clock base than video startedAtMs.

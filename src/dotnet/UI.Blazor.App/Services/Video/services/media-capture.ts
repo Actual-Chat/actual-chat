@@ -159,7 +159,7 @@ export class MediaCapture {
     // iOS Safari MSTP: never request portrait. Sensor is physically landscape and
     // VideoFrame.rotation is left null — the rotation reconcile in
     // workers/video-processing.ts streamReadLoop (isRotated / isRotatedByCoded)
-    // and webgpu-downscaler.ts fallbackRotationDeg path only work with
+    // and webgpu/downscaler.ts fallbackRotationDeg path only work with
     // sensor-landscape frames. Asking iOS for portrait causes the encoder to
     // flip to landscape mid-startup, producing mis-oriented encoded output.
     // Android Chrome populates VideoFrame.rotation correctly, so portrait
