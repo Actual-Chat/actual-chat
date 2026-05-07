@@ -41,16 +41,27 @@
 }
 .left-chat-search-input .c-place-badge {
     @apply hidden;
-    @apply flex-none items-center self-center;
+    @apply flex-none items-center self-center gap-x-1;
     @apply h-8;
-    @apply ml-1 px-2 py-1.5;
+    @apply ml-1 pl-2 pr-1 py-1.5;
     @apply rounded-full;
-    @apply bg-05;
-    @apply text-02 text-caption-1 tracking-wider;
+    @apply bg-status-badge;
+    @apply text-status text-caption-4 tracking-wider;
     @apply whitespace-nowrap;
+    @apply cursor-pointer;
 }
 .left-chat-search-input.open .c-place-badge {
     @apply inline-flex;
+}
+.left-chat-search-input .c-place-badge-text {
+    @apply flex-none;
+}
+.left-chat-search-input .c-place-badge-close {
+    @apply flex-none;
+    @apply text-03;
+}
+.left-chat-search-input .c-place-badge-close i {
+    @apply text-base leading-none;
 }
 .left-chat-search-input.open.place .search-input input {
     @apply flex-1 min-w-0;
