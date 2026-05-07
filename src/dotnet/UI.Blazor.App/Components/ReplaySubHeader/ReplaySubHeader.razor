@@ -7,6 +7,15 @@
     var isNarrow = ScreenSize.IsNarrow();
     var size = isNarrow ? SquareSize.Size8 : SquareSize.Size6;
     var maxAvatars = isNarrow ? 3 : 4;
+    var participantCount = m?.ParticipantCount ?? 0;
+    var slotCount = participantCount switch {
+        <= 2 => 2,
+        3 => 3,
+        _ => maxAvatars,
+    };
+    var showDivider = participantCount > 0 && participantCount <= 3;
+    var showSkeletons = participantCount > 2;
+    var slotsCls = $"c-slots-{slotCount}";
     var speed = m?.Speed ?? ChatAudioUI.ReplaySettings.Value.Speed;
     var speedLabel = Math.Abs(speed - 1.0) < 0.01 ? "1x" : $"{speed:0.##}x";
 
@@ -28,12 +37,24 @@
 }
 
 <SubHeader Class="replay-subheader" IsVisible="@(m is not null)">
-    <AuthorCircleGroup
-        Class="c-authors"
-        MaxCount="@maxAvatars"
-        Size="@size"
-        AuthorIds="@m?.AuthorIds"
-        IsListening="true"/>
+    <div class="c-authors-block @slotsCls">
+        @if (showSkeletons) {
+            <div class="c-skeletons" aria-hidden="true">
+                @for (var i = 0; i < slotCount; i++) {
+                    <div class="replay-skeleton"></div>
+                }
+            </div>
+        }
+        <AuthorCircleGroup
+            Class="c-authors"
+            MaxCount="@slotCount"
+            Size="@size"
+            AuthorIds="@m?.AuthorIds"
+            IsListening="true"/>
+    </div>
+    @if (showDivider) {
+        <div class="c-divider" aria-hidden="true"></div>
+    }
     <div class="c-info">
         @if (m?.ShowChatTitle == true) {
             <a class="c-title" href="@Links.Chat(m.ChatId)">@titleLabel</a>
@@ -87,6 +108,7 @@
     private RewindDelayer? _rewindController;
 
     private IChats Chats => Hub.Chats;
+    private IAuthors Authors => Hub.Authors;
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ActivePlaybackInfo ActivePlaybackInfo => Hub.ActivePlaybackInfo;
@@ -109,6 +131,7 @@
 
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var chatTitle = chat?.Title ?? "";
+        var participantCount = await GetParticipantCount(chatId, cancellationToken).ConfigureAwait(false);
 
         // Paused state: player is stopped, but we still show the banner
         if (replayState.PausedAt is { } pausedAt)
@@ -121,6 +144,7 @@
                 ChatTitle = chatTitle,
                 ShowChatTitle = chatId != selectedChatId,
                 AuthorIds = lastState?.AuthorIds ?? [],
+                ParticipantCount = participantCount,
             };
 
         var player = await ChatAudioUI.GetReplayer(chatId, cancellationToken).ConfigureAwait(false);
@@ -156,12 +180,20 @@
                 ChatTitle = chatTitle,
                 ShowChatTitle = chatId != selectedChatId,
                 AuthorIds = authorIds.ToList(),
+                ParticipantCount = participantCount,
             };
 
         // No playing tracks yet (e.g. resuming) — keep last state to avoid blinking
         if (lastState is not null && lastState.ChatId == chatId)
             return lastState with { Player = player, IsPaused = isPaused };
         return null;
+    }
+
+    private async Task<int> GetParticipantCount(ChatId chatId, CancellationToken cancellationToken) {
+        if (chatId.Kind == ChatKind.Peer)
+            return 2;
+        var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return allAuthorIds.Length;
     }
 
     private void OnStop()
@@ -226,6 +258,7 @@
         public required ChatId ChatId { get; init; }
         public bool ShowChatTitle { get; init; }
         public IReadOnlyList<AuthorId> AuthorIds { get; init; } = [];
+        public int ParticipantCount { get; init; }
 
         // This record relies on referential equality
         public bool Equals(Model? other) => ReferenceEquals(this, other);

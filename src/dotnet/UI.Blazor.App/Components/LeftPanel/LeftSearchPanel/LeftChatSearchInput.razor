@@ -13,7 +13,15 @@
         <div class="search-input">
             <label>
                 @if (Place != null) {
-                    <span class="c-place-badge" title="@Place.Title">In this Place:</span>
+                    <span class="c-place-badge" title="@Place.Title">
+                        <span class="c-place-badge-text">In this Place:</span>
+                        <HeaderButton Click="@OnPlaceBadgeRemove"
+                                      Class="c-place-badge-close btn-sm"
+                                      StopPropagation="true"
+                                      PreventDefault="true">
+                            <i class="icon-close"></i>
+                        </HeaderButton>
+                    </span>
                 }
                 <TextInput
                     @ref="_inputRef"
@@ -28,7 +36,7 @@
                 <ButtonRound Click="@OnSearchButtonClick" Class="c-ai-btn search-btn btn-transparent">
                     <i class="icon-search text-xl"></i>
                 </ButtonRound>
-                <HeaderButton Click="@(_ => OnClick(false))" Class="c-close-btn">
+                <HeaderButton Click="@OnCloseClick" Class="c-close-btn">
                     <i class="icon-close text-2xl"></i>
                 </HeaderButton>
             </label>
@@ -38,8 +46,10 @@
 
 @code {
     TextInput? _inputRef;
+    bool _hasText;
 
     private SearchUI SearchUI => Hub.SearchUI;
+    private NavbarUI NavbarUI => Hub.NavbarUI;
 
     [Parameter] public Place? Place { get; set; }
     [Parameter] public string Placeholder { get; set; } = "Search";
@@ -62,6 +72,7 @@
         var isOpen = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false)
                      || await SearchUI.IsShowRecentOn.Use(cancellationToken).ConfigureAwait(false);
         var initialText = SearchUI.Text.Value; // .Value instead of .Use() is intentional here (AY: why?)
+        _hasText = !initialText.IsNullOrEmpty();
         return new Model(isOpen, initialText);
     }
 
@@ -77,9 +88,35 @@
         => _inputRef?.Focus();
 
     private void OnSearchInputTextChanged(string text) {
-        SearchUI.PlaceId.Value = Place?.Id;
+        // Empty input restores the place filter (a fresh search defaults to in-place);
+        // any non-empty input keeps whatever filter the user has set (Place may be null
+        // if the badge was removed).
+        SearchUI.PlaceId.Value = text.IsNullOrEmpty()
+            ? GetNavbarPlaceId()
+            : Place?.Id;
         SearchUI.Text.Value = text;
+        UpdateHasText(text);
     }
+
+    private PlaceId? GetNavbarPlaceId()
+        => NavbarUI.IsPlaceSelected(out var placeId) ? placeId : null;
+
+    private void OnCloseClick() {
+        if (_hasText) {
+            _ = _inputRef?.Clear();
+            UpdateHasText("");
+        } else {
+            OnClick(false);
+        }
+    }
+
+    private void OnPlaceBadgeRemove() {
+        SearchUI.PlaceId.Value = null;
+        StateHasChanged();
+    }
+
+    private void UpdateHasText(string text)
+        => _hasText = !text.IsNullOrEmpty();
 
     private ValueTask Cancel()
         => _inputRef?.Clear() ?? default;
