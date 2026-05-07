@@ -1,5 +1,6 @@
 import { getLogs } from 'logging';
-import { Api, WorkerKind } from 'api';
+import { Api, MediaRpcStreamOptions, streamingApi, toMoment, WorkerKind, type VideoFormatDto, type VideoFrameDto } from 'api';
+import { RpcStream } from 'actuallab-rpc';
 import { OnDeviceAwake } from 'on-device-awake';
 import { SvgCache } from '../../Components/Avatar/svg-cache';
 
@@ -291,5 +292,49 @@ export class DebugUI {
         });
 
         infoLog?.log(`startDOMEventSniffer: installed` + (hasBlazorHook ? '' : ' (no Blazor hook)'));
+    }
+
+    /**
+     * Diagnostic: call `streamingApi.liveVideoStreams.PushStream` directly
+     * from the main thread with a synthetic single-keyframe payload. If
+     * the server logs `PushStream ENTRY` for `chatId='debug-test'`, the
+     * wire shape + auth are fine and the recorder worker has a separate
+     * issue. If it doesn't, the problem is in the streamingApi proxy
+     * or the wire DTO.
+     */
+    public static async testPushStream(chatId = 'debug-test'): Promise<string> {
+        const peer = Api.peer;
+        const format: VideoFormatDto = {
+            Codec: 'avc1.640028',
+            CodecSettings: '',
+            Size: { Width: 1280, Height: 720 },
+            SourceSize: { Width: 1280, Height: 720 },
+        };
+        const fakeData = new Uint8Array(64);
+        fakeData[0] = 0x42;
+        const dto: VideoFrameDto = {
+            Data: fakeData,
+            Offset: toMoment(0),
+            Duration: toMoment(0),
+            IsKeyFrame: true,
+            Width: 1280,
+            Height: 720,
+        };
+        const stream = new RpcStream<VideoFrameDto>(
+            (async function* () { await Promise.resolve(); yield dto; })(),
+            MediaRpcStreamOptions.videoRealtime<VideoFrameDto>(),
+        );
+        infoLog?.log(`testPushStream: calling PushStream chatId=${chatId} ...`);
+        try {
+            // 0 = Webcam streamKind. session='~' resolves to Session.Default.
+            await streamingApi.liveVideoStreams.PushStream('~', chatId, 0, format, stream.toRef(peer), 0);
+            return 'ok';
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
+            infoLog?.log(`testPushStream: rejected: ${msg}`);
+            return `error: ${msg}`;
+        } finally {
+            try { stream.disconnect(); } catch { /* ignore */ }
+        }
     }
 }

@@ -8,26 +8,15 @@ include:
 # target Chrome debug port from $CHROME_DEBUG_PORT, so callers control the
 # binding via the environment override on the service (or the .env file) — not
 # baked into the compose definition. Listens on port 8765 internally; the
-# instance maps it to a unique host port.
+# instance maps it to a unique host port. The image is built from
+# ./services/chrome-devtools-mcp — its entrypoint supervises supergateway and
+# recycles it when host Chrome flaps, so --stateful sessions recover after a
+# Chrome restart.
 x-chrome-devtools-mcp-base: &chrome-devtools-mcp-base
-  image: node:20-alpine
+  build: ./services/chrome-devtools-mcp
+  restart: unless-stopped
   extra_hosts:
     - "host.docker.internal:host-gateway"
-  command:
-    - sh
-    - -c
-    - |
-      # Chrome's /json/version rejects Host headers that aren't localhost or
-      # an IP literal, so resolve host.docker.internal to IPv4 here.
-      HOST_IP=$$(getent ahosts host.docker.internal | awk '$$1 ~ /\./ { print $$1; exit }')
-      echo "Resolved host.docker.internal -> $$HOST_IP, target Chrome :$$CHROME_DEBUG_PORT"
-      exec npx -y supergateway \
-        --stdio "npx -y chrome-devtools-mcp@0.20.0 --browserUrl http://$$HOST_IP:$$CHROME_DEBUG_PORT --acceptInsecureCerts" \
-        --outputTransport streamableHttp \
-        --stateful \
-        --port 8765 \
-        --healthEndpoint /healthz \
-        --logLevel info
   healthcheck:
     test: ["CMD-SHELL", "wget -qO- http://localhost:8765/healthz >/dev/null 2>&1 || exit 1"]
     interval: 15s

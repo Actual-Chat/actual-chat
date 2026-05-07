@@ -16,10 +16,10 @@ export interface OpusEncoderWorker extends SharedSettingsWorker {
      *  loop will re-create it. Invoked by {@link DebugUI.disconnectApi}. */
     disconnectApi(noWait?: RpcNoWait): Promise<void>;
     /** Debug-only: bias the recorder's reported source start timestamp
-     *  (`clientStartOffset` in the legacy RPC contract) by `offsetMs` ms on
-     *  every new PushStream. Used to simulate
-     *  audio drift relative to real time so the audio catch-up policy can be
-     *  exercised end-to-end. Invoked by {@link DebugUI.setAudioRecorderOffset}. */
+     *  (`clientStartAt` in the RPC contract) by `offsetMs` ms on every new
+     *  PushStream. Used to simulate audio drift relative to real time so the
+     *  audio catch-up policy can be exercised end-to-end. Invoked by
+     *  {@link DebugUI.setAudioRecorderOffset}. */
     setRecorderOffset(offsetMs: number, noWait?: RpcNoWait): Promise<void>;
     runDiagnostics(diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState>;
 

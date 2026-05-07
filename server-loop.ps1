@@ -19,7 +19,14 @@
 [CmdletBinding()]
 param(
     [Alias('c')]
-    [string]$Configuration = "Release"
+    [string]$Configuration = "Release",
+    # Anything after the named params is forwarded to `dotnet run` AFTER
+    # the `--` separator — i.e. it goes to App.Server.exe as command-line
+    # arguments. Example:
+    #   pwsh -NoProfile -File server-loop.ps1 -c Debug --foo --bar=baz
+    # → `dotnet run -c Debug ... -- --foo --bar=baz`
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$ServerArgs = @()
 )
 
 $ErrorActionPreference = "Continue"
@@ -95,13 +102,62 @@ function Get-BaseUri {
 # child's keyboard watcher don't reach it because we redirect stdout/stderr to
 # capture logs (which detaches the inherited console on Windows), so we forward
 # keypresses from the loop terminal via this HTTP path instead.
+#
+# 502 / 503 / connection-refused responses mean the upstream is already
+# down (server has stopped or is mid-restart). That's the desired
+# end-state, so we treat them as success and keep the log line quiet.
+# Watchdog helpers: external liveness check used during Step 3 in case the
+# in-process /health/stop hard-exit watchdog can never arm because the
+# listener itself is unresponsive (NGINX 502, direct port refused).
+#
+# The .NET process publishes its bound port via a single log line:
+#   "[ActualChat.Mesh.MeshWatcher] [+] Endpoint lock acquired: localhost:<port>"
+# The line is stable across one dotnet run; the .log file is wiped at the
+# start of every loop iteration, so the next process writes a fresh line.
+function Get-ServerPortFromDevLog {
+    if (-not (Test-Path $devLog)) { return $null }
+    try {
+        $line = Select-String -Path $devLog `
+            -Pattern '\[ActualChat\.Mesh\.MeshWatcher\] \[\+\] Endpoint lock acquired: localhost:(\d+)' `
+            -ErrorAction SilentlyContinue |
+            Select-Object -Last 1
+        if ($line -and $line.Matches.Count -gt 0) {
+            return [int]$line.Matches[0].Groups[1].Value
+        }
+    } catch {
+        # Log is currently being written; transient I/O errors are fine.
+    }
+    return $null
+}
+
+function Test-ServerProbe([int]$Port) {
+    $url = "http://localhost:$Port/healthz/live"
+    try {
+        $resp = Invoke-WebRequest -Uri $url -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop
+        return ([int]$resp.StatusCode -ge 200) -and ([int]$resp.StatusCode -lt 400)
+    } catch {
+        return $false
+    }
+}
+
 function Send-StopSignal {
     $url = "$(Get-BaseUri)/health/stop"
     Write-LoopLog "Forwarding stop request to $url..."
     try {
         Invoke-WebRequest -Uri $url -Method Get -TimeoutSec 5 -SkipCertificateCheck -UseBasicParsing | Out-Null
     } catch {
-        Write-LoopLog "Stop request failed: $_"
+        $resp = $_.Exception.Response
+        $status = $null
+        if ($resp -is [System.Net.Http.HttpResponseMessage]) { $status = [int]$resp.StatusCode }
+        elseif ($resp -is [System.Net.HttpWebResponse]) { $status = [int]$resp.StatusCode }
+        # 502/503 from nginx + raw socket errors all mean "upstream gone" —
+        # which is what stop is trying to achieve. Don't yell about it.
+        $upstreamGone = ($status -in 502, 503, 504) -or ($_.Exception -is [System.Net.WebException] -and $resp -eq $null)
+        if ($upstreamGone) {
+            Write-LoopLog "Stop request: upstream already down (treating as success)."
+        } else {
+            Write-LoopLog "Stop request failed: $_"
+        }
     }
 }
 
@@ -164,26 +220,115 @@ while ($true) {
         # IHostApplicationLifetime.StopApplication path the child would have.
         # Stdout and stderr go to separate sibling files so output streams stay
         # uninterleaved — the .err file is empty on a healthy run.
+        # Args after `--` are forwarded to App.Server.exe. The loop owns
+        # keypress handling itself (forwards 's'/'x' / any-key to
+        # /health/stop), so the App.Server-side `-kb` keyboard watcher
+        # would have nothing to read — its stdin is captured by the
+        # redirect anyway. We don't pass `-kb`. `$ServerArgs` appends
+        # whatever the operator passed to server-loop.ps1.
+        $serverRunArgs = @('run', '-c', $Configuration, '--no-launch-profile', '--project', $projectCsproj, '--') + $ServerArgs
         $proc = Start-Process -FilePath dotnet `
-            -ArgumentList @('run', '-c', $Configuration, '--no-launch-profile', '--project', $projectCsproj, '--', '-kb') `
+            -ArgumentList $serverRunArgs `
             -RedirectStandardOutput $serverRunOutLog -RedirectStandardError $serverRunErrLog `
             -NoNewWindow -PassThru
-        Write-Host "Keyboard: 's' or 'x' = stop the server (forwarded to /health/stop)." -ForegroundColor Cyan
+        Write-Host "Keyboard: any key = stop the server (forwarded to /health/stop; force-kill after 30s)." -ForegroundColor Cyan
+
+        # Watchdog state: probe /healthz/live once we've learned the port
+        # from the MeshWatcher log line. Two consecutive misses
+        # -> Stop-Process -Force on $proc so the loop can recycle into a
+        # fresh build. First probe lands 10s after process start (the
+        # MeshWatcher line should have been written by then); subsequent
+        # probes every 15s. If the port isn't in the log when a probe is
+        # due, that itself counts as a missed probe.
+        $watchdogPort = $null
+        $watchdogMissCount = 0
+        $watchdogAnnounced = $false
+        $watchdogNextProbeAt = (Get-Date).AddSeconds(10)
+        # Keyboard-stop force-kill deadline: set when the user presses a
+        # key in the loop terminal. If $proc hasn't exited by then we
+        # bypass /health/stop entirely with Stop-Process -Force.
+        $keyStopForceKillAt = $null
+        # Set whenever the loop knows it caused the exit (stop signal sent
+        # or watchdog killed the process). On exit we treat non-zero codes
+        # as "stop-style termination" instead of a start failure, since
+        # FailFast / Stop-Process -Force never exit 0.
+        $stopRequested = $false
 
         while (-not $proc.HasExited) {
             try {
                 if ([System.Console]::KeyAvailable) {
-                    $ch = [System.Console]::ReadKey($true).KeyChar
-                    if ($ch -in 's','S','x','X') { Send-StopSignal }
+                    [void][System.Console]::ReadKey($true)
+                    if (-not $keyStopForceKillAt) {
+                        Send-StopSignal
+                        $stopRequested = $true
+                        $keyStopForceKillAt = (Get-Date).AddSeconds(30)
+                        Write-LoopLog "Stop signal sent; will force-kill PID $($proc.Id) if it doesn't exit within 30s."
+                    }
+                    # Subsequent keypresses while we wait are no-ops; the
+                    # 30s deadline already covers the "stop didn't take" case.
                 }
             } catch {
                 # Detached / no console — fall back to passive wait.
             }
+
+            if ($keyStopForceKillAt -and (Get-Date) -ge $keyStopForceKillAt) {
+                Write-LoopLog "Keyboard-stop: graceful shutdown didn't complete within 30s; force-killing PID $($proc.Id)."
+                try { Stop-Process -Id $proc.Id -Force -ErrorAction Stop }
+                catch { Write-LoopLog "Keyboard-stop: Stop-Process failed: $_" }
+                $stopRequested = $true
+                # Clear the deadline so we don't retry on the next tick.
+                # $proc.HasExited will flip after Stop-Process.
+                $keyStopForceKillAt = $null
+            }
+
+            if ((Get-Date) -ge $watchdogNextProbeAt) {
+                if (-not $watchdogPort) {
+                    $watchdogPort = Get-ServerPortFromDevLog
+                }
+                $probeOk = $false
+                if ($watchdogPort) {
+                    if (-not $watchdogAnnounced) {
+                        Write-LoopLog "Watchdog: started — probing http://localhost:$watchdogPort/healthz/live every 15s, kill after 2 misses."
+                        $watchdogAnnounced = $true
+                    }
+                    $probeOk = Test-ServerProbe $watchdogPort
+                }
+
+                if ($probeOk) {
+                    $watchdogMissCount = 0
+                } else {
+                    $watchdogMissCount++
+                    if ($watchdogPort) {
+                        Write-LoopLog "Watchdog: miss $watchdogMissCount/2 on port $watchdogPort (PID $($proc.Id))."
+                    } else {
+                        Write-LoopLog "Watchdog: miss $watchdogMissCount/2 — MeshWatcher port not yet in $devLog."
+                    }
+                    if ($watchdogMissCount -ge 2) {
+                        Write-LoopLog "Watchdog: two consecutive misses; force-killing PID $($proc.Id)."
+                        try { Stop-Process -Id $proc.Id -Force -ErrorAction Stop }
+                        catch { Write-LoopLog "Watchdog: Stop-Process failed: $_" }
+                        $stopRequested = $true
+                        # $proc.HasExited will flip on the next tick.
+                    }
+                }
+                $watchdogNextProbeAt = (Get-Date).AddSeconds(15)
+            }
+
             Start-Sleep -Milliseconds 200
         }
         $exitCode = $proc.ExitCode
-        if ($exitCode -ne 0) {
-            # Server exits non-zero only on start failure. Stop-style termination is exit 0.
+        # Did the server reach "I bound a port" before exiting? If so any
+        # exit is a post-start termination (stop signal in any of its
+        # forms — keyboard, /health/stop, DebugUI, watchdog, in-process
+        # HardExit) and we restart. If the MeshWatcher line never
+        # appeared, the process never finished startup — that's a real
+        # failure and the loop should park.
+        $reachedSteadyState = $stopRequested -or ($null -ne (Get-ServerPortFromDevLog))
+        if ($reachedSteadyState) {
+            # FailFast / Stop-Process -Force don't yield exit 0; the
+            # original "exit 0 only" rule would falsely park the loop.
+            Write-LoopLog "Server stopped (exit code $exitCode). Restarting from step 1..."
+        } elseif ($exitCode -ne 0) {
             $failureMessage = "Step 3 (server-run) failed to start, exit code $exitCode."
         } else {
             Write-LoopLog "Server stopped. Restarting from step 1..."

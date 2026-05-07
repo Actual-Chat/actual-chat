@@ -35,6 +35,7 @@ export type LogScope =
     // Library
     | 'Api'
     | 'AsyncProcessor'
+    | 'AsyncVideoEncoder'
     | 'BrowserInfo'
     | 'BrowserInit'
     | 'BubbleHost'
@@ -141,6 +142,7 @@ const defaults: Record<LogScope, LogLevel> = {
     // Library
     Api: LogLevel.Warn,
     AsyncProcessor: LogLevel.Warn,
+    AsyncVideoEncoder: LogLevel.Warn,
     BrowserInfo: LogLevel.Warn,
     BrowserInit: LogLevel.Warn,
     BubbleHost: LogLevel.Warn,

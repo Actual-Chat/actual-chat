@@ -13,7 +13,7 @@ import { Versioning } from 'versioning';
 
 import { Api } from 'api';
 import { AudioStream, AudioStreamer } from './audio-streamer';
-import { ServerClock } from 'server-clock';
+import { ServerClock } from 'clocks';
 import { AudioVadWorker } from './audio-vad-worker-contract';
 import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { OpusEncoderWorklet } from '../worklets/opus-encoder-worklet-contract';

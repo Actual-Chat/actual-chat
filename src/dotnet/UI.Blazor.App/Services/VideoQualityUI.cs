@@ -569,7 +569,11 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             string.Join(", ", entries.Select(x =>
                 $"{x.Key.Value}:v{x.Value.Verdict}/req=L{requestedMap[x.Key.Value].MaxSpatialLayer}/cur=L{x.Value.Snapshot.CurrentMaxSpatial}"
                 + $"/rate={x.Value.Snapshot.IncomingByteRate}/peak={x.Value.PeakIncomingByteRate}"
-                + $"/buf={x.Value.Snapshot.BufferDurationMsEma:F0}ms")));
+                + $"/buf={x.Value.Snapshot.BufferDurationMsEma:F0}ms"
+                + $"/skips={x.Value.Snapshot.KeyframeSkipsInWindow}"
+                + $"/qDepth={x.Value.Snapshot.DecoderQueueDepthEma:F0}"
+                + $"/qReduce={x.Value.Snapshot.QualityReductionRequested}"
+                + $"/age={x.Value.Snapshot.StreamAgeMs}ms")));
         var streamInfoMap = new ApiMap<string, PlaybackStreamInfo>();
         foreach (var (streamId, state) in entries) {
             var requestedQuality = requestedMap[streamId.Value];

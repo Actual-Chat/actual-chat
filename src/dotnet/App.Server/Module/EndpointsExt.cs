@@ -43,6 +43,8 @@ public static class EndpointsExt
 
         Console.WriteLine($"HTTP {HealthPathPrefix}/stop received - stopping the server...");
         lifetime.StopApplication();
+        HardExit.Schedule(TimeSpan.FromSeconds(15),
+            $"{HealthPathPrefix}/stop: graceful shutdown didn't finish within 15s");
         return Results.Text("stopping\n");
     }
 }

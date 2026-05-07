@@ -84,7 +84,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         Session session,
         string chatId,
         string? repliedChatEntryId,
-        double sourceStartOffsetSeconds,
+        double clientStartAt, // Unix epoch (seconds, double)
         int preSkip,
         RpcStream<AudioFrame> frameStream,
         CancellationToken cancellationToken)
@@ -95,7 +95,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
             var repliedEntryIdTyped = ChatEntryId.ParseNullable(repliedChatEntryId);
 
             var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
-            var audioRecord = new AudioRecord(streamId, session, chatIdTyped, sourceStartOffsetSeconds, repliedEntryIdTyped);
+            var audioRecord = new AudioRecord(streamId, session, chatIdTyped, clientStartAt, repliedEntryIdTyped);
             Log.LogInformation("PushStream: {AudioRecord}", audioRecord);
 
             var newFrameStream = RpcStream.New(frameStream);

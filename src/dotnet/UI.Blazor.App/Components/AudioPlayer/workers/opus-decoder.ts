@@ -15,7 +15,7 @@ import { ObjectPool } from 'object-pool';
 import { getLogs } from 'logging';
 import { BufferHandler } from './opus-decoder-worker-contract';
 import Denque from 'denque';
-import { ServerClock } from 'server-clock';
+import { ServerClock } from 'clocks';
 
 const { logScope, debugLog, warnLog, errorLog } = getLogs('OpusDecoder');
 const enableFrequentDebugLog = false;

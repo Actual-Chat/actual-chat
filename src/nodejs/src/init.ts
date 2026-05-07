@@ -2,7 +2,7 @@ import { DeviceInfo } from 'device-info';
 import { Interactive } from 'interactive';
 import { Gestures } from 'gestures';
 import { EmojiPreview } from 'emoji-preview';
-import { ServerClock } from 'server-clock';
+import { ServerClock } from 'clocks';
 import { SharedSettings } from 'shared-settings';
 import { ServiceWorker } from 'service-worker';
 import { BrowserInit } from '../../dotnet/UI.Blazor/Services/BrowserInit/browser-init';

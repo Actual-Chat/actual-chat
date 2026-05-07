@@ -29,6 +29,27 @@ the marker line `Last step failed, remove this file to restart the loop.`
 is the last line of `tmp/server-loop.log`. To unstick, delete that file
 or press a key in the loop terminal.
 
+### DON'T manually run `npm run build:Debug` while the loop is running
+
+Step 1 of the loop already runs `npm run build:Debug` on every iteration.
+If you `npm run build:Debug` first AND THEN trigger a restart, you build
+twice — and the second one (the loop's) is the one whose output the .NET
+host actually picks up via the bundle-fingerprint emitted at startup.
+
+Workflow when iterating on TS / shared code with the loop running:
+1. Edit code.
+2. Trigger a restart — `debugUI.stopServer()`, `curl /health/stop`, OR
+   `rm tmp/server-loop.log` if the loop parked at "Last step failed".
+3. Wait for `Step 3/3 (server-run)` + the watchdog's
+   `Watchdog: started — probing http://localhost:7080/healthz/live …`
+   line in `tmp/server-loop.log` and a 200 from
+   `https://local.voxt.ai/`.
+4. Reload Chrome (hard-reload if WASM mode — see `/debug-ui`).
+
+That's it. ~30 seconds and the bundle the page loads is fresh. Manual
+`npm run build:Debug` is appropriate ONLY when the loop isn't running
+(or when you're hunting a build error in isolation).
+
 ## Cross-environment caveat
 
 You may be running in Docker/WSL while `server-loop` runs on the host
@@ -215,3 +236,14 @@ not hot-reload. After editing the script (renaming log files, changing
 env vars, etc.), the host needs to **restart the loop** for the changes
 to take effect. C# / TypeScript changes are picked up by the next
 rebuild and don't need a loop restart.
+
+## After a server restart, hard-reload the browser when WASM is in play
+
+A plain reload is enough when render mode is `'s'` (Server). When the
+page is in `'w'` (WASM) or `'a'` (Auto, which upgrades to WASM), you
+need a hard reload with caches cleared — otherwise the SW keeps
+serving the stale hashed `bundle.<hash>.js` and the cached
+`_framework` payload, and your fix won't appear. See the **"Hard-reload
+after WASM-affecting changes"** section in `/debug-ui` for the
+one-liner and the recommended workflow ("`'s'` while iterating, switch
+to `'w'` at the end to confirm").

@@ -82,7 +82,7 @@ export async function runRpcProducer(
             Size: { Width: FrameConfig.Width, Height: FrameConfig.Height },
             SourceSize: { Width: FrameConfig.Width, Height: FrameConfig.Height },
         };
-        const clientStartOffsetSec = Date.now() / 1000;
+        const clientStartAtSec = Date.now() / 1000;  // Unix epoch (seconds, double)
 
         // Real-time video stream: isRealTime=true, allowReconnect=false, ackPeriod=5, bufferSize=31.
         // toRef() creates the sender, registers it, and starts pumping in the background.
@@ -102,7 +102,7 @@ export async function runRpcProducer(
         // the frame stream ends. Fire-and-forget; surface any rejection so
         // it's visible via the global unhandledRejection handler.
         void streamServer
-            .PushVideo('~', chatId, clientStartOffsetSec, format, stream.toRef(bundle.peer), 0 /* StreamKind.Webcam */)
+            .PushVideo('~', chatId, clientStartAtSec, format, stream.toRef(bundle.peer), 0 /* StreamKind.Webcam */)
             .catch((err: unknown) => {
                 if (!ctx.abort.aborted)
                     console.error(

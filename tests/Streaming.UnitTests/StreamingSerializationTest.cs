@@ -28,6 +28,6 @@ public class StreamingSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var s = record.PassThroughAllSerializers(Out);
         s.StreamId.Should().Be(record.StreamId);
         s.ChatId.Should().Be(record.ChatId);
-        s.ClientStartOffset.Should().Be(record.ClientStartOffset);
+        s.ClientStartAt.Should().Be(record.ClientStartAt);
     }
 }

@@ -5,6 +5,7 @@
 
 import { getLogs } from 'logging';
 import Denque from 'denque';
+import type { MonotonicTime } from 'clocks';
 import { getCodecCategory, getCodecForCategory } from './codec-support';
 
 const { infoLog, warnLog, errorLog } = getLogs('VideoEncoder');
@@ -85,6 +86,12 @@ export interface EncodedChunkData {
   // its true resolution instead of borrowing from the primary encoder's config.
   width: number;
   height: number;
+  // Sender-side MonotonicClock snapshot captured at the moment the source
+  // frame was submitted to encode(). Carried through the encoder boundary via
+  // a parallel FIFO (mirrors encodeStartTimes). The pipeline uses .timeMs
+  // (Unix-domain ms) as the canonical wire offset and .epoch as the
+  // discontinuity marker. Undefined when the caller didn't supply it.
+  capturedAt?: MonotonicTime;
 }
 
 export interface EncoderStats {
@@ -134,6 +141,9 @@ export class WebCodecsEncoder {
     private encodeTimeHistory = new Denque<number>();
     private encodeStartTimes = new Denque<number>();
     private encodeQueueAtStart = new Denque<number>(); // Queue size when encode was called (parallel to encodeStartTimes)
+    // Mirrors encodeStartTimes: pushed at every accepted submit, shifted in the
+    // output callback. Drives wire-side capturedAt + epoch on EncodedChunkData.
+    private capturedAtQueue = new Denque<MonotonicTime | undefined>();
     private pureEncodeTimeHistory = new Denque<number>(); // Times when queue was 0 at start (actual codec cost)
     private chunkSequence = 0; // Track chunk sequence for proper ordering
     // PLI diagnostics: timestamp set when encode() is called with forceKeyFrame=true,
@@ -204,7 +214,7 @@ export class WebCodecsEncoder {
         }
     }
 
-    encode(frame: VideoFrame, forceKeyFrame = false): void {
+    encode(frame: VideoFrame, forceKeyFrame = false, capturedAt?: MonotonicTime): void {
         if (this.encoder.state !== 'configured') {
             this.droppedFrames++;
             const stateError = new DOMException(
@@ -257,6 +267,7 @@ export class WebCodecsEncoder {
         // Record start time and queue size for async timing measurement
         this.encodeStartTimes.push(performance.now());
         this.encodeQueueAtStart.push(this.encoder.encodeQueueSize);
+        this.capturedAtQueue.push(capturedAt);
 
         // Determine if this should be a keyframe
         // - forceKeyFrame: PLI from receiver or pipeline event
@@ -295,6 +306,7 @@ export class WebCodecsEncoder {
             // Remove the start time and queue size since encode failed
             this.encodeStartTimes.pop();
             this.encodeQueueAtStart.pop();
+            this.capturedAtQueue.pop();
             const e = error as Error;
             this.recordError(e);
             if (shouldLogEncoderError(`enc-throw:${e.name}:${e.message}`))
@@ -430,6 +442,7 @@ export class WebCodecsEncoder {
         // in the queues forever and pair with unrelated future outputs.
         this.encodeStartTimes.clear();
         this.encodeQueueAtStart.clear();
+        this.capturedAtQueue.clear();
     }
 
     private createEncoder(): VideoEncoder {
@@ -437,6 +450,7 @@ export class WebCodecsEncoder {
             output: (chunk: EncodedVideoChunk, metadata?: EncodedVideoChunkMetadata) => {
                 const startTime = this.encodeStartTimes.shift();
                 const queueAtStart = this.encodeQueueAtStart.shift();
+                const capturedAt = this.capturedAtQueue.shift();
                 const encodeTime = startTime !== undefined
                     ? performance.now() - startTime
                     : 0;
@@ -465,6 +479,7 @@ export class WebCodecsEncoder {
                     spatialLayerId: this.spatialLayerId,
                     width: this.config.width,
                     height: this.config.height,
+                    capturedAt,
                 };
 
                 this.totalBytes += chunk.byteLength;

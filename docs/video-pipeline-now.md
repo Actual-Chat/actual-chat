@@ -618,7 +618,7 @@ axis:
 
 8. **Time model is mixed.** Doc: every unit carries origin capture time;
    receiver builds local presentation mapping. Current: frames carry
-   `Offset` (from `ClientStartOffset`), there is a server-side clock-skew
+   `Offset` (from `ClientStartAt`), there is a server-side clock-skew
    guard (±5 s overrides client offset with server now), and the receiver
    latency report is `serverNow - (StartedAt + StreamOffsetMs)`. Workable
    but not a clean shared origin timeline — and `AudioVideoSync` then

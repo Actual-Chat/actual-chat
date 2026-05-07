@@ -1,0 +1,168 @@
+import { drain, pipe, tap, type PipeOperator } from 'ix-ext';
+import type { DecodedFrame } from '../frame-envelopes';
+import { decode, type DecoderLike } from '../operators/decode';
+import { latencyTap, type LatencySample } from '../operators/latency-tap';
+import { canvasPresent, type CanvasImageInterface } from '../operators/present-canvas';
+import { mstgPresent } from '../operators/present-mstg';
+import { pullSource, type VideoFrameDto } from '../operators/pull';
+import { pacedEncodedBuffer } from '../operators/encoded-buffer';
+import { resetOnEpochChange } from '../operators/epoch-reset';
+import { EncodedFrameBuffer } from './encoded-frame-buffer';
+import type { PlaybackSession } from './session';
+import type { RenderBackendConfig } from './render-backends';
+
+const STOP_DRAIN_GRACE_MS = 1_000;
+
+export type { DecoderLike } from '../operators/decode';
+export type { LatencySample } from '../operators/latency-tap';
+export type { VideoFrameDto } from '../operators/pull';
+
+export interface PlayerConfig {
+    streamId: string;
+    initialDecoderConfig: { codec: string; codedWidth?: number; codedHeight?: number };
+    targetBufferSpanMs: number;
+    backend: RenderBackendConfig;
+    /** Production: `streamingApi.liveVideoStreams.GetStream`. */
+    getStream: (streamId: string) => Promise<AsyncIterable<VideoFrameDto>> | AsyncIterable<VideoFrameDto>;
+    createDecoder: (handlers: {
+        onFrame: (frame: VideoFrame) => void;
+        onError: (e: Error) => void;
+    }) => DecoderLike;
+    /** Optional ~1Hz latency sample sink for stats display. */
+    reportLatency?: (sample: LatencySample) => void;
+}
+
+/**
+ * One Player owns one running pipeline (one stream). Multiple Players
+ * can share a `PlaybackSession` to amortize decoder pool / clock / stats.
+ *
+ * `start` rejects if a run is in flight — call `stop` and `whenDone`
+ * first. `stop` is non-blocking; `whenDone` resolves when the pipe
+ * actually drains.
+ */
+export class Player {
+    private readonly session: PlaybackSession;
+    private abortController: AbortController | null = null;
+    private sourceStopController: AbortController | null = null;
+    private abortTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    private abortTimeoutReason: unknown = null;
+    /** Re-created per `start()` so a stop/start cycle drops half-buffered state. */
+    private buffer: EncodedFrameBuffer | null = null;
+    private whenDoneInternal: Promise<void> = Promise.resolve();
+
+    constructor(session: PlaybackSession) {
+        this.session = session;
+    }
+
+    start(config: PlayerConfig): Promise<void> {
+        if (this.abortController !== null) {
+            return Promise.reject(new Error(
+                `Player.start: already running (streamId=${config.streamId})`));
+        }
+
+        const buffer = new EncodedFrameBuffer({
+            targetSpanMs: config.targetBufferSpanMs,
+        });
+        this.buffer = buffer;
+        const session = this.session;
+        const arrivalClock = session.arrivalClock;
+        const stats = session.stats;
+        const abortController = new AbortController();
+        const abortSignal = abortController.signal;
+        const sourceStopController = new AbortController();
+        const source = pullSource({
+            streamId: config.streamId,
+            getStream: config.getStream,
+            arrivalClock,
+            stats,
+            abortSignal,
+            stopSignal: sourceStopController.signal,
+        });
+        let present: PipeOperator<DecodedFrame, void>;
+        if (config.backend.kind === 'mstg') {
+            const writer = config.backend.writer;
+            present = mstgPresent({ getWriter: () => writer });
+        } else {
+            const canvasCtx: CanvasImageInterface = config.backend.canvasCtx;
+            const convertToBitmap = config.backend.convertToBitmap;
+            present = canvasPresent({
+                getCanvasCtx: () => canvasCtx,
+                convertToBitmap,
+            });
+        }
+        // Inject the buffer span at the seam — the operator has no buffer ref.
+        const reportLatency = config.reportLatency;
+        const wrappedReportLatency = reportLatency
+            ? (sample: LatencySample): void => {
+                sample.bufferSpanMs = buffer.spanMs();
+                reportLatency(sample);
+            }
+            : undefined;
+        const decodedTap = wrappedReportLatency
+            ? latencyTap({ report: wrappedReportLatency })
+            : tap<DecodedFrame>(() => { /* identity */ });
+        // const tag = config.streamId.slice(-8);
+        // const pulledLog = logItems<ArrivedChunk>(`pull[${tag}]`, { firstN: 5, everyN: 300, format: c => `key=${c.isKeyFrame} layer=${c.spatialLayerId} ${c.width}x${c.height} sz=${c.chunk.byteLength}` });
+        // const decodedLog = logItems<DecodedFrame>(`decoded[${tag}]`, { firstN: 5, everyN: 300, format: f => `${f.frame.codedWidth}x${f.frame.codedHeight} layer=${f.spatialLayerId}` });
+        const pipeline = pipe(
+            source,
+            // pulledLog,
+            resetOnEpochChange({ buffer }),
+            pacedEncodedBuffer({ buffer, abortSignal }),
+            decode({
+                initialConfig: config.initialDecoderConfig,
+                createDecoder: config.createDecoder,
+                abortSignal,
+            }),
+            // decodedLog,
+            decodedTap,
+            present,
+        );
+        this.abortController = abortController;
+        this.sourceStopController = sourceStopController;
+        this.whenDoneInternal = drain(pipeline, e => e === this.abortTimeoutReason).finally(() => {
+            if (this.abortController === abortController) {
+                if (this.abortTimeoutId !== null)
+                    clearTimeout(this.abortTimeoutId);
+                this.abortController = null;
+                this.sourceStopController = null;
+                this.abortTimeoutId = null;
+                this.abortTimeoutReason = null;
+                this.buffer = null;
+            }
+        });
+        return Promise.resolve();
+    }
+
+    stop(): void {
+        const sourceStopController = this.sourceStopController;
+        const abortController = this.abortController;
+        if (!sourceStopController || !abortController)
+            return;
+
+        if (!sourceStopController.signal.aborted)
+            sourceStopController.abort(new Error('Player.stop: source completed'));
+        if (this.abortTimeoutId !== null)
+            return;
+
+        const abortReason = new Error('Player.stop: graceful drain timed out');
+        this.abortTimeoutReason = abortReason;
+        this.abortTimeoutId = setTimeout(() => {
+            if (!abortController.signal.aborted)
+                abortController.abort(abortReason);
+        }, STOP_DRAIN_GRACE_MS);
+    }
+
+    isRunning(): boolean {
+        return this.abortController !== null;
+    }
+
+    whenDone(): Promise<void> {
+        return this.whenDoneInternal;
+    }
+
+    /** Recovery hook for out-of-band sender resync — rarely used. */
+    resetBuffer(): void {
+        this.buffer?.reset();
+    }
+}
