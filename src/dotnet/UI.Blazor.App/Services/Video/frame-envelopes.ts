@@ -57,6 +57,15 @@ export interface VideoRecordingStats {
     lastCapturedEpoch: number;
     /** Wallclock when the recording started (Unix ms via MonotonicClock). */
     startedAtMs: number;
+    /** Sender-side bridge / RpcStream counters. */
+    wireFramesAdded: number;
+    wireQueueDepth: number;
+    wireMaxQueueDepth: number;
+    wireFramesDropped: number;
+    wireKeyframesDropped: number;
+    rpcStreamFramesSkipped: number;
+    wireLastAckAgeMs: number;
+    isPeerConnected: boolean;
 }
 
 /**
@@ -93,6 +102,14 @@ export function createEmptyRecordingStats(startedAtMs: number): VideoRecordingSt
         encodeTimeMsCount: 0,
         lastCapturedEpoch: 0,
         startedAtMs,
+        wireFramesAdded: 0,
+        wireQueueDepth: 0,
+        wireMaxQueueDepth: 0,
+        wireFramesDropped: 0,
+        wireKeyframesDropped: 0,
+        rpcStreamFramesSkipped: 0,
+        wireLastAckAgeMs: -1,
+        isPeerConnected: false,
     };
 }
 

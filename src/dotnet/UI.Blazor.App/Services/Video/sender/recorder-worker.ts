@@ -17,6 +17,7 @@
 import { sharedSettingsWorker } from 'shared-settings-worker';
 import { getLogs } from 'logging';
 import { createEmptyRecordingStats, type VideoRecordingStats } from '../frame-envelopes';
+import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 import type { DownscalerLike } from '../operators/downscale';
 import type { StreamSenderLike } from '../operators/wire-send';
 import { Recorder } from './recorder';
@@ -193,16 +194,11 @@ export const recorderWorkerImpl: RecorderWorker = {
     },
 
     async onConnectivityUpdate(
-        _isOnline: boolean,
-        _isConnected: boolean,
-        _isBlazorServer: boolean,
+        isOnline: boolean,
+        isConnected: boolean,
+        isBlazorServer: boolean,
     ): Promise<void> {
-        // TODO(phase 7+): wire `WorkerConnectivityUI` mirror once the
-        // new pipeline grows a worker-side connectivity gate. The
-        // legacy worker honored these to suppress sender output during
-        // brief disconnects; for the new pipeline the underlying RPC
-        // transport handles reconnects on its own, so this is a no-op
-        // placeholder until we have a measured reason to add the gate.
+        WorkerConnectivityUI.update(isOnline, isConnected, isBlazorServer);
         await Promise.resolve();
     },
 

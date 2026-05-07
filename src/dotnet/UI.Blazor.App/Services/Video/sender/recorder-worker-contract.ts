@@ -133,8 +133,7 @@ export interface RecorderWorker extends SharedSettingsWorker {
     getStats(): Promise<VideoRecordingStats>;
     /** Mirrors `ConnectivityUI.isOnline` / `isConnected` /
      *  `isBlazorServer` into the worker so its RPC peer mirror can
-     *  honor the connectivity gate. No-op for now — the new pipeline
-     *  doesn't yet wire a worker-side `WorkerConnectivityUI`. */
+     *  honor the connectivity gate. */
     onConnectivityUpdate(isOnline: boolean, isConnected: boolean, isBlazorServer: boolean): Promise<void>;
     /** Debug-only: force-remove the worker's RPC peer from the hub.
      *  No-op for now — there is no hub-managed peer in the new

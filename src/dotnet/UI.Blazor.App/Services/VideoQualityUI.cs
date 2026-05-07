@@ -119,11 +119,12 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             Log.LogWarning(
                 "RecordingQuality changed: kind={Kind} target={Target} reason={Reason} signal={Signal} "
                 + "encodeEma={EncEma:F2} encodeP90={EncP90:F2} slotRateEma={SlotRateEma:F2} "
-                + "senderDropRatioEma={DropRatioEma:F2} ackAgeMs={Ack:F0} connected={Connected}",
+                + "senderDropRatioEma={DropRatioEma:F2} ackAgeMs={Ack:F0} "
+                + "connected={Connected} peerConnected={PeerConnected}",
                 kind, decision.NewTargetLayerCount, decision.Reason, signal,
                 snapshot.EncodeRatioEma, snapshot.EncodeRatioP90, snapshot.SlotReplacementRateEma,
                 snapshot.SenderFrameDropRatioEma, snapshot.LastAckAgeMs,
-                snapshot.IsConnected);
+                snapshot.IsConnected, snapshot.IsPeerConnected);
 
         await ApplyRecordingQuality(
             kind,
@@ -951,7 +952,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             var anyBad =
                 h.EncodeRatioEma > t.EncodeRatioBadAbove
                 || (h.LastAckAgeMs >= 0 && h.LastAckAgeMs > t.LastAckBadMs)
-                || h.SenderFrameDropRatioEma > t.SenderFrameDropRatioBadAbove;
+                || h.SenderFrameDropRatioEma >= t.SenderFrameDropRatioBadAbove;
             if (anyBad)
                 return -1;
 

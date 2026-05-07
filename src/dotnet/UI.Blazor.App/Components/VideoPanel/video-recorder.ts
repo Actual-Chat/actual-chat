@@ -17,9 +17,9 @@
 //  - Preview-only mode (the blur preview tap to a main-thread canvas)
 //    is no longer surfaced — the new pipeline doesn't bounce frames
 //    back to main. `addPreviewFrameListener` becomes a no-op.
-//  - 1 Hz recorder-health snapshots stop firing — the new pipeline
-//    doesn't compute the legacy metrics. `OnRecorderHealthSnapshot`
-//    on the C# side just stops getting called.
+//  - 1 Hz recorder-health snapshots report the new pipeline's sender
+//    drop / ACK / peer-connectivity signals; legacy encoder slot metrics
+//    remain neutral until the new pipeline exposes them.
 //  - VAD-driven adaptive framerate is out of scope (`setRemoteStreamCount`
 //    becomes a no-op).
 //
@@ -62,6 +62,7 @@ import type { EncoderConfigPerLayer } from '../../Services/Video/operators/encod
 import type { VideoRecordingStats } from '../../Services/Video/frame-envelopes';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
+const RECORDER_HEALTH_INTERVAL_MS = 1000;
 
 // ---- Public diagnostics shapes -------------------------------------------
 
@@ -293,6 +294,10 @@ export class VideoRecorder {
     private _disconnectApiHandler: (() => void) | null = null;
     private _connectivityHandler: (() => void) | null = null;
     private _sharedSettingsRegistration: Disposable | null = null;
+    private recorderHealthTimer: number | null = null;
+    private recorderHealthInFlight = false;
+    private lastRecorderHealthStats: VideoRecordingStats | null = null;
+    private lastRecorderHealthWasPeerConnected = false;
 
     // Wallclock anchor for diagnostics duration calculation.
     private startedAtMs = 0;
@@ -1113,6 +1118,7 @@ export class VideoRecorder {
             const message = e instanceof Error ? e.message : String(e);
             void this.blazorRef.invokeMethodAsync('OnRecordingError', message);
         });
+        this.startRecorderHealthMonitor();
     }
 
     private toEncoderConfigs(ladder: SpatialLayerConfig[]): EncoderConfigPerLayer[] {
@@ -1154,6 +1160,7 @@ export class VideoRecorder {
     }
 
     private tearDownWorker(): void {
+        this.stopRecorderHealthMonitor();
         if (this._disconnectApiHandler) {
             Api.onDisconnectRequested(WorkerKind.VideoCapture).remove(this._disconnectApiHandler);
             this._disconnectApiHandler = null;
@@ -1194,6 +1201,63 @@ export class VideoRecorder {
         if (this.workerSourceTrack) {
             try { this.workerSourceTrack.stop(); } catch { /* ignore */ }
             this.workerSourceTrack = null;
+        }
+    }
+
+    private startRecorderHealthMonitor(): void {
+        this.stopRecorderHealthMonitor();
+        this.lastRecorderHealthStats = null;
+        this.lastRecorderHealthWasPeerConnected = false;
+        this.recorderHealthTimer = window.setInterval(() => {
+            void this.reportRecorderHealth();
+        }, RECORDER_HEALTH_INTERVAL_MS);
+    }
+
+    private stopRecorderHealthMonitor(): void {
+        if (this.recorderHealthTimer !== null) {
+            window.clearInterval(this.recorderHealthTimer);
+            this.recorderHealthTimer = null;
+        }
+        this.lastRecorderHealthStats = null;
+        this.lastRecorderHealthWasPeerConnected = false;
+    }
+
+    private async reportRecorderHealth(): Promise<void> {
+        if (this.recorderHealthInFlight || !this.worker)
+            return;
+
+        this.recorderHealthInFlight = true;
+        try {
+            const stats = await this.worker.getStats();
+            const isPeerConnected = stats.isPeerConnected;
+            const previous = this.lastRecorderHealthStats;
+            let senderFrameDropRatio = 0;
+            if (previous && isPeerConnected && this.lastRecorderHealthWasPeerConnected) {
+                const added = Math.max(0, stats.wireFramesAdded - previous.wireFramesAdded);
+                const dropped = Math.max(0,
+                    stats.wireFramesDropped - previous.wireFramesDropped
+                    + stats.rpcStreamFramesSkipped - previous.rpcStreamFramesSkipped);
+                senderFrameDropRatio = added > 0 ? dropped / added : 0;
+            }
+            this.lastRecorderHealthStats = { ...stats };
+            this.lastRecorderHealthWasPeerConnected = isPeerConnected;
+            await this.blazorRef.invokeMethodAsync(
+                'OnRecorderHealthSnapshot',
+                0,
+                0,
+                0,
+                senderFrameDropRatio,
+                stats.wireLastAckAgeMs,
+                isPeerConnected,
+                stats.wireFramesDropped,
+                stats.wireKeyframesDropped,
+                stats.rpcStreamFramesSkipped,
+                stats.wireQueueDepth,
+                stats.wireMaxQueueDepth);
+        } catch (e) {
+            warnLog?.log('reportRecorderHealth failed:', e);
+        } finally {
+            this.recorderHealthInFlight = false;
         }
     }
 

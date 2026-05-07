@@ -31,7 +31,13 @@ public sealed partial record RecorderHealthSnapshot(
     [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] double SlotReplacementRateEma,
     [property: DataMember(Order = 3), MemoryPackOrder(3), Key(3)] double SenderFrameDropRatioEma,
     [property: DataMember(Order = 4), MemoryPackOrder(4), Key(4)] double LastAckAgeMs,
-    [property: DataMember(Order = 5), MemoryPackOrder(5), Key(5)] bool IsConnected);
+    [property: DataMember(Order = 5), MemoryPackOrder(5), Key(5)] bool IsConnected,
+    [property: DataMember(Order = 6), MemoryPackOrder(6), Key(6)] bool IsPeerConnected = true,
+    [property: DataMember(Order = 7), MemoryPackOrder(7), Key(7)] long SenderFramesDropped = 0,
+    [property: DataMember(Order = 8), MemoryPackOrder(8), Key(8)] long SenderKeyframesDropped = 0,
+    [property: DataMember(Order = 9), MemoryPackOrder(9), Key(9)] long RpcStreamFramesSkipped = 0,
+    [property: DataMember(Order = 10), MemoryPackOrder(10), Key(10)] int SenderQueueDepth = 0,
+    [property: DataMember(Order = 11), MemoryPackOrder(11), Key(11)] int SenderMaxQueueDepth = 0);
 
 /// <summary>
 /// Diagnostic payload accompanying a recording quality decision: the reason

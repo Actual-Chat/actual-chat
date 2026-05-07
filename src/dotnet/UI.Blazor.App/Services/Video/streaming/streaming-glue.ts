@@ -26,7 +26,7 @@ import { Api, MediaRpcStreamOptions, streamingApi, toMoment,
     type LiveVideoStreamsClient, type SessionTokenProvider, type VideoFormatDto, type VideoFrameDto } from 'api';
 import { ServerClock } from 'clocks';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
-import type { StreamSenderLike, VideoStreamFrame } from '../operators/wire-send';
+import type { StreamSenderLike, StreamSenderStats, VideoStreamFrame } from '../operators/wire-send';
 
 const { infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
@@ -170,7 +170,7 @@ export interface CreateWireSenderOptions {
  *  recorder's quality controller can read this to feed bitrate / layer
  *  decisions; under healthy conditions every counter except
  *  `addedFrameCount` stays at zero. */
-export interface WireSenderStats {
+export interface WireSenderStats extends StreamSenderStats {
     /** Total frames pushed into the bridge. */
     addedFrameCount: number;
     /** Current queue depth (frames awaiting pump pickup). */
@@ -181,6 +181,9 @@ export interface WireSenderStats {
     droppedAtSenderQueue: number;
     /** Subset of `droppedAtSenderQueue` that were keyframes (severe loss). */
     droppedKeyframesAtSenderQueue: number;
+    rpcStreamSkipped: number;
+    lastAckAgeMs: number;
+    isPeerConnected: boolean;
 }
 
 export interface DisposableStreamSender extends StreamSenderLike {
@@ -221,6 +224,9 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
     let droppedAtSenderQueue = 0;
     let droppedKeyframesAtSenderQueue = 0;
     let maxQueueDepth = 0;
+    let rpcStreamSkipped = 0;
+    let rpcStreamSender: { readonly skipCount: number; onAckProcessed?: () => void } | null = null;
+    let lastAckAtMs = -1;
     let isCompleted = false;
     let isDisposed = false;
     let lastError = '';
@@ -280,8 +286,17 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
                     frame => frame.IsKeyFrame && (frame.SpatialLayerId ?? 0) === 0),
             );
 
+            const streamRef = stream.toRef(peer);
+            if (stream.sender) {
+                rpcStreamSender = stream.sender;
+                rpcStreamSender.onAckProcessed = () => {
+                    lastAckAtMs = Date.now();
+                    rpcStreamSkipped = rpcStreamSender?.skipCount ?? rpcStreamSkipped;
+                };
+            }
+
             void liveVideoStreams
-                .PushStream(RPC_SESSION_DEFAULT, chatId, sourceStartOffsetSeconds, formatDto, stream.toRef(peer), ctx.streamKind)
+                .PushStream(RPC_SESSION_DEFAULT, chatId, sourceStartOffsetSeconds, formatDto, streamRef, ctx.streamKind)
                 .catch((err: unknown) => {
                     const msg = err instanceof Error ? err.message : String(err);
                     warnLog?.log('PushStream rejected:', err);
@@ -395,9 +410,17 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
         maxQueueDepth,
         droppedAtSenderQueue,
         droppedKeyframesAtSenderQueue,
+        rpcStreamSkipped: streamSkipped(),
+        lastAckAgeMs: lastAckAtMs >= 0 ? Date.now() - lastAckAtMs : -1,
+        isPeerConnected: Api.peer.isConnected,
     });
 
     return { send, dispose, whenDisposed, getStats };
+
+    function streamSkipped(): number {
+        rpcStreamSkipped = Math.max(rpcStreamSkipped, rpcStreamSender?.skipCount ?? 0);
+        return rpcStreamSkipped;
+    }
 }
 
 /**

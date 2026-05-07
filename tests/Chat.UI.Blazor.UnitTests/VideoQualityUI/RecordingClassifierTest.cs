@@ -57,10 +57,10 @@ public class RecordingClassifierTest
     }
 
     [Fact]
-    public void SenderFrameDropRatioAtThreshold_ReturnsNeutral()
+    public void SenderFrameDropRatioAtThreshold_ReturnsBad()
     {
         var h = Snapshot(senderFrameDropRatio: T.SenderFrameDropRatioBadAbove);
-        RecordingClassifier.Classify(h, T).Should().Be(0);
+        RecordingClassifier.Classify(h, T).Should().Be(-1);
     }
 
     [Fact]

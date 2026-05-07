@@ -48,6 +48,18 @@ export interface StreamSenderLike {
     /** Called from the operator's `finally` so the server-side iterator
      *  returns and `PushStream` completes deterministically. */
     dispose?(): void;
+    getStats?(): StreamSenderStats;
+}
+
+export interface StreamSenderStats {
+    addedFrameCount: number;
+    queueDepth: number;
+    maxQueueDepth: number;
+    droppedAtSenderQueue: number;
+    droppedKeyframesAtSenderQueue: number;
+    rpcStreamSkipped: number;
+    lastAckAgeMs: number;
+    isPeerConnected: boolean;
 }
 
 export interface WireSendOptions {
@@ -96,6 +108,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedFrame, void
             // Pump terminal state — see StreamSenderLike.whenDisposed comment.
             let pumpFailure: Error | null = null;
             let pumpResolved = false;
+            let lastStats: EncodedFrame['stats'] | null = null;
             // HEVC: later keyframes per spec may omit the description; fill
             // from cache so the receiver can always reconfigure on dim change.
             const descriptionByLayer = new Map<number, Uint8Array>();
@@ -104,6 +117,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedFrame, void
                     if (abortSignal?.aborted) return;
 
                     try {
+                        lastStats = encoded.stats;
                         const { capturedAt, spatialLayerId } = encoded;
                         const isKeyFrame = encoded.chunk.type === 'key';
                         if (Number.isNaN(captureStartUnixMs))
@@ -166,15 +180,35 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedFrame, void
                             Promise.resolve(sender.send(dto)),
                             abortRace,
                         ]);
+                        copySenderStats(encoded.stats, sender.getStats?.());
                     } finally {
                         closeEncodedChunk(encoded.chunk);
                     }
                 }
             } finally {
+                if (sender && lastStats)
+                    copySenderStats(lastStats, sender.getStats?.());
                 try { sender?.dispose?.(); } catch { /* ignore */ }
             }
         }
     };
+}
+
+function copySenderStats(
+    stats: EncodedFrame['stats'],
+    senderStats: StreamSenderStats | undefined,
+): void {
+    if (!senderStats)
+        return;
+
+    stats.wireFramesAdded = senderStats.addedFrameCount;
+    stats.wireQueueDepth = senderStats.queueDepth;
+    stats.wireMaxQueueDepth = senderStats.maxQueueDepth;
+    stats.wireFramesDropped = senderStats.droppedAtSenderQueue;
+    stats.wireKeyframesDropped = senderStats.droppedKeyframesAtSenderQueue;
+    stats.rpcStreamFramesSkipped = senderStats.rpcStreamSkipped;
+    stats.wireLastAckAgeMs = senderStats.lastAckAgeMs;
+    stats.isPeerConnected = senderStats.isPeerConnected;
 }
 
 // Per-layer cache: copy on insert so later mutation of

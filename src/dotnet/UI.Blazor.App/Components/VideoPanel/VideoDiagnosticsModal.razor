@@ -721,7 +721,12 @@
 
     private static string FormatRecordingSenderSignal(RecorderHealthSnapshot health)
         => $"dropRatioEma={health.SenderFrameDropRatioEma:F2}, "
-            + $"ackAge={FormatAckAge(health.LastAckAgeMs)}, connected={(health.IsConnected ? "yes" : "no")}";
+            + $"dropped={health.SenderFramesDropped}+{health.RpcStreamFramesSkipped}, "
+            + $"keyDropped={health.SenderKeyframesDropped}, "
+            + $"queue={health.SenderQueueDepth}/{health.SenderMaxQueueDepth}, "
+            + $"ackAge={FormatAckAge(health.LastAckAgeMs)}, "
+            + $"connected={(health.IsConnected ? "yes" : "no")}, "
+            + $"peer={(health.IsPeerConnected ? "yes" : "no")}";
 
     private static string FormatAckAge(double ageMs)
         => ageMs >= 0 ? $"{ageMs:0}ms" : "n/a";

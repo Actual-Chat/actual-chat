@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import {
     wireSend,
     type StreamSenderLike,
+    type StreamSenderStats,
     type StreamFormat,
     type VideoStreamFrame,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/wire-send';
@@ -39,6 +40,26 @@ class FakeSender implements StreamSenderLike {
     send(dto: VideoStreamFrame): void {
         this.sent.push(dto);
         this.sendCount++;
+    }
+}
+
+class StatsSender extends FakeSender {
+    public stats: StreamSenderStats = {
+        addedFrameCount: 0,
+        queueDepth: 0,
+        maxQueueDepth: 0,
+        droppedAtSenderQueue: 0,
+        droppedKeyframesAtSenderQueue: 0,
+        rpcStreamSkipped: 0,
+        lastAckAgeMs: -1,
+        isPeerConnected: false,
+    };
+    override send(dto: VideoStreamFrame): void {
+        super.send(dto);
+        this.stats.addedFrameCount = this.sendCount;
+    }
+    getStats(): StreamSenderStats {
+        return this.stats;
     }
 }
 
@@ -304,5 +325,26 @@ describe('wireSend', () => {
         await runWith(source(items), wireSend({ createSender: () => sender }));
 
         expect(items.map(x => (x.chunk as unknown as MockEncodedVideoChunk).closed)).toEqual([true, true]);
+    });
+
+    it('copies sender and RpcStream drop counters into recording stats', async () => {
+        const stats = createEmptyRecordingStats(0);
+        const sender = new StatsSender();
+        sender.stats.droppedAtSenderQueue = 2;
+        sender.stats.droppedKeyframesAtSenderQueue = 1;
+        sender.stats.rpcStreamSkipped = 3;
+        sender.stats.lastAckAgeMs = 123;
+        sender.stats.isPeerConnected = true;
+
+        await runWith(source([
+            makeEncoded(stats, { type: 'key', capturedAt: { timeMs: 1_000, epoch: 0 } }),
+        ]), wireSend({ createSender: () => sender }));
+
+        expect(stats.wireFramesAdded).toBe(1);
+        expect(stats.wireFramesDropped).toBe(2);
+        expect(stats.wireKeyframesDropped).toBe(1);
+        expect(stats.rpcStreamFramesSkipped).toBe(3);
+        expect(stats.wireLastAckAgeMs).toBe(123);
+        expect(stats.isPeerConnected).toBe(true);
     });
 });

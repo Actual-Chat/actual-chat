@@ -177,7 +177,13 @@ public sealed class VideoRecorder : IAsyncDisposable
     }
 
     private Task OnRecorderHealthSnapshot(RecorderHealthSnapshot snapshot)
-        => Hub.VideoQualityUI.PushRecorderHealth(Kind, snapshot, this, CancellationToken.None);
+    {
+        var isDotNetConnected = !Hub.ConnectivityUI.IsConnected.IsValue(out var v) || v;
+        var effectiveSnapshot = snapshot with {
+            IsConnected = isDotNetConnected && snapshot.IsPeerConnected,
+        };
+        return Hub.VideoQualityUI.PushRecorderHealth(Kind, effectiveSnapshot, this, CancellationToken.None);
+    }
 
     private async Task RunMaintenance(Task startTrigger, CancellationToken cancellationToken)
     {
@@ -407,13 +413,24 @@ public sealed class VideoRecorder : IAsyncDisposable
             double slotReplacementRateEma,
             double senderFrameDropRatioEma,
             double lastAckAgeMs,
-            bool isConnected)
+            bool isPeerConnected,
+            long senderFramesDropped,
+            long senderKeyframesDropped,
+            long rpcStreamFramesSkipped,
+            int senderQueueDepth,
+            int senderMaxQueueDepth)
             => videoRecorder.OnRecorderHealthSnapshot(new RecorderHealthSnapshot(
                 encodeRatioEma,
                 encodeRatioP90,
                 slotReplacementRateEma,
                 senderFrameDropRatioEma,
                 lastAckAgeMs,
-                isConnected));
+                false,
+                isPeerConnected,
+                senderFramesDropped,
+                senderKeyframesDropped,
+                rpcStreamFramesSkipped,
+                senderQueueDepth,
+                senderMaxQueueDepth));
     }
 }

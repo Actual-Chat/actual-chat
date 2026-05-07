@@ -363,6 +363,18 @@ function createSender(chatId: string): StreamSenderLike {
         dispose() {
             inner?.dispose();
         },
+        getStats() {
+            return inner?.getStats?.() ?? {
+                addedFrameCount: buffered?.length ?? 0,
+                queueDepth: buffered?.length ?? 0,
+                maxQueueDepth: buffered?.length ?? 0,
+                droppedAtSenderQueue: 0,
+                droppedKeyframesAtSenderQueue: 0,
+                rpcStreamSkipped: 0,
+                lastAckAgeMs: -1,
+                isPeerConnected: false,
+            };
+        },
     };
 }
 
