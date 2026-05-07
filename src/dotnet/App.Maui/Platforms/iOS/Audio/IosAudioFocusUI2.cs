@@ -81,28 +81,34 @@ public sealed class IosAudioFocusUI2 : AudioFocusUI
     private async Task Release(AudioFocusRequester requester, Scope scope)
     {
         Log.LogInformation("Scope {Scope} releasing for {Mode}", scope, requester.Kind);
-        using var _1 = await _lock.Lock(StopToken).ConfigureAwait(false);
-        var modeBefore = _scopes.GetMode();
-        // TODO: move logging to Scopes
-        if (!_scopes.Remove(requester, out var existing)) {
-            Log.LogWarning("Requester {Requester} not found in _scopes", requester);
-            return;
-        }
+        try {
+            using var _1 = await _lock.Lock(StopToken).ConfigureAwait(false);
+            var modeBefore = _scopes.GetMode();
+            // TODO: move logging to Scopes
+            if (!_scopes.Remove(requester, out var existing)) {
+                Log.LogWarning("Requester {Requester} not found in _scopes", requester);
+                return;
+            }
 
-        if (existing != scope) {
-            Log.LogWarning("Scope {Scope} doesn't match existing scope {Existing} for {Mode}",
-                scope,
-                existing,
-                requester.Kind);
-            return;
-        }
+            if (existing != scope) {
+                Log.LogError("Scope {Scope} doesn't match existing scope {Existing} for {Mode}",
+                    scope,
+                    existing,
+                    requester.Kind);
+                return;
+            }
 
-        var modeAfter = _scopes.GetMode();
-        Log.LogInformation("Release {Mode}: state {Before} -> {After}", requester.Kind, modeBefore, modeAfter);
-        if (requester.Kind is AudioFocusMode.Recording && modeAfter < AudioFocusMode.Recording)
-            AudioEngines.Recording.StopRecording();
-        if (modeAfter != modeBefore)
-            await SetModeUnsafe(modeAfter).ConfigureAwait(false);
+            var modeAfter = _scopes.GetMode();
+            Log.LogInformation("Release {Mode}: state {Before} -> {After}", requester.Kind, modeBefore, modeAfter);
+            if (requester.Kind is AudioFocusMode.Recording && modeAfter < AudioFocusMode.Recording)
+                AudioEngines.Recording.StopRecording();
+            if (modeAfter != modeBefore)
+                await SetModeUnsafe(modeAfter).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            if (!e.IsCancellationOf(StopToken))
+                Log.LogError(e, "Failed to release scope {Scope} for {Mode}", scope, requester.Kind);
+        }
     }
 
     private async Task SetModeUnsafe(AudioFocusMode mode)
