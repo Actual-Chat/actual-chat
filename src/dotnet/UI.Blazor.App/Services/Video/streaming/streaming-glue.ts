@@ -166,9 +166,27 @@ export interface CreateWireSenderOptions {
  *  failure (PushStream rejection / generator throw) — letting the
  *  pipeline observe a backend failure that the sync `send()` path
  *  can't surface on its own. */
+/** Snapshot of {@link createWireSender}'s queue / drop counters. The
+ *  recorder's quality controller can read this to feed bitrate / layer
+ *  decisions; under healthy conditions every counter except
+ *  `addedFrameCount` stays at zero. */
+export interface WireSenderStats {
+    /** Total frames pushed into the bridge. */
+    addedFrameCount: number;
+    /** Current queue depth (frames awaiting pump pickup). */
+    queueDepth: number;
+    /** Highest queue depth observed across the run. */
+    maxQueueDepth: number;
+    /** Frames dropped by the overflow-compaction policy. */
+    droppedAtSenderQueue: number;
+    /** Subset of `droppedAtSenderQueue` that were keyframes (severe loss). */
+    droppedKeyframesAtSenderQueue: number;
+}
+
 export interface DisposableStreamSender extends StreamSenderLike {
     dispose(): void;
     readonly whenDisposed: Promise<void>;
+    getStats(): WireSenderStats;
 }
 
 /**
@@ -200,6 +218,9 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
     const frames = new Denque<VideoStreamFrame>();
     const frameAdded = new EventHandlerSet<void>();
     let addedFrameCount = 0;
+    let droppedAtSenderQueue = 0;
+    let droppedKeyframesAtSenderQueue = 0;
+    let maxQueueDepth = 0;
     let isCompleted = false;
     let isDisposed = false;
     let lastError = '';
@@ -285,17 +306,76 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
 
     void pump();
 
+    // Queue-overflow drop policy. The Denque is a sync→async bridge: under
+    // healthy conditions the pump drains it as fast as send() pushes.
+    // Under sustained pump stall (peer disconnected, ACKs blocked, slow
+    // network), the Denque is the only place push-rate vs ACK-rate
+    // mismatch can accumulate — RpcStream's own RingBuffer is downstream
+    // and only fills when the iterator yields, which the pump-stall
+    // prevents. We can't use a ReplaceableSlot here: encoded frames are
+    // not freely droppable (delta sequences depend on prior keyframes,
+    // and we have multiple spatial layers).
+    //
+    // Trigger: any single layer has > 2 keyframes queued — a buffer this
+    // deep means we're past one full keyframe cycle plus an in-progress
+    // one, which only happens when the pump can't move forward.
+    // Action: drop everything before the most recent keyframe in the
+    // queue. The receiver can resync onto a keyframe regardless of
+    // layer, so this preserves decodability for whatever survives.
+    const compactIfOverflowing = (): void => {
+        let lastKfIdx = -1;
+        const kfCountByLayer = new Map<number, number>();
+        for (let i = 0; i < frames.length; i++) {
+            const f = frames.get(i)!;
+            if (!f.isKeyFrame) continue;
+            const layer = f.spatialLayerId ?? 0;
+            kfCountByLayer.set(layer, (kfCountByLayer.get(layer) ?? 0) + 1);
+            lastKfIdx = i;
+        }
+        let maxKfPerLayer = 0;
+        for (const c of kfCountByLayer.values())
+            if (c > maxKfPerLayer) maxKfPerLayer = c;
+
+        if (maxKfPerLayer <= 2 || lastKfIdx <= 0) return;
+
+        let droppedKeys = 0;
+        for (let i = 0; i < lastKfIdx; i++) {
+            const dropped = frames.shift()!;
+            if (dropped.isKeyFrame) droppedKeys++;
+        }
+        droppedAtSenderQueue += lastKfIdx;
+        droppedKeyframesAtSenderQueue += droppedKeys;
+        warnLog?.log(`send: queue compacted — dropped ${lastKfIdx} frames ` +
+            `(incl. ${droppedKeys} keyframes); cumulative dropped=${droppedAtSenderQueue} ` +
+            `keyframes=${droppedKeyframesAtSenderQueue}`);
+    };
+
     const send = (frame: VideoStreamFrame): void => {
         if (isCompleted) return;
-        if (isDisposed)
-            throw new Error(lastError || 'createWireSender: send after stream disposed');
+        // Late frames after pump teardown: drop silently. Throwing here
+        // races with the wire-send operator's whenDisposed handler — when
+        // PushStream rejects, isDisposed flips synchronously while the
+        // pump's reject microtask is still pending, so one in-flight
+        // frame would otherwise mask the real error with the generic
+        // "send after stream disposed" message.
+        if (isDisposed) return;
         if (frame.data.byteLength === 0) return;
 
         frames.push(frame);
         addedFrameCount++;
+        if (frame.isKeyFrame)
+            compactIfOverflowing();
+        if (frames.length > maxQueueDepth)
+            maxQueueDepth = frames.length;
 
+        // Heartbeat at Info so live diagnosis doesn't need a log-level
+        // override. At 30fps this fires roughly every 10s. Throws into
+        // warnLog territory automatically via compactIfOverflowing when
+        // the queue actually overflows.
         if (addedFrameCount <= 3 || addedFrameCount % 300 === 0) {
-            debugLog?.log(`send: total=${addedFrameCount} queue=${frames.length} ` +
+            infoLog?.log(`send: total=${addedFrameCount} queue=${frames.length} ` +
+                `peakQueue=${maxQueueDepth} ` +
+                `dropped=${droppedAtSenderQueue} keyframesDropped=${droppedKeyframesAtSenderQueue} ` +
                 `isKey=${frame.isKeyFrame} size=${frame.data.byteLength} ` +
                 `lastError='${lastError}' isDisposed=${isDisposed}`);
         }
@@ -309,7 +389,15 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
         frameAdded.trigger();
     };
 
-    return { send, dispose, whenDisposed };
+    const getStats = (): WireSenderStats => ({
+        addedFrameCount,
+        queueDepth: frames.length,
+        maxQueueDepth,
+        droppedAtSenderQueue,
+        droppedKeyframesAtSenderQueue,
+    });
+
+    return { send, dispose, whenDisposed, getStats };
 }
 
 /**
