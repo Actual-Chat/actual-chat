@@ -43,6 +43,22 @@ class FakeSender implements StreamSenderLike {
     }
 }
 
+class ResolvingSender extends FakeSender {
+    public disposed = false;
+    private resolveDisposed: () => void = () => { /* set by promise ctor */ };
+    public readonly whenDisposed = new Promise<void>(resolve => {
+        this.resolveDisposed = resolve;
+    });
+    override send(dto: VideoStreamFrame): void {
+        super.send(dto);
+        if (this.sendCount === 1)
+            this.resolveDisposed();
+    }
+    dispose(): void {
+        this.disposed = true;
+    }
+}
+
 class StatsSender extends FakeSender {
     public stats: StreamSenderStats = {
         addedFrameCount: 0,
@@ -346,5 +362,27 @@ describe('wireSend', () => {
         expect(stats.rpcStreamFramesSkipped).toBe(3);
         expect(stats.wireLastAckAgeMs).toBe(123);
         expect(stats.isPeerConnected).toBe(true);
+    });
+
+    it('recreates the sender if the wire pump completes while capture continues', async () => {
+        const stats = createEmptyRecordingStats(0);
+        const senders: ResolvingSender[] = [];
+        const sink = wireSend({
+            createSender: () => {
+                const sender = new ResolvingSender();
+                senders.push(sender);
+                return sender;
+            },
+        });
+
+        await runWith(source([
+            makeEncoded(stats, { type: 'key', capturedAt: { timeMs: 1_000, epoch: 0 } }),
+            makeEncoded(stats, { type: 'key', capturedAt: { timeMs: 1_033, epoch: 0 } }),
+        ]), sink);
+
+        expect(senders).toHaveLength(2);
+        expect(senders[0].sent).toHaveLength(1);
+        expect(senders[1].sent).toHaveLength(1);
+        expect(senders.every(s => s.disposed)).toBe(true);
     });
 });

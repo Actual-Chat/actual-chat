@@ -1,6 +1,9 @@
 import { from, type PipeOperator } from 'ix-ext';
 import { abortPromise } from 'promises';
+import { getLogs } from 'logging';
 import { closeEncodedChunk, type EncodedFrame } from '../frame-envelopes';
+
+const { warnLog } = getLogs('VideoPipeline');
 
 // Wire DTO consumed by the .NET sender (MessagePack `VideoFrame`).
 // `offset`/`duration` are in 100-ns ticks (= µs × 10). `description`,
@@ -109,6 +112,16 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedFrame, void
             let pumpFailure: Error | null = null;
             let pumpResolved = false;
             let lastStats: EncodedFrame['stats'] | null = null;
+            const resetSender = (reason: string): void => {
+                if (sender && lastStats)
+                    copySenderStats(lastStats, sender.getStats?.());
+                try { sender?.dispose?.(); } catch { /* ignore */ }
+                sender = null;
+                initSent = false;
+                pumpFailure = null;
+                pumpResolved = false;
+                warnLog?.log(`wireSend: resetting wire sender — ${reason}`);
+            };
             // HEVC: later keyframes per spec may omit the description; fill
             // from cache so the receiver can always reconfigure on dim change.
             const descriptionByLayer = new Map<number, Uint8Array>();
@@ -146,11 +159,13 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedFrame, void
                             if (description) dto.description = description;
                         }
                         // Async-set flags (mutated by `whenDisposed` callback below).
-                        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition, @typescript-eslint/only-throw-error
-                        if (pumpFailure) throw pumpFailure;
+                        const failure = pumpFailure;
+                        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                        if (failure)
+                            resetSender(failure.message);
                         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                         if (pumpResolved)
-                            throw new Error('wireSend: wire pump completed before source drained');
+                            resetSender('wire pump completed before source drained');
 
                         if (!sender) {
                             sender = createSender();
