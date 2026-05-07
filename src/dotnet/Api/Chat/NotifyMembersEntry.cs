@@ -4,22 +4,21 @@ namespace ActualChat.Chat;
 /// System entry emitted when an author asks for the attention of all members.
 /// </summary>
 [DataContract, MessagePackObject(AllowPrivate = true)]
-public sealed partial record NotifyMembersEntry : SystemEntry
+[method: SerializationConstructor]
+public sealed partial record NotifyMembersEntry(ChatEntryId Id, long Version = 0) : SystemEntry(Id, Version)
 {
-    [DataMember, Key(20)] public AuthorId TargetAuthorId { get; init; } = default!;
+    [DataMember, Key(20)] public AuthorId? TargetAuthorId { get; init; }
     [DataMember, Key(21)] public string TargetAuthorName { get; init; } = "";
 
-    public NotifyMembersEntry() : base((ChatEntryId)null!) { }
-
-    [SerializationConstructor]
-    public NotifyMembersEntry(ChatEntryId id, long version = 0) : base(id, version) { }
+    public NotifyMembersEntry() : this(null!, 0) { }
 
     public override Markup ToMarkup()
     {
-        var authorMentionId = MentionId.NewAuthor(TargetAuthorId);
         var authorName = TargetAuthorName.NullIfEmpty() ?? "Someone";
-        return new MarkupSeq(
-            new MentionMarkup(authorMentionId, authorName),
-            new PlainTextMarkup(" asked for attention."));
+        return TargetAuthorId is null
+            ? new PlainTextMarkup($"{authorName} asked for attention.")
+            : new MarkupSeq(
+                new MentionMarkup(MentionId.NewAuthor(TargetAuthorId), authorName),
+                new PlainTextMarkup(" asked for attention."));
     }
 }

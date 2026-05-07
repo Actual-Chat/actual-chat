@@ -82,6 +82,26 @@ public class ChatMarkupHubExtTest
         rawMarkup.Should().Be(expectedMarkupText);
     }
 
+    [Fact]
+    public void ShouldGetNotifyMembersMarkupWithoutTargetAuthorId()
+    {
+        // arrange
+        using var services = new ServiceCollection().AddTransient<IMarkupParser, MarkupParser>().BuildServiceProvider();
+        var chatId = GroupChatId.New();
+        var markupHub = new ChatMarkupHub(services, chatId);
+        var chatEntryId = ChatEntryId.New(chatId, 1);
+        var chatEntry = new NotifyMembersEntry(chatEntryId, 1) {
+            TargetAuthorName = "Alice",
+        };
+
+        // act
+        var markup = markupHub.GetMarkup(chatEntry, MarkupConsumer.ChatListItemText);
+        var rawMarkup = MarkupFormatter.Default.Format(markup);
+
+        // assert
+        rawMarkup.Should().Be("Alice asked for attention.");
+    }
+
     private static ChatEntryAttachment Attachment(string file)
     {
         if (!FileExtensionContentTypeProvider.TryGetContentType(file, out var contentType))

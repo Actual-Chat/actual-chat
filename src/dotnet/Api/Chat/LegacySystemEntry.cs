@@ -63,11 +63,11 @@ public sealed partial record LegacyMembersChangedOption : LegacySystemEntryOptio
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record LegacyNotifyMembersOption : LegacySystemEntryOption
 {
-    [DataMember, MemoryPackOrder(0)] public AuthorId AuthorId { get; init; }
+    [DataMember, MemoryPackOrder(0)] public AuthorId? AuthorId { get; init; }
     [DataMember, MemoryPackOrder(1)] public string AuthorName { get; init; } = "";
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public LegacyNotifyMembersOption(AuthorId authorId, string authorName)
+    public LegacyNotifyMembersOption(AuthorId? authorId, string authorName)
     {
         AuthorId = authorId;
         AuthorName = authorName;
