@@ -7,7 +7,7 @@
         picClass += " pic-square";
     }
     if (Click.HasDelegate)
-        picClass += " pic-show-cursor";
+        picClass += " cursor-pointer";
     var hasPicture = !_pictureUrl.IsNullOrEmpty();
     var isSvg = hasPicture && Path.GetExtension(_pictureUrl).Equals(".svg", StringComparison.OrdinalIgnoreCase);
     if (IsBlurred && isSvg) {

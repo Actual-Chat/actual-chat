@@ -23,10 +23,11 @@
         Title="@Title"
         Picture="@Picture"
         Size="@SquareSize.Size16"
-        IsSquare="false"/>
+        IsSquare="false"
+        Click="@OnPickImageClicked"/>
 
     <div class="c-buttons">
-        <ButtonRound Class="btn-modal btn-sm" Click="@(() => _picker!.Pick())">
+        <ButtonRound Class="btn-modal btn-sm" Click="@OnPickImageClicked">
             <i class="icon-image text-2xl"></i>
         </ButtonRound>
         <ImageCropPicker @ref="_picker"
@@ -48,6 +49,9 @@
     [Parameter] public Picture? Picture { get; set; }
     [Parameter] public EventCallback<Picture> ImagePicked { get; set; }
     [Parameter] public EventCallback CloseRequested { get; set; }
+
+    private void OnPickImageClicked()
+         => _ = _picker!.Pick();
 
     private void OnCropped(MediaRef mediaRef)
         => ImagePicked.InvokeAsync(new Picture(mediaRef));
