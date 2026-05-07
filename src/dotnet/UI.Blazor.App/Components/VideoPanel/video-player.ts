@@ -126,9 +126,6 @@ const MAX_TEMPORAL_LAYER = 2147483647;
 const PLAYBACK_PRIORITY_SECONDARY = 0;
 const PLAYBACK_PRIORITY_PRIMARY = 1;
 
-const OUTPUT_VERIFICATION_CHECK_INTERVAL_MS = 250;
-const OUTPUT_DIMENSION_MISMATCH_TOLERANCE_PX = 16;
-
 export class VideoPlayer {
     private blazorRef: DotNet.DotNetObject;
     private streamId: string;
@@ -138,8 +135,6 @@ export class VideoPlayer {
     private videoEl: HTMLVideoElement;
     private bgCanvasEl: HTMLCanvasElement;
     private renderBackend: RenderBackend;
-    private readonly expectedDisplayWidth: number;
-    private readonly expectedDisplayHeight: number;
 
     // Player worker (the new pipeline pulls + decodes + renders entirely off-thread)
     private playerWorkerInstance: Worker | null = null;
@@ -194,12 +189,6 @@ export class VideoPlayer {
     private lastArrivedOffsetMs = 0;
     private lastRenderedOffsetMs = 0;
 
-    // Output verification — runs on a timer probing the render backend's
-    // observed output size against the worker-reported decoded dims (if any).
-    private outputVerificationTimer: ReturnType<typeof globalThis.setInterval> | undefined;
-    private outputVerified = false;
-    private outputVerificationFailed = false;
-    private outputVerificationMismatchCount = 0;
     private codecExclusionRequested = false;
 
     private startedAtMs: number;
@@ -241,14 +230,8 @@ export class VideoPlayer {
         this.canvas = canvas;
         this.videoEl = videoEl;
         this.bgCanvasEl = bgCanvasEl;
-        this.expectedDisplayWidth = width || 1280;
-        this.expectedDisplayHeight = height || 720;
         this.renderBackend = pickRenderBackend(canvas, videoEl);
         this.applyBackendVisibility(canvas, videoEl);
-        const container = canvas.parentElement;
-        if (container) {
-            container.classList.add('output-unverified');
-        }
 
         // Set canvas size
         canvas.width = width || 1280;
@@ -311,8 +294,6 @@ export class VideoPlayer {
             this.selectedCodecedHeight = height || undefined;
             this.codecCategory = VideoPlayer.getCodecCategory(codecString);
             debugLog?.log(`Selected decoder codec: ${codecString} (accel: ${selection.hardwareAcceleration})`);
-
-            this.startOutputVerificationMonitor();
 
             // Construct the new player worker bundle.
             const playerWorkerPath = Versioning.mapPath('/dist/videoPlayerWorker.js');
@@ -414,71 +395,6 @@ export class VideoPlayer {
         return 'unknown';
     }
 
-    private startOutputVerificationMonitor(): void {
-        if (this.outputVerificationTimer !== undefined || this.outputVerified)
-            return;
-        this.outputVerificationFailed = false;
-        this.outputVerificationMismatchCount = 0;
-        this.outputVerificationTimer = globalThis.setInterval(
-            () => this.checkOutputVerification('timer'),
-            OUTPUT_VERIFICATION_CHECK_INTERVAL_MS);
-        globalThis.setTimeout(() => this.checkOutputVerification('startup'), 0);
-    }
-
-    private stopOutputVerificationMonitor(): void {
-        if (this.outputVerificationTimer === undefined)
-            return;
-        globalThis.clearInterval(this.outputVerificationTimer);
-        this.outputVerificationTimer = undefined;
-    }
-
-    private checkOutputVerification(reason: string): boolean {
-        if (this.outputVerified || !this.isPlaying)
-            return false;
-
-        // Reference dims come from the stream-creation-time metadata.
-        // Mid-stream resolution flips are handled by the worker's
-        // pipeline — we just need a sanity check that the rendering
-        // surface is emitting non-stale output of roughly the right
-        // dimensions.
-        const refW = this.expectedDisplayWidth;
-        const refH = this.expectedDisplayHeight;
-        if (refW <= 0 || refH <= 0)
-            return false;
-
-        const output = this.renderBackend.getOutputSize();
-        if (!output || output.width <= 0 || output.height <= 0)
-            return false;
-
-        const widthMismatch = Math.abs(output.width - refW) > OUTPUT_DIMENSION_MISMATCH_TOLERANCE_PX;
-        const heightMismatch = Math.abs(output.height - refH) > OUTPUT_DIMENSION_MISMATCH_TOLERANCE_PX;
-        if (!widthMismatch && !heightMismatch) {
-            this.markOutputVerified(reason, output.width, output.height);
-            return false;
-        }
-
-        this.outputVerificationMismatchCount++;
-        if (!this.outputVerificationFailed) {
-            this.outputVerificationFailed = true;
-            debugLog?.log(
-                `checkOutputVerification: tentative mismatch #${this.outputVerificationMismatchCount}, ` +
-                `decoded ${output.width}x${output.height} vs expected ${refW}x${refH} (${reason})`);
-        }
-        // Resolution adapts mid-stream; we no longer treat this as an
-        // exclusion trigger — the new pipeline's epoch-reset operator
-        // handles bootstrap and the worker drives dim changes itself.
-        return false;
-    }
-
-    private markOutputVerified(reason: string, width: number, height: number): void {
-        this.outputVerified = true;
-        this.outputVerificationFailed = false;
-        this.outputVerificationMismatchCount = 0;
-        this.stopOutputVerificationMonitor();
-        this.canvas.parentElement?.classList.remove('output-unverified');
-        debugLog?.log(`checkOutputVerification: ok, ${width}x${height} (${reason})`);
-    }
-
     private shouldRequestCodecExclusion(): boolean {
         return this.codecCategory !== ''
             && this.codecCategory !== 'h264'
@@ -507,7 +423,6 @@ export class VideoPlayer {
         if (this.isPlaying) return;
 
         this.isPlaying = true;
-        this.startOutputVerificationMonitor();
         // Per-instance scope — refcounts across concurrent players so one
         // stopping doesn't park the peer that other players still need.
         Api.requireConnection(`VideoPlayer:${this.streamId}`);
@@ -817,9 +732,6 @@ export class VideoPlayer {
 
         // Push a playback-health snapshot for the server-side controller.
         this.reportPlaybackHealth(sample);
-
-        if (this.checkOutputVerification('worker-latency'))
-            return;
     }
 
     public async stop(): Promise<void> {
@@ -831,7 +743,6 @@ export class VideoPlayer {
         infoLog?.log(`VideoPlayer registry: removed ${this.streamId}, active=${activePlayers.size}`);
 
         this.isPlaying = false;
-        this.stopOutputVerificationMonitor();
         Api.releaseConnection(`VideoPlayer:${this.streamId}`);
         this.lastRenderedOffsetMs = 0;
         this.lastArrivedOffsetMs = 0;
