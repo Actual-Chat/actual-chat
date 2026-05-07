@@ -250,30 +250,31 @@ async function* decodeAsync(
                     const dimChanged = configured
                         && (newWidth !== currentWidth || newHeight !== currentHeight);
                     if (!configured || dimChanged) {
-                        if (!description) {
-                            if (!canConfigureWithoutDescription(currentCodec)) {
-                                throw new Error(
-                                    `decode: codec ${currentCodec} requires description but none provided`);
-                            }
-                            const config: VideoDecoderConfig = {
-                                codec: currentCodec,
-                                codedWidth: newWidth || undefined,
-                                codedHeight: newHeight || undefined,
-                                hardwareAcceleration: initialConfig.hardwareAcceleration,
-                                optimizeForLatency: initialConfig.optimizeForLatency,
-                            };
-                            dec.configure(config);
-                        } else {
-                            const config: VideoDecoderConfig = {
-                                codec: currentCodec,
-                                codedWidth: newWidth || undefined,
-                                codedHeight: newHeight || undefined,
-                                description,
-                                hardwareAcceleration: initialConfig.hardwareAcceleration,
-                                optimizeForLatency: initialConfig.optimizeForLatency,
-                            };
-                            dec.configure(config);
+                        if (!description && !canConfigureWithoutDescription(currentCodec))
+                            throw new Error(
+                                `decode: codec ${currentCodec} requires description but none provided`);
+
+                        // Pin displayAspect=coded so the browser doesn't derive
+                        // display dims from the bitstream SPS/HVCC. Without
+                        // this, Edge HEVC HW returns swapped portrait display
+                        // dims (1280×720 for a 720×1280 coded portrait stream)
+                        // and Chrome Android delivers VideoFrames whose
+                        // display dims confuse `<video srcObject>` rendering
+                        // of an MSTG-fed track — track stays black until the
+                        // watchdog falls back to canvas after ~8 s.
+                        const config: VideoDecoderConfig = {
+                            codec: currentCodec,
+                            codedWidth: newWidth || undefined,
+                            codedHeight: newHeight || undefined,
+                            hardwareAcceleration: initialConfig.hardwareAcceleration,
+                            optimizeForLatency: initialConfig.optimizeForLatency,
+                        };
+                        if (description) config.description = description;
+                        if (newWidth > 0 && newHeight > 0) {
+                            config.displayAspectWidth = newWidth;
+                            config.displayAspectHeight = newHeight;
                         }
+                        dec.configure(config);
                         configured = true;
                         currentWidth = newWidth;
                         currentHeight = newHeight;
