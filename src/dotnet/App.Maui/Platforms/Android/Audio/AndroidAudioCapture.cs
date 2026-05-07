@@ -22,7 +22,14 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
         // We'll read at least VAD frame size per push
         var frameSamples = Constants.Audio.OpusFrameLength; // 20 ms at 16 kHz = 320 samples
         var bytesPerSample = sizeof(float);
-        var bufferBytes = Math.Max(minBufferBytes, frameSamples * bytesPerSample * 4); // some headroom
+        // 250ms of kernel-side ring. Note: this protects persisted-blob
+        // completeness (samples survive reader-thread stalls instead of being
+        // dropped on kernel overrun) — it does NOT remove the live-gap heard
+        // by listeners, since we still send no packets while the thread is
+        // stalled. Live-gap fix needs to prevent the stall itself (Process on
+        // dedicated thread, etc.). 250ms covers most observed scheduling
+        // hiccups (~80–130ms) and leaves headroom; ~16KB memory.
+        var bufferBytes = Math.Max(minBufferBytes, sampleRate * bytesPerSample / 4);
 
         AudioRecord? recorder = null;
         try {
@@ -37,6 +44,11 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
                 recorder.Release();
                 return Task.FromResult<IAsyncEnumerable<IMemoryOwner<float>>?>(null);
             }
+
+            var actualFrames = recorder.BufferSizeInFrames;
+            Log.LogInformation(
+                "AudioRecord initialized: requested {RequestedBytes}B, actual {ActualFrames} frames ({ActualMs}ms at {SampleRate}Hz)",
+                bufferBytes, actualFrames, actualFrames * 1000 / sampleRate, sampleRate);
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to initialize AudioRecord");
