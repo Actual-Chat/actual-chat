@@ -12,15 +12,15 @@ public sealed class IosAudioFocusUI : MauiAudioFocusUI
     private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.2, 3);
 
     private readonly AsyncLock _lock = new (LockReentryMode.CheckedFail);
-    private readonly ConcurrentDictionary<AudioFocusMode, AudioFocusMode> _modes = new () {
-        [AudioFocusMode.Tune] = AudioFocusMode.Tune,
-    };
+    private readonly HashSet<AudioFocusMode> _modes = [AudioFocusMode.Tune];
+    private readonly Dictionary<AudioFocusMode, MauiAudioFocusHandle> _handles = new();
     private readonly Disposable<NSObject> _interruptionSubscription;
     private readonly Disposable<NSObject> _configurationChangeSubscription;
-    private MauiAudioFocusHandle? _handle;
 
     private AudioSession AudioSession => field ??= Hub.Services.GetRequiredService<AudioSession>();
     private AudioEngines AudioEngines => field ??= Hub.Services.GetRequiredService<AudioEngines>();
+    private AudioFocusMode CurrentMode => _modes.DefaultIfEmpty(AudioFocusMode.Tune).Max();
+    private MauiAudioFocusHandle? FocusHandle => _handles.GetValueOrDefault(CurrentMode);
 
     public IosAudioFocusUI(AppUIHub hub) : base(hub)
     {
@@ -50,10 +50,16 @@ public sealed class IosAudioFocusUI : MauiAudioFocusUI
 
     protected override async Task<MauiAudioFocusHandle?> RequestAudioFocus(AudioFocusMode mode)
     {
-        _modes.TryAdd(mode, mode);
+        using var _1 = await _lock.Lock(StopToken).ConfigureAwait(false);
+        if (!_modes.Add(mode)) {
+            Log.LogInformation("Mode {Mode} already requested, returning existing handle", mode);
+            return _handles.GetValueOrDefault(mode);
+        }
+
         await SetModeUnsafe(mode).ConfigureAwait(false);
-        _handle = new MauiAudioFocusHandle(x => _ = Release(mode, x));
-        return _handle;
+        var handle = new MauiAudioFocusHandle(x => _ = Release(mode, x));
+        _handles.Add(mode, handle);
+        return handle;
     }
 
     // Private methods
@@ -63,10 +69,14 @@ public sealed class IosAudioFocusUI : MauiAudioFocusUI
         Log.LogInformation("AudioFocusHandle {Handle} releasing", handle);
         using var _1 = await _lock.Lock(StopToken).ConfigureAwait(false);
         try {
+            if (!_handles.Remove(mode, out var existingHandle))
+                Log.LogWarning("Mode {Mode} not found in _handles.", mode);
+            if (!ReferenceEquals(existingHandle, handle))
+                Log.LogWarning("Handle {Handle} not found in _handles for mode {Mode}.", handle, mode);
             if (mode is AudioFocusMode.Recording)
                 AudioEngines.Recording.StopRecording();
-            if (mode is not AudioFocusMode.Tune && _modes.TryRemove(mode, out _))
-                await SetModeUnsafe(_modes.Keys.Max()).ConfigureAwait(false);
+            if (mode is not AudioFocusMode.Tune && _modes.Remove(mode))
+                await SetModeUnsafe(CurrentMode).ConfigureAwait(false);
         }
         catch (Exception e) {
             if (!e.IsCancellationOf(StopToken))
@@ -99,10 +109,8 @@ public sealed class IosAudioFocusUI : MauiAudioFocusUI
         Log.LogInformation("Audio engine configuration change detected");
         _ = BackgroundTask.Run(async () => {
             using var _ = await _lock.Lock(StopToken).ConfigureAwait(false);
-            if (_handle != null) {
-                var currentMode = _modes.Keys.DefaultIfEmpty(AudioFocusMode.Tune).Max();
-                AudioEngines.Resume(currentMode);
-            }
+            if (FocusHandle != null)
+                AudioEngines.Resume(CurrentMode);
         }, Log, "Failed to handle configuration change", StopToken);
     }
 
@@ -118,7 +126,7 @@ public sealed class IosAudioFocusUI : MauiAudioFocusUI
         using var _ = await _lock.Lock(StopToken).ConfigureAwait(false);
         switch (type) {
         case AVAudioSessionInterruptionType.Began:
-            _handle?.RaiseFocusLost(true, false);
+            FocusHandle?.RaiseFocusLost(true, false);
             break;
         case AVAudioSessionInterruptionType.Ended:
             // Always attempt recovery - ShouldResume flag is unreliable for phone calls
@@ -131,9 +139,10 @@ public sealed class IosAudioFocusUI : MauiAudioFocusUI
 
     private async Task RecoverInternal(CancellationToken cancellationToken)
     {
-        var currentMode = _modes.Keys.DefaultIfEmpty(AudioFocusMode.Tune).Max();
+        using var _ = await _lock.Lock(StopToken).ConfigureAwait(false);
+        var currentMode = CurrentMode;
         await AudioSession.Reactivate(currentMode).ConfigureAwait(false);
         AudioEngines.Resume(currentMode);
-        _handle?.RaiseFocusRecover();
+        FocusHandle?.RaiseFocusRecover();
     }
 }
