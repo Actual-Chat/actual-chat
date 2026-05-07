@@ -16,6 +16,11 @@ on:
           - auto
           - dev
           - prod
+      skipTests:
+        type: boolean
+        required: false
+        default: false
+        description: Skip unit and integration tests
   create:
   push:
     branches:
@@ -50,8 +55,9 @@ jobs:
         id: check
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          SKIP_TESTS_INPUT: ${{ github.event.inputs.skipTests }}
         run: |
-          if echo "$COMMIT_MESSAGE" | grep -qiw '#tested'; then
+          if [[ "$SKIP_TESTS_INPUT" == "true" ]] || echo "$COMMIT_MESSAGE" | grep -qiw '#tested'; then
             echo "skip-tests=true" | tee -a $GITHUB_OUTPUT
           else
             echo "skip-tests=false" | tee -a $GITHUB_OUTPUT
