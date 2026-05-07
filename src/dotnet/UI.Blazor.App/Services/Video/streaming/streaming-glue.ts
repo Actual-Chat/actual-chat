@@ -28,7 +28,7 @@ import { ServerClock } from 'clocks';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 import type { StreamSenderLike, VideoStreamFrame } from '../operators/wire-send';
 
-const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
+const { infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
 /** Session token used by PushStream / GetStream — `'~'` = Session.Default,
  *  resolved from the WebSocket connection context. */

@@ -38,7 +38,6 @@ export function mstpSource(opts: MstpSourceOptions): AsyncIterableX<CapturedFram
     return exclusive(finalize<CapturedFrame>(release)(segment));
 
     async function* impl(): AsyncIterable<CapturedFrame> {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- signals can be pre-aborted by callers before iteration starts.
         if (stopSignal?.aborted || abortSignal?.aborted)
             return;
 

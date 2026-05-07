@@ -98,7 +98,6 @@ export function pullSource(opts: PullSourceOptions): AsyncIterableX<ArrivedChunk
     return exclusive(finalize<ArrivedChunk>(release)(segment));
 
     async function* impl(): AsyncIterable<ArrivedChunk> {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- signals can be pre-aborted by callers before iteration starts.
         if (stopSignal?.aborted || abortSignal?.aborted)
             return;
 
