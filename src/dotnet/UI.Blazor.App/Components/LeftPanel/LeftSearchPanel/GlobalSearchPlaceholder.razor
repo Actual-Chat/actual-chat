@@ -1,0 +1,18 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+
+<div class="search-result-group-header global-search-placeholder">
+    <div class="c-title">
+        Public chats &amp; places
+    </div>
+    <Button Class="show-btn btn-transparent unhovered btn-sm" Click="@OnShowClick">
+        <span class="c-text">Show</span>
+    </Button>
+</div>
+
+@code {
+    private SearchUI SearchUI => Hub.SearchUI;
+
+    private void OnShowClick()
+        => SearchUI.ShowGlobalResults();
+}

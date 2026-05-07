@@ -22,3 +22,7 @@
 .search-result-group-header.expanded .show-more-btn.btn .c-arrow {
     @apply rotate-0;
 }
+.search-result-group-header .show-btn.btn {
+    @apply px-2;
+    @apply text-caption-4;
+}

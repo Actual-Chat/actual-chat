@@ -8,7 +8,8 @@ public sealed record FoundItem(
     bool IsGlobalSearchResult,
     bool IsFirstInGroup = false,
     bool IsLastInGroup = false,
-    bool CanScopeBeExpanded = false)
+    bool CanScopeBeExpanded = false,
+    bool IsGlobalSearchPlaceholder = false)
 {
     public ChatId ChatId => SearchResult switch {
         ContactSearchResult contact => contact.ContactId.ChatId,

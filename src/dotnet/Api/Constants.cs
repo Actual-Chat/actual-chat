@@ -307,7 +307,7 @@ public static partial class Constants
     public static class Search
     {
         public const int PageSizeLimit = 50;
-        public const int DefaultPageSize = 3;
+        public const int DefaultPageSize = 5;
         public const int ExtendedPageSize = 30;
     }
 
