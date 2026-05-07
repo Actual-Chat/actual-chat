@@ -6,12 +6,15 @@
     var wrapperCls = stateCls;
     if (IsNarrow)
         wrapperCls += " narrow";
-    var tooltip = isVideoOn ? "Stop video" : "Start video";
+    var tooltip = IsDisabled
+        ? "Unavailable in this chat"
+        : isVideoOn ? "Stop video" : "Start video";
 }
 
 <div class="@wrapperCls video-wrapper">
     <ButtonRound
         Click="@(() => OnVideoClick(!isVideoOn))"
+        IsDisabled="@IsDisabled"
         Tooltip="@tooltip"
         TooltipPosition="FloatingPosition.Top">
         <i class="icon-video text-2xl"></i>
@@ -23,6 +26,7 @@
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public bool IsNarrow { get; set; }
+    [Parameter] public bool IsDisabled { get; set; }
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => new() {
@@ -38,6 +42,9 @@
     }
 
     private void OnVideoClick(bool enable) {
+        if (IsDisabled)
+            return;
+
         if (!enable) {
             // Stop webcam only — screencast (if any) keeps running
             ChatVideoUI.StopRecording();

@@ -1,5 +1,8 @@
+using ActualChat.Chat.Module;
+using ActualChat.Contacts;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Video;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
@@ -99,6 +102,53 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
 
         computed = await computed.Update(CancellationToken.None);
         computed.Value.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ShouldMarkVideoUnavailableForNotesChat()
+    {
+        // arrange
+        await using var appHost = await NewAppHost("notes-chat-video", options => options with {
+            ChatDbInitializerOptions = ChatDbInitializer.Options.Default with {
+                AddNotesChat = true,
+            },
+        });
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsNew("NotesVideo");
+        var contacts = tester.AppServices.GetRequiredService<IContacts>();
+        var chatsBackend = tester.AppServices.GetRequiredService<IChatsBackend>();
+        var chatVideoUI = tester.ScopedAppServices.GetRequiredService<ChatVideoUI>();
+        Chat? notesChat = null;
+
+        await ComputedTest.When(async ct => {
+            var chats = await (await contacts.ListIds(tester.Session, null, ct).ConfigureAwait(false))
+                .Select(x => chatsBackend.Get(x.ChatId, ct))
+                .Collect(ct)
+                .ConfigureAwait(false);
+            notesChat = chats
+                .SkipNullItems()
+                .FirstOrDefault(c => c.SystemTag == Constants.Chat.SystemTags.Notes);
+            notesChat.Should().NotBeNull();
+        });
+
+        var (regularChatId, _) = await tester.CreateChat(false);
+        var regularChat = await tester.Chats.Get(tester.Session, regularChatId, CancellationToken.None).Require();
+
+        // act
+        var isNotesVideoAvailable = await chatVideoUI.IsVideoAvailable(notesChat!.Id, CancellationToken.None);
+        var isRegularVideoAvailable = await chatVideoUI.IsVideoAvailable(regularChatId, CancellationToken.None);
+        var isNotesVideoAvailableNonComputed = chatVideoUI.IsVideoAvailableNonComputed(notesChat);
+        var isRegularVideoAvailableNonComputed = chatVideoUI.IsVideoAvailableNonComputed(regularChat);
+        var isNotesVideoEnabled = await chatVideoUI.IsVideoEnabled(notesChat!.Id, CancellationToken.None);
+        var isRegularVideoEnabled = await chatVideoUI.IsVideoEnabled(regularChatId, CancellationToken.None);
+
+        // assert
+        isNotesVideoAvailable.Should().BeFalse();
+        isNotesVideoAvailableNonComputed.Should().BeFalse();
+        isNotesVideoEnabled.Should().BeFalse();
+        isRegularVideoAvailable.Should().BeTrue();
+        isRegularVideoAvailableNonComputed.Should().BeTrue();
+        isRegularVideoEnabled.Should().BeTrue();
     }
 
     /// <summary>

@@ -81,9 +81,23 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     [ComputeMethod]
-    // ReSharper disable once AsyncMethodWithoutAwait
-    public virtual Task<bool> IsVideoEnabled(ChatId chatId, CancellationToken cancellationToken = default)
+    public virtual async Task<bool> IsVideoAvailable(ChatId chatId, CancellationToken cancellationToken = default)
     {
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return IsVideoAvailableNonComputed(chat);
+    }
+
+#pragma warning disable CA1822 // Non-computed fast path for an already-loaded chat
+    public bool IsVideoAvailableNonComputed(ActualChat.Chat.Chat? chat)
+        => chat is { HasSingleAuthor: false };
+#pragma warning restore CA1822
+
+    [ComputeMethod]
+    public virtual async Task<bool> IsVideoEnabled(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        if (!await IsVideoAvailable(chatId, cancellationToken).ConfigureAwait(false))
+            return false;
+
 #if false
         if (chatId.Kind == ChatKind.Peer)
             return true;
@@ -92,14 +106,9 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         return account.IsAdmin;
 #else
         // NOTE(AY): Let's try to enable it in all chats
-        return ActualLab.Async.TaskExt.TrueTask;
+        return true;
 #endif
     }
-
-#pragma warning disable CA1822 // Can be static
-    public bool IsVideoEnabledNonComputed(ChatId chatId)
-        => true;
-#pragma warning restore CA1822
 
     [ComputeMethod]
     public virtual async Task<bool> IsOwnWebcamRecording(ChatId chatId, CancellationToken cancellationToken = default)
@@ -174,15 +183,13 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     public void StartScreenCasting(ChatId chatId)
-    {
-        if (!IsVideoEnabledNonComputed(chatId))
-            return;
-
-        _ = StartScreenCastingInternal(chatId);
-    }
+        => _ = StartScreenCastingInternal(chatId);
 
     private async Task StartScreenCastingInternal(ChatId chatId, CancellationToken cancellationToken = default)
     {
+        if (!await IsVideoEnabled(chatId, cancellationToken).ConfigureAwait(false))
+            return;
+
         if (_screencastChatId.Value == chatId) {
             await ShowScreencastAlreadyActiveModal(cancellationToken).ConfigureAwait(true);
             return;
@@ -247,11 +254,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         => SetWatching(null);
 
     public void OpenVideoPanel(ChatId chatId)
-    {
-        if (!IsVideoEnabledNonComputed(chatId))
-            return;
-        SetWatching(chatId);
-    }
+        => _ = OpenVideoPanelInternal(chatId);
 
     public bool HasJoinedVideoCall(ChatId chatId)
         => _watchingChatId.Value == chatId && _lastRecordingChatId.Value == chatId;
@@ -272,14 +275,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         => Interlocked.Exchange(ref _remoteStreamEndedIntentionally, 0) != 0;
 
     public void ResumeVideoStreaming(ChatId chatId)
-    {
-        if (!IsVideoEnabledNonComputed(chatId))
-            return;
-
-        // Resume recording without overwriting camera/blur settings preserved from the previous recording
-        _recordingChatId.Value = chatId;
-        OpenVideoPanel(chatId);
-    }
+        => _ = ResumeVideoStreamingInternal(chatId);
 
     // JS callback handlers (called from VideoPanel)
 
@@ -353,16 +349,13 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public void JoinVideoSession(ChatId chatId)
     {
-        if (!IsVideoEnabledNonComputed(chatId))
-            return;
-
         _ = JoinInternal();
         return;
 
         async Task JoinInternal(CancellationToken cancellationToken = default)
         {
             var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-            if (chat is null)
+            if (chat is null || !IsVideoAvailableNonComputed(chat))
                 return;
 
             var model = new JoinVideoCallModal.Model(chat, JoinVideoCallModal.VideoCallMode.Join);
@@ -387,16 +380,13 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public void ChangeVideoSessionSettings(ChatId chatId)
     {
-        if (!IsVideoEnabledNonComputed(chatId))
-            return;
-
         _ = ChangeInternal();
         return;
 
         async Task ChangeInternal()
         {
             var chat = await Chats.Get(Session, chatId, default).ConfigureAwait(false);
-            if (chat is null)
+            if (chat is null || !IsVideoAvailableNonComputed(chat))
                 return;
 
             // Freeze the VideoPanel's self-preview before the modal even opens so
@@ -491,6 +481,24 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     private void ClearRecordingError(StreamKind kind)
         => GetErrorState(kind).Value = null;
+
+    private async Task OpenVideoPanelInternal(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        if (!await IsVideoEnabled(chatId, cancellationToken).ConfigureAwait(false))
+            return;
+
+        SetWatching(chatId);
+    }
+
+    private async Task ResumeVideoStreamingInternal(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        if (!await IsVideoEnabled(chatId, cancellationToken).ConfigureAwait(false))
+            return;
+
+        // Resume recording without overwriting camera/blur settings preserved from the previous recording
+        _recordingChatId.Value = chatId;
+        await OpenVideoPanelInternal(chatId, cancellationToken).ConfigureAwait(false);
+    }
 
     private static bool IsScreencastAlreadyActiveError(string error)
         => error.Contains("Another screencast is already active", StringComparison.OrdinalIgnoreCase)

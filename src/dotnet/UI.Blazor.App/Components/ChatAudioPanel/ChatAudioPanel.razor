@@ -10,10 +10,15 @@
     var isOwnScreencasting = m.IsOwnScreencasting;
     var isOwnVideoStreaming = isOwnWebcamRecording || isOwnScreencasting;
     var isAnyoneVideoStreaming = m.IsAnyoneVideoStreaming;
+    var isVideoAvailable = m.IsVideoAvailable;
+    var isVideoDisabled = !isVideoAvailable;
     var showHeaderVoiceSettings = isListening && isRecording;
-    var showVideoControls = isVideoEnabled
+    var showVideoControls = (isVideoEnabled || !isVideoAvailable)
         && (isOwnVideoStreaming || isRecording || isAnyoneVideoStreaming);
     var showHeader = showHeaderVoiceSettings || showVideoControls;
+    var screencastTooltip = isVideoDisabled
+        ? "Unavailable in this chat"
+        : isOwnScreencasting ? "Stop screen share" : "Share screen";
 }
 
 <div class="chat-audio-panel">
@@ -27,8 +32,8 @@
                 } else {
                     <div class="c-incut"></div>
                 }
-                @if (isVideoEnabled) {
-                    <VideoToggle Chat="@Chat" IsNarrow="true"/>
+                @if (isVideoEnabled || !isVideoAvailable) {
+                    <VideoToggle Chat="@Chat" IsNarrow="true" IsDisabled="@isVideoDisabled"/>
                 }
             </div>
             <div class="c-right">
@@ -41,12 +46,13 @@
         @if (!IsNarrow && showVideoControls) {
             <div class="@(isOwnScreencasting ? "screencast-on" : "screencast-off") screencast-wrapper">
                 <ButtonRound Click="@(() => OnScreencastClick(!isOwnScreencasting))"
-                    Tooltip="@(isOwnScreencasting ? "Stop screen share" : "Share screen")"
+                    IsDisabled="@isVideoDisabled"
+                    Tooltip="@screencastTooltip"
                     TooltipPosition="FloatingPosition.Top">
                     <i class="icon-screen-share text-2xl"></i>
                 </ButtonRound>
             </div>
-            <VideoToggle Chat="@Chat" />
+            <VideoToggle Chat="@Chat" IsDisabled="@isVideoDisabled" />
         }
         <div class="recorder-button">
             <div data-bubble="@(BubbleRef.New<RecordButtonBubble>())"
@@ -79,6 +85,9 @@
 
     private void OnScreencastClick(bool enable) {
         var chat = Chat;
+        if (!ChatVideoUI.IsVideoAvailableNonComputed(chat))
+            return;
+
         if (!enable)
             ChatVideoUI.StopScreenCasting();
         else
@@ -88,7 +97,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Model>.Options {
-                InitialValue = new Model(null, false, false, false, false),
+                InitialValue = new Model(null, true, false, false, false, false),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -96,12 +105,14 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var audioState = await ChatAudioUI.GetState(chat.Id).ConfigureAwait(false);
+        var isVideoAvailable = ChatVideoUI.IsVideoAvailableNonComputed(chat);
         var isVideoEnabled = await ChatVideoUI.IsVideoEnabled(chat.Id, cancellationToken).ConfigureAwait(false);
         var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chat.Id, cancellationToken).ConfigureAwait(false);
         var isOwnWebcamRecording = await ChatVideoUI.IsOwnWebcamRecording(chat.Id, cancellationToken).ConfigureAwait(false);
         var isOwnScreencasting = await ChatVideoUI.IsOwnScreencasting(chat.Id, cancellationToken).ConfigureAwait(false);
         return new(
             audioState,
+            isVideoAvailable,
             isVideoEnabled,
             isAnyoneVideoStreaming,
             isOwnWebcamRecording,
@@ -113,6 +124,7 @@
 
     public sealed record Model(
         ChatAudioState? AudioState,
+        bool IsVideoAvailable,
         bool IsVideoEnabled,
         bool IsAnyoneVideoStreaming,
         bool IsOwnWebcamRecording,
