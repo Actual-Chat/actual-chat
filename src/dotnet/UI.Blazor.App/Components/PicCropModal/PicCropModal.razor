@@ -8,6 +8,7 @@
 <DialogFrame
     Class="@("pic-crop-modal" + (ModalModel.IsSquare ? " square" : "") + (ModalModel.HasBlur ? " has-blur" : ""))"
     Title="@(ModalModel.HasBlur ? "Crop wallpaper" : ModalModel.IsSquare ? "Crop place avatar" : "Crop avatar")"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.Default"
     HasCloseButton="true">
     <Body>
         @if (_hasError) {
