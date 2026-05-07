@@ -5,7 +5,10 @@
     var isExpanded = State.Value;
     var btnText = isExpanded ? "Show less" : "Show more";
     var isExpandedCls = isExpanded ? "expanded" : "";
-    var title = IsGlobalSearchResult ? "Global search" : Scope.ToString();
+    var isPlaceSearch = SearchUI.PlaceId.Value is not null;
+    var title = isPlaceSearch
+        ? (IsGlobalSearchResult ? "This place" : "This chat")
+        : (IsGlobalSearchResult ? "Public chats & places" : Scope.ToString());
 }
 
 <div class="search-result-group-header @isExpandedCls">

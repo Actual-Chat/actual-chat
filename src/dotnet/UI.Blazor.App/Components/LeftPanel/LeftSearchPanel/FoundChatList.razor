@@ -15,6 +15,10 @@
 
 <div class="chat-list own-chat-list @listCls">
     @foreach (var foundItem in foundItems) {
+        @if (foundItem.IsGlobalSearchPlaceholder) {
+            <GlobalSearchPlaceholder />
+            continue;
+        }
         @if (foundItem.IsFirstInGroup) {
             <SearchResultGroupHeader
                 CanExpandOrCollapse="foundItem.CanScopeBeExpanded"

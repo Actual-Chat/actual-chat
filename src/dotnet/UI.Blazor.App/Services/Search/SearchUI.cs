@@ -17,6 +17,7 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
     private readonly MutableState<bool> _isSearchModeOn;
     private readonly MutableState<bool> _isShowRecentOn;
     private readonly MutableState<bool> _isResultsNavigationOn;
+    private readonly MutableState<bool> _isGlobalSearchOn;
     private readonly ComputedState<FoundItem?> _selectedItem;
     private Cached _cached = Cached.None;
 
@@ -25,6 +26,7 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
     public IState<bool> IsSearchModeOn => _isSearchModeOn;
     public IState<bool> IsShowRecentOn => _isShowRecentOn;
     public IState<bool> IsResultsNavigationOn => _isResultsNavigationOn;
+    public IState<bool> IsGlobalSearchOn => _isGlobalSearchOn;
     public IState<FoundItem?> SelectedItem => _selectedItem;
 
     private MutableState<ImmutableHashSet<SearchScope>> ExtendedLimits { get; }
@@ -42,6 +44,7 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
         _isSearchModeOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsSearchModeOn)));
         _isShowRecentOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsShowRecentOn)));
         _isResultsNavigationOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsResultsNavigationOn)));
+        _isGlobalSearchOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsGlobalSearchOn)));
         _selectedItem = stateFactory.NewComputed((FoundItem?)null, _ => Task.FromResult(_cached.Selected), StateCategories.Get(GetType(), nameof(SelectedItem)));
         ExtendedLimits = stateFactory
             .NewMutable(ImmutableHashSet<SearchScope>.Empty, StateCategories.Get(GetType(), nameof(ExtendedLimits)));
@@ -67,7 +70,14 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
 
         var extendedLimits = await ExtendedLimits.Use(cancellationToken).ConfigureAwait(false);
         var placeId = await _placeId.Use(cancellationToken).ConfigureAwait(false);
-        return new (text, placeId, extendedLimits);
+        ChatId? chatId = null;
+        if (placeId is not null) {
+            var selectedChatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+            if (selectedChatId is PlaceChatId placeChatId && placeChatId.PlaceId == placeId)
+                chatId = selectedChatId;
+        }
+        var isGlobalSearchOn = await _isGlobalSearchOn.Use(cancellationToken).ConfigureAwait(false);
+        return new (text, placeId, chatId, extendedLimits, isGlobalSearchOn);
     }
 
     [ComputeMethod]
@@ -84,6 +94,7 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
 
         Text.Value = "";
         PlaceId.Value = null;
+        _isGlobalSearchOn.Value = false;
         _ = UIEventHub.Publish(new SearchClearedEvent());
     }
 
@@ -98,6 +109,9 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
         var current = await ExtendedLimits.Use(cancellationToken).ConfigureAwait(false);
         ExtendedLimits.Value = current.Remove(chatKind);
     }
+
+    public void ShowGlobalResults()
+        => _isGlobalSearchOn.Value = true;
 
     public void ShowRecent(bool isOn)
         => _isShowRecentOn.Set(isOn);
@@ -170,9 +184,15 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
         }
     }
 
-    protected sealed record Criteria(string Text, PlaceId? PlaceId, ImmutableHashSet<SearchScope> ExtendedLimits)
+    protected sealed record Criteria(
+        string Text,
+        PlaceId? PlaceId,
+        ChatId? ChatId,
+        ImmutableHashSet<SearchScope> ExtendedLimits,
+        bool IsGlobalSearchOn)
     {
-        public static readonly Criteria None = new ("", null, []);
+        public static readonly Criteria None = new ("", null, null, [], false);
+        public bool IsPlaceSearch => PlaceId is not null && ChatId is not null;
 
         public ContactSearchQuery ToContactQuery(SubgroupKey key)
             => new () {
@@ -185,14 +205,25 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
                 Own = key.Own,
             };
 
-        public EntrySearchQuery ToEntryQuery(SubgroupKey key)
-            => new () {
+        public EntrySearchQuery ToEntryQuery(SubgroupKey key) {
+            if (IsPlaceSearch)
+                return key.Own
+                    ? new () { Criteria = Text, ChatId = ChatId, Limit = Constants.Search.DefaultPageSize }
+                    : new () {
+                        Criteria = Text,
+                        PlaceId = PlaceId,
+                        Limit = ExtendedLimits.Contains(key.Scope)
+                            ? Constants.Search.ExtendedPageSize
+                            : Constants.Search.DefaultPageSize,
+                    };
+            return new () {
                 Criteria = Text,
-                PlaceId = PlaceId, // search everywhere (chats and places) if Null
+                PlaceId = PlaceId,
                 Limit = ExtendedLimits.Contains(key.Scope)
                     ? Constants.Search.ExtendedPageSize
                     : Constants.Search.DefaultPageSize,
             };
+        }
     }
 
     protected sealed record SubgroupKey(SearchScope Scope, bool Own);

@@ -28,10 +28,16 @@ public partial class SearchUI
             .Where(x => !x.HasError)
             .Select(x => x.Value)
             .AdjacentDistinct();
+        var lastText = "";
         var debouncer = Debouncer.New<Criteria>(DebounceInterval, UpdateSearchResults);
         await using var _ = debouncer.ConfigureAwait(false);
-        await foreach (var criteria in criteriaChanges.ConfigureAwait(false))
+        await foreach (var criteria in criteriaChanges.ConfigureAwait(false)) {
+            if (criteria.Text != lastText) {
+                lastText = criteria.Text;
+                _isGlobalSearchOn.Value = false;
+            }
             debouncer.Enqueue(criteria);
+        }
     }
 
     private async Task UpdateSearchResults(
@@ -44,14 +50,21 @@ public partial class SearchUI
             var searchResultMap = await Find(criteria, searchCts.Token).ConfigureAwait(false);
             foundItems = new List<FoundItem>(searchResultMap.Sum(x => x.Value.Count));
 
-            AddUserRelatedSearchResults(searchResultMap);
-            AddGlobalSearchResults(searchResultMap);
+            if (criteria.IsPlaceSearch)
+                AddPlaceSearchResults(searchResultMap);
+            else {
+                AddUserRelatedSearchResults(searchResultMap);
+                if (criteria.IsGlobalSearchOn)
+                    AddGlobalSearchResults(searchResultMap);
+                else
+                    AddGlobalSearchPlaceholder();
+            }
         }
         _isSearchModeOn.Value = !criteria.Text.IsNullOrEmpty();
         _isResultsNavigationOn.Value = false;
         _cached = new Cached(foundItems);
         var messageSearchMatches = _cached.FoundItems
-            .Where(x => x.Scope is SearchScope.Messages)
+            .Where(x => x.Scope is SearchScope.Messages && !x.IsGlobalSearchPlaceholder)
             .ToDictionary(x => (ChatEntryId)x.EntryId!, IReadOnlySet<string> (x) => x.HighlightedWords);
         HighlightUI.SetHighlightedWords(messageSearchMatches);
         _selectedItem.Invalidate();
@@ -93,6 +106,53 @@ public partial class SearchUI
                 }
             }
         }
+
+        void AddGlobalSearchPlaceholder() {
+            foundItems.Add(new (
+                null!,
+                SearchScope.People,
+                true,
+                IsFirstInGroup: true,
+                IsLastInGroup: true,
+                IsGlobalSearchPlaceholder: true));
+        }
+
+        void AddPlaceSearchResults(Dictionary<SubgroupKey, IReadOnlyList<SearchResult>> searchResultMap) {
+            // Group 1: Messages from current chat (always max DefaultPageSize, no expand)
+            var currentChatMessages = searchResultMap.GetValueOrDefault(new (SearchScope.Messages, true)) ?? [];
+            for (int i = 0; i < currentChatMessages.Count; i++)
+                foundItems.Add(new (currentChatMessages[i],
+                    SearchScope.Messages,
+                    false,
+                    i == 0,
+                    i == currentChatMessages.Count - 1));
+
+            // Collect current chat entry IDs for dedup
+            var currentChatEntryIds = currentChatMessages
+                .OfType<EntrySearchResult>()
+                .Select(x => x.EntryId)
+                .ToHashSet();
+
+            // Group 2+: Rest of place results, per scope
+            foreach (var scope in Scopes.Where(x => x is not SearchScope.Places)) {
+                IReadOnlyList<SearchResult> scopeResults;
+                if (scope is SearchScope.Messages) {
+                    var allPlaceMessages = searchResultMap.GetValueOrDefault(new (scope, false)) ?? [];
+                    scopeResults = allPlaceMessages
+                        .Where(x => x is not EntrySearchResult entry || !currentChatEntryIds.Contains(entry.EntryId))
+                        .ToList();
+                } else
+                    scopeResults = searchResultMap.GetValueOrDefault(new (scope, true)) ?? [];
+
+                for (int i = 0; i < scopeResults.Count; i++)
+                    foundItems.Add(new (scopeResults[i],
+                        scope,
+                        true,
+                        i == 0,
+                        i == scopeResults.Count - 1,
+                        scopeResults.Count >= Constants.Search.DefaultPageSize));
+            }
+        }
     }
 
     private async Task<Dictionary<SubgroupKey, IReadOnlyList<SearchResult>>> Find(
@@ -106,7 +166,7 @@ public partial class SearchUI
         var scopes = criteria.PlaceId is null
             ? Scopes
             : Scopes.Where(x => x is not SearchScope.Places);
-        var subgroups = ToSubgroups(scopes);
+        var subgroups = ToSubgroups(scopes, criteria.IsGlobalSearchOn, criteria.IsPlaceSearch);
         var allSearchResults = await subgroups.Select(FindSubgroup)
             .CollectResults(ApiConstants.Concurrency.Low, cancellationToken)
             .ConfigureAwait(false);
@@ -132,8 +192,25 @@ public partial class SearchUI
         }
     }
 
-    private static SubgroupKey[] ToSubgroups(IEnumerable<SearchScope> scopes)
-        => scopes.SelectMany(x => new SubgroupKey[] { new (x, true), new (x, false) })
+    private static SubgroupKey[] ToSubgroups(
+        IEnumerable<SearchScope> scopes,
+        bool includeGlobal,
+        bool isPlaceSearch)
+    {
+        if (isPlaceSearch)
+            // Messages: Own=true (current chat) + Own=false (all place chats)
+            // Contacts: Own=true only (place members)
+            return scopes
+                .SelectMany(x => x is SearchScope.Messages
+                    ? new SubgroupKey[] { new (x, true), new (x, false) }
+                    : new SubgroupKey[] { new (x, true) })
+                .ToArray();
+
+        var subgroups = includeGlobal
+            ? scopes.SelectMany(x => new SubgroupKey[] { new (x, true), new (x, false) })
+            : scopes.Select(x => new SubgroupKey(x, true));
+        return subgroups
             .Except([new SubgroupKey(SearchScope.Messages, false)]) // searching for messages only in own chats
             .ToArray();
+    }
 }
