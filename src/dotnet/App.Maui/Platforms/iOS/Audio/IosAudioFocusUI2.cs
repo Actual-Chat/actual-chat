@@ -61,8 +61,17 @@ public sealed class IosAudioFocusUI2 : AudioFocusUI
 
         var needsReconfigure = _scopes.GetMode() < requester.Kind;
         scope = _scopes.Add(requester, new Scope(this, requester));
-        if (needsReconfigure)
+        if (!needsReconfigure)
+            return scope;
+
+        try {
             await SetModeUnsafe(_scopes.GetMode()).ConfigureAwait(false);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(StopToken)) {
+            _scopes.Remove(requester, out _);
+            Log.LogError(e, "Failed to acquire scope for {Mode}", requester.Kind);
+            throw;
+        }
         return scope;
     }
 
