@@ -66,7 +66,7 @@ public sealed class IosAudioFocusUI : MauiAudioFocusUI
 
     private async Task Release(AudioFocusMode mode, MauiAudioFocusHandle handle)
     {
-        Log.LogInformation("AudioFocusHandle {Handle} releasing", handle);
+        Log.LogInformation("AudioFocusHandle {Handle} releasing for mode {Mode}", handle, mode);
         using var _1 = await _lock.Lock(StopToken).ConfigureAwait(false);
         try {
             if (!_handles.Remove(mode, out var existingHandle))
