@@ -1,6 +1,6 @@
 import type { MonotonicTime } from 'clocks';
 import { from, type PipeOperator } from 'ix-ext';
-import { AsyncVideoEncoder, isAsyncVideoEncoderResetError } from 'async-video-encoder';
+import { AsyncVideoEncoder, isAsyncVideoEncoderResetError } from '../adapters';
 import { closeEncodedChunk, type CapturedFrame, type EncodedFrame, type SimulcastBundle } from '../frame-envelopes';
 
 // Subset of `VideoEncoderConfig` the operator threads into the encoded

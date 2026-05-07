@@ -12,7 +12,7 @@ import {
     type VideoRecordingStats,
     createEmptyRecordingStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
-import { AsyncVideoEncoder, AsyncVideoEncoderResetError } from 'async-video-encoder';
+import { AsyncVideoEncoder, AsyncVideoEncoderResetError } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/adapters';
 
 // ---- Mock WebCodecs surface ----------------------------------------------
 //

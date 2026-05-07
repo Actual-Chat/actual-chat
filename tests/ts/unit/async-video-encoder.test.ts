@@ -3,7 +3,7 @@ import {
     AsyncVideoEncoder,
     type CapturedFrame,
     type EncodedFrame,
-} from 'async-video-encoder';
+} from '../../../src/dotnet/UI.Blazor.App/Services/Video/adapters';
 import { isDisposable } from 'disposable';
 
 // ---- Mocks for the WebCodecs surface --------------------------------------

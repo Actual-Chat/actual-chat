@@ -4,7 +4,7 @@ import {
     type EncoderHandle,
     type PooledEncoder,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/sender/encoder-pool';
-import { AsyncVideoEncoder } from 'async-video-encoder';
+import { AsyncVideoEncoder } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/adapters';
 import type {
     EncodedFrame,
     VideoRecordingStats,

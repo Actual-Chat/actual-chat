@@ -10,7 +10,7 @@ import { rpcClientServer } from 'rpc';
 import { getLogs } from 'logging';
 import { initAppConstants, type AppConstants } from 'app-constants';
 import { SharedSettings } from 'shared-settings';
-import { AsyncVideoEncoder } from 'async-video-encoder';
+import { AsyncVideoEncoder } from '../adapters';
 import {
     initRecorderWorker,
     recorderWorkerImpl,

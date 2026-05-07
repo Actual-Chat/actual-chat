@@ -11,7 +11,7 @@
 // the encoder factory is injected per-acquire so the operator-side
 // `createEncoder` in `operators/encode.ts` stays pluggable.
 
-import { AsyncVideoEncoder } from 'async-video-encoder';
+import { AsyncVideoEncoder } from '../adapters';
 import type { EncodedFrame } from '../frame-envelopes';
 import type { EncodeInput } from '../operators/encode';
 
@@ -27,8 +27,8 @@ export type EncoderCodecCategory = 'h264' | 'hevc' | 'av1' | 'vp9';
 
 /**
  * Per-layer encoder type expected by the rest of the pipeline. Aliased
- * here so callers don't have to import both `async-video-encoder` and
- * the operator's `EncodeInput` separately.
+ * here so callers don't have to import both `adapters` and the operator's
+ * `EncodeInput` separately.
  */
 export type PooledEncoder = AsyncVideoEncoder<EncodeInput, EncodedFrame>;
 

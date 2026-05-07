@@ -53,7 +53,7 @@ import {
 
 import { EncodedFrameBuffer } from '../../../src/dotnet/UI.Blazor.App/Services/Video/playback/encoded-frame-buffer';
 
-import { AsyncVideoEncoder } from 'async-video-encoder';
+import { AsyncVideoEncoder } from '../../../src/dotnet/UI.Blazor.App/Services/Video/adapters';
 import { MonotonicClock } from 'clocks';
 // ============================================================================
 // Mock WebCodecs surfaces

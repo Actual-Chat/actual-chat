@@ -6,7 +6,7 @@ import {
 import { SenderSession } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/sender/session';
 import type { EncoderConfigPerLayer } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/encode';
 import type { StreamSenderLike, VideoStreamFrame } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/wire-send';
-import { AsyncVideoEncoder } from 'async-video-encoder';
+import { AsyncVideoEncoder } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/adapters';
 import type {
     EncodedFrame,
     VideoRecordingStats,
