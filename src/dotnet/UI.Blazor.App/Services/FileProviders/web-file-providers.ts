@@ -149,18 +149,6 @@ export class WebFileProvider implements IUploadStreamSource {
         return this.resolvedFile!;
     }
 
-    public getBlobSize(): number
-    {
-        return this.getBlob().size;
-    }
-
-    public async readBlobChunk(offset: number, length: number): Promise<Uint8Array>
-    {
-        const blob = this.getBlob();
-        const chunk = blob.slice(offset, offset + length);
-        return new Uint8Array(await chunk.arrayBuffer());
-    }
-
     public async clearForRemoving() : Promise<void>
     {
         this.revokePreviewUrl();
