@@ -6,14 +6,6 @@ using Foundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-// iOS allows one AVAudioSession category at a time. The active mode is the max
-// AudioFocusMode in _activeScopes, mapped to a category:
-//   Tune (or empty) -> Ambient (mixes with other apps)
-//   Playback        -> Playback
-//   Recording       -> PlayAndRecord
-// _isSessionConfigured guards the first-ever acquire — iOS defaults to SoloAmbient, which
-// would silence other apps, so we must call SetCategory(Ambient) at least once.
-
 public sealed class IosAudioFocusUI : AudioFocusUI
 {
     private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.2, 3);
