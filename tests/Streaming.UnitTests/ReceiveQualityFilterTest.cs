@@ -6,10 +6,12 @@ namespace ActualChat.Streaming.UnitTests;
 
 public class ReceiveQualityFilterTest
 {
+    private static readonly ReceiveQuality TopQuality = new(2, int.MaxValue);
+
     [Fact]
     public async Task LoweredCapSwitchesOnNextKeyframe()
     {
-        var quality = ReceiveQuality.Default;
+        var quality = TopQuality;
         var frames = Frames(
             Key(2, 1),
             Delta(2, 1),
@@ -30,7 +32,7 @@ public class ReceiveQualityFilterTest
     [Fact]
     public async Task LoweredCapKeepsForwardingCurrentLayerUntilKeyframe()
     {
-        var quality = ReceiveQuality.Default;
+        var quality = TopQuality;
         var frames = Frames(
             Key(2, 1),
             Delta(2, 1),
@@ -55,7 +57,7 @@ public class ReceiveQualityFilterTest
         var frames = Frames(
             Key(0, 1),
             Delta(0, 1),
-            Mutate(() => quality = ReceiveQuality.Default),
+            Mutate(() => quality = TopQuality),
             Delta(0, 1),
             Delta(2, 1),
             Key(2, 2),
@@ -77,7 +79,7 @@ public class ReceiveQualityFilterTest
             Key(2, 1),
             Delta(2, 1),
             Delta(2, 1, temporal: 1),
-            Mutate(() => quality = ReceiveQuality.Default),
+            Mutate(() => quality = TopQuality),
             Delta(2, 1, temporal: 1),
             Delta(2, 1),
             Key(2, 2),
@@ -99,14 +101,14 @@ public class ReceiveQualityFilterTest
     [Fact]
     public async Task LoweredTemporalCapDoesNotReUpgradeBeforeKeyframe()
     {
-        var quality = ReceiveQuality.Default;
+        var quality = TopQuality;
         var frames = Frames(
             Key(2, 1),
             Delta(2, 1, temporal: 1),
             Mutate(() => quality = ReceiveQuality.Lowest),
             Delta(2, 1, temporal: 1),
             Delta(2, 1),
-            Mutate(() => quality = ReceiveQuality.Default),
+            Mutate(() => quality = TopQuality),
             Delta(2, 1, temporal: 1),
             Key(2, 2),
             Delta(2, 2, temporal: 1));

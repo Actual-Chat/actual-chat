@@ -154,6 +154,8 @@ public class CapacityEstimatorTest
 
 public class AllocatorTest
 {
+    private static readonly ReceiveQuality TopQuality = new(2, int.MaxValue);
+
     private static StreamRequest Req(string id, long bytesAtBase, long bytesAtTop)
         => new(id, [bytesAtBase, (bytesAtBase + bytesAtTop) / 2, bytesAtTop], MaxLayerId: 2);
 
@@ -164,7 +166,7 @@ public class AllocatorTest
         var result = Allocator.Allocate(1_000_000, primaries, []);
 
         result.Should().ContainKey("p1");
-        result["p1"].Should().Be(ReceiveQuality.Default);
+        result["p1"].Should().Be(TopQuality);
     }
 
     [Fact]
@@ -222,7 +224,7 @@ public class AllocatorTest
         var secondaries = new[] { Req("s1", 200_000, 600_000) };
         var result = Allocator.Allocate(1_200_000, primaries, secondaries);
 
-        result["p1"].Should().Be(ReceiveQuality.Default);
+        result["p1"].Should().Be(TopQuality);
         result["s1"].MaxLayerId.Should().Be(2);
     }
 
