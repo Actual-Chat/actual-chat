@@ -101,8 +101,19 @@ export function pacedEncodedBuffer(opts: PacedEncodedBufferOptions): PipeOperato
             } finally {
                 // Drop retained chunks; anything already yielded is downstream's.
                 buffer.reset();
-                if (pendingNext !== null && typeof iterator.return === 'function') {
-                    try { await iterator.return(undefined as never); } catch { /* ignore */ }
+                if (pendingNext !== null) {
+                    // The chunk that satisfies an in-flight next() doesn't reach
+                    // the buffer, so without an explicit close hook it leaks.
+                    // Attached as a tail handler (not awaited) so a non-cooperative
+                    // upstream that never settles return() can't block teardown.
+                    pendingNext.then(
+                        r => { if (!r.done) closeEncodedChunk(r.value.chunk); },
+                        () => { /* ignore */ },
+                    );
+                    if (typeof iterator.return === 'function') {
+                        try { await iterator.return(undefined as never); } catch { /* ignore */ }
+                    }
+                    pendingNext = null;
                 }
             }
         }

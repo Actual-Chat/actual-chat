@@ -310,6 +310,70 @@ describe('pacedEncodedBuffer', () => {
         expect((pendingChunk.chunk as unknown as MockEncodedVideoChunk).closed).toBe(true);
     });
 
+    it('closes a chunk that arrives via in-flight next() after abort', async () => {
+        const ac = new AbortController();
+        const stats = createEmptyPlaybackStats(0);
+        const clock = makeFakeClock();
+        const buffer = new EncodedFrameBuffer({ targetSpanMs: 1_000, now: clock.now });
+        const op = pacedEncodedBuffer({
+            buffer,
+            abortSignal: ac.signal,
+            now: clock.now,
+            setTimeoutFn: clock.setTimeoutFn,
+            clearTimeoutFn: clock.clearTimeoutFn,
+        });
+
+        // Cooperative source: return() resolves any pending next() with done=true,
+        // but a chunk pushed *between* abort and return() races into the in-flight
+        // promise and must be closed by the operator.
+        const queue: ArrivedChunk[] = [];
+        const waiters: ((v: IteratorResult<ArrivedChunk>) => void)[] = [];
+        let ended = false;
+        const seg: AsyncIterable<ArrivedChunk> = {
+            [Symbol.asyncIterator](): AsyncIterator<ArrivedChunk> {
+                return {
+                    next(): Promise<IteratorResult<ArrivedChunk>> {
+                        if (queue.length > 0)
+                            return Promise.resolve({ value: queue.shift()!, done: false });
+                        if (ended)
+                            return Promise.resolve({ value: undefined as unknown as ArrivedChunk, done: true });
+
+                        return new Promise(resolve => waiters.push(resolve));
+                    },
+                    return(): Promise<IteratorResult<ArrivedChunk>> {
+                        ended = true;
+                        while (waiters.length > 0)
+                            waiters.shift()!({ value: undefined as unknown as ArrivedChunk, done: true });
+                        return Promise.resolve({ value: undefined as unknown as ArrivedChunk, done: true });
+                    },
+                };
+            },
+        };
+        const collected: ArrivedChunk[] = [];
+        const driverSeg: AsyncIterable<ArrivedChunk> = (async function* () {
+            for await (const item of op(seg)) {
+                collected.push(item);
+                yield item;
+            }
+        })();
+        const runPromise = count(driverSeg);
+
+        // Let the operator install a waiter for next().
+        await clock.advance(0);
+        const inflightChunk = mkChunk({ timeMs: 0, arrivedAtMs: 0, isKeyFrame: true, stats });
+
+        // Abort, then deliver a chunk into the pending next() before return() lands.
+        ac.abort();
+        const w = waiters.shift();
+        if (w) w({ value: inflightChunk, done: false });
+        await clock.advance(0);
+        await runPromise.catch(() => { /* expected */ });
+
+        // Settle the .then(...) tail handler that closes the in-flight chunk.
+        for (let i = 0; i < 8; i++) await Promise.resolve();
+        expect((inflightChunk.chunk as unknown as MockEncodedVideoChunk).closed).toBe(true);
+    });
+
     it('drains as many due chunks as the cushion permits in one tick', async () => {
         const ac = new AbortController();
         const stats = createEmptyPlaybackStats(0);
