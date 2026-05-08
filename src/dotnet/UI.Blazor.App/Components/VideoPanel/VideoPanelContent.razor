@@ -351,6 +351,7 @@
         var layout = await _layoutCalculator.GetLayout(cancellationToken).ConfigureAwait(false);
 
         var isAdmin = AccountUI.OwnAccount.Value.IsAdmin;
+        var allowDiagnostics = isAdmin || HostInfo.IsDevelopmentInstance;
 
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var isCollapsed = await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
@@ -378,7 +379,7 @@
                 chat,
                 isCollapsed,
                 isVideoEnabled,
-                AllowDiagnostics: isAdmin);
+                AllowDiagnostics: allowDiagnostics);
 
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
 
@@ -402,7 +403,7 @@
             chat,
             isCollapsed,
             isVideoEnabled,
-            isAdmin,
+            allowDiagnostics,
             focusedName);
     }
 
