@@ -57,6 +57,13 @@ export function encode(opts: EncodeOptions): PipeOperator<SimulcastBundle, Encod
 
         async function* impl(): AsyncIterable<EncodedFrame> {
             const encoders: AsyncVideoEncoder<EncodeInput, EncodedFrame>[] = [];
+            // True on the very first bundle through this operator instance.
+            // Forces keyFrame:true on the first encode per layer regardless
+            // of policy — pool-reused encoders may otherwise emit a delta as
+            // their first chunk after handleEncoderReset, which the server
+            // drops as a pre-keyframe delta and the receiver waits for the
+            // next natural keyframe (up to one full GOP, ~3 s).
+            let forceKeyframeOnFirstEncode = true;
             let forceKeyframeNext = false;
             try {
                 for await (const bundle of source) {
@@ -76,7 +83,10 @@ export function encode(opts: EncodeOptions): PipeOperator<SimulcastBundle, Encod
                             throw e;
                         }
                     }
-                    const keyFrame = bundle.primary.forceKeyframe || forceKeyframeNext;
+                    const keyFrame = bundle.primary.forceKeyframe
+                        || forceKeyframeNext
+                        || forceKeyframeOnFirstEncode;
+                    forceKeyframeOnFirstEncode = false;
                     // Bottom-first: extras[0..N-2] then primary (top tier).
                     const layerFrames: CapturedFrame[] = [...bundle.extras, bundle.primary];
                     const promises: Promise<EncodedFrame>[] = [];

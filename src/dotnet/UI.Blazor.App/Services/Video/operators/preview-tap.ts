@@ -2,7 +2,10 @@ import { tap, type PipeOperator } from 'ix-ext';
 import { getLogs } from 'logging';
 import type { CapturedFrame } from '../frame-envelopes';
 
-const { debugLog } = getLogs('VideoPipeline');
+const { warnLog } = getLogs('VideoPipeline');
+// Throttle: log first, then 1-in-N to avoid drowning the console if a
+// device-level failure (GPU OOM, lost surface) starts dropping every clone.
+const LogEveryN = 30;
 
 export interface PreviewTapOptions {
     /** Returns the writer to forward to, or `null` to detach. Called per
@@ -20,7 +23,11 @@ export function previewTap(opts: PreviewTapOptions): PipeOperator<CapturedFrame,
         try {
             writer = getWriter();
         } catch (e) {
-            debugLog?.log('previewTap: getWriter failed:', e);
+            envelope.stats.previewClonesFailed++;
+            if (envelope.stats.previewClonesFailed === 1
+                || envelope.stats.previewClonesFailed % LogEveryN === 0) {
+                warnLog?.log(`previewTap: getWriter failed (#${envelope.stats.previewClonesFailed}):`, e);
+            }
             return;
         }
         if (!writer) return;
@@ -29,14 +36,22 @@ export function previewTap(opts: PreviewTapOptions): PipeOperator<CapturedFrame,
         try {
             clone = envelope.frame.clone();
         } catch (e) {
-            debugLog?.log('previewTap: frame clone failed:', e);
+            envelope.stats.previewClonesFailed++;
+            if (envelope.stats.previewClonesFailed === 1
+                || envelope.stats.previewClonesFailed % LogEveryN === 0) {
+                warnLog?.log(`previewTap: frame clone failed (#${envelope.stats.previewClonesFailed}):`, e);
+            }
             return;
         }
         try {
             await writer.write(clone);
         } catch (e) {
             try { clone.close(); } catch { /* ignore */ }
-            debugLog?.log('previewTap: writer.write failed:', e);
+            envelope.stats.previewClonesFailed++;
+            if (envelope.stats.previewClonesFailed === 1
+                || envelope.stats.previewClonesFailed % LogEveryN === 0) {
+                warnLog?.log(`previewTap: writer.write failed (#${envelope.stats.previewClonesFailed}):`, e);
+            }
         }
     });
 }

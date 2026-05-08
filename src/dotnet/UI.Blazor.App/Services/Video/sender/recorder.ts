@@ -20,7 +20,7 @@ import { wireSend, type StreamSenderLike } from '../operators/wire-send';
 import type { SenderSession } from './session';
 
 const { warnLog } = getLogs('VideoPipeline');
-const STOP_DRAIN_GRACE_MS = 1_000;
+const STOP_DRAIN_GRACE_MS = 3_000;
 
 // Re-export collaborator-facing types so callers don't have to reach
 // into operators/.

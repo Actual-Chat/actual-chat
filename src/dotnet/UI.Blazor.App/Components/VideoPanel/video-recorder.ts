@@ -1237,10 +1237,21 @@ export class VideoRecorder {
             let senderFrameDropRatio = 0;
             if (previous && isPeerConnected && this.lastRecorderHealthWasPeerConnected) {
                 const added = Math.max(0, stats.wireFramesAdded - previous.wireFramesAdded);
-                const dropped = Math.max(0,
+                const wireDropped = Math.max(0,
                     stats.wireFramesDropped - previous.wireFramesDropped
                     + stats.rpcStreamFramesSkipped - previous.rpcStreamFramesSkipped);
-                senderFrameDropRatio = added > 0 ? dropped / added : 0;
+                // Pre-encode losses (dim guard, backpressure, other) feed
+                // the same EMA: each is a frame the recorder was supposed
+                // to emit and didn't. Treat them as additional "would-be"
+                // adds so the ratio reflects total pipe loss, not just
+                // wire-side loss.
+                const preEncodeDropped = Math.max(0,
+                    stats.framesDroppedDimMismatch - previous.framesDroppedDimMismatch
+                    + stats.framesDroppedBackpressure - previous.framesDroppedBackpressure
+                    + stats.framesDroppedOther - previous.framesDroppedOther);
+                const totalDropped = wireDropped + preEncodeDropped;
+                const totalProduced = added + preEncodeDropped;
+                senderFrameDropRatio = totalProduced > 0 ? totalDropped / totalProduced : 0;
             }
             this.lastRecorderHealthStats = { ...stats };
             this.lastRecorderHealthWasPeerConnected = isPeerConnected;

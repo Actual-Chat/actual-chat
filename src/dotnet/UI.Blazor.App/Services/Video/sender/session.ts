@@ -54,12 +54,18 @@ export interface SenderSessionOptions {
  *     writer threw at construction. Once obtained, the writer survives
  *     all runs; only `dispose()` releases it.
  */
+// Pool TTL (5 s) divided by 2 — guarantees we hit the eviction window
+// at least once for every parked encoder so an idle session can't pin
+// a HW slot forever just because acquire() is never called again.
+const PoolSweepIntervalMs = 2_500;
+
 export class SenderSession {
     readonly captureClock: MonotonicClock;
     readonly encoderPool: EncoderPool;
     readonly previewWriter: WritableStreamDefaultWriter<VideoFrame> | null;
 
     private disposed = false;
+    private sweepTimer: ReturnType<typeof setInterval> | null = null;
 
     constructor(opts: SenderSessionOptions = {}) {
         const createCaptureClock = opts.createCaptureClock
@@ -67,6 +73,11 @@ export class SenderSession {
         this.captureClock = createCaptureClock();
         this.encoderPool = new EncoderPool(opts.encoderPoolOptions);
         this.previewWriter = acquirePreviewWriter(opts.previewGenerator);
+        // Periodic sweep so a long-idle session releases parked encoders
+        // even when no further acquire() runs the in-acquire sweep.
+        this.sweepTimer = setInterval(() => {
+            try { this.encoderPool.sweep(); } catch { /* ignore */ }
+        }, PoolSweepIntervalMs);
     }
 
     get isDisposed(): boolean { return this.disposed; }
@@ -91,6 +102,10 @@ export class SenderSession {
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
+        if (this.sweepTimer !== null) {
+            try { clearInterval(this.sweepTimer); } catch { /* ignore */ }
+            this.sweepTimer = null;
+        }
         try { this.encoderPool.dispose(); } catch { /* ignore */ }
         if (this.previewWriter) {
             try { this.previewWriter.releaseLock(); } catch { /* ignore */ }

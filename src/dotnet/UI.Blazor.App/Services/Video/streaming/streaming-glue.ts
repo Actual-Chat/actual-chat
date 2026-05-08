@@ -411,7 +411,13 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
         droppedKeyframesAtSenderQueue,
         rpcStreamSkipped: streamSkipped(),
         lastAckAgeMs: lastAckAtMs >= 0 ? Date.now() - lastAckAtMs : -1,
-        isPeerConnected: Api.peer.isConnected,
+        // RpcPeer.isConnected flips true only after the RPC handshake
+        // completes (rpc-peer.ts: _setConnectionState(Connected) at the
+        // post-handshake site). We additionally gate on the stream's own
+        // PushStream call not having rejected — without this, an
+        // auth/permission rejection at stream-create time would still
+        // report "connected" because the RPC peer itself is healthy.
+        isPeerConnected: Api.peer.isConnected && !lastError,
     });
 
     return { send, dispose, whenDisposed, getStats };

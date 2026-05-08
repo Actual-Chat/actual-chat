@@ -66,6 +66,10 @@ export interface VideoRecordingStats {
     rpcStreamFramesSkipped: number;
     wireLastAckAgeMs: number;
     isPeerConnected: boolean;
+    /** Local self-view tap failures (clone or write rejections). Counted
+     *  for diagnostics; the sender pipeline is unaffected — only the
+     *  preview lags. */
+    previewClonesFailed: number;
 }
 
 /**
@@ -111,6 +115,7 @@ export function createEmptyRecordingStats(startedAtMs: number): VideoRecordingSt
         rpcStreamFramesSkipped: 0,
         wireLastAckAgeMs: -1,
         isPeerConnected: false,
+        previewClonesFailed: 0,
     };
 }
 

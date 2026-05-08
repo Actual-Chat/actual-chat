@@ -297,26 +297,36 @@ describe('encode operator', () => {
             createEncoder: makeFactory(),
         })(fromArray([
             makeBundle(1, stats, [{ width: 640, height: 360 }], false),
-            makeBundle(2, stats, [{ width: 640, height: 360 }], true),
+            makeBundle(2, stats, [{ width: 640, height: 360 }], false),
+            makeBundle(3, stats, [{ width: 640, height: 360 }], true),
         ]));
         const iter: AsyncIterator<EncodedFrame> = seg[Symbol.asyncIterator]();
 
-        // First bundle submitted: keyFrame=false.
+        // First bundle: keyFrame=true regardless of policy — pool-reused
+        // encoders may not emit a natural keyframe as their first chunk.
         const next1 = iter.next();
         await waitForCalls(0, 1);
         const mock = MockVideoEncoder.instances[0];
         expect(mock.encodeCalls).toHaveLength(1);
-        expect(mock.encodeCalls[0].opts.keyFrame).toBe(false);
+        expect(mock.encodeCalls[0].opts.keyFrame).toBe(true);
         mock.emitNext();
         await next1;
 
-        // Second bundle submitted: keyFrame=true.
+        // Second bundle (no upstream forceKeyframe): keyFrame=false.
         const next2 = iter.next();
+        await waitForCalls(0, 1);
+        expect(mock.encodeCalls).toHaveLength(1);
+        expect(mock.encodeCalls[0].opts.keyFrame).toBe(false);
+        mock.emitNext();
+        await next2;
+
+        // Third bundle (upstream forceKeyframe=true): keyFrame=true.
+        const next3 = iter.next();
         await waitForCalls(0, 1);
         expect(mock.encodeCalls).toHaveLength(1);
         expect(mock.encodeCalls[0].opts.keyFrame).toBe(true);
         mock.emitNext();
-        await next2;
+        await next3;
         await iter.next();
     });
 
@@ -462,7 +472,10 @@ describe('encode operator', () => {
         expect(result.done).toBe(false);
         expect(result.done === false ? result.value.index : 0).toBe(2);
         expect(encodeCalls).toHaveLength(2);
-        expect(encodeCalls[0].opts.keyFrame).toBe(false);
+        // First encode is forced to keyFrame=true (per-encoder first-call guard).
+        expect(encodeCalls[0].opts.keyFrame).toBe(true);
+        // Second is also keyFrame=true: forceKeyframeNext is set after the
+        // reset-error rejection on the first bundle.
         expect(encodeCalls[1].opts.keyFrame).toBe(true);
         expect((first.primary.frame as unknown as MockVideoFrame).closed).toBe(true);
         await iter.next();

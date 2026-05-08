@@ -11,7 +11,7 @@ import { EncodedFrameBuffer } from './encoded-frame-buffer';
 import type { PlaybackSession } from './session';
 import type { RenderBackendConfig } from './render-backends';
 
-const STOP_DRAIN_GRACE_MS = 1_000;
+const STOP_DRAIN_GRACE_MS = 3_000;
 
 export type { DecoderLike } from '../operators/decode';
 export type { LatencySample } from '../operators/latency-tap';
