@@ -18,6 +18,8 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
     private readonly MutableState<bool> _isShowRecentOn;
     private readonly MutableState<bool> _isResultsNavigationOn;
     private readonly MutableState<bool> _isGlobalSearchOn;
+    private readonly MutableState<SearchLocationFilter> _locationFilter;
+    private readonly MutableState<SearchTypeFilter> _typeFilter;
     private readonly ComputedState<FoundItem?> _selectedItem;
     private Cached _cached = Cached.None;
 
@@ -27,9 +29,12 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
     public IState<bool> IsShowRecentOn => _isShowRecentOn;
     public IState<bool> IsResultsNavigationOn => _isResultsNavigationOn;
     public IState<bool> IsGlobalSearchOn => _isGlobalSearchOn;
+    public IState<SearchLocationFilter> LocationFilter => _locationFilter;
+    public IState<SearchTypeFilter> TypeFilter => _typeFilter;
     public IState<FoundItem?> SelectedItem => _selectedItem;
 
     private MutableState<ImmutableHashSet<SearchScope>> ExtendedLimits { get; }
+    public MutableState<ImmutableHashSet<SearchResultGroupKey>> CollapsedGroups { get; }
 
     private ISearch Search => Hub.Search;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
@@ -45,9 +50,13 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
         _isShowRecentOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsShowRecentOn)));
         _isResultsNavigationOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsResultsNavigationOn)));
         _isGlobalSearchOn = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsGlobalSearchOn)));
+        _locationFilter = stateFactory.NewMutable(SearchLocationFilter.Anywhere, StateCategories.Get(GetType(), nameof(LocationFilter)));
+        _typeFilter = stateFactory.NewMutable(SearchTypeFilter.Anything, StateCategories.Get(GetType(), nameof(TypeFilter)));
         _selectedItem = stateFactory.NewComputed((FoundItem?)null, _ => Task.FromResult(_cached.Selected), StateCategories.Get(GetType(), nameof(SelectedItem)));
         ExtendedLimits = stateFactory
             .NewMutable(ImmutableHashSet<SearchScope>.Empty, StateCategories.Get(GetType(), nameof(ExtendedLimits)));
+        CollapsedGroups = stateFactory
+            .NewMutable(ImmutableHashSet<SearchResultGroupKey>.Empty, StateCategories.Get(GetType(), nameof(CollapsedGroups)));
         NavbarUI.SelectedGroupChanged += NavbarUIOnSelectedGroupChanged;
     }
 
@@ -70,14 +79,15 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
 
         var extendedLimits = await ExtendedLimits.Use(cancellationToken).ConfigureAwait(false);
         var placeId = await _placeId.Use(cancellationToken).ConfigureAwait(false);
-        ChatId? chatId = null;
-        if (placeId is not null) {
-            var selectedChatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-            if (selectedChatId is PlaceChatId placeChatId && placeChatId.PlaceId == placeId)
-                chatId = selectedChatId;
-        }
         var isGlobalSearchOn = await _isGlobalSearchOn.Use(cancellationToken).ConfigureAwait(false);
-        return new (text, placeId, chatId, extendedLimits, isGlobalSearchOn);
+        var locationFilter = await _locationFilter.Use(cancellationToken).ConfigureAwait(false);
+        var typeFilter = await _typeFilter.Use(cancellationToken).ConfigureAwait(false);
+        ChatId? chatId = null;
+        if (locationFilter == SearchLocationFilter.Chat)
+            chatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        // Effective query PlaceId reflects the LocationFilter — Anywhere/Chat ignore the ambient place.
+        var effectivePlaceId = locationFilter == SearchLocationFilter.Place ? placeId : null;
+        return new (text, effectivePlaceId, chatId, extendedLimits, isGlobalSearchOn, locationFilter, typeFilter);
     }
 
     [ComputeMethod]
@@ -110,8 +120,40 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
         ExtendedLimits.Value = current.Remove(chatKind);
     }
 
+    [ComputeMethod]
+    public virtual async Task<bool> IsGroupCollapsed(SearchResultGroupKey key)
+    {
+        var collapsed = await CollapsedGroups.Use(StopToken).ConfigureAwait(false);
+        return collapsed.Contains(key);
+    }
+
+    public async Task ToggleGroupCollapse(SearchResultGroupKey key, CancellationToken cancellationToken = default)
+    {
+        var current = await CollapsedGroups.Use(cancellationToken).ConfigureAwait(false);
+        var withoutKey = current.Remove(key);
+        CollapsedGroups.Value = ReferenceEquals(withoutKey, current) ? current.Add(key) : withoutKey;
+    }
+
     public void ShowGlobalResults()
         => _isGlobalSearchOn.Value = true;
+
+    public void SetLocationFilter(SearchLocationFilter value)
+        => _locationFilter.Value = value;
+
+    public void SetTypeFilter(SearchTypeFilter value)
+        => _typeFilter.Value = value;
+
+    public void ResetFilters()
+    {
+        _locationFilter.Value = GetDefaultLocationFilter();
+        _typeFilter.Value = SearchTypeFilter.Anything;
+        CollapsedGroups.Value = ImmutableHashSet<SearchResultGroupKey>.Empty;
+    }
+
+    private SearchLocationFilter GetDefaultLocationFilter()
+        => Hub.ChatUI.SelectedChatId.ValueOrDefault is PlaceChatId
+            ? SearchLocationFilter.Place
+            : SearchLocationFilter.Chat;
 
     public void ShowRecent(bool isOn)
         => _isShowRecentOn.Set(isOn);
@@ -148,7 +190,10 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
         if (!e.IsUserAction)
             return;
 
-        PlaceId.Value = NavbarUI.IsPlaceSelected(out var placeId) ? placeId : null;
+        var newPlaceId = NavbarUI.IsPlaceSelected(out var placeId) ? placeId : null;
+        PlaceId.Value = newPlaceId;
+        if (newPlaceId is null && _locationFilter.Value == SearchLocationFilter.Place)
+            _locationFilter.Value = SearchLocationFilter.Chat;
     }
 
     // Nested types
@@ -189,41 +234,33 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
         PlaceId? PlaceId,
         ChatId? ChatId,
         ImmutableHashSet<SearchScope> ExtendedLimits,
-        bool IsGlobalSearchOn)
+        bool IsGlobalSearchOn,
+        SearchLocationFilter LocationFilter,
+        SearchTypeFilter TypeFilter)
     {
-        public static readonly Criteria None = new ("", null, null, [], false);
-        public bool IsPlaceSearch => PlaceId is not null && ChatId is not null;
+        public static readonly Criteria None = new ("", null, null, [], false, SearchLocationFilter.Anywhere, SearchTypeFilter.Anything);
+
+        // We request DisplayLimit + 1 so we can detect whether more results exist beyond what we render.
+        public int DisplayLimit(SearchScope scope) => ExtendedLimits.Contains(scope)
+            ? Constants.Search.ExtendedPageSize
+            : Constants.Search.DefaultPageSize;
 
         public ContactSearchQuery ToContactQuery(SubgroupKey key)
             => new () {
                 Criteria = Text,
                 PlaceId = PlaceId, // search everywhere (chats and places) if Null
                 Scope = key.Scope,
-                Limit = ExtendedLimits.Contains(key.Scope)
-                    ? Constants.Search.ExtendedPageSize
-                    : Constants.Search.DefaultPageSize,
+                Limit = DisplayLimit(key.Scope) + 1,
                 Own = key.Own,
             };
 
-        public EntrySearchQuery ToEntryQuery(SubgroupKey key) {
-            if (IsPlaceSearch)
-                return key.Own
-                    ? new () { Criteria = Text, ChatId = ChatId, Limit = Constants.Search.DefaultPageSize }
-                    : new () {
-                        Criteria = Text,
-                        PlaceId = PlaceId,
-                        Limit = ExtendedLimits.Contains(key.Scope)
-                            ? Constants.Search.ExtendedPageSize
-                            : Constants.Search.DefaultPageSize,
-                    };
-            return new () {
+        public EntrySearchQuery ToEntryQuery(SubgroupKey key)
+            => new () {
                 Criteria = Text,
                 PlaceId = PlaceId,
-                Limit = ExtendedLimits.Contains(key.Scope)
-                    ? Constants.Search.ExtendedPageSize
-                    : Constants.Search.DefaultPageSize,
+                ChatId = LocationFilter == SearchLocationFilter.Chat ? ChatId : null,
+                Limit = DisplayLimit(key.Scope) + 1,
             };
-        }
     }
 
     protected sealed record SubgroupKey(SearchScope Scope, bool Own);

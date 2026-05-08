@@ -1,8 +1,10 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, IReadOnlyList<FoundItem>>
+@inherits ComputedStateComponent<AppUIHub, FoundChatList.Model>
 @{
-    if (State.IsInitial(out var foundItems))
+    if (State.IsInitial(out var m))
         return;
+    var foundItems = m.FoundItems;
+    var collapsedGroups = m.CollapsedGroups;
 
     var isPlace = Place?.Id is not null;
     var listCls = isPlace ? "place" : "";
@@ -14,22 +16,27 @@
 }
 
 <div class="chat-list own-chat-list @listCls">
+    @{ var isCurrentGroupCollapsed = false; }
     @foreach (var foundItem in foundItems) {
         @if (foundItem.IsGlobalSearchPlaceholder) {
             <GlobalSearchPlaceholder />
             continue;
         }
-        @if (foundItem.IsFirstInGroup) {
+        if (foundItem.IsFirstInGroup) {
+            isCurrentGroupCollapsed = collapsedGroups.Contains(new SearchResultGroupKey(foundItem.Scope, foundItem.IsGlobalSearchResult));
             <SearchResultGroupHeader
                 CanExpandOrCollapse="foundItem.CanScopeBeExpanded"
                 Scope="foundItem.Scope"
-                IsGlobalSearchResult="foundItem.IsGlobalSearchResult" />
+                IsGlobalSearchResult="foundItem.IsGlobalSearchResult"
+                IsCollapsed="@isCurrentGroupCollapsed" />
         }
 
-        <FoundResult @key=@foundItem.SearchResult.Id FoundItem="@foundItem" IsPlace="@isPlace"/>
+        if (!isCurrentGroupCollapsed) {
+            <FoundResult @key=@foundItem.SearchResult.Id FoundItem="@foundItem" IsPlace="@isPlace"/>
 
-        @if (foundItem.IsLastInGroup) {
-            <Divider Class="mx-1 my-1.5" />
+            @if (foundItem.IsLastInGroup) {
+                <Divider Class="mx-1 my-1.5" />
+            }
         }
     }
 </div>
@@ -39,10 +46,16 @@
 
     [Parameter] public Place? Place { get; set; }
 
-    protected override async Task<IReadOnlyList<FoundItem>> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var isOn = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false);
-        return isOn
+        var foundItems = isOn
             ? await SearchUI.GetSearchResults().ConfigureAwait(false)
             : [];
+        var collapsed = await SearchUI.CollapsedGroups.Use(cancellationToken).ConfigureAwait(false);
+        return new Model(foundItems, collapsed);
     }
+
+    public sealed record Model(
+        IReadOnlyList<FoundItem> FoundItems,
+        ImmutableHashSet<SearchResultGroupKey> CollapsedGroups);
 }

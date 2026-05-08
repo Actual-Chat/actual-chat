@@ -6,23 +6,21 @@
     var m = State.Value;
     var cls = m.IsOpen ? "open" : "closed";
     var placeCls = ReferenceEquals(Place, null) ? "" : "place";
+    var showLocationBadge = m.LocationFilter != SearchLocationFilter.Anywhere;
+    var showTypeBadge = m.TypeFilter != SearchTypeFilter.Anything;
 }
 
 <div class="left-chat-search-input @cls @placeCls">
     <div class="c-search">
         <div class="search-input">
             <label>
-                @if (Place != null) {
-                    <span class="c-place-badge" title="@Place.Title">
-                        <span class="c-place-badge-text">In this Place:</span>
-                        <HeaderButton Click="@OnPlaceBadgeRemove"
-                                      Class="c-place-badge-close btn-sm"
-                                      StopPropagation="true"
-                                      PreventDefault="true">
-                            <i class="icon-close"></i>
-                        </HeaderButton>
-                    </span>
-                }
+                <HeaderButton
+                    Class="c-filter-btn btn-lg"
+                    data-menu="@(MenuRef.New<SearchFilterMenu>())"
+                    data-menu-trigger="@MenuTrigger.Primary"
+                    data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+                    <i class="icon-options-2 text-xl"></i>
+                </HeaderButton>
                 <TextInput
                     @ref="_inputRef"
                     Text="@m.InitialText"
@@ -42,6 +40,20 @@
             </label>
         </div>
     </div>
+    @if (m.IsOpen && (showLocationBadge || showTypeBadge)) {
+        <div class="c-filter-badges">
+            @if (showLocationBadge) {
+                <SearchFilterBadge
+                    Text="@LocationBadgeText(m.LocationFilter)"
+                    Click="@OnLocationBadgeClick" />
+            }
+            @if (showTypeBadge) {
+                <SearchFilterBadge
+                    Text="@TypeBadgeText(m.TypeFilter)"
+                    Click="@OnTypeBadgeClick" />
+            }
+        </div>
+    }
 </div>
 
 @code {
@@ -57,13 +69,18 @@
 
     public override ValueTask DisposeAsync() {
         SearchUI.ShowRecent(false);
+        SearchUI.ResetFilters();
         return base.DisposeAsync();
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Model>.Options() {
-                InitialValue = new Model(SearchUI.IsSearchModeOn.ValueOrDefault, SearchUI.Text.ValueOrDefault ?? ""),
+                InitialValue = new Model(
+                    SearchUI.IsSearchModeOn.ValueOrDefault,
+                    SearchUI.Text.ValueOrDefault ?? "",
+                    SearchUI.LocationFilter.ValueOrDefault,
+                    SearchUI.TypeFilter.ValueOrDefault),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -71,16 +88,21 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var isOpen = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false)
                      || await SearchUI.IsShowRecentOn.Use(cancellationToken).ConfigureAwait(false);
+        var locationFilter = await SearchUI.LocationFilter.Use(cancellationToken).ConfigureAwait(false);
+        var typeFilter = await SearchUI.TypeFilter.Use(cancellationToken).ConfigureAwait(false);
         var initialText = SearchUI.Text.Value; // .Value instead of .Use() is intentional here (AY: why?)
         _hasText = !initialText.IsNullOrEmpty();
-        return new Model(isOpen, initialText);
+        return new Model(isOpen, initialText, locationFilter, typeFilter);
     }
 
     private void OnClick(bool openPanel) {
         if (!openPanel)
             Cancel();
+        var wasOpen = SearchUI.IsShowRecentOn.Value || SearchUI.IsSearchModeOn.Value;
         SearchUI.ShowRecent(openPanel);
         SearchUI.PlaceId.Value = Place?.Id;
+        if (openPanel != wasOpen)
+            SearchUI.ResetFilters();
         StateHasChanged();
     }
 
@@ -110,10 +132,24 @@
         }
     }
 
-    private void OnPlaceBadgeRemove() {
-        SearchUI.PlaceId.Value = null;
-        StateHasChanged();
-    }
+    private void OnLocationBadgeClick()
+        => SearchUI.SetLocationFilter(SearchLocationFilter.Anywhere);
+
+    private void OnTypeBadgeClick()
+        => SearchUI.SetTypeFilter(SearchTypeFilter.Anything);
+
+    private static string LocationBadgeText(SearchLocationFilter filter) => filter switch {
+        SearchLocationFilter.Chat => "Chat",
+        SearchLocationFilter.Place => "Place",
+        _ => "",
+    };
+
+    private static string TypeBadgeText(SearchTypeFilter filter) => filter switch {
+        SearchTypeFilter.People => "People",
+        SearchTypeFilter.Groups => "Groups",
+        SearchTypeFilter.Messages => "Messages",
+        _ => "",
+    };
 
     private void UpdateHasText(string text)
         => _hasText = !text.IsNullOrEmpty();
@@ -126,5 +162,9 @@
 
     // Nested types
 
-    public sealed record Model(bool IsOpen, string InitialText = "");
+    public sealed record Model(
+        bool IsOpen,
+        string InitialText,
+        SearchLocationFilter LocationFilter,
+        SearchTypeFilter TypeFilter);
 }
