@@ -7,7 +7,7 @@ using Foundation;
 namespace ActualChat.App.Maui.Audio;
 
 // iOS allows one AVAudioSession category at a time. The active mode is the max
-// AudioFocusMode in _scopes, mapped to a category:
+// AudioFocusMode in _activeScopes, mapped to a category:
 //   Tune (or empty) -> Ambient (mixes with other apps)
 //   Playback        -> Playback
 //   Recording       -> PlayAndRecord
@@ -79,7 +79,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
             await SetModeUnsafe(_activeScopes.GetMode()).ConfigureAwait(false);
         }
         catch (Exception e) when (!e.IsCancellationOf(StopToken)) {
-            _activeScopes.Remove(requester, out _);
+            _activeScopes.TryRemove(requester, scope);
             Log.LogError(e, "Failed to acquire scope for {Mode}", requester.Kind);
             throw;
         }
@@ -104,19 +104,8 @@ public sealed class IosAudioFocusUI : AudioFocusUI
         try {
             using var _1 = await _lock.Lock(StopToken).ConfigureAwait(false);
             var modeBefore = _activeScopes.GetMode();
-            // TODO: move logging to Scopes
-            if (!_activeScopes.Remove(requester, out var existing)) {
-                Log.LogWarning("Requester {Requester} not found in _scopes", requester);
+            if (!_activeScopes.TryRemove(requester, scope))
                 return;
-            }
-
-            if (existing != scope) {
-                Log.LogError("Scope {Scope} doesn't match existing scope {Existing} for {Mode}",
-                    scope,
-                    existing,
-                    requester.Kind);
-                return;
-            }
 
             var modeAfter = _activeScopes.GetMode();
             Log.LogInformation("Release {Mode}: state {Before} -> {After}", requester.Kind, modeBefore, modeAfter);
@@ -260,8 +249,21 @@ public sealed class IosAudioFocusUI : AudioFocusUI
                 .DefaultIfEmpty(AudioFocusMode.Tune)
                 .Max();
 
-        public bool Remove(AudioFocusRequester requester, out Scope? scope)
-            => _byMode[requester.Kind].Remove(requester, out scope);
+        public bool TryRemove(AudioFocusRequester requester, Scope scope)
+        {
+            if (!_byMode[requester.Kind].Remove(requester, out var existing)) {
+                log.LogWarning("Requester {Requester} not found in active scopes", requester);
+                return false;
+            }
+            if (existing != scope) {
+                log.LogError("Scope {Scope} doesn't match existing scope {Existing} for {Mode}",
+                    scope,
+                    existing,
+                    requester.Kind);
+                return false;
+            }
+            return true;
+        }
 
         public IEnumerable<Scope> All()
             => _byMode.SelectMany(x => x.Value.Values);
