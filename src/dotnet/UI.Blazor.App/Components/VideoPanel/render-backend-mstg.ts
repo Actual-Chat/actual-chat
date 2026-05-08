@@ -245,6 +245,14 @@ export class OffThreadRenderBackend implements RenderBackend {
         // sits at 0. Fire after two consecutive stalls so a single dropped
         // tick (e.g. main-thread jank) doesn't trigger spurious play()
         // calls in already-healthy state.
+        //
+        // High-RTT bursty-arrival tolerance: under long network delays the
+        // MSTG track receives frames in bursts, so individual 2 s windows
+        // can have dCt≈0 even though the wire is healthy. The intermittent-
+        // stall score matches a *healthy tick fully cancels a stall tick*
+        // (decrement = 1.0) and the fallback fires only after 4 net stall
+        // ticks (~8 s of no progress) — past the 5 s skip-to-live threshold,
+        // so skip-to-live gets first shot before we tear down playback.
         const isStalled = this.videoEl.paused || dCt < 0.05;
         if (isStalled) {
             this.consecutiveStallTicks++;
@@ -275,9 +283,9 @@ export class OffThreadRenderBackend implements RenderBackend {
         } else {
             this.consecutiveStallTicks = 0;
             this.consecutivePlayRetries = 0;
-            this.intermittentStallScore = Math.max(0, this.intermittentStallScore - 0.25);
+            this.intermittentStallScore = Math.max(0, this.intermittentStallScore - 1.0);
         }
-        if (!this.videoEl.paused && this.intermittentStallScore >= 2 && tracks.length > 0) {
+        if (!this.videoEl.paused && this.intermittentStallScore >= 4 && tracks.length > 0) {
             warnLog?.log(
                 `tickWatchdog: intermittent MSTG playback stalls detected ` +
                 `(score=${this.intermittentStallScore.toFixed(1)}, currentTime=${nowCt.toFixed(3)}s), ` +
