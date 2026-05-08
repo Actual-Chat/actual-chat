@@ -4,7 +4,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { css, html, LitElement } from 'lit';
 import { scan,  Subscription } from 'rxjs';
 import { clamp, RunningMax, translate } from 'math';
-import { RecorderStateHub } from '../AudioRecorder/recorder-state-hub';
+import { RecordingActivity } from '../AudioRecorder/recording-activity';
 
 const SIGNAL_COUNT_TO_CALCULATE_MAX = 100; // 100 * 96ms ~ 10s
 
@@ -63,7 +63,7 @@ export class NarrowRecordingSvg extends LitElement {
 
         const minOpacity = 60;
         const maxOpacity = 100;
-        const signalPower$ = RecorderStateHub.audioPowerChanged$
+        const signalPower$ = RecordingActivity.audioPowerChanged$
             .pipe(scan<number, Result, RunningMax>((runningMaxOrResult, p, i) => {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 const runningMax: RunningMax = runningMaxOrResult['runningMax'] ?? runningMaxOrResult;
@@ -75,7 +75,7 @@ export class NarrowRecordingSvg extends LitElement {
                 return { runningMax, p, i };
             }, new RunningMax(SIGNAL_COUNT_TO_CALCULATE_MAX, 0.05)));
 
-        this.recorderStateChangedSubscription = RecorderStateHub.recorderStateChanged$.subscribe(s => {
+        this.recorderStateChangedSubscription = RecordingActivity.stateChanged$.subscribe(s => {
             this.isRecording = s.isRecording;
             this.isVoiceActive = s.isVoiceActive;
         });

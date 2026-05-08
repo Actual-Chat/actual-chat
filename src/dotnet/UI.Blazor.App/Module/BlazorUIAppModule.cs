@@ -198,7 +198,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped<IAudioCatchUpPolicy>(c => new LiveAudioCatchUpPolicy(c));
         services.AddScoped<AudioRecorder>(c => new AudioRecorder(c.AppUIHub()));
         services.AddScoped<IAudioRecorderBackend>(c => c.GetRequiredService<AudioRecorder>());
-        services.AddScoped<RecorderStateHub>(c => new RecorderStateHub(c.UIHub()));
+        services.AddScoped<RecordingActivityClient>(c => new RecordingActivityClient(c.UIHub()));
         if (HostInfo.HostKind != HostKind.MauiApp) {
             services.AddScoped<IAudioInitializer>(c => new AudioInitializer(c.UIHub()));
             services.AddScoped<IAudioRecorderEngine>(c => new WebRecorderEngine(c.AppUIHub()));

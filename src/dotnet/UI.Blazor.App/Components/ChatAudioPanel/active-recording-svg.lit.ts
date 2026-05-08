@@ -2,7 +2,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { css, html, LitElement } from 'lit';
 import { scan, Subscription } from 'rxjs';
 import { clamp, RunningMax, translate, RunningEMA } from 'math';
-import { RecorderStateHub } from '../AudioRecorder/recorder-state-hub';
+import { RecordingActivity } from '../AudioRecorder/recording-activity';
 
 const SIGNAL_COUNT_TO_CALCULATE_MAX = 100; // 100 * 96ms ~ 10s
 
@@ -121,8 +121,8 @@ export class ActiveRecordingSvg extends LitElement {
             p: 0,
             i: 0,
         };
-        const recorderState$ = RecorderStateHub.recorderStateChanged$;
-        const signalPower$ = RecorderStateHub.audioPowerChanged$
+        const recorderState$ = RecordingActivity.stateChanged$;
+        const signalPower$ = RecordingActivity.audioPowerChanged$
             .pipe(scan<number, Result, Result>((result, p, i) => {
                 const runningMax = result.runningMax;
                 const runningEMA = result.runningEMA;

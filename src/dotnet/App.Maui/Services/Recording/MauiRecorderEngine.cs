@@ -33,7 +33,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     private VoiceActivityDetector VoiceActivityDetector => field ??= _hub.Services.GetRequiredService<VoiceActivityDetector>();
     private IAudioRecorderBackend AudioRecorderBackend => field ??= _hub.Services.GetRequiredService<IAudioRecorderBackend>();
     private IAudioCodec AudioCodec => field ??= _hub.Services.GetRequiredService<IAudioCodec>();
-    private RecorderStateHub RecorderStateHub => field ??= _hub.Services.GetRequiredService<RecorderStateHub>();
+    private RecordingActivityClient RecordingActivityClient => field ??= _hub.Services.GetRequiredService<RecordingActivityClient>();
     private ConnectivityUI ConnectivityUI => field ??= _hub.Services.GetRequiredService<ConnectivityUI>();
     private MicrophonePermissionHandler MicrophonePermissionHandler => field ??= _hub.Services.GetRequiredService<MicrophonePermissionHandler>();
     private MomentClockSet Clocks => field ??= _hub.Clocks;
@@ -45,7 +45,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         _noSignalDetectedDebouncer = Debouncer.New<Unit>(
             hub.Clocks.CpuClock,
             RecordingFailedInterval,
-            _ => SetSignalDetected(false).AsTask());
+            _ => { SetSignalDetected(false); return Task.CompletedTask; });
     }
 
     public async Task<bool> Start(
@@ -58,12 +58,22 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
         // Wait for online before starting
         await ConnectivityUI.WhenConnected(cancellationToken).ConfigureAwait(false);
-        await SetConnected(true).ConfigureAwait(false);
 
         // Create a new recording context
         var recordingCts = cancellationToken.CreateLinkedTokenSource();
         _recordingCts = recordingCts;
         var recordingToken = recordingCts.Token;
+
+        // Mirror RPC peer connectivity into _isConnected for the duration of the
+        // session so RecorderToggle's "Reconnecting..." indicator can light up
+        // when the peer drops mid-recording (web-side parity). Sync initial
+        // value first so InitializeRecordingState's notification carries it.
+        SetConnected(ConnectivityUI.IsConnected.Value);
+        _ = BackgroundTask.Run(
+            () => WatchConnectivity(recordingToken),
+            Log,
+            "Failed to watch RPC connectivity",
+            recordingToken);
 
         // Native capture setup can be non-trivial, and Start is usually called from
         // the Blazor/MAUI UI path. Keep it away from the main thread from the first
@@ -197,7 +207,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     private async Task InitializeRecordingState()
     {
         await SetRecording(true).ConfigureAwait(false);
-        await SetSignalDetected(false).ConfigureAwait(false);
+        SetSignalDetected(false);
         await SetVoiceActive(false).ConfigureAwait(false);
     }
 
@@ -205,7 +215,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     {
         await SetRecording(false).ConfigureAwait(false);
         await SetVoiceActive(false).ConfigureAwait(false);
-        await SetSignalDetected(false).ConfigureAwait(false);
+        SetSignalDetected(false);
     }
 
     private ValueTask SetRecording(bool isRecording)
@@ -215,30 +225,44 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             return ValueTask.CompletedTask;
 
         NotifyStateChange();
-        return RecorderStateHub.SetRecording(isRecording);
+        return RecordingActivityClient.SetRecording(isRecording);
     }
 
-    private ValueTask SetConnected(bool isConnected)
+    private void SetConnected(bool isConnected)
     {
+        // Direct C# notify only — no JSI roundtrip. isConnected isn't part of the
+        // JS RecordingActivity hub (Lit doesn't read it), and the JS AudioRecorderState
+        // hub is web-only. Source of truth is ConnectivityUI, pushed through WatchConnectivity.
         var previous = Interlocked.Exchange(ref _isConnected, isConnected);
         if (previous == isConnected)
-            return ValueTask.CompletedTask;
+            return;
 
         NotifyStateChange();
-        return RecorderStateHub.SetConnected(isConnected);
     }
 
-    private ValueTask SetSignalDetected(bool isSignalDetected)
+    private async Task WatchConnectivity(CancellationToken cancellationToken)
     {
+        // ConnectivityUI.IsConnected is fed by PushIsConnectedToJS, which polls
+        // RpcClientPeer.ConnectionState — i.e. it's a real-time signal, not a
+        // one-shot flag. Mirror it into _isConnected for the recording session.
+        var changes = ConnectivityUI.IsConnected.Computed.Changes(cancellationToken);
+        await foreach (var change in changes.ConfigureAwait(false))
+            SetConnected(change.Value);
+    }
+
+    private void SetSignalDetected(bool isSignalDetected)
+    {
+        // Direct C# notify only — no JSI roundtrip. The JS-side RecordingActivity hub
+        // doesn't expose isSignalDetected (Lit components don't read it), and the JS
+        // AudioRecorderState hub (which does) is web-only.
         if (isSignalDetected)
             _noSignalDetectedDebouncer.Debounce(Unit.Default);
 
         var previous = Interlocked.Exchange(ref _isSignalDetected, isSignalDetected);
         if (previous == isSignalDetected)
-            return ValueTask.CompletedTask;
+            return;
 
         NotifyStateChange();
-        return RecorderStateHub.SetSignalDetected(isSignalDetected);
     }
 
     private ValueTask SetVoiceActive(bool isVoiceActive)
@@ -248,27 +272,26 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             return ValueTask.CompletedTask;
 
         NotifyStateChange();
-        return RecorderStateHub.SetVoiceActive(isVoiceActive);
+        return RecordingActivityClient.SetVoiceActive(isVoiceActive);
     }
 
     private async ValueTask OnAudioPowerChange(double power)
     {
         var isVoiceActive = Volatile.Read(ref _isVoiceActive);
         if (isVoiceActive)
-            await RecorderStateHub.OnAudioPowerChange(power).ConfigureAwait(false);
+            await RecordingActivityClient.SetAudioPower(power).ConfigureAwait(false);
     }
 
-    private async ValueTask MicrophoneIsCaptured()
-    {
-        await SetSignalDetected(true).ConfigureAwait(false);
-        await RecorderStateHub.MicrophoneIsCaptured().ConfigureAwait(false);
-    }
+    private void MicrophoneIsCaptured()
+        // Direct C# notify only — no JSI roundtrip. The heartbeat/microphoneIsCaptured
+        // signal lives on the JS AudioRecorderState hub, which is web-only — on MAUI
+        // we don't go through that JS relay at all (C# already knows everything directly).
+        => SetSignalDetected(true);
 
     private void NotifyStateChange()
     {
         bool isRecording, isSignalDetected, isConnected, isVoiceActive;
-        lock (_sync)
-        {
+        lock (_sync) {
             isRecording = _isRecording;
             isSignalDetected = _isSignalDetected;
             isConnected = _isConnected;
@@ -465,7 +488,6 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             return null;
 
         await ConnectivityUI.WhenConnected(cancellationToken).ConfigureAwait(false);
-        await SetConnected(true).ConfigureAwait(false);
 
         var stream = Channel.CreateBounded<IMemoryOwner<byte>>(
             new BoundedChannelOptions(Constants.Audio.StreamingChannelCapacity) {
@@ -547,13 +569,12 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                         }
                     }
 
-                    // Notify that microphone is captured (UI-only, fire-and-forget JS interop:
-                    // awaiting it through BlazorWebView's bridge serialises onto the WebView's
-                    // main JS thread, which is contended by the video pipeline).
+                    // Notify that microphone is captured (UI-only, sync — no JSI hop:
+                    // the heartbeat lives on the web-only JS AudioRecorderState hub, which MAUI bypasses).
                     samplesSinceLastReport += memory.Length;
                     if (samplesSinceLastReport >= samplesPerRecordingInProgressCall) {
                         samplesSinceLastReport = 0;
-                        _ = engine.MicrophoneIsCaptured();
+                        engine.MicrophoneIsCaptured();
                     }
 
                     // Process the audio frame (sync — returns Task.CompletedTask)

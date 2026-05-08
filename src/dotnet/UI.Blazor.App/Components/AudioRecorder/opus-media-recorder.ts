@@ -24,7 +24,8 @@ import { getLogs } from 'logging';
 import { Interactive } from 'interactive';
 import { DeviceInfo } from 'device-info';
 import { AudioVadProcessorOptions } from './worklets/audio-vad-worklet-processor';
-import { RecorderStateHub } from './recorder-state-hub';
+import { RecordingActivity } from './recording-activity';
+import { AudioRecorderState } from './audio-recorder-state';
 import { SharedSettings } from 'shared-settings';
 import { SharedSettingsWorkerSync } from 'shared-settings-worker';
 
@@ -397,7 +398,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
     }
 
     public async start(chatId: string, repliedChatEntryId: string): Promise<void> {
-        RecorderStateHub.setRecording(this.isRecording);
+        RecordingActivity.setRecording(this.isRecording);
+        AudioRecorderState.setRecording(this.isRecording);
 
         debugLog?.log('-> start(): #', chatId);
         if (!chatId)
@@ -440,7 +442,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
                 this.startHeartbeat();
 
                 await this.startMicrophoneStream(context, pipeline);
-                RecorderStateHub.setRecording(this.isRecording);
+                RecordingActivity.setRecording(this.isRecording);
+                AudioRecorderState.setRecording(this.isRecording);
             }
             catch (e) {
                 this.state = 'stopped';
@@ -468,7 +471,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
 
         try {
             await this.stopMicrophoneStream();
-            RecorderStateHub.setRecording(this.isRecording);
+            RecordingActivity.setRecording(this.isRecording);
+            AudioRecorderState.setRecording(this.isRecording);
         }
         finally {
             this.recordingAction?.dispose();
@@ -528,22 +532,23 @@ export class OpusMediaRecorder implements RecorderStateServer {
     // recorder state event handlers called by JS recording pipeline
 
     public onConnectionStateChanged(isConnected: boolean, _noWait?: RpcNoWait): Promise<void> {
-        RecorderStateHub.setConnected(isConnected);
+        AudioRecorderState.setConnected(isConnected);
         return ResolvedPromise.Void;
     }
 
     public onVoiceStateChanged(isVoiceActive: boolean, _noWait?: RpcNoWait): Promise<void> {
-        RecorderStateHub.setVoiceActive(isVoiceActive);
+        RecordingActivity.setVoiceActive(isVoiceActive);
+        AudioRecorderState.setVoiceActive(isVoiceActive);
         return ResolvedPromise.Void;
     }
 
     public onAudioPowerChange(power: number, _noWait?: RpcNoWait): Promise<void> {
-        RecorderStateHub.onAudioPowerChange(power);
+        RecordingActivity.setAudioPower(power);
         return ResolvedPromise.Void;
     }
 
     public microphoneIsCaptured(noWait?: RpcNoWait): Promise<void> {
-        RecorderStateHub.microphoneIsCaptured();
+        AudioRecorderState.microphoneIsCaptured();
         return ResolvedPromise.Void;
     }
 

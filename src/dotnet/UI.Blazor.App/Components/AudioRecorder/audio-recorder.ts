@@ -8,7 +8,7 @@ import { VoiceActivityChange } from './workers/audio-vad-contract';
 import { getLogs } from 'logging';
 import { throttle } from 'promises';
 import { WebMicrophonePermissionHandler } from './web-microphone-permission-handler';
-import { RecorderStateHub } from './recorder-state-hub';
+import { AudioRecorderState } from './audio-recorder-state';
 import { Subscription } from 'rxjs';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('AudioRecorder');
@@ -54,12 +54,12 @@ export class AudioRecorder {
 
     public constructor(blazorRef: DotNet.DotNetObject) {
         this.blazorRef = blazorRef;
-        this.recorderStateChangedSubscription = RecorderStateHub.recorderStateChanged$.subscribe(state => this.onRecordingStateChange(
+        this.recorderStateChangedSubscription = AudioRecorderState.stateChanged$.subscribe(state => this.onRecordingStateChange(
             state.isRecording,
             state.isSignalDetected,
             state.isConnected,
             state.isVoiceActive));
-        this.recordingHeartbeatSubscription = RecorderStateHub.recordingHeartbeat$.subscribe(() => this.heartbeatThrottled());
+        this.recordingHeartbeatSubscription = AudioRecorderState.recordingHeartbeat$.subscribe(() => this.heartbeatThrottled());
     }
 
     /** Called from Blazor */
