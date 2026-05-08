@@ -191,25 +191,33 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         if (stream != null)
             return AudioStreamingBackend.SkipTo(stream, skipTo, cancellationToken);
 
-        // CT.None deliberately: detaches the cached source from this viewer's
-        // lifetime so V1 disconnect cannot tear down the cached stream for
-        // V2..VN. Cache entry expiry handles cleanup of unowned streams.
-        var rawRpcStream = await Backend
-            .GetAudio(streamId, TimeSpan.Zero, CancellationToken.None)
+        // Dedupe so concurrent viewers on this node share a single
+        // cross-shard fetch (mirrors RemoteVideoStreamCache).
+        var fetched = await RemoteAudioCache
+            .EnsureFetched(streamId, FetchAndPublish)
             .ConfigureAwait(false);
-        if (rawRpcStream == null)
+        if (!fetched)
             return null;
-
-        Log.LogInformation("GetOrFetchRemoteAudio: caching #{StreamId} locally", streamId);
-        var memoizer = ((IAsyncEnumerable<AudioFrame>)rawRpcStream).Memoize();
-        if (!store.Publish(streamId, memoizer))
-            // Lost the registration race to a concurrent first-viewer. Dispose
-            // our memoizer so its Read loop tears down and the duplicate
-            // cross-shard RPC closes immediately.
-            await memoizer.DisposeAsync().ConfigureAwait(false);
 
         stream = await store.Get(streamId, true, cancellationToken).ConfigureAwait(false);
         return stream == null ? null : AudioStreamingBackend.SkipTo(stream, skipTo, cancellationToken);
+
+        async Task<bool> FetchAndPublish(StreamId sid) {
+            // CT.None deliberately: detaches the cached source from this
+            // viewer's lifetime so the originating viewer disconnecting
+            // cannot tear down the cached stream for siblings.
+            var rawRpcStream = await Backend
+                .GetAudio(sid, TimeSpan.Zero, CancellationToken.None)
+                .ConfigureAwait(false);
+            if (rawRpcStream == null)
+                return false;
+
+            Log.LogInformation("GetOrFetchRemoteAudio: caching #{StreamId} locally", sid);
+            var memoizer = ((IAsyncEnumerable<AudioFrame>)rawRpcStream).Memoize();
+            if (!store.Publish(sid, memoizer))
+                await memoizer.DisposeAsync().ConfigureAwait(false);
+            return true;
+        }
     }
 
     private async IAsyncEnumerable<LiveStreamItem> ToLiveAsyncEnumerable(

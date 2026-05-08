@@ -291,33 +291,43 @@ public class LiveVideoStreams : ILiveVideoStreams
         if (stream != null)
             return stream.SkipWhile(f => !f.IsKeyFrame);
 
-        // Miss: pull once from the publisher's shard, cache for siblings.
-        // CT.None deliberately: detaches the cached source from this viewer's
-        // lifetime so V1 disconnect cannot tear the cached stream down for
-        // V2..VN. Cache entry's idle expiry handles cleanup of unowned streams.
-        var rawRpcStream = await VideoStreamingBackend
-            .GetVideoRaw(streamId, CancellationToken.None)
+        // Dedupe: concurrent viewers on this node coalesce onto a single
+        // cross-shard fetch. Without this, N simultaneous joiners would
+        // each issue their own GetVideoRaw RPC and N-1 of them would lose
+        // the Publish race, wasting RPCs and amplifying join latency.
+        var fetched = await RemoteVideoCache
+            .EnsureFetched(streamId, FetchAndPublish)
             .ConfigureAwait(false);
-        if (rawRpcStream == null)
+        if (!fetched)
             return null;
-
-        Log.LogInformation("GetOrFetchRemoteVideo: caching #{StreamId} locally", streamId);
-        // Bounded memoizer: per-layer keyframe-span eviction caps
-        // retained content at ~ServerReplayTailDuration per layer, regardless
-        // of stream duration. Without this, an 8-hour call would grow the
-        // chain to millions of nodes.
-        var memoizer = new VideoStreamMemoizer(
-            rawRpcStream,
-            Constants.Video.ServerReplayTailDuration,
-            CancellationToken.None);
-        if (!store.Publish(streamId, memoizer))
-            // Lost the registration race to a concurrent first-viewer. Dispose
-            // our memoizer so its Read loop tears down and the duplicate
-            // cross-shard RPC closes immediately.
-            await memoizer.DisposeAsync().ConfigureAwait(false);
 
         var shared = await store.Get(streamId, true, cancellationToken).ConfigureAwait(false);
         return shared?.SkipWhile(f => !f.IsKeyFrame);
+
+        async Task<bool> FetchAndPublish(StreamId sid) {
+            // CT.None deliberately: detaches the cached source from this
+            // viewer's lifetime so the originating viewer disconnecting
+            // cannot tear the cached stream down for siblings. Cache
+            // entry's idle expiry handles cleanup of unowned streams.
+            var rawRpcStream = await VideoStreamingBackend
+                .GetVideoRaw(sid, CancellationToken.None)
+                .ConfigureAwait(false);
+            if (rawRpcStream == null)
+                return false;
+
+            Log.LogInformation("GetOrFetchRemoteVideo: caching #{StreamId} locally", sid);
+            // Bounded memoizer: per-layer keyframe-span eviction caps
+            // retained content at ~ServerReplayTailDuration per layer,
+            // regardless of stream duration. Without this, an 8-hour call
+            // would grow the chain to millions of nodes.
+            var memoizer = new VideoStreamMemoizer(
+                rawRpcStream,
+                Constants.Video.ServerReplayTailDuration,
+                CancellationToken.None);
+            if (!store.Publish(sid, memoizer))
+                await memoizer.DisposeAsync().ConfigureAwait(false);
+            return true;
+        }
     }
 
     private async Task RunQualityCleanup(CancellationToken cancellationToken)

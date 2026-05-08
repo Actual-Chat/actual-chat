@@ -75,9 +75,15 @@ public sealed class VideoStreamMemoizer : AsyncMemoizer<VideoFrame>
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         _ = tailSize;
-        TimeSpan? startOffset = _latestKfByLayer.IsEmpty
+        // Snapshot to a single array first: ConcurrentDictionary's IsEmpty,
+        // Values, and Min are individually thread-safe but not atomic
+        // together. Without this, a producer-side eviction running
+        // concurrently can remove the only entry between IsEmpty and Min,
+        // surfacing as a KeyNotFoundException out of Min().
+        var kfSnapshot = _latestKfByLayer.Values.ToArray();
+        TimeSpan? startOffset = kfSnapshot.Length == 0
             ? null
-            : _latestKfByLayer.Values.Min();
+            : kfSnapshot.Min();
 
         var current = CurrentHead;
         while (true) {
