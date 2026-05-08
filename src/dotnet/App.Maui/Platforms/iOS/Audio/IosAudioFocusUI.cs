@@ -6,15 +6,16 @@ using Foundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-// iOS allows exactly one AVAudioSession category at a time, and Tunes is always implicitly
-// active. The four reachable states and the corresponding session category are:
-//   Tunes onlyΩ                     -> Ambient
-//   Tunes + Playback               -> Playback
-//   Tunes + Recording              -> PlayAndRecord
-//   Tunes + Playback + Recording   -> PlayAndRecord
-// _modes is the set of currently-active focus kinds (always seeded with Tune so Tune is
-// the implicit baseline and is never removed). _scopes tracks per-requester scopes on top
-// of _modes so we can invoke each requester's FocusLost handler independently.
+// iOS allows exactly one AVAudioSession category at a time. The active focus mode is the
+// maximum AudioFocusMode over all registered requesters in _scopes, mapped to a category:
+//   Tune (or no requesters)        -> Ambient        (mixes with other apps' audio)
+//   Playback (no Recording)        -> Playback
+//   Recording (with or w/o others) -> PlayAndRecord
+// _scopes keeps per-requester scopes grouped by AudioFocusMode so each requester gets its
+// own AudioFocusLostHandler callback on interruptions. _isConfigured tracks whether the
+// AVAudioSession category has actually been applied — without it the first-ever Tune
+// acquire would skip SetCategory(Ambient) and iOS's default SoloAmbient would silence
+// other apps' audio.
 
 public sealed class IosAudioFocusUI : AudioFocusUI
 {
