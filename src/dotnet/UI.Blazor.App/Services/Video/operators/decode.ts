@@ -34,6 +34,13 @@ export interface DecodeOptions {
     now?: () => number;
     /** Max consecutive recovery attempts before giving up. Default: 4. */
     maxRecoveries?: number;
+    /** Max time the decoder is allowed to sit on submitted chunks without
+     *  producing a frame or an error before we synthesise an error and
+     *  drive the existing recovery path. Default: 2000 ms. */
+    decoderHangTimeoutMs?: number;
+    /** Test seam for `setTimeout`. */
+    setTimeoutFn?: (cb: () => void, ms: number) => unknown;
+    clearTimeoutFn?: (handle: unknown) => void;
     abortSignal?: AbortSignal;
 }
 
@@ -68,6 +75,9 @@ export function decode(opts: DecodeOptions): PipeOperator<ArrivedChunk, DecodedF
     const onCodecExhausted = opts.onCodecExhausted;
     const now = opts.now ?? ((): number => performance.now());
     const maxRecoveries = opts.maxRecoveries ?? 4;
+    const decoderHangTimeoutMs = opts.decoderHangTimeoutMs ?? 2_000;
+    const setTimeoutFn = opts.setTimeoutFn ?? ((cb, ms): unknown => setTimeout(cb, ms));
+    const clearTimeoutFn = opts.clearTimeoutFn ?? ((h: unknown): void => clearTimeout(h as ReturnType<typeof setTimeout>));
     const abortSignal = opts.abortSignal;
 
     return source => from(decodeAsync(
@@ -77,6 +87,9 @@ export function decode(opts: DecodeOptions): PipeOperator<ArrivedChunk, DecodedF
         onCodecExhausted,
         now,
         maxRecoveries,
+        decoderHangTimeoutMs,
+        setTimeoutFn,
+        clearTimeoutFn,
         abortSignal,
     ));
 }
@@ -88,6 +101,9 @@ async function* decodeAsync(
     onCodecExhausted: ((codec: string) => void) | undefined,
     now: () => number,
     maxRecoveries: number,
+    decoderHangTimeoutMs: number,
+    setTimeoutFn: (cb: () => void, ms: number) => unknown,
+    clearTimeoutFn: (handle: unknown) => void,
     abortSignal: AbortSignal | undefined,
 ): AsyncIterable<DecodedFrame> {
     const currentCodec = initialConfig.codec;
@@ -100,9 +116,13 @@ async function* decodeAsync(
     let wakeup = new PromiseSource<void>();
     let pendingError: Error | null = null;
     let consecutiveRecoveries = 0;
+    // Watchdog: timestamp of the last decoder-side activity (frame or error).
+    // Used to detect a hung decoder while chunks sit in the `pending` FIFO.
+    let lastDecoderActivityMs = now();
 
     const handlers = {
         onFrame: (frame: VideoFrame): void => {
+            lastDecoderActivityMs = now();
             const meta = pending.shift();
             if (!meta) {
                 try { frame.close(); } catch { /* ignore */ }
@@ -127,6 +147,7 @@ async function* decodeAsync(
             if (!wakeup.isCompleted()) wakeup.resolve();
         },
         onError: (e: Error): void => {
+            lastDecoderActivityMs = now();
             pendingError = e;
             if (!wakeup.isCompleted()) wakeup.resolve();
         },
@@ -154,7 +175,8 @@ async function* decodeAsync(
     type WaitResult =
         | { kind: 'src'; result: IteratorResult<ArrivedChunk> }
         | { kind: 'wake' }
-        | { kind: 'abort' };
+        | { kind: 'abort' }
+        | { kind: 'watchdog' };
 
     try {
         for (;;) {
@@ -179,22 +201,47 @@ async function* decodeAsync(
             const sourceP = sourceDone ? null : armSource();
             const wakeP = wakeup;
 
+            // Watchdog arms only when the decoder owes us a frame. Otherwise
+            // a quiet stream would synthesise spurious timeouts.
+            const racers: Promise<WaitResult>[] = [
+                wakeP.then((): WaitResult => ({ kind: 'wake' })),
+                abortWait,
+            ];
+            if (sourceP)
+                racers.push(sourceP.then((r): WaitResult => ({ kind: 'src', result: r })));
+            let watchdogHandle: unknown = null;
+            if (pending.length > 0) {
+                const elapsed = now() - lastDecoderActivityMs;
+                const remaining = Math.max(0, decoderHangTimeoutMs - elapsed);
+                racers.push(new Promise<WaitResult>(resolve => {
+                    watchdogHandle = setTimeoutFn(() => resolve({ kind: 'watchdog' }), remaining);
+                }));
+            }
             let winner: WaitResult;
-            if (sourceP) {
-                winner = await Promise.race([
-                    sourceP.then((r): WaitResult => ({ kind: 'src', result: r })),
-                    wakeP.then((): WaitResult => ({ kind: 'wake' })),
-                    abortWait,
-                ]);
-            } else {
-                winner = await Promise.race([
-                    wakeP.then((): WaitResult => ({ kind: 'wake' })),
-                    abortWait,
-                ]);
+            try {
+                winner = await Promise.race(racers);
+            } finally {
+                if (watchdogHandle !== null) {
+                    try { clearTimeoutFn(watchdogHandle); } catch { /* ignore */ }
+                }
             }
 
             if (winner.kind === 'abort')
                 return;
+
+            if (winner.kind === 'watchdog') {
+                // Decoder went silent while owing us frames. Synthesize an
+                // error so the existing recovery path drops deltas, closes
+                // and reconfigures the decoder on the next keyframe, and
+                // eventually exhausts via onCodecExhausted.
+                if (!pendingError) {
+                    pendingError = new Error(
+                        `decode: hang watchdog (no frames in ${decoderHangTimeoutMs} ms, pending=${pending.length}, codec=${currentCodec})`);
+                }
+                lastDecoderActivityMs = now();
+                wakeup = new PromiseSource<void>();
+                continue;
+            }
 
             if (winner.kind === 'wake') {
                 // Re-arm; any pendingError or queued frame is handled at

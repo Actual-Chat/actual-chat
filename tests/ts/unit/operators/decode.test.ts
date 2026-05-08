@@ -382,6 +382,62 @@ describe('decode operator', () => {
         expect((arrivals[0].chunk as unknown as MockEncodedVideoChunk).closed).toBe(true);
     });
 
+    it('watchdog: hang synthesises an error and the next keyframe drives recovery', async () => {
+        const stats = makeStats();
+        const decoders: MockDecoder[] = [];
+        type FakeTimer = { cb: () => void; canceled: boolean };
+        const timers: FakeTimer[] = [];
+        const setTimeoutFn = (cb: () => void): unknown => {
+            const t: FakeTimer = { cb, canceled: false };
+            timers.push(t);
+            return t;
+        };
+        const clearTimeoutFn = (h: unknown): void => {
+            (h as FakeTimer).canceled = true;
+        };
+        const fireWatchdog = (): void => {
+            for (const t of timers.splice(0)) {
+                if (!t.canceled) t.cb();
+            }
+        };
+
+        let nowMs = 100;
+        const opts: DecodeOptions = {
+            initialConfig: { codec: 'avc1.42E01E' },
+            createDecoder: handlers => {
+                const d = new MockDecoder(handlers);
+                decoders.push(d);
+                return d;
+            },
+            maxRecoveries: 4,
+            decoderHangTimeoutMs: 2_000,
+            now: () => nowMs,
+            setTimeoutFn,
+            clearTimeoutFn,
+        };
+        // First keyframe hangs (no frame emitted) → watchdog → recovery on the
+        // second keyframe rebuilds the decoder and resubmits.
+        const arrivals: ArrivedChunk[] = [
+            makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }),
+            makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }),
+        ];
+        const seg = decode(opts)(fromArray(arrivals));
+        const iter = seg[Symbol.asyncIterator]();
+        const n1 = stepIter(iter);
+
+        await pumpUntil(() => decoders.length >= 1 && decoders[0].decodeCalls.length >= 1);
+        nowMs = 100 + 2_000;
+        fireWatchdog();
+        // Recovery: a second decoder is created and the second keyframe is submitted.
+        await pumpUntil(() => decoders.length >= 2 && decoders[1].decodeCalls.length >= 1);
+        expect(decoders[0].closed).toBe(true);
+
+        // Emit a frame on the rebuilt decoder; n1 yields it.
+        decoders[1].emitFrame(0);
+        const r1 = await n1;
+        expect(r1.done).toBe(false);
+    });
+
     it('reconfigure on dim change: second keyframe with different dims triggers a new configure()', async () => {
         const stats = makeStats();
         let captured: MockDecoder | undefined;
