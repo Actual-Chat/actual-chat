@@ -26,6 +26,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
     private readonly Disposable<NSObject> _configurationChangeSubscription;
     private readonly TaskSerializer _interruptions = new();
     private bool _isSuspended;
+    private bool _isConfigured;
 
     private AppUIHub Hub { get; }
     private AudioSession AudioSession => field ??= Hub.Services.GetRequiredService<AudioSession>();
@@ -71,7 +72,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
             return scope;
         }
 
-        var needsReconfigure = _scopes.GetMode() < requester.Kind;
+        var needsReconfigure = !_isConfigured || _scopes.GetMode() < requester.Kind;
         scope = _scopes.Add(requester, new Scope(this, requester));
         if (!needsReconfigure)
             return scope;
@@ -138,6 +139,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
         AudioEngines.Pause();
         await AudioSession.Reconfigure(mode).ConfigureAwait(false);
         AudioEngines.Resume(mode);
+        _isConfigured = true;
     }
 
     private async Task RecoverInternal(CancellationToken cancellationToken)
@@ -146,6 +148,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
         var mode = _scopes.GetMode();
         Log.LogInformation("Recover: reactivating session in {Mode}", mode);
         await AudioSession.Reactivate(mode).ConfigureAwait(false);
+        _isConfigured = true;
         AudioEngines.Resume(mode);
         InvokeRestoreUnsafe();
         _isSuspended = false;
