@@ -96,6 +96,7 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
 
     private void ConfigureUnsafe(AVAudioSession session, AudioFocusMode mode)
     {
+        Log.LogInformation("Configure: mode={Mode}", mode);
         if (mode is AudioFocusMode.Recording) {
             session.SetCategory(AVAudioSessionCategory.PlayAndRecord,
                     AVAudioSessionCategoryOptions.DefaultToSpeaker
