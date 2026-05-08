@@ -144,10 +144,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     {
         var verdict = PlaybackVerdictClassifier.Classify(
             snapshot.BufferDurationMsEma,
-            snapshot.KeyframeSkipsInWindow,
             PlaybackThresholds.Defaults,
-            snapshot.StreamAgeMs,
-            snapshot.DecoderQueueDepthEma,
             snapshot.QualityReductionRequested);
         bool isFirstTick;
         lock (_playbackLock) {
@@ -249,10 +246,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                 };
                 var verdict = PlaybackVerdictClassifier.Classify(
                     snapshot.BufferDurationMsEma,
-                    snapshot.KeyframeSkipsInWindow,
                     PlaybackThresholds.Defaults,
-                    snapshot.StreamAgeMs,
-                    snapshot.DecoderQueueDepthEma,
                     snapshot.QualityReductionRequested);
                 _playbackByStream[streamId] = state with {
                     SourceKind = sourceKind,
@@ -1074,22 +1068,14 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     // --- Playback branch (Step 10.4) ---
 
     public sealed record PlaybackThresholds(
-        double BufferDurationTooLowMs,
         double BufferDurationTooHighMs,
-        int StartupGraceMs,
-        int KeyframeSkipsBadAtOrAbove,
-        int DecoderQueueDepthBadAbove,
         long MinCapacityBytesPerSec,
         long ColdStartCapacityBytesPerSec,
         double ClimbCap,
         double BackoffFactor)
     {
         public static PlaybackThresholds Defaults => new (
-            BufferDurationTooLowMs: Constants.Video.BufferDurationTooLowMs,
             BufferDurationTooHighMs: Constants.Video.BufferDurationTooHighMs,
-            StartupGraceMs: (int)QcStartupCooldown.TotalMilliseconds,
-            KeyframeSkipsBadAtOrAbove: 1,
-            DecoderQueueDepthBadAbove: Constants.Video.HighBufferDepthThreshold,
             MinCapacityBytesPerSec: 50_000,
             ColdStartCapacityBytesPerSec: 1_500_000,
             ClimbCap: 1.4142135623730951,   // √2
@@ -1097,32 +1083,25 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     }
 
     /// <summary>
-    /// Pure per-stream classifier: -1 (bad), 0 (neutral), +1 (good)
-    /// based on buffer span and keyframe skip count. The ramp-up band is the
-    /// intentional decoder buffer target up to the "too much buffered" ceiling.
-    /// Low buffer is ignored during initial startup grace; over-buffering is
-    /// neutral because it indicates playback/decoder lag, not low bandwidth.
+    /// Pure per-stream classifier: -1 (bad), 0 (neutral), +1 (good).
+    /// Receiver-domain only: reacts to local decoder/main-thread overload via
+    /// QualityReductionRequested, and treats a buffer EMA inside the healthy
+    /// band as a positive signal. Sender-side starvation indicators (low
+    /// buffer, keyframe skips, missing-segment counters) intentionally do
+    /// not feed this verdict — those problems are owned by the sender's QC.
     /// </summary>
     public static class PlaybackVerdictClassifier
     {
         public static int Classify(
             double bufferDurationMsEma,
-            int keyframeSkipsInWindow,
             PlaybackThresholds t,
-            int streamAgeMs = int.MaxValue,
-            double decoderQueueDepthEma = 0,
             bool qualityReductionRequested = false)
         {
             if (qualityReductionRequested)
                 return -1;
-            if (keyframeSkipsInWindow >= t.KeyframeSkipsBadAtOrAbove)
-                return -1;
-            if (decoderQueueDepthEma > t.DecoderQueueDepthBadAbove)
-                return -1;
-            if (bufferDurationMsEma < t.BufferDurationTooLowMs)
-                return streamAgeMs < t.StartupGraceMs ? 0 : -1;
-            if (bufferDurationMsEma <= t.BufferDurationTooHighMs)
+            if (bufferDurationMsEma > 0 && bufferDurationMsEma <= t.BufferDurationTooHighMs)
                 return 1;
+
             return 0;
         }
     }

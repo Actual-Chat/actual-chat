@@ -8,55 +8,37 @@ public class PlaybackVerdictClassifierTest
     private static readonly PlaybackThresholds T = PlaybackThresholds.Defaults;
 
     [Fact]
-    public void TargetBuffer_NoSkips_ReturnsGood()
-        => PlaybackVerdictClassifier.Classify(T.BufferDurationTooLowMs, 0, T).Should().Be(1);
+    public void TargetBuffer_ReturnsGood()
+        => PlaybackVerdictClassifier.Classify(Constants.Video.BufferDurationTooLowMs, T).Should().Be(1);
 
     [Fact]
-    public void LowBuffer_ReturnsBad()
+    public void LowButPositiveBuffer_StillReturnsGood()
         => PlaybackVerdictClassifier
-            .Classify(T.BufferDurationTooLowMs - 1, 0, T)
-            .Should().Be(-1);
+            .Classify(Constants.Video.BufferDurationTooLowMs - 1, T)
+            .Should().Be(1);
 
     [Fact]
-    public void LowBuffer_DuringStartupGrace_ReturnsNeutral()
-        => PlaybackVerdictClassifier
-            .Classify(T.BufferDurationTooLowMs - 1, 0, T, T.StartupGraceMs - 1)
-            .Should().Be(0);
+    public void ZeroBuffer_ReturnsNeutral()
+        => PlaybackVerdictClassifier.Classify(0, T).Should().Be(0);
 
     [Fact]
     public void TooMuchBuffer_ReturnsNeutral()
         => PlaybackVerdictClassifier
-            .Classify(T.BufferDurationTooHighMs + 1, 0, T)
+            .Classify(T.BufferDurationTooHighMs + 1, T)
             .Should().Be(0);
-
-    [Fact]
-    public void KeyframeSkip_ReturnsBad()
-        => PlaybackVerdictClassifier.Classify(T.BufferDurationTooLowMs, T.KeyframeSkipsBadAtOrAbove, T)
-            .Should().Be(-1);
-
-    [Fact]
-    public void DecoderQueueTooDeep_ReturnsBad()
-        => PlaybackVerdictClassifier
-            .Classify(
-                T.BufferDurationTooLowMs,
-                0,
-                T,
-                decoderQueueDepthEma: T.DecoderQueueDepthBadAbove + 1)
-            .Should().Be(-1);
 
     [Fact]
     public void QualityReductionRequested_ReturnsBad()
         => PlaybackVerdictClassifier
             .Classify(
-                T.BufferDurationTooLowMs,
-                0,
+                Constants.Video.BufferDurationTooLowMs,
                 T,
                 qualityReductionRequested: true)
             .Should().Be(-1);
 
     [Fact]
-    public void TooHighBoundary_NoSkips_ReturnsGood()
-        => PlaybackVerdictClassifier.Classify(T.BufferDurationTooHighMs, 0, T).Should().Be(1);
+    public void TooHighBoundary_ReturnsGood()
+        => PlaybackVerdictClassifier.Classify(T.BufferDurationTooHighMs, T).Should().Be(1);
 }
 
 public class AggregateHealthTest
