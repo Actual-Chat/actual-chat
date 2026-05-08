@@ -69,19 +69,26 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
             .GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
         var activeVideoStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken)
             .ConfigureAwait(false);
+        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var ownAuthorId = ownAuthor?.Id ?? default;
 
+        // Own author is filtered out: focus on this client should always be a
+        // remote participant (a remote screencaster or a remote speaker), never
+        // ourselves — even when we're the one screencasting.
         var activeVideoAuthorIds = activeVideoStreams
+            .Where(s => s.AuthorId != ownAuthorId)
             .Select(s => s.AuthorId)
             .ToHashSet();
 
         var screenCastAuthorIds = activeVideoStreams
-            .Where(s => s.SourceKind == VideoSourceKind.ScreenCast)
+            .Where(s => s.SourceKind == VideoSourceKind.ScreenCast && s.AuthorId != ownAuthorId)
             .Select(s => s.AuthorId)
             .Distinct()
             .ToImmutableArray();
 
         var speakingWithVideo = audioStreamingAuthorIds
             .Where(activeVideoAuthorIds.Contains)
+            .Where(a => a != ownAuthorId)
             .ToArray();
 
         return new ActiveSpeakerState(speakingWithVideo, screenCastAuthorIds);
@@ -92,17 +99,11 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
     {
         var focusedIds = await _focusedSpeakerIds.Use(cancellationToken).ConfigureAwait(false);
         var isOwnRecording = await ChatVideoUI.IsOwnCameraRecording(ChatId, cancellationToken).ConfigureAwait(false);
-        var isOwnScreenCasting = await ChatVideoUI.IsOwnScreenCasting(ChatId, cancellationToken).ConfigureAwait(false);
-        var ownAuthor = isOwnRecording || isOwnScreenCasting
-            ? await Hub.Authors.GetOwn(Session, ChatId, cancellationToken).ConfigureAwait(false)
-            : null;
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(ChatId, cancellationToken).ConfigureAwait(false);
         var screenSize = await Hub.BrowserInfo.ScreenSize.Use(cancellationToken).ConfigureAwait(false);
         return new LayoutInputs(
             screenSize.IsNarrow(),
             isOwnRecording,
-            isOwnScreenCasting,
-            ownAuthor?.Id,
             remoteStreams,
             focusedIds);
     }
@@ -289,17 +290,19 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
 
     private static VideoPanelLayout BuildLayout(LayoutInputs inputs)
     {
-        var (isNarrow, hasOwnCamera, hasOwnScreenCast, ownAuthorId, remoteStreams, focusedIds) = inputs;
+        var (isNarrow, hasOwnCamera, remoteStreams, focusedIds) = inputs;
         var hasRemote = remoteStreams.Length > 0;
 
         // Build ordered display list from focus history + active streams
         var maxSlots = isNarrow ? MaxDisplaySlotsNarrow : MaxDisplaySlotsWide;
         var displayList = BuildDisplayList(remoteStreams, focusedIds, maxSlots);
-        var primaryScreenCast = SelectPrimaryScreenCast(displayList, hasOwnScreenCast, ownAuthorId, focusedIds);
-        var hasScreenCastPrimary = primaryScreenCast is not null || hasOwnScreenCast;
-        var ownScreenCastIsPrimary = primaryScreenCast is OwnScreenCastPrimary;
+        // Only remote screencasts can be primary on this client. Own screencast
+        // is intentionally not shown on the local user's screen at all — they
+        // already see what they're sharing through the OS-level share UI, and
+        // surfacing it here would push remote speakers out of the focused slot.
+        var primaryScreenCast = SelectPrimaryRemoteScreenCast(displayList, focusedIds);
+        var hasScreenCastPrimary = primaryScreenCast is not null;
 
-        var ownScreenCastClass = ownScreenCastIsPrimary ? "item-focused" : "";
         var ownCameraClass = !hasOwnCamera ? ""
             : hasScreenCastPrimary || hasRemote ? "item-x item-0"
             : "item-focused";
@@ -310,12 +313,12 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
         var remoteClasses = new List<RemoteStreamPlayerClass>();
         var pipPairs = new List<PipPair>();
         AuthorStreamGroup? focusedCameraGroup = null;
-        if (primaryScreenCast is RemoteScreenCastPrimary remotePrimary) {
+        if (primaryScreenCast is { } remotePrimary) {
             remoteClasses.Add(new RemoteStreamPlayerClass(remotePrimary.Group.Primary.StreamId.Value, "item-focused"));
             if (remotePrimary.Group.Pip is { } pip)
                 pipPairs.Add(new PipPair(remotePrimary.Group.Primary.StreamId.Value, pip));
         }
-        else if (!hasScreenCastPrimary) {
+        else {
             var focusedGroup = displayList.FirstOrDefault();
             if (focusedGroup is not null) {
                 focusedCameraGroup = focusedGroup;
@@ -331,30 +334,24 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
             remoteClasses.Add(new RemoteStreamPlayerClass(stream.StreamId.Value, cls));
         }
 
-        return new VideoPanelLayout(ownCameraClass, ownScreenCastClass, [..remoteClasses], [..pipPairs]);
+        return new VideoPanelLayout(ownCameraClass, [..remoteClasses], [..pipPairs]);
     }
 
-    private static ScreenCastPrimary? SelectPrimaryScreenCast(
+    private static RemoteScreenCastPrimary? SelectPrimaryRemoteScreenCast(
         ImmutableArray<AuthorStreamGroup> displayList,
-        bool hasOwnScreenCast,
-        AuthorId? ownAuthorId,
         ImmutableArray<AuthorId> focusedIds)
     {
         var remoteScreenCasts = displayList
             .Where(g => g.Primary.SourceKind == VideoSourceKind.ScreenCast)
             .ToDictionary(g => g.Primary.AuthorId, g => g);
-        if (!hasOwnScreenCast && remoteScreenCasts.Count == 0)
+        if (remoteScreenCasts.Count == 0)
             return null;
 
         foreach (var id in focusedIds) {
-            if (hasOwnScreenCast && ownAuthorId == id)
-                return OwnScreenCastPrimary.Instance;
             if (remoteScreenCasts.TryGetValue(id, out var group))
                 return new RemoteScreenCastPrimary(group);
         }
 
-        if (hasOwnScreenCast)
-            return OwnScreenCastPrimary.Instance;
         return remoteScreenCasts.Values.FirstOrDefault() is { } fallback
             ? new RemoteScreenCastPrimary(fallback)
             : null;
@@ -362,11 +359,11 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
 
     private static IEnumerable<VideoStreamInfo> GetSidebarCameras(
         ImmutableArray<AuthorStreamGroup> displayList,
-        ScreenCastPrimary? primaryScreenCast,
+        RemoteScreenCastPrimary? primaryScreenCast,
         AuthorStreamGroup? focusedCameraGroup)
     {
         foreach (var group in displayList) {
-            if (primaryScreenCast is RemoteScreenCastPrimary remotePrimary
+            if (primaryScreenCast is { } remotePrimary
                 && remotePrimary.Group.Primary.StreamId == group.Primary.StreamId)
                 continue;
             if (focusedCameraGroup is not null
@@ -393,22 +390,13 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
     protected sealed record LayoutInputs(
         bool IsNarrowScreen,
         bool HasOwnCameraPreview,
-        bool HasOwnScreenCastPreview,
-        AuthorId? OwnAuthorId,
         VideoStreamInfo[] RemoteStreams,
         ImmutableArray<AuthorId> FocusedSpeakerIds)
     {
-        public static readonly LayoutInputs None = new(true, false, false, null, [], []);
+        public static readonly LayoutInputs None = new(true, false, [], []);
     }
 
-    private abstract record ScreenCastPrimary;
-
-    private sealed record OwnScreenCastPrimary : ScreenCastPrimary
-    {
-        public static readonly OwnScreenCastPrimary Instance = new();
-    }
-
-    private sealed record RemoteScreenCastPrimary(AuthorStreamGroup Group) : ScreenCastPrimary;
+    private sealed record RemoteScreenCastPrimary(AuthorStreamGroup Group);
 }
 
 public record RemoteStreamPlayerClass(string StreamId, string Class);
@@ -417,11 +405,10 @@ public record PipPair(string PrimaryStreamId, VideoStreamInfo Pip);
 
 public record VideoPanelLayout(
     string OwnCameraPreviewClass,
-    string OwnScreenCastPreviewClass,
     ImmutableArray<RemoteStreamPlayerClass> RemoteStreamPlayerClasses,
     ImmutableArray<PipPair> PipPairs)
 {
-    public static readonly VideoPanelLayout New = new("", "", [], []);
+    public static readonly VideoPanelLayout New = new("", [], []);
 
 #pragma warning disable CA1822 // Member can be static
     public string LayoutClass

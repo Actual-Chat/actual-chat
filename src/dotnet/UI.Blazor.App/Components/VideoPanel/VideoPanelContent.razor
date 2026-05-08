@@ -181,13 +181,10 @@
                         Class="pip-overlay" />
                 }
             }
-            @if (isOwnScreenCasting) {
-                <VideoStreamingPreview
-                    @key="@("own-screen-" + ChatId.Value)"
-                    ChatId="@ChatId"
-                    SourceKind="@VideoSourceKind.ScreenCast"
-                    Class="@(layout.OwnScreenCastPreviewClass)" />
-            }
+            @* Own screencast intentionally not rendered: on this client the
+               primary slot is reserved for whoever is actually talking
+               remotely. The camera tile shows a screencast indicator when the
+               local user is dual-streaming. *@
             @if (isOwnCameraStreaming) {
                 <VideoStreamingPreview
                     @key="@("own-camera-" + ChatId.Value)"
@@ -414,7 +411,7 @@
         CancellationToken cancellationToken)
     {
         const string focusedCls = "item-focused";
-        if (layout.OwnScreenCastPreviewClass.Contains(focusedCls) || layout.OwnCameraPreviewClass.Contains(focusedCls))
+        if (layout.OwnCameraPreviewClass.Contains(focusedCls))
             return "You";
 
         var focused = layout.RemoteStreamPlayerClasses.FirstOrDefault(c => c.Class.Contains(focusedCls));

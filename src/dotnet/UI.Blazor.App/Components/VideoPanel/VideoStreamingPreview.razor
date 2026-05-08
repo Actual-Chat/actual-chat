@@ -4,13 +4,18 @@
 @inherits ComputedStateComponent<AppUIHub, VideoStreamingPreview.Model>
 @{
     var m = State.Value;
-    var isRecording = m.IsOwnRecording;
-    var isScreenCasting = m.IsOwnScreenCasting;
-    var recordingCls = isRecording ? "recording" : "";
-    var screenCastCls = !isRecording && isScreenCasting ? "screencast" : "";
+    var isCameraSource = SourceKind == VideoSourceKind.Camera;
+    var isOwnCameraRecording = m.IsOwnCameraRecording;
+    var isOwnScreenCasting = m.IsOwnScreenCasting;
+    var isActiveRecording = isCameraSource ? isOwnCameraRecording : isOwnScreenCasting;
+    var recordingCls = isCameraSource && isOwnCameraRecording ? "recording" : "";
+    var screenCastCls = !isCameraSource && isOwnScreenCasting ? "screencast" : "";
     // Mirror only for camera. ScreenCast is never mirrored.
-    var mirrorCls = isRecording && m.IsCameraMirrored ? "" : "no-mirror";
-    var labelIcon = !isRecording && isScreenCasting ? "icon-screen-share" : "icon-video";
+    var mirrorCls = isCameraSource && m.IsCameraMirrored ? "" : "no-mirror";
+    // On a camera tile that is also screencasting, show both icons so the
+    // local user can see they're broadcasting in two ways at once.
+    var showDualIcons = isCameraSource && isOwnCameraRecording && isOwnScreenCasting;
+    var labelIcon = isCameraSource ? "icon-video" : "icon-screen-share";
 }
 
 <div @ref="Ref" class="video-track-player video-streaming-preview @Class @recordingCls @screenCastCls">
@@ -21,19 +26,24 @@
            controlslist="nodownload nofullscreen noremoteplayback"></video>
     <canvas
         class="call-video @mirrorCls"
-        @onclick="@(isRecording && !m.IsAloneOnStream ? OnSettingsClick : null!)"></canvas>
+        @onclick="@(isActiveRecording && !m.IsAloneOnStream ? OnSettingsClick : null!)"></canvas>
     <div class="video-loading">
         <span class="spinner-icon-wrapper">
             <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
         </span>
     </div>
-    @if (isRecording && m.IsAloneOnStream) {
+    @if (isActiveRecording && m.IsAloneOnStream) {
         <HeaderButton Class="btn-settings btn-video-panel" Click="@OnSettingsClick">
             <i class="icon-settings text-lg"></i>
         </HeaderButton>
     }
     <div class="video-participant-label">
-        <i class="@labelIcon"></i>
+        @if (showDualIcons) {
+            <i class="icon-screen-share"></i>
+            <i class="icon-video"></i>
+        } else {
+            <i class="@labelIcon"></i>
+        }
         <span>You</span>
     </div>
     @if (m.LastErrorMessage is {} errorMessage && errorMessage.Length > 0) {
@@ -76,14 +86,15 @@
         if (_isSuspended)
             return _suspendedModel;
 
-        var isOwnRecording = SourceKind == VideoSourceKind.Camera
-            && await ChatVideoUI.IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);
-        var isOwnScreenCasting = SourceKind == VideoSourceKind.ScreenCast
-            && await ChatVideoUI.IsOwnScreenCasting(chatId, cancellationToken).ConfigureAwait(false);
+        // Both fields reflect the user's actual streaming state regardless of
+        // SourceKind: the camera tile needs to know whether the user is also
+        // screencasting in order to render dual icons in its label.
+        var isOwnCameraRecording = await ChatVideoUI.IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);
+        var isOwnScreenCasting = await ChatVideoUI.IsOwnScreenCasting(chatId, cancellationToken).ConfigureAwait(false);
         var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
         var lastError = await ChatVideoUI.GetLastVideoRecorderError(SourceKind, cancellationToken).ConfigureAwait(false);
         var isMirrored = await ChatVideoUI.GetIsCameraMirrored(cancellationToken).ConfigureAwait(false);
-        return new Model(isOwnRecording, isOwnScreenCasting, !hasRemoteStreams, lastError, isMirrored);
+        return new Model(isOwnCameraRecording, isOwnScreenCasting, !hasRemoteStreams, lastError, isMirrored);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -109,7 +120,7 @@
     // Nested types
 
     public sealed record Model(
-        bool IsOwnRecording,
+        bool IsOwnCameraRecording,
         bool IsOwnScreenCasting,
         bool IsAloneOnStream,
         string? LastErrorMessage,
