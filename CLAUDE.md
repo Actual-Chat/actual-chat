@@ -183,7 +183,11 @@ to what you're about to write.
 
 # Architecture Docs
 
-Consult `docs/architecture/video-system.md` for the video system design — covers video streaming, recording, playback, and server/client components.
+Consult `docs/live-video/` for the live-video pipeline (capture, encoding,
+simulcast, RPC fan-out, playback, quality control, A/V sync) and
+`docs/live-audio/` for the live-audio pipeline (mic capture, VAD, Opus,
+publish/persist/transcribe, fan-out, replay, playback). Both are written
+from current source.
 
 # Building
 

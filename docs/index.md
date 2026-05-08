@@ -16,6 +16,12 @@ hero:
       text: Testing
       link: /testing/overview
     - theme: alt
+      text: Live Video
+      link: /live-video/
+    - theme: alt
+      text: Live Audio
+      link: /live-audio/
+    - theme: alt
       text: Plans
       link: /plans/BigTasks
     - theme: alt
@@ -43,6 +49,15 @@ features:
 | Databases | PostgreSQL, Redis |
 | Messaging | NATS |
 | Mobile | .NET MAUI |
+
+## Pipelines
+
+- [Live Video pipeline](./live-video/) — end-to-end documentation of the
+  current video pipeline: capture, encoding, simulcast, RPC fan-out,
+  playback, quality control, buffering goals, A/V sync.
+- [Live Audio pipeline](./live-audio/) — end-to-end documentation of the
+  current audio pipeline: microphone capture, VAD, Opus encoding,
+  publish/persist/transcribe, fan-out, replay, playback.
 
 ## Related Projects
 
