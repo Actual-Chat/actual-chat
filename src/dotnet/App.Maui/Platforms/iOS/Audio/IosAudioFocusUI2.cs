@@ -22,7 +22,7 @@ public sealed class IosAudioFocusUI2 : AudioFocusUI
 
     private readonly AsyncLock _lock = new(LockReentryMode.CheckedFail);
     private readonly List<AudioFocusRestoreHandler> _restoreHandlers = new();
-    private readonly Scopes _scopes = new ();
+    private readonly Scopes _scopes;
     private readonly Disposable<NSObject> _interruptionSubscription;
     private readonly Disposable<NSObject> _configurationChangeSubscription;
     private bool _isSuspended;
@@ -35,6 +35,7 @@ public sealed class IosAudioFocusUI2 : AudioFocusUI
     public IosAudioFocusUI2(AppUIHub hub)
     {
         Hub = hub;
+        _scopes = new Scopes(Log);
         _interruptionSubscription = Disposable.New(
             AVAudioSession.Notifications.ObserveInterruption(OnInterruption),
             NSNotificationCenter.DefaultCenter.RemoveObserver);
@@ -47,6 +48,17 @@ public sealed class IosAudioFocusUI2 : AudioFocusUI
     {
         _interruptionSubscription.DisposeSilently();
         _configurationChangeSubscription.DisposeSilently();
+
+        using var cts = new CancellationTokenSource(CoreConstants.DisposeTimeout);
+        try {
+            using var _1 = await _lock.Lock(cts.Token).ConfigureAwait(false);
+            _scopes.Dispose();
+            _restoreHandlers.Clear();
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested) {
+            Log.LogWarning("{Type}: lock wasn't acquired in {Timeout}; releasing without it",
+                GetType().GetName(), CoreConstants.DisposeTimeout);
+        }
         await base.DisposeAsyncCore().ConfigureAwait(false);
     }
 
@@ -229,35 +241,51 @@ public sealed class IosAudioFocusUI2 : AudioFocusUI
             => _ = owner.Release(requester, this);
     }
 
-    private sealed class Scopes
+    private sealed class Scopes(ILogger log) : IDisposable
     {
-        private readonly Dictionary<AudioFocusMode, Dictionary<AudioFocusRequester, Scope>> _scopes = new() {
+        private readonly Dictionary<AudioFocusMode, Dictionary<AudioFocusRequester, Scope>> _byMode = new() {
             [AudioFocusMode.Tune] = new(),
             [AudioFocusMode.Playback] = new(),
             [AudioFocusMode.Recording] = new(),
         };
 
-        public bool IsEmpty => _scopes.All(x => x.Value.Count == 0);
+        public bool IsEmpty => _byMode.All(x => x.Value.Count == 0);
 
         public Scope? Get(AudioFocusRequester requester)
-            => _scopes.GetValueOrDefault(requester.Kind)?.GetValueOrDefault(requester);
+            => _byMode.GetValueOrDefault(requester.Kind)?.GetValueOrDefault(requester);
 
         public Scope Add(AudioFocusRequester requester, Scope scope)
         {
-            _scopes[requester.Kind].Add(requester, scope);
+            _byMode[requester.Kind].Add(requester, scope);
             return scope;
         }
 
         public AudioFocusMode GetMode()
-            => _scopes.Where(x => x.Value.Count > 0)
+            => _byMode.Where(x => x.Value.Count > 0)
                 .Select(x => x.Key)
                 .DefaultIfEmpty(AudioFocusMode.Tune)
                 .Max();
 
         public bool Remove(AudioFocusRequester requester, out Scope? scope)
-            => _scopes[requester.Kind].Remove(requester, out scope);
+            => _byMode[requester.Kind].Remove(requester, out scope);
 
         public IEnumerable<Scope> All()
-            => _scopes.SelectMany(x => x.Value.Values);
+            => _byMode.SelectMany(x => x.Value.Values);
+
+        public void Dispose()
+        {
+            // Notify each active requester that focus is permanently lost (no recovery).
+            foreach (var scope in All()) {
+                scope.Suspend(true);
+                try {
+                    scope.Requester.AudioFocusLostHandler(false, false);
+                }
+                catch (Exception e) {
+                    log.LogError(e, "FocusLost handler threw for {Mode} on dispose", scope.Requester.Kind);
+                }
+            }
+            foreach (var scopes in _byMode.Values)
+                scopes.Clear();
+        }
     }
 }
