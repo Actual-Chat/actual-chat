@@ -1,0 +1,52 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits Menu<AppUIHub>
+@{
+    var location = SearchUI.LocationFilter.ValueOrDefault;
+    var type = SearchUI.TypeFilter.ValueOrDefault;
+    var hasPlace = ChatUI.SelectedChatId.ValueOrDefault is PlaceChatId;
+}
+
+<div class="search-filter-menu">
+    <div class="c-section">
+        <div class="c-section-title">Search location</div>
+        @RenderLocation(SearchLocationFilter.Anywhere, "Anywhere")
+        @RenderLocation(SearchLocationFilter.Chat, "In this chat")
+        @if (hasPlace) {
+            @RenderLocation(SearchLocationFilter.Place, "In this place")
+        }
+    </div>
+    <div class="c-section">
+        <div class="c-section-title">Result type</div>
+        @RenderType(SearchTypeFilter.Anything, "Anything")
+        @RenderType(SearchTypeFilter.People, "People")
+        @RenderType(SearchTypeFilter.Groups, "Groups")
+        @RenderType(SearchTypeFilter.Messages, "Messages")
+    </div>
+</div>
+
+@code {
+    private SearchUI SearchUI => Hub.SearchUI;
+    private ChatUI ChatUI => Hub.ChatUI;
+
+    private RenderFragment RenderLocation(SearchLocationFilter value, string label)
+        => RenderOption(label, SearchUI.LocationFilter.ValueOrDefault == value, () => SelectLocation(value));
+
+    private RenderFragment RenderType(SearchTypeFilter value, string label)
+        => RenderOption(label, SearchUI.TypeFilter.ValueOrDefault == value, () => SelectType(value));
+
+    private RenderFragment RenderOption(string label, bool isSelected, Func<Task> onClick)
+        => @<button type="button" class="@("c-option" + (isSelected ? " selected" : ""))" @onclick="@(_ => onClick())">
+                <span class="c-radio"></span>
+                <span class="c-label">@label</span>
+            </button>;
+
+    private async Task SelectLocation(SearchLocationFilter value) {
+        SearchUI.SetLocationFilter(value);
+        await Host.Hide();
+    }
+
+    private async Task SelectType(SearchTypeFilter value) {
+        SearchUI.SetTypeFilter(value);
+        await Host.Hide();
+    }
+}

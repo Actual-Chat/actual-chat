@@ -1,7 +1,7 @@
 .left-chat-search-input {
     @apply relative z-10;
     @apply flex-none flex-y gap-y-0 self-end;
-    @apply h-14;
+    @apply min-h-14;
     @apply p-0;
     @apply pointer-events-auto;
     width: calc(100% - 4rem);
@@ -39,42 +39,47 @@
     @apply bg-transparent;
     @apply border-transparent;
 }
-.left-chat-search-input .c-place-badge {
-    @apply hidden;
-    @apply flex-none items-center self-center gap-x-1;
-    @apply h-8;
-    @apply ml-1 pl-2 pr-1 py-1.5;
+.left-chat-search-input .c-filter-btn {
+    @apply flex-none self-center inline-flex;
+    @apply w-0;
+    @apply ml-0;
     @apply rounded-full;
-    @apply bg-status-badge;
-    @apply text-status text-caption-4 tracking-wider;
-    @apply whitespace-nowrap;
-    @apply cursor-pointer;
-}
-.left-chat-search-input.open .c-place-badge {
-    @apply inline-flex;
-}
-.left-chat-search-input .c-place-badge-text {
-    @apply flex-none;
-}
-.left-chat-search-input .c-place-badge-close {
-    @apply flex-none;
+    @apply opacity-0;
     @apply text-03;
+    overflow: hidden;
+    pointer-events: none;
+    transition: width 200ms ease-in 200ms,
+                margin-left 200ms ease-in 200ms,
+                opacity 200ms ease-in 200ms;
 }
-.left-chat-search-input .c-place-badge-close i {
-    @apply text-base leading-none;
+.left-chat-search-input.open .c-filter-btn {
+    @apply w-8;
+    @apply ml-1;
+    @apply opacity-100;
+    @apply bg-03;
+    pointer-events: auto;
 }
-.left-chat-search-input.open.place .search-input input {
-    @apply flex-1 min-w-0;
-    @apply pl-2;
-}
-.left-chat-search-input.open.place .search-input input::placeholder {
-    @apply text-transparent;
+.left-chat-search-input .c-filter-badges {
+    @apply z-30;
+    @apply flex flex-wrap items-center gap-2;
+    @apply -mt-1 px-3 pb-1;
+    @apply opacity-100;
+    @apply bg-03;
+    @apply translate-y-0;
+    transition: opacity 300ms ease-in-out 200ms, transform 300ms ease-in-out 200ms;
+    @starting-style {
+        opacity: 0;
+        transform: translateY(-125%);
+    }
 }
 .left-chat-search-input .search-input {
     transition: box-shadow 0.3s ease-in;
 }
 .left-chat-search-input .search-input input {
     @apply px-4;
+}
+.left-chat-search-input.open .search-input input {
+    @apply pl-2;
 }
 .left-chat-search-input.place .search-input {
     @apply relative;
@@ -100,9 +105,6 @@
     @apply bg-primary;
     @apply text-white;
     transition: opacity 0.3s ease-in;
-}
-body.hoverable .left-chat-search-input .c-ai-btn:hover {
-    @apply bg-primary;
 }
 .left-chat-search-input.place .c-close-btn i {
     @apply text-03;

@@ -1,0 +1,49 @@
+.search-filter-menu {
+    @apply flex-y gap-y-2;
+    @apply min-w-56;
+    @apply p-2;
+}
+.search-filter-menu > .c-section {
+    @apply flex-y;
+}
+.search-filter-menu > .c-section + .c-section {
+    @apply mt-1 pt-2;
+    @apply border-t border-bg-04;
+}
+.search-filter-menu .c-section-title {
+    @apply px-2 py-1;
+    @apply text-caption-6 text-03;
+    @apply uppercase tracking-wider;
+}
+.search-filter-menu .c-option {
+    @apply flex items-center gap-x-2;
+    @apply px-2 py-2;
+    @apply rounded-md border-0;
+    @apply bg-transparent;
+    @apply text-left text-headline-1 text-01;
+    @apply cursor-pointer;
+}
+body.hoverable .search-filter-menu .c-option:hover {
+    @apply bg-04;
+}
+.search-filter-menu .c-option > .c-radio {
+    @apply relative;
+    @apply flex-none;
+    @apply h-4 w-4;
+    @apply rounded-full border border-radio-border;
+    @apply bg-radio;
+}
+.search-filter-menu .c-option.selected > .c-radio {
+    @apply border-primary;
+}
+.search-filter-menu .c-option.selected > .c-radio::before {
+    @apply content-empty;
+    @apply absolute top-1/2 left-1/2;
+    @apply h-2 w-2;
+    @apply rounded-full;
+    @apply bg-primary;
+    @apply -translate-x-1/2 -translate-y-1/2;
+}
+.search-filter-menu .c-option > .c-label {
+    @apply flex-1;
+}

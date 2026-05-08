@@ -50,10 +50,8 @@ public partial class SearchUI
             var searchResultMap = await Find(criteria, searchCts.Token).ConfigureAwait(false);
             foundItems = new List<FoundItem>(searchResultMap.Sum(x => x.Value.Count));
 
-            if (criteria.IsPlaceSearch)
-                AddPlaceSearchResults(searchResultMap);
-            else {
-                AddUserRelatedSearchResults(searchResultMap);
+            AddUserRelatedSearchResults(searchResultMap);
+            if (criteria.LocationFilter == SearchLocationFilter.Anywhere) {
                 if (criteria.IsGlobalSearchOn)
                     AddGlobalSearchResults(searchResultMap);
                 else
@@ -76,32 +74,42 @@ public partial class SearchUI
         {
             foreach (var scope in Scopes) {
                 var scopeResults = searchResultMap.GetValueOrDefault(new (scope, true)) ?? [];
-                for (int i = 0; i < scopeResults.Count; i++) {
-                    var searchResult = scopeResults[i];
-                    foundItems.Add(new (searchResult,
+                var displayLimit = criteria.DisplayLimit(scope);
+                var hasMore = scopeResults.Count > displayLimit;
+                var isExpanded = criteria.ExtendedLimits.Contains(scope);
+                var canExpandOrCollapse = isExpanded || hasMore;
+                var displayCount = Math.Min(scopeResults.Count, displayLimit);
+                for (int i = 0; i < displayCount; i++) {
+                    foundItems.Add(new (scopeResults[i],
                         scope,
                         false,
                         i == 0,
-                        i == scopeResults.Count - 1,
-                        scopeResults.Count >= Constants.Search.DefaultPageSize));
+                        i == displayCount - 1,
+                        canExpandOrCollapse));
                 }
             }
         }
 
         void AddGlobalSearchResults(Dictionary<SubgroupKey, IReadOnlyList<SearchResult>> searchResultMap)
         {
-            var globalSearchResultCount = Scopes.Sum(x => searchResultMap.GetValueOrDefault(new (x, false))?.Count ?? 0);
-            var canGlobalSearchResultsBeExpanded = Scopes.Any(x => searchResultMap.GetValueOrDefault(new (x, false))?.Count >= Constants.Search.DefaultPageSize);
+            var perScope = Scopes.Select(scope => {
+                var rs = searchResultMap.GetValueOrDefault(new (scope, false)) ?? [];
+                var dl = criteria.DisplayLimit(scope);
+                return (Scope: scope, Results: rs, DisplayCount: Math.Min(rs.Count, dl), HasMore: rs.Count > dl);
+            }).ToArray();
+            var totalDisplayCount = perScope.Sum(p => p.DisplayCount);
+            var anyHasMore = perScope.Any(p => p.HasMore);
+            var anyExpanded = Scopes.Any(s => criteria.ExtendedLimits.Contains(s));
+            var canExpandOrCollapse = anyHasMore || anyExpanded;
             var i = 0;
-            foreach (var scope in Scopes) {
-                var scopeResults = searchResultMap.GetValueOrDefault(new (scope, false)) ?? [];
-                foreach (var searchResult in scopeResults) {
-                    foundItems.Add(new (searchResult,
-                        scope,
+            foreach (var p in perScope) {
+                for (var j = 0; j < p.DisplayCount; j++) {
+                    foundItems.Add(new (p.Results[j],
+                        p.Scope,
                         true,
                         i == 0,
-                        i == globalSearchResultCount - 1,
-                        canGlobalSearchResultsBeExpanded));
+                        i == totalDisplayCount - 1,
+                        canExpandOrCollapse));
                     i++;
                 }
             }
@@ -116,43 +124,6 @@ public partial class SearchUI
                 IsLastInGroup: true,
                 IsGlobalSearchPlaceholder: true));
         }
-
-        void AddPlaceSearchResults(Dictionary<SubgroupKey, IReadOnlyList<SearchResult>> searchResultMap) {
-            // Group 1: Messages from current chat (always max DefaultPageSize, no expand)
-            var currentChatMessages = searchResultMap.GetValueOrDefault(new (SearchScope.Messages, true)) ?? [];
-            for (int i = 0; i < currentChatMessages.Count; i++)
-                foundItems.Add(new (currentChatMessages[i],
-                    SearchScope.Messages,
-                    false,
-                    i == 0,
-                    i == currentChatMessages.Count - 1));
-
-            // Collect current chat entry IDs for dedup
-            var currentChatEntryIds = currentChatMessages
-                .OfType<EntrySearchResult>()
-                .Select(x => x.EntryId)
-                .ToHashSet();
-
-            // Group 2+: Rest of place results, per scope
-            foreach (var scope in Scopes.Where(x => x is not SearchScope.Places)) {
-                IReadOnlyList<SearchResult> scopeResults;
-                if (scope is SearchScope.Messages) {
-                    var allPlaceMessages = searchResultMap.GetValueOrDefault(new (scope, false)) ?? [];
-                    scopeResults = allPlaceMessages
-                        .Where(x => x is not EntrySearchResult entry || !currentChatEntryIds.Contains(entry.EntryId))
-                        .ToList();
-                } else
-                    scopeResults = searchResultMap.GetValueOrDefault(new (scope, true)) ?? [];
-
-                for (int i = 0; i < scopeResults.Count; i++)
-                    foundItems.Add(new (scopeResults[i],
-                        scope,
-                        true,
-                        i == 0,
-                        i == scopeResults.Count - 1,
-                        scopeResults.Count >= Constants.Search.DefaultPageSize));
-            }
-        }
     }
 
     private async Task<Dictionary<SubgroupKey, IReadOnlyList<SearchResult>>> Find(
@@ -161,12 +132,18 @@ public partial class SearchUI
     {
         if (criteria == Criteria.None)
             return [];
+        if (criteria.LocationFilter == SearchLocationFilter.Chat && criteria.ChatId is null)
+            return [];
 
         var session = Session;
-        var scopes = criteria.PlaceId is null
-            ? Scopes
-            : Scopes.Where(x => x is not SearchScope.Places);
-        var subgroups = ToSubgroups(scopes, criteria.IsGlobalSearchOn, criteria.IsPlaceSearch);
+        IEnumerable<SearchScope> scopes;
+        if (criteria.LocationFilter == SearchLocationFilter.Chat)
+            scopes = [SearchScope.Messages];
+        else if (criteria.PlaceId is null)
+            scopes = Scopes;
+        else
+            scopes = Scopes.Where(x => x is not SearchScope.Places);
+        var subgroups = ToSubgroups(scopes, criteria.TypeFilter, criteria.IsGlobalSearchOn);
         var allSearchResults = await subgroups.Select(FindSubgroup)
             .CollectResults(ApiConstants.Concurrency.Low, cancellationToken)
             .ConfigureAwait(false);
@@ -194,21 +171,18 @@ public partial class SearchUI
 
     private static SubgroupKey[] ToSubgroups(
         IEnumerable<SearchScope> scopes,
-        bool includeGlobal,
-        bool isPlaceSearch)
+        SearchTypeFilter typeFilter,
+        bool includeGlobal)
     {
-        if (isPlaceSearch)
-            // Messages: Own=true (current chat) + Own=false (all place chats)
-            // Contacts: Own=true only (place members)
-            return scopes
-                .SelectMany(x => x is SearchScope.Messages
-                    ? new SubgroupKey[] { new (x, true), new (x, false) }
-                    : new SubgroupKey[] { new (x, true) })
-                .ToArray();
-
+        var filteredScopes = typeFilter switch {
+            SearchTypeFilter.People => scopes.Where(x => x == SearchScope.People),
+            SearchTypeFilter.Groups => scopes.Where(x => x is SearchScope.Groups or SearchScope.Places),
+            SearchTypeFilter.Messages => scopes.Where(x => x == SearchScope.Messages),
+            _ => scopes,
+        };
         var subgroups = includeGlobal
-            ? scopes.SelectMany(x => new SubgroupKey[] { new (x, true), new (x, false) })
-            : scopes.Select(x => new SubgroupKey(x, true));
+            ? filteredScopes.SelectMany(x => new SubgroupKey[] { new (x, true), new (x, false) })
+            : filteredScopes.Select(x => new SubgroupKey(x, true));
         return subgroups
             .Except([new SubgroupKey(SearchScope.Messages, false)]) // searching for messages only in own chats
             .ToArray();

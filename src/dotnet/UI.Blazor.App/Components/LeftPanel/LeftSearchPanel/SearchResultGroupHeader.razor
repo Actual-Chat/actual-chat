@@ -5,18 +5,19 @@
     var isExpanded = State.Value;
     var btnText = isExpanded ? "Show less" : "Show more";
     var isExpandedCls = isExpanded ? "expanded" : "";
-    var isPlaceSearch = SearchUI.PlaceId.Value is not null;
-    var title = isPlaceSearch
-        ? (IsGlobalSearchResult ? "This place" : "This chat")
-        : (IsGlobalSearchResult ? "Public chats & places" : Scope.ToString());
+    var isCollapsedCls = IsCollapsed ? "collapsed" : "";
+    var title = IsGlobalSearchResult ? "Public chats & places" : Scope.ToString();
 }
 
-<div class="search-result-group-header @isExpandedCls">
-    <div class="c-title">
-        @title
-    </div>
-    @if (CanExpandOrCollapse) {
-        <Button Class="show-more-btn btn-transparent unhovered btn-sm" Click="@OnClick">
+<div class="search-result-group-header @isExpandedCls @isCollapsedCls">
+    <button type="button" class="c-title" @onclick="@OnTitleClick">
+        <span class="c-title-text">@title</span>
+        @if (IsCollapsed) {
+            <i class="icon-chevron-right c-collapse-arrow"></i>
+        }
+    </button>
+    @if (!IsCollapsed && CanExpandOrCollapse) {
+        <Button Class="show-more-btn btn-transparent unhovered btn-sm" Click="@OnShowMoreClick">
             <i class="icon-chevron-up c-arrow"></i>
             <span class="c-text">@btnText</span>
         </Button>
@@ -29,8 +30,12 @@
     [Parameter, EditorRequired] public bool CanExpandOrCollapse { get; set; }
     [Parameter, EditorRequired] public SearchScope Scope { get; set; }
     [Parameter, EditorRequired] public bool IsGlobalSearchResult { get; set; }
+    [Parameter] public bool IsCollapsed { get; set; }
 
-    private async Task OnClick(MouseEventArgs e) {
+    private Task OnTitleClick()
+        => SearchUI.ToggleGroupCollapse(new SearchResultGroupKey(Scope, IsGlobalSearchResult));
+
+    private async Task OnShowMoreClick(MouseEventArgs e) {
         var scope = Scope;
         if (State.ValueOrDefault)
             await SearchUI.ShowLess(scope);

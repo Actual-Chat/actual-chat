@@ -1,0 +1,14 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<button type="button" class="search-filter-badge @Class" @onclick="@OnClick">
+    <span class="c-text">@Text</span>
+    <i class="icon-close c-close"></i>
+</button>
+
+@code {
+    [Parameter, EditorRequired] public string Text { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public EventCallback Click { get; set; }
+
+    private Task OnClick() => Click.InvokeAsync();
+}

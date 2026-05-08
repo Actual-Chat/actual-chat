@@ -1,13 +1,31 @@
 .search-result-group-header {
     @apply flex-x items-center;
+    @apply h-8;
     @apply p-0 px-2;
 }
-.search-result-group-header .c-title {
-    @apply flex-1 flex items-center;
-    @apply text-square-title text-headline-1;
+.search-result-group-header > .c-title {
+    @apply flex-1 flex items-center justify-between gap-x-2;
+    @apply px-0 py-1;
+    @apply border-0;
+    @apply bg-transparent;
+    @apply text-left text-03 text-headline-1;
+    @apply cursor-pointer;
+}
+.search-result-group-header > .c-title > .c-title-text {
+    @apply flex-1;
+    @apply truncate;
+}
+.search-result-group-header > .c-title > .c-collapse-arrow {
+    @apply flex-none;
+    @apply text-03 text-text-1;
+}
+body.hoverable .search-result-group-header > .c-title:hover > .c-title-text,
+.touch-capable .search-result-group-header > .c-title:active > .c-title-text {
+    @apply text-01;
 }
 .search-result-group-header .show-more-btn.btn {
-    @apply px-0 text-caption-4;
+    @apply px-0;
+    @apply text-caption-4;
 }
 .search-result-group-header .show-more-btn.btn .btn-content {
     @apply gap-0;
