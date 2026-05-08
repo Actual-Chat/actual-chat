@@ -25,6 +25,7 @@ import type { DownscalerLike, LayerSpec } from '../operators/downscale';
 import type { StreamSenderLike, VideoStreamFrame } from '../operators/wire-send';
 import { WebGpuDownscaler, type DownscaleTarget } from '../webgpu/downscaler';
 import { WebGPUManager } from '../webgpu/manager';
+import { Canvas2dDownscaler } from '../canvas2d/downscaler';
 import {
     createWireSender,
     type DisposableStreamSender,
@@ -231,10 +232,25 @@ class WebGpuDownscalerAdapter implements DownscalerLike {
  * One device is shared across all runs (the device lives on
  * {@link WebGPUManager}); the adapter / per-run state lives in the
  * returned `DownscalerLike`.
+ *
+ * NOTE: Currently disabled in favour of {@link Canvas2dDownscaler} —
+ * the WebGPU path has had recurring device-loss cascades under load.
+ * Kept around so we can swap back when the underlying issues are
+ * addressed (see `createDownscalerInstance` below).
  */
-async function createDownscaler(): Promise<DownscalerLike> {
+async function createWebGpuDownscalerInstance(): Promise<DownscalerLike> {
     const device = await WebGPUManager.init();
     return new WebGpuDownscalerAdapter(new WebGpuDownscaler(device));
+}
+
+/**
+ * Active downscaler factory — points at the simpler Canvas 2D
+ * implementation by default. To swap back to the WebGPU one, replace
+ * the body with `return createWebGpuDownscalerInstance()` and update
+ * {@link LazyDownscaler}'s init path accordingly.
+ */
+function createDownscalerInstance(): DownscalerLike {
+    return new Canvas2dDownscaler();
 }
 
 /**
@@ -447,36 +463,38 @@ const deps: RecorderWorkerDeps = {
         observeCallbackPromise('onStreamEnded', () => callbacks.onStreamEnded(reason));
     },
     createSender,
-    createDownscaler: () => {
-        // The DownscalerLike interface is sync, but createDownscaler
-        // returns a Promise. We expose a thin sync wrapper that resolves
-        // lazily on the first `process()` call. Mirrors the legacy
-        // `tryRecreateDownscalerAsync` wiring.
-        return new LazyDownscaler();
-    },
+    createDownscaler: () => createDownscalerInstance(),
     poolEncoderFactory,
 };
 
 /**
  * Sync `DownscalerLike` that defers actual GPU acquisition until the
- * first `process()` call. The new operator caches the downscaler for
- * the run, so the lazy init runs at most once per pipeline run.
+ * first `process()` call. Used when the active downscaler is the
+ * WebGPU implementation, whose construction is async (device init).
+ * The new operator caches the downscaler for the run, so the lazy
+ * init runs at most once per pipeline run.
+ *
+ * Currently unreferenced — kept as the wrapper to use when
+ * {@link createDownscalerInstance} is switched back to WebGPU.
  */
-class LazyDownscaler implements DownscalerLike {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+class WebGpuLazyDownscaler implements DownscalerLike {
     private inner: DownscalerLike | null = null;
     private initPromise: Promise<DownscalerLike> | null = null;
 
     async process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]> {
-        if (!this.inner) {
-            this.initPromise ??= createDownscaler();
+        let inner = this.inner;
+        if (!inner) {
+            this.initPromise ??= createWebGpuDownscalerInstance();
             try {
-                this.inner = await this.initPromise;
+                inner = await this.initPromise;
+                this.inner = inner;
             } catch (e) {
                 try { input.close(); } catch { /* already closed */ }
                 throw e;
             }
         }
-        return this.inner.process(input, layers);
+        return inner.process(input, layers);
     }
 
     dispose(): void {
