@@ -542,84 +542,94 @@ export class WebGpuDownscaler {
             }
         }
 
-        // Identity slot = output dims match source AND rotation is zero AND
-        // there's no coded/display divergence. We skip the render entirely and
-        // clone the input frame; saves a render pass and (when ALL slots are
-        // identity) the importExternalTexture upload too — meaningful on
-        // Safari iOS where the import is not free.
-        //
-        // Coded/display divergence guard: Chrome's MSTP can deliver frames
-        // whose codedWidth/Height report the camera's native sensor dim
-        // (e.g. 1920x1080) while the actual plane0 buffer is internally scaled
-        // to displayWidth/Height (e.g. 1280x720 / 640x360). `clone()` preserves
-        // codedWidth — the downstream encoder dim-mismatch guard then drops
-        // every frame because frame.codedWidth (1920) != encoder.config.width
-        // (640). Force a render in that case so the result is a fresh
-        // canvas-backed VideoFrame whose codedWidth matches its plane0.
-        const codedMatchesDisplay =
-            input.codedWidth === srcW && input.codedHeight === srcH;
-        const isIdentity = (slot: TargetSlot): boolean =>
-            rotationIdx === 0
-            && codedMatchesDisplay
-            && slot.target.width === srcW
-            && slot.target.height === srcH;
-
-        let renderingCount = 0;
-        for (const slot of slots) {
-            if (!isIdentity(slot)) renderingCount++;
-        }
-
-        if (renderingCount > 0) {
-            // Lazy-init compute pipeline on first frame. Validates via error
-            // scope; on failure flips to render path forever for this instance.
-            if (this.useStoragePath && !this.computePipeline && !this.computePipelineFailed)
-                await this.ensureComputePipelineLazy();
-            if (this.useStoragePath && this.computePipeline && this.computeBgLayout
-                && this.computeUniformBuffer && this.computeUniformStaging
-                && this.dummyStorageViews[0] && this.dummyStorageViews[1]
-                && this.dummyStorageViews[2]) {
-                await this.runComputePath(slots, isIdentity, input, srcW, srcH, rotationIdx);
-            } else {
-                await this.runRenderPath(slots, isIdentity, input, srcW, srcH, rotationIdx,
-                    pipeline, uniformBuffer, bindGroupLayout);
-            }
-        }
-        else if (!this.loggedAllIdentitySkip) {
-            this.loggedAllIdentitySkip = true;
-            infoLog?.log('Downscaler: all slots identity — importExternalTexture skipped');
-        }
-
-        // Build results in slot order. Identity slots clone the input frame
-        // (refcount bump, no copy); rendered slots wrap the canvas. Timestamps
-        // are inherited from the source frame — rebase to the recording-anchor
-        // timeline happens at chunk emission, not per VideoFrame.
-        const results: DownscaleResult[] = [];
-        let identityHits = 0;
+        let inputClosed = false;
+        const closeInput = (): void => {
+            if (inputClosed) return;
+            inputClosed = true;
+            try { input.close(); } catch { /* already closed */ }
+        };
         try {
+            // Identity slot = output dims match source AND rotation is zero AND
+            // there's no coded/display divergence. We skip the render entirely and
+            // clone the input frame; saves a render pass and (when ALL slots are
+            // identity) the importExternalTexture upload too — meaningful on
+            // Safari iOS where the import is not free.
+            //
+            // Coded/display divergence guard: Chrome's MSTP can deliver frames
+            // whose codedWidth/Height report the camera's native sensor dim
+            // (e.g. 1920x1080) while the actual plane0 buffer is internally scaled
+            // to displayWidth/Height (e.g. 1280x720 / 640x360). `clone()` preserves
+            // codedWidth — the downstream encoder dim-mismatch guard then drops
+            // every frame because frame.codedWidth (1920) != encoder.config.width
+            // (640). Force a render in that case so the result is a fresh
+            // canvas-backed VideoFrame whose codedWidth matches its plane0.
+            const codedMatchesDisplay =
+                input.codedWidth === srcW && input.codedHeight === srcH;
+            const isIdentity = (slot: TargetSlot): boolean =>
+                rotationIdx === 0
+                && codedMatchesDisplay
+                && slot.target.width === srcW
+                && slot.target.height === srcH;
+
+            let renderingCount = 0;
             for (const slot of slots) {
-                if (isIdentity(slot)) {
-                    results.push({ frame: input.clone(), target: slot.target });
-                    identityHits++;
+                if (!isIdentity(slot)) renderingCount++;
+            }
+
+            if (renderingCount > 0) {
+                // Lazy-init compute pipeline on first frame. Validates via error
+                // scope; on failure flips to render path forever for this instance.
+                if (this.useStoragePath && !this.computePipeline && !this.computePipelineFailed)
+                    await this.ensureComputePipelineLazy();
+                if (this.useStoragePath && this.computePipeline && this.computeBgLayout
+                    && this.computeUniformBuffer && this.computeUniformStaging
+                    && this.dummyStorageViews[0] && this.dummyStorageViews[1]
+                    && this.dummyStorageViews[2]) {
+                    await this.runComputePath(slots, isIdentity, input, srcW, srcH, rotationIdx);
                 } else {
-                    const outFrame = new VideoFrame(slot.canvas, { timestamp, duration });
-                    results.push({ frame: outFrame, target: slot.target });
+                    await this.runRenderPath(slots, isIdentity, input, srcW, srcH, rotationIdx,
+                        pipeline, uniformBuffer, bindGroupLayout);
                 }
             }
-        } catch (e) {
-            for (const result of results) {
-                try { result.frame.close(); } catch { /* already closed */ }
+            else if (!this.loggedAllIdentitySkip) {
+                this.loggedAllIdentitySkip = true;
+                infoLog?.log('Downscaler: all slots identity — importExternalTexture skipped');
             }
-            input.close();
+
+            // Build results in slot order. Identity slots clone the input frame
+            // (refcount bump, no copy); rendered slots wrap the canvas. Timestamps
+            // are inherited from the source frame — rebase to the recording-anchor
+            // timeline happens at chunk emission, not per VideoFrame.
+            const results: DownscaleResult[] = [];
+            let identityHits = 0;
+            try {
+                for (const slot of slots) {
+                    if (isIdentity(slot)) {
+                        results.push({ frame: input.clone(), target: slot.target });
+                        identityHits++;
+                    } else {
+                        const outFrame = new VideoFrame(slot.canvas, { timestamp, duration });
+                        results.push({ frame: outFrame, target: slot.target });
+                    }
+                }
+            } catch (e) {
+                for (const result of results) {
+                    try { result.frame.close(); } catch { /* already closed */ }
+                }
+                throw e;
+            }
+
+            if (identityHits > 0 && !this.loggedIdentitySkip) {
+                this.loggedIdentitySkip = true;
+                infoLog?.log(`Downscaler: ${identityHits}/${slots.length} slot(s) identity short-circuit`);
+            }
+
+            closeInput();
+            return results;
+        } catch (e) {
+            closeInput();
             throw e;
         }
-
-        if (identityHits > 0 && !this.loggedIdentitySkip) {
-            this.loggedIdentitySkip = true;
-            infoLog?.log(`Downscaler: ${identityHits}/${slots.length} slot(s) identity short-circuit`);
-        }
-
-        input.close();
-        return results;
     }
 
     dispose(): void {
