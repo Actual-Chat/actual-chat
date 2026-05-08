@@ -10,7 +10,6 @@ interface Result {
     runningMax: RunningMax;
     runningEMA: RunningEMA;
     p: number;
-    i: number;
 }
 
 interface AudioPowerState {
@@ -119,11 +118,10 @@ export class ActiveRecordingSvg extends LitElement {
             runningMax: new RunningMax(SIGNAL_COUNT_TO_CALCULATE_MAX, 0.05),
             runningEMA: new RunningEMA(0, 10, 0.8),
             p: 0,
-            i: 0,
         };
         const recorderState$ = RecordingActivity.stateChanged$;
         const signalPower$ = RecordingActivity.audioPowerChanged$
-            .pipe(scan<number, Result, Result>((result, p, i) => {
+            .pipe(scan<number, Result, Result>((result, p) => {
                 const runningMax = result.runningMax;
                 const runningEMA = result.runningEMA;
                 // Fill the window first; once full, only advance it while voice is active
@@ -132,7 +130,7 @@ export class ActiveRecordingSvg extends LitElement {
                 if (shouldAppendMax)
                     runningMax.appendSample(p);
                 runningEMA.appendSample(p);
-                return { runningMax, runningEMA, p, i };
+                return { runningMax, runningEMA, p };
             }, initialResult));
 
         this.recorderStateChangedSubscription = recorderState$.subscribe(rs => {
@@ -168,6 +166,7 @@ export class ActiveRecordingSvg extends LitElement {
     disconnectedCallback() {
         super.disconnectedCallback();
 
+        this.observer.disconnect();
         this.recorderStateChangedSubscription.unsubscribe();
         this.signalPowerChangedSubscription.unsubscribe();
     }
@@ -206,9 +205,7 @@ export class ActiveRecordingSvg extends LitElement {
                 </svg>
             `;
         } else {
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-non-null-asserted-optional-chain
-            const display = getComputedStyle(this.shadowRoot?.host!, null)?.display ?? 'none';
-            if (display === 'none')
+            if (getComputedStyle(this).display === 'none')
                 return html``;
 
             const shouldAnimate = isVoiceActive && isVisible;
