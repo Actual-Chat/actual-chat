@@ -29,6 +29,7 @@ export function canvasPresent(opts: CanvasPresentOptions): PipeOperator<DecodedF
             let canvasCtx: CanvasImageInterface | null = null;
             for await (const decoded of source) {
                 const frame = decoded.frame;
+                let presented = false;
                 try {
                     canvasCtx ??= getCanvasCtx();
                     const width = frame.displayWidth > 0 ? frame.displayWidth : frame.codedWidth;
@@ -52,7 +53,10 @@ export function canvasPresent(opts: CanvasPresentOptions): PipeOperator<DecodedF
                         canvasCtx.drawImage(frame, 0, 0, width, height);
                     }
                     decoded.stats.framesPresented++;
+                    presented = true;
                 } finally {
+                    if (!presented)
+                        decoded.stats.framesDroppedAtPresenter++;
                     try { frame.close(); } catch { /* already closed */ }
                 }
             }

@@ -210,7 +210,27 @@ describe('mstgPresent', () => {
         // Frames 0, 2, 3 made it; frame 1 was dropped. framesPresented == 3.
         expect(writer.written.map(f => (f as unknown as MockVideoFrame).id)).toEqual([0, 2, 3]);
         expect(stats.framesPresented).toBe(3);
+        expect(stats.framesDroppedAtPresenter).toBe(1);
         expect(frames.map(f => f.closed)).toEqual([true, true, true, true]);
+    });
+
+    it('write rejection is reflected in framesDroppedAtPresenter', async () => {
+        const stats = createEmptyPlaybackStats(0);
+        const writer = new FakeWriter();
+        writer.manualMode = true;
+        const sink = mstgPresent({ getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame> });
+        const ch = controllableSource<DecodedFrame>();
+        const frame = new MockVideoFrame(0);
+
+        const run = count(pipe(ch.seg, sink));
+        ch.push(makeEnvelope(stats, 0, frame));
+        await tick();
+        await writer.rejectNext(new Error('writer broke'));
+
+        ch.push(makeEnvelope(stats, 1, new MockVideoFrame(1)));
+        await expect(run).rejects.toThrow('writer broke');
+        expect(stats.framesPresented).toBe(0);
+        expect(stats.framesDroppedAtPresenter).toBeGreaterThanOrEqual(1);
     });
 
     it('framesPresented increments only after writer.write resolves (not on enqueue)', async () => {

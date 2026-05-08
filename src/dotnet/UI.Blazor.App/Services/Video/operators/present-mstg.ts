@@ -21,8 +21,8 @@ interface MstgState {
  * — fresher arrivals replace the pending slot, since the receiver
  * always wants the latest frame.
  *
- * `framesPresented` counts real writes only; frames that lost the slot
- * to a fresher arrival are not counted.
+ * `framesPresented` counts real writes only. `framesDroppedAtPresenter`
+ * covers both replace-slot losses and frames whose write rejected.
  */
 export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame, void> {
     const { getWriter } = opts;
@@ -46,10 +46,14 @@ export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame
                     state.pending = null;
                     state.busy = true;
                     state.inFlight = envelope;
+                    let written = false;
                     try {
                         await writer!.write(envelope.frame);
                         envelope.stats.framesPresented++;
+                        written = true;
                     } finally {
+                        if (!written)
+                            envelope.stats.framesDroppedAtPresenter++;
                         try { envelope.frame.close(); } catch { /* already closed */ }
                         state.inFlight = null;
                         state.busy = false;
@@ -66,6 +70,7 @@ export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame
                         // Close the previous pending frame; the write loop closes
                         // the in-flight frame when its write settles.
                         if (state.pending !== null) {
+                            state.pending.stats.framesDroppedAtPresenter++;
                             try { state.pending.frame.close(); } catch { /* already closed */ }
                         }
                         state.pending = decoded;
@@ -73,8 +78,10 @@ export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame
                         if (!state.busy)
                             startWriteLoop();
                     } finally {
-                        if (mustClose)
+                        if (mustClose) {
+                            decoded.stats.framesDroppedAtPresenter++;
                             try { decoded.frame.close(); } catch { /* already closed */ }
+                        }
                     }
                 }
                 completedNormally = true;
@@ -82,10 +89,12 @@ export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame
                 await writeLoopDone;
             } finally {
                 if (state.pending !== null) {
+                    state.pending.stats.framesDroppedAtPresenter++;
                     try { state.pending.frame.close(); } catch { /* already closed */ }
                     state.pending = null;
                 }
                 if (!completedNormally && state.inFlight !== null) {
+                    state.inFlight.stats.framesDroppedAtPresenter++;
                     try { state.inFlight.frame.close(); } catch { /* already closed */ }
                     state.inFlight = null;
                 }

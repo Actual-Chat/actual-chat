@@ -80,6 +80,7 @@ export interface VideoPlaybackStats {
     chunksDroppedDecoderError: number;
     framesDecoded: number;
     framesPresented: number;
+    framesDroppedAtPresenter: number;
     bytesReceived: number;
     decodeTimeMsSum: number;
     decodeTimeMsCount: number;
@@ -120,6 +121,7 @@ export function createEmptyPlaybackStats(sessionStartedAtMs: number): VideoPlayb
         chunksDroppedDecoderError: 0,
         framesDecoded: 0,
         framesPresented: 0,
+        framesDroppedAtPresenter: 0,
         bytesReceived: 0,
         decodeTimeMsSum: 0,
         decodeTimeMsCount: 0,
