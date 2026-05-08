@@ -19,7 +19,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
     private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.2, 3);
 
     private readonly AsyncLock _lock = new(LockReentryMode.CheckedFail);
-    private readonly Scopes _scopes;
+    private readonly ActiveScopes _activeScopes;
     private readonly Disposable<NSObject> _interruptionSubscription;
     private readonly Disposable<NSObject> _configurationChangeSubscription;
     private readonly TaskSerializer _interruptionQueue = new();
@@ -34,7 +34,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
     public IosAudioFocusUI(AppUIHub hub)
     {
         Hub = hub;
-        _scopes = new Scopes(Hub.LogFor(GetType()));
+        _activeScopes = new ActiveScopes(Hub.LogFor(GetType()));
         _interruptionSubscription = Disposable.New(
             AVAudioSession.Notifications.ObserveInterruption(OnInterruption),
             NSNotificationCenter.DefaultCenter.RemoveObserver);
@@ -52,7 +52,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
         using var cts = new CancellationTokenSource(CoreConstants.DisposeTimeout);
         try {
             using var _1 = await _lock.Lock(cts.Token).ConfigureAwait(false);
-            _scopes.Dispose();
+            _activeScopes.Dispose();
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested) {
             Log.LogWarning("{Type}: lock wasn't acquired in {Timeout}; releasing without it",
@@ -64,22 +64,22 @@ public sealed class IosAudioFocusUI : AudioFocusUI
     public override async Task<AudioFocusScope?> TryAcquire(AudioFocusRequester requester)
     {
         using var _1 = await _lock.Lock(StopToken).ConfigureAwait(false);
-        var scope = _scopes.Get(requester);
+        var scope = _activeScopes.Get(requester);
         if (scope is not null) {
             Log.LogInformation("Returning existing scope {Scope} ({Mode})", scope, requester.Kind);
             return scope;
         }
 
-        var needsReconfigure = !_isSessionConfigured || _scopes.GetMode() < requester.Kind;
-        scope = _scopes.Add(requester, new Scope(this, requester));
+        var needsReconfigure = !_isSessionConfigured || _activeScopes.GetMode() < requester.Kind;
+        scope = _activeScopes.Add(requester, new Scope(this, requester));
         if (!needsReconfigure)
             return scope;
 
         try {
-            await SetModeUnsafe(_scopes.GetMode()).ConfigureAwait(false);
+            await SetModeUnsafe(_activeScopes.GetMode()).ConfigureAwait(false);
         }
         catch (Exception e) when (!e.IsCancellationOf(StopToken)) {
-            _scopes.Remove(requester, out _);
+            _activeScopes.Remove(requester, out _);
             Log.LogError(e, "Failed to acquire scope for {Mode}", requester.Kind);
             throw;
         }
@@ -103,9 +103,9 @@ public sealed class IosAudioFocusUI : AudioFocusUI
         Log.LogInformation("Scope {Scope} releasing for {Mode}", scope, requester.Kind);
         try {
             using var _1 = await _lock.Lock(StopToken).ConfigureAwait(false);
-            var modeBefore = _scopes.GetMode();
+            var modeBefore = _activeScopes.GetMode();
             // TODO: move logging to Scopes
-            if (!_scopes.Remove(requester, out var existing)) {
+            if (!_activeScopes.Remove(requester, out var existing)) {
                 Log.LogWarning("Requester {Requester} not found in _scopes", requester);
                 return;
             }
@@ -118,7 +118,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
                 return;
             }
 
-            var modeAfter = _scopes.GetMode();
+            var modeAfter = _activeScopes.GetMode();
             Log.LogInformation("Release {Mode}: state {Before} -> {After}", requester.Kind, modeBefore, modeAfter);
             if (requester.Kind is AudioFocusMode.Recording && modeAfter < AudioFocusMode.Recording)
                 AudioEngines.Recording.StopRecording();
@@ -143,7 +143,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
     private async Task RecoverInternal(CancellationToken cancellationToken)
     {
         using var _1 = await _lock.Lock(cancellationToken).ConfigureAwait(false);
-        var mode = _scopes.GetMode();
+        var mode = _activeScopes.GetMode();
         Log.LogInformation("Recover: reactivating session in {Mode}", mode);
         await AudioSession.Reactivate(mode).ConfigureAwait(false);
         _isSessionConfigured = true;
@@ -155,7 +155,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
     private void InvokeLostFocusUnsafe(bool mayRecover, bool canDuck)
     {
         _isSuspended = true;
-        foreach (var scope in _scopes.All()) {
+        foreach (var scope in _activeScopes.All()) {
             scope.Suspend(true);
             scope.PendingRestore = scope.Requester.AudioFocusLostHandler(mayRecover, canDuck);
         }
@@ -163,7 +163,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
 
     private void InvokeRestoreUnsafe()
     {
-        foreach (var scope in _scopes.All().Where(x => x.PendingRestore is not null).ToArray()) {
+        foreach (var scope in _activeScopes.All().Where(x => x.PendingRestore is not null).ToArray()) {
             var handler = scope.PendingRestore!;
             scope.PendingRestore = null;
             try {
@@ -191,8 +191,8 @@ public sealed class IosAudioFocusUI : AudioFocusUI
         Log.LogInformation("Audio engine configuration change detected");
         _ = BackgroundTask.Run(async () => {
             using var _1 = await _lock.Lock(StopToken).ConfigureAwait(false);
-            if (!_scopes.IsEmpty && !_isSuspended)
-                AudioEngines.Resume(_scopes.GetMode());
+            if (!_activeScopes.IsEmpty && !_isSuspended)
+                AudioEngines.Resume(_activeScopes.GetMode());
         }, Log, "Failed to handle configuration change", StopToken);
     }
 
@@ -235,7 +235,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
             => _ = owner.Release(requester, this);
     }
 
-    private sealed class Scopes(ILogger log) : IDisposable
+    private sealed class ActiveScopes(ILogger log) : IDisposable
     {
         private readonly Dictionary<AudioFocusMode, Dictionary<AudioFocusRequester, Scope>> _byMode = new() {
             [AudioFocusMode.Tune] = new(),
