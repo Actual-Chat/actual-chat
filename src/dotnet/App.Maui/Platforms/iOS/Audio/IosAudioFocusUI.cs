@@ -21,7 +21,6 @@ public sealed class IosAudioFocusUI : AudioFocusUI
     private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.2, 3);
 
     private readonly AsyncLock _lock = new(LockReentryMode.CheckedFail);
-    private readonly List<AudioFocusRestoreHandler> _restoreHandlers = new();
     private readonly Scopes _scopes;
     private readonly Disposable<NSObject> _interruptionSubscription;
     private readonly Disposable<NSObject> _configurationChangeSubscription;
@@ -55,7 +54,6 @@ public sealed class IosAudioFocusUI : AudioFocusUI
         try {
             using var _1 = await _lock.Lock(cts.Token).ConfigureAwait(false);
             _scopes.Dispose();
-            _restoreHandlers.Clear();
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested) {
             Log.LogWarning("{Type}: lock wasn't acquired in {Timeout}; releasing without it",
@@ -158,31 +156,21 @@ public sealed class IosAudioFocusUI : AudioFocusUI
         _isSuspended = true;
         foreach (var scope in _scopes.All()) {
             scope.Suspend(true);
-            var restoreHandler = scope.Requester.AudioFocusLostHandler(mayRecover, canDuck);
-            if (restoreHandler is null)
-                continue;
-
-            var capturedScope = scope;
-            _restoreHandlers.Add(() => {
-                capturedScope.Suspend(false);
-                restoreHandler.Invoke();
-            });
+            scope.PendingRestore = scope.Requester.AudioFocusLostHandler(mayRecover, canDuck);
         }
     }
 
     private void InvokeRestoreUnsafe()
     {
-        if (_restoreHandlers.Count == 0)
-            return;
-
-        var handlers = _restoreHandlers.ToArray();
-        _restoreHandlers.Clear();
-        foreach (var handler in handlers) {
+        foreach (var scope in _scopes.All().Where(x => x.PendingRestore is not null).ToArray()) {
+            var handler = scope.PendingRestore!;
+            scope.PendingRestore = null;
             try {
-                handler.Invoke();
+                scope.Suspend(false);
+                handler();
             }
             catch (Exception e) {
-                Log.LogError(e, "Audio focus restore handler threw");
+                Log.LogError(e, "Audio focus restore handler failed");
             }
         }
     }
@@ -240,6 +228,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
     private sealed class Scope(IosAudioFocusUI owner, AudioFocusRequester requester) : AudioFocusScope
     {
         public AudioFocusRequester Requester => requester;
+        public AudioFocusRestoreHandler? PendingRestore { get; set; }
 
         public override void Dispose()
             => _ = owner.Release(requester, this);
