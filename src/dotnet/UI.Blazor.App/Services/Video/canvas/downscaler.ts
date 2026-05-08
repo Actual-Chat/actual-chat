@@ -20,7 +20,7 @@ const { warnLog } = getLogs('VideoPipeline');
 //    fed pre-rotated by the worker; desktop and screencast never rotate.
 //  - Per-target throttling. The compositor schedules drawImage; if a layer is
 //    too slow it'll back-pressure naturally through the encoder pipeline.
-export class Canvas2dDownscaler implements DownscalerLike {
+export class CanvasDownscaler implements DownscalerLike {
     private slots: Slot[] = [];
 
     async process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]> {
@@ -53,7 +53,7 @@ export class Canvas2dDownscaler implements DownscalerLike {
             try { input.close(); } catch { /* already closed */ }
             return results;
         } catch (e) {
-            warnLog?.log('Canvas2dDownscaler.process failed:', e);
+            warnLog?.log('CanvasDownscaler.process failed:', e);
             for (const r of results)
                 try { r.close(); } catch { /* ignore */ }
             if (mustCloseInput)
@@ -85,7 +85,7 @@ function createSlot(): Slot {
     const canvas = new OffscreenCanvas(0, 0);
     const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
     if (!ctx)
-        throw new Error('Canvas2dDownscaler: 2D context unavailable on OffscreenCanvas');
+        throw new Error('CanvasDownscaler: 2D context unavailable on OffscreenCanvas');
 
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';

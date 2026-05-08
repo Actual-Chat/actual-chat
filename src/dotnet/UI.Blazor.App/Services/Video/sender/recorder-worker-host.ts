@@ -25,7 +25,7 @@ import type { DownscalerLike, LayerSpec } from '../operators/downscale';
 import type { StreamSenderLike, VideoStreamFrame } from '../operators/wire-send';
 import { WebGpuDownscaler, type DownscaleTarget } from '../webgpu/downscaler';
 import { WebGPUManager } from '../webgpu/manager';
-import { Canvas2dDownscaler } from '../canvas2d/downscaler';
+import { CanvasDownscaler } from '../canvas/downscaler';
 import {
     createWireSender,
     type DisposableStreamSender,
@@ -233,7 +233,7 @@ class WebGpuDownscalerAdapter implements DownscalerLike {
  * {@link WebGPUManager}); the adapter / per-run state lives in the
  * returned `DownscalerLike`.
  *
- * NOTE: Currently disabled in favour of {@link Canvas2dDownscaler} —
+ * NOTE: Currently disabled in favour of {@link CanvasDownscaler} —
  * the WebGPU path has had recurring device-loss cascades under load.
  * Kept around so we can swap back when the underlying issues are
  * addressed (see `createDownscalerInstance` below).
@@ -250,7 +250,7 @@ async function createWebGpuDownscalerInstance(): Promise<DownscalerLike> {
  * {@link LazyDownscaler}'s init path accordingly.
  */
 function createDownscalerInstance(): DownscalerLike {
-    return new Canvas2dDownscaler();
+    return new CanvasDownscaler();
 }
 
 /**
