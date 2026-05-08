@@ -35,7 +35,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
     public IosAudioFocusUI(AppUIHub hub)
     {
         Hub = hub;
-        _scopes = new Scopes(Log);
+        _scopes = new Scopes(Hub.LogFor(GetType()));
         _interruptionSubscription = Disposable.New(
             AVAudioSession.Notifications.ObserveInterruption(OnInterruption),
             NSNotificationCenter.DefaultCenter.RemoveObserver);
@@ -89,11 +89,11 @@ public sealed class IosAudioFocusUI : AudioFocusUI
 
     public override async Task TryRecover(CancellationToken cancellationToken = default)
     {
-        using var cancellationToken1 = cancellationToken.LinkWith(StopToken);
+        using var cts = cancellationToken.LinkWith(StopToken);
         await AsyncChain.From(RecoverInternal)
             .Retry(RetryDelays, 3, Log)
             .LogError(Log)
-            .Run(StopToken)
+            .Run(cts.Token)
             .ConfigureAwait(false);
     }
 
