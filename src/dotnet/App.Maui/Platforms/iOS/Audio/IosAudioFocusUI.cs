@@ -25,6 +25,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
     private readonly Scopes _scopes;
     private readonly Disposable<NSObject> _interruptionSubscription;
     private readonly Disposable<NSObject> _configurationChangeSubscription;
+    private readonly TaskSerializer _interruptions = new();
     private bool _isSuspended;
 
     private AppUIHub Hub { get; }
@@ -48,6 +49,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
     {
         _interruptionSubscription.DisposeSilently();
         _configurationChangeSubscription.DisposeSilently();
+        await _interruptions.Abort().ConfigureAwait(false);
 
         using var cts = new CancellationTokenSource(CoreConstants.DisposeTimeout);
         try {
@@ -192,10 +194,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
         var reason = e.Reason;
         var wasSuspended = e.WasSuspended;
         var option = e.Option;
-        _ = BackgroundTask.Run(() => HandleInterruption(type, reason, wasSuspended, option),
-            Log,
-            "Failed to handle interruption",
-            StopToken);
+        _ = _interruptions.Enqueue(_ => HandleInterruption(type, reason, wasSuspended, option));
     }
 
     private void OnConfigurationChange(object? sender, NSNotificationEventArgs e)
@@ -217,17 +216,22 @@ public sealed class IosAudioFocusUI : AudioFocusUI
         Log.LogInformation(
             "Interruption type={Type}, reason={Reason}, wasSuspended={WasSuspended}, option={Option}",
             type, reason, wasSuspended, option);
-        switch (type) {
-        case AVAudioSessionInterruptionType.Began:
-            using (await _lock.Lock(StopToken).ConfigureAwait(false))
-                InvokeLostFocusUnsafe(true, false);
-            break;
-        case AVAudioSessionInterruptionType.Ended:
-            // Always attempt recovery - ShouldResume flag is unreliable for phone calls
-            await TryRecover().ConfigureAwait(false);
-            break;
-        default:
-            throw new ArgumentOutOfRangeException(nameof(type), type, "Invalid interruption type");
+        try {
+            switch (type) {
+            case AVAudioSessionInterruptionType.Began:
+                using (await _lock.Lock(StopToken).ConfigureAwait(false))
+                    InvokeLostFocusUnsafe(true, false);
+                break;
+            case AVAudioSessionInterruptionType.Ended:
+                // Always attempt recovery - ShouldResume flag is unreliable for phone calls
+                await TryRecover().ConfigureAwait(false);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(type), type, "Invalid interruption type");
+            }
+        }
+        catch (Exception e) when (!e.IsCancellationOf(StopToken)) {
+            Log.LogError(e, "Failed to handle interruption type={Type}", type);
         }
     }
 
