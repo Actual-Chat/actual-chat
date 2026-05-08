@@ -6,16 +6,13 @@ using Foundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-// iOS allows exactly one AVAudioSession category at a time. The active focus mode is the
-// maximum AudioFocusMode over all registered requesters in _scopes, mapped to a category:
-//   Tune (or no requesters)        -> Ambient        (mixes with other apps' audio)
-//   Playback (no Recording)        -> Playback
-//   Recording (with or w/o others) -> PlayAndRecord
-// _scopes keeps per-requester scopes grouped by AudioFocusMode so each requester gets its
-// own AudioFocusLostHandler callback on interruptions. _isConfigured tracks whether the
-// AVAudioSession category has actually been applied — without it the first-ever Tune
-// acquire would skip SetCategory(Ambient) and iOS's default SoloAmbient would silence
-// other apps' audio.
+// iOS allows one AVAudioSession category at a time. The active mode is the max
+// AudioFocusMode in _scopes, mapped to a category:
+//   Tune (or empty) -> Ambient (mixes with other apps)
+//   Playback        -> Playback
+//   Recording       -> PlayAndRecord
+// _isSessionConfigured guards the first-ever acquire — iOS defaults to SoloAmbient, which
+// would silence other apps, so we must call SetCategory(Ambient) at least once.
 
 public sealed class IosAudioFocusUI : AudioFocusUI
 {
@@ -25,9 +22,9 @@ public sealed class IosAudioFocusUI : AudioFocusUI
     private readonly Scopes _scopes;
     private readonly Disposable<NSObject> _interruptionSubscription;
     private readonly Disposable<NSObject> _configurationChangeSubscription;
-    private readonly TaskSerializer _interruptions = new();
+    private readonly TaskSerializer _interruptionQueue = new();
     private bool _isSuspended;
-    private bool _isConfigured;
+    private bool _isSessionConfigured;
 
     private AppUIHub Hub { get; }
     private AudioSession AudioSession => field ??= Hub.Services.GetRequiredService<AudioSession>();
@@ -50,7 +47,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
     {
         _interruptionSubscription.DisposeSilently();
         _configurationChangeSubscription.DisposeSilently();
-        await _interruptions.Abort().ConfigureAwait(false);
+        await _interruptionQueue.Abort().ConfigureAwait(false);
 
         using var cts = new CancellationTokenSource(CoreConstants.DisposeTimeout);
         try {
@@ -73,7 +70,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
             return scope;
         }
 
-        var needsReconfigure = !_isConfigured || _scopes.GetMode() < requester.Kind;
+        var needsReconfigure = !_isSessionConfigured || _scopes.GetMode() < requester.Kind;
         scope = _scopes.Add(requester, new Scope(this, requester));
         if (!needsReconfigure)
             return scope;
@@ -140,7 +137,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
         AudioEngines.Pause();
         await AudioSession.Reconfigure(mode).ConfigureAwait(false);
         AudioEngines.Resume(mode);
-        _isConfigured = true;
+        _isSessionConfigured = true;
     }
 
     private async Task RecoverInternal(CancellationToken cancellationToken)
@@ -149,7 +146,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
         var mode = _scopes.GetMode();
         Log.LogInformation("Recover: reactivating session in {Mode}", mode);
         await AudioSession.Reactivate(mode).ConfigureAwait(false);
-        _isConfigured = true;
+        _isSessionConfigured = true;
         AudioEngines.Resume(mode);
         InvokeRestoreUnsafe();
         _isSuspended = false;
@@ -186,7 +183,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
         var reason = e.Reason;
         var wasSuspended = e.WasSuspended;
         var option = e.Option;
-        _ = _interruptions.Enqueue(_ => HandleInterruption(type, reason, wasSuspended, option));
+        _ = _interruptionQueue.Enqueue(_ => HandleInterruption(type, reason, wasSuspended, option));
     }
 
     private void OnConfigurationChange(object? sender, NSNotificationEventArgs e)
@@ -215,7 +212,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
                     InvokeLostFocusUnsafe(true, false);
                 break;
             case AVAudioSessionInterruptionType.Ended:
-                // Always attempt recovery - ShouldResume flag is unreliable for phone calls
+                // ShouldResume is unreliable for phone calls, so always recover.
                 await TryRecover().ConfigureAwait(false);
                 break;
             default:
