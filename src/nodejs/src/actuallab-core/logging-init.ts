@@ -23,12 +23,11 @@ const GlobalThisKey = 'logLevels';
 const StorageKey = 'logLevels';
 const DateStorageKey = `${StorageKey}.date`;
 const MaxStorageAge = 86_400_000 * 3; // 3 days
-const IndexedDbName = 'ActualChat.Logging';
+const IndexedDbName = 'actuallab-logging';
 const IndexedDbStore = 'settings';
 const IndexedDbKey = 'logLevels';
 
-const localStorage: Storage | null = tryGetStorage('localStorage');
-const legacySessionStorage: Storage | null = tryGetStorage('sessionStorage');
+const localStorage: Storage | null = tryGetLocalStorage();
 
 // Workers, worklets, and service workers run in separate JS realms with
 // their own globalThis.  Within one realm, esbuild can also produce multiple
@@ -161,10 +160,10 @@ export class LogLevelController {
     /** Override the level for every scope matching a glob-like pattern.
      *  `*` matches any sequence of characters; everything else is literal.
      *  Examples:
-     *    override('VideoPlayer', 1)   // exact — one scope to Debug
-     *    override('Video*',     1)    // prefix — every scope starting with 'Video'
-     *    override('*Video*',    1)    // contains — every scope with 'Video' in it
-     *    override('*Decoder',   1)    // suffix — every scope ending with 'Decoder'
+     *    override('rpc.RpcPeer', 1)   // exact — one scope to Debug
+     *    override('rpc.*',      1)    // prefix — every scope starting with 'rpc.'
+     *    override('*rpc*',      1)    // contains — every scope with 'rpc' in it
+     *    override('*Peer',      1)    // suffix — every scope ending with 'Peer'
      *  Matches scopes that are user-overridden, package-registered (defaults),
      *  or have ever been requested via Log.get().  If the pattern has no `*`
      *  and nothing known matches, the literal scope is set anyway — so an
@@ -215,17 +214,11 @@ interface PersistedLogLevels {
 }
 
 function restore(minLevels: Map<string, LogLevel>): boolean {
-    const snapshot = readFromStorage(localStorage)
-        ?? readFromStorage(legacySessionStorage);
-
+    const snapshot = readFromStorage(localStorage);
     if (!snapshot)
         return false;
 
-    if (!applySnapshot(minLevels, snapshot))
-        return false;
-
-    persist(minLevels);
-    return true;
+    return applySnapshot(minLevels, snapshot);
 }
 
 async function restoreFromIndexedDb(minLevels: Map<string, LogLevel>): Promise<boolean> {
@@ -305,12 +298,12 @@ function createSnapshot(minLevels: Map<string, LogLevel>): PersistedLogLevels {
     };
 }
 
-function tryGetStorage(name: 'localStorage' | 'sessionStorage'): Storage | null {
-    if (typeof globalThis === 'undefined' || !(name in globalThis))
+function tryGetLocalStorage(): Storage | null {
+    if (typeof globalThis === 'undefined' || !('localStorage' in globalThis))
         return null;
 
     try {
-        return (globalThis as unknown as Record<typeof name, Storage>)[name];
+        return (globalThis as unknown as { localStorage: Storage }).localStorage;
     } catch {
         return null;
     }
