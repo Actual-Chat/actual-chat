@@ -52,10 +52,10 @@ body.hoverable .video-streaming-preview .btn-h.btn-settings:hover {
     @apply flex;
 }
 
-/* Error display */
+/* Error display — theme-independent: black 50% bg, white text */
 .video-streaming-preview .video-error {
     @apply absolute bottom-12 left-1/2 -translate-x-1/2;
-    @apply bg-[var(--red-70)] text-white;
+    @apply bg-[rgba(0,0,0,0.5)] text-white;
     @apply px-4 py-2 rounded-lg;
     @apply text-sm;
     @apply max-w-xs text-center;
