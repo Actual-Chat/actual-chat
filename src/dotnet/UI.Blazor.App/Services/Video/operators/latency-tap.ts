@@ -14,7 +14,7 @@ export interface LatencySample {
     /** Sender's `capturedAt.epoch` — consumers may want to drop the
      *  first sample after a flip (e2e jumps on resync). */
     capturedEpoch: number;
-    spatialLayerId: number;
+    layerId: number;
     /** Cumulative `pullSource` bytes received this run. VideoQualityUI
      *  derives bitrate from this; 0 here pegs the cap at L0. */
     bytesReceived: number;
@@ -52,7 +52,7 @@ export function latencyTap(opts: LatencyTapOptions): PipeOperator<DecodedFrame, 
                 frameAgeMs: nowMs - envelope.decodedAt.timeMs,
                 e2eLatencyMs: nowMs - envelope.capturedAt.timeMs,
                 capturedEpoch: envelope.capturedAt.epoch,
-                spatialLayerId: envelope.spatialLayerId,
+                layerId: envelope.layerId,
                 bytesReceived: envelope.stats.bytesReceived,
                 bufferSpanMs: 0,
             });

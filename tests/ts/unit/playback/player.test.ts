@@ -84,7 +84,7 @@ function makeDto(opts: { isKeyFrame: boolean; offsetMs?: number }): VideoFrameDt
         IsKeyFrame: opts.isKeyFrame,
         Width: 1280,
         Height: 720,
-        SpatialLayerId: 0,
+        LayerId: 0,
     };
 }
 

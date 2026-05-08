@@ -11,7 +11,7 @@ public partial class ChatVideoUI
         if (rec is not null)
             return rec;
 
-        var screen = await _screencastChatId.Use(cancellationToken).ConfigureAwait(false);
+        var screen = await _screenCastChatId.Use(cancellationToken).ConfigureAwait(false);
         if (screen is not null)
             return screen;
 
@@ -48,8 +48,8 @@ public partial class ChatVideoUI
 
             // Inactivity timer applies only when the user is the sender
             // (recording or screencasting). Pure watching is not stopped here.
-            var ownStreamKind = await GetOwnStreamKind(activeChatId, cancellationToken).ConfigureAwait(false);
-            var hasOwnStream = ownStreamKind is not null;
+            var ownSourceKind = await GetOwnSourceKind(activeChatId, cancellationToken).ConfigureAwait(false);
+            var hasOwnStream = ownSourceKind is not null;
 
             var cActiveUntil = Hub.UserActivityUI.ActiveUntil.Computed;
             var activeUntil = cActiveUntil.Value;
@@ -101,9 +101,9 @@ public partial class ChatVideoUI
         string title;
         string text;
         if (reason == IdleReason.Inactivity) {
-            var isRecording = await IsOwnWebcamRecording(chatId, cancellationToken).ConfigureAwait(false);
-            var isScreencasting = await IsOwnScreencasting(chatId, cancellationToken).ConfigureAwait(false);
-            var what = (isRecording, isScreencasting) switch {
+            var isRecording = await IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);
+            var isScreenCasting = await IsOwnScreenCasting(chatId, cancellationToken).ConfigureAwait(false);
+            var what = (isRecording, isScreenCasting) switch {
                 (true, true) => "video recording and screencasting",
                 (false, true) => "screencasting",
                 _ => "video recording",

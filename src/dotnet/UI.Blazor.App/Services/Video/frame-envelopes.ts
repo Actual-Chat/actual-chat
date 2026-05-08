@@ -45,7 +45,7 @@ export interface VideoRecordingStats {
     framesDroppedDimMismatch: number;
     framesDroppedBackpressure: number;
     framesDroppedOther: number;
-    /** Encoded chunks produced (sum across all spatial layers). */
+    /** Encoded chunks produced (sum across all layers). */
     chunksEncoded: number;
     keyframesEncoded: number;
     /** Aggregate encoded byte volume (sum across layers). */
@@ -180,7 +180,7 @@ export interface CapturedFrame {
  * Multi-tier output of the downscaler. The downscaler emits one bundle
  * per input `CapturedFrame`. All members share the same `capturedAt` /
  * `index` / `forceKeyframe` so the receiver-side simulcast matcher can
- * pair chunks across spatial layers by exact identity.
+ * pair chunks across layers by exact identity.
  *
  * `extras` is bottom-first: `extras[0]` is the SECOND-highest tier
  * (extra layer 1), `extras[1]` the third, etc. `primary` is the
@@ -207,12 +207,12 @@ export interface EncodedFrame {
 
     /** Capture-time metadata, threaded through the encoder boundary via
      *  the per-lane FIFO inside `AsyncVideoEncoder`. Identical across
-     *  spatial layers for the same source frame. */
+     *  layers for the same source frame. */
     capturedAt: MonotonicTime;
     index: number;
 
-    /** 0 = base (lowest-res) layer; 1+ = higher-res simulcast layers. */
-    spatialLayerId: number;
+    /** 0 = base (lowest-res) layer; 1+ = higher-res layers. */
+    layerId: number;
 
     /** Source dims at capture (carried through for keyframe wire DTO). */
     sourceWidth: number;
@@ -254,10 +254,10 @@ export interface ArrivedChunk {
 
     /** Codec description bytes (SPS/PPS for H.264, HVCC for HEVC).
      *  Present on (some) keyframes; the decode operator caches per
-     *  spatial layer for resolution-change recovery. */
+     *  layer for resolution-change recovery. */
     description?: ArrayBuffer;
 
-    spatialLayerId: number;
+    layerId: number;
     width: number;
     height: number;
 
@@ -287,10 +287,10 @@ export interface DecodedFrame {
      *  "frame age" reference for the latency-tap operator. */
     decodedAt: MonotonicTime;
 
-    /** Spatial layer that produced this frame. Sticky across decode
+    /** Layer that produced this frame. Sticky across decode
      *  outputs — the present sink can use it to render layer indicators
      *  in diagnostics. */
-    spatialLayerId: number;
+    layerId: number;
 
     stats: VideoPlaybackStats;
 }

@@ -19,8 +19,8 @@ public class AnalyticEvents
     public void RaiseRecordingCompleted(int durationInMs)
         => RecordingCompleted?.Invoke(this, new RecordingCompletedEventArgs(durationInMs));
 
-    public void RaiseVideoStreamStarted(StreamKind streamKind)
-        => VideoStreamStarted?.Invoke(this, new VideoStreamStartedEventArgs(streamKind));
+    public void RaiseVideoStreamStarted(VideoSourceKind sourceKind)
+        => VideoStreamStarted?.Invoke(this, new VideoStreamStartedEventArgs(sourceKind));
 
     public void RaiseModalStateChanged(string modalName, bool isOpen)
         => ModalStateChanged?.Invoke(this, new ModalStateChangedEventArgs(modalName, isOpen));
@@ -37,9 +37,9 @@ public class AnalyticEvents
         public int DurationInMs { get; } = durationInMs;
     }
 
-    public class VideoStreamStartedEventArgs(StreamKind streamKind) : EventArgs
+    public class VideoStreamStartedEventArgs(VideoSourceKind sourceKind) : EventArgs
     {
-        public StreamKind StreamKind { get; } = streamKind;
+        public VideoSourceKind SourceKind { get; } = sourceKind;
     }
 
     public class ModalStateChangedEventArgs(string modalName, bool isOpen) : EventArgs

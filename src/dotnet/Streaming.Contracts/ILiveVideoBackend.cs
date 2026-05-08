@@ -1,5 +1,6 @@
 using ActualChat.Attributes;
 using ActualChat.Hosting;
+using ActualChat.Video;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;

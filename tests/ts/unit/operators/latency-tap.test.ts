@@ -27,7 +27,7 @@ interface MakeOpts {
     capturedEpoch?: number;
     arrivedTimeMs?: number;
     decodedTimeMs: number;
-    spatialLayerId?: number;
+    layerId?: number;
 }
 
 function makeEnvelope(stats: VideoPlaybackStats, id: number, opts: MakeOpts): DecodedFrame {
@@ -36,7 +36,7 @@ function makeEnvelope(stats: VideoPlaybackStats, id: number, opts: MakeOpts): De
         capturedAt: { timeMs: opts.capturedTimeMs, epoch: opts.capturedEpoch ?? 0 },
         arrivedAt: { timeMs: opts.arrivedTimeMs ?? opts.capturedTimeMs + 5, epoch: opts.capturedEpoch ?? 0 },
         decodedAt: { timeMs: opts.decodedTimeMs, epoch: opts.capturedEpoch ?? 0 },
-        spatialLayerId: opts.spatialLayerId ?? 0,
+        layerId: opts.layerId ?? 0,
         stats,
     };
 }
@@ -103,7 +103,7 @@ describe('latencyTap', () => {
         expect(samples).toHaveLength(2);
     });
 
-    it('sample fields are correct: frameAgeMs, e2eLatencyMs, capturedEpoch, spatialLayerId', async () => {
+    it('sample fields are correct: frameAgeMs, e2eLatencyMs, capturedEpoch, layerId', async () => {
         const stats = createEmptyPlaybackStats(0);
         const samples: LatencySample[] = [];
         const items = [
@@ -111,7 +111,7 @@ describe('latencyTap', () => {
                 capturedTimeMs: 1_000,
                 decodedTimeMs: 1_080,
                 capturedEpoch: 7,
-                spatialLayerId: 2,
+                layerId: 2,
             }),
         ];
 
@@ -126,7 +126,7 @@ describe('latencyTap', () => {
         expect(samples[0].frameAgeMs).toBe(20);     // 1100 − 1080
         expect(samples[0].e2eLatencyMs).toBe(100);  // 1100 − 1000
         expect(samples[0].capturedEpoch).toBe(7);
-        expect(samples[0].spatialLayerId).toBe(2);
+        expect(samples[0].layerId).toBe(2);
     });
 
     it('default intervalMs is 1000 ms; default now is Date.now', async () => {

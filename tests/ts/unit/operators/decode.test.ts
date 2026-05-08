@@ -72,7 +72,7 @@ interface ArrivedOpts {
     description?: ArrayBuffer;
     width?: number;
     height?: number;
-    spatialLayerId?: number;
+    layerId?: number;
     capturedTimeMs?: number;
     capturedEpoch?: number;
     arrivedTimeMs?: number;
@@ -89,7 +89,7 @@ function makeArrived(stats: VideoPlaybackStats, opts: ArrivedOpts = {}): Arrived
         capturedAt: { timeMs: opts.capturedTimeMs ?? 0, epoch: opts.capturedEpoch ?? 0 },
         isKeyFrame: opts.isKeyFrame ?? false,
         description: opts.description,
-        spatialLayerId: opts.spatialLayerId ?? 0,
+        layerId: opts.layerId ?? 0,
         width: opts.width ?? 1280,
         height: opts.height ?? 720,
         rawByteLength: 16,
@@ -228,7 +228,7 @@ describe('decode operator', () => {
                 capturedTimeMs: i * 33,
                 capturedEpoch: 7,
                 arrivedTimeMs: 1_000 + i,
-                spatialLayerId: 0,
+                layerId: 0,
                 width: 640,
                 height: 360,
             }));
@@ -258,8 +258,8 @@ describe('decode operator', () => {
         expect(arrivedTimeMsList).toEqual([1000, 1001, 1002, 1003, 1004]);
         // capturedEpoch threaded through.
         for (const f of collected) expect(f.capturedAt.epoch).toBe(7);
-        // spatialLayerId threaded through.
-        for (const f of collected) expect(f.spatialLayerId).toBe(0);
+        // layerId threaded through.
+        for (const f of collected) expect(f.layerId).toBe(0);
         // stats reference is shared.
         for (const f of collected) expect(f.stats).toBe(stats);
     });

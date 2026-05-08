@@ -16,7 +16,7 @@ interface ChunkOpts {
     arrivedAtMs: number;
     isKeyFrame: boolean;
     epoch?: number;
-    spatialLayerId?: number;
+    layerId?: number;
     rawByteLength?: number;
     width?: number;
     height?: number;
@@ -35,7 +35,7 @@ function mkChunk(opts: ChunkOpts): ChunkWithDispose {
         arrivedAt: { timeMs: opts.arrivedAtMs, epoch: 0 },
         capturedAt: { timeMs: opts.capturedAtMs, epoch: opts.epoch ?? 0 },
         isKeyFrame: opts.isKeyFrame,
-        spatialLayerId: opts.spatialLayerId ?? 0,
+        layerId: opts.layerId ?? 0,
         width: opts.width ?? 640,
         height: opts.height ?? 480,
         rawByteLength: opts.rawByteLength ?? 1024,

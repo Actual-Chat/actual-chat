@@ -58,7 +58,7 @@ function makeDto(opts: Partial<VideoFrameDto> & { offsetTicks?: number }): Video
         Height: opts.Height,
         Description: opts.Description,
         Codec: opts.Codec,
-        SpatialLayerId: opts.SpatialLayerId,
+        LayerId: opts.LayerId,
         TemporalLayerId: opts.TemporalLayerId,
         SourceWidth: opts.SourceWidth,
         SourceHeight: opts.SourceHeight,
@@ -122,14 +122,14 @@ function makeStats(): VideoPlaybackStats {
 // ---- Tests ----------------------------------------------------------------
 
 describe('pullSource', () => {
-    it('5 dtos in → 5 ArrivedChunks out, with capturedAt/arrivedAt/spatialLayerId fields', async () => {
+    it('5 dtos in → 5 ArrivedChunks out, with capturedAt/arrivedAt/layerId fields', async () => {
         const stats = makeStats();
         const dtos = [
-            makeDto({ IsKeyFrame: true,  Offset: 0,         SpatialLayerId: 0 }),
-            makeDto({ IsKeyFrame: false, Offset: 330_000,   SpatialLayerId: 1 }), // 33 ms
-            makeDto({ IsKeyFrame: false, Offset: 660_000,   SpatialLayerId: 0 }), // 66 ms
-            makeDto({ IsKeyFrame: false, Offset: 990_000,   SpatialLayerId: 0 }), // 99 ms
-            makeDto({ IsKeyFrame: false, Offset: 1_320_000, SpatialLayerId: 1 }), // 132 ms
+            makeDto({ IsKeyFrame: true,  Offset: 0,         LayerId: 0 }),
+            makeDto({ IsKeyFrame: false, Offset: 330_000,   LayerId: 1 }), // 33 ms
+            makeDto({ IsKeyFrame: false, Offset: 660_000,   LayerId: 0 }), // 66 ms
+            makeDto({ IsKeyFrame: false, Offset: 990_000,   LayerId: 0 }), // 99 ms
+            makeDto({ IsKeyFrame: false, Offset: 1_320_000, LayerId: 1 }), // 132 ms
         ];
 
         // Mock arrival clock with predictable times.
@@ -155,9 +155,9 @@ describe('pullSource', () => {
         expect(out[3].capturedAt).toEqual({ timeMs: 99, epoch: 0 });
         expect(out[4].capturedAt).toEqual({ timeMs: 132, epoch: 0 });
 
-        expect(out[0].spatialLayerId).toBe(0);
-        expect(out[1].spatialLayerId).toBe(1);
-        expect(out[2].spatialLayerId).toBe(0);
+        expect(out[0].layerId).toBe(0);
+        expect(out[1].layerId).toBe(1);
+        expect(out[2].layerId).toBe(0);
 
         // arrivedAt timeMs is monotone (because of mock clock).
         const arrivalTimes = out.map(o => o.arrivedAt.timeMs);

@@ -18,7 +18,7 @@ export interface CanvasPresentOptions {
 
 // Terminal sink: drawImage each frame stretched to the displayWidth/Height
 // canvas. Resizing the backing store on every frame avoids drawing a low
-// spatial layer (e.g. 320px) into the top-left quarter of a canvas that
+// layer (e.g. 320px) into the top-left quarter of a canvas that
 // was sized for the top layer (e.g. 1280px).
 export function canvasPresent(opts: CanvasPresentOptions): PipeOperator<DecodedFrame, void> {
     const { getCanvasCtx, convertToBitmap } = opts;

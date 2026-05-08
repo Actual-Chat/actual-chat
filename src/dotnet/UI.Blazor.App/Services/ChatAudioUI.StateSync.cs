@@ -681,18 +681,16 @@ public partial class ChatAudioUI
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await Task.Yield();
-        var lastTranscribedAt = Clocks.ServerClock.Now;
         yield return null;
 
         // We just started, so it's ok to await for the countdown interval first
         await Task.Delay(options.PreCountdownTimeout, cancellationToken).ConfigureAwait(false);
-        lastTranscribedAt = Clocks.ServerClock.Now; // Reset after pre-countdown wait to avoid stale timestamp on repeat activations
-
+        var lastTranscribedAt = Clocks.ServerClock.Now; // Reset after pre-countdown wait to avoid stale timestamp on repeat activations
         while (!cancellationToken.IsCancellationRequested) {
             // If own video is streaming for this chat, treat as activity — don't countdown
-            var ownStreamKind = await ChatVideoUI.GetOwnStreamKind(chatId, cancellationToken).ConfigureAwait(false);
+            var ownSourceKind = await ChatVideoUI.GetOwnSourceKind(chatId, cancellationToken).ConfigureAwait(false);
             var isWatching = await ChatVideoUI.IsWatching(chatId, cancellationToken).ConfigureAwait(false);
-            if (ownStreamKind is not null || isWatching) {
+            if (ownSourceKind is not null || isWatching) {
                 lastTranscribedAt = Clocks.ServerClock.Now;
                 yield return null; // No countdown
                 await Task.Delay(options.CheckPeriod, cancellationToken).ConfigureAwait(false);

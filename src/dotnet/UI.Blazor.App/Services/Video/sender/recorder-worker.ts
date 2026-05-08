@@ -67,14 +67,14 @@ export interface RecorderWorkerDeps {
      *  iterator returns. */
     endSource?: () => void;
     /** Updates the host's streaming context (apiUrl / chatId /
-     *  streamKind / serverClockOffsetMs) before each `start()`. The
+     *  sourceKind / serverClockOffsetMs) before each `start()`. The
      *  host populates {@link StreamingContext} from these fields so
      *  `createWireSender` can dial the Fusion RPC peer. Optional —
      *  tests with synthetic senders skip it. */
     configureStreaming?: (opts: {
         chatId: string;
         apiUrl: string;
-        streamKind?: number;
+        sourceKind?: number;
         serverClockOffsetMs?: number;
     }) => void;
     /** Forwards the AppConstants payload to the host's
@@ -223,7 +223,7 @@ export const recorderWorkerImpl: RecorderWorker = {
         deps.configureStreaming?.({
             chatId: config.chatId,
             apiUrl: config.apiUrl,
-            streamKind: config.streamKind,
+            sourceKind: config.sourceKind,
             serverClockOffsetMs: config.serverClockOffsetMs,
         });
         const track = deps.getTrack();

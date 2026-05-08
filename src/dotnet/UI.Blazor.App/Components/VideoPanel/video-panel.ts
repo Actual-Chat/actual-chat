@@ -29,7 +29,7 @@ export class VideoPanel {
     private parentElement: HTMLElement | null = null;
     private disposed$: Subject<void> = new Subject<void>();
 
-    // Screencast zoom/pan state
+    // ScreenCast zoom/pan state
     private zoomScale = 1;
     private panX = 0;
     private panY = 0;
@@ -183,14 +183,14 @@ export class VideoPanel {
         return document.body.classList.contains('narrow') ? MAX_SCALE_MOBILE : MAX_SCALE_DESKTOP;
     }
 
-    private getScreencastContainer(): HTMLElement | null {
+    private getScreenCastContainer(): HTMLElement | null {
         return this.videoPanel.querySelector<HTMLElement>('.remote-video-container.item-focused.screencast');
     }
 
     // Returns the visible render surface — canvas when canvas backend is active,
     // video element when MSTG backend is active (canvas is display:none in that case).
-    private getScreencastSurface(): HTMLElement | null {
-        const container = this.getScreencastContainer();
+    private getScreenCastSurface(): HTMLElement | null {
+        const container = this.getScreenCastContainer();
         if (!container)
             return null;
 
@@ -211,7 +211,7 @@ export class VideoPanel {
             && !target.closest('.video-panel-chat');
     }
 
-    private isOnScreencast(target: HTMLElement): boolean {
+    private isOnScreenCast(target: HTMLElement): boolean {
         return target.closest('.remote-video-container.screencast') != null;
     }
 
@@ -272,7 +272,7 @@ export class VideoPanel {
         fromEvent<WheelEvent>(this.videoPanel, 'wheel', { passive: false } as AddEventListenerOptions)
             .pipe(
                 takeUntil(this.disposed$),
-                filter(e => this.isExpanded() && this.isOnScreencast(e.target as HTMLElement))
+                filter(e => this.isExpanded() && this.isOnScreenCast(e.target as HTMLElement))
             )
             .subscribe(e => this.onWheel(e));
 
@@ -281,7 +281,7 @@ export class VideoPanel {
             .pipe(
                 takeUntil(this.disposed$),
                 filter(e => e.pointerType === 'mouse' && this.isExpanded()
-                    && this.isOnScreencast(e.target as HTMLElement) && e.button === 0 && this.zoomScale > 1)
+                    && this.isOnScreenCast(e.target as HTMLElement) && e.button === 0 && this.zoomScale > 1)
             )
             .subscribe(e => {
                 this.mouseDragging = true;
@@ -347,15 +347,15 @@ export class VideoPanel {
     private onTouchStart(e: TouchEvent): void {
         const target = e.target as HTMLElement;
         const onVideo = this.isOnVideo(target);
-        const onScreencast = this.isOnScreencast(target);
+        const onScreenCast = this.isOnScreenCast(target);
 
         // Track screencast touches for move/end filtering
-        if (onScreencast)
+        if (onScreenCast)
             for (const t of Array.from(e.changedTouches))
                 this.activeTouchIds.add(t.identifier);
 
         // ── Pinch (2 fingers on screencast) ──
-        if (onScreencast && e.touches.length === 2) {
+        if (onScreenCast && e.touches.length === 2) {
             e.preventDefault();
             if (this.singleTapTimer) {
                 clearTimeout(this.singleTapTimer);
@@ -366,7 +366,7 @@ export class VideoPanel {
             const [t0, t1] = [e.touches[0], e.touches[1]];
             this.pinchInitialDist = this.touchDistance(t0, t1);
             this.pinchInitialScale = this.zoomScale;
-            const container = this.getScreencastContainer();
+            const container = this.getScreenCastContainer();
             if (container) {
                 const rect = container.getBoundingClientRect();
                 const midX = ((t0.clientX + t1.clientX) / 2 - rect.left) / rect.width;
@@ -378,7 +378,7 @@ export class VideoPanel {
         }
 
         // ── Single-finger on screencast (expanded) ──
-        if (onScreencast && e.touches.length === 1) {
+        if (onScreenCast && e.touches.length === 1) {
             // Always preventDefault to block browser swipe-to-navigate in fullscreen
             e.preventDefault();
             if (this.zoomScale > 1) {
@@ -430,7 +430,7 @@ export class VideoPanel {
             const ratio = dist / this.pinchInitialDist;
             this.zoomScale = Math.max(MIN_SCALE, Math.min(this.maxScale, this.pinchInitialScale * ratio));
 
-            const container = this.getScreencastContainer();
+            const container = this.getScreenCastContainer();
             if (container) {
                 const rect = container.getBoundingClientRect();
                 const midX = ((t0.clientX + t1.clientX) / 2 - rect.left) / rect.width;
@@ -441,7 +441,7 @@ export class VideoPanel {
             this.clampPan();
             this.applyTransform();
         } else if (this.dragging && e.touches.length === 1) {
-            const container = this.getScreencastContainer();
+            const container = this.getScreenCastContainer();
             if (!container)
                 return;
 
@@ -506,7 +506,7 @@ export class VideoPanel {
     }
 
     private onDoubleTap(screenX: number, screenY: number): void {
-        const container = this.getScreencastContainer();
+        const container = this.getScreenCastContainer();
         if (!container) {
             // Non-screencast video — toggle toolbar
             this.videoPanel.classList.toggle('toolbar-hidden');
@@ -547,7 +547,7 @@ export class VideoPanel {
 
     private onWheel(e: WheelEvent): void {
         e.preventDefault();
-        const container = this.getScreencastContainer();
+        const container = this.getScreenCastContainer();
         if (!container)
             return;
 
@@ -568,7 +568,7 @@ export class VideoPanel {
     }
 
     private onMouseDrag(e: PointerEvent): void {
-        const container = this.getScreencastContainer();
+        const container = this.getScreenCastContainer();
         if (!container)
             return;
 
@@ -606,7 +606,7 @@ export class VideoPanel {
     }
 
     private clampPan(): void {
-        const container = this.getScreencastContainer();
+        const container = this.getScreenCastContainer();
         if (!container)
             return;
 
@@ -631,8 +631,8 @@ export class VideoPanel {
     }
 
     private applyTransform(animate = false): void {
-        const surface = this.getScreencastSurface();
-        const container = this.getScreencastContainer();
+        const surface = this.getScreenCastSurface();
+        const container = this.getScreenCastContainer();
         if (!surface || !container)
             return;
 

@@ -1,8 +1,8 @@
 // Fusion RPC service definitions needed by the load test.
-// These mirror the C# IEmailAuth / ILiveVideoStreams / IStreamServer
-// contracts. ILiveVideoStreams / IStreamServer already live in
-// `../src/api/streaming-service.ts` — we duplicate them here so the test has zero
-// dependencies on the shared api tree and can be built stand-alone.
+// These mirror the C# IEmailAuth / ILiveVideoStreams contracts.
+// ILiveVideoStreams already lives in `../src/api/streaming-service.ts` — we
+// duplicate it here so the test has zero dependencies on the shared api tree
+// and can be built stand-alone.
 
 import { defineRpcService, RpcRemoteExecutionMode, RpcType } from '../src/actuallab-rpc/index.js';
 
@@ -53,6 +53,10 @@ export interface EmailAuthClient {
 export const LiveVideoStreamsDef = defineRpcService('ILiveVideoStreams', {
     GetStream: { args: ['session', 'streamId'], returns: RpcType.stream },
     List: { args: ['session', 'chatId'], callTypeId: 1 },
+    PushStream: {
+        args: ['session', 'chatId', 'clientStartAt', 'format', 'sourceKind', 'frameStream'],
+        remoteExecutionMode: RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect,
+    },
 });
 
 export interface VideoFrameDto {
@@ -75,7 +79,7 @@ export interface Size2D {
 export interface VideoFormat {
     Codec: string;
     CodecSettings: string;
-    SpatialLayerId: number;
+    LayerId: number;
     Size: Size2D;
     SourceSize: Size2D;
 }
@@ -86,31 +90,18 @@ export interface VideoStreamInfo {
     AuthorId: string;
     Formats: VideoFormat[];
     StartedAt: unknown;
-    StreamKind?: number;
+    SourceKind?: number;
 }
 
 export interface LiveVideoStreamsClient {
     GetStream(session: string, streamId: string): Promise<AsyncIterable<VideoFrameDto>>;
     List(session: string, chatId: string): Promise<VideoStreamInfo[]>;
-}
-
-// --- IStreamServer (push) ---
-// Wire: "IStreamServer.PushVideo:7" — (session, chatId, clientStartAt, format, frameStream, streamKind) + CT.
-// Must match the [RpcMethod] mode on IStreamServer.cs.
-export const StreamServerDef = defineRpcService('IStreamServer', {
-    PushVideo: {
-        args: ['session', 'chatId', 'clientStartAt', 'format', 'frameStream', 'streamKind'],
-        remoteExecutionMode: RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect,
-    },
-});
-
-export interface StreamServerClient {
-    PushVideo(
+    PushStream(
         session: string,
         chatId: string,
         clientStartAt: number, // Unix epoch (seconds, double)
         format: VideoFormat,
+        sourceKind: number,
         frameStreamRef: unknown,
-        streamKind: number,
     ): Promise<void>;
 }

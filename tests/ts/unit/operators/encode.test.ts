@@ -175,7 +175,7 @@ function makeFactory(opts: { onResetRequested?: (reason: string) => void; timeou
                 metadata,
                 capturedAt: input.capturedAt,
                 index: input.index,
-                spatialLayerId: layerId,
+                layerId: layerId,
                 sourceWidth: 0,
                 sourceHeight: 0,
                 encodedWidth: config.width,
@@ -281,7 +281,7 @@ describe('encode operator', () => {
         expect(results).toHaveLength(5);
         expect(results.map(r => r.index)).toEqual([1, 2, 3, 4, 5]);
         for (const result of results) {
-            expect(result.spatialLayerId).toBe(0);
+            expect(result.layerId).toBe(0);
             expect(result.encodedWidth).toBe(640);
             expect(result.encodedHeight).toBe(360);
             expect(result.sourceWidth).toBe(1920);
@@ -367,11 +367,11 @@ describe('encode operator', () => {
         expect(byIndex.size).toBe(5);
         for (const [, group] of byIndex) {
             expect(group).toHaveLength(3);
-            expect(group.map(g => g.spatialLayerId)).toEqual([0, 1, 2]);
-            const ids = group.map(g => g.spatialLayerId).sort();
+            expect(group.map(g => g.layerId)).toEqual([0, 1, 2]);
+            const ids = group.map(g => g.layerId).sort();
             expect(ids).toEqual([0, 1, 2]);
             // Encoded dims line up with config.
-            const byLayer = new Map(group.map(g => [g.spatialLayerId, g]));
+            const byLayer = new Map(group.map(g => [g.layerId, g]));
             expect(byLayer.get(0)?.encodedWidth).toBe(320);
             expect(byLayer.get(1)?.encodedWidth).toBe(640);
             expect(byLayer.get(2)?.encodedWidth).toBe(1280);
@@ -442,7 +442,7 @@ describe('encode operator', () => {
                     metadata: {},
                     capturedAt: input.capturedAt,
                     index: input.index,
-                    spatialLayerId: 0,
+                    layerId: 0,
                     sourceWidth: 0,
                     sourceHeight: 0,
                     encodedWidth: 640,

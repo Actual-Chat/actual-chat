@@ -326,8 +326,8 @@ export class DebugUI {
         );
         infoLog?.log(`testPushStream: calling PushStream chatId=${chatId} ...`);
         try {
-            // 0 = Webcam streamKind. session='~' resolves to Session.Default.
-            await streamingApi.liveVideoStreams.PushStream('~', chatId, 0, format, stream.toRef(peer), 0);
+            // 0 = Camera sourceKind. session='~' resolves to Session.Default.
+            await streamingApi.liveVideoStreams.PushStream('~', chatId, 0, format, 0, stream.toRef(peer));
             return 'ok';
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);

@@ -47,7 +47,7 @@ public class VideoStreamMemoizerTest
     }
 
     [Fact]
-    public async Task ReplayStartsAtMinAcrossAlignedSimulcastLayers()
+    public async Task ReplayStartsAtMinAcrossAlignedLayers()
     {
         // Three layers, KFs perfectly aligned at the same source offsets.
         // MIN of latest-KF-per-layer == that aligned offset, so every layer's
@@ -63,7 +63,7 @@ public class VideoStreamMemoizerTest
 
         result.Where(f => f.IsKeyFrame).Should().HaveCount(3, "the 3 latest aligned KFs");
         result.Should().OnlyContain(f => f.Offset >= TimeSpan.FromMilliseconds(3000));
-        result.Select(f => f.SpatialLayerId).Should().Contain([(byte)0, (byte)1, (byte)2]);
+        result.Select(f => f.LayerId).Should().Contain([(byte)0, (byte)1, (byte)2]);
     }
 
     [Fact]
@@ -85,8 +85,8 @@ public class VideoStreamMemoizerTest
         result.Should().OnlyContain(f => f.Offset >= TimeSpan.FromMilliseconds(2950));
         var keyFrames = result.Where(f => f.IsKeyFrame).ToList();
         keyFrames.Should().HaveCount(2);
-        keyFrames.Should().Contain(f => f.SpatialLayerId == 0 && f.Offset == TimeSpan.FromMilliseconds(3000));
-        keyFrames.Should().Contain(f => f.SpatialLayerId == 1 && f.Offset == TimeSpan.FromMilliseconds(2950));
+        keyFrames.Should().Contain(f => f.LayerId == 0 && f.Offset == TimeSpan.FromMilliseconds(3000));
+        keyFrames.Should().Contain(f => f.LayerId == 1 && f.Offset == TimeSpan.FromMilliseconds(2950));
     }
 
     [Fact]
@@ -115,7 +115,7 @@ public class VideoStreamMemoizerTest
 
         // Replay anchor = MIN of remaining latest-KFs (layers 0 and 1) = 3000.
         result.Should().OnlyContain(f => f.Offset >= TimeSpan.FromMilliseconds(3000));
-        result.Should().OnlyContain(f => f.SpatialLayerId != 2);
+        result.Should().OnlyContain(f => f.LayerId != 2);
         result.Where(f => f.IsKeyFrame).Should().HaveCount(2);
     }
 
@@ -190,7 +190,7 @@ public class VideoStreamMemoizerTest
         => new(isKeyFrame) {
             Offset = TimeSpan.FromMilliseconds(offsetMs),
             Duration = TimeSpan.FromMilliseconds(33),
-            SpatialLayerId = layer,
+            LayerId = layer,
         };
 
     // Nested types

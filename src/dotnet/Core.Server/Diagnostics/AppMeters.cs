@@ -41,7 +41,7 @@ public static class AppMeters
         VideoSendAckAgeMs = m.CreateHistogram<double>(
             "app.video.send.ack_age", "ms", "Wall-clock age of the most recent sender ACK");
         VideoSendLayerCount = m.CreateHistogram<int>(
-            "app.video.send.layer_count", "layers", "Effective simulcast layer count on the recording client");
+            "app.video.send.layer_count", "layers", "Effective layer count on the recording client");
 
         VideoReceiveCapacityBps = m.CreateHistogram<long>(
             "app.video.receive.capacity", "By/s", "Estimated client-wide incoming video capacity");

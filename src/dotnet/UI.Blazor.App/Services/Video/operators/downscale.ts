@@ -1,8 +1,8 @@
 import { from, type PipeOperator } from 'ix-ext';
 import type { CapturedFrame, SimulcastBundle } from '../frame-envelopes';
 
-// Output dims for one spatial layer (encoder dims for that layer).
-export interface SpatialLayerSpec {
+// Output dims for one layer (encoder dims for that layer).
+export interface LayerSpec {
     width: number;
     height: number;
 }
@@ -18,14 +18,14 @@ export interface SpatialLayerSpec {
  *   (the operator does not double-close).
  */
 export interface DownscalerLike {
-    process(input: VideoFrame, layers: readonly SpatialLayerSpec[]): Promise<VideoFrame[]>;
+    process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]>;
     /** GPU-resource disposal called from the operator's `finally`. */
     dispose?(): void;
 }
 
 export interface DownscaleOptions {
     /** Bottom-first ladder. Last entry becomes `SimulcastBundle.primary`. */
-    ladder: readonly SpatialLayerSpec[];
+    ladder: readonly LayerSpec[];
     /** Lazy-init: called once on first iteration so construction can
      *  happen before the GPU device exists. */
     createDownscaler: () => DownscalerLike;
@@ -52,7 +52,7 @@ export function downscale(opts: DownscaleOptions): PipeOperator<CapturedFrame, S
 
 async function* downscaleAsync(
     source: AsyncIterable<CapturedFrame>,
-    ladder: readonly SpatialLayerSpec[],
+    ladder: readonly LayerSpec[],
     topIdx: number,
     createDownscaler: () => DownscalerLike,
 ): AsyncIterable<SimulcastBundle> {

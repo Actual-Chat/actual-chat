@@ -4,7 +4,7 @@
 //
 // Matching is by CODEC CATEGORY (`h264` / `hevc` / `av1` / `vp9`), not
 // exact codec string. We keep up to three parked encoders for the current
-// category to cover simulcast layers. Returning or acquiring a different
+// category to cover layers. Returning or acquiring a different
 // category clears the parked set so the pool never mixes encoder families.
 //
 // The pool exposes a simple acquire / release / sweep / dispose surface;

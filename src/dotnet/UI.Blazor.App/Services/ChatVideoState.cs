@@ -8,7 +8,7 @@ public sealed record ChatVideoState(
     bool IsBackgroundBlurEnabled = false,
     bool HasError = false,
     string? ErrorMessage = null,
-    bool IsScreencasting = false)
+    bool IsScreenCasting = false)
 {
     public static readonly ChatVideoState None = new((ChatId?)null);
 }

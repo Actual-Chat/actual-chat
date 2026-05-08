@@ -6,9 +6,9 @@
     var isListening = audioState?.IsListening == true;
     var isRecording = audioState?.IsRecording == true;
     var isVideoEnabled = m.IsVideoEnabled;
-    var isOwnWebcamRecording = m.IsOwnWebcamRecording;
-    var isOwnScreencasting = m.IsOwnScreencasting;
-    var isOwnVideoStreaming = isOwnWebcamRecording || isOwnScreencasting;
+    var isOwnCameraRecording = m.IsOwnCameraRecording;
+    var isOwnScreenCasting = m.IsOwnScreenCasting;
+    var isOwnVideoStreaming = isOwnCameraRecording || isOwnScreenCasting;
     var isAnyoneVideoStreaming = m.IsAnyoneVideoStreaming;
     var isVideoAvailable = m.IsVideoAvailable;
     var isVideoDisabled = !isVideoAvailable;
@@ -16,16 +16,16 @@
     var showVideoControls = (isVideoEnabled || !isVideoAvailable)
         && (isOwnVideoStreaming || isRecording || isAnyoneVideoStreaming);
     var showHeader = showHeaderVoiceSettings || showVideoControls;
-    var screencastTooltip = isVideoDisabled
+    var screenCastTooltip = isVideoDisabled
         ? "Unavailable in this chat"
-        : isOwnScreencasting ? "Stop screen share" : "Share screen";
+        : isOwnScreenCasting ? "Stop screen share" : "Share screen";
 }
 
 <div class="chat-audio-panel">
     @if (IsNarrow && showHeader) {
         <div class="audio-panel-header">
             <div class="c-left">
-                @if (isOwnWebcamRecording) {
+                @if (isOwnCameraRecording) {
                     <ButtonRound Click="@OnSwitchCamera">
                         <i class="icon-camera-switch text-2xl"></i>
                     </ButtonRound>
@@ -44,10 +44,10 @@
     }
     <div class="audio-panel-wrapper">
         @if (!IsNarrow && showVideoControls) {
-            <div class="@(isOwnScreencasting ? "screencast-on" : "screencast-off") screencast-wrapper">
-                <ButtonRound Click="@(() => OnScreencastClick(!isOwnScreencasting))"
+            <div class="@(isOwnScreenCasting ? "screencast-on" : "screencast-off") screencast-wrapper">
+                <ButtonRound Click="@(() => OnScreenCastClick(!isOwnScreenCasting))"
                     IsDisabled="@isVideoDisabled"
-                    Tooltip="@screencastTooltip"
+                    Tooltip="@screenCastTooltip"
                     TooltipPosition="FloatingPosition.Top">
                     <i class="icon-screen-share text-2xl"></i>
                 </ButtonRound>
@@ -83,7 +83,7 @@
     private Task OnSwitchCamera()
         => ChatVideoUI.SwitchCamera();
 
-    private void OnScreencastClick(bool enable) {
+    private void OnScreenCastClick(bool enable) {
         var chat = Chat;
         if (!ChatVideoUI.IsVideoAvailableNonComputed(chat))
             return;
@@ -108,15 +108,15 @@
         var isVideoAvailable = ChatVideoUI.IsVideoAvailableNonComputed(chat);
         var isVideoEnabled = await ChatVideoUI.IsVideoEnabled(chat.Id, cancellationToken).ConfigureAwait(false);
         var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chat.Id, cancellationToken).ConfigureAwait(false);
-        var isOwnWebcamRecording = await ChatVideoUI.IsOwnWebcamRecording(chat.Id, cancellationToken).ConfigureAwait(false);
-        var isOwnScreencasting = await ChatVideoUI.IsOwnScreencasting(chat.Id, cancellationToken).ConfigureAwait(false);
+        var isOwnCameraRecording = await ChatVideoUI.IsOwnCameraRecording(chat.Id, cancellationToken).ConfigureAwait(false);
+        var isOwnScreenCasting = await ChatVideoUI.IsOwnScreenCasting(chat.Id, cancellationToken).ConfigureAwait(false);
         return new(
             audioState,
             isVideoAvailable,
             isVideoEnabled,
             isAnyoneVideoStreaming,
-            isOwnWebcamRecording,
-            isOwnScreencasting);
+            isOwnCameraRecording,
+            isOwnScreenCasting);
 
     }
 
@@ -127,6 +127,6 @@
         bool IsVideoAvailable,
         bool IsVideoEnabled,
         bool IsAnyoneVideoStreaming,
-        bool IsOwnWebcamRecording,
-        bool IsOwnScreencasting);
+        bool IsOwnCameraRecording,
+        bool IsOwnScreenCasting);
 }

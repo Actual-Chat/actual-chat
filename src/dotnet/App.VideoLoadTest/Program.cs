@@ -110,7 +110,7 @@ if (!signedIn)
     throw new InvalidOperationException("Sign-in failed. Is the server running with test agent bypass?");
 
 // N distinct producer users → N distinct Authors per chat → no stream eviction.
-// LiveVideoBackend.Register evicts prior (AuthorId, StreamKind) duplicates in a chat.
+// LiveVideoBackend.Register evicts prior (AuthorId, VideoSourceKind) duplicates in a chat.
 // One user per prodIdx (0..streamsPerChat-1), chat-scoped to this worker.
 WriteLine($"Signing in {streamsPerChat} producer users (test-videoload-c{workerChatIdx}-p0..p{streamsPerChat - 1})...");
 var producerSessions = new Session[streamsPerChat];
@@ -604,7 +604,7 @@ async Task RunProducer(int chatIdx, int prodIdx, CancellationToken ct)
         await connection.SendAsync(
             method,
             sessionToken, chatIds[chatIdx].Value, Codec, FrameWidth, FrameHeight, "",
-            sourceStartOffsetSeconds, 0, // 0 = Webcam
+            sourceStartOffsetSeconds, 0, // 0 = Camera
             PushFrames(chatIdx, prodIdx, ct), ct
             ).ConfigureAwait(false);
 
@@ -711,7 +711,7 @@ async Task RunParticipant(int chatIdx, int partIdx, ApiArray<VideoStreamInfo> st
         var pushMethod = useMem ? "PushVideoMem" : "PushVideo";
         var pushTask = connection.SendAsync(pushMethod,
             sessionToken, chatIds[chatIdx].Value, Codec, FrameWidth, FrameHeight, "",
-            sourceStartOffsetSeconds, 0, // 0 = Webcam
+            sourceStartOffsetSeconds, 0, // 0 = Camera
             PushFrames(chatIdx, partIdx, ct), ct);
 
         // Start all pulls concurrently on the same connection
@@ -754,7 +754,7 @@ async Task RunProducerRpc(int chatIdx, int prodIdx, CancellationToken ct)
         var frameStream = RpcStream.New(PushFramesRpc(chatIdx, prodIdx, ct));
         await ownLiveVideoStreams.PushStream(
             prodSession, chatIds[chatIdx].Value, sourceStartOffsetSeconds,
-            format, frameStream, StreamKind.Webcam, ct
+            format, VideoSourceKind.Camera, frameStream, ct
             ).ConfigureAwait(false);
         try { await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, ct).ConfigureAwait(false); }
         catch (OperationCanceledException) { }

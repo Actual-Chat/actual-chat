@@ -1,22 +1,19 @@
-// One simulcast layer. Defined here (a leaf module with no imports of the
+// One layer. Defined here (a leaf module with no imports of the
 // worker contract) so test code and the worker contract can both reference
 // the same type without test imports pulling in the full RPC/logging
 // dependency chain via the worker contract module. The base-layer dims/bitrate
 // live on `EncoderConfig`; additional layers (higher-res for closer peers) are
-// enumerated as `SpatialLayerConfig[]` and produce parallel encoder instances
-// tagged with `SpatialLayerId = index + 1` on each emitted chunk.
-export interface SpatialLayerConfig {
+// enumerated as `LayerConfig[]` and produce parallel encoder instances
+// tagged with `layerId = index` on each emitted chunk.
+export interface LayerConfig {
     width: number;
     height: number;
-    bitrate: number;
+    baseBitrateKbps?: number;
+    bitrateKbps: number;
     /** Overrides EncoderConfig.scalabilityMode for this layer (e.g. 'L1T3'). */
     scalabilityMode?: string;
 }
 
-// Mode-specific caps. Webcam gets up to 3 tiers (720p/360p/180p), screencast
-// gets up to 2 (top + half-size) to keep text legibility and encoder cost sane.
-export const WEBCAM_MAX_SIMULCAST_TIERS = 3;
-export const SCREENCAST_MAX_SIMULCAST_TIERS = 2;
 export const MIN_SIMULCAST_SMALL_AXIS = 150;
 
 export interface LadderBuildInput {
@@ -30,8 +27,8 @@ export interface LadderBuildInput {
     maxTierCount: number;
     /** Drop derived lower tiers whose smaller axis would be below this threshold. */
     minSmallAxis?: number;
-    /** Bitrate provider — caller injects the codec/mode-aware lookup. */
-    bitrateFor: (height: number) => number;
+    /** Bottom-first bitrate ladder in Kbps. The last value belongs to the top tier. */
+    bitratesKbps: readonly number[];
 }
 
 // Builds a simulcast ladder. Top tier is `(topWidth, topHeight)` — the
@@ -41,19 +38,22 @@ export interface LadderBuildInput {
 // accept them. Result is bottom-first.
 //
 // Examples:
-//  - Webcam 3-tier @ 720p: (1280,720,3) → [320×180, 640×360, 1280×720]
-//  - Webcam 2-tier dropTop @ 360p: (640,360,2) → [320×180, 640×360]
-//  - Screencast 2-tier @ 1080p: (1920,1080,2) → [960×540, 1920×1080]
+//  - Camera 3-tier @ 720p: (1280,720,3) → [320×180, 640×360, 1280×720]
+//  - Camera 2-tier dropTop @ 360p: (640,360,2) → [320×180, 640×360]
+//  - ScreenCast 2-tier @ 1080p: (1920,1080,2) → [960×540, 1920×1080]
 //
 // Capped to maxTierCount regardless of `tierCount`.
-export function buildLadder(input: LadderBuildInput): SpatialLayerConfig[] {
-    const { topWidth, topHeight, tierCount, maxTierCount, bitrateFor } = input;
+export function buildLadder(input: LadderBuildInput): LayerConfig[] {
+    const { topWidth, topHeight, tierCount, maxTierCount, bitratesKbps } = input;
     if (tierCount <= 0 || topWidth <= 0 || topHeight <= 0)
         return [];
 
-    const effectiveCount = Math.min(tierCount, maxTierCount);
+    const effectiveCount = Math.min(tierCount, maxTierCount, bitratesKbps.length);
+    if (effectiveCount <= 0)
+        return [];
+
     const minSmallAxis = input.minSmallAxis ?? MIN_SIMULCAST_SMALL_AXIS;
-    const ladder: SpatialLayerConfig[] = [];
+    const ladder: LayerConfig[] = [];
     // Build top-down then reverse to keep the bottom-first invariant.
     let w = topWidth;
     let h = topHeight;
@@ -62,7 +62,12 @@ export function buildLadder(input: LadderBuildInput): SpatialLayerConfig[] {
         // too small to be useful as simulcast alternatives.
         if (i > 0 && Math.min(w, h) < minSmallAxis)
             break;
-        ladder.push({ width: w, height: h, bitrate: bitrateFor(h) });
+        ladder.push({
+            width: w,
+            height: h,
+            baseBitrateKbps: bitratesKbps[effectiveCount - i - 1],
+            bitrateKbps: bitratesKbps[effectiveCount - i - 1],
+        });
         w = roundToEven(w / 2);
         h = roundToEven(h / 2);
     }
@@ -82,7 +87,7 @@ export function fitWithin(width: number, height: number, maxWidth: number, maxHe
     };
 }
 
-export function webcamTopSize(width: number, height: number): Size {
+export function cameraTopSize(width: number, height: number): Size {
     if (width <= 0 || height <= 0)
         return { width: 0, height: 0 };
 

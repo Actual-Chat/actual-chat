@@ -13,12 +13,11 @@ public interface IVideoStreamingBackend : IComputeService, IBackendService
     Task<RpcStream<VideoFrame>?> GetVideoRaw(StreamId streamId, CancellationToken cancellationToken);
     Task PushVideo(VideoRecord record, RpcStream<VideoFrame> videoStream, CancellationToken cancellationToken);
 
-    // Publisher-facing keyframe-request signal. The old quality-adaptation model
-    // is replaced by ChangeRecordingQuality / ChangePlaybackQuality, but this
-    // method survives so RequestKeyFrame can propagate immediately to the
-    // recorder by invalidating GetQualityPreset and surfacing IsKeyFrameRequested.
+    // Publisher-facing keyframe-request signal. RequestKeyFrame invalidates
+    // this computed method so the recorder can force the next frame to be a
+    // keyframe when the observed value changes.
     [ComputeMethod]
-    Task<VideoQualityPreset> GetQualityPreset(StreamId streamId, CancellationToken cancellationToken);
+    Task<Moment> LastKeyframeRequestAt(StreamId streamId, CancellationToken cancellationToken);
 
     Task RequestKeyFrame(StreamId streamId, CancellationToken cancellationToken = default);
 }

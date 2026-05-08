@@ -29,8 +29,8 @@ export interface VideoConstants {
     readonly cancellationDelayMs: number;
     readonly streamExpirationDelayMs: number;
     readonly maxLiveDurationMs: number;
-    readonly webcamFrameSilenceTimeoutMs: number;
-    readonly screencastFrameSilenceTimeoutMs: number;
+    readonly cameraFrameSilenceTimeoutMs: number;
+    readonly screenCastFrameSilenceTimeoutMs: number;
     readonly latencyReportIntervalMs: number;
     readonly highLatencyThresholdMs: number;
     readonly lowLatencyThresholdMs: number;
@@ -55,9 +55,12 @@ export interface VideoConstants {
     readonly egressStallThresholdMs: number;
     readonly egressRecoveryWindowMs: number;
     readonly egressGapFrameThreshold: number;
-    readonly maxWebcamStreamsPerChat: number;
+    readonly maxCameraStreamsPerChat: number;
     readonly priorityActivationThreshold: number;
     readonly silenceGracePeriodMs: number;
+    readonly cameraLayerBaseBitratesKbps: readonly number[];
+    readonly screenCastLayerBaseBitratesKbps: readonly number[];
+    readonly codecDefs: readonly VideoCodecDef[];
     // Derived in TS
     readonly frameDurationMs: number;            // 1000 / frameRate
     readonly targetBufferDurationMs: number;     // (targetBufferSize / frameRate) * 1000
@@ -68,6 +71,23 @@ export interface VideoConstants {
     readonly serverReplayTailSize: number;       // frameRate * serverReplayTailDurationMs / 1000
     readonly rpcStreamAckPeriod: number;         // bufferHysteresisSize
     readonly rpcStreamBufferSize: number;        // targetBufferSize
+}
+
+export enum VideoCodecKind {
+    Unknown = 0,
+    H264 = 1,
+    Hevc = 2,
+    Vp9 = 3,
+    Av1 = 4,
+}
+
+export interface VideoCodecDef {
+    readonly kind: VideoCodecKind;
+    readonly efficiency: number;
+}
+
+export interface VideoCodecConstants {
+    readonly codecDefs: readonly VideoCodecDef[];
 }
 
 // AudioConstants: base fields come from .NET (camelCased nested records);
@@ -220,6 +240,51 @@ export let AUDIO: AudioConstants = undefined!;
 const _whenAppConstantsReady = new PromiseSource<void>();
 export const whenAppConstantsReady: Promise<void> = _whenAppConstantsReady;
 let initialized = false;
+
+export function parseVideoCodecKind(codec: string): VideoCodecKind {
+    const c = codec.trim().toLowerCase();
+    if (c.startsWith('avc1') || c.startsWith('h264')) return VideoCodecKind.H264;
+    if (c.startsWith('hev1') || c.startsWith('hvc1') || c.startsWith('hevc') || c.startsWith('h265')) return VideoCodecKind.Hevc;
+    if (c.startsWith('vp09') || c.startsWith('vp9')) return VideoCodecKind.Vp9;
+    if (c.startsWith('av01') || c.startsWith('av1')) return VideoCodecKind.Av1;
+    return VideoCodecKind.Unknown;
+}
+
+export function getVideoCodecEfficiency(codec: string, video: VideoCodecConstants = VIDEO): number {
+    const kind = parseVideoCodecKind(codec);
+    return video.codecDefs.find(x => x.kind === kind)?.efficiency
+        ?? video.codecDefs.find(x => x.kind === VideoCodecKind.Unknown)?.efficiency
+        ?? 1;
+}
+
+export function getVideoLayerBitrateKbps(
+    baseBitrateKbps: number,
+    codec: string,
+    video: VideoCodecConstants = VIDEO,
+): number {
+    const efficiency = getVideoCodecEfficiency(codec, video);
+    return Math.max(Number.EPSILON, baseBitrateKbps / efficiency);
+}
+
+export function getVideoLayerBitratesKbps(
+    baseBitratesKbps: readonly number[],
+    codec: string,
+    video: VideoCodecConstants = VIDEO,
+): number[] {
+    return baseBitratesKbps.map(x => getVideoLayerBitrateKbps(x, codec, video));
+}
+
+export function getVideoLayerByteRate(
+    baseBitrateKbps: number,
+    codec: string,
+    video: VideoCodecConstants = VIDEO,
+): number {
+    return Math.max(1, Math.ceil(getVideoLayerBitrateKbps(baseBitrateKbps, codec, video) * 1_000 / 8));
+}
+
+export function kbpsToBitsPerSecond(bitrateKbps: number): number {
+    return Math.max(1, Math.round(bitrateKbps * 1_000));
+}
 
 // First call wins. Subsequent calls are silently ignored so a redundant init
 // from e.g. a re-acquired shared worker doesn't reset the holders.

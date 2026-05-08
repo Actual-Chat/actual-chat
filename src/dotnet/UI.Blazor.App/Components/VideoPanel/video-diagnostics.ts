@@ -22,15 +22,15 @@ export async function collectRemoteStreamDiagnostics(streamId: string): Promise<
     return player.getDiagnosticsAsync();
 }
 
-export async function collectActiveStreamHints(): Promise<{ streamId: string; currentSpatialLayerId: number }[]> {
-    const result: { streamId: string; currentSpatialLayerId: number }[] = [];
+export async function collectActiveStreamHints(): Promise<{ streamId: string; currentLayerId: number }[]> {
+    const result: { streamId: string; currentLayerId: number }[] = [];
     for (const [streamId, player] of getActivePlayers()) {
         try {
             const d = await player.getDiagnosticsAsync();
-            const layer = d.forwarded?.ForwardedSpatialLayerId ?? 0;
-            result.push({ streamId, currentSpatialLayerId: layer });
+            const layer = d.forwarded?.ForwardedLayerId ?? 0;
+            result.push({ streamId, currentLayerId: layer });
         } catch {
-            result.push({ streamId, currentSpatialLayerId: 0 });
+            result.push({ streamId, currentLayerId: 0 });
         }
     }
     return result;
@@ -38,15 +38,15 @@ export async function collectActiveStreamHints(): Promise<{ streamId: string; cu
 
 export function setRequestedReceiveQuality(
     streamId: string,
-    maxSpatialLayer: number | null,
-    maxTemporalLayer: number | null
+    maxLayerId: number | null,
+    maxTemporalLayerId: number | null
 ): void {
-    if (maxSpatialLayer === null || maxTemporalLayer === null) {
+    if (maxLayerId === null || maxTemporalLayerId === null) {
         recordRequestedReceiveQuality(streamId, null);
         return;
     }
 
-    recordRequestedReceiveQuality(streamId, { maxSpatialLayer, maxTemporalLayer });
+    recordRequestedReceiveQuality(streamId, { maxLayerId, maxTemporalLayerId });
 }
 
 // Diagnostic settings — toggleable from VideoDiagnosticsSettingsModal.

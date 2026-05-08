@@ -94,7 +94,7 @@ public static class FirebaseAnalyticsExt
         private void OnVideoStreamStarted(object? sender, AnalyticEvents.VideoStreamStartedEventArgs e)
         {
             var parameters = CreateBaseParameters();
-            parameters.Add("stream_kind", e.StreamKind.ToString());
+            parameters.Add("source_kind", e.SourceKind.ToString());
             LogEvent("video_stream_started", parameters);
         }
 

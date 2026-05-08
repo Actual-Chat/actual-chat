@@ -1,4 +1,3 @@
-using ActualChat.Streaming;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Resilience;
 
@@ -10,8 +9,8 @@ public partial class ChatVideoUI
     {
         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(true);
         var baseChains = new[] {
-            AsyncChain.From(SyncWebcamLifecycle),
-            AsyncChain.From(SyncScreencastLifecycle),
+            AsyncChain.From(SyncCameraLifecycle),
+            AsyncChain.From(SyncScreenCastLifecycle),
             AsyncChain.From(MonitorVideoIdleness),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
@@ -26,7 +25,7 @@ public partial class ChatVideoUI
     }
 
     [ComputeMethod]
-    protected virtual async Task<WebcamRecordingIntent?> GetWebcamIntent(CancellationToken cancellationToken)
+    protected virtual async Task<CameraRecordingIntent?> GetCameraIntent(CancellationToken cancellationToken)
     {
         var chatId = await _recordingChatId.Use(cancellationToken).ConfigureAwait(false);
         if (chatId is null)
@@ -34,36 +33,36 @@ public partial class ChatVideoUI
 
         var cameraDeviceId = await _selectedCameraDeviceId.Use(cancellationToken).ConfigureAwait(false);
         var blurEnabled = await _isBackgroundBlurEnabled.Use(cancellationToken).ConfigureAwait(false);
-        return new WebcamRecordingIntent(chatId, cameraDeviceId, blurEnabled);
+        return new CameraRecordingIntent(chatId, cameraDeviceId, blurEnabled);
     }
 
     [ComputeMethod]
-    protected virtual async Task<ScreencastIntent?> GetScreencastIntent(CancellationToken cancellationToken)
+    protected virtual async Task<ScreenCastIntent?> GetScreenCastIntent(CancellationToken cancellationToken)
     {
-        var chatId = await _screencastChatId.Use(cancellationToken).ConfigureAwait(false);
-        return chatId is null ? null : new ScreencastIntent(chatId);
+        var chatId = await _screenCastChatId.Use(cancellationToken).ConfigureAwait(false);
+        return chatId is null ? null : new ScreenCastIntent(chatId);
     }
 
     // Recording lifecycles
 
-    private Task SyncWebcamLifecycle(CancellationToken cancellationToken)
+    private Task SyncCameraLifecycle(CancellationToken cancellationToken)
         => RunRecorderLifecycle(
-            kind: StreamKind.Webcam,
-            captureIntent: () => GetWebcamIntent(cancellationToken),
-            startRecorder: (recorder, intent, ct) => StartWebcam(recorder, (WebcamRecordingIntent)intent, ct),
-            updateRecorder: (recorder, intent, ct) => UpdateWebcam(recorder, (WebcamRecordingIntent)intent, ct),
+            kind: VideoSourceKind.Camera,
+            captureIntent: () => GetCameraIntent(cancellationToken),
+            startRecorder: (recorder, intent, ct) => StartCamera(recorder, (CameraRecordingIntent)intent, ct),
+            updateRecorder: (recorder, intent, ct) => UpdateCamera(recorder, (CameraRecordingIntent)intent, ct),
             cancellationToken);
 
-    private Task SyncScreencastLifecycle(CancellationToken cancellationToken)
+    private Task SyncScreenCastLifecycle(CancellationToken cancellationToken)
         => RunRecorderLifecycle(
-            kind: StreamKind.Screencast,
-            captureIntent: () => GetScreencastIntent(cancellationToken),
-            startRecorder: (recorder, intent, ct) => recorder.StartScreencast(intent.ChatId, ct),
+            kind: VideoSourceKind.ScreenCast,
+            captureIntent: () => GetScreenCastIntent(cancellationToken),
+            startRecorder: (recorder, intent, ct) => recorder.StartScreenCast(intent.ChatId, ct),
             updateRecorder: null,
             cancellationToken);
 
     private async Task RunRecorderLifecycle<TIntent>(
-        StreamKind kind,
+        VideoSourceKind kind,
         Func<Task<TIntent?>> captureIntent,
         Func<VideoRecorder, TIntent, CancellationToken, Task> startRecorder,
         Func<VideoRecorder, TIntent, CancellationToken, Task>? updateRecorder,
@@ -134,19 +133,19 @@ public partial class ChatVideoUI
         }
     }
 
-    private static async Task StartWebcam(VideoRecorder recorder, WebcamRecordingIntent intent, CancellationToken ct)
+    private static async Task StartCamera(VideoRecorder recorder, CameraRecordingIntent intent, CancellationToken ct)
     {
         await recorder.SetSelectedCamera(intent.CameraDeviceId ?? "", ct).ConfigureAwait(false);
         await recorder.SetBlurEnabled(intent.BlurEnabled, ct).ConfigureAwait(false);
         await recorder.StartRecording(intent.ChatId, ct).ConfigureAwait(false);
     }
 
-    private async Task UpdateWebcam(VideoRecorder recorder, WebcamRecordingIntent intent, CancellationToken ct)
+    private async Task UpdateCamera(VideoRecorder recorder, CameraRecordingIntent intent, CancellationToken ct)
     {
         // Clear any stale error so VideoStreamingPreview shows the loading spinner
         // (via the .starting class driven by !hasError) instead of the previous
         // failure message while the new camera is being acquired.
-        ClearRecordingError(StreamKind.Webcam);
+        ClearRecordingError(VideoSourceKind.Camera);
         await recorder.SwitchCamera(intent.CameraDeviceId ?? "", ct).ConfigureAwait(false);
         await recorder.ToggleBlur(intent.BlurEnabled, ct).ConfigureAwait(false);
     }
@@ -155,8 +154,8 @@ public partial class ChatVideoUI
 
     protected abstract record RecordingIntent(ChatId ChatId);
 
-    protected sealed record WebcamRecordingIntent(ChatId ChatId, string? CameraDeviceId, bool BlurEnabled)
+    protected sealed record CameraRecordingIntent(ChatId ChatId, string? CameraDeviceId, bool BlurEnabled)
         : RecordingIntent(ChatId);
 
-    protected sealed record ScreencastIntent(ChatId ChatId) : RecordingIntent(ChatId);
+    protected sealed record ScreenCastIntent(ChatId ChatId) : RecordingIntent(ChatId);
 }

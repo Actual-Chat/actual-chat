@@ -36,9 +36,9 @@ export interface WireSafeRecorderConfig {
      *  Required: the worker's `streamingContext` is populated from
      *  this on `start()` so `PushStream` can dial the right peer. */
     apiUrl: string;
-    /** Stream kind: 0 = Webcam, 1 = Screencast. Maps to .NET
-     *  `LiveVideoStreamKind`. Default 0. */
-    streamKind?: number;
+    /** Stream kind: 0 = Camera, 1 = ScreenCast. Maps to .NET
+     *  `.NET VideoSourceKind`. Default 0. */
+    sourceKind?: number;
     /** Server clock offset in milliseconds, captured on the main
      *  thread for sender-side latency math. Default 0. */
     serverClockOffsetMs?: number;

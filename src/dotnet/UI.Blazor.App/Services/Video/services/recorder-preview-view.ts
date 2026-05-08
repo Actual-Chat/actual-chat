@@ -40,9 +40,9 @@ export interface RecorderPreviewViewOptions {
     /** Optional low-resolution background canvas (e.g. for a focused-view blur backdrop). */
     bgCanvas?: HTMLCanvasElement;
     /** Which recorder kinds to follow, in priority order. First available wins.
-     *  Defaults to [0] (webcam only). Pass [0, 1] to prefer webcam and fall
-     *  back to screencast when no webcam is recording. */
-    streamKinds?: number[];
+     *  Defaults to [0] (camera only). Pass [0, 1] to prefer camera and fall
+     *  back to screencast when no camera is recording. */
+    sourceKinds?: number[];
     /** Called when we attach to a recorder with a live preview track. */
     onAttach?: (recorder: VideoRecorder) => void;
     /** Called when we detach (track gone, recorder gone). */
@@ -61,7 +61,7 @@ export class RecorderPreviewView {
     private readonly canvasTarget: CanvasTarget;
     private readonly bgCanvasTarget: CanvasTarget | null;
     private readonly bgContainer: HTMLElement | null;
-    private readonly streamKinds: number[];
+    private readonly sourceKinds: number[];
     private lastBgDrawTime = 0;
 
     private attachedRecorder: VideoRecorder | null = null;
@@ -76,7 +76,7 @@ export class RecorderPreviewView {
     // that drives bg canvas sampling from videoEl.
     private videoLoadedDataListener: (() => void) | null = null;
     private bgPumpHandle: number | null = null;
-    // Registry subscription — fires on recorder register/unregister for our streamKind.
+    // Registry subscription — fires on recorder register/unregister for our sourceKind.
     private unsubscribeRegistry: (() => void) | null = null;
     // The recorder currently being followed (may differ from attachedRecorder
     // until its track goes live). We hold track/state/blur subscriptions on it.
@@ -92,22 +92,22 @@ export class RecorderPreviewView {
         this.canvasTarget = new CanvasTarget(options.canvas);
         this.bgCanvasTarget = options.bgCanvas ? new CanvasTarget(options.bgCanvas, false, BG_FILTER) : null;
         this.bgContainer = options.bgCanvas?.parentElement ?? null;
-        this.streamKinds = options.streamKinds ?? [0];
+        this.sourceKinds = options.sourceKinds ?? [0];
 
         // Subscribe to recorder register/unregister events and immediately
         // reconcile with whatever recorder is already active (common case:
         // the recorder registers synchronously in its constructor, before
         // this view is even constructed).
         this.unsubscribeRegistry = addActiveRecorderListener((_recorder, kind) => {
-            if (!this.streamKinds.includes(kind)) return;
+            if (!this.sourceKinds.includes(kind)) return;
             this.followRecorder(this.pickRecorder());
         });
         this.followRecorder(this.pickRecorder());
     }
 
-    // Return the highest-priority recorder currently active among streamKinds.
+    // Return the highest-priority recorder currently active among sourceKinds.
     private pickRecorder(): VideoRecorder | null {
-        for (const k of this.streamKinds) {
+        for (const k of this.sourceKinds) {
             const r = getActiveRecorder(k);
             if (r) return r;
         }

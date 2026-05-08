@@ -12,15 +12,11 @@ public sealed class RemoteVideoStreamCache : IDisposable
     public StreamStore<VideoFrame> Store { get; }
 
     public RemoteVideoStreamCache(IServiceProvider services)
-    {
-        var latencyStore = services.GetRequiredService<StreamLatencyStore>();
-        Store = new StreamStore<VideoFrame> {
+        => Store = new StreamStore<VideoFrame> {
             ExpirationDelay = Constants.Video.StreamExpirationDelay,
             ReplayTailSize = Constants.Video.ServerReplayTailSize,
-            OnStreamExpire = latencyStore.OnStreamExpire,
             Log = services.LogFor($"{GetType().FullName}.Store"),
         };
-    }
 
     public void Dispose()
         => Store.Dispose();

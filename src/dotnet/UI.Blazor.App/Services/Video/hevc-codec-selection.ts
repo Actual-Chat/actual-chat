@@ -3,7 +3,7 @@
  *
  * Pure helpers split out of `VideoPlayer` so the decoder worker can re-derive
  * codec strings when the keyframe description changes mid-stream (e.g.
- * simulcast layer switch).
+ * layer switch).
  *
  * Selection rule: hardware acceleration only. If no candidate is HW-supported
  * for the given description, the helper returns null — callers surface a

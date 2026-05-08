@@ -170,9 +170,9 @@ export class MediaCapture {
         return screen.orientation.type.startsWith('portrait');
     }
 
-    static async captureScreencast(): Promise<MediaStreamTrack> {
-        infoLog?.log('captureScreencast: requesting display media');
-        // 15 fps ideal (30 max) biases the encoder toward spatial fidelity for
+    static async captureScreenCast(): Promise<MediaStreamTrack> {
+        infoLog?.log('captureScreenCast: requesting display media');
+        // 15 fps ideal (30 max) biases the encoder toward layer fidelity for
         // IDE/code review content. displaySurface='monitor' is a hint only —
         // browsers may still let the user pick a window/tab.
         const stream = await navigator.mediaDevices.getDisplayMedia({
@@ -187,7 +187,7 @@ export class MediaCapture {
         // motion smoothness — critical for readable text on low-bitrate links.
         track.contentHint = 'text';
         const settings = track.getSettings();
-        infoLog?.log(`captureScreencast: ${settings.width}x${settings.height} @ ${settings.frameRate}fps, surface=${settings.displaySurface}`);
+        infoLog?.log(`captureScreenCast: ${settings.width}x${settings.height} @ ${settings.frameRate}fps, surface=${settings.displaySurface}`);
         return track;
     }
 }

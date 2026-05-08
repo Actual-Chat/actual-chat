@@ -5,15 +5,15 @@
 @{
     var m = State.Value;
     var isRecording = m.IsOwnRecording;
-    var isScreencasting = m.IsOwnScreencasting;
+    var isScreenCasting = m.IsOwnScreenCasting;
     var recordingCls = isRecording ? "recording" : "";
-    var screencastCls = !isRecording && isScreencasting ? "screencast" : "";
-    // Mirror only for webcam. Screencast is never mirrored.
+    var screenCastCls = !isRecording && isScreenCasting ? "screencast" : "";
+    // Mirror only for camera. ScreenCast is never mirrored.
     var mirrorCls = isRecording && m.IsCameraMirrored ? "" : "no-mirror";
-    var labelIcon = !isRecording && isScreencasting ? "icon-screen-share" : "icon-video";
+    var labelIcon = !isRecording && isScreenCasting ? "icon-screen-share" : "icon-video";
 }
 
-<div @ref="Ref" class="video-track-player video-streaming-preview @Class @recordingCls @screencastCls">
+<div @ref="Ref" class="video-track-player video-streaming-preview @Class @recordingCls @screenCastCls">
     <canvas class="remote-video-bg" aria-hidden="true"></canvas>
     <video class="call-video-native live-stream-video @mirrorCls"
            autoplay playsinline muted aria-hidden="true"
@@ -54,7 +54,7 @@
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; }
     [Parameter] public string Class { get; set; } = "";
-    [Parameter, EditorRequired] public StreamKind StreamKind { get; set; }
+    [Parameter, EditorRequired] public VideoSourceKind SourceKind { get; set; }
 
     public override async ValueTask DisposeAsync() {
         ChatVideoUI.SuspendOwnStreamingPreview -= OnSuspendOwnStreamingPreview;
@@ -76,21 +76,21 @@
         if (_isSuspended)
             return _suspendedModel;
 
-        var isOwnRecording = StreamKind == StreamKind.Webcam
-            && await ChatVideoUI.IsOwnWebcamRecording(chatId, cancellationToken).ConfigureAwait(false);
-        var isOwnScreencasting = StreamKind == StreamKind.Screencast
-            && await ChatVideoUI.IsOwnScreencasting(chatId, cancellationToken).ConfigureAwait(false);
+        var isOwnRecording = SourceKind == VideoSourceKind.Camera
+            && await ChatVideoUI.IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);
+        var isOwnScreenCasting = SourceKind == VideoSourceKind.ScreenCast
+            && await ChatVideoUI.IsOwnScreenCasting(chatId, cancellationToken).ConfigureAwait(false);
         var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
-        var lastError = await ChatVideoUI.GetLastVideoRecorderError(StreamKind, cancellationToken).ConfigureAwait(false);
+        var lastError = await ChatVideoUI.GetLastVideoRecorderError(SourceKind, cancellationToken).ConfigureAwait(false);
         var isMirrored = await ChatVideoUI.GetIsCameraMirrored(cancellationToken).ConfigureAwait(false);
-        return new Model(isOwnRecording, isOwnScreencasting, !hasRemoteStreams, lastError, isMirrored);
+        return new Model(isOwnRecording, isOwnScreenCasting, !hasRemoteStreams, lastError, isMirrored);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender)
             return;
 
-        JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, (int)StreamKind);
+        JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, (int)SourceKind);
         ChatVideoUI.SuspendOwnStreamingPreview += OnSuspendOwnStreamingPreview;
     }
 
@@ -110,7 +110,7 @@
 
     public sealed record Model(
         bool IsOwnRecording,
-        bool IsOwnScreencasting,
+        bool IsOwnScreenCasting,
         bool IsAloneOnStream,
         string? LastErrorMessage,
         bool IsCameraMirrored) {

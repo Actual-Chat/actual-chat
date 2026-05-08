@@ -5,11 +5,11 @@ export class VideoStreamingPreview {
     private readonly view: RecorderPreviewView;
     private disposed = false;
 
-    static create(element: HTMLElement, streamKind: number): VideoStreamingPreview {
-        return new VideoStreamingPreview(element, streamKind);
+    static create(element: HTMLElement, sourceKind: number): VideoStreamingPreview {
+        return new VideoStreamingPreview(element, sourceKind);
     }
 
-    constructor(element: HTMLElement, streamKind: number) {
+    constructor(element: HTMLElement, sourceKind: number) {
         this.element = element;
         const canvas = this.element.querySelector<HTMLCanvasElement>('.call-video')!;
         const bgCanvas = this.element.querySelector<HTMLCanvasElement>('.remote-video-bg') ?? undefined;
@@ -19,7 +19,7 @@ export class VideoStreamingPreview {
             canvas,
             videoEl,
             bgCanvas,
-            streamKinds: [streamKind],
+            sourceKinds: [sourceKind],
             onFirstFrame: () => {
                 this.element.classList.add('has-video');
             },

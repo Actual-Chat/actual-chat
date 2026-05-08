@@ -19,10 +19,9 @@ public interface ILiveVideoStreams : IComputeService
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<ApiArray<string>> GetSupportedCodecs(Session session, ChatId chatId, CancellationToken cancellationToken);
 
-    // Remains as the propagation path for RequestKeyFrame: the publisher
-    // observes IsKeyFrameRequested = true and forces the next frame to be a KF.
+    // Publisher-facing keyframe-request signal. Changes when a request is accepted.
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
-    Task<VideoQualityPreset> GetQualityPreset(Session session, StreamId streamId, CancellationToken cancellationToken);
+    Task<Moment> LastKeyframeRequestAt(Session session, StreamId streamId, CancellationToken cancellationToken);
 
     Task RegisterMember(
         Session session, ChatId chatId, ApiArray<string> supportedDecoderCodecs, CancellationToken cancellationToken);
@@ -35,8 +34,8 @@ public interface ILiveVideoStreams : IComputeService
         string chatId,
         double clientStartAt, // Unix epoch (seconds, double)
         VideoFormat format,
+        VideoSourceKind sourceKind,
         RpcStream<VideoFrame> frameStream,
-        StreamKind streamKind,
         CancellationToken cancellationToken);
 
     [RpcMethod(RemoteExecutionMode = RpcRemoteExecutionMode.AwaitForConnection, ConnectTimeout = 10)]

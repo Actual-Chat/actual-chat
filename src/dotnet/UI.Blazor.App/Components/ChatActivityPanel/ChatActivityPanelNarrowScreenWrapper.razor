@@ -33,8 +33,8 @@
         var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
         if (isAnyoneTalking)
             return true;
-        var ownStreamKind = await ChatVideoUI.GetOwnStreamKind(chatId, cancellationToken).ConfigureAwait(false);
-        var isOwnVideoStreaming = ownStreamKind is not null;
+        var ownSourceKind = await ChatVideoUI.GetOwnSourceKind(chatId, cancellationToken).ConfigureAwait(false);
+        var isOwnVideoStreaming = ownSourceKind is not null;
         if (isOwnVideoStreaming)
             return true;
         var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);

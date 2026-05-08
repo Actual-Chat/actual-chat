@@ -4,6 +4,7 @@
  */
 
 import { getLogs } from 'logging';
+import { kbpsToBitsPerSecond } from 'app-constants';
 import { DeviceInfo } from 'device-info';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
@@ -218,7 +219,7 @@ export interface EncoderProbeResult {
     failedStage: 'configure' | 'encode' | null;
 }
 
-interface ProbeLayer { width: number; height: number; bitrate: number }
+interface ProbeLayer { width: number; height: number; bitrateKbps: number }
 
 // Cache results per (codec, top-layer-dims, layer-count). The probe itself
 // only exercises the top-tier encoder, so top dims drive the result; layer
@@ -227,7 +228,7 @@ interface ProbeLayer { width: number; height: number; bitrate: number }
 // top) so we key on `layers[layers.length - 1]`.
 const encoderProbeCache = new Map<string, Promise<EncoderProbeResult>>();
 
-// Single-encoder probe of the top simulcast layer. Default budget = 30fps
+// Single-encoder probe of the top layer. Default budget = 30fps
 // frame interval (33.3ms) — "can one top-tier encoder keep up with one
 // frame per tick". Not a search for the optimal codec, not a simulcast
 // concurrency test. Steady-state encode is ~5–20ms on hardware capable
@@ -283,7 +284,7 @@ async function probeEncoderUncached(
             codec,
             width: top.width,
             height: top.height,
-            bitrate: top.bitrate,
+            bitrate: kbpsToBitsPerSecond(top.bitrateKbps),
             framerate: 30,
             latencyMode: 'realtime',
             hardwareAcceleration: 'prefer-hardware',

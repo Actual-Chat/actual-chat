@@ -16,7 +16,7 @@ import { dropDimMismatch } from '../../../src/dotnet/UI.Blazor.App/Services/Vide
 import {
     downscale,
     type DownscalerLike,
-    type SpatialLayerSpec,
+    type LayerSpec,
 } from '../../../src/dotnet/UI.Blazor.App/Services/Video/operators/downscale';
 import { applyKeyframePolicy } from '../../../src/dotnet/UI.Blazor.App/Services/Video/operators/apply-keyframe-policy';
 import {
@@ -139,7 +139,7 @@ interface MockGlobals {
 /** Identity downscaler for single-tier: returns one VideoFrame with the
  *  layer's coded dims, closing the input. */
 class IdentityDownscaler implements DownscalerLike {
-    process(input: VideoFrame, layers: readonly SpatialLayerSpec[]): Promise<VideoFrame[]> {
+    process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]> {
         const frames = layers.map(l =>
             new MockVideoFrame((input as unknown as MockVideoFrame).id, l.width, l.height) as unknown as VideoFrame,
         );
@@ -231,7 +231,7 @@ function makeEncoderFactory() {
                 metadata,
                 capturedAt: input.capturedAt,
                 index: input.index,
-                spatialLayerId: layerId,
+                layerId: layerId,
                 sourceWidth: 0,
                 sourceHeight: 0,
                 encodedWidth: config.width,
@@ -346,7 +346,7 @@ describe('video pipeline integration', () => {
         for (const dto of sender.sent) expect(dto.offsetEpoch).toBe(0);
     });
 
-    it('2. sender simulcast 3-layer: 5 frames → 15 DTOs with correct spatialLayerIds', async () => {
+    it('2. sender simulcast 3-layer: 5 frames → 15 DTOs with correct layerIds', async () => {
         let mockWallMs = 1_700_000_000_000;
         let mockPerfMs = 100;
         vi.spyOn(Date, 'now').mockImplementation(() => mockWallMs);
@@ -355,7 +355,7 @@ describe('video pipeline integration', () => {
         const stats = createEmptyRecordingStats(mockWallMs);
         const clock = new MonotonicClock();
         const sender = new FakeSender();
-        const ladder: SpatialLayerSpec[] = [
+        const ladder: LayerSpec[] = [
             { width: 480, height: 270 },
             { width: 960, height: 540 },
             { width: 1920, height: 1080 },
@@ -391,7 +391,7 @@ describe('video pipeline integration', () => {
         await runSenderToCompletion(runP, 15);
 
         expect(sender.sent).toHaveLength(15);
-        // Group by offset; each group should have spatialLayerId 0,1,2.
+        // Group by offset; each group should have layerId 0,1,2.
         const groups = new Map<number, VideoStreamFrame[]>();
         for (const dto of sender.sent) {
             const arr = groups.get(dto.offset) ?? [];
@@ -401,7 +401,7 @@ describe('video pipeline integration', () => {
         expect(groups.size).toBe(5);
         for (const [, group] of groups) {
             expect(group).toHaveLength(3);
-            const ids = group.map(d => d.spatialLayerId).sort();
+            const ids = group.map(d => d.layerId).sort();
             expect(ids).toEqual([0, 1, 2]);
         }
     });
@@ -593,7 +593,7 @@ describe('video pipeline integration', () => {
             Height: s.height,
             Description: s.description,
             Codec: s.codec,
-            SpatialLayerId: s.spatialLayerId,
+            LayerId: s.layerId,
             TemporalLayerId: s.temporalLayerId,
             SourceWidth: s.sourceWidth,
             SourceHeight: s.sourceHeight,

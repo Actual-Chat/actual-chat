@@ -48,13 +48,13 @@ function canConfigureWithoutDescription(codec: string): boolean {
 interface PendingDecode {
     capturedAt: { timeMs: number; epoch: number };
     arrivedAt: ArrivedChunk['arrivedAt'];
-    spatialLayerId: number;
+    layerId: number;
     submitMs: number;
 }
 
 /**
  * `ArrivedChunk → DecodedFrame`. Lazy decoder init on the first
- * keyframe; reconfigures on dim change. Per-spatial-layer description
+ * keyframe; reconfigures on dim change. Per-layer-layer description
  * cache covers HEVC's "later keyframes may omit description" case.
  *
  * Errors from the decoder's error callback are buffered and trigger
@@ -116,7 +116,7 @@ async function* decodeAsync(
                 capturedAt: meta.capturedAt,
                 arrivedAt: meta.arrivedAt,
                 decodedAt: { timeMs: decodedAtMs, epoch: 0 },
-                spatialLayerId: meta.spatialLayerId,
+                layerId: meta.layerId,
                 stats,
             };
             stats.framesDecoded++;
@@ -244,8 +244,8 @@ async function* decodeAsync(
                     const newWidth = arrived.width || currentWidth;
                     const newHeight = arrived.height || currentHeight;
                     if (arrived.description && arrived.description.byteLength > 0)
-                        descriptionByLayer.set(arrived.spatialLayerId, arrived.description);
-                    const description = descriptionByLayer.get(arrived.spatialLayerId);
+                        descriptionByLayer.set(arrived.layerId, arrived.description);
+                    const description = descriptionByLayer.get(arrived.layerId);
 
                     const dimChanged = configured
                         && (newWidth !== currentWidth || newHeight !== currentHeight);
@@ -290,7 +290,7 @@ async function* decodeAsync(
                 pending.push({
                     capturedAt: arrived.capturedAt,
                     arrivedAt: arrived.arrivedAt,
-                    spatialLayerId: arrived.spatialLayerId,
+                    layerId: arrived.layerId,
                     submitMs,
                 });
                 try {

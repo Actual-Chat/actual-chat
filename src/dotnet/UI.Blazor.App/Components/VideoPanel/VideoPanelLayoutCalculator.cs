@@ -1,6 +1,7 @@
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Video;
 using ActualLab.Interception;
 using ActualLab.Resilience;
 
@@ -73,8 +74,8 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
             .Select(s => s.AuthorId)
             .ToHashSet();
 
-        var screencastAuthorIds = activeVideoStreams
-            .Where(s => s.StreamKind == StreamKind.Screencast)
+        var screenCastAuthorIds = activeVideoStreams
+            .Where(s => s.SourceKind == VideoSourceKind.ScreenCast)
             .Select(s => s.AuthorId)
             .Distinct()
             .ToImmutableArray();
@@ -83,16 +84,16 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
             .Where(activeVideoAuthorIds.Contains)
             .ToArray();
 
-        return new ActiveSpeakerState(speakingWithVideo, screencastAuthorIds);
+        return new ActiveSpeakerState(speakingWithVideo, screenCastAuthorIds);
     }
 
     [ComputeMethod]
     protected virtual async Task<LayoutInputs> GetLayoutInputs(CancellationToken cancellationToken)
     {
         var focusedIds = await _focusedSpeakerIds.Use(cancellationToken).ConfigureAwait(false);
-        var isOwnRecording = await ChatVideoUI.IsOwnWebcamRecording(ChatId, cancellationToken).ConfigureAwait(false);
-        var isOwnScreencasting = await ChatVideoUI.IsOwnScreencasting(ChatId, cancellationToken).ConfigureAwait(false);
-        var ownAuthor = isOwnRecording || isOwnScreencasting
+        var isOwnRecording = await ChatVideoUI.IsOwnCameraRecording(ChatId, cancellationToken).ConfigureAwait(false);
+        var isOwnScreenCasting = await ChatVideoUI.IsOwnScreenCasting(ChatId, cancellationToken).ConfigureAwait(false);
+        var ownAuthor = isOwnRecording || isOwnScreenCasting
             ? await Hub.Authors.GetOwn(Session, ChatId, cancellationToken).ConfigureAwait(false)
             : null;
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(ChatId, cancellationToken).ConfigureAwait(false);
@@ -100,7 +101,7 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
         return new LayoutInputs(
             screenSize.IsNarrow(),
             isOwnRecording,
-            isOwnScreencasting,
+            isOwnScreenCasting,
             ownAuthor?.Id,
             remoteStreams,
             focusedIds);
@@ -115,18 +116,18 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
             .ConfigureAwait(false);
 
         await foreach (var (state, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
-            var (speakersWithVideo, screencastAuthorIds) = state;
+            var (speakersWithVideo, screenCastAuthorIds) = state;
             lock (_trackFocusLock) {
-                // Screencasts are primary-only. Backend/client gates allow only
+                // ScreenCasts are primary-only. Backend/client gates allow only
                 // one, but stale/raced entries can overlap briefly; in that case
                 // the current speaker's screencast wins.
-                if (screencastAuthorIds.Length != 0) {
+                if (screenCastAuthorIds.Length != 0) {
                     var current = _focusedSpeakerIds.Value.FirstOrDefault();
-                    var focusedScreencast = screencastAuthorIds.FirstOrDefault(a => a == current);
-                    var speakingScreencast = speakersWithVideo.FirstOrDefault(screencastAuthorIds.Contains);
-                    var next = speakingScreencast
-                        ?? focusedScreencast
-                        ?? screencastAuthorIds[0];
+                    var focusedScreenCast = screenCastAuthorIds.FirstOrDefault(a => a == current);
+                    var speakingScreenCast = speakersWithVideo.FirstOrDefault(screenCastAuthorIds.Contains);
+                    var next = speakingScreenCast
+                        ?? focusedScreenCast
+                        ?? screenCastAuthorIds[0];
                     SetFocused(next);
 #pragma warning disable CA1849 // Use async overload
                     _focusDebounceCts?.Cancel();
@@ -220,8 +221,8 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
 
     /// <summary>
     /// Groups streams by author into a primary-plus-PiP pair: if an author has both
-    /// a screencast and a webcam stream active, the screencast is the primary tile
-    /// and the webcam is its PiP overlay. An author with only one kind has a null PiP.
+    /// a screencast and a camera stream active, the screencast is the primary tile
+    /// and the camera is its PiP overlay. An author with only one kind has a null PiP.
     /// </summary>
     private static ImmutableArray<AuthorStreamGroup> BuildDisplayList(
         VideoStreamInfo[] remoteStreams,
@@ -229,9 +230,9 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
         int maxDisplaySlots)
     {
         // Build per-author grouping. An author may have multiple concurrent streams
-        // (screencast + webcam, or transient overlap during stream restart). The
+        // (screencast + camera, or transient overlap during stream restart). The
         // group pairs a primary stream with an optional PiP overlay — screencast
-        // wins as primary, webcam becomes the PiP. This replaces the earlier
+        // wins as primary, camera becomes the PiP. This replaces the earlier
         // single-stream-per-author dictionary that crashed on duplicate keys.
         var groups = remoteStreams
             .GroupBy(s => s.AuthorId)
@@ -265,134 +266,134 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
     }
 
     /// <summary>
-    /// Primary stream (screencast if available) plus optional PiP overlay (webcam
+    /// Primary stream (screencast if available) plus optional PiP overlay (camera
     /// belonging to the same author, when the author is dual-streaming).
     /// </summary>
     public sealed record AuthorStreamGroup(VideoStreamInfo Primary, VideoStreamInfo? Pip)
     {
         public static AuthorStreamGroup From(IEnumerable<VideoStreamInfo> authorStreams)
         {
-            VideoStreamInfo? screencast = null;
-            VideoStreamInfo? webcam = null;
+            VideoStreamInfo? screenCast = null;
+            VideoStreamInfo? camera = null;
             foreach (var s in authorStreams) {
-                if (s.StreamKind == StreamKind.Screencast)
-                    screencast = s;
+                if (s.SourceKind == VideoSourceKind.ScreenCast)
+                    screenCast = s;
                 else
-                    webcam = s;
+                    camera = s;
             }
-            return screencast is not null
-                ? new AuthorStreamGroup(screencast, webcam)
-                : new AuthorStreamGroup(webcam!, null);
+            return screenCast is not null
+                ? new AuthorStreamGroup(screenCast, camera)
+                : new AuthorStreamGroup(camera!, null);
         }
     }
 
     private static VideoPanelLayout BuildLayout(LayoutInputs inputs)
     {
-        var (isNarrow, hasOwnWebcam, hasOwnScreencast, ownAuthorId, remoteStreams, focusedIds) = inputs;
+        var (isNarrow, hasOwnCamera, hasOwnScreenCast, ownAuthorId, remoteStreams, focusedIds) = inputs;
         var hasRemote = remoteStreams.Length > 0;
 
         // Build ordered display list from focus history + active streams
         var maxSlots = isNarrow ? MaxDisplaySlotsNarrow : MaxDisplaySlotsWide;
         var displayList = BuildDisplayList(remoteStreams, focusedIds, maxSlots);
-        var primaryScreencast = SelectPrimaryScreencast(displayList, hasOwnScreencast, ownAuthorId, focusedIds);
-        var hasScreencastPrimary = primaryScreencast is not null || hasOwnScreencast;
-        var ownScreencastIsPrimary = primaryScreencast is OwnScreencastPrimary;
+        var primaryScreenCast = SelectPrimaryScreenCast(displayList, hasOwnScreenCast, ownAuthorId, focusedIds);
+        var hasScreenCastPrimary = primaryScreenCast is not null || hasOwnScreenCast;
+        var ownScreenCastIsPrimary = primaryScreenCast is OwnScreenCastPrimary;
 
-        var ownScreencastClass = ownScreencastIsPrimary ? "item-focused" : "";
-        var ownWebcamClass = !hasOwnWebcam ? ""
-            : hasScreencastPrimary || hasRemote ? "item-x item-0"
+        var ownScreenCastClass = ownScreenCastIsPrimary ? "item-focused" : "";
+        var ownCameraClass = !hasOwnCamera ? ""
+            : hasScreenCastPrimary || hasRemote ? "item-x item-0"
             : "item-focused";
-        var nextSidebarIndex = ownWebcamClass.Contains("item-x") ? 1 : 0;
+        var nextSidebarIndex = ownCameraClass.Contains("item-x") ? 1 : 0;
 
         // Map display list to stream → CSS class; hide PiP-overlay streams from the
         // main tile grid (they render inside their primary's tile).
         var remoteClasses = new List<RemoteStreamPlayerClass>();
         var pipPairs = new List<PipPair>();
-        AuthorStreamGroup? focusedWebcamGroup = null;
-        if (primaryScreencast is RemoteScreencastPrimary remotePrimary) {
+        AuthorStreamGroup? focusedCameraGroup = null;
+        if (primaryScreenCast is RemoteScreenCastPrimary remotePrimary) {
             remoteClasses.Add(new RemoteStreamPlayerClass(remotePrimary.Group.Primary.StreamId.Value, "item-focused"));
             if (remotePrimary.Group.Pip is { } pip)
                 pipPairs.Add(new PipPair(remotePrimary.Group.Primary.StreamId.Value, pip));
         }
-        else if (!hasScreencastPrimary) {
+        else if (!hasScreenCastPrimary) {
             var focusedGroup = displayList.FirstOrDefault();
             if (focusedGroup is not null) {
-                focusedWebcamGroup = focusedGroup;
+                focusedCameraGroup = focusedGroup;
                 remoteClasses.Add(new RemoteStreamPlayerClass(focusedGroup.Primary.StreamId.Value, "item-focused"));
                 if (focusedGroup.Pip is { } pip)
                     pipPairs.Add(new PipPair(focusedGroup.Primary.StreamId.Value, pip));
             }
         }
 
-        foreach (var stream in GetSidebarWebcams(displayList, primaryScreencast, focusedWebcamGroup)) {
+        foreach (var stream in GetSidebarCameras(displayList, primaryScreenCast, focusedCameraGroup)) {
             var cls = $"item-x item-{nextSidebarIndex}";
             nextSidebarIndex++;
             remoteClasses.Add(new RemoteStreamPlayerClass(stream.StreamId.Value, cls));
         }
 
-        return new VideoPanelLayout(ownWebcamClass, ownScreencastClass, [..remoteClasses], [..pipPairs]);
+        return new VideoPanelLayout(ownCameraClass, ownScreenCastClass, [..remoteClasses], [..pipPairs]);
     }
 
-    private static ScreencastPrimary? SelectPrimaryScreencast(
+    private static ScreenCastPrimary? SelectPrimaryScreenCast(
         ImmutableArray<AuthorStreamGroup> displayList,
-        bool hasOwnScreencast,
+        bool hasOwnScreenCast,
         AuthorId? ownAuthorId,
         ImmutableArray<AuthorId> focusedIds)
     {
-        var remoteScreencasts = displayList
-            .Where(g => g.Primary.StreamKind == StreamKind.Screencast)
+        var remoteScreenCasts = displayList
+            .Where(g => g.Primary.SourceKind == VideoSourceKind.ScreenCast)
             .ToDictionary(g => g.Primary.AuthorId, g => g);
-        if (!hasOwnScreencast && remoteScreencasts.Count == 0)
+        if (!hasOwnScreenCast && remoteScreenCasts.Count == 0)
             return null;
 
         foreach (var id in focusedIds) {
-            if (hasOwnScreencast && ownAuthorId == id)
-                return OwnScreencastPrimary.Instance;
-            if (remoteScreencasts.TryGetValue(id, out var group))
-                return new RemoteScreencastPrimary(group);
+            if (hasOwnScreenCast && ownAuthorId == id)
+                return OwnScreenCastPrimary.Instance;
+            if (remoteScreenCasts.TryGetValue(id, out var group))
+                return new RemoteScreenCastPrimary(group);
         }
 
-        if (hasOwnScreencast)
-            return OwnScreencastPrimary.Instance;
-        return remoteScreencasts.Values.FirstOrDefault() is { } fallback
-            ? new RemoteScreencastPrimary(fallback)
+        if (hasOwnScreenCast)
+            return OwnScreenCastPrimary.Instance;
+        return remoteScreenCasts.Values.FirstOrDefault() is { } fallback
+            ? new RemoteScreenCastPrimary(fallback)
             : null;
     }
 
-    private static IEnumerable<VideoStreamInfo> GetSidebarWebcams(
+    private static IEnumerable<VideoStreamInfo> GetSidebarCameras(
         ImmutableArray<AuthorStreamGroup> displayList,
-        ScreencastPrimary? primaryScreencast,
-        AuthorStreamGroup? focusedWebcamGroup)
+        ScreenCastPrimary? primaryScreenCast,
+        AuthorStreamGroup? focusedCameraGroup)
     {
         foreach (var group in displayList) {
-            if (primaryScreencast is RemoteScreencastPrimary remotePrimary
+            if (primaryScreenCast is RemoteScreenCastPrimary remotePrimary
                 && remotePrimary.Group.Primary.StreamId == group.Primary.StreamId)
                 continue;
-            if (focusedWebcamGroup is not null
-                && focusedWebcamGroup.Primary.StreamId == group.Primary.StreamId)
+            if (focusedCameraGroup is not null
+                && focusedCameraGroup.Primary.StreamId == group.Primary.StreamId)
                 continue;
 
-            if (group.Primary.StreamKind == StreamKind.Webcam) {
+            if (group.Primary.SourceKind == VideoSourceKind.Camera) {
                 yield return group.Primary;
                 continue;
             }
 
-            if (group.Pip is { } webcam)
-                yield return webcam;
+            if (group.Pip is { } camera)
+                yield return camera;
         }
     }
 
     // Nested types
 
-    protected sealed record ActiveSpeakerState(AuthorId[] SpeakersWithVideo, ImmutableArray<AuthorId> ScreencastAuthorIds)
+    protected sealed record ActiveSpeakerState(AuthorId[] SpeakersWithVideo, ImmutableArray<AuthorId> ScreenCastAuthorIds)
     {
         public static readonly ActiveSpeakerState None = new([], []);
     }
 
     protected sealed record LayoutInputs(
         bool IsNarrowScreen,
-        bool HasOwnWebcamPreview,
-        bool HasOwnScreencastPreview,
+        bool HasOwnCameraPreview,
+        bool HasOwnScreenCastPreview,
         AuthorId? OwnAuthorId,
         VideoStreamInfo[] RemoteStreams,
         ImmutableArray<AuthorId> FocusedSpeakerIds)
@@ -400,14 +401,14 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
         public static readonly LayoutInputs None = new(true, false, false, null, [], []);
     }
 
-    private abstract record ScreencastPrimary;
+    private abstract record ScreenCastPrimary;
 
-    private sealed record OwnScreencastPrimary : ScreencastPrimary
+    private sealed record OwnScreenCastPrimary : ScreenCastPrimary
     {
-        public static readonly OwnScreencastPrimary Instance = new();
+        public static readonly OwnScreenCastPrimary Instance = new();
     }
 
-    private sealed record RemoteScreencastPrimary(AuthorStreamGroup Group) : ScreencastPrimary;
+    private sealed record RemoteScreenCastPrimary(AuthorStreamGroup Group) : ScreenCastPrimary;
 }
 
 public record RemoteStreamPlayerClass(string StreamId, string Class);
@@ -415,8 +416,8 @@ public record RemoteStreamPlayerClass(string StreamId, string Class);
 public record PipPair(string PrimaryStreamId, VideoStreamInfo Pip);
 
 public record VideoPanelLayout(
-    string OwnWebcamPreviewClass,
-    string OwnScreencastPreviewClass,
+    string OwnCameraPreviewClass,
+    string OwnScreenCastPreviewClass,
     ImmutableArray<RemoteStreamPlayerClass> RemoteStreamPlayerClasses,
     ImmutableArray<PipPair> PipPairs)
 {

@@ -38,7 +38,7 @@
                 <TileItem IsHoverable="false">
                     <Content>Outbound layer cap</Content>
                     <Caption>
-                        Caps the recording quality controller for your own webcam stream.
+                        Caps the recording quality controller for your own camera stream.
                         Default leaves the controller uncapped.
                     </Caption>
                     <Right>
@@ -176,11 +176,11 @@
         var raw = await JS.InvokeAsync<JsHint[]>(JSCollectStreamHintsMethod);
         var hints = new List<VideoQualityUI.PlaybackOverrideStreamHint>(raw.Length);
         foreach (var h in raw)
-            hints.Add(new VideoQualityUI.PlaybackOverrideStreamHint(h.streamId, h.currentSpatialLayerId));
+            hints.Add(new VideoQualityUI.PlaybackOverrideStreamHint(h.streamId, h.currentLayerId));
         return hints;
     }
 
-    private sealed record JsHint(string streamId, int currentSpatialLayerId);
+    private sealed record JsHint(string streamId, int currentLayerId);
 
     // Mirrors `VideoDebugSettings` in `video-diagnostics.ts`. JSInterop uses
     // System.Text.Json with web defaults (case-insensitive), so PascalCase

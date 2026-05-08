@@ -19,9 +19,8 @@ export interface VideoStreamFrame {
     description?: Uint8Array;
     codec?: string;
     temporalLayerId?: number;
-    spatialLayerId?: number;
-    minSpatialLayerId?: number;
-    maxSpatialLayerId?: number;
+    layerId?: number;
+    maxLayerId?: number;
     sourceWidth?: number;
     sourceHeight?: number;
 }
@@ -67,7 +66,7 @@ export interface StreamSenderStats {
 
 export interface WireSendOptions {
     createSender: () => StreamSenderLike;
-    /** Number of active spatial layers — fills `[Min,Max]SpatialLayerId`
+    /** Number of active layers — fills `MaxLayerId`
      *  on every chunk so the server's `ReceiveQualityFilter` knows the
      *  producer's range. Without it, consumers clamp to L0. */
     layerCount?: number;
@@ -101,7 +100,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedFrame, void
         async function* impl(): AsyncIterable<void> {
             const { createSender, topLayerWidth, topLayerHeight, abortSignal } = opts;
             const layerCount = opts.layerCount ?? 1;
-            const maxSpatialLayerId = layerCount - 1;
+            const maxLayerId = layerCount - 1;
             const abortRace: Promise<never> = abortSignal
                 ? abortPromise(abortSignal)
                 : new Promise(() => { /* never resolves */ });
@@ -112,6 +111,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedFrame, void
             let pumpFailure: Error | null = null;
             let pumpResolved = false;
             let lastStats: EncodedFrame['stats'] | null = null;
+            const getPumpFailure = (): Error | null => pumpFailure;
             const resetSender = (reason: string): void => {
                 if (sender && lastStats)
                     copySenderStats(lastStats, sender.getStats?.());
@@ -131,7 +131,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedFrame, void
 
                     try {
                         lastStats = encoded.stats;
-                        const { capturedAt, spatialLayerId } = encoded;
+                        const { capturedAt, layerId } = encoded;
                         const isKeyFrame = encoded.chunk.type === 'key';
                         if (Number.isNaN(captureStartUnixMs))
                             captureStartUnixMs = capturedAt.timeMs;
@@ -146,9 +146,8 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedFrame, void
                             width: encoded.encodedWidth,
                             height: encoded.encodedHeight,
                             data,
-                            spatialLayerId,
-                            minSpatialLayerId: 0,
-                            maxSpatialLayerId,
+                            layerId,
+                            maxLayerId,
                             temporalLayerId: encoded.metadata.temporalLayerId,
                         };
                         dto.offsetEpoch = capturedAt.epoch;
@@ -159,8 +158,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedFrame, void
                             if (description) dto.description = description;
                         }
                         // Async-set flags (mutated by `whenDisposed` callback below).
-                        const failure = pumpFailure;
-                        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                        const failure = getPumpFailure();
                         if (failure)
                             resetSender(failure.message);
                         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -176,7 +174,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedFrame, void
                                 },
                             );
                         }
-                        if (!initSent && isKeyFrame && spatialLayerId === maxSpatialLayerId && sender.init) {
+                        if (!initSent && isKeyFrame && layerId === maxLayerId && sender.init) {
                             const description = resolveDescription(encoded, descriptionByLayer);
                             sender.init({
                                 codec: encoded.metadata.decoderConfig?.codec ?? '',
@@ -235,10 +233,10 @@ function resolveDescription(
     const raw = encoded.metadata.decoderConfig?.description as ArrayBuffer | ArrayBufferView | undefined;
     if (raw) {
         const bytes = toUint8Array(raw);
-        cache.set(encoded.spatialLayerId, bytes);
+        cache.set(encoded.layerId, bytes);
         return bytes;
     }
-    return cache.get(encoded.spatialLayerId) ?? null;
+    return cache.get(encoded.layerId) ?? null;
 }
 
 function toUint8Array(source: ArrayBuffer | ArrayBufferView): Uint8Array {

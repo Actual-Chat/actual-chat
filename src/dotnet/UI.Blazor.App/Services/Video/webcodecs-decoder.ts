@@ -49,10 +49,10 @@ export interface DecoderStats {
   pullReceivedBytes?: number;
   pullReceivedFrameCount?: number;
   pullReceivedKeyframeCount?: number;
-  pullForwardedSpatialLayerId?: number;
+  pullForwardedLayerId?: number;
   pullForwardedWidth?: number;
   pullForwardedHeight?: number;
-  pullObservedMaxSpatialLayer?: number;
+  pullObservedMaxLayerId?: number;
   // Encoded pre-decode buffer (the doc's `video buffer`). Lives in
   // decoder-worker.ts and is the receiver-side jitter absorber. Filled
   // by decoder-worker.getStats; the WebCodecsDecoder itself doesn't
@@ -205,7 +205,7 @@ export class WebCodecsDecoder {
 
     /**
      * Reconfigure the decoder with a new description (typically a new keyframe's
-     * SPS/PPS after a simulcast layer switch). When `codec` is provided and
+     * SPS/PPS after a layer switch). When `codec` is provided and
      * differs from the current config codec, the decoder is reconfigured with
      * the new codec string too — this is required when the new keyframe's
      * description bytes carry a different tier/level/profile that changes the

@@ -132,7 +132,7 @@ function makeEncoderFactory(opts: { timeoutMs?: number } = {}) {
                 metadata,
                 capturedAt: input.capturedAt,
                 index: input.index,
-                spatialLayerId: layerId,
+                layerId: layerId,
                 sourceWidth: 0,
                 sourceHeight: 0,
                 encodedWidth: config.width,

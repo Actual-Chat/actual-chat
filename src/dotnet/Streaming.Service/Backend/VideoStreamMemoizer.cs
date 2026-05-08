@@ -7,14 +7,14 @@ namespace ActualChat.Streaming;
 /// AsyncMemoizer specialised for live video. Replaces count-based FIFO eviction
 /// with a duration-tracked, keyframe-span eviction policy: the chain holds at
 /// most ~<paramref name="targetDuration"/> of recoverable source time per
-/// spatial layer, and eviction drops complete keyframe-anchored spans rather
+/// layer, and eviction drops complete keyframe-anchored spans rather
 /// than individual frames.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Per-layer accounting in a single chain: all spatial layers share the
+/// Per-layer accounting in a single chain: all layers share the
 /// underlying linked list, but eviction state is tracked per
-/// <see cref="VideoFrame.SpatialLayerId"/> so a quiet or paused layer does not
+/// <see cref="VideoFrame.LayerId"/> so a quiet or paused layer does not
 /// drag the active layer into eviction (and vice versa).
 /// </para>
 /// <para>
@@ -24,14 +24,14 @@ namespace ActualChat.Streaming;
 /// least two keyframes remain (so the last decodable anchor is preserved),
 /// the layer with the largest excess is picked and its oldest span is evicted
 /// by advancing the chain head past every node with an offset older than the
-/// new anchor — across all layers, since spatial-layer keyframes from the
+/// new anchor — across all layers, since layer-layer keyframes from the
 /// same source instant share an <see cref="VideoFrame.Offset"/>.
 /// </para>
 /// </remarks>
 public sealed class VideoStreamMemoizer : AsyncMemoizer<VideoFrame>
 {
     private readonly TimeSpan _targetDuration;
-    // Ordered queues of keyframe offsets currently retained, keyed by SpatialLayerId.
+    // Ordered queues of keyframe offsets currently retained, keyed by LayerId.
     private readonly Dictionary<int, Queue<TimeSpan>> _kfOffsetsByLayer = new();
     // Most recent (Offset + Duration) appended for each layer.
     private readonly Dictionary<int, TimeSpan> _latestEndByLayer = new();
@@ -60,8 +60,8 @@ public sealed class VideoStreamMemoizer : AsyncMemoizer<VideoFrame>
     /// (ReceiveQualityFilter) can pick any layer without waiting for the
     /// next natural KF. <paramref name="tailSize"/> is ignored: the keyframe
     /// anchor drives the start position. A count-based limit is meaningless
-    /// under simulcast where multiple spatial layers share one chain
-    /// (3 × 30 fps = 90 fps for webcam).
+    /// under simulcast where multiple layers share one chain
+    /// (3 × 30 fps = 90 fps for camera).
     /// </summary>
     /// <remarks>
     /// Cold path: when no keyframe has arrived yet, <c>_latestKfByLayer</c>
@@ -111,7 +111,7 @@ public sealed class VideoStreamMemoizer : AsyncMemoizer<VideoFrame>
     protected override void EvictIfNeeded(Node newNode)
     {
         var frame = newNode.Value;
-        var layer = frame.SpatialLayerId;
+        var layer = frame.LayerId;
 
         // Update per-layer latest end. Take max in case of out-of-order arrivals.
         var frameEnd = frame.Offset + frame.Duration;
@@ -164,7 +164,7 @@ public sealed class VideoStreamMemoizer : AsyncMemoizer<VideoFrame>
                 if (oldest.Value.Offset >= newAnchorOffset)
                     break;
                 if (oldest.Value.IsKeyFrame
-                    && _kfOffsetsByLayer.TryGetValue(oldest.Value.SpatialLayerId, out var q)
+                    && _kfOffsetsByLayer.TryGetValue(oldest.Value.LayerId, out var q)
                     && q.Count > 0
                     && q.Peek() == oldest.Value.Offset) {
                     q.Dequeue();
@@ -175,7 +175,7 @@ public sealed class VideoStreamMemoizer : AsyncMemoizer<VideoFrame>
                     // remaining frame's Offset < stale-offset check trivially
                     // and fall back to chain-head replay, regressing latency).
                     if (q.Count == 0)
-                        _latestKfByLayer.TryRemove(oldest.Value.SpatialLayerId, out _);
+                        _latestKfByLayer.TryRemove(oldest.Value.LayerId, out _);
                 }
                 if (!TryAdvanceHead())
                     break;

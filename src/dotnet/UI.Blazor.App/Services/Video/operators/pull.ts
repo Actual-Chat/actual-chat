@@ -21,9 +21,8 @@ export interface VideoFrameDto {
     Height?: number;
     Description?: Uint8Array | null;
     Codec?: string | null;
-    SpatialLayerId?: number;
-    MinSpatialLayerId?: number;
-    MaxSpatialLayerId?: number;
+    LayerId?: number;
+    MaxLayerId?: number;
     TemporalLayerId?: number;
     SourceWidth?: number;
     SourceHeight?: number;
@@ -156,7 +155,7 @@ export function pullSource(opts: PullSourceOptions): AsyncIterableX<ArrivedChunk
                             epoch: dto.OffsetEpoch ?? 0,
                         },
                         isKeyFrame: dto.IsKeyFrame,
-                        spatialLayerId: dto.SpatialLayerId ?? 0,
+                        layerId: dto.LayerId ?? 0,
                         width: dto.Width ?? 0,
                         height: dto.Height ?? 0,
                         rawByteLength: data.byteLength,

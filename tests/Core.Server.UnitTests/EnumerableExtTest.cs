@@ -1,4 +1,3 @@
-
 namespace ActualChat.Core.Server.UnitTests;
 
 public class EnumerableExtTest

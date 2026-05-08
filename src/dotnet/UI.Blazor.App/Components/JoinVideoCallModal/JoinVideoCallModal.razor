@@ -242,7 +242,9 @@
             // Show "Camera is unavailable" when the live recorder reports an error
             // (e.g. ghost camera). The recorder clears the error on a successful
             // switch so the state recovers automatically.
-            var lastError = await ChatVideoUI.GetLastVideoRecorderError(StreamKind.Webcam, cancellationToken).ConfigureAwait(false);
+            var lastError = await ChatVideoUI
+                .GetLastVideoRecorderError(VideoSourceKind.Camera, cancellationToken)
+                .ConfigureAwait(false);
             return new ComputedModel(false, lastError);
         }
 
@@ -423,8 +425,8 @@
         if (_jsRef is null)
             return;
         if (IsSettingsMode) {
-            _currentDeviceId = ChatVideoUI.LastWebcamDeviceId;
-            _currentFacingMode = ChatVideoUI.LastWebcamFacingMode;
+            _currentDeviceId = ChatVideoUI.LastCameraDeviceId;
+            _currentFacingMode = ChatVideoUI.LastCameraFacingMode;
         } else {
             var info = await _jsRef.InvokeAsync<CameraInfo?>("getCurrentCameraInfo");
             _currentDeviceId = info?.DeviceId;
@@ -719,7 +721,7 @@
         }
 
         public override Task SetVideoEnabled(bool enabled) {
-            // Stops the webcam stream on the active call (or resumes it) —
+            // Stops the camera stream on the active call (or resumes it) —
             // same as the video-panel's toggle. The RecorderPreviewView
             // detaches on recorder teardown and re-attaches when it comes back.
             if (enabled) {

@@ -18,14 +18,12 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     private ILiveVideoBackend LiveVideoBackend => field ??= Services.GetRequiredService<ILiveVideoBackend>();
 
     private IServiceProvider Services { get; }
-    private StreamLatencyStore LatencyStore { get; }
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
 
     public VideoStreamingBackend(IServiceProvider services)
     {
         Services = services;
-        LatencyStore = services.GetRequiredService<StreamLatencyStore>();
         Log = services.LogFor(GetType());
         var typeFullName = GetType().FullName;
         _videoStreams = new StreamStore<VideoFrame> {
@@ -33,7 +31,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             StreamCount = AppMeters.VideoStreamCount,
             ExpirationDelay = Constants.Video.StreamExpirationDelay,
             ReplayTailSize = Constants.Video.ServerReplayTailSize,
-            OnStreamExpire = OnVideoStreamExpire,
             Log = services.LogFor($"{typeFullName}.VideoStreams"),
         };
     }
@@ -103,50 +100,24 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         }
     }
 
-    // [ComputeMethod] — publisher-facing keyframe-request signal. The old
-    // quality-adaptation logic was removed in Step 8.5; this method now only
-    // surfaces pending keyframe requests. RequestKeyFrame stores the flag and
-    // invalidates this Computed; the publisher's subscription re-reads it,
-    // observes IsKeyFrameRequested=true, and forces the next frame to be a KF.
-    public virtual Task<VideoQualityPreset> GetQualityPreset(StreamId streamId, CancellationToken cancellationToken)
-    {
-        _ = cancellationToken;
-        var preset = VideoQualityPreset.High;
-        var hadKeyFrameRequest = LatencyStore.KeyFrameRequests.TryRemove(streamId, out _);
-        if (hadKeyFrameRequest)
-            preset = preset with { IsKeyFrameRequested = true };
-        Log.LogInformation(
-            "GetQualityPreset: streamId={StreamId} returning IsKeyFrameRequested={IsKeyFrameRequested}",
-            streamId, hadKeyFrameRequest);
-        return Task.FromResult(preset);
-    }
+    // [ComputeMethod] - publisher-facing keyframe-request signal.
+    public virtual Task<Moment> LastKeyframeRequestAt(StreamId streamId, CancellationToken cancellationToken)
+        => Task.FromResult(Clocks.SystemClock.Now);
 
-    public virtual Task RequestKeyFrame(StreamId streamId, CancellationToken cancellationToken = default)
+    public virtual async Task RequestKeyFrame(StreamId streamId, CancellationToken cancellationToken = default)
     {
-        // Rate-limit PLI: collapse multiple receivers' requests into one per cooldown window
-        var now = CpuTimestamp.Now;
-        var lastTime = LatencyStore.LastKeyFrameRequestTime.GetOrAdd(streamId, now);
-        if (lastTime != now && lastTime.Elapsed < Constants.Video.KeyFrameRequestCooldown) {
-            Log.LogDebug("RequestKeyFrame: streamId={StreamId} — throttled (last {Elapsed:F1}s ago)",
-                streamId, lastTime.Elapsed.TotalSeconds);
-            return Task.CompletedTask;
-        }
-        LatencyStore.LastKeyFrameRequestTime[streamId] = now;
-        LatencyStore.KeyFrameRequests[streamId] = true;
-        LatencyStore.PendingPliRequest[streamId] = now;
+        var now = Clocks.SystemClock.Now;
+        var requestAt = await LastKeyframeRequestAt(streamId, cancellationToken).ConfigureAwait(false);
+        var elapsed = now - requestAt;
+        if (elapsed < Constants.Video.KeyFrameRequestCooldown)
+            return;
+
         Log.LogInformation("RequestKeyFrame: streamId={StreamId}", streamId);
-
-        // Invalidate GetQualityPreset so computed consumers re-evaluate reactively
         using (Invalidation.Begin())
-            _ = GetQualityPreset(streamId, default);
-
-        return Task.CompletedTask;
+            _ = LastKeyframeRequestAt(streamId, default);
     }
 
     // Private methods
-
-    private void OnVideoStreamExpire(StreamId streamId)
-        => LatencyStore.OnStreamExpire(streamId);
 
     private async Task PushVideoInternal(
         VideoRecord record,
@@ -185,15 +156,15 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
         // Register stream for real-time signaling. Initially we only know the
         // format the producer pushed at registration time — the base layer.
-        // Higher spatial layers will surface as their keyframes flow through
-        // (each frame carries SpatialLayerId + dims); see Formats[] update path.
+        // Higher layers will surface as their keyframes flow through
+        // (each frame carries LayerId + dims); see Formats[] update path.
         var streamInfo = new VideoStreamInfo(
             record.StreamId,
             record.ChatId,
             author.Id,
             [record.Format],
             beginsAt,
-            record.StreamKind,
+            record.SourceKind,
             sourceStartedAt);
 
         // Cross-service RPC call — properly shard-routed via ILiveVideoBackend
@@ -205,24 +176,24 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             // No processing - just forward to StreamStore for memoization
             Log.LogInformation("PushVideoInternal: publishing #{StreamId} to StreamStore", record.StreamId);
 
-            // Per-(spatial-layer) keyframe counters. Simulcast senders emit a
-            // keyframe on every spatial layer at the same boundary; a single
+            // Per-(layer-layer) keyframe counters. Simulcast senders emit a
+            // keyframe on every layer at the same boundary; a single
             // global counter would give sibling-layer KFs different numbers,
             // and deltas would be stamped with whichever layer's KF landed last
             // — making downstream gap detection (filter compares KeyFrameNumber
             // equality to decide "this delta belongs to the KF I joined at")
             // fire spuriously. Keeping counters per-layer keeps the "delta.kf
             // == lastYieldedKf" invariant correct for the filter's selected
-            // layer. Small key = int (spatialLayerId, typically 0..2).
+            // layer. Small key = int (layerId, typically 0..2).
             var keyFrameNumberByLayer = new Dictionary<int, long>();
             var startedLayers = new HashSet<int>();
             var negativeOffsetDropCount = 0;
             var preKeyframeDeltaDropCount = 0;
             var lastHeartbeat = CpuTimestamp.Now;
             var heartbeatInterval = TimeSpan.FromMinutes(2.5); // Half of LiveVideoBackend.ChatStateTtl
-            var silenceTimeout = record.StreamKind == StreamKind.Screencast
-                ? Constants.Video.ScreencastFrameSilenceTimeout
-                : Constants.Video.WebcamFrameSilenceTimeout;
+            var silenceTimeout = record.SourceKind == VideoSourceKind.ScreenCast
+                ? Constants.Video.ScreenCastFrameSilenceTimeout
+                : Constants.Video.CameraFrameSilenceTimeout;
             async IAsyncEnumerable<VideoFrame> ProcessFrames(IAsyncEnumerable<VideoFrame> source)
             {
                 // Frame-silence watchdog: cancels watchdogCts if no frame arrives within silenceTimeout.
@@ -231,13 +202,13 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                     watchdogCts.CancelAfter(silenceTimeout);
 
-                    var layerId = frame.SpatialLayerId;
+                    var layerId = frame.LayerId;
                     if (frame.Offset < TimeSpan.Zero) {
                         negativeOffsetDropCount++;
                         if (negativeOffsetDropCount <= 3 || negativeOffsetDropCount % 30 == 0)
                             Log.LogWarning(
                                 "ProcessFrames: dropping frame with negative offset #{DropCount} for stream #{StreamId}: " +
-                                "offset={OffsetMs:F0}ms, key={IsKeyFrame}, layer={SpatialLayerId}, temporal={TemporalLayerId}, " +
+                                "offset={OffsetMs:F0}ms, key={IsKeyFrame}, layer={LayerId}, temporal={TemporalLayerId}, " +
                                 "dims={Width}x{Height}",
                                 negativeOffsetDropCount,
                                 record.StreamId,
@@ -251,13 +222,9 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                     }
 
                     if (frame.IsKeyFrame) {
-                        if (LatencyStore.PendingPliRequest.TryRemove(record.StreamId, out var pliTime))
-                            Log.LogInformation(
-                                "PLI→KF: stream #{StreamId} layer={SpatialLayerId} arrived in {ElapsedMs:F0}ms",
-                                record.StreamId, layerId, pliTime.Elapsed.TotalMilliseconds);
                         if (startedLayers.Add(layerId))
                             Log.LogWarning(
-                                "ProcessFrames: first keyframe for stream #{StreamId} layer={SpatialLayerId} dims={Width}x{Height} (DIAG: simulcast probe)",
+                                "ProcessFrames: first keyframe for stream #{StreamId} layer={LayerId} dims={Width}x{Height} (DIAG: simulcast probe)",
                                 record.StreamId, layerId, frame.Width, frame.Height);
                     }
                     else if (!startedLayers.Contains(layerId)) {
@@ -265,7 +232,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                         if (preKeyframeDeltaDropCount <= 3 || preKeyframeDeltaDropCount % 30 == 0)
                             Log.LogWarning(
                                 "ProcessFrames: dropping delta before first keyframe #{DropCount} for stream #{StreamId}: " +
-                                "offset={OffsetMs:F0}ms, layer={SpatialLayerId}, temporal={TemporalLayerId}, " +
+                                "offset={OffsetMs:F0}ms, layer={LayerId}, temporal={TemporalLayerId}, " +
                                 "dims={Width}x{Height}",
                                 preKeyframeDeltaDropCount,
                                 record.StreamId,

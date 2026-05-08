@@ -1,6 +1,7 @@
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Components.VideoPanel;
 using ActualChat.UI.Blazor.App.Module;
+using ActualChat.Video;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -12,16 +13,16 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </summary>
 public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
-    // Centralized video state — webcam and screencast are tracked independently
+    // Centralized video state — camera and screencast are tracked independently
     // so an author can stream both at the same time.
-    private readonly MutableState<ChatId?> _recordingChatId;        // webcam target chat
-    private readonly MutableState<ChatId?> _screencastChatId;       // screencast target chat
+    private readonly MutableState<ChatId?> _recordingChatId;        // camera target chat
+    private readonly MutableState<ChatId?> _screenCastChatId;       // screencast target chat
     private readonly MutableState<ChatId?> _lastRecordingChatId;
     private readonly MutableState<string?> _selectedCameraDeviceId;
     private readonly MutableState<bool> _isBackgroundBlurEnabled;
     private readonly MutableState<bool> _isCameraMirrored;
-    private readonly MutableState<string?> _webcamErrorMessage;
-    private readonly MutableState<string?> _screencastErrorMessage;
+    private readonly MutableState<string?> _cameraErrorMessage;
+    private readonly MutableState<string?> _screenCastErrorMessage;
 
     // Tracks which chat the user is currently watching video in (in-memory, resets on reload)
     private readonly MutableState<ChatId?> _watchingChatId;
@@ -49,13 +50,13 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public ChatVideoUI(AppUIHub hub) : base(hub)
     {
         _recordingChatId = StateFactory.NewMutable((ChatId?)null);
-        _screencastChatId = StateFactory.NewMutable((ChatId?)null);
+        _screenCastChatId = StateFactory.NewMutable((ChatId?)null);
         _lastRecordingChatId = StateFactory.NewMutable((ChatId?)null);
         _selectedCameraDeviceId = StateFactory.NewMutable((string?)null);
         _isBackgroundBlurEnabled = StateFactory.NewMutable(false);
         _isCameraMirrored = StateFactory.NewMutable(true);
-        _webcamErrorMessage = StateFactory.NewMutable((string?)null);
-        _screencastErrorMessage = StateFactory.NewMutable((string?)null);
+        _cameraErrorMessage = StateFactory.NewMutable((string?)null);
+        _screenCastErrorMessage = StateFactory.NewMutable((string?)null);
         _watchingChatId = StateFactory.NewMutable((ChatId?)null);
         _isVideoPanelCollapsed = StateFactory.NewMutable(false);
     }
@@ -66,17 +67,17 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     // Core state accessors
 
     /// <summary>
-    /// Primary stream kind for a single-value UI surface. Screencast takes precedence
-    /// when both are active. Prefer <see cref="IsOwnWebcamRecording"/> / <see cref="IsOwnScreencasting"/>
+    /// Primary stream kind for a single-value UI surface. ScreenCast takes precedence
+    /// when both are active. Prefer <see cref="IsOwnCameraRecording"/> / <see cref="IsOwnScreenCasting"/>
     /// for independent checks.
     /// </summary>
     [ComputeMethod]
-    public virtual async Task<StreamKind?> GetOwnStreamKind(ChatId chatId, CancellationToken cancellationToken = default)
+    public virtual async Task<VideoSourceKind?> GetOwnSourceKind(ChatId chatId, CancellationToken cancellationToken = default)
     {
-        if (await IsOwnScreencasting(chatId, cancellationToken).ConfigureAwait(false))
-            return StreamKind.Screencast;
-        if (await IsOwnWebcamRecording(chatId, cancellationToken).ConfigureAwait(false))
-            return StreamKind.Webcam;
+        if (await IsOwnScreenCasting(chatId, cancellationToken).ConfigureAwait(false))
+            return VideoSourceKind.ScreenCast;
+        if (await IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false))
+            return VideoSourceKind.Camera;
         return null;
     }
 
@@ -111,7 +112,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     [ComputeMethod]
-    public virtual async Task<bool> IsOwnWebcamRecording(ChatId chatId, CancellationToken cancellationToken = default)
+    public virtual async Task<bool> IsOwnCameraRecording(ChatId chatId, CancellationToken cancellationToken = default)
     {
         if (!await IsVideoEnabled(chatId, cancellationToken).ConfigureAwait(false))
             return false;
@@ -121,21 +122,21 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     [ComputeMethod]
-    public virtual async Task<bool> IsOwnScreencasting(ChatId chatId, CancellationToken cancellationToken = default)
+    public virtual async Task<bool> IsOwnScreenCasting(ChatId chatId, CancellationToken cancellationToken = default)
     {
         if (!await IsVideoEnabled(chatId, cancellationToken).ConfigureAwait(false))
             return false;
 
-        var screencastChatId = await _screencastChatId.Use(cancellationToken).ConfigureAwait(false);
-        return screencastChatId == chatId;
+        var screenCastChatId = await _screenCastChatId.Use(cancellationToken).ConfigureAwait(false);
+        return screenCastChatId == chatId;
     }
 
     [ComputeMethod]
     public virtual async Task<string?> GetLastVideoRecorderError(CancellationToken cancellationToken = default)
-        => await _webcamErrorMessage.Use(cancellationToken).ConfigureAwait(false);
+        => await _cameraErrorMessage.Use(cancellationToken).ConfigureAwait(false);
 
     [ComputeMethod]
-    public virtual async Task<string?> GetLastVideoRecorderError(StreamKind kind, CancellationToken cancellationToken = default)
+    public virtual async Task<string?> GetLastVideoRecorderError(VideoSourceKind kind, CancellationToken cancellationToken = default)
         => await GetErrorState(kind).Use(cancellationToken).ConfigureAwait(false);
 
     [ComputeMethod]
@@ -153,33 +154,33 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     // State mutators
 
     /// <summary>
-    /// Stops all of the current user's outgoing streams (webcam + screencast).
+    /// Stops all of the current user's outgoing streams (camera + screencast).
     /// Used on hang-up.
     /// </summary>
     public void StopStreaming()
     {
         _recordingChatId.Value = null;
-        _screencastChatId.Value = null;
-        ClearRecordingError(StreamKind.Webcam);
-        ClearRecordingError(StreamKind.Screencast);
+        _screenCastChatId.Value = null;
+        ClearRecordingError(VideoSourceKind.Camera);
+        ClearRecordingError(VideoSourceKind.ScreenCast);
     }
 
     /// <summary>
-    /// Stops the webcam stream only. Screencast (if any) keeps running.
+    /// Stops the camera stream only. ScreenCast (if any) keeps running.
     /// </summary>
     public void StopRecording()
     {
         _recordingChatId.Value = null;
-        ClearRecordingError(StreamKind.Webcam);
+        ClearRecordingError(VideoSourceKind.Camera);
     }
 
     /// <summary>
-    /// Stops the screencast stream only. Webcam (if any) keeps running.
+    /// Stops the screencast stream only. Camera (if any) keeps running.
     /// </summary>
     public void StopScreenCasting()
     {
-        _screencastChatId.Value = null;
-        ClearRecordingError(StreamKind.Screencast);
+        _screenCastChatId.Value = null;
+        ClearRecordingError(VideoSourceKind.ScreenCast);
     }
 
     public void StartScreenCasting(ChatId chatId)
@@ -190,15 +191,15 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         if (!await IsVideoEnabled(chatId, cancellationToken).ConfigureAwait(false))
             return;
 
-        if (_screencastChatId.Value == chatId) {
-            await ShowScreencastAlreadyActiveModal(cancellationToken).ConfigureAwait(true);
+        if (_screenCastChatId.Value == chatId) {
+            await ShowScreenCastAlreadyActiveModal(cancellationToken).ConfigureAwait(true);
             return;
         }
 
         try {
             var activeStreams = await GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(true);
-            if (activeStreams.Any(s => s.StreamKind == StreamKind.Screencast)) {
-                await ShowScreencastAlreadyActiveModal(cancellationToken).ConfigureAwait(true);
+            if (activeStreams.Any(s => s.SourceKind == VideoSourceKind.ScreenCast)) {
+                await ShowScreenCastAlreadyActiveModal(cancellationToken).ConfigureAwait(true);
                 return;
             }
         }
@@ -206,8 +207,8 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             Log.LogWarning(e, "Failed to check active screencast before starting screen share");
         }
 
-        // Additive: does not stop webcam.
-        _screencastChatId.Value = chatId;
+        // Additive: does not stop camera.
+        _screenCastChatId.Value = chatId;
         OpenVideoPanel(chatId);
     }
 
@@ -221,19 +222,19 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public virtual async Task<bool> GetIsCameraMirrored(CancellationToken cancellationToken = default)
         => await _isCameraMirrored.Use(cancellationToken).ConfigureAwait(false);
 
-    // Last track settings reported by the active webcam recorder. Plain fields —
+    // Last track settings reported by the active camera recorder. Plain fields —
     // only touched from the Blazor dispatcher (JS callback + UI consumers).
-    public string? LastWebcamDeviceId { get; private set; }
-    public string? LastWebcamFacingMode { get; private set; }
+    public string? LastCameraDeviceId { get; private set; }
+    public string? LastCameraFacingMode { get; private set; }
 
-    internal void OnWebcamTrackSettings(string? deviceId, string? facingMode)
+    internal void OnCameraTrackSettings(string? deviceId, string? facingMode)
     {
-        // Called by the active webcam recorder after each track acquisition
+        // Called by the active camera recorder after each track acquisition
         // (start or camera switch). Resolves the effective mirror state from
         // per-camera overrides so the live self-preview reflects the right
         // camera regardless of how the stream was started.
-        LastWebcamDeviceId = deviceId;
-        LastWebcamFacingMode = facingMode;
+        LastCameraDeviceId = deviceId;
+        LastCameraFacingMode = facingMode;
         _ = ApplyAsync();
         return;
 
@@ -248,7 +249,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     // forces the live preview to re-resolve against the now-updated override
     // without waiting for the next camera (re)acquisition.
     public void ReapplyCameraMirror()
-        => OnWebcamTrackSettings(LastWebcamDeviceId, LastWebcamFacingMode);
+        => OnCameraTrackSettings(LastCameraDeviceId, LastCameraFacingMode);
 
     public void CloseVideoPanel()
         => SetWatching(null);
@@ -279,7 +280,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     // JS callback handlers (called from VideoPanel)
 
-    public void OnRecordingStarted(ChatId chatId, StreamKind kind)
+    public void OnRecordingStarted(ChatId chatId, VideoSourceKind kind)
     {
         // Clear any previous error (e.g. the user cycled past a failing camera
         // and landed on a working one) so VideoStreamingPreview drops the overlay.
@@ -287,31 +288,31 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         Hub.AnalyticEvents.RaiseVideoStreamStarted(kind);
     }
 
-    public void OnRecordingStopped(StreamKind kind)
+    public void OnRecordingStopped(VideoSourceKind kind)
     {
-        if (kind == StreamKind.Screencast)
+        if (kind == VideoSourceKind.ScreenCast)
             StopScreenCasting();
         else
             StopRecording();
     }
 
-    public void OnRecordingError(string error, StreamKind kind)
+    public void OnRecordingError(string error, VideoSourceKind kind)
     {
-        if (kind == StreamKind.Screencast && IsScreencastAlreadyActiveError(error)) {
-            ClearRecordingError(StreamKind.Screencast);
-            _screencastChatId.Value = null;
-            _ = ShowScreencastAlreadyActiveModal(CancellationToken.None);
+        if (kind == VideoSourceKind.ScreenCast && IsScreenCastAlreadyActiveError(error)) {
+            ClearRecordingError(VideoSourceKind.ScreenCast);
+            _screenCastChatId.Value = null;
+            _ = ShowScreenCastAlreadyActiveModal(CancellationToken.None);
             return;
         }
 
         GetErrorState(kind).Value = error;
-        // Webcam keeps the session alive — the user can cycle cameras to recover
+        // Camera keeps the session alive — the user can cycle cameras to recover
         // (see VideoRecorder.switchCamera — it restarts from the interrupted state).
-        // Screencast has no such retry path: a failed getDisplayMedia (user cancel,
+        // ScreenCast has no such retry path: a failed getDisplayMedia (user cancel,
         // permission denied) means the user doesn't want to share, so turn the
         // toggle off by clearing the intent.
-        if (kind == StreamKind.Screencast)
-            _screencastChatId.Value = null;
+        if (kind == VideoSourceKind.ScreenCast)
+            _screenCastChatId.Value = null;
     }
 
     // Device enumeration
@@ -473,13 +474,13 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         OpenVideoPanel(chatId);
     }
 
-    private async Task ShowScreencastAlreadyActiveModal(CancellationToken cancellationToken)
-        => await ModalUI.Show(new ScreencastAlreadyActiveModal.Model(), cancellationToken).ConfigureAwait(true);
+    private async Task ShowScreenCastAlreadyActiveModal(CancellationToken cancellationToken)
+        => await ModalUI.Show(new ScreenCastAlreadyActiveModal.Model(), cancellationToken).ConfigureAwait(true);
 
-    private MutableState<string?> GetErrorState(StreamKind kind)
-        => kind == StreamKind.Screencast ? _screencastErrorMessage : _webcamErrorMessage;
+    private MutableState<string?> GetErrorState(VideoSourceKind kind)
+        => kind == VideoSourceKind.ScreenCast ? _screenCastErrorMessage : _cameraErrorMessage;
 
-    private void ClearRecordingError(StreamKind kind)
+    private void ClearRecordingError(VideoSourceKind kind)
         => GetErrorState(kind).Value = null;
 
     private async Task OpenVideoPanelInternal(ChatId chatId, CancellationToken cancellationToken = default)
@@ -500,7 +501,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         await OpenVideoPanelInternal(chatId, cancellationToken).ConfigureAwait(false);
     }
 
-    private static bool IsScreencastAlreadyActiveError(string error)
+    private static bool IsScreenCastAlreadyActiveError(string error)
         => error.Contains("Another screencast is already active", StringComparison.OrdinalIgnoreCase)
             || error.Contains("screen sharing is already active", StringComparison.OrdinalIgnoreCase)
             || error.Contains("screen share is already active", StringComparison.OrdinalIgnoreCase);

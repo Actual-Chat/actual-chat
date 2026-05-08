@@ -509,7 +509,7 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     @apply hidden;
 }
 
-/* PiP overlay: author's webcam rendered on top of their own screencast tile */
+/* PiP overlay: author's camera rendered on top of their own screencast tile */
 .video-panel-content .video-track-player.pip-overlay {
     @apply absolute;
     @apply top-3 right-3;

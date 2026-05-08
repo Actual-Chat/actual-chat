@@ -1,5 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components.VideoPanel
 @using ActualChat.Streaming
+@using ActualChat.Video
 @using ActualChat.UI.Blazor.App.Module
 @using System.Text
 @using System.Text.Json
@@ -10,7 +11,7 @@
     var own = _ownDiag;
     var playbackSnap = Hub.VideoQualityUI.PlaybackSnapshot;
     var playbackOverride = Hub.VideoQualityUI.PlaybackOverride;
-    var recordingSnap = m.OwnStreamingKind is { } ownKind
+    var recordingSnap = m.OwnSourceKind is { } ownKind
         ? Hub.VideoQualityUI.GetRecordingSnapshot(ownKind)
         : null;
     var copyText = BuildDiagnosticsText(m);
@@ -33,7 +34,7 @@
         @* Own streaming *@
         <div class="diag-section">
             @{
-                var isStreaming = m.OwnStreamingKind is {};
+                var isStreaming = m.OwnSourceKind is {};
                 var onClickHandler = isStreaming ? OnToggleOwnStreamingDetails : (Action)(() => { });
             }
             <div class="diag-section-header @(isStreaming ? "diag-clickable" : "")" @onclick="@onClickHandler">
@@ -42,7 +43,7 @@
                     <span class="diag-expand-indicator">@GetShowDetailsIndicator(_showOwnStreamingDetails)</span>
                 }
             </div>
-            @if (m.OwnStreamingKind is { } kind) {
+            @if (m.OwnSourceKind is { } kind) {
                 <div class="diag-row">
                     <span class="diag-label">Kind</span>
                     <span class="diag-value">@kind</span>
@@ -93,24 +94,24 @@
                         <span class="diag-value">@GetStrArray(stream, "supportedEncoderCategories")</span>
                     </div>
 
-                    @* Selected spatial layer *@
+                    @* Selected layer *@
                     @{
-                        var spatialLayers = GetArray(stream, "spatialLayers")
-                            .OrderBy(GetSpatialLayerId)
+                        var layers = GetArray(stream, "layers")
+                            .OrderBy(GetLayerId)
                             .ToArray();
-                        var selectedLayer = SelectOwnSpatialLayer(spatialLayers);
+                        var selectedLayer = SelectOwnLayer(layers);
                     }
                     @if (selectedLayer is { } layer) {
-                        var layerId = GetSpatialLayerId(layer);
+                        var layerId = GetLayerId(layer);
                         var layerState = GetStr(layer, "encoderState");
                         var isLayerDead = layerState is "closed" or "unconfigured";
                         <div class="diag-group-header">Layer</div>
                         <div class="diag-row">
                             <span class="diag-label">Layer</span>
                             <span class="diag-value diag-layer-picker">
-                                @foreach (var l in spatialLayers) {
-                                    var id = GetSpatialLayerId(l);
-                                    <button type="button" class="diag-layer-link @(id == layerId ? "active" : "")" @onclick="() => OnSelectOwnSpatialLayer(id)">L@(id)</button>
+                                @foreach (var l in layers) {
+                                    var id = GetLayerId(l);
+                                    <button type="button" class="diag-layer-link @(id == layerId ? "active" : "")" @onclick="() => OnSelectOwnLayer(id)">L@(id)</button>
                                 }
                             </span>
                         </div>
@@ -286,7 +287,7 @@
                         @if (s.IsOwn) {
                             <div class="diag-stream-header">
                                 <span>@s.Info.StreamId</span>
-                                <span class="diag-stream-kind ml-auto">Own</span>
+                                <span class="diag-source-kind ml-auto">Own</span>
                             </div>
                         } else {
                             <div class="diag-stream-header diag-clickable" @onclick="() => OnToggleStreamDetails(sid)">
@@ -296,7 +297,7 @@
                         }
                         <div class="diag-row">
                             <span class="diag-label">Kind</span>
-                            <span class="diag-value">@s.Info.StreamKind</span>
+                            <span class="diag-value">@s.Info.SourceKind</span>
                         </div>
                         <div class="diag-row">
                             <span class="diag-label">Started</span>
@@ -309,10 +310,10 @@
                         @{
                             var formats = s.Info.Formats;
                             var topFmt = formats.LastOrDefault();
-                            // Codec is the same across all simulcast layers; pick the top
+                            // Codec is the same across all layers; pick the top
                             // tier so the displayed value lines up with the published ladder.
                             var senderCodec = topFmt?.Codec ?? "";
-                            var simulcastLayers = FormatSimulcastLayerSizes(formats);
+                            var layers = FormatLayerSizes(formats);
                         }
                         <div class="diag-row">
                             <span class="diag-label">Codec</span>
@@ -320,7 +321,7 @@
                         </div>
                         <div class="diag-row">
                             <span class="diag-label">Resolutions</span>
-                            <span class="diag-value">@simulcastLayers</span>
+                            <span class="diag-value">@layers</span>
                         </div>
                         @{
                             var hasDiag = _streamDiags.TryGetValue(sid, out var rdPeek)
@@ -339,10 +340,10 @@
                                 ? fwd
                                 : null;
                         }
-                        @if (fwdEl is { } f && GetNum(f, "ForwardedSpatialLayerId") >= 0) {
+                        @if (fwdEl is { } f && GetNum(f, "ForwardedLayerId") >= 0) {
                             <div class="diag-row">
                                 <span class="diag-label">Forwarded</span>
-                                <span class="diag-value">L@(GetNum(f, "ForwardedSpatialLayerId").ToString("0")) @(GetNum(f, "ForwardedWidth").ToString("0"))×@(GetNum(f, "ForwardedHeight").ToString("0")) (obsMax=@(GetNum(f, "ObservedMaxSpatialLayer").ToString("0")))</span>
+                                <span class="diag-value">L@(GetNum(f, "ForwardedLayerId").ToString("0")) @(GetNum(f, "ForwardedWidth").ToString("0"))×@(GetNum(f, "ForwardedHeight").ToString("0")) (obsMax=@(GetNum(f, "ObservedMaxLayerId").ToString("0")))</span>
                             </div>
                         }
                         @if (!string.IsNullOrEmpty(encodedRes)) {
@@ -361,7 +362,7 @@
                             <div class="diag-js-details">
                                 <div class="diag-row">
                                     <span class="diag-label">Resolutions</span>
-                                    <span class="diag-value">@FormatSimulcastLayerSizes(formats)</span>
+                                    <span class="diag-value">@FormatLayerSizes(formats)</span>
                                 </div>
 
                                 @* Decoder *@
@@ -475,7 +476,7 @@
                     <div class="diag-stream">
                         <div class="diag-stream-header">
                             <span>@s.Info.StreamId</span>
-                            <span class="diag-stream-kind ml-auto">@s.Info.StreamKind</span>
+                            <span class="diag-source-kind ml-auto">@s.Info.SourceKind</span>
                         </div>
                         <div class="diag-row">
                             <span class="diag-label">Author</span>
@@ -530,7 +531,7 @@
     private readonly HashSet<string> _expandedStreams = new();
     private bool _isDisposed;
     private bool _showOwnStreamingDetails;
-    private int? _selectedOwnSpatialLayerId;
+    private int? _selectedOwnLayerId;
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private IAuthors Authors => Hub.Authors;
@@ -562,7 +563,7 @@
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chatId = ModalModel.ChatId;
 
-        var ownStreamKind = await ChatVideoUI.GetOwnStreamKind(chatId, cancellationToken).ConfigureAwait(false);
+        var ownSourceKind = await ChatVideoUI.GetOwnSourceKind(chatId, cancellationToken).ConfigureAwait(false);
         var activeStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken);
         var memberCount = activeStreams.Count > 0
             ? await ChatVideoUI.GetVideoStreamMemberCount(chatId, cancellationToken).ConfigureAwait(false)
@@ -579,7 +580,7 @@
         }
 
         var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken);
-        return new ComputedModel(ownStreamKind, streams, memberCount, account.IsAdmin);
+        return new ComputedModel(ownSourceKind, streams, memberCount, account.IsAdmin);
     }
 
     private void OnToggleOwnStreamingDetails() {
@@ -620,7 +621,7 @@
         if (_isDisposed) return;
         try {
             if (_showOwnStreamingDetails) {
-                var kind = (int)State.Value.OwnStreamingKind.GetValueOrDefault(StreamKind.Webcam);
+                var kind = (int)State.Value.OwnSourceKind.GetValueOrDefault(VideoSourceKind.Camera);
                 _ownDiag = await JS.InvokeAsync<JsonElement>(JSCollectOwnMethod, kind);
             }
 
@@ -652,22 +653,22 @@
             ? v.EnumerateArray().ToArray()
             : [];
 
-    private static int GetSpatialLayerId(JsonElement layer)
-        => (int)GetNum(layer, "spatialLayerId");
+    private static int GetLayerId(JsonElement layer)
+        => (int)GetNum(layer, "layerId");
 
-    private JsonElement? SelectOwnSpatialLayer(JsonElement[] layers) {
+    private JsonElement? SelectOwnLayer(JsonElement[] layers) {
         if (layers.Length == 0)
             return null;
-        if (_selectedOwnSpatialLayerId is { } selected) {
+        if (_selectedOwnLayerId is { } selected) {
             foreach (var layer in layers)
-                if (GetSpatialLayerId(layer) == selected)
+                if (GetLayerId(layer) == selected)
                     return layer;
         }
         return layers[^1];
     }
 
-    private void OnSelectOwnSpatialLayer(int layerId) {
-        _selectedOwnSpatialLayerId = layerId;
+    private void OnSelectOwnLayer(int layerId) {
+        _selectedOwnLayerId = layerId;
         StateHasChanged();
     }
 
@@ -680,12 +681,12 @@
     private static string FormatForwarded(JsonElement rd) {
         if (!rd.TryGetProperty("forwarded", out var forwarded)
             || forwarded.ValueKind != JsonValueKind.Object
-            || GetNum(forwarded, "ForwardedSpatialLayerId") < 0)
+            || GetNum(forwarded, "ForwardedLayerId") < 0)
             return "no frames yet";
 
-        return $"L{GetNum(forwarded, "ForwardedSpatialLayerId"):0} "
+        return $"L{GetNum(forwarded, "ForwardedLayerId"):0} "
             + $"{GetNum(forwarded, "ForwardedWidth"):0}×{GetNum(forwarded, "ForwardedHeight"):0} "
-            + $"(obsMax={GetNum(forwarded, "ObservedMaxSpatialLayer"):0})";
+            + $"(obsMax={GetNum(forwarded, "ObservedMaxLayerId"):0})";
     }
 
     private static string FormatRequestedReceiveQuality(JsonElement rd) {
@@ -693,8 +694,8 @@
             || requested.ValueKind != JsonValueKind.Object)
             return "default (server-driven)";
 
-        return $"maxSpatial={GetNum(requested, "maxSpatialLayer"):0} "
-            + $"maxTemporal={FormatMaxTemporal(GetNum(requested, "maxTemporalLayer"))}";
+        return $"maxLayerId={GetNum(requested, "maxLayerId"):0} "
+            + $"maxTemporalLayerId={FormatMaxTemporal(GetNum(requested, "maxTemporalLayerId"))}";
     }
 
     private static string FormatDecodeQualitySignal(JsonElement rd)
@@ -741,11 +742,11 @@
             _ => "0 (neutral)",
         };
 
-    private static string FormatSimulcastLayerSizes(IEnumerable<ActualChat.Video.VideoFormat> formats, string separator = "×") {
+    private static string FormatLayerSizes(IEnumerable<ActualChat.Video.VideoFormat> formats, string separator = "×") {
         var items = formats
-            .OrderBy(f => f.SpatialLayerId)
+            .OrderBy(f => f.LayerId)
             .Where(f => f.Size.Width > 0 && f.Size.Height > 0)
-            .Select(f => $"L{f.SpatialLayerId} {f.Size.Width}{separator}{f.Size.Height}");
+            .Select(f => $"L{f.LayerId} {f.Size.Width}{separator}{f.Size.Height}");
         return string.Join(", ", items).NullIfEmpty() ?? "n/a";
     }
 
@@ -763,7 +764,7 @@
 
         // Own streaming
         sb.AppendLine("-- Own Streaming --");
-        if (m.OwnStreamingKind is { } kind)
+        if (m.OwnSourceKind is { } kind)
             sb.AppendLine($"Kind: {kind}");
         else
             sb.AppendLine("Status: Not streaming");
@@ -786,12 +787,12 @@
                 sb.AppendLine($"Blur: {GetStr(ownStream, "segmentationBackend")} ({GetNum(ownStream, "segmentationAvgTime"):0.0}ms)");
             sb.AppendLine($"Available: {GetStrArray(ownStream, "supportedEncoderCategories")}");
 
-            var copyLayers = GetArray(ownStream, "spatialLayers").OrderBy(GetSpatialLayerId).ToArray();
+            var copyLayers = GetArray(ownStream, "layers").OrderBy(GetLayerId).ToArray();
             if (copyLayers.Length > 0) {
                 sb.AppendLine();
                 sb.AppendLine("-- Encoder Layers --");
                 foreach (var layer in copyLayers) {
-                    var layerId = GetSpatialLayerId(layer);
+                    var layerId = GetLayerId(layer);
                     sb.AppendLine($"L{layerId}: {GetStr(layer, "outputResolution")} @ {GetNum(layer, "actualBitrateKbps"):0} kbps (cfg: {GetNum(layer, "configuredBitrate") / 1000:0} kbps)");
                     sb.AppendLine($"  Encode time: {GetNum(layer, "medianEncodeTime"):0.0}ms (pure: {GetNum(layer, "pureMedianEncodeTime"):0.0}ms)");
                     sb.AppendLine($"  HW accel: {GetStr(layer, "encoderHwAccel")}");
@@ -834,7 +835,7 @@
                     sb.AppendLine($"Last Error: {copyStreamError}");
             }
         }
-        if (m.OwnStreamingKind is { } ownCopyKind) {
+        if (m.OwnSourceKind is { } ownCopyKind) {
             var copyRecordingSnap = Hub.VideoQualityUI.GetRecordingSnapshot(ownCopyKind);
             sb.AppendLine();
             sb.AppendLine("-- Quality Control (outbound) --");
@@ -859,21 +860,21 @@
             var sid = s.Info.StreamId.Value;
             sb.AppendLine();
             sb.AppendLine($"[{sid}] {s.Author}{(s.IsOwn ? " (Own)" : "")}");
-            sb.AppendLine($"  Kind: {(s.Info.StreamKind == StreamKind.Screencast ? "Screencast" : "Camera")}");
+            sb.AppendLine($"  Kind: {(s.Info.SourceKind == VideoSourceKind.ScreenCast ? "ScreenCast" : "Camera")}");
             sb.AppendLine($"  Started: {DateTimeConverter.ToLocalTime(s.Info.StartedAt):HH:mm:ss}");
             var copyFormats = s.Info.Formats;
             var copyTop = copyFormats.LastOrDefault();
             sb.AppendLine($"  Codec: {copyTop?.Codec ?? "?"}");
-            sb.AppendLine($"  Resolutions: {FormatSimulcastLayerSizes(copyFormats, "x")}");
+            sb.AppendLine($"  Resolutions: {FormatLayerSizes(copyFormats, "x")}");
 
             if (_streamDiags.TryGetValue(sid, out var rd) && rd.ValueKind == JsonValueKind.Object) {
                 if (rd.TryGetProperty("forwarded", out var copyFwd)
                     && copyFwd.ValueKind == JsonValueKind.Object
-                    && GetNum(copyFwd, "ForwardedSpatialLayerId") >= 0)
+                    && GetNum(copyFwd, "ForwardedLayerId") >= 0)
                     sb.AppendLine(
-                        $"  Forwarded: L{GetNum(copyFwd, "ForwardedSpatialLayerId"):0} "
+                        $"  Forwarded: L{GetNum(copyFwd, "ForwardedLayerId"):0} "
                         + $"{GetNum(copyFwd, "ForwardedWidth"):0}x{GetNum(copyFwd, "ForwardedHeight"):0} "
-                        + $"(obsMax={GetNum(copyFwd, "ObservedMaxSpatialLayer"):0})");
+                        + $"(obsMax={GetNum(copyFwd, "ObservedMaxLayerId"):0})");
                 // Decoder
                 sb.AppendLine("  -- Decoder --");
                 sb.AppendLine($"  Codec: {GetStr(rd, "codec")} ({GetStr(rd, "codecCategory")})");
@@ -916,7 +917,7 @@
     public sealed record StreamEntry(VideoStreamInfo Info, string Author, bool IsOwn = false);
 
     public sealed record ComputedModel(
-        StreamKind? OwnStreamingKind,
+        VideoSourceKind? OwnSourceKind,
         StreamEntry[] Streams,
         int MemberCount,
         bool IsAdmin

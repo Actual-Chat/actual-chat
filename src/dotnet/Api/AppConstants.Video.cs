@@ -25,8 +25,8 @@ partial record AppConstants
         public double StreamExpirationDelayMs { get; init; } = Constants.Video.StreamExpirationDelay.TotalMilliseconds;
         public double MaxLiveDurationMs { get; init; } = Constants.Video.MaxLiveDuration.TotalMilliseconds;
         // Frame silence watchdogs
-        public double WebcamFrameSilenceTimeoutMs { get; init; } = Constants.Video.WebcamFrameSilenceTimeout.TotalMilliseconds;
-        public double ScreencastFrameSilenceTimeoutMs { get; init; } = Constants.Video.ScreencastFrameSilenceTimeout.TotalMilliseconds;
+        public double CameraFrameSilenceTimeoutMs { get; init; } = Constants.Video.CameraFrameSilenceTimeout.TotalMilliseconds;
+        public double ScreenCastFrameSilenceTimeoutMs { get; init; } = Constants.Video.ScreenCastFrameSilenceTimeout.TotalMilliseconds;
         // Latency & quality adaptation
         public double LatencyReportIntervalMs { get; init; } = Constants.Video.LatencyReportInterval.TotalMilliseconds;
         public float HighLatencyThresholdMs { get; init; } = Constants.Video.HighLatencyThresholdMs;
@@ -54,13 +54,16 @@ partial record AppConstants
         // Warmup & codec switching
         public double PeerWarmupDurationMs { get; init; } = Constants.Video.PeerWarmupDuration.TotalMilliseconds;
         public double CodecSwitchHysteresisWindowMs { get; init; } = Constants.Video.CodecSwitchHysteresisWindow.TotalMilliseconds;
-        // Egress-side spatial fallback
+        // Egress-side layer fallback
         public double EgressStallThresholdMs { get; init; } = Constants.Video.EgressStallThreshold.TotalMilliseconds;
         public double EgressRecoveryWindowMs { get; init; } = Constants.Video.EgressRecoveryWindow.TotalMilliseconds;
         public int EgressGapFrameThreshold { get; init; } = Constants.Video.EgressGapFrameThreshold;
         // Stream management
-        public int MaxWebcamStreamsPerChat { get; init; } = Constants.Video.MaxWebcamStreamsPerChat;
+        public int MaxCameraStreamsPerChat { get; init; } = Constants.Video.MaxCameraStreamsPerChat;
         public int PriorityActivationThreshold { get; init; } = Constants.Video.PriorityActivationThreshold;
         public double SilenceGracePeriodMs { get; init; } = Constants.Video.SilenceGracePeriod.TotalMilliseconds;
+        public double[] CameraLayerBaseBitratesKbps { get; init; } = VideoLayerDef.CameraLayers.Select(x => x.BaseBitrateKbps).ToArray();
+        public double[] ScreenCastLayerBaseBitratesKbps { get; init; } = VideoLayerDef.ScreenCastLayers.Select(x => x.BaseBitrateKbps).ToArray();
+        public VideoCodecDef[] CodecDefs { get; init; } = VideoCodecDef.All;
     }
 }

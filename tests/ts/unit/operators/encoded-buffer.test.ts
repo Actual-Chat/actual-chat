@@ -26,7 +26,7 @@ function mkChunk(opts: {
         arrivedAt: { timeMs: opts.arrivedAtMs, epoch: 0 },
         capturedAt: { timeMs: opts.timeMs, epoch: opts.epoch ?? 0 },
         isKeyFrame: opts.isKeyFrame,
-        spatialLayerId: 0,
+        layerId: 0,
         width: 640,
         height: 480,
         rawByteLength: 1024,

@@ -13,7 +13,7 @@ function mkChunk(timeMs: number, epoch: number, isKeyFrame = false): ArrivedChun
         arrivedAt: { timeMs, epoch: 0 },
         capturedAt: { timeMs, epoch },
         isKeyFrame,
-        spatialLayerId: 0,
+        layerId: 0,
         width: 640,
         height: 480,
         rawByteLength: 1024,

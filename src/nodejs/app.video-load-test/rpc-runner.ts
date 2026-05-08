@@ -10,8 +10,7 @@
 //
 // The `RpcHarnessBundle` is built once in main() and handed to every
 // consumer/producer task. Clients are resolved off the same hub so there's
-// exactly one `StreamServerClient` and one `LiveVideoStreamsClient` shared
-// across the whole run.
+// exactly one `LiveVideoStreamsClient` shared across the whole run.
 
 import { RpcHub, RpcClientPeer, RpcStream, RpcPeerRefBuilder } from '../src/actuallab-rpc';
 
@@ -20,9 +19,7 @@ import { FrameConfig, generateFrame, paceFrame } from './frame-gen.js';
 import type { Metrics } from './metrics.js';
 import {
     LiveVideoStreamsDef,
-    StreamServerDef,
     type LiveVideoStreamsClient,
-    type StreamServerClient,
     type VideoFrameDto,
     type VideoFormat,
     type VideoStreamInfo,
@@ -41,7 +38,6 @@ export interface RpcRunContext {
 export interface RpcHarnessBundle {
     hub: RpcHub;
     peer: RpcClientPeer;
-    streamServer: StreamServerClient;
     liveVideoStreams: LiveVideoStreamsClient;
 }
 
@@ -57,9 +53,8 @@ export async function createRpcHarnessBundle(
     const whenConnected = peer.whenConnected();
     peer.start();
     await whenConnected;
-    const streamServer = hub.addClient(peer, StreamServerDef) as unknown as StreamServerClient;
     const liveVideoStreams = hub.addClient(peer, LiveVideoStreamsDef) as unknown as LiveVideoStreamsClient;
-    return { hub, peer, streamServer, liveVideoStreams };
+    return { hub, peer, liveVideoStreams };
 }
 
 export function closeRpcHarnessBundle(bundle: RpcHarnessBundle): void {
@@ -74,11 +69,11 @@ export async function runRpcProducer(
     chatId: string,
 ): Promise<void> {
     try {
-        const { streamServer } = bundle;
+        const { liveVideoStreams } = bundle;
         const format: VideoFormat = {
             Codec: FrameConfig.Codec,
             CodecSettings: '',
-            SpatialLayerId: 0,
+            LayerId: 0,
             Size: { Width: FrameConfig.Width, Height: FrameConfig.Height },
             SourceSize: { Width: FrameConfig.Width, Height: FrameConfig.Height },
         };
@@ -98,15 +93,15 @@ export async function runRpcProducer(
             }
         })(), { isRealTime: true, allowReconnect: false, ackPeriod: 5, bufferSize: 31 });
 
-        // PushVideo is a long-lived call — the server holds it open until
+        // PushStream is a long-lived call — the server holds it open until
         // the frame stream ends. Fire-and-forget; surface any rejection so
         // it's visible via the global unhandledRejection handler.
-        void streamServer
-            .PushVideo('~', chatId, clientStartAtSec, format, stream.toRef(bundle.peer), 0 /* StreamKind.Webcam */)
+        void liveVideoStreams
+            .PushStream('~', chatId, clientStartAtSec, format, 0 /* VideoSourceKind.Camera */, stream.toRef(bundle.peer))
             .catch((err: unknown) => {
                 if (!ctx.abort.aborted)
                     console.error(
-                        `[rpc producer chat=${chatIdx} prod=${prodIdx}] PushVideo rejected:`, err);
+                        `[rpc producer chat=${chatIdx} prod=${prodIdx}] PushStream rejected:`, err);
             });
 
         await stream.whenSent;

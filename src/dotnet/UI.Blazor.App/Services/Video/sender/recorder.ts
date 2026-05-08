@@ -13,7 +13,7 @@ import {
 import { mstpSource } from '../operators/capture';
 import { stampCaptureTime } from '../operators/stamp-capture-time';
 import { attachSourceDims } from '../operators/attach-source-dims';
-import { downscale, type DownscalerLike, type SpatialLayerSpec } from '../operators/downscale';
+import { downscale, type DownscalerLike, type LayerSpec } from '../operators/downscale';
 import { applyKeyframePolicy } from '../operators/apply-keyframe-policy';
 import { encode, type EncoderConfigPerLayer, type EncoderFactory } from '../operators/encode';
 import { wireSend, type StreamSenderLike } from '../operators/wire-send';
@@ -26,7 +26,7 @@ const STOP_DRAIN_GRACE_MS = 1_000;
 // into operators/.
 export type { EncoderConfigPerLayer, EncoderFactory } from '../operators/encode';
 export type { StreamSenderLike } from '../operators/wire-send';
-export type { DownscalerLike, SpatialLayerSpec } from '../operators/downscale';
+export type { DownscalerLike, LayerSpec } from '../operators/downscale';
 export type { EncodeInput } from '../operators/encode';
 export type { VideoRecordingStats };
 
@@ -74,7 +74,7 @@ export class Recorder {
         this.startedAtMs = Date.now();
         const stats = createEmptyRecordingStats(this.startedAtMs);
         this.currentStats = stats;
-        const ladder: SpatialLayerSpec[] = config.encoderConfigs.map(c => ({
+        const ladder: LayerSpec[] = config.encoderConfigs.map(c => ({
             width: c.width,
             height: c.height,
         }));
@@ -110,7 +110,7 @@ export class Recorder {
                 configs: config.encoderConfigs,
                 createEncoder: config.createEncoder,
             }),
-            // logItems<EncodedFrame>('encoded', { firstN: 5, everyN: 300, format: f => `layer=${f.spatialLayerId} key=${f.chunk.type === 'key'} sz=${f.chunk.byteLength}` }),
+            // logItems<EncodedFrame>('encoded', { firstN: 5, everyN: 300, format: f => `layer=${f.layerId} key=${f.chunk.type === 'key'} sz=${f.chunk.byteLength}` }),
             wireSend({
                 createSender: config.createSender,
                 layerCount: config.encoderConfigs.length,
@@ -187,7 +187,7 @@ export class Recorder {
 // silently skip the resize and lie about layer dims.
 function identityDownscaler(): DownscalerLike {
     return {
-        process(input: VideoFrame, layers: readonly SpatialLayerSpec[]): Promise<VideoFrame[]> {
+        process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]> {
             if (layers.length !== 1) {
                 try { input.close(); } catch { /* ignore */ }
                 return Promise.reject(new Error(

@@ -47,13 +47,13 @@ public partial class VideoFrame : MediaFrame
     public string? Codec { get; init; }
 
     /// <summary>
-    /// SVC spatial layer ID. 0 = base (lowest-res) layer, 1+ = higher-res simulcast layers.
+    /// SVC layer ID. 0 = base (lowest-res) layer, 1+ = higher-res layers.
     /// Always 0 on single-encoder (P2P) streams.
     /// </summary>
     [DataMember(Order = 9), MemoryPackOrder(9), Key(9)]
-    public byte SpatialLayerId { get; init; }
+    public byte LayerId { get; init; }
     [DataMember(Order = 10), MemoryPackOrder(10), Key(10)]
-    public byte MaxSpatialLayerId { get; init; }
+    public byte MaxLayerId { get; init; }
 
     /// <summary>
     /// SVC temporal layer ID. 0 = base layer, 1+ = enhancement layers.
@@ -73,9 +73,9 @@ public partial class VideoFrame : MediaFrame
     [DataMember(Order = 13), MemoryPackOrder(13), Key(13)]
     public int SourceHeight { get; init; }
     [DataMember(Order = 14), MemoryPackOrder(14), Key(14)]
-    public int MaxSpatialLayerWidth { get; init; }
+    public int MaxLayerWidth { get; init; }
     [DataMember(Order = 15), MemoryPackOrder(15), Key(15)]
-    public int MaxSpatialLayerHeight { get; init; }
+    public int MaxLayerHeight { get; init; }
 
     // NB: The properties below this line aren't serialized!
 

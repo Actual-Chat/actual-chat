@@ -11,7 +11,7 @@ public enum RecordingQualityReason
 }
 
 /// <summary>
-/// Recorder controller's intended simulcast layer count and the count actually
+/// Recorder controller's intended layer count and the count actually
 /// applied to the encoder. Sent to the server purely as a metric.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]

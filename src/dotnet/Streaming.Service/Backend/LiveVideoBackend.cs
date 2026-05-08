@@ -83,20 +83,20 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         // Enforce single screencaster per chat — but allow the same author to replace
         // their own prior screencast (mints a new StreamId on every reconnect / pipeline
         // restart; the stale one gets evicted by the same-author/same-kind loop below).
-        if (streamInfo.StreamKind == StreamKind.Screencast) {
-            var hasForeignScreencast = prev
-                .Any(s => s.StreamKind == StreamKind.Screencast
+        if (streamInfo.SourceKind == VideoSourceKind.ScreenCast) {
+            var hasForeignScreenCast = prev
+                .Any(s => s.SourceKind == VideoSourceKind.ScreenCast
                     && s.AuthorId != streamInfo.AuthorId
                     && s.StreamId != streamInfo.StreamId);
-            if (hasForeignScreencast)
+            if (hasForeignScreenCast)
                 throw new InvalidOperationException("Another screencast is already active in this chat.");
         }
 
-        // Enforce webcam stream cap
-        if (streamInfo.StreamKind == StreamKind.Webcam) {
-            var webcamCount = prev
-                .Count(s => s.StreamKind == StreamKind.Webcam && s.StreamId != streamInfo.StreamId);
-            if (webcamCount >= Constants.Video.MaxWebcamStreamsPerChat)
+        // Enforce camera stream cap
+        if (streamInfo.SourceKind == VideoSourceKind.Camera) {
+            var cameraCount = prev
+                .Count(s => s.SourceKind == VideoSourceKind.Camera && s.StreamId != streamInfo.StreamId);
+            if (cameraCount >= Constants.Video.MaxCameraStreamsPerChat)
                 throw new VideoStreamLimitExceededException(chatId);
         }
 
@@ -106,7 +106,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
                 continue;
 
             if (existing.AuthorId == streamInfo.AuthorId
-                && existing.StreamKind == streamInfo.StreamKind) {
+                && existing.SourceKind == streamInfo.SourceKind) {
                 Log.LogWarning("Register: evicting stale stream {OldStreamId} for author {AuthorId} (replaced by {NewStreamId})",
                     existing.StreamId, streamInfo.AuthorId, streamInfo.StreamId);
                 await _streams.Remove(chatId.Value, existing.StreamId.Value).ConfigureAwait(false);
@@ -116,8 +116,8 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         }
         next.Add(streamInfo);
 
-        Log.LogWarning("RegisterActiveStream({ChatId}): #{StreamId}, AuthorId={AuthorId}, StreamKind={StreamKind}",
-            chatId, streamInfo.StreamId, streamInfo.AuthorId, streamInfo.StreamKind);
+        Log.LogWarning("RegisterActiveStream({ChatId}): #{StreamId}, AuthorId={AuthorId}, SourceKind={SourceKind}",
+            chatId, streamInfo.StreamId, streamInfo.AuthorId, streamInfo.SourceKind);
         var isAdded = await _streams.Set(chatId.Value, streamInfo.StreamId.Value, streamInfo).ConfigureAwait(false);
         if (!isAdded)
             return;

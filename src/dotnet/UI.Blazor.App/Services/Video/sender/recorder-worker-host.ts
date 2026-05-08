@@ -21,7 +21,7 @@ import type {
 } from './recorder-worker-contract';
 import type { EncodedFrame } from '../frame-envelopes';
 import type { EncoderConfigPerLayer, EncodeInput } from '../operators/encode';
-import type { DownscalerLike, SpatialLayerSpec } from '../operators/downscale';
+import type { DownscalerLike, LayerSpec } from '../operators/downscale';
 import type { StreamSenderLike, VideoStreamFrame } from '../operators/wire-send';
 import { WebGpuDownscaler, type DownscaleTarget } from '../webgpu/downscaler';
 import { WebGPUManager } from '../webgpu/manager';
@@ -163,14 +163,14 @@ const stubTrack = {} as unknown as MediaStreamTrack;
  * sender factory closure) and reused across runs so `Api.hub` stays
  * warm — same pattern as the legacy worker.
  *
- * `chatId` / `streamKind` / `apiUrl` are filled in per `start()` from
+ * `chatId` / `sourceKind` / `apiUrl` are filled in per `start()` from
  * the RPC payload before any sender pump runs; the lazy
  * `rpcLiveVideoStreams` cache survives across runs.
  */
 const streamingContext: StreamingContext = {
     chatId: '',
     serverClockOffsetMs: 0,
-    streamKind: 0,
+    sourceKind: 0,
     apiUrl: null,
     rpcLiveVideoStreams: null,
 };
@@ -183,12 +183,12 @@ const streamingContext: StreamingContext = {
 export function configureStreaming(opts: {
     chatId: string;
     apiUrl: string;
-    streamKind?: number;
+    sourceKind?: number;
     serverClockOffsetMs?: number;
 }): void {
     streamingContext.chatId = opts.chatId;
     streamingContext.apiUrl = opts.apiUrl;
-    if (opts.streamKind !== undefined) streamingContext.streamKind = opts.streamKind;
+    if (opts.sourceKind !== undefined) streamingContext.sourceKind = opts.sourceKind;
     if (opts.serverClockOffsetMs !== undefined) streamingContext.serverClockOffsetMs = opts.serverClockOffsetMs;
 }
 
@@ -207,7 +207,7 @@ class WebGpuDownscalerAdapter implements DownscalerLike {
     private configured = false;
     constructor(private readonly inner: WebGpuDownscaler) {}
 
-    async process(input: VideoFrame, layers: readonly SpatialLayerSpec[]): Promise<VideoFrame[]> {
+    async process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]> {
         if (!this.configured) {
             const targets: DownscaleTarget[] = layers.map(l => ({
                 width: l.width,
@@ -249,7 +249,7 @@ async function createDownscaler(): Promise<DownscalerLike> {
  *    method and retain the latest config for reset recovery.
  *  - Wires `buildOutput` so each encoded chunk is paired with the
  *    matching `EncodeInput` to yield an `EncodedFrame` envelope. The
- *    operator patches `spatialLayerId` / `sourceWidth` / `sourceHeight`
+ *    operator patches `layerId` / `sourceWidth` / `sourceHeight`
  *    / `stats` itself before yielding.
  */
 function poolEncoderFactory(
@@ -269,7 +269,7 @@ function poolEncoderFactory(
             index: input.index,
             // Patched by the encode operator using `bundle.primary` /
             // `bundle.extras[k]` after the per-layer encode resolves.
-            spatialLayerId: 0,
+            layerId: 0,
             sourceWidth: 0,
             sourceHeight: 0,
             encodedWidth: config.width,
@@ -364,7 +364,7 @@ function createSender(chatId: string): StreamSenderLike {
             inner?.dispose();
         },
         getStats() {
-            return inner?.getStats?.() ?? {
+            return inner?.getStats() ?? {
                 addedFrameCount: buffered?.length ?? 0,
                 queueDepth: buffered?.length ?? 0,
                 maxQueueDepth: buffered?.length ?? 0,
@@ -466,7 +466,7 @@ class LazyDownscaler implements DownscalerLike {
     private inner: DownscalerLike | null = null;
     private initPromise: Promise<DownscalerLike> | null = null;
 
-    async process(input: VideoFrame, layers: readonly SpatialLayerSpec[]): Promise<VideoFrame[]> {
+    async process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]> {
         if (!this.inner) {
             this.initPromise ??= createDownscaler();
             try {

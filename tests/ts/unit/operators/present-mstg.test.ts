@@ -75,7 +75,7 @@ function makeEnvelope(stats: VideoPlaybackStats, id: number, frame?: MockVideoFr
         capturedAt: { timeMs: 100 + id, epoch: 0 },
         arrivedAt: { timeMs: 200 + id, epoch: 0 },
         decodedAt: { timeMs: 300 + id, epoch: 0 },
-        spatialLayerId: 0,
+        layerId: 0,
         stats,
     };
 }

@@ -4,9 +4,9 @@ namespace ActualChat.Streaming.Services;
 
 /// <summary>
 /// Per-consumer video filter that clamps a raw stream to the client-requested
-/// spatial and temporal caps. Picks the spatial layer per keyframe by clamping
-/// the consumer's <see cref="ReceiveQuality.MaxSpatialLayer"/> into the
-/// producer-declared range <c>[0, MaxSpatialLayerId]</c> on the frame itself;
+/// layer and temporal caps. Picks the layer per keyframe by clamping
+/// the consumer's <see cref="ReceiveQuality.MaxLayerId"/> into the
+/// producer-declared range <c>[0, MaxLayerId]</c> on the frame itself;
 /// only switches layers on a keyframe. A quality change keeps forwarding the
 /// currently selected layer until the requested layer's keyframe arrives, so we
 /// don't manufacture delta-frame gaps while QC is settling. Temporal increases
@@ -22,37 +22,37 @@ public static class ReceiveQualityFilter
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         _ = log;
-        var consumerMaxSpatial = -1;
-        var consumerMaxTemporal = int.MaxValue;
+        var consumerMaxLayerId = -1;
+        var consumerMaxTemporalLayerId = int.MaxValue;
         var selectedLayer = -1;
-        var selectedMaxTemporal = int.MaxValue;
+        var selectedMaxTemporalLayerId = int.MaxValue;
         var lastKeyFrameNumber = -1L;
         var skipping = true;
 
         await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
             var q = getQuality();
-            if (q.MaxSpatialLayer != consumerMaxSpatial || q.MaxTemporalLayer != consumerMaxTemporal) {
-                consumerMaxSpatial = q.MaxSpatialLayer;
-                consumerMaxTemporal = q.MaxTemporalLayer;
-                if (!skipping && selectedLayer >= 0 && consumerMaxTemporal < selectedMaxTemporal)
-                    selectedMaxTemporal = consumerMaxTemporal;
+            if (q.MaxLayerId != consumerMaxLayerId || q.MaxTemporalLayerId != consumerMaxTemporalLayerId) {
+                consumerMaxLayerId = q.MaxLayerId;
+                consumerMaxTemporalLayerId = q.MaxTemporalLayerId;
+                if (!skipping && selectedLayer >= 0 && consumerMaxTemporalLayerId < selectedMaxTemporalLayerId)
+                    selectedMaxTemporalLayerId = consumerMaxTemporalLayerId;
             }
 
-            int producerMax = frame.MaxSpatialLayerId;
-            int desiredLayer = consumerMaxSpatial < 0 ? 0
-                : consumerMaxSpatial > producerMax ? producerMax
-                : consumerMaxSpatial;
+            int producerMax = frame.MaxLayerId;
+            int desiredLayer = consumerMaxLayerId < 0 ? 0
+                : consumerMaxLayerId > producerMax ? producerMax
+                : consumerMaxLayerId;
 
             if (frame.IsKeyFrame) {
                 // Lock onto the desired layer on each matching keyframe; other-layer
                 // keyframes (sibling simulcast bursts) get skipped.
-                if (frame.SpatialLayerId == desiredLayer) {
-                    if (frame.TemporalLayerId > consumerMaxTemporal) {
+                if (frame.LayerId == desiredLayer) {
+                    if (frame.TemporalLayerId > consumerMaxTemporalLayerId) {
                         skipping = true;
                         continue;
                     }
                     selectedLayer = desiredLayer;
-                    selectedMaxTemporal = consumerMaxTemporal;
+                    selectedMaxTemporalLayerId = consumerMaxTemporalLayerId;
                     lastKeyFrameNumber = frame.KeyFrameNumber;
                     skipping = false;
                     yield return frame;
@@ -67,7 +67,7 @@ public static class ReceiveQualityFilter
                 skipping = true;
                 continue;
             }
-            if (frame.SpatialLayerId != selectedLayer)
+            if (frame.LayerId != selectedLayer)
                 continue;
             // Bounded-replay channel may have evicted intervening frames; gap means
             // the GOP is broken and we have to wait for the next keyframe.
@@ -75,7 +75,7 @@ public static class ReceiveQualityFilter
                 skipping = true;
                 continue;
             }
-            if (frame.TemporalLayerId > selectedMaxTemporal)
+            if (frame.TemporalLayerId > selectedMaxTemporalLayerId)
                 continue;
 
             yield return frame;

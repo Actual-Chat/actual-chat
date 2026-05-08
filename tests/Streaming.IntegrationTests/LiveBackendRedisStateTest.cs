@@ -113,20 +113,20 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
     }
 
     [Fact]
-    public async Task VideoBackend_ShouldAllowSameAuthorWebcamAndScreencast()
+    public async Task VideoBackend_ShouldAllowSameAuthorCameraAndScreenCast()
     {
         var (chatId, liveBackend) = await CreateChatWithVideoBackend("VideoSameAuthorKinds");
         var authorId = AuthorId.New(chatId, 1);
-        var webcam = NewVideoStreamInfo(chatId, authorId, StreamKind.Webcam);
-        var screencast = NewVideoStreamInfo(chatId, authorId, StreamKind.Screencast);
+        var camera = NewVideoStreamInfo(chatId, authorId, VideoSourceKind.Camera);
+        var screenCast = NewVideoStreamInfo(chatId, authorId, VideoSourceKind.ScreenCast);
 
-        await liveBackend.Register(chatId, webcam, CancellationToken.None);
-        await liveBackend.Register(chatId, screencast, CancellationToken.None);
+        await liveBackend.Register(chatId, camera, CancellationToken.None);
+        await liveBackend.Register(chatId, screenCast, CancellationToken.None);
 
         var streams = await liveBackend.List(chatId, CancellationToken.None);
         streams.Should().HaveCount(2);
-        streams.Should().Contain(s => s.StreamId == webcam.StreamId && s.StreamKind == StreamKind.Webcam);
-        streams.Should().Contain(s => s.StreamId == screencast.StreamId && s.StreamKind == StreamKind.Screencast);
+        streams.Should().Contain(s => s.StreamId == camera.StreamId && s.SourceKind == VideoSourceKind.Camera);
+        streams.Should().Contain(s => s.StreamId == screenCast.StreamId && s.SourceKind == VideoSourceKind.ScreenCast);
     }
 
     [Fact]
@@ -134,27 +134,27 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
     {
         var (chatId, liveBackend) = await CreateChatWithVideoBackend("VideoReplaceSameKind");
         var authorId = AuthorId.New(chatId, 1);
-        var oldWebcam = NewVideoStreamInfo(chatId, authorId, StreamKind.Webcam);
-        var screencast = NewVideoStreamInfo(chatId, authorId, StreamKind.Screencast);
-        var newWebcam = NewVideoStreamInfo(chatId, authorId, StreamKind.Webcam);
+        var oldCamera = NewVideoStreamInfo(chatId, authorId, VideoSourceKind.Camera);
+        var screenCast = NewVideoStreamInfo(chatId, authorId, VideoSourceKind.ScreenCast);
+        var newCamera = NewVideoStreamInfo(chatId, authorId, VideoSourceKind.Camera);
 
-        await liveBackend.Register(chatId, oldWebcam, CancellationToken.None);
-        await liveBackend.Register(chatId, screencast, CancellationToken.None);
-        await liveBackend.Register(chatId, newWebcam, CancellationToken.None);
+        await liveBackend.Register(chatId, oldCamera, CancellationToken.None);
+        await liveBackend.Register(chatId, screenCast, CancellationToken.None);
+        await liveBackend.Register(chatId, newCamera, CancellationToken.None);
 
         var streams = await liveBackend.List(chatId, CancellationToken.None);
         streams.Should().HaveCount(2);
-        streams.Should().NotContain(s => s.StreamId == oldWebcam.StreamId);
-        streams.Should().Contain(s => s.StreamId == newWebcam.StreamId && s.StreamKind == StreamKind.Webcam);
-        streams.Should().Contain(s => s.StreamId == screencast.StreamId && s.StreamKind == StreamKind.Screencast);
+        streams.Should().NotContain(s => s.StreamId == oldCamera.StreamId);
+        streams.Should().Contain(s => s.StreamId == newCamera.StreamId && s.SourceKind == VideoSourceKind.Camera);
+        streams.Should().Contain(s => s.StreamId == screenCast.StreamId && s.SourceKind == VideoSourceKind.ScreenCast);
     }
 
     [Fact]
-    public async Task VideoBackend_ShouldRejectSecondScreencastFromDifferentAuthor()
+    public async Task VideoBackend_ShouldRejectSecondScreenCastFromDifferentAuthor()
     {
-        var (chatId, liveBackend) = await CreateChatWithVideoBackend("VideoSingleScreencast");
-        var first = NewVideoStreamInfo(chatId, AuthorId.New(chatId, 1), StreamKind.Screencast);
-        var second = NewVideoStreamInfo(chatId, AuthorId.New(chatId, 2), StreamKind.Screencast);
+        var (chatId, liveBackend) = await CreateChatWithVideoBackend("VideoSingleScreenCast");
+        var first = NewVideoStreamInfo(chatId, AuthorId.New(chatId, 1), VideoSourceKind.ScreenCast);
+        var second = NewVideoStreamInfo(chatId, AuthorId.New(chatId, 2), VideoSourceKind.ScreenCast);
 
         await liveBackend.Register(chatId, first, CancellationToken.None);
         var registerSecond = () => liveBackend.Register(chatId, second, CancellationToken.None);
@@ -392,14 +392,14 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
             Format = AudioSource.DefaultFormat,
         };
 
-    private VideoStreamInfo NewVideoStreamInfo(ChatId chatId, AuthorId authorId, StreamKind streamKind)
+    private VideoStreamInfo NewVideoStreamInfo(ChatId chatId, AuthorId authorId, VideoSourceKind sourceKind)
         => new(
             StreamId.New(AppHost.Services.MeshWatcher().ThisNode.Ref),
             chatId,
             authorId,
             [new VideoFormat { Codec = "avc1", Size = new Size2D(640, 480) }],
             Clocks.SystemClock.Now,
-            streamKind);
+            sourceKind);
 
     private async Task<Dictionary<string, TValue>> ReadRedisHash<TValue>(string keyPrefix, ChatId chatId)
     {

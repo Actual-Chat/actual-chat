@@ -78,9 +78,9 @@ export interface EncodedChunkData {
   sequenceNumber: number; // Added for chunk ordering to prevent out-of-order delivery issues
   encodeTimeMs: number;
   temporalLayerId?: number; // SVC temporal layer: 0 = base, 1+ = enhancement
-  // Simulcast spatial layer: 0 = base (lowest-res) layer, 1+ = higher-res layers.
+  // Simulcast layer: 0 = base (lowest-res) layer, 1+ = higher-res layers.
   // Always 0 for single-encoder (P2P) streams; set by encoder instance in multi-encoder mode.
-  spatialLayerId?: number;
+  layerId?: number;
   // Encoded frame dimensions — the dims of the encoder instance that produced
   // this chunk. Needed so the worker can tag each layer's VideoStreamFrame with
   // its true resolution instead of borrowing from the primary encoder's config.
@@ -163,19 +163,19 @@ export class WebCodecsEncoder {
     private lastErrorAtMs = 0;
     private errorCount = 0;
 
-    // Simulcast spatial layer ID this encoder instance is producing. 0 = base
-    // (lowest-res) layer, 1+ = higher-res simulcast layers. Stamped onto every
+    // Simulcast layer ID this encoder instance is producing. 0 = base
+    // (lowest-res) layer, 1+ = higher-res layers. Stamped onto every
     // chunk emitted by this instance. Defaults to 0 — single-encoder pipelines
     // (P2P, screencast, non-simulcast recordings) leave it at 0.
-    private readonly spatialLayerId: number;
+    private readonly layerId: number;
 
     constructor(
     private config: EncoderConfig,
     private onChunk: (chunk: EncodedChunkData) => void,
     private onError: (error: Error) => void,
-    spatialLayerId = 0,
+    layerId = 0,
     ) {
-        this.spatialLayerId = spatialLayerId;
+        this.layerId = layerId;
         this.encoder = this.createEncoder();
     }
 
@@ -234,7 +234,7 @@ export class WebCodecsEncoder {
         if (this.frameCount === 0 || this.frameCount % 300 === 0) {
             const rot = (frame as VideoFrame & { rotation?: number | null }).rotation ?? null;
             infoLog?.log(
-                `encode #${this.frameCount} (${this.config.codec}, layer=${this.spatialLayerId}): `
+                `encode #${this.frameCount} (${this.config.codec}, layer=${this.layerId}): `
                 + `display=${frame.displayWidth}x${frame.displayHeight} `
                 + `coded=${frame.codedWidth}x${frame.codedHeight} `
                 + `rotation=${rot ?? 'null'} `
@@ -295,7 +295,7 @@ export class WebCodecsEncoder {
         if (forceKeyFrame) {
             this.pendingForcedKfStartMs = nowMs;
             infoLog?.log(
-                `PLI: encode() forced KF requested (${this.config.codec}, layer=${this.spatialLayerId}, frame=${this.frameCount}, queue=${this.encoder.encodeQueueSize})`);
+                `PLI: encode() forced KF requested (${this.config.codec}, layer=${this.layerId}, frame=${this.frameCount}, queue=${this.encoder.encodeQueueSize})`);
         }
 
         try {
@@ -476,7 +476,7 @@ export class WebCodecsEncoder {
                     sequenceNumber: this.chunkSequence++,
                     encodeTimeMs: encodeTime,
                     temporalLayerId: extractTemporalLayerId(metadata),
-                    spatialLayerId: this.spatialLayerId,
+                    layerId: this.layerId,
                     width: this.config.width,
                     height: this.config.height,
                     capturedAt,
@@ -489,7 +489,7 @@ export class WebCodecsEncoder {
                         const elapsedMs = performance.now() - this.pendingForcedKfStartMs;
                         infoLog?.log(
                             `PLI: encoder OUTPUT forced KF in ${elapsedMs.toFixed(0)}ms ` +
-                            `(${this.config.codec}, layer=${this.spatialLayerId}, bytes=${chunk.byteLength})`);
+                            `(${this.config.codec}, layer=${this.layerId}, bytes=${chunk.byteLength})`);
                         this.pendingForcedKfStartMs = 0;
                     }
                 }
@@ -508,7 +508,7 @@ export class WebCodecsEncoder {
                     }) | undefined;
                     if (dc) {
                         infoLog?.log(
-                            `chunk KF (${this.config.codec}, layer=${this.spatialLayerId}): `
+                            `chunk KF (${this.config.codec}, layer=${this.layerId}): `
                             + `decoderConfig coded=${dc.codedWidth}x${dc.codedHeight} `
                             + `displayAspect=${dc.displayAspectWidth ?? 'n/a'}x${dc.displayAspectHeight ?? 'n/a'} `
                             + `descBytes=${dc.description ? (dc.description as ArrayBuffer | Uint8Array).byteLength : 'none'}`);

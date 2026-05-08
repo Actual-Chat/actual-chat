@@ -7,7 +7,7 @@
 @implements IAsyncDisposable
 
 @{
-    var streamKindCls = StreamInfo.StreamKind == StreamKind.Screencast ? "screencast" : "";
+    var sourceKindCls = StreamInfo.SourceKind == VideoSourceKind.ScreenCast ? "screencast" : "";
     // Prefer rotation-aware source dims over encoder dims: the encoder's W/H
     // can be landscape at PushVideo time even when the source is portrait
     // (the rotation reconcile in workers/video-processing.ts swaps encoder
@@ -26,7 +26,7 @@
         _                                                   => "",
     };
 }
-<div class="video-track-player remote-video-container has-source-aspect @FocusedClass @streamKindCls" style="@aspectRatioStyle">
+<div class="video-track-player remote-video-container has-source-aspect @FocusedClass @sourceKindCls" style="@aspectRatioStyle">
     @* Low-res intrinsic resolution: WebGPU renders to a 64×64 swap chain
        and CSS `object-cover` upscales to fill the focused tile. The heavy
        bilinear upscale on top of the Kawase blur produces a soft backdrop. *@
@@ -103,7 +103,7 @@
             if (serverTimeSync != null)
                 await serverTimeSync.EnsureSynced(_disposeCts.Token);
 
-            // Use the top layer (last format = highest SpatialLayerId) for the JS player init —
+            // Use the top layer (last format = highest LayerId) for the JS player init —
             // canvas dims, codec settings (SPS/PPS), and starting resolution all align to the
             // best tier the receiver may ever decode. The decoder reconfigures at keyframe
             // boundaries if the actual forwarded layer is lower.
@@ -157,7 +157,7 @@
 
         try {
             await Hub.VideoQualityUI
-                .PushPlaybackHealth(StreamInfo.StreamId, StreamInfo.StreamKind, snapshot, CancellationToken.None)
+                .PushPlaybackHealth(StreamInfo.StreamId, StreamInfo.SourceKind, snapshot, CancellationToken.None)
                 .ConfigureAwait(false);
         }
         catch (Exception e) {
@@ -166,7 +166,7 @@
     }
 
     [JSInvokable]
-    public async Task OnPlaybackRenderHint(int currentMaxSpatial, int priority)
+    public async Task OnPlaybackRenderHint(double renderCssLongSide, double renderDevicePixelRatio, int priority)
     {
         if (_isDisposed)
             return;
@@ -175,8 +175,9 @@
             await Hub.VideoQualityUI
                 .PushPlaybackRenderHint(
                     StreamInfo.StreamId,
-                    StreamInfo.StreamKind,
-                    currentMaxSpatial,
+                    StreamInfo.SourceKind,
+                    renderCssLongSide,
+                    renderDevicePixelRatio,
                     (PlaybackStreamPriority)priority,
                     CancellationToken.None)
                 .ConfigureAwait(false);
@@ -189,8 +190,8 @@
     [JSInvokable]
     public void OnPresentationLag(double lagMs)
     {
-        // Webcam-only: screencast pacing is too uneven to be a useful A/V sync target.
-        if (StreamInfo.StreamKind != StreamKind.Webcam)
+        // Camera-only: screencast pacing is too uneven to be a useful A/V sync target.
+        if (StreamInfo.SourceKind != VideoSourceKind.Camera)
             return;
 
         LagTracker.UpdateVideo(StreamInfo.AuthorId, StreamInfo.StreamId.Value, TimeSpan.FromMilliseconds(lagMs));
@@ -215,7 +216,7 @@
             "[VideoTrackPlayer #{StreamId}] OnRequestQualityReduction: codec={Codec} — decode too slow, requesting base playback layer",
             StreamInfo.StreamId, codecCategory);
         await Hub.VideoQualityUI
-            .RequestPlaybackQualityReduction(StreamInfo.StreamId, StreamInfo.StreamKind, CancellationToken.None)
+            .RequestPlaybackQualityReduction(StreamInfo.StreamId, StreamInfo.SourceKind, CancellationToken.None)
             .ConfigureAwait(false);
     }
 

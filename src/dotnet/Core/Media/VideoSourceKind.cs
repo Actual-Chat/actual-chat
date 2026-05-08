@@ -1,9 +1,9 @@
-namespace ActualChat.Streaming;
+namespace ActualChat.Media;
 
 #pragma warning disable CA1028 // Enum Storage should be Int32 - byte is used for compact serialization
 
-public enum StreamKind : byte
+public enum VideoSourceKind : byte
 {
-    Webcam = 0,
-    Screencast = 1,
+    Camera,
+    ScreenCast,
 }

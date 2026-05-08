@@ -3,7 +3,7 @@ import {
     downscale,
     type DownscaleOptions,
     type DownscalerLike,
-    type SpatialLayerSpec,
+    type LayerSpec,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/downscale';
 import {
     type CapturedFrame,
@@ -34,11 +34,11 @@ const mkFrame = (id: number, w: number, h: number): VideoFrame =>
  * Records every `process()` call for assertions.
  */
 class FakeDownscaler implements DownscalerLike {
-    public calls: { input: VideoFrame; layers: readonly SpatialLayerSpec[] }[] = [];
+    public calls: { input: VideoFrame; layers: readonly LayerSpec[] }[] = [];
     public disposeCount = 0;
     private nextId = 1000;
 
-    process(input: VideoFrame, layers: readonly SpatialLayerSpec[]): Promise<VideoFrame[]> {
+    process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]> {
         this.calls.push({ input, layers });
         const frames = layers.map(l => mkFrame(this.nextId++, l.width, l.height));
         // Close the input frame, as the contract specifies.
@@ -90,7 +90,7 @@ async function drain<T>(seg: AsyncIterable<T>): Promise<T[]> {
 }
 
 function makeOpts(
-    ladder: SpatialLayerSpec[],
+    ladder: LayerSpec[],
     factory: () => DownscalerLike,
 ): DownscaleOptions {
     return { ladder, createDownscaler: factory };
@@ -108,7 +108,7 @@ describe('downscale operator', () => {
     it('1-tier ladder yields primary-only bundles (extras empty)', async () => {
         const stats = makeStats();
         const fake = new FakeDownscaler();
-        const ladder: SpatialLayerSpec[] = [{ width: 640, height: 360 }];
+        const ladder: LayerSpec[] = [{ width: 640, height: 360 }];
 
         const seg = downscale(makeOpts(ladder, () => fake))(
             fromArray([makeCaptured(1, stats), makeCaptured(2, stats)]),
@@ -129,7 +129,7 @@ describe('downscale operator', () => {
     it('3-tier ladder: primary = top tier, extras = bottom-up tiers', async () => {
         const stats = makeStats();
         const fake = new FakeDownscaler();
-        const ladder: SpatialLayerSpec[] = [
+        const ladder: LayerSpec[] = [
             { width: 320, height: 180 },     // base (extra[0])
             { width: 640, height: 360 },     // mid  (extra[1])
             { width: 1280, height: 720 },    // top  (primary)
@@ -154,7 +154,7 @@ describe('downscale operator', () => {
     it('all output envelopes share capturedAt / index / forceKeyframe / stats / sourceWidth/Height', async () => {
         const stats = makeStats();
         const fake = new FakeDownscaler();
-        const ladder: SpatialLayerSpec[] = [
+        const ladder: LayerSpec[] = [
             { width: 320, height: 180 },
             { width: 640, height: 360 },
             { width: 1280, height: 720 },
@@ -207,7 +207,7 @@ describe('downscale operator', () => {
     it('frame ownership: input is consumed (closed by downscaler), outputs are fresh', async () => {
         const stats = makeStats();
         const fake = new FakeDownscaler();
-        const ladder: SpatialLayerSpec[] = [
+        const ladder: LayerSpec[] = [
             { width: 320, height: 180 },
             { width: 640, height: 360 },
         ];
@@ -288,7 +288,7 @@ describe('downscale operator', () => {
     it('passes the configured ladder verbatim to the downscaler each frame', async () => {
         const stats = makeStats();
         const fake = new FakeDownscaler();
-        const ladder: SpatialLayerSpec[] = [
+        const ladder: LayerSpec[] = [
             { width: 320, height: 180 },
             { width: 1280, height: 720 },
         ];

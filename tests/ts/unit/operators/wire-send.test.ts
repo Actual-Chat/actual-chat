@@ -82,7 +82,7 @@ class StatsSender extends FakeSender {
 interface BuildOpts {
     type?: 'key' | 'delta';
     capturedAt?: { timeMs: number; epoch: number };
-    spatialLayerId?: number;
+    layerId?: number;
     encodedWidth?: number;
     encodedHeight?: number;
     sourceWidth?: number;
@@ -114,7 +114,7 @@ function makeEncoded(stats: VideoRecordingStats, opts: BuildOpts = {}): EncodedF
         metadata,
         capturedAt: opts.capturedAt ?? { timeMs: 1_000, epoch: 0 },
         index: opts.index ?? 0,
-        spatialLayerId: opts.spatialLayerId ?? 0,
+        layerId: opts.layerId ?? 0,
         sourceWidth: opts.sourceWidth ?? 1920,
         sourceHeight: opts.sourceHeight ?? 1080,
         encodedWidth: opts.encodedWidth ?? 1920,
@@ -197,13 +197,13 @@ describe('wireSend', () => {
 
         const items = [
             // Layer 0 keyframe with description → cache it.
-            makeEncoded(stats, { type: 'key', spatialLayerId: 0, capturedAt: { timeMs: 1_000, epoch: 0 }, description: desc0 }),
+            makeEncoded(stats, { type: 'key', layerId: 0, capturedAt: { timeMs: 1_000, epoch: 0 }, description: desc0 }),
             // Layer 1 keyframe with description → distinct cache entry.
-            makeEncoded(stats, { type: 'key', spatialLayerId: 1, capturedAt: { timeMs: 1_000, epoch: 0 }, description: desc1 }),
+            makeEncoded(stats, { type: 'key', layerId: 1, capturedAt: { timeMs: 1_000, epoch: 0 }, description: desc1 }),
             // Layer 0 keyframe WITHOUT description → fall back to cache.
-            makeEncoded(stats, { type: 'key', spatialLayerId: 0, capturedAt: { timeMs: 5_000, epoch: 0 } }),
+            makeEncoded(stats, { type: 'key', layerId: 0, capturedAt: { timeMs: 5_000, epoch: 0 } }),
             // Layer 1 keyframe WITHOUT description → fall back to layer-1 cache.
-            makeEncoded(stats, { type: 'key', spatialLayerId: 1, capturedAt: { timeMs: 5_000, epoch: 0 } }),
+            makeEncoded(stats, { type: 'key', layerId: 1, capturedAt: { timeMs: 5_000, epoch: 0 } }),
         ];
         await runWith(source(items), sink);
 
@@ -293,21 +293,21 @@ describe('wireSend', () => {
         await runWith(source([
             makeEncoded(stats, {
                 type: 'key',
-                spatialLayerId: 0,
+                layerId: 0,
                 encodedWidth: 320,
                 encodedHeight: 180,
                 capturedAt: { timeMs: 1_000, epoch: 0 },
             }),
             makeEncoded(stats, {
                 type: 'key',
-                spatialLayerId: 1,
+                layerId: 1,
                 encodedWidth: 640,
                 encodedHeight: 360,
                 capturedAt: { timeMs: 1_000, epoch: 0 },
             }),
             makeEncoded(stats, {
                 type: 'key',
-                spatialLayerId: 2,
+                layerId: 2,
                 encodedWidth: 1280,
                 encodedHeight: 720,
                 capturedAt: { timeMs: 1_000, epoch: 0 },
@@ -315,7 +315,7 @@ describe('wireSend', () => {
             }),
         ]), sink);
 
-        expect(sender.sent.map(x => x.spatialLayerId)).toEqual([0, 1, 2]);
+        expect(sender.sent.map(x => x.layerId)).toEqual([0, 1, 2]);
         expect(sender.formats).toHaveLength(1);
         expect(sender.formats[0].width).toBe(1280);
         expect(sender.formats[0].height).toBe(720);

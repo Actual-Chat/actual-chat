@@ -26,7 +26,7 @@ const StreamControlMode = RpcRemoteExecutionMode.AwaitForConnection;
 export const LiveVideoStreamsDef = defineRpcService('ILiveVideoStreams', {
     GetStream: { args: ['session', 'streamId'], returns: RpcType.stream },
     PushStream: {
-        args: ['session', 'chatId', 'clientStartAt', 'format', 'frameStream', 'streamKind'],
+        args: ['session', 'chatId', 'clientStartAt', 'format', 'sourceKind', 'frameStream'],
         remoteExecutionMode: StreamPushMode,
     },
     RequestKeyFrame: { args: ['session', 'streamId'], remoteExecutionMode: StreamControlMode },
@@ -70,13 +70,12 @@ export interface VideoFrameDto {
     Height?: number;
     Description?: Uint8Array | null;
     Codec?: string | null;
-    // SVC spatial layer ID (uint8 on wire). 0 = base (lowest-res) layer,
-    // 1+ = higher-res simulcast layers. Always 0 on single-encoder (P2P) streams.
-    SpatialLayerId?: number;
-    // Min/max spatial layer this frame covers (uint8 on wire). Used by the
-    // server forwarder to clamp simulcast fan-out per consumer.
-    MinSpatialLayerId?: number;
-    MaxSpatialLayerId?: number;
+    // SVC layer ID (uint8 on wire). 0 = base (lowest-res) layer,
+    // 1+ = higher-res layers. Always 0 on single-encoder (P2P) streams.
+    LayerId?: number;
+    // Max layer this frame covers (uint8 on wire). Used by the server
+    // forwarder to clamp fan-out per consumer.
+    MaxLayerId?: number;
     // SVC temporal layer ID (uint8 on wire). 0 = base, 1+ = enhancement.
     TemporalLayerId?: number;
     // Native source dimensions, keyframe only. Lets server track source-resolution
@@ -102,7 +101,7 @@ export interface Size2DDto { Width: number; Height: number }
 export interface VideoFormatDto {
     Codec: string;
     CodecSettings: string;
-    SpatialLayerId?: number;
+    LayerId?: number;
     Size: Size2DDto;
     SourceSize: Size2DDto;
 }
@@ -122,8 +121,8 @@ export interface AudioFrameDto {
 // MessagePack with explicit numeric Key(N), so wire keys are integers.
 
 export interface ReceiveQualityDto {
-    0: number;  // MaxSpatialLayer
-    1: number;  // MaxTemporalLayer
+    0: number;  // MaxLayerId
+    1: number;  // MaxTemporalLayerId
 }
 
 export interface RecordingQualityStateDto {
@@ -150,8 +149,8 @@ export interface PlaybackStreamInfoDto {
     1: number;   // BufferDurationMsEma
     2: number;   // KeyframeSkipsInWindow
     3: number;   // DecoderQueueDepthEma
-    4: number;   // CurrentMaxSpatial
-    5: number;   // CurrentMaxTemporal
+    4: number;   // CurrentMaxLayerId
+    5: number;   // CurrentMaxTemporalLayerId
     6: number;   // PlaybackStreamPriority (0=Secondary, 1=Primary)
     7: number;   // Verdict (-1, 0, +1)
 }
@@ -173,8 +172,8 @@ export interface LiveVideoStreamsClient {
         chatId: string,
         sourceStartOffsetSeconds: number,
         format: VideoFormatDto,
-        frameStreamRef: unknown,
-        streamKind: number): Promise<void>;
+        sourceKind: number,
+        frameStreamRef: unknown): Promise<void>;
     RequestKeyFrame(session: string, streamId: string): Promise<void>;
     ChangeRecordingQuality(
         session: string,

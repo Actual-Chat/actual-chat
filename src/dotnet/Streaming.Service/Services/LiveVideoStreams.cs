@@ -116,8 +116,7 @@ public class LiveVideoStreams : ILiveVideoStreams
         // here would just waste memory. Remote: fan out via RemoteVideoStreamCache
         // so N viewers across this API server collapse to one cross-shard pull.
         var rawStream = isLocal
-            ? (IAsyncEnumerable<VideoFrame>?)
-              await VideoStreamingBackend.GetVideoRaw(streamId, cancellationToken).ConfigureAwait(false)
+            ? await VideoStreamingBackend.GetVideoRaw(streamId, cancellationToken).ConfigureAwait(false)
             : await GetOrFetchRemoteVideo(streamId, cancellationToken).ConfigureAwait(false);
         if (rawStream is null)
             return null;
@@ -167,29 +166,29 @@ public class LiveVideoStreams : ILiveVideoStreams
     }
 
     // [ComputeMethod]
-    public virtual async Task<VideoQualityPreset> GetQualityPreset(
+    public virtual async Task<Moment> LastKeyframeRequestAt(
         Session session,
         StreamId streamId,
         CancellationToken cancellationToken)
-        => await VideoStreamingBackend.GetQualityPreset(streamId, cancellationToken).ConfigureAwait(false);
+        => await VideoStreamingBackend.LastKeyframeRequestAt(streamId, cancellationToken).ConfigureAwait(false);
 
     public async Task PushStream(
         Session session,
         string chatId,
         double clientStartAt, // Unix epoch (seconds, double)
         VideoFormat format,
+        VideoSourceKind sourceKind,
         RpcStream<VideoFrame> frameStream,
-        StreamKind streamKind,
         CancellationToken cancellationToken)
     {
         // Live video calls: cap at Constants.Video.MaxLiveDuration (8h) rather than
-        // the 3-min chat-entry duration. Every StreamKind (Webcam/Screencast) is a
+        // the 3-min chat-entry duration. Every VideoSourceKind (Camera/ScreenCast) is a
         // live stream; there is no voice-message-style video path.
         using var stopCts = new CancellationTokenSource(Constants.Video.MaxLiveDuration);
         try {
             var chatIdTyped = ChatId.Parse(chatId);
             var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
-            var videoRecord = new VideoRecord(streamId, session, chatIdTyped, clientStartAt, format, streamKind);
+            var videoRecord = new VideoRecord(streamId, session, chatIdTyped, clientStartAt, format, sourceKind);
             Log.LogInformation("PushStream: {VideoRecord}", videoRecord);
 
             var newFrameStream = RpcStream.New(frameStream);
@@ -265,7 +264,7 @@ public class LiveVideoStreams : ILiveVideoStreams
         }
 
         // Request a fresh keyframe whenever a stream's quality envelope CHANGES,
-        // not just on lowering. On upgrades, the new spatial/temporal layer
+        // not just on lowering. On upgrades, the new layer/temporal layer
         // can't be decoded by the receiver until the next keyframe of that
         // layer arrives — periodic keyframes are 3s apart, so without this we
         // get up to 3s of stuck-on-old-quality after every upgrade. The
@@ -303,12 +302,12 @@ public class LiveVideoStreams : ILiveVideoStreams
             return null;
 
         Log.LogInformation("GetOrFetchRemoteVideo: caching #{StreamId} locally", streamId);
-        // Bounded memoizer: per-spatial-layer keyframe-span eviction caps
+        // Bounded memoizer: per-layer keyframe-span eviction caps
         // retained content at ~ServerReplayTailDuration per layer, regardless
         // of stream duration. Without this, an 8-hour call would grow the
         // chain to millions of nodes.
         var memoizer = new VideoStreamMemoizer(
-            (IAsyncEnumerable<VideoFrame>)rawRpcStream,
+            rawRpcStream,
             Constants.Video.ServerReplayTailDuration,
             CancellationToken.None);
         if (!store.Publish(streamId, memoizer))
@@ -352,8 +351,8 @@ public class LiveVideoStreams : ILiveVideoStreams
             var oldQuality = previous is not null && previous.TryGetValue(streamId, out var old)
                 ? old
                 : ReceiveQuality.Default;
-            if (quality.MaxSpatialLayer != oldQuality.MaxSpatialLayer
-                || quality.MaxTemporalLayer != oldQuality.MaxTemporalLayer)
+            if (quality.MaxLayerId != oldQuality.MaxLayerId
+                || quality.MaxTemporalLayerId != oldQuality.MaxTemporalLayerId)
                 yield return streamId;
         }
     }

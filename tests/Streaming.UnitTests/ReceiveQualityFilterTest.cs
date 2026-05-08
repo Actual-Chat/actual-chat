@@ -24,7 +24,7 @@ public class ReceiveQualityFilterTest
                            .Apply(frames, () => quality, NullLogger.Instance, CancellationToken.None))
             result.Add(frame);
 
-        result.Select(x => x.SpatialLayerId).Should().Equal((byte)2, (byte)2, (byte)0, (byte)0);
+        result.Select(x => x.LayerId).Should().Equal((byte)2, (byte)2, (byte)0, (byte)0);
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public class ReceiveQualityFilterTest
                            .Apply(frames, () => quality, NullLogger.Instance, CancellationToken.None))
             result.Add(frame);
 
-        result.Select(x => x.SpatialLayerId).Should().Equal((byte)2, (byte)2, (byte)2, (byte)0, (byte)0);
+        result.Select(x => x.LayerId).Should().Equal((byte)2, (byte)2, (byte)2, (byte)0, (byte)0);
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public class ReceiveQualityFilterTest
                            .Apply(frames, () => quality, NullLogger.Instance, CancellationToken.None))
             result.Add(frame);
 
-        result.Select(x => x.SpatialLayerId).Should().Equal((byte)0, (byte)0, (byte)0, (byte)2, (byte)2);
+        result.Select(x => x.LayerId).Should().Equal((byte)0, (byte)0, (byte)0, (byte)2, (byte)2);
     }
 
     [Fact]
@@ -124,29 +124,29 @@ public class ReceiveQualityFilterTest
             (2L, (byte)1));
     }
 
-    private static VideoFrame Key(byte spatial, long keyFrameNumber)
-        => Frame(spatial, keyFrameNumber, isKeyFrame: true);
+    private static VideoFrame Key(byte layer, long keyFrameNumber)
+        => Frame(layer, keyFrameNumber, isKeyFrame: true);
 
-    private static VideoFrame Delta(byte spatial, long keyFrameNumber)
-        => Delta(spatial, keyFrameNumber, temporal: 0);
+    private static VideoFrame Delta(byte layer, long keyFrameNumber)
+        => Delta(layer, keyFrameNumber, temporal: 0);
 
-    private static VideoFrame Delta(byte spatial, long keyFrameNumber, byte temporal)
-        => Frame(spatial, keyFrameNumber, isKeyFrame: false, temporal);
+    private static VideoFrame Delta(byte layer, long keyFrameNumber, byte temporal)
+        => Frame(layer, keyFrameNumber, isKeyFrame: false, temporal);
 
-    private static VideoFrame Frame(byte spatial, long keyFrameNumber, bool isKeyFrame, byte temporal = 0)
+    private static VideoFrame Frame(byte layer, long keyFrameNumber, bool isKeyFrame, byte temporal = 0)
         => new(isKeyFrame) {
-            Width = spatial switch {
+            Width = layer switch {
                 0 => 320,
                 1 => 640,
                 _ => 1280,
             },
-            Height = spatial switch {
+            Height = layer switch {
                 0 => 180,
                 1 => 360,
                 _ => 720,
             },
-            SpatialLayerId = spatial,
-            MaxSpatialLayerId = 2,
+            LayerId = layer,
+            MaxLayerId = 2,
             TemporalLayerId = temporal,
             KeyFrameNumber = keyFrameNumber,
         };

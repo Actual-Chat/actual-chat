@@ -8,7 +8,6 @@ import type { Disposable } from 'disposable';
 import { DocumentEvents } from 'event-handling';
 import { Versioning } from 'versioning';
 import { type Subscription } from 'rxjs';
-import { renderQualityLevelForWidth } from './render-quality';
 import type {
     PlayerWorker,
     LatencySample,
@@ -49,11 +48,14 @@ export function getActivePlayers(): ReadonlyMap<string, VideoPlayer> {
     return activePlayers;
 }
 
-const requestedReceiveQuality = new Map<string, { maxSpatialLayer: number; maxTemporalLayer: number } | null>();
+const requestedReceiveQuality = new Map<string, {
+    maxLayerId: number;
+    maxTemporalLayerId: number
+} | null>();
 
 export function recordRequestedReceiveQuality(
     streamId: string,
-    quality: { maxSpatialLayer: number; maxTemporalLayer: number } | null
+    quality: { maxLayerId: number; maxTemporalLayerId: number } | null
 ): void {
     if (quality === null)
         requestedReceiveQuality.delete(streamId);
@@ -84,14 +86,14 @@ export interface RemoteStreamDiagnostics {
     decoderStats: VideoPlaybackStats | null;
     avDriftMs: number | null;
     forwarded: {
-        ForwardedSpatialLayerId: number;
+        ForwardedLayerId: number;
         ForwardedWidth: number;
         ForwardedHeight: number;
-        ObservedMaxSpatialLayer: number;
+        ObservedMaxLayerId: number;
     } | null;
     requestedReceiveQuality: {
-        maxSpatialLayer: number;
-        maxTemporalLayer: number;
+        maxLayerId: number;
+        maxTemporalLayerId: number;
     } | null;
     streamAgeMs: number;
 }
@@ -101,14 +103,22 @@ interface PlaybackHealthSnapshot {
     bufferDurationMsEma: number;
     keyframeSkipsInWindow: number;
     decoderQueueDepthEma: number;
-    currentMaxSpatial: number;
-    currentMaxTemporal: number;
+    currentMaxLayerId: number;
+    currentMaxTemporalLayerId: number;
     priority: number;
     streamAgeMs: number;
     qualityReductionRequested: boolean;
     /** Smoothed end-to-end latency, ms — sourced from the worker's
      *  `latency-tap` operator. */
     latencyMsEma: number;
+    renderCssLongSide: number;
+    renderDevicePixelRatio: number;
+    codec: string;
+}
+
+interface RenderSizeHint {
+    cssLongSide: number;
+    devicePixelRatio: number;
 }
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPlayer');
@@ -121,7 +131,7 @@ const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPlayer');
 // (≈ 111ms) means a 100ms target landed BELOW the "too low" threshold
 // → verdict pegged at -1 → Allocator capped at L0.
 const TARGET_BUFFER_SPAN_MS = 333;
-const DEFAULT_MAX_SPATIAL_LAYER = 2;
+const DEFAULT_MAX_LAYER = 2;
 const MAX_TEMPORAL_LAYER = 2147483647;
 const PLAYBACK_PRIORITY_SECONDARY = 0;
 const PLAYBACK_PRIORITY_PRIMARY = 1;
@@ -167,10 +177,10 @@ export class VideoPlayer {
     private receivedKeyframeCount = 0;
     private receivedBytes = 0;
     private firstFrameReceivedTime = 0;
-    private forwardedSpatialLayerId = -1;
+    private forwardedLayerId = -1;
     private forwardedWidth = 0;
     private forwardedHeight = 0;
-    private observedMaxSpatialLayer = -1;
+    private observedMaxLayerId = -1;
 
     // PLI: receiver-requested keyframe (kept as a courtesy hook — most of
     // this is now driven by the worker's epoch-reset operator).
@@ -179,7 +189,7 @@ export class VideoPlayer {
 
     // Render-quality hint state.
     private resizeObserver: ResizeObserver | null = null;
-    private lastSentRenderQuality: number | null | undefined = undefined;
+    private lastSentRenderHint: string | null = null;
 
     // Smoothed pipeline latency from the worker's latency-tap.
     private pipelineLatencyMs = 0;
@@ -437,9 +447,8 @@ export class VideoPlayer {
             }
         });
 
-        // Watch the canvas for layout changes and send a render-hint-only
-        // ReportVideoLatency whenever the implied quality level flips between
-        // buckets.
+        // Watch the canvas for layout changes and send render-size hints when
+        // the displayed long side changes enough to affect playback quality.
         this.resizeObserver = new ResizeObserver(() => this.maybeSendRenderHint());
         this.resizeObserver.observe(this.canvas);
         this.maybeSendRenderHint();
@@ -447,18 +456,24 @@ export class VideoPlayer {
         void this.reportPlaying(0, true);
     }
 
-    private maybeSendRenderHint(): number | null | undefined {
-        const level = this.computeRenderQualityLevel();
-        if (level === this.lastSentRenderQuality) return undefined;
-        this.lastSentRenderQuality = level;
-        const currentMaxSpatial = maxSpatialForRenderQualityLevel(level);
-        const priority = priorityForRenderQualityLevel(level);
-        void this.blazorRef.invokeMethodAsync('OnPlaybackRenderHint', currentMaxSpatial, priority)
+    private maybeSendRenderHint(): RenderSizeHint | null | undefined {
+        const hint = this.computeRenderSizeHint();
+        const priority = priorityForRenderSize(hint);
+        const key = hint
+            ? `${Math.round(hint.cssLongSide)}:${hint.devicePixelRatio.toFixed(3)}:${priority}`
+            : `none:${priority}`;
+        if (key === this.lastSentRenderHint) return undefined;
+        this.lastSentRenderHint = key;
+        void this.blazorRef.invokeMethodAsync(
+            'OnPlaybackRenderHint',
+            hint?.cssLongSide ?? 0,
+            hint?.devicePixelRatio ?? 0,
+            priority)
             .catch((e: unknown) => warnLog?.log('OnPlaybackRenderHint error:', e));
         debugLog?.log(
-            `RenderQuality hint: level=${level ?? 'uncapped'} maxSpatial=${currentMaxSpatial} ` +
+            `RenderSize hint: css=${hint?.cssLongSide ?? 0} dpr=${hint?.devicePixelRatio ?? 0} ` +
             `priority=${priority} (canvas=${this.canvas.clientWidth}x${this.canvas.clientHeight})`);
-        return level;
+        return hint;
     }
 
     private requestKeyFrame(): void {
@@ -647,11 +662,11 @@ export class VideoPlayer {
             codecSlowTickCount: 0,
             decoderStats: stats,
             avDriftMs,
-            forwarded: this.forwardedSpatialLayerId >= 0 ? {
-                ForwardedSpatialLayerId: this.forwardedSpatialLayerId,
+            forwarded: this.forwardedLayerId >= 0 ? {
+                ForwardedLayerId: this.forwardedLayerId,
                 ForwardedWidth: this.forwardedWidth,
                 ForwardedHeight: this.forwardedHeight,
-                ObservedMaxSpatialLayer: this.observedMaxSpatialLayer,
+                ObservedMaxLayerId: this.observedMaxLayerId,
             } : null,
             requestedReceiveQuality: requested,
             streamAgeMs,
@@ -794,25 +809,27 @@ export class VideoPlayer {
         debugLog?.log(`VideoPlayer stopped for stream ${this.streamId}`);
     }
 
-    // Maps this player's current render size to a VideoQualityLevel hint for the
-    // server's simulcast fan-out. Uses CSS layout pixels rather than canvas.width
-    // (decoder output resolution). Server maps Low→spatial layer 0,
-    // Medium→1, High/Full/Ultra→2.
-    private computeRenderQualityLevel(): number | null {
+    private computeRenderSizeHint(): RenderSizeHint | null {
         const parent = this.canvas.parentElement;
-        const canvasWidth = this.canvas.clientWidth;
-        const parentWidth = parent?.clientWidth ?? 0;
-        const parentRectWidth = parent?.getBoundingClientRect().width ?? 0;
-        const width = canvasWidth > 0 ? canvasWidth
-            : parentWidth > 0 ? parentWidth
-                : parentRectWidth > 0 ? parentRectWidth
+        const canvasRect = this.canvas.getBoundingClientRect();
+        const parentRect = parent?.getBoundingClientRect();
+        const canvasLongSide = Math.max(canvasRect.width, canvasRect.height);
+        const parentLongSide = parentRect ? Math.max(parentRect.width, parentRect.height) : 0;
+        const clientLongSide = Math.max(this.canvas.clientWidth, this.canvas.clientHeight);
+        const cssLongSide = canvasLongSide > 0 ? canvasLongSide
+            : clientLongSide > 0 ? clientLongSide
+                : parentLongSide > 0 ? parentLongSide
                     : 0;
-        const level = renderQualityLevelForWidth(width);
-        if (level !== null)
-            return level;
-
+        if (cssLongSide > 0) {
+            return {
+                cssLongSide,
+                devicePixelRatio: getDevicePixelRatio(),
+            };
+        }
+        if (this.canvas.isConnected && parent && isZeroSized(canvasRect) && parentRect && isZeroSized(parentRect))
+            return { cssLongSide: 1, devicePixelRatio: getDevicePixelRatio() };
         if (parent?.classList.contains('pip-overlay') || parent?.classList.contains('item-x'))
-            return 4;
+            return { cssLongSide: 1, devicePixelRatio: getDevicePixelRatio() };
 
         return null;
     }
@@ -824,7 +841,8 @@ export class VideoPlayer {
         const bitrateKbps = elapsedSec > 0
             ? Math.round(this.receivedBytes * 8 / elapsedSec / 1000)
             : 0;
-        const renderLevel = this.computeRenderQualityLevel();
+        const renderHint = this.computeRenderSizeHint();
+        const requested = requestedReceiveQuality.get(this.streamId) ?? null;
         const skipDelta = Math.max(0, this.skipToLiveCount - this.lastQualitySkipToLiveCount);
         this.lastQualitySkipToLiveCount = this.skipToLiveCount;
 
@@ -833,12 +851,15 @@ export class VideoPlayer {
             bufferDurationMsEma: sample.bufferSpanMs,
             keyframeSkipsInWindow: skipDelta,
             decoderQueueDepthEma: 0,
-            currentMaxSpatial: maxSpatialForRenderQualityLevel(renderLevel),
-            currentMaxTemporal: MAX_TEMPORAL_LAYER,
-            priority: priorityForRenderQualityLevel(renderLevel),
+            currentMaxLayerId: requested?.maxLayerId ?? DEFAULT_MAX_LAYER,
+            currentMaxTemporalLayerId: MAX_TEMPORAL_LAYER,
+            priority: priorityForRenderSize(renderHint),
             streamAgeMs: Math.max(0, Math.round(performance.now() - this.createdAtMs)),
             qualityReductionRequested: false,
             latencyMsEma: Math.max(0, sample.e2eLatencyMs),
+            renderCssLongSide: renderHint?.cssLongSide ?? 0,
+            renderDevicePixelRatio: renderHint?.devicePixelRatio ?? 0,
+            codec: this.selectedCodec ?? 'unknown',
         };
         void this.blazorRef.invokeMethodAsync('OnPlaybackHealth', snapshot)
             .catch((e: unknown) => warnLog?.log('reportPlaybackHealth error:', e));
@@ -870,24 +891,20 @@ export class VideoPlayer {
     }
 }
 
-function maxSpatialForRenderQualityLevel(level: number | null): number {
-    if (level === null)
-        return DEFAULT_MAX_SPATIAL_LAYER;
-    if (level >= 4)
-        return 0;
-    if (level >= 3)
-        return 1;
-    return DEFAULT_MAX_SPATIAL_LAYER;
-}
-
-function priorityForRenderQualityLevel(level: number | null): number {
-    // Anything we render full-size is PRIMARY. SECONDARY (= "base layer
-    // only" in the server-side Allocator) is reserved for the tiny
-    // sidebar / pip tiles (level 4, ≤ 480px wide). Treating any
-    // medium-sized tile as SECONDARY pins it to L0 even when the link
-    // can deliver top tier — which is exactly the L0 lockup we hit on
-    // a 2-user PM where both tiles sit at ~600px.
-    return level === null || level <= 3
+function priorityForRenderSize(hint: RenderSizeHint | null): number {
+    // Anything medium-sized or larger is PRIMARY. SECONDARY is reserved for
+    // tiny sidebar / pip tiles; the allocator may still give them more than L0
+    // if primaries leave enough budget.
+    return hint === null || hint.cssLongSide > 480
         ? PLAYBACK_PRIORITY_PRIMARY
         : PLAYBACK_PRIORITY_SECONDARY;
+}
+
+function getDevicePixelRatio(): number {
+    const dpr = Number.isFinite(window.devicePixelRatio) ? window.devicePixelRatio : 1;
+    return Math.max(1, dpr);
+}
+
+function isZeroSized(rect: DOMRect): boolean {
+    return rect.width <= 0 && rect.height <= 0;
 }

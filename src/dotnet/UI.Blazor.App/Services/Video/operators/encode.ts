@@ -23,14 +23,14 @@ export interface EncodeInput {
 
 // `buildOutput` (inside the factory) fills `chunk`, `metadata`,
 // `capturedAt`, `index`, `encodedWidth/Height`. The operator patches
-// `spatialLayerId`, `sourceWidth/Height`, `stats` from the bundle.
+// `layerId`, `sourceWidth/Height`, `stats` from the bundle.
 export type EncoderFactory = (
     config: EncoderConfigPerLayer,
     layerId: number,
 ) => AsyncVideoEncoder<EncodeInput, EncodedFrame>;
 
 export interface EncodeOptions {
-    /** One config per spatial layer, bottom-first. Length MUST equal
+    /** One config per layer, bottom-first. Length MUST equal
      *  `bundle.extras.length + 1`; mismatch is a hard error. */
     configs: readonly EncoderConfigPerLayer[];
     createEncoder: EncoderFactory;
@@ -126,7 +126,7 @@ export function encode(opts: EncodeOptions): PipeOperator<SimulcastBundle, Encod
                                     metadata: partial.metadata,
                                     capturedAt: bundle.primary.capturedAt,
                                     index: bundle.primary.index,
-                                    spatialLayerId: layerId,
+                                    layerId: layerId,
                                     sourceWidth: bundle.primary.sourceWidth,
                                     sourceHeight: bundle.primary.sourceHeight,
                                     encodedWidth: cfg.width,

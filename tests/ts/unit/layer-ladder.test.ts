@@ -2,43 +2,36 @@ import { describe, it, expect } from 'vitest';
 import {
     buildLadder,
     fitWithin,
-    SCREENCAST_MAX_SIMULCAST_TIERS,
-    WEBCAM_MAX_SIMULCAST_TIERS,
-    webcamTopSize,
-    type SpatialLayerConfig,
-} from '../../../src/dotnet/UI.Blazor.App/Components/VideoPanel/simulcast-ladder';
+    cameraTopSize,
+    type LayerConfig,
+} from '../../../src/dotnet/UI.Blazor.App/Components/VideoPanel/layer-ladder';
 
-// Mimic the hevc bitrate-table row so the bitrate assertion can be exact
-// without pulling the actual table (which transitively imports the logging
-// module — not test-resolvable).
-const hevcBitrate = (height: number): number => {
-    if (height >= 2160) return 6_500_000;
-    if (height >= 1080) return 3_250_000;
-    if (height >= 720) return 2_000_000;
-    if (height >= 540) return 1_250_000;
-    if (height >= 360) return 650_000;
-    return 162_500;
-};
+const CAMERA_BITRATES_KBPS = [162.5, 650, 2_000] as const;
+const SCREENCAST_BITRATES_KBPS = [2_187.5, 5_687.5] as const;
+const CAMERA_BITRATES = CAMERA_BITRATES_KBPS;
+const SCREENCAST_BITRATES = SCREENCAST_BITRATES_KBPS;
+const CAMERA_MAX_SIMULCAST_TIERS = CAMERA_BITRATES.length;
+const SCREENCAST_MAX_SIMULCAST_TIERS = SCREENCAST_BITRATES.length;
 
-const dims = (ladder: SpatialLayerConfig[]): string[] =>
+const dims = (ladder: LayerConfig[]): string[] =>
     ladder.map(l => `${l.width}x${l.height}`);
 
 describe('buildLadder — quarter-pixel ratio', () => {
-    it('webcam 3-tier @ 720p → 180p / 360p / 720p', () => {
+    it('camera 3-tier @ 720p → 180p / 360p / 720p', () => {
         const result = buildLadder({
             topWidth: 1280, topHeight: 720, tierCount: 3,
-            maxTierCount: WEBCAM_MAX_SIMULCAST_TIERS,
-            bitrateFor: hevcBitrate,
+            maxTierCount: CAMERA_MAX_SIMULCAST_TIERS,
+            bitratesKbps: CAMERA_BITRATES,
         });
         expect(dims(result)).toEqual(['320x180', '640x360', '1280x720']);
     });
 
-    it('webcam 2-tier dropTop fallback @ 360p → 180p / 360p', () => {
+    it('camera 2-tier dropTop fallback @ 360p → 180p / 360p', () => {
         // iOS HW-encoder budget probe-fail path: drop 720p top, keep [180p, 360p].
         const result = buildLadder({
             topWidth: 640, topHeight: 360, tierCount: 2,
-            maxTierCount: WEBCAM_MAX_SIMULCAST_TIERS,
-            bitrateFor: hevcBitrate,
+            maxTierCount: CAMERA_MAX_SIMULCAST_TIERS,
+            bitratesKbps: CAMERA_BITRATES,
         });
         expect(dims(result)).toEqual(['160x90', '320x180', '640x360'].slice(-2));
         expect(dims(result)).toEqual(['320x180', '640x360']);
@@ -48,7 +41,7 @@ describe('buildLadder — quarter-pixel ratio', () => {
         const result = buildLadder({
             topWidth: 1920, topHeight: 1080, tierCount: 2,
             maxTierCount: SCREENCAST_MAX_SIMULCAST_TIERS,
-            bitrateFor: hevcBitrate,
+            bitratesKbps: SCREENCAST_BITRATES,
         });
         expect(dims(result)).toEqual(['960x540', '1920x1080']);
     });
@@ -57,27 +50,27 @@ describe('buildLadder — quarter-pixel ratio', () => {
         // Source-shaped rebuild for a rotated camera. Each tier is ¼ pixels.
         const result = buildLadder({
             topWidth: 720, topHeight: 1280, tierCount: 3,
-            maxTierCount: WEBCAM_MAX_SIMULCAST_TIERS,
-            bitrateFor: hevcBitrate,
+            maxTierCount: CAMERA_MAX_SIMULCAST_TIERS,
+            bitratesKbps: CAMERA_BITRATES,
         });
         expect(dims(result)).toEqual(['180x320', '360x640', '720x1280']);
     });
 
-    it('tierCount cap clamps to WEBCAM_MAX_SIMULCAST_TIERS', () => {
+    it('tierCount cap clamps to CAMERA_MAX_SIMULCAST_TIERS', () => {
         const result = buildLadder({
             topWidth: 1920, topHeight: 1080, tierCount: 10,
-            maxTierCount: WEBCAM_MAX_SIMULCAST_TIERS,
-            bitrateFor: hevcBitrate,
+            maxTierCount: CAMERA_MAX_SIMULCAST_TIERS,
+            bitratesKbps: CAMERA_BITRATES,
         });
-        expect(result.length).toBeLessThanOrEqual(WEBCAM_MAX_SIMULCAST_TIERS);
-        expect(WEBCAM_MAX_SIMULCAST_TIERS).toBe(3);
+        expect(result.length).toBeLessThanOrEqual(CAMERA_MAX_SIMULCAST_TIERS);
+        expect(CAMERA_MAX_SIMULCAST_TIERS).toBe(3);
     });
 
     it('tierCount=1 keeps only the top (source dims)', () => {
         const result = buildLadder({
             topWidth: 1280, topHeight: 720, tierCount: 1,
-            maxTierCount: WEBCAM_MAX_SIMULCAST_TIERS,
-            bitrateFor: hevcBitrate,
+            maxTierCount: CAMERA_MAX_SIMULCAST_TIERS,
+            bitratesKbps: CAMERA_BITRATES,
         });
         expect(dims(result)).toEqual(['1280x720']);
     });
@@ -85,8 +78,8 @@ describe('buildLadder — quarter-pixel ratio', () => {
     it('tierCount=0 returns empty', () => {
         const result = buildLadder({
             topWidth: 1280, topHeight: 720, tierCount: 0,
-            maxTierCount: WEBCAM_MAX_SIMULCAST_TIERS,
-            bitrateFor: hevcBitrate,
+            maxTierCount: CAMERA_MAX_SIMULCAST_TIERS,
+            bitratesKbps: CAMERA_BITRATES,
         });
         expect(result).toEqual([]);
     });
@@ -94,31 +87,28 @@ describe('buildLadder — quarter-pixel ratio', () => {
     it('zero source dims returns empty (still warming)', () => {
         const result = buildLadder({
             topWidth: 0, topHeight: 0, tierCount: 3,
-            maxTierCount: WEBCAM_MAX_SIMULCAST_TIERS,
-            bitrateFor: hevcBitrate,
+            maxTierCount: CAMERA_MAX_SIMULCAST_TIERS,
+            bitratesKbps: CAMERA_BITRATES,
         });
         expect(result).toEqual([]);
     });
 
-    it('uses bitrate-table for each tier height', () => {
+    it('uses supplied bottom-first bitrates for each tier', () => {
         const result = buildLadder({
             topWidth: 1280, topHeight: 720, tierCount: 3,
-            maxTierCount: WEBCAM_MAX_SIMULCAST_TIERS,
-            bitrateFor: hevcBitrate,
+            maxTierCount: CAMERA_MAX_SIMULCAST_TIERS,
+            bitratesKbps: CAMERA_BITRATES,
         });
-        // Top tier: 720 → 2_000_000
-        expect(result[2].bitrate).toBe(2_000_000);
-        // Mid tier: 360 → 650_000
-        expect(result[1].bitrate).toBe(650_000);
-        // Base tier: 180 → 162_500
-        expect(result[0].bitrate).toBe(162_500);
+        expect(result[2].bitrateKbps).toBe(2_000);
+        expect(result[1].bitrateKbps).toBe(650);
+        expect(result[0].bitrateKbps).toBe(162.5);
     });
 
     it('odd source dims: top is source-as-is, lower tiers even-rounded', () => {
         const result = buildLadder({
             topWidth: 1001, topHeight: 561, tierCount: 3,
-            maxTierCount: WEBCAM_MAX_SIMULCAST_TIERS,
-            bitrateFor: hevcBitrate,
+            maxTierCount: CAMERA_MAX_SIMULCAST_TIERS,
+            bitratesKbps: CAMERA_BITRATES,
         });
         expect(result).toHaveLength(2);
         // Top = source (odd dims preserved).
@@ -134,8 +124,8 @@ describe('buildLadder — quarter-pixel ratio', () => {
     it('quarter-pixel ratio holds for all adjacent tiers (3-tier)', () => {
         const result = buildLadder({
             topWidth: 1280, topHeight: 720, tierCount: 3,
-            maxTierCount: WEBCAM_MAX_SIMULCAST_TIERS,
-            bitrateFor: hevcBitrate,
+            maxTierCount: CAMERA_MAX_SIMULCAST_TIERS,
+            bitratesKbps: CAMERA_BITRATES,
         });
         // Each lower tier is ½ width × ½ height = ¼ pixels of the next.
         for (let i = 0; i < result.length - 1; i++) {
@@ -147,8 +137,8 @@ describe('buildLadder — quarter-pixel ratio', () => {
     it('prunes lower tiers below the minimum small axis but keeps top', () => {
         const result = buildLadder({
             topWidth: 320, topHeight: 180, tierCount: 3,
-            maxTierCount: WEBCAM_MAX_SIMULCAST_TIERS,
-            bitrateFor: hevcBitrate,
+            maxTierCount: CAMERA_MAX_SIMULCAST_TIERS,
+            bitratesKbps: CAMERA_BITRATES,
         });
         expect(dims(result)).toEqual(['320x180']);
     });
@@ -157,7 +147,7 @@ describe('buildLadder — quarter-pixel ratio', () => {
         const result = buildLadder({
             topWidth: 1440, topHeight: 900, tierCount: 2,
             maxTierCount: SCREENCAST_MAX_SIMULCAST_TIERS,
-            bitrateFor: hevcBitrate,
+            bitratesKbps: SCREENCAST_BITRATES,
         });
         expect(dims(result)).toEqual(['720x450', '1440x900']);
     });
@@ -168,8 +158,8 @@ describe('capture top sizing', () => {
         expect(fitWithin(3440, 1440, 1920, 1080)).toEqual({ width: 1920, height: 804 });
     });
 
-    it('webcam top uses 16:9 cover-crop target capped at 720p', () => {
-        expect(webcamTopSize(1600, 1200)).toEqual({ width: 1280, height: 720 });
-        expect(webcamTopSize(960, 720)).toEqual({ width: 960, height: 540 });
+    it('camera top uses 16:9 cover-crop target capped at 720p', () => {
+        expect(cameraTopSize(1600, 1200)).toEqual({ width: 1280, height: 720 });
+        expect(cameraTopSize(960, 720)).toEqual({ width: 960, height: 540 });
     });
 });

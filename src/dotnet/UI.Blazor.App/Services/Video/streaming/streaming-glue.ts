@@ -44,8 +44,8 @@ const RPC_SESSION_DEFAULT = '~';
 export interface StreamingContext {
     chatId: string;
     serverClockOffsetMs: number;
-    /** 0 = Webcam, 1 = Screencast. Matches `.NET LiveVideoStreamKind`. */
-    streamKind: number;
+    /** 0 = Camera, 1 = ScreenCast. Matches `.NET VideoSourceKind`. */
+    sourceKind: number;
     /** Fusion RPC WebSocket URL. Mirrored into `Api.hub.defaultPeerUrl` on
      *  first push via {@link ensureRpcPush}. */
     apiUrl: string | null;
@@ -93,13 +93,12 @@ function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
     if (frame.codec) dto.Codec = frame.codec;
     if (frame.temporalLayerId !== undefined && frame.temporalLayerId > 0)
         dto.TemporalLayerId = frame.temporalLayerId;
-    if (frame.spatialLayerId !== undefined && frame.spatialLayerId > 0)
-        dto.SpatialLayerId = frame.spatialLayerId;
-    // Always emit the producer's current ladder range; the server's
-    // ReceiveQualityFilter clamps the consumer cap into [min, max] per frame
-    // without observing layers over time.
-    dto.MinSpatialLayerId = frame.minSpatialLayerId ?? 0;
-    dto.MaxSpatialLayerId = frame.maxSpatialLayerId ?? 0;
+    if (frame.layerId !== undefined && frame.layerId > 0)
+        dto.LayerId = frame.layerId;
+    // Always emit the producer's current ladder max; the server's
+    // ReceiveQualityFilter clamps the consumer cap without observing layers
+    // over time.
+    dto.MaxLayerId = frame.maxLayerId ?? 0;
     return dto;
 }
 
@@ -283,7 +282,7 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
                     }
                 })(),
                 MediaRpcStreamOptions.videoRealtime<VideoFrameDto>(
-                    frame => frame.IsKeyFrame && (frame.SpatialLayerId ?? 0) === 0),
+                    frame => frame.IsKeyFrame && (frame.LayerId ?? 0) === 0),
             );
 
             const streamRef = stream.toRef(peer);
@@ -296,7 +295,7 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
             }
 
             void liveVideoStreams
-                .PushStream(RPC_SESSION_DEFAULT, chatId, sourceStartOffsetSeconds, formatDto, streamRef, ctx.streamKind)
+                .PushStream(RPC_SESSION_DEFAULT, chatId, sourceStartOffsetSeconds, formatDto, ctx.sourceKind, streamRef)
                 .catch((err: unknown) => {
                     const msg = err instanceof Error ? err.message : String(err);
                     warnLog?.log('PushStream rejected:', err);
@@ -329,7 +328,7 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
     // and only fills when the iterator yields, which the pump-stall
     // prevents. We can't use a ReplaceableSlot here: encoded frames are
     // not freely droppable (delta sequences depend on prior keyframes,
-    // and we have multiple spatial layers).
+    // and we have multiple layers).
     //
     // Trigger: any single layer has > 2 keyframes queued — a buffer this
     // deep means we're past one full keyframe cycle plus an in-progress
@@ -343,7 +342,7 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
         for (let i = 0; i < frames.length; i++) {
             const f = frames.get(i)!;
             if (!f.isKeyFrame) continue;
-            const layer = f.spatialLayerId ?? 0;
+            const layer = f.layerId ?? 0;
             kfCountByLayer.set(layer, (kfCountByLayer.get(layer) ?? 0) + 1);
             lastKfIdx = i;
         }

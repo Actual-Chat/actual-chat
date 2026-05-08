@@ -40,36 +40,31 @@ public static partial class Constants
         // enough to surface it). 10% margin over KeyFramePeriod absorbs minor
         // jitter in the sender's keyframe cadence.
         public static readonly TimeSpan ServerReplayTailDuration = TimeSpan.FromSeconds(KeyFramePeriod.TotalSeconds * 1.1);
-        // Simulcast streams interleave MaxSimulcastTiers spatial layers into one
-        // chain at MaxSimulcastTiers × FrameRate frames per second. Without the
+        // Simulcast streams interleave the widest layer ladder into one
+        // chain at VideoLayerDef.MaxLayerCount × FrameRate frames per second. Without the
         // layer multiplier the count cap clipped the Replay window to ~1.1 s of
         // wall-time, excluding the keyframe anchor VideoStreamMemoizer preserves
         // at the chain head and forcing GetVideoRaw's SkipWhile to drain
         // hundreds of deltas before the next live KF arrives.
         public static readonly int ServerReplayTailSize =
-            MaxSimulcastTiers * FrameRate * (int)Math.Ceiling(ServerReplayTailDuration.TotalSeconds);
+            VideoLayerDef.MaxLayerCount
+            * FrameRate
+            * (int)Math.Ceiling(ServerReplayTailDuration.TotalSeconds);
         // = 3 × 30 × 4 = 360 frames (~4 s wall-time per layer at full cadence)
-
-        // Max simulcast tiers by stream kind. Mirrors TS constants in
-        // src/dotnet/UI.Blazor.App/Components/VideoPanel/simulcast-ladder.ts.
-        // Webcam: up to 3 tiers (720p/360p/180p). Screencast: top + half-size.
-        public const int WebcamMaxSimulcastTiers = 3;
-        public const int ScreencastMaxSimulcastTiers = 2;
-        public const int MaxSimulcastTiers = 3;
 
         public static readonly TimeSpan CancellationDelay = TimeSpan.FromSeconds(5);
         public static readonly TimeSpan StreamExpirationDelay = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan MaxLiveDuration = TimeSpan.FromHours(8);
 
         // Watchdog: cancel PushVideo handler if no frame arrives within this window.
-        // Webcam: 10s — tolerates brief sensor stalls (camera permission re-prompt,
+        // Camera: 10s — tolerates brief sensor stalls (camera permission re-prompt,
         // OS-level camera swap, momentary USB hang) without killing the stream.
-        public static readonly TimeSpan WebcamFrameSilenceTimeout = TimeSpan.FromSeconds(10);
-        // Screencast: 3min — getDisplayMedia is change-driven. A user reading code
+        public static readonly TimeSpan CameraFrameSilenceTimeout = TimeSpan.FromSeconds(10);
+        // ScreenCast: 3min — getDisplayMedia is change-driven. A user reading code
         // in a static IDE produces zero frames for extended periods. Client sends
-        // heartbeat frames every ScreencastHeartbeatInterval during silence, so
+        // heartbeat frames every ScreenCastHeartbeatInterval during silence, so
         // this timeout only trips if the client itself is stuck/gone.
-        public static readonly TimeSpan ScreencastFrameSilenceTimeout = TimeSpan.FromMinutes(3);
+        public static readonly TimeSpan ScreenCastFrameSilenceTimeout = TimeSpan.FromMinutes(3);
 
         // RPC stream flow control for video — doc-target values from
         // docs/video-pipeline.md "Constants" block: derived from TargetBufferSize.
@@ -134,10 +129,7 @@ public static partial class Constants
         // QualityHysteresisWindow (5s) so we don't oscillate at the boundary.
         public static readonly int LatencyStepDownConsecutiveChecks = 2;
 
-        // PLI rate limiting — one fresh keyframe per natural keyframe cadence.
-        // Two viewers joining within a sender's keyframe window can both prime
-        // a fresh KF if needed; further joiners ride the cached anchor.
-        public static readonly TimeSpan KeyFrameRequestCooldown = KeyFramePeriod;
+        public static readonly TimeSpan KeyFrameRequestCooldown = KeyFramePeriod / 3;
 
         // Warmup
         public static readonly TimeSpan PeerWarmupDuration = TimeSpan.FromSeconds(10);
@@ -145,17 +137,17 @@ public static partial class Constants
         // Codec selection
         public static readonly TimeSpan CodecSwitchHysteresisWindow = TimeSpan.FromSeconds(10);
 
-        // Egress-side spatial fallback: server-edge fast-reaction cap when a peer's
-        // fan-out stalls or can't anchor a keyframe on its current spatial layer.
+        // Egress-side layer fallback: server-edge fast-reaction cap when a peer's
+        // fan-out stalls or can't anchor a keyframe on its current layer.
         // Bypasses the 2s latency-report cadence to react within one frame.
         public static readonly TimeSpan EgressStallThreshold = TimeSpan.FromMilliseconds(500);
         public static readonly TimeSpan EgressRecoveryWindow = TimeSpan.FromSeconds(10);
-        // Max frames skipped on the selected spatial layer before egress falls back.
+        // Max frames skipped on the selected layer before egress falls back.
         // ~5s at 30fps — covers up to 5 missed 1s-cadence keyframes.
         public static readonly int EgressGapFrameThreshold = 150;
 
         // Stream count limits
-        public static readonly int MaxWebcamStreamsPerChat = 8;
+        public static readonly int MaxCameraStreamsPerChat = 8;
         public static readonly int PriorityActivationThreshold = 6;
         public static readonly TimeSpan SilenceGracePeriod = TimeSpan.FromSeconds(30);
 

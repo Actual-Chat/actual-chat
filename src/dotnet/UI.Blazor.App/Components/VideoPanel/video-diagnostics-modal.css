@@ -96,7 +96,7 @@ div.diag-value.multiline .diag-value {
     font-size: 0.8125rem;
 }
 
-.diag-stream-kind {
+.diag-source-kind {
     @apply text-xs font-medium px-1.5 py-0.5 rounded bg-03 text-02;
 }
 

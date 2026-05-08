@@ -8,10 +8,10 @@
 //    via JS interop (Services/VideoRecorder.cs).
 //  - Module-level helpers: `getActiveRecorder`, `getAllActiveRecorders`,
 //    `addActiveRecorderListener`, `PreviewFrameListener`.
-//  - Diagnostics shape: `OwnStreamDiagnostics`, `OwnSpatialLayerDiagnostics`.
+//  - Diagnostics shape: `OwnStreamDiagnostics`, `OwnLayerDiagnostics`.
 //
 // Behavioural diffs from the legacy file (intentional, per cut-over plan):
-//  - Reconfigure / switchCodec / setSimulcastLayers all become a
+//  - switchCodec / setLayers become a
 //    `worker.stop()` followed by `worker.start({...newConfig})` (no
 //    in-place reconfigure on the new pipeline).
 //  - Preview-only mode (the blur preview tap to a main-thread canvas)
@@ -27,7 +27,14 @@
 // known-degraded and we'd want to revisit once follow-up phases add
 // the missing surface to the new pipeline.
 
-import { AC } from 'app-constants';
+import {
+    AC,
+    VIDEO,
+    getVideoCodecEfficiency,
+    getVideoLayerBitrateKbps,
+    getVideoLayerBitratesKbps,
+    kbpsToBitsPerSecond,
+} from 'app-constants';
 import { getLogs } from 'logging';
 import { Api, WorkerKind } from 'api';
 import { rpcClientServer } from 'rpc';
@@ -45,13 +52,10 @@ import {
     probeEncoder,
     type CodecInfo,
 } from '../../Services/Video/codec-support';
-import { getExpectedBitrate } from '../../Services/Video/bitrate-table';
 import {
     buildLadder,
-    SCREENCAST_MAX_SIMULCAST_TIERS,
-    WEBCAM_MAX_SIMULCAST_TIERS,
-    type SpatialLayerConfig,
-} from './simulcast-ladder';
+    type LayerConfig,
+} from './layer-ladder';
 import { MediaCapture } from '../../Services/Video/services/media-capture';
 import {
     type RecorderWorker,
@@ -79,7 +83,7 @@ export interface OwnStreamDiagnostics {
     encodedFrames: number;
     droppedFrames: number;
     keyFrames: number;
-    spatialLayers: OwnSpatialLayerDiagnostics[];
+    layers: OwnLayerDiagnostics[];
     medianEncodeTime: number;
     pureMedianEncodeTime: number;
     encoderHwAccel: string;
@@ -118,12 +122,12 @@ export interface OwnStreamDiagnostics {
     } | null;
     simulcast: {
         layerCount: number;
-        layers: { width: number; height: number; bitrate: number; scalabilityMode?: string }[];
+        layers: { width: number; height: number; bitrateKbps: number; scalabilityMode?: string }[];
     } | null;
 }
 
-export interface OwnSpatialLayerDiagnostics {
-    spatialLayerId: number;
+export interface OwnLayerDiagnostics {
+    layerId: number;
     outputResolution: string;
     configuredBitrate: number;
     actualBitrateKbps: number;
@@ -151,10 +155,10 @@ export interface VideoDevice {
 
 // ---- Active recorder registry --------------------------------------------
 
-const StreamKindWebcam = 0;
+const VideoSourceKindCamera = 0;
 const activeRecorders = new Map<number, VideoRecorder>();
 
-export function getActiveRecorder(kind: number = StreamKindWebcam): VideoRecorder | null {
+export function getActiveRecorder(kind: number = VideoSourceKindCamera): VideoRecorder | null {
     return activeRecorders.get(kind) ?? null;
 }
 
@@ -186,6 +190,14 @@ interface Size {
     height: number;
 }
 
+interface LayerInput {
+    width: number;
+    height: number;
+    baseBitrateKbps?: number;
+    bitrateKbps?: number;
+    scalabilityMode?: string;
+}
+
 /**
  * Preview frame listener — preserved for API compatibility with the
  * legacy file. The new pipeline does NOT push preview frames to the
@@ -203,7 +215,7 @@ export type VideoRecordingState = 'stopped' | 'starting' | 'recording' | 'error'
 // ---- Worker construction --------------------------------------------------
 
 // Mirrors the legacy `createProcessingWorker` from `video-pipeline.ts`.
-// Each VideoRecorder owns its own worker so a webcam + screencast can
+// Each VideoRecorder owns its own worker so a camera + screencast can
 // run side-by-side without overwriting each other's state.
 function createRecorderWorker(): Worker {
     const workerPath = Versioning.mapPath('/dist/videoRecorderWorker.js');
@@ -225,7 +237,7 @@ export class VideoRecorder {
     // Lifecycle flags.
     private isRecording = false;
     private isStoppingRecording = false;
-    private isScreencasting = false;
+    private isScreenCasting = false;
 
     // Active recorder registration (by kind).
     private registeredKind: number | null = null;
@@ -252,8 +264,8 @@ export class VideoRecorder {
     private workerSourceCancelled = false;
     private workerSourceCaptureWatchdogCancel: (() => void) | null = null;
 
-    // Configuration cached for restart on switchCamera / reconfigure /
-    // codec switch / simulcast change.
+    // Configuration cached for restart on switchCamera / codec switch /
+    // simulcast change.
     private selectedCameraDeviceId: string | null = null;
     private chatId = '';
     private isBlurEnabled = false;
@@ -271,15 +283,15 @@ export class VideoRecorder {
 
     // Active simulcast ladder (bottom-first). Drives the wire-safe
     // recorder config via {@link toEncoderConfigs}.
-    private simulcastLayers: SpatialLayerConfig[] | null = null;
-    private fullSimulcastLadder: SpatialLayerConfig[] | null = null;
+    private layers: LayerConfig[] | null = null;
+    private fullLayerLadder: LayerConfig[] | null = null;
     // Currently-selected codec string (e.g. 'avc1.640028'). Threaded
     // into every encoder config layer.
     private currentCodecString = '';
     private currentCodecHardwareAccel = false;
-    // Stream-mode driving downstream config (bitrate table, simulcast caps).
-    private currentMode: 'webcam' | 'screen' = 'webcam';
-    // Top-tier encoder framerate. 30 for webcam, 15 for screencast.
+    // Stream-mode driving downstream config (simulcast caps and layer bitrates).
+    private currentMode: 'camera' | 'screen' = 'camera';
+    // Top-tier encoder framerate. 30 for camera, 15 for screencast.
     private currentFramerate = 30;
 
     // Listeners.
@@ -415,36 +427,41 @@ export class VideoRecorder {
     /**
      * Update the cached simulcast ladder. On a running recorder this
      * triggers a stop+start with the new ladder (the new pipeline does
-     * NOT support hot reconfigure of the spatial layer set).
+     * NOT support hot reconfigure of the layer set).
      *
      * TODO(phase 7+): re-introduce hot-apply once the recorder
      * supports a control channel for adding/removing layers without
      * tearing down the underlying RPC stream.
      */
-    public setSimulcastLayers(layers: SpatialLayerConfig[] | null): void {
-        const maxTiers = this.isScreencasting ? SCREENCAST_MAX_SIMULCAST_TIERS : WEBCAM_MAX_SIMULCAST_TIERS;
+    public setLayers(layers: LayerInput[] | null): void {
+        const maxTiers = this.isScreenCasting
+            ? VIDEO.screenCastLayerBaseBitratesKbps.length
+            : VIDEO.cameraLayerBaseBitratesKbps.length;
         const clamped = (layers && layers.length > maxTiers)
             ? layers.slice(-maxTiers)
             : layers;
-        const requestedCount = clamped?.length ?? 0;
-        let active: SpatialLayerConfig[] | null = (clamped && clamped.length >= 2) ? clamped : null;
-        const prevCount = this.simulcastLayers?.length ?? 0;
-        if (active !== null && this.fullSimulcastLadder) {
-            active = this.fullSimulcastLadder.slice(0, Math.min(requestedCount, this.fullSimulcastLadder.length));
+        const normalized = clamped?.map(l => this.normalizeLayerInput(l)) ?? null;
+        const requestedCount = normalized?.length ?? 0;
+        let active: LayerConfig[] | null = (normalized && normalized.length >= 2) ? normalized : null;
+        const prevCount = this.layers?.length ?? 0;
+        if (active !== null && this.fullLayerLadder) {
+            active = this.fullLayerLadder.slice(0, Math.min(requestedCount, this.fullLayerLadder.length));
             if (active.length < 2)
                 active = null;
         }
+        if (active !== null)
+            active = this.withCodecBitrates(active, this.currentCodecString);
         const newCount = active?.length ?? 0;
-        this.simulcastLayers = active;
+        this.layers = active;
         if (prevCount !== newCount) {
-            infoLog?.log(`setSimulcastLayers: ${prevCount} -> ${newCount} layer(s)`);
+            infoLog?.log(`setLayers: ${prevCount} -> ${newCount} layer(s)`);
         }
         if (this.worker && prevCount !== newCount) {
             // Hot-restart with the new ladder. The encoder pool inside
             // the session retains parked encoders across the gap so
             // codec / NVENC slot survives.
             void this.restartWithCurrentConfig().catch((e: unknown) =>
-                warnLog?.log('setSimulcastLayers: restart failed:', e));
+                warnLog?.log('setLayers: restart failed:', e));
         }
     }
 
@@ -488,8 +505,8 @@ export class VideoRecorder {
         return this.isBlurEnabled;
     }
 
-    public isScreencastActive(): boolean {
-        return this.isScreencasting;
+    public isScreenCastActive(): boolean {
+        return this.isScreenCasting;
     }
 
     public addPreviewFrameListener(cb: PreviewFrameListener): () => void {
@@ -516,7 +533,7 @@ export class VideoRecorder {
         }
 
         this.setRecordingState('starting');
-        this.currentMode = 'webcam';
+        this.currentMode = 'camera';
         infoLog?.log(`Starting video recording... audienceCodecs=[${audienceCodecs?.join(', ') ?? '(none)'}]`);
 
         try {
@@ -534,19 +551,19 @@ export class VideoRecorder {
                 topWidth: targetSize.width,
                 topHeight: targetSize.height,
                 tierCount: 3,
-                maxTierCount: WEBCAM_MAX_SIMULCAST_TIERS,
-                bitrateFor: (h: number) => getExpectedBitrate(initialPick, h),
+                maxTierCount: VIDEO.cameraLayerBaseBitratesKbps.length,
+                bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
             });
             let bestCodecString = await this.pickSimulcastCodec(
                 supportedCodecs, audienceCodecs, ladder3);
-            let ladder: SpatialLayerConfig[] = ladder3;
+            let ladder: LayerConfig[] = ladder3;
             if (!bestCodecString) {
                 const ladder2 = buildLadder({
                     topWidth: 640,
                     topHeight: 360,
                     tierCount: 2,
-                    maxTierCount: WEBCAM_MAX_SIMULCAST_TIERS,
-                    bitrateFor: (h: number) => getExpectedBitrate(initialPick, h),
+                    maxTierCount: VIDEO.cameraLayerBaseBitratesKbps.length,
+                    bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
                 });
                 infoLog?.log(`3-tier probe failed for all codecs — falling back to 2-tier @ 360p (drop 720p top)`);
                 const codec2 = await this.pickSimulcastCodec(
@@ -565,18 +582,19 @@ export class VideoRecorder {
                 topWidth: ladder[ladder.length - 1].width,
                 topHeight: ladder[ladder.length - 1].height,
                 tierCount: ladder.length,
-                maxTierCount: WEBCAM_MAX_SIMULCAST_TIERS,
-                bitrateFor: (h: number) => getExpectedBitrate(bestCodecString, h),
+                maxTierCount: VIDEO.cameraLayerBaseBitratesKbps.length,
+                bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
             });
+            ladder = this.withCodecBitrates(ladder, bestCodecString);
             const top = ladder[ladder.length - 1];
             const captureWidth = top.width;
             const captureHeight = top.height;
-            const captureBitrate = top.bitrate;
-            this.simulcastLayers = ladder.length >= 2 ? [...ladder] : null;
-            this.fullSimulcastLadder = this.simulcastLayers ? [...this.simulcastLayers] : null;
+            const captureBitrateKbps = top.bitrateKbps;
+            this.layers = ladder.length >= 2 ? [...ladder] : null;
+            this.fullLayerLadder = this.layers ? [...this.layers] : null;
             this.currentCodecString = bestCodecString;
             this.currentCodecHardwareAccel = bestCodecInfo?.hardwareAccelerated ?? false;
-            infoLog?.log(`Initial codec selection: ${codecCategory} (${bestCodecString}), hw=${this.currentCodecHardwareAccel}, top=${captureWidth}x${captureHeight}@${captureBitrate / 1_000_000}Mbps`);
+            infoLog?.log(`Initial codec selection: ${codecCategory} (${bestCodecString}), hw=${this.currentCodecHardwareAccel}, top=${captureWidth}x${captureHeight}@${captureBitrateKbps / 1_000}Mbps`);
             infoLog?.log(`Capture ladder (bottom-first): [${ladder.map(l => `${l.width}x${l.height}`).join(', ')}], capture ${captureWidth}x${captureHeight}`);
 
             // Acquire the camera track on main thread.
@@ -621,7 +639,7 @@ export class VideoRecorder {
         }
     }
 
-    public async startScreencast(chatId: string, audienceCodecs?: string[]): Promise<void> {
+    public async startScreenCast(chatId: string, audienceCodecs?: string[]): Promise<void> {
         this.chatId = chatId;
         this.audienceCodecs = audienceCodecs;
         if (this.isRecording) {
@@ -645,22 +663,23 @@ export class VideoRecorder {
             const bestCodecString = this.pickInitialCodec(supportedCodecs, audienceCodecs, targetSize);
             const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
 
-            const screencastLadder = buildLadder({
+            const screenCastLadder = buildLadder({
                 topWidth: targetSize.width,
                 topHeight: targetSize.height,
                 tierCount: 2,
-                maxTierCount: SCREENCAST_MAX_SIMULCAST_TIERS,
-                bitrateFor: (h: number) => getExpectedBitrate(bestCodecString, h, 'screen'),
+                maxTierCount: VIDEO.screenCastLayerBaseBitratesKbps.length,
+                bitratesKbps: VIDEO.screenCastLayerBaseBitratesKbps,
             });
-            const screencastTop = screencastLadder[screencastLadder.length - 1];
-            this.simulcastLayers = [...screencastLadder];
-            this.fullSimulcastLadder = [...screencastLadder];
+            const actualScreenCastLadder = this.withCodecBitrates(screenCastLadder, bestCodecString);
+            const screenCastTop = actualScreenCastLadder[actualScreenCastLadder.length - 1];
+            this.layers = [...actualScreenCastLadder];
+            this.fullLayerLadder = [...actualScreenCastLadder];
             this.currentCodecString = bestCodecString;
             this.currentCodecHardwareAccel = bestCodecInfo?.hardwareAccelerated ?? false;
-            infoLog?.log(`Screencast ladder (bottom-first): [${screencastLadder.map(l => `${l.width}x${l.height}`).join(', ')}], capture ${screencastTop.width}x${screencastTop.height}`);
+            infoLog?.log(`ScreenCast ladder (bottom-first): [${actualScreenCastLadder.map(l => `${l.width}x${l.height}`).join(', ')}], capture ${screenCastTop.width}x${screenCastTop.height}`);
 
             // Acquire the screen track on main thread.
-            const screenTrack = await MediaCapture.captureScreencast();
+            const screenTrack = await MediaCapture.captureScreenCast();
             this.inputTrack = screenTrack;
             this.previewTrack = screenTrack;
 
@@ -674,19 +693,19 @@ export class VideoRecorder {
             };
 
             this.ensureWorker();
-            await this.startWorker(screencastLadder);
+            await this.startWorker(actualScreenCastLadder);
 
             this.isRecording = true;
-            this.isScreencasting = true;
+            this.isScreenCasting = true;
             this.setRecordingState('recording');
 
             await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
-            infoLog?.log('Screencast started');
+            infoLog?.log('ScreenCast started');
         } catch (error) {
             const isUserCancel = error instanceof DOMException && error.name === 'NotAllowedError';
             if (isUserCancel) {
                 this.setRecordingState('stopped');
-                infoLog?.log('Screencast cancelled by user');
+                infoLog?.log('ScreenCast cancelled by user');
                 await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
                 return;
             }
@@ -716,9 +735,9 @@ export class VideoRecorder {
             this.tearDownWorker();
             this.cleanupPreviewTrack();
             this.isRecording = false;
-            this.isScreencasting = false;
-            this.simulcastLayers = null;
-            this.fullSimulcastLadder = null;
+            this.isScreenCasting = false;
+            this.layers = null;
+            this.fullLayerLadder = null;
             this.lastCodecSwitchAt = 0;
             this.startedAtMs = 0;
             this.setRecordingState('stopped');
@@ -737,19 +756,14 @@ export class VideoRecorder {
         this.audienceCodecs = codecs;
         if (!this.worker) return;
 
-        const matchingCategories = codecs.filter(c => this.supportedEncoderCategories.includes(c));
-
-        if (matchingCategories.length === 0) {
+        const allowedCategories = this.allowedCodecCategories(codecs);
+        if (allowedCategories && ![...allowedCategories].some(c => this.supportedEncoderCategories.includes(c))) {
             warnLog?.log(`updateSupportedDecoderCodecs: no match between server codecs [${codecs.join(', ')}] and encoder capabilities [${this.supportedEncoderCategories.join(', ')}], keeping current codec`);
             return;
         }
 
-        const audienceFilteredCodecs = this.supportedCodecs.filter(c =>
-            c.supported && matchingCategories.includes(c.category)
-        );
-        if (audienceFilteredCodecs.length === 0) return;
-
-        const pickedCodecString = getDefaultCodec(audienceFilteredCodecs, this.cameraWidth || 1280, this.cameraHeight || 720);
+        const pickedCodecString = this.pickBestCodecByEfficiency(this.supportedCodecs, codecs)
+            ?? getDefaultCodec(this.supportedCodecs, this.cameraWidth || 1280, this.cameraHeight || 720);
         const pickedCategory = getCodecCategory(pickedCodecString);
         const currentCategory = getCodecCategory(this.currentCodecString);
 
@@ -761,56 +775,8 @@ export class VideoRecorder {
         const pickedInfo = this.supportedCodecs.find(c => c.codec === pickedCodecString);
         this.currentCodecString = pickedCodecString;
         this.currentCodecHardwareAccel = pickedInfo?.hardwareAccelerated ?? false;
+        this.repriceCurrentLadders();
         await this.restartWithCurrentConfig();
-    }
-
-    public reconfigure(level: string, width: number, height: number): void {
-        if (!this.worker) {
-            warnLog?.log('reconfigure: no active worker');
-            return;
-        }
-
-        infoLog?.log(`reconfigure: level=${level}, size=${width}x${height}, cameraSize=${this.cameraWidth}x${this.cameraHeight}`);
-        const cameraIsPortrait = this.cameraWidth > 0 && this.cameraHeight > 0 && this.cameraHeight > this.cameraWidth;
-        const presetIsLandscape = width > height;
-        if (cameraIsPortrait && presetIsLandscape)
-            [width, height] = [height, width];
-
-        let cappedWidth = this.cameraWidth > 0 ? Math.min(width, this.cameraWidth) : width;
-        let cappedHeight = this.cameraHeight > 0 ? Math.min(height, this.cameraHeight) : height;
-
-        if (this.currentMode === 'webcam') {
-            const longSide = Math.max(cappedWidth, cappedHeight);
-            if (longSide > 1280) {
-                const scale = 1280 / longSide;
-                cappedWidth = Math.round(cappedWidth * scale) & ~1;
-                cappedHeight = Math.round(cappedHeight * scale) & ~1;
-            }
-        }
-
-        // When simulcast is active, ladder TOP dim is fixed by source cap.
-        const isSimulcastActive = this.simulcastLayers !== null && this.simulcastLayers.length >= 2;
-        if (isSimulcastActive) {
-            infoLog?.log(`reconfigure (simulcast): preset ${cappedWidth}x${cappedHeight} ignored — ladder top fixed by source cap`);
-            return;
-        }
-
-        // P2P / single-tier: rebuild a 1-tier ladder with new dims and restart.
-        // TODO(phase 7+): the legacy `worker.reconfigure({ bitrate, width, height })`
-        // could change encoder dims in-place, avoiding a full restart. The new
-        // pipeline does not have an in-place reconfigure; every encoder swap
-        // is a stop/start. NVENC slot survives via the encoder pool.
-        let cappedBitrate = getExpectedBitrate(this.currentCodecString, cappedHeight, this.currentMode === 'screen' ? 'screen' : 'webcam');
-        if (DeviceInfo.isIos)
-            cappedBitrate = Math.min(cappedBitrate, 1_000_000);
-        else if (DeviceInfo.isMobile)
-            cappedBitrate = Math.min(cappedBitrate, 2_000_000);
-
-        infoLog?.log(`reconfigure: ${cappedWidth}x${cappedHeight} @ ${cappedBitrate / 1_000_000}Mbps (codec=${this.currentCodecString})`);
-        this.simulcastLayers = [{ width: cappedWidth, height: cappedHeight, bitrate: cappedBitrate }];
-        this.fullSimulcastLadder = [...this.simulcastLayers];
-        void this.restartWithCurrentConfig().catch((e: unknown) =>
-            warnLog?.log('reconfigure: restart failed:', e));
     }
 
     public forceKeyFrame(): void {
@@ -827,9 +793,9 @@ export class VideoRecorder {
         // the legacy `VideoProcessingStats`. We map what we can; the
         // rest become zero / 'N/A' / null. The C# diagnostics surface
         // tolerates these — fields are simply rendered blank.
-        // TODO(phase 7+): repopulate per-spatial-layer stats once the
+        // TODO(phase 7+): repopulate per-layer stats once the
         // new pipeline's encoder-pool exposes per-layer counters.
-        const ladder = this.simulcastLayers ?? [];
+        const ladder = this.layers ?? [];
         const top = ladder.length > 0 ? ladder[ladder.length - 1] : null;
 
         const duration = this.startedAtMs > 0
@@ -841,22 +807,22 @@ export class VideoRecorder {
             : '';
 
         return {
-            mode: this.isScreencasting ? 'screen' : this.isRecording ? 'webcam' : 'none',
+            mode: this.isScreenCasting ? 'screen' : this.isRecording ? 'camera' : 'none',
             codec: this.currentCodecString,
             codecCategory,
             hardwareAccelerated: this.currentCodecHardwareAccel,
             inputResolution: this.cameraWidth > 0 ? `${this.cameraWidth}x${this.cameraHeight}` : 'N/A',
             inputFramerate: this.currentFramerate,
             outputResolution: top ? `${top.width}x${top.height}` : 'N/A',
-            configuredBitrate: top?.bitrate ?? 0,
+            configuredBitrate: kbpsToBitsPerSecond(top?.bitrateKbps ?? 0),
             actualBitrateKbps: 0,
             encodedFrames: 0,
             droppedFrames: 0,
             keyFrames: 0,
-            spatialLayers: ladder.map((l, i) => ({
-                spatialLayerId: i,
+            layers: ladder.map((l, i) => ({
+                layerId: i,
                 outputResolution: `${l.width}x${l.height}`,
-                configuredBitrate: l.bitrate,
+                configuredBitrate: kbpsToBitsPerSecond(l.bitrateKbps),
                 actualBitrateKbps: 0,
                 encodedFrames: 0,
                 droppedFrames: 0,
@@ -902,7 +868,7 @@ export class VideoRecorder {
                 layers: ladder.map(l => ({
                     width: l.width,
                     height: l.height,
-                    bitrate: l.bitrate,
+                    bitrateKbps: l.bitrateKbps,
                     scalabilityMode: l.scalabilityMode,
                 })),
             } : null,
@@ -934,7 +900,7 @@ export class VideoRecorder {
         this._connectivityHandler = null;
 
         this.isRecording = false;
-        this.isScreencasting = false;
+        this.isScreenCasting = false;
         this.setRecordingState('stopped');
     }
 
@@ -987,7 +953,7 @@ export class VideoRecorder {
         this._sharedSettingsRegistration = SharedSettingsWorkerSync.register(this.worker);
     }
 
-    private async startWorker(ladder: SpatialLayerConfig[]): Promise<void> {
+    private async startWorker(ladder: LayerConfig[]): Promise<void> {
         if (!this.worker || !this.inputTrack) {
             throw new Error('startWorker: worker or input track missing');
         }
@@ -1099,9 +1065,9 @@ export class VideoRecorder {
         const config: WireSafeRecorderConfig = {
             chatId: this.chatId,
             apiUrl,
-            streamKind: this.currentMode === 'screen' ? 1 : 0,
+            sourceKind: this.currentMode === 'screen' ? 1 : 0,
             encoderConfigs,
-            // Webcam: 2-3s interval; Screencast: 1-2s interval.
+            // Camera: 2-3s interval; ScreenCast: 1-2s interval.
             keyframeIntervalFrames: this.currentMode === 'screen'
                 ? this.currentFramerate * 2
                 : this.currentFramerate * 3,
@@ -1121,16 +1087,18 @@ export class VideoRecorder {
         this.startRecorderHealthMonitor();
     }
 
-    private toEncoderConfigs(ladder: SpatialLayerConfig[]): EncoderConfigPerLayer[] {
+    private toEncoderConfigs(ladder: LayerConfig[]): EncoderConfigPerLayer[] {
         if (ladder.length === 0) {
-            // Should not happen — startRecording / startScreencast always
+            // Should not happen — startRecording / startScreenCast always
             // set at least one tier — but defensively produce a single
             // tier from camera dims so the worker doesn't reject the start.
             return [{
                 codec: this.currentCodecString,
                 width: this.cameraWidth,
                 height: this.cameraHeight,
-                bitrate: getExpectedBitrate(this.currentCodecString, this.cameraHeight),
+                bitrate: this.isScreenCasting
+                    ? kbpsToBitsPerSecond(this.topBitrateKbpsForCodec(VIDEO.screenCastLayerBaseBitratesKbps, this.currentCodecString, 6_000))
+                    : kbpsToBitsPerSecond(this.topBitrateKbpsForCodec(VIDEO.cameraLayerBaseBitratesKbps, this.currentCodecString, 2_000)),
                 framerate: this.currentFramerate,
             }];
         }
@@ -1138,14 +1106,14 @@ export class VideoRecorder {
             codec: this.currentCodecString,
             width: l.width,
             height: l.height,
-            bitrate: l.bitrate,
+            bitrate: kbpsToBitsPerSecond(l.bitrateKbps),
             framerate: this.currentFramerate,
         }));
     }
 
     private async restartWithCurrentConfig(): Promise<void> {
         if (!this.worker || !this.inputTrack) return;
-        const ladder = this.simulcastLayers ?? this.fullSimulcastLadder ?? [];
+        const ladder = this.layers ?? this.fullLayerLadder ?? [];
         if (ladder.length === 0) {
             warnLog?.log('restartWithCurrentConfig: no ladder, skipping');
             return;
@@ -1157,6 +1125,41 @@ export class VideoRecorder {
             warnLog?.log('restart: stop failed (continuing):', e);
         }
         await this.startWorker(ladder);
+    }
+
+    private withCodecBitrates(layers: readonly LayerConfig[], codec: string): LayerConfig[] {
+        return layers.map(l => {
+            const baseBitrateKbps = l.baseBitrateKbps ?? l.bitrateKbps;
+            return {
+                ...l,
+                baseBitrateKbps,
+                bitrateKbps: getVideoLayerBitrateKbps(baseBitrateKbps, codec),
+            };
+        });
+    }
+
+    private repriceCurrentLadders(): void {
+        if (this.layers)
+            this.layers = this.withCodecBitrates(this.layers, this.currentCodecString);
+        if (this.fullLayerLadder)
+            this.fullLayerLadder = this.withCodecBitrates(this.fullLayerLadder, this.currentCodecString);
+    }
+
+    private topBitrateKbpsForCodec(baseBitratesKbps: readonly number[], codec: string, fallbackKbps: number): number {
+        return getVideoLayerBitratesKbps(baseBitratesKbps, codec).at(-1) ?? fallbackKbps;
+    }
+
+    private normalizeLayerInput(layer: LayerInput): LayerConfig {
+        const baseBitrateKbps = layer.baseBitrateKbps ?? layer.bitrateKbps ?? 0;
+        const result: LayerConfig = {
+            width: layer.width,
+            height: layer.height,
+            baseBitrateKbps,
+            bitrateKbps: layer.bitrateKbps ?? baseBitrateKbps,
+        };
+        if (layer.scalabilityMode !== undefined)
+            result.scalabilityMode = layer.scalabilityMode;
+        return result;
     }
 
     private tearDownWorker(): void {
@@ -1292,17 +1295,12 @@ export class VideoRecorder {
     private async pickSimulcastCodec(
         supportedCodecs: CodecInfo[],
         audienceCodecs: string[] | undefined,
-        ladder: SpatialLayerConfig[],
+        ladder: LayerConfig[],
     ): Promise<string | null> {
-        const priority: ('av1' | 'hevc' | 'vp9' | 'h264')[] = ['av1', 'hevc', 'vp9', 'h264'];
-        const audience = audienceCodecs && audienceCodecs.length > 0 ? audienceCodecs : null;
-        for (const category of priority) {
-            if (!this.supportedEncoderCategories.includes(category)) continue;
-            if (audience && !audience.includes(category)) continue;
-            const codecInfo = supportedCodecs.find(c => c.category === category && c.supported && c.hardwareAccelerated)
-                ?? supportedCodecs.find(c => c.category === category && c.supported);
-            if (!codecInfo) continue;
-            const probe = await probeEncoder(codecInfo.codec, ladder);
+        for (const codecInfo of this.listCodecCandidatesByEfficiency(supportedCodecs, audienceCodecs)) {
+            const category = codecInfo.category;
+            const probeLadder = this.withCodecBitrates(ladder, codecInfo.codec);
+            const probe = await probeEncoder(codecInfo.codec, probeLadder);
             if (probe.supported) {
                 infoLog?.log(`pickSimulcastCodec: ${category} (${codecInfo.codec}) PASS — median=${probe.medianEncodeMs.toFixed(1)}ms over ${ladder.length} layer(s)`);
                 return codecInfo.codec;
@@ -1313,19 +1311,46 @@ export class VideoRecorder {
     }
 
     private pickInitialCodec(supportedCodecs: CodecInfo[], audienceCodecs: string[] | undefined, size: Size): string {
-        if (audienceCodecs && audienceCodecs.length > 0) {
-            const matchingCategories = audienceCodecs.filter(c => this.supportedEncoderCategories.includes(c));
-            if (matchingCategories.length > 0) {
-                const audienceFilteredCodecs = supportedCodecs.filter(c =>
-                    c.supported && matchingCategories.includes(c.category),
-                );
-                return audienceFilteredCodecs.length > 0
-                    ? getDefaultCodec(audienceFilteredCodecs, size.width, size.height)
-                    : getDefaultCodec(supportedCodecs, size.width, size.height);
-            }
-            return getDefaultCodec(supportedCodecs, size.width, size.height);
+        return this.pickBestCodecByEfficiency(supportedCodecs, audienceCodecs)
+            ?? getDefaultCodec(supportedCodecs, size.width, size.height);
+    }
+
+    private pickBestCodecByEfficiency(supportedCodecs: CodecInfo[], audienceCodecs: string[] | undefined): string | null {
+        return this.listCodecCandidatesByEfficiency(supportedCodecs, audienceCodecs)[0]?.codec ?? null;
+    }
+
+    private listCodecCandidatesByEfficiency(
+        supportedCodecs: CodecInfo[],
+        audienceCodecs: string[] | undefined,
+    ): CodecInfo[] {
+        const allowedCategories = this.allowedCodecCategories(audienceCodecs);
+        const bestByCategory = new Map<CodecInfo['category'], CodecInfo>();
+        for (const codecInfo of supportedCodecs) {
+            if (!codecInfo.supported) continue;
+            if (allowedCategories && !allowedCategories.has(codecInfo.category)) continue;
+            const current = bestByCategory.get(codecInfo.category);
+            if (!current || (!current.hardwareAccelerated && codecInfo.hardwareAccelerated))
+                bestByCategory.set(codecInfo.category, codecInfo);
         }
-        return getDefaultCodec(supportedCodecs, size.width, size.height);
+        return [...bestByCategory.values()]
+            .sort((a, b) =>
+                getVideoCodecEfficiency(b.codec) - getVideoCodecEfficiency(a.codec)
+                || Number(b.hardwareAccelerated) - Number(a.hardwareAccelerated));
+    }
+
+    private allowedCodecCategories(codecs: string[] | undefined): Set<CodecInfo['category']> | null {
+        if (!codecs || codecs.length === 0)
+            return null;
+
+        const result = new Set<CodecInfo['category']>();
+        for (const codec of codecs) {
+            const normalized = codec.trim().toLowerCase();
+            if (normalized === 'h264' || normalized === 'hevc' || normalized === 'av1' || normalized === 'vp9')
+                result.add(normalized);
+            else
+                result.add(getCodecCategory(normalized));
+        }
+        return result;
     }
 
     private register(kind: number): void {
