@@ -1,6 +1,5 @@
 using ActualChat.Streaming.Services;
 using ActualChat.Video;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.Streaming.UnitTests;
 

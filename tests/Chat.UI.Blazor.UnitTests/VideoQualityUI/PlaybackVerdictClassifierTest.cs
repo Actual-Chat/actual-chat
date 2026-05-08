@@ -278,8 +278,8 @@ public class VideoSizeTest
         var videoConstants = new AppConstants.VideoConstants();
         videoConstants.CameraLayerBaseBitratesKbps.Should().Equal(312.5, 1_250d, 4_000d);
         videoConstants.ScreenCastLayerBaseBitratesKbps.Should().Equal(4_375d, 11_375d);
-        videoConstants.CodecDefs.Should().Contain(new VideoCodecDef(VideoCodecKind.H264, 1));
-        videoConstants.CodecDefs.Should().Contain(new VideoCodecDef(VideoCodecKind.Hevc, 2));
+        videoConstants.CodecDefs.Should().Contain(new VideoCodecDef() { Kind = VideoCodecKind.H264, Efficiency = 1 });
+        videoConstants.CodecDefs.Should().Contain(new VideoCodecDef() { Kind = VideoCodecKind.Hevc, Efficiency = 2 });
     }
 
     [Fact]
@@ -303,7 +303,5 @@ public class VideoSizeTest
     [InlineData("av01.0.08M.08", VideoCodecKind.Av1)]
     [InlineData("bogus", VideoCodecKind.Unknown)]
     public void VideoCodecKind_Parse_ReturnsExpectedKind(string codec, VideoCodecKind expected)
-    {
-        VideoCodecKindExt.Parse(codec).Should().Be(expected);
-    }
+        => VideoCodecKindExt.Parse(codec).Should().Be(expected);
 }

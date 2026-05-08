@@ -1,14 +1,21 @@
 namespace ActualChat.Media;
 
-public sealed record VideoCodecDef(VideoCodecKind Kind, double Efficiency)
+// Init-only properties (not a positional record): trimmed/AOT builds strip
+// constructor parameter names, which breaks System.Text.Json's positional
+// record handling with `ConstructorContainsNullParameterNames`. The browser
+// init payload serializes this through AppConstants.Video.CodecDefs.
+public sealed record VideoCodecDef
 {
     public static readonly VideoCodecDef[] All = [
-        new(VideoCodecKind.Unknown, 1),
-        new(VideoCodecKind.H264, 1),
-        new(VideoCodecKind.Hevc, 2),
-        new(VideoCodecKind.Vp9, 2.35),
-        new(VideoCodecKind.Av1, 2.85),
+        new() { Kind = VideoCodecKind.Unknown, Efficiency = 1 },
+        new() { Kind = VideoCodecKind.H264, Efficiency = 1 },
+        new() { Kind = VideoCodecKind.Hevc, Efficiency = 2 },
+        new() { Kind = VideoCodecKind.Vp9, Efficiency = 2.35 },
+        new() { Kind = VideoCodecKind.Av1, Efficiency = 2.85 },
     ];
+
+    public VideoCodecKind Kind { get; init; }
+    public double Efficiency { get; init; } = 1;
 
     public static double EfficiencyFor(VideoCodecKind kind)
         => All.FirstOrDefault(x => x.Kind == kind)?.Efficiency ?? 1;
