@@ -141,16 +141,20 @@ export class EncoderPool {
         if (this.parkedCategory !== undefined && this.parkedCategory !== category)
             this.clearParked();
 
-        let encoder: PooledEncoder;
-        const parked = this.parked.pop();
-        if (parked) {
+        let encoder: PooledEncoder | undefined;
+        while (this.parked.length > 0) {
+            const parked = this.parked.pop()!;
             if (this.parked.length === 0)
                 this.parkedCategory = undefined;
+            if (!this.canReuse(parked.encoder)) {
+                try { parked.encoder.dispose(); } catch { /* ignore */ }
+                continue;
+            }
             encoder = parked.encoder;
             encoder.handleEncoderReset();
-        } else {
-            encoder = factory();
+            break;
         }
+        encoder ??= factory();
         return this.makeHandle(category, encoder);
     }
 
@@ -211,7 +215,7 @@ export class EncoderPool {
     }
 
     private park(category: EncoderCodecCategory, encoder: PooledEncoder): void {
-        if (this.disposed || encoder.isDisposed) {
+        if (this.disposed || !this.canReuse(encoder)) {
             try { encoder.dispose(); } catch { /* ignore */ }
             return;
         }
@@ -238,5 +242,9 @@ export class EncoderPool {
         }
         this.parked.length = 0;
         this.parkedCategory = undefined;
+    }
+
+    private canReuse(encoder: PooledEncoder): boolean {
+        return !encoder.isDisposed && encoder.state !== 'closed';
     }
 }

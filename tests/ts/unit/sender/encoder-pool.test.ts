@@ -252,4 +252,36 @@ describe('EncoderPool', () => {
         expect(pool.parkedCount).toBe(1);
         pool.dispose();
     });
+
+    it('release of a closed encoder disposes instead of parking', () => {
+        const pool = new EncoderPool();
+        const handle = pool.acquire('h264', makeEncoderFactory());
+        const encoder = handle.encoder;
+
+        encoder.encoder.close();
+        handle.release();
+
+        expect(pool.parkedCount).toBe(0);
+        expect(encoder.isDisposed).toBe(true);
+        pool.dispose();
+    });
+
+    it('acquire skips closed parked encoders and builds fresh', () => {
+        const pool = new EncoderPool();
+        const factory = makeEncoderFactory();
+        const h1 = pool.acquire('h264', factory);
+        const encoder1 = h1.encoder;
+        h1.release();
+        expect(pool.parkedCount).toBe(1);
+
+        encoder1.encoder.close();
+        const h2 = pool.acquire('h264', factory);
+
+        expect(h2.encoder).not.toBe(encoder1);
+        expect(factoryCallCount).toBe(2);
+        expect(encoder1.isDisposed).toBe(true);
+        expect(pool.parkedCount).toBe(0);
+        h2.release();
+        pool.dispose();
+    });
 });

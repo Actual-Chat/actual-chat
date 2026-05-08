@@ -296,7 +296,7 @@ function poolEncoderFactory(
         const encoder = new AsyncVideoEncoder<EncodeInput, EncodedFrame>(
             buildOutput,
             onError,
-            { maxInflight: 2, firstTimeoutMs: 1_500, timeoutMs: 300 },
+            { maxInflight: 2, firstTimeoutMs: 3_000, timeoutMs: 1_000 },
         );
         return encoder;
     };
