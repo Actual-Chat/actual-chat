@@ -169,6 +169,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FoundResult>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FoundUserListItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.GifPicker>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.GlobalSearchPlaceholder>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.GrantFileUploadsSubHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.HasContextMenuBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ImageCropPicker>();
@@ -361,6 +362,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.UploadPlug>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VerificationStatus>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.RemoteStreamPlayer>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.ScreenCastAlreadyActiveModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoDiagnosticsModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoDiagnosticsSettingsModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoStreamingPreview>();
@@ -378,6 +380,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebEdgeGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebSafariGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.AdminCopyChatToPlacePage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.AudioBlobDownloadTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.AudioPlayerTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.AudioRecorderTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.AuthTestPage>();
@@ -816,6 +819,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.FoundResult), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.FoundUserListItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.GifPicker), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.GlobalSearchPlaceholder), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.GrantFileUploadsSubHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.HasContextMenuBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ImageCropPicker), AotTypeKind.Component),
@@ -1008,6 +1012,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.UploadPlug), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VerificationStatus), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.RemoteStreamPlayer), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.ScreenCastAlreadyActiveModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoDiagnosticsModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoDiagnosticsSettingsModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoStreamingPreview), AotTypeKind.Component),
@@ -1025,6 +1030,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebEdgeGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebSafariGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.AdminCopyChatToPlacePage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Pages.AudioBlobDownloadTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.AudioPlayerTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.AudioRecorderTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.AuthTestPage), AotTypeKind.Component),
