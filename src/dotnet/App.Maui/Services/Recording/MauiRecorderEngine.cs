@@ -275,11 +275,11 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         return RecordingActivityClient.SetVoiceActive(isVoiceActive);
     }
 
-    private async ValueTask OnAudioPowerChange(double power)
+    private void OnAudioPowerChange(double power)
     {
         var isVoiceActive = Volatile.Read(ref _isVoiceActive);
         if (isVoiceActive)
-            await RecordingActivityClient.SetAudioPower(power).ConfigureAwait(false);
+            RecordingActivityClient.SetAudioPower(power);
     }
 
     private void MicrophoneIsCaptured()
@@ -580,12 +580,13 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                     // Process the audio frame (sync — returns Task.CompletedTask)
                     await ProcessAudioFrame(memory, cancellationToken).ConfigureAwait(false);
 
-                    // Audio level meter update — fire-and-forget for the same reason as above.
+                    // Audio level meter update — sync submit into a coalescer; the JSI
+                    // call runs detached, intermediate values drop if JS lags.
                     // gainBuffer self-throttles to ~96ms (32ms * 3), so it's not 50Hz here.
                     gainBuffer.TryWrite(memory.Span);
                     if (gainBuffer.TryRead(gainFrameOwner.Span, out _)) {
                         var gain = AudioExt.ApproximateGain(gainFrameOwner.Span);
-                        _ = engine.OnAudioPowerChange(gain);
+                        engine.OnAudioPowerChange(gain);
                     }
 
                     // Process VAD events (must stay awaited — drives encode start/end)
