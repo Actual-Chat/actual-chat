@@ -285,6 +285,53 @@ describe('downscale operator', () => {
         expect(out).toHaveLength(1);
     });
 
+    it('hang watchdog: timed-out process discards downscaler, next bundle is force-keyframed', async () => {
+        const stats = makeStats();
+        let callCount = 0;
+        let nextId = 5000;
+        const disposed: number[] = [];
+        const factories: number[] = [];
+        const factory = (): DownscalerLike => {
+            const id = factories.length;
+            factories.push(id);
+            return {
+                process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]> {
+                    callCount++;
+                    if (callCount === 1) {
+                        // Hang forever — never resolves.
+                        return new Promise<VideoFrame[]>(() => { /* never */ });
+                    }
+                    (input as unknown as MockVideoFrame).close();
+                    const out = layers.map(l => mkFrame(nextId++, l.width, l.height));
+                    return Promise.resolve(out);
+                },
+                dispose(): void { disposed.push(id); },
+            };
+        };
+
+        const seg = downscale({
+            ladder: [{ width: 640, height: 360 }],
+            createDownscaler: factory,
+            hangTimeoutMs: 10,  // real timer; fires quickly
+        })(fromArray([
+            makeCaptured(1, stats),
+            makeCaptured(2, stats),
+        ]));
+
+        const out = await drain(seg);
+        // First frame is consumed silently after watchdog timeout.
+        // Second frame yields a bundle marked forceKeyframe (post-hang
+        // re-anchor) so encoders restart cleanly.
+        expect(out).toHaveLength(1);
+        expect(out[0].primary.forceKeyframe).toBe(true);
+        // Two factory calls: original + post-hang replacement.
+        expect(factories.length).toBe(2);
+        // Both downscalers disposed (the hung one immediately, the
+        // replacement in the outer finally on completion).
+        expect(disposed).toContain(0);
+        expect(disposed).toContain(1);
+    });
+
     it('passes the configured ladder verbatim to the downscaler each frame', async () => {
         const stats = makeStats();
         const fake = new FakeDownscaler();
