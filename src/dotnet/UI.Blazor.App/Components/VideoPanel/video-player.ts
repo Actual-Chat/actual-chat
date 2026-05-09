@@ -326,11 +326,12 @@ export class VideoPlayer {
                     getSessionToken: (minLifespanMs?: number) => Api.getSessionToken(minLifespanMs),
                     onTrackReady: (streamId: string, kind: RenderBackendKind, track: MediaStreamTrack | null) => {
                         debugLog?.log(`onTrackReady: stream=${streamId}, backend=${kind}, track=${track ? 'yes' : 'null'}`);
-                        if (kind === 'mstg' && track) {
-                            // Worker-built MSTG: attach the transferred track to
-                            // the <video> srcObject so frames render directly.
-                            try { this.videoEl.srcObject = new MediaStream([track]); }
-                            catch (e) { warnLog?.log('onTrackReady: srcObject failed', e); }
+                        if (kind === 'mstg' && track && this.renderBackend.kind === 'mstg') {
+                            // Worker-built MSTG/VTG (Tier 1): hand the track to
+                            // the off-thread backend so the watchdog, resize
+                            // listener, and play() retry are wired up the same
+                            // way as the main-thread (Tier 2) path.
+                            (this.renderBackend as OffThreadRenderBackend).onTrackReady(track);
                         }
                         return Promise.resolve();
                     },
@@ -456,14 +457,16 @@ export class VideoPlayer {
             }
         });
 
-        // Watch the canvas for layout changes and send render-size hints when
-        // the displayed long side changes enough to affect playback quality.
+        // Watch the tile (parent of canvas + video) for layout changes and
+        // send render-size hints when the displayed long side changes enough
+        // to affect playback quality. Observing the parent instead of the
+        // canvas is backend-agnostic — the canvas is `display: none` on the
+        // MSTG path and never reports a size change there.
         // RAF-defer so getBoundingClientRect reads post-layout dimensions.
-        this.resizeObserver = new ResizeObserver(() => this.scheduleViewportCheck());
-        this.resizeObserver.observe(this.canvas);
-        // Backstop 1: layout swap on the canvas's immediate parent
-        // (item-focused ↔ item-x).
         const parent = this.canvas.parentElement;
+        this.resizeObserver = new ResizeObserver(() => this.scheduleViewportCheck());
+        this.resizeObserver.observe(parent ?? this.canvas);
+        // Backstop 1: layout swap on the tile (item-focused ↔ item-x).
         if (parent) {
             this.parentClassObserver = new MutationObserver(() => this.scheduleViewportCheck());
             this.parentClassObserver.observe(parent, { attributes: true, attributeFilter: ['class'] });
@@ -618,11 +621,18 @@ export class VideoPlayer {
             // Worker rejected mstg (no Tier 1 / Tier 2 surface). Retry
             // with the canvas backend — this only fires on browsers
             // where neither main nor worker exposes MSTG/VTG (rare).
-            if (backend === 'mstg' && /MediaStreamTrackGenerator|mstgWritable/.test(message)) {
+            if (backend === 'mstg' && /MediaStreamTrackGenerator|VideoTrackGenerator|mstgWritable/.test(message)) {
                 if (mstgGenerator) {
                     try { mstgGenerator.stop(); } catch { /* ignore */ }
                 }
                 warnLog?.log(`startPull: MSTG unavailable on both tiers — retrying with canvas backend`);
+                // Worker now draws into the OffscreenCanvas; main DOM still
+                // had the <video> visible and <canvas> hidden because the
+                // mstg backend was selected at construction. Swap to canvas
+                // backend before transferring so the canvas element is shown.
+                this.renderBackend.dispose();
+                this.renderBackend = new TransferableCanvasRenderBackend(this.canvas);
+                this.applyBackendVisibility(this.canvas, this.videoEl);
                 const canvasOffscreen = this.transferCanvasToOffscreen('startPull retry');
                 try {
                     this.workerStreamActive = true;
@@ -879,15 +889,18 @@ export class VideoPlayer {
     }
 
     private computeViewportChangedInfo(): ViewportInfo | null {
+        // Read from the tile (parent of canvas + video) — that's the real
+        // layout box for both backends. Canvas is hidden on the MSTG path,
+        // video is hidden on the canvas path; the parent always sizes the tile.
         const parent = this.canvas.parentElement;
-        const canvasRect = this.canvas.getBoundingClientRect();
         const parentRect = parent?.getBoundingClientRect();
-        const canvasLongSide = Math.max(canvasRect.width, canvasRect.height);
+        const canvasRect = this.canvas.getBoundingClientRect();
         const parentLongSide = parentRect ? Math.max(parentRect.width, parentRect.height) : 0;
+        const canvasLongSide = Math.max(canvasRect.width, canvasRect.height);
         const clientLongSide = Math.max(this.canvas.clientWidth, this.canvas.clientHeight);
-        const cssLongSide = canvasLongSide > 0 ? canvasLongSide
-            : clientLongSide > 0 ? clientLongSide
-                : parentLongSide > 0 ? parentLongSide
+        const cssLongSide = parentLongSide > 0 ? parentLongSide
+            : canvasLongSide > 0 ? canvasLongSide
+                : clientLongSide > 0 ? clientLongSide
                     : 0;
         if (cssLongSide > 0) {
             return {

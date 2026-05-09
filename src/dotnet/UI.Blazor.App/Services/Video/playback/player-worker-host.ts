@@ -71,6 +71,12 @@ interface MstgGlobal {
     MediaStreamTrackGenerator?: new (init: { kind: 'video' }) => MediaStreamTrack & {
         readonly writable: WritableStream<VideoFrame>;
     };
+    // Safari-only equivalent: same shape but a different ctor name and the
+    // emitted MediaStreamTrack lives on `.track`, not on the generator itself.
+    VideoTrackGenerator?: new () => {
+        readonly writable: WritableStream<VideoFrame>;
+        readonly track: MediaStreamTrack;
+    };
 }
 
 function buildBackend(
@@ -88,21 +94,31 @@ function buildBackend(
                 track: null,
             };
         }
-        // Tier 1: worker-side MSTG (Safari workers, future Chromium).
+        // Tier 1: worker-side generator. Chromium exposes
+        // MediaStreamTrackGenerator on the worker; Safari exposes
+        // VideoTrackGenerator (different ctor, track lives on `.track`).
         const g = globalThis as unknown as MstgGlobal;
-        if (typeof g.MediaStreamTrackGenerator !== 'function') {
-            throw new Error(
-                'PlayerWorkerHost: backend=\'mstg\' requested but neither '
-                + '`opts.mstgWritable` (Tier 2) nor a worker-side '
-                + 'MediaStreamTrackGenerator (Tier 1) is available. '
-                + 'Caller should retry with backend=\'canvas\'.');
+        if (typeof g.MediaStreamTrackGenerator === 'function') {
+            const generator = new g.MediaStreamTrackGenerator({ kind: 'video' });
+            const writer = generator.writable.getWriter();
+            return {
+                config: pickRenderBackend({ preferMstg: true, mstgWriter: writer }),
+                track: generator,
+            };
         }
-        const generator = new g.MediaStreamTrackGenerator({ kind: 'video' });
-        const writer = generator.writable.getWriter();
-        return {
-            config: pickRenderBackend({ preferMstg: true, mstgWriter: writer }),
-            track: generator,
-        };
+        if (typeof g.VideoTrackGenerator === 'function') {
+            const vtg = new g.VideoTrackGenerator();
+            const writer = vtg.writable.getWriter();
+            return {
+                config: pickRenderBackend({ preferMstg: true, mstgWriter: writer }),
+                track: vtg.track,
+            };
+        }
+        throw new Error(
+            'PlayerWorkerHost: backend=\'mstg\' requested but neither '
+            + '`opts.mstgWritable` (Tier 2) nor a worker-side '
+            + 'MediaStreamTrackGenerator/VideoTrackGenerator (Tier 1) is '
+            + 'available. Caller should retry with backend=\'canvas\'.');
     }
     {
         if (!opts.canvas) {
