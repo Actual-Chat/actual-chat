@@ -365,6 +365,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.DictionaryOfTKeyTValueConverter`3[[System.Collections.Generic.Dictionary`2[[ActualChat.UI.Blazor.Services.Tune, ActualChat.UI.Blazor],[ActualChat.UI.Blazor.Services.TuneInfo, ActualChat.UI.Blazor]], System.Private.CoreLib],[ActualChat.UI.Blazor.Services.Tune, ActualChat.UI.Blazor],[ActualChat.UI.Blazor.Services.TuneInfo, ActualChat.UI.Blazor]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.DictionaryOfTKeyTValueConverter`3[[System.Collections.Generic.Dictionary`2[[System.String, System.Private.CoreLib],[System.Boolean, System.Private.CoreLib]], System.Private.CoreLib],[System.String, System.Private.CoreLib],[System.Boolean, System.Private.CoreLib]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.DoubleConverter, System.Text.Json");
+        CodeKeeper.Keep("System.Text.Json.Serialization.Converters.EnumConverter`1[[ActualChat.Media.VideoSize, ActualChat.Core]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.EnumConverter`1[[ActualChat.Streaming.PlaybackStreamPriority, ActualChat.Api.Contracts]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.EnumConverter`1[[ActualChat.UI.Blazor.App.Components.MarkupEditorListCommandKind, ActualChat.UI.Blazor.App]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.EnumConverter`1[[ActualChat.UI.Blazor.Components.SideNav.SideNavSide, ActualChat.UI.Blazor]], System.Text.Json");
@@ -457,6 +458,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep("System.Text.Json.Serialization.Metadata.JsonPropertyInfo`1[[ActualChat.Mathematics.Range`1[[System.Int32, System.Private.CoreLib]], ActualChat.Core]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Metadata.JsonPropertyInfo`1[[ActualChat.Mathematics.Range`1[[System.Single, System.Private.CoreLib]], ActualChat.Core]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Metadata.JsonPropertyInfo`1[[ActualChat.Mathematics.Range`1[[System.String, System.Private.CoreLib]], ActualChat.Core]], System.Text.Json");
+        CodeKeeper.Keep("System.Text.Json.Serialization.Metadata.JsonPropertyInfo`1[[ActualChat.Media.VideoSize, ActualChat.Core]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Metadata.JsonPropertyInfo`1[[ActualChat.Streaming.PlaybackStreamPriority, ActualChat.Api.Contracts]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Metadata.JsonPropertyInfo`1[[ActualChat.UI.Blazor.App.Components.AudioRecorder+VadEvent, ActualChat.UI.Blazor.App]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Metadata.JsonPropertyInfo`1[[ActualChat.UI.Blazor.App.Components.MarkupEditorListCommandKind, ActualChat.UI.Blazor.App]], System.Text.Json");
