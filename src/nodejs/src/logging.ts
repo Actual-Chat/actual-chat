@@ -133,9 +133,6 @@ export type LogScope =
     | 'WebAuth'
     | 'WebFileProvider';
 
-// Per-scope defaults.  Most are Warn (quiet by default); video scopes are
-// Debug for ongoing latency troubleshooting (preserved from the previous
-// logging-init.ts reset() block).
 const defaults: Record<LogScope, LogLevel> = {
     default: LogLevel.Warn,
     // Library
