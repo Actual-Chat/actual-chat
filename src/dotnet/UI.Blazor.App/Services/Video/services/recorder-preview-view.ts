@@ -1,21 +1,8 @@
-/**
- * RecorderPreviewView
- *
- * Follows the currently active VideoRecorder's preview output and renders it on
- * a caller-supplied native `<video srcObject>` (raw track) plus an optional
- * `<canvas>` overlay (blurred frames). Encapsulates the "watch the active
- * recorder, reattach on camera switch" lifecycle so multiple UI surfaces
- * (VideoPanel's self-preview, JoinVideoCallModal in Settings mode) can each
- * render the recorder feed independently without coordinating with one another.
- *
- * Handles both rendering paths:
- *  - Raw preview track (when blur is off) goes to `videoEl.srcObject`;
- *  - Blurred VideoFrames (when blur is on) drawn to `canvas` via
- *    `recorder.addPreviewFrameListener`.
- *
- * Does NOT toggle caller-specific UI classes (`.starting`, `.has-video`, etc.) —
- * callers do that themselves via the onAttach / onDetach / onFirstFrame hooks.
- */
+// Follows the currently active VideoRecorder and renders its preview to a
+// caller-supplied <video srcObject> (raw track) plus an optional <canvas>
+// overlay (blurred frames). Multiple UI surfaces can attach independently.
+// Caller-specific UI state (.starting, .has-video) is signalled via the
+// onAttach/onDetach/onFirstFrame hooks — this class doesn't touch CSS.
 
 import { getLogs } from 'logging';
 import {
@@ -30,29 +17,16 @@ import { BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS, BG_FILTER } from './bg-canvas-set
 const { infoLog } = getLogs('VideoRecorder');
 
 export interface RecorderPreviewViewOptions {
-    /** Canvas where blurred frames are drawn (via addPreviewFrameListener).
-     *  Used only as the blur overlay — raw track always goes to `videoEl`. */
+    // Blur overlay only — raw track always goes to videoEl.
     canvas: HTMLCanvasElement;
-    /** Native `<video>` element for raw-track rendering. The raw camera/screen
-     *  track is attached via `srcObject`. The native decoder runs natively
-     *  (no rVFC/JS render loop). */
     videoEl: HTMLVideoElement;
-    /** Optional low-resolution background canvas (e.g. for a focused-view blur backdrop). */
     bgCanvas?: HTMLCanvasElement;
-    /** Which recorder kinds to follow, in priority order. First available wins.
-     *  Defaults to [0] (camera only). Pass [0, 1] to prefer camera and fall
-     *  back to screencast when no camera is recording. */
+    // Recorder kinds to follow in priority order; defaults to [0] (camera).
     sourceKinds?: number[];
-    /** Called when we attach to a recorder with a live preview track. */
     onAttach?: (recorder: VideoRecorder) => void;
-    /** Called when we detach (track gone, recorder gone). */
     onDetach?: () => void;
-    /** Called once per attach, after the first frame reaches the canvas. */
     onFirstFrame?: () => void;
-    /** Called when the "starting" state changes (recorder intends to produce video but first frame hasn't landed yet). */
     onStartingChange?: (starting: boolean) => void;
-    /** Called when the followed recorder's blur state changes. Consumers use
-     *  this to show/hide the canvas overlay. */
     onBlurChange?: (blurActive: boolean) => void;
 }
 
@@ -72,14 +46,10 @@ export class RecorderPreviewView {
     private lastBlurActive = false;
     private disposed = false;
     private _paused = false;
-    // Listener for the first decoded frame on videoEl, and a setInterval handle
-    // that drives bg canvas sampling from videoEl.
     private videoLoadedDataListener: (() => void) | null = null;
     private bgPumpHandle: number | null = null;
-    // Registry subscription — fires on recorder register/unregister for our sourceKind.
     private unsubscribeRegistry: (() => void) | null = null;
-    // The recorder currently being followed (may differ from attachedRecorder
-    // until its track goes live). We hold track/state/blur subscriptions on it.
+    // May differ from attachedRecorder until the followed recorder's track goes live.
     private followedRecorder: VideoRecorder | null = null;
     private followUnsubscribers: (() => void)[] = [];
 
@@ -94,10 +64,7 @@ export class RecorderPreviewView {
         this.bgContainer = options.bgCanvas?.parentElement ?? null;
         this.sourceKinds = options.sourceKinds ?? [0];
 
-        // Subscribe to recorder register/unregister events and immediately
-        // reconcile with whatever recorder is already active (common case:
-        // the recorder registers synchronously in its constructor, before
-        // this view is even constructed).
+        // Reconcile immediately — recorder may already be registered before this view exists.
         this.unsubscribeRegistry = addActiveRecorderListener((_recorder, kind) => {
             if (!this.sourceKinds.includes(kind)) return;
             this.followRecorder(this.pickRecorder());
@@ -105,7 +72,6 @@ export class RecorderPreviewView {
         this.followRecorder(this.pickRecorder());
     }
 
-    // Return the highest-priority recorder currently active among sourceKinds.
     private pickRecorder(): VideoRecorder | null {
         for (const k of this.sourceKinds) {
             const r = getActiveRecorder(k);
@@ -114,17 +80,12 @@ export class RecorderPreviewView {
         return null;
     }
 
-    /** True when currently attached to a recorder with a live track. */
     public isAttached(): boolean {
         return this.attachedRecorder !== null;
     }
 
-    /**
-     * When true, this view stops drawing new frames (both raw and blurred)
-     * and keeps the last frame on the canvas — attach/detach logic also
-     * freezes so a reattach won't wipe the canvas. Independent of the
-     * recorder's own pause flag honored via `respectPauseFlag`.
-     */
+    // While paused, drawing and attach/detach are frozen so the last frame stays
+    // on the canvas (independent of the recorder's own pause flag).
     public get paused(): boolean {
         return this._paused;
     }
@@ -132,7 +93,6 @@ export class RecorderPreviewView {
     public set paused(value: boolean) {
         if (this._paused === value) return;
         this._paused = value;
-        // Flipping pause may require attach (resume) or just renderer.paused refresh.
         this.syncAttachment();
     }
 
@@ -149,8 +109,6 @@ export class RecorderPreviewView {
         this.detach();
     }
 
-    // Switch to following a different recorder (or none). Unsubscribes from the
-    // previous recorder's lifecycle events and subscribes to the new one's.
     private followRecorder(recorder: VideoRecorder | null): void {
         if (this.followedRecorder === recorder) {
             this.syncAttachment();
@@ -169,16 +127,13 @@ export class RecorderPreviewView {
         this.syncAttachment();
     }
 
-    // Reconcile attached state and derived flags with the currently-followed
-    // recorder. Called initially, on any lifecycle event, and on paused flip.
     private syncAttachment(): void {
         if (this.disposed) return;
         const recorder = this.followedRecorder;
         const paused = this._paused;
 
-        // While paused, skip attach/detach so the canvas keeps the last frame
-        // intact — detaching would `canvasTarget.clear()` and flash the spinner
-        // even though another consumer is driving rendering.
+        // While paused, skip attach/detach: detach() would clear the canvas and
+        // flash the spinner even though another consumer is driving rendering.
         if (!paused) {
             const track = recorder?.getPreviewTrack() ?? null;
             const trackLive = track?.readyState === 'live';
@@ -189,15 +144,10 @@ export class RecorderPreviewView {
             }
         }
 
-        // Keep <video> playing so the decoder stays warm, but rely on the canvas
-        // overlay (blurred frames) to visually cover it when blur is active.
-        // Bg-canvas sampling from videoEl must not run during blur — the blur
-        // listener drives drawBgFrame from the canvas.
         if (this.attachedRecorder) {
             if (paused) this.options.videoEl.pause(); else void this.options.videoEl.play();
         }
 
-        // Compute starting state: recorder intends to produce video but first frame hasn't landed yet
         const isStarting = !paused
             && recorder?.recordingState === 'starting'
             && !this.firstFrameFired;
@@ -222,20 +172,15 @@ export class RecorderPreviewView {
         infoLog?.log('Attached to active recorder');
 
         const videoEl = this.options.videoEl;
-        // Raw track goes straight to <video srcObject>. Decoder runs natively.
         videoEl.srcObject = new MediaStream([track]);
         void videoEl.play();
         this.videoLoadedDataListener = () => this.fireFirstFrame();
         videoEl.addEventListener('loadeddata', this.videoLoadedDataListener);
-        // Drive bg-canvas sampling from videoEl. The internal throttle in
-        // drawBgFrame keeps actual draws to BG_DRAW_INTERVAL_MS — we tick at
-        // the same cadence so we don't waste rAF.
         if (this.bgCanvasTarget) {
             this.bgPumpHandle = window.setInterval(() => {
                 if (this._paused) return;
-                // When blur is on, the blur listener drives drawBgFrame from
-                // the (blurred) canvas — sourcing from raw video here would
-                // overwrite it with non-blurred content.
+                // When blur is on, the blur listener already paints the bg from the
+                // blurred canvas — sourcing from raw video here would overwrite it.
                 if (this.attachedRecorder?.isBlurActive()) return;
                 if (videoEl.videoWidth === 0 || videoEl.videoHeight === 0) return;
                 this.drawBgFrameFromVideo(videoEl);
@@ -243,10 +188,6 @@ export class RecorderPreviewView {
         }
 
         const blurListener: PreviewFrameListener = (frame: VideoFrame) => {
-            // Skip drawing while the view is paused (either by the consumer via
-            // `paused` or by the recorder's global pause flag) — otherwise
-            // blurred frames from the recorder pipeline would overwrite the
-            // last preserved frame on the canvas.
             if (this._paused)
                 return;
             this.canvasTarget.draw(frame, frame.displayWidth, frame.displayHeight);
@@ -282,7 +223,7 @@ export class RecorderPreviewView {
         }
 
         // Wipe stale frames so a failed re-attach doesn't leave the last good
-        // frame on-screen while the new pipeline spins up (or after a teardown).
+        // frame on-screen while the new pipeline spins up.
         this.canvasTarget.clear();
         this.bgCanvasTarget?.clear();
 
@@ -293,8 +234,6 @@ export class RecorderPreviewView {
     private fireFirstFrame(): void {
         if (this.firstFrameFired) return;
         this.firstFrameFired = true;
-        // Clear starting state immediately so the spinner doesn't flicker for
-        // one frame before the next tick() re-evaluates.
         if (this.lastStarting) {
             this.lastStarting = false;
             this.options.onStartingChange?.(false);
@@ -304,26 +243,22 @@ export class RecorderPreviewView {
 
     private drawBgFrame(width: number, height: number): void {
         if (!this.bgCanvasTarget) return;
-        // Skip when the bg canvas is hidden — CSS reveals it only on .item-focused
         if (!this.bgContainer?.classList.contains('item-focused')) return;
-        // Throttle: the bg is blurred via CSS, updating every frame is wasted GPU work
         const now = performance.now();
         if (now - this.lastBgDrawTime < BG_DRAW_INTERVAL_MS) return;
         this.lastBgDrawTime = now;
 
         const bgW = BG_CANVAS_WIDTH;
         const bgH = Math.max(1, Math.round(bgW * height / Math.max(1, width)));
-        // Source from the already-drawn main canvas — avoids a second GPU→RGB
-        // conversion of the VideoFrame / HTMLVideoElement per frame.
+        // Source from the already-drawn main canvas to avoid a second
+        // GPU->RGB conversion of the VideoFrame per frame.
         this.bgCanvasTarget.draw(this.canvasTarget.element, bgW, bgH);
     }
 
-    // Native-video bg-canvas update: source from <video> directly since the
-    // main canvas is empty (raw frames go to the video element instead).
+    // Sourced from <video> because the main canvas is empty in the raw-track path.
     private drawBgFrameFromVideo(videoEl: HTMLVideoElement): void {
         if (!this.bgCanvasTarget) return;
         if (!this.bgContainer?.classList.contains('item-focused')) return;
-        // No timestamp throttle here — the setInterval cadence already enforces it.
         const w = videoEl.videoWidth;
         const h = videoEl.videoHeight;
         const bgW = BG_CANVAS_WIDTH;

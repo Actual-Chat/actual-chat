@@ -62,11 +62,7 @@ function source(items: DecodedFrame[]): AsyncIterable<DecodedFrame> {
     })();
 }
 
-/**
- * Default test wiring: in-budget (extra=0), zero delay, virtual clock
- * advanced by 1 s per call so the natural-delta pacing never imposes a
- * sleep — keeps non-pacing tests fast.
- */
+// nowFn auto-advances 1 s per call so natural-delta pacing never sleeps.
 function defaults(extra: { getBufferSpanMs?: () => number; targetSpanMs?: number } = {}): Pick<
     CanvasPresentOptions, 'getBufferSpanMs' | 'targetSpanMs' | 'nowFn' | 'delayFn'
 > {
@@ -165,9 +161,8 @@ describe('canvasPresent', () => {
     it('catch-up overflow (extra > CATCHUP_BUDGET_MS) AND frozen clock → frame closed without draw', async () => {
         const stats = createEmptyPlaybackStats(0);
         const ctx = new FakeCtx();
-        // extra = 5000 - 333 = 4667 > 4000 (CATCHUP_BUDGET_MS).
-        // Frozen clock: every frame after the first lands within MIN_DURATION_MS
-        // → skip-after-decode path.
+        // extra = 5000 - 333 = 4667 > CATCHUP_BUDGET_MS (4000); frozen clock keeps
+        // every non-first frame within MIN_DURATION_MS → skip-after-decode path.
         const sink = canvasPresent({
             getCanvasCtx: () => ctx,
             getBufferSpanMs: (): number => 5000,
@@ -180,8 +175,6 @@ describe('canvasPresent', () => {
 
         await count(pipe(source(items), sink));
 
-        // First frame draws (lastWriteAt is null → skip check skipped).
-        // Subsequent frames at same now() are within MIN_DURATION_MS → skip.
         expect(ctx.calls).toHaveLength(1);
         expect(stats.framesPresented).toBe(1);
         expect(stats.framesDroppedAtPresenter).toBe(2);
@@ -191,8 +184,7 @@ describe('canvasPresent', () => {
     it('catch-up below budget never skips even when frames land within MIN_DURATION_MS', async () => {
         const stats = createEmptyPlaybackStats(0);
         const ctx = new FakeCtx();
-        // extra = 500 - 333 = 167. > 0 and < CATCHUP_BUDGET_MS (4000) →
-        // present every frame at MIN_DURATION_MS cap, no skip.
+        // extra = 167, well under CATCHUP_BUDGET_MS (4000) → no skip.
         const sink = canvasPresent({
             getCanvasCtx: () => ctx,
             getBufferSpanMs: (): number => 500,

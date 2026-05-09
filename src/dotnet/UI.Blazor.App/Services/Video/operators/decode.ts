@@ -2,7 +2,7 @@ import { from, type PipeOperator } from 'ix-ext';
 import { abortPromise, PromiseSource } from 'promises';
 import { closeEncodedChunk, type ArrivedChunk, type DecodedFrame } from '../frame-envelopes';
 
-// WebCodecs `VideoDecoder` surface. Tests inject a fake.
+// WebCodecs VideoDecoder surface. Tests inject a fake.
 export interface DecoderLike {
     state: 'unconfigured' | 'configured' | 'closed';
     decodeQueueSize: number;
@@ -26,32 +26,26 @@ export interface DecodeOptions {
         onFrame: (frame: VideoFrame) => void;
         onError: (e: Error) => void;
     }) => DecoderLike;
-    /** Notified when recovery is exhausted; the operator throws on the
-     *  same tick, the callback is purely informational. The receiver
-     *  decides whether to restart with the failing codec excluded. */
+    // Informational only — operator throws on the same tick.
     onCodecExhausted?: (codec: string) => void;
-    /** Test override for `performance.now`. */
     now?: () => number;
-    /** Max consecutive recovery attempts before giving up. Default: 4. */
     maxRecoveries?: number;
-    /** Max time the decoder is allowed to sit on submitted chunks without
-     *  producing a frame or an error before we synthesise an error and
-     *  drive the existing recovery path. Default: 2000 ms. */
+    // Synthesises an error and drives recovery if the decoder sits on
+    // submitted chunks without producing a frame or error. Default 2000 ms.
     decoderHangTimeoutMs?: number;
-    /** Test seam for `setTimeout`. */
     setTimeoutFn?: (cb: () => void, ms: number) => unknown;
     clearTimeoutFn?: (handle: unknown) => void;
     abortSignal?: AbortSignal;
 }
 
-// HEVC (`hev1`/`hvc1`) needs a description; AVC and AV1 inline their
-// codec parameters in the bytestream and can configure without one.
+// HEVC (hev1/hvc1) needs a description; AVC and AV1 inline codec
+// parameters in the bytestream and can configure without one.
 function canConfigureWithoutDescription(codec: string): boolean {
     return codec.startsWith('avc1') || codec.startsWith('av01');
 }
 
-// FIFO entry mirroring `decode()` calls. Output frames are paired by
-// shift order (WebCodecs guarantees in-order output per submitted chunk).
+// FIFO mirroring decode() calls; output frames pair by shift order
+// (WebCodecs guarantees in-order output per submitted chunk).
 interface PendingDecode {
     capturedAt: { timeMs: number; epoch: number };
     arrivedAt: ArrivedChunk['arrivedAt'];
@@ -59,16 +53,12 @@ interface PendingDecode {
     submitMs: number;
 }
 
-/**
- * `ArrivedChunk → DecodedFrame`. Lazy decoder init on the first
- * keyframe; reconfigures on dim change. Per-layer-layer description
- * cache covers HEVC's "later keyframes may omit description" case.
- *
- * Errors from the decoder's error callback are buffered and trigger
- * a rebuild + reconfigure on the next keyframe. After `maxRecoveries`
- * consecutive recoveries `onCodecExhausted` fires and the operator
- * throws; pre-keyframe deltas during recovery are dropped.
- */
+// ArrivedChunk -> DecodedFrame. Lazy decoder init on first keyframe,
+// reconfigures on dim change. Per-layer description cache covers HEVC's
+// "later keyframes may omit description" case. Decoder errors trigger a
+// rebuild + reconfigure on the next keyframe; pre-keyframe deltas during
+// recovery are dropped. After maxRecoveries consecutive recoveries the
+// operator throws and onCodecExhausted fires.
 export function decode(opts: DecodeOptions): PipeOperator<ArrivedChunk, DecodedFrame> {
     const initialConfig = opts.initialConfig;
     const createDecoder = opts.createDecoder;
@@ -116,8 +106,7 @@ async function* decodeAsync(
     let wakeup = new PromiseSource<void>();
     let pendingError: Error | null = null;
     let consecutiveRecoveries = 0;
-    // Watchdog: timestamp of the last decoder-side activity (frame or error).
-    // Used to detect a hung decoder while chunks sit in the `pending` FIFO.
+    // Watchdog: detects a hung decoder while chunks sit in the pending FIFO.
     let lastDecoderActivityMs = now();
 
     const handlers = {
@@ -181,7 +170,6 @@ async function* decodeAsync(
     try {
         for (;;) {
             if (abortSignal?.aborted) return;
-            // Drain any ready envelopes synchronously first.
             while (ready.length > 0) {
                 const envelope = ready.shift()!;
                 let mustClose = true;
@@ -196,12 +184,11 @@ async function* decodeAsync(
             if (pendingError && sourceDone) throw pendingError;
             if (sourceDone && pending.length === 0) return;
 
-            // Race source.next() against decoder activity (frame or error).
             const sourceP = sourceDone ? null : armSource();
             const wakeP = wakeup;
 
-            // Watchdog arms only when the decoder owes us a frame. Otherwise
-            // a quiet stream would synthesise spurious timeouts.
+            // Watchdog arms only when the decoder owes us a frame —
+            // otherwise a quiet stream would synthesise spurious timeouts.
             const racers: Promise<WaitResult>[] = [
                 wakeP.then((): WaitResult => ({ kind: 'wake' })),
                 abortWait,
@@ -229,10 +216,7 @@ async function* decodeAsync(
                 return;
 
             if (winner.kind === 'watchdog') {
-                // Decoder went silent while owing us frames. Synthesize an
-                // error so the existing recovery path drops deltas, closes
-                // and reconfigures the decoder on the next keyframe, and
-                // eventually exhausts via onCodecExhausted.
+                // Synthesize an error so the recovery path takes over.
                 pendingError ??= new Error(
                     `decode: hang watchdog (no frames in ${decoderHangTimeoutMs} ms, pending=${pending.length}, codec=${currentCodec})`);
                 lastDecoderActivityMs = now();
@@ -241,8 +225,6 @@ async function* decodeAsync(
             }
 
             if (winner.kind === 'wake') {
-                // Re-arm; any pendingError or queued frame is handled at
-                // the top of the loop on the next iteration.
                 wakeup = new PromiseSource<void>();
                 continue;
             }
@@ -257,9 +239,8 @@ async function* decodeAsync(
             try {
                 currentStats = arrived.stats;
 
-                // Snapshot via local: TS can't see the async writes from
-                // the decoder error callback so it narrows pendingError
-                // to null.
+                // Local snapshot: TS narrows pendingError to null otherwise
+                // (it can't see the async writes from the error callback).
                 const errSnapshot = pendingError;
                 if (errSnapshot) {
                     if (!arrived.isKeyFrame) {
@@ -298,14 +279,14 @@ async function* decodeAsync(
                             throw new Error(
                                 `decode: codec ${currentCodec} requires description but none provided`);
 
-                        // Pin displayAspect=coded so the browser doesn't derive
-                        // display dims from the bitstream SPS/HVCC. Without
-                        // this, Edge HEVC HW returns swapped portrait display
-                        // dims (1280×720 for a 720×1280 coded portrait stream)
-                        // and Chrome Android delivers VideoFrames whose
-                        // display dims confuse `<video srcObject>` rendering
-                        // of an MSTG-fed track — track stays black until the
-                        // watchdog falls back to canvas after ~8 s.
+                        // Pin displayAspect=coded so the browser doesn't
+                        // derive display dims from the bitstream SPS/HVCC.
+                        // Without this, Edge HEVC HW returns swapped portrait
+                        // display dims (1280x720 for a 720x1280 coded portrait
+                        // stream) and Chrome Android delivers VideoFrames
+                        // whose display dims confuse <video srcObject>
+                        // rendering of an MSTG-fed track — track stays black
+                        // until the watchdog falls back to canvas after ~8 s.
                         const config: VideoDecoderConfig = {
                             codec: currentCodec,
                             codedWidth: newWidth || undefined,

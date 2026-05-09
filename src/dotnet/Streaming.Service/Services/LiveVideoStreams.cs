@@ -275,12 +275,9 @@ public class LiveVideoStreams : ILiveVideoStreams
         // cooldown on a downgrade can block the next upgrade's keyframe.
         // The VideoStreamingBackend.RequestKeyFrame path is throttled (1 s
         // cooldown) so concurrent receivers collapse to one PLI.
-        // Small delay before firing: empirically the PLI-driven keyframe
-        // can land at the publisher / fan-out before the new envelope has
-        // fully propagated, so the upgraded layer's KF gets emitted while
-        // some component still acts on the old envelope and the anchor is
-        // wasted — leaving us waiting the full periodic interval (~3 s)
-        // for the next one.
+        // Small delay so the new envelope propagates before the PLI; otherwise
+        // the keyframe can land while some component is still on the old envelope,
+        // wasting the anchor and forcing us to wait the full ~3 s periodic interval.
         var upgradedStreams = GetUpgradedStreams(prevState?.QualityByStream, qualityByStream).ToArray();
         if (upgradedStreams.Length != 0) {
             await Task.Delay(KeyFrameRequestDelay, cancellationToken).ConfigureAwait(false);

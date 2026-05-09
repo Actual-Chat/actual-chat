@@ -22,31 +22,24 @@ export interface PlayerConfig {
     initialDecoderConfig: { codec: string; codedWidth?: number; codedHeight?: number };
     targetBufferSpanMs: number;
     backend: RenderBackendConfig;
-    /** Production: `streamingApi.liveVideoStreams.GetStream`. */
     getStream: (streamId: string) => Promise<AsyncIterable<VideoFrameDto>> | AsyncIterable<VideoFrameDto>;
     createDecoder: (handlers: {
         onFrame: (frame: VideoFrame) => void;
         onError: (e: Error) => void;
     }) => DecoderLike;
-    /** Optional ~1Hz latency sample sink for stats display. */
     reportLatency?: (sample: LatencySample) => void;
 }
 
-/**
- * One Player owns one running pipeline (one stream). Multiple Players
- * can share a `PlaybackSession` to amortize decoder pool / clock / stats.
- *
- * `start` rejects if a run is in flight — call `stop` and `whenDone`
- * first. `stop` is non-blocking; `whenDone` resolves when the pipe
- * actually drains.
- */
+// One running pipeline (one stream). Multiple Players can share a
+// PlaybackSession to amortize decoder pool / clock / stats. start()
+// rejects if a run is in flight — call stop() and whenDone() first.
+// stop() is non-blocking; whenDone() resolves when the pipe drains.
 export class Player {
     private readonly session: PlaybackSession;
     private abortController: AbortController | null = null;
     private sourceStopController: AbortController | null = null;
     private abortTimeoutId: ReturnType<typeof setTimeout> | null = null;
     private abortTimeoutReason: unknown = null;
-    /** Re-created per `start()` so a stop/start cycle drops half-buffered state. */
     private buffer: EncodedFrameBuffer | null = null;
     private whenDoneInternal: Promise<void> = Promise.resolve();
 
@@ -98,7 +91,6 @@ export class Player {
                 targetSpanMs,
             });
         }
-        // Inject the buffer span at the seam — the operator has no buffer ref.
         const reportLatency = config.reportLatency;
         const wrappedReportLatency = reportLatency
             ? (sample: LatencySample): void => {
@@ -164,7 +156,7 @@ export class Player {
         return this.whenDoneInternal;
     }
 
-    /** Recovery hook for out-of-band sender resync — rarely used. */
+    // Recovery hook for out-of-band sender resync — rarely used.
     resetBuffer(): void {
         this.buffer?.reset();
     }

@@ -1,7 +1,7 @@
 import { AsyncIterableX, exclusive, finalize, from, fromReadable } from 'ix-ext';
 import type { CapturedFrame, VideoRecordingStats } from '../frame-envelopes';
 
-// Minimal `MediaStreamTrackProcessor` surface. Tests inject a fake.
+// Minimal MediaStreamTrackProcessor surface. Tests inject a fake.
 interface MstpLike {
     readable: ReadableStream<VideoFrame>;
 }
@@ -10,15 +10,14 @@ export interface MstpSourceOptions {
     track: MediaStreamTrack;
     stats: VideoRecordingStats;
     abortSignal?: AbortSignal;
-    /** Graceful source-completion signal. Unlike abortSignal, this is
-     *  the normal stop path and simply ends the captured frame sequence. */
+    // Graceful stop: ends the sequence without aborting.
     stopSignal?: AbortSignal;
     createProcessor?: (track: MediaStreamTrack) => MstpLike;
 }
 
-// `MediaStreamTrack → CapturedFrame`. No queueing here — production
-// backs the readable with a single-slot push (`ReplaceableSlot`) so
-// slow downstream naturally drops older frames at the source.
+// MediaStreamTrack -> CapturedFrame. No queueing — production backs the
+// readable with a single-slot push so slow downstream drops older frames
+// at the source.
 export function mstpSource(opts: MstpSourceOptions): AsyncIterableX<CapturedFrame> {
     const { track, stats, abortSignal, stopSignal } = opts;
     const createProcessor = opts.createProcessor

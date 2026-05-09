@@ -1,8 +1,3 @@
-/**
- * WebCodecs Video Encoder
- * Encodes video frames to H.264 chunks with statistics tracking
- */
-
 import { getLogs } from 'logging';
 import Denque from 'denque';
 import type { MonotonicTime } from 'clocks';
@@ -10,18 +5,16 @@ import { getCodecCategory, getCodecForCategory } from './codec-support';
 
 const { infoLog, warnLog, errorLog } = getLogs('VideoEncoder');
 
-// Yield a macrotask so the platform can release a previous HW codec slot
-// before allocating a new one. close() is synchronous; the slot is freed on
-// the next task tick. Used between encoder close() → new VideoEncoder() to
-// avoid OperationError 'Encoder creation error' on Chrome NVENC / VA-API.
+// Yield a macrotask between close() and `new VideoEncoder()` so the platform
+// releases the HW codec slot — otherwise Chrome NVENC/VA-API throws
+// OperationError 'Encoder creation error'.
 async function awaitHwReleased(): Promise<void> {
     await Promise.resolve();
     await new Promise<void>(resolve => setTimeout(resolve, 0));
 }
 
-// Dedupe error logs by key within a 1 s window. Defends against async error
-// cascades from the WebCodecs error callback when the platform fires errors
-// faster than the dead-encoder watchdog can react.
+// Dedupe error logs by key within a 1s window — guards against cascades from
+// the WebCodecs error callback firing faster than the dead-encoder watchdog reacts.
 const ERROR_LOG_DEDUPE_WINDOW_MS = 1000;
 const errorLogLastSeenMs = new Map<string, number>();
 function shouldLogEncoderError(key: string): boolean {
@@ -32,7 +25,7 @@ function shouldLogEncoderError(key: string): boolean {
     return true;
 }
 
-// WebCodecs SVC metadata (svc.temporalLayerId) is not yet in TS typings
+// WebCodecs SVC metadata (svc.temporalLayerId) is not yet in TS typings.
 function extractTemporalLayerId(metadata: EncodedVideoChunkMetadata | undefined): number | undefined {
     if (!metadata) return undefined;
     const svc = (metadata as Record<string, unknown>)['svc'];
@@ -42,55 +35,43 @@ function extractTemporalLayerId(metadata: EncodedVideoChunkMetadata | undefined)
 }
 
 export interface EncoderConfig {
-  codec: string; // Support any codec string to handle H.264, HEVC, AV1, VP9, etc.
+  codec: string;
   width: number;
   height: number;
   bitrate: number;
   framerate: number;
-  /**
-   * Primary keyframe trigger — emit a keyframe every N encoded frames.
-   * Encoder-natural knob (controls GOP size in frames for bandwidth planning).
-   */
+  // GOP size in frames (primary keyframe trigger).
   keyframeInterval: number;
-  /**
-   * Wall-clock keyframe floor — guarantees a keyframe is emitted at least every
-   * N ms regardless of input frame rate. Needed because `keyframeInterval` is
-   * frame-count-based: if encoder.encode() is called slowly (VAD-reduced path,
-   * static screencast with low capture framerate), the frame-count trigger can
-   * drift to 10s+ wall time. Leaving this undefined keeps frame-count-only
-   * behavior.
-   */
+  // Wall-clock keyframe floor — guarantees a keyframe at least every N ms when
+  // encode() is called slowly (VAD-reduced, low-framerate screencast).
   maxKeyFrameIntervalMs?: number;
   latencyMode: 'realtime' | 'quality';
   hardwareAcceleration: 'prefer-hardware' | 'prefer-software' | 'no-preference';
-  scalabilityMode?: string; // Scalability mode like 'L1T1', 'L1T2', 'L1T3'
-  /** Pre-convert frames to YUV before encoding. Disabled by default — HW encoders accept RGBA natively. */
+  // 'L1T1' | 'L1T2' | 'L1T3'
+  scalabilityMode?: string;
+  // Disabled by default — HW encoders accept RGBA natively.
   preConvertYuv?: boolean;
 }
 
 export interface EncodedChunkData {
-  codec?: string; // Codec string (e.g., 'avc1.640028', 'av01.0.08M.08') — set by encoder worker
+  // Set by encoder worker, e.g. 'avc1.640028', 'av01.0.08M.08'.
+  codec?: string;
   chunk: EncodedVideoChunk;
   metadata: EncodedVideoChunkMetadata | undefined;
   timestamp: number;
   type: 'key' | 'delta';
   byteLength: number;
-  sequenceNumber: number; // Added for chunk ordering to prevent out-of-order delivery issues
+  sequenceNumber: number;
   encodeTimeMs: number;
-  temporalLayerId?: number; // SVC temporal layer: 0 = base, 1+ = enhancement
-  // Simulcast layer: 0 = base (lowest-res) layer, 1+ = higher-res layers.
-  // Always 0 for single-encoder (P2P) streams; set by encoder instance in multi-encoder mode.
+  // SVC: 0=base, 1+=enhancement.
+  temporalLayerId?: number;
+  // Simulcast: 0=base (lowest-res); always 0 for single-encoder (P2P).
   layerId?: number;
-  // Encoded frame dimensions — the dims of the encoder instance that produced
-  // this chunk. Needed so the worker can tag each layer's VideoStreamFrame with
-  // its true resolution instead of borrowing from the primary encoder's config.
+  // Dims of the producing encoder instance (per-layer truth, not primary config).
   width: number;
   height: number;
-  // Sender-side MonotonicClock snapshot captured at the moment the source
-  // frame was submitted to encode(). Carried through the encoder boundary via
-  // a parallel FIFO (mirrors encodeStartTimes). The pipeline uses .timeMs
-  // (Unix-domain ms) as the canonical wire offset and .epoch as the
-  // discontinuity marker. Undefined when the caller didn't supply it.
+  // Sender-side MonotonicClock snapshot at encode() time. Threaded via parallel
+  // FIFO. Wire uses .timeMs (Unix ms) as offset and .epoch as discontinuity marker.
   capturedAt?: MonotonicTime;
 }
 
@@ -101,29 +82,22 @@ export interface EncoderStats {
   totalBytes: number;
   averageEncodeTime: number;
   medianEncodeTime: number;
-  /** Encode time measured only when queue was empty (no wait component). -1 if no samples. */
+  // Sampled only when encode queue was empty at start; -1 if no samples.
   pureMedianEncodeTime: number;
   configuredWidth: number;
   configuredHeight: number;
   configuredBitrate: number;
   hardwareAcceleration: string;
-  /** Current state of the underlying WebCodecs VideoEncoder. */
   state: CodecState;
-  /** How many times reconfigure() was invoked on this WebCodecsEncoder. */
   reconfigureCount: number;
-  /** How many times the underlying VideoEncoder instance has been replaced
-   *  (close + new) — covers dim-change reconfigure and switchCodec paths. */
+  // Underlying VideoEncoder close+new count (covers dim-change reconfigure + switchCodec).
   replaceCount: number;
-  /** Human-readable summary of the last reconfigure (e.g. "4Mbps 720x1280 -> 2Mbps 540x960"). */
   lastReconfigureSummary: string;
-  /** Wall-clock ms since the last reconfigure() call. -1 if none yet. */
   lastReconfigureAgeMs: number;
-  /** Last error reported by the encoder (sync throw or async `error` callback). */
   lastErrorName: string;
   lastErrorMessage: string;
-  /** Wall-clock ms since the last error. -1 if none. */
   lastErrorAgeMs: number;
-  /** Total errors observed from this WebCodecsEncoder (pre-dedupe). */
+  // Pre-dedupe.
   errorCount: number;
 }
 
@@ -131,8 +105,7 @@ export class WebCodecsEncoder {
     private encoder: VideoEncoder;
     private frameCount = 0;
     private droppedFrames = 0;
-    // Latches when a dims-mismatch drop happens, clears on next accepted frame.
-    // Coalesces the per-frame warn into one log per reconfigure-race burst.
+    // Coalesces the per-frame mismatch warn into one log per reconfigure-race burst.
     private inDimsMismatchBurst = false;
     private keyFrameCount = 0;
     private lastKeyFrame = 0;
@@ -140,20 +113,17 @@ export class WebCodecsEncoder {
     private totalBytes = 0;
     private encodeTimeHistory = new Denque<number>();
     private encodeStartTimes = new Denque<number>();
-    private encodeQueueAtStart = new Denque<number>(); // Queue size when encode was called (parallel to encodeStartTimes)
-    // Mirrors encodeStartTimes: pushed at every accepted submit, shifted in the
-    // output callback. Drives wire-side capturedAt + epoch on EncodedChunkData.
+    private encodeQueueAtStart = new Denque<number>();
+    // Parallel FIFO to encodeStartTimes; drives wire-side capturedAt+epoch on output.
     private capturedAtQueue = new Denque<MonotonicTime | undefined>();
-    private pureEncodeTimeHistory = new Denque<number>(); // Times when queue was 0 at start (actual codec cost)
-    private chunkSequence = 0; // Track chunk sequence for proper ordering
-    // PLI diagnostics: timestamp set when encode() is called with forceKeyFrame=true,
-    // cleared when the next 'key' chunk comes out of the encoder. Lets us measure
-    // encoder request→output latency for forced keyframes.
+    // Times sampled only when queue was 0 at start (actual codec cost).
+    private pureEncodeTimeHistory = new Denque<number>();
+    private chunkSequence = 0;
+    // PLI diagnostics: set on forceKeyFrame submit, cleared on next 'key' output.
     private pendingForcedKfStartMs = 0;
 
-    // Diagnostics: track encoder lifecycle so the modal can distinguish
-    // "encoder is healthy and waiting for first frame" from "encoder died,
-    // pipeline silently keeps trying". Surfaced via getStats().
+    // Lifecycle counters surfaced via getStats() — distinguishes "healthy, waiting
+    // for first frame" from "encoder died, pipeline silently retries".
     private reconfigureCount = 0;
     private replaceCount = 0;
     private lastReconfigureSummary = '';
@@ -163,10 +133,7 @@ export class WebCodecsEncoder {
     private lastErrorAtMs = 0;
     private errorCount = 0;
 
-    // Simulcast layer ID this encoder instance is producing. 0 = base
-    // (lowest-res) layer, 1+ = higher-res layers. Stamped onto every
-    // chunk emitted by this instance. Defaults to 0 — single-encoder pipelines
-    // (P2P, screencast, non-simulcast recordings) leave it at 0.
+    // 0=base (lowest-res); 1+=higher-res. 0 for single-encoder pipelines (P2P).
     private readonly layerId: number;
 
     constructor(
@@ -179,11 +146,9 @@ export class WebCodecsEncoder {
         this.encoder = this.createEncoder();
     }
 
-    // Replace the encoder's config (dims, bitrate, framerate, etc) without
-    // recreating the underlying VideoEncoder instance. Used by the encoder pool
-    // when a pooled instance is adopted by a new pipeline with different params
-    // — initialize() is then called to apply the new config via VideoEncoder.configure(),
-    // which on an existing 'configured' encoder is a reconfigure (no NVENC re-init).
+    // Used by the encoder pool when adopting a pooled instance for a new pipeline:
+    // updates config without recreating the VideoEncoder; subsequent initialize()
+    // is a reconfigure (no NVENC re-init).
     setConfig(newConfig: EncoderConfig): void {
         this.config = newConfig;
     }
@@ -203,12 +168,9 @@ export class WebCodecsEncoder {
         } catch (error) {
             errorLog?.log('Failed to configure encoder:', error);
             this.recordError(error as Error);
-            // Surface the synchronous configure() failure to onError so the
-            // dead-encoder fallback fires immediately. (Async OperationError
-            // from NVENC contention reaches onError via the encoder's `error`
-            // callback.) DO NOT retry here — every retry creates a new NVENC
-            // session attempt, piling on contention. Let the codec-fallback
-            // chain do its thing.
+            // Surface to onError so the dead-encoder fallback fires immediately.
+            // DO NOT retry — every retry piles NVENC contention. Let the
+            // codec-fallback chain handle it.
             this.onError(error as Error);
             throw error;
         }
@@ -225,11 +187,9 @@ export class WebCodecsEncoder {
             return;
         }
 
-        // Rotation diagnostics: log encoder INPUT frame metadata on first
-        // frame and every 300th (~10s @ 30fps). Confirms whether downscaler
-        // baked rotation into pixels (frame.rotation null/0, dims match
-        // portrait config) or left it for the encoder to tag (frame.rotation
-        // non-zero) — bitstream rotation tag is what makes Edge HEVC HW
+        // Rotation diagnostics: log encoder INPUT every ~10s. Distinguishes
+        // downscaler-baked rotation (rotation=null/0, portrait dims match) from
+        // encoder-tagged rotation (non-zero) — the latter makes Edge HEVC HW
         // disagree with Chrome on decoded display dims.
         if (this.frameCount === 0 || this.frameCount % 300 === 0) {
             const rot = (frame as VideoFrame & { rotation?: number | null }).rotation ?? null;
@@ -241,16 +201,11 @@ export class WebCodecsEncoder {
                 + `config=${this.config.width}x${this.config.height}`);
         }
 
-        // Dims-mismatch guard. Chrome's HW encoders (HEVC, H.264, AV1) silently
-        // crop from the top-left corner when `frame.codedWidth/Height` exceeds
-        // the configured dims instead of scaling — producing a visible
-        // top-left-crop artifact on the receiver for what should be a
-        // scaled-down frame. The mismatch happens transiently during a
-        // reconfigure race: `downscaler.configure` and `encoder.configure`
-        // can't be applied atomically, so a frame from the old downscaler
-        // (old target dims) may reach a newly-reconfigured encoder, or
-        // vice versa. Drop such frames — a few missed frames at a reconfigure
-        // boundary are invisible; a multi-second crop is not.
+        // Dims-mismatch guard: Chrome HW encoders silently top-left-crop when
+        // frame.coded* exceeds configured dims (instead of scaling). This
+        // happens transiently during reconfigure races between downscaler and
+        // encoder configure() calls, which can't be applied atomically.
+        // Dropping a few frames at the boundary is invisible; multi-second crop is not.
         if (frame.codedWidth !== this.config.width || frame.codedHeight !== this.config.height) {
             this.droppedFrames++;
             if (!this.inDimsMismatchBurst) {
@@ -264,22 +219,16 @@ export class WebCodecsEncoder {
         }
         this.inDimsMismatchBurst = false;
 
-        // Record start time and queue size for async timing measurement
         this.encodeStartTimes.push(performance.now());
         this.encodeQueueAtStart.push(this.encoder.encodeQueueSize);
         this.capturedAtQueue.push(capturedAt);
 
-        // Determine if this should be a keyframe
-        // - forceKeyFrame: PLI from receiver or pipeline event
-        // - frame-count trigger: encoder-natural GOP size
-        // - wall-clock floor: guarantees a keyframe even if encoder is called slowly
-        //   (VAD-reduced path, static screencast). Without this, retention can hold
-        //   no keyframe and late-joining receivers can't start decoding.
+        // Keyframe triggers: forceKeyFrame (PLI/pipeline), GOP frame count,
+        // wall-clock floor (guarantees keyframe under slow capture so late
+        // joiners can decode).
         const nowMs = performance.now();
-        // Seed the wall-clock baseline on first encode so the first keyframe is
-        // also bounded by maxKeyFrameIntervalMs. Without this the cap only kicks
-        // in after the first frame-count-triggered keyframe, leaving startup
-        // unbounded when capture is slow.
+        // Seed wall-clock baseline on first encode so the first keyframe is
+        // also bounded — otherwise cap only kicks in after the first count-triggered KF.
         if (this.lastKeyFrameTimeMs === 0)
             this.lastKeyFrameTimeMs = nowMs;
         const shouldBeKeyFrame = forceKeyFrame
@@ -303,7 +252,6 @@ export class WebCodecsEncoder {
             this.frameCount++;
         } catch (error) {
             this.droppedFrames++;
-            // Remove the start time and queue size since encode failed
             this.encodeStartTimes.pop();
             this.encodeQueueAtStart.pop();
             this.capturedAtQueue.pop();
@@ -336,7 +284,6 @@ export class WebCodecsEncoder {
         const oldWidth = this.config.width;
         const oldHeight = this.config.height;
 
-        // Update config with new parameters
         if (params.bitrate !== undefined) {
             this.config.bitrate = params.bitrate;
         }
@@ -347,11 +294,8 @@ export class WebCodecsEncoder {
             this.config.height = params.height;
         }
 
-        // Bump codec string to a higher AVC/HEVC/VP9/AV1 level if the new dims
-        // cross the level threshold (e.g. 720p → 1080p forces AVC 3.1 → 4.0).
-        // Without this, encoder.configure() throws NotSupportedError because the
-        // old codec string (e.g. avc1.64001F = level 3.1, max ~921k pixels) can't
-        // describe a 1080p stream.
+        // Bump codec-string level if new dims cross threshold (e.g. 720p→1080p
+        // forces AVC 3.1→4.0); else configure() throws NotSupportedError.
         const category = getCodecCategory(this.config.codec);
         const newCodec = getCodecForCategory(category, this.config.width, this.config.height);
         if (newCodec !== this.config.codec) {
@@ -365,66 +309,47 @@ export class WebCodecsEncoder {
         infoLog?.log(`Reconfigure: ${this.lastReconfigureSummary} (dimsChanged=${dimsChanged})`);
 
         if (dimsChanged) {
-            // Android Chrome's MediaCodec H.264 session reproducibly fails with
-            // OperationError "Encoding error." when configure() is called in-place
-            // for a smaller resolution mid-stream (prod log 1777558634013:
-            // avc1.4D4029, 720x1280 → 540x960 ✓ → 360x640 ✗). Likely cause:
-            // queued old-dim frames hit the new MediaCodec config. Replace the
-            // VideoEncoder instance entirely. Bitrate-only path below stays
-            // in-place — that's reliable on every platform we see.
+            // Android Chrome MediaCodec H.264 reproducibly fails with
+            // OperationError when configure() is called in-place for a smaller
+            // resolution mid-stream (queued old-dim frames hit the new config).
+            // Replace the VideoEncoder entirely; bitrate-only stays in-place.
             await this.replaceUnderlyingEncoder();
             this.encoder.configure(this.buildEncoderConfig());
-            // Restart the wall-clock keyframe floor so the new session emits a
-            // fresh IDR immediately on the next encode.
             this.lastKeyFrameTimeMs = 0;
         } else {
             this.encoder.configure(this.buildEncoderConfig());
         }
-        // Force immediate keyframe on next frame so the new config (dims or
-        // bitrate target) is honored without waiting for the next scheduled
-        // GOP boundary.
+        // Force immediate keyframe so the new config is honored without
+        // waiting for the next scheduled GOP boundary.
         this.lastKeyFrame = this.frameCount - this.config.keyframeInterval;
     }
 
     async switchCodec(newConfig: EncoderConfig): Promise<void> {
         await this.replaceUnderlyingEncoder();
 
-        // Update config
         this.config = newConfig;
 
-        // Reset counters to force immediate keyframe and restart sequencing —
-        // worker tears down the old videoStream around switchCodec, so receivers
-        // see this as a fresh stream starting at seq=0. (NB: reconfigure() does
-        // NOT reset; it preserves chunkSequence/frameCount because the stream
-        // continues unchanged.)
+        // Reset to seq=0 — worker tears down the old videoStream, receivers see
+        // a fresh stream. (reconfigure() preserves these; switchCodec doesn't.)
         this.reset();
 
-        // Configure with new codec
         this.initialize();
         infoLog?.log(`Codec switched to ${newConfig.codec}`);
     }
 
-    // Resurrect a dead encoder with the same config: close (if still open),
-    // create a fresh VideoEncoder, and configure it. Called by the worker on
-    // the first OperationError so transient HW glitches (MediaCodec session
-    // hiccup, NVENC contention spike) don't blacklist the codec immediately.
-    // Caller is responsible for cooldown/limit policy. Throws if configure()
-    // fails synchronously — async errors after this returns will arrive via
-    // the `error` callback as usual.
+    // Recovery: close + new VideoEncoder with same config. Called on first
+    // OperationError so transient HW glitches don't blacklist the codec.
+    // Caller owns cooldown/limit policy.
     async rebuild(): Promise<void> {
         await this.replaceUnderlyingEncoder();
         this.encoder.configure(this.buildEncoderConfig());
-        // chunkSequence/frameCount/totalBytes preserved — this is a recovery,
-        // not a stream restart. Force a fresh keyframe so receivers can resync
-        // immediately after the gap caused by the dead session.
+        // Counters preserved — this is recovery, not a stream restart.
         this.lastKeyFrame = this.frameCount - this.config.keyframeInterval;
         this.lastKeyFrameTimeMs = 0;
     }
 
-    // Flush in-flight encodes, close the current VideoEncoder session, wait
-    // for the platform to release the HW slot, then create a fresh
-    // VideoEncoder instance. Caller must follow up with configure() (or
-    // initialize()) and any bookkeeping for stale per-encode state.
+    // Flush, close, await HW-slot release, then re-create. Caller must follow
+    // up with configure()/initialize().
     private async replaceUnderlyingEncoder(): Promise<void> {
         if (this.encoder.state === 'configured') {
             try {
@@ -437,9 +362,8 @@ export class WebCodecsEncoder {
         await awaitHwReleased();
         this.encoder = this.createEncoder();
         this.replaceCount++;
-        // Output callbacks for any encodes still in flight on the closed
-        // session never fire, so their start-time entries would otherwise sit
-        // in the queues forever and pair with unrelated future outputs.
+        // Pending output callbacks on the closed session never fire — flush
+        // their start-time entries so they don't pair with future outputs.
         this.encodeStartTimes.clear();
         this.encodeQueueAtStart.clear();
         this.capturedAtQueue.clear();
@@ -494,13 +418,9 @@ export class WebCodecsEncoder {
                     }
                 }
 
-                // Rotation diagnostics: on each keyframe, parse the chunk's
-                // decoderConfig (when present) to confirm bitstream codedWidth/
-                // codedHeight matches the encoder config. Mismatch means the
-                // encoder embedded a rotation/transform — receivers with
-                // different HEVC HW drivers will then report different
-                // displayWidth/displayHeight, which is the Edge vs Chrome
-                // divergence we're hunting.
+                // Rotation diagnostics: on each KF, parse decoderConfig (when
+                // present) to detect bitstream-embedded rotation — that's what
+                // makes Edge vs Chrome HEVC HW disagree on displayWidth/Height.
                 if (chunk.type === 'key') {
                     const dc = metadata?.decoderConfig as (VideoDecoderConfig & {
                         codedWidth?: number; codedHeight?: number;
@@ -537,19 +457,15 @@ export class WebCodecsEncoder {
             hardwareAcceleration: this.config.hardwareAcceleration,
         };
 
-        // Variable bitrate is the WebCodecs spec default — leaving bitrateMode
-        // unset gets variable mode without forcing a strict-VBR contract that
-        // some HW encoders (Chrome HEVC HW + L1T2) silently reject by emitting
-        // no output. Explicit 'variable' + HEVC HW = stuck encoder.
+        // Leave bitrateMode unset: variable is the spec default. Setting
+        // explicit 'variable' + HEVC HW (Chrome) silently stalls the encoder.
 
         if (this.config.scalabilityMode) {
             encoderConfig.scalabilityMode = this.config.scalabilityMode;
         }
 
-        // Codec-specific config
         if (this.config.codec.startsWith('avc1')) {
-            // Annex B everywhere: SPS/PPS embedded in bitstream → no description needed,
-            // no AVCC serialization overhead, uniform across browsers.
+            // Annex B everywhere: SPS/PPS embedded → no description, no AVCC overhead.
             encoderConfig.avc = { format: 'annexb' };
         } else if (this.config.codec.startsWith('hev1') || this.config.codec.startsWith('hvc1')) {
             (encoderConfig as VideoEncoderConfig & { hevc?: { format: string } }).hevc = { format: 'hevc' };
@@ -578,7 +494,6 @@ export class WebCodecsEncoder {
             ? encodeHistory.reduce((a, b) => a + b, 0) / encodeHistory.length
             : 0;
 
-        // Compute median encode time
         let medianEncodeTime = 0;
         if (encodeHistory.length > 0) {
             const sorted = encodeHistory.sort((a, b) => a - b);
@@ -588,7 +503,7 @@ export class WebCodecsEncoder {
                 : (sorted[mid - 1] + sorted[mid]) / 2;
         }
 
-        // Compute pure median encode time (queue was empty at start — no wait component)
+        // Pure median: queue was empty at start — actual codec cost.
         let pureMedianEncodeTime = -1;
         const pureHistory = this.pureEncodeTimeHistory.toArray();
         if (pureHistory.length > 0) {
@@ -599,13 +514,10 @@ export class WebCodecsEncoder {
                 : (sorted[mid - 1] + sorted[mid]) / 2;
         }
 
-        // Try to determine hardware acceleration status
+        // WebCodecs doesn't expose actual HW status; infer from config.
         let hardwareAcceleration = 'unknown';
         try {
-            // The encoder's decoderConfig property may contain hints about HW acceleration
-            // Note: WebCodecs doesn't directly expose this, so we infer from configuration
             if (this.encoder.state === 'configured') {
-                // If we requested hardware and encoder is working well, likely using it
                 hardwareAcceleration = this.config.hardwareAcceleration === 'prefer-hardware'
                     ? 'likely (preferred)'
                     : 'software (preferred)';
@@ -653,8 +565,7 @@ export class WebCodecsEncoder {
         this.pureEncodeTimeHistory = new Denque<number>();
         this.chunkSequence = 0;
         // Diagnostic counters intentionally NOT reset — they describe the
-        // lifetime of this WebCodecsEncoder instance, including switchCodec
-        // boundaries. The pool keeps the same wrapper across stop/start.
+        // wrapper's lifetime, which the pool preserves across stop/start.
     }
 
     private recordError(error: Error): void {

@@ -2,24 +2,15 @@ import { from, type PipeOperator } from 'ix-ext';
 import type { CapturedBundle, CapturedFrame } from '../frame-envelopes';
 
 export interface KeyframePolicyOptions {
-    /** Force a keyframe every Nth bundle. Counter resets on every
-     *  triggered keyframe (regardless of trigger reason). */
+    // Counter resets on every triggered keyframe regardless of trigger reason.
     keyframeIntervalFrames: number;
-    /** Wallclock floor (ms). Wallclock trigger requires a prior
-     *  keyframe — first frame qualifies by frame-count or upstream flag. */
     maxKeyframeIntervalMs?: number;
     now?: () => number;
 }
 
-/**
- * Sets `forceKeyframe = true` across every layer in a bundle on any
- * of: frame-count interval, wallclock floor, or upstream already
- * raised the flag (any layer with the flag triggers it across the
- * whole bundle).
- *
- * Shallow-clones the layer envelopes when raising the flag so upstream
- * operators see no surprising mutations.
- */
+// Sets forceKeyframe across every layer in a bundle on any of:
+// frame-count interval, wallclock floor, or upstream-raised flag.
+// Shallow-clones layer envelopes when raising the flag.
 export function applyKeyframePolicy(opts: KeyframePolicyOptions): PipeOperator<CapturedBundle, CapturedBundle> {
     const { keyframeIntervalFrames, maxKeyframeIntervalMs } = opts;
     if (keyframeIntervalFrames <= 0)

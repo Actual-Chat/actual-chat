@@ -4,12 +4,9 @@ const { infoLog, warnLog, errorLog } = getLogs('VideoWebGPU');
 
 export type DeviceLostListener = (info: GPUDeviceLostInfo) => void;
 
-/**
- * Centralized WebGPU device ownership shared between ONNX Runtime, tensor utilities,
- * blur, and downscaler pipelines. Ensures a single GPUDevice and shared sampler.
- * Watches device.lost so consumers can fail-fast instead of submitting work to a
- * dead device (which surfaces as per-frame OperationError storms on Edge).
- */
+// Single shared GPUDevice + sampler across ONNX, tensor, blur, downscaler.
+// Watches device.lost so consumers fail-fast instead of triggering Edge's
+// per-frame OperationError storms against a dead device.
 export class WebGPUManager {
     private static device: GPUDevice | null = null;
     private static sampler: GPUSampler | null = null;
@@ -39,11 +36,9 @@ export class WebGPUManager {
             if (!adapter)
                 throw new Error('Failed to acquire WebGPU adapter');
 
-            // Opt into bgra8unorm-storage when the adapter has it. Lets the
-            // simulcast downscaler write directly into canvas swap-chain
-            // textures from a compute shader (BGRA is the preferred canvas
-            // format on Chrome/Safari). No-op if unsupported — downscaler
-            // automatically falls back to its render-pass path.
+            // bgra8unorm-storage lets the simulcast downscaler compute path
+            // write directly into BGRA canvas textures (Chrome/Safari preferred
+            // format). Downscaler falls back to render-pass when unsupported.
             const requiredFeatures: GPUFeatureName[] = [];
             if (adapter.features.has('bgra8unorm-storage'))
                 requiredFeatures.push('bgra8unorm-storage');
@@ -82,10 +77,8 @@ export class WebGPUManager {
         return this.lastLostInfo;
     }
 
-    // Subscribe to device-lost notifications. Listener is invoked synchronously
-    // after the device.lost promise settles and AFTER the manager nulls out
-    // its device/sampler refs — consumers can read hasDevice() to confirm.
-    // Returns a disposer that unregisters the listener.
+    // Listener fires AFTER manager nulls device/sampler — consumers can
+    // confirm via hasDevice(). Returns a disposer.
     static addLostListener(listener: DeviceLostListener): () => void {
         this.lostListeners.add(listener);
         return () => { this.lostListeners.delete(listener); };
@@ -98,7 +91,7 @@ export class WebGPUManager {
         this.sampler = device.createSampler({ magFilter: 'linear', minFilter: 'linear' });
         this.lastLostInfo = null;
 
-        // D1: device baseline so a later freeze report has device context.
+        // D1: device baseline for freeze post-mortems.
         try {
             const features = Array.from(device.features).join(',');
             const limits = device.limits;
@@ -111,8 +104,8 @@ export class WebGPUManager {
             warnLog?.log('attachDevice: feature/limit dump failed:', e);
         }
 
-        // Surface async GPU validation errors that would otherwise be silent
-        // (Chrome/Edge log them to the console with no JS-readable signal).
+        // Surface async GPU validation errors — Chrome/Edge otherwise log them
+        // to console with no JS-readable signal.
         try {
             device.addEventListener('uncapturederror', (event: Event) => {
                 const err = (event as GPUUncapturedErrorEvent).error;
@@ -122,10 +115,8 @@ export class WebGPUManager {
             warnLog?.log('attachDevice: uncapturederror listener failed:', e);
         }
 
-        // device.lost is a Promise<GPUDeviceLostInfo> — settles exactly once
-        // when the device is permanently dead. Reasons: 'destroyed' (we
-        // called destroy()), 'unknown' (driver crash, GPU process killed,
-        // OS reset). After this, any work submitted surfaces OperationError.
+        // device.lost settles exactly once when the device is permanently dead;
+        // any later submit surfaces OperationError.
         void device.lost.then((info: GPUDeviceLostInfo) => {
             this.onDeviceLost(device, info);
         }).catch((e: unknown) => {
@@ -134,7 +125,7 @@ export class WebGPUManager {
     }
 
     private static onDeviceLost(device: GPUDevice, info: GPUDeviceLostInfo): void {
-        // Ignore stale notifications from a previously-replaced device.
+        // Ignore stale notifications from a replaced device.
         if (this.device !== device) {
             warnLog?.log(
                 `GPUDevice lost (stale, already replaced): reason=${info.reason} `
@@ -147,7 +138,7 @@ export class WebGPUManager {
         this.sampler = null;
         this.lastLostInfo = info;
 
-        // Snapshot listeners — handlers may dispose themselves and mutate the set.
+        // Snapshot — handlers may self-dispose and mutate the set.
         const listeners = Array.from(this.lostListeners);
         for (const listener of listeners) {
             try {

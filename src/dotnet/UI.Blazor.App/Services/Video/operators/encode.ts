@@ -9,8 +9,8 @@ import {
     type EncodedFrame,
 } from '../frame-envelopes';
 
-// Subset of `VideoEncoderConfig` the operator threads into the encoded
-// envelope; the full WebCodecs config lives inside `createEncoder`.
+// Subset of VideoEncoderConfig threaded into the encoded envelope;
+// the full WebCodecs config lives inside createEncoder.
 export interface EncoderConfigPerLayer {
     width: number;
     height: number;
@@ -19,36 +19,28 @@ export interface EncoderConfigPerLayer {
     codec: string;
 }
 
-// Per-layer encoder input. `index` and `capturedAt` ride the
-// `AsyncVideoEncoder` boundary back into the produced `EncodedFrame`.
 export interface EncodeInput {
     frame: VideoFrame;
     index: number;
     capturedAt: MonotonicTime;
 }
 
-// `buildOutput` (inside the factory) fills `chunk`, `metadata`,
-// `capturedAt`, `index`, `encodedWidth/Height`. The operator patches
-// `layerId`, `sourceWidth/Height`, `stats` from the bundle.
+// Factory's buildOutput fills chunk/metadata/capturedAt/index/encodedWidth/Height;
+// operator patches layerId, sourceWidth/Height, stats from the bundle.
 export type EncoderFactory = (
     config: EncoderConfigPerLayer,
     layerId: number,
 ) => AsyncVideoEncoder<EncodeInput, EncodedFrame>;
 
 export interface EncodeOptions {
-    /** One config per layer, bottom-first. Length MUST equal
-     *  `bundle.layers.length`; mismatch is a hard error. */
+    // Bottom-first; length MUST equal bundle.layers.length.
     configs: readonly EncoderConfigPerLayer[];
     createEncoder: EncoderFactory;
 }
 
-/**
- * `CapturedBundle → EncodedBundle`. Per bundle: lazy-init one encoder
- * per layer on first iteration, submit all layers in parallel,
- * `Promise.allSettled` so one rejection doesn't leak the others'
- * already-produced chunks. Emits one `EncodedBundle` per source bundle
- * with `layers` bottom-first (L0, L1, …, LN-1).
- */
+// CapturedBundle -> EncodedBundle. Lazy-init one encoder per layer on
+// the first bundle, submit layers in parallel via allSettled so one
+// rejection doesn't leak the others' chunks. Bundle layers bottom-first.
 export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, EncodedBundle> {
     if (opts.configs.length === 0)
         throw new Error('encode: configs must contain at least one layer');
@@ -60,12 +52,9 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
 
         async function* impl(): AsyncIterable<EncodedBundle> {
             const encoders: AsyncVideoEncoder<EncodeInput, EncodedFrame>[] = [];
-            // True on the very first bundle through this operator instance.
-            // Forces keyFrame:true on the first encode per layer regardless
-            // of policy — pool-reused encoders may otherwise emit a delta as
-            // their first chunk after handleEncoderReset, which the server
-            // drops as a pre-keyframe delta and the receiver waits for the
-            // next natural keyframe (up to one full GOP, ~3 s).
+            // Pool-reused encoders may emit a delta as their first chunk after
+            // handleEncoderReset; the server drops pre-keyframe deltas and the
+            // receiver waits up to one full GOP (~3 s) for the next keyframe.
             let forceKeyframeOnFirstEncode = true;
             let forceKeyframeNext = false;
             try {
@@ -126,10 +115,6 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
 
                         return result.value;
                     });
-                    // Patch per-layer fields and assemble the bundle. On
-                    // success we transfer ownership to downstream; on any
-                    // failure between assembly and yield, close every chunk
-                    // we produced.
                     const out: EncodedFrame[] = [];
                     let mustClose = true;
                     try {
@@ -164,10 +149,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         yield encodedBundle;
                     } finally {
                         if (mustClose) {
-                            // Either assembly threw or the consumer aborted
-                            // before consuming the yield. Close everything
-                            // we already wrapped, then anything left in
-                            // `results` we hadn't yet wrapped.
+                            // Assembly threw or consumer aborted pre-yield.
                             for (const f of out)
                                 closeEncodedFrame(f);
                             for (let i = out.length; i < results.length; i++)

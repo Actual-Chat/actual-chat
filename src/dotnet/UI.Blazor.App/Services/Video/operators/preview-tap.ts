@@ -3,19 +3,17 @@ import { getLogs } from 'logging';
 import type { CapturedFrame } from '../frame-envelopes';
 
 const { warnLog } = getLogs('VideoPipeline');
-// Throttle: log first, then 1-in-N to avoid drowning the console if a
-// device-level failure (GPU OOM, lost surface) starts dropping every clone.
+// Log first, then 1-in-N — prevents flooding when a device-level failure drops every clone.
 const LogEveryN = 30;
 
 export interface PreviewTapOptions {
-    /** Returns the writer to forward to, or `null` to detach. Called per
-     *  frame so the recorder can swap / detach without restarting. */
+    // Called per frame so the recorder can swap / detach without restarting.
     getWriter: () => WritableStreamDefaultWriter<VideoFrame> | null;
 }
 
-// Side-effect operator: forwards a clone of every frame to a writer
-// (typically the local self-view's `MediaStreamTrackGenerator`).
-// Cloning is mandatory — pipeline owns the original; writer owns the clone.
+// Forwards a clone of every frame to a writer (typically the self-view's
+// MediaStreamTrackGenerator). Cloning is mandatory — pipeline owns the
+// original; writer owns the clone.
 export function previewTap(opts: PreviewTapOptions): PipeOperator<CapturedFrame, CapturedFrame> {
     const { getWriter } = opts;
     return tap(async (envelope: CapturedFrame): Promise<void> => {

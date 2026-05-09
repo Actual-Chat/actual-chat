@@ -2,46 +2,27 @@ import { type PipeOperator } from 'ix-ext';
 import type { CapturedBundle, CapturedFrame } from '../frame-envelopes';
 import { parallelMap } from './parallel-map';
 
-// Output dims for one layer (encoder dims for that layer).
 export interface LayerSpec {
     width: number;
     height: number;
 }
 
-/**
- * Production binding: `WebGpuDownscaler` (one render pass per
- * non-identity slot). Tests can inject a pure clone-based fake.
- *
- * Contract:
- * - One frame per spec, same order.
- * - Implementation takes the input frame (consumes/closes it).
- * - On failure, implementation closes `input` itself before throwing
- *   (the operator does not double-close).
- */
+// Contract: one frame per spec in order; implementation owns the input
+// frame (consumes/closes it, including on failure before throwing).
 export interface DownscalerLike {
     process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]>;
-    /** GPU-resource disposal called from the operator's `finally`. */
     dispose?(): void;
 }
 
 export interface DownscaleOptions {
-    /** Bottom-first ladder. `ladder[0]` is the base (lowest-resolution)
-     *  layer; the last entry is the top layer. */
+    // Bottom-first: ladder[0] is the base layer.
     ladder: readonly LayerSpec[];
-    /** Lazy-init: called per slot on first dispatch so construction can
-     *  happen before the GPU device exists. With concurrency > 1 the
-     *  factory is invoked once per slot. */
+    // Lazy-init per slot so construction can run before the GPU device exists.
     createDownscaler: () => DownscalerLike;
-    /** Max concurrent process() calls — i.e. how many bundles can be
-     *  in-flight through the downscale stage at once. Each slot owns its
-     *  own downscaler instance. Default: 2. */
     concurrency?: number;
-    /** Max time `downscaler.process()` is allowed to take before the
-     *  operator considers the GPU wedged: closes the downscaler,
-     *  recreates it on the next frame, marks the next emitted bundle's
-     *  forceKeyframe so encoders restart cleanly. Default 1500 ms. */
+    // On hang: close the downscaler, recreate on next frame, force a
+    // keyframe so encoders restart cleanly. Default 1500 ms.
     hangTimeoutMs?: number;
-    /** Test seam for setTimeout. */
     setTimeoutFn?: (cb: () => void, ms: number) => unknown;
     clearTimeoutFn?: (handle: unknown) => void;
 }
@@ -50,21 +31,12 @@ interface SlotState {
     downscaler: DownscalerLike | null;
 }
 
-/**
- * `CapturedFrame → CapturedBundle`. Per-layer envelopes inside the
- * bundle share all metadata from the input (capturedAt, index,
- * forceKeyframe, stats, sourceWidth/Height) — only `frame` differs.
- * Output is bottom-first: `layers[0]` = base layer, `layers[length-1]`
- * = top layer.
- *
- * Concurrency: up to `concurrency` bundles run through `process()`
- * simultaneously, each on its own downscaler instance. Output ordering
- * matches source order via `parallelMap`.
- *
- * Output ownership flips to downstream at `yield`. On the failure path
- * before yield, the operator closes any returned frames; the input
- * frame's close is the downscaler's responsibility per its contract.
- */
+// CapturedFrame -> CapturedBundle. Per-layer envelopes share all
+// metadata from the input — only `frame` differs. Output bottom-first.
+// Up to `concurrency` bundles run process() in parallel, each on its
+// own downscaler instance; ordering preserved via parallelMap. Output
+// ownership flips at yield; before yield the operator closes returned
+// frames (input frame is the downscaler's responsibility).
 export function downscale(opts: DownscaleOptions): PipeOperator<CapturedFrame, CapturedBundle> {
     if (opts.ladder.length === 0)
         throw new Error('downscale: ladder must contain at least one layer');
@@ -75,11 +47,8 @@ export function downscale(opts: DownscaleOptions): PipeOperator<CapturedFrame, C
     const setTimeoutFn = opts.setTimeoutFn ?? ((cb, ms): unknown => setTimeout(cb, ms));
     const clearTimeoutFn = opts.clearTimeoutFn ?? ((h: unknown): void => clearTimeout(h as ReturnType<typeof setTimeout>));
 
-    // Shared across slots: hang accounting + post-hang forceKeyframe
-    // latch. With single-threaded JS, the read-modify-write sequences in
-    // the slot map function are atomic w.r.t. each other; only awaits
-    // interleave, so reading these flags AFTER process() returns gives a
-    // consistent post-hang view.
+    // Shared across slots: single-threaded JS makes the read-modify-write
+    // sequences atomic between awaits, so post-process() reads are consistent.
     let consecutiveHangs = 0;
     let forceKeyframeAfterHang = false;
 
@@ -125,9 +94,8 @@ export function downscale(opts: DownscaleOptions): PipeOperator<CapturedFrame, C
                     timedOut = true;
                     consecutiveHangs++;
                     forceKeyframeAfterHang = true;
-                    // Detach: any frames the stuck process() eventually
-                    // produces will be closed via this tail handler. The
-                    // input frame is owned by process() per its contract.
+                    // Detach: tail handler closes anything the stuck process()
+                    // eventually produces. Input frame is owned by process().
                     void processPromise.then(
                         produced => { closeFrames(produced); },
                         () => { /* downscaler error already logged */ },
@@ -140,8 +108,6 @@ export function downscale(opts: DownscaleOptions): PipeOperator<CapturedFrame, C
                     if (consecutiveHangs >= 4)
                         throw new Error(
                             `downscale: hang watchdog fired ${consecutiveHangs} times in a row, giving up`);
-                    // Skip this bundle. parallelMap yields nothing for
-                    // null filter below.
                     return null;
                 }
                 consecutiveHangs = 0;
@@ -152,9 +118,7 @@ export function downscale(opts: DownscaleOptions): PipeOperator<CapturedFrame, C
                         `downscale: downscaler returned ${frames.length} frames, expected ${ladder.length}`);
                 }
 
-                // Bottom-first: bundle.layers[0] = base, .layers[topIdx] = top.
-                // After a hang, mark forceKeyframe so the encoders re-anchor
-                // at the next clean bundle.
+                // After a hang, force a keyframe so encoders re-anchor.
                 const layerSource = forceKeyframeAfterHang
                     ? { ...envelope, forceKeyframe: true }
                     : envelope;
@@ -163,9 +127,6 @@ export function downscale(opts: DownscaleOptions): PipeOperator<CapturedFrame, C
                 for (const frame of frames) {
                     layers.push(makeLayerEnvelope(layerSource, frame));
                 }
-                // Reference void so the linter doesn't flag the early-fail
-                // branch helper as unused after we move ownership to the
-                // returned bundle.
                 void timedOut;
                 return {
                     layers,
@@ -174,8 +135,7 @@ export function downscale(opts: DownscaleOptions): PipeOperator<CapturedFrame, C
             },
         });
 
-        // Skip post-hang null entries (those are the "input frame
-        // consumed but no bundle produced" case).
+        // Skip post-hang null entries (input consumed, no bundle produced).
         const op = stage(source);
         return (async function* (): AsyncIterable<CapturedBundle> {
             for await (const bundle of op) {

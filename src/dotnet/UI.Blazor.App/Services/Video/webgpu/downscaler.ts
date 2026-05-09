@@ -4,20 +4,12 @@ import { WebGPUManager } from './manager';
 
 const { infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
-// Per-frame `await device.queue.onSubmittedWorkDone()` is needed on iOS
-// Safari to drain GPU work before constructing canvas-backed VideoFrames —
-// each `new VideoFrame(canvas)` otherwise blocks the JS thread on an
-// implicit per-canvas swap-chain sync. On Chromium-based browsers WebGPU
-// pipelines submissions, so the per-frame drain only adds a round-trip
-// without preventing a stall. Keeping it everywhere lets the GPU process
-// queue grow unbounded under multi-encoder simulcast load (the Edge freeze
-// regression). Drain only on iOS Safari; gate concurrent submissions with
-// MAX_ACTIVE_SUBMISSIONS elsewhere so we still bound queue depth.
+// iOS Safari needs a per-frame onSubmittedWorkDone drain — each
+// `new VideoFrame(canvas)` otherwise blocks the JS thread on implicit swap-chain
+// sync. Elsewhere the drain only adds round-trips and lets the GPU queue grow
+// unbounded under multi-encoder simulcast load (Edge freeze regression).
 const NEEDS_PER_FRAME_DRAIN = DeviceInfo.isIos && DeviceInfo.isWebKit;
-// iOS Safari awaits the drain per frame so 1 in-flight submission suffices;
-// other browsers pipeline submissions but cap=2 keeps CrGpuMain from
-// saturating under multi-encoder simulcast load. Profile-tested: cap=3
-// saturated CrGpuMain to ~101% on Chromium; cap=2 holds it at ~35%.
+// Profile-tested: cap=3 saturated CrGpuMain to ~101% on Chromium, cap=2 holds it at ~35%.
 const MAX_ACTIVE_SUBMISSIONS = NEEDS_PER_FRAME_DRAIN ? 1 : 2;
 
 export interface DownscaleTarget {
@@ -36,10 +28,7 @@ interface TargetSlot {
     canvas: OffscreenCanvas;
     ctx: GPUCanvasContext;
     key: string;
-    // Intermediate storage texture for the compute path. Allocated only when
-    // useStoragePath is active. Compute writes here; result is copied into
-    // the canvas swap-chain via copyTextureToTexture (advances the swap chain
-    // the way a render pass would).
+    // Compute-path intermediate; copyTextureToTexture into the swap-chain advances it.
     storageTex?: GPUTexture | null;
     storageView?: GPUTextureView | null;
 }
@@ -48,7 +37,7 @@ const SHADER_WGSL = `
 struct Uniforms {
     // [sourceW, sourceH, targetW, targetH]
     srcDstDims: vec4<f32>,
-    // rotation in {0,1,2,3} = {0, 90, 180, 270} CW, centerCrop in {0,1}
+    // [rotation in {0,1,2,3} = {0,90,180,270} CW, centerCrop 0/1]
     rotationCrop: vec2<u32>,
 };
 
@@ -61,7 +50,7 @@ struct VsOut {
     @location(0) uv: vec2<f32>,
 };
 
-// Fullscreen triangle: draw call uses 3 verts, covers [-1,1]^2 with UV [0,1]^2.
+// Fullscreen triangle: 3 verts, covers [-1,1]^2 with UV [0,1]^2.
 @vertex
 fn vs(@builtin(vertex_index) vid: u32) -> VsOut {
     var out: VsOut;
@@ -77,8 +66,7 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
     let rot = u.rotationCrop.x;
     let doCrop = u.rotationCrop.y != 0u;
 
-    // Source display dimensions after applying VideoFrame.rotation CW.
-    // Rotation 90/270 swaps W/H when viewing the source as displayable.
+    // Apply VideoFrame.rotation CW to display W/H — 90/270 swap.
     var dispW = u.srcDstDims.x;
     var dispH = u.srcDstDims.y;
     if (rot == 1u || rot == 3u) {
@@ -90,18 +78,15 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
 
     let srcAspect = dispW / dispH;
     let dstAspect = dstW / dstH;
-    // Treat 1:1 as landscape for orientation match purposes (arbitrary, stable).
+    // 1:1 treated as landscape (arbitrary but stable).
     let orientMatch = (srcAspect >= 1.0) == (dstAspect >= 1.0);
 
-    // UV starts in dst-display space [0,1]^2.
-    // - doCrop + orientMatch  → fill (zoom in to drop bars on minor-axis aspect mismatch).
-    // - doCrop + !orientMatch → fit  (portrait↔landscape never zooms; letterbox instead).
-    // - !doCrop               → stretch (uv unchanged).
+    // doCrop + orientMatch → fill (zoom). doCrop + !orientMatch → fit (letterbox).
+    // !doCrop → stretch.
     var uv = in.uv;
     var letterbox = false;
     if (doCrop && orientMatch) {
         if (srcAspect > dstAspect) {
-            // Source wider than target — crop horizontally.
             let scale = dstAspect / srcAspect;
             uv.x = 0.5 + (uv.x - 0.5) * scale;
         } else if (srcAspect < dstAspect) {
@@ -109,9 +94,6 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
             uv.y = 0.5 + (uv.y - 0.5) * scale;
         }
     } else if (doCrop) {
-        // Orientation mismatch — fit (contain). Expand uv past [0,1] on the
-        // axis where the source is smaller than dst; out-of-range uv samples
-        // become black bars below.
         if (srcAspect > dstAspect) {
             let scale = srcAspect / dstAspect;
             uv.y = 0.5 + (uv.y - 0.5) * scale;
@@ -122,25 +104,20 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
         letterbox = true;
     }
 
-    // Bar pixels — output black before sampling (avoid clamp-to-edge smear).
+    // Output black for bar pixels before sampling — avoid clamp-to-edge smear.
     if (letterbox && (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)) {
         return vec4<f32>(0.0, 0.0, 0.0, 1.0);
     }
 
-    // Rotate UV back into source texture space (inverse of display rotation).
-    // Image coords: Y grows downward, so CW rotation maps (px, py) → (1-py, px).
-    // Display(x,y) = Buffer(src); src = inverse-forward(x,y).
+    // Inverse of display rotation; image-coord Y grows down so CW maps (px,py) → (1-py,px).
     var src: vec2<f32>;
     if (rot == 0u) {
         src = uv;
     } else if (rot == 1u) {
-        // 90 CW: Display(x,y) = Buffer(y, 1-x)
         src = vec2<f32>(uv.y, 1.0 - uv.x);
     } else if (rot == 2u) {
-        // 180: Display(x,y) = Buffer(1-x, 1-y)
         src = vec2<f32>(1.0 - uv.x, 1.0 - uv.y);
     } else {
-        // 270 CW: Display(x,y) = Buffer(1-y, x)
         src = vec2<f32>(1.0 - uv.y, uv.x);
     }
 
@@ -150,24 +127,14 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
 
 const UNIFORM_BYTES = 32;
 
-// Compute-path WGSL: single dispatch writes up to 3 differently-sized layers
-// into canvas swap-chain storage textures. Replaces the 3-render-pass loop on
-// devices where the canvas format supports STORAGE_BINDING (bgra8unorm-storage
-// feature on Chromium/Safari, or core rgba8unorm). The format placeholder is
-// substituted at module-build time so the same shader source covers both.
+// Single-dispatch compute path: writes up to 3 differently-sized layers in one
+// pass when the canvas format is storage-bindable. Replaces the 3-render-pass
+// loop on Chromium/Safari with bgra8unorm-storage (or core rgba8unorm).
 //
-// Uniforms layout (std140-compatible, all members 16-byte aligned):
-//   layers: array<LayerU, 3>  // 3 × 32 = 96 bytes
-//   cfg:    vec4<u32>          // 16 bytes
-// Total: 112 bytes (round up to 16 for buffer size).
-//
-// LayerU:
-//   dims:  vec4<f32>  [srcW, srcH, dstW, dstH]
-//   flags: vec4<u32>  [rotation 0..3, doCrop 0/1, enabled 0/1, _pad]
-//
-// cfg:
-//   [maxDstW, maxDstH, layerCount, _pad]  — used to bound the dispatch and skip layers.
-//   (`meta` is a reserved keyword in WGSL — using `cfg` instead.)
+// Uniforms (std140, 16-byte aligned):
+//   layers: array<LayerU, 3>  — dims=[srcW,srcH,dstW,dstH], flags=[rot,crop,enabled,_]
+//   cfg:    vec4<u32>          — [maxDstW, maxDstH, layerCount, _]
+// (`meta` is a reserved keyword in WGSL, hence `cfg`.)
 const COMPUTE_WGSL = (fmt: string) => `
 struct LayerU {
     dims: vec4<f32>,
@@ -227,7 +194,7 @@ fn sampleLayer(L: LayerU, gid: vec2<u32>) -> vec4<f32> {
     if (rot == 0u) { src = uv; }
     else if (rot == 1u) { src = vec2<f32>(uv.y, 1.0 - uv.x); }
     else if (rot == 2u) { src = vec2<f32>(1.0 - uv.x, 1.0 - uv.y); }
-    else               { src = vec2<f32>(1.0 - uv.y, uv.x); }
+    else { src = vec2<f32>(1.0 - uv.y, uv.x); }
     return textureSampleBaseClampToEdge(srcTex, linSampler, src);
 }
 
@@ -259,16 +226,15 @@ fn cs(@builtin(global_invocation_id) gid: vec3<u32>) {
 }
 `;
 
-const COMPUTE_UNIFORM_BYTES = 16 * 8; // 3 LayerU (3*32=96) + meta (16) = 112, round up to 128
+const COMPUTE_UNIFORM_BYTES = 16 * 8; // 3*32 + 16 = 112, padded to 128.
 const MAX_COMPUTE_LAYERS = 3;
 
 function slotKey(t: DownscaleTarget): string {
     return `${t.width}x${t.height}:${t.centerCrop === false ? 0 : 1}`;
 }
 
-// Outputs are GPU-resident (Chrome canvas-backed VideoFrames). Do NOT insert
-// `copyTo` / `getImageData` / `readPixels` between this class and the encoder
-// path — every readback round-trips through CPU and bleeds battery on mobile.
+// Outputs are GPU-resident canvas-backed VideoFrames. Never insert
+// copyTo/getImageData/readPixels downstream — readbacks round-trip through CPU.
 export class WebGpuDownscaler {
     private readonly device: GPUDevice;
     private readonly sampler: GPUSampler;
@@ -289,33 +255,20 @@ export class WebGpuDownscaler {
     private loggedAllIdentitySkip = false;
     private loggedRewrapFail = false;
     private loggedCanvasNormalize = false;
-    // Reused for the canvas-normalize fallback when visibleRect re-wrap can't
-    // bring `coded` down to match Plane0 (e.g. Chrome MSTP frames whose buffer
-    // is internally scaled below codedWidth/Height). One allocation per dim.
+    // Canvas-normalize fallback when visibleRect re-wrap can't bring coded down
+    // to Plane0 (Chrome MSTP frames whose buffer is internally scaled).
     private normalizeCanvas: OffscreenCanvas | null = null;
     private normalizeCtx: OffscreenCanvasRenderingContext2D | null = null;
-    // Set when device.lost fires or when a submit/onSubmittedWorkDone throws.
-    // Once invalid the downscaler refuses further process() calls — every later
-    // frame would otherwise re-throw the same OperationError and produce the
-    // per-frame "external Instance reference no longer exists" log storm we
-    // saw on Edge under multi-encoder simulcast load.
+    // Once invalid, refuse process() — every retry would re-throw the same
+    // OperationError, producing the Edge per-frame "external Instance reference
+    // no longer exists" log storm under multi-encoder simulcast load.
     private invalid = false;
     private lostListenerDispose: (() => void) | null = null;
     private firstErrorLogged = false;
-    // Counts how many times the soft submission cap forced us to await a
-    // prior submission before the current frame could submit. Sustained
-    // non-zero values mean the GPU process is the bottleneck — i.e. we're
-    // already on the path that, unmitigated, leads to the device-lost
-    // freeze. Surfaced through the sender pipeline-counters log (D4) so
-    // freeze post-mortems show whether GPU pressure was rising before
-    // the cascade. Reset by getCapHitsAndReset().
+    // Sustained non-zero capHits = GPU process is the bottleneck (path to the
+    // device-lost freeze cascade). Surfaced via D4 sender counters.
     private capHits = 0;
 
-    // Compute-path (single-dispatch multi-storage-texture) state. Active when
-    // the canvas format is storage-bindable (rgba8unorm core; bgra8unorm via
-    // the `bgra8unorm-storage` feature). Falls back to the render-pass path
-    // when the shader/pipeline fails async validation at init time. See
-    // COMPUTE_WGSL for the shader.
     private useStoragePath = false;
     private computePipelineFailed = false;
     private computePipelinePromise: Promise<void> | null = null;
@@ -323,9 +276,8 @@ export class WebGpuDownscaler {
     private computeBgLayout: GPUBindGroupLayout | null = null;
     private computeUniformBuffer: GPUBuffer | null = null;
     private computeUniformStaging: ArrayBuffer | null = null;
-    // Three separate 1×1 dummies — WebGPU forbids aliasing the same texture
-    // across multiple write-only storage entries in one bind group, even if
-    // the shader gates writes via uniforms and never actually executes them.
+    // Three separate 1x1 dummies — WebGPU forbids aliasing one texture across
+    // multiple write-only storage entries in a bind group, even if unused.
     private dummyStorageTexs: (GPUTexture | null)[] = [null, null, null];
     private dummyStorageViews: (GPUTextureView | null)[] = [null, null, null];
 
@@ -336,9 +288,7 @@ export class WebGpuDownscaler {
         // Dynamic-offset uniform regions must align to device limit (typically 256).
         const align = device.limits.minUniformBufferOffsetAlignment;
         this.slotStride = Math.max(align, UNIFORM_BYTES);
-        // Compute-path eligibility: rgba8unorm is storage-bindable in core
-        // WebGPU; bgra8unorm requires the `bgra8unorm-storage` feature opted
-        // into at device init (see WebGPUManager.init).
+        // bgra8unorm needs the `bgra8unorm-storage` feature (opted in at device init).
         if (this.format === 'rgba8unorm') {
             this.useStoragePath = true;
         } else if (this.format === 'bgra8unorm' && WebGPUManager.hasFeature('bgra8unorm-storage')) {
@@ -366,8 +316,7 @@ export class WebGpuDownscaler {
         this.ensurePipeline();
         this.ensureUniformCapacity(targets.length);
 
-        // Multi-map of survivor slots keyed by dims+crop. Multiple targets with
-        // identical dims each consume one slot from the pool.
+        // Multi-map by dims+crop — duplicate-dim targets each consume one slot.
         const survivors = new Map<string, TargetSlot[]>();
         for (const slot of this.slots) {
             const arr = survivors.get(slot.key);
@@ -392,12 +341,9 @@ export class WebGpuDownscaler {
             const ctx = canvas.getContext('webgpu');
             if (!ctx)
                 throw new Error('Failed to get webgpu context on OffscreenCanvas');
-            // RENDER_ATTACHMENT for the render-path; COPY_DST so the
-            // compute-path can copyTextureToTexture from its intermediate
-            // storage texture into the swap-chain. We don't use STORAGE_BINDING
-            // on the canvas itself because Chrome's canvas presenter doesn't
-            // reliably advance the swap chain on STORAGE-only writes — produces
-            // visible-black output despite the texture having content.
+            // STORAGE_BINDING on the canvas itself doesn't advance Chrome's
+            // swap-chain reliably (produces visible-black despite content) —
+            // compute path writes to an intermediate then copyTextureToTexture.
             const usage = GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST;
             ctx.configure({
                 device: this.device,
@@ -406,9 +352,6 @@ export class WebGpuDownscaler {
                 usage,
             });
             const slot: TargetSlot = { target, canvas, ctx, key };
-            // Allocate intermediate storage texture for the compute path.
-            // Sized to the slot's target dims; compute writes here, then we
-            // copyTextureToTexture into the canvas swap-chain.
             if (this.useStoragePath) {
                 slot.storageTex = this.device.createTexture({
                     size: [target.width, target.height],
@@ -450,20 +393,14 @@ export class WebGpuDownscaler {
         const uniformBuffer = this.uniformBuffer;
         const bindGroupLayout = this.bindGroupLayout;
 
-        // Prefer display dims over coded dims. Chrome's getUserMedia with
-        // `resizeMode: 'crop-and-scale'` returns VideoFrames whose codedWidth/Height
-        // report the camera's native plane (e.g. 1920x1080) while the actual
-        // plane0 buffer is scaled to displayWidth/Height (e.g. 1280x720). Using
-        // coded dims makes `importExternalTexture` default cropSize exceed plane0
-        // → WebGPU validation spam ("cropSize exceeds texture size"). When display
-        // ≤ coded, trust display.
+        // Prefer display dims: Chrome resizeMode='crop-and-scale' reports coded
+        // as the native sensor (e.g. 1920x1080) while plane0 is scaled down.
+        // Using coded would make importExternalTexture's default cropSize exceed
+        // plane0 ("cropSize exceeds texture size" validation spam).
         const srcW = source.displayWidth > 0 ? source.displayWidth : source.codedWidth;
         const srcH = source.displayHeight > 0 ? source.displayHeight : source.codedHeight;
-        // Prefer spec-populated rotation. Fall back to a main-thread supplied value
-        // derived from `screen.orientation.angle` — needed on Safari iOS where MSTP
-        // does not populate VideoFrame.rotation.
-        // Round (not truncate) to absorb sensor-fusion float noise:
-        // 89.999° must map to idx 1, not 0; 359.999° must wrap to 0.
+        // Fallback rotation needed on Safari iOS where MSTP doesn't populate VideoFrame.rotation.
+        // Round (not truncate) to absorb sensor-fusion float noise: 89.999° → idx 1, 359.999° → 0.
         const rawRot = source.rotation ?? opts?.fallbackRotationDeg ?? 0;
         const rotationDeg = ((rawRot % 360) + 360) % 360;
         const rotationIdx = Math.round(rotationDeg / 90) % 4;
@@ -483,17 +420,11 @@ export class WebGpuDownscaler {
             );
         }
 
-        // Normalize the source so importExternalTexture's cropSize default
-        // (= source.visibleRect) fits the actual Plane0 buffer. Chrome's MSTP
-        // can deliver frames where codedWidth/Height > Plane0 buffer dim
-        // (resizeMode='crop-and-scale' surface, or sensor-side scaling that
-        // bypasses our resizeMode='none' constraint). Two-step normalization:
-        //   1. Try visibleRect re-wrap (zero-copy, just tags a new visibleRect).
-        //   2. On failure (or no improvement on re-wrap), draw the source onto
-        //      an OffscreenCanvas at (srcW, srcH) and wrap the canvas as a
-        //      fresh VideoFrame — guaranteed coded == Plane0.
-        // Capture timestamp/duration before any potential close — VideoFrame
-        // attributes return 0/null after close().
+        // Normalize so importExternalTexture's default cropSize (=visibleRect)
+        // fits Plane0 — Chrome MSTP can deliver coded > Plane0. Two steps:
+        //   1. visibleRect re-wrap (zero-copy).
+        //   2. OffscreenCanvas redraw — guaranteed coded == Plane0.
+        // Capture timestamp/duration before any close — they return 0/null after.
         const timestamp = source.timestamp;
         const duration = source.duration ?? undefined;
         let input = source;
@@ -518,10 +449,7 @@ export class WebGpuDownscaler {
                 source.close();
                 input = rewrapped;
             } else {
-                // Canvas-normalize fallback: draw source onto a (srcW, srcH)
-                // offscreen canvas; the canvas-backed VideoFrame is guaranteed
-                // to have coded == Plane0. Per-frame 2D copy — only fires when
-                // re-wrap is unavailable (rare on modern Chrome).
+                // Per-frame 2D copy fallback — rare on modern Chrome.
                 if (this.normalizeCanvas?.width !== srcW
                     || this.normalizeCanvas.height !== srcH) {
                     this.normalizeCanvas = new OffscreenCanvas(srcW, srcH);
@@ -549,20 +477,13 @@ export class WebGpuDownscaler {
             try { input.close(); } catch { /* already closed */ }
         };
         try {
-            // Identity slot = output dims match source AND rotation is zero AND
-            // there's no coded/display divergence. We skip the render entirely and
-            // clone the input frame; saves a render pass and (when ALL slots are
-            // identity) the importExternalTexture upload too — meaningful on
-            // Safari iOS where the import is not free.
-            //
-            // Coded/display divergence guard: Chrome's MSTP can deliver frames
-            // whose codedWidth/Height report the camera's native sensor dim
-            // (e.g. 1920x1080) while the actual plane0 buffer is internally scaled
-            // to displayWidth/Height (e.g. 1280x720 / 640x360). `clone()` preserves
-            // codedWidth — the downstream encoder dim-mismatch guard then drops
-            // every frame because frame.codedWidth (1920) != encoder.config.width
-            // (640). Force a render in that case so the result is a fresh
-            // canvas-backed VideoFrame whose codedWidth matches its plane0.
+            // Identity = same dims, zero rotation, AND coded==display. Saves a
+            // render pass plus (when all-identity) the importExternalTexture
+            // upload too — non-trivial on Safari iOS.
+            // codedMatchesDisplay guard: clone() preserves codedWidth, so under
+            // MSTP coded/display divergence the downstream encoder dim-mismatch
+            // guard would drop every frame (e.g. 1920 != 640). Force a render
+            // in that case to produce a fresh canvas-backed frame.
             const codedMatchesDisplay =
                 input.codedWidth === srcW && input.codedHeight === srcH;
             const isIdentity = (slot: TargetSlot): boolean =>
@@ -577,8 +498,6 @@ export class WebGpuDownscaler {
             }
 
             if (renderingCount > 0) {
-                // Lazy-init compute pipeline on first frame. Validates via error
-                // scope; on failure flips to render path forever for this instance.
                 if (this.useStoragePath && !this.computePipeline && !this.computePipelineFailed)
                     await this.ensureComputePipelineLazy();
                 if (this.useStoragePath && this.computePipeline && this.computeBgLayout
@@ -596,10 +515,7 @@ export class WebGpuDownscaler {
                 infoLog?.log('Downscaler: all slots identity — importExternalTexture skipped');
             }
 
-            // Build results in slot order. Identity slots clone the input frame
-            // (refcount bump, no copy); rendered slots wrap the canvas. Timestamps
-            // are inherited from the source frame — rebase to the recording-anchor
-            // timeline happens at chunk emission, not per VideoFrame.
+            // Identity slots clone (refcount bump); rendered slots wrap the canvas.
             const results: DownscaleResult[] = [];
             let identityHits = 0;
             try {
@@ -671,17 +587,13 @@ export class WebGpuDownscaler {
         uniformBuffer: GPUBuffer,
         bindGroupLayout: GPUBindGroupLayout,
     ): Promise<void> {
-        // Wait for submission cap BEFORE acquiring any swap-chain textures.
-        // Yielding after getCurrentTexture() risks the canvas being unconfigured
-        // by a concurrent reconfigure(), destroying the texture and producing
-        // "Destroyed texture used in submit" validation errors.
+        // Wait BEFORE getCurrentTexture — a concurrent reconfigure() could
+        // destroy the texture and trigger "Destroyed texture used in submit".
         if (!NEEDS_PER_FRAME_DRAIN)
             await this.waitForSubmissionSlot();
 
         const externalTex = this.device.importExternalTexture({ source: input });
 
-        // Pack uniforms for all rendering slots into one staging buffer;
-        // single writeBuffer call replaces N small writes.
         let renderingCount = 0;
         for (const slot of slots) if (!isIdentity(slot)) renderingCount++;
         const totalBytes = renderingCount * this.slotStride;
@@ -704,8 +616,7 @@ export class WebGpuDownscaler {
             uniformBuffer, 0, staging.buffer, staging.byteOffset, totalBytes,
         );
 
-        // One bind group per frame (externalTex changes each frame; uniform
-        // buffer is shared via dynamic offset).
+        // externalTex changes each frame; uniform buffer is shared via dynamic offset.
         const bindGroup = this.device.createBindGroup({
             layout: bindGroupLayout,
             entries: [
@@ -715,7 +626,6 @@ export class WebGpuDownscaler {
             ],
         });
 
-        // Single command encoder + single submit batches all render passes.
         const encoder = this.device.createCommandEncoder();
         let drawIdx = 0;
         for (const slot of slots) {
@@ -761,18 +671,11 @@ export class WebGpuDownscaler {
         const stagingBuf = this.computeUniformStaging!;
         const dummyViews = this.dummyStorageViews;
 
-        // Wait for submission cap BEFORE acquiring any swap-chain textures.
         // Same reason as runRenderPath — must not yield after getCurrentTexture.
         if (!NEEDS_PER_FRAME_DRAIN)
             await this.waitForSubmissionSlot();
 
-        // Pack uniforms: 3 LayerU entries (unused = enabled:0) + meta vec4.
-        // Layer N occupies bytes [N*32, N*32+32). meta sits at byte 96.
-        // Uniform layout (4-byte words):
-        //   layer 0: f32[0..3]=dims, u32[4..7]=flags  (words 0..7)
-        //   layer 1: words 8..15
-        //   layer 2: words 16..23
-        //   meta:    words 24..27
+        // Layout (4-byte words): layers[N] = words [N*8 .. N*8+8); meta = words 24..27.
         const f32 = new Float32Array(stagingBuf);
         const u32 = new Uint32Array(stagingBuf);
         for (let w = 0; w < f32.length; w++) f32[w] = 0;
@@ -792,7 +695,6 @@ export class WebGpuDownscaler {
             u32[off + 4] = rotationIdx;
             u32[off + 5] = slot.target.centerCrop === false ? 0 : 1;
             u32[off + 6] = 1; // enabled
-            // u32[off + 7] = 0 (pad — zeroed above)
             if (slot.target.width > maxW) maxW = slot.target.width;
             if (slot.target.height > maxH) maxH = slot.target.height;
             slotByLayer[layerIdx] = i;
@@ -801,21 +703,16 @@ export class WebGpuDownscaler {
         u32[24] = maxW;
         u32[25] = maxH;
         u32[26] = layerIdx;
-        // u32[27] = 0 (pad)
         this.device.queue.writeBuffer(computeUniformBuffer, 0, stagingBuf, 0, COMPUTE_UNIFORM_BYTES);
 
         const externalTex = this.device.importExternalTexture({ source: input });
-        // Each binding slot gets a DISTINCT texture view, even when unused —
-        // WebGPU validation rejects two write-only storage entries aliasing
-        // the same texture. Hence per-slot dummy textures.
+        // Per-slot distinct views even when unused — WebGPU forbids aliased
+        // write-only storage entries.
         const views: GPUTextureView[] = [
             dummyViews[0]!, dummyViews[1]!, dummyViews[2]!,
         ];
         for (let n = 0; n < layerIdx; n++) {
             const slot = slots[slotByLayer[n]];
-            // storageView is allocated in configure() when useStoragePath is on.
-            // If somehow missing (e.g. configure was called before the path was
-            // armed), bail to render path by demoting.
             if (!slot.storageView) {
                 this.markComputeFailed('compute path slot missing storageView');
                 throw new Error('runComputePath: missing storageView');
@@ -841,9 +738,8 @@ export class WebGpuDownscaler {
         pass.dispatchWorkgroups(Math.ceil(maxW / 8), Math.ceil(maxH / 8), 1);
         pass.end();
 
-        // Copy each intermediate storage texture into its canvas swap-chain.
-        // Cheaper than a render pass, and properly marks the canvas as
-        // "presented" so the new VideoFrame(canvas) sees fresh content.
+        // copyTextureToTexture marks the canvas "presented" — fresh content
+        // visible to new VideoFrame(canvas), cheaper than a render pass.
         for (let n = 0; n < layerIdx; n++) {
             const slot = slots[slotByLayer[n]];
             const dstTex = slot.ctx.getCurrentTexture();
@@ -888,8 +784,8 @@ export class WebGpuDownscaler {
                 this.flushDeferredDisposals();
             });
         this.pendingSubmissionDrains.push(drain);
-        // Non-Safari does not await the drain on the current frame, so attach a
-        // handler to keep asynchronous device-loss rejections observed.
+        // Non-Safari doesn't await per-frame; attach a no-op to keep async
+        // device-loss rejections observed.
         void drain.catch(() => { /* observed by invalidateFromGpuError */ });
         return drain;
     }
@@ -936,11 +832,8 @@ export class WebGpuDownscaler {
 
     }
 
-    // Lazy + validated compute-pipeline init. First call wraps creation in a
-    // validation error scope and awaits the result; on validation error
-    // (e.g. storage-format/feature mismatch on this device), `computePipelineFailed`
-    // sticks and process() falls through to the render path. Subsequent calls
-    // are a no-op once the pipeline is good or known-bad.
+    // Wraps creation in a validation error scope; on rejection
+    // computePipelineFailed sticks and process() falls through to render path.
     private ensureComputePipelineLazy(): Promise<void> {
         if (this.computePipeline || this.computePipelineFailed)
             return Promise.resolve();
@@ -1003,8 +896,7 @@ export class WebGpuDownscaler {
                     });
                 }
             } catch (e) {
-                // Sync throws (very rare — most validation errors are async).
-                // Pop the scope to keep the device clean and demote.
+                // Sync throws are rare — pop the scope to keep device clean.
                 void this.device.popErrorScope().catch(() => { /* ignore */ });
                 this.markComputeFailed(`compute pipeline creation threw: ${String(e)}`);
                 for (const d of createdDummies)

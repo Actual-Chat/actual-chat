@@ -8,110 +8,52 @@ import type {
     PlayerWorkerOptions,
 } from './player-worker-contract';
 
-/**
- * Module-private state. The worker hosts at most one
- * `PlaybackSession` (concurrent streams share its decoder pool, clock,
- * and aggregated stats) and a registry of `Player`s keyed by
- * `streamId`.
- *
- * The worker is built around a session-singleton model rather than
- * per-call session creation: the decoder pool's TTL semantics depend
- * on persistent state across stop / start cycles. Recreating the
- * session on every `start()` would defeat the pool entirely.
- */
+// Session-singleton model: the decoder pool's TTL semantics depend on
+// persistent state across stop/start cycles. Recreating the session
+// on every start() would defeat the pool entirely.
 let session: PlaybackSession | null = null;
 const players = new Map<string, Player>();
 
-/**
- * Production hooks that the worker delegates to. Tests can override
- * them via `__setPlayerWorkerHooks` to drive synthetic streams /
- * decoders without monkey-patching globals. Production wires
- * `streamingApi.liveVideoStreams.GetStream` and a real `VideoDecoder`
- * (after borrowing a slot from the session's decoder pool).
- */
 interface PlayerWorkerHooks {
     getStream: (streamId: string) => Promise<AsyncIterable<VideoFrameDto>> | AsyncIterable<VideoFrameDto>;
     createDecoder: (
         codec: string,
         handlers: { onFrame: (frame: VideoFrame) => void; onError: (e: Error) => void },
     ) => DecoderLike;
-    /**
-     * Build the rendering surface for a freshly-started stream. The
-     * production wiring constructs a `MediaStreamTrackGenerator` (when
-     * the platform supports it) or an `OffscreenCanvas` 2D context;
-     * the resulting `RenderBackendConfig` is passed to the Player.
-     */
-    /**
-     * Build the rendering surface AND optionally the
-     * `MediaStreamTrack` to ship to the main thread for `<video
-     * srcObject>` attachment. The MSTG path returns the generator's
-     * `track` so the worker can fire `onTrackReady(streamId, kind,
-     * track)`; the canvas path returns `null` (the main thread already
-     * holds the canvas).
-     */
+    // MSTG path returns the generator's track so the worker can fire
+    // onTrackReady; canvas path returns null.
     buildBackend: (opts: PlayerWorkerOptions) => {
         config: PlayerConfig['backend'];
         track: MediaStreamTrack | null;
     };
-    /**
-     * Notify the main thread that the rendering surface is ready. The
-     * worker fires this from `start()` immediately after `buildBackend`
-     * so the main thread can wire its `<video>` / `<canvas>` while the
-     * pipeline is still spinning up. Test hooks can leave it undefined.
-     */
     onTrackReady?: (
         streamId: string,
         kind: PlayerConfig['backend']['kind'],
         track: MediaStreamTrack | null,
     ) => void;
-    /**
-     * Latency reporter forwarded to the main thread. Optional: when
-     * absent, the operator stays unwired for the run. The hook is
-     * stream-scoped — the worker calls this once per `start()` with
-     * the matching `streamId` to obtain a per-stream reporter.
-     */
     makeReportLatency?: (streamId: string) => PlayerConfig['reportLatency'];
-    /** Forwards the AppConstants payload to the host's
-     *  `initAppConstants`. Tests can supply a no-op. */
     initAppConstants?: (appConstants: import('./player-worker-contract').AppConstantsLike) => void;
-    /** Surface terminal pipeline failures to the main thread. */
     reportError?: (streamId: string, error: string) => void;
-    /** Surface clean stream termination to the main thread. */
     reportStreamEnded?: (streamId: string, reason: string) => void;
-    /** Eagerly initialise the worker's Fusion RPC peer so the WS
-     *  handshake overlaps the rest of init. Production: stores
-     *  `apiUrl` and runs the equivalent of `ensurePullApi()`. Tests
-     *  with synthetic streams skip it. */
     prewarmRpc?: (apiUrl: string) => void;
 }
 
 let hooks: PlayerWorkerHooks | null = null;
-// Stream IDs that we stopped locally (via `stop()`) — so the lifecycle
-// observer suppresses `onError` / `onStreamEnded` for the resulting
-// abort. Without this, an MSTG-to-canvas fallback (which calls
-// `playerWorker.stop(streamId)` then immediately `playerWorker.start(...)`
-// the same stream) raises spurious terminal callbacks on the main thread
-// while the restart is mid-flight.
+// Stream IDs we stopped locally — so the lifecycle observer suppresses
+// onError/onStreamEnded for the resulting abort. Without this, an
+// MSTG-to-canvas fallback (stop then immediately start the same
+// stream) raises spurious terminal callbacks while the restart is
+// mid-flight.
 const locallyStopped = new Set<string>();
 
-/**
- * Test seam: install the hooks the worker delegates to. Production
- * wiring (separate file or a top-level entry) calls this once on
- * worker startup with the platform-specific factories.
- */
 export function __setPlayerWorkerHooks(next: PlayerWorkerHooks | null): void {
     hooks = next;
 }
 
-/** Test seam: replace the session (or null it out). Used by tests
- *  that want to assert disposal / reset behavior without going through
- *  the full RPC surface. */
 export function __setPlayerWorkerSession(next: PlaybackSession | null): void {
     session = next;
 }
 
-/** Test seam: read the current session (e.g. to assert
- *  `activeStreams` after a series of start / stop calls). */
 export function __getPlayerWorkerSession(): PlaybackSession | null {
     return session;
 }
@@ -130,24 +72,6 @@ function ensureHooks(): PlayerWorkerHooks {
     return hooks;
 }
 
-/**
- * Worker implementation of the {@link PlayerWorker} RPC contract.
- * Methods delegate to the module-private session + player registry.
- *
- * Concurrency model:
- *  - `start()` builds a `Player`, registers a stream with the session,
- *    stores it in the registry, and triggers the pipeline. The
- *    method resolves immediately after the pipeline starts (the
- *    pipeline runs in the background until `whenDone()` settles or
- *    `stop()` is called).
- *  - When the pipeline drains, the player auto-clears its internal
- *    `run`; we additionally remove it from the registry and
- *    `unregisterStream()` so `stats.activeStreams` stays accurate.
- *  - `stop(streamId?)` triggers `Player.stop()` and awaits drain.
- *  - Errors from the pipeline (rejection of `whenDone`) are swallowed
- *    here and reported via `onError`. We don't re-throw — the worker
- *    must keep running for the other streams.
- */
 export const playerWorkerImpl: PlayerWorker = {
     init(appConstants): Promise<void> {
         const h = hooks;
@@ -165,9 +89,8 @@ export const playerWorkerImpl: PlayerWorker = {
         }
         const s = ensureSession();
         const h = ensureHooks();
-        // Fold trailing transferable args back into opts for buildBackend.
-        // Per the contract, these can't ride inside the structured-cloned
-        // `opts` envelope — they have to land here as separate args.
+        // Trailing transferable args can't ride inside the
+        // structured-cloned opts envelope — fold them back here.
         const fullOpts: PlayerWorkerOptions = {
             ...opts,
             ...(canvas !== undefined ? { canvas } : {}),
@@ -178,9 +101,8 @@ export const playerWorkerImpl: PlayerWorker = {
         players.set(opts.streamId, player);
         s.registerStream();
 
-        // Tell the main thread about the rendering surface BEFORE the
-        // pipeline starts pulling frames — keeps `<video srcObject>` /
-        // canvas attachment off the critical path of the first keyframe.
+        // Notify BEFORE pulling frames — keeps <video srcObject>/canvas
+        // attachment off the critical path of the first keyframe.
         h.onTrackReady?.(opts.streamId, backend.kind, track);
 
         const playerConfig: PlayerConfig = {
@@ -195,12 +117,8 @@ export const playerWorkerImpl: PlayerWorker = {
 
         await player.start(playerConfig);
 
-        // Track lifecycle in the background. The pipeline drains either
-        // because it finished cleanly (sender stopped), an operator
-        // threw, or we stopped it locally. Local stops (`locallyStopped`)
-        // skip the terminal callback so an MSTG→canvas fallback's
-        // intermediate abort doesn't race the restart. Failures fan to
-        // `onError` ONLY — the host treats `onError` as terminal.
+        // Local stops skip the terminal callback so an MSTG→canvas
+        // fallback's intermediate abort doesn't race the restart.
         player.whenDone().then(
             () => {
                 if (!locallyStopped.has(opts.streamId))
@@ -223,8 +141,8 @@ export const playerWorkerImpl: PlayerWorker = {
 
     async stop(streamId?: string): Promise<void> {
         if (streamId === undefined) {
-            // Stop everything. Snapshot so iteration isn't perturbed by
-            // the cleanup-on-drain handler racing us.
+            // Snapshot so iteration isn't perturbed by the
+            // cleanup-on-drain handler racing us.
             const all = Array.from(players.entries());
             for (const [id, _p] of all) locallyStopped.add(id);
             for (const [, p] of all) p.stop();
@@ -239,30 +157,21 @@ export const playerWorkerImpl: PlayerWorker = {
     },
 
     requestKeyframe(streamId?: string): Promise<void> {
-        // Keyframe requests live outside the pipeline (they're an RPC
-        // hint to the SENDER, not a pipeline operation) and are
-        // currently a no-op on the worker side — the production wiring
-        // forwards via the streaming API surface, but that's hooked up
-        // in the wiring file rather than the contract impl. Kept here
-        // for contract symmetry; future implementations should look
-        // up `streamId` and dispatch the RPC.
+        // No-op on the worker side: keyframe requests are an RPC hint
+        // to the SENDER, hooked in the wiring file. Kept for contract
+        // symmetry.
         void streamId;
         return Promise.resolve();
     },
 
     getStats(): Promise<VideoPlaybackStats> {
         const s = ensureSession();
-        // Return a shallow copy so the caller can't mutate session
-        // counters by handle. The session itself owns the canonical
-        // mutable instance.
+        // Shallow copy so the caller can't mutate session counters by
+        // handle.
         return Promise.resolve({ ...s.stats });
     },
 
     prewarmRpc(apiUrl: string): Promise<void> {
-        // Production: caches the URL on the host and triggers
-        // `Api.init` so the WS handshake overlaps player setup. Tests
-        // that don't install the hook fall back to the lazy path
-        // inside `getStream`.
         hooks?.prewarmRpc?.(apiUrl);
         return Promise.resolve();
     },
@@ -272,8 +181,8 @@ export const playerWorkerImpl: PlayerWorker = {
         isConnected: boolean,
         isBlazorServer: boolean,
     ): Promise<void> {
-        // Stub. Production wiring forwards to a worker-side connectivity
-        // mirror; left as a no-op until that lands.
+        // Stub. Production wiring forwards to a worker-side
+        // connectivity mirror; left as a no-op until that lands.
         void isOnline;
         void isConnected;
         void isBlazorServer;
@@ -281,14 +190,6 @@ export const playerWorkerImpl: PlayerWorker = {
     },
 };
 
-/**
- * Tear down the entire worker state. Stops every running pipeline,
- * disposes the session, clears the registry. Idempotent.
- *
- * Production callers invoke this on worker termination (e.g. a
- * `worker.terminate()` precursor message); tests use it to reset
- * between cases.
- */
 export async function disposePlayerWorker(): Promise<void> {
     if (players.size > 0) {
         const all = Array.from(players.values());

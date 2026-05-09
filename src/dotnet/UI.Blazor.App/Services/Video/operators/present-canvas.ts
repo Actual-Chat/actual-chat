@@ -2,20 +2,15 @@ import { from, type PipeOperator } from 'ix-ext';
 import { delayAsync } from 'promises';
 import type { DecodedFrame } from '../frame-envelopes';
 
-// ---- Tunables -------------------------------------------------------------
-// Mirrored with `present-mstg.ts` so canvas + MSTG share the same drain
-// policy. Read that file for the full pacing-rule write-up.
+// Pacing policy mirrored with `present-mstg.ts`.
 
 const MAX_FPS = 120;
 const MIN_FPS = 10;
-const MIN_DURATION_MS = 1000 / MAX_FPS;     // 8.33 ms — 120 fps cap
-const MAX_DURATION_MS = 1000 / MIN_FPS;     // 100  ms — 10 fps floor
+const MIN_DURATION_MS = 1000 / MAX_FPS;
+const MAX_DURATION_MS = 1000 / MIN_FPS;
 
 const CATCHUP_BUDGET_MS = 4_000;
 
-// ---- Options --------------------------------------------------------------
-
-// `drawImage`-only subset of the 2D context. Tests inject a recorder.
 export interface CanvasImageInterface {
     readonly canvas?: { width: number; height: number };
     drawImage(image: VideoFrame | ImageBitmap, x: number, y: number): void;
@@ -24,28 +19,14 @@ export interface CanvasImageInterface {
 
 export interface CanvasPresentOptions {
     getCanvasCtx: () => CanvasImageInterface;
-    /** WebKit can't `drawImage(VideoFrame)` directly — convert to a
-     *  bitmap first when this is provided. Chromium/Firefox draw the
-     *  `VideoFrame` directly (zero-copy). */
+    // WebKit can't drawImage(VideoFrame) directly; convert via bitmap when provided.
     convertToBitmap?: (frame: VideoFrame) => Promise<ImageBitmap>;
-    /** Receiver buffer's current `spanMs()`. Read fresh per frame to
-     *  decide present-vs-skip; see `CATCHUP_BUDGET_MS`. */
     getBufferSpanMs: () => number;
-    /** Same value passed to the buffer's `targetSpanMs`. */
     targetSpanMs: number;
-    /** Test seam for `performance.now`. */
     nowFn?: () => number;
-    /** Test seam for the inter-frame delay primitive. */
     delayFn?: (ms: number) => Promise<void>;
 }
 
-/**
- * Terminal sink: drawImage each frame into the canvas at a variable
- * cadence driven by the source's capture-time deltas. Same dual-mode
- * (steady / catch-up / skip) policy as `mstgPresent`. Resizes the
- * backing store on every layer-size change so a 320 px frame doesn't
- * get drawn into the top-left quarter of a canvas sized for 1280 px.
- */
 export function canvasPresent(opts: CanvasPresentOptions): PipeOperator<DecodedFrame, void> {
     const { getCanvasCtx, convertToBitmap, getBufferSpanMs, targetSpanMs } = opts;
     const nowFn = opts.nowFn ?? ((): number => performance.now());

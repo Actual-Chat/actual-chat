@@ -1,12 +1,9 @@
 import { from, type PipeOperator } from 'ix-ext';
 import type { CapturedFrame } from '../frame-envelopes';
 
-// Raises `forceKeyframe` when source coded dims change. Encoder
-// reconfigure on dim change must hand the receiver a keyframe at the
-// new dims; otherwise a following delta would decode garbage.
-//
-// Strictly raises — never lowers — the upstream flag (so the
-// `stampCaptureTime` first-frame keyframe survives a no-dim-change frame).
+// Raises forceKeyframe on dim change so the receiver gets a keyframe at
+// the new dims (otherwise a following delta decodes garbage). Strictly
+// raises — never lowers — to preserve upstream-set first-frame keyframes.
 export function forceKeyframeOnDimChange(): PipeOperator<CapturedFrame, CapturedFrame> {
     return source => {
         return from(impl());

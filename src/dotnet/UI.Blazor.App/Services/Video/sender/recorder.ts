@@ -1,8 +1,6 @@
 // Recorder façade — composes the sender operators into one pipeline.
-// `start` builds a fresh pipe and drains it; `stop` completes the source
-// and lets the pipeline drain, with abort only as a safety timeout.
-// `restart` chains stop + start while the session's encoder pool retains
-// parked encoders across the gap.
+// `stop` completes the source and lets the pipe drain; abort is a safety
+// timeout. `restart` keeps the session's parked encoders across the gap.
 
 import { drain, pipe } from 'ix-ext';
 import { getLogs } from 'logging';
@@ -23,8 +21,6 @@ import type { SenderSession } from './session';
 const { warnLog } = getLogs('VideoPipeline');
 const STOP_DRAIN_GRACE_MS = 3_000;
 
-// Re-export collaborator-facing types so callers don't have to reach
-// into operators/.
 export type { EncoderConfigPerLayer, EncoderFactory } from '../operators/encode';
 export type { StreamSenderLike } from '../operators/wire-send';
 export type { DownscalerLike, LayerSpec } from '../operators/downscale';
@@ -33,22 +29,14 @@ export type { VideoRecordingStats };
 
 export interface RecorderConfig {
     track: MediaStreamTrack;
-    /** Bottom-first simulcast ladder. Single-tier P2P passes one entry. */
+    // Bottom-first simulcast ladder; single-tier P2P passes one entry.
     encoderConfigs: readonly EncoderConfigPerLayer[];
-    /** Frame-count keyframe interval (must be > 0). */
     keyframeIntervalFrames: number;
-    /** Wallclock floor (ms) for keyframe forcing. */
     maxKeyFrameIntervalMs?: number;
-    /** Production: `RpcStreamSender` via `push-to-pull-buffer`. The
-     *  recorder owns the {@link FloodGate}; the factory threads it
-     *  through to the wire bridge so it can drive backpressure. */
     createSender: (gate: FloodGate) => StreamSenderLike;
-    /** Production: pulls from session encoder pool + WebCodecs glue. */
     createEncoder: EncoderFactory;
-    /** Required for simulcast (length > 1); defaults to clone-only
-     *  identity for single-tier. */
+    // Required for simulcast (length > 1); single-tier defaults to clone-only.
     createDownscaler?: () => DownscalerLike;
-    /** Test override for the {@link mstpSource} processor factory. */
     createProcessor?: (track: MediaStreamTrack) => { readable: ReadableStream<VideoFrame> };
 }
 
@@ -92,12 +80,9 @@ export class Recorder {
         const abortController = new AbortController();
         const abortSignal = abortController.signal;
         const sourceStopController = new AbortController();
-        // FloodGate lives for the duration of this run. Closed by
-        // `push-to-pull-buffer` when its bundle queue fills past half;
-        // reopened when it drains below a quarter. While closed, the
-        // `floodGate` operator just after capture closes incoming
-        // frames and skips the yield — encoders and downscaler stay
-        // idle, which is the cheapest place to absorb a wire stall.
+        // Closed by `push-to-pull-buffer` when its bundle queue fills past
+        // half, reopened below a quarter. Closing right after capture is
+        // the cheapest place to absorb a wire stall.
         const gate = new FloodGate();
         const captureSource = mstpSource({
             track: config.track,
@@ -111,7 +96,6 @@ export class Recorder {
             floodGate(gate),
             stampCaptureTime({ clock: this.session.captureClock }),
             attachSourceDims(),
-            // logItems<CapturedFrame>('captured', { firstN: 5, everyN: 300, format: f => `idx=${f.index}` }),
             downscale({ ladder, createDownscaler }),
             applyKeyframePolicy({
                 keyframeIntervalFrames: config.keyframeIntervalFrames,
@@ -121,7 +105,6 @@ export class Recorder {
                 configs: config.encoderConfigs,
                 createEncoder: config.createEncoder,
             }),
-            // logItems<EncodedFrame>('encoded', { firstN: 5, everyN: 300, format: f => `layer=${f.layerId} key=${f.chunk.type === 'key'} sz=${f.chunk.byteLength}` }),
             wireSend({
                 createSender: () => config.createSender(gate),
                 layerCount: config.encoderConfigs.length,
@@ -146,7 +129,7 @@ export class Recorder {
                 this.abortTimeoutReason = null;
                 this.currentWhenDone = null;
             }
-            // Stats persist post-run for one-shot diagnostic reads —
+            // Stats persist post-run for one-shot diagnostic reads;
             // cleared on the next `start()`.
         }
     }
@@ -193,9 +176,8 @@ export class Recorder {
     }
 }
 
-// Single-tier default: clone-then-close. Simulcast ladders MUST supply
-// a real downscaler — feeding multi-layer through a clone-only would
-// silently skip the resize and lie about layer dims.
+// Single-tier default: clone-then-close. Multi-layer through a clone-only
+// would silently skip the resize and lie about layer dims, so we throw.
 function identityDownscaler(): DownscalerLike {
     return {
         process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]> {

@@ -11,8 +11,7 @@ import {
 const { warnLog } = getLogs('VideoPipeline');
 
 // Wire DTO consumed by the .NET sender (MessagePack `VideoFrame`).
-// `offset`/`duration` are in 100-ns ticks (= µs × 10). `description`,
-// `codec`, `sourceWidth/Height` are keyframe-only.
+// offset/duration are 100-ns ticks; description/codec/sourceWidth/Height are keyframe-only.
 export interface VideoStreamFrame {
     offset: number;
     offsetEpoch?: number;
@@ -30,39 +29,27 @@ export interface VideoStreamFrame {
     sourceHeight?: number;
 }
 
-/**
- * One source-moment's worth of per-layer wire frames, sent as a single
- * RpcStream item to the server. Wire-bytes-equivalent of N individual
- * VideoStreamFrames previously sent back-to-back.
- */
+// One source-moment's worth of per-layer wire frames, sent as a single RpcStream item.
 export interface VideoStreamFrameBundle {
     layers: VideoStreamFrame[];
 }
 
-// Stream-format payload sent via `StreamSenderLike.init` from the first
-// top-layer keyframe (encoder output is bottom-first, so we wait for it).
 export interface StreamFormat {
     codec: string;
     width: number;
     height: number;
     sourceWidth: number;
     sourceHeight: number;
-    /** Free-form codec hint (e.g. base64 HEVC description). Empty when
-     *  no extra negotiation is needed. */
+    // Free-form codec hint (e.g. base64 HEVC description); empty when no extra negotiation is needed.
     codecSettings: string;
 }
 
-/** Production binding: `RpcStreamSender<VideoFrameBundleDto>` via
- *  `InternalVideoStream`. Tests pass an in-memory recorder. */
 export interface StreamSenderLike {
     send(dto: VideoStreamFrameBundle): void | Promise<void>;
     init?(format: StreamFormat): void;
-    /** When set, `wireSend` short-circuits if the underlying pump
-     *  resolves while the source is still producing — silently piling
-     *  chunks into a dead queue would mask peer-change / server-close. */
+    // wireSend short-circuits if this resolves while source is still producing —
+    // silently piling chunks into a dead queue would mask peer-change / server-close.
     readonly whenDisposed?: Promise<void>;
-    /** Called from the operator's `finally` so the server-side iterator
-     *  returns and `PushStream` completes deterministically. */
     dispose?(): void;
     getStats?(): StreamSenderStats;
 }
@@ -71,11 +58,9 @@ export interface StreamSenderStats {
     addedFrameCount: number;
     queueDepth: number;
     maxQueueDepth: number;
-    /** Frames the RpcStreamSender skipped inside its local ring via
-     *  `canSkipTo=isKeyFrame`. Real-time compaction — NOT a loss
-     *  counter at the queue level (that's `floodGateSkipCount`). */
+    // Frames RpcStreamSender skipped inside its local ring via canSkipTo=isKeyFrame.
+    // Real-time compaction — NOT a queue-level loss counter (that's floodGateSkipCount).
     rpcStreamSkipped: number;
-    /** Frames closed-and-skipped at the capture-side flood gate. */
     floodGateSkipCount: number;
     lastAckAgeMs: number;
     isPeerConnected: boolean;
@@ -83,16 +68,12 @@ export interface StreamSenderStats {
 
 export interface WireSendOptions {
     createSender: () => StreamSenderLike;
-    /** Number of active layers — fills `MaxLayerId`
-     *  on every chunk so the server's `ReceiveQualityFilter` knows the
-     *  producer's range. Without it, consumers clamp to L0. */
+    // Fills MaxLayerId on every chunk; without it, consumers clamp to L0.
     layerCount?: number;
-    /** Top-layer encoded dims for the `init` payload. Encoder yields
-     *  bottom-first; we wait for the top-layer keyframe before init. */
+    // Encoder yields bottom-first; we wait for the top-layer keyframe before init.
     topLayerWidth?: number;
     topLayerHeight?: number;
-    /** Aborts mid-`send` so a `Recorder.stop()` doesn't block on a
-     *  stalled `RpcStreamSender` ring buffer / dead peer. */
+    // Aborts mid-send so Recorder.stop() doesn't block on a stalled ring buffer / dead peer.
     abortSignal?: AbortSignal;
 }
 
@@ -102,15 +83,9 @@ function microsecondsToTicks(microseconds: number): number {
     return microseconds * TICKS_PER_MICROSECOND;
 }
 
-/**
- * Terminal sink: `EncodedBundle → VideoStreamFrameBundle` via
- * `StreamSenderLike`. One bundle in, one wire bundle out.
- *
- * `captureStartUnixMs` (NaN sentinel until the first bundle) anchors
- * the stream-relative offset and never resets across the run — epoch
- * flips are carried in `offsetEpoch`, the receiver uses that to rebase
- * pacing without rebasing offset.
- */
+// captureStartUnixMs anchors stream-relative offset and never resets across the
+// run; epoch flips ride in offsetEpoch so the receiver rebases pacing without
+// rebasing offset.
 export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, void> {
     return source => {
         return from(impl());
@@ -125,7 +100,6 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
             let sender: StreamSenderLike | null = null;
             let captureStartUnixMs = Number.NaN;
             let initSent = false;
-            // Pump terminal state — see StreamSenderLike.whenDisposed comment.
             let pumpFailure: Error | null = null;
             let pumpResolved = false;
             let lastStats: EncodedBundle['stats'] | null = null;
@@ -140,8 +114,8 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                 pumpResolved = false;
                 warnLog?.log(`wireSend: resetting wire sender — ${reason}`);
             };
-            // HEVC: later keyframes per spec may omit the description; fill
-            // from cache so the receiver can always reconfigure on dim change.
+            // HEVC: later keyframes may omit description; cache the first one
+            // so the receiver can always reconfigure on dim change.
             const descriptionByLayer = new Map<number, Uint8Array>();
             try {
                 for await (const bundle of source) {
@@ -182,7 +156,6 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                             return dto;
                         });
 
-                        // Async-set flags (mutated by `whenDisposed` callback below).
                         const failure = getPumpFailure();
                         if (failure)
                             resetSender(failure.message);
@@ -211,9 +184,8 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                             });
                             initSent = true;
                         }
-                        // Race against abort — `RpcStreamSender.send` can
-                        // hang on a full ring buffer when the consumer-side
-                        // iterator stalls, blocking `Recorder.stop()`.
+                        // Race against abort: send can hang on a full ring buffer
+                        // when the consumer iterator stalls, blocking Recorder.stop().
                         await Promise.race([
                             Promise.resolve(sender.send({ layers: wireLayers })),
                             abortRace,
@@ -248,8 +220,8 @@ function copySenderStats(
     stats.isPeerConnected = senderStats.isPeerConnected;
 }
 
-// Per-layer cache: copy on insert so later mutation of
-// `metadata.decoderConfig.description` can't bleed into earlier wire frames.
+// Copy on insert so later mutation of metadata.decoderConfig.description
+// can't bleed into earlier wire frames.
 function resolveDescription(
     encoded: EncodedFrame,
     cache: Map<number, Uint8Array>,
@@ -278,8 +250,8 @@ function readChunkBytes(chunk: EncodedVideoChunk): Uint8Array {
     return new Uint8Array(buffer);
 }
 
-// Chunked Latin-1 base64 — workers don't expose `Buffer`, and inputs
-// (HVCC / SPS) can be large enough to overflow `String.fromCharCode(...)`.
+// Chunked Latin-1 base64: workers don't expose Buffer, and HVCC/SPS inputs
+// can overflow String.fromCharCode(...) in one shot.
 function bytesToBase64(bytes: Uint8Array): string {
     if (bytes.byteLength === 0) return '';
     const CHUNK = 0x8000;

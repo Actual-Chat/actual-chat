@@ -1,15 +1,9 @@
-/**
- * WebCodecs Video Decoder
- * Decodes H.264 chunks to video frames for real-time playback
- */
-
 import type { EncodedChunkData } from './webcodecs-encoder';
 import { getLogs } from 'logging';
 
 const { infoLog, warnLog, errorLog } = getLogs('VideoDecoder');
 
-// Drop non-key chunks when decoder queue exceeds this depth — prevents
-// thrashing under network jitter where frames stack up faster than HW decode.
+// Drop non-key chunks when decoder queue exceeds this depth.
 const BackpressureQueueLimit = 4;
 
 export interface DecoderConfig {
@@ -17,9 +11,8 @@ export interface DecoderConfig {
   optimizeForLatency: boolean;
   hardwareAcceleration: 'prefer-hardware' | 'prefer-software' | 'no-preference';
   description?: AllowSharedBufferSource;
-  // Stream dimensions — passed into VideoDecoder.isConfigSupported probes so
-  // codec candidates are validated against the real frame size, and re-probed
-  // when a mid-stream layer switch carries a new description.
+  // Stream dims — used by isConfigSupported probes; re-probed on mid-stream
+  // layer switch carrying a new description.
   codedWidth?: number;
   codedHeight?: number;
 }
@@ -29,22 +22,17 @@ export interface DecoderStats {
   droppedFrames: number;
   averageDecodeTime: number;
   medianDecodeTime: number;
-  /** Decode time measured only when decode queue was empty (no wait component). -1 if no samples. */
+  // Sampled only when decode queue was empty at start; -1 if no samples.
   pureMedianDecodeTime: number;
-  /** Current decode queue size from VideoDecoder API */
   decodeQueueSize: number;
-  /** Number of delta frames dropped due to backpressure */
   backpressureDrops: number;
-  /** Peak observed VideoDecoder.decodeQueueSize since last reset. */
   peakDecodeQueueSize: number;
-  /** Duration of the most recent backpressure burst (ms from first drop to recovery keyframe). 0 if no burst observed yet. */
+  // ms from first drop to recovery keyframe; 0 if no burst yet.
   lastArtifactWindowMs: number;
-  /** Total number of backpressure-drop bursts observed since last reset. */
   artifactWindowsCount: number;
   hardwareAcceleration: string;
   resolution: string;
-  // Pull stats — populated only when the decoder worker owns the pull loop
-  // (off-thread pull). Main-thread pull tracks these in VideoPlayer directly.
+  // Populated only when the decoder worker owns the pull loop (off-thread pull).
   pullBitrateKbps?: number;
   pullReceivedBytes?: number;
   pullReceivedFrameCount?: number;
@@ -53,10 +41,8 @@ export interface DecoderStats {
   pullForwardedWidth?: number;
   pullForwardedHeight?: number;
   pullObservedMaxLayerId?: number;
-  // Encoded pre-decode buffer (the doc's `video buffer`). Lives in
-  // decoder-worker.ts and is the receiver-side jitter absorber. Filled
-  // by decoder-worker.getStats; the WebCodecsDecoder itself doesn't
-  // populate these.
+  // Encoded pre-decode buffer (the receiver-side jitter absorber). Filled by
+  // decoder-worker.getStats; not populated by WebCodecsDecoder itself.
   encodedBufferDepth?: number;
   encodedBufferSpanMs?: number;
 }
@@ -67,8 +53,9 @@ export class WebCodecsDecoder {
     private droppedFrames = 0;
     private decodeTimeHistory: number[] = [];
     private decodeStartTimes: number[] = [];
-    private decodeQueueAtStart: number[] = []; // Queue depth when decode was called
-    private pureDecodeTimeHistory: number[] = []; // Times when queue was 0 at start
+    private decodeQueueAtStart: number[] = [];
+    // Times sampled only when decoder queue was 0 at start.
+    private pureDecodeTimeHistory: number[] = [];
     private lastResolution: { width: number; height: number } | null = null;
     private backpressureDrops = 0;
     private peakDecodeQueueSize = 0;
@@ -76,28 +63,22 @@ export class WebCodecsDecoder {
     private burstStartedSeq = -1;
     private burstDropCount = 0;
     private deltasPassedDuringBurst = 0;
-    // Once any encoded chunk is discarded, later deltas may reference missing
-    // decoder state. Gate deltas until the next keyframe re-establishes the GOP.
+    // After any chunk discard, later deltas may reference missing decoder state;
+    // gate deltas until the next keyframe re-establishes the GOP.
     private dropDeltasUntilKeyframe = false;
     private lastArtifactWindowMs = 0;
     private artifactWindowsCount = 0;
 
     constructor(
     private config: DecoderConfig,
-    /**
-     * Called once per decoded frame. **Caller MUST `frame.close()` exactly once**
-     * — either after rendering, after a postMessage transfer, or in an error
-     * path. Without close, the platform GCs the frame and (in dev builds) logs
-     * "VideoFrame was garbage-collected without being closed", and HW decoder
-     * pool slots leak. Errors thrown synchronously here will propagate up
-     * through `VideoDecoder.output` — wrap in try/finally if uncertain.
-     */
+    // Caller MUST call frame.close() exactly once (after render, postMessage
+    // transfer, or in error paths). Otherwise HW decoder pool slots leak and
+    // dev builds log "VideoFrame was garbage-collected without being closed".
     private onFrame: (frame: VideoFrame) => void,
     private onError: (error: Error) => void
     ) {
         this.decoder = new VideoDecoder({
             output: (frame: VideoFrame) => {
-                // Track decode time - pop the start time and queue depth from queues
                 const startTime = this.decodeStartTimes.shift();
                 const queueAtStart = this.decodeQueueAtStart.shift();
                 if (startTime !== undefined) {
@@ -106,7 +87,6 @@ export class WebCodecsDecoder {
                     if (this.decodeTimeHistory.length > 100) {
                         this.decodeTimeHistory.shift();
                     }
-                    // Pure decode time: only when queue was empty at decode start
                     if (queueAtStart === 0) {
                         this.pureDecodeTimeHistory.push(decodeTime);
                         if (this.pureDecodeTimeHistory.length > 100) {
@@ -117,19 +97,13 @@ export class WebCodecsDecoder {
 
                 this.frameCount++;
 
-                // Sample peak VideoDecoder queue depth so getStats() can show
-                // whether we're routinely sitting near BackpressureQueueLimit
-                // (the silent-delta-drop trigger). output() fires per decoded
-                // frame, so this is amortized cost-free.
                 const qSize = this.decoder.decodeQueueSize;
                 if (qSize > this.peakDecodeQueueSize) this.peakDecodeQueueSize = qSize;
 
-                // Track resolution changes. Log both coded and display dims —
-                // when they disagree the bitstream carries a transform (HEVC
-                // SPS default_display_window, SAR SEI, etc.) and the decoder
-                // applied it. After the displayAspect=coded fix in
-                // initialize(), they should match for portrait HEVC streams
-                // on every browser (Edge included).
+                // Log coded vs display dims on change — divergence means the
+                // bitstream carried a transform (HEVC default_display_window,
+                // SAR SEI). With the displayAspect=coded fix below, these
+                // should match for portrait HEVC on every browser.
                 const currentResolution = { width: frame.displayWidth, height: frame.displayHeight };
                 if (!this.lastResolution ||
                     this.lastResolution.width !== currentResolution.width ||
@@ -159,35 +133,24 @@ export class WebCodecsDecoder {
                 hardwareAcceleration: this.config.hardwareAcceleration
             };
 
-            // Add description if provided (required for AVC/H.264)
             if (this.config.description) {
                 decoderConfig.description = this.config.description;
             }
             if (this.config.codedWidth) decoderConfig.codedWidth = this.config.codedWidth;
             if (this.config.codedHeight) decoderConfig.codedHeight = this.config.codedHeight;
-            // Force display = coded by stamping 1:1 PAR via the coded dims as
-            // displayAspectWidth/Height. Per WebCodecs spec, when both fields
-            // are set the decoder derives display dims via the standard
-            // visualWidth/Height algorithm — overriding any HEVC SPS
-            // default_display_window or SAR SEI the bitstream might carry.
-            // Without this Edge's HEVC HW driver returns swapped portrait
-            // display dims (1280×720) for a 720×1280 coded portrait stream;
-            // Chrome returns the matching 720×1280. Setting the aspect ratio
-            // makes both browsers agree on display = coded.
+            // Force display=coded via 1:1 PAR — overrides any HEVC SPS
+            // default_display_window or SAR SEI the bitstream may carry.
+            // Without this, Edge's HEVC HW returns swapped portrait dims
+            // (1280×720 for a 720×1280 coded stream) while Chrome agrees.
             if (this.config.codedWidth && this.config.codedHeight) {
                 decoderConfig.displayAspectWidth = this.config.codedWidth;
                 decoderConfig.displayAspectHeight = this.config.codedHeight;
             }
 
-            // Safari-specific optimizations for H.264 decoding
             const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
             if (isSafari && this.config.codec.includes('avc1')) {
                 infoLog?.log('Safari detected - applying H.264 optimizations');
-
-                // Safari benefits from explicit hardware acceleration preference
                 decoderConfig.hardwareAcceleration = 'prefer-hardware';
-
-                // Safari performs better with latency optimization enabled
                 decoderConfig.optimizeForLatency = true;
             }
 
@@ -203,21 +166,9 @@ export class WebCodecsDecoder {
         }
     }
 
-    /**
-     * Reconfigure the decoder with a new description (typically a new keyframe's
-     * SPS/PPS after a layer switch). When `codec` is provided and
-     * differs from the current config codec, the decoder is reconfigured with
-     * the new codec string too — this is required when the new keyframe's
-     * description bytes carry a different tier/level/profile that changes the
-     * derived codec string.
-     *
-     * `codedWidth` / `codedHeight` are required when the keyframe also carries
-     * a new resolution (mid-stream layer switch / rotation). Without updating
-     * them, Chromium's HEVC HW decoder keeps applying the *initial* SPS
-     * conformance window and produces frames whose `displayWidth/Height` lag
-     * the real picture — visible on Edge as a slight height shrink plus
-     * stride-padding artifacts at the bottom of the frame.
-     */
+    // Reconfigure on layer switch. codedWidth/Height required when the keyframe
+    // carries a new resolution — Chromium's HEVC HW keeps applying the initial
+    // SPS conformance window otherwise (Edge: height shrink + bottom artifacts).
     updateDescription(
         description: AllowSharedBufferSource,
         codec?: string,
@@ -235,9 +186,7 @@ export class WebCodecsDecoder {
         if (codedHeight && codedHeight !== this.config.codedHeight) {
             this.config = { ...this.config, codedHeight };
         }
-        // Carry displayAspect = coded forward on every reconfigure for the
-        // same reason as initialize() — keeps Edge HEVC HW from returning
-        // swapped portrait display dims after a layer / description change.
+        // Carry displayAspect=coded forward on every reconfigure (see initialize).
         const aspect = this.config.codedWidth && this.config.codedHeight
             ? { displayAspectWidth: this.config.codedWidth, displayAspectHeight: this.config.codedHeight }
             : {};
@@ -250,7 +199,8 @@ export class WebCodecsDecoder {
             ...(this.config.codedHeight ? { codedHeight: this.config.codedHeight } : {}),
             ...aspect,
         });
-        this.decodeStartTimes = []; // flush stale timings — configure() aborts pending decodes
+        // configure() aborts pending decodes; flush stale timings to avoid mispairing.
+        this.decodeStartTimes = [];
         this.decodeQueueAtStart = [];
         infoLog?.log(
             `Decoder reconfigured: codec=${this.config.codec} `
@@ -298,17 +248,16 @@ export class WebCodecsDecoder {
             this.clearDropDeltasGate();
             this.closeArtifactWindow();
         }
-        // Backpressure: drop delta chunks when decoder queue is saturated.
-        // Always pass keyframes through so the decoder can resync.
+        // Drop deltas under saturation; keyframes always pass for resync.
         if (this.decoder.decodeQueueSize > BackpressureQueueLimit && chunk.type !== 'key') {
             this.backpressureDrops++;
             this.recordBackpressureDrop(chunk.timestamp);
             this.gateAfterDroppedChunk();
             return;
         }
-        // Burst tracking: a keyframe terminates the artifact window; deltas
-        // that pass the gate during a burst are counted to estimate how much
-        // of the GOP actually decoded between first drop and recovery.
+        // Burst tracking: keyframe terminates the artifact window; deltas that
+        // pass during a burst estimate how much of the GOP decoded between
+        // first drop and recovery.
         if (this.burstDropCount > 0) {
             if (chunk.type === 'key') this.closeArtifactWindow();
             else this.deltasPassedDuringBurst++;
@@ -327,7 +276,6 @@ export class WebCodecsDecoder {
     }
 
     decode(chunkData: EncodedChunkData): void {
-    // Check decoder state before attempting decode
         const currentState = this.decoder.state;
 
         if (currentState === 'closed') {
@@ -353,34 +301,30 @@ export class WebCodecsDecoder {
             this.closeArtifactWindow();
         }
 
-        // Backpressure: drop delta chunks when decoder queue is saturated.
         if (this.decoder.decodeQueueSize > BackpressureQueueLimit && chunkData.type !== 'key') {
             this.backpressureDrops++;
             this.recordBackpressureDrop(chunkData.timestamp, chunkData.sequenceNumber);
             this.gateAfterDroppedChunk();
             return;
         }
-        // Burst tracking: see decodeRaw() comment.
         if (this.burstDropCount > 0) {
             if (chunkData.type === 'key') this.closeArtifactWindow();
             else this.deltasPassedDuringBurst++;
         }
 
-        // Record start time and queue depth for async timing measurement
         this.decodeStartTimes.push(performance.now());
         this.decodeQueueAtStart.push(this.decoder.decodeQueueSize);
 
         try {
             this.decoder.decode(chunkData.chunk);
 
-            // Check state after decode to detect silent failures
+            // Detect silent failure: decoder closes itself on some HEVC/AV1 bugs.
             if (this.decoder.state === 'closed') {
                 errorLog?.log('Decoder closed after decoding', chunkData.type, 'frame');
                 this.onError(new Error(`Decoder closed unexpectedly after ${chunkData.type} frame - possible browser HEVC/AV1 bug`));
             }
         } catch (error) {
             this.droppedFrames++;
-            // Remove the start time and queue depth since decode failed
             this.decodeStartTimes.pop();
             this.decodeQueueAtStart.pop();
             this.gateAfterDroppedChunk();
@@ -409,12 +353,7 @@ export class WebCodecsDecoder {
         return this.decoder.state;
     }
 
-    /**
-     * Current VideoDecoder.decodeQueueSize, or 0 if the decoder isn't
-     * configured / safe to read. Used by the encoded pre-decode buffer's
-     * drain loop to gate input rate so the decoded-frame backlog doesn't
-     * grow unbounded inside the platform decoder.
-     */
+    // Used by the pre-decode buffer's drain loop to gate input rate.
     getDecodeQueueSize(): number {
         try {
             if (this.decoder.state === 'configured')
@@ -428,7 +367,6 @@ export class WebCodecsDecoder {
             ? this.decodeTimeHistory.reduce((a, b) => a + b, 0) / this.decodeTimeHistory.length
             : 0;
 
-        // Compute median decode time
         let medianDecodeTime = 0;
         if (this.decodeTimeHistory.length > 0) {
             const sorted = [...this.decodeTimeHistory].sort((a, b) => a - b);
@@ -438,7 +376,7 @@ export class WebCodecsDecoder {
                 : (sorted[mid - 1] + sorted[mid]) / 2;
         }
 
-        // Compute pure median decode time (queue was empty at start — actual codec cost)
+        // Pure decode time: queue was empty at start — actual codec cost.
         let pureMedianDecodeTime = -1;
         if (this.pureDecodeTimeHistory.length > 0) {
             const sorted = [...this.pureDecodeTimeHistory].sort((a, b) => a - b);
@@ -448,11 +386,10 @@ export class WebCodecsDecoder {
                 : (sorted[mid - 1] + sorted[mid]) / 2;
         }
 
-        // Try to determine hardware acceleration status
+        // WebCodecs doesn't expose actual HW status; infer from configured preference.
         let hardwareAcceleration = 'unknown';
         try {
             if (this.decoder.state === 'configured') {
-                // If we requested hardware and decoder is working well, likely using it
                 hardwareAcceleration = this.config.hardwareAcceleration === 'prefer-hardware'
                     ? 'likely (preferred)'
                     : this.config.hardwareAcceleration === 'no-preference'
@@ -463,12 +400,10 @@ export class WebCodecsDecoder {
             hardwareAcceleration = 'unknown';
         }
 
-        // Format resolution string
         const resolution = this.lastResolution
             ? `${this.lastResolution.width}x${this.lastResolution.height}`
             : 'N/A';
 
-        // Read queue size safely (decoder may be closed)
         let decodeQueueSize = 0;
         try {
             if (this.decoder.state === 'configured') {

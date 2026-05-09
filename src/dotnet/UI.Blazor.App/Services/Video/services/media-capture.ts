@@ -136,14 +136,10 @@ export class MediaCapture {
         if (size) {
             videoConstraints.width = size.width;
             videoConstraints.height = size.height;
-            // Force native capture — no browser-side crop-and-scale. Chrome's
-            // `resizeMode: 'crop-and-scale'` returns MSTP VideoFrames with a
-            // codedW/H / plane0 mismatch that blows up WebGPU
-            // importExternalTexture ("cropSize exceeds texture size"). We do
-            // all scaling ourselves in the GPU downscaler; if the camera can't
-            // match the requested dims exactly, we'd rather get a larger
-            // native frame and downscale than have the browser scale it with
-            // the broken metadata.
+            // Force native capture: Chrome's `resizeMode: 'crop-and-scale'` returns
+            // MSTP VideoFrames with a codedW/H / plane0 mismatch that breaks WebGPU
+            // importExternalTexture ("cropSize exceeds texture size"). We downscale
+            // ourselves in the GPU downscaler.
             (videoConstraints as MediaTrackConstraints & { resizeMode?: ConstrainDOMString })
                 .resizeMode = { ideal: 'none' };
         }
@@ -157,14 +153,10 @@ export class MediaCapture {
             && Math.min(settings.width, settings.height) >= minimumSize.small;
     }
 
-    // iOS Safari MSTP: never request portrait. Sensor is physically landscape and
-    // VideoFrame.rotation is left null — the rotation reconcile in
-    // workers/video-processing.ts streamReadLoop (isRotated / isRotatedByCoded)
-    // and webgpu/downscaler.ts fallbackRotationDeg path only work with
-    // sensor-landscape frames. Asking iOS for portrait causes the encoder to
-    // flip to landscape mid-startup, producing mis-oriented encoded output.
-    // Android Chrome populates VideoFrame.rotation correctly, so portrait
-    // capture in portrait orientation is safe there.
+    // iOS Safari MSTP leaves VideoFrame.rotation null and our rotation reconcile
+    // (workers/video-processing.ts, webgpu/downscaler.ts) assumes sensor-landscape
+    // frames; requesting portrait there flips the encoder mid-startup and produces
+    // mis-oriented output. Android Chrome populates rotation correctly.
     private static preferPortraitConstraint(): boolean {
         if (DeviceInfo.isIos) return false;
         if (!DeviceInfo.isMobile) return false;
@@ -181,8 +173,7 @@ export class MediaCapture {
             audio: false,
         });
         const track = stream.getVideoTracks()[0];
-        // contentHint='text' tells the encoder to prioritize sharpness over
-        // motion smoothness — critical for readable text on low-bitrate links.
+        // 'text' biases the encoder toward sharpness over motion smoothness.
         track.contentHint = 'text';
         const settings = track.getSettings();
         infoLog?.log(`captureScreenCast: ${settings.width}x${settings.height} @ ${settings.frameRate}fps, surface=${settings.displaySurface}`);

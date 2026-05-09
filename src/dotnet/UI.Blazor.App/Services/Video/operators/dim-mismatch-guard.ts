@@ -5,8 +5,7 @@ import type { CapturedFrame } from '../frame-envelopes';
 const { warnLog } = getLogs('VideoPipeline');
 
 export interface DimMismatchGuardOptions {
-    /** Called per frame so a downstream encoder reconfigure takes
-     *  effect immediately. */
+    // Called per frame so a downstream encoder reconfigure takes effect immediately.
     getExpectedDims: () => { width: number; height: number };
 }
 

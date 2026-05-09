@@ -2,10 +2,7 @@ import { getLogs } from 'logging';
 
 const { debugLog } = getLogs('VideoSegmentation');
 
-/**
- * GPU Backend Detection and Support
- * Detects available GPU backends for ONNX Runtime Web
- */
+// Detects available GPU backends for ONNX Runtime Web.
 
 export interface GPUBackendSupport {
   webgpu: boolean;
@@ -19,27 +16,21 @@ export interface GPUBackendSupport {
   };
 }
 
-/**
- * Detect available GPU backends for ONNX Runtime Web
- * Tests actual ONNX Runtime backend availability, not just browser APIs
- */
 export async function detectGPUBackends(): Promise<GPUBackendSupport> {
     const support: GPUBackendSupport = {
         webgpu: false,
         webgl: false,
-        wasm: true, // WASM is always available as CPU fallback
+        wasm: true,
         recommended: 'wasm',
         details: {}
     };
 
-    // Test WebGPU support - check if browser supports it
     try {
         if ('gpu' in navigator) {
             const adapter = await navigator.gpu.requestAdapter();
             if (adapter) {
-                // Check importExternalTexture support without allocating a device.
-                // Creating a device here wastes GPU memory that iOS Safari needs
-                // for the worker — causes OOM when ONNX Runtime requests its own device.
+                // Probe via prototype only — allocating a device here OOMs iOS
+                // Safari when ONNX Runtime later requests its own.
                 const hasImportExternalTexture = typeof GPUDevice !== 'undefined'
                     && typeof GPUDevice.prototype.importExternalTexture === 'function';
                 if (hasImportExternalTexture) {
@@ -58,7 +49,6 @@ export async function detectGPUBackends(): Promise<GPUBackendSupport> {
         support.details.webgpu = `WebGPU error: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
 
-    // Test WebGL support
     try {
         const canvas = document.createElement('canvas');
         const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl');
@@ -79,11 +69,8 @@ export async function detectGPUBackends(): Promise<GPUBackendSupport> {
         support.details.webgl = `WebGL error: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
 
-    // WASM is always available
     support.details.wasm = 'CPU fallback always available';
 
-    // Determine recommended backend based on what's actually likely to work
-    // Prefer WebGPU > WebGL > WASM for performance
     if (support.webgpu) {
         support.recommended = 'webgpu';
     } else if (support.webgl) {

@@ -6,35 +6,17 @@ import { closeEncodedChunk } from './frame-envelopes';
 
 const { warnLog } = getLogs('AsyncVideoEncoder');
 
-// Test fault injection for encoder recovery drills. Uncomment locally when
-// needed; production should use the configured timeout unchanged.
-// const RANDOM_INSTANT_TIMEOUT_PROBABILITY = 0.02;
-
 // ---- Recommended input / output types -------------------------------------
 
-// Callers can use these directly, extend them, or substitute their own —
-// `AsyncVideoEncoder` is generic over `TIn extends { frame, index }` and an
-// arbitrary `TOut`.
-
-/**
- * Input bundle for {@link AsyncVideoEncoder.encode}. The `frame` is owned by
- * the wrapper once submitted and is closed when output emerges or the
- * submission is failed. `capturedAt` and `index` are threaded through to
- * the matching {@link EncodedFrame}.
- */
+// Frame is owned by the wrapper once submitted; closed on output or failure.
 export interface CapturedFrame<TMeta = void> {
     frame: VideoFrame;
     capturedAt: MonotonicTime;
-    /** Monotonic submission counter assigned by the producer. Used by the
-     *  wrapper for FIFO ordering verification. */
+    // Monotonic submission counter; used for FIFO ordering verification.
     index: number;
     meta: TMeta;
 }
 
-/**
- * Output bundle: encoded chunk + metadata reattached after passing through
- * the WebCodecs encoder boundary.
- */
 export interface EncodedFrame<TMeta = void> {
     chunk: EncodedVideoChunk;
     metadata: EncodedVideoChunkMetadata;
@@ -44,36 +26,17 @@ export interface EncodedFrame<TMeta = void> {
 }
 
 export interface CodecToAsyncAdapterOptions {
-    /**
-     * Initial concurrency cap. Default 2 — lets one codec submission happen
-     * while the previous item is still emerging, supporting transient slow
-     * spikes without building an unbounded queue.
-     */
+    // Default 2 — allows one submission to overlap with previous item still emerging.
     maxInflight?: number;
-    /**
-     * Steady-state per-item timeout (ms). On timeout the pending promise
-     * rejects with a recoverable reset error, the adapter drops to
-     * maxInflight=1, resets/reconfigures the underlying codec if supported,
-     * and invokes `onResetRequested`. Default 300. Set to 0 to disable.
-     */
+    // Steady-state per-item timeout (ms). On timeout: reject with reset error,
+    // drop to maxInflight=1, reset codec, invoke onResetRequested. 0 disables.
     timeoutMs?: number;
-    /**
-     * Timeout for the first output from a codec. Hardware codecs can take
-     * substantially longer to produce their first keyframe / frame than
-     * their steady-state cadence. Default 1500. Set to 0 to disable.
-     */
+    // First-output timeout — HW codecs take longer for the first frame than
+    // steady-state cadence. Default 1500. 0 disables.
     firstTimeoutMs?: number;
-    /**
-     * Invoked when the adapter has decided that the underlying codec is no
-     * longer usable as-is — timeout, stale output, or out-of-order output.
-     * Adapter internal state has already been reset; the owner is expected
-     * to force the next submission to be independently recoverable when the
-     * codec format requires it.
-     */
     onResetRequested?: (reason: string) => void;
 }
 
-/** Back-compat name for existing encoder call sites. */
 export type AsyncVideoEncoderOptions = CodecToAsyncAdapterOptions;
 
 interface PendingCodecItem<TIn, TOut> {
@@ -115,12 +78,9 @@ export function isAsyncVideoEncoderResetError(e: unknown): e is AsyncVideoEncode
             && (e as { isRecoverable?: unknown }).isRecoverable === true);
 }
 
-/**
- * Bounded FIFO adapter for event-callback codecs. Subclasses submit input to
- * an event-based codec in `submit`, then call `resolveOutput` from the codec's
- * output callback. The returned `process()` promise resolves with the output
- * paired to the oldest in-flight input.
- */
+// Bounded FIFO adapter for event-callback codecs. Subclasses submit via `submit`
+// and call `resolveOutput` from the codec's output callback; `process()` resolves
+// with the output paired to the oldest in-flight input.
 export abstract class CodecToAsyncAdapter<TIn, TOut, TCodecOutput> implements Disposable {
     private readonly inflight: PendingCodecItem<TIn, TOut>[] = [];
     private readonly onResetRequested?: (reason: string) => void;
@@ -242,18 +202,17 @@ export abstract class CodecToAsyncAdapter<TIn, TOut, TCodecOutput> implements Di
     }
 
     protected resetCodec(): void {
-        // Optional for subclasses.
+        // Optional subclass hook.
     }
 
     protected closeCodec(): void {
-        // Optional for subclasses.
+        // Optional subclass hook.
     }
 
     private makePending(input: TIn): PendingCodecItem<TIn, TOut> {
         const source = new PromiseSourceWithTimeout<TOut>();
-        // Swallow unhandled-rejection — caller may not attach .catch before
-        // the timeout/queue-full path rejects synchronously. Real consumers
-        // get the rejection through the returned promise.
+        // Caller may not attach .catch before sync timeout/queue-full rejection;
+        // real consumers still see the rejection via the returned promise.
         source.catch(() => { /* ignore */ });
         const pending: PendingCodecItem<TIn, TOut> = {
             input,
@@ -261,15 +220,7 @@ export abstract class CodecToAsyncAdapter<TIn, TOut, TCodecOutput> implements Di
             source,
         };
 
-        // Test fault injection for encoder recovery drills. Uncomment locally
-        // to make random submissions behave as if they had a 0ms timeout.
-        // const injectInstantTimeout = Math.random() < RANDOM_INSTANT_TIMEOUT_PROBABILITY;
-        // if (injectInstantTimeout)
-        //     warnLog?.log(`TEST FAULT: injected random instant timeout (index=${pending.index})`);
-        // const timeoutMs = injectInstantTimeout ? 0 : (this.hasResolvedOutput ? this.timeoutMs : this.firstTimeoutMs);
-
         const timeoutMs = this.hasResolvedOutput ? this.timeoutMs : this.firstTimeoutMs;
-        // if (timeoutMs > 0 || injectInstantTimeout) {
         if (timeoutMs > 0) {
             source.setTimeout(timeoutMs, () => {
                 source.reject(this.createResetError(this.getTimeoutMessage(timeoutMs, pending.index)));
@@ -316,18 +267,13 @@ interface EncoderOutput {
     metadata: EncodedVideoChunkMetadata;
 }
 
-/**
- * Async wrapper around a WebCodecs `VideoEncoder` that turns each `encode()`
- * call into a `Promise<TOut>` resolving when the matching `EncodedVideoChunk`
- * emerges.
- */
+// Async wrapper around a WebCodecs VideoEncoder — each encode() returns a
+// Promise<TOut> resolving when the matching EncodedVideoChunk emerges.
 export class AsyncVideoEncoder<
     TIn extends { frame: VideoFrame; index: number },
     TOut,
 > extends CodecToAsyncAdapter<TIn, TOut, EncoderOutput> {
-    /** The underlying encoder, exposed for `configure()` / `flush()` /
-     *  `reset()` / state inspection. The wrapper handles `encode()` and
-     *  the `output` callback wiring; everything else is owner-managed. */
+    // Owner manages configure/flush/reset/state; wrapper owns only encode + output wiring.
     public readonly encoder: VideoEncoder;
 
     private readonly buildEncodedOutput: (
@@ -434,9 +380,7 @@ export class AsyncVideoEncoder<
         this.encoder.encode(input.frame, { keyFrame: this.nextEncodeOptions?.keyFrame ?? false });
     }
 
-    // Frame close is DEFERRED until the encoder's output callback fires for
-    // this submission. Closing synchronously after `encode()` works for
-    // source-cloned frames, but a canvas-backed frame's JS handle can be the
-    // sole reference to its GPU texture; closing it before the encoder has
-    // read the texture can make the encoder silently never emit output.
+    // Frame close is DEFERRED until the encoder's output callback fires:
+    // canvas-backed frames may be the sole reference to their GPU texture, and
+    // closing before the encoder reads it makes the encoder silently never emit.
 }

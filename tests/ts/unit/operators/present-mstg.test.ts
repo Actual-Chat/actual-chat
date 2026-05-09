@@ -168,8 +168,7 @@ function defaults(extra: Partial<MstgPresentOptions> = {}): Pick<
     return {
         getBufferSpanMs: extra.getBufferSpanMs ?? ((): number => 0),
         targetSpanMs: extra.targetSpanMs ?? 333,
-        // Default nowFn auto-advances 1 s per call so the natural-delta
-        // pacing never imposes a sleep — keeps non-pacing tests fast.
+        // nowFn auto-advances 1 s per call so natural-delta pacing never sleeps.
         nowFn: extra.nowFn ?? ((): number => { t += 1000; return t; }),
         delayFn: extra.delayFn ?? ((): Promise<void> => Promise.resolve()),
     };
@@ -208,15 +207,12 @@ describe('mstgPresent', () => {
             nowFn: clock.nowFn,
             delayFn: clock.delayFn,
         });
-        // Frames spaced 33 ms apart in capture time (30 fps source).
+        // 33 ms apart in capture time (30 fps), inside [MIN, MAX] → no clamping.
         const frames = Array.from({ length: 4 }, (_, i) => new MockVideoFrame(i));
         const items = frames.map((f, i) => makeEnvelope(stats, i, 1000 + i * 33, f));
 
         await count(pipe(staticSource(items), sink));
 
-        // First frame: durationMs = 0 (no prev) → no delay.
-        // Subsequent 3 frames: naturalDelta = 33, clamp(33, 8.33, 100) = 33
-        // → each delays 33 ms.
         expect(writer.written).toHaveLength(4);
         expect(stats.framesPresented).toBe(4);
         expect(clock.delays).toHaveLength(3);
@@ -237,15 +233,14 @@ describe('mstgPresent', () => {
             nowFn: clock.nowFn,
             delayFn: clock.delayFn,
         });
-        // 3 ms apart in capture time (≈ 333 fps source — way above cap).
+        // 3 ms apart (~333 fps) → naturalDelta is below the MIN_DURATION_MS floor.
         const frames = Array.from({ length: 4 }, (_, i) => new MockVideoFrame(i));
         const items = frames.map((f, i) => makeEnvelope(stats, i, i * 3, f));
 
         await count(pipe(staticSource(items), sink));
 
         expect(writer.written).toHaveLength(4);
-        // Each delay is MIN_DURATION_MS (1000/120 ≈ 8.33 ms): the cap, not the
-        // smaller naturalDelta. Three delays for frames 1, 2, 3.
+        // Each delay clamped up to MIN_DURATION_MS (1000/120 ≈ 8.33 ms).
         expect(clock.delays).toHaveLength(3);
         for (const d of clock.delays) {
             expect(d).toBeGreaterThan(8);
@@ -264,14 +259,14 @@ describe('mstgPresent', () => {
             nowFn: clock.nowFn,
             delayFn: clock.delayFn,
         });
-        // 200 ms apart in capture time (5 fps source — below floor).
+        // 200 ms apart (5 fps) → naturalDelta exceeds MAX_DURATION_MS.
         const frames = Array.from({ length: 3 }, (_, i) => new MockVideoFrame(i));
         const items = frames.map((f, i) => makeEnvelope(stats, i, i * 200, f));
 
         await count(pipe(staticSource(items), sink));
 
         expect(writer.written).toHaveLength(3);
-        // Each delay capped at MAX_DURATION_MS (1000/10 = 100 ms).
+        // Each delay clamped down to MAX_DURATION_MS (1000/10 = 100 ms).
         expect(clock.delays).toHaveLength(2);
         for (const d of clock.delays) expect(d).toBeCloseTo(100, 5);
     });
@@ -280,7 +275,7 @@ describe('mstgPresent', () => {
         const stats = createEmptyPlaybackStats(0);
         const writer = new FakeWriter();
         const clock = fakeClock(0);
-        // extra = 500 - 333 = 167. > 0 and well under CATCHUP_BUDGET_MS (4000).
+        // extra = 167, well under CATCHUP_BUDGET_MS (4000).
         const sink = mstgPresent({
             getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
             getBufferSpanMs: (): number => 500,
@@ -293,7 +288,6 @@ describe('mstgPresent', () => {
 
         await count(pipe(staticSource(items), sink));
 
-        // All 4 written, no skips. Each non-first frame waits MIN_DURATION_MS.
         expect(writer.written).toHaveLength(4);
         expect(stats.framesPresented).toBe(4);
         expect(stats.framesDroppedAtPresenter).toBe(0);
@@ -307,9 +301,8 @@ describe('mstgPresent', () => {
     it('catch-up overflow (extra > CATCHUP_BUDGET_MS) AND frozen clock → skip-after-decode', async () => {
         const stats = createEmptyPlaybackStats(0);
         const writer = new FakeWriter();
-        // extra = 5000 - 333 = 4667 > 4000 (CATCHUP_BUDGET_MS).
-        // Frozen clock: every frame after the first lands within MIN_DURATION_MS
-        // → skip-after-decode path.
+        // extra = 5000 - 333 = 4667 > CATCHUP_BUDGET_MS (4000); frozen clock keeps
+        // every non-first frame within MIN_DURATION_MS → skip-after-decode path.
         const sink = mstgPresent({
             getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
             getBufferSpanMs: (): number => 5000,
@@ -322,8 +315,6 @@ describe('mstgPresent', () => {
 
         await count(pipe(staticSource(items), sink));
 
-        // First frame writes (lastWriteAt is null → skip check skipped).
-        // Subsequent 4 frames at same now() are within MIN_DURATION_MS → skip.
         expect(writer.written).toHaveLength(1);
         expect(stats.framesPresented).toBe(1);
         expect(stats.framesDroppedAtPresenter).toBe(4);
@@ -334,8 +325,7 @@ describe('mstgPresent', () => {
         const stats = createEmptyPlaybackStats(0);
         const writer = new FakeWriter();
         const clock = fakeClock(0);
-        // extra = 500. > 0 and < CATCHUP_BUDGET_MS → present every frame at
-        // MIN_DURATION_MS cap, no skip.
+        // extra = 167, well under CATCHUP_BUDGET_MS (4000) → no skip.
         const sink = mstgPresent({
             getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
             getBufferSpanMs: (): number => 500,

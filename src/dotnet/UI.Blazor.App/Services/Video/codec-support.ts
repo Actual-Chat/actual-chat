@@ -1,8 +1,3 @@
-/**
- * Codec Support Detection
- * Detects which video codecs are supported by the browser
- */
-
 import { getLogs } from 'logging';
 import { kbpsToBitsPerSecond } from 'app-constants';
 import { DeviceInfo } from 'device-info';
@@ -57,21 +52,18 @@ const CODEC_PROFILES = {
     ],
 };
 
-// Cache detection results by resolution key. Codec support is a property of the
-// UA + OS and does not change within a page lifetime, so each (W, H) probe runs
-// at most once. Stores the in-flight Promise so concurrent callers share work.
+// Codec support is per UA+OS for the page lifetime, so each (W,H) probes once.
+// In-flight Promise stored so concurrent callers share work.
 const encoderCodecCache = new Map<string, Promise<CodecInfo[]>>();
 
-// Debug flag: when true, codec detection only considers H.264. Persists in
-// localStorage so it survives page reloads. Toggled from VideoDiagnosticsSettingsModal.
-// Used to reproduce / debug AVC-only behaviour when other codecs cause issues.
+// Debug flag persisted in localStorage; toggled from VideoDiagnosticsSettingsModal.
 const FORCE_H264_ONLY_KEY = 'video.debug.forceH264Only';
 
 function readForceH264OnlyFromStorage(): boolean {
     try {
         return globalThis.localStorage.getItem(FORCE_H264_ONLY_KEY) === 'true';
     } catch {
-        // localStorage access can throw in private mode / sandboxed contexts.
+        // localStorage throws in private mode / sandboxed contexts.
         return false;
     }
 }
@@ -93,6 +85,7 @@ export function setForceH264Only(enabled: boolean): void {
     infoLog?.log(`Debug: forceH264Only set to ${enabled}; codec detection caches cleared`);
 }
 
+
 export function detectSupportedCodecs(width = 1920, height = 1080): Promise<CodecInfo[]> {
     const key = `${width}x${height}`;
     let cached = encoderCodecCache.get(key);
@@ -103,13 +96,11 @@ export function detectSupportedCodecs(width = 1920, height = 1080): Promise<Code
     return cached;
 }
 
-// Category-level detection: probe ONE representative codec per category at the
-// target resolution, in priority order (AV1 → HEVC → VP9 → H.264). For the
-// actual encoder profile string we consult `getCodecForCategory()` which picks
-// a profile deterministically from category + resolution + platform — no extra
-// probing needed. Reduces startup probe count ~7× vs per-profile detection.
+// Probe ONE representative codec per category at the target resolution, in
+// priority order. The actual encoder profile string is then derived from
+// getCodecForCategory(category, w, h). Reduces startup probes ~7× vs per-profile.
 const REPRESENTATIVE_CODECS: { category: CodecInfo['category']; name: string; codec: string }[] = [
-    // TEMPORARILY DISABLED — AV1 mobile issues, VP9 selection disabled. Re-enable by uncommenting.
+    // TEMPORARILY DISABLED — AV1 mobile issues, VP9 selection disabled.
     // { category: 'av1',  name: 'AV1 Main L3.0',      codec: 'av01.0.05M.08' },
     { category: 'hevc', name: 'HEVC Main L3.1',     codec: 'hev1.1.6.L93.B0' },
     // { category: 'vp9',  name: 'VP9 Profile 0 L3.1', codec: 'vp09.00.31.08' },
@@ -126,11 +117,8 @@ async function detectSupportedCodecsUncached(width: number, height: number): Pro
     const results: CodecInfo[] = [];
     for (const { category, name, codec } of probeList) {
         const { supported, hardwareAccelerated, scalabilityModes } = await isCodecSupported(codec, category, width, height);
-        // Report with the profile string the encoder will actually use for this
-        // category at the target resolution. getCodecForCategory may pick a
-        // higher-level profile than the one we probed — WebCodecs level ladders
-        // are backward-compatible so a working low-level profile implies the
-        // higher ones work for the same width/height too.
+        // WebCodecs level ladders are backward-compatible: a working low-level
+        // profile implies higher ones at the same dims work too.
         const chosenCodec = supported ? getCodecForCategory(category, width, height) : codec;
         results.push({
             name,
@@ -163,13 +151,11 @@ async function isCodecSupported(
             latencyMode: 'realtime',
         };
 
-        // Add codec-specific config
         if (category === 'h264') {
             baseConfig.avc = { format: 'avc' };
         }
 
-        // Try hardware-accelerated first, then software fallback
-        // Firefox often returns supported: false for 'prefer-hardware' but works with 'no-preference'
+        // Firefox often returns false for 'prefer-hardware' but works with 'no-preference'.
         let supported = false;
         let hardwareAccelerated = false;
 
@@ -184,7 +170,6 @@ async function isCodecSupported(
             }
         }
 
-        // Detect supported scalability modes
         const scalabilityModes: string[] = [];
         if (supported) {
             const modesToTest = ['L1T1', 'L1T2', 'L1T3'];
@@ -199,9 +184,7 @@ async function isCodecSupported(
                     if (modeSupport.supported) {
                         scalabilityModes.push(mode);
                     }
-                } catch {
-                    // Mode not supported, continue
-                }
+                } catch { /* unsupported */ }
             }
         }
 
@@ -221,25 +204,15 @@ export interface EncoderProbeResult {
 
 interface ProbeLayer { width: number; height: number; bitrateKbps: number }
 
-// Cache results per (codec, top-layer-dims, layer-count). The probe itself
-// only exercises the top-tier encoder, so top dims drive the result; layer
-// count is kept in the key so a future move to multi-encoder probing
-// re-invalidates cleanly. Ladders are bottom-first (index 0 = base, last =
-// top) so we key on `layers[layers.length - 1]`.
+// Cached per (codec, top-layer-dims, layer-count). Probe exercises only the top
+// tier; layer count stays in the key for clean future invalidation if multi-
+// encoder probing returns. Ladders are bottom-first.
 const encoderProbeCache = new Map<string, Promise<EncoderProbeResult>>();
 
-// Single-encoder probe of the top layer. Default budget = 30fps
-// frame interval (33.3ms) — "can one top-tier encoder keep up with one
-// frame per tick". Not a search for the optimal codec, not a simulcast
-// concurrency test. Steady-state encode is ~5–20ms on hardware capable
-// of simulcast, so 33ms is a generous ceiling that lets borderline-but-
-// workable codecs pass and trusts runtime backpressure (step-down +
-// onEncoderFailure → pickFallbackCodec → switchCodec) to recover if
-// reality diverges.
-//
-// Default frameCount = 8 (3 warmup discarded + 5 steady). The first
-// frame is a keyframe and pays codec init cost — discarding the cold-
-// start samples gives the steady-state median that matters.
+// Single-encoder probe of the top layer. Budget defaults to 33ms (30fps frame
+// interval) — a generous ceiling. Borderline codecs pass here and rely on
+// runtime backpressure (step-down → pickFallbackCodec → switchCodec) to recover.
+// frameCount=8: 3 warmup (cold-start, first-keyframe init) + 5 steady-state.
 export function probeEncoder(
     codec: string,
     layers: readonly ProbeLayer[],
@@ -264,14 +237,9 @@ async function probeEncoderUncached(
     frameCount: number,
     budgetMs: number,
 ): Promise<EncoderProbeResult> {
-    // Probe ONLY the top-tier encoder with a single VideoEncoder. Spinning
-    // up N concurrent encoders here creates cold-start GPU/CPU contention
-    // that does not exist at runtime (where encoders are warm and frame
-    // submission is paced), so concurrent probes produced false-fails on
-    // hardware that ran the same simulcast cleanly. The top-tier encoder
-    // dominates simulcast cost; lower tiers are cheap-by-comparison and
-    // any divergence is caught by the runtime backpressure step-down +
-    // onEncoderFailure → pickFallbackCodec → switchCodec path.
+    // Probe only the top-tier encoder. Spinning up N concurrent encoders here
+    // creates cold-start contention not present at runtime (encoders warm,
+    // submission paced), producing false-fails. Top tier dominates simulcast cost.
     if (layers.length === 0)
         return { supported: false, medianEncodeMs: 0, failedStage: 'configure' };
     const category = getCodecCategory(codec);
@@ -342,13 +310,10 @@ async function probeEncoderUncached(
             timings.push(performance.now() - t0);
         }
 
-        // Discard cold-start samples — the first frame is a keyframe and the
-        // first 1-2 frames also pay codec init / first I-frame allocation costs
-        // that don't repeat at steady state. Without this the probe rejects
-        // HW-capable machines that just need a few ms more for warmup (e.g.
-        // 1080p single-encoder probes failing at ~20 ms median because the
-        // warmup samples dragged the median above an 18 ms budget).
-        // 6+ frames: drop 3 warmup; 3-5 frames: drop 2; <3: drop none.
+        // Discard cold-start samples: first frame is a keyframe and first 1-2
+        // pay codec init costs that don't repeat at steady state. Without this,
+        // HW-capable machines fail the probe due to warmup-skewed median.
+        // 6+ frames: drop 3 warmup; 3-5: drop 2; <3: drop none.
         const warmupCount = frameCount >= 6 ? 3 : (frameCount >= 3 ? 2 : 0);
         const steadyTimings = timings.slice(warmupCount);
         steadyTimings.sort((a, b) => a - b);
@@ -375,40 +340,35 @@ export function getCodecCategory(codecString: string): 'h264' | 'hevc' | 'av1' |
 
 export function getCodecForCategory(category: 'h264' | 'hevc' | 'av1' | 'vp9', width: number, height: number): string {
     const isMobile = DeviceInfo.isMobile; // includes iOS
-    // Codec STRING is the encoder's max-capability hint (level), not the actual
-    // bitstream level. Picking a higher level for low-res streams is harmless —
-    // the encoder still outputs at the actual dims. Critically, keeping the
-    // codec string CONSTANT across resolutions lets the worker-side encoder
-    // pool reuse the NVENC session across stop/start: Chrome's WebCodecs
+    // Keep the codec string CONSTANT across resolutions — Chrome's WebCodecs
     // re-inits the underlying NVENC session on any codec-string change (even
     // just a level byte), so changing strings on resolution change defeats
-    // pool reuse and reproduces the `OperationError: Encoder initialization
-    // error` storm. Pick the highest "ladder-cap" level per category — L4.0
-    // for 1080p — and use it for every session of that category.
-    // For >1080p (rare path: 4K screencast) bump up; otherwise stay constant.
+    // encoder-pool reuse and reproduces 'Encoder initialization error' storms.
+    // Use the highest ladder-cap level per category (L4.0 for 1080p), bumped
+    // for >1080p (4K screencast).
     const pixels = width * height;
     const ultraHi = pixels > 2_073_600; // 4K territory
 
     if (category === 'av1') {
-        return ultraHi ? 'av01.0.12M.08' : 'av01.0.08M.08'; // Main L5.0 / Main L4.0
+        return ultraHi ? 'av01.0.12M.08' : 'av01.0.08M.08';
     }
     if (category === 'vp9') {
-        return ultraHi ? 'vp09.00.50.08' : 'vp09.00.41.08'; // Profile 0 L5.0 / L4.1
+        return ultraHi ? 'vp09.00.50.08' : 'vp09.00.41.08';
     }
     if (category === 'hevc') {
-        return ultraHi ? 'hev1.1.6.L150.B0' : 'hev1.1.6.L120.B0'; // Main L5.0 / Main L4.0
+        return ultraHi ? 'hev1.1.6.L150.B0' : 'hev1.1.6.L120.B0';
     }
-    // H.264: Firefox and mobile use Main profile, desktop uses High (better compression)
+    // H.264: Firefox/mobile = Main, desktop = High (better compression).
     if (isMobile || DeviceInfo.isFirefox) {
-        if (ultraHi) return 'avc1.4D4034'; // Main 5.2
-        return 'avc1.4D4029';              // Main 4.1 (covers up to 1080p)
+        if (ultraHi) return 'avc1.4D4034';
+        return 'avc1.4D4029';
     }
-    if (ultraHi) return 'avc1.640034'; // High 5.2
-    return 'avc1.640028';              // High 4.0 (covers up to 1080p)
+    if (ultraHi) return 'avc1.640034';
+    return 'avc1.640028';
 }
 
 export function getDefaultCodec(supportedCodecs: CodecInfo[], width: number, height: number): string {
-    // Firefox: force H.264 Main 3.1 — only reliable encoder profile
+    // Firefox: H.264 Main 3.1 is the only reliable encoder profile.
     if (DeviceInfo.isFirefox) {
         return 'avc1.4D401F';
     }
@@ -417,71 +377,60 @@ export function getDefaultCodec(supportedCodecs: CodecInfo[], width: number, hei
 
     // Priority: AV1 HW > HEVC HW > VP9 HW > H.264 HW (profile by platform) > H.264 SW
 
-    // 1. Try AV1 with hardware acceleration
     const av1HW = supportedCodecs.find(
         c => c.category === 'av1' && c.supported && c.hardwareAccelerated
     );
     if (av1HW) return av1HW.codec;
 
-    // 2. Try HEVC with hardware acceleration
     const hevcHW = supportedCodecs.find(
         c => c.category === 'hevc' && c.supported && c.hardwareAccelerated
     );
     if (hevcHW) return hevcHW.codec;
 
-    // 3. Try VP9 with hardware acceleration
     const vp9HW = supportedCodecs.find(
         c => c.category === 'vp9' && c.supported && c.hardwareAccelerated
     );
     if (vp9HW) return vp9HW.codec;
 
-    // H.264 profile preference depends on platform
-    // Mobile: Main > Baseline > High (power efficient)
-    // Desktop: High > Main > any (better compression)
+    // Mobile prefers Main>Baseline>High (power); desktop prefers High>Main (compression).
     const h264ProfileOrder = isMobile
-        ? ['4D40', '42E0', '6400']  // Main, Baseline, High
-        : ['6400', '4D40'];         // High, Main
+        ? ['4D40', '42E0', '6400']
+        : ['6400', '4D40'];
 
-    // 4. Try H.264 HW in profile preference order
     for (const profile of h264ProfileOrder) {
         const match = supportedCodecs.find(
             c => c.category === 'h264' && c.supported && c.hardwareAccelerated && c.codec.includes(profile)
         );
         if (match) return match.codec;
     }
-    // 4b. Any H.264 HW
     const anyH264HW = supportedCodecs.find(
         c => c.category === 'h264' && c.supported && c.hardwareAccelerated
     );
     if (anyH264HW) return anyH264HW.codec;
 
-    // 5. Try VP9 SW (better compression than H.264 SW)
+    // VP9 SW beats H.264 SW on compression.
     const vp9SW = supportedCodecs.find(
         c => c.category === 'vp9' && c.supported
     );
     if (vp9SW) return vp9SW.codec;
 
-    // 6. Try H.264 SW in profile preference order
     for (const profile of h264ProfileOrder) {
         const match = supportedCodecs.find(
             c => c.category === 'h264' && c.supported && c.codec.includes(profile)
         );
         if (match) return match.codec;
     }
-    // 5b. Any H.264 SW
     const anyH264 = supportedCodecs.find(
         c => c.category === 'h264' && c.supported
     );
     if (anyH264) return anyH264.codec;
 
-    // Fallback: resolution-aware codec string
     return getCodecForCategory('h264', width, height);
 }
 
 export async function getAV1CodecSupport(): Promise<CodecInfo[]> {
     const results: CodecInfo[] = [];
 
-    // Check AV1 codecs
     for (const profile of CODEC_PROFILES.av1) {
         const { supported, hardwareAccelerated, scalabilityModes } = await isCodecSupported(profile.codec, 'av1', 1920, 1080);
         results.push({
@@ -497,7 +446,7 @@ export async function getAV1CodecSupport(): Promise<CodecInfo[]> {
     return results;
 }
 
-/** Check decoder support with prefer-hardware → no-preference fallback (matches video-player.ts init) */
+// prefer-hardware → no-preference fallback (matches video-player.ts init).
 async function isDecoderCodecSupported(codec: string, width: number, height: number): Promise<boolean> {
     for (const accel of ['prefer-hardware', 'no-preference'] as const) {
         try {
@@ -513,25 +462,20 @@ async function isDecoderCodecSupported(codec: string, width: number, height: num
     return false;
 }
 
-// Runtime codec exclusion — codecs that technically report support but fail at runtime
-// (for example, wrong decoded dimensions or sustained slow decode).
+// Codecs that report support but fail at runtime (wrong dims, slow decode).
 const excludedDecoderCodecs = new Set<string>();
 
-/** Exclude a decoder codec category at runtime (persists for JS module lifetime). */
 export function excludeDecoderCodec(codec: string): void {
     if (codec === 'h264') return; // never exclude h264 — universal fallback
     warnLog?.log(`Excluding decoder codec: ${codec}`);
     excludedDecoderCodecs.add(codec);
-    // Invalidate the cache so the next call re-detects with the new exclusion set.
     decoderCodecCache = null;
 }
 
-/** Get the set of runtime-excluded decoder codecs. */
 export function getExcludedDecoderCodecs(): string[] {
     return [...excludedDecoderCodecs];
 }
 
-// Cache decoder-codec detection the same way as encoder detection.
 let decoderCodecCache: Promise<string[]> | null = null;
 
 export function detectSupportedDecoderCodecs(): Promise<string[]> {
@@ -540,24 +484,23 @@ export function detectSupportedDecoderCodecs(): Promise<string[]> {
 }
 
 async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
-    const codecs: string[] = ['h264']; // H.264 always assumed supported
+    const codecs: string[] = ['h264']; // always assumed supported
 
     if (readForceH264OnlyFromStorage()) {
         infoLog?.log('Debug: forceH264Only=true → decoder detection limited to H.264');
         return codecs;
     }
 
-    // AV1 — TEMPORARILY DISABLED (mobile issues). Re-enable by restoring the probe block.
+    // AV1 — TEMPORARILY DISABLED (mobile issues).
     infoLog?.log('Decoder AV1: temporarily disabled');
 
-    // HEVC — try multiple codec strings
     if (!excludedDecoderCodecs.has('hevc')) {
         let hevcSupported = false;
         for (const hevcCodec of [
-            'hev1.1.6.L120.B0',    // hev1 Main L4.0
-            'hev1.1.6.L93.B0',     // hev1 Main L3.1
-            'hvc1.1.6.L120.B0',    // hvc1 Main L4.0 (iOS Safari)
-            'hvc1.1.6.L93.90',     // hvc1 Main L3.1 (iOS Safari variant)
+            'hev1.1.6.L120.B0',
+            'hev1.1.6.L93.B0',
+            'hvc1.1.6.L120.B0',    // iOS Safari
+            'hvc1.1.6.L93.90',     // iOS Safari variant
         ]) {
             try {
                 if (await isDecoderCodecSupported(hevcCodec, 1280, 720)) {
@@ -575,7 +518,7 @@ async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
         warnLog?.log(`Decoder HEVC: excluded at runtime`);
     }
 
-    // VP9 — TEMPORARILY DISABLED (selection disabled). Re-enable by restoring the probe block.
+    // VP9 — TEMPORARILY DISABLED.
     infoLog?.log('Decoder VP9: temporarily disabled');
 
     infoLog?.log(`detectSupportedDecoderCodecsUncached: [${codecs.join(', ')}]${excludedDecoderCodecs.size > 0 ? ` (excluded: [${[...excludedDecoderCodecs].join(', ')}])` : ''}`);

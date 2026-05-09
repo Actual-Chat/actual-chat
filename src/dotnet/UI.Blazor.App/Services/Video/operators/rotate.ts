@@ -2,13 +2,11 @@ import { from, type PipeOperator } from 'ix-ext';
 import type { CapturedFrame } from '../frame-envelopes';
 
 export interface RotateOptions {
-    /** Called per frame so a `screen.orientation` change takes effect
-     *  without restarting the pipeline. Returns 0/90/180/270. */
+    // Called per frame so screen.orientation changes apply without restart.
     getRotationDeg: () => number;
 }
 
-// Sets `VideoFrame.rotation` (Chromium extension; no-op on Safari).
-// Metadata-only — actual pixel rotation happens downstream.
+// Sets VideoFrame.rotation (Chromium-only; Safari ignores it).
 export function rotate(opts: RotateOptions): PipeOperator<CapturedFrame, CapturedFrame> {
     const { getRotationDeg } = opts;
     return source => {

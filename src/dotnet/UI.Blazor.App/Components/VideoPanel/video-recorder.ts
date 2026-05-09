@@ -291,10 +291,8 @@ export class VideoRecorder {
     private currentCodecHardwareAccel = false;
     // Stream-mode driving downstream config (simulcast caps and layer bitrates).
     private currentMode: 'camera' | 'screen' = 'camera';
-    // Top-tier encoder framerate. Set from `VIDEO.frameRate` (camera) or
-    // from `track.getSettings().frameRate` after `captureScreenCast`.
-    // Undefined until a recording starts; reads outside that window
-    // would mean the consumer ran before lifecycle setup.
+    // Top-tier encoder framerate; undefined until a recording starts. Set from
+    // `VIDEO.frameRate` (camera) or `track.getSettings().frameRate` (screencast).
     private currentFramerate: number | undefined;
 
     // Listeners.

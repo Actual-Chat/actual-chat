@@ -3,18 +3,12 @@ import { closeEncodedChunk, type ArrivedChunk } from '../frame-envelopes';
 import type { EncodedFrameBuffer } from '../playback/encoded-frame-buffer';
 
 export interface EpochResetOptions {
-    /** Shared with `pacedEncodedBuffer`: this operator owns `reset()`,
-     *  the buffer operator owns push/drain. */
+    // Shared with pacedEncodedBuffer: this operator owns reset(), the buffer operator owns push/drain.
     buffer: EncodedFrameBuffer;
 }
 
-/**
- * Watches `chunk.capturedAt.epoch` and resets the buffer when it
- * changes. Pass-through otherwise.
- *
- * `epoch === 0` is a valid producer value, so we initialize `lastEpoch`
- * from the first chunk rather than 0 — first chunk never triggers a reset.
- */
+// epoch === 0 is a valid producer value, so lastEpoch starts at null (not 0)
+// — the first chunk anchors it instead of triggering a spurious reset.
 export function resetOnEpochChange(opts: EpochResetOptions): PipeOperator<ArrivedChunk, ArrivedChunk> {
     const { buffer } = opts;
     return source => {
