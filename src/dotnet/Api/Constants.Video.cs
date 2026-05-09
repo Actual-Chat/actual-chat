@@ -56,15 +56,18 @@ public static partial class Constants
         public static readonly TimeSpan StreamExpirationDelay = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan MaxLiveDuration = TimeSpan.FromHours(8);
 
-        // Watchdog: cancel PushVideo handler if no frame arrives within this window.
-        // Camera: 10s — tolerates brief sensor stalls (camera permission re-prompt,
-        // OS-level camera swap, momentary USB hang) without killing the stream.
-        public static readonly TimeSpan CameraFrameSilenceTimeout = TimeSpan.FromSeconds(10);
-        // ScreenCast: 3min — getDisplayMedia is change-driven. A user reading code
-        // in a static IDE produces zero frames for extended periods. Client sends
-        // heartbeat frames every ScreenCastHeartbeatInterval during silence, so
-        // this timeout only trips if the client itself is stuck/gone.
-        public static readonly TimeSpan ScreenCastFrameSilenceTimeout = TimeSpan.FromMinutes(3);
+        // Stream-silence watchdog: counts incoming bundles per fixed
+        // interval and cancels the PushVideo handler when there are zero
+        // bundles for K consecutive intervals. With 5 s × 2 = 10 s total,
+        // this catches "browser closed without a clean WebSocket close"
+        // fast enough to free the single-screencast-per-chat slot for
+        // another publisher. Replaces the older split CameraFrameSilenceTimeout
+        // / ScreenCastFrameSilenceTimeout pair — cleaner state and unified
+        // for both source kinds.
+        public static readonly TimeSpan StreamSilenceCheckInterval = TimeSpan.FromSeconds(5);
+        public static readonly int StreamSilenceMaxConsecutiveZeroIntervals = 2;
+        public static TimeSpan StreamSilenceCancelAfter
+            => StreamSilenceCheckInterval * StreamSilenceMaxConsecutiveZeroIntervals;
 
         // RPC stream flow control for video — doc-target values from
         // docs/video-pipeline.md "Constants" block: derived from TargetBufferSize.

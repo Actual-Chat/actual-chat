@@ -24,9 +24,6 @@ partial record AppConstants
         public double CancellationDelayMs { get; init; } = Constants.Video.CancellationDelay.TotalMilliseconds;
         public double StreamExpirationDelayMs { get; init; } = Constants.Video.StreamExpirationDelay.TotalMilliseconds;
         public double MaxLiveDurationMs { get; init; } = Constants.Video.MaxLiveDuration.TotalMilliseconds;
-        // Frame silence watchdogs
-        public double CameraFrameSilenceTimeoutMs { get; init; } = Constants.Video.CameraFrameSilenceTimeout.TotalMilliseconds;
-        public double ScreenCastFrameSilenceTimeoutMs { get; init; } = Constants.Video.ScreenCastFrameSilenceTimeout.TotalMilliseconds;
         // Latency & quality adaptation
         public double LatencyReportIntervalMs { get; init; } = Constants.Video.LatencyReportInterval.TotalMilliseconds;
         public float HighLatencyThresholdMs { get; init; } = Constants.Video.HighLatencyThresholdMs;

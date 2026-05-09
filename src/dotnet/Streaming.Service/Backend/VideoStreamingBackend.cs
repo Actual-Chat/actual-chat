@@ -171,6 +171,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         await LiveVideoBackend.Register(record.ChatId, streamInfo, cancellationToken)
             .ConfigureAwait(false);
 
+        Task? silenceWatchdogTask = null;
         try {
             // Publish video stream for real-time viewing
             // No processing - just forward to StreamStore for memoization
@@ -191,16 +192,35 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             var preKeyframeDeltaDropCount = 0;
             var lastHeartbeat = CpuTimestamp.Now;
             var heartbeatInterval = TimeSpan.FromMinutes(2.5); // Half of LiveVideoBackend.ChatStateTtl
-            var silenceTimeout = record.SourceKind == VideoSourceKind.ScreenCast
-                ? Constants.Video.ScreenCastFrameSilenceTimeout
-                : Constants.Video.CameraFrameSilenceTimeout;
+
+            // Stream-silence watchdog: counts incoming bundles per fixed
+            // interval and cancels watchdogCts after K consecutive zero
+            // intervals (default 2 × 5 s = 10 s). Catches "browser tab
+            // closed without a clean WebSocket close" fast enough to free
+            // the single-screencast-per-chat slot. One increment per
+            // bundle (= source moment), regardless of layer count.
+            var bundleCounter = 0;
+            var streamId = record.StreamId;
+            // CA2025: the watchdog task is awaited in the outer finally
+            // (silenceWatchdogTask is hoisted there) so it always completes
+            // before `watchdogCts` is disposed. The analyzer can't track
+            // that across the variable hoist.
+#pragma warning disable CA2025
+            silenceWatchdogTask = StreamSilenceWatchdog.Run(
+                consumeFrameCount: () => Interlocked.Exchange(ref bundleCounter, 0),
+                onSilenceCts: watchdogCts,
+                interval: Constants.Video.StreamSilenceCheckInterval,
+                maxConsecutiveZeroIntervals: Constants.Video.StreamSilenceMaxConsecutiveZeroIntervals,
+                onSilenceDetected: zeroIntervals => Log.LogWarning(
+                    "Stale stream watchdog: no bundles in {DurationSec}s for stream #{StreamId}, closing",
+                    Constants.Video.StreamSilenceCheckInterval.TotalSeconds * zeroIntervals, streamId),
+                cancellationToken: cancellationToken);
+#pragma warning restore CA2025
+
             async IAsyncEnumerable<VideoFrame> ProcessFrames(IAsyncEnumerable<VideoFrameBundle> source)
             {
-                // Frame-silence watchdog: cancels watchdogCts if no bundle arrives within silenceTimeout.
-                // Each bundle resets the deadline; CancellationTokenSource reuses a single internal timer.
-                watchdogCts.CancelAfter(silenceTimeout);
                 await foreach (var bundle in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-                    watchdogCts.CancelAfter(silenceTimeout);
+                    Interlocked.Increment(ref bundleCounter);
                     if (bundle.Frames.Length == 0)
                         continue;
 
@@ -289,6 +309,18 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 await memoizer.DisposeAsync().ConfigureAwait(false);
         }
         finally {
+            // Drain the silence watchdog before the linked CTS goes out
+            // of scope. The watchdog's Task.Delay is bound to
+            // cancellationToken (linked from watchdogCts), so the using {}
+            // teardown wakes it via OCE; awaiting here avoids the racy
+            // "Task using IDisposable instance after dispose" warning.
+            if (silenceWatchdogTask is not null) {
+                try {
+                    await silenceWatchdogTask.ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { /* expected on teardown */ }
+            }
+
             // Unregister stream when it ends — cross-service RPC call
             await LiveVideoBackend.Unregister(record.ChatId, record.StreamId, CancellationToken.None)
                 .ConfigureAwait(false);
