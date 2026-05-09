@@ -291,8 +291,11 @@ export class VideoRecorder {
     private currentCodecHardwareAccel = false;
     // Stream-mode driving downstream config (simulcast caps and layer bitrates).
     private currentMode: 'camera' | 'screen' = 'camera';
-    // Top-tier encoder framerate. 30 for camera, 15 for screencast.
-    private currentFramerate = 30;
+    // Top-tier encoder framerate. Set from `VIDEO.frameRate` (camera) or
+    // from `track.getSettings().frameRate` after `captureScreenCast`.
+    // Undefined until a recording starts; reads outside that window
+    // would mean the consumer ran before lifecycle setup.
+    private currentFramerate: number | undefined;
 
     // Listeners.
     private previewFrameListeners = new Set<PreviewFrameListener>();
@@ -538,7 +541,7 @@ export class VideoRecorder {
 
         try {
             const targetSize: Size = { width: 1280, height: 720 };
-            const targetFramerate = 30;
+            const targetFramerate = VIDEO.frameRate;
             this.currentFramerate = targetFramerate;
 
             const supportedCodecs = await detectSupportedCodecs(targetSize.width, targetSize.height);
@@ -649,7 +652,6 @@ export class VideoRecorder {
 
         this.setRecordingState('starting');
         this.currentMode = 'screen';
-        this.currentFramerate = 15;
         infoLog?.log('Starting screencast...');
 
         try {
@@ -686,6 +688,7 @@ export class VideoRecorder {
             const trackSettings = screenTrack.getSettings();
             this.cameraWidth = trackSettings.width ?? targetSize.width;
             this.cameraHeight = trackSettings.height ?? targetSize.height;
+            this.currentFramerate = trackSettings.frameRate ?? VIDEO.frameRate;
 
             screenTrack.onended = () => {
                 infoLog?.log('Screen sharing track ended (user stopped sharing)');
@@ -812,7 +815,7 @@ export class VideoRecorder {
             codecCategory,
             hardwareAccelerated: this.currentCodecHardwareAccel,
             inputResolution: this.cameraWidth > 0 ? `${this.cameraWidth}x${this.cameraHeight}` : 'N/A',
-            inputFramerate: this.currentFramerate,
+            inputFramerate: this.currentFramerate ?? 0,
             outputResolution: top ? `${top.width}x${top.height}` : 'N/A',
             configuredBitrate: kbpsToBitsPerSecond(top?.bitrateKbps ?? 0),
             actualBitrateKbps: 0,
@@ -1093,6 +1096,7 @@ export class VideoRecorder {
 
         const encoderConfigs = this.toEncoderConfigs(ladder);
 
+        const framerate = this.requireFramerate('startWorker');
         const config: WireSafeRecorderConfig = {
             chatId: this.chatId,
             apiUrl,
@@ -1100,8 +1104,8 @@ export class VideoRecorder {
             encoderConfigs,
             // Camera: 2-3s interval; ScreenCast: 1-2s interval.
             keyframeIntervalFrames: this.currentMode === 'screen'
-                ? this.currentFramerate * 2
-                : this.currentFramerate * 3,
+                ? framerate * 2
+                : framerate * 3,
             maxKeyFrameIntervalMs: this.currentMode === 'screen' ? 10000 : 3000,
         };
 
@@ -1119,6 +1123,7 @@ export class VideoRecorder {
     }
 
     private toEncoderConfigs(ladder: LayerConfig[]): EncoderConfigPerLayer[] {
+        const framerate = this.requireFramerate('toEncoderConfigs');
         if (ladder.length === 0) {
             // Should not happen — startRecording / startScreenCast always
             // set at least one tier — but defensively produce a single
@@ -1130,7 +1135,7 @@ export class VideoRecorder {
                 bitrate: this.isScreenCasting
                     ? kbpsToBitsPerSecond(this.topBitrateKbpsForCodec(VIDEO.screenCastLayerBaseBitratesKbps, this.currentCodecString, 6_000))
                     : kbpsToBitsPerSecond(this.topBitrateKbpsForCodec(VIDEO.cameraLayerBaseBitratesKbps, this.currentCodecString, 2_000)),
-                framerate: this.currentFramerate,
+                framerate,
             }];
         }
         return ladder.map(l => ({
@@ -1138,8 +1143,14 @@ export class VideoRecorder {
             width: l.width,
             height: l.height,
             bitrate: kbpsToBitsPerSecond(l.bitrateKbps),
-            framerate: this.currentFramerate,
+            framerate,
         }));
+    }
+
+    private requireFramerate(caller: string): number {
+        if (this.currentFramerate === undefined)
+            throw new Error(`${caller}: currentFramerate not set (called before recording start?)`);
+        return this.currentFramerate;
     }
 
     private async restartWithCurrentConfig(): Promise<void> {
