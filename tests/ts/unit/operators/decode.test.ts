@@ -385,7 +385,7 @@ describe('decode operator', () => {
     it('watchdog: hang synthesises an error and the next keyframe drives recovery', async () => {
         const stats = makeStats();
         const decoders: MockDecoder[] = [];
-        type FakeTimer = { cb: () => void; canceled: boolean };
+        interface FakeTimer { cb: () => void; canceled: boolean }
         const timers: FakeTimer[] = [];
         const setTimeoutFn = (cb: () => void): unknown => {
             const t: FakeTimer = { cb, canceled: false };

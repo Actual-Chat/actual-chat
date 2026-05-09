@@ -103,8 +103,7 @@ export function downscale(opts: DownscaleOptions): PipeOperator<CapturedFrame, C
             },
             map: async (envelope, slotId) => {
                 const slot = slotStates[slotId]!;
-                if (slot.downscaler === null)
-                    slot.downscaler = createDownscaler();
+                slot.downscaler ??= createDownscaler();
                 const downscaler = slot.downscaler;
 
                 let frames: VideoFrame[] | null = null;
@@ -135,7 +134,7 @@ export function downscale(opts: DownscaleOptions): PipeOperator<CapturedFrame, C
                     );
                     const stuck = slot.downscaler;
                     slot.downscaler = null;
-                    if (stuck && typeof stuck.dispose === 'function') {
+                    if (typeof stuck.dispose === 'function') {
                         try { stuck.dispose(); } catch { /* ignore */ }
                     }
                     if (consecutiveHangs >= 4)
@@ -161,8 +160,8 @@ export function downscale(opts: DownscaleOptions): PipeOperator<CapturedFrame, C
                     : envelope;
                 forceKeyframeAfterHang = false;
                 const layers: CapturedFrame[] = [];
-                for (let i = 0; i < frames.length; i++) {
-                    layers.push(makeLayerEnvelope(layerSource, frames[i]));
+                for (const frame of frames) {
+                    layers.push(makeLayerEnvelope(layerSource, frame));
                 }
                 // Reference void so the linter doesn't flag the early-fail
                 // branch helper as unused after we move ownership to the

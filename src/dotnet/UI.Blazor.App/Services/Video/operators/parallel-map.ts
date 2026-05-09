@@ -23,7 +23,7 @@ export interface ParallelMapOptions<TIn, TOut> {
     concurrency: number;
     /** Per-item transform; receives a slot id ∈ [0, concurrency-1] for
      *  per-slot resource binding. */
-    map: (input: TIn, slotId: number) => Promise<TOut>;
+    map: (input: TIn, slotId: number) => TOut | Promise<TOut>;
     /** Called once per slot just before its first `map` call. */
     onSlotInit?: (slotId: number) => void;
     /** Called once per slot at operator teardown (normal completion or
@@ -92,7 +92,7 @@ export function parallelMap<TIn, TOut>(opts: ParallelMapOptions<TIn, TOut>): Pip
             return -1;
         };
 
-        const dispatch = async (slotId: number, input: TIn, seq: number): Promise<TOut> => {
+        const dispatch = async (slotId: number, input: TIn): Promise<TOut> => {
             slotBusy[slotId] = true;
             if (!slotInitialized[slotId]) {
                 slotInitialized[slotId] = true;
@@ -126,13 +126,13 @@ export function parallelMap<TIn, TOut>(opts: ParallelMapOptions<TIn, TOut>): Pip
                         break;
                     }
                     const seq = nextSeqIn++;
-                    const promise = dispatch(slotId, nextResult.value, seq);
+                    const promise = dispatch(slotId, nextResult.value);
                     pending.push({ seq, slotId, promise });
                     // Settle in the background so multiple in-flight tasks
                     // can complete out of order, then signal the main loop.
                     void promise.then(
                         value => { settled.set(seq, { ok: true, value }); signalWake(); },
-                        error => { settled.set(seq, { ok: false, error }); signalWake(); },
+                        (error: unknown) => { settled.set(seq, { ok: false, error }); signalWake(); },
                     );
                 }
 
@@ -178,7 +178,7 @@ export function parallelMap<TIn, TOut>(opts: ParallelMapOptions<TIn, TOut>): Pip
             // through onUnconsumedResult instead of orphaning them.
             const drainPromises = pending.map(p => p.promise.then(
                 v => ({ ok: true as const, value: v }),
-                e => ({ ok: false as const, error: e }),
+                (e: unknown) => ({ ok: false as const, error: e }),
             ));
             const drained = await Promise.all(drainPromises);
             for (const r of drained) {
@@ -192,6 +192,6 @@ export function parallelMap<TIn, TOut>(opts: ParallelMapOptions<TIn, TOut>): Pip
             try { await iterator.return?.(); } catch { /* ignore */ }
         }
 
-        if (firstError !== null) throw firstError;
+        if (firstError !== null) throw firstError as Error;
     }
 }

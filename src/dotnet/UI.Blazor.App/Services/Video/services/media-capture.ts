@@ -192,10 +192,10 @@ export class MediaCapture {
                 baseConstraints({ ideal: 30 }));
         } catch (e) {
             const err = e as DOMException;
-            if (err?.name === 'NotAllowedError' || err?.name === 'NotFoundError')
+            if (err.name === 'NotAllowedError' || err.name === 'NotFoundError')
                 throw e;
 
-            warnLog?.log(`captureScreenCast: ideal=30 ask rejected (${err?.name}), retrying with ideal=15:`, e);
+            warnLog?.log(`captureScreenCast: ideal=30 ask rejected (${err.name}), retrying with ideal=15:`, e);
             stream = await navigator.mediaDevices.getDisplayMedia(
                 baseConstraints({ ideal: 15, max: 30 }));
         }

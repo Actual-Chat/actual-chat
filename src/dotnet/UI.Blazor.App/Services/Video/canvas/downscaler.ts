@@ -61,6 +61,8 @@ export class CanvasDownscaler implements DownscalerLike {
         return bestIdx >= 0 ? { kind: 'higher', idx: bestIdx } : { kind: 'original' };
     }
 
+    // Async to satisfy DownscalerLike; Canvas2D drawImage is synchronous.
+    // eslint-disable-next-line @typescript-eslint/require-await
     async process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]> {
         const results = new Array<VideoFrame | null>(layers.length).fill(null);
         const painted: number[] = [];

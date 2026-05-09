@@ -193,7 +193,6 @@ async function* decodeAsync(
                         try { envelope.frame.close(); } catch { /* ignore */ }
                 }
             }
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition, @typescript-eslint/only-throw-error
             if (pendingError && sourceDone) throw pendingError;
             if (sourceDone && pending.length === 0) return;
 
@@ -234,10 +233,8 @@ async function* decodeAsync(
                 // error so the existing recovery path drops deltas, closes
                 // and reconfigures the decoder on the next keyframe, and
                 // eventually exhausts via onCodecExhausted.
-                if (!pendingError) {
-                    pendingError = new Error(
-                        `decode: hang watchdog (no frames in ${decoderHangTimeoutMs} ms, pending=${pending.length}, codec=${currentCodec})`);
-                }
+                pendingError ??= new Error(
+                    `decode: hang watchdog (no frames in ${decoderHangTimeoutMs} ms, pending=${pending.length}, codec=${currentCodec})`);
                 lastDecoderActivityMs = now();
                 wakeup = new PromiseSource<void>();
                 continue;
@@ -263,7 +260,7 @@ async function* decodeAsync(
                 // Snapshot via local: TS can't see the async writes from
                 // the decoder error callback so it narrows pendingError
                 // to null.
-                const errSnapshot = pendingError as Error | null;
+                const errSnapshot = pendingError;
                 if (errSnapshot) {
                     if (!arrived.isKeyFrame) {
                         arrived.stats.chunksDroppedDecoderError++;

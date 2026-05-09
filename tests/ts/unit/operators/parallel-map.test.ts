@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parallelMap } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/parallel-map';
 
-async function fromArray<T>(items: readonly T[]): Promise<AsyncIterable<T>> {
+function fromArray<T>(items: readonly T[]): AsyncIterable<T> {
     async function* gen(): AsyncIterable<T> {
         for (const it of items) {
             await Promise.resolve();
@@ -19,17 +19,17 @@ async function drain<T>(seg: AsyncIterable<T>): Promise<T[]> {
 
 describe('parallelMap', () => {
     it('throws on invalid concurrency', () => {
-        expect(() => parallelMap({ concurrency: 0, map: async () => 0 })).toThrow(/≥ 1/);
-        expect(() => parallelMap({ concurrency: -1, map: async () => 0 })).toThrow(/≥ 1/);
-        expect(() => parallelMap({ concurrency: NaN, map: async () => 0 })).toThrow(/≥ 1/);
+        expect(() => parallelMap({ concurrency: 0, map: () => 0 })).toThrow(/≥ 1/);
+        expect(() => parallelMap({ concurrency: -1, map: () => 0 })).toThrow(/≥ 1/);
+        expect(() => parallelMap({ concurrency: NaN, map: () => 0 })).toThrow(/≥ 1/);
     });
 
     it('concurrency=1: results in source order', async () => {
         const op = parallelMap<number, number>({
             concurrency: 1,
-            map: async x => x * 10,
+            map: x => x * 10,
         });
-        const out = await drain(op(await fromArray([1, 2, 3, 4, 5])));
+        const out = await drain(op(fromArray([1, 2, 3, 4, 5])));
         expect(out).toEqual([10, 20, 30, 40, 50]);
     });
 
@@ -43,7 +43,7 @@ describe('parallelMap', () => {
                 return x * 10;
             },
         });
-        const out = await drain(op(await fromArray([1, 2, 3, 4, 5])));
+        const out = await drain(op(fromArray([1, 2, 3, 4, 5])));
         expect(out).toEqual([10, 20, 30, 40, 50]);
     });
 
@@ -61,7 +61,7 @@ describe('parallelMap', () => {
                 return x;
             },
         });
-        const out = await drain(op(await fromArray([1, 2, 3, 4, 5, 6])));
+        const out = await drain(op(fromArray([1, 2, 3, 4, 5, 6])));
         expect(out).toEqual([1, 2, 3, 4, 5, 6]);
         expect(maxInflight).toBe(2);
     });
@@ -70,12 +70,12 @@ describe('parallelMap', () => {
         const seenSlots = new Set<number>();
         const op = parallelMap<number, [number, number]>({
             concurrency: 3,
-            map: async (x, slot) => {
+            map: (x, slot) => {
                 seenSlots.add(slot);
                 return [x, slot];
             },
         });
-        const out = await drain(op(await fromArray([1, 2, 3, 4, 5, 6])));
+        const out = await drain(op(fromArray([1, 2, 3, 4, 5, 6])));
         expect(out.map(p => p[0])).toEqual([1, 2, 3, 4, 5, 6]);
         for (const [, slot] of out) {
             expect(slot).toBeGreaterThanOrEqual(0);
@@ -89,7 +89,7 @@ describe('parallelMap', () => {
         let mapCallCount = 0;
         const op = parallelMap<number, number>({
             concurrency: 3,
-            map: async x => {
+            map: x => {
                 mapCallCount++;
                 return x;
             },
@@ -103,7 +103,7 @@ describe('parallelMap', () => {
                 expect(mapCallCount).toBeLessThanOrEqual(initCalls.length);
             },
         });
-        await drain(op(await fromArray([1, 2, 3, 4, 5])));
+        await drain(op(fromArray([1, 2, 3, 4, 5])));
         // Total init calls bounded by concurrency.
         expect(initCalls.length).toBeLessThanOrEqual(3);
         // Each init fired at most once for any given slot.
@@ -114,10 +114,10 @@ describe('parallelMap', () => {
         const disposed: number[] = [];
         const op = parallelMap<number, number>({
             concurrency: 2,
-            map: async x => x,
+            map: x => x,
             onSlotDispose: slot => disposed.push(slot),
         });
-        await drain(op(await fromArray([1, 2, 3, 4])));
+        await drain(op(fromArray([1, 2, 3, 4])));
         expect(new Set(disposed).size).toBe(disposed.length);
         expect(disposed.length).toBeGreaterThan(0);
         expect(disposed.length).toBeLessThanOrEqual(2);
@@ -128,11 +128,11 @@ describe('parallelMap', () => {
         const disposed: number[] = [];
         const op = parallelMap<number, number>({
             concurrency: 4,
-            map: async x => x,
+            map: x => x,
             onSlotInit: s => inits.push(s),
             onSlotDispose: s => disposed.push(s),
         });
-        await drain(op(await fromArray([1])));
+        await drain(op(fromArray([1])));
         expect(inits).toEqual([0]);
         expect(disposed).toEqual([0]);
     });
@@ -140,12 +140,12 @@ describe('parallelMap', () => {
     it('mapper rejection is rethrown', async () => {
         const op = parallelMap<number, number>({
             concurrency: 2,
-            map: async x => {
+            map: x => {
                 if (x === 3) throw new Error('boom');
                 return x;
             },
         });
-        await expect(drain(op(await fromArray([1, 2, 3, 4])))).rejects.toThrow(/boom/);
+        await expect(drain(op(fromArray([1, 2, 3, 4])))).rejects.toThrow(/boom/);
     });
 
     it('onUnconsumedResult fires for outputs produced after the first error', async () => {
@@ -163,7 +163,7 @@ describe('parallelMap', () => {
             },
             onUnconsumedResult: v => closed.push(v),
         });
-        await expect(drain(op(await fromArray([1, 2, 3])))).rejects.toThrow(/boom/);
+        await expect(drain(op(fromArray([1, 2, 3])))).rejects.toThrow(/boom/);
         // Item 3's success result must have been routed through
         // onUnconsumedResult since the operator threw before yielding it.
         expect(closed).toContain(3);
@@ -173,10 +173,10 @@ describe('parallelMap', () => {
         const inits: number[] = [];
         const op = parallelMap<number, number>({
             concurrency: 2,
-            map: async x => x,
+            map: x => x,
             onSlotInit: s => inits.push(s),
         });
-        const out = await drain(op(await fromArray<number>([])));
+        const out = await drain(op(fromArray<number>([])));
         expect(out).toEqual([]);
         expect(inits).toEqual([]);
     });
