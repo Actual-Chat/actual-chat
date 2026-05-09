@@ -264,6 +264,8 @@ function Show-Help {
     Write-Host "  c chrome*3:50000   Start 3 Chrome instances on 50000..50002 (anonymous profiles)"
     Write-Host "  c chrome --mute-audio --window-size=1280,720"
     Write-Host "                     Any args after chrome[*N][:PORT] are forwarded to the browser"
+    Write-Host "  c chrome --fake-media"
+    Write-Host "                     Use synthetic camera/mic streams (default is real devices)"
     Write-Host "  c edge[:PORT][*N]  Same as chrome, for Microsoft Edge (default port 9322)"
     Write-Host "  c audio            Setup/start PulseAudio for voice mode (macOS only)"
     Write-Host "  c build            Build Docker image"
@@ -1272,15 +1274,34 @@ function Start-DebugBrowsers {
 
         $label = if ($UseAnonymous) { "anonymous" } else { "default" }
         Write-Host "Starting $BrowserName on port $port ($label profile: $profileDir)..." -ForegroundColor Cyan
+        # Pull out our own meta-flag (`--fake-media`) before anything is
+        # forwarded to the browser. If present, Chrome is launched with the
+        # synthetic media-stream backend (mjpeg/wav fake camera + mic);
+        # otherwise Chrome opens the real camera and microphone. Default is
+        # REAL devices so screencast/voice testing on actual hardware works
+        # without per-launch tweaking; the dev rig opts in by adding
+        # `--fake-media`.
+        $useFakeMedia = $false
+        $forwardedArgs = @()
+        foreach ($a in $ExtraArgs) {
+            if ($a -eq "--fake-media") {
+                $useFakeMedia = $true
+            } else {
+                $forwardedArgs += $a
+            }
+        }
+
         # Permission / capture policy for the debug profile:
         #   --disable-notifications              deny Notification API without prompting
         #                                        (the "Allow notifications?" popup blocks the UI otherwise)
-        #   --use-fake-ui-for-media-stream       auto-accept mic/camera (no permission prompt)
-        #   --use-fake-device-for-media-stream   feed synthetic streams instead of real devices
-        #                                        (required for the --use-file-for-fake-* flags to take
-        #                                        effect — without it Chrome uses real cam/mic)
-        #   --use-file-for-fake-video-capture    feed mjpeg as the camera stream
-        #   --use-file-for-fake-audio-capture    feed wav as the mic stream
+        #   --use-fake-ui-for-media-stream       auto-accept mic/camera (no permission prompt) — kept
+        #                                        in both modes so the test profile never blocks on a
+        #                                        permission popup, regardless of fake vs real devices.
+        #   --use-fake-device-for-media-stream   (--fake-media only) feed synthetic streams instead of
+        #                                        real devices. Required for the --use-file-for-fake-*
+        #                                        flags to take effect — without it Chrome uses real cam/mic.
+        #   --use-file-for-fake-video-capture    (--fake-media only) feed mjpeg as the camera stream
+        #   --use-file-for-fake-audio-capture    (--fake-media only) feed wav as the mic stream
         #   --auto-select-desktop-capture-source auto-pick a Voxt-titled window for getDisplayMedia
         #                                        (skips the share-screen picker; matches Voxt's page
         #                                        title — see <PageTitle>@CoreConstants.AppName).
@@ -1311,14 +1332,22 @@ function Start-DebugBrowsers {
             "--remote-allow-origins=*",
             "--disable-notifications",
             "--use-fake-ui-for-media-stream",
-            "--use-fake-device-for-media-stream",
-            # "--use-file-for-fake-video-capture=`"$fakeVideo`"",
-            "--use-file-for-fake-audio-capture=`"$fakeAudio`"",
             "--auto-select-desktop-capture-source=Voxt",
             "--test-type"
-        ) + $ExtraArgs + @("https://local.voxt.ai/")
-        if ($ExtraArgs.Count -gt 0) {
-            Write-Host "  extra args: $($ExtraArgs -join ' ')" -ForegroundColor DarkGray
+        )
+        if ($useFakeMedia) {
+            $cmdArgs += @(
+                "--use-fake-device-for-media-stream",
+                # "--use-file-for-fake-video-capture=`"$fakeVideo`"",
+                "--use-file-for-fake-audio-capture=`"$fakeAudio`""
+            )
+            Write-Host "  media: fake (synthetic camera, $fakeAudio mic)" -ForegroundColor DarkGray
+        } else {
+            Write-Host "  media: real devices (pass --fake-media for synthetic)" -ForegroundColor DarkGray
+        }
+        $cmdArgs = $cmdArgs + $forwardedArgs + @("https://local.voxt.ai/")
+        if ($forwardedArgs.Count -gt 0) {
+            Write-Host "  extra args: $($forwardedArgs -join ' ')" -ForegroundColor DarkGray
         }
         Start-Process -FilePath $ExePath -ArgumentList $cmdArgs
 
