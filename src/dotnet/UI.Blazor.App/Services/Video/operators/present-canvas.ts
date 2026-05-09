@@ -3,19 +3,15 @@ import { delayAsync } from 'promises';
 import type { DecodedFrame } from '../frame-envelopes';
 
 // ---- Tunables -------------------------------------------------------------
+// Mirrored with `present-mstg.ts` so canvas + MSTG share the same drain
+// policy. Read that file for the full pacing-rule write-up.
 
-/** 60 fps slot. Min wallclock gap between two consecutive presented frames. */
-const PRESENT_PERIOD_MS = 1000 / 60;
+const MAX_FPS = 120;
+const MIN_FPS = 10;
+const MIN_DURATION_MS = 1000 / MAX_FPS;     // 8.33 ms — 120 fps cap
+const MAX_DURATION_MS = 1000 / MIN_FPS;     // 100  ms — 10 fps floor
 
-/**
- * Buffer overflow we promise to drain via the 60 fps cap alone — see
- * `present-mstg.ts` for the rationale and full pacing rule. Mirrored
- * here so canvas playback shares the same drain policy as MSTG.
- */
-const CATCHUP_BUDGET_MS = 1000;
-
-/** Hard reset for `nextPresentMs` after a long stall — see present-mstg.ts. */
-const MAX_PRESENT_DURATION_MS = 200;
+const CATCHUP_BUDGET_MS = 4_000;
 
 // ---- Options --------------------------------------------------------------
 
@@ -44,11 +40,11 @@ export interface CanvasPresentOptions {
 }
 
 /**
- * Terminal sink: drawImage each frame into the canvas at a fixed 60 fps
- * cadence. Same dual-mode (in-budget / catch-up skip) policy as
- * `mstgPresent` — read that for the pacing rule. Resizes the backing
- * store on every layer-size change so a 320 px frame doesn't get drawn
- * into the top-left quarter of a canvas sized for 1280 px.
+ * Terminal sink: drawImage each frame into the canvas at a variable
+ * cadence driven by the source's capture-time deltas. Same dual-mode
+ * (steady / catch-up / skip) policy as `mstgPresent`. Resizes the
+ * backing store on every layer-size change so a 320 px frame doesn't
+ * get drawn into the top-left quarter of a canvas sized for 1280 px.
  */
 export function canvasPresent(opts: CanvasPresentOptions): PipeOperator<DecodedFrame, void> {
     const { getCanvasCtx, convertToBitmap, getBufferSpanMs, targetSpanMs } = opts;
@@ -58,29 +54,38 @@ export function canvasPresent(opts: CanvasPresentOptions): PipeOperator<DecodedF
 
     async function* impl(source: AsyncIterable<DecodedFrame>): AsyncIterable<void> {
         let canvasCtx: CanvasImageInterface | null = null;
-        let lastPresentMs = Number.NEGATIVE_INFINITY;
-        let nextPresentMs: number | null = null;
+        let lastWriteAt: number | null = null;
+        let prevCapturedAt: number | null = null;
         for await (const decoded of source) {
             const frame = decoded.frame;
             try {
                 const now = nowFn();
                 const extraMs = Math.max(0, getBufferSpanMs() - targetSpanMs);
-                const inBudget = extraMs <= CATCHUP_BUDGET_MS;
 
-                if (!inBudget && now - lastPresentMs < PRESENT_PERIOD_MS) {
+                if (extraMs > CATCHUP_BUDGET_MS
+                    && lastWriteAt !== null
+                    && now - lastWriteAt < MIN_DURATION_MS) {
                     decoded.stats.framesDroppedAtPresenter++;
+                    prevCapturedAt = decoded.capturedAt.timeMs;
                     continue;
                 }
 
-                if (nextPresentMs === null) {
-                    nextPresentMs = now;
+                let durationMs: number;
+                if (lastWriteAt === null || prevCapturedAt === null) {
+                    durationMs = 0;
+                } else if (extraMs > 0) {
+                    durationMs = MIN_DURATION_MS;
+                } else {
+                    const natural = decoded.capturedAt.timeMs - prevCapturedAt;
+                    durationMs = Math.max(MIN_DURATION_MS, Math.min(MAX_DURATION_MS, natural));
                 }
-                else if (nextPresentMs > now) {
-                    await delayFn(nextPresentMs - now);
-                }
-                else if (now - nextPresentMs > MAX_PRESENT_DURATION_MS) {
-                    nextPresentMs = nowFn();
-                }
+
+                const baseAt: number = lastWriteAt ?? now;
+                let nextWriteAt: number = baseAt + durationMs;
+                if (nextWriteAt - now > MAX_DURATION_MS)
+                    nextWriteAt = now + MAX_DURATION_MS;
+                if (nextWriteAt > now)
+                    await delayFn(nextWriteAt - now);
 
                 canvasCtx ??= getCanvasCtx();
                 const width = frame.displayWidth > 0 ? frame.displayWidth : frame.codedWidth;
@@ -111,8 +116,8 @@ export function canvasPresent(opts: CanvasPresentOptions): PipeOperator<DecodedF
                     if (!presented)
                         decoded.stats.framesDroppedAtPresenter++;
                 }
-                lastPresentMs = nowFn();
-                nextPresentMs += PRESENT_PERIOD_MS;
+                lastWriteAt = nextWriteAt;
+                prevCapturedAt = decoded.capturedAt.timeMs;
             } finally {
                 try { frame.close(); } catch { /* already closed */ }
             }

@@ -17,7 +17,7 @@ export interface PacedEncodedBufferOptions {
  *
  * No internal pacing — the buffer's `isReady()` is purely a function of
  * `spanMs() >= targetSpanMs`, so span only changes on push (or pull).
- * Downstream backpressure (the present stage's 60 fps cap, plus its
+ * Downstream backpressure (the present stage's MAX_FPS cap, plus its
  * catch-up skip policy when the buffer overflows) governs how fast the
  * inner drain loop yields. Drops at the buffer (deltas pushed while
  * reset-armed) bump `stats.chunksDroppedAtBuffer`.

@@ -109,12 +109,8 @@ export class Player {
         const decodedTap = wrappedReportLatency
             ? latencyTap({ report: wrappedReportLatency })
             : tap<DecodedFrame>(() => { /* identity */ });
-        // const tag = config.streamId.slice(-8);
-        // const pulledLog = logItems<ArrivedChunk>(`pull[${tag}]`, { firstN: 5, everyN: 300, format: c => `key=${c.isKeyFrame} layer=${c.layerId} ${c.width}x${c.height} sz=${c.chunk.byteLength}` });
-        // const decodedLog = logItems<DecodedFrame>(`decoded[${tag}]`, { firstN: 5, everyN: 300, format: f => `${f.frame.codedWidth}x${f.frame.codedHeight} layer=${f.layerId}` });
         const pipeline = pipe(
             source,
-            // pulledLog,
             resetOnEpochChange({ buffer }),
             pacedEncodedBuffer({ buffer, abortSignal }),
             decode({
@@ -122,7 +118,6 @@ export class Player {
                 createDecoder: config.createDecoder,
                 abortSignal,
             }),
-            // decodedLog,
             decodedTap,
             present,
         );
