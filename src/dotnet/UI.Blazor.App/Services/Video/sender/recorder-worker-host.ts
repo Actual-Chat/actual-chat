@@ -22,6 +22,7 @@ import type {
 import type { EncodedFrame } from '../frame-envelopes';
 import type { EncoderConfigPerLayer, EncodeInput } from '../operators/encode';
 import type { DownscalerLike, LayerSpec } from '../operators/downscale';
+import type { FloodGate } from '../operators/flood-gate';
 import type { StreamSenderLike, VideoStreamFrameBundle } from '../operators/wire-send';
 import { WebGpuDownscaler, type DownscaleTarget } from '../webgpu/downscaler';
 import { WebGPUManager } from '../webgpu/manager';
@@ -30,7 +31,7 @@ import {
     createWireSender,
     type DisposableStreamSender,
     type StreamingContext,
-} from '../streaming/streaming-glue';
+} from '../streaming/push-to-pull-buffer';
 import type { PooledEncoder } from './encoder-pool';
 import type { SenderSession } from './session';
 
@@ -332,7 +333,7 @@ function poolEncoderFactory(
  * first announce, and dim changes are absorbed by the per-frame DTO's
  * width/height fields.
  */
-function createSender(chatId: string): StreamSenderLike {
+function createSender(chatId: string, floodGate: FloodGate): StreamSenderLike {
     streamingContext.chatId = chatId;
     const sourceStartedAtMs = Date.now();
     let inner: DisposableStreamSender | null = null;
@@ -356,6 +357,7 @@ function createSender(chatId: string): StreamSenderLike {
                 format,
                 sourceStartedAtMs,
                 streamingContext,
+                floodGate,
             });
             resolveWhenDisposed(inner.whenDisposed);
             // Drain anything buffered before init landed (shouldn't
@@ -384,9 +386,8 @@ function createSender(chatId: string): StreamSenderLike {
                 addedFrameCount: buffered?.length ?? 0,
                 queueDepth: buffered?.length ?? 0,
                 maxQueueDepth: buffered?.length ?? 0,
-                droppedAtSenderQueue: 0,
-                droppedKeyframesAtSenderQueue: 0,
                 rpcStreamSkipped: 0,
+                floodGateSkipCount: 0,
                 lastAckAgeMs: -1,
                 isPeerConnected: false,
             };

@@ -33,8 +33,14 @@ public sealed partial record RecorderHealthSnapshot(
     [property: DataMember(Order = 4), MemoryPackOrder(4), Key(4)] double LastAckAgeMs,
     [property: DataMember(Order = 5), MemoryPackOrder(5), Key(5)] bool IsConnected,
     [property: DataMember(Order = 6), MemoryPackOrder(6), Key(6)] bool IsPeerConnected = true,
-    [property: DataMember(Order = 7), MemoryPackOrder(7), Key(7)] long SenderFramesDropped = 0,
-    [property: DataMember(Order = 8), MemoryPackOrder(8), Key(8)] long SenderKeyframesDropped = 0,
+    // Order 7 was SenderFramesDropped; now repurposed as FloodGateSkipCount —
+    // capture-side drops while push-to-pull-buffer was full. Numerically
+    // compatible with the previous "frames dropped at the sender queue" field
+    // (which fell to ~0 in practice once VersionTolerant clients deployed).
+    [property: DataMember(Order = 7), MemoryPackOrder(7), Key(7)] long FloodGateSkipCount = 0,
+    // Order 8 (was SenderKeyframesDropped) is removed — the flood gate
+    // operates on raw captured frames before keyframe policy runs, so there's
+    // no per-keyframe count to report. VersionTolerant clients tolerate gaps.
     [property: DataMember(Order = 9), MemoryPackOrder(9), Key(9)] long RpcStreamFramesSkipped = 0,
     [property: DataMember(Order = 10), MemoryPackOrder(10), Key(10)] int SenderQueueDepth = 0,
     [property: DataMember(Order = 11), MemoryPackOrder(11), Key(11)] int SenderMaxQueueDepth = 0);

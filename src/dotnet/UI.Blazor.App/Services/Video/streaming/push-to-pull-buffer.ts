@@ -1,32 +1,43 @@
 /**
- * Production glue between the new video pipeline (`Services/Video/operators/`)
- * and the Fusion `actuallab-rpc` machinery.
+ * Capture-side push → RPC-pull bridge for the recording pipeline.
  *
- * - `ensureRpcPush` lazily binds the worker's `Api.hub` default peer and
- *   caches the `ILiveVideoStreams` client on the {@link StreamingContext}.
- * - `createWireSender` returns a {@link StreamSenderLike} that the
- *   `wireSend` operator drives — internally it pumps a `Denque` rendezvous
- *   into an `RpcStream<VideoFrameDto>` started via
- *   `streamingApi.liveVideoStreams.PushStream(...)`. Mirrors the legacy
- *   `InternalVideoStream` from `VideoOld/workers/video-streaming.ts`.
- * - `createPullStream` is the receiver-side counterpart: a thin wrapper
- *   over `streamingApi.liveVideoStreams.GetStream(...)` shaped to fit
- *   `pullSource`'s `getStream` factory.
+ * Sits between the synchronous `send(bundle)` calls coming out of
+ * `wireSend` and the async pull driven by Fusion's
+ * `RpcStreamSender`. A small `Denque<VideoStreamFrameBundle>`
+ * (≈ 1 s capacity at frameRate) marries the two — under healthy
+ * operation the queue stays near-empty because the RPC sender's
+ * pump runs continuously while connected, draining bundles into its
+ * own large local ring (`VIDEO.senderBufferSize`).
  *
- * This file does NOT depend on `Services/VideoOld/` — the relevant bits
- * (the `frameToDto` mapper and the producer/consumer loop) are inlined
- * here so the new pipeline can stand on its own.
+ * Backpressure is propagated to the capture source via a
+ * {@link FloodGate}: when the bundle queue reaches half capacity
+ * the gate closes (the `floodGate` operator immediately after
+ * `mstpSource` drops captured frames), and reopens when the queue
+ * drains below a quarter — hysteresis keeps it from flapping.
+ *
+ * - `ensureRpcPush` lazily binds the worker's `Api.hub` default peer
+ *   and caches the `ILiveVideoStreams` client on the
+ *   {@link StreamingContext}.
+ * - `createWireSender` returns a {@link StreamSenderLike} that
+ *   `wireSend` drives. Internally it pumps the rendezvous Denque into
+ *   `RpcStream<VideoFrameBundleDto>` started via
+ *   `streamingApi.liveVideoStreams.PushStream(...)`.
+ * - `createPullStream` is the receiver-side counterpart — a thin
+ *   wrapper over `streamingApi.liveVideoStreams.GetStream(...)`
+ *   shaped to fit `pullSource`'s `getStream` factory.
  */
 
 import Denque from 'denque';
 import { EventHandlerSet } from 'event-handling';
 import { getLogs } from 'logging';
 import { RpcStream } from 'actuallab-rpc';
+import { VIDEO } from 'app-constants';
 import { Api, MediaRpcStreamOptions, streamingApi, toMoment,
     type LiveVideoStreamsClient, type SessionTokenProvider, type VideoFormatDto,
     type VideoFrameBundleDto, type VideoFrameDto } from 'api';
 import { ServerClock } from 'clocks';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
+import type { FloodGate } from '../operators/flood-gate';
 import type {
     StreamSenderLike,
     StreamSenderStats,
@@ -165,6 +176,10 @@ export interface CreateWireSenderOptions {
     format: WireSenderFormat;
     sourceStartedAtMs: number;
     streamingContext: StreamingContext;
+    /** Backpressure valve toggled by this module's queue-fill watcher.
+     *  Closed when `bundles.length >= pushPullBufferSize / 2`, opened
+     *  when it drops below `pushPullBufferSize / 4`. */
+    floodGate: FloodGate;
 }
 
 /** Sender returned by {@link createWireSender}. The pipeline calls
@@ -186,11 +201,8 @@ export interface WireSenderStats extends StreamSenderStats {
     queueDepth: number;
     /** Highest queue depth observed across the run. */
     maxQueueDepth: number;
-    /** Frames dropped by the overflow-compaction policy. */
-    droppedAtSenderQueue: number;
-    /** Subset of `droppedAtSenderQueue` that were keyframes (severe loss). */
-    droppedKeyframesAtSenderQueue: number;
     rpcStreamSkipped: number;
+    floodGateSkipCount: number;
     lastAckAgeMs: number;
     isPeerConnected: boolean;
 }
@@ -202,36 +214,45 @@ export interface DisposableStreamSender extends StreamSenderLike {
 }
 
 /**
- * Build a production wire sender that pumps frames into
+ * Build a production wire sender that pumps bundles into
  * `streamingApi.liveVideoStreams.PushStream(...)` over Fusion RPC.
  *
- * Internals mirror `VideoOld`'s `InternalVideoStream`:
+ * Internals:
  *
- *  - A `Denque<VideoStreamFrame>` is the producer/consumer rendezvous
- *    between the (sync) `send(dto)` calls and the (async) `RpcStream`
- *    source iterator. It is NOT an intentional buffer: under healthy
- *    operation it stays near-empty because `RpcStream`'s ring buffer plus
- *    its `canSkipTo` ACK compaction is the only buffer for unsent encoded
- *    frames. Backpressure is handled upstream (encoder slot replacement).
+ *  - A `Denque<VideoStreamFrameBundle>` of capacity ≈ 1 s
+ *    (`VIDEO.pushPullBufferSize`) is the rendezvous between the sync
+ *    `send(bundle)` calls and the async `RpcStream` source iterator.
+ *    Under healthy operation the queue stays near-empty because Fusion's
+ *    pump fills its own large ring (`VIDEO.senderBufferSize`) continuously
+ *    while connected, draining bundles out of this Denque immediately.
+ *
+ *  - When the queue fills to half capacity, {@link CreateWireSenderOptions.floodGate}
+ *    is closed — the capture-side `floodGate` operator drops captured
+ *    frames at the source. The gate reopens once the queue drains below
+ *    a quarter capacity (hysteresis avoids flapping).
  *
  *  - An `EventHandlerSet<void>` is used to wake the RpcStream pump on
  *    every push, plus once at end-of-stream when `dispose()` flips
  *    `isCompleted`.
  *
- *  - Termination is driven by the iterator returning. `Fusion`'s
+ *  - Termination is driven by the iterator returning. Fusion's
  *    `RpcStreamSender.disconnect()` calls `.return()` on the generator
  *    when needed; calling `dispose()` from the pipeline side flips
  *    `isCompleted` and triggers the wake event so the generator returns
  *    naturally.
  */
 export function createWireSender(opts: CreateWireSenderOptions): DisposableStreamSender {
-    const { chatId, format, sourceStartedAtMs, streamingContext: ctx } = opts;
+    const { chatId, format, sourceStartedAtMs, streamingContext: ctx, floodGate } = opts;
+
+    const queueCapacity = VIDEO.pushPullBufferSize;
+    const closeGateAt = Math.floor(queueCapacity / 2);
+    // +1 to keep the open threshold strictly below close, even when
+    // queueCapacity = 4 (close=2, open=1) and below.
+    const openGateAt = Math.max(0, Math.floor(queueCapacity / 4) - 1);
 
     const bundles = new Denque<VideoStreamFrameBundle>();
     const frameAdded = new EventHandlerSet<void>();
     let addedFrameCount = 0;
-    let droppedAtSenderQueue = 0;
-    let droppedKeyframesAtSenderQueue = 0;
     let maxQueueDepth = 0;
     let rpcStreamSkipped = 0;
     let rpcStreamSender: { readonly skipCount: number; onAckProcessed?: () => void } | null = null;
@@ -285,7 +306,12 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
                 (async function* () {
                     for (;;) {
                         while (!bundles.isEmpty()) {
-                            yield bundleToDto(bundles.shift()!);
+                            const bundle = bundles.shift()!;
+                            // Shifting may have crossed the open threshold —
+                            // re-open the flood gate so capture resumes.
+                            if (!floodGate.isOpen && bundles.length <= openGateAt)
+                                floodGate.open();
+                            yield bundleToDto(bundle);
                         }
                         if (isCompleted) return;
                         await frameAdded.whenNextVoid();
@@ -334,49 +360,6 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
 
     void pump();
 
-    // Queue-overflow drop policy. The Denque is a sync→async bridge: under
-    // healthy conditions the pump drains it as fast as send() pushes.
-    // Under sustained pump stall (peer disconnected, ACKs blocked, slow
-    // network), the Denque is the only place push-rate vs ACK-rate
-    // mismatch can accumulate — RpcStream's own RingBuffer is downstream
-    // and only fills when the iterator yields, which the pump-stall
-    // prevents. We can't use a ReplaceableSlot here: encoded frames are
-    // not freely droppable (delta sequences depend on prior keyframes,
-    // and we have multiple layers).
-    //
-    // Trigger: > 2 keyframe-bundles queued — that's past one full
-    // keyframe cycle plus an in-progress one, which only happens when
-    // the pump can't move forward. (applyKeyframePolicy makes all
-    // layers in a bundle keyframe-or-delta together, so a bundle's
-    // first frame represents the bundle's KF status.)
-    // Action: drop everything before the most recent keyframe bundle.
-    // Counter accounts for both bundles dropped and frames-equivalent.
-    const compactIfOverflowing = (): void => {
-        let lastKfIdx = -1;
-        let kfCount = 0;
-        for (let i = 0; i < bundles.length; i++) {
-            const b = bundles.get(i)!;
-            if (b.layers.length === 0 || !b.layers[0].isKeyFrame) continue;
-            kfCount++;
-            lastKfIdx = i;
-        }
-        if (kfCount <= 2 || lastKfIdx <= 0) return;
-
-        let droppedKeyBundles = 0;
-        let droppedFrames = 0;
-        for (let i = 0; i < lastKfIdx; i++) {
-            const dropped = bundles.shift()!;
-            if (dropped.layers.length > 0 && dropped.layers[0].isKeyFrame)
-                droppedKeyBundles++;
-            droppedFrames += dropped.layers.length;
-        }
-        droppedAtSenderQueue += droppedFrames;
-        droppedKeyframesAtSenderQueue += droppedKeyBundles * (bundles.peekFront()?.layers.length ?? 1);
-        warnLog?.log(`send: queue compacted — dropped ${lastKfIdx} bundles ` +
-            `(${droppedFrames} frames incl. ${droppedKeyBundles} keyframe-bundles); cumulative dropped=${droppedAtSenderQueue} ` +
-            `keyframes=${droppedKeyframesAtSenderQueue}`);
-    };
-
     const send = (bundle: VideoStreamFrameBundle): void => {
         if (isCompleted) return;
         // Late frames after pump teardown: drop silently. Throwing here
@@ -395,19 +378,21 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
         bundles.push(bundle);
         addedFrameCount += bundle.layers.length;
         const isKeyBundle = bundle.layers[0].isKeyFrame;
-        if (isKeyBundle)
-            compactIfOverflowing();
         if (bundles.length > maxQueueDepth)
             maxQueueDepth = bundles.length;
+        // Capture-side backpressure: when the queue fills to half
+        // capacity, ask the flood gate to drop captured frames at the
+        // source. The pump's shift loop reopens the gate when the queue
+        // drains below `openGateAt` (hysteresis prevents flapping).
+        if (floodGate.isOpen && bundles.length >= closeGateAt)
+            floodGate.close();
 
         // Heartbeat at Info so live diagnosis doesn't need a log-level
-        // override. At 30fps this fires roughly every 10s. Throws into
-        // warnLog territory automatically via compactIfOverflowing when
-        // the queue actually overflows.
+        // override. At 30fps this fires roughly every 10s.
         if (addedFrameCount <= 3 || addedFrameCount % 300 === 0) {
             infoLog?.log(`send: total=${addedFrameCount} queueBundles=${bundles.length} ` +
                 `peakQueueBundles=${maxQueueDepth} ` +
-                `dropped=${droppedAtSenderQueue} keyframesDropped=${droppedKeyframesAtSenderQueue} ` +
+                `floodGateSkipCount=${floodGate.skipCount} gateOpen=${floodGate.isOpen} ` +
                 `isKey=${isKeyBundle} bundleLayers=${bundle.layers.length} size=${totalBytes} ` +
                 `lastError='${lastError}' isDisposed=${isDisposed}`);
         }
@@ -425,9 +410,8 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
         addedFrameCount,
         queueDepth: bundles.length,
         maxQueueDepth,
-        droppedAtSenderQueue,
-        droppedKeyframesAtSenderQueue,
         rpcStreamSkipped: streamSkipped(),
+        floodGateSkipCount: floodGate.skipCount,
         lastAckAgeMs: lastAckAtMs >= 0 ? Date.now() - lastAckAtMs : -1,
         // RpcPeer.isConnected flips true only after the RPC handshake
         // completes (rpc-peer.ts: _setConnectionState(Connected) at the

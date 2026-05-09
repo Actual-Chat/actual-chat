@@ -71,6 +71,23 @@ export interface VideoConstants {
     readonly serverReplayTailSize: number;       // frameRate * serverReplayTailDurationMs / 1000
     readonly rpcStreamAckPeriod: number;         // floor(targetBufferSize / 3)
     readonly rpcStreamAckAdvance: number;        // targetBufferSize
+    /**
+     * RPC sender's local buffer (in source moments / bundles). Sized to
+     * one keyframe interval × 1.33, so the sender's canSkipTo=isKeyFrame
+     * compaction has room to skip past at least one full GOP without
+     * wedging on a slow ACK. Fusion's pump fills this buffer
+     * continuously while connected — capture drains into it regardless
+     * of whether the wire window is open. Wired to RpcStreamOptions
+     * `bufferSize` via {@link MediaRpcStreamOptions.videoRealtime}.
+     */
+    readonly senderBufferSize: number;           // ceil(keyFramePeriodSize * 1.33)
+    /**
+     * push-to-pull-buffer (capture-side rendezvous Denque) capacity.
+     * One source moment per slot. ≈ 1 s at frameRate. The flood gate
+     * closes when this queue reaches half capacity and reopens at a
+     * quarter — propagates backpressure to the capture source.
+     */
+    readonly pushPullBufferSize: number;         // frameRate
 }
 
 export enum VideoCodecKind {
@@ -312,17 +329,20 @@ export function initAppConstants(appConstants: AppConstants): void {
 function expandVideo(video: VideoConstants): VideoConstants {
     const { frameRate, targetBufferSize, keyFramePeriodMs, serverReplayTailDurationMs } = video;
     const bufferHysteresisSize = Math.floor(targetBufferSize / 2);
+    const keyFramePeriodSize = Math.round(frameRate * keyFramePeriodMs / 1000);
     return {
         ...video,
         frameDurationMs: 1000 / frameRate,
         targetBufferDurationMs: (targetBufferSize / frameRate) * 1000,
-        keyFramePeriodSize: Math.round(frameRate * keyFramePeriodMs / 1000),
+        keyFramePeriodSize,
         bufferHysteresisSize,
         minBufferSize: targetBufferSize - bufferHysteresisSize,
         maxBufferSize: targetBufferSize + bufferHysteresisSize,
         serverReplayTailSize: Math.round(frameRate * serverReplayTailDurationMs / 1000),
         rpcStreamAckPeriod: Math.floor(targetBufferSize / 3),
         rpcStreamAckAdvance: targetBufferSize,
+        senderBufferSize: Math.ceil(keyFramePeriodSize * 4 / 3),
+        pushPullBufferSize: frameRate,
     };
 }
 

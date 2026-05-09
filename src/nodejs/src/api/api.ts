@@ -102,6 +102,12 @@ export class MediaRpcStreamOptions {
             allowReconnect: true,
             ackPeriod: VIDEO.rpcStreamAckPeriod,
             ackAdvance: VIDEO.rpcStreamAckAdvance,
+            // Local sender buffer sized for ≈ keyframe period × 1.33 of source
+            // moments. Fusion's pump fills it continuously while connected,
+            // and canSkipTo=isKeyFrame absorbs slow-wire spans by skipping
+            // older non-anchor items inside the buffer rather than blocking
+            // the capture pipeline.
+            bufferSize: VIDEO.senderBufferSize,
             canSkipTo: canSkipTo ?? ((item) => (item as KeyFrameLike).IsKeyFrame),
         };
     }

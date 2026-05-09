@@ -940,7 +940,7 @@ export class VideoRecorder {
         Api.onDisconnectRequested(WorkerKind.VideoCapture).add(this._disconnectApiHandler);
 
         // Seed the worker's app-constants holders so `MediaRpcStreamOptions`
-        // can read `VIDEO.rpcStreamAckPeriod` etc. from the streaming-glue
+        // can read `VIDEO.rpcStreamAckPeriod` etc. from the push-to-pull-buffer
         // layer. `AC` is structurally-cloneable JSON.
         void this.worker.init(AC).catch((e: unknown) => {
             warnLog?.log('Worker init failed:', e);
@@ -1268,8 +1268,12 @@ export class VideoRecorder {
             let senderFrameDropRatio = 0;
             if (previous && isPeerConnected && this.lastRecorderHealthWasPeerConnected) {
                 const added = Math.max(0, stats.wireFramesAdded - previous.wireFramesAdded);
+                // Frames the publisher could have shipped but didn't:
+                //   floodGateSkipCount — closed at the capture-side gate
+                //   rpcStreamFramesSkipped — skipped inside the sender ring
+                //                            via canSkipTo=isKeyFrame
                 const wireDropped = Math.max(0,
-                    stats.wireFramesDropped - previous.wireFramesDropped
+                    stats.floodGateSkipCount - previous.floodGateSkipCount
                     + stats.rpcStreamFramesSkipped - previous.rpcStreamFramesSkipped);
                 // Pre-encode losses (dim guard, backpressure, other) feed
                 // the same EMA: each is a frame the recorder was supposed
@@ -1294,8 +1298,7 @@ export class VideoRecorder {
                 senderFrameDropRatio,
                 stats.wireLastAckAgeMs,
                 isPeerConnected,
-                stats.wireFramesDropped,
-                stats.wireKeyframesDropped,
+                stats.floodGateSkipCount,
                 stats.rpcStreamFramesSkipped,
                 stats.wireQueueDepth,
                 stats.wireMaxQueueDepth);

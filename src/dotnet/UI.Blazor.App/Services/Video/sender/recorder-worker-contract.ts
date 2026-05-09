@@ -78,7 +78,7 @@ export interface AppConstantsLike { readonly appName: string; readonly prodHost:
 export interface RecorderWorker extends SharedSettingsWorker {
     /** Initialise worker-local app constants (video/audio limits,
      *  RPC stream tuning). First call wins; subsequent calls no-op.
-     *  MUST be called before {@link start}; the streaming-glue layer
+     *  MUST be called before {@link start}; the push-to-pull-buffer
      *  reads `VIDEO.rpcStreamAckPeriod` etc. from this. */
     init(appConstants: AppConstantsLike): Promise<void>;
     /** Land a transferred `ReadableStream<VideoFrame>` (constructed

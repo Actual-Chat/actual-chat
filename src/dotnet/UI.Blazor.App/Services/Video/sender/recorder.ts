@@ -16,6 +16,7 @@ import { attachSourceDims } from '../operators/attach-source-dims';
 import { downscale, type DownscalerLike, type LayerSpec } from '../operators/downscale';
 import { applyKeyframePolicy } from '../operators/apply-keyframe-policy';
 import { encode, type EncoderConfigPerLayer, type EncoderFactory } from '../operators/encode';
+import { FloodGate, floodGate } from '../operators/flood-gate';
 import { wireSend, type StreamSenderLike } from '../operators/wire-send';
 import type { SenderSession } from './session';
 
@@ -38,8 +39,10 @@ export interface RecorderConfig {
     keyframeIntervalFrames: number;
     /** Wallclock floor (ms) for keyframe forcing. */
     maxKeyFrameIntervalMs?: number;
-    /** Production: `RpcStreamSender` via `InternalVideoStream`. */
-    createSender: () => StreamSenderLike;
+    /** Production: `RpcStreamSender` via `push-to-pull-buffer`. The
+     *  recorder owns the {@link FloodGate}; the factory threads it
+     *  through to the wire bridge so it can drive backpressure. */
+    createSender: (gate: FloodGate) => StreamSenderLike;
     /** Production: pulls from session encoder pool + WebCodecs glue. */
     createEncoder: EncoderFactory;
     /** Required for simulcast (length > 1); defaults to clone-only
@@ -89,6 +92,13 @@ export class Recorder {
         const abortController = new AbortController();
         const abortSignal = abortController.signal;
         const sourceStopController = new AbortController();
+        // FloodGate lives for the duration of this run. Closed by
+        // `push-to-pull-buffer` when its bundle queue fills past half;
+        // reopened when it drains below a quarter. While closed, the
+        // `floodGate` operator just after capture closes incoming
+        // frames and skips the yield — encoders and downscaler stay
+        // idle, which is the cheapest place to absorb a wire stall.
+        const gate = new FloodGate();
         const captureSource = mstpSource({
             track: config.track,
             stats,
@@ -98,6 +108,7 @@ export class Recorder {
         });
         const recordingPipe = pipe(
             captureSource,
+            floodGate(gate),
             stampCaptureTime({ clock: this.session.captureClock }),
             attachSourceDims(),
             // logItems<CapturedFrame>('captured', { firstN: 5, everyN: 300, format: f => `idx=${f.index}` }),
@@ -112,7 +123,7 @@ export class Recorder {
             }),
             // logItems<EncodedFrame>('encoded', { firstN: 5, everyN: 300, format: f => `layer=${f.layerId} key=${f.chunk.type === 'key'} sz=${f.chunk.byteLength}` }),
             wireSend({
-                createSender: config.createSender,
+                createSender: () => config.createSender(gate),
                 layerCount: config.encoderConfigs.length,
                 topLayerWidth: config.encoderConfigs[config.encoderConfigs.length - 1].width,
                 topLayerHeight: config.encoderConfigs[config.encoderConfigs.length - 1].height,

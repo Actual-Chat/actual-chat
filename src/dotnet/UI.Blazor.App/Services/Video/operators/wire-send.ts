@@ -71,9 +71,12 @@ export interface StreamSenderStats {
     addedFrameCount: number;
     queueDepth: number;
     maxQueueDepth: number;
-    droppedAtSenderQueue: number;
-    droppedKeyframesAtSenderQueue: number;
+    /** Frames the RpcStreamSender skipped inside its local ring via
+     *  `canSkipTo=isKeyFrame`. Real-time compaction — NOT a loss
+     *  counter at the queue level (that's `floodGateSkipCount`). */
     rpcStreamSkipped: number;
+    /** Frames closed-and-skipped at the capture-side flood gate. */
+    floodGateSkipCount: number;
     lastAckAgeMs: number;
     isPeerConnected: boolean;
 }
@@ -239,9 +242,8 @@ function copySenderStats(
     stats.wireFramesAdded = senderStats.addedFrameCount;
     stats.wireQueueDepth = senderStats.queueDepth;
     stats.wireMaxQueueDepth = senderStats.maxQueueDepth;
-    stats.wireFramesDropped = senderStats.droppedAtSenderQueue;
-    stats.wireKeyframesDropped = senderStats.droppedKeyframesAtSenderQueue;
     stats.rpcStreamFramesSkipped = senderStats.rpcStreamSkipped;
+    stats.floodGateSkipCount = senderStats.floodGateSkipCount;
     stats.wireLastAckAgeMs = senderStats.lastAckAgeMs;
     stats.isPeerConnected = senderStats.isPeerConnected;
 }

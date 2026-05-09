@@ -722,8 +722,8 @@
 
     private static string FormatRecordingSenderSignal(RecorderHealthSnapshot health)
         => $"dropRatioEma={health.SenderFrameDropRatioEma:F2}, "
-            + $"dropped={health.SenderFramesDropped}+{health.RpcStreamFramesSkipped}, "
-            + $"keyDropped={health.SenderKeyframesDropped}, "
+            + $"floodGateSkipCount={health.FloodGateSkipCount}, "
+            + $"rpcStreamSkipped={health.RpcStreamFramesSkipped}, "
             + $"queue={health.SenderQueueDepth}/{health.SenderMaxQueueDepth}, "
             + $"ackAge={FormatAckAge(health.LastAckAgeMs)}, "
             + $"connected={(health.IsConnected ? "yes" : "no")}, "

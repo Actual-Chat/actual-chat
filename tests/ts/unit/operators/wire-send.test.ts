@@ -69,9 +69,8 @@ class StatsSender extends FakeSender {
         addedFrameCount: 0,
         queueDepth: 0,
         maxQueueDepth: 0,
-        droppedAtSenderQueue: 0,
-        droppedKeyframesAtSenderQueue: 0,
         rpcStreamSkipped: 0,
+        floodGateSkipCount: 0,
         lastAckAgeMs: -1,
         isPeerConnected: false,
     };
@@ -370,9 +369,8 @@ describe('wireSend', () => {
     it('copies sender and RpcStream drop counters into recording stats', async () => {
         const stats = createEmptyRecordingStats(0);
         const sender = new StatsSender();
-        sender.stats.droppedAtSenderQueue = 2;
-        sender.stats.droppedKeyframesAtSenderQueue = 1;
         sender.stats.rpcStreamSkipped = 3;
+        sender.stats.floodGateSkipCount = 2;
         sender.stats.lastAckAgeMs = 123;
         sender.stats.isPeerConnected = true;
 
@@ -381,9 +379,8 @@ describe('wireSend', () => {
         ]), wireSend({ createSender: () => sender }));
 
         expect(stats.wireFramesAdded).toBe(1);
-        expect(stats.wireFramesDropped).toBe(2);
-        expect(stats.wireKeyframesDropped).toBe(1);
         expect(stats.rpcStreamFramesSkipped).toBe(3);
+        expect(stats.floodGateSkipCount).toBe(2);
         expect(stats.wireLastAckAgeMs).toBe(123);
         expect(stats.isPeerConnected).toBe(true);
     });

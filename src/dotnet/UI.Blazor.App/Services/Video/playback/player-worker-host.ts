@@ -43,7 +43,7 @@ let pullApiInitialized = false;
  * Lazily initialise `Api` for the playback worker so
  * `streamingApi.liveVideoStreams.GetStream` has a peer to dial.
  *
- * Mirrors the recorder side's `ensureRpcPush` (in streaming-glue.ts):
+ * Mirrors the recorder side's `ensureRpcPush` (in push-to-pull-buffer.ts):
  *  - First call: `Api.init('VideoPlayer', {...}) + Api.requireConnection`.
  *  - Subsequent calls: no-op (Api.init silently drops options when the
  *    hub already exists, so we re-arm `requireConnection` defensively).

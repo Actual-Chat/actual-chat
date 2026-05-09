@@ -349,7 +349,7 @@ export class VideoPlayer {
                 }
             );
 
-            // Seed worker-local app constants so streaming-glue / decoder
+            // Seed worker-local app constants so push-to-pull-buffer / decoder
             // helpers can read VIDEO/AUDIO. AC is structurally cloneable.
             void this.playerWorker.init(AC).catch((e: unknown) => {
                 warnLog?.log('Player worker init failed:', e);

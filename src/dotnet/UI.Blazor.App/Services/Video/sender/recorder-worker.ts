@@ -19,6 +19,7 @@ import { getLogs } from 'logging';
 import { createEmptyRecordingStats, type VideoRecordingStats } from '../frame-envelopes';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 import type { DownscalerLike } from '../operators/downscale';
+import type { FloodGate } from '../operators/flood-gate';
 import type { StreamSenderLike } from '../operators/wire-send';
 import { Recorder } from './recorder';
 import type { EncoderFactory as PoolEncoderFactory } from './encoder-pool';
@@ -80,8 +81,10 @@ export interface RecorderWorkerDeps {
     /** Forwards the AppConstants payload to the host's
      *  {@link initAppConstants}. Tests can supply a no-op. */
     initAppConstants?: (appConstants: import('./recorder-worker-contract').AppConstantsLike) => void;
-    /** Constructs a fresh `StreamSenderLike` for the run. */
-    createSender: (chatId: string) => StreamSenderLike;
+    /** Constructs a fresh `StreamSenderLike` for the run. The
+     *  recorder threads its {@link FloodGate} so the wire bridge can
+     *  drive backpressure based on its own queue fill. */
+    createSender: (chatId: string, floodGate: FloodGate) => StreamSenderLike;
     /** Constructs a fresh GPU-backed downscaler. May be omitted for
      *  single-tier (P2P) use; the recorder falls back to an identity
      *  downscaler in that case. */
@@ -204,7 +207,7 @@ export const recorderWorkerImpl: RecorderWorker = {
 
     async disconnectApi(): Promise<void> {
         // TODO(phase 7+): force-remove the worker's RPC peer from the
-        // hub when one exists. The new pipeline's `streaming-glue`
+        // hub when one exists. The new pipeline's `push-to-pull-buffer`
         // currently lazy-initialises the peer per stream, so there's
         // no long-lived peer for the debug button to reach.
         await Promise.resolve();
@@ -253,7 +256,7 @@ export const recorderWorkerImpl: RecorderWorker = {
             return handle.encoder;
         };
 
-        const senderFactory = (): StreamSenderLike => deps.createSender(config.chatId);
+        const senderFactory = (gate: FloodGate): StreamSenderLike => deps.createSender(config.chatId, gate);
 
         const whenDone = recorder.start({
             track,

@@ -348,8 +348,7 @@ public sealed class VideoRecorder : IAsyncDisposable
             double senderFrameDropRatioEma,
             double lastAckAgeMs,
             bool isPeerConnected,
-            long senderFramesDropped,
-            long senderKeyframesDropped,
+            long floodGateSkipCount,
             long rpcStreamFramesSkipped,
             int senderQueueDepth,
             int senderMaxQueueDepth)
@@ -361,8 +360,7 @@ public sealed class VideoRecorder : IAsyncDisposable
                 lastAckAgeMs,
                 false,
                 isPeerConnected,
-                senderFramesDropped,
-                senderKeyframesDropped,
+                floodGateSkipCount,
                 rpcStreamFramesSkipped,
                 senderQueueDepth,
                 senderMaxQueueDepth));

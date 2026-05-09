@@ -61,9 +61,13 @@ export interface VideoRecordingStats {
     wireFramesAdded: number;
     wireQueueDepth: number;
     wireMaxQueueDepth: number;
-    wireFramesDropped: number;
-    wireKeyframesDropped: number;
+    /** Frames the RpcStreamSender skipped inside its local ring via
+     *  canSkipTo=isKeyFrame. Real-time compaction inside the sender
+     *  ring; NOT a queue-overflow drop counter. */
     rpcStreamFramesSkipped: number;
+    /** Frames closed-and-skipped at the capture-side flood gate
+     *  because `push-to-pull-buffer` couldn't keep up with the wire. */
+    floodGateSkipCount: number;
     wireLastAckAgeMs: number;
     isPeerConnected: boolean;
     /** Local self-view tap failures (clone or write rejections). Counted
@@ -110,9 +114,8 @@ export function createEmptyRecordingStats(startedAtMs: number): VideoRecordingSt
         wireFramesAdded: 0,
         wireQueueDepth: 0,
         wireMaxQueueDepth: 0,
-        wireFramesDropped: 0,
-        wireKeyframesDropped: 0,
         rpcStreamFramesSkipped: 0,
+        floodGateSkipCount: 0,
         wireLastAckAgeMs: -1,
         isPeerConnected: false,
         previewClonesFailed: 0,
