@@ -71,7 +71,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
         return new RpcStream<VideoFrame>(stream) {
             AckPeriod = Constants.Video.RpcStreamAckPeriod,
-            BufferSize = Constants.Video.RpcStreamBufferSize,
+            AckAdvance = Constants.Video.RpcStreamAckAdvance,
         };
     }
 

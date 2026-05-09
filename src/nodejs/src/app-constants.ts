@@ -69,8 +69,8 @@ export interface VideoConstants {
     readonly minBufferSize: number;              // targetBufferSize - bufferHysteresisSize
     readonly maxBufferSize: number;              // targetBufferSize + bufferHysteresisSize
     readonly serverReplayTailSize: number;       // frameRate * serverReplayTailDurationMs / 1000
-    readonly rpcStreamAckPeriod: number;         // bufferHysteresisSize
-    readonly rpcStreamBufferSize: number;        // targetBufferSize
+    readonly rpcStreamAckPeriod: number;         // floor(targetBufferSize / 3)
+    readonly rpcStreamAckAdvance: number;        // targetBufferSize
 }
 
 export enum VideoCodecKind {
@@ -321,8 +321,8 @@ function expandVideo(video: VideoConstants): VideoConstants {
         minBufferSize: targetBufferSize - bufferHysteresisSize,
         maxBufferSize: targetBufferSize + bufferHysteresisSize,
         serverReplayTailSize: Math.round(frameRate * serverReplayTailDurationMs / 1000),
-        rpcStreamAckPeriod: bufferHysteresisSize,
-        rpcStreamBufferSize: targetBufferSize,
+        rpcStreamAckPeriod: Math.floor(targetBufferSize / 3),
+        rpcStreamAckAdvance: targetBufferSize,
     };
 }
 

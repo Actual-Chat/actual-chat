@@ -4,7 +4,7 @@ namespace ActualChat.Audio;
 /// Describes audio encoding parameters including codec, sample rate, and channel count.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-public partial record AudioFormat : MediaFormat
+public sealed partial record AudioFormat : MediaFormat
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember]
     public override MediaType Type => MediaType.Audio;

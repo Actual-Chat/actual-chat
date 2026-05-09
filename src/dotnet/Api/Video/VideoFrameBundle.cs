@@ -8,17 +8,16 @@ namespace ActualChat.Video;
 /// only Data, Width/Height, Description and LayerId differ.
 /// </summary>
 [DataContract, MemoryPackable, MessagePackObject]
-public partial class VideoFrameBundle
+[method: MemoryPackConstructor, SerializationConstructor]
+public sealed partial class VideoFrameBundle(VideoFrame[] frames)
 {
-    [MemoryPackConstructor]
-    public VideoFrameBundle() { }
-
-    public VideoFrameBundle(VideoFrame[] frames)
-        => Frames = frames;
-
     [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
-    public VideoFrame[] Frames { get; init; } = [];
+    public VideoFrame[] Frames { get; init; } = frames;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int LayerCount => Frames.Length;
+    [JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public VideoFrame TopFrame => Frames[^1];
+    [JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public VideoFrame BottomFrame => Frames[0];
 }

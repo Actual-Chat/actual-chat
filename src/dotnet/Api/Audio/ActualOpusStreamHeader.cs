@@ -6,7 +6,7 @@ namespace ActualChat.Audio;
 /// <summary>
 /// Header for ActualChat's native Opus stream format (A_OPUS_S).
 /// </summary>
-public record ActualOpusStreamHeader(Moment CreatedAt, AudioFormat Format)
+public sealed record ActualOpusStreamHeader(Moment CreatedAt, AudioFormat Format)
 {
     public static readonly byte[] Prefix = { 0x41, 0x5F, 0x4F, 0x50, 0x55, 0x53, 0x5F, 0x53 }; // A_OPUS_S
     public static readonly byte[] ActualOpusStreamFormat = { 0x41, 0x5F, 0x4F, 0x50, 0x55, 0x53, 0x5F, 0x53, 0x03 }; // A_OPUS_S + version = 3

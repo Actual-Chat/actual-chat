@@ -1,13 +1,11 @@
-using System.Buffers;
 using ActualChat.Audio.Ogg;
-using ActualChat.Spans;
 
 namespace ActualChat.Audio;
 
 /// <summary>
 /// Converts <see cref="AudioSource"/> to Ogg/Opus stream format.
 /// </summary>
-public class OggOpusStreamConverter(OggOpusStreamConverter.Options? options = null) : IAudioStreamConverter
+public sealed class OggOpusStreamConverter(OggOpusStreamConverter.Options? options = null) : IAudioStreamConverter
 {
     public record Options
     {

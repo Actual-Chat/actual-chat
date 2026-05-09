@@ -101,7 +101,7 @@ export class MediaRpcStreamOptions {
             isRealTime: true,
             allowReconnect: true,
             ackPeriod: VIDEO.rpcStreamAckPeriod,
-            bufferSize: VIDEO.rpcStreamBufferSize,
+            ackAdvance: VIDEO.rpcStreamAckAdvance,
             canSkipTo: canSkipTo ?? ((item) => (item as KeyFrameLike).IsKeyFrame),
         };
     }

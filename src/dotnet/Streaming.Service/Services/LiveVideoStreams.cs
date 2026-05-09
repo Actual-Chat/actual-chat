@@ -147,7 +147,7 @@ public class LiveVideoStreams : ILiveVideoStreams
         return new RpcStream<VideoFrame>(LogFirstFrame()) {
             AllowReconnect = false,
             AckPeriod = Constants.Video.RpcStreamAckPeriod,
-            BufferSize = Constants.Video.RpcStreamBufferSize,
+            AckAdvance = Constants.Video.RpcStreamAckAdvance,
         };
 
         async IAsyncEnumerable<VideoFrame> LogFirstFrame()

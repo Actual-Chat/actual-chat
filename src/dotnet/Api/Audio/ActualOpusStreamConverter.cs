@@ -6,7 +6,7 @@ namespace ActualChat.Audio;
 /// <summary>
 /// Converts between ActualChat's native Opus stream format and <see cref="AudioSource"/>.
 /// </summary>
-public class ActualOpusStreamConverter(MomentClockSet clocks, ILogger log) : IAudioStreamConverter
+public sealed class ActualOpusStreamConverter(MomentClockSet clocks, ILogger log) : IAudioStreamConverter
 {
     private MomentClockSet Clocks { get; } = clocks;
     private ILogger Log { get; } = log;

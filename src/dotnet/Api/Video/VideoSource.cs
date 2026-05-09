@@ -1,6 +1,6 @@
 namespace ActualChat.Video;
 
-public class VideoSource(
+public sealed class VideoSource(
     Moment createdAt,
     VideoFormat format,
     IAsyncEnumerable<VideoFrame> frameStream,

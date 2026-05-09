@@ -751,10 +751,10 @@ async Task RunProducerRpc(int chatIdx, int prodIdx, CancellationToken ct)
         var sourceStartOffsetSeconds = CpuClock.Instance.Now.EpochOffset.TotalSeconds;
         producerSourceStartOffsets[(chatIdx, prodIdx)] = sourceStartOffsetSeconds;
         var format = new VideoFormat { Codec = Codec, Size = (FrameWidth, FrameHeight) };
-        var frameStream = RpcStream.New(PushFramesRpc(chatIdx, prodIdx, ct));
+        var bundleStream = RpcStream.New(PushFrameBundlesRpc(chatIdx, prodIdx, ct));
         await ownLiveVideoStreams.PushStream(
             prodSession, chatIds[chatIdx].Value, sourceStartOffsetSeconds,
-            format, VideoSourceKind.Camera, frameStream, ct
+            format, VideoSourceKind.Camera, bundleStream, ct
             ).ConfigureAwait(false);
         try { await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, ct).ConfigureAwait(false); }
         catch (OperationCanceledException) { }
@@ -764,7 +764,7 @@ async Task RunProducerRpc(int chatIdx, int prodIdx, CancellationToken ct)
     }
 }
 
-async IAsyncEnumerable<VideoFrame> PushFramesRpc(
+async IAsyncEnumerable<VideoFrameBundle> PushFrameBundlesRpc(
     int chatIdx, int prodIdx,
     [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
 {
@@ -778,7 +778,7 @@ async IAsyncEnumerable<VideoFrame> PushFramesRpc(
             await Task.Delay(remaining, ct).ConfigureAwait(false);
 
         sentTimestamps[(chatIdx, prodIdx, frame.Offset.Ticks)] = Stopwatch.GetTimestamp();
-        yield return frame;
+        yield return new VideoFrameBundle([frame]);
     }
 }
 

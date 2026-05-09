@@ -74,8 +74,8 @@ public static partial class Constants
         // 5-frame ack cadence (~165ms @ 30fps), 10-frame credit window
         // (~333ms outstanding). Real-time canSkipTo=isKeyFrame compaction
         // handles stalls by skipping to the latest decoder-safe frame.
-        public const int RpcStreamAckPeriod = TargetBufferSize / 2; // 5
-        public const int RpcStreamBufferSize = TargetBufferSize;    // 10
+        public const int RpcStreamAckPeriod = TargetBufferSize / 3; // 3
+        public const int RpcStreamAckAdvance = TargetBufferSize;    // 10
         // Memoizer retention is now duration-tracked, keyframe-span eviction
         // (VideoStreamMemoizer in Streaming.Service) bounded by
         // ServerReplayTailDuration — no count-based ceiling.

@@ -79,7 +79,7 @@ export async function runRpcProducer(
         };
         const clientStartAtSec = Date.now() / 1000;  // Unix epoch (seconds, double)
 
-        // Real-time video stream: isRealTime=true, allowReconnect=false, ackPeriod=5, bufferSize=31.
+        // Real-time video stream: isRealTime=true, allowReconnect=false, ackPeriod=5, ackAdvance=31.
         // toRef() creates the sender, registers it, and starts pumping in the background.
         const stream = new RpcStream<VideoFrameDto>((async function* () {
             const start = Date.now();
@@ -91,7 +91,7 @@ export async function runRpcProducer(
                 ctx.metrics.recordSent(chatIdx, prodIdx, frame.Offset);
                 yield frame;
             }
-        })(), { isRealTime: true, allowReconnect: false, ackPeriod: 5, bufferSize: 31 });
+        })(), { isRealTime: true, allowReconnect: false, ackPeriod: 5, ackAdvance: 31 });
 
         // PushStream is a long-lived call — the server holds it open until
         // the frame stream ends. Fire-and-forget; surface any rejection so

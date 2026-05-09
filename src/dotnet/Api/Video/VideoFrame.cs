@@ -2,7 +2,7 @@ namespace ActualChat.Video;
 
 [DataContract, MemoryPackable, MessagePackObject]
 [MessagePackFormatter(typeof(CachingVideoFrameFormatter))]
-public partial class VideoFrame : MediaFrame
+public sealed partial class VideoFrame : MediaFrame
 {
     // Parameterless constructor for MessagePack and MemoryPack deserialization
     [MemoryPackConstructor]

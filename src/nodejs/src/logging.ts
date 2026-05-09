@@ -128,7 +128,6 @@ export type LogScope =
     | 'VideoDecoder'
     | 'VideoSegmentation'
     | 'VideoWebGPU'
-    | 'BlurPreviewSession'
     | 'CameraPermission'
     | 'VisualMediaViewer'
     | 'WebAuth'
@@ -225,20 +224,19 @@ const defaults: Record<LogScope, LogLevel> = {
     Theme: LogLevel.Warn,
     TooltipHost: LogLevel.Warn,
     UserInterface: LogLevel.Warn,
-    // Video — Debug for latency troubleshooting (preserved from old reset())
+    // Video — Debug for ongoing latency troubleshooting.
     VideoPanel: LogLevel.Debug,
-    JoinVideoCallModal: LogLevel.Info,
+    JoinVideoCallModal: LogLevel.Debug,
     VideoPlayer: LogLevel.Debug,
-    VideoRecorder: LogLevel.Warn,
-    VideoStreamingPreview: LogLevel.Warn,
+    VideoRecorder: LogLevel.Debug,
+    VideoStreamingPreview: LogLevel.Debug,
     VideoPipeline: LogLevel.Debug,
-    VideoEncoder: LogLevel.Warn,
-    VideoDecoder: LogLevel.Warn,
-    VideoSegmentation: LogLevel.Warn,
-    VideoWebGPU: LogLevel.Info,
-    BlurPreviewSession: LogLevel.Warn,
-    CameraPermission: LogLevel.Warn,
-    VisualMediaViewer: LogLevel.Warn,
+    VideoEncoder: LogLevel.Debug,
+    VideoDecoder: LogLevel.Debug,
+    VideoSegmentation: LogLevel.Debug,
+    VideoWebGPU: LogLevel.Debug,
+    CameraPermission: LogLevel.Debug,
+    VisualMediaViewer: LogLevel.Debug,
     WebAuth: LogLevel.Warn,
     WebFileProvider: LogLevel.Warn,
 };

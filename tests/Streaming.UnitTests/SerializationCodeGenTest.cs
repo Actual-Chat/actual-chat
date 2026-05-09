@@ -15,6 +15,7 @@ public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
         SerializationCodeGen.ValidateType<VideoStreamHeader>();
         SerializationCodeGen.ValidateType<VideoStreamInfo>();
         SerializationCodeGen.ValidateType<VideoFormat>();
+        SerializationCodeGen.ValidateType<VideoFrameBundle>();
         SerializationCodeGen.ValidateType<VideoStreamMemberInfo>();
         SerializationCodeGen.ValidateType<AudioFormat>();
         SerializationCodeGen.ValidateType<LiveStreamInfo>();
