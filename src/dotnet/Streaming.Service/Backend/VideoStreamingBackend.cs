@@ -309,12 +309,16 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 await memoizer.DisposeAsync().ConfigureAwait(false);
         }
         finally {
-            // Drain the silence watchdog before the linked CTS goes out
-            // of scope. The watchdog's Task.Delay is bound to
-            // cancellationToken (linked from watchdogCts), so the using {}
-            // teardown wakes it via OCE; awaiting here avoids the racy
-            // "Task using IDisposable instance after dispose" warning.
+            // Wake the silence watchdog explicitly so it doesn't keep us
+            // here for up to one full interval (5 s) on a clean source
+            // end. The watchdog's Task.Delay is bound to
+            // cancellationToken (= watchdogCts.Token); cancelling here
+            // releases it immediately. Safe at this point: ProcessFrames
+            // and the memoizer have already wound down, so nothing else
+            // is reading watchdogCts.Token.
             if (silenceWatchdogTask is not null) {
+                try { await watchdogCts.CancelAsync().ConfigureAwait(false); }
+                catch { /* already cancelled / disposed */ }
                 try {
                     await silenceWatchdogTask.ConfigureAwait(false);
                 }
