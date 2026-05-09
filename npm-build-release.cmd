@@ -1,11 +1,10 @@
 :<<BATCH
-    rem call "./npm-install.cmd"
+    @echo off
     if /i "%~1"=="-f" goto :skip_ci
     if /i "%~1"=="--fast" goto :skip_ci
     call npm ci
     :skip_ci
     call npm run build:Release
-
     exit /b
 BATCH
 

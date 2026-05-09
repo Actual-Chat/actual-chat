@@ -1,7 +1,6 @@
 :<<BATCH
-    REM call "./npm-install.cmd"
+    @echo off
     npm run watch
-
     exit /b
 BATCH
 
