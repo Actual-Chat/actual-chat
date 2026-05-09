@@ -37,7 +37,7 @@ export type EncoderFactory = (
 
 export interface EncodeOptions {
     /** One config per layer, bottom-first. Length MUST equal
-     *  `bundle.frames.length`; mismatch is a hard error. */
+     *  `bundle.layers.length`; mismatch is a hard error. */
     configs: readonly EncoderConfigPerLayer[];
     createEncoder: EncoderFactory;
 }
@@ -47,7 +47,7 @@ export interface EncodeOptions {
  * per layer on first iteration, submit all layers in parallel,
  * `Promise.allSettled` so one rejection doesn't leak the others'
  * already-produced chunks. Emits one `EncodedBundle` per source bundle
- * with `frames` bottom-first (L0, L1, …, LN-1).
+ * with `layers` bottom-first (L0, L1, …, LN-1).
  */
 export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, EncodedBundle> {
     if (opts.configs.length === 0)
@@ -70,9 +70,9 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
             let forceKeyframeNext = false;
             try {
                 for await (const bundle of source) {
-                    const layerCount = bundle.frames.length;
+                    const layerCount = bundle.layers.length;
                     if (layerCount !== configs.length) {
-                        closeBundleFrames(bundle);
+                        closeBundleLayers(bundle);
                         throw new Error(
                             `encode: bundle has ${layerCount} layer(s), expected ${configs.length}`);
                     }
@@ -82,15 +82,15 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                                 encoders.push(createEncoder(configs[layerId], layerId));
                             }
                         } catch (e) {
-                            closeBundleFrames(bundle);
+                            closeBundleLayers(bundle);
                             throw e;
                         }
                     }
-                    const keyFrame = bundle.frames[0].forceKeyframe
+                    const keyFrame = bundle.layers[0].forceKeyframe
                         || forceKeyframeNext
                         || forceKeyframeOnFirstEncode;
                     forceKeyframeOnFirstEncode = false;
-                    const layerFrames: readonly CapturedFrame[] = bundle.frames;
+                    const layerFrames: readonly CapturedFrame[] = bundle.layers;
                     const promises: Promise<EncodedFrame>[] = [];
                     try {
                         for (let layerId = 0; layerId < layerCount; layerId++) {
@@ -158,7 +158,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         forceKeyframeNext = false;
                         mustClose = false;
                         const encodedBundle: EncodedBundle = {
-                            frames: out,
+                            layers: out,
                             stats: bundle.stats,
                         };
                         yield encodedBundle;
@@ -184,8 +184,8 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
     };
 }
 
-function closeBundleFrames(bundle: CapturedBundle): void {
-    closeCapturedFrames(bundle.frames);
+function closeBundleLayers(bundle: CapturedBundle): void {
+    closeCapturedFrames(bundle.layers);
 }
 
 function closeCapturedFrames(frames: readonly CapturedFrame[]): void {

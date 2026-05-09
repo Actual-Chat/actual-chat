@@ -36,7 +36,7 @@ export function applyKeyframePolicy(opts: KeyframePolicyOptions): PipeOperator<C
                 try {
                     frameCount++;
                     const wallNow = now();
-                    const upstreamForce = bundle.frames.some(f => f.forceKeyframe);
+                    const upstreamForce = bundle.layers.some(f => f.forceKeyframe);
                     const intervalTrigger = frameCount % keyframeIntervalFrames === 0;
                     const wallclockTrigger = maxKeyframeIntervalMs !== undefined
                         && lastKeyframeAtMs !== Number.NEGATIVE_INFINITY
@@ -49,7 +49,7 @@ export function applyKeyframePolicy(opts: KeyframePolicyOptions): PipeOperator<C
                     if (forceKeyframe && !upstreamForce) {
                         const output: CapturedBundle = {
                             ...bundle,
-                            frames: bundle.frames.map(withForceKeyframe),
+                            layers: bundle.layers.map(withForceKeyframe),
                         };
                         mustClose = false;
                         yield output;
@@ -59,7 +59,7 @@ export function applyKeyframePolicy(opts: KeyframePolicyOptions): PipeOperator<C
                     }
                 } finally {
                     if (mustClose)
-                        closeBundleFrames(bundle);
+                        closeBundleLayers(bundle);
                 }
             }
         }
@@ -71,8 +71,8 @@ function withForceKeyframe(layer: CapturedFrame): CapturedFrame {
     return { ...layer, forceKeyframe: true };
 }
 
-function closeBundleFrames(bundle: CapturedBundle): void {
-    for (const layer of bundle.frames) {
+function closeBundleLayers(bundle: CapturedBundle): void {
+    for (const layer of bundle.layers) {
         try { layer.frame.close(); } catch { /* ignore */ }
     }
 }

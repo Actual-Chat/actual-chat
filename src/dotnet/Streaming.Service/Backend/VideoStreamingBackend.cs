@@ -221,14 +221,14 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             {
                 await foreach (var bundle in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                     Interlocked.Increment(ref bundleCounter);
-                    if (bundle.Frames.Length == 0)
+                    if (bundle.Layers.Length == 0)
                         continue;
 
                     // Decompose: each per-layer VideoFrame is processed and yielded
                     // independently. Memoizer + filter + GetStream stay per-frame on
                     // the consumer side; the bundle exists only on the publisher leg
                     // for wire-format efficiency.
-                    foreach (var frame in bundle.Frames) {
+                    foreach (var frame in bundle.Layers) {
                         var layerId = frame.LayerId;
                         if (frame.Offset < TimeSpan.Zero) {
                             negativeOffsetDropCount++;

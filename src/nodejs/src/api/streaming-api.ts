@@ -90,7 +90,7 @@ export interface VideoFrameDto {
 // Used only on the publisher → server leg (PushStream); server → consumer
 // stays per-frame.
 export interface VideoFrameBundleDto {
-    Frames: VideoFrameDto[];
+    Layers: VideoFrameDto[];
 }
 
 // --- Size2D / VideoFormat TypeScript interfaces ---

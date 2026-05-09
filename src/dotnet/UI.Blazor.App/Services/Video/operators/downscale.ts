@@ -54,7 +54,7 @@ interface SlotState {
  * `CapturedFrame → CapturedBundle`. Per-layer envelopes inside the
  * bundle share all metadata from the input (capturedAt, index,
  * forceKeyframe, stats, sourceWidth/Height) — only `frame` differs.
- * Output is bottom-first: `frames[0]` = base layer, `frames[length-1]`
+ * Output is bottom-first: `layers[0]` = base layer, `layers[length-1]`
  * = top layer.
  *
  * Concurrency: up to `concurrency` bundles run through `process()`
@@ -99,7 +99,7 @@ export function downscale(opts: DownscaleOptions): PipeOperator<CapturedFrame, C
                 slotStates[slotId] = undefined;
             },
             onUnconsumedResult: bundle => {
-                if (bundle) closeBundleFrames(bundle);
+                if (bundle) closeBundleLayers(bundle);
             },
             map: async (envelope, slotId) => {
                 const slot = slotStates[slotId]!;
@@ -152,7 +152,7 @@ export function downscale(opts: DownscaleOptions): PipeOperator<CapturedFrame, C
                         `downscale: downscaler returned ${frames.length} frames, expected ${ladder.length}`);
                 }
 
-                // Bottom-first: bundle.frames[0] = base, .frames[topIdx] = top.
+                // Bottom-first: bundle.layers[0] = base, .layers[topIdx] = top.
                 // After a hang, mark forceKeyframe so the encoders re-anchor
                 // at the next clean bundle.
                 const layerSource = forceKeyframeAfterHang
@@ -168,7 +168,7 @@ export function downscale(opts: DownscaleOptions): PipeOperator<CapturedFrame, C
                 // returned bundle.
                 void timedOut;
                 return {
-                    frames: layers,
+                    layers,
                     stats: envelope.stats,
                 };
             },
@@ -191,8 +191,8 @@ function closeFrames(frames: readonly VideoFrame[]): void {
     }
 }
 
-function closeBundleFrames(bundle: CapturedBundle): void {
-    for (const layer of bundle.frames) {
+function closeBundleLayers(bundle: CapturedBundle): void {
+    for (const layer of bundle.layers) {
         try { layer.frame.close(); } catch { /* ignore */ }
     }
 }

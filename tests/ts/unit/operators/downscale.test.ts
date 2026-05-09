@@ -121,16 +121,16 @@ describe('downscale operator', () => {
 
         expect(out).toHaveLength(2);
         for (const bundle of out) {
-            expect(bundle.frames).toHaveLength(1);
-            expect(bundle.frames[0].frame.codedWidth).toBe(640);
-            expect(bundle.frames[0].frame.codedHeight).toBe(360);
+            expect(bundle.layers).toHaveLength(1);
+            expect(bundle.layers[0].frame.codedWidth).toBe(640);
+            expect(bundle.layers[0].frame.codedHeight).toBe(360);
             expect(bundle.stats).toBe(stats);
         }
         expect(fake.calls).toHaveLength(2);
         expect(fake.disposeCount).toBe(1);   // disposed in finally
     });
 
-    it('3-tier ladder: bottom-first (frames[0]=base, frames[topIdx]=top)', async () => {
+    it('3-tier ladder: bottom-first (layers[0]=base, layers[topIdx]=top)', async () => {
         const stats = makeStats();
         const fake = new FakeDownscaler();
         const ladder: LayerSpec[] = [
@@ -146,14 +146,14 @@ describe('downscale operator', () => {
 
         expect(out).toHaveLength(1);
         const bundle = out[0];
-        expect(bundle.frames).toHaveLength(3);
+        expect(bundle.layers).toHaveLength(3);
         // Bottom-first.
-        expect(bundle.frames[0].frame.codedWidth).toBe(320);
-        expect(bundle.frames[0].frame.codedHeight).toBe(180);
-        expect(bundle.frames[1].frame.codedWidth).toBe(640);
-        expect(bundle.frames[1].frame.codedHeight).toBe(360);
-        expect(bundle.frames[2].frame.codedWidth).toBe(1280);
-        expect(bundle.frames[2].frame.codedHeight).toBe(720);
+        expect(bundle.layers[0].frame.codedWidth).toBe(320);
+        expect(bundle.layers[0].frame.codedHeight).toBe(180);
+        expect(bundle.layers[1].frame.codedWidth).toBe(640);
+        expect(bundle.layers[1].frame.codedHeight).toBe(360);
+        expect(bundle.layers[2].frame.codedWidth).toBe(1280);
+        expect(bundle.layers[2].frame.codedHeight).toBe(720);
     });
 
     it('all output envelopes share capturedAt / index / forceKeyframe / stats / sourceWidth/Height', async () => {
@@ -170,7 +170,7 @@ describe('downscale operator', () => {
         );
         const [bundle] = await drain(seg);
 
-        const all = bundle.frames;
+        const all = bundle.layers;
         for (const e of all) {
             expect(e.capturedAt).toEqual({ timeMs: 1_700_000_000_042, epoch: 0 });
             expect(e.index).toBe(42);
@@ -225,7 +225,7 @@ describe('downscale operator', () => {
         // Input frame closed by the fake (matching production contract).
         expect(inputFrame.closed).toBe(true);
         // Outputs are fresh (different instances) and still open.
-        for (const f of bundle.frames) {
+        for (const f of bundle.layers) {
             expect(f.frame).not.toBe(captured.frame);
             expect((f.frame as unknown as MockVideoFrame).closed).toBe(false);
         }
@@ -333,7 +333,7 @@ describe('downscale operator', () => {
         // Second frame yields a bundle marked forceKeyframe (post-hang
         // re-anchor) so encoders restart cleanly.
         expect(out).toHaveLength(1);
-        expect(out[0].frames.every(f => f.forceKeyframe)).toBe(true);
+        expect(out[0].layers.every(f => f.forceKeyframe)).toBe(true);
         // Two factory calls: original + post-hang replacement.
         expect(factories.length).toBe(2);
         // Both downscalers disposed (the hung one immediately, the
@@ -381,7 +381,7 @@ describe('downscale operator', () => {
         const out = await drain(seg);
         expect(out).toHaveLength(4);
         // Output indices preserve source order.
-        expect(out.map(b => b.frames[0].frame.codedWidth)).toEqual([640, 640, 640, 640]);
+        expect(out.map(b => b.layers[0].frame.codedWidth)).toEqual([640, 640, 640, 640]);
         // Two slots created, each used at least once.
         expect(factories.length).toBe(2);
         for (const f of factories) expect(f.calls).toBeGreaterThan(0);

@@ -185,8 +185,8 @@ export interface CapturedFrame {
 
 /**
  * Multi-tier output of the downscaler. The downscaler emits one bundle
- * per input source `CapturedFrame`. `frames` is bottom-first
- * (`frames[0]` = lowest layer, `frames[length-1]` = top). All entries
+ * per input source `CapturedFrame`. `layers` is bottom-first
+ * (`layers[0]` = lowest layer, `layers[length-1]` = top). All entries
  * share `capturedAt` / `index` / `forceKeyframe` / `sourceWidth/Height`
  * — only the underlying `frame` differs per layer.
  *
@@ -194,14 +194,14 @@ export interface CapturedFrame {
  */
 export interface CapturedBundle {
     /** Bottom-first per-layer entries (length 1..3). */
-    frames: CapturedFrame[];
-    /** Same reference as `frames[*].stats` — exposed at bundle level so
+    layers: CapturedFrame[];
+    /** Same reference as `layers[*].stats` — exposed at bundle level so
      *  callers don't have to reach into a layer entry. */
     stats: VideoRecordingStats;
 }
 
 export function disposeCapturedBundle(bundle: CapturedBundle): void {
-    for (const f of bundle.frames) {
+    for (const f of bundle.layers) {
         try { f.frame.close(); } catch { /* already closed */ }
     }
 }
@@ -238,18 +238,18 @@ export interface EncodedFrame {
 
 /**
  * Multi-tier output of the encode operator. Bottom-first
- * (`frames[0]` = base layer; `frames[length-1]` = top). All frames
+ * (`layers[0]` = base layer; `layers[length-1]` = top). All frames
  * share `capturedAt` / `index` and were produced from the same source
  * `CapturedBundle`.
  */
 export interface EncodedBundle {
     /** Bottom-first per-layer entries (length 1..3). */
-    frames: EncodedFrame[];
+    layers: EncodedFrame[];
     stats: VideoRecordingStats;
 }
 
 export function disposeEncodedBundle(bundle: EncodedBundle): void {
-    for (const f of bundle.frames) {
+    for (const f of bundle.layers) {
         closeEncodedChunk(f.chunk);
     }
 }

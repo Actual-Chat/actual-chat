@@ -153,7 +153,7 @@ class FakeSender implements StreamSenderLike {
     sent: VideoStreamFrame[] = [];
     afterSend?: () => void;
     send(bundle: VideoStreamFrameBundle): void {
-        for (const f of bundle.frames) this.sent.push(f);
+        for (const f of bundle.layers) this.sent.push(f);
         this.afterSend?.();
     }
 }

@@ -76,7 +76,7 @@ export function serverClockNow(_ctx: StreamingContext): number {
  * Inlined verbatim from `VideoOld/workers/video-streaming.ts`.
  */
 function bundleToDto(bundle: VideoStreamFrameBundle): VideoFrameBundleDto {
-    return { Frames: bundle.frames.map(frameToDto) };
+    return { Layers: bundle.layers.map(frameToDto) };
 }
 
 function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
@@ -294,9 +294,9 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
                 // canSkipTo: a bundle is a decode-anchor iff its first frame
                 // is a keyframe. applyKeyframePolicy enforces all-or-none
                 // across a bundle's layers, so any frame's IsKeyFrame would
-                // do; we use Frames[0] to keep it cheap.
+                // do; we use Layers[0] to keep it cheap.
                 MediaRpcStreamOptions.videoRealtime<VideoFrameBundleDto>(
-                    bundle => bundle.Frames.length > 0 && bundle.Frames[0].IsKeyFrame),
+                    bundle => bundle.Layers.length > 0 && bundle.Layers[0].IsKeyFrame),
             );
 
             const streamRef = stream.toRef(peer);
@@ -356,7 +356,7 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
         let kfCount = 0;
         for (let i = 0; i < bundles.length; i++) {
             const b = bundles.get(i)!;
-            if (b.frames.length === 0 || !b.frames[0].isKeyFrame) continue;
+            if (b.layers.length === 0 || !b.layers[0].isKeyFrame) continue;
             kfCount++;
             lastKfIdx = i;
         }
@@ -366,12 +366,12 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
         let droppedFrames = 0;
         for (let i = 0; i < lastKfIdx; i++) {
             const dropped = bundles.shift()!;
-            if (dropped.frames.length > 0 && dropped.frames[0].isKeyFrame)
+            if (dropped.layers.length > 0 && dropped.layers[0].isKeyFrame)
                 droppedKeyBundles++;
-            droppedFrames += dropped.frames.length;
+            droppedFrames += dropped.layers.length;
         }
         droppedAtSenderQueue += droppedFrames;
-        droppedKeyframesAtSenderQueue += droppedKeyBundles * (bundles.peekFront()?.frames.length ?? 1);
+        droppedKeyframesAtSenderQueue += droppedKeyBundles * (bundles.peekFront()?.layers.length ?? 1);
         warnLog?.log(`send: queue compacted — dropped ${lastKfIdx} bundles ` +
             `(${droppedFrames} frames incl. ${droppedKeyBundles} keyframe-bundles); cumulative dropped=${droppedAtSenderQueue} ` +
             `keyframes=${droppedKeyframesAtSenderQueue}`);
@@ -386,15 +386,15 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
         // frame would otherwise mask the real error with the generic
         // "send after stream disposed" message.
         if (isDisposed) return;
-        if (bundle.frames.length === 0) return;
+        if (bundle.layers.length === 0) return;
         // Treat a bundle whose every layer has empty data as no-op too.
         let totalBytes = 0;
-        for (const f of bundle.frames) totalBytes += f.data.byteLength;
+        for (const f of bundle.layers) totalBytes += f.data.byteLength;
         if (totalBytes === 0) return;
 
         bundles.push(bundle);
-        addedFrameCount += bundle.frames.length;
-        const isKeyBundle = bundle.frames[0].isKeyFrame;
+        addedFrameCount += bundle.layers.length;
+        const isKeyBundle = bundle.layers[0].isKeyFrame;
         if (isKeyBundle)
             compactIfOverflowing();
         if (bundles.length > maxQueueDepth)
@@ -408,7 +408,7 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
             infoLog?.log(`send: total=${addedFrameCount} queueBundles=${bundles.length} ` +
                 `peakQueueBundles=${maxQueueDepth} ` +
                 `dropped=${droppedAtSenderQueue} keyframesDropped=${droppedKeyframesAtSenderQueue} ` +
-                `isKey=${isKeyBundle} bundleLayers=${bundle.frames.length} size=${totalBytes} ` +
+                `isKey=${isKeyBundle} bundleLayers=${bundle.layers.length} size=${totalBytes} ` +
                 `lastError='${lastError}' isDisposed=${isDisposed}`);
         }
 

@@ -39,7 +39,7 @@ function makeBundle(stats: VideoRecordingStats, idx: number, forceKeyframe = fal
     for (let i = 0; i < extraCount + 1; i++) {
         layers.push(makeCaptured(stats, idx, forceKeyframe));
     }
-    return { frames: layers, stats };
+    return { layers, stats };
 }
 
 async function* source(items: CapturedBundle[]): AsyncIterable<CapturedBundle> {
@@ -56,7 +56,7 @@ async function drain<T>(it: AsyncIterable<T>): Promise<T[]> {
 function bundleForceKey(bundle: CapturedBundle): boolean {
     // Contract: when this operator decides to key, every layer in the
     // bundle MUST carry forceKeyframe=true.
-    return bundle.frames.length > 0 && bundle.frames.every(f => f.forceKeyframe);
+    return bundle.layers.length > 0 && bundle.layers.every(f => f.forceKeyframe);
 }
 
 // ---- Tests ----------------------------------------------------------------
@@ -187,10 +187,10 @@ describe('applyKeyframePolicy', () => {
         ];
         const out = await drain(op(source(items)));
 
-        expect(out[0].frames.every(f => !f.forceKeyframe)).toBe(true);
+        expect(out[0].layers.every(f => !f.forceKeyframe)).toBe(true);
 
-        expect(out[1].frames).toHaveLength(3);
-        for (const f of out[1].frames) {
+        expect(out[1].layers).toHaveLength(3);
+        for (const f of out[1].layers) {
             expect(f.forceKeyframe).toBe(true);
         }
     });
@@ -207,10 +207,10 @@ describe('applyKeyframePolicy', () => {
             now: () => 0,
         });
         const original = makeBundle(stats, 0, false, /* extras */ 1);
-        const originalLayers = original.frames.slice();
+        const originalLayers = original.layers.slice();
         const out = await drain(op(source([original])));
 
-        expect(out[0].frames.every(f => f.forceKeyframe)).toBe(true);
+        expect(out[0].layers.every(f => f.forceKeyframe)).toBe(true);
         // Original envelopes not mutated.
         for (const f of originalLayers)
             expect(f.forceKeyframe).toBe(false);

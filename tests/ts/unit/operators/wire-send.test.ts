@@ -43,7 +43,7 @@ class FakeSender implements StreamSenderLike {
     }
     send(bundle: VideoStreamFrameBundle): void {
         this.sentBundles.push(bundle);
-        for (const f of bundle.frames) this.sent.push(f);
+        for (const f of bundle.layers) this.sent.push(f);
         this.sendCount++;
     }
 }
@@ -134,7 +134,7 @@ function source(items: EncodedFrame[]): AsyncIterable<EncodedBundle> {
     return (async function* () {
         await Promise.resolve();
         for (const item of items) {
-            yield { frames: [item], stats: item.stats } as EncodedBundle;
+            yield { layers: [item], stats: item.stats } as EncodedBundle;
         }
     })();
 }
@@ -147,7 +147,7 @@ function bundledSource(groups: EncodedFrame[][]): AsyncIterable<EncodedBundle> {
         await Promise.resolve();
         for (const group of groups) {
             if (group.length === 0) continue;
-            yield { frames: group, stats: group[0].stats } as EncodedBundle;
+            yield { layers: group, stats: group[0].stats } as EncodedBundle;
         }
     })();
 }

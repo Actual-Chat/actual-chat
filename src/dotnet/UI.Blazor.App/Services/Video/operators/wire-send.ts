@@ -36,7 +36,7 @@ export interface VideoStreamFrame {
  * VideoStreamFrames previously sent back-to-back.
  */
 export interface VideoStreamFrameBundle {
-    frames: VideoStreamFrame[];
+    layers: VideoStreamFrame[];
 }
 
 // Stream-format payload sent via `StreamSenderLike.init` from the first
@@ -145,10 +145,10 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                     if (abortSignal?.aborted) return;
 
                     try {
-                        if (bundle.frames.length === 0)
+                        if (bundle.layers.length === 0)
                             continue;
                         lastStats = bundle.stats;
-                        const top = bundle.frames[bundle.frames.length - 1];
+                        const top = bundle.layers[bundle.layers.length - 1];
                         const { capturedAt } = top;
                         const isKeyFrame = top.chunk.type === 'key';
                         if (Number.isNaN(captureStartUnixMs))
@@ -157,7 +157,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                         const offsetMicros = Math.round((capturedAt.timeMs - captureStartUnixMs) * 1000);
                         const offset = microsecondsToTicks(offsetMicros);
 
-                        const wireFrames: VideoStreamFrame[] = bundle.frames.map(encoded => {
+                        const wireLayers: VideoStreamFrame[] = bundle.layers.map(encoded => {
                             const dto: VideoStreamFrame = {
                                 offset,
                                 offsetEpoch: capturedAt.epoch,
@@ -212,7 +212,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                         // hang on a full ring buffer when the consumer-side
                         // iterator stalls, blocking `Recorder.stop()`.
                         await Promise.race([
-                            Promise.resolve(sender.send({ frames: wireFrames })),
+                            Promise.resolve(sender.send({ layers: wireLayers })),
                             abortRace,
                         ]);
                         copySenderStats(bundle.stats, sender.getStats?.());

@@ -41,10 +41,10 @@ public class StreamingSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var bundle = new VideoFrameBundle([]);
         var mp = bundle.PassThroughMessagePackByteSerializer(Out);
-        mp.Frames.Should().BeEmpty();
+        mp.Layers.Should().BeEmpty();
         mp.LayerCount.Should().Be(0);
         var mem = bundle.PassThroughMemoryPackByteSerializer(Out);
-        mem.Frames.Should().BeEmpty();
+        mem.Layers.Should().BeEmpty();
         mem.LayerCount.Should().Be(0);
     }
 
@@ -55,11 +55,11 @@ public class StreamingSerializationTest(ITestOutputHelper @out) : TestBase(@out)
 
         var mp = bundle.PassThroughMessagePackByteSerializer(Out);
         mp.LayerCount.Should().Be(1);
-        AssertEqual(mp.Frames[0], bundle.Frames[0]);
+        AssertEqual(mp.Layers[0], bundle.Layers[0]);
 
         var mem = bundle.PassThroughMemoryPackByteSerializer(Out);
         mem.LayerCount.Should().Be(1);
-        AssertEqual(mem.Frames[0], bundle.Frames[0]);
+        AssertEqual(mem.Layers[0], bundle.Layers[0]);
     }
 
     [Fact]
@@ -75,13 +75,13 @@ public class StreamingSerializationTest(ITestOutputHelper @out) : TestBase(@out)
 
         var mp = bundle.PassThroughMessagePackByteSerializer(Out);
         mp.LayerCount.Should().Be(3);
-        for (var i = 0; i < bundle.Frames.Length; i++)
-            AssertEqual(mp.Frames[i], bundle.Frames[i]);
+        for (var i = 0; i < bundle.Layers.Length; i++)
+            AssertEqual(mp.Layers[i], bundle.Layers[i]);
 
         var mem = bundle.PassThroughMemoryPackByteSerializer(Out);
         mem.LayerCount.Should().Be(3);
-        for (var i = 0; i < bundle.Frames.Length; i++)
-            AssertEqual(mem.Frames[i], bundle.Frames[i]);
+        for (var i = 0; i < bundle.Layers.Length; i++)
+            AssertEqual(mem.Layers[i], bundle.Layers[i]);
     }
 
     private static VideoFrame MakeFrame(

@@ -138,10 +138,10 @@ function makeBundle(
     forceKeyframe = false,
 ): CapturedBundle {
     if (layers.length === 0) throw new Error('makeBundle: at least one layer');
-    // Bottom-first: frames[0] = base layer, frames[last] = top layer.
-    const frames: CapturedFrame[] = layers.map(l =>
+    // Bottom-first: layers[0] = base layer, layers[last] = top layer.
+    const captured: CapturedFrame[] = layers.map(l =>
         makeCaptured(index, stats, l.width, l.height, forceKeyframe));
-    return { frames, stats };
+    return { layers: captured, stats };
 }
 
 function fromArray<T>(items: T[]): AsyncIterable<T> {
@@ -268,7 +268,7 @@ describe('encode operator', () => {
             mock.emitNext(50);
             const r = await next;
             expect(r.done).toBe(false);
-            if (r.done === false) results.push(...r.value.frames);
+            if (r.done === false) results.push(...r.value.layers);
         }
         const final = await iter.next();
         expect(final.done).toBe(true);
@@ -356,11 +356,11 @@ describe('encode operator', () => {
         expect(collectedBundles).toHaveLength(5);
 
         for (const eb of collectedBundles) {
-            expect(eb.frames).toHaveLength(3);
-            expect(eb.frames.map(g => g.layerId)).toEqual([0, 1, 2]);
-            expect(eb.frames[0].encodedWidth).toBe(320);
-            expect(eb.frames[1].encodedWidth).toBe(640);
-            expect(eb.frames[2].encodedWidth).toBe(1280);
+            expect(eb.layers).toHaveLength(3);
+            expect(eb.layers.map(g => g.layerId)).toEqual([0, 1, 2]);
+            expect(eb.layers[0].encodedWidth).toBe(320);
+            expect(eb.layers[1].encodedWidth).toBe(640);
+            expect(eb.layers[2].encodedWidth).toBe(1280);
         }
     });
 
@@ -445,14 +445,14 @@ describe('encode operator', () => {
         const iter: AsyncIterator<EncodedBundle> = seg[Symbol.asyncIterator]();
         const result = await iter.next();
         expect(result.done).toBe(false);
-        expect(result.done === false ? result.value.frames[0].index : 0).toBe(2);
+        expect(result.done === false ? result.value.layers[0].index : 0).toBe(2);
         expect(encodeCalls).toHaveLength(2);
         // First encode is forced to keyFrame=true (per-encoder first-call guard).
         expect(encodeCalls[0].opts.keyFrame).toBe(true);
         // Second is also keyFrame=true: forceKeyframeNext is set after the
         // reset-error rejection on the first bundle.
         expect(encodeCalls[1].opts.keyFrame).toBe(true);
-        expect((first.frames[0].frame as unknown as MockVideoFrame).closed).toBe(true);
+        expect((first.layers[0].frame as unknown as MockVideoFrame).closed).toBe(true);
         await iter.next();
     });
 
