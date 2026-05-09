@@ -263,14 +263,18 @@ public class LiveVideoStreams : ILiveVideoStreams
             }
         }
 
-        // Request a fresh keyframe whenever a stream's quality envelope CHANGES,
-        // not just on lowering. On upgrades, the new layer/temporal layer
-        // can't be decoded by the receiver until the next keyframe of that
-        // layer arrives — periodic keyframes are 3s apart, so without this we
-        // get up to 3s of stuck-on-old-quality after every upgrade. The
-        // VideoStreamingBackend.RequestKeyFrame path is throttled (≥5 s gap),
-        // so this won't burst even if many receivers change at once.
-        var keyFrameRequests = GetChangedStreams(prevState?.QualityByStream, qualityByStream)
+        // Request a fresh keyframe whenever a stream's quality envelope is
+        // UPGRADED (more spatial / temporal layers requested). On upgrades,
+        // the new layer can't be decoded by the receiver until the next
+        // keyframe of that layer arrives — periodic keyframes are 3 s apart,
+        // so without this we get up to 3 s of stuck-on-old-quality after the
+        // upgrade, and the larger render size on the client makes this very
+        // visible. On downgrades we skip the request: keeping the higher
+        // layer for a bit longer is fine, and burning the per-stream
+        // cooldown on a downgrade can block the next upgrade's keyframe.
+        // The VideoStreamingBackend.RequestKeyFrame path is throttled (1 s
+        // cooldown) so concurrent receivers collapse to one PLI.
+        var keyFrameRequests = GetUpgradedStreams(prevState?.QualityByStream, qualityByStream)
             .Select(x => VideoStreamingBackend.RequestKeyFrame(StreamId.Parse(x), cancellationToken))
             .ToArray();
         if (keyFrameRequests.Length != 0)
@@ -353,7 +357,7 @@ public class LiveVideoStreams : ILiveVideoStreams
                 : ReceiveQuality.Lowest
             : ReceiveQuality.Default;
 
-    private static IEnumerable<string> GetChangedStreams(
+    private static IEnumerable<string> GetUpgradedStreams(
         ApiMap<string, ReceiveQuality>? previous,
         ApiMap<string, ReceiveQuality> current)
     {
@@ -361,8 +365,8 @@ public class LiveVideoStreams : ILiveVideoStreams
             var oldQuality = previous is not null && previous.TryGetValue(streamId, out var old)
                 ? old
                 : ReceiveQuality.Default;
-            if (quality.MaxLayerId != oldQuality.MaxLayerId
-                || quality.MaxTemporalLayerId != oldQuality.MaxTemporalLayerId)
+            if (quality.MaxLayerId > oldQuality.MaxLayerId
+                || quality.MaxTemporalLayerId > oldQuality.MaxTemporalLayerId)
                 yield return streamId;
         }
     }

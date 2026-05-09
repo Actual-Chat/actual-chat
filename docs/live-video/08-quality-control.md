@@ -130,18 +130,22 @@ Greedy, runs every ~2 s (also on render-size change):
 ```csharp
 _qualityBySession[session] = new ReceiveQualityState(qualityByStream, SystemClock.Now);
 
-var keyFrameRequests = GetChangedStreams(prevState?.QualityByStream, qualityByStream)
+var keyFrameRequests = GetUpgradedStreams(prevState?.QualityByStream, qualityByStream)
     .Select(x => VideoStreamingBackend.RequestKeyFrame(StreamId.Parse(x), ct))
     .ToArray();
 if (keyFrameRequests.Length != 0)
     await Task.WhenAll(keyFrameRequests);
 ```
 
-For every stream whose desired layer changed, the server fires
-`RequestKeyFrame` (subject to the 1 s cooldown). The publisher's worker
-forces the next bundle as a keyframe; the new layer's keyframe arrives in
-`ReceiveQualityFilter` within milliseconds and the filter switches over (see
-below).
+For every stream whose desired spatial or temporal layer **increased**, the
+server fires `RequestKeyFrame` (subject to the 1 s cooldown). The publisher's
+worker forces the next bundle as a keyframe; the new layer's keyframe
+arrives in `ReceiveQualityFilter` within milliseconds and the filter
+switches over (see below). Downgrades intentionally skip the request: the
+receiver can keep showing the higher layer until the next periodic
+keyframe, and burning the per-stream cooldown on a downgrade would block a
+follow-up upgrade's keyframe — exactly when the visible image just grew on
+the client and we want a sharper picture immediately.
 
 The session also records:
 `VideoReceiveCapacityBps`, `VideoReceiveAggregateHealth`,
