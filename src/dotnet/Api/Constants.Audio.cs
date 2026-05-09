@@ -31,8 +31,8 @@ public static partial class Constants
         // RPC stream flow control — split into recording (client→server upload,
         // must not skip recorded speech) and delivery (server→client, must not
         // skip frames on receiver's behalf). Doc-target values.
-        public const int DeliveryRpcStreamAckPeriod = 5; // 100 ms @ 50 fps
-        public const int RecordingRpcStreamAckPeriod = 5; // 100 ms @ 50 fps
+        public const int DeliveryRpcStreamAckPeriod = 10; // 200 ms @ 50 fps
+        public const int RecordingRpcStreamAckPeriod = 10; // 200 ms @ 50 fps
 
         // Audio buffer playback catch-up policy (used when paired with video
         // from the same author; a separate step will wire these in).

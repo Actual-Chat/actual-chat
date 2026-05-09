@@ -25,8 +25,8 @@ public sealed class VideoSource(
         log,
         cancellationToken)
 {
-    protected static bool DebugMode => Constants.DebugMode.VideoSource;
-    protected ILogger? DebugLog => DebugMode ? Log : null;
+    private static bool DebugMode => Constants.DebugMode.VideoSource;
+    private ILogger? DebugLog => DebugMode ? Log : null;
 
     public static readonly VideoFormat DefaultFormat = new();
 

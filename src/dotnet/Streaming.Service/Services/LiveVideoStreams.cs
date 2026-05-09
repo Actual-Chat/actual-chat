@@ -10,7 +10,6 @@ public class LiveVideoStreams : ILiveVideoStreams
     private static bool DebugMode => Constants.DebugMode.LiveStreaming;
     private static readonly TimeSpan ReceiveQualityRetention = TimeSpan.FromMinutes(3);
     private static readonly TimeSpan ReceiveQualityCleanupPeriod = TimeSpan.FromMinutes(5);
-    private static readonly TimeSpan KeyFrameRequestDelay = TimeSpan.FromMilliseconds(100);
 
     private IServiceProvider Services { get; }
     private MeshWatcher MeshWatcher { get; }
@@ -280,9 +279,9 @@ public class LiveVideoStreams : ILiveVideoStreams
         // wasting the anchor and forcing us to wait the full ~3 s periodic interval.
         var upgradedStreams = GetUpgradedStreams(prevState?.QualityByStream, qualityByStream).ToArray();
         if (upgradedStreams.Length != 0) {
-            await Task.Delay(KeyFrameRequestDelay, cancellationToken).ConfigureAwait(false);
             var keyFrameRequests = upgradedStreams
-                .Select(x => VideoStreamingBackend.RequestKeyFrame(StreamId.Parse(x), cancellationToken));
+                .Select(x => VideoStreamingBackend.RequestKeyFrame(StreamId.Parse(x), cancellationToken))
+                .ToArray();
             await Task.WhenAll(keyFrameRequests).ConfigureAwait(false);
         }
     }

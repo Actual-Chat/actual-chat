@@ -3,7 +3,7 @@ namespace ActualChat.Audio;
 /// <summary>
 /// Provides a stream of audio frames with format metadata.
 /// </summary>
-public sealed class AudioSource(
+public class AudioSource(
     Moment createdAt,
     AudioFormat format,
     IAsyncEnumerable<AudioFrame> frameStream,
