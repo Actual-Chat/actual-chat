@@ -77,8 +77,10 @@ describe('parallelMap', () => {
         });
         const out = await drain(op(await fromArray([1, 2, 3, 4, 5, 6])));
         expect(out.map(p => p[0])).toEqual([1, 2, 3, 4, 5, 6]);
-        for (const [, slot] of out)
-            expect(slot).toBeGreaterThanOrEqual(0).and.toBeLessThan(3);
+        for (const [, slot] of out) {
+            expect(slot).toBeGreaterThanOrEqual(0);
+            expect(slot).toBeLessThan(3);
+        }
         expect(seenSlots.size).toBeGreaterThan(0);
     });
 
