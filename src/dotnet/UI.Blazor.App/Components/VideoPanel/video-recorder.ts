@@ -958,21 +958,51 @@ export class VideoRecorder {
             throw new Error('startWorker: worker or input track missing');
         }
 
-        // Frame source: a hidden <video srcObject> driven by
-        // `requestVideoFrameCallback`. On each callback we construct a
-        // VideoFrame from the video element and ship it to the worker
-        // via `pushFrame` (the frame is transferred — VideoFrame is a
-        // Transferable per the rpc.ts trailing-args convention).
+        // Frame source — two-tier strategy.
         //
-        // Why not MediaStreamTrackProcessor: Chromium 147 (and its
-        // fake-device path that the dev rig uses) starves the reader
-        // after a small fixed number of frames — verified by both
-        // standalone tests and the recorder pipeline. `rVFC` on a
-        // <video> element gives us a steady 30 fps from the same track
-        // with no additional plumbing.
-        // rVFC pump from a hidden <video> (gives us steady ~30fps
-        // from the live track without going through the
-        // MediaStreamTrackProcessor 3-frame-stall path on Chromium 147).
+        // PRIMARY: `MediaStreamTrackProcessor` on main, transfer
+        //   `processor.readable` to the worker via `setSource(readable)`.
+        //   The worker's recorder pipeline pulls frames from the readable
+        //   directly. Source-bound: no rVFC, no main-thread tick involved
+        //   in capture. Decouples capture rate from page-render load (we
+        //   were observing 20 fps caps on both screencast + camera under
+        //   multi-tile render load purely because rVFC throttles).
+        //
+        // FALLBACK: a hidden `<video srcObject=track>` driven by
+        //   `requestVideoFrameCallback`. On each callback we build a
+        //   `VideoFrame` from the element and ship it to the worker via
+        //   `pushFrame`. Used when MSTP is unavailable (older Safari /
+        //   Firefox) or its construction fails.
+        //
+        // Historical note: the rVFC pump used to be the production path
+        // because Chromium 147 starved MSTP-readable consumers after a
+        // small fixed number of frames (verified at the time). Current
+        // Chrome stable is well past that; if the issue resurfaces,
+        // catching the construct/transfer error here flips us back to
+        // the rVFC fallback transparently.
+        let useMstp = false;
+        const MstpCtor = (globalThis as unknown as {
+            MediaStreamTrackProcessor?: new (init: { track: MediaStreamTrack }) => { readable: ReadableStream<VideoFrame> };
+        }).MediaStreamTrackProcessor;
+        if (typeof MstpCtor === 'function') {
+            try {
+                const processor = new MstpCtor({ track: this.inputTrack });
+                // Transfer the readable across the worker boundary. The
+                // worker's createProcessor returns this readable to the
+                // mstpSource operator on the next start().
+                await this.worker.setSource(processor.readable);
+                this.workerSourceCancelled = false;
+                useMstp = true;
+                infoLog?.log('startWorker: capture path = MSTP-readable (source-bound)');
+            } catch (e) {
+                warnLog?.log('startWorker: MSTP construction/transfer failed, falling back to rVFC pump:', e);
+            }
+        } else {
+            infoLog?.log('startWorker: MSTP unavailable, using rVFC pump');
+        }
+
+        if (!useMstp) {
+        // FALLBACK: rVFC pump from a hidden <video>.
         const sourceVideo = document.createElement('video');
         sourceVideo.muted = true;
         sourceVideo.autoplay = true;
@@ -1053,6 +1083,7 @@ export class VideoRecorder {
         this.workerSourceCaptureWatchdogCancel = (): void => {
             window.clearInterval(captureWatchdog);
         };
+        }
 
         const apiUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
         // SharedSettings is the legacy worker plumbing; the new worker
