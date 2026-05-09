@@ -181,16 +181,24 @@
                         Class="pip-overlay" />
                 }
             }
-            @* Own screencast intentionally not rendered: on this client the
-               primary slot is reserved for whoever is actually talking
-               remotely. The camera tile shows a screencast indicator when the
-               local user is dual-streaming. *@
+            @* Own screencast is normally not rendered — the primary slot is
+               reserved for whoever is actually talking remotely, and the
+               camera tile shows a screencast indicator when the local user
+               is dual-streaming. The exception is when own-screencast is
+               the only stream in the panel: without this tile the sharing
+               user sees nothing at all. *@
             @if (isOwnCameraStreaming) {
                 <VideoStreamingPreview
                     @key="@("own-camera-" + ChatId.Value)"
                     ChatId="@ChatId"
                     SourceKind="@VideoSourceKind.Camera"
                     Class="@(layout.OwnCameraPreviewClass)" />
+            } else if (isOwnScreenCasting && !hasRemoteStreams) {
+                <VideoStreamingPreview
+                    @key="@("own-screencast-" + ChatId.Value)"
+                    ChatId="@ChatId"
+                    SourceKind="@VideoSourceKind.ScreenCast"
+                    Class="item-focused" />
             }
         </div>
         @if (_isExpanded && isChatVisible && !ScreenSize.IsNarrow() && _lastChat is { } chat) {
