@@ -38,13 +38,18 @@ class FakeCtx implements CanvasImageInterface {
 
 // ---- Helpers --------------------------------------------------------------
 
-function makeEnvelope(stats: VideoPlaybackStats, id: number, frame?: MockVideoFrame): DecodedFrame {
+function makeEnvelope(
+    stats: VideoPlaybackStats,
+    id: number,
+    capturedAtMs: number,
+    frame?: MockVideoFrame,
+): DecodedFrame {
     const f = frame ?? new MockVideoFrame(id);
     return {
         frame: f as unknown as VideoFrame,
-        capturedAt: { timeMs: 100 + id, epoch: 0 },
-        arrivedAt: { timeMs: 200 + id, epoch: 0 },
-        decodedAt: { timeMs: 300 + id, epoch: 0 },
+        capturedAt: { timeMs: capturedAtMs, epoch: 0 },
+        arrivedAt: { timeMs: capturedAtMs + 100, epoch: 0 },
+        decodedAt: { timeMs: capturedAtMs + 200, epoch: 0 },
         layerId: 0,
         stats,
     };
@@ -59,8 +64,8 @@ function source(items: DecodedFrame[]): AsyncIterable<DecodedFrame> {
 
 /**
  * Default test wiring: in-budget (extra=0), zero delay, virtual clock
- * advanced by `nextTickMs` per call so the cap doesn't apply (lastPresentMs
- * always far enough in the past).
+ * advanced by 1 s per call so the natural-delta pacing never imposes a
+ * sleep — keeps non-pacing tests fast.
  */
 function defaults(extra: { getBufferSpanMs?: () => number; targetSpanMs?: number } = {}): Pick<
     CanvasPresentOptions, 'getBufferSpanMs' | 'targetSpanMs' | 'nowFn' | 'delayFn'
@@ -82,7 +87,7 @@ describe('canvasPresent', () => {
         const ctx = new FakeCtx();
         const sink = canvasPresent({ getCanvasCtx: () => ctx, ...defaults() });
         const frames = Array.from({ length: 5 }, (_, i) => new MockVideoFrame(i));
-        const items = frames.map((f, i) => makeEnvelope(stats, i, f));
+        const items = frames.map((f, i) => makeEnvelope(stats, i, i * 33, f));
 
         await count(pipe(source(items), sink));
 
@@ -107,7 +112,7 @@ describe('canvasPresent', () => {
             getCanvasCtx: () => { calls++; return ctx; },
             ...defaults(),
         });
-        const items = Array.from({ length: 4 }, (_, i) => makeEnvelope(stats, i));
+        const items = Array.from({ length: 4 }, (_, i) => makeEnvelope(stats, i, i * 33));
 
         await count(pipe(source(items), sink));
 
@@ -128,7 +133,7 @@ describe('canvasPresent', () => {
         };
         const sink = canvasPresent({ getCanvasCtx: () => ctx, convertToBitmap, ...defaults() });
         const frames = Array.from({ length: 3 }, (_, i) => new MockVideoFrame(i));
-        const items = frames.map((f, i) => makeEnvelope(stats, i, f));
+        const items = frames.map((f, i) => makeEnvelope(stats, i, i * 33, f));
 
         await count(pipe(source(items), sink));
 
@@ -151,37 +156,57 @@ describe('canvasPresent', () => {
         frame.displayHeight = 180;
 
         const sink = canvasPresent({ getCanvasCtx: () => ctx, ...defaults() });
-        await count(pipe(source([makeEnvelope(stats, 1, frame)]), sink));
+        await count(pipe(source([makeEnvelope(stats, 1, 0, frame)]), sink));
 
         expect(ctx.canvas).toEqual({ width: 320, height: 180 });
         expect(ctx.calls[0]).toMatchObject({ x: 0, y: 0, w: 320, h: 180 });
     });
 
-    it('catch-up skip: when extra > catchupBudget AND last present was < period ago, frame is closed without draw', async () => {
+    it('catch-up overflow (extra > CATCHUP_BUDGET_MS) AND frozen clock → frame closed without draw', async () => {
         const stats = createEmptyPlaybackStats(0);
         const ctx = new FakeCtx();
-        // Out-of-budget: spanMs = 2000 > target 333 → extra 1667 > 1000.
-        const getBufferSpanMs = (): number => 2000;
-        // Frozen clock: every call returns the same value, so
-        // lastPresentMs always equals now → diff 0 < period → skip.
+        // extra = 5000 - 333 = 4667 > 4000 (CATCHUP_BUDGET_MS).
+        // Frozen clock: every frame after the first lands within MIN_DURATION_MS
+        // → skip-after-decode path.
         const sink = canvasPresent({
             getCanvasCtx: () => ctx,
-            getBufferSpanMs,
+            getBufferSpanMs: (): number => 5000,
             targetSpanMs: 333,
             nowFn: (): number => 1000,
             delayFn: (): Promise<void> => Promise.resolve(),
         });
         const frames = Array.from({ length: 3 }, (_, i) => new MockVideoFrame(i));
-        const items = frames.map((f, i) => makeEnvelope(stats, i, f));
+        const items = frames.map((f, i) => makeEnvelope(stats, i, i * 33, f));
 
         await count(pipe(source(items), sink));
 
-        // First frame presents (lastPresentMs starts at -Infinity).
-        // Subsequent frames at same now() are within the period → skip.
+        // First frame draws (lastWriteAt is null → skip check skipped).
+        // Subsequent frames at same now() are within MIN_DURATION_MS → skip.
         expect(ctx.calls).toHaveLength(1);
         expect(stats.framesPresented).toBe(1);
         expect(stats.framesDroppedAtPresenter).toBe(2);
-        // All frames closed regardless of skip vs present.
         for (const f of frames) expect(f.closed).toBe(true);
+    });
+
+    it('catch-up below budget never skips even when frames land within MIN_DURATION_MS', async () => {
+        const stats = createEmptyPlaybackStats(0);
+        const ctx = new FakeCtx();
+        // extra = 500 - 333 = 167. > 0 and < CATCHUP_BUDGET_MS (4000) →
+        // present every frame at MIN_DURATION_MS cap, no skip.
+        const sink = canvasPresent({
+            getCanvasCtx: () => ctx,
+            getBufferSpanMs: (): number => 500,
+            targetSpanMs: 333,
+            nowFn: (): number => 1000,
+            delayFn: (): Promise<void> => Promise.resolve(),
+        });
+        const frames = Array.from({ length: 4 }, (_, i) => new MockVideoFrame(i));
+        const items = frames.map((f, i) => makeEnvelope(stats, i, i * 33, f));
+
+        await count(pipe(source(items), sink));
+
+        expect(ctx.calls).toHaveLength(4);
+        expect(stats.framesPresented).toBe(4);
+        expect(stats.framesDroppedAtPresenter).toBe(0);
     });
 });

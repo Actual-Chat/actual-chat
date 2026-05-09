@@ -62,13 +62,18 @@ class FakeWriter {
 
 // ---- Helpers --------------------------------------------------------------
 
-function makeEnvelope(stats: VideoPlaybackStats, id: number, frame?: MockVideoFrame): DecodedFrame {
+function makeEnvelope(
+    stats: VideoPlaybackStats,
+    id: number,
+    capturedAtMs: number,
+    frame?: MockVideoFrame,
+): DecodedFrame {
     const f = frame ?? new MockVideoFrame(id);
     return {
         frame: f as unknown as VideoFrame,
-        capturedAt: { timeMs: 100 + id, epoch: 0 },
-        arrivedAt: { timeMs: 200 + id, epoch: 0 },
-        decodedAt: { timeMs: 300 + id, epoch: 0 },
+        capturedAt: { timeMs: capturedAtMs, epoch: 0 },
+        arrivedAt: { timeMs: capturedAtMs + 100, epoch: 0 },
+        decodedAt: { timeMs: capturedAtMs + 200, epoch: 0 },
         layerId: 0,
         stats,
     };
@@ -163,8 +168,8 @@ function defaults(extra: Partial<MstgPresentOptions> = {}): Pick<
     return {
         getBufferSpanMs: extra.getBufferSpanMs ?? ((): number => 0),
         targetSpanMs: extra.targetSpanMs ?? 333,
-        // Default nowFn auto-advances 1s per call so the period cap never
-        // imposes a sleep — keeps non-pacing tests fast.
+        // Default nowFn auto-advances 1 s per call so the natural-delta
+        // pacing never imposes a sleep — keeps non-pacing tests fast.
         nowFn: extra.nowFn ?? ((): number => { t += 1000; return t; }),
         delayFn: extra.delayFn ?? ((): Promise<void> => Promise.resolve()),
     };
@@ -173,7 +178,7 @@ function defaults(extra: Partial<MstgPresentOptions> = {}): Pick<
 // ---- Tests ----------------------------------------------------------------
 
 describe('mstgPresent', () => {
-    it('writes every frame and increments framesPresented (in-budget, fast clock)', async () => {
+    it('writes every frame and increments framesPresented (steady, fast clock)', async () => {
         const stats = createEmptyPlaybackStats(0);
         const writer = new FakeWriter();
         const sink = mstgPresent({
@@ -181,7 +186,7 @@ describe('mstgPresent', () => {
             ...defaults(),
         });
         const frames = [new MockVideoFrame(0), new MockVideoFrame(1), new MockVideoFrame(2)];
-        const items = frames.map((f, i) => makeEnvelope(stats, i, f));
+        const items = frames.map((f, i) => makeEnvelope(stats, i, 100 + i * 33, f));
 
         await count(pipe(staticSource(items), sink));
 
@@ -192,67 +197,38 @@ describe('mstgPresent', () => {
         expect(frames.map(f => f.closed)).toEqual([true, true, true]);
     });
 
-    it('paces writes via delayFn when nextPresentMs > now (frozen-clock case)', async () => {
+    it('steady mode: paces writes by naturalDelta (capture-time gap)', async () => {
         const stats = createEmptyPlaybackStats(0);
         const writer = new FakeWriter();
         const clock = fakeClock(1000);
-        // Use a controlled clock that doesn't auto-advance — every frame
-        // fires at the same wallclock, so the cap forces a delayFn call.
         const sink = mstgPresent({
             getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
-            getBufferSpanMs: (): number => 0,
+            getBufferSpanMs: (): number => 0,        // extra = 0 → steady mode
             targetSpanMs: 333,
             nowFn: clock.nowFn,
             delayFn: clock.delayFn,
         });
+        // Frames spaced 33 ms apart in capture time (30 fps source).
         const frames = Array.from({ length: 4 }, (_, i) => new MockVideoFrame(i));
-        const items = frames.map((f, i) => makeEnvelope(stats, i, f));
+        const items = frames.map((f, i) => makeEnvelope(stats, i, 1000 + i * 33, f));
 
         await count(pipe(staticSource(items), sink));
 
-        // First frame: nextPresentMs starts null → set to now, no delay.
-        // Subsequent frames: nextPresentMs is in the future → sleep PRESENT_PERIOD_MS.
+        // First frame: durationMs = 0 (no prev) → no delay.
+        // Subsequent 3 frames: naturalDelta = 33, clamp(33, 8.33, 100) = 33
+        // → each delays 33 ms.
         expect(writer.written).toHaveLength(4);
         expect(stats.framesPresented).toBe(4);
-        // Three sleeps for frames 1, 2, 3 — all of length ~16.67 ms.
         expect(clock.delays).toHaveLength(3);
         for (const d of clock.delays) {
-            expect(d).toBeGreaterThan(16);
-            expect(d).toBeLessThan(17);
+            expect(d).toBeGreaterThan(32);
+            expect(d).toBeLessThan(34);
         }
     });
 
-    it('catch-up skip: out-of-budget AND frozen clock → all but the first are closed without write', async () => {
+    it('steady mode: clamps duration up to MIN_DURATION_MS for source above 120 fps', async () => {
         const stats = createEmptyPlaybackStats(0);
         const writer = new FakeWriter();
-        // extra = 2000 - 333 = 1667 > 1000 → out of budget. Frozen clock
-        // means every frame after the first lands within the period →
-        // skip-after-decode path.
-        const sink = mstgPresent({
-            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
-            getBufferSpanMs: (): number => 2000,
-            targetSpanMs: 333,
-            nowFn: (): number => 1000,
-            delayFn: (): Promise<void> => Promise.resolve(),
-        });
-        const frames = Array.from({ length: 5 }, (_, i) => new MockVideoFrame(i));
-        const items = frames.map((f, i) => makeEnvelope(stats, i, f));
-
-        await count(pipe(staticSource(items), sink));
-
-        // Only the first frame (lastPresentMs starts at -Infinity → first
-        // is never within-period) writes; the rest are skipped.
-        expect(writer.written).toHaveLength(1);
-        expect(stats.framesPresented).toBe(1);
-        expect(stats.framesDroppedAtPresenter).toBe(4);
-        for (const f of frames) expect(f.closed).toBe(true);
-    });
-
-    it('catch-up skip: in-budget never skips even when frames land within the period', async () => {
-        const stats = createEmptyPlaybackStats(0);
-        const writer = new FakeWriter();
-        // extra = 0 < catchup budget → in-budget mode → never skip,
-        // pace via delayFn instead.
         const clock = fakeClock(0);
         const sink = mstgPresent({
             getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
@@ -261,8 +237,114 @@ describe('mstgPresent', () => {
             nowFn: clock.nowFn,
             delayFn: clock.delayFn,
         });
+        // 3 ms apart in capture time (≈ 333 fps source — way above cap).
         const frames = Array.from({ length: 4 }, (_, i) => new MockVideoFrame(i));
-        const items = frames.map((f, i) => makeEnvelope(stats, i, f));
+        const items = frames.map((f, i) => makeEnvelope(stats, i, i * 3, f));
+
+        await count(pipe(staticSource(items), sink));
+
+        expect(writer.written).toHaveLength(4);
+        // Each delay is MIN_DURATION_MS (1000/120 ≈ 8.33 ms): the cap, not the
+        // smaller naturalDelta. Three delays for frames 1, 2, 3.
+        expect(clock.delays).toHaveLength(3);
+        for (const d of clock.delays) {
+            expect(d).toBeGreaterThan(8);
+            expect(d).toBeLessThan(9);
+        }
+    });
+
+    it('steady mode: clamps duration down to MAX_DURATION_MS for source below 10 fps', async () => {
+        const stats = createEmptyPlaybackStats(0);
+        const writer = new FakeWriter();
+        const clock = fakeClock(0);
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            getBufferSpanMs: (): number => 0,
+            targetSpanMs: 333,
+            nowFn: clock.nowFn,
+            delayFn: clock.delayFn,
+        });
+        // 200 ms apart in capture time (5 fps source — below floor).
+        const frames = Array.from({ length: 3 }, (_, i) => new MockVideoFrame(i));
+        const items = frames.map((f, i) => makeEnvelope(stats, i, i * 200, f));
+
+        await count(pipe(staticSource(items), sink));
+
+        expect(writer.written).toHaveLength(3);
+        // Each delay capped at MAX_DURATION_MS (1000/10 = 100 ms).
+        expect(clock.delays).toHaveLength(2);
+        for (const d of clock.delays) expect(d).toBeCloseTo(100, 5);
+    });
+
+    it('catch-up mode (extra > 0, ≤ budget): writes every frame at MIN_DURATION_MS cadence', async () => {
+        const stats = createEmptyPlaybackStats(0);
+        const writer = new FakeWriter();
+        const clock = fakeClock(0);
+        // extra = 500 - 333 = 167. > 0 and well under CATCHUP_BUDGET_MS (4000).
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            getBufferSpanMs: (): number => 500,
+            targetSpanMs: 333,
+            nowFn: clock.nowFn,
+            delayFn: clock.delayFn,
+        });
+        const frames = Array.from({ length: 4 }, (_, i) => new MockVideoFrame(i));
+        const items = frames.map((f, i) => makeEnvelope(stats, i, i * 33, f));
+
+        await count(pipe(staticSource(items), sink));
+
+        // All 4 written, no skips. Each non-first frame waits MIN_DURATION_MS.
+        expect(writer.written).toHaveLength(4);
+        expect(stats.framesPresented).toBe(4);
+        expect(stats.framesDroppedAtPresenter).toBe(0);
+        expect(clock.delays).toHaveLength(3);
+        for (const d of clock.delays) {
+            expect(d).toBeGreaterThan(8);
+            expect(d).toBeLessThan(9);
+        }
+    });
+
+    it('catch-up overflow (extra > CATCHUP_BUDGET_MS) AND frozen clock → skip-after-decode', async () => {
+        const stats = createEmptyPlaybackStats(0);
+        const writer = new FakeWriter();
+        // extra = 5000 - 333 = 4667 > 4000 (CATCHUP_BUDGET_MS).
+        // Frozen clock: every frame after the first lands within MIN_DURATION_MS
+        // → skip-after-decode path.
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            getBufferSpanMs: (): number => 5000,
+            targetSpanMs: 333,
+            nowFn: (): number => 1000,
+            delayFn: (): Promise<void> => Promise.resolve(),
+        });
+        const frames = Array.from({ length: 5 }, (_, i) => new MockVideoFrame(i));
+        const items = frames.map((f, i) => makeEnvelope(stats, i, i * 33, f));
+
+        await count(pipe(staticSource(items), sink));
+
+        // First frame writes (lastWriteAt is null → skip check skipped).
+        // Subsequent 4 frames at same now() are within MIN_DURATION_MS → skip.
+        expect(writer.written).toHaveLength(1);
+        expect(stats.framesPresented).toBe(1);
+        expect(stats.framesDroppedAtPresenter).toBe(4);
+        for (const f of frames) expect(f.closed).toBe(true);
+    });
+
+    it('catch-up below budget never skips even when frames land within MIN_DURATION_MS', async () => {
+        const stats = createEmptyPlaybackStats(0);
+        const writer = new FakeWriter();
+        const clock = fakeClock(0);
+        // extra = 500. > 0 and < CATCHUP_BUDGET_MS → present every frame at
+        // MIN_DURATION_MS cap, no skip.
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            getBufferSpanMs: (): number => 500,
+            targetSpanMs: 333,
+            nowFn: clock.nowFn,
+            delayFn: clock.delayFn,
+        });
+        const frames = Array.from({ length: 4 }, (_, i) => new MockVideoFrame(i));
+        const items = frames.map((f, i) => makeEnvelope(stats, i, i * 33, f));
 
         await count(pipe(staticSource(items), sink));
 
@@ -283,7 +365,7 @@ describe('mstgPresent', () => {
         const frame = new MockVideoFrame(0);
 
         const run = count(pipe(ch.seg, sink));
-        ch.push(makeEnvelope(stats, 0, frame));
+        ch.push(makeEnvelope(stats, 0, 0, frame));
         await tick();
         await writer.rejectNext(new Error('writer broke'));
 
@@ -305,7 +387,7 @@ describe('mstgPresent', () => {
         const frames = [new MockVideoFrame(0), new MockVideoFrame(1)];
         const run = count(pipe(ch.seg, sink));
 
-        ch.push(makeEnvelope(stats, 0, frames[0]));
+        ch.push(makeEnvelope(stats, 0, 0, frames[0]));
         await tick();
         // Write is in flight — counter must NOT have advanced yet.
         expect(stats.framesPresented).toBe(0);
@@ -314,7 +396,7 @@ describe('mstgPresent', () => {
         await tick();
         expect(stats.framesPresented).toBe(1);
 
-        ch.push(makeEnvelope(stats, 1, frames[1]));
+        ch.push(makeEnvelope(stats, 1, 33, frames[1]));
         await tick();
         expect(stats.framesPresented).toBe(1);
 
@@ -335,8 +417,8 @@ describe('mstgPresent', () => {
 
         const seg: AsyncIterable<DecodedFrame> = (async function* () {
             await Promise.resolve();
-            yield makeEnvelope(stats, 0, frames[0]);
-            yield makeEnvelope(stats, 1, frames[1]);
+            yield makeEnvelope(stats, 0, 0, frames[0]);
+            yield makeEnvelope(stats, 1, 33, frames[1]);
             throw new Error('upstream blew up');
         })();
 
@@ -357,7 +439,7 @@ describe('mstgPresent', () => {
             },
             ...defaults(),
         });
-        const items = Array.from({ length: 4 }, (_, i) => makeEnvelope(stats, i));
+        const items = Array.from({ length: 4 }, (_, i) => makeEnvelope(stats, i, i * 33));
 
         await count(pipe(staticSource(items), sink));
 
