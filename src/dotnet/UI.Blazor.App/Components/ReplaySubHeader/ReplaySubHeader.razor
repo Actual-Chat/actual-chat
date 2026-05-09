@@ -19,7 +19,7 @@
     var speed = m?.Speed ?? ChatAudioUI.ReplaySettings.Value.Speed;
     var speedLabel = Math.Abs(speed - 1.0) < 0.01 ? "1x" : $"{speed:0.##}x";
 
-    var titleLabel = m?.ShowChatTitle == true ? m.ChatTitle : "Playing here";
+    var titleLabel = m?.ShowChatTitle == true ? m.ChatTitle : "Replaying";
     var dateLabel = "";
     if (m?.PlayingAt is { } playingAt) {
         var now = DateTimeConverter.ToLocalTime(Hub.Clocks.SystemClock.Now);
