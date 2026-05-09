@@ -130,11 +130,13 @@ Greedy, runs every ~2 s (also on render-size change):
 ```csharp
 _qualityBySession[session] = new ReceiveQualityState(qualityByStream, SystemClock.Now);
 
-var keyFrameRequests = GetUpgradedStreams(prevState?.QualityByStream, qualityByStream)
-    .Select(x => VideoStreamingBackend.RequestKeyFrame(StreamId.Parse(x), ct))
-    .ToArray();
-if (keyFrameRequests.Length != 0)
+var upgradedStreams = GetUpgradedStreams(prevState?.QualityByStream, qualityByStream).ToArray();
+if (upgradedStreams.Length != 0) {
+    await Task.Delay(KeyFrameRequestDelay, ct);   // 100 ms — see below
+    var keyFrameRequests = upgradedStreams
+        .Select(x => VideoStreamingBackend.RequestKeyFrame(StreamId.Parse(x), ct));
     await Task.WhenAll(keyFrameRequests);
+}
 ```
 
 For every stream whose desired spatial or temporal layer **increased**, the
@@ -146,6 +148,14 @@ receiver can keep showing the higher layer until the next periodic
 keyframe, and burning the per-stream cooldown on a downgrade would block a
 follow-up upgrade's keyframe — exactly when the visible image just grew on
 the client and we want a sharper picture immediately.
+
+The keyframe request fires after a small `KeyFrameRequestDelay` (100 ms).
+Empirically the PLI-driven keyframe can otherwise land at the publisher /
+fan-out before the new envelope has fully propagated; the upgraded layer's
+KF then gets consumed while some component still acts on the old envelope
+and the anchor is wasted — leaving us waiting the full periodic interval
+(~3 s) for the next one. The delay does not block any caller: every
+`ChangePlaybackQuality` call site (`VideoQualityUI`) is fire-and-forget.
 
 The session also records:
 `VideoReceiveCapacityBps`, `VideoReceiveAggregateHealth`,
