@@ -1003,86 +1003,86 @@ export class VideoRecorder {
 
         if (!useMstp) {
         // FALLBACK: rVFC pump from a hidden <video>.
-        const sourceVideo = document.createElement('video');
-        sourceVideo.muted = true;
-        sourceVideo.autoplay = true;
-        sourceVideo.playsInline = true;
-        sourceVideo.srcObject = new MediaStream([this.inputTrack]);
-        sourceVideo.style.position = 'fixed';
-        sourceVideo.style.opacity = '0';
-        sourceVideo.style.pointerEvents = 'none';
-        sourceVideo.style.width = '1px';
-        sourceVideo.style.height = '1px';
-        document.body.appendChild(sourceVideo);
-        await sourceVideo.play().catch(() => { /* tolerated */ });
-        this.workerSourceVideo = sourceVideo;
-        this.workerSourceCancelled = false;
-        const workerForPump = this.worker;
-        let pumpFrameCount = 0;
-        let pushInFlight = false;
-        let pushDroppedCount = 0;
-        let lastPumpTickAtMs = performance.now();
-        const onFrame = (now: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata): void => {
-            if (this.workerSourceCancelled) return;
-            void now;
-            lastPumpTickAtMs = performance.now();
-            if (pushInFlight) {
-                pushDroppedCount++;
-                if (pushDroppedCount <= 5 || pushDroppedCount % 60 === 0)
-                    warnLog?.log(`pushFrame pump: dropped while push in flight (#${pushDroppedCount})`);
-                sourceVideo.requestVideoFrameCallback(onFrame);
-                return;
-            }
+            const sourceVideo = document.createElement('video');
+            sourceVideo.muted = true;
+            sourceVideo.autoplay = true;
+            sourceVideo.playsInline = true;
+            sourceVideo.srcObject = new MediaStream([this.inputTrack]);
+            sourceVideo.style.position = 'fixed';
+            sourceVideo.style.opacity = '0';
+            sourceVideo.style.pointerEvents = 'none';
+            sourceVideo.style.width = '1px';
+            sourceVideo.style.height = '1px';
+            document.body.appendChild(sourceVideo);
+            await sourceVideo.play().catch(() => { /* tolerated */ });
+            this.workerSourceVideo = sourceVideo;
+            this.workerSourceCancelled = false;
+            const workerForPump = this.worker;
+            let pumpFrameCount = 0;
+            let pushInFlight = false;
+            let pushDroppedCount = 0;
+            let lastPumpTickAtMs = performance.now();
+            const onFrame = (now: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata): void => {
+                if (this.workerSourceCancelled) return;
+                void now;
+                lastPumpTickAtMs = performance.now();
+                if (pushInFlight) {
+                    pushDroppedCount++;
+                    if (pushDroppedCount <= 5 || pushDroppedCount % 60 === 0)
+                        warnLog?.log(`pushFrame pump: dropped while push in flight (#${pushDroppedCount})`);
+                    sourceVideo.requestVideoFrameCallback(onFrame);
+                    return;
+                }
 
-            const timestampUs = Math.round(metadata.mediaTime * 1_000_000);
-            let frame: VideoFrame;
-            try {
-                frame = new VideoFrame(sourceVideo, { timestamp: timestampUs });
-            } catch (e) {
-                warnLog?.log('pushFrame pump: VideoFrame ctor failed', e);
+                const timestampUs = Math.round(metadata.mediaTime * 1_000_000);
+                let frame: VideoFrame;
+                try {
+                    frame = new VideoFrame(sourceVideo, { timestamp: timestampUs });
+                } catch (e) {
+                    warnLog?.log('pushFrame pump: VideoFrame ctor failed', e);
+                    sourceVideo.requestVideoFrameCallback(onFrame);
+                    return;
+                }
+                pumpFrameCount++;
+                try {
+                    pushInFlight = true;
+                    void workerForPump.pushFrame(frame)
+                        .catch((e: unknown) => {
+                            warnLog?.log('pushFrame: worker rejected', e);
+                            this.workerSourceCancelled = true;
+                        })
+                        .finally(() => {
+                            pushInFlight = false;
+                        });
+                } catch (e) {
+                    warnLog?.log('pushFrame: worker rejected', e);
+                    this.workerSourceCancelled = true;
+                    try { frame.close(); } catch { /* ignore */ }
+                    return;
+                }
+                try { frame.close(); } catch { /* already detached */ }
                 sourceVideo.requestVideoFrameCallback(onFrame);
-                return;
-            }
-            pumpFrameCount++;
-            try {
-                pushInFlight = true;
-                void workerForPump.pushFrame(frame)
-                    .catch((e: unknown) => {
-                        warnLog?.log('pushFrame: worker rejected', e);
-                        this.workerSourceCancelled = true;
-                    })
-                    .finally(() => {
-                        pushInFlight = false;
-                    });
-            } catch (e) {
-                warnLog?.log('pushFrame: worker rejected', e);
-                this.workerSourceCancelled = true;
-                try { frame.close(); } catch { /* ignore */ }
-                return;
-            }
-            try { frame.close(); } catch { /* already detached */ }
+            };
             sourceVideo.requestVideoFrameCallback(onFrame);
-        };
-        sourceVideo.requestVideoFrameCallback(onFrame);
-        // Capture watchdog: fires every 2s; logs only when the rVFC pump
-        // hasn't ticked recently (= camera/preview frozen) along with
-        // current camera + sourceVideo state for diagnostics. Replaces
-        // any prior watchdog so we don't stack stale ones across restarts.
-        this.workerSourceCaptureWatchdogCancel?.();
-        const captureWatchdog = window.setInterval(() => {
-            if (this.workerSourceCancelled) return;
-            const sinceTickMs = performance.now() - lastPumpTickAtMs;
-            if (sinceTickMs <= 1500) return;
-            const t = this.inputTrack;
-            warnLog?.log(
-                `capture watchdog: pump=#${pumpFrameCount} sinceTick=${sinceTickMs.toFixed(0)}ms ` +
+            // Capture watchdog: fires every 2s; logs only when the rVFC pump
+            // hasn't ticked recently (= camera/preview frozen) along with
+            // current camera + sourceVideo state for diagnostics. Replaces
+            // any prior watchdog so we don't stack stale ones across restarts.
+            this.workerSourceCaptureWatchdogCancel?.();
+            const captureWatchdog = window.setInterval(() => {
+                if (this.workerSourceCancelled) return;
+                const sinceTickMs = performance.now() - lastPumpTickAtMs;
+                if (sinceTickMs <= 1500) return;
+                const t = this.inputTrack;
+                warnLog?.log(
+                    `capture watchdog: pump=#${pumpFrameCount} sinceTick=${sinceTickMs.toFixed(0)}ms ` +
                 `srcVid(rs=${sourceVideo.readyState} ct=${sourceVideo.currentTime.toFixed(2)} ` +
                 `paused=${sourceVideo.paused} ended=${sourceVideo.ended}) ` +
                 `track(rs=${t?.readyState} muted=${t?.muted} enabled=${t?.enabled})`);
-        }, 2000);
-        this.workerSourceCaptureWatchdogCancel = (): void => {
-            window.clearInterval(captureWatchdog);
-        };
+            }, 2000);
+            this.workerSourceCaptureWatchdogCancel = (): void => {
+                window.clearInterval(captureWatchdog);
+            };
         }
 
         const apiUrl = BrowserInit.getUrl('/rpc/ws').replace(/^http/, 'ws');
