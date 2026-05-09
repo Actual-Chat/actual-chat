@@ -169,7 +169,7 @@
                 var remoteStreamCls = layout.GetRemoteStreamPlayerClass(streamInfo.StreamId);
                 if (string.IsNullOrEmpty(remoteStreamCls)) {
                     // Hidden slot (e.g. the camera half of an author who's also
-                    // screencasting — it renders as a PiP overlay on the screencast tile).
+                    // screencasting — it renders as a separate `pip-overlay` sidebar tile).
                     continue;
                 }
                 <RemoteStreamPlayer @key="streamInfo.StreamId.Value" StreamInfo="@streamInfo" Class="@remoteStreamCls" />

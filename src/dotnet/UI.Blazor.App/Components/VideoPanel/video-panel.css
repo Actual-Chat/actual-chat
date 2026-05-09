@@ -509,17 +509,26 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     @apply hidden;
 }
 
-/* PiP overlay: author's camera rendered on top of their own screencast tile */
+/* PiP: author's camera shown as the bottom-most sidebar tile when they
+   are also screencasting. Same footprint and border width as item-x.
+   order: -1 places it below all item-* tiles in the column-reverse
+   sidebar. The border keeps the lighter "separator" tint while the other
+   tiles step one shade darker (see .item-x below), so the screencast
+   author is distinguished without standing out. In dark theme the tint
+   inverts: PiP goes fully black, sidebar tiles stay on --separator. */
 .video-panel-content .video-track-player.pip-overlay {
-    @apply absolute;
-    @apply top-3 right-3;
-    @apply w-32 h-32;
+    @apply relative;
+    @apply z-20;
+    @apply w-20 h-20;
     @apply rounded-lg overflow-hidden;
     @apply border-2 border-separator;
-    @apply z-30;
+    order: -1;
+}
+.theme-dark .video-panel-content .video-track-player.pip-overlay {
+    @apply border-black;
 }
 body.wide .video-panel-content .video-track-player.pip-overlay {
-    @apply w-48 h-48;
+    @apply w-40 h-40;
 }
 
 /* Focused item: absolute overlay, full content area */
@@ -547,13 +556,21 @@ body.wide .video-panel-content .video-track-player.item-focused {
     @apply overflow-hidden;
 }
 
-/* Sidebar items: flex children with order, PiP size */
+/* Sidebar items: flex children with order, PiP size.
+   In light theme the border is one gray step darker than --separator
+   so the PiP tile (which keeps --separator) reads as the lighter one.
+   In dark theme we restore --separator — the contrast there is carried
+   by the PiP tile going fully black instead. */
 .video-panel-content .video-track-player.item-x {
     @apply relative;
     @apply z-20;
     @apply w-20 h-20;
     @apply rounded-lg overflow-hidden;
-    @apply border-2 border-separator;
+    @apply border-2;
+    border-color: var(--gray-80);
+}
+.theme-dark .video-panel-content .video-track-player.item-x {
+    @apply border-separator;
 }
 body.wide .video-panel-content .video-track-player.item-x {
     @apply w-40 h-40;
@@ -580,7 +597,8 @@ body.wide .video-panel-content .video-track-player.item-x {
     max-width: 16ch;
     text-overflow: ellipsis;
 }
-body.narrow .video-panel-content .video-track-player.item-x .video-participant-label {
+body.narrow .video-panel-content .video-track-player.item-x .video-participant-label,
+body.narrow .video-panel-content .video-track-player.pip-overlay .video-participant-label {
     @apply hidden;
 }
 /* Focused video shows the participant name in the header (.c-center), hide the in-video label */
