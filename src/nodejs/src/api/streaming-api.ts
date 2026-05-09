@@ -155,7 +155,7 @@ export interface RecordingQualityInfoDto {
 
 export interface PlaybackStreamInfoDto {
     0: number;   // IncomingByteRate
-    1: number;   // BufferDurationMsEma
+    1: number;   // BufferSpanMsEma
     2: number;   // KeyframeSkipsInWindow
     3: number;   // DecoderQueueDepthEma
     4: number;   // CurrentMaxLayerId

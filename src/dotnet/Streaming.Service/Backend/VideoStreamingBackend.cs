@@ -155,14 +155,14 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                 record.StreamId, clockDelta.TotalMilliseconds);
 
         // Register stream for real-time signaling. Initially we only know the
-        // format the producer pushed at registration time — the base layer.
-        // Higher layers will surface as their keyframes flow through
-        // (each frame carries LayerId + dims); see Formats[] update path.
+        // The producer registers with the top-tier format (highest layer
+        // dims + codec). The simulcast ladder for non-top layers is
+        // derivable from `SourceKind` via the recorder's ladder builder.
         var streamInfo = new VideoStreamInfo(
             record.StreamId,
             record.ChatId,
             author.Id,
-            [record.Format],
+            record.Format,
             beginsAt,
             record.SourceKind,
             sourceStartedAt);

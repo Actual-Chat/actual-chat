@@ -56,6 +56,7 @@ export interface VideoDebugSettings {
     forceH264Only: boolean;
     maxOutboundLayerCount: number | null;
     maxInboundLayerCount: number | null;
+    estBandwidthMultiplier: number;
 }
 
 export function getVideoDebugSettings(): VideoDebugSettings {
@@ -63,6 +64,7 @@ export function getVideoDebugSettings(): VideoDebugSettings {
         forceH264Only: getForceH264OnlyImpl(),
         maxOutboundLayerCount: getLayerCount(OUTBOUND_LAYER_COUNT_KEY),
         maxInboundLayerCount: getLayerCount(INBOUND_LAYER_COUNT_KEY),
+        estBandwidthMultiplier: getBandwidthMultiplier(),
     };
 }
 
@@ -78,8 +80,22 @@ export function setVideoDebugMaxInboundLayerCount(layerCount: number | null): vo
     setLayerCount(INBOUND_LAYER_COUNT_KEY, layerCount);
 }
 
+export function setVideoDebugEstBandwidthMultiplier(value: number): void {
+    try {
+        if (!Number.isFinite(value) || value === 1) {
+            globalThis.localStorage.removeItem(EST_BANDWIDTH_MULTIPLIER_KEY);
+            return;
+        }
+
+        globalThis.localStorage.setItem(EST_BANDWIDTH_MULTIPLIER_KEY, String(value));
+    } catch {
+        // Debug-only setting; ignore storage failures in private/sandboxed contexts.
+    }
+}
+
 const OUTBOUND_LAYER_COUNT_KEY = 'video.debug.maxOutboundLayerCount';
 const INBOUND_LAYER_COUNT_KEY = 'video.debug.maxInboundLayerCount';
+const EST_BANDWIDTH_MULTIPLIER_KEY = 'video.debug.estBandwidthMultiplier';
 
 function getLayerCount(key: string): number | null {
     try {
@@ -113,4 +129,15 @@ function normalizeLayerCount(layerCount: number | null): number | null {
     if (layerCount < 1 || layerCount > 3)
         return null;
     return layerCount;
+}
+
+function getBandwidthMultiplier(): number {
+    try {
+        const raw = globalThis.localStorage.getItem(EST_BANDWIDTH_MULTIPLIER_KEY);
+        if (raw === null) return 1;
+        const v = Number(raw);
+        return Number.isFinite(v) && v > 0 ? v : 1;
+    } catch {
+        return 1;
+    }
 }

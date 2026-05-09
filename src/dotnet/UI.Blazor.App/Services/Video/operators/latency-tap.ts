@@ -11,6 +11,8 @@ export interface LatencySample {
     e2eLatencyMs: number;
     capturedEpoch: number;
     layerId: number;
+    width: number;
+    height: number;
     bytesReceived: number;
     // Filled in by Player.start's wrapped report (the operator has no buffer reference).
     bufferSpanMs: number;
@@ -44,6 +46,8 @@ export function latencyTap(opts: LatencyTapOptions): PipeOperator<DecodedFrame, 
                 e2eLatencyMs: nowMs - envelope.capturedAt.timeMs,
                 capturedEpoch: envelope.capturedAt.epoch,
                 layerId: envelope.layerId,
+                width: envelope.frame.displayWidth,
+                height: envelope.frame.displayHeight,
                 bytesReceived: envelope.stats.bytesReceived,
                 bufferSpanMs: 0,
             });

@@ -13,15 +13,11 @@
     // Prefer rotation-aware source dims over encoder dims: the encoder's W/H
     // can be landscape at PushVideo time even when the source is portrait
     // (the rotation reconcile in workers/video-processing.ts swaps encoder
-    // dims after the first frame, but VideoStreamInfo.Formats is frozen at
+    // dims after the first frame, but VideoStreamInfo.Format is frozen at
     // PushVideo). SourceSize is populated post-rotation. JS-side
     // (render-backend-canvas.ts) overrides this on each canvas resize for
     // mid-stream rotation.
-    // Pyramid: Formats[0] = base/smallest, Formats[^1] = top/largest. All
-    // layers derive from the same source, so any layer's SourceSize matches —
-    // pick the top tier to size the canvas for the highest layer the receiver
-    // might ever decode.
-    var topFormat = StreamInfo.Formats.LastOrDefault();
+    var topFormat = StreamInfo.Format;
     var aspectRatioStyle = topFormat switch {
         { SourceSize.Width: > 0, SourceSize.Height: > 0 } f => $"aspect-ratio: {f.SourceSize.Width} / {f.SourceSize.Height}",
         { Size.Width: > 0, Size.Height: > 0 } f             => $"aspect-ratio: {f.Size.Width} / {f.Size.Height}",
@@ -109,7 +105,7 @@
             // canvas dims, codec settings (SPS/PPS), and starting resolution all align to the
             // best tier the receiver may ever decode. The decoder reconfigures at keyframe
             // boundaries if the actual forwarded layer is lower.
-            var format = StreamInfo.Formats.LastOrDefault() ?? new VideoFormat();
+            var format = StreamInfo.Format;
             var sourceStartedAt = StreamInfo.SourceStartedAt != default
                 ? StreamInfo.SourceStartedAt
                 : StreamInfo.StartedAt;
@@ -168,14 +164,14 @@
     }
 
     [JSInvokable]
-    public async Task OnPlaybackViewChanged(double renderCssLongSide, double renderDevicePixelRatio, int priority)
+    public async Task OnPlaybackViewportChanged(double renderCssLongSide, double renderDevicePixelRatio, int priority)
     {
         if (_isDisposed)
             return;
 
         try {
             await Hub.VideoQualityUI
-                .OnPlaybackViewChanged(
+                .OnPlaybackViewportChanged(
                     StreamInfo.StreamId,
                     StreamInfo.SourceKind,
                     renderCssLongSide,
@@ -200,29 +196,6 @@
     }
 
     [JSInvokable]
-    public void OnEnded(string? errorMessage)
-    {
-        if (errorMessage is not null)
-            Log.LogWarning("[VideoTrackPlayer #{StreamId}] OnEnded: {Error}", StreamInfo.StreamId, errorMessage);
-        if (errorMessage is null) {
-            // Normal completion — sender intentionally ended the stream
-            Hub.ChatVideoUI.NotifyRemoteStreamEndedIntentionally();
-        }
-        _whenCompletedSource.TrySetResult();
-    }
-
-    [JSInvokable]
-    public async Task OnRequestQualityReduction(string codecCategory)
-    {
-        Log.LogWarning(
-            "[VideoTrackPlayer #{StreamId}] OnRequestQualityReduction: codec={Codec} — decode too slow, requesting base playback layer",
-            StreamInfo.StreamId, codecCategory);
-        await Hub.VideoQualityUI
-            .RequestPlaybackQualityReduction(StreamInfo.StreamId, StreamInfo.SourceKind, CancellationToken.None)
-            .ConfigureAwait(false);
-    }
-
-    [JSInvokable]
     public async Task OnRequestCodecExclusion(string codecCategory)
     {
         Log.LogWarning(
@@ -244,6 +217,18 @@
                 "[VideoTrackPlayer #{StreamId}] Failed to re-register after requested codec exclusion",
                 StreamInfo.StreamId);
         }
+    }
+
+    [JSInvokable]
+    public void OnEnded(string? errorMessage)
+    {
+        if (errorMessage is not null)
+            Log.LogWarning("[VideoTrackPlayer #{StreamId}] OnEnded: {Error}", StreamInfo.StreamId, errorMessage);
+        if (errorMessage is null) {
+            // Normal completion — sender intentionally ended the stream
+            Hub.ChatVideoUI.NotifyRemoteStreamEndedIntentionally();
+        }
+        _whenCompletedSource.TrySetResult();
     }
 
     public async ValueTask DisposeAsync()

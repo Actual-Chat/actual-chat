@@ -393,7 +393,7 @@
 
 #if false
         Log.LogWarning("[VideoPanelContent] ComputeState: remoteStreams=[{Streams}], isOwnRecording={IsOwnRecording}, isOwnScreenCasting={IsOwnScreenCasting}",
-            string.Join(", ", remoteStreams.Select(s => $"{s.StreamId}({(s.Formats.LastOrDefault()?.Codec ?? "?")})")),
+            string.Join(", ", remoteStreams.Select(s => $"{s.StreamId}({s.Format.Codec})")),
             isOwnRecording,
             isOwnScreenCasting);
 #endif

@@ -100,7 +100,7 @@ export interface RemoteStreamDiagnostics {
 
 interface PlaybackHealthSnapshot {
     incomingByteRate: number;
-    bufferDurationMsEma: number;
+    bufferSpanMsEma: number;
     keyframeSkipsInWindow: number;
     decoderQueueDepthEma: number;
     currentMaxLayerId: number;
@@ -116,7 +116,7 @@ interface PlaybackHealthSnapshot {
     codec: string;
 }
 
-interface RenderSizeHint {
+interface ViewportInfo {
     cssLongSide: number;
     devicePixelRatio: number;
 }
@@ -161,7 +161,6 @@ export class VideoPlayer {
     private codecCategory = '';
 
     private isPlaying = false;
-    private get _isPlayingNow(): boolean { return this.isPlaying; }
     private visibilitySubscription: Subscription | null = null;
 
     /** True between `worker.start({...})` and the worker's stream-end
@@ -189,7 +188,17 @@ export class VideoPlayer {
 
     // Render-quality hint state.
     private resizeObserver: ResizeObserver | null = null;
-    private lastSentRenderHint: string | null = null;
+    // Layout swaps (item-focused ↔ item-x) change the canvas's direct
+    // parent class without always producing a content-box change on the
+    // canvas itself, so ResizeObserver alone misses them.
+    private parentClassObserver: MutationObserver | null = null;
+    // Minimize/maximize / collapse / expand are class swaps on the OUTER
+    // `.video-panel` ancestor (many levels above the canvas). Watch its
+    // class + size so we re-evaluate when the whole panel reshapes.
+    private panelClassObserver: MutationObserver | null = null;
+    private panelResizeObserver: ResizeObserver | null = null;
+    private viewportCheckRafHandle: number | null = null;
+    private lastSentViewportInfo: string | null = null;
 
     // Smoothed pipeline latency from the worker's latency-tap.
     private pipelineLatencyMs = 0;
@@ -449,31 +458,62 @@ export class VideoPlayer {
 
         // Watch the canvas for layout changes and send render-size hints when
         // the displayed long side changes enough to affect playback quality.
-        this.resizeObserver = new ResizeObserver(() => this.maybeSendRenderHint());
+        // RAF-defer so getBoundingClientRect reads post-layout dimensions.
+        this.resizeObserver = new ResizeObserver(() => this.scheduleViewportCheck());
         this.resizeObserver.observe(this.canvas);
-        this.maybeSendRenderHint();
+        // Backstop 1: layout swap on the canvas's immediate parent
+        // (item-focused ↔ item-x).
+        const parent = this.canvas.parentElement;
+        if (parent) {
+            this.parentClassObserver = new MutationObserver(() => this.scheduleViewportCheck());
+            this.parentClassObserver.observe(parent, { attributes: true, attributeFilter: ['class'] });
+        }
+        // Backstop 2: collapse / expand / minimize / maximize toggle classes
+        // on the outer `.video-panel` ancestor, many levels above the canvas.
+        // Watch both its class and its size — the panel-level reshape is what
+        // ultimately drives our viewport.
+        const panel = this.canvas.closest('.video-panel');
+        if (panel) {
+            this.panelClassObserver = new MutationObserver(() => this.scheduleViewportCheck());
+            this.panelClassObserver.observe(panel, { attributes: true, attributeFilter: ['class'] });
+            this.panelResizeObserver = new ResizeObserver(() => this.scheduleViewportCheck());
+            this.panelResizeObserver.observe(panel);
+        }
+        this.maybeSendViewportChanged();
 
         void this.reportPlaying(0, true);
     }
 
-    private maybeSendRenderHint(): RenderSizeHint | null | undefined {
-        const hint = this.computeRenderSizeHint();
-        const priority = priorityForRenderSize(hint);
-        const key = hint
-            ? `${Math.round(hint.cssLongSide)}:${hint.devicePixelRatio.toFixed(3)}:${priority}`
+    private scheduleViewportCheck(): void {
+        // Coalesce bursts of layout/class events into a single post-layout
+        // read so getBoundingClientRect lands AFTER the browser's reflow.
+        if (this.viewportCheckRafHandle !== null)
+            return;
+
+        this.viewportCheckRafHandle = requestAnimationFrame(() => {
+            this.viewportCheckRafHandle = null;
+            this.maybeSendViewportChanged();
+        });
+    }
+
+    private maybeSendViewportChanged(): void {
+        const info = this.computeViewportChangedInfo();
+        const priority = priorityForRenderSize(info);
+        const key = info
+            ? `${Math.round(info.cssLongSide)}:${info.devicePixelRatio.toFixed(3)}:${priority}`
             : `none:${priority}`;
-        if (key === this.lastSentRenderHint) return undefined;
-        this.lastSentRenderHint = key;
-        void this.blazorRef.invokeMethodAsync(
-            'OnPlaybackViewChanged',
-            hint?.cssLongSide ?? 0,
-            hint?.devicePixelRatio ?? 0,
-            priority)
-            .catch((e: unknown) => warnLog?.log('OnPlaybackViewChanged error:', e));
+        if (key === this.lastSentViewportInfo) return undefined;
+        this.lastSentViewportInfo = key;
+
         debugLog?.log(
-            `RenderSize hint: css=${hint?.cssLongSide ?? 0} dpr=${hint?.devicePixelRatio ?? 0} ` +
+            `viewport changed: css=${info?.cssLongSide ?? 0} dpr=${info?.devicePixelRatio ?? 0} ` +
             `priority=${priority} (canvas=${this.canvas.clientWidth}x${this.canvas.clientHeight})`);
-        return hint;
+        void this.blazorRef.invokeMethodAsync(
+            'OnPlaybackViewportChanged',
+            info?.cssLongSide ?? 0,
+            info?.devicePixelRatio ?? 0,
+            priority)
+            .catch((e: unknown) => errorLog?.log('OnPlaybackViewportChanged failed:', e));
     }
 
     private requestKeyFrame(): void {
@@ -740,6 +780,15 @@ export class VideoPlayer {
         this.receivedFrameCount++;
         this.renderFrameCount++;
 
+        // Last-decoded-frame snapshot for diagnostics — what the modal's
+        // "Resolution" row reads. Worker side has the data; latency-tap
+        // is the existing main-thread channel.
+        this.forwardedLayerId = sample.layerId;
+        this.forwardedWidth = sample.width;
+        this.forwardedHeight = sample.height;
+        if (sample.layerId > this.observedMaxLayerId)
+            this.observedMaxLayerId = sample.layerId;
+
         // Forward presentation lag to Blazor for A/V sync.
         const presentationLagMs = Math.max(0, sample.frameAgeMs);
         void this.blazorRef.invokeMethodAsync('OnPresentationLag', presentationLagMs)
@@ -778,6 +827,26 @@ export class VideoPlayer {
             this.resizeObserver = null;
         }
 
+        if (this.parentClassObserver) {
+            this.parentClassObserver.disconnect();
+            this.parentClassObserver = null;
+        }
+
+        if (this.panelClassObserver) {
+            this.panelClassObserver.disconnect();
+            this.panelClassObserver = null;
+        }
+
+        if (this.panelResizeObserver) {
+            this.panelResizeObserver.disconnect();
+            this.panelResizeObserver = null;
+        }
+
+        if (this.viewportCheckRafHandle !== null) {
+            cancelAnimationFrame(this.viewportCheckRafHandle);
+            this.viewportCheckRafHandle = null;
+        }
+
         // Stop the worker pipeline.
         if (this.workerStreamActive && this.playerWorker) {
             try { await this.playerWorker.stop(this.streamId); }
@@ -809,7 +878,7 @@ export class VideoPlayer {
         debugLog?.log(`VideoPlayer stopped for stream ${this.streamId}`);
     }
 
-    private computeRenderSizeHint(): RenderSizeHint | null {
+    private computeViewportChangedInfo(): ViewportInfo | null {
         const parent = this.canvas.parentElement;
         const canvasRect = this.canvas.getBoundingClientRect();
         const parentRect = parent?.getBoundingClientRect();
@@ -841,24 +910,24 @@ export class VideoPlayer {
         const bitrateKbps = elapsedSec > 0
             ? Math.round(this.receivedBytes * 8 / elapsedSec / 1000)
             : 0;
-        const renderHint = this.computeRenderSizeHint();
+        const info = this.computeViewportChangedInfo();
         const requested = requestedReceiveQuality.get(this.streamId) ?? null;
         const skipDelta = Math.max(0, this.skipToLiveCount - this.lastQualitySkipToLiveCount);
         this.lastQualitySkipToLiveCount = this.skipToLiveCount;
 
         const snapshot: PlaybackHealthSnapshot = {
             incomingByteRate: Math.round(bitrateKbps * 1000 / 8),
-            bufferDurationMsEma: sample.bufferSpanMs,
+            bufferSpanMsEma: sample.bufferSpanMs,
             keyframeSkipsInWindow: skipDelta,
             decoderQueueDepthEma: 0,
             currentMaxLayerId: requested?.maxLayerId ?? DEFAULT_MAX_LAYER,
             currentMaxTemporalLayerId: MAX_TEMPORAL_LAYER,
-            priority: priorityForRenderSize(renderHint),
+            priority: priorityForRenderSize(info),
             streamAgeMs: Math.max(0, Math.round(performance.now() - this.createdAtMs)),
             qualityReductionRequested: false,
             latencyMsEma: Math.max(0, sample.e2eLatencyMs),
-            renderCssLongSide: renderHint?.cssLongSide ?? 0,
-            renderDevicePixelRatio: renderHint?.devicePixelRatio ?? 0,
+            renderCssLongSide: info?.cssLongSide ?? 0,
+            renderDevicePixelRatio: info?.devicePixelRatio ?? 0,
             codec: this.selectedCodec ?? 'unknown',
         };
         void this.blazorRef.invokeMethodAsync('OnPlaybackHealth', snapshot)
@@ -891,7 +960,7 @@ export class VideoPlayer {
     }
 }
 
-function priorityForRenderSize(hint: RenderSizeHint | null): number {
+function priorityForRenderSize(hint: ViewportInfo | null): number {
     // Anything medium-sized or larger is PRIMARY. SECONDARY is reserved for
     // tiny sidebar / pip tiles; the allocator may still give them more than L0
     // if primaries leave enough budget.

@@ -790,14 +790,13 @@ export class VideoRecorder {
     }
 
     public getDiagnostics(): OwnStreamDiagnostics {
-        // The new pipeline's `VideoRecordingStats` is much sparser than
-        // the legacy `VideoProcessingStats`. We map what we can; the
-        // rest become zero / 'N/A' / null. The C# diagnostics surface
-        // tolerates these — fields are simply rendered blank.
-        // TODO(phase 7+): repopulate per-layer stats once the
-        // new pipeline's encoder-pool exposes per-layer counters.
+        // Aggregate counters live on `VideoRecordingStats` and are refreshed at
+        // 1Hz by the recorder-health monitor. Per-layer breakdowns are NOT
+        // tracked — the encode operator only mutates aggregates. The modal
+        // surfaces aggregates at the encoder header; per-layer fields stay 0.
         const ladder = this.layers ?? [];
         const top = ladder.length > 0 ? ladder[ladder.length - 1] : null;
+        const liveStats = this.lastRecorderHealthStats;
 
         const duration = this.startedAtMs > 0
             ? (Date.now() - this.startedAtMs) / 1000
@@ -806,6 +805,18 @@ export class VideoRecorder {
         const codecCategory = this.currentCodecString
             ? getCodecCategory(this.currentCodecString)
             : '';
+
+        const droppedAggregate = liveStats
+            ? liveStats.framesDroppedDimMismatch
+                + liveStats.framesDroppedBackpressure
+                + liveStats.framesDroppedOther
+            : 0;
+        const meanEncodeTimeMs = liveStats && liveStats.encodeTimeMsCount > 0
+            ? liveStats.encodeTimeMsSum / liveStats.encodeTimeMsCount
+            : 0;
+        const aggregateBitrateKbps = liveStats && duration > 0
+            ? (liveStats.bytesEncoded * 8) / duration / 1000
+            : 0;
 
         return {
             mode: this.isScreenCasting ? 'screen' : this.isRecording ? 'camera' : 'none',
@@ -816,10 +827,10 @@ export class VideoRecorder {
             inputFramerate: this.currentFramerate ?? 0,
             outputResolution: top ? `${top.width}x${top.height}` : 'N/A',
             configuredBitrate: kbpsToBitsPerSecond(top?.bitrateKbps ?? 0),
-            actualBitrateKbps: 0,
-            encodedFrames: 0,
-            droppedFrames: 0,
-            keyFrames: 0,
+            actualBitrateKbps: aggregateBitrateKbps,
+            encodedFrames: liveStats?.chunksEncoded ?? 0,
+            droppedFrames: droppedAggregate,
+            keyFrames: liveStats?.keyframesEncoded ?? 0,
             layers: ladder.map((l, i) => ({
                 layerId: i,
                 outputResolution: `${l.width}x${l.height}`,
@@ -841,7 +852,7 @@ export class VideoRecorder {
                 encoderLastErrorAgeMs: -1,
                 encoderErrorCount: 0,
             })),
-            medianEncodeTime: 0,
+            medianEncodeTime: meanEncodeTimeMs,
             pureMedianEncodeTime: 0,
             encoderHwAccel: this.currentCodecHardwareAccel ? 'hardware' : 'software',
             encoderState: this.isRecording ? 'configured' : 'unconfigured',

@@ -71,33 +71,32 @@
                         </select>
                     </Right>
                 </TileItem>
+                <TileItem IsHoverable="false">
+                    <Content>Est. bandwidth multiplier</Content>
+                    <Caption>
+                        Multiplies the AIMD-estimated capacity by this factor before
+                        the inbound allocator runs. Use to simulate constrained or
+                        plentiful capacity without touching the real network.
+                    </Caption>
+                    <Right>
+                        <select
+                            class="diag-select"
+                            value="@FormatBandwidthMultiplier(_estBandwidthMultiplier)"
+                            @onchange="@OnEstBandwidthMultiplierChange">
+                            @foreach (var v in BandwidthMultiplierOptions) {
+                                <option value="@v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)">@v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)x</option>
+                            }
+                        </select>
+                    </Right>
+                </TileItem>
             </Tile>
             <div class="diag-row diag-dim">
                 <span class="diag-label">Storage keys</span>
                 <span class="diag-value multiline">
                     video.debug.maxOutboundLayerCount,
-                    video.debug.maxInboundLayerCount
+                    video.debug.maxInboundLayerCount,
+                    video.debug.estBandwidthMultiplier
                 </span>
-            </div>
-        </div>
-        <div class="diag-section">
-            <div class="diag-section-header">Playback override (global)</div>
-            <div class="diag-row diag-dim">
-                Forces ReceiveQuality on every remote stream. Off = server-driven
-                (default). Degrade = base layer only. Keep = pin to the currently
-                forwarded layer. Upgrade = top layer. Session-only; resets on reload.
-            </div>
-            <div class="diag-row">
-                <span class="diag-label">Mode</span>
-                <select
-                    class="diag-select"
-                    value="@_playbackOverride"
-                    @onchange="@(e => OnPlaybackModeChanged(e.Value as string))">
-                    <option value="Off">Off</option>
-                    <option value="Degrade">Degrade</option>
-                    <option value="Keep">Keep</option>
-                    <option value="Upgrade">Upgrade</option>
-                </select>
             </div>
         </div>
     </Body>
@@ -110,13 +109,18 @@
         $"{BlazorUIAppModule.ImportName}.setVideoDebugMaxOutboundLayerCount";
     private static readonly string JSSetMaxInboundLayerCountMethod =
         $"{BlazorUIAppModule.ImportName}.setVideoDebugMaxInboundLayerCount";
+    private static readonly string JSSetEstBandwidthMultiplierMethod =
+        $"{BlazorUIAppModule.ImportName}.setVideoDebugEstBandwidthMultiplier";
     private static readonly string JSCollectStreamHintsMethod =
         $"{BlazorUIAppModule.ImportName}.collectActiveStreamHints";
+
+    private static readonly double[] BandwidthMultiplierOptions =
+        [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5];
 
     private bool _forceH264Only;
     private int? _maxOutboundLayerCount;
     private int? _maxInboundLayerCount;
-    private VideoQualityUI.PlaybackOverrideMode _playbackOverride = VideoQualityUI.PlaybackOverrideMode.Off;
+    private double _estBandwidthMultiplier = 1.0;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -126,12 +130,13 @@
         _forceH264Only = settings.ForceH264Only;
         _maxOutboundLayerCount = settings.MaxOutboundLayerCount;
         _maxInboundLayerCount = settings.MaxInboundLayerCount;
+        _estBandwidthMultiplier = NormalizeMultiplier(settings.EstBandwidthMultiplier);
         await Hub.VideoQualityUI.SetDebugMaxRecordingLayerCount(_maxOutboundLayerCount, CancellationToken.None);
         await Hub.VideoQualityUI.SetDebugMaxPlaybackLayerCount(
             _maxInboundLayerCount,
             await CollectStreamHints(),
             CancellationToken.None);
-        _playbackOverride = Hub.VideoQualityUI.PlaybackOverride;
+        Hub.VideoQualityUI.SetDebugBandwidthMultiplier(_estBandwidthMultiplier);
     }
 
     private async Task OnForceH264OnlyClick() {
@@ -155,6 +160,12 @@
             CancellationToken.None);
     }
 
+    private async Task OnEstBandwidthMultiplierChange(ChangeEventArgs e) {
+        _estBandwidthMultiplier = NormalizeMultiplier(ParseMultiplier(e.Value?.ToString()));
+        await JS.InvokeVoidAsync(JSSetEstBandwidthMultiplierMethod, _estBandwidthMultiplier);
+        Hub.VideoQualityUI.SetDebugBandwidthMultiplier(_estBandwidthMultiplier);
+    }
+
     private static string FormatLayerCount(int? layerCount)
         => layerCount?.ToString() ?? "";
 
@@ -163,20 +174,35 @@
             ? layerCount
             : null;
 
-    private async Task OnPlaybackModeChanged(string? value) {
-        if (!Enum.TryParse<VideoQualityUI.PlaybackOverrideMode>(value, out var mode))
-            mode = VideoQualityUI.PlaybackOverrideMode.Off;
-        _playbackOverride = mode;
-        StateHasChanged();
-        var hints = await CollectStreamHints();
-        await Hub.VideoQualityUI.SetPlaybackOverride(mode, hints, CancellationToken.None);
+    private static string FormatBandwidthMultiplier(double value)
+        => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static double ParseMultiplier(string? value)
+        => double.TryParse(value, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var v)
+            ? v
+            : 1.0;
+
+    private static double NormalizeMultiplier(double value) {
+        // Snap to closest option in BandwidthMultiplierOptions so localStorage
+        // can't push out-of-range values into the controller.
+        var closest = BandwidthMultiplierOptions[0];
+        var bestDelta = Math.Abs(closest - value);
+        for (var i = 1; i < BandwidthMultiplierOptions.Length; i++) {
+            var d = Math.Abs(BandwidthMultiplierOptions[i] - value);
+            if (d < bestDelta) {
+                bestDelta = d;
+                closest = BandwidthMultiplierOptions[i];
+            }
+        }
+        return closest;
     }
 
-    private async Task<IReadOnlyList<VideoQualityUI.PlaybackOverrideStreamHint>> CollectStreamHints() {
+    private async Task<IReadOnlyList<VideoQualityUI.PlaybackStreamHint>> CollectStreamHints() {
         var raw = await JS.InvokeAsync<JsHint[]>(JSCollectStreamHintsMethod);
-        var hints = new List<VideoQualityUI.PlaybackOverrideStreamHint>(raw.Length);
+        var hints = new List<VideoQualityUI.PlaybackStreamHint>(raw.Length);
         foreach (var h in raw)
-            hints.Add(new VideoQualityUI.PlaybackOverrideStreamHint(h.streamId, h.currentLayerId));
+            hints.Add(new VideoQualityUI.PlaybackStreamHint(h.streamId, h.currentLayerId));
         return hints;
     }
 
@@ -188,7 +214,8 @@
     public sealed record VideoDebugSettings(
         bool ForceH264Only,
         int? MaxOutboundLayerCount,
-        int? MaxInboundLayerCount);
+        int? MaxInboundLayerCount,
+        double EstBandwidthMultiplier);
 
     public sealed record Model;
 }

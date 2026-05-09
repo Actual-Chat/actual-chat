@@ -81,6 +81,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                     forceKeyframeOnFirstEncode = false;
                     const layerFrames: readonly CapturedFrame[] = bundle.layers;
                     const promises: Promise<EncodedFrame>[] = [];
+                    const encodeStartedAtMs = performance.now();
                     try {
                         for (let layerId = 0; layerId < layerCount; layerId++) {
                             const cf = layerFrames[layerId];
@@ -97,6 +98,11 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         throw e;
                     }
                     const settled = await Promise.allSettled(promises);
+                    // Wall-clock per-bundle encode cost (parallel layers + dispatch
+                    // overhead). Median needs a histogram; mean = sum/count is good
+                    // enough for the diagnostics modal.
+                    bundle.stats.encodeTimeMsSum += performance.now() - encodeStartedAtMs;
+                    bundle.stats.encodeTimeMsCount++;
                     const rejected = settled.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
                     if (rejected.length > 0) {
                         for (const result of settled) {
