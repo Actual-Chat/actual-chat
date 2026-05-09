@@ -77,7 +77,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
     public virtual async Task PushVideo(
         VideoRecord record,
-        RpcStream<VideoFrame> videoStream,
+        RpcStream<VideoFrameBundle> videoStream,
         CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug(nameof(PushVideo) + ": record #{StreamId} = {Record}", record.StreamId, record);
@@ -121,7 +121,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
     private async Task PushVideoInternal(
         VideoRecord record,
-        IAsyncEnumerable<VideoFrame> videoFrames,
+        IAsyncEnumerable<VideoFrameBundle> videoBundles,
         CancellationToken cancellationToken)
     {
         using var watchdogCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -194,62 +194,72 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             var silenceTimeout = record.SourceKind == VideoSourceKind.ScreenCast
                 ? Constants.Video.ScreenCastFrameSilenceTimeout
                 : Constants.Video.CameraFrameSilenceTimeout;
-            async IAsyncEnumerable<VideoFrame> ProcessFrames(IAsyncEnumerable<VideoFrame> source)
+            async IAsyncEnumerable<VideoFrame> ProcessFrames(IAsyncEnumerable<VideoFrameBundle> source)
             {
-                // Frame-silence watchdog: cancels watchdogCts if no frame arrives within silenceTimeout.
-                // Each frame resets the deadline; CancellationTokenSource reuses a single internal timer.
+                // Frame-silence watchdog: cancels watchdogCts if no bundle arrives within silenceTimeout.
+                // Each bundle resets the deadline; CancellationTokenSource reuses a single internal timer.
                 watchdogCts.CancelAfter(silenceTimeout);
-                await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                await foreach (var bundle in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                     watchdogCts.CancelAfter(silenceTimeout);
-
-                    var layerId = frame.LayerId;
-                    if (frame.Offset < TimeSpan.Zero) {
-                        negativeOffsetDropCount++;
-                        if (negativeOffsetDropCount <= 3 || negativeOffsetDropCount % 30 == 0)
-                            Log.LogWarning(
-                                "ProcessFrames: dropping frame with negative offset #{DropCount} for stream #{StreamId}: " +
-                                "offset={OffsetMs:F0}ms, key={IsKeyFrame}, layer={LayerId}, temporal={TemporalLayerId}, " +
-                                "dims={Width}x{Height}",
-                                negativeOffsetDropCount,
-                                record.StreamId,
-                                frame.Offset.TotalMilliseconds,
-                                frame.IsKeyFrame,
-                                layerId,
-                                frame.TemporalLayerId,
-                                frame.Width,
-                                frame.Height);
+                    if (bundle.Frames.Length == 0)
                         continue;
-                    }
 
-                    if (frame.IsKeyFrame) {
-                        if (startedLayers.Add(layerId))
-                            Log.LogWarning(
-                                "ProcessFrames: first keyframe for stream #{StreamId} layer={LayerId} dims={Width}x{Height} (DIAG: simulcast probe)",
-                                record.StreamId, layerId, frame.Width, frame.Height);
-                    }
-                    else if (!startedLayers.Contains(layerId)) {
-                        preKeyframeDeltaDropCount++;
-                        if (preKeyframeDeltaDropCount <= 3 || preKeyframeDeltaDropCount % 30 == 0)
-                            Log.LogWarning(
-                                "ProcessFrames: dropping delta before first keyframe #{DropCount} for stream #{StreamId}: " +
-                                "offset={OffsetMs:F0}ms, layer={LayerId}, temporal={TemporalLayerId}, " +
-                                "dims={Width}x{Height}",
-                                preKeyframeDeltaDropCount,
-                                record.StreamId,
-                                frame.Offset.TotalMilliseconds,
-                                layerId,
-                                frame.TemporalLayerId,
-                                frame.Width,
-                                frame.Height);
-                        continue;
-                    }
+                    // Decompose: each per-layer VideoFrame is processed and yielded
+                    // independently. Memoizer + filter + GetStream stay per-frame on
+                    // the consumer side; the bundle exists only on the publisher leg
+                    // for wire-format efficiency.
+                    foreach (var frame in bundle.Frames) {
+                        var layerId = frame.LayerId;
+                        if (frame.Offset < TimeSpan.Zero) {
+                            negativeOffsetDropCount++;
+                            if (negativeOffsetDropCount <= 3 || negativeOffsetDropCount % 30 == 0)
+                                Log.LogWarning(
+                                    "ProcessFrames: dropping frame with negative offset #{DropCount} for stream #{StreamId}: " +
+                                    "offset={OffsetMs:F0}ms, key={IsKeyFrame}, layer={LayerId}, temporal={TemporalLayerId}, " +
+                                    "dims={Width}x{Height}",
+                                    negativeOffsetDropCount,
+                                    record.StreamId,
+                                    frame.Offset.TotalMilliseconds,
+                                    frame.IsKeyFrame,
+                                    layerId,
+                                    frame.TemporalLayerId,
+                                    frame.Width,
+                                    frame.Height);
+                            continue;
+                        }
 
-                    if (frame.IsKeyFrame) {
-                        keyFrameNumberByLayer.TryGetValue(layerId, out var current);
-                        keyFrameNumberByLayer[layerId] = current + 1;
+                        if (frame.IsKeyFrame) {
+                            if (startedLayers.Add(layerId))
+                                Log.LogWarning(
+                                    "ProcessFrames: first keyframe for stream #{StreamId} layer={LayerId} dims={Width}x{Height} (DIAG: simulcast probe)",
+                                    record.StreamId, layerId, frame.Width, frame.Height);
+                        }
+                        else if (!startedLayers.Contains(layerId)) {
+                            preKeyframeDeltaDropCount++;
+                            if (preKeyframeDeltaDropCount <= 3 || preKeyframeDeltaDropCount % 30 == 0)
+                                Log.LogWarning(
+                                    "ProcessFrames: dropping delta before first keyframe #{DropCount} for stream #{StreamId}: " +
+                                    "offset={OffsetMs:F0}ms, layer={LayerId}, temporal={TemporalLayerId}, " +
+                                    "dims={Width}x{Height}",
+                                    preKeyframeDeltaDropCount,
+                                    record.StreamId,
+                                    frame.Offset.TotalMilliseconds,
+                                    layerId,
+                                    frame.TemporalLayerId,
+                                    frame.Width,
+                                    frame.Height);
+                            continue;
+                        }
+
+                        if (frame.IsKeyFrame) {
+                            keyFrameNumberByLayer.TryGetValue(layerId, out var current);
+                            keyFrameNumberByLayer[layerId] = current + 1;
+                        }
+                        keyFrameNumberByLayer.TryGetValue(layerId, out var layerKf);
+                        frame.KeyFrameNumber = layerKf;
+
+                        yield return frame;
                     }
-                    keyFrameNumberByLayer.TryGetValue(layerId, out var layerKf);
-                    frame.KeyFrameNumber = layerKf;
 
                     if (lastHeartbeat.Elapsed >= heartbeatInterval) {
                         lastHeartbeat = CpuTimestamp.Now;
@@ -257,8 +267,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                         await LiveVideoBackend.Register(record.ChatId, streamInfo, CancellationToken.None)
                             .ConfigureAwait(false);
                     }
-
-                    yield return frame;
                 }
             }
 
@@ -272,7 +280,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             // eviction drops complete keyframe-anchored spans rather than
             // individual frames, so deltas are never orphaned in retention.
             var memoizer = new VideoStreamMemoizer(
-                ProcessFrames(videoFrames),
+                ProcessFrames(videoBundles),
                 Constants.Video.ServerReplayTailDuration,
                 cancellationToken);
             if (_videoStreams.Publish(record.StreamId, memoizer))

@@ -28,6 +28,7 @@ import {
     wireSend,
     type StreamSenderLike,
     type VideoStreamFrame,
+    type VideoStreamFrameBundle,
 } from '../../../src/dotnet/UI.Blazor.App/Services/Video/operators/wire-send';
 import {
     pullSource,
@@ -151,8 +152,8 @@ class IdentityDownscaler implements DownscalerLike {
 class FakeSender implements StreamSenderLike {
     sent: VideoStreamFrame[] = [];
     afterSend?: () => void;
-    send(dto: VideoStreamFrame): void {
-        this.sent.push(dto);
+    send(bundle: VideoStreamFrameBundle): void {
+        for (const f of bundle.frames) this.sent.push(f);
         this.afterSend?.();
     }
 }

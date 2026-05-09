@@ -11,7 +11,7 @@ namespace ActualChat.Streaming;
 public interface IVideoStreamingBackend : IComputeService, IBackendService
 {
     Task<RpcStream<VideoFrame>?> GetVideoRaw(StreamId streamId, CancellationToken cancellationToken);
-    Task PushVideo(VideoRecord record, RpcStream<VideoFrame> videoStream, CancellationToken cancellationToken);
+    Task PushVideo(VideoRecord record, RpcStream<VideoFrameBundle> videoStream, CancellationToken cancellationToken);
 
     // Publisher-facing keyframe-request signal. RequestKeyFrame invalidates
     // this computed method so the recorder can force the next frame to be a

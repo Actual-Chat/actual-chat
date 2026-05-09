@@ -105,7 +105,7 @@ describe('downscale operator', () => {
         ).toThrow(/at least one layer/);
     });
 
-    it('1-tier ladder yields primary-only bundles (extras empty)', async () => {
+    it('1-tier ladder yields length-1 bundles', async () => {
         const stats = makeStats();
         const fake = new FakeDownscaler();
         const ladder: LayerSpec[] = [{ width: 640, height: 360 }];
@@ -117,16 +117,16 @@ describe('downscale operator', () => {
 
         expect(out).toHaveLength(2);
         for (const bundle of out) {
-            expect(bundle.extras).toEqual([]);
-            expect(bundle.primary.frame.codedWidth).toBe(640);
-            expect(bundle.primary.frame.codedHeight).toBe(360);
+            expect(bundle.frames).toHaveLength(1);
+            expect(bundle.frames[0].frame.codedWidth).toBe(640);
+            expect(bundle.frames[0].frame.codedHeight).toBe(360);
             expect(bundle.stats).toBe(stats);
         }
         expect(fake.calls).toHaveLength(2);
         expect(fake.disposeCount).toBe(1);   // disposed in finally
     });
 
-    it('3-tier ladder: primary = top tier, extras = bottom-up tiers', async () => {
+    it('3-tier ladder: bottom-first (frames[0]=base, frames[topIdx]=top)', async () => {
         const stats = makeStats();
         const fake = new FakeDownscaler();
         const ladder: LayerSpec[] = [
@@ -142,13 +142,14 @@ describe('downscale operator', () => {
 
         expect(out).toHaveLength(1);
         const bundle = out[0];
-        expect(bundle.primary.frame.codedWidth).toBe(1280);
-        expect(bundle.primary.frame.codedHeight).toBe(720);
-        expect(bundle.extras).toHaveLength(2);
-        expect(bundle.extras[0].frame.codedWidth).toBe(320);
-        expect(bundle.extras[0].frame.codedHeight).toBe(180);
-        expect(bundle.extras[1].frame.codedWidth).toBe(640);
-        expect(bundle.extras[1].frame.codedHeight).toBe(360);
+        expect(bundle.frames).toHaveLength(3);
+        // Bottom-first.
+        expect(bundle.frames[0].frame.codedWidth).toBe(320);
+        expect(bundle.frames[0].frame.codedHeight).toBe(180);
+        expect(bundle.frames[1].frame.codedWidth).toBe(640);
+        expect(bundle.frames[1].frame.codedHeight).toBe(360);
+        expect(bundle.frames[2].frame.codedWidth).toBe(1280);
+        expect(bundle.frames[2].frame.codedHeight).toBe(720);
     });
 
     it('all output envelopes share capturedAt / index / forceKeyframe / stats / sourceWidth/Height', async () => {
@@ -165,7 +166,7 @@ describe('downscale operator', () => {
         );
         const [bundle] = await drain(seg);
 
-        const all = [bundle.primary, ...bundle.extras];
+        const all = bundle.frames;
         for (const e of all) {
             expect(e.capturedAt).toEqual({ timeMs: 1_700_000_000_042, epoch: 0 });
             expect(e.index).toBe(42);
@@ -220,9 +221,10 @@ describe('downscale operator', () => {
         // Input frame closed by the fake (matching production contract).
         expect(inputFrame.closed).toBe(true);
         // Outputs are fresh (different instances) and still open.
-        expect(bundle.primary.frame).not.toBe(captured.frame);
-        expect((bundle.primary.frame as unknown as MockVideoFrame).closed).toBe(false);
-        expect((bundle.extras[0].frame as unknown as MockVideoFrame).closed).toBe(false);
+        for (const f of bundle.frames) {
+            expect(f.frame).not.toBe(captured.frame);
+            expect((f.frame as unknown as MockVideoFrame).closed).toBe(false);
+        }
     });
 
     it('disposes the downscaler on normal completion', async () => {
@@ -323,7 +325,7 @@ describe('downscale operator', () => {
         // Second frame yields a bundle marked forceKeyframe (post-hang
         // re-anchor) so encoders restart cleanly.
         expect(out).toHaveLength(1);
-        expect(out[0].primary.forceKeyframe).toBe(true);
+        expect(out[0].frames.every(f => f.forceKeyframe)).toBe(true);
         // Two factory calls: original + post-hang replacement.
         expect(factories.length).toBe(2);
         // Both downscalers disposed (the hung one immediately, the

@@ -35,7 +35,7 @@ public interface ILiveVideoStreams : IComputeService
         double clientStartAt, // Unix epoch (seconds, double)
         VideoFormat format,
         VideoSourceKind sourceKind,
-        RpcStream<VideoFrame> frameStream,
+        RpcStream<VideoFrameBundle> frameStream,
         CancellationToken cancellationToken);
 
     [RpcMethod(RemoteExecutionMode = RpcRemoteExecutionMode.AwaitForConnection, ConnectTimeout = 10)]

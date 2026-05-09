@@ -84,6 +84,15 @@ export interface VideoFrameDto {
     SourceHeight?: number;
 }
 
+// --- VideoFrameBundle TypeScript interface ---
+// Matches .NET ActualChat.Video.VideoFrameBundle over MessagePack.
+// Carries 1..3 per-layer VideoFrames sharing the same source moment.
+// Used only on the publisher → server leg (PushStream); server → consumer
+// stays per-frame.
+export interface VideoFrameBundleDto {
+    Frames: VideoFrameDto[];
+}
+
 // --- Size2D / VideoFormat TypeScript interfaces ---
 // Match .NET ActualChat.Media.Size2D and ActualChat.Video.VideoFormat
 // over MessagePack. Both use [Key(N)] attributes — MessagePack serializes

@@ -22,7 +22,7 @@ import type {
 import type { EncodedFrame } from '../frame-envelopes';
 import type { EncoderConfigPerLayer, EncodeInput } from '../operators/encode';
 import type { DownscalerLike, LayerSpec } from '../operators/downscale';
-import type { StreamSenderLike, VideoStreamFrame } from '../operators/wire-send';
+import type { StreamSenderLike, VideoStreamFrameBundle } from '../operators/wire-send';
 import { WebGpuDownscaler, type DownscaleTarget } from '../webgpu/downscaler';
 import { WebGPUManager } from '../webgpu/manager';
 import { CanvasDownscaler } from '../canvas/downscaler';
@@ -336,7 +336,7 @@ function createSender(chatId: string): StreamSenderLike {
     streamingContext.chatId = chatId;
     const sourceStartedAtMs = Date.now();
     let inner: DisposableStreamSender | null = null;
-    let buffered: VideoStreamFrame[] | null = null;
+    let buffered: VideoStreamFrameBundle[] | null = null;
     // Surface the inner pump's terminal state; resolved synchronously
     // once `inner` exists, before that the outer never-completing
     // promise lets wireSend skip the check until init lands.

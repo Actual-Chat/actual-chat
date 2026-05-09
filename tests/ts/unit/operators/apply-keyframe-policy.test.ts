@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { applyKeyframePolicy } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/apply-keyframe-policy';
 import {
     createEmptyRecordingStats,
+    type CapturedBundle,
     type CapturedFrame,
-    type SimulcastBundle,
     type VideoRecordingStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 
@@ -32,16 +32,17 @@ function makeCaptured(stats: VideoRecordingStats, idx: number, forceKeyframe = f
     };
 }
 
-function makeBundle(stats: VideoRecordingStats, idx: number, forceKeyframe = false, extraCount = 0): SimulcastBundle {
-    const primary = makeCaptured(stats, idx, forceKeyframe);
-    const extras: CapturedFrame[] = [];
-    for (let i = 0; i < extraCount; i++) {
-        extras.push(makeCaptured(stats, idx, forceKeyframe));
+function makeBundle(stats: VideoRecordingStats, idx: number, forceKeyframe = false, extraCount = 0): CapturedBundle {
+    // Bottom-first: index 0 = base layer; last index = top. `extraCount`
+    // adds extra layers below the top so total length = extraCount + 1.
+    const layers: CapturedFrame[] = [];
+    for (let i = 0; i < extraCount + 1; i++) {
+        layers.push(makeCaptured(stats, idx, forceKeyframe));
     }
-    return { primary, extras, stats };
+    return { frames: layers, stats };
 }
 
-async function* source(items: SimulcastBundle[]): AsyncIterable<SimulcastBundle> {
+async function* source(items: CapturedBundle[]): AsyncIterable<CapturedBundle> {
     await Promise.resolve();
     for (const item of items) yield item;
 }
@@ -52,14 +53,10 @@ async function drain<T>(it: AsyncIterable<T>): Promise<T[]> {
     return out;
 }
 
-function bundleForceKey(bundle: SimulcastBundle): boolean {
-    // Contract: when this operator decides to key, primary AND every extras
-    // entry MUST carry forceKeyframe=true.
-    if (!bundle.primary.forceKeyframe) return false;
-    for (const e of bundle.extras) {
-        if (!e.forceKeyframe) return false;
-    }
-    return true;
+function bundleForceKey(bundle: CapturedBundle): boolean {
+    // Contract: when this operator decides to key, every layer in the
+    // bundle MUST carry forceKeyframe=true.
+    return bundle.frames.length > 0 && bundle.frames.every(f => f.forceKeyframe);
 }
 
 // ---- Tests ----------------------------------------------------------------
@@ -90,13 +87,13 @@ describe('applyKeyframePolicy', () => {
             maxKeyframeIntervalMs: 100,
             now: () => t,
         });
-        const items: SimulcastBundle[] = [];
+        const items: CapturedBundle[] = [];
         const ts = [0, 50, 110, 150, 220];
         for (let i = 0; i < ts.length; i++) {
             items.push(makeBundle(stats, i));
         }
 
-        const seg: AsyncIterable<SimulcastBundle> = (async function* () {
+        const seg: AsyncIterable<CapturedBundle> = (async function* () {
             await Promise.resolve();
             for (let i = 0; i < items.length; i++) {
                 t = ts[i];
@@ -125,7 +122,7 @@ describe('applyKeyframePolicy', () => {
         const ts = [0, 50, 110, 130, 250];
         const upstreamForce = [true, false, false, false, false];
 
-        const seg: AsyncIterable<SimulcastBundle> = (async function* () {
+        const seg: AsyncIterable<CapturedBundle> = (async function* () {
             await Promise.resolve();
             for (let i = 0; i < ts.length; i++) {
                 t = ts[i];
@@ -178,7 +175,7 @@ describe('applyKeyframePolicy', () => {
         expect(out.map(bundleForceKey)).toEqual([false, true, false, true, false, true]);
     });
 
-    it('sets forceKeyframe on bundle.primary AND every extras entry when triggering', async () => {
+    it('sets forceKeyframe on every bundle layer when triggering', async () => {
         const stats = createEmptyRecordingStats(0);
         const op = applyKeyframePolicy({
             keyframeIntervalFrames: 2,
@@ -190,13 +187,11 @@ describe('applyKeyframePolicy', () => {
         ];
         const out = await drain(op(source(items)));
 
-        expect(out[0].primary.forceKeyframe).toBe(false);
-        expect(out[0].extras.every(e => !e.forceKeyframe)).toBe(true);
+        expect(out[0].frames.every(f => !f.forceKeyframe)).toBe(true);
 
-        expect(out[1].primary.forceKeyframe).toBe(true);
-        expect(out[1].extras).toHaveLength(2);
-        for (const e of out[1].extras) {
-            expect(e.forceKeyframe).toBe(true);
+        expect(out[1].frames).toHaveLength(3);
+        for (const f of out[1].frames) {
+            expect(f.forceKeyframe).toBe(true);
         }
     });
 
@@ -212,14 +207,12 @@ describe('applyKeyframePolicy', () => {
             now: () => 0,
         });
         const original = makeBundle(stats, 0, false, /* extras */ 1);
-        const originalPrimary = original.primary;
-        const originalExtra = original.extras[0];
+        const originalLayers = original.frames.slice();
         const out = await drain(op(source([original])));
 
-        expect(out[0].primary.forceKeyframe).toBe(true);
-        expect(out[0].extras[0].forceKeyframe).toBe(true);
+        expect(out[0].frames.every(f => f.forceKeyframe)).toBe(true);
         // Original envelopes not mutated.
-        expect(originalPrimary.forceKeyframe).toBe(false);
-        expect(originalExtra.forceKeyframe).toBe(false);
+        for (const f of originalLayers)
+            expect(f.forceKeyframe).toBe(false);
     });
 });

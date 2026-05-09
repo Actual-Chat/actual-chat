@@ -23,10 +23,16 @@ import { EventHandlerSet } from 'event-handling';
 import { getLogs } from 'logging';
 import { RpcStream } from 'actuallab-rpc';
 import { Api, MediaRpcStreamOptions, streamingApi, toMoment,
-    type LiveVideoStreamsClient, type SessionTokenProvider, type VideoFormatDto, type VideoFrameDto } from 'api';
+    type LiveVideoStreamsClient, type SessionTokenProvider, type VideoFormatDto,
+    type VideoFrameBundleDto, type VideoFrameDto } from 'api';
 import { ServerClock } from 'clocks';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
-import type { StreamSenderLike, StreamSenderStats, VideoStreamFrame } from '../operators/wire-send';
+import type {
+    StreamSenderLike,
+    StreamSenderStats,
+    VideoStreamFrame,
+    VideoStreamFrameBundle,
+} from '../operators/wire-send';
 
 const { infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
@@ -69,6 +75,10 @@ export function serverClockNow(_ctx: StreamingContext): number {
  *
  * Inlined verbatim from `VideoOld/workers/video-streaming.ts`.
  */
+function bundleToDto(bundle: VideoStreamFrameBundle): VideoFrameBundleDto {
+    return { Frames: bundle.frames.map(frameToDto) };
+}
+
 function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
     // @msgpack/msgpack v3 emits large JS numbers as float64 once they exceed
     // uint32. The server reads TimeSpan ticks as int64, so pass bigint to force
@@ -217,7 +227,7 @@ export interface DisposableStreamSender extends StreamSenderLike {
 export function createWireSender(opts: CreateWireSenderOptions): DisposableStreamSender {
     const { chatId, format, sourceStartedAtMs, streamingContext: ctx } = opts;
 
-    const frames = new Denque<VideoStreamFrame>();
+    const bundles = new Denque<VideoStreamFrameBundle>();
     const frameAdded = new EventHandlerSet<void>();
     let addedFrameCount = 0;
     let droppedAtSenderQueue = 0;
@@ -271,18 +281,22 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
             // Termination is driven by iterator.return() — Fusion's
             // RpcStreamSender.disconnect() calls it on the generator, which
             // unwinds any try/finally blocks and exits.
-            const stream = new RpcStream<VideoFrameDto>(
+            const stream = new RpcStream<VideoFrameBundleDto>(
                 (async function* () {
                     for (;;) {
-                        while (!frames.isEmpty()) {
-                            yield frameToDto(frames.shift()!);
+                        while (!bundles.isEmpty()) {
+                            yield bundleToDto(bundles.shift()!);
                         }
                         if (isCompleted) return;
                         await frameAdded.whenNextVoid();
                     }
                 })(),
-                MediaRpcStreamOptions.videoRealtime<VideoFrameDto>(
-                    frame => frame.IsKeyFrame && (frame.LayerId ?? 0) === 0),
+                // canSkipTo: a bundle is a decode-anchor iff its first frame
+                // is a keyframe. applyKeyframePolicy enforces all-or-none
+                // across a bundle's layers, so any frame's IsKeyFrame would
+                // do; we use Frames[0] to keep it cheap.
+                MediaRpcStreamOptions.videoRealtime<VideoFrameBundleDto>(
+                    bundle => bundle.Frames.length > 0 && bundle.Frames[0].IsKeyFrame),
             );
 
             const streamRef = stream.toRef(peer);
@@ -330,41 +344,40 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
     // not freely droppable (delta sequences depend on prior keyframes,
     // and we have multiple layers).
     //
-    // Trigger: any single layer has > 2 keyframes queued — a buffer this
-    // deep means we're past one full keyframe cycle plus an in-progress
-    // one, which only happens when the pump can't move forward.
-    // Action: drop everything before the most recent keyframe in the
-    // queue. The receiver can resync onto a keyframe regardless of
-    // layer, so this preserves decodability for whatever survives.
+    // Trigger: > 2 keyframe-bundles queued — that's past one full
+    // keyframe cycle plus an in-progress one, which only happens when
+    // the pump can't move forward. (applyKeyframePolicy makes all
+    // layers in a bundle keyframe-or-delta together, so a bundle's
+    // first frame represents the bundle's KF status.)
+    // Action: drop everything before the most recent keyframe bundle.
+    // Counter accounts for both bundles dropped and frames-equivalent.
     const compactIfOverflowing = (): void => {
         let lastKfIdx = -1;
-        const kfCountByLayer = new Map<number, number>();
-        for (let i = 0; i < frames.length; i++) {
-            const f = frames.get(i)!;
-            if (!f.isKeyFrame) continue;
-            const layer = f.layerId ?? 0;
-            kfCountByLayer.set(layer, (kfCountByLayer.get(layer) ?? 0) + 1);
+        let kfCount = 0;
+        for (let i = 0; i < bundles.length; i++) {
+            const b = bundles.get(i)!;
+            if (b.frames.length === 0 || !b.frames[0].isKeyFrame) continue;
+            kfCount++;
             lastKfIdx = i;
         }
-        let maxKfPerLayer = 0;
-        for (const c of kfCountByLayer.values())
-            if (c > maxKfPerLayer) maxKfPerLayer = c;
+        if (kfCount <= 2 || lastKfIdx <= 0) return;
 
-        if (maxKfPerLayer <= 2 || lastKfIdx <= 0) return;
-
-        let droppedKeys = 0;
+        let droppedKeyBundles = 0;
+        let droppedFrames = 0;
         for (let i = 0; i < lastKfIdx; i++) {
-            const dropped = frames.shift()!;
-            if (dropped.isKeyFrame) droppedKeys++;
+            const dropped = bundles.shift()!;
+            if (dropped.frames.length > 0 && dropped.frames[0].isKeyFrame)
+                droppedKeyBundles++;
+            droppedFrames += dropped.frames.length;
         }
-        droppedAtSenderQueue += lastKfIdx;
-        droppedKeyframesAtSenderQueue += droppedKeys;
-        warnLog?.log(`send: queue compacted — dropped ${lastKfIdx} frames ` +
-            `(incl. ${droppedKeys} keyframes); cumulative dropped=${droppedAtSenderQueue} ` +
+        droppedAtSenderQueue += droppedFrames;
+        droppedKeyframesAtSenderQueue += droppedKeyBundles * (bundles.peekFront()?.frames.length ?? 1);
+        warnLog?.log(`send: queue compacted — dropped ${lastKfIdx} bundles ` +
+            `(${droppedFrames} frames incl. ${droppedKeyBundles} keyframe-bundles); cumulative dropped=${droppedAtSenderQueue} ` +
             `keyframes=${droppedKeyframesAtSenderQueue}`);
     };
 
-    const send = (frame: VideoStreamFrame): void => {
+    const send = (bundle: VideoStreamFrameBundle): void => {
         if (isCompleted) return;
         // Late frames after pump teardown: drop silently. Throwing here
         // races with the wire-send operator's whenDisposed handler — when
@@ -373,24 +386,29 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
         // frame would otherwise mask the real error with the generic
         // "send after stream disposed" message.
         if (isDisposed) return;
-        if (frame.data.byteLength === 0) return;
+        if (bundle.frames.length === 0) return;
+        // Treat a bundle whose every layer has empty data as no-op too.
+        let totalBytes = 0;
+        for (const f of bundle.frames) totalBytes += f.data.byteLength;
+        if (totalBytes === 0) return;
 
-        frames.push(frame);
-        addedFrameCount++;
-        if (frame.isKeyFrame)
+        bundles.push(bundle);
+        addedFrameCount += bundle.frames.length;
+        const isKeyBundle = bundle.frames[0].isKeyFrame;
+        if (isKeyBundle)
             compactIfOverflowing();
-        if (frames.length > maxQueueDepth)
-            maxQueueDepth = frames.length;
+        if (bundles.length > maxQueueDepth)
+            maxQueueDepth = bundles.length;
 
         // Heartbeat at Info so live diagnosis doesn't need a log-level
         // override. At 30fps this fires roughly every 10s. Throws into
         // warnLog territory automatically via compactIfOverflowing when
         // the queue actually overflows.
         if (addedFrameCount <= 3 || addedFrameCount % 300 === 0) {
-            infoLog?.log(`send: total=${addedFrameCount} queue=${frames.length} ` +
-                `peakQueue=${maxQueueDepth} ` +
+            infoLog?.log(`send: total=${addedFrameCount} queueBundles=${bundles.length} ` +
+                `peakQueueBundles=${maxQueueDepth} ` +
                 `dropped=${droppedAtSenderQueue} keyframesDropped=${droppedKeyframesAtSenderQueue} ` +
-                `isKey=${frame.isKeyFrame} size=${frame.data.byteLength} ` +
+                `isKey=${isKeyBundle} bundleLayers=${bundle.frames.length} size=${totalBytes} ` +
                 `lastError='${lastError}' isDisposed=${isDisposed}`);
         }
 
@@ -405,7 +423,7 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
 
     const getStats = (): WireSenderStats => ({
         addedFrameCount,
-        queueDepth: frames.length,
+        queueDepth: bundles.length,
         maxQueueDepth,
         droppedAtSenderQueue,
         droppedKeyframesAtSenderQueue,

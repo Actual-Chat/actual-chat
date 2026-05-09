@@ -1,5 +1,5 @@
 import { from, type PipeOperator } from 'ix-ext';
-import type { CapturedFrame, SimulcastBundle } from '../frame-envelopes';
+import type { CapturedBundle, CapturedFrame } from '../frame-envelopes';
 
 // Output dims for one layer (encoder dims for that layer).
 export interface LayerSpec {
@@ -24,7 +24,8 @@ export interface DownscalerLike {
 }
 
 export interface DownscaleOptions {
-    /** Bottom-first ladder. Last entry becomes `SimulcastBundle.primary`. */
+    /** Bottom-first ladder. `ladder[0]` is the base (lowest-resolution)
+     *  layer; the last entry is the top layer. */
     ladder: readonly LayerSpec[];
     /** Lazy-init: called once on first iteration so construction can
      *  happen before the GPU device exists. */
@@ -40,38 +41,38 @@ export interface DownscaleOptions {
 }
 
 /**
- * `CapturedFrame → SimulcastBundle`. Per-layer envelopes share all
- * metadata from the input (capturedAt, index, forceKeyframe, stats,
- * sourceWidth/Height) — only `frame` differs.
+ * `CapturedFrame → CapturedBundle`. Per-layer envelopes inside the
+ * bundle share all metadata from the input (capturedAt, index,
+ * forceKeyframe, stats, sourceWidth/Height) — only `frame` differs.
+ * Output is bottom-first: `frames[0]` = base layer, `frames[length-1]`
+ * = top layer.
  *
  * Output ownership flips to downstream at `yield`. On the failure path
  * before yield, the operator closes any returned frames; the input
  * frame's close is the downscaler's responsibility per its contract.
  */
-export function downscale(opts: DownscaleOptions): PipeOperator<CapturedFrame, SimulcastBundle> {
+export function downscale(opts: DownscaleOptions): PipeOperator<CapturedFrame, CapturedBundle> {
     if (opts.ladder.length === 0)
         throw new Error('downscale: ladder must contain at least one layer');
     const ladder = opts.ladder.slice();
     const createDownscaler = opts.createDownscaler;
-    const topIdx = ladder.length - 1;
     const hangTimeoutMs = opts.hangTimeoutMs ?? 1_500;
     const setTimeoutFn = opts.setTimeoutFn ?? ((cb, ms): unknown => setTimeout(cb, ms));
     const clearTimeoutFn = opts.clearTimeoutFn ?? ((h: unknown): void => clearTimeout(h as ReturnType<typeof setTimeout>));
 
     return source => from(downscaleAsync(
-        source, ladder, topIdx, createDownscaler,
+        source, ladder, createDownscaler,
         hangTimeoutMs, setTimeoutFn, clearTimeoutFn));
 }
 
 async function* downscaleAsync(
     source: AsyncIterable<CapturedFrame>,
     ladder: readonly LayerSpec[],
-    topIdx: number,
     createDownscaler: () => DownscalerLike,
     hangTimeoutMs: number,
     setTimeoutFn: (cb: () => void, ms: number) => unknown,
     clearTimeoutFn: (handle: unknown) => void,
-): AsyncIterable<SimulcastBundle> {
+): AsyncIterable<CapturedBundle> {
     let downscaler: DownscalerLike | null = null;
     let consecutiveHangs = 0;
     // Set after a hang; cleared once the post-hang bundle is yielded with
@@ -136,21 +137,19 @@ async function* downscaleAsync(
                         `downscale: downscaler returned ${frames.length} frames, expected ${ladder.length}`);
                 }
 
-                // primary = top tier (frames[topIdx]); extras = bottom-up
-                // [base..second-highest]. After a hang, mark forceKeyframe
-                // so the encoders re-anchor at the next clean bundle.
+                // Bottom-first: bundle.frames[0] = base, .frames[topIdx] = top.
+                // After a hang, mark forceKeyframe so the encoders re-anchor
+                // at the next clean bundle.
                 const layerSource = forceKeyframeAfterHang
                     ? { ...envelope, forceKeyframe: true }
                     : envelope;
                 forceKeyframeAfterHang = false;
-                const primary = makeLayerEnvelope(layerSource, frames[topIdx]);
-                const extras: CapturedFrame[] = [];
-                for (let i = 0; i < topIdx; i++) {
-                    extras.push(makeLayerEnvelope(layerSource, frames[i]));
+                const layers: CapturedFrame[] = [];
+                for (let i = 0; i < frames.length; i++) {
+                    layers.push(makeLayerEnvelope(layerSource, frames[i]));
                 }
-                const bundle: SimulcastBundle = {
-                    primary,
-                    extras,
+                const bundle: CapturedBundle = {
+                    frames: layers,
                     stats: envelope.stats,
                 };
                 frames = null;

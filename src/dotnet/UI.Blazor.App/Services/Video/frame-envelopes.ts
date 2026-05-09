@@ -185,28 +185,31 @@ export interface CapturedFrame {
 
 /**
  * Multi-tier output of the downscaler. The downscaler emits one bundle
- * per input `CapturedFrame`. All members share the same `capturedAt` /
- * `index` / `forceKeyframe` so the receiver-side simulcast matcher can
- * pair chunks across layers by exact identity.
+ * per input source `CapturedFrame`. `frames` is bottom-first
+ * (`frames[0]` = lowest layer, `frames[length-1]` = top). All entries
+ * share `capturedAt` / `index` / `forceKeyframe` / `sourceWidth/Height`
+ * — only the underlying `frame` differs per layer.
  *
- * `extras` is bottom-first: `extras[0]` is the SECOND-highest tier
- * (extra layer 1), `extras[1]` the third, etc. `primary` is the
- * highest-resolution tier — the layer the base encoder runs at.
- *
- * Single-tier (P2P / non-simulcast) sources emit `extras: []`.
+ * Single-tier (P2P / non-simulcast) sources produce a length-1 bundle.
  */
-export interface SimulcastBundle {
-    primary: CapturedFrame;
-    extras: CapturedFrame[];
-    /** Same reference as `primary.stats` — exposed at bundle level so
-     *  the encode operator doesn't have to reach through the primary. */
+export interface CapturedBundle {
+    /** Bottom-first per-layer entries (length 1..3). */
+    frames: CapturedFrame[];
+    /** Same reference as `frames[*].stats` — exposed at bundle level so
+     *  callers don't have to reach into a layer entry. */
     stats: VideoRecordingStats;
+}
+
+export function disposeCapturedBundle(bundle: CapturedBundle): void {
+    for (const f of bundle.frames) {
+        try { f.frame.close(); } catch { /* already closed */ }
+    }
 }
 
 /**
  * One encoded chunk emerging from a per-layer encoder, paired with the
- * source-side metadata of the captured frame that produced it. The
- * encode operator emits one `EncodedFrame` per chunk per layer.
+ * source-side metadata of the captured frame that produced it. Held
+ * inside an `EncodedBundle`.
  */
 export interface EncodedFrame {
     chunk: EncodedVideoChunk;
@@ -231,6 +234,24 @@ export interface EncodedFrame {
     encodedHeight: number;
 
     stats: VideoRecordingStats;
+}
+
+/**
+ * Multi-tier output of the encode operator. Bottom-first
+ * (`frames[0]` = base layer; `frames[length-1]` = top). All frames
+ * share `capturedAt` / `index` and were produced from the same source
+ * `CapturedBundle`.
+ */
+export interface EncodedBundle {
+    /** Bottom-first per-layer entries (length 1..3). */
+    frames: EncodedFrame[];
+    stats: VideoRecordingStats;
+}
+
+export function disposeEncodedBundle(bundle: EncodedBundle): void {
+    for (const f of bundle.frames) {
+        closeEncodedChunk(f.chunk);
+    }
 }
 
 // ---- Receiver -------------------------------------------------------------

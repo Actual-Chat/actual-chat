@@ -1,7 +1,12 @@
 import { from, type PipeOperator } from 'ix-ext';
 import { abortPromise } from 'promises';
 import { getLogs } from 'logging';
-import { closeEncodedChunk, type EncodedFrame } from '../frame-envelopes';
+import {
+    disposeEncodedBundle,
+    type EncodedBundle,
+    type EncodedFrame,
+    type VideoRecordingStats,
+} from '../frame-envelopes';
 
 const { warnLog } = getLogs('VideoPipeline');
 
@@ -25,6 +30,15 @@ export interface VideoStreamFrame {
     sourceHeight?: number;
 }
 
+/**
+ * One source-moment's worth of per-layer wire frames, sent as a single
+ * RpcStream item to the server. Wire-bytes-equivalent of N individual
+ * VideoStreamFrames previously sent back-to-back.
+ */
+export interface VideoStreamFrameBundle {
+    frames: VideoStreamFrame[];
+}
+
 // Stream-format payload sent via `StreamSenderLike.init` from the first
 // top-layer keyframe (encoder output is bottom-first, so we wait for it).
 export interface StreamFormat {
@@ -38,10 +52,10 @@ export interface StreamFormat {
     codecSettings: string;
 }
 
-/** Production binding: `RpcStreamSender<VideoFrameDto>` via
+/** Production binding: `RpcStreamSender<VideoFrameBundleDto>` via
  *  `InternalVideoStream`. Tests pass an in-memory recorder. */
 export interface StreamSenderLike {
-    send(dto: VideoStreamFrame): void | Promise<void>;
+    send(dto: VideoStreamFrameBundle): void | Promise<void>;
     init?(format: StreamFormat): void;
     /** When set, `wireSend` short-circuits if the underlying pump
      *  resolves while the source is still producing — silently piling
@@ -86,14 +100,15 @@ function microsecondsToTicks(microseconds: number): number {
 }
 
 /**
- * Terminal sink: `EncodedFrame → VideoStreamFrame` via `StreamSenderLike`.
+ * Terminal sink: `EncodedBundle → VideoStreamFrameBundle` via
+ * `StreamSenderLike`. One bundle in, one wire bundle out.
  *
- * `captureStartUnixMs` (NaN sentinel until the first chunk) anchors the
- * stream-relative offset and never resets across the run — epoch flips
- * are carried in `offsetEpoch`, the receiver uses that to rebase pacing
- * without rebasing offset.
+ * `captureStartUnixMs` (NaN sentinel until the first bundle) anchors
+ * the stream-relative offset and never resets across the run — epoch
+ * flips are carried in `offsetEpoch`, the receiver uses that to rebase
+ * pacing without rebasing offset.
  */
-export function wireSend(opts: WireSendOptions): PipeOperator<EncodedFrame, void> {
+export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, void> {
     return source => {
         return from(impl());
 
@@ -110,7 +125,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedFrame, void
             // Pump terminal state — see StreamSenderLike.whenDisposed comment.
             let pumpFailure: Error | null = null;
             let pumpResolved = false;
-            let lastStats: EncodedFrame['stats'] | null = null;
+            let lastStats: EncodedBundle['stats'] | null = null;
             const getPumpFailure = (): Error | null => pumpFailure;
             const resetSender = (reason: string): void => {
                 if (sender && lastStats)
@@ -126,37 +141,44 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedFrame, void
             // from cache so the receiver can always reconfigure on dim change.
             const descriptionByLayer = new Map<number, Uint8Array>();
             try {
-                for await (const encoded of source) {
+                for await (const bundle of source) {
                     if (abortSignal?.aborted) return;
 
                     try {
-                        lastStats = encoded.stats;
-                        const { capturedAt, layerId } = encoded;
-                        const isKeyFrame = encoded.chunk.type === 'key';
+                        if (bundle.frames.length === 0)
+                            continue;
+                        lastStats = bundle.stats;
+                        const top = bundle.frames[bundle.frames.length - 1];
+                        const { capturedAt } = top;
+                        const isKeyFrame = top.chunk.type === 'key';
                         if (Number.isNaN(captureStartUnixMs))
                             captureStartUnixMs = capturedAt.timeMs;
 
                         const offsetMicros = Math.round((capturedAt.timeMs - captureStartUnixMs) * 1000);
                         const offset = microsecondsToTicks(offsetMicros);
-                        const data = readChunkBytes(encoded.chunk);
-                        const dto: VideoStreamFrame = {
-                            offset,
-                            duration: microsecondsToTicks(encoded.chunk.duration ?? 0),
-                            isKeyFrame,
-                            width: encoded.encodedWidth,
-                            height: encoded.encodedHeight,
-                            data,
-                            layerId,
-                            maxLayerId,
-                            temporalLayerId: encoded.metadata.temporalLayerId,
-                        };
-                        dto.offsetEpoch = capturedAt.epoch;
-                        if (isKeyFrame) {
-                            dto.sourceWidth = encoded.sourceWidth;
-                            dto.sourceHeight = encoded.sourceHeight;
-                            const description = resolveDescription(encoded, descriptionByLayer);
-                            if (description) dto.description = description;
-                        }
+
+                        const wireFrames: VideoStreamFrame[] = bundle.frames.map(encoded => {
+                            const dto: VideoStreamFrame = {
+                                offset,
+                                offsetEpoch: capturedAt.epoch,
+                                duration: microsecondsToTicks(encoded.chunk.duration ?? 0),
+                                isKeyFrame: encoded.chunk.type === 'key',
+                                width: encoded.encodedWidth,
+                                height: encoded.encodedHeight,
+                                data: readChunkBytes(encoded.chunk),
+                                layerId: encoded.layerId,
+                                maxLayerId,
+                                temporalLayerId: encoded.metadata.temporalLayerId,
+                            };
+                            if (dto.isKeyFrame) {
+                                dto.sourceWidth = encoded.sourceWidth;
+                                dto.sourceHeight = encoded.sourceHeight;
+                                const description = resolveDescription(encoded, descriptionByLayer);
+                                if (description) dto.description = description;
+                            }
+                            return dto;
+                        });
+
                         // Async-set flags (mutated by `whenDisposed` callback below).
                         const failure = getPumpFailure();
                         if (failure)
@@ -174,14 +196,14 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedFrame, void
                                 },
                             );
                         }
-                        if (!initSent && isKeyFrame && layerId === maxLayerId && sender.init) {
-                            const description = resolveDescription(encoded, descriptionByLayer);
+                        if (!initSent && isKeyFrame && sender.init) {
+                            const description = resolveDescription(top, descriptionByLayer);
                             sender.init({
-                                codec: encoded.metadata.decoderConfig?.codec ?? '',
-                                width: topLayerWidth ?? encoded.encodedWidth,
-                                height: topLayerHeight ?? encoded.encodedHeight,
-                                sourceWidth: encoded.sourceWidth,
-                                sourceHeight: encoded.sourceHeight,
+                                codec: top.metadata.decoderConfig?.codec ?? '',
+                                width: topLayerWidth ?? top.encodedWidth,
+                                height: topLayerHeight ?? top.encodedHeight,
+                                sourceWidth: top.sourceWidth,
+                                sourceHeight: top.sourceHeight,
                                 codecSettings: description ? bytesToBase64(description) : '',
                             });
                             initSent = true;
@@ -190,12 +212,12 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedFrame, void
                         // hang on a full ring buffer when the consumer-side
                         // iterator stalls, blocking `Recorder.stop()`.
                         await Promise.race([
-                            Promise.resolve(sender.send(dto)),
+                            Promise.resolve(sender.send({ frames: wireFrames })),
                             abortRace,
                         ]);
-                        copySenderStats(encoded.stats, sender.getStats?.());
+                        copySenderStats(bundle.stats, sender.getStats?.());
                     } finally {
-                        closeEncodedChunk(encoded.chunk);
+                        disposeEncodedBundle(bundle);
                     }
                 }
             } finally {
@@ -208,7 +230,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedFrame, void
 }
 
 function copySenderStats(
-    stats: EncodedFrame['stats'],
+    stats: VideoRecordingStats,
     senderStats: StreamSenderStats | undefined,
 ): void {
     if (!senderStats)

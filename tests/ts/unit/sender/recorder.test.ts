@@ -5,7 +5,11 @@ import {
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/sender/recorder';
 import { SenderSession } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/sender/session';
 import type { EncoderConfigPerLayer } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/encode';
-import type { StreamSenderLike, VideoStreamFrame } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/wire-send';
+import type {
+    StreamSenderLike,
+    VideoStreamFrame,
+    VideoStreamFrameBundle,
+} from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/wire-send';
 import { AsyncVideoEncoder } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/adapters';
 import type {
     EncodedFrame,
@@ -77,7 +81,9 @@ class MockVideoFrame {
 
 class FakeSender implements StreamSenderLike {
     public sent: VideoStreamFrame[] = [];
-    send(dto: VideoStreamFrame): void { this.sent.push(dto); }
+    send(bundle: VideoStreamFrameBundle): void {
+        for (const f of bundle.frames) this.sent.push(f);
+    }
 }
 
 interface GlobalWithVideoEncoder {

@@ -6,8 +6,10 @@ import {
     type StreamSenderStats,
     type StreamFormat,
     type VideoStreamFrame,
+    type VideoStreamFrameBundle,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/wire-send';
 import {
+    type EncodedBundle,
     type EncodedFrame,
     type VideoRecordingStats,
     createEmptyRecordingStats,
@@ -31,14 +33,17 @@ class MockEncodedVideoChunk {
 }
 
 class FakeSender implements StreamSenderLike {
+    /** Flattened per-layer wire frames across all bundles, in send order. */
     public sent: VideoStreamFrame[] = [];
+    public sentBundles: VideoStreamFrameBundle[] = [];
     public formats: StreamFormat[] = [];
     public sendCount = 0;
     init(format: StreamFormat): void {
         this.formats.push(format);
     }
-    send(dto: VideoStreamFrame): void {
-        this.sent.push(dto);
+    send(bundle: VideoStreamFrameBundle): void {
+        this.sentBundles.push(bundle);
+        for (const f of bundle.frames) this.sent.push(f);
         this.sendCount++;
     }
 }
@@ -49,8 +54,8 @@ class ResolvingSender extends FakeSender {
     public readonly whenDisposed = new Promise<void>(resolve => {
         this.resolveDisposed = resolve;
     });
-    override send(dto: VideoStreamFrame): void {
-        super.send(dto);
+    override send(bundle: VideoStreamFrameBundle): void {
+        super.send(bundle);
         if (this.sendCount === 1)
             this.resolveDisposed();
     }
@@ -70,9 +75,9 @@ class StatsSender extends FakeSender {
         lastAckAgeMs: -1,
         isPeerConnected: false,
     };
-    override send(dto: VideoStreamFrame): void {
-        super.send(dto);
-        this.stats.addedFrameCount = this.sendCount;
+    override send(bundle: VideoStreamFrameBundle): void {
+        super.send(bundle);
+        this.stats.addedFrameCount = this.sent.length;
     }
     getStats(): StreamSenderStats {
         return this.stats;
@@ -123,15 +128,32 @@ function makeEncoded(stats: VideoRecordingStats, opts: BuildOpts = {}): EncodedF
     };
 }
 
-function source(items: EncodedFrame[]): AsyncIterable<EncodedFrame> {
+/** One length-1 EncodedBundle per EncodedFrame — preserves the legacy
+ *  per-frame test semantics where each frame stood for one source moment. */
+function source(items: EncodedFrame[]): AsyncIterable<EncodedBundle> {
     return (async function* () {
         await Promise.resolve();
-        for (const item of items) yield item;
+        for (const item of items) {
+            yield { frames: [item], stats: item.stats } as EncodedBundle;
+        }
+    })();
+}
+
+/** Group N EncodedFrames sharing a source moment into one bundle. Used by
+ *  multi-layer init tests where the original publisher emits all layers
+ *  for one source frame as a single bundle. */
+function bundledSource(groups: EncodedFrame[][]): AsyncIterable<EncodedBundle> {
+    return (async function* () {
+        await Promise.resolve();
+        for (const group of groups) {
+            if (group.length === 0) continue;
+            yield { frames: group, stats: group[0].stats } as EncodedBundle;
+        }
     })();
 }
 
 async function runWith(
-    seg: AsyncIterable<EncodedFrame>,
+    seg: AsyncIterable<EncodedBundle>,
     op: ReturnType<typeof wireSend>,
 ): Promise<void> {
     await count(pipe(seg, op));
@@ -290,7 +312,9 @@ describe('wireSend', () => {
         });
         const topDescription = new Uint8Array([0x67, 0x42, 0x00, 0x1f]);
 
-        await runWith(source([
+        // One bundle carrying all three layers — wireSend takes the top
+        // (frames[length-1]) for the init payload.
+        await runWith(bundledSource([[
             makeEncoded(stats, {
                 type: 'key',
                 layerId: 0,
@@ -313,7 +337,7 @@ describe('wireSend', () => {
                 capturedAt: { timeMs: 1_000, epoch: 0 },
                 description: topDescription,
             }),
-        ]), sink);
+        ]]), sink);
 
         expect(sender.sent.map(x => x.layerId)).toEqual([0, 1, 2]);
         expect(sender.formats).toHaveLength(1);

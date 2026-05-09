@@ -1,5 +1,5 @@
 import { from, type PipeOperator } from 'ix-ext';
-import type { CapturedFrame, SimulcastBundle } from '../frame-envelopes';
+import type { CapturedBundle, CapturedFrame } from '../frame-envelopes';
 
 export interface KeyframePolicyOptions {
     /** Force a keyframe every Nth bundle. Counter resets on every
@@ -12,15 +12,15 @@ export interface KeyframePolicyOptions {
 }
 
 /**
- * Sets `forceKeyframe = true` across a bundle on any of: frame-count
- * interval, wallclock floor, or upstream already raised the flag.
- * Sets the flag on the bundle, primary, and every extra so downstream
- * encoders can consult any view.
+ * Sets `forceKeyframe = true` across every layer in a bundle on any
+ * of: frame-count interval, wallclock floor, or upstream already
+ * raised the flag (any layer with the flag triggers it across the
+ * whole bundle).
  *
  * Shallow-clones the layer envelopes when raising the flag so upstream
  * operators see no surprising mutations.
  */
-export function applyKeyframePolicy(opts: KeyframePolicyOptions): PipeOperator<SimulcastBundle, SimulcastBundle> {
+export function applyKeyframePolicy(opts: KeyframePolicyOptions): PipeOperator<CapturedBundle, CapturedBundle> {
     const { keyframeIntervalFrames, maxKeyframeIntervalMs } = opts;
     if (keyframeIntervalFrames <= 0)
         throw new Error('applyKeyframePolicy: keyframeIntervalFrames must be > 0');
@@ -28,7 +28,7 @@ export function applyKeyframePolicy(opts: KeyframePolicyOptions): PipeOperator<S
     return source => {
         return from(impl());
 
-        async function* impl(): AsyncIterable<SimulcastBundle> {
+        async function* impl(): AsyncIterable<CapturedBundle> {
             let frameCount = 0;
             let lastKeyframeAtMs = Number.NEGATIVE_INFINITY;
             for await (const bundle of source) {
@@ -36,7 +36,7 @@ export function applyKeyframePolicy(opts: KeyframePolicyOptions): PipeOperator<S
                 try {
                     frameCount++;
                     const wallNow = now();
-                    const upstreamForce = bundle.primary.forceKeyframe;
+                    const upstreamForce = bundle.frames.some(f => f.forceKeyframe);
                     const intervalTrigger = frameCount % keyframeIntervalFrames === 0;
                     const wallclockTrigger = maxKeyframeIntervalMs !== undefined
                         && lastKeyframeAtMs !== Number.NEGATIVE_INFINITY
@@ -47,10 +47,9 @@ export function applyKeyframePolicy(opts: KeyframePolicyOptions): PipeOperator<S
                         lastKeyframeAtMs = wallNow;
                     }
                     if (forceKeyframe && !upstreamForce) {
-                        const output = {
+                        const output: CapturedBundle = {
                             ...bundle,
-                            primary: withForceKeyframe(bundle.primary),
-                            extras: bundle.extras.map(withForceKeyframe),
+                            frames: bundle.frames.map(withForceKeyframe),
                         };
                         mustClose = false;
                         yield output;
@@ -72,8 +71,8 @@ function withForceKeyframe(layer: CapturedFrame): CapturedFrame {
     return { ...layer, forceKeyframe: true };
 }
 
-function closeBundleFrames(bundle: SimulcastBundle): void {
-    for (const layer of [...bundle.extras, bundle.primary]) {
+function closeBundleFrames(bundle: CapturedBundle): void {
+    for (const layer of bundle.frames) {
         try { layer.frame.close(); } catch { /* ignore */ }
     }
 }

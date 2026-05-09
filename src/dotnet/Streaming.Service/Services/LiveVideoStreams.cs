@@ -178,7 +178,7 @@ public class LiveVideoStreams : ILiveVideoStreams
         double clientStartAt, // Unix epoch (seconds, double)
         VideoFormat format,
         VideoSourceKind sourceKind,
-        RpcStream<VideoFrame> frameStream,
+        RpcStream<VideoFrameBundle> frameStream,
         CancellationToken cancellationToken)
     {
         // Live video calls: cap at Constants.Video.MaxLiveDuration (8h) rather than

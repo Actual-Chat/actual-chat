@@ -6,8 +6,9 @@ import {
     type EncoderConfigPerLayer,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/encode';
 import {
-    type SimulcastBundle,
+    type CapturedBundle,
     type CapturedFrame,
+    type EncodedBundle,
     type EncodedFrame,
     type VideoRecordingStats,
     createEmptyRecordingStats,
@@ -135,18 +136,12 @@ function makeBundle(
     stats: VideoRecordingStats,
     layers: { width: number; height: number }[],
     forceKeyframe = false,
-): SimulcastBundle {
+): CapturedBundle {
     if (layers.length === 0) throw new Error('makeBundle: at least one layer');
-    const top = layers[layers.length - 1];
-    const primary = makeCaptured(index, stats, top.width, top.height, forceKeyframe);
-    const extras: CapturedFrame[] = [];
-    for (let i = 0; i < layers.length - 1; i++) {
-        const l = layers[i];
-        // Extras share index/capturedAt/forceKeyframe/stats with primary.
-        const c = makeCaptured(index, stats, l.width, l.height, forceKeyframe);
-        extras.push(c);
-    }
-    return { primary, extras, stats };
+    // Bottom-first: frames[0] = base layer, frames[last] = top layer.
+    const frames: CapturedFrame[] = layers.map(l =>
+        makeCaptured(index, stats, l.width, l.height, forceKeyframe));
+    return { frames, stats };
 }
 
 function fromArray<T>(items: T[]): AsyncIterable<T> {
@@ -256,12 +251,12 @@ describe('encode operator', () => {
             createEncoder: makeFactory(),
         };
 
-        const bundles: SimulcastBundle[] = [];
+        const bundles: CapturedBundle[] = [];
         for (let i = 1; i <= 5; i++)
             bundles.push(makeBundle(i, stats, [{ width: 640, height: 360 }]));
 
         const seg = encode(opts)(fromArray(bundles));
-        const iter: AsyncIterator<EncodedFrame> = seg[Symbol.asyncIterator]();
+        const iter: AsyncIterator<EncodedBundle> = seg[Symbol.asyncIterator]();
 
         const results: EncodedFrame[] = [];
         for (const _b of bundles) {
@@ -273,7 +268,7 @@ describe('encode operator', () => {
             mock.emitNext(50);
             const r = await next;
             expect(r.done).toBe(false);
-            if (r.done === false) results.push(r.value);
+            if (r.done === false) results.push(...r.value.frames);
         }
         const final = await iter.next();
         expect(final.done).toBe(true);
@@ -300,7 +295,7 @@ describe('encode operator', () => {
             makeBundle(2, stats, [{ width: 640, height: 360 }], false),
             makeBundle(3, stats, [{ width: 640, height: 360 }], true),
         ]));
-        const iter: AsyncIterator<EncodedFrame> = seg[Symbol.asyncIterator]();
+        const iter: AsyncIterator<EncodedBundle> = seg[Symbol.asyncIterator]();
 
         // First bundle: keyFrame=true regardless of policy — pool-reused
         // encoders may not emit a natural keyframe as their first chunk.
@@ -330,7 +325,7 @@ describe('encode operator', () => {
         await iter.next();
     });
 
-    it('multi-layer (3 tiers): 5 bundles → 15 EncodedFrames (1 per layer per bundle)', async () => {
+    it('multi-layer (3 tiers): 5 source bundles → 5 EncodedBundles (1 per layer inside each)', async () => {
         const stats = makeStats();
         const layers = [
             { width: 320, height: 180 },
@@ -341,50 +336,31 @@ describe('encode operator', () => {
             configs: layers.map(l => cfg(l.width, l.height)),
             createEncoder: makeFactory(),
         };
-        const bundles: SimulcastBundle[] = [];
+        const bundles: CapturedBundle[] = [];
         for (let i = 1; i <= 5; i++) bundles.push(makeBundle(i, stats, layers));
 
         const seg = encode(opts)(fromArray(bundles));
-        const iter: AsyncIterator<EncodedFrame> = seg[Symbol.asyncIterator]();
+        const iter: AsyncIterator<EncodedBundle> = seg[Symbol.asyncIterator]();
 
-        const collected: EncodedFrame[] = [];
+        const collectedBundles: EncodedBundle[] = [];
         for (const _b of bundles) {
-            // Kick off the iteration that will submit to all 3 encoders.
-            const firstNext = iter.next();
+            const next = iter.next();
             await waitForInstances(3);
-            // Emit one chunk per encoder.
             for (const m of MockVideoEncoder.instances) m.emitNext(80);
-            // Pull all 3 results (the operator yields one per layer per bundle).
-            const r1 = await firstNext;
-            if (r1.done === false) collected.push(r1.value);
-            const r2 = await iter.next();
-            if (r2.done === false) collected.push(r2.value);
-            const r3 = await iter.next();
-            if (r3.done === false) collected.push(r3.value);
+            const r = await next;
+            if (r.done === false) collectedBundles.push(r.value);
         }
         const tail = await iter.next();
         expect(tail.done).toBe(true);
 
-        expect(collected).toHaveLength(15);
+        expect(collectedBundles).toHaveLength(5);
 
-        // Group by source bundle (`index`) and verify all 3 layer ids present.
-        const byIndex = new Map<number, EncodedFrame[]>();
-        for (const f of collected) {
-            const arr = byIndex.get(f.index) ?? [];
-            arr.push(f);
-            byIndex.set(f.index, arr);
-        }
-        expect(byIndex.size).toBe(5);
-        for (const [, group] of byIndex) {
-            expect(group).toHaveLength(3);
-            expect(group.map(g => g.layerId)).toEqual([0, 1, 2]);
-            const ids = group.map(g => g.layerId).sort();
-            expect(ids).toEqual([0, 1, 2]);
-            // Encoded dims line up with config.
-            const byLayer = new Map(group.map(g => [g.layerId, g]));
-            expect(byLayer.get(0)?.encodedWidth).toBe(320);
-            expect(byLayer.get(1)?.encodedWidth).toBe(640);
-            expect(byLayer.get(2)?.encodedWidth).toBe(1280);
+        for (const eb of collectedBundles) {
+            expect(eb.frames).toHaveLength(3);
+            expect(eb.frames.map(g => g.layerId)).toEqual([0, 1, 2]);
+            expect(eb.frames[0].encodedWidth).toBe(320);
+            expect(eb.frames[1].encodedWidth).toBe(640);
+            expect(eb.frames[2].encodedWidth).toBe(1280);
         }
     });
 
@@ -398,18 +374,18 @@ describe('encode operator', () => {
             configs: layers.map(l => cfg(l.width, l.height)),
             createEncoder: makeFactory(),
         };
-        const bundles: SimulcastBundle[] = [
+        const bundles: CapturedBundle[] = [
             makeBundle(1, stats, layers, true),    // keyframe
             makeBundle(2, stats, layers, false),
             makeBundle(3, stats, layers, false),
         ];
         const seg = encode(opts)(fromArray(bundles));
-        const iter: AsyncIterator<EncodedFrame> = seg[Symbol.asyncIterator]();
+        const iter: AsyncIterator<EncodedBundle> = seg[Symbol.asyncIterator]();
 
         let totalBytes = 0;
         let bundleIdx = 0;
         for (const _b of bundles) {
-            const firstNext = iter.next();
+            const next = iter.next();
             await waitForInstances(layers.length);
             const byteSizes = [70 + bundleIdx * 10, 130 + bundleIdx * 10];
             const instances: MockVideoEncoder[] = MockVideoEncoder.instances.slice(0, layers.length);
@@ -417,8 +393,7 @@ describe('encode operator', () => {
                 inst.emitNext(byteSizes[layerIdx]);
                 totalBytes += byteSizes[layerIdx];
             });
-            await firstNext;
-            for (let l = 1; l < layers.length; l++) await iter.next();
+            await next;
             bundleIdx++;
         }
         await iter.next();
@@ -467,17 +442,17 @@ describe('encode operator', () => {
             createEncoder: () => fakeEncoder,
         })(fromArray([first, second]));
 
-        const iter: AsyncIterator<EncodedFrame> = seg[Symbol.asyncIterator]();
+        const iter: AsyncIterator<EncodedBundle> = seg[Symbol.asyncIterator]();
         const result = await iter.next();
         expect(result.done).toBe(false);
-        expect(result.done === false ? result.value.index : 0).toBe(2);
+        expect(result.done === false ? result.value.frames[0].index : 0).toBe(2);
         expect(encodeCalls).toHaveLength(2);
         // First encode is forced to keyFrame=true (per-encoder first-call guard).
         expect(encodeCalls[0].opts.keyFrame).toBe(true);
         // Second is also keyFrame=true: forceKeyframeNext is set after the
         // reset-error rejection on the first bundle.
         expect(encodeCalls[1].opts.keyFrame).toBe(true);
-        expect((first.primary.frame as unknown as MockVideoFrame).closed).toBe(true);
+        expect((first.frames[0].frame as unknown as MockVideoFrame).closed).toBe(true);
         await iter.next();
     });
 
@@ -493,7 +468,7 @@ describe('encode operator', () => {
             }),
         })(fromArray([makeBundle(1, stats, [{ width: 640, height: 360 }])]));
 
-        const iter: AsyncIterator<EncodedFrame> = seg[Symbol.asyncIterator]();
+        const iter: AsyncIterator<EncodedBundle> = seg[Symbol.asyncIterator]();
         const promise = iter.next();
         await vi.advanceTimersByTimeAsync(60);
         const result = await promise;
@@ -514,14 +489,11 @@ describe('encode operator', () => {
             createEncoder: makeFactory(),
         })(fromArray([makeBundle(1, stats, layers)]));
 
-        const iter: AsyncIterator<EncodedFrame> = seg[Symbol.asyncIterator]();
+        const iter: AsyncIterator<EncodedBundle> = seg[Symbol.asyncIterator]();
         const firstNext = iter.next();
         await waitForInstances(layers.length);
         for (const m of MockVideoEncoder.instances) m.emitNext(64);
         await firstNext;
-        for (let l = 1; l < layers.length; l++) {
-            await iter.next();
-        }
         await iter.next();
 
         // After source completes & finally runs, every underlying mock encoder
