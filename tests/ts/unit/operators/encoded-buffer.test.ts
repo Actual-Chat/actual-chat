@@ -16,14 +16,13 @@ class MockEncodedVideoChunk {
 
 function mkChunk(opts: {
     timeMs: number;
-    arrivedAtMs: number;
     isKeyFrame: boolean;
     epoch?: number;
     stats: VideoPlaybackStats;
 }): ArrivedChunk {
     return {
         chunk: new MockEncodedVideoChunk() as unknown as EncodedVideoChunk,
-        arrivedAt: { timeMs: opts.arrivedAtMs, epoch: 0 },
+        arrivedAt: { timeMs: opts.timeMs, epoch: 0 },
         capturedAt: { timeMs: opts.timeMs, epoch: opts.epoch ?? 0 },
         isKeyFrame: opts.isKeyFrame,
         layerId: 0,
@@ -80,57 +79,8 @@ function manualSource(): ManualSource {
     return { seg, push, end };
 }
 
-interface FakeTimer {
-    cb: () => void;
-    delayMs: number;
-    canceled: boolean;
-}
-
-interface FakeClock {
-    now: () => number;
-    setTimeoutFn: (cb: () => void, ms: number) => unknown;
-    clearTimeoutFn: (h: unknown) => void;
-    advance: (ms: number) => Promise<void>;
-    setTo: (ms: number) => Promise<void>;
-}
-
-function makeFakeClock(): FakeClock {
-    let t = 0;
-    const timers: FakeTimer[] = [];
-    const advance = async (ms: number): Promise<void> => {
-        t += ms;
-        // Repeatedly fire pending timers and flush microtasks until the
-        // system reaches a fixed point (no new timers scheduled and
-        // microtask queue idle). This matches the typical "tick the
-        // clock, settle the system" expectation while remaining robust
-        // to async hops between operator yields, consumer for-await
-        // iterations, and inner Promise.race continuations.
-        for (let pass = 0; pass < 20; pass++) {
-            let firedAny = false;
-            for (const timer of timers.splice(0)) {
-                if (!timer.canceled) {
-                    timer.cb();
-                    firedAny = true;
-                }
-            }
-            for (let i = 0; i < 8; i++) await Promise.resolve();
-            if (!firedAny && timers.length === 0) break;
-        }
-    };
-    return {
-        now: (): number => t,
-        setTimeoutFn: (cb: () => void, ms: number): unknown => {
-            const timer: FakeTimer = { cb, delayMs: ms, canceled: false };
-            timers.push(timer);
-            return timer;
-        },
-        clearTimeoutFn: (h: unknown): void => {
-            const timer = h as FakeTimer;
-            timer.canceled = true;
-        },
-        advance,
-        setTo: (ms: number): Promise<void> => advance(ms - t),
-    };
+async function tick(times = 50): Promise<void> {
+    for (let i = 0; i < times; i++) await Promise.resolve();
 }
 
 // ---- Tests ----------------------------------------------------------------
@@ -139,15 +89,8 @@ describe('pacedEncodedBuffer', () => {
     it('drops deltas while in reset state and increments stats.chunksDroppedAtBuffer', async () => {
         const ac = new AbortController();
         const stats = createEmptyPlaybackStats(0);
-        const clock = makeFakeClock();
-        const buffer = new EncodedFrameBuffer({ targetSpanMs: 100, now: clock.now });
-        const op = pacedEncodedBuffer({
-            buffer,
-            abortSignal: ac.signal,
-            now: clock.now,
-            setTimeoutFn: clock.setTimeoutFn,
-            clearTimeoutFn: clock.clearTimeoutFn,
-        });
+        const buffer = new EncodedFrameBuffer({ targetSpanMs: 100 });
+        const op = pacedEncodedBuffer({ buffer, abortSignal: ac.signal });
 
         const src = manualSource();
         const collected: ArrivedChunk[] = [];
@@ -159,10 +102,9 @@ describe('pacedEncodedBuffer', () => {
         })();
         const runPromise = count(driverSeg);
 
-        // Push a delta while reset → drop, no yield, no buffered chunk.
-        src.push(mkChunk({ timeMs: 100, arrivedAtMs: 0, isKeyFrame: false, stats }));
-        await clock.advance(0);
-        await clock.advance(20); // fires inner pacing timer if any
+        // Push a delta while reset → drop, no yield.
+        src.push(mkChunk({ timeMs: 100, isKeyFrame: false, stats }));
+        await tick();
         expect(stats.chunksDroppedAtBuffer).toBe(1);
         expect(collected).toHaveLength(0);
         expect(buffer.isReset()).toBe(true);
@@ -172,18 +114,11 @@ describe('pacedEncodedBuffer', () => {
         await runPromise;
     });
 
-    it('yields chunks once the buffer reaches target span and dueAt arrives', async () => {
+    it('yields chunks once the buffer reaches target span', async () => {
         const ac = new AbortController();
         const stats = createEmptyPlaybackStats(0);
-        const clock = makeFakeClock();
-        const buffer = new EncodedFrameBuffer({ targetSpanMs: 100, now: clock.now });
-        const op = pacedEncodedBuffer({
-            buffer,
-            abortSignal: ac.signal,
-            now: clock.now,
-            setTimeoutFn: clock.setTimeoutFn,
-            clearTimeoutFn: clock.clearTimeoutFn,
-        });
+        const buffer = new EncodedFrameBuffer({ targetSpanMs: 100 });
+        const op = pacedEncodedBuffer({ buffer, abortSignal: ac.signal });
 
         const src = manualSource();
         const collected: ArrivedChunk[] = [];
@@ -195,33 +130,21 @@ describe('pacedEncodedBuffer', () => {
         })();
         const runPromise = count(driverSeg);
 
-        // Push 8 chunks at 33 ms cadence so the residual span stays
-        // ≥ targetSpanMs (100) even after the front is pulled — that
-        // way the buffer stays "ready" for chunk 1's pacing turn.
+        // 8 chunks at 33 ms cadence: span = 231 ≥ 100. After draining
+        // chunk 0, residual = 231 - 33 = 198 ≥ 100; chunk 1 also drains.
+        // After chunk 1: residual = 165 ≥ 100; chunk 2 drains too. Etc.
         const cs: ArrivedChunk[] = [];
         for (let i = 0; i < 8; i++) {
-            cs.push(mkChunk({
-                timeMs: i * 33,
-                arrivedAtMs: i * 33,
-                isKeyFrame: i === 0,
-                stats,
-            }));
+            cs.push(mkChunk({ timeMs: i * 33, isKeyFrame: i === 0, stats }));
         }
         for (const c of cs) src.push(c);
-        await clock.advance(0);
+        await tick();
 
-        // We're at t=0 → still waiting on dueAt 100.
-        expect(collected.length).toBe(0);
-
-        // Advance to t=100 → cs[0] (arrivedAt=0) is now due.
-        await clock.setTo(100);
+        // First few in FIFO order; exact count depends on scheduling but
+        // the prefix that satisfies span ≥ target on every step gets out.
         expect(collected.length).toBeGreaterThanOrEqual(1);
         expect(collected[0]).toBe(cs[0]);
-
-        // Advance to t=133 → cs[1] due.
-        await clock.setTo(133);
-        expect(collected.length).toBeGreaterThanOrEqual(2);
-        expect(collected[1]).toBe(cs[1]);
+        if (collected.length >= 2) expect(collected[1]).toBe(cs[1]);
 
         src.end();
         ac.abort();
@@ -231,15 +154,8 @@ describe('pacedEncodedBuffer', () => {
     it('honors reset state: deltas drop, then a fresh keyframe re-arms', async () => {
         const ac = new AbortController();
         const stats = createEmptyPlaybackStats(0);
-        const clock = makeFakeClock();
-        const buffer = new EncodedFrameBuffer({ targetSpanMs: 50, now: clock.now });
-        const op = pacedEncodedBuffer({
-            buffer,
-            abortSignal: ac.signal,
-            now: clock.now,
-            setTimeoutFn: clock.setTimeoutFn,
-            clearTimeoutFn: clock.clearTimeoutFn,
-        });
+        const buffer = new EncodedFrameBuffer({ targetSpanMs: 50 });
+        const op = pacedEncodedBuffer({ buffer, abortSignal: ac.signal });
 
         const src = manualSource();
         const collected: ArrivedChunk[] = [];
@@ -253,15 +169,15 @@ describe('pacedEncodedBuffer', () => {
 
         // Three deltas dropped (reset state).
         for (let i = 0; i < 3; i++) {
-            src.push(mkChunk({ timeMs: 33 * i, arrivedAtMs: 33 * i, isKeyFrame: false, stats }));
+            src.push(mkChunk({ timeMs: 33 * i, isKeyFrame: false, stats }));
         }
-        await clock.advance(0);
+        await tick();
         expect(stats.chunksDroppedAtBuffer).toBe(3);
         expect(buffer.isReset()).toBe(true);
 
-        // Keyframe arms the buffer.
-        src.push(mkChunk({ timeMs: 100, arrivedAtMs: 100, isKeyFrame: true, stats }));
-        await clock.advance(0);
+        // Keyframe arms the buffer (single chunk → span 0 < target so no yield).
+        src.push(mkChunk({ timeMs: 100, isKeyFrame: true, stats }));
+        await tick();
         expect(buffer.isReset()).toBe(false);
         expect(buffer.count()).toBe(1);
 
@@ -273,15 +189,8 @@ describe('pacedEncodedBuffer', () => {
     it('stop() unwinds the operator promptly even with chunks pending', async () => {
         const ac = new AbortController();
         const stats = createEmptyPlaybackStats(0);
-        const clock = makeFakeClock();
-        const buffer = new EncodedFrameBuffer({ targetSpanMs: 1_000_000, now: clock.now }); // unreachable
-        const op = pacedEncodedBuffer({
-            buffer,
-            abortSignal: ac.signal,
-            now: clock.now,
-            setTimeoutFn: clock.setTimeoutFn,
-            clearTimeoutFn: clock.clearTimeoutFn,
-        });
+        const buffer = new EncodedFrameBuffer({ targetSpanMs: 1_000_000 }); // unreachable
+        const op = pacedEncodedBuffer({ buffer, abortSignal: ac.signal });
 
         const src = manualSource();
         const collected: ArrivedChunk[] = [];
@@ -293,16 +202,15 @@ describe('pacedEncodedBuffer', () => {
         })();
         const runPromise = count(driverSeg);
 
-        src.push(mkChunk({ timeMs: 0, arrivedAtMs: 0, isKeyFrame: true, stats }));
-        const pendingChunk = mkChunk({ timeMs: 33, arrivedAtMs: 33, isKeyFrame: false, stats });
+        src.push(mkChunk({ timeMs: 0, isKeyFrame: true, stats }));
+        const pendingChunk = mkChunk({ timeMs: 33, isKeyFrame: false, stats });
         src.push(pendingChunk);
-        await clock.advance(0);
+        await tick();
 
         // Nothing yielded — span unreachable.
         expect(collected.length).toBe(0);
         ac.abort();
-        // Allow the stopped Promise.race branches to win.
-        await clock.advance(0);
+        await tick();
         // runStream rejects with signal.reason on abort; callers filter.
         await runPromise.catch(() => { /* expected */ });
         expect(collected.length).toBe(0);
@@ -313,15 +221,8 @@ describe('pacedEncodedBuffer', () => {
     it('closes a chunk that arrives via in-flight next() after abort', async () => {
         const ac = new AbortController();
         const stats = createEmptyPlaybackStats(0);
-        const clock = makeFakeClock();
-        const buffer = new EncodedFrameBuffer({ targetSpanMs: 1_000, now: clock.now });
-        const op = pacedEncodedBuffer({
-            buffer,
-            abortSignal: ac.signal,
-            now: clock.now,
-            setTimeoutFn: clock.setTimeoutFn,
-            clearTimeoutFn: clock.clearTimeoutFn,
-        });
+        const buffer = new EncodedFrameBuffer({ targetSpanMs: 1_000 });
+        const op = pacedEncodedBuffer({ buffer, abortSignal: ac.signal });
 
         // Cooperative source: return() resolves any pending next() with done=true,
         // but a chunk pushed *between* abort and return() races into the in-flight
@@ -359,14 +260,14 @@ describe('pacedEncodedBuffer', () => {
         const runPromise = count(driverSeg);
 
         // Let the operator install a waiter for next().
-        await clock.advance(0);
-        const inflightChunk = mkChunk({ timeMs: 0, arrivedAtMs: 0, isKeyFrame: true, stats });
+        await tick();
+        const inflightChunk = mkChunk({ timeMs: 0, isKeyFrame: true, stats });
 
         // Abort, then deliver a chunk into the pending next() before return() lands.
         ac.abort();
         const w = waiters.shift();
         if (w) w({ value: inflightChunk, done: false });
-        await clock.advance(0);
+        await tick();
         await runPromise.catch(() => { /* expected */ });
 
         // Settle the .then(...) tail handler that closes the in-flight chunk.
@@ -374,21 +275,16 @@ describe('pacedEncodedBuffer', () => {
         expect((inflightChunk.chunk as unknown as MockEncodedVideoChunk).closed).toBe(true);
     });
 
-    it('drains as many due chunks as the cushion permits in one tick', async () => {
+    it('drains as many chunks as the cushion permits in one batch', async () => {
         const ac = new AbortController();
         const stats = createEmptyPlaybackStats(0);
-        const clock = makeFakeClock();
-        // Target 50 ms cushion. The buffer keeps ≥ 50 ms of content
-        // beyond whatever it has yielded — so on a single tick it
-        // drains the prefix while the residual span stays ≥ target.
-        const buffer = new EncodedFrameBuffer({ targetSpanMs: 50, now: clock.now });
-        const op = pacedEncodedBuffer({
-            buffer,
-            abortSignal: ac.signal,
-            now: clock.now,
-            setTimeoutFn: clock.setTimeoutFn,
-            clearTimeoutFn: clock.clearTimeoutFn,
-        });
+        // Target 50 ms cushion. 5 chunks @ 33 ms cadence: span = 132.
+        // After draining chunk 0: residual = 99 (≥ 50)
+        // After draining chunk 1: residual = 66 (≥ 50)
+        // After draining chunk 2: residual = 33 (< 50) → stop
+        // So one batch should yield exactly chunks [0, 1, 2].
+        const buffer = new EncodedFrameBuffer({ targetSpanMs: 50 });
+        const op = pacedEncodedBuffer({ buffer, abortSignal: ac.signal });
 
         const src = manualSource();
         const collected: ArrivedChunk[] = [];
@@ -400,24 +296,15 @@ describe('pacedEncodedBuffer', () => {
         })();
         const runPromise = count(driverSeg);
 
-        // 5 chunks at 33 ms cadence: capturedAt = 0,33,66,99,132.
-        // After draining chunk 0: residual span = 132 - 33 = 99 (≥ 50)
-        // After draining chunk 1: residual span = 132 - 66 = 66 (≥ 50)
-        // After draining chunk 2: residual span = 132 - 99 = 33 (< 50) → stop
-        // So one tick should yield exactly chunks [0, 1, 2].
         const cs = [
-            mkChunk({ timeMs: 0, arrivedAtMs: 0, isKeyFrame: true, stats }),
-            mkChunk({ timeMs: 33, arrivedAtMs: 33, isKeyFrame: false, stats }),
-            mkChunk({ timeMs: 66, arrivedAtMs: 66, isKeyFrame: false, stats }),
-            mkChunk({ timeMs: 99, arrivedAtMs: 99, isKeyFrame: false, stats }),
-            mkChunk({ timeMs: 132, arrivedAtMs: 132, isKeyFrame: false, stats }),
+            mkChunk({ timeMs: 0, isKeyFrame: true, stats }),
+            mkChunk({ timeMs: 33, isKeyFrame: false, stats }),
+            mkChunk({ timeMs: 66, isKeyFrame: false, stats }),
+            mkChunk({ timeMs: 99, isKeyFrame: false, stats }),
+            mkChunk({ timeMs: 132, isKeyFrame: false, stats }),
         ];
         for (const c of cs) src.push(c);
-        await clock.advance(0);
-
-        // Move to t=200 — every chunk's dueAt has elapsed.
-        await clock.setTo(200);
-        await clock.advance(0);
+        await tick();
 
         expect(collected).toEqual([cs[0], cs[1], cs[2]]);
         expect(buffer.count()).toBe(2);

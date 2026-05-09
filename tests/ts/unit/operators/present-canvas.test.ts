@@ -3,6 +3,7 @@ import { count, pipe } from 'ix-ext';
 import {
     canvasPresent,
     type CanvasImageInterface,
+    type CanvasPresentOptions,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/present-canvas';
 import {
     createEmptyPlaybackStats,
@@ -56,13 +57,30 @@ function source(items: DecodedFrame[]): AsyncIterable<DecodedFrame> {
     })();
 }
 
+/**
+ * Default test wiring: in-budget (extra=0), zero delay, virtual clock
+ * advanced by `nextTickMs` per call so the cap doesn't apply (lastPresentMs
+ * always far enough in the past).
+ */
+function defaults(extra: { getBufferSpanMs?: () => number; targetSpanMs?: number } = {}): Pick<
+    CanvasPresentOptions, 'getBufferSpanMs' | 'targetSpanMs' | 'nowFn' | 'delayFn'
+> {
+    let t = 0;
+    return {
+        getBufferSpanMs: extra.getBufferSpanMs ?? ((): number => 0),
+        targetSpanMs: extra.targetSpanMs ?? 333,
+        nowFn: (): number => { t += 1000; return t; },
+        delayFn: (): Promise<void> => Promise.resolve(),
+    };
+}
+
 // ---- Tests ----------------------------------------------------------------
 
 describe('canvasPresent', () => {
     it('drawImage is called once per frame at (0, 0); frames are closed; framesPresented increments', async () => {
         const stats = createEmptyPlaybackStats(0);
         const ctx = new FakeCtx();
-        const sink = canvasPresent({ getCanvasCtx: () => ctx });
+        const sink = canvasPresent({ getCanvasCtx: () => ctx, ...defaults() });
         const frames = Array.from({ length: 5 }, (_, i) => new MockVideoFrame(i));
         const items = frames.map((f, i) => makeEnvelope(stats, i, f));
 
@@ -87,6 +105,7 @@ describe('canvasPresent', () => {
         let calls = 0;
         const sink = canvasPresent({
             getCanvasCtx: () => { calls++; return ctx; },
+            ...defaults(),
         });
         const items = Array.from({ length: 4 }, (_, i) => makeEnvelope(stats, i));
 
@@ -107,13 +126,12 @@ describe('canvasPresent', () => {
             bitmaps.push(bm);
             return bm as unknown as ImageBitmap;
         };
-        const sink = canvasPresent({ getCanvasCtx: () => ctx, convertToBitmap });
+        const sink = canvasPresent({ getCanvasCtx: () => ctx, convertToBitmap, ...defaults() });
         const frames = Array.from({ length: 3 }, (_, i) => new MockVideoFrame(i));
         const items = frames.map((f, i) => makeEnvelope(stats, i, f));
 
         await count(pipe(source(items), sink));
 
-        // Bitmap was drawn (not the original VideoFrame).
         expect(ctx.calls).toHaveLength(3);
         for (let i = 0; i < 3; i++) {
             expect(ctx.calls[i].image).toBe(bitmaps[i] as unknown as ImageBitmap);
@@ -132,10 +150,38 @@ describe('canvasPresent', () => {
         frame.displayWidth = 320;
         frame.displayHeight = 180;
 
-        const sink = canvasPresent({ getCanvasCtx: () => ctx });
+        const sink = canvasPresent({ getCanvasCtx: () => ctx, ...defaults() });
         await count(pipe(source([makeEnvelope(stats, 1, frame)]), sink));
 
         expect(ctx.canvas).toEqual({ width: 320, height: 180 });
         expect(ctx.calls[0]).toMatchObject({ x: 0, y: 0, w: 320, h: 180 });
+    });
+
+    it('catch-up skip: when extra > catchupBudget AND last present was < period ago, frame is closed without draw', async () => {
+        const stats = createEmptyPlaybackStats(0);
+        const ctx = new FakeCtx();
+        // Out-of-budget: spanMs = 2000 > target 333 → extra 1667 > 1000.
+        const getBufferSpanMs = (): number => 2000;
+        // Frozen clock: every call returns the same value, so
+        // lastPresentMs always equals now → diff 0 < period → skip.
+        const sink = canvasPresent({
+            getCanvasCtx: () => ctx,
+            getBufferSpanMs,
+            targetSpanMs: 333,
+            nowFn: (): number => 1000,
+            delayFn: (): Promise<void> => Promise.resolve(),
+        });
+        const frames = Array.from({ length: 3 }, (_, i) => new MockVideoFrame(i));
+        const items = frames.map((f, i) => makeEnvelope(stats, i, f));
+
+        await count(pipe(source(items), sink));
+
+        // First frame presents (lastPresentMs starts at -Infinity).
+        // Subsequent frames at same now() are within the period → skip.
+        expect(ctx.calls).toHaveLength(1);
+        expect(stats.framesPresented).toBe(1);
+        expect(stats.framesDroppedAtPresenter).toBe(2);
+        // All frames closed regardless of skip vs present.
+        for (const f of frames) expect(f.closed).toBe(true);
     });
 });

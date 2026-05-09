@@ -7,27 +7,23 @@ export interface PacedEncodedBufferOptions {
     /** Shared with `epoch-reset.ts`: that operator owns `reset()`,
      *  this one owns push/drain. */
     buffer: EncodedFrameBuffer;
-    /** Test seam (passed through to `EncodedFrameBuffer.now`). */
-    now?: () => number;
-    /** Test seam for `setTimeout`. Production uses platform default. */
-    setTimeoutFn?: (cb: () => void, ms: number) => unknown;
-    clearTimeoutFn?: (handle: unknown) => void;
     abortSignal?: AbortSignal;
 }
 
 /**
- * Receiver-side paced drain. Pushes each input chunk into the buffer,
- * yields whatever is currently due, and races upstream-arrival vs. the
- * front chunk's pacing deadline when nothing is due yet.
+ * Receiver-side drain for an `EncodedFrameBuffer`. Pushes each input
+ * chunk into the buffer, yields whatever is currently due, and waits
+ * for the next upstream arrival to trigger a re-evaluation.
  *
- * Pacing exists so a network burst (multiple chunks delivered together)
- * doesn't drain the cushion in one tick. Drops at the buffer (deltas
- * pushed while reset-armed) bump `stats.chunksDroppedAtBuffer`.
+ * No internal pacing — the buffer's `isReady()` is purely a function of
+ * `spanMs() >= targetSpanMs`, so span only changes on push (or pull).
+ * Downstream backpressure (the present stage's 60 fps cap, plus its
+ * catch-up skip policy when the buffer overflows) governs how fast the
+ * inner drain loop yields. Drops at the buffer (deltas pushed while
+ * reset-armed) bump `stats.chunksDroppedAtBuffer`.
  */
 export function pacedEncodedBuffer(opts: PacedEncodedBufferOptions): PipeOperator<ArrivedChunk, ArrivedChunk> {
     const { buffer, abortSignal } = opts;
-    const setTimeoutFn = opts.setTimeoutFn ?? ((cb, ms) => setTimeout(cb, ms));
-    const clearTimeoutFn = opts.clearTimeoutFn ?? ((h) => clearTimeout(h as ReturnType<typeof setTimeout>));
     const abortRace: Promise<never> = abortSignal
         ? abortPromise(abortSignal)
         : new Promise(() => { /* never resolves */ });
@@ -52,36 +48,8 @@ export function pacedEncodedBuffer(opts: PacedEncodedBufferOptions): PipeOperato
                                 closeEncodedChunk(drained.chunk);
                         }
                     }
-                    const next = pendingNext ?? (pendingNext = iterator.next());
-                    if (buffer.count() > 0) {
-                        const result = await raceWithTimeout(
-                            next,
-                            computeNextDueDelayMs(buffer),
-                            setTimeoutFn,
-                            clearTimeoutFn,
-                            abortRace,
-                        );
-                        if (result === 'timeout')
-                            continue;
-
-                        pendingNext = null;
-                        if (result.done)
-                            return;
-
-                        const { value: chunk } = result;
-                        let mustClose = true;
-                        try {
-                            const status = buffer.push(chunk);
-                            mustClose = false;
-                            if (status === 'droppedReset')
-                                chunk.stats.chunksDroppedAtBuffer++;
-                        } finally {
-                            if (mustClose)
-                                closeEncodedChunk(chunk.chunk);
-                        }
-                        continue;
-                    }
-                    const result = await Promise.race([next, abortRace]);
+                    pendingNext = iterator.next();
+                    const result = await Promise.race([pendingNext, abortRace]);
                     pendingNext = null;
                     if (result.done)
                         return;
@@ -118,32 +86,4 @@ export function pacedEncodedBuffer(opts: PacedEncodedBufferOptions): PipeOperato
             }
         }
     };
-}
-
-// We can't peek at the buffer's front chunk through the public API; just
-// short-circuit when due, otherwise re-check after a small slice.
-function computeNextDueDelayMs(buffer: EncodedFrameBuffer): number {
-    return buffer.isReady() ? 0 : 5;
-}
-
-type RaceResult<T> = 'timeout' | IteratorResult<T>;
-
-async function raceWithTimeout<T>(
-    pending: Promise<IteratorResult<T>>,
-    delayMs: number,
-    setTimeoutFn: (cb: () => void, ms: number) => unknown,
-    clearTimeoutFn: (handle: unknown) => void,
-    aborted: Promise<never>,
-): Promise<RaceResult<T>> {
-    let timerHandle: unknown = null;
-    const timer = new Promise<'timeout'>(resolve => {
-        timerHandle = setTimeoutFn(() => resolve('timeout'), delayMs);
-    });
-    try {
-        return await Promise.race([pending, timer, aborted]);
-    } finally {
-        if (timerHandle !== null) {
-            try { clearTimeoutFn(timerHandle); } catch { /* ignore */ }
-        }
-    }
 }

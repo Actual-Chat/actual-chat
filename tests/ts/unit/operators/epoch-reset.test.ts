@@ -38,7 +38,7 @@ async function drain<T>(seg: AsyncIterable<T>): Promise<T[]> {
 
 describe('resetOnEpochChange', () => {
     it('stable epoch: passes through unchanged, no reset called', async () => {
-        const buffer = new EncodedFrameBuffer({ targetSpanMs: 200, now: () => 0 });
+        const buffer = new EncodedFrameBuffer({ targetSpanMs: 200 });
         const resetSpy = vi.spyOn(buffer, 'reset');
         const op = resetOnEpochChange({ buffer });
         const chunks = [
@@ -55,7 +55,7 @@ describe('resetOnEpochChange', () => {
     });
 
     it('first chunk does not trigger reset (no prior epoch to compare)', async () => {
-        const buffer = new EncodedFrameBuffer({ targetSpanMs: 200, now: () => 0 });
+        const buffer = new EncodedFrameBuffer({ targetSpanMs: 200 });
         const resetSpy = vi.spyOn(buffer, 'reset');
         const op = resetOnEpochChange({ buffer });
         const chunks = [mkChunk(100, 5, true)]; // even non-zero epoch on first chunk
@@ -67,7 +67,7 @@ describe('resetOnEpochChange', () => {
     });
 
     it('epoch change → buffer.reset() called once at the boundary, chunk yielded', async () => {
-        const buffer = new EncodedFrameBuffer({ targetSpanMs: 200, now: () => 0 });
+        const buffer = new EncodedFrameBuffer({ targetSpanMs: 200 });
         const resetSpy = vi.spyOn(buffer, 'reset');
         const op = resetOnEpochChange({ buffer });
         const chunks = [
@@ -85,7 +85,7 @@ describe('resetOnEpochChange', () => {
     });
 
     it('multiple epoch changes → multiple resets, one per boundary', async () => {
-        const buffer = new EncodedFrameBuffer({ targetSpanMs: 200, now: () => 0 });
+        const buffer = new EncodedFrameBuffer({ targetSpanMs: 200 });
         const resetSpy = vi.spyOn(buffer, 'reset');
         const op = resetOnEpochChange({ buffer });
         const chunks = [
@@ -101,7 +101,7 @@ describe('resetOnEpochChange', () => {
     });
 
     it('epoch 0 → 0 (sender never resyncs) does not trigger any reset', async () => {
-        const buffer = new EncodedFrameBuffer({ targetSpanMs: 200, now: () => 0 });
+        const buffer = new EncodedFrameBuffer({ targetSpanMs: 200 });
         const resetSpy = vi.spyOn(buffer, 'reset');
         const op = resetOnEpochChange({ buffer });
         const chunks = [

@@ -1,11 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { count, pipe } from 'ix-ext';
-import { mstgPresent } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/present-mstg';
+import {
+    mstgPresent,
+    type MstgPresentOptions,
+} from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/present-mstg';
 import {
     createEmptyPlaybackStats,
     type DecodedFrame,
     type VideoPlaybackStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
+
 // ---- Mocks ----------------------------------------------------------------
 
 class MockVideoFrame {
@@ -24,19 +28,11 @@ interface PendingWrite {
     reject: (e: unknown) => void;
 }
 
-/**
- * Fake writer that records each `write()` call AND lets the test
- * control when the resulting promise resolves. Mirrors the behavior
- * of `MediaStreamTrackGenerator.writable.getWriter()` closely enough
- * to exercise the sink's single-slot replace logic.
- */
 class FakeWriter {
     public written: VideoFrame[] = [];
     public pending: PendingWrite[] = [];
-    /** When false, write() resolves synchronously — useful for the
-     *  "all frames written" sanity test. When true, write() returns a
-     *  pending promise that the test resolves manually via
-     *  `flushNext()` to simulate slow downstream consumers. */
+    /** When false, write() resolves synchronously. When true, write() returns
+     *  a pending promise that the test resolves manually via `flushNext()`. */
     public manualMode = false;
 
     write(frame: VideoFrame): Promise<void> {
@@ -47,12 +43,10 @@ class FakeWriter {
         });
     }
 
-    /** Resolves the oldest pending write. */
     async flushNext(): Promise<void> {
         const next = this.pending.shift();
         if (!next) throw new Error('no pending write to flush');
         next.resolve();
-        // Yield once so the sink's microtask continuation runs.
         await Promise.resolve();
         await Promise.resolve();
     }
@@ -80,12 +74,6 @@ function makeEnvelope(stats: VideoPlaybackStats, id: number, frame?: MockVideoFr
     };
 }
 
-/**
- * Source backed by a controllable channel — the test pushes envelopes
- * one at a time, then closes when done. Lets us interleave "send a
- * frame" with "flush a write" and observe the sink's single-slot
- * replace logic step by step.
- */
 interface ControllableSource<T> {
     push: (item: T) => void;
     close: () => void;
@@ -139,86 +127,158 @@ function staticSource<T>(items: T[]): AsyncIterable<T> {
     })();
 }
 
-// Tick the microtask queue a few times so the sink can advance.
 async function tick(times = 4): Promise<void> {
     for (let i = 0; i < times; i++) await Promise.resolve();
+}
+
+interface FakeClock {
+    now: number;
+    nowFn: () => number;
+    delays: number[];
+    delayFn: (ms: number) => Promise<void>;
+    advance: (ms: number) => void;
+}
+
+/** Manual virtual clock: nowFn returns whatever `now` is set to,
+ *  delayFn records the requested delay AND advances the clock. */
+function fakeClock(start = 0): FakeClock {
+    const c: FakeClock = {
+        now: start,
+        nowFn: () => c.now,
+        delays: [],
+        delayFn: async (ms: number) => {
+            c.delays.push(ms);
+            c.now += ms;
+            await Promise.resolve();
+        },
+        advance: (ms: number) => { c.now += ms; },
+    };
+    return c;
+}
+
+function defaults(extra: Partial<MstgPresentOptions> = {}): Pick<
+    MstgPresentOptions, 'getBufferSpanMs' | 'targetSpanMs' | 'nowFn' | 'delayFn'
+> {
+    let t = 0;
+    return {
+        getBufferSpanMs: extra.getBufferSpanMs ?? ((): number => 0),
+        targetSpanMs: extra.targetSpanMs ?? 333,
+        // Default nowFn auto-advances 1s per call so the period cap never
+        // imposes a sleep — keeps non-pacing tests fast.
+        nowFn: extra.nowFn ?? ((): number => { t += 1000; return t; }),
+        delayFn: extra.delayFn ?? ((): Promise<void> => Promise.resolve()),
+    };
 }
 
 // ---- Tests ----------------------------------------------------------------
 
 describe('mstgPresent', () => {
-    it('writes every frame and increments framesPresented (slow upstream)', async () => {
+    it('writes every frame and increments framesPresented (in-budget, fast clock)', async () => {
         const stats = createEmptyPlaybackStats(0);
         const writer = new FakeWriter();
-        const sink = mstgPresent({ getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame> });
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            ...defaults(),
+        });
         const frames = [new MockVideoFrame(0), new MockVideoFrame(1), new MockVideoFrame(2)];
         const items = frames.map((f, i) => makeEnvelope(stats, i, f));
 
         await count(pipe(staticSource(items), sink));
 
-        // Slow upstream + auto-resolving writes → all 3 frames make it through.
         expect(writer.written).toHaveLength(3);
         expect(stats.framesPresented).toBe(3);
-        // Each written frame was the original (not closed before write).
         expect(writer.written[0]).toBe(frames[0] as unknown as VideoFrame);
         expect(writer.written[2]).toBe(frames[2] as unknown as VideoFrame);
         expect(frames.map(f => f.closed)).toEqual([true, true, true]);
     });
 
-    it('single-slot replace: when frames outpace writes, intermediate frames are dropped (and closed)', async () => {
+    it('paces writes via delayFn when nextPresentMs > now (frozen-clock case)', async () => {
         const stats = createEmptyPlaybackStats(0);
         const writer = new FakeWriter();
-        writer.manualMode = true;
-        const sink = mstgPresent({ getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame> });
-        const ch = controllableSource<DecodedFrame>();
-        const frames = [new MockVideoFrame(0), new MockVideoFrame(1), new MockVideoFrame(2), new MockVideoFrame(3)];
+        const clock = fakeClock(1000);
+        // Use a controlled clock that doesn't auto-advance — every frame
+        // fires at the same wallclock, so the cap forces a delayFn call.
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            getBufferSpanMs: (): number => 0,
+            targetSpanMs: 333,
+            nowFn: clock.nowFn,
+            delayFn: clock.delayFn,
+        });
+        const frames = Array.from({ length: 4 }, (_, i) => new MockVideoFrame(i));
+        const items = frames.map((f, i) => makeEnvelope(stats, i, f));
 
-        const run = count(pipe(ch.seg, sink));
+        await count(pipe(staticSource(items), sink));
 
-        // Push frame 0. Sink takes it, calls writer.write (which stays pending).
-        ch.push(makeEnvelope(stats, 0, frames[0]));
-        await tick();
-        expect(writer.written).toEqual([frames[0] as unknown as VideoFrame]);
-        expect(writer.pending).toHaveLength(1);
-
-        // Push 1 and 2 while frame 0's write is in flight. Frame 1 is closed
-        // when frame 2 displaces it.
-        ch.push(makeEnvelope(stats, 1, frames[1]));
-        await tick();
-        ch.push(makeEnvelope(stats, 2, frames[2]));
-        await tick();
-        expect(frames[1].closed).toBe(true);
-        expect(frames[2].closed).toBe(false);
-        // Writer hasn't seen 1 or 2 yet — frame 0's write is still pending.
-        expect(writer.written).toHaveLength(1);
-
-        // Resolve frame 0's write. Sink advances to frame 2 (frame 1 is gone).
-        await writer.flushNext();
-        await tick();
-        expect(writer.written).toHaveLength(2);
-        expect(writer.written[1]).toBe(frames[2] as unknown as VideoFrame);
-
-        // Push frame 3 while frame 2 is in flight, then close source.
-        ch.push(makeEnvelope(stats, 3, frames[3]));
-        await tick();
-        await writer.flushNext();
-        await tick();
-        ch.close();
-        await writer.flushNext();
-        await run;
-
-        // Frames 0, 2, 3 made it; frame 1 was dropped. framesPresented == 3.
-        expect(writer.written.map(f => (f as unknown as MockVideoFrame).id)).toEqual([0, 2, 3]);
-        expect(stats.framesPresented).toBe(3);
-        expect(stats.framesDroppedAtPresenter).toBe(1);
-        expect(frames.map(f => f.closed)).toEqual([true, true, true, true]);
+        // First frame: nextPresentMs starts null → set to now, no delay.
+        // Subsequent frames: nextPresentMs is in the future → sleep PRESENT_PERIOD_MS.
+        expect(writer.written).toHaveLength(4);
+        expect(stats.framesPresented).toBe(4);
+        // Three sleeps for frames 1, 2, 3 — all of length ~16.67 ms.
+        expect(clock.delays).toHaveLength(3);
+        for (const d of clock.delays) {
+            expect(d).toBeGreaterThan(16);
+            expect(d).toBeLessThan(17);
+        }
     });
 
-    it('write rejection is reflected in framesDroppedAtPresenter', async () => {
+    it('catch-up skip: out-of-budget AND frozen clock → all but the first are closed without write', async () => {
+        const stats = createEmptyPlaybackStats(0);
+        const writer = new FakeWriter();
+        // extra = 2000 - 333 = 1667 > 1000 → out of budget. Frozen clock
+        // means every frame after the first lands within the period →
+        // skip-after-decode path.
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            getBufferSpanMs: (): number => 2000,
+            targetSpanMs: 333,
+            nowFn: (): number => 1000,
+            delayFn: (): Promise<void> => Promise.resolve(),
+        });
+        const frames = Array.from({ length: 5 }, (_, i) => new MockVideoFrame(i));
+        const items = frames.map((f, i) => makeEnvelope(stats, i, f));
+
+        await count(pipe(staticSource(items), sink));
+
+        // Only the first frame (lastPresentMs starts at -Infinity → first
+        // is never within-period) writes; the rest are skipped.
+        expect(writer.written).toHaveLength(1);
+        expect(stats.framesPresented).toBe(1);
+        expect(stats.framesDroppedAtPresenter).toBe(4);
+        for (const f of frames) expect(f.closed).toBe(true);
+    });
+
+    it('catch-up skip: in-budget never skips even when frames land within the period', async () => {
+        const stats = createEmptyPlaybackStats(0);
+        const writer = new FakeWriter();
+        // extra = 0 < catchup budget → in-budget mode → never skip,
+        // pace via delayFn instead.
+        const clock = fakeClock(0);
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            getBufferSpanMs: (): number => 0,
+            targetSpanMs: 333,
+            nowFn: clock.nowFn,
+            delayFn: clock.delayFn,
+        });
+        const frames = Array.from({ length: 4 }, (_, i) => new MockVideoFrame(i));
+        const items = frames.map((f, i) => makeEnvelope(stats, i, f));
+
+        await count(pipe(staticSource(items), sink));
+
+        expect(writer.written).toHaveLength(4);
+        expect(stats.framesPresented).toBe(4);
+        expect(stats.framesDroppedAtPresenter).toBe(0);
+    });
+
+    it('write rejection bumps framesDroppedAtPresenter and propagates the error', async () => {
         const stats = createEmptyPlaybackStats(0);
         const writer = new FakeWriter();
         writer.manualMode = true;
-        const sink = mstgPresent({ getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame> });
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            ...defaults(),
+        });
         const ch = controllableSource<DecodedFrame>();
         const frame = new MockVideoFrame(0);
 
@@ -227,17 +287,20 @@ describe('mstgPresent', () => {
         await tick();
         await writer.rejectNext(new Error('writer broke'));
 
-        ch.push(makeEnvelope(stats, 1, new MockVideoFrame(1)));
         await expect(run).rejects.toThrow('writer broke');
         expect(stats.framesPresented).toBe(0);
-        expect(stats.framesDroppedAtPresenter).toBeGreaterThanOrEqual(1);
+        expect(stats.framesDroppedAtPresenter).toBe(1);
+        expect(frame.closed).toBe(true);
     });
 
     it('framesPresented increments only after writer.write resolves (not on enqueue)', async () => {
         const stats = createEmptyPlaybackStats(0);
         const writer = new FakeWriter();
         writer.manualMode = true;
-        const sink = mstgPresent({ getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame> });
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            ...defaults(),
+        });
         const ch = controllableSource<DecodedFrame>();
         const frames = [new MockVideoFrame(0), new MockVideoFrame(1)];
         const run = count(pipe(ch.seg, sink));
@@ -261,37 +324,13 @@ describe('mstgPresent', () => {
         expect(stats.framesPresented).toBe(2);
     });
 
-    it('upstream completes while a frame sits in pending → final frame is presented (not leaked)', async () => {
+    it('upstream throws → final frame is closed in finally (no GPU leak)', async () => {
         const stats = createEmptyPlaybackStats(0);
         const writer = new FakeWriter();
-        writer.manualMode = true;
-        const sink = mstgPresent({ getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame> });
-        const frames = [new MockVideoFrame(0), new MockVideoFrame(1)];
-        const ch = controllableSource<DecodedFrame>();
-
-        const run = count(pipe(ch.seg, sink));
-        ch.push(makeEnvelope(stats, 0, frames[0]));
-        await tick();
-        ch.push(makeEnvelope(stats, 1, frames[1]));
-        await tick();
-        ch.close();
-        // Frame 0 is in flight; frame 1 is pending. Resolve frame 0; sink
-        // should pick frame 1 next.
-        await writer.flushNext();
-        await tick();
-        await writer.flushNext();
-        await run;
-
-        expect(writer.written).toHaveLength(2);
-        expect(stats.framesPresented).toBe(2);
-        expect(frames.map(f => f.closed)).toEqual([true, true]);
-    });
-
-    it('upstream throws → pending frame is closed in finally (no GPU leak)', async () => {
-        const stats = createEmptyPlaybackStats(0);
-        const writer = new FakeWriter();
-        writer.manualMode = true;
-        const sink = mstgPresent({ getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame> });
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            ...defaults(),
+        });
         const frames = [new MockVideoFrame(0), new MockVideoFrame(1)];
 
         const seg: AsyncIterable<DecodedFrame> = (async function* () {
@@ -301,61 +340,28 @@ describe('mstgPresent', () => {
             throw new Error('upstream blew up');
         })();
 
-        const run = count(pipe(seg, sink));
-        await tick(8);
-        // Drain so the writer accepts frame 0; frame 1 stays pending when
-        // upstream throws.
-        await writer.flushNext();
-        // Now allow the throw to propagate.
-        let caught: unknown = null;
-        try {
-            await run;
-        } catch (e) {
-            caught = e;
-        }
-        expect((caught as Error).message).toBe('upstream blew up');
-        // Frame 1 was the pending slot when the throw fired → must be closed.
-        expect(frames[1].closed).toBe(true);
-    });
-
-    it('upstream throws without waiting for a stuck write', async () => {
-        const stats = createEmptyPlaybackStats(0);
-        const writer = new FakeWriter();
-        writer.manualMode = true;
-        const sink = mstgPresent({ getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame> });
-        const frame = new MockVideoFrame(0);
-
-        const seg: AsyncIterable<DecodedFrame> = (async function* () {
-            await Promise.resolve();
-            yield makeEnvelope(stats, 0, frame);
-            throw new Error('upstream stopped');
-        })();
-
-        const run = count(pipe(seg, sink));
-        await tick();
-
-        await expect(run).rejects.toThrow('upstream stopped');
-        expect(frame.closed).toBe(true);
-        expect(writer.pending).toHaveLength(1);
-    });
-
-    it('propagates a previous write failure before accepting a new frame', async () => {
-        const stats = createEmptyPlaybackStats(0);
-        const writer = new FakeWriter();
-        writer.manualMode = true;
-        const sink = mstgPresent({ getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame> });
-        const ch = controllableSource<DecodedFrame>();
-        const frames = [new MockVideoFrame(0), new MockVideoFrame(1)];
-
-        const run = count(pipe(ch.seg, sink));
-        ch.push(makeEnvelope(stats, 0, frames[0]));
-        await tick();
-        await writer.rejectNext(new Error('writer broke'));
-
-        ch.push(makeEnvelope(stats, 1, frames[1]));
-
-        await expect(run).rejects.toThrow('writer broke');
+        await expect(count(pipe(seg, sink))).rejects.toThrow('upstream blew up');
+        // Both yielded frames went through the present loop; both closed.
         expect(frames[0].closed).toBe(true);
         expect(frames[1].closed).toBe(true);
+    });
+
+    it('getWriter is called once and reused across frames', async () => {
+        const stats = createEmptyPlaybackStats(0);
+        const writer = new FakeWriter();
+        let writerCalls = 0;
+        const sink = mstgPresent({
+            getWriter: () => {
+                writerCalls++;
+                return writer as unknown as WritableStreamDefaultWriter<VideoFrame>;
+            },
+            ...defaults(),
+        });
+        const items = Array.from({ length: 4 }, (_, i) => makeEnvelope(stats, i));
+
+        await count(pipe(staticSource(items), sink));
+
+        expect(writerCalls).toBe(1);
+        expect(writer.written).toHaveLength(4);
     });
 });

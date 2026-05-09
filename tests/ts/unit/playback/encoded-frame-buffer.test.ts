@@ -13,7 +13,7 @@ import {
 
 interface ChunkOpts {
     capturedAtMs: number;
-    arrivedAtMs: number;
+    arrivedAtMs?: number;
     isKeyFrame: boolean;
     epoch?: number;
     layerId?: number;
@@ -32,7 +32,7 @@ function mkChunk(opts: ChunkOpts): ChunkWithDispose {
     const stats = opts.stats ?? createEmptyPlaybackStats(0);
     const out: ChunkWithDispose = {
         chunk: {} as EncodedVideoChunk,
-        arrivedAt: { timeMs: opts.arrivedAtMs, epoch: 0 },
+        arrivedAt: { timeMs: opts.arrivedAtMs ?? opts.capturedAtMs, epoch: 0 },
         capturedAt: { timeMs: opts.capturedAtMs, epoch: opts.epoch ?? 0 },
         isKeyFrame: opts.isKeyFrame,
         layerId: opts.layerId ?? 0,
@@ -46,19 +46,11 @@ function mkChunk(opts: ChunkOpts): ChunkWithDispose {
     return out;
 }
 
-class MockNow {
-    constructor(public t: number) {}
-    fn = (): number => this.t;
-    advance(ms: number): void { this.t += ms; }
-    setTo(ms: number): void { this.t = ms; }
-}
-
 // ---- Tests ----------------------------------------------------------------
 
 describe('EncodedFrameBuffer', () => {
     it('starts in reset state with count 0, spanMs 0, not ready', () => {
-        const clock = new MockNow(1000);
-        const buf = new EncodedFrameBuffer({ targetSpanMs: 200, now: clock.fn });
+        const buf = new EncodedFrameBuffer({ targetSpanMs: 200 });
         expect(buf.isReset()).toBe(true);
         expect(buf.count()).toBe(0);
         expect(buf.spanMs()).toBe(0);
@@ -67,9 +59,8 @@ describe('EncodedFrameBuffer', () => {
     });
 
     it('drops deltas while in reset state and disposes them; remains in reset', () => {
-        const clock = new MockNow(1000);
-        const buf = new EncodedFrameBuffer({ targetSpanMs: 200, now: clock.fn });
-        const delta = mkChunk({ capturedAtMs: 100, arrivedAtMs: 1000, isKeyFrame: false });
+        const buf = new EncodedFrameBuffer({ targetSpanMs: 200 });
+        const delta = mkChunk({ capturedAtMs: 100, isKeyFrame: false });
         const result: EncodedFrameBufferPushResult = buf.push(delta);
         expect(result).toBe('droppedReset');
         expect(delta.disposed).toBe(true);
@@ -78,9 +69,8 @@ describe('EncodedFrameBuffer', () => {
     });
 
     it('first keyframe transitions reset → armed; result is "armed"', () => {
-        const clock = new MockNow(1000);
-        const buf = new EncodedFrameBuffer({ targetSpanMs: 200, now: clock.fn });
-        const kf = mkChunk({ capturedAtMs: 100, arrivedAtMs: 1000, isKeyFrame: true });
+        const buf = new EncodedFrameBuffer({ targetSpanMs: 200 });
+        const kf = mkChunk({ capturedAtMs: 100, isKeyFrame: true });
         const result = buf.push(kf);
         expect(result).toBe('armed');
         expect(buf.isReset()).toBe(false);
@@ -88,91 +78,81 @@ describe('EncodedFrameBuffer', () => {
     });
 
     it('subsequent deltas accepted in armed state', () => {
-        const clock = new MockNow(1000);
-        const buf = new EncodedFrameBuffer({ targetSpanMs: 200, now: clock.fn });
-        buf.push(mkChunk({ capturedAtMs: 100, arrivedAtMs: 1000, isKeyFrame: true }));
-        const r = buf.push(mkChunk({ capturedAtMs: 133, arrivedAtMs: 1033, isKeyFrame: false }));
+        const buf = new EncodedFrameBuffer({ targetSpanMs: 200 });
+        buf.push(mkChunk({ capturedAtMs: 100, isKeyFrame: true }));
+        const r = buf.push(mkChunk({ capturedAtMs: 133, isKeyFrame: false }));
         expect(r).toBe('accepted');
         expect(buf.count()).toBe(2);
         expect(buf.isReset()).toBe(false);
     });
 
     it('not ready until span ≥ targetSpanMs', () => {
-        const clock = new MockNow(10_000);
-        const buf = new EncodedFrameBuffer({ targetSpanMs: 200, now: clock.fn });
+        const buf = new EncodedFrameBuffer({ targetSpanMs: 200 });
         // 5 frames at 33 ms cadence = 132 ms span (< 200) — not ready.
-        const arrived = 1000;
         for (let i = 0; i < 5; i++) {
-            buf.push(mkChunk({
-                capturedAtMs: 100 + i * 33,
-                arrivedAtMs: arrived + i * 33,
-                isKeyFrame: i === 0,
-            }));
+            buf.push(mkChunk({ capturedAtMs: 100 + i * 33, isKeyFrame: i === 0 }));
         }
         expect(buf.spanMs()).toBe(132);
         expect(buf.isReady()).toBe(false);
         expect(buf.tryPull()).toBeNull();
 
         // Add one more — span 165, still under target.
-        buf.push(mkChunk({ capturedAtMs: 100 + 5 * 33, arrivedAtMs: arrived + 5 * 33, isKeyFrame: false }));
+        buf.push(mkChunk({ capturedAtMs: 100 + 5 * 33, isKeyFrame: false }));
         expect(buf.spanMs()).toBe(165);
         expect(buf.isReady()).toBe(false);
     });
 
-    it('isReady true once span ≥ targetSpanMs AND dueAt has arrived', () => {
-        const clock = new MockNow(1000);
-        const buf = new EncodedFrameBuffer({ targetSpanMs: 200, now: clock.fn });
+    it('ready as soon as span ≥ targetSpanMs (no wallclock gate)', () => {
+        const buf = new EncodedFrameBuffer({ targetSpanMs: 200 });
         // 7 frames @ 33 ms span = 198 — still < 200; need 8.
-        for (let i = 0; i < 8; i++) {
-            buf.push(mkChunk({
-                capturedAtMs: 100 + i * 33,
-                arrivedAtMs: 1000 + i * 33,
-                isKeyFrame: i === 0,
-            }));
+        for (let i = 0; i < 7; i++) {
+            buf.push(mkChunk({ capturedAtMs: 100 + i * 33, isKeyFrame: i === 0 }));
         }
-        expect(buf.spanMs()).toBe(231);
-        // Front arrivedAt = 1000, target = 200 → due at 1200.
-        clock.setTo(1199);
+        expect(buf.spanMs()).toBe(198);
         expect(buf.isReady()).toBe(false);
-        expect(buf.tryPull()).toBeNull();
-        clock.setTo(1200);
+        buf.push(mkChunk({ capturedAtMs: 100 + 7 * 33, isKeyFrame: false }));
+        expect(buf.spanMs()).toBe(231);
         expect(buf.isReady()).toBe(true);
     });
 
-    it('tryPull returns chunks in FIFO order, gated by each one\'s dueAt', () => {
-        const clock = new MockNow(1000);
-        const buf = new EncodedFrameBuffer({ targetSpanMs: 100, now: clock.fn });
-        // Arrival cadence 33 ms, dueAt = arrivedAt + 100. Push enough
-        // chunks that span stays ≥ 100 even after the first pull (we
-        // need at least 7 to keep span ≥ 100 once chunk 1 is at front).
+    it('tryPull drains FIFO until residual span drops below target', () => {
+        const buf = new EncodedFrameBuffer({ targetSpanMs: 100 });
+        // 5 chunks @ 33 ms cadence: capturedAt = 0,33,66,99,132. Span 132.
+        // After pulling chunk 0: residual span = 132 - 33 = 99 (< 100) → stop.
         const chunks: ChunkWithDispose[] = [];
-        for (let i = 0; i < 8; i++) {
-            const c = mkChunk({
-                capturedAtMs: 100 + i * 33,
-                arrivedAtMs: 1000 + i * 33,
-                isKeyFrame: i === 0,
-            });
+        for (let i = 0; i < 5; i++) {
+            const c = mkChunk({ capturedAtMs: i * 33, isKeyFrame: i === 0 });
             chunks.push(c);
             buf.push(c);
         }
+        expect(buf.tryPull()).toBe(chunks[0]);
+        expect(buf.tryPull()).toBeNull();
+        expect(buf.count()).toBe(4);
+    });
 
-        clock.setTo(1099);
-        expect(buf.tryPull()).toBeNull();
-        clock.setTo(1100); // chunk 0 due
-        const out0 = buf.tryPull();
-        expect(out0).toBe(chunks[0]);
-        // Now front is chunk 1, dueAt = 1133.
-        clock.setTo(1132);
-        expect(buf.tryPull()).toBeNull();
-        clock.setTo(1133);
-        expect(buf.tryPull()).toBe(chunks[1]);
+    it('tryPull drains multiple chunks in one go when span permits', () => {
+        const buf = new EncodedFrameBuffer({ targetSpanMs: 50 });
+        // 5 chunks @ 33 ms: span 132.
+        // After chunk 0 pulled: residual = 99 (≥ 50) → pull again.
+        // After chunk 1 pulled: residual = 66 (≥ 50) → pull again.
+        // After chunk 2 pulled: residual = 33 (< 50) → stop.
+        const chunks: ChunkWithDispose[] = [];
+        for (let i = 0; i < 5; i++) {
+            const c = mkChunk({ capturedAtMs: i * 33, isKeyFrame: i === 0 });
+            chunks.push(c);
+            buf.push(c);
+        }
+        const drained: ArrivedChunk[] = [];
+        let next: ArrivedChunk | null;
+        while ((next = buf.tryPull()) !== null) drained.push(next);
+        expect(drained).toEqual([chunks[0], chunks[1], chunks[2]]);
+        expect(buf.count()).toBe(2);
     });
 
     it('reset clears all chunks, returns to reset state, disposes content', () => {
-        const clock = new MockNow(1000);
-        const buf = new EncodedFrameBuffer({ targetSpanMs: 100, now: clock.fn });
-        const a = mkChunk({ capturedAtMs: 100, arrivedAtMs: 1000, isKeyFrame: true });
-        const b = mkChunk({ capturedAtMs: 133, arrivedAtMs: 1033, isKeyFrame: false });
+        const buf = new EncodedFrameBuffer({ targetSpanMs: 100 });
+        const a = mkChunk({ capturedAtMs: 100, isKeyFrame: true });
+        const b = mkChunk({ capturedAtMs: 133, isKeyFrame: false });
         buf.push(a);
         buf.push(b);
         expect(buf.count()).toBe(2);
@@ -186,54 +166,41 @@ describe('EncodedFrameBuffer', () => {
     });
 
     it('after reset, deltas drop and only the next keyframe re-arms the buffer', () => {
-        const clock = new MockNow(1000);
-        const buf = new EncodedFrameBuffer({ targetSpanMs: 100, now: clock.fn });
-        buf.push(mkChunk({ capturedAtMs: 100, arrivedAtMs: 1000, isKeyFrame: true }));
+        const buf = new EncodedFrameBuffer({ targetSpanMs: 100 });
+        buf.push(mkChunk({ capturedAtMs: 100, isKeyFrame: true }));
         buf.reset();
-        const delta = mkChunk({ capturedAtMs: 200, arrivedAtMs: 1100, isKeyFrame: false });
+        const delta = mkChunk({ capturedAtMs: 200, isKeyFrame: false });
         expect(buf.push(delta)).toBe('droppedReset');
         expect(delta.disposed).toBe(true);
-        const kf = mkChunk({ capturedAtMs: 233, arrivedAtMs: 1133, isKeyFrame: true });
+        const kf = mkChunk({ capturedAtMs: 233, isKeyFrame: true });
         expect(buf.push(kf)).toBe('armed');
         expect(buf.isReset()).toBe(false);
     });
 
     it('detectRegression: false on forward progress, true on backwards beyond tolerance', () => {
-        const clock = new MockNow(1000);
-        const buf = new EncodedFrameBuffer({ targetSpanMs: 100, now: clock.fn });
-        buf.push(mkChunk({ capturedAtMs: 1000, arrivedAtMs: 1000, isKeyFrame: true }));
-        const fwd = mkChunk({ capturedAtMs: 1033, arrivedAtMs: 1033, isKeyFrame: false });
+        const buf = new EncodedFrameBuffer({ targetSpanMs: 100 });
+        buf.push(mkChunk({ capturedAtMs: 1000, isKeyFrame: true }));
+        const fwd = mkChunk({ capturedAtMs: 1033, isKeyFrame: false });
         expect(buf.detectRegression(fwd, 50)).toBe(false);
-        const back = mkChunk({ capturedAtMs: 900, arrivedAtMs: 1100, isKeyFrame: false });
+        const back = mkChunk({ capturedAtMs: 900, isKeyFrame: false });
         expect(buf.detectRegression(back, 50)).toBe(true);
         // Within tolerance.
-        const slightlyBack = mkChunk({ capturedAtMs: 970, arrivedAtMs: 1100, isKeyFrame: false });
+        const slightlyBack = mkChunk({ capturedAtMs: 970, isKeyFrame: false });
         expect(buf.detectRegression(slightlyBack, 50)).toBe(false);
     });
 
     it('detectRegression returns false when comparing across epoch boundary', () => {
-        const clock = new MockNow(1000);
-        const buf = new EncodedFrameBuffer({ targetSpanMs: 100, now: clock.fn });
-        buf.push(mkChunk({ capturedAtMs: 5000, arrivedAtMs: 1000, isKeyFrame: true, epoch: 1 }));
-        const newEpoch = mkChunk({ capturedAtMs: 100, arrivedAtMs: 1100, isKeyFrame: true, epoch: 2 });
+        const buf = new EncodedFrameBuffer({ targetSpanMs: 100 });
+        buf.push(mkChunk({ capturedAtMs: 5000, isKeyFrame: true, epoch: 1 }));
+        const newEpoch = mkChunk({ capturedAtMs: 100, isKeyFrame: true, epoch: 2 });
         expect(buf.detectRegression(newEpoch, 50)).toBe(false);
     });
 
-    it('isReady requires count ≥ 2 (single keyframe with span 0 is not ready)', () => {
-        const clock = new MockNow(2000);
-        const buf = new EncodedFrameBuffer({ targetSpanMs: 0, now: clock.fn });
-        buf.push(mkChunk({ capturedAtMs: 100, arrivedAtMs: 1000, isKeyFrame: true }));
-        // span is 0 (only one chunk) → not ready even with target 0.
+    it('single keyframe is not ready when targetSpanMs > 0 (span 0 < target)', () => {
+        const buf = new EncodedFrameBuffer({ targetSpanMs: 1 });
+        buf.push(mkChunk({ capturedAtMs: 100, isKeyFrame: true }));
+        // span is 0 (only one chunk) → not ready.
         expect(buf.isReady()).toBe(false);
-        expect(buf.tryPull()).toBeNull();
-    });
-
-    it('default now() falls back to Date.now when not injected', () => {
-        const buf = new EncodedFrameBuffer({ targetSpanMs: 1_000_000_000 });
-        // Just exercise the no-options-now path; tryPull returns null
-        // because the target span is unreachable.
-        const c = mkChunk({ capturedAtMs: 100, arrivedAtMs: 100, isKeyFrame: true });
-        buf.push(c);
         expect(buf.tryPull()).toBeNull();
     });
 });

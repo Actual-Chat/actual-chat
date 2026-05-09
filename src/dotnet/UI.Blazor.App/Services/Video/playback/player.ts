@@ -79,15 +79,23 @@ export class Player {
             stopSignal: sourceStopController.signal,
         });
         let present: PipeOperator<DecodedFrame, void>;
+        const getBufferSpanMs = (): number => buffer.spanMs();
+        const targetSpanMs = config.targetBufferSpanMs;
         if (config.backend.kind === 'mstg') {
             const writer = config.backend.writer;
-            present = mstgPresent({ getWriter: () => writer });
+            present = mstgPresent({
+                getWriter: () => writer,
+                getBufferSpanMs,
+                targetSpanMs,
+            });
         } else {
             const canvasCtx: CanvasImageInterface = config.backend.canvasCtx;
             const convertToBitmap = config.backend.convertToBitmap;
             present = canvasPresent({
                 getCanvasCtx: () => canvasCtx,
                 convertToBitmap,
+                getBufferSpanMs,
+                targetSpanMs,
             });
         }
         // Inject the buffer span at the seam — the operator has no buffer ref.

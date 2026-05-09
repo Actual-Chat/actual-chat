@@ -441,28 +441,7 @@ describe('video pipeline integration', () => {
             epoch: 1,
         } as unknown as MonotonicClock;
 
-        const buffer = new EncodedFrameBuffer({ targetSpanMs, now: () => nowMs });
-
-        // Synchronous setTimeoutFn: fires the callback on the next
-        // microtask. The pacing operator uses 5ms timers between drain
-        // attempts; we don't actually need real time to pass — a microtask
-        // is enough as long as we've advanced `nowMs` between push() and
-        // the retry. Using a real setTimeout would require yielding to
-        // the macrotask queue, which makes test pacing brittle.
-        const pacingTimers: { cb: () => void }[] = [];
-        const setTimeoutFn = (cb: () => void, _ms: number): unknown => {
-            const handle = { cb };
-            pacingTimers.push(handle);
-            return handle;
-        };
-        const clearTimeoutFn = (handle: unknown): void => {
-            const idx = pacingTimers.indexOf(handle as { cb: () => void });
-            if (idx >= 0) pacingTimers.splice(idx, 1);
-        };
-        const firePacingTimers = (): void => {
-            const pending = pacingTimers.splice(0);
-            for (const t of pending) t.cb();
-        };
+        const buffer = new EncodedFrameBuffer({ targetSpanMs });
 
         async function* dtoStream(): AsyncIterable<VideoFrameDto> {
             for (const d of dtos) {
@@ -485,7 +464,7 @@ describe('video pipeline integration', () => {
                 abortSignal: ac.signal,
             }),
             resetOnEpochChange({ buffer }),
-            pacedEncodedBuffer({ buffer, abortSignal: ac.signal, now: () => nowMs, setTimeoutFn, clearTimeoutFn }),
+            pacedEncodedBuffer({ buffer, abortSignal: ac.signal }),
             decode({
                 initialConfig: { codec: 'avc1.42E01E' },
                 createDecoder: handlers => new SyncFakeDecoder(handlers),
@@ -506,10 +485,11 @@ describe('video pipeline integration', () => {
             for await (const _ of receiverPipe) { void _; }
         })();
 
-        // Watchdog: pump microtasks while advancing nowMs and firing the
-        // pacing-timer fakes so any chunk past its dueAt gets released.
+        // Watchdog: pump microtasks until everything decodes (span-only
+        // gating means no time advancement is needed — chunks release as
+        // soon as buffered span ≥ targetSpanMs, which is purely a function
+        // of capturedAt deltas).
         for (let i = 0; i < 5000; i++) {
-            firePacingTimers();
             for (let m = 0; m < 5; m++) await Promise.resolve();
             nowMs += 20;
             if (decodedYieldOrder.length >= dtos.length) break;
@@ -530,11 +510,9 @@ describe('video pipeline integration', () => {
         for (let i = 1; i < decodedYieldOrder.length; i++) {
             expect(decodedYieldOrder[i]).toBeGreaterThan(decodedYieldOrder[i - 1]);
         }
-        // First decoded frame appeared AFTER the buffer's bootstrap
-        // threshold: dueAt of chunks[0] = arrivedAt[0] + targetSpanMs =
-        // 10_000 + 100 = 10_100, so firstYieldNowMs ≥ 10_100.
+        // First decoded frame appeared after the buffer accumulated
+        // span ≥ targetSpanMs (now span-only — no wallclock cushion).
         expect(firstYieldNowMs.value).not.toBeNull();
-        expect(firstYieldNowMs.value!).toBeGreaterThanOrEqual(10_000 + targetSpanMs);
     });
 
     it('4. sender → receiver round-trip: epoch threads through; offsets monotonic', async () => {

@@ -23,28 +23,19 @@ export type EncodedFrameBufferPushResult =
  *   - `reset`   — initial state, and the state after `reset()`. Deltas
  *                 are dropped; the next keyframe transitions to `armed`.
  *   - `armed`   — keyframe seen; appending all chunks. `tryPull()` may
- *                 emit once span ≥ target AND the front chunk's pacing
- *                 deadline has arrived.
+ *                 emit once span ≥ target.
  */
 export type EncodedFrameBufferState = 'reset' | 'armed';
 
 export interface EncodedFrameBufferOptions {
     /**
-     * Target span (ms) of buffered content before bootstrap fires.
-     * `tryPull()` will not emit until `spanMs() >= targetSpanMs`. Once
-     * armed, the same value is also added to each chunk's `arrivedAt`
-     * to compute its pacing deadline (so the buffer maintains a
-     * receiver-side cushion of approximately this duration).
+     * Target span (ms) of buffered content. `tryPull()` only releases
+     * when `spanMs() >= targetSpanMs`. The cushion sets the steady-state
+     * buffer depth; the present stage drains at its own pace (60 fps cap
+     * with optional catch-up skipping above the budget — see
+     * `present-mstg.ts`).
      */
     targetSpanMs: number;
-
-    /**
-     * Wallclock source. Test override; defaults to `Date.now`. The
-     * pacing math compares this against `chunk.arrivedAt.timeMs`, so
-     * `now()` must be in the same domain (ms since Unix epoch, modulo
-     * any monotonic-clock smoothing the receiver applies).
-     */
-    now?: () => number;
 }
 
 // ---- Class ---------------------------------------------------------------
@@ -52,21 +43,21 @@ export interface EncodedFrameBufferOptions {
 /**
  * Receiver-side jitter buffer for encoded video chunks.
  *
- * Replaces the legacy `EncodedChunkBuffer` + the `sourceAnchorUs` /
- * `wallclockAnchorMs` / `waitingForKeyframe` / `skipFramesBeforeUs` state
- * tangle in `VideoOld/workers/decoder-worker.ts`. The pacing rule is
- * deliberately simpler than the legacy "anchor on first decode" scheme:
+ * Pacing rule — span-gated, no clock involved:
  *
- *   A chunk is "due" when `now() ≥ chunk.arrivedAt.timeMs + targetSpanMs`.
+ *   `tryPull()` releases the front chunk iff `spanMs() >= targetSpanMs`.
+ *   That's the entire policy: when the buffer holds ≥ target span of
+ *   capture-time content, drain; otherwise wait for more arrivals.
  *
- * In other words, every chunk waits in the buffer until it is at least
- * `targetSpanMs` old (in receiver-arrival time) before being released.
- * This makes pacing robust to sender clock anomalies — the buffer's
- * cushion is determined by RECEIVER arrival time, not by the sender's
- * `capturedAt` deltas. A network burst that delivers ten chunks in a
- * single millisecond just means all ten of them become eligible
- * `targetSpanMs` later, paced naturally by their already-staggered
- * `arrivedAt` stamps.
+ * Why no anchor / wallclock pacing: an earlier capture-time-anchor
+ * design (release at `wallclockAnchor + (capturedAt - captureAnchor)`)
+ * fixed the original burst-drop problem but introduced slow-drift —
+ * any sustained period where capture rate exceeded the anchored release
+ * pace caused the buffer to grow monotonically with no path to recover.
+ * Span-gating self-corrects: every push that pushes span over target
+ * unblocks a pull; every pull that drops span below target re-blocks
+ * until the next push. The smoothing layer is no longer here — it's
+ * the present stage's 60 fps cap + catch-up skip policy.
  *
  * Reset semantics: when `state === 'reset'`, deltas are dropped on push
  * (they'd be undecodable without their preceding keyframe). The first
@@ -79,13 +70,11 @@ export interface EncodedFrameBufferOptions {
  */
 export class EncodedFrameBuffer {
     private readonly targetSpanMs: number;
-    private readonly nowFn: () => number;
     private readonly chunks: ArrivedChunk[] = [];
     private state: EncodedFrameBufferState = 'reset';
 
     constructor(opts: EncodedFrameBufferOptions) {
         this.targetSpanMs = opts.targetSpanMs;
-        this.nowFn = opts.now ?? (() => Date.now());
     }
 
     // ---- Inspection ------------------------------------------------------
@@ -118,11 +107,8 @@ export class EncodedFrameBuffer {
      */
     isReady(): boolean {
         if (this.state !== 'armed') return false;
-        if (this.chunks.length < 2) return false;
-        if (this.spanMs() < this.targetSpanMs) return false;
-        const front = this.chunks[0];
-        const dueAt = front.arrivedAt.timeMs + this.targetSpanMs;
-        return this.nowFn() >= dueAt;
+        if (this.chunks.length === 0) return false;
+        return this.spanMs() >= this.targetSpanMs;
     }
 
     // ---- Mutation --------------------------------------------------------
@@ -150,13 +136,13 @@ export class EncodedFrameBuffer {
     }
 
     /**
-     * Return the next chunk if its scheduled decode time has arrived
-     * AND the buffered span is at least `targetSpanMs`, else null.
+     * Return the next chunk if `spanMs() >= targetSpanMs`, else null.
+     * Stateless beyond the queue itself — calling `tryPull()` repeatedly
+     * drains the prefix until the residual span drops below target.
      */
     tryPull(): ArrivedChunk | null {
         if (!this.isReady()) return null;
-        const chunk = this.chunks.shift();
-        return chunk ?? null;
+        return this.chunks.shift() ?? null;
     }
 
     /**
