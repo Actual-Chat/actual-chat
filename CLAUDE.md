@@ -8,6 +8,15 @@ style). Default instincts from elsewhere will produce code that gets
 rejected. If you haven't opened that file yet in this session, stop and
 read it now.
 
+**You MUST NOT write a single comment, docstring, or XML doc** — in C#, in
+TypeScript, anywhere — without first reading
+[docs/CODING_STYLE.md → "Regular comments, docstrings, XML documentation
+comments"](docs/CODING_STYLE.md#regular-comments-docstrings-xml-documentation-comments).
+You have a strong tendency to over-comment and to restate what the code
+already says; that section explains exactly when a comment is justified and
+when it isn't. Re-read it any time you're tempted to add a `//`, `///`, or
+JSDoc block.
+
 `pwsh` (cross-platform PowerShell) command is available on any OS you run, so use it.
 
 # Claude Launcher (c.ps1)
@@ -59,17 +68,9 @@ When running in Docker (`AC_OS` = `Linux in Docker`), the following tools are av
 
 Build artifacts are stored in `artifacts/claude-docker/` to avoid permission conflicts with the host.
 
-**Infrastructure services**: When running in Docker, assume that all services defined in `docker-compose.yml` (PostgreSQL, Redis, NATS, nginx, etc.) are already running on the host. Do not attempt to start them yourself - they are managed externally and accessible from the container.
-
 **Host service connectivity**: The Docker container uses `--network host` mode, so `localhost` inside the container directly refers to the host. This means you can connect to host services (Redis, PostgreSQL, NATS, etc.) using `localhost:port` just like on the host. On macOS, `--network host` requires Docker Desktop 4.34+ (Sept 2024).
 
 **macOS / Apple Silicon**: The Docker image supports both amd64 and arm64 architectures. `c.cmd` is a polyglot script that works on both Windows and macOS/Linux.
-
-**Running integration tests**: Tests detect Claude's Docker environment via `AC_OS="Linux in Docker"` and use regular localhost-based configuration (not `testsettings.docker.json`). This works because `--network host` makes localhost = host.
-
-**Running the server (Docker watch mode)**: The host runs `./run-watch.cmd` — it auto-rebuilds and restarts the server when you change files. After editing code, poll `tmp/watch-dotnet.log` until you see `Now listening on:` (ready) or `error` (fix and wait again). Do not use `/server-start` or `/server-restart` — the watch process owns the server. Frontend build output: `tmp/watch-web.log`.
-
-**Running the server (direct)**: Use `/server-start`, `/server-restart`, `/server-stop`. Use `--watch` flag for auto-reload.
 
 **Propagated environment variables**: The following environment variables are automatically propagated from the host to the Docker container:
 - Variables containing `__` in their names (e.g., `ChatSettings__OpenAIApiKey` for .NET configuration)
@@ -181,35 +182,20 @@ If the work is small enough that you skip a written plan, you still owe
 yourself the "look first" step: search the indexes for keywords related
 to what you're about to write.
 
-# Architecture Docs
-
-Consult `docs/live-video/` for the live-video pipeline (capture, encoding,
-simulcast, RPC fan-out, playback, quality control, A/V sync) and
-`docs/live-audio/` for the live-audio pipeline (mic capture, VAD, Opus,
-publish/persist/transcribe, fan-out, replay, playback). Both are written
-from current source.
-
 # Building
 
-If a `*.CI.slnf` (solution filter) file exists in the project root, use it instead of the main `*.sln` file for building. The CI solution filter excludes projects that require additional workloads (like MAUI) that may not be installed in your environment.
+If a `*.CI.slnf` (solution filter) file exists in the project root, use it
+instead of the main `*.sln` file for building. The CI solution filter
+excludes projects that require additional workloads (like MAUI) that may
+not be installed in your environment.
 
 ```bash
-# Preferred - uses CI solution filter (excludes MAUI projects)
-dotnet build ActualChat.CI.slnf
+# Preferred — uses CI solution filter (excludes workload-heavy projects)
+dotnet build <Project>.CI.slnf
 
 # Only if you have all workloads installed (including maui-android, etc.)
-dotnet build ActualChat.sln
+dotnet build <Project>.sln
 ```
-
-## TypeScript Validation
-
-When modifying TypeScript files under `src/nodejs/` or `src/dotnet/UI.Blazor.App/`, always validate changes by running:
-
-```bash
-npm run build:Verify
-```
-
-This runs `tsc --noEmit`, `eslint`, and the debug build. It catches unused variables, type errors, and lint violations that `tsc --noEmit` alone may miss.
 
 # Testing
 
@@ -257,3 +243,40 @@ If you're missing information in test logs:
 
 If AC_OS environment variable is defined, you're started with Claude Launcher (c.ps1),
 so your actual OS is specified in this environment variable.
+
+# ActualChat-specific
+
+**Everything below applies only to projects in the ActualChat family** —
+folder paths matching `/proj/ActualChat*` or any project folder with
+`ActualChat` in its name (e.g. `ActualChat`, `ActualChat-C1`,
+`ActualChat-C2`, `ActualChat-e2ee`). **Skip this section entirely** if
+you're working in a different project (e.g. `ActualLab.Fusion`,
+`ActualLab.Fusion.Samples`, `MauiNativeAotApp`).
+
+## Architecture Docs
+
+Consult `docs/live-video/` for the live-video pipeline (capture, encoding,
+simulcast, RPC fan-out, playback, quality control, A/V sync) and
+`docs/live-audio/` for the live-audio pipeline (mic capture, VAD, Opus,
+publish/persist/transcribe, fan-out, replay, playback). Both are written
+from current source.
+
+## TypeScript Validation
+
+When modifying TypeScript files under `src/nodejs/` or `src/dotnet/UI.Blazor.App/`, always validate changes by running:
+
+```bash
+npm run build:Verify
+```
+
+This runs `tsc --noEmit`, `eslint`, and the debug build. It catches unused variables, type errors, and lint violations that `tsc --noEmit` alone may miss.
+
+## Infrastructure services and the running server
+
+**Infrastructure services**: When running in Docker, assume that all services defined in `docker-compose.yml` (PostgreSQL, Redis, NATS, nginx, etc.) are already running on the host. Do not attempt to start them yourself - they are managed externally and accessible from the container.
+
+**Running integration tests**: Tests detect Claude's Docker environment via `AC_OS="Linux in Docker"` and use regular localhost-based configuration (not `testsettings.docker.json`). This works because `--network host` makes localhost = host.
+
+**Running the server (Docker watch mode)**: The host runs `./run-watch.cmd` — it auto-rebuilds and restarts the server when you change files. After editing code, poll `tmp/watch-dotnet.log` until you see `Now listening on:` (ready) or `error` (fix and wait again). Do not use `/server-start` or `/server-restart` — the watch process owns the server. Frontend build output: `tmp/watch-web.log`.
+
+**Running the server (direct)**: Use `/server-start`, `/server-restart`, `/server-stop`. Use `--watch` flag for auto-reload.
