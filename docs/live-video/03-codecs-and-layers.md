@@ -31,65 +31,78 @@ Result: `CodecInfo { codec, hardwareAccelerated, scalabilityModes }`.
 On Firefox, H.264 Main 3.1 is forced (only profile that works reliably). On
 mobile, the policy prefers Main over High for power efficiency.
 
-`getCodecForCategory()` always returns the highest level in the category
-(e.g. H.264 High 5.2). The string is then **constant** across sessions for that
-category — Chrome re-initialises NVENC when the string changes, so keeping it
-constant lets the encoder pool actually reuse hardware slots.
+`getCodecForCategory(category, w, h)` always returns the highest level in the
+category (e.g. H.264 High 5.2). The exact codec string can vary across
+sessions for the same category, but the encoder pool slot is keyed on
+**category** (`getCodecCategory`), not the exact string, so an idle encoder
+inside the same category can be reused across `start/stop` cycles.
 
-`probeEncoder(codec, layers)` measures steady-state encode time (median of last
-5 frames after 3 warm-up). The 33 ms budget = one frame at 30 fps. Cache key:
-`codec@WxH×layer-count`.
+`probeEncoder(codec, layers)` measures steady-state encode time (median of
+last 5 frames after 3 warm-up). The 33 ms budget = one frame at 30 fps.
+Cache key: `codec@WxH×layer-count`.
 
 ### Receiver-side codec selection
 
 The receiver registers its decoder support every 30 s
 (`ILiveVideoStreams.RegisterMember(session, chatId, supportedDecoderCodecs)`).
 The server's `LiveVideoBackend` intersects all members' codecs and exposes the
-result via `GetSupportedCodecs(chatId)`. Senders use that to pick the codec for
-the encoder. Codec **upgrades** are delayed by
+result via `GetSupportedCodecs(chatId)`. Senders use that to pick the codec
+for the encoder. Codec **upgrades** are delayed by
 `CodecSwitchHysteresisWindow = 10 s` to avoid flapping; **downgrades** apply
 immediately (e.g., a Safari user joining forces H.264).
 
 When a receiver decoder fails repeatedly, `getCodecCategory(codecString)` is
-mapped, and `excludeDecoderCodec(category)` adds it to a localStorage exclusion
+mapped, and `excludeDecoderCodec(codec)` adds it to a localStorage exclusion
 set; subsequent `RegisterMember` calls report a smaller list and the server
 re-negotiates.
 
 ## Hardware acceleration
 
-File: `src/dotnet/UI.Blazor.App/Services/Video/support/gpu.ts` and `webgpu/`.
+File: `src/dotnet/UI.Blazor.App/Services/Video/support/gpu.ts` and
+`canvas/`, `webgpu/`.
 
-WebGPU is used **only for the downscaler**, not for encode/decode (that's
-WebCodecs). `WebGpuManager` lazy-initialises a single GPU adapter per worker.
-The downscaler runs one render pass per non-identity tier, with the source
-frame as a texture and the output frame produced via `VideoFrame` from a
-texture. On platforms without WebGPU, the pipeline falls back to a single-tier
-identity downscaler — simulcast is effectively disabled, and the AIMD
-controller (08) won't try to use it.
+The downscaler choice is independent of encode:
+
+- **Production**: `CanvasDownscaler` (`canvas/downscaler.ts`). 2D-canvas
+  draw-image based, top-down processing with per-tier source reuse when
+  `longEdge(higher) ≥ 2 × longEdge(target)`. Lazy per-slot init via the
+  `parallelMap` operator (default 2 slots).
+- **Lab / single-tier**: `WebGpuDownscaler` (`webgpu/downscaler.ts`) is still
+  in the tree but not the default — production uses `CanvasDownscaler`
+  because WebGPU pacing on iOS forced too many per-frame drains.
+- **Single-tier P2P**: `identityDownscaler()` clones once.
 
 The encoder picks `hardwareAcceleration: 'prefer-hardware'`. WebCodecs decides
 whether HW is actually used; the result is reported back through
 `hardwareAccelerated` in `CodecInfo`.
 
+## Capture frame rate
+
+`Constants.Video.FrameRate = 30` is the single source of truth, exposed to TS
+via `VIDEO.frameRate`. `getUserMedia` for camera and `getDisplayMedia` for
+screencast both request `{ ideal: 30, max: 30 }`; whatever the source delivers
+is what the pipeline encodes (variable framerate is honoured — see the
+recording-pipeline invariants in
+`memory/project_video_pipeline_invariants.md`). The earlier 15-fps screencast
+fallback has been removed.
+
 ## Simulcast layers — the "ladder"
 
 File: `src/dotnet/UI.Blazor.App/Components/VideoPanel/layer-ladder.ts`.
 
-A `LayerConfig[]` is bottom-first (index 0 = base, last = top). Each layer has
-`{ width, height, bitrate, framerate, codec }`. All layers in a single run
-share the same codec string.
+A `LayerConfig[]` is bottom-first (index 0 = base, last = top). Each layer
+has `{ width, height, bitrateKbps, baseBitrateKbps, scalabilityMode? }`. All
+layers in a single run share the same codec.
 
-`buildLadder(sourceW, sourceH, targetLayerCount, sourceKind)`:
+`buildLadder({ topWidth, topHeight, tierCount, maxTierCount, bitratesKbps, … })`:
 
-- Starts with the source dimensions (top tier).
+- Top tier is `(topWidth, topHeight)` — the caller's chosen capture size.
 - Halves both axes each step down (`/2`), rounding to even numbers.
-- Drops any tier whose smallest axis would be below
-  `MIN_SIMULCAST_SMALL_AXIS = 150 px`.
-- Per-layer bitrates come from `getVideoLayerBitratesKbps(...)` — different
-  curves for camera vs. screencast, and different totals depending on
-  `targetLayerCount`.
-- Maximum 3 layers; cameras typically run 1 (poor link) → 3 (great link).
-  Screencast peaks at 1080p.
+- Drops any **derived** lower tier whose smallest axis would be below
+  `MIN_SIMULCAST_SMALL_AXIS = 150 px`. The top tier is always kept.
+- Per-layer bitrates come from the caller's `bitratesKbps` array (different
+  curves for camera vs. screencast, sized by `effectiveCount`).
+- Capped at `maxTierCount` (3 for camera, 2 for screencast in production).
 
 Example, camera at 1280×720 → 3 layers:
 
@@ -101,43 +114,52 @@ L2 1280×720   ~1500 kbps
 
 `buildLadder` is called from main-thread `VideoRecorder` and serialised into
 the worker's `RecorderWorkerOptions.encoderConfigs`. Changes to the ladder
-require a full `Recorder.restart()` (stop + start the pipeline) — there is no
-in-place reconfigure.
+require a full `Recorder.restart()` (stop, `session.reset()`, start) — there
+is no in-place reconfigure.
 
-The active count (`targetLayerCount`) is what the AIMD recording controller
-adjusts (08): on persistent encoder overload or peer-ack staleness, it reduces
-the count; on consecutive good ticks, it climbs back.
+The active count is what the AIMD recording controller adjusts ([08](./08-quality-control.md)):
+on persistent encoder overload or peer-ack staleness, it reduces the count;
+on consecutive good ticks, it climbs back.
 
 ## How the ladder shows up in the data
 
 In the sender pipeline:
 
-- `downscale` produces a `SimulcastBundle { primary, extras[] }`.
-  `primary` = top tier, `extras[i]` are bottom-first lower tiers.
-- `encode` emits `EncodedFrame` per layer **bottom-first** (L0, L1, …, top).
-- `wireSend` writes one `VideoStreamFrame` per layer with `LayerId` and
-  `MaxLayerId` (the producer's current top tier).
+- `downscale` produces a `CapturedBundle { layers }` (bottom-first).
+- `encode` emits one `EncodedBundle { layers }` per source moment, also
+  bottom-first.
+- `wireSend` writes one `VideoStreamFrameBundle { layers }` per source
+  moment, with `layerId` and `maxLayerId` (the producer's current top tier)
+  set on every per-layer DTO.
 
-On the wire and on the server, layers share one `RpcStream<VideoFrame>` —
-they are interleaved, not separate streams. The first keyframe at `LayerId == 0`
-is the canonical sync point; the RPC layer's `canSkipTo = isKeyFrame`
-compaction skips forward to the latest L0 keyframe when a consumer falls
-behind.
+On the wire and on the server, layers travel **as bundles on the publisher
+leg** and are **decomposed into per-frame items on the consumer leg**:
+
+- `RpcStream<VideoFrameBundle>` between sender and API pod (one source
+  moment = one bundle item; `canSkipTo` is "Layers[0].IsKeyFrame" so
+  compaction happens at full-bundle keyframe boundaries).
+- `VideoStreamingBackend.ProcessFrames` decomposes bundles → `VideoFrame`
+  per layer, assigns a per-layer `KeyFrameNumber`, and yields into the
+  memoizer.
+- `RpcStream<VideoFrame>` between API pod and viewer (per-frame, per-layer);
+  `ReceiveQualityFilter` selects one spatial layer + temporal cap from this
+  stream.
 
 On the server:
 
-- `VideoStreamInfo.Formats[]` (Api/Video/VideoStreamInfo.cs) holds one
-  `VideoFormat` per layer. It starts with the base layer at `Register` time
-  and is extended as higher-layer keyframes arrive.
+- `VideoStreamInfo.Format` is the **top-tier** `VideoFormat`. The per-layer
+  ladder is derivable from `SourceKind` via the recorder's ladder builder,
+  so the server doesn't store it per stream.
 - `VideoStreamMemoizer` tracks per-layer keyframe queues and evicts whole
   keyframe-spans (see [05](./05-server-publish.md)).
 
 On the receiver:
 
-- The decoder is configured from the active layer's `VideoFormat` (codec +
-  description). When a layer switch happens (08), the decoder pool may swap to
-  a decoder configured for the new codec string, but for spatial-only switches
-  within the same codec, only `configure()` is called.
+- The decoder is configured from the active layer's first keyframe (codec
+  string from `Codec`, dims from `Width/Height`, optional `Description`).
+  When a layer switch happens ([08](./08-quality-control.md)), the decoder
+  pool may swap to a decoder configured for the new codec string, but for
+  spatial-only switches within the same codec, only `configure()` is called.
 
 ## Keyframe policy
 
@@ -145,26 +167,28 @@ Sender-side triggers (file: `apply-keyframe-policy.ts` plus a few extras):
 
 | Trigger | Source | Notes |
 |---|---|---|
-| Frame counter | `apply-keyframe-policy` | every `keyframeIntervalFrames` (≈ `KeyFramePeriod * fps`, 90 frames at 30 fps) |
+| Frame counter | `apply-keyframe-policy` | every `keyframeIntervalFrames` (= `KeyFramePeriod × frameRate`, 90 frames at 30 fps) |
 | Wallclock floor | `apply-keyframe-policy` | every `maxKeyFrameIntervalMs` even if frames are sparse |
 | Epoch flip | `stamp-capture-time` | clock discontinuity → mark next frame as keyframe |
 | Dim change | `force-keyframe-on-dim-change` | window/screen rotation, source resize |
-| `requestKeyframe()` | RPC from main, e.g. server PLI | one-shot |
+| Downscaler hang recovery | `downscale` | watchdog fired ⇒ next bundle is a keyframe |
+| `requestKeyframe()` | RPC from main, e.g. server PLI observed by the worker | one-shot |
 
 Server-side triggers a sender keyframe by invalidating the
 `LastKeyframeRequestAt(streamId)` Fusion compute method on
-`VideoStreamingBackend` (sender's worker observes the invalidation and forces
-the next bundle as a keyframe). Cooldown:
-`Constants.Video.KeyFrameRequestCooldown = 1 s` (≈ `KeyFramePeriod / 3`) so
+`VideoStreamingBackend` (the worker's RPC client observes the invalidation
+and forces the next bundle as a keyframe). Cooldown:
+`Constants.Video.KeyFrameRequestCooldown = KeyFramePeriod / 3 = 1 s` so
 concurrent late joiners collapse to a single PLI.
 
 The reasons the server issues a PLI:
 
 - A new viewer subscribes to a stream
   (`LiveVideoStreams.GetStream` always fires one — collapsed by cooldown).
-- A viewer's `ChangePlaybackQuality` changes the desired layer for a stream
-  (so the new layer can be picked up immediately rather than waiting for the
-  next natural keyframe up to ~3 s away).
+- A viewer's `ChangePlaybackQuality` **upgrades** a stream's `MaxLayerId` or
+  `MaxTemporalLayerId` (so the new layer can be picked up immediately rather
+  than waiting up to ~3 s for the next natural keyframe). Downgrades skip
+  the PLI deliberately — see [08](./08-quality-control.md).
 
 ## Constants worth remembering
 
@@ -172,9 +196,12 @@ The reasons the server issues a PLI:
 |---|---|---|
 | `Constants.Video.FrameRate` | 30 fps | `Api/Constants.Video.cs` |
 | `Constants.Video.KeyFramePeriod` | 3 s | same |
-| `Constants.Video.KeyFrameRequestCooldown` | 1 s | same |
+| `Constants.Video.KeyFramePeriodSize` | 90 frames | derived |
+| `Constants.Video.KeyFrameRequestCooldown` | 1 s (= `KeyFramePeriod / 3`) | same |
 | `Constants.Video.CodecSwitchHysteresisWindow` | 10 s | same |
 | `MIN_SIMULCAST_SMALL_AXIS` | 150 px | `layer-ladder.ts` |
 | Encoder probe budget | 33 ms / frame | `codec-support.ts` |
 | Encoder pool TTL | 5 s | `encoder-pool.ts` |
-| Top simulcast layers | 3 | `layer-ladder.ts` |
+| `VideoLayerDef.MaxLayerCount` (camera) | 3 | `Constants.Video.cs` |
+| Downscaler concurrency (slots) | 2 | `operators/downscale.ts` |
+| Downscaler hang watchdog | 1.5 s, ≤ 4 in a row | `operators/downscale.ts` |

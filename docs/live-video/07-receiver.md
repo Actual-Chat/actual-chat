@@ -3,30 +3,30 @@
 The receiver mirrors the sender: a Web Worker pulls a server-filtered
 `RpcStream<VideoFrame>`, decodes it with WebCodecs, and presents either via
 `MediaStreamTrackGenerator` (MSTG → `<video>`) or by drawing onto an
-`OffscreenCanvas`. The Razor entry is `VideoTrackPlayer.razor` (used by
-`RemoteStreamPlayer.razor`).
+`OffscreenCanvas`. The Razor entry is `VideoTrackPlayer.razor` (used by the
+remote-stream player components).
 
 ## Process model
 
 ```
 ┌── Main thread (Blazor) ─────────────────────────────────┐
 │ VideoTrackPlayer.razor  ──[create()]──▶ VideoPlayer (TS) │
-│                                              │            │
-│   <canvas class="remote-video">              │            │
-│   <video  class="live-stream-video">         │ start()    │
-│   <canvas class="remote-video-bg">           ▼            │
-│                                         playerWorker     │
-└──────────────────────────────────────────────┬───────────┘
-                                               │ postMessage
-┌──────────────────────────────── Worker ─────▼───────────┐
+│   <canvas class="remote-video">                          │
+│   <video  class="live-stream-video">  (MSTG sink)        │
+│                              │ start()                   │
+│                              ▼                           │
+│                         playerWorker                     │
+└──────────────────────────────┬──────────────────────────┘
+                                │ postMessage
+┌──────────────────────────────▼─── Worker ───────────────┐
 │ playback/session.ts (one PlaybackSession per worker)    │
-│  ├ DecoderPool   (codec-keyed, parkTtlMs=30s)          │
-│  ├ MonotonicClock arrivalClock                         │
-│  └ stats (VideoPlaybackStats)                          │
+│  ├ MonotonicClock arrivalClock                          │
+│  ├ DecoderPool   (codec-keyed, parkTtlMs ≈ 30 s)        │
+│  └ stats (VideoPlaybackStats, session-level)            │
 │                                                         │
 │ playback/player.ts (one Player per stream)              │
 │  pull → resetOnEpochChange → pacedEncodedBuffer →       │
-│  decode → latencyTap → presentMstg | presentCanvas      │
+│  decode → latencyTap → mstgPresent | canvasPresent      │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -36,7 +36,7 @@ between two streams with the same codec is essentially free.
 
 ## How playback starts
 
-`VideoTrackPlayer.razor` (`OnAfterRenderAsync`):
+`VideoTrackPlayer.razor`:
 
 1. `RegisterMember(session, chatId, supportedDecoderCodecs)` — declares this
    client's decoder support to the server's chat state. Heartbeat every 30 s.
@@ -44,13 +44,16 @@ between two streams with the same codec is essentially free.
    up with the sender's offset domain.
 3. `JS.InvokeAsync("VideoPlayer.create", ...)` — main-thread façade.
 4. `player.startPull(streamId, skipToMs)` — kicks off subscription.
-5. Background `PlayAsync()` waits for end and surfaces stats.
 
 `VideoPlayer.startPull`:
 
 - Builds the render backend (MSTG vs. canvas) — see below.
-- Calls `playerWorker.start({ streamId, initialDecoderConfig, targetBufferSpanMs, backend }, mstgWritable?, offscreenCanvas?)`.
+- Calls
+  `playerWorker.start({ streamId, initialDecoderConfig, targetBufferSpanMs, backend }, mstgWritable?, offscreenCanvas?)`.
 - The worker creates a `Player` and runs the pipeline in the background.
+- A render-size hint (`OnPlaybackViewportChanged`) flows back into
+  `VideoQualityUI` whenever the player tile is resized, driving the
+  allocator's per-stream `RenderVideoSize` ([08](./08-quality-control.md)).
 
 ## Worker pipeline
 
@@ -63,14 +66,18 @@ File: `operators/pull.ts`. Calls
 iterates the resulting `AsyncIterable<VideoFrameDto>`. For each DTO:
 
 - Stamps `arrivedAt = arrivalClock.now()` (receiver's `MonotonicClock`).
-- Converts `Offset` (TimeSpan ticks) → microseconds for
-  `EncodedVideoChunk.timestamp`.
-- Builds `EncodedVideoChunk` with type `key`/`delta` from `IsKeyFrame`.
-- Wraps in `ArrivedChunk { chunk, capturedAt, arrivedAt, isKeyFrame, layerId, stats }`.
+- Parses `Offset` (TimeSpan ticks, possibly bigint) → `capturedAt.timeMs`,
+  with `OffsetEpoch` carried through.
+- Builds an `EncodedVideoChunk` with type `key`/`delta` from `IsKeyFrame`,
+  copying `Description` into a standalone `ArrayBuffer` (MessagePack may
+  hand back a shared-buffer view).
+- Wraps in `ArrivedChunk { chunk, arrivedAt, capturedAt, isKeyFrame,
+  description?, layerId, width, height, rawByteLength, stats }`.
 - Increments `stats.chunksArrived` and `stats.bytesReceived`.
 
 `exclusive` + `finalize` wrappers ensure exactly one iteration and that
-`return()` is propagated upstream on stop.
+`return()` is propagated upstream on stop, so the in-flight RPC
+subscription unwinds on dispose.
 
 ### `resetOnEpochChange`
 
@@ -79,7 +86,7 @@ changes (sender clock discontinuity, sender restart), calls `buffer.reset()`
 on the encoded-frame buffer below — so the buffer goes back to its `reset`
 state and waits for the next keyframe before producing anything.
 
-### `pacedEncodedBuffer` — jitter buffer + pacing
+### `pacedEncodedBuffer` — span-gated jitter buffer
 
 File: `operators/encoded-buffer.ts`, with the actual buffer in
 `playback/encoded-frame-buffer.ts`. The buffer is a small two-state machine:
@@ -92,42 +99,55 @@ delta in reset    ─── drop (chunksDroppedAtBuffer++)
 any chunk in armed── enqueue
 ```
 
-`tryPull` releases a chunk only if all three hold:
+`tryPull()` releases a chunk only if **both** hold:
 
-1. At least 2 chunks queued.
-2. Span between front and back ≥ `targetSpanMs` (default
-   `TARGET_BUFFER_SPAN_MS = 333 ms` — matches server retention).
-3. The front chunk's wall-clock "due time" arrived: `now ≥ arrivedAt.timeMs +
-   targetSpanMs`.
+1. The buffer is `armed` and non-empty.
+2. `spanMs() ≥ targetSpanMs` (default `Constants.Video.TargetBufferSpanMs ≈ 333 ms`).
 
-The pacing operator races `iterator.next()` against `setTimeout(5 ms)` so it
-checks for due chunks frequently without busy-waiting. Net behaviour: the
-buffer absorbs ~333 ms of network jitter; under steady arrivals chunks are
-released at roughly the same rate they came in, just delayed by the buffer
-span.
+`spanMs()` returns `(last.capturedAt.timeMs - first.capturedAt.timeMs) +
+frameDurationMs` — capture-time-anchored, so it tracks source pacing rather
+than wallclock arrivals. The trailing chunk's real duration isn't known until
+the next chunk arrives, so it's approximated as one nominal frame
+(33.333 ms by default).
+
+Span-gating self-corrects on every push/pull: if jitter momentarily fills
+the buffer, the next arrivals advance `last` and `tryPull` keeps releasing;
+if the source pauses, `spanMs` shrinks below target and pulls stop. The
+`pacedEncodedBuffer` operator races `iterator.next()` against the abort
+signal; on shutdown it disposes the buffer and any in-flight upstream
+iteration.
+
+`detectRegression(chunk, toleranceMs)` is a stateless helper for callers
+that want to detect out-of-order arrivals across the same epoch. The buffer
+itself does not reject regressing chunks.
 
 ### `decode` — WebCodecs
 
 File: `operators/decode.ts`. Uses `decoderPool.acquire(codec)` from the
 session.
 
-- Initial config from `PlayerWorkerOptions.initialDecoderConfig` (codec, dims).
+- Initial config from `PlayerWorkerOptions.initialDecoderConfig` (codec,
+  dims).
 - On every keyframe with a `description`, caches it per-`layerId`. (HEVC may
   omit description on later keyframes; H.264 carries SPS/PPS in-band.)
 - Reconfigures on dim changes detected from the produced frames.
-- On decode error: buffers the error, recovers on next keyframe by closing
-  and re-creating the decoder via the pool. After
-  `maxRecoveries = 4` consecutive errors it fires `onCodecExhausted` and the
-  player surfaces an error to main-thread, which can `excludeDecoderCodec(category)`
-  and re-register.
-- Tracks pending decodes in a small FIFO so `onFrame` callbacks pair up with
-  the right `arrivedAt`/`capturedAt` for downstream latency reporting.
+- **Hang watchdog**: `decoderHangTimeoutMs = 2000 ms`. Arms a race when the
+  decoder has pending submitted chunks but hasn't produced a frame or
+  error. On timeout, synthesizes an error which drives the standard
+  recovery path (close + recreate + reconfigure on next keyframe).
+- **Error recovery**: closes and rebuilds the decoder via the pool, drops
+  pre-keyframe deltas during recovery. After `maxRecoveries = 4`
+  consecutive errors it fires `onCodecExhausted` and the player surfaces
+  the error to main-thread, which can `excludeDecoderCodec(codec)` and
+  re-register.
+- Tracks pending decodes in a small FIFO so `onFrame` callbacks pair up
+  with the right `arrivedAt`/`capturedAt` for downstream latency reporting.
 
 ### `latencyTap`
 
-File: `operators/latency-tap.ts`. Sampled every 1 s (driven by frame arrival,
-not `setInterval` — a stalled stream produces no spurious "latency = ∞"
-reports). Builds a `LatencySample`:
+File: `operators/latency-tap.ts`. Sampled at `LatencyReportInterval = 500 ms`
+(driven by frame arrival, not `setInterval` — a stalled stream produces no
+spurious "latency = ∞" reports). Builds a `LatencySample`:
 
 ```ts
 {
@@ -140,48 +160,61 @@ reports). Builds a `LatencySample`:
 ```
 
 Pushed to main via `onLatencyReport(streamId, sample)`. Main thread feeds it
-into the `VideoQualityUI` controller (08) as part of `PlaybackHealthSnapshot`.
+into `VideoQualityUI` ([08](./08-quality-control.md)) as part of
+`PlaybackHealthSnapshot`.
 
 ### Present — MSTG or canvas
 
-Two sinks, picked by `pickRenderBackend` based on platform/preferences (query
-param `?renderBackend=mstg|canvas` overrides):
+Two sinks, picked by `pickRenderBackend(...)` (in
+`playback/render-backends.ts`) using `preferMstg`, the supplied writer/canvas,
+and a `convertToBitmap` shim where Safari needs it:
 
 - **`mstgPresent`** (`operators/present-mstg.ts`): writes decoded
-  `VideoFrame`s into a `MediaStreamTrackGenerator` writable. Single-slot
-  replace — a fresher decoded frame replaces a still-pending older one.
-  Counts only enqueued frames as `framesPresented`.
-  Track is attached to a `<video>` element on main thread → platform
-  hardware-decoded display. Preferred path on Chrome/Safari.
+  `VideoFrame`s into a `MediaStreamTrackGenerator` writable. Pacing is
+  capture-time-delta driven:
+  - `MAX_FPS = 120`, `MIN_FPS = 10` ⇒ `MIN_DURATION_MS ≈ 8.3 ms`,
+    `MAX_DURATION_MS = 100 ms`.
+  - `extraMs = max(0, bufferSpan - targetSpan)`.
+  - **Skip mode**: if `extraMs > CATCHUP_BUDGET_MS = 4000` AND the next
+    write would land within `MIN_DURATION_MS` of the previous one, drop
+    the frame. `framesDroppedAtPresenter++`. Used when the buffer is so
+    far over target that the MAX_FPS catch-up alone can't drain it.
+  - **Catch-up**: if `extraMs > 0`, force `durationMs = MIN_DURATION_MS`
+    (present at MAX_FPS).
+  - **Steady**: else, `durationMs = clamp(natural source delta, MIN, MAX)`
+    — schedule advances by exactly the source delta so it tracks capture
+    time without anchor drift.
+  - On write success: `framesPresented++`. On write failure:
+    `framesDroppedAtPresenter++` (the writer raised; pipeline rethrows).
 - **`canvasPresent`** (`operators/present-canvas.ts`): `drawImage(frame, …)`
-  onto an `OffscreenCanvas` transferred from main. Resizes the canvas to the
-  current frame dims to avoid upscaling. Safari needs a `convertToBitmap`
-  intermediate (WebKit can't `drawImage(VideoFrame)` directly).
+  onto an `OffscreenCanvas` transferred from main. Resizes the canvas to
+  the current frame dims to avoid upscaling. Safari needs a
+  `convertToBitmap` intermediate (WebKit can't `drawImage(VideoFrame)`
+  directly).
 
-There's a third path — **worker-side MSTG** (`OffThreadRenderBackend`). On
-platforms where the main-thread MSTG path doesn't work (some Safari versions),
-the worker creates the MSTG, fires `onTrackReady(streamId, 'mstg', track)`,
-and the main thread attaches the received track to the `<video>`.
-
-The MSTG render backend on the main thread also runs a watchdog that retries
-`<video>.play()` on stalls and falls back to canvas if `<video>` is stuck for
-a configurable period.
+The MSTG render backend on the main thread runs a watchdog that retries
+`<video>.play()` on stalls and falls back to canvas if `<video>` is stuck
+for a configurable period (`render-backend-mstg.ts`).
 
 ## Player lifecycle
 
 File: `playback/player.ts`.
 
-- `start(config)` constructs the pipeline and runs it in the background.
+- `start(config)` constructs the pipeline and runs it in the background;
+  rejects if a run is already in flight.
 - `whenDone()` resolves when the pipeline finishes (sender ended, error, or
   `stop()`).
-- `stop()` aborts the pull source; gives the pipeline 1 s
-  (`STOP_DRAIN_GRACE_MS`) to drain, then hard-aborts.
+- `stop()` aborts the pull source; gives the pipeline `STOP_DRAIN_GRACE_MS = 3 s`
+  to drain, then hard-aborts.
+- `resetBuffer()` calls `buffer.reset()` — out-of-band sender resync hook,
+  rarely used.
 - The worker's `PlayerWorker` impl tracks `locallyStopped` to suppress an
-  `onStreamEnded` callback when a fallback (e.g. MSTG → canvas) restarts the
-  pipeline, so the UI doesn't think the stream actually ended.
+  `onStreamEnded` callback when a fallback (e.g. MSTG → canvas) restarts
+  the pipeline, so the UI doesn't think the stream actually ended.
 
-After completion the worker decrements `session.activeStreams` and removes the
-player from its registry, but the `PlaybackSession` keeps the decoder pool warm.
+After completion the worker decrements `session.activeStreams` and removes
+the player from its registry, but the `PlaybackSession` keeps the decoder
+pool warm.
 
 ## DecoderPool
 
@@ -193,9 +226,8 @@ Codec-keyed: one parked slot per distinct codec string. `acquire(codec)`:
 - Otherwise evicts mismatched parked slots, calls the factory.
 
 `release()` parks the decoder under its codec key with a wallclock stamp.
-`sweep()` runs periodically and closes anything idle longer than
-`parkTtlMs = 30 s`. `dispose()` closes all parked decoders and
-neutralises outstanding leases.
+A periodic sweep closes anything idle longer than `parkTtlMs ≈ 30 s`.
+`dispose()` closes all parked decoders and neutralises outstanding leases.
 
 This lets a viewer who frequently pauses/resumes a stream avoid repeated
 codec init (which on hardware is many milliseconds and on Chrome can cause
@@ -204,30 +236,31 @@ visible glitches).
 ## Codec selection on the receiver
 
 `VideoPlayer.initPlayerWorker` uses
-`getCodecCandidates(codec, description)` (file: `hevc-codec-selection.ts`) to
-turn the publisher's codec string into a list of fallback strings to try in
-order. `selectDecoderCodec(candidates, description, dims)` then probes them
-via `VideoDecoder.isConfigSupported()` and picks the first match. If the
-worker reports a hard decode error, the main thread maps
-`getCodecCategory(codecString)`, calls `excludeDecoderCodec(category)`
-(localStorage-backed), and the next `RegisterMember` reports the smaller list.
+`getCodecCandidates(codec, description)` (file: `hevc-codec-selection.ts`)
+to turn the publisher's codec string into a list of fallback strings to
+try in order. `selectDecoderCodec(candidates, description, dims)` then
+probes them via `VideoDecoder.isConfigSupported()` and picks the first
+match. If the worker reports a hard decode error, the main thread maps
+`getCodecCategory(codecString)`, calls `excludeDecoderCodec(codecString)`
+(localStorage-backed), and the next `RegisterMember` reports the smaller
+list.
 
 ## Quality feedback collected here
 
-Two reports are produced from receiver state and sent to the server (08 has
-the full picture):
+Two reports are produced from receiver state and sent to the server (see
+[08](./08-quality-control.md) for full picture):
 
-1. **`PlaybackQualityInfo` (every ~2 s + 5 s heartbeat)** — bandwidth
+1. **`PlaybackQualityInfo` (every ~2 s + 1 min keep-alive)** — bandwidth
    capacity estimate, aggregate health, decoder queue depth EMA, keyframe
-   skips in window, etc. Computed from worker stats.
+   skips in window, render-size hints, etc. Computed from worker stats and
+   per-stream `LatencySample`s.
 2. **Per-stream `ReceiveQuality`** — the desired `MaxLayerId` and
-   `MaxTemporalLayerId` for each stream the viewer is watching. Sent in the
-   same `ChangePlaybackQuality` call.
+   `MaxTemporalLayerId` for each stream the viewer is watching. Sent in
+   the same `ChangePlaybackQuality` call.
 
-Render-size hint (from `ResizeObserver` on the canvas/`<video>`) is also part
-of `PlaybackQualityInfo`. `cssLongSide` and `devicePixelRatio` let the server
-pick a layer near the viewport size — there's no point sending a 720p layer to
-a 200-px tile.
+`RenderVideoSize` (per-stream) and `cssLongSide` × `devicePixelRatio` let
+the server-side allocator pick a layer near the viewport size — no point
+sending a 720p layer to a 200-px tile.
 
 ## Multiple concurrent streams
 
@@ -239,7 +272,8 @@ A worker can play many streams at once. They share:
 Per-stream they each have their own `Player`, `EncodedFrameBuffer`, render
 surface, and (typically) decoder lease.
 
-`Constants.Video.TargetBufferSize = 10` and the per-stream RPC `BufferSize`
-mean each stream is bounded ≤ ~333 ms of frames in flight. With N streams
-that scales linearly; the AIMD playback controller (08) is what keeps the
-total under the receiver's measured capacity.
+`Constants.Video.TargetBufferSize = 10` and the per-stream consumer-leg
+`AckAdvance = 16` bound each stream to ~333 ms of frames in flight. With N
+streams that scales linearly; the AIMD playback controller
+([08](./08-quality-control.md)) is what keeps the total under the receiver's
+measured capacity.

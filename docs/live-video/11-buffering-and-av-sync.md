@@ -34,7 +34,7 @@ size-1 replace-slot inboxes; they don't measure or own latency.
 
 Sender side parameters from the plan:
 
-| Parameter | Value |
+| Parameter | Plan value |
 |---|---|
 | Sender policy | real-time `RpcStream` (no extra buffer) |
 | `RpcStream.BufferSize` | 10 frames |
@@ -44,7 +44,7 @@ Sender side parameters from the plan:
 
 Receiver side parameters from the plan (the "video buffer"):
 
-| Parameter | Value |
+| Parameter | Plan value |
 |---|---|
 | Receiver policy | one intentional playback buffer |
 | `TargetBufferSize` | 10 frames |
@@ -61,137 +61,143 @@ waste decoder work on frames that will be dropped.
 ### Current state and why it differs
 
 Reality forced a small relaxation on the **sender** side and a different
-buffer position on the **receiver** side.
+buffer-position-and-policy on the **receiver** side.
 
-#### Sender — push pipeline + one trailing pull-bound buffer
+#### Sender — push pipeline + flood-gated Denque + RpcStream ring
 
 The encoder side of the worker is fundamentally **push-style**: the source
 emits `VideoFrame`s at ~30 fps, the downscaler runs per source frame, the
 encoders are submitted per layer per source frame. There is no upstream
 back-pressure that can throttle the source — `getUserMedia` doesn't honour
-"please slow down". So even though the operator chain is written as async
-iterables, between source and the wire-send sink it is a fixed-rate
-production line.
+"please slow down".
 
-The pull side starts at the wire. `RpcStream<VideoFrameDto>` is consumed by
-the API pod over WebSocket — that's where you actually get back-pressure
-(disconnects, slow ACKs, peer churn). That asymmetry means there has to be
-**at least one buffer between the push pipeline and the pull-bound RPC peer**;
-if there weren't, a 200 ms hiccup on the wire would propagate back into the
-encoder and cause it to stutter.
-
-So today the sender has two structures, not one:
+What we have instead is a single backpressure channel **at the very front**
+of the pipeline (the flood gate) plus the RpcStream ring **at the very back**.
+Everything in between is one frame deep.
 
 ```
-encode → wireSend.send()                ▲ push side, fixed rate
-              │                          │ ack-driven compaction kicks in here
-              ▼                          │
-        Denque<VideoStreamFrame>  ◀──────┘
-              │
-              ▼ generator pulled by RpcStream
-        RpcStream  ─────▶  WebSocket
-              │  AckPeriod = 5
-              │  BufferSize = 10
-              │  canSkipTo = isKeyFrame
-              ▼
-            wire
+Capture                                     ▲ closes when Denque ≥ size/2
+  │                                          │ opens when Denque ≤ size/4
+  ▼                                          │
+floodGate (backpressure valve) ◀─────────────┘
+  ▼
+stamp / dim / downscale / KF policy / encode    (each operator is sync per frame)
+  ▼
+wireSend.send(VideoStreamFrameBundle)            ▲ push side
+  │                                               │
+  ▼                                               │
+push-to-pull-buffer (Denque<VideoStreamFrameBundle>, capacity = pushPullBufferSize ≈ 30 ≈ 1 s)
+  │
+  ▼ generator pulled by RpcStream
+RpcStream<VideoFrameBundleDto>  ─────▶  WebSocket
+  │  ackPeriod ≈ 3, ackAdvance = 10
+  │  bufferSize ≈ keyFramePeriodSize × 4/3 ≈ 120 source moments
+  │  canSkipTo: bundle ⇒ Layers[0].IsKeyFrame
+  ▼
+wire
 ```
 
-The Denque is `wireSend`'s producer queue (file:
-`Services/Video/operators/wire-send.ts`). It is **not unbounded** and it is
-not a "drop oldest" policy:
+So today the sender has three structures, not one:
 
-- On every keyframe enqueue, if the queue holds **more than 2 keyframes for
-  any layer**, the older frames before the most recent keyframe are dropped
-  (`compactIfOverflowing`).
-- Drops are counted in `VideoRecordingStats.wireFramesDropped` and
-  `wireKeyframesDropped`.
+1. **The flood gate** — a hysteresis valve right after capture that drops
+   captured frames before they hit the encoder/downscaler. Effectively a
+   resource-saving "don't even try" path; it's not a buffer because it
+   holds nothing.
+2. **The Denque in `push-to-pull-buffer.ts`** — a small (~1 s) FIFO between
+   the synchronous wireSend output and the asynchronous RpcStream pump.
+   Its job is to be there at all: without it, an RPC stall would block
+   `wireSend.send(...)` itself, which is on the encode pipeline's hot path.
+3. **The RpcStream sender ring** — the actual on-the-wire credit window.
+   `bufferSize ≈ 120 source moments` is large by design: under transient
+   wire stalls, `canSkipTo: isKeyFrame` compacts older non-keyframe bundles
+   inside the ring rather than letting the producer block.
 
-`RpcStream`'s own `canSkipTo: isKeyFrame` compaction kicks in further down,
-on the wire side. So the design has **two compaction stages** stacked, both
+Compaction therefore happens at **two stacked stages**, both
 keyframe-anchored:
 
-1. Pre-RPC Denque compaction (drops before the RPC layer ever sees them).
-2. RPC ACK-driven compaction (drops after ACK rotates the credit window).
+1. The Denque holds at most ~1 s of bundles; the flood gate engages well
+   before that and stops feeding more source frames in.
+2. RPC ACK-driven compaction inside the ring drops older non-KF bundles
+   when the wire is slow.
 
-Why two? Because the RPC layer's `BufferSize = 10` is small (≈ 333 ms) and
-the compaction it does is conservative — it can only collapse to the newest
-decoder-safe frame within its window. The pre-RPC Denque sits in front and
-gives a longer scan window for keyframe-anchored compaction. Without it, a
-multi-second wire stall would let frames pile up in the unobservable RPC
-ring.
+Why two? Because the flood gate at ½-capacity is the cheapest place to
+absorb the load, and the RPC ring's own compaction handles the residual
+in-flight stall. Without the front-end gate, the Denque would cap out and
+the encoder would back up; without the ring's compaction, a brief wire
+stall would propagate as decoder gaps on the consumer side.
 
 In practice this means the doc's "one buffer per side" rule is **almost
 honoured** on the sender:
 
-- All upstream stages (`mstpSource`, `stampCaptureTime`, `attachSourceDims`,
-  `downscale`, `applyKeyframePolicy`, `encode`) have effective queue depth
-  ≤ 1; they run synchronously on each frame.
+- All upstream operators have effective queue depth ≤ 1; they run
+  synchronously per frame.
 - The push→pull boundary requires the Denque-plus-RpcStream pair, and that
-  pair is the only place compaction policy is configured.
-- Numerically the older plan's `BufferSize = 10` / `AckPeriod = 5` are still
-  the canonical numbers; whether the Denque is treated as inside or outside
-  the "one buffer" depends on how strictly you read the rule.
+  pair is the only place latency is held — but the **flood gate** is what
+  enforces an upper bound, so there's no policy decision in the Denque
+  itself ("drop oldest" never fires there in practice).
+- The numbers are different from the plan because the bundle-per-source-moment
+  shape changes the units: `bufferSize ≈ 120 source moments` is roughly the
+  same number of *encoded chunks* as the plan's `BufferSize = 10` would be
+  per-layer (~3 layers × 30 fps × 1.33 ≈ 120 frames); `ackPeriod` derives
+  from `targetBufferSize` instead of being hard-coded.
 
-The "ladder of compaction" — Denque keyframe-compact → RPC `canSkipTo` —
-matches the spirit of the plan: encoded video is only dropped at decoder-safe
-points (keyframes), and there is no speculative trimming inside the encoder
-chain.
+#### Receiver — one intentional buffer, span-gated, post-pull
 
-#### Receiver — one intentional buffer, post-decode pacing
-
-The receiver is closer to the original plan but with one structural
-difference: the buffer is **encoded** and **paced**, with the decoder fed
-just-in-time.
+The receiver is closer to the original plan but with structural differences
+in **what** is buffered and **how** the gate fires.
 
 ```
 pull              resetOnEpochChange       pacedEncodedBuffer        decode         present
 (VideoFrameDto)  (no buffering, just ─▶  (intentional playback ─▶  (≤2 in    ─▶  (single
-                  detects epoch flip)     buffer; 333 ms span)      flight)       slot)
+                  detects epoch flip)     buffer; 333 ms span)      flight)       slot, paced)
 ```
 
 - `EncodedFrameBuffer` (file: `playback/encoded-frame-buffer.ts`) is the
   one and only intentional latency holder. Target span is
-  `TARGET_BUFFER_SPAN_MS = 333 ms` — same number as the plan's
+  `Constants.Video.TargetBufferSpanMs ≈ 333 ms` — same number as the plan's
   `TargetBufferDuration`.
-- It is **encoded**: holds `ArrivedChunk`s, not `VideoFrame`s. So
-  keyframe-anchored skip-forward is in principle possible here, although the
-  current implementation only paces — it does not auto-trim above a "max
-  span" threshold. (The plan's `MaxBufferSize = 15` / hysteresis logic isn't
-  implemented; the controller in `VideoQualityUI` reacts to over-deep
-  buffers indirectly via the verdict classifier.)
+- It is **encoded**: holds `ArrivedChunk`s, not `VideoFrame`s.
+- Gate is **span-based, not count-based**: `tryPull()` only releases a
+  chunk while `spanMs() ≥ targetSpanMs`. `spanMs` is anchored on
+  `capturedAt` so it tracks source pacing rather than wallclock arrivals
+  (an earlier capture-time-anchor design self-corrected drift poorly;
+  span-gating self-corrects on every push/pull).
 - The decoder has only its own internal queue (≤ 2 in flight via
   `AsyncVideoDecoder` adapter); it isn't an intentional buffer.
-- Both presenters are size-1: `present-mstg.ts` uses a single replace-slot
-  before the MSTG writer; `present-canvas.ts` draws each frame once.
+- The presenter (`mstgPresent`) does its own pacing on top of the buffer
+  span: 60-fps cap, capture-time-delta scheduling for steady state, and a
+  skip mode when the buffer is more than `CATCHUP_BUDGET_MS = 4 s` over
+  target. The skip path drops frames at the presenter and counts them in
+  `framesDroppedAtPresenter`.
 
-Reading the Min/Max/Hysteresis numbers from the old plan: they map to the
-current quality controller's verdict thresholds in `VideoQualityUI.cs`
-(`BufferDurationTooLowMs ≈ 111`, `BufferDurationTooHighMs ≈ 333`) rather
-than to in-buffer evict/skip thresholds. The action ("buffer too low ⇒
-reduce quality / request keyframe") happens via `ChangePlaybackQuality`,
-not inside the buffer.
+The plan's `Min/Max/Hysteresis` numbers map to the current quality
+controller's verdict thresholds in `VideoQualityUI.cs`:
+`BufferDurationTooLowMs ≈ 111` (= `TargetBufferSpanMs / 3`),
+`BufferDurationTooHighMs ≈ 500` (= `TargetBufferSpanMs × 1.5`). The action
+("buffer too low ⇒ reduce quality / request keyframe") happens via
+`ChangePlaybackQuality`, not inside the buffer.
 
 So the rule "one big buffer per side" holds on the receiver:
 
 - `pull` and `resetOnEpochChange`: no queue.
 - `pacedEncodedBuffer`: the buffer.
 - `decode`: small platform FIFO.
-- `present`: size-1 replace.
+- `present`: own pacing + skip mode, but no queue beyond the writer.
 
 ### Summary table
 
 | Stage | Old plan | Current |
 |---|---|---|
-| Sender intermediates | size-1 replace slots | same (operators are sync per frame) |
-| Sender push→pull | RpcStream alone (Buf=10, Ack=5) | Denque + RpcStream pair, both keyframe-compact |
-| Receiver encoded buffer | one intentional buffer, 333 ms, max 15 frames | one buffer, 333 ms, no hard cap (controller-driven) |
-| Receiver post-decode | (unspecified) | size-1 replace before presenter |
-| Buffer trims at | keyframes | keyframes |
+| Sender intermediates | size-1 replace slots | same (operators are sync per frame); flood gate is a resource gate, not a buffer |
+| Sender push→pull | RpcStream alone (Buf=10, Ack=5) | Denque (~1 s) + RpcStream pair (~120 source-moment ring); both keyframe-compact |
+| Receiver encoded buffer | one intentional buffer, 333 ms, max 15 frames | one buffer, 333 ms, **span-gated** (no hard count cap; controller-driven backoff via `ChangePlaybackQuality`) |
+| Receiver post-decode | (unspecified) | own pacing in `mstgPresent` (60 fps cap, 4 s catch-up budget, skip mode) |
+| Buffer trims at | keyframes | keyframes (upstream RPC ring) + capture-time pacing (downstream presenter) |
 
 The principal residual deviation from the plan is the
-**Denque-plus-RpcStream pair on the sender** and the **lack of an in-buffer
-high-watermark trim on the receiver** (the controller handles it instead).
+**Denque-plus-RpcStream pair on the sender** with a flood gate front-stop,
+and the **lack of an in-buffer high-watermark trim on the receiver** (the
+controller plus the presenter's skip mode handle it instead).
 
 ## Part B — audio/video sync
 
@@ -252,16 +258,16 @@ The mechanism is fully implemented in code; it just doesn't run by default.
 #### The pieces (all live)
 
 1. **Lag reporting from both sides into a shared tracker**
-   - Video: `latency-tap` operator samples `frameAgeMs` every ~1 s, sends
-     it to main, which calls `VideoTrackPlayer.OnPresentationLag` (camera
-     streams only — screencast is excluded as too jittery). That calls
+   - Video: `latency-tap` operator samples `frameAgeMs` every
+     `LatencyReportInterval = 500 ms`, sends it to main, which calls
+     `VideoTrackPlayer.OnPresentationLag` (camera streams only —
+     screencast is excluded as too jittery). That calls
      `PlaybackLagTracker.UpdateVideo(authorId, streamId, lag)`.
      - File: `src/dotnet/UI.Blazor.App/Components/VideoPanel/VideoTrackPlayer.razor`
      - File: `src/dotnet/UI.Blazor.App/Components/VideoPanel/video-player.ts`
      - File: `src/dotnet/UI.Blazor.App/Services/Video/operators/latency-tap.ts`
    - Audio: `AudioTrackPlayer.OnPresentationLag` calls
      `PlaybackLagTracker.UpdateAudio(authorId, _id, lag)`.
-     - File: `src/dotnet/UI.Blazor.App/Components/AudioPlayer/AudioTrackPlayer.cs`
 
 2. **Per-author pairing**
    `PlaybackLagTracker` keys EMAs by `AuthorId` and exposes
@@ -286,12 +292,9 @@ The mechanism is fully implemented in code; it just doesn't run by default.
    - `skipUntil(ms)` — drops frames with `sourceOffsetMs < ms`.
    - `speedUpUntil(ms, dropEveryN)` — drops every Nth frame until reaching
      `ms`.
-   - File: `src/dotnet/UI.Blazor.App/Components/AudioPlayer/workers/opus-decoder.ts`
-   - File: `src/dotnet/UI.Blazor.App/Components/AudioPlayer/audio-player.ts`
 
 5. **Application logic in `AudioTrackPlayer`**
-   `ApplyAudioSync()` is called every 10th audio frame
-   (`AudioSyncPolicySamplePeriodFrames`):
+   `ApplyAudioSync()` is called every 10th audio frame:
    - Reads `desired` from the policy.
    - If `desired ≥ PlaybackHardSkipThreshold (2 s)` → call
      `_playbackEngine.SkipUntil(targetMs)`.
@@ -299,7 +302,6 @@ The mechanism is fully implemented in code; it just doesn't run by default.
      `speedUpDuration = min(desired × dropEveryN, PlaybackMaxSpeedUpDuration)`
      and call `_playbackEngine.SpeedUpUntil(targetMs, dropEveryN)`.
    - Cooldown of `PlaybackCatchUpCommandCooldown = 1 s` between commands.
-   - File: `src/dotnet/UI.Blazor.App/Components/AudioPlayer/AudioTrackPlayer.cs:163`
 
 #### The kill switch
 
@@ -313,13 +315,12 @@ public bool IsAudioSyncEnabled { get; set; } = false;  // NOTE(AY): Needs testin
 Toggle path:
 
 - File: `src/dotnet/UI.Blazor.App/Services/ChatAudioUI.cs`
-- Toggle: `DebugUI.EnableAudioSync(true|false)` from a JS console, only on
-  development instances (`HostInfo.IsDevelopmentInstance`).
-- File: `src/dotnet/UI.Blazor/Services/DebugUI/DebugUI.Settings.cs`
+- Toggle: `debugUI.enableAudioSync(true|false)` from the JS console, only
+  on development instances.
 
 There is no end-user setting, no chat-level configuration, no automatic
-enablement. The flag is wired to the only gate; flip it and the whole chain
-runs.
+enablement. The flag is wired to the only gate; flip it and the whole
+chain runs.
 
 #### Match against the plan
 
@@ -334,16 +335,6 @@ runs.
 | Deadband / baseline | Yes (`AudioCatchUpDeadband = 200 ms`, `AudioCatchUpBaselineDelta = -100 ms`) |
 | Cooldown between commands | Yes (`PlaybackCatchUpCommandCooldown = 1 s`) |
 | Production-enabled | **No.** Gated by `IsAudioSyncEnabled = false` |
-
-#### Side note on direction
-
-There was an intermediate `AudioVideoSync` design where audio published
-`playingAt` and video chased it (the inverse of the original plan).
-The **current** code in this repo has the direction the plan prescribes:
-video reports lag via `OnPresentationLag`, audio reads it via
-`PlaybackLagTracker`, and `AudioTrackPlayer` is the actor that adjusts.
-Whatever inverted scaffold existed has been removed or was never wired into
-the audio side.
 
 #### Practical implications
 
