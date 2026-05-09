@@ -1,7 +1,7 @@
 import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 
-const { infoLog } = getLogs('VideoRecorder');
+const { infoLog, warnLog } = getLogs('VideoRecorder');
 
 export interface CameraCaptureOptions {
     deviceId?: string;
@@ -172,16 +172,33 @@ export class MediaCapture {
 
     static async captureScreenCast(): Promise<MediaStreamTrack> {
         infoLog?.log('captureScreenCast: requesting display media');
-        // 15 fps ideal (30 max) biases the encoder toward layer fidelity for
-        // IDE/code review content. displaySurface='monitor' is a hint only —
-        // browsers may still let the user pick a window/tab.
-        const stream = await navigator.mediaDevices.getDisplayMedia({
+        // Two-step ask: first try `ideal: 30` so monitor capture can run
+        // smoother where the OS allows it (most desktop browsers honour
+        // 30 fps for monitor surfaces; some screencast paths cap at 15).
+        // If the constraint is rejected, fall back to the original
+        // `ideal: 15, max: 30` ask. Re-throw user-cancellation
+        // (`NotAllowedError`) — there's nothing useful to do then, and
+        // re-prompting would reopen the picker.
+        const baseConstraints = (frameRate: MediaTrackConstraints['frameRate']): DisplayMediaStreamOptions => ({
             video: {
                 displaySurface: 'monitor',
-                frameRate: { ideal: 15, max: 30 },
+                frameRate,
             },
             audio: false,
         });
+        let stream: MediaStream;
+        try {
+            stream = await navigator.mediaDevices.getDisplayMedia(
+                baseConstraints({ ideal: 30 }));
+        } catch (e) {
+            const err = e as DOMException;
+            if (err?.name === 'NotAllowedError' || err?.name === 'NotFoundError')
+                throw e;
+
+            warnLog?.log(`captureScreenCast: ideal=30 ask rejected (${err?.name}), retrying with ideal=15:`, e);
+            stream = await navigator.mediaDevices.getDisplayMedia(
+                baseConstraints({ ideal: 15, max: 30 }));
+        }
         const track = stream.getVideoTracks()[0];
         // contentHint='text' tells the encoder to prioritize sharpness over
         // motion smoothness — critical for readable text on low-bitrate links.
