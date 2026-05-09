@@ -1,3 +1,4 @@
+import { VIDEO } from 'app-constants';
 import { drain, pipe, tap, type PipeOperator } from 'ix-ext';
 import type { DecodedFrame } from '../frame-envelopes';
 import { decode, type DecoderLike } from '../operators/decode';
@@ -55,6 +56,9 @@ export class Player {
 
         const buffer = new EncodedFrameBuffer({
             targetSpanMs: config.targetBufferSpanMs,
+            // Optional chain: tests may run before initAppConstants. The
+            // buffer falls back to a sensible default when undefined.
+            frameDurationMs: VIDEO?.frameDurationMs,
         });
         this.buffer = buffer;
         const session = this.session;

@@ -441,7 +441,7 @@ describe('video pipeline integration', () => {
             epoch: 1,
         } as unknown as MonotonicClock;
 
-        const buffer = new EncodedFrameBuffer({ targetSpanMs });
+        const buffer = new EncodedFrameBuffer({ targetSpanMs, frameDurationMs: 33.333 });
 
         async function* dtoStream(): AsyncIterable<VideoFrameDto> {
             for (const d of dtos) {

@@ -126,7 +126,7 @@ const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPlayer');
 // Receiver-side jitter buffer span in ms. Drives the worker's
 // `pacedEncodedBuffer` operator: smaller = lower latency, larger =
 // more network jitter absorption. Sized to match the server-side
-// `Constants.Video.TargetBufferDuration` (≈ 333ms, = 10 frames at
+// `Constants.Video.TargetBufferSpan` (≈ 333ms, = 10 frames at
 // 30fps); VideoQualityUI's `BufferDurationTooLowMs = TargetBuffer/3`
 // (≈ 111ms) means a 100ms target landed BELOW the "too low" threshold
 // → verdict pegged at -1 → Allocator capped at L0.
@@ -465,11 +465,11 @@ export class VideoPlayer {
         if (key === this.lastSentRenderHint) return undefined;
         this.lastSentRenderHint = key;
         void this.blazorRef.invokeMethodAsync(
-            'OnPlaybackRenderHint',
+            'OnPlaybackViewChanged',
             hint?.cssLongSide ?? 0,
             hint?.devicePixelRatio ?? 0,
             priority)
-            .catch((e: unknown) => warnLog?.log('OnPlaybackRenderHint error:', e));
+            .catch((e: unknown) => warnLog?.log('OnPlaybackViewChanged error:', e));
         debugLog?.log(
             `RenderSize hint: css=${hint?.cssLongSide ?? 0} dpr=${hint?.devicePixelRatio ?? 0} ` +
             `priority=${priority} (canvas=${this.canvas.clientWidth}x${this.canvas.clientHeight})`);

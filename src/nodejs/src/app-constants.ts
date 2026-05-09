@@ -63,7 +63,7 @@ export interface VideoConstants {
     readonly codecDefs: readonly VideoCodecDef[];
     // Derived in TS
     readonly frameDurationMs: number;            // 1000 / frameRate
-    readonly targetBufferDurationMs: number;     // (targetBufferSize / frameRate) * 1000
+    readonly targetBufferSpanMs: number;         // (targetBufferSize / frameRate) * 1000
     readonly keyFramePeriodSize: number;         // frameRate * keyFramePeriodMs / 1000
     readonly bufferHysteresisSize: number;       // floor(targetBufferSize / 2)
     readonly minBufferSize: number;              // targetBufferSize - bufferHysteresisSize
@@ -333,7 +333,7 @@ function expandVideo(video: VideoConstants): VideoConstants {
     return {
         ...video,
         frameDurationMs: 1000 / frameRate,
-        targetBufferDurationMs: (targetBufferSize / frameRate) * 1000,
+        targetBufferSpanMs: (targetBufferSize / frameRate) * 1000,
         keyFramePeriodSize,
         bufferHysteresisSize,
         minBufferSize: targetBufferSize - bufferHysteresisSize,

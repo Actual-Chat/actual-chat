@@ -89,7 +89,7 @@ describe('pacedEncodedBuffer', () => {
     it('drops deltas while in reset state and increments stats.chunksDroppedAtBuffer', async () => {
         const ac = new AbortController();
         const stats = createEmptyPlaybackStats(0);
-        const buffer = new EncodedFrameBuffer({ targetSpanMs: 100 });
+        const buffer = new EncodedFrameBuffer({ targetSpanMs: 100, frameDurationMs: 33.333 });
         const op = pacedEncodedBuffer({ buffer, abortSignal: ac.signal });
 
         const src = manualSource();
@@ -117,7 +117,7 @@ describe('pacedEncodedBuffer', () => {
     it('yields chunks once the buffer reaches target span', async () => {
         const ac = new AbortController();
         const stats = createEmptyPlaybackStats(0);
-        const buffer = new EncodedFrameBuffer({ targetSpanMs: 100 });
+        const buffer = new EncodedFrameBuffer({ targetSpanMs: 100, frameDurationMs: 33.333 });
         const op = pacedEncodedBuffer({ buffer, abortSignal: ac.signal });
 
         const src = manualSource();
@@ -154,7 +154,7 @@ describe('pacedEncodedBuffer', () => {
     it('honors reset state: deltas drop, then a fresh keyframe re-arms', async () => {
         const ac = new AbortController();
         const stats = createEmptyPlaybackStats(0);
-        const buffer = new EncodedFrameBuffer({ targetSpanMs: 50 });
+        const buffer = new EncodedFrameBuffer({ targetSpanMs: 50, frameDurationMs: 33.333 });
         const op = pacedEncodedBuffer({ buffer, abortSignal: ac.signal });
 
         const src = manualSource();
@@ -189,7 +189,7 @@ describe('pacedEncodedBuffer', () => {
     it('stop() unwinds the operator promptly even with chunks pending', async () => {
         const ac = new AbortController();
         const stats = createEmptyPlaybackStats(0);
-        const buffer = new EncodedFrameBuffer({ targetSpanMs: 1_000_000 }); // unreachable
+        const buffer = new EncodedFrameBuffer({ targetSpanMs: 1_000_000, frameDurationMs: 33.333 }); // unreachable
         const op = pacedEncodedBuffer({ buffer, abortSignal: ac.signal });
 
         const src = manualSource();
@@ -221,7 +221,7 @@ describe('pacedEncodedBuffer', () => {
     it('closes a chunk that arrives via in-flight next() after abort', async () => {
         const ac = new AbortController();
         const stats = createEmptyPlaybackStats(0);
-        const buffer = new EncodedFrameBuffer({ targetSpanMs: 1_000 });
+        const buffer = new EncodedFrameBuffer({ targetSpanMs: 1_000, frameDurationMs: 33.333 });
         const op = pacedEncodedBuffer({ buffer, abortSignal: ac.signal });
 
         // Cooperative source: return() resolves any pending next() with done=true,
@@ -278,12 +278,13 @@ describe('pacedEncodedBuffer', () => {
     it('drains as many chunks as the cushion permits in one batch', async () => {
         const ac = new AbortController();
         const stats = createEmptyPlaybackStats(0);
-        // Target 50 ms cushion. 5 chunks @ 33 ms cadence: span = 132.
-        // After draining chunk 0: residual = 99 (≥ 50)
-        // After draining chunk 1: residual = 66 (≥ 50)
-        // After draining chunk 2: residual = 33 (< 50) → stop
-        // So one batch should yield exactly chunks [0, 1, 2].
-        const buffer = new EncodedFrameBuffer({ targetSpanMs: 50 });
+        // Target 50 ms cushion. 5 chunks @ 33 ms cadence: spanMs = 132+33.333 = 165.333.
+        // After draining chunk 0: residual = 99+33.333 = 132.333 (≥ 50) → pull.
+        // After draining chunk 1: residual = 66+33.333 = 99.333  (≥ 50) → pull.
+        // After draining chunk 2: residual = 33+33.333 = 66.333  (≥ 50) → pull.
+        // After draining chunk 3: residual = 0+33.333  = 33.333  (< 50) → stop.
+        // So one batch should yield exactly chunks [0, 1, 2, 3].
+        const buffer = new EncodedFrameBuffer({ targetSpanMs: 50, frameDurationMs: 33.333 });
         const op = pacedEncodedBuffer({ buffer, abortSignal: ac.signal });
 
         const src = manualSource();
@@ -306,14 +307,13 @@ describe('pacedEncodedBuffer', () => {
         for (const c of cs) src.push(c);
         await tick();
 
-        expect(collected).toEqual([cs[0], cs[1], cs[2]]);
-        expect(buffer.count()).toBe(2);
+        expect(collected).toEqual([cs[0], cs[1], cs[2], cs[3]]);
+        expect(buffer.count()).toBe(1);
 
         src.end();
         ac.abort();
         await runPromise;
         expect(buffer.count()).toBe(0);
-        expect((cs[3].chunk as unknown as MockEncodedVideoChunk).closed).toBe(true);
         expect((cs[4].chunk as unknown as MockEncodedVideoChunk).closed).toBe(true);
     });
 });

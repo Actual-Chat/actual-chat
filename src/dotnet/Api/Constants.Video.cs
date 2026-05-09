@@ -10,16 +10,16 @@ public static partial class Constants
 
         // Target playback buffer (the only intentional live-video buffer).
         public const int TargetBufferSize = 10;
-        public static readonly TimeSpan TargetBufferDuration =
+        public static readonly TimeSpan TargetBufferSpan =
             TimeSpan.FromSeconds((double)TargetBufferSize / FrameRate); // 333.333 ms
-        public static readonly double TargetBufferDurationMs = TargetBufferDuration.TotalMilliseconds;
+        public static readonly double TargetBufferSpanMs = TargetBufferSpan.TotalMilliseconds;
 
         // Playback verdict thresholds (compared against per-tick EMAs of the
         // same `double Ms` type — direct comparison, no TimeSpan conversion).
         // BufferDurationTooLowMs sits at ⅓ of target so per-tick rounding
         // noise around the steady-state buffer can't flip the verdict.
-        public static readonly double BufferDurationTooLowMs = TargetBufferDurationMs / 3;
-        public static readonly double BufferDurationTooHighMs = TargetBufferDurationMs * 1.5;
+        public static readonly double BufferDurationTooLowMs = TargetBufferSpanMs / 3;
+        public static readonly double BufferDurationTooHighMs = TargetBufferSpanMs * 1.5;
 
         // Recording verdict thresholds — sender-ack age bands.
         public static readonly double LastAckBadMs = 2000;

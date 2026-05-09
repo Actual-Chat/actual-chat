@@ -220,7 +220,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         return RecomputePlaybackQuality(PlaybackQualityReason.Backoff, cancellationToken);
     }
 
-    public Task PushPlaybackRenderHint(
+    public Task OnPlaybackViewChanged(
         StreamId streamId,
         VideoSourceKind sourceKind,
         double renderCssLongSide,
@@ -233,8 +233,8 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         lock (_playbackLock) {
             if (!_playbackStartedAt.ContainsKey(streamId))
                 _playbackStartedAt[streamId] = CpuTimestamp.Now;
+            var startedAt = _playbackStartedAt.GetValueOrDefault(streamId);
             if (_playbackByStream.TryGetValue(streamId, out var state)) {
-                var startedAt = _playbackStartedAt.GetValueOrDefault(streamId);
                 var snapshot = state.Snapshot with {
                     Priority = priority,
                     CurrentMaxLayerId = currentMaxLayerId,
@@ -277,6 +277,10 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                     RequestedMaxLayerId: currentMaxLayerId,
                     DesiredVideoSize: desiredSize);
             }
+            var lastEvalAt = _playbackLastEvalAt.GetValueOrDefault(streamId);
+            if (!IsEvaluationDue(startedAt, lastEvalAt, force: true))
+                return Task.CompletedTask;
+
             _playbackLastEvalAt[streamId] = CpuTimestamp.Now;
         }
         return RecomputePlaybackQuality(PlaybackQualityReason.ActiveSetChanged, cancellationToken);
@@ -658,17 +662,15 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         return Math.Max(decayed, current);
     }
 
-    // True if the controller may make a new decision for a stream that began
-    // at `startedAt` and last evaluated at `lastEvalAt`. Cooldown for the
-    // first QcStartupCooldown of life; QcSettlingInterval cadence until
-    // QcSettlingDuration of age; QcSteadyInterval thereafter. Default
-    // `lastEvalAt` (= zero CpuTimestamp) lets the first eligible eval fire
-    // as soon as cooldown ends.
-    private static bool IsEvaluationDue(CpuTimestamp startedAt, CpuTimestamp lastEvalAt)
+    private static bool IsEvaluationDue(CpuTimestamp startedAt, CpuTimestamp lastEvalAt, bool force = false)
     {
+        // Cooldown is unconditional even with force=true: layer requests during
+        // the L2-keyframe wait + EMA(10) ramp-up are based on noisy signals.
         var age = startedAt.Elapsed;
         if (age < QcStartupCooldown)
             return false;
+        if (force)
+            return true;
         var sinceLast = lastEvalAt.Elapsed;
         var required = age < QcSettlingDuration ? QcSettlingInterval : QcSteadyInterval;
         return sinceLast >= required;
@@ -682,9 +684,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
 
     private static VideoSize GetDesiredVideoSize(PlaybackHealthSnapshot snapshot, VideoSourceKind sourceKind)
     {
-        var size = VideoSizeExt.FromLongSide(
-            snapshot.RenderCssLongSide,
-            snapshot.RenderDevicePixelRatio);
+        var size = snapshot.RenderVideoSize;
         return size == VideoSize.None ? GetTopVideoSize(sourceKind) : size;
     }
 
@@ -1239,7 +1239,11 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         double LatencyMsEma = 0,
         double RenderCssLongSide = 0,
         double RenderDevicePixelRatio = 0,
-        string Codec = "");
+        string Codec = "")
+    {
+        public VideoSize RenderVideoSize
+            => VideoSizeExt.FromLongSide(RenderCssLongSide, RenderDevicePixelRatio);
+    }
 
     private sealed record PlaybackHealthState(
         VideoSourceKind SourceKind,

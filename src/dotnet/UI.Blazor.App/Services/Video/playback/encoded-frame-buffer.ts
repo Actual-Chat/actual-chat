@@ -9,6 +9,12 @@ export type EncodedFrameBufferState = 'reset' | 'armed';
 
 export interface EncodedFrameBufferOptions {
     targetSpanMs: number;
+    /** Approximate duration of one source frame (ms). Used to attribute a
+     *  duration to the trailing chunk in `spanMs()` (its real duration
+     *  isn't known until the next chunk arrives). Production passes
+     *  `VIDEO.frameDurationMs`. Defaults to `1000/30` (= 33.333 ms) for
+     *  unit tests that don't initialize `VIDEO`. */
+    frameDurationMs?: number;
 }
 
 // Receiver-side jitter buffer for encoded video chunks. Pacing is
@@ -22,11 +28,13 @@ export interface EncodedFrameBufferOptions {
 // 'armed'. reset() returns to 'reset' and disposes buffered chunks.
 export class EncodedFrameBuffer {
     private readonly targetSpanMs: number;
+    private readonly frameDurationMs: number;
     private readonly chunks: ArrivedChunk[] = [];
     private state: EncodedFrameBufferState = 'reset';
 
     constructor(opts: EncodedFrameBufferOptions) {
         this.targetSpanMs = opts.targetSpanMs;
+        this.frameDurationMs = opts.frameDurationMs ?? 1000 / 30;
     }
 
     count(): number {
@@ -37,13 +45,16 @@ export class EncodedFrameBuffer {
         return this.state === 'reset';
     }
 
+    // Capture-time duration of buffered content (ms). The trailing-chunk's
+    // own duration isn't known until the next chunk arrives, so it's
+    // approximated as one nominal frame. 0 only when the buffer is empty.
     spanMs(): number {
         const n = this.chunks.length;
-        if (n < 2) return 0;
+        if (n === 0) return 0;
         const first = this.chunks[0];
         const last = this.chunks[n - 1];
         const span = last.capturedAt.timeMs - first.capturedAt.timeMs;
-        return span > 0 ? span : 0;
+        return Math.max(0, span) + this.frameDurationMs;
     }
 
     isReady(): boolean {

@@ -168,14 +168,14 @@
     }
 
     [JSInvokable]
-    public async Task OnPlaybackRenderHint(double renderCssLongSide, double renderDevicePixelRatio, int priority)
+    public async Task OnPlaybackViewChanged(double renderCssLongSide, double renderDevicePixelRatio, int priority)
     {
         if (_isDisposed)
             return;
 
         try {
             await Hub.VideoQualityUI
-                .PushPlaybackRenderHint(
+                .OnPlaybackViewChanged(
                     StreamInfo.StreamId,
                     StreamInfo.SourceKind,
                     renderCssLongSide,
@@ -185,7 +185,7 @@
                 .ConfigureAwait(false);
         }
         catch (Exception e) {
-            Log.LogWarning(e, "[VideoTrackPlayer #{StreamId}] OnPlaybackRenderHint failed", StreamInfo.StreamId);
+            Log.LogWarning(e, "[VideoTrackPlayer #{StreamId}] OnPlaybackViewChanged failed", StreamInfo.StreamId);
         }
     }
 
