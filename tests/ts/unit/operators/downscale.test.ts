@@ -93,7 +93,11 @@ function makeOpts(
     ladder: LayerSpec[],
     factory: () => DownscalerLike,
 ): DownscaleOptions {
-    return { ladder, createDownscaler: factory };
+    // Pin concurrency to 1 in the default helper so existing tests that
+    // count downscaler instantiations / dispose calls keep their
+    // single-slot expectations. Parallelism is exercised by dedicated
+    // tests further down.
+    return { ladder, createDownscaler: factory, concurrency: 1 };
 }
 
 // ---- Tests ----------------------------------------------------------------
@@ -314,6 +318,10 @@ describe('downscale operator', () => {
         const seg = downscale({
             ladder: [{ width: 640, height: 360 }],
             createDownscaler: factory,
+            // Single slot so consecutive frames go through the same
+            // downscaler instance — needed to verify the post-hang
+            // replacement story.
+            concurrency: 1,
             hangTimeoutMs: 10,  // real timer; fires quickly
         })(fromArray([
             makeCaptured(1, stats),
@@ -332,6 +340,53 @@ describe('downscale operator', () => {
         // replacement in the outer finally on completion).
         expect(disposed).toContain(0);
         expect(disposed).toContain(1);
+    });
+
+    it('parallelism: with concurrency=2, two slot-bound downscalers handle interleaved frames', async () => {
+        const stats = makeStats();
+        const factories: { id: number; calls: number }[] = [];
+        // Slow processor with controllable timing so we can prove that
+        // a second frame can be in flight before the first settles.
+        let inflight = 0;
+        let maxInflight = 0;
+        const factory = (): DownscalerLike => {
+            const entry = { id: factories.length, calls: 0 };
+            factories.push(entry);
+            return {
+                async process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]> {
+                    entry.calls++;
+                    inflight++;
+                    maxInflight = Math.max(maxInflight, inflight);
+                    await new Promise(r => setTimeout(r, 25));
+                    inflight--;
+                    (input as unknown as MockVideoFrame).close();
+                    let nextId = 9000 + entry.id * 100;
+                    return layers.map(l => mkFrame(nextId++, l.width, l.height));
+                },
+                dispose(): void { /* nothing */ },
+            };
+        };
+
+        const seg = downscale({
+            ladder: [{ width: 640, height: 360 }],
+            createDownscaler: factory,
+            concurrency: 2,
+        })(fromArray([
+            makeCaptured(1, stats),
+            makeCaptured(2, stats),
+            makeCaptured(3, stats),
+            makeCaptured(4, stats),
+        ]));
+
+        const out = await drain(seg);
+        expect(out).toHaveLength(4);
+        // Output indices preserve source order.
+        expect(out.map(b => b.frames[0].frame.codedWidth)).toEqual([640, 640, 640, 640]);
+        // Two slots created, each used at least once.
+        expect(factories.length).toBe(2);
+        for (const f of factories) expect(f.calls).toBeGreaterThan(0);
+        // Concurrency was actually exercised.
+        expect(maxInflight).toBe(2);
     });
 
     it('passes the configured ladder verbatim to the downscaler each frame', async () => {

@@ -1,5 +1,6 @@
-import { from, type PipeOperator } from 'ix-ext';
+import { type PipeOperator } from 'ix-ext';
 import type { CapturedBundle, CapturedFrame } from '../frame-envelopes';
+import { parallelMap } from './parallel-map';
 
 // Output dims for one layer (encoder dims for that layer).
 export interface LayerSpec {
@@ -27,17 +28,26 @@ export interface DownscaleOptions {
     /** Bottom-first ladder. `ladder[0]` is the base (lowest-resolution)
      *  layer; the last entry is the top layer. */
     ladder: readonly LayerSpec[];
-    /** Lazy-init: called once on first iteration so construction can
-     *  happen before the GPU device exists. */
+    /** Lazy-init: called per slot on first dispatch so construction can
+     *  happen before the GPU device exists. With concurrency > 1 the
+     *  factory is invoked once per slot. */
     createDownscaler: () => DownscalerLike;
+    /** Max concurrent process() calls — i.e. how many bundles can be
+     *  in-flight through the downscale stage at once. Each slot owns its
+     *  own downscaler instance. Default: 2. */
+    concurrency?: number;
     /** Max time `downscaler.process()` is allowed to take before the
      *  operator considers the GPU wedged: closes the downscaler,
-     *  recreates it on the next frame, marks the input frame's
+     *  recreates it on the next frame, marks the next emitted bundle's
      *  forceKeyframe so encoders restart cleanly. Default 1500 ms. */
     hangTimeoutMs?: number;
     /** Test seam for setTimeout. */
     setTimeoutFn?: (cb: () => void, ms: number) => unknown;
     clearTimeoutFn?: (handle: unknown) => void;
+}
+
+interface SlotState {
+    downscaler: DownscalerLike | null;
 }
 
 /**
@@ -46,6 +56,10 @@ export interface DownscaleOptions {
  * forceKeyframe, stats, sourceWidth/Height) — only `frame` differs.
  * Output is bottom-first: `frames[0]` = base layer, `frames[length-1]`
  * = top layer.
+ *
+ * Concurrency: up to `concurrency` bundles run through `process()`
+ * simultaneously, each on its own downscaler instance. Output ordering
+ * matches source order via `parallelMap`.
  *
  * Output ownership flips to downstream at `yield`. On the failure path
  * before yield, the operator closes any returned frames; the input
@@ -56,48 +70,51 @@ export function downscale(opts: DownscaleOptions): PipeOperator<CapturedFrame, C
         throw new Error('downscale: ladder must contain at least one layer');
     const ladder = opts.ladder.slice();
     const createDownscaler = opts.createDownscaler;
+    const concurrency = opts.concurrency ?? 2;
     const hangTimeoutMs = opts.hangTimeoutMs ?? 1_500;
     const setTimeoutFn = opts.setTimeoutFn ?? ((cb, ms): unknown => setTimeout(cb, ms));
     const clearTimeoutFn = opts.clearTimeoutFn ?? ((h: unknown): void => clearTimeout(h as ReturnType<typeof setTimeout>));
 
-    return source => from(downscaleAsync(
-        source, ladder, createDownscaler,
-        hangTimeoutMs, setTimeoutFn, clearTimeoutFn));
-}
-
-async function* downscaleAsync(
-    source: AsyncIterable<CapturedFrame>,
-    ladder: readonly LayerSpec[],
-    createDownscaler: () => DownscalerLike,
-    hangTimeoutMs: number,
-    setTimeoutFn: (cb: () => void, ms: number) => unknown,
-    clearTimeoutFn: (handle: unknown) => void,
-): AsyncIterable<CapturedBundle> {
-    let downscaler: DownscalerLike | null = null;
+    // Shared across slots: hang accounting + post-hang forceKeyframe
+    // latch. With single-threaded JS, the read-modify-write sequences in
+    // the slot map function are atomic w.r.t. each other; only awaits
+    // interleave, so reading these flags AFTER process() returns gives a
+    // consistent post-hang view.
     let consecutiveHangs = 0;
-    // Set after a hang; cleared once the post-hang bundle is yielded with
-    // forceKeyframe=true. Encoders downstream consume this flag and
-    // restart at a clean keyframe boundary.
     let forceKeyframeAfterHang = false;
-    try {
-        for await (const envelope of source) {
-            let frames: VideoFrame[] | null = null;
-            let mustClose = true;
-            let timedOut = false;
-            try {
-                downscaler ??= createDownscaler();
-                // Race process() against a hang timeout. On timeout the
-                // downscaler's process() owns the input frame per its
-                // contract — we cannot reach in to close it. Drop the
-                // downscaler reference so the next iteration creates a
-                // fresh one; the next bundle is force-keyframed so the
-                // encoder chain re-anchors.
+
+    const slotStates: (SlotState | undefined)[] = new Array<SlotState | undefined>(concurrency).fill(undefined);
+
+    return source => {
+        const stage = parallelMap<CapturedFrame, CapturedBundle | null>({
+            concurrency,
+            onSlotInit: slotId => {
+                slotStates[slotId] = { downscaler: null };
+            },
+            onSlotDispose: slotId => {
+                const s = slotStates[slotId];
+                if (s?.downscaler && typeof s.downscaler.dispose === 'function') {
+                    try { s.downscaler.dispose(); } catch { /* ignore */ }
+                }
+                slotStates[slotId] = undefined;
+            },
+            onUnconsumedResult: bundle => {
+                if (bundle) closeBundleFrames(bundle);
+            },
+            map: async (envelope, slotId) => {
+                const slot = slotStates[slotId]!;
+                if (slot.downscaler === null)
+                    slot.downscaler = createDownscaler();
+                const downscaler = slot.downscaler;
+
+                let frames: VideoFrame[] | null = null;
+                let timedOut = false;
+                let raced: VideoFrame[] | 'timeout';
                 const processPromise = downscaler.process(envelope.frame, ladder);
                 let timerHandle: unknown = null;
                 const timeoutP = new Promise<'timeout'>(resolve => {
                     timerHandle = setTimeoutFn(() => resolve('timeout'), hangTimeoutMs);
                 });
-                let raced: VideoFrame[] | 'timeout';
                 try {
                     raced = await Promise.race([processPromise, timeoutP]);
                 } finally {
@@ -110,29 +127,28 @@ async function* downscaleAsync(
                     consecutiveHangs++;
                     forceKeyframeAfterHang = true;
                     // Detach: any frames the stuck process() eventually
-                    // produces will be closed via the tail handler below
-                    // when the promise finally settles.
+                    // produces will be closed via this tail handler. The
+                    // input frame is owned by process() per its contract.
                     void processPromise.then(
                         produced => { closeFrames(produced); },
                         () => { /* downscaler error already logged */ },
                     );
-                    const stuck = downscaler;
-                    downscaler = null;
+                    const stuck = slot.downscaler;
+                    slot.downscaler = null;
                     if (stuck && typeof stuck.dispose === 'function') {
                         try { stuck.dispose(); } catch { /* ignore */ }
                     }
                     if (consecutiveHangs >= 4)
                         throw new Error(
                             `downscale: hang watchdog fired ${consecutiveHangs} times in a row, giving up`);
-                    // Input frame ownership: the original process() call
-                    // already took ownership per the contract. Don't
-                    // double-close.
-                    mustClose = false;
-                    continue;
+                    // Skip this bundle. parallelMap yields nothing for
+                    // null filter below.
+                    return null;
                 }
                 consecutiveHangs = 0;
                 frames = raced;
                 if (frames.length !== ladder.length) {
+                    closeFrames(frames);
                     throw new Error(
                         `downscale: downscaler returned ${frames.length} frames, expected ${ladder.length}`);
                 }
@@ -148,30 +164,37 @@ async function* downscaleAsync(
                 for (let i = 0; i < frames.length; i++) {
                     layers.push(makeLayerEnvelope(layerSource, frames[i]));
                 }
-                const bundle: CapturedBundle = {
+                // Reference void so the linter doesn't flag the early-fail
+                // branch helper as unused after we move ownership to the
+                // returned bundle.
+                void timedOut;
+                return {
                     frames: layers,
                     stats: envelope.stats,
                 };
-                frames = null;
-                mustClose = false;
-                yield bundle;
-            } finally {
-                if (frames)
-                    closeFrames(frames);
-                if (mustClose && !timedOut)
-                    try { envelope.frame.close(); } catch { /* ignore */ }
+            },
+        });
+
+        // Skip post-hang null entries (those are the "input frame
+        // consumed but no bundle produced" case).
+        const op = stage(source);
+        return (async function* (): AsyncIterable<CapturedBundle> {
+            for await (const bundle of op) {
+                if (bundle !== null) yield bundle;
             }
-        }
-    } finally {
-        if (downscaler && typeof downscaler.dispose === 'function') {
-            try { downscaler.dispose(); } catch { /* ignore */ }
-        }
-    }
+        })() as unknown as ReturnType<PipeOperator<CapturedFrame, CapturedBundle>>;
+    };
 }
 
 function closeFrames(frames: readonly VideoFrame[]): void {
     for (const frame of frames) {
         try { frame.close(); } catch { /* ignore */ }
+    }
+}
+
+function closeBundleFrames(bundle: CapturedBundle): void {
+    for (const layer of bundle.frames) {
+        try { layer.frame.close(); } catch { /* ignore */ }
     }
 }
 

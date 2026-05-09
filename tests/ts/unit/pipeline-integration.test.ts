@@ -322,7 +322,7 @@ describe('video pipeline integration', () => {
             attachSourceDims(),
             forceKeyframeOnDimChange(),
             dropDimMismatch({ getExpectedDims: () => encDims }),
-            downscale({ ladder: [encDims], createDownscaler: () => new IdentityDownscaler() }),
+            downscale({ ladder: [encDims], createDownscaler: () => new IdentityDownscaler(), concurrency: 1 }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
@@ -377,7 +377,11 @@ describe('video pipeline integration', () => {
             attachSourceDims(),
             forceKeyframeOnDimChange(),
             dropDimMismatch({ getExpectedDims: () => expectedSourceDims }),
-            downscale({ ladder, createDownscaler: () => new IdentityDownscaler() }),
+            // concurrency: 1 keeps the source-pull cadence serial in the
+            // mock-clock environment used by this E2E (otherwise multiple
+            // frames stamp the same mockPerfMs before sender.afterSend
+            // advances it, collapsing distinct source offsets).
+            downscale({ ladder, createDownscaler: () => new IdentityDownscaler(), concurrency: 1 }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
@@ -566,7 +570,7 @@ describe('video pipeline integration', () => {
             attachSourceDims(),
             forceKeyframeOnDimChange(),
             dropDimMismatch({ getExpectedDims: () => encDims }),
-            downscale({ ladder: [encDims], createDownscaler: () => new IdentityDownscaler() }),
+            downscale({ ladder: [encDims], createDownscaler: () => new IdentityDownscaler(), concurrency: 1 }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
@@ -662,7 +666,7 @@ describe('video pipeline integration', () => {
                 attachSourceDims(),
                 forceKeyframeOnDimChange(),
                 dropDimMismatch({ getExpectedDims: () => encDims }),
-                downscale({ ladder: [encDims], createDownscaler: () => new IdentityDownscaler() }),
+                downscale({ ladder: [encDims], createDownscaler: () => new IdentityDownscaler(), concurrency: 1 }),
                 applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
             );
             const senderPipe = pipe(
