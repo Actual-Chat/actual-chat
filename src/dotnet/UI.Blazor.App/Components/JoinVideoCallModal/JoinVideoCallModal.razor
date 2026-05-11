@@ -4,11 +4,13 @@
 @using ActualChat.Streaming
 @using ActualChat.Hosting
 @using ActualChat.UI
+@using ActualChat.UI.Blazor.App.Events
 @using ActualChat.UI.Blazor.App.Module
 @{
     var m = State.Value;
 }
 
+<OnUIEvent TEvent="@JoinVideoCallCameraSelectedEvent" Handler="OnCameraSelectedEvent"/>
 <DialogFrame
     Class="join-video-call-modal modal-sm"
     Title="@Title">
@@ -74,35 +76,19 @@
             if (ScreenSize.IsWide()) {
                 @* Desktop toolbar *@
                 <div class="c-toolbar">
-                    @* Camera pill with chevron + dropdown *@
-                    <div class="camera-pill-wrapper">
-                        <div class="toolbar-pill @(_isVideoOn ? "active" : "")">
-                            <HeaderButton Class="pill-action" Click="OnVideoToggle">
-                                <i class="icon-video text-2xl"></i>
-                            </HeaderButton>
-                            <span class="pill-divider"></span>
-                            <HeaderButton Class="pill-chevron" Click="OnCameraDropdownToggle">
-                                <i class="icon-chevron-compact-down text-xl"></i>
-                            </HeaderButton>
-                        </div>
-                        @if (_isCameraDropdownOpen) {
-                            <div class="camera-dropdown-backdrop" @onclick="OnCameraDropdownToggle"></div>
-                            <div class="camera-dropdown">
-                                <div class="camera-dropdown-header">Select a camera</div>
-                                @foreach (var device in _videoDevices) {
-                                    var isSelected = device == _selectedDevice;
-                                    <div class="camera-dropdown-item"
-                                         @onclick="@(() => OnCameraSelected(device))">
-                                        @if (isSelected) {
-                                            <i class="icon-checkmark-simple text-primary text-lg"></i>
-                                        } else {
-                                            <span class="w-[18px]"></span>
-                                        }
-                                        <span class="truncate">@device.Label</span>
-                                    </div>
-                                }
-                            </div>
-                        }
+                    @* Camera pill with chevron menu *@
+                    <div class="toolbar-pill @(_isVideoOn ? "active" : "")">
+                        <HeaderButton Class="pill-action" Click="OnVideoToggle">
+                            <i class="icon-video text-2xl"></i>
+                        </HeaderButton>
+                        <span class="pill-divider"></span>
+                        <HeaderButton
+                            Class="pill-chevron"
+                            data-menu="@(MenuRef.New<JoinVideoCallCameraMenu>(_selectedDevice?.DeviceId ?? "").ToString())"
+                            data-menu-trigger="@MenuTrigger.Primary"
+                            data-menu-placement="@(FloatingPosition.Bottom.ToPositionString())">
+                            <i class="icon-chevron-compact-down text-xl"></i>
+                        </HeaderButton>
                     </div>
 
                     @* Mic button *@
@@ -184,7 +170,6 @@
     private bool _isVideoOn = true;
     private bool _isBlurEnabled;
     private bool _isCameraMirrored = true;
-    private bool _isCameraDropdownOpen;
     private bool _isRecording;
     private CameraPermissionState _permission = CameraPermissionState.Unknown;
     private List<VideoDevice> _videoDevices = new();
@@ -447,14 +432,8 @@
         await _session.SetVideoEnabled(_isVideoOn);
     }
 
-    private void OnCameraDropdownToggle() {
-        _isCameraDropdownOpen = !_isCameraDropdownOpen;
-        StateHasChanged();
-    }
-
     private async Task OnCameraSelected(VideoDevice device) {
         _selectedDevice = device;
-        _isCameraDropdownOpen = false;
         StateHasChanged();
 
         await Hub.LocalSettings.LocalAppSettings().Update(
@@ -464,6 +443,11 @@
             return;
 
         await _session.ChangeCamera(device.DeviceId);
+    }
+
+    private Task OnCameraSelectedEvent(JoinVideoCallCameraSelectedEvent @event, CancellationToken cancellationToken) {
+        var device = _videoDevices.FirstOrDefault(d => d.DeviceId == @event.DeviceId);
+        return device is null ? Task.CompletedTask : OnCameraSelected(device);
     }
 
     private async Task OnSwitchCamera() {

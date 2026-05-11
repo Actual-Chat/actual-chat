@@ -1,0 +1,38 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Events
+@inherits Menu<AppUIHub>
+
+<div class="join-video-call-camera-menu">
+    <div class="c-header">Select a camera</div>
+    @if (_devices is null) {
+        <div class="c-loading">Loading…</div>
+    } else if (_devices.Length == 0) {
+        <div class="c-empty">No cameras detected</div>
+    } else {
+        @foreach (var device in _devices) {
+            var isSelected = device.DeviceId == _selectedDeviceId;
+            <MenuEntry
+                Class="@(isSelected ? "selected" : "")"
+                Icon="@(isSelected ? "icon-checkmark-simple" : "icon-checkmark-simple invisible")"
+                Text="@device.Label"
+                Click="@(() => OnClick(device.DeviceId))">
+            </MenuEntry>
+        }
+    }
+</div>
+
+@code {
+    private VideoDevice[]? _devices;
+    private string _selectedDeviceId = "";
+
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+
+    protected override async Task OnParametersSetAsync() {
+        _selectedDeviceId = Arguments.Length > 0 ? Arguments[0] : "";
+        _devices = await ChatVideoUI.EnumerateVideoDevices().ConfigureAwait(true);
+    }
+
+    private async Task OnClick(string deviceId) {
+        await UIEventHub.Publish(new JoinVideoCallCameraSelectedEvent(deviceId));
+    }
+}

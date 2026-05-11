@@ -124,55 +124,20 @@
     @apply bg-separator;
 }
 
-/* Allow dropdown to escape modal overflow clipping */
-.modal-chrome:has(.join-video-call-modal) {
-    @apply overflow-visible;
+/* Camera selector menu (rendered by global MenuHost) */
+.join-video-call-camera-menu {
+    @apply flex-y;
+    @apply min-w-[15rem] max-w-[20rem];
 }
-.join-video-call-modal.modal-frame {
-    @apply overflow-visible;
+.join-video-call-camera-menu .c-header {
+    @apply text-caption-1 text-02 px-2 py-1;
 }
-.join-video-call-modal .dialog-body {
-    @apply overflow-visible;
+.join-video-call-camera-menu .c-loading,
+.join-video-call-camera-menu .c-empty {
+    @apply text-caption-1 text-03 px-2 py-2;
 }
-
-/* Camera pill wrapper + dropdown */
-.join-video-call-modal .camera-pill-wrapper {
-    @apply relative;
-    @apply justify-self-end;
-}
-.join-video-call-modal .camera-dropdown-backdrop {
-    @apply fixed inset-0 z-40;
-}
-.join-video-call-modal .camera-dropdown {
-    @apply absolute top-full left-1/2 z-50;
-    @apply flex-y gap-0.5;
-    @apply mt-2 p-2;
-    @apply rounded-lg border border-separator;
-    @apply bg-01;
-    @apply shadow-context;
-    @apply -translate-x-1/2;
-    @apply overflow-y-auto;
-    max-height: 30vh;
-}
-.join-video-call-modal .camera-dropdown-header {
-    @apply text-caption-1 text-02 px-4 h-6 flex items-center;
-}
-.join-video-call-modal .camera-dropdown-item {
-    @apply flex items-center gap-x-4;
-    @apply h-12;
-    @apply px-4;
-    @apply rounded-lg;
-    @apply text-01;
-    @apply cursor-pointer;
-}
-body.hoverable .join-video-call-modal .camera-dropdown-item:hover {
-    @apply bg-hover;
-}
-.join-video-call-modal .camera-dropdown-item.disabled {
-    @apply opacity-50 cursor-default pointer-events-none;
-}
-.join-video-call-modal .camera-dropdown-divider {
-    @apply h-px bg-separator mx-4;
+.join-video-call-camera-menu .ac-menu-item.selected .ac-menu-icon > i {
+    @apply text-primary;
 }
 
 /* Mic button — recording state */
