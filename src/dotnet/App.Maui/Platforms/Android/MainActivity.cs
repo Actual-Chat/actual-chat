@@ -13,6 +13,7 @@ using Uri = Android.Net.Uri;
 
 namespace ActualChat.App.Maui;
 
+[MetaData("android.app.shortcuts", Resource = "@xml/share_targets")]
 [Activity(
     Name = MauiSettings.IsDevApp ? "chat.actual.dev.app.MainActivity" : "actual.chat.app.MainActivity",
     Theme = "@style/SplashTheme",

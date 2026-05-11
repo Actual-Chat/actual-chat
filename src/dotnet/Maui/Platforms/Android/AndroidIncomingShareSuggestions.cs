@@ -13,9 +13,9 @@ public class AndroidIncomingShareSuggestions(IServiceProvider services) : Incomi
 {
     private const int AdaptiveIconSize = 108;
     private const int MaxShortLabelLength = 25;
-    private int _nextRank;
 
     private IconUI IconUI => field ??= Services.GetRequiredService<IconUI>();
+    private UrlMapper UrlMapper => field ??= Services.UrlMapper();
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.ShareSuggestions);
 
     protected override async Task SuggestInternal(ContactId contactId, CancellationToken cancellationToken)
@@ -32,39 +32,31 @@ public class AndroidIncomingShareSuggestions(IServiceProvider services) : Incomi
                 .Build();
 
             var context = Platform.AppContext;
-            var chatUrl = $"https://{MauiSettings.Host}/chat/{chat.Id}";
+            var localId = Links.Chat(chat.Id);
+            var chatUrl = UrlMapper.ToAbsolute(localId);
             var intent = new Intent(Intent.ActionDefault);
             intent.SetData(Android.Net.Uri.Parse(chatUrl));
-
-            var categories = new HashSet<string> {
-                "com.android.sharing_shortcut.TEXT",
-                "com.android.sharing_shortcut.IMAGE",
-            };
 
             var shortLabel = chat.Title.Length > MaxShortLabelLength
                 ? chat.Title[..MaxShortLabelLength]
                 : chat.Title;
 
-            var rank = Interlocked.Increment(ref _nextRank);
-            var shortcutInfo = new ShortcutInfoCompat.Builder(context, chat.Id.Value)!
+            var shortcutInfo = new ShortcutInfoCompat.Builder(context, chat.Id.Value)
                 .SetShortLabel(shortLabel)!
                 .SetLongLabel(chat.Title)!
                 .SetIcon(iconCompat)!
                 .SetIntent(intent)!
                 .SetLongLived(true)!
-                .SetCategories(categories)!
+                .SetCategories(["chat.actual.app.category.SHARE_TARGET"])!
                 .SetPerson(person)!
-                .SetRank(rank)!
                 .Build();
 
-            await MainThread.InvokeOnMainThreadAsync(
-                () => ShortcutManagerCompat.PushDynamicShortcut(context, shortcutInfo)
-            ).ConfigureAwait(false);
+            ShortcutManagerCompat.PushDynamicShortcut(context, shortcutInfo);
 
             DebugLog?.LogInformation("Pushed dynamic shortcut for chat {ChatId}", chat.Id);
         }
         finally {
-            iconCompat?.Dispose();
+            iconCompat.Dispose();
         }
     }
 
