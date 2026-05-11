@@ -267,6 +267,7 @@ export class VideoRecorder {
     // Configuration cached for restart on switchCamera / codec switch /
     // simulcast change.
     private selectedCameraDeviceId: string | null = null;
+    private pendingFacingMode: 'user' | 'environment' | null = null;
     private chatId = '';
     private isBlurEnabled = false;
     private disposed = false;
@@ -321,10 +322,13 @@ export class VideoRecorder {
 
     static async enumerateDevices(): Promise<VideoDevice[]> {
         try {
-            const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
-            tempStream.getTracks().forEach(t => t.stop());
+            let devices = await navigator.mediaDevices.enumerateDevices();
+            if (!devices.some(d => d.kind === 'videoinput' && d.label)) {
+                const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                tempStream.getTracks().forEach(t => t.stop());
+                devices = await navigator.mediaDevices.enumerateDevices();
+            }
 
-            const devices = await navigator.mediaDevices.enumerateDevices();
             const videoInputs = devices.filter(d => d.kind === 'videoinput');
 
             const selected = DeviceInfo.isMobile
@@ -392,11 +396,43 @@ export class VideoRecorder {
     // ---- Public methods called from Blazor (preserved surface) -----------
 
     public setSelectedCamera(deviceId: string): void {
+        this.pendingFacingMode = null;
         this.selectedCameraDeviceId = deviceId;
         infoLog?.log('Selected camera device:', deviceId);
     }
 
+    // Flips front/back by facingMode so mobile browsers pick the primary lens
+    // for that facing instead of cycling through rear ultrawide/tele lenses.
+    public async switchFacing(): Promise<CameraSwitchResult> {
+        if (!this.chatId) {
+            infoLog?.log('switchFacing: not yet recording');
+            return { success: false, deviceId: null };
+        }
+
+        const current = this.inputTrack?.getSettings().facingMode ?? null;
+        const target: 'user' | 'environment' = current === 'environment' ? 'user' : 'environment';
+        infoLog?.log(`switchFacing: ${current ?? '(unknown)'} -> ${target}`);
+
+        if (this.worker) {
+            this.cleanupPreviewTrack();
+            try {
+                await this.worker.stop();
+            } catch (e) {
+                warnLog?.log('Stop during facing switch failed:', e);
+            }
+            this.tearDownWorker();
+            this.isRecording = false;
+            this.setRecordingState('stopped');
+        }
+
+        this.pendingFacingMode = target;
+        await this.startRecording(this.chatId, this.audienceCodecs);
+        const deviceId = this.inputTrack?.getSettings().deviceId ?? this.selectedCameraDeviceId;
+        return { success: this.isRecording, deviceId: this.isRecording ? deviceId ?? null : null };
+    }
+
     public async switchCamera(deviceId: string): Promise<void> {
+        this.pendingFacingMode = null;
         this.selectedCameraDeviceId = deviceId;
         infoLog?.log('Switching camera to:', deviceId);
 
@@ -600,10 +636,12 @@ export class VideoRecorder {
 
             // Acquire the camera track on main thread.
             const track = await MediaCapture.captureCameraStream({
-                deviceId: this.selectedCameraDeviceId ?? undefined,
+                deviceId: this.pendingFacingMode ? undefined : this.selectedCameraDeviceId ?? undefined,
+                facingMode: this.pendingFacingMode ?? undefined,
                 frameRate: targetFramerate,
                 width: captureWidth,
                 height: captureHeight,
+                preferHighRes: this.pendingFacingMode != null,
             });
             this.inputTrack = track;
             this.previewTrack = track;
@@ -612,6 +650,9 @@ export class VideoRecorder {
             infoLog?.log(`Track resolution: ${trackSettings.width}x${trackSettings.height}, facingMode=${trackSettings.facingMode ?? '(none)'}`);
             this.cameraWidth = trackSettings.width ?? captureWidth;
             this.cameraHeight = trackSettings.height ?? captureHeight;
+            if (trackSettings.deviceId)
+                this.selectedCameraDeviceId = trackSettings.deviceId;
+            this.pendingFacingMode = null;
 
             void this.blazorRef.invokeMethodAsync(
                 'OnTrackSettings',
@@ -633,6 +674,7 @@ export class VideoRecorder {
 
             infoLog?.log('Video recording started');
         } catch (error) {
+            this.pendingFacingMode = null;
             this.setRecordingState('error');
             errorLog?.log('Failed to start recording:', error);
             const message = await this.describeStartError(error);
@@ -1468,6 +1510,11 @@ export class VideoRecorder {
         if (categories.has('h264')) ordered.push('h264');
         return ordered;
     }
+}
+
+interface CameraSwitchResult {
+    success: boolean;
+    deviceId: string | null;
 }
 
 // ---- Debug-log usage suppressor ------------------------------------------

@@ -50,7 +50,14 @@ export class JoinVideoCallModal {
     // ---------- Join mode: own stream ---------------------------------------
 
     public async startPreview(deviceId?: string): Promise<boolean> {
-        infoLog?.log(`startPreview: deviceId=${deviceId ?? '(default)'}`);
+        return this.startPreviewInternal({ deviceId });
+    }
+
+    private async startPreviewInternal(
+        options: { deviceId?: string; facingMode?: 'user' | 'environment' },
+    ): Promise<boolean> {
+        infoLog?.log(
+            `startPreview: deviceId=${options.deviceId ?? '(default)'}, facingMode=${options.facingMode ?? '(none)'}`);
         await this.stopPreview();
 
         // Browser needs time to release camera hardware after track.stop().
@@ -67,7 +74,9 @@ export class JoinVideoCallModal {
 
         try {
             const track = await MediaCapture.captureCameraStream({
-                deviceId: deviceId,
+                deviceId: options.deviceId,
+                facingMode: options.facingMode,
+                preferHighRes: options.facingMode != null && options.deviceId == null,
                 maxRetries: 3,
             });
             // If the modal was closed while getUserMedia was in flight, stop the
@@ -133,6 +142,21 @@ export class JoinVideoCallModal {
             await this.startBlurPreview();
         }
         return success;
+    }
+
+    // Flips front/back by facingMode so the browser picks the primary lens per facing.
+    public async switchFacing(): Promise<CameraSwitchResult> {
+        const current = this.track?.getSettings().facingMode ?? null;
+        const target: 'user' | 'environment' = current === 'environment' ? 'user' : 'environment';
+        infoLog?.log(`switchFacing: ${current ?? '(unknown)'} -> ${target}`);
+        const wasBlurActive = this.isBlurActive;
+        const success = await this.startPreviewInternal({ facingMode: target });
+        if (success) {
+            this.selectedDeviceId = this.track?.getSettings().deviceId ?? null;
+            if (wasBlurActive)
+                await this.startBlurPreview();
+        }
+        return { success, deviceId: success ? this.selectedDeviceId : null };
     }
 
     // Returns deviceId + facingMode for the modal's own preview track (Join mode).
@@ -220,4 +244,9 @@ export class JoinVideoCallModal {
         void this.stopBlurPreview();
         void this.stopPreview();
     }
+}
+
+interface CameraSwitchResult {
+    success: boolean;
+    deviceId: string | null;
 }

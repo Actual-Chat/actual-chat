@@ -28,6 +28,7 @@ public sealed class VideoRecorder : IAsyncDisposable
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     public VideoSourceKind Kind { get; }
+    public string DeviceId => _deviceId;
     public Task WhenStopped => _whenStoppedTaskCompletionSource.Task;
 
     public static async Task<VideoRecorder> Create(AppUIHub hub, VideoSourceKind kind = VideoSourceKind.Camera)
@@ -101,6 +102,21 @@ public sealed class VideoRecorder : IAsyncDisposable
 
         _deviceId = deviceId;
         return _jsRef.InvokeVoidAsync("switchCamera", cancellationToken, deviceId).AsTask();
+    }
+
+    public async Task<bool> SwitchFacing(CancellationToken cancellationToken)
+    {
+        // Clears _deviceId so a later state-sync SwitchCamera with a stale saved deviceId doesn't no-op.
+        _deviceId = "";
+        var result = await _jsRef
+            .InvokeAsync<CameraSwitchResult>("switchFacing", cancellationToken)
+            .ConfigureAwait(false);
+        if (!result.Success)
+            return false;
+
+        if (!string.IsNullOrEmpty(result.DeviceId))
+            _deviceId = result.DeviceId;
+        return true;
     }
 
     public Task ToggleBlur(bool enabled, CancellationToken cancellationToken)
@@ -366,3 +382,5 @@ public sealed class VideoRecorder : IAsyncDisposable
                 senderMaxQueueDepth));
     }
 }
+
+public sealed record CameraSwitchResult(bool Success, string? DeviceId);

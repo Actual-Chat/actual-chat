@@ -6,10 +6,12 @@ const { infoLog } = getLogs('VideoRecorder');
 
 export interface CameraCaptureOptions {
     deviceId?: string;
+    facingMode?: 'user' | 'environment';
     width?: number;
     height?: number;
     frameRate?: number;
     maxRetries?: number;
+    preferHighRes?: boolean;
 }
 
 export class MediaCapture {
@@ -85,8 +87,12 @@ export class MediaCapture {
         const requestedSmall = options.width && options.height
             ? Math.min(options.width, options.height)
             : 0;
-        const targetLarge = Math.max(requestedLarge, 1280);
-        const targetSmall = Math.max(requestedSmall, 720);
+        const targetLarge = options.preferHighRes
+            ? Math.max(requestedLarge, 3840)
+            : Math.max(requestedLarge, 1280);
+        const targetSmall = options.preferHighRes
+            ? Math.max(requestedSmall, 2160)
+            : Math.max(requestedSmall, 720);
         const minLarge = 1280;
         const minSmall = 720;
         const max = targetLarge * 2;
@@ -131,6 +137,8 @@ export class MediaCapture {
         const videoConstraints: MediaTrackConstraints = {};
         if (options.deviceId)
             videoConstraints.deviceId = { exact: options.deviceId };
+        else if (options.facingMode)
+            videoConstraints.facingMode = { exact: options.facingMode };
         if (options.frameRate)
             videoConstraints.frameRate = { ideal: options.frameRate, max: options.frameRate };
         if (size) {

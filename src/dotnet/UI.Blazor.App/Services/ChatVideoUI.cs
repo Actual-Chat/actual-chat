@@ -33,6 +33,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     // Set when a remote stream completes normally (sender intentionally ended).
     // Consumed by VideoPanelContent to suppress "Connecting..." overlay.
     private volatile int _remoteStreamEndedIntentionally;
+    internal VideoRecorder? ActiveCameraRecorder { get; set; }
 
     /// <summary>
     /// Raised to ask <see cref="VideoStreamingPreview"/> consumers to pause (true) /
@@ -329,7 +330,44 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         }
     }
 
-    public async Task SwitchCamera()
+    public Task SwitchCamera()
+        => ExecuteCameraSwitch(
+            LastCameraFacingMode,
+            flipFacing: SwitchActiveCameraFacing,
+            cycleDevice: CycleCameraByDeviceId);
+
+    internal async Task ExecuteCameraSwitch(
+        string? currentFacingMode,
+        Func<Task<bool>> flipFacing,
+        Func<Task> cycleDevice)
+    {
+        if (Hub.BrowserInfo.IsMobile && !string.IsNullOrEmpty(currentFacingMode)) {
+            if (await flipFacing().ConfigureAwait(false))
+                return;
+        }
+        await cycleDevice().ConfigureAwait(false);
+    }
+
+    internal async Task<bool> SwitchActiveCameraFacing()
+    {
+        var recorder = ActiveCameraRecorder;
+        if (recorder is null)
+            return false;
+
+        var success = await recorder.SwitchFacing(CancellationToken.None).ConfigureAwait(false);
+        if (!success)
+            return false;
+
+        var deviceId = recorder.DeviceId;
+        if (!string.IsNullOrEmpty(deviceId)) {
+            await LocalSettings.LocalAppSettings()
+                .Update(s => s with { SelectedCameraDeviceId = deviceId }).ConfigureAwait(false);
+            SetSelectedCamera(deviceId);
+        }
+        return true;
+    }
+
+    private async Task CycleCameraByDeviceId()
     {
         var devices = await EnumerateVideoDevices().ConfigureAwait(false);
         if (devices.Length <= 1)

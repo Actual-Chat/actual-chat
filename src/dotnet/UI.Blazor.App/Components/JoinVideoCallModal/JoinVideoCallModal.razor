@@ -467,6 +467,35 @@
     }
 
     private async Task OnSwitchCamera() {
+        if (_session is null)
+            return;
+
+        await ChatVideoUI.ExecuteCameraSwitch(
+            _currentFacingMode,
+            flipFacing: TrySwitchFacing,
+            cycleDevice: CycleCamera);
+    }
+
+    private async Task<bool> TrySwitchFacing() {
+        if (PreviewState is not CameraState.On)
+            return false;
+
+        var result = await _session!.SwitchFacing();
+        if (!result.Success)
+            return false;
+
+        if (!string.IsNullOrEmpty(result.DeviceId)) {
+            _selectedDevice = _videoDevices.FirstOrDefault(d => d.DeviceId == result.DeviceId)
+                ?? _selectedDevice;
+            await Hub.LocalSettings.LocalAppSettings().Update(
+                s => s with { SelectedCameraDeviceId = result.DeviceId });
+        }
+        await ApplyMirrorForCurrentCamera();
+        StateHasChanged();
+        return true;
+    }
+
+    private async Task CycleCamera() {
         if (_videoDevices.Count <= 1)
             return;
 
@@ -568,46 +597,20 @@
     // Nested types
 
     /// <summary>
-    /// Strategy for the modal's live preview. <see cref="LocalVideoSession"/> drives
-    /// an own-stream preview via the modal's JS instance (Join mode);
-    /// <see cref="RecorderVideoSession"/> follows the active <c>VideoRecorder</c>
-    /// through <see cref="ChatVideoUI"/> (Settings mode). The session owns the
-    /// <see cref="CameraState"/> machine and notifies the component via
-    /// <see cref="StateChanged"/>; the first actually-rendered frame is funneled
-    /// into <see cref="NotifyFirstFrameRendered"/>.
+    /// Strategy for the modal's live preview: own-stream in Join mode,
+    /// active-recorder preview in Settings mode.
     /// </summary>
     private interface IVideoSession
     {
-        /// <summary>Current camera/preview state. Transitions are driven by the
-        /// session itself; subscribe to <see cref="StateChanged"/> to re-render.</summary>
         CameraState State { get; }
 
         event Action StateChanged;
 
-        /// <summary>Engage the preview source. Join mode: acquires a MediaStreamTrack
-        /// and starts the canvas renderer, ending in <c>On</c> or <c>Unavailable</c>.
-        /// Settings mode: attaches the canvas to the active recorder's preview
-        /// pipeline and stays in <c>Starting</c> until
-        /// <see cref="NotifyFirstFrameRendered"/> is called.</summary>
         Task Start();
-
-        /// <summary>Switch the active camera. Join mode: restarts the own stream.
-        /// Settings mode: pushes the selection into <see cref="ChatVideoUI"/>; the
-        /// recorder's pipeline restarts and the shared preview view auto-reattaches.</summary>
         Task ChangeCamera(string deviceId);
-
-        /// <summary>Toggle preview blur. Join mode: drives a local
-        /// <c>BlurPreviewSession</c> over the own stream. Settings mode: mutates
-        /// <see cref="ChatVideoUI.SetBackgroundBlur"/> — the recorder's pipeline
-        /// produces blurred frames for the shared view.</summary>
+        Task<CameraSwitchResult> SwitchFacing();
         Task SetBlurEnabled(bool enabled);
-
-        /// <summary>Enable/disable the preview. Join mode: start/stop the own
-        /// stream. Settings mode: no-op (the recorder owns the pipeline).</summary>
         Task SetVideoEnabled(bool enabled);
-
-        /// <summary>Called by the component when the JS layer reports the first
-        /// rendered frame. Advances state from <c>Starting</c> to <c>On</c>.</summary>
         void NotifyFirstFrameRendered();
     }
 
@@ -635,6 +638,7 @@
 
         public abstract Task Start();
         public abstract Task ChangeCamera(string deviceId);
+        public abstract Task<CameraSwitchResult> SwitchFacing();
         public abstract Task SetBlurEnabled(bool enabled);
         public abstract Task SetVideoEnabled(bool enabled);
 
@@ -647,7 +651,9 @@
         }
     }
 
-    /// <summary>Join mode — the modal owns its own preview stream via its JS instance.</summary>
+    /// <summary>
+    /// Join mode: the modal owns its own preview stream via its JS instance.
+    /// </summary>
     private sealed class LocalVideoSession(
         IJSObjectReference jsRef,
         Func<string?> getSelectedDeviceId,
@@ -661,6 +667,13 @@
 
         public override Task ChangeCamera(string deviceId)
             => SwitchCamera(deviceId);
+
+        public override async Task<CameraSwitchResult> SwitchFacing() {
+            SetState(CameraState.Starting);
+            var result = await jsRef.InvokeAsync<CameraSwitchResult>("switchFacing");
+            SetState(result.Success ? CameraState.On : CameraState.Unavailable);
+            return result;
+        }
 
         public override async Task SetBlurEnabled(bool enabled)
             => await jsRef.InvokeVoidAsync("toggleBlur", enabled);
@@ -690,12 +703,10 @@
         }
     }
 
-    /// <summary>Settings mode — preview follows the active recorder; camera/blur
-    /// changes are applied by mutating the shared recorder state through
-    /// <see cref="ChatVideoUI"/>, and the <c>RecorderPreviewView</c> inside the JS
-    /// module re-renders automatically. Leaves the UI in <c>Starting</c> until the
-    /// recorder delivers a frame; <see cref="VideoSessionBase.NotifyFirstFrameRendered"/>
-    /// advances it to <c>On</c>.</summary>
+    /// <summary>
+    /// Settings mode: preview follows the active recorder through
+    /// <see cref="ChatVideoUI"/>.
+    /// </summary>
     private sealed class RecorderVideoSession(
         IJSObjectReference jsRef,
         ChatVideoUI chatVideoUI,
@@ -713,6 +724,15 @@
             SetState(CameraState.Starting);
             chatVideoUI.SetSelectedCamera(deviceId);
             return Task.CompletedTask;
+        }
+
+        public override async Task<CameraSwitchResult> SwitchFacing() {
+            SetState(CameraState.Starting);
+            var success = await chatVideoUI.SwitchActiveCameraFacing();
+            SetState(success ? CameraState.On : CameraState.Unavailable);
+            var deviceId = chatVideoUI.ActiveCameraRecorder?.DeviceId
+                ?? chatVideoUI.LastCameraDeviceId;
+            return new(success, deviceId);
         }
 
         public override Task SetBlurEnabled(bool enabled) {
@@ -738,6 +758,7 @@
     public enum CameraState { Off, Starting, On, Unavailable }
     public enum CameraPermissionState { Unknown, Prompt, Granted, Denied }
     public enum VideoCallMode { Join, Settings }
+    public sealed record CameraSwitchResult(bool Success, string? DeviceId);
 
     // JSON DTO returned by the JS `getCurrentCameraInfo` method.
     // ReSharper disable once ClassNeverInstantiated.Global — instantiated via JS interop deserialization
