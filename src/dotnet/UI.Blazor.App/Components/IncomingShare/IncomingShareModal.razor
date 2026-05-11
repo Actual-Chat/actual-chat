@@ -1,6 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Search
-@using ActualChat.Media
 @inherits ComponentBase<AppUIHub>
 @implements IModalView<IncomingShareModal.Model>
 @{
@@ -8,8 +7,10 @@
     var destinationSelected = selectedChatIds.Count > 0;
     var shareButtonClass = !destinationSelected ? "hidden" : "";
     shareButtonClass += " btn-modal btn-primary btn-share-action";
-    var showFilePreview = selectedChatIds.Count == 1 && ModalModel.Files.Length <= Constants.Attachments.FileCountLimit;
-    var showCommentEditor = destinationSelected && (!ModalModel.HasFiles || !showFilePreview);
+    var willPrefillEditor = ModalModel.HasFiles
+        && selectedChatIds.Count == 1
+        && ModalModel.Files.Length <= Constants.Attachments.FileCountLimit;
+    var showCommentEditor = destinationSelected && !willPrefillEditor;
 }
 
 <DialogFrame
@@ -40,21 +41,12 @@
         }
     </Footer>
     <Buttons>
-        @if (ModalModel.HasFiles) {
-            <Button
-                Class="@shareButtonClass"
-                IsDisabled="@(!destinationSelected)"
-                Click="@(() => ShareFiles(showFilePreview))">
-                <span>@(showFilePreview ? "Next" : "Send")</span>
-            </Button>
-        } else {
-            <Button
-                Class="@shareButtonClass"
-                IsDisabled="@(!destinationSelected)"
-                Click="@(() => ShareText(_comment))">
-                <span>Send</span>
-            </Button>
-        }
+        <Button
+            Class="@shareButtonClass"
+            IsDisabled="@(!destinationSelected)"
+            Click="@OnSendClick">
+            <span>@(willPrefillEditor ? "Next" : "Send")</span>
+        </Button>
     </Buttons>
 </DialogFrame>
 
@@ -62,10 +54,6 @@
     private ContactSelector? _contactSelectorRef;
     private SearchPhrase _searchPhrase = SearchPhrase.None;
     private string _comment = "";
-
-    private SendingMessages SendingMessages => Hub.SendingMessages;
-    private ILogger Log => field ??= Hub.LogFor(GetType());
-    private FilePreviews FilePreviews => field ??= Hub.Services.GetRequiredService<FilePreviews>();
 
     private ImmutableHashSet<ChatId> SelectedChatIds
         => _contactSelectorRef?.SelectedChatIds.Value ?? ImmutableHashSet<ChatId>.Empty;
@@ -83,117 +71,27 @@
         return Task.CompletedTask;
     }
 
-    private async Task ShareText(string comment)
-    {
+    private void OnSendClick() {
         var selectedChatIds = SelectedChatIds;
         if (selectedChatIds.Count == 0)
             return;
 
-        var text = ModalModel.Text;
-        CancellationToken cancellationToken = default;
-        foreach (var chatId in selectedChatIds) {
-            if (!comment.IsNullOrEmpty())
-                await SendingMessages.Send(SendMessageRequest.NewMessage(chatId, comment), cancellationToken);
-            await SendingMessages.Send(SendMessageRequest.NewMessage(chatId, text), cancellationToken);
-        }
-
+        ModalModel.SelectedChatIds = selectedChatIds;
+        ModalModel.Comment = _comment;
+        ModalModel.IsConfirmed = true;
         Modal.Close(true);
-        await Services.GetRequiredService<History>()
-            .NavigateTo(Links.Chat(selectedChatIds.First()));
-    }
-
-    private async Task ShareFiles(bool showFilePreview)
-    {
-        var selectedChatIds = SelectedChatIds;
-        if (selectedChatIds.Count == 0)
-            return;
-
-        if (showFilePreview) {
-            var chatId = SelectedChatIds.First();
-            Services.GetRequiredService<SentAttachmentsStorage>()
-                .Push(chatId, ModalModel.Files);
-            Modal.Close(true);
-            await Hub.History.NavigateTo(Links.Chat(chatId));
-            return;
-        }
-
-        Modal.Close(true);
-        try {
-            var postTasks = new List<(Task, ChatId, int)>();
-            var comment = _comment;
-            var mediaScope = selectedChatIds.Count == 1 ? selectedChatIds.First().Value : "";
-            foreach (var filesChunk in ModalModel.Files.Chunk(Constants.Attachments.FileCountLimit)) {
-                var attachments = await CreateAttachmentList(filesChunk);
-                var uploads = (await SendingMessages.Upload(attachments, mediaScope))!;
-                foreach (var chatId in selectedChatIds) {
-                    var postTask = PostMessage(chatId, comment, uploads, attachments.Length);
-                    postTasks.Add((postTask, chatId, filesChunk.Length));
-                }
-                uploads.Dispose();
-                comment = "";
-            }
-            await Task.WhenAll(postTasks.Select(c => c.Item1));
-            var failedTasks = postTasks
-                .Where(c => !c.Item1.IsCompletedSuccessfully)
-                .ToArray();
-            if (failedTasks.Length == 0)
-                return;
-
-            var failedToUploadFilesNumber = failedTasks
-                .Sum(c => c.Item3); // Failed to arrange message sending.
-            var info = $"Failed to share {failedToUploadFilesNumber} files";
-            ToastUI.Show(info, "icon-alert-circle", ToastDismissDelay.Long);
-        }
-        catch (Exception e) {
-            Log.LogError(e, "Failed to share files");
-            ToastUI.Show("Failed to share files", "icon-alert-circle", ToastDismissDelay.Long);
-        }
-    }
-
-    private async Task<ImmutableArray<Attachment>> CreateAttachmentList(IEnumerable<AttachFileInfo> fileInfos) {
-        Exception? fileSizeLimitError = null;
-        var attachments = new List<Attachment>();
-        foreach (var fileInfo in fileInfos) {
-            var fileProvider = fileInfo.FileProvider;
-            var fileMetadata = fileProvider.Metadata;
-            if (fileMetadata.Length > Constants.Attachments.FileSizeLimit) {
-                Log.LogWarning("File size limit exceeded for '{Url}'. Actual size is {FileSize}", fileMetadata.FileName, fileMetadata.Length);
-                fileSizeLimitError ??= AttachmentList.FileTooBigError();
-                continue;
-            }
-            // TODO: Do not request preview url here, because we are not going to display attachment,
-            // but rather post a message immediately.
-            var preview = await FilePreviews.Get(fileProvider, fileMetadata.FileType, Hub.StopToken);
-            var attachment = new SourceAttachment(
-                fileMetadata.FileName,
-                fileMetadata.FileType,
-                fileMetadata.Length,
-                preview) {
-                FileProvider = fileProvider,
-            };
-            attachment.Cleanups.Add(AttachmentCleanupFactory.ForFile(fileProvider));
-            attachments.Add(attachment);
-        }
-        if (fileSizeLimitError != null)
-            Services.UICommander().ShowError(fileSizeLimitError);
-        return [..attachments];
-    }
-
-    private async Task PostMessage(ChatId chatId, string text, FilesUploadHandle uploads, int attachmentCount) {
-        var afterHandler = new AfterSendMessageHandler(
-            SendingMessages.AfterSendMessageHandlerKeys.IncomingShare,
-            attachmentCount.ToString());
-        var cmd = SendMessageRequest.NewMessage(chatId, text, uploads, afterHandler);
-        var postTask = await SendingMessages.Send(cmd, default).ConfigureAwait(false);
-        await postTask.SilentAwait(); // IncomingShareAfterSendMessageHandler will handle a send result.
     }
 
     // Nested types
 
-    public sealed record Model {
+    public sealed class Model {
         public AttachFileInfo[] Files { get; } = [];
         public string Text { get; } = "";
         public bool HasFiles => Files.Length > 0;
+
+        public bool IsConfirmed { get; set; }
+        public IReadOnlyCollection<ChatId> SelectedChatIds { get; set; } = [];
+        public string Comment { get; set; } = "";
 
         public Model(string plainText)
             => Text = plainText;

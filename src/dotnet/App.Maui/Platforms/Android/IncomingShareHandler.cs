@@ -24,50 +24,55 @@ public static class IncomingShareHandler
 
         Log.LogInformation("-> IncomingShare, send intent is detected. Action: {Action}", action);
 
-        // Extract shortcut ID when the share was triggered via a dynamic shortcut
-        var shortcutChatId = intent.GetStringExtra(Intent.ExtraShortcutId);
-        if (!shortcutChatId.IsNullOrEmpty())
-            Log.LogInformation("Share triggered via shortcut for chat: {ChatId}", shortcutChatId);
+        var shortcutChatIdString = intent.GetStringExtra(Intent.ExtraShortcutId);
+        ChatId? targetChatId = null;
+        if (!shortcutChatIdString.IsNullOrEmpty()) {
+            targetChatId = ChatId.TryParse(shortcutChatIdString);
+            if (targetChatId is null)
+                Log.LogWarning("Share via shortcut: failed to parse shortcut id '{ShortcutId}' as ChatId", shortcutChatIdString);
+            else
+                Log.LogInformation("Share triggered via shortcut for chat: {ChatId}", targetChatId);
+        }
 
         var mimeType = intent.Type ?? "";
         var hasExtraStream = intent.Extras?.ContainsKey(Intent.ExtraStream) ?? false;
         if (action == Intent.ActionSend) {
             if (hasExtraStream)
-                HandleFilesSend(mimeType, GetStreams(intent, false));
+                HandleFilesSend(mimeType, GetStreams(intent, false), targetChatId);
             else if (mimeType == System.Net.Mime.MediaTypeNames.Text.Plain)
-                HandlePlainTextSend(intent.GetStringExtra(Intent.ExtraText));
+                HandlePlainTextSend(intent.GetStringExtra(Intent.ExtraText), targetChatId);
             else
                 Log.LogWarning("Unsupported send mime type: '{MimiType}'", mimeType);
         }
         else {
             if (hasExtraStream)
-                HandleFilesSend(mimeType, GetStreams(intent, true));
+                HandleFilesSend(mimeType, GetStreams(intent, true), targetChatId);
             else
                 Log.LogWarning("No extra streams for SendMultiple action. Mime type: '{MimiType}'", mimeType);
         }
     }
 
-    private static void HandlePlainTextSend(string? text)
+    private static void HandlePlainTextSend(string? text, ChatId? targetChatId)
     {
         if (text.IsNullOrEmpty()) {
             Log.LogWarning("No text to send");
             return;
         }
-        BeginInvokeOnMainThreadAsync(() => HandlePlainTextSendInternal(text));
+        BeginInvokeOnMainThreadAsync(() => HandlePlainTextSendInternal(text, targetChatId));
     }
 
-    private static void HandlePlainTextSendInternal(string text)
+    private static void HandlePlainTextSendInternal(string text, ChatId? targetChatId)
     {
         Log.LogInformation("About to send text: '{Text}'", text.ToPrivate());
         _ = DispatchToBlazor(
-                c => c.GetRequiredService<IncomingShareUI>().ShareText(text),
+                c => c.GetRequiredService<IncomingShareUI>().ShareText(text, targetChatId),
                 "IncomingShareUI.ShareText(...)",
                 true)
             .WithErrorLog(Log, "Failed send text")
             .SuppressExceptions();
     }
 
-    private static void HandleFilesSend(string mimeType, IList? streams)
+    private static void HandleFilesSend(string mimeType, IList? streams, ChatId? targetChatId)
     {
         if (streams == null || streams.Count == 0) {
             Log.LogWarning("No file streams provided");
@@ -79,17 +84,17 @@ public static class IncomingShareHandler
                 streams[0]?.GetType().FullName ?? "<null>");
             return;
         }
-        BeginInvokeOnMainThreadAsync(() => HandleFilesSendInternal(mimeType, uris));
+        BeginInvokeOnMainThreadAsync(() => HandleFilesSendInternal(mimeType, uris, targetChatId));
     }
 
-    private static void HandleFilesSendInternal(string mimeType, Uri[] uris)
+    private static void HandleFilesSendInternal(string mimeType, Uri[] uris, ChatId? targetChatId)
     {
         Log.LogInformation("About to send {Count} files of type '{MimeType}'", uris.Length, mimeType);
         _ = DispatchToBlazor(scopedServices => {
                     var downloader = scopedServices.GetRequiredService<AndroidContentDownloader>();
                     var fileInfos = downloader.ConvertToAttachFileInfos(uris);
                     var incomingShareUI = scopedServices.GetRequiredService<IncomingShareUI>();
-                    incomingShareUI.ShareFiles(fileInfos);
+                    incomingShareUI.ShareFiles(fileInfos, targetChatId);
                 },
                 "IncomingShareUI.ShareFiles(...)",
                 true)
