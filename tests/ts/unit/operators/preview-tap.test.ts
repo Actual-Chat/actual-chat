@@ -41,6 +41,7 @@ function makeEnvelopes(stats: VideoRecordingStats, count: number): { envelopes: 
             frame: f as unknown as VideoFrame,
             capturedAt: { timeMs: 100 + i, epoch: 0 },
             index: i,
+            dropTrace: [],
             sourceWidth: 1920,
             sourceHeight: 1080,
             forceKeyframe: false,

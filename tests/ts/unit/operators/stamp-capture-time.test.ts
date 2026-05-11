@@ -26,7 +26,8 @@ function envelopesFor(stats: VideoRecordingStats, count: number): CapturedFrame[
         // An opaque object stands in for VideoFrame; the operator never reads it.
         frame: { id: i } as unknown as VideoFrame,
         capturedAt: { timeMs: 0, epoch: 0 },
-        index: 0,
+        index: i,
+        dropTrace: [],
         sourceWidth: 0,
         sourceHeight: 0,
         forceKeyframe: false,

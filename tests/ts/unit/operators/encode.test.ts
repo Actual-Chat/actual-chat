@@ -124,6 +124,7 @@ function makeCaptured(
         frame: mkFrame(index, width, height),
         capturedAt: { timeMs: 1_700_000_000_000 + index, epoch: 0 },
         index,
+        dropTrace: [],
         sourceWidth: 1920,
         sourceHeight: 1080,
         forceKeyframe,
@@ -141,7 +142,7 @@ function makeBundle(
     // Bottom-first: layers[0] = base layer, layers[last] = top layer.
     const captured: CapturedFrame[] = layers.map(l =>
         makeCaptured(index, stats, l.width, l.height, forceKeyframe));
-    return { layers: captured, stats };
+    return { layers: captured, index, dropTrace: [], stats };
 }
 
 function fromArray<T>(items: T[]): AsyncIterable<T> {
@@ -170,6 +171,7 @@ function makeFactory(opts: { onResetRequested?: (reason: string) => void; timeou
                 metadata,
                 capturedAt: input.capturedAt,
                 index: input.index,
+                dropTrace: [],
                 layerId: layerId,
                 sourceWidth: 0,
                 sourceHeight: 0,
@@ -425,6 +427,7 @@ describe('encode operator', () => {
                         close(): void { /* ignore */ },
                     } as unknown as EncodedVideoChunk,
                     metadata: {},
+                    dropTrace: [],
                     capturedAt: input.capturedAt,
                     index: input.index,
                     layerId: 0,

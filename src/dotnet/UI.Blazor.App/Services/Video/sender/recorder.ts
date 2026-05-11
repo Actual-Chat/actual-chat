@@ -6,8 +6,12 @@ import { drain, pipe } from 'ix-ext';
 import { getLogs } from 'logging';
 import {
     createEmptyRecordingStats,
+    type CapturedBundle,
+    type CapturedFrame,
+    type EncodedBundle,
     type VideoRecordingStats,
 } from '../frame-envelopes';
+import { FrameDropStage, traceDrops } from '../frame-drop-trace';
 import { mstpSource } from '../operators/capture';
 import { stampCaptureTime } from '../operators/stamp-capture-time';
 import { attachSourceDims } from '../operators/attach-source-dims';
@@ -91,20 +95,34 @@ export class Recorder {
             stopSignal: sourceStopController.signal,
             createProcessor: config.createProcessor,
         });
-        const recordingPipe = pipe(
+        // `traceDrops(prevStage)` runs BETWEEN operators and tags any gap it
+        // observes against the operator immediately upstream (`prevStage`).
+        // Split into two pipes only because pipe()'s typed overload tops out
+        // at 9 ops; runtime composition is the same.
+        const captureToBundle = pipe(
             captureSource,
+            traceDrops<CapturedFrame>(FrameDropStage.SenderSource),
             floodGate(gate),
+            traceDrops<CapturedFrame>(FrameDropStage.SenderFloodGate),
             stampCaptureTime({ clock: this.session.captureClock }),
+            traceDrops<CapturedFrame>(FrameDropStage.SenderStampCaptureTime),
             attachSourceDims(),
+            traceDrops<CapturedFrame>(FrameDropStage.SenderAttachSourceDims),
             downscale({ ladder, createDownscaler }),
+        );
+        const recordingPipe = pipe(
+            captureToBundle,
+            traceDrops<CapturedBundle>(FrameDropStage.SenderDownscale),
             applyKeyframePolicy({
                 keyframeIntervalFrames: config.keyframeIntervalFrames,
                 maxKeyframeIntervalMs: config.maxKeyFrameIntervalMs,
             }),
+            traceDrops<CapturedBundle>(FrameDropStage.SenderApplyKeyframePolicy),
             encode({
                 configs: config.encoderConfigs,
                 createEncoder: config.createEncoder,
             }),
+            traceDrops<EncodedBundle>(FrameDropStage.SenderEncode),
             wireSend({
                 createSender: () => config.createSender(gate),
                 layerCount: config.encoderConfigs.length,

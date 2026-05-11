@@ -74,6 +74,8 @@ function makeEnvelope(
         capturedAt: { timeMs: capturedAtMs, epoch: 0 },
         arrivedAt: { timeMs: capturedAtMs + 100, epoch: 0 },
         decodedAt: { timeMs: capturedAtMs + 200, epoch: 0 },
+        index: id,
+        dropTrace: [],
         layerId: 0,
         stats,
     };

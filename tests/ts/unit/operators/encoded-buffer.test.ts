@@ -24,6 +24,8 @@ function mkChunk(opts: {
         chunk: new MockEncodedVideoChunk() as unknown as EncodedVideoChunk,
         arrivedAt: { timeMs: opts.timeMs, epoch: 0 },
         capturedAt: { timeMs: opts.timeMs, epoch: opts.epoch ?? 0 },
+        index: 0,
+        dropTrace: [],
         isKeyFrame: opts.isKeyFrame,
         layerId: 0,
         width: 640,

@@ -26,6 +26,7 @@ function envelopeFor(stats: VideoRecordingStats, frame: MockVideoFrame, index = 
         frame: frame as unknown as VideoFrame,
         capturedAt: { timeMs: 100 + index, epoch: 0 },
         index,
+        dropTrace: [],
         sourceWidth: frame.codedWidth,
         sourceHeight: frame.codedHeight,
         forceKeyframe: false,

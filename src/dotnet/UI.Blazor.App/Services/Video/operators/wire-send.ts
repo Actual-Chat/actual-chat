@@ -27,6 +27,10 @@ export interface VideoStreamFrame {
     maxLayerId?: number;
     sourceWidth?: number;
     sourceHeight?: number;
+    // Sender-assigned source-moment counter; receiver compares to detect gaps.
+    index?: number;
+    // FrameDropStage[] — one entry per dropped predecessor up to this point.
+    dropTrace?: Uint8Array;
 }
 
 // One source-moment's worth of per-layer wire frames, sent as a single RpcStream item.
@@ -133,6 +137,12 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
 
                         const offsetMicros = Math.round((capturedAt.timeMs - captureStartUnixMs) * 1000);
                         const offset = microsecondsToTicks(offsetMicros);
+                        // Snapshot the bundle's drop trace once per bundle: every
+                        // per-layer DTO ships the same bytes so the server-side
+                        // detector sees coherent gap counts on each layer's stream.
+                        const dropTraceBytes = bundle.dropTrace.length > 0
+                            ? Uint8Array.from(bundle.dropTrace)
+                            : undefined;
 
                         const wireLayers: VideoStreamFrame[] = bundle.layers.map(encoded => {
                             const dto: VideoStreamFrame = {
@@ -146,7 +156,9 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                                 layerId: encoded.layerId,
                                 maxLayerId,
                                 temporalLayerId: encoded.metadata.temporalLayerId,
+                                index: encoded.index,
                             };
+                            if (dropTraceBytes) dto.dropTrace = dropTraceBytes;
                             if (dto.isKeyFrame) {
                                 dto.sourceWidth = encoded.sourceWidth;
                                 dto.sourceHeight = encoded.sourceHeight;

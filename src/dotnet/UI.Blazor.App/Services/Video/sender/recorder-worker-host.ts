@@ -184,6 +184,7 @@ function poolEncoderFactory(
             capturedAt: input.capturedAt,
             index: input.index,
             // Patched by the encode operator after the per-layer encode resolves.
+            dropTrace: [],
             layerId: 0,
             sourceWidth: 0,
             sourceHeight: 0,

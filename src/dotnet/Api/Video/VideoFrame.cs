@@ -77,6 +77,23 @@ public sealed partial class VideoFrame : MediaFrame
     [DataMember(Order = 15), MemoryPackOrder(15), Key(15)]
     public int MaxLayerHeight { get; init; }
 
+    /// <summary>
+    /// Sender-assigned source-moment counter. Drops at any pipeline stage
+    /// surface as gaps in <c>Index</c> for the same-layer stream. 0 if the
+    /// upstream peer doesn't populate it (legacy clients).
+    /// </summary>
+    [DataMember(Order = 16), MemoryPackOrder(16), Key(16)]
+    public int Index { get; init; }
+
+    /// <summary>
+    /// End-to-end drop attribution. Each byte is a <see cref="FrameDropStage"/>
+    /// enum value identifying one dropped predecessor frame. Empty on the very
+    /// first frame; subsequent frames append entries when an operator's local
+    /// detector observes a gap larger than the trace already covers.
+    /// </summary>
+    [DataMember(Order = 17), MemoryPackOrder(17), Key(17)]
+    public ReadOnlyMemory<byte> DropTrace { get; init; }
+
     // NB: The properties below this line aren't serialized!
 
     /// <summary>

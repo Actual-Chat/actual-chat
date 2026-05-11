@@ -68,6 +68,7 @@ function makeCaptured(
         frame: mkFrame(index, width, height),
         capturedAt: { timeMs: 1_700_000_000_000 + index, epoch: 0 },
         index,
+        dropTrace: [],
         sourceWidth: width,
         sourceHeight: height,
         forceKeyframe: opts.forceKeyframe ?? false,

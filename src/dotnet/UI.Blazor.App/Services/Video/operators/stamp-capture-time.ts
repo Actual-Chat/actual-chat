@@ -16,7 +16,6 @@ export function stampCaptureTime(opts: StampCaptureTimeOptions = {}): PipeOperat
         async function* impl(): AsyncIterable<CapturedFrame> {
             // -1 sentinel: first frame always trips epochChanged.
             let lastEpoch = -1;
-            let nextIndex = 0;
             for await (const envelope of source) {
                 let mustClose = true;
                 try {
@@ -26,10 +25,11 @@ export function stampCaptureTime(opts: StampCaptureTimeOptions = {}): PipeOperat
                         envelope.stats.lastCapturedEpoch = capturedAt.epoch;
                         lastEpoch = capturedAt.epoch;
                     }
+                    // Index is assigned at the source (mstpSource); preserve it
+                    // so flood-gate drops show as gaps downstream.
                     const output = {
                         ...envelope,
                         capturedAt,
-                        index: nextIndex++,
                         forceKeyframe: epochChanged,
                     };
                     mustClose = false;

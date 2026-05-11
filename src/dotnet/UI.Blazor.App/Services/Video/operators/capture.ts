@@ -56,6 +56,9 @@ export function mstpSource(opts: MstpSourceOptions): AsyncIterableX<CapturedFram
         });
         let cancelled = false;
         cancelSource = () => { cancelled = true; };
+        // Assigned at capture so that drops at later stages (flood gate, stamp,
+        // downscale, encode, wire) appear as gaps in the index downstream.
+        let nextIndex = 0;
         try {
             for await (const value of rawSource) {
                 let mustClose = true;
@@ -68,7 +71,8 @@ export function mstpSource(opts: MstpSourceOptions): AsyncIterableX<CapturedFram
                     const envelope: CapturedFrame = {
                         frame: value,
                         capturedAt: { timeMs: 0, epoch: 0 },
-                        index: 0,
+                        index: nextIndex++,
+                        dropTrace: [],
                         sourceWidth: 0,
                         sourceHeight: 0,
                         forceKeyframe: false,

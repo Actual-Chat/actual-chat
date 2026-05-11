@@ -76,6 +76,10 @@ function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
     // Always emit producer's current ladder max — server's ReceiveQualityFilter
     // clamps the consumer cap without observing layers over time.
     dto.MaxLayerId = frame.maxLayerId ?? 0;
+    if (frame.index !== undefined)
+        dto.Index = frame.index;
+    if (frame.dropTrace && frame.dropTrace.byteLength > 0)
+        dto.DropTrace = frame.dropTrace;
     return dto;
 }
 

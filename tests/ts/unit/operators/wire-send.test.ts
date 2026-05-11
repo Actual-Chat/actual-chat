@@ -118,6 +118,7 @@ function makeEncoded(stats: VideoRecordingStats, opts: BuildOpts = {}): EncodedF
         metadata,
         capturedAt: opts.capturedAt ?? { timeMs: 1_000, epoch: 0 },
         index: opts.index ?? 0,
+        dropTrace: [],
         layerId: opts.layerId ?? 0,
         sourceWidth: opts.sourceWidth ?? 1920,
         sourceHeight: opts.sourceHeight ?? 1080,

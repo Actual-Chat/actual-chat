@@ -30,6 +30,7 @@ function envelopeFor(
         frame: frame as unknown as VideoFrame,
         capturedAt: { timeMs: 100 + index, epoch: 0 },
         index,
+        dropTrace: [],
         sourceWidth: frame.codedWidth,
         sourceHeight: frame.codedHeight,
         forceKeyframe,

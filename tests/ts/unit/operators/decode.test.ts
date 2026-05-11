@@ -87,6 +87,8 @@ function makeArrived(stats: VideoPlaybackStats, opts: ArrivedOpts = {}): Arrived
         chunk,
         arrivedAt: { timeMs: opts.arrivedTimeMs ?? 1_000, epoch: opts.arrivedEpoch ?? 0 },
         capturedAt: { timeMs: opts.capturedTimeMs ?? 0, epoch: opts.capturedEpoch ?? 0 },
+        index: 0,
+        dropTrace: [],
         isKeyFrame: opts.isKeyFrame ?? false,
         description: opts.description,
         layerId: opts.layerId ?? 0,

@@ -8,6 +8,7 @@
 // all concurrent playback pipelines). Operators mutate counters in place.
 
 import type { MonotonicTime } from 'clocks';
+import type { FrameDropStage } from './frame-drop-trace';
 
 // ---- Stats ---------------------------------------------------------------
 
@@ -103,9 +104,13 @@ export interface CapturedFrame {
     // MonotonicClock for E2E latency / pacing.
     capturedAt: MonotonicTime;
 
-    // Monotonic counter from the capture-stamper. Correlates input↔output
-    // across the WebCodecs encoder boundary via the encoder lane FIFO.
+    // Monotonic per-capture counter assigned in `mstpSource`. Drops at any
+    // later sender stage become visible as gaps in this index. Correlates
+    // input↔output across the WebCodecs encoder boundary via the encoder lane FIFO.
     index: number;
+
+    // End-to-end drop attribution. See frame-drop-trace.ts.
+    dropTrace: FrameDropStage[];
 
     // Source (pre-downscale) dimensions. Threaded end-to-end so wire keyframe
     // DTOs carry them — server tracks source-res growth to unlock quality presets.
@@ -124,6 +129,9 @@ export interface CapturedFrame {
 // Single-tier (P2P) sources produce a length-1 bundle.
 export interface CapturedBundle {
     layers: CapturedFrame[];
+    // Bundle-level index (== layers[*].index) for drop-trace gap detection.
+    index: number;
+    dropTrace: FrameDropStage[];
     stats: VideoRecordingStats;
 }
 
@@ -139,6 +147,7 @@ export interface EncodedFrame {
 
     capturedAt: MonotonicTime;
     index: number;
+    dropTrace: FrameDropStage[];
 
     // 0 = base (lowest-res); 1+ = higher-res layers.
     layerId: number;
@@ -158,6 +167,8 @@ export interface EncodedFrame {
 // capturedAt/index from the same source CapturedBundle.
 export interface EncodedBundle {
     layers: EncodedFrame[];
+    index: number;
+    dropTrace: FrameDropStage[];
     stats: VideoRecordingStats;
 }
 
@@ -178,6 +189,11 @@ export interface ArrivedChunk {
     // Sender's MonotonicClock (from wire Offset+OffsetEpoch). Epoch change
     // forces pacing/decode anchor reset.
     capturedAt: { timeMs: number; epoch: number };
+
+    // Sender-assigned source-moment counter; gap == frames dropped somewhere
+    // upstream of this point. 0 if the sender peer didn't populate it.
+    index: number;
+    dropTrace: FrameDropStage[];
 
     isKeyFrame: boolean;
 
@@ -202,6 +218,9 @@ export interface DecodedFrame {
 
     // Canonical "frame age" reference for the latency-tap operator.
     decodedAt: MonotonicTime;
+
+    index: number;
+    dropTrace: FrameDropStage[];
 
     layerId: number;
 

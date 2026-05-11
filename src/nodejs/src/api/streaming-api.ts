@@ -82,6 +82,12 @@ export interface VideoFrameDto {
     // growth (e.g. screencast window resize) and unlock higher quality tiers mid-stream.
     SourceWidth?: number;
     SourceHeight?: number;
+    // Sender-assigned source-moment counter (int32). Gaps in `Index` between
+    // consecutive same-layer frames == frames dropped somewhere upstream.
+    Index?: number;
+    // FrameDropStage[] (byte enum). One entry per dropped predecessor frame
+    // tagged with the stage that dropped it.
+    DropTrace?: Uint8Array | null;
 }
 
 // --- VideoFrameBundle TypeScript interface ---

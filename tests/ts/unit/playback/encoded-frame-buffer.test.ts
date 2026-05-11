@@ -34,6 +34,8 @@ function mkChunk(opts: ChunkOpts): ChunkWithDispose {
         chunk: {} as EncodedVideoChunk,
         arrivedAt: { timeMs: opts.arrivedAtMs ?? opts.capturedAtMs, epoch: 0 },
         capturedAt: { timeMs: opts.capturedAtMs, epoch: opts.epoch ?? 0 },
+        index: 0,
+        dropTrace: [],
         isKeyFrame: opts.isKeyFrame,
         layerId: opts.layerId ?? 0,
         width: opts.width ?? 640,

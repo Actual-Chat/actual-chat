@@ -60,6 +60,7 @@ function makeEncoderFactory(): () => PooledEncoder {
                 metadata,
                 capturedAt: input.capturedAt,
                 index: input.index,
+                dropTrace: [],
                 layerId: 0,
                 sourceWidth: 0,
                 sourceHeight: 0,
