@@ -32,11 +32,6 @@
             <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
         </span>
     </div>
-    @if (isActiveRecording && m.IsAloneOnStream) {
-        <HeaderButton Class="btn-settings btn-video-panel" Click="@OnSettingsClick">
-            <i class="icon-settings text-lg"></i>
-        </HeaderButton>
-    }
     <div class="video-participant-label">
         @if (showDualIcons) {
             <i class="icon-screen-share"></i>

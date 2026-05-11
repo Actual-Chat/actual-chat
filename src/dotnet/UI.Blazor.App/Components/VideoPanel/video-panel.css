@@ -64,6 +64,45 @@ body.wide .video-panel.collapsed > .c-container {
 .video-panel.collapsed .video-panel-chat {
     @apply hidden;
 }
+/* Hidden state — desktop-only oval pill under the header, top-right.
+   Click restores the panel to its default inline state. */
+.video-panel .c-hidden-pill {
+    @apply hidden;
+}
+body.wide .video-panel.panel-hidden {
+    @apply absolute z-button top-2 right-2;
+    @apply h-8 max-h-8 min-h-0 w-auto;
+    @apply px-3;
+    @apply rounded-full;
+    @apply cursor-pointer;
+    @apply overflow-hidden;
+    background: linear-gradient(to left, var(--bottom-sheet-1), var(--bottom-sheet-2));
+    /* Why: Blazor sets `.panel-hidden` before JS reparents the node into
+       `.layout-body-wrapper > .c-container`. For the first frame the pill paints
+       at the wrong position (against `.page-with-header-and-footer`). The 80ms
+       opacity-0 lead-in hides that frame; the remainder fades the pill in once
+       it's in place. */
+    animation: smoothShowPill 0.25s ease-out 0.08s both;
+}
+@keyframes smoothShowPill {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.video-panel.panel-hidden > .c-container {
+    @apply hidden;
+}
+.video-panel.panel-hidden > .c-drag-handle {
+    @apply hidden;
+}
+.video-panel.panel-hidden .c-hidden-pill {
+    @apply flex-x items-center gap-2;
+    @apply h-full;
+    @apply text-caption-1 text-white;
+}
+body.narrow .video-panel.panel-hidden {
+    @apply hidden;
+}
+
 .video-panel.first-time-open {
     animation: smoothShowVideoPanel 0.3s ease-in-out forwards;
 }
@@ -147,17 +186,17 @@ body.wide .c-drag-handle {
     @apply w-40 h-1.5;
     @apply opacity-100;
 }
-body.wide .video-panel:not(.collapsed):not(.expanded) {
+body.wide .video-panel:not(.collapsed):not(.expanded):not(.panel-hidden) {
     @apply min-h-112 max-h-112;
 }
-body.wide:not(.side-nav-right-open) .video-panel:not(.collapsed):not(.expanded) {
+body.wide:not(.side-nav-right-open) .video-panel:not(.collapsed):not(.expanded):not(.panel-hidden) {
     @apply min-h-0 max-w-none mx-auto;
     @apply h-auto;
     aspect-ratio: 16/9;
     max-height: 66.67dvh;
     width: min(100%, calc(66.67dvh * 16 / 9));
 }
-body.wide.side-nav-right-open .video-panel:not(.collapsed):not(.expanded) {
+body.wide.side-nav-right-open .video-panel:not(.collapsed):not(.expanded):not(.panel-hidden) {
     @apply min-h-96 max-h-96;
 }
 .video-panel > .c-container {
@@ -186,22 +225,35 @@ body.wide .video-panel.expanded:has(.video-panel-chat) > .c-container {
 .video-panel.closing .video-panel-content {
     animation: smoothHideVideoPanelContent 0.35s ease-in-out forwards;
 }
-/* Collapse/expand toggle — always visible */
-.video-panel .btn-h.video-panel-collapse-toggle {
+/* Top-right action cluster — settings (conditional), collapse-toggle, hide */
+.video-panel .video-panel-actions {
     @apply absolute top-2 right-2 z-button;
+    @apply flex-x items-center gap-1;
 }
-.video-panel.collapsed .btn-h.video-panel-collapse-toggle {
+.video-panel.expanded .video-panel-actions {
+    @apply hidden;
+}
+/* Hide-button is desktop-only — narrow uses the swipe-handle */
+body.narrow .video-panel .btn-video-hide {
+    @apply hidden;
+}
+/* In the collapsed island only the collapse-toggle stays — others fold away. */
+.video-panel.collapsed .video-panel-actions {
     @apply relative inset-auto;
     @apply flex-none self-start;
+    @apply gap-0;
+    order: 1;
+}
+.video-panel.collapsed .video-panel-actions .btn-settings,
+.video-panel.collapsed .video-panel-actions .btn-video-hide {
+    @apply hidden;
+}
+.video-panel.collapsed .btn-h.video-panel-collapse-toggle {
     @apply w-9 h-9;
     @apply -mt-1 -mr-1;
-    order: 1;
 }
 body.wide .video-panel.collapsed .btn-h.video-panel-collapse-toggle {
     @apply m-0;
-}
-.video-panel.expanded .btn-h.video-panel-collapse-toggle {
-    @apply hidden;
 }
 
 .video-panel .expanded-video-panel {

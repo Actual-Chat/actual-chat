@@ -66,6 +66,7 @@ export class VideoPanel {
     private islandOrigTop = 0;
     private islandResizeObserver: ResizeObserver | null = null;
     private islandTeardown$: Subject<void> | null = null;
+    private panelMode: 'inline' | 'island' | 'pill' = 'inline';
     private closeTimer = 0;
     private closeContent: Element | null = null;
     private closeComplete: (() => void) | null = null;
@@ -671,16 +672,32 @@ export class VideoPanel {
 
     // region: Collapsed island positioning & drag
 
-    // Called from Blazor when collapsed state changes.
-    public updateIslandPosition(): void {
+    // Called from Blazor when collapsed/hidden state changes.
+    // Owns the transition between inline / island (collapsed) / pill (hidden).
+    // Island reparents to <body> for fixed positioning + drag; pill reparents to
+    // .layout-body-wrapper for absolute positioning anchored to the middle panel.
+    public updatePanelMode(): void {
         this.videoPanel.classList.remove('minimized');
-        if (!this.videoPanel.classList.contains('collapsed')) {
-            this.teardownIsland();
-            this.setDragHandleVisible(true);
+        const isCollapsed = this.videoPanel.classList.contains('collapsed');
+        const isHidden = this.videoPanel.classList.contains('panel-hidden');
+        const newMode: 'inline' | 'island' | 'pill' =
+            isCollapsed ? 'island' : (isHidden ? 'pill' : 'inline');
+        if (newMode === this.panelMode)
             return;
+        if (this.panelMode === 'island')
+            this.teardownIsland();
+        else if (this.panelMode === 'pill')
+            this.teardownHidden();
+        if (newMode === 'island') {
+            this.setDragHandleVisible(false);
+            this.setupIsland();
+        } else if (newMode === 'pill') {
+            this.setDragHandleVisible(false);
+            this.setupHidden();
+        } else {
+            this.setDragHandleVisible(true);
         }
-        this.setDragHandleVisible(false);
-        this.setupIsland();
+        this.panelMode = newMode;
     }
 
     private setupIsland(): void {
@@ -722,6 +739,19 @@ export class VideoPanel {
         this.videoPanel.style.top = '';
         this.videoPanel.style.left = '';
         this.videoPanel.style.right = '';
+        this.parentElement?.appendChild(this.videoPanel);
+    }
+
+    // Hidden pill — reparent to `.layout-body-wrapper > .c-container`, which is
+    // `position: relative` and whose bounds match the middle panel (right edge =
+    // left edge of the right side-nav when open; top edge = below header/subheader).
+    // No JS measurement needed — CSS `position: absolute` does the rest.
+    private setupHidden(): void {
+        const host = document.querySelector('.layout-body-wrapper > .c-container');
+        (host ?? document.body).appendChild(this.videoPanel);
+    }
+
+    private teardownHidden(): void {
         this.parentElement?.appendChild(this.videoPanel);
     }
 
@@ -1021,6 +1051,7 @@ export class VideoPanel {
             this.singleTapTimer = 0;
         }
         this.teardownIsland();
+        this.teardownHidden();
         this.returnDragHandle();
         this.collapse();
         this.disposed$.next();

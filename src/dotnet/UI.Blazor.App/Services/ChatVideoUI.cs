@@ -29,6 +29,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     // UI-only: hides video panel without affecting watching/recording state
     private readonly MutableState<bool> _isVideoPanelCollapsed;
+    private readonly MutableState<bool> _isVideoPanelHidden;
 
     // Set when a remote stream completes normally (sender intentionally ended).
     // Consumed by VideoPanelContent to suppress "Connecting..." overlay.
@@ -59,6 +60,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _screenCastErrorMessage = StateFactory.NewMutable((string?)null);
         _watchingChatId = StateFactory.NewMutable((ChatId?)null);
         _isVideoPanelCollapsed = StateFactory.NewMutable(false);
+        _isVideoPanelHidden = StateFactory.NewMutable(false);
     }
 
     void INotifyInitialized.Initialized()
@@ -150,6 +152,10 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     [ComputeMethod]
     public virtual async Task<bool> GetIsVideoPanelCollapsed(CancellationToken cancellationToken = default)
         => await _isVideoPanelCollapsed.Use(cancellationToken).ConfigureAwait(false);
+
+    [ComputeMethod]
+    public virtual async Task<bool> GetIsVideoPanelHidden(CancellationToken cancellationToken = default)
+        => await _isVideoPanelHidden.Use(cancellationToken).ConfigureAwait(false);
 
     // State mutators
 
@@ -261,7 +267,18 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         => _watchingChatId.Value == chatId && _lastRecordingChatId.Value == chatId;
 
     public void SetVideoPanelCollapsed(bool collapsed)
-        => _isVideoPanelCollapsed.Value = collapsed;
+    {
+        _isVideoPanelCollapsed.Value = collapsed;
+        if (collapsed)
+            _isVideoPanelHidden.Value = false;
+    }
+
+    public void SetVideoPanelHidden(bool hidden)
+    {
+        _isVideoPanelHidden.Value = hidden;
+        if (hidden)
+            _isVideoPanelCollapsed.Value = false;
+    }
 
     /// <summary>
     /// Called by VideoTrackPlayer when a remote stream ends normally (no error).
@@ -460,6 +477,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             return;
         _watchingChatId.Value = chatId;
         _isVideoPanelCollapsed.Value = false; // Reset collapsed state on watching change
+        _isVideoPanelHidden.Value = false;
         // Ensure listening is on when starting to watch
         if (chatId is not null)
             _ = ChatAudioUI.SetListeningState(chatId, true);
