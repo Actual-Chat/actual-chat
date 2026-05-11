@@ -317,11 +317,11 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     // Device enumeration
 
-    public async Task<VideoDevice[]> EnumerateVideoDevices()
+    public async Task<VideoDevice[]> EnumerateVideoDevices(bool includeAll = false)
     {
         try {
             var jsMethod = $"{BlazorUIAppModule.ImportName}.VideoRecorder.enumerateDevices";
-            return await JS.InvokeAsync<VideoDevice[]>(jsMethod).ConfigureAwait(false);
+            return await JS.InvokeAsync<VideoDevice[]>(jsMethod, includeAll).ConfigureAwait(false);
         }
         catch(Exception e) {
             Log.LogError(e, "EnumerateVideoDevices failed");

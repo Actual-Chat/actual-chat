@@ -395,7 +395,7 @@
         => _ = InvokeAsync(StateHasChanged);
 
     private async Task LoadVideoDevices() {
-        _videoDevices = (await ChatVideoUI.EnumerateVideoDevices()).ToList();
+        _videoDevices = (await ChatVideoUI.EnumerateVideoDevices(includeAll: true)).ToList();
         StateHasChanged();
     }
 
@@ -455,12 +455,13 @@
     }
 
     private async Task OnSwitchCamera() {
-        if (_videoDevices.Count <= 1)
+        var cycleDevices = await ChatVideoUI.EnumerateVideoDevices();
+        if (cycleDevices.Length <= 1)
             return;
 
-        var currentIndex = _videoDevices.FindIndex(d => d == _selectedDevice);
-        var nextIndex = (currentIndex + 1) % _videoDevices.Count;
-        await OnCameraSelected(_videoDevices[nextIndex]);
+        var currentIndex = Array.FindIndex(cycleDevices, d => d.DeviceId == _selectedDevice?.DeviceId);
+        var nextIndex = (currentIndex + 1) % cycleDevices.Length;
+        await OnCameraSelected(cycleDevices[nextIndex]);
     }
 
     private void OnMirrorToggle() {

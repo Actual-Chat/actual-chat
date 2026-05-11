@@ -319,7 +319,7 @@ export class VideoRecorder {
         return new VideoRecorder(blazorRef, kind);
     }
 
-    static async enumerateDevices(): Promise<VideoDevice[]> {
+    static async enumerateDevices(includeAll = false): Promise<VideoDevice[]> {
         try {
             const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
             tempStream.getTracks().forEach(t => t.stop());
@@ -327,7 +327,7 @@ export class VideoRecorder {
             const devices = await navigator.mediaDevices.enumerateDevices();
             const videoInputs = devices.filter(d => d.kind === 'videoinput');
 
-            const selected = DeviceInfo.isMobile
+            const selected = DeviceInfo.isMobile && !includeAll
                 ? VideoRecorder.pickMobileCameras(videoInputs)
                 : videoInputs;
 
