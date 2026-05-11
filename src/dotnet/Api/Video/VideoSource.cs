@@ -11,24 +11,14 @@ public sealed class VideoSource(
         createdAt,
         format,
         frameStream
-            // Skip frames until we find a keyframe at or after the requested position.
-            // For video, we must start from a keyframe to decode correctly.
+            // Skip frames until we find a keyframe at or after the requested position
             .SkipWhile(vf => vf.Offset < skipTo || !vf.IsKeyFrame)
-            .Select(vf => new VideoFrame(vf.IsKeyFrame) {
-                Data = vf.Data,
-                Offset = vf.Offset - skipTo,
-                Duration = vf.Duration,
-                Width = vf.Width,
-                Height = vf.Height,
-                Description = vf.Description,
-            }),
+            .Select(vf => vf with { Offset = vf.Offset - skipTo, SerializedData = default }),
         log,
         cancellationToken)
 {
     private static bool DebugMode => Constants.DebugMode.VideoSource;
     private ILogger? DebugLog => DebugMode ? Log : null;
-
-    public static readonly VideoFormat DefaultFormat = new();
 
     public new ILogger Log => base.Log;
 

@@ -72,12 +72,33 @@ function ensureHooks(): PlayerWorkerHooks {
     return hooks;
 }
 
+// Method order matches the PlayerWorker interface contract:
+//   init → prewarm → connectivity → run → query → stop.
 export const playerWorkerImpl: PlayerWorker = {
     init(appConstants): Promise<void> {
         const h = hooks;
         h?.initAppConstants?.(appConstants);
         return Promise.resolve();
     },
+
+    prewarmRpc(apiUrl: string): Promise<void> {
+        hooks?.prewarmRpc?.(apiUrl);
+        return Promise.resolve();
+    },
+
+    onConnectivityUpdate(
+        isOnline: boolean,
+        isConnected: boolean,
+        isBlazorServer: boolean,
+    ): Promise<void> {
+        // Stub. Production wiring forwards to a worker-side
+        // connectivity mirror; left as a no-op until that lands.
+        void isOnline;
+        void isConnected;
+        void isBlazorServer;
+        return Promise.resolve();
+    },
+
     async start(
         opts: PlayerWorkerOptions,
         mstgWritable?: WritableStream<VideoFrame>,
@@ -107,12 +128,12 @@ export const playerWorkerImpl: PlayerWorker = {
 
         const playerConfig: PlayerConfig = {
             streamId: opts.streamId,
-            initialDecoderConfig: opts.initialDecoderConfig,
-            targetBufferSpanMs: opts.targetBufferSpanMs,
-            backend,
             getStream: h.getStream,
+            targetBufferSpanMs: opts.targetBufferSpanMs,
+            initialDecoderConfig: opts.initialDecoderConfig,
             createDecoder: handlers => h.createDecoder(opts.initialDecoderConfig.codec, handlers),
             reportLatency: h.makeReportLatency?.(opts.streamId),
+            backend,
         };
 
         await player.start(playerConfig);
@@ -139,23 +160,6 @@ export const playerWorkerImpl: PlayerWorker = {
         });
     },
 
-    async stop(streamId?: string): Promise<void> {
-        if (streamId === undefined) {
-            // Snapshot so iteration isn't perturbed by the
-            // cleanup-on-drain handler racing us.
-            const all = Array.from(players.entries());
-            for (const [id, _p] of all) locallyStopped.add(id);
-            for (const [, p] of all) p.stop();
-            await Promise.allSettled(all.map(([, p]) => p.whenDone()));
-            return;
-        }
-        const player = players.get(streamId);
-        if (!player) return;
-        locallyStopped.add(streamId);
-        player.stop();
-        try { await player.whenDone(); } catch { /* local stop — suppressed */ }
-    },
-
     requestKeyframe(streamId?: string): Promise<void> {
         // No-op on the worker side: keyframe requests are an RPC hint
         // to the SENDER, hooked in the wiring file. Kept for contract
@@ -171,22 +175,21 @@ export const playerWorkerImpl: PlayerWorker = {
         return Promise.resolve({ ...s.stats });
     },
 
-    prewarmRpc(apiUrl: string): Promise<void> {
-        hooks?.prewarmRpc?.(apiUrl);
-        return Promise.resolve();
-    },
-
-    onConnectivityUpdate(
-        isOnline: boolean,
-        isConnected: boolean,
-        isBlazorServer: boolean,
-    ): Promise<void> {
-        // Stub. Production wiring forwards to a worker-side
-        // connectivity mirror; left as a no-op until that lands.
-        void isOnline;
-        void isConnected;
-        void isBlazorServer;
-        return Promise.resolve();
+    async stop(streamId?: string): Promise<void> {
+        if (streamId === undefined) {
+            // Snapshot so iteration isn't perturbed by the
+            // cleanup-on-drain handler racing us.
+            const all = Array.from(players.entries());
+            for (const [id, _p] of all) locallyStopped.add(id);
+            for (const [, p] of all) p.stop();
+            await Promise.allSettled(all.map(([, p]) => p.whenDone()));
+            return;
+        }
+        const player = players.get(streamId);
+        if (!player) return;
+        locallyStopped.add(streamId);
+        player.stop();
+        try { await player.whenDone(); } catch { /* local stop — suppressed */ }
     },
 };
 

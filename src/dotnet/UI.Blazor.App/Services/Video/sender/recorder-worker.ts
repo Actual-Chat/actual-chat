@@ -19,27 +19,37 @@ import type {
 const { errorLog, infoLog } = getLogs('VideoPipeline');
 
 // Production-side dependencies injected by the bootstrap.
+// Members ordered by pipeline flow:
+//   init  → session  → source  → pipeline-stage factories (downscale → encode → wireSend)
+//   → lifecycle callbacks.
 export interface RecorderWorkerDeps {
-    getTrack: () => MediaStreamTrack;
-    createProcessor?: (track: MediaStreamTrack) => { readable: ReadableStream<VideoFrame> };
-    setSource?: (readable: ReadableStream<VideoFrame>) => void;
-    pushFrame?: (frame: VideoFrame) => void;
-    endSource?: () => void;
+    // -- init / configuration --
+    initAppConstants?: (appConstants: import('./recorder-worker-contract').AppConstantsLike) => void;
     configureStreaming?: (opts: {
         chatId: string;
         apiUrl: string;
         sourceKind?: number;
         serverClockOffsetMs?: number;
     }) => void;
-    initAppConstants?: (appConstants: import('./recorder-worker-contract').AppConstantsLike) => void;
-    createSender: (chatId: string, floodGate: FloodGate) => StreamSenderLike;
+    createSession?: () => SenderSession;
+
+    // -- source (capture → mstpSource) --
+    getTrack: () => MediaStreamTrack;
+    createProcessor?: (track: MediaStreamTrack) => { readable: ReadableStream<VideoFrame> };
+    setSource?: (readable: ReadableStream<VideoFrame>) => void;
+    pushFrame?: (frame: VideoFrame) => void;
+    endSource?: () => void;
+
+    // -- pipeline-stage factories, in sender pipeline order --
     createDownscaler?: () => DownscalerLike;
-    poolEncoderFactory: (
+    createPoolEncoderFactory: (
         session: SenderSession,
         config: import('../operators/encode').EncoderConfigPerLayer,
         layerId: number,
     ) => PoolEncoderFactory;
-    createSession?: () => SenderSession;
+    createSender: (chatId: string, floodGate: FloodGate) => StreamSenderLike;
+
+    // -- lifecycle callbacks --
     reportError?: (error: string) => void;
     reportStreamEnded?: (reason: string) => void;
 }
@@ -76,6 +86,7 @@ export function disposeRecorderWorker(): void {
 function requireState(): WorkerState {
     if (!state)
         throw new Error('RecorderWorker: not initialized — call initRecorderWorker first');
+
     return state;
 }
 
@@ -84,6 +95,8 @@ function emptyStats(): VideoRecordingStats {
     return createEmptyRecordingStats(0);
 }
 
+// Method order matches the RecorderWorker interface contract:
+//   init → connectivity → source → run → query → stop → dispose.
 export const recorderWorkerImpl: RecorderWorker = {
     init(appConstants: import('./recorder-worker-contract').AppConstantsLike): Promise<void> {
         const s = requireState();
@@ -92,6 +105,15 @@ export const recorderWorkerImpl: RecorderWorker = {
     },
 
     updateSharedSettings: (settings, noWait) => sharedSettingsWorker.updateSharedSettings(settings, noWait),
+
+    async onConnectivityUpdate(
+        isOnline: boolean,
+        isConnected: boolean,
+        isBlazorServer: boolean,
+    ): Promise<void> {
+        WorkerConnectivityUI.update(isOnline, isConnected, isBlazorServer);
+        await Promise.resolve();
+    },
 
     setSource(readable: ReadableStream<VideoFrame>): Promise<void> {
         const s = requireState();
@@ -111,26 +133,11 @@ export const recorderWorkerImpl: RecorderWorker = {
         return Promise.resolve();
     },
 
-    async onConnectivityUpdate(
-        isOnline: boolean,
-        isConnected: boolean,
-        isBlazorServer: boolean,
-    ): Promise<void> {
-        WorkerConnectivityUI.update(isOnline, isConnected, isBlazorServer);
-        await Promise.resolve();
-    },
-
-    async disconnectApi(): Promise<void> {
-        // No-op today: the new pipeline lazy-creates the peer per stream,
-        // so there's no long-lived peer to disconnect.
-        await Promise.resolve();
-    },
-
     async start(opts: RecorderWorkerOptions): Promise<void> {
         const s = requireState();
-        if (s.whenDone) {
+        if (s.whenDone)
             throw new Error('RecorderWorker: already running — call stop() first');
-        }
+
         const { config } = opts;
         const { deps, recorder, session } = s;
         // Streaming context must land before the pipeline starts so
@@ -152,7 +159,7 @@ export const recorderWorkerImpl: RecorderWorker = {
             const category = layerCategoriesByCodec[layerId];
             const handle = session.encoderPool.acquire(
                 category,
-                deps.poolEncoderFactory(session, layerCfg, layerId),
+                deps.createPoolEncoderFactory(session, layerCfg, layerId),
             );
             handles.push(handle);
             handle.encoder.configure({
@@ -170,13 +177,13 @@ export const recorderWorkerImpl: RecorderWorker = {
 
         const whenDone = recorder.start({
             track,
+            createProcessor: deps.createProcessor,
+            createDownscaler: deps.createDownscaler,
             encoderConfigs: config.encoderConfigs,
+            createEncoder: encoderFactory,
             keyframeIntervalFrames: config.keyframeIntervalFrames,
             maxKeyFrameIntervalMs: config.maxKeyFrameIntervalMs,
             createSender: senderFactory,
-            createEncoder: encoderFactory,
-            createDownscaler: deps.createDownscaler,
-            createProcessor: deps.createProcessor,
         });
         s.whenDone = whenDone;
         // RPC `start()` resolves once the pipeline is wired up; the run
@@ -205,14 +212,6 @@ export const recorderWorkerImpl: RecorderWorker = {
         await Promise.resolve();
     },
 
-    async stop(): Promise<void> {
-        const s = requireState();
-        const run = s.whenDone;
-        s.recorder.stop();
-        if (run)
-            await run;
-    },
-
     async requestKeyframe(): Promise<void> {
         // TODO: plumb through Recorder once the pipe-internal control
         // channel lands. Today PLI relies on the keyframe-policy interval.
@@ -222,6 +221,20 @@ export const recorderWorkerImpl: RecorderWorker = {
     getStats(): Promise<VideoRecordingStats> {
         const s = requireState();
         return Promise.resolve(s.recorder.getStats() ?? emptyStats());
+    },
+
+    async stop(): Promise<void> {
+        const s = requireState();
+        const run = s.whenDone;
+        s.recorder.stop();
+        if (run)
+            await run;
+    },
+
+    async disconnectApi(): Promise<void> {
+        // No-op today: the new pipeline lazy-creates the peer per stream,
+        // so there's no long-lived peer to disconnect.
+        await Promise.resolve();
     },
 };
 

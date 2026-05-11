@@ -316,13 +316,15 @@ export class DebugUI {
             Data: fakeData,
             Offset: toMoment(0),
             Duration: toMoment(0),
-            IsKeyFrame: true,
+            KeyFrameIndex: 0,
+            Index: 0,
             Width: 1280,
             Height: 720,
         };
         const stream = new RpcStream<VideoFrameDto>(
             (async function* () { await Promise.resolve(); yield dto; })(),
-            MediaRpcStreamOptions.videoRealtime<VideoFrameDto>(),
+            MediaRpcStreamOptions.videoRealtime<VideoFrameDto>(
+                item => item.KeyFrameIndex !== undefined && item.KeyFrameIndex === item.Index),
         );
         infoLog?.log(`testPushStream: calling PushStream chatId=${chatId} ...`);
         try {

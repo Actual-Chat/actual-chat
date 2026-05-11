@@ -74,14 +74,17 @@ class FakeDecoder implements DecoderLike {
     close(): void { this.state = 'closed'; this.closed = true; }
 }
 
-function makeDto(opts: { isKeyFrame: boolean; offsetMs?: number }): VideoFrameDto {
+function makeDto(opts: { isKeyFrame: boolean; offsetMs?: number; index?: number }): VideoFrameDto {
     const offsetMs = opts.offsetMs ?? 0;
+    const index = opts.index ?? 0;
     return {
         Data: new Uint8Array([1, 2, 3, 4]),
         Offset: BigInt(offsetMs * 10_000), // ticks (100ns)
         OffsetEpoch: 0,
         Duration: 0,
-        IsKeyFrame: opts.isKeyFrame,
+        // IsKeyFrame derived: KeyFrameIndex === Index iff this is a keyframe.
+        KeyFrameIndex: opts.isKeyFrame ? index : index - 1,
+        Index: index,
         Width: 1280,
         Height: 720,
         LayerId: 0,
@@ -131,11 +134,11 @@ describe('Player', () => {
 
         await player.start({
             streamId: 'stream-1',
-            initialDecoderConfig: { codec: 'avc1.42E01E', codedWidth: 1280, codedHeight: 720 },
-            targetBufferSpanMs: 0,
-            backend: { kind: 'canvas', canvasCtx: canvas },
             getStream: () => longSource,
+            targetBufferSpanMs: 0,
+            initialDecoderConfig: { codec: 'avc1.42E01E', codedWidth: 1280, codedHeight: 720 },
             createDecoder: handlers => new FakeDecoder(handlers),
+            backend: { kind: 'canvas', canvasCtx: canvas },
         });
         expect(player.isRunning()).toBe(true);
 
@@ -165,19 +168,19 @@ describe('Player', () => {
         })();
         await player.start({
             streamId: 's',
-            initialDecoderConfig: { codec: 'avc1.42E01E' },
-            targetBufferSpanMs: 0,
-            backend: { kind: 'canvas', canvasCtx: canvas },
             getStream: () => neverEnding,
+            targetBufferSpanMs: 0,
+            initialDecoderConfig: { codec: 'avc1.42E01E' },
             createDecoder: handlers => new FakeDecoder(handlers),
+            backend: { kind: 'canvas', canvasCtx: canvas },
         });
         await expect(player.start({
             streamId: 's',
-            initialDecoderConfig: { codec: 'avc1.42E01E' },
-            targetBufferSpanMs: 0,
-            backend: { kind: 'canvas', canvasCtx: canvas },
             getStream: () => fromArray([]),
+            targetBufferSpanMs: 0,
+            initialDecoderConfig: { codec: 'avc1.42E01E' },
             createDecoder: handlers => new FakeDecoder(handlers),
+            backend: { kind: 'canvas', canvasCtx: canvas },
         })).rejects.toThrow(/already running/);
 
         player.stop();

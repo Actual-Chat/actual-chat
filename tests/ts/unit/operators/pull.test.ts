@@ -45,23 +45,28 @@ afterEach(() => {
 
 // ---- Helpers --------------------------------------------------------------
 
-function makeDto(opts: Partial<VideoFrameDto> & { offsetTicks?: number }): VideoFrameDto {
+function makeDto(opts: Partial<VideoFrameDto> & { offsetTicks?: number; IsKeyFrame?: boolean }): VideoFrameDto {
     const data = opts.Data ?? new Uint8Array([1, 2, 3, 4]);
+    // IsKeyFrame is not on the wire — it's derived as KeyFrameIndex === Index.
+    // For test convenience, accept an IsKeyFrame boolean and synthesise
+    // consistent KeyFrameIndex/Index values.
+    const isKey = opts.IsKeyFrame ?? false;
+    const index = opts.Index ?? 0;
+    const keyFrameIndex = opts.KeyFrameIndex ?? (isKey ? index : index - 1);
     return {
         Data: data,
         // Default to 10 ticks per ms (TimeSpan ticks = 100ns; 10000 = 1ms)
         Offset: opts.Offset ?? (opts.offsetTicks ?? 10000),
         OffsetEpoch: opts.OffsetEpoch,
         Duration: opts.Duration ?? 0,
-        IsKeyFrame: opts.IsKeyFrame ?? false,
+        KeyFrameIndex: keyFrameIndex,
+        Index: index,
         Width: opts.Width,
         Height: opts.Height,
         Description: opts.Description,
         Codec: opts.Codec,
         LayerId: opts.LayerId,
         TemporalLayerId: opts.TemporalLayerId,
-        SourceWidth: opts.SourceWidth,
-        SourceHeight: opts.SourceHeight,
     };
 }
 

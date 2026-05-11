@@ -41,10 +41,8 @@ public static class FrameDropTrace
         }
     }
 
-    // VideoFrame is `init`-only; produce a copy with the lengthened trace.
-    // SerializedData is intentionally left default so the formatter re-encodes
-    // the frame on next serialization (the cached bytes don't include the new
-    // trace entries).
+    // SerializedData is cleared so the formatter re-encodes on next serialization
+    // (the cached bytes don't include the new trace entries).
     private static VideoFrame WithExtendedTrace(VideoFrame source, FrameDropStage stage, int extraCount)
     {
         var have = source.DropTrace.Length;
@@ -55,26 +53,7 @@ public static class FrameDropTrace
         for (var i = have; i < bytes.Length; i++)
             bytes[i] = stageByte;
 
-        return new VideoFrame(source.IsKeyFrame) {
-            Data = source.Data,
-            Offset = source.Offset,
-            OffsetEpoch = source.OffsetEpoch,
-            Duration = source.Duration,
-            Width = source.Width,
-            Height = source.Height,
-            Description = source.Description,
-            Codec = source.Codec,
-            LayerId = source.LayerId,
-            MaxLayerId = source.MaxLayerId,
-            TemporalLayerId = source.TemporalLayerId,
-            SourceWidth = source.SourceWidth,
-            SourceHeight = source.SourceHeight,
-            MaxLayerWidth = source.MaxLayerWidth,
-            MaxLayerHeight = source.MaxLayerHeight,
-            Index = source.Index,
-            DropTrace = bytes,
-            KeyFrameNumber = source.KeyFrameNumber,
-        };
+        return source with { DropTrace = bytes, SerializedData = default };
     }
 
     // Bundle-level detector for the publisher leg. The bundle's index is

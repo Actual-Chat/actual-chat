@@ -11,24 +11,25 @@ import {
 const { warnLog } = getLogs('VideoPipeline');
 
 // Wire DTO consumed by the .NET sender (MessagePack `VideoFrame`).
-// offset/duration are 100-ns ticks; description/codec/sourceWidth/Height are keyframe-only.
+// offset/duration are 100-ns ticks; description/codec are keyframe-only.
+// IsKeyFrame is NOT on the wire — derived as `keyFrameIndex === index`.
 export interface VideoStreamFrame {
     offset: number;
     offsetEpoch?: number;
     duration: number;
-    isKeyFrame: boolean;
+    // Per-layer pointer to the keyframe this frame belongs to (the keyframe's own `index`).
+    keyFrameIndex: number;
+    // Sender-assigned source-moment counter.
+    index: number;
     width: number;
     height: number;
     data: Uint8Array;
     description?: Uint8Array;
     codec?: string;
     temporalLayerId?: number;
+    maxTemporalLayerId?: number;
     layerId?: number;
     maxLayerId?: number;
-    sourceWidth?: number;
-    sourceHeight?: number;
-    // Sender-assigned source-moment counter; receiver compares to detect gaps.
-    index?: number;
     // FrameDropStage[] — one entry per dropped predecessor up to this point.
     dropTrace?: Uint8Array;
 }
@@ -121,6 +122,10 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
             // HEVC: later keyframes may omit description; cache the first one
             // so the receiver can always reconfigure on dim change.
             const descriptionByLayer = new Map<number, Uint8Array>();
+            // Per-layer "last keyframe's Index" — the value we stamp into
+            // `keyFrameIndex` on every encoded frame. A frame is a keyframe
+            // iff its `keyFrameIndex === index`.
+            const lastKfIndexByLayer = new Map<number, number>();
             try {
                 for await (const bundle of source) {
                     if (abortSignal?.aborted) return;
@@ -128,6 +133,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                     try {
                         if (bundle.layers.length === 0)
                             continue;
+
                         lastStats = bundle.stats;
                         const top = bundle.layers[bundle.layers.length - 1];
                         const { capturedAt } = top;
@@ -145,23 +151,25 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                             : undefined;
 
                         const wireLayers: VideoStreamFrame[] = bundle.layers.map(encoded => {
+                            const isKey = encoded.chunk.type === 'key';
+                            if (isKey)
+                                lastKfIndexByLayer.set(encoded.layerId, encoded.index);
+                            const keyFrameIndex = lastKfIndexByLayer.get(encoded.layerId) ?? encoded.index;
                             const dto: VideoStreamFrame = {
                                 offset,
                                 offsetEpoch: capturedAt.epoch,
                                 duration: microsecondsToTicks(encoded.chunk.duration ?? 0),
-                                isKeyFrame: encoded.chunk.type === 'key',
+                                keyFrameIndex,
+                                index: encoded.index,
                                 width: encoded.encodedWidth,
                                 height: encoded.encodedHeight,
                                 data: readChunkBytes(encoded.chunk),
                                 layerId: encoded.layerId,
                                 maxLayerId,
                                 temporalLayerId: encoded.metadata.temporalLayerId,
-                                index: encoded.index,
                             };
                             if (dropTraceBytes) dto.dropTrace = dropTraceBytes;
-                            if (dto.isKeyFrame) {
-                                dto.sourceWidth = encoded.sourceWidth;
-                                dto.sourceHeight = encoded.sourceHeight;
+                            if (isKey) {
                                 const description = resolveDescription(encoded, descriptionByLayer);
                                 if (description) dto.description = description;
                             }

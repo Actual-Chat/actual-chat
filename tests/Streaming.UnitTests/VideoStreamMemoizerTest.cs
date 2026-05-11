@@ -187,10 +187,14 @@ public class VideoStreamMemoizerTest
         => Frame(layer, offsetMs, isKeyFrame: false);
 
     private static VideoFrame Frame(byte layer, int offsetMs, bool isKeyFrame)
-        => new(isKeyFrame) {
+        => new() {
             Offset = TimeSpan.FromMilliseconds(offsetMs),
             Duration = TimeSpan.FromMilliseconds(33),
             LayerId = layer,
+            // Synthetic Index from offset so keyframes have Index == KeyFrameIndex;
+            // deltas use a unique non-matching value so IsKeyFrame returns false.
+            Index = isKeyFrame ? offsetMs : offsetMs + 100000,
+            KeyFrameIndex = isKeyFrame ? offsetMs : 0,
         };
 
     // Nested types
@@ -201,7 +205,7 @@ public class VideoStreamMemoizerTest
 
         public int MoveNextCount { get; private set; }
         public Task WhenMoved => _whenMoved.Task;
-        public VideoFrame Current => new(false);
+        public VideoFrame Current => new();
 
         public IAsyncEnumerator<VideoFrame> GetAsyncEnumerator(CancellationToken cancellationToken = default)
             => this;

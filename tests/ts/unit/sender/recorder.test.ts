@@ -176,11 +176,11 @@ function buildConfig(overrides: Partial<RecorderConfig> = {}): RecorderConfig {
     ];
     return {
         track: {} as MediaStreamTrack,
+        createProcessor: makeProcessorFromQueue(frames),
         encoderConfigs: [cfg],
+        createEncoder: makeEncoderFactory(),
         keyframeIntervalFrames: 30,
         createSender: () => new FakeSender(),
-        createEncoder: makeEncoderFactory(),
-        createProcessor: makeProcessorFromQueue(frames),
         ...overrides,
     };
 }
@@ -201,7 +201,8 @@ describe('Recorder', () => {
         await driveToCompletion(runPromise);
         expect(recorder.isRunning()).toBe(false);
         expect(sender.sent.length).toBe(3);
-        expect(sender.sent[0].isKeyFrame).toBe(true);
+        // IsKeyFrame derived: keyFrameIndex === index iff this is a keyframe.
+        expect(sender.sent[0].keyFrameIndex).toBe(sender.sent[0].index);
         session.dispose();
     });
 

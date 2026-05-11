@@ -339,6 +339,11 @@ export class VideoPlayer {
                         this.onWorkerLatencyReport(streamId, sample);
                         return Promise.resolve();
                     },
+                    onStreamEnded: (streamId: string, reason: string) => {
+                        debugLog?.log(`Worker stream ended: stream=${streamId}, reason=${reason}`);
+                        void this.reportEnded();
+                        return Promise.resolve();
+                    },
                     onError: (streamId: string, error: string) => {
                         warnLog?.log(`Worker reported error for stream ${streamId}: ${error}`);
                         if (this.shouldRequestCodecExclusion() && !this.codecExclusionRequested) {
@@ -349,11 +354,6 @@ export class VideoPlayer {
                             void this.blazorRef.invokeMethodAsync('OnRequestCodecExclusion', this.codecCategory);
                         }
                         void this.reportEnded(error);
-                        return Promise.resolve();
-                    },
-                    onStreamEnded: (streamId: string, reason: string) => {
-                        debugLog?.log(`Worker stream ended: stream=${streamId}, reason=${reason}`);
-                        void this.reportEnded();
                         return Promise.resolve();
                     },
                 }

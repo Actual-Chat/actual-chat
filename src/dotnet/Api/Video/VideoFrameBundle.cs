@@ -20,4 +20,13 @@ public sealed partial class VideoFrameBundle(VideoFrame[] layers)
     public VideoFrame TopLayer => Layers[^1];
     [JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public VideoFrame BottomLayer => Layers[0];
+
+    /// <summary>
+    /// True iff EVERY layer in the bundle is a keyframe. Per-layer
+    /// <see cref="VideoFrame.IsKeyFrame"/> can diverge — encoders may emit a
+    /// KF unilaterally on reset/recovery even when only a delta was requested.
+    /// A bundle is a real keyframe only when all spatial layers agree.
+    /// </summary>
+    [JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public bool IsKeyFrame => Layers.Length != 0 && Layers.All(layer => layer.IsKeyFrame);
 }

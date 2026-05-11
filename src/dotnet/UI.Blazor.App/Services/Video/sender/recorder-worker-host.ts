@@ -20,9 +20,13 @@ import type { EncoderConfigPerLayer, EncodeInput } from '../operators/encode';
 import type { DownscalerLike, LayerSpec } from '../operators/downscale';
 import type { FloodGate } from '../operators/flood-gate';
 import type { StreamSenderLike, VideoStreamFrameBundle } from '../operators/wire-send';
+// WebGPU imports — kept live so re-enabling the WebGPU path in
+// `createDownscalerInstance` is a single-comment-toggle.
 import { WebGpuDownscaler, type DownscaleTarget } from '../webgpu/downscaler';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { WebGPUManager } from '../webgpu/manager';
 import { CanvasDownscaler } from '../canvas/downscaler';
+import { LazyDownscaler } from '../lazy-downscaler';
 import {
     createWireSender,
     type DisposableStreamSender,
@@ -133,7 +137,9 @@ export function configureStreaming(opts: {
 
 // Bridges WebGpuDownscaler's one-shot `configure(targets)` + bare `process(input)`
 // API to the operator's per-call `process(input, layers)`. Configures lazily on
-// first call when the layer ladder is known.
+// first call when the layer ladder is known. Currently unused — referenced
+// only from the commented-out WebGPU branch in `createDownscalerInstance`.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 class WebGpuDownscalerAdapter implements DownscalerLike {
     private configured = false;
     constructor(private readonly inner: WebGpuDownscaler) {}
@@ -157,18 +163,16 @@ class WebGpuDownscalerAdapter implements DownscalerLike {
     }
 }
 
-// Currently unused — the WebGPU path had recurring device-loss cascades under
-// load. Kept so we can swap back when those are fixed.
-async function createWebGpuDownscalerInstance(): Promise<DownscalerLike> {
-    const device = await WebGPUManager.init();
-    return new WebGpuDownscalerAdapter(new WebGpuDownscaler(device));
+// Single factory invoked lazily by `LazyDownscaler` on the first frame.
+// The WebGPU branch is commented out — that path had recurring device-loss
+// cascades under load. Re-enable when those are fixed.
+async function createDownscalerInstance(): Promise<DownscalerLike> {
+    // const device = await WebGPUManager.init();
+    // return new WebGpuDownscalerAdapter(new WebGpuDownscaler(device));
+    return Promise.resolve(new CanvasDownscaler());
 }
 
-function createDownscalerInstance(): DownscalerLike {
-    return new CanvasDownscaler();
-}
-
-function poolEncoderFactory(
+function createPoolEncoderFactory(
     _session: SenderSession,
     config: EncoderConfigPerLayer,
     layerId: number,
@@ -300,6 +304,13 @@ streamingContext.sessionTokenProvider = () =>
     Promise.resolve(SharedSettings.current.sessionToken ?? '');
 
 const deps: RecorderWorkerDeps = {
+    // -- init / configuration --
+    initAppConstants(appConstants) {
+        initAppConstants(appConstants as AppConstants);
+    },
+    configureStreaming,
+
+    // -- source --
     getTrack(): MediaStreamTrack {
         return stubTrack;
     },
@@ -320,50 +331,20 @@ const deps: RecorderWorkerDeps = {
     endSource(): void {
         endPushedSource();
     },
-    configureStreaming,
-    initAppConstants(appConstants) {
-        initAppConstants(appConstants as AppConstants);
-    },
+
+    // -- pipeline-stage factories --
+    createDownscaler: () => new LazyDownscaler(createDownscalerInstance),
+    createPoolEncoderFactory: createPoolEncoderFactory,
+    createSender,
+
+    // -- lifecycle callbacks --
     reportError(error) {
         observeCallbackPromise('onError', () => callbacks.onError(error));
     },
     reportStreamEnded(reason) {
         observeCallbackPromise('onStreamEnded', () => callbacks.onStreamEnded(reason));
     },
-    createSender,
-    createDownscaler: () => createDownscalerInstance(),
-    poolEncoderFactory,
 };
-
-// Defers GPU device init until the first `process()` call. Currently
-// unreferenced — wired in when `createDownscalerInstance` is switched
-// back to WebGPU.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-class WebGpuLazyDownscaler implements DownscalerLike {
-    private inner: DownscalerLike | null = null;
-    private initPromise: Promise<DownscalerLike> | null = null;
-
-    async process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]> {
-        let inner = this.inner;
-        if (!inner) {
-            this.initPromise ??= createWebGpuDownscalerInstance();
-            try {
-                inner = await this.initPromise;
-                this.inner = inner;
-            } catch (e) {
-                try { input.close(); } catch { /* already closed */ }
-                throw e;
-            }
-        }
-        return inner.process(input, layers);
-    }
-
-    dispose(): void {
-        try { this.inner?.dispose?.(); } catch { /* ignore */ }
-        this.inner = null;
-        this.initPromise = null;
-    }
-}
 
 initRecorderWorker(deps);
 

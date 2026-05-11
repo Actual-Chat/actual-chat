@@ -5,15 +5,16 @@ namespace ActualChat.Audio;
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 [MessagePackFormatter(typeof(CachingAudioFrameFormatter))]
-public sealed partial class AudioFrame : MediaFrame
+public sealed partial record AudioFrame : MediaFrame
 {
-    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
+    [Key(1)]
     public override TimeSpan Offset { get; init; }
-
     [Key(2)]
     public override TimeSpan Duration { get; init; } = Constants.Audio.OpusFrameDuration;
-    [Key(3)]
-    public override bool IsKeyFrame { get; init; } = true;
+
+    [Obsolete("2025.05: Unused in AudioFrame (serialized by MemoryPack, ignored by MessagePack)")]
+    [DataMember(Order = 3), MemoryPackOrder(3), IgnoreMember]
+    public bool LegacyIsKeyFrame { get; init; } = true;
 
     /// <summary>
     /// Cached serialized bytes for zero-copy forwarding and serialize-once fan-out.
@@ -26,4 +27,11 @@ public sealed partial class AudioFrame : MediaFrame
     /// </summary>
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ReadOnlyMemory<byte> SerializedData { get; set; }
+
+    public override string ToString()
+        => $"AudioFrame({Duration.ToShortString()} @ {Offset.ToShortString()})";
+
+    // This record relies on reference equality
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+    public bool Equals(AudioFrame? other) => ReferenceEquals(this, other);
 }

@@ -920,15 +920,15 @@ export class VideoRecorder {
         this.workerInstance = workerInstance;
 
         const callbacks: RecorderWorkerCallbacks = {
-            onError: (error: string) => {
-                errorLog?.log(`RecorderWorker reported error: ${error}`);
-                void this.blazorRef.invokeMethodAsync('OnRecordingError', error);
-            },
             onStreamCreated: (codecSettings: string) => {
                 infoLog?.log(`Worker created RPC stream, codecSettings: ${codecSettings.length} chars`);
             },
             onStreamEnded: (reason: string) => {
                 infoLog?.log(`Worker stream ended: ${reason}`);
+            },
+            onError: (error: string) => {
+                errorLog?.log(`RecorderWorker reported error: ${error}`);
+                void this.blazorRef.invokeMethodAsync('OnRecordingError', error);
             },
         };
 

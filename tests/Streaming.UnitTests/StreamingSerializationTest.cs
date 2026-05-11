@@ -90,10 +90,12 @@ public class StreamingSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var data = new byte[isKey ? 400 : 80];
         for (var i = 0; i < data.Length; i++)
             data[i] = (byte)((index + layerId + i) & 0xFF);
-        return new VideoFrame(isKey) {
+        return new VideoFrame {
             Data = data,
             Offset = TimeSpan.FromMilliseconds(index * 33),
             Duration = TimeSpan.FromMilliseconds(33),
+            Index = index,
+            KeyFrameIndex = isKey ? index : 0,
             Width = isKey ? width : 0,
             Height = isKey ? height : 0,
             Description = isKey ? new byte[] { 0x00, 0x00, 0x00, 0x01, 0x67 } : default,

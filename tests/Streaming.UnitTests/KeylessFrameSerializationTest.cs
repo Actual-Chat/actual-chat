@@ -129,10 +129,12 @@ public class KeylessFrameSerializationTest(ITestOutputHelper @out) : TestBase(@o
         var data = new byte[isKey ? 400 : 80];
         for (var i = 0; i < data.Length; i++)
             data[i] = (byte)((index + i) & 0xFF);
-        return new VideoFrame(isKey) {
+        return new VideoFrame {
             Data = data,
             Offset = TimeSpan.FromMilliseconds(index * 33),
             Duration = TimeSpan.FromMilliseconds(33),
+            Index = index,
+            KeyFrameIndex = isKey ? index : 0,
             Width = isKey ? 1280 : 0,
             Height = isKey ? 720 : 0,
             Description = isKey ? new byte[] { 0x00, 0x00, 0x00, 0x01, 0x67 } : default,
@@ -150,7 +152,7 @@ public class KeylessFrameSerializationTest(ITestOutputHelper @out) : TestBase(@o
             Data = data,
             Offset = TimeSpan.FromMilliseconds(index * 20),
             Duration = Constants.Audio.OpusFrameDuration,
-            IsKeyFrame = true,
+            LegacyIsKeyFrame = true,
         };
     }
 
@@ -171,7 +173,7 @@ public class KeylessFrameSerializationTest(ITestOutputHelper @out) : TestBase(@o
     {
         actual.Offset.Should().Be(expected.Offset);
         actual.Duration.Should().Be(expected.Duration);
-        actual.IsKeyFrame.Should().Be(expected.IsKeyFrame);
+        actual.LegacyIsKeyFrame.Should().Be(expected.LegacyIsKeyFrame);
         actual.Data.Span.SequenceEqual(expected.Data.Span).Should().BeTrue();
     }
 }

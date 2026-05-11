@@ -342,7 +342,8 @@ describe('video pipeline integration', () => {
 
         expect(sender.sent).toHaveLength(10);
         expect(sender.sent[0].offset).toBe(0);
-        expect(sender.sent[0].isKeyFrame).toBe(true);
+        // IsKeyFrame derived: keyFrameIndex === index iff this is a keyframe.
+        expect(sender.sent[0].keyFrameIndex).toBe(sender.sent[0].index);
         // Offsets monotonic non-decreasing.
         for (let i = 1; i < 10; i++)
             expect(sender.sent[i].offset).toBeGreaterThanOrEqual(sender.sent[i - 1].offset);
@@ -424,13 +425,16 @@ describe('video pipeline integration', () => {
         // tick `nowMs` between yields by yielding to microtasks).
         const dtos: VideoFrameDto[] = [];
         for (let i = 0; i < 8; i++) {
+            const isKey = i === 0;
             dtos.push({
                 Data: new Uint8Array([i, i + 1, i + 2, i + 3]),
                 // Offset in 100-ns ticks: i * 33 ms × 10000 ticks/ms.
                 Offset: i * 33 * 10_000,
                 OffsetEpoch: 1,
                 Duration: 0,
-                IsKeyFrame: i === 0,
+                // IsKeyFrame derived: KeyFrameIndex === Index iff keyframe.
+                Index: i,
+                KeyFrameIndex: isKey ? i : 0,
                 Width: 1280,
                 Height: 720,
             });
@@ -573,15 +577,15 @@ describe('video pipeline integration', () => {
             Offset: s.offset,
             OffsetEpoch: s.offsetEpoch,
             Duration: s.duration,
-            IsKeyFrame: s.isKeyFrame,
+            // IsKeyFrame is derived from KeyFrameIndex === Index — not on wire.
+            KeyFrameIndex: s.keyFrameIndex,
+            Index: s.index,
             Width: s.width,
             Height: s.height,
             Description: s.description,
             Codec: s.codec,
             LayerId: s.layerId,
             TemporalLayerId: s.temporalLayerId,
-            SourceWidth: s.sourceWidth,
-            SourceHeight: s.sourceHeight,
         }));
 
         // Run the receiver side just up to pullSource → ArrivedChunk so we
@@ -673,7 +677,8 @@ describe('video pipeline integration', () => {
         // First DTO of the SECOND run anchors at offset 0 (fresh
         // captureStartUnixMs, despite a different absolute Unix-ms baseline).
         expect(second.dtos[0].offset).toBe(0);
-        expect(second.dtos[0].isKeyFrame).toBe(true);
+        // IsKeyFrame derived: keyFrameIndex === index iff this is a keyframe.
+        expect(second.dtos[0].keyFrameIndex).toBe(second.dtos[0].index);
         // Fresh encoder created for the second run (no leaked state).
         expect(first.encoderCount).toBe(1);
         expect(second.encoderCount).toBe(1);
