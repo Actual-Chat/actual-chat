@@ -13,36 +13,24 @@
 
 import { from, type PipeOperator } from 'ix-ext';
 
-// Numeric values are kept stable on the wire: append new stages, never
-// renumber existing ones. byte-sized so it round-trips through MessagePack
-// `byte[]` cheaply on the .NET side.
+// Byte-sized so it round-trips through MessagePack `byte[]` cheaply on the
+// .NET side. Ranges: 1-30 sender, 31-60 server, 61-90 receiver.
 export const enum FrameDropStage {
     None = 0,
-    // Unspecified upstream — used when we know a drop happened earlier but
-    // can't pin it to a specific operator (e.g. raw MSTP source loss).
+
     SenderSource = 1,
     SenderFloodGate = 2,
-    SenderStampCaptureTime = 3,
-    SenderAttachSourceDims = 4,
-    SenderDownscale = 5,
-    SenderApplyKeyframePolicy = 6,
-    SenderEncode = 7,
-    SenderWireSend = 8,
-    SenderPushPullBuffer = 9,
-    SenderRpcStream = 10,
+    SenderDownscale = 3,
+    SenderEncode = 4,
 
-    ServerPushStream = 20,
-    ServerProcessFrames = 21,
-    ServerMemoizer = 22,
-    ServerSkipWhile = 23,
-    ServerReceiveQualityFilter = 24,
-    ServerRpcStream = 25,
+    ServerPushStream = 31,
+    ServerMemoizer = 32,
+    ServerSkipWhile = 33,
+    ServerReceiveQualityFilter = 34,
 
-    ReceiverPull = 40,
-    ReceiverEpochReset = 41,
-    ReceiverEncodedBuffer = 42,
-    ReceiverDecode = 43,
-    ReceiverPresent = 44,
+    ReceiverPull = 61,
+    ReceiverEncodedBuffer = 62,
+    ReceiverDecode = 63,
 }
 
 // `traceDrops` is a generic AsyncIterable wrapper. Items must expose `index`
