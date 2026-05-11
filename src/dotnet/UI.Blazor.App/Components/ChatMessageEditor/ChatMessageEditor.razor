@@ -106,7 +106,7 @@
     private MarkupEditor MarkupEditorRef { get; set; } = null!;
     private IChatMarkupHub ChatMarkupHub { get; set; } = null!;
     private SharedResourcePool<ChatId, SyncedState<ReadPosition>>.Lease? ReadPositionStateLease { get; set; }
-    private SentAttachmentsStorage? AttachmentsStorage { get; set; }
+    private SentContentStorage? ContentStorage { get; set; }
 
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
     private ChatUI ChatUI => Hub.ChatUI;
@@ -138,9 +138,9 @@
 
     public async ValueTask DisposeAsync() {
         PanelsUI.Right.IsVisible.Updated -= OnRightPanelVisibilityChanged;
-        if (AttachmentsStorage != null)
-            AttachmentsStorage.AttachmentsStored -= OnAttachmentsStored;
-        AttachmentsStorage = null;
+        if (ContentStorage != null)
+            ContentStorage.ContentStored -= OnContentStored;
+        ContentStorage = null;
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         ReadPositionStateLease.DisposeSilently();
@@ -181,10 +181,10 @@
             if (JSRef == null! || MarkupEditorRef.JSRef == null!)
                 return; // Dispose may happen during await above
 
-            AttachmentsStorage = Hub.Services.GetRequiredService<SentAttachmentsStorage>();
-            if (AttachmentsStorage.ChatId == Chat.Id && AttachmentsStorage.HasFiles)
-                await SetAttachments(AttachmentsStorage);
-            AttachmentsStorage.AttachmentsStored += OnAttachmentsStored;
+            ContentStorage = Hub.Services.GetRequiredService<SentContentStorage>();
+            if (ContentStorage.ChatId == Chat.Id)
+                await ApplyPendingShare(ContentStorage);
+            ContentStorage.ContentStored += OnContentStored;
         }
     }
 
@@ -316,21 +316,21 @@
         await MarkupEditorRef.Clear(mustFocus: true);
     }
 
-    private void OnAttachmentsStored(object? sender, EventArgs e) {
-        var attachmentsStorage = AttachmentsStorage;
-        if (attachmentsStorage != null && attachmentsStorage.ChatId == Chat.Id && attachmentsStorage.HasFiles)
-            _ = Handle();
-
-        async Task Handle() {
-            await SetAttachments(attachmentsStorage);
-            PanelsUI.HidePanels();
-        }
+    private void OnContentStored(object? sender, EventArgs e) {
+        var storage = ContentStorage;
+        if (storage != null && storage.ChatId == Chat.Id)
+            _ = ApplyPendingShare(storage);
     }
 
-    private async Task SetAttachments(SentAttachmentsStorage attachmentsStorage)
+    private async Task ApplyPendingShare(SentContentStorage storage)
     {
-        var fileInfos = attachmentsStorage.Pop();
-        await FileAttachments.TryAddFileAttachments(_attachmentListHolder.Attachments, fileInfos);
+        var (text, files) = storage.Pop();
+        if (!text.IsNullOrEmpty())
+            await MarkupEditorRef.SetText(text, mustFocus: true);
+        if (files.Length > 0) {
+            await FileAttachments.TryAddFileAttachments(_attachmentListHolder.Attachments, files);
+            PanelsUI.HidePanels();
+        }
     }
 
     private Task OnAttachFilesPicked(AttachFileInfo[] fileInfos)

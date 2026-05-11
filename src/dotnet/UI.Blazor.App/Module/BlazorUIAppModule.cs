@@ -57,8 +57,8 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<BackgroundActivityUI, PlaybackAndRecordingBackgroundActivityUI>(ServiceLifetime.Scoped);
         services.AddScoped(c => new SelectionUI(c.AppUIHub()));
         services.AddScoped(c => new ActiveChatsUI(c.AppUIHub()));
-        services.AddScoped(c => new IncomingShareUI(c.GetRequiredService<ModalUI>()));
-        services.AddScoped(_ => new SentAttachmentsStorage());
+        services.AddScoped(c => new IncomingShareUI(c.AppUIHub()));
+        services.AddScoped(_ => new SentContentStorage());
         services.AddScoped(_ => new PlayableTextPaletteProvider());
         services.AddScoped(_ => new OptimisticReactions());
 
