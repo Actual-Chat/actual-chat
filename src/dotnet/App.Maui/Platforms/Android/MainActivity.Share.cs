@@ -4,6 +4,7 @@ using Android.Content;
 namespace ActualChat.App.Maui;
 
 [MetaData("android.app.shortcuts", Resource = "@xml/share_targets")]
+[MetaData("android.service.chooser.chooser_target_service", Value = "androidx.sharetarget.ChooserTargetServiceCompat")]
 [IntentFilter(
     new [] { Intent.ActionSend },
     DataMimeTypes = new [] { System.Net.Mime.MediaTypeNames.Text.Plain },

@@ -90,6 +90,13 @@
     <PackageReference Include="Xamarin.Firebase.Analytics" />
     <PackageReference Include="Xamarin.Firebase.Crashlytics" />
     <PackageReference Include="Xamarin.Firebase.Messaging" />
+    <!-- Backports Sharing Shortcuts API to Android 9 via ChooserTargetServiceCompat (no public API; only bundled for manifest entry + runtime class). -->
+    <AndroidMavenLibrary
+      Include="androidx.sharetarget:sharetarget"
+      Version="1.2.0"
+      Repository="Google"
+      Bind="false"
+      VerifyDependencies="false" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
     <PackageReference Include="Plugin.Firebase.Analytics" />
