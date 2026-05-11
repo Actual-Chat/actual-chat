@@ -3,6 +3,7 @@ using Android.Content;
 
 namespace ActualChat.App.Maui;
 
+[MetaData("android.app.shortcuts", Resource = "@xml/share_targets")]
 [IntentFilter(
     new [] { Intent.ActionSend },
     DataMimeTypes = new [] { System.Net.Mime.MediaTypeNames.Text.Plain },

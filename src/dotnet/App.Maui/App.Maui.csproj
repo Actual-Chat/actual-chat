@@ -554,9 +554,13 @@
   </ItemGroup>
   <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-android'))">
     <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.dev" Link="Platforms\Android\Resources\google-services.json" />
+    <AndroidResource Remove="Platforms\Android\Resources\xml\share_targets.xml.prod" />
+    <AndroidResource Include="Platforms\Android\Resources\xml\share_targets.xml.dev" Link="Platforms\Android\Resources\xml\share_targets.xml" />
   </ItemGroup>
   <ItemGroup Condition="'$(IsDevMaui)' != 'true' AND $(TargetFramework.Contains('-android'))">
     <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.prod" Link="Platforms\Android\Resources\google-services.json" />
+    <AndroidResource Remove="Platforms\Android\Resources\xml\share_targets.xml.dev" />
+    <AndroidResource Include="Platforms\Android\Resources\xml\share_targets.xml.prod" Link="Platforms\Android\Resources\xml\share_targets.xml" />
   </ItemGroup>
 
   <!-- NOT iOS and NOT Mac Catalyst -->
