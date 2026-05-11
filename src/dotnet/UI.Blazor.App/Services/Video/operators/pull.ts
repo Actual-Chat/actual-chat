@@ -5,22 +5,24 @@ import { closeEncodedChunk, type ArrivedChunk, type VideoPlaybackStats } from '.
 
 // Mirror of the .NET wire DTO; PascalCase matches the MessagePack field names.
 // Offset/Duration are 100-ns ticks; OffsetEpoch is the sender's MonotonicClock epoch.
+// IsKeyFrame is NOT on the wire — derived as `KeyFrameIndex === Index`.
 export interface VideoFrameDto {
     Data: Uint8Array;
     Offset: number | bigint;
-    OffsetEpoch?: number;
     Duration: number | bigint;
-    IsKeyFrame: boolean;
+    OffsetEpoch?: number;
+    KeyFrameIndex?: number;
+    Index?: number;
     Width?: number;
     Height?: number;
-    Description?: Uint8Array | null;
-    Codec?: string | null;
     LayerId?: number;
     MaxLayerId?: number;
+    MaxLayerWidth?: number;
+    MaxLayerHeight?: number;
     TemporalLayerId?: number;
-    SourceWidth?: number;
-    SourceHeight?: number;
-    Index?: number;
+    MaxTemporalLayerId?: number;
+    Codec?: string | null;
+    Description?: Uint8Array | null;
     DropTrace?: Uint8Array | null;
 }
 
@@ -116,8 +118,12 @@ export function pullSource(opts: PullSourceOptions): AsyncIterableX<ArrivedChunk
                 const arrivedAt = arrivalClock.now();
                 const data = dto.Data;
                 const durationUs = ticksToUs(dto.Duration);
+                // IsKeyFrame is derived: keyframe iff KeyFrameIndex equals Index.
+                const index = dto.Index ?? 0;
+                const keyFrameIndex = dto.KeyFrameIndex ?? 0;
+                const isKeyFrame = keyFrameIndex === index;
                 const chunkInit: EncodedVideoChunkInit = {
-                    type: dto.IsKeyFrame ? 'key' : 'delta',
+                    type: isKeyFrame ? 'key' : 'delta',
                     timestamp: ticksToUs(dto.Offset),
                     data,
                 };
@@ -134,13 +140,13 @@ export function pullSource(opts: PullSourceOptions): AsyncIterableX<ArrivedChunk
                             timeMs: ticksToMs(dto.Offset),
                             epoch: dto.OffsetEpoch ?? 0,
                         },
-                        index: dto.Index ?? 0,
+                        index,
                         // Copy on intake: MessagePack may hand us a view into
                         // a shared buffer, and downstream operators mutate.
                         dropTrace: dto.DropTrace && dto.DropTrace.byteLength > 0
                             ? Array.from(dto.DropTrace)
                             : [],
-                        isKeyFrame: dto.IsKeyFrame,
+                        isKeyFrame,
                         layerId: dto.LayerId ?? 0,
                         width: dto.Width ?? 0,
                         height: dto.Height ?? 0,

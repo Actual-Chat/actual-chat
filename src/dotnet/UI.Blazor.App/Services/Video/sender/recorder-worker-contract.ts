@@ -28,8 +28,12 @@ export interface RecorderWorkerOptions {
 // Structural subset of `AppConstants` — anything assignable to AppConstants fits.
 export interface AppConstantsLike { readonly appName: string; readonly prodHost: string; readonly video: unknown; readonly audio: unknown }
 
+// Methods ordered by lifecycle:
+//   init → connectivity → source → run → query → stop → dispose.
 export interface RecorderWorker extends SharedSettingsWorker {
     init(appConstants: AppConstantsLike): Promise<void>;
+    onConnectivityUpdate(isOnline: boolean, isConnected: boolean, isBlazorServer: boolean): Promise<void>;
+
     // Test path. Production prefers `pushFrame`+`endSource` because Chrome's
     // MSTP-readable cross-realm bridge starves after a few frames.
     setSource(readable: ReadableStream<VideoFrame>): Promise<void>;
@@ -37,19 +41,21 @@ export interface RecorderWorker extends SharedSettingsWorker {
     // VideoFrames pile up in the message queue ahead of the slot that closes them.
     pushFrame(frame: VideoFrame, noWait?: RpcNoWait): Promise<void>;
     endSource(noWait?: RpcNoWait): Promise<void>;
+
     start(opts: RecorderWorkerOptions): Promise<void>;
-    stop(): Promise<void>;
     requestKeyframe(): Promise<void>;
     getStats(): Promise<VideoRecordingStats>;
-    onConnectivityUpdate(isOnline: boolean, isConnected: boolean, isBlazorServer: boolean): Promise<void>;
+    stop(): Promise<void>;
+
     // No-op today — the new pipeline lazy-creates the peer per stream and the
     // reconnect loop lives in StreamingApi.
     disconnectApi(): Promise<void>;
 }
 
+// Callbacks ordered by lifecycle: start → end → error (error is anytime).
 export interface RecorderWorkerCallbacks {
-    onError(error: string): void;
     // `codecSettings` carries the codec descriptor the receiver needs to bootstrap its decoder.
     onStreamCreated(codecSettings: string): void;
     onStreamEnded(reason: string): void;
+    onError(error: string): void;
 }

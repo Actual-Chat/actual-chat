@@ -34,12 +34,13 @@ namespace ActualChat.Video;
 /// element to this formatter, so <see cref="VideoFrame"/>[] batches hit the cache too.
 /// </para>
 /// <para>
-/// Wire format: an 18-entry MessagePack map with PascalCase string keys — Data (bin),
-/// Offset (int64 ticks), OffsetEpoch (int32), Duration (int64 ticks), IsKeyFrame (bool),
-/// Width (int32), Height (int32), Description (bin or nil), Codec (str or nil),
-/// LayerId (uint8), MaxLayerId (uint8), TemporalLayerId (uint8),
-/// SourceWidth (int32), SourceHeight (int32), MaxLayerWidth (int32),
-/// MaxLayerHeight (int32), Index (int32), DropTrace (bin).
+/// Wire format: a 17-entry MessagePack map with PascalCase string keys — Data (bin),
+/// Offset (int64 ticks), Duration (int64 ticks), OffsetEpoch (int32),
+/// Index (int32), KeyFrameIndex (int32), Width (int32), Height (int32),
+/// LayerId (uint8), MaxLayerId (uint8), MaxLayerWidth (int32), MaxLayerHeight (int32),
+/// TemporalLayerId (uint8), MaxTemporalLayerId (uint8), Codec (str or nil),
+/// Description (bin or nil), DropTrace (bin).
+/// IsKeyFrame is NOT on the wire — derived as <c>KeyFrameIndex == Index</c>.
 /// </para>
 /// </remarks>
 public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFrame?>
@@ -91,15 +92,14 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
 
         long offsetTicks = 0, durationTicks = 0;
         var offsetEpoch = 0;
-        var isKey = false;
         var width = 0;
         var height = 0;
-        var sourceWidth = 0;
-        var sourceHeight = 0;
         var maxLayerWidth = 0;
         var maxLayerHeight = 0;
         var index = 0;
+        var keyFrameIndex = 0;
         byte temporalLayerId = 0;
+        byte maxTemporalLayerId = 0;
         byte layerId = 0;
         byte maxLayerId = 0;
         var dataSlice = default(ReadOnlyMemory<byte>);
@@ -122,8 +122,11 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
                 case "Duration":
                     durationTicks = reader.ReadInt64();
                     break;
-                case "IsKeyFrame":
-                    isKey = reader.ReadBoolean();
+                case "KeyFrameIndex":
+                    keyFrameIndex = reader.ReadInt32();
+                    break;
+                case "Index":
+                    index = reader.ReadInt32();
                     break;
                 case "Width":
                     width = reader.ReadInt32();
@@ -141,10 +144,6 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
                 case "SpatialLayerId":
                     layerId = reader.ReadByte();
                     break;
-                case "MinLayerId":
-                case "MinSpatialLayerId":
-                    reader.Skip();
-                    break;
                 case "MaxLayerId":
                 case "MaxSpatialLayerId":
                     maxLayerId = reader.ReadByte();
@@ -152,11 +151,8 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
                 case "TemporalLayerId":
                     temporalLayerId = reader.ReadByte();
                     break;
-                case "SourceWidth":
-                    sourceWidth = reader.ReadInt32();
-                    break;
-                case "SourceHeight":
-                    sourceHeight = reader.ReadInt32();
+                case "MaxTemporalLayerId":
+                    maxTemporalLayerId = reader.ReadByte();
                     break;
                 case "MaxLayerWidth":
                 case "MaxSpatialLayerWidth":
@@ -166,24 +162,25 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
                 case "MaxSpatialLayerHeight":
                     maxLayerHeight = reader.ReadInt32();
                     break;
-                case "Index":
-                    index = reader.ReadInt32();
-                    break;
                 case "DropTrace":
                     dropTraceSlice = reader.TryReadNil() ? default : ReadBinSlice(ref reader);
                     break;
                 default:
-                    // Forward-compat: tolerate unknown fields.
+                    // Forward-compat / legacy-compat: tolerate unknown or
+                    // removed fields (IsKeyFrame, SourceWidth, SourceHeight,
+                    // MinLayerId, MinSpatialLayerId, …).
                     reader.Skip();
                     break;
             }
         }
 
-        return new VideoFrame(isKey) {
+        return new VideoFrame {
             Data = dataSlice,                       // slice of bytes
             Offset = new TimeSpan(offsetTicks),
             OffsetEpoch = offsetEpoch,
             Duration = new TimeSpan(durationTicks),
+            KeyFrameIndex = keyFrameIndex,
+            Index = index,
             Width = width,
             Height = height,
             Description = descriptionSlice,         // slice of bytes (may be empty)
@@ -191,11 +188,9 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
             LayerId = layerId,
             MaxLayerId = maxLayerId,
             TemporalLayerId = temporalLayerId,
-            SourceWidth = sourceWidth,
-            SourceHeight = sourceHeight,
+            MaxTemporalLayerId = maxTemporalLayerId,
             MaxLayerWidth = maxLayerWidth,
             MaxLayerHeight = maxLayerHeight,
-            Index = index,
             DropTrace = dropTraceSlice,             // slice of bytes (may be empty)
             SerializedData = bytes,
         };
@@ -233,7 +228,7 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
 
     private static void WriteFrame(ref MessagePackWriter writer, VideoFrame v)
     {
-        writer.WriteMapHeader(18);
+        writer.WriteMapHeader(17);
 
         writer.Write("Data");
         writer.Write(v.Data.Span);
@@ -241,14 +236,17 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
         writer.Write("Offset");
         writer.Write(v.Offset.Ticks);
 
-        writer.Write("OffsetEpoch");
-        writer.Write(v.OffsetEpoch);
-
         writer.Write("Duration");
         writer.Write(v.Duration.Ticks);
 
-        writer.Write("IsKeyFrame");
-        writer.Write(v.IsKeyFrame);
+        writer.Write("OffsetEpoch");
+        writer.Write(v.OffsetEpoch);
+
+        writer.Write("Index");
+        writer.Write(v.Index);
+
+        writer.Write("KeyFrameIndex");
+        writer.Write(v.KeyFrameIndex);
 
         writer.Write("Width");
         writer.Write(v.Width);
@@ -256,32 +254,11 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
         writer.Write("Height");
         writer.Write(v.Height);
 
-        writer.Write("Description");
-        if (v.Description.IsEmpty)
-            writer.WriteNil();
-        else
-            writer.Write(v.Description.Span);
-
-        writer.Write("Codec");
-        if (v.Codec is null)
-            writer.WriteNil();
-        else
-            writer.Write(v.Codec);
-
         writer.Write("LayerId");
         writer.Write(v.LayerId);
 
         writer.Write("MaxLayerId");
         writer.Write(v.MaxLayerId);
-
-        writer.Write("TemporalLayerId");
-        writer.Write(v.TemporalLayerId);
-
-        writer.Write("SourceWidth");
-        writer.Write(v.SourceWidth);
-
-        writer.Write("SourceHeight");
-        writer.Write(v.SourceHeight);
 
         writer.Write("MaxLayerWidth");
         writer.Write(v.MaxLayerWidth);
@@ -289,8 +266,23 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
         writer.Write("MaxLayerHeight");
         writer.Write(v.MaxLayerHeight);
 
-        writer.Write("Index");
-        writer.Write(v.Index);
+        writer.Write("TemporalLayerId");
+        writer.Write(v.TemporalLayerId);
+
+        writer.Write("MaxTemporalLayerId");
+        writer.Write(v.MaxTemporalLayerId);
+
+        writer.Write("Codec");
+        if (v.Codec is null)
+            writer.WriteNil();
+        else
+            writer.Write(v.Codec);
+
+        writer.Write("Description");
+        if (v.Description.IsEmpty)
+            writer.WriteNil();
+        else
+            writer.Write(v.Description.Span);
 
         writer.Write("DropTrace");
         if (v.DropTrace.IsEmpty)

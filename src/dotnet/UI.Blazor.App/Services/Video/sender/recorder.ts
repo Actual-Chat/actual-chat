@@ -31,17 +31,28 @@ export type { DownscalerLike, LayerSpec } from '../operators/downscale';
 export type { EncodeInput } from '../operators/encode';
 export type { VideoRecordingStats };
 
+// Members ordered by sender pipeline flow:
+//   source (track) → downscale → encode → keyframe-policy → wireSend.
 export interface RecorderConfig {
+    // -- source --
     track: MediaStreamTrack;
-    // Bottom-first simulcast ladder; single-tier P2P passes one entry.
-    encoderConfigs: readonly EncoderConfigPerLayer[];
-    keyframeIntervalFrames: number;
-    maxKeyFrameIntervalMs?: number;
-    createSender: (gate: FloodGate) => StreamSenderLike;
-    createEncoder: EncoderFactory;
+    createProcessor?: (track: MediaStreamTrack) => { readable: ReadableStream<VideoFrame> };
+
+    // -- downscale --
     // Required for simulcast (length > 1); single-tier defaults to clone-only.
     createDownscaler?: () => DownscalerLike;
-    createProcessor?: (track: MediaStreamTrack) => { readable: ReadableStream<VideoFrame> };
+
+    // -- encode --
+    // Bottom-first simulcast ladder; single-tier P2P passes one entry.
+    encoderConfigs: readonly EncoderConfigPerLayer[];
+    createEncoder: EncoderFactory;
+
+    // -- keyframe policy --
+    keyframeIntervalFrames: number;
+    maxKeyFrameIntervalMs?: number;
+
+    // -- wire send --
+    createSender: (gate: FloodGate) => StreamSenderLike;
 }
 
 export class Recorder {

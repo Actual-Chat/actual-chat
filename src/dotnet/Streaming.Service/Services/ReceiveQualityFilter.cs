@@ -26,7 +26,7 @@ public static class ReceiveQualityFilter
         var consumerMaxTemporalLayerId = int.MaxValue;
         var selectedLayer = -1;
         var selectedMaxTemporalLayerId = int.MaxValue;
-        var lastKeyFrameNumber = -1L;
+        var lastKeyFrameNumber = -1;
         var skipping = true;
 
         await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
@@ -53,7 +53,7 @@ public static class ReceiveQualityFilter
                     }
                     selectedLayer = desiredLayer;
                     selectedMaxTemporalLayerId = consumerMaxTemporalLayerId;
-                    lastKeyFrameNumber = frame.KeyFrameNumber;
+                    lastKeyFrameNumber = frame.KeyFrameIndex;
                     skipping = false;
                     yield return frame;
                 }
@@ -71,7 +71,7 @@ public static class ReceiveQualityFilter
                 continue;
             // Bounded-replay channel may have evicted intervening frames; gap means
             // the GOP is broken and we have to wait for the next keyframe.
-            if (frame.KeyFrameNumber != lastKeyFrameNumber) {
+            if (frame.KeyFrameIndex != lastKeyFrameNumber) {
                 skipping = true;
                 continue;
             }

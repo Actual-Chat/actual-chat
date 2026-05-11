@@ -3,6 +3,8 @@ using MessagePack.Formatters;
 
 namespace ActualChat.Audio;
 
+#pragma warning disable CS0618 // Type or member is obsolete
+
 /// <summary>
 /// MessagePack formatter for <see cref="AudioFrame"/> that enables serialize-once fan-out.
 /// Hand-written — bypasses the auto-generated formatter to eliminate per-frame Gen0 allocation
@@ -109,7 +111,7 @@ public sealed class CachingAudioFrameFormatter : IMessagePackFormatter<AudioFram
             Data = dataSlice,                       // slice of bytes
             Offset = new TimeSpan(offsetTicks),
             Duration = new TimeSpan(durationTicks),
-            IsKeyFrame = isKey,
+            LegacyIsKeyFrame = isKey,
             SerializedData = bytes,
         };
     }
@@ -173,6 +175,6 @@ public sealed class CachingAudioFrameFormatter : IMessagePackFormatter<AudioFram
         writer.Write(v.Duration.Ticks);
 
         writer.Write("IsKeyFrame");
-        writer.Write(v.IsKeyFrame);
+        writer.Write(v.LegacyIsKeyFrame);
     }
 }

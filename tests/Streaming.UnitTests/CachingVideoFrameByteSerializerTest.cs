@@ -1,9 +1,4 @@
-using System.Buffers;
-using System.Runtime.InteropServices;
 using ActualChat.Video;
-using ActualLab.Collections;
-using ActualLab.Serialization;
-using MessagePack;
 using MessagePack.Resolvers;
 
 namespace ActualChat.Streaming.UnitTests;
@@ -114,8 +109,6 @@ public class CachingVideoFrameByteSerializerTest(ITestOutputHelper @out) : TestB
         writer.Write("MinSpatialLayerId"); writer.Write((byte)0);
         writer.Write("MaxSpatialLayerId"); writer.Write((byte)2);
         writer.Write("TemporalLayerId"); writer.Write((byte)3);
-        writer.Write("SourceWidth"); writer.Write(1920);
-        writer.Write("SourceHeight"); writer.Write(1080);
         writer.Write("MaxSpatialLayerWidth"); writer.Write(1280);
         writer.Write("MaxSpatialLayerHeight"); writer.Write(720);
         writer.Write("Codec"); writer.Write("avc1");
@@ -127,8 +120,6 @@ public class CachingVideoFrameByteSerializerTest(ITestOutputHelper @out) : TestB
         decoded.LayerId.Should().Be(1);
         decoded.MaxLayerId.Should().Be(2);
         decoded.TemporalLayerId.Should().Be(3);
-        decoded.SourceWidth.Should().Be(1920);
-        decoded.SourceHeight.Should().Be(1080);
         decoded.MaxLayerWidth.Should().Be(1280);
         decoded.MaxLayerHeight.Should().Be(720);
         decoded.Data.ToArray().Should().Equal(data);
@@ -277,14 +268,14 @@ public class CachingVideoFrameByteSerializerTest(ITestOutputHelper @out) : TestB
         var data = new byte[isKey ? 400 : 80];
         for (var i = 0; i < data.Length; i++)
             data[i] = (byte)((index + i) & 0xFF);
-        return new VideoFrame(isKey) {
+        return new VideoFrame {
             Data = data,
             Offset = TimeSpan.FromMilliseconds(index * 33),
             Duration = TimeSpan.FromMilliseconds(33),
+            Index = index,
+            KeyFrameIndex = isKey ? index : 0,
             Width = isKey ? 1280 : 0,
             Height = isKey ? 720 : 0,
-            SourceWidth = isKey ? 1920 : 0,
-            SourceHeight = isKey ? 1080 : 0,
             MaxLayerId = 2,
             MaxLayerWidth = isKey ? 1280 : 0,
             MaxLayerHeight = isKey ? 720 : 0,
@@ -299,10 +290,10 @@ public class CachingVideoFrameByteSerializerTest(ITestOutputHelper @out) : TestB
         actual.IsKeyFrame.Should().Be(expected.IsKeyFrame);
         actual.Offset.Should().Be(expected.Offset);
         actual.Duration.Should().Be(expected.Duration);
+        actual.Index.Should().Be(expected.Index);
+        actual.KeyFrameIndex.Should().Be(expected.KeyFrameIndex);
         actual.Width.Should().Be(expected.Width);
         actual.Height.Should().Be(expected.Height);
-        actual.SourceWidth.Should().Be(expected.SourceWidth);
-        actual.SourceHeight.Should().Be(expected.SourceHeight);
         actual.MaxLayerId.Should().Be(expected.MaxLayerId);
         actual.MaxLayerWidth.Should().Be(expected.MaxLayerWidth);
         actual.MaxLayerHeight.Should().Be(expected.MaxLayerHeight);

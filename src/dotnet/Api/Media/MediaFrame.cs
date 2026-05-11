@@ -10,7 +10,7 @@ namespace ActualChat.Media;
 [MemoryPackUnion(1, typeof(Video.VideoFrame))]
 [Union(0, typeof(AudioFrame))]
 [Union(1, typeof(Video.VideoFrame))]
-public abstract partial class MediaFrame
+public abstract partial record MediaFrame
 {
     // ReadOnlyMemory<byte> for zero-copy slicing and reduced GC pressure.
     [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
@@ -20,6 +20,9 @@ public abstract partial class MediaFrame
     public abstract TimeSpan Offset { get; init; }
     [DataMember(Order = 2), MemoryPackOrder(2)]
     public abstract TimeSpan Duration { get; init; }
-    [DataMember(Order = 3), MemoryPackOrder(3)]
-    public abstract bool IsKeyFrame { get; init; }
+    // Key/Order 3 is reserved for the obsolete IsKeyFrame wire field.
+
+    // This record relies on reference equality
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+    public virtual bool Equals(MediaFrame? other) => ReferenceEquals(this, other);
 }

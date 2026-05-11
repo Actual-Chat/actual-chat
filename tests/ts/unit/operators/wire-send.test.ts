@@ -258,24 +258,25 @@ describe('wireSend', () => {
         expect(sender.sent[3].offset).toBe(90_500_000);
     });
 
-    it('keyframe DTOs carry sourceWidth/Height; delta DTOs do not', async () => {
+    it('keyframe DTOs have keyFrameIndex === index; delta DTOs differ', async () => {
         const stats = createEmptyRecordingStats(0);
         const sender = new FakeSender();
         const sink = wireSend({ createSender: () => sender });
 
         const items = [
-            makeEncoded(stats, { type: 'key', sourceWidth: 1920, sourceHeight: 1080, capturedAt: { timeMs: 1_000, epoch: 0 } }),
-            makeEncoded(stats, { type: 'delta', sourceWidth: 1920, sourceHeight: 1080, capturedAt: { timeMs: 1_033, epoch: 0 } }),
+            makeEncoded(stats, { type: 'key', index: 0, capturedAt: { timeMs: 1_000, epoch: 0 } }),
+            makeEncoded(stats, { type: 'delta', index: 1, capturedAt: { timeMs: 1_033, epoch: 0 } }),
         ];
         await runWith(source(items), sink);
 
-        expect(sender.sent[0].isKeyFrame).toBe(true);
-        expect(sender.sent[0].sourceWidth).toBe(1920);
-        expect(sender.sent[0].sourceHeight).toBe(1080);
+        // IsKeyFrame is derived: keyFrameIndex === index iff this is a keyframe.
+        expect(sender.sent[0].keyFrameIndex).toBe(sender.sent[0].index);
+        expect(sender.sent[0].index).toBe(0);
 
-        expect(sender.sent[1].isKeyFrame).toBe(false);
-        expect(sender.sent[1].sourceWidth).toBeUndefined();
-        expect(sender.sent[1].sourceHeight).toBeUndefined();
+        expect(sender.sent[1].keyFrameIndex).not.toBe(sender.sent[1].index);
+        // Delta inherits the previous keyframe's index.
+        expect(sender.sent[1].keyFrameIndex).toBe(0);
+        expect(sender.sent[1].index).toBe(1);
     });
 
     it('createSender is called exactly once across the run', async () => {

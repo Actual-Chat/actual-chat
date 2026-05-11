@@ -89,12 +89,12 @@ public class ReceiveQualityFilterTest
                            .Apply(frames, () => quality, NullLogger.Instance, CancellationToken.None))
             result.Add(frame);
 
-        result.Select(x => (x.KeyFrameNumber, x.TemporalLayerId)).Should().Equal(
-            (1L, (byte)0),
-            (1L, (byte)0),
-            (1L, (byte)0),
-            (2L, (byte)0),
-            (2L, (byte)1));
+        result.Select(x => (KeyFrameNumber: x.KeyFrameIndex, x.TemporalLayerId)).Should().Equal(
+            (1, 0),
+            (1, 0),
+            (1, 0),
+            (2, 0),
+            (2, 1));
     }
 
     [Fact]
@@ -117,12 +117,12 @@ public class ReceiveQualityFilterTest
                            .Apply(frames, () => quality, NullLogger.Instance, CancellationToken.None))
             result.Add(frame);
 
-        result.Select(x => (x.KeyFrameNumber, x.TemporalLayerId)).Should().Equal(
-            (1L, (byte)0),
-            (1L, (byte)1),
-            (1L, (byte)0),
-            (2L, (byte)0),
-            (2L, (byte)1));
+        result.Select(x => (KeyFrameNumber: x.KeyFrameIndex, x.TemporalLayerId)).Should().Equal(
+            (1, 0),
+            (1, 1),
+            (1, 0),
+            (2, 0),
+            (2, 1));
     }
 
     private static VideoFrame Key(byte layer, long keyFrameNumber)
@@ -135,7 +135,7 @@ public class ReceiveQualityFilterTest
         => Frame(layer, keyFrameNumber, isKeyFrame: false, temporal);
 
     private static VideoFrame Frame(byte layer, long keyFrameNumber, bool isKeyFrame, byte temporal = 0)
-        => new(isKeyFrame) {
+        => new() {
             Width = layer switch {
                 0 => 320,
                 1 => 640,
@@ -149,7 +149,12 @@ public class ReceiveQualityFilterTest
             LayerId = layer,
             MaxLayerId = 2,
             TemporalLayerId = temporal,
-            KeyFrameNumber = keyFrameNumber,
+            // KF: Index == KeyFrameIndex (so IsKeyFrame is true);
+            // Delta: Index = -1 (or any other value != KeyFrameIndex) so the
+            // getter returns false. The filter only ever compares KeyFrameIndex
+            // values, so the delta's Index value itself is immaterial.
+            KeyFrameIndex = (int)keyFrameNumber,
+            Index = isKeyFrame ? (int)keyFrameNumber : -1,
         };
 
     private static Func<VideoFrame?> Mutate(Action action)

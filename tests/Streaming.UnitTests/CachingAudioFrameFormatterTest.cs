@@ -30,7 +30,9 @@ public class CachingAudioFrameFormatterTest(ITestOutputHelper @out) : TestBase(@
             Data = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 },
             Offset = TimeSpan.FromMilliseconds(-1),
             Duration = TimeSpan.FromMilliseconds(20),
-            IsKeyFrame = true,
+#pragma warning disable CS0618 // Type or member is obsolete
+            LegacyIsKeyFrame = true,
+#pragma warning restore CS0618 // Type or member is obsolete
         };
 
         var buffer = new ArrayPoolBuffer<byte>(256, mustClear: false);
@@ -204,7 +206,7 @@ public class CachingAudioFrameFormatterTest(ITestOutputHelper @out) : TestBase(@
             Data = data,
             Offset = TimeSpan.FromMilliseconds(index * 20),
             Duration = Constants.Audio.OpusFrameDuration,
-            IsKeyFrame = true,
+            LegacyIsKeyFrame = true,
         };
     }
 
@@ -212,7 +214,7 @@ public class CachingAudioFrameFormatterTest(ITestOutputHelper @out) : TestBase(@
     {
         actual.Offset.Should().Be(expected.Offset);
         actual.Duration.Should().Be(expected.Duration);
-        actual.IsKeyFrame.Should().Be(expected.IsKeyFrame);
+        actual.LegacyIsKeyFrame.Should().Be(expected.LegacyIsKeyFrame);
         actual.Data.Span.SequenceEqual(expected.Data.Span).Should().BeTrue();
     }
 }

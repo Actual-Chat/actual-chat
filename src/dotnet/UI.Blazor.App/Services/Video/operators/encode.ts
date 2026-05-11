@@ -1,6 +1,7 @@
 import type { MonotonicTime } from 'clocks';
 import { from, type PipeOperator } from 'ix-ext';
 import { AsyncVideoEncoder, isAsyncVideoEncoderResetError } from '../adapters';
+import { isCapturedBundleKeyFrame } from '../bundle-helpers';
 import {
     closeEncodedChunk,
     type CapturedBundle,
@@ -75,7 +76,9 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                             throw e;
                         }
                     }
-                    const keyFrame = bundle.layers[0].forceKeyframe
+                    // applyKeyframePolicy promotes forceKeyframe to all-or-none;
+                    // use the bundle helper to keep the contract explicit.
+                    const keyFrame = isCapturedBundleKeyFrame(bundle)
                         || forceKeyframeNext
                         || forceKeyframeOnFirstEncode;
                     forceKeyframeOnFirstEncode = false;

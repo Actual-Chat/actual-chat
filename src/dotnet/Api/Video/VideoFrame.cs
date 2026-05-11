@@ -2,49 +2,36 @@ namespace ActualChat.Video;
 
 [DataContract, MemoryPackable, MessagePackObject]
 [MessagePackFormatter(typeof(CachingVideoFrameFormatter))]
-public sealed partial class VideoFrame : MediaFrame
+public sealed partial record VideoFrame : MediaFrame
 {
-    // Parameterless constructor for MessagePack and MemoryPack deserialization
-    [MemoryPackConstructor]
-    public VideoFrame() { }
-
-    // Constructor for creating frames programmatically
-    public VideoFrame(bool isKeyFrame)
-        // ReSharper disable once VirtualMemberCallInConstructor
-        => IsKeyFrame = isKeyFrame;
-
     [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
     public override TimeSpan Offset { get; init; }
-    /// <summary>
-    /// Increments every time the sender's monotonic capture clock is resynced
-    /// (sleep/wake, NTP step). The receiver uses an epoch change as the
-    /// trigger to reset its decode-side anchors and re-bootstrap pacing.
-    /// Senders that don't track this leave it at 0; receivers treat 0 as
-    /// "no epoch information" (no-op).
-    /// </summary>
     [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
-    public int OffsetEpoch { get; init; }
-    [DataMember(Order = 3), MemoryPackOrder(3), Key(3)]
     public override TimeSpan Duration { get; init; }
+    // Key/Order 3 is reserved for the obsolete IsKeyFrame wire field.
     [DataMember(Order = 4), MemoryPackOrder(4), Key(4)]
-    public override bool IsKeyFrame { get; init; }
+    public int OffsetEpoch { get; init; }
+
+    /// <summary>
+    /// Sender-assigned source-moment counter. Drops at any pipeline stage
+    /// surface as gaps in <c>Index</c> for the same-layer stream. 0 if the
+    /// upstream peer doesn't populate it (legacy clients).
+    /// </summary>
     [DataMember(Order = 5), MemoryPackOrder(5), Key(5)]
-    public int Width { get; init; }
+    public int Index { get; init; }
+    /// <summary>
+    /// Per-layer pointer to the keyframe this frame belongs to: the value is the
+    /// keyframe's own <see cref="Index"/>. A frame is a keyframe iff
+    /// <see cref="Index"/> == <see cref="KeyFrameIndex"/>. Sender-assigned;
+    /// passed through the server unchanged.
+    /// </summary>
     [DataMember(Order = 6), MemoryPackOrder(6), Key(6)]
-    public int Height { get; init; }
+    public int KeyFrameIndex { get; init; }
 
-    /// <summary>
-    /// Codec-specific data (SPS/PPS for H.264). Only present on keyframes.
-    /// ReadOnlyMemory&lt;byte&gt; for zero-copy slicing and reduced GC pressure.
-    /// </summary>
     [DataMember(Order = 7), MemoryPackOrder(7), Key(7)]
-    public ReadOnlyMemory<byte> Description { get; init; }
-
-    /// <summary>
-    /// Codec identifier (e.g., "avc1" for H.264). Only present on keyframes.
-    /// </summary>
+    public int Width { get; init; }
     [DataMember(Order = 8), MemoryPackOrder(8), Key(8)]
-    public string? Codec { get; init; }
+    public int Height { get; init; }
 
     /// <summary>
     /// SVC layer ID. 0 = base (lowest-res) layer, 1+ = higher-res layers.
@@ -54,36 +41,30 @@ public sealed partial class VideoFrame : MediaFrame
     public byte LayerId { get; init; }
     [DataMember(Order = 10), MemoryPackOrder(10), Key(10)]
     public byte MaxLayerId { get; init; }
+    [DataMember(Order = 11), MemoryPackOrder(11), Key(11)]
+    public int MaxLayerWidth { get; init; }
+    [DataMember(Order = 12), MemoryPackOrder(12), Key(12)]
+    public int MaxLayerHeight { get; init; }
 
     /// <summary>
     /// SVC temporal layer ID. 0 = base layer, 1+ = enhancement layers.
     /// </summary>
-    [DataMember(Order = 11), MemoryPackOrder(11), Key(11)]
-    public byte TemporalLayerId { get; init; }
-
-    /// <summary>
-    /// Native capture source dimensions (pre-downscale). Sent on keyframes only —
-    /// lets the server track live source resolution changes (e.g. a screencast
-    /// window resized from 1280x768 to full-screen 4K) and unlock the matching
-    /// quality-preset ceiling. Zero when the sender doesn't populate them
-    /// (legacy peers, non-keyframe deltas).
-    /// </summary>
-    [DataMember(Order = 12), MemoryPackOrder(12), Key(12)]
-    public int SourceWidth { get; init; }
     [DataMember(Order = 13), MemoryPackOrder(13), Key(13)]
-    public int SourceHeight { get; init; }
+    public byte TemporalLayerId { get; init; }
     [DataMember(Order = 14), MemoryPackOrder(14), Key(14)]
-    public int MaxLayerWidth { get; init; }
-    [DataMember(Order = 15), MemoryPackOrder(15), Key(15)]
-    public int MaxLayerHeight { get; init; }
+    public byte MaxTemporalLayerId { get; init; }
 
     /// <summary>
-    /// Sender-assigned source-moment counter. Drops at any pipeline stage
-    /// surface as gaps in <c>Index</c> for the same-layer stream. 0 if the
-    /// upstream peer doesn't populate it (legacy clients).
+    /// Codec identifier (e.g., "avc1" for H.264). Only present on keyframes.
+    /// </summary>
+    [DataMember(Order = 15), MemoryPackOrder(15), Key(15)]
+    public string? Codec { get; init; }
+    /// <summary>
+    /// Codec-specific data (SPS/PPS for H.264). Only present on keyframes.
+    /// ReadOnlyMemory&lt;byte&gt; for zero-copy slicing and reduced GC pressure.
     /// </summary>
     [DataMember(Order = 16), MemoryPackOrder(16), Key(16)]
-    public int Index { get; init; }
+    public ReadOnlyMemory<byte> Description { get; init; }
 
     /// <summary>
     /// End-to-end drop attribution. Each byte is a <see cref="FrameDropStage"/>
@@ -96,13 +77,8 @@ public sealed partial class VideoFrame : MediaFrame
 
     // NB: The properties below this line aren't serialized!
 
-    /// <summary>
-    /// Monotonically increasing keyframe sequence number. Assigned server-side in ProcessFrames.
-    /// Incremented on each keyframe; non-keyframes inherit the current value.
-    /// Used for gap detection when frames are dropped by bounded replay channels.
-    /// </summary>
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public long KeyFrameNumber { get; set; }
+    public bool IsKeyFrame => KeyFrameIndex == Index;
 
     /// <summary>
     /// Cached serialized bytes for zero-copy forwarding and serialize-once fan-out.
@@ -115,4 +91,16 @@ public sealed partial class VideoFrame : MediaFrame
     /// </summary>
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ReadOnlyMemory<byte> SerializedData { get; set; }
+
+    public override string ToString()
+    {
+        var k = IsKeyFrame ? "K" : "";
+        return $"VideoFrame(#{Index}{k}: {Duration.ToShortString()} @ {Offset.ToShortString()}, "
+            + $"{Width}x{Height}, L{LayerId}/{MaxLayerId}({MaxLayerWidth}x{MaxLayerHeight}), "
+            + $"T{TemporalLayerId}/{MaxTemporalLayerId})";
+    }
+
+    // This record relies on reference equality
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+    public bool Equals(VideoFrame? other) => ReferenceEquals(this, other);
 }

@@ -9,9 +9,17 @@ export type { LatencySample } from '../operators/latency-tap';
 // serialize across the worker boundary (no class instances, no
 // functions). Platform resources (MSTG track, canvas) are constructed
 // worker-side based on `backend`.
+//
+// Members ordered by receiver pipeline flow:
+//   pull → buffer → decode → present (config + transferables).
 export interface PlayerWorkerOptions {
+    // -- pull --
     streamId: string;
 
+    // -- buffer --
+    targetBufferSpanMs: number;
+
+    // -- decode --
     // First keyframe's description (if present) is merged in by the
     // `decode` operator before configure(). Codec-only is OK for
     // AVC/AV1; HEVC needs the wire to deliver one.
@@ -21,8 +29,7 @@ export interface PlayerWorkerOptions {
         codedHeight?: number;
     };
 
-    targetBufferSpanMs: number;
-
+    // -- present --
     backend: RenderBackendKind;
 
     // Tests-only. Production callers pass canvas as a trailing arg of
@@ -42,9 +49,22 @@ export interface AppConstantsLike { readonly appName: string; readonly prodHost:
 // hosts many concurrent playback pipelines under one shared
 // PlaybackSession; stop() and requestKeyframe() target a specific
 // stream (omitting the id signals "all streams").
+//
+// Methods ordered by lifecycle:
+//   init → prewarm → connectivity → run → query → stop.
 export interface PlayerWorker {
     // First call wins. MUST be called before any start().
     init(appConstants: AppConstantsLike): Promise<void>;
+
+    // Fire-and-forget: callers should NOT await before calling start().
+    prewarmRpc(apiUrl: string, noWait?: RpcNoWait): Promise<void>;
+
+    onConnectivityUpdate(
+        isOnline: boolean,
+        isConnected: boolean,
+        isBlazorServer: boolean,
+        noWait?: RpcNoWait,
+    ): Promise<void>;
 
     // Trailing transferable args (rpc.ts auto-transfer scan):
     //  - mstgWritable — Tier 2 path: main constructs MSTG (Chromium
@@ -62,39 +82,32 @@ export interface PlayerWorker {
         canvas?: OffscreenCanvas,
     ): Promise<void>;
 
-    stop(streamId?: string): Promise<void>;
-
     requestKeyframe(streamId?: string): Promise<void>;
 
     getStats(): Promise<VideoPlaybackStats>;
 
-    // Fire-and-forget: callers should NOT await before calling start().
-    prewarmRpc(apiUrl: string, noWait?: RpcNoWait): Promise<void>;
-
-    onConnectivityUpdate(
-        isOnline: boolean,
-        isConnected: boolean,
-        isBlazorServer: boolean,
-        noWait?: RpcNoWait,
-    ): Promise<void>;
+    stop(streamId?: string): Promise<void>;
 }
 
 // Main-thread-side RPC surface. The worker calls these to notify the
 // main thread of lifecycle events. String error/kind/reason values
 // keep the contract serializer-agnostic.
+//
+// Members ordered by lifecycle:
+//   setup → start → runtime → end → error (error is anytime).
 export interface PlayerWorkerCallbacks {
     getSessionToken(minLifespanMs?: number): Promise<string>;
-
-    onError(streamId: string, error: string): void;
 
     // For MSTG the worker passes the resulting MediaStreamTrack
     // (transferable) so the main thread can attach via <video
     // srcObject>. For canvas the track is null.
     onTrackReady(streamId: string, kind: RenderBackendKind, track: MediaStreamTrack | null): void;
 
+    onLatencyReport(streamId: string, sample: LatencySample): void;
+
     // reason is a free-form short string for diagnostics
     // ('eof', 'sender-stop', 'session-disposed', etc.).
     onStreamEnded(streamId: string, reason: string): void;
 
-    onLatencyReport(streamId: string, sample: LatencySample): void;
+    onError(streamId: string, error: string): void;
 }

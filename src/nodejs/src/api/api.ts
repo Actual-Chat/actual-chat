@@ -89,14 +89,10 @@ export interface ApiConnectivityUI {
     readonly isConnectedChanged: { add(handler: (v: boolean) => void): unknown };
 }
 
-interface KeyFrameLike {
-    readonly IsKeyFrame: boolean;
-}
-
 export class MediaRpcStreamOptions {
-    static videoRealtime<T extends KeyFrameLike>(): RpcStreamOptions<T>;
-    static videoRealtime<T>(canSkipTo: (item: T) => boolean): RpcStreamOptions<T>;
-    static videoRealtime<T>(canSkipTo?: (item: T) => boolean): RpcStreamOptions<T> {
+    // Caller passes an explicit keyframe predicate — for VideoFrameDto this is
+    // `item.KeyFrameIndex === item.Index`; for VideoFrameBundleDto same on layer 0.
+    static videoRealtime<T>(canSkipTo: (item: T) => boolean): RpcStreamOptions<T> {
         return {
             isRealTime: true,
             allowReconnect: true,
@@ -108,7 +104,7 @@ export class MediaRpcStreamOptions {
             // older non-anchor items inside the buffer rather than blocking
             // the capture pipeline.
             bufferSize: VIDEO.senderBufferSize,
-            canSkipTo: canSkipTo ?? ((item) => (item as KeyFrameLike).IsKeyFrame),
+            canSkipTo,
         };
     }
 

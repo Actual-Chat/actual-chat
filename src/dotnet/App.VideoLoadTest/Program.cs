@@ -937,10 +937,13 @@ VideoFrame GenerateFrame(int index)
     data[0] = (byte)(index & 0xFF);
     data[1] = (byte)((index >> 8) & 0xFF);
 
-    return new VideoFrame(isKeyFrame) {
+    var keyFrameIndex = index - (index % GopSize);
+    return new VideoFrame {
         Data = data,
         Offset = TimeSpan.FromTicks(frameDuration.Ticks * index),
         Duration = frameDuration,
+        Index = index,
+        KeyFrameIndex = keyFrameIndex,
         Width = isKeyFrame ? FrameWidth : 0,
         Height = isKeyFrame ? FrameHeight : 0,
         Description = isKeyFrame ? new byte[] { 0x00, 0x00, 0x00, 0x01, 0x67 } : default,
@@ -1014,10 +1017,14 @@ static VideoFrame? DeserializeVideoFrame(byte[] bytes)
             }
         }
 
-        return new VideoFrame(isKeyFrame) {
+        // Round-trip from the load test's custom wire format: it only carries
+        // the legacy IsKeyFrame bool. Encode it into KeyFrameIndex (0 = KF,
+        // -1 = delta) — Index defaults to 0, so KeyFrameIndex == Index iff KF.
+        return new VideoFrame {
             Data = data ?? [],
             Offset = new TimeSpan(offset),
             Duration = new TimeSpan(duration),
+            KeyFrameIndex = isKeyFrame ? 0 : -1,
             Width = width,
             Height = height,
             Description = description ?? default,

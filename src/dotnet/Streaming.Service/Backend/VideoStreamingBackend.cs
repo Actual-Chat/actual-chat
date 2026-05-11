@@ -180,16 +180,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             // No processing - just forward to StreamStore for memoization
             Log.LogInformation("PushVideoInternal: publishing #{StreamId} to StreamStore", record.StreamId);
 
-            // Per-(layer-layer) keyframe counters. Simulcast senders emit a
-            // keyframe on every layer at the same boundary; a single
-            // global counter would give sibling-layer KFs different numbers,
-            // and deltas would be stamped with whichever layer's KF landed last
-            // — making downstream gap detection (filter compares KeyFrameNumber
-            // equality to decide "this delta belongs to the KF I joined at")
-            // fire spuriously. Keeping counters per-layer keeps the "delta.kf
-            // == lastYieldedKf" invariant correct for the filter's selected
-            // layer. Small key = int (layerId, typically 0..2).
-            var keyFrameNumberByLayer = new Dictionary<int, long>();
             var startedLayers = new HashSet<int>();
             var negativeOffsetDropCount = 0;
             var preKeyframeDeltaDropCount = 0;
@@ -242,49 +232,25 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                             negativeOffsetDropCount++;
                             if (negativeOffsetDropCount <= 3 || negativeOffsetDropCount % 30 == 0)
                                 Log.LogWarning(
-                                    "ProcessFrames: dropping frame with negative offset #{DropCount} for stream #{StreamId}: " +
-                                    "offset={OffsetMs:F0}ms, key={IsKeyFrame}, layer={LayerId}, temporal={TemporalLayerId}, " +
-                                    "dims={Width}x{Height}",
-                                    negativeOffsetDropCount,
-                                    record.StreamId,
-                                    frame.Offset.TotalMilliseconds,
-                                    frame.IsKeyFrame,
-                                    layerId,
-                                    frame.TemporalLayerId,
-                                    frame.Width,
-                                    frame.Height);
+                                    "ProcessFrames: dropping frame with negative offset ({DropCount}) for stream #{StreamId}: {Frame}",
+                                    negativeOffsetDropCount, record.StreamId, frame);
                             continue;
                         }
 
-                        if (frame.IsKeyFrame) {
+                        if (bundle.IsKeyFrame) {
                             if (startedLayers.Add(layerId))
                                 Log.LogWarning(
-                                    "ProcessFrames: first keyframe for stream #{StreamId} layer={LayerId} dims={Width}x{Height} (DIAG: simulcast probe)",
-                                    record.StreamId, layerId, frame.Width, frame.Height);
+                                    "ProcessFrames: first keyframe for stream #{StreamId}: {Frame}",
+                                    record.StreamId, frame);
                         }
                         else if (!startedLayers.Contains(layerId)) {
                             preKeyframeDeltaDropCount++;
                             if (preKeyframeDeltaDropCount <= 3 || preKeyframeDeltaDropCount % 30 == 0)
                                 Log.LogWarning(
-                                    "ProcessFrames: dropping delta before first keyframe #{DropCount} for stream #{StreamId}: " +
-                                    "offset={OffsetMs:F0}ms, layer={LayerId}, temporal={TemporalLayerId}, " +
-                                    "dims={Width}x{Height}",
-                                    preKeyframeDeltaDropCount,
-                                    record.StreamId,
-                                    frame.Offset.TotalMilliseconds,
-                                    layerId,
-                                    frame.TemporalLayerId,
-                                    frame.Width,
-                                    frame.Height);
+                                    "ProcessFrames: dropping delta frame ({DropCount}) for stream #{StreamId}: {Frame}",
+                                    preKeyframeDeltaDropCount, record.StreamId, frame);
                             continue;
                         }
-
-                        if (frame.IsKeyFrame) {
-                            keyFrameNumberByLayer.TryGetValue(layerId, out var current);
-                            keyFrameNumberByLayer[layerId] = current + 1;
-                        }
-                        keyFrameNumberByLayer.TryGetValue(layerId, out var layerKf);
-                        frame.KeyFrameNumber = layerKf;
 
                         yield return frame;
                     }

@@ -61,30 +61,32 @@ export const StreamServerDef = defineRpcService('IStreamServer', {
 export interface VideoFrameDto {
     Data: Uint8Array;
     Offset: Moment;       // TimeSpan ticks (int64)
+    Duration: Moment;     // TimeSpan ticks (int64)
     /** Sender's MonotonicClock epoch at capture. Increments on sleep/wake or
      *  NTP step. Receiver resets decode-side anchors when this changes. */
     OffsetEpoch?: number;
-    Duration: Moment;     // TimeSpan ticks (int64)
-    IsKeyFrame: boolean;
+    /** Per-layer pointer to this frame's keyframe: the keyframe's own `Index`.
+     *  A frame is a keyframe iff `KeyFrameIndex === Index`. There is no
+     *  separate IsKeyFrame on the wire — derive it. */
+    KeyFrameIndex?: number;
+    /** Sender-assigned source-moment counter. Gaps in `Index` between
+     *  consecutive same-layer frames == frames dropped somewhere upstream. */
+    Index?: number;
     Width?: number;
     Height?: number;
-    Description?: Uint8Array | null;
-    Codec?: string | null;
     // SVC layer ID (uint8 on wire). 0 = base (lowest-res) layer,
     // 1+ = higher-res layers. Always 0 on single-encoder (P2P) streams.
     LayerId?: number;
     // Max layer this frame covers (uint8 on wire). Used by the server
     // forwarder to clamp fan-out per consumer.
     MaxLayerId?: number;
+    MaxLayerWidth?: number;
+    MaxLayerHeight?: number;
     // SVC temporal layer ID (uint8 on wire). 0 = base, 1+ = enhancement.
     TemporalLayerId?: number;
-    // Native source dimensions, keyframe only. Lets server track source-resolution
-    // growth (e.g. screencast window resize) and unlock higher quality tiers mid-stream.
-    SourceWidth?: number;
-    SourceHeight?: number;
-    // Sender-assigned source-moment counter (int32). Gaps in `Index` between
-    // consecutive same-layer frames == frames dropped somewhere upstream.
-    Index?: number;
+    MaxTemporalLayerId?: number;
+    Codec?: string | null;
+    Description?: Uint8Array | null;
     // FrameDropStage[] (byte enum). One entry per dropped predecessor frame
     // tagged with the stage that dropped it.
     DropTrace?: Uint8Array | null;
@@ -106,8 +108,8 @@ export interface VideoFrameBundleDto {
 // play (ActualLab's RPC pipeline uses `MessagePackByteSerializer` which
 // derives keys from the property names regardless of the [Key] index).
 //
-// Important: `Width`/`Height`/`SourceWidth`/`SourceHeight` are NOT
-// flat fields on `VideoFormat` — they live nested under `Size` and
+// Important: `Width`/`Height` (and the source-side equivalents) on
+// `VideoFormat` are NOT flat — they live nested under `Size` and
 // `SourceSize`. Sending them flat (the older shape) leaves the server's
 // `VideoFormat.Size` defaulted to (0, 0), which breaks downstream
 // width/height filters even though the call dispatches.

@@ -13,6 +13,7 @@ import { Api, MediaRpcStreamOptions, streamingApi, toMoment,
     type VideoFrameBundleDto, type VideoFrameDto } from 'api';
 import { ServerClock } from 'clocks';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
+import { isVideoFrameBundleDtoKeyFrame, isVideoStreamBundleKeyFrame } from '../bundle-helpers';
 import type { FloodGate } from '../operators/flood-gate';
 import type {
     StreamSenderLike,
@@ -51,33 +52,32 @@ function bundleToDto(bundle: VideoStreamFrameBundle): VideoFrameBundleDto {
 function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
     // @msgpack/msgpack v3 emits >uint32 JS numbers as float64; server reads
     // TimeSpan ticks as int64, so pass bigint to force int msgpack code beyond 429.4967295s.
+    // IsKeyFrame is NOT on the wire — server derives it as KeyFrameIndex === Index.
+    const isKey = frame.keyFrameIndex === frame.index;
     const dto: VideoFrameDto = {
         Data: frame.data,
         Offset: toMoment(frame.offset),
         Duration: toMoment(frame.duration),
-        IsKeyFrame: frame.isKeyFrame,
+        KeyFrameIndex: frame.keyFrameIndex,
+        Index: frame.index,
     };
     if (frame.offsetEpoch !== undefined)
         dto.OffsetEpoch = frame.offsetEpoch;
-    if (frame.isKeyFrame) {
+    if (isKey) {
         dto.Width = frame.width;
         dto.Height = frame.height;
-        if (frame.sourceWidth && frame.sourceHeight) {
-            dto.SourceWidth = frame.sourceWidth;
-            dto.SourceHeight = frame.sourceHeight;
-        }
     }
     if (frame.description) dto.Description = frame.description;
     if (frame.codec) dto.Codec = frame.codec;
     if (frame.temporalLayerId !== undefined && frame.temporalLayerId > 0)
         dto.TemporalLayerId = frame.temporalLayerId;
+    if (frame.maxTemporalLayerId !== undefined && frame.maxTemporalLayerId > 0)
+        dto.MaxTemporalLayerId = frame.maxTemporalLayerId;
     if (frame.layerId !== undefined && frame.layerId > 0)
         dto.LayerId = frame.layerId;
     // Always emit producer's current ladder max — server's ReceiveQualityFilter
     // clamps the consumer cap without observing layers over time.
     dto.MaxLayerId = frame.maxLayerId ?? 0;
-    if (frame.index !== undefined)
-        dto.Index = frame.index;
     if (frame.dropTrace && frame.dropTrace.byteLength > 0)
         dto.DropTrace = frame.dropTrace;
     return dto;
@@ -205,9 +205,12 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
                         await frameAdded.whenNextVoid();
                     }
                 })(),
-                // applyKeyframePolicy enforces all-or-none across layers, so Layers[0] suffices.
+                // Skip only on bundles where EVERY layer is a keyframe — a
+                // mixed bundle (one layer's encoder unilaterally emitted a KF
+                // after reset while others emitted deltas) is not safe to
+                // skip past as a GOP anchor.
                 MediaRpcStreamOptions.videoRealtime<VideoFrameBundleDto>(
-                    bundle => bundle.Layers.length > 0 && bundle.Layers[0].IsKeyFrame),
+                    isVideoFrameBundleDtoKeyFrame),
             );
 
             const streamRef = stream.toRef(peer);
@@ -256,7 +259,8 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
 
         bundles.push(bundle);
         addedFrameCount += bundle.layers.length;
-        const isKeyBundle = bundle.layers[0].isKeyFrame;
+        // Bundle is a keyframe only when every layer agrees.
+        const isKeyBundle = isVideoStreamBundleKeyFrame(bundle);
         if (bundles.length > maxQueueDepth)
             maxQueueDepth = bundles.length;
         if (floodGate.isOpen && bundles.length >= closeGateAt)
@@ -267,7 +271,7 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
             infoLog?.log(`send: total=${addedFrameCount} queueBundles=${bundles.length} ` +
                 `peakQueueBundles=${maxQueueDepth} ` +
                 `floodGateSkipCount=${floodGate.skipCount} gateOpen=${floodGate.isOpen} ` +
-                `isKey=${isKeyBundle} bundleLayers=${bundle.layers.length} size=${totalBytes} ` +
+                `isKeyBundle=${isKeyBundle} bundleLayers=${bundle.layers.length} size=${totalBytes} ` +
                 `lastError='${lastError}' isDisposed=${isDisposed}`);
         }
 

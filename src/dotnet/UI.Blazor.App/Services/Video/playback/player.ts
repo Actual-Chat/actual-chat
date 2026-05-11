@@ -18,17 +18,28 @@ export type { DecoderLike } from '../operators/decode';
 export type { LatencySample } from '../operators/latency-tap';
 export type { VideoFrameDto } from '../operators/pull';
 
+// Members ordered by receiver pipeline flow:
+//   pull → buffer → decode → latency-tap → present.
 export interface PlayerConfig {
+    // -- pull --
     streamId: string;
-    initialDecoderConfig: { codec: string; codedWidth?: number; codedHeight?: number };
-    targetBufferSpanMs: number;
-    backend: RenderBackendConfig;
     getStream: (streamId: string) => Promise<AsyncIterable<VideoFrameDto>> | AsyncIterable<VideoFrameDto>;
+
+    // -- buffer --
+    targetBufferSpanMs: number;
+
+    // -- decode --
+    initialDecoderConfig: { codec: string; codedWidth?: number; codedHeight?: number };
     createDecoder: (handlers: {
         onFrame: (frame: VideoFrame) => void;
         onError: (e: Error) => void;
     }) => DecoderLike;
+
+    // -- latency-tap --
     reportLatency?: (sample: LatencySample) => void;
+
+    // -- present --
+    backend: RenderBackendConfig;
 }
 
 // One running pipeline (one stream). Multiple Players can share a

@@ -4,12 +4,14 @@ import { RpcStream } from 'actuallab-rpc';
 import { Api, MediaRpcStreamOptions, type VideoFrameDto, type AudioFrameDto } from 'api';
 
 // Real-time video: shared video stream policy with reconnect disabled.
+// Keyframe predicate: a frame is a keyframe iff `KeyFrameIndex === Index`.
 export function createVideoStream(source: AsyncIterable<VideoFrameDto>): { stream: RpcStream<VideoFrameDto>; ref: unknown } {
     const peer = Api.peer;
     const stream = new RpcStream<VideoFrameDto>(
         source,
         {
-            ...MediaRpcStreamOptions.videoRealtime<VideoFrameDto>(),
+            ...MediaRpcStreamOptions.videoRealtime<VideoFrameDto>(
+                item => item.KeyFrameIndex !== undefined && item.KeyFrameIndex === item.Index),
             allowReconnect: false,
         },
     );
