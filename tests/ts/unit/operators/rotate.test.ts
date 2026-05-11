@@ -10,6 +10,7 @@ function envelope(frame: FakeFrame, stats: VideoRecordingStats): CapturedFrame {
         frame: frame as unknown as VideoFrame,
         capturedAt: { timeMs: 0, epoch: 0 },
         index: 0,
+        dropTrace: [],
         sourceWidth: frame.codedWidth, sourceHeight: frame.codedHeight,
         forceKeyframe: false,
         stats,

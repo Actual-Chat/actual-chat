@@ -12,6 +12,8 @@ function mkChunk(timeMs: number, epoch: number, isKeyFrame = false): ArrivedChun
         chunk: {} as EncodedVideoChunk,
         arrivedAt: { timeMs, epoch: 0 },
         capturedAt: { timeMs, epoch },
+        index: 0,
+        dropTrace: [],
         isKeyFrame,
         layerId: 0,
         width: 640,

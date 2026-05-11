@@ -36,6 +36,8 @@ function makeEnvelope(stats: VideoPlaybackStats, id: number, opts: MakeOpts): De
         capturedAt: { timeMs: opts.capturedTimeMs, epoch: opts.capturedEpoch ?? 0 },
         arrivedAt: { timeMs: opts.arrivedTimeMs ?? opts.capturedTimeMs + 5, epoch: opts.capturedEpoch ?? 0 },
         decodedAt: { timeMs: opts.decodedTimeMs, epoch: opts.capturedEpoch ?? 0 },
+        index: id,
+        dropTrace: [],
         layerId: opts.layerId ?? 0,
         stats,
     };

@@ -138,6 +138,7 @@ function makeEncoderFactory(opts: { timeoutMs?: number } = {}) {
                 metadata,
                 capturedAt: input.capturedAt,
                 index: input.index,
+                dropTrace: [],
                 layerId: layerId,
                 sourceWidth: 0,
                 sourceHeight: 0,

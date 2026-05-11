@@ -1,5 +1,6 @@
 import { drain, pipe, tap, type PipeOperator } from 'ix-ext';
-import type { DecodedFrame } from '../frame-envelopes';
+import type { ArrivedChunk, DecodedFrame } from '../frame-envelopes';
+import { FrameDropStage, traceDrops } from '../frame-drop-trace';
 import { decode, type DecoderLike } from '../operators/decode';
 import { latencyTap, type LatencySample } from '../operators/latency-tap';
 import { canvasPresent, type CanvasImageInterface } from '../operators/present-canvas';
@@ -101,15 +102,22 @@ export class Player {
         const decodedTap = wrappedReportLatency
             ? latencyTap({ report: wrappedReportLatency })
             : tap<DecodedFrame>(() => { /* identity */ });
+        // `traceDrops(prevStage)` runs BETWEEN operators and tags any gap it
+        // observes against the operator immediately upstream (`prevStage`).
+        // Source-side trace covers everything before `pull` (sender, server).
         const pipeline = pipe(
             source,
+            traceDrops<ArrivedChunk>(FrameDropStage.ReceiverPull),
             resetOnEpochChange({ buffer }),
+            traceDrops<ArrivedChunk>(FrameDropStage.ReceiverEpochReset),
             pacedEncodedBuffer({ buffer, abortSignal }),
+            traceDrops<ArrivedChunk>(FrameDropStage.ReceiverEncodedBuffer),
             decode({
                 initialConfig: config.initialDecoderConfig,
                 createDecoder: config.createDecoder,
                 abortSignal,
             }),
+            traceDrops<DecodedFrame>(FrameDropStage.ReceiverDecode),
             decodedTap,
             present,
         );

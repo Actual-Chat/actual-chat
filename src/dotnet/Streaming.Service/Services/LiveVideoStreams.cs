@@ -131,11 +131,14 @@ public class LiveVideoStreams : ILiveVideoStreams
         // benefit other viewers.
         _ = VideoStreamingBackend.RequestKeyFrame(streamId, CancellationToken.None);
 
+        // Trace memoizer-side drops first, then the per-consumer quality filter.
+        var traced = rawStream.TraceDrops(FrameDropStage.ServerMemoizer);
         var filtered = ReceiveQualityFilter.Apply(
-            rawStream,
+            traced,
             () => GetReceiveQuality(session, streamIdValue),
             Log,
             cancellationToken);
+        filtered = filtered.TraceDrops(FrameDropStage.ServerReceiveQualityFilter);
 
         // Diagnostic: time from GetStream entry to the first frame the
         // server-side RpcStream actually yields. A large gap here means

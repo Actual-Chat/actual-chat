@@ -34,12 +34,12 @@ namespace ActualChat.Video;
 /// element to this formatter, so <see cref="VideoFrame"/>[] batches hit the cache too.
 /// </para>
 /// <para>
-/// Wire format: a 16-entry MessagePack map with PascalCase string keys — Data (bin),
+/// Wire format: an 18-entry MessagePack map with PascalCase string keys — Data (bin),
 /// Offset (int64 ticks), OffsetEpoch (int32), Duration (int64 ticks), IsKeyFrame (bool),
 /// Width (int32), Height (int32), Description (bin or nil), Codec (str or nil),
 /// LayerId (uint8), MaxLayerId (uint8), TemporalLayerId (uint8),
 /// SourceWidth (int32), SourceHeight (int32), MaxLayerWidth (int32),
-/// MaxLayerHeight (int32).
+/// MaxLayerHeight (int32), Index (int32), DropTrace (bin).
 /// </para>
 /// </remarks>
 public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFrame?>
@@ -98,11 +98,13 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
         var sourceHeight = 0;
         var maxLayerWidth = 0;
         var maxLayerHeight = 0;
+        var index = 0;
         byte temporalLayerId = 0;
         byte layerId = 0;
         byte maxLayerId = 0;
         var dataSlice = default(ReadOnlyMemory<byte>);
         var descriptionSlice = default(ReadOnlyMemory<byte>);
+        var dropTraceSlice = default(ReadOnlyMemory<byte>);
         string? codec = null;
 
         for (var i = 0; i < mapLen; i++) {
@@ -164,6 +166,12 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
                 case "MaxSpatialLayerHeight":
                     maxLayerHeight = reader.ReadInt32();
                     break;
+                case "Index":
+                    index = reader.ReadInt32();
+                    break;
+                case "DropTrace":
+                    dropTraceSlice = reader.TryReadNil() ? default : ReadBinSlice(ref reader);
+                    break;
                 default:
                     // Forward-compat: tolerate unknown fields.
                     reader.Skip();
@@ -187,6 +195,8 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
             SourceHeight = sourceHeight,
             MaxLayerWidth = maxLayerWidth,
             MaxLayerHeight = maxLayerHeight,
+            Index = index,
+            DropTrace = dropTraceSlice,             // slice of bytes (may be empty)
             SerializedData = bytes,
         };
     }
@@ -223,7 +233,7 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
 
     private static void WriteFrame(ref MessagePackWriter writer, VideoFrame v)
     {
-        writer.WriteMapHeader(16);
+        writer.WriteMapHeader(18);
 
         writer.Write("Data");
         writer.Write(v.Data.Span);
@@ -278,5 +288,14 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
 
         writer.Write("MaxLayerHeight");
         writer.Write(v.MaxLayerHeight);
+
+        writer.Write("Index");
+        writer.Write(v.Index);
+
+        writer.Write("DropTrace");
+        if (v.DropTrace.IsEmpty)
+            writer.Write(ReadOnlySpan<byte>.Empty);
+        else
+            writer.Write(v.DropTrace.Span);
     }
 }

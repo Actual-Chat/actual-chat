@@ -133,6 +133,9 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                                 metadata: partial.metadata,
                                 capturedAt: top.capturedAt,
                                 index: top.index,
+                                // Shared by reference with the bundle; per-layer
+                                // wire DTOs carry the same trace bytes.
+                                dropTrace: bundle.dropTrace,
                                 layerId: layerId,
                                 sourceWidth: top.sourceWidth,
                                 sourceHeight: top.sourceHeight,
@@ -150,6 +153,8 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         mustClose = false;
                         const encodedBundle: EncodedBundle = {
                             layers: out,
+                            index: bundle.index,
+                            dropTrace: bundle.dropTrace,
                             stats: bundle.stats,
                         };
                         yield encodedBundle;

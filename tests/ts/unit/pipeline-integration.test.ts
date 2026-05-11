@@ -202,6 +202,7 @@ function makeCaptured(
         // capturedAt overwritten by stampCaptureTime; placeholder values:
         capturedAt: { timeMs: 0, epoch: 0 },
         index,
+        dropTrace: [],
         sourceWidth: width,
         sourceHeight: height,
         forceKeyframe: false,
@@ -232,6 +233,7 @@ function makeEncoderFactory() {
                 metadata,
                 capturedAt: input.capturedAt,
                 index: input.index,
+                dropTrace: [],
                 layerId: layerId,
                 sourceWidth: 0,
                 sourceHeight: 0,

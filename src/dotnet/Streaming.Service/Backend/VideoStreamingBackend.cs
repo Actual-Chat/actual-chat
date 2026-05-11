@@ -68,6 +68,9 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             skipCount++;
             return true;
         });
+        // Tag any drops the memoizer / SkipWhile introduced between
+        // ProcessFrames and this point.
+        stream = stream.TraceDrops(FrameDropStage.ServerSkipWhile);
 
         return new RpcStream<VideoFrame>(stream) {
             AckPeriod = Constants.Video.RpcStreamAckPeriod,
@@ -219,6 +222,11 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
             async IAsyncEnumerable<VideoFrame> ProcessFrames(IAsyncEnumerable<VideoFrameBundle> source)
             {
+                // Bundle-level drop trace: any gap between consecutive bundle
+                // indexes is attributed to ServerPushStream (RpcStream sender
+                // ring compaction or wire/auth failure) and the new entries
+                // are written into every layer's per-frame trace.
+                source = source.TraceBundleDrops(FrameDropStage.ServerPushStream);
                 await foreach (var bundle in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                     Interlocked.Increment(ref bundleCounter);
                     if (bundle.Layers.Length == 0)

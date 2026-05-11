@@ -51,6 +51,8 @@ interface PendingDecode {
     arrivedAt: ArrivedChunk['arrivedAt'];
     layerId: number;
     submitMs: number;
+    index: number;
+    dropTrace: ArrivedChunk['dropTrace'];
 }
 
 // ArrivedChunk -> DecodedFrame. Lazy decoder init on first keyframe,
@@ -125,6 +127,8 @@ async function* decodeAsync(
                 capturedAt: meta.capturedAt,
                 arrivedAt: meta.arrivedAt,
                 decodedAt: { timeMs: decodedAtMs, epoch: 0 },
+                index: meta.index,
+                dropTrace: meta.dropTrace,
                 layerId: meta.layerId,
                 stats,
             };
@@ -317,6 +321,8 @@ async function* decodeAsync(
                     arrivedAt: arrived.arrivedAt,
                     layerId: arrived.layerId,
                     submitMs,
+                    index: arrived.index,
+                    dropTrace: arrived.dropTrace,
                 });
                 try {
                     dec.decode(arrived.chunk);

@@ -130,6 +130,8 @@ export function downscale(opts: DownscaleOptions): PipeOperator<CapturedFrame, C
                 void timedOut;
                 return {
                     layers,
+                    index: envelope.index,
+                    dropTrace: envelope.dropTrace,
                     stats: envelope.stats,
                 };
             },
@@ -162,6 +164,9 @@ function makeLayerEnvelope(source: CapturedFrame, frame: VideoFrame): CapturedFr
         frame,
         capturedAt: source.capturedAt,
         index: source.index,
+        // Per-layer envelope shares the bundle's drop trace by reference; the
+        // bundle is the unit of drop accounting in the post-downscale pipeline.
+        dropTrace: source.dropTrace,
         sourceWidth: source.sourceWidth,
         sourceHeight: source.sourceHeight,
         forceKeyframe: source.forceKeyframe,

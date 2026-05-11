@@ -20,6 +20,8 @@ export interface VideoFrameDto {
     TemporalLayerId?: number;
     SourceWidth?: number;
     SourceHeight?: number;
+    Index?: number;
+    DropTrace?: Uint8Array | null;
 }
 
 export interface PullSourceOptions {
@@ -132,6 +134,12 @@ export function pullSource(opts: PullSourceOptions): AsyncIterableX<ArrivedChunk
                             timeMs: ticksToMs(dto.Offset),
                             epoch: dto.OffsetEpoch ?? 0,
                         },
+                        index: dto.Index ?? 0,
+                        // Copy on intake: MessagePack may hand us a view into
+                        // a shared buffer, and downstream operators mutate.
+                        dropTrace: dto.DropTrace && dto.DropTrace.byteLength > 0
+                            ? Array.from(dto.DropTrace)
+                            : [],
                         isKeyFrame: dto.IsKeyFrame,
                         layerId: dto.LayerId ?? 0,
                         width: dto.Width ?? 0,

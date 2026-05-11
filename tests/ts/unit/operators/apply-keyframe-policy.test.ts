@@ -25,6 +25,7 @@ function makeCaptured(stats: VideoRecordingStats, idx: number, forceKeyframe = f
         frame: new MockVideoFrame(idx) as unknown as VideoFrame,
         capturedAt: { timeMs: 1_000 + idx, epoch: 0 },
         index: idx,
+        dropTrace: [],
         sourceWidth: 1920,
         sourceHeight: 1080,
         forceKeyframe,
@@ -39,7 +40,7 @@ function makeBundle(stats: VideoRecordingStats, idx: number, forceKeyframe = fal
     for (let i = 0; i < extraCount + 1; i++) {
         layers.push(makeCaptured(stats, idx, forceKeyframe));
     }
-    return { layers, stats };
+    return { layers, index: idx, dropTrace: [], stats };
 }
 
 async function* source(items: CapturedBundle[]): AsyncIterable<CapturedBundle> {
