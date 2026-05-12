@@ -151,12 +151,12 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             snapshot = WithRenderFallback(snapshot, prev);
             var peak = ComputeDecayedPeak(prev, snapshot.IncomingByteRate);
             var desiredSize = GetDesiredVideoSize(snapshot, sourceKind);
-            var requestedMaxLayerId = snapshot.QualityReductionRequested
-                ? 0
-                : GetBestLayerFor(sourceKind, desiredSize);
+            var requestedLayerCount = snapshot.QualityReductionRequested
+                ? 1
+                : GetBestLayerFor(sourceKind, desiredSize) + 1;
             _playbackByStream[streamId] = new PlaybackStatsState(
                 sourceKind, snapshot, verdict, CpuTimestamp.Now, peak,
-                requestedMaxLayerId, desiredSize);
+                requestedLayerCount, desiredSize);
             isFirstTick = prev is null;
             if (isFirstTick || !_playbackStartedAt.ContainsKey(streamId))
                 _playbackStartedAt[streamId] = CpuTimestamp.Now;
@@ -207,7 +207,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                     Verdict: -1,
                     LastSeen: CpuTimestamp.Now,
                     PeakIncomingByteRate: 0,
-                    RequestedMaxLayerId: 0,
+                    RequestedLayerCount: 1,
                     DesiredVideoSize: VideoSize.None);
             }
         }
@@ -223,7 +223,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         CancellationToken cancellationToken)
     {
         var desiredSize = VideoSizeExt.FromLongSide(renderCssLongSide, renderDevicePixelRatio);
-        var currentMaxLayerId = GetBestLayerFor(sourceKind, desiredSize);
+        var currentLayerCount = GetBestLayerFor(sourceKind, desiredSize) + 1;
         lock (_playbackLock) {
             if (!_playbackStartedAt.ContainsKey(streamId))
                 _playbackStartedAt[streamId] = CpuTimestamp.Now;
@@ -246,7 +246,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                     Snapshot = snapshot,
                     Verdict = verdict,
                     LastSeen = CpuTimestamp.Now,
-                    RequestedMaxLayerId = currentMaxLayerId,
+                    RequestedLayerCount = currentLayerCount,
                     DesiredVideoSize = desiredSize,
                 };
             }
@@ -261,7 +261,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                     Verdict: 0,
                     LastSeen: CpuTimestamp.Now,
                     PeakIncomingByteRate: 0,
-                    RequestedMaxLayerId: currentMaxLayerId,
+                    RequestedLayerCount: currentLayerCount,
                     DesiredVideoSize: desiredSize);
             }
             var lastEvalAt = _playbackLastEvalAt.GetValueOrDefault(streamId);
@@ -531,10 +531,8 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             .Where(x => x.Value.Snapshot.Priority != PlaybackStreamPriority.Primary)
             .Select(ToStreamRequest)
             .ToArray();
-        var maxLayerId = _debugMaxPlaybackLayerCount is { } maxLayerCount
-            ? maxLayerCount - 1
-            : (int?)null;
-        var requested = Allocator.Allocate(capacity, primaries, secondaries, maxLayerId);
+        var layerCount = _debugMaxPlaybackLayerCount;
+        var requested = Allocator.Allocate(capacity, primaries, secondaries, layerCount);
         var requestedMap = new ApiMap<string, ReceiveQuality>();
         foreach (var (streamId, _) in entries)
             requestedMap[streamId.Value] = requested.GetValueOrDefault(streamId.Value, ReceiveQuality.Lowest);
@@ -546,7 +544,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         var streamSignals = new Dictionary<string, PlaybackStreamSignals>();
         foreach (var (streamId, state) in entries) {
             var ladder = VideoRecorder.BuildLadder(state.SourceKind);
-            var pickedLayer = requestedMap[streamId.Value].MaxLayerId;
+            var pickedLayer = requestedMap[streamId.Value].LayerCount - 1;
             var layer = Math.Clamp(pickedLayer, 0, ladder.Count - 1);
             var allocated = ladder[layer].GetByteRate(state.Snapshot.Codec);
             streamSignals[streamId.Value] = new PlaybackStreamSignals(
@@ -559,7 +557,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             + "streams=[{Streams}]",
             reason, capacity, aggregateHealth,
             string.Join(", ", entries.Select(x =>
-                $"{x.Key.Value}:v{x.Value.Verdict}/size={x.Value.DesiredVideoSize}/req=L{requestedMap[x.Key.Value].MaxLayerId}"
+                $"{x.Key.Value}:v{x.Value.Verdict}/size={x.Value.DesiredVideoSize}/req=L{requestedMap[x.Key.Value].LayerCount - 1}"
                 + $"/rate={x.Value.Snapshot.IncomingByteRate}/peak={x.Value.PeakIncomingByteRate}"
                 + $"/buf={x.Value.Snapshot.BufferSpanMsEma:F0}ms"
                 + $"/qReduce={x.Value.Snapshot.QualityReductionRequested}"
@@ -585,7 +583,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             cancellationToken).SuppressExceptions();
         await UpdateRequestedReceiveQualityRegistry(
             entries
-                .Select(x => new PlaybackStreamHint(x.Key.Value, x.Value.RequestedMaxLayerId))
+                .Select(x => new PlaybackStreamHint(x.Key.Value, Math.Max(0, x.Value.RequestedLayerCount - 1)))
                 .ToArray(),
             requestedMap,
             cancellationToken).ConfigureAwait(false);
@@ -594,20 +592,20 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
 
         static StreamRequest ToStreamRequest(KeyValuePair<StreamId, PlaybackStatsState> entry)
         {
-            var maxLayerId = entry.Value.Snapshot.QualityReductionRequested
-                ? 0
-                : entry.Value.RequestedMaxLayerId;
-            var rates = EstimateLayerRates(entry.Value, maxLayerId);
-            return new StreamRequest(entry.Key.Value, rates, maxLayerId);
+            var layerCount = entry.Value.Snapshot.QualityReductionRequested
+                ? 1
+                : entry.Value.RequestedLayerCount;
+            var rates = EstimateLayerRates(entry.Value, layerCount);
+            return new StreamRequest(entry.Key.Value, rates, layerCount);
         }
     }
 
     private static IReadOnlyList<long> EstimateLayerRates(
         PlaybackStatsState state,
-        int maxLayerId)
+        int layerCount)
     {
         var ladder = VideoRecorder.BuildLadder(state.SourceKind);
-        var targetLayer = Math.Clamp(maxLayerId, 0, ladder.Count - 1);
+        var targetLayer = Math.Clamp(layerCount - 1, 0, ladder.Count - 1);
         var rates = new long[ladder.Count];
         for (var i = 0; i < ladder.Count; i++)
             rates[i] = ladder[i].GetByteRate(state.Snapshot.Codec);
@@ -719,7 +717,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         foreach (var hint in streamHints) {
             if (requested is not null && requested.TryGetValue(hint.StreamId, out var q)) {
                 await Hub.JS.InvokeVoidAsync(
-                    jsMethod, cancellationToken, hint.StreamId, q.MaxLayerId, q.MaxTemporalLayerId)
+                    jsMethod, cancellationToken, hint.StreamId, q.LayerCount, q.TemporalLayerCount)
                     .ConfigureAwait(false);
             }
             else {
@@ -748,7 +746,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     {
         var map = new ApiMap<string, ReceiveQuality>();
         var quality = layerCount is { } count
-            ? new ReceiveQuality(Math.Max(0, count - 1), int.MaxValue)
+            ? new ReceiveQuality(Math.Max(1, count), int.MaxValue)
             : ReceiveQuality.Default;
         foreach (var hint in hints)
             map[hint.StreamId] = quality;
@@ -1101,7 +1099,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     public sealed record StreamRequest(
         string StreamId,
         IReadOnlyList<long> PredictedRatesByLayer,
-        int? MaxLayerId = null)
+        int? LayerCount = null)
     {
         public long PredictedRateAtBase => PredictedRatesByLayer.Count == 0 ? long.MaxValue : PredictedRatesByLayer[0];
     }
@@ -1119,7 +1117,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             long budgetBytesPerSec,
             IReadOnlyList<StreamRequest> primaries,
             IReadOnlyList<StreamRequest> secondaries,
-            int? maxLayerId = null)
+            int? layerCount = null)
         {
             var result = new Dictionary<string, ReceiveQuality>();
             var remaining = budgetBytesPerSec;
@@ -1130,30 +1128,30 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             void Allocate(IReadOnlyList<StreamRequest> requests)
             {
                 foreach (var req in requests) {
-                    var layer = FindBestLayer(req, remaining, maxLayerId);
+                    var layer = FindBestLayer(req, remaining, layerCount);
                     if (layer < 0)
                         continue;
-                    result[req.StreamId] = new ReceiveQuality(layer, int.MaxValue);
+                    result[req.StreamId] = new ReceiveQuality(layer + 1, int.MaxValue);
                     remaining -= req.PredictedRatesByLayer[layer];
                 }
             }
 
-            static int FindBestLayer(StreamRequest req, long remaining, int? globalMaxLayerId)
+            static int FindBestLayer(StreamRequest req, long remaining, int? globalLayerCount)
             {
                 if (req.PredictedRatesByLayer.Count == 0)
                     return -1;
-                var effectiveMaxLayerId = MinLayer(globalMaxLayerId, req.MaxLayerId)
-                    ?? req.PredictedRatesByLayer.Count - 1;
-                effectiveMaxLayerId = Math.Clamp(effectiveMaxLayerId, 0, req.PredictedRatesByLayer.Count - 1);
-                for (var layer = effectiveMaxLayerId; layer >= 0; layer--) {
+                var effectiveLayerCount = MinCount(globalLayerCount, req.LayerCount)
+                    ?? req.PredictedRatesByLayer.Count;
+                effectiveLayerCount = Math.Clamp(effectiveLayerCount, 1, req.PredictedRatesByLayer.Count);
+                for (var layer = effectiveLayerCount - 1; layer >= 0; layer--) {
                     if (remaining >= req.PredictedRatesByLayer[layer])
                         return layer;
                 }
                 return -1;
             }
 
-            static int? MinLayer(int? globalMax, int? streamMax)
-                => (globalMax, streamMax) switch {
+            static int? MinCount(int? globalCount, int? streamCount)
+                => (globalCount, streamCount) switch {
                     ({ } g, { } s) => Math.Min(g, s),
                     ({ } g, null) => g,
                     (null, { } s) => s,
@@ -1170,7 +1168,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         int Verdict,
         CpuTimestamp LastSeen,
         long PeakIncomingByteRate,
-        // Per-stream max layer requested for this allocation cycle.
-        int RequestedMaxLayerId,
+        // Per-stream layer count requested for this allocation cycle (1-based).
+        int RequestedLayerCount,
         VideoSize DesiredVideoSize);
 }

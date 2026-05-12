@@ -71,13 +71,13 @@ function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
     if (frame.codec) dto.Codec = frame.codec;
     if (frame.temporalLayerId !== undefined && frame.temporalLayerId > 0)
         dto.TemporalLayerId = frame.temporalLayerId;
-    if (frame.maxTemporalLayerId !== undefined && frame.maxTemporalLayerId > 0)
-        dto.MaxTemporalLayerId = frame.maxTemporalLayerId;
+    if (frame.temporalLayerCount !== undefined && frame.temporalLayerCount > 1)
+        dto.TemporalLayerCount = frame.temporalLayerCount;
     if (frame.layerId !== undefined && frame.layerId > 0)
         dto.LayerId = frame.layerId;
-    // Always emit producer's current ladder max — server's ReceiveQualityFilter
+    // Always emit producer's current ladder size — server's ReceiveQualityFilter
     // clamps the consumer cap without observing layers over time.
-    dto.MaxLayerId = frame.maxLayerId ?? 0;
+    dto.LayerCount = frame.layerCount ?? 1;
     if (frame.dropTrace && frame.dropTrace.byteLength > 0)
         dto.DropTrace = frame.dropTrace;
     return dto;

@@ -77,6 +77,7 @@ export function mstpSource(opts: MstpSourceOptions): AsyncIterableX<CapturedFram
                         forceKeyframe: false,
                         stats,
                     };
+                    stats.framesCaptured++;
                     mustClose = false;
                     yield envelope;
                 } finally {

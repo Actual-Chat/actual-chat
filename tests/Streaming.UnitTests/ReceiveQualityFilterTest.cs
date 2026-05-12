@@ -5,7 +5,7 @@ namespace ActualChat.Streaming.UnitTests;
 
 public class ReceiveQualityFilterTest
 {
-    private static readonly ReceiveQuality TopQuality = new(2, int.MaxValue);
+    private static readonly ReceiveQuality TopQuality = new(3, int.MaxValue);
 
     [Fact]
     public async Task LoweredCapSwitchesOnNextKeyframe()
@@ -73,7 +73,7 @@ public class ReceiveQualityFilterTest
     [Fact]
     public async Task UpgradedTemporalCapWaitsForNextKeyframe()
     {
-        var quality = new ReceiveQuality(2, 0);
+        var quality = new ReceiveQuality(3, 1);
         var frames = Frames(
             Key(2, 1),
             Delta(2, 1),
@@ -147,7 +147,7 @@ public class ReceiveQualityFilterTest
                 _ => 720,
             },
             LayerId = layer,
-            MaxLayerId = 2,
+            LayerCount = 3,
             TemporalLayerId = temporal,
             // KF: Index == KeyFrameIndex (so IsKeyFrame is true);
             // Delta: Index = -1 (or any other value != KeyFrameIndex) so the

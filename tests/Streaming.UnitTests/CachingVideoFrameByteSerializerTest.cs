@@ -95,38 +95,6 @@ public class CachingVideoFrameByteSerializerTest(ITestOutputHelper @out) : TestB
     }
 
     [Fact]
-    public void Deserialize_AcceptsLegacySpatialLayerKeys()
-    {
-        var data = new byte[] { 1, 2, 3 };
-        var buffer = new ArrayPoolBuffer<byte>(512, mustClear: false);
-        var writer = new MessagePackWriter(buffer);
-        writer.WriteMapHeader(13);
-        writer.Write("IsKeyFrame"); writer.Write(true);
-        writer.Write("Offset"); writer.Write(TimeSpan.FromMilliseconds(33).Ticks);
-        writer.Write("Duration"); writer.Write(TimeSpan.FromMilliseconds(10).Ticks);
-        writer.Write("Data"); writer.Write(data);
-        writer.Write("SpatialLayerId"); writer.Write((byte)1);
-        writer.Write("MinSpatialLayerId"); writer.Write((byte)0);
-        writer.Write("MaxSpatialLayerId"); writer.Write((byte)2);
-        writer.Write("TemporalLayerId"); writer.Write((byte)3);
-        writer.Write("MaxSpatialLayerWidth"); writer.Write(1280);
-        writer.Write("MaxSpatialLayerHeight"); writer.Write(720);
-        writer.Write("Codec"); writer.Write("avc1");
-        writer.Flush();
-
-        var reader = new MessagePackReader(buffer.WrittenMemory);
-        var decoded = CachingVideoFrameFormatter.Instance.Deserialize(ref reader, MessagePackSerializerOptions.Standard)!;
-
-        decoded.LayerId.Should().Be(1);
-        decoded.MaxLayerId.Should().Be(2);
-        decoded.TemporalLayerId.Should().Be(3);
-        decoded.MaxLayerWidth.Should().Be(1280);
-        decoded.MaxLayerHeight.Should().Be(720);
-        decoded.Data.ToArray().Should().Equal(data);
-        decoded.Codec.Should().Be("avc1");
-    }
-
-    [Fact]
     public void Deserialize_DataIsAliasedToSerializedData()
     {
         // Regression guard: after deserialize, VideoFrame.Data must NOT be a separately
@@ -276,7 +244,7 @@ public class CachingVideoFrameByteSerializerTest(ITestOutputHelper @out) : TestB
             KeyFrameIndex = isKey ? index : 0,
             Width = isKey ? 1280 : 0,
             Height = isKey ? 720 : 0,
-            MaxLayerId = 2,
+            LayerCount = 3,
             MaxLayerWidth = isKey ? 1280 : 0,
             MaxLayerHeight = isKey ? 720 : 0,
             Description = isKey ? new byte[] { 0x00, 0x00, 0x00, 0x01, 0x67 } : default,
@@ -294,7 +262,7 @@ public class CachingVideoFrameByteSerializerTest(ITestOutputHelper @out) : TestB
         actual.KeyFrameIndex.Should().Be(expected.KeyFrameIndex);
         actual.Width.Should().Be(expected.Width);
         actual.Height.Should().Be(expected.Height);
-        actual.MaxLayerId.Should().Be(expected.MaxLayerId);
+        actual.LayerCount.Should().Be(expected.LayerCount);
         actual.MaxLayerWidth.Should().Be(expected.MaxLayerWidth);
         actual.MaxLayerHeight.Should().Be(expected.MaxLayerHeight);
         actual.Data.Span.SequenceEqual(expected.Data.Span).Should().BeTrue();

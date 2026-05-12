@@ -28,9 +28,9 @@ export interface VideoStreamFrame {
     description?: Uint8Array;
     codec?: string;
     temporalLayerId?: number;
-    maxTemporalLayerId?: number;
+    temporalLayerCount?: number;
     layerId?: number;
-    maxLayerId?: number;
+    layerCount?: number;
     // FrameDropStage[] — one entry per dropped predecessor up to this point.
     dropTrace?: Uint8Array;
 }
@@ -74,7 +74,7 @@ export interface StreamSenderStats {
 
 export interface WireSendOptions {
     createSender: () => StreamSenderLike;
-    // Fills MaxLayerId on every chunk; without it, consumers clamp to L0.
+    // Fills LayerCount on every chunk; without it, consumers clamp to L0.
     layerCount?: number;
     // Encoder yields bottom-first; we wait for the top-layer keyframe before init.
     topLayerWidth?: number;
@@ -99,7 +99,6 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
         async function* impl(): AsyncIterable<void> {
             const { createSender, topLayerWidth, topLayerHeight, abortSignal } = opts;
             const layerCount = opts.layerCount ?? 1;
-            const maxLayerId = layerCount - 1;
             const abortRace: Promise<never> = abortSignal
                 ? abortPromise(abortSignal)
                 : new Promise(() => { /* never resolves */ });
@@ -166,7 +165,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                                 height: encoded.encodedHeight,
                                 data: readChunkBytes(encoded.chunk),
                                 layerId: encoded.layerId,
-                                maxLayerId,
+                                layerCount,
                                 temporalLayerId: encoded.metadata.temporalLayerId,
                             };
                             if (dropTraceBytes) dto.dropTrace = dropTraceBytes;

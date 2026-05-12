@@ -84,6 +84,17 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     [ComputeMethod]
+    public virtual async Task<IReadOnlyList<VideoSourceKind>> GetOwnSourceKinds(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        var result = new List<VideoSourceKind>(2);
+        if (await IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false))
+            result.Add(VideoSourceKind.Camera);
+        if (await IsOwnScreenCasting(chatId, cancellationToken).ConfigureAwait(false))
+            result.Add(VideoSourceKind.ScreenCast);
+        return result;
+    }
+
+    [ComputeMethod]
     public virtual async Task<bool> IsVideoAvailable(ChatId chatId, CancellationToken cancellationToken = default)
     {
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);

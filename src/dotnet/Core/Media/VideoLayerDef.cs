@@ -13,7 +13,6 @@ public sealed record VideoLayerDef(VideoSourceKind SourceKind, VideoSize Size, d
     ];
     public static readonly VideoLayerDef[] All = CameraLayers.Concat(ScreenCastLayers).ToArray();
     public static readonly int MaxLayerCount = Math.Max(CameraLayers.Length, ScreenCastLayers.Length);
-    public static readonly int MaxLayerId = MaxLayerCount - 1;
 
     public int Width => Size.LongSide();
     public int Height => Size.ShortSide();

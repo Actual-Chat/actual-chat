@@ -77,14 +77,14 @@ export interface VideoFrameDto {
     // SVC layer ID (uint8 on wire). 0 = base (lowest-res) layer,
     // 1+ = higher-res layers. Always 0 on single-encoder (P2P) streams.
     LayerId?: number;
-    // Max layer this frame covers (uint8 on wire). Used by the server
-    // forwarder to clamp fan-out per consumer.
-    MaxLayerId?: number;
+    // Number of spatial layers in the producing ladder (uint8 on wire).
+    // Used by the server forwarder to clamp fan-out per consumer.
+    LayerCount?: number;
     MaxLayerWidth?: number;
     MaxLayerHeight?: number;
     // SVC temporal layer ID (uint8 on wire). 0 = base, 1+ = enhancement.
     TemporalLayerId?: number;
-    MaxTemporalLayerId?: number;
+    TemporalLayerCount?: number;
     Codec?: string | null;
     Description?: Uint8Array | null;
     // FrameDropStage[] (byte enum). One entry per dropped predecessor frame
@@ -138,8 +138,8 @@ export interface AudioFrameDto {
 // MessagePack with explicit numeric Key(N), so wire keys are integers.
 
 export interface ReceiveQualityDto {
-    0: number;  // MaxLayerId
-    1: number;  // MaxTemporalLayerId
+    0: number;  // LayerCount
+    1: number;  // TemporalLayerCount
 }
 
 export interface RecordingQualityStateDto {
@@ -166,8 +166,8 @@ export interface PlaybackStreamInfoDto {
     1: number;   // BufferSpanMsEma
     2: number;   // KeyframeSkipsInWindow
     3: number;   // DecoderQueueDepthEma
-    4: number;   // CurrentMaxLayerId
-    5: number;   // CurrentMaxTemporalLayerId
+    4: number;   // CurrentLayerCount
+    5: number;   // CurrentTemporalLayerCount
     6: number;   // PlaybackStreamPriority (0=Secondary, 1=Primary)
     7: number;   // Verdict (-1, 0, +1)
 }

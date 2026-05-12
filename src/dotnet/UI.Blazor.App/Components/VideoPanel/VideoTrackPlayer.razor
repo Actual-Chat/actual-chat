@@ -38,9 +38,9 @@
         <div class="video-participant-label">
             <i class="@labelIcon"></i>
             <span>@AuthorName</span>
+            <span class="video-fps" data-stream-id="@StreamInfo.StreamId.Value"></span>
         </div>
     }
-    <div class="video-fps-overlay" data-stream-id="@StreamInfo.StreamId.Value">…</div>
 </div>
 
 @code {
@@ -149,11 +149,36 @@
     }
 
     [JSInvokable]
-    public async Task OnPlaybackStats(PlaybackStats stats)
+    public async Task OnPlaybackStats(
+        long incomingByteRate,
+        double bufferSpanMsEma,
+        int priority,
+        int streamAgeMs,
+        bool qualityReductionRequested,
+        double renderCssLongSide,
+        double renderDevicePixelRatio,
+        string codec,
+        byte[] dropStages,
+        long[] dropCounts,
+        long presented)
     {
         if (_isDisposed)
             return;
 
+        var dropTrace = new Dictionary<FrameDropStage, long>(dropStages.Length);
+        for (var i = 0; i < dropStages.Length && i < dropCounts.Length; i++)
+            dropTrace[(FrameDropStage)dropStages[i]] = dropCounts[i];
+        var stats = new PlaybackStats(
+            IncomingByteRate: incomingByteRate,
+            BufferSpanMsEma: bufferSpanMsEma,
+            Priority: (PlaybackStreamPriority)priority,
+            StreamAgeMs: streamAgeMs,
+            QualityReductionRequested: qualityReductionRequested,
+            RenderCssLongSide: renderCssLongSide,
+            RenderDevicePixelRatio: renderDevicePixelRatio,
+            Codec: codec,
+            DropTrace: dropTrace,
+            Presented: presented);
         try {
             await Hub.VideoQualityUI
                 .PushPlaybackStats(StreamInfo.StreamId, StreamInfo.SourceKind, stats, CancellationToken.None)
