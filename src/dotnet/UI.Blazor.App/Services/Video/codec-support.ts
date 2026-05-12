@@ -246,6 +246,15 @@ async function probeEncoderUncached(
     const top = layers[layers.length - 1];
     let pendingResolver: (() => void) | null = null;
     let encoder: VideoEncoder | null = null;
+    let encoderError: unknown = null;
+
+    const resolvePending = (): void => {
+        const resolve = pendingResolver;
+        if (resolve) {
+            pendingResolver = null;
+            resolve();
+        }
+    };
 
     try {
         const config: VideoEncoderConfig = {
@@ -265,14 +274,15 @@ async function probeEncoderUncached(
             return { supported: false, medianEncodeMs: 0, failedStage: 'configure' };
         }
         encoder = new VideoEncoder({
-            output: () => {
-                const resolve = pendingResolver;
-                if (resolve) {
-                    pendingResolver = null;
-                    resolve();
-                }
+            output: () => resolvePending(),
+            // Hardware encoders can fail asynchronously (NVENC contention,
+            // VideoToolbox init quirks). Capture and unblock the pending
+            // wait so the probe fails fast instead of hanging on `await wait`.
+            error: e => {
+                encoderError = e;
+                debugLog?.log(`probeEncoder: encoder error for ${codec}`, e);
+                resolvePending();
             },
-            error: e => errorLog?.log(`probeEncoder error`, e),
         });
         encoder.configure(config);
 
@@ -307,6 +317,8 @@ async function probeEncoderUncached(
             }
             srcFrame.close();
             await wait;
+            if (encoderError)
+                return { supported: false, medianEncodeMs: 0, failedStage: 'encode' };
             timings.push(performance.now() - t0);
         }
 
