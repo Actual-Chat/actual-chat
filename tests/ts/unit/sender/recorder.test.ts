@@ -254,54 +254,33 @@ describe('Recorder', () => {
         session.dispose();
     });
 
-    it('restart: stop+start cycle reuses the encoder pool, second run produces frames', async () => {
+    it('restart: every run creates a fresh VideoEncoder so the first chunk is a keyframe', async () => {
         const session = new SenderSession();
         const recorder = new Recorder(session);
 
-        // First run: 1 frame; bind the encoder factory through the pool.
+        // First run: 1 frame.
         const sender1 = new FakeSender();
-        let acquired: { release: () => void }[] = [];
-        const poolFactory: RecorderConfig['createEncoder'] = (lc, lid) => {
-            const handle = session.encoderPool.acquire(
-                'h264',
-                () => makeEncoderFactory()(lc, lid),
-            );
-            acquired.push(handle);
-            return handle.encoder;
-        };
         const run1 = recorder.start(buildConfig({
             createSender: () => sender1,
-            createEncoder: poolFactory,
             createProcessor: makeProcessorFromQueue([new MockVideoFrame(0)]),
         }));
         await driveToCompletion(run1);
-        // Release back to pool so it can be reused on restart.
-        for (const h of acquired) h.release();
-        acquired = [];
-        expect(session.encoderPool.parkedCount).toBe(1);
+        const instancesAfterRun1 = MockVideoEncoder.instances.length;
+        expect(instancesAfterRun1).toBeGreaterThan(0);
 
-        // restart() — second run reuses the parked encoder; factory is
-        // NOT called again at the operator boundary (acquire returns the
-        // parked instance).
+        // restart() — second run MUST create a new VideoEncoder, not reuse.
+        // The fresh encoder's first encoded chunk is guaranteed to be a
+        // keyframe (its an empty internal frame buffer; nothing to predict from).
         const sender2 = new FakeSender();
-        const factoryCallsBefore = MockVideoEncoder.instances.length;
         const run2Promise = recorder.restart(buildConfig({
             createSender: () => sender2,
-            createEncoder: (lc, lid) => {
-                const handle = session.encoderPool.acquire(
-                    'h264',
-                    () => makeEncoderFactory()(lc, lid),
-                );
-                acquired.push(handle);
-                return handle.encoder;
-            },
             createProcessor: makeProcessorFromQueue([new MockVideoFrame(0)]),
         }));
         await driveToCompletion(run2Promise);
-        // No NEW MockVideoEncoder instance was created — pool reused the parked one.
-        expect(MockVideoEncoder.instances.length).toBe(factoryCallsBefore);
+        expect(MockVideoEncoder.instances.length).toBeGreaterThan(instancesAfterRun1);
         expect(sender2.sent.length).toBe(1);
-        for (const h of acquired) h.release();
+        // First wire DTO of the second run is a real keyframe.
+        expect(sender2.sent[0].keyFrameIndex).toBe(sender2.sent[0].index);
         session.dispose();
     });
 

@@ -53,9 +53,10 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
 
         async function* impl(): AsyncIterable<EncodedBundle> {
             const encoders: AsyncVideoEncoder<EncodeInput, EncodedFrame>[] = [];
-            // Pool-reused encoders may emit a delta as their first chunk after
-            // handleEncoderReset; the server drops pre-keyframe deltas and the
-            // receiver waits up to one full GOP (~3 s) for the next keyframe.
+            // We always request a keyframe on the first encode. Encoders are
+            // not pooled (createEncoder returns a fresh `new VideoEncoder()`),
+            // so a fresh internal buffer guarantees the first encoded chunk
+            // is an intra-coded keyframe.
             let forceKeyframeOnFirstEncode = true;
             let forceKeyframeNext = false;
             try {

@@ -139,7 +139,9 @@ on the wire.
 ### `encode` — per-layer encoders, parallel
 File: `operators/encode.ts`. For each `CapturedBundle`:
 
-- Lazily acquires one `PooledEncoder` per layer (see `EncoderPool` below).
+- Lazily creates one `AsyncVideoEncoder` per layer via `createEncoder`
+  (production wiring in `recorder-worker-host.ts` returns a fresh
+  `new VideoEncoder()` every call — see "No encoder pooling" below).
 - Submits all layers in parallel (`Promise.allSettled`); each call passes
   `{ keyFrame: forceKeyframe }` so all simulcast keyframes line up.
 - Yields a single `EncodedBundle { layers: EncodedFrame[] }` with `layers`
@@ -204,29 +206,29 @@ The Denque is **not** "drop oldest"; the RpcStream's own
 ([11-buffering-and-av-sync.md](./11-buffering-and-av-sync.md) covers the two
 tiers in detail).
 
-## EncoderPool — keep the NVENC slot warm
+## No encoder pooling — fresh `VideoEncoder` per run
 
-File: `sender/encoder-pool.ts`, `sender/session.ts`.
+`createEncoder` in `recorder-worker-host.ts` returns a brand-new
+`AsyncVideoEncoder` (and therefore a brand-new underlying `VideoEncoder`)
+every time. There is no pool.
 
-The pool parks released encoders (instead of disposing them) for
-`parkTtlMs = 5 s`. The trick is to override the encoder's `dispose` on
-checkout so the operator's `finally` parks instead of kills it.
+Why this matters: a pool-reused encoder can emit a **delta as its first
+chunk** after reset. If that happens, the wire layer caches no prior
+keyframe index, the receiver mis-decodes it as a keyframe, and Chrome's
+`VideoDecoder` raises *"A key frame is required after configure() or
+flush()"*. A fresh encoder has an empty internal frame buffer, so its
+first encoded chunk is guaranteed to be a real intra-coded keyframe.
 
-Two non-obvious rules pay off here:
+We trade the warm-NVENC-slot win (sub-second restart) for that guarantee.
+Codec strings still stay constant within a category (see
+`getCodecForCategory()`) so a single `VideoEncoder` instance can absorb
+dim/bitrate changes via `reconfigure` mid-run — only `start()` after
+`stop()` pays the cold-init cost.
 
-1. **Codec category stays constant within a session.** `getCodecForCategory()`
-   picks the highest level in the category (e.g. H.264 High 5.2) and the
-   matching pool slot is keyed on category, not the exact codec string.
-   Chrome re-initialises NVENC when the codec string changes; reusing a slot
-   would otherwise be impossible.
-2. **Bitrate-only reconfigures are in-place.** Dimension changes replace the
-   encoder instance, but the pool holds the slot during the gap.
-
-`SenderSession` owns the pool, the `MonotonicClock` used for capture timing,
-and (optionally) a `MediaStreamTrackGenerator` writer for local preview. It
-survives `stop()` → `start()` cycles so warm-state is reused.
-`session.reset()` is called from `Recorder.restart()` to clear per-run
-state without losing parked encoders.
+`SenderSession` owns the `MonotonicClock` used for capture timing and
+(optionally) a `MediaStreamTrackGenerator` writer for local preview. It
+survives `stop()` → `start()` cycles so capture-clock monotonicity is
+preserved across runs.
 
 ## Local preview tap
 
@@ -246,11 +248,11 @@ counted in `stats.previewClonesFailed`.
 - Schedules `STOP_DRAIN_GRACE_MS = 3 s` abort timer. If the pipeline hasn't
   drained by then, the operators are aborted hard so the worker doesn't hang
   on a dead RPC pump.
-- Encoder pool keeps parked entries for 5 s in case `start()` is called again
-  shortly after (e.g. switching the camera).
+- `encode`'s `finally` disposes every per-layer encoder. A subsequent
+  `start()` constructs new ones from scratch (no warm slot to reuse).
 
 `Recorder.restart(config)` is the standard layer-count change path: stops,
-awaits drain, calls `session.reset()`, then starts with the new config.
+awaits drain, then starts with the new config (fresh encoders).
 
 ## Stats carried through the pipeline
 

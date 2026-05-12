@@ -32,10 +32,11 @@ On Firefox, H.264 Main 3.1 is forced (only profile that works reliably). On
 mobile, the policy prefers Main over High for power efficiency.
 
 `getCodecForCategory(category, w, h)` always returns the highest level in the
-category (e.g. H.264 High 5.2). The exact codec string can vary across
-sessions for the same category, but the encoder pool slot is keyed on
-**category** (`getCodecCategory`), not the exact string, so an idle encoder
-inside the same category can be reused across `start/stop` cycles.
+category (e.g. H.264 High 5.2) and keeps it constant within a session, so a
+single `VideoEncoder` can absorb dim/bitrate reconfigures mid-run without a
+cold NVENC re-init. Encoders are NOT pooled across `start/stop` cycles —
+every recorder run constructs a fresh `VideoEncoder` so its first chunk is
+guaranteed to be an intra-coded keyframe (see `02-sender.md`).
 
 `probeEncoder(codec, layers)` measures steady-state encode time (median of
 last 5 frames after 3 warm-up). The 33 ms budget = one frame at 30 fps.
@@ -114,7 +115,7 @@ L2 1280×720   ~1500 kbps
 
 `buildLadder` is called from main-thread `VideoRecorder` and serialised into
 the worker's `RecorderWorkerOptions.encoderConfigs`. Changes to the ladder
-require a full `Recorder.restart()` (stop, `session.reset()`, start) — there
+require a full `Recorder.restart()` (stop, start with fresh encoders) — there
 is no in-place reconfigure.
 
 The active count is what the AIMD recording controller adjusts ([08](./08-quality-control.md)):
@@ -201,7 +202,6 @@ The reasons the server issues a PLI:
 | `Constants.Video.CodecSwitchHysteresisWindow` | 10 s | same |
 | `MIN_SIMULCAST_SMALL_AXIS` | 150 px | `layer-ladder.ts` |
 | Encoder probe budget | 33 ms / frame | `codec-support.ts` |
-| Encoder pool TTL | 5 s | `encoder-pool.ts` |
 | `VideoLayerDef.MaxLayerCount` (camera) | 3 | `Constants.Video.cs` |
 | Downscaler concurrency (slots) | 2 | `operators/downscale.ts` |
 | Downscaler hang watchdog | 1.5 s, ≤ 4 in a row | `operators/downscale.ts` |

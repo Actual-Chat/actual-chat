@@ -289,6 +289,35 @@ describe('wireSend', () => {
         expect(sender.sent[1].index).toBe(1);
     });
 
+    it('pre-keyframe delta is tagged as non-keyframe via -1 sentinel', async () => {
+        // Pool-reused encoders can emit a delta as their first chunk. Without a
+        // sentinel, `keyFrameIndex` would fall back to `index` and the receiver
+        // would mis-decode it as a keyframe — Chrome then throws "A key frame
+        // is required after configure() or flush()".
+        const stats = createEmptyRecorderStats();
+        const sender = new FakeSender();
+        const sink = wireSend({ createSender: () => sender });
+
+        const items = [
+            makeEncoded(stats, { type: 'delta', index: 0, capturedAt: { timeMs: 1_000, epoch: 0 } }),
+            makeEncoded(stats, { type: 'delta', index: 1, capturedAt: { timeMs: 1_033, epoch: 0 } }),
+            makeEncoded(stats, { type: 'key', index: 2, capturedAt: { timeMs: 1_066, epoch: 0 } }),
+            makeEncoded(stats, { type: 'delta', index: 3, capturedAt: { timeMs: 1_099, epoch: 0 } }),
+        ];
+        await runWith(source(items), sink);
+
+        expect(sender.sent[0].keyFrameIndex).toBe(-1);
+        expect(sender.sent[0].index).toBe(0);
+        expect(sender.sent[1].keyFrameIndex).toBe(-1);
+        expect(sender.sent[1].index).toBe(1);
+        // Real keyframe arrives at index 2.
+        expect(sender.sent[2].keyFrameIndex).toBe(2);
+        expect(sender.sent[2].index).toBe(2);
+        // Subsequent delta inherits the real keyframe's index.
+        expect(sender.sent[3].keyFrameIndex).toBe(2);
+        expect(sender.sent[3].index).toBe(3);
+    });
+
     it('createSender is called exactly once across the run', async () => {
         const stats = createEmptyRecorderStats();
         const sender = new FakeSender();

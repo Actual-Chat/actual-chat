@@ -354,8 +354,7 @@ export function getCodecForCategory(category: 'h264' | 'hevc' | 'av1' | 'vp9', w
     const isMobile = DeviceInfo.isMobile; // includes iOS
     // Keep the codec string CONSTANT across resolutions — Chrome's WebCodecs
     // re-inits the underlying NVENC session on any codec-string change (even
-    // just a level byte), so changing strings on resolution change defeats
-    // encoder-pool reuse and reproduces 'Encoder initialization error' storms.
+    // just a level byte), reproducing 'Encoder initialization error' storms.
     // Use the highest ladder-cap level per category (L4.0 for 1080p), bumped
     // for >1080p (4K screencast).
     const pixels = width * height;

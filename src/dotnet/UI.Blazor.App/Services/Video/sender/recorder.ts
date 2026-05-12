@@ -198,7 +198,6 @@ export class Recorder {
                 catch (e) { warnLog?.log('Recorder.restart: previous run failed during restart:', e); }
             }
         }
-        this.session.reset();
         await this.start(config);
     }
 

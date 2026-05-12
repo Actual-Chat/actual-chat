@@ -9,7 +9,9 @@ import type { DownscalerLike } from '../operators/downscale';
 import type { FloodGate } from '../operators/flood-gate';
 import type { StreamSenderLike } from '../operators/wire-send';
 import { Recorder } from './recorder';
-import type { EncoderFactory as PoolEncoderFactory } from './encoder-pool';
+import type { EncodedFrame } from '../frame-envelopes';
+import type { EncodeInput } from '../operators/encode';
+import type { AsyncVideoEncoder } from '../adapters';
 import { SenderSession } from './session';
 import type {
     RecorderWorker,
@@ -42,11 +44,15 @@ export interface RecorderWorkerDeps {
 
     // -- pipeline-stage factories, in sender pipeline order --
     createDownscaler?: () => DownscalerLike;
-    createPoolEncoderFactory: (
+    // Always returns a FRESH AsyncVideoEncoder. We deliberately don't pool
+    // encoders: a pool-reused encoder can emit a delta as its first chunk
+    // after reset, which the wire/server then mis-classify; a brand-new
+    // encoder's first chunk is guaranteed to be a keyframe.
+    createEncoder: (
         session: SenderSession,
         config: import('../operators/encode').EncoderConfigPerLayer,
         layerId: number,
-    ) => PoolEncoderFactory;
+    ) => AsyncVideoEncoder<EncodeInput, EncodedFrame>;
     createSender: (chatId: string, floodGate: FloodGate) => StreamSenderLike;
 
     // -- lifecycle callbacks --
@@ -63,8 +69,8 @@ interface WorkerState {
 
 let state: WorkerState | null = null;
 
-// Idempotent: subsequent calls reuse the existing session so the encoder
-// pool and capture clock survive.
+// Idempotent: subsequent calls reuse the existing session so the
+// capture clock survives across runs.
 export function initRecorderWorker(deps: RecorderWorkerDeps): void {
     if (state) return;
     const session = (deps.createSession ?? (() => new SenderSession()))();
@@ -149,20 +155,14 @@ export const recorderWorkerImpl: RecorderWorker = {
             serverClockOffsetMs: config.serverClockOffsetMs,
         });
         const track = deps.getTrack();
-        const ladder = config.encoderConfigs;
-        const layerCategoriesByCodec = ladder.map(c => deriveCategory(c.codec));
-        const handles: { release: () => void }[] = [];
         const encoderFactory: import('./recorder').RecorderConfig['createEncoder'] = (
             layerCfg,
             layerId,
         ) => {
-            const category = layerCategoriesByCodec[layerId];
-            const handle = session.encoderPool.acquire(
-                category,
-                deps.createPoolEncoderFactory(session, layerCfg, layerId),
-            );
-            handles.push(handle);
-            handle.encoder.configure({
+            // Fresh encoder per run: see `createEncoder` in RecorderWorkerDeps.
+            // encode() disposes it in its own `finally`.
+            const encoder = deps.createEncoder(session, layerCfg, layerId);
+            encoder.configure({
                 codec: layerCfg.codec,
                 width: layerCfg.width,
                 height: layerCfg.height,
@@ -170,7 +170,7 @@ export const recorderWorkerImpl: RecorderWorker = {
                 framerate: layerCfg.framerate,
                 latencyMode: 'realtime',
             });
-            return handle.encoder;
+            return encoder;
         };
 
         const senderFactory = (gate: FloodGate): StreamSenderLike => deps.createSender(config.chatId, gate);
@@ -204,9 +204,6 @@ export const recorderWorkerImpl: RecorderWorker = {
                 catch (reportError) { errorLog?.log('reportStreamEnded failed:', reportError); }
             },
         ).finally(() => {
-            for (const h of handles) {
-                try { h.release(); } catch { /* ignore */ }
-            }
             if (s.whenDone === whenDone) s.whenDone = null;
         });
         await Promise.resolve();
@@ -237,13 +234,3 @@ export const recorderWorkerImpl: RecorderWorker = {
         await Promise.resolve();
     },
 };
-
-// Mirrors the legacy `getCodecCategory` in `Services/Video/codec-support.ts`
-// without importing it — the new pipeline avoids legacy modules.
-function deriveCategory(codec: string): import('./encoder-pool').EncoderCodecCategory {
-    const lower = codec.toLowerCase();
-    if (lower.startsWith('av01')) return 'av1';
-    if (lower.startsWith('hev1') || lower.startsWith('hvc1')) return 'hevc';
-    if (lower.startsWith('vp09') || lower.startsWith('vp9')) return 'vp9';
-    return 'h264';
-}

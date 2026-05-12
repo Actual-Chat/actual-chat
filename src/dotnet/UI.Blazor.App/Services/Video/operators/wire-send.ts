@@ -154,7 +154,10 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                             const isKey = encoded.chunk.type === 'key';
                             if (isKey)
                                 lastKfIndexByLayer.set(encoded.layerId, encoded.index);
-                            const keyFrameIndex = lastKfIndexByLayer.get(encoded.layerId) ?? encoded.index;
+                            // Sentinel for pre-keyframe deltas (pool-reused encoder
+                            // can emit one before its first 'key'): `-1 !== index`
+                            // keeps server + receiver from mis-classifying it as KF.
+                            const keyFrameIndex = lastKfIndexByLayer.get(encoded.layerId) ?? -1;
                             const dto: VideoStreamFrame = {
                                 offset,
                                 offsetEpoch: capturedAt.epoch,

@@ -65,8 +65,7 @@ docs.
 | `DownscalerLike` | `operators/downscale.ts` | Per-slot downscaler interface; `process(input, layers) → frames[]` |
 | `CanvasDownscaler` | `canvas/downscaler.ts` | Production 2D-canvas downscaler with higher-tier reuse |
 | `WebGpuDownscaler` | `webgpu/downscaler.ts` | Lab WebGPU downscaler (not production) |
-| `EncoderPool` | `sender/encoder-pool.ts` | Per-category parking of WebCodecs encoders |
-| `SenderSession` | `sender/session.ts` | Owns clock + pool + preview writer; survives stop/start |
+| `SenderSession` | `sender/session.ts` | Owns capture clock + preview writer; survives stop/start (no encoder pool — fresh `VideoEncoder` per run) |
 | `FloodGate` | `operators/flood-gate.ts` | Capture-side backpressure valve |
 | `parallelMap` | `operators/parallel-map.ts` | Ordered parallel-map operator (drives downscale slots) |
 | `pushPullBuffer` (Denque + RpcStream) | `streaming/push-to-pull-buffer.ts` | Sync wireSend ↔ async RpcStream rendezvous |
@@ -159,7 +158,6 @@ Browser process
 │   ├ MediaStreamTrackProcessor.readable
 │   ├ pipeline operators (capture..encode..wireSend)
 │   ├ FloodGate + push-to-pull-buffer (Denque)
-│   ├ EncoderPool
 │   └ Fusion RPC client (PushStream)
 │
 └ playerWorker.js             (one shared session for all playing streams)

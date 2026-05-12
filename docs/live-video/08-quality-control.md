@@ -374,10 +374,10 @@ RpcStream<VideoFrameBundle> ─▶ ProcessFrames ─▶ Memoizer       per-frame
 - **No client-side network probing.** Backpressure is observed from the
   publisher leg's RPC ring (compaction kicks in via `canSkipTo`) and
   from the receiver leg's `playbackRateEma`.
-- **Layer changes restart the sender encoder pipeline.** The pool keeps
-  parked encoders so this is fast (sub-second), but it does drop a small
-  number of frames around the transition. Within-layer bitrate-only
-  reconfigs are in-place.
+- **Layer changes restart the sender encoder pipeline.** A fresh
+  `VideoEncoder` is constructed per layer (encoders are not pooled — see
+  `02-sender.md`), so a few frames around the transition cost the
+  cold-init delay. Within-layer bitrate-only reconfigs stay in-place.
 - **Stream count cap is 9 above-Lowest.** Above that, the server demotes
   by priority then registration order. UI clients should set priority
   correctly on stream subscribe.

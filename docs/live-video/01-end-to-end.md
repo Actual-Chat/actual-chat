@@ -90,7 +90,8 @@ contract. On the receiver `VideoFrameDto` is reconstructed into `ArrivedChunk`
 ## Why this shape
 
 - **One worker per recorder** isolates each camera/screencast and gives a
-  clean place to pin GPU resources, encoder pools, and the capture clock.
+  clean place to pin GPU resources and the capture clock. Encoders are not
+  pooled — fresh `VideoEncoder` per run (see `02-sender.md`).
 - **Bundle on PushStream, frames on GetStream.** The publisher leg ships all
   per-layer chunks for one source moment as a single bundle — half the wire
   envelopes, half the ACK chatter, and one place to enforce all-or-none

@@ -43,11 +43,9 @@ afterEach(() => {
 });
 
 describe('SenderSession', () => {
-    it('constructs with default capture clock + empty pool, no preview writer when generator omitted', () => {
+    it('constructs with default capture clock, no preview writer when generator omitted', () => {
         const session = new SenderSession();
         expect(session.captureClock).toBeInstanceOf(MonotonicClock);
-        expect(session.encoderPool).toBeDefined();
-        expect(session.encoderPool.parkedCount).toBe(0);
         expect(session.previewWriter).toBeNull();
         session.dispose();
     });
@@ -75,21 +73,11 @@ describe('SenderSession', () => {
         session.dispose();
     });
 
-    it('reset is safe to call between runs and does not dispose the encoder pool', () => {
-        const session = new SenderSession();
-        const poolRef = session.encoderPool;
-        session.reset();
-        expect(session.encoderPool).toBe(poolRef);
-        expect(session.encoderPool.isDisposed).toBe(false);
-        session.dispose();
-    });
-
-    it('dispose is idempotent and disposes the encoder pool', () => {
+    it('dispose is idempotent', () => {
         const session = new SenderSession();
         expect(session.isDisposed).toBe(false);
         session.dispose();
         expect(session.isDisposed).toBe(true);
-        expect(session.encoderPool.isDisposed).toBe(true);
         // Second call is a no-op (no throw).
         session.dispose();
         expect(session.isDisposed).toBe(true);

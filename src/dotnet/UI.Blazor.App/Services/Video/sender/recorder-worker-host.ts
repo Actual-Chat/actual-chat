@@ -32,7 +32,6 @@ import {
     type DisposableStreamSender,
     type StreamingContext,
 } from '../streaming/push-to-pull-buffer';
-import type { PooledEncoder } from './encoder-pool';
 import type { SenderSession } from './session';
 
 const { infoLog, warnLog } = getLogs('VideoPipeline');
@@ -172,48 +171,45 @@ async function createDownscalerInstance(): Promise<DownscalerLike> {
     return Promise.resolve(new CanvasDownscaler());
 }
 
-function createPoolEncoderFactory(
+function createEncoder(
     _session: SenderSession,
     config: EncoderConfigPerLayer,
     layerId: number,
-): () => PooledEncoder {
-    return () => {
-        const buildOutput = (
-            input: EncodeInput,
-            chunk: EncodedVideoChunk,
-            metadata: EncodedVideoChunkMetadata,
-        ): EncodedFrame => ({
-            chunk,
-            metadata,
-            capturedAt: input.capturedAt,
-            index: input.index,
-            // Patched by the encode operator after the per-layer encode resolves.
-            dropTrace: [],
-            layerId: 0,
-            sourceWidth: 0,
-            sourceHeight: 0,
-            encodedWidth: config.width,
-            encodedHeight: config.height,
-            stats: undefined as unknown as EncodedFrame['stats'],
-        });
+): AsyncVideoEncoder<EncodeInput, EncodedFrame> {
+    const buildOutput = (
+        input: EncodeInput,
+        chunk: EncodedVideoChunk,
+        metadata: EncodedVideoChunkMetadata,
+    ): EncodedFrame => ({
+        chunk,
+        metadata,
+        capturedAt: input.capturedAt,
+        index: input.index,
+        // Patched by the encode operator after the per-layer encode resolves.
+        dropTrace: [],
+        layerId: 0,
+        sourceWidth: 0,
+        sourceHeight: 0,
+        encodedWidth: config.width,
+        encodedHeight: config.height,
+        stats: undefined as unknown as EncodedFrame['stats'],
+    });
 
-        const onError = (e: unknown): void => {
-            const msg = e instanceof Error ? e.message : String(e);
-            const stack = e instanceof Error ? e.stack : undefined;
-            warnLog?.log(
-                `encoder error (layer=${layerId}, codec=${config.codec}, ${config.width}x${config.height}): ${msg}`,
-                stack ?? '');
-        };
-
-        // First HW-encoder output can be much slower than steady state
-        // (driver warm-up + first keyframe); use a wider window for it.
-        const encoder = new AsyncVideoEncoder<EncodeInput, EncodedFrame>(
-            buildOutput,
-            onError,
-            { maxInflight: 2, firstTimeoutMs: 3_000, timeoutMs: 1_000 },
-        );
-        return encoder;
+    const onError = (e: unknown): void => {
+        const msg = e instanceof Error ? e.message : String(e);
+        const stack = e instanceof Error ? e.stack : undefined;
+        warnLog?.log(
+            `encoder error (layer=${layerId}, codec=${config.codec}, ${config.width}x${config.height}): ${msg}`,
+            stack ?? '');
     };
+
+    // First HW-encoder output can be much slower than steady state
+    // (driver warm-up + first keyframe); use a wider window for it.
+    return new AsyncVideoEncoder<EncodeInput, EncodedFrame>(
+        buildOutput,
+        onError,
+        { maxInflight: 2, firstTimeoutMs: 3_000, timeoutMs: 1_000 },
+    );
 }
 
 // Defers `PushStream` startup until the first keyframe lands `init(format)`,
@@ -334,7 +330,7 @@ const deps: RecorderWorkerDeps = {
 
     // -- pipeline-stage factories --
     createDownscaler: () => new LazyDownscaler(createDownscalerInstance),
-    createPoolEncoderFactory: createPoolEncoderFactory,
+    createEncoder,
     createSender,
 
     // -- lifecycle callbacks --

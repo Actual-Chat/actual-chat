@@ -174,7 +174,6 @@ fields live in `src/nodejs/src/app-constants.ts` (`expandVideo`).
 | `LatencyReportInterval` | 500 ms | Receiver `latency-tap` cadence |
 | `STOP_DRAIN_GRACE_MS` (sender) | 3 s | `Recorder.stop()` graceful drain |
 | `STOP_DRAIN_GRACE_MS` (receiver) | 3 s | `Player.stop()` graceful drain |
-| Encoder pool TTL (TS) | 5 s | Time a parked encoder stays warm |
 | Decoder pool TTL (TS) | ~30 s | Time a parked decoder stays warm |
 | Downscaler hang watchdog | 1.5 s | Per `process()` call; ≤ 4 in a row |
 | Decoder hang watchdog | 2 s | Per pending-but-no-output |
@@ -202,7 +201,7 @@ capacity backoff `0.7×`, climb cap `√2×`, cold-start `1.5 Mbps`, floor
 | Layer change not honoured | `ChangePlaybackQuality` arriving? `ReceiveQualityFilter` getting fresh keyframe? PLI cooldown? |
 | Wrong codec on encoder | `RegisterMember` heartbeats from all viewers? `CodecSwitchHysteresisWindow` still running? |
 | Cross-pod fan-out duplicates | `RemoteVideoStreamCache` cache hit ratio (look for `caching #...` logs) — should always coalesce via `EnsureFetched` |
-| Encoder hangs / NVENC errors | Encoder pool sweep logs; HW probing fallback in `codec-support.ts` |
+| Encoder hangs / NVENC errors | `AsyncVideoEncoder.handleEncoderReset` logs; HW probing fallback in `codec-support.ts` |
 | Receiver stuck on black | MSTG watchdog logs; consider `?renderBackend=canvas` |
 | Cold-replay drops | `GetVideoRaw: ... first decodable KF after dropping ... non-KF chunks` — replay tail too narrow |
 | Downscaler hangs | "downscale: hang watchdog fired N times" — recreates each time, bails after 4 |
