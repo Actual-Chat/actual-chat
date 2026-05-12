@@ -81,7 +81,6 @@ export interface RemoteStreamDiagnostics {
     renderFrameCount: number;
     skipToLiveCount: number;
     waitingForKeyframe: boolean;
-    qualityReductionRequested: boolean;
     codecSlowTickCount: number;
     decoderStats: PlayerStats | null;
     avDriftMs: number | null;
@@ -728,7 +727,6 @@ export class VideoPlayer {
             renderFrameCount: this.renderFrameCount,
             skipToLiveCount: this.skipToLiveCount,
             waitingForKeyframe: false,
-            qualityReductionRequested: false,
             codecSlowTickCount: 0,
             decoderStats: stats,
             avDriftMs,
@@ -1002,13 +1000,14 @@ export class VideoPlayer {
             sample.bufferSpanMs,
             priorityForRenderSize(info),
             Math.max(0, Math.round(performance.now() - this.createdAtMs)),
-            false,                        // qualityReductionRequested
             info?.cssLongSide ?? 0,
             info?.devicePixelRatio ?? 0,
             this.selectedCodec ?? 'unknown',
             stages,
             counts,
-            stats.presented)
+            stats.presented,
+            stats.playbackRateEma,
+            stats.producerTemporalLayerCount)
             .catch((e: unknown) => warnLog?.log('reportPlaybackStats error:', e));
         // Also fire a stale-frame hint to the SKIP_TO_LIVE thresholds so
         // diagnostics still tick. The new pipeline's internal recovery

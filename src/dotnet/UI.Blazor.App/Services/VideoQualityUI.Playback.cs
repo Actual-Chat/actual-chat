@@ -1,0 +1,494 @@
+using ActualChat.Bandwidth;
+using ActualChat.Streaming;
+using ActualChat.UI.Blazor.App.Module;
+
+namespace ActualChat.UI.Blazor.App.Services;
+
+public sealed partial class VideoQualityUI
+{
+    private static readonly TimeSpan PlaybackHealthTtl = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan PlaybackQualityKeepAlivePeriod = TimeSpan.FromMinutes(1);
+
+    // Per-stream peak-rate decay. The allocator reads the peak observed
+    // incoming byte rate so it doesn't underestimate upper-tier
+    // cost when the receiver is currently subscribed to a lower simulcast
+    // tier (current rate ≈ baseRate then, but the real top rate is many
+    // times higher — without peak tracking, allocator climbs prematurely
+    // and oscillates). Peak decays slowly so a sender that genuinely
+    // lowered its top bitrate is eventually forgiven; 0.97/s halves in
+    // ~23 s, allowing a probe-back-to-top roughly every minute when the
+    // capacity estimator catches up.
+    private const double PeakDecayPerSecond = 0.97;
+
+    // Stream-age-aware throttle on QC decisions: cooldown for the first
+    // StartupCooldown, then evaluate at SettlingInterval until SettlingDuration
+    // of stream age, then SteadyInterval. Prevents premature thrash and keeps
+    // steady-state ChangeQuality traffic low.
+    private readonly Dictionary<StreamId, CpuTimestamp> _playbackStartedAt = new();
+    private readonly Dictionary<StreamId, CpuTimestamp> _playbackLastEvalAt = new();
+    private readonly Dictionary<StreamId, PlaybackStatsState> _playbackByStream = new();
+    private readonly Lock _playbackLock = new();
+    private readonly BandwidthEstimator _inboundBwEstimator;
+    private PlaybackQualitySnapshot _playbackSnapshot = PlaybackQualitySnapshot.Empty;
+
+    public BandwidthEstimator InboundBandwidthEstimator => _inboundBwEstimator;
+    public PlaybackQualitySnapshot PlaybackSnapshot => _playbackSnapshot;
+
+    public Task OnPlaybackStats(
+        StreamId streamId,
+        VideoSourceKind sourceKind,
+        PlaybackStats snapshot,
+        CancellationToken cancellationToken)
+    {
+        _whenActuallyUsed.TrySetResult();
+        var verdict = PlaybackVerdictClassifier.Classify(
+            snapshot.BufferSpanMsEma,
+            PlaybackThresholds.Defaults);
+        bool isFirstTick;
+        lock (_playbackLock) {
+            var prev = _playbackByStream.GetValueOrDefault(streamId);
+            snapshot = WithRenderFallback(snapshot, prev);
+            var peak = ComputeDecayedPeak(prev, snapshot.IncomingByteRate);
+            var desiredSize = GetDesiredVideoSize(snapshot, sourceKind);
+            var requestedLayerCount = GetBestLayerFor(sourceKind, desiredSize) + 1;
+            _playbackByStream[streamId] = new PlaybackStatsState(
+                sourceKind, snapshot, verdict, CpuTimestamp.Now, peak,
+                requestedLayerCount, desiredSize);
+            isFirstTick = prev is null;
+            if (isFirstTick || !_playbackStartedAt.ContainsKey(streamId))
+                _playbackStartedAt[streamId] = CpuTimestamp.Now;
+        }
+        // First tick always emits an allocation using the current render-size
+        // hint, falling back to top size until layout arrives. Subsequent
+        // health-driven recomputes are gated by stream-age cadence so we don't
+        // thrash during startup or in steady state. Manual paths — override,
+        // debug, keep-alive, reduction request — bypass the gate and call
+        // RecomputePlaybackQuality directly.
+        if (!isFirstTick) {
+            var startedAt = _playbackStartedAt.GetValueOrDefault(streamId);
+            var lastEvalAt = _playbackLastEvalAt.GetValueOrDefault(streamId);
+            if (!IsEvaluationDue(startedAt, lastEvalAt))
+                return Task.CompletedTask;
+        }
+        _playbackLastEvalAt[streamId] = CpuTimestamp.Now;
+        var reason = verdict switch {
+            < 0 => PlaybackQualityReason.Backoff,
+            > 0 => PlaybackQualityReason.Climb,
+            _ => PlaybackQualityReason.Stable,
+        };
+        return RecomputePlaybackQuality(reason, cancellationToken);
+    }
+
+    public Task OnPlaybackViewportChanged(
+        StreamId streamId,
+        VideoSourceKind sourceKind,
+        double renderCssLongSide,
+        double renderDevicePixelRatio,
+        PlaybackStreamPriority priority,
+        CancellationToken cancellationToken)
+    {
+        var desiredSize = VideoSizeExt.FromLongSide(renderCssLongSide, renderDevicePixelRatio);
+        var currentLayerCount = GetBestLayerFor(sourceKind, desiredSize) + 1;
+        lock (_playbackLock) {
+            if (!_playbackStartedAt.ContainsKey(streamId))
+                _playbackStartedAt[streamId] = CpuTimestamp.Now;
+            var startedAt = _playbackStartedAt.GetValueOrDefault(streamId);
+            if (_playbackByStream.TryGetValue(streamId, out var state)) {
+                var snapshot = state.Snapshot with {
+                    Priority = priority,
+                    RenderCssLongSide = renderCssLongSide,
+                    RenderDevicePixelRatio = renderDevicePixelRatio,
+                    StreamDurationMs = Math.Max(
+                        state.Snapshot.StreamDurationMs,
+                        (int)startedAt.Elapsed.TotalMilliseconds),
+                };
+                var verdict = PlaybackVerdictClassifier.Classify(
+                    snapshot.BufferSpanMsEma,
+                    PlaybackThresholds.Defaults);
+                _playbackByStream[streamId] = state with {
+                    SourceKind = sourceKind,
+                    Snapshot = snapshot,
+                    Verdict = verdict,
+                    LastSeen = CpuTimestamp.Now,
+                    RequestedLayerCount = currentLayerCount,
+                    DesiredVideoSize = desiredSize,
+                };
+            }
+            else {
+                _playbackByStream[streamId] = new PlaybackStatsState(
+                    sourceKind,
+                    PlaybackStats.Empty with {
+                        Priority = priority,
+                        RenderCssLongSide = renderCssLongSide,
+                        RenderDevicePixelRatio = renderDevicePixelRatio,
+                    },
+                    Verdict: 0,
+                    LastSeen: CpuTimestamp.Now,
+                    PeakIncomingByteRate: 0,
+                    RequestedLayerCount: currentLayerCount,
+                    DesiredVideoSize: desiredSize);
+            }
+            var lastEvalAt = _playbackLastEvalAt.GetValueOrDefault(streamId);
+            if (!IsEvaluationDue(startedAt, lastEvalAt, force: true))
+                return Task.CompletedTask;
+
+            _playbackLastEvalAt[streamId] = CpuTimestamp.Now;
+        }
+        return RecomputePlaybackQuality(PlaybackQualityReason.ActiveSetChanged, cancellationToken);
+    }
+
+    // Private methods
+
+    private async Task RunPlaybackQualityKeepAlive(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested) {
+            await Task.Delay(PlaybackQualityKeepAlivePeriod, cancellationToken).ConfigureAwait(false);
+            var entries = GetFreshPlaybackEntries();
+            if (entries.Count == 0)
+                continue;
+
+            await RecomputePlaybackQuality(PlaybackQualityReason.Stable, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task RecomputePlaybackQuality(PlaybackQualityReason reason, CancellationToken cancellationToken)
+    {
+        var entries = GetFreshPlaybackEntries();
+        if (entries.Count == 0) {
+            _playbackSnapshot = PlaybackQualitySnapshot.Empty;
+            return;
+        }
+
+        var sumIncomingBytesPerSec = entries.Sum(x => Math.Max(0, x.Value.Snapshot.IncomingByteRate));
+        var playbackRateEma = ComputeByteWeightedPlaybackRate(entries);
+        var receiverDropRatio = ComputeAggregateReceiveDropRatio(entries);
+        var driftPenalty = Math.Clamp(
+            (Constants.Video.PlaybackRateOk - playbackRateEma)
+                / (Constants.Video.PlaybackRateOk - Constants.Video.PlaybackRateBad),
+            0, 1);
+        var dropPenalty = Math.Clamp(
+            (receiverDropRatio - Constants.Video.DropOkReceiver)
+                / (Constants.Video.DropBadReceiver - Constants.Video.DropOkReceiver),
+            0, 1);
+        var signalLevel = 1.0 - Math.Max(driftPenalty, dropPenalty);
+
+        var connection = ConnectivityUI.ConnectionInfo.Value;
+        _inboundBwEstimator.Tick(connection, SystemClock.Now, sumIncomingBytesPerSec, signalLevel);
+        var capacity = (long)(_inboundBwEstimator.CeilingBps * _debugBandwidthMultiplier);
+        var aggregateHealth = 2 * signalLevel - 1;
+        var verdicts = entries.ToDictionary(x => x.Key.Value, x => x.Value.Verdict);
+
+        var primaries = entries
+            .Where(x => x.Value.Snapshot.Priority == PlaybackStreamPriority.Primary)
+            .Select(ToAllocationRequest)
+            .ToArray();
+        var secondaries = entries
+            .Where(x => x.Value.Snapshot.Priority != PlaybackStreamPriority.Primary)
+            .Select(ToAllocationRequest)
+            .ToArray();
+        var requested = VideoQualityAllocator.Allocate(capacity, primaries, secondaries);
+        var requestedMap = new ApiMap<string, ReceiveQuality>();
+        foreach (var (streamId, _) in entries)
+            requestedMap[streamId.Value] = requested.GetValueOrDefault(streamId.Value, ReceiveQuality.Lowest);
+
+        var streamSignals = new Dictionary<string, PlaybackStreamSignals>();
+        foreach (var (streamId, state) in entries) {
+            var ladder = VideoRecorder.BuildLadder(state.SourceKind);
+            var pickedLayer = requestedMap[streamId.Value].LayerCount - 1;
+            var layer = Math.Clamp(pickedLayer, 0, ladder.Count - 1);
+            var allocated = ladder[layer].GetByteRate(state.Snapshot.Codec);
+            streamSignals[streamId.Value] = new PlaybackStreamSignals(
+                AllocatedBytesPerSec: allocated,
+                BufferSpanMsEma: state.Snapshot.BufferSpanMsEma);
+        }
+        _playbackSnapshot = new PlaybackQualitySnapshot(
+            capacity, aggregateHealth, verdicts, streamSignals,
+            PlaybackRateEma: playbackRateEma,
+            DropRatio: receiverDropRatio);
+        Log.LogInformation(
+            "PlaybackQuality: reason={Reason} ceiling={Ceiling} signalLevel={SignalLevel:F2} streams=[{Streams}]",
+            reason, capacity, signalLevel,
+            string.Join(", ", entries.Select(x =>
+                $"{x.Key.Value}:size={x.Value.DesiredVideoSize}/req=L{requestedMap[x.Key.Value].LayerCount}/T{requestedMap[x.Key.Value].TemporalLayerCount}"
+                + $"/duration={x.Value.Snapshot.StreamDurationMs}ms"
+                + $"/buf={x.Value.Snapshot.BufferSpanMsEma:F0}ms"
+                + $"/rate={x.Value.Snapshot.IncomingByteRate}/peak={x.Value.PeakIncomingByteRate}"
+                + $"/playbackRate={x.Value.Snapshot.PlaybackRateEma:F2}"
+                )));
+        var streamInfoMap = new ApiMap<string, PlaybackStreamInfo>();
+        foreach (var (streamId, state) in entries) {
+            streamInfoMap[streamId.Value] = new PlaybackStreamInfo(
+                state.Snapshot.IncomingByteRate,
+                state.Snapshot.BufferSpanMsEma,
+                state.Snapshot.Priority,
+                state.Verdict);
+        }
+        var info = new PlaybackQualityInfo(
+            capacity,
+            aggregateHealth,
+            reason,
+            IsColdStart: false,
+            streamInfoMap);
+        _ = LiveVideoStreams.ChangePlaybackQuality(
+            Session,
+            requestedMap,
+            info,
+            cancellationToken).SuppressExceptions();
+        await UpdateRequestedReceiveQualityRegistry(
+            entries
+                .Select(x => new PlaybackStreamHint(x.Key.Value, Math.Max(0, x.Value.RequestedLayerCount - 1)))
+                .ToArray(),
+            requestedMap,
+            cancellationToken).ConfigureAwait(false);
+
+        return;
+
+        StreamAllocationRequest ToAllocationRequest(KeyValuePair<StreamId, PlaybackStatsState> entry)
+        {
+            var debugCap = _debugMaxPlaybackLayerCount;
+            var layerCountCap = Math.Min(entry.Value.RequestedLayerCount, debugCap ?? int.MaxValue);
+            var rates = EstimateLayerRates(entry.Value, layerCountCap);
+            var area = Math.Max(1,
+                entry.Value.Snapshot.RenderCssLongSide
+                * entry.Value.Snapshot.RenderCssLongSide
+                * Math.Max(1, entry.Value.Snapshot.RenderDevicePixelRatio)
+                * Math.Max(1, entry.Value.Snapshot.RenderDevicePixelRatio));
+            return new StreamAllocationRequest(
+                entry.Key.Value,
+                rates,
+                layerCountCap,
+                Math.Max(1, entry.Value.Snapshot.AvailableTemporalLayerCount),
+                area);
+        }
+    }
+
+    private static double ComputeByteWeightedPlaybackRate(IReadOnlyList<KeyValuePair<StreamId, PlaybackStatsState>> entries)
+    {
+        double totalWeight = 0;
+        double weightedSum = 0;
+        foreach (var (_, state) in entries) {
+            var w = Math.Max(1, state.Snapshot.IncomingByteRate);
+            totalWeight += w;
+            weightedSum += w * Math.Clamp(state.Snapshot.PlaybackRateEma, 0, 1);
+        }
+        return totalWeight > 0 ? weightedSum / totalWeight : 1;
+    }
+
+    // Only receiver-side stages (61-90) reflect bandwidth/health on the
+    // consumer side — sender + server drops are intentional pacing and don't
+    // belong in the receive-side penalty.
+    private static double ComputeAggregateReceiveDropRatio(IReadOnlyList<KeyValuePair<StreamId, PlaybackStatsState>> entries)
+    {
+        long totalDrops = 0;
+        long totalPresented = 0;
+        foreach (var (_, state) in entries) {
+            foreach (var (stage, count) in state.Snapshot.DropTrace) {
+                var b = (byte)stage;
+                if (b is >= 61 and <= 90)
+                    totalDrops += count;
+            }
+            totalPresented += state.Snapshot.PresentedCount;
+        }
+        var denom = Math.Max(1, totalDrops + totalPresented);
+        return (double)totalDrops / denom;
+    }
+
+    private static IReadOnlyList<long> EstimateLayerRates(
+        PlaybackStatsState state,
+        int layerCount)
+    {
+        var ladder = VideoRecorder.BuildLadder(state.SourceKind);
+        var targetLayer = Math.Clamp(layerCount - 1, 0, ladder.Count - 1);
+        var rates = new long[ladder.Count];
+        for (var i = 0; i < ladder.Count; i++)
+            rates[i] = ladder[i].GetByteRate(state.Snapshot.Codec);
+
+        var targetRate = Math.Max(1, rates[targetLayer]);
+        // Peak protects against underestimating rich content after subscribing
+        // to a lower layer, but keyframes / startup bursts can inflate it. Bound
+        // it to the same 2.5x over-delivery margin used by video QC elsewhere.
+        var cappedPeak = Math.Min(
+            state.PeakIncomingByteRate,
+            (long)(targetRate * Constants.Video.ThroughputOverDeliveryRatio));
+        rates[targetLayer] = Math.Max(targetRate, cappedPeak);
+        return rates;
+    }
+
+    private static long ComputeDecayedPeak(PlaybackStatsState? prev, long currentRate)
+    {
+        var current = Math.Max(0, currentRate);
+        if (prev is null)
+            return current;
+        var elapsedSec = Math.Max(0, prev.LastSeen.Elapsed.TotalSeconds);
+        var decayed = (long)(prev.PeakIncomingByteRate * Math.Pow(PeakDecayPerSecond, elapsedSec));
+        return Math.Max(decayed, current);
+    }
+
+    private static VideoSize GetTopVideoSize(VideoSourceKind sourceKind)
+    {
+        var ladder = VideoRecorder.BuildLadder(sourceKind);
+        return ladder[^1].Size;
+    }
+
+    private static VideoSize GetDesiredVideoSize(PlaybackStats snapshot, VideoSourceKind sourceKind)
+    {
+        var size = snapshot.RenderVideoSize;
+        return size == VideoSize.None ? GetTopVideoSize(sourceKind) : size;
+    }
+
+    internal static int GetBestLayerFor(VideoSourceKind sourceKind, VideoSize desiredSize)
+    {
+        var ladder = VideoRecorder.BuildLadder(sourceKind);
+        if (desiredSize == VideoSize.None)
+            return ladder.Count - 1;
+
+        // Standard ABR rule: smallest layer ≥ desired (never serve a layer
+        // smaller than the display needs). Falls back to the largest layer
+        // when the display wants more pixels than the ladder offers.
+        // Nearest-by-absolute-distance biased screencast toward L0 because the
+        // ladder's two rungs (W960, W1920) are far apart and a typical
+        // modal-sized screencast tile rounds DOWN under that rule.
+        var desiredWidth = desiredSize.LongSide();
+        for (var i = 0; i < ladder.Count; i++) {
+            if (ladder[i].Width >= desiredWidth)
+                return i;
+        }
+        return ladder.Count - 1;
+    }
+
+    private static PlaybackStats WithRenderFallback(
+        PlaybackStats snapshot,
+        PlaybackStatsState? previous)
+    {
+        if (snapshot.RenderCssLongSide > 0 || snapshot.RenderDevicePixelRatio > 0 || previous is null)
+            return snapshot;
+        return snapshot with {
+            RenderCssLongSide = previous.Snapshot.RenderCssLongSide,
+            RenderDevicePixelRatio = previous.Snapshot.RenderDevicePixelRatio,
+            Priority = previous.Snapshot.Priority,
+        };
+    }
+
+    private List<KeyValuePair<StreamId, PlaybackStatsState>> GetFreshPlaybackEntries()
+    {
+        lock (_playbackLock) {
+            var staleStreamIds = _playbackByStream
+                .Where(x => x.Value.LastSeen.Elapsed > PlaybackHealthTtl)
+                .Select(x => x.Key)
+                .ToArray();
+            foreach (var streamId in staleStreamIds) {
+                _playbackByStream.Remove(streamId);
+                _playbackStartedAt.Remove(streamId);
+                _playbackLastEvalAt.Remove(streamId);
+            }
+            return _playbackByStream.ToList();
+        }
+    }
+
+    private static int? NormalizeLayerCount(int? layerCount)
+        => layerCount is >= 1 and <= 3 ? layerCount : null;
+
+    private async Task UpdateRequestedReceiveQualityRegistry(
+        IReadOnlyList<PlaybackStreamHint> streamHints,
+        ApiMap<string, ReceiveQuality>? requested,
+        CancellationToken cancellationToken)
+    {
+        var jsMethod = $"{BlazorUIAppModule.ImportName}.setRequestedReceiveQuality";
+        foreach (var hint in streamHints) {
+            if (requested is not null && requested.TryGetValue(hint.StreamId, out var q))
+                await JS
+                    .InvokeVoidAsync(jsMethod, cancellationToken, hint.StreamId, q.LayerCount, q.TemporalLayerCount)
+                    .ConfigureAwait(false);
+            else
+                await JS
+                    .InvokeVoidAsync(jsMethod, cancellationToken, hint.StreamId, null, null)
+                    .ConfigureAwait(false);
+        }
+    }
+
+    private async Task ClearRequestedReceiveQualityRegistry(
+        IReadOnlyList<PlaybackStreamHint> streamHints,
+        CancellationToken cancellationToken)
+    {
+        var jsMethod = $"{BlazorUIAppModule.ImportName}.setRequestedReceiveQuality";
+        foreach (var hint in streamHints)
+            await JS.InvokeVoidAsync(jsMethod, cancellationToken, hint.StreamId, null, null).ConfigureAwait(false);
+    }
+
+    private static ApiMap<string, ReceiveQuality> BuildLayerCapQuality(
+        int? layerCount,
+        IReadOnlyList<PlaybackStreamHint> hints)
+    {
+        var map = new ApiMap<string, ReceiveQuality>();
+        var quality = layerCount is { } count
+            ? new ReceiveQuality(Math.Max(1, count), int.MaxValue)
+            : ReceiveQuality.Default;
+        foreach (var hint in hints)
+            map[hint.StreamId] = quality;
+        return map;
+    }
+
+    private static int ApplyLayerCountConstraint(int layerCount, int? maxLayerCount)
+        => maxLayerCount is { } max ? Math.Clamp(layerCount, 1, max) : layerCount;
+
+    // Nested types
+
+    public sealed record PlaybackQualitySnapshot(
+        long EstimatedCapacityBytesPerSec,
+        double AggregateHealth,
+        IReadOnlyDictionary<string, int> Verdicts,
+        IReadOnlyDictionary<string, PlaybackStreamSignals> Signals,
+        double PlaybackRateEma = 1,
+        double DropRatio = 0)
+    {
+        public static readonly PlaybackQualitySnapshot Empty = new(
+            EstimatedCapacityBytesPerSec: 0,
+            AggregateHealth: 0,
+            Verdicts: new Dictionary<string, int>(),
+            Signals: new Dictionary<string, PlaybackStreamSignals>());
+    }
+
+    public sealed record PlaybackStreamSignals(
+        long AllocatedBytesPerSec,
+        double BufferSpanMsEma);
+
+    public sealed record PlaybackStreamHint(string StreamId, int CurrentLayerId);
+
+    public sealed record PlaybackThresholds(
+        double BufferDurationTooHighMs,
+        long MinCapacityBytesPerSec,
+        long ColdStartCapacityBytesPerSec,
+        double ClimbCap,
+        double BackoffFactor)
+    {
+        public static PlaybackThresholds Defaults => new (
+            BufferDurationTooHighMs: Constants.Video.BufferDurationTooHighMs,
+            MinCapacityBytesPerSec: 50_000,
+            ColdStartCapacityBytesPerSec: 1_500_000,
+            ClimbCap: 1.4142135623730951,   // √2
+            BackoffFactor: 0.7);
+    }
+
+    public static class PlaybackVerdictClassifier
+    {
+        public static int Classify(
+            double bufferSpanMsEma,
+            PlaybackThresholds t)
+        {
+            if (bufferSpanMsEma > 0 && bufferSpanMsEma <= t.BufferDurationTooHighMs)
+                return 1;
+
+            return 0;
+        }
+    }
+
+    private sealed record PlaybackStatsState(
+        VideoSourceKind SourceKind,
+        PlaybackStats Snapshot,
+        int Verdict,
+        CpuTimestamp LastSeen,
+        long PeakIncomingByteRate,
+        // Per-stream layer count requested for this allocation cycle (1-based).
+        int RequestedLayerCount,
+        VideoSize DesiredVideoSize);
+}

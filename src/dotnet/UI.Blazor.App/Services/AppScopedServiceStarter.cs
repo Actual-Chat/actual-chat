@@ -124,6 +124,7 @@ public sealed class AppScopedServiceStarter
             _ = Hub.AudioFocusUI.WarmUp(); // Pre-initialize audio HAL for faster first recording
             _ = Hub.TuneUI; // Touch. Auto-starts on construction
             _ = Hub.AudioWidget; // Touch. Auto-starts on construction
+            _ = Hub.VideoQualityUI; // Touch. Constructor calls Start(); chains gate on first video activity.
             Hub.Services.GetRequiredService<ThrottledTranslations>().Start();
             if (!HostInfo.IsProductionInstance)
                 Hub.Services.GetRequiredService<DebugUI>();

@@ -20,8 +20,7 @@ public class WebMicrophonePermissionHandler : MicrophonePermissionHandler
 
     protected override async Task<bool?> Get(CancellationToken cancellationToken)
     {
-        var js = Hub.JS;
-        var permission = await js.InvokeAsync<string?>(JSCheckPermission, cancellationToken).ConfigureAwait(false);
+        var permission = await JS.InvokeAsync<string?>(JSCheckPermission, cancellationToken).ConfigureAwait(false);
         return permission switch {
             "prompt" => null,
             "denied" => false,
@@ -31,7 +30,7 @@ public class WebMicrophonePermissionHandler : MicrophonePermissionHandler
     }
 
     protected override async Task<bool> Request(CancellationToken cancellationToken)
-        => await Hub.JS.InvokeAsync<bool>(JSRequestPermission, cancellationToken).ConfigureAwait(false);
+        => await JS.InvokeAsync<bool>(JSRequestPermission, cancellationToken).ConfigureAwait(false);
 
     protected override async Task Troubleshoot(CancellationToken cancellationToken)
     {

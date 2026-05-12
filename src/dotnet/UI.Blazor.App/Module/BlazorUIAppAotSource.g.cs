@@ -364,7 +364,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.RemoteStreamPlayer>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.ScreenCastAlreadyActiveModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoDiagnosticsModal>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoDiagnosticsSettingsModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoStreamingPreview>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoTrackPlayer>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoToggle>();
@@ -1014,7 +1013,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.RemoteStreamPlayer), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.ScreenCastAlreadyActiveModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoDiagnosticsModal), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoDiagnosticsSettingsModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoStreamingPreview), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoTrackPlayer), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoToggle), AotTypeKind.Component),

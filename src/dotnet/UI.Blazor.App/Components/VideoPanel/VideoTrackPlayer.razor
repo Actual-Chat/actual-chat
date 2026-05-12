@@ -154,34 +154,35 @@
         double bufferSpanMsEma,
         int priority,
         int streamAgeMs,
-        bool qualityReductionRequested,
         double renderCssLongSide,
         double renderDevicePixelRatio,
         string codec,
         byte[] dropStages,
-        long[] dropCounts,
-        long presented)
+        int[] dropCounts,
+        int presentedCount,
+        double playbackRateEma,
+        int producerTemporalLayerCount)
     {
         if (_isDisposed)
             return;
 
-        var dropTrace = new Dictionary<FrameDropStage, long>(dropStages.Length);
+        var dropTrace = new Dictionary<FrameDropStage, int>(dropStages.Length);
         for (var i = 0; i < dropStages.Length && i < dropCounts.Length; i++)
             dropTrace[(FrameDropStage)dropStages[i]] = dropCounts[i];
-        var stats = new PlaybackStats(
-            IncomingByteRate: incomingByteRate,
-            BufferSpanMsEma: bufferSpanMsEma,
-            Priority: (PlaybackStreamPriority)priority,
-            StreamAgeMs: streamAgeMs,
-            QualityReductionRequested: qualityReductionRequested,
+        var stats = new PlaybackStats(Priority: (PlaybackStreamPriority)priority,
+            Codec: codec,
+            AvailableTemporalLayerCount: producerTemporalLayerCount,
             RenderCssLongSide: renderCssLongSide,
             RenderDevicePixelRatio: renderDevicePixelRatio,
-            Codec: codec,
-            DropTrace: dropTrace,
-            Presented: presented);
+            PresentedCount: presentedCount,
+            StreamDurationMs: streamAgeMs,
+            IncomingByteRate: incomingByteRate,
+            BufferSpanMsEma: bufferSpanMsEma,
+            PlaybackRateEma: playbackRateEma,
+            DropTrace: dropTrace);
         try {
             await Hub.VideoQualityUI
-                .PushPlaybackStats(StreamInfo.StreamId, StreamInfo.SourceKind, stats, CancellationToken.None)
+                .OnPlaybackStats(StreamInfo.StreamId, StreamInfo.SourceKind, stats, CancellationToken.None)
                 .ConfigureAwait(false);
         }
         catch (Exception e) {

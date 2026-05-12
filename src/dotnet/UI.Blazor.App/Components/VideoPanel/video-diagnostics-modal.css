@@ -5,6 +5,42 @@ body.wide .video-diagnostics-modal {
     @apply flex flex-col gap-3 p-4;
     font-size: 0.8125rem;
 }
+/* The body content wrapper is explicitly user-selectable so the user can
+   highlight and copy any subset of the diagnostics. */
+.video-diagnostics-modal .diag-body-content {
+    @apply flex flex-col gap-3 select-text;
+    user-select: text;
+}
+
+.diag-tabs {
+    @apply flex gap-1 border-b border-separator;
+    margin-bottom: 0.25rem;
+}
+.diag-tab {
+    @apply px-3 py-1.5 text-02 cursor-pointer select-none;
+    border: none;
+    background: transparent;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid transparent;
+}
+.diag-tab:hover {
+    @apply text-01;
+}
+.diag-tab--active {
+    @apply text-01 font-semibold;
+    border-bottom-color: var(--primary, #4a90e2);
+}
+
+.diag-history-row {
+    line-height: 1.4;
+}
+.diag-history-value {
+    @apply font-mono text-04;
+    font-size: 0.6875rem;
+    white-space: nowrap;
+}
 
 .diag-section {
     @apply flex flex-col gap-1;
