@@ -19,6 +19,34 @@ JSDoc block.
 
 `pwsh` (cross-platform PowerShell) command is available on any OS you run, so use it.
 
+# Execution policy after plan approval
+
+Once a plan is approved and the open questions in it have been resolved,
+**push it to completion without stopping for confirmation between steps.**
+Don't ask permission to move from one pre-approved step to the next.
+Don't pause to summarize "I'm about to do X" between pre-agreed phases.
+Don't ask the user to choose when the choice has minimal impact.
+
+You stop and ask only when **all** of these are true:
+
+1. You hit a **real obstacle** you can't resolve from context alone.
+2. The choice **likely obsoletes the plan or forces significant rework** —
+   not "minor implementation detail," but "the path branches into two very
+   different futures."
+3. Your best guess at the right answer has a **non-trivial chance of being
+   wrong in a way that's hard to revert**.
+
+Concretely, do NOT ask when:
+- The next step is a mechanical consequence of an earlier approved step.
+- Two options exist and either is reversible in a few minutes.
+- One option is clearly best (≥ ~80% probability) on the available evidence.
+- You're already mid-plan and the next step is just "keep going."
+- The build is broken between phases and the user already said that's fine.
+
+When in doubt, **act**, then briefly note the choice in the result so the
+user can correct course if needed. A short "I picked X because Y; flag if
+you'd prefer Z" beats a question that stalls progress.
+
 # Claude Launcher (c.ps1)
 
 You may be started via `c.ps1` launcher script. This script can run Claude in different environments:
