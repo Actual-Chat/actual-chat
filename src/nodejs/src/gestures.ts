@@ -199,6 +199,11 @@ class ContextMenuGesture extends Gesture {
                 if (delta > ContextMenuGesture.cancelLongPressDistance)
                     this.dispose()
             }),
+            // Multi-touch (e.g. pinch-zoom) must cancel long-press
+            DocumentEvents.capturedPassive.pointerDown$.subscribe((e: PointerEvent) => {
+                if (e.pointerId !== startEvent.pointerId)
+                    this.dispose();
+            }),
             DocumentEvents.capturedPassive.pointerUp$.subscribe(() => this.dispose()),
             DocumentEvents.capturedPassive.pointerCancel$.subscribe(() => this.dispose()),
             // We cancel it in on 'onpointerdown' handler, but it might trigger earlier on some devices

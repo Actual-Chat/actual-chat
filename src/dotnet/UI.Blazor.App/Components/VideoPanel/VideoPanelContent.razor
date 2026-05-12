@@ -32,6 +32,7 @@
 
     if (m != Model.Loading && !isOwnStreaming && !hasRemoteStreams && !_showConnecting) {
         // TODO(DF): move this logic to ChatVideoUI
+        _skipCloseAnimation = m.IsExpanded || m.IsCollapsed || m.IsHidden;
         ChatVideoUI.CloseVideoPanel();
     }
 
@@ -42,64 +43,24 @@
     var videoBtnCls = isOwnCameraStreaming ? "on" : "";
     var screenCastBtnCls = isOwnScreenCasting ? "on" : "";
     var expandedPanelRecBtnCls = $"rec-btn {audioRecordingCls}";
-    var isChatVisible = _isChatVisible ?? GetDefaultChatVisibility();
+    var isChatVisible = m.IsChatVisible ?? GetDefaultChatVisibility();
     var chatBtnCls = isChatVisible ? "on" : "";
-    var expandedCls = _isExpanded ? "expanded" : "";
     var collapsedCls = m.IsCollapsed ? "collapsed" : "";
     var hiddenCls = m.IsHidden ? "panel-hidden" : "";
+    var videoMenuRef = MenuRef.New<VideoPanelMenu>(ChatId.Value, ScreenSize.IsNarrow().ToString()).ToString();
     if (m.Chat is { } mChat)
         _lastChat = mChat;
     var layout = m.Layout;
-    var showSettingsAction = isOwnStreaming && !hasRemoteStreams;
-    var cameraStateText = isOwnCameraStreaming ? "Camera on" : "Camera off";
 }
 
-<div @ref="Ref" class="video-panel @firstOpenCls @recordingCls @remoteStreamsCls @expandedCls @collapsedCls @hiddenCls">
+<div @ref="Ref" class="video-panel @firstOpenCls @recordingCls @remoteStreamsCls @collapsedCls @hiddenCls">
     <div class="c-container">
-        <div class="video-panel-actions">
-            @if (showSettingsAction) {
-                <HeaderButton
-                    Class="btn-video-panel btn-settings"
-                    StopPropagation="true"
-                    PreventDefault="true"
-                    Click="@OnVideoSettingsClick">
-                    <i class="icon-settings text-lg"></i>
-                </HeaderButton>
-            }
-            <HeaderButton
-                Class="@("video-panel-collapse-toggle" + (m.IsCollapsed ? "" : " btn-video-panel"))"
-                StopPropagation="true"
-                PreventDefault="true"
-                Click="@OnToggleCollapsed">
-                @if (m.IsCollapsed) {
-                    <i class="icon-video-expand text-lg"></i>
-                } else {
-                    <i class="icon-video-collapse text-lg"></i>
-                }
-            </HeaderButton>
-            <HeaderButton
-                Class="btn-video-panel btn-video-hide"
-                StopPropagation="true"
-                PreventDefault="true"
-                Click="@OnHideClick">
-                <i class="icon-eye-off text-lg"></i>
-            </HeaderButton>
-        </div>
-        @* Header for expanded video *@
         <div class="video-panel-toolbar video-panel-header">
             <div class="c-left">
                 <HeaderButton Class="btn-video-panel expand-btn show-with-delay" Click="@OnExpandClick">
                     <i class="icon-expand text-lg collapsed-video-panel"></i>
                     <i class="icon-collapse text-lg expanded-video-panel"></i>
                 </HeaderButton>
-                @if (m.AllowDiagnostics) {
-                    <HeaderButton
-                        Tooltip="Diagnostics"
-                        Click="@OnDiagnosticsClick"
-                        Class="btn-video-panel btn-diagnostics">
-                        <i class="icon-activity text-lg"></i>
-                    </HeaderButton>
-                }
             </div>
 
             @if (m.VideoStreamMemberCount > 0 || !string.IsNullOrEmpty(m.FocusedParticipantName)) {
@@ -114,6 +75,21 @@
             }
 
             <div class="c-right">
+                <HeaderButton
+                    Class="btn-video-panel btn-video-menu"
+                    StopPropagation="true"
+                    PreventDefault="true"
+                    data-menu="@videoMenuRef"
+                    data-menu-trigger="Primary">
+                    <i class="icon-more-vertical text-lg"></i>
+                </HeaderButton>
+                <HeaderButton
+                    Class="btn-video-panel video-panel-collapse-toggle"
+                    StopPropagation="true"
+                    PreventDefault="true"
+                    Click="@(() => ChatVideoUI.SetVideoPanelCollapsed(false))">
+                    <i class="icon-video-expand text-lg"></i>
+                </HeaderButton>
                 <HeaderButton
                     Class="btn-video-panel talking"
                     StopPropagation="true"
@@ -134,13 +110,7 @@
                     IsDisabled="@(!isOwnCameraStreaming)">
                     <i class="icon-camera-switch text-lg"></i>
                 </HeaderButton>
-            }
-            <HeaderButton
-                Click="@(() => OnVideoClick(!isOwnCameraStreaming))"
-                Class="@("btn-video-panel btn-video-toggle " + videoBtnCls)">
-                <i class="icon-video text-lg"></i>
-            </HeaderButton>
-            @if (!ScreenSize.IsNarrow()) {
+            } else {
                 <HeaderButton
                     Click="@(() => OnScreenCastClick(!isOwnScreenCasting))"
                     Class="@("btn-video-panel " + screenCastBtnCls)">
@@ -159,14 +129,10 @@
                     <i class="icon-recorder-right-half right"></i>
                 }
             </HeaderButton>
-            <HeaderButton Click="OnVoiceSettingsClick" Class="btn-video-panel">
-                <i class="icon-options-2 text-lg"></i>
-            </HeaderButton>
             <HeaderButton
-                Click="@OnVideoSettingsClick"
-                Class="btn-video-panel settings-btn"
-                IsDisabled="@(!isOwnCameraStreaming)">
-                <i class="icon-settings text-lg"></i>
+                Click="@(() => OnVideoClick(!isOwnCameraStreaming))"
+                Class="@("btn-video-panel btn-video-toggle " + videoBtnCls)">
+                <i class="icon-video text-lg"></i>
             </HeaderButton>
             @if (!ScreenSize.IsNarrow()) {
                 <HeaderButton Click="@OnToggleChatVisibilityClick" Class="@("btn-video-panel chat-btn " + chatBtnCls)">
@@ -174,7 +140,7 @@
                 </HeaderButton>
             }
         </div>
-        <div class="video-panel-content @(layout.LayoutClass)">
+        <div class="video-panel-content @(layout.LayoutClass)" data-menu="@videoMenuRef">
             @if (_showConnecting) {
                 <UITimer Period="@TimeSpan.FromSeconds(5)" IsRecurring="false" Tick="OnConnectingTimeout" />
                 <div class="connecting-overlay">
@@ -218,7 +184,7 @@
                     Class="item-focused" />
             }
         </div>
-        @if (_isExpanded && isChatVisible && !ScreenSize.IsNarrow() && _lastChat is { } chat) {
+        @if (m.IsExpanded && isChatVisible && !ScreenSize.IsNarrow() && _lastChat is { } chat) {
             <div class="video-panel-chat upload-drag-drop-host">
                 <ChatView @key="@chat.Id.Value" ChatId="@chat.Id"/>
                 <ChatMessageEditor @key="@("vp-editor-" + chat.Id.Value)" Chat="@chat"/>
@@ -226,8 +192,17 @@
         }
     </div>
     <div class="c-hidden-pill" @onclick="@OnHidePillClick" @onclick:stopPropagation="true">
-        <i class="icon-video text-lg"></i>
-        <span>@cameraStateText</span>
+        <span class="c-live-dot"></span>
+        <span>Live</span>
+        @if (isOwnStreaming) {
+            <span class="c-divider"></span>
+            @if (isOwnCameraStreaming) {
+                <i class="icon-video text-xl"></i>
+            }
+            @if (isOwnScreenCasting) {
+                <i class="icon-screen-share text-xl"></i>
+            }
+        }
     </div>
     <div class="c-drag-handle"><div class="c-bar"></div></div>
 </div>
@@ -236,15 +211,15 @@
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPanel.create";
 
     private bool _isFirstOpen = true;
-    private bool _isExpanded;
-    private bool? _isChatVisible;
     private Chat? _lastChat;
     private bool _noStreamsTimedOut;
     private bool _showConnecting;
     private bool _hadRemoteStreams;
     private bool _shouldStartClosing;
+    private bool _skipCloseAnimation;
     private bool _lastCollapsed;
     private bool _lastHidden;
+    private bool _lastExpanded;
     private VideoPanelLayoutCalculator? _layoutCalculator;
     private HistoryStepRef? _expandStepRef;
 
@@ -288,6 +263,13 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (_shouldStartClosing) {
             _shouldStartClosing = false;
+            if (_skipCloseAnimation) {
+                _skipCloseAnimation = false;
+                await CloseVideoPanel();
+                // CloseVideoPanel disposed JSRef/BlazorRef and unmounts via OnClosed.
+                // Anything below would try to lazy-init or InvokeVoidAsync on the dead refs.
+                return;
+            }
             if (JSRef is not null)
                 await JSRef.InvokeVoidAsync("startClosing");
         }
@@ -307,11 +289,18 @@
             if (JSRef is not null)
                 await JSRef.InvokeVoidAsync("updatePanelMode");
         }
+
+        var isExpanded = State.Value.IsExpanded;
+        if (isExpanded != _lastExpanded) {
+            _lastExpanded = isExpanded;
+            if (JSRef is not null)
+                await JSRef.InvokeVoidAsync(isExpanded ? "expand" : "collapse");
+        }
     }
 
     [JSInvokable]
     public async Task CloseVideoPanel() {
-        _isExpanded = false;
+        ChatVideoUI.SetVideoPanelExpanded(false);
         CloseExpandStep();
         _lastChat = null;
         ChatVideoUI.StopStreaming();
@@ -327,7 +316,8 @@
     [JSInvokable]
     public async Task OnExpanded()
     {
-        _isExpanded = true;
+        ChatVideoUI.SetVideoPanelExpanded(true);
+        _lastExpanded = true;
         _expandStepRef = HistoryStepper.StepIn("VideoPanel");
         _ = WaitForExpandStepClosed(_expandStepRef);
         await InvokeAsync(StateHasChanged);
@@ -336,7 +326,8 @@
     [JSInvokable]
     public async Task OnCollapsed()
     {
-        _isExpanded = false;
+        ChatVideoUI.SetVideoPanelExpanded(false);
+        _lastExpanded = false;
         CloseExpandStep();
         await InvokeAsync(StateHasChanged);
     }
@@ -348,7 +339,7 @@
             if (_expandStepRef != stepRef)
                 return; // Already handled
             _expandStepRef = null;
-            if (!_isExpanded)
+            if (!State.Value.IsExpanded)
                 return; // Already collapsed
             // Back button pressed — collapse the video panel
             if (JSRef is not null)
@@ -380,12 +371,13 @@
         }
         var layout = await _layoutCalculator.GetLayout(cancellationToken).ConfigureAwait(false);
 
-        var isAdmin = AccountUI.OwnAccount.Value.IsAdmin;
-        var allowDiagnostics = isAdmin || HostInfo.IsDevelopmentInstance;
+        var isNarrow = ScreenSize.IsNarrow();
 
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var isCollapsed = await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
         var isHidden = await ChatVideoUI.GetIsVideoPanelHidden(cancellationToken).ConfigureAwait(false);
+        var isExpanded = await ChatVideoUI.GetIsVideoPanelExpanded(cancellationToken).ConfigureAwait(false);
+        var isChatVisible = await ChatVideoUI.GetIsVideoPanelChatVisible(cancellationToken).ConfigureAwait(false);
 
         // Get centralized video state (for recording status)
         var isOwnRecording = await ChatVideoUI.IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);
@@ -408,8 +400,9 @@
                 0,
                 chat,
                 isCollapsed,
-                AllowDiagnostics: allowDiagnostics,
-                IsHidden: isHidden);
+                IsHidden: isHidden,
+                IsExpanded: isExpanded,
+                IsChatVisible: isChatVisible);
 
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
 
@@ -432,9 +425,10 @@
             videoStreamMemberCount,
             chat,
             isCollapsed,
-            allowDiagnostics,
-            focusedName,
-            isHidden);
+            FocusedParticipantName: focusedName,
+            IsHidden: isHidden,
+            IsExpanded: isExpanded,
+            IsChatVisible: isChatVisible);
     }
 
     private async Task<string?> GetFocusedParticipantName(
@@ -460,7 +454,9 @@
     }
 
     private void OnHangUpClick() {
-        if (State.Value.IsAudioRecording)
+        var m = State.Value;
+        _skipCloseAnimation = m.IsExpanded || m.IsCollapsed || m.IsHidden;
+        if (m.IsAudioRecording)
             _ = ChatAudioUI.SetRecordingChatId(null);
         _ = ChatAudioUI.SetListeningState(ChatId, false);
         ChatVideoUI.StopStreaming();
@@ -497,31 +493,13 @@
         }
     }
 
-    private void OnVoiceSettingsClick() {
-        _ = Hub.ModalUI.Show(new VoiceSettingsModal.Model(ChatId));
-    }
-
-    private void OnVideoSettingsClick() {
-        // DO NOT stop recording — the modal will share the recorder's preview stream
-        ChatVideoUI.ChangeVideoSessionSettings(ChatId);
-    }
-
-    private void OnDiagnosticsClick()
-        => _ = Hub.ModalUI.Show(new VideoDiagnosticsModal.Model(ChatId));
-
     private Task OnSwitchCamera()
         => CameraUI.SwitchCamera();
 
     private void OnToggleChatVisibilityClick() {
-        _isChatVisible = !(_isChatVisible ?? GetDefaultChatVisibility());
-        StateHasChanged();
+        var current = State.Value.IsChatVisible ?? GetDefaultChatVisibility();
+        ChatVideoUI.SetVideoPanelChatVisible(!current);
     }
-
-    private void OnToggleCollapsed()
-        => ChatVideoUI.SetVideoPanelCollapsed(!State.Value.IsCollapsed);
-
-    private void OnHideClick()
-        => ChatVideoUI.SetVideoPanelHidden(true);
 
     private void OnHidePillClick()
         => ChatVideoUI.SetVideoPanelHidden(false);
@@ -544,6 +522,7 @@
         _noStreamsTimedOut = true;
         var m = State.Value;
         if (m.RemoteStreams.Length == 0 && !m.IsOwnRecording && !m.IsOwnScreenCasting) {
+            _skipCloseAnimation = m.IsExpanded || m.IsCollapsed || m.IsHidden;
             ChatVideoUI.CloseVideoPanel();
         }
         StateHasChanged();
@@ -560,9 +539,10 @@
         int VideoStreamMemberCount,
         Chat? Chat,
         bool IsCollapsed = false,
-        bool AllowDiagnostics = false,
         string? FocusedParticipantName = null,
-        bool IsHidden = false
+        bool IsHidden = false,
+        bool IsExpanded = false,
+        bool? IsChatVisible = null
     ) {
         public static readonly Model Loading = new(VideoPanelLayout.New, [], false, false, false, 0, null, false);
     }

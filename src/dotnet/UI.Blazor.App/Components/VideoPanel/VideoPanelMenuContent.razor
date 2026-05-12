@@ -1,0 +1,128 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+@{
+    if (Actions is null)
+        return;
+
+    var a = Actions;
+    var isExpanded = a.Mode == VideoPanelMode.Expanded;
+    var isCollapsed = a.Mode == VideoPanelMode.Collapsed;
+    var effectiveChatVisible = IsChatVisible ?? !a.IsNarrow;
+}
+
+<div class="video-panel-menu">
+    @if (a.CanToggleFullscreen) {
+        <MenuEntry
+            Icon="@(isExpanded ? "icon-collapse" : "icon-expand")"
+            Text="@(isExpanded ? "Exit fullscreen" : "Fullscreen")"
+            Click="@OnToggleFullscreen"/>
+    }
+    @if (a.CanToggleIsland) {
+        <MenuEntry
+            Icon="@(isCollapsed ? "icon-video-expand" : "icon-video-collapse")"
+            Text="@(isCollapsed ? "Restore" : "Pin to corner")"
+            Click="@OnToggleIsland"/>
+    }
+    @if (a.CanMinimize) {
+        <MenuEntry
+            Icon="icon-eye-off"
+            Text="Minimize"
+            Click="@OnMinimize"/>
+    }
+
+    <MenuEntrySeparator/>
+
+    @if (a.CanSwitchCamera) {
+        <MenuEntry
+            Icon="icon-camera-switch"
+            Text="Switch camera"
+            Click="@OnSwitchCamera"/>
+    }
+    @if (a.CanToggleVideo) {
+        <MenuEntry
+            Icon="icon-video"
+            Text="@(IsOwnRecording ? "Turn camera off" : "Turn camera on")"
+            Click="@OnToggleVideo"/>
+    }
+    @if (a.CanToggleScreenCast) {
+        <MenuEntry
+            Icon="icon-screen-share"
+            Text="@(IsOwnScreenCasting ? "Stop sharing screen" : "Share screen")"
+            Click="@OnToggleScreenCast"/>
+    }
+
+    <MenuEntrySeparator/>
+
+    @if (a.CanShowVoiceSettings) {
+        <MenuEntry
+            Icon="icon-options-2"
+            Text="Voice settings"
+            Click="@OnVoiceSettings"/>
+    }
+    @if (a.CanShowVideoSettings) {
+        <MenuEntry
+            Icon="icon-settings"
+            Text="Video settings"
+            Click="@OnVideoSettings"/>
+    }
+
+    <MenuEntrySeparator/>
+
+    @if (a.CanToggleChatPanel) {
+        <MenuEntry
+            Icon="icon-message-ellipse"
+            Text="@(effectiveChatVisible ? "Hide chat" : "Show chat")"
+            Click="@OnToggleChatPanel"/>
+        <MenuEntrySeparator/>
+    }
+
+    @if (a.CanShowDiagnostics) {
+        <MenuEntry
+            Icon="icon-activity"
+            Text="Diagnostics"
+            Click="@OnDiagnostics"/>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    [Parameter, EditorRequired] public VideoPanelActions? Actions { get; set; }
+    [Parameter] public bool IsOwnRecording { get; set; }
+    [Parameter] public bool IsOwnScreenCasting { get; set; }
+    [Parameter] public bool? IsChatVisible { get; set; }
+
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+
+    private void OnToggleFullscreen()
+        => ChatVideoUI.SetVideoPanelExpanded(Actions?.Mode != VideoPanelMode.Expanded);
+
+    private void OnToggleIsland()
+        => ChatVideoUI.SetVideoPanelCollapsed(Actions?.Mode != VideoPanelMode.Collapsed);
+
+    private void OnMinimize()
+        => ChatVideoUI.SetVideoPanelHidden(true);
+
+    private Task OnSwitchCamera()
+        => Hub.CameraUI.SwitchCamera();
+
+    private void OnToggleVideo()
+        => ChatVideoUI.ToggleVideoCapture(ChatId);
+
+    private void OnToggleScreenCast()
+        => ChatVideoUI.ToggleScreenCast(ChatId);
+
+    private void OnToggleChatPanel() {
+        var a = Actions;
+        var current = IsChatVisible ?? (a is not null && !a.IsNarrow);
+        ChatVideoUI.SetVideoPanelChatVisible(!current);
+    }
+
+    private void OnVoiceSettings()
+        => ChatVideoUI.ShowVoiceSettings(ChatId);
+
+    private void OnVideoSettings()
+        => ChatVideoUI.ChangeVideoSessionSettings(ChatId);
+
+    private void OnDiagnostics()
+        => ChatVideoUI.ShowDiagnostics(ChatId);
+}

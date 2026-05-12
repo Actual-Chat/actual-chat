@@ -28,6 +28,8 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     // UI-only: hides video panel without affecting watching/recording state
     private readonly MutableState<bool> _isVideoPanelCollapsed;
     private readonly MutableState<bool> _isVideoPanelHidden;
+    private readonly MutableState<bool> _isVideoPanelExpanded;
+    private readonly MutableState<bool?> _isVideoPanelChatVisible;
 
     // Set when a remote stream completes normally (sender intentionally ended).
     // Consumed by VideoPanelContent to suppress "Connecting..." overlay.
@@ -59,6 +61,8 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _watchingChatId = StateFactory.NewMutable((ChatId?)null);
         _isVideoPanelCollapsed = StateFactory.NewMutable(false);
         _isVideoPanelHidden = StateFactory.NewMutable(false);
+        _isVideoPanelExpanded = StateFactory.NewMutable(false);
+        _isVideoPanelChatVisible = StateFactory.NewMutable((bool?)null);
     }
 
     void INotifyInitialized.Initialized()
@@ -94,6 +98,48 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public virtual async Task<bool> GetIsVideoPanelHidden(CancellationToken cancellationToken = default)
         => await _isVideoPanelHidden.Use(cancellationToken).ConfigureAwait(false);
 
+    [ComputeMethod]
+    public virtual async Task<bool> GetIsVideoPanelExpanded(CancellationToken cancellationToken = default)
+        => await _isVideoPanelExpanded.Use(cancellationToken).ConfigureAwait(false);
+
+    [ComputeMethod]
+    public virtual async Task<bool?> GetIsVideoPanelChatVisible(CancellationToken cancellationToken = default)
+        => await _isVideoPanelChatVisible.Use(cancellationToken).ConfigureAwait(false);
+
+    [ComputeMethod]
+    public virtual async Task<VideoPanelMode> GetVideoPanelMode(CancellationToken cancellationToken = default)
+    {
+        if (await _isVideoPanelHidden.Use(cancellationToken).ConfigureAwait(false))
+            return VideoPanelMode.Hidden;
+        if (await _isVideoPanelExpanded.Use(cancellationToken).ConfigureAwait(false))
+            return VideoPanelMode.Expanded;
+        if (await _isVideoPanelCollapsed.Use(cancellationToken).ConfigureAwait(false))
+            return VideoPanelMode.Collapsed;
+        return VideoPanelMode.Inline;
+    }
+
+    [ComputeMethod]
+    public virtual async Task<VideoPanelActions> GetVideoPanelActions(
+        ChatId chatId, bool isNarrow, bool isAdmin, bool isDevInstance, CancellationToken cancellationToken = default)
+    {
+        var mode = await GetVideoPanelMode(cancellationToken).ConfigureAwait(false);
+        var isVideoAvailable = await IsVideoAvailable(chatId, cancellationToken).ConfigureAwait(false);
+        var allowDiagnostics = isAdmin || isDevInstance;
+        return new VideoPanelActions(
+            Mode: mode,
+            IsNarrow: isNarrow,
+            CanToggleFullscreen: true,
+            CanToggleIsland: true,
+            CanMinimize: !isNarrow && mode != VideoPanelMode.Hidden,
+            CanSwitchCamera: isNarrow && isVideoAvailable,
+            CanToggleVideo: isVideoAvailable,
+            CanToggleScreenCast: !isNarrow && isVideoAvailable,
+            CanToggleChatPanel: !isNarrow && mode == VideoPanelMode.Expanded,
+            CanShowDiagnostics: allowDiagnostics,
+            CanShowVoiceSettings: true,
+            CanShowVideoSettings: isVideoAvailable);
+    }
+
     // State mutators
 
     public void OpenVideoPanel(ChatId chatId)
@@ -105,19 +151,65 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public void SetVideoPanelCollapsed(bool collapsed)
     {
         _isVideoPanelCollapsed.Value = collapsed;
-        if (collapsed)
+        if (collapsed) {
             _isVideoPanelHidden.Value = false;
+            _isVideoPanelExpanded.Value = false;
+        }
     }
 
     public void SetVideoPanelHidden(bool hidden)
     {
         _isVideoPanelHidden.Value = hidden;
-        if (hidden)
+        if (hidden) {
             _isVideoPanelCollapsed.Value = false;
+            _isVideoPanelExpanded.Value = false;
+        }
     }
+
+    public void SetVideoPanelExpanded(bool expanded)
+    {
+        _isVideoPanelExpanded.Value = expanded;
+        if (expanded) {
+            _isVideoPanelCollapsed.Value = false;
+            _isVideoPanelHidden.Value = false;
+        }
+    }
+
+    public void SetVideoPanelChatVisible(bool? visible)
+        => _isVideoPanelChatVisible.Value = visible;
 
     public bool HasJoinedVideoSession(ChatId chatId)
         => _watchingChatId.Value == chatId && _lastRecordingChatId.Value == chatId;
+
+    public void ToggleVideoCapture(ChatId chatId)
+    {
+        var isOwnRecording = _recordingChatId.Value == chatId;
+        if (isOwnRecording) {
+            StopRecording();
+            return;
+        }
+        if (HasJoinedVideoSession(chatId))
+            ResumeVideoStreaming(chatId);
+        else
+            JoinVideoSession(chatId);
+    }
+
+    public void ToggleScreenCast(ChatId chatId)
+    {
+        var isOwnScreenCasting = _screenCastChatId.Value == chatId;
+        if (isOwnScreenCasting)
+            StopScreenCasting();
+        else
+            StartScreenCasting(chatId);
+    }
+
+    public void ShowDiagnostics(ChatId chatId)
+        => _ = ModalUI.Show(new VideoDiagnosticsModal.Model(chatId));
+
+    public void ShowVoiceSettings(ChatId chatId)
+        => _ = ModalUI.Show(new VoiceSettingsModal.Model(chatId));
+
+    // Modal helpers
 
     public void JoinVideoSession(ChatId chatId)
     {
@@ -184,11 +276,16 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         if (_watchingChatId.Value == chatId)
             return;
         _watchingChatId.Value = chatId;
-        _isVideoPanelCollapsed.Value = false; // Reset collapsed state on watching change
-        _isVideoPanelHidden.Value = false;
-        // Ensure listening is on when starting to watch
-        if (chatId is not null)
+        // Reset transient view state only when opening the panel; on close we
+        // leave it as-is so the panel stays in its current visual mode while
+        // it unmounts (otherwise it would snap to inline position first).
+        if (chatId is not null) {
+            _isVideoPanelCollapsed.Value = false;
+            _isVideoPanelHidden.Value = false;
+            _isVideoPanelExpanded.Value = false;
+            _isVideoPanelChatVisible.Value = null;
             _ = ChatAudioUI.SetListeningState(chatId, true);
+        }
     }
 
     private async Task OpenVideoPanelInternal(ChatId chatId, CancellationToken cancellationToken = default)
@@ -203,3 +300,19 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
 // ReSharper disable once ClassNeverInstantiated.Global — instantiated via JS interop deserialization
 public sealed record VideoDevice(string DeviceId, string Label);
+
+public enum VideoPanelMode { Inline, Expanded, Collapsed, Hidden }
+
+public sealed record VideoPanelActions(
+    VideoPanelMode Mode,
+    bool IsNarrow,
+    bool CanToggleFullscreen,
+    bool CanToggleIsland,
+    bool CanMinimize,
+    bool CanSwitchCamera,
+    bool CanToggleVideo,
+    bool CanToggleScreenCast,
+    bool CanToggleChatPanel,
+    bool CanShowDiagnostics,
+    bool CanShowVoiceSettings,
+    bool CanShowVideoSettings);
