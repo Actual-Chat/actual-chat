@@ -24,10 +24,10 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
 
     protected bool MustPushIsOnlineToJS { get; init; }
 
-    public bool IsBlazorServer { get; }
+        public bool IsBlazorServer { get; }
     public IState<bool> IsConnected => _isConnected;
-    public RpcClientPeer? Peer => IsBlazorServer ? null : Hub.RpcHub.GetClientPeer(RpcPeerRef.Default);
     public abstract IState<bool> IsOnline { get; }
+    public RpcClientPeer? Peer => IsBlazorServer ? null : Hub.RpcHub.GetClientPeer(RpcPeerRef.Default);
 
     protected ConnectivityUI(UIHub hub) : base(hub)
     {
