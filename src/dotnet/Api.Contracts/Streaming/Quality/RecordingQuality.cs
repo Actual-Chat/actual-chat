@@ -48,10 +48,10 @@ public sealed record RecorderStats(
     bool IsPeerConnected,
     // Cumulative per-stage drop counts since the recording run started.
     // Powers the per-stream FPS breakdown in video diagnostics.
-    IReadOnlyDictionary<FrameDropStage, long> DropTrace,
+    IReadOnlyDictionary<FrameDropStage, int> DropTrace,
     // Cumulative bundles successfully shipped to the wire since the run
     // started. Powers FPS (= delta-per-second) for the diagnostics row.
-    long BundlesShipped,
+    int BundlesShipped,
     // Cumulative encoded bytes (sum across layers). Drives the outbound
     // "kbps" display in the diagnostics modal.
     long BytesEncoded)
@@ -59,6 +59,6 @@ public sealed record RecorderStats(
     public static RecorderStats Empty { get; } =
         new(0, 0, 0, IsConnected: false, IsPeerConnected: false, EmptyDropTrace, 0, 0);
 
-    private static readonly IReadOnlyDictionary<FrameDropStage, long> EmptyDropTrace
-        = new Dictionary<FrameDropStage, long>();
+    private static readonly IReadOnlyDictionary<FrameDropStage, int> EmptyDropTrace
+        = new Dictionary<FrameDropStage, int>();
 }

@@ -24,14 +24,14 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     private Task InvokeGrantFilePermissions()
-        => Hub.JS.InvokeVoidAsync($"{BlazorUIAppModule.ImportName}.WebFileProviders.grantFileUploadPermissions").AsTask();
+        => JS.InvokeVoidAsync($"{BlazorUIAppModule.ImportName}.WebFileProviders.grantFileUploadPermissions").AsTask();
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender)
             return;
 
         BlazorRef = DotNetObjectReference.Create<IGrantFileUploadsSubHeader>(this);
-        await Hub.JS.InvokeVoidAsync($"{BlazorUIAppModule.ImportName}.WebFileProviders.startMonitorGrantPermissionsRequests", BlazorRef);
+        await JS.InvokeVoidAsync($"{BlazorUIAppModule.ImportName}.WebFileProviders.startMonitorGrantPermissionsRequests", BlazorRef);
     }
 
     [JSInvokable]

@@ -25,6 +25,27 @@ public static partial class Constants
         public static readonly double LastAckBadMs = 2000;
         public static readonly double LastAckGoodMs = 500;
 
+        // BandwidthEstimator initial ceilings (bytes/sec). Big enough to run
+        // the baseline configuration without an early downgrade; the estimator
+        // refines from the first real signal.
+        public const long InitialOutboundCeilingBps = 375_000;  // ~3 Mbps
+        public const long InitialInboundCeilingBps = 1_000_000; // ~8 Mbps
+
+        // Reference values for the fused signalLevel formulas (see
+        // docs/plans/video-quality-control-v2.md → "Computing signalLevel").
+        // Penalty for each input is a linear ramp from Ok (penalty = 0) to
+        // Bad (penalty = 1), clamped to [0, 1].
+        public const double DropOkSender = 0.20;
+        public const double DropBadSender = 0.50;
+        public const double DropOkReceiver = 0.20;
+        public const double DropBadReceiver = 0.50;
+        public const double PlaybackRateOk = 0.90;
+        public const double PlaybackRateBad = 0.00;
+        public const double AckOkMs = 500;
+        public const double AckBadMs = 2000;
+        public const double EncOkRatio = 1.0;
+        public const double EncBadRatio = 2.0;
+
         // Keyframe cadence — KeyFramePeriod is the input; KeyFramePeriodSize is derived.
         public static readonly TimeSpan KeyFramePeriod = TimeSpan.FromSeconds(3);
         public static readonly int KeyFramePeriodSize = (int)(FrameRate * KeyFramePeriod.TotalSeconds); // 90

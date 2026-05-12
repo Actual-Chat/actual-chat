@@ -22,10 +22,10 @@ public sealed class VideoRecorder : IAsyncDisposable
 
     private AppUIHub Hub { get; }
     private Session Session => Hub.Session;
-    private IJSRuntime JS => Hub.JS;
     private IAuthors Authors => Hub.Authors;
-    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ILiveVideoStreams LiveVideoStreams => Hub.LiveVideoStreams;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private IJSRuntime JS => Hub.JS;
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     public VideoSourceKind Kind { get; }
@@ -53,6 +53,16 @@ public sealed class VideoRecorder : IAsyncDisposable
         _jsRef = await JS
             .InvokeAsync<IJSObjectReference>(jsMethod, CancellationToken.None, _blazorCallbacksRef, (int)Kind)
             .ConfigureAwait(false);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _maintenanceCts.CancelAndDisposeSilently();
+        await _maintenanceTask.SilentAwait();
+        await _jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(false);
+        _jsRef = null!;
+        _blazorCallbacksRef.Dispose();
+        _blazorCallbacksRef = null!;
     }
 
     // Recording lifecycle
@@ -139,14 +149,17 @@ public sealed class VideoRecorder : IAsyncDisposable
         return SetLayers(layers, cancellationToken);
     }
 
-    public async ValueTask DisposeAsync()
+    // Private methods
+
+    private async Task RunMaintenance(Task startTrigger, CancellationToken cancellationToken)
     {
-        _maintenanceCts.CancelAndDisposeSilently();
-        await _maintenanceTask.SilentAwait();
-        await _jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(false);
-        _jsRef = null!;
-        _blazorCallbacksRef.Dispose();
-        _blazorCallbacksRef = null!;
+        await startTrigger.WaitAsync(cancellationToken).ConfigureAwait(false);
+        var startRequest = GetStartRequest();
+        var chatId = startRequest.Item1;
+        var t1 = SubscribeToKeyFrameRequests(chatId, cancellationToken);
+        var t2 = SubscribeToSupportedDecoderCodecs(chatId, cancellationToken);
+        var t3 = ForwardRemoteStreamCount(chatId, cancellationToken);
+        await Task.WhenAll(t1, t2, t3).ConfigureAwait(false);
     }
 
     private (ChatId, bool) GetStartRequest()
@@ -173,18 +186,7 @@ public sealed class VideoRecorder : IAsyncDisposable
         var effectiveStats = stats with {
             IsConnected = isDotNetConnected && stats.IsPeerConnected,
         };
-        return Hub.VideoQualityUI.PushRecorderStats(Kind, effectiveStats, this, CancellationToken.None);
-    }
-
-    private async Task RunMaintenance(Task startTrigger, CancellationToken cancellationToken)
-    {
-        await startTrigger.WaitAsync(cancellationToken).ConfigureAwait(false);
-        var startRequest = GetStartRequest();
-        var chatId = startRequest.Item1;
-        var t1 = SubscribeToKeyFrameRequests(chatId, cancellationToken);
-        var t2 = SubscribeToSupportedDecoderCodecs(chatId, cancellationToken);
-        var t3 = ForwardRemoteStreamCount(chatId, cancellationToken);
-        await Task.WhenAll(t1, t2, t3).ConfigureAwait(false);
+        return Hub.VideoQualityUI.OnRecorderStats(Kind, effectiveStats, this, CancellationToken.None);
     }
 
     private async Task SubscribeToKeyFrameRequests(ChatId chatId, CancellationToken cancellationToken) {
@@ -348,11 +350,11 @@ public sealed class VideoRecorder : IAsyncDisposable
             double lastAckAgeMs,
             bool isPeerConnected,
             byte[] dropStages,
-            long[] dropCounts,
-            long bundlesShipped,
+            int[] dropCounts,
+            int bundlesShipped,
             long bytesEncoded)
         {
-            var dropTrace = new Dictionary<FrameDropStage, long>(dropStages.Length);
+            var dropTrace = new Dictionary<FrameDropStage, int>(dropStages.Length);
             for (var i = 0; i < dropStages.Length && i < dropCounts.Length; i++)
                 dropTrace[(FrameDropStage)dropStages[i]] = dropCounts[i];
             return videoRecorder.OnRecorderStats(new RecorderStats(

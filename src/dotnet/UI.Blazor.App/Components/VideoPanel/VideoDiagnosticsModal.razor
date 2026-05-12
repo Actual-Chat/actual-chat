@@ -3,6 +3,7 @@
 @using ActualChat.Streaming
 @using ActualChat.Video
 @using ActualChat.UI.Blazor.App.Module
+@using Microsoft.AspNetCore.Components.Rendering
 @using System.Text
 @using System.Text.Json
 @inherits ComputedStateComponent<AppUIHub, VideoDiagnosticsModal.ComputedModel>
@@ -19,14 +20,32 @@
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Default"
     HasCloseButton="true">
     <Buttons>
-        @if (m.AllowDiagnostics) {
-            <Button Class="btn-modal" Click="@OnSettingsClick">Settings</Button>
-        }
-        <CopyTrigger CopyText="@copyText" Tooltip="Copy diagnostics">
-            <Button Class="btn-modal">Copy</Button>
-        </CopyTrigger>
+        <Button Class="btn-modal" Click="@OnCopyClick">Copy</Button>
     </Buttons>
     <Body>
+        <div class="diag-tabs">
+            <button type="button"
+                    class="diag-tab @(_activeTab == Tab.Inbound ? "diag-tab--active" : "")"
+                    @onclick="@(() => OnSelectTab(Tab.Inbound))">
+                Inbound
+            </button>
+            <button type="button"
+                    class="diag-tab @(_activeTab == Tab.Outbound ? "diag-tab--active" : "")"
+                    @onclick="@(() => OnSelectTab(Tab.Outbound))">
+                Outbound
+            </button>
+            @if (m.AllowDiagnostics) {
+                <button type="button"
+                        class="diag-tab @(_activeTab == Tab.Settings ? "diag-tab--active" : "")"
+                        @onclick="@(() => OnSelectTab(Tab.Settings))">
+                    Settings
+                </button>
+            }
+        </div>
+        <div @ref="_bodyRef" class="diag-body-content">
+        @* All tab content sits inside the selectable wrapper *@
+
+        @if (_activeTab == Tab.Outbound) {
         @* Own streaming *@
         <div class="diag-section">
             @{
@@ -34,7 +53,7 @@
                 var headerOnClick = hasOutbound ? OnToggleOwnStreamingDetails : (Action)(() => { });
             }
             <div class="diag-section-header @(hasOutbound ? "diag-clickable" : "")" @onclick="@headerOnClick">
-                Outbound Stream@(m.OwnSourceKinds.Count > 1 ? "s" : "")
+                Streams
                 @if (m.OwnSourceKinds.Count > 1) {
                     <span class="diag-badge">@m.OwnSourceKinds.Count</span>
                 }
@@ -242,7 +261,7 @@
                                     }
 
                                     @* Quality control *@
-                                    <div class="diag-group-header">Quality Control (outbound)</div>
+                                    <div class="diag-group-header">Quality Control</div>
                                     <div class="diag-row">
                                         <span class="diag-label">Target</span>
                                         <span class="diag-value">@FormatRecordingQualityState(recordingSnap)</span>
@@ -279,10 +298,14 @@
             }
         </div>
 
+        @RenderOutboundQualityControl(m)
+        } @* end Outbound tab *@
+
+        @if (_activeTab == Tab.Inbound) {
         @* Active streams *@
         <div class="diag-section">
             <div class="diag-section-header">
-                Inbound Streams
+                Streams
                 <span class="diag-badge">@m.Streams.Count(s => !s.IsOwn)</span>
                 @if (m.MemberCount > 0) {
                     <span class="diag-dim ml-2">(@m.MemberCount members)</span>
@@ -380,59 +403,95 @@
                 }
             }
         </div>
-        @if (m.Streams.Any(s => !s.IsOwn)) {
-            <div class="diag-section">
-                <div class="diag-section-header">Quality Control (inbound)</div>
-                <div class="diag-row">
-                    <span class="diag-label">Est. Capacity</span>
-                    <span class="diag-value">@((playbackSnap.EstimatedCapacityBytesPerSec * 8 / 1000).ToString("0")) kbps</span>
-                </div>
-                <div class="diag-row">
-                    <span class="diag-label">Aggregate health</span>
-                    <span class="diag-value">@(playbackSnap.AggregateHealth.ToString("F2"))</span>
-                </div>
+        @RenderInboundQualityControl()
+        } @* end Inbound tab *@
 
-                @foreach (var s in m.Streams.Where(s => !s.IsOwn)) {
-                    var sid = s.Info.StreamId.Value;
-                    var hasDiag = _streamDiags.TryGetValue(sid, out var rd)
-                        && rd.ValueKind == JsonValueKind.Object;
-                    int? verdict = playbackSnap.Verdicts.TryGetValue(sid, out var v) ? v : null;
-                    var streamSignals = playbackSnap.Signals.TryGetValue(sid, out var sig) ? sig : null;
-                    <div class="diag-stream">
-                        <div class="diag-stream-header">
-                            <span>@s.Info.StreamId</span>
-                            <span class="diag-source-kind ml-auto">@s.Info.SourceKind</span>
-                        </div>
-                        <div class="diag-row">
-                            <span class="diag-label">Author</span>
-                            <span class="diag-value">@s.Author</span>
-                        </div>
-                        <div class="diag-row">
-                            <span class="diag-label">Verdict</span>
-                            <span class="diag-value">@(verdict is { } signal ? SignalText(signal) : "n/a")</span>
-                        </div>
-                        @if (hasDiag) {
-                            <div class="diag-row">
-                                <span class="diag-label">Requested</span>
-                                <span class="diag-value">@FormatRequestedReceiveQuality(rd)</span>
+        @if (_activeTab == Tab.Settings && m.AllowDiagnostics) {
+            <div class="diag-section">
+                <div class="diag-section-header">Overlays</div>
+                <Tile>
+                    <TileItem Click="@OnShowFpsOverlayClick">
+                        <Content>Show FPS overlay on tiles</Content>
+                        <Caption>
+                            Renders a small per-tile FPS readout in the corner of
+                            every video tile. Updates at 1 Hz; hidden automatically
+                            on tiles that are currently showing an error.
+                        </Caption>
+                        <Right>
+                            <div class="pointer-events-none">
+                                <Toggle IsChecked="@_showFpsOverlay"/>
                             </div>
-                        }
-                        @if (streamSignals is { } sigs) {
-                            <div class="diag-row">
-                                <span class="diag-label">Signals</span>
-                                <span class="diag-value">allocated=@((sigs.AllocatedBytesPerSec * 8 / 1000).ToString("0"))kbps, buf=@(sigs.BufferSpanMsEma.ToString("0"))ms</span>
+                        </Right>
+                    </TileItem>
+                </Tile>
+            </div>
+            <div class="diag-section">
+                <div class="diag-section-header">Codec selection</div>
+                <Tile>
+                    <TileItem Click="@OnForceH264OnlyClick">
+                        <Content>Force H.264 (AVC) only</Content>
+                        <Caption>
+                            Restrict codec detection to H.264 (AVC). AV1, HEVC and VP9
+                            are excluded for both encoder and decoder. Useful for
+                            reproducing AVC-only behaviour. Takes effect on the next
+                            stream — toggle, then re-join the call.
+                        </Caption>
+                        <Right>
+                            <div class="pointer-events-none">
+                                <Toggle IsChecked="@_forceH264Only"/>
                             </div>
-                        }
-                        else {
-                            <div class="diag-row">
-                                <span class="diag-label">Signals</span>
-                                <span class="diag-value diag-dim">no snapshot yet</span>
-                            </div>
-                        }
-                    </div>
-                }
+                        </Right>
+                    </TileItem>
+                </Tile>
+            </div>
+            <div class="diag-section">
+                <div class="diag-section-header">Quality control</div>
+                <Tile>
+                    <TileItem IsHoverable="false">
+                        <Content>Outbound layer cap</Content>
+                        <Caption>Caps the recording quality controller for your own camera stream.</Caption>
+                        <Right>
+                            <select class="diag-select"
+                                    value="@FormatLayerCount(_maxOutboundLayerCount)"
+                                    @onchange="@OnMaxOutboundLayerCountChange">
+                                <option value="">Default</option>
+                                <option value="1">Up to 1</option>
+                                <option value="2">Up to 2</option>
+                                <option value="3">Up to 3</option>
+                            </select>
+                        </Right>
+                    </TileItem>
+                    <TileItem IsHoverable="false">
+                        <Content>Inbound layer cap</Content>
+                        <Caption>Caps the playback quality controller requests for active remote streams.</Caption>
+                        <Right>
+                            <select class="diag-select"
+                                    value="@FormatLayerCount(_maxInboundLayerCount)"
+                                    @onchange="@OnMaxInboundLayerCountChange">
+                                <option value="">Default</option>
+                                <option value="1">Up to 1</option>
+                                <option value="2">Up to 2</option>
+                                <option value="3">Up to 3</option>
+                            </select>
+                        </Right>
+                    </TileItem>
+                    <TileItem IsHoverable="false">
+                        <Content>Est. bandwidth multiplier</Content>
+                        <Caption>Multiplies the AIMD-estimated capacity by this factor before the inbound allocator runs.</Caption>
+                        <Right>
+                            <select class="diag-select"
+                                    value="@FormatBandwidthMultiplier(_estBandwidthMultiplier)"
+                                    @onchange="@OnEstBandwidthMultiplierChange">
+                                @foreach (var v in BandwidthMultiplierOptions) {
+                                    <option value="@v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)">@v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)x</option>
+                                }
+                            </select>
+                        </Right>
+                    </TileItem>
+                </Tile>
             </div>
         }
+        </div> @* end .diag-body-content *@
     </Body>
 </DialogFrame>
 
@@ -440,11 +499,14 @@
     private static readonly string JSCollectOwnMethod = $"{BlazorUIAppModule.ImportName}.collectOwnStreamDiagnostics";
     private static readonly string JSCollectRemoteMethod = $"{BlazorUIAppModule.ImportName}.collectRemoteStreamDiagnostics";
 
+    private enum Tab { Inbound, Outbound, Settings }
+
     private Timer? _pollTimer;
     private readonly Dictionary<VideoSourceKind, JsonElement> _ownDiagByKind = new();
     private readonly Dictionary<string, JsonElement> _streamDiags = new();
     private bool _isDisposed;
     private bool _showOwnStreamingDetails;
+    private Tab _activeTab = Tab.Inbound;
     private readonly Dictionary<VideoSourceKind, int> _selectedOwnLayerIdByKind = new();
     // Per-target rates + cumulative drop totals, mirrored verbatim from the
     // JS-side diagnostics JSON. Rates are pre-computed at the recorder-tick /
@@ -454,8 +516,11 @@
     private readonly HashSet<string> _throughputExpanded = new();
     private static string OwnThroughputKey(VideoSourceKind kind) => $"__own__/{(int)kind}";
 
+    private ElementReference _bodyRef;
+
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private IAuthors Authors => Hub.Authors;
+    private ILogger Log => field ??= Services.LogFor<VideoDiagnosticsModal>();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -472,6 +537,8 @@
         // Re-evaluate polling state on every render so the timer kicks in as soon as
         // streams appear and disposes when the list empties.
         EnsurePollingState();
+        if (firstRender)
+            _ = LoadSettings();
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
@@ -503,6 +570,64 @@
         var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken);
         var allowDiagnostics = account.IsAdmin || Hub.HostInfo.IsDevelopmentInstance;
         return new ComputedModel(ownSourceKinds, streams, memberCount, allowDiagnostics);
+    }
+
+    private void OnSelectTab(Tab tab) {
+        if (_activeTab == tab)
+            return;
+        _activeTab = tab;
+        StateHasChanged();
+    }
+
+    private static void AppendCeilingAndSignal(
+        RenderTreeBuilder builder, int seqBase, ActualChat.Bandwidth.BandwidthEstimator bw)
+    {
+        var ceilingLabel = (bw.CeilingBps * 8 / 1000).ToString("0") + " kbps"
+            + (bw.HasSeenBadSignal ? "" : " (unproven)");
+        AppendRow(builder, seqBase + 0, "Ceiling", ceilingLabel);
+        AppendRow(builder, seqBase + 1, "Current",
+            (bw.LastCurrentBps * 8 / 1000).ToString("0") + " kbps");
+        AppendRow(builder, seqBase + 2, "Signal",
+            bw.LastSignalLevel.ToString("F2") + " (" + bw.LastVerdict + ")");
+    }
+
+    private static void AppendHistory(
+        RenderTreeBuilder builder, int seqBase, ActualChat.Bandwidth.BandwidthEstimator bw)
+    {
+        builder.OpenElement(seqBase, "div");
+        builder.AddAttribute(seqBase + 1, "class", "diag-group-header");
+        builder.AddContent(seqBase + 2, "Recent updates");
+        builder.CloseElement();
+
+        var i = 0;
+        foreach (var r in bw.History) {
+            var line = $"{r.At.ToDateTimeOffset():HH:mm:ss}: "
+                + $"{r.TriedBps * 8 / 1000} Kbps ? {r.SignalLevel:F2} -> "
+                + $"{r.CeilingAfter * 8 / 1000} Kbps ceiling";
+            builder.OpenElement(seqBase + 100 + i * 2, "div");
+            builder.AddAttribute(seqBase + 101 + i * 2, "class", "diag-row diag-history-row");
+            builder.OpenElement(seqBase + 102 + i * 2, "span");
+            builder.AddAttribute(seqBase + 103 + i * 2, "class", "diag-value diag-history-value");
+            builder.AddContent(seqBase + 104 + i * 2, line);
+            builder.CloseElement();
+            builder.CloseElement();
+            i++;
+        }
+    }
+
+    private static void AppendRow(RenderTreeBuilder builder, int seq, string label, string value)
+    {
+        builder.OpenElement(seq, "div");
+        builder.AddAttribute(seq + 1, "class", "diag-row");
+        builder.OpenElement(seq + 2, "span");
+        builder.AddAttribute(seq + 3, "class", "diag-label");
+        builder.AddContent(seq + 4, label);
+        builder.CloseElement();
+        builder.OpenElement(seq + 5, "span");
+        builder.AddAttribute(seq + 6, "class", "diag-value");
+        builder.AddContent(seq + 7, value);
+        builder.CloseElement();
+        builder.CloseElement();
     }
 
     private void OnToggleOwnStreamingDetails() {
@@ -649,8 +774,16 @@
     private string GetShowDetailsIndicator(bool show)
         => show ? ">---<" : "<->";
 
-    private void OnSettingsClick()
-        => _ = Hub.ModalUI.Show(new VideoDiagnosticsSettingsModal.Model());
+    private async Task OnCopyClick()
+    {
+        try {
+            var jsMethod = $"{BlazorUIAppModule.ImportName}.copyElementText";
+            await Hub.JS.InvokeVoidAsync(jsMethod, _bodyRef).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Copy diagnostics failed");
+        }
+    }
 
     private string BuildDiagnosticsText(ComputedModel m) {
         var sb = new StringBuilder();
@@ -816,7 +949,7 @@
         double Fps,
         double Kbps,
         IReadOnlyDictionary<FrameDropStage, double> DropPerSec,
-        IReadOnlyDictionary<FrameDropStage, long> DropTotal);
+        IReadOnlyDictionary<FrameDropStage, int> DropTotal);
 
     private void OnToggleThroughputExpanded(string key) {
         if (!_throughputExpanded.Add(key))
@@ -882,14 +1015,14 @@
             ReadDropTotalMap(diag, "dropTraceByStage"));
     }
 
-    private static IReadOnlyDictionary<FrameDropStage, long> ReadDropTotalMap(JsonElement el, string prop) {
+    private static IReadOnlyDictionary<FrameDropStage, int> ReadDropTotalMap(JsonElement el, string prop) {
         if (!el.TryGetProperty(prop, out var m) || m.ValueKind != JsonValueKind.Object)
             return EmptyDropTotal;
-        var dict = new Dictionary<FrameDropStage, long>();
+        var dict = new Dictionary<FrameDropStage, int>();
         foreach (var p in m.EnumerateObject()) {
             if (!int.TryParse(p.Name, out var stageNum)) continue;
             if (p.Value.ValueKind != JsonValueKind.Number) continue;
-            dict[(FrameDropStage)stageNum] = p.Value.GetInt64();
+            dict[(FrameDropStage)stageNum] = p.Value.GetInt32();
         }
         return dict;
     }
@@ -906,8 +1039,8 @@
         return dict;
     }
 
-    private static readonly IReadOnlyDictionary<FrameDropStage, long> EmptyDropTotal
-        = new Dictionary<FrameDropStage, long>();
+    private static readonly IReadOnlyDictionary<FrameDropStage, int> EmptyDropTotal
+        = new Dictionary<FrameDropStage, int>();
     private static readonly IReadOnlyDictionary<FrameDropStage, double> EmptyDropRate
         = new Dictionary<FrameDropStage, double>();
 }

@@ -24,4 +24,8 @@
     <UpToDateCheckInput Remove="Components\SummaryMessage\TestSummaryMessageContent.razor" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="ActualChat.Chat.UI.Blazor.UnitTests" />
+  </ItemGroup>
+
 </Project>

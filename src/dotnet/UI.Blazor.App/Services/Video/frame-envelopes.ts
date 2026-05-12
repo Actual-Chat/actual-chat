@@ -61,6 +61,13 @@ export interface PlayerStats {
     // success. Internal to the present operator; surfaced only via
     // dropTrace.
     pendingPresenterDrops: number;
+    // Source-clock ms drained per wall-clock ms at the buffer exit, clamped
+    // to [0, 1] (catching up doesn't earn credit). Updated in updatePlaybackRateEma.
+    playbackRateEma: number;
+    driftAnchorEpoch: number;
+    driftLastSampleOffsetMs: number;
+    driftLastSampleWallMs: number;
+    producerTemporalLayerCount: number;
 }
 
 export function createEmptyRecorderStats(): RecorderStats {
@@ -82,7 +89,40 @@ export function createEmptyPlayerStats(): PlayerStats {
         bytesReceived: 0,
         dropTrace: new Map(),
         pendingPresenterDrops: 0,
+        playbackRateEma: 1,
+        driftAnchorEpoch: -1,
+        driftLastSampleOffsetMs: 0,
+        driftLastSampleWallMs: 0,
+        producerTemporalLayerCount: 1,
     };
+}
+
+// Call from the present operator after each successful present.
+// Samples once per DRIFT_SAMPLE_INTERVAL_MS; intermediate calls just update anchors.
+const DRIFT_SAMPLE_INTERVAL_MS = 1000;
+const DRIFT_EMA_ALPHA = 0.3;
+
+export function updatePlaybackRateEma(
+    stats: PlayerStats,
+    presentedOffset: { timeMs: number; epoch: number },
+    wallNowMs: number,
+): void {
+    if (presentedOffset.epoch !== stats.driftAnchorEpoch) {
+        stats.driftAnchorEpoch = presentedOffset.epoch;
+        stats.driftLastSampleOffsetMs = presentedOffset.timeMs;
+        stats.driftLastSampleWallMs = wallNowMs;
+        stats.playbackRateEma = 1;
+        return;
+    }
+
+    const wallDelta = wallNowMs - stats.driftLastSampleWallMs;
+    if (wallDelta < DRIFT_SAMPLE_INTERVAL_MS) return;
+
+    const offsetDelta = Math.max(0, presentedOffset.timeMs - stats.driftLastSampleOffsetMs);
+    const playbackRate = Math.min(1, offsetDelta / wallDelta);
+    stats.playbackRateEma = (1 - DRIFT_EMA_ALPHA) * stats.playbackRateEma + DRIFT_EMA_ALPHA * playbackRate;
+    stats.driftLastSampleOffsetMs = presentedOffset.timeMs;
+    stats.driftLastSampleWallMs = wallNowMs;
 }
 
 // Walk `frame.dropTrace` (the byte array on every envelope) into the

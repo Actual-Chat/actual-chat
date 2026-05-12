@@ -59,7 +59,7 @@
         if (!_canUseWebShare)
             return;
 
-        await Hub.JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.Share.registerHandler");
+        await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.Share.registerHandler");
     }
 
     private Task OnMauiShareClick()

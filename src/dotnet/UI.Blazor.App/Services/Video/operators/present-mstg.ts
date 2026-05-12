@@ -1,7 +1,7 @@
 import { from, type PipeOperator } from 'ix-ext';
 import { getLogs } from 'logging';
 import { delayAsync } from 'promises';
-import { aggregateDropTrace, type DecodedFrame } from '../frame-envelopes';
+import { aggregateDropTrace, updatePlaybackRateEma, type DecodedFrame } from '../frame-envelopes';
 import { FrameDropStage } from '../frame-drop-trace';
 
 const { warnLog } = getLogs('VideoPipeline');
@@ -96,6 +96,7 @@ export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame
                             decoded.stats.pendingPresenterDrops = 0;
                         }
                         decoded.stats.presented++;
+                        updatePlaybackRateEma(decoded.stats, decoded.capturedAt, performance.now());
                     }
                 }
                 lastWriteAt = nextWriteAt;

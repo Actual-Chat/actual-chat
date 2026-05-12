@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using ActualChat.Rpc;
 using ActualChat.UI.Blazor.Module;
 using ActualLab.Rpc;
 
@@ -19,13 +20,16 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
         = $"{BlazorUICoreModule.ImportName}.ConnectivityUI.setConnected";
 
     private readonly MutableState<bool> _isConnected;
+    private readonly MutableState<RpcConnectionInfo?> _connectionInfo;
+    private int _lastConnectionIndex;
     private bool _jsIsOnline = true; // Must be in sync with the default value for _jsIsOnline in JS!
     private bool _jsIsConnected = true; // Must be in sync with the default value for _isConnected in JS!
 
     protected bool MustPushIsOnlineToJS { get; init; }
 
-        public bool IsBlazorServer { get; }
+    public bool IsBlazorServer { get; }
     public IState<bool> IsConnected => _isConnected;
+    public IState<RpcConnectionInfo?> ConnectionInfo => _connectionInfo;
     public abstract IState<bool> IsOnline { get; }
     public RpcClientPeer? Peer => IsBlazorServer ? null : Hub.RpcHub.GetClientPeer(RpcPeerRef.Default);
 
@@ -33,6 +37,12 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
     {
         IsBlazorServer = hub.HostInfo.HostKind.IsServer();
         _isConnected = StateFactory.NewMutable(IsBlazorServer);
+        RpcConnectionInfo? initialInfo = null;
+        if (IsBlazorServer) {
+            _lastConnectionIndex = 1;
+            initialInfo = new RpcConnectionInfo(1, hub.Clocks.SystemClock.Now);
+        }
+        _connectionInfo = StateFactory.NewMutable(initialInfo);
     }
 
     public Task WhenConnected(CancellationToken cancellationToken = default)
@@ -94,7 +104,15 @@ public abstract class ConnectivityUI : UIWorkerBase<UIHub>
             var peer = Peer!;
             var connectionState = peer.ConnectionState;
             var isConnected = connectionState.Value.IsConnected();
+            var wasConnected = _isConnected.Value;
             _isConnected.Set(isConnected);
+            if (isConnected && !wasConnected) {
+                _lastConnectionIndex++;
+                _connectionInfo.Set(new RpcConnectionInfo(_lastConnectionIndex, Hub.Clocks.SystemClock.Now));
+            }
+            else if (!isConnected && wasConnected) {
+                _connectionInfo.Set((RpcConnectionInfo?)null);
+            }
             if (isConnected != _jsIsConnected) {
                 await JS.InvokeVoidAsync(JSSetConnectedMethod, CancellationToken.None, isConnected).ConfigureAwait(false);
                 _jsIsConnected = isConnected;

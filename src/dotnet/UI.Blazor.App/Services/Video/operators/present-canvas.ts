@@ -1,6 +1,6 @@
 import { from, type PipeOperator } from 'ix-ext';
 import { delayAsync } from 'promises';
-import { aggregateDropTrace, type DecodedFrame } from '../frame-envelopes';
+import { aggregateDropTrace, updatePlaybackRateEma, type DecodedFrame } from '../frame-envelopes';
 import { FrameDropStage } from '../frame-drop-trace';
 
 // Pacing policy mirrored with `present-mstg.ts`.
@@ -107,6 +107,7 @@ export function canvasPresent(opts: CanvasPresentOptions): PipeOperator<DecodedF
                             decoded.stats.pendingPresenterDrops = 0;
                         }
                         decoded.stats.presented++;
+                        updatePlaybackRateEma(decoded.stats, decoded.capturedAt, performance.now());
                     }
                 }
                 lastWriteAt = nextWriteAt;
