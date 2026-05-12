@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.Components
-@using ActualChat.Streaming
 @using ActualChat.Video
 @using ActualChat.UI.Blazor.App.Components.VideoPanel
 @using ActualChat.UI.Blazor.App.Module
@@ -42,7 +41,6 @@
     var audioRecordingCls = m.IsAudioRecording ? "recording" : "";
     var videoBtnCls = isOwnCameraStreaming ? "on" : "";
     var screenCastBtnCls = isOwnScreenCasting ? "on" : "";
-    var isVideoEnabled = m.IsVideoEnabled;
     var expandedPanelRecBtnCls = $"rec-btn {audioRecordingCls}";
     var isChatVisible = _isChatVisible ?? GetDefaultChatVisibility();
     var chatBtnCls = isChatVisible ? "on" : "";
@@ -133,21 +131,19 @@
                 <HeaderButton
                     Click="@OnSwitchCamera"
                     Class="btn-video-panel"
-                    IsDisabled="@(!isVideoEnabled)">
+                    IsDisabled="@(!isOwnCameraStreaming)">
                     <i class="icon-camera-switch text-lg"></i>
                 </HeaderButton>
             }
             <HeaderButton
                 Click="@(() => OnVideoClick(!isOwnCameraStreaming))"
-                Class="@("btn-video-panel btn-video-toggle " + videoBtnCls)"
-                IsDisabled="@(!isVideoEnabled && !isOwnCameraStreaming)">
+                Class="@("btn-video-panel btn-video-toggle " + videoBtnCls)">
                 <i class="icon-video text-lg"></i>
             </HeaderButton>
             @if (!ScreenSize.IsNarrow()) {
                 <HeaderButton
                     Click="@(() => OnScreenCastClick(!isOwnScreenCasting))"
-                    Class="@("btn-video-panel " + screenCastBtnCls)"
-                    IsDisabled="@(!isVideoEnabled && !isOwnScreenCasting)">
+                    Class="@("btn-video-panel " + screenCastBtnCls)">
                     <i class="icon-screen-share text-lg"></i>
                 </HeaderButton>
             }
@@ -169,7 +165,7 @@
             <HeaderButton
                 Click="@OnVideoSettingsClick"
                 Class="btn-video-panel settings-btn"
-                IsDisabled="@(!isVideoEnabled)">
+                IsDisabled="@(!isOwnCameraStreaming)">
                 <i class="icon-settings text-lg"></i>
             </HeaderButton>
             @if (!ScreenSize.IsNarrow()) {
@@ -390,7 +386,6 @@
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var isCollapsed = await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
         var isHidden = await ChatVideoUI.GetIsVideoPanelHidden(cancellationToken).ConfigureAwait(false);
-        var isVideoEnabled = await ChatVideoUI.IsVideoEnabled(chatId, cancellationToken).ConfigureAwait(false);
 
         // Get centralized video state (for recording status)
         var isOwnRecording = await ChatVideoUI.IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);
@@ -413,7 +408,6 @@
                 0,
                 chat,
                 isCollapsed,
-                isVideoEnabled,
                 AllowDiagnostics: allowDiagnostics,
                 IsHidden: isHidden);
 
@@ -438,7 +432,6 @@
             videoStreamMemberCount,
             chat,
             isCollapsed,
-            isVideoEnabled,
             allowDiagnostics,
             focusedName,
             isHidden);
@@ -482,9 +475,6 @@
     }
 
     private void OnVideoClick(bool enable) {
-        if (enable && !State.Value.IsVideoEnabled)
-            return;
-
         if (!enable) {
             // Stop own camera only — screencast (if any) keeps running
             ChatVideoUI.StopRecording();
@@ -498,9 +488,6 @@
     }
 
     private void OnScreenCastClick(bool enable) {
-        if (enable && !State.Value.IsVideoEnabled)
-            return;
-
         if (!enable) {
             // Stop screencast only — camera (if any) keeps running
             ChatVideoUI.StopScreenCasting();
@@ -515,9 +502,6 @@
     }
 
     private void OnVideoSettingsClick() {
-        if (!State.Value.IsVideoEnabled)
-            return;
-
         // DO NOT stop recording — the modal will share the recorder's preview stream
         ChatVideoUI.ChangeVideoSessionSettings(ChatId);
     }
@@ -576,7 +560,6 @@
         int VideoStreamMemberCount,
         Chat? Chat,
         bool IsCollapsed = false,
-        bool IsVideoEnabled = false,
         bool AllowDiagnostics = false,
         string? FocusedParticipantName = null,
         bool IsHidden = false
