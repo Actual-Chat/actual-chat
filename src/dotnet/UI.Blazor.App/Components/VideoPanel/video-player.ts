@@ -49,13 +49,13 @@ export function getActivePlayers(): ReadonlyMap<string, VideoPlayer> {
 }
 
 const requestedReceiveQuality = new Map<string, {
-    maxLayerId: number;
-    maxTemporalLayerId: number
+    layerCount: number;
+    temporalLayerCount: number
 } | null>();
 
 export function recordRequestedReceiveQuality(
     streamId: string,
-    quality: { maxLayerId: number; maxTemporalLayerId: number } | null
+    quality: { layerCount: number; temporalLayerCount: number } | null
 ): void {
     if (quality === null)
         requestedReceiveQuality.delete(streamId);
@@ -92,19 +92,24 @@ export interface RemoteStreamDiagnostics {
         ObservedMaxLayerId: number;
     } | null;
     requestedReceiveQuality: {
-        maxLayerId: number;
-        maxTemporalLayerId: number;
+        layerCount: number;
+        temporalLayerCount: number;
     } | null;
     streamAgeMs: number;
     // Cumulative drop-stage histogram from the player's stats. Keys are
-    // decimal FrameDropStage values; only non-zero stages emitted. The
-    // modal computes deltas between polls for the breakdown view.
+    // decimal FrameDropStage values; only non-zero stages emitted.
     dropTraceByStage: Record<string, number>;
-    // Cumulative bytes received so the modal can derive throughput
-    // without sharing the bitrate-averaging logic.
+    // Cumulative bytes received.
     bytesReceived: number;
-    // Cumulative frames presented (drives the inbound FPS reading).
+    // Cumulative frames presented.
     presented: number;
+    // Per-tick instantaneous rates, computed at the latency-tap boundary
+    // (≈ 1 Hz) where the wall-clock dt is known. Display these directly to
+    // avoid the beat-frequency artifact from cross-cadence sampling.
+    presentedPerSec: number;
+    bytesPerSec: number;
+    // Per-FrameDropStage drop rates; same provenance as presentedPerSec.
+    dropTracePerSecByStage: Record<string, number>;
 }
 
 interface ViewportInfo {
@@ -161,6 +166,23 @@ export class VideoPlayer {
 
     // Diagnostics counters
     private renderFrameCount = 0;       // bumped from worker latency reports (frames presented)
+    // Mirror of worker-side PlayerStats.presented, updated on every
+    // latency-tap sample. Captured separately because `renderFrameCount`
+    // is incremented once per sample (≈ 1 Hz), so it can't drive
+    // per-second FPS readouts on its own.
+    private presentedFrameCount = 0;
+    // Per-tick instantaneous rates computed at the latency-tap boundary
+    // where the wall-clock dt is known. Resampling cumulative counters at a
+    // different cadence creates a beat-frequency artifact — same class of
+    // bug as on the sender side; same fix applied uniformly across every
+    // cumulative counter (presented, bytesReceived, per-stage drops).
+    private presentedPerSec = 0;
+    private bytesPerSec = 0;
+    private readonly dropPerSec = new Map<number, number>();
+    private lastLatencyTickMs = 0;
+    private lastPresentedAtTick = 0;
+    private lastBytesAtTick = 0;
+    private readonly lastDropAtTick = new Map<number, number>();
     private receivedFrameCount = 0;
     private receivedKeyframeCount = 0;
     private receivedBytes = 0;
@@ -658,9 +680,6 @@ export class VideoPlayer {
             .catch((e: unknown) => warnLog?.log('worker.stop error:', e));
     }
 
-    public peekPresentedCount(): number {
-        return this.renderFrameCount;
-    }
 
     public async getDiagnosticsAsync(): Promise<RemoteStreamDiagnostics> {
         let stats: PlayerStats | null = null;
@@ -724,7 +743,15 @@ export class VideoPlayer {
             dropTraceByStage,
             bytesReceived: this.receivedBytes,
             presented: stats?.presented ?? 0,
+            presentedPerSec: this.presentedPerSec,
+            bytesPerSec: this.bytesPerSec,
+            dropTracePerSecByStage: Object.fromEntries(
+                Array.from(this.dropPerSec.entries(), ([k, v]) => [String(k), v])),
         };
+    }
+
+    public peekPresentedPerSec(): number {
+        return this.presentedPerSec;
     }
 
     private async fallbackFromMstgToCanvas(reason: string): Promise<void> {
@@ -793,6 +820,29 @@ export class VideoPlayer {
         // to main).
         this.receivedFrameCount++;
         this.renderFrameCount++;
+        this.presentedFrameCount = sample.playerStats.presented;
+
+        const nowMs = performance.now();
+        if (this.lastLatencyTickMs > 0) {
+            const dt = nowMs - this.lastLatencyTickMs;
+            if (dt > 0) {
+                const scale = 1000 / dt;
+                this.presentedPerSec = Math.max(0, this.presentedFrameCount - this.lastPresentedAtTick) * scale;
+                this.bytesPerSec = Math.max(0, this.receivedBytes - this.lastBytesAtTick) * scale;
+                this.dropPerSec.clear();
+                for (const [stage, count] of sample.playerStats.dropTrace) {
+                    const prev = this.lastDropAtTick.get(stage) ?? 0;
+                    const rate = Math.max(0, count - prev) * scale;
+                    if (rate > 0) this.dropPerSec.set(stage as number, rate);
+                }
+            }
+        }
+        this.lastLatencyTickMs = nowMs;
+        this.lastPresentedAtTick = this.presentedFrameCount;
+        this.lastBytesAtTick = this.receivedBytes;
+        this.lastDropAtTick.clear();
+        for (const [stage, count] of sample.playerStats.dropTrace)
+            this.lastDropAtTick.set(stage as number, count);
 
         // Last-decoded-frame snapshot for diagnostics — what the modal's
         // "Resolution" row reads. Worker side has the data; latency-tap
@@ -825,6 +875,14 @@ export class VideoPlayer {
         this.lastRenderedOffsetMs = 0;
         this.lastArrivedOffsetMs = 0;
         this.renderFrameCount = 0;
+        this.presentedFrameCount = 0;
+        this.presentedPerSec = 0;
+        this.bytesPerSec = 0;
+        this.dropPerSec.clear();
+        this.lastLatencyTickMs = 0;
+        this.lastPresentedAtTick = 0;
+        this.lastBytesAtTick = 0;
+        this.lastDropAtTick.clear();
         this.receivedFrameCount = 0;
         this.receivedKeyframeCount = 0;
         this.receivedBytes = 0;

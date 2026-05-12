@@ -20,6 +20,12 @@ import type { FrameDropStage } from './frame-drop-trace';
 // Cumulative per-stage drop counts live in `dropTrace`; everything else
 // that used to track individual drop sites was redundant.
 export interface RecorderStats {
+    // Cumulative VideoFrames the capture source yielded — bumped in
+    // `mstpSource`, ahead of flood-gate / downscaler / encoder. The
+    // ground-truth rate of what the camera or screen track is delivering;
+    // `track.getSettings().frameRate` is the *negotiated* / requested
+    // value, which Chrome's screencast pipeline routinely overstates.
+    framesCaptured: number;
     // Cumulative bundles successfully shipped to the wire. One per source
     // moment (NOT per per-layer chunk).
     bundlesShipped: number;
@@ -59,6 +65,7 @@ export interface PlayerStats {
 
 export function createEmptyRecorderStats(): RecorderStats {
     return {
+        framesCaptured: 0,
         bundlesShipped: 0,
         bytesEncoded: 0,
         encodeTimeMsSum: 0,

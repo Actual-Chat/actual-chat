@@ -40,7 +40,7 @@ public sealed partial record VideoFrame : MediaFrame
     [DataMember(Order = 9), MemoryPackOrder(9), Key(9)]
     public byte LayerId { get; init; }
     [DataMember(Order = 10), MemoryPackOrder(10), Key(10)]
-    public byte MaxLayerId { get; init; }
+    public byte LayerCount { get; init; } = 1;
     [DataMember(Order = 11), MemoryPackOrder(11), Key(11)]
     public int MaxLayerWidth { get; init; }
     [DataMember(Order = 12), MemoryPackOrder(12), Key(12)]
@@ -52,7 +52,7 @@ public sealed partial record VideoFrame : MediaFrame
     [DataMember(Order = 13), MemoryPackOrder(13), Key(13)]
     public byte TemporalLayerId { get; init; }
     [DataMember(Order = 14), MemoryPackOrder(14), Key(14)]
-    public byte MaxTemporalLayerId { get; init; }
+    public byte TemporalLayerCount { get; init; } = 1;
 
     /// <summary>
     /// Codec identifier (e.g., "avc1" for H.264). Only present on keyframes.
@@ -96,8 +96,8 @@ public sealed partial record VideoFrame : MediaFrame
     {
         var k = IsKeyFrame ? "K" : "";
         return $"VideoFrame(#{Index}{k}: {Duration.ToShortString()} @ {Offset.ToShortString()}, "
-            + $"{Width}x{Height}, L{LayerId}/{MaxLayerId}({MaxLayerWidth}x{MaxLayerHeight}), "
-            + $"T{TemporalLayerId}/{MaxTemporalLayerId})";
+            + $"{Width}x{Height}, L{LayerId}/{LayerCount}({MaxLayerWidth}x{MaxLayerHeight}), "
+            + $"T{TemporalLayerId}/{TemporalLayerCount})";
     }
 
     // This record relies on reference equality

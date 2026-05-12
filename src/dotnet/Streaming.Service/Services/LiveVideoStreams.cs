@@ -360,8 +360,8 @@ public class LiveVideoStreams : ILiveVideoStreams
             var oldQuality = previous is not null && previous.TryGetValue(streamId, out var old)
                 ? old
                 : ReceiveQuality.Default;
-            if (quality.MaxLayerId > oldQuality.MaxLayerId
-                || quality.MaxTemporalLayerId > oldQuality.MaxTemporalLayerId)
+            if (quality.LayerCount > oldQuality.LayerCount
+                || quality.TemporalLayerCount > oldQuality.TemporalLayerCount)
                 yield return streamId;
         }
     }

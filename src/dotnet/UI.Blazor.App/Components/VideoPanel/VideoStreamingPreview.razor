@@ -40,13 +40,13 @@
             <i class="@labelIcon"></i>
         }
         <span>You</span>
+        <span class="video-fps" data-source-kind="@((int)SourceKind)"></span>
     </div>
     @if (m.LastErrorMessage is {} errorMessage && errorMessage.Length > 0) {
         <div class="video-error">
             <span>@errorMessage</span>
         </div>
     }
-    <div class="video-fps-overlay" data-source-kind="@((int)SourceKind)">…</div>
 </div>
 
 @code {

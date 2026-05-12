@@ -126,12 +126,19 @@ export interface OwnStreamDiagnostics {
     } | null;
     // Cumulative drop-stage histogram from the active RecorderStats sample.
     // Keys are decimal FrameDropStage values; only non-zero stages are
-    // emitted. The modal computes per-stage deltas between successive
-    // polls and renders the breakdown when the user expands the row.
+    // emitted.
     dropTraceByStage: Record<string, number>;
-    // Cumulative bytes encoded; the modal turns deltas into FPS-style
-    // throughput readings.
+    // Cumulative bytes encoded.
     bytesEncoded: number;
+    // Per-tick instantaneous rates, computed at the recorder-health-monitor
+    // boundary where the wall-clock dt is exact. Display these directly —
+    // resampling cumulative counters at a different cadence introduces a
+    // beat-frequency artifact (delta divided by uncorrelated wall-clock dt).
+    bundlesPerSec: number;
+    bytesPerSec: number;
+    // Per-FrameDropStage drop rates, keyed by decimal stage value. Only
+    // non-zero stages emitted. Same provenance as bundlesPerSec/bytesPerSec.
+    dropTracePerSecByStage: Record<string, number>;
 }
 
 export interface OwnLayerDiagnostics {
@@ -612,9 +619,12 @@ export class VideoRecorder {
             this.previewTrack = track;
 
             const trackSettings = track.getSettings();
-            infoLog?.log(`Track resolution: ${trackSettings.width}x${trackSettings.height}, facingMode=${trackSettings.facingMode ?? '(none)'}`);
+            infoLog?.log(`Track resolution: ${trackSettings.width}x${trackSettings.height}, frameRate=${trackSettings.frameRate ?? '(none)'}, facingMode=${trackSettings.facingMode ?? '(none)'}`);
             this.cameraWidth = trackSettings.width ?? captureWidth;
             this.cameraHeight = trackSettings.height ?? captureHeight;
+            // Prefer the negotiated rate the device actually agreed to: it can be lower than requested.
+            // We use this to stamp frame.duration so downstream (FPS, etc.) all see real cadence.
+            this.currentFramerate = trackSettings.frameRate ?? targetFramerate;
 
             void this.blazorRef.invokeMethodAsync(
                 'OnTrackSettings',
@@ -831,7 +841,7 @@ export class VideoRecorder {
             codecCategory,
             hardwareAccelerated: this.currentCodecHardwareAccel,
             inputResolution: this.cameraWidth > 0 ? `${this.cameraWidth}x${this.cameraHeight}` : 'N/A',
-            inputFramerate: this.currentFramerate ?? 0,
+            inputFramerate: this.capturedPerSec > 0 ? this.capturedPerSec : (this.currentFramerate ?? 0),
             outputResolution: top ? `${top.width}x${top.height}` : 'N/A',
             configuredBitrate: kbpsToBitsPerSecond(top?.bitrateKbps ?? 0),
             actualBitrateKbps: aggregateBitrateKbps,
@@ -893,7 +903,15 @@ export class VideoRecorder {
             } : null,
             dropTraceByStage,
             bytesEncoded: liveStats?.bytesEncoded ?? 0,
+            bundlesPerSec: this.bundlesPerSec,
+            bytesPerSec: this.bytesPerSec,
+            dropTracePerSecByStage: Object.fromEntries(
+                Array.from(this.dropPerSec.entries(), ([k, v]) => [String(k), v])),
         };
+    }
+
+    public peekBundlesPerSec(): number {
+        return this.bundlesPerSec;
     }
 
     public dispose() {
@@ -1273,6 +1291,17 @@ export class VideoRecorder {
     private static readonly EncodeRatioEmaAlpha = 0.3;
     private encodeRatioEma = 0;
     private senderDropRatioEma = 0;
+    // Per-tick instantaneous rates for every cumulative counter the modal /
+    // overlay surfaces. Computed at the recorder-health-monitor boundary
+    // (wall-clock dt) — resampling the cumulative counters at a different
+    // cadence introduces a beat-frequency artifact (delta divided by an
+    // uncorrelated wall-clock dt), which is what showed up in the modal as
+    // 13/27 fps alternation.
+    private capturedPerSec = 0;
+    private bundlesPerSec = 0;
+    private bytesPerSec = 0;
+    private readonly dropPerSec = new Map<number, number>();
+    private lastReportTickMs = 0;
 
     private startRecorderHealthMonitor(): void {
         this.stopRecorderHealthMonitor();
@@ -1280,6 +1309,11 @@ export class VideoRecorder {
         this.lastRecorderHealthWasPeerConnected = false;
         this.encodeRatioEma = 0;
         this.senderDropRatioEma = 0;
+        this.capturedPerSec = 0;
+        this.bundlesPerSec = 0;
+        this.bytesPerSec = 0;
+        this.dropPerSec.clear();
+        this.lastReportTickMs = 0;
         this.recorderHealthTimer = window.setInterval(() => {
             void this.reportRecorderStats();
         }, RECORDER_HEALTH_INTERVAL_MS);
@@ -1303,6 +1337,26 @@ export class VideoRecorder {
             const stats = await this.worker.getStats();
             const isPeerConnected = stats.isPeerConnected;
             const previous = this.lastRecorderHealthStats;
+            const nowMs = performance.now();
+            if (previous && this.lastReportTickMs > 0) {
+                const dt = nowMs - this.lastReportTickMs;
+                if (dt > 0) {
+                    const scale = 1000 / dt;
+                    this.capturedPerSec =
+                        Math.max(0, stats.framesCaptured - previous.framesCaptured) * scale;
+                    this.bundlesPerSec =
+                        Math.max(0, stats.bundlesShipped - previous.bundlesShipped) * scale;
+                    this.bytesPerSec =
+                        Math.max(0, stats.bytesEncoded - previous.bytesEncoded) * scale;
+                    this.dropPerSec.clear();
+                    for (const [stage, count] of stats.dropTrace) {
+                        const prev = previous.dropTrace.get(stage) ?? 0;
+                        const rate = Math.max(0, count - prev) * scale;
+                        if (rate > 0) this.dropPerSec.set(stage as number, rate);
+                    }
+                }
+            }
+            this.lastReportTickMs = nowMs;
 
             // Drop trace deltas → senderFrameDropRatio. Sum only sender
             // stages (1..30). Denominator = bundles attempted = bundles

@@ -51,7 +51,7 @@ public class StreamingSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void VideoFrameBundle_SingleLayer()
     {
-        var bundle = new VideoFrameBundle([MakeFrame(isKey: true, layerId: 0, maxLayerId: 0, index: 0)]);
+        var bundle = new VideoFrameBundle([MakeFrame(isKey: true, layerId: 0, layerCount: 1, index: 0)]);
 
         var mp = bundle.PassThroughMessagePackByteSerializer(Out);
         mp.LayerCount.Should().Be(1);
@@ -68,9 +68,9 @@ public class StreamingSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         // Simulcast bundle: 3 layers, ordered bottom-first, all sharing capture
         // time and keyframe policy — only Data, dims, Description, LayerId differ.
         var bundle = new VideoFrameBundle([
-            MakeFrame(isKey: true, layerId: 0, maxLayerId: 2, index: 7, width: 320,  height: 180),
-            MakeFrame(isKey: true, layerId: 1, maxLayerId: 2, index: 7, width: 640,  height: 360),
-            MakeFrame(isKey: true, layerId: 2, maxLayerId: 2, index: 7, width: 1280, height: 720),
+            MakeFrame(isKey: true, layerId: 0, layerCount: 3, index: 7, width: 320,  height: 180),
+            MakeFrame(isKey: true, layerId: 1, layerCount: 3, index: 7, width: 640,  height: 360),
+            MakeFrame(isKey: true, layerId: 2, layerCount: 3, index: 7, width: 1280, height: 720),
         ]);
 
         var mp = bundle.PassThroughMessagePackByteSerializer(Out);
@@ -85,7 +85,7 @@ public class StreamingSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     private static VideoFrame MakeFrame(
-        bool isKey, byte layerId, byte maxLayerId, int index, int width = 1280, int height = 720)
+        bool isKey, byte layerId, byte layerCount, int index, int width = 1280, int height = 720)
     {
         var data = new byte[isKey ? 400 : 80];
         for (var i = 0; i < data.Length; i++)
@@ -101,7 +101,7 @@ public class StreamingSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Description = isKey ? new byte[] { 0x00, 0x00, 0x00, 0x01, 0x67 } : default,
             Codec = isKey ? "avc1" : null,
             LayerId = layerId,
-            MaxLayerId = maxLayerId,
+            LayerCount = layerCount,
             TemporalLayerId = 0,
         };
     }
@@ -114,7 +114,7 @@ public class StreamingSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         actual.Width.Should().Be(expected.Width);
         actual.Height.Should().Be(expected.Height);
         actual.LayerId.Should().Be(expected.LayerId);
-        actual.MaxLayerId.Should().Be(expected.MaxLayerId);
+        actual.LayerCount.Should().Be(expected.LayerCount);
         actual.TemporalLayerId.Should().Be(expected.TemporalLayerId);
         actual.Data.Span.SequenceEqual(expected.Data.Span).Should().BeTrue();
         actual.Description.Span.SequenceEqual(expected.Description.Span).Should().BeTrue();

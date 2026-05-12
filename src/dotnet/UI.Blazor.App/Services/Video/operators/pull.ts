@@ -16,11 +16,11 @@ export interface VideoFrameDto {
     Width?: number;
     Height?: number;
     LayerId?: number;
-    MaxLayerId?: number;
+    LayerCount?: number;
     MaxLayerWidth?: number;
     MaxLayerHeight?: number;
     TemporalLayerId?: number;
-    MaxTemporalLayerId?: number;
+    TemporalLayerCount?: number;
     Codec?: string | null;
     Description?: Uint8Array | null;
     DropTrace?: Uint8Array | null;

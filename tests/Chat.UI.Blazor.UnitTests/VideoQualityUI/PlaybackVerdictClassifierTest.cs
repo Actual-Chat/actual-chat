@@ -136,10 +136,10 @@ public class CapacityEstimatorTest
 
 public class AllocatorTest
 {
-    private static readonly ReceiveQuality TopQuality = new(2, int.MaxValue);
+    private static readonly ReceiveQuality TopQuality = new(3, int.MaxValue);
 
     private static StreamRequest Req(string id, long bytesAtBase, long bytesAtTop)
-        => new(id, [bytesAtBase, (bytesAtBase + bytesAtTop) / 2, bytesAtTop], MaxLayerId: 2);
+        => new(id, [bytesAtBase, (bytesAtBase + bytesAtTop) / 2, bytesAtTop], LayerCount: 3);
 
     [Fact]
     public void PrimaryFitsAtTop_GetsDefaultQuality()
@@ -155,10 +155,10 @@ public class AllocatorTest
     public void PrimaryFitsAtTop_WithLayerCap_GetsCappedQuality()
     {
         var primaries = new[] { Req("p1", 100_000, 500_000) };
-        var result = Allocator.Allocate(1_000_000, primaries, [], maxLayerId: 1);
+        var result = Allocator.Allocate(1_000_000, primaries, [], layerCount: 2);
 
-        result["p1"].MaxLayerId.Should().Be(1);
-        result["p1"].MaxTemporalLayerId.Should().Be(int.MaxValue);
+        result["p1"].LayerCount.Should().Be(2);
+        result["p1"].TemporalLayerCount.Should().Be(int.MaxValue);
     }
 
     [Fact]
@@ -167,25 +167,25 @@ public class AllocatorTest
         var primaries = new[] { Req("p1", 100_000, 500_000) };
         var result = Allocator.Allocate(150_000, primaries, []);
 
-        result["p1"].MaxLayerId.Should().Be(0);
+        result["p1"].LayerCount.Should().Be(1);
     }
 
     [Fact]
     public void PrimaryFitsAtTop_WithBaseOnlyCap_GetsBaseQuality()
     {
         var primaries = new[] { Req("p1", 100_000, 500_000) };
-        var result = Allocator.Allocate(1_000_000, primaries, [], maxLayerId: 0);
+        var result = Allocator.Allocate(1_000_000, primaries, [], layerCount: 1);
 
-        result["p1"].MaxLayerId.Should().Be(0);
+        result["p1"].LayerCount.Should().Be(1);
     }
 
     [Fact]
     public void PrimaryFitsAtTop_WithPerStreamBaseCap_GetsBaseQuality()
     {
-        var primaries = new[] { new StreamRequest("p1", [100_000, 300_000, 500_000], MaxLayerId: 0) };
+        var primaries = new[] { new StreamRequest("p1", [100_000, 300_000, 500_000], LayerCount: 1) };
         var result = Allocator.Allocate(1_000_000, primaries, []);
 
-        result["p1"].MaxLayerId.Should().Be(0);
+        result["p1"].LayerCount.Should().Be(1);
     }
 
     [Fact]
@@ -207,19 +207,19 @@ public class AllocatorTest
         var result = Allocator.Allocate(1_200_000, primaries, secondaries);
 
         result["p1"].Should().Be(TopQuality);
-        result["s1"].MaxLayerId.Should().Be(2);
+        result["s1"].LayerCount.Should().Be(3);
     }
 
     [Fact]
     public void SecondaryDegradesToNearestFittingLayerWhenBudgetTight()
     {
         var primaries = new[] { Req("p1", 100_000, 500_000) };
-        var secondaries = new[] { new StreamRequest("s1", [100_000, 300_000, 800_000], MaxLayerId: 2) };
+        var secondaries = new[] { new StreamRequest("s1", [100_000, 300_000, 800_000], LayerCount: 3) };
         // Budget 800K — fits p1 at top (500K), 300K left, so s1 gets L1.
         var result = Allocator.Allocate(800_000, primaries, secondaries);
 
         result.Should().ContainKey("p1");
-        result["s1"].MaxLayerId.Should().Be(1);
+        result["s1"].LayerCount.Should().Be(2);
     }
 }
 
