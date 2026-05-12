@@ -321,16 +321,11 @@ export class VideoRecorder {
 
     static async enumerateDevices(includeAll = false): Promise<VideoDevice[]> {
         try {
-            const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
-            tempStream.getTracks().forEach(t => t.stop());
-
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoInputs = devices.filter(d => d.kind === 'videoinput');
-
+            const videoInputs = (await navigator.mediaDevices.enumerateDevices())
+                .filter(d => d.kind === 'videoinput');
             const selected = DeviceInfo.isMobile && !includeAll
                 ? VideoRecorder.pickMobileCameras(videoInputs)
                 : videoInputs;
-
             const videoDevices = selected.map(d => ({
                 deviceId: d.deviceId,
                 label: d.label || `Camera ${d.deviceId.slice(0, 8)}`,
