@@ -84,7 +84,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                     forceKeyframeOnFirstEncode = false;
                     const layerFrames: readonly CapturedFrame[] = bundle.layers;
                     const promises: Promise<EncodedFrame>[] = [];
-                    const encodeStartedAtMs = performance.now();
+                    const layerDurations = new Array<number>(layerCount).fill(0);
                     try {
                         for (let layerId = 0; layerId < layerCount; layerId++) {
                             const cf = layerFrames[layerId];
@@ -94,17 +94,26 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                                 index: cf.index,
                                 capturedAt: cf.capturedAt,
                             };
-                            promises.push(enc.encode(encInput, { keyFrame }));
+                            const id = layerId;
+                            const startedAtMs = performance.now();
+                            promises.push(enc.encode(encInput, { keyFrame }).then(
+                                r => { layerDurations[id] = performance.now() - startedAtMs; return r; },
+                                (e: unknown) => { layerDurations[id] = performance.now() - startedAtMs; throw e; },
+                            ));
                         }
                     } catch (e) {
                         closeCapturedFrames(layerFrames);
                         throw e;
                     }
                     const settled = await Promise.allSettled(promises);
-                    // Wall-clock per-bundle encode cost (parallel layers + dispatch
-                    // overhead). Median needs a histogram; mean = sum/count is good
-                    // enough for the diagnostics modal.
-                    bundle.stats.encodeTimeMsSum += performance.now() - encodeStartedAtMs;
+                    let layerSumMs = 0;
+                    let layerMaxMs = 0;
+                    for (const d of layerDurations) {
+                        layerSumMs += d;
+                        if (d > layerMaxMs) layerMaxMs = d;
+                    }
+                    bundle.stats.encodeTimeMsSum += layerSumMs;
+                    bundle.stats.encodeTimeMsMaxSum += layerMaxMs;
                     bundle.stats.encodeTimeMsCount++;
                     const rejected = settled.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
                     if (rejected.length > 0) {

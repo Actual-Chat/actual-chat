@@ -32,10 +32,13 @@ export interface RecorderStats {
     // Cumulative encoded bytes summed across all layers — the real on-wire
     // payload total. Drives the outbound bitrate display.
     bytesEncoded: number;
-    // Wall-clock encode cost — sum of every per-layer encode duration in
-    // ms and the count of bundles those samples come from. Main-thread
-    // computes encodeRatio = (sum/count) / frameDurationMs, EMA-smoothed.
+    // Wall-clock encode cost per bundle, split two ways:
+    //  * encodeTimeMsSum   — running sum of (sum-across-layers-per-bundle)
+    //  * encodeTimeMsMaxSum — running sum of (max-across-layers-per-bundle)
+    // Both share `encodeTimeMsCount` (bundles sampled). Display shows
+    // mean-per-bundle for each; QC uses encodeTimeMsSum/Count vs frameDuration.
     encodeTimeMsSum: number;
+    encodeTimeMsMaxSum: number;
     encodeTimeMsCount: number;
     // Wire-sender side-channels copied from the active sender's stats.
     wireLastAckAgeMs: number;
@@ -76,6 +79,7 @@ export function createEmptyRecorderStats(): RecorderStats {
         bundlesShipped: 0,
         bytesEncoded: 0,
         encodeTimeMsSum: 0,
+        encodeTimeMsMaxSum: 0,
         encodeTimeMsCount: 0,
         wireLastAckAgeMs: -1,
         isPeerConnected: false,

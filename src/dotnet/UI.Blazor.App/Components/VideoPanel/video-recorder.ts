@@ -85,6 +85,7 @@ export interface OwnStreamDiagnostics {
     keyFrames: number;
     layers: OwnLayerDiagnostics[];
     medianEncodeTime: number;
+    maxLayerEncodeTime: number;
     pureMedianEncodeTime: number;
     encoderHwAccel: string;
     encoderState: string;
@@ -782,6 +783,9 @@ export class VideoRecorder {
         const meanEncodeTimeMs = liveStats && liveStats.encodeTimeMsCount > 0
             ? liveStats.encodeTimeMsSum / liveStats.encodeTimeMsCount
             : 0;
+        const meanMaxLayerEncodeTimeMs = liveStats && liveStats.encodeTimeMsCount > 0
+            ? liveStats.encodeTimeMsMaxSum / liveStats.encodeTimeMsCount
+            : 0;
         const aggregateBitrateKbps = liveStats && duration > 0
             ? (liveStats.bytesEncoded * 8) / duration / 1000
             : 0;
@@ -821,6 +825,7 @@ export class VideoRecorder {
                 encoderErrorCount: 0,
             })),
             medianEncodeTime: meanEncodeTimeMs,
+            maxLayerEncodeTime: meanMaxLayerEncodeTimeMs,
             pureMedianEncodeTime: 0,
             encoderHwAccel: this.currentCodecHardwareAccel ? 'hardware' : 'software',
             encoderState: this.isRecording ? 'configured' : 'unconfigured',

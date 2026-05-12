@@ -170,7 +170,7 @@ public sealed partial class VideoQualityUI
 
         var connection = ConnectivityUI.ConnectionInfo.Value;
         _inboundBwEstimator.Tick(connection, SystemClock.Now, sumIncomingBytesPerSec, signalLevel);
-        var capacity = (long)(_inboundBwEstimator.CeilingBps * _debugBandwidthMultiplier);
+        var estimatedCapacity = (long)(_inboundBwEstimator.CeilingBps * _debugBandwidthMultiplier);
         var aggregateHealth = 2 * signalLevel - 1;
         var verdicts = entries.ToDictionary(x => x.Key.Value, x => x.Value.Verdict);
 
@@ -182,6 +182,7 @@ public sealed partial class VideoQualityUI
             .Where(x => x.Value.Snapshot.Priority != PlaybackStreamPriority.Primary)
             .Select(ToAllocationRequest)
             .ToArray();
+        var capacity = GetAllocationCapacity(estimatedCapacity, primaries, secondaries);
         var requested = VideoQualityAllocator.Allocate(capacity, primaries, secondaries);
         var requestedMap = new ApiMap<string, ReceiveQuality>();
         foreach (var (streamId, _) in entries)
@@ -220,7 +221,7 @@ public sealed partial class VideoQualityUI
                 state.Verdict);
         }
         var info = new PlaybackQualityInfo(
-            capacity,
+            estimatedCapacity,
             aggregateHealth,
             reason,
             IsColdStart: false,
@@ -308,6 +309,53 @@ public sealed partial class VideoQualityUI
         rates[targetLayer] = Math.Max(targetRate, cappedPeak);
         return rates;
     }
+
+    private long GetAllocationCapacity(
+        long estimatedCapacity,
+        IReadOnlyList<StreamAllocationRequest> primaries,
+        IReadOnlyList<StreamAllocationRequest> secondaries)
+    {
+        if (_inboundBwEstimator.HasSeenBadSignal)
+            return estimatedCapacity;
+
+        // Before the first bad receiver signal, the ceiling is only a seed.
+        // Don't let that unproven estimate prevent the probe that would prove
+        // a higher capacity. Probe primaries to their requested cap and keep
+        // secondaries at floor; if there are no primaries, probe all active
+        // streams to their requested caps.
+        long probeCapacity = 0;
+        if (primaries.Count != 0) {
+            foreach (var p in primaries)
+                probeCapacity += MaxRateOf(p);
+            foreach (var s in secondaries)
+                probeCapacity += FloorRateOf(s);
+        }
+        else {
+            foreach (var s in secondaries)
+                probeCapacity += MaxRateOf(s);
+        }
+
+        probeCapacity = (long)(probeCapacity * _debugBandwidthMultiplier);
+        return Math.Max(estimatedCapacity, probeCapacity);
+    }
+
+    private static long MaxRateOf(StreamAllocationRequest s)
+    {
+        if (s.PredictedRatesByLayer.Count == 0)
+            return 0;
+        return s.PredictedRatesByLayer[s.EffectiveLayerCountCap - 1];
+    }
+
+    private static long FloorRateOf(StreamAllocationRequest s)
+    {
+        if (s.PredictedRatesByLayer.Count == 0)
+            return 0;
+        var fullRate = s.PredictedRatesByLayer[0];
+        return (long)Math.Ceiling(fullRate * TemporalFloor(s.EffectiveTemporalLayerCount));
+    }
+
+    private static double TemporalFloor(int producerCount)
+        => 1.0 / Math.Pow(2, Math.Max(0, producerCount - 1));
 
     private static long ComputeDecayedObservedRate(PlaybackStatsState? prev, long currentRate)
     {

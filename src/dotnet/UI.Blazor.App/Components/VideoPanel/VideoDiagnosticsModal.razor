@@ -124,11 +124,11 @@
                                     </div>
                                     <div class="diag-row">
                                         <span class="diag-label">Frames</span>
-                                        <span class="diag-value">@(GetNum(stream, "encodedFrames").ToString("0")) enc, @(GetNum(stream, "droppedFrames").ToString("0")) drop, @(GetNum(stream, "keyFrames").ToString("0")) key</span>
+                                        <span class="diag-value">@(GetNum(stream, "encodedFrames").ToString("0")) enc, @(GetNum(stream, "droppedFrames").ToString("0")) drop</span>
                                     </div>
                                     <div class="diag-row">
                                         <span class="diag-label">Encode time</span>
-                                        <span class="diag-value">@(GetNum(stream, "medianEncodeTime").ToString("0.0"))ms (mean across layers)</span>
+                                        <span class="diag-value">@(GetNum(stream, "medianEncodeTime").ToString("0.0"))ms (@(GetNum(stream, "maxLayerEncodeTime").ToString("0.0"))ms LMax)</span>
                                     </div>
                                     <div class="diag-row">
                                         <span class="diag-label">Bitrate</span>
@@ -819,8 +819,8 @@
                 if (GetBool(ownStream, "blurEnabled"))
                     sb.AppendLine($"Blur: {GetStr(ownStream, "segmentationBackend")} ({GetNum(ownStream, "segmentationAvgTime"):0.0}ms)");
                 sb.AppendLine($"Available: {GetStrArray(ownStream, "supportedEncoderCategories")}");
-                sb.AppendLine($"Frames: {GetNum(ownStream, "encodedFrames"):0} enc, {GetNum(ownStream, "droppedFrames"):0} drop, {GetNum(ownStream, "keyFrames"):0} key");
-                sb.AppendLine($"Encode time: {GetNum(ownStream, "medianEncodeTime"):0.0}ms (mean across layers)");
+                sb.AppendLine($"Frames: {GetNum(ownStream, "encodedFrames"):0} enc, {GetNum(ownStream, "droppedFrames"):0} drop");
+                sb.AppendLine($"Encode time: {GetNum(ownStream, "medianEncodeTime"):0.0}ms ({GetNum(ownStream, "maxLayerEncodeTime"):0.0}ms LMax)");
                 sb.AppendLine($"Bitrate: {GetNum(ownStream, "actualBitrateKbps"):0} kbps (sum across layers)");
 
                 var copyLayers = GetArray(ownStream, "layers").OrderBy(GetLayerId).ToArray();

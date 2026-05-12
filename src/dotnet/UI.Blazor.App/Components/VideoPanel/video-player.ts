@@ -114,6 +114,7 @@ export interface RemoteStreamDiagnostics {
 interface ViewportInfo {
     cssLongSide: number;
     devicePixelRatio: number;
+    isFocused: boolean;
 }
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPlayer');
@@ -982,12 +983,13 @@ export class VideoPlayer {
             return {
                 cssLongSide,
                 devicePixelRatio: getDevicePixelRatio(),
+                isFocused: parent?.classList.contains('item-focused') ?? false,
             };
         }
         if (this.canvas.isConnected && parent && isZeroSized(canvasRect) && parentRect && isZeroSized(parentRect))
-            return { cssLongSide: 1, devicePixelRatio: getDevicePixelRatio() };
+            return { cssLongSide: 1, devicePixelRatio: getDevicePixelRatio(), isFocused: false };
         if (parent?.classList.contains('pip-overlay') || parent?.classList.contains('item-x'))
-            return { cssLongSide: 1, devicePixelRatio: getDevicePixelRatio() };
+            return { cssLongSide: 1, devicePixelRatio: getDevicePixelRatio(), isFocused: false };
 
         return null;
     }
@@ -1049,10 +1051,10 @@ export class VideoPlayer {
 }
 
 function priorityForRenderSize(hint: ViewportInfo | null): number {
-    // Anything medium-sized or larger is PRIMARY. SECONDARY is reserved for
-    // tiny sidebar / pip tiles; the allocator may still give them more than L0
-    // if primaries leave enough budget.
-    return hint === null || hint.cssLongSide > 480
+    // The focused tile is PRIMARY; sidebar and PiP tiles are SECONDARY even if
+    // they are physically large. This keeps a screencast from competing with
+    // the same author's camera for the primary downstream budget.
+    return hint === null || hint.isFocused
         ? PLAYBACK_PRIORITY_PRIMARY
         : PLAYBACK_PRIORITY_SECONDARY;
 }
