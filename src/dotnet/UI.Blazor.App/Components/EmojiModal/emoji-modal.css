@@ -19,7 +19,7 @@ body.device-android .modal-frame.emoji-modal {
     @apply overflow-hidden;
 }
 .emoji-modal .tab {
-    @apply overflow-y-auto;
+    @apply overflow-y-auto overflow-x-hidden;
     scrollbar-width: none;
 }
 .emoji-modal .tab::-webkit-scrollbar {
@@ -69,6 +69,11 @@ body.hoverable .emoji-modal .c-item:hover,
 }
 .emoji-modal .c-emoji-recent-list {
     @apply flex-x gap-1;
+    @apply overflow-x-auto;
+    scrollbar-width: none;
+}
+.emoji-modal .c-emoji-recent-list::-webkit-scrollbar {
+    display: none;
 }
 
 /* ── GIF tab ── */
