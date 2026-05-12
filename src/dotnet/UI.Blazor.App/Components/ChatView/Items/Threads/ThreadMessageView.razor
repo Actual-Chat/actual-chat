@@ -20,7 +20,7 @@
                     ? createdAt.ToString("dddd")
                         : createdAt.ToString("MMM dd"); // this year
     var attachments = m is null ? [] : m.Attachments;
-    var messageCount = m!.MessageCount;
+    var messageCount = m?.MessageCount ?? 0;
 }
 
 <div class="thread-message"
