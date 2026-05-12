@@ -137,10 +137,6 @@ public static partial class Constants
         public static readonly float HighDecodeTimeThresholdMs = 100f;
         public static readonly int HighBufferDepthThreshold = 10;     // Receiver's buffer is bloated
 
-        // Over-delivery detection: HW encoder ignoring bitrate cap (e.g. HEVC VBR blowing past
-        // target by 2.5×). Under-delivery is NOT a congestion signal — latency-vs-baseline
-        // catches real congestion; encoder output is content-driven and routinely below target.
-        public static readonly float ThroughputOverDeliveryRatio = 2.5f; // Step down when actual > 250% of target
         public static readonly int ThroughputStepDownConsecutiveChecks = 2; // Require 2 consecutive high checks
         // Latency-driven step-down hysteresis. Without this the publisher
         // ping-pongs between presets every QualityDecisionInterval (~2s) on a

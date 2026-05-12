@@ -21,7 +21,7 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
     // is still settling and to cut steady-state traffic later. The 5 s
     // startup cooldown covers the L2-keyframe wait (~3 s) plus EMA(10)
     // ramp-up so the first eval lands on a settled buffer signal.
-    private static readonly TimeSpan QcStartupCooldown = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan QcStartupCooldown = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan QcSettlingInterval = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan QcSettlingDuration = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan QcSteadyInterval = TimeSpan.FromSeconds(5);

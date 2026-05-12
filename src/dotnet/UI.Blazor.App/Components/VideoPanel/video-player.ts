@@ -186,6 +186,12 @@ export class VideoPlayer {
     private receivedKeyframeCount = 0;
     private receivedBytes = 0;
     private firstFrameReceivedTime = 0;
+    // Ring buffer of (atMs, cumulativeBytes) samples for a windowed
+    // IncomingByteRate. Cumulative-since-start would let an initial keyframe
+    // burst dominate the rate for many seconds and the receiver-side QC peak
+    // would lock the allocator into the wrong layer.
+    private readonly bytesSamples: { atMs: number; bytes: number }[] = [];
+    private static readonly bytesWindowMs = 3000;
     private forwardedLayerId = -1;
     private forwardedWidth = 0;
     private forwardedHeight = 0;
@@ -686,12 +692,7 @@ export class VideoPlayer {
             try { stats = await this.playerWorker.getStats(this.streamId); } catch { /* ignore */ }
         }
 
-        const elapsedSec = this.firstFrameReceivedTime > 0
-            ? (performance.now() - this.firstFrameReceivedTime) / 1000
-            : 0;
-        const bitrateKbps = elapsedSec > 0
-            ? Math.round(this.receivedBytes * 8 / elapsedSec / 1000)
-            : 0;
+        const bitrateKbps = Math.round(this.peekWindowedBytesPerSec() * 8 / 1000);
 
         const dropTraceByStage: Record<string, number> = {};
         if (stats) {
@@ -750,6 +751,15 @@ export class VideoPlayer {
 
     public peekPresentedPerSec(): number {
         return this.presentedPerSec;
+    }
+
+    private peekWindowedBytesPerSec(): number {
+        if (this.bytesSamples.length < 2) return 0;
+        const first = this.bytesSamples[0];
+        const last = this.bytesSamples[this.bytesSamples.length - 1];
+        const dtMs = last.atMs - first.atMs;
+        if (dtMs <= 0) return 0;
+        return Math.max(0, (last.bytes - first.bytes) * 1000 / dtMs);
     }
 
     private async fallbackFromMstgToCanvas(reason: string): Promise<void> {
@@ -811,8 +821,13 @@ export class VideoPlayer {
         // this `IncomingByteRate` was always 0, VideoQualityUI verdict
         // pegged at -1, and the allocator capped every stream at L0.
         this.receivedBytes = sample.bytesReceived;
+        const nowMsForSample = performance.now();
         if (this.firstFrameReceivedTime === 0)
-            this.firstFrameReceivedTime = performance.now();
+            this.firstFrameReceivedTime = nowMsForSample;
+        this.bytesSamples.push({ atMs: nowMsForSample, bytes: this.receivedBytes });
+        const cutoff = nowMsForSample - VideoPlayer.bytesWindowMs;
+        while (this.bytesSamples.length > 1 && this.bytesSamples[0].atMs < cutoff)
+            this.bytesSamples.shift();
         // Bump received counters for diagnostics (each report represents
         // ongoing flow; the new pipeline doesn't ship per-frame counters
         // to main).
@@ -885,6 +900,7 @@ export class VideoPlayer {
         this.receivedKeyframeCount = 0;
         this.receivedBytes = 0;
         this.firstFrameReceivedTime = 0;
+        this.bytesSamples.length = 0;
         this.pipelineLatencyMs = 0;
 
         if (this.visibilitySubscription) {
@@ -977,12 +993,7 @@ export class VideoPlayer {
     }
 
     private reportPlaybackStats(sample: LatencySample): void {
-        const elapsedSec = this.firstFrameReceivedTime > 0
-            ? (performance.now() - this.firstFrameReceivedTime) / 1000
-            : 0;
-        const bitrateKbps = elapsedSec > 0
-            ? Math.round(this.receivedBytes * 8 / elapsedSec / 1000)
-            : 0;
+        const bitrateKbps = Math.round(this.peekWindowedBytesPerSec() * 8 / 1000);
         const info = this.computeViewportChangedInfo();
 
         const stats = sample.playerStats;

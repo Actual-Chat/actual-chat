@@ -42,8 +42,6 @@ partial record AppConstants
         // Root-cause classification
         public float HighDecodeTimeThresholdMs { get; init; } = Constants.Video.HighDecodeTimeThresholdMs;
         public int HighBufferDepthThreshold { get; init; } = Constants.Video.HighBufferDepthThreshold;
-        // Over-delivery detection
-        public float ThroughputOverDeliveryRatio { get; init; } = Constants.Video.ThroughputOverDeliveryRatio;
         public int ThroughputStepDownConsecutiveChecks { get; init; } = Constants.Video.ThroughputStepDownConsecutiveChecks;
         public int LatencyStepDownConsecutiveChecks { get; init; } = Constants.Video.LatencyStepDownConsecutiveChecks;
         // PLI rate limiting
