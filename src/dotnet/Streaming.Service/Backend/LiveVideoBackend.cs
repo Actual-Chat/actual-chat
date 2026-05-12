@@ -25,6 +25,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         var log = services.LogFor(GetType());
         _streams = new RedisMultiHashMap<VideoStreamInfo>(redisDb, "live-video:streams", log) {
             HashTtl = RedisTtl,
+            DefaultFieldTtl = Constants.Video.SilenceGracePeriod,
         };
         _members = new RedisMultiHashMap<VideoStreamMemberInfo>(redisDb, "live-video:members", log) {
             HashTtl = RedisTtl,
@@ -192,10 +193,18 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     protected virtual async Task<ApiArray<VideoStreamInfo>> ListRaw(ChatId chatId, CancellationToken cancellationToken)
     {
         if (_listRawPrimer.TryUsePrimed(chatId, out var primed))
-            return primed;
+            return WithAutoInvalidation(primed);
 
         var streams = await SafeGetAll(_streams, chatId).ConfigureAwait(false);
-        return streams.Values.ToApiArray();
+        var result = streams.Values.ToApiArray();
+        return WithAutoInvalidation(result);
+
+        static ApiArray<VideoStreamInfo> WithAutoInvalidation(ApiArray<VideoStreamInfo> result)
+        {
+            if (result.Count != 0)
+                Computed.GetCurrent().Invalidate(Constants.Video.SilenceGracePeriod / 2);
+            return result;
+        }
     }
 
     // Private methods

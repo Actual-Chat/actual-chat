@@ -48,7 +48,7 @@
         if (!enable) {
             // Stop camera only — screencast (if any) keeps running
             ChatVideoUI.StopRecording();
-        } else if (ChatVideoUI.HasJoinedVideoCall(Chat.Id)) {
+        } else if (ChatVideoUI.HasJoinedVideoSession(Chat.Id)) {
             // Previously recorded this session → resume without modal
             ChatVideoUI.ResumeVideoStreaming(Chat.Id);
         } else {

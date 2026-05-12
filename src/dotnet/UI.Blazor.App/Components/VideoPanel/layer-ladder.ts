@@ -27,7 +27,7 @@ export interface LadderBuildInput {
     maxTierCount: number;
     /** Drop derived lower tiers whose smaller axis would be below this threshold. */
     minSmallAxis?: number;
-    /** Bottom-first bitrate ladder in Kbps. The last value belongs to the top tier. */
+    /** Bottom-first bitrate ladder in kbps. The last value belongs to the top tier. */
     bitratesKbps: readonly number[];
 }
 

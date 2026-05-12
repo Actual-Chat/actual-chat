@@ -372,6 +372,13 @@
                             </span>
                         </div>
 
+                        @if (hasDiag) {
+                            <div class="diag-row">
+                                <span class="diag-label">Requested</span>
+                                <span class="diag-value">@FormatRequestedReceiveQuality(rdPeek)</span>
+                            </div>
+                        }
+
                         @if (peekBitrate > 0) {
                             <div class="diag-row">
                                 <span class="diag-label">Incoming bitrate</span>
@@ -583,8 +590,10 @@
     private static void AppendCeilingAndSignal(
         RenderTreeBuilder builder, int seqBase, ActualChat.Bandwidth.BandwidthEstimator bw)
     {
-        var ceilingLabel = (bw.CeilingBps * 8 / 1000).ToString("0") + " kbps"
-            + (bw.HasSeenBadSignal ? "" : " (unproven)");
+        var ceilingKbps = (bw.CeilingBps * 8 / 1000).ToString("0");
+        var ceilingLabel = bw.HasSeenBadSignal
+            ? ceilingKbps + " kbps"
+            : "unknown (seed " + ceilingKbps + " kbps)";
         AppendRow(builder, seqBase + 0, "Ceiling", ceilingLabel);
         AppendRow(builder, seqBase + 1, "Current",
             (bw.LastCurrentBps * 8 / 1000).ToString("0") + " kbps");
@@ -603,8 +612,9 @@
         var i = 0;
         foreach (var r in bw.History) {
             var line = $"{r.At.ToDateTimeOffset():HH:mm:ss}: "
-                + $"{r.TriedBps * 8 / 1000} Kbps ? {r.SignalLevel:F2} -> "
-                + $"{r.CeilingAfter * 8 / 1000} Kbps ceiling";
+                + $"{r.TriedBps * 8 / 1000} kbps ? {r.SignalLevel:F2} -> "
+                + $"{r.CeilingAfter * 8 / 1000} kbps "
+                + (bw.HasSeenBadSignal ? "ceiling" : "seed");
             builder.OpenElement(seqBase + 100 + i * 2, "div");
             builder.AddAttribute(seqBase + 101 + i * 2, "class", "diag-row diag-history-row");
             builder.OpenElement(seqBase + 102 + i * 2, "span");
@@ -909,6 +919,7 @@
                         + $"{GetNum(copyFwd, "ForwardedWidth"):0}x{GetNum(copyFwd, "ForwardedHeight"):0}");
                 else
                     sb.AppendLine("  Resolution: no frame yet");
+                sb.AppendLine($"  Requested: {FormatRequestedReceiveQuality(rd)}");
                 var copyBitrate = GetNum(rd, "bitrateKbps");
                 if (copyBitrate > 0)
                     sb.AppendLine($"  Incoming bitrate: {copyBitrate:0} kbps");

@@ -22,7 +22,9 @@ public partial class VideoDiagnosticsModal
         RenderTreeBuilder builder, int seqBase,
         VideoQualityUI.PlaybackQualitySnapshot snap)
     {
-        AppendRow(builder, seqBase + 0, "Playback rate", snap.PlaybackRateEma.ToString("F3"));
-        AppendRow(builder, seqBase + 1, "Drop ratio", snap.DropRatio.ToString("F3"));
+        AppendRow(builder, seqBase + 0, "Allocation budget",
+            (snap.EstimatedCapacityBytesPerSec * 8 / 1000).ToString("0") + " kbps");
+        AppendRow(builder, seqBase + 1, "Playback rate", snap.PlaybackRateEma.ToString("F3"));
+        AppendRow(builder, seqBase + 2, "Drop ratio", snap.DropRatio.ToString("F3"));
     }
 }

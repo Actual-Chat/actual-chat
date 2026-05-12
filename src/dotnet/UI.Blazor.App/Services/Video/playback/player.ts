@@ -45,6 +45,9 @@ export interface PlayerConfig {
 
     // -- present --
     backend: RenderBackendConfig;
+
+    // -- lifecycle --
+    streamStallTimeoutMs?: number;
 }
 
 // One running pipeline (one stream). Multiple Players can share a
@@ -110,6 +113,25 @@ export class Player {
             });
         }
         const reportLatency = config.reportLatency;
+        const streamStallTimeoutMs = config.streamStallTimeoutMs ?? 0;
+        let streamStallTimeoutId: ReturnType<typeof setTimeout> | null = null;
+        let streamStallError: Error | null = null;
+        const clearStreamStallTimer = (): void => {
+            if (streamStallTimeoutId !== null)
+                clearTimeout(streamStallTimeoutId);
+            streamStallTimeoutId = null;
+        };
+        const resetStreamStallTimer = (): void => {
+            if (streamStallTimeoutMs <= 0)
+                return;
+            clearStreamStallTimer();
+            streamStallTimeoutId = setTimeout(() => {
+                streamStallError = new Error(
+                    `Player stream stalled: no frames received for ${streamStallTimeoutMs}ms`);
+                if (!abortSignal.aborted)
+                    abortController.abort(streamStallError);
+            }, streamStallTimeoutMs);
+        };
         const wrappedReportLatency = reportLatency
             ? (sample: LatencySample): void => {
                 sample.bufferSpanMs = buffer.spanMs();
@@ -119,9 +141,14 @@ export class Player {
         const decodedTap = wrappedReportLatency
             ? latencyTap({ report: wrappedReportLatency })
             : tap<DecodedFrame>(() => { /* identity */ });
+        const arrivedTap = streamStallTimeoutMs > 0
+            ? tap<ArrivedChunk>(() => resetStreamStallTimer())
+            : tap<ArrivedChunk>(() => { /* identity */ });
 
+        resetStreamStallTimer();
         const pipeline = pipe(
             source,
+            arrivedTap,
             traceDrops<ArrivedChunk>(FrameDropStage.ReceiverPull),
             resetOnEpochChange({ buffer }),
             pacedEncodedBuffer({ buffer, abortSignal }),
@@ -137,10 +164,14 @@ export class Player {
         );
         this.abortController = abortController;
         this.sourceStopController = sourceStopController;
-        this.whenDoneInternal = drain(pipeline, e => e === this.abortTimeoutReason).finally(() => {
+        this.whenDoneInternal = drain(pipeline, e => e === this.abortTimeoutReason).then(() => {
+            if (streamStallError)
+                throw streamStallError;
+        }).finally(() => {
             if (this.abortController === abortController) {
                 if (this.abortTimeoutId !== null)
                     clearTimeout(this.abortTimeoutId);
+                clearStreamStallTimer();
                 this.abortController = null;
                 this.sourceStopController = null;
                 this.abortTimeoutId = null;

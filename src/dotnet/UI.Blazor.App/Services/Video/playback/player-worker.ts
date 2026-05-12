@@ -1,3 +1,4 @@
+import { VIDEO } from 'app-constants';
 import { createEmptyPlayerStats, type PlayerStats } from '../frame-envelopes';
 import type { DecoderLike } from '../operators/decode';
 import type { VideoFrameDto } from '../operators/pull';
@@ -62,7 +63,16 @@ export function isTerminalStreamError(error: unknown): boolean {
     const message = error instanceof Error ? error.message : String(error);
     return message.includes('RpcStream not found or disconnected')
         || /^Stream gap at index \d+ \(expected \d+\); reconnect not allowed$/.test(message)
-        || message === 'Peer disconnected.';
+        || message === 'Peer disconnected.'
+        || message.startsWith('Player stream stalled:');
+}
+
+function getStreamStallTimeoutMs(): number {
+    const video = VIDEO as typeof VIDEO | undefined;
+    return Math.max(
+        video?.streamExpirationDelayMs ?? 30_000,
+        video?.silenceGracePeriodMs ?? 30_000,
+    );
 }
 
 function ensureSession(): PlaybackSession {
@@ -141,6 +151,7 @@ export const playerWorkerImpl: PlayerWorker = {
             createDecoder: handlers => h.createDecoder(opts.initialDecoderConfig.codec, handlers),
             reportLatency: h.makeReportLatency?.(opts.streamId),
             backend,
+            streamStallTimeoutMs: getStreamStallTimeoutMs(),
         };
 
         await player.start(playerConfig);

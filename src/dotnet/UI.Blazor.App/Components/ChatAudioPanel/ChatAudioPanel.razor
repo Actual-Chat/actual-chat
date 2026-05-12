@@ -107,7 +107,7 @@
         var chat = Chat;
         var audioState = await ChatAudioUI.GetState(chat.Id).ConfigureAwait(false);
         var isVideoAvailable = ChatVideoUI.IsVideoAvailableNonComputed(chat);
-        var isVideoEnabled = await ChatVideoUI.IsVideoEnabled(chat.Id, cancellationToken).ConfigureAwait(false);
+        var isVideoEnabled = await ChatVideoUI.IsVideoAvailable(chat.Id, cancellationToken).ConfigureAwait(false);
         var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chat.Id, cancellationToken).ConfigureAwait(false);
         var isOwnCameraRecording = await ChatVideoUI.IsOwnCameraRecording(chat.Id, cancellationToken).ConfigureAwait(false);
         var isOwnScreenCasting = await ChatVideoUI.IsOwnScreenCasting(chat.Id, cancellationToken).ConfigureAwait(false);

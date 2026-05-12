@@ -9,7 +9,7 @@
     var isOwnCameraStreaming = m.IsOwnRecording;
     var isOwnScreenCasting = m.IsOwnScreenCasting;
     var isOwnStreaming = isOwnCameraStreaming || isOwnScreenCasting;
-    var remoteStreamEndedIntentionally = ChatVideoUI.ConsumeRemoteStreamEndedIntentionally();
+    var remoteStreamEndedSuccessfully = ChatVideoUI.ConsumeRemoteStreamEndedSuccessfully();
 
     // Show "Connecting..." overlay when remote streams briefly disappear;
     // after 5s timeout, auto-close the panel if streams haven't appeared.
@@ -25,7 +25,7 @@
         _showConnecting = false;
     } else if (!_noStreamsTimedOut && _hadRemoteStreams) {
         _showConnecting = true;
-    } else if (remoteStreamEndedIntentionally) {
+    } else if (remoteStreamEndedSuccessfully) {
         // Remote stream ended normally (sender hung up) — don't show "Connecting..."
         _showConnecting = false;
     }
@@ -478,7 +478,7 @@
         if (!enable) {
             // Stop own camera only — screencast (if any) keeps running
             ChatVideoUI.StopRecording();
-        } else if (ChatVideoUI.HasJoinedVideoCall(ChatId)) {
+        } else if (ChatVideoUI.HasJoinedVideoSession(ChatId)) {
             // Already joined this call — resume without modal
             ChatVideoUI.ResumeVideoStreaming(ChatId);
         } else {

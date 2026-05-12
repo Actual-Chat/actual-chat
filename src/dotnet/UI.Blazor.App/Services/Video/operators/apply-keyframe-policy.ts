@@ -6,6 +6,7 @@ export interface KeyframePolicyOptions {
     keyframeIntervalFrames: number;
     maxKeyframeIntervalMs?: number;
     now?: () => number;
+    consumeForceKeyframe?: () => boolean;
 }
 
 // Sets forceKeyframe across every layer in a bundle on any of:
@@ -28,11 +29,12 @@ export function applyKeyframePolicy(opts: KeyframePolicyOptions): PipeOperator<C
                     frameCount++;
                     const wallNow = now();
                     const upstreamForce = bundle.layers.some(f => f.forceKeyframe);
+                    const requestedForce = opts.consumeForceKeyframe?.() ?? false;
                     const intervalTrigger = frameCount % keyframeIntervalFrames === 0;
-                    const wallclockTrigger = maxKeyframeIntervalMs !== undefined
+                    const wallClockTrigger = maxKeyframeIntervalMs !== undefined
                         && lastKeyframeAtMs !== Number.NEGATIVE_INFINITY
                         && (wallNow - lastKeyframeAtMs) >= maxKeyframeIntervalMs;
-                    const forceKeyframe = upstreamForce || intervalTrigger || wallclockTrigger;
+                    const forceKeyframe = upstreamForce || requestedForce || intervalTrigger || wallClockTrigger;
                     if (forceKeyframe) {
                         frameCount = 0;
                         lastKeyframeAtMs = wallNow;

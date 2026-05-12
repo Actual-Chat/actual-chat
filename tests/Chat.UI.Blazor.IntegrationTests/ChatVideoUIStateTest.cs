@@ -139,8 +139,8 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
         var isRegularVideoAvailable = await chatVideoUI.IsVideoAvailable(regularChatId, CancellationToken.None);
         var isNotesVideoAvailableNonComputed = chatVideoUI.IsVideoAvailableNonComputed(notesChat);
         var isRegularVideoAvailableNonComputed = chatVideoUI.IsVideoAvailableNonComputed(regularChat);
-        var isNotesVideoEnabled = await chatVideoUI.IsVideoEnabled(notesChat!.Id, CancellationToken.None);
-        var isRegularVideoEnabled = await chatVideoUI.IsVideoEnabled(regularChatId, CancellationToken.None);
+        var isNotesVideoEnabled = await chatVideoUI.IsVideoAvailable(notesChat!.Id, CancellationToken.None);
+        var isRegularVideoEnabled = await chatVideoUI.IsVideoAvailable(regularChatId, CancellationToken.None);
 
         // assert
         isNotesVideoAvailable.Should().BeFalse();

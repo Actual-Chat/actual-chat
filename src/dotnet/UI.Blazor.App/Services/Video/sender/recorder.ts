@@ -63,7 +63,7 @@ export class Recorder {
     private abortTimeoutReason: unknown = null;
     private currentWhenDone: Promise<void> | null = null;
     private currentStats: RecorderStats | null = null;
-    private startedAtMs = 0;
+    private forceKeyframeRequested = false;
 
     constructor(session: SenderSession) {
         this.session = session;
@@ -77,7 +77,6 @@ export class Recorder {
         if (config.keyframeIntervalFrames <= 0)
             throw new Error('Recorder: keyframeIntervalFrames must be > 0');
 
-        this.startedAtMs = Date.now();
         const stats = createEmptyRecorderStats();
         this.currentStats = stats;
         const ladder: LayerSpec[] = config.encoderConfigs.map(c => ({
@@ -124,6 +123,11 @@ export class Recorder {
             applyKeyframePolicy({
                 keyframeIntervalFrames: config.keyframeIntervalFrames,
                 maxKeyframeIntervalMs: config.maxKeyFrameIntervalMs,
+                consumeForceKeyframe: () => {
+                    const requested = this.forceKeyframeRequested;
+                    this.forceKeyframeRequested = false;
+                    return requested;
+                },
             }),
             encode({
                 configs: config.encoderConfigs,
@@ -176,6 +180,12 @@ export class Recorder {
             if (!abortController.signal.aborted)
                 abortController.abort(abortReason);
         }, STOP_DRAIN_GRACE_MS);
+    }
+
+    requestKeyframe(): void {
+        if (!this.abortController)
+            return;
+        this.forceKeyframeRequested = true;
     }
 
     async restart(config: RecorderConfig): Promise<void> {

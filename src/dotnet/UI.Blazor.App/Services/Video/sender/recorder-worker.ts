@@ -213,8 +213,8 @@ export const recorderWorkerImpl: RecorderWorker = {
     },
 
     async requestKeyframe(): Promise<void> {
-        // TODO: plumb through Recorder once the pipe-internal control
-        // channel lands. Today PLI relies on the keyframe-policy interval.
+        const s = requireState();
+        s.recorder.requestKeyframe();
         await Promise.resolve();
     },
 

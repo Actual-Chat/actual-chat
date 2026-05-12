@@ -184,7 +184,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             var negativeOffsetDropCount = 0;
             var preKeyframeDeltaDropCount = 0;
             var lastHeartbeat = CpuTimestamp.Now;
-            var heartbeatInterval = TimeSpan.FromMinutes(2.5); // Half of LiveVideoBackend.ChatStateTtl
+            var heartbeatInterval = Constants.Video.SilenceGracePeriod / 2;
 
             // Stream-silence watchdog: counts incoming bundles per fixed
             // interval and cancels watchdogCts after K consecutive zero

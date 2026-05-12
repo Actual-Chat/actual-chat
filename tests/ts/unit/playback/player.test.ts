@@ -184,6 +184,34 @@ describe('Player', () => {
         await player.whenDone().catch(() => { /* ignore */ });
     });
 
+    it('ends with a terminal stall error when no frames arrive', async () => {
+        const session = new PlaybackSession();
+        const player = new Player(session);
+        const canvas = new FakeCanvas();
+        const stalledSource: AsyncIterable<VideoFrameDto> = {
+            [Symbol.asyncIterator](): AsyncIterator<VideoFrameDto> {
+                return {
+                    next: () => new Promise<IteratorResult<VideoFrameDto>>(() => { /* hang */ }),
+                    return: () => Promise.resolve({ done: true, value: undefined }),
+                };
+            },
+        };
+
+        await player.start({
+            streamId: 'stalled',
+            getStream: () => stalledSource,
+            targetBufferSpanMs: 0,
+            initialDecoderConfig: { codec: 'avc1.42E01E' },
+            createDecoder: handlers => new FakeDecoder(handlers),
+            backend: { kind: 'canvas', canvasCtx: canvas },
+            streamStallTimeoutMs: 20,
+        });
+
+        await expect(player.whenDone()).rejects.toThrow(/Player stream stalled/);
+        expect(player.isRunning()).toBe(false);
+        expect(canvas.drawCount).toBe(0);
+    });
+
     it('two players sharing one session both contribute to stats', async () => {
         const session = new PlaybackSession();
         const playerA = new Player(session);

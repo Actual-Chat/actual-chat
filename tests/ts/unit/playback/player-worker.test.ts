@@ -10,6 +10,9 @@ describe('player-worker terminal stream errors', () => {
             new Error('Stream gap at index 8 (expected 4); reconnect not allowed'),
         )).toBe(true);
         expect(isTerminalStreamError(new Error('Peer disconnected.'))).toBe(true);
+        expect(isTerminalStreamError(
+            new Error('Player stream stalled: no frames received for 30000ms'),
+        )).toBe(true);
     });
 
     it('leaves decode/render failures on the error path', () => {

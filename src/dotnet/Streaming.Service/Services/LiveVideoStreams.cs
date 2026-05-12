@@ -352,14 +352,19 @@ public class LiveVideoStreams : ILiveVideoStreams
                 : ReceiveQuality.Lowest
             : ReceiveQuality.Default;
 
-    private static IEnumerable<string> GetUpgradedStreams(
+    internal static IEnumerable<string> GetUpgradedStreams(
         ApiMap<string, ReceiveQuality>? previous,
         ApiMap<string, ReceiveQuality> current)
     {
         foreach (var (streamId, quality) in current) {
+            // If there was no explicit prior envelope, or the stream was absent
+            // from it, a new non-lowest envelope still needs a fresh anchor.
+            // Do not compare against ReceiveQuality.Default here: screencast's
+            // top layer is layerCount=2, so that would suppress the PLI needed
+            // to switch from L0 to L1.
             var oldQuality = previous is not null && previous.TryGetValue(streamId, out var old)
                 ? old
-                : ReceiveQuality.Default;
+                : ReceiveQuality.Lowest;
             if (quality.LayerCount > oldQuality.LayerCount
                 || quality.TemporalLayerCount > oldQuality.TemporalLayerCount)
                 yield return streamId;

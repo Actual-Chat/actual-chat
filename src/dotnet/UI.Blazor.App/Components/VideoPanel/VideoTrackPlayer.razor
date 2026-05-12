@@ -251,10 +251,16 @@
     {
         if (errorMessage is not null)
             Log.LogWarning("[VideoTrackPlayer #{StreamId}] OnEnded: {Error}", StreamInfo.StreamId, errorMessage);
-        if (errorMessage is null) {
-            // Normal completion — sender intentionally ended the stream
-            Hub.ChatVideoUI.NotifyRemoteStreamEndedIntentionally();
-        }
+
+        var isEndedSuccessfully = errorMessage is null;
+        var isTerminal = isEndedSuccessfully
+            || string.Equals(errorMessage, "evicted", StringComparison.Ordinal)
+            || (errorMessage?.StartsWith("Player stream stalled:", StringComparison.Ordinal) ?? false);
+        Hub.ChatVideoUI.NotifyRemoteStreamEnded(
+            StreamInfo.ChatId,
+            StreamInfo.StreamId,
+            isEndedSuccessfully,
+            isTerminal);
         _whenCompletedSource.TrySetResult();
     }
 
