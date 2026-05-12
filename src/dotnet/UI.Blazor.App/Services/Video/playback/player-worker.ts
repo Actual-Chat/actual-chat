@@ -2,6 +2,7 @@ import { VIDEO } from 'app-constants';
 import { createEmptyPlayerStats, type PlayerStats } from '../frame-envelopes';
 import type { DecoderLike } from '../operators/decode';
 import type { VideoFrameDto } from '../operators/pull';
+import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 import { Player, type PlayerConfig } from './player';
 import { PlaybackSession } from './session';
 import type {
@@ -108,11 +109,7 @@ export const playerWorkerImpl: PlayerWorker = {
         isConnected: boolean,
         isBlazorServer: boolean,
     ): Promise<void> {
-        // Stub. Production wiring forwards to a worker-side
-        // connectivity mirror; left as a no-op until that lands.
-        void isOnline;
-        void isConnected;
-        void isBlazorServer;
+        WorkerConnectivityUI.update(isOnline, isConnected, isBlazorServer);
         return Promise.resolve();
     },
 

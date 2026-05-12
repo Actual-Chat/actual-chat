@@ -90,9 +90,7 @@ export interface ApiConnectivityUI {
 }
 
 export class MediaRpcStreamOptions {
-    // Caller passes an explicit keyframe predicate — for VideoFrameDto this is
-    // `item.KeyFrameIndex === item.Index`; for VideoFrameBundleDto same on layer 0.
-    static videoRealtime<T>(canSkipTo: (item: T) => boolean): RpcStreamOptions<T> {
+    static videoRecording<T>(canSkipTo: (item: T) => boolean): RpcStreamOptions<T> {
         return {
             isRealTime: true,
             allowReconnect: true,

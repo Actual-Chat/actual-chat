@@ -226,7 +226,6 @@ src/dotnet/
    │  ├ webcodecs-decoder.ts          ← decoder wrapper
    │  ├ frame-envelopes.ts            ← TS envelope types
    │  ├ adapters.ts                   ← AsyncVideoEncoder/Decoder
-   │  ├ streaming-rpc-client.ts
    │  ├ operators/                    ← pipeline operators (both sides)
    │  ├ sender/                       ← sender worker, pool, session
    │  ├ playback/                     ← receiver worker, pool, session, player

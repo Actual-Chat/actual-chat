@@ -52,8 +52,13 @@ function ensurePullApi(): void {
     infoLog?.log(`ensurePullApi: Api initialized for ${pullApiUrl}`);
 }
 
-function getStream(streamId: string): Promise<AsyncIterable<VideoFrameDto>> | AsyncIterable<VideoFrameDto> {
+async function getStream(streamId: string): Promise<AsyncIterable<VideoFrameDto>> {
     ensurePullApi();
+    if (!Api.peer.isConnected) {
+        infoLog?.log(`getStream: waiting for RPC connection before pulling stream ${streamId}`);
+        await Api.peer.whenConnected();
+    }
+
     return streamingApi.liveVideoStreams.GetStream(RPC_SESSION_DEFAULT, streamId);
 }
 

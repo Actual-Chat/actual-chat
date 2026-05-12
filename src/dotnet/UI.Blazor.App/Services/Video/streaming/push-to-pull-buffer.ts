@@ -206,12 +206,7 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
                         await frameAdded.whenNextVoid();
                     }
                 })(),
-                // Skip only on bundles where EVERY layer is a keyframe — a
-                // mixed bundle (one layer's encoder unilaterally emitted a KF
-                // after reset while others emitted deltas) is not safe to
-                // skip past as a GOP anchor.
-                MediaRpcStreamOptions.videoRealtime<VideoFrameBundleDto>(
-                    isVideoFrameBundleDtoKeyFrame),
+                MediaRpcStreamOptions.videoRecording<VideoFrameBundleDto>(isVideoFrameBundleDtoKeyFrame),
             );
             rpcStream = stream;
 
@@ -310,11 +305,4 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
         rpcStreamSkipped = Math.max(rpcStreamSkipped, rpcStreamSender?.skipCount ?? 0);
         return rpcStreamSkipped;
     }
-}
-
-// Receiver-side counterpart of createWireSender; shaped to fit pullSource's getStream factory.
-export function createPullStream(streamId: string, ctx: StreamingContext): Promise<AsyncIterable<VideoFrameDto>> {
-    ensureRpcPush(ctx);
-    const liveVideoStreams = ctx.rpcLiveVideoStreams!;
-    return liveVideoStreams.GetStream(RPC_SESSION_DEFAULT, streamId);
 }

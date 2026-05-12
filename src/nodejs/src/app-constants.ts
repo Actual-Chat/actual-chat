@@ -77,7 +77,7 @@ export interface VideoConstants {
      * wedging on a slow ACK. Fusion's pump fills this buffer
      * continuously while connected — capture drains into it regardless
      * of whether the wire window is open. Wired to RpcStreamOptions
-     * `bufferSize` via {@link MediaRpcStreamOptions.videoRealtime}.
+     * `bufferSize` via {@link MediaRpcStreamOptions.videoRecording}.
      */
     readonly senderBufferSize: number;           // ceil(keyFramePeriodSize * 1.33)
     /**

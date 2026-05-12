@@ -323,7 +323,7 @@ export class DebugUI {
         };
         const stream = new RpcStream<VideoFrameDto>(
             (async function* () { await Promise.resolve(); yield dto; })(),
-            MediaRpcStreamOptions.videoRealtime<VideoFrameDto>(
+            MediaRpcStreamOptions.videoRecording<VideoFrameDto>(
                 item => item.KeyFrameIndex !== undefined && item.KeyFrameIndex === item.Index),
         );
         infoLog?.log(`testPushStream: calling PushStream chatId=${chatId} ...`);
