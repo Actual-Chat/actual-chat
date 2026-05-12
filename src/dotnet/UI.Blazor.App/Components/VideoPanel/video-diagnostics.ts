@@ -16,25 +16,13 @@ export function collectOwnStreamDiagnostics(kind: number): OwnStreamDiagnosticsS
     };
 }
 
-// Copy the visible text of an element to the clipboard. Strips HTML markup
-// (uses `innerText` so CSS-hidden nodes and `display:none` blocks are excluded)
-// and writes the result via the async Clipboard API.
+// `innerText` excludes CSS-hidden nodes and `display:none` blocks — we want
+// the visible plaintext, not the raw HTML.
 export async function copyElementText(el: HTMLElement | null): Promise<void> {
     if (!el) return;
-    const text = el.innerText ?? '';
+    const text = el.innerText;
     if (!text) return;
-    try {
-        await navigator.clipboard.writeText(text);
-    } catch {
-        // Fallback for older browsers: a hidden textarea + execCommand.
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.left = '-9999px';
-        document.body.appendChild(ta);
-        ta.select();
-        try { document.execCommand('copy'); } finally { document.body.removeChild(ta); }
-    }
+    await navigator.clipboard.writeText(text);
 }
 
 export async function collectRemoteStreamDiagnostics(streamId: string): Promise<RemoteStreamDiagnostics | null> {
