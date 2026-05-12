@@ -26,6 +26,7 @@ public sealed record BandwidthEstimatorConfig(long InitialCeilingBps)
     public Func<double, BandwidthVerdict>? Classify { get; init; }
 }
 
+[StructLayout(LayoutKind.Auto)]
 public readonly record struct BandwidthEstimateRecord(
     Moment At,
     long TriedBps,
@@ -41,15 +42,14 @@ public readonly record struct BandwidthEstimateRecord(
 /// ~half of what I just used".
 /// Algorithm and rationale: <c>docs/plans/video-quality-control-v2.md</c>.
 /// </summary>
-public sealed class BandwidthEstimator
+public sealed class BandwidthEstimator(BandwidthEstimatorConfig config)
 {
-    private readonly Queue<BandwidthEstimateRecord> _history;
-    private readonly BandwidthEstimatorConfig _config;
+    private readonly Queue<BandwidthEstimateRecord> _history = new (config.HistorySize);
 
-    public BandwidthEstimatorConfig Config => _config;
+    public BandwidthEstimatorConfig Config => config;
 
     public int     EpochIndex        { get; private set; }
-    public long    CeilingBps        { get; private set; }
+    public long    CeilingBps        { get; private set; } = config.InitialCeilingBps;
     public long    LastCurrentBps    { get; private set; }
     public double  LastSignalLevel   { get; private set; } = 1.0;
     public BandwidthVerdict LastVerdict { get; private set; } = BandwidthVerdict.Neutral;
@@ -61,20 +61,13 @@ public sealed class BandwidthEstimator
     public bool    HasSeenBadSignal  { get; private set; }
     public IReadOnlyCollection<BandwidthEstimateRecord> History => _history;
 
-    public BandwidthEstimator(BandwidthEstimatorConfig config)
-    {
-        _config = config;
-        _history = new Queue<BandwidthEstimateRecord>(config.HistorySize);
-        CeilingBps = config.InitialCeilingBps;
-    }
-
     public void Tick(RpcConnectionInfo? connection, Moment now, long currentBandwidthBps, double signalLevel)
     {
         if (connection is null)
             return;
 
         if (connection.Index != EpochIndex) {
-            CeilingBps = _config.InitialCeilingBps;
+            CeilingBps = config.InitialCeilingBps;
             LastCurrentBps = 0;
             LastSignalLevel = 1.0;
             LastVerdict = BandwidthVerdict.Neutral;
@@ -98,8 +91,8 @@ public sealed class BandwidthEstimator
 
         var ageSec = Math.Max(0, (now - connection.ConnectedAt).TotalSeconds);
         var ageFactor = Math.Clamp(
-            1.0 - Math.Log10(1.0 + ageSec / _config.TauSec),
-            _config.MinAgeFactor,
+            1.0 - Math.Log10(1.0 + ageSec / config.TauSec),
+            config.MinAgeFactor,
             1.0);
 
         switch (verdict) {
@@ -107,7 +100,7 @@ public sealed class BandwidthEstimator
             ApplyBad(currentBandwidthBps, signalLevel, ageFactor, now);
             CalmTicks = 0;
             break;
-        case BandwidthVerdict.Good when currentBandwidthBps >= CeilingBps * _config.ConfirmRatio:
+        case BandwidthVerdict.Good when currentBandwidthBps >= CeilingBps * config.ConfirmRatio:
             ApplyGoodWithHeadroom(currentBandwidthBps, ageFactor, now);
             CalmTicks++;
             break;
@@ -117,7 +110,7 @@ public sealed class BandwidthEstimator
             break;
         }
 
-        if (CalmTicks >= _config.ProbeFailureResetStreak) {
+        if (CalmTicks >= config.ProbeFailureResetStreak) {
             ProbeFailures = 0;
             LastCeilingDownAt = null;
         }
@@ -127,12 +120,12 @@ public sealed class BandwidthEstimator
 
     private BandwidthVerdict ClassifyVerdict(double signalLevel)
     {
-        if (_config.Classify is { } classify)
+        if (config.Classify is { } classify)
             return classify(signalLevel);
 
-        if (signalLevel >= _config.GoodThreshold)
+        if (signalLevel >= config.GoodThreshold)
             return BandwidthVerdict.Good;
-        if (signalLevel < _config.BadThreshold)
+        if (signalLevel < config.BadThreshold)
             return BandwidthVerdict.Bad;
         return BandwidthVerdict.Neutral;
     }
@@ -140,16 +133,16 @@ public sealed class BandwidthEstimator
     private void ApplyBad(long currentBandwidthBps, double signalLevel, double ageFactor, Moment now)
     {
         HasSeenBadSignal = true;
-        var suggestedCap = Math.Max(_config.FloorBps, (long)Math.Round(currentBandwidthBps * signalLevel));
+        var suggestedCap = Math.Max(config.FloorBps, (long)Math.Round(currentBandwidthBps * signalLevel));
         var α = Math.Clamp(
-            _config.BaseStep
+            config.BaseStep
                 * ageFactor
                 * (1.0 - signalLevel)
-                * (1.0 + NegativeStreak * _config.NegStreakStep),
+                * (1.0 + NegativeStreak * config.NegStreakStep),
             0.0,
-            _config.MaxStep);
+            config.MaxStep);
         var newCeiling = Math.Max(
-            _config.FloorBps,
+            config.FloorBps,
             (long)Math.Round(CeilingBps + α * (suggestedCap - CeilingBps)));
 
         if (newCeiling < CeilingBps) {
@@ -167,8 +160,8 @@ public sealed class BandwidthEstimator
     {
         if (LastCeilingDownAt is { } downAt) {
             var cooldownSec = Math.Min(
-                _config.MaxProbeCooldownSec,
-                _config.BaseProbeCooldownSec * Math.Pow(_config.ProbeCooldownGrowth, ProbeFailures));
+                config.MaxProbeCooldownSec,
+                config.BaseProbeCooldownSec * Math.Pow(config.ProbeCooldownGrowth, ProbeFailures));
             if ((now - downAt).TotalSeconds < cooldownSec) {
                 PositiveStreak = Math.Max(0, PositiveStreak - 1);
                 return;
@@ -176,12 +169,12 @@ public sealed class BandwidthEstimator
         }
 
         var α = Math.Clamp(
-            _config.BaseStep
+            config.BaseStep
                 * ageFactor
-                * _config.AsymRatio
-                * (1.0 + PositiveStreak * _config.PosStreakStep),
+                * config.AsymRatio
+                * (1.0 + PositiveStreak * config.PosStreakStep),
             0.0,
-            _config.MaxStepUp);
+            config.MaxStepUp);
         var lift = Math.Max(currentBandwidthBps, (long)Math.Round(CeilingBps * (1.0 + α)));
         CeilingBps = lift;
         PositiveStreak++;
@@ -205,7 +198,7 @@ public sealed class BandwidthEstimator
     {
         _history.Enqueue(new BandwidthEstimateRecord(
             now, currentBandwidthBps, signalLevel, ceilingBefore, CeilingBps, verdict));
-        while (_history.Count > _config.HistorySize)
+        while (_history.Count > config.HistorySize)
             _history.Dequeue();
     }
 }

@@ -213,7 +213,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
                 return false;
 
             Log.LogInformation("GetOrFetchRemoteAudio: caching #{StreamId} locally", sid);
-            var memoizer = ((IAsyncEnumerable<AudioFrame>)rawRpcStream).Memoize();
+            var memoizer = rawRpcStream.Memoize(CancellationToken.None);
             if (!store.Publish(sid, memoizer))
                 await memoizer.DisposeAsync().ConfigureAwait(false);
             return true;

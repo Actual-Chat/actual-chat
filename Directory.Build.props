@@ -190,7 +190,8 @@
     <!-- MA0064: Avoid locking on publicly accessible instance - buggy, triggers on protected fields -->
     <!-- MA0097: A class that implements IComparable<T> should also implement IEquatable<T> -->
     <!-- MA0099: Use Explicit enum value for 'Flag' instead of 0 -->
-    <NoWarn>$(NoWarn);MA0009;MA0018;MA0048;MA0056;MA0064;MA0097;MA0099</NoWarn>
+    <!-- MA0123: Sequence number must be a constant -->
+    <NoWarn>$(NoWarn);MA0009;MA0018;MA0048;MA0056;MA0064;MA0097;MA0099;MA0123</NoWarn>
     <!-- RCS1047: Non-asynchronous method name should not end with 'Async' -->
     <!-- VSTHRD003: Avoid awaiting or returning a Task representing work that was not start ed within your context as that can lead to deadlocks. -->
     <!-- VSTHRD002: Synchronously waiting on tasks or awaiters may cause deadlocks -->

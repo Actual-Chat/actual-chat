@@ -56,9 +56,9 @@ public sealed record RecorderStats(
     // "kbps" display in the diagnostics modal.
     long BytesEncoded)
 {
-    public static RecorderStats Empty { get; } =
-        new(0, 0, 0, IsConnected: false, IsPeerConnected: false, EmptyDropTrace, 0, 0);
-
     private static readonly IReadOnlyDictionary<FrameDropStage, int> EmptyDropTrace
         = new Dictionary<FrameDropStage, int>();
+
+    public static RecorderStats Empty { get; } =
+        new(0, 0, 0, IsConnected: false, IsPeerConnected: false, EmptyDropTrace, 0, 0);
 }
