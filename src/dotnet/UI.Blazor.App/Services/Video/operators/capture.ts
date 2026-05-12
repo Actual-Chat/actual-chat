@@ -1,5 +1,5 @@
 import { AsyncIterableX, exclusive, finalize, from, fromReadable } from 'ix-ext';
-import type { CapturedFrame, VideoRecordingStats } from '../frame-envelopes';
+import type { CapturedFrame, RecorderStats } from '../frame-envelopes';
 
 // Minimal MediaStreamTrackProcessor surface. Tests inject a fake.
 interface MstpLike {
@@ -8,7 +8,7 @@ interface MstpLike {
 
 export interface MstpSourceOptions {
     track: MediaStreamTrack;
-    stats: VideoRecordingStats;
+    stats: RecorderStats;
     abortSignal?: AbortSignal;
     // Graceful stop: ends the sequence without aborting.
     stopSignal?: AbortSignal;
@@ -67,7 +67,6 @@ export function mstpSource(opts: MstpSourceOptions): AsyncIterableX<CapturedFram
                     if (cancelled || stopSignal?.aborted || abortSignal?.aborted)
                         return;
 
-                    stats.framesCaptured++;
                     const envelope: CapturedFrame = {
                         frame: value,
                         capturedAt: { timeMs: 0, epoch: 0 },

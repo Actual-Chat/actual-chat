@@ -1,3 +1,5 @@
+using ActualChat.Video;
+
 namespace ActualChat.Streaming;
 
 public enum RecordingQualityReason
@@ -20,36 +22,43 @@ public sealed partial record RecordingQualityState(
     [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] int EffectiveLayerCount);
 
 /// <summary>
-/// Per-second snapshot of recorder-side health signals: encode cost vs frame
-/// budget, slot pressure, sender drops, and ACK age. Drives the recording
-/// quality controller; also forwarded to the server as a metric.
-/// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-public sealed partial record RecorderHealthSnapshot(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] double EncodeRatioEma,
-    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] double EncodeRatioP90,
-    [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] double SlotReplacementRateEma,
-    [property: DataMember(Order = 3), MemoryPackOrder(3), Key(3)] double SenderFrameDropRatioEma,
-    [property: DataMember(Order = 4), MemoryPackOrder(4), Key(4)] double LastAckAgeMs,
-    [property: DataMember(Order = 5), MemoryPackOrder(5), Key(5)] bool IsConnected,
-    [property: DataMember(Order = 6), MemoryPackOrder(6), Key(6)] bool IsPeerConnected = true,
-    // Order 7 was SenderFramesDropped; now repurposed as FloodGateSkipCount —
-    // capture-side drops while push-to-pull-buffer was full. Numerically
-    // compatible with the previous "frames dropped at the sender queue" field
-    // (which fell to ~0 in practice once VersionTolerant clients deployed).
-    [property: DataMember(Order = 7), MemoryPackOrder(7), Key(7)] long FloodGateSkipCount = 0,
-    // Order 8 (was SenderKeyframesDropped) is removed — the flood gate
-    // operates on raw captured frames before keyframe policy runs, so there's
-    // no per-keyframe count to report. VersionTolerant clients tolerate gaps.
-    [property: DataMember(Order = 9), MemoryPackOrder(9), Key(9)] long RpcStreamFramesSkipped = 0,
-    [property: DataMember(Order = 10), MemoryPackOrder(10), Key(10)] int SenderQueueDepth = 0,
-    [property: DataMember(Order = 11), MemoryPackOrder(11), Key(11)] int SenderMaxQueueDepth = 0);
-
-/// <summary>
-/// Diagnostic payload accompanying a recording quality decision: the reason
-/// the controller chose this state and the health snapshot it acted on.
+/// Wire payload accompanying a recording quality decision. Slim: only
+/// what the server-side telemetry uses (VideoSendDropRatio, VideoSendAckAgeMs).
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record RecordingQualityInfo(
     [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] RecordingQualityReason Reason,
-    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] RecorderHealthSnapshot Health);
+    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] double SenderFrameDropRatioEma,
+    [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] double LastAckAgeMs);
+
+/// <summary>
+/// Per-tick recorder stats — CLIENT-LOCAL only, never serialized to the
+/// wire. Consumed by the local QC classifier and the outbound-side video
+/// diagnostics. Pruned to only what one of those two consumers reads.
+/// </summary>
+public sealed record RecorderStats(
+    // Encode cost relative to frame budget. Computed as
+    // (sum of all per-layer encode times) / frameDuration, EMA-smoothed.
+    double EncodeRatioEma,
+    // Bundles dropped anywhere in the sender pipeline / (bundles dropped +
+    // bundles shipped), EMA-smoothed.
+    double SenderFrameDropRatioEma,
+    double LastAckAgeMs,
+    bool IsConnected,
+    bool IsPeerConnected,
+    // Cumulative per-stage drop counts since the recording run started.
+    // Powers the per-stream FPS breakdown in video diagnostics.
+    IReadOnlyDictionary<FrameDropStage, long> DropTrace,
+    // Cumulative bundles successfully shipped to the wire since the run
+    // started. Powers FPS (= delta-per-second) for the diagnostics row.
+    long BundlesShipped,
+    // Cumulative encoded bytes (sum across layers). Drives the outbound
+    // "kbps" display in the diagnostics modal.
+    long BytesEncoded)
+{
+    public static RecorderStats Empty { get; } =
+        new(0, 0, 0, IsConnected: false, IsPeerConnected: false, EmptyDropTrace, 0, 0);
+
+    private static readonly IReadOnlyDictionary<FrameDropStage, long> EmptyDropTrace
+        = new Dictionary<FrameDropStage, long>();
+}

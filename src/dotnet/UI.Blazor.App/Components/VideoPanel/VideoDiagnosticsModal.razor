@@ -554,11 +554,11 @@
         => reason != RecordingQualityReason.Stable;
 
     // Verdict inputs only — must mirror RecordingClassifier.Classify.
-    private static string FormatRecordingSignals(RecorderHealthSnapshot health)
-        => $"encodeRatioEma={health.EncodeRatioEma:F2}x, "
-            + $"ackAge={FormatAckAge(health.LastAckAgeMs)}, "
-            + $"dropRatioEma={health.SenderFrameDropRatioEma:F2}, "
-            + $"connected={(health.IsConnected ? "yes" : "no")}";
+    private static string FormatRecordingSignals(RecorderStats stats)
+        => $"encodeRatioEma={stats.EncodeRatioEma:F2}x, "
+            + $"ackAge={FormatAckAge(stats.LastAckAgeMs)}, "
+            + $"dropRatioEma={stats.SenderFrameDropRatioEma:F2}, "
+            + $"connected={(stats.IsConnected ? "yes" : "no")}";
 
     private static string FormatAckAge(double ageMs)
         => ageMs >= 0 ? $"{ageMs:0}ms" : "n/a";

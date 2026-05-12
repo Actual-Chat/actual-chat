@@ -4,9 +4,9 @@ import {
     type LatencySample,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/latency-tap';
 import {
-    createEmptyPlaybackStats,
+    createEmptyPlayerStats,
     type DecodedFrame,
-    type VideoPlaybackStats,
+    type PlayerStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 // ---- Mocks ----------------------------------------------------------------
 
@@ -30,7 +30,7 @@ interface MakeOpts {
     layerId?: number;
 }
 
-function makeEnvelope(stats: VideoPlaybackStats, id: number, opts: MakeOpts): DecodedFrame {
+function makeEnvelope(stats: PlayerStats, id: number, opts: MakeOpts): DecodedFrame {
     return {
         frame: new MockVideoFrame(id) as unknown as VideoFrame,
         capturedAt: { timeMs: opts.capturedTimeMs, epoch: opts.capturedEpoch ?? 0 },
@@ -60,7 +60,7 @@ async function drain<T>(seg: AsyncIterable<T>): Promise<T[]> {
 
 describe('latencyTap', () => {
     it('frames pass through unchanged (passthrough operator)', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const samples: LatencySample[] = [];
         const items = Array.from({ length: 5 }, (_, i) => makeEnvelope(stats, i, {
             capturedTimeMs: 1_000 + i * 33,
@@ -81,7 +81,7 @@ describe('latencyTap', () => {
     });
 
     it('first frame produces an immediate sample; subsequent samples are throttled to intervalMs', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const samples: LatencySample[] = [];
         // 5 frames at 33 ms intervals on the receiver clock, intervalMs=100 →
         // expect samples on frame 0, then on the first frame whose now()
@@ -106,7 +106,7 @@ describe('latencyTap', () => {
     });
 
     it('sample fields are correct: frameAgeMs, e2eLatencyMs, capturedEpoch, layerId', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const samples: LatencySample[] = [];
         const items = [
             makeEnvelope(stats, 0, {
@@ -132,7 +132,7 @@ describe('latencyTap', () => {
     });
 
     it('default intervalMs is 1000 ms; default now is Date.now', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const samples: LatencySample[] = [];
         // Two frames; pin Date.now() so the first is sampled and the second
         // (sub-1000 ms later) is throttled out.

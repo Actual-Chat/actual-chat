@@ -1,7 +1,8 @@
 import { from, type PipeOperator } from 'ix-ext';
 import { getLogs } from 'logging';
 import { delayAsync } from 'promises';
-import type { DecodedFrame } from '../frame-envelopes';
+import { aggregateDropTrace, type DecodedFrame } from '../frame-envelopes';
+import { FrameDropStage } from '../frame-drop-trace';
 
 const { warnLog } = getLogs('VideoPipeline');
 
@@ -46,7 +47,7 @@ export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame
                 if (extraMs > CATCHUP_BUDGET_MS
                     && lastWriteAt !== null
                     && now - lastWriteAt < MIN_DURATION_MS) {
-                    decoded.stats.framesDroppedAtPresenter++;
+                    decoded.stats.pendingPresenterDrops++;
                     prevCapturedAt = decoded.capturedAt.timeMs;
                     continue;
                 }
@@ -73,14 +74,29 @@ export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame
                 let written = false;
                 try {
                     await writer.write(decoded.frame);
-                    decoded.stats.framesPresented++;
                     written = true;
                 } catch (e: unknown) {
                     warnLog?.log('mstgPresent: write failed', e);
                     throw e;
                 } finally {
-                    if (!written)
-                        decoded.stats.framesDroppedAtPresenter++;
+                    if (!written) {
+                        decoded.stats.pendingPresenterDrops++;
+                    }
+                    else {
+                        // Carry-forward Option A: every successful present
+                        // attributes the upstream trace AND any presenter
+                        // drops accumulated since the previous accept to
+                        // the cumulative histogram, then bumps `presented`.
+                        aggregateDropTrace(decoded.stats, decoded.dropTrace);
+                        if (decoded.stats.pendingPresenterDrops > 0) {
+                            decoded.stats.dropTrace.set(
+                                FrameDropStage.ReceiverPresent,
+                                (decoded.stats.dropTrace.get(FrameDropStage.ReceiverPresent) ?? 0)
+                                    + decoded.stats.pendingPresenterDrops);
+                            decoded.stats.pendingPresenterDrops = 0;
+                        }
+                        decoded.stats.presented++;
+                    }
                 }
                 lastWriteAt = nextWriteAt;
                 prevCapturedAt = decoded.capturedAt.timeMs;

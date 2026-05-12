@@ -148,18 +148,18 @@
     }
 
     [JSInvokable]
-    public async Task OnPlaybackHealth(VideoQualityUI.PlaybackHealthSnapshot snapshot)
+    public async Task OnPlaybackStats(PlaybackStats stats)
     {
         if (_isDisposed)
             return;
 
         try {
             await Hub.VideoQualityUI
-                .PushPlaybackHealth(StreamInfo.StreamId, StreamInfo.SourceKind, snapshot, CancellationToken.None)
+                .PushPlaybackStats(StreamInfo.StreamId, StreamInfo.SourceKind, stats, CancellationToken.None)
                 .ConfigureAwait(false);
         }
         catch (Exception e) {
-            Log.LogWarning(e, "[VideoTrackPlayer #{StreamId}] OnPlaybackHealth failed", StreamInfo.StreamId);
+            Log.LogWarning(e, "[VideoTrackPlayer #{StreamId}] OnPlaybackStats failed", StreamInfo.StreamId);
         }
     }
 

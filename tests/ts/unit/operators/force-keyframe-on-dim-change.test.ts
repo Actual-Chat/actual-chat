@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { forceKeyframeOnDimChange } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/force-keyframe-on-dim-change';
 import {
-    createEmptyRecordingStats,
+    createEmptyRecorderStats,
     type CapturedFrame,
-    type VideoRecordingStats,
+    type RecorderStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 // ---- Mocks ----------------------------------------------------------------
 
@@ -21,7 +21,7 @@ const mkFrame = (id: number, w: number, h: number): MockVideoFrame => new MockVi
 // ---- Helpers --------------------------------------------------------------
 
 function envelopeFor(
-    stats: VideoRecordingStats,
+    stats: RecorderStats,
     frame: MockVideoFrame,
     index = 0,
     forceKeyframe = false,
@@ -55,7 +55,7 @@ async function drain<T>(seg: AsyncIterable<T>): Promise<T[]> {
 
 describe('forceKeyframeOnDimChange', () => {
     it('same dims across frames → forceKeyframe unchanged', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const op = forceKeyframeOnDimChange();
         const envelopes = [
             envelopeFor(stats, mkFrame(1, 1920, 1080), 0, false),
@@ -68,7 +68,7 @@ describe('forceKeyframeOnDimChange', () => {
     });
 
     it('dim change → forceKeyframe = true on the first frame at new dims', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const op = forceKeyframeOnDimChange();
         const envelopes = [
             envelopeFor(stats, mkFrame(1, 1920, 1080), 0, false),
@@ -82,7 +82,7 @@ describe('forceKeyframeOnDimChange', () => {
     });
 
     it('first frame: prior forceKeyframe value is preserved (we do not override it)', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const op = forceKeyframeOnDimChange();
         // Upstream stampCaptureTime sets forceKeyframe=true on the first frame.
         const envelopes = [
@@ -98,7 +98,7 @@ describe('forceKeyframeOnDimChange', () => {
     });
 
     it('upstream-set true is never lowered by this operator (raises only)', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const op = forceKeyframeOnDimChange();
         const envelopes = [
             envelopeFor(stats, mkFrame(1, 1920, 1080), 0, false),
@@ -110,7 +110,7 @@ describe('forceKeyframeOnDimChange', () => {
     });
 
     it('multiple successive dim changes each force a keyframe', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const op = forceKeyframeOnDimChange();
         const envelopes = [
             envelopeFor(stats, mkFrame(1, 1920, 1080), 0, false),
@@ -124,7 +124,7 @@ describe('forceKeyframeOnDimChange', () => {
     });
 
     it('preserves all other envelope fields (no mutation of input)', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const op = forceKeyframeOnDimChange();
         const f1 = mkFrame(1, 1920, 1080);
         const f2 = mkFrame(2, 1280, 720);

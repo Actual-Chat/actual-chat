@@ -44,7 +44,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         [VideoSourceKind.ScreenCast] = new RecordingAggregator(RecordingThresholds.Defaults),
     };
     private readonly Dictionary<VideoSourceKind, VideoRecorder> _recordersByKind = new();
-    private readonly Dictionary<VideoSourceKind, RecorderHealthSnapshot> _lastRecordingHealthByKind = new();
+    private readonly Dictionary<VideoSourceKind, RecorderStats> _lastRecorderStatsByKind = new();
     private readonly Dictionary<VideoSourceKind, RecordingQualityState> _lastRecordingStateByKind = new();
     private readonly Dictionary<VideoSourceKind, int> _lastRecordingSignalByKind = new();
     private readonly Dictionary<VideoSourceKind, RecordingQualityReason> _lastRecordingReasonByKind = new();
@@ -56,7 +56,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     private readonly Dictionary<VideoSourceKind, CpuTimestamp> _recordingLastEvalAt = new();
     private readonly Dictionary<StreamId, CpuTimestamp> _playbackStartedAt = new();
     private readonly Dictionary<StreamId, CpuTimestamp> _playbackLastEvalAt = new();
-    private readonly Dictionary<StreamId, PlaybackHealthState> _playbackByStream = new();
+    private readonly Dictionary<StreamId, PlaybackStatsState> _playbackByStream = new();
     private readonly CapacityEstimator _playbackEstimator = new(PlaybackThresholds.Defaults);
     private readonly Lock _playbackLock = new();
     private PlaybackQualitySnapshot _playbackSnapshot = PlaybackQualitySnapshot.Empty;
@@ -77,18 +77,18 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         => this.Start();
 
     /// <summary>
-    /// Receives a <see cref="RecorderHealthSnapshot"/> from the worker
+    /// Receives a <see cref="RecorderStats"/> from the worker
     /// (JS-side aggregator in <c>video-processing.ts</c>). Triggers a
     /// classification + aggregation step for the matching <see cref="VideoSourceKind"/>.
     /// </summary>
-    public async Task PushRecorderHealth(
+    public async Task PushRecorderStats(
         VideoSourceKind kind,
-        RecorderHealthSnapshot snapshot,
+        RecorderStats snapshot,
         VideoRecorder recorder,
         CancellationToken cancellationToken)
     {
         _recordersByKind[kind] = recorder;
-        _lastRecordingHealthByKind[kind] = snapshot;
+        _lastRecorderStatsByKind[kind] = snapshot;
         if (!_recordingByKind.TryGetValue(kind, out var aggregator))
             return;
         if (_coldStartTicksRemaining > 0) {
@@ -118,11 +118,10 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         if (decision.Changed)
             Log.LogWarning(
                 "RecordingQuality changed: kind={Kind} target={Target} reason={Reason} signal={Signal} "
-                + "encodeEma={EncEma:F2} encodeP90={EncP90:F2} slotRateEma={SlotRateEma:F2} "
-                + "senderDropRatioEma={DropRatioEma:F2} ackAgeMs={Ack:F0} "
+                + "encodeEma={EncEma:F2} senderDropRatioEma={DropRatioEma:F2} ackAgeMs={Ack:F0} "
                 + "connected={Connected} peerConnected={PeerConnected}",
                 kind, decision.NewTargetLayerCount, decision.Reason, signal,
-                snapshot.EncodeRatioEma, snapshot.EncodeRatioP90, snapshot.SlotReplacementRateEma,
+                snapshot.EncodeRatioEma,
                 snapshot.SenderFrameDropRatioEma, snapshot.LastAckAgeMs,
                 snapshot.IsConnected, snapshot.IsPeerConnected);
 
@@ -136,10 +135,10 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             cancellationToken).ConfigureAwait(false);
     }
 
-    public Task PushPlaybackHealth(
+    public Task PushPlaybackStats(
         StreamId streamId,
         VideoSourceKind sourceKind,
-        PlaybackHealthSnapshot snapshot,
+        PlaybackStats snapshot,
         CancellationToken cancellationToken)
     {
         var verdict = PlaybackVerdictClassifier.Classify(
@@ -155,7 +154,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             var requestedMaxLayerId = snapshot.QualityReductionRequested
                 ? 0
                 : GetBestLayerFor(sourceKind, desiredSize);
-            _playbackByStream[streamId] = new PlaybackHealthState(
+            _playbackByStream[streamId] = new PlaybackStatsState(
                 sourceKind, snapshot, verdict, CpuTimestamp.Now, peak,
                 requestedMaxLayerId, desiredSize);
             isFirstTick = prev is null;
@@ -198,18 +197,13 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                 };
             }
             else {
-                _playbackByStream[streamId] = new PlaybackHealthState(
+                _playbackByStream[streamId] = new PlaybackStatsState(
                     sourceKind,
-                    new PlaybackHealthSnapshot(
-                        IncomingByteRate: 0,
-                        BufferSpanMsEma: 0,
-                        KeyframeSkipsInWindow: 0,
-                        DecoderQueueDepthEma: Constants.Video.HighBufferDepthThreshold + 1,
-                        CurrentMaxLayerId: 2,
-                        CurrentMaxTemporalLayerId: int.MaxValue,
-                        Priority: PlaybackStreamPriority.Primary,
-                        StreamAgeMs: int.MaxValue,
-                        QualityReductionRequested: true),
+                    PlaybackStats.Empty with {
+                        Priority = PlaybackStreamPriority.Primary,
+                        StreamAgeMs = int.MaxValue,
+                        QualityReductionRequested = true,
+                    },
                     Verdict: -1,
                     LastSeen: CpuTimestamp.Now,
                     PeakIncomingByteRate: 0,
@@ -237,7 +231,6 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             if (_playbackByStream.TryGetValue(streamId, out var state)) {
                 var snapshot = state.Snapshot with {
                     Priority = priority,
-                    CurrentMaxLayerId = currentMaxLayerId,
                     RenderCssLongSide = renderCssLongSide,
                     RenderDevicePixelRatio = renderDevicePixelRatio,
                     StreamAgeMs = Math.Max(
@@ -258,19 +251,13 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                 };
             }
             else {
-                _playbackByStream[streamId] = new PlaybackHealthState(
+                _playbackByStream[streamId] = new PlaybackStatsState(
                     sourceKind,
-                    new PlaybackHealthSnapshot(
-                        IncomingByteRate: 0,
-                        BufferSpanMsEma: 0,
-                        KeyframeSkipsInWindow: 0,
-                        DecoderQueueDepthEma: 0,
-                        CurrentMaxLayerId: currentMaxLayerId,
-                        CurrentMaxTemporalLayerId: int.MaxValue,
-                        Priority: priority,
-                        StreamAgeMs: 0,
-                        RenderCssLongSide: renderCssLongSide,
-                        RenderDevicePixelRatio: renderDevicePixelRatio),
+                    PlaybackStats.Empty with {
+                        Priority = priority,
+                        RenderCssLongSide = renderCssLongSide,
+                        RenderDevicePixelRatio = renderDevicePixelRatio,
+                    },
                     Verdict: 0,
                     LastSeen: CpuTimestamp.Now,
                     PeakIncomingByteRate: 0,
@@ -296,7 +283,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         foreach (var (kind, aggregator) in _recordingByKind) {
             if (!_recordersByKind.TryGetValue(kind, out var recorder))
                 continue;
-            if (!_lastRecordingHealthByKind.TryGetValue(kind, out var snapshot))
+            if (!_lastRecorderStatsByKind.TryGetValue(kind, out var snapshot))
                 continue;
 
             await ApplyRecordingQuality(
@@ -369,7 +356,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         return new(
             kind,
             state,
-            _lastRecordingHealthByKind.GetValueOrDefault(kind),
+            _lastRecorderStatsByKind.GetValueOrDefault(kind),
             _lastRecordingSignalByKind.GetValueOrDefault(kind),
             _lastRecordingReasonByKind.GetValueOrDefault(kind),
             _debugMaxRecordingLayerCount);
@@ -489,7 +476,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         RecordingAggregator aggregator,
         VideoRecorder recorder,
         RecordingQualityReason reason,
-        RecorderHealthSnapshot snapshot,
+        RecorderStats snapshot,
         bool force,
         CancellationToken cancellationToken)
     {
@@ -505,7 +492,10 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
 
         _lastRecordingStateByKind[kind] = state;
         _lastRecordingReasonByKind[kind] = reason;
-        var info = new RecordingQualityInfo(reason, snapshot);
+        var info = new RecordingQualityInfo(
+            reason,
+            snapshot.SenderFrameDropRatioEma,
+            snapshot.LastAckAgeMs);
         _ = LiveVideoStreams.ChangeRecordingQuality(
             Session,
             state,
@@ -569,26 +559,18 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             + "streams=[{Streams}]",
             reason, capacity, aggregateHealth,
             string.Join(", ", entries.Select(x =>
-                $"{x.Key.Value}:v{x.Value.Verdict}/size={x.Value.DesiredVideoSize}/req=L{requestedMap[x.Key.Value].MaxLayerId}/cur=L{x.Value.Snapshot.CurrentMaxLayerId}"
+                $"{x.Key.Value}:v{x.Value.Verdict}/size={x.Value.DesiredVideoSize}/req=L{requestedMap[x.Key.Value].MaxLayerId}"
                 + $"/rate={x.Value.Snapshot.IncomingByteRate}/peak={x.Value.PeakIncomingByteRate}"
                 + $"/buf={x.Value.Snapshot.BufferSpanMsEma:F0}ms"
-                + $"/skips={x.Value.Snapshot.KeyframeSkipsInWindow}"
-                + $"/qDepth={x.Value.Snapshot.DecoderQueueDepthEma:F0}"
                 + $"/qReduce={x.Value.Snapshot.QualityReductionRequested}"
                 + $"/age={x.Value.Snapshot.StreamAgeMs}ms")));
         var streamInfoMap = new ApiMap<string, PlaybackStreamInfo>();
         foreach (var (streamId, state) in entries) {
-            var requestedQuality = requestedMap[streamId.Value];
             streamInfoMap[streamId.Value] = new PlaybackStreamInfo(
                 state.Snapshot.IncomingByteRate,
                 state.Snapshot.BufferSpanMsEma,
-                state.Snapshot.KeyframeSkipsInWindow,
-                state.Snapshot.DecoderQueueDepthEma,
-                requestedQuality.MaxLayerId,
-                requestedQuality.MaxTemporalLayerId,
                 state.Snapshot.Priority,
-                state.Verdict,
-                state.Snapshot.LatencyMsEma);
+                state.Verdict);
         }
         var info = new PlaybackQualityInfo(
             capacity,
@@ -603,14 +585,14 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
             cancellationToken).SuppressExceptions();
         await UpdateRequestedReceiveQualityRegistry(
             entries
-                .Select(x => new PlaybackStreamHint(x.Key.Value, x.Value.Snapshot.CurrentMaxLayerId))
+                .Select(x => new PlaybackStreamHint(x.Key.Value, x.Value.RequestedMaxLayerId))
                 .ToArray(),
             requestedMap,
             cancellationToken).ConfigureAwait(false);
 
         return;
 
-        static StreamRequest ToStreamRequest(KeyValuePair<StreamId, PlaybackHealthState> entry)
+        static StreamRequest ToStreamRequest(KeyValuePair<StreamId, PlaybackStatsState> entry)
         {
             var maxLayerId = entry.Value.Snapshot.QualityReductionRequested
                 ? 0
@@ -621,7 +603,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     }
 
     private static IReadOnlyList<long> EstimateLayerRates(
-        PlaybackHealthState state,
+        PlaybackStatsState state,
         int maxLayerId)
     {
         var ladder = VideoRecorder.BuildLadder(state.SourceKind);
@@ -641,7 +623,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         return rates;
     }
 
-    private static long ComputeDecayedPeak(PlaybackHealthState? prev, long currentRate)
+    private static long ComputeDecayedPeak(PlaybackStatsState? prev, long currentRate)
     {
         var current = Math.Max(0, currentRate);
         if (prev is null)
@@ -671,7 +653,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         return ladder[^1].Size;
     }
 
-    private static VideoSize GetDesiredVideoSize(PlaybackHealthSnapshot snapshot, VideoSourceKind sourceKind)
+    private static VideoSize GetDesiredVideoSize(PlaybackStats snapshot, VideoSourceKind sourceKind)
     {
         var size = snapshot.RenderVideoSize;
         return size == VideoSize.None ? GetTopVideoSize(sourceKind) : size;
@@ -696,9 +678,9 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         return bestLayer;
     }
 
-    private static PlaybackHealthSnapshot WithRenderFallback(
-        PlaybackHealthSnapshot snapshot,
-        PlaybackHealthState? previous)
+    private static PlaybackStats WithRenderFallback(
+        PlaybackStats snapshot,
+        PlaybackStatsState? previous)
     {
         if (snapshot.RenderCssLongSide > 0 || snapshot.RenderDevicePixelRatio > 0 || previous is null)
             return snapshot;
@@ -709,7 +691,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         };
     }
 
-    private List<KeyValuePair<StreamId, PlaybackHealthState>> GetFreshPlaybackEntries()
+    private List<KeyValuePair<StreamId, PlaybackStatsState>> GetFreshPlaybackEntries()
     {
         lock (_playbackLock) {
             var staleStreamIds = _playbackByStream
@@ -797,8 +779,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
                 Log.LogWarning(
                     "RecordingQualityTest changed: phase={Phase:F2} signal={Signal} target={Target} reason={Reason}",
                     phase, signal, aggregator.TargetLayerCount, decision.Reason);
-                var fakeHealth = new RecorderHealthSnapshot(0, 0, 0, 0, 0, IsConnected: true);
-                var info = new RecordingQualityInfo(decision.Reason, fakeHealth);
+                var info = new RecordingQualityInfo(decision.Reason, 0, 0);
                 _ = LiveVideoStreams.ChangeRecordingQuality(
                     Session, aggregator.Snapshot(), info, CancellationToken.None).SuppressExceptions();
             }
@@ -898,7 +879,7 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
     public sealed record RecordingQualitySnapshot(
         VideoSourceKind Kind,
         RecordingQualityState? State,
-        RecorderHealthSnapshot? Health,
+        RecorderStats? Health,
         int Signal,
         RecordingQualityReason Reason,
         int? DebugMaxLayerCount);
@@ -932,11 +913,11 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
 
     /// <summary>
     /// Pure ternary classifier: returns +1 (good), 0 (neutral), or -1 (bad)
-    /// from a single <see cref="RecorderHealthSnapshot"/>.
+    /// from a single <see cref="RecorderStats"/>.
     /// </summary>
     public static class RecordingClassifier
     {
-        public static int Classify(RecorderHealthSnapshot h, RecordingThresholds t)
+        public static int Classify(RecorderStats h, RecordingThresholds t)
         {
             if (!h.IsConnected)
                 return 0;
@@ -1181,28 +1162,11 @@ public sealed class VideoQualityUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), 
         }
     }
 
-    public sealed record PlaybackHealthSnapshot(
-        long IncomingByteRate,
-        double BufferSpanMsEma,
-        int KeyframeSkipsInWindow,
-        double DecoderQueueDepthEma,
-        int CurrentMaxLayerId,
-        int CurrentMaxTemporalLayerId,
-        PlaybackStreamPriority Priority,
-        int StreamAgeMs,
-        bool QualityReductionRequested = false,
-        double LatencyMsEma = 0,
-        double RenderCssLongSide = 0,
-        double RenderDevicePixelRatio = 0,
-        string Codec = "")
-    {
-        public VideoSize RenderVideoSize
-            => VideoSizeExt.FromLongSide(RenderCssLongSide, RenderDevicePixelRatio);
-    }
+    // PlaybackStats moved to Api.Contracts/Streaming/Quality/PlaybackQuality.cs.
 
-    private sealed record PlaybackHealthState(
+    private sealed record PlaybackStatsState(
         VideoSourceKind SourceKind,
-        PlaybackHealthSnapshot Snapshot,
+        PlaybackStats Snapshot,
         int Verdict,
         CpuTimestamp LastSeen,
         long PeakIncomingByteRate,

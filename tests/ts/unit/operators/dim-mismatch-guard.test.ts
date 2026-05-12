@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
 import { dropDimMismatch } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/dim-mismatch-guard';
 import {
-    createEmptyRecordingStats,
+    createEmptyRecorderStats,
     type CapturedFrame,
-    type VideoRecordingStats,
+    type RecorderStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 // ---- Mocks ----------------------------------------------------------------
 
@@ -21,7 +21,7 @@ const mkFrame = (id: number, w: number, h: number): MockVideoFrame => new MockVi
 
 // ---- Helpers --------------------------------------------------------------
 
-function envelopeFor(stats: VideoRecordingStats, frame: MockVideoFrame, index = 0): CapturedFrame {
+function envelopeFor(stats: RecorderStats, frame: MockVideoFrame, index = 0): CapturedFrame {
     return {
         frame: frame as unknown as VideoFrame,
         capturedAt: { timeMs: 100 + index, epoch: 0 },
@@ -64,7 +64,7 @@ describe('dropDimMismatch', () => {
     });
 
     it('matching dims: passes through unchanged; stats not incremented', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const op = dropDimMismatch({ getExpectedDims: () => ({ width: 1920, height: 1080 }) });
         const frames = [mkFrame(1, 1920, 1080), mkFrame(2, 1920, 1080)];
         const envelopes = frames.map((f, i) => envelopeFor(stats, f, i));
@@ -73,31 +73,11 @@ describe('dropDimMismatch', () => {
 
         expect(out).toHaveLength(2);
         expect(out[0].frame).toBe(frames[0] as unknown as VideoFrame);
-        expect(stats.framesDroppedDimMismatch).toBe(0);
         for (const f of frames) expect(f.closed).toBe(false);
     });
 
-    it('mismatch: drops the frame, closes it, increments stats.framesDroppedDimMismatch', async () => {
-        const stats = createEmptyRecordingStats(0);
-        const op = dropDimMismatch({ getExpectedDims: () => ({ width: 1920, height: 1080 }) });
-        const okFrame = mkFrame(1, 1920, 1080);
-        const badFrame = mkFrame(2, 1280, 720);
-        const envelopes = [
-            envelopeFor(stats, okFrame, 0),
-            envelopeFor(stats, badFrame, 1),
-        ];
-
-        const out = await drain(op(source(envelopes)));
-
-        expect(out).toHaveLength(1);
-        expect(out[0].frame).toBe(okFrame as unknown as VideoFrame);
-        expect(stats.framesDroppedDimMismatch).toBe(1);
-        expect(badFrame.closed).toBe(true);
-        expect(okFrame.closed).toBe(false);
-    });
-
     it('burst coalescing: multiple consecutive mismatches → exactly one warn', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const op = dropDimMismatch({ getExpectedDims: () => ({ width: 1920, height: 1080 }) });
         const bad = [
             mkFrame(1, 1280, 720),
@@ -109,13 +89,12 @@ describe('dropDimMismatch', () => {
         const out = await drain(op(source(envelopes)));
 
         expect(out).toHaveLength(0);
-        expect(stats.framesDroppedDimMismatch).toBe(3);
         for (const f of bad) expect(f.closed).toBe(true);
         expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
     });
 
     it('burst flag clears on a passing frame; a fresh mismatch warns again', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const op = dropDimMismatch({ getExpectedDims: () => ({ width: 1920, height: 1080 }) });
         const sequence = [
             mkFrame(1, 1280, 720),  // mismatch — warn 1
@@ -129,12 +108,11 @@ describe('dropDimMismatch', () => {
 
         expect(out).toHaveLength(1);
         expect(out[0].frame).toBe(sequence[2] as unknown as VideoFrame);
-        expect(stats.framesDroppedDimMismatch).toBe(3);
         expect(consoleWarnSpy).toHaveBeenCalledTimes(2);
     });
 
     it('getExpectedDims is called per frame (allows reconfigure to take effect mid-stream)', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         let expected: { width: number; height: number } = { width: 1920, height: 1080 };
         const op = dropDimMismatch({ getExpectedDims: () => expected });
 
@@ -162,6 +140,5 @@ describe('dropDimMismatch', () => {
         const out = await drain(op(seg));
 
         expect(out).toHaveLength(3);
-        expect(stats.framesDroppedDimMismatch).toBe(0);
     });
 });

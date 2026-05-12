@@ -63,7 +63,7 @@ import {
     type WireSafeRecorderConfig,
 } from '../../Services/Video/sender/recorder-worker-contract';
 import type { EncoderConfigPerLayer } from '../../Services/Video/operators/encode';
-import type { VideoRecordingStats } from '../../Services/Video/frame-envelopes';
+import type { RecorderStats } from '../../Services/Video/frame-envelopes';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
 const RECORDER_HEALTH_INTERVAL_MS = 1000;
@@ -309,7 +309,7 @@ export class VideoRecorder {
     private _sharedSettingsRegistration: Disposable | null = null;
     private recorderHealthTimer: number | null = null;
     private recorderHealthInFlight = false;
-    private lastRecorderHealthStats: VideoRecordingStats | null = null;
+    private lastRecorderHealthStats: RecorderStats | null = null;
     private lastRecorderHealthWasPeerConnected = false;
 
     // Wallclock anchor for diagnostics duration calculation.
@@ -785,7 +785,7 @@ export class VideoRecorder {
     }
 
     public getDiagnostics(): OwnStreamDiagnostics {
-        // Aggregate counters live on `VideoRecordingStats` and are refreshed at
+        // Aggregate counters live on `RecorderStats` and are refreshed at
         // 1Hz by the recorder-health monitor. Per-layer breakdowns are NOT
         // tracked — the encode operator only mutates aggregates. The modal
         // surfaces aggregates at the encoder header; per-layer fields stay 0.
@@ -801,11 +801,11 @@ export class VideoRecorder {
             ? getCodecCategory(this.currentCodecString)
             : '';
 
-        const droppedAggregate = liveStats
-            ? liveStats.framesDroppedDimMismatch
-                + liveStats.framesDroppedBackpressure
-                + liveStats.framesDroppedOther
-            : 0;
+        let droppedAggregate = 0;
+        if (liveStats) {
+            for (const count of liveStats.dropTrace.values())
+                droppedAggregate += count;
+        }
         const meanEncodeTimeMs = liveStats && liveStats.encodeTimeMsCount > 0
             ? liveStats.encodeTimeMsSum / liveStats.encodeTimeMsCount
             : 0;
@@ -823,9 +823,9 @@ export class VideoRecorder {
             outputResolution: top ? `${top.width}x${top.height}` : 'N/A',
             configuredBitrate: kbpsToBitsPerSecond(top?.bitrateKbps ?? 0),
             actualBitrateKbps: aggregateBitrateKbps,
-            encodedFrames: liveStats?.chunksEncoded ?? 0,
+            encodedFrames: liveStats?.bundlesShipped ?? 0,
             droppedFrames: droppedAggregate,
-            keyFrames: liveStats?.keyframesEncoded ?? 0,
+            keyFrames: 0,
             layers: ladder.map((l, i) => ({
                 layerId: i,
                 outputResolution: `${l.width}x${l.height}`,
@@ -1253,12 +1253,21 @@ export class VideoRecorder {
         }
     }
 
+    // EMA smoothing factor for encode-ratio. Single-tick spikes from a
+    // slow keyframe would otherwise pop the classifier; α=0.3 gives a
+    // ~3-tick half-life at 1 Hz polling.
+    private static readonly EncodeRatioEmaAlpha = 0.3;
+    private encodeRatioEma = 0;
+    private senderDropRatioEma = 0;
+
     private startRecorderHealthMonitor(): void {
         this.stopRecorderHealthMonitor();
         this.lastRecorderHealthStats = null;
         this.lastRecorderHealthWasPeerConnected = false;
+        this.encodeRatioEma = 0;
+        this.senderDropRatioEma = 0;
         this.recorderHealthTimer = window.setInterval(() => {
-            void this.reportRecorderHealth();
+            void this.reportRecorderStats();
         }, RECORDER_HEALTH_INTERVAL_MS);
     }
 
@@ -1271,7 +1280,7 @@ export class VideoRecorder {
         this.lastRecorderHealthWasPeerConnected = false;
     }
 
-    private async reportRecorderHealth(): Promise<void> {
+    private async reportRecorderStats(): Promise<void> {
         if (this.recorderHealthInFlight || !this.worker)
             return;
 
@@ -1280,45 +1289,69 @@ export class VideoRecorder {
             const stats = await this.worker.getStats();
             const isPeerConnected = stats.isPeerConnected;
             const previous = this.lastRecorderHealthStats;
-            let senderFrameDropRatio = 0;
+
+            // Drop trace deltas → senderFrameDropRatio. Sum only sender
+            // stages (1..30). Denominator = bundles attempted = bundles
+            // shipped + bundles dropped in the sender pipeline.
+            let senderDropsDelta = 0;
             if (previous && isPeerConnected && this.lastRecorderHealthWasPeerConnected) {
-                const added = Math.max(0, stats.wireFramesAdded - previous.wireFramesAdded);
-                // Frames the publisher could have shipped but didn't:
-                //   floodGateSkipCount — closed at the capture-side gate
-                //   rpcStreamFramesSkipped — skipped inside the sender ring
-                //                            via canSkipTo=isKeyFrame
-                const wireDropped = Math.max(0,
-                    stats.floodGateSkipCount - previous.floodGateSkipCount
-                    + stats.rpcStreamFramesSkipped - previous.rpcStreamFramesSkipped);
-                // Pre-encode losses (dim guard, backpressure, other) feed
-                // the same EMA: each is a frame the recorder was supposed
-                // to emit and didn't. Treat them as additional "would-be"
-                // adds so the ratio reflects total pipe loss, not just
-                // wire-side loss.
-                const preEncodeDropped = Math.max(0,
-                    stats.framesDroppedDimMismatch - previous.framesDroppedDimMismatch
-                    + stats.framesDroppedBackpressure - previous.framesDroppedBackpressure
-                    + stats.framesDroppedOther - previous.framesDroppedOther);
-                const totalDropped = wireDropped + preEncodeDropped;
-                const totalProduced = added + preEncodeDropped;
-                senderFrameDropRatio = totalProduced > 0 ? totalDropped / totalProduced : 0;
+                for (const [stage, count] of stats.dropTrace) {
+                    const stageNum = stage as number;
+                    if (stageNum < 1 || stageNum > 30) continue;
+                    const prevCount = previous.dropTrace.get(stage) ?? 0;
+                    senderDropsDelta += Math.max(0, count - prevCount);
+                }
+                const shippedDelta = Math.max(0, stats.bundlesShipped - previous.bundlesShipped);
+                const totalProduced = shippedDelta + senderDropsDelta;
+                const ratio = totalProduced > 0 ? senderDropsDelta / totalProduced : 0;
+                this.senderDropRatioEma =
+                    VideoRecorder.EncodeRatioEmaAlpha * ratio
+                    + (1 - VideoRecorder.EncodeRatioEmaAlpha) * this.senderDropRatioEma;
             }
-            this.lastRecorderHealthStats = { ...stats };
+
+            // Encode ratio: (sum of per-layer encode times in this tick)
+            // / frameDuration. Frame duration: 1000/30 = 33.33ms baseline.
+            const frameDurationMs = 1000 / 30;
+            if (previous) {
+                const sumDelta = Math.max(0, stats.encodeTimeMsSum - previous.encodeTimeMsSum);
+                const countDelta = Math.max(0, stats.encodeTimeMsCount - previous.encodeTimeMsCount);
+                if (countDelta > 0) {
+                    const meanMs = sumDelta / countDelta;
+                    const ratio = meanMs / frameDurationMs;
+                    this.encodeRatioEma =
+                        VideoRecorder.EncodeRatioEmaAlpha * ratio
+                        + (1 - VideoRecorder.EncodeRatioEmaAlpha) * this.encodeRatioEma;
+                }
+            }
+
+            this.lastRecorderHealthStats = {
+                ...stats,
+                dropTrace: new Map(stats.dropTrace),
+            };
             this.lastRecorderHealthWasPeerConnected = isPeerConnected;
+
+            // Histogram split into parallel arrays for JSON-friendly
+            // JSInvokable transit (byte enum + long count).
+            const stages = new Uint8Array(stats.dropTrace.size);
+            const counts: number[] = new Array<number>(stats.dropTrace.size);
+            let i = 0;
+            for (const [stage, count] of stats.dropTrace) {
+                stages[i] = stage;
+                counts[i] = count;
+                i++;
+            }
             await this.blazorRef.invokeMethodAsync(
-                'OnRecorderHealthSnapshot',
-                0,
-                0,
-                0,
-                senderFrameDropRatio,
+                'OnRecorderStats',
+                this.encodeRatioEma,
+                this.senderDropRatioEma,
                 stats.wireLastAckAgeMs,
                 isPeerConnected,
-                stats.floodGateSkipCount,
-                stats.rpcStreamFramesSkipped,
-                stats.wireQueueDepth,
-                stats.wireMaxQueueDepth);
+                stages,
+                counts,
+                stats.bundlesShipped,
+                stats.bytesEncoded);
         } catch (e) {
-            warnLog?.log('reportRecorderHealth failed:', e);
+            warnLog?.log('reportRecorderStats failed:', e);
         } finally {
             this.recorderHealthInFlight = false;
         }
@@ -1473,8 +1506,8 @@ export class VideoRecorder {
 // new debug logging lands here it just plugs into this handle.
 void debugLog;
 
-// `VideoRecordingStats` is exported for callers that want to inspect
+// `RecorderStats` is exported for callers that want to inspect
 // the new wire-safe stats shape. Currently no external caller uses
 // it; suppress unused-import warnings the same way.
-const _statsType: VideoRecordingStats | null = null;
+const _statsType: RecorderStats | null = null;
 void _statsType;

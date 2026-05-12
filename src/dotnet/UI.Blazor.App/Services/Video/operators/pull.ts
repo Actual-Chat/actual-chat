@@ -1,7 +1,7 @@
 import { AsyncIterableX, exclusive, finalize, from } from 'ix-ext';
 import { abortPromise } from 'promises';
 import { MonotonicClock } from 'clocks';
-import { closeEncodedChunk, type ArrivedChunk, type VideoPlaybackStats } from '../frame-envelopes';
+import { closeEncodedChunk, type ArrivedChunk, type PlayerStats } from '../frame-envelopes';
 
 // Mirror of the .NET wire DTO; PascalCase matches the MessagePack field names.
 // Offset/Duration are 100-ns ticks; OffsetEpoch is the sender's MonotonicClock epoch.
@@ -32,7 +32,7 @@ export interface PullSourceOptions {
         streamId: string,
     ) => Promise<AsyncIterable<VideoFrameDto>> | AsyncIterable<VideoFrameDto>;
     arrivalClock?: MonotonicClock;
-    stats: VideoPlaybackStats;
+    stats: PlayerStats;
     abortSignal?: AbortSignal;
     // Graceful source-completion signal for local stop/restart.
     stopSignal?: AbortSignal;
@@ -156,7 +156,6 @@ export function pullSource(opts: PullSourceOptions): AsyncIterableX<ArrivedChunk
                     if (dto.Description && dto.Description.byteLength > 0)
                         envelope.description = copyToArrayBuffer(dto.Description);
 
-                    stats.chunksArrived++;
                     stats.bytesReceived += data.byteLength;
                     mustClose = false;
                     yield envelope;

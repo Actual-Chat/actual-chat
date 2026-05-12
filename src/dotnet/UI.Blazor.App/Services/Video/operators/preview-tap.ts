@@ -16,16 +16,19 @@ export interface PreviewTapOptions {
 // original; writer owns the clone.
 export function previewTap(opts: PreviewTapOptions): PipeOperator<CapturedFrame, CapturedFrame> {
     const { getWriter } = opts;
+    let failures = 0;
+    const reportFailure = (where: string, e: unknown): void => {
+        failures++;
+        if (failures === 1 || failures % LogEveryN === 0)
+            warnLog?.log(`previewTap: ${where} failed (#${failures}):`, e);
+    };
     return tap(async (envelope: CapturedFrame): Promise<void> => {
+        void envelope;
         let writer: WritableStreamDefaultWriter<VideoFrame> | null;
         try {
             writer = getWriter();
         } catch (e) {
-            envelope.stats.previewClonesFailed++;
-            if (envelope.stats.previewClonesFailed === 1
-                || envelope.stats.previewClonesFailed % LogEveryN === 0) {
-                warnLog?.log(`previewTap: getWriter failed (#${envelope.stats.previewClonesFailed}):`, e);
-            }
+            reportFailure('getWriter', e);
             return;
         }
         if (!writer) return;
@@ -34,22 +37,14 @@ export function previewTap(opts: PreviewTapOptions): PipeOperator<CapturedFrame,
         try {
             clone = envelope.frame.clone();
         } catch (e) {
-            envelope.stats.previewClonesFailed++;
-            if (envelope.stats.previewClonesFailed === 1
-                || envelope.stats.previewClonesFailed % LogEveryN === 0) {
-                warnLog?.log(`previewTap: frame clone failed (#${envelope.stats.previewClonesFailed}):`, e);
-            }
+            reportFailure('frame clone', e);
             return;
         }
         try {
             await writer.write(clone);
         } catch (e) {
             try { clone.close(); } catch { /* ignore */ }
-            envelope.stats.previewClonesFailed++;
-            if (envelope.stats.previewClonesFailed === 1
-                || envelope.stats.previewClonesFailed % LogEveryN === 0) {
-                warnLog?.log(`previewTap: writer.write failed (#${envelope.stats.previewClonesFailed}):`, e);
-            }
+            reportFailure('writer.write', e);
         }
     });
 }

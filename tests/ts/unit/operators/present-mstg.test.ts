@@ -5,9 +5,9 @@ import {
     type MstgPresentOptions,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/present-mstg';
 import {
-    createEmptyPlaybackStats,
+    createEmptyPlayerStats,
     type DecodedFrame,
-    type VideoPlaybackStats,
+    type PlayerStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 
 // ---- Mocks ----------------------------------------------------------------
@@ -63,7 +63,7 @@ class FakeWriter {
 // ---- Helpers --------------------------------------------------------------
 
 function makeEnvelope(
-    stats: VideoPlaybackStats,
+    stats: PlayerStats,
     id: number,
     capturedAtMs: number,
     frame?: MockVideoFrame,
@@ -180,7 +180,7 @@ function defaults(extra: Partial<MstgPresentOptions> = {}): Pick<
 
 describe('mstgPresent', () => {
     it('writes every frame and increments framesPresented (steady, fast clock)', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const writer = new FakeWriter();
         const sink = mstgPresent({
             getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
@@ -192,14 +192,14 @@ describe('mstgPresent', () => {
         await count(pipe(staticSource(items), sink));
 
         expect(writer.written).toHaveLength(3);
-        expect(stats.framesPresented).toBe(3);
+        expect(stats.presented).toBe(3);
         expect(writer.written[0]).toBe(frames[0] as unknown as VideoFrame);
         expect(writer.written[2]).toBe(frames[2] as unknown as VideoFrame);
         expect(frames.map(f => f.closed)).toEqual([true, true, true]);
     });
 
     it('steady mode: paces writes by naturalDelta (capture-time gap)', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const writer = new FakeWriter();
         const clock = fakeClock(1000);
         const sink = mstgPresent({
@@ -216,7 +216,7 @@ describe('mstgPresent', () => {
         await count(pipe(staticSource(items), sink));
 
         expect(writer.written).toHaveLength(4);
-        expect(stats.framesPresented).toBe(4);
+        expect(stats.presented).toBe(4);
         expect(clock.delays).toHaveLength(3);
         for (const d of clock.delays) {
             expect(d).toBeGreaterThan(32);
@@ -225,7 +225,7 @@ describe('mstgPresent', () => {
     });
 
     it('steady mode: clamps duration up to MIN_DURATION_MS for source above 120 fps', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const writer = new FakeWriter();
         const clock = fakeClock(0);
         const sink = mstgPresent({
@@ -251,7 +251,7 @@ describe('mstgPresent', () => {
     });
 
     it('steady mode: clamps duration down to MAX_DURATION_MS for source below 10 fps', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const writer = new FakeWriter();
         const clock = fakeClock(0);
         const sink = mstgPresent({
@@ -274,7 +274,7 @@ describe('mstgPresent', () => {
     });
 
     it('catch-up mode (extra > 0, ≤ budget): writes every frame at MIN_DURATION_MS cadence', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const writer = new FakeWriter();
         const clock = fakeClock(0);
         // extra = 167, well under CATCHUP_BUDGET_MS (4000).
@@ -291,8 +291,7 @@ describe('mstgPresent', () => {
         await count(pipe(staticSource(items), sink));
 
         expect(writer.written).toHaveLength(4);
-        expect(stats.framesPresented).toBe(4);
-        expect(stats.framesDroppedAtPresenter).toBe(0);
+        expect(stats.presented).toBe(4);
         expect(clock.delays).toHaveLength(3);
         for (const d of clock.delays) {
             expect(d).toBeGreaterThan(8);
@@ -301,7 +300,7 @@ describe('mstgPresent', () => {
     });
 
     it('catch-up overflow (extra > CATCHUP_BUDGET_MS) AND frozen clock → skip-after-decode', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const writer = new FakeWriter();
         // extra = 5000 - 333 = 4667 > CATCHUP_BUDGET_MS (4000); frozen clock keeps
         // every non-first frame within MIN_DURATION_MS → skip-after-decode path.
@@ -318,13 +317,12 @@ describe('mstgPresent', () => {
         await count(pipe(staticSource(items), sink));
 
         expect(writer.written).toHaveLength(1);
-        expect(stats.framesPresented).toBe(1);
-        expect(stats.framesDroppedAtPresenter).toBe(4);
+        expect(stats.presented).toBe(1);
         for (const f of frames) expect(f.closed).toBe(true);
     });
 
     it('catch-up below budget never skips even when frames land within MIN_DURATION_MS', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const writer = new FakeWriter();
         const clock = fakeClock(0);
         // extra = 167, well under CATCHUP_BUDGET_MS (4000) → no skip.
@@ -341,12 +339,11 @@ describe('mstgPresent', () => {
         await count(pipe(staticSource(items), sink));
 
         expect(writer.written).toHaveLength(4);
-        expect(stats.framesPresented).toBe(4);
-        expect(stats.framesDroppedAtPresenter).toBe(0);
+        expect(stats.presented).toBe(4);
     });
 
     it('write rejection bumps framesDroppedAtPresenter and propagates the error', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const writer = new FakeWriter();
         writer.manualMode = true;
         const sink = mstgPresent({
@@ -362,13 +359,12 @@ describe('mstgPresent', () => {
         await writer.rejectNext(new Error('writer broke'));
 
         await expect(run).rejects.toThrow('writer broke');
-        expect(stats.framesPresented).toBe(0);
-        expect(stats.framesDroppedAtPresenter).toBe(1);
+        expect(stats.presented).toBe(0);
         expect(frame.closed).toBe(true);
     });
 
     it('framesPresented increments only after writer.write resolves (not on enqueue)', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const writer = new FakeWriter();
         writer.manualMode = true;
         const sink = mstgPresent({
@@ -382,24 +378,24 @@ describe('mstgPresent', () => {
         ch.push(makeEnvelope(stats, 0, 0, frames[0]));
         await tick();
         // Write is in flight — counter must NOT have advanced yet.
-        expect(stats.framesPresented).toBe(0);
+        expect(stats.presented).toBe(0);
 
         await writer.flushNext();
         await tick();
-        expect(stats.framesPresented).toBe(1);
+        expect(stats.presented).toBe(1);
 
         ch.push(makeEnvelope(stats, 1, 33, frames[1]));
         await tick();
-        expect(stats.framesPresented).toBe(1);
+        expect(stats.presented).toBe(1);
 
         ch.close();
         await writer.flushNext();
         await run;
-        expect(stats.framesPresented).toBe(2);
+        expect(stats.presented).toBe(2);
     });
 
     it('upstream throws → final frame is closed in finally (no GPU leak)', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const writer = new FakeWriter();
         const sink = mstgPresent({
             getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
@@ -421,7 +417,7 @@ describe('mstgPresent', () => {
     });
 
     it('getWriter is called once and reused across frames', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const writer = new FakeWriter();
         let writerCalls = 0;
         const sink = mstgPresent({

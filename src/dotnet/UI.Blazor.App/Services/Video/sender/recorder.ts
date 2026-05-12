@@ -5,11 +5,11 @@
 import { drain, pipe } from 'ix-ext';
 import { getLogs } from 'logging';
 import {
-    createEmptyRecordingStats,
+    createEmptyRecorderStats,
     type CapturedBundle,
     type CapturedFrame,
     type EncodedBundle,
-    type VideoRecordingStats,
+    type RecorderStats,
 } from '../frame-envelopes';
 import { FrameDropStage, traceDrops } from '../frame-drop-trace';
 import { mstpSource } from '../operators/capture';
@@ -29,7 +29,7 @@ export type { EncoderConfigPerLayer, EncoderFactory } from '../operators/encode'
 export type { StreamSenderLike } from '../operators/wire-send';
 export type { DownscalerLike, LayerSpec } from '../operators/downscale';
 export type { EncodeInput } from '../operators/encode';
-export type { VideoRecordingStats };
+export type { RecorderStats };
 
 // Members ordered by sender pipeline flow:
 //   source (track) → downscale → encode → keyframe-policy → wireSend.
@@ -62,7 +62,7 @@ export class Recorder {
     private abortTimeoutId: ReturnType<typeof setTimeout> | null = null;
     private abortTimeoutReason: unknown = null;
     private currentWhenDone: Promise<void> | null = null;
-    private currentStats: VideoRecordingStats | null = null;
+    private currentStats: RecorderStats | null = null;
     private startedAtMs = 0;
 
     constructor(session: SenderSession) {
@@ -78,7 +78,7 @@ export class Recorder {
             throw new Error('Recorder: keyframeIntervalFrames must be > 0');
 
         this.startedAtMs = Date.now();
-        const stats = createEmptyRecordingStats(this.startedAtMs);
+        const stats = createEmptyRecorderStats();
         this.currentStats = stats;
         const ladder: LayerSpec[] = config.encoderConfigs.map(c => ({
             width: c.width,
@@ -196,7 +196,7 @@ export class Recorder {
         return this.abortController !== null;
     }
 
-    getStats(): VideoRecordingStats | null {
+    getStats(): RecorderStats | null {
         return this.currentStats;
     }
 }

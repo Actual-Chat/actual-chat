@@ -415,7 +415,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.Int32Converter, System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.Int64Converter, System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.JsonElementConverter, System.Text.Json");
-        CodeKeeper.Keep("System.Text.Json.Serialization.Converters.LargeObjectWithParameterizedConstructorConverterWithReflection`1[[ActualChat.UI.Blazor.App.Services.VideoQualityUI+PlaybackHealthSnapshot, ActualChat.UI.Blazor.App]], System.Text.Json");
+        // Removed: PlaybackHealthSnapshot moved to Api.Contracts as PlaybackStats and is no longer a JSInvokable parameter type.
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.LargeObjectWithParameterizedConstructorConverterWithReflection`1[[ActualChat.UI.Blazor.Services.IBrowserInfoBackend+InitResult, ActualChat.UI.Blazor]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.ListOfTConverter`2[[System.Collections.Generic.List`1[[ActualChat.Chat.PlayableTextMarkup+Word, ActualChat.Api]], System.Private.CoreLib],[ActualChat.Chat.PlayableTextMarkup+Word, ActualChat.Api]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.ListOfTConverter`2[[System.Collections.Generic.List`1[[ActualChat.UI.Blazor.App.Components.WebFileInfo, ActualChat.UI.Blazor.App]], System.Private.CoreLib],[ActualChat.UI.Blazor.App.Components.WebFileInfo, ActualChat.UI.Blazor.App]], System.Text.Json");

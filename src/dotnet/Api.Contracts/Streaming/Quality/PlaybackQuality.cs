@@ -1,3 +1,5 @@
+using ActualChat.Video;
+
 namespace ActualChat.Streaming;
 
 public enum PlaybackQualityReason
@@ -18,23 +20,15 @@ public enum PlaybackStreamPriority
 }
 
 /// <summary>
-/// Per-stream playback health sample plus the controller's classification:
-/// rate, buffer, decoder load, currently-applied caps, and a -1/0/+1 verdict.
-/// `LatencyMsEma` is the receiver-measured capture-to-presentation latency
-/// (server-clock-corrected, EMA-smoothed), the canonical input for
-/// app.video.latency.
+/// Per-stream playback sample plus the controller's classification.
+/// Pruned to what the server-side allocator and telemetry consume.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record PlaybackStreamInfo(
     [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] long IncomingByteRate,
     [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] double BufferDurationMsEma,
-    [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] int KeyframeSkipsInWindow,
-    [property: DataMember(Order = 3), MemoryPackOrder(3), Key(3)] double DecoderQueueDepthEma,
-    [property: DataMember(Order = 4), MemoryPackOrder(4), Key(4)] int CurrentMaxLayerId,
-    [property: DataMember(Order = 5), MemoryPackOrder(5), Key(5)] int CurrentMaxTemporalLayerId,
-    [property: DataMember(Order = 6), MemoryPackOrder(6), Key(6)] PlaybackStreamPriority Priority,
-    [property: DataMember(Order = 7), MemoryPackOrder(7), Key(7)] int Verdict,
-    [property: DataMember(Order = 8), MemoryPackOrder(8), Key(8)] double LatencyMsEma = 0);
+    [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] PlaybackStreamPriority Priority,
+    [property: DataMember(Order = 3), MemoryPackOrder(3), Key(3)] int Verdict);
 
 /// <summary>
 /// Aggregate playback health + per-stream details accompanying a playback
@@ -48,3 +42,39 @@ public sealed partial record PlaybackQualityInfo(
     [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] PlaybackQualityReason Reason,
     [property: DataMember(Order = 3), MemoryPackOrder(3), Key(3)] bool IsColdStart,
     [property: DataMember(Order = 4), MemoryPackOrder(4), Key(4)] ApiMap<string, PlaybackStreamInfo> Streams);
+
+/// <summary>
+/// Per-tick playback stats — CLIENT-LOCAL only, never serialized to the
+/// wire. Consumed by the local QC classifier (verdict + capacity estimator
+/// + allocator) and the inbound-side video diagnostics. DropTrace is
+/// aggregated at the present stage and covers recorder + server + receiver
+/// stages (the trace bytes ride with every frame).
+/// </summary>
+public sealed record PlaybackStats(
+    long IncomingByteRate,
+    double BufferSpanMsEma,
+    PlaybackStreamPriority Priority,
+    int StreamAgeMs,
+    bool QualityReductionRequested,
+    double RenderCssLongSide,
+    double RenderDevicePixelRatio,
+    string Codec,
+    // Cumulative per-stage drop counts since the playback run started.
+    // Aggregated at the present operator, end-to-end (recorder + server + receiver).
+    IReadOnlyDictionary<FrameDropStage, long> DropTrace,
+    // Cumulative frames successfully presented to the render sink since the
+    // run started. FPS = delta-per-second; powers the diagnostics row and
+    // the optional FPS overlay.
+    long Presented)
+{
+    public static PlaybackStats Empty { get; } =
+        new(0, 0, PlaybackStreamPriority.Secondary, 0,
+            QualityReductionRequested: false, 0, 0, "",
+            EmptyDropTrace, 0);
+
+    private static readonly IReadOnlyDictionary<FrameDropStage, long> EmptyDropTrace
+        = new Dictionary<FrameDropStage, long>();
+
+    public VideoSize RenderVideoSize
+        => VideoSizeExt.FromLongSide(RenderCssLongSide, RenderDevicePixelRatio);
+}

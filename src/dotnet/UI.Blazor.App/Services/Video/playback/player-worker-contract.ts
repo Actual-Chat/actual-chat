@@ -1,5 +1,5 @@
 import type { RpcNoWait } from 'rpc';
-import type { VideoPlaybackStats } from '../frame-envelopes';
+import type { PlayerStats } from '../frame-envelopes';
 import type { LatencySample } from '../operators/latency-tap';
 import type { RenderBackendKind } from './render-backends';
 
@@ -84,7 +84,7 @@ export interface PlayerWorker {
 
     requestKeyframe(streamId?: string): Promise<void>;
 
-    getStats(): Promise<VideoPlaybackStats>;
+    getStats(streamId: string): Promise<PlayerStats>;
 
     stop(streamId?: string): Promise<void>;
 }

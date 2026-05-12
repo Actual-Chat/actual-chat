@@ -120,7 +120,6 @@ async function* decodeAsync(
                 return;
             }
             const decodedAtMs = now();
-            const decodeTimeMs = decodedAtMs - meta.submitMs;
             const stats = currentStats!;
             const envelope: DecodedFrame = {
                 frame,
@@ -132,9 +131,6 @@ async function* decodeAsync(
                 layerId: meta.layerId,
                 stats,
             };
-            stats.framesDecoded++;
-            stats.decodeTimeMsSum += decodeTimeMs;
-            stats.decodeTimeMsCount++;
             consecutiveRecoveries = 0;
             ready.push(envelope);
             if (!wakeup.isCompleted()) wakeup.resolve();
@@ -248,7 +244,6 @@ async function* decodeAsync(
                 const errSnapshot = pendingError;
                 if (errSnapshot) {
                     if (!arrived.isKeyFrame) {
-                        arrived.stats.chunksDroppedDecoderError++;
                         continue;
                     }
                     consecutiveRecoveries++;
@@ -311,7 +306,6 @@ async function* decodeAsync(
                 }
 
                 if (!configured) {
-                    arrived.stats.chunksDroppedDecoderError++;
                     continue;
                 }
 

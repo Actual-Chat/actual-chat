@@ -146,10 +146,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                                 encodedHeight: cfg.height,
                                 stats: bundle.stats,
                             };
-                            bundle.stats.chunksEncoded++;
                             bundle.stats.bytesEncoded += completed.chunk.byteLength;
-                            if (completed.chunk.type === 'key')
-                                bundle.stats.keyframesEncoded++;
                             out.push(completed);
                         }
                         forceKeyframeNext = false;

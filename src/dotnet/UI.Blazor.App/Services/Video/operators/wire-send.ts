@@ -2,10 +2,11 @@ import { from, type PipeOperator } from 'ix-ext';
 import { abortPromise } from 'promises';
 import { getLogs } from 'logging';
 import {
+    aggregateDropTrace,
     disposeEncodedBundle,
     type EncodedBundle,
     type EncodedFrame,
-    type VideoRecordingStats,
+    type RecorderStats,
 } from '../frame-envelopes';
 
 const { warnLog } = getLogs('VideoPipeline');
@@ -210,6 +211,10 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                             Promise.resolve(sender.send({ layers: wireLayers })),
                             abortRace,
                         ]);
+                        // Terminal sender stage: aggregate this bundle's drop
+                        // trail and count the bundle as shipped.
+                        aggregateDropTrace(bundle.stats, bundle.dropTrace);
+                        bundle.stats.bundlesShipped++;
                         copySenderStats(bundle.stats, sender.getStats?.());
                     } finally {
                         disposeEncodedBundle(bundle);
@@ -225,17 +230,12 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
 }
 
 function copySenderStats(
-    stats: VideoRecordingStats,
+    stats: RecorderStats,
     senderStats: StreamSenderStats | undefined,
 ): void {
     if (!senderStats)
         return;
 
-    stats.wireFramesAdded = senderStats.addedFrameCount;
-    stats.wireQueueDepth = senderStats.queueDepth;
-    stats.wireMaxQueueDepth = senderStats.maxQueueDepth;
-    stats.rpcStreamFramesSkipped = senderStats.rpcStreamSkipped;
-    stats.floodGateSkipCount = senderStats.floodGateSkipCount;
     stats.wireLastAckAgeMs = senderStats.lastAckAgeMs;
     stats.isPeerConnected = senderStats.isPeerConnected;
 }

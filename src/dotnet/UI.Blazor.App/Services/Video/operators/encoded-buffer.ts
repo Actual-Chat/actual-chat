@@ -45,10 +45,8 @@ export function pacedEncodedBuffer(opts: PacedEncodedBufferOptions): PipeOperato
                     const chunk = result.value;
                     let mustClose = true;
                     try {
-                        const status = buffer.push(chunk);
+                        buffer.push(chunk);
                         mustClose = false;
-                        if (status === 'droppedReset')
-                            chunk.stats.chunksDroppedAtBuffer++;
                     } finally {
                         if (mustClose)
                             closeEncodedChunk(chunk.chunk);

@@ -5,7 +5,7 @@
 
 import type { RpcNoWait } from 'rpc';
 import type { EncoderConfigPerLayer } from '../operators/encode';
-import type { VideoRecordingStats } from '../frame-envelopes';
+import type { RecorderStats } from '../frame-envelopes';
 import type { SharedSettingsWorker } from 'shared-settings-worker';
 
 // Must round-trip through `structuredClone` — no closures, no MediaStream refs.
@@ -44,7 +44,7 @@ export interface RecorderWorker extends SharedSettingsWorker {
 
     start(opts: RecorderWorkerOptions): Promise<void>;
     requestKeyframe(): Promise<void>;
-    getStats(): Promise<VideoRecordingStats>;
+    getStats(): Promise<RecorderStats>;
     stop(): Promise<void>;
 
     // No-op today — the new pipeline lazy-creates the peer per stream and the

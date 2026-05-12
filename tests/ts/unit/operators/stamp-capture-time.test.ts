@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import type { MonotonicClock, MonotonicTime } from 'clocks';
 import { stampCaptureTime } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/stamp-capture-time';
 import {
-    createEmptyRecordingStats,
+    createEmptyRecorderStats,
     type CapturedFrame,
-    type VideoRecordingStats,
+    type RecorderStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 
 // ---- Helpers --------------------------------------------------------------
@@ -21,7 +21,7 @@ class FakeClock {
     }
 }
 
-function envelopesFor(stats: VideoRecordingStats, count: number): CapturedFrame[] {
+function envelopesFor(stats: RecorderStats, count: number): CapturedFrame[] {
     return Array.from({ length: count }, (_, i): CapturedFrame => ({
         // An opaque object stands in for VideoFrame; the operator never reads it.
         frame: { id: i } as unknown as VideoFrame,
@@ -52,7 +52,7 @@ async function drain<T>(seg: AsyncIterable<T>): Promise<T[]> {
 
 describe('stampCaptureTime', () => {
     it('first frame: forceKeyframe=true (epoch is new vs the −1 sentinel)', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const clock = new FakeClock([{ timeMs: 100, epoch: 0 }]) as unknown as MonotonicClock;
         const op = stampCaptureTime({ clock });
         const out = await drain(op(source(envelopesFor(stats, 1))));
@@ -63,7 +63,7 @@ describe('stampCaptureTime', () => {
     });
 
     it('timeMs and index advance per item', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const clock = new FakeClock([
             { timeMs: 100, epoch: 0 },
             { timeMs: 133, epoch: 0 },
@@ -77,7 +77,7 @@ describe('stampCaptureTime', () => {
     });
 
     it('only the first frame at a stable epoch has forceKeyframe=true', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const clock = new FakeClock([
             { timeMs: 10, epoch: 0 },
             { timeMs: 20, epoch: 0 },
@@ -89,7 +89,7 @@ describe('stampCaptureTime', () => {
     });
 
     it('mid-stream epoch bump flips forceKeyframe=true exactly once', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         // Frames 0,1,2 at epoch 0; frame 3 bumps to epoch 1; frames 4,5 stay at epoch 1.
         const clock = new FakeClock([
             { timeMs: 100, epoch: 0 },
@@ -104,45 +104,8 @@ describe('stampCaptureTime', () => {
         expect(out.map(e => e.forceKeyframe)).toEqual([true, false, false, true, false, false]);
     });
 
-    it('updates stats.lastCapturedEpoch on every epoch change', async () => {
-        const stats = createEmptyRecordingStats(0);
-        const clock = new FakeClock([
-            { timeMs: 100, epoch: 0 },
-            { timeMs: 133, epoch: 0 },
-            { timeMs: 5_000, epoch: 1 },
-            { timeMs: 5_033, epoch: 1 },
-            { timeMs: 9_000, epoch: 2 },
-        ]) as unknown as MonotonicClock;
-        const op = stampCaptureTime({ clock });
-
-        const seen: number[] = [];
-        const op2 = op(source(envelopesFor(stats, 5)));
-        for await (const env of op2) {
-            seen.push(env.stats.lastCapturedEpoch);
-        }
-        // After frame 0: epoch 0; frame 2: epoch 1 ; frame 4: epoch 2.
-        expect(seen).toEqual([0, 0, 1, 1, 2]);
-        expect(stats.lastCapturedEpoch).toBe(2);
-    });
-
-    it('does not write to stats.lastCapturedEpoch when epoch is unchanged', async () => {
-        const stats = createEmptyRecordingStats(0);
-        // Pre-set a sentinel that should NOT be overwritten on stable-epoch frames.
-        stats.lastCapturedEpoch = 0;
-        const clock = new FakeClock([
-            { timeMs: 100, epoch: 0 },
-            { timeMs: 133, epoch: 0 },
-            { timeMs: 166, epoch: 0 },
-        ]) as unknown as MonotonicClock;
-        const op = stampCaptureTime({ clock });
-        await drain(op(source(envelopesFor(stats, 3))));
-        // First frame DID flip lastCapturedEpoch (epoch 0 vs sentinel −1).
-        // Subsequent frames don't touch it because epoch stays 0.
-        expect(stats.lastCapturedEpoch).toBe(0);
-    });
-
     it('preserves passthrough envelope fields (frame, sourceWidth/Height, stats ref)', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const op = stampCaptureTime({
             clock: new FakeClock([{ timeMs: 100, epoch: 0 }]) as unknown as MonotonicClock,
         });
@@ -159,7 +122,7 @@ describe('stampCaptureTime', () => {
     });
 
     it('uses a default clock when none is supplied (no throw)', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const op = stampCaptureTime();
         const out = await drain(op(source(envelopesFor(stats, 2))));
         expect(out).toHaveLength(2);
@@ -172,7 +135,7 @@ describe('stampCaptureTime', () => {
     });
 
     it('multiple consecutive epoch bumps each force a keyframe', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const clock = new FakeClock([
             { timeMs: 100, epoch: 0 },
             { timeMs: 200, epoch: 1 }, // bump

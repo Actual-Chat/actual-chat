@@ -3,8 +3,8 @@
 // Sender:   CapturedFrame → SimulcastBundle → EncodedFrame → wire DTO
 // Receiver: wire DTO → ArrivedChunk → DecodedFrame → presented
 //
-// Stats threading: sender envelopes share one VideoRecordingStats per pipe run;
-// receiver envelopes share one VideoPlaybackStats at the SESSION level (across
+// Stats threading: sender envelopes share one RecorderStats per pipe run;
+// receiver envelopes share one PlayerStats at the SESSION level (across
 // all concurrent playback pipelines). Operators mutate counters in place.
 
 import type { MonotonicTime } from 'clocks';
@@ -12,87 +12,85 @@ import type { FrameDropStage } from './frame-drop-trace';
 
 // ---- Stats ---------------------------------------------------------------
 
-export interface VideoRecordingStats {
-    framesCaptured: number;
-    // Frames that reached the encoder (survived blur, dim guard, YUV preconvert, downscale).
-    framesProcessed: number;
-    framesDroppedDimMismatch: number;
-    framesDroppedBackpressure: number;
-    framesDroppedOther: number;
-    chunksEncoded: number;
-    keyframesEncoded: number;
+// Per-recording-run, mutable counters. Operators bump in place; the
+// main-thread reporter polls once per second, diffs, and ships the
+// derived snapshot to Blazor.
+//
+// Only fields fed into the QC classifier or video diagnostics survive.
+// Cumulative per-stage drop counts live in `dropTrace`; everything else
+// that used to track individual drop sites was redundant.
+export interface RecorderStats {
+    // Cumulative bundles successfully shipped to the wire. One per source
+    // moment (NOT per per-layer chunk).
+    bundlesShipped: number;
+    // Cumulative encoded bytes summed across all layers — the real on-wire
+    // payload total. Drives the outbound bitrate display.
     bytesEncoded: number;
+    // Wall-clock encode cost — sum of every per-layer encode duration in
+    // ms and the count of bundles those samples come from. Main-thread
+    // computes encodeRatio = (sum/count) / frameDurationMs, EMA-smoothed.
     encodeTimeMsSum: number;
     encodeTimeMsCount: number;
-    lastCapturedEpoch: number;
-    startedAtMs: number;
-    wireFramesAdded: number;
-    wireQueueDepth: number;
-    wireMaxQueueDepth: number;
-    // RpcStreamSender ring compaction (canSkipTo=isKeyFrame); NOT queue overflow.
-    rpcStreamFramesSkipped: number;
-    // Flood-gate skips when push-to-pull-buffer can't keep up with the wire.
-    floodGateSkipCount: number;
+    // Wire-sender side-channels copied from the active sender's stats.
     wireLastAckAgeMs: number;
     isPeerConnected: boolean;
-    // Local self-view tap failures; sender pipeline unaffected, only preview lags.
-    previewClonesFailed: number;
+    // Cumulative per-FrameDropStage drop counts since the run started.
+    dropTrace: Map<FrameDropStage, number>;
 }
 
-// Session-level (PlaybackSession) — every concurrent playback pipeline contributes.
-export interface VideoPlaybackStats {
-    chunksArrived: number;
-    chunksDroppedAtBuffer: number;
-    chunksDroppedDecoderError: number;
-    framesDecoded: number;
-    framesPresented: number;
-    framesDroppedAtPresenter: number;
+// Per-stream, mutable. Created by Player.start; operators bump in place;
+// the latency-tap operator's main-thread callback polls and ships the
+// derived snapshot to Blazor. End-to-end: `dropTrace` is aggregated at
+// the present operator from the byte trail carried with every frame, so
+// it covers recorder + server + receiver stages.
+export interface PlayerStats {
+    // Cumulative frames successfully written to the present sink.
+    presented: number;
+    // Cumulative bytes received on the wire for this stream.
     bytesReceived: number;
-    decodeTimeMsSum: number;
-    decodeTimeMsCount: number;
-    activeStreams: number;
-    sessionStartedAtMs: number;
+    // Cumulative per-FrameDropStage drop counts since the stream started.
+    dropTrace: Map<FrameDropStage, number>;
+    // Present-stage carry-forward — drops accumulated since the last
+    // successful present, attributed to ReceiverPresent on the next
+    // success. Internal to the present operator; surfaced only via
+    // dropTrace.
+    pendingPresenterDrops: number;
 }
 
-export function createEmptyRecordingStats(startedAtMs: number): VideoRecordingStats {
+export function createEmptyRecorderStats(): RecorderStats {
     return {
-        framesCaptured: 0,
-        framesProcessed: 0,
-        framesDroppedDimMismatch: 0,
-        framesDroppedBackpressure: 0,
-        framesDroppedOther: 0,
-        chunksEncoded: 0,
-        keyframesEncoded: 0,
+        bundlesShipped: 0,
         bytesEncoded: 0,
         encodeTimeMsSum: 0,
         encodeTimeMsCount: 0,
-        lastCapturedEpoch: 0,
-        startedAtMs,
-        wireFramesAdded: 0,
-        wireQueueDepth: 0,
-        wireMaxQueueDepth: 0,
-        rpcStreamFramesSkipped: 0,
-        floodGateSkipCount: 0,
         wireLastAckAgeMs: -1,
         isPeerConnected: false,
-        previewClonesFailed: 0,
+        dropTrace: new Map(),
     };
 }
 
-export function createEmptyPlaybackStats(sessionStartedAtMs: number): VideoPlaybackStats {
+export function createEmptyPlayerStats(): PlayerStats {
     return {
-        chunksArrived: 0,
-        chunksDroppedAtBuffer: 0,
-        chunksDroppedDecoderError: 0,
-        framesDecoded: 0,
-        framesPresented: 0,
-        framesDroppedAtPresenter: 0,
+        presented: 0,
         bytesReceived: 0,
-        decodeTimeMsSum: 0,
-        decodeTimeMsCount: 0,
-        activeStreams: 0,
-        sessionStartedAtMs,
+        dropTrace: new Map(),
+        pendingPresenterDrops: 0,
     };
+}
+
+// Walk `frame.dropTrace` (the byte array on every envelope) into the
+// per-stream cumulative histogram. Called by the terminal stage on every
+// frame it observes (present operator on receiver, wireSend on sender).
+export function aggregateDropTrace(
+    stats: { dropTrace: Map<FrameDropStage, number> },
+    frameDropTrace: readonly FrameDropStage[],
+): void {
+    if (frameDropTrace.length === 0)
+        return;
+    const histogram = stats.dropTrace;
+    for (const stage of frameDropTrace) {
+        histogram.set(stage, (histogram.get(stage) ?? 0) + 1);
+    }
 }
 
 // ---- Sender ---------------------------------------------------------------
@@ -121,7 +119,7 @@ export interface CapturedFrame {
     // applyKeyframePolicy, and recorder.requestKeyframe (PLI).
     forceKeyframe: boolean;
 
-    stats: VideoRecordingStats;
+    stats: RecorderStats;
 }
 
 // Downscaler output. `layers` is bottom-first (length 1..3). All entries share
@@ -132,7 +130,7 @@ export interface CapturedBundle {
     // Bundle-level index (== layers[*].index) for drop-trace gap detection.
     index: number;
     dropTrace: FrameDropStage[];
-    stats: VideoRecordingStats;
+    stats: RecorderStats;
 }
 
 export function disposeCapturedBundle(bundle: CapturedBundle): void {
@@ -160,7 +158,7 @@ export interface EncodedFrame {
     encodedWidth: number;
     encodedHeight: number;
 
-    stats: VideoRecordingStats;
+    stats: RecorderStats;
 }
 
 // Encode operator output. Bottom-first (length 1..3); all frames share
@@ -169,7 +167,7 @@ export interface EncodedBundle {
     layers: EncodedFrame[];
     index: number;
     dropTrace: FrameDropStage[];
-    stats: VideoRecordingStats;
+    stats: RecorderStats;
 }
 
 export function disposeEncodedBundle(bundle: EncodedBundle): void {
@@ -207,7 +205,7 @@ export interface ArrivedChunk {
 
     rawByteLength: number;
 
-    stats: VideoPlaybackStats;
+    stats: PlayerStats;
 }
 
 export interface DecodedFrame {
@@ -224,7 +222,7 @@ export interface DecodedFrame {
 
     layerId: number;
 
-    stats: VideoPlaybackStats;
+    stats: PlayerStats;
 }
 
 // ---- Helpers -----------------------------------------------------------
