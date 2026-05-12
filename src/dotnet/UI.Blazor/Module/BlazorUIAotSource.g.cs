@@ -239,6 +239,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.EditPlaceMemberModel, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.EmptyChatContent+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.EmptySearchChatContent+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
+        CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.FoundChatList+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.FoundGroupListItem+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.FoundMessageListItem+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.FoundPlaceListItem+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
@@ -338,7 +339,6 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[System.Boolean, System.Private.CoreLib]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[System.Collections.Generic.IReadOnlyList`1[[ActualChat.Chat.Chat, ActualChat.Api]], System.Private.CoreLib]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[System.Collections.Generic.IReadOnlyList`1[[ActualChat.UI.Blazor.App.Services.ChatInfo, ActualChat.UI.Blazor.App]], System.Private.CoreLib]], ActualLab.Fusion.Blazor");
-        CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[System.Collections.Generic.IReadOnlyList`1[[ActualChat.UI.Blazor.App.Services.FoundItem, ActualChat.UI.Blazor.App]], System.Private.CoreLib]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[System.Collections.Generic.List`1[[ActualChat.Chat.Chat, ActualChat.Api]], System.Private.CoreLib]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[System.Collections.Generic.List`1[[ActualChat.Chat.Place, ActualChat.Api]], System.Private.CoreLib]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[System.Collections.Generic.List`1[[ActualChat.Contacts.Contact, ActualChat.Api]], System.Private.CoreLib]], ActualLab.Fusion.Blazor");
@@ -365,8 +365,6 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.DictionaryOfTKeyTValueConverter`3[[System.Collections.Generic.Dictionary`2[[ActualChat.UI.Blazor.Services.Tune, ActualChat.UI.Blazor],[ActualChat.UI.Blazor.Services.TuneInfo, ActualChat.UI.Blazor]], System.Private.CoreLib],[ActualChat.UI.Blazor.Services.Tune, ActualChat.UI.Blazor],[ActualChat.UI.Blazor.Services.TuneInfo, ActualChat.UI.Blazor]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.DictionaryOfTKeyTValueConverter`3[[System.Collections.Generic.Dictionary`2[[System.String, System.Private.CoreLib],[System.Boolean, System.Private.CoreLib]], System.Private.CoreLib],[System.String, System.Private.CoreLib],[System.Boolean, System.Private.CoreLib]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.DoubleConverter, System.Text.Json");
-        CodeKeeper.Keep("System.Text.Json.Serialization.Converters.EnumConverter`1[[ActualChat.Media.VideoSize, ActualChat.Core]], System.Text.Json");
-        CodeKeeper.Keep("System.Text.Json.Serialization.Converters.EnumConverter`1[[ActualChat.Streaming.PlaybackStreamPriority, ActualChat.Api.Contracts]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.EnumConverter`1[[ActualChat.UI.Blazor.App.Components.MarkupEditorListCommandKind, ActualChat.UI.Blazor.App]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.EnumConverter`1[[ActualChat.UI.Blazor.Components.SideNav.SideNavSide, ActualChat.UI.Blazor]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.EnumConverter`1[[ActualChat.UI.Blazor.Components.VirtualListEdge, ActualChat.UI.Blazor]], System.Text.Json");
@@ -415,7 +413,6 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.Int32Converter, System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.Int64Converter, System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.JsonElementConverter, System.Text.Json");
-        // Removed: PlaybackHealthSnapshot moved to Api.Contracts as PlaybackStats and is no longer a JSInvokable parameter type.
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.LargeObjectWithParameterizedConstructorConverterWithReflection`1[[ActualChat.UI.Blazor.Services.IBrowserInfoBackend+InitResult, ActualChat.UI.Blazor]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.ListOfTConverter`2[[System.Collections.Generic.List`1[[ActualChat.Chat.PlayableTextMarkup+Word, ActualChat.Api]], System.Private.CoreLib],[ActualChat.Chat.PlayableTextMarkup+Word, ActualChat.Api]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Converters.ListOfTConverter`2[[System.Collections.Generic.List`1[[ActualChat.UI.Blazor.App.Components.WebFileInfo, ActualChat.UI.Blazor.App]], System.Private.CoreLib],[ActualChat.UI.Blazor.App.Components.WebFileInfo, ActualChat.UI.Blazor.App]], System.Text.Json");
@@ -458,8 +455,6 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep("System.Text.Json.Serialization.Metadata.JsonPropertyInfo`1[[ActualChat.Mathematics.Range`1[[System.Int32, System.Private.CoreLib]], ActualChat.Core]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Metadata.JsonPropertyInfo`1[[ActualChat.Mathematics.Range`1[[System.Single, System.Private.CoreLib]], ActualChat.Core]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Metadata.JsonPropertyInfo`1[[ActualChat.Mathematics.Range`1[[System.String, System.Private.CoreLib]], ActualChat.Core]], System.Text.Json");
-        CodeKeeper.Keep("System.Text.Json.Serialization.Metadata.JsonPropertyInfo`1[[ActualChat.Media.VideoSize, ActualChat.Core]], System.Text.Json");
-        CodeKeeper.Keep("System.Text.Json.Serialization.Metadata.JsonPropertyInfo`1[[ActualChat.Streaming.PlaybackStreamPriority, ActualChat.Api.Contracts]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Metadata.JsonPropertyInfo`1[[ActualChat.UI.Blazor.App.Components.AudioRecorder+VadEvent, ActualChat.UI.Blazor.App]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Metadata.JsonPropertyInfo`1[[ActualChat.UI.Blazor.App.Components.MarkupEditorListCommandKind, ActualChat.UI.Blazor.App]], System.Text.Json");
         CodeKeeper.Keep("System.Text.Json.Serialization.Metadata.JsonPropertyInfo`1[[ActualChat.UI.Blazor.Services.IBrowserInfoBackend+ThemeInfo, ActualChat.UI.Blazor]], System.Text.Json");

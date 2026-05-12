@@ -116,7 +116,6 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Streaming.PlaybackQualityInfo>();
         CodeKeeper.KeepSerializable<global::ActualChat.Streaming.PlaybackStreamInfo>();
         CodeKeeper.KeepSerializable<global::ActualChat.Streaming.ReceiveQuality>();
-        CodeKeeper.KeepSerializable<global::ActualChat.Streaming.RecorderStats>();
         CodeKeeper.KeepSerializable<global::ActualChat.Streaming.RecordingQualityInfo>();
         CodeKeeper.KeepSerializable<global::ActualChat.Streaming.RecordingQualityState>();
         CodeKeeper.KeepSerializable<global::ActualChat.Users.Accounts_CancelRegister>();
@@ -839,9 +838,6 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.ReceiveQuality>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.ReceiveQuality>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.ReceiveQuality>>>>();
-        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.RecorderStats>>();
-        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.RecorderStats>>>();
-        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.RecorderStats>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.RecordingQualityInfo>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.RecordingQualityInfo>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Streaming.RecordingQualityInfo>>>>();
@@ -1725,7 +1721,6 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Streaming+PlaybackStreamInfoFormatter, ActualChat.Api.Contracts");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Streaming+PlaybackStreamPriorityFormatter, ActualChat.Api.Contracts");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Streaming+ReceiveQualityFormatter, ActualChat.Api.Contracts");
-        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Streaming+RecorderStatsFormatter, ActualChat.Api.Contracts");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Streaming+RecordingQualityInfoFormatter, ActualChat.Api.Contracts");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Streaming+RecordingQualityReasonFormatter, ActualChat.Api.Contracts");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Streaming+RecordingQualityStateFormatter, ActualChat.Api.Contracts");
@@ -1893,7 +1888,6 @@ internal partial class ApiContractsAotSource : IAotSource
             (typeof(global::ActualChat.Streaming.PlaybackQualityInfo), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Streaming.PlaybackStreamInfo), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Streaming.ReceiveQuality), AotTypeKind.Serializable),
-            (typeof(global::ActualChat.Streaming.RecorderStats), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Streaming.RecordingQualityInfo), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Streaming.RecordingQualityState), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Users.Accounts_CancelRegister), AotTypeKind.Serializable),

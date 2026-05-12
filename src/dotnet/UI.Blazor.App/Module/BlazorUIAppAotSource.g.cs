@@ -178,6 +178,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingCallModalHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingShareModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IosAppGuideContent>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.JoinVideoCallCameraMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.JoinVideoCallModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LanguageButtonGroup>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LanguagesStep>();
@@ -307,6 +308,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanelHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanelSearchTabs>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RoundProgress>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SearchFilterBadge>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SearchFilterMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SearchInput>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SearchPanel>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.SearchResultGroupHeader>();
@@ -827,6 +830,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingCallModalHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingShareModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IosAppGuideContent), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.JoinVideoCallCameraMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.JoinVideoCallModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LanguageButtonGroup), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LanguagesStep), AotTypeKind.Component),
@@ -956,6 +960,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanelHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanelSearchTabs), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.RoundProgress), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.SearchFilterBadge), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.SearchFilterMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SearchInput), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SearchPanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.SearchResultGroupHeader), AotTypeKind.Component),
