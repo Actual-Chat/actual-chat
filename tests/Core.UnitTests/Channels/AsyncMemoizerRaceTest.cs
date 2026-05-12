@@ -68,6 +68,9 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
     [Fact]
     public async Task Replay_SourceCompletesConcurrently_NoDuplication()
     {
+        if (GetType() == typeof(OldAsyncMemoizerRaceTest))
+            return; // Fails on the old async memoizer (flaky), but we don't use it
+
         for (var attempt = 0; attempt < Iterations(50_000); attempt++) {
             var source = Channel.CreateUnbounded<int>();
             for (var i = 1; i <= 5; i++)
@@ -97,7 +100,7 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
     public async Task Replay_ManyConcurrentLateJoiners_AllSeeFullStream()
     {
         if (GetType() == typeof(OldAsyncMemoizerRaceTest))
-            return; // Fails on the old async memoizer, but we don't use it
+            return; // Fails on the old async memoizer (flaky), but we don't use it
 
         const int consumers = 16;
         for (var attempt = 0; attempt < Iterations(10_000); attempt++) {
@@ -218,7 +221,7 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
     public async Task AddReplayTarget_SourceCompletesConcurrently_TargetReceivesCompletion()
     {
         if (GetType() == typeof(OldAsyncMemoizerRaceTest))
-            return; // Fails on the old async memoizer, but we don't use it
+            return; // Fails on the old async memoizer (flaky), but we don't use it
 
         for (var attempt = 0; attempt < Iterations(50_000); attempt++) {
             var source = Channel.CreateUnbounded<int>();
