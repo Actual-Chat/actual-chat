@@ -47,9 +47,9 @@ import {
     type EncodedFrame,
     type ArrivedChunk,
     type DecodedFrame,
-    type VideoRecordingStats,
-    createEmptyRecordingStats,
-    createEmptyPlaybackStats,
+    type RecorderStats,
+    createEmptyRecorderStats,
+    createEmptyPlayerStats,
 } from '../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 
 import { EncodedFrameBuffer } from '../../../src/dotnet/UI.Blazor.App/Services/Video/playback/encoded-frame-buffer';
@@ -193,7 +193,7 @@ function mkFrame(id: number, w: number, h: number): VideoFrame {
 
 function makeCaptured(
     index: number,
-    stats: VideoRecordingStats,
+    stats: RecorderStats,
     width: number,
     height: number,
 ): CapturedFrame {
@@ -239,7 +239,7 @@ function makeEncoderFactory() {
                 sourceHeight: 0,
                 encodedWidth: config.width,
                 encodedHeight: config.height,
-                stats: undefined as unknown as VideoRecordingStats,
+                stats: undefined as unknown as RecorderStats,
             }),
             () => { /* swallow */ },
             { timeoutMs: 5_000 },
@@ -306,7 +306,7 @@ describe('video pipeline integration', () => {
         vi.spyOn(Date, 'now').mockImplementation(() => mockWallMs);
         vi.spyOn(performance, 'now').mockImplementation(() => mockPerfMs);
 
-        const stats = createEmptyRecordingStats(mockWallMs);
+        const stats = createEmptyRecorderStats();
         const clock = new MonotonicClock();
         const sender = new FakeSender();
         const encDims = { width: 1280, height: 720 };
@@ -356,7 +356,7 @@ describe('video pipeline integration', () => {
         vi.spyOn(Date, 'now').mockImplementation(() => mockWallMs);
         vi.spyOn(performance, 'now').mockImplementation(() => mockPerfMs);
 
-        const stats = createEmptyRecordingStats(mockWallMs);
+        const stats = createEmptyRecorderStats();
         const clock = new MonotonicClock();
         const sender = new FakeSender();
         const ladder: LayerSpec[] = [
@@ -418,7 +418,7 @@ describe('video pipeline integration', () => {
         // Wallclock controlled via a mock — drives buffer pacing.
         let nowMs = 10_000;
         const targetSpanMs = 100;
-        const stats = createEmptyPlaybackStats(nowMs);
+        const stats = createEmptyPlayerStats();
 
         // Synthetic DTOs spaced 33ms apart in capture time. Arrival time
         // tracks `nowMs` at the moment pullSource yields each one (we
@@ -540,7 +540,7 @@ describe('video pipeline integration', () => {
         vi.spyOn(Date, 'now').mockImplementation(() => mockWallMs);
         vi.spyOn(performance, 'now').mockImplementation(() => mockPerfMs);
 
-        const recStats = createEmptyRecordingStats(mockWallMs);
+        const recStats = createEmptyRecorderStats();
         const clock = new MonotonicClock();
         const fakeSender = new FakeSender();
         const encDims = { width: 1280, height: 720 };
@@ -591,7 +591,7 @@ describe('video pipeline integration', () => {
         // Run the receiver side just up to pullSource → ArrivedChunk so we
         // can inspect what came through. We don't need decode + buffer for
         // this test; the round-trip claim is about pull's capturedAt.
-        const playbackStats = createEmptyPlaybackStats(0);
+        const playbackStats = createEmptyPlayerStats();
         const arrivedChunks: ArrivedChunk[] = [];
         const receiverPipe = pipe(
             pullSource({
@@ -636,7 +636,7 @@ describe('video pipeline integration', () => {
             vi.spyOn(Date, 'now').mockImplementation(() => mockWallMs);
             vi.spyOn(performance, 'now').mockImplementation(() => mockPerfMs);
 
-            const stats = createEmptyRecordingStats(mockWallMs);
+            const stats = createEmptyRecorderStats();
             const clock = new MonotonicClock();
             const sender = new FakeSender();
             const encDims = { width: 1280, height: 720 };

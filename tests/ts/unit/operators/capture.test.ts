@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mstpSource } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/capture';
 import {
-    createEmptyRecordingStats,
+    createEmptyRecorderStats,
     type CapturedFrame,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 
@@ -111,7 +111,7 @@ describe('mstpSource', () => {
     it('yields one envelope per source frame (5 in → 5 out)', async () => {
         const frames = Array.from({ length: 5 }, (_, i) => new MockVideoFrame(i));
         const { factory } = probedFiniteProcessor(frames);
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const seg = mstpSource({ track: dummyTrack, stats, createProcessor: factory });
         const out = await drain(seg);
         expect(out).toHaveLength(5);
@@ -119,7 +119,7 @@ describe('mstpSource', () => {
     });
 
     it('seeds placeholder envelope fields for downstream operators', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const { factory } = probedFiniteProcessor([new MockVideoFrame(0)]);
         const seg = mstpSource({ track: dummyTrack, stats, createProcessor: factory });
         const out = await drain(seg);
@@ -133,19 +133,8 @@ describe('mstpSource', () => {
         expect(env.stats).toBe(stats);
     });
 
-    it('increments stats.framesCaptured by exactly 1 per yielded envelope', async () => {
-        const stats = createEmptyRecordingStats(0);
-        const frames = Array.from({ length: 4 }, (_, i) => new MockVideoFrame(i));
-        const { factory } = probedFiniteProcessor(frames);
-        const seg = mstpSource({ track: dummyTrack, stats, createProcessor: factory });
-        const seen: number[] = [];
-        for await (const _ of seg) seen.push(stats.framesCaptured);
-        expect(seen).toEqual([1, 2, 3, 4]);
-        expect(stats.framesCaptured).toBe(4);
-    });
-
     it('exclusive: a second concurrent iteration throws', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const { factory } = probedInfiniteProcessor();
         const seg = mstpSource({ track: dummyTrack, stats, createProcessor: factory });
         const iter1 = seg[Symbol.asyncIterator]();
@@ -159,7 +148,7 @@ describe('mstpSource', () => {
         // Natural end (`controller.close()`) doesn't trip the cancel callback —
         // the stream is already in the "closed" state when our finalize calls
         // cancel(), so it's a no-op. The reader IS released though.
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const { factory, probe } = probedFiniteProcessor([new MockVideoFrame(0), new MockVideoFrame(1)]);
         const seg = mstpSource({ track: dummyTrack, stats, createProcessor: factory });
         await drain(seg);
@@ -167,7 +156,7 @@ describe('mstpSource', () => {
     });
 
     it('finalize: reader is released when abort() fires', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const { factory, probe } = probedInfiniteProcessor();
         const ac = new AbortController();
         const seg = mstpSource({ track: dummyTrack, stats, abortSignal: ac.signal, createProcessor: factory });
@@ -180,7 +169,7 @@ describe('mstpSource', () => {
     });
 
     it('finalize: abort() cancels an idle pending read', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const { factory, probe, cancelSpy } = probedIdleProcessor();
         const ac = new AbortController();
         const seg = mstpSource({ track: dummyTrack, stats, abortSignal: ac.signal, createProcessor: factory });
@@ -191,11 +180,10 @@ describe('mstpSource', () => {
         expect(cancelSpy).toHaveBeenCalledTimes(1);
         expect(probe.cancelled).toBe(true);
         expect(probe.released).toBe(true);
-        expect(stats.framesCaptured).toBe(0);
     });
 
     it('finalize: reader is released when an error propagates downstream', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const { factory, probe } = probedInfiniteProcessor();
         const seg = mstpSource({ track: dummyTrack, stats, createProcessor: factory });
         const errorPromise = (async (): Promise<void> => {
@@ -209,7 +197,7 @@ describe('mstpSource', () => {
     });
 
     it('finalize: cancel spy is called after consumer break via iter.return()', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const { factory, probe, cancelSpy } = probedInfiniteProcessor();
         const seg = mstpSource({ track: dummyTrack, stats, createProcessor: factory });
         const iter = seg[Symbol.asyncIterator]();
@@ -221,7 +209,7 @@ describe('mstpSource', () => {
     });
 
     it('uses default MediaStreamTrackProcessor when createProcessor is omitted', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const g = globalThis as unknown as { MediaStreamTrackProcessor?: unknown };
         const constructed: { track: MediaStreamTrack }[] = [];
         const original = g.MediaStreamTrackProcessor;
@@ -247,7 +235,7 @@ describe('mstpSource', () => {
     });
 
     it('does not yield when signal is already aborted before any frame is read', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const { factory } = probedFiniteProcessor([new MockVideoFrame(0), new MockVideoFrame(1)]);
         const ac = new AbortController();
         ac.abort();
@@ -255,6 +243,5 @@ describe('mstpSource', () => {
         const out: CapturedFrame[] = [];
         for await (const env of seg) out.push(env);
         expect(out).toEqual([]);
-        expect(stats.framesCaptured).toBe(0);
     });
 });

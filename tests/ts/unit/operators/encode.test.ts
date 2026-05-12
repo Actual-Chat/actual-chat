@@ -10,8 +10,8 @@ import {
     type CapturedFrame,
     type EncodedBundle,
     type EncodedFrame,
-    type VideoRecordingStats,
-    createEmptyRecordingStats,
+    type RecorderStats,
+    createEmptyRecorderStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 import { AsyncVideoEncoder, AsyncVideoEncoderResetError } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/adapters';
 
@@ -105,8 +105,8 @@ afterEach(() => {
 
 // ---- Helpers --------------------------------------------------------------
 
-function makeStats(): VideoRecordingStats {
-    return createEmptyRecordingStats(1_700_000_000_000);
+function makeStats(): RecorderStats {
+    return createEmptyRecorderStats();
 }
 
 function mkFrame(id: number, w: number, h: number): VideoFrame {
@@ -115,7 +115,7 @@ function mkFrame(id: number, w: number, h: number): VideoFrame {
 
 function makeCaptured(
     index: number,
-    stats: VideoRecordingStats,
+    stats: RecorderStats,
     width: number,
     height: number,
     forceKeyframe = false,
@@ -134,7 +134,7 @@ function makeCaptured(
 
 function makeBundle(
     index: number,
-    stats: VideoRecordingStats,
+    stats: RecorderStats,
     layers: { width: number; height: number }[],
     forceKeyframe = false,
 ): CapturedBundle {
@@ -177,7 +177,7 @@ function makeFactory(opts: { onResetRequested?: (reason: string) => void; timeou
                 sourceHeight: 0,
                 encodedWidth: config.width,
                 encodedHeight: config.height,
-                stats: undefined as unknown as VideoRecordingStats,
+                stats: undefined as unknown as RecorderStats,
             }),
             () => { /* swallow encoder error */ },
             {
@@ -400,8 +400,6 @@ describe('encode operator', () => {
         }
         await iter.next();
 
-        expect(stats.chunksEncoded).toBe(6);          // 3 bundles × 2 layers
-        expect(stats.keyframesEncoded).toBe(2);       // both layers of bundle 1
         expect(stats.bytesEncoded).toBe(totalBytes);
     });
 
@@ -435,7 +433,7 @@ describe('encode operator', () => {
                     sourceHeight: 0,
                     encodedWidth: 640,
                     encodedHeight: 360,
-                    stats: undefined as unknown as VideoRecordingStats,
+                    stats: undefined as unknown as RecorderStats,
                 });
             },
             dispose(): void { /* ignore */ },

@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { FloodGate, floodGate } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/flood-gate';
 import {
-    createEmptyRecordingStats,
+    createEmptyRecorderStats,
     type CapturedFrame,
-    type VideoRecordingStats,
+    type RecorderStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 
 class MockVideoFrame {
@@ -12,7 +12,7 @@ class MockVideoFrame {
     close(): void { this.closed = true; }
 }
 
-function envelope(stats: VideoRecordingStats, frame: MockVideoFrame, index: number): CapturedFrame {
+function envelope(stats: RecorderStats, frame: MockVideoFrame, index: number): CapturedFrame {
     return {
         frame: frame as unknown as VideoFrame,
         capturedAt: { timeMs: 100 + index, epoch: 0 },
@@ -56,7 +56,7 @@ describe('FloodGate', () => {
 
 describe('floodGate operator', () => {
     it('passes frames through while gate is open', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const gate = new FloodGate();
         const frames = [new MockVideoFrame(1), new MockVideoFrame(2), new MockVideoFrame(3)];
         const envelopes = frames.map((f, i) => envelope(stats, f, i));
@@ -70,7 +70,7 @@ describe('floodGate operator', () => {
     });
 
     it('closes-and-skips frames while gate is closed; increments skipCount', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const gate = new FloodGate();
         gate.close();
         const frames = [new MockVideoFrame(1), new MockVideoFrame(2)];
@@ -84,7 +84,7 @@ describe('floodGate operator', () => {
     });
 
     it('reflects mid-stream gate transitions', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const gate = new FloodGate();
         const frames = [
             new MockVideoFrame(1), new MockVideoFrame(2), new MockVideoFrame(3),
@@ -117,7 +117,7 @@ describe('floodGate operator', () => {
     });
 
     it('tolerates VideoFrame.close() throwing', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const gate = new FloodGate();
         gate.close();
         const frame = {

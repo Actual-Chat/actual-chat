@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { resetOnEpochChange } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/epoch-reset';
 import { EncodedFrameBuffer } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/playback/encoded-frame-buffer';
 import {
-    createEmptyPlaybackStats,
+    createEmptyPlayerStats,
     type ArrivedChunk,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 // ---- Helpers --------------------------------------------------------------
@@ -19,7 +19,7 @@ function mkChunk(timeMs: number, epoch: number, isKeyFrame = false): ArrivedChun
         width: 640,
         height: 480,
         rawByteLength: 1024,
-        stats: createEmptyPlaybackStats(0),
+        stats: createEmptyPlayerStats(),
     };
 }
 

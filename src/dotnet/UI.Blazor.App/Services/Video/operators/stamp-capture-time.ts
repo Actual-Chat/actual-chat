@@ -22,7 +22,6 @@ export function stampCaptureTime(opts: StampCaptureTimeOptions = {}): PipeOperat
                     const capturedAt = clock.now();
                     const epochChanged = capturedAt.epoch !== lastEpoch;
                     if (epochChanged) {
-                        envelope.stats.lastCapturedEpoch = capturedAt.epoch;
                         lastEpoch = capturedAt.epoch;
                     }
                     // Index is assigned at the source (mstpSource); preserve it

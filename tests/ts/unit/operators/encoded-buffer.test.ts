@@ -3,9 +3,9 @@ import { count } from 'ix-ext';
 import { pacedEncodedBuffer } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/encoded-buffer';
 import { EncodedFrameBuffer } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/playback/encoded-frame-buffer';
 import {
-    createEmptyPlaybackStats,
+    createEmptyPlayerStats,
     type ArrivedChunk,
-    type VideoPlaybackStats,
+    type PlayerStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 // ---- Helpers --------------------------------------------------------------
 
@@ -18,7 +18,7 @@ function mkChunk(opts: {
     timeMs: number;
     isKeyFrame: boolean;
     epoch?: number;
-    stats: VideoPlaybackStats;
+    stats: PlayerStats;
 }): ArrivedChunk {
     return {
         chunk: new MockEncodedVideoChunk() as unknown as EncodedVideoChunk,
@@ -88,37 +88,9 @@ async function tick(times = 50): Promise<void> {
 // ---- Tests ----------------------------------------------------------------
 
 describe('pacedEncodedBuffer', () => {
-    it('drops deltas while in reset state and increments stats.chunksDroppedAtBuffer', async () => {
-        const ac = new AbortController();
-        const stats = createEmptyPlaybackStats(0);
-        const buffer = new EncodedFrameBuffer({ targetSpanMs: 100, frameDurationMs: 33.333 });
-        const op = pacedEncodedBuffer({ buffer, abortSignal: ac.signal });
-
-        const src = manualSource();
-        const collected: ArrivedChunk[] = [];
-        const driverSeg: AsyncIterable<ArrivedChunk> = (async function* () {
-            for await (const item of op(src.seg)) {
-                collected.push(item);
-                yield item;
-            }
-        })();
-        const runPromise = count(driverSeg);
-
-        // Push a delta while reset → drop, no yield.
-        src.push(mkChunk({ timeMs: 100, isKeyFrame: false, stats }));
-        await tick();
-        expect(stats.chunksDroppedAtBuffer).toBe(1);
-        expect(collected).toHaveLength(0);
-        expect(buffer.isReset()).toBe(true);
-
-        src.end();
-        ac.abort();
-        await runPromise;
-    });
-
     it('yields chunks once the buffer reaches target span', async () => {
         const ac = new AbortController();
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const buffer = new EncodedFrameBuffer({ targetSpanMs: 100, frameDurationMs: 33.333 });
         const op = pacedEncodedBuffer({ buffer, abortSignal: ac.signal });
 
@@ -155,7 +127,7 @@ describe('pacedEncodedBuffer', () => {
 
     it('honors reset state: deltas drop, then a fresh keyframe re-arms', async () => {
         const ac = new AbortController();
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const buffer = new EncodedFrameBuffer({ targetSpanMs: 50, frameDurationMs: 33.333 });
         const op = pacedEncodedBuffer({ buffer, abortSignal: ac.signal });
 
@@ -174,7 +146,6 @@ describe('pacedEncodedBuffer', () => {
             src.push(mkChunk({ timeMs: 33 * i, isKeyFrame: false, stats }));
         }
         await tick();
-        expect(stats.chunksDroppedAtBuffer).toBe(3);
         expect(buffer.isReset()).toBe(true);
 
         // Keyframe arms the buffer (single chunk → span 0 < target so no yield).
@@ -190,7 +161,7 @@ describe('pacedEncodedBuffer', () => {
 
     it('stop() unwinds the operator promptly even with chunks pending', async () => {
         const ac = new AbortController();
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const buffer = new EncodedFrameBuffer({ targetSpanMs: 1_000_000, frameDurationMs: 33.333 }); // unreachable
         const op = pacedEncodedBuffer({ buffer, abortSignal: ac.signal });
 
@@ -222,7 +193,7 @@ describe('pacedEncodedBuffer', () => {
 
     it('closes a chunk that arrives via in-flight next() after abort', async () => {
         const ac = new AbortController();
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const buffer = new EncodedFrameBuffer({ targetSpanMs: 1_000, frameDurationMs: 33.333 });
         const op = pacedEncodedBuffer({ buffer, abortSignal: ac.signal });
 
@@ -279,7 +250,7 @@ describe('pacedEncodedBuffer', () => {
 
     it('drains as many chunks as the cushion permits in one batch', async () => {
         const ac = new AbortController();
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         // Target 50 ms cushion. 5 chunks @ 33 ms cadence: spanMs = 132+33.333 = 165.333.
         // After draining chunk 0: residual = 99+33.333 = 132.333 (≥ 50) → pull.
         // After draining chunk 1: residual = 66+33.333 = 99.333  (≥ 50) → pull.

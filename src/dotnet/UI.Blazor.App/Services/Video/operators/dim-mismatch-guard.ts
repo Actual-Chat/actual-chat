@@ -26,7 +26,6 @@ export function dropDimMismatch(opts: DimMismatchGuardOptions): PipeOperator<Cap
                 try {
                     const { width, height } = getExpectedDims();
                     if (frame.codedWidth !== width || frame.codedHeight !== height) {
-                        envelope.stats.framesDroppedDimMismatch++;
                         if (!inMismatchBurst) {
                             inMismatchBurst = true;
                             warnLog?.log(

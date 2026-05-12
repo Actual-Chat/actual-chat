@@ -6,9 +6,9 @@ import {
     type CanvasPresentOptions,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/present-canvas';
 import {
-    createEmptyPlaybackStats,
+    createEmptyPlayerStats,
     type DecodedFrame,
-    type VideoPlaybackStats,
+    type PlayerStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 // ---- Mocks ----------------------------------------------------------------
 
@@ -39,7 +39,7 @@ class FakeCtx implements CanvasImageInterface {
 // ---- Helpers --------------------------------------------------------------
 
 function makeEnvelope(
-    stats: VideoPlaybackStats,
+    stats: PlayerStats,
     id: number,
     capturedAtMs: number,
     frame?: MockVideoFrame,
@@ -81,7 +81,7 @@ function defaults(extra: { getBufferSpanMs?: () => number; targetSpanMs?: number
 
 describe('canvasPresent', () => {
     it('drawImage is called once per frame at (0, 0); frames are closed; framesPresented increments', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const ctx = new FakeCtx();
         const sink = canvasPresent({ getCanvasCtx: () => ctx, ...defaults() });
         const frames = Array.from({ length: 5 }, (_, i) => new MockVideoFrame(i));
@@ -99,11 +99,11 @@ describe('canvasPresent', () => {
             expect(frames[i].closed).toBe(true);
         }
         expect(ctx.canvas).toEqual({ width: 320, height: 180 });
-        expect(stats.framesPresented).toBe(5);
+        expect(stats.presented).toBe(5);
     });
 
     it('getCanvasCtx is called exactly once across the run (not per frame)', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const ctx = new FakeCtx();
         let calls = 0;
         const sink = canvasPresent({
@@ -119,7 +119,7 @@ describe('canvasPresent', () => {
     });
 
     it('Safari path: convertToBitmap is called per frame; bitmap is drawn and closed; frame is closed', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const ctx = new FakeCtx();
         const bitmaps: MockImageBitmap[] = [];
         const convertToBitmap = async (frame: VideoFrame): Promise<ImageBitmap> => {
@@ -141,11 +141,11 @@ describe('canvasPresent', () => {
             expect(bitmaps[i].closed).toBe(true);
             expect(frames[i].closed).toBe(true);
         }
-        expect(stats.framesPresented).toBe(3);
+        expect(stats.presented).toBe(3);
     });
 
     it('resizes backing canvas to display dimensions before drawing', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const ctx = new FakeCtx();
         const frame = new MockVideoFrame(1);
         frame.codedWidth = 320;
@@ -161,7 +161,7 @@ describe('canvasPresent', () => {
     });
 
     it('catch-up overflow (extra > CATCHUP_BUDGET_MS) AND frozen clock → frame closed without draw', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const ctx = new FakeCtx();
         // extra = 5000 - 333 = 4667 > CATCHUP_BUDGET_MS (4000); frozen clock keeps
         // every non-first frame within MIN_DURATION_MS → skip-after-decode path.
@@ -178,13 +178,12 @@ describe('canvasPresent', () => {
         await count(pipe(source(items), sink));
 
         expect(ctx.calls).toHaveLength(1);
-        expect(stats.framesPresented).toBe(1);
-        expect(stats.framesDroppedAtPresenter).toBe(2);
+        expect(stats.presented).toBe(1);
         for (const f of frames) expect(f.closed).toBe(true);
     });
 
     it('catch-up below budget never skips even when frames land within MIN_DURATION_MS', async () => {
-        const stats = createEmptyPlaybackStats(0);
+        const stats = createEmptyPlayerStats();
         const ctx = new FakeCtx();
         // extra = 167, well under CATCHUP_BUDGET_MS (4000) → no skip.
         const sink = canvasPresent({
@@ -200,7 +199,6 @@ describe('canvasPresent', () => {
         await count(pipe(source(items), sink));
 
         expect(ctx.calls).toHaveLength(4);
-        expect(stats.framesPresented).toBe(4);
-        expect(stats.framesDroppedAtPresenter).toBe(0);
+        expect(stats.presented).toBe(4);
     });
 });

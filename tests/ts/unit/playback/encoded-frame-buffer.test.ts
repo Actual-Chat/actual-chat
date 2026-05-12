@@ -4,9 +4,9 @@ import {
     type EncodedFrameBufferPushResult,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/playback/encoded-frame-buffer';
 import {
-    createEmptyPlaybackStats,
+    createEmptyPlayerStats,
     type ArrivedChunk,
-    type VideoPlaybackStats,
+    type PlayerStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 
 // ---- Helpers --------------------------------------------------------------
@@ -20,7 +20,7 @@ interface ChunkOpts {
     rawByteLength?: number;
     width?: number;
     height?: number;
-    stats?: VideoPlaybackStats;
+    stats?: PlayerStats;
 }
 
 interface ChunkWithDispose extends ArrivedChunk {
@@ -29,7 +29,7 @@ interface ChunkWithDispose extends ArrivedChunk {
 }
 
 function mkChunk(opts: ChunkOpts): ChunkWithDispose {
-    const stats = opts.stats ?? createEmptyPlaybackStats(0);
+    const stats = opts.stats ?? createEmptyPlayerStats();
     const out: ChunkWithDispose = {
         chunk: {} as EncodedVideoChunk,
         arrivedAt: { timeMs: opts.arrivedAtMs ?? opts.capturedAtMs, epoch: 0 },

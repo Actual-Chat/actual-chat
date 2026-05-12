@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { applyKeyframePolicy } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/apply-keyframe-policy';
 import {
-    createEmptyRecordingStats,
+    createEmptyRecorderStats,
     type CapturedBundle,
     type CapturedFrame,
-    type VideoRecordingStats,
+    type RecorderStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 
 // ---- Mocks ----------------------------------------------------------------
@@ -20,7 +20,7 @@ class MockVideoFrame {
 
 // ---- Helpers --------------------------------------------------------------
 
-function makeCaptured(stats: VideoRecordingStats, idx: number, forceKeyframe = false): CapturedFrame {
+function makeCaptured(stats: RecorderStats, idx: number, forceKeyframe = false): CapturedFrame {
     return {
         frame: new MockVideoFrame(idx) as unknown as VideoFrame,
         capturedAt: { timeMs: 1_000 + idx, epoch: 0 },
@@ -33,7 +33,7 @@ function makeCaptured(stats: VideoRecordingStats, idx: number, forceKeyframe = f
     };
 }
 
-function makeBundle(stats: VideoRecordingStats, idx: number, forceKeyframe = false, extraCount = 0): CapturedBundle {
+function makeBundle(stats: RecorderStats, idx: number, forceKeyframe = false, extraCount = 0): CapturedBundle {
     // Bottom-first: index 0 = base layer; last index = top. `extraCount`
     // adds extra layers below the top so total length = extraCount + 1.
     const layers: CapturedFrame[] = [];
@@ -64,7 +64,7 @@ function bundleForceKey(bundle: CapturedBundle): boolean {
 
 describe('applyKeyframePolicy', () => {
     it('frame-count interval: every Nth bundle is keyed', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const op = applyKeyframePolicy({
             keyframeIntervalFrames: 3,
             now: () => 0, // fixed clock; only frame-count trigger fires
@@ -79,7 +79,7 @@ describe('applyKeyframePolicy', () => {
     });
 
     it('wallclock floor triggers when interval exceeds maxKeyframeIntervalMs', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         // Frame-count interval is large enough that the interval trigger never fires
         // in our 5-bundle test; only the wallclock floor should activate.
         let t = 0;
@@ -113,7 +113,7 @@ describe('applyKeyframePolicy', () => {
     });
 
     it('wallclock floor: after a starter keyframe, fires once interval exceeds threshold', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         let t = 0;
         const op = applyKeyframePolicy({
             keyframeIntervalFrames: 9999,
@@ -141,7 +141,7 @@ describe('applyKeyframePolicy', () => {
     });
 
     it('upstream-set forceKeyframe is preserved (and resets the counter)', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const op = applyKeyframePolicy({
             keyframeIntervalFrames: 5,
             now: () => 0,
@@ -165,7 +165,7 @@ describe('applyKeyframePolicy', () => {
     });
 
     it('counter resets on a triggered keyframe (so the next interval starts fresh)', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const op = applyKeyframePolicy({
             keyframeIntervalFrames: 2,
             now: () => 0,
@@ -177,7 +177,7 @@ describe('applyKeyframePolicy', () => {
     });
 
     it('sets forceKeyframe on every bundle layer when triggering', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const op = applyKeyframePolicy({
             keyframeIntervalFrames: 2,
             now: () => 0,
@@ -202,7 +202,7 @@ describe('applyKeyframePolicy', () => {
     });
 
     it('does not mutate input bundle envelopes when raising the flag', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const op = applyKeyframePolicy({
             keyframeIntervalFrames: 1,    // every bundle is keyed by interval
             now: () => 0,

@@ -1,5 +1,10 @@
 import { drain, pipe, tap, type PipeOperator } from 'ix-ext';
-import type { ArrivedChunk, DecodedFrame } from '../frame-envelopes';
+import {
+    createEmptyPlayerStats,
+    type ArrivedChunk,
+    type DecodedFrame,
+    type PlayerStats,
+} from '../frame-envelopes';
 import { FrameDropStage, traceDrops } from '../frame-drop-trace';
 import { decode, type DecoderLike } from '../operators/decode';
 import { latencyTap, type LatencySample } from '../operators/latency-tap';
@@ -54,6 +59,7 @@ export class Player {
     private abortTimeoutReason: unknown = null;
     private buffer: EncodedFrameBuffer | null = null;
     private whenDoneInternal: Promise<void> = Promise.resolve();
+    readonly stats: PlayerStats = createEmptyPlayerStats();
 
     constructor(session: PlaybackSession) {
         this.session = session;
@@ -71,7 +77,7 @@ export class Player {
         this.buffer = buffer;
         const session = this.session;
         const arrivalClock = session.arrivalClock;
-        const stats = session.stats;
+        const stats = this.stats;
         const abortController = new AbortController();
         const abortSignal = abortController.signal;
         const sourceStopController = new AbortController();

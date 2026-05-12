@@ -13,7 +13,7 @@ import type {
     LatencySample,
 } from '../../Services/Video/playback/player-worker-contract';
 import type { RenderBackendKind } from '../../Services/Video/playback/render-backends';
-import type { VideoPlaybackStats } from '../../Services/Video/frame-envelopes';
+import type { PlayerStats } from '../../Services/Video/frame-envelopes';
 import {
     getCodecCandidates,
     selectDecoderCodec,
@@ -83,7 +83,7 @@ export interface RemoteStreamDiagnostics {
     waitingForKeyframe: boolean;
     qualityReductionRequested: boolean;
     codecSlowTickCount: number;
-    decoderStats: VideoPlaybackStats | null;
+    decoderStats: PlayerStats | null;
     avDriftMs: number | null;
     forwarded: {
         ForwardedLayerId: number;
@@ -96,24 +96,6 @@ export interface RemoteStreamDiagnostics {
         maxTemporalLayerId: number;
     } | null;
     streamAgeMs: number;
-}
-
-interface PlaybackHealthSnapshot {
-    incomingByteRate: number;
-    bufferSpanMsEma: number;
-    keyframeSkipsInWindow: number;
-    decoderQueueDepthEma: number;
-    currentMaxLayerId: number;
-    currentMaxTemporalLayerId: number;
-    priority: number;
-    streamAgeMs: number;
-    qualityReductionRequested: boolean;
-    /** Smoothed end-to-end latency, ms — sourced from the worker's
-     *  `latency-tap` operator. */
-    latencyMsEma: number;
-    renderCssLongSide: number;
-    renderDevicePixelRatio: number;
-    codec: string;
 }
 
 interface ViewportInfo {
@@ -131,8 +113,6 @@ const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPlayer');
 // (≈ 111ms) means a 100ms target landed BELOW the "too low" threshold
 // → verdict pegged at -1 → Allocator capped at L0.
 const TARGET_BUFFER_SPAN_MS = 333;
-const DEFAULT_MAX_LAYER = 2;
-const MAX_TEMPORAL_LAYER = 2147483647;
 const PLAYBACK_PRIORITY_SECONDARY = 0;
 const PLAYBACK_PRIORITY_PRIMARY = 1;
 
@@ -670,9 +650,9 @@ export class VideoPlayer {
     }
 
     public async getDiagnosticsAsync(): Promise<RemoteStreamDiagnostics> {
-        let stats: VideoPlaybackStats | null = null;
+        let stats: PlayerStats | null = null;
         if (this.playerWorker) {
-            try { stats = await this.playerWorker.getStats(); } catch { /* ignore */ }
+            try { stats = await this.playerWorker.getStats(this.streamId); } catch { /* ignore */ }
         }
 
         const elapsedSec = this.firstFrameReceivedTime > 0
@@ -701,7 +681,7 @@ export class VideoPlayer {
             rttGradientMs: 0,
             playbackRate: 1.0,
             // Encoded buffer depth lives inside the worker and isn't
-            // exposed via VideoPlaybackStats; report 0 here.
+            // exposed via PlayerStats; report 0 here.
             bufferSize: 0,
             receivedFrameCount: this.receivedFrameCount,
             receivedKeyframeCount: this.receivedKeyframeCount,
@@ -805,7 +785,7 @@ export class VideoPlayer {
             .catch(() => { /* ignore */ });
 
         // Push a playback-health snapshot for the server-side controller.
-        this.reportPlaybackHealth(sample);
+        this.reportPlaybackStats(sample);
     }
 
     public async stop(): Promise<void> {
@@ -916,7 +896,7 @@ export class VideoPlayer {
         return null;
     }
 
-    private reportPlaybackHealth(sample: LatencySample): void {
+    private reportPlaybackStats(sample: LatencySample): void {
         const elapsedSec = this.firstFrameReceivedTime > 0
             ? (performance.now() - this.firstFrameReceivedTime) / 1000
             : 0;
@@ -924,27 +904,30 @@ export class VideoPlayer {
             ? Math.round(this.receivedBytes * 8 / elapsedSec / 1000)
             : 0;
         const info = this.computeViewportChangedInfo();
-        const requested = requestedReceiveQuality.get(this.streamId) ?? null;
-        const skipDelta = Math.max(0, this.skipToLiveCount - this.lastQualitySkipToLiveCount);
-        this.lastQualitySkipToLiveCount = this.skipToLiveCount;
 
-        const snapshot: PlaybackHealthSnapshot = {
-            incomingByteRate: Math.round(bitrateKbps * 1000 / 8),
-            bufferSpanMsEma: sample.bufferSpanMs,
-            keyframeSkipsInWindow: skipDelta,
-            decoderQueueDepthEma: 0,
-            currentMaxLayerId: requested?.maxLayerId ?? DEFAULT_MAX_LAYER,
-            currentMaxTemporalLayerId: MAX_TEMPORAL_LAYER,
-            priority: priorityForRenderSize(info),
-            streamAgeMs: Math.max(0, Math.round(performance.now() - this.createdAtMs)),
-            qualityReductionRequested: false,
-            latencyMsEma: Math.max(0, sample.e2eLatencyMs),
-            renderCssLongSide: info?.cssLongSide ?? 0,
-            renderDevicePixelRatio: info?.devicePixelRatio ?? 0,
-            codec: this.selectedCodec ?? 'unknown',
-        };
-        void this.blazorRef.invokeMethodAsync('OnPlaybackHealth', snapshot)
-            .catch((e: unknown) => warnLog?.log('reportPlaybackHealth error:', e));
+        const stats = sample.playerStats;
+        const stages = new Uint8Array(stats.dropTrace.size);
+        const counts: number[] = new Array<number>(stats.dropTrace.size);
+        let i = 0;
+        for (const [stage, count] of stats.dropTrace) {
+            stages[i] = stage;
+            counts[i] = count;
+            i++;
+        }
+        void this.blazorRef.invokeMethodAsync(
+            'OnPlaybackStats',
+            Math.round(bitrateKbps * 1000 / 8),
+            sample.bufferSpanMs,
+            priorityForRenderSize(info),
+            Math.max(0, Math.round(performance.now() - this.createdAtMs)),
+            false,                        // qualityReductionRequested
+            info?.cssLongSide ?? 0,
+            info?.devicePixelRatio ?? 0,
+            this.selectedCodec ?? 'unknown',
+            stages,
+            counts,
+            stats.presented)
+            .catch((e: unknown) => warnLog?.log('reportPlaybackStats error:', e));
         // Also fire a stale-frame hint to the SKIP_TO_LIVE thresholds so
         // diagnostics still tick. The new pipeline's internal recovery
         // (epoch-reset + paced-encoded-buffer) replaces the old main-thread

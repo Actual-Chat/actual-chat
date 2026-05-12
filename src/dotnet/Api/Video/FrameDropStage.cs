@@ -23,4 +23,5 @@ public enum FrameDropStage : byte
     ReceiverPull = 61,
     ReceiverEncodedBuffer = 62,
     ReceiverDecode = 63,
+    ReceiverPresent = 64,
 }

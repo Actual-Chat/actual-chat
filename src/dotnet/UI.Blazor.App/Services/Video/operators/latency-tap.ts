@@ -1,6 +1,6 @@
 import { getLogs } from 'logging';
 import { tap, type PipeOperator } from 'ix-ext';
-import type { DecodedFrame } from '../frame-envelopes';
+import type { DecodedFrame, PlayerStats } from '../frame-envelopes';
 
 const { debugLog } = getLogs('VideoPipeline');
 
@@ -16,6 +16,9 @@ export interface LatencySample {
     bytesReceived: number;
     // Filled in by Player.start's wrapped report (the operator has no buffer reference).
     bufferSpanMs: number;
+    // Live reference — the consumer sees up-to-date counters (presented,
+    // dropTrace) at the moment it reads, not a stale copy.
+    playerStats: PlayerStats;
 }
 
 export interface LatencyTapOptions {
@@ -50,6 +53,7 @@ export function latencyTap(opts: LatencyTapOptions): PipeOperator<DecodedFrame, 
                 height: envelope.frame.displayHeight,
                 bytesReceived: envelope.stats.bytesReceived,
                 bufferSpanMs: 0,
+                playerStats: envelope.stats,
             });
         } catch (e) {
             debugLog?.log('latencyTap: sample failed:', e);

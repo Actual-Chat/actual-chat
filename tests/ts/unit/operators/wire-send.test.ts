@@ -11,8 +11,8 @@ import {
 import {
     type EncodedBundle,
     type EncodedFrame,
-    type VideoRecordingStats,
-    createEmptyRecordingStats,
+    type RecorderStats,
+    createEmptyRecorderStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 // ---- Mocks ----------------------------------------------------------------
 
@@ -99,7 +99,7 @@ interface BuildOpts {
     index?: number;
 }
 
-function makeEncoded(stats: VideoRecordingStats, opts: BuildOpts = {}): EncodedFrame {
+function makeEncoded(stats: RecorderStats, opts: BuildOpts = {}): EncodedFrame {
     const type = opts.type ?? 'delta';
     const byteLength = opts.byteLength ?? 16;
     const bytes = opts.bytes ?? new Uint8Array(Array.from({ length: byteLength }, (_, i) => i & 0xff));
@@ -134,7 +134,12 @@ function source(items: EncodedFrame[]): AsyncIterable<EncodedBundle> {
     return (async function* () {
         await Promise.resolve();
         for (const item of items) {
-            yield { layers: [item], stats: item.stats } as EncodedBundle;
+            yield {
+                layers: [item],
+                index: item.index,
+                dropTrace: [],
+                stats: item.stats,
+            } as EncodedBundle;
         }
     })();
 }
@@ -147,7 +152,12 @@ function bundledSource(groups: EncodedFrame[][]): AsyncIterable<EncodedBundle> {
         await Promise.resolve();
         for (const group of groups) {
             if (group.length === 0) continue;
-            yield { layers: group, stats: group[0].stats } as EncodedBundle;
+            yield {
+                layers: group,
+                index: group[0].index,
+                dropTrace: [],
+                stats: group[0].stats,
+            } as EncodedBundle;
         }
     })();
 }
@@ -163,7 +173,7 @@ async function runWith(
 
 describe('wireSend', () => {
     it('first chunk pins captureStartUnixMs; offset is 0', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const sender = new FakeSender();
         const sink = wireSend({ createSender: () => sender });
 
@@ -177,7 +187,7 @@ describe('wireSend', () => {
     });
 
     it('subsequent chunk offset = (capturedAt.timeMs − captureStartUnixMs) × 1000 µs (× 10 ticks)', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const sender = new FakeSender();
         const sink = wireSend({ createSender: () => sender });
 
@@ -193,7 +203,7 @@ describe('wireSend', () => {
     });
 
     it('offsetEpoch is included on every frame', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const sender = new FakeSender();
         const sink = wireSend({ createSender: () => sender });
 
@@ -210,7 +220,7 @@ describe('wireSend', () => {
     });
 
     it('per-layer description cache: first keyframe with description sets cache; later keyframe without picks from it', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const sender = new FakeSender();
         const sink = wireSend({ createSender: () => sender });
 
@@ -237,7 +247,7 @@ describe('wireSend', () => {
     });
 
     it('epoch change does not re-anchor captureStartUnixMs', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const sender = new FakeSender();
         const sink = wireSend({ createSender: () => sender });
 
@@ -259,7 +269,7 @@ describe('wireSend', () => {
     });
 
     it('keyframe DTOs have keyFrameIndex === index; delta DTOs differ', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const sender = new FakeSender();
         const sink = wireSend({ createSender: () => sender });
 
@@ -280,7 +290,7 @@ describe('wireSend', () => {
     });
 
     it('createSender is called exactly once across the run', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const sender = new FakeSender();
         let createCount = 0;
         const sink = wireSend({
@@ -303,7 +313,7 @@ describe('wireSend', () => {
     });
 
     it('initializes the sender from the top-layer keyframe while sending bottom-first', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const sender = new FakeSender();
         const sink = wireSend({
             createSender: () => sender,
@@ -356,7 +366,7 @@ describe('wireSend', () => {
     });
 
     it('closes every encoded chunk after serializing it', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const sender = new FakeSender();
         const items = [
             makeEncoded(stats, { type: 'key', capturedAt: { timeMs: 1_000, epoch: 0 } }),
@@ -369,10 +379,9 @@ describe('wireSend', () => {
     });
 
     it('copies sender and RpcStream drop counters into recording stats', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const sender = new StatsSender();
         sender.stats.rpcStreamSkipped = 3;
-        sender.stats.floodGateSkipCount = 2;
         sender.stats.lastAckAgeMs = 123;
         sender.stats.isPeerConnected = true;
 
@@ -380,15 +389,13 @@ describe('wireSend', () => {
             makeEncoded(stats, { type: 'key', capturedAt: { timeMs: 1_000, epoch: 0 } }),
         ]), wireSend({ createSender: () => sender }));
 
-        expect(stats.wireFramesAdded).toBe(1);
-        expect(stats.rpcStreamFramesSkipped).toBe(3);
-        expect(stats.floodGateSkipCount).toBe(2);
+        expect(stats.bundlesShipped).toBe(1);
         expect(stats.wireLastAckAgeMs).toBe(123);
         expect(stats.isPeerConnected).toBe(true);
     });
 
     it('recreates the sender if the wire pump completes while capture continues', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const senders: ResolvingSender[] = [];
         const sink = wireSend({
             createSender: () => {

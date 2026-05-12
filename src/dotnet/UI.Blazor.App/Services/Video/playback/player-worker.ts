@@ -1,4 +1,4 @@
-import type { VideoPlaybackStats } from '../frame-envelopes';
+import { createEmptyPlayerStats, type PlayerStats } from '../frame-envelopes';
 import type { DecoderLike } from '../operators/decode';
 import type { VideoFrameDto } from '../operators/pull';
 import { Player, type PlayerConfig } from './player';
@@ -168,11 +168,11 @@ export const playerWorkerImpl: PlayerWorker = {
         return Promise.resolve();
     },
 
-    getStats(): Promise<VideoPlaybackStats> {
-        const s = ensureSession();
-        // Shallow copy so the caller can't mutate session counters by
-        // handle.
-        return Promise.resolve({ ...s.stats });
+    getStats(streamId: string): Promise<PlayerStats> {
+        const player = players.get(streamId);
+        if (!player)
+            return Promise.resolve(createEmptyPlayerStats());
+        return Promise.resolve({ ...player.stats });
     },
 
     async stop(streamId?: string): Promise<void> {

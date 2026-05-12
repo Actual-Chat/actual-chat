@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { previewTap } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/preview-tap';
 import {
-    createEmptyRecordingStats,
+    createEmptyRecorderStats,
     type CapturedFrame,
-    type VideoRecordingStats,
+    type RecorderStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 // ---- Mocks ----------------------------------------------------------------
 
@@ -31,7 +31,7 @@ class FakeWriter {
 
 // ---- Helpers --------------------------------------------------------------
 
-function makeEnvelopes(stats: VideoRecordingStats, count: number): { envelopes: CapturedFrame[]; frames: MockVideoFrame[] } {
+function makeEnvelopes(stats: RecorderStats, count: number): { envelopes: CapturedFrame[]; frames: MockVideoFrame[] } {
     const frames: MockVideoFrame[] = [];
     const envelopes: CapturedFrame[] = [];
     for (let i = 0; i < count; i++) {
@@ -68,7 +68,7 @@ async function drain<T>(seg: AsyncIterable<T>): Promise<T[]> {
 
 describe('previewTap', () => {
     it('getWriter null → no-op (frames pass through unchanged, no clones taken)', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const { envelopes, frames } = makeEnvelopes(stats, 3);
 
         const op = previewTap({ getWriter: () => null });
@@ -83,7 +83,7 @@ describe('previewTap', () => {
     });
 
     it('getWriter non-null → clone() called per item; writer.write() called with the clone', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const { envelopes, frames } = makeEnvelopes(stats, 3);
         const writer = new FakeWriter();
 
@@ -101,7 +101,7 @@ describe('previewTap', () => {
     });
 
     it('passthrough preserves the original frame and envelope identity', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const { envelopes } = makeEnvelopes(stats, 2);
         const writer = new FakeWriter();
         const op = previewTap({ getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame> });
@@ -117,7 +117,7 @@ describe('previewTap', () => {
     });
 
     it('getWriter is called once per frame (so the recorder can swap writers mid-stream)', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const { envelopes, frames } = makeEnvelopes(stats, 4);
 
         const writerA = new FakeWriter();
@@ -145,7 +145,7 @@ describe('previewTap', () => {
     });
 
     it('writer.write() rejection closes the clone and is swallowed (frames continue to pass through)', async () => {
-        const stats = createEmptyRecordingStats(0);
+        const stats = createEmptyRecorderStats();
         const { envelopes, frames } = makeEnvelopes(stats, 2);
         const writer = new FakeWriter();
         writer.writeShouldThrow = new Error('writer closed');

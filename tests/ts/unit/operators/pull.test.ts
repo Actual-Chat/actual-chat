@@ -4,9 +4,9 @@ import {
     type VideoFrameDto,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/pull';
 import {
-    createEmptyPlaybackStats,
+    createEmptyPlayerStats,
     type ArrivedChunk,
-    type VideoPlaybackStats,
+    type PlayerStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 import { MonotonicClock } from 'clocks';
 
@@ -120,8 +120,8 @@ async function drain<T>(seg: AsyncIterable<T>): Promise<T[]> {
     return out;
 }
 
-function makeStats(): VideoPlaybackStats {
-    return createEmptyPlaybackStats(0);
+function makeStats(): PlayerStats {
+    return createEmptyPlayerStats();
 }
 
 // ---- Tests ----------------------------------------------------------------
@@ -173,7 +173,6 @@ describe('pullSource', () => {
         expect(out[0].isKeyFrame).toBe(true);
         expect(out[1].isKeyFrame).toBe(false);
 
-        expect(stats.chunksArrived).toBe(5);
     });
 
     it('OffsetEpoch missing → 0', async () => {

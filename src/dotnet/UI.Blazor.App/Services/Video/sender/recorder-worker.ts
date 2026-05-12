@@ -3,7 +3,7 @@
 
 import { sharedSettingsWorker } from 'shared-settings-worker';
 import { getLogs } from 'logging';
-import { createEmptyRecordingStats, type VideoRecordingStats } from '../frame-envelopes';
+import { createEmptyRecorderStats, type RecorderStats } from '../frame-envelopes';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
 import type { DownscalerLike } from '../operators/downscale';
 import type { FloodGate } from '../operators/flood-gate';
@@ -91,8 +91,8 @@ function requireState(): WorkerState {
 }
 
 // Built fresh per call so callers can't mutate a shared singleton.
-function emptyStats(): VideoRecordingStats {
-    return createEmptyRecordingStats(0);
+function emptyStats(): RecorderStats {
+    return createEmptyRecorderStats();
 }
 
 // Method order matches the RecorderWorker interface contract:
@@ -218,7 +218,7 @@ export const recorderWorkerImpl: RecorderWorker = {
         await Promise.resolve();
     },
 
-    getStats(): Promise<VideoRecordingStats> {
+    getStats(): Promise<RecorderStats> {
         const s = requireState();
         return Promise.resolve(s.recorder.getStats() ?? emptyStats());
     },

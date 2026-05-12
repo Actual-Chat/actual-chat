@@ -7,32 +7,23 @@ public class RecordingClassifierTest
 {
     private static readonly RecordingThresholds T = RecordingThresholds.Defaults;
 
-    private static RecorderHealthSnapshot Snapshot(
+    private static RecorderStats Snapshot(
         double encodeRatio = 0,
-        double? encodeP90 = null,
-        double slotRate = 0,
         double senderFrameDropRatio = 0,
         double lastAckMs = 0,
         bool isConnected = true)
-        => new(
-            encodeRatio,
-            encodeP90 ?? encodeRatio,
-            slotRate,
-            senderFrameDropRatio,
-            lastAckMs,
-            isConnected);
+        => RecorderStats.Empty with {
+            EncodeRatioEma = encodeRatio,
+            SenderFrameDropRatioEma = senderFrameDropRatio,
+            LastAckAgeMs = lastAckMs,
+            IsConnected = isConnected,
+        };
 
     [Fact]
     public void AllGoodSignal_ReturnsPlusOne()
     {
-        // arrange
         var h = Snapshot(encodeRatio: 0.2, senderFrameDropRatio: 0, lastAckMs: 100);
-
-        // act
-        var result = RecordingClassifier.Classify(h, T);
-
-        // assert
-        result.Should().Be(1);
+        RecordingClassifier.Classify(h, T).Should().Be(1);
     }
 
     [Fact]
@@ -40,13 +31,6 @@ public class RecordingClassifierTest
     {
         var h = Snapshot(encodeRatio: 1.5);
         RecordingClassifier.Classify(h, T).Should().Be(-1);
-    }
-
-    [Fact]
-    public void HighP90WithGoodAverage_ReturnsGood()
-    {
-        var h = Snapshot(encodeRatio: 0.2, encodeP90: 1.1, senderFrameDropRatio: 0, lastAckMs: 100);
-        RecordingClassifier.Classify(h, T).Should().Be(1);
     }
 
     [Fact]

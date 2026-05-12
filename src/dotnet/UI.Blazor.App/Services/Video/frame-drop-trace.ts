@@ -31,6 +31,11 @@ export const enum FrameDropStage {
     ReceiverPull = 61,
     ReceiverEncodedBuffer = 62,
     ReceiverDecode = 63,
+    // Terminal sink — drops happen directly inside the present operator
+    // (skip-mode catch-up, write failure). The aggregator on this stage
+    // also walks every surviving frame's dropTrace into the per-stream
+    // histogram, so this is the canonical end-of-pipe count point.
+    ReceiverPresent = 64,
 }
 
 // `traceDrops` is a generic AsyncIterable wrapper. Items must expose `index`

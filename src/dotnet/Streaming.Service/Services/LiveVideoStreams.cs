@@ -218,12 +218,11 @@ public class LiveVideoStreams : ILiveVideoStreams
     {
         DebugLog?.LogDebug("ChangeRecordingQuality: session={Session}, state={State}, info={Info}", session, state, info);
 
-        if (info?.Health is { } h) {
-            AppMeters.VideoSendEncodeRatio.Record(h.EncodeRatioP90);
-            AppMeters.VideoSendDropRatio.Record(h.SenderFrameDropRatioEma);
+        if (info is not null) {
+            AppMeters.VideoSendDropRatio.Record(info.SenderFrameDropRatioEma);
             // -1 marks "no ACK observed yet" — don't pollute the histogram with a sentinel.
-            if (h.LastAckAgeMs >= 0)
-                AppMeters.VideoSendAckAgeMs.Record(h.LastAckAgeMs);
+            if (info.LastAckAgeMs >= 0)
+                AppMeters.VideoSendAckAgeMs.Record(info.LastAckAgeMs);
         }
         if (state is not null)
             AppMeters.VideoSendLayerCount.Record(state.EffectiveLayerCount);
@@ -252,18 +251,6 @@ public class LiveVideoStreams : ILiveVideoStreams
         if (info is not null) {
             AppMeters.VideoReceiveCapacityBps.Record(info.EstimatedCapacityBytesPerSec);
             AppMeters.VideoReceiveAggregateHealth.Record(info.AggregateHealth);
-            foreach (var (_, s) in info.Streams) {
-                var priorityTag = PriorityTag(s.Priority);
-                // Capture-to-presentation latency, server-clock-corrected by
-                // the receiver. Skip the default-0 sample from clients still
-                // on the old wire format — recording 0 ms would skew the
-                // histogram toward an unrealistic floor.
-                if (s.LatencyMsEma > 0)
-                    AppMeters.VideoLatency.Record(s.LatencyMsEma, priorityTag);
-                if (s.KeyframeSkipsInWindow > 0)
-                    AppMeters.VideoReceiveKeyframeSkips.Add(s.KeyframeSkipsInWindow, priorityTag);
-                AppMeters.VideoReceiveDecoderQueue.Record(s.DecoderQueueDepthEma, priorityTag);
-            }
         }
 
         // Request a fresh keyframe whenever a stream's quality envelope is

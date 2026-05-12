@@ -1,6 +1,7 @@
 import { from, type PipeOperator } from 'ix-ext';
 import { delayAsync } from 'promises';
-import type { DecodedFrame } from '../frame-envelopes';
+import { aggregateDropTrace, type DecodedFrame } from '../frame-envelopes';
+import { FrameDropStage } from '../frame-drop-trace';
 
 // Pacing policy mirrored with `present-mstg.ts`.
 
@@ -46,7 +47,7 @@ export function canvasPresent(opts: CanvasPresentOptions): PipeOperator<DecodedF
                 if (extraMs > CATCHUP_BUDGET_MS
                     && lastWriteAt !== null
                     && now - lastWriteAt < MIN_DURATION_MS) {
-                    decoded.stats.framesDroppedAtPresenter++;
+                    decoded.stats.pendingPresenterDrops++;
                     prevCapturedAt = decoded.capturedAt.timeMs;
                     continue;
                 }
@@ -91,11 +92,22 @@ export function canvasPresent(opts: CanvasPresentOptions): PipeOperator<DecodedF
                     } else {
                         canvasCtx.drawImage(frame, 0, 0, width, height);
                     }
-                    decoded.stats.framesPresented++;
                     presented = true;
                 } finally {
-                    if (!presented)
-                        decoded.stats.framesDroppedAtPresenter++;
+                    if (!presented) {
+                        decoded.stats.pendingPresenterDrops++;
+                    }
+                    else {
+                        aggregateDropTrace(decoded.stats, decoded.dropTrace);
+                        if (decoded.stats.pendingPresenterDrops > 0) {
+                            decoded.stats.dropTrace.set(
+                                FrameDropStage.ReceiverPresent,
+                                (decoded.stats.dropTrace.get(FrameDropStage.ReceiverPresent) ?? 0)
+                                    + decoded.stats.pendingPresenterDrops);
+                            decoded.stats.pendingPresenterDrops = 0;
+                        }
+                        decoded.stats.presented++;
+                    }
                 }
                 lastWriteAt = nextWriteAt;
                 prevCapturedAt = decoded.capturedAt.timeMs;

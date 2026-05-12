@@ -7,7 +7,7 @@ import {
 import { AsyncVideoEncoder } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/adapters';
 import type {
     EncodedFrame,
-    VideoRecordingStats,
+    RecorderStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 import type { EncodeInput } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/encode';
 
@@ -66,7 +66,7 @@ function makeEncoderFactory(): () => PooledEncoder {
                 sourceHeight: 0,
                 encodedWidth: 0,
                 encodedHeight: 0,
-                stats: undefined as unknown as VideoRecordingStats,
+                stats: undefined as unknown as RecorderStats,
             }),
             () => { /* swallow */ },
             { timeoutMs: 0 },

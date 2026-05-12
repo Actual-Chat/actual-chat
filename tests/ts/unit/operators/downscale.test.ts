@@ -7,8 +7,8 @@ import {
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/downscale';
 import {
     type CapturedFrame,
-    type VideoRecordingStats,
-    createEmptyRecordingStats,
+    type RecorderStats,
+    createEmptyRecorderStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 
 // ---- Mocks ----------------------------------------------------------------
@@ -53,13 +53,13 @@ class FakeDownscaler implements DownscalerLike {
 
 // ---- Helpers --------------------------------------------------------------
 
-function makeStats(): VideoRecordingStats {
-    return createEmptyRecordingStats(1_700_000_000_000);
+function makeStats(): RecorderStats {
+    return createEmptyRecorderStats();
 }
 
 function makeCaptured(
     index: number,
-    stats: VideoRecordingStats,
+    stats: RecorderStats,
     opts: { width?: number; height?: number; forceKeyframe?: boolean } = {},
 ): CapturedFrame {
     const width = opts.width ?? 1280;

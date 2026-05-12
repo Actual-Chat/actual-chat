@@ -1,5 +1,6 @@
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Module;
+using ActualChat.Video;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -166,13 +167,13 @@ public sealed class VideoRecorder : IAsyncDisposable
         _whenStoppedTaskCompletionSource.TrySetResult();
     }
 
-    private Task OnRecorderHealthSnapshot(RecorderHealthSnapshot snapshot)
+    private Task OnRecorderStats(RecorderStats stats)
     {
         var isDotNetConnected = !Hub.ConnectivityUI.IsConnected.IsValue(out var v) || v;
-        var effectiveSnapshot = snapshot with {
-            IsConnected = isDotNetConnected && snapshot.IsPeerConnected,
+        var effectiveStats = stats with {
+            IsConnected = isDotNetConnected && stats.IsPeerConnected,
         };
-        return Hub.VideoQualityUI.PushRecorderHealth(Kind, effectiveSnapshot, this, CancellationToken.None);
+        return Hub.VideoQualityUI.PushRecorderStats(Kind, effectiveStats, this, CancellationToken.None);
     }
 
     private async Task RunMaintenance(Task startTrigger, CancellationToken cancellationToken)
@@ -341,28 +342,28 @@ public sealed class VideoRecorder : IAsyncDisposable
         }
 
         [JSInvokable]
-        public Task OnRecorderHealthSnapshot(
+        public Task OnRecorderStats(
             double encodeRatioEma,
-            double encodeRatioP90,
-            double slotReplacementRateEma,
             double senderFrameDropRatioEma,
             double lastAckAgeMs,
             bool isPeerConnected,
-            long floodGateSkipCount,
-            long rpcStreamFramesSkipped,
-            int senderQueueDepth,
-            int senderMaxQueueDepth)
-            => videoRecorder.OnRecorderHealthSnapshot(new RecorderHealthSnapshot(
-                encodeRatioEma,
-                encodeRatioP90,
-                slotReplacementRateEma,
-                senderFrameDropRatioEma,
-                lastAckAgeMs,
-                false,
-                isPeerConnected,
-                floodGateSkipCount,
-                rpcStreamFramesSkipped,
-                senderQueueDepth,
-                senderMaxQueueDepth));
+            byte[] dropStages,
+            long[] dropCounts,
+            long bundlesShipped,
+            long bytesEncoded)
+        {
+            var dropTrace = new Dictionary<FrameDropStage, long>(dropStages.Length);
+            for (var i = 0; i < dropStages.Length && i < dropCounts.Length; i++)
+                dropTrace[(FrameDropStage)dropStages[i]] = dropCounts[i];
+            return videoRecorder.OnRecorderStats(new RecorderStats(
+                EncodeRatioEma: encodeRatioEma,
+                SenderFrameDropRatioEma: senderFrameDropRatioEma,
+                LastAckAgeMs: lastAckAgeMs,
+                IsConnected: false,
+                IsPeerConnected: isPeerConnected,
+                DropTrace: dropTrace,
+                BundlesShipped: bundlesShipped,
+                BytesEncoded: bytesEncoded));
+        }
     }
 }
