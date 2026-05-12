@@ -87,6 +87,13 @@ div.diag-value.multiline .diag-value {
     @apply flex flex-col gap-0.5 py-2 rounded-lg bg-02;
 }
 
+.diag-row.diag-sub .diag-label {
+    @apply pl-3 text-04;
+}
+.diag-row.diag-sub .diag-value {
+    @apply text-04;
+}
+
 .diag-stream + .diag-stream {
     @apply mt-1;
 }

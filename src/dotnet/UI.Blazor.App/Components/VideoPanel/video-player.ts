@@ -96,6 +96,15 @@ export interface RemoteStreamDiagnostics {
         maxTemporalLayerId: number;
     } | null;
     streamAgeMs: number;
+    // Cumulative drop-stage histogram from the player's stats. Keys are
+    // decimal FrameDropStage values; only non-zero stages emitted. The
+    // modal computes deltas between polls for the breakdown view.
+    dropTraceByStage: Record<string, number>;
+    // Cumulative bytes received so the modal can derive throughput
+    // without sharing the bitrate-averaging logic.
+    bytesReceived: number;
+    // Cumulative frames presented (drives the inbound FPS reading).
+    presented: number;
 }
 
 interface ViewportInfo {
@@ -649,6 +658,10 @@ export class VideoPlayer {
             .catch((e: unknown) => warnLog?.log('worker.stop error:', e));
     }
 
+    public peekPresentedCount(): number {
+        return this.renderFrameCount;
+    }
+
     public async getDiagnosticsAsync(): Promise<RemoteStreamDiagnostics> {
         let stats: PlayerStats | null = null;
         if (this.playerWorker) {
@@ -661,6 +674,14 @@ export class VideoPlayer {
         const bitrateKbps = elapsedSec > 0
             ? Math.round(this.receivedBytes * 8 / elapsedSec / 1000)
             : 0;
+
+        const dropTraceByStage: Record<string, number> = {};
+        if (stats) {
+            for (const [stage, count] of stats.dropTrace) {
+                if (count > 0)
+                    dropTraceByStage[String(stage)] = count;
+            }
+        }
 
         const avDriftMs: number | null = null;
         const requested = requestedReceiveQuality.get(this.streamId) ?? null;
@@ -700,6 +721,9 @@ export class VideoPlayer {
             } : null,
             requestedReceiveQuality: requested,
             streamAgeMs,
+            dropTraceByStage,
+            bytesReceived: this.receivedBytes,
+            presented: stats?.presented ?? 0,
         };
     }
 

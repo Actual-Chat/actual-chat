@@ -65,6 +65,7 @@ export * from './Components/VideoPanel/video-recorder';
 export * from './Components/VideoPanel/video-streaming-preview';
 export * from './Components/VideoPanel/video-player';
 export * from './Components/VideoPanel/video-diagnostics';
+export * from './Components/VideoPanel/fps-overlay';
 export * from './Pages/AudioRecorderTestPage/audio-recorder-test-page';
 export * from './Pages/AudioPlayerTestPage/audio-player-test-page';
 export * from './Services/audio-context-source';

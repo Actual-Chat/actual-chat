@@ -105,6 +105,19 @@
                         <span class="diag-label">Bitrate</span>
                         <span class="diag-value">@(GetNum(stream, "actualBitrateKbps").ToString("0")) kbps (sum across layers)</span>
                     </div>
+                    @if (_throughputDelta.TryGetValue(OwnThroughputKey, out var outDelta)) {
+                        var isOwnExpanded = _throughputExpanded.Contains(OwnThroughputKey);
+                        <div class="diag-row diag-clickable" @onclick="@(() => OnToggleThroughputExpanded(OwnThroughputKey))">
+                            <span class="diag-label">Throughput</span>
+                            <span class="diag-value">
+                                @($"{outDelta.Fps:0} bundles/s shipped · {outDelta.Kbps:0} kbps")
+                                <span class="diag-expand-indicator">@GetShowDetailsIndicator(isOwnExpanded)</span>
+                            </span>
+                        </div>
+                        @if (isOwnExpanded) {
+                            @RenderDropBreakdown(outDelta)
+                        }
+                    }
 
                     @* Selected layer *@
                     @{
@@ -330,6 +343,19 @@
                                 <span class="diag-value">@(ageSec.ToString("0"))s</span>
                             </div>
                         }
+                        @if (_throughputDelta.TryGetValue(sid, out var inDelta)) {
+                            var isExpanded = _throughputExpanded.Contains(sid);
+                            <div class="diag-row diag-clickable" @onclick="@(() => OnToggleThroughputExpanded(sid))">
+                                <span class="diag-label">Throughput</span>
+                                <span class="diag-value">
+                                    @($"{inDelta.Fps:0} fps presented · {inDelta.Kbps:0} kbps")
+                                    <span class="diag-expand-indicator">@GetShowDetailsIndicator(isExpanded)</span>
+                                </span>
+                            </div>
+                            @if (isExpanded) {
+                                @RenderDropBreakdown(inDelta)
+                            }
+                        }
                     </div>
                 }
             }
@@ -399,6 +425,13 @@
     private bool _isDisposed;
     private bool _showOwnStreamingDetails;
     private int? _selectedOwnLayerId;
+    // Per-target throughput history: tracks the last seen cumulative values
+    // and the elapsed time since the previous sample so the row can render
+    // FPS / kbps deltas without serializing computed rates on the JS side.
+    private readonly Dictionary<string, ThroughputSample> _throughputPrev = new();
+    private readonly Dictionary<string, ThroughputDelta> _throughputDelta = new();
+    private readonly HashSet<string> _throughputExpanded = new();
+    private const string OwnThroughputKey = "__own__";
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private IAuthors Authors => Hub.Authors;
@@ -481,14 +514,21 @@
             if (_showOwnStreamingDetails) {
                 var kind = (int)State.Value.OwnSourceKind.GetValueOrDefault(VideoSourceKind.Camera);
                 _ownDiag = await JS.InvokeAsync<JsonElement>(JSCollectOwnMethod, kind);
+                if (_ownDiag is { } ownVal
+                    && ownVal.TryGetProperty("stream", out var ownStream)
+                    && BuildOwnThroughputSample(ownStream) is { } ownSample)
+                    UpdateThroughput(OwnThroughputKey, ownSample);
             }
 
             foreach (var entry in State.Value.Streams) {
                 if (entry.IsOwn) continue;
                 var streamId = entry.Info.StreamId.Value;
                 var diag = await JS.InvokeAsync<JsonElement>(JSCollectRemoteMethod, streamId);
-                if (diag.ValueKind == JsonValueKind.Object)
+                if (diag.ValueKind == JsonValueKind.Object) {
                     _streamDiags[streamId] = diag;
+                    if (BuildRemoteThroughputSample(diag) is { } sample)
+                        UpdateThroughput(streamId, sample);
+                }
             }
 
             await InvokeAsync(StateHasChanged);
@@ -742,4 +782,114 @@
     ) {
         public static readonly ComputedModel Empty = new(null, [], 0, false);
     }
+
+    // Cumulative counters captured at a single poll. Snapshot taken at the
+    // top of UpdateThroughput so deltas don't accidentally mix samples.
+    private sealed record ThroughputSample(
+        long PrimaryCount,   // bundlesShipped (sender) or presented (receiver)
+        long BytesTransferred,
+        IReadOnlyDictionary<FrameDropStage, long> DropTrace,
+        long TimestampMs);
+
+    // Per-target rate readings derived from the last two ThroughputSamples.
+    // Surfaced into the row template; cleared when the underlying stream goes away.
+    private sealed record ThroughputDelta(
+        double Fps,
+        double Kbps,
+        IReadOnlyDictionary<FrameDropStage, long> DropDelta,
+        IReadOnlyDictionary<FrameDropStage, long> DropTotal);
+
+    private void UpdateThroughput(string key, ThroughputSample sample) {
+        if (_throughputPrev.TryGetValue(key, out var prev)) {
+            var dtMs = sample.TimestampMs - prev.TimestampMs;
+            if (dtMs > 0) {
+                var fps = Math.Max(0, sample.PrimaryCount - prev.PrimaryCount) * 1000.0 / dtMs;
+                var bytesDelta = Math.Max(0, sample.BytesTransferred - prev.BytesTransferred);
+                var kbps = bytesDelta * 8.0 / dtMs;
+                var dropDelta = new Dictionary<FrameDropStage, long>();
+                foreach (var (stage, count) in sample.DropTrace) {
+                    var prevCount = prev.DropTrace.TryGetValue(stage, out var p) ? p : 0L;
+                    var d = count - prevCount;
+                    if (d > 0) dropDelta[stage] = d;
+                }
+                _throughputDelta[key] = new ThroughputDelta(fps, kbps, dropDelta, sample.DropTrace);
+            }
+        }
+        _throughputPrev[key] = sample;
+    }
+
+    private void OnToggleThroughputExpanded(string key) {
+        if (!_throughputExpanded.Add(key))
+            _throughputExpanded.Remove(key);
+    }
+
+    private RenderFragment RenderDropBreakdown(ThroughputDelta d) => builder => {
+        // Show every stage that has either a recent drop or a non-zero
+        // lifetime total — both are diagnostic signals. Sorted by enum
+        // value so sender → server → receiver ordering is preserved.
+        var stages = d.DropTotal.Keys.Union(d.DropDelta.Keys)
+            .OrderBy(s => (byte)s)
+            .ToArray();
+        if (stages.Length == 0) {
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "diag-row");
+            builder.OpenElement(2, "span");
+            builder.AddAttribute(3, "class", "diag-label");
+            builder.AddContent(4, "Drops");
+            builder.CloseElement();
+            builder.OpenElement(5, "span");
+            builder.AddAttribute(6, "class", "diag-value diag-dim");
+            builder.AddContent(7, "none");
+            builder.CloseElement();
+            builder.CloseElement();
+            return;
+        }
+        var seq = 0;
+        foreach (var stage in stages) {
+            var total = d.DropTotal.TryGetValue(stage, out var t) ? t : 0L;
+            var delta = d.DropDelta.TryGetValue(stage, out var dd) ? dd : 0L;
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "diag-row diag-sub");
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "diag-label");
+            builder.AddContent(seq++, stage.ToString());
+            builder.CloseElement();
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "diag-value");
+            builder.AddContent(seq++, delta > 0 ? $"+{delta} (Σ {total})" : $"Σ {total}");
+            builder.CloseElement();
+            builder.CloseElement();
+        }
+    };
+
+    private static ThroughputSample? BuildOwnThroughputSample(JsonElement stream) {
+        if (stream.ValueKind != JsonValueKind.Object) return null;
+        var primary = (long)GetNum(stream, "encodedFrames");
+        var bytes = (long)GetNum(stream, "bytesEncoded");
+        var trace = ReadDropTraceMap(stream);
+        return new ThroughputSample(primary, bytes, trace, Environment.TickCount64);
+    }
+
+    private static ThroughputSample? BuildRemoteThroughputSample(JsonElement diag) {
+        if (diag.ValueKind != JsonValueKind.Object) return null;
+        var primary = (long)GetNum(diag, "presented");
+        var bytes = (long)GetNum(diag, "bytesReceived");
+        var trace = ReadDropTraceMap(diag);
+        return new ThroughputSample(primary, bytes, trace, Environment.TickCount64);
+    }
+
+    private static IReadOnlyDictionary<FrameDropStage, long> ReadDropTraceMap(JsonElement el) {
+        if (!el.TryGetProperty("dropTraceByStage", out var m) || m.ValueKind != JsonValueKind.Object)
+            return EmptyDropTrace;
+        var dict = new Dictionary<FrameDropStage, long>();
+        foreach (var p in m.EnumerateObject()) {
+            if (!int.TryParse(p.Name, out var stageNum)) continue;
+            if (p.Value.ValueKind != JsonValueKind.Number) continue;
+            dict[(FrameDropStage)stageNum] = p.Value.GetInt64();
+        }
+        return dict;
+    }
+
+    private static readonly IReadOnlyDictionary<FrameDropStage, long> EmptyDropTrace
+        = new Dictionary<FrameDropStage, long>();
 }
