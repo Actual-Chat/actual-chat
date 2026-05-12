@@ -26,6 +26,7 @@ public sealed partial class UserId : PrincipalId, IStringIdentifier<UserId>
     public static readonly RandomStringGenerator GuestIdGenerator = new(8, Alphabet.AlphaNumeric);
     public static readonly Comparer<UserId> Comparer = Comparer<UserId>.Default;
     public static readonly char GuestIdPrefixChar = '~';
+    public static readonly string[] UserIdExceptions = [ "ml-search", "actual-admin" ];
 
     [IgnoreDataMember]
     public bool IsGuest => Value.Length != 0 && Value[0] == GuestIdPrefixChar;
@@ -82,10 +83,23 @@ public sealed partial class UserId : PrincipalId, IStringIdentifier<UserId>
             return true;
         }
 
-        if (s.Length is < 3 or > 64) // Tests may use some accounts with short Ids + there is "admin"
+        if (s.Length is < 3 or > 64) { // Tests may use some accounts with short Ids + there is "admin"
+            if (Array.IndexOf(UserIdExceptions, s) < 0)
+                return false;
+        }
+        else if (!IsRegularUserId(s) && Array.IndexOf(UserIdExceptions, s) < 0)
             return false;
 
-        var alphabet = Alphabet.AlphaNumericDash;
+        result = new UserId(s);
+        result = Cache.AddOrGet(s, result);
+        return true;
+    }
+
+    // Private methods
+
+    private static bool IsRegularUserId(string s)
+    {
+        var alphabet = Alphabet.AlphaNumeric;
         for (var i = 0; i < s.Length; i++) {
             var c = s[i];
             if (!alphabet.IsMatch(c)) {
@@ -95,8 +109,6 @@ public sealed partial class UserId : PrincipalId, IStringIdentifier<UserId>
             }
         }
 
-        result = new UserId(s);
-        result = Cache.AddOrGet(s, result);
         return true;
     }
 }

@@ -133,14 +133,38 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
         if (userId1Length < 0)
             return null;
 
-        if (!UserId.TryParse(tail[..userId1Length].ToString(), out var userId1))
-            return null;
-        if (!UserId.TryParse(tail[(userId1Length + 1)..].ToString(), out var userId2))
-            return null;
+        var sUserId1 = tail[..userId1Length].ToString();
+        var sUserId2 = tail[(userId1Length + 1)..].ToString();
+        if (!UserId.TryParse(sUserId1, out var userId1)
+            || !UserId.TryParse(sUserId2, out var userId2))
+            return TryParsePeerChatIdWithUserIdException(s);
         if (string.CompareOrdinal(userId1.Value, userId2.Value) >= 0)
             return null; // Wrong sort order or they are the same
 
         return new PeerChatId(s, userId1, userId2);
+    }
+
+    private static PeerChatId? TryParsePeerChatIdWithUserIdException(string s)
+    {
+        var tail = s.AsSpan(2);
+        foreach (var sUserId1 in UserId.UserIdExceptions) {
+            if (tail.Length <= sUserId1.Length
+                || tail[sUserId1.Length] != '-'
+                || !tail.StartsWith(sUserId1))
+                continue;
+
+            var sUserId2 = tail[(sUserId1.Length + 1)..].ToString();
+            if (!UserId.TryParse(sUserId1, out var userId1))
+                continue;
+            if (!UserId.TryParse(sUserId2, out var userId2))
+                continue;
+            if (string.CompareOrdinal(userId1.Value, userId2.Value) >= 0)
+                return null; // Wrong sort order or they are the same
+
+            return new PeerChatId(s, userId1, userId2);
+        }
+
+        return null;
     }
 
     private static ChatId? TryParsePlaceChatId(string s)
