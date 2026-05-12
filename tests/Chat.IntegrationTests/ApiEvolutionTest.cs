@@ -11,7 +11,7 @@ public class ApiEvolutionTest(ITestOutputHelper @out) : TestBase(@out)
     private static readonly bool MustSerialize = false;
 
     private static readonly ChatId TestChatId = ChatId.Parse("the-actual-one");
-    private static readonly UserId TestUserId = UserId.Parse("test-user-1");
+    private static readonly UserId TestUserId = UserId.Parse("testUser1");
     private static readonly AuthorId TestAuthorId = AuthorId.New(TestChatId, 1);
     private static readonly PlaceId TestPlaceId = PlaceId.New();
     private static readonly ChatEntryId TestEntryId = ChatEntryId.New(TestChatId, 1);
