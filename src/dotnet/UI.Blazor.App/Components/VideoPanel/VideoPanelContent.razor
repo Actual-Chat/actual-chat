@@ -253,6 +253,7 @@
     private HistoryStepRef? _expandStepRef;
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private CameraUI CameraUI => Hub.CameraUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
@@ -525,7 +526,7 @@
         => _ = Hub.ModalUI.Show(new VideoDiagnosticsModal.Model(ChatId));
 
     private Task OnSwitchCamera()
-        => ChatVideoUI.SwitchCamera();
+        => CameraUI.SwitchCamera();
 
     private void OnToggleChatVisibilityClick() {
         _isChatVisible = !(_isChatVisible ?? GetDefaultChatVisibility());

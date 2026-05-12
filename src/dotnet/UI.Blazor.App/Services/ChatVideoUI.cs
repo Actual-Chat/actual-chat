@@ -1,6 +1,5 @@
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Components.VideoPanel;
-using ActualChat.UI.Blazor.App.Module;
 using ActualChat.Video;
 using ActualLab.Interception;
 
@@ -18,9 +17,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<ChatId?> _recordingChatId;        // camera target chat
     private readonly MutableState<ChatId?> _screenCastChatId;       // screencast target chat
     private readonly MutableState<ChatId?> _lastRecordingChatId;
-    private readonly MutableState<string?> _selectedCameraDeviceId;
     private readonly MutableState<bool> _isBackgroundBlurEnabled;
-    private readonly MutableState<bool> _isCameraMirrored;
     private readonly MutableState<string?> _cameraErrorMessage;
     private readonly MutableState<string?> _screenCastErrorMessage;
 
@@ -47,15 +44,14 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private IAuthors Authors => Hub.Authors;
     private ILiveVideoStreams LiveVideoStreams => Hub.LiveVideoStreams;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private CameraUI CameraUI => Hub.CameraUI;
 
     public ChatVideoUI(AppUIHub hub) : base(hub)
     {
         _recordingChatId = StateFactory.NewMutable((ChatId?)null);
         _screenCastChatId = StateFactory.NewMutable((ChatId?)null);
         _lastRecordingChatId = StateFactory.NewMutable((ChatId?)null);
-        _selectedCameraDeviceId = StateFactory.NewMutable((string?)null);
         _isBackgroundBlurEnabled = StateFactory.NewMutable(false);
-        _isCameraMirrored = StateFactory.NewMutable(true);
         _cameraErrorMessage = StateFactory.NewMutable((string?)null);
         _screenCastErrorMessage = StateFactory.NewMutable((string?)null);
         _watchingChatId = StateFactory.NewMutable((ChatId?)null);
@@ -229,44 +225,8 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         OpenVideoPanel(chatId);
     }
 
-    public void SetSelectedCamera(string? cameraDeviceId)
-        => _selectedCameraDeviceId.Value = cameraDeviceId;
-
     public void SetBackgroundBlur(bool enabled)
         => _isBackgroundBlurEnabled.Value = enabled;
-
-    [ComputeMethod]
-    public virtual async Task<bool> GetIsCameraMirrored(CancellationToken cancellationToken = default)
-        => await _isCameraMirrored.Use(cancellationToken).ConfigureAwait(false);
-
-    // Last track settings reported by the active camera recorder. Plain fields —
-    // only touched from the Blazor dispatcher (JS callback + UI consumers).
-    public string? LastCameraDeviceId { get; private set; }
-    public string? LastCameraFacingMode { get; private set; }
-
-    internal void OnCameraTrackSettings(string? deviceId, string? facingMode)
-    {
-        // Called by the active camera recorder after each track acquisition
-        // (start or camera switch). Resolves the effective mirror state from
-        // per-camera overrides so the live self-preview reflects the right
-        // camera regardless of how the stream was started.
-        LastCameraDeviceId = deviceId;
-        LastCameraFacingMode = facingMode;
-        _ = ApplyAsync();
-        return;
-
-        async Task ApplyAsync() {
-            var settings = await LocalSettings.LocalAppSettings().Get().ConfigureAwait(false);
-            _isCameraMirrored.Value = settings
-                .ResolveIsCameraMirrored(deviceId, facingMode, Hub.BrowserInfo.IsMobile);
-        }
-    }
-
-    // Called by JoinVideoCallModal after it persists a user's mirror choice —
-    // forces the live preview to re-resolve against the now-updated override
-    // without waiting for the next camera (re)acquisition.
-    public void ReapplyCameraMirror()
-        => OnCameraTrackSettings(LastCameraDeviceId, LastCameraFacingMode);
 
     public void CloseVideoPanel()
         => SetWatching(null);
@@ -341,37 +301,6 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         // toggle off by clearing the intent.
         if (kind == VideoSourceKind.ScreenCast)
             _screenCastChatId.Value = null;
-    }
-
-    // Device enumeration
-
-    public async Task<VideoDevice[]> EnumerateVideoDevices(bool includeAll = false)
-    {
-        try {
-            var jsMethod = $"{BlazorUIAppModule.ImportName}.VideoRecorder.enumerateDevices";
-            return await JS.InvokeAsync<VideoDevice[]>(jsMethod, includeAll).ConfigureAwait(false);
-        }
-        catch(Exception e) {
-            Log.LogError(e, "EnumerateVideoDevices failed");
-            return [];
-        }
-    }
-
-    public async Task SwitchCamera()
-    {
-        var devices = await EnumerateVideoDevices().ConfigureAwait(false);
-        if (devices.Length <= 1)
-            return;
-
-        var localAppSettings = LocalSettings.LocalAppSettings();
-        var settings = await localAppSettings.Get().ConfigureAwait(false);
-        var currentId = settings.SelectedCameraDeviceId ?? "";
-        var currentIndex = Array.FindIndex(devices, d => d.DeviceId == currentId);
-        var nextIndex = (currentIndex + 1) % devices.Length;
-        var nextDevice = devices[nextIndex];
-        await localAppSettings.Update(
-            s => s with { SelectedCameraDeviceId = nextDevice.DeviceId }).ConfigureAwait(false);
-        SetSelectedCamera(nextDevice.DeviceId);
     }
 
     // Modal helpers
@@ -498,7 +427,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     {
         _recordingChatId.Value = chatId;
         _lastRecordingChatId.Value = chatId;
-        _selectedCameraDeviceId.Value = cameraDeviceId;
+        CameraUI.SetSelectedDevice(cameraDeviceId);
         _isBackgroundBlurEnabled.Value = isBackgroundBlurEnabled;
         OpenVideoPanel(chatId);
     }

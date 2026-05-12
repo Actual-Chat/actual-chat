@@ -52,6 +52,7 @@
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoStreamingPreview.create";
 
+    private CameraUI CameraUI => Hub.CameraUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ElementReference Ref { get; set; }
     private IJSObjectReference? JSRef { get; set; }
@@ -89,7 +90,7 @@
         var isOwnScreenCasting = await ChatVideoUI.IsOwnScreenCasting(chatId, cancellationToken).ConfigureAwait(false);
         var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
         var lastError = await ChatVideoUI.GetLastVideoRecorderError(SourceKind, cancellationToken).ConfigureAwait(false);
-        var isMirrored = await ChatVideoUI.GetIsCameraMirrored(cancellationToken).ConfigureAwait(false);
+        var isMirrored = await CameraUI.GetIsMirrored(cancellationToken).ConfigureAwait(false);
         return new Model(isOwnCameraRecording, isOwnScreenCasting, !hasRemoteStreams, lastError, isMirrored);
     }
 

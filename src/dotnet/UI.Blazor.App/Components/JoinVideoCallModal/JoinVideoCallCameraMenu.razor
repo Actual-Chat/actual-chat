@@ -25,11 +25,11 @@
     private VideoDevice[]? _devices;
     private string _selectedDeviceId = "";
 
-    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private CameraUI CameraUI => Hub.CameraUI;
 
     protected override async Task OnParametersSetAsync() {
         _selectedDeviceId = Arguments.Length > 0 ? Arguments[0] : "";
-        _devices = await ChatVideoUI.EnumerateVideoDevices(includeAll: true).ConfigureAwait(true);
+        _devices = await CameraUI.EnumerateDevices(includeAll: true).ConfigureAwait(true);
     }
 
     private async Task OnClick(string deviceId) {

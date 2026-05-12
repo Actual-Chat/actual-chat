@@ -31,7 +31,7 @@ public partial class ChatVideoUI
         if (chatId is null)
             return null;
 
-        var cameraDeviceId = await _selectedCameraDeviceId.Use(cancellationToken).ConfigureAwait(false);
+        var cameraDeviceId = await CameraUI.GetSelectedDeviceId(cancellationToken).ConfigureAwait(false);
         var blurEnabled = await _isBackgroundBlurEnabled.Use(cancellationToken).ConfigureAwait(false);
         return new CameraRecordingIntent(chatId, cameraDeviceId, blurEnabled);
     }

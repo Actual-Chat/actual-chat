@@ -47,7 +47,7 @@ public sealed class VideoRecorder : IAsyncDisposable
 
     private async Task Initialize()
     {
-        var blazorCallbacks = new RecorderCallbacks(ChatVideoUI, this, Kind);
+        var blazorCallbacks = new RecorderCallbacks(Hub, this, Kind);
         _blazorCallbacksRef = DotNetObjectReference.Create(blazorCallbacks);
         var jsMethod = $"{BlazorUIAppModule.ImportName}.VideoRecorder.create";
         _jsRef = await JS
@@ -308,7 +308,7 @@ public sealed class VideoRecorder : IAsyncDisposable
 
     // Nested types
 
-    private sealed class RecorderCallbacks(ChatVideoUI owner, VideoRecorder videoRecorder, VideoSourceKind kind)
+    private sealed class RecorderCallbacks(AppUIHub hub, VideoRecorder videoRecorder, VideoSourceKind kind)
     {
         [JSInvokable]
         public void OnRecordingStarted()
@@ -316,31 +316,31 @@ public sealed class VideoRecorder : IAsyncDisposable
             videoRecorder.OnRecordingStarted();
             var startRequest = videoRecorder.GetStartRequest();
             var chatId = startRequest.Item1;
-            owner.OnRecordingStarted(chatId, kind);
+            hub.ChatVideoUI.OnRecordingStarted(chatId, kind);
         }
 
         [JSInvokable]
         public void OnRecordingStopped() {
             videoRecorder.OnRecordingStopped();
-            owner.OnRecordingStopped(kind);
+            hub.ChatVideoUI.OnRecordingStopped(kind);
         }
 
         [JSInvokable]
         public void OnRecordingError(string error)
         {
             videoRecorder.OnRecordingError();
-            owner.OnRecordingError(error, kind);
+            hub.ChatVideoUI.OnRecordingError(error, kind);
         }
 
         [JSInvokable]
         public void OnTrackSettings(string? deviceId, string? facingMode)
         {
             // Fires from JS after a camera track is acquired (start or camera
-            // switch). Lets ChatVideoUI resolve per-camera display preferences
+            // switch). Lets CameraUI resolve per-camera display preferences
             // (mirror) from current device + facingMode. Not called for
             // screencast — its display is never mirrored.
             if (kind == VideoSourceKind.Camera)
-                owner.OnCameraTrackSettings(deviceId, facingMode);
+                hub.CameraUI.OnTrackSettings(deviceId, facingMode);
         }
 
         [JSInvokable]

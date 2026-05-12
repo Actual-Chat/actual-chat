@@ -76,12 +76,13 @@
 @code {
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private CameraUI CameraUI => Hub.CameraUI;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public bool IsNarrow { get; set; }
 
     private Task OnSwitchCamera()
-        => ChatVideoUI.SwitchCamera();
+        => CameraUI.SwitchCamera();
 
     private void OnScreenCastClick(bool enable) {
         var chat = Chat;

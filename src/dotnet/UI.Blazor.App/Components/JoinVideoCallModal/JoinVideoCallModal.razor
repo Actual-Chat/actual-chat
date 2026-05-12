@@ -189,6 +189,7 @@
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private CameraUI CameraUI => Hub.CameraUI;
     private CameraPermissionHandler CameraPermission => field ??= Hub.Services.GetRequiredService<CameraPermissionHandler>();
     private SystemSettingsUI SystemSettingsUI => field ??= Hub.Services.GetRequiredService<SystemSettingsUI>();
     private bool IsSettingsMode => ModalModel.Mode is VideoCallMode.Settings;
@@ -373,7 +374,7 @@
 
     private IVideoSession CreateSession(IJSObjectReference jsRef)
         => IsSettingsMode
-            ? new RecorderVideoSession(jsRef, ChatVideoUI, ModalModel.Chat.Id)
+            ? new RecorderVideoSession(jsRef, ChatVideoUI, CameraUI, ModalModel.Chat.Id)
             : new LocalVideoSession(jsRef, () => _selectedDevice?.DeviceId, () => _isBlurEnabled);
 
     public override async ValueTask DisposeAsync() {
@@ -395,7 +396,7 @@
         => _ = InvokeAsync(StateHasChanged);
 
     private async Task LoadVideoDevices() {
-        _videoDevices = (await ChatVideoUI.EnumerateVideoDevices(includeAll: true)).ToList();
+        _videoDevices = (await CameraUI.EnumerateDevices(includeAll: true)).ToList();
         StateHasChanged();
     }
 
@@ -407,15 +408,15 @@
     }
 
     // Reads the currently-previewing camera's deviceId + facingMode (Join mode:
-    // from own JS; Settings mode: from ChatVideoUI's last-seen values), resolves
-    // the effective mirror state per-camera, and updates local UI + ChatVideoUI
+    // from own JS; Settings mode: from CameraUI's last-seen values), resolves
+    // the effective mirror state per-camera, and updates local UI + CameraUI
     // so VideoStreamingPreview picks it up too.
     private async Task ApplyMirrorForCurrentCamera() {
         if (_jsRef is null)
             return;
         if (IsSettingsMode) {
-            _currentDeviceId = ChatVideoUI.LastCameraDeviceId;
-            _currentFacingMode = ChatVideoUI.LastCameraFacingMode;
+            _currentDeviceId = CameraUI.LastDeviceId;
+            _currentFacingMode = CameraUI.LastFacingMode;
         } else {
             var info = await _jsRef.InvokeAsync<CameraInfo?>("getCurrentCameraInfo");
             _currentDeviceId = info?.DeviceId;
@@ -455,7 +456,7 @@
     }
 
     private async Task OnSwitchCamera() {
-        var cycleDevices = await ChatVideoUI.EnumerateVideoDevices();
+        var cycleDevices = await CameraUI.EnumerateDevices();
         if (cycleDevices.Length <= 1)
             return;
 
@@ -474,7 +475,7 @@
     }
 
     private async Task CommitMirrorChoice() {
-        // Persist the per-camera override and tell ChatVideoUI to re-resolve so
+        // Persist the per-camera override and tell CameraUI to re-resolve so
         // the live self-preview picks up the change without waiting for the
         // next camera (re)acquisition. No-op if we never resolved a deviceId.
         if (string.IsNullOrEmpty(_currentDeviceId))
@@ -483,7 +484,7 @@
         var mirrored = _isCameraMirrored;
         await Hub.LocalSettings.LocalAppSettings().Update(
             s => s with { CameraMirrorOverrides = s.CameraMirrorOverrides.With(deviceId, mirrored) });
-        ChatVideoUI.ReapplyCameraMirror();
+        CameraUI.ReapplyMirror();
     }
 
     private string MirrorBtnClass()
@@ -688,6 +689,7 @@
     private sealed class RecorderVideoSession(
         IJSObjectReference jsRef,
         ChatVideoUI chatVideoUI,
+        CameraUI cameraUI,
         ChatId chatId) : VideoSessionBase
     {
         public override async Task Start() {
@@ -700,7 +702,7 @@
             // auto-detaches and reattaches, so we'll get a fresh first-frame
             // callback once the new camera is live.
             SetState(CameraState.Starting);
-            chatVideoUI.SetSelectedCamera(deviceId);
+            cameraUI.SetSelectedDevice(deviceId);
             return Task.CompletedTask;
         }
 
