@@ -46,7 +46,6 @@ export interface VideoConstants {
     readonly baselineLatencyEmaAlpha: number;
     readonly highDecodeTimeThresholdMs: number;
     readonly highBufferDepthThreshold: number;
-    readonly throughputOverDeliveryRatio: number;
     readonly throughputStepDownConsecutiveChecks: number;
     readonly latencyStepDownConsecutiveChecks: number;
     readonly keyFrameRequestCooldownMs: number;

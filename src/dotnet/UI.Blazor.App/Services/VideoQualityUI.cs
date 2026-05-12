@@ -18,9 +18,9 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
     // Stream-age-tiered evaluation cadence for both rec and playback QC.
     // Health snapshots arrive at 1 Hz; we throttle the controller's
     // decide+push step on top of that to avoid thrash while a fresh stream
-    // is still settling and to cut steady-state traffic later. The 5 s
-    // startup cooldown covers the L2-keyframe wait (~3 s) plus EMA(10)
-    // ramp-up so the first eval lands on a settled buffer signal.
+    // is still settling and to cut steady-state traffic later. The 3 s
+    // startup cooldown covers the L2-keyframe wait while keeping upgrades
+    // responsive once the first real playback stats arrive.
     private static readonly TimeSpan QcStartupCooldown = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan QcSettlingInterval = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan QcSettlingDuration = TimeSpan.FromSeconds(10);

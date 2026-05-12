@@ -154,6 +154,7 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
     let maxQueueDepth = 0;
     let rpcStreamSkipped = 0;
     let rpcStreamSender: { readonly skipCount: number; onAckProcessed?: () => void } | null = null;
+    let rpcStream: RpcStream<VideoFrameBundleDto> | null = null;
     let lastAckAtMs = -1;
     let isCompleted = false;
     let isDisposed = false;
@@ -212,6 +213,7 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
                 MediaRpcStreamOptions.videoRealtime<VideoFrameBundleDto>(
                     isVideoFrameBundleDtoKeyFrame),
             );
+            rpcStream = stream;
 
             const streamRef = stream.toRef(peer);
             if (stream.sender) {
@@ -220,6 +222,11 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
                     lastAckAtMs = Date.now();
                     rpcStreamSkipped = rpcStreamSender?.skipCount ?? rpcStreamSkipped;
                 };
+            }
+            if (isCompleted) {
+                stream.disconnect();
+                await stream.whenSent;
+                return;
             }
 
             void liveVideoStreams
@@ -282,6 +289,7 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
         if (isCompleted) return;
         isCompleted = true;
         frameAdded.trigger();
+        rpcStream?.disconnect();
     };
 
     const getStats = (): WireSenderStats => ({

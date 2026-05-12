@@ -219,12 +219,12 @@ describe('Player', () => {
         await playerA.start(startOpts('a', canvasA));
         await playerB.start(startOpts('b', canvasB));
 
-        // Pump until both pipelines have absorbed all their inputs and
-        // at least a couple of frames have been decoded through the
-        // shared session.
-        for (let i = 0; i < 400; i++) {
+        // Pump until both pipelines have presented at least one frame.
+        for (let i = 0; i < 100 && (canvasA.drawCount === 0 || canvasB.drawCount === 0); i++) {
             await new Promise(r => setTimeout(r, 0));
         }
+        expect(canvasA.drawCount).toBeGreaterThanOrEqual(1);
+        expect(canvasB.drawCount).toBeGreaterThanOrEqual(1);
 
         playerA.stop();
         playerB.stop();
@@ -234,7 +234,7 @@ describe('Player', () => {
             playerB.whenDone().catch(() => { /* expected */ }),
         ]);
 
-        // 5 chunks per stream → 10 total.
-        // Both pipelines used the same session's stats reference.
+        expect(playerA.stats.presented).toBeGreaterThanOrEqual(1);
+        expect(playerB.stats.presented).toBeGreaterThanOrEqual(1);
     });
 });

@@ -357,7 +357,7 @@ export class VideoPlayer {
                     },
                     onStreamEnded: (streamId: string, reason: string) => {
                         debugLog?.log(`Worker stream ended: stream=${streamId}, reason=${reason}`);
-                        void this.reportEnded();
+                        void this.reportEnded(reason === 'completed' ? undefined : reason);
                         return Promise.resolve();
                     },
                     onError: (streamId: string, error: string) => {

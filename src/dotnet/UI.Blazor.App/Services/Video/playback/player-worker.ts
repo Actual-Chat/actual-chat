@@ -58,6 +58,13 @@ export function __getPlayerWorkerSession(): PlaybackSession | null {
     return session;
 }
 
+export function isTerminalStreamError(error: unknown): boolean {
+    const message = error instanceof Error ? error.message : String(error);
+    return message.includes('RpcStream not found or disconnected')
+        || /^Stream gap at index \d+ \(expected \d+\); reconnect not allowed$/.test(message)
+        || message === 'Peer disconnected.';
+}
+
 function ensureSession(): PlaybackSession {
     session ??= new PlaybackSession();
     return session;
@@ -148,6 +155,10 @@ export const playerWorkerImpl: PlayerWorker = {
             (e: unknown) => {
                 if (locallyStopped.has(opts.streamId))
                     return;
+                if (isTerminalStreamError(e)) {
+                    h.reportStreamEnded?.(opts.streamId, 'evicted');
+                    return;
+                }
                 const msg = e instanceof Error ? e.message : String(e);
                 h.reportError?.(opts.streamId, msg);
             },

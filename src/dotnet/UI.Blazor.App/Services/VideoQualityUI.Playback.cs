@@ -9,6 +9,13 @@ public sealed partial class VideoQualityUI
     private static readonly TimeSpan PlaybackHealthTtl = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan PlaybackQualityKeepAlivePeriod = TimeSpan.FromMinutes(1);
 
+    // Per-stream observed-rate decay. The allocator mostly trusts static ladder
+    // rates, but keeps a short-lived guard for real encoder over-delivery on the
+    // requested tier. Input is already a 3s JS-side window, so this should decay
+    // quickly; otherwise a startup/keyframe burst can pin L2 as "too expensive".
+    private const double ObservedRateDecayPerSecond = 0.80; // halves in ~3s
+    private const double ObservedRateCapMultiplier = 1.50;
+
     // Stream-age-aware throttle on QC decisions: cooldown for the first
     // StartupCooldown, then evaluate at SettlingInterval until SettlingDuration
     // of stream age, then SteadyInterval. Prevents premature thrash and keeps
@@ -37,10 +44,11 @@ public sealed partial class VideoQualityUI
         lock (_playbackLock) {
             var prev = _playbackByStream.GetValueOrDefault(streamId);
             snapshot = WithRenderFallback(snapshot, prev);
+            var observedPeak = ComputeDecayedObservedRate(prev, snapshot.IncomingByteRate);
             var desiredSize = GetDesiredVideoSize(snapshot, sourceKind);
             var requestedLayerCount = GetBestLayerFor(sourceKind, desiredSize) + 1;
             _playbackByStream[streamId] = new PlaybackStatsState(
-                sourceKind, snapshot, verdict, CpuTimestamp.Now,
+                sourceKind, snapshot, verdict, CpuTimestamp.Now, observedPeak,
                 requestedLayerCount, desiredSize);
             isFirstTick = prev is null;
             if (isFirstTick || !_playbackStartedAt.ContainsKey(streamId))
@@ -112,6 +120,7 @@ public sealed partial class VideoQualityUI
                     },
                     Verdict: 0,
                     LastSeen: CpuTimestamp.Now,
+                    ObservedPeakByteRate: 0,
                     RequestedLayerCount: currentLayerCount,
                     DesiredVideoSize: desiredSize);
             }
@@ -192,14 +201,14 @@ public sealed partial class VideoQualityUI
             capacity, aggregateHealth, verdicts, streamSignals,
             PlaybackRateEma: playbackRateEma,
             DropRatio: receiverDropRatio);
-        Log.LogInformation(
+        Log.LogDebug(
             "PlaybackQuality: reason={Reason} ceiling={Ceiling} signalLevel={SignalLevel:F2} streams=[{Streams}]",
             reason, capacity, signalLevel,
             string.Join(", ", entries.Select(x =>
                 $"{x.Key.Value}:size={x.Value.DesiredVideoSize}/req=L{requestedMap[x.Key.Value].LayerCount}/T{requestedMap[x.Key.Value].TemporalLayerCount}"
                 + $"/duration={x.Value.Snapshot.StreamDurationMs}ms"
                 + $"/buf={x.Value.Snapshot.BufferSpanMsEma:F0}ms"
-                + $"/rate={x.Value.Snapshot.IncomingByteRate}"
+                + $"/rate={x.Value.Snapshot.IncomingByteRate}/peak={x.Value.ObservedPeakByteRate}"
                 + $"/playbackRate={x.Value.Snapshot.PlaybackRateEma:F2}"
                 )));
         var streamInfoMap = new ApiMap<string, PlaybackStreamInfo>();
@@ -234,7 +243,7 @@ public sealed partial class VideoQualityUI
         {
             var debugCap = _debugMaxPlaybackLayerCount;
             var layerCountCap = Math.Min(entry.Value.RequestedLayerCount, debugCap ?? int.MaxValue);
-            var rates = EstimateLayerRates(entry.Value);
+            var rates = EstimateLayerRates(entry.Value, layerCountCap);
             var area = Math.Max(1,
                 entry.Value.Snapshot.RenderCssLongSide
                 * entry.Value.Snapshot.RenderCssLongSide
@@ -280,13 +289,34 @@ public sealed partial class VideoQualityUI
         return (double)totalDrops / denom;
     }
 
-    private static IReadOnlyList<long> EstimateLayerRates(PlaybackStatsState state)
+    private static IReadOnlyList<long> EstimateLayerRates(
+        PlaybackStatsState state,
+        int layerCount)
     {
         var ladder = VideoRecorder.BuildLadder(state.SourceKind);
+        var targetLayer = Math.Clamp(layerCount - 1, 0, ladder.Count - 1);
         var rates = new long[ladder.Count];
         for (var i = 0; i < ladder.Count; i++)
             rates[i] = ladder[i].GetByteRate(state.Snapshot.Codec);
+
+        var targetRate = Math.Max(1, rates[targetLayer]);
+        // Windowed observed rate protects against real over-delivery, but only
+        // within a small cap so transient bursts don't block L2 for a long time.
+        var cappedPeak = Math.Min(
+            state.ObservedPeakByteRate,
+            (long)(targetRate * ObservedRateCapMultiplier));
+        rates[targetLayer] = Math.Max(targetRate, cappedPeak);
         return rates;
+    }
+
+    private static long ComputeDecayedObservedRate(PlaybackStatsState? prev, long currentRate)
+    {
+        var current = Math.Max(0, currentRate);
+        if (prev is null)
+            return current;
+        var elapsedSec = Math.Max(0, prev.LastSeen.Elapsed.TotalSeconds);
+        var decayed = (long)(prev.ObservedPeakByteRate * Math.Pow(ObservedRateDecayPerSecond, elapsedSec));
+        return Math.Max(decayed, current);
     }
 
     private static VideoSize GetTopVideoSize(VideoSourceKind sourceKind)
@@ -452,6 +482,7 @@ public sealed partial class VideoQualityUI
         PlaybackStats Snapshot,
         int Verdict,
         CpuTimestamp LastSeen,
+        long ObservedPeakByteRate,
         // Per-stream layer count requested for this allocation cycle (1-based).
         int RequestedLayerCount,
         VideoSize DesiredVideoSize);
