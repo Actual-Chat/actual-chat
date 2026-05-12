@@ -18,11 +18,8 @@ export function collectOwnStreamDiagnostics(kind: number): OwnStreamDiagnosticsS
 
 // `innerText` excludes CSS-hidden nodes and `display:none` blocks — we want
 // the visible plaintext, not the raw HTML.
-export async function copyElementText(el: HTMLElement | null): Promise<void> {
-    if (!el) return;
-    const text = el.innerText;
-    if (!text) return;
-    await navigator.clipboard.writeText(text);
+export function getElementText(el: HTMLElement | null): string {
+    return el?.innerText ?? '';
 }
 
 export async function collectRemoteStreamDiagnostics(streamId: string): Promise<RemoteStreamDiagnostics | null> {

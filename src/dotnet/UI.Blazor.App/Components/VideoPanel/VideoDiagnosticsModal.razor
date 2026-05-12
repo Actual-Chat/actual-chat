@@ -520,6 +520,7 @@
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private IAuthors Authors => Hub.Authors;
+    private ClipboardUI ClipboardUI => Hub.ClipboardUI;
     private ILogger Log => field ??= Services.LogFor<VideoDiagnosticsModal>();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -777,8 +778,10 @@
     private async Task OnCopyClick()
     {
         try {
-            var jsMethod = $"{BlazorUIAppModule.ImportName}.copyElementText";
-            await Hub.JS.InvokeVoidAsync(jsMethod, _bodyRef).ConfigureAwait(false);
+            var jsMethod = $"{BlazorUIAppModule.ImportName}.getElementText";
+            var text = await Hub.JS.InvokeAsync<string>(jsMethod, _bodyRef).ConfigureAwait(false);
+            if (!string.IsNullOrEmpty(text))
+                await ClipboardUI.WriteText(text).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogWarning(e, "Copy diagnostics failed");
