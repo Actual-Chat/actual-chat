@@ -154,7 +154,6 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
     let maxQueueDepth = 0;
     let rpcStreamSkipped = 0;
     let rpcStreamSender: { readonly skipCount: number; onAckProcessed?: () => void } | null = null;
-    let rpcStream: RpcStream<VideoFrameBundleDto> | null = null;
     let lastAckAtMs = -1;
     let isCompleted = false;
     let isDisposed = false;
@@ -208,7 +207,6 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
                 })(),
                 MediaRpcStreamOptions.videoRecording<VideoFrameBundleDto>(isVideoFrameBundleDtoKeyFrame),
             );
-            rpcStream = stream;
 
             const streamRef = stream.toRef(peer);
             if (stream.sender) {
@@ -284,7 +282,13 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
         if (isCompleted) return;
         isCompleted = true;
         frameAdded.trigger();
-        rpcStream?.disconnect();
+        // Don't call RpcStream.disconnect() here: it sets _ended=true on the
+        // sender without sending $sys.End, leaving the server's consumer
+        // waiting until KeepAlive eventually disconnects the orphan stream
+        // (~10s). Instead, isCompleted=true lets the generator return done
+        // naturally, which queues _endItem, fires sendEnd, and the server
+        // sees graceful end-of-stream immediately. Recovery-on-eviction is
+        // driven by pump rejection, not by this path.
     };
 
     const getStats = (): WireSenderStats => ({
