@@ -1046,6 +1046,10 @@ export class VideoPanel {
         if (this.disposed$.closed)
             return;
 
+        // Hide before any DOM reshuffling (collapse/reparent) so callers that
+        // dispose without playing a close animation don't see the panel briefly
+        // snap to its inline location before unmount.
+        this.videoPanel.style.visibility = 'hidden';
         if (this.singleTapTimer) {
             clearTimeout(this.singleTapTimer);
             this.singleTapTimer = 0;
@@ -1059,27 +1063,37 @@ export class VideoPanel {
     }
 
     public toggleExpand(): void {
-        if (!this.videoPanel.classList.contains('expanded')) {
-            this.videoPanel.classList.remove('minimized');
-            this.videoPanel.classList.add('expanded');
-            this.setDragHandleVisible(false);
-            document.body.appendChild(this.videoPanel);
-            // Freeze narrow/wide state so rotating the device while fullscreen
-            // doesn't reflow the hidden app layout underneath (e.g. left panel appearing).
-            ScreenSize.freeze();
-            void this.blazorRef.invokeMethodAsync('OnExpanded');
-        } else {
+        if (this.videoPanel.parentElement !== document.body)
+            this.expand();
+        else
             this.collapse();
-        }
+    }
+
+    public expand(): void {
+        if (this.videoPanel.parentElement === document.body)
+            return;
+
+        // Reparent BEFORE adding 'expanded' — otherwise position:fixed would
+        // resolve against the original (possibly transformed) ancestor for a frame.
+        document.body.appendChild(this.videoPanel);
+        this.videoPanel.classList.remove('minimized');
+        this.videoPanel.classList.add('expanded');
+        this.setDragHandleVisible(false);
+        // Freeze narrow/wide state so rotating the device while fullscreen
+        // doesn't reflow the hidden app layout underneath (e.g. left panel appearing).
+        ScreenSize.freeze();
+        void this.blazorRef.invokeMethodAsync('OnExpanded');
     }
 
     public collapse() {
-        if (!this.videoPanel.classList.contains('expanded'))
+        if (this.videoPanel.parentElement !== document.body)
             return;
 
         this.resetZoom();
-        this.videoPanel.classList.remove('expanded', 'toolbar-hidden');
+        // Reparent BEFORE removing 'expanded' — otherwise the panel briefly
+        // renders as inline-positioned while still attached to document.body.
         this.parentElement?.appendChild(this.videoPanel);
+        this.videoPanel.classList.remove('expanded', 'toolbar-hidden');
         this.setDragHandleVisible(true);
         // Resume ScreenSize updates; re-sync body classes to the current orientation.
         ScreenSize.unfreeze();

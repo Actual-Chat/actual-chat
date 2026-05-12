@@ -13,32 +13,35 @@
 /* Collapsed "island" — fixed, positioned below subheader, draggable */
 .video-panel.collapsed {
     @apply fixed z-button top-16 right-2;
-    @apply h-full max-h-24;
-    @apply w-auto;
-    @apply p-px;
+    @apply h-24 w-44 md:h-32 md:w-56;
+    @apply p-0;
     @apply rounded-lg;
     @apply overflow-hidden;
+    @apply bg-03;
     @apply cursor-grab;
     @apply touch-none;
-    background: linear-gradient(to left, var(--bottom-sheet-1), var(--bottom-sheet-2));
 }
 .video-panel.collapsed > .c-container {
-    @apply flex-x items-center gap-1;
-    @apply h-full;
-    @apply p-px;
-    @apply rounded-[7px];
+    @apply flex-x items-center gap-0;
+    @apply h-full w-full;
+    @apply p-0;
+    @apply rounded-lg;
     @apply bg-03;
 }
-body.wide .video-panel.collapsed > .c-container {
-    @apply gap-0;
-    @apply p-0.5;
-}
-.video-panel.collapsed .video-panel-toolbar {
+.video-panel.collapsed .video-panel-footer {
     @apply hidden;
+}
+.video-panel.collapsed .video-panel-header {
+    @apply absolute top-1 right-1 left-auto;
+    @apply flex-none;
+    @apply p-0 z-10;
+}
+.video-panel.collapsed .video-panel-header .c-right {
+    @apply gap-0;
 }
 .video-panel.collapsed .video-panel-content {
     @apply relative;
-    @apply w-40 h-full;
+    @apply w-full h-full;
     @apply p-0;
     @apply rounded-md;
     @apply overflow-hidden;
@@ -71,12 +74,16 @@ body.wide .video-panel.collapsed > .c-container {
 }
 body.wide .video-panel.panel-hidden {
     @apply absolute z-button top-2 right-2;
-    @apply h-8 max-h-8 min-h-0 w-auto;
+    @apply h-10 max-h-10 min-h-0 w-auto;
     @apply px-3;
     @apply rounded-full;
     @apply cursor-pointer;
     @apply overflow-hidden;
-    background: linear-gradient(to left, var(--bottom-sheet-1), var(--bottom-sheet-2));
+    background: linear-gradient(180deg, var(--black-40) -20.83%, var(--black-60) 100%);
+    backdrop-filter: blur(2px);
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+        0 4px 12px rgba(0, 0, 0, 0.35);
     /* Why: Blazor sets `.panel-hidden` before JS reparents the node into
        `.layout-body-wrapper > .c-container`. For the first frame the pill paints
        at the wrong position (against `.page-with-header-and-footer`). The 80ms
@@ -97,7 +104,24 @@ body.wide .video-panel.panel-hidden {
 .video-panel.panel-hidden .c-hidden-pill {
     @apply flex-x items-center gap-2;
     @apply h-full;
-    @apply text-caption-1 text-white;
+    @apply text-headline-1 text-white;
+}
+.video-panel.panel-hidden .c-hidden-pill .c-live-dot {
+    @apply w-2 h-2;
+    @apply rounded-full;
+    background: var(--danger);
+    will-change: opacity;
+    contain: layout paint style;
+    animation: pulseLiveDot 2s ease-in-out infinite;
+}
+.video-panel.panel-hidden .c-hidden-pill .c-divider {
+    @apply w-0.5 h-4;
+    @apply rounded-full;
+    @apply bg-[var(--white-40)];
+}
+@keyframes pulseLiveDot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
 }
 body.narrow .video-panel.panel-hidden {
     @apply hidden;
@@ -225,35 +249,28 @@ body.wide .video-panel.expanded:has(.video-panel-chat) > .c-container {
 .video-panel.closing .video-panel-content {
     animation: smoothHideVideoPanelContent 0.35s ease-in-out forwards;
 }
-/* Top-right action cluster — settings (conditional), collapse-toggle, hide */
-.video-panel .video-panel-actions {
-    @apply absolute top-2 right-2 z-button;
-    @apply flex-x items-center gap-1;
-}
-.video-panel.expanded .video-panel-actions {
-    @apply hidden;
-}
 /* Hide-button is desktop-only — narrow uses the swipe-handle */
 body.narrow .video-panel .btn-video-hide {
     @apply hidden;
 }
-/* In the collapsed island only the collapse-toggle stays — others fold away. */
-.video-panel.collapsed .video-panel-actions {
-    @apply relative inset-auto;
-    @apply flex-none self-start;
-    @apply gap-0;
-    order: 1;
-}
-.video-panel.collapsed .video-panel-actions .btn-settings,
-.video-panel.collapsed .video-panel-actions .btn-video-hide {
+/* Per-mode header button visibility. Header lives in the DOM in every mode;
+   each row below hides the button(s) that don't belong in that mode. */
+.video-panel:not(.expanded) .video-panel-header .talking {
     @apply hidden;
 }
-.video-panel.collapsed .btn-h.video-panel-collapse-toggle {
-    @apply w-9 h-9;
-    @apply -mt-1 -mr-1;
+.video-panel:not(.collapsed) .video-panel-header .video-panel-collapse-toggle {
+    @apply hidden;
 }
-body.wide .video-panel.collapsed .btn-h.video-panel-collapse-toggle {
-    @apply m-0;
+.video-panel.expanded .video-panel-header .btn-settings,
+.video-panel.expanded .video-panel-header .btn-video-hide {
+    @apply hidden;
+}
+.video-panel.collapsed .video-panel-header .c-left,
+.video-panel.collapsed .video-panel-header .btn-settings,
+.video-panel.collapsed .video-panel-header .btn-video-menu,
+.video-panel.collapsed .video-panel-header .btn-video-hide,
+.video-panel.collapsed .video-panel-header .talking {
+    @apply hidden;
 }
 
 .video-panel .expanded-video-panel {
@@ -273,15 +290,14 @@ body.wide .video-panel.collapsed .btn-h.video-panel-collapse-toggle {
     @apply hidden;
 }
 .video-panel .video-panel-header {
+    @apply inset-x-0 top-0;
     @apply flex-x items-center justify-between;
-    @apply left-0 top-0;
     @apply pt-2 px-2;
 }
 .video-panel .video-panel-header .c-left,
 .video-panel .video-panel-header .c-right {
     @apply flex-x items-center gap-2;
 }
-.video-panel:not(.expanded) .video-panel-header .c-right,
 .video-panel:not(.expanded) .video-panel-header .c-center {
     @apply hidden;
 }
@@ -353,6 +369,7 @@ body.device-mobile.narrow .video-panel.expanded .video-panel-header {
     @apply pt-0;
 }
 .video-panel.expanded .video-panel-footer {
+    @apply justify-center gap-4;
     bottom: var(--vp-safe-bottom);
 }
 body.device-mobile.narrow .video-panel.expanded .video-panel-content.video-panel-layout__sidebar {

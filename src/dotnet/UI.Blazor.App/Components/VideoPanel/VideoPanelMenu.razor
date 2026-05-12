@@ -1,0 +1,70 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedMenuBase<AppUIHub, VideoPanelMenu.Model>
+@{
+    var m = State.Value;
+    if (m == Model.None)
+        return;
+}
+
+<VideoPanelMenuContent
+    ChatId="@(m.ChatId!)"
+    Actions="@m.Actions"
+    IsOwnRecording="@m.IsOwnRecording"
+    IsOwnScreenCasting="@m.IsOwnScreenCasting"
+    IsChatVisible="@m.IsChatVisible"/>
+
+@code {
+    private ChatId? _chatId;
+    private bool _isNarrow;
+
+    protected override void OnParametersSet() {
+        if (Arguments is not [ var sChatId, var sIsNarrow ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        _chatId = ChatId.TryParse(sChatId);
+        _isNarrow = bool.Parse(sIsNarrow);
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = _chatId;
+        if (chatId is null)
+            return Model.None;
+
+        var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        var isDev = Hub.HostInfo.IsDevelopmentInstance;
+        var actions = await Hub.ChatVideoUI
+            .GetVideoPanelActions(chatId, _isNarrow, account.IsAdmin, isDev, cancellationToken)
+            .ConfigureAwait(false);
+
+        var isOwnRecording = await Hub.ChatVideoUI.IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);
+        var isOwnScreenCasting = await Hub.ChatVideoUI.IsOwnScreenCasting(chatId, cancellationToken).ConfigureAwait(false);
+        var isChatVisible = await Hub.ChatVideoUI.GetIsVideoPanelChatVisible(cancellationToken).ConfigureAwait(false);
+
+        return new Model {
+            ChatId = chatId,
+            IsNarrow = _isNarrow,
+            Actions = actions,
+            IsOwnRecording = isOwnRecording,
+            IsOwnScreenCasting = isOwnScreenCasting,
+            IsChatVisible = isChatVisible,
+        };
+    }
+
+    public sealed record Model {
+        public static readonly Model None = new();
+
+        public ChatId? ChatId { get; init; }
+        public bool IsNarrow { get; init; }
+        public VideoPanelActions? Actions { get; init; }
+        public bool IsOwnRecording { get; init; }
+        public bool IsOwnScreenCasting { get; init; }
+        public bool? IsChatVisible { get; init; }
+    }
+}
