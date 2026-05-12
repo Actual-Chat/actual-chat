@@ -636,6 +636,28 @@ body.wide .video-panel-content .video-track-player.item-x {
 .item-6 { order: 6; }
 .item-7 { order: 7; }
 
+/* FPS debug overlay — hidden by default; revealed when the debug toggle
+   adds `show-fps-overlay` to body. Sits opposite the participant label
+   in the top-right corner and is slightly more transparent than the
+   label so it doesn't compete for attention with stream content. */
+.video-fps-overlay {
+    @apply hidden;
+    @apply absolute top-1 right-1 z-10;
+    @apply px-1.5 py-0.5 rounded;
+    @apply text-xs text-white font-mono;
+    background: rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+}
+body.show-fps-overlay .video-fps-overlay {
+    @apply flex;
+}
+/* Hide the overlay whenever the tile is showing an error. `:has()` is
+   safe to use — Chromium 105+ / Safari 15.4+ / Firefox 121+ all support
+   it, and the rule degrades to "still visible" on older browsers. */
+.video-track-player:has(.video-error) .video-fps-overlay {
+    @apply hidden;
+}
+
 /* Participant label */
 .video-panel .video-track-player .video-participant-label {
     @apply absolute bottom-1 left-1 z-10;

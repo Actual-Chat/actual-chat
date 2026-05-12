@@ -124,6 +124,14 @@ export interface OwnStreamDiagnostics {
         layerCount: number;
         layers: { width: number; height: number; bitrateKbps: number; scalabilityMode?: string }[];
     } | null;
+    // Cumulative drop-stage histogram from the active RecorderStats sample.
+    // Keys are decimal FrameDropStage values; only non-zero stages are
+    // emitted. The modal computes per-stage deltas between successive
+    // polls and renders the breakdown when the user expands the row.
+    dropTraceByStage: Record<string, number>;
+    // Cumulative bytes encoded; the modal turns deltas into FPS-style
+    // throughput readings.
+    bytesEncoded: number;
 }
 
 export interface OwnLayerDiagnostics {
@@ -802,9 +810,13 @@ export class VideoRecorder {
             : '';
 
         let droppedAggregate = 0;
+        const dropTraceByStage: Record<string, number> = {};
         if (liveStats) {
-            for (const count of liveStats.dropTrace.values())
+            for (const [stage, count] of liveStats.dropTrace) {
                 droppedAggregate += count;
+                if (count > 0)
+                    dropTraceByStage[String(stage)] = count;
+            }
         }
         const meanEncodeTimeMs = liveStats && liveStats.encodeTimeMsCount > 0
             ? liveStats.encodeTimeMsSum / liveStats.encodeTimeMsCount
@@ -879,6 +891,8 @@ export class VideoRecorder {
                     scalabilityMode: l.scalabilityMode,
                 })),
             } : null,
+            dropTraceByStage,
+            bytesEncoded: liveStats?.bytesEncoded ?? 0,
         };
     }
 
