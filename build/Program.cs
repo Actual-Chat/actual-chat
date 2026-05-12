@@ -65,6 +65,7 @@ internal static class Program
     /// <param name="cancellationToken">The terminate program cancellation</param>
     /// <param name="configuration">The configuration for building</param>
     /// <param name="isDevMaui">If false then app connects to voxt.ai, it true - to dev.voxt.ai</param>
+    /// <param name="useNativeAot">Build the MAUI app with Native AOT (currently wired for publish-ios only).</param>
     /// <param name="dumps">Enable test running crash dumps</param>
     private static async Task<int> Main(
         string[] arguments,
@@ -84,6 +85,7 @@ internal static class Program
         // our options here
         string configuration = "Debug",
         bool? isDevMaui = null,
+        bool useNativeAot = false,
         bool dumps = false
         )
     {
@@ -451,7 +453,8 @@ internal static class Program
                     "-f net10.0-ios",
                     @"/p:TargetFrameworks=\""net10.0-ios;net10.0\""", // otherwise needs maui-android etc
                     $"-c {configuration}",
-                    $"-p:IsDevMaui={isDevMaui}")
+                    $"-p:IsDevMaui={isDevMaui}",
+                    $"-p:UseNativeAot={useNativeAot}")
                 .WithWorkingDirectory("src/dotnet/App.Maui")
                 .ToConsole(Green("dotnet: "))
                 .ExecuteAsync(cancellationToken)
@@ -469,7 +472,8 @@ internal static class Program
                     "-p:RuntimeIdentifier=ios-arm64",
                     "-p:ArchiveOnBuild=true",
                     $"-c {configuration}",
-                    $"-p:IsDevMaui={isDevMaui}")
+                    $"-p:IsDevMaui={isDevMaui}",
+                    $"-p:UseNativeAot={useNativeAot}")
                 .WithWorkingDirectory("src/dotnet/App.Maui")
                 .ToConsole(Green("dotnet: "))
                 .ExecuteAsync(cancellationToken)
