@@ -1,6 +1,16 @@
 import { getLogs } from 'logging';
 import { kbpsToBitsPerSecond } from 'app-constants';
 import { DeviceInfo } from 'device-info';
+import { isDecoderCodecProven, isEncoderCodecProven } from './codec-proof';
+
+export {
+    getProvenDecoderCodecs,
+    getProvenEncoderCodecs,
+    isDecoderCodecProven,
+    isEncoderCodecProven,
+    markDecoderCodecProven,
+    markEncoderCodecProven,
+} from './codec-proof';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPipeline');
 
@@ -485,11 +495,10 @@ async function isDecoderCodecSupported(codec: string, width: number, height: num
 // Categories that probe as supported but fail at runtime configure() on this
 // device. Mirrors excludedDecoderCodecs.
 const excludedEncoderCodecs = new Set<string>();
-const provenEncoderCodecs = new Set<string>();
 
 export function excludeEncoderCodec(category: string): void {
     if (category === 'h264') return; // never exclude — universal fallback
-    if (provenEncoderCodecs.has(category)) {
+    if (isEncoderCodecProven(category)) {
         warnLog?.log(`excludeEncoderCodec: ignoring '${category}' — already proven this session`);
         return;
     }
@@ -506,34 +515,12 @@ export function isEncoderCodecExcluded(category: string): boolean {
     return excludedEncoderCodecs.has(category);
 }
 
-export function markEncoderCodecProven(category: string): void {
-    if (provenEncoderCodecs.has(category))
-        return;
-    infoLog?.log(`Encoder codec '${category}' proven — exclusion suppressed for the rest of the session`);
-    provenEncoderCodecs.add(category);
-}
-
-export function isEncoderCodecProven(category: string): boolean {
-    return provenEncoderCodecs.has(category);
-}
-
-export function getProvenEncoderCodecs(): string[] {
-    return [...provenEncoderCodecs];
-}
-
 // Codecs that report support but fail at runtime (wrong dims, slow decode).
 const excludedDecoderCodecs = new Set<string>();
 
-// Codec categories ('h264' | 'hevc' | 'av1' | 'vp9') we've already decoded
-// enough frames of — any future failure is treated as recoverable, never as
-// "exclude this codec for the rest of the session". Persists for the page
-// lifetime (like excludedDecoderCodecs), populated by the player worker once
-// per category.
-const provenDecoderCodecs = new Set<string>();
-
 export function excludeDecoderCodec(codec: string): void {
     if (codec === 'h264') return; // never exclude h264 — universal fallback
-    if (provenDecoderCodecs.has(codec)) {
+    if (isDecoderCodecProven(codec)) {
         warnLog?.log(`excludeDecoderCodec: ignoring '${codec}' — already proven this session`);
         return;
     }
@@ -544,21 +531,6 @@ export function excludeDecoderCodec(codec: string): void {
 
 export function getExcludedDecoderCodecs(): string[] {
     return [...excludedDecoderCodecs];
-}
-
-export function markDecoderCodecProven(category: string): void {
-    if (provenDecoderCodecs.has(category))
-        return;
-    infoLog?.log(`Decoder codec '${category}' proven — exclusion suppressed for the rest of the session`);
-    provenDecoderCodecs.add(category);
-}
-
-export function isDecoderCodecProven(category: string): boolean {
-    return provenDecoderCodecs.has(category);
-}
-
-export function getProvenDecoderCodecs(): string[] {
-    return [...provenDecoderCodecs];
 }
 
 let decoderCodecCache: Promise<string[]> | null = null;

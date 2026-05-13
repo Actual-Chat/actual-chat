@@ -1,7 +1,7 @@
 import { from, type PipeOperator } from 'ix-ext';
 import { abortPromise, PromiseSource } from 'promises';
 import { closeEncodedChunk, type ArrivedChunk, type DecodedFrame } from '../frame-envelopes';
-import { createCodecProofTracker, type CodecProofTracker } from '../codec-proof-tracker';
+import { createCodecProofTracker, type CodecProofTracker } from '../codec-proof';
 
 // Message prefix stamped on a thrown error when the decode operator's recovery
 // budget is exhausted — VideoPlayer reads it to drive codec exclusion. Encoded
