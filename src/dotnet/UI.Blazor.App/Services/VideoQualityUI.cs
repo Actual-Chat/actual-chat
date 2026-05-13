@@ -66,6 +66,7 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
         await _whenActuallyUsed.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
         var chains = new[] {
             AsyncChain.From(WatchConnectivityEdges),
+            AsyncChain.From(WatchVideoPanelModeEdges),
             AsyncChain.From(RunPlaybackQualityKeepAlive),
             AsyncChain.From(LoadDebugSettings),
         };
@@ -77,6 +78,24 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
     }
 
     // Private methods
+
+    private async Task WatchVideoPanelModeEdges(CancellationToken cancellationToken)
+    {
+        // Pause/resume requests must propagate within a tick — without this, the
+        // override sits idle until the next 5s steady-state QC re-evaluation.
+        // The cached mode also tells GetFreshPlaybackEntries to keep entries
+        // alive while paused (no inbound frames → no OnPlaybackStats refresh).
+        var cMode = await Computed
+            .Capture(() => Hub.ChatVideoUI.GetVideoPanelMode(), cancellationToken)
+            .ConfigureAwait(false);
+        await foreach (var change in cMode.Changes(cancellationToken).ConfigureAwait(false)) {
+            lock (_playbackLock)
+                _currentPanelMode = change.Value;
+            await RecomputePlaybackQuality(
+                PlaybackQualityReason.ActiveSetChanged,
+                cancellationToken).ConfigureAwait(false);
+        }
+    }
 
     private async Task WatchConnectivityEdges(CancellationToken cancellationToken)
     {

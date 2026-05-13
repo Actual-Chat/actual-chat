@@ -64,6 +64,8 @@ export function recordRequestedReceiveQuality(
         requestedReceiveQuality.delete(streamId);
     else
         requestedReceiveQuality.set(streamId, quality);
+    const player = activePlayers.get(streamId);
+    player?.setExpectedPaused(quality !== null && quality.layerId < 0);
 }
 
 export interface RemoteStreamDiagnostics {
@@ -308,6 +310,20 @@ export class VideoPlayer {
         // Re-seed the fit / backdrop on the new backend so a fallback swap
         // doesn't leave us showing cover with no painter attached.
         this.applyFitDecision();
+        const requested = requestedReceiveQuality.get(this.streamId);
+        if (requested)
+            this.renderBackend.setExpectedPaused(requested.layerId < 0);
+    }
+
+    setExpectedPaused(paused: boolean): void {
+        try { this.renderBackend.setExpectedPaused(paused); }
+        catch (e) { warnLog?.log('setExpectedPaused failed:', e); }
+        // The worker's 30s no-chunk stall timer would tear down a healthy
+        // paused pipeline; let it know to suspend the timer.
+        if (this.playerWorker) {
+            this.playerWorker.setExpectedPaused(this.streamId, paused, rpcNoWait)
+                .catch((e: unknown) => warnLog?.log('worker setExpectedPaused failed:', e));
+        }
     }
 
     private async initPlayerWorker(codec: string, width: number, height: number, codecSettings: string): Promise<void> {

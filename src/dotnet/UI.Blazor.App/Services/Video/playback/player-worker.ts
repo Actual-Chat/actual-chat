@@ -201,6 +201,12 @@ export const playerWorkerImpl: PlayerWorker = {
         return Promise.resolve();
     },
 
+    setExpectedPaused(streamId: string, paused: boolean): Promise<void> {
+        const player = players.get(streamId);
+        player?.setExpectedPaused(paused);
+        return Promise.resolve();
+    },
+
     getStats(streamId: string): Promise<PlayerStats> {
         const player = players.get(streamId);
         if (!player)

@@ -82,6 +82,11 @@ export class CanvasRenderBackend implements RenderBackend {
         }
     }
 
+    setExpectedPaused(_paused: boolean): void {
+        // Canvas backends have no stall watchdog — VideoPlayer's main-thread
+        // draw loop already gates on frame arrival.
+    }
+
     private applyContainerAspect(width: number, height: number, force = false): void {
         if (width <= 0 || height <= 0) return;
         // 90/270 turns swap visual W/H, so the parent's aspect-ratio must invert.
@@ -168,6 +173,11 @@ export class TransferableCanvasRenderBackend implements RenderBackend {
         } else {
             this.bgPainter.stop();
         }
+    }
+
+    setExpectedPaused(_paused: boolean): void {
+        // Canvas backends have no stall watchdog — VideoPlayer's main-thread
+        // draw loop already gates on frame arrival.
     }
 
     private applyContainerAspect(width: number, height: number, force = false): void {

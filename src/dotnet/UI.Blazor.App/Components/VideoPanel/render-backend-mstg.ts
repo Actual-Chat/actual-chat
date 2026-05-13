@@ -45,6 +45,7 @@ export class OffThreadRenderBackend implements RenderBackend {
     private bgCanvas: HTMLCanvasElement | null = null;
     private bgPainter: BgCanvasPainter | null = null;
     private bgFocused = false;
+    private expectedPaused = false;
     private resizeListener: (() => void) | null = null;
     // DIAG: watchdog state — captures whether <video> playback is actually
     // advancing. The blur backdrop is painted by the worker from the same
@@ -184,6 +185,20 @@ export class OffThreadRenderBackend implements RenderBackend {
         }
     }
 
+    setExpectedPaused(paused: boolean): void {
+        if (paused === this.expectedPaused) return;
+        this.expectedPaused = paused;
+        // Resuming clears stall counters so the first post-resume tick starts
+        // from zero — there's a natural gap while the server's keyframe-lock
+        // re-yields its first frame.
+        if (!paused) {
+            this.consecutiveStallTicks = 0;
+            this.consecutivePlayRetries = 0;
+            this.intermittentStallScore = 0;
+            this.startupNoOutputTicks = 0;
+        }
+    }
+
     // Mirrors CanvasRenderBackend.applyContainerAspect: writes the source
     // aspect ratio to the parent `.video-track-player` container so the CSS
     // `.has-source-aspect.item-focused[style*="aspect-ratio"]` rule fits the
@@ -287,6 +302,14 @@ export class OffThreadRenderBackend implements RenderBackend {
         const dCt = nowCt - this.lastWatchdogCurrentTime;
         this.lastWatchdogAtMs = nowMs;
         this.lastWatchdogCurrentTime = nowCt;
+        // QC may pause this stream (Float/Hide). The server drops every frame
+        // until quality lifts, so dCt stays at 0 by design — not a stall.
+        if (this.expectedPaused) {
+            this.consecutiveStallTicks = 0;
+            this.intermittentStallScore = 0;
+            this.startupNoOutputTicks = 0;
+            return;
+        }
         const stream = this.videoEl.srcObject;
         const tracks = stream instanceof MediaStream ? stream.getTracks() : [];
         const trackInfo = tracks.map(t => `${t.kind}:${t.readyState}:muted=${t.muted}:enabled=${t.enabled}`).join('|');

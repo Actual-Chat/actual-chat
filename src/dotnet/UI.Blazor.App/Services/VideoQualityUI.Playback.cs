@@ -24,6 +24,11 @@ public sealed partial class VideoQualityUI
     private readonly Dictionary<StreamId, CpuTimestamp> _playbackLastEvalAt = new();
     private readonly Dictionary<StreamId, PlaybackStatsState> _playbackByStream = new();
     private readonly Lock _playbackLock = new();
+    // Snapshot of the latest panel mode observed by WatchVideoPanelModeEdges.
+    // Used by GetFreshPlaybackEntries to skip staleness pruning while QC has
+    // intentionally paused inbound frames (Hidden/Collapsed) — without that,
+    // OnPlaybackStats dries up, entries age out, and resume can't dispatch.
+    private VideoPanelMode _currentPanelMode = VideoPanelMode.Inline;
     private readonly BandwidthEstimator _inboundBwEstimator;
     private PlaybackQualitySnapshot _playbackSnapshot = PlaybackQualitySnapshot.Empty;
 
@@ -192,6 +197,20 @@ public sealed partial class VideoQualityUI
         var requestedMap = new ApiMap<string, ReceiveQuality>();
         foreach (var (streamId, _) in entries)
             requestedMap[streamId.Value] = requested.GetValueOrDefault(streamId.Value, ReceiveQuality.Lowest);
+        // Float (Collapsed) shows only the primary tile — pause every secondary
+        // stream. Hide pauses every stream. The server filter drops every frame
+        // while Paused is in effect, so this also throttles inbound bandwidth.
+        var panelMode = await Hub.ChatVideoUI.GetVideoPanelMode(cancellationToken).ConfigureAwait(false);
+        if (panelMode == VideoPanelMode.Hidden) {
+            foreach (var (streamId, _) in entries)
+                requestedMap[streamId.Value] = ReceiveQuality.Paused;
+        }
+        else if (panelMode == VideoPanelMode.Collapsed) {
+            foreach (var (streamId, state) in entries) {
+                if (state.Snapshot.Priority != PlaybackStreamPriority.Primary)
+                    requestedMap[streamId.Value] = ReceiveQuality.Paused;
+            }
+        }
 
         var streamSignals = new Dictionary<string, PlaybackStreamSignals>();
         foreach (var (streamId, state) in entries) {
@@ -428,14 +447,17 @@ public sealed partial class VideoQualityUI
     private List<KeyValuePair<StreamId, PlaybackStatsState>> GetFreshPlaybackEntries()
     {
         lock (_playbackLock) {
-            var staleStreamIds = _playbackByStream
-                .Where(x => x.Value.LastSeen.Elapsed > PlaybackHealthTtl)
-                .Select(x => x.Key)
-                .ToArray();
-            foreach (var streamId in staleStreamIds) {
-                _playbackByStream.Remove(streamId);
-                _playbackStartedAt.Remove(streamId);
-                _playbackLastEvalAt.Remove(streamId);
+            var isPaused = _currentPanelMode is VideoPanelMode.Hidden or VideoPanelMode.Collapsed;
+            if (!isPaused) {
+                var staleStreamIds = _playbackByStream
+                    .Where(x => x.Value.LastSeen.Elapsed > PlaybackHealthTtl)
+                    .Select(x => x.Key)
+                    .ToArray();
+                foreach (var streamId in staleStreamIds) {
+                    _playbackByStream.Remove(streamId);
+                    _playbackStartedAt.Remove(streamId);
+                    _playbackLastEvalAt.Remove(streamId);
+                }
             }
             return _playbackByStream.ToList();
         }

@@ -10,6 +10,7 @@ namespace ActualChat.Streaming;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record ReceiveQuality
 {
+    public static readonly ReceiveQuality Paused = new(-1, int.MaxValue);
     public static readonly ReceiveQuality Lowest = new(0, int.MaxValue);
     public static readonly ReceiveQuality Default = new(1, 0);
 
@@ -22,10 +23,13 @@ public sealed partial record ReceiveQuality
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsLowest => LayerId <= 0 && TemporalLayerId > 0;
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public bool IsPaused => LayerId < 0;
+
     [SerializationConstructor]
     public ReceiveQuality(int layerId, int temporalLayerId)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(layerId);
+        ArgumentOutOfRangeException.ThrowIfLessThan(layerId, -1);
         ArgumentOutOfRangeException.ThrowIfNegative(temporalLayerId);
         LayerId = layerId;
         TemporalLayerId = temporalLayerId;

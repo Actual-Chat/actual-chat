@@ -126,6 +126,30 @@ public class ReceiveQualityFilterTest
     }
 
     [Fact]
+    public async Task PausedDropsEveryFrameAndRequiresKeyframeOnResume()
+    {
+        var quality = TopQuality;
+        var frames = Frames(
+            Key(2, 1),
+            Delta(2, 1),
+            Mutate(() => quality = ReceiveQuality.Paused),
+            Key(2, 2),
+            Delta(2, 2),
+            Mutate(() => quality = TopQuality),
+            Delta(2, 2),
+            Key(2, 3),
+            Delta(2, 3));
+
+        var result = new List<VideoFrame>();
+        await foreach (var frame in ReceiveQualityFilter
+                           .Apply(frames, () => quality, NullLogger.Instance, CancellationToken.None))
+            result.Add(frame);
+
+        result.Select(x => (int)x.LayerId).Should().Equal(2, 2, 2, 2);
+        result.Select(x => x.KeyFrameIndex).Should().Equal(1, 1, 3, 3);
+    }
+
+    [Fact]
     public async Task ZeroTemporalRequestForwardsAllTemporalLayers()
     {
         var quality = new ReceiveQuality(2, 0);

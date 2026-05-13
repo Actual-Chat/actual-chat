@@ -37,5 +37,9 @@ export interface RenderBackend {
     // the focused one. The backend pumps the blurred backdrop only when
     // both `fit === 'contain'` AND `focused === true`.
     setBackdrop(canvas: HTMLCanvasElement | null, focused: boolean): void;
+    // Tells the backend that QC has paused this stream (no frames will arrive
+    // for a while). Used to suppress stall watchdogs that would otherwise
+    // mistake intentional silence for a real playback freeze.
+    setExpectedPaused(paused: boolean): void;
     dispose(): void;
 }

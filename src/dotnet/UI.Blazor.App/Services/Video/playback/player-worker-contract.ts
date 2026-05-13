@@ -87,6 +87,8 @@ export interface PlayerWorker {
 
     requestKeyframe(streamId?: string): Promise<void>;
 
+    setExpectedPaused(streamId: string, paused: boolean, noWait?: RpcNoWait): Promise<void>;
+
     getStats(streamId: string): Promise<PlayerStats>;
 
     stop(streamId?: string): Promise<void>;

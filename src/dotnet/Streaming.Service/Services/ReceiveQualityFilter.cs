@@ -37,11 +37,20 @@ public static class ReceiveQualityFilter
                 consumerTemporalLayerId = q.TemporalLayerId;
                 if (!skipping && selectedLayer >= 0 && consumerTemporalLayerId > selectedTemporalLayerId)
                     selectedTemporalLayerId = consumerTemporalLayerId;
+                // Paused (-1) drops everything until quality lifts; force a fresh
+                // keyframe lock on resume so we don't yield mid-GOP deltas.
+                if (q.IsPaused) {
+                    skipping = true;
+                    selectedLayer = -1;
+                    selectedTemporalLayerId = int.MaxValue;
+                }
             }
 
+            if (consumerLayerId < 0)
+                continue;
+
             int producerLayerCount = frame.LayerCount;
-            int desiredLayer = consumerLayerId < 0 ? 0
-                : consumerLayerId >= producerLayerCount ? producerLayerCount - 1
+            int desiredLayer = consumerLayerId >= producerLayerCount ? producerLayerCount - 1
                 : consumerLayerId;
 
             if (frame.IsKeyFrame) {

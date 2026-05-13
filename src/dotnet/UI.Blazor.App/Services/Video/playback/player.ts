@@ -63,6 +63,9 @@ export class Player {
     private abortTimeoutReason: unknown = null;
     private buffer: EncodedFrameBuffer | null = null;
     private whenDoneInternal: Promise<void> = Promise.resolve();
+    private clearStallTimer: (() => void) | null = null;
+    private resetStallTimer: (() => void) | null = null;
+    private expectedPaused = false;
     readonly stats: PlayerStats = createEmptyPlayerStats();
 
     constructor(session: PlaybackSession) {
@@ -125,6 +128,11 @@ export class Player {
         const resetStreamStallTimer = (): void => {
             if (streamStallTimeoutMs <= 0)
                 return;
+            // QC may park this stream indefinitely (Float/Hide); the server
+            // drops every frame, so the no-chunk-for-30s heuristic would
+            // tear down a perfectly healthy paused pipeline.
+            if (this.expectedPaused)
+                return;
             clearStreamStallTimer();
             streamStallTimeoutId = setTimeout(() => {
                 streamStallError = new Error(
@@ -133,6 +141,8 @@ export class Player {
                     abortController.abort(streamStallError);
             }, streamStallTimeoutMs);
         };
+        this.clearStallTimer = clearStreamStallTimer;
+        this.resetStallTimer = resetStreamStallTimer;
         const wrappedReportLatency = reportLatency
             ? (sample: LatencySample): void => {
                 sample.bufferSpanMs = buffer.spanMs();
@@ -205,6 +215,15 @@ export class Player {
 
     isRunning(): boolean {
         return this.abortController !== null;
+    }
+
+    setExpectedPaused(paused: boolean): void {
+        if (paused === this.expectedPaused) return;
+        this.expectedPaused = paused;
+        if (paused)
+            this.clearStallTimer?.();
+        else
+            this.resetStallTimer?.();
     }
 
     whenDone(): Promise<void> {
