@@ -136,6 +136,7 @@ export const playerWorkerImpl: PlayerWorker = {
         const { config: backend, track } = h.buildBackend(fullOpts);
         const player = new Player(s);
         players.set(opts.streamId, player);
+        player.setExpectedPaused(opts.expectedPaused === true);
         s.registerStream();
 
         // Notify BEFORE pulling frames — keeps <video srcObject>/canvas

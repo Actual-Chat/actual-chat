@@ -310,9 +310,7 @@ export class VideoPlayer {
         // Re-seed the fit / backdrop on the new backend so a fallback swap
         // doesn't leave us showing cover with no painter attached.
         this.applyFitDecision();
-        const requested = requestedReceiveQuality.get(this.streamId);
-        if (requested)
-            this.renderBackend.setExpectedPaused(requested.layerId < 0);
+        this.renderBackend.setExpectedPaused(this.getExpectedPaused());
     }
 
     setExpectedPaused(paused: boolean): void {
@@ -324,6 +322,11 @@ export class VideoPlayer {
             this.playerWorker.setExpectedPaused(this.streamId, paused, rpcNoWait)
                 .catch((e: unknown) => warnLog?.log('worker setExpectedPaused failed:', e));
         }
+    }
+
+    private getExpectedPaused(): boolean {
+        const requested = requestedReceiveQuality.get(this.streamId);
+        return requested !== undefined && requested !== null && requested.layerId < 0;
     }
 
     private async initPlayerWorker(codec: string, width: number, height: number, codecSettings: string): Promise<void> {
@@ -798,6 +801,7 @@ export class VideoPlayer {
                 },
                 targetBufferSpanMs: TARGET_BUFFER_SPAN_MS,
                 backend,
+                expectedPaused: this.getExpectedPaused(),
             }, mstgWritable, offscreen);
             debugLog?.log(
                 `worker.start({${streamId}}) resolved (backend=${backend}, ` +

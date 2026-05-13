@@ -33,6 +33,11 @@ export interface PlayerWorkerOptions {
     // -- present --
     backend: RenderBackendKind;
 
+    // Initial QC pause state. This must be known before Player.start() arms
+    // any no-chunk watchdog, because the first explicit pause update may have
+    // arrived before the worker-side Player exists.
+    expectedPaused?: boolean;
+
     // Tests-only. Production callers pass canvas as a trailing arg of
     // start() — Transferables can't ride inside the structured-cloned
     // options envelope. The worker assigns the trailing arg here
