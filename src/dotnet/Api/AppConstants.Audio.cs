@@ -34,7 +34,7 @@ partial record AppConstants
             public sealed record HeartbeatConstants
             {
                 public int IntervalMs { get; init; } = 3000;
-                public int TimeoutMs { get; init; } = 5000;
+                public int TimeoutMs { get; init; } = 12000;
                 public int CheckIntervalMs { get; init; } = 500;
             }
         }
