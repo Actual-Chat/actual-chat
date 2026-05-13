@@ -121,6 +121,7 @@ export class RecorderPreviewView {
         applyRotationLayout(videoEl, rotation);
         applyRotationLayout(this.options.canvas, rotation);
         if (!parent) return;
+
         const swap = (rotation & 1) === 1;
         const sourceW = videoEl.videoWidth || 0;
         const sourceH = videoEl.videoHeight || 0;
@@ -133,7 +134,14 @@ export class RecorderPreviewView {
             videoEl.closest<HTMLElement>('.video-panel'),
             frameW,
             frameH);
-        const fit = chooseFit(frameW, frameH, parent.clientWidth, parent.clientHeight);
+        // Non-focused tiles (sidebar squares, PiP overlay during screencast)
+        // always use cover — the crop is invisible at that size and the
+        // letterbox bars would dominate the small square. Same rule the
+        // receiver follows in VideoPlayer.applyFitDecision.
+        const focused = parent.classList.contains('item-focused');
+        const fit = focused
+            ? chooseFit(frameW, frameH, parent.clientWidth, parent.clientHeight)
+            : 'cover';
         if (fit !== this.currentFit) {
             this.currentFit = fit;
             videoEl.style.objectFit = fit;
