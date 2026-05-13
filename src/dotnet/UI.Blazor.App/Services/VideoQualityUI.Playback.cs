@@ -34,6 +34,7 @@ public sealed partial class VideoQualityUI
         StreamId streamId,
         VideoSourceKind sourceKind,
         PlaybackStats snapshot,
+        bool hasDimensions,
         CancellationToken cancellationToken)
     {
         _whenActuallyUsed.TrySetResult();
@@ -45,7 +46,7 @@ public sealed partial class VideoQualityUI
             var prev = _playbackByStream.GetValueOrDefault(streamId);
             snapshot = WithRenderFallback(snapshot, prev);
             var observedPeak = ComputeDecayedObservedRate(prev, snapshot.IncomingByteRate);
-            var desiredSize = GetDesiredVideoSize(snapshot, sourceKind);
+            var desiredSize = GetDesiredVideoSize(snapshot, sourceKind, hasDimensions);
             var requestedLayerCount = GetBestLayerFor(sourceKind, desiredSize) + 1;
             _playbackByStream[streamId] = new PlaybackStatsState(
                 sourceKind, snapshot, verdict, CpuTimestamp.Now, observedPeak,
@@ -81,9 +82,13 @@ public sealed partial class VideoQualityUI
         double renderCssLongSide,
         double renderDevicePixelRatio,
         PlaybackStreamPriority priority,
+        bool hasDimensions,
         CancellationToken cancellationToken)
     {
-        var desiredSize = VideoSizeExt.FromLongSide(renderCssLongSide, renderDevicePixelRatio);
+        // Pre-layout (!hasDimensions): focused tile → top, others stay tiny.
+        var desiredSize = hasDimensions || priority != PlaybackStreamPriority.Primary
+            ? VideoSizeExt.FromLongSide(renderCssLongSide, renderDevicePixelRatio)
+            : VideoSize.None;
         var currentLayerCount = GetBestLayerFor(sourceKind, desiredSize) + 1;
         lock (_playbackLock) {
             if (!_playbackStartedAt.ContainsKey(streamId))
@@ -378,6 +383,14 @@ public sealed partial class VideoQualityUI
         var size = snapshot.RenderVideoSize;
         return size == VideoSize.None ? GetTopVideoSize(sourceKind) : size;
     }
+
+    private static VideoSize GetDesiredVideoSize(
+        PlaybackStats snapshot,
+        VideoSourceKind sourceKind,
+        bool hasDimensions)
+        => hasDimensions || snapshot.Priority != PlaybackStreamPriority.Primary
+            ? GetDesiredVideoSize(snapshot, sourceKind)
+            : VideoSize.None;
 
     internal static int GetBestLayerFor(VideoSourceKind sourceKind, VideoSize desiredSize)
     {

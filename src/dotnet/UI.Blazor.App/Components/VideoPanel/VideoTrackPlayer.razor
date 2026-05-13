@@ -156,6 +156,7 @@
         int streamAgeMs,
         double renderCssLongSide,
         double renderDevicePixelRatio,
+        bool hasDimensions,
         string codec,
         byte[] dropStages,
         int[] dropCounts,
@@ -182,7 +183,12 @@
             DropTrace: dropTrace);
         try {
             await Hub.VideoQualityUI
-                .OnPlaybackStats(StreamInfo.StreamId, StreamInfo.SourceKind, stats, CancellationToken.None)
+                .OnPlaybackStats(
+                    StreamInfo.StreamId,
+                    StreamInfo.SourceKind,
+                    stats,
+                    hasDimensions,
+                    CancellationToken.None)
                 .ConfigureAwait(false);
         }
         catch (Exception e) {
@@ -191,7 +197,11 @@
     }
 
     [JSInvokable]
-    public async Task OnPlaybackViewportChanged(double renderCssLongSide, double renderDevicePixelRatio, int priority)
+    public async Task OnPlaybackViewportChanged(
+        double renderCssLongSide,
+        double renderDevicePixelRatio,
+        int priority,
+        bool hasDimensions)
     {
         if (_isDisposed)
             return;
@@ -204,6 +214,7 @@
                     renderCssLongSide,
                     renderDevicePixelRatio,
                     (PlaybackStreamPriority)priority,
+                    hasDimensions,
                     CancellationToken.None)
                 .ConfigureAwait(false);
         }

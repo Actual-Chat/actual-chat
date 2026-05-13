@@ -116,6 +116,7 @@ interface ViewportInfo {
     cssLongSide: number;
     devicePixelRatio: number;
     isFocused: boolean;
+    hasDimensions: boolean;
 }
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPlayer');
@@ -534,20 +535,23 @@ export class VideoPlayer {
     private maybeSendViewportChanged(): void {
         const info = this.computeViewportChangedInfo();
         const priority = priorityForRenderSize(info);
+        const hasDimensions = info?.hasDimensions ?? false;
         const key = info
-            ? `${Math.round(info.cssLongSide)}:${info.devicePixelRatio.toFixed(3)}:${priority}`
+            ? `${Math.round(info.cssLongSide)}:${info.devicePixelRatio.toFixed(3)}:${priority}:${hasDimensions}`
             : `none:${priority}`;
         if (key === this.lastSentViewportInfo) return undefined;
         this.lastSentViewportInfo = key;
 
         debugLog?.log(
             `viewport changed: css=${info?.cssLongSide ?? 0} dpr=${info?.devicePixelRatio ?? 0} ` +
-            `priority=${priority} (canvas=${this.canvas.clientWidth}x${this.canvas.clientHeight})`);
+            `priority=${priority} hasDimensions=${hasDimensions} ` +
+            `(canvas=${this.canvas.clientWidth}x${this.canvas.clientHeight})`);
         void this.blazorRef.invokeMethodAsync(
             'OnPlaybackViewportChanged',
             info?.cssLongSide ?? 0,
             info?.devicePixelRatio ?? 0,
-            priority)
+            priority,
+            hasDimensions)
             .catch((e: unknown) => errorLog?.log('OnPlaybackViewportChanged failed:', e));
     }
 
@@ -999,12 +1003,23 @@ export class VideoPlayer {
                 cssLongSide,
                 devicePixelRatio: getDevicePixelRatio(),
                 isFocused: parent?.classList.contains('item-focused') ?? false,
+                hasDimensions: true,
             };
         }
         if (this.canvas.isConnected && parent && isZeroSized(canvasRect) && parentRect && isZeroSized(parentRect))
-            return { cssLongSide: 1, devicePixelRatio: getDevicePixelRatio(), isFocused: false };
+            return {
+                cssLongSide: 1,
+                devicePixelRatio: getDevicePixelRatio(),
+                isFocused: parent.classList.contains('item-focused'),
+                hasDimensions: false,
+            };
         if (parent?.classList.contains('pip-overlay') || parent?.classList.contains('item-x'))
-            return { cssLongSide: 1, devicePixelRatio: getDevicePixelRatio(), isFocused: false };
+            return {
+                cssLongSide: 1,
+                devicePixelRatio: getDevicePixelRatio(),
+                isFocused: false,
+                hasDimensions: true,
+            };
 
         return null;
     }
@@ -1030,6 +1045,7 @@ export class VideoPlayer {
             Math.max(0, Math.round(performance.now() - this.createdAtMs)),
             info?.cssLongSide ?? 0,
             info?.devicePixelRatio ?? 0,
+            info?.hasDimensions ?? false,
             this.selectedCodec ?? 'unknown',
             stages,
             counts,
