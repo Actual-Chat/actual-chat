@@ -16,12 +16,11 @@ public sealed partial record ReceiveQuality
 
     [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public int LayerId { get; init; }
-
     [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
     public int TemporalLayerId { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public bool IsLowest => LayerId <= 0 && TemporalLayerId > 0;
+    public bool IsLowestOrPaused => LayerId <= 0 && TemporalLayerId > 0;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsPaused => LayerId < 0;

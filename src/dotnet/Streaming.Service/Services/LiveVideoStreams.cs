@@ -376,7 +376,7 @@ public class LiveVideoStreams : ILiveVideoStreams
         PlaybackQualityInfo? info)
     {
         const int serverCap = 9;
-        var aboveLowest = qualityByStream.Where(kv => !kv.Value.IsLowest).ToList();
+        var aboveLowest = qualityByStream.Where(kv => !kv.Value.IsLowestOrPaused).ToList();
         if (aboveLowest.Count <= serverCap)
             return qualityByStream;
 
