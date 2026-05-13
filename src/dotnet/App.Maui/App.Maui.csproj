@@ -734,7 +734,7 @@
        of UseNativeAot. This block then overrides what conflicts with NAOT and sets
        the NAOT-specific properties for every TFM (Android / iOS / Windows). Add a
        new NAOT-only knob? It goes here. -->
-  <PropertyGroup Condition="'$(Configuration)' == 'Release' and $(UseNativeAot) and '$(TargetPlatformIdentifier)' != ''">
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' and $(UseNativeAot) and '$([MSBuild]::GetTargetPlatformIdentifier($(TargetFramework)))' != ''">
     <!-- NAOT mode -->
     <PublishAot>true</PublishAot>
     <PublishTrimmed>true</PublishTrimmed>
