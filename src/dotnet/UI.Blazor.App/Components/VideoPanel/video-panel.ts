@@ -90,6 +90,7 @@ export class VideoPanel {
         this.initGestures();
         this.setupDragHandle();
         this.initInlineDrag();
+        this.setupHomeGuard();
 
         // Escape key handler
         fromEvent<KeyboardEvent>(document, 'keydown')
@@ -98,6 +99,28 @@ export class VideoPanel {
                 filter(e => e.key === 'Escape')
             )
             .subscribe(() => this.onEscPress());
+    }
+
+    // Safety net: if the panel ever ends up under <body> without any of the
+    // state classes that move it there (expanded / collapsed / panel-hidden),
+    // pull it back to its original Razor-rendered home. Catches races where
+    // Blazor's class-attribute rewrite drops a JS-added class but the JS
+    // teardown that would have reparented it never fires.
+    private setupHomeGuard(): void {
+        const observer = new MutationObserver(() => {
+            if (this.videoPanel.parentElement !== document.body)
+                return;
+            const cl = this.videoPanel.classList;
+            if (cl.contains('expanded') || cl.contains('collapsed') || cl.contains('panel-hidden'))
+                return;
+            this.videoPanel.style.top = '';
+            this.videoPanel.style.left = '';
+            this.videoPanel.style.right = '';
+            this.parentElement?.appendChild(this.videoPanel);
+            this.panelMode = 'inline';
+        });
+        observer.observe(this.videoPanel, { attributes: true, attributeFilter: ['class'] });
+        this.disposed$.subscribe(() => observer.disconnect());
     }
 
     // region: Helpers

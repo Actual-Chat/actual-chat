@@ -47,13 +47,14 @@
     var chatBtnCls = isChatVisible ? "on" : "";
     var collapsedCls = m.IsCollapsed ? "collapsed" : "";
     var hiddenCls = m.IsHidden ? "panel-hidden" : "";
+    var expandedCls = m.IsExpanded ? "expanded" : "";
     var videoMenuRef = MenuRef.New<VideoPanelMenu>(ChatId.Value, ScreenSize.IsNarrow().ToString()).ToString();
     if (m.Chat is { } mChat)
         _lastChat = mChat;
     var layout = m.Layout;
 }
 
-<div @ref="Ref" class="video-panel @firstOpenCls @recordingCls @remoteStreamsCls @collapsedCls @hiddenCls">
+<div @ref="Ref" class="video-panel @firstOpenCls @recordingCls @remoteStreamsCls @collapsedCls @hiddenCls @expandedCls">
     <div class="c-container">
         <div class="video-panel-toolbar video-panel-header">
             <div class="c-left">
