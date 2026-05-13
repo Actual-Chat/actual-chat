@@ -392,20 +392,11 @@ public sealed partial class VideoQualityUI
         // ladder's two rungs (W960, W1920) are far apart and a typical
         // modal-sized screencast tile rounds DOWN under that rule.
         var desiredWidth = desiredSize.LongSide();
-        var picked = ladder.Count - 1;
         for (var i = 0; i < ladder.Count; i++) {
-            if (ladder[i].Width >= desiredWidth) {
-                picked = i;
-                break;
-            }
+            if (ladder[i].Width >= desiredWidth)
+                return i;
         }
-        // Camera ladder's L0 (320×180) is below useful minimum for any real
-        // tile size — small initial viewport reports during layout settle
-        // dropped the request to L0 and the user saw a blurry first frame
-        // until the L1 keyframe arrived. Floor camera requests at L1.
-        if (sourceKind == VideoSourceKind.Camera)
-            picked = Math.Max(picked, Math.Min(1, ladder.Count - 1));
-        return picked;
+        return ladder.Count - 1;
     }
 
     private static PlaybackStats WithRenderFallback(
