@@ -16,6 +16,7 @@ import { resetOnEpochChange } from '../operators/epoch-reset';
 import { EncodedFrameBuffer } from './encoded-frame-buffer';
 import type { PlaybackSession } from './session';
 import type { RenderBackendConfig } from './render-backends';
+import { StreamStallTimer } from './stream-stall-timer';
 
 const STOP_DRAIN_GRACE_MS = 3_000;
 
@@ -63,8 +64,7 @@ export class Player {
     private abortTimeoutReason: unknown = null;
     private buffer: EncodedFrameBuffer | null = null;
     private whenDoneInternal: Promise<void> = Promise.resolve();
-    private clearStallTimer: (() => void) | null = null;
-    private resetStallTimer: (() => void) | null = null;
+    private stallTimer: StreamStallTimer | null = null;
     private expectedPaused = false;
     readonly stats: PlayerStats = createEmptyPlayerStats();
 
@@ -118,31 +118,12 @@ export class Player {
         }
         const reportLatency = config.reportLatency;
         const streamStallTimeoutMs = config.streamStallTimeoutMs ?? 0;
-        let streamStallTimeoutId: ReturnType<typeof setTimeout> | null = null;
-        let streamStallError: Error | null = null;
-        const clearStreamStallTimer = (): void => {
-            if (streamStallTimeoutId !== null)
-                clearTimeout(streamStallTimeoutId);
-            streamStallTimeoutId = null;
-        };
-        const resetStreamStallTimer = (): void => {
-            if (streamStallTimeoutMs <= 0)
-                return;
-            // QC may park this stream indefinitely (Float/Hide); the server
-            // drops every frame, so the no-chunk-for-30s heuristic would
-            // tear down a perfectly healthy paused pipeline.
-            if (this.expectedPaused)
-                return;
-            clearStreamStallTimer();
-            streamStallTimeoutId = setTimeout(() => {
-                streamStallError = new Error(
-                    `Player stream stalled: no frames received for ${streamStallTimeoutMs}ms`);
-                if (!abortSignal.aborted)
-                    abortController.abort(streamStallError);
-            }, streamStallTimeoutMs);
-        };
-        this.clearStallTimer = clearStreamStallTimer;
-        this.resetStallTimer = resetStreamStallTimer;
+        const stallTimer = new StreamStallTimer({
+            timeoutMs: streamStallTimeoutMs,
+            abortController,
+            isPaused: () => this.expectedPaused,
+        });
+        this.stallTimer = stallTimer;
         const wrappedReportLatency = reportLatency
             ? (sample: LatencySample): void => {
                 sample.bufferSpanMs = buffer.spanMs();
@@ -153,10 +134,10 @@ export class Player {
             ? latencyTap({ report: wrappedReportLatency })
             : tap<DecodedFrame>(() => { /* identity */ });
         const arrivedTap = streamStallTimeoutMs > 0
-            ? tap<ArrivedChunk>(() => resetStreamStallTimer())
+            ? tap<ArrivedChunk>(() => stallTimer.reset())
             : tap<ArrivedChunk>(() => { /* identity */ });
 
-        resetStreamStallTimer();
+        stallTimer.reset();
         const pipeline = pipe(
             source,
             arrivedTap,
@@ -177,13 +158,13 @@ export class Player {
         this.abortController = abortController;
         this.sourceStopController = sourceStopController;
         this.whenDoneInternal = drain(pipeline, e => e === this.abortTimeoutReason).then(() => {
-            if (streamStallError)
-                throw streamStallError;
+            if (stallTimer.error)
+                throw stallTimer.error;
         }).finally(() => {
             if (this.abortController === abortController) {
                 if (this.abortTimeoutId !== null)
                     clearTimeout(this.abortTimeoutId);
-                clearStreamStallTimer();
+                stallTimer.clear();
                 this.abortController = null;
                 this.sourceStopController = null;
                 this.abortTimeoutId = null;
@@ -221,9 +202,9 @@ export class Player {
         if (paused === this.expectedPaused) return;
         this.expectedPaused = paused;
         if (paused)
-            this.clearStallTimer?.();
+            this.stallTimer?.clear();
         else
-            this.resetStallTimer?.();
+            this.stallTimer?.reset();
     }
 
     whenDone(): Promise<void> {
