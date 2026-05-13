@@ -10,7 +10,7 @@ namespace ActualChat.Streaming.Services;
 /// itself; only switches layers on a keyframe. A quality change keeps
 /// forwarding the currently selected layer until the requested layer's
 /// keyframe arrives, so we don't manufacture delta-frame gaps while QC is
-/// settling. Temporal increases are also delayed until a keyframe: once we
+/// settling. Temporal upgrades are also delayed until a keyframe: once we
 /// skip an enhancement-layer delta, later deltas from that temporal chain
 /// are not safe to resume mid-GOP.
 /// </summary>
@@ -35,7 +35,7 @@ public static class ReceiveQualityFilter
             if (q.LayerId != consumerLayerId || q.TemporalLayerId != consumerTemporalLayerId) {
                 consumerLayerId = q.LayerId;
                 consumerTemporalLayerId = q.TemporalLayerId;
-                if (!skipping && selectedLayer >= 0 && consumerTemporalLayerId < selectedTemporalLayerId)
+                if (!skipping && selectedLayer >= 0 && consumerTemporalLayerId > selectedTemporalLayerId)
                     selectedTemporalLayerId = consumerTemporalLayerId;
             }
 
@@ -48,7 +48,7 @@ public static class ReceiveQualityFilter
                 // Lock onto the desired layer on each matching keyframe; other-layer
                 // keyframes (sibling simulcast bursts) get skipped.
                 if (frame.LayerId == desiredLayer) {
-                    if (frame.TemporalLayerId >= consumerTemporalLayerId) {
+                    if (ShouldDropByTemporalRequest(frame, consumerTemporalLayerId)) {
                         skipping = true;
                         continue;
                     }
@@ -73,10 +73,19 @@ public static class ReceiveQualityFilter
                 skipping = true;
                 continue;
             }
-            if (frame.TemporalLayerId >= selectedTemporalLayerId)
+            if (ShouldDropByTemporalRequest(frame, selectedTemporalLayerId))
                 continue;
 
             yield return frame;
         }
+    }
+
+    private static bool ShouldDropByTemporalRequest(VideoFrame frame, int requestedTemporalLayerId)
+    {
+        if (requestedTemporalLayerId <= 0)
+            return false;
+
+        var keptLayerCount = Math.Max(1, frame.TemporalLayerCount - requestedTemporalLayerId);
+        return frame.TemporalLayerId >= keptLayerCount;
     }
 }

@@ -126,7 +126,7 @@ public static class VideoQualityAllocator
     private static ReceiveQuality ToReceiveQuality(StreamAllocationRequest s, int layers, double fraction)
     {
         var k = s.EffectiveTemporalLayerCount;
-        var temporalCount = Math.Clamp((int)Math.Ceiling(fraction * k), 1, k);
-        return new ReceiveQuality(layers - 1, temporalCount);
+        var keptTemporalLayerCount = Math.Clamp((int)Math.Ceiling(fraction * k), 1, k);
+        return new ReceiveQuality(layers - 1, k - keptTemporalLayerCount);
     }
 }

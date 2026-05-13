@@ -20,7 +20,7 @@ public class VideoQualityAllocatorTest
         var result = VideoQualityAllocator.Allocate(500, [primary], []);
 
         result["P"].LayerId.Should().Be(1, "300 fits in 500; 1000 doesn't");
-        result["P"].TemporalLayerId.Should().Be(1);
+        result["P"].TemporalLayerId.Should().Be(0);
     }
 
     [Fact]
@@ -33,18 +33,18 @@ public class VideoQualityAllocatorTest
     }
 
     [Fact]
-    public void TemporalFraction_OneLayer_AlwaysPinnedToOne()
+    public void TemporalFraction_OneLayer_AlwaysPinnedToZero()
     {
         var primary = Req("P", [100], producerTemporal: 1);
         var result = VideoQualityAllocator.Allocate(10_000, [primary], []);
 
-        result["P"].TemporalLayerId.Should().Be(1);
+        result["P"].TemporalLayerId.Should().Be(0);
     }
 
     [Fact]
     public void TemporalFraction_TwoLayers_DyadicSteps()
     {
-        // K=2 → fractions {0.5, 1.0} → TemporalLayerId values {1, 2}
+        // K=2 → fractions {0.5, 1.0} → TemporalLayerId values {1, 0}
         // PredictedRatesByLayer=[200] ⇒ rate at frac 0.5 = 100, at frac 1.0 = 200
         var primary = Req("P", [200], producerTemporal: 2);
 
@@ -53,9 +53,9 @@ public class VideoQualityAllocatorTest
         r150["P"].LayerId.Should().Be(0);
         r150["P"].TemporalLayerId.Should().Be(1, "fraction 0.5 → drop floor 1");
 
-        // budget 250 fits full 1.0 → drop floor 2
+        // budget 250 fits full 1.0 → drop floor 0
         var r250 = VideoQualityAllocator.Allocate(250, [primary], []);
-        r250["P"].TemporalLayerId.Should().Be(2);
+        r250["P"].TemporalLayerId.Should().Be(0);
     }
 
     [Fact]

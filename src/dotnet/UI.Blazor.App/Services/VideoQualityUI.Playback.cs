@@ -464,7 +464,7 @@ public sealed partial class VideoQualityUI
     {
         var map = new ApiMap<string, ReceiveQuality>();
         var quality = layerCount is { } count
-            ? new ReceiveQuality(Math.Max(0, count - 1), int.MaxValue)
+            ? new ReceiveQuality(Math.Max(0, count - 1), 0)
             : ReceiveQuality.Default;
         foreach (var hint in hints)
             map[hint.StreamId] = quality;
