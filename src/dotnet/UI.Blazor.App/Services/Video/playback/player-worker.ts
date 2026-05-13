@@ -3,6 +3,7 @@ import { createEmptyPlayerStats, type PlayerStats } from '../frame-envelopes';
 import type { DecoderLike } from '../operators/decode';
 import type { VideoFrameDto } from '../operators/pull';
 import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/worker-connectivity-ui';
+import { setVideoTraceKill, type VideoTraceKillPeriod } from '../frame-drop-trace';
 import { Player, type PlayerConfig } from './player';
 import { PlaybackSession } from './session';
 import type {
@@ -38,6 +39,7 @@ interface PlayerWorkerHooks {
     reportError?: (streamId: string, error: string) => void;
     reportStreamEnded?: (streamId: string, reason: string) => void;
     reportCodecProven?: (streamId: string, codec: string) => void;
+    reportTraceKillInjected?: () => void;
     prewarmRpc?: (apiUrl: string) => void;
 }
 
@@ -181,6 +183,15 @@ export const playerWorkerImpl: PlayerWorker = {
             }
             locallyStopped.delete(opts.streamId);
         });
+    },
+
+    setTraceKill(avgPeriod: VideoTraceKillPeriod, stage: number): Promise<boolean> {
+        const h = hooks;
+        return Promise.resolve(setVideoTraceKill(
+            'playback',
+            avgPeriod,
+            stage,
+            () => h?.reportTraceKillInjected?.()));
     },
 
     requestKeyframe(streamId?: string): Promise<void> {

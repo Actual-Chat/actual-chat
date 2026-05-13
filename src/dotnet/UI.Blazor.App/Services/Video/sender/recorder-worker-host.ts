@@ -340,6 +340,9 @@ const deps: RecorderWorkerDeps = {
     reportStreamEnded(reason) {
         observeCallbackPromise('onStreamEnded', () => callbacks.onStreamEnded(reason));
     },
+    reportTraceKillInjected() {
+        observeCallbackPromise('onTraceKillInjected', () => callbacks.onTraceKillInjected());
+    },
 };
 
 initRecorderWorker(deps);

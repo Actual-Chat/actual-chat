@@ -12,6 +12,7 @@ import { Recorder } from './recorder';
 import type { EncodedFrame } from '../frame-envelopes';
 import type { EncodeInput } from '../operators/encode';
 import type { AsyncVideoEncoder } from '../adapters';
+import { setVideoTraceKill, type VideoTraceKillPeriod } from '../frame-drop-trace';
 import { SenderSession } from './session';
 import type {
     RecorderWorker,
@@ -58,6 +59,7 @@ export interface RecorderWorkerDeps {
     // -- lifecycle callbacks --
     reportError?: (error: string) => void;
     reportStreamEnded?: (reason: string) => void;
+    reportTraceKillInjected?: () => void;
 }
 
 interface WorkerState {
@@ -207,6 +209,15 @@ export const recorderWorkerImpl: RecorderWorker = {
             if (s.whenDone === whenDone) s.whenDone = null;
         });
         await Promise.resolve();
+    },
+
+    setTraceKill(avgPeriod: VideoTraceKillPeriod, stage: number): Promise<boolean> {
+        const s = requireState();
+        return Promise.resolve(setVideoTraceKill(
+            'recording',
+            avgPeriod,
+            stage,
+            () => s.deps.reportTraceKillInjected?.()));
     },
 
     async requestKeyframe(): Promise<void> {

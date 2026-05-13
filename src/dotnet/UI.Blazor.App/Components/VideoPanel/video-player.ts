@@ -19,6 +19,7 @@ import {
     selectDecoderCodec,
 } from '../../Services/Video/hevc-codec-selection';
 import { isDecoderCodecProven, markDecoderCodecProven } from '../../Services/Video/codec-support';
+import { consumeVideoTraceKill, registerVideoTraceKillWorker } from '../../Services/Video/video-trace-kill-control';
 import type { RenderBackend } from './render-backend';
 import { TransferableCanvasRenderBackend } from './render-backend-canvas';
 import { OffThreadRenderBackend, isOffThreadPlausible } from './render-backend-mstg';
@@ -165,6 +166,7 @@ export class VideoPlayer {
     private workerStreamActive = false;
     private connectivityHandlerOnline: { dispose(): void } | null = null;
     private connectivityHandlerConnected: { dispose(): void } | null = null;
+    private traceKillRegistration: Disposable | null = null;
 
     // Diagnostics counters
     private renderFrameCount = 0;       // bumped from worker latency reports (frames presented)
@@ -382,6 +384,10 @@ export class VideoPlayer {
                         void this.reportEnded(error);
                         return Promise.resolve();
                     },
+                    onTraceKillInjected: () => {
+                        consumeVideoTraceKill('playback');
+                        return Promise.resolve();
+                    },
                     onCodecProven: (streamId: string, codec: string) => {
                         const category = VideoPlayer.getCodecCategory(codec);
                         debugLog?.log(`Worker reported codec proven: stream=${streamId}, codec=${codec} → ${category}`);
@@ -391,6 +397,7 @@ export class VideoPlayer {
                     },
                 }
             );
+            this.traceKillRegistration = registerVideoTraceKillWorker('playback', this.playerWorker);
 
             // Seed worker-local app constants so push-to-pull-buffer / decoder
             // helpers can read VIDEO/AUDIO. AC is structurally cloneable.
@@ -967,6 +974,10 @@ export class VideoPlayer {
         if (this.connectivityHandlerConnected) {
             this.connectivityHandlerConnected.dispose();
             this.connectivityHandlerConnected = null;
+        }
+        if (this.traceKillRegistration) {
+            this.traceKillRegistration.dispose();
+            this.traceKillRegistration = null;
         }
 
         // Tear the worker down.

@@ -2,6 +2,7 @@ import type { RpcNoWait } from 'rpc';
 import type { PlayerStats } from '../frame-envelopes';
 import type { LatencySample } from '../operators/latency-tap';
 import type { RenderBackendKind } from './render-backends';
+import type { VideoTraceKillPeriod } from '../frame-drop-trace';
 
 export type { LatencySample } from '../operators/latency-tap';
 
@@ -82,6 +83,8 @@ export interface PlayerWorker {
         canvas?: OffscreenCanvas,
     ): Promise<void>;
 
+    setTraceKill(avgPeriod: VideoTraceKillPeriod, stage: number): Promise<boolean>;
+
     requestKeyframe(streamId?: string): Promise<void>;
 
     getStats(streamId: string): Promise<PlayerStats>;
@@ -110,6 +113,8 @@ export interface PlayerWorkerCallbacks {
     onStreamEnded(streamId: string, reason: string): void;
 
     onError(streamId: string, error: string): void;
+
+    onTraceKillInjected(): void;
 
     // Fired once per stream when the worker has decoded enough frames of a
     // codec to be confident the codec actually works on this device. Main

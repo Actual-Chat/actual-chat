@@ -62,6 +62,7 @@ import {
     type RecorderWorkerCallbacks,
     type WireSafeRecorderConfig,
 } from '../../Services/Video/sender/recorder-worker-contract';
+import { consumeVideoTraceKill, registerVideoTraceKillWorker } from '../../Services/Video/video-trace-kill-control';
 import type { EncoderConfigPerLayer } from '../../Services/Video/operators/encode';
 import type { RecorderStats } from '../../Services/Video/frame-envelopes';
 
@@ -319,6 +320,7 @@ export class VideoRecorder {
     private _disconnectApiHandler: (() => void) | null = null;
     private _connectivityHandler: (() => void) | null = null;
     private _sharedSettingsRegistration: Disposable | null = null;
+    private _traceKillRegistration: Disposable | null = null;
     private recorderHealthTimer: number | null = null;
     private recorderHealthInFlight = false;
     private lastRecorderHealthStats: RecorderStats | null = null;
@@ -937,6 +939,7 @@ export class VideoRecorder {
                 errorLog?.log(`RecorderWorker reported error: ${error}`);
                 void this.blazorRef.invokeMethodAsync('OnRecordingError', error);
             },
+            onTraceKillInjected: () => consumeVideoTraceKill('recording'),
         };
 
         this.worker = rpcClientServer<RecorderWorker>(
@@ -944,6 +947,7 @@ export class VideoRecorder {
             workerInstance,
             callbacks,
         );
+        this._traceKillRegistration = registerVideoTraceKillWorker('recording', this.worker);
 
         // Push current connectivity to the freshly-created worker
         // (the long-lived listeners installed in the constructor only
@@ -1224,6 +1228,10 @@ export class VideoRecorder {
         if (this._sharedSettingsRegistration) {
             try { this._sharedSettingsRegistration.dispose(); } catch { /* ignore */ }
             this._sharedSettingsRegistration = null;
+        }
+        if (this._traceKillRegistration) {
+            try { this._traceKillRegistration.dispose(); } catch { /* ignore */ }
+            this._traceKillRegistration = null;
         }
         // Connectivity handlers are NOT removed here — they live for
         // the VideoRecorder's whole lifetime so they cover the

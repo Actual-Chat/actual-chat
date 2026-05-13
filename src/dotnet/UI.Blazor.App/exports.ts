@@ -1,4 +1,6 @@
 // Please sort the imports alphabetically!
+import './Services/Video/video-trace-kill-control';
+
 export * from './Pages/Landing/landing-left-menu';
 export * from './Pages/Landing/landing-video-modal';
 export * from './Pages/Landing/Docs/scrollToId';

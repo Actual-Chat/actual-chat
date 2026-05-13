@@ -7,6 +7,7 @@ import type { RpcNoWait } from 'rpc';
 import type { EncoderConfigPerLayer } from '../operators/encode';
 import type { RecorderStats } from '../frame-envelopes';
 import type { SharedSettingsWorker } from 'shared-settings-worker';
+import type { VideoTraceKillPeriod } from '../frame-drop-trace';
 
 // Must round-trip through `structuredClone` — no closures, no MediaStream refs.
 export interface WireSafeRecorderConfig {
@@ -43,6 +44,7 @@ export interface RecorderWorker extends SharedSettingsWorker {
     endSource(noWait?: RpcNoWait): Promise<void>;
 
     start(opts: RecorderWorkerOptions): Promise<void>;
+    setTraceKill(avgPeriod: VideoTraceKillPeriod, stage: number): Promise<boolean>;
     requestKeyframe(): Promise<void>;
     getStats(): Promise<RecorderStats>;
     stop(): Promise<void>;
@@ -58,4 +60,5 @@ export interface RecorderWorkerCallbacks {
     onStreamCreated(codecSettings: string): void;
     onStreamEnded(reason: string): void;
     onError(error: string): void;
+    onTraceKillInjected(): void;
 }

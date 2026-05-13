@@ -19,6 +19,17 @@ interface BlazorGlobal {
     _internal?: BlazorInternal;
 }
 
+type VideoTraceKillKind = 'recording' | 'playback';
+type VideoTraceKillPeriod = number | 'now';
+
+interface VideoTraceKillGlobal {
+    __setVideoTraceKill?: (
+        kind: VideoTraceKillKind,
+        avgPeriod: VideoTraceKillPeriod,
+        stage: number,
+    ) => boolean;
+}
+
 export class DebugUI {
     private static backendRef: DotNet.DotNetObject = null!;
     private static _eventSnifferInstalled = false;
@@ -151,6 +162,14 @@ export class DebugUI {
         void this.backendRef.invokeMethodAsync('TestVideoPlaybackQualityChange', period);
     }
 
+    public static killVideoRecording(avgPeriod: VideoTraceKillPeriod = 10, killStage = 3): boolean {
+        return this.setVideoTraceKill('recording', avgPeriod, killStage);
+    }
+
+    public static killVideoPlayback(avgPeriod: VideoTraceKillPeriod = 10, killStage = 63): boolean {
+        return this.setVideoTraceKill('playback', avgPeriod, killStage);
+    }
+
     /** OpusMediaRecorder registers a handler at init time. Stored here so
      *  DebugUI doesn't need to import the higher-level recorder module. */
     public static registerAudioRecorderOffsetHandler(handler: (offsetMs: number) => void): void {
@@ -182,6 +201,19 @@ export class DebugUI {
         else if (show === false)
             cl.add('hide-safe-areas');
         infoLog?.log(`showSafeAreas: ${show ?? 'default'}`);
+    }
+
+    private static setVideoTraceKill(
+        kind: VideoTraceKillKind,
+        avgPeriod: VideoTraceKillPeriod,
+        killStage: number,
+    ): boolean {
+        const hook = (globalThis as VideoTraceKillGlobal).__setVideoTraceKill;
+        if (hook === undefined) {
+            console.warn(`killVideo${kind === 'recording' ? 'Recording' : 'Playback'}: video trace hook is not loaded`);
+            return false;
+        }
+        return hook(kind, avgPeriod, Number(killStage));
     }
 
     public static startFusionMonitor(): void {
