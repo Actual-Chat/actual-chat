@@ -1,7 +1,7 @@
 import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 
-const { infoLog, errorLog } = getLogs('CameraDevices');
+const { warnLog, errorLog } = getLogs('CameraDevices');
 
 export interface VideoDevice {
     deviceId: string;
@@ -11,20 +11,47 @@ export interface VideoDevice {
 export class CameraDevices {
     static async enumerateDevices(includeAll = false): Promise<VideoDevice[]> {
         try {
-            const videoInputs = (await navigator.mediaDevices.enumerateDevices())
-                .filter(d => d.kind === 'videoinput');
+            let videoInputs = await CameraDevices.enumerateVideoInputs();
+            // Before camera permission is exercised in this browsing session
+            // (notably iOS Safari and some Android browsers), enumerateDevices
+            // returns placeholder entries with empty deviceId/label. Probe with
+            // a brief getUserMedia to make the browser populate real device
+            // info, then re-enumerate.
+            const hasPlaceholders = videoInputs.some(d => !d.deviceId);
+            if (hasPlaceholders) {
+                await CameraDevices.probeCameraPermission();
+                videoInputs = await CameraDevices.enumerateVideoInputs();
+            }
             const selected = DeviceInfo.isMobile && !includeAll
                 ? CameraDevices.pickMobileCameras(videoInputs)
                 : videoInputs;
-            const videoDevices = selected.map(d => ({
+            return selected.map(d => ({
                 deviceId: d.deviceId,
                 label: d.label || `Camera ${d.deviceId.slice(0, 8)}`,
             }));
-            infoLog?.log('Enumerated video devices:', videoDevices);
-            return videoDevices;
         } catch (error) {
             errorLog?.log('Failed to enumerate video devices:', error);
             return [];
+        }
+    }
+
+    private static async enumerateVideoInputs(): Promise<MediaDeviceInfo[]> {
+        return (await navigator.mediaDevices.enumerateDevices())
+            .filter(d => d.kind === 'videoinput');
+    }
+
+    // Briefly opens a camera stream to make the browser populate deviceId /
+    // label fields on subsequent enumerateDevices calls. The track is stopped
+    // immediately so it doesn't hold the camera hardware against an imminent
+    // startPreview getUserMedia.
+    private static async probeCameraPermission(): Promise<void> {
+        let stream: MediaStream | null = null;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        } catch (e) {
+            warnLog?.log('probeCameraPermission: getUserMedia failed:', e);
+        } finally {
+            stream?.getTracks().forEach(t => t.stop());
         }
     }
 

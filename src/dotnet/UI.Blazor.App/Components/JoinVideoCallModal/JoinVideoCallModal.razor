@@ -180,7 +180,6 @@
     private CameraPermissionState _permission = CameraPermissionState.Unknown;
     private List<VideoDevice> _videoDevices = new();
     private VideoDevice? _selectedDevice;
-    private string? _currentDeviceId;
     private string? _currentFacingMode;
     private Task<string> _getLastSelectedDeviceIdTask = null!;
 
@@ -281,7 +280,8 @@
         // racing into duplicate JS module + session creation.
         _isInitialized = true;
 
-        await LoadVideoDevices();
+        _videoDevices = (await CameraUI.EnumerateDevices()).ToList();
+        StateHasChanged();
         var lastSelectedDeviceId = await _getLastSelectedDeviceIdTask;
         if (!lastSelectedDeviceId.IsNullOrEmpty())
             _selectedDevice = _videoDevices.FirstOrDefault(d => d.DeviceId == lastSelectedDeviceId);
@@ -405,11 +405,6 @@
     private void OnSessionStateChanged()
         => _ = InvokeAsync(StateHasChanged);
 
-    private async Task LoadVideoDevices() {
-        _videoDevices = (await CameraUI.EnumerateDevices(includeAll: true)).ToList();
-        StateHasChanged();
-    }
-
     [JSInvokable]
     public Task OnFirstFrameRendered() {
         _session?.NotifyFirstFrameRendered();
@@ -424,17 +419,19 @@
     private async Task ApplyMirrorForCurrentCamera() {
         if (_jsRef is null)
             return;
+
+        var currentDeviceId = "";
         if (IsSettingsMode) {
-            _currentDeviceId = CameraUI.LastDeviceId;
+            currentDeviceId = CameraUI.LastDeviceId;
             _currentFacingMode = CameraUI.LastFacingMode;
         } else {
             var info = await _jsRef.InvokeAsync<CameraInfo?>("getCurrentCameraInfo");
-            _currentDeviceId = info?.DeviceId;
+            currentDeviceId = info?.DeviceId;
             _currentFacingMode = info?.FacingMode;
         }
         var settings = await LocalSettings.LocalAppSettings().Get();
         _isCameraMirrored = settings
-            .ResolveIsCameraMirrored(_currentDeviceId, _currentFacingMode, Hub.BrowserInfo.IsMobile);
+            .ResolveIsCameraMirrored(currentDeviceId, _currentFacingMode, Hub.BrowserInfo.IsMobile);
         await InvokeAsync(StateHasChanged);
     }
 
@@ -463,18 +460,20 @@
     private Task OnCameraSelectedEvent(CameraSelectedEvent @event, CancellationToken cancellationToken) {
         if (@event.Requester != CameraMenuRequester)
             return Task.CompletedTask;
+
         var device = _videoDevices.FirstOrDefault(d => d.DeviceId == @event.DeviceId);
+        Log.LogInformation("CameraSelectedEvent: {DeviceId} -> {Device}", @event.DeviceId, device);
+        Log.LogInformation("Devices: {Devices}", string.Join(", ", _videoDevices.Select(d => d.ToString())));
         return device is null ? Task.CompletedTask : OnCameraSelected(device);
     }
 
     private async Task OnSwitchCamera() {
-        var cycleDevices = await CameraUI.EnumerateDevices();
-        if (cycleDevices.Length <= 1)
+        var currentDeviceId = _selectedDevice?.DeviceId;
+        var nextDevice = await CameraUI.GetCameraToSwitch(currentDeviceId);
+        if (nextDevice is null)
             return;
 
-        var currentIndex = Array.FindIndex(cycleDevices, d => d.DeviceId == _selectedDevice?.DeviceId);
-        var nextIndex = (currentIndex + 1) % cycleDevices.Length;
-        await OnCameraSelected(cycleDevices[nextIndex]);
+        await OnCameraSelected(nextDevice);
     }
 
     private void OnMirrorToggle() {
@@ -490,9 +489,9 @@
         // Persist the per-camera override and tell CameraUI to re-resolve so
         // the live self-preview picks up the change without waiting for the
         // next camera (re)acquisition. No-op if we never resolved a deviceId.
-        if (string.IsNullOrEmpty(_currentDeviceId))
+        if (_selectedDevice is null)
             return;
-        var deviceId = _currentDeviceId;
+        var deviceId = _selectedDevice.DeviceId;
         var mirrored = _isCameraMirrored;
         await Hub.LocalSettings.LocalAppSettings().Update(
             s => s with { CameraMirrorOverrides = s.CameraMirrorOverrides.With(deviceId, mirrored) });

@@ -47,15 +47,28 @@ public class CameraUI : UIServiceBase<AppUIHub>, IComputeService
 
     public async Task SwitchCamera()
     {
-        var devices = await EnumerateDevices().ConfigureAwait(false);
-        if (devices.Length <= 1)
+        var currentId = _selectedDeviceId.Value;
+        var nextDevice = await GetCameraToSwitch(currentId).ConfigureAwait(false);
+        if (nextDevice is null)
             return;
 
-        var settings = await LocalSettings.LocalAppSettings().Get().ConfigureAwait(false);
-        var currentId = settings.SelectedCameraDeviceId ?? "";
-        var currentIndex = Array.FindIndex(devices, d => d.DeviceId == currentId);
-        var nextIndex = (currentIndex + 1) % devices.Length;
-        await SelectCamera(devices[nextIndex].DeviceId).ConfigureAwait(false);
+        await SelectCamera(nextDevice.DeviceId).ConfigureAwait(false);
+    }
+
+    public async Task<VideoDevice?> GetCameraToSwitch(string? currentDeviceId)
+    {
+        var devices = await EnumerateDevices().ConfigureAwait(false);
+        if (devices.Length == 0)
+            return null;
+
+        if (devices.Length == 1)
+            return devices[0];
+
+        var currentIndex = Array.FindIndex(devices, d => d.DeviceId == currentDeviceId);
+        var nextIndex = currentIndex < 0
+            ? devices.Length - 1
+            : (currentIndex + 1) % devices.Length;
+        return devices[nextIndex];
     }
 
     public async Task SelectCamera(string deviceId)
