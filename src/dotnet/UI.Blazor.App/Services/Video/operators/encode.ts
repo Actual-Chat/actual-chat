@@ -22,7 +22,7 @@ export function isEncoderInitFailedError(error: unknown): boolean {
 
 export function parseEncoderInitFailedCodec(error: unknown): string | null {
     const message = error instanceof Error ? error.message : String(error);
-    const match = /\[ENCODER_INIT_FAILED\]\s+codec=(\S+)/.exec(message);
+    const match = /\[ENCODER_INIT_FAILED\]\s+codec=([^\s:]+)/.exec(message);
     return match ? match[1] : null;
 }
 
@@ -156,8 +156,8 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                             forceKeyframeNext = true;
                             continue;
                         }
-                        const firstRealReason = rejected
-                            .find(r => !isAsyncVideoEncoderResetError(r.reason))!.reason;
+                        const firstRealReason: unknown = rejected
+                            .find(r => !isAsyncVideoEncoderResetError(r.reason))!.reason as unknown;
                         if (!anyEncodedOutput) {
                             const topCodec = configs[configs.length - 1].codec;
                             const message = firstRealReason instanceof Error

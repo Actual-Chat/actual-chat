@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
     encode,
+    isEncoderInitFailedError,
+    parseEncoderInitFailedCodec,
     type EncodeOptions,
     type EncodeInput,
     type EncoderConfigPerLayer,
@@ -29,6 +31,7 @@ interface MockVideoEncoderInit {
 
 class MockVideoEncoder {
     static instances: MockVideoEncoder[] = [];
+    static configureFailureForCodec: string | null = null;
     state: 'unconfigured' | 'configured' | 'closed' = 'configured';
     encodeCalls: { frame: MockVideoFrame; opts: { keyFrame: boolean } }[] = [];
     configureCalls: VideoEncoderConfig[] = [];
@@ -52,6 +55,8 @@ class MockVideoEncoder {
 
     configure(config: VideoEncoderConfig): void {
         this.configureCalls.push(config);
+        if (MockVideoEncoder.configureFailureForCodec === config.codec)
+            throw new Error(`configure rejected ${config.codec}`);
         this.state = 'configured';
     }
 
@@ -95,6 +100,7 @@ interface GlobalWithVideoEncoder {
 
 beforeEach(() => {
     MockVideoEncoder.instances = [];
+    MockVideoEncoder.configureFailureForCodec = null;
     (globalThis as unknown as GlobalWithVideoEncoder).VideoEncoder = MockVideoEncoder;
 });
 
@@ -186,14 +192,19 @@ function makeFactory(opts: { onResetRequested?: (reason: string) => void; timeou
                 onResetRequested: opts.onResetRequested,
             },
         );
-        enc.configure({
-            codec: config.codec,
-            width: config.width,
-            height: config.height,
-            bitrate: config.bitrate,
-            framerate: config.framerate,
-            latencyMode: 'realtime',
-        });
+        try {
+            enc.configure({
+                codec: config.codec,
+                width: config.width,
+                height: config.height,
+                bitrate: config.bitrate,
+                framerate: config.framerate,
+                latencyMode: 'realtime',
+            });
+        } catch (e) {
+            enc.dispose();
+            throw e;
+        }
         return enc;
     };
 }
@@ -511,5 +522,40 @@ describe('encode operator', () => {
             createEncoder: makeFactory(),
         })(fromArray([makeBundle(1, stats, [{ width: 1280, height: 720 }])]));
         await expect(drain(seg)).rejects.toThrow(/expected 2/);
+    });
+
+    it('wraps synchronous encoder configure failure as init failure and cleans up', async () => {
+        const stats = makeStats();
+        const configs: EncoderConfigPerLayer[] = [
+            { ...cfg(320, 180), codec: 'avc1.640028' },
+            { ...cfg(640, 360), codec: 'hev1.1.6.L93.B0' },
+        ];
+        const bundle = makeBundle(1, stats, [
+            { width: 320, height: 180 },
+            { width: 640, height: 360 },
+        ]);
+        MockVideoEncoder.configureFailureForCodec = 'hev1.1.6.L93.B0';
+
+        const seg = encode({
+            configs,
+            createEncoder: makeFactory(),
+        })(fromArray([bundle]));
+
+        let thrown: unknown;
+        try {
+            await drain(seg);
+        } catch (e) {
+            thrown = e;
+        }
+
+        expect(thrown).toBeInstanceOf(Error);
+        expect(isEncoderInitFailedError(thrown)).toBe(true);
+        expect(parseEncoderInitFailedCodec(thrown)).toBe('hev1.1.6.L93.B0');
+        expect((thrown as Error).message).toContain('configure rejected hev1.1.6.L93.B0');
+        expect((bundle.layers[0].frame as unknown as MockVideoFrame).closed).toBe(true);
+        expect((bundle.layers[1].frame as unknown as MockVideoFrame).closed).toBe(true);
+        expect(MockVideoEncoder.instances).toHaveLength(2);
+        expect(MockVideoEncoder.instances[0].state).toBe('closed');
+        expect(MockVideoEncoder.instances[1].state).toBe('closed');
     });
 });

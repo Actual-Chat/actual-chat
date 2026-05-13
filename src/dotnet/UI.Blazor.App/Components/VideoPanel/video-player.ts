@@ -3,7 +3,6 @@ import { Api, streamingApi } from 'api';
 import { delayAsync } from 'promises';
 
 const RPC_SESSION_DEFAULT = '~';
-import { ServerClock } from 'clocks';
 import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
 import { DocumentEvents } from 'event-handling';
@@ -628,7 +627,6 @@ export class VideoPlayer {
                 // wire stalls and other errors look codec-ish but aren't.
                 if (isCodecExhaustedError(e)) {
                     const eligible = this.shouldRequestCodecExclusion()
-                        && !this.codecExclusionRequested
                         && !isDecoderCodecProven(this.codecCategory);
                     if (eligible) {
                         this.codecExclusionRequested = true;
@@ -643,7 +641,7 @@ export class VideoPlayer {
                             `runPlaybackLoop: codec ${this.codecCategory} already proven — treating as transient`);
                 }
 
-                if (!this.isPlaying)
+                if (!this.shouldRunPlaybackLoop())
                     return;
 
                 this.restartAttempts++;
@@ -678,12 +676,16 @@ export class VideoPlayer {
         } finally {
             if (this.currentAttempt?.attemptId === attemptId)
                 this.currentAttempt = null;
-            if (this.workerStreamActive && this.playerWorker) {
+            if (this.workerStreamActive) {
                 try { await this.playerWorker.stop(streamId); }
                 catch { /* ignore */ }
                 this.workerStreamActive = false;
             }
         }
+    }
+
+    private shouldRunPlaybackLoop(): boolean {
+        return this.isPlaying && !this.codecExclusionRequested;
     }
 
     private async startWorkerForAttempt(streamId: string): Promise<void> {

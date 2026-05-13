@@ -66,6 +66,7 @@ const StageNames = new Map<number, string>(
 
 export type VideoTraceKillKind = 'recording' | 'playback';
 export type VideoTraceKillPeriod = number | 'now';
+export type VideoTraceKillPeriodInput = number | string;
 
 interface VideoKillOptions {
     avgPeriod: VideoTraceKillPeriod;
@@ -122,16 +123,17 @@ export function traceDrops<T extends DropTraced>(prevStage: FrameDropStage): Pip
 
 export function setVideoTraceKill(
     kind: VideoTraceKillKind,
-    avgPeriod: VideoTraceKillPeriod,
-    stage: number,
+    avgPeriod: VideoTraceKillPeriodInput,
+    stage: number | string,
     onKill?: () => void,
 ): boolean {
     const validStages = kind === 'recording' ? RecordingKillStages : PlaybackKillStages;
     const normalizedAvgPeriod = avgPeriod === 'now' ? avgPeriod : Number(avgPeriod);
+    const normalizedStage = Number(stage);
     if (
         (normalizedAvgPeriod !== 'now'
             && (!Number.isFinite(normalizedAvgPeriod) || normalizedAvgPeriod <= 0))
-        || !validStages.has(stage)
+        || !validStages.has(normalizedStage)
     ) {
         videoKillOptions[kind] = null;
         console.info(`debugUI.killVideo${capitalize(kind)}: disabled`);
@@ -140,13 +142,13 @@ export function setVideoTraceKill(
 
     videoKillOptions[kind] = {
         avgPeriod: normalizedAvgPeriod,
-        stage,
+        stage: normalizedStage,
         onKill,
     };
     console.info(
         normalizedAvgPeriod === 'now'
-            ? `debugUI.killVideo${capitalize(kind)}: enabled stage=${stageName(stage)} avgPeriod=now`
-            : `debugUI.killVideo${capitalize(kind)}: enabled stage=${stageName(stage)} avgPeriod=${normalizedAvgPeriod}s`);
+            ? `debugUI.killVideo${capitalize(kind)}: enabled stage=${stageName(normalizedStage)} avgPeriod=now`
+            : `debugUI.killVideo${capitalize(kind)}: enabled stage=${stageName(normalizedStage)} avgPeriod=${normalizedAvgPeriod}s`);
     return true;
 }
 
@@ -161,13 +163,13 @@ function createVideoTraceKiller(stage: FrameDropStage): () => void {
 
     return () => {
         const options = videoKillOptions[kind];
-        if (options === null || options.stage !== stage) {
+        if (options?.stage !== stage) {
             state = null;
             return;
         }
 
         const now = nowMs();
-        if (state === null || state.options !== options) {
+        if (state?.options !== options) {
             state = {
                 options,
                 armedAtMs: now,

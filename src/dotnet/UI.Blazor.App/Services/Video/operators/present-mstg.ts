@@ -40,72 +40,72 @@ export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame
         let lastWriteAt: number | null = null;
         let prevCapturedAt: number | null = null;
         try {
-        for await (const decoded of source) {
-            try {
-                const now = nowFn();
-                const extraMs = Math.max(0, getBufferSpanMs() - targetSpanMs);
+            for await (const decoded of source) {
+                try {
+                    const now = nowFn();
+                    const extraMs = Math.max(0, getBufferSpanMs() - targetSpanMs);
 
-                if (extraMs > CATCHUP_BUDGET_MS
+                    if (extraMs > CATCHUP_BUDGET_MS
                     && lastWriteAt !== null
                     && now - lastWriteAt < MIN_DURATION_MS) {
-                    decoded.stats.pendingPresenterDrops++;
-                    prevCapturedAt = decoded.capturedAt.timeMs;
-                    continue;
-                }
-
-                let durationMs: number;
-                if (lastWriteAt === null || prevCapturedAt === null) {
-                    durationMs = 0;
-                } else if (extraMs > 0) {
-                    durationMs = MIN_DURATION_MS;
-                } else {
-                    const natural = decoded.capturedAt.timeMs - prevCapturedAt;
-                    durationMs = Math.max(MIN_DURATION_MS, Math.min(MAX_DURATION_MS, natural));
-                }
-
-                const baseAt: number = lastWriteAt ?? now;
-                let nextWriteAt: number = baseAt + durationMs;
-                if (nextWriteAt - now > MAX_DURATION_MS)
-                    nextWriteAt = now + MAX_DURATION_MS;
-
-                if (nextWriteAt > now)
-                    await delayFn(nextWriteAt - now);
-
-                writer ??= getWriter();
-                let written = false;
-                try {
-                    await writer.write(decoded.frame);
-                    written = true;
-                } catch (e: unknown) {
-                    warnLog?.log('mstgPresent: write failed', e);
-                    throw e;
-                } finally {
-                    if (!written) {
                         decoded.stats.pendingPresenterDrops++;
+                        prevCapturedAt = decoded.capturedAt.timeMs;
+                        continue;
                     }
-                    else {
+
+                    let durationMs: number;
+                    if (lastWriteAt === null || prevCapturedAt === null) {
+                        durationMs = 0;
+                    } else if (extraMs > 0) {
+                        durationMs = MIN_DURATION_MS;
+                    } else {
+                        const natural = decoded.capturedAt.timeMs - prevCapturedAt;
+                        durationMs = Math.max(MIN_DURATION_MS, Math.min(MAX_DURATION_MS, natural));
+                    }
+
+                    const baseAt: number = lastWriteAt ?? now;
+                    let nextWriteAt: number = baseAt + durationMs;
+                    if (nextWriteAt - now > MAX_DURATION_MS)
+                        nextWriteAt = now + MAX_DURATION_MS;
+
+                    if (nextWriteAt > now)
+                        await delayFn(nextWriteAt - now);
+
+                    writer ??= getWriter();
+                    let written = false;
+                    try {
+                        await writer.write(decoded.frame);
+                        written = true;
+                    } catch (e: unknown) {
+                        warnLog?.log('mstgPresent: write failed', e);
+                        throw e;
+                    } finally {
+                        if (!written) {
+                            decoded.stats.pendingPresenterDrops++;
+                        }
+                        else {
                         // Carry-forward Option A: every successful present
                         // attributes the upstream trace AND any presenter
                         // drops accumulated since the previous accept to
                         // the cumulative histogram, then bumps `presented`.
-                        aggregateDropTrace(decoded.stats, decoded.dropTrace);
-                        if (decoded.stats.pendingPresenterDrops > 0) {
-                            decoded.stats.dropTrace.set(
-                                FrameDropStage.ReceiverPresent,
-                                (decoded.stats.dropTrace.get(FrameDropStage.ReceiverPresent) ?? 0)
+                            aggregateDropTrace(decoded.stats, decoded.dropTrace);
+                            if (decoded.stats.pendingPresenterDrops > 0) {
+                                decoded.stats.dropTrace.set(
+                                    FrameDropStage.ReceiverPresent,
+                                    (decoded.stats.dropTrace.get(FrameDropStage.ReceiverPresent) ?? 0)
                                     + decoded.stats.pendingPresenterDrops);
-                            decoded.stats.pendingPresenterDrops = 0;
+                                decoded.stats.pendingPresenterDrops = 0;
+                            }
+                            decoded.stats.presented++;
+                            updatePlaybackRateEma(decoded.stats, decoded.capturedAt, performance.now());
                         }
-                        decoded.stats.presented++;
-                        updatePlaybackRateEma(decoded.stats, decoded.capturedAt, performance.now());
                     }
+                    lastWriteAt = nextWriteAt;
+                    prevCapturedAt = decoded.capturedAt.timeMs;
+                } finally {
+                    try { decoded.frame.close(); } catch { /* already closed */ }
                 }
-                lastWriteAt = nextWriteAt;
-                prevCapturedAt = decoded.capturedAt.timeMs;
-            } finally {
-                try { decoded.frame.close(); } catch { /* already closed */ }
             }
-        }
         } finally {
             try { writer?.releaseLock(); } catch { /* ignore */ }
         }

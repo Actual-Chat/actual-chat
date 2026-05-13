@@ -3,6 +3,7 @@ import {
     FrameDropStage,
     isVideoTraceKillStageValid,
     type VideoTraceKillPeriod,
+    type VideoTraceKillPeriodInput,
     type VideoTraceKillKind,
 } from './frame-drop-trace';
 
@@ -18,9 +19,9 @@ interface VideoTraceKillOptions {
 type VideoTraceKillGlobal = typeof globalThis & {
     FrameDropStages?: typeof FrameDropStage;
     __setVideoTraceKill?: (
-        kind: VideoTraceKillKind,
-        avgPeriod: VideoTraceKillPeriod,
-        stage: number,
+        kind: string,
+        avgPeriod: VideoTraceKillPeriodInput,
+        stage: number | string,
     ) => boolean;
 };
 
@@ -61,9 +62,9 @@ export function consumeVideoTraceKill(kind: VideoTraceKillKind): void {
 }
 
 function setVideoTraceKill(
-    kind: VideoTraceKillKind,
-    avgPeriod: VideoTraceKillPeriod,
-    stage: number,
+    kind: string,
+    avgPeriod: VideoTraceKillPeriodInput,
+    stage: number | string,
 ): boolean {
     if (kind !== 'recording' && kind !== 'playback')
         return false;

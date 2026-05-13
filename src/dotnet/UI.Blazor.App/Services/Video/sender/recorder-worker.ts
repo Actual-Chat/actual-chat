@@ -164,14 +164,19 @@ export const recorderWorkerImpl: RecorderWorker = {
             // Fresh encoder per run: see `createEncoder` in RecorderWorkerDeps.
             // encode() disposes it in its own `finally`.
             const encoder = deps.createEncoder(session, layerCfg, layerId);
-            encoder.configure({
-                codec: layerCfg.codec,
-                width: layerCfg.width,
-                height: layerCfg.height,
-                bitrate: layerCfg.bitrate,
-                framerate: layerCfg.framerate,
-                latencyMode: 'realtime',
-            });
+            try {
+                encoder.configure({
+                    codec: layerCfg.codec,
+                    width: layerCfg.width,
+                    height: layerCfg.height,
+                    bitrate: layerCfg.bitrate,
+                    framerate: layerCfg.framerate,
+                    latencyMode: 'realtime',
+                });
+            } catch (e) {
+                try { encoder.dispose(); } catch { /* ignore */ }
+                throw e;
+            }
             return encoder;
         };
 

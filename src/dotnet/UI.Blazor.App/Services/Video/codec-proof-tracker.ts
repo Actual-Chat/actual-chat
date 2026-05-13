@@ -47,14 +47,15 @@ class TopLayerCodecProofTracker implements CodecProofTracker {
 }
 
 class AlwaysUnprovenCodecProofTracker implements CodecProofTracker {
-    noteFrameDecoded(_layerId: number): void { }
-    noteDecoderError(): void { }
+    noteFrameDecoded(_layerId: number): void { void _layerId; }
+    noteDecoderError(): void { return; }
     isProven(): boolean { return false; }
 }
 
 export function createCodecProofTracker(
     framesUntilProven: number = FramesUntilCodecProven,
 ): CodecProofTracker {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- keep the exported kill-switch literal-editable.
     if (!UseCodecProofTracker)
         return new AlwaysUnprovenCodecProofTracker();
 
