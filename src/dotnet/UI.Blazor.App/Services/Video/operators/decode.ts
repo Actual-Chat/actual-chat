@@ -2,6 +2,7 @@ import { from, type PipeOperator } from 'ix-ext';
 import { abortPromise, PromiseSource } from 'promises';
 import { closeEncodedChunk, type ArrivedChunk, type DecodedFrame } from '../frame-envelopes';
 import { createCodecProofTracker, type CodecProofTracker } from '../codec-proof';
+import type { RotationQuarter } from 'orientation';
 
 // Message prefix stamped on a thrown error when the decode operator's recovery
 // budget is exhausted — VideoPlayer reads it to drive codec exclusion. Encoded
@@ -72,6 +73,7 @@ interface PendingDecode {
     submitMs: number;
     index: number;
     dropTrace: ArrivedChunk['dropTrace'];
+    rotation: RotationQuarter;
 }
 
 // ArrivedChunk -> DecodedFrame. Lazy decoder init on first keyframe,
@@ -164,6 +166,7 @@ async function* decodeAsync(
                 index: meta.index,
                 dropTrace: meta.dropTrace,
                 layerId: meta.layerId,
+                rotation: meta.rotation,
                 stats,
             };
             consecutiveRecoveries = 0;
@@ -365,6 +368,7 @@ async function* decodeAsync(
                     submitMs,
                     index: arrived.index,
                     dropTrace: arrived.dropTrace,
+                    rotation: arrived.rotation,
                 });
                 try {
                     dec.decode(arrived.chunk);

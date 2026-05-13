@@ -31,6 +31,7 @@ function envelopesFor(stats: RecorderStats, count: number): CapturedFrame[] {
         sourceWidth: 0,
         sourceHeight: 0,
         forceKeyframe: false,
+        rotation: 0,
         stats,
     }));
 }

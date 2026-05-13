@@ -31,6 +31,9 @@ export interface VideoStreamFrame {
     temporalLayerCount?: number;
     layerId?: number;
     layerCount?: number;
+    // Quarter-turn CW (0|1|2|3) the receiver should apply to display upright.
+    // Omitted when 0 — keeps the wire compact for the common case.
+    rotation?: number;
     // FrameDropStage[] — one entry per dropped predecessor up to this point.
     dropTrace?: Uint8Array;
 }
@@ -171,6 +174,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                                 layerCount,
                                 temporalLayerId: encoded.metadata.temporalLayerId,
                             };
+                            if (encoded.rotation !== 0) dto.rotation = encoded.rotation;
                             if (dropTraceBytes) dto.dropTrace = dropTraceBytes;
                             if (isKey) {
                                 const description = resolveDescription(encoded, descriptionByLayer);

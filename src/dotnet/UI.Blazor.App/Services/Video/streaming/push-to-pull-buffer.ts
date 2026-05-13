@@ -80,6 +80,8 @@ function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
     dto.LayerCount = frame.layerCount ?? 1;
     if (frame.dropTrace && frame.dropTrace.byteLength > 0)
         dto.DropTrace = frame.dropTrace;
+    if (frame.rotation !== undefined && frame.rotation !== 0)
+        dto.Rotation = frame.rotation;
     return dto;
 }
 

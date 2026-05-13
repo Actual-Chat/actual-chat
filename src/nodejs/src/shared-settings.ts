@@ -12,6 +12,14 @@ export interface SharedSettingsSnapshot {
      *  this string into the `?s=` query parameter when dialing the
      *  RPC WebSocket — no per-request round-trip needed. */
     sessionToken?: string;
+    /** Screen orientation angle (degrees CW from natural portrait,
+     *  one of {0, 90, 180, 270}). Mirrors `screen.orientation.angle`
+     *  from the main thread. */
+    screenOrientation?: number;
+    /** Device-pose quarter-turn (0..3, CW). Set by the main thread's
+     *  {@link DeviceOrientation}; overridden by `debugUI.setDeviceOrientation`.
+     *  Workers read this via the same `DeviceOrientation.current`. */
+    deviceOrientation?: number;
 }
 
 let current: SharedSettingsSnapshot = {

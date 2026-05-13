@@ -29,18 +29,17 @@ function makeCaptured(stats: RecorderStats, idx: number, forceKeyframe = false):
         sourceWidth: 1920,
         sourceHeight: 1080,
         forceKeyframe,
+        rotation: 0,
         stats,
     };
 }
 
 function makeBundle(stats: RecorderStats, idx: number, forceKeyframe = false, extraCount = 0): CapturedBundle {
-    // Bottom-first: index 0 = base layer; last index = top. `extraCount`
-    // adds extra layers below the top so total length = extraCount + 1.
     const layers: CapturedFrame[] = [];
     for (let i = 0; i < extraCount + 1; i++) {
         layers.push(makeCaptured(stats, idx, forceKeyframe));
     }
-    return { layers, index: idx, dropTrace: [], stats };
+    return { layers, index: idx, dropTrace: [], rotation: 0, stats };
 }
 
 async function* source(items: CapturedBundle[]): AsyncIterable<CapturedBundle> {

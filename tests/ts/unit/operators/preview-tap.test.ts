@@ -45,6 +45,7 @@ function makeEnvelopes(stats: RecorderStats, count: number): { envelopes: Captur
             sourceWidth: 1920,
             sourceHeight: 1080,
             forceKeyframe: false,
+            rotation: 0,
             stats,
         });
     }

@@ -90,6 +90,9 @@ export interface VideoFrameDto {
     // FrameDropStage[] (byte enum). One entry per dropped predecessor frame
     // tagged with the stage that dropped it.
     DropTrace?: Uint8Array | null;
+    // Quarter-turn CW the receiver should apply to display upright (0..3).
+    // Omitted from the wire when 0.
+    Rotation?: number;
 }
 
 // --- VideoFrameBundle TypeScript interface ---

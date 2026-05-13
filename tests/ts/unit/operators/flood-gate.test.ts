@@ -21,6 +21,7 @@ function envelope(stats: RecorderStats, frame: MockVideoFrame, index: number): C
         sourceWidth: 0,
         sourceHeight: 0,
         forceKeyframe: false,
+        rotation: 0,
         stats,
     };
 }
@@ -131,6 +132,7 @@ describe('floodGate operator', () => {
             sourceWidth: 0,
             sourceHeight: 0,
             forceKeyframe: false,
+            rotation: 0,
             stats,
         };
 

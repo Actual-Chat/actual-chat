@@ -34,9 +34,10 @@ namespace ActualChat.Video;
 /// element to this formatter, so <see cref="VideoFrame"/>[] batches hit the cache too.
 /// </para>
 /// <para>
-/// Wire format: a 17-entry MessagePack map with PascalCase string keys — Data (bin),
+/// Wire format: an 18-entry MessagePack map with PascalCase string keys — Data (bin),
 /// Offset (int64 ticks), Duration (int64 ticks), OffsetEpoch (int32),
 /// Index (int32), KeyFrameIndex (int32), Width (int32), Height (int32),
+/// Rotation (uint8, 0..3 CW),
 /// LayerId (uint8), LayerCount (uint8), MaxLayerWidth (int32), MaxLayerHeight (int32),
 /// TemporalLayerId (uint8), TemporalLayerCount (uint8), Codec (str or nil),
 /// Description (bin or nil), DropTrace (bin).
@@ -102,6 +103,7 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
         byte temporalLayerCount = 1;
         byte layerId = 0;
         byte layerCount = 1;
+        byte rotation = 0;
         var dataSlice = default(ReadOnlyMemory<byte>);
         var descriptionSlice = default(ReadOnlyMemory<byte>);
         var dropTraceSlice = default(ReadOnlyMemory<byte>);
@@ -161,6 +163,9 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
                 case "DropTrace":
                     dropTraceSlice = reader.TryReadNil() ? default : ReadBinSlice(ref reader);
                     break;
+                case "Rotation":
+                    rotation = reader.ReadByte();
+                    break;
                 default:
                     // Unknown keys are skipped so a future field rename or
                     // addition doesn't immediately break consumers.
@@ -187,6 +192,7 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
             MaxLayerWidth = maxLayerWidth,
             MaxLayerHeight = maxLayerHeight,
             DropTrace = dropTraceSlice,             // slice of bytes (may be empty)
+            Rotation = rotation,
             SerializedData = bytes,
         };
     }
@@ -223,7 +229,7 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
 
     private static void WriteFrame(ref MessagePackWriter writer, VideoFrame v)
     {
-        writer.WriteMapHeader(17);
+        writer.WriteMapHeader(18);
 
         writer.Write("Data");
         writer.Write(v.Data.Span);
@@ -284,5 +290,8 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
             writer.Write(ReadOnlySpan<byte>.Empty);
         else
             writer.Write(v.DropTrace.Span);
+
+        writer.Write("Rotation");
+        writer.Write(v.Rotation);
     }
 }

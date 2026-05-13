@@ -41,6 +41,7 @@ function mkChunk(opts: ChunkOpts): ChunkWithDispose {
         width: opts.width ?? 640,
         height: opts.height ?? 480,
         rawByteLength: opts.rawByteLength ?? 1024,
+        rotation: 0,
         stats,
         disposed: false,
     };

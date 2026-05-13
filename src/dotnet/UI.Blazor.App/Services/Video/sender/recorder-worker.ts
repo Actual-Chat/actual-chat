@@ -13,11 +13,18 @@ import type { EncodedFrame } from '../frame-envelopes';
 import type { EncodeInput } from '../operators/encode';
 import type { AsyncVideoEncoder } from '../adapters';
 import { setVideoTraceKill, type VideoTraceKillPeriod } from '../frame-drop-trace';
+import { ScreenOrientation, DeviceOrientation } from 'orientation';
 import { SenderSession } from './session';
 import type {
     RecorderWorker,
     RecorderWorkerOptions,
 } from './recorder-worker-contract';
+
+// Hydrate orientation in this worker realm via SharedSettings.changed.
+// Main thread is the source: it pushes screenOrientation/deviceOrientation
+// updates which the existing SharedSettingsWorkerSync relays here.
+ScreenOrientation.init();
+DeviceOrientation.init();
 
 const { errorLog, infoLog } = getLogs('VideoPipeline');
 
@@ -191,6 +198,9 @@ export const recorderWorkerImpl: RecorderWorker = {
             keyframeIntervalFrames: config.keyframeIntervalFrames,
             maxKeyFrameIntervalMs: config.maxKeyFrameIntervalMs,
             createSender: senderFactory,
+            sourceKind: config.sourceKind ?? 0,
+            isFrontCamera: config.isFrontCamera ?? false,
+            isIos: config.isIos ?? false,
         });
         s.whenDone = whenDone;
         // RPC `start()` resolves once the pipeline is wired up; the run

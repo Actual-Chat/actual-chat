@@ -19,6 +19,7 @@ function mkChunk(timeMs: number, epoch: number, isKeyFrame = false): ArrivedChun
         width: 640,
         height: 480,
         rawByteLength: 1024,
+        rotation: 0,
         stats: createEmptyPlayerStats(),
     };
 }

@@ -95,6 +95,7 @@ function makeArrived(stats: PlayerStats, opts: ArrivedOpts = {}): ArrivedChunk {
         width: opts.width ?? 1280,
         height: opts.height ?? 720,
         rawByteLength: 16,
+        rotation: 0,
         stats,
     };
 }

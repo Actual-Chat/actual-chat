@@ -29,7 +29,7 @@ export function stampCaptureTime(opts: StampCaptureTimeOptions = {}): PipeOperat
                     const output = {
                         ...envelope,
                         capturedAt,
-                        forceKeyframe: epochChanged,
+                        forceKeyframe: envelope.forceKeyframe || epochChanged,
                     };
                     mustClose = false;
                     yield output;

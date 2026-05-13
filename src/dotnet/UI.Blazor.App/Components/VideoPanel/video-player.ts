@@ -305,6 +305,9 @@ export class VideoPlayer {
             canvas.style.display = 'block';
             videoEl.style.display = 'none';
         }
+        // Re-seed the fit / backdrop on the new backend so a fallback swap
+        // doesn't leave us showing cover with no painter attached.
+        this.applyFitDecision();
     }
 
     private async initPlayerWorker(codec: string, width: number, height: number, codecSettings: string): Promise<void> {
@@ -529,6 +532,52 @@ export class VideoPlayer {
         void this.reportPlaying(0, true);
     }
 
+    // Post-rotation frame dims, last seen on a latency report. Used by
+    // applyFitDecision to recompute cover/contain on tile resize without
+    // waiting for a new frame.
+    private lastFrameW = 0;
+    private lastFrameH = 0;
+    // Loss threshold: when cover would crop >COVER_LOSS_MAX of source
+    // pixels, switch to contain and paint the blurred backdrop.
+    private static readonly COVER_LOSS_MAX = 0.20;
+
+    // Cover crops the source to fill the tile; the cropped fraction equals
+    // 1 − min(frameW·tileH, frameH·tileW) / max(...). When that's small
+    // we keep cover (a thin sliver is invisible); when it grows past the
+    // threshold we fall back to contain and light up the blurred backdrop
+    // on focused tiles. Minimized (collapsed/island) and sidebar/PiP tiles
+    // are cover-only — they're small, the crop is visually fine, and a
+    // blurred backdrop in tiny floating tiles is more clutter than value.
+    private applyFitDecision(): void {
+        const backend = this.renderBackend;
+        const parent = this.canvas.parentElement;
+        if (!parent) return;
+        const focused = parent.classList.contains('item-focused');
+        const isMinimized = !!document.querySelector('.video-panel.collapsed');
+        // Sidebar / PiP / minimized: cover-only, no backdrop.
+        if (!focused || isMinimized) {
+            try { backend.setFit('cover'); } catch { /* ignore */ }
+            try { backend.setBackdrop(null, false); } catch { /* ignore */ }
+            return;
+        }
+        const rect = parent.getBoundingClientRect();
+        const tileW = rect.width;
+        const tileH = rect.height;
+        const fw = this.lastFrameW;
+        const fh = this.lastFrameH;
+        let fit: 'cover' | 'contain' = 'cover';
+        if (fw > 0 && fh > 0 && tileW > 0 && tileH > 0) {
+            const a = fw * tileH;
+            const b = fh * tileW;
+            const cropLoss = 1 - Math.min(a, b) / Math.max(a, b);
+            if (cropLoss > VideoPlayer.COVER_LOSS_MAX)
+                fit = 'contain';
+        }
+        try { backend.setFit(fit); } catch (e) { warnLog?.log('setFit failed:', e); }
+        try { backend.setBackdrop(this.bgCanvasEl, true); }
+        catch (e) { warnLog?.log('setBackdrop failed:', e); }
+    }
+
     private scheduleViewportCheck(): void {
         // Coalesce bursts of layout/class events into a single post-layout
         // read so getBoundingClientRect lands AFTER the browser's reflow.
@@ -538,6 +587,9 @@ export class VideoPlayer {
         this.viewportCheckRafHandle = requestAnimationFrame(() => {
             this.viewportCheckRafHandle = null;
             this.maybeSendViewportChanged();
+            try { this.renderBackend.recomputeLayout(); }
+            catch (e) { warnLog?.log('recomputeLayout failed:', e); }
+            this.applyFitDecision();
         });
     }
 
@@ -892,10 +944,24 @@ export class VideoPlayer {
 
     private onWorkerLatencyReport(streamId: string, sample: LatencySample): void {
         void streamId;
+        // Push rotation to render backend — latencyTap fires immediately on
+        // rotation change in addition to its 1Hz cadence, so this is the
+        // sub-second presentation-transform hook.
+        try { this.renderBackend.setRotation(sample.rotation); }
+        catch (e) { warnLog?.log('setRotation failed:', e); }
+        // Frame dims drive the cover-vs-contain decision below. Stash them
+        // post-rotation (90/270 swap visual W/H) so resize-only triggers can
+        // re-decide without waiting for the next latency tap.
+        const swap = (sample.rotation & 1) === 1;
+        this.lastFrameW = swap ? sample.height : sample.width;
+        this.lastFrameH = swap ? sample.width : sample.height;
+        this.applyFitDecision();
+
         // Smooth the e2e latency for diagnostics + Blazor health reports.
         this.pipelineLatencyMs = sample.e2eLatencyMs;
         this.lastArrivedOffsetMs = sample.e2eLatencyMs > 0 ? sample.e2eLatencyMs : this.lastArrivedOffsetMs;
         this.lastRenderedOffsetMs = Math.max(0, this.lastRenderedOffsetMs);
+
         // Mirror the worker's cumulative `bytesReceived` so the bitrate
         // calc in `reportPlaybackHealth` produces a real number; without
         // this `IncomingByteRate` was always 0, VideoQualityUI verdict
@@ -908,6 +974,7 @@ export class VideoPlayer {
         const cutoff = nowMsForSample - VideoPlayer.bytesWindowMs;
         while (this.bytesSamples.length > 1 && this.bytesSamples[0].atMs < cutoff)
             this.bytesSamples.shift();
+
         // Bump received counters for diagnostics (each report represents
         // ongoing flow; the new pipeline doesn't ship per-frame counters
         // to main).
@@ -932,6 +999,7 @@ export class VideoPlayer {
                 }
             }
         }
+
         this.lastLatencyTickMs = nowMs;
         this.lastPresentedAtTick = this.presentedFrameCount;
         this.lastBytesAtTick = this.receivedBytes;

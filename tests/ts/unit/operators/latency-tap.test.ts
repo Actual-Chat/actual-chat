@@ -39,6 +39,7 @@ function makeEnvelope(stats: PlayerStats, id: number, opts: MakeOpts): DecodedFr
         index: id,
         dropTrace: [],
         layerId: opts.layerId ?? 0,
+        rotation: 0,
         stats,
     };
 }

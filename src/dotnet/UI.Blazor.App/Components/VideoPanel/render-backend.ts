@@ -21,5 +21,21 @@ export interface RenderBackend {
     readonly isOffThread: boolean;
     getOutputSize(): { width: number; height: number } | null;
     drawFrame(pf: PresentableFrame): void;
+    // Quarter-turn (0..3, CW from natural) to apply at display time. The
+    // backend writes the CSS transform on its inner element and adjusts
+    // the parent's aspect-ratio (swapping W/H when the quarter is odd).
+    setRotation(quarter: number): void;
+    // Re-applies rotation-dependent layout. Odd-quarter rotations require
+    // the inner element to be sized to the parent's transposed dimensions,
+    // so VideoPlayer calls this on every parent resize.
+    recomputeLayout(): void;
+    // Selects how the inner element fits the tile: cover (crop to fill)
+    // or contain (letterbox to show the whole frame). VideoPlayer drives
+    // this from the cover-vs-contain loss metric.
+    setFit(fit: 'cover' | 'contain'): void;
+    // Optional .remote-video-bg canvas + a hint of whether this tile is
+    // the focused one. The backend pumps the blurred backdrop only when
+    // both `fit === 'contain'` AND `focused === true`.
+    setBackdrop(canvas: HTMLCanvasElement | null, focused: boolean): void;
     dispose(): void;
 }

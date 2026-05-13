@@ -31,6 +31,7 @@ function mkChunk(opts: {
         width: 640,
         height: 480,
         rawByteLength: 1024,
+        rotation: 0,
         stats: opts.stats,
     };
 }

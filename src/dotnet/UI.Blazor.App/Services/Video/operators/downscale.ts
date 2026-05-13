@@ -132,6 +132,7 @@ export function downscale(opts: DownscaleOptions): PipeOperator<CapturedFrame, C
                     layers,
                     index: envelope.index,
                     dropTrace: envelope.dropTrace,
+                    rotation: envelope.rotation,
                     stats: envelope.stats,
                 };
             },
@@ -170,6 +171,7 @@ function makeLayerEnvelope(source: CapturedFrame, frame: VideoFrame): CapturedFr
         sourceWidth: source.sourceWidth,
         sourceHeight: source.sourceHeight,
         forceKeyframe: source.forceKeyframe,
+        rotation: source.rotation,
         stats: source.stats,
     };
 }

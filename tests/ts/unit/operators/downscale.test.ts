@@ -72,6 +72,7 @@ function makeCaptured(
         sourceWidth: width,
         sourceHeight: height,
         forceKeyframe: opts.forceKeyframe ?? false,
+        rotation: 0,
         stats,
     };
 }

@@ -17,6 +17,7 @@ import { nextTick } from 'timeout';
 import { Vector2D } from 'math';
 import Escapist from '../../Services/Escapist/escapist';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
+import { ScreenOrientation } from 'orientation';
 import { getLogs } from 'logging';
 import { unselect } from 'keyboard';
 import { Tune, TuneUI } from '../../Services/TuneUI/tune-ui';
@@ -71,13 +72,16 @@ export class MenuHost implements Disposable {
                     this.hide();
                 }
             });
-        window.screen.orientation.addEventListener('change', () => {
-            if (!this.menu)
-                return;
-            const { menuRef, triggerElement, isHoverMenu } = this.menu;
-            const menu = this.create(menuRef, isHoverMenu, triggerElement, null, null);
-            void this.position(this.menu, menu);
-        });
+        ScreenOrientation.change$
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(() => {
+                if (!this.menu)
+                    return;
+
+                const { menuRef, triggerElement, isHoverMenu } = this.menu;
+                const menu = this.create(menuRef, isHoverMenu, triggerElement, null, null);
+                void this.position(this.menu, menu);
+            });
     }
 
     public dispose(): void {
@@ -282,8 +286,7 @@ export class MenuHost implements Disposable {
 
         let top = `${y}px`;
         if (!this.isDesktopMode) {
-            const orientation = window.screen.orientation.type;
-            if (orientation == 'landscape-primary' || orientation == 'landscape-secondary') {
+            if (!ScreenOrientation.isPortrait) {
                 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                 if (menuElement) {
                     const menuElementBottom = menuElement.getBoundingClientRect().bottom;

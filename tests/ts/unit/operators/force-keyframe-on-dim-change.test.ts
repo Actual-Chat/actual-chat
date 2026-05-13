@@ -34,6 +34,7 @@ function envelopeFor(
         sourceWidth: frame.codedWidth,
         sourceHeight: frame.codedHeight,
         forceKeyframe,
+        rotation: 0,
         stats,
     };
 }

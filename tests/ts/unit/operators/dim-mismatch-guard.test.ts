@@ -30,6 +30,7 @@ function envelopeFor(stats: RecorderStats, frame: MockVideoFrame, index = 0): Ca
         sourceWidth: frame.codedWidth,
         sourceHeight: frame.codedHeight,
         forceKeyframe: false,
+        rotation: 0,
         stats,
     };
 }

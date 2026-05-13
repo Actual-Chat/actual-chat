@@ -1,6 +1,8 @@
 import { DeviceInfo } from 'device-info';
 import { getLogs } from 'logging';
 import type { PresentableFrame, RenderBackend } from './render-backend';
+import { BgCanvasPainter } from '../../Services/Video/services/bg-canvas';
+import { applyRotationLayout } from '../../Services/Video/services/tile-fit';
 
 const { debugLog, infoLog, warnLog } = getLogs('VideoPlayer');
 
@@ -38,6 +40,11 @@ export class OffThreadRenderBackend implements RenderBackend {
     // CanvasRenderBackend. Skip redundant DOM writes when the live videoEl
     // dims still resolve to the same ratio.
     private lastAspectRatio = '';
+    private rotationQuarter = 0;
+    private currentFit: 'cover' | 'contain' = 'cover';
+    private bgCanvas: HTMLCanvasElement | null = null;
+    private bgPainter: BgCanvasPainter | null = null;
+    private bgFocused = false;
     private resizeListener: (() => void) | null = null;
     // DIAG: watchdog state — captures whether <video> playback is actually
     // advancing. The blur backdrop is painted by the worker from the same
@@ -138,26 +145,71 @@ export class OffThreadRenderBackend implements RenderBackend {
         // No-op: off-thread path. Main thread never feeds frames here.
     }
 
+    setRotation(quarter: number): void {
+        const q = ((Math.round(quarter) % 4) + 4) % 4;
+        if (q === this.rotationQuarter) return;
+        this.rotationQuarter = q;
+        applyRotationLayout(this.videoEl, q);
+        this.applyContainerAspect(true);
+    }
+
+    recomputeLayout(): void {
+        if ((this.rotationQuarter & 1) === 1)
+            applyRotationLayout(this.videoEl, this.rotationQuarter);
+    }
+
+    setFit(fit: 'cover' | 'contain'): void {
+        if (fit === this.currentFit) return;
+        this.currentFit = fit;
+        this.videoEl.style.objectFit = fit;
+        this.refreshBgPump();
+    }
+
+    setBackdrop(canvas: HTMLCanvasElement | null, focused: boolean): void {
+        this.bgFocused = focused;
+        if (canvas !== this.bgCanvas) {
+            this.bgPainter?.dispose();
+            this.bgCanvas = canvas;
+            this.bgPainter = canvas ? new BgCanvasPainter(canvas) : null;
+        }
+        this.refreshBgPump();
+    }
+
+    private refreshBgPump(): void {
+        if (!this.bgPainter) return;
+        if (this.currentFit === 'contain' && this.bgFocused) {
+            this.bgPainter.start(() => this.videoEl);
+        } else {
+            this.bgPainter.stop();
+        }
+    }
+
     // Mirrors CanvasRenderBackend.applyContainerAspect: writes the source
     // aspect ratio to the parent `.video-track-player` container so the CSS
     // `.has-source-aspect.item-focused[style*="aspect-ratio"]` rule fits the
     // tile to the source instead of the panel.
-    private applyContainerAspect(): void {
+    private applyContainerAspect(force = false): void {
         const w = this.videoEl.videoWidth;
         const h = this.videoEl.videoHeight;
         if (w <= 0 || h <= 0) return;
-        const ratio = `${w} / ${h}`;
-        if (ratio === this.lastAspectRatio) return;
+        // 90/270 turns swap visual W/H, so parent's aspect-ratio must invert.
+        const swap = (this.rotationQuarter & 1) === 1;
+        const visibleW = swap ? h : w;
+        const visibleH = swap ? w : h;
+        const ratio = `${visibleW} / ${visibleH}`;
+        if (!force && ratio === this.lastAspectRatio) return;
         const parent = this.videoEl.parentElement;
         if (!parent) return;
         parent.style.aspectRatio = ratio;
         this.lastAspectRatio = ratio;
-        debugLog?.log(`Container aspect-ratio set to ${ratio} (mstg)`);
+        debugLog?.log(`Container aspect-ratio set to ${ratio} (mstg rotation=${this.rotationQuarter})`);
     }
 
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
+        this.bgPainter?.dispose();
+        this.bgPainter = null;
         this.stopWatchdog();
         this.stopParentClassObserver();
         if (this.resizeListener) {
@@ -338,3 +390,4 @@ export class OffThreadRenderBackend implements RenderBackend {
             `tracks=[${trackInfo}]${cssInfo} parentCls="${cls}"`);
     }
 }
+

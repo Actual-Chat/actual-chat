@@ -5,6 +5,9 @@
 // onAttach/onDetach/onFirstFrame hooks — this class doesn't touch CSS.
 
 import { getLogs } from 'logging';
+import { DeviceOrientation, ScreenOrientation, normalizeRotationQuarter } from 'orientation';
+import type { Subscription } from 'rxjs';
+import { merge } from 'rxjs';
 import {
     addActiveRecorderListener,
     getActiveRecorder,
@@ -12,7 +15,8 @@ import {
     type VideoRecorder,
 } from '../../../Components/VideoPanel/video-recorder';
 import { CanvasTarget } from './canvas-target';
-import { BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS, BG_FILTER } from './bg-canvas-settings';
+import { BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS, BG_FILTER } from './bg-canvas';
+import { applyRotationLayout, chooseFit } from './tile-fit';
 
 const { infoLog } = getLogs('VideoRecorder');
 
@@ -52,6 +56,19 @@ export class RecorderPreviewView {
     // May differ from attachedRecorder until the followed recorder's track goes live.
     private followedRecorder: VideoRecorder | null = null;
     private followUnsubscribers: (() => void)[] = [];
+    // Rotation + fit wiring for the self-preview videoEl. Same model as the
+    // receiver's render backends: rotate via CSS transform with layout-box
+    // swap on odd quarters; pick cover/contain from cropLoss vs tile rect.
+    private orientationSubscription: Subscription | null = null;
+    private parentResizeObserver: ResizeObserver | null = null;
+    private videoResizeListener: (() => void) | null = null;
+    private currentFit: 'cover' | 'contain' = 'cover';
+    // Captured on first frame after attach. Self-preview's CSS rotation is
+    // (current device-vs-screen delta) − (initial device-vs-screen delta).
+    // Zero while initial == current → browser's natural page rotation
+    // handles it. Non-zero only when one of the two channels diverges
+    // from the start (e.g. screen-lock-on + device physically rotated).
+    private initialDeviceScreenDelta: number | null = null;
 
     static create(options: RecorderPreviewViewOptions): RecorderPreviewView {
         return new RecorderPreviewView(options);
@@ -70,6 +87,49 @@ export class RecorderPreviewView {
             this.followRecorder(this.pickRecorder());
         });
         this.followRecorder(this.pickRecorder());
+        this.startOrientationAndFitForwarding();
+    }
+
+    private startOrientationAndFitForwarding(): void {
+        // Apply rotation/fit on every device- OR screen-orientation flip.
+        // The delta is what matters for self-preview: when screen rotates
+        // WITH the device (no lock), browser already reorients the page
+        // and the camera; no CSS transform needed. When the screen is
+        // locked, only the device pose changes — that's when we rotate
+        // the videoEl to compensate.
+        this.orientationSubscription = merge(DeviceOrientation.change$, ScreenOrientation.change$)
+            .subscribe(() => this.applyRotationAndFit());
+        const parent = this.options.videoEl.parentElement;
+        if (parent) {
+            this.parentResizeObserver = new ResizeObserver(() => this.applyRotationAndFit());
+            this.parentResizeObserver.observe(parent);
+        }
+        this.videoResizeListener = () => this.applyRotationAndFit();
+        this.options.videoEl.addEventListener('resize', this.videoResizeListener);
+        this.applyRotationAndFit();
+    }
+
+    private applyRotationAndFit(): void {
+        if (this.disposed) return;
+        const videoEl = this.options.videoEl;
+        const parent = videoEl.parentElement;
+        const currentDelta = normalizeRotationQuarter(
+            DeviceOrientation.current - ScreenOrientation.quarter);
+        this.initialDeviceScreenDelta ??= currentDelta;
+        const rotation = normalizeRotationQuarter(
+            currentDelta - this.initialDeviceScreenDelta);
+        applyRotationLayout(videoEl, rotation);
+        if (!parent) return;
+        const swap = (rotation & 1) === 1;
+        const sourceW = videoEl.videoWidth || 0;
+        const sourceH = videoEl.videoHeight || 0;
+        const frameW = swap ? sourceH : sourceW;
+        const frameH = swap ? sourceW : sourceH;
+        const fit = chooseFit(frameW, frameH, parent.clientWidth, parent.clientHeight);
+        if (fit !== this.currentFit) {
+            this.currentFit = fit;
+            videoEl.style.objectFit = fit;
+        }
     }
 
     private pickRecorder(): VideoRecorder | null {
@@ -106,6 +166,18 @@ export class RecorderPreviewView {
         for (const u of this.followUnsubscribers) u();
         this.followUnsubscribers = [];
         this.followedRecorder = null;
+        if (this.orientationSubscription) {
+            try { this.orientationSubscription.unsubscribe(); } catch { /* ignore */ }
+            this.orientationSubscription = null;
+        }
+        if (this.parentResizeObserver) {
+            try { this.parentResizeObserver.disconnect(); } catch { /* ignore */ }
+            this.parentResizeObserver = null;
+        }
+        if (this.videoResizeListener) {
+            try { this.options.videoEl.removeEventListener('resize', this.videoResizeListener); } catch { /* ignore */ }
+            this.videoResizeListener = null;
+        }
         this.detach();
     }
 
@@ -227,6 +299,9 @@ export class RecorderPreviewView {
         this.canvasTarget.clear();
         this.bgCanvasTarget?.clear();
 
+        // Re-capture the initial device/screen delta on next attach.
+        this.initialDeviceScreenDelta = null;
+
         this.firstFrameFired = false;
         this.options.onDetach?.();
     }
@@ -244,6 +319,8 @@ export class RecorderPreviewView {
     private drawBgFrame(width: number, height: number): void {
         if (!this.bgCanvasTarget) return;
         if (!this.bgContainer?.classList.contains('item-focused')) return;
+        // Match the receiver: only paint the backdrop when contain is active.
+        if (this.currentFit !== 'contain') return;
         const now = performance.now();
         if (now - this.lastBgDrawTime < BG_DRAW_INTERVAL_MS) return;
         this.lastBgDrawTime = now;

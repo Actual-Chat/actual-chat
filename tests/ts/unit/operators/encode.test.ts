@@ -134,6 +134,7 @@ function makeCaptured(
         sourceWidth: 1920,
         sourceHeight: 1080,
         forceKeyframe,
+        rotation: 0,
         stats,
     };
 }
@@ -148,7 +149,7 @@ function makeBundle(
     // Bottom-first: layers[0] = base layer, layers[last] = top layer.
     const captured: CapturedFrame[] = layers.map(l =>
         makeCaptured(index, stats, l.width, l.height, forceKeyframe));
-    return { layers: captured, index, dropTrace: [], stats };
+    return { layers: captured, index, dropTrace: [], rotation: 0, stats };
 }
 
 function fromArray<T>(items: T[]): AsyncIterable<T> {
@@ -183,6 +184,7 @@ function makeFactory(opts: { onResetRequested?: (reason: string) => void; timeou
                 sourceHeight: 0,
                 encodedWidth: config.width,
                 encodedHeight: config.height,
+                rotation: 0,
                 stats: undefined as unknown as RecorderStats,
             }),
             () => { /* swallow encoder error */ },
@@ -444,6 +446,7 @@ describe('encode operator', () => {
                     sourceHeight: 0,
                     encodedWidth: 640,
                     encodedHeight: 360,
+                    rotation: 0,
                     stats: undefined as unknown as RecorderStats,
                 });
             },

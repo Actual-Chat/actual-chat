@@ -196,6 +196,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                                 sourceHeight: top.sourceHeight,
                                 encodedWidth: cfg.width,
                                 encodedHeight: cfg.height,
+                                rotation: bundle.rotation,
                                 stats: bundle.stats,
                             };
                             bundle.stats.bytesEncoded += completed.chunk.byteLength;
@@ -207,6 +208,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                             layers: out,
                             index: bundle.index,
                             dropTrace: bundle.dropTrace,
+                            rotation: bundle.rotation,
                             stats: bundle.stats,
                         };
                         yield encodedBundle;

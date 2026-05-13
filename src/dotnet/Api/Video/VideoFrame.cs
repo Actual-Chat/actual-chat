@@ -32,38 +32,40 @@ public sealed partial record VideoFrame : MediaFrame
     public int Width { get; init; }
     [DataMember(Order = 8), MemoryPackOrder(8), Key(8)]
     public int Height { get; init; }
+    [DataMember(Order = 9), MemoryPackOrder(9), Key(9)]
+    public byte Rotation { get; init; }
 
     /// <summary>
     /// SVC layer ID. 0 = base (lowest-res) layer, 1+ = higher-res layers.
     /// Always 0 on single-encoder (P2P) streams.
     /// </summary>
-    [DataMember(Order = 9), MemoryPackOrder(9), Key(9)]
-    public byte LayerId { get; init; }
     [DataMember(Order = 10), MemoryPackOrder(10), Key(10)]
-    public byte LayerCount { get; init; } = 1;
+    public byte LayerId { get; init; }
     [DataMember(Order = 11), MemoryPackOrder(11), Key(11)]
-    public int MaxLayerWidth { get; init; }
+    public byte LayerCount { get; init; } = 1;
     [DataMember(Order = 12), MemoryPackOrder(12), Key(12)]
+    public int MaxLayerWidth { get; init; }
+    [DataMember(Order = 13), MemoryPackOrder(13), Key(13)]
     public int MaxLayerHeight { get; init; }
 
     /// <summary>
     /// SVC temporal layer ID. 0 = base layer, 1+ = enhancement layers.
     /// </summary>
-    [DataMember(Order = 13), MemoryPackOrder(13), Key(13)]
-    public byte TemporalLayerId { get; init; }
     [DataMember(Order = 14), MemoryPackOrder(14), Key(14)]
+    public byte TemporalLayerId { get; init; }
+    [DataMember(Order = 15), MemoryPackOrder(15), Key(15)]
     public byte TemporalLayerCount { get; init; } = 1;
 
     /// <summary>
     /// Codec identifier (e.g., "avc1" for H.264). Only present on keyframes.
     /// </summary>
-    [DataMember(Order = 15), MemoryPackOrder(15), Key(15)]
+    [DataMember(Order = 16), MemoryPackOrder(16), Key(16)]
     public string? Codec { get; init; }
     /// <summary>
     /// Codec-specific data (SPS/PPS for H.264). Only present on keyframes.
     /// ReadOnlyMemory&lt;byte&gt; for zero-copy slicing and reduced GC pressure.
     /// </summary>
-    [DataMember(Order = 16), MemoryPackOrder(16), Key(16)]
+    [DataMember(Order = 17), MemoryPackOrder(17), Key(17)]
     public ReadOnlyMemory<byte> Description { get; init; }
 
     /// <summary>
@@ -72,7 +74,7 @@ public sealed partial record VideoFrame : MediaFrame
     /// first frame; subsequent frames append entries when an operator's local
     /// detector observes a gap larger than the trace already covers.
     /// </summary>
-    [DataMember(Order = 17), MemoryPackOrder(17), Key(17)]
+    [DataMember(Order = 18), MemoryPackOrder(18), Key(18)]
     public ReadOnlyMemory<byte> DropTrace { get; init; }
 
     // NB: The properties below this line aren't serialized!

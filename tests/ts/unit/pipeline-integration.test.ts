@@ -206,6 +206,7 @@ function makeCaptured(
         sourceWidth: width,
         sourceHeight: height,
         forceKeyframe: false,
+        rotation: 0,
         stats,
     };
 }
@@ -239,6 +240,7 @@ function makeEncoderFactory() {
                 sourceHeight: 0,
                 encodedWidth: config.width,
                 encodedHeight: config.height,
+                rotation: 0,
                 stats: undefined as unknown as RecorderStats,
             }),
             () => { /* swallow */ },

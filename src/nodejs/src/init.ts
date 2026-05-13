@@ -5,12 +5,15 @@ import { EmojiPreview } from 'emoji-preview';
 import { ServerClock } from 'clocks';
 import { SharedSettings } from 'shared-settings';
 import { ServiceWorker } from 'service-worker';
+import { ScreenOrientation, DeviceOrientation } from 'orientation';
 import { BrowserInit } from '../../dotnet/UI.Blazor/Services/BrowserInit/browser-init';
 
 globalThis.ServerClock = ServerClock;
 globalThis.SharedSettings = SharedSettings;
 globalThis.EmojiPreview = EmojiPreview;
 DeviceInfo.updateBodyClasses();
+ScreenOrientation.init();
+DeviceOrientation.init();
 Interactive.init();
 Gestures.init();
 EmojiPreview.init();

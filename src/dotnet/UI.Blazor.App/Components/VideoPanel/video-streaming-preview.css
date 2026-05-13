@@ -20,9 +20,12 @@ body.wide .video-panel.expanded .video-streaming-preview .call-video-native {
 /* Native <video> element fills the container the same way the canvas does, and
    sits underneath it. The canvas overlay is transparent unless blurred frames
    are being drawn on it (via addPreviewFrameListener) — so the user sees the
-   <video> for the raw camera feed and the canvas overlays it when blur is on. */
+   <video> for the raw camera feed and the canvas overlays it when blur is on.
+   No bg-black — the .remote-video-bg sibling sits behind and is lit when the
+   render decision picks contain. object-fit/width/height are JS-driven (see
+   tile-fit.ts) so rotation layout works the same way as the receiver. */
 .video-streaming-preview .call-video-native {
-    @apply absolute inset-0 w-full h-full bg-black object-cover;
+    @apply absolute inset-0 w-full h-full bg-transparent object-cover;
 }
 .video-streaming-preview .call-video {
     background: transparent;

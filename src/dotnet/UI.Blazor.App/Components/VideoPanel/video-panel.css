@@ -509,19 +509,16 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
 .video-track-player video.remote-video {
     @apply absolute inset-0;
     @apply w-full h-full;
-    /* Default: cover — small sidebar / PiP tiles look better cropped to fill
-       than letterboxed with bars. The focused tile overrides to contain so the
-       full frame is shown with the blur backdrop filling the letterbox bars. */
+    /* `object-fit` is set inline by render-backend setFit() on each tile —
+       cover for sidebar / PiP and for focused tiles whose source loses
+       ≤20% to cover-cropping; contain otherwise (with the blurred backdrop
+       lit up). Default is cover so a pre-first-frame tile still fills. */
     @apply object-cover;
     z-index: 1;
     contain: layout paint style size;
     will-change: transform;
     transform: translateZ(0);
     pointer-events: none;
-}
-.video-track-player.item-focused canvas.remote-video,
-.video-track-player.item-focused video.remote-video {
-    @apply object-contain;
 }
 .video-track-player canvas.remote-video {
     @apply bg-black;
@@ -570,7 +567,6 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
 }
 .video-track-player.item-focused canvas:not(.remote-video-bg) {
     @apply bg-transparent;
-    @apply object-contain;
     z-index: 1;
 }
 /* Hidden video-track-players (no item-* or pip-overlay class) — out of flow */
@@ -600,24 +596,16 @@ body.wide .video-panel-content .video-track-player.pip-overlay {
     @apply w-40 h-40;
 }
 
-/* Focused item: absolute overlay, full content area */
+/* Focused item: absolute overlay, full content area. The render backend
+   decides cover/contain via setFit; contain mode lights up the blurred
+   backdrop canvas behind the tile to fill the letterbox bars. */
 .video-panel-content .video-track-player.item-focused {
     @apply absolute inset-0;
     @apply w-full h-full;
     @apply rounded-none border-0;
     @apply overflow-hidden;
-    /* §6.E — fullscreen subtree has explicit dims (inset-0 + w/h-full),
-       so upgrade from `contain: layout paint` to `strict` (size + layout +
-       paint + style). Stops descendant invalidation (overlay labels,
-       connecting spinner, focus ring) from bubbling out of the focused
-       player. */
     contain: strict;
 }
-/* Focused tile fills the panel; the inner <video>/<canvas> letterboxes
-   inside via `object-contain`, and the blurred `.remote-video-bg` canvas
-   fills the container so it shows through as backdrop in the letterbox /
-   pillar bars. (Aspect-ratio inline style on the container is harmless
-   here — ignored when explicit dims fill the panel.) */
 body.wide .video-panel-content .video-track-player.item-focused {
     @apply rounded-lg;
 }

@@ -1,5 +1,7 @@
 import { getLogs } from 'logging';
 import type { PresentableFrame, RenderBackend } from './render-backend';
+import { BgCanvasPainter } from '../../Services/Video/services/bg-canvas';
+import { applyRotationLayout } from '../../Services/Video/services/tile-fit';
 
 const { debugLog, errorLog } = getLogs('VideoPlayer');
 
@@ -7,12 +9,13 @@ export class CanvasRenderBackend implements RenderBackend {
     readonly kind = 'canvas' as const;
     readonly isOffThread = false;
     private readonly ctx: CanvasRenderingContext2D | null;
-    // Cached aspect-ratio string applied to the parent container. Skip the
-    // DOM write when the live frame dims still resolve to the same ratio —
-    // touching `style.aspectRatio` triggers a re-flow even when the value is
-    // identical.
     private lastAspectRatio = '';
     private lastOutputSize: { width: number; height: number } | null = null;
+    private rotationQuarter = 0;
+    private currentFit: 'cover' | 'contain' = 'cover';
+    private bgCanvas: HTMLCanvasElement | null = null;
+    private bgPainter: BgCanvasPainter | null = null;
+    private bgFocused = false;
 
     constructor(private readonly canvas: HTMLCanvasElement) {
         this.ctx = canvas.getContext('2d');
@@ -38,31 +41,77 @@ export class CanvasRenderBackend implements RenderBackend {
         }
     }
 
-    // The Razor `Format`-derived aspect-ratio is a pre-first-frame guess
-    // (and is frozen even on mid-stream rotation, since VideoStreamInfo is
-    // not republished). Override the parent container's inline aspect-ratio
-    // here, where we know the live pipe's true dims. Both the canvas and
-    // the sibling <video> element share the same parent, so a single write
-    // covers both. Falls through silently if the parent is detached.
-    private applyContainerAspect(width: number, height: number): void {
+    setRotation(quarter: number): void {
+        const q = ((Math.round(quarter) % 4) + 4) % 4;
+        if (q === this.rotationQuarter) return;
+        this.rotationQuarter = q;
+        applyRotationLayout(this.canvas, q);
+        if (this.lastOutputSize)
+            this.applyContainerAspect(this.lastOutputSize.width, this.lastOutputSize.height, true);
+    }
+
+    recomputeLayout(): void {
+        // Odd quarters layout-size the canvas from parent dims; re-apply on resize.
+        if ((this.rotationQuarter & 1) === 1)
+            applyRotationLayout(this.canvas, this.rotationQuarter);
+    }
+
+    setFit(fit: 'cover' | 'contain'): void {
+        if (fit === this.currentFit) return;
+        this.currentFit = fit;
+        this.canvas.style.objectFit = fit;
+        this.refreshBgPump();
+    }
+
+    setBackdrop(canvas: HTMLCanvasElement | null, focused: boolean): void {
+        this.bgFocused = focused;
+        if (canvas !== this.bgCanvas) {
+            this.bgPainter?.dispose();
+            this.bgCanvas = canvas;
+            this.bgPainter = canvas ? new BgCanvasPainter(canvas) : null;
+        }
+        this.refreshBgPump();
+    }
+
+    private refreshBgPump(): void {
+        if (!this.bgPainter) return;
+        if (this.currentFit === 'contain' && this.bgFocused) {
+            this.bgPainter.start(() => this.canvas);
+        } else {
+            this.bgPainter.stop();
+        }
+    }
+
+    private applyContainerAspect(width: number, height: number, force = false): void {
         if (width <= 0 || height <= 0) return;
-        const ratio = `${width} / ${height}`;
-        if (ratio === this.lastAspectRatio) return;
+        // 90/270 turns swap visual W/H, so the parent's aspect-ratio must invert.
+        const swap = (this.rotationQuarter & 1) === 1;
+        const visibleW = swap ? height : width;
+        const visibleH = swap ? width : height;
+        const ratio = `${visibleW} / ${visibleH}`;
+        if (!force && ratio === this.lastAspectRatio) return;
         const parent = this.canvas.parentElement;
         if (!parent) return;
         parent.style.aspectRatio = ratio;
         this.lastAspectRatio = ratio;
-        debugLog?.log(`Container aspect-ratio set to ${ratio}`);
+        debugLog?.log(`Container aspect-ratio set to ${ratio} (rotation=${this.rotationQuarter})`);
     }
 
     dispose(): void {
-        // Canvas element ownership stays with Blazor; nothing to release.
+        this.bgPainter?.dispose();
+        this.bgPainter = null;
     }
 }
 
 export class TransferableCanvasRenderBackend implements RenderBackend {
     readonly kind = 'canvas' as const;
     readonly isOffThread = false;
+    private rotationQuarter = 0;
+    private lastAspectRatio = '';
+    private currentFit: 'cover' | 'contain' = 'cover';
+    private bgCanvas: HTMLCanvasElement | null = null;
+    private bgPainter: BgCanvasPainter | null = null;
+    private bgFocused = false;
 
     constructor(private readonly canvas: HTMLCanvasElement) {}
 
@@ -73,11 +122,69 @@ export class TransferableCanvasRenderBackend implements RenderBackend {
     }
 
     drawFrame(pf: PresentableFrame): void {
+        // OffscreenCanvas owns rendering; we still need to track dims to
+        // keep parent aspect-ratio + rotation transform in sync.
+        if (this.canvas.width > 0 && this.canvas.height > 0)
+            this.applyContainerAspect(this.canvas.width, this.canvas.height);
         const disposable = pf.drawable as unknown as { close?: () => void };
         try { disposable.close?.(); } catch { /* ignore */ }
     }
 
+    setRotation(quarter: number): void {
+        const q = ((Math.round(quarter) % 4) + 4) % 4;
+        if (q === this.rotationQuarter) return;
+        this.rotationQuarter = q;
+        applyRotationLayout(this.canvas, q);
+        if (this.canvas.width > 0 && this.canvas.height > 0)
+            this.applyContainerAspect(this.canvas.width, this.canvas.height, true);
+    }
+
+    recomputeLayout(): void {
+        if ((this.rotationQuarter & 1) === 1)
+            applyRotationLayout(this.canvas, this.rotationQuarter);
+    }
+
+    setFit(fit: 'cover' | 'contain'): void {
+        if (fit === this.currentFit) return;
+        this.currentFit = fit;
+        this.canvas.style.objectFit = fit;
+        this.refreshBgPump();
+    }
+
+    setBackdrop(canvas: HTMLCanvasElement | null, focused: boolean): void {
+        this.bgFocused = focused;
+        if (canvas !== this.bgCanvas) {
+            this.bgPainter?.dispose();
+            this.bgCanvas = canvas;
+            this.bgPainter = canvas ? new BgCanvasPainter(canvas) : null;
+        }
+        this.refreshBgPump();
+    }
+
+    private refreshBgPump(): void {
+        if (!this.bgPainter) return;
+        if (this.currentFit === 'contain' && this.bgFocused) {
+            this.bgPainter.start(() => this.canvas);
+        } else {
+            this.bgPainter.stop();
+        }
+    }
+
+    private applyContainerAspect(width: number, height: number, force = false): void {
+        const swap = (this.rotationQuarter & 1) === 1;
+        const visibleW = swap ? height : width;
+        const visibleH = swap ? width : height;
+        const ratio = `${visibleW} / ${visibleH}`;
+        if (!force && ratio === this.lastAspectRatio) return;
+        const parent = this.canvas.parentElement;
+        if (!parent) return;
+        parent.style.aspectRatio = ratio;
+        this.lastAspectRatio = ratio;
+    }
+
     dispose(): void {
-        // Canvas element ownership stays with Blazor; nothing to release.
+        this.bgPainter?.dispose();
+        this.bgPainter = null;
     }
 }
+

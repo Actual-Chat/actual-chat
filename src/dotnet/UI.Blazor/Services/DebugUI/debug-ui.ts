@@ -1,5 +1,6 @@
 import { getLogs } from 'logging';
 import { Api, MediaRpcStreamOptions, streamingApi, toMoment, WorkerKind, type VideoFormatDto, type VideoFrameDto } from 'api';
+import { DeviceOrientation, normalizeRotationQuarter, type RotationQuarter } from 'orientation';
 import { RpcStream } from 'actuallab-rpc';
 import { OnDeviceAwake } from 'on-device-awake';
 import { SvgCache } from '../../Components/Avatar/svg-cache';
@@ -161,6 +162,43 @@ export class DebugUI {
     public static testVideoPlaybackQualityChange(period = 30): void {
         void this.backendRef.invokeMethodAsync('TestVideoPlaybackQualityChange', period);
     }
+
+    // Override the device-orientation pipeline. `degrees` is CW from natural
+    // portrait — accepts 0/90/180/270 (or raw 0..3 quarter indices). The
+    // override flows through DeviceOrientation → SharedSettings; workers
+    // pick it up automatically.
+    public static setDeviceOrientation(degrees = 0): RotationQuarter {
+        const value = Math.abs(degrees) >= 4 ? degrees / 90 : degrees;
+        const quarter = normalizeRotationQuarter(value);
+        DeviceOrientation.set(quarter);
+        infoLog?.log(`setDeviceOrientation: quarter=${quarter}`);
+        return quarter;
+    }
+
+    /** Auto-rotates the device orientation at `rpm` revolutions per minute.
+     *  Positive RPM cycles CW (0→1→2→3→0); negative cycles CCW. Pass 0 or
+     *  null to stop. */
+    public static rotateDevice(rpm: number | null = 0): void {
+        if (this._rotateTimer !== null) {
+            clearInterval(this._rotateTimer);
+            this._rotateTimer = null;
+        }
+        if (rpm === null || !Number.isFinite(rpm) || rpm === 0) {
+            infoLog?.log(`rotateDevice: stopped`);
+            return;
+        }
+        const step: 1 | -1 = rpm > 0 ? 1 : -1;
+        // 1 revolution = 4 quarter-turns ⇒ each quarter takes 60_000/(4*|rpm|) ms.
+        const intervalMs = Math.max(50, Math.round(60_000 / (4 * Math.abs(rpm))));
+        let q: RotationQuarter = DeviceOrientation.current;
+        this._rotateTimer = setInterval(() => {
+            q = normalizeRotationQuarter(q + step);
+            DeviceOrientation.set(q);
+        }, intervalMs) as unknown as number;
+        infoLog?.log(`rotateDevice: rpm=${rpm} intervalMs=${intervalMs} step=${step}`);
+    }
+
+    private static _rotateTimer: number | null = null;
 
     public static killVideoRecording(avgPeriod: VideoTraceKillPeriodInput = 10, killStage: number | string = 3): boolean {
         return this.setVideoTraceKill('recording', avgPeriod, killStage);

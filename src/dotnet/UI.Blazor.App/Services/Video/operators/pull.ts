@@ -2,6 +2,7 @@ import { AsyncIterableX, exclusive, finalize, from } from 'ix-ext';
 import { abortPromise } from 'promises';
 import { MonotonicClock } from 'clocks';
 import { closeEncodedChunk, type ArrivedChunk, type PlayerStats } from '../frame-envelopes';
+import { quantize } from '../orientation/quantize';
 
 // Mirror of the .NET wire DTO; PascalCase matches the MessagePack field names.
 // Offset/Duration are 100-ns ticks; OffsetEpoch is the sender's MonotonicClock epoch.
@@ -24,6 +25,7 @@ export interface VideoFrameDto {
     Codec?: string | null;
     Description?: Uint8Array | null;
     DropTrace?: Uint8Array | null;
+    Rotation?: number;
 }
 
 export interface PullSourceOptions {
@@ -151,6 +153,7 @@ export function pullSource(opts: PullSourceOptions): AsyncIterableX<ArrivedChunk
                         width: dto.Width ?? 0,
                         height: dto.Height ?? 0,
                         rawByteLength: data.byteLength,
+                        rotation: quantize((dto.Rotation ?? 0) * 90),
                         stats,
                     };
                     if (dto.Description && dto.Description.byteLength > 0)

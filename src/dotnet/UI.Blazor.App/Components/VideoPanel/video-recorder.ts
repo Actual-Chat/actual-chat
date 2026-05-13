@@ -1142,10 +1142,13 @@ export class VideoRecorder {
         const encoderConfigs = this.toEncoderConfigs(ladder);
 
         const framerate = this.requireFramerate('startWorker');
+        const isFrontCamera = this.inputTrack.getSettings().facingMode === 'user';
         const config: WireSafeRecorderConfig = {
             chatId: this.chatId,
             apiUrl,
             sourceKind: this.currentMode === 'screen' ? 1 : 0,
+            isFrontCamera,
+            isIos: DeviceInfo.isIos,
             encoderConfigs,
             // Camera: 2-3s interval; ScreenCast: 1-2s interval.
             keyframeIntervalFrames: this.currentMode === 'screen'

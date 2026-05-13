@@ -75,6 +75,7 @@ export function mstpSource(opts: MstpSourceOptions): AsyncIterableX<CapturedFram
                         sourceWidth: 0,
                         sourceHeight: 0,
                         forceKeyframe: false,
+                        rotation: 0,
                         stats,
                     };
                     stats.framesCaptured++;

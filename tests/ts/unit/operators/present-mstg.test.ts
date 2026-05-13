@@ -77,6 +77,7 @@ function makeEnvelope(
         index: id,
         dropTrace: [],
         layerId: 0,
+        rotation: 0,
         stats,
     };
 }

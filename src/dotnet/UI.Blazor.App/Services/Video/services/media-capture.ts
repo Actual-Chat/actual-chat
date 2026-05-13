@@ -1,6 +1,7 @@
 import { VIDEO } from 'app-constants';
 import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
+import { ScreenOrientation } from 'orientation';
 
 const { infoLog } = getLogs('VideoRecorder');
 
@@ -160,7 +161,7 @@ export class MediaCapture {
     private static preferPortraitConstraint(): boolean {
         if (DeviceInfo.isIos) return false;
         if (!DeviceInfo.isMobile) return false;
-        return screen.orientation.type.startsWith('portrait');
+        return ScreenOrientation.isPortrait;
     }
 
     static async captureScreenCast(): Promise<MediaStreamTrack> {

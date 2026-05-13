@@ -9,6 +9,7 @@
 
 import type { MonotonicTime } from 'clocks';
 import type { FrameDropStage } from './frame-drop-trace';
+import type { RotationQuarter } from './orientation/quantize';
 
 // ---- Stats ---------------------------------------------------------------
 
@@ -170,6 +171,11 @@ export interface CapturedFrame {
     // applyKeyframePolicy, and recorder.requestKeyframe (PLI).
     forceKeyframe: boolean;
 
+    // Quarter-turn CW the receiver should apply to display upright.
+    // Stamped by setRotation right after capture; all layers in one source
+    // moment share the same value.
+    rotation: RotationQuarter;
+
     stats: RecorderStats;
 }
 
@@ -181,6 +187,7 @@ export interface CapturedBundle {
     // Bundle-level index (== layers[*].index) for drop-trace gap detection.
     index: number;
     dropTrace: FrameDropStage[];
+    rotation: RotationQuarter;
     stats: RecorderStats;
 }
 
@@ -209,6 +216,8 @@ export interface EncodedFrame {
     encodedWidth: number;
     encodedHeight: number;
 
+    rotation: RotationQuarter;
+
     stats: RecorderStats;
 }
 
@@ -218,6 +227,7 @@ export interface EncodedBundle {
     layers: EncodedFrame[];
     index: number;
     dropTrace: FrameDropStage[];
+    rotation: RotationQuarter;
     stats: RecorderStats;
 }
 
@@ -256,6 +266,10 @@ export interface ArrivedChunk {
 
     rawByteLength: number;
 
+    // Quarter-turn CW the receiver should apply to display upright. 0 when
+    // the wire DTO omits the field (legacy sender).
+    rotation: RotationQuarter;
+
     stats: PlayerStats;
 }
 
@@ -272,6 +286,8 @@ export interface DecodedFrame {
     dropTrace: FrameDropStage[];
 
     layerId: number;
+
+    rotation: RotationQuarter;
 
     stats: PlayerStats;
 }

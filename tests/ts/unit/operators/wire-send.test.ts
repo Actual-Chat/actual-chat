@@ -124,6 +124,7 @@ function makeEncoded(stats: RecorderStats, opts: BuildOpts = {}): EncodedFrame {
         sourceHeight: opts.sourceHeight ?? 1080,
         encodedWidth: opts.encodedWidth ?? 1920,
         encodedHeight: opts.encodedHeight ?? 1080,
+        rotation: 0,
         stats,
     };
 }
@@ -138,6 +139,7 @@ function source(items: EncodedFrame[]): AsyncIterable<EncodedBundle> {
                 layers: [item],
                 index: item.index,
                 dropTrace: [],
+                rotation: 0,
                 stats: item.stats,
             } as EncodedBundle;
         }
@@ -156,6 +158,7 @@ function bundledSource(groups: EncodedFrame[][]): AsyncIterable<EncodedBundle> {
                 layers: group,
                 index: group[0].index,
                 dropTrace: [],
+                rotation: 0,
                 stats: group[0].stats,
             } as EncodedBundle;
         }

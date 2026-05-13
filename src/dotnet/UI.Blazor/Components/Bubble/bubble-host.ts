@@ -1,5 +1,6 @@
 import { arrow, computePosition, flip, offset, Placement, shift, autoUpdate } from '@floating-ui/dom';
-import { Subject, debounceTime, startWith, takeUntil, fromEvent } from 'rxjs';
+import { Subject, debounceTime, startWith, takeUntil } from 'rxjs';
+import { ScreenOrientation } from 'orientation';
 import { getLogs } from 'logging';
 interface BubbleModel {
     bubbleRef: string;
@@ -68,21 +69,10 @@ export class BubbleHost {
             });
 
         this.bubbleHost = document.querySelector('.ac-bubble-host')!;
-        const mediaQuery = window.matchMedia('(orientation: portrait)');
-        if (!mediaQuery.matches && !this.bubbleHost.classList.contains('landscape')) {
-            this.bubbleHost.classList.add('landscape');
-        }
-        void fromEvent(mediaQuery, 'change')
+        this.applyOrientationClass();
+        ScreenOrientation.change$
             .pipe(takeUntil(this.disposed$))
-            .subscribe((event: MediaQueryListEvent) => {
-                if (event.matches) {
-                    this.bubbleHost.classList.remove('landscape');
-                } else {
-                    if (!this.bubbleHost.classList.contains('landscape')) {
-                        this.bubbleHost.classList.add('landscape');
-                    }
-                }
-            });
+            .subscribe(() => this.applyOrientationClass());
     }
 
     public dispose() {
@@ -93,6 +83,15 @@ export class BubbleHost {
         this.disposed$.complete();
 
         this.mutationObserver.disconnect();
+    }
+
+    private applyOrientationClass(): void {
+        const wantLandscape = !ScreenOrientation.isPortrait;
+        const hasLandscape = this.bubbleHost.classList.contains('landscape');
+        if (wantLandscape && !hasLandscape)
+            this.bubbleHost.classList.add('landscape');
+        else if (!wantLandscape && hasLandscape)
+            this.bubbleHost.classList.remove('landscape');
     }
 
     public skipBubbles(): string[] {

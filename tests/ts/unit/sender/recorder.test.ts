@@ -144,6 +144,7 @@ function makeEncoderFactory(opts: { timeoutMs?: number } = {}) {
                 sourceHeight: 0,
                 encodedWidth: config.width,
                 encodedHeight: config.height,
+                rotation: 0,
                 stats: undefined as unknown as RecorderStats,
             }),
             () => { /* swallow */ },
@@ -177,6 +178,9 @@ function buildConfig(overrides: Partial<RecorderConfig> = {}): RecorderConfig {
     return {
         track: {} as MediaStreamTrack,
         createProcessor: makeProcessorFromQueue(frames),
+        sourceKind: 0,
+        isFrontCamera: false,
+        isIos: false,
         encoderConfigs: [cfg],
         createEncoder: makeEncoderFactory(),
         keyframeIntervalFrames: 30,

@@ -20,13 +20,13 @@
     @if (a.CanToggleIsland) {
         <MenuEntry
             Icon="@(isCollapsed ? "icon-video-expand" : "icon-video-collapse")"
-            Text="@(isCollapsed ? "Restore" : "Pin to corner")"
+            Text="@(isCollapsed ? "Restore" : "Float")"
             Click="@OnToggleIsland"/>
     }
     @if (a.CanMinimize) {
         <MenuEntry
             Icon="icon-eye-off"
-            Text="Minimize"
+            Text="Hide"
             Click="@OnMinimize"/>
     }
 

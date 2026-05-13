@@ -192,6 +192,7 @@ function createEncoder(
         sourceHeight: 0,
         encodedWidth: config.width,
         encodedHeight: config.height,
+        rotation: 0,
         stats: undefined as unknown as EncodedFrame['stats'],
     });
 
