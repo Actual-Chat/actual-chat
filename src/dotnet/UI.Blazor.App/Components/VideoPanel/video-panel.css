@@ -14,11 +14,8 @@
 .video-panel.collapsed {
     @apply fixed z-button top-16 right-2;
     --video-panel-island-short: 6rem;
-    --video-panel-island-long: 11rem;
     --video-panel-island-aspect: 1.7778;
-    width: min(
-        calc(var(--video-panel-island-short) * var(--video-panel-island-aspect)),
-        var(--video-panel-island-long));
+    width: calc(var(--video-panel-island-short) * var(--video-panel-island-aspect));
     height: var(--video-panel-island-short);
     @apply p-0;
     @apply rounded-lg;
@@ -30,14 +27,11 @@
 @media (min-width: 768px) {
     .video-panel.collapsed {
         --video-panel-island-short: 8rem;
-        --video-panel-island-long: 14rem;
     }
 }
 .video-panel.collapsed.portrait-video {
     width: var(--video-panel-island-short);
-    height: min(
-        calc(var(--video-panel-island-short) / var(--video-panel-island-aspect)),
-        var(--video-panel-island-long));
+    height: calc(var(--video-panel-island-short) / var(--video-panel-island-aspect));
 }
 .video-panel.collapsed > .c-container {
     @apply flex-x items-center gap-0;
@@ -534,9 +528,21 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     @apply object-cover;
     z-index: 1;
     contain: layout paint style size;
+    max-width: none;
+    max-height: none;
     will-change: transform;
-    transform: translateZ(0);
+    transform: rotate(var(--video-rotation, 0deg)) translateZ(0);
+    transform-origin: center center;
     pointer-events: none;
+}
+.video-track-player canvas.remote-video.rotated-video,
+.video-track-player video.remote-video.rotated-video {
+    inset: auto;
+    width: 100cqh;
+    height: 100cqw;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) rotate(var(--video-rotation, 0deg)) translateZ(0);
 }
 .video-track-player canvas.remote-video {
     @apply bg-black;
@@ -561,6 +567,7 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
 /* Bound any descendant invalidation (overlays, labels) to the player box. */
 .video-track-player {
     contain: layout paint;
+    container-type: size;
 }
 
 /* Blurred background canvas — only visible inside focused container,
@@ -623,6 +630,9 @@ body.wide .video-panel-content .video-track-player.pip-overlay {
     @apply rounded-none border-0;
     @apply overflow-hidden;
     contain: strict;
+}
+.video-panel.expanded .video-track-player.item-focused {
+    aspect-ratio: auto !important;
 }
 body.wide .video-panel-content .video-track-player.item-focused {
     @apply rounded-lg;

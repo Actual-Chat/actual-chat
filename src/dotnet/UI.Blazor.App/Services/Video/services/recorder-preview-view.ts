@@ -56,9 +56,9 @@ export class RecorderPreviewView {
     // May differ from attachedRecorder until the followed recorder's track goes live.
     private followedRecorder: VideoRecorder | null = null;
     private followUnsubscribers: (() => void)[] = [];
-    // Rotation + fit wiring for the self-preview videoEl. Same model as the
-    // receiver's render backends: rotate via CSS transform with layout-box
-    // swap on odd quarters; pick cover/contain from cropLoss vs tile rect.
+    // Rotation + fit wiring for the self-preview surfaces. Same model as the
+    // receiver's render backends: CSS owns the rotated layout; JS only
+    // publishes the quarter-turn and picks cover/contain from cropLoss.
     private orientationSubscription: Subscription | null = null;
     private parentResizeObserver: ResizeObserver | null = null;
     private videoResizeListener: (() => void) | null = null;
@@ -119,6 +119,7 @@ export class RecorderPreviewView {
         const rotation = normalizeRotationQuarter(
             currentDelta - this.initialDeviceScreenDelta);
         applyRotationLayout(videoEl, rotation);
+        applyRotationLayout(this.options.canvas, rotation);
         if (!parent) return;
         const swap = (rotation & 1) === 1;
         const sourceW = videoEl.videoWidth || 0;
@@ -129,6 +130,7 @@ export class RecorderPreviewView {
         if (fit !== this.currentFit) {
             this.currentFit = fit;
             videoEl.style.objectFit = fit;
+            this.options.canvas.style.objectFit = fit;
         }
     }
 

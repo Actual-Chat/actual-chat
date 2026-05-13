@@ -564,9 +564,8 @@ export class VideoPlayer {
     // 1 − min(frameW·tileH, frameH·tileW) / max(...). When that's small
     // we keep cover (a thin sliver is invisible); when it grows past the
     // threshold we fall back to contain and light up the blurred backdrop
-    // on focused tiles. Minimized (collapsed/island) and sidebar/PiP tiles
-    // are cover-only — they're small, the crop is visually fine, and a
-    // blurred backdrop in tiny floating tiles is more clutter than value.
+    // on focused tiles. Sidebar/PiP/minimized tiles are cover-only; the island
+    // itself is resized to the stream aspect, so cover fills without gray bars.
     private applyFitDecision(): void {
         const backend = this.renderBackend;
         const parent = this.canvas.parentElement;
@@ -575,28 +574,34 @@ export class VideoPlayer {
         const isMinimized = !!document.querySelector('.video-panel.collapsed');
         if (focused)
             this.updateCollapsedIslandAspect();
-        // Sidebar / PiP / minimized: cover-only, no backdrop.
-        if (!focused || isMinimized) {
+        if (!focused) {
             try { backend.setFit('cover'); } catch { /* ignore */ }
             try { backend.setBackdrop(null, false); } catch { /* ignore */ }
             return;
         }
+        const fit = this.computeFocusedFit(parent);
+        if (isMinimized) {
+            try { backend.setFit(fit); } catch { /* ignore */ }
+            try { backend.setBackdrop(null, false); } catch { /* ignore */ }
+            return;
+        }
+        try { backend.setFit(fit); } catch (e) { warnLog?.log('setFit failed:', e); }
+        try { backend.setBackdrop(this.bgCanvasEl, true); }
+        catch (e) { warnLog?.log('setBackdrop failed:', e); }
+    }
+
+    private computeFocusedFit(parent: Element): 'cover' | 'contain' {
         const rect = parent.getBoundingClientRect();
         const tileW = rect.width;
         const tileH = rect.height;
         const fw = this.lastFrameW;
         const fh = this.lastFrameH;
-        let fit: 'cover' | 'contain' = 'cover';
-        if (fw > 0 && fh > 0 && tileW > 0 && tileH > 0) {
-            const a = fw * tileH;
-            const b = fh * tileW;
-            const cropLoss = 1 - Math.min(a, b) / Math.max(a, b);
-            if (cropLoss > VideoPlayer.COVER_LOSS_MAX)
-                fit = 'contain';
-        }
-        try { backend.setFit(fit); } catch (e) { warnLog?.log('setFit failed:', e); }
-        try { backend.setBackdrop(this.bgCanvasEl, true); }
-        catch (e) { warnLog?.log('setBackdrop failed:', e); }
+        if (fw <= 0 || fh <= 0 || tileW <= 0 || tileH <= 0)
+            return 'cover';
+        const a = fw * tileH;
+        const b = fh * tileW;
+        const cropLoss = 1 - Math.min(a, b) / Math.max(a, b);
+        return cropLoss > VideoPlayer.COVER_LOSS_MAX ? 'contain' : 'cover';
     }
 
     private updateCollapsedIslandAspect(): void {
@@ -611,8 +616,20 @@ export class VideoPlayer {
             return;
 
         ratio = Math.max(0.25, Math.min(4, ratio));
-        panel.style.setProperty('--video-panel-island-aspect', ratio.toFixed(4));
-        panel.classList.toggle('portrait-video', ratio < 1);
+        const nextAspect = ratio.toFixed(4);
+        const nextPortrait = ratio < 1;
+        const aspectChanged = panel.style.getPropertyValue('--video-panel-island-aspect') !== nextAspect;
+        const portraitChanged = panel.classList.contains('portrait-video') !== nextPortrait;
+        panel.style.setProperty('--video-panel-island-aspect', nextAspect);
+        panel.classList.toggle('portrait-video', nextPortrait);
+        if (aspectChanged || portraitChanged) {
+            void panel.offsetHeight;
+            this.runViewportCheck();
+            requestAnimationFrame(() => {
+                this.runViewportCheck();
+                requestAnimationFrame(() => this.runViewportCheck());
+            });
+        }
     }
 
     private scheduleViewportCheck(): void {

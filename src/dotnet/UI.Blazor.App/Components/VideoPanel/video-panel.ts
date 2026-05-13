@@ -27,6 +27,8 @@ export class VideoPanel {
     private blazorRef: DotNet.DotNetObject;
     private readonly videoPanel: HTMLElement;
     private parentElement: HTMLElement | null = null;
+    private parentNextSibling: ChildNode | null = null;
+    private homeMarker: Comment | null = null;
     private disposed$: Subject<void> = new Subject<void>();
 
     // ScreenCast zoom/pan state
@@ -81,6 +83,11 @@ export class VideoPanel {
         this.videoPanel = videoPanel;
 
         this.parentElement = this.videoPanel.parentElement;
+        this.parentNextSibling = this.videoPanel.nextSibling;
+        if (this.parentElement) {
+            this.homeMarker = document.createComment('video-panel-home');
+            this.parentElement.insertBefore(this.homeMarker, this.videoPanel);
+        }
         const needToShowElements = this.videoPanel.querySelectorAll('.show-with-delay');
         setTimeout(() => {
             needToShowElements.forEach(element => element.classList.add('show'));
@@ -116,7 +123,7 @@ export class VideoPanel {
             this.videoPanel.style.top = '';
             this.videoPanel.style.left = '';
             this.videoPanel.style.right = '';
-            this.parentElement?.appendChild(this.videoPanel);
+            this.restoreToParent();
             this.panelMode = 'inline';
         });
         observer.observe(this.videoPanel, { attributes: true, attributeFilter: ['class'] });
@@ -766,7 +773,9 @@ export class VideoPanel {
         this.videoPanel.style.top = '';
         this.videoPanel.style.left = '';
         this.videoPanel.style.right = '';
-        this.parentElement?.appendChild(this.videoPanel);
+        this.videoPanel.classList.remove('portrait-video');
+        this.videoPanel.style.removeProperty('--video-panel-island-aspect');
+        this.restoreToParent();
     }
 
     // Hidden pill — reparent to `.layout-body-wrapper > .c-container`, which is
@@ -779,7 +788,7 @@ export class VideoPanel {
     }
 
     private teardownHidden(): void {
-        this.parentElement?.appendChild(this.videoPanel);
+        this.restoreToParent();
     }
 
     // Place the island below the subheader (or header if no subheader), top-right.
@@ -1085,6 +1094,8 @@ export class VideoPanel {
         this.teardownHidden();
         this.returnDragHandle();
         this.collapse();
+        this.homeMarker?.parentNode?.removeChild(this.homeMarker);
+        this.homeMarker = null;
         this.disposed$.next();
         this.disposed$.complete();
     }
@@ -1119,12 +1130,27 @@ export class VideoPanel {
         this.resetZoom();
         // Reparent BEFORE removing 'expanded' — otherwise the panel briefly
         // renders as inline-positioned while still attached to document.body.
-        this.parentElement?.appendChild(this.videoPanel);
+        this.restoreToParent();
         this.videoPanel.classList.remove('expanded', 'toolbar-hidden');
         this.setDragHandleVisible(true);
         // Resume ScreenSize updates; re-sync body classes to the current orientation.
         ScreenSize.unfreeze();
         void this.blazorRef.invokeMethodAsync('OnCollapsed');
+    }
+
+    private restoreToParent(): void {
+        const parent = this.parentElement;
+        if (!parent)
+            return;
+        if (this.homeMarker?.parentNode === parent) {
+            if (this.homeMarker.nextSibling !== this.videoPanel)
+                parent.insertBefore(this.videoPanel, this.homeMarker.nextSibling);
+            return;
+        }
+        if (this.parentNextSibling && this.parentNextSibling.parentNode === parent)
+            parent.insertBefore(this.videoPanel, this.parentNextSibling);
+        else
+            parent.appendChild(this.videoPanel);
     }
 
     private onEscPress() {

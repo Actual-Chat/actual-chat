@@ -1,6 +1,11 @@
 .video-streaming-preview .call-video,
 .video-streaming-preview .call-video-native {
-    transform: scaleX(-1);
+    @apply absolute inset-0 w-full h-full bg-transparent object-cover;
+    max-width: none;
+    max-height: none;
+    transform: scaleX(-1) rotate(var(--video-rotation, 0deg)) translateZ(0);
+    transform-origin: center center;
+    will-change: transform;
 }
 body.wide .video-panel.expanded .video-streaming-preview .call-video,
 body.wide .video-panel.expanded .video-streaming-preview .call-video-native {
@@ -10,23 +15,29 @@ body.wide .video-panel.expanded .video-streaming-preview .call-video-native {
 .video-streaming-preview.screencast .call-video-native,
 .video-streaming-preview .call-video.no-mirror,
 .video-streaming-preview .call-video-native.no-mirror {
-    transform: none;
+    transform: rotate(var(--video-rotation, 0deg)) translateZ(0);
+}
+.video-streaming-preview .call-video.rotated-video,
+.video-streaming-preview .call-video-native.rotated-video {
+    inset: auto;
+    width: 100cqh;
+    height: 100cqw;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scaleX(-1) rotate(var(--video-rotation, 0deg)) translateZ(0);
+}
+.video-streaming-preview.screencast .call-video.rotated-video,
+.video-streaming-preview.screencast .call-video-native.rotated-video,
+.video-streaming-preview .call-video.no-mirror.rotated-video,
+.video-streaming-preview .call-video-native.no-mirror.rotated-video {
+    transform: translate(-50%, -50%) rotate(var(--video-rotation, 0deg)) translateZ(0);
 }
 /* Screencast preview: show whole screen with letterboxing instead of cropping. */
 .video-streaming-preview.screencast .call-video,
 .video-streaming-preview.screencast .call-video-native {
     @apply object-contain;
 }
-/* Native <video> element fills the container the same way the canvas does, and
-   sits underneath it. The canvas overlay is transparent unless blurred frames
-   are being drawn on it (via addPreviewFrameListener) — so the user sees the
-   <video> for the raw camera feed and the canvas overlays it when blur is on.
-   No bg-black — the .remote-video-bg sibling sits behind and is lit when the
-   render decision picks contain. object-fit/width/height are JS-driven (see
-   tile-fit.ts) so rotation layout works the same way as the receiver. */
-.video-streaming-preview .call-video-native {
-    @apply absolute inset-0 w-full h-full bg-transparent object-cover;
-}
+/* The raw <video> and blurred-frame <canvas> share one rotated layout. */
 .video-streaming-preview .call-video {
     background: transparent;
 }

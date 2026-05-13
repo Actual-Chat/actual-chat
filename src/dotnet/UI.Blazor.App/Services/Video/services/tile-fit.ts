@@ -24,37 +24,21 @@ export function chooseFit(frameW: number, frameH: number, tileW: number, tileH: 
     return cropLoss > COVER_LOSS_MAX ? 'contain' : 'cover';
 }
 
-/** CSS transform is post-layout, so for odd quarters we also transpose
- *  the element's layout box: it's sized to the parent's swapped dims,
- *  centered absolutely, then rotated. That way `object-fit: cover|contain`
- *  operates on the element's natural pre-rotation aspect. Even quarters
- *  keep the default `width:100%; height:100%` layout. */
+/** Publish rotation state to CSS. CSS owns the actual sizing via container
+ *  units, so mode changes don't depend on JS reading parent dimensions at
+ *  exactly the right time. */
 export function applyRotationLayout(el: HTMLElement, quarter: RotationQuarter): void {
     const q = normalizeRotationQuarter(quarter);
     const swap = (q & 1) === 1;
-    if (!swap) {
-        el.style.removeProperty('width');
-        el.style.removeProperty('height');
-        el.style.removeProperty('left');
-        el.style.removeProperty('top');
-        if (q === 0) {
-            el.style.removeProperty('transform');
-            return;
-        }
-        el.style.transform = `rotate(${q * 90}deg)`;
-        el.style.transformOrigin = 'center center';
-        return;
-    }
-    const parent = el.parentElement;
-    if (!parent) return;
-    const rect = parent.getBoundingClientRect();
-    const w = rect.width > 0 ? rect.width : parent.clientWidth;
-    const h = rect.height > 0 ? rect.height : parent.clientHeight;
-    if (w <= 0 || h <= 0) return;
-    el.style.width = `${h}px`;
-    el.style.height = `${w}px`;
-    el.style.left = '50%';
-    el.style.top = '50%';
-    el.style.transformOrigin = 'center center';
-    el.style.transform = `translate(-50%, -50%) rotate(${q * 90}deg)`;
+    el.classList.toggle('rotated-video', swap);
+    el.style.removeProperty('width');
+    el.style.removeProperty('height');
+    el.style.removeProperty('left');
+    el.style.removeProperty('top');
+    el.style.removeProperty('transform');
+    el.style.removeProperty('transform-origin');
+    if (q === 0)
+        el.style.removeProperty('--video-rotation');
+    else
+        el.style.setProperty('--video-rotation', `${q * 90}deg`);
 }

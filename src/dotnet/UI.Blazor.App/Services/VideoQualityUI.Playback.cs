@@ -463,6 +463,13 @@ public sealed partial class VideoQualityUI
         }
     }
 
+    private void RefreshPlaybackEntriesLastSeenLocked()
+    {
+        var now = CpuTimestamp.Now;
+        foreach (var (streamId, state) in _playbackByStream.ToArray())
+            _playbackByStream[streamId] = state with { LastSeen = now };
+    }
+
     private static int? NormalizeLayerCount(int? layerCount)
         => layerCount is >= 1 and <= 3 ? layerCount : null;
 

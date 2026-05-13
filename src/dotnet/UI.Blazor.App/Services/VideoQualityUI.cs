@@ -65,8 +65,8 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
     {
         await _whenActuallyUsed.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
         var chains = new[] {
-            AsyncChain.From(WatchConnectivityEdges),
-            AsyncChain.From(WatchVideoPanelModeEdges),
+            AsyncChain.From(WatchConnectivity),
+            AsyncChain.From(WatchVideoPanelMode),
             AsyncChain.From(RunPlaybackQualityKeepAlive),
             AsyncChain.From(LoadDebugSettings),
         };
@@ -79,25 +79,33 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
 
     // Private methods
 
-    private async Task WatchVideoPanelModeEdges(CancellationToken cancellationToken)
+    private async Task WatchVideoPanelMode(CancellationToken cancellationToken)
     {
         // Pause/resume requests must propagate within a tick — without this, the
         // override sits idle until the next 5s steady-state QC re-evaluation.
         // The cached mode also tells GetFreshPlaybackEntries to keep entries
         // alive while paused (no inbound frames → no OnPlaybackStats refresh).
         var cMode = await Computed
-            .Capture(() => Hub.ChatVideoUI.GetVideoPanelMode(), cancellationToken)
+            .Capture(() => Hub.ChatVideoUI.GetVideoPanelMode(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         await foreach (var change in cMode.Changes(cancellationToken).ConfigureAwait(false)) {
-            lock (_playbackLock)
+            bool isResumingPlayback;
+            lock (_playbackLock) {
+                isResumingPlayback = IsPlaybackPaused(_currentPanelMode) && !IsPlaybackPaused(change.Value);
                 _currentPanelMode = change.Value;
+                if (isResumingPlayback)
+                    RefreshPlaybackEntriesLastSeenLocked();
+            }
             await RecomputePlaybackQuality(
                 PlaybackQualityReason.ActiveSetChanged,
                 cancellationToken).ConfigureAwait(false);
         }
     }
 
-    private async Task WatchConnectivityEdges(CancellationToken cancellationToken)
+    private static bool IsPlaybackPaused(VideoPanelMode mode)
+        => mode is VideoPanelMode.Hidden or VideoPanelMode.Collapsed;
+
+    private async Task WatchConnectivity(CancellationToken cancellationToken)
     {
         var cState = ConnectivityUI.IsConnected.Computed;
         await foreach (var (isConnected, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
