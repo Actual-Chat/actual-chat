@@ -13,13 +13,31 @@
 /* Collapsed "island" — fixed, positioned below subheader, draggable */
 .video-panel.collapsed {
     @apply fixed z-button top-16 right-2;
-    @apply h-24 w-44 md:h-32 md:w-56;
+    --video-panel-island-short: 6rem;
+    --video-panel-island-long: 11rem;
+    --video-panel-island-aspect: 1.7778;
+    width: min(
+        calc(var(--video-panel-island-short) * var(--video-panel-island-aspect)),
+        var(--video-panel-island-long));
+    height: var(--video-panel-island-short);
     @apply p-0;
     @apply rounded-lg;
     @apply overflow-hidden;
     @apply bg-03;
     @apply cursor-grab;
     @apply touch-none;
+}
+@media (min-width: 768px) {
+    .video-panel.collapsed {
+        --video-panel-island-short: 8rem;
+        --video-panel-island-long: 14rem;
+    }
+}
+.video-panel.collapsed.portrait-video {
+    width: var(--video-panel-island-short);
+    height: min(
+        calc(var(--video-panel-island-short) / var(--video-panel-island-aspect)),
+        var(--video-panel-island-long));
 }
 .video-panel.collapsed > .c-container {
     @apply flex-x items-center gap-0;

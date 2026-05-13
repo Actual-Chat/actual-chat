@@ -573,6 +573,8 @@ export class VideoPlayer {
         if (!parent) return;
         const focused = parent.classList.contains('item-focused');
         const isMinimized = !!document.querySelector('.video-panel.collapsed');
+        if (focused)
+            this.updateCollapsedIslandAspect();
         // Sidebar / PiP / minimized: cover-only, no backdrop.
         if (!focused || isMinimized) {
             try { backend.setFit('cover'); } catch { /* ignore */ }
@@ -597,6 +599,22 @@ export class VideoPlayer {
         catch (e) { warnLog?.log('setBackdrop failed:', e); }
     }
 
+    private updateCollapsedIslandAspect(): void {
+        const panel = this.canvas.closest<HTMLElement>('.video-panel');
+        if (!panel) return;
+        let ratio = this.lastFrameW > 0 && this.lastFrameH > 0
+            ? this.lastFrameW / this.lastFrameH
+            : 0;
+        if (ratio <= 0 || !Number.isFinite(ratio))
+            ratio = readAspectRatio(this.canvas.parentElement);
+        if (ratio <= 0 || !Number.isFinite(ratio))
+            return;
+
+        ratio = Math.max(0.25, Math.min(4, ratio));
+        panel.style.setProperty('--video-panel-island-aspect', ratio.toFixed(4));
+        panel.classList.toggle('portrait-video', ratio < 1);
+    }
+
     private scheduleViewportCheck(): void {
         // Coalesce bursts of layout/class events into a single post-layout
         // read so getBoundingClientRect lands AFTER the browser's reflow.
@@ -605,11 +623,21 @@ export class VideoPlayer {
 
         this.viewportCheckRafHandle = requestAnimationFrame(() => {
             this.viewportCheckRafHandle = null;
-            this.maybeSendViewportChanged();
-            try { this.renderBackend.recomputeLayout(); }
-            catch (e) { warnLog?.log('recomputeLayout failed:', e); }
-            this.applyFitDecision();
+            this.runViewportCheck();
+            // Fullscreen enter/reparent can report the focused tile's previous
+            // inline size for one frame on mobile. Odd-quarter rotation bakes
+            // that size into the inner canvas/video, so run one settled pass
+            // after fixed-position layout has landed.
+            if (this.canvas.closest('.video-panel')?.classList.contains('expanded'))
+                requestAnimationFrame(() => this.runViewportCheck());
         });
+    }
+
+    private runViewportCheck(): void {
+        this.maybeSendViewportChanged();
+        try { this.renderBackend.recomputeLayout(); }
+        catch (e) { warnLog?.log('recomputeLayout failed:', e); }
+        this.applyFitDecision();
     }
 
     private maybeSendViewportChanged(): void {
@@ -1249,6 +1277,16 @@ function priorityForRenderSize(hint: ViewportInfo | null): number {
 function getDevicePixelRatio(): number {
     const dpr = Number.isFinite(window.devicePixelRatio) ? window.devicePixelRatio : 1;
     return Math.max(1, dpr);
+}
+
+function readAspectRatio(el: HTMLElement | null): number {
+    const raw = el?.style.aspectRatio;
+    if (!raw) return 0;
+    const parts = raw.split('/').map(x => Number.parseFloat(x.trim()));
+    if (parts.length === 2 && parts[0] > 0 && parts[1] > 0)
+        return parts[0] / parts[1];
+    const value = Number.parseFloat(raw);
+    return value > 0 ? value : 0;
 }
 
 function isZeroSized(rect: DOMRect): boolean {

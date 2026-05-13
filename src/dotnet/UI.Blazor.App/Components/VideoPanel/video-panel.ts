@@ -734,14 +734,18 @@ export class VideoPanel {
         this.positionIslandDefault();
         this.initIslandDrag();
 
-        // Watch subheader/banners for size changes to reposition.
+        // Watch subheader/banners and island aspect changes to reposition.
         const subheader = document.querySelector('.layout-subheader');
-        if (subheader && !this.islandResizeObserver) {
+        if (!this.islandResizeObserver) {
             this.islandResizeObserver = new ResizeObserver(() => {
                 if (!this.islandDragged)
                     this.positionIslandDefault();
+                else
+                    this.clampIslandToViewport();
             });
-            this.islandResizeObserver.observe(subheader);
+            if (subheader)
+                this.islandResizeObserver.observe(subheader);
+            this.islandResizeObserver.observe(this.videoPanel);
         }
 
         // Clamp to viewport on resize/zoom.

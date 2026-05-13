@@ -47,8 +47,10 @@ export function applyRotationLayout(el: HTMLElement, quarter: RotationQuarter): 
     }
     const parent = el.parentElement;
     if (!parent) return;
-    const w = parent.clientWidth;
-    const h = parent.clientHeight;
+    const rect = parent.getBoundingClientRect();
+    const w = rect.width > 0 ? rect.width : parent.clientWidth;
+    const h = rect.height > 0 ? rect.height : parent.clientHeight;
+    if (w <= 0 || h <= 0) return;
     el.style.width = `${h}px`;
     el.style.height = `${w}px`;
     el.style.left = '50%';
