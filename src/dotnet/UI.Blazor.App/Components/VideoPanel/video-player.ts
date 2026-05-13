@@ -1,5 +1,6 @@
 import { getLogs } from 'logging';
 import { Api, streamingApi } from 'api';
+import { delayAsync } from 'promises';
 
 const RPC_SESSION_DEFAULT = '~';
 import { ServerClock } from 'clocks';
@@ -20,6 +21,7 @@ import {
 } from '../../Services/Video/hevc-codec-selection';
 import { isDecoderCodecProven, markDecoderCodecProven } from '../../Services/Video/codec-support';
 import { consumeVideoTraceKill, registerVideoTraceKillWorker } from '../../Services/Video/video-trace-kill-control';
+import { isCodecExhaustedError } from '../../Services/Video/operators/decode';
 import type { RenderBackend } from './render-backend';
 import { TransferableCanvasRenderBackend } from './render-backend-canvas';
 import { OffThreadRenderBackend, isOffThreadPlausible } from './render-backend-mstg';
@@ -167,6 +169,22 @@ export class VideoPlayer {
     private connectivityHandlerOnline: { dispose(): void } | null = null;
     private connectivityHandlerConnected: { dispose(): void } | null = null;
     private traceKillRegistration: Disposable | null = null;
+
+    // Recovery loop state. The main thread owns the restart contract:
+    // each call to `runOneAttempt` resolves either when the worker
+    // reports a natural completion (sender stopped publishing) or
+    // when an error/eviction happens. The outer loop reissues attempts
+    // with backoff until: (a) the user stops the player, (b) the
+    // current codec is excluded, or (c) Blazor unmounts us because
+    // `GetActiveVideoStreams` no longer lists this stream.
+    private currentAttempt: {
+        readonly attemptId: number;
+        resolve: () => void;
+        reject: (err: Error) => void;
+    } | null = null;
+    private restartAttempts = 0;
+    private restartLoopRunning = false;
+    private nextAttemptId = 0;
 
     // Diagnostics counters
     private renderFrameCount = 0;       // bumped from worker latency reports (frames presented)
@@ -362,26 +380,26 @@ export class VideoPlayer {
                     },
                     onStreamEnded: (streamId: string, reason: string) => {
                         debugLog?.log(`Worker stream ended: stream=${streamId}, reason=${reason}`);
-                        void this.reportEnded(reason === 'completed' ? undefined : reason);
+                        // 'completed' = sender finished publishing → genuine
+                        // end. Anything else (e.g. eviction, peer
+                        // disconnect, sender restart) is recoverable; signal
+                        // the current attempt so the loop reissues.
+                        if (reason === 'completed') {
+                            this.settleCurrentAttempt({ kind: 'completed' });
+                        } else {
+                            this.settleCurrentAttempt({
+                                kind: 'error',
+                                error: new Error(`stream ended: ${reason}`),
+                            });
+                        }
                         return Promise.resolve();
                     },
                     onError: (streamId: string, error: string) => {
                         warnLog?.log(`Worker reported error for stream ${streamId}: ${error}`);
-                        if (
-                            this.shouldRequestCodecExclusion()
-                            && !this.codecExclusionRequested
-                            && !isDecoderCodecProven(this.codecCategory)
-                        ) {
-                            this.codecExclusionRequested = true;
-                            warnLog?.log(
-                                `Worker error: requesting codec exclusion for ${this.codecCategory} ` +
-                                `(reason: ${error})`);
-                            void this.blazorRef.invokeMethodAsync('OnRequestCodecExclusion', this.codecCategory);
-                        } else if (isDecoderCodecProven(this.codecCategory)) {
-                            infoLog?.log(
-                                `Worker error suppressed for proven codec ${this.codecCategory}: ${error}`);
-                        }
-                        void this.reportEnded(error);
+                        this.settleCurrentAttempt({
+                            kind: 'error',
+                            error: new Error(error),
+                        });
                         return Promise.resolve();
                     },
                     onTraceKillInjected: () => {
@@ -425,7 +443,7 @@ export class VideoPlayer {
                 const mstgBackend = this.renderBackend as OffThreadRenderBackend;
                 mstgBackend.onFocusedChange = (focused: boolean) => { void focused; };
                 mstgBackend.onPlaybackStalled = report => {
-                    void this.fallbackFromMstgToCanvas(
+                    this.fallbackFromMstgToCanvas(
                         `watchdog:${report.reason}, readyState=${report.readyState}, ` +
                         `videoWH=${report.videoWidth}x${report.videoHeight}, tracks=[${report.tracks}]`);
                 };
@@ -579,13 +597,14 @@ export class VideoPlayer {
             .catch((e: unknown) => warnLog?.log('RequestKeyFrame error:', e));
     }
 
-    /** Called by Blazor */
+    /** Called by Blazor. Spawns the self-restarting playback loop and
+     *  returns immediately; the loop runs until the player is stopped
+     *  or the stream completes naturally. */
     public async startPull(streamId: string, skipToMs: number): Promise<void> {
         if (!this.isPlaying) {
             warnLog?.log('startPull called but player not started');
             return;
         }
-
         infoLog?.log(
             `startPull:streamId=${streamId}, skipToMs=${skipToMs.toFixed(0)}, ` +
             `renderBackend=${this.renderBackend.kind}, isOffThread=${this.renderBackend.isOffThread}`);
@@ -603,19 +622,119 @@ export class VideoPlayer {
         // handles bootstrap automatically. Recorded for diagnostics.
         void skipToMs;
 
+        if (this.restartLoopRunning) {
+            warnLog?.log(`startPull: restart loop already running for stream ${streamId}`);
+            return;
+        }
+        this.restartLoopRunning = true;
+        void this.runPlaybackLoop(streamId).finally(() => {
+            this.restartLoopRunning = false;
+        });
+    }
+
+    private async runPlaybackLoop(streamId: string): Promise<void> {
+        this.restartAttempts = 0;
+        while (this.isPlaying && !this.codecExclusionRequested) {
+            try {
+                await this.runOneAttempt(streamId);
+                // Resolved → sender stopped publishing. Genuine end.
+                void this.reportEnded(undefined);
+                return;
+            } catch (err) {
+                const e = err instanceof Error ? err : new Error(String(err));
+
+                // Codec exhaustion: narrow path — only when the decode
+                // operator itself ran out of recovery attempts. Other
+                // errors look superficially codec-related (e.g. a wire
+                // hang) but should NOT trigger codec exclusion.
+                if (isCodecExhaustedError(e)) {
+                    const eligible = this.shouldRequestCodecExclusion()
+                        && !this.codecExclusionRequested
+                        && !isDecoderCodecProven(this.codecCategory);
+                    if (eligible) {
+                        this.codecExclusionRequested = true;
+                        warnLog?.log(
+                            `runPlaybackLoop: codec exhausted (${this.codecCategory}) — ` +
+                            `requesting exclusion (${e.message})`);
+                        void this.blazorRef.invokeMethodAsync('OnRequestCodecExclusion', this.codecCategory);
+                        // Blazor re-registers with a smaller codec set;
+                        // server may push a new stream with a different
+                        // streamId. Old VideoTrackPlayer unmounts via
+                        // GetActiveVideoStreams invalidation. Stop here.
+                        return;
+                    }
+                    if (isDecoderCodecProven(this.codecCategory)) {
+                        infoLog?.log(
+                            `runPlaybackLoop: codec ${this.codecCategory} already proven — ` +
+                            `treating as transient and retrying`);
+                    }
+                }
+
+                if (!this.isPlaying) return;
+
+                this.restartAttempts++;
+                const delayMs = Math.min(3000, 150 * Math.pow(1.7, this.restartAttempts - 1));
+                warnLog?.log(
+                    `runPlaybackLoop: attempt ${this.restartAttempts} failed — ` +
+                    `${e.message}; retrying in ${delayMs.toFixed(0)}ms`);
+                await delayAsync(delayMs);
+            }
+        }
+    }
+
+    /** Runs a single worker.start() to completion. Resolves when the
+     *  worker reports the stream ended naturally; rejects on any
+     *  error (which the outer loop then retries). */
+    private async runOneAttempt(streamId: string): Promise<void> {
+        if (!this.playerWorker || !this.selectedCodec)
+            throw new Error('runOneAttempt: worker or codec missing');
+
+        const attemptId = this.nextAttemptId++;
+        // Settled by onStreamEnded / onError RPC callbacks via
+        // settleCurrentAttempt.
+        const settled = new Promise<void>((resolve, reject) => {
+            this.currentAttempt = { attemptId, resolve, reject };
+        });
+
+        try {
+            await this.startWorkerForAttempt(streamId);
+        } catch (e) {
+            // Failed to spin up — clear the attempt and rethrow so the loop sees it.
+            if (this.currentAttempt?.attemptId === attemptId)
+                this.currentAttempt = null;
+            throw e;
+        }
+
+        try {
+            await settled;
+        } finally {
+            if (this.currentAttempt?.attemptId === attemptId)
+                this.currentAttempt = null;
+            // Ensure the worker pipeline is fully stopped before the
+            // outer loop spins up another attempt. Idempotent.
+            if (this.workerStreamActive && this.playerWorker) {
+                try { await this.playerWorker.stop(streamId); }
+                catch { /* ignore */ }
+                this.workerStreamActive = false;
+            }
+        }
+    }
+
+    /** Side-effects: constructs the per-attempt MSTG track (if MSTG)
+     *  or transfers a fresh OffscreenCanvas (if canvas), and starts
+     *  the worker. Resolves once worker.start() returns. */
+    private async startWorkerForAttempt(streamId: string): Promise<void> {
+        if (!this.playerWorker || !this.selectedCodec)
+            throw new Error('startWorkerForAttempt: worker or codec missing');
+
         const backend: 'mstg' | 'canvas' = this.renderBackend.isOffThread ? 'mstg' : 'canvas';
 
-        // Tier 2 MSTG path (Chromium): main owns the
-        // MediaStreamTrackGenerator. Construct it here, attach the
-        // resulting track to <video srcObject> on this thread, and
-        // transfer the writable to the worker. The worker writes
-        // decoded frames into the writable; the platform routes them
-        // straight to <video> with no extra hops.
-        //
-        // If the main globalThis doesn't expose MSTG (Safari today),
-        // fall through with `mstgWritable=undefined` — the worker host
-        // then tries Tier 1 (worker-side MSTG/VTG). Per the contract,
-        // canvas is the last-resort fallback when both tiers fail.
+        // Tier 2 MSTG path (Chromium): main constructs a fresh
+        // MediaStreamTrackGenerator per attempt, attaches its track to
+        // <video srcObject> (replacing any prior track), and transfers
+        // the writable to the worker. On Safari / older browsers
+        // without MSTG, fall through to Tier 1 (worker-side VTG/MSTG)
+        // or, last-resort, the canvas backend.
         let mstgWritable: WritableStream<VideoFrame> | undefined;
         let mstgGenerator: MediaStreamTrack | null = null;
         if (backend === 'mstg') {
@@ -629,21 +748,18 @@ export class VideoPlayer {
                     mstgGenerator = gen;
                     mstgWritable = gen.writable;
                     (this.renderBackend as OffThreadRenderBackend).onTrackReady(gen);
-                    infoLog?.log(`startPull: Tier 2 — main-thread MSTG track attached (id=${gen.id})`);
+                    debugLog?.log(`startWorkerForAttempt: Tier 2 MSTG (id=${gen.id})`);
                 } catch (e) {
-                    warnLog?.log('startPull: main-thread MSTG construct failed, falling back to worker tier:', e);
+                    warnLog?.log('startWorkerForAttempt: main-thread MSTG construct failed:', e);
                     mstgGenerator = null;
                     mstgWritable = undefined;
                 }
-            } else {
-                infoLog?.log('startPull: main-thread MSTG unavailable, deferring to worker tier');
             }
         }
 
         let offscreen: OffscreenCanvas | undefined;
-        if (backend === 'canvas') {
-            offscreen = this.transferCanvasToOffscreen('startPull');
-        }
+        if (backend === 'canvas')
+            offscreen = this.transferCanvasToOffscreen('startWorkerForAttempt');
 
         try {
             this.workerStreamActive = true;
@@ -657,50 +773,41 @@ export class VideoPlayer {
                 targetBufferSpanMs: TARGET_BUFFER_SPAN_MS,
                 backend,
             }, mstgWritable, offscreen);
-            debugLog?.log(`Player worker.start({${streamId}}) resolved (backend=${backend}, tier=${mstgWritable ? '2' : (backend === 'mstg' ? '1' : 'canvas')})`);
+            debugLog?.log(
+                `worker.start({${streamId}}) resolved (backend=${backend}, ` +
+                `tier=${mstgWritable ? '2' : (backend === 'mstg' ? '1' : 'canvas')})`);
         } catch (err) {
             this.workerStreamActive = false;
             const message = err instanceof Error ? err.message : String(err);
-            // Worker rejected mstg (no Tier 1 / Tier 2 surface). Retry
-            // with the canvas backend — this only fires on browsers
-            // where neither main nor worker exposes MSTG/VTG (rare).
+            // Worker rejected mstg (no Tier 1 / Tier 2 surface). Swap
+            // permanently to canvas and rethrow — the outer loop's
+            // next attempt will use the canvas backend.
             if (backend === 'mstg' && /MediaStreamTrackGenerator|VideoTrackGenerator|mstgWritable/.test(message)) {
                 if (mstgGenerator) {
                     try { mstgGenerator.stop(); } catch { /* ignore */ }
                 }
-                warnLog?.log(`startPull: MSTG unavailable on both tiers — retrying with canvas backend`);
-                // Worker now draws into the OffscreenCanvas; main DOM still
-                // had the <video> visible and <canvas> hidden because the
-                // mstg backend was selected at construction. Swap to canvas
-                // backend before transferring so the canvas element is shown.
+                warnLog?.log(`startWorkerForAttempt: MSTG unavailable — switching backend to canvas`);
                 this.renderBackend.dispose();
                 this.renderBackend = new TransferableCanvasRenderBackend(this.canvas);
                 this.applyBackendVisibility(this.canvas, this.videoEl);
-                const canvasOffscreen = this.transferCanvasToOffscreen('startPull retry');
-                try {
-                    this.workerStreamActive = true;
-                    await this.playerWorker.start({
-                        streamId,
-                        initialDecoderConfig: {
-                            codec: this.selectedCodec,
-                            codedWidth: this.selectedCodecedWidth,
-                            codedHeight: this.selectedCodecedHeight,
-                        },
-                        targetBufferSpanMs: TARGET_BUFFER_SPAN_MS,
-                        backend: 'canvas',
-                    }, undefined, canvasOffscreen);
-                    debugLog?.log(`Player worker.start({${streamId}}) resolved (backend=canvas, retry)`);
-                    return;
-                } catch (err2) {
-                    this.workerStreamActive = false;
-                    const message2 = err2 instanceof Error ? err2.message : String(err2);
-                    warnLog?.log(`startPull retry: worker.start rejected: ${message2}`);
-                    void this.reportEnded(message2);
-                    return;
-                }
             }
-            warnLog?.log(`startPull: worker.start rejected: ${message}`);
-            void this.reportEnded(message);
+            throw err;
+        }
+    }
+
+    private settleCurrentAttempt(outcome:
+        | { kind: 'completed' }
+        | { kind: 'error'; error: Error }): void {
+        const attempt = this.currentAttempt;
+        if (!attempt) {
+            // Late callback from a stale attempt — already cleaned up. Ignore.
+            return;
+        }
+        this.currentAttempt = null;
+        if (outcome.kind === 'completed') {
+            attempt.resolve();
+        } else {
+            attempt.reject(outcome.error);
         }
     }
 
@@ -789,27 +896,24 @@ export class VideoPlayer {
         return Math.max(0, (last.bytes - first.bytes) * 1000 / dtMs);
     }
 
-    private async fallbackFromMstgToCanvas(reason: string): Promise<void> {
+    /** Watchdog-triggered fallback: swap the MSTG backend for canvas
+     *  and signal the current attempt as failed so the loop reissues
+     *  it under the new backend. Idempotent for the case where the
+     *  attempt already settled. */
+    private fallbackFromMstgToCanvas(reason: string): void {
         if (!this.isPlaying || this.renderBackend.kind !== 'mstg')
             return;
-
         warnLog?.log(`fallbackFromMstgToCanvas: ${reason}`);
-        try {
-            if (this.workerStreamActive && this.playerWorker) {
-                try { await this.playerWorker.stop(this.streamId); }
-                catch (e) { warnLog?.log('fallbackFromMstgToCanvas: worker.stop failed:', e); }
-                this.workerStreamActive = false;
-            }
-
-            this.renderBackend.dispose();
-            this.renderBackend = new TransferableCanvasRenderBackend(this.canvas);
-            this.applyBackendVisibility(this.canvas, this.videoEl);
-
-            const liveOffsetMs = Math.max(0, ServerClock.now() - this.startedAtMs);
-            await this.startPull(this.streamId, liveOffsetMs);
-        } catch (e) {
-            warnLog?.log('fallbackFromMstgToCanvas: failed', e);
-        }
+        this.renderBackend.dispose();
+        this.renderBackend = new TransferableCanvasRenderBackend(this.canvas);
+        this.applyBackendVisibility(this.canvas, this.videoEl);
+        // Force the next runOneAttempt to use canvas. The current
+        // attempt (if any) is aborted via settleCurrentAttempt; the
+        // outer loop then issues a fresh attempt against canvas.
+        this.settleCurrentAttempt({
+            kind: 'error',
+            error: new Error(`mstg fallback: ${reason}`),
+        });
     }
 
     private transferCanvasToOffscreen(context: string): OffscreenCanvas | undefined {
@@ -861,6 +965,9 @@ export class VideoPlayer {
         this.receivedFrameCount++;
         this.renderFrameCount++;
         this.presentedFrameCount = sample.playerStats.presented;
+        // Sustained frame flow → restart loop's exponential backoff resets.
+        if (this.restartAttempts > 0)
+            this.restartAttempts = 0;
 
         const nowMs = performance.now();
         if (this.lastLatencyTickMs > 0) {
@@ -911,6 +1018,13 @@ export class VideoPlayer {
         infoLog?.log(`VideoPlayer registry: removed ${this.streamId}, active=${activePlayers.size}`);
 
         this.isPlaying = false;
+        // Settle any in-flight attempt so the restart loop can see
+        // isPlaying=false and exit cleanly. The worker.stop below
+        // would normally suppress the callbacks (locallyStopped).
+        this.settleCurrentAttempt({
+            kind: 'error',
+            error: new Error('VideoPlayer.stop'),
+        });
         Api.releaseConnection(`VideoPlayer:${this.streamId}`);
         this.lastRenderedOffsetMs = 0;
         this.lastArrivedOffsetMs = 0;

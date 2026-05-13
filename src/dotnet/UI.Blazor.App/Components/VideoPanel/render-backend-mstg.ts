@@ -84,16 +84,25 @@ export class OffThreadRenderBackend implements RenderBackend {
             return;
         }
         if (this.trackAttached) {
+            // Replacement path — the recovery loop in VideoPlayer
+            // restarts the worker with a fresh MSTG track, so any
+            // previously-attached track is now stale (the worker is
+            // not feeding it any more). Stop the old tracks and swap
+            // in the new one without warning-flooding the console.
             const existingStream = this.videoEl.srcObject;
-            const existingTracks = existingStream instanceof MediaStream ? existingStream.getTracks() : [];
-            const existingIds = existingTracks.map(t => `${t.id}:${t.readyState}`).join(',');
-            warnLog?.log(
-                `onTrackReady: called twice; ignoring second track. ` +
-                `newTrack=${track.id}:${track.readyState}, existingTracks=[${existingIds}], ` +
-                `videoPaused=${this.videoEl.paused}, videoReadyState=${this.videoEl.readyState}, ` +
-                `videoCurrentTime=${this.videoEl.currentTime.toFixed(2)}s, ` +
-                `videoWidth=${this.videoEl.videoWidth}x${this.videoEl.videoHeight}`);
-            try { track.stop(); } catch { /* ignore */ }
+            if (existingStream instanceof MediaStream) {
+                for (const t of existingStream.getTracks()) {
+                    try { t.stop(); } catch { /* ignore */ }
+                }
+            }
+            try { this.videoEl.srcObject = new MediaStream([track]); } catch { /* ignore */ }
+            this.consecutiveStallTicks = 0;
+            this.consecutivePlayRetries = 0;
+            this.intermittentStallScore = 0;
+            this.startupNoOutputTicks = 0;
+            this.startupNoOutputReported = false;
+            this.tryPlay('track-replaced');
+            infoLog?.log(`onTrackReady: replaced track, new=${track.id}:${track.readyState}`);
             return;
         }
         infoLog?.log(

@@ -329,6 +329,16 @@ export class VideoRecorder {
     // Wallclock anchor for diagnostics duration calculation.
     private startedAtMs = 0;
 
+    // Recovery loop bookkeeping. The recorder worker may report an
+    // error mid-stream (pipeline throw, wire failure, server-side
+    // PushStream eviction). We never surface that to Blazor: instead,
+    // we tear down the worker pipeline and reissue startWorker on the
+    // same input track with backoff. The loop bails only when the
+    // user stops recording (isRecording=false) or the recorder is
+    // being disposed.
+    private recoveryAttempts = 0;
+    private recoveryScheduled = false;
+
     static create(blazorRef: DotNet.DotNetObject, kind: number): VideoRecorder {
         return new VideoRecorder(blazorRef, kind);
     }
@@ -934,10 +944,21 @@ export class VideoRecorder {
             },
             onStreamEnded: (reason: string) => {
                 infoLog?.log(`Worker stream ended: ${reason}`);
+                // 'completed' = recorder.stop drained naturally (user
+                // pressed stop, or `stopRecording` torn it down).
+                // Anything else = pipeline error/eviction; main thread
+                // has already been notified via `onError` and a restart
+                // is in flight or scheduled. Either way we don't
+                // surface to Blazor — Blazor doesn't get an "ended"
+                // signal from the recorder side anyway.
+                void reason;
             },
             onError: (error: string) => {
                 errorLog?.log(`RecorderWorker reported error: ${error}`);
-                void this.blazorRef.invokeMethodAsync('OnRecordingError', error);
+                // Recover transparently — no Blazor notification. The
+                // UI continues to show the recorder as on; the next
+                // frames will flow as soon as the restart completes.
+                this.scheduleRecovery(`worker error: ${error}`);
             },
             onTraceKillInjected: () => consumeVideoTraceKill('recording'),
         };
@@ -1131,10 +1152,56 @@ export class VideoRecorder {
         // startRecording() and let the operator pipe drive itself.
         void this.worker.start({ sourceStartedAtMs, config }).catch((e: unknown) => {
             errorLog?.log('Worker start rejected:', e);
+            // Spin-up failure routes through the same recovery loop
+            // as a runtime pipeline error — Blazor never hears about
+            // it; the UI keeps showing "recording" while we retry.
             const message = e instanceof Error ? e.message : String(e);
-            void this.blazorRef.invokeMethodAsync('OnRecordingError', message);
+            this.scheduleRecovery(`worker.start rejected: ${message}`);
         });
         this.startRecorderHealthMonitor();
+    }
+
+    /** Schedules a worker restart with exponential backoff. Coalesces
+     *  multiple concurrent triggers (worker.start rejection, runtime
+     *  error event, etc.) into a single in-flight restart. */
+    private scheduleRecovery(reason: string): void {
+        if (this.recoveryScheduled || !this.isRecording || this.disposed)
+            return;
+        this.recoveryScheduled = true;
+        this.recoveryAttempts++;
+        const delayMs = Math.min(3000, 200 * Math.pow(1.7, this.recoveryAttempts - 1));
+        warnLog?.log(
+            `scheduleRecovery: ${reason}; attempt ${this.recoveryAttempts} in ${delayMs.toFixed(0)}ms`);
+        window.setTimeout(() => {
+            this.recoveryScheduled = false;
+            if (!this.isRecording || this.disposed) return;
+            void this.recoverNow().catch((e: unknown) => {
+                warnLog?.log('scheduleRecovery: recoverNow failed', e);
+                this.scheduleRecovery('recovery attempt failed');
+            });
+        }, delayMs);
+    }
+
+    private async recoverNow(): Promise<void> {
+        if (!this.worker || !this.inputTrack) {
+            warnLog?.log('recoverNow: worker or input track missing — skipping');
+            return;
+        }
+        const ladder = this.layers ?? this.fullLayerLadder ?? [];
+        if (ladder.length === 0) {
+            warnLog?.log('recoverNow: no ladder, skipping');
+            return;
+        }
+        infoLog?.log(
+            `recoverNow: ladder=[${ladder.map(l => `${l.width}x${l.height}`).join(', ')}], ` +
+            `codec=${this.currentCodecString}`);
+        // Stop the current pipeline so its source-readable (MSTP) and
+        // any wire-level state unwind cleanly. startWorker constructs
+        // a fresh MSTP / rVFC pump on the same `inputTrack`.
+        try { await this.worker.stop(); }
+        catch (e) { warnLog?.log('recoverNow: worker.stop failed (continuing):', e); }
+        if (!this.isRecording || this.disposed) return;
+        await this.startWorker(ladder);
     }
 
     private toEncoderConfigs(ladder: LayerConfig[]): EncoderConfigPerLayer[] {
@@ -1331,6 +1398,10 @@ export class VideoRecorder {
                         Math.max(0, stats.bundlesShipped - previous.bundlesShipped) * scale;
                     this.bytesPerSec =
                         Math.max(0, stats.bytesEncoded - previous.bytesEncoded) * scale;
+                    // Reset recovery backoff once the pipeline is flowing
+                    // again — sustained shipping means the restart took.
+                    if (this.recoveryAttempts > 0 && this.bundlesPerSec > 0)
+                        this.recoveryAttempts = 0;
                     this.dropPerSec.clear();
                     for (const [stage, count] of stats.dropTrace) {
                         const prev = previous.dropTrace.get(stage) ?? 0;

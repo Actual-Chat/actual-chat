@@ -103,7 +103,6 @@ export function traceDrops<T extends DropTraced>(prevStage: FrameDropStage): Pip
         let lastIndex: number | null = null;
         const maybeKill = createVideoTraceKiller(prevStage);
         for await (const item of source) {
-            maybeKill();
             if (lastIndex !== null) {
                 const gap = item.index - lastIndex - 1;
                 if (gap > 0) {
@@ -115,6 +114,11 @@ export function traceDrops<T extends DropTraced>(prevStage: FrameDropStage): Pip
             }
             lastIndex = item.index;
             yield item;
+            // Kill AFTER yield: by this point `item` is owned by the
+            // downstream operator (which closes any wire resources in
+            // its own finally). A throw here can't leak the in-flight
+            // frame because we no longer hold it.
+            maybeKill();
         }
     }
 }

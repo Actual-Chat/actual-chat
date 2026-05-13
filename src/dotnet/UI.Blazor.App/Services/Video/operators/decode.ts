@@ -1,6 +1,19 @@
 import { from, type PipeOperator } from 'ix-ext';
 import { abortPromise, PromiseSource } from 'promises';
 import { closeEncodedChunk, type ArrivedChunk, type DecodedFrame } from '../frame-envelopes';
+import { createCodecProofTracker, type CodecProofTracker } from '../codec-proof-tracker';
+
+// Sentinel marker stamped on any error thrown by the decode operator
+// once its internal recovery is exhausted. Consumers (player worker,
+// main-thread VideoPlayer) test for it to decide whether to request
+// codec exclusion vs. a generic pipeline restart. Encoded in the
+// message because errors cross the worker boundary as strings.
+export const CODEC_EXHAUSTED_PREFIX = '[CODEC_EXHAUSTED]';
+
+export function isCodecExhaustedError(error: unknown): boolean {
+    const message = error instanceof Error ? error.message : String(error);
+    return message.startsWith(CODEC_EXHAUSTED_PREFIX);
+}
 
 // WebCodecs VideoDecoder surface. Tests inject a fake.
 export interface DecoderLike {
@@ -122,13 +135,22 @@ async function* decodeAsync(
     let wakeup = new PromiseSource<void>();
     let pendingError: Error | null = null;
     let consecutiveRecoveries = 0;
-    // Once `framesUntilProven` frames decode without resetting the counter,
-    // the codec is "proven" — onCodecProven fires once and the exhaustion
-    // check is skipped from then on (transient failures still trigger
-    // decoder rebuild + drop-deltas-until-keyframe recovery). Boxed so the
-    // synchronous loop body sees mutations from the async onFrame callback
-    // (TS can't flow-narrow a bare `let` across closure boundaries).
-    const proofState = { framesSinceFirstSuccess: 0, codecProven: false };
+    // See codec-proof-tracker.ts. Tracks the highest spatial layer the
+    // decoder has produced; once enough frames decode at that layer the
+    // codec is "proven" on this device and the exhaustion check stops
+    // firing (transient failures still trigger the decoder rebuild +
+    // drop-deltas-until-keyframe recovery loop below). Toggleable via
+    // the UseCodecProofTracker constant.
+    const codecProofTracker: CodecProofTracker = createCodecProofTracker(framesUntilProven);
+    let codecProvenFired = false;
+    const noteFrameDecoded = (layerId: number): void => {
+        const wasProven = codecProofTracker.isProven();
+        codecProofTracker.noteFrameDecoded(layerId);
+        if (!codecProvenFired && !wasProven && codecProofTracker.isProven()) {
+            codecProvenFired = true;
+            onCodecProven?.(currentCodec);
+        }
+    };
     // Watchdog: detects a hung decoder while chunks sit in the pending FIFO.
     let lastDecoderActivityMs = now();
 
@@ -153,19 +175,14 @@ async function* decodeAsync(
                 stats,
             };
             consecutiveRecoveries = 0;
-            if (!proofState.codecProven) {
-                proofState.framesSinceFirstSuccess++;
-                if (proofState.framesSinceFirstSuccess >= framesUntilProven) {
-                    proofState.codecProven = true;
-                    onCodecProven?.(currentCodec);
-                }
-            }
+            noteFrameDecoded(meta.layerId);
             ready.push(envelope);
             if (!wakeup.isCompleted()) wakeup.resolve();
         },
         onError: (e: Error): void => {
             lastDecoderActivityMs = now();
             pendingError = e;
+            codecProofTracker.noteDecoderError();
             if (!wakeup.isCompleted()) wakeup.resolve();
         },
     };
@@ -244,9 +261,11 @@ async function* decodeAsync(
                 return;
 
             if (winner.kind === 'watchdog') {
-                // Synthesize an error so the recovery path takes over.
+                // Synthesize a decoder error so the recovery path takes
+                // over (rebuild decoder, drop-deltas-until-keyframe).
                 pendingError ??= new Error(
                     `decode: hang watchdog (no frames in ${decoderHangTimeoutMs} ms, pending=${pending.length}, codec=${currentCodec})`);
+                codecProofTracker.noteDecoderError();
                 lastDecoderActivityMs = now();
                 wakeup = new PromiseSource<void>();
                 continue;
@@ -275,13 +294,12 @@ async function* decodeAsync(
                         continue;
                     }
                     consecutiveRecoveries++;
-                    proofState.framesSinceFirstSuccess = 0;
-                    if (!proofState.codecProven && consecutiveRecoveries >= maxRecoveries) {
+                    if (!codecProofTracker.isProven() && consecutiveRecoveries >= maxRecoveries) {
                         const codec = currentCodec;
                         pendingError = null;
                         onCodecExhausted?.(codec);
                         throw new Error(
-                            `decode: recovery exhausted after ${consecutiveRecoveries} attempts (codec=${codec})`,
+                            `${CODEC_EXHAUSTED_PREFIX} decode: recovery exhausted after ${consecutiveRecoveries} attempts (codec=${codec})`,
                             { cause: errSnapshot },
                         );
                     }
@@ -303,9 +321,16 @@ async function* decodeAsync(
                     const dimChanged = configured
                         && (newWidth !== currentWidth || newHeight !== currentHeight);
                     if (!configured || dimChanged) {
-                        if (!description && !canConfigureWithoutDescription(currentCodec))
-                            throw new Error(
+                        if (!description && !canConfigureWithoutDescription(currentCodec)) {
+                            // Treat "needs description" as a codec-side
+                            // problem — feed into pendingError so the same
+                            // recovery loop (rebuild → wait keyframe → maybe
+                            // exhaust) handles it.
+                            pendingError ??= new Error(
                                 `decode: codec ${currentCodec} requires description but none provided`);
+                            codecProofTracker.noteDecoderError();
+                            continue;
+                        }
 
                         // Pin displayAspect=coded so the browser doesn't
                         // derive display dims from the bitstream SPS/HVCC.
@@ -327,10 +352,20 @@ async function* decodeAsync(
                             config.displayAspectWidth = newWidth;
                             config.displayAspectHeight = newHeight;
                         }
-                        dec.configure(config);
-                        configured = true;
-                        currentWidth = newWidth;
-                        currentHeight = newHeight;
+                        try {
+                            dec.configure(config);
+                            configured = true;
+                            currentWidth = newWidth;
+                            currentHeight = newHeight;
+                        } catch (e) {
+                            // configure() throws on unsupported configs
+                            // (bad SPS, codec/dim mismatch). Funnel through
+                            // pendingError so it counts as a recovery
+                            // attempt and feeds the codec-exhausted path.
+                            pendingError ??= e instanceof Error ? e : new Error(String(e));
+                            codecProofTracker.noteDecoderError();
+                            continue;
+                        }
                     }
                 }
 
@@ -351,7 +386,15 @@ async function* decodeAsync(
                     dec.decode(arrived.chunk);
                 } catch (e) {
                     pending.pop();
-                    throw e;
+                    // Decode() throws on malformed chunks / decoder in
+                    // bad state. Same funnel as configure() above —
+                    // pendingError → next-keyframe rebuild → maybe
+                    // codec exhaustion. Pre-tracker behaviour rethrew
+                    // here, which short-circuited recovery and forced
+                    // a hard pipeline failure.
+                    pendingError ??= e instanceof Error ? e : new Error(String(e));
+                    codecProofTracker.noteDecoderError();
+                    if (!wakeup.isCompleted()) wakeup.resolve();
                 }
             } finally {
                 closeEncodedChunk(arrived.chunk);

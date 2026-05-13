@@ -63,12 +63,13 @@ export function __getPlayerWorkerSession(): PlaybackSession | null {
     return session;
 }
 
-export function isTerminalStreamError(error: unknown): boolean {
-    const message = error instanceof Error ? error.message : String(error);
-    return message.includes('RpcStream not found or disconnected')
-        || /^Stream gap at index \d+ \(expected \d+\); reconnect not allowed$/.test(message)
-        || message === 'Peer disconnected.'
-        || message.startsWith('Player stream stalled:');
+// All non-success outcomes are now treated as recoverable: the main
+// thread's restart loop in VideoPlayer is the single authority on what
+// counts as terminal (it bails only when the parent unmounts us or
+// codec exclusion takes over). Kept exported so callers that imported
+// it still type-check; no longer used internally to suppress reports.
+export function isTerminalStreamError(_error: unknown): boolean {
+    return false;
 }
 
 function getStreamStallTimeoutMs(): number {

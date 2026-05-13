@@ -39,6 +39,7 @@ export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame
         let writer: WritableStreamDefaultWriter<VideoFrame> | null = null;
         let lastWriteAt: number | null = null;
         let prevCapturedAt: number | null = null;
+        try {
         for await (const decoded of source) {
             try {
                 const now = nowFn();
@@ -104,6 +105,9 @@ export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame
             } finally {
                 try { decoded.frame.close(); } catch { /* already closed */ }
             }
+        }
+        } finally {
+            try { writer?.releaseLock(); } catch { /* ignore */ }
         }
     }
 }
