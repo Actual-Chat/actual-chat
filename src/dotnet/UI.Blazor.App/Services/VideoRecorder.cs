@@ -67,24 +67,29 @@ public sealed class VideoRecorder : IAsyncDisposable
 
     // Recording lifecycle
 
-    public async Task StartRecording(ChatId chatId, CancellationToken cancellationToken)
+    public async Task StartRecording(ChatId chatId, int maxLayerCount, CancellationToken cancellationToken)
     {
         if (_startRequest.HasValue)
             throw StandardError.Constraint("Start request already set");
         _startRequest = (chatId, true);
         var codecs = await GetInitialAudienceCodecs(chatId).ConfigureAwait(false);
-        // Always-on simulcast: JS startRecording builds the 3-tier ladder
-        // (probe-gated to 2-tier on iOS HW-encoder budget exhaustion).
-        await _jsRef.InvokeVoidAsync("startRecording", cancellationToken, chatId.Value, codecs).ConfigureAwait(false);
+        // Always-on simulcast: JS startRecording builds up to a 3-tier ladder
+        // (probe-gated to 2-tier on iOS HW-encoder budget exhaustion), clamped
+        // by maxLayerCount (mobile = 2 to keep the top output at 640x360 / L1).
+        await _jsRef
+            .InvokeVoidAsync("startRecording", cancellationToken, chatId.Value, codecs, maxLayerCount)
+            .ConfigureAwait(false);
     }
 
-    public async Task StartScreenCast(ChatId chatId, CancellationToken cancellationToken)
+    public async Task StartScreenCast(ChatId chatId, int maxLayerCount, CancellationToken cancellationToken)
     {
         if (_startRequest.HasValue)
             throw StandardError.Constraint("Start request already set");
         _startRequest = (chatId, false);
         var codecs = await GetInitialAudienceCodecs(chatId).ConfigureAwait(false);
-        await _jsRef.InvokeVoidAsync("startScreenCast", cancellationToken, chatId.Value, codecs).ConfigureAwait(false);
+        await _jsRef
+            .InvokeVoidAsync("startScreenCast", cancellationToken, chatId.Value, codecs, maxLayerCount)
+            .ConfigureAwait(false);
     }
 
     public Task StopRecording(CancellationToken cancellationToken)

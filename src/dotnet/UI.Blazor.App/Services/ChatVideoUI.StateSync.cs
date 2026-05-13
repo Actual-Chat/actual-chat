@@ -57,7 +57,8 @@ public partial class ChatVideoUI
         => RunRecorderLifecycle(
             kind: VideoSourceKind.ScreenCast,
             captureIntent: () => GetScreenCastIntent(cancellationToken),
-            startRecorder: (recorder, intent, ct) => recorder.StartScreenCast(intent.ChatId, ct),
+            startRecorder: (recorder, intent, ct) => recorder.StartScreenCast(
+                intent.ChatId, Hub.VideoQualityUI.OutboundDeviceScreencastCap, ct),
             updateRecorder: null,
             cancellationToken);
 
@@ -133,11 +134,13 @@ public partial class ChatVideoUI
         }
     }
 
-    private static async Task StartCamera(VideoRecorder recorder, CameraRecordingIntent intent, CancellationToken ct)
+    private async Task StartCamera(VideoRecorder recorder, CameraRecordingIntent intent, CancellationToken ct)
     {
         await recorder.SetSelectedCamera(intent.CameraDeviceId ?? "", ct).ConfigureAwait(false);
         await recorder.SetBlurEnabled(intent.BlurEnabled, ct).ConfigureAwait(false);
-        await recorder.StartRecording(intent.ChatId, ct).ConfigureAwait(false);
+        await recorder
+            .StartRecording(intent.ChatId, Hub.VideoQualityUI.OutboundDeviceCameraCap, ct)
+            .ConfigureAwait(false);
     }
 
     private async Task UpdateCamera(VideoRecorder recorder, CameraRecordingIntent intent, CancellationToken ct)

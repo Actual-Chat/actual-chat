@@ -287,6 +287,7 @@ export class VideoRecorder {
     // Cached encoder capabilities (detected at recording start).
     private supportedEncoderCategories: string[] = [];
     private audienceCodecs?: string[];
+    private currentMaxLayerCount = 3;
     // Codec switch fallback bookkeeping (preserved from legacy).
     private lastCodecSwitchAt = 0;
     private readonly codecSwitchCooldownMs = 2000;
@@ -379,7 +380,7 @@ export class VideoRecorder {
             this.setRecordingState('stopped');
         }
 
-        await this.startRecording(this.chatId, this.audienceCodecs);
+        await this.startRecording(this.chatId, this.audienceCodecs, this.currentMaxLayerCount);
     }
 
     public setBlurEnabled(enabled: boolean): void {
@@ -487,9 +488,10 @@ export class VideoRecorder {
         return () => this.blurChangeListeners.delete(cb);
     }
 
-    public async startRecording(chatId: string, audienceCodecs?: string[]): Promise<void> {
+    public async startRecording(chatId: string, audienceCodecs?: string[], maxLayerCount = 3): Promise<void> {
         this.chatId = chatId;
         this.audienceCodecs = audienceCodecs;
+        this.currentMaxLayerCount = maxLayerCount;
         if (this.isRecording) {
             warnLog?.log('Already recording');
             return;
@@ -497,10 +499,16 @@ export class VideoRecorder {
 
         this.setRecordingState('starting');
         this.currentMode = 'camera';
-        infoLog?.log(`Starting video recording... audienceCodecs=[${audienceCodecs?.join(', ') ?? '(none)'}]`);
+        const tierCap = Math.max(1, Math.min(maxLayerCount, 3));
+        infoLog?.log(`Starting video recording... audienceCodecs=[${audienceCodecs?.join(', ') ?? '(none)'}], maxLayerCount=${maxLayerCount} → tierCap=${tierCap}`);
 
         try {
-            const targetSize: Size = { width: 1280, height: 720 };
+            const cameraTopByTier: Record<number, Size> = {
+                1: { width: 320, height: 180 },
+                2: { width: 640, height: 360 },
+                3: { width: 1280, height: 720 },
+            };
+            const targetSize: Size = cameraTopByTier[tierCap];
             const targetFramerate = VIDEO.frameRate;
             this.currentFramerate = targetFramerate;
 
@@ -510,17 +518,19 @@ export class VideoRecorder {
             infoLog?.log(`Supported encoder categories: [${this.supportedEncoderCategories.join(', ')}]`);
 
             const initialPick = this.pickInitialCodec(supportedCodecs, audienceCodecs, targetSize);
-            const ladder3 = buildLadder({
+            const ladderTop = buildLadder({
                 topWidth: targetSize.width,
                 topHeight: targetSize.height,
-                tierCount: 3,
+                tierCount: tierCap,
                 maxTierCount: VIDEO.cameraLayerBaseBitratesKbps.length,
                 bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
             });
             let bestCodecString = await this.pickSimulcastCodec(
-                supportedCodecs, audienceCodecs, ladder3);
-            let ladder: LayerConfig[] = ladder3;
-            if (!bestCodecString) {
+                supportedCodecs, audienceCodecs, ladderTop);
+            let ladder: LayerConfig[] = ladderTop;
+            // Drop-top fallback only applies when we'd otherwise have built a
+            // 3-tier ladder — mobile already starts at the lower cap.
+            if (!bestCodecString && tierCap >= 3) {
                 const ladder2 = buildLadder({
                     topWidth: 640,
                     topHeight: 360,
@@ -538,6 +548,9 @@ export class VideoRecorder {
                     bestCodecString = initialPick;
                 }
                 ladder = ladder2;
+            } else if (!bestCodecString) {
+                warnLog?.log(`Probe failed at tierCap=${tierCap} — proceeding with ${initialPick}`);
+                bestCodecString = initialPick;
             }
             const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
             const codecCategory = getCodecCategory(bestCodecString);
@@ -605,9 +618,10 @@ export class VideoRecorder {
         }
     }
 
-    public async startScreenCast(chatId: string, audienceCodecs?: string[]): Promise<void> {
+    public async startScreenCast(chatId: string, audienceCodecs?: string[], maxLayerCount = 2): Promise<void> {
         this.chatId = chatId;
         this.audienceCodecs = audienceCodecs;
+        this.currentMaxLayerCount = maxLayerCount;
         if (this.isRecording) {
             warnLog?.log('Already recording');
             return;
@@ -615,7 +629,8 @@ export class VideoRecorder {
 
         this.setRecordingState('starting');
         this.currentMode = 'screen';
-        infoLog?.log('Starting screencast...');
+        const tierCap = Math.max(1, Math.min(maxLayerCount, 2));
+        infoLog?.log(`Starting screencast... maxLayerCount=${maxLayerCount} → tierCap=${tierCap}`);
 
         try {
             const detectionWidth = DeviceInfo.isMobile ? 1280 : 1920;
@@ -624,14 +639,18 @@ export class VideoRecorder {
             this.supportedCodecs = supportedCodecs;
             this.supportedEncoderCategories = this.extractEncoderCategories(supportedCodecs);
 
-            const targetSize = { width: 1920, height: 1080 };
+            const screenTopByTier: Record<number, Size> = {
+                1: { width: 960, height: 540 },
+                2: { width: 1920, height: 1080 },
+            };
+            const targetSize: Size = screenTopByTier[tierCap];
             const bestCodecString = this.pickInitialCodec(supportedCodecs, audienceCodecs, targetSize);
             const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
 
             const screenCastLadder = buildLadder({
                 topWidth: targetSize.width,
                 topHeight: targetSize.height,
-                tierCount: 2,
+                tierCount: tierCap,
                 maxTierCount: VIDEO.screenCastLayerBaseBitratesKbps.length,
                 bitratesKbps: VIDEO.screenCastLayerBaseBitratesKbps,
             });

@@ -22,6 +22,8 @@ public sealed partial class VideoQualityUI
     public BandwidthEstimator OutboundBandwidthEstimator => _outboundBwEstimator;
     public LayerCap OutboundEncodingLayers => _outboundEncodingCap.Layers;
     public LayerCap OutboundBandwidthLayers => _outboundBandwidthCap.Layers;
+    public int OutboundDeviceCameraCap => _outboundLayers.DeviceCameraCap;
+    public int OutboundDeviceScreencastCap => _outboundLayers.ScreencastCap;
 
     /// <summary>
     /// Receives a <see cref="RecorderStats"/> from the worker
