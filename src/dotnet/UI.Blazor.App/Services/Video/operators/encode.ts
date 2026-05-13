@@ -91,7 +91,14 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                             }
                         } catch (e) {
                             closeBundleLayers(bundle);
-                            throw e;
+                            // The factory does synchronous WebCodecs configure(); a throw here
+                            // means the codec failed init before any frame was encoded.
+                            const topCodec = configs[configs.length - 1].codec;
+                            const message = e instanceof Error ? e.message : String(e);
+                            throw new Error(
+                                `${ENCODER_INIT_FAILED_PREFIX} codec=${topCodec}: ${message}`,
+                                { cause: e },
+                            );
                         }
                     }
                     // applyKeyframePolicy promotes forceKeyframe to all-or-none;

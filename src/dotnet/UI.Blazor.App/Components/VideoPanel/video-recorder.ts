@@ -1003,6 +1003,8 @@ export class VideoRecorder {
         if (!this.worker || !this.inputTrack) {
             throw new Error('startWorker: worker or input track missing');
         }
+        // Recovery may call this while a prior MSTP readable / rVFC pump is still alive.
+        this.tearDownWorkerSource();
 
         // Frame source — two-tier strategy.
         //
@@ -1352,10 +1354,13 @@ export class VideoRecorder {
             try { this.workerInstance.terminate(); } catch { /* ignore */ }
             this.workerInstance = null;
         }
-        // Stop the rVFC pump: setting workerSourceCancelled prevents
-        // re-arming the next callback; the in-flight frame is closed by
-        // the pump's own try/catch on worker rejection. Then drop the
-        // hidden video so the engine releases its track-feed.
+        this.tearDownWorkerSource();
+    }
+
+    private tearDownWorkerSource(): void {
+        // The rVFC pump self-rearms; setting workerSourceCancelled is the only
+        // way to break the loop. Without this, recoverNow → startWorker stacks
+        // a second pump alongside the first against the same worker slot.
         this.workerSourceCancelled = true;
         if (this.workerSourceCaptureWatchdogCancel) {
             this.workerSourceCaptureWatchdogCancel();

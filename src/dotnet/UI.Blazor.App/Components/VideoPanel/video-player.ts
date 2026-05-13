@@ -764,9 +764,13 @@ export class VideoPlayer {
     }
 
     public stopPull(): void {
-        // Stopping the worker pipeline is the new "stop pull". Idempotent.
         if (!this.workerStreamActive || !this.playerWorker) return;
         this.workerStreamActive = false;
+        // Drop out of the restart loop too — without this, worker.stop's locallyStopped
+        // suppresses the callback, `await settled` hangs, and restartLoopRunning stays true
+        // forever, blocking any future startPull.
+        this.isPlaying = false;
+        this.settleCurrentAttempt({ kind: 'error', error: new Error('VideoPlayer.stopPull') });
         void this.playerWorker.stop(this.streamId)
             .catch((e: unknown) => warnLog?.log('worker.stop error:', e));
     }
