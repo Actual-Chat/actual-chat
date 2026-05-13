@@ -1,22 +1,37 @@
 @using ActualChat.UI.Blazor.App.Module
 @inherits MarkupViewBase<CodeBlockMarkup>
 @{
-    var cls = $"code-block-markup code-block-language-{Markup.Language}";
-    var title = Markup.Language.IsNullOrEmpty() ? "" : $"Language: {Markup.Language}";
+    var preCls = $"code-block-language-{Markup.Language}";
     if (!Markup.Language.IsNullOrEmpty())
-        cls += " language-" + Markup.Language;
+        preCls += " language-" + Markup.Language;
+    var title = Markup.Language.IsNullOrEmpty() ? "" : $"Language: {Markup.Language}";
+    var menuRef = MenuRef.New<MessageMenu>(Entry.Id.Value, bool.FalseString, "", Markup.Code).ToString();
 }
 
-<pre @ref="_preRef" class="@cls" title="@title"
-    data-menu="@(MenuRef.New<MessageMenu>(Entry.Id.Value, bool.FalseString, "", Markup.Code))">
-    <code>@Markup.Code</code>
-</pre>
+<div @ref="_rootRef" class="code-block-markup" data-menu="@menuRef">
+    <div class="code-block-header">
+        <div class="code-block-language"></div>
+        <div class="code-block-actions">
+            <HeaderButton Class="code-block-wrap-toggle btn-sm" Tooltip="Wrap">
+                <i class="icon-wrap"></i>
+            </HeaderButton>
+            <CopyTrigger Tooltip="" CopyText="@Markup.Code">
+                <HeaderButton Class="btn-sm" Tooltip="Copy code">
+                    <i class="icon-copy"></i>
+                </HeaderButton>
+            </CopyTrigger>
+        </div>
+    </div>
+    <pre class="@preCls" title="@title">
+        <code>@Markup.Code</code>
+    </pre>
+</div>
 
 @code {
     private static readonly string JSHighlightCodeMethod = $"{BlazorUIAppModule.ImportName}.highlightCode";
 
-    private ElementReference _preRef;
+    private ElementReference _rootRef;
 
     protected override Task OnAfterRenderAsync(bool firstRender)
-        => JS.InvokeVoidAsync(JSHighlightCodeMethod, _preRef, Markup.Language.NullIfWhiteSpace(), Markup.Code).AsTask();
+        => JS.InvokeVoidAsync(JSHighlightCodeMethod, _rootRef, Markup.Language.NullIfWhiteSpace(), Markup.Code).AsTask();
 }
