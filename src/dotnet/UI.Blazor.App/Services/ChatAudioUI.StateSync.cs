@@ -112,15 +112,32 @@ public partial class ChatAudioUI
         var cRecordingStateBase = await Computed
             .Capture(() => GetRecordingState(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
+        var restartDelays = RetryDelaySeq.Exp(0.5, 8);
+        var restartAttempt = 0;
         while (!cancellationToken.IsCancellationRequested) {
             var cRecordingState = await cRecordingStateBase
                 .When(x => x.ChatId is not null, FixedDelayer.MinDelay, cancellationToken)
                 .ConfigureAwait(false);
+            var intendedChatId = cRecordingState.Value.ChatId;
             await BackgroundTask.Run(
                 () => RecordChat(cRecordingState, cancellationToken),
                 Log, $"{nameof(RecordChat)} failed",
                 cancellationToken
                 ).SilentAwait(false);
+
+            // If user intent for the same chat persists, RecordChat exited unexpectedly
+            // (recorder died, mic permission failure, etc.). Back off before re-entering.
+            var latest = await cRecordingStateBase.Update(cancellationToken).ConfigureAwait(false);
+            if (latest.Value.ChatId == intendedChatId) {
+                restartAttempt++;
+                var delay = restartDelays[restartAttempt];
+                Log.LogWarning(
+                    nameof(PushRecordingState) + ": recorder for chat #{ChatId} exited with user intent intact (attempt {Attempt}); restarting in {Delay}",
+                    intendedChatId, restartAttempt, delay);
+                await Clocks.CpuClock.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
+            else
+                restartAttempt = 0;
         }
     }
 
@@ -183,6 +200,20 @@ public partial class ChatAudioUI
             // and WebKit AEC does not register the DestinationFallbackTrait
             // playback path, so a tune playing into a live mic feeds back.
             await TuneUI.PlayAndWait(Tune.BeginRecording).ConfigureAwait(false);
+            // Install before StartRecording so we don't miss a fast false→true→false
+            // transition (e.g., pipeline dies during JS init).
+            var whenRecorderStopped = ForegroundTask.Run(async () => {
+                var sawRecording = false;
+                await foreach (var c in AudioRecorder.State.Computed.Changes(abortToken).ConfigureAwait(false)) {
+                    var s = c.Value;
+                    if (s.ChatId != chatId)
+                        continue;
+                    if (s.IsRecording)
+                        sawRecording = true;
+                    else if (sawRecording)
+                        return;
+                }
+            }, abortToken);
             await AudioRecorder.StartRecording(chatId, repliedEntryId, abortToken).ConfigureAwait(false);
             _ = IncomingShareSuggestions?.Push(chatId);
             var whenStopped = ForegroundTask.Run(
@@ -199,7 +230,7 @@ public partial class ChatAudioUI
                 await foreach (var serverStopAt in streamingIdleBoundaries.ConfigureAwait(false))
                     _stopRecordingAt.Value = serverStopAt.Convert(serverClock, cpuClock);
             }, abortToken);
-            await Task.WhenAny(whenStopped, whenIdle).ConfigureAwait(false);
+            await Task.WhenAny(whenStopped, whenIdle, whenRecorderStopped).ConfigureAwait(false);
             // No need to await for the result of WhenAny: we're stopping anyway
         }
         finally {
