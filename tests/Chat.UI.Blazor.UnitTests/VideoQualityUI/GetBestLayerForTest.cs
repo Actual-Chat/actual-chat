@@ -18,7 +18,7 @@ public class GetBestLayerForTest
 
     [Theory]
     [InlineData(VideoSize.None, 2)]
-    [InlineData(VideoSize.W320, 0)]
+    [InlineData(VideoSize.W320, 1)] // L0 (320×180) is below useful minimum — camera floors at L1.
     [InlineData(VideoSize.W480, 1)]
     [InlineData(VideoSize.W640, 1)]
     [InlineData(VideoSize.W960, 2)]
