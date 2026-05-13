@@ -776,7 +776,7 @@
         => value == int.MaxValue ? "LMax" : $"L{Math.Max(0, value)}";
 
     private static string FormatRequestedTemporalLayerId(int value)
-        => value == int.MaxValue ? "T0" : $"T{Math.Max(1, value)}";
+        => value == int.MaxValue ? "TMax" : $"T{Math.Max(0, value)}";
 
     private static string SignalText(int signal)
         => signal switch {
