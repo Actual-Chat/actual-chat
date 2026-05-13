@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Events
 @inherits ComputedStateComponent<AppUIHub, ChatAudioPanel.Model>
 @{
     var m = State.Value;
@@ -21,12 +22,17 @@
         : isOwnScreenCasting ? "Stop screen share" : "Share screen";
 }
 
+<OnUIEvent TEvent="@CameraSelectedEvent" Handler="OnCameraSelectedEvent"/>
 <div class="chat-audio-panel">
     @if (IsNarrow && showHeader) {
         <div class="audio-panel-header">
             <div class="c-left">
                 @if (isOwnCameraRecording) {
-                    <ButtonRound Click="@OnSwitchCamera">
+                    <ButtonRound
+                        Click="@OnSwitchCamera"
+                        data-menu="@(MenuRef.New<CameraMenu>(CameraMenuRequester, m.SelectedCameraDeviceId ?? "").ToString())"
+                        data-menu-trigger="@MenuTrigger.Secondary"
+                        data-menu-placement="@(FloatingPosition.Bottom.ToPositionString())">
                         <i class="icon-camera-switch text-2xl"></i>
                     </ButtonRound>
                 } else {
@@ -74,6 +80,8 @@
 </div>
 
 @code {
+    private const string CameraMenuRequester = nameof(ChatAudioPanel);
+
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private CameraUI CameraUI => Hub.CameraUI;
@@ -83,6 +91,11 @@
 
     private Task OnSwitchCamera()
         => CameraUI.SwitchCamera();
+
+    private Task OnCameraSelectedEvent(CameraSelectedEvent @event, CancellationToken cancellationToken)
+        => @event.Requester == CameraMenuRequester
+            ? CameraUI.SelectCamera(@event.DeviceId)
+            : Task.CompletedTask;
 
     private void OnScreenCastClick(bool enable) {
         var chat = Chat;
@@ -98,7 +111,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Model>.Options {
-                InitialValue = new Model(null, true, false, false, false, false),
+                InitialValue = new Model(null, true, false, false, false, false, null),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -111,14 +124,15 @@
         var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chat.Id, cancellationToken).ConfigureAwait(false);
         var isOwnCameraRecording = await ChatVideoUI.IsOwnCameraRecording(chat.Id, cancellationToken).ConfigureAwait(false);
         var isOwnScreenCasting = await ChatVideoUI.IsOwnScreenCasting(chat.Id, cancellationToken).ConfigureAwait(false);
+        var selectedCameraDeviceId = await CameraUI.GetSelectedDeviceId(cancellationToken).ConfigureAwait(false);
         return new(
             audioState,
             isVideoAvailable,
             isVideoEnabled,
             isAnyoneVideoStreaming,
             isOwnCameraRecording,
-            isOwnScreenCasting);
-
+            isOwnScreenCasting,
+            selectedCameraDeviceId);
     }
 
     // Nested classes
@@ -129,5 +143,6 @@
         bool IsVideoEnabled,
         bool IsAnyoneVideoStreaming,
         bool IsOwnCameraRecording,
-        bool IsOwnScreenCasting);
+        bool IsOwnScreenCasting,
+        string? SelectedCameraDeviceId);
 }

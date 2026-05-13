@@ -2,7 +2,7 @@
 @using ActualChat.UI.Blazor.App.Events
 @inherits Menu<AppUIHub>
 
-<div class="join-video-call-camera-menu">
+<div class="camera-menu">
     <div class="c-header">Select a camera</div>
     @if (_devices is null) {
         <div class="c-loading">Loading…</div>
@@ -23,16 +23,18 @@
 
 @code {
     private VideoDevice[]? _devices;
+    private string _requester = "";
     private string _selectedDeviceId = "";
 
     private CameraUI CameraUI => Hub.CameraUI;
 
     protected override async Task OnParametersSetAsync() {
-        _selectedDeviceId = Arguments.Length > 0 ? Arguments[0] : "";
+        _requester = Arguments.Length > 0 ? Arguments[0] : "";
+        _selectedDeviceId = Arguments.Length > 1 ? Arguments[1] : "";
         _devices = await CameraUI.EnumerateDevices(includeAll: true).ConfigureAwait(true);
     }
 
     private async Task OnClick(string deviceId) {
-        await UIEventHub.Publish(new JoinVideoCallCameraSelectedEvent(deviceId));
+        await UIEventHub.Publish(new CameraSelectedEvent(_requester, deviceId));
     }
 }

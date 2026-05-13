@@ -178,7 +178,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingCallModalHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingShareModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IosAppGuideContent>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.JoinVideoCallCameraMenu>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CameraMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.JoinVideoCallModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LanguageButtonGroup>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LanguagesStep>();
@@ -830,7 +830,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingCallModalHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingShareModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IosAppGuideContent), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.JoinVideoCallCameraMenu), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CameraMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.JoinVideoCallModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LanguageButtonGroup), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LanguagesStep), AotTypeKind.Component),

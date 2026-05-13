@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Video
 @using ActualChat.UI.Blazor.App.Components.VideoPanel
+@using ActualChat.UI.Blazor.App.Events
 @using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, VideoPanelContent.Model>
 @{
@@ -54,6 +55,7 @@
     var layout = m.Layout;
 }
 
+<OnUIEvent TEvent="@CameraSelectedEvent" Handler="OnCameraSelectedEvent"/>
 <div @ref="Ref" class="video-panel @firstOpenCls @recordingCls @remoteStreamsCls @collapsedCls @hiddenCls @expandedCls">
     <div class="c-container">
         <div class="video-panel-toolbar video-panel-header">
@@ -108,7 +110,10 @@
                 <HeaderButton
                     Click="@OnSwitchCamera"
                     Class="btn-video-panel"
-                    IsDisabled="@(!isOwnCameraStreaming)">
+                    IsDisabled="@(!isOwnCameraStreaming)"
+                    data-menu="@(MenuRef.New<CameraMenu>(CameraMenuRequester, m.SelectedCameraDeviceId ?? "").ToString())"
+                    data-menu-trigger="@MenuTrigger.Secondary"
+                    data-menu-placement="@(FloatingPosition.Top.ToPositionString())">
                     <i class="icon-camera-switch text-lg"></i>
                 </HeaderButton>
             } else {
@@ -209,6 +214,8 @@
 </div>
 
 @code {
+    private const string CameraMenuRequester = nameof(VideoPanelContent);
+
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPanel.create";
 
     private bool _isFirstOpen = true;
@@ -384,6 +391,7 @@
         var isOwnRecording = await ChatVideoUI.IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);
         var isOwnScreenCasting = await ChatVideoUI.IsOwnScreenCasting(chatId, cancellationToken).ConfigureAwait(false);
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
+        var selectedCameraDeviceId = await CameraUI.GetSelectedDeviceId(cancellationToken).ConfigureAwait(false);
 
         // Get active video streams for this chat
         var activeStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken);
@@ -403,7 +411,8 @@
                 isCollapsed,
                 IsHidden: isHidden,
                 IsExpanded: isExpanded,
-                IsChatVisible: isChatVisible);
+                IsChatVisible: isChatVisible,
+                SelectedCameraDeviceId: selectedCameraDeviceId);
 
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
 
@@ -429,7 +438,8 @@
             FocusedParticipantName: focusedName,
             IsHidden: isHidden,
             IsExpanded: isExpanded,
-            IsChatVisible: isChatVisible);
+            IsChatVisible: isChatVisible,
+            SelectedCameraDeviceId: selectedCameraDeviceId);
     }
 
     private async Task<string?> GetFocusedParticipantName(
@@ -497,6 +507,11 @@
     private Task OnSwitchCamera()
         => CameraUI.SwitchCamera();
 
+    private Task OnCameraSelectedEvent(CameraSelectedEvent @event, CancellationToken cancellationToken)
+        => @event.Requester == CameraMenuRequester
+            ? CameraUI.SelectCamera(@event.DeviceId)
+            : Task.CompletedTask;
+
     private void OnToggleChatVisibilityClick() {
         var current = State.Value.IsChatVisible ?? GetDefaultChatVisibility();
         ChatVideoUI.SetVideoPanelChatVisible(!current);
@@ -543,7 +558,8 @@
         string? FocusedParticipantName = null,
         bool IsHidden = false,
         bool IsExpanded = false,
-        bool? IsChatVisible = null
+        bool? IsChatVisible = null,
+        string? SelectedCameraDeviceId = null
     ) {
         public static readonly Model Loading = new(VideoPanelLayout.New, [], false, false, false, 0, null, false);
     }

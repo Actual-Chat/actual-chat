@@ -125,18 +125,18 @@
 }
 
 /* Camera selector menu (rendered by global MenuHost) */
-.join-video-call-camera-menu {
+.camera-menu {
     @apply flex-y;
     @apply min-w-[15rem] max-w-[20rem];
 }
-.join-video-call-camera-menu .c-header {
+.camera-menu .c-header {
     @apply text-caption-1 text-02 px-2 py-1;
 }
-.join-video-call-camera-menu .c-loading,
-.join-video-call-camera-menu .c-empty {
+.camera-menu .c-loading,
+.camera-menu .c-empty {
     @apply text-caption-1 text-03 px-2 py-2;
 }
-.join-video-call-camera-menu .ac-menu-item.selected .ac-menu-icon > i {
+.camera-menu .ac-menu-item.selected .ac-menu-icon > i {
     @apply text-primary;
 }
 

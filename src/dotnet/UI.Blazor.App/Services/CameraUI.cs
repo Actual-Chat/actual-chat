@@ -51,15 +51,19 @@ public class CameraUI : UIServiceBase<AppUIHub>, IComputeService
         if (devices.Length <= 1)
             return;
 
-        var localAppSettings = LocalSettings.LocalAppSettings();
-        var settings = await localAppSettings.Get().ConfigureAwait(false);
+        var settings = await LocalSettings.LocalAppSettings().Get().ConfigureAwait(false);
         var currentId = settings.SelectedCameraDeviceId ?? "";
         var currentIndex = Array.FindIndex(devices, d => d.DeviceId == currentId);
         var nextIndex = (currentIndex + 1) % devices.Length;
-        var nextDevice = devices[nextIndex];
-        await localAppSettings.Update(
-            s => s with { SelectedCameraDeviceId = nextDevice.DeviceId }).ConfigureAwait(false);
-        SetSelectedDevice(nextDevice.DeviceId);
+        await SelectCamera(devices[nextIndex].DeviceId).ConfigureAwait(false);
+    }
+
+    public async Task SelectCamera(string deviceId)
+    {
+        await LocalSettings.LocalAppSettings()
+            .Update(s => s with { SelectedCameraDeviceId = deviceId })
+            .ConfigureAwait(false);
+        SetSelectedDevice(deviceId);
     }
 
     internal void OnTrackSettings(string? deviceId, string? facingMode)
