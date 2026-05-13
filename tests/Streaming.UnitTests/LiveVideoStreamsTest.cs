@@ -12,7 +12,7 @@ public class LiveVideoStreamsTest
         };
         var current = new ApiMap<string, ReceiveQuality> {
             ["camera"] = ReceiveQuality.Lowest,
-            ["screen"] = new ReceiveQuality(2, int.MaxValue),
+            ["screen"] = new ReceiveQuality(1, int.MaxValue),
         };
 
         var result = LiveVideoStreams.GetUpgradedStreams(previous, current);
@@ -24,7 +24,7 @@ public class LiveVideoStreamsTest
     public void GetUpgradedStreams_TreatsFirstExplicitEnvelopeAsUpgrade()
     {
         var current = new ApiMap<string, ReceiveQuality> {
-            ["screen"] = new ReceiveQuality(2, int.MaxValue),
+            ["screen"] = new ReceiveQuality(1, int.MaxValue),
         };
 
         var result = LiveVideoStreams.GetUpgradedStreams(null, current);

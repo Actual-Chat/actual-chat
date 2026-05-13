@@ -5,13 +5,14 @@ namespace ActualChat.Streaming.Services;
 /// <summary>
 /// Per-consumer video filter that clamps a raw stream to the client-requested
 /// layer and temporal caps. Picks the layer per keyframe by clamping
-/// the consumer's <see cref="ReceiveQuality.LayerCount"/> into the
-/// producer-declared range <c>[1, LayerCount]</c> on the frame itself;
-/// only switches layers on a keyframe. A quality change keeps forwarding the
-/// currently selected layer until the requested layer's keyframe arrives, so we
-/// don't manufacture delta-frame gaps while QC is settling. Temporal increases
-/// are also delayed until a keyframe: once we skip an enhancement-layer delta,
-/// later deltas from that temporal chain are not safe to resume mid-GOP.
+/// the consumer's <see cref="ReceiveQuality.LayerId"/> into the
+/// producer-declared range <c>[0, producerLayerCount - 1]</c> on the frame
+/// itself; only switches layers on a keyframe. A quality change keeps
+/// forwarding the currently selected layer until the requested layer's
+/// keyframe arrives, so we don't manufacture delta-frame gaps while QC is
+/// settling. Temporal increases are also delayed until a keyframe: once we
+/// skip an enhancement-layer delta, later deltas from that temporal chain
+/// are not safe to resume mid-GOP.
 /// </summary>
 public static class ReceiveQualityFilter
 {
@@ -22,37 +23,37 @@ public static class ReceiveQualityFilter
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         _ = log;
-        var consumerLayerCount = 0;
-        var consumerTemporalLayerCount = int.MaxValue;
+        var consumerLayerId = -1;
+        var consumerTemporalLayerId = int.MaxValue;
         var selectedLayer = -1;
-        var selectedTemporalLayerCount = int.MaxValue;
+        var selectedTemporalLayerId = int.MaxValue;
         var lastKeyFrameNumber = -1;
         var skipping = true;
 
         await foreach (var frame in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
             var q = getQuality();
-            if (q.LayerCount != consumerLayerCount || q.TemporalLayerCount != consumerTemporalLayerCount) {
-                consumerLayerCount = q.LayerCount;
-                consumerTemporalLayerCount = q.TemporalLayerCount;
-                if (!skipping && selectedLayer >= 0 && consumerTemporalLayerCount < selectedTemporalLayerCount)
-                    selectedTemporalLayerCount = consumerTemporalLayerCount;
+            if (q.LayerId != consumerLayerId || q.TemporalLayerId != consumerTemporalLayerId) {
+                consumerLayerId = q.LayerId;
+                consumerTemporalLayerId = q.TemporalLayerId;
+                if (!skipping && selectedLayer >= 0 && consumerTemporalLayerId < selectedTemporalLayerId)
+                    selectedTemporalLayerId = consumerTemporalLayerId;
             }
 
             int producerLayerCount = frame.LayerCount;
-            int desiredLayer = consumerLayerCount <= 0 ? 0
-                : consumerLayerCount > producerLayerCount ? producerLayerCount - 1
-                : consumerLayerCount - 1;
+            int desiredLayer = consumerLayerId < 0 ? 0
+                : consumerLayerId >= producerLayerCount ? producerLayerCount - 1
+                : consumerLayerId;
 
             if (frame.IsKeyFrame) {
                 // Lock onto the desired layer on each matching keyframe; other-layer
                 // keyframes (sibling simulcast bursts) get skipped.
                 if (frame.LayerId == desiredLayer) {
-                    if (frame.TemporalLayerId >= consumerTemporalLayerCount) {
+                    if (frame.TemporalLayerId >= consumerTemporalLayerId) {
                         skipping = true;
                         continue;
                     }
                     selectedLayer = desiredLayer;
-                    selectedTemporalLayerCount = consumerTemporalLayerCount;
+                    selectedTemporalLayerId = consumerTemporalLayerId;
                     lastKeyFrameNumber = frame.KeyFrameIndex;
                     skipping = false;
                     yield return frame;
@@ -62,20 +63,17 @@ public static class ReceiveQualityFilter
 
             if (skipping || selectedLayer < 0)
                 continue;
-            // Producer dropped our layer mid-GOP — wait for the next keyframe to re-select.
             if (selectedLayer >= producerLayerCount) {
                 skipping = true;
                 continue;
             }
             if (frame.LayerId != selectedLayer)
                 continue;
-            // Bounded-replay channel may have evicted intervening frames; gap means
-            // the GOP is broken and we have to wait for the next keyframe.
             if (frame.KeyFrameIndex != lastKeyFrameNumber) {
                 skipping = true;
                 continue;
             }
-            if (frame.TemporalLayerId >= selectedTemporalLayerCount)
+            if (frame.TemporalLayerId >= selectedTemporalLayerId)
                 continue;
 
             yield return frame;

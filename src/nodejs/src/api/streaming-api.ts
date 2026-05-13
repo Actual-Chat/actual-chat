@@ -138,8 +138,8 @@ export interface AudioFrameDto {
 // MessagePack with explicit numeric Key(N), so wire keys are integers.
 
 export interface ReceiveQualityDto {
-    0: number;  // LayerCount
-    1: number;  // TemporalLayerCount
+    0: number;  // LayerId
+    1: number;  // TemporalLayerId
 }
 
 export interface RecordingQualityStateDto {

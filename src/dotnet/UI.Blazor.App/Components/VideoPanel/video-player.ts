@@ -49,13 +49,13 @@ export function getActivePlayers(): ReadonlyMap<string, VideoPlayer> {
 }
 
 const requestedReceiveQuality = new Map<string, {
-    layerCount: number;
-    temporalLayerCount: number
+    layerId: number;
+    temporalLayerId: number
 } | null>();
 
 export function recordRequestedReceiveQuality(
     streamId: string,
-    quality: { layerCount: number; temporalLayerCount: number } | null
+    quality: { layerId: number; temporalLayerId: number } | null
 ): void {
     if (quality === null)
         requestedReceiveQuality.delete(streamId);
@@ -91,8 +91,8 @@ export interface RemoteStreamDiagnostics {
         ObservedMaxLayerId: number;
     } | null;
     requestedReceiveQuality: {
-        layerCount: number;
-        temporalLayerCount: number;
+        layerId: number;
+        temporalLayerId: number;
     } | null;
     streamAgeMs: number;
     // Cumulative drop-stage histogram from the player's stats. Keys are

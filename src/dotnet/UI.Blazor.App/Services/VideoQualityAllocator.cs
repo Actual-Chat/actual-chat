@@ -127,6 +127,6 @@ public static class VideoQualityAllocator
     {
         var k = s.EffectiveTemporalLayerCount;
         var temporalCount = Math.Clamp((int)Math.Ceiling(fraction * k), 1, k);
-        return new ReceiveQuality(layers, temporalCount);
+        return new ReceiveQuality(layers - 1, temporalCount);
     }
 }

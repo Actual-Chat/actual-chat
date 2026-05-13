@@ -360,13 +360,13 @@ public class LiveVideoStreams : ILiveVideoStreams
             // If there was no explicit prior envelope, or the stream was absent
             // from it, a new non-lowest envelope still needs a fresh anchor.
             // Do not compare against ReceiveQuality.Default here: screencast's
-            // top layer is layerCount=2, so that would suppress the PLI needed
-            // to switch from L0 to L1.
+            // top layer id is 1, so that would suppress the PLI needed to
+            // switch from L0 to L1.
             var oldQuality = previous is not null && previous.TryGetValue(streamId, out var old)
                 ? old
                 : ReceiveQuality.Lowest;
-            if (quality.LayerCount > oldQuality.LayerCount
-                || quality.TemporalLayerCount > oldQuality.TemporalLayerCount)
+            if (quality.LayerId > oldQuality.LayerId
+                || quality.TemporalLayerId < oldQuality.TemporalLayerId)
                 yield return streamId;
         }
     }

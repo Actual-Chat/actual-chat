@@ -191,7 +191,7 @@ public sealed partial class VideoQualityUI
         var streamSignals = new Dictionary<string, PlaybackStreamSignals>();
         foreach (var (streamId, state) in entries) {
             var ladder = VideoRecorder.BuildLadder(state.SourceKind);
-            var pickedLayer = requestedMap[streamId.Value].LayerCount - 1;
+            var pickedLayer = requestedMap[streamId.Value].LayerId;
             var layer = Math.Clamp(pickedLayer, 0, ladder.Count - 1);
             var allocated = ladder[layer].GetByteRate(state.Snapshot.Codec);
             streamSignals[streamId.Value] = new PlaybackStreamSignals(
@@ -206,7 +206,7 @@ public sealed partial class VideoQualityUI
             "PlaybackQuality: reason={Reason} ceiling={Ceiling} signalLevel={SignalLevel:F2} streams=[{Streams}]",
             reason, capacity, signalLevel,
             string.Join(", ", entries.Select(x =>
-                $"{x.Key.Value}:size={x.Value.DesiredVideoSize}/req=L{requestedMap[x.Key.Value].LayerCount}/T{requestedMap[x.Key.Value].TemporalLayerCount}"
+                $"{x.Key.Value}:size={x.Value.DesiredVideoSize}/req=L{requestedMap[x.Key.Value].LayerId}/T{requestedMap[x.Key.Value].TemporalLayerId}"
                 + $"/duration={x.Value.Snapshot.StreamDurationMs}ms"
                 + $"/buf={x.Value.Snapshot.BufferSpanMsEma:F0}ms"
                 + $"/rate={x.Value.Snapshot.IncomingByteRate}/peak={x.Value.ObservedPeakByteRate}"
@@ -440,7 +440,7 @@ public sealed partial class VideoQualityUI
         foreach (var hint in streamHints) {
             if (requested is not null && requested.TryGetValue(hint.StreamId, out var q))
                 await JS
-                    .InvokeVoidAsync(jsMethod, cancellationToken, hint.StreamId, q.LayerCount, q.TemporalLayerCount)
+                    .InvokeVoidAsync(jsMethod, cancellationToken, hint.StreamId, q.LayerId, q.TemporalLayerId)
                     .ConfigureAwait(false);
             else
                 await JS
@@ -464,7 +464,7 @@ public sealed partial class VideoQualityUI
     {
         var map = new ApiMap<string, ReceiveQuality>();
         var quality = layerCount is { } count
-            ? new ReceiveQuality(Math.Max(1, count), int.MaxValue)
+            ? new ReceiveQuality(Math.Max(0, count - 1), int.MaxValue)
             : ReceiveQuality.Default;
         foreach (var hint in hints)
             map[hint.StreamId] = quality;
