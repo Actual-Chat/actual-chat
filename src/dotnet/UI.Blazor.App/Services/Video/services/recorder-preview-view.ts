@@ -16,7 +16,7 @@ import {
 } from '../../../Components/VideoPanel/video-recorder';
 import { CanvasTarget } from './canvas-target';
 import { BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS, BG_FILTER } from './bg-canvas';
-import { applyRotationLayout, chooseFit } from './tile-fit';
+import { applyRotationLayout, chooseFit, updateCollapsedIslandAspect } from './tile-fit';
 
 const { infoLog } = getLogs('VideoRecorder');
 
@@ -126,6 +126,13 @@ export class RecorderPreviewView {
         const sourceH = videoEl.videoHeight || 0;
         const frameW = swap ? sourceH : sourceW;
         const frameH = swap ? sourceW : sourceH;
+        // Keep the collapsed island sized to the source aspect — without this
+        // the panel stays at the default 16:9 and a portrait camera ends up
+        // letterboxed in a tiny landscape tile.
+        updateCollapsedIslandAspect(
+            videoEl.closest<HTMLElement>('.video-panel'),
+            frameW,
+            frameH);
         const fit = chooseFit(frameW, frameH, parent.clientWidth, parent.clientHeight);
         if (fit !== this.currentFit) {
             this.currentFit = fit;

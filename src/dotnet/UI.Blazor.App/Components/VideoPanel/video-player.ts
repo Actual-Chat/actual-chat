@@ -8,6 +8,7 @@ import type { Disposable } from 'disposable';
 import { DocumentEvents } from 'event-handling';
 import { Versioning } from 'versioning';
 import { type Subscription } from 'rxjs';
+import { updateCollapsedIslandAspect } from '../../Services/Video/services/tile-fit';
 import type {
     PlayerWorker,
     LatencySample,
@@ -607,21 +608,20 @@ export class VideoPlayer {
     private updateCollapsedIslandAspect(): void {
         const panel = this.canvas.closest<HTMLElement>('.video-panel');
         if (!panel) return;
-        let ratio = this.lastFrameW > 0 && this.lastFrameH > 0
-            ? this.lastFrameW / this.lastFrameH
-            : 0;
-        if (ratio <= 0 || !Number.isFinite(ratio))
-            ratio = readAspectRatio(this.canvas.parentElement);
-        if (ratio <= 0 || !Number.isFinite(ratio))
-            return;
-
-        ratio = Math.max(0.25, Math.min(4, ratio));
-        const nextAspect = ratio.toFixed(4);
-        const nextPortrait = ratio < 1;
-        const aspectChanged = panel.style.getPropertyValue('--video-panel-island-aspect') !== nextAspect;
-        const portraitChanged = panel.classList.contains('portrait-video') !== nextPortrait;
-        panel.style.setProperty('--video-panel-island-aspect', nextAspect);
-        panel.classList.toggle('portrait-video', nextPortrait);
+        let frameW = this.lastFrameW;
+        let frameH = this.lastFrameH;
+        if (frameW <= 0 || frameH <= 0) {
+            const ratio = readAspectRatio(this.canvas.parentElement);
+            if (ratio > 0 && Number.isFinite(ratio)) {
+                frameW = ratio;
+                frameH = 1;
+            }
+        }
+        const prevAspect = panel.style.getPropertyValue('--video-panel-island-aspect');
+        const prevPortrait = panel.classList.contains('portrait-video');
+        updateCollapsedIslandAspect(panel, frameW, frameH);
+        const aspectChanged = panel.style.getPropertyValue('--video-panel-island-aspect') !== prevAspect;
+        const portraitChanged = panel.classList.contains('portrait-video') !== prevPortrait;
         if (aspectChanged || portraitChanged) {
             void panel.offsetHeight;
             this.runViewportCheck();

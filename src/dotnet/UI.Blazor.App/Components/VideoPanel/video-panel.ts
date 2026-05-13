@@ -113,6 +113,13 @@ export class VideoPanel {
     // pull it back to its original Razor-rendered home. Catches races where
     // Blazor's class-attribute rewrite drops a JS-added class but the JS
     // teardown that would have reparented it never fires.
+    //
+    // Why call both teardowns (both are idempotent): if we did partial
+    // cleanup here and just set panelMode='inline', the subsequent
+    // updatePanelMode() call from Blazor would short-circuit (panelMode
+    // already matches), leaving the stale island ResizeObserver alive — and
+    // the next size change would re-fire positionIslandDefault() and pin
+    // `top/right` back on the inline panel.
     private setupHomeGuard(): void {
         const observer = new MutationObserver(() => {
             if (this.videoPanel.parentElement !== document.body)
@@ -120,10 +127,8 @@ export class VideoPanel {
             const cl = this.videoPanel.classList;
             if (cl.contains('expanded') || cl.contains('collapsed') || cl.contains('panel-hidden'))
                 return;
-            this.videoPanel.style.top = '';
-            this.videoPanel.style.left = '';
-            this.videoPanel.style.right = '';
-            this.restoreToParent();
+            this.teardownIsland();
+            this.teardownHidden();
             this.panelMode = 'inline';
         });
         observer.observe(this.videoPanel, { attributes: true, attributeFilter: ['class'] });
@@ -1147,7 +1152,7 @@ export class VideoPanel {
                 parent.insertBefore(this.videoPanel, this.homeMarker.nextSibling);
             return;
         }
-        if (this.parentNextSibling && this.parentNextSibling.parentNode === parent)
+        if (this.parentNextSibling?.parentNode === parent)
             parent.insertBefore(this.videoPanel, this.parentNextSibling);
         else
             parent.appendChild(this.videoPanel);
