@@ -50,6 +50,10 @@ import {
     getDefaultCodec,
     getCodecCategory,
     probeEncoder,
+    excludeEncoderCodec,
+    isEncoderCodecExcluded,
+    isEncoderCodecProven,
+    markEncoderCodecProven,
     type CodecInfo,
 } from '../../Services/Video/codec-support';
 import {
@@ -63,7 +67,11 @@ import {
     type WireSafeRecorderConfig,
 } from '../../Services/Video/sender/recorder-worker-contract';
 import { consumeVideoTraceKill, registerVideoTraceKillWorker } from '../../Services/Video/video-trace-kill-control';
-import type { EncoderConfigPerLayer } from '../../Services/Video/operators/encode';
+import {
+    isEncoderInitFailedError,
+    parseEncoderInitFailedCodec,
+    type EncoderConfigPerLayer,
+} from '../../Services/Video/operators/encode';
 import type { RecorderStats } from '../../Services/Video/frame-envelopes';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
@@ -955,6 +963,29 @@ export class VideoRecorder {
             },
             onError: (error: string) => {
                 errorLog?.log(`RecorderWorker reported error: ${error}`);
+                // Encoder init failure: the WebCodecs VideoEncoder
+                // rejected the codec on this device (e.g. HEVC HW
+                // driver returned "Encoder initialization error").
+                // Restarting with the same codec would loop forever
+                // — exclude the codec category for the rest of the
+                // session and re-pick before the next attempt.
+                if (isEncoderInitFailedError(error)) {
+                    const failedCodec = parseEncoderInitFailedCodec(error);
+                    const failedCategory = failedCodec ? getCodecCategory(failedCodec) : null;
+                    if (failedCategory && !isEncoderCodecProven(failedCategory)) {
+                        warnLog?.log(
+                            `RecorderWorker: encoder init failure for codec=${failedCodec} ` +
+                            `(category=${failedCategory}) — excluding and re-picking`);
+                        excludeEncoderCodec(failedCategory);
+                        void this.repickCodecAndRestart(`encoder init failed: ${failedCategory}`);
+                        return;
+                    }
+                    if (failedCategory && isEncoderCodecProven(failedCategory)) {
+                        infoLog?.log(
+                            `RecorderWorker: encoder init failure for proven codec ` +
+                            `${failedCategory} — treating as transient`);
+                    }
+                }
                 // Recover transparently — no Blazor notification. The
                 // UI continues to show the recorder as on; the next
                 // frames will flow as soon as the restart completes.
@@ -1159,6 +1190,47 @@ export class VideoRecorder {
             this.scheduleRecovery(`worker.start rejected: ${message}`);
         });
         this.startRecorderHealthMonitor();
+    }
+
+    /** Re-runs codec selection (after a codec has been excluded) and
+     *  restarts the worker pipeline with the resulting best codec.
+     *  Falls back to scheduleRecovery if re-pick fails so the loop
+     *  still keeps trying instead of leaving the user with no video. */
+    private async repickCodecAndRestart(reason: string): Promise<void> {
+        if (!this.isRecording || this.disposed) return;
+        try {
+            const w = this.cameraWidth || 1280;
+            const h = this.cameraHeight || 720;
+            const refreshedCodecs = await detectSupportedCodecs(w, h);
+            this.supportedCodecs = refreshedCodecs;
+            this.supportedEncoderCategories = this.extractEncoderCategories(refreshedCodecs);
+            const nextCodec = this.pickInitialCodec(
+                refreshedCodecs,
+                this.audienceCodecs,
+                { width: w, height: h });
+            if (nextCodec === this.currentCodecString) {
+                warnLog?.log(
+                    `repickCodecAndRestart: re-pick returned same codec ${nextCodec} ` +
+                    `— excluded category may already be h264 or no fallback exists; ` +
+                    `falling back to scheduleRecovery`);
+                this.scheduleRecovery(reason);
+                return;
+            }
+            const prevCodec = this.currentCodecString;
+            this.currentCodecString = nextCodec;
+            const nextCodecInfo = refreshedCodecs.find(c => c.codec === nextCodec);
+            this.currentCodecHardwareAccel = nextCodecInfo?.hardwareAccelerated ?? false;
+            this.repriceCurrentLadders();
+            infoLog?.log(
+                `repickCodecAndRestart: ${reason} → switching codec ` +
+                `${prevCodec} → ${nextCodec} (hw=${this.currentCodecHardwareAccel})`);
+            // Reset backoff so the new codec gets a clean 200ms first attempt.
+            this.recoveryAttempts = 0;
+            this.scheduleRecovery(`codec switch to ${getCodecCategory(nextCodec)}`);
+        } catch (e) {
+            warnLog?.log('repickCodecAndRestart: failed', e);
+            this.scheduleRecovery(reason);
+        }
     }
 
     /** Schedules a worker restart with exponential backoff. Coalesces
@@ -1402,6 +1474,15 @@ export class VideoRecorder {
                     // again — sustained shipping means the restart took.
                     if (this.recoveryAttempts > 0 && this.bundlesPerSec > 0)
                         this.recoveryAttempts = 0;
+                    // Sustained shipping also proves the current encoder
+                    // codec category works on this device — suppress
+                    // future exclusion attempts for the rest of the
+                    // session (same shape as decoder-side proving).
+                    if (this.bundlesPerSec > 0 && this.currentCodecString) {
+                        const cat = getCodecCategory(this.currentCodecString);
+                        if (!isEncoderCodecProven(cat))
+                            markEncoderCodecProven(cat);
+                    }
                     this.dropPerSec.clear();
                     for (const [stage, count] of stats.dropTrace) {
                         const prev = previous.dropTrace.get(stage) ?? 0;
@@ -1543,6 +1624,10 @@ export class VideoRecorder {
         for (const codecInfo of supportedCodecs) {
             if (!codecInfo.supported) continue;
             if (allowedCategories && !allowedCategories.has(codecInfo.category)) continue;
+            // Skip categories the encoder has failed to init this
+            // session — the cached probe result said "supported" but
+            // runtime configure() rejected.
+            if (isEncoderCodecExcluded(codecInfo.category)) continue;
             const current = bestByCategory.get(codecInfo.category);
             if (!current || (!current.hardwareAccelerated && codecInfo.hardwareAccelerated))
                 bestByCategory.set(codecInfo.category, codecInfo);

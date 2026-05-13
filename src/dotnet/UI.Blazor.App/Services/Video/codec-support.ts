@@ -109,11 +109,20 @@ const REPRESENTATIVE_CODECS: { category: CodecInfo['category']; name: string; co
 
 async function detectSupportedCodecsUncached(width: number, height: number): Promise<CodecInfo[]> {
     const forceH264 = readForceH264OnlyFromStorage();
-    const probeList = forceH264
+    let probeList = forceH264
         ? REPRESENTATIVE_CODECS.filter(c => c.category === 'h264')
         : REPRESENTATIVE_CODECS;
     if (forceH264)
         infoLog?.log('Debug: forceH264Only=true → encoder detection limited to H.264');
+    if (excludedEncoderCodecs.size > 0) {
+        const before = probeList.length;
+        probeList = probeList.filter(c => !excludedEncoderCodecs.has(c.category));
+        if (probeList.length < before) {
+            infoLog?.log(
+                `Encoder detection skipping excluded categories: ` +
+                `[${[...excludedEncoderCodecs].join(', ')}]`);
+        }
+    }
     const results: CodecInfo[] = [];
     for (const { category, name, codec } of probeList) {
         const { supported, hardwareAccelerated, scalabilityModes } = await isCodecSupported(codec, category, width, height);
@@ -471,6 +480,46 @@ async function isDecoderCodecSupported(codec: string, width: number, height: num
         } catch { /* continue */ }
     }
     return false;
+}
+
+// Categories that report support but fail at runtime encoder init —
+// e.g. HEVC HW encoder driver rejects configure() with "Encoder
+// initialization error" on some devices. Mirrors excludedDecoderCodecs.
+const excludedEncoderCodecs = new Set<string>();
+const provenEncoderCodecs = new Set<string>();
+
+export function excludeEncoderCodec(category: string): void {
+    if (category === 'h264') return; // never exclude — universal fallback
+    if (provenEncoderCodecs.has(category)) {
+        warnLog?.log(`excludeEncoderCodec: ignoring '${category}' — already proven this session`);
+        return;
+    }
+    warnLog?.log(`Excluding encoder codec category: ${category}`);
+    excludedEncoderCodecs.add(category);
+    encoderCodecCache.clear();
+}
+
+export function getExcludedEncoderCodecs(): string[] {
+    return [...excludedEncoderCodecs];
+}
+
+export function isEncoderCodecExcluded(category: string): boolean {
+    return excludedEncoderCodecs.has(category);
+}
+
+export function markEncoderCodecProven(category: string): void {
+    if (provenEncoderCodecs.has(category))
+        return;
+    infoLog?.log(`Encoder codec '${category}' proven — exclusion suppressed for the rest of the session`);
+    provenEncoderCodecs.add(category);
+}
+
+export function isEncoderCodecProven(category: string): boolean {
+    return provenEncoderCodecs.has(category);
+}
+
+export function getProvenEncoderCodecs(): string[] {
+    return [...provenEncoderCodecs];
 }
 
 // Codecs that report support but fail at runtime (wrong dims, slow decode).
