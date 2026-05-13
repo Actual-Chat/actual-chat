@@ -180,6 +180,7 @@ __setPlayerWorkerHooks({
     },
     reportError: (streamId, error) => callbacks.onError(streamId, error),
     reportStreamEnded: (streamId, reason) => callbacks.onStreamEnded(streamId, reason),
+    reportCodecProven: (streamId, codec) => callbacks.onCodecProven(streamId, codec),
     prewarmRpc(apiUrl) {
         // Main fires this with rpcNoWait right after constructing the
         // worker, so any error here must NOT escape — log + bail.

@@ -28,6 +28,14 @@ export interface DecodeOptions {
     }) => DecoderLike;
     // Informational only — operator throws on the same tick.
     onCodecExhausted?: (codec: string) => void;
+    // Fired once per stream when `framesUntilProven` decoded frames have
+    // landed without resetting the counter (the counter resets on every
+    // recovery). Signals the consumer that the codec actually works on this
+    // device; the operator also switches to unbounded recovery from this
+    // point on, so a single transient failure never tears down a working
+    // codec.
+    onCodecProven?: (codec: string) => void;
+    framesUntilProven?: number;
     now?: () => number;
     maxRecoveries?: number;
     // Synthesises an error and drives recovery if the decoder sits on
@@ -65,6 +73,8 @@ export function decode(opts: DecodeOptions): PipeOperator<ArrivedChunk, DecodedF
     const initialConfig = opts.initialConfig;
     const createDecoder = opts.createDecoder;
     const onCodecExhausted = opts.onCodecExhausted;
+    const onCodecProven = opts.onCodecProven;
+    const framesUntilProven = Math.max(1, opts.framesUntilProven ?? 10);
     const now = opts.now ?? ((): number => performance.now());
     const maxRecoveries = opts.maxRecoveries ?? 4;
     const decoderHangTimeoutMs = opts.decoderHangTimeoutMs ?? 2_000;
@@ -77,6 +87,8 @@ export function decode(opts: DecodeOptions): PipeOperator<ArrivedChunk, DecodedF
         initialConfig,
         createDecoder,
         onCodecExhausted,
+        onCodecProven,
+        framesUntilProven,
         now,
         maxRecoveries,
         decoderHangTimeoutMs,
@@ -91,6 +103,8 @@ async function* decodeAsync(
     initialConfig: InitialDecoderConfig,
     createDecoder: DecodeOptions['createDecoder'],
     onCodecExhausted: ((codec: string) => void) | undefined,
+    onCodecProven: ((codec: string) => void) | undefined,
+    framesUntilProven: number,
     now: () => number,
     maxRecoveries: number,
     decoderHangTimeoutMs: number,
@@ -108,6 +122,13 @@ async function* decodeAsync(
     let wakeup = new PromiseSource<void>();
     let pendingError: Error | null = null;
     let consecutiveRecoveries = 0;
+    // Once `framesUntilProven` frames decode without resetting the counter,
+    // the codec is "proven" — onCodecProven fires once and the exhaustion
+    // check is skipped from then on (transient failures still trigger
+    // decoder rebuild + drop-deltas-until-keyframe recovery). Boxed so the
+    // synchronous loop body sees mutations from the async onFrame callback
+    // (TS can't flow-narrow a bare `let` across closure boundaries).
+    const proofState = { framesSinceFirstSuccess: 0, codecProven: false };
     // Watchdog: detects a hung decoder while chunks sit in the pending FIFO.
     let lastDecoderActivityMs = now();
 
@@ -132,6 +153,13 @@ async function* decodeAsync(
                 stats,
             };
             consecutiveRecoveries = 0;
+            if (!proofState.codecProven) {
+                proofState.framesSinceFirstSuccess++;
+                if (proofState.framesSinceFirstSuccess >= framesUntilProven) {
+                    proofState.codecProven = true;
+                    onCodecProven?.(currentCodec);
+                }
+            }
             ready.push(envelope);
             if (!wakeup.isCompleted()) wakeup.resolve();
         },
@@ -247,7 +275,8 @@ async function* decodeAsync(
                         continue;
                     }
                     consecutiveRecoveries++;
-                    if (consecutiveRecoveries >= maxRecoveries) {
+                    proofState.framesSinceFirstSuccess = 0;
+                    if (!proofState.codecProven && consecutiveRecoveries >= maxRecoveries) {
                         const codec = currentCodec;
                         pendingError = null;
                         onCodecExhausted?.(codec);

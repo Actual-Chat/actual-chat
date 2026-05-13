@@ -110,4 +110,10 @@ export interface PlayerWorkerCallbacks {
     onStreamEnded(streamId: string, reason: string): void;
 
     onError(streamId: string, error: string): void;
+
+    // Fired once per stream when the worker has decoded enough frames of a
+    // codec to be confident the codec actually works on this device. Main
+    // thread uses this to suppress future codec-exclusion requests for the
+    // same codec category.
+    onCodecProven(streamId: string, codec: string): void;
 }

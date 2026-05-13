@@ -37,6 +37,7 @@ interface PlayerWorkerHooks {
     initAppConstants?: (appConstants: import('./player-worker-contract').AppConstantsLike) => void;
     reportError?: (streamId: string, error: string) => void;
     reportStreamEnded?: (streamId: string, reason: string) => void;
+    reportCodecProven?: (streamId: string, codec: string) => void;
     prewarmRpc?: (apiUrl: string) => void;
 }
 
@@ -149,6 +150,9 @@ export const playerWorkerImpl: PlayerWorker = {
             reportLatency: h.makeReportLatency?.(opts.streamId),
             backend,
             streamStallTimeoutMs: getStreamStallTimeoutMs(),
+            reportCodecProven: h.reportCodecProven
+                ? (codec: string): void => h.reportCodecProven?.(opts.streamId, codec)
+                : undefined,
         };
 
         await player.start(playerConfig);

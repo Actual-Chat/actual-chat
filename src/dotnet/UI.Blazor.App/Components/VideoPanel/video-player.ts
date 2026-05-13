@@ -18,6 +18,7 @@ import {
     getCodecCandidates,
     selectDecoderCodec,
 } from '../../Services/Video/hevc-codec-selection';
+import { isDecoderCodecProven, markDecoderCodecProven } from '../../Services/Video/codec-support';
 import type { RenderBackend } from './render-backend';
 import { TransferableCanvasRenderBackend } from './render-backend-canvas';
 import { OffThreadRenderBackend, isOffThreadPlausible } from './render-backend-mstg';
@@ -363,14 +364,28 @@ export class VideoPlayer {
                     },
                     onError: (streamId: string, error: string) => {
                         warnLog?.log(`Worker reported error for stream ${streamId}: ${error}`);
-                        if (this.shouldRequestCodecExclusion() && !this.codecExclusionRequested) {
+                        if (
+                            this.shouldRequestCodecExclusion()
+                            && !this.codecExclusionRequested
+                            && !isDecoderCodecProven(this.codecCategory)
+                        ) {
                             this.codecExclusionRequested = true;
                             warnLog?.log(
                                 `Worker error: requesting codec exclusion for ${this.codecCategory} ` +
                                 `(reason: ${error})`);
                             void this.blazorRef.invokeMethodAsync('OnRequestCodecExclusion', this.codecCategory);
+                        } else if (isDecoderCodecProven(this.codecCategory)) {
+                            infoLog?.log(
+                                `Worker error suppressed for proven codec ${this.codecCategory}: ${error}`);
                         }
                         void this.reportEnded(error);
+                        return Promise.resolve();
+                    },
+                    onCodecProven: (streamId: string, codec: string) => {
+                        const category = VideoPlayer.getCodecCategory(codec);
+                        debugLog?.log(`Worker reported codec proven: stream=${streamId}, codec=${codec} → ${category}`);
+                        if (category && category !== 'unknown')
+                            markDecoderCodecProven(category);
                         return Promise.resolve();
                     },
                 }

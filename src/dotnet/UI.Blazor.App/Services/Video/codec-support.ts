@@ -476,8 +476,19 @@ async function isDecoderCodecSupported(codec: string, width: number, height: num
 // Codecs that report support but fail at runtime (wrong dims, slow decode).
 const excludedDecoderCodecs = new Set<string>();
 
+// Codec categories ('h264' | 'hevc' | 'av1' | 'vp9') we've already decoded
+// enough frames of — any future failure is treated as recoverable, never as
+// "exclude this codec for the rest of the session". Persists for the page
+// lifetime (like excludedDecoderCodecs), populated by the player worker once
+// per category.
+const provenDecoderCodecs = new Set<string>();
+
 export function excludeDecoderCodec(codec: string): void {
     if (codec === 'h264') return; // never exclude h264 — universal fallback
+    if (provenDecoderCodecs.has(codec)) {
+        warnLog?.log(`excludeDecoderCodec: ignoring '${codec}' — already proven this session`);
+        return;
+    }
     warnLog?.log(`Excluding decoder codec: ${codec}`);
     excludedDecoderCodecs.add(codec);
     decoderCodecCache = null;
@@ -485,6 +496,21 @@ export function excludeDecoderCodec(codec: string): void {
 
 export function getExcludedDecoderCodecs(): string[] {
     return [...excludedDecoderCodecs];
+}
+
+export function markDecoderCodecProven(category: string): void {
+    if (provenDecoderCodecs.has(category))
+        return;
+    infoLog?.log(`Decoder codec '${category}' proven — exclusion suppressed for the rest of the session`);
+    provenDecoderCodecs.add(category);
+}
+
+export function isDecoderCodecProven(category: string): boolean {
+    return provenDecoderCodecs.has(category);
+}
+
+export function getProvenDecoderCodecs(): string[] {
+    return [...provenDecoderCodecs];
 }
 
 let decoderCodecCache: Promise<string[]> | null = null;
