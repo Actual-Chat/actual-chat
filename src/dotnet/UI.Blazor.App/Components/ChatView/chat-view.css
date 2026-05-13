@@ -700,6 +700,13 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
     @apply text-xl;
 }
 
+.chat-view.virtual-list > .c-wrapper > ul.c-virtual-container > li {
+    @apply px-1;
+}
+body.narrow .chat-view.virtual-list > .c-wrapper > ul.c-virtual-container > li {
+    @apply px-0.5;
+}
+
 .chat-view.virtual-list .c-virtual-container .chat-message-group {
     @apply relative;
     @apply flex-x;
