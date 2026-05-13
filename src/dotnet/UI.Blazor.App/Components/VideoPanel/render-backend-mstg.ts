@@ -84,11 +84,7 @@ export class OffThreadRenderBackend implements RenderBackend {
             return;
         }
         if (this.trackAttached) {
-            // Replacement path — the recovery loop in VideoPlayer
-            // restarts the worker with a fresh MSTG track, so any
-            // previously-attached track is now stale (the worker is
-            // not feeding it any more). Stop the old tracks and swap
-            // in the new one without warning-flooding the console.
+            // Replacement: each VideoPlayer restart constructs a fresh MSTG track.
             const existingStream = this.videoEl.srcObject;
             if (existingStream instanceof MediaStream) {
                 for (const t of existingStream.getTracks()) {

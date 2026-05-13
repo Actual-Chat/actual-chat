@@ -337,13 +337,6 @@ export class VideoRecorder {
     // Wallclock anchor for diagnostics duration calculation.
     private startedAtMs = 0;
 
-    // Recovery loop bookkeeping. The recorder worker may report an
-    // error mid-stream (pipeline throw, wire failure, server-side
-    // PushStream eviction). We never surface that to Blazor: instead,
-    // we tear down the worker pipeline and reissue startWorker on the
-    // same input track with backoff. The loop bails only when the
-    // user stops recording (isRecording=false) or the recorder is
-    // being disposed.
     private recoveryAttempts = 0;
     private recoveryScheduled = false;
 
@@ -952,23 +945,10 @@ export class VideoRecorder {
             },
             onStreamEnded: (reason: string) => {
                 infoLog?.log(`Worker stream ended: ${reason}`);
-                // 'completed' = recorder.stop drained naturally (user
-                // pressed stop, or `stopRecording` torn it down).
-                // Anything else = pipeline error/eviction; main thread
-                // has already been notified via `onError` and a restart
-                // is in flight or scheduled. Either way we don't
-                // surface to Blazor — Blazor doesn't get an "ended"
-                // signal from the recorder side anyway.
                 void reason;
             },
             onError: (error: string) => {
                 errorLog?.log(`RecorderWorker reported error: ${error}`);
-                // Encoder init failure: the WebCodecs VideoEncoder
-                // rejected the codec on this device (e.g. HEVC HW
-                // driver returned "Encoder initialization error").
-                // Restarting with the same codec would loop forever
-                // — exclude the codec category for the rest of the
-                // session and re-pick before the next attempt.
                 if (isEncoderInitFailedError(error)) {
                     const failedCodec = parseEncoderInitFailedCodec(error);
                     const failedCategory = failedCodec ? getCodecCategory(failedCodec) : null;
@@ -980,15 +960,11 @@ export class VideoRecorder {
                         void this.repickCodecAndRestart(`encoder init failed: ${failedCategory}`);
                         return;
                     }
-                    if (failedCategory && isEncoderCodecProven(failedCategory)) {
+                    if (failedCategory && isEncoderCodecProven(failedCategory))
                         infoLog?.log(
                             `RecorderWorker: encoder init failure for proven codec ` +
                             `${failedCategory} — treating as transient`);
-                    }
                 }
-                // Recover transparently — no Blazor notification. The
-                // UI continues to show the recorder as on; the next
-                // frames will flow as soon as the restart completes.
                 this.scheduleRecovery(`worker error: ${error}`);
             },
             onTraceKillInjected: () => consumeVideoTraceKill('recording'),
@@ -1183,21 +1159,16 @@ export class VideoRecorder {
         // startRecording() and let the operator pipe drive itself.
         void this.worker.start({ sourceStartedAtMs, config }).catch((e: unknown) => {
             errorLog?.log('Worker start rejected:', e);
-            // Spin-up failure routes through the same recovery loop
-            // as a runtime pipeline error — Blazor never hears about
-            // it; the UI keeps showing "recording" while we retry.
             const message = e instanceof Error ? e.message : String(e);
             this.scheduleRecovery(`worker.start rejected: ${message}`);
         });
         this.startRecorderHealthMonitor();
     }
 
-    /** Re-runs codec selection (after a codec has been excluded) and
-     *  restarts the worker pipeline with the resulting best codec.
-     *  Falls back to scheduleRecovery if re-pick fails so the loop
-     *  still keeps trying instead of leaving the user with no video. */
     private async repickCodecAndRestart(reason: string): Promise<void> {
-        if (!this.isRecording || this.disposed) return;
+        if (!this.isRecording || this.disposed)
+            return;
+
         try {
             const w = this.cameraWidth || 1280;
             const h = this.cameraHeight || 720;
@@ -1224,7 +1195,6 @@ export class VideoRecorder {
             infoLog?.log(
                 `repickCodecAndRestart: ${reason} → switching codec ` +
                 `${prevCodec} → ${nextCodec} (hw=${this.currentCodecHardwareAccel})`);
-            // Reset backoff so the new codec gets a clean 200ms first attempt.
             this.recoveryAttempts = 0;
             this.scheduleRecovery(`codec switch to ${getCodecCategory(nextCodec)}`);
         } catch (e) {
@@ -1233,12 +1203,10 @@ export class VideoRecorder {
         }
     }
 
-    /** Schedules a worker restart with exponential backoff. Coalesces
-     *  multiple concurrent triggers (worker.start rejection, runtime
-     *  error event, etc.) into a single in-flight restart. */
     private scheduleRecovery(reason: string): void {
         if (this.recoveryScheduled || !this.isRecording || this.disposed)
             return;
+
         this.recoveryScheduled = true;
         this.recoveryAttempts++;
         const delayMs = Math.min(3000, 200 * Math.pow(1.7, this.recoveryAttempts - 1));
@@ -1246,7 +1214,9 @@ export class VideoRecorder {
             `scheduleRecovery: ${reason}; attempt ${this.recoveryAttempts} in ${delayMs.toFixed(0)}ms`);
         window.setTimeout(() => {
             this.recoveryScheduled = false;
-            if (!this.isRecording || this.disposed) return;
+            if (!this.isRecording || this.disposed)
+                return;
+
             void this.recoverNow().catch((e: unknown) => {
                 warnLog?.log('scheduleRecovery: recoverNow failed', e);
                 this.scheduleRecovery('recovery attempt failed');
@@ -1267,12 +1237,11 @@ export class VideoRecorder {
         infoLog?.log(
             `recoverNow: ladder=[${ladder.map(l => `${l.width}x${l.height}`).join(', ')}], ` +
             `codec=${this.currentCodecString}`);
-        // Stop the current pipeline so its source-readable (MSTP) and
-        // any wire-level state unwind cleanly. startWorker constructs
-        // a fresh MSTP / rVFC pump on the same `inputTrack`.
         try { await this.worker.stop(); }
         catch (e) { warnLog?.log('recoverNow: worker.stop failed (continuing):', e); }
-        if (!this.isRecording || this.disposed) return;
+        if (!this.isRecording || this.disposed)
+            return;
+
         await this.startWorker(ladder);
     }
 
@@ -1470,14 +1439,8 @@ export class VideoRecorder {
                         Math.max(0, stats.bundlesShipped - previous.bundlesShipped) * scale;
                     this.bytesPerSec =
                         Math.max(0, stats.bytesEncoded - previous.bytesEncoded) * scale;
-                    // Reset recovery backoff once the pipeline is flowing
-                    // again — sustained shipping means the restart took.
                     if (this.recoveryAttempts > 0 && this.bundlesPerSec > 0)
                         this.recoveryAttempts = 0;
-                    // Sustained shipping also proves the current encoder
-                    // codec category works on this device — suppress
-                    // future exclusion attempts for the rest of the
-                    // session (same shape as decoder-side proving).
                     if (this.bundlesPerSec > 0 && this.currentCodecString) {
                         const cat = getCodecCategory(this.currentCodecString);
                         if (!isEncoderCodecProven(cat))
@@ -1624,9 +1587,6 @@ export class VideoRecorder {
         for (const codecInfo of supportedCodecs) {
             if (!codecInfo.supported) continue;
             if (allowedCategories && !allowedCategories.has(codecInfo.category)) continue;
-            // Skip categories the encoder has failed to init this
-            // session — the cached probe result said "supported" but
-            // runtime configure() rejected.
             if (isEncoderCodecExcluded(codecInfo.category)) continue;
             const current = bestByCategory.get(codecInfo.category);
             if (!current || (!current.hardwareAccelerated && codecInfo.hardwareAccelerated))

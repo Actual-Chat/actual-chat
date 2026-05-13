@@ -482,9 +482,8 @@ async function isDecoderCodecSupported(codec: string, width: number, height: num
     return false;
 }
 
-// Categories that report support but fail at runtime encoder init —
-// e.g. HEVC HW encoder driver rejects configure() with "Encoder
-// initialization error" on some devices. Mirrors excludedDecoderCodecs.
+// Categories that probe as supported but fail at runtime configure() on this
+// device. Mirrors excludedDecoderCodecs.
 const excludedEncoderCodecs = new Set<string>();
 const provenEncoderCodecs = new Set<string>();
 

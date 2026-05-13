@@ -1,19 +1,8 @@
-// Once N successful frame decodes have landed at the highest spatial
-// layer the decoder has produced, the codec is considered "proven" on
-// this device. From that point on, transient decode failures no longer
-// trip the codec-exclusion path — they get attributed to other issues
-// (wire jitter, server hiccups, browser-side decoder quirks) and the
-// pipeline restart-loop handles them in stride.
-//
-// Reset semantics: when a NEW (higher) spatial layer first appears,
-// the streak resets — proven status follows the codec/layer pair the
-// receiver actually intends to present. The previous (lower) top
-// layer's proof status is irrelevant; HW that decodes 360p fine but
-// stalls at 1080p is a codec problem we want to surface.
-//
-// Disable the whole proof mechanism via UseCodecProofTracker if we
-// ever conclude that proven codecs still fail in the wild — a single
-// flag-flip and the system reverts to the bounded-recovery behaviour.
+// Once `threshold` successful frame decodes have landed at the highest spatial
+// layer seen so far, the codec is considered "proven" on this device — later
+// errors are treated as transient and don't trigger codec exclusion. The streak
+// resets when a new (higher) top layer first appears. Toggle the whole
+// mechanism off via `UseCodecProofTracker = false`.
 
 export const UseCodecProofTracker = true;
 export const FramesUntilCodecProven = 10;
@@ -32,7 +21,9 @@ class TopLayerCodecProofTracker implements CodecProofTracker {
     constructor(private readonly threshold: number) {}
 
     noteFrameDecoded(layerId: number): void {
-        if (this.proven) return;
+        if (this.proven)
+            return;
+
         if (layerId > this.highestSeenLayerId) {
             this.highestSeenLayerId = layerId;
             this.framesAtHighestSinceReset = 1;
@@ -44,7 +35,9 @@ class TopLayerCodecProofTracker implements CodecProofTracker {
     }
 
     noteDecoderError(): void {
-        if (this.proven) return;
+        if (this.proven)
+            return;
+
         this.framesAtHighestSinceReset = 0;
     }
 
@@ -54,8 +47,8 @@ class TopLayerCodecProofTracker implements CodecProofTracker {
 }
 
 class AlwaysUnprovenCodecProofTracker implements CodecProofTracker {
-    noteFrameDecoded(_layerId: number): void { /* identity */ }
-    noteDecoderError(): void { /* identity */ }
+    noteFrameDecoded(_layerId: number): void { }
+    noteDecoderError(): void { }
     isProven(): boolean { return false; }
 }
 
@@ -64,5 +57,6 @@ export function createCodecProofTracker(
 ): CodecProofTracker {
     if (!UseCodecProofTracker)
         return new AlwaysUnprovenCodecProofTracker();
+
     return new TopLayerCodecProofTracker(framesUntilProven);
 }

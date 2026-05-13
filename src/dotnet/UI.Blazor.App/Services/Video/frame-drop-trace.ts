@@ -114,10 +114,7 @@ export function traceDrops<T extends DropTraced>(prevStage: FrameDropStage): Pip
             }
             lastIndex = item.index;
             yield item;
-            // Kill AFTER yield: by this point `item` is owned by the
-            // downstream operator (which closes any wire resources in
-            // its own finally). A throw here can't leak the in-flight
-            // frame because we no longer hold it.
+            // Kill AFTER yield: item is owned by the next operator now, so a throw can't leak it.
             maybeKill();
         }
     }

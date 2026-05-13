@@ -10,12 +10,9 @@ import {
     type EncodedFrame,
 } from '../frame-envelopes';
 
-// Sentinel marker for an encoder-side codec init failure: thrown when
-// the encode operator rejects without having produced any encoded
-// output. Mirrors CODEC_EXHAUSTED_PREFIX on the receiver side — the
-// recorder's restart loop uses it to drive sender-side codec
-// exclusion. Encoded in the message because errors cross the worker
-// boundary as strings.
+// Message prefix stamped on a thrown error when the encode operator rejects
+// without having produced any chunk — VideoRecorder reads it to drive
+// sender-side codec exclusion. Mirrors CODEC_EXHAUSTED_PREFIX in decode.ts.
 export const ENCODER_INIT_FAILED_PREFIX = '[ENCODER_INIT_FAILED]';
 
 export function isEncoderInitFailedError(error: unknown): boolean {
@@ -78,11 +75,6 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
             // is an intra-coded keyframe.
             let forceKeyframeOnFirstEncode = true;
             let forceKeyframeNext = false;
-            // Tracks whether ANY encoder has produced ANY chunk. False at
-            // throw time signals an encoder-init failure (the WebCodecs
-            // VideoEncoder rejected configure() or got an async error
-            // before output) — the recorder loop maps that into a codec
-            // exclusion via parseEncoderInitFailedCodec.
             let anyEncodedOutput = false;
             try {
                 for await (const bundle of source) {
@@ -142,10 +134,6 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                     bundle.stats.encodeTimeMsMaxSum += layerMaxMs;
                     bundle.stats.encodeTimeMsCount++;
                     const rejected = settled.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
-                    // Bump the proof flag for ANY successful settled result
-                    // before deciding what to do with the rejections, so a
-                    // mixed-outcome bundle (some layers OK, some failed)
-                    // doesn't get re-classified as a codec init failure.
                     for (const result of settled) {
                         if (result.status === 'fulfilled') {
                             anyEncodedOutput = true;
@@ -163,12 +151,6 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         }
                         const firstRealReason = rejected
                             .find(r => !isAsyncVideoEncoderResetError(r.reason))!.reason;
-                        // Encoder init failure: no encoder has ever
-                        // produced a chunk and a non-reset error is
-                        // surfacing. Tag with the codec string so the
-                        // recorder can exclude the category and pick
-                        // again, instead of restart-looping the same
-                        // bad codec.
                         if (!anyEncodedOutput) {
                             const topCodec = configs[configs.length - 1].codec;
                             const message = firstRealReason instanceof Error

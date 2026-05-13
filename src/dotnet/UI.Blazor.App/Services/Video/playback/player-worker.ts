@@ -63,11 +63,9 @@ export function __getPlayerWorkerSession(): PlaybackSession | null {
     return session;
 }
 
-// All non-success outcomes are now treated as recoverable: the main
-// thread's restart loop in VideoPlayer is the single authority on what
-// counts as terminal (it bails only when the parent unmounts us or
-// codec exclusion takes over). Kept exported so callers that imported
-// it still type-check; no longer used internally to suppress reports.
+// VideoPlayer's restart loop is the sole authority on what's terminal — every
+// non-success outcome is now recoverable from this layer's perspective. Kept
+// exported only for legacy import callers.
 export function isTerminalStreamError(_error: unknown): boolean {
     return false;
 }
