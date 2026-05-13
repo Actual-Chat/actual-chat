@@ -210,15 +210,40 @@ body.hoverable .playable-text-markup > span:hover {
     @apply overflow-hidden;
     max-height: 75vh;
 }
-.code-block-markup code {
-    @apply block;
-    @apply h-full;
-    @apply p-1;
-    @apply rounded border-none;
-    @apply bg-02;
+.code-block-header {
+    @apply flex items-center justify-between gap-2;
+    @apply flex-none;
+    @apply px-2 py-1;
+    @apply border-b border-separator;
+    @apply bg-03;
+    @apply text-xs text-02;
+    @apply select-none;
+}
+.code-block-language {
+    @apply truncate;
+    @apply text-caption-1 uppercase;
+    @apply tracking-wide;
+}
+.code-block-language:empty {
+    @apply invisible;
+}
+.code-block-actions {
+    @apply flex-none flex items-center gap-2;
+}
+.code-block-markup pre {
+    @apply min-h-0;
+    @apply p-1 m-0;
     @apply overflow-auto custom-scrollbar-x;
+    @apply bg-01;
     @apply text-sm;
-    /*@apply whitespace-pre-wrap;*/
+}
+.code-block-markup.wrap pre {
+    @apply overflow-x-hidden;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.code-block-markup code {
+    @apply rounded border-none;
 }
 .code-block-markup code span {
     font: inherit !important;
