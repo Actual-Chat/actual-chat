@@ -1001,8 +1001,14 @@ export class VideoPlayer {
                 isFocused: parent?.classList.contains('item-focused') ?? false,
             };
         }
+        // Layout not yet settled (canvas + parent both zero-sized). Return
+        // null so the C# side reads VideoSize.None and picks the top layer;
+        // ResizeObserver re-fires with real dims once layout lands. The old
+        // `cssLongSide: 1` sentinel made the first request land at L0, which
+        // the server then faithfully forwarded for the first ~1–2 s until a
+        // higher-layer keyframe arrived (blurry "first frame" symptom).
         if (this.canvas.isConnected && parent && isZeroSized(canvasRect) && parentRect && isZeroSized(parentRect))
-            return { cssLongSide: 1, devicePixelRatio: getDevicePixelRatio(), isFocused: false };
+            return null;
         if (parent?.classList.contains('pip-overlay') || parent?.classList.contains('item-x'))
             return { cssLongSide: 1, devicePixelRatio: getDevicePixelRatio(), isFocused: false };
 
