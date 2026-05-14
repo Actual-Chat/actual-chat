@@ -24,7 +24,7 @@ on:
       useNativeAot:
         type: boolean
         required: false
-        default: false
+        default: true
         description: Build the iOS app with Native AOT (experimental, hits upstream linker bug — dotnet/runtime#119380)
   create:
   push:
