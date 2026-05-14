@@ -752,6 +752,12 @@
     <!-- iOS-only: full mtouch link replaces the default SdkOnly link -->
     <MtouchLink Condition="$(TargetFramework.Contains('-ios'))">Full</MtouchLink>
 
+    <!-- iOS-only, publish-only: Xcode 16+ ld-prime fails with "too many large addends" on
+         the large NAOT object emitted by ILC. Force the classic linker. Scoped to publish
+         so the non-NAOT `dotnet build` step (which links a small Mono binary) keeps using
+         ld-prime — ld_classic has a separate dylib-ordinal bug on that path. -->
+    <_UseClassicLinker Condition="$(TargetFramework.Contains('-ios')) and '$(_IsPublishing)' == 'true'">true</_UseClassicLinker>
+
     <!-- Windows-only: NAOT publishes a self-contained exe, not an MSIX -->
     <WindowsPackageType Condition="$(TargetFramework.Contains('-windows'))">None</WindowsPackageType>
   </PropertyGroup>
