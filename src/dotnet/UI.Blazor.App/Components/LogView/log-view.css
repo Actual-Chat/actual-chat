@@ -1,6 +1,9 @@
 .page-with-header-and-footer .layout-body-wrapper:has(.log-list) .layout-footer {
     @apply hidden;
 }
+.log-viewer-report-btn {
+    @apply px-3 text-primary text-sm font-semibold;
+}
 .log-list {
     @apply font-mono;
     @apply select-text;

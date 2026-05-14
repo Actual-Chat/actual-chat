@@ -244,6 +244,7 @@ body.narrow .settings-tab-content {
 }
 .settings-tab-header .c-end {
     @apply ml-auto flex-x items-center gap-x-2;
+    padding-right: max(0px, env(safe-area-inset-right));
 }
 body.narrow .settings-tab-header {
     box-sizing: content-box;
