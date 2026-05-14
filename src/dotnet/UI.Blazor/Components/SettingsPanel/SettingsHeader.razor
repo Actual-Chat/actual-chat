@@ -6,11 +6,7 @@
 <div class="c-title">
     @Title
 </div>
-@if (Buttons != null) {
-    <div class="c-buttons">
-        @Buttons
-    </div>
-}
+@Buttons
 
 @code {
     [Parameter] public string Title { get; set; } = "";
