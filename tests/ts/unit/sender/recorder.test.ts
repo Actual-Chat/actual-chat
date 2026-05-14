@@ -37,6 +37,7 @@ class MockVideoEncoder {
 
     encode(frame: MockVideoFrame, opts: { keyFrame: boolean }): void {
         this.encodeCalls.push({ frame, opts });
+        queueMicrotask(() => this.drainAll());
     }
 
     close(): void { this.state = 'closed'; }
@@ -66,17 +67,51 @@ class MockVideoFrame {
     public closed = false;
     public clones: MockVideoFrame[] = [];
     public rotation = 0;
+    public timestamp = 0;
     constructor(
-        public id: number,
-        public codedWidth = 640,
-        public codedHeight = 360,
-    ) {}
+        idOrCanvas: number | MockOffscreenCanvas,
+        widthOrInit: number | VideoFrameInit = 640,
+        codedHeight = 360,
+    ) {
+        if (typeof idOrCanvas === 'number') {
+            this.id = idOrCanvas;
+            this.codedWidth = widthOrInit as number;
+            this.codedHeight = codedHeight;
+            return;
+        }
+
+        this.id = -1;
+        this.codedWidth = idOrCanvas.width;
+        this.codedHeight = idOrCanvas.height;
+        this.timestamp = typeof widthOrInit === 'object' ? (widthOrInit.timestamp ?? 0) : 0;
+    }
+    public id: number;
+    public codedWidth: number;
+    public codedHeight: number;
     clone(): VideoFrame {
         const c = new MockVideoFrame(this.id + 10_000, this.codedWidth, this.codedHeight);
         this.clones.push(c);
         return c as unknown as VideoFrame;
     }
     close(): void { this.closed = true; }
+}
+
+class MockCanvasContext {
+    imageSmoothingEnabled = false;
+    imageSmoothingQuality: ImageSmoothingQuality = 'low';
+    drawImage(): void { /* no-op */ }
+    save(): void { /* no-op */ }
+    restore(): void { /* no-op */ }
+    translate(): void { /* no-op */ }
+    rotate(): void { /* no-op */ }
+}
+
+class MockOffscreenCanvas {
+    readonly ctx = new MockCanvasContext();
+    constructor(public width: number, public height: number) {}
+    getContext(): MockCanvasContext {
+        return this.ctx;
+    }
 }
 
 class FakeSender implements StreamSenderLike {
@@ -88,15 +123,21 @@ class FakeSender implements StreamSenderLike {
 
 interface GlobalWithVideoEncoder {
     VideoEncoder?: typeof MockVideoEncoder;
+    VideoFrame?: typeof MockVideoFrame;
+    OffscreenCanvas?: typeof MockOffscreenCanvas;
 }
 
 beforeEach(() => {
     MockVideoEncoder.instances = [];
     (globalThis as unknown as GlobalWithVideoEncoder).VideoEncoder = MockVideoEncoder;
+    (globalThis as unknown as GlobalWithVideoEncoder).VideoFrame = MockVideoFrame;
+    (globalThis as unknown as GlobalWithVideoEncoder).OffscreenCanvas = MockOffscreenCanvas;
 });
 
 afterEach(() => {
     delete (globalThis as unknown as GlobalWithVideoEncoder).VideoEncoder;
+    delete (globalThis as unknown as GlobalWithVideoEncoder).VideoFrame;
+    delete (globalThis as unknown as GlobalWithVideoEncoder).OffscreenCanvas;
 });
 
 // ---- Synthetic capture source --------------------------------------------

@@ -5,7 +5,7 @@
 // where chunks silently dry up. Flip IS_STREAM_STALL_TIMER_ENABLED to
 // false to confirm the pipeline is healthy without the safety net.
 
-export const IS_STREAM_STALL_TIMER_ENABLED = false;
+export const IS_STREAM_STALL_TIMER_ENABLED = true;
 export const isStreamStallTimerEnabled = (): boolean => IS_STREAM_STALL_TIMER_ENABLED;
 
 export interface StreamStallTimerOptions {

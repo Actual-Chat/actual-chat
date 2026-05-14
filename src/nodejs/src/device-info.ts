@@ -1,11 +1,30 @@
 // TODO(AY): cleanup eslint suppressions
 /// <reference types="user-agent-data-types" />
-const userAgent = navigator.userAgent;
+interface NavigatorLike {
+    userAgent?: string;
+    userAgentData?: { mobile: boolean; } | null;
+    maxTouchPoints?: number;
+}
+
+interface WindowLike {
+    matchMedia?: (query: string) => { matches: boolean; };
+}
+
+interface BrowserGlobals {
+    navigator?: NavigatorLike;
+    window?: WindowLike;
+    document?: Document;
+}
+
+const browserGlobals = globalThis as BrowserGlobals;
+const navigatorLike = browserGlobals.navigator;
+const userAgent = navigatorLike?.userAgent ?? '';
 const userAgentLowerCase = userAgent.toLowerCase();
-const userAgentData = navigator.userAgentData as { mobile: boolean; } | null;
+const userAgentData = navigatorLike?.userAgentData ?? null;
 const isMobile = userAgentData?.mobile
     ?? /android|mobile|phone|webos|iphone|ipad|ipod|blackberry/.test(userAgentLowerCase);
 const isChromium = userAgentLowerCase.includes('chrome');
+const windowLike = browserGlobals.window;
 
 export const DeviceInfo = {
     isMobile: isMobile,
@@ -15,14 +34,12 @@ export const DeviceInfo = {
     isWebKit: userAgentLowerCase.includes('webkit') && !isChromium,
     isFirefox: userAgentLowerCase.includes('firefox'),
     isEdge: userAgentLowerCase.includes('edg/'),
-    isTouchCapable: (typeof window !== 'undefined'
-        && (('ontouchstart' in window) || (navigator.maxTouchPoints > 0))
-        && window.matchMedia('(pointer: coarse)').matches),
+    isTouchCapable: Boolean(windowLike
+        && (('ontouchstart' in windowLike) || ((navigatorLike?.maxTouchPoints ?? 0) > 0))
+        && windowLike.matchMedia?.('(pointer: coarse)').matches),
 
     updateBodyClasses: function (): void {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        const body = document?.body;
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        const body = browserGlobals.document?.body;
         if (!body)
             return;
 
