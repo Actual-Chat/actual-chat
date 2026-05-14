@@ -33,7 +33,7 @@ interface PreviewQueueItem {
 // the original; the selected preview sink observes a short-lived clone.
 export function previewForwarder(opts: PreviewForwarderOptions): PipeOperator<NormalizedFrame, NormalizedFrame> {
     const { getWriter, reportFrame, reportPresentation } = opts;
-    const maxBufferedFrames = Math.max(1, Math.floor(opts.maxBufferedFrames ?? 2));
+    const maxBufferedFrames = Math.max(1, Math.floor(opts.maxBufferedFrames ?? 3));
     const frameDurationMs = opts.frameDurationMs ?? getFrameDurationMs();
     const nowMs = opts.nowMs ?? (() => performance.now());
     const sleep = opts.sleep ?? ((delayMs: number) => new Promise<void>(resolve => setTimeout(resolve, delayMs)));
