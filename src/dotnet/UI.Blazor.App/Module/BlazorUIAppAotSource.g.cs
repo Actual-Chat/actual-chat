@@ -50,6 +50,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AvatarStep>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.BackendStatusTest>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.Banners>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CameraMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatActivities>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatActivityPanel>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatActivityPanelNarrowScreenWrapper>();
@@ -178,7 +179,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingCallModalHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingShareModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IosAppGuideContent>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CameraMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.JoinVideoCallModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LanguageButtonGroup>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LanguagesStep>();
@@ -369,6 +369,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoDiagnosticsModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoStreamingPreview>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoTrackPlayer>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanelMenu>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanelMenuContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoToggle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VisualMediaAttachment>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VisualMediaAttachmentList>();
@@ -702,6 +704,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.AvatarStep), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.BackendStatusTest), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.Banners), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CameraMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatActivities), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatActivityPanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatActivityPanelNarrowScreenWrapper), AotTypeKind.Component),
@@ -830,7 +833,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingCallModalHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingShareModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IosAppGuideContent), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.CameraMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.JoinVideoCallModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LanguageButtonGroup), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LanguagesStep), AotTypeKind.Component),
@@ -1021,6 +1023,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoDiagnosticsModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoStreamingPreview), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.VideoTrackPlayer), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanelMenu), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanelMenuContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoToggle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VisualMediaAttachment), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VisualMediaAttachmentList), AotTypeKind.Component),
