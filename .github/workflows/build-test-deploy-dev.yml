@@ -21,6 +21,11 @@ on:
         required: false
         default: false
         description: Skip unit and integration tests
+      useNativeAot:
+        type: boolean
+        required: false
+        default: false
+        description: Build the iOS app with Native AOT (experimental, hits upstream linker bug — dotnet/runtime#119380)
   create:
   push:
     branches:
@@ -676,7 +681,7 @@ jobs:
 
       - name: Build app package
         run: |-
-          ./run-build.cmd publish-ios --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}" --use-native-aot true
+          ./run-build.cmd publish-ios --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}" --use-native-aot "${{ github.event.inputs.useNativeAot || 'false' }}"
           pushd artifacts/publish/App.Maui/release_net10.0-ios_ios-arm64
           unzip ActualChat.ipa
           rm -r Payload/ActualChat.app/_CodeSignature
