@@ -226,7 +226,7 @@
                     const isRightPanelVisibleData = localStorage.getItem('RightPanelUI.RightPanel.IsVisible');
                     const isRightPanelVisible = isRightPanelVisibleData === '1';
                     overlay.innerHTML = `
-                        <splash-page-skeleton isRightPanelVisible="${isRightPanelVisible}"/>
+                        <splash-page-skeleton class="no-scrollbar" isRightPanelVisible="${isRightPanelVisible}"/>
                     `;
                 }
             } catch (err) {

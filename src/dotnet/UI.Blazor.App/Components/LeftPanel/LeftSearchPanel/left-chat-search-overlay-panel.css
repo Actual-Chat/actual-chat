@@ -36,7 +36,6 @@
 .left-place-search-overlay-panel .tab-panel .btn-group {
     @apply py-0 px-2;
     @apply overflow-x-auto;
-    scrollbar-width: none;
 }
 .left-place-search-overlay-panel .c-search-tab.c-container, /* TODO: Remove when migrated to new search UI */
 .left-place-search-overlay-panel .tab > .c-container {

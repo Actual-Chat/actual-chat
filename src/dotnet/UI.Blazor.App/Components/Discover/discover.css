@@ -1,10 +1,6 @@
 .discover-layout {
     @apply flex-1 flex-y;
 }
-.discover-layout .layout-body {
-    scrollbar-width: none;
-}
-
 /* Test Page */
 .discover-test-content {
     @apply flex-x flex-1;
@@ -70,7 +66,6 @@
     @apply flex-y gap-y-2;
     @apply py-2;
     @apply overflow-auto;
-    scrollbar-width: none;
 }
 .discover-left .c-wide .creation-buttons {
     @apply flex-x gap-x-2 justify-between;

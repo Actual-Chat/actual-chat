@@ -18,7 +18,7 @@
     MaxLength="@Constants.Chat.MaxSearchFilterLength"
     TextChanged="@OnFilter"/>
 
-<div class="member-list">
+<div class="member-list no-scrollbar">
     @foreach (var authorId in m.AuthorIds) {
         var isOwn = m.IsOwn(authorId);
         var isOwner = m.IsOwner(authorId);
@@ -39,9 +39,9 @@
                      data-menu-trigger="@MenuTrigger.Primary"
                      data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
 
-                    <ButtonRound Class="btn-transparent btn-xxs">
+                    <HeaderButton>
                         <i class="icon-more-vertical text-2xl"></i>
-                    </ButtonRound>
+                    </HeaderButton>
                 </div>
             }
         </li>

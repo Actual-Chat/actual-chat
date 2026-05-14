@@ -24,7 +24,7 @@
 
 @if (_showAllReactions) {
     <div class="message-menu">
-        <div class="reactions-menu">
+        <div class="reactions-menu no-scrollbar">
             @foreach (var group in Enum.GetValues<EmojiGroup>()) {
                 <div @key="group" class="reactions-menu-group">
                     <div class="reactions-menu-group-items">

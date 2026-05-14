@@ -62,6 +62,12 @@
 
 .navbar-chats .chat-list.virtual-list::-webkit-scrollbar {
     display: block;
+    width: 0.25rem;
+    height: 0.25rem;
+}
+body.narrow .navbar-chats .chat-list.virtual-list::-webkit-scrollbar {
+    width: 0.125rem;
+    height: 0.125rem;
 }
 
 /* Top-level container - active-chats, pinned-chats, etc. */

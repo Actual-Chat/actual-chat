@@ -21,10 +21,6 @@ splash-page-skeleton {
     padding-bottom: var(--safe-area-bottom);
     padding-left: var(--safe-area-left);
     padding-right: var(--safe-area-right);
-    scrollbar-width: none;
-}
-splash-page-skeleton::-webkit-scrollbar {
-    display: none;
 }
 
 .animated-skeleton {
@@ -78,7 +74,6 @@ thin-left-panel-skeleton .c-delimiter {
     @apply flex-y;
     @apply bg-03;
     @apply w-full;
-    scrollbar-width: none;
 }
 body.narrow .wide-left-panel-skeleton {
     width: 100%;
@@ -105,12 +100,14 @@ body.narrow .wide-left-panel-skeleton:has(.inaccessible-place-request) {
 .wide-left-panel-skeleton .panel-body-skeleton {
     @apply gap-y-0.5 overflow-hidden;
     @apply px-2;
-    scrollbar-width: none;
 }
 
 /* Chat Panel Skeleton */
 .layout-body:has(.chat-panel-skeleton) {
     scrollbar-width: none;
+}
+.layout-body:has(.chat-panel-skeleton)::-webkit-scrollbar {
+    display: none;
 }
 .chat-panel-skeleton {
     @apply absolute md:relative;
@@ -193,17 +190,12 @@ body.narrow .right-panel-skeleton {
 /* Panel Body Skeleton */
 .panel-body-skeleton {
     @apply flex-1 flex-y;
-    scrollbar-width: none;
 }
 .chat-panel-skeleton .panel-body-skeleton {
     @apply self-center;
     @apply w-full h-0 min-h-0 lg:max-w-192;
     @apply p-2 md:py-1.5 md:px-0 ml-[2px];
     @apply overflow-y-auto;
-    scrollbar-width: none;
-}
-.chat-panel-skeleton .panel-body-skeleton::-webkit-scrollbar {
-    @apply hidden;
 }
 
 /* Panel Footer Skeleton */
@@ -450,10 +442,6 @@ chat-list-skeleton .message-skeleton.thread-skeleton .c-container {
 chat-view-skeleton {
     @apply flex-y lg:self-center;
     @apply w-full lg:max-w-192;
-    scrollbar-width: none;
-}
-chat-view-skeleton::-webkit-scrollbar {
-    @apply hidden;
 }
 chat-view-skeleton.animated-skeleton {
     animation: pulse 2s infinite;

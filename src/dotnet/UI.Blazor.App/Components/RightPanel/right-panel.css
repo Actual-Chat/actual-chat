@@ -112,7 +112,6 @@ body.hoverable .right-panel-chat-info-item.hovered:hover,
     @apply text-caption-6 text-03;
     line-height: 0.875rem;
     max-height: calc(0.875rem * 3);
-    scrollbar-width: none;
     word-break: break-word;
 }
 .right-panel > .c-header > .c-bottom > .c-info > .c-bullet {

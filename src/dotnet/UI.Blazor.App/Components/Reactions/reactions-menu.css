@@ -3,7 +3,6 @@
     @apply w-full md:min-w-72 md:max-w-80 h-full max-h-120;
     @apply p-2;
     @apply overflow-y-auto;
-    scrollbar-width: none;
 }
 .reactions-menu-group {
     @apply flex flex-col gap-1;

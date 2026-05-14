@@ -95,10 +95,6 @@ body.narrow .place-info {
 .place-info > .c-bottom .tab-panel .tab {
     @apply h-full;
     @apply overflow-y-auto;
-    scrollbar-width: none;
-}
-.place-info > .c-bottom .tab-panel .tab::-webkit-scrollbar {
-    display: none;
 }
 
 .place-info .member-list {

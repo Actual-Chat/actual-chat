@@ -7,7 +7,7 @@
 <div @ref="Ref" id="@Id" class="@Class markup-editor">
     <div class="c-cursor"></div>
     <div class="c-placeholder">@Placeholder</div>
-    <div class="editor-content"
+    <div class="editor-content @ContentClass"
          enterkeyhint="enter"
          contenteditable="true">
     </div>
@@ -34,6 +34,7 @@
     [Parameter] public string Id { get; set; } = "";
     [Parameter] public string Placeholder { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string ContentClass { get; set; } = "";
     [Parameter] public bool Autofocus { get; set; }
     [Parameter] public EventCallback<string> Post { get; set; }
     [Parameter] public EventCallback Cancel { get; set; }

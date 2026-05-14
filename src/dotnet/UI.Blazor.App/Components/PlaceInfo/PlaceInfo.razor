@@ -108,10 +108,10 @@
             TabsClass="left-panel-tabs wide-left-panel-tabs"
             BottomHill="true">
 
-            <Tab @key="@("chats")" Id="chats" Title="Chats" Order="0">
+            <Tab @key="@("chats")" Id="chats" Title="Chats" Order="0" Class="no-scrollbar">
                 <ChatList @key="@place.Id.Value" PlaceId="@place.Id" UsePlaceChatListSettings="@m.IsPlaceMember" />
             </Tab>
-            <Tab @key="@("members")" Id="members" Title="Members" Order="1">
+            <Tab @key="@("members")" Id="members" Title="Members" Order="1" Class="no-scrollbar">
                 <PlaceInfoMembersTab Data="@m"/>
             </Tab>
         </TabPanel>

@@ -230,7 +230,6 @@ body.narrow .docs-tab .docs-content {
 .log-viewer-tab .settings-tab-header,
 .log-viewer-tab .settings-tab-content {
     @apply w-full max-w-144;
-    scrollbar-width: none;
 }
 .log-viewer-page .log-list {
     height: calc(100vh - 5rem);

@@ -53,6 +53,7 @@
     if (m.Chat is { } mChat)
         _lastChat = mChat;
     var layout = m.Layout;
+    var isMobileOrNarrow = ScreenSize.IsNarrow() || Hub.BrowserInfo.IsMobile;
 }
 
 <OnUIEvent TEvent="@CameraSelectedEvent" Handler="OnCameraSelectedEvent"/>
@@ -106,7 +107,7 @@
 
         @* Footer for mobile full-screen video *@
         <div class="video-panel-toolbar video-panel-footer">
-            @if (ScreenSize.IsNarrow()) {
+            @if (isMobileOrNarrow) {
                 <HeaderButton
                     Click="@OnSwitchCamera"
                     Class="btn-video-panel"
@@ -140,7 +141,7 @@
                 Class="@("btn-video-panel btn-video-toggle " + videoBtnCls)">
                 <i class="icon-video text-lg"></i>
             </HeaderButton>
-            @if (!ScreenSize.IsNarrow()) {
+            @if (!isMobileOrNarrow) {
                 <HeaderButton Click="@OnToggleChatVisibilityClick" Class="@("btn-video-panel chat-btn " + chatBtnCls)">
                     <i class="icon-message-ellipse text-lg"></i>
                 </HeaderButton>

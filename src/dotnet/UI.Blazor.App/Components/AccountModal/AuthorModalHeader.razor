@@ -66,11 +66,11 @@
             <AuthorName AuthorId="@Author.Id" Class="text-02 text-headline-7" ShowDetailsOnClick="false"/>
         </div>
         @if (!_peerOwnName.IsNullOrEmpty()) {
-            <span class="c-public">
+            <span class="c-public no-scrollbar">
                 @_peerOwnName
             </span>
         }
-        <div class="c-public">
+        <div class="c-public no-scrollbar">
             @if (!Author.Avatar.Bio.IsNullOrEmpty()) {
                 @Author.Avatar.Bio
             }

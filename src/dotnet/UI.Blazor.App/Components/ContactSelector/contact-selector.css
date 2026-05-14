@@ -33,7 +33,6 @@ body.hoverable .contact-selector-list-item:hover,
     @apply p-1;
     @apply border-t border-separator;
     @apply bg-transparent;
-    scrollbar-width: none;
 }
 .contact-selector-badges:empty {
     @apply p-0;
@@ -86,7 +85,7 @@ body.hoverable .contact-selector-badges > .c-contact:hover .c-remove {
 /* Place picker */
 .contact-selector-place-picker {
     @apply flex-none flex-x gap-x-4 ;
-    @apply overflow-x-auto custom-scrollbar-hide;
+    @apply overflow-x-auto;
 }
 .contact-selector-place-picker .tab-panel {
     @apply px-2;

@@ -22,7 +22,7 @@
                     <div class="layout-subfooter">
                         @SubFooter
                     </div>
-                    <div class="layout-body">
+                    <div class="layout-body @BodyClass">
                         <ErrorBarrier Name="PageWithHeaderAndFooter-Body">
                             @Body
                         </ErrorBarrier>
@@ -43,6 +43,7 @@
     [Inject] public PanelsUI PanelsUI { get; init; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string BodyClass { get; set; } = "";
     [Parameter] public RenderFragment? Header { get; set; }
     [Parameter] public RenderFragment? SubHeader { get; set; }
     [Parameter] public RenderFragment? Footer { get; set; }

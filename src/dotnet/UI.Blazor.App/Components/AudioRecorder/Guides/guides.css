@@ -5,11 +5,6 @@
 .guide-modal .dialog-body {
     @apply gap-y-4;
     @apply overflow-y-auto;
-    @apply custom-scrollbar-hide;
-}
-
-.guide-modal .dialog-body::-webkit-scrollbar {
-    @apply hidden;
 }
 
 .guide-modal .c-text {

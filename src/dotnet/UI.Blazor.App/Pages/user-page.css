@@ -4,5 +4,5 @@
 
 .home-page {
     @apply h-full w-full;
-    @apply overflow-auto custom-scrollbar-hide;
+    @apply overflow-auto;
 }
