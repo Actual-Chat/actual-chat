@@ -1,17 +1,12 @@
-using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.IO;
 using Sentry;
 
 namespace ActualChat.App.Maui.Services;
 
-public sealed class MauiReportUI(IServiceProvider services) : ReportUI
+public sealed class MauiReportUI(UIHub hub) : ReportUI(hub)
 {
     private static readonly TimeSpan FlushTimeout = TimeSpan.FromSeconds(15);
-
-    private ILogger Log { get; } = services.LogFor<MauiReportUI>();
-    private AccountUI AccountUI => field ??= services.GetRequiredService<AccountUI>();
-    private HostInfo HostInfo => field ??= services.HostInfo();
 
     public override bool IsAvailable => true;
 
