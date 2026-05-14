@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 public static class LogUIExt
 {
-    public static async Task<FilePath> DumpToTempFile(this LogUI logUI, CancellationToken cancellationToken)
+    public static async Task<Disposable<FilePath>> DumpToTempFile(this LogUI logUI, CancellationToken cancellationToken)
     {
         var fileName = $"{MomentClockSet.Default.SystemClock.UtcNow:yyyyMMdd-HHmmss}.log";
         FilePath logFile = (FilePath)Path.GetTempPath() | fileName;
@@ -17,7 +17,7 @@ public static class LogUIExt
             logFile.DeleteSilently();
             throw;
         }
-        return logFile;
+        return Disposable.New(logFile, x => x.DeleteSilently());
     }
 
     public static async Task Save(this LogUI logUI, Stream stream, CancellationToken cancellationToken)
