@@ -136,7 +136,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         fusion.AddService<AccountUI>(ServiceLifetime.Scoped);
         fusion.AddService<TotpUI>(ServiceLifetime.Scoped);
         fusion.AddService<LogUI>(ServiceLifetime.Scoped);
-        services.AddScoped<ReportUI>();
+        services.AddScoped(c => new ReportUI(c.UIHub()));
 
         // Host-specific services
         services.AddScoped<SessionTokens>(c => new SessionTokens(c.UIHub()));

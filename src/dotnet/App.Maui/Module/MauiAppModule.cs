@@ -52,7 +52,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<MicrophonePermissionHandler>(c => new MauiMicrophonePermissionHandler(c.UIHub()));
         services.AddScoped<CameraPermissionHandler>(c => new MauiCameraPermissionHandler(c.UIHub()));
         services.AddScoped<IDataCollectionSettingsUI>(_ => new MauiDataCollectionSettingsUI());
-        services.AddScoped<ReportUI>(c => new MauiReportUI(c)); // Replaces base no-op ReportUI
+        services.AddScoped<ReportUI>(c => new MauiReportUI(c.UIHub())); // Replaces base no-op ReportUI
 
         // Connectivity
         services.AddScoped<ConnectivityUI>(c => new MauiConnectivityUI(c.UIHub()));
