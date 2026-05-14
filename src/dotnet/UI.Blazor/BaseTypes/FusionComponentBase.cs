@@ -41,6 +41,7 @@ public abstract class FusionComponentBase<THub> : FusionComponentBase, IHasCircu
     // Shortcuts
     protected bool IsPrerendering => Hub.IsPrerendering;
     protected bool IsInteractive => Hub.IsInteractive;
+    protected bool ShouldAutoFocusField => Hub.BrowserInfo.ShouldAutoFocusField;
 
     // Explicit IHasFusionHub & IHasServices implementation
     CircuitHub IHasCircuitHub.CircuitHub => Hub;

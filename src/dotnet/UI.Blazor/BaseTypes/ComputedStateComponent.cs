@@ -38,6 +38,7 @@ public abstract class ComputedStateComponent<THub, TState> : ComputedStateCompon
     // Shortcuts
     protected bool IsPrerendering => Hub.IsPrerendering;
     protected bool IsInteractive => Hub.IsInteractive;
+    protected bool ShouldAutoFocusField => Hub.BrowserInfo.ShouldAutoFocusField;
 
     protected ComputedStateComponent()
         => Options = DefaultOptions | ComputedStateComponentOptions.ComputeStateOnThreadPool; // Prevent blocking the UI thread

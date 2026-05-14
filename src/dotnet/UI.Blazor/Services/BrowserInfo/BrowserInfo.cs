@@ -30,6 +30,9 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
     public string WindowId { get; protected set; } = "";
     public Task WhenReady => WhenReadySource.Task;
     public Task WhenWasmReady => WhenWasmReadySource.Task;
+    // True when the device likely has a physical keyboard (heuristic):
+    // wide viewport (not a phone) + hoverable pointer (not touch-only).
+    public bool ShouldAutoFocusField => ScreenSize.Value.IsWide() && IsHoverable.Value;
 
     public BrowserInfo(UIHub hub) : base(hub)
     {
