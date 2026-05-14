@@ -14,7 +14,8 @@
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.CopyTrigger.create";
 
     private ElementReference _ref;
-    private Task<IJSObjectReference>? _jsRefTask;
+    private IJSObjectReference? _jsRef;
+    private readonly AsyncTaskMethodBuilder _whenFirstRender = AsyncTaskMethodBuilderExt.New();
     private string _lastCopyText = "";
 
     [Parameter] public string Class { get; set; } = "";
@@ -26,29 +27,27 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            // Store the in-flight task so a re-render triggered by the parent
-            // (e.g. AddMemberModalPage.OnInitializedAsync) can await it instead
-            // of dereferencing a not-yet-assigned IJSObjectReference — see #3864.
-            _jsRefTask = JS.InvokeAsync<IJSObjectReference>(
-                JSCreateMethod,
-                _ref, CopyText, Tooltip, CopyTextSourceRef, CopyTextFormatString).AsTask();
-            await _jsRefTask;
+            try {
+                _jsRef = await JS.InvokeAsync<IJSObjectReference>(
+                    JSCreateMethod,
+                    _ref, CopyText, Tooltip, CopyTextSourceRef, CopyTextFormatString);
+                _lastCopyText = CopyText;
+            }
+            finally {
+                _whenFirstRender.TrySetResult();
+            }
+        } else if (CopyText != _lastCopyText) {
             _lastCopyText = CopyText;
-        } else if (CopyText != _lastCopyText && _jsRefTask is not null) {
-            _lastCopyText = CopyText;
-            var jsRef = await _jsRefTask;
-            await jsRef.InvokeVoidAsync("setCopyText", CopyText);
+            await _whenFirstRender.Task;
+            if (_jsRef is not null)
+                await _jsRef.InvokeVoidAsync("setCopyText", CopyText);
         }
     }
 
     public async ValueTask DisposeAsync() {
-        var task = _jsRefTask;
-        _jsRefTask = null;
-        if (task is null)
-            return;
-        IJSObjectReference? jsRef = null;
-        try { jsRef = await task; }
-        catch { /* Intended: JS init may have failed; nothing to dispose. */ }
-        await jsRef.DisposeSilentlyAsync("dispose");
+        // Unblock anyone still awaiting first-render if dispose races init.
+        _whenFirstRender.TrySetResult();
+        await _jsRef.DisposeSilentlyAsync("dispose");
+        _jsRef = null;
     }
 }
