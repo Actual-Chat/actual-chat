@@ -39,7 +39,6 @@
     @apply max-h-16;
     @apply overflow-y-auto overflow-x-hidden;
     @apply text-caption-6 text-03;
-    scrollbar-width: none;
 }
 .author-modal .c-header > .c-center {
     @apply absolute top-12 z-20;

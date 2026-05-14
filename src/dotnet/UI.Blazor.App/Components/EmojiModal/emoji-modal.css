@@ -20,10 +20,6 @@ body.device-android .modal-frame.emoji-modal {
 }
 .emoji-modal .tab {
     @apply overflow-y-auto overflow-x-hidden;
-    scrollbar-width: none;
-}
-.emoji-modal .tab::-webkit-scrollbar {
-    display: none;
 }
 
 /* ── Tabs ── */
@@ -70,10 +66,6 @@ body.hoverable .emoji-modal .c-item:hover,
 .emoji-modal .c-emoji-recent-list {
     @apply flex-x gap-1;
     @apply overflow-x-auto;
-    scrollbar-width: none;
-}
-.emoji-modal .c-emoji-recent-list::-webkit-scrollbar {
-    display: none;
 }
 
 /* ── GIF tab ── */
@@ -87,10 +79,6 @@ body.hoverable .emoji-modal .c-item:hover,
     @apply flex-1 flex-y;
     @apply min-h-0;
     @apply overflow-y-auto;
-    scrollbar-width: none;
-}
-.emoji-modal .c-gif-scroll::-webkit-scrollbar {
-    display: none;
 }
 .emoji-modal .c-gif-tab .search-box {
     @apply flex-none;
@@ -108,10 +96,6 @@ body.hoverable .emoji-modal .c-item:hover,
 .emoji-modal .c-gif-recent-list {
     @apply flex gap-1;
     @apply overflow-x-auto;
-    scrollbar-width: none;
-}
-.emoji-modal .c-gif-recent-list::-webkit-scrollbar {
-    display: none;
 }
 .emoji-modal .c-gif-recent-item {
     @apply flex-none;

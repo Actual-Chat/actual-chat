@@ -5,11 +5,11 @@
 
 <div class="c-gif-tab">
     <SearchBox Placeholder="Search GIFs..." ClearButton="true" TextChanged="@OnSearch"/>
-    <div class="c-gif-scroll">
+    <div class="c-gif-scroll no-scrollbar">
         @if (_recentGifs.Count > 0 && _searchQuery.IsNullOrEmpty()) {
             <div class="c-gif-recent">
                 <div class="c-gif-recent-label">Recent</div>
-                <div class="c-gif-recent-list">
+                <div class="c-gif-recent-list no-scrollbar">
                     @foreach (var gif in _recentGifs) {
                         @GifButton(gif, "c-gif-recent-item", false)
                     }

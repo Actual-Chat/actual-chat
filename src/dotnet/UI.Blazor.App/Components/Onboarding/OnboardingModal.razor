@@ -18,7 +18,7 @@
     NarrowViewSettings="DialogFrameNarrowViewSettings.Default">
     <Body>
     <Stepper Context="stepper" CurrentStepChanged="@OnCurrentStepChanged"
-        Class="onboarding-stepper" ShowNoise="@true" SkipCompletedSteps="@true">
+        Class="onboarding-stepper" ContentClass="no-scrollbar" ShowNoise="@true" SkipCompletedSteps="@true">
         <Filler>
             @if (stepper.CurrentStep is PhoneStep) {
                 <div class="stepper-image-filler">

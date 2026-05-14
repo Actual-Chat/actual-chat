@@ -200,7 +200,7 @@
         width: 0.125rem;
         height: 0.125rem;
     }
-    .custom-scrollbar-hide::-webkit-scrollbar {
+    .no-scrollbar::-webkit-scrollbar {
         width: 0;
         height: 0;
     }
@@ -233,7 +233,7 @@
     body.hoverable .custom-scrollbar-x:hover {
         scrollbar-color: var(--scrollbar) transparent;
     }
-    .custom-scrollbar-hide {
+    .no-scrollbar {
         scrollbar-width: none;
     }
 

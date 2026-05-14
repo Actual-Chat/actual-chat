@@ -9,12 +9,12 @@
     NarrowViewSettings="DialogFrameNarrowViewSettings.Bottom">
     <Body>
         <TabPanel @ref="_tabPanel" BottomHill="true" TabsClass="emoji-modal-tabs">
-            <Tab Id="emoji" Title="Emoji" Order="0">
+            <Tab Id="emoji" Title="Emoji" Order="0" Class="no-scrollbar">
                 <div class="c-grid">
                     @if (_recentEmojis.Count > 0) {
                         <div class="c-emoji-recent">
                             <div class="c-group-title">Recent</div>
-                            <div class="c-emoji-recent-list">
+                            <div class="c-emoji-recent-list no-scrollbar">
                                 @foreach (var emoji in _recentEmojis) {
                                     @EmojiButton(emoji)
                                 }
@@ -33,7 +33,7 @@
                     }
                 </div>
             </Tab>
-            <Tab Id="gif" Title="GIF" Order="1">
+            <Tab Id="gif" Title="GIF" Order="1" Class="no-scrollbar">
                 <GifPicker GifSelected="@OnGifSelected"/>
             </Tab>
         </TabPanel>

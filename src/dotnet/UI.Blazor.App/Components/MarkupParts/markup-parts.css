@@ -82,8 +82,6 @@
     @apply inline;
     white-space: nowrap;
 }
-body.hoverable .playable-text-markup > span:hover {
-}
 
 .playable-text-markup .highlight {
     @apply text-primary;

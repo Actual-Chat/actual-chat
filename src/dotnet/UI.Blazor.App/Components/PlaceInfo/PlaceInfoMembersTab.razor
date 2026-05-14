@@ -2,7 +2,7 @@
     var m = Data;
 }
 
-<div class="member-list">
+<div class="member-list no-scrollbar">
     @foreach (var authorId in m.AuthorIds) {
         var isOwn = m.IsOwn(authorId);
         var isOwner = m.IsOwner(authorId);

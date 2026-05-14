@@ -2,7 +2,6 @@
     @apply flex-none flex-x gap-x-1;
     @apply mx-2;
     @apply overflow-y-hidden;
-    @apply custom-scrollbar-hide;
 }
 .recently-contacted-people:first-child,
 .recently-contacted-people:last-child {

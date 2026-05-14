@@ -6,7 +6,7 @@
 }
 
 <div class="contact-selector-wrapper">
-    <div class="contact-selector-badges">
+    <div class="contact-selector-badges no-scrollbar">
         @foreach (var chatId in selectedChatIds) {
             var chat = allChats.GetValueOrDefault(chatId);
             if (chat == null)

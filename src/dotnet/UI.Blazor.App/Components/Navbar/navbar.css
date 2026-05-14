@@ -163,7 +163,6 @@ body.hoverable .navbar-item:hover,
     @apply flex-y items-end gap-y-3 md:gap-y-2;
     @apply gap-y-3 md:gap-y-2;
     @apply w-full overflow-x-hidden overflow-y-auto;
-    @apply custom-scrollbar-hide;
 }
 
 .navbar-place-buttons {

@@ -168,6 +168,46 @@ Do NOT write Tailwind utility classes directly in `.razor` markup. Instead, assi
 <Button Class="@(_isActive ? "btn-primary" : "btn-secondary")" />
 ```
 
+## Scrollbars
+
+### Hiding scrollbars: `no-scrollbar`
+
+`tailwind.css` defines a `.no-scrollbar` utility that hides the scrollbar in both Firefox and webkit browsers:
+
+```css
+.no-scrollbar               { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { width: 0; height: 0; }
+```
+
+**Always put `no-scrollbar` directly on the element in Razor/HTML — not via `@apply` in component CSS.**
+
+```razor
+<div class="member-list no-scrollbar">
+```
+
+`@apply no-scrollbar` only inlines `scrollbar-width: none` (Firefox). The `::-webkit-scrollbar` pseudo rule is a separate selector and is not pulled in by `@apply`, so the scrollbar stays visible on webkit. Adding the class on the element makes both rules match the same node and gives one source of truth.
+
+When the element is rendered inside a shared component, prefer passing the class through the component's class parameter:
+
+| Component | Parameter | Targets |
+|---|---|---|
+| `DialogFrame` / `DiveInDialogFrame` | `BodyClass` | `.dialog-body` |
+| `PageWithHeaderAndFooter` (via `DefaultLayout.BodyClass`) | `BodyClass` | `.layout-body` |
+| `Stepper` | `ContentClass` | `.stepper-content` |
+| `SettingsTab` | `HeaderClass` / `ContentClass` | `.settings-tab-header` / `.settings-tab-content` |
+| `MarkupEditor` | `ContentClass` | `.editor-content` |
+
+When neither direct HTML nor a class parameter is feasible (e.g. a `:has()`-conditional rule), keep the local CSS but write the **paired FF + webkit** version so both browsers behave the same:
+
+```css
+.layout-body:has(.chat-panel-skeleton)              { scrollbar-width: none; }
+.layout-body:has(.chat-panel-skeleton)::-webkit-scrollbar { display: none; }
+```
+
+### Custom scrollbar: `custom-scrollbar` / `custom-scrollbar-x`
+
+`tailwind.css` also defines thin styled scrollbars (`.custom-scrollbar`, `.custom-scrollbar-x`, `.custom-scrollbar-outside`). These are normal Tailwind utilities — use them via `@apply` or directly in Razor as you would any other class.
+
 ## CSS File Structure
 
 ### Selector Ordering
@@ -376,6 +416,46 @@ Key conventions:
 
 - **`ImportName`** — `BlazorUICoreModule.ImportName` (`"ui"`) for `UI.Blazor` components, `BlazorUIAppModule.ImportName` (`"blazorApp"`) for `UI.Blazor.App` components
 - **`.ConfigureAwait(true)`** — use in UI code when accessing instance members after await
+
+### State classes shared between Razor and JS
+
+Blazor rewrites the whole `class` attribute whenever any expression in the binding changes. Any class JS added on the side gets dropped silently on the next unrelated re-render.
+
+**Wrong** — JS is the sole writer of `expanded`:
+
+```razor
+<div @ref="Ref" class="panel @firstOpenCls @recordingCls">
+```
+```typescript
+public expand(): void {
+    document.body.appendChild(this.panel);
+    this.panel.classList.add('expanded'); // wiped by the next Razor render
+}
+```
+
+**Correct** — route the state class through Razor too, so re-renders preserve it:
+
+```razor
+@{
+    var expandedCls = m.IsExpanded ? "expanded" : "";
+}
+<div @ref="Ref" class="panel @firstOpenCls @recordingCls @expandedCls">
+```
+
+This is critical when the class also gates DOM position. If JS reparented the element to `document.body` based on the class, a class wipe alone leaves the element stuck there with nothing signalling that it should come back.
+
+### Reparenting Blazor-rendered elements
+
+If JS moves a Blazor-rendered element out of its home (e.g. `document.body.appendChild` for fixed-positioning escape), capture the original parent in the constructor and restore it on teardown:
+
+```typescript
+constructor(panel: HTMLElement, blazorRef: DotNet.DotNetObject) {
+    this.panel = panel;
+    this.home = panel.parentElement; // restore target
+}
+```
+
+For defense-in-depth, add a MutationObserver on the element's class attribute that returns it to `this.home` when none of the state classes that should hold it elsewhere are present. Cheap, catches future races regardless of cause.
 
 ## Modal Components
 

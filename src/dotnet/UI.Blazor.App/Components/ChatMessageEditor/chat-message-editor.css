@@ -92,14 +92,9 @@ body.narrow .narrow-panel .post-panel .message-input-label {
 
 .post-panel .message-input .editor-content {
     @apply mr-0 md:mr-2 md:py-0.5;
-    @apply custom-scrollbar-hide;
     /* AY: It's an inline element that grows to flexbox container, so setting its width defines the weight,
        but flexbox ensures it never grows above what's allowed;
        I checked w-full, etc. - all these options let the text (1 long word) to overflow-x the container. */
-}
-
-.post-panel .message-input .editor-content::-webkit-scrollbar {
-    display: none;
 }
 
 .not-recording {
@@ -640,15 +635,18 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
     @apply w-8 h-8;
     background: radial-gradient(circle at left top, transparent 70%, var(--post-panel) 60%)
 }
-body.narrow .list-view-layout:has(.chat-activity-panel.listening) .rounded-sub-footer {
+body.narrow .list-view-layout:has(.chat-activity-panel.listening) .rounded-sub-footer,
+body.narrow .list-view-layout:has(.audio-panel-header) .rounded-sub-footer {
     @apply h-20 inset-x-0;
     top: calc(-5rem + 1px);
 }
-body.narrow .list-view-layout:has(.chat-activity-panel.listening) .narrow-panel .rounded-sub-footer {
+body.narrow .list-view-layout:has(.chat-activity-panel.listening) .narrow-panel .rounded-sub-footer,
+body.narrow .list-view-layout:has(.audio-panel-header) .narrow-panel .rounded-sub-footer {
     @apply h-12 inset-x-0;
     top: calc(-3rem + 1px);
 }
-body.narrow .list-view-layout:has(.chat-activity-panel.listening) .rounded-sub-footer > .bg-layer {
+body.narrow .list-view-layout:has(.chat-activity-panel.listening) .rounded-sub-footer > .bg-layer,
+body.narrow .list-view-layout:has(.audio-panel-header) .rounded-sub-footer > .bg-layer {
     background:
         radial-gradient(100.91% 105.88% at 50% 100%, var(--background-01) 30%, var(--transparent) 75%),
         radial-gradient(100.91% 105.88% at 50% 100%, var(--footer-fog-color-1) 30%, var(--footer-fog-color-2) 75%);
