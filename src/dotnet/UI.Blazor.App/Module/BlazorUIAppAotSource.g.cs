@@ -300,6 +300,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RenderModeSelector>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReplaySpeedMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReplaySubHeader>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReportModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightChatPanelButtonBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanel>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RightPanelChatInfo>();
@@ -954,6 +955,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.RenderModeSelector), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReplaySpeedMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReplaySubHeader), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ReportModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightChatPanelButtonBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.RightPanelChatInfo), AotTypeKind.Component),

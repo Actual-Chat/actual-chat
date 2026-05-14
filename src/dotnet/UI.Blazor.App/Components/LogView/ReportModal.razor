@@ -1,0 +1,96 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualLab.IO
+@inherits ComponentBase<AppUIHub>
+@implements IModalView<ReportModal.Model>
+
+<DialogFrame
+    Class="report-modal modal-sm"
+    Title="Send a report"
+    HasCloseButton="true">
+    <Body>
+    <div class="c-container">
+        <div class="c-description">
+            We'll attach the current log buffer to help diagnose the issue.
+            Add a short note describing what happened (optional).
+        </div>
+        <textarea
+            class="report-modal-comment"
+            rows="4"
+            maxlength="@CommentMaxLength"
+            placeholder="What were you doing? What went wrong?"
+            value="@_comment"
+            disabled="@_isSubmitting"
+            @oninput="OnCommentInput">
+        </textarea>
+        <div class="c-counter">@_comment.Length / @CommentMaxLength</div>
+    </div>
+    </Body>
+    <Buttons>
+        <Button Class="btn-modal" Click="@OnCancel" IsDisabled="@_isSubmitting">Cancel</Button>
+        <Button Class="btn-modal btn-primary" Click="@OnSubmit" IsDisabled="@(_isSubmitting || string.IsNullOrWhiteSpace(_comment))">
+            @(_isSubmitting ? "Sending…" : "Send")
+        </Button>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    private const int CommentMaxLength = 1000;
+
+    private string _comment = "";
+    private bool _isSubmitting;
+
+    private LogUI LogUI => Hub.LogUI;
+    private ReportUI ReportUI => Hub.ReportUI;
+    private ILogger Log => field ??= Hub.LogFor(GetType());
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private void OnCommentInput(ChangeEventArgs e) {
+        var v = e.Value as string ?? "";
+        if (v.Length > CommentMaxLength)
+            v = v[..CommentMaxLength];
+        _comment = v;
+    }
+
+    private void OnCancel()
+        => Modal.Close();
+
+    private async Task OnSubmit() {
+        if (_isSubmitting)
+            return;
+
+        _isSubmitting = true;
+        var now = Clocks.SystemClock.Now;
+        var fileName = $"voxt-log-{now.ToString("yyyyMMdd-HHmmss")}.log";
+        FilePath logFile = (FilePath)Path.GetTempPath() | fileName;
+        Log.LogInformation("OnSubmit: starting, ReportUI={ReportUIType}, IsAvailable={IsAvailable}, logFile={LogFile}",
+            ReportUI.GetType().Name, ReportUI.IsAvailable, logFile.Value);
+        try {
+            var ct = CancellationToken.None;
+            var idRange = await LogUI.GetIdRange(ct);
+            var tiles = await LogUI.GetTiles(idRange, ct);
+            var entries = tiles.SelectMany(t => t.Entries).ToList();
+            var account = AccountUI.OwnAccount.Value;
+            Log.LogInformation("OnSubmit: snapshot has {EntryCount} entries across {TileCount} tiles, account={Account}",
+                entries.Count, tiles.Count, account?.Id.Value ?? "(none)");
+            var payload = ReportLogBuilder.BuildLogPayload(entries, HostInfo, account, now);
+            await File.WriteAllBytesAsync(logFile, payload, ct);
+            Log.LogInformation("OnSubmit: wrote {ByteCount} bytes to {LogFile}", payload.Length, logFile.Value);
+            await ReportUI.Submit(_comment, logFile, ct);
+            Log.LogInformation("OnSubmit: ReportUI.Submit returned");
+            ToastUI.Show("Report sent — thanks!", ToastDismissDelay.Short);
+            Modal.Close();
+        }
+        catch (Exception e) {
+            Log.LogError(e, "OnSubmit: failed to send report");
+            ToastUI.Show($"Failed to send report: {e.Message}", "icon-alert-circle", ToastDismissDelay.Long);
+        }
+        finally {
+            logFile.DeleteSilently();
+            _isSubmitting = false;
+        }
+    }
+
+    public sealed record Model();
+}

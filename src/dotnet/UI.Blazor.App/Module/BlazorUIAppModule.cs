@@ -133,6 +133,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<TimeZoneEditorModal.Model, TimeZoneEditorModal>()
             .Add<ApiKeyCreateModal.Model, ApiKeyCreateModal>()
             .Add<EmojiModal.Model, EmojiModal>()
+            .Add<ReportModal.Model, ReportModal>()
         );
         // IBannerViews
         services.AddTypeMap<IBannerView>(map => map

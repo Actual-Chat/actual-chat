@@ -88,6 +88,7 @@ public class UIHub : CircuitHub, IDispatcherResolver
     public AudioFocusUI AudioFocusUI => field ??= Services.GetRequiredService<AudioFocusUI>();
     public IDataCollectionSettingsUI DataCollectionSettingsUI => field ??= Services.GetRequiredService<IDataCollectionSettingsUI>();
     public LogUI LogUI => field ??= Services.GetRequiredService<LogUI>();
+    public ReportUI ReportUI => field ??= Services.GetRequiredService<ReportUI>();
 
     // UI-related services w/o UI suffix
     public Escapist Escapist => field ??= Services.GetRequiredService<Escapist>();
