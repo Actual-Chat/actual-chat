@@ -37,7 +37,6 @@
 
     private LogUI LogUI => Hub.LogUI;
     private ReportUI ReportUI => Hub.ReportUI;
-    private ILogger Log => field ??= Hub.LogFor(GetType());
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
