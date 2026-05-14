@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualLab.IO
 @inherits ComponentBase<AppUIHub>
 @implements IModalView<ReportModal.Model>
 
@@ -25,7 +24,6 @@
     </div>
     </Body>
     <Buttons>
-        <Button Class="btn-modal" Click="@OnCancel">Cancel</Button>
         <Button Class="btn-modal btn-primary" Click="@OnSubmit">Send</Button>
     </Buttons>
 </DialogFrame>
@@ -48,13 +46,10 @@
         _comment = v;
     }
 
-    private void OnCancel()
-        => Modal.Close();
-
     private async Task OnSubmit() {
         var comment = _comment.IsNullOrWhiteSpace() ? "(no comment)" : _comment;
         using var dLog = await LogUI.DumpToTempFile(Hub.StopToken);
-        await ReportUI.Submit(comment, dLog.Resource, Hub.StopToken);
+        _ = ReportUI.Submit(comment, dLog.Resource, Hub.StopToken);
         ToastUI.Show("Report sent — thanks!", ToastDismissDelay.Short);
         Modal.Close();
     }
