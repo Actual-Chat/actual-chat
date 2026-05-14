@@ -1179,11 +1179,9 @@ export class VideoRecorder {
             isFrontCamera,
             isIos: DeviceInfo.isIos,
             encoderConfigs,
-            // Camera: 2-3s interval; ScreenCast: 1-2s interval.
-            keyframeIntervalFrames: this.currentMode === 'screen'
-                ? framerate * 2
-                : framerate * 3,
-            maxKeyFrameIntervalMs: this.currentMode === 'screen' ? 10000 : 3000,
+            // Both camera and screencast use a 3s keyframe cadence.
+            keyframeIntervalFrames: framerate * 3,
+            maxKeyFrameIntervalMs: 3000,
         };
 
         const sourceStartedAtMs = Date.now();
