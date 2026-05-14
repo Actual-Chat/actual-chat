@@ -17,6 +17,7 @@
     private IJSObjectReference _jsRef = null!;
     private readonly AsyncTaskMethodBuilder _whenFirstRender = AsyncTaskMethodBuilderExt.New();
     private string _lastCopyText = "";
+    private bool _isDisposed;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Tooltip { get; set; } = "Copy";
@@ -29,14 +30,17 @@
         if (firstRender) {
             _lastCopyText = CopyText;
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _ref, CopyText, Tooltip, CopyTextSourceRef, CopyTextFormatString);
+            _whenFirstRender.TrySetResult();
         } else if (CopyText != _lastCopyText) {
             _lastCopyText = CopyText;
-            await _whenFirstRender.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            await _jsRef.InvokeVoidAsync("setCopyText", CopyText);
+            await _whenFirstRender.Task;
+            if (!_isDisposed)
+                await _jsRef.InvokeVoidAsync("setCopyText", CopyText);
         }
     }
 
     public async ValueTask DisposeAsync() {
+        _isDisposed = true;
         // Unblock anyone still awaiting first-render if dispose races init.
         _whenFirstRender.TrySetResult();
         await _jsRef.DisposeSilentlyAsync("dispose");

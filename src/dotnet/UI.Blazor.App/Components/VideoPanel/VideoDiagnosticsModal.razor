@@ -17,7 +17,11 @@
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Default"
     HasCloseButton="true">
     <Buttons>
-        <Button Class="btn-modal" Click="@OnCopyClick">Copy</Button>
+        @if (_copyTextSourceRef is not null) {
+            <CopyTrigger Class="flex-1" Tooltip="Copy diagnostics" CopyTextSourceRef="@_copyTextSourceRef">
+                <Button Class="btn-modal">Copy</Button>
+            </CopyTrigger>
+        }
     </Buttons>
     <Body>
         <div class="diag-tabs">
@@ -39,7 +43,7 @@
                 </button>
             }
         </div>
-        <div @ref="_bodyRef" class="diag-body-content">
+        <div @ref="_copyTextSourceRef" class="diag-body-content" data-copy-source="innerText">
         @* All tab content sits inside the selectable wrapper *@
 
         @if (_activeTab == Tab.Outbound) {
@@ -520,11 +524,10 @@
     private readonly HashSet<string> _throughputExpanded = new();
     private static string OwnThroughputKey(VideoSourceKind kind) => $"__own__/{(int)kind}";
 
-    private ElementReference _bodyRef;
+    private ElementReference? _copyTextSourceRef;
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private IAuthors Authors => Hub.Authors;
-    private ClipboardUI ClipboardUI => Hub.ClipboardUI;
     private ILogger Log => field ??= Services.LogFor<VideoDiagnosticsModal>();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -784,19 +787,6 @@
 
     private string GetShowDetailsIndicator(bool show)
         => show ? ">---<" : "<->";
-
-    private async Task OnCopyClick()
-    {
-        try {
-            var jsMethod = $"{BlazorUIAppModule.ImportName}.getElementText";
-            var text = await Hub.JS.InvokeAsync<string>(jsMethod, _bodyRef).ConfigureAwait(false);
-            if (!string.IsNullOrEmpty(text))
-                await ClipboardUI.WriteText(text).ConfigureAwait(false);
-        }
-        catch (Exception e) {
-            Log.LogWarning(e, "Copy diagnostics failed");
-        }
-    }
 
     // Nested types
 

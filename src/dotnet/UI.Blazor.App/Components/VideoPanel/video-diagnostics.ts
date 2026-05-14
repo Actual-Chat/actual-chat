@@ -16,12 +16,6 @@ export function collectOwnStreamDiagnostics(kind: number): OwnStreamDiagnosticsS
     };
 }
 
-// `innerText` excludes CSS-hidden nodes and `display:none` blocks — we want
-// the visible plaintext, not the raw HTML.
-export function getElementText(el: HTMLElement | null): string {
-    return el?.innerText ?? '';
-}
-
 export async function collectRemoteStreamDiagnostics(streamId: string): Promise<RemoteStreamDiagnostics | null> {
     const player = getActivePlayers().get(streamId);
     if (!player) return null;
