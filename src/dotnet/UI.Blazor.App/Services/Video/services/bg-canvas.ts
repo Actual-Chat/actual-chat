@@ -8,6 +8,7 @@ import { CanvasTarget } from './canvas-target';
 export const BG_CANVAS_WIDTH = 64;
 export const BG_DRAW_INTERVAL_MS = 100;
 export const BG_FILTER = 'blur(3px) saturate(1.2)';
+export const BG_CANVAS_OVERDRAW_PX = 4;
 // Reserved for shader-based blur paths (Kawase / WebGPU); the simple
 // 2D-canvas variant below uses BG_FILTER directly.
 export const BG_BLUR_STRENGTH = 20;
@@ -22,7 +23,7 @@ export class BgCanvasPainter {
     private getSource: (() => SourceLike | null) | null = null;
 
     constructor(bgCanvas: HTMLCanvasElement) {
-        this.target = new CanvasTarget(bgCanvas, false, BG_FILTER);
+        this.target = new CanvasTarget(bgCanvas, false, BG_FILTER, BG_CANVAS_OVERDRAW_PX);
     }
 
     /** Start or restart the pump. `getSource` is re-read every tick so a

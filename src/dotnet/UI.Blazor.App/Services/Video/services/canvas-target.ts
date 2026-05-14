@@ -2,11 +2,13 @@ export class CanvasTarget {
     private readonly ctx: CanvasRenderingContext2D;
     private readonly smoothing: boolean;
     private readonly filter: string;
+    private readonly overdrawPx: number;
 
-    constructor(public readonly element: HTMLCanvasElement, smoothing = true, filter = 'none') {
+    constructor(public readonly element: HTMLCanvasElement, smoothing = true, filter = 'none', overdrawPx = 0) {
         this.ctx = element.getContext('2d')!;
         this.smoothing = smoothing;
         this.filter = filter;
+        this.overdrawPx = Math.max(0, overdrawPx);
         this.applyCtxState();
     }
 
@@ -18,7 +20,13 @@ export class CanvasTarget {
             // Canvas resize resets context state.
             this.applyCtxState();
         }
-        this.ctx.drawImage(source, 0, 0, width, height);
+        const overdrawPx = this.overdrawPx;
+        this.ctx.drawImage(
+            source,
+            -overdrawPx,
+            -overdrawPx,
+            width + 2 * overdrawPx,
+            height + 2 * overdrawPx);
     }
 
     private applyCtxState(): void {

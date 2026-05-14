@@ -23,10 +23,14 @@ public partial record LocalAppSettings : StoredSettings, IHasKvasKey<LocalAppSet
         init;
     } = ApiMap<string, bool>.Empty;
 
+    [DataMember, MemoryPackOrder(4), Key(4)] public bool? IsVideoDiagnosticsEnabled { get; init; }
+
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsLogViewerEnabledOrDefault => IsLogViewerEnabled ?? true;
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsBackgroundBlurEnabledOrDefault => IsBackgroundBlurEnabled ?? false;
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public bool IsVideoDiagnosticsEnabledOrDefault => IsVideoDiagnosticsEnabled ?? false;
 }
 
 public static class LocalAppSettingsExt

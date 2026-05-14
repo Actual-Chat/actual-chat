@@ -37,10 +37,8 @@
         if (chatId is null)
             return Model.None;
 
-        var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        var isDev = Hub.HostInfo.IsDevelopmentInstance;
         var actions = await Hub.ChatVideoUI
-            .GetVideoPanelActions(chatId, _isNarrow, account.IsAdmin, isDev, cancellationToken)
+            .GetVideoPanelActions(chatId, _isNarrow, cancellationToken)
             .ConfigureAwait(false);
 
         var isOwnRecording = await Hub.ChatVideoUI.IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);

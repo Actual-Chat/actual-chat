@@ -15,7 +15,7 @@ import {
     type VideoRecorder,
 } from '../../../Components/VideoPanel/video-recorder';
 import { CanvasTarget } from './canvas-target';
-import { BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS, BG_FILTER } from './bg-canvas';
+import { BG_CANVAS_OVERDRAW_PX, BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS, BG_FILTER } from './bg-canvas';
 import { applyRotationLayout, chooseFit, updateCollapsedIslandAspect } from './tile-fit';
 
 const { infoLog } = getLogs('VideoRecorder');
@@ -77,7 +77,9 @@ export class RecorderPreviewView {
     constructor(options: RecorderPreviewViewOptions) {
         this.options = options;
         this.canvasTarget = new CanvasTarget(options.canvas);
-        this.bgCanvasTarget = options.bgCanvas ? new CanvasTarget(options.bgCanvas, false, BG_FILTER) : null;
+        this.bgCanvasTarget = options.bgCanvas
+            ? new CanvasTarget(options.bgCanvas, false, BG_FILTER, BG_CANVAS_OVERDRAW_PX)
+            : null;
         this.bgContainer = options.bgCanvas?.parentElement ?? null;
         this.sourceKinds = options.sourceKinds ?? [0];
 

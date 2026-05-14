@@ -47,6 +47,12 @@
             <Toggle IsChecked="@m.IsLogUIEnabled"/>
         </Right>
     </TileItem>
+    <TileItem Click="@OnVideoDiagnosticsEnabledClick">
+        <Content>Enable video diagnostics</Content>
+        <Right>
+            <Toggle IsChecked="@m.IsVideoDiagnosticsEnabled"/>
+        </Right>
+    </TileItem>
     @if (MauiLogAccessor?.GetLogFile != null) {
         <TileItem Click="@OnGetLogFileClick">
             <Content>
@@ -78,7 +84,8 @@
             settings.AreExperimentalFeaturesEnabled ?? false,
             settings.IsIncompleteUIEnabled ?? false,
             account.IsAdmin,
-            appSettings.IsLogViewerEnabledOrDefault);
+            appSettings.IsLogViewerEnabledOrDefault,
+            appSettings.IsVideoDiagnosticsEnabledOrDefault);
     }
 
     private Task OnExperimentalFeatureEnabledClick()
@@ -98,6 +105,11 @@
         LogUI.IsEnabled.Invalidate();
     }
 
+    private Task OnVideoDiagnosticsEnabledClick()
+        => LocalSettings.LocalAppSettings().Update(x => x with {
+            IsVideoDiagnosticsEnabled = !x.IsVideoDiagnosticsEnabledOrDefault,
+        });
+
     private Task OnGetLogFileClick()
         => MauiLogAccessor!.GetLogFile!.Invoke();
 
@@ -107,8 +119,9 @@
         bool AreExperimentalFeaturesEnabled,
         bool IsIncompleteUIEnabled,
         bool IsAdmin,
-        bool IsLogUIEnabled)
+        bool IsLogUIEnabled,
+        bool IsVideoDiagnosticsEnabled)
     {
-        public static readonly Model None = new(false, false, false, false);
+        public static readonly Model None = new(false, false, false, false, false);
     }
 }

@@ -8,78 +8,98 @@
     var isExpanded = a.Mode == VideoPanelMode.Expanded;
     var isCollapsed = a.Mode == VideoPanelMode.Collapsed;
     var effectiveChatVisible = IsChatVisible ?? !a.IsNarrow;
+    var hasLayoutActions = a.CanToggleFullscreen || a.CanToggleIsland || a.CanMinimize;
+    var hasStreamActions = a.CanSwitchCamera || a.CanToggleVideo || a.CanToggleScreenCast;
+    var hasSettingsActions = a.CanShowVideoSettings || a.CanShowVoiceSettings;
+    var hasChatActions = a.CanToggleChatPanel;
+    var hasDiagnosticsActions = a.CanShowDiagnostics;
 }
 
 <div class="video-panel-menu">
-    @if (a.CanToggleFullscreen) {
-        <MenuEntry
-            Icon="@(isExpanded ? "icon-collapse" : "icon-expand")"
-            Text="@(isExpanded ? "Exit fullscreen" : "Fullscreen")"
-            Click="@OnToggleFullscreen"/>
-    }
-    @if (a.CanToggleIsland) {
-        <MenuEntry
-            Icon="@(isCollapsed ? "icon-video-expand" : "icon-video-collapse")"
-            Text="@(isCollapsed ? "Restore" : "Float")"
-            Click="@OnToggleIsland"/>
-    }
-    @if (a.CanMinimize) {
-        <MenuEntry
-            Icon="icon-eye-off"
-            Text="Hide"
-            Click="@OnMinimize"/>
-    }
-
-    <MenuEntrySeparator/>
-
-    @if (a.CanSwitchCamera) {
-        <MenuEntry
-            Icon="icon-camera-switch"
-            Text="Switch camera"
-            Click="@OnSwitchCamera"/>
-    }
-    @if (a.CanToggleVideo) {
-        <MenuEntry
-            Icon="icon-video"
-            Text="@(IsOwnRecording ? "Turn camera off" : "Turn camera on")"
-            Click="@OnToggleVideo"/>
-    }
-    @if (a.CanToggleScreenCast) {
-        <MenuEntry
-            Icon="icon-screen-share"
-            Text="@(IsOwnScreenCasting ? "Stop sharing screen" : "Share screen")"
-            Click="@OnToggleScreenCast"/>
+    @if (hasLayoutActions) {
+        @if (a.CanToggleFullscreen) {
+            <MenuEntry
+                Icon="@(isExpanded ? "icon-collapse" : "icon-expand")"
+                Text="@(isExpanded ? "Exit fullscreen" : "Fullscreen")"
+                Click="@OnToggleFullscreen"/>
+        }
+        @if (a.CanToggleIsland) {
+            <MenuEntry
+                Icon="@(isCollapsed ? "icon-video-expand" : "icon-video-collapse")"
+                Text="@(isCollapsed ? "Restore" : "Float")"
+                Click="@OnToggleIsland"/>
+        }
+        @if (a.CanMinimize) {
+            <MenuEntry
+                Icon="icon-eye-off"
+                Text="Hide"
+                Click="@OnMinimize"/>
+        }
     }
 
-    <MenuEntrySeparator/>
-
-    @if (a.CanShowVideoSettings) {
-        <MenuEntry
-            Icon="icon-settings"
-            Text="Video settings"
-            Click="@OnVideoSettings"/>
-    }
-    @if (a.CanShowVoiceSettings) {
-        <MenuEntry
-            Icon="icon-options-2"
-            Text="Voice settings"
-            Click="@OnVoiceSettings"/>
+    @if (hasLayoutActions && hasStreamActions) {
+        <MenuEntrySeparator/>
     }
 
-    <MenuEntrySeparator/>
+    @if (hasStreamActions) {
+        @if (a.CanSwitchCamera) {
+            <MenuEntry
+                Icon="icon-camera-switch"
+                Text="Switch camera"
+                Click="@OnSwitchCamera"/>
+        }
+        @if (a.CanToggleVideo) {
+            <MenuEntry
+                Icon="icon-video"
+                Text="@(IsOwnRecording ? "Turn camera off" : "Turn camera on")"
+                Click="@OnToggleVideo"/>
+        }
+        @if (a.CanToggleScreenCast) {
+            <MenuEntry
+                Icon="icon-screen-share"
+                Text="@(IsOwnScreenCasting ? "Stop sharing screen" : "Share screen")"
+                Click="@OnToggleScreenCast"/>
+        }
+    }
 
-    @if (a.CanToggleChatPanel) {
+    @if ((hasLayoutActions || hasStreamActions) && hasSettingsActions) {
+        <MenuEntrySeparator/>
+    }
+
+    @if (hasSettingsActions) {
+        @if (a.CanShowVideoSettings) {
+            <MenuEntry
+                Icon="icon-settings"
+                Text="Video settings"
+                Click="@OnVideoSettings"/>
+        }
+        @if (a.CanShowVoiceSettings) {
+            <MenuEntry
+                Icon="icon-options-2"
+                Text="Voice settings"
+                Click="@OnVoiceSettings"/>
+        }
+    }
+
+    @if ((hasLayoutActions || hasStreamActions || hasSettingsActions) && hasChatActions) {
+        <MenuEntrySeparator/>
+    }
+
+    @if (hasChatActions) {
         <MenuEntry
             Icon="icon-message-ellipse"
             Text="@(effectiveChatVisible ? "Hide chat" : "Show chat")"
             Click="@OnToggleChatPanel"/>
+    }
+
+    @if ((hasLayoutActions || hasStreamActions || hasSettingsActions || hasChatActions) && hasDiagnosticsActions) {
         <MenuEntrySeparator/>
     }
 
-    @if (a.CanShowDiagnostics) {
+    @if (hasDiagnosticsActions) {
         <MenuEntry
             Icon="icon-activity"
-            Text="Diagnostics"
+            Text="Video diagnostics"
             Click="@OnDiagnostics"/>
     }
 </div>

@@ -1,17 +1,14 @@
 @namespace ActualChat.UI.Blazor.App.Components.VideoPanel
+@using System.Text.Json
 @using ActualChat.Media
 @using ActualChat.Streaming
-@using ActualChat.Video
 @using ActualChat.UI.Blazor.App.Module
+@using ActualChat.Video
 @using Microsoft.AspNetCore.Components.Rendering
-@using System.Text
-@using System.Text.Json
 @inherits ComputedStateComponent<AppUIHub, VideoDiagnosticsModal.ComputedModel>
 @implements IModalView<VideoDiagnosticsModal.Model>
 @{
     var m = State.Value;
-    var playbackSnap = Hub.VideoQualityUI.PlaybackSnapshot;
-    var copyText = BuildDiagnosticsText(m);
 }
 
 <DialogFrame
@@ -34,7 +31,7 @@
                     @onclick="@(() => OnSelectTab(Tab.Outbound))">
                 Outbound
             </button>
-            @if (m.AllowDiagnostics) {
+            @if (m.ShowSettingsTab) {
                 <button type="button"
                         class="diag-tab @(_activeTab == Tab.Settings ? "diag-tab--active" : "")"
                         @onclick="@(() => OnSelectTab(Tab.Settings))">
@@ -413,7 +410,7 @@
         @RenderInboundQualityControl()
         } @* end Inbound tab *@
 
-        @if (_activeTab == Tab.Settings && m.AllowDiagnostics) {
+        @if (_activeTab == Tab.Settings && m.ShowSettingsTab) {
             <div class="diag-section">
                 <div class="diag-section-header">Overlays</div>
                 <Tile>
@@ -576,8 +573,8 @@
         }
 
         var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken);
-        var allowDiagnostics = account.IsAdmin || Hub.HostInfo.IsDevelopmentInstance;
-        return new ComputedModel(ownSourceKinds, streams, memberCount, allowDiagnostics);
+        var showSettingsTab = account.IsAdmin || Hub.HostInfo.IsDevelopmentInstance;
+        return new ComputedModel(ownSourceKinds, streams, memberCount, showSettingsTab);
     }
 
     private void OnSelectTab(Tab tab) {
@@ -801,144 +798,6 @@
         }
     }
 
-    private string BuildDiagnosticsText(ComputedModel m) {
-        var sb = new StringBuilder();
-
-        sb.AppendLine("=== Video Diagnostics ===");
-        sb.AppendLine();
-
-        // Outbound streams
-        sb.AppendLine($"-- Outbound Streams ({m.OwnSourceKinds.Count}) --");
-        if (m.OwnSourceKinds.Count == 0)
-            sb.AppendLine("Status: Not streaming");
-        foreach (var kind in m.OwnSourceKinds) {
-            sb.AppendLine();
-            sb.AppendLine($"[{kind}]");
-            var hasOwnDiag = _ownDiagByKind.TryGetValue(kind, out var ownDiag);
-            if (hasOwnDiag
-                && ownDiag.TryGetProperty("stream", out var ownStream)
-                && ownStream.ValueKind == JsonValueKind.Object) {
-                // Source
-                sb.AppendLine($"Status: {GetStr(ownStream, "status")}");
-                if (GetStr(ownStream, "cameraLabel") is { Length: > 0 } copyCameraLabel)
-                    sb.AppendLine($"Source: {kind}: {copyCameraLabel}");
-                sb.AppendLine($"Input: {GetStr(ownStream, "inputResolution")} @ {GetNum(ownStream, "inputFramerate"):0.##}fps");
-                sb.AppendLine($"Duration: {GetNum(ownStream, "duration"):0}s");
-
-                // Encoder
-                sb.AppendLine();
-                sb.AppendLine("-- Encoder --");
-                sb.AppendLine($"Codec: {GetStr(ownStream, "codec")} ({GetStr(ownStream, "codecCategory")}, {(GetBool(ownStream, "hardwareAccelerated") ? "HW" : "SW")})");
-                if (GetBool(ownStream, "blurEnabled"))
-                    sb.AppendLine($"Blur: {GetStr(ownStream, "segmentationBackend")} ({GetNum(ownStream, "segmentationAvgTime"):0.0}ms)");
-                sb.AppendLine($"Available: {GetStrArray(ownStream, "supportedEncoderCategories")}");
-                sb.AppendLine($"Frames: {GetNum(ownStream, "encodedFrames"):0} enc, {GetNum(ownStream, "droppedFrames"):0} drop");
-                sb.AppendLine($"Encode time: {GetNum(ownStream, "medianEncodeTime"):0.0}ms ({GetNum(ownStream, "maxLayerEncodeTime"):0.0}ms LMax)");
-                sb.AppendLine($"Bitrate: {GetNum(ownStream, "actualBitrateKbps"):0} kbps (sum across layers)");
-
-                var copyLayers = GetArray(ownStream, "layers").OrderBy(GetLayerId).ToArray();
-                if (copyLayers.Length > 0) {
-                    sb.AppendLine();
-                    sb.AppendLine("-- Encoder Layers --");
-                    var copyCodec = GetStr(ownStream, "codec");
-                    foreach (var layer in copyLayers) {
-                        var layerId = GetLayerId(layer);
-                        var copyEstKbps = EstimatedLayerKbps(kind, layerId, copyCodec);
-                        sb.AppendLine($"L{layerId}: {GetStr(layer, "outputResolution")} @ {copyEstKbps:0} kbps");
-                        if (GetStr(layer, "encoderLastReconfigureSummary") is { Length: > 0 } copyReconfSummary) {
-                            var ageMs = GetNum(layer, "encoderLastReconfigureAgeMs");
-                            sb.AppendLine($"  Last reconfig: {copyReconfSummary}{(ageMs >= 0 ? $" ({ageMs:0}ms ago)" : "")}");
-                        }
-                        if (GetNum(layer, "encoderErrorCount") > 0) {
-                            var errAgeMs = GetNum(layer, "encoderLastErrorAgeMs");
-                            sb.AppendLine($"  Encoder error: {GetStr(layer, "encoderLastErrorName")}: {GetStr(layer, "encoderLastErrorMessage")} ({GetNum(layer, "encoderErrorCount"):0} total{(errAgeMs >= 0 ? $", {errAgeMs:0}ms ago" : "")})");
-                        }
-                    }
-                }
-
-                // Orientation
-                if (ownStream.TryGetProperty("orientation", out var orient) && orient.ValueKind == JsonValueKind.Object) {
-                    sb.AppendLine();
-                    sb.AppendLine("-- Orientation --");
-                    sb.AppendLine($"Display: {GetStr(orient, "firstDisplayResolution")}");
-                    sb.AppendLine($"Coded: {GetStr(orient, "firstCodedResolution")}");
-                    sb.AppendLine($"Config: {GetStr(orient, "configuredResolution")}");
-                    sb.AppendLine($"Rotation: {GetStr(orient, "firstRotation")} → {GetStr(orient, "lastRotation")}");
-                    sb.AppendLine($"Detection: {GetStr(orient, "rotationDetection")} (rot: {(GetBool(orient, "needsRotation") ? "yes" : "no")})");
-                    sb.AppendLine($"Frames seen: {GetNum(orient, "framesSeen"):0}");
-                }
-
-                // Streaming
-                if (ownStream.TryGetProperty("streaming", out var copyStreaming) && copyStreaming.ValueKind == JsonValueKind.Object) {
-                    sb.AppendLine();
-                    sb.AppendLine("-- Streaming --");
-                    sb.AppendLine($"Send: {GetStr(copyStreaming, "status")} ({GetNum(copyStreaming, "sentFrames"):0} frames)");
-                    if (GetNum(copyStreaming, "pendingFrames") > 0)
-                        sb.AppendLine($"Pending: {GetNum(copyStreaming, "pendingFrames"):0} frames");
-                    if (GetNum(copyStreaming, "streamRecreations") > 1)
-                        sb.AppendLine($"Reconnects: {GetNum(copyStreaming, "streamRecreations") - 1:0}");
-                    if (GetStr(copyStreaming, "lastError") is { Length: > 0 } copyStreamError)
-                        sb.AppendLine($"Last Error: {copyStreamError}");
-                }
-            }
-            var copyRecordingSnap = Hub.VideoQualityUI.GetRecordingSnapshot(kind);
-            sb.AppendLine();
-            sb.AppendLine("-- Quality Control (outbound) --");
-            sb.AppendLine($"Target: {FormatRecordingQualityState(copyRecordingSnap)}");
-            sb.AppendLine($"Verdict: {SignalText(copyRecordingSnap.Signal)}");
-            if (ShouldShowRecordingAction(copyRecordingSnap.Reason))
-                sb.AppendLine($"Action: {copyRecordingSnap.Reason}");
-            if (copyRecordingSnap.Health is { } copyHealth)
-                sb.AppendLine($"Signals: {FormatRecordingSignals(copyHealth)}");
-            else
-                sb.AppendLine("Signals: no health sample yet");
-        }
-        sb.AppendLine();
-
-        // Inbound streams
-        var copyInbound = m.Streams.Where(s => !s.IsOwn).ToArray();
-        sb.AppendLine($"-- Inbound Streams ({copyInbound.Length}, {m.MemberCount} members) --");
-        foreach (var s in copyInbound) {
-            var sid = s.Info.StreamId.Value;
-            sb.AppendLine();
-            sb.AppendLine($"[{sid}] {s.Author}");
-            sb.AppendLine($"  Kind: {(s.Info.SourceKind == VideoSourceKind.ScreenCast ? "ScreenCast" : "Camera")}");
-            sb.AppendLine($"  Started: {DateTimeConverter.ToLocalTime(s.Info.StartedAt):HH:mm:ss}");
-
-            string copyDisplayCodec = s.Info.Format.Codec;
-            if (_streamDiags.TryGetValue(sid, out var rd) && rd.ValueKind == JsonValueKind.Object) {
-                var rdCodec = GetStr(rd, "codec");
-                var rdCodecCategory = GetStr(rd, "codecCategory");
-                if (!string.IsNullOrEmpty(rdCodec))
-                    copyDisplayCodec = string.IsNullOrEmpty(rdCodecCategory)
-                        ? rdCodec
-                        : $"{rdCodec} ({rdCodecCategory})";
-                sb.AppendLine($"  Codec: {copyDisplayCodec}");
-                if (rd.TryGetProperty("forwarded", out var copyFwd)
-                    && copyFwd.ValueKind == JsonValueKind.Object
-                    && GetNum(copyFwd, "ForwardedLayerId") >= 0)
-                    sb.AppendLine(
-                        $"  Resolution: L{GetNum(copyFwd, "ForwardedLayerId"):0} "
-                        + $"{GetNum(copyFwd, "ForwardedWidth"):0}x{GetNum(copyFwd, "ForwardedHeight"):0}");
-                else
-                    sb.AppendLine("  Resolution: no frame yet");
-                sb.AppendLine($"  Requested: {FormatRequestedReceiveQuality(rd)}");
-                var copyBitrate = GetNum(rd, "bitrateKbps");
-                if (copyBitrate > 0)
-                    sb.AppendLine($"  Incoming bitrate: {copyBitrate:0} kbps");
-                var copyAgeSec = GetNum(rd, "streamAgeMs") / 1000;
-                if (copyAgeSec > 0)
-                    sb.AppendLine($"  Age: {copyAgeSec:0}s");
-            }
-            else {
-                sb.AppendLine($"  Codec: {copyDisplayCodec}");
-                sb.AppendLine("  Resolution: no frame yet");
-            }
-        }
-
-        return sb.ToString();
-    }
-
     // Nested types
 
     public sealed class Model(ChatId chatId)
@@ -952,7 +811,7 @@
         IReadOnlyList<VideoSourceKind> OwnSourceKinds,
         StreamEntry[] Streams,
         int MemberCount,
-        bool AllowDiagnostics
+        bool ShowSettingsTab
     ) {
         public static readonly ComputedModel Empty = new([], [], 0, false);
     }

@@ -120,11 +120,11 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     [ComputeMethod]
     public virtual async Task<VideoPanelActions> GetVideoPanelActions(
-        ChatId chatId, bool isNarrow, bool isAdmin, bool isDevInstance, CancellationToken cancellationToken = default)
+        ChatId chatId, bool isNarrow, CancellationToken cancellationToken = default)
     {
         var mode = await GetVideoPanelMode(cancellationToken).ConfigureAwait(false);
         var isVideoAvailable = await IsVideoAvailable(chatId, cancellationToken).ConfigureAwait(false);
-        var allowDiagnostics = isAdmin || isDevInstance;
+        var settings = await LocalSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
         return new VideoPanelActions(
             Mode: mode,
             IsNarrow: isNarrow,
@@ -135,7 +135,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             CanToggleVideo: isVideoAvailable,
             CanToggleScreenCast: !isNarrow && isVideoAvailable,
             CanToggleChatPanel: !isNarrow && mode == VideoPanelMode.Expanded,
-            CanShowDiagnostics: allowDiagnostics,
+            CanShowDiagnostics: settings.IsVideoDiagnosticsEnabledOrDefault || HostInfo.IsDevelopmentInstance,
             CanShowVoiceSettings: true,
             CanShowVideoSettings: isVideoAvailable);
     }
