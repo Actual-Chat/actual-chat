@@ -119,6 +119,39 @@ describe('canvasPresent', () => {
         expect(ctx.calls).toHaveLength(4);
     });
 
+    it('steady mode: resets pacing on capture epoch change', async () => {
+        const stats = createEmptyPlayerStats();
+        const ctx = new FakeCtx();
+        let now = 1000;
+        const delays: number[] = [];
+        const sink = canvasPresent({
+            getCanvasCtx: () => ctx,
+            getBufferSpanMs: (): number => 0,
+            targetSpanMs: 333,
+            nowFn: (): number => now,
+            delayFn: (delayMs: number): Promise<void> => {
+                delays.push(delayMs);
+                now += delayMs;
+                return Promise.resolve();
+            },
+        });
+        const items = [
+            makeEnvelope(stats, 0, 0),
+            makeEnvelope(stats, 1, 33),
+            {
+                ...makeEnvelope(stats, 2, 0),
+                capturedAt: { timeMs: 0, epoch: 1 },
+            },
+        ];
+
+        await count(pipe(source(items), sink));
+
+        expect(ctx.calls).toHaveLength(3);
+        expect(delays).toHaveLength(1);
+        expect(delays[0]).toBeGreaterThan(32);
+        expect(delays[0]).toBeLessThan(34);
+    });
+
     it('Safari path: convertToBitmap is called per frame; bitmap is drawn and closed; frame is closed', async () => {
         const stats = createEmptyPlayerStats();
         const ctx = new FakeCtx();

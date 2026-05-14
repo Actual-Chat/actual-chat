@@ -30,6 +30,10 @@ class MockVideoEncoder {
     close(): void { /* no-op */ }
 }
 
+class MockVideoFrame {
+    constructor(public id: number) {}
+}
+
 interface GlobalWithVideoEncoder {
     VideoEncoder?: typeof MockVideoEncoder;
 }
@@ -101,6 +105,37 @@ describe('SenderSession', () => {
         session.reportPreviewFramePresentation({ rotation: 1 });
 
         expect(reported).toEqual([0, 1]);
+        session.dispose();
+    });
+
+    it('reports preview frames through the configured reporter', () => {
+        const reported: VideoFrame[] = [];
+        const session = new SenderSession({
+            onPreviewFrame: frame => { reported.push(frame); },
+        });
+        const frame = new MockVideoFrame(1) as unknown as VideoFrame;
+
+        void session.reportPreviewFrame(frame);
+
+        expect(reported).toEqual([frame]);
+        session.dispose();
+    });
+
+    it('can swap preview frame reporter', () => {
+        const first: VideoFrame[] = [];
+        const second: VideoFrame[] = [];
+        const session = new SenderSession({
+            onPreviewFrame: frame => { first.push(frame); },
+        });
+        const frameA = new MockVideoFrame(1) as unknown as VideoFrame;
+        const frameB = new MockVideoFrame(2) as unknown as VideoFrame;
+
+        void session.reportPreviewFrame(frameA);
+        session.setPreviewFrameReporter(frame => { second.push(frame); });
+        void session.reportPreviewFrame(frameB);
+
+        expect(first).toEqual([frameA]);
+        expect(second).toEqual([frameB]);
         session.dispose();
     });
 

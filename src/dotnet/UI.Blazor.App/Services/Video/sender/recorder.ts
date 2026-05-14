@@ -120,6 +120,7 @@ export class Recorder {
             // simpleBlur({ radiusPx: 6 }), // Temporary effect probe; keep disabled by default.
             previewTap({
                 getWriter: () => this.session.getPreviewWriter(),
+                reportFrame: frame => this.session.reportPreviewFrame(frame),
                 reportPresentation: p => this.session.reportPreviewFramePresentation(p),
             }),
         );

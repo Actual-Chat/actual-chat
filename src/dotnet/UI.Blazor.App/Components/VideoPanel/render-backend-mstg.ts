@@ -1,9 +1,9 @@
-import { DeviceInfo } from 'device-info';
 import { getLogs } from 'logging';
 import type { PresentableFrame, RenderBackend } from './render-backend';
 import { BgCanvasPainter } from '../../Services/Video/services/bg-canvas';
 import { applyRotationLayout } from '../../Services/Video/services/tile-fit';
 import { MstgPlaybackWatchdog, type MstgPlaybackStallReport } from './mstg-playback-watchdog';
+import { isMstgRenderBackendPlausible } from './render-backend-selection';
 
 const { debugLog, infoLog, warnLog } = getLogs('VideoPlayer');
 
@@ -22,7 +22,7 @@ export type OffThreadPlaybackStallReport = MstgPlaybackStallReport;
 // through a 2D context. `?renderBackend=mstg` still lets you opt back in
 // for testing.
 export function isOffThreadPlausible(): boolean {
-    return !DeviceInfo.isFirefox && !DeviceInfo.isEdge;
+    return isMstgRenderBackendPlausible();
 }
 
 // Off-thread renderer: just an HTMLVideoElement adapter. The decoder worker
@@ -266,4 +266,3 @@ export class OffThreadRenderBackend implements RenderBackend {
     }
 
 }
-

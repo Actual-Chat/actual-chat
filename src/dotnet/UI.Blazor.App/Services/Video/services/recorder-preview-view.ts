@@ -1,6 +1,6 @@
-// Follows the currently active VideoRecorder and renders its preview to a
-// caller-supplied <video srcObject> (raw track) plus an optional <canvas>
-// overlay (blurred frames). Multiple UI surfaces can attach independently.
+// Follows the currently active VideoRecorder and renders its preview to either
+// a caller-supplied <video srcObject> (generated track) or the paired canvas
+// fallback. Multiple UI surfaces can attach independently.
 // Caller-specific UI state (.starting, .has-video) is signalled via the
 // onAttach/onDetach/onFirstFrame hooks — this class doesn't touch CSS.
 
@@ -63,6 +63,8 @@ export class RecorderPreviewView {
     private parentResizeObserver: ResizeObserver | null = null;
     private videoResizeListener: (() => void) | null = null;
     private currentFit: 'cover' | 'contain' = 'cover';
+    private lastFrameWidth = 0;
+    private lastFrameHeight = 0;
     // Captured on first frame after attach. Self-preview's CSS rotation is
     // (current device-vs-screen delta) − (initial device-vs-screen delta).
     // Zero while initial == current → browser's natural page rotation
@@ -127,8 +129,8 @@ export class RecorderPreviewView {
         if (!parent) return;
 
         const swap = (rotation & 1) === 1;
-        const sourceW = videoEl.videoWidth || 0;
-        const sourceH = videoEl.videoHeight || 0;
+        const sourceW = videoEl.videoWidth || this.lastFrameWidth || 0;
+        const sourceH = videoEl.videoHeight || this.lastFrameHeight || 0;
         const frameW = swap ? sourceH : sourceW;
         const frameH = swap ? sourceW : sourceH;
         // Keep the collapsed island sized to the source aspect — without this
@@ -231,16 +233,20 @@ export class RecorderPreviewView {
         // flash the spinner even though another consumer is driving rendering.
         if (!paused) {
             const track = recorder?.getPreviewTrack() ?? null;
+            const canvasFallback = recorder?.getPreviewUsesCanvas() ?? false;
             const trackLive = track?.readyState === 'live';
-            if (recorder && trackLive && track !== this.attachedTrack) {
+            if (recorder && canvasFallback && (recorder !== this.attachedRecorder || this.attachedTrack !== null)) {
+                this.attach(recorder, null);
+            } else if (recorder && trackLive && track !== this.attachedTrack) {
                 this.attach(recorder, track);
-            } else if (this.attachedRecorder && (!recorder || !trackLive)) {
+            } else if (this.attachedRecorder && (!recorder || (!canvasFallback && !trackLive))) {
                 this.detach();
             }
         }
 
         if (this.attachedRecorder) {
-            if (paused) this.options.videoEl.pause(); else void this.options.videoEl.play();
+            if (paused || !this.attachedTrack) this.options.videoEl.pause();
+            else void this.options.videoEl.play();
         }
 
         const isStarting = !paused
@@ -258,7 +264,7 @@ export class RecorderPreviewView {
         }
     }
 
-    private attach(recorder: VideoRecorder, track: MediaStreamTrack): void {
+    private attach(recorder: VideoRecorder, track: MediaStreamTrack | null): void {
         this.detach();
         this.attachedRecorder = recorder;
         this.attachedTrack = track;
@@ -267,11 +273,19 @@ export class RecorderPreviewView {
         infoLog?.log('Attached to active recorder');
 
         const videoEl = this.options.videoEl;
-        videoEl.srcObject = new MediaStream([track]);
-        void videoEl.play();
-        this.videoLoadedDataListener = () => this.fireFirstFrame();
-        videoEl.addEventListener('loadeddata', this.videoLoadedDataListener);
-        if (this.bgCanvasTarget) {
+        if (track) {
+            videoEl.srcObject = new MediaStream([track]);
+            void videoEl.play();
+            this.videoLoadedDataListener = () => this.fireFirstFrame();
+            videoEl.addEventListener('loadeddata', this.videoLoadedDataListener);
+        } else {
+            videoEl.pause();
+            videoEl.srcObject = null;
+        }
+        const parent = videoEl.parentElement;
+        parent?.classList.toggle('preview-backend-canvas', track === null);
+        parent?.classList.toggle('preview-backend-mstg', track !== null);
+        if (track && this.bgCanvasTarget) {
             this.bgPumpHandle = window.setInterval(() => {
                 if (this._paused) return;
                 // When blur is on, the blur listener already paints the bg from the
@@ -286,6 +300,9 @@ export class RecorderPreviewView {
             if (this._paused)
                 return;
             this.canvasTarget.draw(frame, frame.displayWidth, frame.displayHeight);
+            this.lastFrameWidth = frame.displayWidth;
+            this.lastFrameHeight = frame.displayHeight;
+            this.applyRotationAndFit();
             this.drawBgFrame(frame.displayWidth, frame.displayHeight);
             this.fireFirstFrame();
         };
@@ -316,6 +333,8 @@ export class RecorderPreviewView {
             clearInterval(this.bgPumpHandle);
             this.bgPumpHandle = null;
         }
+        const parent = videoEl.parentElement;
+        parent?.classList.remove('preview-backend-canvas', 'preview-backend-mstg');
 
         // Wipe stale frames so a failed re-attach doesn't leave the last good
         // frame on-screen while the new pipeline spins up.
@@ -324,6 +343,8 @@ export class RecorderPreviewView {
 
         // Re-capture the initial device/screen delta on next attach.
         this.initialDeviceScreenDelta = null;
+        this.lastFrameWidth = 0;
+        this.lastFrameHeight = 0;
 
         this.firstFrameFired = false;
         this.options.onDetach?.();
@@ -355,7 +376,7 @@ export class RecorderPreviewView {
         this.bgCanvasTarget.draw(this.canvasTarget.element, bgW, bgH);
     }
 
-    // Sourced from <video> because the main canvas is empty in the raw-track path.
+    // Sourced from <video> because the main canvas is empty in the generated-track path.
     private drawBgFrameFromVideo(videoEl: HTMLVideoElement): void {
         if (!this.bgCanvasTarget) return;
         if (!this.bgContainer?.classList.contains('item-focused')) return;

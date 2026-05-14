@@ -38,11 +38,16 @@ export function canvasPresent(opts: CanvasPresentOptions): PipeOperator<DecodedF
         let canvasCtx: CanvasImageInterface | null = null;
         let lastWriteAt: number | null = null;
         let prevCapturedAt: number | null = null;
+        let prevCapturedEpoch: number | null = null;
         for await (const decoded of source) {
             const frame = decoded.frame;
             try {
                 const now = nowFn();
                 const extraMs = Math.max(0, getBufferSpanMs() - targetSpanMs);
+                if (prevCapturedEpoch !== null && decoded.capturedAt.epoch !== prevCapturedEpoch) {
+                    lastWriteAt = null;
+                    prevCapturedAt = null;
+                }
 
                 if (extraMs > CATCHUP_BUDGET_MS
                     && lastWriteAt !== null
@@ -112,6 +117,7 @@ export function canvasPresent(opts: CanvasPresentOptions): PipeOperator<DecodedF
                 }
                 lastWriteAt = nextWriteAt;
                 prevCapturedAt = decoded.capturedAt.timeMs;
+                prevCapturedEpoch = decoded.capturedAt.epoch;
             } finally {
                 try { frame.close(); } catch { /* already closed */ }
             }

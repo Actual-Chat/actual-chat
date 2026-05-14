@@ -225,6 +225,34 @@ describe('mstgPresent', () => {
         }
     });
 
+    it('steady mode: resets pacing on capture epoch change', async () => {
+        const stats = createEmptyPlayerStats();
+        const writer = new FakeWriter();
+        const clock = fakeClock(1000);
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            getBufferSpanMs: (): number => 0,
+            targetSpanMs: 333,
+            nowFn: clock.nowFn,
+            delayFn: clock.delayFn,
+        });
+        const items = [
+            makeEnvelope(stats, 0, 0),
+            makeEnvelope(stats, 1, 33),
+            {
+                ...makeEnvelope(stats, 2, 0),
+                capturedAt: { timeMs: 0, epoch: 1 },
+            },
+        ];
+
+        await count(pipe(staticSource(items), sink));
+
+        expect(writer.written).toHaveLength(3);
+        expect(clock.delays).toHaveLength(1);
+        expect(clock.delays[0]).toBeGreaterThan(32);
+        expect(clock.delays[0]).toBeLessThan(34);
+    });
+
     it('steady mode: clamps duration up to MIN_DURATION_MS for source above 120 fps', async () => {
         const stats = createEmptyPlayerStats();
         const writer = new FakeWriter();

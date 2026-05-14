@@ -12,6 +12,7 @@ const LogEveryN = 30;
 export interface PreviewTapOptions {
     // Called per frame so the recorder can swap / detach without restarting.
     getWriter: () => WritableStreamDefaultWriter<VideoFrame> | null;
+    reportFrame?: (frame: VideoFrame) => void | Promise<void>;
     reportPresentation?: (presentation: PreviewFramePresentation) => void;
     frameDurationMs?: number;
     nowMs?: () => number;
@@ -20,9 +21,9 @@ export interface PreviewTapOptions {
 
 // Forwards a clone of the normalized sender surface to a writer (typically the
 // self-view's MediaStreamTrackGenerator). Cloning is mandatory — pipeline owns
-// the original; writer owns the clone.
+// the original; the selected preview sink observes a short-lived clone.
 export function previewTap(opts: PreviewTapOptions): PipeOperator<NormalizedFrame, NormalizedFrame> {
-    const { getWriter, reportPresentation } = opts;
+    const { getWriter, reportFrame, reportPresentation } = opts;
     const frameDurationMs = opts.frameDurationMs ?? getFrameDurationMs();
     const nowMs = opts.nowMs ?? (() => performance.now());
     const sleep = opts.sleep ?? ((delayMs: number) => new Promise<void>(resolve => setTimeout(resolve, delayMs)));
@@ -41,12 +42,14 @@ export function previewTap(opts: PreviewTapOptions): PipeOperator<NormalizedFram
             reportFailure('getWriter', e);
             return;
         }
-        if (!writer) return;
+        if (!writer && !reportFrame) return;
         reportPresentation?.({ rotation: envelope.rotation });
 
-        const desiredSize = writer.desiredSize;
-        if (desiredSize !== null && desiredSize <= 0)
-            return;
+        if (writer) {
+            const desiredSize = writer.desiredSize;
+            if (desiredSize !== null && desiredSize <= 0)
+                return;
+        }
 
         const plan = pacer.plan(envelope.capturedAt, nowMs());
         if (plan === 'skip')
@@ -54,9 +57,11 @@ export function previewTap(opts: PreviewTapOptions): PipeOperator<NormalizedFram
         if (plan.delayMs > 0)
             await sleep(plan.delayMs);
 
-        const desiredSizeAfterDelay = writer.desiredSize;
-        if (desiredSizeAfterDelay !== null && desiredSizeAfterDelay <= 0)
-            return;
+        if (writer) {
+            const desiredSizeAfterDelay = writer.desiredSize;
+            if (desiredSizeAfterDelay !== null && desiredSizeAfterDelay <= 0)
+                return;
+        }
 
         let clone: VideoFrame;
         try {
@@ -66,10 +71,15 @@ export function previewTap(opts: PreviewTapOptions): PipeOperator<NormalizedFram
             return;
         }
         try {
-            await writer.write(clone);
+            if (writer) {
+                await writer.write(clone);
+            } else if (reportFrame) {
+                await reportFrame(clone);
+            }
         } catch (e) {
+            reportFailure(writer ? 'writer.write' : 'reportFrame', e);
+        } finally {
             try { clone.close(); } catch { /* ignore */ }
-            reportFailure('writer.write', e);
         }
     });
 }

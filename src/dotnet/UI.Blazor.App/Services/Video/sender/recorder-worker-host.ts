@@ -236,7 +236,7 @@ const callbacks = rpcClientServer<RecorderWorkerCallbacks>(
     recorderWorkerImpl,
 );
 
-function observeCallbackPromise(name: string, invoke: () => void): void {
+function observeCallbackPromise(name: string, invoke: () => void): void | Promise<void> {
     // RPC client bindings may return a Promise despite the void signature;
     // observe so async failures don't go silent.
     const result: unknown = (invoke as () => unknown)();
@@ -246,9 +246,13 @@ function observeCallbackPromise(name: string, invoke: () => void): void {
         && 'catch' in result
         && typeof result.catch === 'function'
     ) {
-        void (result as Promise<unknown>).catch((e: unknown) =>
-            warnLog?.log(`Recorder callback ${name} failed:`, e));
+        return (result as Promise<unknown>)
+            .catch((e: unknown) => {
+                warnLog?.log(`Recorder callback ${name} failed:`, e);
+            })
+            .then(() => undefined);
     }
+    return undefined;
 }
 
 // Main thread pushes fresh tokens via `SharedSettingsWorkerSync.register`.
@@ -290,16 +294,21 @@ const deps: RecorderWorkerDeps = {
 
     // -- lifecycle callbacks --
     reportError(error) {
-        observeCallbackPromise('onError', () => callbacks.onError(error));
+        void observeCallbackPromise('onError', () => callbacks.onError(error));
     },
     reportStreamEnded(reason) {
-        observeCallbackPromise('onStreamEnded', () => callbacks.onStreamEnded(reason));
+        void observeCallbackPromise('onStreamEnded', () => callbacks.onStreamEnded(reason));
     },
     reportTraceKillInjected() {
-        observeCallbackPromise('onTraceKillInjected', () => callbacks.onTraceKillInjected());
+        void observeCallbackPromise('onTraceKillInjected', () => callbacks.onTraceKillInjected());
+    },
+    reportPreviewFrame(frame) {
+        return observeCallbackPromise(
+            'onPreviewFrame',
+            () => callbacks.onPreviewFrame(frame));
     },
     reportPreviewFramePresentation(presentation) {
-        observeCallbackPromise(
+        void observeCallbackPromise(
             'onPreviewFramePresentation',
             () => callbacks.onPreviewFramePresentation(presentation));
     },

@@ -13,6 +13,7 @@ export interface PreviewGeneratorLike {
 
 export interface SenderSessionOptions {
     previewGenerator?: PreviewGeneratorLike;
+    onPreviewFrame?: (frame: VideoFrame) => void | Promise<void>;
     onPreviewFramePresentation?: (presentation: PreviewFramePresentation) => void;
     createCaptureClock?: () => MonotonicClock;
 }
@@ -20,6 +21,7 @@ export interface SenderSessionOptions {
 export class SenderSession {
     readonly captureClock: MonotonicClock;
     private previewWriter: WritableStreamDefaultWriter<VideoFrame> | null = null;
+    private onPreviewFrame: ((frame: VideoFrame) => void | Promise<void>) | null = null;
     private onPreviewFramePresentation: ((presentation: PreviewFramePresentation) => void) | null = null;
 
     private disposed = false;
@@ -29,12 +31,16 @@ export class SenderSession {
         const createCaptureClock = opts.createCaptureClock
             ?? (() => new MonotonicClock({ minTickMs: 33 }));
         this.captureClock = createCaptureClock();
+        this.onPreviewFrame = opts.onPreviewFrame ?? null;
         this.onPreviewFramePresentation = opts.onPreviewFramePresentation ?? null;
         this.setPreviewGenerator(opts.previewGenerator);
     }
 
     get isDisposed(): boolean { return this.disposed; }
     getPreviewWriter(): WritableStreamDefaultWriter<VideoFrame> | null { return this.previewWriter; }
+    reportPreviewFrame(frame: VideoFrame): void | Promise<void> {
+        return this.onPreviewFrame?.(frame);
+    }
     reportPreviewFramePresentation(presentation: PreviewFramePresentation): void {
         const last = this.lastPreviewFramePresentation;
         if (last?.rotation === presentation.rotation)
@@ -54,6 +60,12 @@ export class SenderSession {
         reporter: ((presentation: PreviewFramePresentation) => void) | undefined,
     ): void {
         this.onPreviewFramePresentation = reporter ?? null;
+    }
+
+    setPreviewFrameReporter(
+        reporter: ((frame: VideoFrame) => void | Promise<void>) | undefined,
+    ): void {
+        this.onPreviewFrame = reporter ?? null;
     }
 
     dispose(): void {

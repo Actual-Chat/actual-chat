@@ -113,6 +113,7 @@ describe('previewTap', () => {
         for (let i = 0; i < 3; i++) {
             expect(writer.written[i]).toBe(frames[i].clones[0] as unknown as VideoFrame);
         }
+        expect(frames.map(f => f.clones[0].closed)).toEqual([true, true, true]);
     });
 
     it('passthrough preserves the original frame and envelope identity', async () => {
@@ -210,6 +211,11 @@ describe('previewTap', () => {
         await drain(op(source(envelopes)));
 
         expect(writer.written).toHaveLength(3);
+        expect(envelopes.map(e => (e.frame as unknown as MockVideoFrame).clones[0].closed)).toEqual([
+            true,
+            true,
+            true,
+        ]);
         expect(sleeps).toEqual([33, 33]);
     });
 
@@ -256,5 +262,29 @@ describe('previewTap', () => {
 
         expect(writer.written).toHaveLength(1);
         expect(frames.map(f => f.clones.length)).toEqual([1, 0, 0]);
+    });
+
+    it('reports frames to the canvas fallback when no writer is available', async () => {
+        const stats = createEmptyRecorderStats();
+        const { envelopes, frames } = makeFrames(stats, 2);
+        const reported: VideoFrame[] = [];
+
+        const op = previewTap({
+            getWriter: () => null,
+            reportFrame: frame => {
+                reported.push(frame);
+            },
+            frameDurationMs: 1,
+            nowMs: () => 0,
+            sleep: () => Promise.resolve(),
+        });
+        const out = await drain(op(source(envelopes)));
+
+        expect(out).toHaveLength(2);
+        expect(reported).toEqual([
+            frames[0].clones[0] as unknown as VideoFrame,
+            frames[1].clones[0] as unknown as VideoFrame,
+        ]);
+        expect(frames.map(f => f.clones[0].closed)).toEqual([true, true]);
     });
 });

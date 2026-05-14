@@ -66,6 +66,7 @@ export interface RecorderWorkerDeps {
     reportError?: (error: string) => void;
     reportStreamEnded?: (reason: string) => void;
     reportTraceKillInjected?: () => void;
+    reportPreviewFrame?: (frame: VideoFrame) => void | Promise<void>;
     reportPreviewFramePresentation?: (presentation: PreviewFramePresentation) => void;
 }
 
@@ -83,6 +84,7 @@ let state: WorkerState | null = null;
 export function initRecorderWorker(deps: RecorderWorkerDeps): void {
     if (state) return;
     const session = (deps.createSession ?? (() => new SenderSession()))();
+    session.setPreviewFrameReporter(deps.reportPreviewFrame);
     session.setPreviewFramePresentationReporter(deps.reportPreviewFramePresentation);
     state = {
         session,

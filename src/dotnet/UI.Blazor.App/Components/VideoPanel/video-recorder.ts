@@ -14,9 +14,8 @@
 //  - switchCodec / setLayers become a
 //    `worker.stop()` followed by `worker.start({...newConfig})` (no
 //    in-place reconfigure on the new pipeline).
-//  - Preview-only mode (the blur preview tap to a main-thread canvas)
-//    is no longer surfaced — the new pipeline doesn't bounce frames
-//    back to main. `addPreviewFrameListener` becomes a no-op.
+//  - Preview frames are surfaced from the normalized pipeline: preferably via
+//    a generated track, with a main-thread canvas fallback matching playback.
 //  - 1 Hz recorder-health snapshots report the new pipeline's sender
 //    drop / ACK / peer-connectivity signals; legacy encoder slot metrics
 //    remain neutral until the new pipeline exposes them.
@@ -74,6 +73,7 @@ import {
     type EncoderConfigPerLayer,
 } from '../../Services/Video/operators/encode';
 import type { RecorderStats } from '../../Services/Video/frame-envelopes';
+import { pickRenderBackendKind } from './render-backend-selection';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
 const RECORDER_HEALTH_INTERVAL_MS = 1000;
@@ -224,16 +224,8 @@ interface LayerInput {
     scalabilityMode?: string;
 }
 
-/**
- * Preview frame listener — preserved for API compatibility with the
- * legacy file. The new pipeline does NOT push preview frames to the
- * main thread (the worker writes its WYSIWYG output directly to an
- * MSTG generator), so listeners registered here will never fire until
- * the preview-tap-to-main-thread surface is added back.
- *
- * TODO(phase 7+): wire onPreviewFrame in `RecorderWorkerCallbacks` and
- * fan out here once the new pipeline grows the corresponding tap.
- */
+// Preview frame listener used by the canvas fallback when generated preview
+// tracks are unavailable. The VideoFrame is valid only during the callback.
 export type PreviewFrameListener = (frame: VideoFrame) => void;
 export type PreviewPresentationListener = (presentation: PreviewFramePresentation | null) => void;
 
@@ -276,6 +268,7 @@ export class VideoRecorder {
     // the legacy `startTrackTransferMode`).
     private inputTrack: MediaStreamTrack | null = null;
     private previewTrack: MediaStreamTrack | null = null;
+    private previewCanvasFallback = false;
     private generatedPreviewTrack: MediaStreamTrack | null = null;
     private previewFramePresentation: PreviewFramePresentation | null = null;
     // Worker-fed pipeline: feed the camera track to a hidden <video>
@@ -478,6 +471,10 @@ export class VideoRecorder {
 
     public getPreviewTrack(): MediaStreamTrack | null {
         return this.previewTrack;
+    }
+
+    public getPreviewUsesCanvas(): boolean {
+        return this.previewCanvasFallback;
     }
 
     public getPreviewFramePresentation(): PreviewFramePresentation | null {
@@ -996,6 +993,7 @@ export class VideoRecorder {
                 this.scheduleRecovery(`worker error: ${error}`);
             },
             onTraceKillInjected: () => consumeVideoTraceKill('recording'),
+            onPreviewFrame: frame => this.handlePreviewFrame(frame),
             onPreviewFramePresentation: presentation => this.setPreviewFramePresentation(presentation),
         };
 
@@ -1193,10 +1191,12 @@ export class VideoRecorder {
         const previewGenerator = this.createGeneratedPreviewTrack();
         if (previewGenerator) {
             this.setPreviewFramePresentation(null);
+            this.previewCanvasFallback = false;
             this.previewTrack = previewGenerator.track;
         } else {
             this.setPreviewFramePresentation(null);
-            this.previewTrack = this.inputTrack;
+            this.previewCanvasFallback = true;
+            this.previewTrack = null;
         }
         if (this.previewTrack !== previousPreviewTrack)
             this.notifyPreviewTrackChanged();
@@ -1205,7 +1205,8 @@ export class VideoRecorder {
             errorLog?.log('Worker start rejected:', e);
             if (previewGenerator && this.previewTrack === previewGenerator.track) {
                 this.cleanupGeneratedPreviewTrack();
-                this.previewTrack = this.inputTrack;
+                this.previewCanvasFallback = true;
+                this.previewTrack = null;
                 this.notifyPreviewTrackChanged();
             }
             const message = e instanceof Error ? e.message : String(e);
@@ -1578,6 +1579,7 @@ export class VideoRecorder {
     private cleanupPreviewTrack(): void {
         this.cleanupGeneratedPreviewTrack();
         this.setPreviewFramePresentation(null);
+        this.previewCanvasFallback = false;
         if (this.inputTrack) {
             this.inputTrack.onended = null;
             // For screencast, the same track is shared as preview; stop
@@ -1590,6 +1592,10 @@ export class VideoRecorder {
 
     private createGeneratedPreviewTrack(): PreviewTrackGenerator | null {
         this.cleanupGeneratedPreviewTrack();
+        if (pickRenderBackendKind() !== 'mstg') {
+            debugLog?.log('createGeneratedPreviewTrack: canvas preview selected');
+            return null;
+        }
 
         const g = globalThis as unknown as {
             MediaStreamTrackGenerator?: new (init: { kind: 'video' }) =>
@@ -1613,7 +1619,7 @@ export class VideoRecorder {
                 return { track: generator.track, writable: generator.writable };
             }
         } catch (e) {
-            warnLog?.log('createGeneratedPreviewTrack failed; falling back to raw preview track:', e);
+            warnLog?.log('createGeneratedPreviewTrack failed; falling back to canvas preview:', e);
             this.cleanupGeneratedPreviewTrack();
         }
         return null;
@@ -1624,9 +1630,21 @@ export class VideoRecorder {
         if (!track) return;
         try { track.stop(); } catch { /* ignore */ }
         this.generatedPreviewTrack = null;
-        if (this.previewTrack === track)
-            this.previewTrack = this.inputTrack;
+        if (this.previewTrack === track) {
+            this.previewCanvasFallback = false;
+            this.previewTrack = null;
+        }
         this.setPreviewFramePresentation(null);
+    }
+
+    private handlePreviewFrame(frame: VideoFrame): void {
+        try {
+            for (const cb of this.previewFrameListeners) {
+                try { cb(frame); } catch (e) { warnLog?.log('preview frame listener threw', e); }
+            }
+        } finally {
+            try { frame.close(); } catch { /* already closed */ }
+        }
     }
 
     private notifyPreviewTrackChanged(): void {

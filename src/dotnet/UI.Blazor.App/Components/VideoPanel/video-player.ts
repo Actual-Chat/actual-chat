@@ -24,7 +24,8 @@ import { consumeVideoTraceKill, registerVideoTraceKillWorker } from '../../Servi
 import { isCodecExhaustedError } from '../../Services/Video/operators/decode';
 import type { RenderBackend } from './render-backend';
 import { TransferableCanvasRenderBackend } from './render-backend-canvas';
-import { OffThreadRenderBackend, isOffThreadPlausible } from './render-backend-mstg';
+import { OffThreadRenderBackend } from './render-backend-mstg';
+import { pickRenderBackendKind } from './render-backend-selection';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 import { AC, VIDEO } from 'app-constants';
@@ -35,15 +36,9 @@ import { AC, VIDEO } from 'app-constants';
 // it rejects start() and we fall back to canvas.
 // ?renderBackend=mstg|canvas overrides for diagnostics.
 function pickRenderBackend(canvas: HTMLCanvasElement, videoEl: HTMLVideoElement): RenderBackend {
-    let flag: string | null = null;
-    try {
-        flag = new URL(globalThis.location.href).searchParams.get('renderBackend');
-    } catch { /* non-browser context */ }
-    if (flag === 'canvas')
+    if (pickRenderBackendKind() === 'canvas')
         return new TransferableCanvasRenderBackend(canvas);
-    if (flag === 'mstg' || isOffThreadPlausible())
-        return new OffThreadRenderBackend(videoEl);
-    return new TransferableCanvasRenderBackend(canvas);
+    return new OffThreadRenderBackend(videoEl);
 }
 
 // Global registry of active VideoPlayer instances for diagnostics

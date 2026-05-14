@@ -41,6 +41,9 @@ body.wide .video-panel.expanded .video-streaming-preview .call-video-native {
 .video-streaming-preview .call-video {
     background: transparent;
 }
+.video-streaming-preview.preview-backend-canvas .call-video-native {
+    display: none;
+}
 .video-streaming-preview .btn-h.btn-settings {
     @apply absolute top-2 right-14 z-button;
 }
