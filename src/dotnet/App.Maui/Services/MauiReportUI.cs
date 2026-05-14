@@ -26,9 +26,6 @@ public sealed class MauiReportUI(UIHub hub) : ReportUI(hub)
                     Username = account.Name.NullIfEmpty(),
                     Email = account.Email.NullIfEmpty(),
                 };
-                scope.SetTag("app.kind", HostInfo.AppKind.ToString());
-                scope.SetTag("host.kind", HostInfo.HostKind.ToString());
-                scope.SetExtra("base.url", HostInfo.BaseUrl);
                 scope.AddAttachment(logFile, AttachmentType.Default, "text/plain");
             });
 
