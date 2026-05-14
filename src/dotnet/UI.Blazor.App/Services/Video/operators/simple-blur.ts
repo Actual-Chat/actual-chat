@@ -22,6 +22,8 @@ export function simpleBlur(opts: SimpleBlurOptions = {}): PipeOperator<Normalize
         try {
             for await (const envelope of source) {
                 let output: VideoFrame | null = null;
+                let mustCloseInput = true;
+                let mustCloseOutput = false;
                 try {
                     const input = envelope.frame;
                     const width = input.codedWidth;
@@ -29,26 +31,30 @@ export function simpleBlur(opts: SimpleBlurOptions = {}): PipeOperator<Normalize
                     resizeCanvas(canvas, width, height);
 
                     ctx.filter = `blur(${radiusPx}px)`;
-                    drawFrameCover(ctx, input, width, height);
-                    ctx.filter = 'none';
+                    try {
+                        drawFrameCover(ctx, input, width, height);
+                    } finally {
+                        ctx.filter = 'none';
+                    }
                     output = new VideoFrame(canvas, {
                         timestamp: input.timestamp,
                         alpha: 'discard',
                     });
+                    mustCloseOutput = true;
                     try { input.close(); } catch { /* already closed */ }
-                    yield {
-                        ...envelope,
-                        frame: output,
-                    };
-                    output = null;
+                    mustCloseInput = false;
+
+                    const next: NormalizedFrame = { ...envelope, frame: output };
+                    mustCloseOutput = false;
+                    yield next;
                 } catch (e) {
                     warnLog?.log('simpleBlur: process failed:', e);
-                    if (output)
-                        try { output.close(); } catch { /* ignore */ }
-                    try { envelope.frame.close(); } catch { /* ignore */ }
                     throw e instanceof Error ? e : new Error(String(e));
                 } finally {
-                    ctx.filter = 'none';
+                    if (mustCloseInput)
+                        try { envelope.frame.close(); } catch { /* ignore */ }
+                    if (mustCloseOutput && output)
+                        try { output.close(); } catch { /* ignore */ }
                 }
             }
         } finally {
