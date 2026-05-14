@@ -139,6 +139,9 @@
 .camera-menu .ac-menu-item.selected .ac-menu-icon > i {
     @apply text-primary;
 }
+.camera-menu .c-facing-badge {
+    @apply ml-1.5 text-03;
+}
 
 /* Mic button — recording state */
 .join-video-call-modal .btn-round.mic-btn .rec-icon {

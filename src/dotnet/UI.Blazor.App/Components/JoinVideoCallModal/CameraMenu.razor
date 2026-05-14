@@ -9,14 +9,33 @@
     } else if (_devices.Length == 0) {
         <div class="c-empty">No cameras detected</div>
     } else {
-        @foreach (var device in _devices) {
-            var isSelected = device.DeviceId == _selectedDeviceId;
-            <MenuEntry
-                Class="@(isSelected ? "selected" : "")"
-                Icon="@(isSelected ? "icon-checkmark-simple" : "icon-checkmark-simple invisible")"
-                Text="@device.Label"
-                Click="@(() => OnClick(device.DeviceId))">
-            </MenuEntry>
+        var hasFront = _devices.Any(d => d.IsFront);
+        var hasBack = _devices.Any(d => d.IsBack);
+        var showFacingBadge = hasFront && hasBack;
+        var groupOrder = new[] { "user", "environment", null };
+        var first = true;
+        foreach (var group in groupOrder) {
+            var groupDevices = _devices.Where(d => d.Facing == group).ToArray();
+            if (groupDevices.Length == 0)
+                continue;
+            if (!first) {
+                <MenuEntrySeparator/>
+            }
+            first = false;
+            foreach (var device in groupDevices) {
+                var isSelected = device.DeviceId == _selectedDeviceId;
+                <MenuEntry
+                    Class="@(isSelected ? "selected" : "")"
+                    Icon="@(isSelected ? "icon-checkmark-simple" : "icon-checkmark-simple invisible")"
+                    Click="@(() => OnClick(device.DeviceId))">
+                    <TextContent>
+                        <span class="c-camera-name">@device.Label</span>
+                        @if (showFacingBadge && device.Facing is { Length: > 0 }) {
+                            <span class="c-facing-badge">(@FacingBadgeText(device.Facing))</span>
+                        }
+                    </TextContent>
+                </MenuEntry>
+            }
         }
     }
 </div>
@@ -37,4 +56,11 @@
     private async Task OnClick(string deviceId) {
         await UIEventHub.Publish(new CameraSelectedEvent(_requester, deviceId));
     }
+
+    private static string FacingBadgeText(string? facing)
+        => facing switch {
+            "user" => "front",
+            "environment" => "back",
+            _ => "",
+        };
 }

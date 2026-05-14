@@ -299,7 +299,11 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 }
 
 // ReSharper disable once ClassNeverInstantiated.Global — instantiated via JS interop deserialization
-public sealed record VideoDevice(string DeviceId, string Label);
+public sealed record VideoDevice(string DeviceId, string Label, string? Facing = null)
+{
+    public bool IsFront => Facing == "user";
+    public bool IsBack => Facing == "environment";
+}
 
 public enum VideoPanelMode
 {
