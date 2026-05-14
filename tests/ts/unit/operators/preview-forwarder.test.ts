@@ -305,9 +305,11 @@ describe('previewForwarder', () => {
             sleep: () => Promise.resolve(),
         });
         await drain(op(source(envelopes)));
+        await settlePreviewWork();
 
         expect(writer.written).toHaveLength(1);
-        expect(frames.map(f => f.clones.length)).toEqual([1, 0, 0]);
+        expect(frames.map(f => f.clones.length)).toEqual([1, 1, 1]);
+        expect(frames.map(f => f.clones[0].closed)).toEqual([true, true, true]);
     });
 
     it('reports frames to the canvas fallback when no writer is available', async () => {
