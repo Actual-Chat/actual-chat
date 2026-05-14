@@ -6,6 +6,7 @@ DEVICE_UDID="$(detect_ios_device)"
 APP_PATH="$SCRIPT_DIR/artifacts/bin/App.Maui/debug_net10.0-ios_ios-arm64/ActualChat.app"
 
 # Build only (mlaunch Run fails on iOS 26.3+)
+npm run build:Debug
 dotnet build src/dotnet/App.Maui/ -f net10.0-ios -p:RuntimeIdentifier=ios-arm64 || exit 1
 
 # Install and launch via devicectl
