@@ -53,17 +53,17 @@
 
     <MenuEntrySeparator/>
 
-    @if (a.CanShowVoiceSettings) {
-        <MenuEntry
-            Icon="icon-options-2"
-            Text="Voice settings"
-            Click="@OnVoiceSettings"/>
-    }
     @if (a.CanShowVideoSettings) {
         <MenuEntry
             Icon="icon-settings"
             Text="Video settings"
             Click="@OnVideoSettings"/>
+    }
+    @if (a.CanShowVoiceSettings) {
+        <MenuEntry
+            Icon="icon-options-2"
+            Text="Voice settings"
+            Click="@OnVoiceSettings"/>
     }
 
     <MenuEntrySeparator/>
