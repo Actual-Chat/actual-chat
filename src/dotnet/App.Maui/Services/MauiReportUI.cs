@@ -1,6 +1,6 @@
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.IO;
-using Sentry;
 
 namespace ActualChat.App.Maui.Services;
 
