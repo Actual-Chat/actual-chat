@@ -22,6 +22,7 @@ class MockVideoFrame {
 class FakeWriter {
     public written: VideoFrame[] = [];
     public writeShouldThrow: Error | null = null;
+    public desiredSize: number | null = 1;
     async write(frame: VideoFrame): Promise<void> {
         await Promise.resolve();
         if (this.writeShouldThrow) throw this.writeShouldThrow;
@@ -65,6 +66,19 @@ async function drain<T>(seg: AsyncIterable<T>): Promise<T[]> {
     return out;
 }
 
+function makePreviewTap(
+    getWriter: () => WritableStreamDefaultWriter<VideoFrame> | null,
+    extra: Partial<Parameters<typeof previewTap>[0]> = {},
+): ReturnType<typeof previewTap> {
+    return previewTap({
+        getWriter,
+        frameDurationMs: 1,
+        nowMs: () => 0,
+        sleep: () => Promise.resolve(),
+        ...extra,
+    });
+}
+
 // ---- Tests ----------------------------------------------------------------
 
 describe('previewTap', () => {
@@ -72,7 +86,7 @@ describe('previewTap', () => {
         const stats = createEmptyRecorderStats();
         const { envelopes, frames } = makeFrames(stats, 3);
 
-        const op = previewTap({ getWriter: () => null });
+        const op = makePreviewTap(() => null);
         const out = await drain(op(source(envelopes)));
 
         expect(out).toHaveLength(3);
@@ -88,7 +102,7 @@ describe('previewTap', () => {
         const { envelopes, frames } = makeFrames(stats, 3);
         const writer = new FakeWriter();
 
-        const op = previewTap({ getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame> });
+        const op = makePreviewTap(() => writer as unknown as WritableStreamDefaultWriter<VideoFrame>);
         const out = await drain(op(source(envelopes)));
 
         expect(out).toHaveLength(3);
@@ -105,7 +119,7 @@ describe('previewTap', () => {
         const stats = createEmptyRecorderStats();
         const { envelopes } = makeFrames(stats, 2);
         const writer = new FakeWriter();
-        const op = previewTap({ getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame> });
+        const op = makePreviewTap(() => writer as unknown as WritableStreamDefaultWriter<VideoFrame>);
 
         const out = await drain(op(source(envelopes)));
 
@@ -124,13 +138,11 @@ describe('previewTap', () => {
         const writerA = new FakeWriter();
         const writerB = new FakeWriter();
         let calls = 0;
-        const op = previewTap({
-            getWriter: () => {
-                // First two frames go to A; remaining to B.
-                const writer = calls < 2 ? writerA : writerB;
-                calls++;
-                return writer as unknown as WritableStreamDefaultWriter<VideoFrame>;
-            },
+        const op = makePreviewTap(() => {
+            // First two frames go to A; remaining to B.
+            const writer = calls < 2 ? writerA : writerB;
+            calls++;
+            return writer as unknown as WritableStreamDefaultWriter<VideoFrame>;
         });
         await drain(op(source(envelopes)));
 
@@ -151,7 +163,7 @@ describe('previewTap', () => {
         const writer = new FakeWriter();
         writer.writeShouldThrow = new Error('writer closed');
 
-        const op = previewTap({ getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame> });
+        const op = makePreviewTap(() => writer as unknown as WritableStreamDefaultWriter<VideoFrame>);
         const out = await drain(op(source(envelopes)));
 
         expect(out).toHaveLength(2);
@@ -162,5 +174,87 @@ describe('previewTap', () => {
         }
         // No frames made it to the writer.
         expect(writer.written).toEqual([]);
+    });
+
+    it('drops without cloning when the preview writer is backpressured', async () => {
+        const stats = createEmptyRecorderStats();
+        const { envelopes, frames } = makeFrames(stats, 2);
+        const writer = new FakeWriter();
+        writer.desiredSize = 0;
+
+        const op = makePreviewTap(() => writer as unknown as WritableStreamDefaultWriter<VideoFrame>);
+        const out = await drain(op(source(envelopes)));
+
+        expect(out).toHaveLength(2);
+        expect(frames.map(f => f.clones.length)).toEqual([0, 0]);
+        expect(writer.written).toEqual([]);
+    });
+
+    it('paces bunched frames from capturedAt time', async () => {
+        const stats = createEmptyRecorderStats();
+        const { envelopes } = makeFrames(stats, 3);
+        const writer = new FakeWriter();
+        let now = 0;
+        const sleeps: number[] = [];
+
+        const op = previewTap({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            frameDurationMs: 33,
+            nowMs: () => now,
+            sleep: async delayMs => {
+                await Promise.resolve();
+                sleeps.push(delayMs);
+                now += delayMs;
+            },
+        });
+        await drain(op(source(envelopes)));
+
+        expect(writer.written).toHaveLength(3);
+        expect(sleeps).toEqual([33, 33]);
+    });
+
+    it('resets pacing on capture-clock epoch changes', async () => {
+        const stats = createEmptyRecorderStats();
+        const { envelopes } = makeFrames(stats, 3);
+        envelopes[2] = {
+            ...envelopes[2],
+            capturedAt: { timeMs: 0, epoch: 1 },
+        };
+        const writer = new FakeWriter();
+        let now = 0;
+        const sleeps: number[] = [];
+
+        const op = previewTap({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            frameDurationMs: 33,
+            nowMs: () => now,
+            sleep: async delayMs => {
+                await Promise.resolve();
+                sleeps.push(delayMs);
+                now += delayMs;
+            },
+        });
+        await drain(op(source(envelopes)));
+
+        expect(writer.written).toHaveLength(3);
+        expect(sleeps).toEqual([33]);
+    });
+
+    it('drops preview frames that are already two frame intervals late', async () => {
+        const stats = createEmptyRecorderStats();
+        const { envelopes, frames } = makeFrames(stats, 3);
+        const writer = new FakeWriter();
+        let calls = 0;
+
+        const op = previewTap({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            frameDurationMs: 33,
+            nowMs: () => calls++ === 0 ? 0 : 100,
+            sleep: () => Promise.resolve(),
+        });
+        await drain(op(source(envelopes)));
+
+        expect(writer.written).toHaveLength(1);
+        expect(frames.map(f => f.clones.length)).toEqual([1, 0, 0]);
     });
 });
