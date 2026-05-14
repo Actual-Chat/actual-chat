@@ -360,6 +360,11 @@ export class RecorderPreviewView {
         this.options.onFirstFrame?.();
     }
 
+    private shouldMirrorPreview(): boolean {
+        return !this.options.canvas.classList.contains('no-mirror')
+            && !this.options.videoEl.classList.contains('no-mirror');
+    }
+
     private drawBgFrame(width: number, height: number): void {
         if (!this.bgCanvasTarget) return;
         if (!this.bgContainer?.classList.contains('item-focused')) return;
@@ -373,7 +378,7 @@ export class RecorderPreviewView {
         const bgH = Math.max(1, Math.round(bgW * height / Math.max(1, width)));
         // Source from the already-drawn main canvas to avoid a second
         // GPU->RGB conversion of the VideoFrame per frame.
-        this.bgCanvasTarget.draw(this.canvasTarget.element, bgW, bgH);
+        this.bgCanvasTarget.draw(this.canvasTarget.element, bgW, bgH, this.shouldMirrorPreview());
     }
 
     // Sourced from <video> because the main canvas is empty in the generated-track path.
@@ -384,6 +389,6 @@ export class RecorderPreviewView {
         const h = videoEl.videoHeight;
         const bgW = BG_CANVAS_WIDTH;
         const bgH = Math.max(1, Math.round(bgW * h / Math.max(1, w)));
-        this.bgCanvasTarget.draw(videoEl, bgW, bgH);
+        this.bgCanvasTarget.draw(videoEl, bgW, bgH, this.shouldMirrorPreview());
     }
 }

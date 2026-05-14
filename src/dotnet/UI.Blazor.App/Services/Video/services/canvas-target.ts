@@ -12,7 +12,7 @@ export class CanvasTarget {
         this.applyCtxState();
     }
 
-    draw(source: CanvasImageSource, width: number, height: number): void {
+    draw(source: CanvasImageSource, width: number, height: number, mirrorX = false): void {
         if (width <= 0 || height <= 0) return;
         if (this.element.width !== width || this.element.height !== height) {
             this.element.width = width;
@@ -21,12 +21,21 @@ export class CanvasTarget {
             this.applyCtxState();
         }
         const overdrawPx = this.overdrawPx;
-        this.ctx.drawImage(
-            source,
-            -overdrawPx,
-            -overdrawPx,
-            width + 2 * overdrawPx,
-            height + 2 * overdrawPx);
+        this.ctx.save();
+        try {
+            if (mirrorX) {
+                this.ctx.translate(width, 0);
+                this.ctx.scale(-1, 1);
+            }
+            this.ctx.drawImage(
+                source,
+                -overdrawPx,
+                -overdrawPx,
+                width + 2 * overdrawPx,
+                height + 2 * overdrawPx);
+        } finally {
+            this.ctx.restore();
+        }
     }
 
     private applyCtxState(): void {
