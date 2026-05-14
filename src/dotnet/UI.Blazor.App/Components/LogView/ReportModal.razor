@@ -19,17 +19,14 @@
             maxlength="@CommentMaxLength"
             placeholder="What were you doing? What went wrong?"
             value="@_comment"
-            disabled="@_isSubmitting"
             @oninput="OnCommentInput">
         </textarea>
         <div class="c-counter">@_comment.Length / @CommentMaxLength</div>
     </div>
     </Body>
     <Buttons>
-        <Button Class="btn-modal" Click="@OnCancel" IsDisabled="@_isSubmitting">Cancel</Button>
-        <Button Class="btn-modal btn-primary" Click="@OnSubmit" IsDisabled="@(_isSubmitting || string.IsNullOrWhiteSpace(_comment))">
-            @(_isSubmitting ? "Sending…" : "Send")
-        </Button>
+        <Button Class="btn-modal" Click="@OnCancel">Cancel</Button>
+        <Button Class="btn-modal btn-primary" Click="@OnSubmit" IsDisabled="@(_comment.IsNullOrWhiteSpace())">Send</Button>
     </Buttons>
 </DialogFrame>
 
@@ -37,7 +34,6 @@
     private const int CommentMaxLength = 1000;
 
     private string _comment = "";
-    private bool _isSubmitting;
 
     private LogUI LogUI => Hub.LogUI;
     private ReportUI ReportUI => Hub.ReportUI;
@@ -57,32 +53,10 @@
         => Modal.Close();
 
     private async Task OnSubmit() {
-        if (_isSubmitting)
-            return;
-
-        _isSubmitting = true;
-        var ct = CancellationToken.None;
-        var fileName = $"voxt-log-{Clocks.SystemClock.Now.ToString("yyyyMMdd-HHmmss")}.log";
-        FilePath logFile = (FilePath)Path.GetTempPath() | fileName;
-        Log.LogInformation("OnSubmit: starting, ReportUI={ReportUIType}, IsAvailable={IsAvailable}, logFile={LogFile}",
-            ReportUI.GetType().Name, ReportUI.IsAvailable, logFile.Value);
-        try {
-            await using (var stream = File.Create(logFile)) {
-                await LogUI.Save(stream, ct);
-            }
-            await ReportUI.Submit(_comment, logFile, ct);
-            Log.LogInformation("OnSubmit: ReportUI.Submit returned");
-            ToastUI.Show("Report sent — thanks!", ToastDismissDelay.Short);
-            Modal.Close();
-        }
-        catch (Exception e) {
-            Log.LogError(e, "OnSubmit: failed to send report");
-            ToastUI.Show($"Failed to send report: {e.Message}", "icon-alert-circle", ToastDismissDelay.Long);
-        }
-        finally {
-            logFile.DeleteSilently();
-            _isSubmitting = false;
-        }
+        using var dLog = await LogUI.DumpToTempFile(Hub.StopToken);
+        await ReportUI.Submit(_comment, dLog.Resource, Hub.StopToken);
+        ToastUI.Show("Report sent — thanks!", ToastDismissDelay.Short);
+        Modal.Close();
     }
 
     public sealed record Model();
