@@ -60,11 +60,11 @@
 
         @if (m.ShowLogViewer) {
             <SettingsTab @key="92" TabIndex="92" Title="Log Viewer" Id="@SettingsTabId.LogViewer" Class="log-viewer-tab" HeaderClass="no-scrollbar" ContentClass="no-scrollbar" IconClass="icon-info">
-                <HeaderEndContent>
+                <HeaderButtons>
                     @if (Hub.ReportUI.IsAvailable) {
                         <HeaderButton Class="log-viewer-report-btn" Click="@OnReportClick">Report</HeaderButton>
                     }
-                </HeaderEndContent>
+                </HeaderButtons>
                 <ChildContent>
                     <div class="log-viewer-page">
                         <LogView/>
