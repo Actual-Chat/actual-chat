@@ -41,8 +41,16 @@ public abstract class TuneUI : ProcessorBase
         [Tune.ChangeLanguage] = new ([20, 20] /*, "change-language"*/),
         [Tune.ShowMenu] = new ([20] /*, "show-menu"*/),
     };
+    // Suppress redundant tactile feedback fired as a side-effect of starting
+    // recording: ConfirmRecording (mic-live signal ~0.5–1 s after start) and
+    // StartListening (listening auto-enables for the recording chat) feel
+    // like jitter on top of Tune.BeginRecording's initial haptic+sound.
+    private static readonly TimeSpan BeginRecordingFollowupWindow = TimeSpan.FromMilliseconds(1500);
+    private static readonly HashSet<Tune> BeginRecordingFollowups = [Tune.ConfirmRecording, Tune.StartListening];
+
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.TuneUI.init";
     private DotNetObjectReference<TuneUI>? _backendRef;
+    private CpuTimestamp _lastBeginRecordingAt;
 
     protected TuneUI(UIHub hub)
     {
@@ -72,9 +80,35 @@ public abstract class TuneUI : ProcessorBase
         return Task.CompletedTask;
     }
 
-    public abstract Task Play(Tune tune);
+    public Task Play(Tune tune)
+    {
+        if (IsSuppressed(tune))
+            return Task.CompletedTask;
+        OnBeforePlay(tune);
+        return PlayInternal(tune);
+    }
 
-    public abstract Task PlayAndWait(Tune tune);
+    public Task PlayAndWait(Tune tune)
+    {
+        if (IsSuppressed(tune))
+            return Task.CompletedTask;
+        OnBeforePlay(tune);
+        return PlayAndWaitInternal(tune);
+    }
+
+    protected abstract Task PlayInternal(Tune tune);
+
+    protected abstract Task PlayAndWaitInternal(Tune tune);
+
+    private bool IsSuppressed(Tune tune)
+        => BeginRecordingFollowups.Contains(tune)
+            && _lastBeginRecordingAt.Elapsed < BeginRecordingFollowupWindow;
+
+    private void OnBeforePlay(Tune tune)
+    {
+        if (tune == Tune.BeginRecording)
+            _lastBeginRecordingAt = CpuTimestamp.Now;
+    }
 }
 
 /// <summary>

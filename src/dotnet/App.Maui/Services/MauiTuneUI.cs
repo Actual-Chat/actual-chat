@@ -34,13 +34,13 @@ public class MauiTuneUI : TuneUI
         _players.Clear();
     }
 
-    public override Task Play(Tune tune)
+    protected override Task PlayInternal(Tune tune)
     {
-        _ = ForegroundTask.Run(() => PlayAndWait(tune), CancellationToken.None);
+        _ = ForegroundTask.Run(() => PlayAndWaitInternal(tune), CancellationToken.None);
         return Task.CompletedTask;
     }
 
-    public override async Task PlayAndWait(Tune tune)
+    protected override async Task PlayAndWaitInternal(Tune tune)
     {
         if (!Tunes.TryGetValue(tune, out var info))
             return;

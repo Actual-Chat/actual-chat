@@ -11,9 +11,9 @@ public class WebTuneUI(UIHub hub) : TuneUI(hub)
 
     private IJSRuntime JS => Hub.JS;
 
-    public override Task Play(Tune tune)
+    protected override Task PlayInternal(Tune tune)
         => ForegroundTask.Run(() => JS.InvokeVoidAsync(JSPlayMethod, tune).AsTask());
 
-    public override Task PlayAndWait(Tune tune)
+    protected override Task PlayAndWaitInternal(Tune tune)
         => JS.InvokeVoidAsync(JSPlayAndWaitMethod, tune).AsTask();
 }
