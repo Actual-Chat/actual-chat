@@ -19,7 +19,6 @@ public sealed class MauiReportUI(UIHub hub) : ReportUI(hub)
         if (!SentrySdk.IsEnabled)
             throw StandardError.Constraint("Diagnostics aren't ready yet — please retry in a few seconds.");
 
-        var bytes = await File.ReadAllBytesAsync(logFile, cancellationToken).ConfigureAwait(false);
         var eventId = SentrySdk.CaptureMessage($"User report: {comment}",
             scope => {
                 scope.User = new SentryUser {
@@ -30,7 +29,7 @@ public sealed class MauiReportUI(UIHub hub) : ReportUI(hub)
                 scope.SetTag("app.kind", HostInfo.AppKind.ToString());
                 scope.SetTag("host.kind", HostInfo.HostKind.ToString());
                 scope.SetExtra("base.url", HostInfo.BaseUrl);
-                scope.AddAttachment(bytes, logFile.FileName, AttachmentType.Default, "text/plain");
+                scope.AddAttachment(logFile, AttachmentType.Default, "text/plain");
             });
 
         var feedback = new SentryFeedback(
