@@ -61,22 +61,17 @@
             return;
 
         _isSubmitting = true;
-        var now = Clocks.SystemClock.Now;
-        var fileName = $"voxt-log-{now.ToString("yyyyMMdd-HHmmss")}.log";
+        var ct = CancellationToken.None;
+        var fileName = $"voxt-log-{Clocks.SystemClock.Now.ToString("yyyyMMdd-HHmmss")}.log";
         FilePath logFile = (FilePath)Path.GetTempPath() | fileName;
         Log.LogInformation("OnSubmit: starting, ReportUI={ReportUIType}, IsAvailable={IsAvailable}, logFile={LogFile}",
             ReportUI.GetType().Name, ReportUI.IsAvailable, logFile.Value);
         try {
-            var ct = CancellationToken.None;
-            var idRange = await LogUI.GetIdRange(ct);
-            var tiles = await LogUI.GetTiles(idRange, ct);
-            var entries = tiles.SelectMany(t => t.Entries).ToList();
-            var account = AccountUI.OwnAccount.Value;
-            Log.LogInformation("OnSubmit: snapshot has {EntryCount} entries across {TileCount} tiles, account={Account}",
-                entries.Count, tiles.Count, account?.Id.Value ?? "(none)");
-            var payload = ReportLogBuilder.BuildLogPayload(entries, HostInfo, account, now);
-            await File.WriteAllBytesAsync(logFile, payload, ct);
-            Log.LogInformation("OnSubmit: wrote {ByteCount} bytes to {LogFile}", payload.Length, logFile.Value);
+            await using (var stream = File.Create(logFile)) {
+                var header = ReportLogBuilder.BuildHeader(HostInfo, AccountUI.OwnAccount.Value, Clocks.SystemClock.Now);
+                await stream.WriteAsync(header, ct);
+                await LogUI.Save(stream, ct);
+            }
             await ReportUI.Submit(_comment, logFile, ct);
             Log.LogInformation("OnSubmit: ReportUI.Submit returned");
             ToastUI.Show("Report sent — thanks!", ToastDismissDelay.Short);
