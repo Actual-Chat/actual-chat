@@ -46,7 +46,13 @@ export interface RecorderWorker extends SharedSettingsWorker {
     pushFrame(frame: VideoFrame, noWait?: RpcNoWait): Promise<void>;
     endSource(noWait?: RpcNoWait): Promise<void>;
 
-    start(opts: RecorderWorkerOptions): Promise<void>;
+    // Trailing transferable arg: main constructs the preview
+    // MediaStreamTrackGenerator, attaches its track locally, and transfers
+    // only the writable into the worker.
+    start(
+        opts: RecorderWorkerOptions,
+        previewWritable?: WritableStream<VideoFrame>,
+    ): Promise<void>;
     setTraceKill(avgPeriod: VideoTraceKillPeriod, stage: number): Promise<boolean>;
     requestKeyframe(): Promise<void>;
     getStats(): Promise<RecorderStats>;

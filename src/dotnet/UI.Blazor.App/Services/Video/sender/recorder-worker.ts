@@ -146,13 +146,17 @@ export const recorderWorkerImpl: RecorderWorker = {
         return Promise.resolve();
     },
 
-    async start(opts: RecorderWorkerOptions): Promise<void> {
+    async start(
+        opts: RecorderWorkerOptions,
+        previewWritable?: WritableStream<VideoFrame>,
+    ): Promise<void> {
         const s = requireState();
         if (s.whenDone)
             throw new Error('RecorderWorker: already running — call stop() first');
 
         const { config } = opts;
         const { deps, recorder, session } = s;
+        session.setPreviewGenerator(previewWritable ? { writable: previewWritable } : undefined);
         // Streaming context must land before the pipeline starts so
         // `createWireSender` finds it on the first encoded chunk.
         deps.configureStreaming?.({
@@ -218,6 +222,7 @@ export const recorderWorkerImpl: RecorderWorker = {
                 catch (reportError) { errorLog?.log('reportStreamEnded failed:', reportError); }
             },
         ).finally(() => {
+            session.setPreviewGenerator(undefined);
             if (s.whenDone === whenDone) s.whenDone = null;
         });
         await Promise.resolve();

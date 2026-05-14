@@ -77,6 +77,11 @@ import type { RecorderStats } from '../../Services/Video/frame-envelopes';
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
 const RECORDER_HEALTH_INTERVAL_MS = 1000;
 
+interface PreviewTrackGenerator {
+    track: MediaStreamTrack;
+    writable: WritableStream<VideoFrame>;
+}
+
 // ---- Public diagnostics shapes -------------------------------------------
 
 export interface OwnStreamDiagnostics {
@@ -269,6 +274,7 @@ export class VideoRecorder {
     // the legacy `startTrackTransferMode`).
     private inputTrack: MediaStreamTrack | null = null;
     private previewTrack: MediaStreamTrack | null = null;
+    private generatedPreviewTrack: MediaStreamTrack | null = null;
     // Worker-fed pipeline: feed the camera track to a hidden <video>
     // element on main; on each `requestVideoFrameCallback` build a
     // `VideoFrame` from the video and ship it to the worker via
@@ -1175,8 +1181,23 @@ export class VideoRecorder {
         // `start()` resolves only when the run finishes draining (per
         // the new contract) — fire and forget so we can return from
         // startRecording() and let the operator pipe drive itself.
-        void this.worker.start({ sourceStartedAtMs, config }).catch((e: unknown) => {
+        const previousPreviewTrack = this.previewTrack;
+        const previewGenerator = this.createGeneratedPreviewTrack();
+        if (previewGenerator) {
+            this.previewTrack = previewGenerator.track;
+        } else {
+            this.previewTrack = this.inputTrack;
+        }
+        if (this.previewTrack !== previousPreviewTrack)
+            this.notifyPreviewTrackChanged();
+
+        void this.worker.start({ sourceStartedAtMs, config }, previewGenerator?.writable).catch((e: unknown) => {
             errorLog?.log('Worker start rejected:', e);
+            if (previewGenerator && this.previewTrack === previewGenerator.track) {
+                this.cleanupGeneratedPreviewTrack();
+                this.previewTrack = this.inputTrack;
+                this.notifyPreviewTrackChanged();
+            }
             const message = e instanceof Error ? e.message : String(e);
             this.scheduleRecovery(`worker.start rejected: ${message}`);
         });
@@ -1545,6 +1566,7 @@ export class VideoRecorder {
     }
 
     private cleanupPreviewTrack(): void {
+        this.cleanupGeneratedPreviewTrack();
         if (this.inputTrack) {
             this.inputTrack.onended = null;
             // For screencast, the same track is shared as preview; stop
@@ -1553,6 +1575,52 @@ export class VideoRecorder {
             this.inputTrack = null;
         }
         this.previewTrack = null;
+    }
+
+    private createGeneratedPreviewTrack(): PreviewTrackGenerator | null {
+        this.cleanupGeneratedPreviewTrack();
+
+        const g = globalThis as unknown as {
+            MediaStreamTrackGenerator?: new (init: { kind: 'video' }) =>
+                MediaStreamTrack & { readonly writable: WritableStream<VideoFrame> };
+            VideoTrackGenerator?: new () => {
+                readonly writable: WritableStream<VideoFrame>;
+                readonly track: MediaStreamTrack;
+            };
+        };
+        try {
+            if (typeof g.MediaStreamTrackGenerator === 'function') {
+                const generator = new g.MediaStreamTrackGenerator({ kind: 'video' });
+                this.generatedPreviewTrack = generator;
+                debugLog?.log(`createGeneratedPreviewTrack: MediaStreamTrackGenerator (id=${generator.id})`);
+                return { track: generator, writable: generator.writable };
+            }
+            if (typeof g.VideoTrackGenerator === 'function') {
+                const generator = new g.VideoTrackGenerator();
+                this.generatedPreviewTrack = generator.track;
+                debugLog?.log(`createGeneratedPreviewTrack: VideoTrackGenerator (id=${generator.track.id})`);
+                return { track: generator.track, writable: generator.writable };
+            }
+        } catch (e) {
+            warnLog?.log('createGeneratedPreviewTrack failed; falling back to raw preview track:', e);
+            this.cleanupGeneratedPreviewTrack();
+        }
+        return null;
+    }
+
+    private cleanupGeneratedPreviewTrack(): void {
+        const track = this.generatedPreviewTrack;
+        if (!track) return;
+        try { track.stop(); } catch { /* ignore */ }
+        this.generatedPreviewTrack = null;
+        if (this.previewTrack === track)
+            this.previewTrack = this.inputTrack;
+    }
+
+    private notifyPreviewTrackChanged(): void {
+        for (const cb of this.stateChangeListeners) {
+            try { cb(this._recordingState); } catch (e) { warnLog?.log('state change listener threw', e); }
+        }
     }
 
     private async describeStartError(error: unknown): Promise<string> {

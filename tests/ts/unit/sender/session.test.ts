@@ -46,7 +46,7 @@ describe('SenderSession', () => {
     it('constructs with default capture clock, no preview writer when generator omitted', () => {
         const session = new SenderSession();
         expect(session.captureClock).toBeInstanceOf(MonotonicClock);
-        expect(session.previewWriter).toBeNull();
+        expect(session.getPreviewWriter()).toBeNull();
         session.dispose();
     });
 
@@ -55,7 +55,7 @@ describe('SenderSession', () => {
         const session = new SenderSession({
             previewGenerator: { writable: stream as unknown as WritableStream<VideoFrame> },
         });
-        expect(session.previewWriter).not.toBeNull();
+        expect(session.getPreviewWriter()).not.toBeNull();
         expect(stream.writerCount).toBe(1);
         expect(stream.locked).toBe(true);
         session.dispose();
@@ -69,7 +69,24 @@ describe('SenderSession', () => {
         const session = new SenderSession({
             previewGenerator: { writable: stream as unknown as WritableStream<VideoFrame> },
         });
-        expect(session.previewWriter).toBeNull();
+        expect(session.getPreviewWriter()).toBeNull();
+        session.dispose();
+    });
+
+    it('can swap preview generators between runs', () => {
+        const first = new FakeWritableStream();
+        const second = new FakeWritableStream();
+        const session = new SenderSession({
+            previewGenerator: { writable: first as unknown as WritableStream<VideoFrame> },
+        });
+
+        session.setPreviewGenerator({ writable: second as unknown as WritableStream<VideoFrame> });
+
+        expect(first.lockReleased).toBe(true);
+        expect(first.locked).toBe(false);
+        expect(second.writerCount).toBe(1);
+        expect(second.locked).toBe(true);
+        expect(session.getPreviewWriter()).not.toBeNull();
         session.dispose();
     });
 

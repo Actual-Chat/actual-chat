@@ -14,7 +14,8 @@ import { attachSourceDims } from '../../../src/dotnet/UI.Blazor.App/Services/Vid
 import { forceKeyframeOnDimChange } from '../../../src/dotnet/UI.Blazor.App/Services/Video/operators/force-keyframe-on-dim-change';
 import { dropDimMismatch } from '../../../src/dotnet/UI.Blazor.App/Services/Video/operators/dim-mismatch-guard';
 import {
-    downscale,
+    normalizeFrame,
+    spatialize,
     type LayerSpec,
 } from '../../../src/dotnet/UI.Blazor.App/Services/Video/operators/downscale';
 import { applyKeyframePolicy } from '../../../src/dotnet/UI.Blazor.App/Services/Video/operators/apply-keyframe-policy';
@@ -61,12 +62,50 @@ import { MonotonicClock } from 'clocks';
 
 class MockVideoFrame {
     closed = false;
+    id: number;
+    codedWidth: number;
+    codedHeight: number;
+    timestamp: number;
+
     constructor(
-        public id: number,
-        public codedWidth: number,
-        public codedHeight: number,
-    ) {}
+        idOrCanvas: number | MockOffscreenCanvas,
+        widthOrInit: number | VideoFrameInit = 0,
+        codedHeight = 0,
+    ) {
+        if (typeof idOrCanvas === 'number') {
+            this.id = idOrCanvas;
+            this.codedWidth = widthOrInit as number;
+            this.codedHeight = codedHeight;
+            this.timestamp = 0;
+            return;
+        }
+
+        this.id = -1;
+        this.codedWidth = idOrCanvas.width;
+        this.codedHeight = idOrCanvas.height;
+        this.timestamp = typeof widthOrInit === 'object' ? (widthOrInit.timestamp ?? 0) : 0;
+    }
+
     close(): void { this.closed = true; }
+}
+
+class MockCanvasContext {
+    imageSmoothingEnabled = false;
+    imageSmoothingQuality: ImageSmoothingQuality = 'low';
+    filter = 'none';
+    drawImage(): void { /* no-op */ }
+    save(): void { /* no-op */ }
+    restore(): void { /* no-op */ }
+    translate(): void { /* no-op */ }
+    rotate(): void { /* no-op */ }
+}
+
+class MockOffscreenCanvas {
+    constructor(public width: number, public height: number) {}
+    readonly ctx = new MockCanvasContext();
+    getContext(): MockCanvasContext {
+        return this.ctx;
+    }
 }
 
 interface MockVideoEncoderInit {
@@ -130,6 +169,8 @@ class MockEncodedVideoChunk {
 interface MockGlobals {
     VideoEncoder?: typeof MockVideoEncoder;
     EncodedVideoChunk?: typeof MockEncodedVideoChunk;
+    VideoFrame?: typeof MockVideoFrame;
+    OffscreenCanvas?: typeof MockOffscreenCanvas;
 }
 
 // ============================================================================
@@ -274,11 +315,15 @@ beforeEach(() => {
     MockVideoEncoder.instances = [];
     (globalThis as unknown as MockGlobals).VideoEncoder = MockVideoEncoder;
     (globalThis as unknown as MockGlobals).EncodedVideoChunk = MockEncodedVideoChunk;
+    (globalThis as unknown as MockGlobals).VideoFrame = MockVideoFrame;
+    (globalThis as unknown as MockGlobals).OffscreenCanvas = MockOffscreenCanvas;
 });
 
 afterEach(() => {
     delete (globalThis as unknown as MockGlobals).VideoEncoder;
     delete (globalThis as unknown as MockGlobals).EncodedVideoChunk;
+    delete (globalThis as unknown as MockGlobals).VideoFrame;
+    delete (globalThis as unknown as MockGlobals).OffscreenCanvas;
     vi.useRealTimers();
     vi.restoreAllMocks();
 });
@@ -305,15 +350,14 @@ describe('video pipeline integration', () => {
             source.push(makeCaptured(i, stats, encDims.width, encDims.height));
         }
 
-        // pipe() overloads cap at source + 7 operators; we have 8. Compose
-        // in two segments and chain them.
         const captureToBundle = pipe(
             fromArray(source),
             stampCaptureTime({ clock }),
             attachSourceDims(),
             forceKeyframeOnDimChange(),
             dropDimMismatch({ getExpectedDims: () => encDims }),
-            downscale({ ladder: [encDims], isCamera: false, isFrontCamera: false, isIos: false, concurrency: 1 }),
+            normalizeFrame({ target: encDims, isCamera: false, isFrontCamera: false, isIos: false, concurrency: 1 }),
+            spatialize({ ladder: [encDims], concurrency: 1 }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
@@ -373,7 +417,8 @@ describe('video pipeline integration', () => {
             // mock-clock environment used by this E2E (otherwise multiple
             // frames stamp the same mockPerfMs before sender.afterSend
             // advances it, collapsing distinct source offsets).
-            downscale({ ladder, isCamera: false, isFrontCamera: false, isIos: false, concurrency: 1 }),
+            normalizeFrame({ target: ladder[ladder.length - 1], isCamera: false, isFrontCamera: false, isIos: false, concurrency: 1 }),
+            spatialize({ ladder, concurrency: 1 }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
@@ -543,7 +588,8 @@ describe('video pipeline integration', () => {
             attachSourceDims(),
             forceKeyframeOnDimChange(),
             dropDimMismatch({ getExpectedDims: () => encDims }),
-            downscale({ ladder: [encDims], isCamera: false, isFrontCamera: false, isIos: false, concurrency: 1 }),
+            normalizeFrame({ target: encDims, isCamera: false, isFrontCamera: false, isIos: false, concurrency: 1 }),
+            spatialize({ ladder: [encDims], concurrency: 1 }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
@@ -639,7 +685,8 @@ describe('video pipeline integration', () => {
                 attachSourceDims(),
                 forceKeyframeOnDimChange(),
                 dropDimMismatch({ getExpectedDims: () => encDims }),
-                downscale({ ladder: [encDims], isCamera: false, isFrontCamera: false, isIos: false, concurrency: 1 }),
+                normalizeFrame({ target: encDims, isCamera: false, isFrontCamera: false, isIos: false, concurrency: 1 }),
+                spatialize({ ladder: [encDims], concurrency: 1 }),
                 applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
             );
             const senderPipe = pipe(

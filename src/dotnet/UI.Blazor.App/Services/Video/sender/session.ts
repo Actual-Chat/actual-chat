@@ -17,7 +17,7 @@ export interface SenderSessionOptions {
 
 export class SenderSession {
     readonly captureClock: MonotonicClock;
-    readonly previewWriter: WritableStreamDefaultWriter<VideoFrame> | null;
+    private previewWriter: WritableStreamDefaultWriter<VideoFrame> | null = null;
 
     private disposed = false;
 
@@ -25,17 +25,27 @@ export class SenderSession {
         const createCaptureClock = opts.createCaptureClock
             ?? (() => new MonotonicClock({ minTickMs: 33 }));
         this.captureClock = createCaptureClock();
-        this.previewWriter = acquirePreviewWriter(opts.previewGenerator);
+        this.setPreviewGenerator(opts.previewGenerator);
     }
 
     get isDisposed(): boolean { return this.disposed; }
+    getPreviewWriter(): WritableStreamDefaultWriter<VideoFrame> | null { return this.previewWriter; }
+
+    setPreviewGenerator(generator: PreviewGeneratorLike | undefined): void {
+        this.releasePreviewWriter();
+        this.previewWriter = acquirePreviewWriter(generator);
+    }
 
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
-        if (this.previewWriter) {
-            try { this.previewWriter.releaseLock(); } catch { /* ignore */ }
-        }
+        this.releasePreviewWriter();
+    }
+
+    private releasePreviewWriter(): void {
+        if (!this.previewWriter) return;
+        try { this.previewWriter.releaseLock(); } catch { /* ignore */ }
+        this.previewWriter = null;
     }
 }
 

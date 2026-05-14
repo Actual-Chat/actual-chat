@@ -178,6 +178,11 @@ export interface CapturedFrame {
     stats: RecorderStats;
 }
 
+// Sender surface after normalization: one frame at the top spatial layer's
+// locked dimensions, with crop/orientation compensation already baked into
+// pixels and `rotation` set for remote presentation.
+export type NormalizedFrame = CapturedFrame;
+
 // Downscaler output. `layers` is bottom-first (length 1..3). All entries share
 // capturedAt/index/forceKeyframe/sourceWidth/Height; only `frame` differs.
 // Single-tier (P2P) sources produce a length-1 bundle.

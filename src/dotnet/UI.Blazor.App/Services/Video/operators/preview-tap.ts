@@ -1,6 +1,6 @@
 import { tap, type PipeOperator } from 'ix-ext';
 import { getLogs } from 'logging';
-import type { CapturedFrame } from '../frame-envelopes';
+import type { NormalizedFrame } from '../frame-envelopes';
 
 const { warnLog } = getLogs('VideoPipeline');
 // Log first, then 1-in-N — prevents flooding when a device-level failure drops every clone.
@@ -11,10 +11,10 @@ export interface PreviewTapOptions {
     getWriter: () => WritableStreamDefaultWriter<VideoFrame> | null;
 }
 
-// Forwards a clone of every frame to a writer (typically the self-view's
-// MediaStreamTrackGenerator). Cloning is mandatory — pipeline owns the
-// original; writer owns the clone.
-export function previewTap(opts: PreviewTapOptions): PipeOperator<CapturedFrame, CapturedFrame> {
+// Forwards a clone of the normalized sender surface to a writer (typically the
+// self-view's MediaStreamTrackGenerator). Cloning is mandatory — pipeline owns
+// the original; writer owns the clone.
+export function previewTap(opts: PreviewTapOptions): PipeOperator<NormalizedFrame, NormalizedFrame> {
     const { getWriter } = opts;
     let failures = 0;
     const reportFailure = (where: string, e: unknown): void => {
@@ -22,8 +22,7 @@ export function previewTap(opts: PreviewTapOptions): PipeOperator<CapturedFrame,
         if (failures === 1 || failures % LogEveryN === 0)
             warnLog?.log(`previewTap: ${where} failed (#${failures}):`, e);
     };
-    return tap(async (envelope: CapturedFrame): Promise<void> => {
-        void envelope;
+    return tap(async (envelope: NormalizedFrame): Promise<void> => {
         let writer: WritableStreamDefaultWriter<VideoFrame> | null;
         try {
             writer = getWriter();

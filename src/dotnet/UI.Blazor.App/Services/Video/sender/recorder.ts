@@ -15,7 +15,8 @@ import { FrameDropStage, traceDrops } from '../frame-drop-trace';
 import { mstpSource } from '../operators/capture';
 import { stampCaptureTime } from '../operators/stamp-capture-time';
 import { attachSourceDims } from '../operators/attach-source-dims';
-import { downscale, type LayerSpec } from '../operators/downscale';
+import { normalizeFrame, spatialize, type LayerSpec } from '../operators/downscale';
+import { previewTap } from '../operators/preview-tap';
 import { applyKeyframePolicy } from '../operators/apply-keyframe-policy';
 import { encode, type EncoderConfigPerLayer, type EncoderFactory } from '../operators/encode';
 import { FloodGate, floodGate } from '../operators/flood-gate';
@@ -32,7 +33,7 @@ export type { EncodeInput } from '../operators/encode';
 export type { RecorderStats };
 
 // Members ordered by sender pipeline flow:
-//   source (track) → downscale → encode → keyframe-policy → wireSend.
+//   source (track) → normalize → preview/effects → spatial layers → encode → wireSend.
 export interface RecorderConfig {
     // -- source --
     track: MediaStreamTrack;
@@ -102,23 +103,30 @@ export class Recorder {
 
         // Two pipes only because pipe()'s typed overload tops out at 9 ops;
         // runtime composition is identical.
-        const captureToBundle = pipe(
+        const topLayer = ladder[ladder.length - 1];
+        const captureToNormalized = pipe(
             captureSource,
             traceDrops<CapturedFrame>(FrameDropStage.SenderSource),
             floodGate(gate),
             traceDrops<CapturedFrame>(FrameDropStage.SenderFloodGate),
             stampCaptureTime({ clock: this.session.captureClock }),
             attachSourceDims(),
-            downscale({
-                ladder,
+            normalizeFrame({
+                target: topLayer,
                 isCamera: config.sourceKind === 0,
                 isFrontCamera: config.isFrontCamera,
                 isIos: config.isIos,
             }),
+            // simpleBlur({ radiusPx: 6 }), // Temporary effect probe; keep disabled by default.
+            previewTap({ getWriter: () => this.session.getPreviewWriter() }),
+        );
+        const normalizedToBundle = pipe(
+            captureToNormalized,
+            spatialize({ ladder }),
             traceDrops<CapturedBundle>(FrameDropStage.SenderDownscale),
         );
         const recordingPipe = pipe(
-            captureToBundle,
+            normalizedToBundle,
             applyKeyframePolicy({
                 keyframeIntervalFrames: config.keyframeIntervalFrames,
                 maxKeyframeIntervalMs: config.maxKeyFrameIntervalMs,
