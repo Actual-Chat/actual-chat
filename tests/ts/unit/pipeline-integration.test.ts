@@ -3,7 +3,7 @@ import { count, pipe, tap } from 'ix-ext';
 //
 // Per-operator unit tests already cover individual operator behavior; this
 // file verifies operators COMPOSE correctly end-to-end. Only platform-edge
-// collaborators are faked (VideoEncoder, VideoDecoder, downscaler, sender
+// collaborators are faked (VideoEncoder, VideoDecoder, sender
 // transport). Everything else is real.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -15,7 +15,6 @@ import { forceKeyframeOnDimChange } from '../../../src/dotnet/UI.Blazor.App/Serv
 import { dropDimMismatch } from '../../../src/dotnet/UI.Blazor.App/Services/Video/operators/dim-mismatch-guard';
 import {
     downscale,
-    type DownscalerLike,
     type LayerSpec,
 } from '../../../src/dotnet/UI.Blazor.App/Services/Video/operators/downscale';
 import { applyKeyframePolicy } from '../../../src/dotnet/UI.Blazor.App/Services/Video/operators/apply-keyframe-policy';
@@ -134,20 +133,8 @@ interface MockGlobals {
 }
 
 // ============================================================================
-// Fakes for collaborators (downscaler, sender, decoder)
+// Fakes for collaborators (sender, decoder)
 // ============================================================================
-
-/** Identity downscaler for single-tier: returns one VideoFrame with the
- *  layer's coded dims, closing the input. */
-class IdentityDownscaler implements DownscalerLike {
-    process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]> {
-        const frames = layers.map(l =>
-            new MockVideoFrame((input as unknown as MockVideoFrame).id, l.width, l.height) as unknown as VideoFrame,
-        );
-        (input as unknown as MockVideoFrame).close();
-        return Promise.resolve(frames);
-    }
-}
 
 class FakeSender implements StreamSenderLike {
     sent: VideoStreamFrame[] = [];
@@ -326,7 +313,7 @@ describe('video pipeline integration', () => {
             attachSourceDims(),
             forceKeyframeOnDimChange(),
             dropDimMismatch({ getExpectedDims: () => encDims }),
-            downscale({ ladder: [encDims], createDownscaler: () => new IdentityDownscaler(), concurrency: 1 }),
+            downscale({ ladder: [encDims], isCamera: false, isFrontCamera: false, isIos: false, concurrency: 1 }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
@@ -386,7 +373,7 @@ describe('video pipeline integration', () => {
             // mock-clock environment used by this E2E (otherwise multiple
             // frames stamp the same mockPerfMs before sender.afterSend
             // advances it, collapsing distinct source offsets).
-            downscale({ ladder, createDownscaler: () => new IdentityDownscaler(), concurrency: 1 }),
+            downscale({ ladder, isCamera: false, isFrontCamera: false, isIos: false, concurrency: 1 }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
@@ -556,7 +543,7 @@ describe('video pipeline integration', () => {
             attachSourceDims(),
             forceKeyframeOnDimChange(),
             dropDimMismatch({ getExpectedDims: () => encDims }),
-            downscale({ ladder: [encDims], createDownscaler: () => new IdentityDownscaler(), concurrency: 1 }),
+            downscale({ ladder: [encDims], isCamera: false, isFrontCamera: false, isIos: false, concurrency: 1 }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
@@ -652,7 +639,7 @@ describe('video pipeline integration', () => {
                 attachSourceDims(),
                 forceKeyframeOnDimChange(),
                 dropDimMismatch({ getExpectedDims: () => encDims }),
-                downscale({ ladder: [encDims], createDownscaler: () => new IdentityDownscaler(), concurrency: 1 }),
+                downscale({ ladder: [encDims], isCamera: false, isFrontCamera: false, isIos: false, concurrency: 1 }),
                 applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
             );
             const senderPipe = pipe(

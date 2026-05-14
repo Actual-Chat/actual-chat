@@ -15,7 +15,7 @@ import { FrameDropStage, traceDrops } from '../frame-drop-trace';
 import { mstpSource } from '../operators/capture';
 import { stampCaptureTime } from '../operators/stamp-capture-time';
 import { attachSourceDims } from '../operators/attach-source-dims';
-import { downscale, type DownscalerLike, type LayerSpec } from '../operators/downscale';
+import { downscale, type LayerSpec } from '../operators/downscale';
 import { applyKeyframePolicy } from '../operators/apply-keyframe-policy';
 import { encode, type EncoderConfigPerLayer, type EncoderFactory } from '../operators/encode';
 import { FloodGate, floodGate } from '../operators/flood-gate';
@@ -27,7 +27,7 @@ const STOP_DRAIN_GRACE_MS = 3_000;
 
 export type { EncoderConfigPerLayer, EncoderFactory } from '../operators/encode';
 export type { StreamSenderLike } from '../operators/wire-send';
-export type { DownscalerLike, LayerSpec } from '../operators/downscale';
+export type { LayerSpec } from '../operators/downscale';
 export type { EncodeInput } from '../operators/encode';
 export type { RecorderStats };
 
@@ -38,9 +38,11 @@ export interface RecorderConfig {
     track: MediaStreamTrack;
     createProcessor?: (track: MediaStreamTrack) => { readable: ReadableStream<VideoFrame> };
 
-    // -- downscale --
-    // Required for simulcast (length > 1); single-tier defaults to clone-only.
-    createDownscaler?: () => DownscalerLike;
+    // -- orientation / downscale --
+    // 0 = Camera, 1 = ScreenCast. Maps to .NET VideoSourceKind.
+    sourceKind: number;
+    isFrontCamera: boolean;
+    isIos: boolean;
 
     // -- encode --
     // Bottom-first simulcast ladder; single-tier P2P passes one entry.
@@ -83,14 +85,6 @@ export class Recorder {
             width: c.width,
             height: c.height,
         }));
-        const createDownscaler = config.createDownscaler
-            ?? (config.encoderConfigs.length === 1
-                ? () => identityDownscaler()
-                : (): DownscalerLike => {
-                    throw new Error(
-                        'Recorder: createDownscaler is required for simulcast '
-                        + `(${config.encoderConfigs.length}-layer ladder)`);
-                });
         const abortController = new AbortController();
         const abortSignal = abortController.signal;
         const sourceStopController = new AbortController();
@@ -115,7 +109,12 @@ export class Recorder {
             traceDrops<CapturedFrame>(FrameDropStage.SenderFloodGate),
             stampCaptureTime({ clock: this.session.captureClock }),
             attachSourceDims(),
-            downscale({ ladder, createDownscaler }),
+            downscale({
+                ladder,
+                isCamera: config.sourceKind === 0,
+                isFrontCamera: config.isFrontCamera,
+                isIos: config.isIos,
+            }),
             traceDrops<CapturedBundle>(FrameDropStage.SenderDownscale),
         );
         const recordingPipe = pipe(
@@ -208,21 +207,4 @@ export class Recorder {
     getStats(): RecorderStats | null {
         return this.currentStats;
     }
-}
-
-// Single-tier default: clone-then-close. Multi-layer through a clone-only
-// would silently skip the resize and lie about layer dims, so we throw.
-function identityDownscaler(): DownscalerLike {
-    return {
-        process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]> {
-            if (layers.length !== 1) {
-                try { input.close(); } catch { /* ignore */ }
-                return Promise.reject(new Error(
-                    `identityDownscaler: expected single-tier ladder, got ${layers.length}`));
-            }
-            const out: VideoFrame[] = [input.clone()];
-            try { input.close(); } catch { /* ignore */ }
-            return Promise.resolve(out);
-        },
-    };
 }

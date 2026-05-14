@@ -1161,6 +1161,7 @@ export class VideoRecorder {
             apiUrl,
             sourceKind: this.currentMode === 'screen' ? 1 : 0,
             isFrontCamera,
+            isIos: DeviceInfo.isIos,
             encoderConfigs,
             // Camera: 2-3s interval; ScreenCast: 1-2s interval.
             keyframeIntervalFrames: this.currentMode === 'screen'

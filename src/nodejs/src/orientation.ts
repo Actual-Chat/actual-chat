@@ -142,10 +142,10 @@ export class DeviceOrientation {
             const hasAngle = typeof s.deviceOrientationAngle === 'number';
             if (hasQuarter || hasAngle) {
                 const quarter = hasQuarter
-                    ? s.deviceOrientation as number
+                    ? s.deviceOrientation!
                     : DeviceOrientation.cached;
                 const angle = hasAngle
-                    ? s.deviceOrientationAngle as number
+                    ? s.deviceOrientationAngle!
                     : DeviceOrientation.cachedAngle;
                 DeviceOrientation.commit(
                     quarter,

@@ -17,16 +17,8 @@ import type {
 } from './recorder-worker-contract';
 import type { EncodedFrame } from '../frame-envelopes';
 import type { EncoderConfigPerLayer, EncodeInput } from '../operators/encode';
-import type { DownscalerLike, LayerSpec } from '../operators/downscale';
 import type { FloodGate } from '../operators/flood-gate';
 import type { StreamSenderLike, VideoStreamFrameBundle } from '../operators/wire-send';
-// WebGPU imports — kept live so re-enabling the WebGPU path in
-// `createDownscalerInstance` is a single-comment-toggle.
-import { WebGpuDownscaler, type DownscaleTarget } from '../webgpu/downscaler';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { WebGPUManager } from '../webgpu/manager';
-import { CanvasDownscaler } from '../canvas/downscaler';
-import { LazyDownscaler } from '../lazy-downscaler';
 import {
     createWireSender,
     type DisposableStreamSender,
@@ -132,43 +124,6 @@ export function configureStreaming(opts: {
     streamingContext.apiUrl = opts.apiUrl;
     if (opts.sourceKind !== undefined) streamingContext.sourceKind = opts.sourceKind;
     if (opts.serverClockOffsetMs !== undefined) streamingContext.serverClockOffsetMs = opts.serverClockOffsetMs;
-}
-
-// Bridges WebGpuDownscaler's one-shot `configure(targets)` + bare `process(input)`
-// API to the operator's per-call `process(input, layers)`. Configures lazily on
-// first call when the layer ladder is known. Currently unused — referenced
-// only from the commented-out WebGPU branch in `createDownscalerInstance`.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-class WebGpuDownscalerAdapter implements DownscalerLike {
-    private configured = false;
-    constructor(private readonly inner: WebGpuDownscaler) {}
-
-    async process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]> {
-        if (!this.configured) {
-            const targets: DownscaleTarget[] = layers.map(l => ({
-                width: l.width,
-                height: l.height,
-                centerCrop: true,
-            }));
-            this.inner.configure(targets);
-            this.configured = true;
-        }
-        const results = await this.inner.process(input);
-        return results.map(r => r.frame);
-    }
-
-    dispose(): void {
-        try { this.inner.dispose(); } catch { /* ignore */ }
-    }
-}
-
-// Single factory invoked lazily by `LazyDownscaler` on the first frame.
-// The WebGPU branch is commented out — that path had recurring device-loss
-// cascades under load. Re-enable when those are fixed.
-async function createDownscalerInstance(isFrontCamera: boolean): Promise<DownscalerLike> {
-    // const device = await WebGPUManager.init();
-    // return new WebGpuDownscalerAdapter(new WebGpuDownscaler(device));
-    return Promise.resolve(new CanvasDownscaler({ isFrontCamera }));
 }
 
 function createEncoder(
@@ -330,8 +285,6 @@ const deps: RecorderWorkerDeps = {
     },
 
     // -- pipeline-stage factories --
-    createDownscaler: isFrontCamera =>
-        new LazyDownscaler(() => createDownscalerInstance(isFrontCamera)),
     createEncoder,
     createSender,
 

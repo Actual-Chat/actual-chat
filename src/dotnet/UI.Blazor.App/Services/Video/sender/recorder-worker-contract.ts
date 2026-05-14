@@ -17,6 +17,7 @@ export interface WireSafeRecorderConfig {
     sourceKind?: number;
     // Captured once at recorder start from track.getSettings().facingMode === 'user'.
     isFrontCamera?: boolean;
+    isIos?: boolean;
     serverClockOffsetMs?: number;
     encoderConfigs: readonly EncoderConfigPerLayer[];
     keyframeIntervalFrames: number;

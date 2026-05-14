@@ -178,6 +178,9 @@ function buildConfig(overrides: Partial<RecorderConfig> = {}): RecorderConfig {
     return {
         track: {} as MediaStreamTrack,
         createProcessor: makeProcessorFromQueue(frames),
+        sourceKind: 0,
+        isFrontCamera: false,
+        isIos: false,
         encoderConfigs: [cfg],
         createEncoder: makeEncoderFactory(),
         keyframeIntervalFrames: 30,
