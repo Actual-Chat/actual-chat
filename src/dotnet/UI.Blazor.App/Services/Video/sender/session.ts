@@ -5,6 +5,7 @@
 // `VideoEncoder` so its first encoded chunk is guaranteed to be a keyframe.
 
 import { MonotonicClock } from 'clocks';
+import type { PreviewFramePresentation } from './recorder-worker-contract';
 
 export interface PreviewGeneratorLike {
     writable: WritableStream<VideoFrame>;
@@ -12,28 +13,47 @@ export interface PreviewGeneratorLike {
 
 export interface SenderSessionOptions {
     previewGenerator?: PreviewGeneratorLike;
+    onPreviewFramePresentation?: (presentation: PreviewFramePresentation) => void;
     createCaptureClock?: () => MonotonicClock;
 }
 
 export class SenderSession {
     readonly captureClock: MonotonicClock;
     private previewWriter: WritableStreamDefaultWriter<VideoFrame> | null = null;
+    private onPreviewFramePresentation: ((presentation: PreviewFramePresentation) => void) | null = null;
 
     private disposed = false;
+    private lastPreviewFramePresentation: PreviewFramePresentation | null = null;
 
     constructor(opts: SenderSessionOptions = {}) {
         const createCaptureClock = opts.createCaptureClock
             ?? (() => new MonotonicClock({ minTickMs: 33 }));
         this.captureClock = createCaptureClock();
+        this.onPreviewFramePresentation = opts.onPreviewFramePresentation ?? null;
         this.setPreviewGenerator(opts.previewGenerator);
     }
 
     get isDisposed(): boolean { return this.disposed; }
     getPreviewWriter(): WritableStreamDefaultWriter<VideoFrame> | null { return this.previewWriter; }
+    reportPreviewFramePresentation(presentation: PreviewFramePresentation): void {
+        const last = this.lastPreviewFramePresentation;
+        if (last?.rotation === presentation.rotation)
+            return;
+
+        this.lastPreviewFramePresentation = presentation;
+        this.onPreviewFramePresentation?.(presentation);
+    }
 
     setPreviewGenerator(generator: PreviewGeneratorLike | undefined): void {
         this.releasePreviewWriter();
+        this.lastPreviewFramePresentation = null;
         this.previewWriter = acquirePreviewWriter(generator);
+    }
+
+    setPreviewFramePresentationReporter(
+        reporter: ((presentation: PreviewFramePresentation) => void) | undefined,
+    ): void {
+        this.onPreviewFramePresentation = reporter ?? null;
     }
 
     dispose(): void {

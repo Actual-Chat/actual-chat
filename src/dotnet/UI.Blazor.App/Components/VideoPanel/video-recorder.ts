@@ -62,6 +62,7 @@ import {
 } from './layer-ladder';
 import { MediaCapture } from '../../Services/Video/services/media-capture';
 import {
+    type PreviewFramePresentation,
     type RecorderWorker,
     type RecorderWorkerCallbacks,
     type WireSafeRecorderConfig,
@@ -234,6 +235,7 @@ interface LayerInput {
  * fan out here once the new pipeline grows the corresponding tap.
  */
 export type PreviewFrameListener = (frame: VideoFrame) => void;
+export type PreviewPresentationListener = (presentation: PreviewFramePresentation | null) => void;
 
 export type VideoRecordingState = 'stopped' | 'starting' | 'recording' | 'error';
 
@@ -275,6 +277,7 @@ export class VideoRecorder {
     private inputTrack: MediaStreamTrack | null = null;
     private previewTrack: MediaStreamTrack | null = null;
     private generatedPreviewTrack: MediaStreamTrack | null = null;
+    private previewFramePresentation: PreviewFramePresentation | null = null;
     // Worker-fed pipeline: feed the camera track to a hidden <video>
     // element on main; on each `requestVideoFrameCallback` build a
     // `VideoFrame` from the video and ship it to the worker via
@@ -324,6 +327,7 @@ export class VideoRecorder {
 
     // Listeners.
     private previewFrameListeners = new Set<PreviewFrameListener>();
+    private previewPresentationListeners = new Set<PreviewPresentationListener>();
     private stateChangeListeners = new Set<(state: VideoRecordingState) => void>();
     private blurChangeListeners = new Set<(enabled: boolean) => void>();
 
@@ -473,11 +477,11 @@ export class VideoRecorder {
     }
 
     public getPreviewTrack(): MediaStreamTrack | null {
-        // The new pipeline's worker-side WYSIWYG MSTG output isn't
-        // surfaced back to main yet, so we just return the raw input
-        // track. Functionally equivalent to the legacy fallback path
-        // for browsers without MSTG support.
         return this.previewTrack;
+    }
+
+    public getPreviewFramePresentation(): PreviewFramePresentation | null {
+        return this.previewFramePresentation;
     }
 
     public getPreviewDeviceId(): string | null {
@@ -495,6 +499,11 @@ export class VideoRecorder {
     public addPreviewFrameListener(cb: PreviewFrameListener): () => void {
         this.previewFrameListeners.add(cb);
         return () => this.previewFrameListeners.delete(cb);
+    }
+
+    public addPreviewPresentationListener(cb: PreviewPresentationListener): () => void {
+        this.previewPresentationListeners.add(cb);
+        return () => this.previewPresentationListeners.delete(cb);
     }
 
     public addStateChangeListener(cb: (state: VideoRecordingState) => void): () => void {
@@ -987,6 +996,7 @@ export class VideoRecorder {
                 this.scheduleRecovery(`worker error: ${error}`);
             },
             onTraceKillInjected: () => consumeVideoTraceKill('recording'),
+            onPreviewFramePresentation: presentation => this.setPreviewFramePresentation(presentation),
         };
 
         this.worker = rpcClientServer<RecorderWorker>(
@@ -1184,8 +1194,10 @@ export class VideoRecorder {
         const previousPreviewTrack = this.previewTrack;
         const previewGenerator = this.createGeneratedPreviewTrack();
         if (previewGenerator) {
+            this.setPreviewFramePresentation(null);
             this.previewTrack = previewGenerator.track;
         } else {
+            this.setPreviewFramePresentation(null);
             this.previewTrack = this.inputTrack;
         }
         if (this.previewTrack !== previousPreviewTrack)
@@ -1567,6 +1579,7 @@ export class VideoRecorder {
 
     private cleanupPreviewTrack(): void {
         this.cleanupGeneratedPreviewTrack();
+        this.setPreviewFramePresentation(null);
         if (this.inputTrack) {
             this.inputTrack.onended = null;
             // For screencast, the same track is shared as preview; stop
@@ -1615,11 +1628,23 @@ export class VideoRecorder {
         this.generatedPreviewTrack = null;
         if (this.previewTrack === track)
             this.previewTrack = this.inputTrack;
+        this.setPreviewFramePresentation(null);
     }
 
     private notifyPreviewTrackChanged(): void {
         for (const cb of this.stateChangeListeners) {
             try { cb(this._recordingState); } catch (e) { warnLog?.log('state change listener threw', e); }
+        }
+    }
+
+    private setPreviewFramePresentation(presentation: PreviewFramePresentation | null): void {
+        const current = this.previewFramePresentation;
+        if (current?.rotation === presentation?.rotation)
+            return;
+
+        this.previewFramePresentation = presentation;
+        for (const cb of this.previewPresentationListeners) {
+            try { cb(presentation); } catch (e) { warnLog?.log('preview presentation listener threw', e); }
         }
     }
 

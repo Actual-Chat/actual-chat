@@ -29,6 +29,10 @@ export interface RecorderWorkerOptions {
     config: WireSafeRecorderConfig;
 }
 
+export interface PreviewFramePresentation {
+    rotation: number;
+}
+
 // Structural subset of `AppConstants` — anything assignable to AppConstants fits.
 export interface AppConstantsLike { readonly appName: string; readonly prodHost: string; readonly video: unknown; readonly audio: unknown }
 
@@ -70,4 +74,5 @@ export interface RecorderWorkerCallbacks {
     onStreamEnded(reason: string): void;
     onError(error: string): void;
     onTraceKillInjected(): void;
+    onPreviewFramePresentation(presentation: PreviewFramePresentation): void;
 }

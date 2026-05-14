@@ -298,6 +298,11 @@ const deps: RecorderWorkerDeps = {
     reportTraceKillInjected() {
         observeCallbackPromise('onTraceKillInjected', () => callbacks.onTraceKillInjected());
     },
+    reportPreviewFramePresentation(presentation) {
+        observeCallbackPromise(
+            'onPreviewFramePresentation',
+            () => callbacks.onPreviewFramePresentation(presentation));
+    },
 };
 
 initRecorderWorker(deps);

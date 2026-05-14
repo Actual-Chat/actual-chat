@@ -118,7 +118,10 @@ export class Recorder {
                 isIos: config.isIos,
             }),
             // simpleBlur({ radiusPx: 6 }), // Temporary effect probe; keep disabled by default.
-            previewTap({ getWriter: () => this.session.getPreviewWriter() }),
+            previewTap({
+                getWriter: () => this.session.getPreviewWriter(),
+                reportPresentation: p => this.session.reportPreviewFramePresentation(p),
+            }),
         );
         const normalizedToBundle = pipe(
             captureToNormalized,

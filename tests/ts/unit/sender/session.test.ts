@@ -90,6 +90,20 @@ describe('SenderSession', () => {
         session.dispose();
     });
 
+    it('reports preview presentation changes once per rotation value', () => {
+        const reported: number[] = [];
+        const session = new SenderSession({
+            onPreviewFramePresentation: p => reported.push(p.rotation),
+        });
+
+        session.reportPreviewFramePresentation({ rotation: 0 });
+        session.reportPreviewFramePresentation({ rotation: 0 });
+        session.reportPreviewFramePresentation({ rotation: 1 });
+
+        expect(reported).toEqual([0, 1]);
+        session.dispose();
+    });
+
     it('dispose is idempotent', () => {
         const session = new SenderSession();
         expect(session.isDisposed).toBe(false);

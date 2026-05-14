@@ -116,8 +116,10 @@ export class RecorderPreviewView {
         const currentDelta = normalizeRotationQuarter(
             DeviceOrientation.current - ScreenOrientation.quarter);
         this.initialDeviceScreenDelta ??= currentDelta;
-        const rotation = normalizeRotationQuarter(
-            currentDelta - this.initialDeviceScreenDelta);
+        const previewPresentation = this.attachedRecorder?.getPreviewFramePresentation() ?? null;
+        const rotation = previewPresentation
+            ? normalizeRotationQuarter(previewPresentation.rotation)
+            : normalizeRotationQuarter(currentDelta - this.initialDeviceScreenDelta);
         applyRotationLayout(videoEl, rotation);
         applyRotationLayout(this.options.canvas, rotation);
         if (!parent) return;
@@ -208,9 +210,11 @@ export class RecorderPreviewView {
         this.followedRecorder = recorder;
         if (recorder) {
             const resync = () => this.syncAttachment();
+            const refreshPresentation = () => this.applyRotationAndFit();
             this.followUnsubscribers = [
                 recorder.addStateChangeListener(resync),
                 recorder.addBlurChangeListener(resync),
+                recorder.addPreviewPresentationListener(refreshPresentation),
             ];
         }
         this.syncAttachment();

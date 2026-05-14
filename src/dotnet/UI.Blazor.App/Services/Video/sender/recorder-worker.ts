@@ -15,6 +15,7 @@ import { setVideoTraceKill, type VideoTraceKillPeriod } from '../frame-drop-trac
 import { ScreenOrientation, DeviceOrientation } from 'orientation';
 import { SenderSession } from './session';
 import type {
+    PreviewFramePresentation,
     RecorderWorker,
     RecorderWorkerOptions,
 } from './recorder-worker-contract';
@@ -65,6 +66,7 @@ export interface RecorderWorkerDeps {
     reportError?: (error: string) => void;
     reportStreamEnded?: (reason: string) => void;
     reportTraceKillInjected?: () => void;
+    reportPreviewFramePresentation?: (presentation: PreviewFramePresentation) => void;
 }
 
 interface WorkerState {
@@ -81,6 +83,7 @@ let state: WorkerState | null = null;
 export function initRecorderWorker(deps: RecorderWorkerDeps): void {
     if (state) return;
     const session = (deps.createSession ?? (() => new SenderSession()))();
+    session.setPreviewFramePresentationReporter(deps.reportPreviewFramePresentation);
     state = {
         session,
         recorder: new Recorder(session),
