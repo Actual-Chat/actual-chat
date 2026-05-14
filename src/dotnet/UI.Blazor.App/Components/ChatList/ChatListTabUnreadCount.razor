@@ -5,10 +5,11 @@
     _rendered = m;
     if (m.Count <= 0)
         return;
+    var notificationMode = m.IsMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default;
 }
 
 <div class="c-badge">
-    <UnreadCount Value="@m.Count" Click="OnUnreadBadgeClick"/>
+    <UnreadCount Value="@m.Count" NotificationMode="@notificationMode" Click="OnUnreadBadgeClick"/>
 </div>
 
 @code {
@@ -34,7 +35,11 @@
         // Done w/ preps for .ConfigureAwait(false)
 
         var count = await ChatListUI.GetUnreadChatCount(placeId, chatListFilter, cancellationToken).ConfigureAwait(false);
-        return new(count);
+        if (count <= 0)
+            return new(count);
+
+        var unmutedCount = await ChatListUI.GetUnmutedUnreadChatCount(placeId, chatListFilter, cancellationToken).ConfigureAwait(false);
+        return new(count, unmutedCount <= 0);
     }
 
     private async Task OnUnreadBadgeClick() {
@@ -45,7 +50,8 @@
         if (placeChatListSettings != PlaceChatListSettings)
             return;
 
-        var firstUnreadChat = list.FirstOrDefault(c => c.UnreadCount > 0);
+        var firstUnreadChat = list.FirstOrDefault(c => c.UnmutedUnreadCount > 0)
+            ?? list.FirstOrDefault(c => c.UnreadCount > 0);
         if (firstUnreadChat == null || firstUnreadChat.Id == ChatUI.SelectedChatId.Value)
             return;
 
@@ -57,5 +63,5 @@
 
     // Nested types
 
-    public sealed record Model(Trimmed<int> Count = default);
+    public sealed record Model(Trimmed<int> Count = default, bool IsMuted = false);
 }

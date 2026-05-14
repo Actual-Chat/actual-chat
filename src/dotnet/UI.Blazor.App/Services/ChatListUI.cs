@@ -94,6 +94,12 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     public virtual async Task<Trimmed<int>> GetUnmutedUnreadChatCount(PlaceId? placeId, CancellationToken cancellationToken = default)
     {
         var filter = placeId is null ? ChatListFilter.None : ChatListFilter.Groups;
+        return await GetUnmutedUnreadChatCount(placeId, filter, cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod(InvalidationDelay = 0.6)]
+    public virtual async Task<Trimmed<int>> GetUnmutedUnreadChatCount(PlaceId? placeId, ChatListFilter filter, CancellationToken cancellationToken = default)
+    {
         var chatById = await ListUnordered(placeId, filter, cancellationToken).ConfigureAwait(false);
         return chatById.Select(c => c.Value).UnmutedUnreadChatCount();
     }
