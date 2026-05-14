@@ -74,6 +74,6 @@ export interface RecorderWorkerCallbacks {
     onStreamEnded(reason: string): void;
     onError(error: string): void;
     onTraceKillInjected(): void;
-    onPreviewFrame(frame: VideoFrame): void;
+    onPreviewFrame(frame: VideoFrame): void | Promise<void>;
     onPreviewFramePresentation(presentation: PreviewFramePresentation): void;
 }

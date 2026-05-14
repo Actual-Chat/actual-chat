@@ -236,7 +236,7 @@ const callbacks = rpcClientServer<RecorderWorkerCallbacks>(
     recorderWorkerImpl,
 );
 
-function observeCallbackPromise(name: string, invoke: () => void): void | Promise<void> {
+function observeCallbackPromise(name: string, invoke: () => void | Promise<void>): void | Promise<void> {
     // RPC client bindings may return a Promise despite the void signature;
     // observe so async failures don't go silent.
     const result: unknown = (invoke as () => unknown)();

@@ -225,8 +225,9 @@ interface LayerInput {
 }
 
 // Preview frame listener used by the canvas fallback when generated preview
-// tracks are unavailable. The VideoFrame is valid only during the callback.
-export type PreviewFrameListener = (frame: VideoFrame) => void;
+// tracks are unavailable. Async listeners must return their Promise; the frame
+// is closed after all returned listener work settles.
+export type PreviewFrameListener = (frame: VideoFrame) => void | Promise<void>;
 export type PreviewPresentationListener = (presentation: PreviewFramePresentation | null) => void;
 
 export type VideoRecordingState = 'stopped' | 'starting' | 'recording' | 'error';
@@ -242,6 +243,13 @@ function createRecorderWorker(): Worker {
     const worker = new Worker(workerPath, { type: 'module' });
     worker.onerror = (e) => errorLog?.log('Video recorder worker error:', e);
     return worker;
+}
+
+function isPromiseLike(value: unknown): value is PromiseLike<void> {
+    return Boolean(value
+        && typeof value === 'object'
+        && 'then' in value
+        && typeof value.then === 'function');
 }
 
 // ---- VideoRecorder --------------------------------------------------------
@@ -1637,11 +1645,23 @@ export class VideoRecorder {
         this.setPreviewFramePresentation(null);
     }
 
-    private handlePreviewFrame(frame: VideoFrame): void {
+    private async handlePreviewFrame(frame: VideoFrame): Promise<void> {
+        const pending: Promise<void>[] = [];
         try {
             for (const cb of this.previewFrameListeners) {
-                try { cb(frame); } catch (e) { warnLog?.log('preview frame listener threw', e); }
+                try {
+                    const result = cb(frame);
+                    if (isPromiseLike(result)) {
+                        pending.push(result.catch((e: unknown) => {
+                            warnLog?.log('preview frame listener failed', e);
+                        }));
+                    }
+                } catch (e) {
+                    warnLog?.log('preview frame listener threw', e);
+                }
             }
+            if (pending.length > 0)
+                await Promise.all(pending);
         } finally {
             try { frame.close(); } catch { /* already closed */ }
         }

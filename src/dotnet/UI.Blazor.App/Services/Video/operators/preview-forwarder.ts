@@ -9,32 +9,109 @@ const { warnLog } = getLogs('VideoPipeline');
 // Log first, then 1-in-N — prevents flooding when a device-level failure drops every clone.
 const LogEveryN = 30;
 
-export interface PreviewTapOptions {
+export interface PreviewForwarderOptions {
     // Called per frame so the recorder can swap / detach without restarting.
     getWriter: () => WritableStreamDefaultWriter<VideoFrame> | null;
     reportFrame?: (frame: VideoFrame) => void | Promise<void>;
     reportPresentation?: (presentation: PreviewFramePresentation) => void;
+    maxBufferedFrames?: number;
     frameDurationMs?: number;
     nowMs?: () => number;
     sleep?: (delayMs: number) => Promise<void>;
 }
 
+interface PreviewQueueItem {
+    frame: VideoFrame;
+    capturedAt: MonotonicTime;
+    rotation: number;
+    writer: WritableStreamDefaultWriter<VideoFrame> | null;
+    reportFrame?: (frame: VideoFrame) => void | Promise<void>;
+}
+
 // Forwards a clone of the normalized sender surface to a writer (typically the
 // self-view's MediaStreamTrackGenerator). Cloning is mandatory — pipeline owns
 // the original; the selected preview sink observes a short-lived clone.
-export function previewTap(opts: PreviewTapOptions): PipeOperator<NormalizedFrame, NormalizedFrame> {
+export function previewForwarder(opts: PreviewForwarderOptions): PipeOperator<NormalizedFrame, NormalizedFrame> {
     const { getWriter, reportFrame, reportPresentation } = opts;
+    const maxBufferedFrames = Math.max(1, Math.floor(opts.maxBufferedFrames ?? 2));
     const frameDurationMs = opts.frameDurationMs ?? getFrameDurationMs();
     const nowMs = opts.nowMs ?? (() => performance.now());
     const sleep = opts.sleep ?? ((delayMs: number) => new Promise<void>(resolve => setTimeout(resolve, delayMs)));
     const pacer = new PreviewPacer(frameDurationMs);
+    const queue: PreviewQueueItem[] = [];
     let failures = 0;
+    let pumpRunning = false;
+    let lastReportedRotation: number | null = null;
     const reportFailure = (where: string, e: unknown): void => {
         failures++;
         if (failures === 1 || failures % LogEveryN === 0)
-            warnLog?.log(`previewTap: ${where} failed (#${failures}):`, e);
+            warnLog?.log(`previewForwarder: ${where} failed (#${failures}):`, e);
     };
-    return tap(async (envelope: NormalizedFrame): Promise<void> => {
+    const reportPresentationOnce = (rotation: number): void => {
+        if (!reportPresentation || lastReportedRotation === rotation)
+            return;
+
+        lastReportedRotation = rotation;
+        try {
+            reportPresentation({ rotation });
+        } catch (e) {
+            reportFailure('reportPresentation', e);
+        }
+    };
+    const closeFrame = (frame: VideoFrame): void => {
+        try { frame.close(); } catch { /* ignore */ }
+    };
+    const enqueue = (item: PreviewQueueItem): void => {
+        while (queue.length >= maxBufferedFrames) {
+            const dropped = queue.shift();
+            if (dropped)
+                closeFrame(dropped.frame);
+        }
+        queue.push(item);
+        startPump();
+    };
+    const startPump = (): void => {
+        if (pumpRunning)
+            return;
+
+        pumpRunning = true;
+        void pump();
+    };
+    const pump = async (): Promise<void> => {
+        try {
+            while (queue.length > 0) {
+                const item = queue.shift()!;
+                try {
+                    const plan = pacer.plan(item.capturedAt, nowMs());
+                    if (plan === 'skip')
+                        continue;
+                    if (plan.delayMs > 0)
+                        await sleep(plan.delayMs);
+
+                    if (item.writer) {
+                        const desiredSize = item.writer.desiredSize;
+                        if (desiredSize !== null && desiredSize <= 0)
+                            continue;
+
+                        reportPresentationOnce(item.rotation);
+                        await item.writer.write(item.frame);
+                    } else if (item.reportFrame) {
+                        reportPresentationOnce(item.rotation);
+                        await item.reportFrame(item.frame);
+                    }
+                } catch (e) {
+                    reportFailure(item.writer ? 'writer.write' : 'reportFrame', e);
+                } finally {
+                    closeFrame(item.frame);
+                }
+            }
+        } finally {
+            pumpRunning = false;
+            if (queue.length > 0)
+                startPump();
+        }
+    };
+    return tap((envelope: NormalizedFrame): void => {
         let writer: WritableStreamDefaultWriter<VideoFrame> | null;
         try {
             writer = getWriter();
@@ -43,23 +120,10 @@ export function previewTap(opts: PreviewTapOptions): PipeOperator<NormalizedFram
             return;
         }
         if (!writer && !reportFrame) return;
-        reportPresentation?.({ rotation: envelope.rotation });
 
         if (writer) {
             const desiredSize = writer.desiredSize;
             if (desiredSize !== null && desiredSize <= 0)
-                return;
-        }
-
-        const plan = pacer.plan(envelope.capturedAt, nowMs());
-        if (plan === 'skip')
-            return;
-        if (plan.delayMs > 0)
-            await sleep(plan.delayMs);
-
-        if (writer) {
-            const desiredSizeAfterDelay = writer.desiredSize;
-            if (desiredSizeAfterDelay !== null && desiredSizeAfterDelay <= 0)
                 return;
         }
 
@@ -70,17 +134,14 @@ export function previewTap(opts: PreviewTapOptions): PipeOperator<NormalizedFram
             reportFailure('frame clone', e);
             return;
         }
-        try {
-            if (writer) {
-                await writer.write(clone);
-            } else if (reportFrame) {
-                await reportFrame(clone);
-            }
-        } catch (e) {
-            reportFailure(writer ? 'writer.write' : 'reportFrame', e);
-        } finally {
-            try { clone.close(); } catch { /* ignore */ }
-        }
+
+        enqueue({
+            frame: clone,
+            capturedAt: envelope.capturedAt,
+            rotation: envelope.rotation,
+            writer,
+            reportFrame,
+        });
     });
 }
 

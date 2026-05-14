@@ -16,7 +16,7 @@ import { mstpSource } from '../operators/capture';
 import { stampCaptureTime } from '../operators/stamp-capture-time';
 import { attachSourceDims } from '../operators/attach-source-dims';
 import { normalizeFrame, spatialize, type LayerSpec } from '../operators/downscale';
-import { previewTap } from '../operators/preview-tap';
+import { previewForwarder } from '../operators/preview-forwarder';
 import { applyKeyframePolicy } from '../operators/apply-keyframe-policy';
 import { encode, type EncoderConfigPerLayer, type EncoderFactory } from '../operators/encode';
 import { FloodGate, floodGate } from '../operators/flood-gate';
@@ -118,7 +118,7 @@ export class Recorder {
                 isIos: config.isIos,
             }),
             // simpleBlur({ radiusPx: 6 }), // Temporary effect probe; keep disabled by default.
-            previewTap({
+            previewForwarder({
                 getWriter: () => this.session.getPreviewWriter(),
                 reportFrame: frame => this.session.reportPreviewFrame(frame),
                 reportPresentation: p => this.session.reportPreviewFramePresentation(p),
