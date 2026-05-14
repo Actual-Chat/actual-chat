@@ -68,8 +68,6 @@
             ReportUI.GetType().Name, ReportUI.IsAvailable, logFile.Value);
         try {
             await using (var stream = File.Create(logFile)) {
-                var header = ReportLogBuilder.BuildHeader(HostInfo, AccountUI.OwnAccount.Value, Clocks.SystemClock.Now);
-                await stream.WriteAsync(header, ct);
                 await LogUI.Save(stream, ct);
             }
             await ReportUI.Submit(_comment, logFile, ct);
