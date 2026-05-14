@@ -13,8 +13,6 @@ public sealed class MauiReportUI(UIHub hub) : ReportUI(hub)
     public override async Task Submit(string comment, FilePath logFile, CancellationToken cancellationToken)
     {
         var account = AccountUI.OwnAccount.Value;
-        var name = account.Name.NullIfEmpty() ?? "(no name)";
-        var email = account.Email.NullIfEmpty() ?? "noreply@actual.chat";
         // TODO: just queue the report and show a notification
         if (!SentrySdk.IsEnabled)
             throw StandardError.Constraint("Diagnostics aren't ready yet — please retry in a few seconds.");
@@ -31,8 +29,8 @@ public sealed class MauiReportUI(UIHub hub) : ReportUI(hub)
 
         var feedback = new SentryFeedback(
             comment,
-            contactEmail: email,
-            name: name,
+            contactEmail: account.Email.NullIfEmpty() ?? "noreply@actual.chat",
+            name: account.Name.NullIfEmpty() ?? "(no name)",
             associatedEventId: eventId);
         SentrySdk.CaptureFeedback(feedback);
         await SentrySdk.FlushAsync(FlushTimeout).ConfigureAwait(false);
