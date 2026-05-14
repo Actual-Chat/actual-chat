@@ -40,6 +40,5 @@
         // Unblock anyone still awaiting first-render if dispose races init.
         _whenFirstRender.TrySetResult();
         await _jsRef.DisposeSilentlyAsync("dispose");
-        _jsRef = null;
     }
 }
