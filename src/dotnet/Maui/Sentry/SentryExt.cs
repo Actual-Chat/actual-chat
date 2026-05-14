@@ -15,12 +15,10 @@ public static class SentryExt
     {
         options.Dsn = UIDsn;
         options.AddExceptionFilterForType<OperationCanceledException>();
-        options.Debug = MauiSettings.IsDevApp;
-        options.DiagnosticLevel = MauiSettings.IsDevApp ? SentryLevel.Debug : SentryLevel.Error;
-        if (MauiSettings.IsDevApp) {
+        options.Debug = false;
+        options.DiagnosticLevel = SentryLevel.Error;
+        if (MauiSettings.IsDevApp)
             options.Environment = "dev";
-            options.DiagnosticLogger = new SerilogDiagnosticLogger(options.DiagnosticLevel);
-        }
         options.CreateHttpMessageHandler = CreateHttpMessageHandler;
         options.AttachStacktrace = true;
         options.SendDefaultPii = false;
