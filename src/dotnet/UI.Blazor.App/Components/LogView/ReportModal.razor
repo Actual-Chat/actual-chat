@@ -26,7 +26,7 @@
     </Body>
     <Buttons>
         <Button Class="btn-modal" Click="@OnCancel">Cancel</Button>
-        <Button Class="btn-modal btn-primary" Click="@OnSubmit" IsDisabled="@(_comment.IsNullOrWhiteSpace())">Send</Button>
+        <Button Class="btn-modal btn-primary" Click="@OnSubmit">Send</Button>
     </Buttons>
 </DialogFrame>
 
@@ -52,8 +52,9 @@
         => Modal.Close();
 
     private async Task OnSubmit() {
+        var comment = _comment.IsNullOrWhiteSpace() ? "(no comment)" : _comment;
         using var dLog = await LogUI.DumpToTempFile(Hub.StopToken);
-        await ReportUI.Submit(_comment, dLog.Resource, Hub.StopToken);
+        await ReportUI.Submit(comment, dLog.Resource, Hub.StopToken);
         ToastUI.Show("Report sent — thanks!", ToastDismissDelay.Short);
         Modal.Close();
     }
