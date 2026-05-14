@@ -604,6 +604,19 @@ export class VideoRecorder {
             // We use this to stamp frame.duration so downstream (FPS, etc.) all see real cadence.
             this.currentFramerate = trackSettings.frameRate ?? targetFramerate;
 
+            // The capture-side ladder is built landscape-first, but a camera may
+            // deliver a portrait native frame (Android front cam in portrait
+            // pose, screen-locked phone, etc.). Flip each tier's W/H so the
+            // downscaler/encoder targets match the source orientation —
+            // otherwise the downscaler center-crops portrait into landscape
+            // and a 3:4 selfie ships as a 16:9 letterbox of the middle band.
+            if (this.cameraHeight > this.cameraWidth) {
+                ladder = ladder.map(l => ({ ...l, width: l.height, height: l.width }));
+                this.layers = ladder.length >= 2 ? [...ladder] : null;
+                this.fullLayerLadder = this.layers ? [...this.layers] : null;
+                infoLog?.log(`Portrait source detected — flipped ladder to: [${ladder.map(l => `${l.width}x${l.height}`).join(', ')}]`);
+            }
+
             void this.blazorRef.invokeMethodAsync(
                 'OnTrackSettings',
                 trackSettings.deviceId ?? null,
@@ -1148,7 +1161,6 @@ export class VideoRecorder {
             apiUrl,
             sourceKind: this.currentMode === 'screen' ? 1 : 0,
             isFrontCamera,
-            isIos: DeviceInfo.isIos,
             encoderConfigs,
             // Camera: 2-3s interval; ScreenCast: 1-2s interval.
             keyframeIntervalFrames: this.currentMode === 'screen'

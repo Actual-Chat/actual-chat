@@ -172,8 +172,7 @@ export interface CapturedFrame {
     forceKeyframe: boolean;
 
     // Quarter-turn CW the receiver should apply to display upright.
-    // Stamped by setRotation right after capture; all layers in one source
-    // moment share the same value.
+    // All layers in one source moment share the same value.
     rotation: RotationQuarter;
 
     stats: RecorderStats;

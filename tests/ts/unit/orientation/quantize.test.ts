@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     quantize,
-    iosCameraRotationDeg,
+    cameraRotationDeg,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/orientation/quantize';
 
 describe('quantize', () => {
@@ -34,8 +34,9 @@ describe('quantize', () => {
     });
 });
 
-describe('iosCameraRotationDeg', () => {
-    // From WebRTC RTCCameraVideoCapturer.m (see plan).
+describe('cameraRotationDeg', () => {
+    // Mirrors WebRTC RTCCameraVideoCapturer.m's iOS-derived formula; applies
+    // to typical Android phones too (same 90° sensor offset).
     it.each<[number, boolean, number]>([
         [0, true, 90],
         [90, true, 180],
@@ -46,11 +47,11 @@ describe('iosCameraRotationDeg', () => {
         [180, false, 270],
         [270, false, 180],
     ])('angle=%i front=%s → %i', (angle, isFront, expected) => {
-        expect(iosCameraRotationDeg(angle, isFront)).toBe(expected);
+        expect(cameraRotationDeg(angle, isFront)).toBe(expected);
     });
 
     it('handles negative/360+ angles', () => {
-        expect(iosCameraRotationDeg(-90, true)).toBe(iosCameraRotationDeg(270, true));
-        expect(iosCameraRotationDeg(450, false)).toBe(iosCameraRotationDeg(90, false));
+        expect(cameraRotationDeg(-90, true)).toBe(cameraRotationDeg(270, true));
+        expect(cameraRotationDeg(450, false)).toBe(cameraRotationDeg(90, false));
     });
 });

@@ -51,7 +51,7 @@ export interface RecorderWorkerDeps {
     endSource?: () => void;
 
     // -- pipeline-stage factories, in sender pipeline order --
-    createDownscaler?: () => DownscalerLike;
+    createDownscaler?: (isFrontCamera: boolean) => DownscalerLike;
     // Always returns a FRESH AsyncVideoEncoder. We deliberately don't pool
     // encoders: a pool-reused encoder can emit a delta as its first chunk
     // after reset, which the wire/server then mis-classify; a brand-new
@@ -192,15 +192,14 @@ export const recorderWorkerImpl: RecorderWorker = {
         const whenDone = recorder.start({
             track,
             createProcessor: deps.createProcessor,
-            createDownscaler: deps.createDownscaler,
+            createDownscaler: deps.createDownscaler
+                ? () => deps.createDownscaler!(config.isFrontCamera ?? false)
+                : undefined,
             encoderConfigs: config.encoderConfigs,
             createEncoder: encoderFactory,
             keyframeIntervalFrames: config.keyframeIntervalFrames,
             maxKeyFrameIntervalMs: config.maxKeyFrameIntervalMs,
             createSender: senderFactory,
-            sourceKind: config.sourceKind ?? 0,
-            isFrontCamera: config.isFrontCamera ?? false,
-            isIos: config.isIos ?? false,
         });
         s.whenDone = whenDone;
         // RPC `start()` resolves once the pipeline is wired up; the run

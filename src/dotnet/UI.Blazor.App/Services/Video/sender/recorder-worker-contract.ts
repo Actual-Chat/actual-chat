@@ -16,9 +16,7 @@ export interface WireSafeRecorderConfig {
     // 0 = Camera, 1 = ScreenCast. Maps to .NET VideoSourceKind.
     sourceKind?: number;
     // Captured once at recorder start from track.getSettings().facingMode === 'user'.
-    // Required for the iOS rotation formula; ignored on other platforms.
     isFrontCamera?: boolean;
-    isIos?: boolean;
     serverClockOffsetMs?: number;
     encoderConfigs: readonly EncoderConfigPerLayer[];
     keyframeIntervalFrames: number;

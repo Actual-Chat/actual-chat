@@ -165,10 +165,10 @@ class WebGpuDownscalerAdapter implements DownscalerLike {
 // Single factory invoked lazily by `LazyDownscaler` on the first frame.
 // The WebGPU branch is commented out — that path had recurring device-loss
 // cascades under load. Re-enable when those are fixed.
-async function createDownscalerInstance(): Promise<DownscalerLike> {
+async function createDownscalerInstance(isFrontCamera: boolean): Promise<DownscalerLike> {
     // const device = await WebGPUManager.init();
     // return new WebGpuDownscalerAdapter(new WebGpuDownscaler(device));
-    return Promise.resolve(new CanvasDownscaler());
+    return Promise.resolve(new CanvasDownscaler({ isFrontCamera }));
 }
 
 function createEncoder(
@@ -330,7 +330,8 @@ const deps: RecorderWorkerDeps = {
     },
 
     // -- pipeline-stage factories --
-    createDownscaler: () => new LazyDownscaler(createDownscalerInstance),
+    createDownscaler: isFrontCamera =>
+        new LazyDownscaler(() => createDownscalerInstance(isFrontCamera)),
     createEncoder,
     createSender,
 

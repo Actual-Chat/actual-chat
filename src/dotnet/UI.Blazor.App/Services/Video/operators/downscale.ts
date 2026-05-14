@@ -10,7 +10,10 @@ export interface LayerSpec {
 // Contract: one frame per spec in order; implementation owns the input
 // frame (consumes/closes it, including on failure before throwing).
 export interface DownscalerLike {
-    process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]>;
+    process(
+        input: VideoFrame,
+        layers: readonly LayerSpec[],
+    ): Promise<VideoFrame[]>;
     dispose?(): void;
 }
 

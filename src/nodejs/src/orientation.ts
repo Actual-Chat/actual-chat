@@ -18,6 +18,15 @@ export function normalizeRotationQuarter(value: RotationQuarter): RotationQuarte
     return (((Math.round(value) % 4) + 4) % 4);
 }
 
+function normalizeRotationDegrees(value: number): number {
+    if (!Number.isFinite(value)) return 0;
+    return ((value % 360) + 360) % 360;
+}
+
+function quantizeRotationDegrees(value: number, step = 10): number {
+    return normalizeRotationDegrees(Math.round(value / step) * step);
+}
+
 // Both classes are safe to import in workers — `init()` no-ops the
 // browser-only listeners when `screen` / `window` aren't available.
 // In a worker the values stay in sync via the SharedSettings.changed
@@ -87,6 +96,7 @@ export class ScreenOrientation {
 //   * debugUI: `set()` from any realm pushes through commit → SharedSettings.
 export class DeviceOrientation {
     private static cached: RotationQuarter = 0;
+    private static cachedAngle = 0;
     private static initDone = false;
     private static readonly changeSubject = new Subject<RotationQuarter>();
     public static readonly change$: Observable<RotationQuarter> = DeviceOrientation.changeSubject;
@@ -95,32 +105,53 @@ export class DeviceOrientation {
         return DeviceOrientation.cached;
     }
 
+    public static get angle(): number {
+        return DeviceOrientation.cachedAngle;
+    }
+
     // Debug / test override. Pushes a value as if it came from a real sensor
     // or screen-orientation flip. Used by debugUI.setDeviceOrientation.
     public static set(quarter: RotationQuarter): void {
-        DeviceOrientation.commit(quarter, true);
+        const normalized = normalizeRotationQuarter(quarter);
+        DeviceOrientation.commit(normalized, true, normalized * 90);
     }
 
     public static init(): void {
         if (DeviceOrientation.initDone) return;
         DeviceOrientation.initDone = true;
         DeviceOrientation.cached = ScreenOrientation.quarter;
+        DeviceOrientation.cachedAngle = ScreenOrientation.current;
         const isMain = typeof window !== 'undefined' && typeof screen !== 'undefined';
 
         if (isMain) {
             ScreenOrientation.change$.subscribe(() => {
                 if (DeviceInfo.isIos || !hasMotionInput)
-                    DeviceOrientation.commit(ScreenOrientation.quarter, true);
+                    DeviceOrientation.commit(ScreenOrientation.quarter, true, ScreenOrientation.current);
             });
             if (!DeviceInfo.isIos)
                 DeviceOrientation.attachMotionListener();
             // Seed SharedSettings so workers start in sync.
-            SharedSettings.update({ deviceOrientation: DeviceOrientation.cached });
+            SharedSettings.update({
+                deviceOrientation: DeviceOrientation.cached,
+                deviceOrientationAngle: DeviceOrientation.cachedAngle,
+            });
         }
 
         SharedSettings.changed.add(s => {
-            if (typeof s.deviceOrientation === 'number')
-                DeviceOrientation.commit(s.deviceOrientation, false);
+            const hasQuarter = typeof s.deviceOrientation === 'number';
+            const hasAngle = typeof s.deviceOrientationAngle === 'number';
+            if (hasQuarter || hasAngle) {
+                const quarter = hasQuarter
+                    ? s.deviceOrientation as number
+                    : DeviceOrientation.cached;
+                const angle = hasAngle
+                    ? s.deviceOrientationAngle as number
+                    : DeviceOrientation.cachedAngle;
+                DeviceOrientation.commit(
+                    quarter,
+                    false,
+                    angle);
+            }
         });
     }
 
@@ -132,20 +163,34 @@ export class DeviceOrientation {
             if (now - lastSampleAtMs < minIntervalMs) return;
             lastSampleAtMs = now;
             const next = poseToRotationQuarter(e);
-            if (next !== null) {
+            const angle = poseToRotationAngle(e);
+            if (next !== null || angle !== null) {
                 hasMotionInput = true;
-                DeviceOrientation.commit(next, true);
+                DeviceOrientation.commit(
+                    next ?? DeviceOrientation.cached,
+                    true,
+                    angle ?? (next ?? DeviceOrientation.cached) * 90);
             }
         });
     }
 
-    private static commit(next: RotationQuarter, publish: boolean): void {
+    private static commit(next: RotationQuarter, publish: boolean, angle?: number): void {
         const normalized = normalizeRotationQuarter(next);
-        if (normalized === DeviceOrientation.cached) return;
+        const normalizedAngle = quantizeRotationDegrees(angle ?? normalized * 90);
+        if (normalized === DeviceOrientation.cached
+            && normalizedAngle === DeviceOrientation.cachedAngle)
+            return;
+
+        const quarterChanged = normalized !== DeviceOrientation.cached;
         DeviceOrientation.cached = normalized;
-        DeviceOrientation.changeSubject.next(normalized);
+        DeviceOrientation.cachedAngle = normalizedAngle;
+        if (quarterChanged)
+            DeviceOrientation.changeSubject.next(normalized);
         if (publish)
-            SharedSettings.update({ deviceOrientation: normalized });
+            SharedSettings.update({
+                deviceOrientation: normalized,
+                deviceOrientationAngle: normalizedAngle,
+            });
     }
 }
 
@@ -183,4 +228,20 @@ function poseToRotationQuarter(e: DeviceOrientationEvent): RotationQuarter | nul
     if (absGamma > absBeta + 10) return gamma > 0 ? 1 : 3;
     if (absBeta > absGamma + 10) return beta < -30 ? 2 : 0;
     return null;
+}
+
+// DeviceOrientationEvent -> degrees CW from natural portrait, quantized by
+// DeviceOrientation.commit before publishing. `atan2(gamma, beta)` matches
+// the quarter mapping above: beta+ => 0°, gamma+ => 90°, beta- => 180°,
+// gamma- => 270°.
+function poseToRotationAngle(e: DeviceOrientationEvent): number | null {
+    const beta = e.beta;
+    const gamma = e.gamma;
+    if (beta === null || gamma === null) return null;
+
+    const absBeta = Math.abs(beta);
+    const absGamma = Math.abs(gamma);
+    if (absBeta < 30 && absGamma < 30) return null;
+
+    return normalizeRotationDegrees(Math.atan2(gamma, beta) * 180 / Math.PI);
 }

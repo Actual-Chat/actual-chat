@@ -20,6 +20,10 @@ export interface SharedSettingsSnapshot {
      *  {@link DeviceOrientation}; overridden by `debugUI.setDeviceOrientation`.
      *  Workers read this via the same `DeviceOrientation.current`. */
     deviceOrientation?: number;
+    /** Device-pose angle in degrees CW from natural portrait, quantized to
+     *  10-degree steps to avoid excessive worker updates. Workers read this
+     *  via `DeviceOrientation.angle`. */
+    deviceOrientationAngle?: number;
 }
 
 let current: SharedSettingsSnapshot = {

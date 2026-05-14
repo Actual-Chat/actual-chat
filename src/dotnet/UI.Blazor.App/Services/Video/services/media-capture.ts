@@ -1,7 +1,7 @@
 import { VIDEO } from 'app-constants';
 import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
-import { ScreenOrientation } from 'orientation';
+import { DeviceOrientation } from 'orientation';
 
 const { infoLog } = getLogs('VideoRecorder');
 
@@ -154,14 +154,16 @@ export class MediaCapture {
             && Math.min(settings.width, settings.height) >= minimumSize.small;
     }
 
-    // iOS Safari MSTP leaves VideoFrame.rotation null and our rotation reconcile
-    // (workers/video-processing.ts, webgpu/downscaler.ts) assumes sensor-landscape
-    // frames; requesting portrait there flips the encoder mid-startup and produces
-    // mis-oriented output. Android Chrome populates rotation correctly.
+    // Drives constraint orientation by *device pose* (not screen orientation),
+    // so the camera gets to deliver its best view for how the phone is held —
+    // independent of OS rotation lock and independent of front/rear. iOS
+    // stays landscape: MSTP doesn't auto-rotate there, and requesting portrait
+    // mid-startup flips the encoder and produces mis-oriented output.
     private static preferPortraitConstraint(): boolean {
         if (DeviceInfo.isIos) return false;
         if (!DeviceInfo.isMobile) return false;
-        return ScreenOrientation.isPortrait;
+        const q = DeviceOrientation.current;
+        return q === 0 || q === 2;
     }
 
     static async captureScreenCast(): Promise<MediaStreamTrack> {

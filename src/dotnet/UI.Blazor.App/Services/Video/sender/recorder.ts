@@ -19,9 +19,6 @@ import { downscale, type DownscalerLike, type LayerSpec } from '../operators/dow
 import { applyKeyframePolicy } from '../operators/apply-keyframe-policy';
 import { encode, type EncoderConfigPerLayer, type EncoderFactory } from '../operators/encode';
 import { FloodGate, floodGate } from '../operators/flood-gate';
-import { setRotation } from '../operators/set-rotation';
-import { DeviceOrientation } from 'orientation';
-import { RotationDebouncer } from '../orientation/rotation-debouncer';
 import { wireSend, type StreamSenderLike } from '../operators/wire-send';
 import type { SenderSession } from './session';
 
@@ -35,18 +32,11 @@ export type { EncodeInput } from '../operators/encode';
 export type { RecorderStats };
 
 // Members ordered by sender pipeline flow:
-//   source (track) → setRotation → downscale → encode → keyframe-policy → wireSend.
+//   source (track) → downscale → encode → keyframe-policy → wireSend.
 export interface RecorderConfig {
     // -- source --
     track: MediaStreamTrack;
     createProcessor?: (track: MediaStreamTrack) => { readable: ReadableStream<VideoFrame> };
-
-    // -- rotation --
-    // 0 = Camera, 1 = ScreenCast. Maps to .NET VideoSourceKind.
-    sourceKind: number;
-    isFrontCamera: boolean;
-    isIos: boolean;
-    rotationDwellMs?: number;
 
     // -- downscale --
     // Required for simulcast (length > 1); single-tier defaults to clone-only.
@@ -116,21 +106,11 @@ export class Recorder {
             createProcessor: config.createProcessor,
         });
 
-        const rotationDebouncer = new RotationDebouncer(
-            DeviceOrientation.current,
-            config.rotationDwellMs ?? 200);
-
         // Two pipes only because pipe()'s typed overload tops out at 9 ops;
         // runtime composition is identical.
         const captureToBundle = pipe(
             captureSource,
             traceDrops<CapturedFrame>(FrameDropStage.SenderSource),
-            setRotation({
-                sourceKind: config.sourceKind,
-                isFrontCamera: config.isFrontCamera,
-                debouncer: rotationDebouncer,
-                isIos: config.isIos,
-            }),
             floodGate(gate),
             traceDrops<CapturedFrame>(FrameDropStage.SenderFloodGate),
             stampCaptureTime({ clock: this.session.captureClock }),

@@ -4,7 +4,8 @@ export type { RotationQuarter } from 'orientation';
 
 // Feed device pose (deviceQuarter * 90), not screen.orientation.angle —
 // the device-pose value is correct even when the OS rotation lock is on.
-export function iosCameraRotationDeg(
+// Assumes a 90° sensor offset (true for typical iOS and Android phones).
+export function cameraRotationDeg(
     deviceAngle: number,
     isFrontCamera: boolean,
 ): number {
