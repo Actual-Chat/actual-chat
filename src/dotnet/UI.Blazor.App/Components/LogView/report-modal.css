@@ -1,0 +1,16 @@
+.report-modal .c-container {
+    @apply flex flex-y gap-y-2;
+}
+.report-modal .c-description {
+    @apply text-02;
+}
+.report-modal-comment {
+    @apply w-full p-2 rounded;
+    @apply bg-input border border-bg-04;
+    @apply text-01;
+    resize: vertical;
+    min-height: 6rem;
+}
+.report-modal .c-counter {
+    @apply self-end text-sm text-03;
+}
