@@ -14,7 +14,7 @@
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.CopyTrigger.create";
 
     private ElementReference _ref;
-    private IJSObjectReference? _jsRef;
+    private IJSObjectReference _jsRef = null!;
     private readonly AsyncTaskMethodBuilder _whenFirstRender = AsyncTaskMethodBuilderExt.New();
     private string _lastCopyText = "";
 
@@ -27,20 +27,12 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            try {
-                _jsRef = await JS.InvokeAsync<IJSObjectReference>(
-                    JSCreateMethod,
-                    _ref, CopyText, Tooltip, CopyTextSourceRef, CopyTextFormatString);
-                _lastCopyText = CopyText;
-            }
-            finally {
-                _whenFirstRender.TrySetResult();
-            }
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _ref, CopyText, Tooltip, CopyTextSourceRef, CopyTextFormatString);
+            _lastCopyText = CopyText;
         } else if (CopyText != _lastCopyText) {
             _lastCopyText = CopyText;
-            await _whenFirstRender.Task;
-            if (_jsRef is not null)
-                await _jsRef.InvokeVoidAsync("setCopyText", CopyText);
+            await _whenFirstRender.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await _jsRef.InvokeVoidAsync("setCopyText", CopyText);
         }
     }
 
@@ -48,6 +40,5 @@
         // Unblock anyone still awaiting first-render if dispose races init.
         _whenFirstRender.TrySetResult();
         await _jsRef.DisposeSilentlyAsync("dispose");
-        _jsRef = null;
     }
 }
