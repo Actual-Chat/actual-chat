@@ -4,7 +4,7 @@
 .report-modal .c-description {
     @apply text-02;
 }
-.report-modal-comment {
+.report-modal .c-comment {
     @apply w-full p-2 rounded;
     @apply bg-input border border-bg-04;
     @apply text-01;
