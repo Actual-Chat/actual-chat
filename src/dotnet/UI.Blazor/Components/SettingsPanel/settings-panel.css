@@ -242,6 +242,9 @@ body.narrow .settings-tab-content {
     @apply bg-03 md:bg-01;
     @apply border-b border-separator md:border-none;
 }
+.settings-tab-header .c-end {
+    @apply ml-auto flex-x items-center gap-x-2;
+}
 body.narrow .settings-tab-header {
     box-sizing: content-box;
     padding-top: var(--safe-area-top);

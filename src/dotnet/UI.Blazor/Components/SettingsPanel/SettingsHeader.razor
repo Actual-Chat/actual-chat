@@ -7,8 +7,14 @@
 <div class="c-title">
     @Title
 </div>
+@if (EndContent != null) {
+    <div class="c-end">
+        @EndContent
+    </div>
+}
 
 @code {
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public EventCallback ArrowClick { get; set; }
+    [Parameter] public RenderFragment? EndContent { get; set; }
 }
