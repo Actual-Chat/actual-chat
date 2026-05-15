@@ -17,9 +17,11 @@ _get_device_name() {
 }
 
 detect_ios_device() {
-    # Collect all physical devices from xctrace (excluding Mac, simulators, and offline)
+    # Collect all physical devices from xctrace (excluding Mac and simulators).
+    # Includes offline devices since wirelessly paired iPhones often appear there
+    # but are still reachable via `devicectl`.
     local devices_section
-    devices_section=$(xcrun xctrace list devices 2>/dev/null | sed -n '/^== Devices ==$/,/^==/p' | grep -E '\([0-9]+\.[0-9]+')
+    devices_section=$(xcrun xctrace list devices 2>/dev/null | sed -n '/^== Devices ==$/,/^== Simulators ==$/p' | grep -E '\([0-9]+\.[0-9]+')
 
     if [ -z "$devices_section" ]; then
         echo "Error: No available iOS device found. Please connect an iPhone and ensure it's paired." >&2
