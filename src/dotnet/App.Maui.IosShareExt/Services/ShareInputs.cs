@@ -16,6 +16,9 @@ public class ShareInputs(IosHub hub)
     public Task<List<NSItemProvider>> ListFiles(CancellationToken cancellationToken = default)
         => MainThread.InvokeOnMainThreadAsync(() => ListFileInputsUnsafe().ToList());
 
+    public Task<bool> HasFiles()
+        => MainThread.InvokeOnMainThreadAsync(() => ListFileInputsUnsafe().Any());
+
     private Task<string[]> ListTextInputsUnsafe(CancellationToken cancellationToken)
     {
         var inputItems = UIKitExt.ExtensionContext.InputItems;

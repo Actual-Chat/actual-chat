@@ -67,9 +67,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             if (ownAccount.IsGuest)
                 return;
 
-            var files = await SharedInputs.ListFiles(cancellationToken).ConfigureAwait(false);
-            _hasFiles = files.Count > 0;
-
+            _hasFiles = await SharedInputs.HasFiles().ConfigureAwait(false);
             if (await UIKitExt.GetSuggestedRecipient().ConfigureAwait(false) is not { } chatId)
                 return;
 
