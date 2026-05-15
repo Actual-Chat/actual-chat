@@ -140,6 +140,46 @@ function Test-ServerProbe([int]$Port) {
     }
 }
 
+function Start-ServerProcess {
+    param(
+        [Parameter(Mandatory)] [string]   $Configuration,
+        [Parameter(Mandatory)] [string]   $ProjectCsproj,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]] $ServerArgs,
+        [Parameter(Mandatory)] [string]   $StdoutPath,
+        [Parameter(Mandatory)] [string]   $StderrPath
+    )
+    if ($IsWindows) {
+        $runArgs = @('run', '-c', $Configuration, '--no-launch-profile', '--project', $ProjectCsproj, '--') + $ServerArgs
+        return Start-Process -FilePath dotnet `
+            -ArgumentList $runArgs `
+            -RedirectStandardOutput $StdoutPath -RedirectStandardError $StderrPath `
+            -NoNewWindow -PassThru
+    }
+    # POSIX: Start-Process with -RedirectStandardOutput/-RedirectStandardError
+    # attaches an AsyncStreamReader to the child's stdio. On force-kill
+    # (Stop-Process -Force / watchdog kill) the StreamWriter backing the
+    # redirect file is disposed while the reader still has buffered lines;
+    # the next FlushMessageQueue throws ObjectDisposedException on a
+    # threadpool thread, escapes $ErrorActionPreference, and aborts the
+    # host (the "Cannot write to a closed TextWriter" / "Abort trap: 6"
+    # symptom). Workaround: launch via System.Diagnostics.Process directly
+    # with no PowerShell-owned readers, and have /bin/sh do the redirection
+    # then `exec` dotnet so we still get the dotnet PID. (Start-Process
+    # -NoNewWindow without -Redirect* on macOS turned out to detach the
+    # child early; the direct API does not.)
+    $quotedArgs = ($ServerArgs | ForEach-Object { "'$(($_ -replace "'", "'\''"))'" }) -join ' '
+    $shellLine = "exec dotnet run -c '$Configuration' --no-launch-profile --project '$ProjectCsproj' -- $quotedArgs > '$StdoutPath' 2> '$StderrPath'"
+    $psi = [System.Diagnostics.ProcessStartInfo]::new()
+    $psi.FileName = '/bin/sh'
+    $psi.ArgumentList.Add('-c')
+    $psi.ArgumentList.Add($shellLine)
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardInput = $false
+    $psi.RedirectStandardOutput = $false
+    $psi.RedirectStandardError = $false
+    return [System.Diagnostics.Process]::Start($psi)
+}
+
 function Send-StopSignal {
     $url = "$(Get-BaseUri)/health/stop"
     Write-LoopLog "Forwarding stop request to $url..."
@@ -226,11 +266,12 @@ while ($true) {
         # would have nothing to read — its stdin is captured by the
         # redirect anyway. We don't pass `-kb`. `$ServerArgs` appends
         # whatever the operator passed to server-loop.ps1.
-        $serverRunArgs = @('run', '-c', $Configuration, '--no-launch-profile', '--project', $projectCsproj, '--') + $ServerArgs
-        $proc = Start-Process -FilePath dotnet `
-            -ArgumentList $serverRunArgs `
-            -RedirectStandardOutput $serverRunOutLog -RedirectStandardError $serverRunErrLog `
-            -NoNewWindow -PassThru
+        $proc = Start-ServerProcess `
+            -Configuration  $Configuration `
+            -ProjectCsproj  $projectCsproj `
+            -ServerArgs     $ServerArgs `
+            -StdoutPath     $serverRunOutLog `
+            -StderrPath     $serverRunErrLog
         Write-Host "Keyboard: any key = stop the server (forwarded to /health/stop; force-kill after 30s)." -ForegroundColor Cyan
 
         # Watchdog state: probe /healthz/live once we've learned the port
