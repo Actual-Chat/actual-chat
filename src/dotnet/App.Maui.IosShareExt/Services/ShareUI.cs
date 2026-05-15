@@ -21,10 +21,13 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     private readonly MutableState<bool> _isSending;
     private readonly MutableState<bool> _isSent;
     private readonly MutableState<bool> _hasFailed;
+    private readonly MutableState<bool> _hasFiles;
+    private readonly MutableState<string> _failureMessage;
 
     public MutableState<PlaceId?> SelectedPlaceId { get; }
     public IState<double> UploadPct => _uploadPct;
     public IState<bool> CanSend => _canSend;
+    public IState<string> FailureMessage => _failureMessage;
 
     private IosHub Hub { get; }
     private IAccounts Accounts => Hub.Accounts;
@@ -47,6 +50,8 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         _isSending = Hub.StateFactory.NewMutable<bool>();
         _isSent = Hub.StateFactory.NewMutable<bool>();
         _hasFailed = Hub.StateFactory.NewMutable<bool>();
+        _hasFiles = Hub.StateFactory.NewMutable<bool>();
+        _failureMessage = Hub.StateFactory.NewMutable<string>();
         _uploadPct = Hub.StateFactory.NewMutable<double>();
         _canSend = Hub.StateFactory.NewMutable<bool>();
         _sendWorker = FuncWorker.New(ct
@@ -65,11 +70,19 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             if (ownAccount.IsGuest)
                 return;
 
+            var files = await SharedInputs.ListFiles(cancellationToken).ConfigureAwait(false);
+            _hasFiles.Value = files.Count > 0;
+
             if (await UIKitExt.GetSuggestedRecipient().ConfigureAwait(false) is not { } chatId)
                 return;
 
-            // Auto-send when sharing from a contact suggestion
+            // Auto-send only if the user can actually send to the suggested chat,
+            // otherwise fall through to manual contact selection.
             var contactId = ContactId.NewAny(ownAccount.Id, chatId);
+            var contact = await Contacts.Get(Session, contactId, cancellationToken).ConfigureAwait(false);
+            if (contact is null || !CanSendTo(contact.Chat.Rules, _hasFiles.Value))
+                return;
+
             _selectedIds.Add(contactId);
             _canSend.Value = true;
             StartSending();
@@ -81,6 +94,15 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         finally {
             _isInitialized.Value = true;
         }
+    }
+
+    private static bool CanSendTo(AuthorRules rules, bool hasFiles)
+    {
+        if (!rules.CanWrite())
+            return false;
+        if (hasFiles && !rules.CanUpload())
+            return false;
+        return true;
     }
 
     protected override Task DisposeAsyncCore()
@@ -120,16 +142,20 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     public virtual async Task<IReadOnlyList<Contact>> ListContacts(CancellationToken cancellationToken)
     {
         var placeId = await SelectedPlaceId.Use(cancellationToken).ConfigureAwait(false);
+        var hasFiles = await _hasFiles.Use(cancellationToken).ConfigureAwait(false);
         var contactIds = await Contacts.ListIds(Session, placeId, cancellationToken).ConfigureAwait(false);
         var contacts = await contactIds.Select(x => Contacts.Get(Session, x, cancellationToken))
             .Collect(cancellationToken)
             .ConfigureAwait(false);
 
-        if (_searchPhrase.IsEmpty)
-            return contacts.SkipNullItems().ToList();
-
-        return contacts
+        var sendable = contacts
             .SkipNullItems()
+            .Where(c => CanSendTo(c.Chat.Rules, hasFiles));
+
+        if (_searchPhrase.IsEmpty)
+            return sendable.ToList();
+
+        return sendable
             .WithSearchMatchRank(_searchPhrase, c => c.Chat.Title)
             .FilterBySearchMatchRank()
             .OrderBySearchMatchRank()
@@ -220,6 +246,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         catch (Exception e) {
             if (!e.IsCancellationOf(cancellationToken)) {
                 Log.LogError(e, "Failed to send message");
+                _failureMessage.Value = e.UserFriendlyMessage;
                 _hasFailed.Value = true;
             }
             throw;

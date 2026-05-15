@@ -57,8 +57,11 @@ public class ErrorView(IosHub hub) : ComputedStateView<ErrorView.Model>(hub)
     {
     }
 
-    protected override Task<Model> ComputeState(CancellationToken cancellationToken)
-        => Task.FromResult(new Model("Upload failed"));
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+    {
+        var message = await ShareUI.FailureMessage.Use(cancellationToken).ConfigureAwait(false);
+        return new Model(message);
+    }
 
     // Nested types
     public sealed record Model(string Message);
