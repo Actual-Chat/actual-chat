@@ -20,7 +20,6 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     private readonly MutableState<bool> _isInitialized;
     private readonly MutableState<bool> _isSending;
     private readonly MutableState<bool> _isSent;
-    private readonly MutableState<bool> _hasFailed;
     private readonly MutableState<bool> _hasFiles;
     private readonly MutableState<string> _failureMessage;
 
@@ -49,9 +48,8 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         _isInitialized = Hub.StateFactory.NewMutable<bool>();
         _isSending = Hub.StateFactory.NewMutable<bool>();
         _isSent = Hub.StateFactory.NewMutable<bool>();
-        _hasFailed = Hub.StateFactory.NewMutable<bool>();
         _hasFiles = Hub.StateFactory.NewMutable<bool>();
-        _failureMessage = Hub.StateFactory.NewMutable<string>();
+        _failureMessage = Hub.StateFactory.NewMutable<string>("");
         _uploadPct = Hub.StateFactory.NewMutable<double>();
         _canSend = Hub.StateFactory.NewMutable<bool>();
         _sendWorker = FuncWorker.New(ct
@@ -89,7 +87,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to initialize");
-            _hasFailed.Value = true;
+            _failureMessage.Value = e.UserFriendlyMessage;
         }
         finally {
             _isInitialized.Value = true;
@@ -115,8 +113,8 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         if (ownAccount.IsGuest)
             return ShareStep.SignIn;
 
-        var hasFailed = await _hasFailed.Use(cancellationToken).ConfigureAwait(false);
-        if (hasFailed)
+        var failureMessage = await _failureMessage.Use(cancellationToken).ConfigureAwait(false);
+        if (!failureMessage.IsNullOrEmpty())
             return ShareStep.Failed;
 
         var isSent = await _isSent.Use(cancellationToken).ConfigureAwait(false);
@@ -247,7 +245,6 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             if (!e.IsCancellationOf(cancellationToken)) {
                 Log.LogError(e, "Failed to send message");
                 _failureMessage.Value = e.UserFriendlyMessage;
-                _hasFailed.Value = true;
             }
             throw;
         }
