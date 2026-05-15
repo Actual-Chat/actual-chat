@@ -25,6 +25,20 @@ async function clearSearch(page: Page) {
     await page.waitForTimeout(800);
 }
 
+// LeftChatSearchInput resets the location filter to Chat (or Place) every time
+// the panel opens — that filter scopes results to the current chat and hides the
+// Global subgroup. Clicking the Chat/Place badge clears it to Anywhere.
+async function setLocationAnywhere(page: Page) {
+    const badge = page.locator(
+        '.left-chat-search-input .search-filter-badge:has-text("Chat"), ' +
+        '.left-chat-search-input .search-filter-badge:has-text("Place")',
+    ).first();
+    if (await badge.isVisible({ timeout: 1500 }).catch(() => false)) {
+        await badge.click({ force: true });
+        await badge.waitFor({ state: 'hidden', timeout: 3_000 }).catch(() => { /* ignore */ });
+    }
+}
+
 async function searchFor(page: Page, query: string) {
     await skipOnboarding(page);
     await clearSearch(page);
@@ -32,6 +46,7 @@ async function searchFor(page: Page, query: string) {
     await input.waitFor({ state: 'visible', timeout: 10_000 });
     await input.click({ force: true });
     await page.waitForTimeout(200);
+    await setLocationAnywhere(page);
     // pressSequentially: TextInput's input listener is debounced 800ms; fill() can land before it attaches.
     await input.pressSequentially(query, { delay: 60 });
     await page.waitForTimeout(2_500);
@@ -58,12 +73,16 @@ async function findPersonResultContaining(page: Page, needle: string): Promise<b
 }
 
 async function expandGlobalIfPossible(page: Page) {
-    const showMore = page.locator(
-        '.search-result-group-header:has-text("Global search") button:has-text("Show more")',
+    // FoundChatList renders GlobalSearchPlaceholder ("Public chats & places" + "Show")
+    // when local results don't already include global hits. Clicking it calls
+    // SearchUI.ShowGlobalResults() which fetches and renders the Global subgroup.
+    const showBtn = page.locator(
+        '.global-search-placeholder button:has-text("Show"), ' +
+        '.search-result-group-header:has-text("Public chats") button:has-text("Show")',
     ).first();
-    if (await showMore.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await showMore.click({ force: true });
-        await page.waitForTimeout(1_500);
+    if (await showBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+        await showBtn.click({ force: true });
+        await page.waitForTimeout(2_000);
     }
 }
 

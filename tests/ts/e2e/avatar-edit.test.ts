@@ -153,15 +153,15 @@ describe('avatar editing', () => {
         const avatarModal = page.locator('.edit-avatar-modal');
         await avatarModal.waitFor({ state: 'visible', timeout: 5000 });
 
-        // act - change name. fill() alone can leave Blazor's @bind-Value unchanged
-        // because the TextBox wires its JS listener in OnAfterRenderAsync and reads
-        // from change events on blur — simulate that explicitly.
+        // act - change name. Ctrl+A via locator.press doesn't reliably select in this
+        // input (observed: only the first char gets deleted, new text gets inserted
+        // before the leftover tail). selectText() calls input.select() directly, then
+        // typing replaces the selection. Tab → blur fires Blazor's @onchange.
         const nameInput = avatarModal.locator('input#avatar-editor-name, input[id*="name" i]').first();
         await nameInput.waitFor({ state: 'visible', timeout: 5000 });
         const newName = `Edited ${uniqueSuffix}`;
         await nameInput.click();
-        await nameInput.press('Control+A');
-        await nameInput.press('Delete');
+        await nameInput.selectText();
         await nameInput.pressSequentially(newName, { delay: 20 });
         await nameInput.press('Tab');
         await page.waitForTimeout(300);
