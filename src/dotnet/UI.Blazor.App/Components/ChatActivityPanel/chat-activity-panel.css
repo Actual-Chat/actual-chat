@@ -172,19 +172,15 @@ body.narrow .c-film-strip {
 body.narrow .layout-header:has(.video-streaming) {
     @apply overflow-hidden;
 }
-/* Dim film strip when watching; hide entirely when activity panel is collapsed */
+/* Dim film strip when watching; hide entirely when activity panel is collapsed into the header pill */
 .chat-activity-panel.watching .c-film-strip {
     @apply opacity-75;
 }
-.layout-header.collapsed .c-film-strip {
+.layout-header.collapsed:not(:has(.video-panel:not(.collapsed):not(.panel-hidden))) .c-film-strip {
     @apply opacity-0;
 }
-.layout-header.collapsed .c-film-strip::after {
+.layout-header.collapsed:not(:has(.video-panel:not(.collapsed):not(.panel-hidden))) .c-film-strip::after {
     animation-play-state: paused;
-}
-/* Restore full strength when video panel is minimized (swiped up on mobile) */
-.layout-header:has(.video-panel.minimized) .chat-activity-panel.watching .c-film-strip {
-    @apply opacity-100;
 }
 @media (prefers-reduced-motion: reduce) {
     .c-film-strip {
