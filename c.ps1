@@ -1107,10 +1107,10 @@ if ($featureWorktreeSuffix) {
     Set-Location $worktreePath
 }
 
-# Register server config and write .env file (ActualChat projects only)
+# Register server config and write .env file (ActualChat projects only).
 $isActualChatProject = Test-Path (Join-Path $projectRoot "ActualChat.sln")
 $serverConfig = $null
-if ($isActualChatProject) {
+if ($isActualChatProject -and $fromMode -ne "from-docker") {
     $mainProjectPath = if ($worktree -or $worktreeSuffix -or $featureWorktreeSuffix) {
         Join-Path $env:AC_ProjectRoot $projectName
     } else {
