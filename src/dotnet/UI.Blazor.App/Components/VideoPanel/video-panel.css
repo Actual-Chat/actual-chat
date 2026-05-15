@@ -476,7 +476,18 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
 .video-panel .video-panel-footer > button.rec-btn.recording {
     background: linear-gradient(180deg, #2970FF -116.66%, #FF3880 66.08%);
     background-size: auto;
-    animation: record-btn-on 1s ease-in-out forwards, record-btn-on-pulse 2s ease-in-out infinite;
+    animation: record-btn-on-pulse 2s ease-in-out infinite;
+}
+.video-panel .video-panel-footer > button.rec-btn::after {
+    @apply content-empty;
+    @apply absolute inset-0;
+    @apply pointer-events-none;
+    @apply opacity-0;
+    border-radius: inherit;
+    box-shadow: 0 0 1rem 0 var(--magenta-60);
+}
+.video-panel .video-panel-footer > button.rec-btn.recording::after {
+    animation: record-btn-glow 1s ease-in-out forwards;
 }
 .video-panel .video-panel-footer > button.rec-btn i {
     @apply text-xl leading-5;

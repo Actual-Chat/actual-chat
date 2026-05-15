@@ -39,6 +39,8 @@ export class ActiveRecordingSvg extends LitElement {
         }
         rect {
             transition-duration: 0s;
+        }
+        rect.in-rest {
             will-change: transform;
         }
         rect.non-active {
