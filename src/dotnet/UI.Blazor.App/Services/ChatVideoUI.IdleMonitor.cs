@@ -18,6 +18,35 @@ public partial class ChatVideoUI
         return await _watchingChatId.Use(cancellationToken).ConfigureAwait(false);
     }
 
+    [ComputeMethod]
+    protected virtual async Task<bool> IsOwnTranscribingInChat(
+        ChatId chatId,
+        AuthorId ownAuthorId,
+        CancellationToken cancellationToken)
+    {
+        var idRange = await Hub.Chats
+            .GetIdRange(Session, chatId, cancellationToken)
+            .ConfigureAwait(false);
+        if (idRange.IsEmptyOrNegative) {
+            Log.LogInformation("IdleMonitor[{ChatId}]: IsOwnTranscribingInChat — idRange empty", chatId);
+            return false;
+        }
+        const int maxScan = 32;
+        var startId = Math.Max(idRange.Start, idRange.End - maxScan);
+        var reader = Hub.NewEntryReader(chatId);
+        var entry = await reader.GetLast(
+                (startId, idRange.End),
+                e => e.AuthorId == ownAuthorId && e.IsContentStreaming,
+                maxScan,
+                cancellationToken)
+            .ConfigureAwait(false);
+        Log.LogInformation(
+            "IdleMonitor[{ChatId}]: IsOwnTranscribingInChat — idRange=[{Start}..{End}), scan>={ScanStart}, found={EntryId} streaming={Streaming}",
+            chatId, idRange.Start, idRange.End, startId,
+            entry?.Id.ToString() ?? "<none>", entry?.IsContentStreaming);
+        return entry is not null;
+    }
+
     // Private methods
 
     private async Task MonitorVideoIdleness(CancellationToken cancellationToken)
@@ -30,12 +59,14 @@ public partial class ChatVideoUI
         ChatId? sessionChatId = null;
         var lastConfirmedAt = default(Moment);
         var lastVoiceActiveAt = default(Moment);
+        var lastVadActiveAt = default(Moment);
 
         while (!cancellationToken.IsCancellationRequested) {
             var activeChatId = cActiveChat.Value;
             if (activeChatId is null) {
                 sessionChatId = null;
                 lastVoiceActiveAt = default;
+                lastVadActiveAt = default;
                 cActiveChat = await cActiveChat
                     .When(x => x is not null, cancellationToken)
                     .ConfigureAwait(false);
@@ -46,6 +77,7 @@ public partial class ChatVideoUI
                 sessionChatId = activeChatId;
                 lastConfirmedAt = cpuClock.Now;
                 lastVoiceActiveAt = default;
+                lastVadActiveAt = default;
                 Log.LogInformation("IdleMonitor: session started for {ChatId}", activeChatId);
             }
 
@@ -54,16 +86,44 @@ public partial class ChatVideoUI
             var ownSourceKind = await GetOwnSourceKind(activeChatId, cancellationToken).ConfigureAwait(false);
             var hasOwnStream = ownSourceKind is not null;
 
-            // Voice extension: while VAD reports speech in the same chat,
-            // anchor inactivity to the latest voice-active moment so a user
-            // talking into the camera doesn't trip the 15-min DOM-idle deadline.
+            // VAD: fast, bursty. We latch the moment of the last hit and use
+            // it as a "this device" anchor for the transcription check below.
             var cAudioRecorderState = Hub.AudioRecorder.State.Computed;
             var audioRecorderState = cAudioRecorderState.Value;
-            var isVoiceActiveHere = hasOwnStream
+            var vadActiveHere = hasOwnStream
                 && audioRecorderState.IsVoiceActive
                 && audioRecorderState.ChatId == activeChatId;
-            if (isVoiceActiveHere)
-                lastVoiceActiveAt = cpuClock.Now;
+            if (vadActiveHere)
+                lastVadActiveAt = cpuClock.Now;
+
+            // Transcription is the primary signal: a streaming own-author entry
+            // means the user IS speaking somewhere. VAD recency anchors it to
+            // THIS device — if they switched to another device, transcription
+            // still fires here (same author), but local VAD goes stale → grace
+            // expires → we stop bumping → this device's timer fires normally.
+            Computed<bool>? cIsOwnTranscribing = null;
+            if (hasOwnStream) {
+                var ownAuthor = await Hub.AuthorUI
+                    .GetOwn(activeChatId, cancellationToken)
+                    .ConfigureAwait(false);
+                var ownAuthorId = ownAuthor.Id;
+                cIsOwnTranscribing = await Computed
+                    .Capture(
+                        () => IsOwnTranscribingInChat(activeChatId, ownAuthorId, cancellationToken),
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                var isVadRecent = lastVadActiveAt != default
+                    && cpuClock.Now - lastVadActiveAt <= Constants.Video.VadActiveGrace;
+                Log.LogInformation(
+                    "IdleMonitor[{ChatId}]: vadActiveHere={Vad}, lastVadActiveAt={LastVad}, isVadRecent={IsVadRecent}, isOwnTranscribing={IsOwnTranscribing}",
+                    activeChatId, vadActiveHere, lastVadActiveAt, isVadRecent, cIsOwnTranscribing.Value);
+                if (cIsOwnTranscribing.Value && isVadRecent) {
+                    lastVoiceActiveAt = cpuClock.Now;
+                    Log.LogInformation(
+                        "IdleMonitor[{ChatId}]: bumped lastVoiceActiveAt to {LastVoiceActiveAt}",
+                        activeChatId, lastVoiceActiveAt);
+                }
+            }
 
             var cActiveUntil = Hub.UserActivityUI.ActiveUntil.Computed;
             var userActiveUntil = cActiveUntil.Value;
@@ -76,13 +136,20 @@ public partial class ChatVideoUI
             var firesAt = Moment.Min(inactivityFiresAt, sessionFiresAt);
             var wait = (firesAt - cpuClock.Now).Positive();
 
+            Log.LogInformation(
+                "IdleMonitor[{ChatId}]: vadActiveHere={Vad}, hasOwnStream={HasOwnStream}, userActiveUntil={UserActiveUntil}, lastVoiceActiveAt={LastVoiceActiveAt}, effectiveActiveUntil={Effective}, inactivityFiresAt={InactivityFiresAt}, sessionFiresAt={SessionFiresAt}, wait={WaitSec}s",
+                activeChatId, vadActiveHere, hasOwnStream, userActiveUntil, lastVoiceActiveAt, effectiveActiveUntil,
+                inactivityFiresAt, sessionFiresAt, wait.TotalSeconds);
+
             if (wait > IdleMonitorEpsilon) {
                 using var delayCts = cancellationToken.CreateLinkedTokenSource();
                 var whenActiveChatChanges = cActiveChat.WhenInvalidated(cancellationToken);
                 var whenActivityChanges = cActiveUntil.WhenInvalidated(cancellationToken);
                 var whenAudioChanges = cAudioRecorderState.WhenInvalidated(cancellationToken);
+                var whenTranscriptionChanges = cIsOwnTranscribing?.WhenInvalidated(cancellationToken)
+                    ?? TaskExt.NeverEnding(delayCts.Token);
                 var whenTimeout = Task.Delay(wait, delayCts.Token);
-                await Task.WhenAny(whenActiveChatChanges, whenActivityChanges, whenAudioChanges, whenTimeout).ConfigureAwait(false);
+                await Task.WhenAny(whenActiveChatChanges, whenActivityChanges, whenAudioChanges, whenTranscriptionChanges, whenTimeout).ConfigureAwait(false);
                 delayCts.CancelAndDisposeSilently();
                 cActiveChat = await cActiveChat.Update(cancellationToken).ConfigureAwait(false);
                 continue;

@@ -173,5 +173,11 @@ public static partial class Constants
         public static readonly TimeSpan SessionInactivityTimeout = TimeSpan.FromMinutes(15);
         public static readonly TimeSpan SessionConfirmInterval = TimeSpan.FromMinutes(60);
         public static readonly TimeSpan SessionConfirmModalTimeout = TimeSpan.FromMinutes(1);
+        // How long after the last local VAD hit we still treat an ongoing
+        // own-author transcription as "user is speaking on THIS device".
+        // Wider than VAD's inter-segment pauses so continuous speech keeps
+        // bumping; narrow enough that talking on another device releases
+        // this device's recording within a sane window.
+        public static readonly TimeSpan VadActiveGrace = TimeSpan.FromSeconds(30);
     }
 }
