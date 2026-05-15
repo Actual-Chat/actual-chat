@@ -232,5 +232,6 @@ body.narrow .docs-tab .docs-content {
     @apply w-full max-w-144;
 }
 .log-viewer-page .log-list {
-    height: calc(100vh - 5rem);
+    @apply pb-8;
+    height: calc(100vh - 5.5rem);
 }
