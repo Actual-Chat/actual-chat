@@ -29,11 +29,13 @@ public partial class ChatVideoUI
 
         ChatId? sessionChatId = null;
         var lastConfirmedAt = default(Moment);
+        var lastVoiceActiveAt = default(Moment);
 
         while (!cancellationToken.IsCancellationRequested) {
             var activeChatId = cActiveChat.Value;
             if (activeChatId is null) {
                 sessionChatId = null;
+                lastVoiceActiveAt = default;
                 cActiveChat = await cActiveChat
                     .When(x => x is not null, cancellationToken)
                     .ConfigureAwait(false);
@@ -43,6 +45,7 @@ public partial class ChatVideoUI
             if (sessionChatId != activeChatId) {
                 sessionChatId = activeChatId;
                 lastConfirmedAt = cpuClock.Now;
+                lastVoiceActiveAt = default;
                 Log.LogInformation("IdleMonitor: session started for {ChatId}", activeChatId);
             }
 
@@ -51,11 +54,24 @@ public partial class ChatVideoUI
             var ownSourceKind = await GetOwnSourceKind(activeChatId, cancellationToken).ConfigureAwait(false);
             var hasOwnStream = ownSourceKind is not null;
 
+            // Voice extension: while VAD reports speech in the same chat,
+            // anchor inactivity to the latest voice-active moment so a user
+            // talking into the camera doesn't trip the 15-min DOM-idle deadline.
+            var cAudioRecorderState = Hub.AudioRecorder.State.Computed;
+            var audioRecorderState = cAudioRecorderState.Value;
+            var isVoiceActiveHere = hasOwnStream
+                && audioRecorderState.IsVoiceActive
+                && audioRecorderState.ChatId == activeChatId;
+            if (isVoiceActiveHere)
+                lastVoiceActiveAt = cpuClock.Now;
+
             var cActiveUntil = Hub.UserActivityUI.ActiveUntil.Computed;
-            var activeUntil = cActiveUntil.Value;
+            var userActiveUntil = cActiveUntil.Value;
+            var effectiveActiveUntil = Moment.Max(userActiveUntil, lastVoiceActiveAt);
+
             var sessionFiresAt = lastConfirmedAt + Constants.Video.SessionConfirmInterval;
             var inactivityFiresAt = hasOwnStream
-                ? activeUntil + Constants.Video.SessionInactivityTimeout
+                ? effectiveActiveUntil + Constants.Video.SessionInactivityTimeout
                 : Moment.MaxValue;
             var firesAt = Moment.Min(inactivityFiresAt, sessionFiresAt);
             var wait = (firesAt - cpuClock.Now).Positive();
@@ -64,8 +80,9 @@ public partial class ChatVideoUI
                 using var delayCts = cancellationToken.CreateLinkedTokenSource();
                 var whenActiveChatChanges = cActiveChat.WhenInvalidated(cancellationToken);
                 var whenActivityChanges = cActiveUntil.WhenInvalidated(cancellationToken);
+                var whenAudioChanges = cAudioRecorderState.WhenInvalidated(cancellationToken);
                 var whenTimeout = Task.Delay(wait, delayCts.Token);
-                await Task.WhenAny(whenActiveChatChanges, whenActivityChanges, whenTimeout).ConfigureAwait(false);
+                await Task.WhenAny(whenActiveChatChanges, whenActivityChanges, whenAudioChanges, whenTimeout).ConfigureAwait(false);
                 delayCts.CancelAndDisposeSilently();
                 cActiveChat = await cActiveChat.Update(cancellationToken).ConfigureAwait(false);
                 continue;
