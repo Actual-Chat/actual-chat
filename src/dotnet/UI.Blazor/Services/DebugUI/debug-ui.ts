@@ -190,7 +190,7 @@ export class DebugUI {
         const step: 1 | -1 = rpm > 0 ? 1 : -1;
         // 1 revolution = 4 quarter-turns ⇒ each quarter takes 60_000/(4*|rpm|) ms.
         const intervalMs = Math.max(50, Math.round(60_000 / (4 * Math.abs(rpm))));
-        let q: RotationQuarter = DeviceOrientation.current;
+        let q: RotationQuarter = DeviceOrientation.quarter;
         this._rotateTimer = setInterval(() => {
             q = normalizeRotationQuarter(q + step);
             DeviceOrientation.set(q);

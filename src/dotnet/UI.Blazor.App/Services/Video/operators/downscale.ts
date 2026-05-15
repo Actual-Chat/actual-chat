@@ -183,15 +183,15 @@ class NormalizeFrameOrientation {
     decide(input: VideoFrame, target: LayerSpec): FrameTransform {
         if (!this.opts.isCamera)
             return { cropboxRotation: 0, wireRotation: 0 };
-        if (this.opts.isIos)
-            return this.decideIosTransform();
 
-        return this.decideChromeStyleTransform(input, target);
+        return this.opts.isIos
+            ? this.decideIosTransform()
+            : this.decideChromeStyleTransform(input, target);
     }
 
     private decideIosTransform(): FrameTransform {
         const wireRotation = normalizeRotationQuarter(
-            cameraRotationDeg(DeviceOrientation.current * 90, this.opts.isFrontCamera) / 90);
+            cameraRotationDeg(DeviceOrientation.quarter * 90, this.opts.isFrontCamera) / 90);
         return { cropboxRotation: 0, wireRotation };
     }
 

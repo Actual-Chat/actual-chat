@@ -21,7 +21,7 @@ const shot = (name: string) => screenshot('add-place-members', name);
 // The exact failure mode we are guarding against. Keep both anchors so we
 // don't accidentally match unrelated `jsObjectReference` mentions or
 // unrelated CopyTrigger render frames.
-const COPY_TRIGGER_NRE = /CopyTrigger\.OnAfterRenderAsync/;
+const COPY_TRIGGER_NRE = 'CopyTrigger.OnAfterRenderAsync';
 const JS_REF_NULL = /Parameter 'jsObjectReference'|ArgumentNullException.*jsObjectReference/;
 
 interface CapturedError {
@@ -186,7 +186,7 @@ describe('Add members to a Place — CopyTrigger jsObjectReference NRE (#3864)',
 
         // assert
         const matches = errors.filter(e =>
-            COPY_TRIGGER_NRE.test(e.text) && JS_REF_NULL.test(e.text));
+            e.text.includes(COPY_TRIGGER_NRE) && JS_REF_NULL.test(e.text));
 
         if (matches.length > 0) {
             const preview = matches.slice(0, 2)

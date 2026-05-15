@@ -18,15 +18,6 @@ export function normalizeRotationQuarter(value: RotationQuarter): RotationQuarte
     return (((Math.round(value) % 4) + 4) % 4);
 }
 
-function normalizeRotationDegrees(value: number): number {
-    if (!Number.isFinite(value)) return 0;
-    return ((value % 360) + 360) % 360;
-}
-
-function quantizeRotationDegrees(value: number, step = 10): number {
-    return normalizeRotationDegrees(Math.round(value / step) * step);
-}
-
 // Both classes are safe to import in workers — `init()` no-ops the
 // browser-only listeners when `screen` / `window` aren't available.
 // In a worker the values stay in sync via the SharedSettings.changed
@@ -34,41 +25,44 @@ function quantizeRotationDegrees(value: number, step = 10): number {
 // `screen.orientation` / `deviceorientation` events.
 
 export class ScreenOrientation {
-    private static cached = 0;
-    private static initDone = false;
-    private static readonly changeSubject = new Subject<number>();
-    public static readonly change$: Observable<number> = ScreenOrientation.changeSubject;
+    private static _current = 0;
+    private static _isInitialized = false;
+    private static readonly _changeSubject = new Subject<number>();
+
+    public static readonly change$: Observable<number> = ScreenOrientation._changeSubject;
 
     public static get current(): number {
-        return ScreenOrientation.cached;
+        return ScreenOrientation._current;
     }
 
     public static get quarter(): RotationQuarter {
-        return normalizeRotationQuarter(ScreenOrientation.cached / 90);
+        return normalizeRotationQuarter(ScreenOrientation._current / 90);
     }
 
     public static get isPortrait(): boolean {
-        return (ScreenOrientation.cached % 180) === 0;
+        return (ScreenOrientation._current % 180) === 0;
     }
 
     public static init(): void {
-        if (ScreenOrientation.initDone) return;
-        ScreenOrientation.initDone = true;
-        ScreenOrientation.cached = readScreenAngle();
+        if (ScreenOrientation._isInitialized)
+            return;
+
+        ScreenOrientation._isInitialized = true;
+        ScreenOrientation._current = readScreenAngle();
         const screenOrientation = typeof screen !== 'undefined'
             ? (screen as unknown as { orientation?: { addEventListener?: (e: string, cb: () => void) => void } }).orientation
             : undefined;
-        const isMain = !!screenOrientation || (typeof window !== 'undefined' && 'orientation' in window);
+        const hasLegacyOrientation = typeof window !== 'undefined' && 'orientation' in window;
+        const isMain = !!screenOrientation || hasLegacyOrientation;
 
         if (isMain) {
             const onChange = (): void => ScreenOrientation.commit(readScreenAngle(), true);
-            if (screenOrientation && typeof screenOrientation.addEventListener === 'function') {
+            if (screenOrientation && typeof screenOrientation.addEventListener === 'function')
                 screenOrientation.addEventListener('change', onChange);
-            } else if (typeof window !== 'undefined') {
+            if (hasLegacyOrientation)
                 window.addEventListener('orientationchange', onChange);
-            }
             // Seed SharedSettings with the initial value so workers start in sync.
-            SharedSettings.update({ screenOrientation: ScreenOrientation.cached });
+            SharedSettings.update({ screenOrientation: ScreenOrientation._current });
         }
 
         SharedSettings.changed.add(s => {
@@ -79,34 +73,34 @@ export class ScreenOrientation {
 
     private static commit(angle: number, publish: boolean): void {
         const normalized = normalizeRotationQuarter(angle / 90) * 90;
-        if (normalized === ScreenOrientation.cached) return;
-        ScreenOrientation.cached = normalized;
-        ScreenOrientation.changeSubject.next(normalized);
+        if (normalized === ScreenOrientation._current) return;
+        ScreenOrientation._current = normalized;
+        ScreenOrientation._changeSubject.next(normalized);
         if (publish)
             SharedSettings.update({ screenOrientation: normalized });
     }
 }
 
 // Device-pose channel — what the video pipeline rotates by.
-//   * Main, non-iOS: subscribes to DeviceOrientationEvent (no permission
-//     prompt). Survives OS rotation lock.
-//   * Main, iOS: no motion subscription. Mirrors ScreenOrientation — a
-//     locked screen IS the orientation we keep. (2026-05-13 review.)
+//   * Main, non-iOS: subscribes to DeviceOrientationEvent (no permission prompt).
+//   * Main, iOS: mirrors ScreenOrientation — no motion permission prompt.
 //   * Worker: hydrated solely from SharedSettings.changed.
 //   * debugUI: `set()` from any realm pushes through commit → SharedSettings.
 export class DeviceOrientation {
-    private static cached: RotationQuarter = 0;
-    private static cachedAngle = 0;
-    private static initDone = false;
-    private static readonly changeSubject = new Subject<RotationQuarter>();
-    public static readonly change$: Observable<RotationQuarter> = DeviceOrientation.changeSubject;
+    private static _quarter: RotationQuarter = 0;
+    private static _angle = 0;
+    private static _isInitialized = false;
+    private static _isMotionListenerAttached = false;
+    private static readonly _changeSubject = new Subject<RotationQuarter>();
 
-    public static get current(): RotationQuarter {
-        return DeviceOrientation.cached;
+    public static readonly change$: Observable<RotationQuarter> = DeviceOrientation._changeSubject;
+
+    public static get quarter(): RotationQuarter {
+        return DeviceOrientation._quarter;
     }
 
     public static get angle(): number {
-        return DeviceOrientation.cachedAngle;
+        return DeviceOrientation._angle;
     }
 
     // Debug / test override. Pushes a value as if it came from a real sensor
@@ -117,14 +111,17 @@ export class DeviceOrientation {
     }
 
     public static init(): void {
-        if (DeviceOrientation.initDone) return;
-        DeviceOrientation.initDone = true;
-        DeviceOrientation.cached = ScreenOrientation.quarter;
-        DeviceOrientation.cachedAngle = ScreenOrientation.current;
+        if (DeviceOrientation._isInitialized)
+            return;
+
+        DeviceOrientation._isInitialized = true;
+        DeviceOrientation._quarter = ScreenOrientation.quarter;
+        DeviceOrientation._angle = ScreenOrientation.current;
         const isMain = typeof window !== 'undefined' && typeof screen !== 'undefined';
 
         if (isMain) {
             ScreenOrientation.change$.subscribe(() => {
+                // On iOS or when no motion input is available, we use screen orientation as device orientation
                 if (DeviceInfo.isIos || !hasMotionInput)
                     DeviceOrientation.commit(ScreenOrientation.quarter, true, ScreenOrientation.current);
             });
@@ -132,8 +129,8 @@ export class DeviceOrientation {
                 DeviceOrientation.attachMotionListener();
             // Seed SharedSettings so workers start in sync.
             SharedSettings.update({
-                deviceOrientation: DeviceOrientation.cached,
-                deviceOrientationAngle: DeviceOrientation.cachedAngle,
+                deviceOrientation: DeviceOrientation._quarter,
+                deviceOrientationAngle: DeviceOrientation._angle,
             });
         }
 
@@ -143,10 +140,10 @@ export class DeviceOrientation {
             if (hasQuarter || hasAngle) {
                 const quarter = hasQuarter
                     ? s.deviceOrientation!
-                    : DeviceOrientation.cached;
+                    : DeviceOrientation._quarter;
                 const angle = hasAngle
                     ? s.deviceOrientationAngle!
-                    : DeviceOrientation.cachedAngle;
+                    : DeviceOrientation._angle;
                 DeviceOrientation.commit(
                     quarter,
                     false,
@@ -156,6 +153,10 @@ export class DeviceOrientation {
     }
 
     private static attachMotionListener(): void {
+        if (DeviceOrientation._isMotionListenerAttached)
+            return;
+
+        DeviceOrientation._isMotionListenerAttached = true;
         let lastSampleAtMs = 0;
         const minIntervalMs = 100; // throttle ~10 Hz before quantising
         window.addEventListener('deviceorientation', (e: DeviceOrientationEvent) => {
@@ -167,9 +168,9 @@ export class DeviceOrientation {
             if (next !== null || angle !== null) {
                 hasMotionInput = true;
                 DeviceOrientation.commit(
-                    next ?? DeviceOrientation.cached,
+                    next ?? DeviceOrientation._quarter,
                     true,
-                    angle ?? (next ?? DeviceOrientation.cached) * 90);
+                    angle ?? (next ?? DeviceOrientation._quarter) * 90);
             }
         });
     }
@@ -177,15 +178,15 @@ export class DeviceOrientation {
     private static commit(next: RotationQuarter, publish: boolean, angle?: number): void {
         const normalized = normalizeRotationQuarter(next);
         const normalizedAngle = quantizeRotationDegrees(angle ?? normalized * 90);
-        if (normalized === DeviceOrientation.cached
-            && normalizedAngle === DeviceOrientation.cachedAngle)
+        if (normalized === DeviceOrientation._quarter
+            && normalizedAngle === DeviceOrientation._angle)
             return;
 
-        const quarterChanged = normalized !== DeviceOrientation.cached;
-        DeviceOrientation.cached = normalized;
-        DeviceOrientation.cachedAngle = normalizedAngle;
+        const quarterChanged = normalized !== DeviceOrientation._quarter;
+        DeviceOrientation._quarter = normalized;
+        DeviceOrientation._angle = normalizedAngle;
         if (quarterChanged)
-            DeviceOrientation.changeSubject.next(normalized);
+            DeviceOrientation._changeSubject.next(normalized);
         if (publish)
             SharedSettings.update({
                 deviceOrientation: normalized,
@@ -194,9 +195,15 @@ export class DeviceOrientation {
     }
 }
 
+// Helpers
+
 let hasMotionInput = false;
 
 function readScreenAngle(): number {
+    const legacy = readLegacyWindowOrientation();
+    if (DeviceInfo.isIos && legacy !== null)
+        return legacy;
+
     // `screen.orientation` is typed as non-optional but can be missing on
     // older WebKit / some worker realms; check defensively.
     const screenLike = typeof screen !== 'undefined'
@@ -205,12 +212,18 @@ function readScreenAngle(): number {
     const angle = screenLike?.orientation?.angle;
     if (typeof angle === 'number' && Number.isFinite(angle))
         return normalizeRotationQuarter(angle / 90) * 90;
-    if (typeof window !== 'undefined') {
-        const legacy = (window as unknown as { orientation?: number }).orientation;
-        if (typeof legacy === 'number' && Number.isFinite(legacy))
-            return normalizeRotationQuarter(legacy / 90) * 90;
-    }
-    return 0;
+
+    return legacy ?? 0;
+}
+
+function readLegacyWindowOrientation(): number | null {
+    if (typeof window === 'undefined')
+        return null;
+
+    const legacy = (window as unknown as { orientation?: number }).orientation;
+    return typeof legacy === 'number' && Number.isFinite(legacy)
+        ? normalizeRotationQuarter(legacy / 90) * 90
+        : null;
 }
 
 // DeviceOrientationEvent → quarter-turn. beta dominates → portrait;
@@ -244,4 +257,13 @@ function poseToRotationAngle(e: DeviceOrientationEvent): number | null {
     if (absBeta < 30 && absGamma < 30) return null;
 
     return normalizeRotationDegrees(Math.atan2(gamma, beta) * 180 / Math.PI);
+}
+
+function normalizeRotationDegrees(value: number): number {
+    if (!Number.isFinite(value)) return 0;
+    return ((value % 360) + 360) % 360;
+}
+
+function quantizeRotationDegrees(value: number, step = 10): number {
+    return normalizeRotationDegrees(Math.round(value / step) * step);
 }

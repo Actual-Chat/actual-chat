@@ -41,6 +41,7 @@ import type { Disposable } from 'disposable';
 import { Versioning } from 'versioning';
 import { DeviceInfo } from 'device-info';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
+import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 import { SharedSettings } from 'shared-settings';
 import { SharedSettingsWorkerSync } from 'shared-settings-worker';
@@ -1183,7 +1184,7 @@ export class VideoRecorder {
             apiUrl,
             sourceKind: this.currentMode === 'screen' ? 1 : 0,
             isFrontCamera,
-            isIos: DeviceInfo.isIos,
+            isIos: DeviceInfo.isIos || BrowserInfo.appKind === 'Ios',
             encoderConfigs,
             // Both camera and screencast use a 3s keyframe cadence.
             keyframeIntervalFrames: framerate * 3,

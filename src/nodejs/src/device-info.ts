@@ -18,24 +18,27 @@ interface BrowserGlobals {
 
 const browserGlobals = globalThis as BrowserGlobals;
 const navigatorLike = browserGlobals.navigator;
+const touchPointCount = navigatorLike?.maxTouchPoints ?? 0;
 const userAgent = navigatorLike?.userAgent ?? '';
 const userAgentLowerCase = userAgent.toLowerCase();
 const userAgentData = navigatorLike?.userAgentData ?? null;
+const isIos = /iphone|ipad|ipod/.test(userAgentLowerCase)
+    || (userAgentLowerCase.includes('macintosh') && touchPointCount >= 2);
 const isMobile = userAgentData?.mobile
-    ?? /android|mobile|phone|webos|iphone|ipad|ipod|blackberry/.test(userAgentLowerCase);
+    ?? (isIos || /android|mobile|phone|webos|blackberry/.test(userAgentLowerCase));
 const isChromium = userAgentLowerCase.includes('chrome');
 const windowLike = browserGlobals.window;
 
 export const DeviceInfo = {
     isMobile: isMobile,
     isAndroid: isMobile && userAgentLowerCase.includes('android'),
-    isIos: isMobile && /iphone|ipad|ipod/.test(userAgentLowerCase),
+    isIos: isIos,
     isChromium: isChromium,
     isWebKit: userAgentLowerCase.includes('webkit') && !isChromium,
     isFirefox: userAgentLowerCase.includes('firefox'),
     isEdge: userAgentLowerCase.includes('edg/'),
     isTouchCapable: Boolean(windowLike
-        && (('ontouchstart' in windowLike) || ((navigatorLike?.maxTouchPoints ?? 0) > 0))
+        && (('ontouchstart' in windowLike) || touchPointCount >= 1)
         && windowLike.matchMedia?.('(pointer: coarse)').matches),
 
     updateBodyClasses: function (): void {

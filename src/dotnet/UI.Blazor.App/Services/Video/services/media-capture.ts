@@ -162,7 +162,7 @@ export class MediaCapture {
     private static preferPortraitConstraint(): boolean {
         if (DeviceInfo.isIos) return false;
         if (!DeviceInfo.isMobile) return false;
-        const q = DeviceOrientation.current;
+        const q = DeviceOrientation.quarter;
         return q === 0 || q === 2;
     }
 

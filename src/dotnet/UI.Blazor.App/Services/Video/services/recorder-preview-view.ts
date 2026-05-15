@@ -117,8 +117,7 @@ export class RecorderPreviewView {
         if (this.disposed) return;
         const videoEl = this.options.videoEl;
         const parent = videoEl.parentElement;
-        const currentDelta = normalizeRotationQuarter(
-            DeviceOrientation.current - ScreenOrientation.quarter);
+        const currentDelta = normalizeRotationQuarter(DeviceOrientation.quarter - ScreenOrientation.quarter);
         this.initialDeviceScreenDelta ??= currentDelta;
         const previewPresentation = this.attachedRecorder?.getPreviewFramePresentation() ?? null;
         const rotation = previewPresentation
