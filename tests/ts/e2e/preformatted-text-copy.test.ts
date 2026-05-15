@@ -78,11 +78,10 @@ describe('preformatted text markup copy-on-click', () => {
     it('copies the preformatted text to the clipboard on click', async () => {
         const code = page.locator(`code.preformatted-text-markup:has-text("${preformattedText}")`).first();
         await code.click();
-        // Toast appears after a successful copy — wait for it to confirm the handler fired.
-        await page.locator('.toast:has-text("Copied"), [class*="toast"]:has-text("Copied")')
-            .first()
+        // CopyTrigger adds `.copied` to its wrapper for 3s after a successful copy.
+        await page.locator('.copy-trigger.copied').first()
             .waitFor({ state: 'visible', timeout: 5_000 })
-            .catch(() => { /* toast may auto-dismiss before we observe it */ });
+            .catch(() => { /* hint may auto-clear before we observe it */ });
 
         const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
         expect(clipboardText).toBe(preformattedText);
