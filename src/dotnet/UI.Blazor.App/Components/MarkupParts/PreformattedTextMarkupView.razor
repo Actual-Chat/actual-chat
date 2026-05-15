@@ -4,7 +4,7 @@
     var m = State.Value;
 }
 
-<CopyTrigger Class="preformatted-text-markup-wrapper" Tooltip="Click to copy" CopyText="@m.MarkupText">
+<CopyTrigger Class="!contents" Tooltip="Click to copy" CopyText="@m.MarkupText">
     <code class="preformatted-text-markup">
         @if (m.MustHighlight) {
             <SearchMatchHighlighter
