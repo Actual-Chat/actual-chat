@@ -12,6 +12,13 @@ public sealed partial class VideoQualityUI
     private readonly Dictionary<VideoSourceKind, RecordingQualityReason> _lastRecordingReasonByKind = new();
     private readonly Dictionary<VideoSourceKind, (long BytesAt, CpuTimestamp At)> _lastEncodedSampleByKind = new();
     private readonly Dictionary<VideoSourceKind, int> _lastAppliedTargetByKind = new();
+    // Worker-restart cooldown: a worker.stop()/start() cycle resets the
+    // RecorderStats counters to 0, producing a transient bytes/sec=0
+    // tick that would otherwise feed BWE a fake bad signal and trigger
+    // a cascading demote → another restart → another cooldown. Detect
+    // the counter going backwards and skip RunOutboundTick for N ticks.
+    private const int RestartCooldownTicks = 2;
+    private readonly Dictionary<VideoSourceKind, int> _restartCooldownByKind = new();
     private readonly LayerCap _outboundLayers;
     private readonly EncodingCap _outboundEncodingCap;
     private readonly BandwidthCap _outboundBandwidthCap;
@@ -38,10 +45,45 @@ public sealed partial class VideoQualityUI
     {
         _whenActuallyUsed.TrySetResult();
         _recordersByKind[kind] = recorder;
+
+        // Worker restart detection: RecorderStats counters reset to 0
+        // on worker.start(). If the new snapshot's monotonic counters
+        // are below the prior snapshot's, the worker was restarted —
+        // re-baseline the bytes sample, arm a cooldown so BWE doesn't
+        // see the transient bytes=0 tick as bad signal, and reset
+        // streak state across BWE + caps so a half-built bad streak
+        // from before the restart doesn't immediately fire on the
+        // first eval after the cooldown.
+        var previous = _lastRecorderStatsByKind.GetValueOrDefault(kind);
+        if (previous is not null
+            && (snapshot.BytesEncoded < previous.BytesEncoded
+                || snapshot.BundlesShipped < previous.BundlesShipped)) {
+            _restartCooldownByKind[kind] = RestartCooldownTicks;
+            _lastEncodedSampleByKind[kind] = (snapshot.BytesEncoded, CpuTimestamp.Now);
+            _outboundBwEstimator.ResetStreaks();
+            _outboundEncodingCap.ResetStreaks();
+            _outboundBandwidthCap.ResetStreaks();
+            Log.LogInformation(
+                "OnRecorderStats: {Kind} worker restart detected (BytesEncoded {PrevB}->{NewB}, " +
+                "BundlesShipped {PrevBundles}->{NewBundles}); skipping outbound tick for {Cooldown} ticks, " +
+                "reset BWE+cap streaks",
+                kind, previous.BytesEncoded, snapshot.BytesEncoded,
+                previous.BundlesShipped, snapshot.BundlesShipped, RestartCooldownTicks);
+        }
+
         _lastRecorderStatsByKind[kind] = snapshot;
         if (_coldStartTicksRemaining > 0) {
             _coldStartTicksRemaining--;
             _lastRecordingSignalByKind[kind] = 0;
+            _lastRecordingReasonByKind[kind] = RecordingQualityReason.ColdStartTick;
+            return;
+        }
+
+        // BWE / cap evaluation is global across kinds — if any kind is
+        // still in restart cooldown, skip this tick entirely.
+        if (IsAnyKindInRestartCooldown()) {
+            if (_restartCooldownByKind.TryGetValue(kind, out var remaining) && remaining > 0)
+                _restartCooldownByKind[kind] = remaining - 1;
             _lastRecordingReasonByKind[kind] = RecordingQualityReason.ColdStartTick;
             return;
         }
@@ -55,6 +97,15 @@ public sealed partial class VideoQualityUI
         _outboundLastEvalAt = CpuTimestamp.Now;
 
         await RunOutboundTick(cancellationToken).ConfigureAwait(false);
+    }
+
+    private bool IsAnyKindInRestartCooldown()
+    {
+        foreach (var (_, ticks) in _restartCooldownByKind) {
+            if (ticks > 0)
+                return true;
+        }
+        return false;
     }
 
     public RecordingQualitySnapshot GetRecordingSnapshot(VideoSourceKind kind)
@@ -89,8 +140,22 @@ public sealed partial class VideoQualityUI
         var signalLevel = ComputeSenderSignalLevel(fusedDropRatio, fusedAckAgeMs, fusedEncodeRatio);
         var connection = ConnectivityUI.ConnectionInfo.Value;
         _outboundBwEstimator.Tick(connection, SystemClock.Now, totalBytesPerSec, signalLevel);
+        var preEncCam = _outboundEncodingCap.Layers.CameraLayers;
+        var preBwCam = _outboundBandwidthCap.Layers.CameraLayers;
         _outboundEncodingCap.Tick(fusedEncodeRatio);
         _outboundBandwidthCap.Tick(_outboundBwEstimator);
+        var postEncCam = _outboundEncodingCap.Layers.CameraLayers;
+        var postBwCam = _outboundBandwidthCap.Layers.CameraLayers;
+        if (preEncCam != postEncCam || preBwCam != postBwCam)
+            Log.LogInformation(
+                "RunOutboundTick: cap changed — encCam {PreEnc}->{PostEnc} (encRatio={EncRatio:F2}, badStreak={BadStreak}, goodStreak={GoodStreak}), " +
+                "bwCam {PreBw}->{PostBw} (signal={Signal:F2}, verdict={Verdict}, ceiling={CeilingBps}bps, current={CurrentBps}bps, " +
+                "negStreak={NegStreak}, posStreak={PosStreak}), totalBps={TotalBps}, dropRatio={DropRatio:F3}, ackAgeMs={AckAgeMs:F0}",
+                preEncCam, postEncCam, fusedEncodeRatio, _outboundEncodingCap.BadStreak, _outboundEncodingCap.GoodStreak,
+                preBwCam, postBwCam, signalLevel, _outboundBwEstimator.LastVerdict,
+                _outboundBwEstimator.CeilingBps, _outboundBwEstimator.LastCurrentBps,
+                _outboundBwEstimator.NegativeStreak, _outboundBwEstimator.PositiveStreak,
+                totalBytesPerSec * 8, fusedDropRatio, fusedAckAgeMs);
 
         var encLayers = _outboundEncodingCap.Layers;
         var bwLayers = _outboundBandwidthCap.Layers;

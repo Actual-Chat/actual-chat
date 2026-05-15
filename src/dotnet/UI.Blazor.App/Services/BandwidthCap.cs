@@ -26,6 +26,20 @@ public sealed class BandwidthCap
         _config = config;
     }
 
+    /// <summary>
+    /// Clears the consumed-streak watermarks so the next cap walk fires
+    /// when the underlying <see cref="BandwidthEstimator"/> streak hits
+    /// the configured threshold, not when it grows past the previously
+    /// consumed value. Pair with <see cref="BandwidthEstimator.ResetStreaks"/>
+    /// on restart so post-restart state isn't anchored to pre-restart
+    /// streaks.
+    /// </summary>
+    public void ResetStreaks()
+    {
+        _consumedBadStreak = 0;
+        _consumedGoodStreak = 0;
+    }
+
     public void Tick(BandwidthEstimator estimator, IReadOnlyCollection<VideoSourceKind>? activeKinds = null)
     {
         if (estimator.NegativeStreak >= _config.BadStreak

@@ -28,6 +28,18 @@ public sealed class EncodingCap
         _config = config;
     }
 
+    /// <summary>
+    /// Zeroes the bad/good streak counters. Use after a recorder pipeline
+    /// restart so a residual half-bad streak doesn't carry over the
+    /// cooldown gap and trigger an immediate demote when fresh stats
+    /// resume.
+    /// </summary>
+    public void ResetStreaks()
+    {
+        _badStreak = 0;
+        _goodStreak = 0;
+    }
+
     public void Tick(double encodeRatioEma, IReadOnlyCollection<VideoSourceKind>? activeKinds = null)
     {
         if (encodeRatioEma > _config.EncodeRatioBad) {
