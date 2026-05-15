@@ -1,5 +1,6 @@
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Components.VideoPanel;
+using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -49,6 +50,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private ILiveVideoStreams LiveVideoStreams => Hub.LiveVideoStreams;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private CameraUI CameraUI => Hub.CameraUI;
+    private BrowserInfo BrowserInfo => Hub.BrowserInfo;
 
     public ChatVideoUI(AppUIHub hub) : base(hub)
     {
@@ -133,7 +135,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             CanMinimize: !isNarrow && mode != VideoPanelMode.Hidden,
             CanSwitchCamera: isNarrow && isVideoAvailable,
             CanToggleVideo: isVideoAvailable,
-            CanToggleScreenCast: !isNarrow && isVideoAvailable,
+            CanToggleScreenCast: !isNarrow && !BrowserInfo.IsMobile && isVideoAvailable,
             CanToggleChatPanel: !isNarrow && mode == VideoPanelMode.Expanded,
             CanShowDiagnostics: settings.IsVideoDiagnosticsEnabledOrDefault || HostInfo.IsDevelopmentInstance,
             CanShowVoiceSettings: true,

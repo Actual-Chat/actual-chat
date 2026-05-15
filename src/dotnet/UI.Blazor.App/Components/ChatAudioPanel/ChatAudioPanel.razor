@@ -50,14 +50,16 @@
     }
     <div class="audio-panel-wrapper">
         @if (!IsNarrow && showVideoControls) {
-            <div class="@(isOwnScreenCasting ? "screencast-on" : "screencast-off") screencast-wrapper">
-                <ButtonRound Click="@(() => OnScreenCastClick(!isOwnScreenCasting))"
-                    IsDisabled="@isVideoDisabled"
-                    Tooltip="@screenCastTooltip"
-                    TooltipPosition="FloatingPosition.Top">
-                    <i class="icon-screen-share text-2xl"></i>
-                </ButtonRound>
-            </div>
+            @if (!Hub.BrowserInfo.IsMobile) {
+                <div class="@(isOwnScreenCasting ? "screencast-on" : "screencast-off") screencast-wrapper">
+                    <ButtonRound Click="@(() => OnScreenCastClick(!isOwnScreenCasting))"
+                        IsDisabled="@isVideoDisabled"
+                        Tooltip="@screenCastTooltip"
+                        TooltipPosition="FloatingPosition.Top">
+                        <i class="icon-screen-share text-2xl"></i>
+                    </ButtonRound>
+                </div>
+            }
             <VideoToggle Chat="@Chat" IsDisabled="@isVideoDisabled" />
         }
         <div class="recorder-button">
