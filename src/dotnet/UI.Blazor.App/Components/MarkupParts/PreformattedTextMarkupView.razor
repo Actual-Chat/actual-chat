@@ -4,22 +4,19 @@
     var m = State.Value;
 }
 
-<code class="preformatted-text-markup"
-      title="Click to copy"
-      @onclick="OnClick"
-      @onclick:stopPropagation="true">
-    @if (m.MustHighlight) {
-        <SearchMatchHighlighter
-            Match="m.SearchMatch"
-            HighlightedClass="highlight"/>
-    } else {
-        @m.MarkupText
-    }
-</code>
+<CopyTrigger Class="preformatted-text-markup-wrapper" Tooltip="Click to copy" CopyText="@m.MarkupText">
+    <code class="preformatted-text-markup">
+        @if (m.MustHighlight) {
+            <SearchMatchHighlighter
+                Match="m.SearchMatch"
+                HighlightedClass="highlight"/>
+        } else {
+            @m.MarkupText
+        }
+    </code>
+</CopyTrigger>
 
 @code {
-    private ClipboardUI ClipboardUI => Hub.ClipboardUI;
-
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Model>.Options() {
@@ -32,11 +29,6 @@
         var markupText = Markup.Text;
         var searchMatch = await HighlightUI.GetMatch(entryId, markupText, cancellationToken).ConfigureAwait(false);
         return new(markupText, searchMatch);
-    }
-
-    private async Task OnClick() {
-        await ClipboardUI.WriteText(Markup.Text);
-        ToastUI.Show("Copied to clipboard", "icon-checkmark-circle-2", ToastDismissDelay.Short);
     }
 
     // Nested types

@@ -192,6 +192,9 @@
     @apply rounded-r-md;
 }
 
+.preformatted-text-markup-wrapper {
+    display: contents;
+}
 .preformatted-text-markup {
     @apply bg-02;
     @apply whitespace-pre-wrap;
