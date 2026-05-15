@@ -46,6 +46,7 @@ export class OffThreadRenderBackend implements RenderBackend {
     private bgCanvas: HTMLCanvasElement | null = null;
     private bgPainter: BgCanvasPainter | null = null;
     private bgFocused = false;
+    private readonly getBgSource = (): HTMLVideoElement => this.videoEl;
     private expectedPaused = false;
     private resizeListener: (() => void) | null = null;
     // DIAG: watchdog watches whether <video> playback is actually advancing
@@ -172,7 +173,7 @@ export class OffThreadRenderBackend implements RenderBackend {
     private refreshBgPump(): void {
         if (!this.bgPainter) return;
         if (this.currentFit === 'contain' && this.bgFocused) {
-            this.bgPainter.start(() => this.videoEl);
+            this.bgPainter.start(this.getBgSource);
         } else {
             this.bgPainter.stop();
         }

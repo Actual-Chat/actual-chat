@@ -16,6 +16,8 @@ export class CanvasRenderBackend implements RenderBackend {
     private bgCanvas: HTMLCanvasElement | null = null;
     private bgPainter: BgCanvasPainter | null = null;
     private bgFocused = false;
+    // Stable getter so BgCanvasPainter.start can identity-compare and no-op.
+    private readonly getBgSource = (): HTMLCanvasElement => this.canvas;
 
     constructor(private readonly canvas: HTMLCanvasElement) {
         this.ctx = canvas.getContext('2d');
@@ -76,7 +78,7 @@ export class CanvasRenderBackend implements RenderBackend {
     private refreshBgPump(): void {
         if (!this.bgPainter) return;
         if (this.currentFit === 'contain' && this.bgFocused) {
-            this.bgPainter.start(() => this.canvas);
+            this.bgPainter.start(this.getBgSource);
         } else {
             this.bgPainter.stop();
         }
@@ -117,6 +119,7 @@ export class TransferableCanvasRenderBackend implements RenderBackend {
     private bgCanvas: HTMLCanvasElement | null = null;
     private bgPainter: BgCanvasPainter | null = null;
     private bgFocused = false;
+    private readonly getBgSource = (): HTMLCanvasElement => this.canvas;
 
     constructor(private readonly canvas: HTMLCanvasElement) {}
 
@@ -169,7 +172,7 @@ export class TransferableCanvasRenderBackend implements RenderBackend {
     private refreshBgPump(): void {
         if (!this.bgPainter) return;
         if (this.currentFit === 'contain' && this.bgFocused) {
-            this.bgPainter.start(() => this.canvas);
+            this.bgPainter.start(this.getBgSource);
         } else {
             this.bgPainter.stop();
         }

@@ -8,7 +8,6 @@ export const BG_CANVAS_WIDTH = 64;
 export const BG_DRAW_INTERVAL_MS = 100;
 export const BG_FILTER = 'blur(3px) saturate(1.2)';
 export const BG_CANVAS_OVERDRAW_PX = 4;
-const WEBGL_BLUR_OFFSETS = [1, 2, 3, 4];
 let isWebGlCanvasCopySupportedCached: boolean | null = null;
 
 export class BgCanvasRenderer {
@@ -23,7 +22,7 @@ export class BgCanvasRenderer {
         try {
             this.target.draw(source, width, height, mirrorX);
         } catch {
-            // Only reachable from WebGL copy-mode (direct-WebGL mode is not allowed —
+            // Only reachable from WebGL copy-mode (direct-WebGL mode is not allowed -
             // see WebGlBgRenderTarget.create). The scratch WebGL canvas is separate
             // from bgCanvas, so swapping to a Canvas2D target on bgCanvas is safe.
             const fallback = this.getFallback();
@@ -60,9 +59,16 @@ export class BgCanvasPainter {
         this.target = new BgCanvasRenderer(bgCanvas);
     }
 
-    /** Start or restart the pump. `getSource` is re-read every tick so a
-     *  late-arriving `<video>` track or canvas swap is picked up live. */
+    /** Start the pump. `getSource` is re-read every tick so a late-arriving
+     *  `<video>` track or canvas swap is picked up live. No-op when already
+     *  running with the same source — callers (refreshBgPump) invoke start()
+     *  on every latency-tap / viewport-check pass, and resetting the timer
+     *  on each call collapses the effective rate to whatever cadence the
+     *  caller fires at. */
     start(getSource: () => SourceLike | null): void {
+        if (this.timer !== null && this.getSource === getSource)
+            return;
+
         this.getSource = getSource;
         this.stop();
         this.timer = setInterval(() => this.tick(), BG_DRAW_INTERVAL_MS);
@@ -130,7 +136,9 @@ class CanvasBgRenderTarget implements BgCanvasRenderTarget {
         this.target.clear();
     }
 
-    dispose(): void {}
+    dispose(): void {
+        this.clear();
+    }
 }
 
 class WebGlBgRenderTarget implements BgCanvasRenderTarget {
@@ -150,6 +158,7 @@ class WebGlBgRenderTarget implements BgCanvasRenderTarget {
     private readonly uniformCropX: WebGLUniformLocation | null;
     private readonly uniformCropY: WebGLUniformLocation | null;
     private readonly uniformMirrorX: WebGLUniformLocation | null;
+    private readonly uniformBlurAxis: WebGLUniformLocation | null;
     private readonly uniformSaturate: WebGLUniformLocation | null;
     private pixelBuffer: Uint8Array | null = null;
     private cachedImageData: ImageData | null = null;
@@ -178,10 +187,7 @@ class WebGlBgRenderTarget implements BgCanvasRenderTarget {
             premultipliedAlpha: true,
             stencil: false,
         };
-        const gl = scratch.getContext('webgl', contextAttrs)
-            ?? (scratch.getContext(
-                'experimental-webgl' as 'webgl',
-                contextAttrs) as WebGLRenderingContext | null);
+        const gl = getWebGlContext(scratch, contextAttrs);
         if (!gl)
             return null;
 
@@ -220,6 +226,7 @@ class WebGlBgRenderTarget implements BgCanvasRenderTarget {
         this.uniformCropX = gl.getUniformLocation(this.program, 'u_cropX');
         this.uniformCropY = gl.getUniformLocation(this.program, 'u_cropY');
         this.uniformMirrorX = gl.getUniformLocation(this.program, 'u_mirrorX');
+        this.uniformBlurAxis = gl.getUniformLocation(this.program, 'u_blurAxis');
         this.uniformSaturate = gl.getUniformLocation(this.program, 'u_saturate');
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
@@ -257,24 +264,10 @@ class WebGlBgRenderTarget implements BgCanvasRenderTarget {
         const cropX = BG_CANVAS_OVERDRAW_PX / Math.max(1, width + 2 * BG_CANVAS_OVERDRAW_PX);
         const cropY = BG_CANVAS_OVERDRAW_PX / Math.max(1, height + 2 * BG_CANVAS_OVERDRAW_PX);
         this.drawPass(this.sourceTexture, this.framebuffers[0], 0, cropX, cropY, mirrorX, 1);
-
-        let src = this.tempTextures[0];
-        let dstIndex: 0 | 1 = 1;
-        for (const offset of WEBGL_BLUR_OFFSETS) {
-            const isLast = offset === WEBGL_BLUR_OFFSETS[WEBGL_BLUR_OFFSETS.length - 1];
-            this.drawPass(
-                src,
-                isLast ? null : this.framebuffers[dstIndex],
-                offset,
-                0,
-                0,
-                false,
-                isLast ? 1.2 : 1);
-            if (!isLast) {
-                src = this.tempTextures[dstIndex];
-                dstIndex = dstIndex === 0 ? 1 : 0;
-            }
-        }
+        this.drawPass(this.tempTextures[0], this.framebuffers[1], 1, 0, 0, false, 1);
+        this.drawPass(this.tempTextures[1], this.framebuffers[0], 2, 0, 0, false, 1);
+        this.drawPass(this.tempTextures[0], this.framebuffers[1], 1, 0, 0, false, 1);
+        this.drawPass(this.tempTextures[1], null, 2, 0, 0, false, 1.2);
 
         if (this.output.width !== width || this.output.height !== height) {
             this.output.width = width;
@@ -347,7 +340,7 @@ class WebGlBgRenderTarget implements BgCanvasRenderTarget {
     private drawPass(
         texture: WebGLTexture,
         framebuffer: WebGLFramebuffer | null,
-        offsetPx: number,
+        blurAxis: number,
         cropX: number,
         cropY: number,
         mirrorX: boolean,
@@ -365,11 +358,12 @@ class WebGlBgRenderTarget implements BgCanvasRenderTarget {
         gl.uniform1i(this.uniformTexture, 0);
         gl.uniform2f(
             this.uniformTexelOffset,
-            offsetPx / Math.max(1, this.element.width),
-            offsetPx / Math.max(1, this.element.height));
+            1 / Math.max(1, this.element.width),
+            1 / Math.max(1, this.element.height));
         gl.uniform1f(this.uniformCropX, cropX);
         gl.uniform1f(this.uniformCropY, cropY);
         gl.uniform1f(this.uniformMirrorX, mirrorX ? 1 : 0);
+        gl.uniform1f(this.uniformBlurAxis, blurAxis);
         gl.uniform1f(this.uniformSaturate, saturate);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
@@ -452,6 +446,17 @@ function requireGlObject<T>(value: T | null, name: string): T {
     return value;
 }
 
+function getWebGlContext(
+    canvas: HTMLCanvasElement,
+    contextAttrs: WebGLContextAttributes,
+): WebGLRenderingContext | null {
+    const gl = canvas.getContext('webgl', contextAttrs);
+    if (gl)
+        return gl;
+
+    return canvas.getContext('experimental-webgl', contextAttrs) as WebGLRenderingContext | null;
+}
+
 function isWebGlCanvasCopySupported(): boolean {
     if (isWebGlCanvasCopySupportedCached !== null)
         return isWebGlCanvasCopySupportedCached;
@@ -507,6 +512,7 @@ uniform vec2 u_texelOffset;
 uniform float u_cropX;
 uniform float u_cropY;
 uniform float u_mirrorX;
+uniform float u_blurAxis;
 uniform float u_saturate;
 varying vec2 v_uv;
 
@@ -522,7 +528,7 @@ vec2 cropUv(vec2 uv) {
 
 void main() {
     vec2 uv = cropUv(v_uv);
-    if (u_texelOffset.x == 0.0 && u_texelOffset.y == 0.0) {
+    if (u_blurAxis < 0.5) {
         vec4 source = texture2D(u_texture, uv);
         float gray = dot(source.rgb, vec3(0.2126, 0.7152, 0.0722));
         source.rgb = mix(vec3(gray), source.rgb, u_saturate);
@@ -531,11 +537,19 @@ void main() {
         return;
     }
 
-    vec4 color = texture2D(u_texture, uv) * 0.2;
-    color += texture2D(u_texture, uv + vec2(u_texelOffset.x, u_texelOffset.y)) * 0.2;
-    color += texture2D(u_texture, uv + vec2(-u_texelOffset.x, u_texelOffset.y)) * 0.2;
-    color += texture2D(u_texture, uv + vec2(u_texelOffset.x, -u_texelOffset.y)) * 0.2;
-    color += texture2D(u_texture, uv + vec2(-u_texelOffset.x, -u_texelOffset.y)) * 0.2;
+    // 9-tap separable blur. JS runs the horizontal + vertical pair twice in
+    // the downsampled bg-canvas pixel space. Side taps use a 2px-ish step and
+    // land between pixel centers to avoid preserving too much source detail.
+    vec2 axis = u_blurAxis < 1.5 ? vec2(u_texelOffset.x, 0.0) : vec2(0.0, u_texelOffset.y);
+    vec4 color = texture2D(u_texture, uv) * 0.2270270270;
+    color += texture2D(u_texture, uv + axis * 1.5) * 0.1945945946;
+    color += texture2D(u_texture, uv - axis * 1.5) * 0.1945945946;
+    color += texture2D(u_texture, uv + axis * 3.5) * 0.1216216216;
+    color += texture2D(u_texture, uv - axis * 3.5) * 0.1216216216;
+    color += texture2D(u_texture, uv + axis * 5.5) * 0.0540540541;
+    color += texture2D(u_texture, uv - axis * 5.5) * 0.0540540541;
+    color += texture2D(u_texture, uv + axis * 7.5) * 0.0162162162;
+    color += texture2D(u_texture, uv - axis * 7.5) * 0.0162162162;
     float gray = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
     color.rgb = mix(vec3(gray), color.rgb, u_saturate);
     color.a = 1.0;
