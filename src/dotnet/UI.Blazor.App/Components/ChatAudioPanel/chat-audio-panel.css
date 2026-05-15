@@ -150,36 +150,13 @@ body.narrow .chat-audio-panel .recorder-wrapper {
 
 /* Recorder off / on-to-off states */
 .chat-audio-panel .recorder-wrapper.record-off,
-.chat-audio-panel .recorder-wrapper.record-on-to-off {
-    @apply items-center;
-    @apply rounded-full;
-    @apply bg-transparent;
-    @apply text-06;
-    box-shadow:
-        -1px 0 0 0 var(--recorder-off-middle),
-        0 -1px 0 0 var(--recorder-off-top),
-        1px 0 0 0 var(--recorder-off-middle),
-        0 1px 0 0 var(--recorder-off-bottom);
-}
-.chat-audio-panel .recorder-wrapper.take-phone,
-.chat-audio-panel .recorder-wrapper.take-phone.record-off {
-    box-shadow:
-        -1px 0 0 0 var(--recorder-off-middle),
-        0 -1px 0 0 var(--recorder-off-bottom),
-        1px 0 0 0 var(--recorder-off-middle),
-        0 1px 0 0 var(--recorder-off-top);
-}
+.chat-audio-panel .recorder-wrapper.record-on-to-off,
 .chat-audio-panel .recorder-wrapper.record-off.listen-only,
 .chat-audio-panel .recorder-wrapper.record-on-to-off.listen-only {
     @apply items-center;
     @apply rounded-full;
     @apply bg-transparent;
     @apply text-06;
-    box-shadow:
-        -1px 0 0 0 var(--recorder-off-middle),
-        0 -1px 0 0 var(--recorder-off-bottom),
-        1px 0 0 0 var(--recorder-off-middle),
-        0 1px 0 0 var(--recorder-off-top);
 }
 .chat-audio-panel .recorder-wrapper .btn {
     @apply absolute z-button;
@@ -195,7 +172,7 @@ body.narrow .chat-audio-panel .recorder-wrapper {
         height 200ms ease-in-out;
 }
 
-/* ::before ring */
+/* ::before ring (off-state colors as base) */
 .chat-audio-panel .recorder-wrapper::before {
     @apply content-empty;
     @apply absolute inset-0;
@@ -204,20 +181,43 @@ body.narrow .chat-audio-panel .recorder-wrapper {
     @apply z-minus;
     @apply transition-opacity duration-100 ease-out;
     background: conic-gradient(
-        var(--recorder-on-top),
-        var(--recorder-on-bottom) 50%,
-        var(--recorder-on-top));
-    -webkit-mask: radial-gradient(circle closest-side at calc(50% - 0.5px) 50%, transparent calc(100% - 2px), black calc(100% - 1px));
-    mask: radial-gradient(circle closest-side at calc(50% - 0.5px) 50%, transparent calc(100% - 2px), black calc(100% - 1px));
+        var(--recorder-off-top),
+        var(--recorder-off-bottom) 50%,
+        var(--recorder-off-top));
+    -webkit-mask: radial-gradient(circle closest-side at center, transparent calc(100% - 2px), black calc(100% - 1px));
+    mask: radial-gradient(circle closest-side at center, transparent calc(100% - 2px), black calc(100% - 1px));
+}
+/* Show ring in off-states */
+.chat-audio-panel .recorder-wrapper.record-off::before,
+.chat-audio-panel .recorder-wrapper.record-on-to-off::before,
+.chat-audio-panel .recorder-wrapper.take-phone::before {
+    opacity: 1;
+}
+/* Inverted off colors */
+.chat-audio-panel .recorder-wrapper.take-phone::before,
+.chat-audio-panel .recorder-wrapper.record-off.listen-only::before,
+.chat-audio-panel .recorder-wrapper.record-on-to-off.listen-only::before {
+    background: conic-gradient(
+        var(--recorder-off-bottom),
+        var(--recorder-off-top) 50%,
+        var(--recorder-off-bottom));
 }
 body.narrow .narrow-panel .recorder-wrapper::before,
 body.narrow .text-mode .recorder-wrapper::before,
 body.narrow .to-thin .recorder-wrapper::before {
     @apply hidden;
 }
+/* On-state: rotate + on colors + thicker ring */
 .chat-audio-panel .recorder-wrapper.record-on::before,
 .chat-audio-panel .recorder-wrapper.record-off-to-on::before {
     opacity: 1;
+    background: conic-gradient(
+        var(--recorder-on-top),
+        var(--recorder-on-bottom) 50%,
+        var(--recorder-on-top));
+    -webkit-mask: radial-gradient(circle closest-side at center, transparent calc(100% - 3px), black calc(100% - 1px));
+    mask: radial-gradient(circle closest-side at center, transparent calc(100% - 3px), black calc(100% - 1px));
+    will-change: transform;
     animation: rotate-ring 2.5s 1s linear infinite;
 }
 
@@ -314,7 +314,18 @@ body.narrow .to-thin .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-con
 }
 .chat-audio-panel .recorder-wrapper.record-on .record-on-btn.btn {
     @apply opacity-100;
-    animation: record-btn-on 1s ease-in-out forwards, record-btn-on-pulse 2s ease-in-out infinite;
+    animation: record-btn-on-pulse 2s ease-in-out infinite;
+}
+.chat-audio-panel .record-on-btn.btn::after {
+    @apply content-empty;
+    @apply absolute inset-0;
+    @apply pointer-events-none;
+    @apply opacity-0;
+    border-radius: inherit;
+    box-shadow: 0 0 1rem 0 var(--magenta-60);
+}
+.chat-audio-panel .recorder-wrapper.record-on .record-on-btn.btn::after {
+    animation: record-btn-glow 1s ease-in-out forwards;
 }
 
 /* To "off" state */
@@ -533,8 +544,16 @@ body.narrow .to-thin .rec-icon.text-mode-on {
 .playback-wrapper.listen-off-to-on {
     animation: off-to-on-outline 1000ms ease-in-out forwards;
 }
-.playback-wrapper.listen-off-to-on .btn {
-    animation: playback-btn-on 1000ms ease-in-out forwards;
+.playback-wrapper .btn::after {
+    @apply content-empty;
+    @apply absolute inset-0;
+    @apply pointer-events-none;
+    @apply opacity-0;
+    border-radius: inherit;
+    box-shadow: 0 0 0.5rem 0 var(--primary);
+}
+.playback-wrapper.listen-off-to-on .btn::after {
+    animation: playback-btn-glow 1000ms ease-in-out forwards;
 }
 
 /* === 7. Language === */
@@ -911,12 +930,12 @@ body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .volume-settings
         outline-width: 2px;
     }
 }
-@keyframes playback-btn-on {
+@keyframes playback-btn-glow {
     0%, 100% {
-        box-shadow: 0 0 0 0 var(--transparent);
+        opacity: 0;
     }
     50% {
-        box-shadow: 0 0 0.5rem 0 var(--primary);
+        opacity: 1;
     }
 }
 @keyframes rotate-ring {
@@ -941,12 +960,12 @@ body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .volume-settings
         transform: scale(1);
     }
 }
-@keyframes record-btn-on {
+@keyframes record-btn-glow {
     0%, 100% {
-        box-shadow: 0 0 0 0 var(--transparent);
+        opacity: 0;
     }
     50% {
-        box-shadow: 0 0 1rem 0 var(--magenta-60);
+        opacity: 1;
     }
 }
 @keyframes record-btn-on-pulse {
