@@ -69,10 +69,8 @@ public partial class ChatVideoUI
     /// </summary>
     public void StopStreaming()
     {
-        _recordingChatId.Value = null;
-        _screenCastChatId.Value = null;
-        ClearRecordingError(VideoSourceKind.Camera);
-        ClearRecordingError(VideoSourceKind.ScreenCast);
+        StopRecording();
+        StopScreenCasting();
     }
 
     /// <summary>
