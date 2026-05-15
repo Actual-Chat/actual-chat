@@ -2,8 +2,9 @@
     @apply hidden;
 }
 .log-viewer-footer {
-    @apply absolute inset-x-4 bottom-4;
+    @apply absolute inset-x-4;
     @apply flex justify-center;
+    bottom: var(--safe-area-bottom);
 }
 .log-viewer-report-btn.btn {
     @apply w-full md:w-40;
