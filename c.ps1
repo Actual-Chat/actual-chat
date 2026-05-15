@@ -583,16 +583,16 @@ class WorktreeServer {
     }
 
     [hashtable] Register([bool]$debug) {
-        # Return existing config if already registered
-        if ($this.Port) {
-            return $this.GetConfig()
+        if (-not $this.Port) {
+            $this.Port = $this.PortRegistry.Allocate($this.InstanceName)
+            if ($debug) {
+                Write-Host "[DEBUG] Allocated port $($this.Port) for instance '$($this.InstanceName)'"
+            }
         }
 
-        # Allocate new port
-        $this.Port = $this.PortRegistry.Allocate($this.InstanceName)
-        if ($debug) { Write-Host "[DEBUG] Allocated port $($this.Port) for instance '$($this.InstanceName)'" }
-
-        # Write nginx config and update hosts (only for worktrees, not main project)
+        # Re-apply nginx config and hosts entries on every launch so a changed LAN IP
+        # (e.g. after switching networks) gets propagated even when the port was already
+        # allocated. The helpers no-op when nothing has changed.
         if (-not $this.IsMainProject) {
             $this.WriteNginxConfig($debug)
             $this.ReloadNginx($debug)
