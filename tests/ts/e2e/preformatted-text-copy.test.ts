@@ -71,7 +71,6 @@ describe('preformatted text markup copy-on-click', () => {
     it('shows pointer cursor on the preformatted text', async () => {
         const code = page.locator(`code.preformatted-text-markup:has-text("${preformattedText}")`).first();
         const cursor = await code.evaluate(el => getComputedStyle(el).cursor);
-        // Tests run with Chromium which reports `pointer` for `(hover: hover) and (pointer: fine)`.
         expect(cursor).toBe('pointer');
     });
 

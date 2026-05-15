@@ -192,21 +192,11 @@
     @apply rounded-r-md;
 }
 
-.preformatted-text-markup-wrapper {
-    display: contents;
-}
 .preformatted-text-markup {
     @apply bg-02;
     @apply whitespace-pre-wrap;
     @apply text-sm;
-}
-@media (hover: hover) and (pointer: fine) {
-    .preformatted-text-markup {
-        @apply cursor-pointer;
-    }
-    .preformatted-text-markup:hover {
-        @apply bg-04;
-    }
+    @apply cursor-pointer;
 }
 .preformatted-text-markup > span.highlight {
     @apply text-primary;
