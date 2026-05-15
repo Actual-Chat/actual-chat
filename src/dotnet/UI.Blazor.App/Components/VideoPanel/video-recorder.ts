@@ -1283,12 +1283,26 @@ export class VideoRecorder {
         }, delayMs);
     }
 
+    // `this.layers === null` is the "single-encoder mode" sentinel set
+    // by `setLayers` when QC targets ≤1 layer. Previously both restart
+    // paths fell back to `this.fullLayerLadder`, which silently restarted
+    // at the FULL 3-tier 1280x720 ladder — the exact opposite of what
+    // QC wanted, turning every "demote to 1" into an "escalate to max"
+    // and snowballing encoder degradation. In single-encoder mode the
+    // restart must run with only the bottom layer.
+    private resolveActiveLadder(): LayerConfig[] {
+        if (this.layers) return this.layers;
+        if (this.fullLayerLadder && this.fullLayerLadder.length > 0)
+            return [this.fullLayerLadder[0]];
+        return [];
+    }
+
     private async recoverNow(): Promise<void> {
         if (!this.worker || !this.inputTrack) {
             warnLog?.log('recoverNow: worker or input track missing — skipping');
             return;
         }
-        const ladder = this.layers ?? this.fullLayerLadder ?? [];
+        const ladder = this.resolveActiveLadder();
         if (ladder.length === 0) {
             warnLog?.log('recoverNow: no ladder, skipping');
             return;
@@ -1337,7 +1351,7 @@ export class VideoRecorder {
 
     private async restartWithCurrentConfig(): Promise<void> {
         if (!this.worker || !this.inputTrack) return;
-        const ladder = this.layers ?? this.fullLayerLadder ?? [];
+        const ladder = this.resolveActiveLadder();
         if (ladder.length === 0) {
             warnLog?.log('restartWithCurrentConfig: no ladder, skipping');
             return;
@@ -1537,15 +1551,23 @@ export class VideoRecorder {
                     + (1 - VideoRecorder.EncodeRatioEmaAlpha) * this.senderDropRatioEma;
             }
 
-            // Encode ratio: (sum of per-layer encode times in this tick)
-            // / frameDuration. Frame duration: 1000/30 = 33.33ms baseline.
+            // Encode ratio: (mean of MAX-across-layers per bundle) /
+            // frameDuration. The encode operator fires all encoders in
+            // parallel via Promise.allSettled, so per-bundle wall-clock
+            // cost is the SLOWEST layer, not the sum across layers.
+            // Using sum here was overcounting parallelism: 3 layers each
+            // at ~20ms ran in parallel → ~20ms bundle wall-clock → 30
+            // fps achievable, but sum=60ms produced ratio≈1.8-2.0 and
+            // tripped the `EncBadRatio=2.0` threshold by design. The
+            // resulting `signal=0` flipped BWE to Bad and triggered a
+            // false demote within 10s of every healthy 3-layer start.
             const frameDurationMs = 1000 / 30;
             if (previous) {
-                const sumDelta = Math.max(0, stats.encodeTimeMsSum - previous.encodeTimeMsSum);
+                const maxSumDelta = Math.max(0, stats.encodeTimeMsMaxSum - previous.encodeTimeMsMaxSum);
                 const countDelta = Math.max(0, stats.encodeTimeMsCount - previous.encodeTimeMsCount);
                 if (countDelta > 0) {
-                    const meanMs = sumDelta / countDelta;
-                    const ratio = meanMs / frameDurationMs;
+                    const meanMaxMs = maxSumDelta / countDelta;
+                    const ratio = meanMaxMs / frameDurationMs;
                     this.encodeRatioEma =
                         VideoRecorder.EncodeRatioEmaAlpha * ratio
                         + (1 - VideoRecorder.EncodeRatioEmaAlpha) * this.encodeRatioEma;

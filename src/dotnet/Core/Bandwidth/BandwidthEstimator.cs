@@ -61,6 +61,20 @@ public sealed class BandwidthEstimator(BandwidthEstimatorConfig config)
     public bool    HasSeenBadSignal  { get; private set; }
     public IReadOnlyCollection<BandwidthEstimateRecord> History => _history;
 
+    /// <summary>
+    /// Clears the verdict streak counters without touching the ceiling
+    /// estimate. Call when an upstream event (e.g. recorder pipeline
+    /// restart) creates a transient noise window — pre-event streaks
+    /// would otherwise carry over and trigger an immediate cap walk on
+    /// the first eval after the noise clears.
+    /// </summary>
+    public void ResetStreaks()
+    {
+        NegativeStreak = 0;
+        PositiveStreak = 0;
+        CalmTicks = 0;
+    }
+
     public void Tick(RpcConnectionInfo? connection, Moment now, long currentBandwidthBps, double signalLevel)
     {
         if (connection is null)
