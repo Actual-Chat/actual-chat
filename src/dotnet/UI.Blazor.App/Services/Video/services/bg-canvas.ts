@@ -4,7 +4,7 @@
 
 import { CanvasTarget } from './canvas-target';
 
-export const BG_CANVAS_WIDTH = 64;
+export const BG_CANVAS_WIDTH = 48;
 export const BG_DRAW_INTERVAL_MS = 100;
 export const BG_FILTER = 'blur(3px) saturate(1.2)';
 export const BG_CANVAS_OVERDRAW_PX = 4;

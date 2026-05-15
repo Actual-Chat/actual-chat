@@ -23,6 +23,7 @@ import {
 import { applyRotationLayout, chooseFit, updateCollapsedIslandAspect } from './tile-fit';
 
 const { infoLog } = getLogs('VideoRecorder');
+const BG_DRAW_GATE_TOLERANCE_MS = 20;
 
 export interface RecorderPreviewViewOptions {
     // Blur overlay only — raw track always goes to videoEl.
@@ -387,7 +388,7 @@ export class RecorderPreviewView {
         // Match the receiver: only paint the backdrop when contain is active.
         if (this.currentFit !== 'contain') return;
         const now = performance.now();
-        if (now - this.lastBgDrawTime < BG_DRAW_INTERVAL_MS) return;
+        if (now - this.lastBgDrawTime < BG_DRAW_INTERVAL_MS - BG_DRAW_GATE_TOLERANCE_MS) return;
         this.lastBgDrawTime = now;
 
         const bgW = BG_CANVAS_WIDTH;
@@ -403,7 +404,7 @@ export class RecorderPreviewView {
         if (!this.bgContainer?.classList.contains('item-focused')) return;
         if (this.currentFit !== 'contain') return;
         const now = performance.now();
-        if (now - this.lastBgDrawTime < BG_DRAW_INTERVAL_MS) return;
+        if (now - this.lastBgDrawTime < BG_DRAW_INTERVAL_MS - BG_DRAW_GATE_TOLERANCE_MS) return;
         this.lastBgDrawTime = now;
 
         const w = videoEl.videoWidth;
