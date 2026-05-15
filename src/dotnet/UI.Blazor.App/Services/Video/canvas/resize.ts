@@ -17,8 +17,13 @@ export function drawFrameCover(
     targetH: number,
     rotation: RotationQuarter = 0,
 ): void {
-    const inputW = input.codedWidth;
-    const inputH = input.codedHeight;
+    // VideoFrame as CanvasImageSource has intrinsic size = displayWidth/Height
+    // (per WebCodecs spec). On Chrome MSTP `crop-and-scale` the coded plane is
+    // the camera's native sensor rect while display is the scaled output —
+    // sampling with coded coords samples the wrong region. Fall back to coded
+    // only if display is unreported (older WebKit before 17.x).
+    const inputW = input.displayWidth || input.codedWidth;
+    const inputH = input.displayHeight || input.codedHeight;
     const rotatedSrcW = (rotation & 1) === 1 ? inputH : inputW;
     const rotatedSrcH = (rotation & 1) === 1 ? inputW : inputH;
     const cropR = computeCenterCrop(rotatedSrcW, rotatedSrcH, targetW, targetH);

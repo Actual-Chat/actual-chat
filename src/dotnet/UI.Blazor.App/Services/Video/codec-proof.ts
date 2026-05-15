@@ -14,10 +14,15 @@ export function isCodecProofEnabled(): boolean {
 // are treated as transient instead of excluding the codec for the session.
 const provenEncoderCodecs = new Set<string>();
 const provenDecoderCodecs = new Set<string>();
+const disabledEncoderProofLogged = new Set<string>();
+const disabledDecoderProofLogged = new Set<string>();
 
 export function markEncoderCodecProven(category: string): void {
     if (!isCodecProofEnabled()) {
-        infoLog?.log(`Encoder codec '${category}' proof ignored - codec-proof is disabled`);
+        if (!disabledEncoderProofLogged.has(category)) {
+            disabledEncoderProofLogged.add(category);
+            infoLog?.log(`Encoder codec '${category}' proof ignored - codec-proof is disabled`);
+        }
         return;
     }
     if (provenEncoderCodecs.has(category))
@@ -36,7 +41,10 @@ export function getProvenEncoderCodecs(): string[] {
 
 export function markDecoderCodecProven(category: string): void {
     if (!isCodecProofEnabled()) {
-        infoLog?.log(`Decoder codec '${category}' proof ignored - codec-proof is disabled`);
+        if (!disabledDecoderProofLogged.has(category)) {
+            disabledDecoderProofLogged.add(category);
+            infoLog?.log(`Decoder codec '${category}' proof ignored - codec-proof is disabled`);
+        }
         return;
     }
     if (provenDecoderCodecs.has(category))

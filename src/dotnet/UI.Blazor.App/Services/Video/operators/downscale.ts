@@ -254,6 +254,18 @@ class NormalizeFrameSlotProcessor {
         let mustCloseInput = true;
         try {
             const transform = this.orientation.decide(input, target);
+            // Identity short-circuit: input already at target dims and no pixel
+            // rotation needed — transfer the frame downstream without a draw +
+            // VideoFrame(canvas) round-trip. wireRotation may still be non-zero
+            // (iOS bakes orientation on the wire, not in pixels).
+            const displayW = input.displayWidth || input.codedWidth;
+            const displayH = input.displayHeight || input.codedHeight;
+            if (transform.cropboxRotation === 0
+                && displayW === target.width
+                && displayH === target.height) {
+                mustCloseInput = false;
+                return Promise.resolve({ frame: input, rotation: transform.wireRotation });
+            }
             this.drawNormalized(input, target, transform.cropboxRotation);
             result = new VideoFrame(this.slot.canvas, {
                 timestamp: input.timestamp,
