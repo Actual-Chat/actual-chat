@@ -15,7 +15,11 @@ import {
     type VideoRecorder,
 } from '../../../Components/VideoPanel/video-recorder';
 import { CanvasTarget } from './canvas-target';
-import { BG_CANVAS_OVERDRAW_PX, BG_CANVAS_WIDTH, BG_DRAW_INTERVAL_MS, BG_FILTER } from './bg-canvas';
+import {
+    BgCanvasRenderer,
+    BG_CANVAS_WIDTH,
+    BG_DRAW_INTERVAL_MS,
+} from './bg-canvas';
 import { applyRotationLayout, chooseFit, updateCollapsedIslandAspect } from './tile-fit';
 
 const { infoLog } = getLogs('VideoRecorder');
@@ -37,7 +41,7 @@ export interface RecorderPreviewViewOptions {
 export class RecorderPreviewView {
     private readonly options: RecorderPreviewViewOptions;
     private readonly canvasTarget: CanvasTarget;
-    private readonly bgCanvasTarget: CanvasTarget | null;
+    private readonly bgCanvasTarget: BgCanvasRenderer | null;
     private readonly bgContainer: HTMLElement | null;
     private readonly sourceKinds: number[];
     private lastBgDrawTime = 0;
@@ -80,7 +84,7 @@ export class RecorderPreviewView {
         this.options = options;
         this.canvasTarget = new CanvasTarget(options.canvas);
         this.bgCanvasTarget = options.bgCanvas
-            ? new CanvasTarget(options.bgCanvas, false, BG_FILTER, BG_CANVAS_OVERDRAW_PX)
+            ? new BgCanvasRenderer(options.bgCanvas)
             : null;
         this.bgContainer = options.bgCanvas?.parentElement ?? null;
         this.sourceKinds = options.sourceKinds ?? [0];
@@ -201,6 +205,7 @@ export class RecorderPreviewView {
             this.videoResizeListener = null;
         }
         this.detach();
+        this.bgCanvasTarget?.dispose();
     }
 
     private followRecorder(recorder: VideoRecorder | null): void {
@@ -384,6 +389,11 @@ export class RecorderPreviewView {
     private drawBgFrameFromVideo(videoEl: HTMLVideoElement): void {
         if (!this.bgCanvasTarget) return;
         if (!this.bgContainer?.classList.contains('item-focused')) return;
+        if (this.currentFit !== 'contain') return;
+        const now = performance.now();
+        if (now - this.lastBgDrawTime < BG_DRAW_INTERVAL_MS) return;
+        this.lastBgDrawTime = now;
+
         const w = videoEl.videoWidth;
         const h = videoEl.videoHeight;
         const bgW = BG_CANVAS_WIDTH;

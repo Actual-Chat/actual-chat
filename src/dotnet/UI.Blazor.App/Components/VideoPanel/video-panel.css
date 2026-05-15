@@ -562,14 +562,10 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     @apply bg-transparent;
 }
 
-/* Blurred backdrop (§13): fills the letterbox/pillarbox bars. Worker paints
-   the latest VideoFrame onto a 64×N OffscreenCanvas with `ctx.filter='blur(...)'`
-   baked into the bitmap; CSS just upscales the small texture via `object-fit:
-   cover`. NO CSS `filter:` — the blur is already baked into the canvas pixels,
-   so the compositor only does a bilinear sample instead of a per-frame Gaussian
-   shader. Hidden by default; the focused tile rule below brings it in. The
-   canvas backend doesn't paint the bg canvas, so it stays transparent in that
-   path — no visual leakage. */
+/* Blurred backdrop (§13): fills the letterbox/pillarbox bars. JS paints a
+   blurred, saturated, low-res bitmap into this canvas; CSS only upscales it via
+   object-fit: cover. Hidden by default; the focused tile rule below brings it
+   in. */
 .video-track-player canvas.remote-video-bg {
     @apply hidden;
     @apply bg-transparent;
@@ -591,15 +587,10 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     @apply z-0;
     @apply block;
     @apply object-cover;
-    /* Slight scale-up + saturate boost — common video-backdrop look (YouTube,
-       Apple, Netflix). Scale pushes Kawase edge-kernel artifacts offscreen so
-       the frame border doesn't bleed into the visible area; saturate gives
-       the backdrop more colour life. Both are GPU-composited filters — zero
-       cost on top of `will-change: transform`. Promote to its own layer so
-       canvas paints don't invalidate the #document layer. */
+    /* Slight scale-up pushes blur edge artifacts offscreen and promotes the
+       canvas to its own layer so paints don't invalidate the #document layer. */
     will-change: transform;
     transform: scale(1.1) translateZ(0);
-    filter: saturate(1.2);
 }
 .video-track-player.item-focused canvas:not(.remote-video-bg) {
     @apply bg-transparent;

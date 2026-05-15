@@ -197,4 +197,3 @@ export class TransferableCanvasRenderBackend implements RenderBackend {
         this.bgPainter = null;
     }
 }
-

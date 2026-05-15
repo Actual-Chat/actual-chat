@@ -367,7 +367,7 @@ function createSlot(owner: string): Slot {
         throw new Error(`${owner}: 2D context unavailable on OffscreenCanvas`);
 
     ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
+    ctx.imageSmoothingQuality = 'medium';
     return { canvas, ctx };
 }
 

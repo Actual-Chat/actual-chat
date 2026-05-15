@@ -1,12 +1,12 @@
 export class CanvasTarget {
     private readonly ctx: CanvasRenderingContext2D;
-    private readonly smoothing: boolean;
+    private readonly mustSmooth: boolean;
     private readonly filter: string;
     private readonly overdrawPx: number;
 
-    constructor(public readonly element: HTMLCanvasElement, smoothing = true, filter = 'none', overdrawPx = 0) {
+    constructor(public readonly element: HTMLCanvasElement, mustSmooth = true, filter = 'none', overdrawPx = 0) {
         this.ctx = element.getContext('2d')!;
-        this.smoothing = smoothing;
+        this.mustSmooth = mustSmooth;
         this.filter = filter;
         this.overdrawPx = Math.max(0, overdrawPx);
         this.applyCtxState();
@@ -39,8 +39,9 @@ export class CanvasTarget {
     }
 
     private applyCtxState(): void {
-        if (!this.smoothing)
-            this.ctx.imageSmoothingEnabled = false;
+        this.ctx.imageSmoothingEnabled = this.mustSmooth;
+        if (this.mustSmooth)
+            this.ctx.imageSmoothingQuality = 'medium';
         if (this.filter !== 'none')
             this.ctx.filter = this.filter;
     }
