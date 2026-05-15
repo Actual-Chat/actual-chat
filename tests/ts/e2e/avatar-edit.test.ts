@@ -19,34 +19,23 @@ import {
 
 const shot = (name: string) => screenshot('e2e', name);
 
-/**
- * Navigate to /settings and wait for the modal to open.
- *
- * Repeated `page.goto('/settings')` across tests can race with the previous
- * modal's close animation, an OnboardingModal re-render, or the avatar-created
- * bubble tutorial. Dismiss bubbles first, then retry with a proper app-ready
- * wait — the first goto sometimes returns before Blazor re-mounts the modal.
- */
+// Repeated /settings goto across tests races with the previous modal's close animation,
+// an OnboardingModal re-render, or the avatar-saved bubble tutorial — retry until the
+// settings modal itself is visible. Use waitFor (not isVisible, which doesn't poll).
 async function openSettings(page: Page) {
+    const settingsModal = page.locator('.settings-modal');
     for (let attempt = 0; attempt < 3; attempt++) {
         await page.goto(`${BASE_URL}/settings`, { waitUntil: 'domcontentloaded' });
-        await waitForAppReady(page);
         await skipOnboarding(page);
-        const settingsModal = page.locator('.settings-modal');
-        if (await settingsModal.isVisible({ timeout: 10_000 }).catch(() => false))
-            return;
+        const visible = await settingsModal.waitFor({ state: 'visible', timeout: 15_000 })
+            .then(() => true).catch(() => false);
+        if (visible) return;
     }
     throw new Error('settings-modal did not become visible after 3 goto attempts');
 }
 
-/**
- * Click a button that may be transiently occluded by the OnboardingModal.
- *
- * The onboarding stepper re-renders on a schedule and can pop up between the
- * moment we open a child modal (settings / avatar editor) and the moment we
- * press a button inside it. Retry the click with interleaved skipOnboarding
- * calls so transient overlays are cleared before each attempt.
- */
+// Retry click with interleaved skipOnboarding — onboarding stepper can re-mount
+// between opening a child modal and pressing a button inside it.
 async function clickResilient(
     page: Page,
     locator: ReturnType<Page['locator']>,
@@ -97,7 +86,7 @@ describe('avatar editing', () => {
 
         const accountTab = page.locator('text=Your Account').first();
         if (await accountTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await accountTab.click();
+            await clickResilient(page, accountTab);
             await page.waitForTimeout(1000);
         }
 
@@ -105,7 +94,7 @@ describe('avatar editing', () => {
         const addBtn = page.locator('text=Add avatar').first();
         await addBtn.waitFor({ state: 'visible', timeout: 10000 });
         await page.screenshot({ path: shot('avatar-before-create') });
-        await addBtn.click();
+        await clickResilient(page, addBtn);
         await page.waitForTimeout(2000);
 
         // assert - editor modal opens
@@ -141,14 +130,14 @@ describe('avatar editing', () => {
 
         const accountTab = page.locator('text=Your Account').first();
         if (await accountTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await accountTab.click();
+            await clickResilient(page, accountTab);
             await page.waitForTimeout(1000);
         }
 
         // dismiss any tooltip bubbles
         const okBtn = page.locator('button:has-text("Ok")');
         if (await okBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-            await okBtn.click();
+            await clickResilient(page, okBtn);
             await page.waitForTimeout(500);
         }
 
@@ -206,14 +195,14 @@ describe('avatar editing', () => {
 
         const accountTab = page.locator('text=Your Account').first();
         if (await accountTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await accountTab.click();
+            await clickResilient(page, accountTab);
             await page.waitForTimeout(1000);
         }
 
         // dismiss any tooltip bubbles
         const okBtn = page.locator('button:has-text("Ok")');
         if (await okBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-            await okBtn.click();
+            await clickResilient(page, okBtn);
             await page.waitForTimeout(500);
         }
 
@@ -243,13 +232,13 @@ describe('avatar editing', () => {
         const _settingsModal = page.locator('.settings-modal');
 
         if (await accountTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await accountTab.click();
+            await clickResilient(page, accountTab);
             await page.waitForTimeout(1000);
         }
 
         // dismiss tooltip again after reload
         if (await okBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-            await okBtn.click();
+            await clickResilient(page, okBtn);
             await page.waitForTimeout(500);
         }
 
