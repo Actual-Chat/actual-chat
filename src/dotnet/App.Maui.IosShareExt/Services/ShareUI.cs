@@ -20,8 +20,8 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     private readonly MutableState<bool> _isInitialized;
     private readonly MutableState<bool> _isSending;
     private readonly MutableState<bool> _isSent;
-    private readonly MutableState<bool> _hasFiles;
     private readonly MutableState<string> _failureMessage;
+    private bool _hasFiles;
 
     public MutableState<PlaceId?> SelectedPlaceId { get; }
     public IState<double> UploadPct => _uploadPct;
@@ -48,7 +48,6 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         _isInitialized = Hub.StateFactory.NewMutable<bool>();
         _isSending = Hub.StateFactory.NewMutable<bool>();
         _isSent = Hub.StateFactory.NewMutable<bool>();
-        _hasFiles = Hub.StateFactory.NewMutable<bool>();
         _failureMessage = Hub.StateFactory.NewMutable<string>("");
         _uploadPct = Hub.StateFactory.NewMutable<double>();
         _canSend = Hub.StateFactory.NewMutable<bool>();
@@ -69,7 +68,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
                 return;
 
             var files = await SharedInputs.ListFiles(cancellationToken).ConfigureAwait(false);
-            _hasFiles.Value = files.Count > 0;
+            _hasFiles = files.Count > 0;
 
             if (await UIKitExt.GetSuggestedRecipient().ConfigureAwait(false) is not { } chatId)
                 return;
@@ -78,7 +77,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             // otherwise fall through to manual contact selection.
             var contactId = ContactId.NewAny(ownAccount.Id, chatId);
             var contact = await Contacts.Get(Session, contactId, cancellationToken).ConfigureAwait(false);
-            if (contact is null || !CanSendTo(contact.Chat.Rules, _hasFiles.Value))
+            if (contact is null || !CanSendTo(contact))
                 return;
 
             _selectedIds.Add(contactId);
@@ -94,13 +93,10 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         }
     }
 
-    private static bool CanSendTo(AuthorRules rules, bool hasFiles)
+    private bool CanSendTo(Contact contact)
     {
-        if (!rules.CanWrite())
-            return false;
-        if (hasFiles && !rules.CanUpload())
-            return false;
-        return true;
+        var rules = contact.Chat.Rules;
+        return rules.CanWrite() && (!_hasFiles || rules.CanUpload());
     }
 
     protected override Task DisposeAsyncCore()
@@ -140,7 +136,6 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     public virtual async Task<IReadOnlyList<Contact>> ListContacts(CancellationToken cancellationToken)
     {
         var placeId = await SelectedPlaceId.Use(cancellationToken).ConfigureAwait(false);
-        var hasFiles = await _hasFiles.Use(cancellationToken).ConfigureAwait(false);
         var contactIds = await Contacts.ListIds(Session, placeId, cancellationToken).ConfigureAwait(false);
         var contacts = await contactIds.Select(x => Contacts.Get(Session, x, cancellationToken))
             .Collect(cancellationToken)
@@ -148,7 +143,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
 
         var sendable = contacts
             .SkipNullItems()
-            .Where(c => CanSendTo(c.Chat.Rules, hasFiles));
+            .Where(CanSendTo);
 
         if (_searchPhrase.IsEmpty)
             return sendable.ToList();
