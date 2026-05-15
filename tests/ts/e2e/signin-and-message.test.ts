@@ -14,7 +14,7 @@ import type { Page } from 'playwright';
 import {
     BASE_URL, connectBrowser, dismissCookieConsent, skipOnboarding,
     isSignedIn, signIn, screenshot, waitForAppReady, waitForChatReady,
-    type BrowserConnection,
+    waitForEditor, type BrowserConnection,
 } from './helpers';
 
 describe('sign-in and send message', () => {
@@ -65,31 +65,48 @@ describe('sign-in and send message', () => {
 
         await page.screenshot({ path: screenshot('e2e', 'chat') });
 
-        const messageInput = page.locator('#message-input .editor-content[contenteditable="true"]').first();
-        await messageInput.waitFor({ state: 'visible', timeout: 15_000 });
+        await waitForEditor(page);
     }, 45_000);
 
     it('should send a message and see it appear', async () => {
+        // Earlier test files in the suite can leave the chat panel unmounted; re-navigate
+        // here so the editor is reliably present even when the previous test mid-suite
+        // unmounted the chat-view.
+        await page.goto(`${BASE_URL}/chat/the-actual-one`, { waitUntil: 'domcontentloaded' });
+        await waitForChatReady(page);
+        await skipOnboarding(page);
+        await waitForEditor(page);
         const messageInput = page.locator('#message-input .editor-content[contenteditable="true"]').first();
-        await messageInput.click();
-        await page.waitForTimeout(300);
+        await messageInput.click({ force: true });
+        await page.waitForTimeout(200);
+        // Clear leftover draft: ChatMessageEditor restores per-chat drafts across page loads,
+        // so a previous run's typed-but-unsent text appends to ours otherwise.
+        await messageInput.evaluate(el => {
+            el.innerHTML = '';
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        await messageInput.click({ force: true });
 
         const testMessage = `E2E test at ${new Date().toISOString()}`;
         await page.keyboard.type(testMessage);
         await page.screenshot({ path: screenshot('e2e', 'before-send') });
 
-        // Send
-        const sendButton = page.locator('button.post-message');
-        if (await sendButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await sendButton.click();
-        } else {
-            await page.keyboard.press('Control+Enter');
-        }
-        await page.waitForTimeout(3000);
+        // dispatchEvent skips actionability checks (a tutorial overlay can land
+        // on top of the editor right after typing). MarkupEditor handles Post on
+        // 'keypress' for Enter, so dispatch that to fire its listener directly.
+        await messageInput.dispatchEvent('keypress', {
+            key: 'Enter', code: 'Enter', bubbles: true, cancelable: true,
+        });
+        await page.waitForTimeout(2000);
+
+        // The chat panel unmounts briefly after a post (transcription tutorial
+        // and chat-list rerender). Re-navigate so the chat view re-mounts.
+        await page.goto(`${BASE_URL}/chat/the-actual-one`, { waitUntil: 'domcontentloaded' });
+        await waitForChatReady(page);
+        await skipOnboarding(page);
         await page.screenshot({ path: screenshot('e2e', 'after-send') });
 
-        // Verify the message appears in the chat (text is inside .chat-message-markup)
         const sentMessage = page.locator(`.chat-message-markup:has-text("${testMessage}")`).first();
-        await expect(sentMessage.isVisible({ timeout: 10000 })).resolves.toBe(true);
-    }, 30_000);
+        await sentMessage.waitFor({ state: 'visible', timeout: 15_000 });
+    }, 60_000);
 });
