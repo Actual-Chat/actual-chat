@@ -1,6 +1,6 @@
 import { type PipeOperator } from 'ix-ext';
 import { getLogs } from 'logging';
-import { DeviceOrientation, normalizeRotationQuarter, type RotationQuarter } from 'orientation';
+import { DeviceOrientation, ScreenOrientation, normalizeRotationQuarter, type RotationQuarter } from 'orientation';
 import type { CapturedBundle, CapturedFrame, NormalizedFrame } from '../frame-envelopes';
 import { cameraRotationDeg } from '../orientation/quantize';
 import { drawFrameCover, resizeCanvas } from '../canvas/resize';
@@ -185,13 +185,32 @@ class NormalizeFrameOrientation {
             return { cropboxRotation: 0, wireRotation: 0 };
 
         return this.opts.isIos
-            ? this.decideIosTransform()
+            ? this.decideIosTransform(input)
             : this.decideChromeStyleTransform(input, target);
     }
 
-    private decideIosTransform(): FrameTransform {
-        const wireRotation = normalizeRotationQuarter(
-            cameraRotationDeg(DeviceOrientation.quarter * 90, this.opts.isFrontCamera) / 90);
+    // iOS never bakes a rotation into pixels — the cropbox always matches the
+    // frame and only `wireRotation` carries the orientation downstream.
+    // Wire rotation comes from one of two sources, in order:
+    //   1. ScreenOrientation, once it's been observed (initial platform read,
+    //      a `screen.orientation` change, or SharedSettings hydration in a
+    //      worker). On iOS Safari main thread `window.orientation` is always
+    //      readable so this is the normal path.
+    //   2. Buffer-vs-display dim comparison on the frame itself — used only
+    //      during the worker startup window before SharedSettings hydrates.
+    //      Transposed dims (landscape coded buffer, portrait display) signal
+    //      portrait ⇒ apply the +90° rotation. Matched dims ⇒ no rotation.
+    private decideIosTransform(input: VideoFrame): FrameTransform {
+        let wireRotation: RotationQuarter;
+        if (ScreenOrientation.isObserved) {
+            wireRotation = normalizeRotationQuarter(
+                cameraRotationDeg(ScreenOrientation.quarter * 90, this.opts.isFrontCamera) / 90);
+        } else if (isFrameTransposed(input)) {
+            wireRotation = normalizeRotationQuarter(
+                cameraRotationDeg(0, this.opts.isFrontCamera) / 90);
+        } else {
+            wireRotation = 0;
+        }
         return { cropboxRotation: 0, wireRotation };
     }
 
@@ -377,6 +396,14 @@ function prepareSlot(slot: Slot, width: number, height: number): void {
 
 function longEdge(spec: LayerSpec): number {
     return Math.max(spec.width, spec.height);
+}
+
+function isFrameTransposed(input: VideoFrame): boolean {
+    const cw = input.codedWidth;
+    const ch = input.codedHeight;
+    const dw = input.displayWidth;
+    const dh = input.displayHeight;
+    return cw > 0 && ch > 0 && dw > 0 && dh > 0 && cw === dh && ch === dw;
 }
 
 function signedAngleDeltaDeg(from: number, to: number): number {

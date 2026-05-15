@@ -26,6 +26,7 @@ export function normalizeRotationQuarter(value: RotationQuarter): RotationQuarte
 
 export class ScreenOrientation {
     private static _current = 0;
+    private static _isObserved = false;
     private static _isInitialized = false;
     private static readonly _changeSubject = new Subject<number>();
 
@@ -43,12 +44,20 @@ export class ScreenOrientation {
         return (ScreenOrientation._current % 180) === 0;
     }
 
+    public static get isObserved(): boolean {
+        return ScreenOrientation._isObserved;
+    }
+
     public static init(): void {
         if (ScreenOrientation._isInitialized)
             return;
 
         ScreenOrientation._isInitialized = true;
-        ScreenOrientation._current = readScreenAngle();
+        const initialAngle = readScreenAngle();
+        if (initialAngle !== null) {
+            ScreenOrientation._current = initialAngle;
+            ScreenOrientation._isObserved = true;
+        }
         const screenOrientation = typeof screen !== 'undefined'
             ? (screen as unknown as { orientation?: { addEventListener?: (e: string, cb: () => void) => void } }).orientation
             : undefined;
@@ -56,13 +65,17 @@ export class ScreenOrientation {
         const isMain = !!screenOrientation || hasLegacyOrientation;
 
         if (isMain) {
-            const onChange = (): void => ScreenOrientation.commit(readScreenAngle(), true);
+            const onChange = (): void => {
+                const angle = readScreenAngle();
+                if (angle !== null) ScreenOrientation.commit(angle, true);
+            };
             if (screenOrientation && typeof screenOrientation.addEventListener === 'function')
                 screenOrientation.addEventListener('change', onChange);
             if (hasLegacyOrientation)
                 window.addEventListener('orientationchange', onChange);
             // Seed SharedSettings with the initial value so workers start in sync.
-            SharedSettings.update({ screenOrientation: ScreenOrientation._current });
+            if (ScreenOrientation._isObserved)
+                SharedSettings.update({ screenOrientation: ScreenOrientation._current });
         }
 
         SharedSettings.changed.add(s => {
@@ -73,7 +86,9 @@ export class ScreenOrientation {
 
     private static commit(angle: number, publish: boolean): void {
         const normalized = normalizeRotationQuarter(angle / 90) * 90;
-        if (normalized === ScreenOrientation._current) return;
+        const wasObserved = ScreenOrientation._isObserved;
+        ScreenOrientation._isObserved = true;
+        if (wasObserved && normalized === ScreenOrientation._current) return;
         ScreenOrientation._current = normalized;
         ScreenOrientation._changeSubject.next(normalized);
         if (publish)
@@ -199,7 +214,7 @@ export class DeviceOrientation {
 
 let hasMotionInput = false;
 
-function readScreenAngle(): number {
+function readScreenAngle(): number | null {
     const legacy = readLegacyWindowOrientation();
     if (DeviceInfo.isIos && legacy !== null)
         return legacy;
@@ -213,7 +228,7 @@ function readScreenAngle(): number {
     if (typeof angle === 'number' && Number.isFinite(angle))
         return normalizeRotationQuarter(angle / 90) * 90;
 
-    return legacy ?? 0;
+    return legacy;
 }
 
 function readLegacyWindowOrientation(): number | null {
