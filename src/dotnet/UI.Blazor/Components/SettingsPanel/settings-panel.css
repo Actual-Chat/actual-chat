@@ -107,6 +107,7 @@ body.narrow .settings-panel > .c-tabs .c-footer {
 
 /* Tab content */
 .settings-tab {
+    @apply relative;
     @apply flex-1 flex-x;
     @apply pb-4;
     @apply custom-scrollbar;

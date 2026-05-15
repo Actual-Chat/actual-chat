@@ -1,8 +1,12 @@
 .page-with-header-and-footer .layout-body-wrapper:has(.log-list) .layout-footer {
     @apply hidden;
 }
-.log-viewer-report-btn {
-    @apply px-3 text-primary text-sm font-semibold;
+.log-viewer-footer {
+    @apply absolute inset-x-4 bottom-4;
+    @apply flex justify-center;
+}
+.log-viewer-report-btn.btn {
+    @apply w-full md:w-40;
 }
 .log-list {
     @apply font-mono;
