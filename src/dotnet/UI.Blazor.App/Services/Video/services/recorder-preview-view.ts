@@ -129,6 +129,18 @@ export class RecorderPreviewView {
             : normalizeRotationQuarter(currentDelta - this.initialDeviceScreenDelta);
         applyRotationLayout(videoEl, rotation);
         applyRotationLayout(this.options.canvas, rotation);
+        if (this.options.bgCanvas) {
+            // bg pixels are pre-mirrored by the painter, but the main canvas's
+            // CSS does `scaleX(-1) rotate(θ)` (rotate then mirror). Reflection
+            // conjugates rotation to its inverse, so to make
+            // `bg-CSS ∘ scaleX(-1) ≡ scaleX(-1) ∘ rotate(θ)` we apply
+            // rotate(-θ) on the bg whenever the painter mirrors it. No-op for
+            // θ ∈ {0, 2} where rotate commutes with scaleX(-1).
+            const bgRotation = this.shouldMirrorPreview()
+                ? normalizeRotationQuarter(-rotation)
+                : rotation;
+            applyRotationLayout(this.options.bgCanvas, bgRotation);
+        }
         if (!parent) return;
 
         const swap = (rotation & 1) === 1;

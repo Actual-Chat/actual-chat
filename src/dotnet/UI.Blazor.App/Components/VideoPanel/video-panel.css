@@ -588,9 +588,19 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     @apply block;
     @apply object-cover;
     /* Slight scale-up pushes blur edge artifacts offscreen and promotes the
-       canvas to its own layer so paints don't invalidate the #document layer. */
+       canvas to its own layer so paints don't invalidate the #document layer.
+       Rotation follows the main canvas; the bg's mirror is baked into its
+       pixels by the painter, so no scaleX(-1) here. */
     will-change: transform;
-    transform: scale(1.1) translateZ(0);
+    transform: scale(1.1) rotate(var(--video-rotation, 0deg)) translateZ(0);
+}
+.video-track-player.item-focused canvas.remote-video-bg.rotated-video {
+    inset: auto;
+    width: 100cqh;
+    height: 100cqw;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(1.1) rotate(var(--video-rotation, 0deg)) translateZ(0);
 }
 .video-track-player.item-focused canvas:not(.remote-video-bg) {
     @apply bg-transparent;
