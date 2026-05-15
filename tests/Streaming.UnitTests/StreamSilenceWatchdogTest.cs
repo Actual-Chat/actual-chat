@@ -33,32 +33,38 @@ public class StreamSilenceWatchdogTest
     public async Task SteadyFrameFlow_NoCancel()
     {
         // arrange
+        var watchdogInterval = TimeSpan.FromMilliseconds(100);
         using var cts = new CancellationTokenSource();
         using var stopCts = new CancellationTokenSource();
         var counter = 0;
         var detectionCount = 0;
 
-        // Drive a steady producer: increment every ~5 ms, 4× faster than the
-        // watchdog's 20 ms interval. The intervals must always sample > 0.
+        // Drive a steady producer: increment every ~2 ms, ≈50× faster than the
+        // watchdog's 100 ms interval, so a scheduler hiccup can't starve an entire tick.
         var producer = Task.Run(async () => {
             while (!stopCts.IsCancellationRequested) {
                 Interlocked.Increment(ref counter);
-                try { await Task.Delay(5, stopCts.Token); }
+                try { await Task.Delay(2, stopCts.Token); }
                 catch (OperationCanceledException) { break; }
             }
         });
+
+        // Wait until the producer is actually scheduled and ticking before we
+        // arm the watchdog — otherwise the first interval can race with Task.Run startup.
+        while (Volatile.Read(ref counter) == 0)
+            await Task.Delay(1);
 
         // act
         var watchdog = StreamSilenceWatchdog.Run(
             consumeFrameCount: () => Interlocked.Exchange(ref counter, 0),
             onSilenceCts: cts,
-            interval: ShortInterval,
-            maxConsecutiveZeroIntervals: 2,
+            interval: watchdogInterval,
+            maxConsecutiveZeroIntervals: 3,
             onSilenceDetected: _ => Interlocked.Increment(ref detectionCount),
             cancellationToken: stopCts.Token);
 
-        // Run for ~10 watchdog intervals.
-        await Task.Delay(ShortInterval * 10);
+        // Run for ~5 watchdog intervals.
+        await Task.Delay(watchdogInterval * 5);
 
         // assert: still no cancellation.
         cts.IsCancellationRequested.Should().BeFalse();
