@@ -25,12 +25,10 @@
     };
 }
 <div class="video-track-player remote-video-container has-source-aspect @FocusedClass @sourceKindCls" style="@aspectRatioStyle">
-    @* Low-res intrinsic resolution: painter writes downscaled raw pixels
-       at 128×N (see BG_RECEIVER_CANVAS_WIDTH in bg-canvas.ts); the sibling
-       .remote-video-bg-overlay applies the CSS backdrop-filter blur. CSS
-       `object-fit: cover` upscales the canvas to fill the focused tile. *@
-    <canvas @ref="BgCanvasRef" class="remote-video-bg" width="128" height="128" aria-hidden="true"></canvas>
-    <div class="remote-video-bg-overlay" aria-hidden="true"></div>
+    @* Low-res intrinsic resolution: WebGPU renders to a 64×64 swap chain
+       and CSS `object-cover` upscales to fill the focused tile. The heavy
+       bilinear upscale on top of the Kawase blur produces a soft backdrop. *@
+    <canvas @ref="BgCanvasRef" class="remote-video-bg" width="64" height="64" aria-hidden="true"></canvas>
     <canvas @ref="CanvasRef" class="remote-video" data-stream-id="@StreamInfo.StreamId.Value" data-author-id="@StreamInfo.AuthorId.Value"></canvas>
     <video @ref="VideoElRef" class="remote-video live-stream-video"
            autoplay playsinline muted aria-hidden="true"

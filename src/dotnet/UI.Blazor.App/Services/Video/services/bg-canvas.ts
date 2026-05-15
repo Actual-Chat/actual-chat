@@ -1,14 +1,11 @@
 // Blurred backdrop drawn behind a contain-fitted main video tile
-// (.remote-video-bg in video-panel.css). Receiver path: paints a raw
-// downscaled frame on a 100 ms tick; the blur+saturate are applied by
-// CSS `backdrop-filter` on a sibling overlay (works on iOS Safari, where
-// Canvas 2D `ctx.filter` is silently dropped). Sender preview path (in
-// recorder-preview-view.ts) still uses BG_FILTER baked into the bitmap.
+// (.remote-video-bg in video-panel.css). Settings + the small main-thread
+// painter that samples the visible inner element on a 100 ms tick and
+// draws it scaled-down with `ctx.filter` baked into the bitmap.
 
 import { CanvasTarget } from './canvas-target';
 
 export const BG_CANVAS_WIDTH = 64;
-export const BG_RECEIVER_CANVAS_WIDTH = 128;
 export const BG_DRAW_INTERVAL_MS = 100;
 export const BG_FILTER = 'blur(3px) saturate(1.2)';
 export const BG_CANVAS_OVERDRAW_PX = 4;
@@ -16,19 +13,17 @@ export const BG_CANVAS_OVERDRAW_PX = 4;
 // 2D-canvas variant below uses BG_FILTER directly.
 export const BG_BLUR_STRENGTH = 20;
 
-/** Drives the receiver .remote-video-bg canvas: every 100 ms reads the
- *  supplied source element (the visible `<video>` or `<canvas>`), draws
- *  it scaled down (no ctx.filter), then lets CSS `object-fit: cover`
- *  stretch the low-res bitmap to fill the focused tile's letterbox bars.
- *  A sibling overlay (.remote-video-bg-overlay) applies `backdrop-filter:
- *  blur(...) saturate(...)` over the canvas. */
+/** Drives the .remote-video-bg canvas: every 100 ms reads the supplied
+ *  source element (the visible `<video>` or `<canvas>`), draws it scaled
+ *  to 64xN with `BG_FILTER` baked, then lets CSS object-cover stretch
+ *  the low-res bitmap to fill the focused tile's letterbox bars. */
 export class BgCanvasPainter {
     private readonly target: CanvasTarget;
     private timer: ReturnType<typeof setInterval> | null = null;
     private getSource: (() => SourceLike | null) | null = null;
 
     constructor(bgCanvas: HTMLCanvasElement) {
-        this.target = new CanvasTarget(bgCanvas, true, 'none', BG_CANVAS_OVERDRAW_PX);
+        this.target = new CanvasTarget(bgCanvas, false, BG_FILTER, BG_CANVAS_OVERDRAW_PX);
     }
 
     /** Start or restart the pump. `getSource` is re-read every tick so a
@@ -59,7 +54,7 @@ export class BgCanvasPainter {
         const sw = readSourceWidth(src);
         const sh = readSourceHeight(src);
         if (sw <= 0 || sh <= 0) return;
-        const bgW = BG_RECEIVER_CANVAS_WIDTH;
+        const bgW = BG_CANVAS_WIDTH;
         const bgH = Math.max(1, Math.round(bgW * sh / sw));
         this.target.draw(src as CanvasImageSource, bgW, bgH);
     }

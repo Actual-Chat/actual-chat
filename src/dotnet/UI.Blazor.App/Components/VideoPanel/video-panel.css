@@ -562,16 +562,15 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     @apply bg-transparent;
 }
 
-/* Blurred backdrop (§13): fills the letterbox/pillarbox bars. The painter
-   (BgCanvasPainter) writes raw downscaled pixels onto a 128×N canvas every
-   100 ms — NO `ctx.filter` baked in, because iOS Safari silently drops it.
-   The sibling .remote-video-bg-overlay div applies a CSS `backdrop-filter:
-   blur(...) saturate(...)` over the upscaled canvas. CSS `object-fit:
-   cover` upscales the small texture. Hidden by default; the focused tile
-   rule below brings both elements in. The canvas backend doesn't paint
-   the bg canvas, so it stays transparent in that path — no visual leakage. */
-.video-track-player canvas.remote-video-bg,
-.video-track-player .remote-video-bg-overlay {
+/* Blurred backdrop (§13): fills the letterbox/pillarbox bars. Worker paints
+   the latest VideoFrame onto a 64×N OffscreenCanvas with `ctx.filter='blur(...)'`
+   baked into the bitmap; CSS just upscales the small texture via `object-fit:
+   cover`. NO CSS `filter:` — the blur is already baked into the canvas pixels,
+   so the compositor only does a bilinear sample instead of a per-frame Gaussian
+   shader. Hidden by default; the focused tile rule below brings it in. The
+   canvas backend doesn't paint the bg canvas, so it stays transparent in that
+   path — no visual leakage. */
+.video-track-player canvas.remote-video-bg {
     @apply hidden;
     @apply bg-transparent;
 }
@@ -584,7 +583,7 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
 
 /* Blurred background canvas — only visible inside focused container,
    fills the container behind the letterboxed main canvas. The canvas
-   renders at 128×N intrinsic resolution; CSS upscales it via object-cover
+   renders at 64×N intrinsic resolution; CSS upscales it via object-cover
    to fill the parent (parent has aspect-ratio matching the source). */
 .video-track-player.item-focused canvas.remote-video-bg {
     @apply absolute inset-0;
@@ -592,27 +591,15 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     @apply z-0;
     @apply block;
     @apply object-cover;
-    /* Slight scale-up — common video-backdrop look (YouTube, Apple,
-       Netflix). Scale pushes upscale edge artifacts offscreen so the
-       frame border doesn't bleed into the visible area. Promote to its
-       own layer so canvas paints don't invalidate the #document layer.
-       Saturate lives on the sibling overlay's backdrop-filter so the GPU
-       composites blur + saturate in a single pass. */
+    /* Slight scale-up + saturate boost — common video-backdrop look (YouTube,
+       Apple, Netflix). Scale pushes Kawase edge-kernel artifacts offscreen so
+       the frame border doesn't bleed into the visible area; saturate gives
+       the backdrop more colour life. Both are GPU-composited filters — zero
+       cost on top of `will-change: transform`. Promote to its own layer so
+       canvas paints don't invalidate the #document layer. */
     will-change: transform;
     transform: scale(1.1) translateZ(0);
-}
-/* Backdrop-filter overlay — blurs the bg canvas behind it. Sits between
-   the bg canvas (z=0) and the main video (z=1). iOS Safari supports the
-   prefixed property since iOS 9; Chromium/FF support the unprefixed form.
-   Pointer-events:none so it doesn't intercept clicks on the focused tile. */
-.video-track-player.item-focused .remote-video-bg-overlay {
-    @apply absolute inset-0;
-    @apply block;
-    z-index: 0;
-    pointer-events: none;
-    contain: layout paint style;
-    -webkit-backdrop-filter: blur(24px) saturate(1.2);
-    backdrop-filter: blur(24px) saturate(1.2);
+    filter: saturate(1.2);
 }
 .video-track-player.item-focused canvas:not(.remote-video-bg) {
     @apply bg-transparent;
