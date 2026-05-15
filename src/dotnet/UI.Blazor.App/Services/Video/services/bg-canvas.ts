@@ -173,16 +173,24 @@ class WebGlBgRenderTarget implements BgCanvasRenderTarget {
         if (!isWebGlCanvasCopySupported())
             return null;
 
-        const outputCtx = output.getContext('2d', { alpha: true, desynchronized: true });
+        // No `desynchronized: true` here — Chromium WebView (MAUI Android,
+        // some WebView2 builds) either rejects the hint outright or renders
+        // into a buffer the compositor doesn't surface, leaving the bg canvas
+        // visibly empty. Standard compositing is fine for a 10 Hz update.
+        const outputCtx = output.getContext('2d', { alpha: true });
         if (!outputCtx)
             return null;
 
         const scratch = document.createElement('canvas');
+        // alpha:true (was: false). With alpha:false WebGL spec lets readPixels
+        // return any value for the alpha component; some GPU drivers return 0,
+        // which makes putImageData write fully-transparent pixels. The shader
+        // writes gl_FragColor.a = 1.0 in both branches, so alpha:true preserves
+        // it. Same reasoning for omitting `desynchronized: true`.
         const contextAttrs: WebGLContextAttributes = {
-            alpha: false,
+            alpha: true,
             antialias: false,
             depth: false,
-            desynchronized: true,
             preserveDrawingBuffer: false,
             premultipliedAlpha: true,
             stencil: false,
@@ -464,8 +472,8 @@ function isWebGlCanvasCopySupported(): boolean {
         const source = document.createElement('canvas');
         source.width = 2;
         source.height = 2;
-        const gl = source.getContext('webgl', {
-            alpha: false,
+        const gl = getWebGlContext(source, {
+            alpha: true,
             antialias: false,
             depth: false,
             preserveDrawingBuffer: false,
@@ -480,11 +488,17 @@ function isWebGlCanvasCopySupported(): boolean {
             isWebGlCanvasCopySupportedCached = false;
             return isWebGlCanvasCopySupportedCached;
         }
+
         gl.viewport(0, 0, 2, 2);
         gl.clearColor(1, 0, 0, 1);
         gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.flush();
-        ctx.drawImage(source, 0, 0);
+
+        const pixels = new Uint8Array(16);
+        gl.readPixels(0, 0, 2, 2, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        const imageData = ctx.createImageData(2, 2);
+        imageData.data.set(pixels);
+        ctx.putImageData(imageData, 0, 0);
+
         const data = ctx.getImageData(0, 0, 1, 1).data;
         isWebGlCanvasCopySupportedCached = data[0] > 200 && data[1] < 40 && data[2] < 40 && data[3] > 200;
         gl.getExtension('WEBGL_lose_context')?.loseContext();
