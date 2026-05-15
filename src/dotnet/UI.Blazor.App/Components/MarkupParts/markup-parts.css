@@ -197,6 +197,14 @@
     @apply whitespace-pre-wrap;
     @apply text-sm;
 }
+@media (hover: hover) and (pointer: fine) {
+    .preformatted-text-markup {
+        @apply cursor-pointer;
+    }
+    .preformatted-text-markup:hover {
+        @apply bg-04;
+    }
+}
 .preformatted-text-markup > span.highlight {
     @apply text-primary;
 }
