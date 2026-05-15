@@ -32,18 +32,17 @@ async function clearEditor(page: Page) {
     await page.waitForTimeout(200);
 }
 
-/**
- * Put the chat message editor back into a known-interactive state before a test.
- *
- * OnboardingModal re-renders on a schedule (e.g. after tutorial events fire) and
- * can reappear between tests even though we called `skipOnboarding` in beforeAll.
- * When it does, its `modal-chrome-overlay` intercepts pointer events on the
- * editor. Dismiss it and ensure the editor is focusable before each test acts.
- */
+// Re-mounts the chat panel if it collapsed between tests (Voxt's responsive layout
+// can hide the right panel mid-suite when ScreenSize re-evaluates).
 async function ensureEditorReady(page: Page) {
-    await skipOnboarding(page);
     const editor = page.locator('#message-input .editor-content[contenteditable="true"]').first();
-    await editor.waitFor({ state: 'visible', timeout: 10_000 });
+    if (!await editor.isVisible({ timeout: 1500 }).catch(() => false)) {
+        await page.goto(`${BASE_URL}/chat/the-actual-one`, { waitUntil: 'domcontentloaded' });
+        await waitForChatReady(page);
+        await editor.waitFor({ state: 'visible', timeout: 15_000 });
+    }
+    await editor.click({ force: true });
+    await page.waitForTimeout(300);
 }
 
 describe('mention search', () => {
@@ -68,10 +67,11 @@ describe('mention search', () => {
             await waitForChatReady(page);
         }
 
-        // Editor is the prerequisite for every test in this suite — wait for it
-        // before screenshot so failures have a meaningful last-known state.
+        // Wait for editor without skipOnboarding-on-failure — once the chat panel
+        // is mounted, calling skipOnboarding again can unmount it via resetOnboarding's
+        // Blazor state reset.
         await page.locator('#message-input .editor-content[contenteditable="true"]').first()
-            .waitFor({ state: 'visible', timeout: 15_000 });
+            .waitFor({ state: 'visible', timeout: 20_000 });
         await page.screenshot({ path: screenshot('mention', '00-chat-page') });
     }, 60_000);
 

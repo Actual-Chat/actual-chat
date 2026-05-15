@@ -51,12 +51,18 @@ async function ensurePlaceExists(page: Page, title: string): Promise<void> {
     // creation when no place is genuinely available.
     if (await page.locator('.place-plus-btn').first().isVisible({ timeout: 10_000 }).catch(() => false))
         return;
-    const existingPlace = page.locator('.navbar-place-buttons .navbar-button').first();
-    if (await existingPlace.isVisible({ timeout: 2_000 }).catch(() => false)) {
-        await existingPlace.click({ force: true });
-        await page.locator('.place-plus-btn').first()
-            .waitFor({ state: 'visible', timeout: 15_000 });
-        return;
+    // Try each existing place — repeat runs of this test can leave non-admin places
+    // in the navbar, where `.place-plus-btn` never renders. Fall through to the
+    // create path if none of them surface the button.
+    const navbarPlaces = page.locator('.navbar-place-buttons .navbar-button');
+    const navbarCount = await navbarPlaces.count();
+    for (let i = 0; i < navbarCount; i++) {
+        const placeBtn = navbarPlaces.nth(i);
+        await placeBtn.evaluate(el => (el as HTMLElement).click()).catch(() => { /* ignore */ });
+        const visible = await page.locator('.place-plus-btn').first()
+            .waitFor({ state: 'visible', timeout: 5_000 })
+            .then(() => true).catch(() => false);
+        if (visible) return;
     }
 
     // Open the navbar "+" → CreateMenu. The menu-host listens for

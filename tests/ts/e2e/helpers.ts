@@ -133,6 +133,41 @@ export async function waitForChatReady(page: Page, timeout = 20_000) {
     ].join(', ')).first().waitFor({ state: 'visible', timeout });
 }
 
+// Re-runs skipOnboarding between waitFor attempts because an OnboardingModal
+// can re-mount after skipOnboarding returns and intercept clicks on the editor.
+// On a final fallback, reloads the page if the editor still hasn't appeared.
+export async function waitForEditor(page: Page, timeout = 30_000) {
+    const editor = page.locator('#message-input .editor-content[contenteditable="true"]').first();
+    const start = Date.now();
+    let attempt = 0;
+    let reloaded = false;
+    let lastErr: unknown;
+    while (Date.now() - start < timeout) {
+        attempt++;
+        try {
+            await editor.waitFor({ state: 'visible', timeout: 3_000 });
+            return;
+        } catch (e) {
+            lastErr = e;
+            await skipOnboarding(page);
+            // Halfway through the budget, reload once — sometimes the chat-view
+            // RPC hangs and a reload is the only way to get a fresh render.
+            if (!reloaded && Date.now() - start > timeout / 2) {
+                reloaded = true;
+                await page.reload({ waitUntil: 'domcontentloaded' });
+                await waitForAppReady(page).catch(() => { /* fallthrough */ });
+                await skipOnboarding(page);
+            }
+            await page.waitForTimeout(300);
+        }
+    }
+    await page.screenshot({ path: screenshot('e2e', 'wait-for-editor-failed') }).catch(() => { /* ignore */ });
+    throw new Error(
+        `waitForEditor: editor did not appear after ${attempt} cycles (${timeout}ms). `
+        + `Last error: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`,
+    );
+}
+
 export async function dismissCookieConsent(page: Page, timeout = 10_000) {
     const btn = page.locator(
         'button:has-text("Accept all cookies"), button:has-text("Necessary cookies only")',
