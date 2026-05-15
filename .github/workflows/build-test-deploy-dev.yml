@@ -159,6 +159,17 @@ jobs:
           mv configs/prompts .config/
           rm -rf configs/
 
+      - name: Free Disk Space (Ubuntu)
+        uses: insightsengineering/disk-space-reclaimer@v1
+        with:
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: true
+          tools-cache: true
+
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v3
