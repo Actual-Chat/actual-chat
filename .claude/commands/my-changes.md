@@ -124,11 +124,10 @@ is genuinely worth explaining.
 - **`minimal`** — the **smallest** possible report. Per user, render:
 
   ```
-  **<UserName>**:
+  **<UserName>** — <period>, `+<added>`/`-<removed>`:
   - <item, ≤ 8 words>
   - <item, ≤ 8 words>
   - ...
-  <period>, `+<added>`/`-<removed>`
   ```
 
   Rules:
@@ -147,10 +146,18 @@ is genuinely worth explaining.
     the item text only when it's load-bearing.
   - Order items most-impactful first (the same ranking rule that orders
     categories in the default layout).
-  - The closing summary is **one short line**: the rounded time period
-    (same units as the standard footer — minutes/hours/days/weeks) and
-    `` `+<added>`/`-<removed>` `` LOC, **scoped to the user**. No commit
-    count, no branch list, no SHA. Example: `6h, +312/-87`.
+  - **Header line carries the period + LOC** in the form
+    `` **<UserName>** — <period>, `+<added>`/`-<removed>`: `` —
+    em-dash separator, trailing colon, all on a single line.
+    The period uses the same rounded units as the standard footer
+    (minutes/hours/days/weeks). LOC is **scoped to the user** and uses
+    backticks around each side. No commit count, no branch list, no SHA.
+    Examples:
+    `` **Alex Yakunin** — 11h, `+3208`/`-1054`: ``,
+    `` **Iq Mulator** — a single commit, `+246`/`-61`: ``.
+  - **No separate summary line at the bottom**, and **no blank line
+    between the header and the first bullet, or between the last bullet
+    and anything that follows**. The block is `header → bullets`, period.
   - No combined cross-user footer in `--all` mode — each user's block is
     self-contained.
 
@@ -302,15 +309,16 @@ If the sibling repo is not present, silently skip it.
 Default layout: the bulleted format described above.
 
 If `minimal` is set, render the minimal layout from *Detail level → minimal*
-(per-user block, no category/branch headers, ≤ 8-word items, one-line
-period+LOC summary). Skip Step 8 entirely — each user block is
+(per-user block, no category/branch headers, ≤ 8-word items, period+LOC
+**inlined into the header**). Skip Step 8 entirely — each user block is
 self-contained.
 
 If `--all` is set, repeat the render once per remaining (non-bot) author.
 Separate blocks with a blank line. In default / `compact` / `Nx` modes,
 prefix each block with `## <UserName>` and put the per-user footer (Step 8)
 **inside** each block — there is no combined cross-user footer. In
-`minimal` mode, the `**<UserName>**:` line is the header; no `##` needed.
+`minimal` mode, the `` **<UserName>** — <period>, `+<added>`/`-<removed>`: ``
+line is the header; no `##` needed, no Step-8 footer.
 In `as table` mode, add a leading `Author` column.
 
 If `--post` is set, do not print the report inline — see *Posting to
@@ -398,10 +406,10 @@ before printing the footer.
 The footer is the last thing in the output — no closing prose, no
 trailing summary sentence after it.
 
-In `minimal` mode this footer is **suppressed** — the per-user one-line
-summary inside each block replaces it. In `--all` mode the footer is
-emitted **per user inside each block** (see Step 7); there is no
-combined cross-user footer.
+In `minimal` mode this footer is **suppressed** — the period+LOC is
+inlined into each user's header line. In `--all` mode (non-minimal) the
+footer is emitted **per user inside each block** (see Step 7); there is
+no combined cross-user footer.
 
 ## Multi-user mode (`--all`)
 
@@ -432,8 +440,9 @@ human's report; do not promote a parallel AI entry.
 - Default / `compact` / `Nx`: prefix each user's block with `## <UserName>`
   and keep the standard category/branch structure inside. Per-user footer
   (Step 8) goes at the bottom of each block; no combined cross-user footer.
-- `minimal`: use the `**<UserName>**:` header from *Detail level → minimal*
-  with its one-line period+LOC summary. No `##`, no Step-8 footer.
+- `minimal`: use the `` **<UserName>** — <period>, `+<added>`/`-<removed>`: ``
+  header from *Detail level → minimal*. No `##`, no Step-8 footer, no
+  trailing summary line.
 - `as table`: add a leading `Author` column; one giant table is fine.
 
 Order user blocks by **descending total LOC** (added + removed) in the
