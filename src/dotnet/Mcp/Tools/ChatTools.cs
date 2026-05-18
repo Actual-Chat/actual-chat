@@ -11,6 +11,7 @@ namespace ActualChat.Mcp.Tools;
 [McpServerToolType]
 public sealed class ChatTools(IServiceProvider services)
 {
+    private const int DefaultLimit = 256;
     private const int MaxLimit = 1024;
 
     private IContacts Contacts { get; } = services.GetRequiredService<IContacts>();
@@ -26,7 +27,7 @@ public sealed class ChatTools(IServiceProvider services)
         "`afterId` is exclusive; pass null to start from the beginning. `limit` is capped at 1024.")]
     public async Task<ListChatsResult> ListGroupChats(
         [Description("Return chats with id > afterId. Use null to start from the beginning.")] string? afterId = null,
-        [Description("Max chats to return; capped at 1024.")] int limit = 256,
+        [Description("Max chats to return; capped at 1024.")] int limit = DefaultLimit,
         CancellationToken cancellationToken = default)
     {
         var contactIds = await Contacts.ListIds(Session, placeId: null, cancellationToken).ConfigureAwait(false);
@@ -45,7 +46,7 @@ public sealed class ChatTools(IServiceProvider services)
         "`afterId` is exclusive; pass null to start from the beginning. `limit` is capped at 1024.")]
     public async Task<ListPlacesResult> ListPlaces(
         [Description("Return places with id > afterId. Use null to start from the beginning.")] string? afterId = null,
-        [Description("Max places to return; capped at 1024.")] int limit = 256,
+        [Description("Max places to return; capped at 1024.")] int limit = DefaultLimit,
         CancellationToken cancellationToken = default)
     {
         var placeIds = await Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
@@ -61,7 +62,7 @@ public sealed class ChatTools(IServiceProvider services)
     public async Task<ListChatsResult> ListPlaceChats(
         [Description("The place id.")] string placeId,
         [Description("Return chats with id > afterId. Use null to start from the beginning.")] string? afterId = null,
-        [Description("Max chats to return; capped at 1024.")] int limit = 256,
+        [Description("Max chats to return; capped at 1024.")] int limit = DefaultLimit,
         CancellationToken cancellationToken = default)
     {
         var parsedPlaceId = PlaceId.Parse(placeId);
@@ -81,7 +82,7 @@ public sealed class ChatTools(IServiceProvider services)
         "`afterId` is exclusive; pass null to start from the beginning. `limit` is capped at 1024.")]
     public async Task<ListChatsResult> ListPeerChats(
         [Description("Return chats with id > afterId. Use null to start from the beginning.")] string? afterId = null,
-        [Description("Max chats to return; capped at 1024.")] int limit = 256,
+        [Description("Max chats to return; capped at 1024.")] int limit = DefaultLimit,
         CancellationToken cancellationToken = default)
     {
         var ownAccount = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
