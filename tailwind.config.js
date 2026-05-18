@@ -298,8 +298,8 @@ module.exports = {
     },
     screens: {
       sm: '640px',
-      md: '820px',
-      lg: '1280px',
+      md: { raw: '(min-width: 820px) and (pointer: fine), (min-width: 1100px)' },
+      lg: '1100px',
       xl: '1536px',
       '2xl': '1800px',
     },
