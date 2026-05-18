@@ -1,0 +1,31 @@
+using System.Text.Json.Serialization.Metadata;
+using ActualChat.Hosting;
+using ActualChat.Mcp.Tools;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using ModelContextProtocol.Protocol;
+
+namespace ActualChat.Mcp.Module;
+
+public sealed class McpModule(IServiceProvider moduleServices)
+    : HostModule<McpSettings>(moduleServices), IServerModule
+{
+    protected override void InjectServices(IServiceCollection services)
+    {
+        if (!Settings.IsEnabled || !HostInfo.HasRole(HostRole.Api))
+            return;
+
+        services.TryAddSingleton<Auth.McpSessionAccessor>();
+        services.AddHttpContextAccessor();
+
+        var serializerOptions = new JsonSerializerOptions(SystemJsonSerializer.Default.Options);
+        serializerOptions.TypeInfoResolver ??= new DefaultJsonTypeInfoResolver();
+        services
+            .AddMcpServer(o => o.ServerInfo = new Implementation {
+                Name = Settings.ServerName,
+                Version = Settings.ServerVersion,
+            })
+            .WithHttpTransport(o => o.Stateless = true)
+            .WithTools<ChatTools>(serializerOptions)
+            .WithTools<DiscoveryTools>(serializerOptions);
+    }
+}
