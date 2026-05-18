@@ -9,6 +9,7 @@ namespace ActualChat.Mcp.Tools;
 [McpServerToolType]
 public sealed class MessageTools(IServiceProvider services)
 {
+    private const int DefaultLimit = 256;
     private const int MaxLimit = 1024;
 
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
@@ -76,7 +77,7 @@ public sealed class MessageTools(IServiceProvider services)
     public async Task<ListMessagesResult> ListMessages(
         [Description("The chat id.")] string chatId,
         [Description("Return messages with id > afterId. Use null to start from the beginning.")] long? afterId = null,
-        [Description("Max messages to return; capped at 1024.")] int limit = 256,
+        [Description("Max messages to return; capped at 1024.")] int limit = DefaultLimit,
         CancellationToken cancellationToken = default)
     {
         var parsedChatId = ChatId.Parse(chatId);
