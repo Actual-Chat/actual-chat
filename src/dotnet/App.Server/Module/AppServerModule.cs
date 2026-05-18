@@ -6,6 +6,7 @@ using ActualChat.Db.Diagnostics;
 using ActualChat.Diagnostics;
 using ActualChat.Hosting;
 using ActualChat.Kubernetes;
+using ActualChat.Mcp;
 using ActualChat.MLSearch.Diagnostics;
 using ActualChat.Streaming.Diagnostics;
 using ActualChat.Module;
@@ -154,6 +155,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             app.MapFusionRenderModeEndpoints(); // /fusion/renderMode
         }
         app.MapControllers();
+        app.MapMcp();
 
         // Diagnostic endpoints
         // app.UseOpenTelemetryPrometheusScrapingEndpoint();
