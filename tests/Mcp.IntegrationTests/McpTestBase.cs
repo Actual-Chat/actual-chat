@@ -36,7 +36,7 @@ public abstract class McpTestBase<TFixture>(TFixture fixture, ITestOutputHelper 
         var endpoint = new Uri(baseUri, "/api/mcp");
         var transport = new HttpClientTransport(new HttpClientTransportOptions {
             Endpoint = endpoint,
-            AdditionalHeaders = new Dictionary<string, string> { ["Session"] = sessionId },
+            AdditionalHeaders = new Dictionary<string, string> { ["Authorization"] = $"Bearer {sessionId}" },
         });
         return await McpClient.CreateAsync(transport, cancellationToken: ct).ConfigureAwait(false);
     }
