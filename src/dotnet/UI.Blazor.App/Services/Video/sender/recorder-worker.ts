@@ -14,6 +14,7 @@ import type { AsyncVideoEncoder } from '../adapters';
 import { setVideoTraceKill, type VideoTraceKillPeriod } from '../frame-drop-trace';
 import { ScreenOrientation, DeviceOrientation } from 'orientation';
 import { SenderSession } from './session';
+import { getCodecCategory } from '../codec-support';
 import type {
     PreviewFramePresentation,
     RecorderWorker,
@@ -175,11 +176,18 @@ export const recorderWorkerImpl: RecorderWorker = {
             layerCfg,
             layerId,
         ) => {
-            // Fresh encoder per run: see `createEncoder` in RecorderWorkerDeps.
-            // encode() disposes it in its own `finally`.
-            const encoder = deps.createEncoder(session, layerCfg, layerId);
+            // Acquire from session's encoder pool — park-after-release across
+            // recording restarts avoids burning HW encoder slots (NVENC has a
+            // bounded concurrent-session limit on consumer GPUs). On a pool
+            // hit, the encoder is reset (queue cleared) but the codec config
+            // is set by configure() below.
+            const category = getCodecCategory(layerCfg.codec);
+            const handle = session.encoderPool.acquire(
+                category,
+                () => deps.createEncoder(session, layerCfg, layerId),
+            );
             try {
-                encoder.configure({
+                handle.encoder.configure({
                     codec: layerCfg.codec,
                     width: layerCfg.width,
                     height: layerCfg.height,
@@ -188,10 +196,11 @@ export const recorderWorkerImpl: RecorderWorker = {
                     latencyMode: 'realtime',
                 });
             } catch (e) {
-                try { encoder.dispose(); } catch { /* ignore */ }
+                // Release back to pool so it can be parked or discarded by canReuse check.
+                try { handle.release(); } catch { /* ignore */ }
                 throw e;
             }
-            return encoder;
+            return handle.encoder;
         };
 
         const senderFactory = (gate: FloodGate): StreamSenderLike => deps.createSender(config.chatId, gate);
