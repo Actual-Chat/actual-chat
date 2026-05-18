@@ -49,7 +49,7 @@ import {
     detectSupportedCodecs,
     getDefaultCodec,
     getCodecCategory,
-    probeEncoder,
+    isEncoderConfigSupportedAtTop,
     excludeEncoderCodec,
     isEncoderCodecExcluded,
     isEncoderCodecProven,
@@ -1192,7 +1192,14 @@ export class VideoRecorder {
         };
 
         const sourceStartedAtMs = Date.now();
-        this.startedAtMs = sourceStartedAtMs;
+        // `sourceStartedAtMs` is the per-run wire stream reference (resets on
+        // every restart — wire stream is fresh per run). `this.startedAtMs`
+        // tracks the recording SESSION start for the diagnostics Duration row;
+        // it must survive setLayers-driven restartWithCurrentConfig() so the
+        // user sees continuous duration. Only the explicit stopRecording()
+        // path resets it back to 0.
+        if (this.startedAtMs === 0)
+            this.startedAtMs = sourceStartedAtMs;
         // `start()` resolves only when the run finishes draining (per
         // the new contract) — fire and forget so we can return from
         // startRecording() and let the operator pipe drive itself.
@@ -1729,15 +1736,24 @@ export class VideoRecorder {
         audienceCodecs: string[] | undefined,
         ladder: LayerConfig[],
     ): Promise<string | null> {
+        // Config-feature check only: VideoEncoder.isConfigSupported() is
+        // a zero-cost browser capability query (no HW encoder instantiated).
+        // We no longer run a live encoding probe here — those burned HW
+        // encoder slots on each fresh page load and made the NVENC slot
+        // exhaustion problem worse. If the chosen codec turns out to be too
+        // slow at runtime, the existing path reacts:
+        //   * encoder configure failure → ENCODER_INIT_FAILED_PREFIX in encode.ts
+        //   * repickCodecAndRestart excludes the failed category and restarts
+        //   * QC's encodeRatioEma signal triggers demote / codec switch
         for (const codecInfo of this.listCodecCandidatesByEfficiency(supportedCodecs, audienceCodecs)) {
-            const category = codecInfo.category;
-            const probeLadder = this.withCodecBitrates(ladder, codecInfo.codec);
-            const probe = await probeEncoder(codecInfo.codec, probeLadder);
-            if (probe.supported) {
-                infoLog?.log(`pickSimulcastCodec: ${category} (${codecInfo.codec}) PASS — median=${probe.medianEncodeMs.toFixed(1)}ms over ${ladder.length} layer(s)`);
+            const top = this.withCodecBitrates(ladder, codecInfo.codec)[ladder.length - 1];
+            const supported = await isEncoderConfigSupportedAtTop(
+                codecInfo.codec, top.width, top.height, top.bitrateKbps);
+            if (supported) {
+                infoLog?.log(`pickSimulcastCodec: ${codecInfo.category} (${codecInfo.codec}) chosen at ${top.width}x${top.height} (${ladder.length} layer(s))`);
                 return codecInfo.codec;
             }
-            infoLog?.log(`pickSimulcastCodec: ${category} (${codecInfo.codec}) FAIL — median=${probe.medianEncodeMs.toFixed(1)}ms, stage=${probe.failedStage ?? 'timing'}`);
+            infoLog?.log(`pickSimulcastCodec: ${codecInfo.category} (${codecInfo.codec}) UNSUPPORTED at ${top.width}x${top.height}`);
         }
         return null;
     }
