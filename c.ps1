@@ -257,10 +257,11 @@ function Show-Help {
     Write-Host "  c rwt feature1     Remove feature1 worktree and clean up"
     Write-Host "  c os fwt feature1  Run on host OS in feature worktree"
     Write-Host "  c os bwt issue1    Run on host OS in bugfix worktree"
-    Write-Host "  c chrome           Start Chrome with remote debugging (default profile, port 9222)"
-    Write-Host "  c chrome:50000     Start Chrome on port 50000 (default profile)"
+    Write-Host "  c chrome           Start Chrome with remote debugging (Playwright profile, port 9222)"
+    Write-Host "  c chrome:50000     Start Chrome on port 50000 (Playwright profile)"
     Write-Host "  c chrome*3         Start 3 Chrome instances on 9222..9224 (anonymous profiles)"
     Write-Host "  c chrome*3:50000   Start 3 Chrome instances on 50000..50002 (anonymous profiles)"
+    Write-Host "  c chrome --default Start Chrome on the OS-default profile (incompatible with *N)"
     Write-Host "  c chrome --mute-audio --window-size=1280,720"
     Write-Host "                     Any args after chrome[*N][:PORT] are forwarded to the browser"
     Write-Host "  c chrome --fake-media"
@@ -1294,6 +1295,32 @@ function Start-DebugBrowsers {
         [bool]  $UseAnonymous,
         [string[]]$ExtraArgs = @()
     )
+    # Pull out our own meta-flags before anything is forwarded to the browser:
+    #   --fake-media  → synthetic media-stream backend (mjpeg/wav fake cam+mic).
+    #                   Default is REAL devices so screencast/voice testing on
+    #                   actual hardware works without per-launch tweaking; the
+    #                   dev rig opts in by adding this flag.
+    #   --default     → use the OS-standard default profile (omit
+    #                   --user-data-dir entirely) instead of the Playwright
+    #                   profile. Incompatible with multi-instance (*N) — the
+    #                   OS default profile can only be opened by one process.
+    $useFakeMedia = $false
+    $useDefaultProfile = $false
+    $forwardedArgs = @()
+    foreach ($a in $ExtraArgs) {
+        if ($a -eq "--fake-media") {
+            $useFakeMedia = $true
+        } elseif ($a -eq "--default") {
+            $useDefaultProfile = $true
+        } else {
+            $forwardedArgs += $a
+        }
+    }
+    if ($useDefaultProfile -and ($UseAnonymous -or $Count -gt 1)) {
+        Write-Error "${BrowserName}: --default cannot be combined with multi-instance (*N) — the OS default profile can only be opened by a single process"
+        exit 1
+    }
+
     Write-Host "$BrowserName path: $ExePath"
     for ($i = 0; $i -lt $Count; $i++) {
         $port = $StartPort + $i
@@ -1306,23 +1333,11 @@ function Start-DebugBrowsers {
             continue
         }
 
-        $label = if ($UseAnonymous) { "anonymous" } else { "default" }
-        Write-Host "Starting $BrowserName on port $port ($label profile: $profileDir)..." -ForegroundColor Cyan
-        # Pull out our own meta-flag (`--fake-media`) before anything is
-        # forwarded to the browser. If present, Chrome is launched with the
-        # synthetic media-stream backend (mjpeg/wav fake camera + mic);
-        # otherwise Chrome opens the real camera and microphone. Default is
-        # REAL devices so screencast/voice testing on actual hardware works
-        # without per-launch tweaking; the dev rig opts in by adding
-        # `--fake-media`.
-        $useFakeMedia = $false
-        $forwardedArgs = @()
-        foreach ($a in $ExtraArgs) {
-            if ($a -eq "--fake-media") {
-                $useFakeMedia = $true
-            } else {
-                $forwardedArgs += $a
-            }
+        $label = if ($useDefaultProfile) { "OS default" } elseif ($UseAnonymous) { "anonymous" } else { "Playwright" }
+        $profileDesc = if ($useDefaultProfile) { "<OS default>" } else { $profileDir }
+        Write-Host "Starting $BrowserName on port $port ($label profile: $profileDesc)..." -ForegroundColor Cyan
+        if ($useDefaultProfile) {
+            Write-Host "  note: if $BrowserName is already running on the default profile, the new instance will attach to it and ignore --remote-debugging-port" -ForegroundColor DarkYellow
         }
 
         # Permission / capture policy for the debug profile:
@@ -1361,8 +1376,12 @@ function Start-DebugBrowsers {
         # to Y4M and put the flag back with that file.
         $cmdArgs = @(
             "--remote-debugging-port=$port",
-            "--remote-debugging-address=0.0.0.0",
-            "--user-data-dir=`"$profileDir`"",
+            "--remote-debugging-address=0.0.0.0"
+        )
+        if (-not $useDefaultProfile) {
+            $cmdArgs += "--user-data-dir=`"$profileDir`""
+        }
+        $cmdArgs += @(
             "--remote-allow-origins=*",
             "--disable-notifications",
             "--use-fake-ui-for-media-stream",
