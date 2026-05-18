@@ -21,9 +21,12 @@
 .ac-menu {
     @apply hidden absolute z-menu;
     @apply p-1;
-    @apply bg-modal;
     @apply rounded-lg border-modal border;
+    @apply overflow-y-auto overflow-x-hidden;
+    @apply bg-modal;
     @apply pointer-events-auto;
+    max-height: calc(100dvh - 2rem - var(--safe-area-top) - var(--safe-area-bottom));
+    overscroll-behavior: contain;
 }
 .ac-menu {
     animation: ac-menu-show 200ms ease-in-out;
@@ -33,12 +36,12 @@ body.wide .ac-menu {
 }
 body.narrow .ac-menu {
     @apply p-3;
-    @apply overflow-hidden;
     @apply shadow-modal-narrow;
     top: auto !important;
     left: calc(1rem + var(--safe-area-left)) !important;
     right: calc(1rem + var(--safe-area-right));
     bottom: calc(2.5rem + var(--safe-area-bottom));
+    max-height: calc(100dvh - 4.5rem - var(--safe-area-top) - var(--safe-area-bottom));
 }
 
 @keyframes ac-menu-show {

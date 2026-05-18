@@ -12,6 +12,7 @@ import { preventDefaultForEvent } from 'event-handling';
 import { MarkupEditor } from '../MarkupEditor/markup-editor';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 import { localSettings } from '../../../UI.Blazor/Services/Settings/local-settings';
+import { CompactLayout } from 'compact-layout';
 import { getLogs } from 'logging';
 import { AttachmentWebFilePicker, AttachmentWebFilePickerBackend, PickFileResult } from './attachment-web-file-picker';
 
@@ -35,10 +36,10 @@ export class ChatMessageEditor {
     private readonly sideNavObserver: MutationObserver;
     private markupEditor: MarkupEditor;
     private attachmentListElement: HTMLDivElement | null;
-    private lastHeight: number;
     private lastWidth: number;
     private isNarrowScreen: boolean | null = null; // Intended: updateLayout needs this on the first run
     private panelModel: PanelMode | null = null; // Intended: updateLayout needs this on the first run
+    private heightAtFocus: number | null = null;
     private hasContent: boolean | null = null; // Intended: updateHasContent needs this on the first run
     private chatId: string;
     private hasAttachments: boolean;
@@ -69,6 +70,13 @@ export class ChatMessageEditor {
         ScreenSize.event$
             .pipe(takeUntil(this.disposed$))
             .subscribe(this.updateLayout);
+
+        fromEvent(this.input, 'focusin')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(this.onEditorFocus);
+        fromEvent(this.input, 'focusout')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(this.onEditorBlur);
 
         this.backupRequired$.pipe(debounceTime(1000), tap(() => this.saveDraft())).subscribe();
 
@@ -342,56 +350,65 @@ export class ChatMessageEditor {
 
     private updateLayout = () => {
         const width = window.visualViewport?.width ?? window.innerWidth;
-        const height = window.visualViewport?.height ?? window.innerHeight;
         const isNarrowScreen = width < 1024;
 
-        if (this.isNarrowScreen === isNarrowScreen) {
-            if (!isNarrowScreen)
-                return; // Nothing to update in desktop mode
-
-            if (width != this.lastWidth) {
-                // Orientation changed
-                this.lastWidth = width;
-                this.lastHeight = height;
-                return;
-            }
-            if (height == this.lastHeight)
-                return;
-
-            // Maybe mobile keyboard pull-out / pull-in
-            const minHeight = Math.min(height, this.lastHeight);
-            const maxHeight = Math.max(height, this.lastHeight);
-            const keyboardHeight = maxHeight - minHeight;
-            debugLog?.log(`updateLayout: keyboardHeight:`, keyboardHeight, '/', maxHeight);
-            if (keyboardHeight >= 0.2 * maxHeight) {
-                // Mobile keyboard pull-out / pull-in
-                const panelMode = Math.abs(height - minHeight) < 0.01 // FP: height == minHeight
-                    ? 'Narrow'
-                    : 'Normal';
-                if (this.panelModel !== panelMode) {
-                    this.panelModel = panelMode;
-                    if (panelMode === 'Narrow') {
-                        this.editorDiv.classList.remove('to-thick');
-                        this.editorDiv.classList.add('narrow-panel', 'to-thin');
-                    }
-                    else {
-                        this.editorDiv.classList.remove('narrow-panel', 'to-thin');
-                        this.editorDiv.classList.add('to-thick');
-                    }
-                }
-            }
-            this.lastHeight = height;
-            return;
+        if (width !== this.lastWidth) {
+            // Orientation/window width change: re-baseline so a stale heightAtFocus
+            // doesn't trigger the keyboard path with the wrong reference.
+            if (this.heightAtFocus != null)
+                this.heightAtFocus = window.visualViewport?.height ?? window.innerHeight;
+            this.lastWidth = width;
         }
 
+        this.updateKeyboardPanel();
+
+        if (this.isNarrowScreen === isNarrowScreen)
+            return;
+
         this.isNarrowScreen = isNarrowScreen;
-        this.lastHeight = height;
-        this.lastWidth = width;
         const buttons = this.editorDiv.querySelectorAll(':scope div.chat-audio-panel .btn');
         if (isNarrowScreen)
             buttons.forEach(b => b.addEventListener('click', this.onReturnFocusOnInput));
         else
             buttons.forEach(b => b.removeEventListener('click', this.onReturnFocusOnInput));
+    }
+
+    private onEditorFocus = () => {
+        this.heightAtFocus = window.visualViewport?.height ?? window.innerHeight;
+        this.updateKeyboardPanel();
+    }
+
+    private onEditorBlur = () => {
+        this.heightAtFocus = null;
+        this.applyPanelMode('Normal');
+    }
+
+    private updateKeyboardPanel = () => {
+        if (this.heightAtFocus == null)
+            return;
+        const height = window.visualViewport?.height ?? window.innerHeight;
+        const delta = this.heightAtFocus - height;
+        debugLog?.log(`updateKeyboardPanel: delta:`, delta, '/ baseline:', this.heightAtFocus);
+        this.applyPanelMode(delta > 100 ? 'Narrow' : 'Normal');
+    }
+
+    private applyPanelMode = (mode: PanelMode) => {
+        if (this.panelModel === mode)
+            return;
+        const prev = this.panelModel;
+        this.panelModel = mode;
+        if (mode === 'Narrow') {
+            this.editorDiv.classList.remove('to-thick');
+            this.editorDiv.classList.add('narrow-panel', 'to-thin');
+        }
+        else {
+            this.editorDiv.classList.remove('narrow-panel', 'to-thin');
+            this.editorDiv.classList.add('to-thick');
+        }
+        if (mode === 'Narrow' && prev !== 'Narrow')
+            CompactLayout.request('keyboard');
+        else if (mode !== 'Narrow' && prev === 'Narrow')
+            CompactLayout.release('keyboard');
     }
 
     private updateHasContent() {
