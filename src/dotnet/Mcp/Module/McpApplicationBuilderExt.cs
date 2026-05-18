@@ -17,10 +17,10 @@ public static class McpApplicationBuilderExt
             return null;
 
         var settings = app.Services.GetRequiredService<McpSettings>();
-        if (!settings.IsEnabled)
+        var route = settings.Route;
+        if (route.IsNullOrEmpty())
             return null;
 
-        var route = settings.Route;
         app.UseWhen(
             ctx => ctx.Request.Path.StartsWithSegments(route, StringComparison.OrdinalIgnoreCase),
             branch => branch.UseMiddleware<McpAuthMiddleware>());

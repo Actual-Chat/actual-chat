@@ -9,9 +9,11 @@ namespace ActualChat.Mcp.Module;
 public sealed class McpModule(IServiceProvider moduleServices)
     : HostModule<McpSettings>(moduleServices), IServerModule
 {
+    private const string ServerName = "Voxt";
+
     protected override void InjectServices(IServiceCollection services)
     {
-        if (!Settings.IsEnabled || !HostInfo.HasRole(HostRole.Api))
+        if (Settings.Route.IsNullOrEmpty() || !HostInfo.HasRole(HostRole.Api))
             return;
 
         services.TryAddSingleton<Auth.McpSessionAccessor>();
@@ -21,11 +23,11 @@ public sealed class McpModule(IServiceProvider moduleServices)
         serializerOptions.TypeInfoResolver ??= new DefaultJsonTypeInfoResolver();
         services
             .AddMcpServer(o => o.ServerInfo = new Implementation {
-                Name = Settings.ServerName,
-                Version = Settings.ServerVersion,
+                Name = ServerName,
+                Version = ApiConstants.VersionString,
             })
             .WithHttpTransport(o => o.Stateless = true)
-            .WithTools<ChatTools>(serializerOptions)
-            .WithTools<DiscoveryTools>(serializerOptions);
+            .WithTools<MessageTools>(serializerOptions)
+            .WithTools<ChatTools>(serializerOptions);
     }
 }
