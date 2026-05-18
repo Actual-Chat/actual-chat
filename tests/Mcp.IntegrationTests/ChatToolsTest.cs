@@ -1,7 +1,9 @@
 using System.Text.Json;
 using ActualChat.Chat;
+using ActualChat.Contacts;
 using ActualChat.Mcp.Dtos;
 using ActualChat.Testing.Host;
+using ModelContextProtocol.Client;
 
 namespace ActualChat.Mcp.IntegrationTests;
 
@@ -9,143 +11,85 @@ namespace ActualChat.Mcp.IntegrationTests;
 public class ChatToolsTest(McpCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : McpTestBase<McpCollection.AppHostFixture>(fixture, @out)
 {
-    [Fact]
-    public async Task PostMessage_ReturnsLid_AndAppearsInTile()
-    {
-        await Tester.SignInAsUniqueAlice();
-        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
-        var client = await CreateClient();
-
-        var result = await client.CallToolAsync("post_message", new Dictionary<string, object?> {
-            ["chatId"] = chatId.Value,
-            ["text"] = "hello from mcp",
-        });
-        var lid = DeserializeResult<long>(result);
-        lid.Should().BeGreaterThan(0);
-
-        var entry = await Tester.Chats.GetEntry(Tester.Session, ChatEntryId.New(chatId, lid));
-        entry.Should().NotBeNull();
-        entry!.Content.Should().Be("hello from mcp");
-    }
+    private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(10);
 
     [Fact]
-    public async Task EditMessage_UpdatesContent()
+    public async Task ListGroupChats_ReturnsCreatedGroupChat()
     {
-        await Tester.SignInAsUniqueAlice();
-        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
-        var posted = await Tester.CreateTextEntry(chatId, "original");
+        var alice = await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: true, title: "MyGroup");
+        await WaitForContact(ContactId.NewAny(alice.Id, chatId));
+
         var client = await CreateClient();
-
-        var result = await client.CallToolAsync("edit_message", new Dictionary<string, object?> {
-            ["chatId"] = chatId.Value,
-            ["entryId"] = posted.LocalId,
-            ["text"] = "edited",
-        });
-        result.IsError.Should().NotBe(true);
-
-        var entry = await Tester.Chats.GetEntry(Tester.Session, posted.Id);
-        entry!.Content.Should().Be("edited");
-    }
-
-    [Fact]
-    public async Task RemoveMessage_SoftRemovesEntry()
-    {
-        await Tester.SignInAsUniqueAlice();
-        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
-        var posted = await Tester.CreateTextEntry(chatId, "to be removed");
-        var client = await CreateClient();
-
-        var result = await client.CallToolAsync("remove_message", new Dictionary<string, object?> {
-            ["chatId"] = chatId.Value,
-            ["entryId"] = posted.LocalId,
-        });
-        result.IsError.Should().NotBe(true);
-
-        var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(posted.LocalId);
-        var tile = await Tester.Chats.GetTile(Tester.Session, chatId, idTile.Range, CancellationToken.None);
-        tile.Entries.Should().NotContain(e => e.LocalId == posted.LocalId && !e.IsRemoved);
-    }
-
-    [Fact]
-    public async Task GetIdRange_ReturnsInclusiveRange()
-    {
-        await Tester.SignInAsUniqueAlice();
-        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
-        var posted = await Tester.CreateTextEntries(chatId, "hi", 3);
-        var client = await CreateClient();
-
-        var result = await client.CallToolAsync("get_id_range", new Dictionary<string, object?> {
-            ["chatId"] = chatId.Value,
-        });
-        var range = DeserializeResult<IdRange<long>>(result);
-        range.FirstId.Should().BeLessThanOrEqualTo(posted[0].LocalId);
-        range.LastId.Should().Be(posted[^1].LocalId);
-    }
-
-    [Fact]
-    public async Task ListMessages_FromBeginning_ReturnsAllEntriesIncludingFlags()
-    {
-        await Tester.SignInAsUniqueAlice();
-        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
-        var posted = await Tester.CreateTextEntries(chatId, "msg", 5);
-        var client = await CreateClient();
-
-        var result = await client.CallToolAsync("list_messages", new Dictionary<string, object?> {
-            ["chatId"] = chatId.Value,
-            ["afterId"] = null,
+        var result = await client.CallToolAsync("list_group_chats", new Dictionary<string, object?> {
             ["limit"] = 100,
         });
-        var page = DeserializeResult<ListMessagesResult>(result);
-
-        page.Messages.Should().HaveCountGreaterThanOrEqualTo(posted.Length);
-        var textOnly = page.Messages.Where(m => !m.IsSystem).ToArray();
-        textOnly.Select(m => m.Text).Should().Contain(posted.Select(e => e.Content));
-        textOnly.Should().OnlyContain(m =>
-            !m.IsStreaming &&
-            !m.IsTranscribed &&
-            !m.IsRemoved &&
-            !string.IsNullOrEmpty(m.AuthorId));
-        page.FullRange.FirstId.Should().BeLessThanOrEqualTo(posted[0].LocalId);
-        page.FullRange.LastId.Should().Be(posted[^1].LocalId);
+        var page = DeserializeResult<ListChatsResult>(result);
+        page.Chats.Should().Contain(c => c.Id == chatId.Value && c.Title == "MyGroup" && c.IsPublic);
     }
 
     [Fact]
-    public async Task ListMessages_AfterId_SkipsPreviousEntries()
+    public async Task ListPlaces_AndListPlaceChats_RoundTrip()
     {
-        await Tester.SignInAsUniqueAlice();
-        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
-        var posted = await Tester.CreateTextEntries(chatId, "msg", 6);
-        var client = await CreateClient();
+        var alice = await Tester.SignInAsUniqueAlice();
+        var place = await Tester.CreatePlace(isPublicPlace: true, title: "MyPlace");
+        await WaitForPlaceContact(place.Id);
+        var (placeChatId, _) = await Tester.CreateChat(x => x with {
+            IsPublic = true, Kind = null, Title = "InPlace", PlaceId = place.Id,
+        });
+        await WaitForContact(ContactId.NewAny(alice.Id, placeChatId));
 
-        var result = await client.CallToolAsync("list_messages", new Dictionary<string, object?> {
-            ["chatId"] = chatId.Value,
-            ["afterId"] = posted[2].LocalId,
+        var client = await CreateClient();
+        var placesResult = await client.CallToolAsync("list_places", new Dictionary<string, object?> {
             ["limit"] = 100,
         });
-        var page = DeserializeResult<ListMessagesResult>(result);
+        var placesPage = DeserializeResult<ListPlacesResult>(placesResult);
+        placesPage.Places.Should().Contain(p => p.Id == place.Id.Value && p.Title == "MyPlace" && p.IsPublic);
 
-        page.Messages.Should().NotContain(m => m.Id <= posted[2].LocalId);
-        page.Messages.Should().Contain(m => m.Id == posted[3].LocalId);
+        var chatsResult = await client.CallToolAsync("list_place_chats", new Dictionary<string, object?> {
+            ["placeId"] = place.Id.Value,
+            ["limit"] = 100,
+        });
+        var chatsPage = DeserializeResult<ListChatsResult>(chatsResult);
+        chatsPage.Chats.Should().Contain(c => c.Id == placeChatId.Value && c.Title == "InPlace");
     }
 
     [Fact]
-    public async Task ListMessages_OmitsRemovedEntries()
+    public async Task ListPeerChats_ReturnsPeer()
     {
-        await Tester.SignInAsUniqueAlice();
-        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
-        var entries = await Tester.CreateTextEntries(chatId, "msg", 3);
-        await Tester.RemoveTextEntry(entries[1].Id);
-        var client = await CreateClient();
+        var alice = await Tester.SignInAsUniqueAlice();
+        var bob = await Tester.SignInAsUniqueBob();
+        var peerChatId = PeerChatId.New(alice.Id, bob.Id);
 
-        var result = await client.CallToolAsync("list_messages", new Dictionary<string, object?> {
-            ["chatId"] = chatId.Value,
-            ["afterId"] = null,
+        await Tester.CreateTextEntry(peerChatId, "hi alice");
+        await Tester.SignIn(alice);
+        await Tester.CreateTextEntry(peerChatId, "hi bob");
+        await WaitForContact(ContactId.NewUser(alice.Id, bob.Id));
+
+        var client = await CreateClient();
+        var result = await client.CallToolAsync("list_peer_chats", new Dictionary<string, object?> {
             ["limit"] = 100,
         });
-        var page = DeserializeResult<ListMessagesResult>(result);
+        var page = DeserializeResult<ListChatsResult>(result);
+        page.Chats.Should().Contain(c => c.Id == peerChatId.Value);
+    }
 
-        page.Messages.Should().NotContain(m => m.Id == entries[1].LocalId);
-        page.Messages.Should().Contain(m => m.Id == entries[0].LocalId);
-        page.Messages.Should().Contain(m => m.Id == entries[2].LocalId);
+    private Task WaitForContact(ContactId contactId)
+    {
+        var contacts = Tester.AppServices.GetRequiredService<IContacts>();
+        var placeId = contactId.ChatId is PlaceChatId placeChatId ? placeChatId.PlaceId : (PlaceId?)null;
+        return ComputedTest.When(async ct => {
+            var ids = await contacts.ListIds(Tester.Session, placeId, ct);
+            ids.Should().Contain(contactId);
+        }, WaitTimeout);
+    }
+
+    private Task WaitForPlaceContact(PlaceId placeId)
+    {
+        var contacts = Tester.AppServices.GetRequiredService<IContacts>();
+        return ComputedTest.When(async ct => {
+            var ids = await contacts.ListPlaceIds(Tester.Session, ct);
+            ids.Should().Contain(placeId);
+        }, WaitTimeout);
     }
 }

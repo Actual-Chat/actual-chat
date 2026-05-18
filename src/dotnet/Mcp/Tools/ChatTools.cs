@@ -1,145 +1,151 @@
 using System.ComponentModel;
 using ActualChat.Chat;
+using ActualChat.Contacts;
 using ActualChat.Mcp.Auth;
 using ActualChat.Mcp.Dtos;
+using ActualChat.Users;
 using ModelContextProtocol.Server;
 
 namespace ActualChat.Mcp.Tools;
 
 [McpServerToolType]
-public sealed class ChatTools(IChats chats, IAuthors authors, ICommander commander, McpSessionAccessor sessions)
+public sealed class ChatTools(IServiceProvider services)
 {
     private const int MaxLimit = 1024;
 
-    [McpServerTool(Name = "post_message", UseStructuredContent = true)]
-    [Description("Post a new text message to a chat. Returns the new entry's local id (LID).")]
-    public async Task<long> PostMessage(
-        [Description("The chat id (e.g. group, peer, or place chat id).")] string chatId,
-        [Description("The message text.")] string text,
-        CancellationToken cancellationToken)
-    {
-        var parsedChatId = ChatId.Parse(chatId);
-        var command = new Chats_UpsertEntry(sessions.Session, parsedChatId, null) { Text = text };
-        var entry = await commander.Call(command, cancellationToken).ConfigureAwait(false);
-        return entry.LocalId;
-    }
+    private IContacts Contacts { get; } = services.GetRequiredService<IContacts>();
+    private IChats Chats { get; } = services.GetRequiredService<IChats>();
+    private IPlaces Places { get; } = services.GetRequiredService<IPlaces>();
+    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private McpSessionAccessor SessionAccessor { get; } = services.GetRequiredService<McpSessionAccessor>();
 
-    [McpServerTool(Name = "edit_message", UseStructuredContent = true)]
-    [Description("Edit an existing text message by its local id.")]
-    public async Task EditMessage(
-        [Description("The chat id.")] string chatId,
-        [Description("The message local id (LID).")] long entryId,
-        [Description("The new message text.")] string text,
-        CancellationToken cancellationToken)
-    {
-        var parsedChatId = ChatId.Parse(chatId);
-        var command = new Chats_UpsertEntry(sessions.Session, parsedChatId, entryId) { Text = text };
-        await commander.Call(command, cancellationToken).ConfigureAwait(false);
-    }
+    private Session Session => SessionAccessor.Session;
 
-    [McpServerTool(Name = "remove_message", UseStructuredContent = true)]
-    [Description("Soft-remove a message by its local id.")]
-    public async Task RemoveMessage(
-        [Description("The chat id.")] string chatId,
-        [Description("The message local id (LID).")] long entryId,
-        CancellationToken cancellationToken)
-    {
-        var parsedChatId = ChatId.Parse(chatId);
-        var command = new Chats_RemoveEntry(sessions.Session, parsedChatId, entryId);
-        await commander.Call(command, cancellationToken).ConfigureAwait(false);
-    }
-
-    [McpServerTool(Name = "get_id_range", UseStructuredContent = true)]
-    [Description("Returns the inclusive LID range {firstId, lastId} for the chat. " +
-        "Removed entries are skipped, so there may be gaps in the LID sequence returned by list_messages.")]
-    public async Task<IdRange<long>> GetIdRange(
-        [Description("The chat id.")] string chatId,
-        CancellationToken cancellationToken)
-    {
-        var parsedChatId = ChatId.Parse(chatId);
-        var range = await chats.GetIdRange(sessions.Session, parsedChatId, cancellationToken).ConfigureAwait(false);
-        return ToInclusive(range);
-    }
-
-    [McpServerTool(Name = "list_messages", UseStructuredContent = true)]
-    [Description("Lists up to `limit` messages with LID > `afterId`. " +
-        "Returns the inclusive range of the messages, the chat's full inclusive range, and the messages themselves. " +
-        "Removed entries are skipped (their LIDs appear as gaps); system and streaming entries are included. " +
-        "If `afterId` is null, starts from the beginning of the chat. `limit` is capped at 1024.")]
-    public async Task<ListMessagesResult> ListMessages(
-        [Description("The chat id.")] string chatId,
-        [Description("Return messages with id > afterId. Use null to start from the beginning.")] long? afterId = null,
-        [Description("Max messages to return; capped at 1024.")] int limit = 256,
+    [McpServerTool(Name = "list_group_chats", UseStructuredContent = true)]
+    [Description("Lists group chats the caller has access to (excludes peer/place chats). " +
+        "`afterId` is exclusive; pass null to start from the beginning. `limit` is capped at 1024.")]
+    public async Task<ListChatsResult> ListGroupChats(
+        [Description("Return chats with id > afterId. Use null to start from the beginning.")] string? afterId = null,
+        [Description("Max chats to return; capped at 1024.")] int limit = 256,
         CancellationToken cancellationToken = default)
     {
-        var session = sessions.Session;
-        var parsedChatId = ChatId.Parse(chatId);
-        limit = Math.Clamp(limit, 1, MaxLimit);
-
-        var rawFullRange = await chats.GetIdRange(session, parsedChatId, cancellationToken).ConfigureAwait(false);
-        var fullRange = ToInclusive(rawFullRange);
-
-        if (rawFullRange.IsEmptyOrNegative)
-            return new ListMessagesResult(new IdRange<long>(fullRange.FirstId, fullRange.FirstId - 1), fullRange, []);
-
-        var startLid = (afterId ?? -1) + 1;
-        if (startLid < rawFullRange.Start)
-            startLid = rawFullRange.Start;
-        if (startLid >= rawFullRange.End)
-            return new ListMessagesResult(new IdRange<long>(startLid, startLid - 1), fullRange, []);
-
-        var tileLayer = Constants.Chat.ServerIdTileStack.FirstLayer;
-        var collected = new List<ChatEntry>(limit);
-        var tile = tileLayer.GetTile(startLid);
-        while (collected.Count < limit && tile.Start < rawFullRange.End) {
-            var chatTile = await chats
-                .GetTile(session, parsedChatId, tile.Range, cancellationToken)
-                .ConfigureAwait(false);
-            foreach (var entry in chatTile.Entries) {
-                if (entry.LocalId < startLid)
-                    continue;
-                collected.Add(entry);
-                if (collected.Count >= limit)
-                    break;
-            }
-            tile = tile.Next();
-        }
-
-        var distinctAuthorIds = collected.Select(e => e.AuthorId).Distinct().ToArray();
-        var authorById = new Dictionary<AuthorId, Author?>(distinctAuthorIds.Length);
-        var fetched = await Task.WhenAll(distinctAuthorIds.Select(id =>
-            authors.Get(session, parsedChatId, id, cancellationToken)))
+        var contactIds = await Contacts.ListIds(Session, placeId: null, cancellationToken).ConfigureAwait(false);
+        var chatIds = contactIds
+            .Where(id => id.Kind == ContactKind.Chat && id.ChatId is GroupChatId)
+            .Select(id => id.ChatId)
+            .ToArray();
+        var page = Page(chatIds, afterId, limit, chatId => chatId.Value);
+        var infos = await Task.WhenAll(page.Select(id => ResolveChatInfo(id, cancellationToken)))
             .ConfigureAwait(false);
-        for (var i = 0; i < distinctAuthorIds.Length; i++)
-            authorById[distinctAuthorIds[i]] = fetched[i];
-
-        var messages = collected.Select(e => ToDto(e, authorById)).ToArray();
-        var rangeOut = messages.Length == 0
-            ? new IdRange<long>(startLid, startLid - 1)
-            : new IdRange<long>(messages[0].Id, messages[^1].Id);
-        return new ListMessagesResult(rangeOut, fullRange, messages);
+        return new ListChatsResult(infos.Where(i => i is not null).Cast<ChatInfo>().ToArray());
     }
 
-    private static MessageDto ToDto(ChatEntry entry, Dictionary<AuthorId, Author?> authorById)
+    [McpServerTool(Name = "list_places", UseStructuredContent = true)]
+    [Description("Lists places the caller has access to. " +
+        "`afterId` is exclusive; pass null to start from the beginning. `limit` is capped at 1024.")]
+    public async Task<ListPlacesResult> ListPlaces(
+        [Description("Return places with id > afterId. Use null to start from the beginning.")] string? afterId = null,
+        [Description("Max places to return; capped at 1024.")] int limit = 256,
+        CancellationToken cancellationToken = default)
     {
-        var authorName = authorById.GetValueOrDefault(entry.AuthorId)?.Avatar?.Name ?? "";
-        var isStreaming = entry.IsContentStreaming;
-        var text = isStreaming ? "" : entry.Content;
-        return new MessageDto(
-            entry.LocalId,
-            entry.Version,
-            (long)(entry.BeginsAt - Moment.EpochStart).TotalMilliseconds,
-            entry.AuthorId.Value,
-            authorName,
-            entry.IsSystemEntry,
-            isStreaming,
-            entry.HasAudio,
-            entry.IsRemoved,
-            text);
+        var placeIds = await Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
+        var page = Page(placeIds, afterId, limit, placeId => placeId.Value);
+        var infos = await Task.WhenAll(page.Select(id => ResolvePlaceInfo(id, cancellationToken)))
+            .ConfigureAwait(false);
+        return new ListPlacesResult(infos.Where(i => i is not null).Cast<PlaceInfo>().ToArray());
     }
 
-    private static IdRange<long> ToInclusive(Range<long> range)
-        => range.IsEmptyOrNegative
-            ? new IdRange<long>(range.Start, range.Start - 1)
-            : new IdRange<long>(range.Start, range.End - 1);
+    [McpServerTool(Name = "list_place_chats", UseStructuredContent = true)]
+    [Description("Lists chats inside a place the caller has access to. " +
+        "`afterId` is exclusive; pass null to start from the beginning. `limit` is capped at 1024.")]
+    public async Task<ListChatsResult> ListPlaceChats(
+        [Description("The place id.")] string placeId,
+        [Description("Return chats with id > afterId. Use null to start from the beginning.")] string? afterId = null,
+        [Description("Max chats to return; capped at 1024.")] int limit = 256,
+        CancellationToken cancellationToken = default)
+    {
+        var parsedPlaceId = PlaceId.Parse(placeId);
+        var contactIds = await Contacts.ListIds(Session, parsedPlaceId, cancellationToken).ConfigureAwait(false);
+        var chatIds = contactIds
+            .Where(id => id.Kind == ContactKind.Chat)
+            .Select(id => id.ChatId)
+            .ToArray();
+        var page = Page(chatIds, afterId, limit, chatId => chatId.Value);
+        var infos = await Task.WhenAll(page.Select(id => ResolveChatInfo(id, cancellationToken)))
+            .ConfigureAwait(false);
+        return new ListChatsResult(infos.Where(i => i is not null).Cast<ChatInfo>().ToArray());
+    }
+
+    [McpServerTool(Name = "list_peer_chats", UseStructuredContent = true)]
+    [Description("Lists peer (direct) chats the caller has with other users. " +
+        "`afterId` is exclusive; pass null to start from the beginning. `limit` is capped at 1024.")]
+    public async Task<ListChatsResult> ListPeerChats(
+        [Description("Return chats with id > afterId. Use null to start from the beginning.")] string? afterId = null,
+        [Description("Max chats to return; capped at 1024.")] int limit = 256,
+        CancellationToken cancellationToken = default)
+    {
+        var ownAccount = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
+        var contactIds = await Contacts.ListIds(Session, placeId: null, cancellationToken).ConfigureAwait(false);
+        var peerChatIds = contactIds
+            .Where(id => id.Kind == ContactKind.User && id.ChatId is PeerChatId)
+            .Select(id => (PeerChatId)id.ChatId)
+            .ToArray();
+        var page = Page(peerChatIds, afterId, limit, peerChatId => peerChatId.Value);
+        var infos = await Task.WhenAll(page.Select(id =>
+                ResolvePeerChatInfo(id, ownAccount.Id, cancellationToken)))
+            .ConfigureAwait(false);
+        return new ListChatsResult(infos.Where(i => i is not null).Cast<ChatInfo>().ToArray());
+    }
+
+    // Private methods
+
+    private async Task<ChatInfo?> ResolveChatInfo(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return chat is null ? null : new ChatInfo(chat.Id.Value, chat.IsPublic, chat.Title);
+    }
+
+    private async Task<ChatInfo?> ResolvePeerChatInfo(
+        PeerChatId peerChatId, UserId ownUserId, CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(Session, peerChatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null)
+            return null;
+
+        var title = chat.Title;
+        if (title.IsNullOrEmpty()) {
+            var otherUserId = peerChatId.AnotherUserId(ownUserId);
+            var otherAccount = await Accounts.Get(Session, otherUserId, cancellationToken).ConfigureAwait(false);
+            title = otherAccount?.Avatar?.Name ?? "";
+        }
+        return new ChatInfo(chat.Id.Value, chat.IsPublic, title);
+    }
+
+    private async Task<PlaceInfo?> ResolvePlaceInfo(PlaceId placeId, CancellationToken cancellationToken)
+    {
+        var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
+        return place is null ? null : new PlaceInfo(place.Id.Value, place.IsPublic, place.Title);
+    }
+
+    private static T[] Page<T>(IReadOnlyList<T> items, string? afterId, int limit, Func<T, string> idSelector)
+    {
+        limit = Math.Clamp(limit, 1, MaxLimit);
+        var startIndex = 0;
+        if (!afterId.IsNullOrEmpty()) {
+            for (var i = 0; i < items.Count; i++) {
+                if (string.Equals(idSelector(items[i]), afterId, StringComparison.Ordinal)) {
+                    startIndex = i + 1;
+                    break;
+                }
+            }
+        }
+        if (startIndex >= items.Count)
+            return [];
+
+        var count = Math.Min(limit, items.Count - startIndex);
+        var result = new T[count];
+        for (var i = 0; i < count; i++)
+            result[i] = items[startIndex + i];
+        return result;
+    }
 }
