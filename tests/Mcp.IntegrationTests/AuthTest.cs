@@ -53,6 +53,25 @@ public class AuthTest(McpCollection.AppHostFixture fixture, ITestOutputHelper @o
         await connect.Should().ThrowAsync<HttpRequestException>();
     }
 
+    [Fact]
+    public async Task NonexistentApiKey_IsRejected()
+    {
+        // Well-formed API key (passes Session.IsValid and Kind == ApiKey)
+        // but no matching row in the sessions table.
+        var fakeKey = SessionExt.NewApiKey();
+        fakeKey.Kind.Should().Be(SessionKind.ApiKey);
+
+        var connect = CreateClientWithRawKey(fakeKey.Id).AsAsyncFunc();
+        await connect.Should().ThrowAsync<HttpRequestException>();
+    }
+
+    [Fact]
+    public async Task MalformedBearerToken_IsRejected()
+    {
+        var response = await SendInitialize(authorization: "Bearer not-a-valid-session-id");
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.Unauthorized);
+    }
+
     private async Task<HttpResponseMessage> SendInitialize(string? authorization)
     {
         var baseUri = Tester.UrlMapper.BaseUri;
