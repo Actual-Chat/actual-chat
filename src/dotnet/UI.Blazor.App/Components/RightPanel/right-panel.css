@@ -5,6 +5,7 @@
     @apply border-l border-transparent;
     @apply bg-03;
     @apply overflow-hidden;
+    contain: layout;
 }
 .right-panel .tab-panel > .divider {
     @apply mx-6;
@@ -240,7 +241,7 @@ body.hoverable .right-panel-chat-info-item.hovered:hover,
 
 .right-panel > .c-header > .c-center > .c-buttons {
     @apply flex-1 flex-x items-center justify-end gap-x-3;
-    @apply max-w-160;
+    @apply max-w-240;
     @apply overflow-hidden;
     @apply opacity-100;
     transition:
@@ -386,13 +387,7 @@ body.hoverable .thread-list-item:hover,
     @apply custom-scrollbar overflow-y-auto;
 }
 .media-list-tab > .c-content {
-    @apply grid gap-px;
-    grid-template-columns: repeat(3, 1fr);
-}
-@media (min-width: 820px) and (max-width: 1279.8px) {
-    .media-list-tab > .c-content {
-        grid-template-columns: repeat(4, 1fr);
-    }
+    @apply grid gap-px grid-cols-3 md:grid-cols-4 lg:grid-cols-3;
 }
 .media-list-tab > .c-content .image-attachment {
     @apply w-full;

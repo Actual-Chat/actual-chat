@@ -2,6 +2,7 @@
     @apply flex-1 flex-x;
     @apply h-full;
     @apply bg-04;
+    @apply gap-x-1;
 }
 .left-panel .tab-panel > .divider {
     @apply mx-3;
@@ -9,9 +10,13 @@
 .left-panel-buttons {
     @apply z-10;
     @apply flex-none flex-x;
-    @apply lg:w-30 h-full;
-    @apply px-1 lg:px-3;
+    @apply md:w-18 lg:w-16 xl:w-24 h-full;
+    @apply px-1;
     @apply bg-04;
+    @apply md:transition-[width,padding] md:duration-250 md:ease-[cubic-bezier(0.32,0.72,0,1)] lg:transition-none;
+}
+.page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) .left-panel-buttons {
+    @apply md:w-24 lg:w-16 xl:w-24;
 }
 .left-panel-buttons > .c-spacer {
     @apply hidden md:flex grow;
@@ -51,6 +56,7 @@
     @apply w-full h-full;
     @apply bg-03;
     @apply overflow-hidden;
+    contain: layout;
 }
 .left-panel-content .left-panel-content-main-wrapper {
     @apply relative;

@@ -2,21 +2,16 @@
     @apply isolate;
     @apply fixed md:relative;
     @apply z-button;
-    @apply h-full w-full;
+    @apply h-full w-auto;
     @apply text-02 bg-02;
     @apply top-0 bottom-0;
     @apply z-20;
+    @apply md:left-0 md:right-auto md:w-full;
     left: var(--safe-area-left);
     right: var(--safe-area-right);
-    width: auto;
     transform: none;
     touch-action: manipulation;
     will-change: transform; /* Ensures its own composition layer */
-}
-@media (min-width: 820px) {
-    .side-nav {
-        @apply left-0 right-auto w-full;
-    }
 }
 
 body.device-ios .side-nav {
@@ -37,41 +32,36 @@ body.device-ios .side-nav {
 /* Left SideNav */
 .side-nav.side-nav-left {
     @apply flex-none flex-y;
-    @apply md:w-96 lg:w-112 xl:w-128 2xl:w-144;
+    @apply md:w-96 lg:w-96 xl:w-128;
 }
 .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) > .side-nav.side-nav-left {
-    @apply md:w-1/2 lg:w-112 xl:w-128 2xl:w-144;
-    @apply md:transition-width md:duration-200 md:ease-linear md:delay-0 lg:transition-none;
+    @apply md:w-1/2 lg:w-96 xl:w-128;
+    @apply md:transition-width md:duration-250 md:ease-[cubic-bezier(0.32,0.72,0,1)] md:delay-0 lg:transition-none;
 }
 body.narrow .side-nav.side-nav-left[data-side-nav="closed"] {
     transform: translate3d(-100%, 0, 0);
 }
 
-/* Right SideNav */
+/* Right SideNav
+   md (820–1099): overlay covering the right half — Tailwind md: variants set absolute/w-1/2/left-1/2.
+   lg+ (≥1100):   in flow, slides via margin-right — lg: variants override the md ones. */
 .side-nav.side-nav-right {
     @apply flex-none flex-y;
-    @apply lg:w-96 xl:w-112 2xl:w-128;
+    @apply md:absolute md:w-1/2 md:left-1/2;
+    @apply md:transition-transform md:duration-250 md:ease-[cubic-bezier(0.32,0.72,0,1)];
+    @apply lg:relative lg:left-auto lg:w-88 xl:w-112;
+    @apply lg:transition-[margin-right] lg:duration-250 lg:ease-[cubic-bezier(0.32,0.72,0,1)];
+}
+.side-nav.side-nav-right[data-side-nav="open"] {
+    @apply lg:w-88;
+    @apply md:shadow-[-1px_0_0_var(--separator)] lg:shadow-none;
 }
 .side-nav.side-nav-right[data-side-nav="closed"] {
-    @apply lg:-mr-96 xl:-mr-112 2xl:-mr-128;
+    @apply md:translate-x-full;
+    @apply lg:translate-x-0 lg:-mr-88 xl:-mr-112;
 }
 body.narrow .side-nav.side-nav-right[data-side-nav="closed"] {
     transform: translate3d(100%, 0, 0);
-}
-@media (min-width: 820px) and (max-width: 1279.98px) {
-    .side-nav.side-nav-right {
-        @apply absolute;
-        @apply w-1/2;
-        @apply left-1/2;
-        transform: translate3d(0, 0, 0);
-        transition: transform 200ms linear;
-    }
-    .side-nav.side-nav-right[data-side-nav="open"] {
-        box-shadow: -1px 0 0 var(--separator);
-    }
-    .side-nav.side-nav-right[data-side-nav="closed"] {
-        transform: translate3d(100%, 0, 0);
-    }
 }
 @keyframes show-side-nav-content {
     from { filter: opacity(0); }
@@ -81,11 +71,6 @@ body.narrow .side-nav.side-nav-right[data-side-nav="closed"] {
     from { filter: opacity(1); }
     to { filter: opacity(0); }
 }
-@media (min-width: 1280px) {
-    .side-nav.side-nav-right {
-        transition: margin-right 200ms linear;
-    }
-}
 
 
 /* removed rules that hides opposite side nav when one is open to prevent virtual list from jumping in narrow mode */
@@ -93,4 +78,34 @@ body.narrow .side-nav.side-nav-right[data-side-nav="closed"] {
 /* This rule prioritizes left SideNav over the right one when both are open */
 body.narrow.side-nav-right-open .side-nav.side-nav-left.open {
     @apply block;
+}
+
+/* Narrow overrides — apply when body.narrow is set, including md+mobile.
+   Must come last so they win over the @media (min-width: 820px) and (min-width: 1100px)
+   blocks above (same specificity, source order decides). */
+body.narrow .side-nav {
+    @apply fixed w-auto;
+    left: var(--safe-area-left);
+    right: var(--safe-area-right);
+    transform: none;
+}
+body.narrow .side-nav.side-nav-left,
+body.narrow .side-nav.side-nav-right {
+    @apply w-auto;
+    transition: transform 250ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+body.narrow .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) > .side-nav.side-nav-left {
+    @apply w-auto;
+}
+body.narrow .side-nav.side-nav-right {
+    @apply mr-0;
+}
+body.narrow .side-nav.side-nav-left[data-side-nav="closed"] {
+    transform: translate3d(-100%, 0, 0);
+}
+body.narrow .side-nav.side-nav-right[data-side-nav="closed"] {
+    transform: translate3d(100%, 0, 0);
+}
+body.narrow .side-nav.side-nav-right[data-side-nav="open"] {
+    box-shadow: none;
 }

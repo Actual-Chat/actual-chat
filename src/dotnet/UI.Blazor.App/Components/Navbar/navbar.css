@@ -6,7 +6,7 @@
 .navbar-button {
     @apply relative;
     @apply flex-none flex-x items-center justify-end;
-    @apply md:w-16 lg:w-20;
+    @apply md:w-16 xl:w-20;
 }
 .navbar-button .btn-square {
     @apply min-h-0;
@@ -44,7 +44,7 @@ body.hoverable .navbar-chat-buttons .navbar-button .left-line:hover {
 body.hoverable .navbar-place-buttons .navbar-button .hover-zone,
 body.hoverable .navbar-chat-buttons .navbar-button .hover-zone {
     @apply absolute left-0;
-    @apply h-full md:w-4 lg:w-6;
+    @apply h-full md:w-4 xl:w-6;
     @apply hover:cursor-move;
 }
 .touch-capable .navbar-place-buttons .navbar-button .hover-zone,
@@ -69,7 +69,7 @@ body.hoverable .navbar-chat-buttons .navbar-button:has(.hover-zone:hover) .left-
     @apply cursor-move;
 }
 .navbar-button:hover > .c-dots {
-    @apply lg:flex;
+    @apply xl:flex;
 }
 
 /* Navbar content */
