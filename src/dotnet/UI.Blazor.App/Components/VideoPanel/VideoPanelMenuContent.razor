@@ -17,16 +17,16 @@
 
 <div class="video-panel-menu">
     @if (hasLayoutActions) {
-        @if (a.CanToggleFullscreen) {
+        @if (a.CanToggleFullscreen && !isExpanded) {
             <MenuEntry
-                Icon="@(isExpanded ? "icon-collapse" : "icon-expand")"
-                Text="@(isExpanded ? "Exit fullscreen" : "Fullscreen")"
+                Icon="icon-expand"
+                Text="Fullscreen"
                 Click="@OnToggleFullscreen"/>
         }
-        @if (a.CanToggleIsland) {
+        @if (a.CanToggleIsland && !isCollapsed) {
             <MenuEntry
-                Icon="@(isCollapsed ? "icon-video-expand" : "icon-video-collapse")"
-                Text="@(isCollapsed ? "Restore" : "Float")"
+                Icon="icon-video-collapse"
+                Text="Float"
                 Click="@OnToggleIsland"/>
         }
         @if (a.CanMinimize) {

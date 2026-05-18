@@ -91,8 +91,8 @@
                     Class="btn-video-panel video-panel-collapse-toggle"
                     StopPropagation="true"
                     PreventDefault="true"
-                    Click="@(() => ChatVideoUI.SetVideoPanelCollapsed(false))">
-                    <i class="icon-video-expand text-lg"></i>
+                    Click="@(() => ChatVideoUI.SetVideoPanelExpanded(true))">
+                    <i class="icon-expand text-lg"></i>
                 </HeaderButton>
                 <HeaderButton
                     Class="btn-video-panel talking"
@@ -339,6 +339,13 @@
         _lastExpanded = false;
         CloseExpandStep();
         await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnForceIsland(bool active)
+    {
+        ChatVideoUI.SetVideoPanelCollapsed(active);
+        return Task.CompletedTask;
     }
 
     private async Task WaitForExpandStepClosed(HistoryStepRef stepRef)

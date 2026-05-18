@@ -1,5 +1,6 @@
 import { fromEvent, Subject, takeUntil, filter } from 'rxjs';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
+import { CompactLayout } from 'compact-layout';
 
 // Inline drag constants
 const INLINE_FULL_HEIGHT_REM = 12; // body.narrow min-h-48 max-h-48
@@ -69,6 +70,8 @@ export class VideoPanel {
     private islandResizeObserver: ResizeObserver | null = null;
     private islandTeardown$: Subject<void> | null = null;
     private panelMode: 'inline' | 'island' | 'pill' = 'inline';
+    private compactReasons = new Set<string>();
+    private forcedCollapseActive = false;
     private closeTimer = 0;
     private closeContent: Element | null = null;
     private closeComplete: (() => void) | null = null;
@@ -106,6 +109,49 @@ export class VideoPanel {
                 filter(e => e.key === 'Escape')
             )
             .subscribe(() => this.onEscPress());
+
+        // Fold to island whenever any layout source requests compact mode
+        // (on-screen keyboard, landscape mobile, etc.), restore when all sources release.
+        fromEvent<CustomEvent<{ reason: string }>>(document, 'chat-layout:request-compact')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(e => this.addCompactReason(e.detail.reason));
+        fromEvent<CustomEvent<{ reason: string }>>(document, 'chat-layout:release-compact')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(e => this.removeCompactReason(e.detail.reason));
+        // Bootstrap from any reasons already active (e.g. app opened in landscape mobile).
+        for (const reason of CompactLayout.reasons)
+            this.compactReasons.add(reason);
+        this.syncForcedCollapseToBlazor();
+    }
+
+    private syncForcedCollapseToBlazor(): void {
+        const wantCompact = this.compactReasons.size > 0;
+        if (wantCompact) {
+            // Re-force whenever Blazor has cleared the collapsed state but compact is still wanted
+            // (e.g. SetVideoPanelExpanded(true) has the side effect of setting IsCollapsed=false).
+            if (!this.isExpanded() && !this.isCollapsed()) {
+                this.forcedCollapseActive = true;
+                void this.blazorRef.invokeMethodAsync('OnForceIsland', true);
+            }
+        }
+        else if (this.forcedCollapseActive) {
+            this.forcedCollapseActive = false;
+            void this.blazorRef.invokeMethodAsync('OnForceIsland', false);
+        }
+    }
+
+    private addCompactReason = (reason: string): void => {
+        if (this.compactReasons.has(reason))
+            return;
+        this.compactReasons.add(reason);
+        this.syncForcedCollapseToBlazor();
+    }
+
+    private removeCompactReason = (reason: string): void => {
+        if (!this.compactReasons.has(reason))
+            return;
+        this.compactReasons.delete(reason);
+        this.syncForcedCollapseToBlazor();
     }
 
     // Safety net: if the panel ever ends up under <body> without any of the
@@ -1133,14 +1179,26 @@ export class VideoPanel {
             return;
 
         this.resetZoom();
-        // Reparent BEFORE removing 'expanded' — otherwise the panel briefly
-        // renders as inline-positioned while still attached to document.body.
-        this.restoreToParent();
+        // If compact reasons still demand island mode, stay attached to body — no point
+        // restoring to the inline parent only to setupIsland() will reparent right back.
+        // Going via inline causes a visible "video lands in chat header" flash.
+        const willReForceIsland = this.compactReasons.size > 0;
+        if (!willReForceIsland)
+            this.restoreToParent();
         this.videoPanel.classList.remove('expanded', 'toolbar-hidden');
         this.setDragHandleVisible(true);
-        // Resume ScreenSize updates; re-sync body classes to the current orientation.
         ScreenSize.unfreeze();
         void this.blazorRef.invokeMethodAsync('OnCollapsed');
+        if (willReForceIsland)
+            this.videoPanel.classList.add('collapsed');
+        // While fullscreen, panelMode stayed at whatever it was before expand() ran.
+        // Reset so updatePanelMode runs the real transition from the current class state.
+        this.panelMode = 'inline';
+        this.updatePanelMode();
+        if (willReForceIsland) {
+            this.forcedCollapseActive = true;
+            void this.blazorRef.invokeMethodAsync('OnForceIsland', true);
+        }
     }
 
     private restoreToParent(): void {

@@ -405,7 +405,8 @@ body.narrow .list-view-layout .layout-header.collapsed .chat-header-title {
 .header-activity-panel-wrapper {
     @apply flex-x items-center;
     @apply w-full h-14;
-    transition: height 0.5s ease;
+    contain: layout style;
+    transition: height 0.3s cubic-bezier(0.32, 0.72, 0, 1);
 }
 .layout-header.collapsed .header-activity-panel-wrapper {
     @apply h-0;

@@ -187,8 +187,9 @@ body.wide .video-panel.expanded .video-panel-content {
     @apply justify-start;
 }
 /* Default (inline) state — not collapsed, not expanded */
-body.narrow .video-panel:not(.collapsed):not(.expanded) {
-    @apply min-h-48 max-h-48;
+body.narrow .video-panel:not(.collapsed):not(.expanded),
+body.device-mobile .video-panel:not(.collapsed):not(.expanded) {
+    @apply min-h-48 max-h-[50dvh];
 }
 /* Minimized — panel height 0, transparent */
 body.narrow .video-panel.minimized:not(.collapsed):not(.expanded) {

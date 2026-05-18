@@ -3,6 +3,7 @@ import { filter, takeUntil, throttleTime } from 'rxjs/operators';
 import { Gesture, Gestures } from 'gestures';
 import { DocumentEvents, tryPreventDefaultForEvent } from 'event-handling';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
+import { CompactLayout } from 'compact-layout';
 import { Disposables } from 'disposable';
 
 // Wrapper height (the only animated element for collapse/expand)
@@ -36,6 +37,8 @@ export class ChatActivityPanel {
     private isPinned = false;
     private lockUntil = 0;
     private isMoving = false;
+    private compactReasons = new Set<string>();
+    private forcedCollapseActive = false;
 
     static create(activityPanel: HTMLElement): ChatActivityPanel {
         return new ChatActivityPanel(activityPanel);
@@ -97,6 +100,44 @@ export class ChatActivityPanel {
         });
         observer.observe(this.activityPanel, { attributes: true, attributeFilter: ['class'] });
         this.disposed$.subscribe(() => observer.disconnect());
+
+        // Fold whenever any layout source requests compact mode (keyboard, landscape mobile, …),
+        // restore when all sources release — and only if we initiated the collapse.
+        fromEvent<CustomEvent<{ reason: string }>>(document, 'chat-layout:request-compact')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(e => this.addCompactReason(e.detail.reason));
+        fromEvent<CustomEvent<{ reason: string }>>(document, 'chat-layout:release-compact')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(e => this.removeCompactReason(e.detail.reason));
+        // Bootstrap from any reasons already active.
+        for (const reason of CompactLayout.reasons)
+            this.compactReasons.add(reason);
+        if (this.compactReasons.size > 0 && this.state !== 'collapsed' && !this.isPinned && !this.isNotParticipating()) {
+            this.forcedCollapseActive = true;
+            this.collapse();
+        }
+    }
+
+    private addCompactReason = (reason: string): void => {
+        if (this.compactReasons.has(reason))
+            return;
+        this.compactReasons.add(reason);
+        if (this.state !== 'collapsed' && !this.isPinned && !this.isNotParticipating()) {
+            this.forcedCollapseActive = true;
+            this.collapse();
+        }
+    }
+
+    private removeCompactReason = (reason: string): void => {
+        if (!this.compactReasons.has(reason))
+            return;
+        this.compactReasons.delete(reason);
+        if (this.compactReasons.size !== 0)
+            return;
+        if (this.forcedCollapseActive) {
+            this.forcedCollapseActive = false;
+            this.expand();
+        }
     }
 
     public dispose() {
