@@ -1,10 +1,14 @@
 // Sender-side session: long-lived resources reused across recording runs.
 // One instance per worker lifetime. Per-run state lives in operator closures;
-// what survives across runs (capture-clock monotonicity, preview-track writer)
-// lives here. Encoders are intentionally NOT pooled — every run gets a fresh
-// `VideoEncoder` so its first encoded chunk is guaranteed to be a keyframe.
+// what survives across runs (capture-clock monotonicity, preview-track writer,
+// encoder pool) lives here. The encoder pool parks released encoders for a
+// short TTL so reuse across rapid restarts doesn't churn the platform's
+// HW encoder slot (e.g. NVENC concurrent-session limit). Keyframe guarantees
+// on first encode come from explicit `keyFrame: true` requests + a runtime
+// verification of `chunk.type` in the encode operator, not from "fresh encoder".
 
 import { MonotonicClock } from 'clocks';
+import { EncoderPool } from './encoder-pool';
 import type { PreviewFramePresentation } from './recorder-worker-contract';
 
 export interface PreviewGeneratorLike {
@@ -20,6 +24,7 @@ export interface SenderSessionOptions {
 
 export class SenderSession {
     readonly captureClock: MonotonicClock;
+    readonly encoderPool: EncoderPool;
     private previewWriter: WritableStreamDefaultWriter<VideoFrame> | null = null;
     private onPreviewFrame: ((frame: VideoFrame) => void | Promise<void>) | null = null;
     private onPreviewFramePresentation: ((presentation: PreviewFramePresentation) => void) | null = null;
@@ -31,6 +36,7 @@ export class SenderSession {
         const createCaptureClock = opts.createCaptureClock
             ?? (() => new MonotonicClock({ minTickMs: 33 }));
         this.captureClock = createCaptureClock();
+        this.encoderPool = new EncoderPool();
         this.onPreviewFrame = opts.onPreviewFrame ?? null;
         this.onPreviewFramePresentation = opts.onPreviewFramePresentation ?? null;
         this.setPreviewGenerator(opts.previewGenerator);
@@ -72,6 +78,7 @@ export class SenderSession {
         if (this.disposed) return;
         this.disposed = true;
         this.releasePreviewWriter();
+        try { this.encoderPool.dispose(); } catch { /* ignore */ }
     }
 
     private releasePreviewWriter(): void {

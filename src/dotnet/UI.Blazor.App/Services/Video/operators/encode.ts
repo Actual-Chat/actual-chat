@@ -1,4 +1,5 @@
 import type { MonotonicTime } from 'clocks';
+import { getLogs } from 'logging';
 import { from, type PipeOperator } from 'ix-ext';
 import { AsyncVideoEncoder, isAsyncVideoEncoderResetError } from '../adapters';
 import { isCapturedBundleKeyFrame } from '../bundle-helpers';
@@ -13,6 +14,8 @@ import {
 // Message prefix stamped on a thrown error when the encode operator rejects
 // without having produced any chunk — VideoRecorder reads it to drive
 // sender-side codec exclusion. Mirrors CODEC_EXHAUSTED_PREFIX in decode.ts.
+const { warnLog } = getLogs('VideoPipeline');
+
 export const ENCODER_INIT_FAILED_PREFIX = '[ENCODER_INIT_FAILED]';
 
 export function isEncoderInitFailedError(error: unknown): boolean {
@@ -69,10 +72,13 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
 
         async function* impl(): AsyncIterable<EncodedBundle> {
             const encoders: AsyncVideoEncoder<EncodeInput, EncodedFrame>[] = [];
-            // We always request a keyframe on the first encode. Encoders are
-            // not pooled (createEncoder returns a fresh `new VideoEncoder()`),
-            // so a fresh internal buffer guarantees the first encoded chunk
-            // is an intra-coded keyframe.
+            // We always request a keyframe on the first encode. Encoders may
+            // come from `EncoderPool` (re-used across recording restarts to
+            // avoid burning HW slots), so we cannot rely on a "fresh internal
+            // buffer = guaranteed keyframe" assumption. Instead, after each
+            // requested-keyframe bundle, we verify `chunk.type === 'key'` on
+            // every layer's output and re-request if any layer produced a
+            // delta — see verification block below.
             let forceKeyframeOnFirstEncode = true;
             let forceKeyframeNext = false;
             let anyEncodedOutput = false;
@@ -176,6 +182,30 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
 
                         return result.value;
                     });
+                    // Verify keyframe-ness when we asked for one. Pooled
+                    // encoders may have lingering state where the first
+                    // post-reset encode unexpectedly emerges as a delta;
+                    // shipping deltas with no preceding key downstream
+                    // would produce undecodable output at receivers. Drop
+                    // this bundle's chunks and re-request a keyframe on
+                    // the next iteration.
+                    if (keyFrame) {
+                        let allKey = true;
+                        for (const r of results) {
+                            if (r.chunk.type !== 'key') {
+                                allKey = false;
+                                break;
+                            }
+                        }
+                        if (!allKey) {
+                            warnLog?.log(
+                                `requested keyframe but encoder produced delta(s) at index=${bundle.index}; re-requesting`);
+                            for (const r of results)
+                                closeEncodedFrame(r);
+                            forceKeyframeNext = true;
+                            continue;
+                        }
+                    }
                     const out: EncodedFrame[] = [];
                     let mustClose = true;
                     try {
