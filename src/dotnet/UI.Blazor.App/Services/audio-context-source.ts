@@ -620,7 +620,7 @@ export class AudioContextSource {
                 await attached.onUsed();
             }
         } catch (e) {
-            warnLog?.log(`attachTrait: failed to attach '${trait.name}':`, e);
+            warnLog?.log(`attachTrait: failed to attach '${trait.name}', context.state=${context.state}:`, e);
         } finally {
             context._attachingTraits?.delete(trait.name);
         }

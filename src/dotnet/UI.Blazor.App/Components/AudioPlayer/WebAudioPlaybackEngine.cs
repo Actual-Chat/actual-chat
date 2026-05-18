@@ -53,7 +53,15 @@ public sealed class WebAudioPlaybackEngine(
             CancellationToken.None,
             _blazorRef, id, preSkip, title, album, authorId, recordedAtMs, targetBufferSizeMs);
         _whenPlayerCreated = whenPlayerCreated.AsTask();
-        _jsRef = await whenPlayerCreated.ConfigureAwait(false);
+        try {
+            _jsRef = await whenPlayerCreated.ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogError(e,
+                "[WebAudioPlaybackEngine #{AudioTrackPlayerId}] JS AudioPlayer.create threw — feeder/decoder may be in a broken state; only page refresh recovers (suspect: AudioContextSource trait attachment poisoning)",
+                id);
+            throw;
+        }
     }
 
     public async Task Pause(CancellationToken cancellationToken)
