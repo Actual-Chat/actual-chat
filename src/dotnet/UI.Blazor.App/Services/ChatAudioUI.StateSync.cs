@@ -119,6 +119,10 @@ public partial class ChatAudioUI
                 .When(x => x.ChatId is not null, FixedDelayer.MinDelay, cancellationToken)
                 .ConfigureAwait(false);
             var intendedChatId = cRecordingState.Value.ChatId;
+            if (restartAttempt > 0)
+                Log.LogInformation(
+                    nameof(PushRecordingState) + ": retrying recorder for chat #{ChatId} (attempt {Attempt})",
+                    intendedChatId, restartAttempt);
             await BackgroundTask.Run(
                 () => RecordChat(cRecordingState, cancellationToken),
                 Log, $"{nameof(RecordChat)} failed",
@@ -136,8 +140,13 @@ public partial class ChatAudioUI
                     intendedChatId, restartAttempt, delay);
                 await Clocks.CpuClock.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
-            else
+            else {
+                if (restartAttempt > 0)
+                    Log.LogInformation(
+                        nameof(PushRecordingState) + ": recorder for chat #{ChatId} stopped after {Attempt} restart attempt(s)",
+                        intendedChatId, restartAttempt);
                 restartAttempt = 0;
+            }
         }
     }
 
@@ -186,6 +195,7 @@ public partial class ChatAudioUI
             return;
 
         Task? whenIdle = null;
+        Task? whenWinner = null;
         var abortTokenSource = cancellationToken.CreateLinkedTokenSource();
         var abortToken = abortTokenSource.Token;
         try {
@@ -230,14 +240,19 @@ public partial class ChatAudioUI
                 await foreach (var serverStopAt in streamingIdleBoundaries.ConfigureAwait(false))
                     _stopRecordingAt.Value = serverStopAt.Convert(serverClock, cpuClock);
             }, abortToken);
-            await Task.WhenAny(whenStopped, whenIdle, whenRecorderStopped).ConfigureAwait(false);
+            whenWinner = await Task.WhenAny(whenStopped, whenIdle, whenRecorderStopped).ConfigureAwait(false);
             // No need to await for the result of WhenAny: we're stopping anyway
         }
         finally {
             abortTokenSource.CancelAndDisposeSilently();
             _stopRecordingAt.Value = null;
-            if (whenIdle is { IsCompleted: true })
+            // Use winner identity, not whenIdle.IsCompleted: the latter races with abortToken-triggered cancellation
+            if (ReferenceEquals(whenWinner, whenIdle)) {
+                Log.LogInformation(
+                    nameof(RecordChat) + ": idle threshold reached for chat #{ChatId}, stopping recording",
+                    chatId);
                 await SetRecordingChatId(null).ConfigureAwait(false);
+            }
 
             // Stopping the recording
             for (var tryIndex = 0;; tryIndex++) {
