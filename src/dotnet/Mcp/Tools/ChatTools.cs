@@ -1,0 +1,145 @@
+using System.ComponentModel;
+using ActualChat.Chat;
+using ActualChat.Mcp.Auth;
+using ActualChat.Mcp.Dtos;
+using ModelContextProtocol.Server;
+
+namespace ActualChat.Mcp.Tools;
+
+[McpServerToolType]
+public sealed class ChatTools(IChats chats, IAuthors authors, ICommander commander, McpSessionAccessor sessions)
+{
+    private const int MaxLimit = 1024;
+
+    [McpServerTool(Name = "post_message", UseStructuredContent = true)]
+    [Description("Post a new text message to a chat. Returns the new entry's local id (LID).")]
+    public async Task<long> PostMessage(
+        [Description("The chat id (e.g. group, peer, or place chat id).")] string chatId,
+        [Description("The message text.")] string text,
+        CancellationToken cancellationToken)
+    {
+        var parsedChatId = ChatId.Parse(chatId);
+        var command = new Chats_UpsertEntry(sessions.Session, parsedChatId, null) { Text = text };
+        var entry = await commander.Call(command, cancellationToken).ConfigureAwait(false);
+        return entry.LocalId;
+    }
+
+    [McpServerTool(Name = "edit_message", UseStructuredContent = true)]
+    [Description("Edit an existing text message by its local id.")]
+    public async Task EditMessage(
+        [Description("The chat id.")] string chatId,
+        [Description("The message local id (LID).")] long entryId,
+        [Description("The new message text.")] string text,
+        CancellationToken cancellationToken)
+    {
+        var parsedChatId = ChatId.Parse(chatId);
+        var command = new Chats_UpsertEntry(sessions.Session, parsedChatId, entryId) { Text = text };
+        await commander.Call(command, cancellationToken).ConfigureAwait(false);
+    }
+
+    [McpServerTool(Name = "remove_message", UseStructuredContent = true)]
+    [Description("Soft-remove a message by its local id.")]
+    public async Task RemoveMessage(
+        [Description("The chat id.")] string chatId,
+        [Description("The message local id (LID).")] long entryId,
+        CancellationToken cancellationToken)
+    {
+        var parsedChatId = ChatId.Parse(chatId);
+        var command = new Chats_RemoveEntry(sessions.Session, parsedChatId, entryId);
+        await commander.Call(command, cancellationToken).ConfigureAwait(false);
+    }
+
+    [McpServerTool(Name = "get_id_range", UseStructuredContent = true)]
+    [Description("Returns the inclusive LID range {firstId, lastId} for the chat. " +
+        "Removed entries are skipped, so there may be gaps in the LID sequence returned by list_messages.")]
+    public async Task<IdRange<long>> GetIdRange(
+        [Description("The chat id.")] string chatId,
+        CancellationToken cancellationToken)
+    {
+        var parsedChatId = ChatId.Parse(chatId);
+        var range = await chats.GetIdRange(sessions.Session, parsedChatId, cancellationToken).ConfigureAwait(false);
+        return ToInclusive(range);
+    }
+
+    [McpServerTool(Name = "list_messages", UseStructuredContent = true)]
+    [Description("Lists up to `limit` messages with LID > `afterId`. " +
+        "Returns the inclusive range of the messages, the chat's full inclusive range, and the messages themselves. " +
+        "Removed entries are skipped (their LIDs appear as gaps); system and streaming entries are included. " +
+        "If `afterId` is null, starts from the beginning of the chat. `limit` is capped at 1024.")]
+    public async Task<ListMessagesResult> ListMessages(
+        [Description("The chat id.")] string chatId,
+        [Description("Return messages with id > afterId. Use null to start from the beginning.")] long? afterId = null,
+        [Description("Max messages to return; capped at 1024.")] int limit = 256,
+        CancellationToken cancellationToken = default)
+    {
+        var session = sessions.Session;
+        var parsedChatId = ChatId.Parse(chatId);
+        limit = Math.Clamp(limit, 1, MaxLimit);
+
+        var rawFullRange = await chats.GetIdRange(session, parsedChatId, cancellationToken).ConfigureAwait(false);
+        var fullRange = ToInclusive(rawFullRange);
+
+        if (rawFullRange.IsEmptyOrNegative)
+            return new ListMessagesResult(new IdRange<long>(fullRange.FirstId, fullRange.FirstId - 1), fullRange, []);
+
+        var startLid = (afterId ?? -1) + 1;
+        if (startLid < rawFullRange.Start)
+            startLid = rawFullRange.Start;
+        if (startLid >= rawFullRange.End)
+            return new ListMessagesResult(new IdRange<long>(startLid, startLid - 1), fullRange, []);
+
+        var tileLayer = Constants.Chat.ServerIdTileStack.FirstLayer;
+        var collected = new List<ChatEntry>(limit);
+        var tile = tileLayer.GetTile(startLid);
+        while (collected.Count < limit && tile.Start < rawFullRange.End) {
+            var chatTile = await chats
+                .GetTile(session, parsedChatId, tile.Range, cancellationToken)
+                .ConfigureAwait(false);
+            foreach (var entry in chatTile.Entries) {
+                if (entry.LocalId < startLid)
+                    continue;
+                collected.Add(entry);
+                if (collected.Count >= limit)
+                    break;
+            }
+            tile = tile.Next();
+        }
+
+        var distinctAuthorIds = collected.Select(e => e.AuthorId).Distinct().ToArray();
+        var authorById = new Dictionary<AuthorId, Author?>(distinctAuthorIds.Length);
+        var fetched = await Task.WhenAll(distinctAuthorIds.Select(id =>
+            authors.Get(session, parsedChatId, id, cancellationToken)))
+            .ConfigureAwait(false);
+        for (var i = 0; i < distinctAuthorIds.Length; i++)
+            authorById[distinctAuthorIds[i]] = fetched[i];
+
+        var messages = collected.Select(e => ToDto(e, authorById)).ToArray();
+        var rangeOut = messages.Length == 0
+            ? new IdRange<long>(startLid, startLid - 1)
+            : new IdRange<long>(messages[0].Id, messages[^1].Id);
+        return new ListMessagesResult(rangeOut, fullRange, messages);
+    }
+
+    private static MessageDto ToDto(ChatEntry entry, Dictionary<AuthorId, Author?> authorById)
+    {
+        var authorName = authorById.GetValueOrDefault(entry.AuthorId)?.Avatar?.Name ?? "";
+        var isStreaming = entry.IsContentStreaming;
+        var text = isStreaming ? "" : entry.Content;
+        return new MessageDto(
+            entry.LocalId,
+            entry.Version,
+            (long)(entry.BeginsAt - Moment.EpochStart).TotalMilliseconds,
+            entry.AuthorId.Value,
+            authorName,
+            entry.IsSystemEntry,
+            isStreaming,
+            entry.HasAudio,
+            entry.IsRemoved,
+            text);
+    }
+
+    private static IdRange<long> ToInclusive(Range<long> range)
+        => range.IsEmptyOrNegative
+            ? new IdRange<long>(range.Start, range.Start - 1)
+            : new IdRange<long>(range.Start, range.End - 1);
+}

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsServerSideProject>true</IsServerSideProject>
+    <RootNamespace>ActualChat.Mcp</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
+    <ProjectReference Include="..\Contacts.Contracts\Contacts.Contracts.csproj" />
+    <ProjectReference Include="..\Core.Server\Core.Server.csproj" />
+    <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
+  </ItemGroup>
+
+</Project>
