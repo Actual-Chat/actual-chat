@@ -1,5 +1,6 @@
 using System.Numerics;
 using ActualChat.Audio;
+using ActualChat.Streaming;
 using ActualChat.Transcription;
 using Microsoft.IO;
 using OpenAI.Audio;
@@ -7,7 +8,7 @@ using OpenAI;
 
 namespace ActualChat.Chat.ML;
 
-public class OpenAITranscriber
+public class OpenAITranscriber : IRefineTranscriber
 {
     public class Options
     {
@@ -32,7 +33,7 @@ public class OpenAITranscriber
         _audioClient = client.GetAudioClient(options.Model);// The model to use for the transcription
     }
 
-    public async Task<Transcript?> Transcribe(
+    public virtual async Task<Transcript?> Transcribe(
         AudioSource audioSource,
         TranscriptionOptions options,
         CancellationToken cancellationToken)

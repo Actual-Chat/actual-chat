@@ -119,14 +119,6 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
         cmd.AssertPassesThroughAllSerializers();
     }
 
-    [Fact]
-    public void ChatsBackend_RetranscribeChatEntry_Basic()
-    {
-        var entryId = ChatEntryId.New(TestChatId, 1);
-        var cmd = new ChatsBackend_RetranscribeChatEntry(entryId, Languages.English);
-        cmd.AssertPassesThroughAllSerializers();
-    }
-
     // ChatsBackend_CreateAttachments
     [Fact]
     public void ChatsBackend_CreateAttachments_Basic()

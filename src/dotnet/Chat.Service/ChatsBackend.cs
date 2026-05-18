@@ -1,6 +1,5 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Flows;
-using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
 using ActualChat.Contacts;
 using ActualChat.Db;
@@ -10,7 +9,6 @@ using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Kvas;
 using ActualChat.Users;
-using ActualChat.Transcription;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Resilience;
@@ -61,8 +59,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private DiffEngine DiffEngine => field ??= Services.GetRequiredService<DiffEngine>();
     private FlowHub FlowHub => field ??= Services.FlowHub();
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
-    private AudioSourceDownloader AudioSourceDownloader => field ??= Services.GetRequiredService<AudioSourceDownloader>();
-    private OpenAITranscriber OpenAITranscriber => field ??= Services.GetRequiredService<OpenAITranscriber>();
 
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken)
@@ -1873,80 +1869,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (hasChanges) {
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             context.Operation.Items.KeylessSet(true);
-        }
-    }
-
-    public virtual async Task OnRetranscribeChatEntry(
-        ChatsBackend_RetranscribeChatEntry command,
-        CancellationToken cancellationToken)
-    {
-        if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
-
-        if (!Settings.IsRetranscriptionEnabled)
-            return;
-
-        var (entryId, language) = command;
-        var textEntry = await this.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
-        if (textEntry is null)
-            return;
-
-        var audio = textEntry.Audio;
-        if (audio is null)
-            // Apparently text entry was transcribed in no voice streaming mode, or has no audio.
-            return;
-
-        var audioBlobId = audio.BlobId;
-        if (audioBlobId.IsNullOrEmpty())
-            throw StandardError.Constraint("Audio entry has no audio blob id reference.");
-
-        Log.LogDebug("Retranscribing entry {EntryId}...", entryId);
-        var audioSource = await AudioSourceDownloader.Download(audioBlobId, TimeSpan.Zero, cancellationToken).ConfigureAwait(false);
-        var options = new TranscriptionOptions {
-            Language = language,
-        };
-        var transcription = await OpenAITranscriber.Transcribe(audioSource, options, cancellationToken).ConfigureAwait(false);
-        if (transcription is null)
-            return;
-
-        if (ShouldUseOriginalTranscript(textEntry, transcription)) {
-            Log.LogDebug(
-                "Skip updating ChatEntrySlim (id={Id}) transcription.\r\nFrom: '{From}' -> \r\nTo: '{To}'",
-                textEntry.Id.Value, textEntry.Content.ToPrivate(), transcription.Text.ToPrivate());
-            return;
-        }
-
-        Log.LogDebug(
-            "Updating ChatEntrySlim (id={Id}) transcription.\r\nFrom: '{From}' -> \r\nTo: '{To}'",
-            textEntry.Id.Value, textEntry.Content.ToPrivate(), transcription.Text.ToPrivate());
-        var timeMap = transcription.TimeMap;
-        var entryTimeMap = textEntry.Audio?.TimeMap ?? default;
-        if (timeMap.IsDegenerate && !entryTimeMap.IsDegenerate) {
-            timeMap = LinearMapDtwRemapper.Remap(textEntry.Content,
-                transcription.Text,
-                entryTimeMap,
-                LinearMapAlignmentMode.RetranscribeSameAudio);
-        }
-        await Commander.Run(new ChatsBackend_ChangeEntry(
-            entryId,
-            null,
-            Change.Update(new ChatEntryDiff {
-                Content = transcription.Text,
-                Audio = textEntry.Audio! with { TimeMap = timeMap },
-            })), cancellationToken).ConfigureAwait(false);
-        return;
-
-        static bool ShouldUseOriginalTranscript(ChatEntry textEntry, Transcript transcription)
-        {
-            var text = textEntry.Content;
-            var newText = transcription.Text;
-            if (newText.Length >= text.Length)
-                return false;
-            if (text.Length > 50)
-                return newText.Length < 0.9 * text.Length;
-            if (text.Length > 25)
-                return newText.Length < 0.8 * text.Length;
-            return true;
         }
     }
 

@@ -146,12 +146,16 @@ public partial class AudioStreamingBackend
         // Pass streamId for Audio.StreamId during live phase; audio MediaId resolved after save
         var liveStreamId = mustStreamVoice ? openSegment.StreamId.Value : null;
         var audioMediaIdTcs = TaskCompletionSourceExt.New<MediaId?>();
+        var refineTranscriptLanguageTcs = TaskCompletionSourceExt.New<Language?>();
+        var refinedTranscriptTcs = TaskCompletionSourceExt.New<Transcript?>();
         var transcribeTask = BackgroundTask.Run(
             () => TranscribeAudio(
                 openSegment,
                 beginsAt,
                 liveStreamId,
                 audioMediaIdTcs.Task,
+                refineTranscriptLanguageTcs,
+                refinedTranscriptTcs.Task,
                 CancellationToken.None),
             Log,
             $"{nameof(TranscribeAudio)} failed",
@@ -170,13 +174,14 @@ public partial class AudioStreamingBackend
         // audioMediaIdTcs — without that, FinalizeTextEntry hangs forever and the
         // entry is stuck in the streaming state.
         MediaId? audioMediaId = null;
+        ClosedAudioSegment? closedSegment = null;
         try {
             await openSegment.Source.WhenDurationAvailable.ConfigureAwait(false);
             Log.LogInformation(
                 "ProcessAudio: stream #{StreamId} ended normally, duration={Duration:F1}s",
                 openSegment.StreamId, openSegment.Source.Duration.TotalSeconds);
             openSegment.Close(openSegment.Source.Duration);
-            var closedSegment = await openSegment.ClosedSegment.ConfigureAwait(false);
+            closedSegment = await openSegment.ClosedSegment.ConfigureAwait(false);
 
             if (mustStreamVoice) {
                 // Save audio blob and create Media record - use CancellationToken.None to ensure cleanup
@@ -196,12 +201,42 @@ public partial class AudioStreamingBackend
             audioMediaIdTcs.TrySetResult(audioMediaId);
         }
 
-        // And we await for the last "pending" task, which is likely already completed
-        var transcribeResult = await transcribeTask.ConfigureAwait(false);
-        if (transcribeResult is not null) {
-            // Launch re-transcribe after text and audio entries have been finalized.
-            await RetranscribeTextEntry(transcribeResult.Value.Item1, transcribeResult.Value.Item2).SilentAwait();
+        DispatchRefineTranscription(openSegment, closedSegment, mustStreamVoice, refineTranscriptLanguageTcs.Task, refinedTranscriptTcs);
+
+        await transcribeTask.ConfigureAwait(false);
+    }
+
+    private void DispatchRefineTranscription(
+        OpenAudioSegment openSegment,
+        ClosedAudioSegment? closedSegment,
+        bool mustStreamVoice,
+        Task<Language?> refineTranscriptLanguageTask,
+        TaskCompletionSource<Transcript?> refinedTranscriptTcs)
+    {
+        var refineTranscriber = RefineTranscriber;
+        if (!mustStreamVoice || refineTranscriber is null || closedSegment is null) {
+            refinedTranscriptTcs.TrySetResult(null);
+            return;
         }
+        var audioSource = closedSegment.Audio;
+        var streamId = openSegment.StreamId;
+        _ = BackgroundTask.Run(async () => {
+            var language = await refineTranscriptLanguageTask.ConfigureAwait(false);
+            if (language is not { } lang) {
+                refinedTranscriptTcs.TrySetResult(null);
+                return;
+            }
+            using var cts = new CancellationTokenSource(Constants.Transcription.RetranscriptionTimeout);
+            try {
+                var options = new TranscriptionOptions { Language = lang };
+                var result = await refineTranscriber.Transcribe(audioSource, options, cts.Token).ConfigureAwait(false);
+                refinedTranscriptTcs.TrySetResult(result);
+            }
+            catch (Exception ex) {
+                Log.LogWarning(ex, "Re-transcription failed for stream #{StreamId}", streamId);
+                refinedTranscriptTcs.TrySetResult(null);
+            }
+        }, Log, "RefineTranscription background task failed", CancellationToken.None);
     }
 
     private static async IAsyncEnumerable<AudioFrame> WithFrameSilenceWatchdog(
@@ -280,14 +315,17 @@ public partial class AudioStreamingBackend
         Moment beginsAt,
         string? liveStreamId,
         Task<MediaId?> audioMediaIdTask,
+        TaskCompletionSource<Language?> refineTranscriptLanguageTcs,
+        Task<Transcript?> refinedTranscriptTask,
         CancellationToken cancellationToken)
     {
         var (chatLanguage, userLanguageSettings) = audioSegment.Languages;
         if (chatLanguage is not null) {
+            refineTranscriptLanguageTcs.TrySetResult(chatLanguage);
             var transcriptionOptions = new TranscriptionOptions {
                 Language = chatLanguage,
             };
-            var chatEntryId = await TranscribeAudio(audioSegment, transcriptionOptions, beginsAt, liveStreamId, audioMediaIdTask, cancellationToken).ConfigureAwait(false);
+            var chatEntryId = await TranscribeAudio(audioSegment, transcriptionOptions, beginsAt, liveStreamId, audioMediaIdTask, refineTranscriptLanguageTcs, refinedTranscriptTask, cancellationToken).ConfigureAwait(false);
             return chatEntryId is not null ? (chatEntryId, chatLanguage) : null;
         }
         else {
@@ -307,7 +345,7 @@ public partial class AudioStreamingBackend
                 }
             };
             var transcriptionOptions = TranscriptionOptions.AutoDetectLanguage(languageCandidates, onLanguageDetected);
-            var chatEntryId = await TranscribeAudio(audioSegment, transcriptionOptions, beginsAt, liveStreamId, audioMediaIdTask, cancellationToken).ConfigureAwait(false);
+            var chatEntryId = await TranscribeAudio(audioSegment, transcriptionOptions, beginsAt, liveStreamId, audioMediaIdTask, refineTranscriptLanguageTcs, refinedTranscriptTask, cancellationToken).ConfigureAwait(false);
             if (detectedLanguage is not null && chatEntryId is not null)
                 return (chatEntryId, detectedLanguage);
             return null;
@@ -320,6 +358,8 @@ public partial class AudioStreamingBackend
         Moment beginsAt,
         string? liveStreamId,
         Task<MediaId?> audioMediaIdTask,
+        TaskCompletionSource<Language?> refineTranscriptLanguageTcs,
+        Task<Transcript?> refinedTranscriptTask,
         CancellationToken cancellationToken)
     {
         TranscriptionEngine transcriptionEngine;
@@ -398,8 +438,13 @@ public partial class AudioStreamingBackend
                     Log.LogWarning("TranscribeAudio: entry #{EntryId} was removed, skipping finalize", textEntry.Id);
                 else if (!current.IsContentStreaming)
                     Log.LogWarning("TranscribeAudio: entry #{EntryId} was already finalized, skipping", textEntry.Id);
-                else
+                else {
+                    // Unblock refine transcription with the language that will be persisted:
+                    // - chat-language mode: outer already set it; this is a no-op.
+                    // - detect mode: realtime stream has drained, so lastTranscript.Languages is final.
+                    refineTranscriptLanguageTcs.TrySetResult(lastTranscript.Languages.FirstOrDefault());
                     await Task.WhenAll(FinalizeTextEntry(), FinalizeLanguages()).ConfigureAwait(false);
+                }
             }
             await transcriptDiffStream.DisposeSilentlyAsync().ConfigureAwait(false);
         }
@@ -433,21 +478,31 @@ public partial class AudioStreamingBackend
 
         async Task FinalizeTextEntry()
         {
-            // Wait for audio save to complete and get MediaId
             var audioMediaId = await audioMediaIdTask.ConfigureAwait(false);
+            var refinedTranscript = await refinedTranscriptTask.ConfigureAwait(false);
 
-            // Final transcript is empty -> remove text entry
-            // TODO(AY): Maybe publish [Audio: ...] markup here
             var hasAudio = liveStreamId != null;
-            var change = EmptyRegex.IsMatch(lastTranscript.Text)
+            var realtimeText = lastTranscript.Text;
+            var realtimeTimeMap = lastTranscript.TimeMap.Move(-lastTranscript.TextRange.Start, 0);
+
+            var finalText = realtimeText;
+            var finalTimeMap = realtimeTimeMap;
+            if (refinedTranscript is not null && !ShouldUseOriginalTranscript(realtimeText, refinedTranscript.Text)) {
+                finalText = refinedTranscript.Text;
+                finalTimeMap = refinedTranscript.TimeMap.IsDegenerate && !realtimeTimeMap.IsDegenerate
+                    ? LinearMapDtwRemapper.Remap(realtimeText, refinedTranscript.Text, realtimeTimeMap, LinearMapAlignmentMode.RetranscribeSameAudio)
+                    : refinedTranscript.TimeMap;
+            }
+
+            var change = EmptyRegex.IsMatch(realtimeText)
                 ? Change.Remove<ChatEntryDiff>()
                 : Change.Update(new ChatEntryDiff {
-                    Content = lastTranscript.Text,
+                    Content = finalText,
                     ContentStreamId = "",
                     Audio = hasAudio && audioMediaId != null
                         ? new ChatEntryAudio {
                             MediaId = audioMediaId,
-                            TimeMap = lastTranscript.TimeMap.Move(-lastTranscript.TextRange.Start, 0),
+                            TimeMap = finalTimeMap,
                         }
                         : null,
                     EndsAt = beginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End),
@@ -486,14 +541,6 @@ public partial class AudioStreamingBackend
         }
     }
 
-    private async Task RetranscribeTextEntry(ChatEntryId chatEntryId, Language audioSegmentLanguage)
-    {
-        var command = new ChatsBackend_RetranscribeChatEntry(
-            chatEntryId,
-            audioSegmentLanguage);
-        await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
-    }
-
     private void ApplyTranscriptionDetectedLanguage(AudioRecord audioSegmentRecord, Language detectedLanguage,
         CancellationToken cancellationToken)
         => _ = BackgroundTask.Run(async () => {
@@ -508,4 +555,15 @@ public partial class AudioStreamingBackend
                 .Set(userChatRecordingDetectedLanguage, cancellationToken)
                 .ConfigureAwait(false);
         }, Log, "Failed to apply transcription detected language", cancellationToken);
+
+    private static bool ShouldUseOriginalTranscript(string realtimeText, string refinedText)
+    {
+        if (refinedText.Length >= realtimeText.Length)
+            return false;
+        if (realtimeText.Length > 50)
+            return refinedText.Length < 0.9 * realtimeText.Length;
+        if (realtimeText.Length > 25)
+            return refinedText.Length < 0.8 * realtimeText.Length;
+        return true;
+    }
 }

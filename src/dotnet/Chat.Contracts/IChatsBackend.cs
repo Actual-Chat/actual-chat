@@ -128,8 +128,6 @@ public interface IChatsBackend : IComputeService, IBackendService
     Task<ChatCopyState> OnChangeChatCopyState(ChatsBackend_ChangeChatCopyState command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnUpdateReadPositionsStat(ChatsBackend_UpdateReadPositionsStat command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task OnRetranscribeChatEntry(ChatsBackend_RetranscribeChatEntry command, CancellationToken cancellationToken);
 
     // Events
 
@@ -296,16 +294,3 @@ public sealed partial record ChatsBackend_UpdateReadPositionsStat(
     public ChatId ShardKey => ChatId;
 }
 
-/// <summary>
-/// Command to re-transcribe an audio entry in a different language.
-/// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-// ReSharper disable once InconsistentNaming
-public sealed partial record ChatsBackend_RetranscribeChatEntry(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatEntryId EntryId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] Language Language
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
-{
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public ChatId ShardKey => EntryId.ChatId;
-}
