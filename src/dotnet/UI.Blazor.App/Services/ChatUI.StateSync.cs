@@ -81,7 +81,18 @@ public partial class ChatUI
     protected virtual async Task<bool> MustKeepAwake(CancellationToken cancellationToken)
     {
         var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
-        return activeChats.Any(c => c.IsListening || c.IsRecording);
+        foreach (var chat in activeChats) {
+            if (chat.IsListening || chat.IsRecording)
+                return true;
+            // Own video stream (camera or screencast) also requires keep-awake:
+            // backgrounded / unfocused tabs see HW encoder priority drops that
+            // degrade per-call latency 3-5× — KeepAwakeUI's wake lock hints the
+            // OS/browser to maintain media priority.
+            var ownVideoSourceKind = await Hub.ChatVideoUI.GetOwnSourceKind(chat.ChatId, cancellationToken).ConfigureAwait(false);
+            if (ownVideoSourceKind != null)
+                return true;
+        }
+        return false;
     }
 
     [ComputeMethod]
