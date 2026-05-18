@@ -18,8 +18,8 @@ public partial class ChatAudioUI
             AsyncChain.From(InvalidateActiveChatDependencies),
             AsyncChain.From(InvalidateReplayDependencies),
             AsyncChain.From(PushRecordingState),
-            AsyncChain.From(ManageListeningPlayers),
-            AsyncChain.From(ManageReplay),
+            AsyncChain.From(StartStopListeningPlayers),
+            AsyncChain.From(StartStopReplayingPlayers),
             AsyncChain.From(StopReplayWhenRecordingStarts),
             AsyncChain.From(StopListeningWhenIdle),
             AsyncChain.From(StopRecordingAndReplayOnDeviceAwake),
@@ -255,15 +255,15 @@ public partial class ChatAudioUI
         }
     }
 
-    private async Task ManageListeningPlayers(CancellationToken cancellationToken)
+    private async Task StartStopListeningPlayers(CancellationToken cancellationToken)
     {
-        // Don't start till the moment ChatAudioUI gets enabled
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         var cListeningChatIds = await Computed
             .Capture(GetListeningChatIds, cancellationToken)
             .ConfigureAwait(false);
         var lastChatIds = ImmutableHashSet<ChatId>.Empty;
+        var playerWorkers = new Dictionary<ChatId, FuncWorker>();
 
         await foreach (var change in cListeningChatIds.Changes(cancellationToken).ConfigureAwait(false)) {
             var newChatIds = change.Value;
@@ -273,6 +273,9 @@ public partial class ChatAudioUI
 
                 if (!removedChatIds.IsEmpty) {
                     await StopPlayers(removedChatIds, ChatPlayerKind.Listening).ConfigureAwait(false);
+                    foreach (var chatId in removedChatIds)
+                        if (playerWorkers.Remove(chatId, out var worker))
+                            await worker.Stop().ConfigureAwait(false);
                 }
 
                 if (!addedChatIds.IsEmpty) {
@@ -286,7 +289,10 @@ public partial class ChatAudioUI
                     }
                     if (lastChatIds.IsEmpty)
                         _ = TuneUI.Play(Tune.StartListening);
-                    await StartListeningPlayers(addedChatIds, cancellationToken).ConfigureAwait(false);
+                    foreach (var chatId in addedChatIds)
+                        playerWorkers[chatId] = FuncWorker.Start(
+                            ct => KeepListeningPlayerAlive(chatId, ct),
+                            cancellationToken);
                 }
 
                 if (newChatIds.IsEmpty && !lastChatIds.IsEmpty) {
@@ -300,15 +306,42 @@ public partial class ChatAudioUI
             }
             catch (Exception ex) when (ex is not OperationCanceledException) {
                 Log.LogError(ex, "ManageListeningPlayers failed");
-                _ = StopAllPlayers();
+                await StopAllPlayers().ConfigureAwait(false);
+                foreach (var worker in playerWorkers.Values)
+                    await worker.Stop().ConfigureAwait(false);
+                playerWorkers.Clear();
                 lastChatIds = ImmutableHashSet<ChatId>.Empty;
             }
         }
     }
 
-    private async Task ManageReplay(CancellationToken cancellationToken)
+    private async Task KeepListeningPlayerAlive(ChatId chatId, CancellationToken cancellationToken)
     {
-        // Don't start till the moment ChatAudioUI gets enabled
+        var restartDelays = RetryDelaySeq.Exp(0.5, 8);
+        var restartAttempt = 0;
+        while (!cancellationToken.IsCancellationRequested) {
+            var whenPlaying = await StartListeningPlayer(chatId, cancellationToken).ConfigureAwait(false);
+            await whenPlaying.SilentAwait(false);
+
+            if (cancellationToken.IsCancellationRequested)
+                return;
+
+            var listeningChatIds = await GetListeningChatIds().ConfigureAwait(false);
+            if (!listeningChatIds.Contains(chatId))
+                return;
+
+            restartAttempt++;
+            var delay = restartDelays[restartAttempt];
+            Log.LogWarning(
+                nameof(KeepListeningPlayerAlive)
+                + ": listener for chat #{ChatId} exited with user intent intact (attempt {Attempt}); restarting in {Delay}",
+                chatId, restartAttempt, delay);
+            await Clocks.CpuClock.Delay(delay, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task StartStopReplayingPlayers(CancellationToken cancellationToken)
+    {
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         ReplayState? lastState = null;
