@@ -218,6 +218,7 @@ function Show-Help {
     Write-Host "  rwt <suffix> Remove worktree and clean up (ports, hosts, nginx config)"
     Write-Host "  chrome       Start Chrome with remote debugging enabled (for Playwright)"
     Write-Host "  build        Build Docker image for current project"
+    Write-Host "  update-md    Regenerate CLAUDE.md/AGENTS.md from .claude/CLAUDE-N-*.md parts"
     Write-Host "  help         Show this help message"
     Write-Host ""
     Write-Host "Options:"
@@ -284,7 +285,7 @@ while ($argIndex -lt $args.Count) {
     $currentArg = $args[$argIndex]
 
     # Check for mode commands
-    if ($currentArg -in "wsl", "os", "build", "audio" -and $mode -eq "docker") {
+    if ($currentArg -in "wsl", "os", "build", "audio", "update-md" -and $mode -eq "docker") {
         $mode = $currentArg
         $argIndex++
         continue
@@ -430,6 +431,38 @@ while ($argIndex -lt $args.Count) {
 # All remaining args go to Claude
 if ($argIndex -lt $args.Count) {
     $claudeArgs = $args[$argIndex..($args.Count - 1)]
+}
+
+# Handle update-md: regenerate CLAUDE.md and AGENTS.md from .claude/CLAUDE-N-*.md parts.
+# Runs before project-root detection so it has no side effects (no port allocation, no .env writes).
+if ($mode -eq "update-md") {
+    $claudeDir = Join-Path $scriptDir ".claude"
+    if (-not (Test-Path $claudeDir)) {
+        Write-Error ".claude directory not found at: $claudeDir"
+        exit 1
+    }
+
+    $parts = Get-ChildItem -Path $claudeDir -Filter "CLAUDE-*.md" |
+        Where-Object { $_.Name -match '^CLAUDE-(\d+)-.+\.md$' } |
+        Sort-Object { [int]([regex]::Match($_.Name, '^CLAUDE-(\d+)-').Groups[1].Value) }
+
+    if (-not $parts -or $parts.Count -eq 0) {
+        Write-Error "No CLAUDE-N-*.md files found in $claudeDir"
+        exit 1
+    }
+
+    function Write-Concatenated {
+        param([string]$Path, [object[]]$Files)
+        $bodies = $Files | ForEach-Object { (Get-Content -Raw -Path $_.FullName).TrimEnd() }
+        $content = ($bodies -join "`n`n") + "`n"
+        Set-Content -Path $Path -Value $content -NoNewline -Encoding utf8NoBOM
+        Write-Host "Wrote $Path ($($Files.Count) parts: $(($Files | ForEach-Object Name) -join ', '))"
+    }
+
+    Write-Concatenated -Path (Join-Path $scriptDir "CLAUDE.md") -Files $parts
+    $agentsParts = $parts | Where-Object { $_.Name -notlike '*Launcher.md' }
+    Write-Concatenated -Path (Join-Path $scriptDir "AGENTS.md") -Files $agentsParts
+    exit 0
 }
 
 # Find current project
