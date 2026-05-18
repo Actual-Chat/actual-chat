@@ -7,7 +7,7 @@ namespace ActualChat.Mcp.Auth;
 public sealed class McpAuthMiddleware(RequestDelegate next, ISessionsBackend sessionsBackend)
 {
     private const string BearerPrefix = "Bearer ";
-    private const string Realm = "ActualChat";
+    private const string Realm = "Voxt";
 
     public async Task Invoke(HttpContext httpContext)
     {
@@ -30,6 +30,8 @@ public sealed class McpAuthMiddleware(RequestDelegate next, ISessionsBackend ses
         httpContext.Items[McpSessionAccessor.HttpContextItemKey] = session;
         await next(httpContext).ConfigureAwait(false);
     }
+
+    // Private methods
 
     private static Session? TryGetSession(HttpContext httpContext)
     {
