@@ -1,7 +1,7 @@
 ---
-allowed-tools: Bash, Read, Glob, Grep
-description: Summarize the current GitHub user's commits across all branches today (or a given window), grouped by category and branch.
-argument-hint: [time window | starting from <sha> | as table | 2x | compact | ...]
+allowed-tools: Bash, Read, Glob, Grep, mcp__voxt-robokitty__post_message, mcp__voxt-robokitty__list_place_chats
+description: Summarize the current GitHub user's commits across all branches today (or a given window), grouped by category and branch. Supports `--all` (every human author), `--post` (send to Standup chat), and a `minimal` detail level.
+argument-hint: [time window | starting from <sha> | as table | 2x | compact | minimal | --all | --post | ...]
 ---
 
 # /my-changes
@@ -21,8 +21,9 @@ The unit of summary is a **change**, not a commit:
 
 ## Arguments
 
-`$ARGUMENTS` is free-form. Parse out three independent things — a **time
-window**, a **format override**, and a **detail level** — in any order.
+`$ARGUMENTS` is free-form. Parse out five independent things — a **time
+window**, a **format override**, a **detail level**, a **scope flag**, and
+a **delivery flag** — in any order.
 
 **Time window:**
 
@@ -43,6 +44,7 @@ window**, a **format override**, and a **detail level** — in any order.
 
 **Detail level** (default is "normal" — see *Default output format* below):
 
+- `minimal` — the smallest possible report. See *Detail level → minimal* below.
 - `compact` — at most one short sentence per item, no follow-on detail.
 - `2x`, `3x`, `4x`, … — produce roughly that multiple of the normal depth.
   Read the diffs more carefully and surface specific knobs, file or class
@@ -53,6 +55,23 @@ window**, a **format override**, and a **detail level** — in any order.
   category (or categories), keep the rest at normal depth.
 - Combinations are fine: `last 8 hours 3x`, `compact as table`,
   `2x more detail on video`.
+
+**Scope:**
+
+- `--all` — produce a report for **every human author** with commits in the
+  window. Exclude bot/AI authors (see *Multi-user mode (`--all`)* below).
+  Without `--all`, the report covers only the current GitHub user (the
+  original behaviour).
+
+**Delivery:**
+
+- `--post` — post the report to the **Standup** chat instead of printing
+  it inline, using the same path `/robokitty-post` uses (resolve `Standup`
+  → `s-pmMsV1UVKG-xigkwj28ql`, then call
+  `mcp__voxt-robokitty__post_message`). With `--all`, send **one message
+  per user**. See *Posting to Standup (`--post`)* below.
+
+The most common standup-digest combination is `--all minimal --post`.
 
 If the argument can't be parsed, say so and ask for clarification rather than
 guessing.
@@ -102,6 +121,39 @@ Rules:
 The default ("normal") is described above: 1 sentence, or 2–3 when something
 is genuinely worth explaining.
 
+- **`minimal`** — the **smallest** possible report. Per user, render:
+
+  ```
+  **<UserName>**:
+  - <item, ≤ 8 words>
+  - <item, ≤ 8 words>
+  - ...
+  <period>, `+<added>`/`-<removed>`
+  ```
+
+  Rules:
+  - **Drop all cosmetic changes** before listing — whitespace/formatting,
+    pure renames (no behaviour change), comment-only edits, typo fixes,
+    dependency version bumps, CI / tooling tweaks without behaviour impact,
+    generated-file changes. Detect via subject keywords (`format`, `lint`,
+    `typo`, `rename`, `bump`, `chore: comments`, …) **and** by reading
+    `--stat`/`--numstat` when the subject is generic.
+  - Each item is **≤ 8 words**, present tense. No commit hashes, no file
+    paths, no numeric thresholds (unless the number IS the change).
+  - **Aggressively collapse** follow-ups (3 small RPC fixups → one item:
+    `Hardened RPC reconnect path`).
+  - No category headers, no branch headers, no sibling-repo grouping — all
+    items fold into one flat list per user. Mention `ActualLab.Fusion` in
+    the item text only when it's load-bearing.
+  - Order items most-impactful first (the same ranking rule that orders
+    categories in the default layout).
+  - The closing summary is **one short line**: the rounded time period
+    (same units as the standard footer — minutes/hours/days/weeks) and
+    `` `+<added>`/`-<removed>` `` LOC, **scoped to the user**. No commit
+    count, no branch list, no SHA. Example: `6h, +312/-87`.
+  - No combined cross-user footer in `--all` mode — each user's block is
+    self-contained.
+
 - **`compact`** — at most **one short sentence per item, no exceptions**.
   Strip numeric thresholds, class names, and "why" notes unless they're the
   whole point of the change. Prefer fewer items by collapsing tightly
@@ -128,9 +180,9 @@ is genuinely worth explaining.
 
 ## Steps
 
-### 1. Identify the current user
+### 1. Identify the target author(s)
 
-Run in parallel and union the results:
+**Without `--all`** — single-user mode. Run in parallel and union the results:
 
 ```bash
 gh api user --jq .login
@@ -141,6 +193,27 @@ git config user.email
 A commit "belongs" to the user if its author name **or** email **or** the
 linked GitHub login matches any of these. When filtering with `git log`, pass
 multiple `--author=` filters (git ORs them) covering all three values.
+
+**With `--all`** — multi-user mode. Don't pre-filter by author. Instead,
+enumerate every distinct author in the window (both repos), then drop
+bot/AI authors:
+
+```bash
+git log --all --no-merges --since="<window>" --format='%an%x09%ae' \
+  | sort -u
+```
+
+(For revision ranges, swap `--all --since=…` for the range; for the
+sibling repo add `-C /proj/ActualLab.Fusion`. Combine both repos' author
+sets before de-duping.)
+
+Coalesce idents for the same human: if two `(name, email)` rows share a
+canonical GitHub login (look up via `gh api -X GET search/users -f q="<email>"`
+only when in doubt — don't burn API on obvious cases), treat them as one
+author. Otherwise keep them separate.
+
+Then run steps 3–6 once **per remaining author**, passing that author's
+full `--author=` ident set into `git log`.
 
 ### 2. Determine the time window
 
@@ -228,6 +301,21 @@ If the sibling repo is not present, silently skip it.
 
 Default layout: the bulleted format described above.
 
+If `minimal` is set, render the minimal layout from *Detail level → minimal*
+(per-user block, no category/branch headers, ≤ 8-word items, one-line
+period+LOC summary). Skip Step 8 entirely — each user block is
+self-contained.
+
+If `--all` is set, repeat the render once per remaining (non-bot) author.
+Separate blocks with a blank line. In default / `compact` / `Nx` modes,
+prefix each block with `## <UserName>` and put the per-user footer (Step 8)
+**inside** each block — there is no combined cross-user footer. In
+`minimal` mode, the `**<UserName>**:` line is the header; no `##` needed.
+In `as table` mode, add a leading `Author` column.
+
+If `--post` is set, do not print the report inline — see *Posting to
+Standup (`--post`)* below.
+
 If `as table` (or `as markdown table`) was in the args, render as a
 **two-column** Markdown table. The first column stacks the bold category
 name and the branch on two lines (separated by `<br/>`); the second
@@ -310,6 +398,75 @@ before printing the footer.
 The footer is the last thing in the output — no closing prose, no
 trailing summary sentence after it.
 
+In `minimal` mode this footer is **suppressed** — the per-user one-line
+summary inside each block replaces it. In `--all` mode the footer is
+emitted **per user inside each block** (see Step 7); there is no
+combined cross-user footer.
+
+## Multi-user mode (`--all`)
+
+When `--all` is set, produce one report block per **human author** with
+commits in the window. Run steps 3–6 once per author.
+
+### Identifying bots and AI authors
+
+Exclude any author whose name OR email matches any of:
+
+- `[bot]` suffix in the author name or login (`dependabot[bot]`,
+  `github-actions[bot]`, `renovate[bot]`, `mergify[bot]`, …).
+- Substring (case-insensitive) `claude`, `anthropic`, `chatgpt`, `openai`,
+  `codex`, `copilot`, `cursor`, `aider` in name or email.
+- Generic CI/release accounts: `noreply@github.com` alone, or accounts
+  whose name is `GitHub`, `GitHub Actions`, `web-flow`, etc.
+
+When a name/email looks human but ambiguous, you may call
+`gh api users/<login> --jq .type` once per uncertain login — `Bot`
+means skip. Don't burn API on obvious humans.
+
+Commits authored by a human that carry a `Co-Authored-By: Claude …` (or
+other AI) trailer **still belong to the human** — count them toward that
+human's report; do not promote a parallel AI entry.
+
+### Per-author rendering
+
+- Default / `compact` / `Nx`: prefix each user's block with `## <UserName>`
+  and keep the standard category/branch structure inside. Per-user footer
+  (Step 8) goes at the bottom of each block; no combined cross-user footer.
+- `minimal`: use the `**<UserName>**:` header from *Detail level → minimal*
+  with its one-line period+LOC summary. No `##`, no Step-8 footer.
+- `as table`: add a leading `Author` column; one giant table is fine.
+
+Order user blocks by **descending total LOC** (added + removed) in the
+window. If a user has no surviving items after cosmetic filtering in
+`minimal` mode, omit them entirely (don't print an empty block).
+
+## Posting to Standup (`--post`)
+
+When `--post` is set, do **not** print the report inline. Instead post
+it to the **Standup** chat in the **Actual Chat** place using the same
+path `/robokitty-post` uses.
+
+1. Resolve `Standup` → `s-pmMsV1UVKG-xigkwj28ql` from the known-chats
+   table baked into `/robokitty-post`. If that mapping is unavailable
+   for any reason, fall back to listing `mcp__voxt-robokitty__list_place_chats`
+   for place `pmMsV1UVKG` and matching the title case-insensitively.
+2. **Single-user mode:** call `mcp__voxt-robokitty__post_message(chatId,
+   text)` once with the entire report as `text`. Pass the Markdown
+   verbatim — no extra prefix, no signature, no "Daily standup for …"
+   intro.
+3. **`--all` mode:** call `post_message` **once per user block**, in the
+   same order the inline render would use. Each block is a standalone
+   message — don't bundle multiple users into one message.
+4. After each successful post, print a one-line confirmation to the
+   current conversation: `Posted <user> → Standup (LID: <id>).`
+   (For single-user mode, write `Posted → Standup (LID: <id>).`)
+5. On any failure, surface the MCP error verbatim and **stop** — do not
+   retry, do not continue posting remaining users without telling the
+   user what failed and which users were already posted.
+
+`--post` combines with every detail level. The expected standup-digest
+invocation is `--all minimal --post`.
+
 ## Constraints
 
 - **Read-only.** No `git push`, no `git fetch`, no checkouts, no commits, no
@@ -319,3 +476,7 @@ trailing summary sentence after it.
   Branches that only exist on `origin` should still appear.
 - Use parallel Bash calls when gathering independent data (identity lookup,
   current-repo log, sibling-repo log, branch lookups for distinct commits).
+- `--post` is a **user-visible side effect.** Treat it the same as any
+  outbound action — if the target chat resolution is ambiguous, if author
+  enumeration looks wrong, or if the report would land in a public channel
+  with surprising content, stop and confirm before sending.

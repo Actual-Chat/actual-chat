@@ -21,6 +21,13 @@
     },
     "seq": {
       "command": "tools/seq-mcp-mcp-wrapper"
+    },
+    "voxt-robokitty": {
+      "type": "http",
+      "url": "https://voxt.ai/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${ActualChat_RoboKitty_API_Key}"
+      }
     }
   }
 }
