@@ -30,6 +30,31 @@ public class AuthTest(McpCollection.AppHostFixture fixture, ITestOutputHelper @o
     [Fact]
     public async Task MissingHeader_IsRejected()
     {
+        var response = await SendInitialize(authorization: null);
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.Unauthorized);
+        response.Headers.WwwAuthenticate.ToString().Should().StartWith("Bearer");
+    }
+
+    [Fact]
+    public async Task NonBearerHeader_IsRejected()
+    {
+        var response = await SendInitialize(authorization: "Basic dXNlcjpwYXNz");
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task ApiKeyForGuestSession_IsRejected()
+    {
+        var unboundKey = await Tester.Commander
+            .Call(new ActualChat.Users.SessionsBackend_Upsert(SessionExt.NewApiKey()));
+        unboundKey.Session.Kind.Should().Be(SessionKind.ApiKey);
+
+        var connect = CreateClientWithRawKey(unboundKey.Session.Id).AsAsyncFunc();
+        await connect.Should().ThrowAsync<HttpRequestException>();
+    }
+
+    private async Task<HttpResponseMessage> SendInitialize(string? authorization)
+    {
         var baseUri = Tester.UrlMapper.BaseUri;
         using var http = Tester.AppHost.NewHttpClient();
         var request = new HttpRequestMessage(HttpMethod.Post, new Uri(baseUri, "/api/mcp"));
@@ -38,8 +63,8 @@ public class AuthTest(McpCollection.AppHostFixture fixture, ITestOutputHelper @o
         request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
-
-        using var response = await http.SendAsync(request);
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.Unauthorized);
+        if (authorization is not null)
+            request.Headers.TryAddWithoutValidation("Authorization", authorization);
+        return await http.SendAsync(request);
     }
 }
