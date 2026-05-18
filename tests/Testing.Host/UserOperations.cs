@@ -38,4 +38,15 @@ public static class UserOperations
         => new AccountFull(name)
             .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, googleId))
             .WithClaim(ClaimTypes.Email, email);
+
+    // Marks the user as having been last active 15 minutes ago so notification routing
+    // treats them as offline — i.e. pushes are delivered immediately via the
+    // ChatEntryChangedEvent path instead of being deferred by NotificationFlow's
+    // online-user check.
+    public static Task ForceOffline(this IWebTester tester, AccountFull user)
+    {
+        var clocks = tester.AppServices.Clocks();
+        return tester.Commander.Call(new UserPresencesBackend_CheckIn(
+            user.Id, clocks.SystemClock.Now - TimeSpan.FromMinutes(15), true));
+    }
 }

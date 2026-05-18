@@ -5,6 +5,7 @@
     <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
     <ProjectReference Include="..\Core\Core.csproj" />
     <ProjectReference Include="..\Redis\Redis.csproj" />
+    <ProjectReference Include="..\Streaming.Contracts\Streaming.Contracts.csproj" />
   </ItemGroup>
   
   <ItemGroup>

@@ -408,52 +408,23 @@ public class NotificationsBackend(IServiceProvider services)
         var (entry, author, changeKind, oldEntry) = eventCommand;
         if (entry.IsSystemEntry)
             return;
-        if (entry.Id is not ChatEntryId entryId)
+
+        if (!ShouldNotify(entry, oldEntry, changeKind))
             return;
 
-        var chatId = entry.ChatId;
-        if (entry.HasAudio) { // Maybe has transcription
-            if (changeKind != ChangeKind.Update)
-                return;
+        await SendChatMessageNotification(entry, author, cancellationToken).ConfigureAwait(false);
+        return;
 
-            // When the transcribed message is being finalized, it's updated to IsStreaming = false.
-            // At this moment we can notify chat users.
-            var isFinalized = oldEntry is { IsContentStreaming: true } && !entry.IsContentStreaming;
-            if (!isFinalized)
-                return;
+        // - plain typed text: Create already carries the full content → push immediately;
+        // - audio / JustText voice: Create is empty + streaming, final content arrives only
+        //   in the subsequent Update → push on the streaming → finalized transition.
+        static bool ShouldNotify(ChatEntry entry, ChatEntry? oldEntry, ChangeKind changeKind) {
+            if (changeKind == ChangeKind.Create)
+                return !entry.IsContentStreaming;
+            if (changeKind != ChangeKind.Update || oldEntry is null)
+                return false;
+            return oldEntry.IsContentStreaming && !entry.IsContentStreaming;
         }
-        else {
-            if (changeKind != ChangeKind.Create)
-                return;
-            // For regular text messages we notify chat users upon message creation.
-        }
-
-        // Force loading entry media info
-        entry = await ChatsBackend
-            .GetEntry(entry.Id, Constants.Notification.EntryWaitTimeout, cancellationToken)
-            .ConfigureAwait(false);
-        if (entry is null)
-            return;
-
-        var (text, mentionIds) = await NotificationHelper.GetText(entry, MarkupConsumer.Notification, ChatMarkupHubFactory, cancellationToken)
-            .ConfigureAwait(false);
-        var key = chatId.Id.Value;
-        if (!_recentChatsWithNotifications.TryGetValue(key, out _)) {
-            using ICacheEntry cacheEntry = _recentChatsWithNotifications.CreateEntry(key);
-            cacheEntry.Size = 1;
-            cacheEntry.Value = "";
-            cacheEntry.AbsoluteExpirationRelativeToNow = Constants.Notification.ThrottleIntervals.Message;
-        }
-        else if (mentionIds.Count == 0) {
-            DebugLog?.LogInformation("Throttle low priority notifications. EntryId={EntryId}", entry.Id);
-            return;
-        }
-        var userIds = await ListSubscribedUserIds(entry.ChatId, cancellationToken).ConfigureAwait(false);
-        var similarityKey = entry.ChatId.Value;
-        await EnqueueMessageRelatedNotifications(
-            entry.ChatId, entryId, author, text, NotificationKind.Message,
-            similarityKey, userIds, cancellationToken)
-            .ConfigureAwait(false);
     }
 
     // [EventHandler]
@@ -469,8 +440,6 @@ public class NotificationsBackend(IServiceProvider services)
             return;
         if (author.Id == reactionAuthor.Id) // No notifs on your own reactions to your own messages
             return;
-        if (entry.Id is not ChatEntryId entryId)
-            return;
 
         var (text, _) = await NotificationHelper.GetText(entry, MarkupConsumer.ReactionNotification, ChatMarkupHubFactory, cancellationToken).ConfigureAwait(false);
         if (!entry.Content.IsNullOrEmpty())
@@ -479,7 +448,7 @@ public class NotificationsBackend(IServiceProvider services)
         var userIds = new[] { author.UserId };
         var similarityKey = entry.ChatId.Value;
         await EnqueueMessageRelatedNotifications(
-            entry.ChatId, entryId, reactionAuthor, text, NotificationKind.Reaction,
+            entry.ChatId, entry.Id, reactionAuthor, text, NotificationKind.Reaction,
             similarityKey, userIds, cancellationToken)
             .ConfigureAwait(false);
     }
@@ -532,6 +501,40 @@ public class NotificationsBackend(IServiceProvider services)
         => ActualLab.Async.TaskExt.UnitTask;
 
     // Private methods
+
+    private async Task SendChatMessageNotification(
+        ChatEntry entry,
+        AuthorFull author,
+        CancellationToken cancellationToken)
+    {
+        var freshEntry = await ChatsBackend
+            .GetEntry(entry.Id, Constants.Notification.EntryWaitTimeout, cancellationToken)
+            .ConfigureAwait(false);
+        if (freshEntry is null)
+            return;
+
+        var entryId = freshEntry.Id;
+        var chatId = entryId.ChatId;
+        var (text, mentionIds) = await NotificationHelper
+            .GetText(freshEntry, MarkupConsumer.Notification, ChatMarkupHubFactory, cancellationToken)
+            .ConfigureAwait(false);
+        var key = chatId.Id.Value;
+        if (!_recentChatsWithNotifications.TryGetValue(key, out _)) {
+            using ICacheEntry cacheEntry = _recentChatsWithNotifications.CreateEntry(key);
+            cacheEntry.Size = 1;
+            cacheEntry.Value = "";
+            cacheEntry.AbsoluteExpirationRelativeToNow = Constants.Notification.ThrottleIntervals.Message;
+        }
+        else if (mentionIds.Count == 0) {
+            DebugLog?.LogInformation("Throttle low priority notifications. EntryId={EntryId}", entryId);
+            return;
+        }
+        var userIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
+        await EnqueueMessageRelatedNotifications(
+            chatId, entryId, author, text, NotificationKind.Message,
+            chatId.Value, userIds, cancellationToken)
+            .ConfigureAwait(false);
+    }
 
     private async Task Send(UserId userId, Notification notification, CancellationToken cancellationToken1)
     {

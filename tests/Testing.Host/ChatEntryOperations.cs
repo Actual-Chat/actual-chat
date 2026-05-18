@@ -1,5 +1,4 @@
 using ActualChat.Chat;
-using ActualChat.Media;
 
 namespace ActualChat.Testing.Host;
 

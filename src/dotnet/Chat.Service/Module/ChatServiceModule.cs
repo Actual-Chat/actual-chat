@@ -9,6 +9,7 @@ using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Redis;
 using ActualChat.Redis.Module;
+using ActualChat.Streaming;
 using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.EntityFrameworkCore;
@@ -156,7 +157,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
                 ApiKey = Settings.Retranscription.OpenAIKey,
                 Model = Settings.Retranscription.OpenAIModel,
             });
-            services.AddSingleton(c => new OpenAITranscriber(c.GetRequiredService<OpenAITranscriber.Options>(), c));
+            services.AddSingleton<IRefineTranscriber>(c => new OpenAITranscriber(c.GetRequiredService<OpenAITranscriber.Options>(), c));
         }
 
         // Embeddings
