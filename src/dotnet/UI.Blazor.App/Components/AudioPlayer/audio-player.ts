@@ -23,7 +23,7 @@ import { ServerClock } from 'clocks';
 import { SharedSettings } from 'shared-settings';
 import { SharedSettingsWorkerSync } from 'shared-settings-worker';
 
-const { logScope, debugLog, infoLog, warnLog } = getLogs('AudioPlayer');
+const { logScope, debugLog, infoLog, warnLog, errorLog } = getLogs('AudioPlayer');
 
 const EnableFrequentDebugLog = false;
 
@@ -153,6 +153,7 @@ export class AudioPlayer implements Resettable {
     private recordedAtMs = 0;
     private lastLatencyLogTime = 0;
     private lastLagReportTime = 0;
+    private warnedFeederMissingInFrame = false;
     private static readonly LagReportIntervalMs = 500;
     // Dedup state: feeder onStateChanged fires at audio-block rate (≈50 Hz)
     // so without a guard reportPlaying calls Blazor invokeMethodAsync 50×/s
@@ -252,6 +253,7 @@ export class AudioPlayer implements Resettable {
         this.lastReportAttemptedIsBufferLow = null;
         this.lastReportAttemptedAtMs = 0;
         this.lastReportFailedAtMs = 0;
+        this.warnedFeederMissingInFrame = false;
         this.whenEnded = new PromiseSource<void>();
 
         // Create a ref with the feeder node trait
@@ -262,8 +264,10 @@ export class AudioPlayer implements Resettable {
         this.playingAction = this.contextRef.run(async (context) => {
             try {
                 const attachedFeeder = this.contextRef!.getTrait<AttachedFeederNode>(this.feederNodeTrait);
-                if (!attachedFeeder)
+                if (!attachedFeeder) {
+                    errorLog?.log(`#${this.internalId} startPlayback: getTrait returned NULL for feeder, context.state=${context.state}`);
                     throw new Error('Feeder node not attached');
+                }
 
                 const outputLatency = (context as AudioContextOutputLatency).outputLatency;
                 infoLog?.log(
@@ -324,6 +328,13 @@ export class AudioPlayer implements Resettable {
             return;
         if (this.contextRef && !this.contextRef.isReady)
             return; // Skip frames when audio context isn't running (e.g. broken/suspended)
+
+        if (!this.warnedFeederMissingInFrame
+            && this.contextRef
+            && !this.contextRef.getTrait<AttachedFeederNode>(this.feederNodeTrait)) {
+            this.warnedFeederMissingInFrame = true;
+            warnLog?.log(`#${this.internalId} frame: feeder trait is NULL but contextRef is ready — frames will be discarded by decoder worker`);
+        }
 
         // Hot path — called ~50×/s per player via Blazor interop. Bypass the rpcClient Proxy
         // and go straight to the worker's postMessage to avoid per-call allocations.

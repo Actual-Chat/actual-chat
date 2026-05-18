@@ -67,6 +67,6 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
     }
 
     private onProcessorError = (ev: Event) => {
-        errorLog?.log(`#${this.id}.onProcessorError: unhandled error:`, Log.ref(ev));
+        errorLog?.log(`#${this.id}.onProcessorError: unhandled error, context.state=${this.context.state}:`, Log.ref(ev));
     };
 }
