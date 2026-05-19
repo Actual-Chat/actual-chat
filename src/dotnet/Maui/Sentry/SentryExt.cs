@@ -11,6 +11,7 @@ public static class SentryExt
 {
     private const string UIDsn = "https://7bcdf3ac9a774dfab54df0e0a9865a20@o4504632882233344.ingest.sentry.io/4504639283789824";
     private const int ThrottleMaxPerWindow = 5;
+    private const int ThrottleMaxFingerprints = 256;
     private static readonly TimeSpan ThrottleWindow = TimeSpan.FromMinutes(5);
     private static readonly ConcurrentDictionary<string, ThrottleEntry> ThrottleTracker = new();
     private static long _lastThrottleSweepAtTicks = DateTime.UtcNow.Ticks;
@@ -60,7 +61,11 @@ public static class SentryExt
 
         var now = DateTime.UtcNow;
         SweepStaleThrottleEntries(now);
-        var entry = ThrottleTracker.GetOrAdd(key, static _ => new ThrottleEntry());
+        if (!ThrottleTracker.TryGetValue(key, out var entry)) {
+            if (ThrottleTracker.Count >= ThrottleMaxFingerprints)
+                return true; // Cardinality cap reached — drop until next window frees slots
+            entry = ThrottleTracker.GetOrAdd(key, static _ => new ThrottleEntry());
+        }
         lock (entry) {
             if (now - entry.WindowStart > ThrottleWindow) {
                 entry.WindowStart = now;
