@@ -10,11 +10,21 @@ namespace ActualChat.Maui.Sentry;
 public static class SentryExt
 {
     private const string UIDsn = "https://7bcdf3ac9a774dfab54df0e0a9865a20@o4504632882233344.ingest.sentry.io/4504639283789824";
+    private const int ThrottleMaxPerWindow = 5;
+    private static readonly TimeSpan ThrottleWindow = TimeSpan.FromMinutes(5);
+    private static readonly ConcurrentDictionary<string, ThrottleEntry> ThrottleTracker = new();
 
     public static void ConfigureForApp(this SentryOptions options, bool useOpenTelemetry)
     {
         options.Dsn = UIDsn;
-        options.SetBeforeSend(static (e, _) => IsBelowReportableVersion() ? null : e);
+        options.SetBeforeSend(static (e, _) => {
+            if (IsBelowReportableVersion())
+                return null;
+            if (IsThrottled(e))
+                return null;
+
+            return e;
+        });
         options.AddExceptionFilterForType<OperationCanceledException>();
         options.Debug = false;
         options.DiagnosticLevel = SentryLevel.Error;
@@ -39,6 +49,34 @@ public static class SentryExt
 
         return Version.TryParse(minStr, out var min)
             && ApiConstants.Version < min;
+    }
+
+    private static bool IsThrottled(SentryEvent e)
+    {
+        var key = TryGetThrottleKey(e);
+        if (key.IsNullOrEmpty())
+            return false;
+
+        var now = DateTime.UtcNow;
+        var entry = ThrottleTracker.GetOrAdd(key, static _ => new ThrottleEntry());
+        lock (entry) {
+            if (now - entry.WindowStart > ThrottleWindow) {
+                entry.WindowStart = now;
+                entry.Count = 0;
+            }
+            entry.Count++;
+            return entry.Count > ThrottleMaxPerWindow;
+        }
+    }
+
+    private static string TryGetThrottleKey(SentryEvent e)
+    {
+        var ex = e.SentryExceptions?.FirstOrDefault();
+        if (ex != null) {
+            var topFrame = ex.Stacktrace?.Frames?.LastOrDefault();
+            return $"{ex.Type}|{topFrame?.Module}.{topFrame?.Function}";
+        }
+        return e.Message?.Formatted ?? "";
     }
 
     /// <summary>
@@ -72,5 +110,13 @@ public static class SentryExt
         // https://gist.github.com/MihaZupan/835591bb22270b1aa7feeeece721520d
         var handler = new HttpClientHandler();
         return new ConditionalPropagatorHandler(handler);
+    }
+
+    // Nested types
+
+    private sealed class ThrottleEntry
+    {
+        public int Count;
+        public DateTime WindowStart = DateTime.UtcNow;
     }
 }
