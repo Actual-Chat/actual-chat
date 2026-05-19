@@ -39,12 +39,19 @@ body.hoverable .chat-audio-panel .take-phone-btn.btn:hover {
 }
 .chat-audio-panel .listen-only-btn.btn,
 body.hoverable .chat-audio-panel .listen-only-btn.btn:hover {
-    @apply text-06;
-    background: linear-gradient(180deg, #C60077 -18.32%, #2970FF 132%);
-    background-size: 100% 180%;
-    background-position: center center;
-    background-repeat: no-repeat;
+    @apply text-06 bg-transparent;
+    isolation: isolate;
     transition-property: transform, opacity, filter;
+}
+.chat-audio-panel .listen-only-btn.btn::before {
+    @apply content-empty;
+    @apply absolute inset-x-0 z-minus;
+    @apply pointer-events-none;
+    top: -40%;
+    height: 180%;
+    background: linear-gradient(180deg, #C60077 -18.32%, #2970FF 132%);
+    border-radius: inherit;
+    will-change: transform;
     animation: gradientShake 3s ease-in-out infinite alternate;
 }
 .chat-audio-panel .record-off-btn.btn,
@@ -824,6 +831,26 @@ body.narrow .chat-audio-panel .mobile-video-btn.btn-round i {
     @apply text-lg;
 }
 
+/* === 11.5. Video/Screencast Entry Animation === */
+
+.audio-panel-wrapper > .video-wrapper,
+.audio-panel-wrapper > .screencast-wrapper {
+    animation: audio-panel-button-grow 300ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+    transform-origin: center;
+}
+.audio-panel-wrapper > .screencast-wrapper {
+    animation-delay: 200ms;
+}
+
+@keyframes audio-panel-button-grow {
+    from {
+        width: 0;
+        margin-inline: -0.3125rem;
+        opacity: 0;
+        transform: scale(0);
+    }
+}
+
 /* === 12. Volume Settings Button === */
 
 .chat-audio-panel .volume-settings-btn {
@@ -912,23 +939,13 @@ body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .volume-settings
 /* === 15. Keyframe Animations === */
 
 @keyframes gradientShake {
-    0% {
-        background-position: center 10%;
-    }
-    100% {
-        background-position: center 90%;
-    }
+    from { transform: translateY(18%); }
+    to   { transform: translateY(-18%); }
 }
 @keyframes off-to-on-outline {
-    0%, 100% {
-        outline-width: 1px;
-    }
-    50% {
-        outline-width: 3px;
-    }
-    100% {
-        outline-width: 2px;
-    }
+    0%   { outline-width: 1px; }
+    50%  { outline-width: 3px; }
+    100% { outline-width: 2px; }
 }
 @keyframes playback-btn-glow {
     0%, 100% {

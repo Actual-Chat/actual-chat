@@ -1,6 +1,15 @@
 export class EmojiModal {
     private observer: IntersectionObserver | null = null;
     private recentScroll: RecentScroll | null = null;
+    private gridForLoadEvents: HTMLElement | null = null;
+
+    private readonly onMediaLoadOrError = (e: Event) => {
+        const target = e.target;
+        if (!(target instanceof HTMLImageElement))
+            return;
+        const item = target.closest<HTMLElement>('.c-gif-item');
+        item?.classList.add('loaded');
+    };
 
     static create(sentinels: HTMLElement[], blazorRef: DotNet.DotNetObject): EmojiModal {
         return new EmojiModal(sentinels, blazorRef);
@@ -25,6 +34,15 @@ export class EmojiModal {
         for (const sentinel of sentinels)
             this.observer.observe(sentinel);
 
+        // Mark .c-gif-item as .loaded once its <img> finishes (or errors).
+        // 'load' / 'error' don't bubble — listen in capture phase on the grid.
+        const grid = scrollContainer.querySelector<HTMLElement>('.c-gif-grid');
+        if (grid) {
+            grid.addEventListener('load', this.onMediaLoadOrError, { capture: true });
+            grid.addEventListener('error', this.onMediaLoadOrError, { capture: true });
+            this.gridForLoadEvents = grid;
+        }
+
         const recentContainer = scrollContainer.querySelector<HTMLElement>('.c-gif-recent');
         if (recentContainer)
             this.recentScroll = new RecentScroll(recentContainer);
@@ -33,6 +51,11 @@ export class EmojiModal {
     public dispose() {
         this.observer?.disconnect();
         this.observer = null;
+        if (this.gridForLoadEvents) {
+            this.gridForLoadEvents.removeEventListener('load', this.onMediaLoadOrError, { capture: true });
+            this.gridForLoadEvents.removeEventListener('error', this.onMediaLoadOrError, { capture: true });
+            this.gridForLoadEvents = null;
+        }
         this.recentScroll?.dispose();
         this.recentScroll = null;
     }
