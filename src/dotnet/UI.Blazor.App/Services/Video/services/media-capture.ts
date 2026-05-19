@@ -137,12 +137,26 @@ export class MediaCapture {
         if (size) {
             videoConstraints.width = size.width;
             videoConstraints.height = size.height;
-            // Force native capture: Chrome's `resizeMode: 'crop-and-scale'` returns
-            // MSTP VideoFrames with a codedW/H / plane0 mismatch that breaks WebGPU
-            // importExternalTexture ("cropSize exceeds texture size"). We downscale
-            // ourselves in the GPU downscaler.
-            (videoConstraints as MediaTrackConstraints & { resizeMode?: ConstrainDOMString })
-                .resizeMode = { ideal: 'none' };
+            // Mobile: keep `resizeMode: 'none'`. The ladder is built
+            // landscape-first; portrait-vs-landscape detection happens AFTER
+            // capture (VideoRecorder flips the ladder when cameraHeight >
+            // cameraWidth). If we let the browser `crop-and-scale` to satisfy
+            // the landscape constraint on a portrait-held phone, it
+            // center-crops a 16:9 band out of the portrait sensor — tightly
+            // cropped to the speaker's face. `resizeMode: 'none'` makes the
+            // browser deliver native sensor frames so orientation detection
+            // can run on the real aspect ratio.
+            //
+            // Desktop / OBS: drop the override so the browser honors `max=`
+            // and downscales to top-layer dims at source. This lets
+            // `normalizeFrame` short-circuit (no per-frame canvas draw /
+            // VideoFrame allocation) — a load-bearing optimisation, since
+            // per-frame top-dim VideoFrame creation builds GPU texture
+            // pressure that strangles the NVENC HW encoder over time.
+            if (DeviceInfo.isMobile) {
+                (videoConstraints as MediaTrackConstraints & { resizeMode?: ConstrainDOMString })
+                    .resizeMode = { ideal: 'none' };
+            }
         }
         return videoConstraints;
     }

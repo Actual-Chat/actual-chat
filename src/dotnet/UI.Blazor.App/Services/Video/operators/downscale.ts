@@ -1,10 +1,9 @@
-import { type PipeOperator } from 'ix-ext';
+import { from, type PipeOperator } from 'ix-ext';
 import { getLogs } from 'logging';
 import { DeviceOrientation, ScreenOrientation, normalizeRotationQuarter, type RotationQuarter } from 'orientation';
 import type { CapturedBundle, CapturedFrame, NormalizedFrame } from '../frame-envelopes';
 import { cameraRotationDeg } from '../orientation/quantize';
 import { drawFrameCover, resizeCanvas } from '../canvas/resize';
-import { parallelMap } from './parallel-map';
 
 const { warnLog } = getLogs('VideoPipeline');
 
@@ -18,32 +17,12 @@ export interface NormalizeFrameOptions {
     isCamera: boolean;
     isFrontCamera: boolean;
     isIos: boolean;
-    concurrency?: number;
-    // On hang: reset the slot processor, recreate on next frame, force a
-    // keyframe so encoders restart cleanly. Default 1500 ms.
-    hangTimeoutMs?: number;
-    setTimeoutFn?: (cb: () => void, ms: number) => unknown;
-    clearTimeoutFn?: (handle: unknown) => void;
 }
 
 export interface SpatializeOptions {
     // Bottom-first: ladder[0] is the base layer. The top layer must match the
     // normalized frame dimensions.
     ladder: readonly LayerSpec[];
-    concurrency?: number;
-}
-
-interface NormalizeSlotState {
-    processor: NormalizeFrameSlotProcessor | null;
-}
-
-interface SpatialSlotState {
-    processor: SpatializeSlotProcessor | null;
-}
-
-interface NormalizeProcessResult {
-    frame: VideoFrame;
-    rotation: RotationQuarter;
 }
 
 interface FrameTransform {
@@ -56,121 +35,87 @@ interface Slot {
     ctx: OffscreenCanvasRenderingContext2D;
 }
 
-// CapturedFrame -> NormalizedFrame. This is the sender surface: one frame at
-// the top spatial layer's locked dimensions, with crop/orientation fixes baked
-// into pixels and the corresponding wire rotation set on the envelope.
+// CapturedFrame -> NormalizedFrame. Direct generator — no parallelMap, no
+// extra await tick. When the source frame already matches the top-layer dims
+// and no cropbox rotation is needed (the common desktop / OBS path), this
+// degenerates to a zero-allocation pass-through: the input frame flows
+// through unchanged. The expensive `new VideoFrame(canvas)` allocation only
+// happens when an actual crop/resize/rotate is required.
+//
+// Per-frame `new VideoFrame(OffscreenCanvas)` at top dims (e.g. 1280×720)
+// builds GPU-texture pressure that strangles the HW encoder over time —
+// measured ~25× degradation on a sustained 30s recording. Skipping it on
+// the identity path is the single most impactful sender-side optimisation.
 export function normalizeFrame(opts: NormalizeFrameOptions): PipeOperator<CapturedFrame, NormalizedFrame> {
     const target = { ...opts.target };
-    const concurrency = opts.concurrency ?? 2;
-    const hangTimeoutMs = opts.hangTimeoutMs ?? 1_500;
-    const setTimeoutFn = opts.setTimeoutFn ?? ((cb, ms): unknown => setTimeout(cb, ms));
-    const clearTimeoutFn = opts.clearTimeoutFn ?? ((h: unknown): void => clearTimeout(h as ReturnType<typeof setTimeout>));
-
-    let consecutiveHangs = 0;
-    let forceKeyframeAfterHang = false;
     const orientation = new NormalizeFrameOrientation(opts);
-    const slotStates: (NormalizeSlotState | undefined)[] = new Array<NormalizeSlotState | undefined>(concurrency).fill(undefined);
+    let slot: Slot | null = null;
 
     return source => {
-        const stage = parallelMap<CapturedFrame, NormalizedFrame | null>({
-            concurrency,
-            onSlotInit: slotId => {
-                slotStates[slotId] = { processor: null };
-            },
-            onSlotDispose: slotId => {
-                slotStates[slotId]?.processor?.dispose();
-                slotStates[slotId] = undefined;
-            },
-            onUnconsumedResult: frame => {
-                if (frame)
-                    try { frame.frame.close(); } catch { /* ignore */ }
-            },
-            map: async (envelope, slotId) => {
-                const slot = slotStates[slotId]!;
-                slot.processor ??= new NormalizeFrameSlotProcessor(orientation);
-
-                let result: NormalizeProcessResult | null = null;
-                let raced: NormalizeProcessResult | 'timeout';
-                const processPromise = slot.processor.process(envelope.frame, target);
-                let timerHandle: unknown = null;
-                const timeoutP = new Promise<'timeout'>(resolve => {
-                    timerHandle = setTimeoutFn(() => resolve('timeout'), hangTimeoutMs);
-                });
-                try {
-                    raced = await Promise.race([processPromise, timeoutP]);
-                } finally {
-                    if (timerHandle !== null) {
-                        try { clearTimeoutFn(timerHandle); } catch { /* ignore */ }
+        async function* impl(): AsyncIterable<NormalizedFrame> {
+            try {
+                for await (const envelope of source) {
+                    const input = envelope.frame;
+                    const transform = orientation.decide(input, target);
+                    const displayW = input.displayWidth || input.codedWidth;
+                    const displayH = input.displayHeight || input.codedHeight;
+                    if (transform.cropboxRotation === 0
+                        && displayW === target.width
+                        && displayH === target.height) {
+                        // Identity: pass envelope through. Only patch `rotation`
+                        // when it actually changes — preserves object identity
+                        // when nothing changed.
+                        yield envelope.rotation === transform.wireRotation
+                            ? envelope
+                            : { ...envelope, rotation: transform.wireRotation };
+                        continue;
                     }
+                    slot ??= createSlot('normalizeFrame');
+                    prepareSlot(slot, target.width, target.height);
+                    drawFrameCover(slot.ctx, input, target.width, target.height, transform.cropboxRotation);
+                    const out = new VideoFrame(slot.canvas, {
+                        timestamp: input.timestamp,
+                        alpha: 'discard',
+                    });
+                    try { input.close(); } catch { /* already closed */ }
+                    yield { ...envelope, frame: out, rotation: transform.wireRotation };
                 }
-                if (raced === 'timeout') {
-                    consecutiveHangs++;
-                    forceKeyframeAfterHang = true;
-                    // Detach: tail handler closes anything the stuck process()
-                    // eventually produces. Input frame is owned by process().
-                    void processPromise.then(
-                        produced => { try { produced.frame.close(); } catch { /* ignore */ } },
-                        () => { /* normalize error already logged */ },
-                    );
-                    slot.processor.dispose();
-                    slot.processor = null;
-                    if (consecutiveHangs >= 4)
-                        throw new Error(
-                            `normalizeFrame: hang watchdog fired ${consecutiveHangs} times in a row, giving up`);
-                    return null;
+            } finally {
+                if (slot) {
+                    slot.canvas.width = 0;
+                    slot.canvas.height = 0;
+                    slot = null;
                 }
-
-                consecutiveHangs = 0;
-                result = raced;
-                const forceKeyframe = envelope.forceKeyframe || forceKeyframeAfterHang;
-                forceKeyframeAfterHang = false;
-                return {
-                    ...envelope,
-                    frame: result.frame,
-                    forceKeyframe,
-                    rotation: result.rotation,
-                };
-            },
-        });
-
-        const op = stage(source);
-        return (async function* (): AsyncIterable<NormalizedFrame> {
-            for await (const frame of op) {
-                if (frame !== null) yield frame;
             }
-        })() as unknown as ReturnType<PipeOperator<CapturedFrame, NormalizedFrame>>;
+        }
+        return from(impl());
     };
 }
 
-// NormalizedFrame -> CapturedBundle. Adds any lower spatial layers by scaling
-// from the already-normalized top layer. Output remains bottom-first.
+// NormalizedFrame -> CapturedBundle. Direct generator — no parallelMap.
+// Single-layer ladder: input becomes the only layer (zero allocation).
+// Multi-layer ladder: each lower layer gets one canvas downscale +
+// `new VideoFrame`; the top layer stays as the input frame.
 export function spatialize(opts: SpatializeOptions): PipeOperator<NormalizedFrame, CapturedBundle> {
     if (opts.ladder.length === 0)
         throw new Error('spatialize: ladder must contain at least one layer');
 
     const ladder = opts.ladder.slice();
-    const concurrency = opts.concurrency ?? 2;
-    const slotStates: (SpatialSlotState | undefined)[] = new Array<SpatialSlotState | undefined>(concurrency).fill(undefined);
+    let processor: SpatializeSlotProcessor | null = null;
 
     return source => {
-        const stage = parallelMap<NormalizedFrame, CapturedBundle>({
-            concurrency,
-            onSlotInit: slotId => {
-                slotStates[slotId] = { processor: null };
-            },
-            onSlotDispose: slotId => {
-                slotStates[slotId]?.processor?.dispose();
-                slotStates[slotId] = undefined;
-            },
-            onUnconsumedResult: bundle => closeBundleLayers(bundle),
-            map: async (frame, slotId) => {
-                const slot = slotStates[slotId]!;
-                slot.processor ??= new SpatializeSlotProcessor();
-                return slot.processor.process(frame, ladder);
-            },
-        });
-
-        return stage(source) as unknown as ReturnType<PipeOperator<NormalizedFrame, CapturedBundle>>;
+        async function* impl(): AsyncIterable<CapturedBundle> {
+            try {
+                for await (const frame of source) {
+                    processor ??= new SpatializeSlotProcessor();
+                    yield await processor.process(frame, ladder);
+                }
+            } finally {
+                processor?.dispose();
+                processor = null;
+            }
+        }
+        return from(impl());
     };
 }
 
@@ -241,62 +186,6 @@ class NormalizeFrameOrientation {
             * (this.opts.isFrontCamera ? 1 : -1);
         this.currentCropboxRotation = deltaDeg < 0 ? 3 : 1;
         return this.currentCropboxRotation;
-    }
-}
-
-class NormalizeFrameSlotProcessor {
-    private readonly slot = createSlot('normalizeFrame');
-
-    constructor(private readonly orientation: NormalizeFrameOrientation) {}
-
-    process(input: VideoFrame, target: LayerSpec): Promise<NormalizeProcessResult> {
-        let result: VideoFrame | null = null;
-        let mustCloseInput = true;
-        try {
-            const transform = this.orientation.decide(input, target);
-            // Identity short-circuit: input already at target dims and no pixel
-            // rotation needed — transfer the frame downstream without a draw +
-            // VideoFrame(canvas) round-trip. wireRotation may still be non-zero
-            // (iOS bakes orientation on the wire, not in pixels).
-            const displayW = input.displayWidth || input.codedWidth;
-            const displayH = input.displayHeight || input.codedHeight;
-            if (transform.cropboxRotation === 0
-                && displayW === target.width
-                && displayH === target.height) {
-                mustCloseInput = false;
-                return Promise.resolve({ frame: input, rotation: transform.wireRotation });
-            }
-            this.drawNormalized(input, target, transform.cropboxRotation);
-            result = new VideoFrame(this.slot.canvas, {
-                timestamp: input.timestamp,
-                alpha: 'discard',
-            });
-            mustCloseInput = false;
-            try { input.close(); } catch { /* already closed */ }
-            return Promise.resolve({ frame: result, rotation: transform.wireRotation });
-        } catch (e) {
-            warnLog?.log('normalizeFrame: process failed:', e);
-            if (result)
-                try { result.close(); } catch { /* ignore */ }
-            if (mustCloseInput)
-                try { input.close(); } catch { /* ignore */ }
-            return Promise.reject(e instanceof Error ? e : new Error(String(e)));
-        }
-    }
-
-    dispose(): void {
-        this.slot.canvas.width = 0;
-        this.slot.canvas.height = 0;
-    }
-
-    private drawNormalized(
-        input: VideoFrame,
-        target: LayerSpec,
-        cropboxRotation: RotationQuarter,
-    ): void {
-        const { width, height } = target;
-        prepareSlot(this.slot, width, height);
-        drawFrameCover(this.slot.ctx, input, width, height, cropboxRotation);
     }
 }
 
@@ -427,12 +316,6 @@ function signedAngleDeltaDeg(from: number, to: number): number {
 function closeFrames(frames: readonly VideoFrame[]): void {
     for (const frame of frames) {
         try { frame.close(); } catch { /* ignore */ }
-    }
-}
-
-function closeBundleLayers(bundle: CapturedBundle): void {
-    for (const layer of bundle.layers) {
-        try { layer.frame.close(); } catch { /* ignore */ }
     }
 }
 
