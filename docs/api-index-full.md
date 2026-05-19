@@ -455,7 +455,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `CodeBlockMarkup` (sealed class) - Represents a fenced code block with optional language.
 - `Conversation` (record) - Represents a conversation segment with AI-generated summary.
 - `IMarkupParser` - Parses text into markup elements.
-- `IMentionResolver` - Resolves MentionMarkup to its target entity.
+- `IMentionResolver` - Two interfaces in this file: (1) `IMentionResolver<T>` resolves a single MentionMarkup to entity T; (2) non-generic `IMentionResolver` is a markup-tree rewriter (formerly IMentionNamer).
 - `ListItemMarkup` (sealed class) - Represents a single item in a ListMarkup.
 - `ListMarkup` (sealed class) - Represents an unordered list of items in markup.
 - `Markup` (abstract class) - Base class for chat message markup elements.
@@ -465,7 +465,19 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `MarkupParser` - Parses chat message text into Markup elements.
 - `MarkupSeq` (sealed class) - Represents a sequence of markup elements.
 - `Mention` (record) - Represents a mention of a user in a chat entry.
-- `MentionMarkup` (sealed class) - Represents a mention of a user, group, or bot in markup.
+- `MentionMarkup` (class) - Base mention element; subclasses below carry pre-resolved cached data.
+- `AuthorMention` (sealed class) - MentionMarkup with cached Author for an `a:` mention (legacy).
+- `UserMention` (sealed class) - MentionMarkup with cached Account + IsChatMember for a `u:` mention.
+- `ChatMention` (sealed class) - MentionMarkup with cached Chat for a `c:` mention.
+- `PlaceMention` (sealed class) - MentionMarkup with cached Place for a `p:` mention.
+- `EmojiMention` (sealed class) - MentionMarkup with cached Glyph / CustomPicture for an `e:` mention.
+- `GifMention` (sealed class) - MentionMarkup with cached Picture for a `g:` mention.
+- `MentionCandidate` (record) - Unified picker candidate (User/Chat/Emoji) returned by MentionIndexUI.
+- `MentionCandidateKind` (enum) - User / Chat / Emoji.
+- `MentionKindFilter` (flags enum) - Bitmask of allowed kinds for the picker.
+- `MentionFilter` (static class) - Pure tokenize / MatchesAll / CoverageScore / FilterAndRank helpers.
+- `EmojiNormalizer` (record : MarkupRewriter) - Rewrites EmojiMention with a known glyph slug to PlainTextMarkup.
+- `MentionResolver` (record : AsyncMarkupRewriter) - Tree rewriter; delegates per-mention enrichment to IChatMentionResolver.Enrich (was MentionNamer).
 - `NewLineMarkup` (sealed class) - Represents a line break in markup.
 - `Place` (record) - Represents a place (community container for chats).
 - `PlacePermissions` (enum) - Permission flags for place operations.
@@ -558,7 +570,11 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ExplicitNotificationKind` (enum) - Specifies the type of explicit notification.
 - `ExternalContactId` (struct) - Unique identifier for an external contact.
 - `MediaId` (struct) - Unique identifier for a media item.
-- `MentionId` (struct) - Unique identifier for a mention.
+- `MentionId` (class) - `<prefix>:<localId>` reference to a mention target; dispatches via MentionKind.
+- `MentionKind` (sealed class) - Registered mention prefix (`a`/`u`/`c`/`p`/`e`/`g`) with parse fn.
+- `IMentionTarget` (interface) - Marker for identifier types usable as MentionId targets.
+- `EmojiRef` (class) - URL-encoded emoji slug or glyph reference; IMentionTarget for `e:`.
+- `GifRef` (class) - URL-encoded picker GIF id; IMentionTarget for `g:`.
 - `NotificationId` (struct) - Unique identifier for a notification.
 - `NotificationKind` (enum) - Specifies the type of notification.
 - `PlaceId` (struct) - Unique identifier for a place.
