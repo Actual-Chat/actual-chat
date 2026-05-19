@@ -18,23 +18,18 @@ body.hoverable .streaming-entry-badge:hover::after,
 .streaming-entry-badge span,
 .chat-message-markup .streaming-entry-badge span {
     @apply text-caption-4 text-03;
-    background: linear-gradient(
-        90deg,
-        currentColor 0%,
-        currentColor 40%,
-        var(--text-01) 50%,
-        currentColor 60%,
-        currentColor 100%
-    );
-    background-size: 200% 100%;
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+}
+.streaming-entry-badge::before {
+    @apply content-empty;
+    @apply absolute inset-0;
+    @apply opacity-20;
+    @apply pointer-events-none;
+    background: linear-gradient(135deg, transparent 35%, var(--ash-80) 50%, transparent 65%);
+    transform: translateX(-100%);
     animation: badge-shimmer 2.5s ease-in-out infinite;
 }
 @keyframes badge-shimmer {
-    0%   { background-position: 100% 0; }
-    100% { background-position: -100% 0; }
+    to { transform: translateX(100%); }
 }
 .streaming-entry-badge .c-icon,
 .chat-message-markup .streaming-entry-badge .c-icon {

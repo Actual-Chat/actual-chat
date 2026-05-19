@@ -322,6 +322,56 @@ Common replacements:
 - `box-shadow` glow → `::after` with fixed `box-shadow` + `opacity` animation
 - `background-color` pulse → fixed `background-color` + `opacity` animation
 - `background-position` scroll → `transform: translateX()` on the element or pseudo-element
+- `background-clip: text` shimmer → `::before` overlay with translucent gradient + `transform: translateX()`
+- SVG `stroke-dashoffset` perimeter sweep → keep, but use `steps(N)` (see below); a composited replacement requires a child overlay with a mask, rarely worth the complexity
+
+### Don't mix paint-thread properties into composited keyframes
+
+A `transform`-only or `opacity`-only keyframe stays on the compositor. The moment you add `filter`, `box-shadow`, `background-color`, or any other paint property into the same keyframe, the entire animation falls back to paint thread:
+
+```css
+/* BAD — blur kills the compositor path for the whole animation */
+@keyframes timer-swap {
+    0%   { opacity: 0; filter: blur(4px); }
+    100% { opacity: 1; filter: blur(0); }
+}
+
+/* GOOD — opacity-only stays composited */
+@keyframes timer-swap {
+    0%   { opacity: 0; }
+    100% { opacity: 1; }
+}
+```
+
+Same principle when stacking effects: a `box-shadow` glow combined with `transform: scale()` in one keyframe gives the worst of both worlds. Split: keep `transform` on the parent's keyframe, put the `box-shadow` on a `::after` and animate its `opacity`.
+
+### Reduce paint frequency for unavoidable paint-thread animations
+
+Some properties — SVG `stroke-dashoffset`, `stroke-dasharray`, `background-position`, `mask-position` — can't be moved to the compositor. When the visual effect requires one of them, use the `steps(N)` timing function to lower the effective paint rate:
+
+```css
+.c-film-strip::after {
+    /* 30 s × 60 fps = 1800 paints/cycle → with steps(300) only 300 paints */
+    animation: film-scroll 30s steps(300) infinite;
+}
+.video-icon .frame {
+    /* film-strip dashed-border sweep at ~10 fps */
+    animation: frame-gap 4s steps(40) infinite;
+}
+```
+
+`steps(N)` makes the browser only update the rendered value at step boundaries, so paint frequency drops from 60 fps to `N / duration`. The motion looks like an old film projector (small discrete jumps), which usually reads as intentional and avoids a continuous 60 fps paint loop. Always pair with `contain: layout paint style` on the parent so each repaint stays inside a tiny layer.
+
+### Avoid SVG SMIL animations
+
+Do not use `<animateTransform>`, `<animate>`, or any other SMIL inside SVGs. SMIL animations:
+
+- run on the paint thread (not composited),
+- ignore CSS `animation-play-state: paused`,
+- can only be stopped via JS `svg.pauseAnimations()` per individual SVG element,
+- have inconsistent browser support and are deprecated in some engines.
+
+Replace SMIL with CSS keyframes on a CSS-styleable SVG property (`transform`, `opacity`, `stroke-dashoffset` with `steps()`, etc.) — or just drop the animation if it's a decorative detail on a tiny element (e.g., a 3 s gradient rotation on a 24 × 24 px icon is invisible to the user but expensive to paint).
 
 ### Respect `prefers-reduced-motion`
 

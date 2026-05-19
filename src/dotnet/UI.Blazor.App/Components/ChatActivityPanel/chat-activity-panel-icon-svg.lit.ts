@@ -22,42 +22,42 @@ class ChatActivityPanelIconSvg extends LitElement {
                         <linearGradient id="video-live-grad" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stop-color="var(--violet-70)"/>
                             <stop offset="100%" stop-color="var(--indigo-70)"/>
-                            <animateTransform attributeName="gradientTransform"
-                                type="rotate" from="0 0.5 0.5" to="360 0.5 0.5"
-                                dur="3s" repeatCount="indefinite"/>
                         </linearGradient>
                     </defs>
-                    <rect x="2" y="3" width="20" height="16" rx="3.2" ry="3.2"
+                    <rect class="video-frame" x="2" y="3" width="20" height="16" rx="3.2" ry="3.2"
                           pathLength="100"
                           stroke="url(#video-live-grad)" stroke-width="2"
                           stroke-linecap="round" stroke-linejoin="round"
-                          stroke-dasharray="90 10"
-                          style="animation: frame-gap 4s linear infinite;"/>
+                          stroke-dasharray="90 10"/>
                     ${this.isActive ? svg`
                         <rect class="eq-bar b1" x="7.5"  y="8" width="2" height="7" rx="1" fill="url(#video-live-grad)"/>
                         <rect class="eq-bar b2" x="11"   y="8" width="2" height="7" rx="1" fill="url(#video-live-grad)"/>
                         <rect class="eq-bar b3" x="14.5" y="8" width="2" height="7" rx="1" fill="url(#video-live-grad)"/>
                     ` : svg`
-                        <path d="M9 15V7L17 11.3077L9 15Z"
-                              pathLength="100"
+                        <path class="play-arrow"
+                              d="M9 15V7L17 11.3077L9 15Z"
+                              fill="none"
                               stroke="url(#video-live-grad)" stroke-width="2"
-                              stroke-linecap="round" stroke-linejoin="round"
-                              stroke-dasharray="100"
-                              style="animation: play-draw 5.71s ease-in-out infinite;"/>
+                              stroke-linecap="round" stroke-linejoin="round"/>
                     `}
                     <style>
                         @keyframes frame-gap {
                             from { stroke-dashoffset: 0; }
                             to   { stroke-dashoffset: 100; }
                         }
-                        @keyframes play-draw {
-                            0%        { stroke-dashoffset: 100; }
-                            35%, 65%  { stroke-dashoffset: 0; }
-                            100%      { stroke-dashoffset: -100; }
+                        @keyframes play-pulse {
+                            0%, 100% { opacity: 0.6; }
+                            50%      { opacity: 1; }
                         }
                         @keyframes eq {
                             0%, 100% { transform: scaleY(0.35); }
                             50%      { transform: scaleY(1); }
+                        }
+                        .video-frame {
+                            animation: frame-gap 4s steps(40) infinite;
+                        }
+                        .play-arrow {
+                            animation: play-pulse 2.4s ease-in-out infinite;
                         }
                         .eq-bar {
                             transform-origin: center;

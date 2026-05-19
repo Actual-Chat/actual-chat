@@ -144,8 +144,11 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
     background-size: var(--film-tile-w) var(--film-h);
     -webkit-mask-image: linear-gradient(to right, transparent, black 20%, black 80%, transparent);
     mask-image: linear-gradient(to right, transparent, black 20%, black 80%, transparent);
-    animation: film-scroll 30s linear infinite;
+    animation: film-scroll 30s steps(300) infinite;
     will-change: transform;
+}
+body:has(.video-panel:not(.collapsed):not(.panel-hidden)) .c-film-strip::after {
+    animation-timing-function: steps(150);
 }
 body.wide .c-film-strip::after {
     --film-h: 3rem;
@@ -395,12 +398,12 @@ body.narrow .chat-activity-panel.listening:after {
 }
 
 @keyframes equalize-active-1 {
-    0%, 100% { clip-path: inset(28.57% 0 round 9999px); } /* shows 6px of 14px */
-    50% { clip-path: inset(0 round 9999px); } /* shows full 14px */
+    0%, 100% { transform: scaleY(0.4286); }
+    50%      { transform: scaleY(1); }
 }
 @keyframes equalize-active-2 {
-    0%, 100% { clip-path: inset(30% 0 round 9999px); } /* shows 8px of 20px */
-    50% { clip-path: inset(0 round 9999px); } /* shows full 20px */
+    0%, 100% { transform: scaleY(0.4); }
+    50%      { transform: scaleY(1); }
 }
 @keyframes equalize-inactive {
     0%, 50%, 100% {
