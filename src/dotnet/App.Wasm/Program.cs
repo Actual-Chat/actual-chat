@@ -13,9 +13,7 @@ namespace ActualChat.App.Wasm;
 public static class Program
 {
     static Program()
-    {
-        CodeKeeper.Keep<WebApp>();
-    }
+        => CodeKeeper.Keep<WebApp>();
 
     public static async Task Main(string[] args)
     {

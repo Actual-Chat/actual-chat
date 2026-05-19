@@ -1,4 +1,5 @@
 using ActualChat.Diff.Handlers;
+using ActualLab.Internal;
 
 namespace ActualChat.Diff;
 
@@ -64,6 +65,19 @@ public sealed class DiffEngine(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]T,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]TDiff>(T source, TDiff diff)
         => GetHandler<T, TDiff>().Patch(source, diff);
+
+    // This method should be avoided on the client side unless you know the types it needs are there
+    [RequiresUnreferencedCode(UnreferencedCode.Reflection)]
+    public object? DynamicPatch(object? source, object? diff)
+    {
+        if (source == null)
+            return null;
+        if (diff == null)
+            return source;
+
+        var handler = GetHandler(source.GetType(), diff.GetType());
+        return handler.Patch(source, diff);
+    }
 
     public static void DefaultTypeMapBuilder(TypeMap<IDiffHandler> typeMap)
         => typeMap

@@ -1401,7 +1401,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         ChatEntry ApplyDiff(ChatEntry originalEntry, ChatEntryDiff? diff, bool isUpdate)
         {
             var oldAuthorId = originalEntry.AuthorId;
-            var newEntry = DiffEngine.Patch(originalEntry, diff) with {
+            var newEntry = (ChatEntry)DiffEngine.DynamicPatch(originalEntry, diff)! with {
                 Version = VersionGenerator.NextVersion(originalEntry.Version),
             };
             if (newEntry.Id != originalEntry.Id)

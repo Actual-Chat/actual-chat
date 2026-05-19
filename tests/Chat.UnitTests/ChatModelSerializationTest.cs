@@ -536,6 +536,54 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
+    public void SystemEntry_InsideChatTile()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var entryId = ChatEntryId.New(chatId, 1);
+        var authorId = AuthorId.New(chatId, 5);
+        ChatEntry entry = new MembersChangedEntry(entryId, 1) {
+            AuthorId = AuthorId.New(chatId, 1),
+            BeginsAt = new Moment(DateTime.UtcNow),
+            TargetAuthorId = authorId,
+            TargetAuthorName = "TestUser",
+            HasLeft = false,
+        };
+        var tile = new ChatTile(new Range<long>(0, 100), false, [entry]);
+        var s = tile.PassThroughModernSerializers(Out);
+        s.Entries.Should().HaveCount(1);
+        var rt = s.Entries[0];
+        rt.Should().BeOfType<MembersChangedEntry>();
+        var mc = (MembersChangedEntry)rt;
+        mc.TargetAuthorId.Should().Be(authorId);
+        mc.TargetAuthorName.Should().Be("TestUser");
+        mc.HasLeft.Should().BeFalse();
+    }
+
+    [Fact]
+    public void SystemEntry_RoundTripsViaDbJson()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var entryId = ChatEntryId.New(chatId, 1);
+        var authorId = AuthorId.New(chatId, 5);
+        ChatEntry entry = new MembersChangedEntry(entryId, 1) {
+            AuthorId = AuthorId.New(chatId, 1),
+            BeginsAt = new Moment(DateTime.UtcNow),
+            TargetAuthorId = authorId,
+            TargetAuthorName = "TestUser",
+            HasLeft = false,
+        };
+        var dbEntry = new ActualChat.Chat.Db.DbChatEntry(entry);
+        Out.WriteLine($"DbEntry.Content = {dbEntry.Content}");
+        Out.WriteLine($"DbEntry.IsSystemEntry = {dbEntry.IsSystemEntry}");
+        var roundTripped = dbEntry.ToModel();
+        roundTripped.Should().BeOfType<MembersChangedEntry>();
+        var mc = (MembersChangedEntry)roundTripped;
+        mc.TargetAuthorId.Should().Be(authorId);
+        mc.TargetAuthorName.Should().Be("TestUser");
+        mc.HasLeft.Should().BeFalse();
+    }
+
+    [Fact]
     public void ChatEntryAttachment_Basic()
     {
         var chatId = ChatId.Parse("the-actual-one");
