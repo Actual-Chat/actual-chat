@@ -42,10 +42,15 @@ interface Slot {
 // through unchanged. The expensive `new VideoFrame(canvas)` allocation only
 // happens when an actual crop/resize/rotate is required.
 //
-// Per-frame `new VideoFrame(OffscreenCanvas)` at top dims (e.g. 1280×720)
-// builds GPU-texture pressure that strangles the HW encoder over time —
-// measured ~25× degradation on a sustained 30s recording. Skipping it on
-// the identity path is the single most impactful sender-side optimisation.
+// iOS path: rotation is never baked into pixels (cropboxRotation always 0)
+// but `wireRotation` must be decided per frame from `ScreenOrientation`,
+// and the camera may not deliver target dims natively. Full per-frame
+// orientation.decide() + identity short-circuit + cover-crop fallback.
+//
+// Why this matters: per-frame `new VideoFrame(OffscreenCanvas)` at top dims
+// (1280×720+) builds GPU-texture pressure that strangles the HW encoder over
+// time. Avoiding the allocation on the common path is the single most
+// impactful sender-side optimisation.
 export function normalizeFrame(opts: NormalizeFrameOptions): PipeOperator<CapturedFrame, NormalizedFrame> {
     const target = { ...opts.target };
     const orientation = new NormalizeFrameOrientation(opts);
@@ -61,10 +66,12 @@ export function normalizeFrame(opts: NormalizeFrameOptions): PipeOperator<Captur
                     const displayH = input.displayHeight || input.codedHeight;
                     if (transform.cropboxRotation === 0
                         && displayW === target.width
-                        && displayH === target.height) {
-                        // Identity: pass envelope through. Only patch `rotation`
-                        // when it actually changes — preserves object identity
-                        // when nothing changed.
+                        && displayH === target.height
+                        && input.codedWidth === target.width
+                        && input.codedHeight === target.height) {
+                        // Identity: pass envelope through. Only patch
+                        // `rotation` when it actually changes — preserves
+                        // object identity when nothing changed.
                         yield envelope.rotation === transform.wireRotation
                             ? envelope
                             : { ...envelope, rotation: transform.wireRotation };
@@ -238,9 +245,18 @@ class SpatializeSlotProcessor {
                     0, 0, srcSlot.canvas.width, srcSlot.canvas.height,
                     0, 0, width, height);
             } else {
+                // VideoFrame as CanvasImageSource has intrinsic size =
+                // displayWidth/Height (per WebCodecs spec). On Chrome MSTP
+                // `crop-and-scale` the coded plane is the camera's native
+                // sensor rect while display is the scaled output — sampling
+                // with coded coords reads beyond the visible region and
+                // pixels past it render black. Fall back to coded only if
+                // display is unreported (older WebKit before 17.x).
+                const inputW = input.frame.displayWidth || input.frame.codedWidth;
+                const inputH = input.frame.displayHeight || input.frame.codedHeight;
                 slot.ctx.drawImage(
                     input.frame,
-                    0, 0, input.frame.codedWidth, input.frame.codedHeight,
+                    0, 0, inputW, inputH,
                     0, 0, width, height);
             }
             layers[i] = makeLayerEnvelope(input, new VideoFrame(slot.canvas, {

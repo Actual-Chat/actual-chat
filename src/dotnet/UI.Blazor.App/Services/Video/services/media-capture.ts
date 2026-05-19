@@ -86,13 +86,22 @@ export class MediaCapture {
         const requestedSmall = options.width && options.height
             ? Math.min(options.width, options.height)
             : 0;
-        const targetLarge = Math.max(requestedLarge, 1280);
-        const targetSmall = Math.max(requestedSmall, 720);
-        const minLarge = 1280;
-        const minSmall = 720;
+        const hasExplicitCap = requestedLarge > 0 && requestedSmall > 0;
+        const targetLarge = hasExplicitCap ? requestedLarge : 1280;
+        const targetSmall = hasExplicitCap ? requestedSmall : 720;
+        // Allow the browser headroom above `ideal`. A tight `max = targetLarge`
+        // forces an exact match — many phone cameras can't deliver arbitrary
+        // small dims (e.g. 360×640 portrait), causing the portrait candidate
+        // to fail and the next (landscape) candidate to center-crop a
+        // 16:9 band out of the portrait sensor. `normalizeFrame` cover-crops
+        // any oversize result to the top-layer dims.
         const max = targetLarge * 2;
+        // Keep min generous so virtual / cheap cameras with limited
+        // resolution sets can still negotiate down.
+        const minLarge = Math.min(targetLarge, 1280);
+        const minSmall = Math.min(targetSmall, 720);
         const landscape: CameraConstraintCandidate = {
-            name: 'native 720p landscape',
+            name: `native ${targetLarge}x${targetSmall} landscape`,
             constraints: MediaCapture.buildCameraConstraints(options, {
                 width: { min: minLarge, ideal: targetLarge, max },
                 height: { min: minSmall, ideal: targetSmall, max },
@@ -101,7 +110,7 @@ export class MediaCapture {
             fallbackOnFailure: true,
         };
         const portrait: CameraConstraintCandidate = {
-            name: 'native 720p portrait',
+            name: `native ${targetSmall}x${targetLarge} portrait`,
             constraints: MediaCapture.buildCameraConstraints(options, {
                 width: { min: minSmall, ideal: targetSmall, max },
                 height: { min: minLarge, ideal: targetLarge, max },
@@ -115,7 +124,7 @@ export class MediaCapture {
         return [
             ...strictCandidates,
             {
-                name: 'permissive native 720p',
+                name: `permissive ${targetLarge}x${targetSmall}`,
                 constraints: MediaCapture.buildCameraConstraints(options, {
                     width: { ideal: targetLarge, max },
                     height: { ideal: targetSmall, max },

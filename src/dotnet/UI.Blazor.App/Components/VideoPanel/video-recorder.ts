@@ -40,6 +40,7 @@ import { rpcClientServer } from 'rpc';
 import type { Disposable } from 'disposable';
 import { Versioning } from 'versioning';
 import { DeviceInfo } from 'device-info';
+import { ScreenOrientation } from 'orientation';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
@@ -533,7 +534,11 @@ export class VideoRecorder {
 
         this.setRecordingState('starting');
         this.currentMode = 'camera';
-        const tierCap = Math.max(1, Math.min(maxLayerCount, 3));
+        // Mobile maxes out at 2 spatial tiers (640×360 top). Phones can't usefully
+        // encode + ship a 720p+ top layer alongside lower tiers on a wireless
+        // link, and the extra GPU work strangles their HW encoders.
+        const tierCeiling = DeviceInfo.isMobile ? 2 : 3;
+        const tierCap = Math.max(1, Math.min(maxLayerCount, tierCeiling));
         infoLog?.log(`Starting video recording... audienceCodecs=[${audienceCodecs?.join(', ') ?? '(none)'}], maxLayerCount=${maxLayerCount} → tierCap=${tierCap}`);
 
         try {
@@ -542,7 +547,27 @@ export class VideoRecorder {
                 2: { width: 640, height: 360 },
                 3: { width: 1280, height: 720 },
             };
-            const targetSize: Size = cameraTopByTier[tierCap];
+            // Detect orientation BEFORE camera request so we ask for the
+            // matching aspect directly — avoids the browser center-cropping a
+            // 16:9 band out of a portrait sensor (the "head-only" crop).
+            // Skip for iOS: iOS Safari MSTP doesn't auto-rotate and prefers
+            // the camera's native landscape orientation; rotation is set on
+            // the wire instead of baked into pixels.
+            const wantsPortrait = DeviceInfo.isMobile
+                && !DeviceInfo.isIos
+                && ScreenOrientation.isObserved
+                && ScreenOrientation.isPortrait;
+            const baseTop: Size = cameraTopByTier[tierCap];
+            const targetSize: Size = wantsPortrait
+                ? { width: baseTop.height, height: baseTop.width }
+                : baseTop;
+            infoLog?.log(
+                `Orientation pre-capture: isMobile=${DeviceInfo.isMobile}, ` +
+                `isIos=${DeviceInfo.isIos}, ` +
+                `screen.isObserved=${ScreenOrientation.isObserved}, ` +
+                `screen.isPortrait=${ScreenOrientation.isPortrait}, ` +
+                `wantsPortrait=${wantsPortrait}, ` +
+                `requestTarget=${targetSize.width}x${targetSize.height}`);
             const targetFramerate = VIDEO.frameRate;
             this.currentFramerate = targetFramerate;
 
@@ -625,17 +650,24 @@ export class VideoRecorder {
             // We use this to stamp frame.duration so downstream (FPS, etc.) all see real cadence.
             this.currentFramerate = trackSettings.frameRate ?? targetFramerate;
 
-            // The capture-side ladder is built landscape-first, but a camera may
-            // deliver a portrait native frame (Android front cam in portrait
-            // pose, screen-locked phone, etc.). Flip each tier's W/H so the
-            // downscaler/encoder targets match the source orientation —
-            // otherwise the downscaler center-crops portrait into landscape
-            // and a 3:4 selfie ships as a 16:9 letterbox of the middle band.
-            if (this.cameraHeight > this.cameraWidth) {
+            // Safety flip — only when we did NOT pre-decide orientation
+            // (iOS path, or rare case where ScreenOrientation wasn't
+            // observable yet). When pre-decision happened (wantsPortrait),
+            // the ladder reflects the USER's intent (portrait); if the
+            // camera ignored our portrait request and delivered landscape,
+            // we must NOT flip the ladder back to landscape — that would
+            // ship landscape video against the user's intent. Instead leave
+            // ladder portrait so `normalizeFrame` cover-crops the landscape
+            // source into a portrait target.
+            const cameraIsPortrait = this.cameraHeight > this.cameraWidth;
+            const ladderTopIsPortrait = ladder[ladder.length - 1].height > ladder[ladder.length - 1].width;
+            if (!wantsPortrait && cameraIsPortrait !== ladderTopIsPortrait) {
                 ladder = ladder.map(l => ({ ...l, width: l.height, height: l.width }));
                 this.layers = ladder.length >= 2 ? [...ladder] : null;
                 this.fullLayerLadder = this.layers ? [...this.layers] : null;
-                infoLog?.log(`Portrait source detected — flipped ladder to: [${ladder.map(l => `${l.width}x${l.height}`).join(', ')}]`);
+                infoLog?.log(`Camera orientation mismatch — flipped ladder to: [${ladder.map(l => `${l.width}x${l.height}`).join(', ')}]`);
+            } else if (wantsPortrait && !cameraIsPortrait) {
+                infoLog?.log(`Camera returned landscape despite portrait request — keeping ladder portrait, normalize will cover-crop. Camera=${this.cameraWidth}x${this.cameraHeight}, ladder top=${ladder[ladder.length - 1].width}x${ladder[ladder.length - 1].height}`);
             }
 
             void this.blazorRef.invokeMethodAsync(
