@@ -14,6 +14,7 @@ public static class SentryExt
     public static void ConfigureForApp(this SentryOptions options, bool useOpenTelemetry)
     {
         options.Dsn = UIDsn;
+        options.SetBeforeSend(static (e, _) => IsBelowReportableVersion() ? null : e);
         options.AddExceptionFilterForType<OperationCanceledException>();
         options.Debug = false;
         options.DiagnosticLevel = SentryLevel.Error;
@@ -28,6 +29,16 @@ public static class SentryExt
             options.TracesSampleRate = 1;
             options.UseOpenTelemetry();
         }
+    }
+
+    private static bool IsBelowReportableVersion()
+    {
+        var minStr = MauiPreferences.MinReportableClientVersion;
+        if (minStr.IsNullOrEmpty())
+            return false;
+
+        return Version.TryParse(minStr, out var min)
+            && ApiConstants.Version < min;
     }
 
     /// <summary>

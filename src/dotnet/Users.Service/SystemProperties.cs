@@ -8,6 +8,7 @@ public class SystemProperties(IServiceProvider services)
     : DbServiceBase<UsersDbContext>(services), ISystemProperties
 {
     private static readonly Version MinCompatibleVersion = new(2, 5);
+    private static readonly Version MinReportableClientVersion = MinCompatibleVersion;
 
     // Not a [ComputeMethod]!
     public Task<double> GetTime(CancellationToken cancellationToken)
@@ -35,7 +36,12 @@ public class SystemProperties(IServiceProvider services)
             : apiVersion == parsedExpectedVersion
                 ? CompatibilityLevel.Full
                 : CompatibilityLevel.Compatible;
-        return Task.FromResult(new ServerApiInfo(compatibilityLevel));
+        return Task.FromResult(new ServerApiInfo(
+            compatibilityLevel,
+            ApiConstants.VersionString,
+            ApiConstants.FullVersionString,
+            ApiConstants.DisplayVersionString,
+            MinReportableClientVersion.ToString()));
     }
 
 
