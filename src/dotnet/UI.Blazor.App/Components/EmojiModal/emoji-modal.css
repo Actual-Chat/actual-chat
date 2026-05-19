@@ -151,12 +151,27 @@ body.hoverable .emoji-modal .c-gif-recent-arrow:hover {
     @apply min-w-0;
 }
 .emoji-modal .c-gif-item {
+    @apply relative isolate;
     @apply block;
     @apply w-full;
     @apply rounded-lg;
     @apply overflow-hidden;
+    @apply bg-skeleton;
     @apply cursor-pointer;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 180px;
+}
+.emoji-modal .c-gif-item::before {
+    @apply content-empty;
+    @apply absolute inset-0 z-minus;
+    @apply opacity-0;
+    @apply bg-modal;
+    @apply pointer-events-none;
     animation: gif-skeleton-pulse 2s ease-in-out infinite;
+}
+.emoji-modal .c-gif-item.loaded::before {
+    @apply opacity-0;
+    animation: none;
 }
 body.hoverable .emoji-modal .c-gif-item:hover {
     @apply opacity-80;
@@ -167,11 +182,13 @@ body.hoverable .emoji-modal .c-gif-item:hover {
     @apply rounded-lg;
 }
 @keyframes gif-skeleton-pulse {
-    0%, 100% {
-        background-color: var(--skeleton);
-    }
-    50% {
-        background-color: color-mix(in srgb, var(--skeleton) 30%, var(--modal-background))
+    0%, 100% { opacity: 0; }
+    50%      { opacity: 0.7; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .emoji-modal .c-gif-item::before {
+        animation: none;
+        opacity: 0.35;
     }
 }
 .emoji-modal .c-gif-sentinel {
