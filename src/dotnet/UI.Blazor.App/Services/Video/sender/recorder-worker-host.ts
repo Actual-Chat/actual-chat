@@ -159,12 +159,17 @@ function createEncoder(
             stack ?? '');
     };
 
-    // First HW-encoder output can be much slower than steady state
-    // (driver warm-up + first keyframe); use a wider window for it.
+    // Per-encode setTimeout/clearTimeout churn was ~750ms / 30s on a 90
+    // enc/sec pipeline (3 layers × 30 fps). Both timeouts disabled here:
+    // the existing queue-full backpressure in CodecToAsyncAdapter.process
+    // and the WebCodecs `error` callback already cover the real failure
+    // modes. If the HW encoder hangs without emitting an error, frames
+    // pile up to maxInflight and the upstream encode operator rejects —
+    // VideoRecorder's scheduleRecovery picks it up.
     return new AsyncVideoEncoder<EncodeInput, EncodedFrame>(
         buildOutput,
         onError,
-        { maxInflight: 2, firstTimeoutMs: 3_000, timeoutMs: 1_000 },
+        { maxInflight: 2, firstTimeoutMs: 0, timeoutMs: 0 },
     );
 }
 
