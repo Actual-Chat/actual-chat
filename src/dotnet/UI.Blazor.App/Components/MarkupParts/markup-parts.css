@@ -36,6 +36,28 @@
     font-size: 1.25rem;
 }
 
+.mention-markup.mention-markup-chat {
+    @apply inline;
+    @apply max-w-none h-auto;
+    @apply px-0;
+    @apply bg-transparent;
+    @apply text-primary font-medium;
+    @apply no-underline hover:underline;
+}
+.mention-markup.mention-markup-chat > div {
+    @apply inline;
+    @apply overflow-visible;
+    text-overflow: clip;
+    white-space: normal;
+}
+
+.emoji-markup.c-emoji {
+    @apply inline-block;
+    width: 1em;
+    height: 1em;
+    vertical-align: -0.15em;
+}
+
 .url-markup {
     @apply cursor-pointer no-underline hover:underline text-primary;
 }

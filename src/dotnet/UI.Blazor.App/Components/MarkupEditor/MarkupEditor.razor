@@ -76,9 +76,7 @@
 
     public async ValueTask<string> GetText() {
         await WhenReady;
-        var text = await JSRef.InvokeAsync<string>("getText");
-        text = text.Replace("\u8203", ""); // Inserted after mention to resolve "no cursor" issue there
-        return text;
+        return await JSRef.InvokeAsync<string>("getText");
     }
 
     public async ValueTask SetText(string? text, bool mustFocus = false) {
@@ -123,6 +121,15 @@
 
         var html = HtmlConverter.Format(MentionMarkup.New(mention.MentionId, mention.Text)) + " ";
         await JSRef.InvokeVoidAsync("insertHtml", html, "@");
+    }
+
+    [JSInvokable]
+    public async Task<string> ParseTextToHtml(string text) {
+        if (text.IsNullOrEmpty())
+            return "";
+        var markup = MarkupParser.Parse(text);
+        markup = await MentionResolver.Apply(markup, default).ConfigureAwait(false);
+        return HtmlConverter.Format(markup);
     }
 
     // Backend methods

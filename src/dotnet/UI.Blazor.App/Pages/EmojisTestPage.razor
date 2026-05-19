@@ -6,7 +6,7 @@
 
 <div class="test-page-wrapper">
 <div class="emojis-test-page">
-    <h2 class="emojis-test-title">Static Emojis (@(EmojiIcon.SvgNames.Count))</h2>
+    <h2 class="emojis-test-title">Static Emojis (@(Emojis.SvgNames.Count))</h2>
     <div class="emojis-test-grid">
         @foreach (var emoji in Emojis.All) {
             <div class="emojis-test-item">
@@ -15,9 +15,9 @@
         }
     </div>
 
-    <h2 class="emojis-test-title">Animated Emojis (@(EmojiIcon.SvgNames.Count))</h2>
+    <h2 class="emojis-test-title">Animated Emojis (@(Emojis.SvgNames.Count))</h2>
     <div class="emojis-test-grid">
-        @foreach (var svgName in EmojiIcon.SvgNames.Values) {
+        @foreach (var svgName in Emojis.SvgNames.Values) {
             <div class="emojis-test-item animated-emoji">
                 <img class="emojis-test-emoji" src="/dist/images/emoji/@(svgName)-animated.svg" alt="@svgName"/>
             </div>

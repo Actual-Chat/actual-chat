@@ -167,9 +167,77 @@ public static class Emojis
     public static readonly IReadOnlyDictionary<EmojiGroup, Emoji[]> ByGroup
         = All.GroupBy(x => x.Group).ToDictionary(g => g.Key, g => g.ToArray());
 
+    public static readonly IReadOnlyDictionary<Emoji, string> SvgNames = new Dictionary<Emoji, string> {
+        // Positive
+        { Lol, "emoji-lol" },
+        { Awesome, "emoji-awesome" },
+        { Cool, "emoji-cool" },
+        { Smile, "emoji-smile" },
+        { Nerd, "emoji-nerd" },
+        { SmileRotated, "emoji-smile-rotated" },
+        { Kiss, "emoji-kiss" },
+        { Blessed, "emoji-blessed" },
+        { Hugging, "emoji-hugging" },
+        { ExplodingHead, "emoji-exploding-head" },
+        { Party, "emoji-party" },
+        { Saluting, "emoji-saluting" },
+        // Negative
+        { Angry, "emoji-angry" },
+        { Sad, "emoji-sad" },
+        { Crying, "emoji-crying" },
+        { Melting, "emoji-melting" },
+        { Devil, "emoji-devil" },
+        { Clown, "emoji-clown" },
+        { ClownYellow, "emoji-clown-yellow" },
+        { Bored, "emoji-bored" },
+        { Crazy, "emoji-crazy" },
+        { Dead, "emoji-dead" },
+        { EyeRoll, "emoji-eye-roll" },
+        { NoWords, "emoji-no-words" },
+        { Scared, "emoji-scared" },
+        { Sick, "emoji-sick" },
+        { Sleeping, "emoji-sleeping" },
+        // Love
+        { Love, "emoji-love" },
+        { InLove, "emoji-in-love" },
+        { BrokenHeart, "emoji-broken-heart" },
+        { KissLips, "emoji-kiss-lips" },
+        { Praying, "emoji-praying" },
+        // Gestures
+        { ThumbsUp, "emoji-thumbs-up" },
+        { ThumbsDown, "emoji-thumbs-down" },
+        { Done, "emoji-done" },
+        { Eyes, "emoji-eyes" },
+        { Poop, "emoji-poop" },
+        { Surprise, "emoji-surprise" },
+        { Mysterious, "emoji-mysterious" },
+        { StoneFaceMoai, "emoji-stone-face-moai" },
+        { Banana, "emoji-banana" },
+        { Cup, "emoji-cup" },
+        { Deal, "emoji-deal" },
+        { FuckYou, "emoji-fuck-you" },
+        { Lightning, "emoji-lightning" },
+        { Ok, "emoji-ok" },
+        { PeekingEye, "emoji-peeking-eye" },
+        { Pill, "emoji-pill" },
+        { RoboKitty, "emoji-robo-kitty" },
+        { Thinking, "emoji-thinking" },
+        { Writing, "emoji-writing" },
+        { Fire, "emoji-fire" },
+        { HundredPoints, "emoji-hundred-points" },
+        // Legacy
+        { Boom, "emoji-fire" },
+    };
+
     public static Emoji[] GetByGroup(EmojiGroup group)
         => ByGroup.TryGetValue(group, out var emojis) ? emojis : [];
 
     public static Emoji? TryGetByIdOrSymbol(string text)
         => ById.GetValueOrDefault(text) ?? BySymbol.GetValueOrDefault(text);
+
+    public static string? TryGetSvgName(Emoji? emoji)
+        => emoji is null ? null : SvgNames.GetValueOrDefault(emoji);
+
+    public static string? TryGetSvgName(string? idOrSymbol)
+        => idOrSymbol.IsNullOrEmpty() ? null : TryGetSvgName(TryGetByIdOrSymbol(idOrSymbol));
 }

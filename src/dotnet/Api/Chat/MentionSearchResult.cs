@@ -8,6 +8,9 @@ public partial class MentionSearchResult : SearchResult
     [DataMember, MemoryPackOrder(2)]
     public Picture Picture { get; }
 
+    [DataMember, MemoryPackOrder(3)]
+    public bool IsChatMember { get; init; }
+
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public MentionId MentionId => field ??= MentionId.Parse(Id);
 

@@ -1,11 +1,15 @@
 @namespace ActualChat.UI.Blazor.App.Components.MarkupParts
 @inherits MarkupViewBase<EmojiMention>
 @{
-    var glyph = Markup.Glyph.NullIfEmpty()
-        ?? Emojis.ById.GetValueOrDefault(Markup.EmojiRef.Text)?.Symbol;
+    var emoji = Emojis.TryGetByIdOrSymbol(Markup.EmojiRef.Text);
+    var hasSvg = Emojis.TryGetSvgName(emoji) is not null;
+    var glyph = Markup.Glyph.NullIfEmpty() ?? emoji?.Symbol;
 }
 
-@if (glyph is not null) {
+@if (hasSvg && emoji is not null) {
+    <EmojiIcon Emoji="@emoji" Class="emoji-markup c-emoji" HasPreview="false"/>
+}
+else if (glyph is not null) {
     <span class="emoji-markup">@glyph</span>
 }
 else if (Markup.CustomPicture is { } picture) {

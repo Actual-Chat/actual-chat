@@ -204,44 +204,6 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public void EmojiNormalizerReplacesUrlEncodedGlyphWithGlyphTest()
-    {
-        // Standard emoji ids in the registry are the glyphs themselves, so the wire form
-        // inside @e: is their URL-encoded bytes (parser accepts '%' via the widened IdChar).
-        var glyph = Emojis.Smile.Symbol;
-        var encoded = glyph.UrlEncode();
-
-        var input = Parse<ParagraphMarkup>("hi @e:" + encoded + " there");
-        var mention = input.Content.Should().BeAssignableTo<MarkupSeq>().Subject
-            .Items.OfType<EmojiMention>().Single();
-        mention.EmojiRef.Text.Should().Be(glyph);
-
-        var normalized = EmojiNormalizer.Instance.Apply(input);
-        var text = MarkupFormatter.ReadableUnstyled.Format(normalized);
-        text.Should().Contain(glyph);
-        text.Should().NotContain("@e:");
-    }
-
-    [Fact]
-    public void EmojiNormalizerLeavesCustomSlugAsMentionTest()
-    {
-        // Custom slugs (Id != Symbol, e.g. "clown-yellow") aren't glyph-keyed,
-        // so they stay as mentions — the editor needs them as atomic spans.
-        var slug = Emojis.ClownYellow.Id.Value;
-        var input = Parse<ParagraphMarkup>("hi @e:" + slug + " there");
-        var normalized = EmojiNormalizer.Instance.Apply(input);
-        normalized.Should().BeSameAs(input);
-    }
-
-    [Fact]
-    public void EmojiNormalizerLeavesUnknownSlugsAsMentionsTest()
-    {
-        var input = Parse<ParagraphMarkup>("@e:my-custom-emoji");
-        var normalized = EmojiNormalizer.Instance.Apply(input);
-        normalized.Should().BeSameAs(input);
-    }
-
-    [Fact]
     public void UnknownPrefixIsNotAMentionTest()
     {
         // 'z' isn't a registered prefix — the token shouldn't parse as a mention.

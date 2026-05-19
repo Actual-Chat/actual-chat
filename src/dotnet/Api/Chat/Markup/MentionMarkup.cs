@@ -14,6 +14,32 @@ public partial class MentionMarkup(MentionId id, string name = "") : Markup
     public static readonly Func<MentionMarkup, string> DefaultFormatter = m => m.Format();
     public static readonly Func<MentionMarkup, string> NameOrNotAvailableFormatter = m => "@" + m.NameOrNotAvailable;
     public static readonly Func<MentionMarkup, string> NameOrIdFormatter = m => "@" + m.NameOrId;
+    public static readonly Func<MentionMarkup, string> ReadableFormatter = FormatReadable;
+
+    public const char ReadableSpace = '\u2005'; // four-per-em space — joins multi-word names without confusing word boundaries
+
+    private static string FormatReadable(MentionMarkup m) => m switch {
+        EmojiMention em => FormatEmojiReadable(em),
+        ChatMention cm => "@\"" + cm.NameOrNotAvailable + "\"",
+        _ => "@" + JoinWithReadableSpace(m.NameOrNotAvailable),
+    };
+
+    private static string FormatEmojiReadable(EmojiMention em)
+    {
+        var text = em.EmojiRef.Text;
+        if (Emojis.BySymbol.ContainsKey(text))
+            return text;
+        var resolved = Emojis.ById.GetValueOrDefault(text);
+        var title = resolved?.Title ?? em.NameOrNotAvailable;
+        return "@(" + title + ")";
+    }
+
+    private static string JoinWithReadableSpace(string name)
+    {
+        if (name.IndexOf(' ') < 0)
+            return name;
+        return name.Replace(' ', ReadableSpace);
+    }
 
     [DataMember, MemoryPackOrder(0), Key(0)]
     public MentionId Id { get; } = id;
