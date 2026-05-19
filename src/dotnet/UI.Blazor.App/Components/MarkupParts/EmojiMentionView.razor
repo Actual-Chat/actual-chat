@@ -1,7 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components.MarkupParts
 @inherits MarkupViewBase<EmojiMention>
 @{
-    var glyph = Markup.Glyph.NullIfEmpty();
+    var glyph = Markup.Glyph.NullIfEmpty()
+        ?? Emojis.ById.GetValueOrDefault(Markup.EmojiRef.Text)?.Symbol;
 }
 
 @if (glyph is not null) {

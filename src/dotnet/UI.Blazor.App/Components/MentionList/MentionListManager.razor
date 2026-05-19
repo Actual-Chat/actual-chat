@@ -43,6 +43,9 @@
     {
         if (ListRef != null) {
             ListRef.Filter.Value = filter;
+            if (_cls != "show-mention-list") {
+                KindFilter.Value = MentionKindFilter.All;
+            }
             _cls = "show-mention-list";
             StateHasChanged();
         }
