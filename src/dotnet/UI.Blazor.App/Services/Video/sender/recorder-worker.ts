@@ -187,14 +187,21 @@ export const recorderWorkerImpl: RecorderWorker = {
                 () => deps.createEncoder(session, layerCfg, layerId),
             );
             try {
-                handle.encoder.configure({
+                // Mirror probeEncoder's config — prefer-hardware + h264 avc
+                // format. Without these the runtime encoder may land on a
+                // SW path even though the probe verified HW availability.
+                const encoderConfig: VideoEncoderConfig = {
                     codec: layerCfg.codec,
                     width: layerCfg.width,
                     height: layerCfg.height,
                     bitrate: layerCfg.bitrate,
                     framerate: layerCfg.framerate,
                     latencyMode: 'realtime',
-                });
+                    hardwareAcceleration: 'prefer-hardware',
+                };
+                if (category === 'h264')
+                    encoderConfig.avc = { format: 'avc' };
+                handle.encoder.configure(encoderConfig);
             } catch (e) {
                 // Release back to pool so it can be parked or discarded by canReuse check.
                 try { handle.release(); } catch { /* ignore */ }
