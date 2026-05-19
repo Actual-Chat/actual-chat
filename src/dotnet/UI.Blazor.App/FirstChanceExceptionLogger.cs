@@ -13,8 +13,10 @@ public static class FirstChanceExceptionLogger
 
     public static void Use()
     {
-        AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceException;
+        if (IsActivated)
+            return;
         IsActivated = true;
+        AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceException;
     }
 
     private static void OnFirstChanceException(object? sender, FirstChanceExceptionEventArgs e)
