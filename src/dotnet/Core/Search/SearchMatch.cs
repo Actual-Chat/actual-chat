@@ -18,7 +18,7 @@ public sealed partial record SearchMatch(
         init;
     } = Parts;
 
-    [MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public IEnumerable<SearchMatchPart> PartsWithGaps {
         get {
             var lastIndex = 0;

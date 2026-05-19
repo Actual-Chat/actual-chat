@@ -37,8 +37,8 @@ public readonly partial struct LinearMap
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Range<float> YRange => IsEmpty ? default : new Range<float>(Points[0].Y, Points[^1].Y);
 
-    [IgnoreMember] public Vector2 this[int index] => Points[index];
-    [IgnoreMember] public LinearMap this[Range range] => new(Points[range]);
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember] public Vector2 this[int index] => Points[index];
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember] public LinearMap this[Range range] => new(Points[range]);
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public LinearMap(params float[] data)

@@ -8,11 +8,11 @@ using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
 namespace ActualChat.Streaming.IntegrationTests;
 
 [Collection(nameof(StreamingCollection))]
-public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class LiveAudioBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private RedisDb<StreamingContext> RedisDb => AppHost.Services.GetRequiredService<RedisDb<StreamingContext>>();
-    private IByteSerializer RedisHashStoreSerialalizer => Serializers.MessagePack;
+    private IByteSerializer RedisHashStoreSerializer => Serializers.MessagePack;
 
     // --- Audio ---
 
@@ -409,7 +409,7 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
         var result = new Dictionary<string, TValue>(entries.Length, StringComparer.Ordinal);
         foreach (var entry in entries) {
             var field = entry.Name.ToString();
-            var value = (TValue?)RedisHashStoreSerialalizer.Read((byte[])entry.Value!, typeof(TValue), out _);
+            var value = (TValue?)RedisHashStoreSerializer.Read((byte[])entry.Value!, typeof(TValue), out _);
             if (value != null)
                 result[field] = value;
         }
@@ -424,6 +424,6 @@ public class LiveBackendRedisStateTest(AppHostFixture fixture, ITestOutputHelper
         var raw = await db.StringGetAsync(key).ConfigureAwait(false);
         if (raw.IsNullOrEmpty)
             return null;
-        return (TValue?)RedisHashStoreSerialalizer.Read((byte[])raw!, typeof(TValue), out _);
+        return (TValue?)RedisHashStoreSerializer.Read((byte[])raw!, typeof(TValue), out _);
     }
 }

@@ -42,10 +42,16 @@ public static class ChatEntryOperations
         return entries;
     }
 
-    public static async Task<StreamingEntry> CreateStreamingEntry(this IWebTester tester, ChatId chatId, Language language, CancellationToken cancellationToken = default)
+    public static async Task<StreamingEntry> CreateStreamingEntry(
+        this IWebTester tester,
+        ChatId chatId,
+        Language language,
+        Moment? beginsAt = null,
+        string content = "",
+        CancellationToken cancellationToken = default)
     {
         var clocks = tester.AppServices.Clocks();
-        var now = clocks.SystemClock.Now;
+        var effectiveBeginsAt = beginsAt ?? clocks.SystemClock.Now;
         var author = await tester.GetOwnAuthor(chatId, cancellationToken).Require();
         var streamId = StreamId.New(NodeRef.ThisNodeAlias).Value;
         var textEntry = await tester.Commander.Call(new ChatsBackend_ChangeEntry(ChatEntryId.New(chatId, 0),
@@ -54,8 +60,8 @@ public static class ChatEntryOperations
                     AuthorId = author.Id,
                     ContentStreamId = streamId,
                     Audio = new ChatEntryAudio { StreamId = streamId },
-                    Content = "",
-                    BeginsAt = now,
+                    Content = content,
+                    BeginsAt = effectiveBeginsAt,
                 })),
             cancellationToken: cancellationToken);
         var entryLanguage = await tester

@@ -14,8 +14,10 @@ public sealed partial class FlowResumeEvent :
 {
     private static readonly UuidGenerator UuidGenerator = UlidUuidGenerator.Instance;
 
-    [IgnoreMember] private readonly FlowHub? _hub; // Used only in Schedule method
-    [IgnoreMember] private volatile OperationEvent? _operationEvent;
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    private readonly FlowHub? _hub; // Used only in Schedule method
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    private volatile OperationEvent? _operationEvent;
 
     [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public FlowId FlowId { get; }

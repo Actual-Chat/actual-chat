@@ -120,7 +120,7 @@ public partial class AudioStreamingBackend
                 SourceBeginsAt = sourceBeginsAt,
                 Format = audio.Format,
             };
-            await LiveBackend.Register(chatId, streamInfo, cancellationToken).ConfigureAwait(false);
+            await LiveAudioBackend.Register(chatId, streamInfo, cancellationToken).ConfigureAwait(false);
         }
 
         var headerFrame = new AudioFrame {
@@ -163,10 +163,12 @@ public partial class AudioStreamingBackend
             await publishAudioTask.ConfigureAwait(false);
 
         // Close an open audio segment when the duration becomes available.
-        // Wrap in try/finally to ensure LiveBackend.Unregister always runs —
-        // WhenDurationAvailable can throw "Duration wasn't parsed" when the
-        // producer's RPC stream disconnects mid-recording, which would skip
-        // Unregister and leave a stale stream in the active list.
+        // WhenDurationAvailable throws "Duration wasn't parsed" when the producer's
+        // RPC stream disconnects mid-recording — we treat that as end-of-audio (not
+        // an error) and let FinalizeTextEntry close the entry with whatever transcript
+        // we have. The finally must run: it unregisters the live stream and unblocks
+        // audioMediaIdTcs — without that, FinalizeTextEntry hangs forever and the
+        // entry is stuck in the streaming state.
         MediaId? audioMediaId = null;
         try {
             await openSegment.Source.WhenDurationAvailable.ConfigureAwait(false);
@@ -185,15 +187,14 @@ public partial class AudioStreamingBackend
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e,
-                "ProcessAudio: stream #{StreamId} ended with error",
+                "ProcessAudio: stream #{StreamId} ended unexpectedly; finalizing with available transcript",
                 openSegment.StreamId);
-            throw;
         }
         finally {
             if (mustStreamVoice)
-                await LiveBackend.Unregister(chatId, openSegment.StreamId.Value, CancellationToken.None).ConfigureAwait(false);
+                await LiveAudioBackend.Unregister(chatId, openSegment.StreamId.Value, CancellationToken.None).ConfigureAwait(false);
+            audioMediaIdTcs.TrySetResult(audioMediaId);
         }
-        audioMediaIdTcs.TrySetResult(audioMediaId);
 
         // And we await for the last "pending" task, which is likely already completed
         var transcribeResult = await transcribeTask.ConfigureAwait(false);
@@ -387,8 +388,19 @@ public partial class AudioStreamingBackend
             }
         }
         finally {
-            if (lastTranscript != null && textEntry != null)
-                await Task.WhenAll(FinalizeTextEntry(), FinalizeLanguages()).ConfigureAwait(false);
+            if (lastTranscript != null && textEntry != null) {
+                // The entry may have been removed by the user or already finalized by
+                // ChatEntryFixupFlow while we were running. Both are legitimate races
+                // now that streaming entries are user-removable and the fix-up flow
+                // self-heals stuck entries. Re-check before issuing the update.
+                var current = await ChatsBackend.GetEntry(textEntry.Id, CancellationToken.None).ConfigureAwait(false);
+                if (current is null || current.IsRemoved)
+                    Log.LogWarning("TranscribeAudio: entry #{EntryId} was removed, skipping finalize", textEntry.Id);
+                else if (!current.IsContentStreaming)
+                    Log.LogWarning("TranscribeAudio: entry #{EntryId} was already finalized, skipping", textEntry.Id);
+                else
+                    await Task.WhenAll(FinalizeTextEntry(), FinalizeLanguages()).ConfigureAwait(false);
+            }
             await transcriptDiffStream.DisposeSilentlyAsync().ConfigureAwait(false);
         }
         return textEntry?.Id;

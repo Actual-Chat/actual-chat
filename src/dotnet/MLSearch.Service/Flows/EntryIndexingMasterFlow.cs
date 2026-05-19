@@ -2,11 +2,11 @@ using ActualChat.Flows;
 
 namespace ActualChat.MLSearch.Flows;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class EntryIndexingMasterFlow
     : IndexingMasterFlow<EntryIndexingFlow, Chat.Chat, ChatId>, IMasterFlow
 {
-    [IgnoreMember] private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
 
     [DataMember(Order = 5), MemoryPackOrder(5), Key(5)]
     public long MaxVersion { get; set; }

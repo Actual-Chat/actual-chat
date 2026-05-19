@@ -6,20 +6,19 @@ using ActualChat.Queues;
 namespace ActualChat.Chat.Flows;
 
 [Flow(ResumeTimeout = 60)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
 {
     private const int BatchSize = 100;
     private static readonly TimeSpan MaxDelay = TimeSpan.FromDays(7);
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
-    [IgnoreMember] private ChatId ChatId { get; set; } = null!;
 
-    [IgnoreMember] private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
-    [IgnoreMember] private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
-    [IgnoreMember] private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
-    [IgnoreMember] private IEntryGroupExtractor EntryGroupExtractor => field ??= Services.GetRequiredKeyedService<IEntryGroupExtractor>(EntryGroupLimit.None);
+    private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
+    private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
+    private IEntryGroupExtractor EntryGroupExtractor => field ??= Services.GetRequiredKeyedService<IEntryGroupExtractor>(EntryGroupLimit.None);
 
-    // Flow state
+    private ChatId ChatId => field ??= ChatId.Parse(Id.Arguments);
 
     [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public ExtractorState? ExtractorState { get; set; }
@@ -36,7 +35,6 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
 
     private async ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
     {
-        ChatId = ChatId.Parse(Id.Arguments);
         var chat = await ChatsBackend.Get(ChatId, cancellationToken).ConfigureAwait(false);
         if (chat is null) {
             await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);

@@ -1,12 +1,11 @@
 using ActualChat.Audio;
-using ActualChat.Chat;
 using ActualChat.Live;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Streaming.IntegrationTests;
 
 [Collection(nameof(StreamingCollection))]
-public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class LiveAudioBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     /// <summary>
@@ -16,7 +15,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task List_ShouldReturnRegisteredStreams()
     {
         var services = AppHost.Services;
-        var log = services.LogFor<LiveBackendStreamTest>();
+        var log = services.LogFor<LiveAudioBackendStreamTest>();
 
         // Create a test chat
         var commander = services.Commander();
@@ -25,7 +24,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff {
-                Title = "LiveBackendStreamTest",
+                Title = "LiveAudioBackendStreamTest",
                 Kind = ChatKind.Group,
             },
         }));
@@ -68,7 +67,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task List_ShouldInvalidateOnRegister()
     {
         var services = AppHost.Services;
-        var log = services.LogFor<LiveBackendStreamTest>();
+        var log = services.LogFor<LiveAudioBackendStreamTest>();
 
         // Create a test chat
         var commander = services.Commander();
@@ -77,7 +76,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff {
-                Title = "LiveBackendStreamTest2",
+                Title = "LiveAudioBackendStreamTest2",
                 Kind = ChatKind.Group,
             },
         }));
@@ -121,7 +120,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task List_MultipleConcurrentConsumers()
     {
         var services = AppHost.Services;
-        var log = services.LogFor<LiveBackendStreamTest>();
+        var log = services.LogFor<LiveAudioBackendStreamTest>();
 
         // Create a test chat
         var commander = services.Commander();
@@ -130,7 +129,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff {
-                Title = "LiveBackendStreamTest3",
+                Title = "LiveAudioBackendStreamTest3",
                 Kind = ChatKind.Group,
             },
         }));
@@ -175,7 +174,7 @@ public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff {
-                Title = "LiveBackendStreamTest4",
+                Title = "LiveAudioBackendStreamTest4",
                 Kind = ChatKind.Group,
             },
         }));

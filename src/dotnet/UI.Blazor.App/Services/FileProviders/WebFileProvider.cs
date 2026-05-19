@@ -8,7 +8,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 public partial class WebFileProvider : IFileProvider
 {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.WebFileProviders.tryCreateFromFileHandleDbKey";
-    [IgnoreMember] private IServiceProvider? _services;
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember] private IServiceProvider? _services;
 
     [DataMember, MemoryPackOrder(0), Key(0)]
     public FileMetadata Metadata { get; init; } = new ();
@@ -21,8 +21,8 @@ public partial class WebFileProvider : IFileProvider
     private bool IsOriginal => WebFileProviderInternal is WebFileProviderInternal provider && provider.IsOriginal;
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     private IServiceProvider Services => _services ?? throw new InvalidOperationException("Initialize must be called first.");
-    [IgnoreMember] private IJSRuntime JS => field ??= Services.JSRuntime();
-    [IgnoreMember] private ILogger Log => field ??= Services.LogFor<WebFileProvider>();
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember] private IJSRuntime JS => field ??= Services.JSRuntime();
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember] private ILogger Log => field ??= Services.LogFor<WebFileProvider>();
 
     public void Initialize(IServiceProvider services)
         => _services = services;

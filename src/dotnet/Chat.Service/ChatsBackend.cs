@@ -2120,6 +2120,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return; // It just spawns other commands, so nothing to do here
 
         var (entry, _, kind, _) = eventCommand;
+        if (kind == ChangeKind.Create)
+            await FlowHub.NewResumeEvent<ChatEntryFixupFlow>(entry.ChatId.Value)
+                .WithDelay(Constants.Chat.StreamingEntryFixupDelay + TimeSpan.FromSeconds(1))
+                .Schedule(cancellationToken).ConfigureAwait(false);
+
         if (entry.IsContentStreaming)
             return; // Streaming entries are not summarized
 

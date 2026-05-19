@@ -11,14 +11,14 @@ namespace ActualChat.Chat.Flows;
 /// from legacy audio entries to text entries but doesn't set EndsAt.
 /// </summary>
 [Flow(DataVersion = 1, DelayQuanta = 0)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class ChatEntryEndsAtFixupFlow : Flow<(Moment, long)>
 {
     private const int BatchSize = 200;
     private static readonly RandomTimeSpan BatchDelay = TimeSpan.FromSeconds(2).ToRandom(0.25);
 
-    [IgnoreMember] private DbHub<ChatDbContext> DbHub => field ??= Services.DbHub<ChatDbContext>();
-    [IgnoreMember] private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
+    private DbHub<ChatDbContext> DbHub => field ??= Services.DbHub<ChatDbContext>();
+    private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
 
     [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public string? LastProcessedEntryId { get; set; }

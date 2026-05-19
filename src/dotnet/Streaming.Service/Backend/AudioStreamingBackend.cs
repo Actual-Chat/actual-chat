@@ -23,16 +23,17 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     private ILogger? DebugLog => DebugMode ? Log : null;
 
     private IServiceProvider Services { get; }
-    private AudioSettings AudioSettings { get; }
     private MeshNode ThisNode => field ??= Services.MeshWatcher().ThisNode;
+    private AudioSettings AudioSettings { get; }
     private AudioSegmentSaver AudioSegmentSaver => field ??= Services.GetRequiredService<AudioSegmentSaver>();
+    private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private ITranscriberFactory TranscriberFactory => field ??= Services.GetRequiredService<ITranscriberFactory>();
     private IChats Chats => field ??= Services.GetRequiredService<IChats>();
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
     private ICommander Commander => field ??= Services.Commander();
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private IHostApplicationLifetime HostLifetime => field ??= Services.HostLifetime();
-    private ILiveAudioBackend LiveBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
 
     public AudioStreamingBackend(IServiceProvider services)
     {

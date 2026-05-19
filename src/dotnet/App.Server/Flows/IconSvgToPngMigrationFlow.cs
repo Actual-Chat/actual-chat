@@ -26,7 +26,7 @@ namespace ActualChat.App.Server.Flows;
 /// and <c>MediaDbInitializer</c> already upgrades them to PNG in place on startup.
 /// </remarks>
 [Flow(DataVersion = 2, DelayQuanta = 0)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
 {
     private const int BatchSize = 50;
@@ -41,12 +41,12 @@ public sealed partial class IconSvgToPngMigrationFlow : Flow<(Moment, long)>
     // Backup-only — not read by application code.
     private const string ReplacesMediaIdMetadataKey = "ReplacesMediaId";
 
-    [IgnoreMember] private DbHub<UsersDbContext> UsersDbHub => field ??= Services.DbHub<UsersDbContext>();
-    [IgnoreMember] private DbHub<ChatDbContext> ChatDbHub => field ??= Services.DbHub<ChatDbContext>();
-    [IgnoreMember] private IBlobStorage BlobStorage => field ??= Services.BlobStorages()[BlobScope.ContentRecord];
-    [IgnoreMember] private SvgRasterizer SvgRasterizer => field ??= Services.GetRequiredService<SvgRasterizer>();
-    [IgnoreMember] private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
-    [IgnoreMember] private ICommander Commander => Hub.Commander;
+    private DbHub<UsersDbContext> UsersDbHub => field ??= Services.DbHub<UsersDbContext>();
+    private DbHub<ChatDbContext> ChatDbHub => field ??= Services.DbHub<ChatDbContext>();
+    private IBlobStorage BlobStorage => field ??= Services.BlobStorages()[BlobScope.ContentRecord];
+    private SvgRasterizer SvgRasterizer => field ??= Services.GetRequiredService<SvgRasterizer>();
+    private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
+    private ICommander Commander => Hub.Commander;
 
     [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public MigrationPhase Phase { get; set; }

@@ -154,8 +154,8 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
 
         // act
         await TranslationUI.SetIsOn(chatId, true, cancellationToken);
-        var englishEntry = await AliceTester.CreateStreamingEntry(chatId, Languages.English, cancellationToken);
-        var frenchEntry = await AliceTester.CreateStreamingEntry(chatId, Languages.French, cancellationToken);
+        var englishEntry = await AliceTester.CreateStreamingEntry(chatId, Languages.English, cancellationToken: cancellationToken);
+        var frenchEntry = await AliceTester.CreateStreamingEntry(chatId, Languages.French, cancellationToken: cancellationToken);
 
         // assert
         await AssertMustTranslate(frenchEntry.ChatEntrySlim, true);
@@ -181,7 +181,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
 
         // act
         await TranslationUI.SetIsOn(chatId, true, cancellationToken);
-        var streamingEntry = await AliceTester.CreateStreamingEntry(chatId, Languages.French, cancellationToken);
+        var streamingEntry = await AliceTester.CreateStreamingEntry(chatId, Languages.French, cancellationToken: cancellationToken);
         streamingEntry = await AliceTester.FinalizeStreamingEntry(streamingEntry, "Bonjour!", cancellationToken);
 
         // assert

@@ -13,15 +13,15 @@ namespace ActualChat.Users.Flows;
 /// Processes accounts in batches, all items in a batch are processed in parallel.
 /// </summary>
 [Flow(DataVersion = 1, DelayQuanta = 0)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class AccountMigrationFlow : Flow<(Moment, long)>
 {
     private const int BatchSize = 50;
     private static readonly RandomTimeSpan BatchDelay = TimeSpan.FromSeconds(5).ToRandom(0.25);
 
-    [IgnoreMember] private DbHub<UsersDbContext> DbHub => field ??= Services.DbHub<UsersDbContext>();
-    [IgnoreMember] private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
-    [IgnoreMember] private ICommander Commander => Hub.Commander;
+    private DbHub<UsersDbContext> DbHub => field ??= Services.DbHub<UsersDbContext>();
+    private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
+    private ICommander Commander => Hub.Commander;
 
     [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public string? LastProcessedId { get; set; }

@@ -20,8 +20,8 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
     private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
     private IAudioStreamingBackend Backend => field ??= Services.GetRequiredService<IAudioStreamingBackend>();
+    private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private RemoteAudioStreamCache RemoteAudioCache => field ??= Services.GetRequiredService<RemoteAudioStreamCache>();
-    private ILiveAudioBackend LiveBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private ILogger Log => field ??= Services.LogFor<LiveAudioStreams>();
 
     // [ComputeMethod]
@@ -34,7 +34,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         chat.Require();
         if (!chat.Rules.Has(ChatPermissions.ReadAudio))
             return [];
-        return await LiveBackend.List(chatId, cancellationToken).ConfigureAwait(false);
+        return await LiveAudioBackend.List(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<RpcStream<AudioFrame>?> GetStream(

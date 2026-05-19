@@ -24,8 +24,8 @@ public sealed class LiveStreamMuxer : WorkerBase
 
     private IServiceProvider Services { get; }
     private ChatId ChatId { get; }
-    private ILiveAudioBackend LiveBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private ILiveAudioStreams LiveAudioStreams => field ??= Services.GetRequiredService<ILiveAudioStreams>();
+    private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private MomentClock SystemClock => Clocks.SystemClock;
     private ILogger Log => field ??= Services.LogFor<LiveStreamMuxer>();
@@ -59,7 +59,7 @@ public sealed class LiveStreamMuxer : WorkerBase
     {
         // Two tricky races handled here:
         // 1) A stream's playback ended, but it's still listed as active — the
-        //    producer's LiveBackend.Unregister runs after its audio blob save,
+        //    producer's LiveAudioBackend.Unregister runs after its audio blob save,
         //    which can take seconds for long messages. Fixed by two things:
         //    coarse stale-audio trimming in ProcessStream (so a restart replays
         //    at most a short tail) and the EvictionDelay on pruning below (so
@@ -80,7 +80,7 @@ public sealed class LiveStreamMuxer : WorkerBase
 
                     while (true) {
                         var computed = await Computed.Capture(
-                            () => LiveBackend.List(ChatId, cancellationToken),
+                            () => LiveAudioBackend.List(ChatId, cancellationToken),
                             cancellationToken).ConfigureAwait(false);
                         var currentStreams = computed.Value;
 
@@ -184,7 +184,7 @@ public sealed class LiveStreamMuxer : WorkerBase
             streamStopTokenSource.CancelAndDisposeSilently();
             await EmitEndSafe().ConfigureAwait(false);
 
-            // LiveBackend.List may still enlist the same stream, so this delay
+            // LiveAudioBackend.List may still enlist the same stream, so this delay
             // prevents duplicates of the same stream to be processed
             await Task.Delay(EvictionDelay, CancellationToken.None).ConfigureAwait(false);
 

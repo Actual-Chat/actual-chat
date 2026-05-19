@@ -11,15 +11,15 @@ namespace ActualChat.Chat.Flows;
 /// Processes one chat at a time, in batches of 100 text entries per resume.
 /// </summary>
 [Flow(DataVersion = 1, DelayQuanta = 0)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
 {
     private const int BatchSize = 300;
     private const int MaxChatsPerResume = 300;
     private static readonly RandomTimeSpan BatchDelay = TimeSpan.FromSeconds(2).ToRandom(0.25);
 
-    [IgnoreMember] private DbHub<ChatDbContext> DbHub => field ??= Services.DbHub<ChatDbContext>();
-    [IgnoreMember] private ICommander Commander => Hub.Commander;
+    private DbHub<ChatDbContext> DbHub => field ??= Services.DbHub<ChatDbContext>();
+    private ICommander Commander => Hub.Commander;
 
     [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public string? LastProcessedChatId { get; set; }

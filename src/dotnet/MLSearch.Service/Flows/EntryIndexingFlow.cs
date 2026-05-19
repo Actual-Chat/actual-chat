@@ -16,12 +16,10 @@ public sealed partial class EntryIndexingFlow : BatchedIndexingFlow<ChatEntry, C
     private IndexedDocuments IndexedDocuments => field ??= Services.GetRequiredService<IndexedDocuments>();
     private Task WhenReady => field ??= Services.GetRequiredService<OpenSearchConfigurator>().WhenReady;
 
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    private ChatId ChatId { get; set; } = null!;
+    private ChatId ChatId => field ??= ChatId.Parse(Id.Arguments);
 
     protected override async ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
     {
-        ChatId = ChatId.Parse(Id.Arguments);
         await WhenReady.ConfigureAwait(false);
         var readiness = await PrepareOnce().ConfigureAwait(false);
         if (readiness.IsSuspended) {

@@ -15,7 +15,6 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     private readonly RedisMultiHashMap<VideoStreamInfo> _streams;
     private readonly RedisMultiHashMap<VideoStreamMemberInfo> _members;
 
-    private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private MomentClock SystemClock => Clocks.SystemClock;
 
     public LiveVideoBackend(IServiceProvider services)

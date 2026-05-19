@@ -30,6 +30,6 @@ public class UploadProcessingFlowSerializationTest(ITestOutputHelper @out)
 {
     // UploadProcessingFlow has no own [DataMember] properties — verifies the
     // round-trip works for flows with only base-class state (none here, since
-    // Flow<TResult> has [IgnoreMember] on all its properties).
+    // Flow<TResult> has [IgnoreDataMember, MemoryPackIgnore, IgnoreMember] on all its properties).
     protected override UploadProcessingFlow CreatePopulated() => new();
 }
