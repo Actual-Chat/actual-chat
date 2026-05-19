@@ -14,6 +14,7 @@ public static class MauiPreferences
     private const string HostIpKeyPrefix = "host_ip_";
     private const string IsDataCollectionEnabledKey = "analytics";
     private const string ThemeKey = "Theme";
+    private const string MinReportableClientVersionKey = "min_reportable_client_version";
 
     private static readonly Lock Lock = new();
     private static readonly ConcurrentDictionary<string, object?> Cache = new();
@@ -36,6 +37,11 @@ public static class MauiPreferences
     public static string Theme {
         get => Get<string>(ThemeKey) ?? "";
         set => Set(ThemeKey, value);
+    }
+
+    public static string? MinReportableClientVersion {
+        get => Get<string>(MinReportableClientVersionKey).NullIfEmpty();
+        set => Set(MinReportableClientVersionKey, value ?? "");
     }
 
     public static string? GetHostIp(string hostName)

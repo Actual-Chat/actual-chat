@@ -40,9 +40,14 @@ public sealed partial record ServerApiInfo(
     [property: DataMember, MemoryPackOrder(0), Key(0)] CompatibilityLevel CompatibilityLevel,
     [property: DataMember, MemoryPackOrder(1), Key(1)] string VersionString,
     [property: DataMember, MemoryPackOrder(2), Key(2)] string FullVersionString,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] string DisplayVersionString)
+    [property: DataMember, MemoryPackOrder(3), Key(3)] string DisplayVersionString,
+    [property: DataMember, MemoryPackOrder(4), Key(4)] string MinReportableClientVersion = "")
 {
     public ServerApiInfo(CompatibilityLevel compatibilityLevel)
-        : this(compatibilityLevel, ApiConstants.VersionString, ApiConstants.FullVersionString, ApiConstants.DisplayVersionString)
+        : this(compatibilityLevel,
+            ApiConstants.VersionString,
+            ApiConstants.FullVersionString,
+            ApiConstants.DisplayVersionString,
+            "")
     { }
 }

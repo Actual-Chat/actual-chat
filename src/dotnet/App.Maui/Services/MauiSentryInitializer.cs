@@ -14,9 +14,23 @@ public class MauiSentryInitializer(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
 
     private async Task Initialize(CancellationToken cancellationToken)
     {
-        await LoadingUI.WhenAppRendered.WithDelay(SentryStartDelay, cancellationToken).ConfigureAwait(false);
+        await LoadingUI.WhenAppRendered.ConfigureAwait(false);
+        _ = RefreshMinReportableClientVersion(cancellationToken);
+        await Task.Delay(SentryStartDelay, cancellationToken).ConfigureAwait(false);
         MauiDiagnostics.InitSentrySdk();
         await CreateSentryTraceProvider().ConfigureAwait(false);
+    }
+
+    private async Task RefreshMinReportableClientVersion(CancellationToken cancellationToken)
+    {
+        try {
+            var info = await Hub.SystemProperties.GetServerApiInfo(cancellationToken).ConfigureAwait(false);
+            if (!info.MinReportableClientVersion.IsNullOrEmpty())
+                MauiPreferences.MinReportableClientVersion = info.MinReportableClientVersion;
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to refresh MinReportableClientVersion");
+        }
     }
 
     private static async Task CreateSentryTraceProvider()
