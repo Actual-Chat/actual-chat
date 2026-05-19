@@ -122,12 +122,14 @@ public class MentionIndexUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
             if (chat is null || chat.Title.IsNullOrEmpty())
                 continue;
 
+            var chatPicture = chat.Picture?.ToPicture()
+                ?? new Picture(null, null, chat.Id.Value);
             result.Add(new MentionCandidate(
                 MentionId.NewChat(chat.Id),
                 MentionCandidateKind.Chat,
                 chat.Title,
                 null,
-                null,
+                chatPicture,
                 MentionFilter.Tokenize(chat.Title)));
         }
         return result;
@@ -166,12 +168,14 @@ public class MentionIndexUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
                 words.Add(w);
         }
 
+        var picture = account.Avatar.Picture
+            ?? new Picture(null, null, DefaultUserPicture.GetAvatarKey(userId.Value));
         return new MentionCandidate(
             MentionId.NewUser(userId),
             MentionCandidateKind.User,
             primary,
             secondary,
-            account.Avatar.Picture,
+            picture,
             words.ToArray()
         ) {
             IsChatMember = entry.IsChatMember,

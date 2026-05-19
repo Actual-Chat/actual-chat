@@ -37,9 +37,12 @@
                         @key="@authorId"
                         AuthorId="@authorId"
                         Size="SquareSize.Size7"/>
+                } else if (mention.MentionId.Target is EmojiRef emojiRef) {
+                    var glyph = Emojis.ById.GetValueOrDefault(emojiRef.Text)?.Symbol;
+                    <span class="mention-list-emoji">@(glyph ?? "")</span>
                 } else {
-                    var pictureUrl = UrlMapper.PicturePreview128Url(mention.Picture);
-                    <image-skeleton class="flex-none w-7 h-7 rounded-full" src="@pictureUrl"/>
+                    var iconUrl = UrlMapper.IconUrl(GetIconQuery(mention));
+                    <image-skeleton class="flex-none w-7 h-7 rounded-full" src="@iconUrl"/>
                 }
                 <div class="c-center">
                     <SearchMatchHighlighter Match="@mention.SearchMatch"/>
@@ -125,6 +128,23 @@
         (MentionKindFilter.Chat, "C", "Chats only"),
         (MentionKindFilter.Emoji, "E", "Emoji only"),
     ];
+
+    private static IconQuery GetIconQuery(MentionSearchResult mention) {
+        var picture = mention.Picture;
+        var target = mention.MentionId.Target;
+        // Marble for chats/places (matches the chat-list rendering),
+        // Beam for users/everyone else.
+        var avatarKind = target is ChatId or PlaceId
+            ? AvatarKind.Marble
+            : AvatarKind.Beam;
+        var avatarKey = picture.AvatarKey.NullIfEmpty() ?? mention.MentionId.Value;
+        return new IconQuery(picture, new AvatarQuery {
+            Kind = avatarKind,
+            Key = avatarKey,
+            Format = AvatarFormat.Png,
+            Size = 128,
+        });
+    }
 
     public void MoveSelection(int offset) {
         var mentions = State.Value;

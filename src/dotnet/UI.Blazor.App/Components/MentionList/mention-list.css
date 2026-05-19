@@ -70,6 +70,11 @@ body.narrow .narrow-panel .mention-list.expanded {
 .mention-list .mention-list-chips > .mention-list-chip.active {
     @apply bg-primary text-primary-title border-primary;
 }
+.mention-list .mention-list-emoji {
+    @apply flex-none inline-flex items-center justify-center;
+    @apply w-7 h-7;
+    @apply text-xl leading-none;
+}
 
 @keyframes show-mention-list {
     0% {
