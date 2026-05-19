@@ -1,0 +1,18 @@
+@namespace ActualChat.UI.Blazor.App.Components.MarkupParts
+@inherits MarkupViewBase<GifMention>
+@{
+    var alt = Markup.NameOrNotAvailable;
+}
+
+@if (Markup.Picture is { } picture) {
+    var width = Markup.Width;
+    var height = Markup.Height;
+    <img class="gif-markup"
+         src="@UrlMapper.PicturePreview128Url(picture)"
+         alt="@alt"
+         width="@(width?.ToString() ?? "")"
+         height="@(height?.ToString() ?? "")" />
+}
+else {
+    <span class="mention-markup mention-markup-placeholder">@alt</span>
+}

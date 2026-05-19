@@ -28,7 +28,7 @@
 
     [CascadingParameter] public MentionListManager? MentionListManager { get; set; }
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
-    public IMentionNamer MentionNamer { get; set; } = null!;
+    public IMentionResolver MentionResolver { get; set; } = null!;
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public IMarkupFormatter HtmlConverter { get; set; } = null!;
     [Parameter] public string Id { get; set; } = "";
@@ -86,7 +86,7 @@
             await Clear(mustFocus);
         else {
             var markup = MarkupParser.Parse(text);
-            markup = await MentionNamer.Apply(markup, default).ConfigureAwait(false);
+            markup = await MentionResolver.Apply(markup, default).ConfigureAwait(false);
             await SetMarkup(markup, mustFocus);
         }
     }
@@ -121,7 +121,7 @@
         if (mention == null)
             return;
 
-        var html = HtmlConverter.Format(new MentionMarkup(mention.MentionId, mention.Text)) + " ";
+        var html = HtmlConverter.Format(MentionMarkup.New(mention.MentionId, mention.Text)) + " ";
         await JSRef.InvokeVoidAsync("insertHtml", html, "@");
     }
 

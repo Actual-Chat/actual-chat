@@ -1,0 +1,10 @@
+@namespace ActualChat.UI.Blazor.App.Components.MarkupParts
+@inherits MarkupViewBase<ChatMention>
+@{
+    var name = Markup.Chat?.Title.NullIfEmpty() ?? Markup.NameOrNotAvailable;
+    var url = Links.Chat(Markup.ChatId).Value;
+}
+
+<a href="@url" class="mention-markup mention-markup-valid cursor-pointer">
+    <div class="truncate">#@name</div>
+</a>

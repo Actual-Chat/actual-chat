@@ -1,0 +1,10 @@
+@namespace ActualChat.UI.Blazor.App.Components.MarkupParts
+@inherits MarkupViewBase<PlaceMention>
+@{
+    var name = Markup.Place?.Title.NullIfEmpty() ?? Markup.NameOrNotAvailable;
+    var url = Links.PlaceInfo(Markup.PlaceId).Value;
+}
+
+<a href="@url" class="mention-markup mention-markup-valid cursor-pointer">
+    <div class="truncate">@@@name</div>
+</a>

@@ -88,7 +88,7 @@ public class SelectionUI : UIServiceBase<AppUIHub>
             var markup = await chatMarkupHub
                 .GetMarkup(chatEntry, translation, MarkupConsumer.MessageView, cancellationToken)
                 .ConfigureAwait(false);
-            markup = await chatMarkupHub.ApplyMentionNamer(markup, cancellationToken).ConfigureAwait(false);
+            markup = await chatMarkupHub.ApplyMentionResolver(markup, cancellationToken).ConfigureAwait(false);
 
             if (showAuthor && currentAuthorId != chatEntry.AuthorId) {
                 if (lines.Count > 0)
@@ -114,7 +114,7 @@ public class SelectionUI : UIServiceBase<AppUIHub>
         var markup = await chatMarkupHub
             .GetMarkup(sendingChatEntry, null, MarkupConsumer.MessageView, cancellationToken)
             .ConfigureAwait(false);
-        markup = await chatMarkupHub.ApplyMentionNamer(markup, cancellationToken).ConfigureAwait(false);
+        markup = await chatMarkupHub.ApplyMentionResolver(markup, cancellationToken).ConfigureAwait(false);
         return markup.ToClipboardText();
     }
 

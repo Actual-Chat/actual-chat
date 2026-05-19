@@ -8,8 +8,8 @@ namespace ActualChat.Chat;
 public class BackendChatMarkupHub(IServiceProvider services, ChatId chatId) : IBackendChatMarkupHub
 {
     private static MarkupTrimmer? _trimmer;
-    private BackendChatMentionResolver? _mentionResolver;
-    private MentionNamer? _mentionNamer;
+    private BackendChatMentionResolver? _chatMentionResolver;
+    private MentionResolver? _mentionResolver;
     private static IMarkupFormatter? _editorHtmlConverter;
 
     public IServiceProvider Services { get; } = services;
@@ -22,11 +22,11 @@ public class BackendChatMarkupHub(IServiceProvider services, ChatId chatId) : IB
         => _trimmer ??= new MarkupTrimmer();
 #pragma warning restore CA1822
 
-    public IMentionNamer MentionNamer
-        => _mentionNamer ??= new MentionNamer(MentionResolver);
+    public IMentionResolver MentionResolver
+        => _mentionResolver ??= new MentionResolver(ChatMentionResolver);
 
-    public IChatMentionResolver MentionResolver
-        => _mentionResolver ??= new BackendChatMentionResolver(Services, ChatId);
+    public IChatMentionResolver ChatMentionResolver
+        => _chatMentionResolver ??= new BackendChatMentionResolver(Services, ChatId);
 
     public ISearchProvider<MentionSearchResult> MentionSearchProvider
         => throw StandardError.Internal($"You should use {nameof(IChatMarkupHub)} to get {nameof(MentionSearchProvider)}.");

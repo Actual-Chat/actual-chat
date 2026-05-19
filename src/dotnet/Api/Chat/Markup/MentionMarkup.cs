@@ -3,11 +3,12 @@ using ActualLab.Fusion.Blazor;
 namespace ActualChat.Chat;
 
 /// <summary>
-/// Represents a mention of a user or author in markup.
+/// Base markup element for a mention. Typed subclasses (e.g. <see cref="AuthorMention"/>,
+/// <see cref="UserMention"/>) carry pre-resolved data so render-time access is synchronous.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-public sealed partial class MentionMarkup(MentionId id, string name = "") : Markup
+public partial class MentionMarkup(MentionId id, string name = "") : Markup
 {
     public static readonly string NotAvailableName = "(n/a)";
     public static readonly Func<MentionMarkup, string> DefaultFormatter = m => m.Format();
@@ -25,6 +26,18 @@ public sealed partial class MentionMarkup(MentionId id, string name = "") : Mark
     public string NameOrNotAvailable => Name.NullIfEmpty() ?? NotAvailableName;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string NameOrId => Name.NullIfEmpty() ?? Id.Value;
+
+    public static MentionMarkup New(MentionId id, string name = "")
+    {
+        var kind = id.Kind;
+        if (kind == MentionKind.Author) return new AuthorMention(id, name);
+        if (kind == MentionKind.User) return new UserMention(id, name);
+        if (kind == MentionKind.Chat) return new ChatMention(id, name);
+        if (kind == MentionKind.Place) return new PlaceMention(id, name);
+        if (kind == MentionKind.Emoji) return new EmojiMention(id, name);
+        if (kind == MentionKind.Gif) return new GifMention(id, name);
+        return new MentionMarkup(id, name);
+    }
 
     public override string Format()
         => Name.IsNullOrEmpty()

@@ -15,7 +15,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<AuthorId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<AuthorId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class AuthorId : PrincipalId, IStringIdentifier<AuthorId>
+public sealed partial class AuthorId : PrincipalId, IStringIdentifier<AuthorId>, IMentionTarget
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<AuthorId>();
@@ -27,6 +27,8 @@ public sealed partial class AuthorId : PrincipalId, IStringIdentifier<AuthorId>
     public long LocalId { get; }
     [IgnoreDataMember]
     public override string ShardKey => ChatId.Value;
+    [IgnoreDataMember]
+    public MentionKind MentionKind => MentionKind.Author;
 
     // Factories and constructors
 

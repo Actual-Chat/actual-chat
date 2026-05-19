@@ -127,11 +127,11 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
     public void MentionTest()
     {
         var p = Parse<ParagraphMarkup>("@a:abcdef:1", out var text);
-        var m = p.Content.Should().BeOfType<MentionMarkup>().Subject;
+        var m = p.Content.Should().BeAssignableTo<MentionMarkup>().Subject;
         m.Id.Value.Should().Be(text[1..]);
 
         p = Parse<ParagraphMarkup>("@u:userId", out text);
-        m = p.Content.Should().BeOfType<MentionMarkup>().Subject;
+        m = p.Content.Should().BeAssignableTo<MentionMarkup>().Subject;
         m.Id.Value.Should().Be(text[1..]);
 
         Parse<ParagraphMarkup>("@alex", out text);
@@ -142,18 +142,113 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
     public void NamedMentionTest()
     {
         var p = Parse<ParagraphMarkup>("@`a`a:chatid:1");
-        var m = p.Content.Should().BeOfType<MentionMarkup>().Subject;
+        var m = p.Content.Should().BeAssignableTo<MentionMarkup>().Subject;
         m.Name.Should().Be("a");
         m.Id.Value.Should().Be("a:chatid:1");
 
         p = Parse<ParagraphMarkup>("@`a x`a:chatid:1");
-        m = p.Content.Should().BeOfType<MentionMarkup>().Subject;
+        m = p.Content.Should().BeAssignableTo<MentionMarkup>().Subject;
         m.Name.Should().Be("a x");
         m.Id.Value.Should().Be("a:chatid:1");
 
         // Empty id case
         Parse<ParagraphMarkup>("@`Alex Yakunin`");
         Parse<ParagraphMarkup>("@`a`b");
+    }
+
+    [Fact]
+    public void UniversalMentionKindsTest()
+    {
+        var p = Parse<ParagraphMarkup>("@a:chatid:1", out _);
+        var m = p.Content.Should().BeOfType<AuthorMention>().Subject;
+        m.Id.Kind.Should().Be(MentionKind.Author);
+        m.AuthorId.Should().BeOfType<AuthorId>();
+
+        p = Parse<ParagraphMarkup>("@u:userId", out _);
+        var um = p.Content.Should().BeOfType<UserMention>().Subject;
+        um.Id.Kind.Should().Be(MentionKind.User);
+        um.UserId.Should().BeOfType<UserId>();
+
+        p = Parse<ParagraphMarkup>("@c:abcdef1234", out _);
+        var cm = p.Content.Should().BeOfType<ChatMention>().Subject;
+        cm.Id.Kind.Should().Be(MentionKind.Chat);
+        cm.ChatId.Should().BeOfType<GroupChatId>();
+
+        p = Parse<ParagraphMarkup>("@p:abcdef1234", out _);
+        var pm = p.Content.Should().BeOfType<PlaceMention>().Subject;
+        pm.Id.Kind.Should().Be(MentionKind.Place);
+        pm.PlaceId.Should().BeOfType<PlaceId>();
+
+        p = Parse<ParagraphMarkup>("@e:smile", out _);
+        var em = p.Content.Should().BeOfType<EmojiMention>().Subject;
+        em.Id.Kind.Should().Be(MentionKind.Emoji);
+        em.EmojiRef.Should().BeOfType<EmojiRef>();
+    }
+
+    [Fact]
+    public void UrlEncodedGifMentionTest()
+    {
+        // GIF picker yields URL-encoded ids — parser must accept '%', '.', '~'.
+        var encoded = "https%3A%2F%2Fmedia.tenor.com%2Ffoo.gif";
+        var p = Parse<ParagraphMarkup>("@g:" + encoded, out _);
+        var m = p.Content.Should().BeOfType<GifMention>().Subject;
+        m.Id.Kind.Should().Be(MentionKind.Gif);
+        m.GifRef.Value.Should().Be(encoded);
+
+        // Named form round-trip
+        p = Parse<ParagraphMarkup>("@`waving hand`g:" + encoded);
+        m = p.Content.Should().BeOfType<GifMention>().Subject;
+        m.Name.Should().Be("waving hand");
+        m.GifRef.Value.Should().Be(encoded);
+        m.Format().Should().Be("@`waving hand`g:" + encoded);
+    }
+
+    [Fact]
+    public void EmojiNormalizerReplacesUrlEncodedGlyphWithGlyphTest()
+    {
+        // Standard emoji ids in the registry are the glyphs themselves, so the wire form
+        // inside @e: is their URL-encoded bytes (parser accepts '%' via the widened IdChar).
+        var glyph = Emojis.Smile.Symbol;
+        var encoded = glyph.UrlEncode();
+
+        var input = Parse<ParagraphMarkup>("hi @e:" + encoded + " there");
+        var mention = input.Content.Should().BeAssignableTo<MarkupSeq>().Subject
+            .Items.OfType<EmojiMention>().Single();
+        mention.EmojiRef.Text.Should().Be(glyph);
+
+        var normalized = EmojiNormalizer.Instance.Apply(input);
+        var text = MarkupFormatter.ReadableUnstyled.Format(normalized);
+        text.Should().Contain(glyph);
+        text.Should().NotContain("@e:");
+    }
+
+    [Fact]
+    public void EmojiNormalizerLeavesCustomSlugAsMentionTest()
+    {
+        // Custom slugs (Id != Symbol, e.g. "clown-yellow") aren't glyph-keyed,
+        // so they stay as mentions — the editor needs them as atomic spans.
+        var slug = Emojis.ClownYellow.Id.Value;
+        var input = Parse<ParagraphMarkup>("hi @e:" + slug + " there");
+        var normalized = EmojiNormalizer.Instance.Apply(input);
+        normalized.Should().BeSameAs(input);
+    }
+
+    [Fact]
+    public void EmojiNormalizerLeavesUnknownSlugsAsMentionsTest()
+    {
+        var input = Parse<ParagraphMarkup>("@e:my-custom-emoji");
+        var normalized = EmojiNormalizer.Instance.Apply(input);
+        normalized.Should().BeSameAs(input);
+    }
+
+    [Fact]
+    public void UnknownPrefixIsNotAMentionTest()
+    {
+        // 'z' isn't a registered prefix — the token shouldn't parse as a mention.
+        Parse<ParagraphMarkup>("@z:foo");
+        var ok = MentionId.TryParse("z:foo", out var mention);
+        ok.Should().BeFalse();
+        mention.Should().BeNull();
     }
 
     [Fact]
@@ -446,16 +541,16 @@ code
         var item0 = m.Items[0].Content.Should().BeOfType<MarkupSeq>().Subject;
         item0.Items.Length.Should().Be(7);
         item0.Items[0].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("Participants ");
-        item0.Items[1].Should().BeOfType<MentionMarkup>().Which.Id.Should().Be(MentionId.NewAuthor(AuthorId.New(chatId, 3)));
+        item0.Items[1].Should().BeAssignableTo<MentionMarkup>().Which.Id.Should().Be(MentionId.NewAuthor(AuthorId.New(chatId, 3)));
         item0.Items[2].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(", ");
-        item0.Items[3].Should().BeOfType<MentionMarkup>().Which.Id.Should().Be(MentionId.NewAuthor(AuthorId.New(chatId, 2)));
+        item0.Items[3].Should().BeAssignableTo<MentionMarkup>().Which.Id.Should().Be(MentionId.NewAuthor(AuthorId.New(chatId, 2)));
         item0.Items[4].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(" and ");
-        item0.Items[5].Should().BeOfType<MentionMarkup>().Which.Id.Should().Be(MentionId.NewAuthor(AuthorId.New(chatId, 1)));
+        item0.Items[5].Should().BeAssignableTo<MentionMarkup>().Which.Id.Should().Be(MentionId.NewAuthor(AuthorId.New(chatId, 1)));
         item0.Items[6].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(" exchanged greetings and discussed the status of current tasks.");
 
         var item1 = m.Items[1].Content.Should().BeOfType<MarkupSeq>().Subject;
         item1.Items.Length.Should().Be(2);
-        item1.Items[0].Should().BeOfType<MentionMarkup>().Which.Id.Should().Be(MentionId.NewAuthor(AuthorId.New(chatId, 2)));
+        item1.Items[0].Should().BeAssignableTo<MentionMarkup>().Which.Id.Should().Be(MentionId.NewAuthor(AuthorId.New(chatId, 2)));
         item1.Items[1].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(" raised questions about adding and managing the list of images.");
     }
 
@@ -764,7 +859,7 @@ code
         m.Level.Should().Be(1);
         var seq = m.Content.Should().BeOfType<MarkupSeq>().Subject;
         seq.Items.Should().HaveCount(2);
-        seq.Items[1].Should().BeOfType<MentionMarkup>();
+        seq.Items[1].Should().BeAssignableTo<MentionMarkup>();
     }
 
     [Fact]

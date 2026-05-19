@@ -43,7 +43,8 @@ public partial class MarkupParser : IMarkupParser
     private static readonly Parser<char, char> NotEndOfLineChar =
         Token(c => c is not ('\r' or '\n' or '\u2028')).Labelled("not line separator");
     private static readonly Parser<char, char> IdChar =
-        Token(c => char.IsLetterOrDigit(c) || c is '_' or '-' or ':').Labelled("letter, digit, '_', '-', or ':'");
+        Token(c => char.IsLetterOrDigit(c) || c is '_' or '-' or ':' or '.' or '%' or '~')
+            .Labelled("letter, digit, '_', '-', ':', '.', '%', or '~'");
     private static readonly Parser<char, char> SpecialChar =
         Token(c => c is '*' or '`' or '@').Labelled("'*', '`', or '@'");
     private static readonly Parser<char, char> NotSpecialOrWhitespaceChar =
@@ -144,7 +145,7 @@ public partial class MarkupParser : IMarkupParser
         from id in Id
         let mentionId = MentionId.TryParse(id, true)
         where mentionId != null
-        select (Markup)new MentionMarkup(mentionId, name);
+        select (Markup)MentionMarkup.New(mentionId, name);
     private static readonly Parser<char, Markup> NamedMention =
         // @`User Name`userId
         AtToken.Then(QuotedName).Then(MentionParserFactory).Debug("@`name`");
