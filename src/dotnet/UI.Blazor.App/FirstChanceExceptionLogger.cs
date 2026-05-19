@@ -24,6 +24,8 @@ public static class FirstChanceExceptionLogger
         var error = e.Exception;
         if (error is OperationCanceledException or WebSocketException or HttpRequestException or SocketException)
             return; // This one has to be skipped
+        if (error is IOException { InnerException: SocketException })
+            return; // SslStream/NetworkStream wraps transient socket disconnects as IOException
 
         foreach (var func in ShouldSkip.GetInvocationList().OfType<Func<Exception, bool>>()) {
             if (func(error))
