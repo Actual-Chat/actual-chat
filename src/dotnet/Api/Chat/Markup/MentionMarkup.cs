@@ -20,7 +20,7 @@ public partial class MentionMarkup(MentionId id, string name = "") : Markup
 
     private static string FormatReadable(MentionMarkup m) => m switch {
         EmojiMention em => FormatEmojiReadable(em),
-        ChatMention cm => "@\"" + cm.NameOrNotAvailable + "\"",
+        ChatMention or PlaceMention => "@\"" + m.NameOrNotAvailable + "\"",
         _ => "@" + JoinWithReadableSpace(m.NameOrNotAvailable),
     };
 

@@ -83,6 +83,10 @@ body.narrow .narrow-panel .mention-list.expanded {
     @apply text-headline-1 text-03 font-light;
     @apply opacity-60;
 }
+.mention-list .c-place-suffix {
+    @apply text-03 font-light;
+    @apply opacity-60;
+}
 
 @keyframes show-mention-list {
     0% {
