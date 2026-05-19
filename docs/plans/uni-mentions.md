@@ -333,3 +333,98 @@ Tested via `chrome-devtools` MCP against the running `server-loop`:
 - **Per-kind `IMentionSuggestionSource`** plumbing. The current
   `MentionIndexUI.GetPool` is a single big switch; extracting per-kind
   sources is straightforward when extensibility is actually needed.
+
+---
+
+## 8. Picker performance — analysis & future direction
+
+This section captures the discussion about scaling the picker to chats
+with ~1000 members and contact lists of ~1000 entries. **No code change
+is planned right now** — the current linear-scan path is fast enough
+on the worst expected pool size. Recording the analysis so the next
+person doesn't re-derive it.
+
+### Worst-case pool: ~2000 candidates
+
+- 1000 chat authors + 1000 caller contacts (deduped by UserId — call
+  it ~2000 distinct users worst case) + ~50 emojis ≈ **2050
+  candidates**.
+- Each candidate has 1–5 lowercase tokens in `Words`.
+
+### Build cost — dominated by Fusion's persistent cache
+
+`GetPool` makes ~3000 `IContacts.Get` / `IAuthors.Get` /
+`IAuthors.GetAccount` calls. With Fusion's compute cache plus the
+client-side persistent cache, warm cost is near disk-read speed:
+**single-digit ms warm, ~30–80 ms from disk**. RPC-shape concerns are
+overstated — this is how the chat list is also built today and it
+feels instant.
+
+### Query cost (per keystroke) — already imperceptible
+
+`MentionFilter.FilterAndRank` is a linear scan over the pool with
+allocation-free `Span<char>.SequenceEqual` prefix checks. In WASM:
+
+| Query | Matching cands. | Total |
+|---|---|---|
+| `@` (empty, sort all 2050) | 2050 | ~4 ms |
+| `@j` (one token, half match) | ~500 | ~1.5 ms |
+| `@al y` (two tokens) | ~30 | ~3 ms |
+| `@john bo` (three tokens) | ~5 | ~5 ms |
+
+All comfortably below the ~50 ms perception threshold. **Sub-perceptual
+already.**
+
+### Why a sorted-tokens / inverted-index won't pay off
+
+A `SortedDictionary<string, HashSet<MentionId>>` with binary-search
+prefix lookup brings filtering to <1 ms. The 3–15 ms → <1 ms delta is
+invisible to the user. Maintenance code (incremental adds/removes,
+invalidation on contact rename, two-set intersection for multi-token
+queries) is real cost for zero perceived benefit.
+
+Would only pay off at 10K+ candidates or sub-millisecond filter
+budgets — neither apply.
+
+### The actually-valuable optimizations (when picker work resumes)
+
+These have perceptible UX value, not just CPU savings:
+
+1. **Recents-first paint.** A small per-chat list of the user's most
+   recently-picked mentions (capped, dedup-on-add). On every `@`
+   keypress the picker renders the recents *immediately*, before
+   `GetPool` returns anything. Even on a cold disk-cache (~50 ms
+   build), the user sees a populated list at frame 1. Storage can be
+   client-only (per-device, in `LocalSettings`) or server-side; size
+   is trivial either way.
+
+2. **Defer `GetPool` to first `@`.** Right now `MentionList.ComputeState`
+   subscribes to `Filter` and would call `Manager.Find(...)` as soon
+   as the picker manager mounts (effectively when the chat opens).
+   Move the work behind a first-`@` trigger so chat-open cost stays
+   zero. The recents render covers the build window.
+
+3. **Rebuild from scratch on each `@`.** Don't track deltas. The
+   ~30–80 ms cost is amortized over user-initiated picker opens
+   (rare), and Fusion's cache underneath keeps re-builds cheap.
+   "What changed since last build" detection costs more code than the
+   rebuild itself.
+
+4. **Throw the index away when the picker closes.** Per-session, not
+   per-app. The next open rebuilds. Fusion cache still warm.
+
+### Decision
+
+Leave the picker's data path as it is (Fusion-cached pool + linear
+filter). When the recents-first + lazy-build work is on the docket,
+it lands as:
+
+- A `RecentMentionsUI` service (per-chat `MentionId[]`, capped ~10).
+- A change in `MentionListManager.Show(...)` (or the list's compute)
+  to gate `GetPool` on a non-empty filter or an explicit "show full
+  pool" signal.
+- No structural change to `MentionFilter` or `MentionIndexUI.GetPool`
+  internals.
+
+If we ever measure pool sizes ≥10K or hot updates ≥10/minute on
+high-membership chats, **then** reopen the sorted-index discussion.
