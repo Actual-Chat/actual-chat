@@ -13,6 +13,7 @@ public static class SentryExt
     private const int ThrottleMaxPerWindow = 5;
     private static readonly TimeSpan ThrottleWindow = TimeSpan.FromMinutes(5);
     private static readonly ConcurrentDictionary<string, ThrottleEntry> ThrottleTracker = new();
+    private static long _lastThrottleSweepAtTicks = DateTime.UtcNow.Ticks;
 
     public static void ConfigureForApp(this SentryOptions options, bool useOpenTelemetry)
     {
@@ -58,6 +59,7 @@ public static class SentryExt
             return false;
 
         var now = DateTime.UtcNow;
+        SweepStaleThrottleEntries(now);
         var entry = ThrottleTracker.GetOrAdd(key, static _ => new ThrottleEntry());
         lock (entry) {
             if (now - entry.WindowStart > ThrottleWindow) {
@@ -69,14 +71,27 @@ public static class SentryExt
         }
     }
 
+    private static void SweepStaleThrottleEntries(DateTime now)
+    {
+        var lastTicks = Interlocked.Read(ref _lastThrottleSweepAtTicks);
+        if (now.Ticks - lastTicks <= ThrottleWindow.Ticks)
+            return;
+        if (Interlocked.CompareExchange(ref _lastThrottleSweepAtTicks, now.Ticks, lastTicks) != lastTicks)
+            return;
+
+        foreach (var pair in ThrottleTracker)
+            if (now - pair.Value.WindowStart > ThrottleWindow)
+                ThrottleTracker.TryRemove(pair);
+    }
+
     private static string TryGetThrottleKey(SentryEvent e)
     {
         var ex = e.SentryExceptions?.FirstOrDefault();
-        if (ex != null) {
-            var topFrame = ex.Stacktrace?.Frames?.LastOrDefault();
-            return $"{ex.Type}|{ex.Value}|{topFrame?.Module}.{topFrame?.Function}";
-        }
-        return e.Message?.Formatted ?? "";
+        if (ex == null)
+            return e.Message?.Formatted ?? "";
+
+        var topFrame = ex.Stacktrace?.Frames.LastOrDefault();
+        return $"{ex.Type}|{ex.Value}|{topFrame?.Module}.{topFrame?.Function}";
     }
 
     /// <summary>
