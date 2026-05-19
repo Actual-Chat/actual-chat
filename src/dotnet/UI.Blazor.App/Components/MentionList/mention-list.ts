@@ -1,11 +1,10 @@
-// TODO: Fix ESLint errors
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 
 export class MentionList {
     private readonly mentionList: HTMLElement;
     private readonly disposed$: Subject<void> = new Subject<void>();
-    private mentionListObserver: MutationObserver;
+    private scrollScheduled = false;
 
     static create(mentionList: HTMLElement): MentionList {
         return new MentionList(mentionList);
@@ -13,35 +12,29 @@ export class MentionList {
 
     constructor(mentionList: HTMLElement) {
         this.mentionList = mentionList;
-        this.mentionListObserver = new MutationObserver(this.scrollToCurrentItem);
-        this.mentionListObserver.observe(this.mentionList, {
-            attributes: true,
-            childList: true,
-            subtree: true,
-        });
         fromEvent(this.mentionList, 'scroll')
             .pipe(takeUntil(this.disposed$),
             ).subscribe(() => this.mentionList.classList.add('expanded'));
     }
 
-    private scrollToCurrentItem = (mutations, observer) => {
-        for (const mutation of mutations) {
-            if (mutation.type === 'attributes' && mutation.target.classList.contains('selected')) {
-                const item = mutation.target as HTMLElement;
-                const rect = item.getBoundingClientRect();
-                const top = rect.top;
-                const bottom = rect.bottom;
-                const listRect = this.mentionList.getBoundingClientRect();
-                const listTop = listRect.top;
-                const listBottom = listRect.bottom;
-                if (top < listTop) {
-                    item.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                } else if (bottom > listBottom) {
-                    item.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                }
-            }
-        }
-    };
+    // Called from Blazor whenever the selected mention changes.
+    public scrollSelectedIntoView() {
+        if (this.scrollScheduled)
+            return;
+        this.scrollScheduled = true;
+        requestAnimationFrame(() => {
+            this.scrollScheduled = false;
+            const item = this.mentionList.querySelector<HTMLElement>('.mention-list-item.selected');
+            if (!item)
+                return;
+            const rect = item.getBoundingClientRect();
+            const listRect = this.mentionList.getBoundingClientRect();
+            if (rect.top < listRect.top)
+                item.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            else if (rect.bottom > listRect.bottom)
+                item.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        });
+    }
 
     public dispose() {
         if (this.disposed$.closed)
@@ -49,6 +42,5 @@ export class MentionList {
 
         this.disposed$.next();
         this.disposed$.complete();
-        this.mentionListObserver.disconnect();
     }
 }

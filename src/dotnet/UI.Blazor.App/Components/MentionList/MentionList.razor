@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Chat
 @using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, MentionSearchResult[]>
 @{
@@ -7,9 +8,23 @@
     if (mentions.Length == 0)
         listCls += " non-visible";
     var selection = Selection;
+    var kindFilter = Manager.KindFilter.Value;
 }
 
 <div @ref="Ref" class="@Class @listCls mention-list custom-scrollbar">
+    <div class="mention-list-chips" data-editor-focus="true">
+        @foreach (var chip in Chips) {
+            var isActive = kindFilter == chip.Filter;
+            var chipCls = isActive ? "mention-list-chip active" : "mention-list-chip";
+            <button type="button"
+                    class="@chipCls"
+                    data-editor-focus="true"
+                    title="@chip.Tooltip"
+                    @onclick="@(_ => OnChipClick(chip.Filter))">
+                @chip.Label
+            </button>
+        }
+    </div>
     @foreach (var mention in mentions) {
         var cls = mention == selection ? "selected" : "";
         <div class="@cls mention-list-item"
@@ -53,6 +68,7 @@
                 return;
             _selection = FixSelection(value, State.Value);
             StateHasChanged();
+            _ = JSRef.InvokeVoidAsync("scrollSelectedIntoView");
         }
     }
 
@@ -81,8 +97,10 @@
         var selection = _selection;
 
         var filter = await Filter.Use(cancellationToken).ConfigureAwait(false);
+        // Subscribe to the chip state so the list re-runs when the user picks a category.
+        _ = await Manager.KindFilter.Use(cancellationToken).ConfigureAwait(false);
         var mentions = filter != null
-            ? await Manager.SearchProvider.Find(filter, managerLimit, cancellationToken).ConfigureAwait(false)
+            ? await Manager.Find(filter, managerLimit, cancellationToken).ConfigureAwait(false)
             : [];
 
         var fixedSelection = FixSelection(filter == lastFilter ? selection : null, mentions);
@@ -94,6 +112,20 @@
         return mentions;
     }
 
+    private void OnChipClick(MentionKindFilter filter) {
+        if (Manager.KindFilter.Value == filter)
+            Manager.KindFilter.Value = MentionKindFilter.All;
+        else
+            Manager.KindFilter.Value = filter;
+    }
+
+    private static readonly (MentionKindFilter Filter, string Label, string Tooltip)[] Chips = [
+        (MentionKindFilter.All, "All", "All categories"),
+        (MentionKindFilter.User, "U", "Users only"),
+        (MentionKindFilter.Chat, "C", "Chats only"),
+        (MentionKindFilter.Emoji, "E", "Emoji only"),
+    ];
+
     public void MoveSelection(int offset) {
         var mentions = State.Value;
         var selection = FixSelection(_selection, mentions);
@@ -102,6 +134,7 @@
             return;
         _selection = mentions[selectionIndex];
         StateHasChanged();
+        _ = JSRef.InvokeVoidAsync("scrollSelectedIntoView");
     }
 
     public override async ValueTask DisposeAsync() {
