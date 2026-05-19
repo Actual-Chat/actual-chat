@@ -3,7 +3,7 @@ namespace ActualChat.Streaming;
 /// <summary>
 /// Represents an active audio recording session for a chat entry.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 [method: MemoryPackConstructor, SerializationConstructor]
 public sealed partial record AudioRecord(
     [property: DataMember, MemoryPackOrder(0), Key(0)] StreamId StreamId, // Ignored on upload

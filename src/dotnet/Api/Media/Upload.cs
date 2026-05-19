@@ -8,14 +8,14 @@ namespace ActualChat.Media;
 #pragma warning disable MA0049 // Allows ActualChat.Media.Media
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record Upload : IHasId<UploadId>, IHasMetadata, IRequirementTarget
 {
     [DataMember, MemoryPackOrder(0), Key(0)] public UploadId Id { get; init; }
     [DataMember, MemoryPackOrder(1), Key(1)] public UserId UserId { get; init; }
     #region MemoryPackXxx properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(2), IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(2)]
     private ApiNullable8<long> MemoryPackLength {
         get => Length;
         init => Length = value;

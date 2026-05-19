@@ -1,6 +1,6 @@
 ﻿namespace ActualChat.Chat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 [method: SerializationConstructor]
 public sealed partial record ChatEntryRangeMeta(
     [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId? ChatId,
@@ -15,13 +15,13 @@ public sealed partial record ChatEntryRangeMeta(
 
     #region MemoryPackXxx properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(2), IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(2)]
     private ApiNullable8<long> MemoryPackPreviousEntryId {
         get => PreviousEntryLid;
         init => PreviousEntryLid = value;
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(3), IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(3)]
     private ApiNullable8<long> MemoryPackNextEntryId {
         get => NextEntryLid;
         init => NextEntryLid = value;

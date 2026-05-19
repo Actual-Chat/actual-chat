@@ -8,7 +8,7 @@ namespace ActualChat.Chat;
 /// <see cref="NotifyMembersEntry"/>.
 /// </summary>
 [RpcSerializable]
-[DataContract, MessagePackObject(AllowPrivate = true)]
+[DataContract, MessagePackObject]
 [Union(0, typeof(MembersChangedEntry))]
 [Union(1, typeof(NotifyMembersEntry))]
 public abstract partial record SystemEntry(ChatEntryId Id, long Version = 0) : ChatEntry(Id, Version)

@@ -7,7 +7,7 @@ namespace ActualChat.Notification;
 /// </summary>
 #pragma warning disable MA0049 // Allows ActualChat.Notification.Notification
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public partial record Notification(
     [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] NotificationId Id,
     [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] long Version = 0
@@ -15,7 +15,7 @@ public partial record Notification(
 {
     #region MemoryPackXxx properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(7), IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(7)]
     private ApiNullable8<Moment> MemoryPackHandledAt {
         get => HandledAt;
         init => HandledAt = value;

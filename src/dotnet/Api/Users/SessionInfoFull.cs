@@ -13,6 +13,10 @@ public partial record SessionInfoFull(
 {
     [DataMember(Order = 11), MemoryPackOrder(11), Key(11)] public ImmutableOptionSet Options { get; init; }
 
+    // MessagePack deserialization entry point: the int-keyed positional record ctor's first
+    // parameter doesn't match Key(0)'s expected type, so MessagePack falls through to this
+    // parameterless ctor and assigns each Key via the property initializers.
+    [SerializationConstructor]
     internal SessionInfoFull() : this(default(Session)!) { }
 
     public SessionInfoFull(Session session, Moment createdAt = default)

@@ -11,7 +11,7 @@ namespace ActualChat.Chat;
 /// (regular messages) and <see cref="SystemEntry"/> descendants (system events).
 /// </summary>
 [RpcSerializable]
-[DataContract, MessagePackObject(AllowPrivate = true)]
+[DataContract, MessagePackObject]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 [Union(0, typeof(TextEntry))]
 [Union(1, typeof(MembersChangedEntry))]

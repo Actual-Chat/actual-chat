@@ -3,7 +3,7 @@ namespace ActualChat.Chat;
 /// <summary>
 /// System entry emitted when an author asks for the attention of all members.
 /// </summary>
-[DataContract, MessagePackObject(AllowPrivate = true)]
+[DataContract, MessagePackObject]
 [method: SerializationConstructor]
 public sealed partial record NotifyMembersEntry(ChatEntryId Id, long Version = 0) : SystemEntry(Id, Version)
 {

@@ -4,7 +4,7 @@
 /// Represents a device registered for push notifications.
 /// </summary>
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record Device(
     [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] Symbol DeviceId,
     [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] DeviceType DeviceType,
@@ -12,7 +12,7 @@ public sealed partial record Device(
 {
     #region MemoryPackXxx properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(3), IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(3)]
     private ApiNullable8<Moment> MemoryPackAccessedAt {
         get => AccessedAt;
         init => AccessedAt = value;

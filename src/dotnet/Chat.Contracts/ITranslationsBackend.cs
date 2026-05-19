@@ -43,7 +43,7 @@ public sealed partial record TranslationsBackend_Change(
 /// <summary>
 /// Command to translate content to a target language.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record TranslationsBackend_Translate(
     [property: DataMember, MemoryPackOrder(0), Key(0)] TranslationSourceId SourceId,
@@ -65,7 +65,7 @@ public sealed partial record TranslationsBackend_Translate(
 /// <summary>
 /// Command to translate an audio stream to a target language in real-time.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record TranslationsBackend_TranslateStream(
     [property: DataMember, MemoryPackOrder(0), Key(0)] StreamId Id,

@@ -3,7 +3,7 @@ namespace ActualChat.Chat;
 /// <summary>
 /// System entry emitted when a member joins or leaves the chat.
 /// </summary>
-[DataContract, MessagePackObject(AllowPrivate = true)]
+[DataContract, MessagePackObject]
 public sealed partial record MembersChangedEntry : SystemEntry
 {
     [DataMember, Key(20)] public AuthorId? TargetAuthorId { get; init; }

@@ -19,6 +19,10 @@ public sealed partial record AvatarFull(
 
     [DataMember, MemoryPackOrder(8), Key(11)] public bool IsAnonymous { get; init; }
 
+    // MessagePack deserialization entry point: the int-keyed positional record ctor's UserId-first
+    // parameter order doesn't match Key(0)'s expected type, so MessagePack falls through to this
+    // parameterless ctor and assigns each Key via the property initializers.
+    [SerializationConstructor]
     internal AvatarFull() : this(null!, default) { }
 
     // Helpers

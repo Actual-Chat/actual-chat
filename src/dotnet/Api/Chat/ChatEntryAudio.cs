@@ -7,24 +7,24 @@ namespace ActualChat.Chat;
 /// enriched with <see cref="Media.Media"/> data for tiles. Stored back to DB via UpdateFrom().
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(AllowPrivate = true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record ChatEntryAudio
 {
     #region MemoryPackXxx properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(10), IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(10)]
     private ApiNullable8<Moment> MemoryPackEndsAt {
         get => EndsAt;
         init => EndsAt = value;
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(11), IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(11)]
     private ApiNullable8<Moment> MemoryPackContentEndsAt {
         get => ContentEndsAt;
         init => ContentEndsAt = value;
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(12), IgnoreMember]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(12)]
     private ApiNullable8<Moment> MemoryPackClientSideBeginsAt {
         get => ClientSideBeginsAt;
         init => ClientSideBeginsAt = value;

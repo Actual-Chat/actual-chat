@@ -21,6 +21,10 @@ public sealed partial record AuthorFull(
     [DataMember, MemoryPackOrder(10), Key(13)] public bool IsPlaceAuthor { get; set; }
     [DataMember, MemoryPackOrder(9), Key(12)]  public Moment CreatedAt { get; init; }
 
+    // MessagePack deserialization entry point: the int-keyed positional record ctor's UserId-first
+    // parameter order doesn't match Key(0)'s expected type, so MessagePack falls through to this
+    // parameterless ctor and assigns each Key via the property initializers.
+    [SerializationConstructor]
     internal AuthorFull() : this(null!, null!) { }
 
     // This record relies on referential equality
