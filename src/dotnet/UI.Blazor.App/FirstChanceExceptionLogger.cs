@@ -10,9 +10,12 @@ public static class FirstChanceExceptionLogger
 
     public static Func<Exception, bool> ShouldSkip { get; set; } = _ => false;
     public static bool IsActivated { get; private set; }
+    public static LogLevel LogLevel { get; private set; } = LogLevel.Information;
 
-    public static void Use()
+    public static void Use(LogLevel logLevel = LogLevel.Information)
     {
+        if (logLevel > LogLevel)
+            LogLevel = logLevel;
         if (IsActivated)
             return;
         IsActivated = true;
@@ -50,11 +53,11 @@ public static class FirstChanceExceptionLogger
     private static void LogInternal(Exception error, bool withStackTrace = true)
     {
         if (!withStackTrace) {
-            Log.LogWarning("{Type}, {Message}", error.GetType().Name, error.Message);
+            Log.Log(LogLevel, "{Type}, {Message}", error.GetType().Name, error.Message);
             return;
         }
 
         var stackTrace = error.StackTrace ?? new StackTrace().ToString();
-        Log.LogWarning("{Type}, {Message}\r\n{StackTrace}", error.GetType().Name, error.Message, stackTrace);
+        Log.Log(LogLevel, "{Type}, {Message}\r\n{StackTrace}", error.GetType().Name, error.Message, stackTrace);
     }
 }

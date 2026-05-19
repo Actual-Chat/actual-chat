@@ -59,7 +59,7 @@ public static class ClientStartup
 
 #if DEBUG
         if (Constants.DebugMode.LogAnyThrownException)
-            FirstChanceExceptionLogger.Use();
+            FirstChanceExceptionLogger.Use(LogLevel.Warning);
         if (OSInfo.IsWebAssembly && CoreConstants.DebugMode.RpcCalls.LogExistingCacheEntryUpdates)
             RemoteComputeServiceInterceptor.Options.Default = new() {
                 LogCacheEntryUpdateSettings = (LogLevel.Information, int.MaxValue),
