@@ -114,6 +114,14 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `Markup` — base markup element (PlainText, Url, Mention, CodeBlock, etc.)
 - `MarkupFormatter` — formats markup to plain text
 - `MentionExtractor` — extracts mentions from markup
+- `MentionMarkup` — base mention; subclasses `AuthorMention`, `UserMention`, `ChatMention`, `PlaceMention`, `EmojiMention`, `GifMention` carry pre-resolved data
+- `MentionId` — `<prefix>:<localId>` reference; dispatches via `MentionKind` registry to an `IMentionTarget`
+- `MentionKind` — registry of mention prefixes (`a`/`u`/`c`/`p`/`e`/`g`)
+- `EmojiRef` / `GifRef` — URL-encoded mention targets
+- `EmojiNormalizer` — persist-time rewriter that unwraps glyph-id emoji mentions to plain text
+- `IMentionResolver` (non-generic) — `Apply(Markup, ct)` markup-tree rewriter that enriches mentions with cached data (was `MentionNamer`)
+- `MentionFilter` — pure tokenize / matches-all / coverage-rank helpers used by the picker
+- `MentionCandidate` — unified candidate (User/Chat/Emoji) returned by the index
 
 ### Media
 - `Media` (record) — media metadata (content type, size, dimensions)
@@ -261,6 +269,7 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 - `LanguageUI` — language preferences
 - `OnboardingUI` — user onboarding flow
 - `LiveStreamUI` — live streaming management
+- `MentionIndexUI` — per-chat candidate pool for the @-mention picker (contacts ∪ chat authors ∪ chats ∪ emojis); replaces legacy `MentionUI`
 
 ### Playback
 - `ChatPlayers` — orchestrates audio playback across chats
