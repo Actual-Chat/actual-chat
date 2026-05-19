@@ -51,6 +51,9 @@
                 }
                 <div class="c-center">
                     <SearchMatchHighlighter Match="@mention.SearchMatch"/>
+                    @if (mention.PlaceTitleSuffix is { Length: > 0 } suffix) {
+                        <span class="c-place-suffix">&nbsp;| @suffix</span>
+                    }
                 </div>
                 @if (description is not null) {
                     <div class="c-description">— @description</div>
@@ -157,7 +160,8 @@
         var target = mention.MentionId.Target;
         return target switch {
             EmojiRef => "emoji",
-            ChatId or PlaceId => "chat",
+            PlaceId => "place",
+            ChatId => mention.IsInHostPlace ? "this place's chat" : "chat",
             UserId or AuthorId => mention.IsChatMember ? null : "not in this chat",
             _ => null,
         };

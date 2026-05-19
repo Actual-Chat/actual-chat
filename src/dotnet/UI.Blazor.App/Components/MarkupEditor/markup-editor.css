@@ -30,15 +30,18 @@
 body.narrow .markup-editor .editor-content .editor-mention-user {
     @apply -mb-1;
 }
-.markup-editor .editor-content .editor-mention-chat {
+.markup-editor .editor-content .editor-mention-chat,
+.markup-editor .editor-content .editor-mention-place {
     @apply inline;
     @apply max-w-none;
     @apply text-primary font-medium;
 }
-.markup-editor .editor-content .editor-mention-chat::before {
+.markup-editor .editor-content .editor-mention-chat::before,
+.markup-editor .editor-content .editor-mention-place::before {
     content: "\"";
 }
-.markup-editor .editor-content .editor-mention-chat::after {
+.markup-editor .editor-content .editor-mention-chat::after,
+.markup-editor .editor-content .editor-mention-place::after {
     content: "\"";
 }
 .markup-editor .editor-content .editor-mention-emoji {

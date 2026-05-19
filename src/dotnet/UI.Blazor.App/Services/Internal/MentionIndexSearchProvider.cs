@@ -19,12 +19,23 @@ internal class MentionIndexSearchProvider(IServiceProvider services, ChatId chat
             .Find(ChatId, filter, kindFilter, limit, cancellationToken)
             .ConfigureAwait(false);
         var searchPhrase = filter.ToSearchPhrase(true, true);
+        var hostPlaceId = (ChatId as PlaceChatId)?.PlaceId;
         var result = new MentionSearchResult[candidates.Length];
         for (var i = 0; i < candidates.Length; i++) {
             var c = candidates[i];
             var picture = c.Picture ?? new Picture(null, null, c.PrimaryName);
+            // Suffix the candidate name with the place title only when the candidate
+            // lives in a different place than the host chat (and isn't the place mention
+            // itself — those carry PlaceId == Id.Target).
+            var isPlaceMention = c.Id.Target is PlaceId;
+            var suffix = c.PlaceId is { } cp && cp != hostPlaceId && !isPlaceMention
+                ? c.PlaceTitle
+                : null;
+            var isInHostPlace = hostPlaceId is not null && c.PlaceId == hostPlaceId && !isPlaceMention;
             result[i] = new MentionSearchResult(c.Id, searchPhrase.GetMatch(c.PrimaryName), picture) {
                 IsChatMember = c.IsChatMember,
+                PlaceTitleSuffix = suffix,
+                IsInHostPlace = isInHostPlace,
             };
         }
         return result;
