@@ -27,6 +27,7 @@
     </div>
     @foreach (var mention in mentions) {
         var cls = mention == selection ? "selected" : "";
+        var description = GetDescription(mention);
         <div class="@cls mention-list-item"
              data-editor-focus="true"
              @onmouseover="@(_ => Selection = mention)"
@@ -38,8 +39,12 @@
                         AuthorId="@authorId"
                         Size="SquareSize.Size7"/>
                 } else if (mention.MentionId.Target is EmojiRef emojiRef) {
-                    var glyph = Emojis.ById.GetValueOrDefault(emojiRef.Text)?.Symbol;
-                    <span class="mention-list-emoji">@(glyph ?? "")</span>
+                    var emoji = Emojis.ById.GetValueOrDefault(emojiRef.Text);
+                    <span class="mention-list-emoji">
+                        @if (emoji is not null) {
+                            <EmojiIcon Emoji="@emoji" Class="mention-list-emoji-icon" HasPreview="false" InlineAnimate="true"/>
+                        }
+                    </span>
                 } else {
                     var iconUrl = UrlMapper.IconUrl(GetIconQuery(mention));
                     <image-skeleton class="flex-none w-7 h-7 rounded-full" src="@iconUrl"/>
@@ -47,6 +52,9 @@
                 <div class="c-center">
                     <SearchMatchHighlighter Match="@mention.SearchMatch"/>
                 </div>
+                @if (description is not null) {
+                    <div class="c-description">— @description</div>
+                }
             </div>
         </div>
     }
@@ -54,6 +62,12 @@
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.MentionList.create";
+    private static readonly (MentionKindFilter Filter, string Label, string Tooltip)[] Chips = [
+        (MentionKindFilter.All, "All", "All categories"),
+        (MentionKindFilter.User, "U", "Users only"),
+        (MentionKindFilter.Chat, "C", "Chats only"),
+        (MentionKindFilter.Emoji, "E", "Emoji only"),
+    ];
 
     private string? _lastFilter;
     private MentionSearchResult? _selection;
@@ -79,6 +93,12 @@
         => Filter = StateFactory.NewMutable(
             (string?)null,
             StateCategories.Get(GetType(), nameof(Filter)));
+
+    public override async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        await base.DisposeAsync();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
@@ -115,19 +135,33 @@
         return mentions;
     }
 
-    private void OnChipClick(MentionKindFilter filter) {
-        if (Manager.KindFilter.Value == filter)
-            Manager.KindFilter.Value = MentionKindFilter.All;
-        else
-            Manager.KindFilter.Value = filter;
+    public void MoveSelection(int offset) {
+        var mentions = State.Value;
+        var selection = FixSelection(_selection, mentions);
+        var selectionIndex = Array.IndexOf(mentions, selection) + offset;
+        if (selectionIndex < 0 || selectionIndex >= mentions.Length)
+            return;
+        _selection = mentions[selectionIndex];
+        StateHasChanged();
+        _ = JSRef.InvokeVoidAsync("scrollSelectedIntoView");
     }
 
-    private static readonly (MentionKindFilter Filter, string Label, string Tooltip)[] Chips = [
-        (MentionKindFilter.All, "All", "All categories"),
-        (MentionKindFilter.User, "U", "Users only"),
-        (MentionKindFilter.Chat, "C", "Chats only"),
-        (MentionKindFilter.Emoji, "E", "Emoji only"),
-    ];
+    // Private methods
+
+    private void OnChipClick(MentionKindFilter filter)
+        => Manager.KindFilter.Value = Manager.KindFilter.Value == filter
+            ? MentionKindFilter.All
+            : filter;
+
+    private static string? GetDescription(MentionSearchResult mention) {
+        var target = mention.MentionId.Target;
+        return target switch {
+            EmojiRef => "emoji",
+            ChatId or PlaceId => "chat",
+            UserId or AuthorId => mention.IsChatMember ? null : "not in this chat",
+            _ => null,
+        };
+    }
 
     private static IconQuery GetIconQuery(MentionSearchResult mention) {
         var picture = mention.Picture;
@@ -145,25 +179,6 @@
             Size = 128,
         });
     }
-
-    public void MoveSelection(int offset) {
-        var mentions = State.Value;
-        var selection = FixSelection(_selection, mentions);
-        var selectionIndex = Array.IndexOf(mentions, selection) + offset;
-        if (selectionIndex < 0 || selectionIndex >= mentions.Length)
-            return;
-        _selection = mentions[selectionIndex];
-        StateHasChanged();
-        _ = JSRef.InvokeVoidAsync("scrollSelectedIntoView");
-    }
-
-    public override async ValueTask DisposeAsync() {
-        await JSRef.DisposeSilentlyAsync("dispose");
-        JSRef = null!;
-        await base.DisposeAsync();
-    }
-
-    // Private methods
 
     private MentionSearchResult? FixSelection(MentionSearchResult? selection, MentionSearchResult[] mentions) {
         if (mentions.Length == 0)

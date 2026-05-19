@@ -141,7 +141,7 @@ public sealed record MarkupFormatter(
     ) : MarkupFormatterBase
 {
     public static readonly MarkupFormatter Default = new();
-    public static readonly MarkupFormatter Readable = new(MentionMarkup.NameOrNotAvailableFormatter);
+    public static readonly MarkupFormatter Readable = new(MentionMarkup.ReadableFormatter);
     public static readonly MarkupFormatter ReadableUnstyled = Readable with { ShowStyleTokens = false };
     public static readonly MarkupFormatter ReadableUnstyledForQuote = ReadableUnstyled with {
         UrlFormatter = FormatUrlForQuote,

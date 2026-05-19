@@ -12,68 +12,6 @@
 }
 
 @code {
-    public static readonly Dictionary<Emoji, string> SvgNames = new() {
-        // Positive
-        { Emojis.Lol, "emoji-lol" },
-        { Emojis.Awesome, "emoji-awesome" },
-        { Emojis.Cool, "emoji-cool" },
-        { Emojis.Smile, "emoji-smile" },
-        { Emojis.Nerd, "emoji-nerd" },
-        { Emojis.SmileRotated, "emoji-smile-rotated" },
-        { Emojis.Kiss, "emoji-kiss" },
-        { Emojis.Blessed, "emoji-blessed" },
-        { Emojis.Hugging, "emoji-hugging" },
-        { Emojis.ExplodingHead, "emoji-exploding-head" },
-        { Emojis.Party, "emoji-party" },
-        { Emojis.Saluting, "emoji-saluting" },
-        // Negative
-        { Emojis.Angry, "emoji-angry" },
-        { Emojis.Sad, "emoji-sad" },
-        { Emojis.Crying, "emoji-crying" },
-        { Emojis.Melting, "emoji-melting" },
-        { Emojis.Devil, "emoji-devil" },
-        { Emojis.Clown, "emoji-clown" },
-        { Emojis.ClownYellow, "emoji-clown-yellow" },
-        { Emojis.Bored, "emoji-bored" },
-        { Emojis.Crazy, "emoji-crazy" },
-        { Emojis.Dead, "emoji-dead" },
-        { Emojis.EyeRoll, "emoji-eye-roll" },
-        { Emojis.NoWords, "emoji-no-words" },
-        { Emojis.Scared, "emoji-scared" },
-        { Emojis.Sick, "emoji-sick" },
-        { Emojis.Sleeping, "emoji-sleeping" },
-        // Love
-        { Emojis.Love, "emoji-love" },
-        { Emojis.InLove, "emoji-in-love" },
-        { Emojis.BrokenHeart, "emoji-broken-heart" },
-        { Emojis.KissLips, "emoji-kiss-lips" },
-        { Emojis.Praying, "emoji-praying" },
-        // Gestures
-        { Emojis.ThumbsUp, "emoji-thumbs-up" },
-        { Emojis.ThumbsDown, "emoji-thumbs-down" },
-        { Emojis.Done, "emoji-done" },
-        { Emojis.Eyes, "emoji-eyes" },
-        { Emojis.Poop, "emoji-poop" },
-        { Emojis.Surprise, "emoji-surprise" },
-        { Emojis.Mysterious, "emoji-mysterious" },
-        { Emojis.StoneFaceMoai, "emoji-stone-face-moai" },
-        { Emojis.Banana, "emoji-banana" },
-        { Emojis.Cup, "emoji-cup" },
-        { Emojis.Deal, "emoji-deal" },
-        { Emojis.FuckYou, "emoji-fuck-you" },
-        { Emojis.Lightning, "emoji-lightning" },
-        { Emojis.Ok, "emoji-ok" },
-        { Emojis.PeekingEye, "emoji-peeking-eye" },
-        { Emojis.Pill, "emoji-pill" },
-        { Emojis.RoboKitty, "emoji-robo-kitty" },
-        { Emojis.Thinking, "emoji-thinking" },
-        { Emojis.Writing, "emoji-writing" },
-        { Emojis.Fire, "emoji-fire" },
-        { Emojis.HundredPoints, "emoji-hundred-points" },
-        // Legacy
-        { Emojis.Boom, "emoji-fire" },
-    };
-
     private string? _svgName;
 
     [Parameter] public Emoji? Emoji { get; set; }
@@ -81,9 +19,6 @@
     [Parameter] public bool HasPreview { get; set; } = true;
     [Parameter] public bool InlineAnimate { get; set; }
 
-    protected override void OnParametersSet() {
-        _svgName = Emoji is { } emoji
-            ? SvgNames.GetValueOrDefault(emoji)
-            : null;
-    }
+    protected override void OnParametersSet()
+        => _svgName = Emojis.TryGetSvgName(Emoji);
 }

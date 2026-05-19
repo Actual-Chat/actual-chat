@@ -75,6 +75,14 @@ body.narrow .narrow-panel .mention-list.expanded {
     @apply w-7 h-7;
     @apply text-xl leading-none;
 }
+.mention-list .mention-list-emoji-icon {
+    @apply w-6 h-6;
+}
+.mention-list .mention-list-item > .c-content > .c-description {
+    @apply flex-none;
+    @apply text-headline-1 text-03 font-light;
+    @apply opacity-60;
+}
 
 @keyframes show-mention-list {
     0% {

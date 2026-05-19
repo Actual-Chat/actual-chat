@@ -36,7 +36,7 @@
     protected override void OnParametersSet() {
         var isOwn = OwnReaction?.Emoji == Reaction.Emoji;
         _animateSvgName = isOwn && OptimisticReactions.RemovePendingAnimation(Entry.Id.Value, Reaction.Emoji.Id.Value)
-            ? EmojiIcon.SvgNames.GetValueOrDefault(Reaction.Emoji)
+            ? Emojis.SvgNames.GetValueOrDefault(Reaction.Emoji)
             : null;
     }
 

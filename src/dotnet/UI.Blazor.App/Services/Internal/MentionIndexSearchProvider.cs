@@ -23,7 +23,9 @@ internal class MentionIndexSearchProvider(IServiceProvider services, ChatId chat
         for (var i = 0; i < candidates.Length; i++) {
             var c = candidates[i];
             var picture = c.Picture ?? new Picture(null, null, c.PrimaryName);
-            result[i] = new MentionSearchResult(c.Id, searchPhrase.GetMatch(c.PrimaryName), picture);
+            result[i] = new MentionSearchResult(c.Id, searchPhrase.GetMatch(c.PrimaryName), picture) {
+                IsChatMember = c.IsChatMember,
+            };
         }
         return result;
     }

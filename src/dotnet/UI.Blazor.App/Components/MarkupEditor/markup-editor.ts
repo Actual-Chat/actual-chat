@@ -15,6 +15,8 @@ const MentionListId = '@';
 const ZeroWidthSpace = '\u200b';
 const ZeroWidthSpaceRe = new RegExp(ZeroWidthSpace, 'g');
 const CrlfRe = /\r\n/g;
+const RegexEscapeRe = /[.*+?^${}()|[\]\\]/g;
+const IdCharRe = /[\p{L}\p{N}_:.%~\-]/u;
 const emptyHtmlVariants = new Set<string>(['', '\n', '\r\n', '<br>', '<br >', '<br/>', '<br />']);
 
 export class MarkupEditor {
@@ -230,7 +232,24 @@ export class MarkupEditor {
 
     /** Called by Blazor */
     public getText() {
-        return this.contentDiv.innerText;
+        // Strip ZWSPs the converter inserts around mentions as caret anchors —
+        // they must not leak into the saved markup (they'd multiply each round-trip).
+        let text = this.contentDiv.innerText.replace(ZeroWidthSpaceRe, '');
+        // If the user deleted the trailing space, the mention id ends up glued
+        // to the next word and the parser's IdChar.AtLeastOnceString() would
+        // swallow it. For every known mention id in the DOM, insert a single
+        // space when the id is immediately followed by an IdChar.
+        const ids = new Set<string>();
+        this.contentDiv.querySelectorAll('.editor-mention').forEach(el => {
+            const id = el.getAttribute('data-id');
+            if (id) ids.add(id);
+        });
+        for (const id of ids) {
+            const escaped = id.replace(RegexEscapeRe, '\\$&');
+            const re = new RegExp('(`' + escaped + ')(?=' + IdCharRe.source + ')', 'gu');
+            text = text.replace(re, '$1 ');
+        }
+        return text;
     }
 
     public getHtml() {
@@ -406,7 +425,7 @@ export class MarkupEditor {
         }
 
         // Up key & empty content = open previous
-        if (e.code === 'Up' || e.code === 'ArrowUp' && this.contentDiv.classList.contains('is-empty')) {
+        if ((e.code === 'Up' || e.code === 'ArrowUp') && !this.hasContent) {
             void this.onOpenPrevious();
             ok(); return;
         }
@@ -461,11 +480,30 @@ export class MarkupEditor {
         const url = data.getData('text/uri-list');
         const concatenatedText = text?.length && url?.length ? `${text}\n${url}` : (text || url);
 
-        // debugLog?.log(`onPaste: text:`, text)
-        this.transaction('onPaste', () => {
-            this.insertTextAtCursor(concatenatedText);
-        });
+        if (!concatenatedText) { ok(); return; }
+
+        const looksLikeMarkup = /@`/.test(concatenatedText) || /@[a-z]:[\w%.\-:]+/.test(concatenatedText);
+        if (!looksLikeMarkup) {
+            this.transaction('onPaste', () => {
+                this.insertTextAtCursor(concatenatedText);
+            });
+            ok();
+            return;
+        }
+
         ok();
+        void this.blazorRef.invokeMethodAsync<string>('ParseTextToHtml', concatenatedText)
+            .then(html => {
+                if (!html) {
+                    this.transaction('onPaste', () => this.insertTextAtCursor(concatenatedText));
+                    return;
+                }
+                this.insertHtml(html);
+            })
+            .catch(err => {
+                errorLog?.log('onPaste: ParseTextToHtml failed', err);
+                this.transaction('onPaste', () => this.insertTextAtCursor(concatenatedText));
+            });
     }
 
     public insertText(text: string) {
@@ -537,7 +575,8 @@ export class MarkupEditor {
         const theOnlyChild = childNodes.length === 1 ? childNodes.item(0) : null;
         this.hasContent = childNodes.length !== 0 && !(theOnlyChild?.nodeName === 'BR' && theOnlyChild?.nodeValue == null);
         */
-        const hasContent = html.length > 8 || !emptyHtmlVariants.has(html.toLowerCase());
+        const stripped = html.replace(ZeroWidthSpaceRe, '');
+        const hasContent = stripped.length > 8 || !emptyHtmlVariants.has(stripped.toLowerCase());
         if (this.hasContent === hasContent)
             return;
 
@@ -813,6 +852,19 @@ class MentionListHandler extends ListHandler {
     constructor(editor: MarkupEditor) {
         super(MentionListId, editor);
     }
+
+    // Strip the leading '@' and outer quotes if present, then normalize the
+    // multi-word separator (U+2005) to ASCII space so the picker's multi-word
+    // matcher sees `Voxt Announcements` regardless of which form was typed.
+    public getFilter = (matchText: string) => {
+        let s = matchText.substring(1);
+        if (s.startsWith('"')) {
+            s = s.substring(1);
+            if (s.endsWith('"'))
+                s = s.substring(0, s.length - 1);
+        }
+        return s.replace(/\u2005/g, ' ');
+    };
 
     public getMatchStart(text: string, endOffset: number): number | null {
         // Spaces are kept inside the mention filter so the picker survives multi-word

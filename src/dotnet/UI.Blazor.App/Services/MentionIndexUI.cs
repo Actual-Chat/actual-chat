@@ -49,6 +49,10 @@ public class MentionIndexUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
         var ownAccount = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
         var ownUserId = ownAccount?.Id ?? default;
 
+        // Current chat members — single source of truth matched by ChatMentionResolver.
+        var memberUserIds = await Authors.ListUserIds(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var memberSet = memberUserIds.ToHashSet();
+
         var byUserId = new Dictionary<UserId, UserEntry>();
 
         var contactIds = await Contacts.ListIds(Session, null, cancellationToken).ConfigureAwait(false);
@@ -70,7 +74,7 @@ public class MentionIndexUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
             if (account is null)
                 continue;
 
-            byUserId[userId] = new UserEntry(account, contact.PreferredPeerName, null, false);
+            byUserId[userId] = new UserEntry(account, contact.PreferredPeerName, null, memberSet.Contains(userId));
         }
 
         var authorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(false);
@@ -95,9 +99,10 @@ public class MentionIndexUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
                 continue;
 
             var authorName = author.Avatar.Name;
+            var isMember = memberSet.Contains(userId);
             byUserId[userId] = byUserId.TryGetValue(userId, out var existing)
-                ? existing with { AuthorName = authorName, IsChatMember = true }
-                : new UserEntry(account, null, authorName, true);
+                ? existing with { AuthorName = authorName, IsChatMember = isMember }
+                : new UserEntry(account, null, authorName, isMember);
         }
 
         var result = new List<MentionCandidate>(byUserId.Count);

@@ -18,14 +18,38 @@
 .markup-editor .editor-content .editor-mention {
     @apply inline-block;
     @apply max-w-48;
+    @apply truncate;
+    @apply align-baseline;
+}
+.markup-editor .editor-content .editor-mention-user {
     @apply px-1.5 mx-px -mb-1.5;
     @apply rounded-full;
     @apply bg-mention-other;
     @apply text-mention-other-text font-medium;
-    @apply truncate;
 }
-body.narrow .markup-editor .editor-content .editor-mention {
+body.narrow .markup-editor .editor-content .editor-mention-user {
     @apply -mb-1;
+}
+.markup-editor .editor-content .editor-mention-chat {
+    @apply inline;
+    @apply max-w-none;
+    @apply text-primary font-medium;
+}
+.markup-editor .editor-content .editor-mention-chat::before {
+    content: "\"";
+}
+.markup-editor .editor-content .editor-mention-chat::after {
+    content: "\"";
+}
+.markup-editor .editor-content .editor-mention-emoji {
+    @apply inline;
+    @apply max-w-none;
+}
+.markup-editor .editor-content .editor-emoji {
+    @apply inline-block;
+    width: 1em;
+    height: 1em;
+    vertical-align: -0.15em;
 }
 .markup-editor .editor-hidden {
     @apply inline-block overflow-hidden w-[1px] h-[1px];
