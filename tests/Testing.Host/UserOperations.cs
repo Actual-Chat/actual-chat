@@ -43,10 +43,18 @@ public static class UserOperations
     // treats them as offline — i.e. pushes are delivered immediately via the
     // ChatEntryChangedEvent path instead of being deferred by NotificationFlow's
     // online-user check.
-    public static Task ForceOffline(this IWebTester tester, AccountFull user)
+    // Waits until UserPresences.Get observes Offline so callers can rely on
+    // an immediate read returning the new state (Fusion invalidation propagation
+    // is otherwise asynchronous and races with the next CreateTextEntry).
+    public static async Task ForceOffline(this IWebTester tester, AccountFull user)
     {
         var clocks = tester.AppServices.Clocks();
-        return tester.Commander.Call(new UserPresencesBackend_CheckIn(
+        await tester.Commander.Call(new UserPresencesBackend_CheckIn(
             user.Id, clocks.SystemClock.Now - TimeSpan.FromMinutes(15), true));
+        var presences = tester.AppServices.GetRequiredService<IUserPresences>();
+        await TestExt.When(async () => {
+            var presence = await presences.Get(user.Id, CancellationToken.None);
+            presence.Should().Be(Presence.Offline);
+        }, TimeSpan.FromSeconds(5));
     }
 }
