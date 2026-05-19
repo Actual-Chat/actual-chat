@@ -15,8 +15,6 @@ const MentionListId = '@';
 const ZeroWidthSpace = '\u200b';
 const ZeroWidthSpaceRe = new RegExp(ZeroWidthSpace, 'g');
 const CrlfRe = /\r\n/g;
-const DoubleLfRe = /\n\n/g;
-const SingleLfRe = /[^\n^]\n[^\n$]/g;
 const emptyHtmlVariants = new Set<string>(['', '\n', '\r\n', '<br>', '<br >', '<br/>', '<br />']);
 
 export class MarkupEditor {
@@ -459,7 +457,7 @@ export class MarkupEditor {
         { ok(); return; }
 
         const plainText = data.getData('text');
-        const text = cleanupPastedText(plainText, data.types.includes('text/html'));
+        const text = cleanupPastedText(plainText);
         const url = data.getData('text/uri-list');
         const concatenatedText = text?.length && url?.length ? `${text}\n${url}` : (text || url);
 
@@ -892,13 +890,13 @@ function getPostMentionText(mention: HTMLElement): Text | null {
     return text;
 }
 
-function cleanupPastedText(text: string, fixDoubleNewLines: boolean): string {
-    text = text.replace(ZeroWidthSpaceRe, '');
-    text = normalize(text);
-    if (fixDoubleNewLines && !text.match(SingleLfRe))
-        text = text.replace(DoubleLfRe, '\n');
-    // text = text.trim(); // This makes pasting code quite inconvenient
-    return text;
+function cleanupPastedText(text: string): string {
+    // Strip zero-width spaces (they smuggle in via formatted HTML paste) and
+    // normalize \r\n → \n so the markup parser sees a single line-ending style.
+    // The previous "collapse \n\n → \n when no single \n is present" heuristic
+    // was buggy (its single-LF probe used a regex whose `^`/`$` were treated as
+    // literal characters, so it mis-fired and collapsed real paragraph breaks).
+    return normalize(text.replace(ZeroWidthSpaceRe, ''));
 }
 
 function normalize(text: string): string {

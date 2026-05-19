@@ -679,7 +679,8 @@ code
     [Fact]
     public void TwoListsAndCodeBlock2()
     {
-        // Multiple empty lines between blocks are consumed as separators (round-trip not guaranteed)
+        // Each extra newline between blocks is preserved as a ParagraphMarkup.Empty,
+        // so the input round-trips losslessly. Two blank lines = two EmptyParas.
         var text =
             """
             **header 1**
@@ -697,24 +698,26 @@ code
             ```
             """;
         var m = Parse<MarkupSeq>(text);
-        m.Items.Length.Should().Be(7);
+        m.Items.Length.Should().Be(9);
         m.Items[0].Should().BeOfType<ParagraphMarkup>()
             .Which.Content.Should().BeOfType<StylizedMarkup>()
             .Which.Style.Should().Be(TextStyle.Bold);
         m.Items[1].Should().BeOfType<ListMarkup>()
             .Which.Items.Should().HaveCount(2);
         m.Items[2].Should().BeOfType<ParagraphMarkup>()
-            .Which.Content.Should().BeOfType<PlainTextMarkup>()
-            .Which.Text.Should().BeEmpty();
+            .Which.Content.Should().Be(Markup.EmptyText);
         m.Items[3].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().Be(Markup.EmptyText);
+        m.Items[4].Should().BeOfType<ParagraphMarkup>()
             .Which.Content.Should().BeOfType<StylizedMarkup>()
             .Which.Style.Should().Be(TextStyle.Bold);
-        m.Items[4].Should().BeOfType<ListMarkup>()
+        m.Items[5].Should().BeOfType<ListMarkup>()
             .Which.Items.Should().HaveCount(2);
-        m.Items[5].Should().BeOfType<ParagraphMarkup>()
-            .Which.Content.Should().BeOfType<PlainTextMarkup>()
-            .Which.Text.Should().BeEmpty();
-        m.Items[6].Should().BeOfType<CodeBlockMarkup>();
+        m.Items[6].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().Be(Markup.EmptyText);
+        m.Items[7].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().Be(Markup.EmptyText);
+        m.Items[8].Should().BeOfType<CodeBlockMarkup>();
     }
 
     [Theory]
@@ -922,6 +925,34 @@ code
             .Which.Code.Should().Be("some code block");
         m.Items[1].Should().BeOfType<ParagraphMarkup>()
             .Which.Content.Should().Be(Markup.EmptyText);
+    }
+
+    [Theory]
+    [InlineData("A\nB")]                          // 0 blanks, inline newline in one paragraph
+    [InlineData("A\n\nB")]                        // 1 blank between paragraphs
+    [InlineData("A\n\n\nB")]                      // 2 blanks
+    [InlineData("A\n\n\n\nB")]                    // 3 blanks
+    [InlineData("A\n\n\n\n\nB")]                  // 4 blanks
+    [InlineData("A\n```\ncode\n```")]             // paragraph then adjacent code block
+    [InlineData("A\n\n```\ncode\n```")]           // paragraph + 1 blank + code block
+    [InlineData("A\n\n\n```\ncode\n```")]         // paragraph + 2 blanks + code block
+    [InlineData("- a\n- b\nAfter")]               // list + adjacent paragraph
+    [InlineData("- a\n- b\n\nAfter")]             // list + 1 blank + paragraph
+    [InlineData("- a\n- b\n\n\nAfter")]           // list + 2 blanks + paragraph
+    [InlineData("# H\n\nP")]                      // header + 1 blank + paragraph
+    [InlineData("```\ncode\n```\n\nAfter")]       // code block + 1 blank + paragraph
+    [InlineData("A\n\n")]                         // paragraph + trailing blank
+    [InlineData("A\n\n\n")]                       // paragraph + 2 trailing blanks
+    [InlineData("- a\n- b\n")]                    // list + trailing newline
+    [InlineData("- a\n- b\n\n")]                  // list + trailing blank
+    [InlineData("Para1\n\n# H\n\nPara2")]         // mixed pattern
+    public void RoundTripPreservesBlankLines(string text)
+    {
+        var parsed = MarkupParser.ParseRaw(text, true).Simplify();
+        var formatted1 = parsed.Format().Replace("\r\n", "\n");
+        var formatted2 = MarkupFormatter.Default.Format(parsed).Replace("\r\n", "\n");
+        formatted1.Should().Be(text, "Markup.Format() must round-trip blank lines");
+        formatted2.Should().Be(text, "MarkupFormatter.Default must round-trip blank lines");
     }
 
     [Theory]

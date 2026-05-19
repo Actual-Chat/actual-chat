@@ -126,9 +126,20 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
 
     protected void AddText(string text, ref StringBuilder state)
     {
+        if (NewLineReplacement != null) {
+            // Normalize line endings to "\n" before HtmlEncode. HtmlEncoder.Default
+            // emits numeric entities for both \r and \n (e.g. "\r\n" → "&#xD;&#xA;"),
+            // which the regex form of NewLineRegex (\r?\n) can't match — so without
+            // pre-normalization any \r leaks through and the browser ends up with a
+            // stray \r in the decoded DOM text.
+            text = NewLineRegex.Replace(text, "\n");
+        }
         var html = text.HtmlEncode();
-        if (NewLineReplacement != null)
-            html = NewLineRegex.Replace(html, NewLineReplacement);
+        if (NewLineReplacement != null && !string.Equals(NewLineReplacement, "\n", StringComparison.Ordinal)) {
+            // HtmlEncode produced "&#xA;" for every \n; swap them for the desired HTML
+            // (e.g. "<br/>") in one pass.
+            html = html.Replace("&#xA;", NewLineReplacement, StringComparison.Ordinal);
+        }
         AddHtml(html, ref state);
     }
 

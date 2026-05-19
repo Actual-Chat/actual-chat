@@ -271,19 +271,6 @@ public partial class MarkupParser : IMarkupParser
             new[] { first }.Concat(rest).Select(c => (ListItemMarkup)c).ToArray())
         ).Debug("<List>");
 
-    // After a list/code block, optionally consume \n if followed by another \n (or end)
-    // This preserves empty lines after list/code blocks as ParagraphMarkup.Empty,
-    // so users can add a blank line after a list without it being silently swallowed.
-    private static readonly Parser<char, Markup> TrailingEmptyParagraphAfterBlock =
-        Try(EndOfLine.Then(Lookahead(Try(EndOfLine).Or(End.ThenReturn("")))))
-            .ThenReturn((Markup)ParagraphMarkup.Empty);
-
-    // List or code block, optionally followed by an empty paragraph that captures a trailing blank line
-    private static readonly Parser<char, Markup> ListOrCodeBlockWithOptionalEmpty =
-        from b in SafeTryOneOf(CodeBlock, ListBlock)
-        from emptyOpt in TrailingEmptyParagraphAfterBlock.Optional()
-        select emptyOpt.HasValue ? Markup.Join(b, emptyOpt.Value) : b;
-
     private static readonly Parser<char, Markup> FullWithUnparsedMarkup =
         new InternalParsers(true).Parser;
 
@@ -353,35 +340,59 @@ public partial class MarkupParser : IMarkupParser
                 select BuildHeader(level, line.TrimEnd(), inlineParser)
                 ).Debug("<Header>");
 
-            // Header optionally followed by an empty paragraph (preserves trailing blank line)
-            Parser<char, Markup> headerWithOptionalEmpty =
-                from h in header
-                from emptyOpt in TrailingEmptyParagraphAfterBlock.Optional()
-                select emptyOpt.HasValue ? Markup.Join(h, emptyOpt.Value) : h;
+            // Any standalone block (list/code/header, or paragraph including empty/inline-only).
+            Parser<char, Markup> blockOrHeader = SafeTryOneOf(CodeBlock, ListBlock, header);
+            Parser<char, Markup> block = SafeTryOneOf(blockOrHeader, paragraph);
 
-            // Any standalone block (list/code/header with optional trailing empty, or paragraph)
-            Parser<char, Markup> blockOrHeader =
-                SafeTryOneOf(ListOrCodeBlockWithOptionalEmpty, headerWithOptionalEmpty);
-
-            Parser<char, Markup> block =
-                SafeTryOneOf(blockOrHeader, paragraph);
-
-            // Empty paragraph: matches when there's another newline (or end) after paragraph break
-            Parser<char, Markup> emptyParagraph =
-                Lookahead(Try(EndOfLine).Or(End.ThenReturn(""))).ThenReturn((Markup)new ParagraphMarkup(Markup.EmptyText));
-
-            // After code/list/header block: single newline can be followed by any block
-            // After paragraph: need double newline for next paragraph, single newline OK for code/list/header
-            // Solution: Try all options with proper backtracking
-            Parser<char, Markup> blockSeparatorThenBlock =
-                Try(EndOfLine.Then(blockOrHeader)) // single \n + code/list/header (with optional trailing empty line)
-                    .Or(Try(EndOfLine.Then(EndOfLine).Then(SafeTryOneOf(emptyParagraph, block)))) // \n\n + empty or block
-                    .Or(EndOfLine.Then(paragraph)); // single \n + paragraph (only works after code/list/header)
+            // After the first block, every subsequent block is preceded by one or more
+            // newlines. We capture the count and let BuildBlockSequence translate
+            // (leadingNewlines − minSep) extra newlines into ParagraphMarkup.Empty
+            // entries — one per blank line beyond the minimum block-boundary separator.
+            Parser<char, (int LeadingNewlines, Markup Item)> separatorAndNextBlock =
+                from nls in Try(EndOfLine).AtLeastOnce()
+                from item in block
+                select (nls.Count(), item);
 
             Parser =
                 from first in block
-                from rest in Try(blockSeparatorThenBlock).Many()
-                select Markup.Join(new[] { first }.Concat(rest));
+                from rest in Try(separatorAndNextBlock).Many()
+                select BuildBlockSequence(first, rest);
+        }
+
+        private static Markup BuildBlockSequence(
+            Markup first,
+            IEnumerable<(int LeadingNewlines, Markup Item)> rest)
+        {
+            var items = new List<Markup> { first };
+            Markup prev = first;
+            foreach (var (leadingNewlines, item) in rest) {
+                var prevIsNonEmptyPara = MarkupSeqFormatHelper.IsNonEmptyPara(prev);
+                var currIsNonEmptyPara = MarkupSeqFormatHelper.IsNonEmptyPara(item);
+                var currIsEmptyPara = MarkupSeqFormatHelper.IsEmptyPara(item);
+
+                int minSep;
+                if (currIsEmptyPara)
+                    // For a trailing/intervening empty paragraph the EmptyPara itself
+                    // already accounts for one newline; pair it with the paragraph
+                    // break when the predecessor is a non-empty paragraph, otherwise
+                    // a single block boundary newline is enough.
+                    minSep = prevIsNonEmptyPara ? 2 : 1;
+                else if (prevIsNonEmptyPara && currIsNonEmptyPara)
+                    // Adjacent non-empty paragraphs require a paragraph break.
+                    minSep = 2;
+                else
+                    // Any other transition needs exactly one block boundary newline.
+                    minSep = 1;
+
+                var emptyParas = Math.Max(0, leadingNewlines - minSep);
+                for (var i = 0; i < emptyParas; i++) {
+                    items.Add(ParagraphMarkup.Empty);
+                    prev = ParagraphMarkup.Empty;
+                }
+                items.Add(item);
+                prev = item;
+            }
+            return Markup.Join(items);
         }
 
         private static Markup BuildParagraph(string firstLine, IEnumerable<string> restParts, Parser<char, Markup> inlineParser)

@@ -21,22 +21,7 @@ public sealed class MarkupSeq : Markup
     public override string Format()
     {
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
-        Markup? prevItem = null;
-        foreach (var item in Items) {
-            // Auto-newline between blocks
-            if (prevItem != null && (item.IsBlockMarkup() || prevItem.IsBlockMarkup())) {
-                sb.Append(NewLineMarkup.Instance.Format());
-                // Double newline between consecutive paragraphs (paragraph break)
-                if (prevItem is ParagraphMarkup && item is ParagraphMarkup)
-                    sb.Append(NewLineMarkup.Instance.Format());
-                // Extra newline after empty paragraph to preserve empty line in output
-                else if (prevItem is ParagraphMarkup p && p.Content == Markup.EmptyText)
-                    sb.Append(NewLineMarkup.Instance.Format());
-            }
-
-            sb.Append(item.Format());
-            prevItem = item;
-        }
+        MarkupSeqFormatHelper.FormatBlockSequence(Items, sb);
         return sb.ToStringAndRelease();
     }
 

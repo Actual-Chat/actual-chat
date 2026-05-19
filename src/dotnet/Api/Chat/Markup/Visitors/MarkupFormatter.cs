@@ -36,22 +36,52 @@ public abstract record MarkupFormatterBase : MarkupVisitorWithState<StringBuilde
 
     protected override void VisitSeq(MarkupSeq markup, ref StringBuilder state)
     {
-        Markup? prevItem = null;
-
+        // Inline sequences (e.g. paragraph content) contain no block markup; emit
+        // their items back-to-back without inserting newlines.
+        var hasAnyBlock = false;
         foreach (var item in markup.Items) {
-            // Auto-newline between blocks
-            if (prevItem != null && (item.IsBlockMarkup() || prevItem.IsBlockMarkup())) {
-                state.Append(NewLineMarkup.Instance.Format());
-                // Double newline between consecutive paragraphs (paragraph break)
-                if (prevItem is ParagraphMarkup && item is ParagraphMarkup)
-                    state.Append(NewLineMarkup.Instance.Format());
-                // Extra newline after empty paragraph to preserve empty line in output
-                else if (prevItem is ParagraphMarkup p && p.Content == Markup.EmptyText)
+            if (item.IsBlockMarkup()) {
+                hasAnyBlock = true;
+                break;
+            }
+        }
+        if (!hasAnyBlock) {
+            foreach (var item in markup.Items)
+                Visit(item, ref state);
+            return;
+        }
+
+        Markup? prevNonEmpty = null;
+        var emptyParaCount = 0;
+        foreach (var item in markup.Items) {
+            if (MarkupSeqFormatHelper.IsEmptyPara(item)) {
+                emptyParaCount++;
+                continue;
+            }
+
+            if (prevNonEmpty != null) {
+                var newlines = 1;
+                if (MarkupSeqFormatHelper.IsNonEmptyPara(prevNonEmpty)
+                    && MarkupSeqFormatHelper.IsNonEmptyPara(item))
+                    newlines++;
+                newlines += emptyParaCount;
+                for (var i = 0; i < newlines; i++)
                     state.Append(NewLineMarkup.Instance.Format());
             }
 
             Visit(item, ref state);
-            prevItem = item;
+            prevNonEmpty = item;
+            emptyParaCount = 0;
+        }
+
+        if (emptyParaCount > 0) {
+            var trailingNewlines = emptyParaCount;
+            if (prevNonEmpty != null && MarkupSeqFormatHelper.IsNonEmptyPara(prevNonEmpty))
+                trailingNewlines++;
+            else if (prevNonEmpty == null)
+                trailingNewlines--;
+            for (var i = 0; i < trailingNewlines; i++)
+                state.Append(NewLineMarkup.Instance.Format());
         }
     }
 
