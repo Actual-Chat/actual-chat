@@ -815,10 +815,12 @@ class MentionListHandler extends ListHandler {
     }
 
     public getMatchStart(text: string, endOffset: number): number | null {
+        // Spaces are kept inside the mention filter so the picker survives multi-word
+        // queries ("@John Bolton"); only newlines or '/' terminate the scan.
         let i = endOffset - 1;
         for (; i >= 0; i--) {
             const c = text[i];
-            if (c == ' ' || c == '\n' || c == '/')
+            if (c == '\n' || c == '/')
                 return null;
             if (c == '@')
                 break;

@@ -55,6 +55,22 @@ body.narrow .narrow-panel .mention-list.expanded {
     @apply truncate;
     @apply text-headline-1;
 }
+.mention-list .mention-list-chips {
+    @apply flex-x items-center gap-x-1;
+    @apply px-2 md:px-4 py-1;
+    @apply sticky top-0 z-10 bg-01;
+    box-shadow: 0 1px 0 0 var(--separator);
+}
+.mention-list .mention-list-chips > .mention-list-chip {
+    @apply px-2 py-0.5 rounded-full;
+    @apply text-headline-1;
+    @apply bg-transparent text-03 border border-separator;
+    @apply cursor-pointer;
+}
+.mention-list .mention-list-chips > .mention-list-chip.active {
+    @apply bg-primary text-primary-title border-primary;
+}
+
 @keyframes show-mention-list {
     0% {
         transform: translateY(100%);

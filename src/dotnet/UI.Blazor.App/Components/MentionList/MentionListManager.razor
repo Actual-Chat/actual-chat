@@ -1,4 +1,6 @@
+@using ActualChat.Chat
 @using ActualChat.Search
+@using ActualChat.UI.Blazor.App.Services.Internal
 @namespace ActualChat.UI.Blazor.App.Components
 
 <CascadingValue TValue="MentionListManager" Value="@this" IsFixed="true">
@@ -18,7 +20,21 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     public MentionList? ListRef { get; private set; }
+    public MutableState<MentionKindFilter> KindFilter { get; private set; } = null!;
     public event Action<MentionSearchResult>? MentionSelected;
+
+    protected override void OnInitialized()
+        => KindFilter = StateFactory.NewMutable(
+            MentionKindFilter.All,
+            StateCategories.Get(GetType(), nameof(KindFilter)));
+
+    public Task<MentionSearchResult[]> Find(string filter, int limit, CancellationToken cancellationToken)
+    {
+        var kindFilter = KindFilter.Value;
+        return SearchProvider is MentionIndexSearchProvider mi
+            ? mi.Find(filter, kindFilter, limit, cancellationToken)
+            : SearchProvider.Find(filter, limit, cancellationToken);
+    }
 
     public void SelectMention(MentionSearchResult mention)
         => MentionSelected?.Invoke(mention);

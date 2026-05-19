@@ -9,10 +9,14 @@ internal class MentionIndexSearchProvider(IServiceProvider services, ChatId chat
 
     public ChatId ChatId { get; } = chatId;
 
-    public async Task<MentionSearchResult[]> Find(string filter, int limit, CancellationToken cancellationToken)
+    public Task<MentionSearchResult[]> Find(string filter, int limit, CancellationToken cancellationToken)
+        => Find(filter, MentionKindFilter.All, limit, cancellationToken);
+
+    public async Task<MentionSearchResult[]> Find(
+        string filter, MentionKindFilter kindFilter, int limit, CancellationToken cancellationToken)
     {
         var candidates = await Index
-            .Find(ChatId, filter, MentionKindFilter.All, limit, cancellationToken)
+            .Find(ChatId, filter, kindFilter, limit, cancellationToken)
             .ConfigureAwait(false);
         var searchPhrase = filter.ToSearchPhrase(true, true);
         var result = new MentionSearchResult[candidates.Length];
