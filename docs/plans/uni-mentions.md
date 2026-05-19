@@ -1,218 +1,335 @@
-# Implementation Plan: Universal Mentions
+# Universal Mentions — implementation record
+
+**Status**: shipped on branch `feat/uni-mention` (5 commits, see `git log`).
+All seven phases complete; build clean across `ActualChat.CI.slnf`;
+`Chat.UnitTests` 327/327 pass; live-tested end-to-end via
+`chrome-devtools` MCP against `server-loop`.
 
 ## Overview
 
-Today a mention can only refer to an `AuthorId` (legacy) or a `UserId`. We're generalizing the mention machinery so a mention can reference **any "mentionable" entity** — users, chats, places, future channels, emojis, and GIFs — through a single uniform model: a `MentionRef` whose value is a registry-dispatched prefixed string.
+A mention can now reference any of several entity kinds — users, chats,
+places, emojis, GIFs — in addition to the legacy author kind. The wire
+format stays `` @`<optional name>`<prefix>:<localId> ``; the prefix
+selects a `MentionKind` from a central registry, the local id parses
+into an `IMentionTarget`, and a typed `MentionMarkup` subclass carries
+pre-resolved data so renderers can read it synchronously.
 
-Out of scope:
-- Message mentions (`ChatEntryId`) — dropped from v1.
-- Channels — handled implicitly when chats grow a `ChatKind.Channel`.
+Out of scope (deferred):
+- Message mentions (`ChatEntryId`).
+- Channels — implicit via `ChatId` when a `ChatKind.Channel` ships.
+- Cross-chat notifications for user mentions to non-members.
 
 ---
 
 ## 1. Mention syntax
 
-### 1.1 Existing grammar (unchanged in shape)
+### 1.1 Grammar (unchanged shape)
 
-`MarkupParser.cs:142-155` defines two forms:
+Two forms from `MarkupParser.cs`:
 
 | Form | Pattern | Example |
 |---|---|---|
 | Unnamed | `@<id>` | `@a:chatid:1`, `@u:userId` |
 | Named | `` @`<name>`<id> `` | `` @`Alice`a:chatid:1 `` |
 
-`Format()` (`MentionMarkup.cs`) round-trips the same order: name first, then id. We **keep** this order. Old stored markup continues to render verbatim.
+`MentionMarkup.Format()` round-trips the same order — name first, then
+id. Old stored markup renders verbatim.
 
-### 1.2 Widening `IdChar`
+### 1.2 `IdChar` widened
 
-Current `IdChar` (`MarkupParser.cs:45-46`): `[A-Za-z0-9_\-:]`. We add **`.`**, **`%`**, **`~`** to support URL-encoded local ids (RFC 3986 unreserved + `%` for percent-escapes). New class: `[A-Za-z0-9_\-:.%~]`.
+Before: `[A-Za-z0-9_\-:]`. Now: `[A-Za-z0-9_\-:.%~]` — added `.`, `%`,
+`~` so URL-encoded local ids parse (RFC 3986 unreserved + `%` for
+percent-escapes). No collisions with other markup tokens (`@`, `` ` ``,
+`*`, whitespace).
 
-Safe because none of those chars collide with mention/style tokens (`@`, `` ` ``, `*`, whitespace).
+### 1.3 Target set
 
-### 1.3 New mention-target set
-
-| Prefix | Target | Suggester | Render |
+| Prefix | Target | Suggested? | Render |
 |---|---|---|---|
-| `a` | `AuthorId` | no (legacy) | author badge (existing) |
-| `u` | `UserId` | yes — chat members + caller's contacts where `Kind == User && State != Blocked` | user badge |
-| `c` | `ChatId` | yes — chats the caller can read | chat pill, click → open chat |
-| `p` | `PlaceId` | yes — places the caller is a member of | place pill, click → open place |
-| `e` | `EmojiRef` | maybe (defer decision) | inline glyph |
-| `g` | `GifRef` | no (inserted by GIF picker only) | inline GIF media |
+| `a` | `AuthorId` | no (legacy; existing markup keeps working) | `MentionView.razor` (existing author badge) |
+| `u` | `UserId` | yes — contacts ∪ chat-author accounts | `UserMentionView.razor` (pill; strikethrough + tooltip for non-members) |
+| `c` | `ChatId` | yes — caller's accessible chats | `ChatMentionView.razor` (`#<title>` pill, navigates to chat) |
+| `p` | `PlaceId` | **no** (place picker chip dropped; mention by chat instead) | `PlaceMentionView.razor` (rendered when typed manually) |
+| `e` | `EmojiRef` (URL-encoded glyph or slug) | yes — `Emojis.All` | `EmojiMentionView.razor` (inline glyph) |
+| `g` | `GifRef` (URL-encoded picker id) | no (picker-only) | `GifMentionView.razor` (inline `<img>`/placeholder) |
 
 ---
 
-## 2. Architecture
+## 2. Architecture as shipped
 
 ```
-            ┌─ AuthorId   (prefix "a", legacy: parse + render only, never suggested)
+            ┌─ AuthorId   (prefix "a", legacy: parse + render only)
             ├─ UserId     (prefix "u")
-IMentionTarget ─ ChatId    (prefix "c", covers group/place/channel chats)
+IMentionTarget ─ ChatId    (prefix "c", covers group/place/thread chats)
             ├─ PlaceId    (prefix "p")
             ├─ EmojiRef   (prefix "e")
             └─ GifRef     (prefix "g")
 
-MentionRef
-  string Value         // full "<prefix>:<localId>"
-  string Prefix        // e.g. "u"
-  string LocalId       // the part after the colon
-  IMentionTarget Target // typed, resolved via MentionRefRegistry
+MentionKind                 // sealed class with static instances + ByPrefix dict
+  string Prefix             // "a" | "u" | "c" | "p" | "e" | "g"
+  string Name
+  TryParseTarget(s) -> IMentionTarget?
 
-MentionMarkup
-  MentionRef Id
-  string Name   // cached display name for first-paint
+MentionId                   // not renamed (see deviation #1)
+  string Value              // "<prefix>:<localId>"
+  MentionKind Kind
+  IMentionTarget Target
+  PrincipalId? PrincipalId  // Target as PrincipalId — kept for back-compat
 
-Per kind (DI-registered):
-  IMentionSuggestionSource   // produces picker candidates
-  IMentionRenderInfoProvider // resolves MentionRef → {name, avatar, click, hasRead}
+MentionMarkup (base, not sealed)
+  MentionId Id
+  string Name               // cached display name for first-paint
+  static New(MentionId, string) -> MentionMarkup   // factory dispatching by Kind
+
+AuthorMention : MentionMarkup { AuthorId AuthorId; Author? Author }
+UserMention   : MentionMarkup { UserId UserId; Account? Account; bool IsChatMember }
+ChatMention   : MentionMarkup { ChatId ChatId; Chat? Chat }
+PlaceMention  : MentionMarkup { PlaceId PlaceId; Place? Place }
+EmojiMention  : MentionMarkup { EmojiRef EmojiRef; string? Glyph; Picture? CustomPicture }
+GifMention    : MentionMarkup { GifRef GifRef; Picture? Picture; int? Width; int? Height }
+
+IChatMentionResolver
+  ValueTask<MentionMarkup> Enrich(MentionMarkup, ct)  // single per-environment dispatcher
+  ResolveAuthor / ResolveName (legacy shims)
+
+IMentionResolver (non-generic)
+  ValueTask<Markup> Apply(Markup, ct)   // markup-tree rewriter; renamed from MentionNamer
 ```
 
-The registry is the seam. Adding "channels" later = a new `IMentionTarget` + a registered source + a registered view. No core code touched.
+The seam is `MentionKind`. Adding a new kind = add a `MentionKind`
+static instance + register the prefix + add a subclass + add a view.
 
 ---
 
-## 3. Reuse section
+## 3. Deviations from the original plan
 
-**Existing abstractions to reuse**:
-- `MentionMarkup` — shape unchanged (`Id` + `Name`).
-- `MarkupParser` mention grammar (`MarkupParser.cs:142-155`) — dispatches through the new registry instead of hardcoded `a:`/`u:`.
-- `MarkupHtmlFormatterBase.VisitMention` — already prefix-agnostic; no change.
-- `MentionExtractor` — already walks any `MentionMarkup`; no change.
-- `MarkupRewriter` / visitor infrastructure — used by the emoji persist-time normalizer.
-- `IAccounts.Get(Session, UserId, ct)`, `IAuthors.Get`, `IChats.Get`, `IPlaces.Get`, `IContacts.ListIds/Get` — resolution sources.
-- `AuthorBadgeTemplate`, `AuthorCircle`, `image-skeleton`, `Avatar`, existing CSS `mention-markup*` classes.
-- `SearchPhrase`/`SearchMatch` ranking used in `MentionUI.Find`.
-- `StringIdentifier` base type for the new `EmojiRef` and `GifRef`.
-
-**New components & placement**:
-- `MentionKind`, `IMentionTarget`, `MentionRef` (renamed from `MentionId`), `MentionRefRegistry`, `EmojiRef`, `GifRef` → `src/dotnet/Api/Identifiers/`. No server/UI deps; correctly shared the first time.
-- `IMentionSuggestionSource` (interface) → `src/dotnet/Api/Chat/Markup/`. Implementations live next to their domain service.
-- `IMentionRenderInfoProvider` + `MentionRenderInfo` → `src/dotnet/UI.Blazor.App/Services/Mentions/`. UI-bound (Session, navigation).
-- Per-kind Blazor views (`UserMentionView`, `ChatMentionView`, `PlaceMentionView`, `EmojiMentionView`, `GifMentionView`) → `src/dotnet/UI.Blazor.App/Components/MarkupParts/Mentions/`.
-
----
-
-## 4. Phasing
-
-Each phase ships green before the next starts. Single commit per phase.
-
-### Phase 1 — Model & registry (additive)
-
-1. `MentionKind` — sealed-class-with-known-instances keyed by prefix string. Not an `enum` because we want third-party extension. Each instance has `Prefix`, `DisplayName`, and a `TryParse` delegate.
-2. `IMentionTarget` — marker interface.
-3. `MentionRefRegistry` — static registration; `Register(MentionKind kind, Func<string, IMentionTarget?> tryParse)`. Initialized in a single `ModuleInit`-style static ctor invoked from `Api`'s module.
-4. Make `UserId`, `AuthorId`, `ChatId`, `PlaceId` implement `IMentionTarget` and self-register.
-5. Add new identifiers:
-   - `EmojiRef` — `StringIdentifier` wrapping the emoji slug (e.g. `smile`, `:custom-emoji-id`).
-   - `GifRef` — `StringIdentifier` wrapping a URL-encoded picker id.
-6. Rename `MentionId` → `MentionRef` (the file's existing TODO at `MentionId.cs:12`). Wide but mechanical. Add `MentionRef.Prefix`, `MentionRef.LocalId`, `MentionRef.Target`. Keep all factory methods (`NewAuthor`, `NewUser`) and add `NewChat`, `NewPlace`, `NewEmoji`, `NewGif`.
-7. `MentionRef.TryParse` dispatches via the registry. Existing `a:`/`u:` tests still pass.
-8. Widen `IdChar` in `MarkupParser.cs:45-46` to `[A-Za-z0-9_\-:.%~]`.
-9. **Tests** in `tests/Chat.UnitTests`:
-   - Parse round-trip for each kind.
-   - Invalid prefix → parse failure.
-   - URL-encoded GIF id round-trip.
-   - Named-mention round-trip per kind.
-   - Existing `MentionTest`/`NamedMentionTest` continue passing.
-
-**No UI/render changes in this phase.** Existing renderer keeps rendering only Author/User mentions.
-
-### Phase 2 — Resolution layer
-
-1. Define `MentionRenderInfo`:
-   ```csharp
-   public sealed record MentionRenderInfo(
-       string DisplayName,
-       string? AvatarUrl,
-       string? Tooltip,
-       MentionClickAction? OnClick,
-       bool? HasRead);
-   ```
-2. `IMentionRenderInfoProvider`:
-   ```csharp
-   public interface IMentionRenderInfoProvider
-   {
-       MentionKind Kind { get; }
-       ValueTask<MentionRenderInfo?> Resolve(
-           MentionRef mention, ChatEntry entry, CancellationToken ct);
-   }
-   ```
-3. Per-kind providers in `UI.Blazor.App/Services/Mentions/`:
-   - `AuthorMentionRenderInfoProvider` — wraps today's `ChatMentionResolver` author path.
-   - `UserMentionRenderInfoProvider` — uses `IAccounts.Get(session, userId, ct)`.
-   - `ChatMentionRenderInfoProvider` — `IChats.Get`.
-   - `PlaceMentionRenderInfoProvider` — `IPlaces.Get`.
-   - `EmojiMentionRenderInfoProvider` — looks up the unicode emoji table for known slugs; returns `DisplayName = "<glyph>"` for known, `null` (fallback to `Markup.Name`) for unknown custom ones.
-   - `GifMentionRenderInfoProvider` — resolves the picker id to media metadata.
-4. `MentionRenderInfoProviderResolver` — DI-keyed dispatcher (`IReadOnlyDictionary<MentionKind, IMentionRenderInfoProvider>`).
-5. `ChatMentionResolver` becomes a thin shim over the dispatcher; preserve `IMentionResolver<Author>` for legacy callers.
-
-### Phase 3 — Rendering (per-kind views)
-
-1. `MentionView.razor` switches on `Markup.Id.Target` and delegates to a per-kind sub-component. Each sub-component:
-   - Uses `Markup.Name` for first paint (no flicker).
-   - Asynchronously resolves the live `MentionRenderInfo` via `MentionRenderInfoProviderResolver` and updates.
-   - Falls back to "(n/a)" pill if unresolvable / inaccessible.
-2. Author view = today's `AuthorBadgeTemplate` behavior (preserved verbatim).
-3. `EmojiMentionView` — renders the resolved glyph inline; no pill chrome.
-4. `GifMentionView` — renders `<img>` or `<video>` inline.
-5. HTML formatter unchanged (already prefix-agnostic).
-
-### Phase 4 — Emoji normalization
-
-1. Add a unicode-emoji table (slug → glyph) — pick an existing curated list (e.g., `emoji-data` minimal subset). Lives in `src/dotnet/Api/Chat/Markup/EmojiTable.cs`.
-2. `EmojiNormalizer` — a `MarkupRewriter` that replaces `MentionMarkup(EmojiRef)` with `PlainTextMarkup(glyph)` **only when the slug is in the unicode table**. Custom (non-unicode) emoji refs are left as mentions.
-3. Wire `EmojiNormalizer` into the persist-time pipeline (likely `Chats.Service`'s upsert path). **Render-time substitution remains** — `EmojiMentionRenderInfoProvider` still resolves unicode slugs to glyphs, so a mention that survived to render also renders correctly.
-
-### Phase 5 — Notification dispatch
-
-1. Today's mention-driven notification path is hardcoded to authors. Make it kind-aware:
-   - `UserId` mention → notify that user (if member of the chat).
-   - `AuthorId` mention → existing behavior.
-   - `ChatId`/`PlaceId`/`EmojiRef`/`GifRef` → decorative; no notification.
-2. `Mention` persistence record (`Api/Chat/Mention.cs`) unchanged — already stores any `MentionId` string.
-
-### Phase 6 — Suggestion UI
-
-1. `IMentionSuggestionSource`:
-   ```csharp
-   public interface IMentionSuggestionSource
-   {
-       MentionKind Kind { get; }
-       Task<IReadOnlyList<MentionCandidate>> Find(
-           ChatId chatId, SearchPhrase phrase, int limit, CancellationToken ct);
-   }
-   ```
-2. Sources for v1:
-   - **UserMentionSuggestionSource**: chat authors with disclosed accounts ∪ caller's `IContacts` peer contacts where `Kind == User && State != Blocked`. Anonymous chat authors excluded. Caller self excluded.
-   - **ChatMentionSuggestionSource**: chats the caller has read access to.
-   - **PlaceMentionSuggestionSource**: places the caller is a member of.
-3. `MentionUI.Find` aggregates from registered sources, ranks by combined `SearchMatch.Rank`, returns `MentionSearchResult[]` with `MentionRef` (any prefix).
-4. `MentionList.razor` renders per-kind row template.
-5. Optional prefix-as-filter UX: `@c…` narrows to chats, `@u…` to users, `@p…` to places.
-6. **Author suggestion source removed** — per direction, author mentions are legacy-render-only.
-
-### Phase 7 — Cleanup & docs
-
-- Update `docs/api-index.md` entries for the renamed `MentionId → MentionRef` and the new types.
-- Delete dead code (old `MentionUI` author-only path).
+1. **`MentionId` not renamed to `MentionRef`.** Wide mechanical rename
+   was reverted because it churned 40+ files for no functional gain.
+   The file's existing TODO marker remains; can be done later.
+2. **No `MentionRenderInfo` envelope; no per-kind
+   `IMentionRenderInfoProvider` registry.** Replaced by the typed
+   `MentionMarkup` subclass + cached fields approach — each kind
+   carries its own typed data shape, and a single
+   `IChatMentionResolver.Enrich` dispatches per-kind in a `switch`.
+   Cleaner for the renderer (synchronous reads), simpler to extend.
+3. **No `MentionRefRegistry` as a separate type.** The `MentionKind`
+   sealed class holds the registry as `ByPrefix` directly.
+4. **Picker uses a single `MentionIndexUI` (Pattern A from the design
+   discussion), not per-kind `IMentionSuggestionSource` plumbing.**
+   The index builds the pool from contacts ∪ chat authors ∪ chats ∪
+   emojis with user dedup by `UserId`. Splitting into per-kind sources
+   stays an option for later.
+5. **Place category chip dropped.** Places have a default chat; surface
+   them as chats. So the chip bar is `All / U / C / E`.
+6. **`EmojiNormalizer` keyed on `Emojis.BySymbol`, not a new
+   `EmojiTable.cs`.** Only mentions whose decoded ref text matches the
+   glyph (vanilla emojis) normalize to plain text; named slugs like
+   `clown-yellow` stay as mentions so the editor treats them as atomic
+   spans.
+7. **`MentionNamer` renamed to `MentionResolver` (non-generic interface
+   `IMentionResolver`).** Coexists with the existing typed
+   `IMentionResolver<T>`. Both live in
+   `Api/Chat/Markup/Visitors/MentionResolver.cs` and
+   `Api/Chat/Markup/IMentionResolver.cs`.
 
 ---
 
-## 5. Test coverage targets
+## 4. File map
 
-- **Phase 1**: parser/format round-trip for every kind incl. URL-encoded GIF id; named & unnamed forms.
-- **Phase 2**: per-kind resolver returns expected `MentionRenderInfo` (unit tests with mocked `IAccounts`/`IChats`/`IPlaces`).
-- **Phase 3**: snapshot/visual sanity per kind (manual via `/qa` skill once UI lands).
-- **Phase 4**: emoji normalizer test — unicode slug substituted, custom slug preserved.
-- **Phase 6**: `ChatMentionSearchTest` extended — user mentions returned, blocked contacts excluded, chat & place candidates surface, anonymous authors filtered.
+**New, in `src/dotnet/Api/`**:
+- `Identifiers/MentionKind.cs`, `IMentionTarget.cs`, `EmojiRef.cs`, `GifRef.cs`.
+- `Chat/Markup/AuthorMention.cs`, `UserMention.cs`, `ChatMention.cs`,
+  `PlaceMention.cs`, `EmojiMention.cs`, `GifMention.cs`.
+- `Chat/Markup/Visitors/EmojiNormalizer.cs`,
+  `Chat/Markup/Visitors/MentionResolver.cs` (renamed from `MentionNamer.cs`).
+- `Chat/MentionCandidate.cs`, `MentionCandidateKind.cs`, `MentionFilter.cs`.
+
+**Modified, in `src/dotnet/Api/`**:
+- `Identifiers/MentionId.cs` — `Target` + `Kind` (`MentionKind`); new
+  factories `NewChat`/`NewPlace`/`NewEmoji`/`NewGif`.
+- `Identifiers/UserId.cs`, `AuthorId.cs`, `ChatId.cs`, `PlaceId.cs` —
+  implement `IMentionTarget`.
+- `Chat/Markup/MarkupParser.cs` — widened `IdChar`; routes through
+  `MentionMarkup.New`.
+- `Chat/Markup/MentionMarkup.cs` — unsealed; `New(...)` factory.
+
+**Frontend (UI.Blazor.App)**:
+- New: `Services/MentionIndexUI.cs`,
+  `Services/Internal/MentionIndexSearchProvider.cs`,
+  `Components/MarkupParts/{User,Chat,Place,Emoji,Gif}MentionView.razor`.
+- Modified: `Services/Internal/ChatMentionResolver.cs` (added `Enrich`),
+  `Services/ChatMarkupHub.cs` (property rename + new search provider),
+  `Components/MentionList/{MentionList.razor, MentionListManager.razor,
+  mention-list.ts, mention-list.css}` (chips, multi-word, observer fix),
+  `Components/MarkupEditor/markup-editor.ts` (space-no-dismiss),
+  `Module/BlazorUIAppModule.cs` (DI + TypeMapper registrations).
+- Deleted: `Services/MentionUI.cs`,
+  `Services/Internal/ChatMentionSearchProvider.cs`.
+
+**Backend (Chat.Service)**:
+- `BackendChatMentionResolver.cs` — added `Enrich`.
+- `BackendChatMarkupHub.cs` — property renames.
+
+**Notification.Service**:
+- `Notifications.cs:GetMentionedUserIds` — extended to include
+  `UserMention` mentions resolved to chat members via
+  `AuthorsBackend.GetByUserId`.
+
+**Docs**:
+- `docs/api-index.md`, `docs/api-index-full.md` updated.
+
+**Tests**:
+- `tests/Chat.UnitTests/MarkupParserTest.cs` — added 4 cases:
+  `UniversalMentionKindsTest`, `UrlEncodedGifMentionTest`,
+  `UnknownPrefixIsNotAMentionTest`,
+  `EmojiNormalizerReplacesUrlEncodedGlyphWithGlyphTest`,
+  `EmojiNormalizerLeavesCustomSlugAsMentionTest`,
+  `EmojiNormalizerLeavesUnknownSlugsAsMentionsTest`.
+- `tests/Chat.UnitTests/MentionFilterTest.cs` — 9 cases covering
+  tokenization, multi-word prefix matching, kind ordering, member-first
+  ranking, kind filter, coverage scoring, prefix-only behavior.
 
 ---
 
-## 6. Non-goals & deferred
+## 5. Phase notes (as shipped)
 
-- Message (`ChatEntryId`) mentions — out.
-- Cross-chat notifications for user mentions to non-members — separate, larger work.
-- Migrating existing `a:` author mentions to `u:` user mentions in stored markup — none.
-- Globally searching all users (suggester stays scoped to contacts + chat).
-- Channels — implicit via `ChatId` when channel chat-kind ships.
+### Phase 1 — model & registry
+Built `IMentionTarget`, `MentionKind` (sealed class with static
+`Author`/`User`/`Chat`/`Place`/`Emoji`/`Gif` instances and `ByPrefix`),
+`EmojiRef`, `GifRef`. Made `UserId`/`AuthorId`/`ChatId`/`PlaceId`
+implement `IMentionTarget`. `MentionId.TryParse` dispatches via
+`MentionKind.ByPrefix`. `IdChar` widened. `MentionId` kept its name;
+`Target` (`IMentionTarget`) replaced `PrincipalId` as the canonical
+typed accessor (`PrincipalId` kept as `Target as PrincipalId` for
+back-compat).
+
+### Phase 2 — typed subclasses + resolution
+Introduced six `MentionMarkup` subclasses, each with kind-specific
+cached fields. `MentionMarkup.New(MentionId, string)` dispatches by
+kind. Parser produces subclasses. `IChatMentionResolver.Enrich(...)`
+single dispatcher implemented in both `ChatMentionResolver` (frontend,
+uses `IAccounts`/`IAuthors`/`IChats`/`IPlaces`) and
+`BackendChatMentionResolver` (backend, uses the corresponding
+`*Backend` services). Renamed `IMentionNamer`/`MentionNamer` →
+`IMentionResolver`/`MentionResolver`; both interfaces (typed and
+non-generic) coexist in `IMentionResolver.cs`. Hub property renamed:
+`MentionNamer` → `MentionResolver` (the rewriter);
+`MentionResolver` → `ChatMentionResolver` (the per-mention resolver).
+`ApplyMentionNamer` extension → `ApplyMentionResolver`.
+
+### Phase 3 — per-kind views
+Five new view components registered in `BlazorUIAppModule`'s
+`TypeMapper<IMarkupView>`. Existing `MentionView` stays as the fallback
+for `AuthorMention` and unknown kinds. Views read cached fields
+synchronously; fall back to `Markup.Name` then `NotAvailable`.
+
+### Phase 4 — emoji normalization
+`EmojiNormalizer : MarkupRewriter<Unit>` rewrites
+`EmojiMention` → `PlainTextMarkup(glyph)` when the decoded ref text is
+in `Emojis.BySymbol`. Wired into `ChatMarkupHubExt.PrepareForSave` so
+messages persist with vanilla emojis baked in. Custom slugs
+(`clown-yellow` etc.) and any unknown id keep the mention. Render-time
+`Enrich` still populates `EmojiMention.Glyph` from `Emojis.ById` so
+surviving mentions render correctly.
+
+`EmojiRef.NewFromText(text)` URL-encodes via `WebUtility.UrlEncode`;
+`EmojiRef.Text` decodes for lookup. Real emoji glyphs encode to `%XX`
+only — no spaces to worry about; passing text with spaces through
+`NewFromText` would break the parser (form-encoded `+`), flagged as a
+known limitation.
+
+### Phase 5 — kind-aware notifications
+`UserMention.IsChatMember` (cached `bool`) populated by both enrichers:
+frontend via `IAuthors.ListUserIds(session, chatId).Contains(userId)`,
+backend via `AuthorsBackend.GetByUserId(...) is not null`.
+`UserMentionView` applies `line-through` + tooltip "Not a member of
+this chat" when `!IsChatMember`; click navigates to `Links.User(userId)`
+for now (TODO marker for the richer "author info + invite" modal).
+`Notifications.cs:GetMentionedUserIds` extended to include
+`UserMention` targets whose user is a chat member; non-members not
+notified. Chat/Place/Emoji/Gif: silent.
+
+### Phase 6 — picker
+`MentionIndexUI` (scoped fusion service) with one
+`[ComputeMethod] GetPool(ChatId, ct)` that builds the candidate pool
+from contacts (`Kind == User`) ∪ current chat's non-anonymous authors
+∪ contacts (other kinds = chats) ∪ `Emojis.All`. User dedup by
+`UserId`; primary name = peer-rename override else
+`Account.Avatar.Name`; secondary = in-chat author name when it differs;
+both indexed into `Words` for matching. Caller + guests excluded.
+
+`MentionFilter` provides pure `Tokenize` / `MatchesAll` /
+`CoverageScore` / `FilterAndRank`. Tokenization splits on whitespace +
+ASCII punctuation; matching requires every query token to be a
+case-insensitive prefix of some candidate word. Ranking:
+Kind asc (User < Chat < Emoji) → `IsChatMember` desc → coverage desc →
+PrimaryName asc.
+
+`MentionIndexSearchProvider` adapts `MentionIndexUI` to
+`ISearchProvider<MentionSearchResult>`; new overload accepts
+`MentionKindFilter`. `MentionListManager` exposes
+`MutableState<MentionKindFilter> KindFilter` and a `Find(...)` wrapper
+that pipes the current filter through the index-backed provider.
+`MentionList.razor` renders a sticky `All / U / C / E` chip bar above
+the items; clicking a chip toggles the filter; the compute method
+subscribes to `KindFilter.Use(...)` so chip changes re-run the search.
+
+`markup-editor.ts`: `MentionListHandler.getMatchStart` no longer
+terminates on space; only newline / `/` end the scan. So
+`@John Bolton` keeps the picker open with the full filter.
+
+`mention-list.ts` rewritten — old `MutationObserver` watched
+`subtree: true, attributes: true` and stormed on every
+`image-skeleton` class flip across 100 candidates. Replaced with a
+Razor-driven `scrollSelectedIntoView()` call from `Selection`
+setter / `MoveSelection` — fires once per actual selection change. No
+observer needed.
+
+### Phase 7 — docs
+`docs/api-index.md` + `docs/api-index-full.md` refreshed with the new
+types (subclasses, `MentionKind`, `IMentionTarget`, `EmojiRef`,
+`GifRef`, `MentionCandidate`, `MentionFilter`, `EmojiNormalizer`,
+`MentionResolver`, `MentionIndexUI`).
+
+---
+
+## 6. Verified end-to-end (live debug)
+
+Tested via `chrome-devtools` MCP against the running `server-loop`:
+1. `@` → picker shows 100 candidates with `All` chip active.
+2. `@al y` → narrows to "Alex Y." and "Alex Yakunin" (multi-word prefix
+   match works; picker survives the space).
+3. `@smiling` → mixed list: 2 users first, then 5 emoji titles.
+4. Click `E` chip → narrows to emojis only.
+5. Click `U` chip → narrows to users only.
+6. Select an emoji and post → chat shows the literal glyph (`😊`)
+   — `EmojiNormalizer` ran at persist time.
+7. Select a non-member user and post → chat shows the mention
+   pill with `mention-markup-non-member` + `line-through` + tooltip
+   "Not a member of this chat".
+8. No `MutationObserver` storm in console from `_MentionList`.
+
+---
+
+## 7. Known follow-ups (deferred deliberately)
+
+- **"Author info + invite" modal** for the non-member `UserMentionView`
+  click target. Currently navigates to `/u/<id>`; a richer modal that
+  conditionally shows an Invite button needs its own UI work.
+- **`ChatEntryMessageView` "did mentioned members read my message"**
+  indicator still extracts only `AuthorMention`s. Adding
+  `UserMention`-of-member needs an async author lookup at a sync code
+  site — separate refactor.
+- **Standard-emoji slug names.** `Emojis.All` currently uses glyphs as
+  ids for standard entries; only the URL-encoded glyph form makes
+  standard emojis mentionable. Adding slug names (`smile`,
+  `thumbs-up`, …) is a small but coordinated change touching reaction
+  key storage. Filed as a separate task.
+- **`EmojiRef.NewFromText`** uses form-encoding (`+` for spaces). Fine
+  for glyphs; broken for arbitrary text with whitespace. Switch to
+  `Uri.EscapeDataString` if a future caller needs space-tolerance.
+- **`MentionId` → `MentionRef` rename.** Mechanical, ~40 files; the
+  TODO in `MentionId.cs` flags it.
+- **Per-kind `IMentionSuggestionSource`** plumbing. The current
+  `MentionIndexUI.GetPool` is a single big switch; extracting per-kind
+  sources is straightforward when extensibility is actually needed.
