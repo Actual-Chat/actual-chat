@@ -74,7 +74,7 @@ public static class SentryExt
         var ex = e.SentryExceptions?.FirstOrDefault();
         if (ex != null) {
             var topFrame = ex.Stacktrace?.Frames?.LastOrDefault();
-            return $"{ex.Type}|{topFrame?.Module}.{topFrame?.Function}";
+            return $"{ex.Type}|{ex.Value}|{topFrame?.Module}.{topFrame?.Function}";
         }
         return e.Message?.Formatted ?? "";
     }
