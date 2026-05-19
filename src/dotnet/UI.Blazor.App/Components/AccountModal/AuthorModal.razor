@@ -34,7 +34,7 @@
     if (m.IsOwnAuthor) {
         if (!author.IsAnonymous)
             onEditClick = EventCallback.Factory.Create(this, OnSettingsClick);
-    } else if (m.PeerChatContact is not null && m.PeerChatContact.IsStored()) {
+    } else if (m.PeerChatContact is { IsRegular: true }) {
         onEditClick = EventCallback.Factory.Create(this, _ => OnEditPeerContactClick(m.PeerChatContact));
     }
 }

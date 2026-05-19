@@ -41,7 +41,7 @@ public class DbExternalContactsHash : IHasId<string>, IHasVersion<long>, IRequir
         var sid = model.Id.Value;
         this.RequireSameOrEmptyId(sid);
         model.Id.Require();
-        model.RequireSomeVersion();
+        model.RequireVersion();
 
         Id = sid;
         Hash = model.Hash;

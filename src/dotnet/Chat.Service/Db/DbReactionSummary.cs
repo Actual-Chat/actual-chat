@@ -41,7 +41,7 @@ public class DbReactionSummary : IHasId<string>, IHasVersion<long>, IRequirement
     {
         var id = ComposeId(model.EntryId, model.Emoji.Value);
         this.RequireSameOrEmptyId(id);
-        model.RequireSomeVersion();
+        model.RequireVersion();
 
         Id = id;
         EntryId = model.EntryId.Value;

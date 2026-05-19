@@ -34,9 +34,11 @@ public sealed partial record Contact(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatId ChatId => Id.ChatId;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public string? PeerRename => PeerContactName.NullIfWhiteSpace() ?? ExternalContactName.NullIfWhiteSpace();
+    public bool IsRegular => State == ContactState.Regular;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public bool IsStoredContact => State == ContactState.Regular;
+    public string? PreferredPeerName => Kind == ContactKind.User
+        ? PeerContactName.NullIfWhiteSpace() ?? ExternalContactName.NullIfWhiteSpace()
+        : null;
 
     // Populated on backend on reads
     [DataMember, MemoryPackOrder(5), Key(5)] public Account? Account { get; init; }

@@ -67,7 +67,7 @@ public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
     {
         var id = model.Id;
         this.RequireSameOrEmptyId(id);
-        model.RequireSomeVersion();
+        model.RequireVersion();
 
         Id = id;
         Version = model.Version;

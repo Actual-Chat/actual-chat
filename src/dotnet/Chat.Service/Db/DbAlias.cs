@@ -24,7 +24,7 @@ public class DbAlias : IHasId<string>, IHasVersion<long>, IRequirementTarget
     {
         var id = alias.Id.NormalizedValue;
         this.RequireSameOrEmptyId(id);
-        alias.RequireSomeVersion();
+        alias.RequireVersion();
 
         Id = id;
         Version = alias.Version;

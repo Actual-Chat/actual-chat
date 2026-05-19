@@ -30,7 +30,7 @@ public partial class ChatEditorUI : UIWorkerBase<AppUIHub>, IComputeService, INo
     public Task ShowRelatedEntry(RelatedEntryKind kind, ChatEntry chatEntry, bool focusOnEditor, bool updateUI = true)
     {
         var entryRef = new EntryRef(chatEntry.Id);
-        if (chatEntry.IsSending && !chatEntry.IsStored())
+        if (chatEntry.IsSending && !chatEntry.HasVersion())
             entryRef = entryRef with {
                 ChatEntry = chatEntry
             };

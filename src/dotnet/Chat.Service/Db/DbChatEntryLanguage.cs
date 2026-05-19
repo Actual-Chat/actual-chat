@@ -40,7 +40,7 @@ public class DbChatEntryLanguage : IHasId<string>, IHasVersion<long>, IRequireme
     public void UpdateFrom(ChatEntryLanguage model)
     {
         this.RequireSameOrEmptyId(model.Id.Value);
-        model.RequireSomeVersion();
+        model.RequireVersion();
 
         Id = model.Id.Value;
         Version = model.Version;

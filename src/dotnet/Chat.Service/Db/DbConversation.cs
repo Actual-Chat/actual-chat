@@ -57,7 +57,7 @@ public class DbConversation : IHasId<string>, IHasVersion<long>, IRequirementTar
     public void UpdateFrom(Conversation model)
     {
         this.RequireSameOrEmptyId(model.Id.Value);
-        model.RequireSomeVersion();
+        model.RequireVersion();
 
         Id = model.Id.Value;
         ChatId = model.Id.ChatId.Value;

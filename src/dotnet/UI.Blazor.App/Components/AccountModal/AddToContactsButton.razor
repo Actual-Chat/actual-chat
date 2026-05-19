@@ -53,6 +53,6 @@
     public sealed record Model(Contact? Contact = null) {
         public  static readonly Model Loading = new();
 
-        public bool CanAddToContacts => Contact is { ChatId.Kind: ChatKind.Peer } && !Contact.IsStored();
+        public bool CanAddToContacts => Contact is { ChatId.Kind: ChatKind.Peer, IsRegular: false };
     }
 }

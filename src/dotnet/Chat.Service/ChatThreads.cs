@@ -174,7 +174,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
             var peerContactId = ContactId.NewUser(peerUserId, ownerId);
             var peerContact = await ContactsBackend.Get(peerUserId, peerContactId, cancellationToken)
                 .ConfigureAwait(false);
-            if (!peerContact.IsStoredContact)
+            if (!peerContact.IsRegular)
                 throw StandardError.Constraint("Threads can be started only after this user adds you to their contacts or replies.");
         }
 

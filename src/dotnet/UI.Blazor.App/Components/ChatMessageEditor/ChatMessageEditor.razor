@@ -344,7 +344,7 @@
 
     private async Task OnEditChatMessageEvent(EditChatMessageEvent @event, CancellationToken cancellationToken) {
         var chatEntry = @event.Entry;
-        if (chatEntry.IsStored()) {
+        if (chatEntry.HasVersion()) {
             var chatSendingMessages = SendingMessages.GetSendingMessages(chatEntry.ChatId);
             chatEntry = await chatSendingMessages.GetSelfOrEdited(chatEntry);
         }

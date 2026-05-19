@@ -39,7 +39,7 @@ public class DbThreadContact : IHasId<string>, IHasVersion<long>, IRequirementTa
     {
         var id = model.Id;
         this.RequireSameOrEmptyId(id.Value);
-        model.RequireSomeVersion();
+        model.RequireVersion();
 
         Version = model.Version;
         TouchedAt = model.TouchedAt.ToDateTimeClamped();

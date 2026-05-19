@@ -48,7 +48,7 @@ public class DbChatEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
     {
         var id = ComposeId(model.EntryId, model.Index);
         this.RequireSameOrEmptyId(id);
-        model.RequireSomeVersion();
+        model.RequireVersion();
 
         Id = id;
         Version = model.Version;

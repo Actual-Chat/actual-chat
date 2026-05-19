@@ -49,6 +49,6 @@
     public sealed record Model(bool IsSignedIn, Contact? Contact = null) {
         public  static readonly Model Loading = new(false);
 
-        public bool CanAddToContacts => IsSignedIn && Contact is { ChatId.Kind: ChatKind.Peer } && !Contact.IsStored();
+        public bool CanAddToContacts => IsSignedIn && Contact is { ChatId.Kind: ChatKind.Peer, IsRegular: false };
     }
 }

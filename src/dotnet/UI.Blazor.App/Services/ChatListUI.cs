@@ -239,7 +239,7 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
             return;
 
         var changedContact = contact with { IsPinned = mustPin };
-        var change = contact.IsStored()
+        var change = contact.HasVersion()
             ? new Change<Contact>() { Update = changedContact }
             : new Change<Contact>() { Create = changedContact };
         var command = new Contacts_Change(Session, contact.Id, contact.Version, change);

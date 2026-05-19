@@ -46,7 +46,7 @@ public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
     {
         var id = model.Id;
         this.RequireSameOrEmptyId(id.Value);
-        model.RequireSomeVersion();
+        model.RequireVersion();
 
         Id = id.Value;
         Version = model.Version;

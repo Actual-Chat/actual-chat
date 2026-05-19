@@ -47,9 +47,9 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
 
         var contactId = ContactId.NewUser(account.Id, userId);
         var contact = await ContactsBackend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
-        var peerRename = contact.PeerRename;
-        if (!peerRename.IsNullOrEmpty() && peerRename != author.Avatar.Name) {
-            var avatar = author.Avatar with { Name = peerRename };
+        var preferredPeerName = contact.PreferredPeerName;
+        if (!preferredPeerName.IsNullOrEmpty() && preferredPeerName != author.Avatar.Name) {
+            var avatar = author.Avatar with { Name = preferredPeerName };
             author = author with { Avatar = avatar };
         }
         return author;

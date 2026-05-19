@@ -45,7 +45,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
     {
         var id = model.Id;
         this.RequireSameOrEmptyId(id);
-        model.RequireSomeVersion();
+        model.RequireVersion();
         var isNew = Id.IsNullOrEmpty();
 
         var modelUserId = model.UserId.Value;

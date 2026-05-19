@@ -94,5 +94,5 @@ public static class Change
         };
 
     public static Change<T> Upsert<T>(T item) where T : IHasVersion<long>
-        => item.IsStored() ? Update(item) : Create(item);
+        => item.HasVersion() ? Update(item) : Create(item);
 }

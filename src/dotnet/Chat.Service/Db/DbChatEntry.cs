@@ -178,7 +178,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     {
         var id = model.Id;
         this.RequireSameOrEmptyId(id.Value);
-        model.RequireSomeVersion();
+        model.RequireVersion();
         if (!ClientId.IsNullOrEmpty())
             if (!model.ClientId.IsNullOrEmpty() && model.ClientId != ClientId)
                 throw StandardError.Constraint("Client ID cannot be changed");

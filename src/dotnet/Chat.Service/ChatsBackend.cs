@@ -1292,7 +1292,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     BeginsAt = Clocks.SystemClock.Now,
                 };
                 entry = ApplyDiff(entry, update, false);
-                entry = await PrepareTextEntryForSave(entry, oldEntry, cancellationToken).ConfigureAwait(false);
+                entry = await PrepareTextEntryForSave(entry, oldEntry, cancellationToken)
+                    .ConfigureAwait(false);
+                await EnforceNonContactPeerMessageLimit(dbContext, chatId, entry.AuthorId, cancellationToken)
+                    .ConfigureAwait(false);
                 dbEntry = new DbChatEntry(entry) {
                     HasAttachments = entry.Attachments.Length > 0,
                 };
@@ -2300,6 +2303,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     // Private / internal methods
 
+    internal Task<long> DbNextLocalId(
+        ChatDbContext dbContext,
+        ChatId chatId,
+        CancellationToken cancellationToken)
+        => DbChatEntryIdGenerator.Next(dbContext, chatId.Value, cancellationToken);
+
     private async Task<ChatEntry> PrepareTextEntryForSave(ChatEntry entry, ChatEntry? existing, CancellationToken cancellationToken)
     {
         if (entry.IsSystemEntry || entry.IsContentStreaming)
@@ -2395,11 +2404,46 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         await Commander.Call(changeCommand, cancellationToken).ConfigureAwait(false);
     }
 
-    internal Task<long> DbNextLocalId(
+    private async Task EnforceNonContactPeerMessageLimit(
         ChatDbContext dbContext,
-        ChatId chatId,
+        ChatId? chatId,
+        AuthorId? authorId,
         CancellationToken cancellationToken)
-        => DbChatEntryIdGenerator.Next(dbContext, chatId.Value, cancellationToken);
+    {
+        if (chatId is not PeerChatId peerChatId || authorId is null || authorId.Value.IsNullOrEmpty())
+            return;
+
+        var author = await AuthorsBackend
+            .Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken)
+            .ConfigureAwait(false);
+        if (author is null)
+            return;
+
+        var senderUserId = author.UserId;
+        var peerUserId = peerChatId.AnotherUserIdOrNull(senderUserId);
+        if (peerUserId.IsGuestOrNull())
+            return;
+
+        var peerContactId = ContactId.NewUser(peerUserId, senderUserId);
+        var peerContact = await ContactsBackend.Get(peerUserId, peerContactId, cancellationToken).ConfigureAwait(false);
+        if (peerContact.IsRegular)
+            return;
+
+        // Serialize concurrent cap checks per (chat, author) so two racing creates can't both pass
+        await dbContext.ChatEntries.Lock(chatId.Value, authorId.Value, cancellationToken).ConfigureAwait(false);
+
+        var limit = Constants.Chat.NonContactPeerMessageLimit;
+        var sAuthorId = authorId.Value;
+        var sChatId = chatId.Value;
+        var authorEntryCount = await dbContext.ChatEntries
+            .Where(e => e.ChatId == sChatId && e.AuthorId == sAuthorId && e.Kind == 0)
+            .Take(limit)
+            .CountAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (authorEntryCount >= limit)
+            throw StandardError.Constraint(
+                $"You can send up to {limit} messages until this user adds you to their contacts or replies.");
+    }
 
     private async Task<AuthorRules> GetPeerChatRules(
         PeerChatId chatId,
@@ -2440,7 +2484,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var peerUserId = otherUserId!;
         var peerContactId = ContactId.NewUser(peerUserId, account.Id);
         var peerContact = await ContactsBackend.Get(peerUserId, peerContactId, cancellationToken).ConfigureAwait(false);
-        if (!peerContact.IsStoredContact)
+        if (!peerContact.IsRegular)
             permissions &= ~(ChatPermissions.Upload
                 | ChatPermissions.WriteAudio
                 | ChatPermissions.WriteVideo
@@ -2453,7 +2497,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private async Task<Chat> EnsureExists(PeerChatId peerChatId, CancellationToken cancellationToken)
     {
         var chat = await Get(peerChatId, cancellationToken).ConfigureAwait(false);
-        if (chat.IsStored())
+        if (chat.HasVersion())
             return chat;
 
         var command = new ChatsBackend_Change(peerChatId, null, new() { Create = new ChatDiff() });

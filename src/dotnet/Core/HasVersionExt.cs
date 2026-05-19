@@ -4,11 +4,11 @@ namespace ActualChat;
 
 public static class HasVersionExt
 {
-    public static bool IsStored<TEntity>([NotNullWhen(true)] this TEntity? entity)
+    public static bool HasVersion<TEntity>([NotNullWhen(true)] this TEntity? entity)
         where TEntity : IHasVersion<long>
         => entity is { Version: > 0 };
 
-    public static TEntity RequireSomeVersion<TEntity>([NotNull] this TEntity? entity)
+    public static TEntity RequireVersion<TEntity>([NotNull] this TEntity? entity)
         where TEntity : IHasVersion<long>
     {
         if (entity == null)

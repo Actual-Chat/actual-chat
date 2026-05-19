@@ -78,7 +78,7 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
     {
         var id = model.Id;
         this.RequireSameOrEmptyId(id.Value);
-        model.RequireSomeVersion();
+        model.RequireVersion();
 
         long? textEntryLocalId = null;
         string? authorSid = null;

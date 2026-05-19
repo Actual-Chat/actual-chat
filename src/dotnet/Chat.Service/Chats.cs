@@ -47,7 +47,7 @@ public partial class Chats(IServiceProvider services) : IChats
 
             chat ??= new Chat(chatId);
             var avatar = peerAccount.Avatar;
-            var peerName = contact.PeerRename ?? avatar.Name;
+            var peerName = contact.PreferredPeerName ?? avatar.Name;
             chat = chat with {
                 Title = peerName,
                 Picture = avatar.Media,
@@ -773,12 +773,12 @@ public partial class Chats(IServiceProvider services) : IChats
                 var userId = author.UserId;
                 var contactId = ContactId.NewAny(userId, newChatId);
                 var contact = await ContactsBackend.Get(userId, contactId, cancellationToken).ConfigureAwait(false);
-                if (!contact.IsStored()) {
-                    var change = new Change<Contact> {
-                        Create = new Contact(contactId) { State = ContactState.Regular },
-                    };
-                    var backendCmd4 = new ContactsBackend_Change(contactId, null, change);
-                    await Commander.Call(backendCmd4, true, cancellationToken).ConfigureAwait(false);
+                if (!contact.IsRegular) {
+                    var backendChangeCmd = new ContactsBackend_Change(
+                        contactId,
+                        contact.HasVersion() ? contact.Version : null,
+                        Change.Upsert(contact with { State = ContactState.Regular }));
+                    await Commander.Call(backendChangeCmd, true, cancellationToken).ConfigureAwait(false);
                 }
             }
         }
@@ -970,12 +970,12 @@ public partial class Chats(IServiceProvider services) : IChats
     {
         var contactId = ContactId.NewUser(ownerId, chatId.AnotherUserId(ownerId));
         var contact = await ContactsBackend.Get(ownerId, contactId, cancellationToken).ConfigureAwait(false);
-        if (contact.IsStoredContact)
+        if (contact.IsRegular)
             return;
 
         var command = new ContactsBackend_Change(
             contactId,
-            contact.IsStored() ? contact.Version : null,
+            contact.HasVersion() ? contact.Version : null,
             Change.Upsert(contact with { State = ContactState.Regular }));
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }

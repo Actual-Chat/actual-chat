@@ -180,6 +180,74 @@ public class NonContactPeerLimitTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task RecipientAddToContactsShouldPromoteTemporaryAndLiftCap()
+    {
+        // arrange
+        var appHost = AppHost;
+        await using var aliceTester = appHost.NewBlazorTester(Out);
+        var alice = await aliceTester.SignInAsUniqueAlice();
+        await using var bobTester = appHost.NewBlazorTester(Out);
+        var bob = await bobTester.SignInAsUniqueBob();
+        var peerChatId = PeerChatId.New(alice.Id, bob.Id);
+        var contactsBackend = aliceTester.AppServices.GetRequiredService<IContactsBackend>();
+        var cap = Constants.Chat.NonContactPeerMessageLimit;
+        for (var i = 0; i < cap; i++)
+            await aliceTester.CreateTextEntry(peerChatId, $"msg {i + 1}");
+
+        // Sanity: Bob's auto-created contact for Alice is Temporary, so the banner is visible to Bob.
+        var bobContactBefore = await contactsBackend.Get(bob.Id, ContactId.NewUser(bob.Id, alice.Id), CancellationToken.None);
+        bobContactBefore.HasVersion().Should().BeTrue("a Temporary contact still has Version > 0");
+        bobContactBefore.IsRegular.Should().BeFalse("Temporary contacts must not look 'stored' to the banner");
+
+        // act - Bob clicks "Add to contacts" (same path as AddToContactsBanner.OnAddClick).
+        await bobTester.CreatePeerContact(bob, alice);
+
+        // assert - Bob's contact promotes to Regular, banner is now hidden, and Alice's cap lifts.
+        var bobContactAfter = await contactsBackend.Get(bob.Id, ContactId.NewUser(bob.Id, alice.Id), CancellationToken.None);
+        bobContactAfter.IsRegular.Should().BeTrue();
+        await ComputedTest.When(async _ => {
+            var entry = await aliceTester.CreateTextEntry(peerChatId, "post-add message");
+            entry.Content.Should().Be("post-add message");
+        });
+    }
+
+    [Fact]
+    public async Task ParallelSendsShouldNotExceedCap()
+    {
+        // arrange
+        var appHost = AppHost;
+        await using var aliceTester = appHost.NewBlazorTester(Out);
+        var alice = await aliceTester.SignInAsUniqueAlice();
+        await using var bobTester = appHost.NewBlazorTester(Out);
+        var bob = await bobTester.SignInAsUniqueBob();
+        var peerChatId = PeerChatId.New(alice.Id, bob.Id);
+        var cap = Constants.Chat.NonContactPeerMessageLimit;
+        var attempts = cap * 4;
+
+        // act - fire many concurrent sends from Alice and collect outcomes.
+        var sends = Enumerable.Range(0, attempts)
+            .Select(i => Task.Run(async () => {
+                try {
+                    await aliceTester.CreateTextEntry(peerChatId, $"race {i}").ConfigureAwait(false);
+                    return true;
+                }
+                catch {
+                    return false;
+                }
+            }))
+            .ToArray();
+        var results = await Task.WhenAll(sends);
+        var successes = results.Count(r => r);
+
+        // assert - the cap holds even under concurrent sends.
+        successes.Should().BeLessThanOrEqualTo(cap);
+
+        var chats = aliceTester.AppServices.GetRequiredService<IChats>();
+        var range = await chats.GetIdRange(aliceTester.Session, peerChatId, CancellationToken.None);
+        (range.End - range.Start).Should().BeLessThanOrEqualTo(cap);
+    }
+
+    [Fact]
     public async Task ThreadStartShouldBeBlockedForNonContactPeer()
     {
         // arrange

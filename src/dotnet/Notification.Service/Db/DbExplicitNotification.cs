@@ -38,7 +38,7 @@ public class DbExplicitNotification : IHasId<string>, IHasVersion<long>, IRequir
     {
         var id = model.Id;
         this.RequireSameOrEmptyId(id.Value);
-        model.RequireSomeVersion();
+        model.RequireVersion();
 
         Id = id.Value;
         Version = model.Version;

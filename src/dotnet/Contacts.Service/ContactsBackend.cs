@@ -635,11 +635,13 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
             var contactId = ContactId.NewChat(userId, chatId);
             var contact = await Get(userId, contactId, cancellationToken).ConfigureAwait(false);
-            if (contact.IsStored())
+            if (contact.IsRegular)
                 continue; // No need to make any changes
 
-            var change = Change.Create(new Contact(contactId) { State = ContactState.Regular });
-            var createContact = new ContactsBackend_Change(contactId, null, change);
+            var createContact = new ContactsBackend_Change(
+                contactId,
+                contact.HasVersion() ? contact.Version : null,
+                Change.Upsert(contact with { State = ContactState.Regular }));
             await Commander.Call(createContact, false, cancellationToken).ConfigureAwait(false);
         }
 
@@ -657,7 +659,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var contactId = command.Id;
         var ownerUserId = contactId.OwnerId;
         var contact = await Get(ownerUserId, contactId, cancellationToken).ConfigureAwait(false);
-        if (!contact.IsStored())
+        if (!contact.HasVersion())
             return;
 
         var peerUserId = contact.Account?.Id;
@@ -827,7 +829,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
         var contactId = ContactId.NewAny(userId, chatId);
         var contact = await Get(userId, contactId, cancellationToken).ConfigureAwait(false);
-        if (contact.IsStored() == !author.HasLeft)
+        if (contact.HasVersion() == !author.HasLeft)
             return; // No need to make any changes
 
         if (author.HasLeft) {

@@ -60,7 +60,7 @@ public class DbExternalContact : IHasId<string>, IHasVersion<long>, IRequirement
         var sid = model.Id.Value;
         this.RequireSameOrEmptyId(sid);
         model.Id.Require();
-        model.RequireSomeVersion();
+        model.RequireVersion();
 
         Id = sid;
         DisplayName = model.DisplayName;
