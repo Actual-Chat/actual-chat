@@ -21,10 +21,10 @@ public class ChatMarkupHub(IServiceProvider services, ChatId chatId) : IChatMark
         => _trimmer ??= new MarkupTrimmer();
 #pragma warning restore CA1822
 
-    public IMentionNamer MentionNamer
-        => field ??= new MentionNamer(MentionResolver);
+    public IMentionResolver MentionResolver
+        => field ??= new MentionResolver(ChatMentionResolver);
 
-    public IChatMentionResolver MentionResolver
+    public IChatMentionResolver ChatMentionResolver
         => field ??= new ChatMentionResolver(Services, NonThreadChatId);
 
     public ISearchProvider<MentionSearchResult> MentionSearchProvider

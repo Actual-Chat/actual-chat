@@ -1,14 +1,22 @@
+using ActualChat.Users;
+
 namespace ActualChat.Chat;
 
 public class BackendChatMentionResolver : IChatMentionResolver
 {
     private IAuthorsBackend AuthorsBackend { get; }
+    private IAccountsBackend AccountsBackend { get; }
+    private IChatsBackend ChatsBackend { get; }
+    private IPlacesBackend PlacesBackend { get; }
 
     public ChatId ChatId { get; }
 
     public BackendChatMentionResolver(IServiceProvider services, ChatId chatId)
     {
         AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
+        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
+        ChatsBackend = services.GetRequiredService<IChatsBackend>();
+        PlacesBackend = services.GetRequiredService<IPlacesBackend>();
         ChatId = chatId;
     }
 
@@ -16,7 +24,7 @@ public class BackendChatMentionResolver : IChatMentionResolver
         => ResolveAuthor(mention, cancellationToken);
     public async ValueTask<Author?> ResolveAuthor(MentionMarkup mention, CancellationToken cancellationToken)
     {
-        if (mention.Id.PrincipalId is not AuthorId authorId)
+        if (mention.Id.Target is not AuthorId authorId)
             return null;
 
         return await AuthorsBackend.Get(ChatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
@@ -26,7 +34,47 @@ public class BackendChatMentionResolver : IChatMentionResolver
         => ResolveName(mention, cancellationToken);
     public async ValueTask<string?> ResolveName(MentionMarkup mention, CancellationToken cancellationToken)
     {
-        var author = await ResolveAuthor(mention, cancellationToken).ConfigureAwait(false);
-        return author?.Avatar.Name;
+        var enriched = await Enrich(mention, cancellationToken).ConfigureAwait(false);
+        return enriched.Name.NullIfEmpty();
+    }
+
+    public async ValueTask<MentionMarkup> Enrich(MentionMarkup mention, CancellationToken cancellationToken)
+    {
+        switch (mention) {
+        case AuthorMention am: {
+            var author = await AuthorsBackend.Get(ChatId, am.AuthorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
+            var name = author?.Avatar.Name ?? am.Name;
+            return new AuthorMention(am.Id, name) { Author = author };
+        }
+        case UserMention um: {
+            var accountTask = AccountsBackend.Get(um.UserId, cancellationToken);
+            var authorTask = AuthorsBackend.GetByUserId(ChatId, um.UserId, RequestedAuthorKind.Default, cancellationToken);
+            var account = await accountTask.ConfigureAwait(false);
+            var author = await authorTask.ConfigureAwait(false);
+            var name = account?.Avatar.Name ?? um.Name;
+            return new UserMention(um.Id, name) {
+                Account = account,
+                IsChatMember = author is not null,
+            };
+        }
+        case ChatMention cm: {
+            var chat = await ChatsBackend.Get(cm.ChatId, cancellationToken).ConfigureAwait(false);
+            var name = chat?.Title.NullIfEmpty() ?? cm.Name;
+            return new ChatMention(cm.Id, name) { Chat = chat };
+        }
+        case PlaceMention pm: {
+            var place = await PlacesBackend.Get(pm.PlaceId, cancellationToken).ConfigureAwait(false);
+            var name = place?.Title.NullIfEmpty() ?? pm.Name;
+            return new PlaceMention(pm.Id, name) { Place = place };
+        }
+        case EmojiMention em: {
+            var emoji = Emojis.ById.GetValueOrDefault(em.EmojiRef.Text);
+            return emoji is null
+                ? em
+                : new EmojiMention(em.Id, em.Name) { Glyph = emoji.Symbol };
+        }
+        default:
+            return mention;
+        }
     }
 }

@@ -20,7 +20,7 @@
         <MentionListManager Limit="5" SearchProvider="@TestMentionSearchProvider.Instance">
             <MarkupEditor
                 @ref="_editorRef"
-                MentionNamer="@_chatMarkupHub.MentionNamer"
+                MentionResolver="@_chatMarkupHub.MentionResolver"
                 HtmlConverter="@_chatMarkupHub.EditorHtmlConverter"
                 Id="message-input"
                 Class="my-2 border-2 border-bg-03 rounded min-h-[8rem]"

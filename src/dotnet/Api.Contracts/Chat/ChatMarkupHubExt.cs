@@ -21,7 +21,7 @@ public static class ChatMarkupHubExt
         case SystemEntry systemEntry:
             markup = systemEntry.ToMarkup();
             // System entries render markup w/o mention names
-            markup = await markupHub.MentionNamer.Apply(markup, cancellationToken).ConfigureAwait(false);
+            markup = await markupHub.MentionResolver.Apply(markup, cancellationToken).ConfigureAwait(false);
             break;
         case { HasAudio: true }:
         // HasAudio covers all audio/media entries now
@@ -72,11 +72,12 @@ public static class ChatMarkupHubExt
             return entry.Content;
 
         var markup = markupHub.Parser.Parse(content);
-        var newMarkup = await markupHub.MentionNamer.Apply(markup, cancellationToken).ConfigureAwait(false);
-        if (ReferenceEquals(newMarkup, markup))
+        var resolved = await markupHub.MentionResolver.Apply(markup, cancellationToken).ConfigureAwait(false);
+        var normalized = EmojiNormalizer.Instance.Apply(resolved);
+        if (ReferenceEquals(normalized, markup))
             return entry.Content;
 
-        return MarkupFormatter.Default.Format(newMarkup);
+        return MarkupFormatter.Default.Format(normalized);
     }
 
     public static async ValueTask<Markup> Parse(
@@ -87,15 +88,15 @@ public static class ChatMarkupHubExt
     {
         var markup = markupHub.Parser.Parse(markupText);
         if (mustNameMentions)
-            markup = await markupHub.MentionNamer.Apply(markup, cancellationToken).ConfigureAwait(false);
+            markup = await markupHub.MentionResolver.Apply(markup, cancellationToken).ConfigureAwait(false);
         return markup;
     }
 
-    public static async ValueTask<Markup> ApplyMentionNamer(
+    public static async ValueTask<Markup> ApplyMentionResolver(
         this IChatMarkupHub markupHub,
         Markup markup,
         CancellationToken cancellationToken)
-        => await markupHub.MentionNamer.Apply(markup, cancellationToken).ConfigureAwait(false);
+        => await markupHub.MentionResolver.Apply(markup, cancellationToken).ConfigureAwait(false);
 
     // Private methods
 

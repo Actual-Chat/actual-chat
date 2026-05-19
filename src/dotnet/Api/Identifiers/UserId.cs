@@ -16,7 +16,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<UserId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<UserId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class UserId : PrincipalId, IStringIdentifier<UserId>
+public sealed partial class UserId : PrincipalId, IStringIdentifier<UserId>, IMentionTarget
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<UserId>();
@@ -30,6 +30,8 @@ public sealed partial class UserId : PrincipalId, IStringIdentifier<UserId>
 
     [IgnoreDataMember]
     public bool IsGuest => Value.Length != 0 && Value[0] == GuestIdPrefixChar;
+    [IgnoreDataMember]
+    public MentionKind MentionKind => MentionKind.User;
 
     // Factories and constructors
 

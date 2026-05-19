@@ -10,8 +10,8 @@ public interface IChatMarkupHub : IHasServices
     ChatId ChatId { get; }
 
     IMarkupParser Parser { get; }
-    IMentionNamer MentionNamer { get; }
-    IChatMentionResolver MentionResolver { get; }
+    IMentionResolver MentionResolver { get; }
+    IChatMentionResolver ChatMentionResolver { get; }
     ISearchProvider<MentionSearchResult> MentionSearchProvider { get; }
     IMarkupFormatter EditorHtmlConverter { get; }
 }

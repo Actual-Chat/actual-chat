@@ -16,7 +16,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<PlaceId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<PlaceId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class PlaceId : StringIdentifier, IStringIdentifier<PlaceId>
+public sealed partial class PlaceId : StringIdentifier, IStringIdentifier<PlaceId>, IMentionTarget
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<PlaceId>();
@@ -26,6 +26,8 @@ public sealed partial class PlaceId : StringIdentifier, IStringIdentifier<PlaceI
 
     [IgnoreDataMember]
     public PlaceChatId RootChatId => field ??= PlaceChatId.Parse(PlaceChatId.Format(this, Value));
+    [IgnoreDataMember]
+    public MentionKind MentionKind => MentionKind.Place;
 
     // Factories and constructors
 

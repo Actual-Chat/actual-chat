@@ -204,18 +204,25 @@ public class Notifications(IServiceProvider services) : INotifications
 
         async Task<UserId[]> GetMentionedUserIds(UserId excludeUserId)
         {
-            var mentionedAuthorIds = mentionIds
-                .Where(c => c.Kind == PrincipalKind.Author)
-                .Select(c => (AuthorId)c.PrincipalId)
-                .ToList();
-            var mentionedAuthors = await mentionedAuthorIds
-                .Select(id => AuthorsBackend.Get(chatId, id, RequestedAuthorKind.Full, cancellationToken))
+            var authorIds = mentionIds
+                .Where(c => c.Target is AuthorId)
+                .Select(c => (AuthorId)c.Target);
+            var userIds = mentionIds
+                .Where(c => c.Target is UserId)
+                .Select(c => (UserId)c.Target);
+            var authorsFromAuthorMentions = authorIds
+                .Select(id => AuthorsBackend.Get(chatId, id, RequestedAuthorKind.Full, cancellationToken));
+            var authorsFromUserMentions = userIds
+                .Select(id => AuthorsBackend.GetByUserId(chatId, id, RequestedAuthorKind.Full, cancellationToken));
+            var allAuthors = await authorsFromAuthorMentions
+                .Concat(authorsFromUserMentions)
                 .Collect(cancellationToken)
                 .ConfigureAwait(false);
-            return mentionedAuthors
+            return allAuthors
                 .SkipNullItems()
                 .Select(a => a.UserId)
                 .Where(c => c != excludeUserId)
+                .Distinct()
                 .ToArray();
         }
     }

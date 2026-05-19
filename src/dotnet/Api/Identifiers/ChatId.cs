@@ -16,7 +16,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<ChatId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<ChatId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasShardKey<string>
+public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasShardKey<string>, IMentionTarget
 {
     public const char ThreadIdSeparator = '-';
 
@@ -35,6 +35,8 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
     [IgnoreDataMember]
     public ChatId RootChatId
         => this is PlaceChatId placeChatId ? placeChatId.RootChatId : this;
+    [IgnoreDataMember]
+    public MentionKind MentionKind => MentionKind.Chat;
 
     // Factories and constructors
 

@@ -41,10 +41,10 @@ public class ConversationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.AppendLine(conversation.Title.Text);
         sb.AppendLine();
-        var description = await chatMarkupHub.ApplyMentionNamer(conversation.Description.Markup, cancellationToken).ConfigureAwait(false);
+        var description = await chatMarkupHub.ApplyMentionResolver(conversation.Description.Markup, cancellationToken).ConfigureAwait(false);
         sb.AppendLine(description.ToClipboardText());
         sb.AppendLine();
-        var summary = await chatMarkupHub.ApplyMentionNamer(conversation.Summary.Markup, cancellationToken).ConfigureAwait(false);
+        var summary = await chatMarkupHub.ApplyMentionResolver(conversation.Summary.Markup, cancellationToken).ConfigureAwait(false);
         sb.AppendLine(summary.ToClipboardText());
         return sb.ToStringAndRelease();
     }
