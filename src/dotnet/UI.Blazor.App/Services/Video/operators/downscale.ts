@@ -69,7 +69,7 @@ export function normalizeFrame(opts: NormalizeFrameOptions): PipeOperator<Captur
                         && displayH === target.height
                         && input.codedWidth === target.width
                         && input.codedHeight === target.height) {
-                        // Identity: pass envelope through. Only patch
+                        // True identity: pass envelope through. Only patch
                         // `rotation` when it actually changes — preserves
                         // object identity when nothing changed.
                         yield envelope.rotation === transform.wireRotation
@@ -77,6 +77,37 @@ export function normalizeFrame(opts: NormalizeFrameOptions): PipeOperator<Captur
                             : { ...envelope, rotation: transform.wireRotation };
                         continue;
                     }
+                    // Zero-copy re-crop via VideoFrame constructor + explicit
+                    // visibleRect + displayWidth/Height. Chrome's MSTP
+                    // crop-and-scale gives us a frame with coded = native
+                    // sensor (e.g. 1920×1080) and display = scaled output
+                    // (e.g. 1280×720), but visibleRect spans the entire
+                    // coded plane — so the encoder, reading from the coded
+                    // plane, encodes the wrong region. We construct a new
+                    // VideoFrame referencing the same buffer with a centered
+                    // visibleRect at the target aspect; Chrome's encoder
+                    // honors that (verified empirically), producing the
+                    // correct crop without a `new VideoFrame(canvas)`
+                    // roundtrip. Saves ~0.5 ms/frame of canvas work and the
+                    // associated GPU texture allocation.
+                    if (transform.cropboxRotation === 0 && input.codedWidth > 0 && input.codedHeight > 0) {
+                        const visible = computeCoverVisibleRect(
+                            input.codedWidth, input.codedHeight,
+                            target.width, target.height);
+                        const recropped = new VideoFrame(input, {
+                            visibleRect: visible,
+                            displayWidth: target.width,
+                            displayHeight: target.height,
+                            timestamp: input.timestamp,
+                        });
+                        try { input.close(); } catch { /* already closed */ }
+                        yield { ...envelope, frame: recropped, rotation: transform.wireRotation };
+                        continue;
+                    }
+                    // Fallback path — used when cropbox rotation is needed
+                    // (Android portrait flip etc.), since VideoFrame's
+                    // zero-copy constructor cannot rotate pixels. Pay the
+                    // canvas + new VideoFrame cost only on this branch.
                     slot ??= createSlot('normalizeFrame');
                     prepareSlot(slot, target.width, target.height);
                     drawFrameCover(slot.ctx, input, target.width, target.height, transform.cropboxRotation);
@@ -294,6 +325,35 @@ export function pickSource(
         }
     }
     return bestIdx >= 0 ? { kind: 'higher', idx: bestIdx } : { kind: 'original' };
+}
+
+// Returns a centered visibleRect with the target's aspect ratio that fits
+// inside the coded plane (cover-crop). Aspect match → full coded plane.
+function computeCoverVisibleRect(
+    codedW: number, codedH: number,
+    targetW: number, targetH: number,
+): { x: number; y: number; width: number; height: number } {
+    const codedAspect = codedW / codedH;
+    const targetAspect = targetW / targetH;
+    let vw: number, vh: number;
+    if (Math.abs(codedAspect - targetAspect) < 1e-3) {
+        vw = codedW;
+        vh = codedH;
+    } else if (codedAspect > targetAspect) {
+        vh = codedH;
+        vw = Math.round(vh * targetAspect);
+    } else {
+        vw = codedW;
+        vh = Math.round(vw / targetAspect);
+    }
+    // VideoFrame visibleRect spec: x/y/width/height in coded pixel units,
+    // must be integer-aligned to subsampling (typically 2 for YUV).
+    const align = (n: number): number => n & ~1;
+    vw = align(vw);
+    vh = align(vh);
+    const x = align(Math.floor((codedW - vw) / 2));
+    const y = align(Math.floor((codedH - vh) / 2));
+    return { x, y, width: vw, height: vh };
 }
 
 function createSlot(owner: string): Slot {
