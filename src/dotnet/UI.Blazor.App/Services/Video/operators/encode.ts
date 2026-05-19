@@ -56,6 +56,14 @@ export interface EncodeOptions {
     // Bottom-first; length MUST equal bundle.layers.length.
     configs: readonly EncoderConfigPerLayer[];
     createEncoder: EncoderFactory;
+    // Bundle-level hang watchdog. If `Promise.allSettled` on a bundle's
+    // per-layer encode promises hasn't resolved within this budget, the
+    // operator throws — VideoRecorder.scheduleRecovery picks up the rejection
+    // and restarts the pipeline. One timer per bundle (not per layer); a
+    // hung HW encoder that emits neither output nor error is the failure
+    // mode this catches. Default 3000 ms covers steady-state (1 frame ~=
+    // 33 ms at 30 fps) plus first-frame warm-up; pass 0 to disable.
+    bundleTimeoutMs?: number;
 }
 
 // CapturedBundle -> EncodedBundle. Lazy-init one encoder per layer on
@@ -67,6 +75,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
 
     const configs = opts.configs.slice();
     const createEncoder = opts.createEncoder;
+    const bundleTimeoutMs = opts.bundleTimeoutMs ?? 3000;
     return source => {
         return from(impl());
 
@@ -136,7 +145,19 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         closeCapturedFrames(layerFrames);
                         throw e;
                     }
-                    const settled = await Promise.allSettled(promises);
+                    // Bundle-level watchdog: race Promise.allSettled against
+                    // a single timer. Detects a silently-hung HW encoder
+                    // that emits neither output nor error (would otherwise
+                    // deadlock the operator — upstream blocks on this
+                    // await, no encode call is ever resubmitted so the
+                    // adapter's queue-full backpressure never triggers).
+                    // One timer per BUNDLE — 3× fewer set/clear ops than
+                    // a per-layer setTimeout in the adapter.
+                    const settled = await raceWithTimeout(
+                        Promise.allSettled(promises),
+                        bundleTimeoutMs,
+                        bundle.index,
+                    );
                     let layerSumMs = 0;
                     let layerMaxMs = 0;
                     for (const d of layerDurations) {
@@ -273,4 +294,20 @@ function closeCapturedFrames(frames: readonly CapturedFrame[]): void {
 
 function closeEncodedFrame(frame: EncodedFrame): void {
     closeEncodedChunk(frame.chunk);
+}
+
+async function raceWithTimeout<T>(p: Promise<T>, timeoutMs: number, bundleIndex: number): Promise<T> {
+    if (timeoutMs <= 0)
+        return p;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    try {
+        return await new Promise<T>((resolve, reject) => {
+            timer = setTimeout(() => {
+                reject(new Error(`encode: bundle ${bundleIndex} hung — Promise.allSettled exceeded ${timeoutMs}ms`));
+            }, timeoutMs);
+            p.then(resolve, reject);
+        });
+    } finally {
+        if (timer !== null) clearTimeout(timer);
+    }
 }
