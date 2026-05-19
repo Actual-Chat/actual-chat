@@ -128,9 +128,14 @@ export function configureStreaming(opts: {
 
 function createEncoder(
     _session: SenderSession,
-    config: EncoderConfigPerLayer,
-    layerId: number,
+    _config: EncoderConfigPerLayer,
+    _layerId: number,
 ): AsyncVideoEncoder<EncodeInput, EncodedFrame> {
+    // `encodedWidth` / `encodedHeight` here are placeholders; the encode
+    // operator patches them along with layerId/sourceWidth/sourceHeight using
+    // the current per-layer config after each encode resolves. Anything
+    // closure-captured from the construction-time `_config` would be stale
+    // after EncoderPool reuses this encoder for a different layer.
     const buildOutput = (
         input: EncodeInput,
         chunk: EncodedVideoChunk,
@@ -140,37 +145,38 @@ function createEncoder(
         metadata,
         capturedAt: input.capturedAt,
         index: input.index,
-        // Patched by the encode operator after the per-layer encode resolves.
         dropTrace: [],
         layerId: 0,
         sourceWidth: 0,
         sourceHeight: 0,
-        encodedWidth: config.width,
-        encodedHeight: config.height,
+        encodedWidth: 0,
+        encodedHeight: 0,
         rotation: 0,
         stats: undefined as unknown as EncodedFrame['stats'],
     });
 
+    // Forward-ref + `tag` lookup: avoids stale closure values after pool
+    // reuse swaps this encoder onto a different layer. The owner
+    // (recorder-worker) updates `enc.tag` on every acquire+configure.
+    let enc: AsyncVideoEncoder<EncodeInput, EncodedFrame>;
     const onError = (e: unknown): void => {
         const msg = e instanceof Error ? e.message : String(e);
         const stack = e instanceof Error ? e.stack : undefined;
-        warnLog?.log(
-            `encoder error (layer=${layerId}, codec=${config.codec}, ${config.width}x${config.height}): ${msg}`,
-            stack ?? '');
+        const tag = enc?.tag || 'pre-configure';
+        warnLog?.log(`encoder error (${tag}): ${msg}`, stack ?? '');
     };
 
     // Per-encode setTimeout/clearTimeout churn was ~750ms / 30s on a 90
-    // enc/sec pipeline (3 layers × 30 fps). Both timeouts disabled here:
-    // the existing queue-full backpressure in CodecToAsyncAdapter.process
-    // and the WebCodecs `error` callback already cover the real failure
-    // modes. If the HW encoder hangs without emitting an error, frames
-    // pile up to maxInflight and the upstream encode operator rejects —
-    // VideoRecorder's scheduleRecovery picks it up.
-    return new AsyncVideoEncoder<EncodeInput, EncodedFrame>(
+    // enc/sec pipeline (3 layers × 30 fps). Adapter-level timeouts disabled
+    // here; the encode operator now applies a bundle-level watchdog (one
+    // timer per bundle instead of per layer) so silent encoder hangs are
+    // still detected without the per-layer timer churn.
+    enc = new AsyncVideoEncoder<EncodeInput, EncodedFrame>(
         buildOutput,
         onError,
         { maxInflight: 2, firstTimeoutMs: 0, timeoutMs: 0 },
     );
+    return enc;
 }
 
 // Defers `PushStream` startup until the first keyframe lands `init(format)`,

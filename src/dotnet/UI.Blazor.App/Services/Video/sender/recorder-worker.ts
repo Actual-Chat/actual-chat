@@ -202,6 +202,10 @@ export const recorderWorkerImpl: RecorderWorker = {
                 if (category === 'h264')
                     encoderConfig.avc = { format: 'avc' };
                 handle.encoder.configure(encoderConfig);
+                // Stamp the encoder's diagnostic tag with current layer + dims
+                // so the onError log reports the encoder's CURRENT use, not
+                // the layer it was first constructed for (pool reuse mismatch).
+                handle.encoder.tag = `layer=${layerId}, codec=${layerCfg.codec}, ${layerCfg.width}x${layerCfg.height}`;
             } catch (e) {
                 // Release back to pool so it can be parked or discarded by canReuse check.
                 try { handle.release(); } catch { /* ignore */ }

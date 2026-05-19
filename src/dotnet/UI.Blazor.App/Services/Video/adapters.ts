@@ -275,6 +275,12 @@ export class AsyncVideoEncoder<
 > extends CodecToAsyncAdapter<TIn, TOut, EncoderOutput> {
     // Owner manages configure/flush/reset/state; wrapper owns only encode + output wiring.
     public readonly encoder: VideoEncoder;
+    // Owner-mutable label for diagnostic logs. Encoders may be reused across
+    // layers via `EncoderPool` (category-only matching) and the original
+    // construction-time closure values become stale — the owner updates this
+    // tag on acquire/configure so error logs reflect the encoder's CURRENT
+    // layer/config rather than its first-ever one.
+    public tag = '';
 
     private readonly buildEncodedOutput: (
         input: TIn,
