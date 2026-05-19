@@ -49,7 +49,7 @@ import {
     detectSupportedCodecs,
     getDefaultCodec,
     getCodecCategory,
-    isEncoderConfigSupportedAtTop,
+    probeEncoder,
     excludeEncoderCodec,
     isEncoderCodecExcluded,
     isEncoderCodecProven,
@@ -1736,24 +1736,20 @@ export class VideoRecorder {
         audienceCodecs: string[] | undefined,
         ladder: LayerConfig[],
     ): Promise<string | null> {
-        // Config-feature check only: VideoEncoder.isConfigSupported() is
-        // a zero-cost browser capability query (no HW encoder instantiated).
-        // We no longer run a live encoding probe here — those burned HW
-        // encoder slots on each fresh page load and made the NVENC slot
-        // exhaustion problem worse. If the chosen codec turns out to be too
-        // slow at runtime, the existing path reacts:
-        //   * encoder configure failure → ENCODER_INIT_FAILED_PREFIX in encode.ts
-        //   * repickCodecAndRestart excludes the failed category and restarts
-        //   * QC's encodeRatioEma signal triggers demote / codec switch
+        // Live encoder probe at top-layer dims. Result cached per
+        // (codec, dims, layerCount) so repeated picks (post-exclusion, restart)
+        // don't burn fresh HW slots. On FAIL probe disposes the encoder in
+        // finally — failed codec category gets excluded and the next category
+        // is probed without leaking NVENC sessions.
         for (const codecInfo of this.listCodecCandidatesByEfficiency(supportedCodecs, audienceCodecs)) {
-            const top = this.withCodecBitrates(ladder, codecInfo.codec)[ladder.length - 1];
-            const supported = await isEncoderConfigSupportedAtTop(
-                codecInfo.codec, top.width, top.height, top.bitrateKbps);
-            if (supported) {
-                infoLog?.log(`pickSimulcastCodec: ${codecInfo.category} (${codecInfo.codec}) chosen at ${top.width}x${top.height} (${ladder.length} layer(s))`);
+            const layersWithBitrates = this.withCodecBitrates(ladder, codecInfo.codec);
+            const result = await probeEncoder(codecInfo.codec, layersWithBitrates);
+            if (result.supported) {
+                const top = layersWithBitrates[layersWithBitrates.length - 1];
+                infoLog?.log(`pickSimulcastCodec: ${codecInfo.category} (${codecInfo.codec}) PASS @ ${top.width}x${top.height} (${ladder.length} layer(s)), median=${result.medianEncodeMs.toFixed(1)}ms`);
                 return codecInfo.codec;
             }
-            infoLog?.log(`pickSimulcastCodec: ${codecInfo.category} (${codecInfo.codec}) UNSUPPORTED at ${top.width}x${top.height}`);
+            infoLog?.log(`pickSimulcastCodec: ${codecInfo.category} (${codecInfo.codec}) FAIL stage=${result.failedStage}`);
         }
         return null;
     }

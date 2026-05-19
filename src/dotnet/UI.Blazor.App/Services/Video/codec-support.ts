@@ -215,25 +215,76 @@ async function isCodecSupported(
     }
 }
 
-// Pure config-feature check at the chosen ladder's top dimensions. Does NOT
-// instantiate a real VideoEncoder — `VideoEncoder.isConfigSupported()` is a
-// browser-level capability query that costs zero HW encoder slots. Used by
-// the simulcast codec picker to validate the top-layer config before
-// committing. If a codec turns out to be too slow at runtime, the existing
-// encoder-error → repickCodecAndRestart → excludeEncoderCodec chain reacts.
-export async function isEncoderConfigSupportedAtTop(
+export interface EncoderProbeResult {
+    supported: boolean;
+    medianEncodeMs: number;
+    failedStage: 'configure' | 'encode' | null;
+}
+
+interface ProbeLayer { width: number; height: number; bitrateKbps: number }
+
+// Cached per (codec, top-layer-dims, layer-count). Probe exercises only the top
+// tier; layer count stays in the key for clean future invalidation if multi-
+// encoder probing returns. Ladders are bottom-first.
+const encoderProbeCache = new Map<string, Promise<EncoderProbeResult>>();
+
+// Single-encoder probe of the top layer. Budget defaults to 33ms (30fps frame
+// interval) — a generous ceiling. Borderline codecs pass here and rely on
+// runtime backpressure (step-down → pickFallbackCodec → switchCodec) to recover.
+// frameCount=8: 3 warmup (cold-start, first-keyframe init) + 5 steady-state.
+//
+// On FAIL the encoder is closed in finally — never returned to any pool —
+// so the failed codec category can be excluded and the next group tried
+// without leaking HW encoder slots.
+export function probeEncoder(
     codec: string,
-    topWidth: number,
-    topHeight: number,
-    topBitrateKbps: number,
-): Promise<boolean> {
+    layers: readonly ProbeLayer[],
+    frameCount = 8,
+    budgetMs = 33,
+): Promise<EncoderProbeResult> {
+    if (layers.length === 0)
+        return Promise.resolve({ supported: false, medianEncodeMs: 0, failedStage: 'configure' });
+    const top = layers[layers.length - 1];
+    const key = `${codec}@${top.width}x${top.height}×${layers.length}`;
+    let cached = encoderProbeCache.get(key);
+    if (!cached) {
+        cached = probeEncoderUncached(codec, layers, frameCount, budgetMs);
+        encoderProbeCache.set(key, cached);
+    }
+    return cached;
+}
+
+async function probeEncoderUncached(
+    codec: string,
+    layers: readonly ProbeLayer[],
+    frameCount: number,
+    budgetMs: number,
+): Promise<EncoderProbeResult> {
+    // Probe only the top-tier encoder. Spinning up N concurrent encoders here
+    // creates cold-start contention not present at runtime (encoders warm,
+    // submission paced), producing false-fails. Top tier dominates simulcast cost.
+    if (layers.length === 0)
+        return { supported: false, medianEncodeMs: 0, failedStage: 'configure' };
+    const category = getCodecCategory(codec);
+    const top = layers[layers.length - 1];
+    let pendingResolver: (() => void) | null = null;
+    let encoder: VideoEncoder | null = null;
+    let encoderError: unknown = null;
+
+    const resolvePending = (): void => {
+        const resolve = pendingResolver;
+        if (resolve) {
+            pendingResolver = null;
+            resolve();
+        }
+    };
+
     try {
-        const category = getCodecCategory(codec);
         const config: VideoEncoderConfig = {
             codec,
-            width: topWidth,
-            height: topHeight,
-            bitrate: kbpsToBitsPerSecond(topBitrateKbps),
+            width: top.width,
+            height: top.height,
+            bitrate: kbpsToBitsPerSecond(top.bitrateKbps),
             framerate: 30,
             latencyMode: 'realtime',
             hardwareAcceleration: 'prefer-hardware',
@@ -241,10 +292,77 @@ export async function isEncoderConfigSupportedAtTop(
         if (category === 'h264')
             config.avc = { format: 'avc' };
         const support = await VideoEncoder.isConfigSupported(config);
-        return !!support.supported;
-    } catch (e) {
-        warnLog?.log(`isEncoderConfigSupportedAtTop: isConfigSupported threw for ${codec}`, e);
-        return false;
+        if (!support.supported) {
+            debugLog?.log(`probeEncoder: configure fail for ${codec} at ${top.width}x${top.height}`);
+            return { supported: false, medianEncodeMs: 0, failedStage: 'configure' };
+        }
+        encoder = new VideoEncoder({
+            output: () => resolvePending(),
+            // Hardware encoders can fail asynchronously (NVENC contention,
+            // VideoToolbox init quirks). Capture and unblock the pending
+            // wait so the probe fails fast instead of hanging on `await wait`.
+            error: e => {
+                encoderError = e;
+                debugLog?.log(`probeEncoder: encoder error for ${codec}`, e);
+                resolvePending();
+            },
+        });
+        encoder.configure(config);
+
+        const srcW = top.width;
+        const srcH = top.height;
+        const canvas = new OffscreenCanvas(srcW, srcH);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            warnLog?.log('probeEncoder: 2D context unavailable on OffscreenCanvas');
+            return { supported: false, medianEncodeMs: 0, failedStage: 'configure' };
+        }
+
+        const frameDurationUs = Math.round(1_000_000 / 30);
+        const timings: number[] = [];
+
+        for (let f = 0; f < frameCount; f++) {
+            ctx.fillStyle = `rgb(${(f * 31) & 0xff}, ${(f * 61) & 0xff}, ${(f * 127) & 0xff})`;
+            ctx.fillRect(0, 0, srcW, srcH);
+            const srcFrame = new VideoFrame(canvas, { timestamp: f * frameDurationUs });
+
+            const wait = new Promise<void>(resolve => {
+                pendingResolver = resolve;
+            });
+            const t0 = performance.now();
+            try {
+                encoder.encode(srcFrame, { keyFrame: f === 0 });
+            } catch (e) {
+                srcFrame.close();
+                errorLog?.log(`probeEncoder encode threw`, e);
+                return { supported: false, medianEncodeMs: 0, failedStage: 'encode' };
+            }
+            srcFrame.close();
+            await wait;
+            if (encoderError)
+                return { supported: false, medianEncodeMs: 0, failedStage: 'encode' };
+            timings.push(performance.now() - t0);
+        }
+
+        // Discard cold-start samples: first frame is a keyframe and first 1-2
+        // pay codec init costs that don't repeat at steady state. Without this,
+        // HW-capable machines fail the probe due to warmup-skewed median.
+        const warmupCount = frameCount >= 6 ? 3 : (frameCount >= 3 ? 2 : 0);
+        const steadyTimings = timings.slice(warmupCount);
+        steadyTimings.sort((a, b) => a - b);
+        const median = steadyTimings[Math.floor(steadyTimings.length / 2)];
+        const supported = median <= budgetMs;
+        debugLog?.log(`probeEncoder: ${codec} (top-layer solo) @ ${top.width}x${top.height} — median=${median.toFixed(1)}ms (warmup=${warmupCount}, steady=${steadyTimings.length}), budget=${budgetMs}ms, ${supported ? 'PASS' : 'FAIL'}`);
+        return { supported, medianEncodeMs: median, failedStage: supported ? null : 'encode' };
+    } catch (error) {
+        errorLog?.log('probeEncoder: unexpected error', error);
+        return { supported: false, medianEncodeMs: 0, failedStage: 'configure' };
+    } finally {
+        // Always close — probe never parks. Failed codec must release the HW
+        // slot so the next codec category can claim it.
+        if (encoder) {
+            try { encoder.close(); } catch { /* already closed */ }
+        }
     }
 }
 
