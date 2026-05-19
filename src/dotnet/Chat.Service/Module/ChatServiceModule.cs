@@ -154,7 +154,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
         if (Settings.IsRetranscriptionEnabled) {
             services.AddSingleton(new OpenAITranscriber.Options {
-                ApiKey = Settings.Retranscription.OpenAIKey,
+                ApiKey = Settings.Retranscription.OpenAIKey.NullIfEmpty() ?? Settings.OpenAIKey,
                 Model = Settings.Retranscription.OpenAIModel,
             });
             services.AddSingleton<IRefineTranscriber>(c => new OpenAITranscriber(c.GetRequiredService<OpenAITranscriber.Options>(), c));
