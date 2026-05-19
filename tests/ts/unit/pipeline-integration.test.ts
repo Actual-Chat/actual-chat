@@ -356,8 +356,8 @@ describe('video pipeline integration', () => {
             attachSourceDims(),
             forceKeyframeOnDimChange(),
             dropDimMismatch({ getExpectedDims: () => encDims }),
-            normalizeFrame({ target: encDims, isCamera: false, isFrontCamera: false, isIos: false, concurrency: 1 }),
-            spatialize({ ladder: [encDims], concurrency: 1 }),
+            normalizeFrame({ target: encDims, isCamera: false, isFrontCamera: false, isIos: false }),
+            spatialize({ ladder: [encDims] }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
@@ -413,12 +413,8 @@ describe('video pipeline integration', () => {
             attachSourceDims(),
             forceKeyframeOnDimChange(),
             dropDimMismatch({ getExpectedDims: () => expectedSourceDims }),
-            // concurrency: 1 keeps the source-pull cadence serial in the
-            // mock-clock environment used by this E2E (otherwise multiple
-            // frames stamp the same mockPerfMs before sender.afterSend
-            // advances it, collapsing distinct source offsets).
-            normalizeFrame({ target: ladder[ladder.length - 1], isCamera: false, isFrontCamera: false, isIos: false, concurrency: 1 }),
-            spatialize({ ladder, concurrency: 1 }),
+            normalizeFrame({ target: ladder[ladder.length - 1], isCamera: false, isFrontCamera: false, isIos: false }),
+            spatialize({ ladder }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
@@ -588,8 +584,8 @@ describe('video pipeline integration', () => {
             attachSourceDims(),
             forceKeyframeOnDimChange(),
             dropDimMismatch({ getExpectedDims: () => encDims }),
-            normalizeFrame({ target: encDims, isCamera: false, isFrontCamera: false, isIos: false, concurrency: 1 }),
-            spatialize({ ladder: [encDims], concurrency: 1 }),
+            normalizeFrame({ target: encDims, isCamera: false, isFrontCamera: false, isIos: false }),
+            spatialize({ ladder: [encDims] }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
@@ -685,8 +681,8 @@ describe('video pipeline integration', () => {
                 attachSourceDims(),
                 forceKeyframeOnDimChange(),
                 dropDimMismatch({ getExpectedDims: () => encDims }),
-                normalizeFrame({ target: encDims, isCamera: false, isFrontCamera: false, isIos: false, concurrency: 1 }),
-                spatialize({ ladder: [encDims], concurrency: 1 }),
+                normalizeFrame({ target: encDims, isCamera: false, isFrontCamera: false, isIos: false }),
+                spatialize({ ladder: [encDims] }),
                 applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
             );
             const senderPipe = pipe(
