@@ -80,10 +80,13 @@ public sealed partial class VideoQualityUI
         }
 
         // BWE / cap evaluation is global across kinds — if any kind is
-        // still in restart cooldown, skip this tick entirely.
+        // still in restart cooldown, skip this tick entirely. Decrement
+        // ALL positive cooldown entries (not just the current `kind`):
+        // if the restarted kind stops producing stats — or simply isn't
+        // the one this callback is for — its entry would otherwise stay
+        // pinned forever and lock outbound QC out on every subsequent tick.
         if (IsAnyKindInRestartCooldown()) {
-            if (_restartCooldownByKind.TryGetValue(kind, out var remaining) && remaining > 0)
-                _restartCooldownByKind[kind] = remaining - 1;
+            DecrementAndPruneRestartCooldowns();
             _lastRecordingReasonByKind[kind] = RecordingQualityReason.ColdStartTick;
             return;
         }
@@ -106,6 +109,26 @@ public sealed partial class VideoQualityUI
                 return true;
         }
         return false;
+    }
+
+    private void DecrementAndPruneRestartCooldowns()
+    {
+        List<VideoSourceKind>? toRemove = null;
+        foreach (var (k, ticks) in _restartCooldownByKind) {
+            if (ticks <= 0)
+                continue;
+            var next = ticks - 1;
+            if (next <= 0) {
+                toRemove ??= new List<VideoSourceKind>(1);
+                toRemove.Add(k);
+            }
+            else
+                _restartCooldownByKind[k] = next;
+        }
+        if (toRemove != null) {
+            foreach (var k in toRemove)
+                _restartCooldownByKind.Remove(k);
+        }
     }
 
     public RecordingQualitySnapshot GetRecordingSnapshot(VideoSourceKind kind)
