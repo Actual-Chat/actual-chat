@@ -114,11 +114,12 @@ public class MentionIndexUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
 
     private async Task<List<MentionCandidate>> BuildChatCandidates(CancellationToken cancellationToken)
     {
-        var contactIds = await Contacts.ListIds(Session, null, cancellationToken).ConfigureAwait(false);
-        var contactsLoad = await contactIds
-            .Select(id => Contacts.Get(Session, id, cancellationToken))
-            .Collect(cancellationToken)
-            .ConfigureAwait(false);
+        // Global contacts (group chats, peer chats, etc.) live under PlaceId == null.
+        // Place-scoped contacts (the place's root + its public chats) live under each PlaceId.
+        // Mirror ChatListUI.ListAllUnorderedRaw — iterate { null, ...places }.
+        var placeIds = await Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
+        var scopes = new List<PlaceId?> { null };
+        scopes.AddRange(placeIds);
 
         var placeTitleCache = new Dictionary<PlaceId, string?>();
         async ValueTask<string?> GetPlaceTitle(PlaceId placeId)
@@ -132,52 +133,92 @@ public class MentionIndexUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
         }
 
         var result = new List<MentionCandidate>();
-        foreach (var contact in contactsLoad) {
-            if (contact is null || contact.Kind == ContactKind.User || contact.State == ContactState.Blocked)
-                continue;
-            var chat = contact.Chat;
-            if (chat is null || chat.Title.IsNullOrEmpty())
-                continue;
+        var seen = new HashSet<MentionId>();
 
-            var chatPicture = chat.Picture?.ToPicture()
-                ?? new Picture(null, null, chat.Id.Value);
+        // Surface each place itself as a PlaceMention candidate. The backend strips
+        // place root chats from contact listings (ChatsBackend.GetPublicChatIdsFor),
+        // so we need to add them explicitly using the user's known place ids.
+        foreach (var placeId in placeIds) {
+            var mentionId = MentionId.NewPlace(placeId);
+            if (!seen.Add(mentionId))
+                continue;
+            var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
+            var placeTitle = place?.Title.NullIfEmpty();
+            if (placeTitle is null)
+                continue;
+            placeTitleCache[placeId] = placeTitle;
+            var picture = place?.Picture?.ToPicture() ?? new Picture(null, null, placeId.Value);
+            result.Add(new MentionCandidate(
+                mentionId,
+                MentionCandidateKind.Chat,
+                placeTitle,
+                null,
+                picture,
+                MentionFilter.Tokenize(placeTitle)) {
+                PlaceId = placeId,
+                PlaceTitle = placeTitle,
+            });
+        }
 
-            if (contact.Kind == ContactKind.Place) {
-                // Place contact: a contact pointing to a place's root chat.
-                // Surface it as a PlaceMention so place links go to the place's default chat.
-                if (chat.Id is not PlaceChatId placeChatId)
+        foreach (var scope in scopes) {
+            var contactIds = await Contacts.ListIds(Session, scope, cancellationToken).ConfigureAwait(false);
+            var contactsLoad = await contactIds
+                .Select(id => Contacts.Get(Session, id, cancellationToken))
+                .Collect(cancellationToken)
+                .ConfigureAwait(false);
+
+            foreach (var contact in contactsLoad) {
+                if (contact is null || contact.Kind == ContactKind.User || contact.State == ContactState.Blocked)
                     continue;
-                var placeId = placeChatId.PlaceId;
+                var chat = contact.Chat;
+                if (chat is null || chat.Title.IsNullOrEmpty())
+                    continue;
+
+                var chatPicture = chat.Picture?.ToPicture()
+                    ?? new Picture(null, null, chat.Id.Value);
+
+                // A place's root chat (PlaceChatId.IsRoot) IS the place — surface as PlaceMention
+                // so descriptions read "place" and the link goes to the place's default chat.
+                if (chat.Id is PlaceChatId rootChatId && rootChatId.IsRoot) {
+                    var placeId = rootChatId.PlaceId;
+                    var placeTitle = await GetPlaceTitle(placeId).ConfigureAwait(false) ?? chat.Title;
+                    var mentionId = MentionId.NewPlace(placeId);
+                    if (!seen.Add(mentionId))
+                        continue;
+                    result.Add(new MentionCandidate(
+                        mentionId,
+                        MentionCandidateKind.Chat,
+                        placeTitle,
+                        null,
+                        chatPicture,
+                        MentionFilter.Tokenize(placeTitle)) {
+                        PlaceId = placeId,
+                        PlaceTitle = placeTitle,
+                    });
+                    continue;
+                }
+
+                string? placeTitleForSuffix = null;
+                PlaceId? candidatePlaceId = null;
+                if (chat.Id is PlaceChatId pc) {
+                    candidatePlaceId = pc.PlaceId;
+                    placeTitleForSuffix = await GetPlaceTitle(pc.PlaceId).ConfigureAwait(false);
+                }
+
+                var chatMentionId = MentionId.NewChat(chat.Id);
+                if (!seen.Add(chatMentionId))
+                    continue;
                 result.Add(new MentionCandidate(
-                    MentionId.NewPlace(placeId),
+                    chatMentionId,
                     MentionCandidateKind.Chat,
                     chat.Title,
                     null,
                     chatPicture,
                     MentionFilter.Tokenize(chat.Title)) {
-                    PlaceId = placeId,
-                    PlaceTitle = chat.Title,
+                    PlaceId = candidatePlaceId,
+                    PlaceTitle = placeTitleForSuffix,
                 });
-                continue;
             }
-
-            string? placeTitleForSuffix = null;
-            PlaceId? candidatePlaceId = null;
-            if (chat.Id is PlaceChatId pc) {
-                candidatePlaceId = pc.PlaceId;
-                placeTitleForSuffix = await GetPlaceTitle(pc.PlaceId).ConfigureAwait(false);
-            }
-
-            result.Add(new MentionCandidate(
-                MentionId.NewChat(chat.Id),
-                MentionCandidateKind.Chat,
-                chat.Title,
-                null,
-                chatPicture,
-                MentionFilter.Tokenize(chat.Title)) {
-                PlaceId = candidatePlaceId,
-                PlaceTitle = placeTitleForSuffix,
-            });
         }
         return result;
     }
