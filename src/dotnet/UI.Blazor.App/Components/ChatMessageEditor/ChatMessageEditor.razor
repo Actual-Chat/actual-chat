@@ -26,7 +26,7 @@
 <OnUIEvent TEvent="@EmojiButtonClickEvent" Handler="OnEmojiButtonClickEvent" />
 <div @ref="Ref" class="chat-message-editor has-safe-area-bottom">
     <Hotkey Keys="ctrl+e" AriaLabel="Focus message editor" OnTrigger="OnFocusEditorRequested"/>
-    <input class="attachment-web-file-picker" type="file" multiple/>
+    <input class="attachment-web-file-picker" type="file" multiple tabindex="-1"/>
     <MentionListManager @key="@MentionListManagerKey">
         @if (ScreenSize.IsWide()) {
             @RenderAttachmentListView()

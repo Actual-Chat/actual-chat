@@ -3,7 +3,7 @@
 @inherits ComponentBase<UIHub>
 @implements IAsyncDisposable
 
-<div @ref="ElementRef" class="@_class @Class" data-side-nav="@_attribute">
+<div @ref="ElementRef" class="@_class @Class" data-side-nav="@_attribute" inert="@(!IsOpen)">
     @ChildContent
 </div>
 

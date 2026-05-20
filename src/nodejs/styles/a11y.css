@@ -1,0 +1,37 @@
+/* Keyboard accessibility — focus ring and related styles.
+   Kept out of tailwind.css's @layer so Tailwind never tree-shakes the
+   body.keyboard-focus rules: that class is referenced only from
+   keyboard-ui.ts, which Tailwind's content scanner does not read. */
+
+/* Suppress the default browser outline; the keyboard ring below replaces it. */
+*:focus {
+    outline: none;
+}
+
+/* Focus ring — shown only while navigating by keyboard. body.keyboard-focus
+   is toggled by keyboard-ui.ts: set on Tab/arrow nav, cleared on pointer
+   input and on Escape. */
+body.keyboard-focus *:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* Inset the ring where an outer one gets clipped by a tight container. */
+body.keyboard-focus [role="tab"]:focus,
+body.keyboard-focus [role="menuitem"]:focus,
+body.keyboard-focus [role="option"]:focus,
+body.keyboard-focus summary:focus {
+    outline-offset: -2px;
+}
+
+/* No ring on text-entry fields — the blinking caret already shows focus. */
+body.keyboard-focus input:focus,
+body.keyboard-focus textarea:focus,
+body.keyboard-focus [contenteditable]:focus {
+    outline: none;
+}
+
+/* No ring on focus-trap anchors — invisible, zero-height Tab-cycling sentinels. */
+body.keyboard-focus .modal-focus-trap-anchor:focus {
+    outline: none;
+}

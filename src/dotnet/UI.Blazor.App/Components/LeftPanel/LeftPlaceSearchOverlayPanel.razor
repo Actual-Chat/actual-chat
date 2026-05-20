@@ -6,7 +6,7 @@
     _shouldRenderContent |= m.IsOpen;
 }
 
-<div class="left-search-overlay-panel left-place-search-overlay-panel @cls" @onmousedown:preventDefault="true">
+<div class="left-search-overlay-panel left-place-search-overlay-panel @cls" inert="@(!m.IsOpen)" @onmousedown:preventDefault="true">
     <ErrorBarrier Name="LeftPanelContentOverlay" Kind="@ErrorBarrierKind.Full">
         @if (_shouldRenderContent) {
             @if (m.EnableIncompleteUI) {
