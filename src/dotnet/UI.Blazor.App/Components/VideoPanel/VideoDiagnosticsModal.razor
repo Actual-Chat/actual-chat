@@ -54,7 +54,10 @@
                 var hasOutbound = m.OwnSourceKinds.Count > 0;
                 var headerOnClick = hasOutbound ? OnToggleOwnStreamingDetails : (Action)(() => { });
             }
-            <div class="diag-section-header @(hasOutbound ? "diag-clickable" : "")" @onclick="@headerOnClick">
+            <div class="diag-section-header @(hasOutbound ? "diag-clickable" : "")"
+                 role="@(hasOutbound ? "button" : null)"
+                 tabindex="@(hasOutbound ? 0 : (int?)null)"
+                 @onclick="@headerOnClick">
                 Streams
                 @if (m.OwnSourceKinds.Count > 1) {
                     <span class="diag-badge">@m.OwnSourceKinds.Count</span>
@@ -139,7 +142,7 @@
 
                                     @if (_throughputDelta.TryGetValue(throughputKey, out var outDelta)) {
                                         var isThroughputExpanded = _throughputExpanded.Contains(throughputKey);
-                                        <div class="diag-row diag-clickable" @onclick="@(() => OnToggleThroughputExpanded(throughputKey))">
+                                        <div class="diag-row diag-clickable" role="button" tabindex="0" @onclick="@(() => OnToggleThroughputExpanded(throughputKey))">
                                             <span class="diag-label">Throughput</span>
                                             <span class="diag-value">
                                                 @($"{outDelta.Fps:0} bundles/s · {outDelta.Kbps:0} kbps")
@@ -434,7 +437,7 @@
 
                         @if (_throughputDelta.TryGetValue(sid, out var inDelta)) {
                             var isExpanded = _throughputExpanded.Contains(sid);
-                            <div class="diag-row diag-clickable" @onclick="@(() => OnToggleThroughputExpanded(sid))">
+                            <div class="diag-row diag-clickable" role="button" tabindex="0" @onclick="@(() => OnToggleThroughputExpanded(sid))">
                                 <span class="diag-label">Throughput</span>
                                 <span class="diag-value">
                                     @($"{inDelta.Fps:0} fps · {inDelta.Kbps:0} kbps")

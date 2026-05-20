@@ -8,9 +8,13 @@
     HasCloseButton="true"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
     <Body>
-        <div class="time-zone-list">
+        <div class="time-zone-list" role="listbox">
             @foreach (var timeZone in ModalModel.TimeZones) {
-                <div class="time-zone-item @(timeZone.Id == _selectedTimeZoneId ? "selected" : "")"
+                var isSelected = timeZone.Id == _selectedTimeZoneId;
+                <div class="time-zone-item @(isSelected ? "selected" : "")"
+                     role="option"
+                     tabindex="0"
+                     aria-selected="@(isSelected ? "true" : "false")"
                      @onclick="@(() => OnTimeZoneSelected(timeZone))">
                     @timeZone.IanaName
                 </div>

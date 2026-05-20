@@ -18,12 +18,14 @@
         <div class="language-btn-group">
             <div class="c-title">
                 Translate to:
-                <span @onclick="@OnOpenLanguageSettings" class="c-edit"> (setup)</span>
+                <span @onclick="@OnOpenLanguageSettings" class="c-edit" role="button" tabindex="0"> (setup)</span>
             </div>
-            <div class="c-languages">
+            <div class="c-languages" role="listbox">
                 @foreach (var l in m.Languages) {
                     <button
                         class="@(l == m.Selected ? "active" : "")"
+                        role="option"
+                        aria-selected="@((l == m.Selected) ? "true" : "false")"
                         @onclick="@(() => OnClick(l))">
                         @l.Title
                     </button>

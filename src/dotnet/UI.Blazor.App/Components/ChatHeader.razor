@@ -19,7 +19,7 @@
             <i class="icon-arrow-left"></i>
         </HeaderButton>
     }
-    <div class="chat-header-center" @onclick="@OnToggleRightPanelClick">
+    <div class="chat-header-center" role="button" tabindex="0" @onclick="@OnToggleRightPanelClick">
         @if (chat is not null) {
             <ChatIcon Chat="@chat"/>
             <div class="chat-header-title">

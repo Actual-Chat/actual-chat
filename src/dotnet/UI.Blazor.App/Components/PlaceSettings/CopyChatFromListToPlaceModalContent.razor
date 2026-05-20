@@ -5,10 +5,12 @@
     var m = State.Value;
 }
 
-<div class="c-chat-list">
+<div class="c-chat-list" role="listbox">
     @foreach (var contact in m) {
         @if (contact != null) {
             <div class="c-chat"
+                 role="option"
+                 tabindex="0"
                  @onclick="@(() => OnChatClick.InvokeAsync(contact.Chat.Id))">
                 <div class="c-chat-avatar">
                     <ChatIcon Chat="@contact.Chat"/>

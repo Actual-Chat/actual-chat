@@ -24,7 +24,7 @@
         return;
     }
     <FormBlock>
-        <div class="avatar-select">
+        <div class="avatar-select" role="listbox">
             @if (mode == Mode.Change) {
                 <div class="c-hint">
                     Change your avatar in this chat:
@@ -39,7 +39,7 @@
                 </div>
             }
             @foreach (var avatar in m.Avatars) {
-                <Tile Click="_ => OnAvatarSelected(avatar)" Class="avatar-select-item">
+                <Tile Role="option" Click="_ => OnAvatarSelected(avatar)" Class="avatar-select-item">
                     <TileItem>
                         <Icon>
                             <AvatarCard Avatar="@avatar"/>
