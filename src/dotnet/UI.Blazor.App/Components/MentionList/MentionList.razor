@@ -46,8 +46,15 @@
                         }
                     </span>
                 } else {
-                    var iconUrl = UrlMapper.IconUrl(GetIconQuery(mention));
-                    <image-skeleton class="flex-none w-7 h-7 rounded-full" src="@iconUrl"/>
+                    var target = mention.MentionId.Target;
+                    var avatarKey = mention.Picture.AvatarKey.NullIfEmpty() ?? mention.MentionId.Value;
+                    var avatarKind = target is ChatId or PlaceId ? AvatarKind.Marble : AvatarKind.Beam;
+                    <Pic
+                        Title="@mention.SearchMatch.Text"
+                        Picture="@mention.Picture"
+                        Size="SquareSize.Size7"
+                        AvatarKind="@avatarKind"
+                        AvatarKey="@avatarKey"/>
                 }
                 <div class="c-center">
                     <SearchMatchHighlighter Match="@mention.SearchMatch"/>
@@ -165,23 +172,6 @@
             UserId or AuthorId => mention.IsChatMember ? null : "not in this chat",
             _ => null,
         };
-    }
-
-    private static IconQuery GetIconQuery(MentionSearchResult mention) {
-        var picture = mention.Picture;
-        var target = mention.MentionId.Target;
-        // Marble for chats/places (matches the chat-list rendering),
-        // Beam for users/everyone else.
-        var avatarKind = target is ChatId or PlaceId
-            ? AvatarKind.Marble
-            : AvatarKind.Beam;
-        var avatarKey = picture.AvatarKey.NullIfEmpty() ?? mention.MentionId.Value;
-        return new IconQuery(picture, new AvatarQuery {
-            Kind = avatarKind,
-            Key = avatarKey,
-            Format = AvatarFormat.Png,
-            Size = 128,
-        });
     }
 
     private MentionSearchResult? FixSelection(MentionSearchResult? selection, MentionSearchResult[] mentions) {
