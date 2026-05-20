@@ -258,6 +258,17 @@
 
             chatId ??= Constants.Chat.AnnouncementsChatId;
         }
+
+        // A place's root chat isn't navigable — redirect to the place's welcome chat.
+        if (chatId is PlaceChatId { IsRoot: true } rootChatId) {
+            var welcomeChatId = await Places.GetWelcomeChatId(Session, rootChatId.PlaceId, CancellationToken.None);
+            if (welcomeChatId is not null) {
+                _routeState.Value = new RouteState(RouteResult.Redirect, RouteResult.Redirect);
+                await Hub.History.NavigateTo(Links.Chat(welcomeChatId), true);
+                return;
+            }
+        }
+
         var fixedRoute = chatId is null ? parsedRoute : new RouteResult(chatId);
         _routeState.Value = new RouteState(parsedRoute, fixedRoute);
         ChatUI.SelectChatOnNavigation(chatId);

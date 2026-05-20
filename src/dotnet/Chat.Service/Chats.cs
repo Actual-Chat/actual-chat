@@ -355,6 +355,7 @@ public partial class Chats(IServiceProvider services) : IChats
 
         var (session, chatId, localId, text, repliedEntryLid) =
             (command.Session, command.ChatId, command.LocalId, command.Text, command.RepliedEntryLid);
+        RequireNotPlaceRootChat(chatId);
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
@@ -471,6 +472,7 @@ public partial class Chats(IServiceProvider services) : IChats
             return; // It just spawns other commands, so nothing to do here
 
         var (session, chatId, localId) = command;
+        RequireNotPlaceRootChat(chatId);
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
@@ -506,6 +508,7 @@ public partial class Chats(IServiceProvider services) : IChats
             return; // It just spawns other commands, so nothing to do here
 
         var (session, chatId, localIds) = command;
+        RequireNotPlaceRootChat(chatId);
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
@@ -991,6 +994,17 @@ public partial class Chats(IServiceProvider services) : IChats
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         return account.Id;
+    }
+
+    // A place's root chat only carries place-level system entries (member changes, etc.).
+    // User messages must never land there — it's the source of inherited place permissions,
+    // so this can't be enforced via permissions and has to be an explicit backend check.
+    // System entries bypass this path entirely (they go through ChatsBackend directly).
+    private static void RequireNotPlaceRootChat(ChatId chatId)
+    {
+        if (chatId is PlaceChatId { IsRoot: true })
+            throw StandardError.Constraint(
+                "A place's root chat can't hold messages — post to one of the place's chats instead.");
     }
 
     private async Task RemoveTextEntry(
