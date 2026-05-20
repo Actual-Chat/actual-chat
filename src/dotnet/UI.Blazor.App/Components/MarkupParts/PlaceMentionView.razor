@@ -2,9 +2,22 @@
 @inherits MarkupViewBase<PlaceMention>
 @{
     var name = Markup.Place?.Title.NullIfEmpty() ?? Markup.NameOrNotAvailable;
-    var url = Links.Chat(Markup.PlaceId.RootChatId).Value;
 }
 
-<a href="@url" class="mention-markup mention-markup-chat mention-markup-valid cursor-pointer">
+<a href="@_url" class="mention-markup mention-markup-chat mention-markup-valid cursor-pointer">
     <div class="truncate">"@name"</div>
 </a>
+
+@code {
+    // A place link must point at the place's welcome chat, never its root chat.
+    private string _url = "";
+
+    protected override void OnParametersSet()
+        => _url = Links.PlaceInfo(Markup.PlaceId).Value;
+
+    protected override async Task OnParametersSetAsync() {
+        var welcomeChatId = await Hub.Places.GetWelcomeChatId(Session, Markup.PlaceId, default);
+        if (welcomeChatId is not null)
+            _url = Links.Chat(welcomeChatId).Value;
+    }
+}
