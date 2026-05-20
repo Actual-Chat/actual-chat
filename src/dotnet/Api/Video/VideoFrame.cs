@@ -77,6 +77,14 @@ public sealed partial record VideoFrame : MediaFrame
     [DataMember(Order = 18), MemoryPackOrder(18), Key(18)]
     public ReadOnlyMemory<byte> DropTrace { get; init; }
 
+    // Stamped server-side in VideoStreamingBackend.ProcessFrames at ingest
+    // (DateTime.UtcNow.Ticks); 0 on the sender->server leg. Receiver derives
+    // downlink latency = (receiver.now - ServerArrivedAtTicks/10000) - minSkew.
+    // Mutable post-construction like SerializedData: server invalidates the
+    // cache after stamping so fan-out rebuilds the bytes once.
+    [DataMember(Order = 19), MemoryPackOrder(19), Key(19)]
+    public long ServerArrivedAtTicks { get; set; }
+
     // NB: The properties below this line aren't serialized!
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
