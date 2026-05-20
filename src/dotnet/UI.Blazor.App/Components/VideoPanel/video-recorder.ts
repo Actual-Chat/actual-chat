@@ -79,6 +79,16 @@ import { pickRenderBackendKind } from './render-backend-selection';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
 const RECORDER_HEALTH_INTERVAL_MS = 1000;
+// Cap on consecutive failed recovery attempts before we surface a fatal error
+// to the user. With the existing backoff (200ms × 1.7^n, capped at 3s), 5
+// attempts span ~9s — long enough to absorb a transient blip, short enough
+// that the user is not left staring at a stalled call.
+const MAX_RECOVERY_ATTEMPTS = 5;
+// User-facing message shown when the HW encoder cannot be initialised at all
+// (every codec probe fails) or when recovery has exhausted MAX_RECOVERY_ATTEMPTS.
+// Kept free of codec/encoder/internals — actionable only.
+const USER_FACING_RESTART_MESSAGE =
+    'Please restart the app or device to be able to use video.';
 
 interface PreviewTrackGenerator {
     track: MediaStreamTrack;
@@ -603,13 +613,17 @@ export class VideoRecorder {
                 if (codec2) {
                     bestCodecString = codec2;
                 } else {
-                    warnLog?.log(`Both 3-tier and 2-tier probes failed — proceeding with ${initialPick} at 2-tier`);
-                    bestCodecString = initialPick;
+                    warnLog?.log(
+                        `Both 3-tier and 2-tier probes failed (initialPick=${initialPick}) — ` +
+                        `aborting startRecording, HW encoder appears unavailable`);
+                    throw new Error(USER_FACING_RESTART_MESSAGE);
                 }
                 ladder = ladder2;
             } else if (!bestCodecString) {
-                warnLog?.log(`Probe failed at tierCap=${tierCap} — proceeding with ${initialPick}`);
-                bestCodecString = initialPick;
+                warnLog?.log(
+                    `Probe failed at tierCap=${tierCap} (initialPick=${initialPick}) — ` +
+                    `aborting startRecording, HW encoder appears unavailable`);
+                throw new Error(USER_FACING_RESTART_MESSAGE);
             }
             const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
             const codecCategory = getCodecCategory(bestCodecString);
@@ -1307,6 +1321,19 @@ export class VideoRecorder {
 
         this.recoveryScheduled = true;
         this.recoveryAttempts++;
+        // recoveryAttempts is reset to 0 by the recorder-health monitor as soon
+        // as a successful bundle ships (see ~line 1557). Crossing the cap means
+        // every attempt since the last success has failed — surface a fatal
+        // error to the user instead of looping forever.
+        if (this.recoveryAttempts > MAX_RECOVERY_ATTEMPTS) {
+            warnLog?.log(
+                `scheduleRecovery: giving up after ${this.recoveryAttempts - 1} ` +
+                `consecutive failed attempts (last reason: ${reason}; ` +
+                `current codec=${this.currentCodecString})`);
+            this.recoveryScheduled = false;
+            void this.blazorRef.invokeMethodAsync('OnRecordingError', USER_FACING_RESTART_MESSAGE);
+            return;
+        }
         const delayMs = Math.min(3000, 200 * Math.pow(1.7, this.recoveryAttempts - 1));
         warnLog?.log(
             `scheduleRecovery: ${reason}; attempt ${this.recoveryAttempts} in ${delayMs.toFixed(0)}ms`);
