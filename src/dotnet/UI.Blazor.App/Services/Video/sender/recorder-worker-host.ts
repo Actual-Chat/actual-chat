@@ -158,11 +158,10 @@ function createEncoder(
     // Forward-ref + `tag` lookup: avoids stale closure values after pool
     // reuse swaps this encoder onto a different layer. The owner
     // (recorder-worker) updates `enc.tag` on every acquire+configure.
-    let enc: AsyncVideoEncoder<EncodeInput, EncodedFrame>;
     const onError = (e: unknown): void => {
         const msg = e instanceof Error ? e.message : String(e);
         const stack = e instanceof Error ? e.stack : undefined;
-        const tag = enc?.tag || 'pre-configure';
+        const tag = enc.tag || 'pre-configure';
         warnLog?.log(`encoder error (${tag}): ${msg}`, stack ?? '');
     };
 
@@ -171,7 +170,7 @@ function createEncoder(
     // here; the encode operator now applies a bundle-level watchdog (one
     // timer per bundle instead of per layer) so silent encoder hangs are
     // still detected without the per-layer timer churn.
-    enc = new AsyncVideoEncoder<EncodeInput, EncodedFrame>(
+    const enc = new AsyncVideoEncoder<EncodeInput, EncodedFrame>(
         buildOutput,
         onError,
         { maxInflight: 2, firstTimeoutMs: 0, timeoutMs: 0 },

@@ -300,14 +300,11 @@ async function raceWithTimeout<T>(p: Promise<T>, timeoutMs: number, bundleIndex:
     if (timeoutMs <= 0)
         return p;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    try {
-        return await new Promise<T>((resolve, reject) => {
-            timer = setTimeout(() => {
-                reject(new Error(`encode: bundle ${bundleIndex} hung — Promise.allSettled exceeded ${timeoutMs}ms`));
-            }, timeoutMs);
-            p.then(resolve, reject);
-        });
-    } finally {
-        if (timer !== null) clearTimeout(timer);
-    }
+    return await new Promise<T>((resolve, reject) => {
+        timer = setTimeout(() => {
+            reject(new Error(`encode: bundle ${bundleIndex} hung — Promise.allSettled exceeded ${timeoutMs}ms`));
+        }, timeoutMs);
+        p.then(resolve, reject)
+            .then(() => clearTimeout(timer!), () => clearTimeout(timer!));
+    });
 }
