@@ -13,7 +13,7 @@
     var isCodeBlockOnly = markup is CodeBlockMarkup;
     var oldTranslation = _rendered?.Translation ?? m.Translation;
     var oldStreaming = _rendered?.Streaming;
-    var oldIsStreaming = oldStreaming?.IsStreaming ?? m.Streaming.IsStreaming;
+    var oldIsStreaming = _rendered?.IsStreaming ?? m.IsStreaming;
     if (oldIsStreaming && !m.IsStreaming && oldStreaming is not null) {
         // Capture the full text shown while streaming (retained + still-animating parts), not just
         // RetainedText: otherwise the fade-out overlay is shorter than the final markup and the
@@ -257,7 +257,10 @@
         }
 
         var streamingState = await _streamReader.State.Use(cancellationToken).ConfigureAwait(false);
-        if (streamingState.IsStreaming) {
+        // The transcript reader can finish before the server clears Entry.IsContentStreaming.
+        // Keep its last state through that gap — it retains the streamed text, so the streaming
+        // branch doesn't render empty and collapse to the "Transcribing" badge.
+        if (streamingState.IsStreaming || entry.IsContentStreaming) {
             var translationState = streamingState.IsTranslating
                 ? TranslationState.Translating
                 : TranslationState.None;
