@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Buffers.Binary;
 using MessagePack.Formatters;
 
 namespace ActualChat.Video;
@@ -300,6 +301,43 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
         writer.Write(v.Rotation);
 
         writer.Write("ServerArrivedAtTicks");
-        writer.Write(v.ServerArrivedAtTicks);
+        // Force fixed 9-byte int64 form so StampServerArrived can overwrite
+        // the trailing 8 bytes in-place without rebuilding the cache.
+        WriteFixedInt64(ref writer, v.ServerArrivedAtTicks);
+    }
+
+    // Stamps ServerArrivedAtTicks on the frame and, if SerializedData is already
+    // populated, overwrites the cached int64 in-place. Must be called before any
+    // fan-out consumer touches SerializedData — VideoStreamingBackend.ProcessFrames
+    // invokes this prior to memoizer publication. Assumes WriteFrame emitted the
+    // field in fixed 9-byte form (see WriteFixedInt64) and that ServerArrivedAtTicks
+    // is the last field in the map.
+    public static void StampServerArrived(VideoFrame frame, long ticks)
+    {
+        frame.ServerArrivedAtTicks = ticks;
+
+        var cached = frame.SerializedData;
+        if (cached.IsEmpty)
+            return;
+        if (!MemoryMarshal.TryGetArray(cached, out var seg) || seg.Array is null)
+            return;
+
+        var end = seg.Offset + seg.Count;
+        // 0xd3 = fixed int64 marker; verify our layout assumption still holds.
+        // If a future change reorders fields or shortens the int64 encoding,
+        // fall back to cache invalidation rather than corrupting bytes.
+        if (seg.Count < 9 || seg.Array[end - 9] != 0xd3) {
+            frame.SerializedData = default;
+            return;
+        }
+        BinaryPrimitives.WriteInt64BigEndian(seg.Array.AsSpan(end - 8, 8), ticks);
+    }
+
+    private static void WriteFixedInt64(ref MessagePackWriter writer, long value)
+    {
+        Span<byte> buf = stackalloc byte[9];
+        buf[0] = 0xd3;
+        BinaryPrimitives.WriteInt64BigEndian(buf.Slice(1), value);
+        writer.WriteRaw(buf);
     }
 }
