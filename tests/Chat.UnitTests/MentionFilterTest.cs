@@ -5,34 +5,44 @@ public class MentionFilterTest(ITestOutputHelper @out) : TestBase(@out)
     private static readonly UserId AnyUser = UserId.New();
 
     [Fact]
-    public void TokenizesOnWhitespaceAndPunctuation()
+    public void NormalizeLowercasesAndSpacePrefixesTokens()
     {
-        MentionFilter.Tokenize("John Bolton").Should().BeEquivalentTo("john", "bolton");
-        MentionFilter.Tokenize("bob-john").Should().BeEquivalentTo("bob", "john");
-        MentionFilter.Tokenize("first.last_name").Should().BeEquivalentTo("first", "last", "name");
-        MentionFilter.Tokenize("  spaced   out  ").Should().BeEquivalentTo("spaced", "out");
-        MentionFilter.Tokenize("").Should().BeEmpty();
-        MentionFilter.Tokenize(null).Should().BeEmpty();
+        MentionFilter.Normalize("John Bolton").Should().Be(" john bolton");
+        MentionFilter.Normalize("bob-john").Should().Be(" bob john");
+        MentionFilter.Normalize("first.last_name").Should().Be(" first last name");
+        MentionFilter.Normalize("  spaced   out  ").Should().Be(" spaced out");
+        MentionFilter.Normalize("").Should().Be("");
+        MentionFilter.Normalize((string?)null).Should().Be("");
+        // Multi-part: place name first, then chat title.
+        MentionFilter.Normalize("Fusion Place", "Funny Chat").Should().Be(" fusion place funny chat");
     }
 
     [Fact]
-    public void MatchesAllRequiresEveryQueryTokenToHitSomeWord()
+    public void GetPrefixesSpacePrefixesEveryQueryToken()
+    {
+        MentionFilter.GetPrefixes("J B").Should().Equal(" j", " b");
+        MentionFilter.GetPrefixes("JOHN").Should().Equal(" john");
+        MentionFilter.GetPrefixes("").Should().BeEmpty();
+        MentionFilter.GetPrefixes(null).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void MatchesRequiresEveryPrefixToHitAWordStart()
     {
         // Per spec: "J B" matches John Bolton, Bolton John, Bob Johnson — but not Alice Bolton.
-        MentionFilter.MatchesAll(["j", "b"], ["john", "bolton"]).Should().BeTrue();
-        MentionFilter.MatchesAll(["j", "b"], ["bolton", "john"]).Should().BeTrue();
-        MentionFilter.MatchesAll(["j", "b"], ["bob", "johnson"]).Should().BeTrue();
-        MentionFilter.MatchesAll(["j", "b"], ["alice", "bolton"]).Should().BeFalse();
+        var jb = MentionFilter.GetPrefixes("J B");
+        MentionFilter.Matches(MentionFilter.Normalize("John Bolton"), jb).Should().BeTrue();
+        MentionFilter.Matches(MentionFilter.Normalize("Bolton John"), jb).Should().BeTrue();
+        MentionFilter.Matches(MentionFilter.Normalize("Bob Johnson"), jb).Should().BeTrue();
+        MentionFilter.Matches(MentionFilter.Normalize("Alice Bolton"), jb).Should().BeFalse();
     }
 
     [Fact]
-    public void MatchesAllIsCaseInsensitive()
+    public void MatchesIsCaseInsensitive()
     {
-        // Caller lowercases via Tokenize; verify direct comparison stays case-sensitive
-        // (caller's contract) but the full pipeline lowercases.
-        var q = MentionFilter.Tokenize("J B");
-        MentionFilter.MatchesAll(q, MentionFilter.Tokenize("John Bolton")).Should().BeTrue();
-        MentionFilter.MatchesAll(q, MentionFilter.Tokenize("JOHN BOLTON")).Should().BeTrue();
+        var q = MentionFilter.GetPrefixes("J B");
+        MentionFilter.Matches(MentionFilter.Normalize("John Bolton"), q).Should().BeTrue();
+        MentionFilter.Matches(MentionFilter.Normalize("JOHN BOLTON"), q).Should().BeTrue();
     }
 
     [Fact]
@@ -69,8 +79,8 @@ public class MentionFilterTest(ITestOutputHelper @out) : TestBase(@out)
             User("Alex Member") with { IsChatMember = true },
         };
         var result = MentionFilter.FilterAndRank(pool, "alex", MentionKindFilter.All, 10);
-        result[0].PrimaryName.Should().Be("Alex Member");
-        result[1].PrimaryName.Should().Be("Alex Non");
+        result[0].Title.Should().Be("Alex Member");
+        result[1].Title.Should().Be("Alex Non");
     }
 
     [Fact]
@@ -95,18 +105,30 @@ public class MentionFilterTest(ITestOutputHelper @out) : TestBase(@out)
             User("Alex"),           // "alex" covers 4 / 4 chars — best
         };
         var result = MentionFilter.FilterAndRank(pool, "alex", MentionKindFilter.User, 10);
-        result.Select(c => c.PrimaryName).Should().Equal("Alex", "Alexander");
+        result.Select(c => c.Title).Should().Equal("Alex", "Alexander");
     }
 
     [Fact]
     public void DoesNotMatchInfix()
     {
-        // "ohn" should NOT match "John" — prefix only.
+        // "ohn" should NOT match "John" — word-prefix only.
         var pool = new[] {
             User("John Bolton"),
         };
         var result = MentionFilter.FilterAndRank(pool, "ohn", MentionKindFilter.User, 10);
         result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void PlaceChatIsMatchedByPlaceName()
+    {
+        // A place chat's SearchText carries the place name first, so typing the place finds it.
+        var pool = new[] {
+            Chat("Funny Chat", placeName: "Fusion Place"),
+        };
+        MentionFilter.FilterAndRank(pool, "fusion", MentionKindFilter.Chat, 10).Should().HaveCount(1);
+        MentionFilter.FilterAndRank(pool, "fusion fun", MentionKindFilter.Chat, 10).Should().HaveCount(1);
+        MentionFilter.FilterAndRank(pool, "funny", MentionKindFilter.Chat, 10).Should().HaveCount(1);
     }
 
     private static MentionCandidate User(string name)
@@ -115,17 +137,15 @@ public class MentionFilterTest(ITestOutputHelper @out) : TestBase(@out)
             MentionCandidateKind.User,
             name,
             null,
-            null,
-            MentionFilter.Tokenize(name));
+            MentionFilter.Normalize(name));
 
-    private static MentionCandidate Chat(string name)
+    private static MentionCandidate Chat(string name, string? placeName = null)
         => new(
             MentionId.NewChat(GroupChatId.New()),
             MentionCandidateKind.Chat,
             name,
             null,
-            null,
-            MentionFilter.Tokenize(name));
+            MentionFilter.Normalize(placeName, name));
 
     private static MentionCandidate Emoji(string title)
     {
@@ -137,7 +157,6 @@ public class MentionFilterTest(ITestOutputHelper @out) : TestBase(@out)
             MentionCandidateKind.Emoji,
             title,
             null,
-            null,
-            MentionFilter.Tokenize(title));
+            MentionFilter.Normalize(title));
     }
 }

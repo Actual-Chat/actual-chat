@@ -78,12 +78,7 @@ body.narrow .narrow-panel .mention-list.expanded {
 .mention-list .mention-list-emoji-icon {
     @apply w-6 h-6;
 }
-.mention-list .mention-list-item > .c-content > .c-description {
-    @apply flex-none;
-    @apply text-headline-1 text-03 font-light;
-    @apply opacity-60;
-}
-.mention-list .c-place-suffix {
+.mention-list .c-description {
     @apply text-03 font-light;
     @apply opacity-60;
 }

@@ -11,16 +11,15 @@ public partial class MentionSearchResult : SearchResult
     [DataMember, MemoryPackOrder(3)]
     public bool IsChatMember { get; init; }
 
-    // Non-null when the candidate is in a different place than the picker's host
-    // chat (or when there's no host place). The picker uses it for a "| PlaceTitle"
-    // suffix on the displayed name.
+    // Light, non-bold suffix shown after the name in the picker, e.g. "emoji", "place",
+    // "in this place", "in Fusion Place", "- not in this chat". Null = no suffix.
     [DataMember, MemoryPackOrder(4)]
-    public string? PlaceTitleSuffix { get; init; }
+    public string? Description { get; init; }
 
-    // True when the candidate's chat lives in the same place as the picker's host chat.
-    // Distinguishes "this place's chat" from generic "chat" in the picker description.
+    // Name baked into the mention markup when this result is picked — e.g. "Fusion › Funny Chat"
+    // for a cross-place chat, the plain title otherwise.
     [DataMember, MemoryPackOrder(5)]
-    public bool IsInHostPlace { get; init; }
+    public string MentionName { get; init; } = "";
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public MentionId MentionId => field ??= MentionId.Parse(Id);

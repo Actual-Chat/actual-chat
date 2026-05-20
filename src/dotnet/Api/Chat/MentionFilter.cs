@@ -1,7 +1,7 @@
 namespace ActualChat.Chat;
 
 /// <summary>
-/// Pure tokenize / filter / rank functions used by <c>MentionIndexUI</c>. Kept side-effect-free
+/// Pure normalize / match / rank functions used by <c>MentionIndexUI</c>. Kept side-effect-free
 /// so it can be unit-tested without DI or fusion plumbing.
 /// </summary>
 public static class MentionFilter
@@ -11,79 +11,90 @@ public static class MentionFilter
         '-', '_', '.', ',', ':', ';', '/', '\\', '|',
         '(', ')', '[', ']', '{', '}',
         '!', '?', '\'', '"', '`',
+        '›', // › — place / chat separator
     ];
 
     /// <summary>
-    /// Splits <paramref name="text"/> into lowercase words by whitespace and punctuation
-    /// (see <c>Separators</c>). Empty results are dropped.
+    /// Builds the normalized search blob: every token from <paramref name="parts"/> lowercased
+    /// and prefixed with a space, e.g. ("Fusion Place", "Funny Chat") → " fusion place funny chat".
+    /// A leading space before every token lets a prefix probe (see <see cref="GetPrefixes"/>)
+    /// match word starts only.
     /// </summary>
-    public static string[] Tokenize(string? text)
+    public static string Normalize(params string?[] parts)
     {
-        if (text.IsNullOrEmpty())
-            return [];
-
-        var parts = text.ToLowerInvariant().Split(Separators, StringSplitOptions.RemoveEmptyEntries);
-        return parts;
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
+        foreach (var part in parts) {
+            if (part.IsNullOrEmpty())
+                continue;
+            var tokens = part.ToLowerInvariant().Split(Separators, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var token in tokens) {
+                sb.Append(' ');
+                sb.Append(token);
+            }
+        }
+        return sb.ToStringAndRelease();
     }
 
     /// <summary>
-    /// True iff every token in <paramref name="queryTokens"/> is a prefix of some word
-    /// in <paramref name="candidateWords"/>. Both inputs are expected lowercase.
+    /// Builds query prefixes — each query token lowercased and space-prefixed so a candidate's
+    /// <see cref="MentionCandidate.SearchText"/> can be probed with a single Ordinal Contains.
     /// </summary>
-    public static bool MatchesAll(string[] queryTokens, string[] candidateWords)
+    public static string[] GetPrefixes(string? query)
     {
-        foreach (var q in queryTokens) {
-            var hit = false;
-            foreach (var w in candidateWords) {
-                if (w.Length < q.Length)
-                    continue;
-                if (w.AsSpan(0, q.Length).SequenceEqual(q.AsSpan())) {
-                    hit = true;
-                    break;
-                }
-            }
-            if (!hit)
+        if (query.IsNullOrEmpty())
+            return [];
+
+        var tokens = query.ToLowerInvariant().Split(Separators, StringSplitOptions.RemoveEmptyEntries);
+        if (tokens.Length == 0)
+            return [];
+
+        var result = new string[tokens.Length];
+        for (var i = 0; i < tokens.Length; i++)
+            result[i] = ' ' + tokens[i];
+        return result;
+    }
+
+    /// <summary>
+    /// True iff every prefix occurs in <paramref name="searchText"/>. Because each prefix and
+    /// every token in the search text start with a space, this matches word prefixes only.
+    /// </summary>
+    public static bool Matches(string searchText, string[] prefixes)
+    {
+        foreach (var prefix in prefixes) {
+            if (!searchText.Contains(prefix, StringComparison.Ordinal))
                 return false;
         }
         return true;
     }
 
     /// <summary>
-    /// Coverage score: total length of words hit by query prefixes, normalized by the
-    /// candidate's total word length. Range [0, 1]. Higher = better.
+    /// Coverage score: total length of the matched prefixes over the candidate's total token
+    /// length. Range [0, 1], higher = better. Assumes every prefix already matched.
     /// </summary>
-    public static double CoverageScore(string[] queryTokens, string[] candidateWords)
+    public static double CoverageScore(string searchText, string[] prefixes)
     {
-        if (queryTokens.Length == 0 || candidateWords.Length == 0)
+        if (prefixes.Length == 0 || searchText.Length == 0)
             return 0;
 
-        var hitChars = 0;
         var totalChars = 0;
-        foreach (var w in candidateWords)
-            totalChars += w.Length;
+        foreach (var c in searchText) {
+            if (c != ' ')
+                totalChars++;
+        }
         if (totalChars == 0)
             return 0;
 
-        foreach (var q in queryTokens) {
-            var bestHit = 0;
-            foreach (var w in candidateWords) {
-                if (w.Length < q.Length)
-                    continue;
-                if (!w.AsSpan(0, q.Length).SequenceEqual(q.AsSpan()))
-                    continue;
-                if (q.Length > bestHit)
-                    bestHit = q.Length;
-            }
-            hitChars += bestHit;
-        }
+        var hitChars = 0;
+        foreach (var prefix in prefixes)
+            hitChars += prefix.Length - 1; // minus the leading space
         return (double)hitChars / totalChars;
     }
 
     /// <summary>
     /// Filters and ranks candidates per the spec:
-    ///   1. drop candidates failing <see cref="MatchesAll"/>;
+    ///   1. drop candidates failing <see cref="Matches"/>;
     ///   2. order by kind (User &lt; Chat &lt; Emoji), then chat-membership (members first),
-    ///      then coverage descending, then alphabetical primary name;
+    ///      then coverage descending, then alphabetical title;
     ///   3. take top <paramref name="limit"/>.
     /// </summary>
     public static MentionCandidate[] FilterAndRank(
@@ -92,17 +103,18 @@ public static class MentionFilter
         MentionKindFilter kindFilter,
         int limit)
     {
-        var tokens = Tokenize(query);
         if (limit <= 0)
             return [];
+
+        var prefixes = GetPrefixes(query);
 
         var matched = new List<(MentionCandidate Candidate, double Score)>();
         foreach (var c in pool) {
             if (!kindFilter.Allows(c.Kind))
                 continue;
-            if (tokens.Length > 0 && !MatchesAll(tokens, c.Words))
+            if (prefixes.Length > 0 && !Matches(c.SearchText, prefixes))
                 continue;
-            var score = tokens.Length == 0 ? 0 : CoverageScore(tokens, c.Words);
+            var score = prefixes.Length == 0 ? 0 : CoverageScore(c.SearchText, prefixes);
             matched.Add((c, score));
         }
 
@@ -113,7 +125,7 @@ public static class MentionFilter
             if (memberCmp != 0) return memberCmp;
             var scoreCmp = b.Score.CompareTo(a.Score);
             if (scoreCmp != 0) return scoreCmp;
-            return string.CompareOrdinal(a.Candidate.PrimaryName, b.Candidate.PrimaryName);
+            return string.CompareOrdinal(a.Candidate.Title, b.Candidate.Title);
         });
 
         var take = Math.Min(limit, matched.Count);

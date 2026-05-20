@@ -61,7 +61,7 @@ public class BackendChatMentionResolver : IChatMentionResolver
             var chat = await ChatsBackend.Get(cm.ChatId, cancellationToken).ConfigureAwait(false);
             var title = chat?.Title.NullIfEmpty() ?? cm.Name;
             var chatPlaceId = cm.ChatId is PlaceChatId pc ? pc.PlaceId : null;
-            var name = await JoinWithPlaceSuffix(title, chatPlaceId, cancellationToken).ConfigureAwait(false);
+            var name = await FormatChatName(title, chatPlaceId, cancellationToken).ConfigureAwait(false);
             return new ChatMention(cm.Id, name) { Chat = chat };
         }
         case PlaceMention pm: {
@@ -80,7 +80,9 @@ public class BackendChatMentionResolver : IChatMentionResolver
         }
     }
 
-    private async ValueTask<string> JoinWithPlaceSuffix(string title, PlaceId? chatPlaceId, CancellationToken cancellationToken)
+    // A cross-place chat mention renders as "Place › Chat Title"; same-place and placeless
+    // chats render as just the title.
+    private async ValueTask<string> FormatChatName(string title, PlaceId? chatPlaceId, CancellationToken cancellationToken)
     {
         if (chatPlaceId is null)
             return title;
@@ -89,6 +91,6 @@ public class BackendChatMentionResolver : IChatMentionResolver
             return title;
         var place = await PlacesBackend.Get(chatPlaceId, cancellationToken).ConfigureAwait(false);
         var placeTitle = place?.Title.NullIfEmpty();
-        return placeTitle is null ? title : $"{title} | {placeTitle}";
+        return placeTitle is null ? title : $"{placeTitle} › {title}";
     }
 }
