@@ -19,6 +19,7 @@
 @import './Components/EmbeddedMessageEditor/embedded-message-editor.css';
 @import './Components/Form/form.css';
 @import './Components/Form/toggle.css';
+@import './Components/Hotkey/hotkey.css';
 @import './Components/InviteList/invite-list.css';
 @import './Components/Lines/lines.css';
 @import './Components/Menu/menu.css';

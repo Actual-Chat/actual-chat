@@ -13,7 +13,7 @@
              id="@menu.Id"
              @key="@menu.Id"
              class="@(GetMenuCssClass(menu))">
-            <ul class="ac-menu-list">
+            <ul class="ac-menu-list" role="menu">
                 <DynamicComponent Type="@menu.Ref.MenuType" Parameters="@menu.Parameters"/>
             </ul>
         </div>;

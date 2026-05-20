@@ -8,9 +8,12 @@
     Placeholder="@SearchBoxPlaceholder"
     MaxLength="@Constants.Chat.MaxSearchFilterLength"
     TextChanged="@OnFilter"/>
-<div class="c-contact-list">
+<div class="c-contact-list" role="listbox" aria-multiselectable="true">
     @foreach (var item in FilteredItems) {
         <div class="c-item"
+             role="option"
+             tabindex="0"
+             aria-selected="@((item.IsChecked || item.IsMember) ? "true" : "false")"
              @key="@item.Account.Id.Value"
              @onclick="@(_ => OnItemClick(item))">
             <AccountCircle UserId="@item.Account.Id" ShowPresence="true"/>

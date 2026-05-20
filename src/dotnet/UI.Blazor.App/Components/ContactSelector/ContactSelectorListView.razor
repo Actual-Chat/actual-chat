@@ -5,14 +5,19 @@
     var selectedChatIds = Selector.SelectedChatIds.Value;
 }
 
-<div class="contact-selector-list">
+<div class="contact-selector-list" role="listbox" aria-multiselectable="true">
     @foreach (var chat in chats) {
-        <div class="contact-selector-list-item" @onclick="() => OnContactClick(chat.Id)">
+        var isSelected = selectedChatIds.Contains(chat.Id);
+        <div class="contact-selector-list-item"
+             role="option"
+             tabindex="0"
+             aria-selected="@(isSelected ? "true" : "false")"
+             @onclick="() => OnContactClick(chat.Id)">
             <ContactView
                 ChatInfo="chat"
                 SearchQuery="Selector.SearchQuery"/>
             <Checkbox
-                IsChecked="@(selectedChatIds.Contains(chat.Id))"
+                IsChecked="@isSelected"
                 Class="!flex-none"
                 Change="() => OnContactClick(chat.Id)"/>
         </div>

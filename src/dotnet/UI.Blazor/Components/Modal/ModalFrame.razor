@@ -4,7 +4,7 @@
     var cls = $"modal-frame {Class}";
 }
 
-<ModalChrome Class="@cls" HasEscapeHandler="@HasEscapeHandler">
+<ModalChrome Class="@cls">
     @Header
     <ErrorBarrier Name="ModalFrame">@ChildContent</ErrorBarrier>
 </ModalChrome>
@@ -13,5 +13,4 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
     [Parameter] public RenderFragment Header { get; set; } = null!;
-    [Parameter] public bool HasEscapeHandler { get; set; } = true;
 }

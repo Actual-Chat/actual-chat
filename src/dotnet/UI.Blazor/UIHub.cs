@@ -91,7 +91,6 @@ public class UIHub : CircuitHub, IDispatcherResolver
     public ReportUI ReportUI => field ??= Services.GetRequiredService<ReportUI>();
 
     // UI-related services w/o UI suffix
-    public Escapist Escapist => field ??= Services.GetRequiredService<Escapist>();
     public RenderVars RenderVars => field ??= Services.GetRequiredService<RenderVars>();
     public BrowserInfo BrowserInfo => field ??= Services.GetRequiredService<BrowserInfo>();
     public DateTimeConverter DateTimeConverter => field ??= Services.GetRequiredService<DateTimeConverter>();

@@ -2,15 +2,12 @@
 @inherits ComputedStateComponent<AppUIHub, SelectionHeader.Model?>
 @{
     var m = State.Value;
-    if (m is null || m.Selection.Count == 0) {
-        _ = StopHandleEscape();
+    if (m is null || m.Selection.Count == 0)
         return;
-    }
-
-    StartHandleEscape();
 }
 
 <SelectionHost Selected="@m.Selection.First().Value" />
+<Hotkey Keys="escape" AriaLabel="Cancel selection" OnTrigger="OnCancel"/>
 
 @if (ScreenSize.IsNarrow()) {
     <div class="selection-header">
@@ -104,19 +101,11 @@
 </div>
 
 @code {
-    private Task<IAsyncDisposable>? _escapistSubscriptionTask;
-
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
     private SelectionUI SelectionUI => Hub.SelectionUI;
-    private Escapist Escapist => Hub.Escapist;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-
-    public override async ValueTask DisposeAsync() {
-        await base.DisposeAsync();
-        await StopHandleEscape();
-    }
 
     protected override ComputedState<Model?>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -174,22 +163,6 @@
     }
 
     private void OnCancel()
-        => SelectionUI.Clear();
-
-    private void StartHandleEscape()
-        => _escapistSubscriptionTask ??= Escapist.SubscribeOnce(OnEscape, State.DisposeToken).AsTask();
-
-    private async ValueTask StopHandleEscape() {
-        var escapistSubscriptionTask = _escapistSubscriptionTask;
-        if (escapistSubscriptionTask == null)
-            return;
-
-        _escapistSubscriptionTask = null;
-        var escapistSubscription = (await escapistSubscriptionTask.ResultAwait()).ValueOrDefault;
-        await escapistSubscription.DisposeSilentlyAsync();
-    }
-
-    private void OnEscape()
         => SelectionUI.Clear();
 
     // Nested types

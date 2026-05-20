@@ -51,6 +51,10 @@
 }
 
 <OnUIEvent TEvent="@NavigateToChatEntryEvent" Handler="@OnNavigateToChatEntry" />
+<button class="hotkey" type="button" tabindex="-1"
+        aria-keyshortcuts="pageup" data-chat-scroll="up" aria-label="Scroll chat up"></button>
+<button class="hotkey" type="button" tabindex="-1"
+        aria-keyshortcuts="pagedown" data-chat-scroll="down" aria-label="Scroll chat down"></button>
 <CascadingValue Value="@this">
     <VirtualList
         @key="@Chat.Id.Value"

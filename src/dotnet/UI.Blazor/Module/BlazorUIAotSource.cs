@@ -19,7 +19,6 @@ internal partial class BlazorUIAotSource
         CodeKeeper.Keep<FontSizeUI>();
         CodeKeeper.Keep<DebugUI>();
         CodeKeeper.Keep<UserActivityUI>();
-        CodeKeeper.Keep<EscapistSubscription>();
 
         // VirtualList data types (components are kept by the generated AotSource)
         CodeKeeper.Keep<VirtualListDataQuery>();

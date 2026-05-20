@@ -25,6 +25,7 @@
 <OnUIEvent TEvent="@MentionButtonClickEvent" Handler="OnMentionButtonClickEvent" />
 <OnUIEvent TEvent="@EmojiButtonClickEvent" Handler="OnEmojiButtonClickEvent" />
 <div @ref="Ref" class="chat-message-editor has-safe-area-bottom">
+    <Hotkey Keys="ctrl+e" AriaLabel="Focus message editor" OnTrigger="OnFocusEditorRequested"/>
     <input class="attachment-web-file-picker" type="file" multiple/>
     <MentionListManager @key="@MentionListManagerKey">
         @if (ScreenSize.IsWide()) {
@@ -358,6 +359,9 @@
 
     private async Task OnFocusChatMessageEditorEvent(FocusChatMessageEditorEvent @event, CancellationToken cancellationToken)
         => await MarkupEditorRef.Focus();
+
+    private Task OnFocusEditorRequested()
+        => MarkupEditorRef.Focus().AsTask();
 
     private async Task OnEditChatMessageEvent(EditChatMessageEvent @event, CancellationToken cancellationToken) {
         var chatEntry = @event.Entry;
