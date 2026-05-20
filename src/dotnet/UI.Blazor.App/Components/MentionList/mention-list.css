@@ -11,22 +11,32 @@
     }
 }
 
-.mention-list {
-    @apply flex-y;
-    @apply max-h-40 md:max-h-64;
-    @apply overflow-x-hidden overflow-y-auto;
-    @apply bg-01 text-03;
+/* Wrapper holds the chips pill (floating above) and the scrollable list.
+   Pinned to the bottom of .mention-list-manager (replaces the role .mention-list
+   used to play). Children are visually separate: chips are a content-width
+   floating "hover-menu" pill anchored over the top-right of the list. */
+.mention-list-wrapper {
+    @apply relative;
+    @apply bg-01;
     @apply translate-y-0;
-    box-shadow: 0 -1px 0 1px var(--separator);
     animation: show-mention-list 400ms ease-in-out forwards;
 }
 /* Firefox workaround: it somehow displays the border otherwise */
-.mention-list.non-visible {
+.mention-list-wrapper.non-visible {
     @apply hidden border-y-0;
     @apply translate-y-full;
 }
+.mention-list {
+    @apply flex-y;
+    @apply max-h-40 md:max-h-64;
+    @apply p-0.5;
+    @apply rounded-lg;
+    @apply overflow-x-hidden overflow-y-auto;
+    @apply bg-input text-03;
+    /*box-shadow: 0 -1px 0 1px var(--separator);*/
+}
 body.narrow .mention-list {
-    @apply border-b border-separator;
+    @apply border-b border-separator rounded-b-none;
     @apply bg-post-panel text-post-panel-text;
     transition: max-height 300ms ease-out;
 }
@@ -43,6 +53,7 @@ body.narrow .narrow-panel .mention-list.expanded {
     @apply flex-none truncate cursor-pointer;
 }
 .mention-list .mention-list-item.selected {
+    @apply rounded-lg;
     @apply bg-mention-list-item-selected;
 }
 .mention-list .mention-list-item > .c-content {
@@ -55,20 +66,39 @@ body.narrow .narrow-panel .mention-list.expanded {
     @apply truncate;
     @apply text-headline-1;
 }
-.mention-list .mention-list-chips {
-    @apply flex-x items-center gap-x-1;
-    @apply px-2 md:px-4 py-1;
-    @apply sticky top-0 z-10 bg-01;
-    box-shadow: 0 1px 0 0 var(--separator);
+/* Toolbar: floating row anchored above the top-right of the mention list.
+   Holds two sibling pills — chips (filter) and close — in the
+   .message-hover-menu-new style. */
+.mention-list-wrapper .mention-list-toolbar {
+    @apply absolute -top-5 right-3 z-10;
+    @apply flex-x items-center gap-1;
 }
-.mention-list .mention-list-chips > .mention-list-chip {
-    @apply px-2 py-0.5 rounded-full;
-    @apply text-headline-1;
-    @apply bg-transparent text-03 border border-separator;
-    @apply cursor-pointer;
+body.narrow .mention-list-wrapper .mention-list-toolbar {
+    @apply right-2;
 }
-.mention-list .mention-list-chips > .mention-list-chip.active {
-    @apply bg-primary text-primary-title border-primary;
+.mention-list-wrapper .mention-list-chips,
+.mention-list-wrapper .mention-list-close {
+    @apply flex-x items-center gap-0.5;
+    @apply w-fit;
+    @apply p-1;
+    @apply rounded-full border border-modal;
+    @apply bg-modal;
+    @apply shadow-modal-wide;
+}
+.mention-list-wrapper .mention-list-chip,
+.mention-list-wrapper .mention-list-close-btn {
+    @apply bg-modal text-01;
+}
+body.narrow .mention-list-wrapper .mention-list-chips,
+body.narrow .mention-list-wrapper .mention-list-close {
+    @apply bg-post-panel border-[var(--text-01)];
+}
+body.narrow .mention-list-wrapper .mention-list-chip,
+body.narrow .mention-list-wrapper .mention-list-close-btn {
+    @apply bg-post-panel text-white;
+}
+.mention-list-wrapper .mention-list-chip.active {
+    @apply bg-primary text-white;
 }
 .mention-list .mention-list-emoji {
     @apply flex-none inline-flex items-center justify-center;
@@ -86,18 +116,18 @@ body.narrow .narrow-panel .mention-list.expanded {
 @keyframes show-mention-list {
     0% {
         transform: translateY(100%);
-        box-shadow: 0 2rem 1rem 1rem var(--mention-shadow);
+        /*box-shadow: 0 2rem 1rem 1rem var(--mention-shadow);*/
     }
     80% {
         transform: translateY(-1rem);
-        box-shadow: 0 2rem 1rem 1rem var(--mention-shadow);
+        /*box-shadow: 0 2rem 1rem 1rem var(--mention-shadow);*/
     }
     99% {
         transform: translateY(0);
-        box-shadow: 0 2rem 1rem 1rem var(--mention-shadow);
+        /*box-shadow: 0 2rem 1rem 1rem var(--mention-shadow);*/
     }
     100% {
         transform: translateY(0);
-        box-shadow: 0 -1px 0 1px var(--separator);
+        /*box-shadow: 0 -1px 0 1px var(--separator);*/
     }
 }
