@@ -713,9 +713,12 @@ public partial class ChatUI
             if (groupedItems.Count == 0)
                 return;
 
-            result.Add(groupedItems.Count == 1
-                ? groupedItems[0]
-                : new ChatEntryAuthorGroup(groupedItems[0].Entry.AuthorId, groupedItems) { Conversation = groupedItems[0].Conversation });
+            // Always wrap into a group, even for a single message: this keeps the virtual list
+            // item key stable ("{firstId}-group") when the next same-author message joins the block,
+            // so the first message isn't torn down and re-created on every follow-up message.
+            result.Add(new ChatEntryAuthorGroup(groupedItems[0].Entry.AuthorId, groupedItems) {
+                Conversation = groupedItems[0].Conversation,
+            });
         }
     }
 
