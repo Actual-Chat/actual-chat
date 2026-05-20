@@ -29,6 +29,8 @@ public static class FirstChanceExceptionLogger
             return; // This one has to be skipped
         if (error is IOException { InnerException: SocketException })
             return; // SslStream/NetworkStream wraps transient socket disconnects as IOException
+        if (error is TimeoutException { Message: "Timeout while connecting to remote host." })
+            return; // Transient RPC connect timeout - caught downstream, noisy on Sentry
 
         foreach (var func in ShouldSkip.GetInvocationList().OfType<Func<Exception, bool>>()) {
             if (func(error))
