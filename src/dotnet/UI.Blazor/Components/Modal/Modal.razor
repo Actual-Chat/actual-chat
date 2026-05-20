@@ -1,4 +1,4 @@
-﻿@using ActualChat.UI.Blazor.Components.Internal
+@using ActualChat.UI.Blazor.Components.Internal
 @namespace ActualChat.UI.Blazor.Components
 @* Use FusionComponentBase base class to avoid modal re-rendring when other modals are added/removed. *@
 @inherits FusionComponentBase<UIHub>
@@ -10,8 +10,11 @@
 <div
     id="@Ref.Id.Value"
     class="@cls"
+    data-modal
+    inert="@Inert"
     @onclick="OnBackgroundClick">
 
+    <Hotkey Keys="escape" AriaLabel="Close" OnTrigger="@(() => Close())"/>
     <FocusTrap @ref="@_focusTrap" IsActive="@(Ref.Options.UseFocusTrap ?? false)">
         <div class="@Ref.Options.Class" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
             <div class="modal-content">

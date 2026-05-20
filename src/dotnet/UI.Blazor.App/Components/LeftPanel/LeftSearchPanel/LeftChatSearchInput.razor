@@ -11,6 +11,10 @@
 }
 
 <div class="left-chat-search-input @cls @placeCls">
+    <Hotkey Keys="ctrl+f" AriaLabel="Search" OnTrigger="OnSearchHotkey"/>
+    @if (m.IsOpen) {
+        <Hotkey Keys="escape" AriaLabel="Close search" OnTrigger="@(() => OnClick(false))"/>
+    }
     <div class="c-search">
         <div class="search-input">
             <label>
@@ -110,6 +114,14 @@
 
     private void OnSearchButtonClick()
         => _inputRef?.Focus();
+
+    private void OnSearchHotkey() {
+        var isOpen = SearchUI.IsShowRecentOn.Value || SearchUI.IsSearchModeOn.Value;
+        if (isOpen)
+            OnClick(false);
+        else
+            _ = _inputRef?.Focus();
+    }
 
     private void OnSearchInputTextChanged(string text) {
         // Empty input restores the place filter (a fresh search defaults to in-place);

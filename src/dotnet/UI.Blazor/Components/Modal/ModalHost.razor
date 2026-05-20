@@ -8,6 +8,8 @@
     var renderedRefs = _renderedRefs;
     _renderedRefs = _refs;
     var toRenderList = _refs.ToRenderList;
+    var activeList = _refs.ActiveList;
+    var topmostActive = activeList.Count > 0 ? activeList[^1] : null;
     if (_refs.CheckIfHasModelsToRenderChanged(renderedRefs, out var hasModals))
         JS.InvokeVoidAsync(JSUpdateBodyStyleMethod, hasModals);
 
@@ -17,20 +19,23 @@
 
 <CascadingValue Value="@this" IsFixed="@true">
     @foreach (var modalRef in toRenderList) {
-        var isHidden = !_refs.ActiveList.Contains(modalRef);
+        var isHidden = !activeList.Contains(modalRef);
         var extraClass = isHidden ? "hide" : "";
         if (isHidden)
             _afterRenderQueue.Enqueue(EliminateHiddenModal, modalRef);
-        <Modal @key="@modalRef.Id" Ref="@modalRef" Class="@extraClass"></Modal>
+        <Modal @key="@modalRef.Id" Ref="@modalRef" Class="@extraClass"
+               Inert="@(!ReferenceEquals(modalRef, topmostActive))"></Modal>
     }
 </CascadingValue>
 
 @code {
     private static readonly string JSUpdateBodyStyleMethod = $"{BlazorUICoreModule.ImportName}.ModalHost.updateBodyStyle";
+    private static readonly string JSUpdateInertMethod = $"{BlazorUICoreModule.ImportName}.ModalHost.updateInert";
 
     private readonly AfterRenderQueue _afterRenderQueue = new ();
     private ModalRefSet _renderedRefs = new ();
     private ModalRefSet _refs = new ();
+    private string _lastInertModalId = "";
 
     [Inject] internal HistoryStepper HistoryStepper { get; init; } = null!;
     [Inject] private UIHub Hub { get; set; } = null!;
@@ -49,7 +54,16 @@
     }
 
     protected override void OnAfterRender(bool firstRender)
-        => _afterRenderQueue.OnAfterRender();
+    {
+        _afterRenderQueue.OnAfterRender();
+        var activeList = _refs.ActiveList;
+        var topmostModalId = activeList.Count > 0 ? activeList[^1].Id.Value : "";
+        if (topmostModalId == _lastInertModalId)
+            return;
+
+        _lastInertModalId = topmostModalId;
+        _ = JS.InvokeVoidAsync(JSUpdateInertMethod, topmostModalId);
+    }
 
     public ModalRef Show(ModalOptions options, object model, RenderFragment content)
     {

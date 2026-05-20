@@ -1,4 +1,4 @@
-import { merge, Subject, takeUntil } from 'rxjs';
+import { fromEvent, merge, Subject, takeUntil } from 'rxjs';
 import {
     computePosition,
     flip,
@@ -15,7 +15,6 @@ import { getOrInheritData } from 'dom-helpers';
 import { delayAsync } from 'actuallab-core';
 import { nextTick } from 'timeout';
 import { Vector2D } from 'math';
-import Escapist from '../../Services/Escapist/escapist';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { ScreenOrientation } from 'orientation';
 import { getLogs } from 'logging';
@@ -39,6 +38,7 @@ interface Menu {
     position: Vector2D | null;
     historyStepId: string | null;
     menuElement: HTMLElement | null;
+    focused: boolean;
 }
 
 export class MenuHost implements Disposable {
@@ -64,14 +64,9 @@ export class MenuHost implements Disposable {
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: PointerEvent) => this.onPointerOver(event));
 
-        Escapist.escapeEvents()
+        fromEvent<KeyboardEvent>(window, 'keydown')
             .pipe(takeUntil(this.disposed$))
-            .subscribe((event: KeyboardEvent) => {
-                if (this.menu != null) {
-                    stopEvent(event);
-                    this.hide();
-                }
-            });
+            .subscribe((event: KeyboardEvent) => this.onKeyDown(event));
         ScreenOrientation.change$
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => {
@@ -135,7 +130,8 @@ export class MenuHost implements Disposable {
         }
 
         menu.menuElement = document.getElementById(menu.id);
-        void this.position(menu);
+        await this.position(menu);
+        this.focusFirstItem(menu);
     }
 
     // Private methods
@@ -161,6 +157,7 @@ export class MenuHost implements Disposable {
             position: position,
             historyStepId: null,
             menuElement: null,
+            focused: false,
         };
     }
 
@@ -211,10 +208,22 @@ export class MenuHost implements Disposable {
                 return;
         }
 
+        const restoreFocus = menu.menuElement?.contains(document.activeElement) ?? false;
         this.menu = null;
         // Hide (un-render) it
         void this.blazorRef.invokeMethodAsync('OnHideRequest', menu.id);
         this.removeMessageMark(this.currentMenuRef);
+        if (restoreFocus && menu.triggerElement.isConnected)
+            menu.triggerElement.focus({ preventScroll: true });
+    }
+
+    private focusFirstItem(menu: Menu): void {
+        if (menu.focused || menu.isHoverMenu || !menu.menuElement)
+            return;
+
+        menu.focused = true;
+        const firstItem = menu.menuElement.querySelector<HTMLElement>('[role=menuitem]');
+        firstItem?.focus({ preventScroll: true });
     }
 
     private removeMessageMark(menuRef: string) {
@@ -305,6 +314,27 @@ export class MenuHost implements Disposable {
     }
 
     // Event handlers
+
+    private onKeyDown(event: KeyboardEvent): void {
+        const menu = this.menu;
+        if (!menu)
+            return;
+
+        if (event.key === 'Escape') {
+            stopEvent(event);
+            this.hide();
+            return;
+        }
+
+        const target = event.target as HTMLElement | null;
+        if (target?.getAttribute('role') !== 'menuitem')
+            return;
+
+        if (event.key === 'Enter' || event.key === ' ') {
+            stopEvent(event);
+            target.click();
+        }
+    }
 
     private onClick(event: Event): void {
         let trigger = MenuTrigger.None

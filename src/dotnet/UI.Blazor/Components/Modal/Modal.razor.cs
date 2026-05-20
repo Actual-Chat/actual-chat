@@ -8,6 +8,7 @@ public partial class Modal : IDisposable
     private bool _mustFocus;
 
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool Inert { get; set; }
     [Parameter, EditorRequired] public ModalRef Ref { get; set; } = null!;
     private ModalHost Host => Ref.Host;
 

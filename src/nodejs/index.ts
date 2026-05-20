@@ -48,5 +48,7 @@ window.blazorApp = blazorApp;
 window.Kvas = Kvas;
 
 blazorApp.initFpsOverlay();
+blazorApp.initChatViewScroll();
+ui.initKeyboardUI();
 
 window.App?.markBundleReady?.(); // "?." here ensures this code won't fail in workers, etc.
