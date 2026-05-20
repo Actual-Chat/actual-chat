@@ -334,10 +334,8 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
     }
 
     private static void WriteFixedInt64(ref MessagePackWriter writer, long value)
-    {
-        Span<byte> buf = stackalloc byte[9];
-        buf[0] = 0xd3;
-        BinaryPrimitives.WriteInt64BigEndian(buf.Slice(1), value);
-        writer.WriteRaw(buf);
-    }
+        // MessagePackWriter.WriteInt64 forces the fixed-form int64 encoding
+        // (0xd3 + 8 BE bytes), independent of the value's range — required so
+        // StampServerArrived can overwrite the trailing 8 bytes in place.
+        => writer.WriteInt64(value);
 }
