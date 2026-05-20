@@ -12,10 +12,13 @@
     var isGifOnly = UrlMapper.IsTrustedGifUrl(trimmedContent);
     var isCodeBlockOnly = markup is CodeBlockMarkup;
     var oldTranslation = _rendered?.Translation ?? m.Translation;
-    var oldIsStreaming = _rendered?.Streaming.IsStreaming ?? m.Streaming.IsStreaming;
-    var oldRetainedText = _rendered?.Streaming.RetainedText;
-    if (oldIsStreaming && !m.IsStreaming) {
-        _temporaryText = oldRetainedText;
+    var oldStreaming = _rendered?.Streaming;
+    var oldIsStreaming = oldStreaming?.IsStreaming ?? m.Streaming.IsStreaming;
+    if (oldIsStreaming && !m.IsStreaming && oldStreaming is not null) {
+        // Capture the full text shown while streaming (retained + still-animating parts), not just
+        // RetainedText: otherwise the fade-out overlay is shorter than the final markup and the
+        // streaming→non-streaming transition visibly jumps.
+        _temporaryText = oldStreaming.RetainedText + oldStreaming.ChangedText + oldStreaming.AnimatedText;
     }
 
     _rendered = m;
