@@ -7,6 +7,7 @@ import {
 } from '../frame-envelopes';
 import { FrameDropStage, traceDrops } from '../frame-drop-trace';
 import { decode, type DecoderLike } from '../operators/decode';
+import { downlinkTap } from '../operators/downlink-tap';
 import { latencyTap, type LatencySample } from '../operators/latency-tap';
 import { canvasPresent, type CanvasImageInterface } from '../operators/present-canvas';
 import { mstgPresent } from '../operators/present-mstg';
@@ -142,6 +143,7 @@ export class Player {
             source,
             arrivedTap,
             traceDrops<ArrivedChunk>(FrameDropStage.ReceiverPull),
+            downlinkTap({ stats }),
             resetOnEpochChange({ buffer }),
             pacedEncodedBuffer({ buffer, abortSignal }),
             traceDrops<ArrivedChunk>(FrameDropStage.ReceiverEncodedBuffer),

@@ -89,6 +89,7 @@ function makeArrived(stats: PlayerStats, opts: ArrivedOpts = {}): ArrivedChunk {
         capturedAt: { timeMs: opts.capturedTimeMs ?? 0, epoch: opts.capturedEpoch ?? 0 },
         index: 0,
         dropTrace: [],
+        serverArrivedAtUnixMs: 0,
         isKeyFrame: opts.isKeyFrame ?? false,
         description: opts.description,
         layerId: opts.layerId ?? 0,

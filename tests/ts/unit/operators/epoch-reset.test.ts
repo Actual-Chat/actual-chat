@@ -14,6 +14,7 @@ function mkChunk(timeMs: number, epoch: number, isKeyFrame = false): ArrivedChun
         capturedAt: { timeMs, epoch },
         index: 0,
         dropTrace: [],
+        serverArrivedAtUnixMs: 0,
         isKeyFrame,
         layerId: 0,
         width: 640,
