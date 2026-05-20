@@ -17,7 +17,7 @@ export function initKeyboardUI(): void {
     window.addEventListener('keydown', onFocusModality, { capture: true });
     window.addEventListener('pointerdown', onPointerDown, { capture: true });
     window.addEventListener('keydown', onEscape, { capture: true });
-    window.addEventListener('keydown', onOptionToggle);
+    window.addEventListener('keydown', onActivate);
 }
 
 // Tracks input modality so the focus ring (gated by body.keyboard-focus in CSS)
@@ -29,9 +29,9 @@ function onFocusModality(event: KeyboardEvent): void {
     }
 
     const target = event.target as HTMLElement | null;
-    const isEditable = target?.isContentEditable
-        || target?.tagName === 'INPUT'
-        || target?.tagName === 'TEXTAREA';
+    const isEditable = !!target && (target.isContentEditable
+        || target.tagName === 'INPUT'
+        || target.tagName === 'TEXTAREA');
     const movesFocus = event.key === 'Tab'
         || (!isEditable && (event.key.startsWith('Arrow') || event.key === 'Home' || event.key === 'End'));
     if (movesFocus)
@@ -42,16 +42,27 @@ function onPointerDown(): void {
     document.body.classList.remove('keyboard-focus');
 }
 
-// Toggles a focused listbox option on Space/Enter/X. Registered before keyux's
-// focus-group listener so stopImmediatePropagation suppresses its type-ahead.
-function onOptionToggle(event: KeyboardEvent): void {
+// Activates a focused custom control by synthesizing a click: role="button"
+// (non-native) on Enter/Space, role="option" on Enter/Space/X. Registered
+// before keyux's focus-group listener so stopImmediatePropagation suppresses
+// its type-ahead.
+function onActivate(event: KeyboardEvent): void {
     if (event.isComposing)
         return;
 
     const target = event.target as HTMLElement | null;
-    if (target?.getAttribute('role') !== 'option')
+    if (!target)
         return;
-    if (event.key !== ' ' && event.key !== 'Enter' && event.key !== 'x' && event.key !== 'X')
+
+    const role = target.getAttribute('role');
+    const isOption = role === 'option';
+    const isCustomButton = role === 'button' && target.tagName !== 'BUTTON' && target.tagName !== 'A';
+    if (!isOption && !isCustomButton)
+        return;
+
+    const isActivateKey = event.key === 'Enter' || event.key === ' '
+        || (isOption && (event.key === 'x' || event.key === 'X'));
+    if (!isActivateKey)
         return;
 
     event.preventDefault();

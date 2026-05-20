@@ -2,12 +2,15 @@
 
 @{
     var unselectedCls = IsHoverable ? "" : "unselected";
-    var extraClass = Click.HasDelegate ? " clickable" : "";
+    var isClickable = Click.HasDelegate;
+    var extraClass = isClickable ? " clickable" : "";
     var bodyClass = Icon == null
         ? "ml-4"
         : "";
 }
 <div class="tile-item @unselectedCls @extraClass group @Class"
+     tabindex="@(isClickable ? 0 : (int?)null)"
+     role="@(isClickable ? Role : null)"
      @attributes="@_resolvedAdditionalAttributes">
     @if (Icon != null) {
         <div class="tile-item-icon">
@@ -39,6 +42,7 @@
     [Parameter] public bool IsHoverable { get; set; } = true;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public EventCallback Click { get; set; }
+    [Parameter] public string Role { get; set; } = "button";
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 

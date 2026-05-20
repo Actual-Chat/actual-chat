@@ -12,7 +12,7 @@
             if (chat == null)
                 continue;
 
-            <div class="c-contact" @onclick="() => Selector.Remove(chat.Id)">
+            <div class="c-contact" role="button" tabindex="0" @onclick="() => Selector.Remove(chat.Id)">
                 <div class="c-remove">
                     <i class="icon-close c-close"></i>
                     <span class="c-text">Remove</span>
