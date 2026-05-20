@@ -264,6 +264,63 @@ function isPromiseLike(value: unknown): value is PromiseLike<void> {
         && typeof value.then === 'function');
 }
 
+// Standalone top-tier encoder probe, callable before any VideoRecorder
+// instance exists. Mirrors the dims and tier count that `startRecording`
+// would pick (3-tier 1280×720 on desktop, 2-tier 640×360 on mobile) so the
+// `probeEncoder` cache hits when the user actually clicks Start Video and
+// the recorder's own `pickSimulcastCodec` runs.
+//
+// Returns the codec category that passed, or null if every HW-accelerated
+// HEVC/H.264 candidate failed. Used by JoinVideoCallModal to detect a
+// machine-level encoder wedge while the user is still in the preview UI.
+export async function probeTopTierEncoderSupport(): Promise<'hevc' | 'h264' | null> {
+    const isMobile = DeviceInfo.isMobile;
+    const targetSize = isMobile
+        ? { width: 640, height: 360 }
+        : { width: 1280, height: 720 };
+    const tierCount = isMobile ? 2 : 3;
+    const supportedCodecs = await detectSupportedCodecs(targetSize.width, targetSize.height);
+    // HEVC first then H264 — same efficiency order startRecording's
+    // pickSimulcastCodec uses, so a cache key minted here lines up with
+    // the later probe.
+    const orderedCategories = ['hevc', 'h264'] as const;
+    const candidates = orderedCategories
+        .map(cat => supportedCodecs.find(c => c.category === cat && c.supported && c.hardwareAccelerated))
+        .filter((c): c is CodecInfo => Boolean(c));
+    if (candidates.length === 0) {
+        warnLog?.log('probeTopTierEncoderSupport: no HW-accelerated HEVC/H264 candidates available');
+        return null;
+    }
+    const ladder = buildLadder({
+        topWidth: targetSize.width,
+        topHeight: targetSize.height,
+        tierCount,
+        maxTierCount: VIDEO.cameraLayerBaseBitratesKbps.length,
+        bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
+    });
+    for (const codec of candidates) {
+        const layersWithBitrates = ladder.map(l => {
+            const baseBitrateKbps = l.baseBitrateKbps ?? l.bitrateKbps;
+            return {
+                ...l,
+                baseBitrateKbps,
+                bitrateKbps: getVideoLayerBitrateKbps(baseBitrateKbps, codec.codec),
+            };
+        });
+        const result = await probeEncoder(codec.codec, layersWithBitrates);
+        if (result.supported) {
+            infoLog?.log(
+                `probeTopTierEncoderSupport: ${codec.category} (${codec.codec}) PASS ` +
+                `@ ${targetSize.width}x${targetSize.height} (${tierCount} layer(s))`);
+            return codec.category as 'hevc' | 'h264';
+        }
+        warnLog?.log(
+            `probeTopTierEncoderSupport: ${codec.category} (${codec.codec}) ` +
+            `FAIL stage=${result.failedStage}`);
+    }
+    return null;
+}
+
 // ---- VideoRecorder --------------------------------------------------------
 
 export class VideoRecorder {

@@ -55,6 +55,26 @@
 .join-video-call-modal .c-video.no-mirror .video-frame .camera-preview-video {
     transform: none;
 }
+/* Encoder-unavailable state: dim the preview and overlay the actionable
+   restart prompt centred on the frame. Triggered by the modal's encoder
+   probe (see JoinVideoCallModal.razor); kept independent of camera state
+   so the user still sees themselves under the message. */
+.join-video-call-modal .c-video.encoder-unavailable .video-frame .camera-preview,
+.join-video-call-modal .c-video.encoder-unavailable .video-frame .camera-preview-video {
+    @apply opacity-30;
+}
+.join-video-call-modal .video-frame .c-encoder-error {
+    @apply absolute inset-0;
+    @apply flex-y items-center justify-center gap-y-2;
+    @apply px-6 text-center;
+    @apply bg-[rgba(0,0,0,0.6)] text-white;
+    @apply rounded-2xl;
+    @apply pointer-events-none;
+}
+.join-video-call-modal .video-frame .c-encoder-error .c-encoder-error-text {
+    @apply text-base;
+    @apply max-w-xs;
+}
 .join-video-call-modal .c-permission-block {
     @apply flex-y items-center justify-center gap-y-3;
     @apply min-h-56 max-h-64;
