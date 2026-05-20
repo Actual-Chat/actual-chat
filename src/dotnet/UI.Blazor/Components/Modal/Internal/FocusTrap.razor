@@ -1,11 +1,11 @@
 @namespace ActualChat.UI.Blazor.Components.Internal
 
 <div class="modal-focus-trap" @ref="_container" @onkeydown="OnKeyDownUp" @onkeyup="OnKeyDownUp">
-    <div tabindex="@(IsActive ? 0 : -1)" @ref="_startSecond" @onfocus="OnFocusEnd"></div>
-    <div tabindex="@(IsActive ? 0 : -1)" @ref="_startFirst" @onfocus="OnFocusEnd"></div>
+    <div class="modal-focus-trap-anchor" tabindex="@(IsActive ? 0 : -1)" @ref="_startSecond" @onfocus="OnFocusEnd"></div>
+    <div class="modal-focus-trap-anchor" tabindex="@(IsActive ? 0 : -1)" @ref="_startFirst" @onfocus="OnFocusEnd"></div>
     @ChildContent
-    <div tabindex="@(IsActive ? 0 : -1)" @ref="_endFirst" @onfocus="OnFocusStart"></div>
-    <div tabindex="@(IsActive ? 0 : -1)" @ref="_endSecond" @onfocus="OnFocusStart"></div>
+    <div class="modal-focus-trap-anchor" tabindex="@(IsActive ? 0 : -1)" @ref="_endFirst" @onfocus="OnFocusStart"></div>
+    <div class="modal-focus-trap-anchor" tabindex="@(IsActive ? 0 : -1)" @ref="_endSecond" @onfocus="OnFocusStart"></div>
 </div>
 
 @code {

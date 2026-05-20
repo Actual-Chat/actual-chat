@@ -6,3 +6,5 @@
 
 @import '../../dotnet/UI.Blazor/styles.css';
 @import '../../dotnet/UI.Blazor.App/styles.css';
+
+@import './a11y.css';

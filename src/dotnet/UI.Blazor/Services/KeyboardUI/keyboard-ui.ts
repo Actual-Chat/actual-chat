@@ -14,8 +14,32 @@ export function initKeyboardUI(): void {
         hotkeyKeyUX([hotkeyMacCompat()]),
         focusGroupKeyUX(),
     ]);
+    window.addEventListener('keydown', onFocusModality, { capture: true });
+    window.addEventListener('pointerdown', onPointerDown, { capture: true });
     window.addEventListener('keydown', onEscape, { capture: true });
     window.addEventListener('keydown', onOptionToggle);
+}
+
+// Tracks input modality so the focus ring (gated by body.keyboard-focus in CSS)
+// shows only during keyboard navigation. Escape and pointer input clear it.
+function onFocusModality(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+        document.body.classList.remove('keyboard-focus');
+        return;
+    }
+
+    const target = event.target as HTMLElement | null;
+    const isEditable = target?.isContentEditable
+        || target?.tagName === 'INPUT'
+        || target?.tagName === 'TEXTAREA';
+    const movesFocus = event.key === 'Tab'
+        || (!isEditable && (event.key.startsWith('Arrow') || event.key === 'Home' || event.key === 'End'));
+    if (movesFocus)
+        document.body.classList.add('keyboard-focus');
+}
+
+function onPointerDown(): void {
+    document.body.classList.remove('keyboard-focus');
 }
 
 // Toggles a focused listbox option on Space/Enter/X. Registered before keyux's
