@@ -211,7 +211,10 @@ body.narrow .chat-audio-panel .recorder-wrapper {
 }
 body.narrow .narrow-panel .recorder-wrapper::before,
 body.narrow .text-mode .recorder-wrapper::before,
-body.narrow .to-thin .recorder-wrapper::before {
+body.narrow .to-thin .recorder-wrapper::before,
+body.narrow .narrow-panel .chat-audio-panel .listen-only-btn.btn::before,
+body.narrow .text-mode .chat-audio-panel .listen-only-btn.btn::before,
+body.narrow .to-thin .chat-audio-panel .listen-only-btn.btn::before {
     @apply hidden;
 }
 /* On-state: rotate + on colors + thicker ring */
