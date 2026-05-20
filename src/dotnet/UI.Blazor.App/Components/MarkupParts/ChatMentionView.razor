@@ -1,7 +1,9 @@
 @namespace ActualChat.UI.Blazor.App.Components.MarkupParts
 @inherits MarkupViewBase<ChatMention>
 @{
-    var name = Markup.Chat?.Title.NullIfEmpty() ?? Markup.NameOrNotAvailable;
+    // Markup.Name is set by the resolver — it already carries the "Place › Title"
+    // prefix for cross-place chats, so use it rather than the raw Chat.Title.
+    var name = Markup.NameOrNotAvailable;
     var url = Links.Chat(Markup.ChatId).Value;
 }
 

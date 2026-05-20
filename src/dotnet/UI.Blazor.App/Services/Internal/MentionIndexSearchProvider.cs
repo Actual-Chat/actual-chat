@@ -23,21 +23,38 @@ internal class MentionIndexSearchProvider(IServiceProvider services, ChatId chat
         var result = new MentionSearchResult[candidates.Length];
         for (var i = 0; i < candidates.Length; i++) {
             var c = candidates[i];
-            var picture = c.Picture ?? new Picture(null, null, c.PrimaryName);
-            // Suffix the candidate name with the place title only when the candidate
-            // lives in a different place than the host chat (and isn't the place mention
-            // itself — those carry PlaceId == Id.Target).
-            var isPlaceMention = c.Id.Target is PlaceId;
-            var suffix = c.PlaceId is { } cp && cp != hostPlaceId && !isPlaceMention
-                ? c.PlaceTitle
-                : null;
-            var isInHostPlace = hostPlaceId is not null && c.PlaceId == hostPlaceId && !isPlaceMention;
-            result[i] = new MentionSearchResult(c.Id, searchPhrase.GetMatch(c.PrimaryName), picture) {
+            var picture = c.Picture ?? new Picture(null, null, c.Title);
+            var (description, mentionName) = Describe(c, hostPlaceId);
+            result[i] = new MentionSearchResult(c.Id, searchPhrase.GetMatch(c.Title), picture) {
                 IsChatMember = c.IsChatMember,
-                PlaceTitleSuffix = suffix,
-                IsInHostPlace = isInHostPlace,
+                Description = description,
+                MentionName = mentionName,
             };
         }
         return result;
+    }
+
+    // Computes the picker description suffix and the name baked into the mention on insert.
+    private static (string? Description, string MentionName) Describe(MentionCandidate c, PlaceId? hostPlaceId)
+    {
+        switch (c.Id.Target) {
+        case EmojiRef:
+            return ("emoji", c.Title);
+        case ActualChat.PlaceId:
+            return ("place", c.Title);
+        case ActualChat.UserId or ActualChat.AuthorId:
+            return (c.IsChatMember ? null : "- not in this chat", c.Title);
+        case ActualChat.ChatId:
+            if (c.PlaceId is not { } placeId)
+                return (null, c.Title); // standalone group chat
+            if (placeId == hostPlaceId)
+                return ("in this place", c.Title);
+            var placeTitle = c.PlaceTitle.NullIfEmpty();
+            return placeTitle is null
+                ? ("in another place", c.Title)
+                : ($"in {placeTitle}", $"{placeTitle} › {c.Title}");
+        default:
+            return (null, c.Title);
+        }
     }
 }

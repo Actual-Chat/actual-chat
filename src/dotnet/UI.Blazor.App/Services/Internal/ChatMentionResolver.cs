@@ -53,7 +53,7 @@ internal class ChatMentionResolver(IServiceProvider services, ChatId chatId) : I
             var chat = await Chats.Get(Session, cm.ChatId, cancellationToken).ConfigureAwait(false);
             var title = chat?.Title.NullIfEmpty() ?? cm.Name;
             var chatPlaceId = cm.ChatId is PlaceChatId pc ? pc.PlaceId : null;
-            var name = await JoinWithPlaceSuffix(title, chatPlaceId, cancellationToken).ConfigureAwait(false);
+            var name = await FormatChatName(title, chatPlaceId, cancellationToken).ConfigureAwait(false);
             return new ChatMention(cm.Id, name) { Chat = chat };
         }
         case PlaceMention pm: {
@@ -72,7 +72,9 @@ internal class ChatMentionResolver(IServiceProvider services, ChatId chatId) : I
         }
     }
 
-    private async ValueTask<string> JoinWithPlaceSuffix(string title, PlaceId? chatPlaceId, CancellationToken cancellationToken)
+    // A cross-place chat mention renders as "Place › Chat Title"; same-place and placeless
+    // chats render as just the title.
+    private async ValueTask<string> FormatChatName(string title, PlaceId? chatPlaceId, CancellationToken cancellationToken)
     {
         if (chatPlaceId is null)
             return title;
@@ -81,6 +83,6 @@ internal class ChatMentionResolver(IServiceProvider services, ChatId chatId) : I
             return title;
         var place = await Places.Get(Session, chatPlaceId, cancellationToken).ConfigureAwait(false);
         var placeTitle = place?.Title.NullIfEmpty();
-        return placeTitle is null ? title : $"{title} | {placeTitle}";
+        return placeTitle is null ? title : $"{placeTitle} › {title}";
     }
 }

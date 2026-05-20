@@ -27,7 +27,7 @@
     </div>
     @foreach (var mention in mentions) {
         var cls = mention == selection ? "selected" : "";
-        var description = GetDescription(mention);
+        var isQuoted = mention.MentionId.Target is ChatId or PlaceId;
         <div class="@cls mention-list-item"
              data-editor-focus="true"
              @onmouseover="@(_ => Selection = mention)"
@@ -57,14 +57,17 @@
                         AvatarKey="@avatarKey"/>
                 }
                 <div class="c-center">
+                    @if (isQuoted) {
+                        <span class="c-quote">"</span>
+                    }
                     <SearchMatchHighlighter Match="@mention.SearchMatch"/>
-                    @if (mention.PlaceTitleSuffix is { Length: > 0 } suffix) {
-                        <span class="c-place-suffix">&nbsp;| @suffix</span>
+                    @if (isQuoted) {
+                        <span class="c-quote">"</span>
+                    }
+                    @if (mention.Description is { Length: > 0 } description) {
+                        <span class="c-description">&nbsp;@description</span>
                     }
                 </div>
-                @if (description is not null) {
-                    <div class="c-description">— @description</div>
-                }
             </div>
         </div>
     }
@@ -162,17 +165,6 @@
         => Manager.KindFilter.Value = Manager.KindFilter.Value == filter
             ? MentionKindFilter.All
             : filter;
-
-    private static string? GetDescription(MentionSearchResult mention) {
-        var target = mention.MentionId.Target;
-        return target switch {
-            EmojiRef => "emoji",
-            PlaceId => "place",
-            ChatId => mention.IsInHostPlace ? "this place's chat" : "chat",
-            UserId or AuthorId => mention.IsChatMember ? null : "not in this chat",
-            _ => null,
-        };
-    }
 
     private MentionSearchResult? FixSelection(MentionSearchResult? selection, MentionSearchResult[] mentions) {
         if (mentions.Length == 0)

@@ -119,9 +119,7 @@
         if (mention == null)
             return;
 
-        var name = mention.PlaceTitleSuffix is { Length: > 0 } suffix
-            ? $"{mention.Text} | {suffix}"
-            : mention.Text;
+        var name = mention.MentionName.NullIfEmpty() ?? mention.Text;
         var html = HtmlConverter.Format(MentionMarkup.New(mention.MentionId, name)) + " ";
         await JSRef.InvokeVoidAsync("insertHtml", html, "@");
     }
