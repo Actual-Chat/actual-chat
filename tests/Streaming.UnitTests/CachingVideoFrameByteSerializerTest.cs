@@ -250,6 +250,7 @@ public class CachingVideoFrameByteSerializerTest(ITestOutputHelper @out) : TestB
             Description = isKey ? new byte[] { 0x00, 0x00, 0x00, 0x01, 0x67 } : default,
             Codec = isKey ? "avc1" : null,
             TemporalLayerId = 0,
+            ServerArrivedAtTicks = 638_000_000_000_000_000L + index,
         };
     }
 
@@ -269,5 +270,70 @@ public class CachingVideoFrameByteSerializerTest(ITestOutputHelper @out) : TestB
         actual.Description.Span.SequenceEqual(expected.Description.Span).Should().BeTrue();
         actual.Codec.Should().Be(expected.Codec);
         actual.TemporalLayerId.Should().Be(expected.TemporalLayerId);
+        actual.ServerArrivedAtTicks.Should().Be(expected.ServerArrivedAtTicks);
+    }
+
+    [Fact]
+    public void Deserialize_LegacyFrame_MissingServerArrivedAtTicks_DefaultsToZero()
+    {
+        // Backward-compat: 18-entry maps (pre-ServerArrivedAtTicks) must still parse.
+        // We hand-write an 18-entry map omitting the new field and assert the decoder
+        // skips it gracefully via the default `reader.Skip()` branch.
+        var buffer = new ArrayPoolBuffer<byte>(1024, mustClear: false);
+        var writer = new MessagePackWriter(buffer);
+        writer.WriteMapHeader(18);
+
+        writer.Write("Data");                writer.Write(new byte[] { 0xAA, 0xBB });
+        writer.Write("Offset");              writer.Write(TimeSpan.FromMilliseconds(99).Ticks);
+        writer.Write("Duration");            writer.Write(TimeSpan.FromMilliseconds(33).Ticks);
+        writer.Write("OffsetEpoch");         writer.Write(0);
+        writer.Write("Index");               writer.Write(7);
+        writer.Write("KeyFrameIndex");       writer.Write(7);
+        writer.Write("Width");               writer.Write(640);
+        writer.Write("Height");              writer.Write(360);
+        writer.Write("LayerId");             writer.Write((byte)0);
+        writer.Write("LayerCount");          writer.Write((byte)1);
+        writer.Write("MaxLayerWidth");       writer.Write(640);
+        writer.Write("MaxLayerHeight");      writer.Write(360);
+        writer.Write("TemporalLayerId");     writer.Write((byte)0);
+        writer.Write("TemporalLayerCount");  writer.Write((byte)1);
+        writer.Write("Codec");               writer.Write("avc1");
+        writer.Write("Description");         writer.WriteNil();
+        writer.Write("DropTrace");           writer.Write(ReadOnlySpan<byte>.Empty);
+        writer.Write("Rotation");            writer.Write((byte)0);
+        writer.Flush();
+
+        var reader = new MessagePackReader(buffer.WrittenMemory);
+        var decoded = CachingVideoFrameFormatter.Instance.Deserialize(ref reader, MessagePackSerializerOptions.Standard)!;
+
+        decoded.Index.Should().Be(7);
+        decoded.ServerArrivedAtTicks.Should().Be(0);
+    }
+
+    [Fact]
+    public void ServerStamping_InvalidatesCache_NewBytesIncludeStamp()
+    {
+        // Mirrors VideoStreamingBackend.ProcessFrames: deserialize a frame from
+        // the publisher (ServerArrivedAtTicks=0), stamp it, drop SerializedData,
+        // and verify subsequent serialization includes the stamp.
+        var sender = MakeFrame(isKey: true, index: 1);
+        sender.ServerArrivedAtTicks = 0;  // publisher leg never populates it
+        var wireBuffer = new ArrayPoolBuffer<byte>(1024, mustClear: false);
+        Serializer.Write(wireBuffer, sender, typeof(VideoFrame));
+
+        var received = (VideoFrame)Serializer.Read(wireBuffer.WrittenMemory, typeof(VideoFrame), out _)!;
+        received.ServerArrivedAtTicks.Should().Be(0);
+        received.SerializedData.IsEmpty.Should().BeFalse("Deserialize populates the cache");
+
+        var stamp = 638_500_000_000_000_000L;
+        received.ServerArrivedAtTicks = stamp;
+        received.SerializedData = default;
+
+        var fanoutBuffer = new ArrayPoolBuffer<byte>(1024, mustClear: false);
+        Serializer.Write(fanoutBuffer, received, typeof(VideoFrame));
+        received.SerializedData.IsEmpty.Should().BeFalse("re-serialize populates the cache again");
+
+        var fanoutDecoded = (VideoFrame)Serializer.Read(fanoutBuffer.WrittenMemory, typeof(VideoFrame), out _)!;
+        fanoutDecoded.ServerArrivedAtTicks.Should().Be(stamp);
     }
 }

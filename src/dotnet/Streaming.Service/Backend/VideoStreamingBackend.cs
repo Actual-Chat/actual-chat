@@ -252,6 +252,11 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                             continue;
                         }
 
+                        // Stamp arrival wallclock for downlink-latency attribution
+                        // on receivers; invalidate the cached serialization so the
+                        // first fan-out consumer rebuilds bytes including the stamp.
+                        frame.ServerArrivedAtTicks = DateTime.UtcNow.Ticks;
+                        frame.SerializedData = default;
                         yield return frame;
                     }
 
