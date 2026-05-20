@@ -147,9 +147,6 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
     animation: film-scroll 30s steps(300) infinite;
     will-change: transform;
 }
-body:has(.video-panel:not(.collapsed):not(.panel-hidden)) .c-film-strip::after {
-    animation-timing-function: steps(150);
-}
 body.wide .c-film-strip::after {
     --film-h: 3rem;
     @apply -left-[100%];

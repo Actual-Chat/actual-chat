@@ -129,7 +129,10 @@ export class VideoPanel {
         if (wantCompact) {
             // Re-force whenever Blazor has cleared the collapsed state but compact is still wanted
             // (e.g. SetVideoPanelExpanded(true) has the side effect of setting IsCollapsed=false).
-            if (!this.isExpanded() && !this.isCollapsed()) {
+            // Skip when minimized: user explicitly swiped the panel down to 0 height, the
+            // compact-mode requirement is already satisfied — don't reveal the panel as an
+            // island just because the keyboard opened.
+            if (!this.isExpanded() && !this.isCollapsed() && !this.isMinimized()) {
                 this.forcedCollapseActive = true;
                 void this.blazorRef.invokeMethodAsync('OnForceIsland', true);
             }
@@ -193,6 +196,10 @@ export class VideoPanel {
 
     private isInline(): boolean {
         return !this.isExpanded() && !this.isCollapsed();
+    }
+
+    private isMinimized(): boolean {
+        return this.videoPanel.classList.contains('minimized');
     }
 
     private handleObserver: MutationObserver | null = null;
@@ -763,21 +770,21 @@ export class VideoPanel {
         const isHidden = this.videoPanel.classList.contains('panel-hidden');
         const newMode: 'inline' | 'island' | 'pill' =
             isCollapsed ? 'island' : (isHidden ? 'pill' : 'inline');
+        // Why: invariant "handle visible ⇔ inline" must hold even when panelMode
+        // is already in sync (e.g. setupHomeGuard's MutationObserver beat us to
+        // teardown and set panelMode='inline' on class removal — without this
+        // call the handle stays display:none after a keyboard close).
+        this.setDragHandleVisible(newMode === 'inline');
         if (newMode === this.panelMode)
             return;
         if (this.panelMode === 'island')
             this.teardownIsland();
         else if (this.panelMode === 'pill')
             this.teardownHidden();
-        if (newMode === 'island') {
-            this.setDragHandleVisible(false);
+        if (newMode === 'island')
             this.setupIsland();
-        } else if (newMode === 'pill') {
-            this.setDragHandleVisible(false);
+        else if (newMode === 'pill')
             this.setupHidden();
-        } else {
-            this.setDragHandleVisible(true);
-        }
         this.panelMode = newMode;
     }
 
@@ -792,8 +799,9 @@ export class VideoPanel {
         this.positionIslandDefault();
         this.initIslandDrag();
 
-        // Watch subheader/banners and island aspect changes to reposition.
+        // Watch header/subheader/banners and island aspect changes to reposition.
         const subheader = document.querySelector('.layout-subheader');
+        const headerContent = document.querySelector('.layout-header > .c-content');
         if (!this.islandResizeObserver) {
             this.islandResizeObserver = new ResizeObserver(() => {
                 if (!this.islandDragged)
@@ -803,6 +811,8 @@ export class VideoPanel {
             });
             if (subheader)
                 this.islandResizeObserver.observe(subheader);
+            if (headerContent)
+                this.islandResizeObserver.observe(headerContent);
             this.islandResizeObserver.observe(this.videoPanel);
         }
 
@@ -842,24 +852,35 @@ export class VideoPanel {
         this.restoreToParent();
     }
 
-    // Place the island below the subheader (or header if no subheader), top-right.
+    // Place the island top-right. Narrow: just below the main header title row
+    // (ignoring activity panel + subheader so the island stays close to the top and
+    // away from the editor), with safe-area-right respected. Wide: below subheader
+    // (or header), small right gap.
     private positionIslandDefault(): void {
-        const subheader = document.querySelector('.layout-subheader');
         let top: number;
-        if (subheader && subheader.getBoundingClientRect().height > 0) {
-            const rect = subheader.getBoundingClientRect();
-            top = rect.bottom + 8; // 0.5rem gap
-        } else {
-            const header = document.querySelector('.layout-header');
-            if (header) {
-                const rect = header.getBoundingClientRect();
-                top = rect.bottom + 8;
+        let right: string;
+        if (ScreenSize.isNarrow()) {
+            // Main header title row only — activity panel sits below it inside
+            // .layout-header and we intentionally overlap it (see #island-overlap).
+            const headerContent = document.querySelector('.layout-header > .c-content');
+            if (headerContent) {
+                top = headerContent.getBoundingClientRect().bottom + 8;
             } else {
-                top = 64; // fallback
+                top = 64;
             }
+            right = 'calc(var(--safe-area-right) + 0.5rem)';
+        } else {
+            const subheader = document.querySelector('.layout-subheader');
+            if (subheader && subheader.getBoundingClientRect().height > 0) {
+                top = subheader.getBoundingClientRect().bottom + 8;
+            } else {
+                const header = document.querySelector('.layout-header');
+                top = header ? header.getBoundingClientRect().bottom + 8 : 64;
+            }
+            right = '0.5rem';
         }
         this.videoPanel.style.top = `${top}px`;
-        this.videoPanel.style.right = '0.5rem';
+        this.videoPanel.style.right = right;
         this.videoPanel.style.left = '';
     }
 
@@ -1004,6 +1025,15 @@ export class VideoPanel {
 
         const handle = document.querySelector<HTMLElement>('.c-drag-handle');
         const startDragFrom = (e: TouchEvent) => {
+            // Keyboard up + drag → close keyboard in parallel with the drag.
+            // The viewport meta sets `interactive-widget=resizes-content`, so the
+            // layout viewport grows as the keyboard hides; the panel expands into
+            // that growing area without pushing the editor offscreen.
+            if (this.compactReasons.has('keyboard')) {
+                const active = document.activeElement as HTMLElement | null;
+                if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable))
+                    active.blur();
+            }
             startX = e.touches[0].clientX;
             startY = e.touches[0].clientY;
             startHeight = this.videoPanel.offsetHeight;

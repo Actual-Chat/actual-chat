@@ -73,18 +73,18 @@ export class ChatActivityPanel {
         ).subscribe(() => this.collapse());
 
         // Continuous drag gesture for expand/pin/unpin.
-        // When collapsed: triggers from header OR activity panel touch.
-        // When expanded/pinned: triggers from activity panel touch only.
+        // Why header-touch: .chat-activity-panel has `pointer-events: none` (to keep
+        // the panel's background click from toggling the right panel), so touches in
+        // the panel area land on .layout-header — we accept those here and let
+        // PanelDragGesture decide whether the gesture does anything based on
+        // isPinned/state/dy threshold.
         // Disabled entirely when not-participating (panel is just a static banner).
         DocumentEvents.capturedPassive.touchStart$.pipe(
             filter(() => !ScreenSize.isWide()),
             filter(() => !this.isNotParticipating()),
             filter(e => {
-                const onPanel = this.activityPanel.contains(e.target as Node);
-                const onHeader = this.header.contains(e.target as Node);
-                if (onPanel) return true;
-                // When collapsed, allow touch on header to start the gesture
-                return onHeader && this.state === 'collapsed';
+                const target = e.target as Node;
+                return this.activityPanel.contains(target) || this.header.contains(target);
             }),
             takeUntil(this.disposed$)
         ).subscribe(e => {
