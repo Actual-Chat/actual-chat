@@ -311,29 +311,61 @@ public class CachingVideoFrameByteSerializerTest(ITestOutputHelper @out) : TestB
     }
 
     [Fact]
-    public void ServerStamping_InvalidatesCache_NewBytesIncludeStamp()
+    public void ServerStamping_InPlace_OverwritesCachedBytes()
     {
         // Mirrors VideoStreamingBackend.ProcessFrames: deserialize a frame from
-        // the publisher (ServerArrivedAtTicks=0), stamp it, drop SerializedData,
-        // and verify subsequent serialization includes the stamp.
+        // the publisher (ServerArrivedAtTicks=0), stamp it via the in-place
+        // helper, and verify the cache stays populated and reads back the stamp.
         var sender = MakeFrame(isKey: true, index: 1);
-        sender.ServerArrivedAtTicks = 0;  // publisher leg never populates it
+        sender.ServerArrivedAtTicks = 0;
         var wireBuffer = new ArrayPoolBuffer<byte>(1024, mustClear: false);
         Serializer.Write(wireBuffer, sender, typeof(VideoFrame));
 
         var received = (VideoFrame)Serializer.Read(wireBuffer.WrittenMemory, typeof(VideoFrame), out _)!;
         received.ServerArrivedAtTicks.Should().Be(0);
         received.SerializedData.IsEmpty.Should().BeFalse("Deserialize populates the cache");
+        var cachedArrayBefore = MemoryMarshal.TryGetArray(received.SerializedData, out var segBefore)
+            ? segBefore.Array
+            : null;
 
         var stamp = 638_500_000_000_000_000L;
-        received.ServerArrivedAtTicks = stamp;
-        received.SerializedData = default;
+        CachingVideoFrameFormatter.StampServerArrived(received, stamp);
+
+        received.ServerArrivedAtTicks.Should().Be(stamp);
+        received.SerializedData.IsEmpty.Should().BeFalse("in-place stamp must not invalidate the cache");
+        MemoryMarshal.TryGetArray(received.SerializedData, out var segAfter).Should().BeTrue();
+        segAfter.Array.Should().BeSameAs(cachedArrayBefore, "the backing byte[] is mutated in place");
 
         var fanoutBuffer = new ArrayPoolBuffer<byte>(1024, mustClear: false);
         Serializer.Write(fanoutBuffer, received, typeof(VideoFrame));
-        received.SerializedData.IsEmpty.Should().BeFalse("re-serialize populates the cache again");
 
         var fanoutDecoded = (VideoFrame)Serializer.Read(fanoutBuffer.WrittenMemory, typeof(VideoFrame), out _)!;
         fanoutDecoded.ServerArrivedAtTicks.Should().Be(stamp);
+    }
+
+    [Fact]
+    public void ServerStamping_InPlace_MatchesReSerialize()
+    {
+        // The in-place overwrite must produce byte-identical output to a fresh
+        // re-serialize so consumers observe the same bytes either way.
+        var frame = MakeFrame(isKey: false, index: 5);
+        var wireBuffer = new ArrayPoolBuffer<byte>(1024, mustClear: false);
+        Serializer.Write(wireBuffer, frame, typeof(VideoFrame));
+        var roundTrip = (VideoFrame)Serializer.Read(wireBuffer.WrittenMemory, typeof(VideoFrame), out _)!;
+
+        var stamp = 638_500_000_000_000_123L;
+        CachingVideoFrameFormatter.StampServerArrived(roundTrip, stamp);
+        var inPlaceBuffer = new ArrayPoolBuffer<byte>(1024, mustClear: false);
+        Serializer.Write(inPlaceBuffer, roundTrip, typeof(VideoFrame));
+
+        // Now do the same via cache invalidation to compare.
+        var roundTrip2 = (VideoFrame)Serializer.Read(wireBuffer.WrittenMemory, typeof(VideoFrame), out _)!;
+        roundTrip2.ServerArrivedAtTicks = stamp;
+        roundTrip2.SerializedData = default;
+        var rebuiltBuffer = new ArrayPoolBuffer<byte>(1024, mustClear: false);
+        Serializer.Write(rebuiltBuffer, roundTrip2, typeof(VideoFrame));
+
+        inPlaceBuffer.WrittenMemory.Span.SequenceEqual(rebuiltBuffer.WrittenMemory.Span)
+            .Should().BeTrue("inline stamp must produce the same bytes as a rebuild");
     }
 }
