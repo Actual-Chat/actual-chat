@@ -12,7 +12,6 @@
 .image-line .image-item {
     @apply /*flex-1*/ flex-x;
     @apply w-full;
-    @apply min-h-20;
     @apply overflow-hidden;
 }
 body.hoverable .image-line .image-item:hover {
@@ -24,10 +23,12 @@ body.hoverable .image-line .image-item:hover {
 .image-line .image-item video {
     @apply object-cover;
 }
-/* Single image: respect aspect ratio, no cropping */
+/* Single image: respect aspect ratio, no cropping.
+   `w-full` (inherited from .image-line) + inline `max-width` give a definite
+   container width so the inline `aspect-ratio` can compute height. Without
+   `min-h-20` on .image-item the chain would collapse to 0 with `w-auto`. */
 .image-line.one-image {
-    @apply w-auto;
-    @apply max-h-96 max-w-full;
+    @apply max-h-96;
     @apply rounded-xl overflow-hidden;
 }
 .image-line.one-image image-skeleton::part(image) {

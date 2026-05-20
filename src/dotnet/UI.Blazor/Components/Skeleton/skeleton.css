@@ -491,23 +491,21 @@ chat-view-footer-skeleton .footer-editor {
     @apply flex-1;
 }
 
-/* Image Skeleton */
+/* Image Skeleton.
+   Children are absolutely positioned so both <img> tags share the same box —
+   state changes only flip opacity, no layout reflow. The parent (image-skeleton)
+   must therefore have a definite size (set via aspect-ratio + width, or fixed
+   w-X h-X classes — every existing usage already satisfies this). */
 image-skeleton {
-    @apply block;
+    @apply relative block;
 }
 image-skeleton.show-image-skeleton {
     @apply bg-05;
     animation: pulse 2s infinite;
 }
-image-skeleton.show-image-skeleton .image,
-image-skeleton.show-image-thumbnail .image,
-image-skeleton.show-image-skeleton .image-thumbnail,
-image-skeleton.show-image-original .image-thumbnail {
-    @apply invisible;
-}
 image-skeleton.show-image-original .image,
 image-skeleton.show-image-thumbnail .image-thumbnail {
-    @apply block;
+    @apply opacity-100;
 }
 image-skeleton.image-cover {
     @apply w-full h-full;
@@ -517,8 +515,9 @@ image-skeleton.image-cover .image {
 }
 image-skeleton .image,
 image-skeleton .image-thumbnail {
-    @apply hidden;
+    @apply absolute inset-0;
     @apply w-full h-full;
+    @apply opacity-0;
     @apply object-cover;
     border-radius: inherit;
 }

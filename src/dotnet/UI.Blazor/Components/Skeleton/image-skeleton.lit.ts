@@ -16,6 +16,8 @@ export class ImageSkeleton extends LitElement {
     @property() src: string;
     @property() thumbnailSrc: string;
     @property() title = '';
+    @property({ type: Number }) width?: number;
+    @property({ type: Number }) height?: number;
 
     private _imageRef: Ref<HTMLImageElement> = createRef();
     private _imageState: ImageState = 'none';
@@ -55,6 +57,11 @@ export class ImageSkeleton extends LitElement {
 
     render() {
         const isSubDomain = this.isSubDomain(this.src);
+        // Width/height attributes give the browser an intrinsic aspect-ratio
+        // hint BEFORE the bitmap loads, preventing CLS. CSS w-full/h-full /
+        // object-fit still drive the actual rendered size.
+        const w = this.width && this.width > 0 ? this.width : nothing;
+        const h = this.height && this.height > 0 ? this.height : nothing;
         if (this.thumbnailSrc && this.thumbnailSrc != '') {
             return html`
                 <img
@@ -64,6 +71,8 @@ export class ImageSkeleton extends LitElement {
                     crossorigin='${isSubDomain ? nothing : 'anonymous'}'
                     draggable='false'
                     alt=''
+                    width='${w}'
+                    height='${h}'
                     .src='${this.src}'
                     .title='${this.title}'
                     @load='${this.imageLoaded.bind(this)}'
@@ -75,6 +84,8 @@ export class ImageSkeleton extends LitElement {
                     crossorigin='${isSubDomain ? nothing : 'anonymous'}'
                     draggable='false'
                     alt=''
+                    width='${w}'
+                    height='${h}'
                     .src='${this.thumbnailSrc}'
                     .title='${this.title}'
                     @load='${this.thumbnailLoaded.bind(this)}'
@@ -89,6 +100,8 @@ export class ImageSkeleton extends LitElement {
                     crossorigin='${isSubDomain ? nothing : 'anonymous'}'
                     draggable='false'
                     alt=''
+                    width='${w}'
+                    height='${h}'
                     .src='${this.src}'
                     .title='${this.title}'
                     @load='${this.imageLoaded.bind(this)}'
