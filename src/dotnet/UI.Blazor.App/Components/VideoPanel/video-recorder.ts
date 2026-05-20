@@ -50,6 +50,7 @@ import {
     detectSupportedCodecs,
     getDefaultCodec,
     getCodecCategory,
+    getActiveEncoderCategoriesByPriority,
     probeEncoder,
     excludeEncoderCodec,
     isEncoderCodecExcluded,
@@ -270,25 +271,25 @@ function isPromiseLike(value: unknown): value is PromiseLike<void> {
 // `probeEncoder` cache hits when the user actually clicks Start Video and
 // the recorder's own `pickSimulcastCodec` runs.
 //
-// Returns the codec category that passed, or null if every HW-accelerated
-// HEVC/H.264 candidate failed. Used by JoinVideoCallModal to detect a
+// Returns the codec category that passed, or null if every active
+// HW-accelerated candidate failed. Used by JoinVideoCallModal to detect a
 // machine-level encoder wedge while the user is still in the preview UI.
-export async function probeTopTierEncoderSupport(): Promise<'hevc' | 'h264' | null> {
+export async function probeTopTierEncoderSupport(): Promise<CodecInfo['category'] | null> {
     const isMobile = DeviceInfo.isMobile;
     const targetSize = isMobile
         ? { width: 640, height: 360 }
         : { width: 1280, height: 720 };
     const tierCount = isMobile ? 2 : 3;
     const supportedCodecs = await detectSupportedCodecs(targetSize.width, targetSize.height);
-    // HEVC first then H264 — same efficiency order startRecording's
-    // pickSimulcastCodec uses, so a cache key minted here lines up with
-    // the later probe.
-    const orderedCategories = ['hevc', 'h264'] as const;
-    const candidates = orderedCategories
+    // Priority comes from codec-support.ts REPRESENTATIVE_CODECS via the
+    // exported helper — the same list that drives detection, default-codec
+    // selection, and audience ordering. Re-enabling a category there (e.g.
+    // AV1) propagates here automatically; no hardcoded list to keep in sync.
+    const candidates = getActiveEncoderCategoriesByPriority()
         .map(cat => supportedCodecs.find(c => c.category === cat && c.supported && c.hardwareAccelerated))
         .filter((c): c is CodecInfo => Boolean(c));
     if (candidates.length === 0) {
-        warnLog?.log('probeTopTierEncoderSupport: no HW-accelerated HEVC/H264 candidates available');
+        warnLog?.log('probeTopTierEncoderSupport: no HW-accelerated candidates available');
         return null;
     }
     const ladder = buildLadder({
@@ -312,7 +313,7 @@ export async function probeTopTierEncoderSupport(): Promise<'hevc' | 'h264' | nu
             infoLog?.log(
                 `probeTopTierEncoderSupport: ${codec.category} (${codec.codec}) PASS ` +
                 `@ ${targetSize.width}x${targetSize.height} (${tierCount} layer(s))`);
-            return codec.category as 'hevc' | 'h264';
+            return codec.category;
         }
         warnLog?.log(
             `probeTopTierEncoderSupport: ${codec.category} (${codec.codec}) ` +

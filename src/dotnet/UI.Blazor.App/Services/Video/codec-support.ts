@@ -106,9 +106,15 @@ export function detectSupportedCodecs(width = 1920, height = 1080): Promise<Code
     return cached;
 }
 
+// Single source of truth for encoder category enable/disable + priority.
 // Probe ONE representative codec per category at the target resolution, in
 // priority order. The actual encoder profile string is then derived from
 // getCodecForCategory(category, w, h). Reduces startup probes ~7× vs per-profile.
+//
+// To re-enable AV1 or VP9: uncomment the corresponding entry. Detection,
+// modal-time probe, recorder probe, default-codec fallback, and audience
+// ordering all derive from this list (directly, or via `supportedCodecs`),
+// so a single change here cascades everywhere — no parallel category lists.
 const REPRESENTATIVE_CODECS: { category: CodecInfo['category']; name: string; codec: string }[] = [
     // TEMPORARILY DISABLED — AV1 mobile issues, VP9 selection disabled.
     // { category: 'av1',  name: 'AV1 Main L3.0',      codec: 'av01.0.05M.08' },
@@ -116,6 +122,13 @@ const REPRESENTATIVE_CODECS: { category: CodecInfo['category']; name: string; co
     // { category: 'vp9',  name: 'VP9 Profile 0 L3.1', codec: 'vp09.00.31.08' },
     { category: 'h264', name: 'H.264 Main 3.1',     codec: 'avc1.4D401F' },
 ];
+
+// Active encoder categories in priority order (best-first). Derived from
+// REPRESENTATIVE_CODECS so callers outside detection (e.g. JoinVideoCallModal's
+// pre-flight probe) stay in sync with what's actually enabled.
+export function getActiveEncoderCategoriesByPriority(): readonly CodecInfo['category'][] {
+    return REPRESENTATIVE_CODECS.map(c => c.category);
+}
 
 async function detectSupportedCodecsUncached(width: number, height: number): Promise<CodecInfo[]> {
     const forceH264 = readForceH264OnlyFromStorage();
