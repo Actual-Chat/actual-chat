@@ -72,6 +72,20 @@ export interface PlayerStats {
     driftLastSampleOffsetMs: number;
     driftLastSampleWallMs: number;
     producerTemporalLayerCount: number;
+    // Above-baseline downlink delay EMA: max(0, rawLatency - minBaselineSkew)
+    // where rawLatency = Date.now() - serverArrivedAtUnixMs and the baseline is
+    // the sliding-60s minimum of rawLatency. -1 == not yet sampled.
+    // Maintained by the downlink-tap operator; consumed by the Downlink health
+    // classifier (Step 5+).
+    downlinkLatencyEma: number;
+    // Sliding-60s minimum of rawLatency for this stream. Represents the
+    // constant cross-clock skew floor; jumps absorb NTP steps within the
+    // window. -1 == not yet sampled.
+    downlinkMinBaselineMs: number;
+    // EMA of wallclock ms between consecutive ArrivedChunks. Bursty arrival
+    // (server fan-out hiccup) raises this independently of latency. -1 == not
+    // yet sampled.
+    arrivalIntervalEma: number;
 }
 
 export function createEmptyRecorderStats(): RecorderStats {
@@ -99,6 +113,9 @@ export function createEmptyPlayerStats(): PlayerStats {
         driftLastSampleOffsetMs: 0,
         driftLastSampleWallMs: 0,
         producerTemporalLayerCount: 1,
+        downlinkLatencyEma: -1,
+        downlinkMinBaselineMs: -1,
+        arrivalIntervalEma: -1,
     };
 }
 
@@ -257,6 +274,12 @@ export interface ArrivedChunk {
     // upstream of this point. 0 if the sender peer didn't populate it.
     index: number;
     dropTrace: FrameDropStage[];
+
+    // Server's Date.now()-equivalent at ProcessFrames ingest, converted from
+    // DateTime.UtcNow.Ticks on the wire. 0 == legacy frame with no stamp.
+    // Used by downlink-tap to compute server->receiver latency via a
+    // sliding-min skew baseline (downlinkMinBaselineMs on PlayerStats).
+    serverArrivedAtUnixMs: number;
 
     isKeyFrame: boolean;
 

@@ -36,6 +36,7 @@ function mkChunk(opts: ChunkOpts): ChunkWithDispose {
         capturedAt: { timeMs: opts.capturedAtMs, epoch: opts.epoch ?? 0 },
         index: 0,
         dropTrace: [],
+        serverArrivedAtUnixMs: 0,
         isKeyFrame: opts.isKeyFrame,
         layerId: opts.layerId ?? 0,
         width: opts.width ?? 640,

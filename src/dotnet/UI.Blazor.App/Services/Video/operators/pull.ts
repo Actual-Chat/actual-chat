@@ -26,6 +26,9 @@ export interface VideoFrameDto {
     Description?: Uint8Array | null;
     DropTrace?: Uint8Array | null;
     Rotation?: number;
+    // DateTime.UtcNow.Ticks (100-ns ticks since AD 0001-01-01) stamped by
+    // VideoStreamingBackend.ProcessFrames. Missing/0 == legacy frame.
+    ServerArrivedAtTicks?: number | bigint;
 }
 
 export interface PullSourceOptions {
@@ -42,6 +45,9 @@ export interface PullSourceOptions {
 
 const TICKS_PER_MILLISECOND = 10000n;
 const TICKS_PER_MICROSECOND = 10n;
+// DateTime ticks at Unix epoch (1970-01-01 UTC). Subtracted to convert
+// .NET DateTime ticks into Unix-epoch milliseconds comparable with Date.now().
+const UNIX_EPOCH_DOTNET_TICKS = 621355968000000000n;
 
 function abortAsDone<T>(abortSignal: AbortSignal | undefined): Promise<IteratorReturnResult<T>> {
     if (!abortSignal)
@@ -61,6 +67,12 @@ function ticksToMs(ticks: number | bigint): number {
 function ticksToUs(ticks: number | bigint): number {
     const big = typeof ticks === 'bigint' ? ticks : BigInt(ticks);
     return Number(big / TICKS_PER_MICROSECOND);
+}
+
+function dateTimeTicksToUnixMs(ticks: number | bigint): number {
+    const big = typeof ticks === 'bigint' ? ticks : BigInt(ticks);
+    if (big === 0n) return 0;
+    return Number((big - UNIX_EPOCH_DOTNET_TICKS) / TICKS_PER_MILLISECOND);
 }
 
 // MessagePack may decode Description as a view onto a shared buffer;
@@ -148,6 +160,9 @@ export function pullSource(opts: PullSourceOptions): AsyncIterableX<ArrivedChunk
                         dropTrace: dto.DropTrace && dto.DropTrace.byteLength > 0
                             ? Array.from(dto.DropTrace)
                             : [],
+                        serverArrivedAtUnixMs: dto.ServerArrivedAtTicks != null
+                            ? dateTimeTicksToUnixMs(dto.ServerArrivedAtTicks)
+                            : 0,
                         isKeyFrame,
                         layerId: dto.LayerId ?? 0,
                         width: dto.Width ?? 0,
