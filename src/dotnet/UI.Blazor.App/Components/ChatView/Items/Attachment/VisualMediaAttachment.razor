@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using System.Globalization
 @inherits ComponentBase<AppUIHub>
 @{
     var attachment = Attachment;
@@ -10,9 +11,18 @@
         previewUrl = UrlMapper.ImagePreviewUrl(url, null, (int?)Constants.Attachments.MaxActualThumbnailResolution.Y);
     }
     var attachments = Attachments ?? [Attachment];
+    // Stamp aspect-ratio from metadata so the tile reserves correct space from
+    // the first paint — independent of when the row's aspect-ratio cascades
+    // down through the flex chain or when the image bitmap actually loads.
+    var mediaW = attachment.Media.Width;
+    var mediaH = attachment.Media.Height;
+    var hasDims = mediaW > 0 && mediaH > 0;
+    var ratioStyle = hasDims
+        ? $"aspect-ratio: {((float)mediaW / mediaH).ToString(CultureInfo.InvariantCulture)}"
+        : null;
 }
 
-<div class="image-attachment @Class">
+<div class="image-attachment @Class" style="@ratioStyle">
     <a class="c-content"
        href="@url"
        role="button"
@@ -25,6 +35,8 @@
                 class="show-image-skeleton"
                 src="@url"
                 thumbnailSrc="@previewUrl"
+                width="@(hasDims ? mediaW : 0)"
+                height="@(hasDims ? mediaH : 0)"
             />
         }
     </a>
