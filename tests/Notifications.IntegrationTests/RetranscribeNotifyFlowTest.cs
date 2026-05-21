@@ -31,9 +31,8 @@ public class RetranscribeNotifyFlowTest(
         var entry = await Tester.RecordVoiceEntry(chat.Id, Languages.English);
 
         var notification = await Tester.WaitForChatEntryNotification(alice.Id, entry.Id);
-        notification.Content.Should().StartWith(FakeRefineTranscriber.Marker);
-        notification.ChatEntryNotification.Should().NotBeNull();
-        notification.ChatEntryNotification!.EntryId.Should().Be(entry.Id);
+        notification.Text.Should().StartWith(FakeRefineTranscriber.Marker);
+        notification.EntryId.Should().Be(entry.Id);
     }
 
     [Fact]
@@ -51,10 +50,9 @@ public class RetranscribeNotifyFlowTest(
         var entry = await Tester.RecordVoiceEntry(chat.Id, Languages.English);
 
         var notification = await Tester.WaitForChatEntryNotification(alice.Id, entry.Id);
-        notification.Content.Should().NotStartWith(FakeRefineTranscriber.Marker);
-        notification.Content.Should().NotBeNullOrEmpty();
-        notification.ChatEntryNotification.Should().NotBeNull();
-        notification.ChatEntryNotification!.EntryId.Should().Be(entry.Id);
+        notification.Text.Should().NotStartWith(FakeRefineTranscriber.Marker);
+        notification.Text.Should().NotBeNullOrEmpty();
+        notification.EntryId.Should().Be(entry.Id);
     }
 
     [Fact]
@@ -76,10 +74,9 @@ public class RetranscribeNotifyFlowTest(
         var entry = await Tester.RecordVoiceEntry(chat.Id, Languages.English, VoiceMode.JustText);
 
         var notification = await Tester.WaitForChatEntryNotification(alice.Id, entry.Id);
-        notification.Content.Should().NotStartWith(FakeRefineTranscriber.Marker);
-        notification.Content.Should().NotBeNullOrEmpty();
-        notification.ChatEntryNotification.Should().NotBeNull();
-        notification.ChatEntryNotification!.EntryId.Should().Be(entry.Id);
+        notification.Text.Should().NotStartWith(FakeRefineTranscriber.Marker);
+        notification.Text.Should().NotBeNullOrEmpty();
+        notification.EntryId.Should().Be(entry.Id);
         transcribeCallCount.Should().Be(0, "no audio → no OpenAI retranscription should be triggered");
     }
 }

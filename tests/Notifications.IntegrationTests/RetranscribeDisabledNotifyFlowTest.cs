@@ -27,9 +27,8 @@ public class RetranscribeDisabledNotifyFlowTest(
         // OpenAITranscriber is not registered when retranscription is disabled,
         // so ProcessAudio falls back to realtime transcript only.
         var notification = await Tester.WaitForChatEntryNotification(alice.Id, entry.Id);
-        notification.Content.Should().NotBeNullOrEmpty();
-        notification.ChatEntryNotification.Should().NotBeNull();
-        notification.ChatEntryNotification!.EntryId.Should().Be(entry.Id);
+        notification.Text.Should().NotBeNullOrEmpty();
+        notification.EntryId.Should().Be(entry.Id);
     }
 }
 

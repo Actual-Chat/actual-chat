@@ -1,3 +1,7 @@
+using ActualChat.Compliance;
+using ActualLab.Rpc;
+using ActualLab.Versioning;
+
 namespace ActualChat.Notifications;
 
 /// <summary>
@@ -5,6 +9,7 @@ namespace ActualChat.Notifications;
 /// identity/dedup key (<see cref="NotificationId"/>) and display text — it does not assume
 /// the notification is chat-related.
 /// </summary>
+[RpcSerializable]
 [DataContract]
 [Union(1, typeof(MessageNotificationItem))]
 [Union(2, typeof(ReplyNotificationItem))]
@@ -15,64 +20,117 @@ namespace ActualChat.Notifications;
 [Union(7, typeof(NewThreadNotificationItem))]
 public abstract partial record NotificationItem(
     [property: DataMember(Order = 0), Key(0)] NotificationId Id,
-    [property: DataMember(Order = 1), Key(1)] string Title,
-    [property: DataMember(Order = 2), Key(2)] string Text,
-    [property: DataMember(Order = 3), Key(3)] Moment CreatedAt
-    ) : IHasId<NotificationId>
+    [property: DataMember(Order = 1), Key(1)] long Version = 0
+    ) : IHasId<NotificationId>, IHasVersion<long>, ISanitized
 {
-    // Computed properties
+    [DataMember(Order = 2), Key(2)]
+    public string Title { get => Sanitizer.MaskPrivate(field); init; } = "";
+    [DataMember(Order = 3), Key(3)]
+    public string Text { get => Sanitizer.MaskPrivate(field); init; } = "";
+    [DataMember(Order = 6), Key(6)]
+    public string IconUrl { get; init; } = "";
+    [DataMember(Order = 7), Key(7)]
+    public Moment CreatedAt { get; init; }
+    [DataMember(Order = 8), Key(8)]
+    public Moment SentAt { get; init; }
+    [DataMember(Order = 9), Key(9)]
+    public Moment? HandledAt { get; init; }
+
+    // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public UserId UserId => Id.UserId;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public NotificationKind Kind => Id.Kind;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public string SimilarityKey => Id.SimilarityKey;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public bool IsActive => HandledAt == null;
+
+    public static NotificationItem New(
+        NotificationId id,
+        ChatId chatId,
+        long entryLid = 0,
+        AuthorId? authorId = null)
+        => id.Kind switch {
+            NotificationKind.Message => new MessageNotificationItem(id) { ChatId = chatId, EntryLid = entryLid, AuthorId = authorId },
+            NotificationKind.Reply => new ReplyNotificationItem(id) { ChatId = chatId, EntryLid = entryLid, AuthorId = authorId },
+            NotificationKind.Invitation => new InvitationNotificationItem(id) { ChatId = chatId, EntryLid = entryLid, AuthorId = authorId },
+            NotificationKind.Mention => new MentionNotificationItem(id) { ChatId = chatId, EntryLid = entryLid, AuthorId = authorId },
+            NotificationKind.Reaction => new ReactionNotificationItem(id) { ChatId = chatId, EntryLid = entryLid, AuthorId = authorId },
+            NotificationKind.Attention => new AttentionNotificationItem(id) { ChatId = chatId, EntryLid = entryLid, AuthorId = authorId },
+            NotificationKind.NewThread => new NewThreadNotificationItem(id) { ChatId = chatId, EntryLid = entryLid, AuthorId = authorId },
+            _ => throw new ArgumentOutOfRangeException(nameof(id)),
+        };
+
+    public NotificationItem WithSimilar(NotificationItem similar)
+    {
+        if (Id != similar.Id)
+            throw new ArgumentOutOfRangeException(nameof(similar));
+
+        return this with {
+            Version = similar.Version,
+            CreatedAt = similar.CreatedAt,
+            HandledAt = null,
+        };
+    }
 }
 
 [DataContract]
 public abstract partial record ChatNotificationItem(
     NotificationId Id,
-    string Title,
-    string Text,
-    Moment CreatedAt,
-    [property: DataMember(Order = 4), Key(4)] long EntryLid
-    ) : NotificationItem(Id, Title, Text, CreatedAt)
+    long Version = 0
+    ) : NotificationItem(Id, Version)
 {
+    [DataMember(Order = 4), Key(4)]
+    public ChatId ChatId { get; init; } = null!;
+    [DataMember(Order = 5), Key(5)]
+    public long EntryLid { get; init; }
+    [DataMember(Order = 10), Key(10)]
+    public AuthorId? AuthorId { get; init; }
+
+    // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ChatId ChatId => field ??= ChatId.Parse(SimilarityKey);
+    public ChatEntryId EntryId => ChatEntryId.New(ChatId, EntryLid);
 }
 
 [DataContract, MessagePackObject]
+[method: SerializationConstructor]
 public sealed partial record MessageNotificationItem(
-    NotificationId Id, string Title, string Text, Moment CreatedAt, long EntryLid
-    ) : ChatNotificationItem(Id, Title, Text, CreatedAt, EntryLid);
+    NotificationId Id, long Version = 0
+    ) : ChatNotificationItem(Id, Version);
 
 [DataContract, MessagePackObject]
+[method: SerializationConstructor]
 public sealed partial record ReplyNotificationItem(
-    NotificationId Id, string Title, string Text, Moment CreatedAt, long EntryLid
-    ) : ChatNotificationItem(Id, Title, Text, CreatedAt, EntryLid);
+    NotificationId Id, long Version = 0
+    ) : ChatNotificationItem(Id, Version);
 
 [DataContract, MessagePackObject]
+[method: SerializationConstructor]
 public sealed partial record InvitationNotificationItem(
-    NotificationId Id, string Title, string Text, Moment CreatedAt, long EntryLid
-    ) : ChatNotificationItem(Id, Title, Text, CreatedAt, EntryLid);
+    NotificationId Id, long Version = 0
+    ) : ChatNotificationItem(Id, Version);
 
 [DataContract, MessagePackObject]
+[method: SerializationConstructor]
 public sealed partial record MentionNotificationItem(
-    NotificationId Id, string Title, string Text, Moment CreatedAt, long EntryLid
-    ) : ChatNotificationItem(Id, Title, Text, CreatedAt, EntryLid);
+    NotificationId Id, long Version = 0
+    ) : ChatNotificationItem(Id, Version);
 
 [DataContract, MessagePackObject]
+[method: SerializationConstructor]
 public sealed partial record ReactionNotificationItem(
-    NotificationId Id, string Title, string Text, Moment CreatedAt, long EntryLid
-    ) : ChatNotificationItem(Id, Title, Text, CreatedAt, EntryLid);
+    NotificationId Id, long Version = 0
+    ) : ChatNotificationItem(Id, Version);
 
 [DataContract, MessagePackObject]
+[method: SerializationConstructor]
 public sealed partial record AttentionNotificationItem(
-    NotificationId Id, string Title, string Text, Moment CreatedAt, long EntryLid
-    ) : ChatNotificationItem(Id, Title, Text, CreatedAt, EntryLid);
+    NotificationId Id, long Version = 0
+    ) : ChatNotificationItem(Id, Version);
 
 [DataContract, MessagePackObject]
+[method: SerializationConstructor]
 public sealed partial record NewThreadNotificationItem(
-    NotificationId Id, string Title, string Text, Moment CreatedAt, long EntryLid
-    ) : ChatNotificationItem(Id, Title, Text, CreatedAt, EntryLid);
+    NotificationId Id, long Version = 0
+    ) : ChatNotificationItem(Id, Version);

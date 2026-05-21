@@ -15,23 +15,26 @@ public class FirebaseMessagingClient(
     private ILogger? DebugLog => Log;
 
     public async Task SendMessage(
-        Notification notification,
+        NotificationItem notification,
         IReadOnlyCollection<Symbol> deviceIds,
         bool? enableDataCollection,
         CancellationToken cancellationToken)
     {
-        var (notificationId, _) = notification;
+        var notificationId = notification.Id;
         var kind = notification.Kind;
         var title = notification.Title;
-        var content = notification.Content;
+        var content = notification.Text;
         var iconUrl = notification.IconUrl;
-        var chatId = notification.ChatId;
+        var chatNotification = notification as ChatNotificationItem;
+        var chatId = (ChatId?)chatNotification?.ChatId;
         var entryId = (ChatEntryId?)null;
         long lastEntryLocalId = 0;
-        if (notification.ChatEntryNotification != null)
-            entryId = notification.ChatEntryNotification.EntryId;
-        else if (notification.GetAttentionNotification != null)
-            lastEntryLocalId = notification.GetAttentionNotification.LastEntryLocalId;
+        if (chatNotification != null) {
+            if (kind == NotificationKind.Attention)
+                lastEntryLocalId = chatNotification.EntryLid;
+            else if (chatNotification.EntryLid != 0)
+                entryId = chatNotification.EntryId;
+        }
 
         var absoluteIconUrl = UrlMapper.ToAbsolute(iconUrl, true);
         var isDev = UrlMapper.IsDevVoxt;
@@ -79,14 +82,14 @@ public class FirebaseMessagingClient(
             Apns = new ApnsConfig {
                 Headers = new Dictionary<string, string>() {
                     ["apns-push-type"] = "alert",
-                    ["apns-priority"] = notification.GetAttentionNotification is not null ? "10" : "5",
+                    ["apns-priority"] = kind == NotificationKind.Attention ? "10" : "5",
                 },
                 Aps = new Aps {
                     Alert = new ApsAlert {
                         Title = title,
                         Body = content,
                     },
-                    Sound = notification.GetAttentionNotification is not null ? "attention_ringtone.caf" : "default",
+                    Sound = kind == NotificationKind.Attention ? "attention_ringtone.caf" : "default",
                     MutableContent = true,
                     ThreadId = tag,
                 },

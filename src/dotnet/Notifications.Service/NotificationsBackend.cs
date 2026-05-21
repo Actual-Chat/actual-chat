@@ -47,7 +47,7 @@ public class NotificationsBackend(IServiceProvider services)
     private ILogger? DebugLog => Log;
 
     // [ComputeMethod]
-    public virtual async Task<Notification?> Get(
+    public virtual async Task<NotificationItem?> Get(
         NotificationId notificationId,
         CancellationToken cancellationToken)
     {
@@ -108,9 +108,10 @@ public class NotificationsBackend(IServiceProvider services)
 
         var notification = command.Notification;
         var userId = notification.UserId.Require();
+        var entryId = (notification as ChatNotificationItem)?.EntryId;
 
         DebugLog?.LogInformation("-> OnNotify. EntryId={EntryId}, UserId={UserId}, NotificationId={NotificationId}",
-            notification.EntryId, userId, notification.Id);
+            entryId, userId, notification.Id);
 
         var similar = await Get(notification.Id, cancellationToken).ConfigureAwait(false);
         if (similar != null) {
@@ -119,7 +120,7 @@ public class NotificationsBackend(IServiceProvider services)
                 var delta = notification.SentAt - similar.SentAt;
                 if (delta <= vThrottleInterval) {
                     DebugLog?.LogInformation("OnNotify. Skipping (Throttling). EntryId={EntryId}, UserId={UserId}, NotificationId={NotificationId}",
-                        notification.EntryId, userId, notification.Id);
+                        entryId, userId, notification.Id);
                     return;
                 }
             }
@@ -130,7 +131,7 @@ public class NotificationsBackend(IServiceProvider services)
         var hasUpserted = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         if (!hasUpserted) {
             DebugLog?.LogInformation("OnNotify. Skipping (Upsert failed). EntryId={EntryId}, UserId={UserId}, NotificationId={NotificationId}",
-                notification.EntryId, userId, notification.Id);
+                entryId, userId, notification.Id);
             return;
         }
 
@@ -536,7 +537,7 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
     }
 
-    private async Task Send(UserId userId, Notification notification, CancellationToken cancellationToken1)
+    private async Task Send(UserId userId, NotificationItem notification, CancellationToken cancellationToken1)
     {
         var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
         var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken1).ConfigureAwait(false);
@@ -548,11 +549,12 @@ public class NotificationsBackend(IServiceProvider services)
         var account = await AccountsBackend.Get(userId, cancellationToken1).ConfigureAwait(false);
         var isAdmin = account is { IsAdmin: true };
         var deviceIds = devices.Select(d => d.DeviceId).ToList();
+        var entryId = (notification as ChatNotificationItem)?.EntryId;
         DebugLog?.LogInformation("-> Send. EntryId={EntryId}, UserId={UserId}, NotificationId={Kind}, DeviceIds#={DeviceIdCount}",
-            notification.EntryId, userId, notification.Id, deviceIds.Count);
+            entryId, userId, notification.Id, deviceIds.Count);
         await FirebaseMessagingClient.SendMessage(notification, deviceIds, isAdmin, cancellationToken1).ConfigureAwait(false);
         DebugLog?.LogInformation("<- Send. EntryId={EntryId}, UserId={UserId}, NotificationId={Kind}, DeviceIds#={DeviceIdCount}",
-            notification.EntryId, userId, notification.Id, deviceIds.Count);
+            entryId, userId, notification.Id, deviceIds.Count);
     }
 
     private async ValueTask EnqueueMessageRelatedNotifications(
@@ -597,30 +599,18 @@ public class NotificationsBackend(IServiceProvider services)
                 }
             }
             var notificationId = NotificationId.New(otherUserId, kind, similarityKey);
-            var notification = new Notification(notificationId) {
+            var notification = NotificationItem.New(notificationId, chatId, entryId?.LocalId ?? 0, changeAuthor.Id) with {
                 Title = title,
-                Content = content,
+                Text = content,
                 IconUrl = iconUrl,
                 SentAt = now,
             };
-            if (kind == NotificationKind.Attention)
-                notification = notification with {
-                    GetAttentionNotification = new (chatId, changeAuthor.Id, entryId?.LocalId ?? 0),
-                };
-            else if (entryId is not null)
-                notification = notification with {
-                    ChatEntryNotification = new ChatEntryNotificationOption(entryId, changeAuthor.Id),
-                };
-            else
-                notification = notification with {
-                    ChatNotification = new ChatNotificationOption(chatId),
-                };
             await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken).ConfigureAwait(false);
         }
     }
 
 
-    private static TimeSpan? GetThrottleInterval(Notification notification)
+    private static TimeSpan? GetThrottleInterval(NotificationItem notification)
     {
         if (notification.Kind == NotificationKind.Message)
             return Constants.Notification.ThrottleIntervals.Message;

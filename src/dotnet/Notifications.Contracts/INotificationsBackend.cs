@@ -8,7 +8,7 @@ namespace ActualChat.Notifications;
 public interface INotificationsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<Notification?> Get(NotificationId notificationId, CancellationToken cancellationToken);
+    Task<NotificationItem?> Get(NotificationId notificationId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ExplicitNotification?> GetExplicit(ExplicitNotificationId notificationId, CancellationToken cancellationToken);
     [ComputeMethod]
@@ -55,27 +55,26 @@ public interface INotificationsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to send a notification to a user.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_Notify(
-    [property: DataMember, MemoryPackOrder(0), Key(0)]
-    Notification Notification
+    [property: DataMember, Key(0)] NotificationItem Notification
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => Notification.UserId;
 }
 
 /// <summary>
 /// Command to create or update a notification record.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+[DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_Upsert(
-    [property: DataMember, MemoryPackOrder(0), Key(0)] Notification Notification
+    [property: DataMember, Key(0)] NotificationItem Notification
 ) : ICommand<bool>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    [IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => Notification.UserId;
 }
 
