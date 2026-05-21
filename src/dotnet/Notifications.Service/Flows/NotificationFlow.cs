@@ -72,12 +72,11 @@ public sealed partial class NotificationFlow : Flow<Unit>
         var similarityKey = chatId.Value;
 
         var notificationId = NotificationId.New(userId, NotificationKind.Message, similarityKey);
-        var notification = new Notification(notificationId) {
+        var notification = NotificationItem.New(notificationId, chatId, entry.LocalId, entry.AuthorId) with {
             Title = title,
-            Content = content,
+            Text = content,
             IconUrl = iconUrl,
             SentAt = now,
-            ChatEntryNotification = new ChatEntryNotificationOption(entry.Id, entry.AuthorId),
         };
 
         await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken).ConfigureAwait(false);

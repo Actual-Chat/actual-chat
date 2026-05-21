@@ -19,85 +19,44 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     }
 
     [Fact]
-    public void NotificationSerializationTest()
+    public void NotificationItemSerializationTest()
     {
         var id = NotificationId.New(UserId.New(), NotificationKind.Message, "1234");
-        var d = new Notification(id, 1L) {
+        var d = NotificationItem.New(id, TestChatId) with {
+            Version = 1L,
             Title = "Bob @ Good chat",
-            Content = "Sent an image",
+            Text = "Sent an image",
             HandledAt = Moment.Now,
         };
-        d.AssertPassesThroughAllSerializers();
+        AssertMessagePackRoundtrip(d);
 
-        d = new Notification(id, 1L) {
+        d = NotificationItem.New(id, TestChatId) with {
+            Version = 1L,
             Title = "Bob @ Good chat",
-            Content = "Sent an image",
+            Text = "Sent an image",
             HandledAt = null,
         };
-        d.AssertPassesThroughAllSerializers();
+        AssertMessagePackRoundtrip(d);
     }
 
     [Fact]
-    public void Notification_WithChatNotificationOption()
-    {
-        var id = NotificationId.New(TestUserId, NotificationKind.Message, "1234");
-        var notification = new Notification(id, 1) {
-            Title = "Test",
-            Content = "Content",
-            ChatNotification = new ChatNotificationOption(TestChatId),
-        };
-        notification.AssertPassesThroughAllSerializers();
-    }
-
-    [Fact]
-    public void Notification_WithChatEntryNotificationOption()
+    public void NotificationItem_PerKind()
     {
         var entryId = ChatEntryId.New(TestChatId, 1);
         var authorId = AuthorId.New(TestChatId, 5);
-        var id = NotificationId.New(TestUserId, NotificationKind.Message, "1234");
-        var notification = new Notification(id, 1) {
-            Title = "Test",
-            Content = "Content",
-            ChatEntryNotification = new ChatEntryNotificationOption(entryId, authorId),
-        };
-        notification.AssertPassesThroughAllSerializers();
-    }
-
-    [Fact]
-    public void Notification_WithGetAttentionNotificationOption()
-    {
-        var callerId = AuthorId.New(TestChatId, 5);
-        var id = NotificationId.New(TestUserId, NotificationKind.Message, "1234");
-        var notification = new Notification(id, 1) {
-            Title = "Test",
-            Content = "Content",
-            GetAttentionNotification = new GetAttentionNotificationOption(TestChatId, callerId, 42),
-        };
-        notification.AssertPassesThroughAllSerializers();
-    }
-
-    [Fact]
-    public void ChatNotificationOption_Basic()
-    {
-        var option = new ChatNotificationOption(TestChatId);
-        option.AssertPassesThroughAllSerializers();
-    }
-
-    [Fact]
-    public void ChatEntryNotificationOption_Basic()
-    {
-        var entryId = ChatEntryId.New(TestChatId, 1);
-        var authorId = AuthorId.New(TestChatId, 5);
-        var option = new ChatEntryNotificationOption(entryId, authorId);
-        option.AssertPassesThroughAllSerializers();
-    }
-
-    [Fact]
-    public void GetAttentionNotificationOption_Basic()
-    {
-        var callerId = AuthorId.New(TestChatId, 5);
-        var option = new GetAttentionNotificationOption(TestChatId, callerId, 42);
-        option.AssertPassesThroughAllSerializers();
+        foreach (var kind in new[] {
+                     NotificationKind.Message, NotificationKind.Reply, NotificationKind.Invitation,
+                     NotificationKind.Mention, NotificationKind.Reaction, NotificationKind.Attention,
+                     NotificationKind.NewThread,
+                 }) {
+            var id = NotificationId.New(TestUserId, kind, "1234");
+            var notification = NotificationItem.New(id, TestChatId, entryId.LocalId, authorId) with {
+                Version = 1,
+                Title = "Test",
+                Text = "Content",
+            };
+            AssertMessagePackRoundtrip(notification);
+        }
     }
 
     [Fact]
@@ -174,24 +133,27 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     public void NotificationsBackend_Notify_Basic()
     {
         var id = NotificationId.New(TestUserId, NotificationKind.Message, "1234");
-        var notification = new Notification(id, 1) { Title = "Test" };
+        var notification = NotificationItem.New(id, TestChatId) with { Version = 1, Title = "Test" };
         var cmd = new NotificationsBackend_Notify(notification);
-        cmd.AssertPassesThroughAllSerializers(
-            (deserialized, original) => {
-                deserialized.Notification.Id.Should().Be(original.Notification.Id);
-            }, Out);
+        var deserialized = AssertMessagePackRoundtrip(cmd);
+        deserialized.Notification.Id.Should().Be(cmd.Notification.Id);
     }
 
     [Fact]
     public void NotificationsBackend_Upsert_Basic()
     {
         var id = NotificationId.New(TestUserId, NotificationKind.Message, "1234");
-        var notification = new Notification(id, 1) { Title = "Test" };
+        var notification = NotificationItem.New(id, TestChatId) with { Version = 1, Title = "Test" };
         var cmd = new NotificationsBackend_Upsert(notification);
-        cmd.AssertPassesThroughAllSerializers(
-            (deserialized, original) => {
-                deserialized.Notification.Id.Should().Be(original.Notification.Id);
-            }, Out);
+        var deserialized = AssertMessagePackRoundtrip(cmd);
+        deserialized.Notification.Id.Should().Be(cmd.Notification.Id);
+    }
+
+    private T AssertMessagePackRoundtrip<T>(T value)
+    {
+        var result = value.PassThroughMessagePackByteSerializer(Out);
+        result.Should().Be(value);
+        return result;
     }
 
     [Fact]

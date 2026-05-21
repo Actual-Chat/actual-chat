@@ -36,9 +36,8 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
         // assert - notification should appear for Alice
         var notification = await GetNotification(alice, entry.Id);
         notification.Title.Should().Contain("Test chat");
-        notification.Content.Should().Be("Hello Alice!");
-        notification.ChatEntryNotification.Should().NotBeNull();
-        notification.ChatEntryNotification!.EntryId.Should().Be(entry.Id);
+        notification.Text.Should().Be("Hello Alice!");
+        notification.EntryId.Should().Be(entry.Id);
     }
 
     [Fact]
@@ -76,6 +75,7 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
             .Collect();
         var matching = notifications
             .SkipNullItems()
+            .OfType<ChatNotificationItem>()
             .Where(x => x.EntryId == entry.Id)
             .ToList();
         matching.Should().BeEmpty("Alice already read the message, so no notification should be sent");
@@ -110,9 +110,8 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
         // assert - exactly 1 notification, for the first unread entry
         var notification = await GetNotification(alice, entry1.Id);
         notification.Title.Should().Contain("Multi-msg chat");
-        notification.Content.Should().Be("First");
-        notification.ChatEntryNotification.Should().NotBeNull();
-        notification.ChatEntryNotification!.EntryId.Should().Be(entry1.Id);
+        notification.Text.Should().Be("First");
+        notification.EntryId.Should().Be(entry1.Id);
     }
 
     [Fact]
@@ -144,7 +143,7 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
 
         // assert - only 1 notification (not 2)
         var notification = await GetNotification(alice, entry.Id);
-        notification.Content.Should().Be("Dedup test message");
+        notification.Text.Should().Be("Dedup test message");
 
         // Verify no duplicate by checking total count for this entry
         await Task.Delay(TimeSpan.FromSeconds(3));
@@ -156,6 +155,7 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
             .Collect();
         var matching = notifications
             .SkipNullItems()
+            .OfType<ChatNotificationItem>()
             .Where(x => x.EntryId == entry.Id)
             .ToList();
         matching.Should().HaveCount(1, "duplicate flow scheduling should not produce duplicate notifications");
@@ -192,14 +192,15 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
             .Collect();
         var matching = notifications
             .SkipNullItems()
+            .OfType<ChatNotificationItem>()
             .Where(x => x.EntryId == entry.Id)
             .ToList();
         matching.Should().BeEmpty("entry is fresh and user is online, notification should be skipped");
     }
 
-    private async Task<Notification> GetNotification(AccountFull user, ChatEntryId entryId)
+    private async Task<ChatNotificationItem> GetNotification(AccountFull user, ChatEntryId entryId)
     {
-        Notification? notification = null!;
+        ChatNotificationItem? notification = null!;
         await TestExt.When(async () => {
             var ids = await Tester.NotificationsBackend.ListRecentNotificationIds(
                 user.Id, Clocks.SystemClock.Now - TimeSpan.FromMinutes(1), CancellationToken.None);
@@ -207,7 +208,7 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
             var retrieved = await ids
                 .Select(x => Tester.NotificationsBackend.Get(x, CancellationToken.None))
                 .Collect();
-            var notifications = retrieved.SkipNullItems().Where(x => x.EntryId == entryId).ToList();
+            var notifications = retrieved.SkipNullItems().OfType<ChatNotificationItem>().Where(x => x.EntryId == entryId).ToList();
             notifications.Should().HaveCount(1);
             notification = notifications.FirstOrDefault()!;
         }, TimeSpan.FromSeconds(30));

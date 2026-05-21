@@ -29,22 +29,12 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
 
         // assert
         var aliceNotification = await GetNotification(alice, entry.Id);
-        aliceNotification.Should()
-            .BeEquivalentTo(
-                new Notification(null!) {
-                    Title = $"Bobby @ {chat.Title}",
-                    Content = "Ok!",
-                },
-                o => o.Text());
+        aliceNotification.Title.Should().Be($"Bobby @ {chat.Title}");
+        aliceNotification.Text.Should().Be("Ok!");
 
         var bobNotification = await GetNotification(bob, entry.Id);
-        bobNotification.Should()
-            .BeEquivalentTo(
-                new Notification(null!) {
-                    Title = $"Alice @ {chat.Title}",
-                    Content = "❤️ to \"Ok!\"",
-                },
-                o => o.Text());
+        bobNotification.Title.Should().Be($"Alice @ {chat.Title}");
+        bobNotification.Text.Should().Be("❤️ to \"Ok!\"");
     }
 
     [Fact]
@@ -66,22 +56,12 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
 
         // assert
         var aliceNotification = await GetNotification(alice, entry.Id);
-        aliceNotification.Should()
-            .BeEquivalentTo(
-                new Notification(null!) {
-                    Title = "Bobby @ Good chat",
-                    Content = "Sent an image",
-                },
-                o => o.Text());
+        aliceNotification.Title.Should().Be("Bobby @ Good chat");
+        aliceNotification.Text.Should().Be("Sent an image");
 
         var bobNotification = await GetNotification(bob, entry.Id);
-        bobNotification.Should()
-            .BeEquivalentTo(
-                new Notification(null!) {
-                    Title = "Alice @ Good chat",
-                    Content = "❤️ to your image",
-                },
-                o => o.Text());
+        bobNotification.Title.Should().Be("Alice @ Good chat");
+        bobNotification.Text.Should().Be("❤️ to your image");
     }
 
     [Fact]
@@ -211,14 +191,17 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         notification.IconUrl.Should().Contain("api/content/");
     }
 
-    private async Task<Notification> GetNotification(AccountFull user, ChatEntryId entryId)
+    private async Task<NotificationItem> GetNotification(AccountFull user, ChatEntryId entryId)
     {
-        Notification? notification = null!;
+        NotificationItem? notification = null!;
         await TestExt.When(async () => {
             var ids = await Tester.NotificationsBackend.ListRecentNotificationIds(user.Id, Clocks.SystemClock.Now - TimeSpan.FromMinutes(1), CancellationToken.None);
             ids.Should().NotBeEmpty();
             var retrieved = await ids.Select(x => Tester.NotificationsBackend.Get(x, CancellationToken.None)).Collect();
-            var notifications = retrieved.SkipNullItems().Where(x => x.EntryId == entryId).ToList();
+            var notifications = retrieved.SkipNullItems()
+                .OfType<ChatNotificationItem>()
+                .Where(x => x.EntryId == entryId)
+                .ToList();
             notifications.Should().HaveCount(1);
             notification = notifications[0];
         }, TimeSpan.FromSeconds(10));

@@ -44,53 +44,37 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
         set => _handledAt = value?.DefaultKind(DateTimeKind.Utc);
     }
 
-    public Notification ToModel()
+    public NotificationItem ToModel()
     {
-        var chatId = ActualChat.ChatId.ParseNullable(ChatId);
-        var entryId = ChatEntryLid is { } localId && chatId is not null
-            ? ChatEntryId.New(chatId, localId)
-            : default;
+        var id = NotificationId.Parse(Id);
+        var chatId = ActualChat.ChatId.Parse(ChatId);
+        var entryLid = ChatEntryLid ?? 0;
         var authorId = ActualChat.AuthorId.ParseNullable(AuthorId);
 
-        return new Notification(NotificationId.Parse(Id), Version) {
+        return NotificationItem.New(id, chatId, entryLid, authorId) with {
+            Version = Version,
             Title = Title,
-            Content = Content,
+            Text = Content,
             IconUrl = IconUrl,
             CreatedAt = CreatedAt,
             SentAt = SentAt,
             HandledAt = HandledAt.ToMoment(),
-            Option = Kind switch {
-                NotificationKind.Invitation
-                    => new ChatNotificationOption(chatId!),
-                NotificationKind.Message or
-                NotificationKind.Reply or
-                NotificationKind.Reaction or
-                NotificationKind.NewThread
-                    => new ChatEntryNotificationOption(entryId!, authorId!),
-                NotificationKind.Attention
-                    => new GetAttentionNotificationOption(chatId!, authorId!, entryId?.LocalId ?? 0),
-                _ => throw new ArgumentOutOfRangeException(),
-            },
         };
     }
 
-    public void UpdateFrom(Notification model)
+    public void UpdateFrom(NotificationItem model)
     {
         var id = model.Id;
         this.RequireSameOrEmptyId(id.Value);
         model.RequireVersion();
 
-        long? textEntryLocalId = null;
+        long? chatEntryLid = null;
         string? authorSid = null;
-        var chatEntryNotification = model.ChatEntryNotification;
-        if (chatEntryNotification != null) {
-            textEntryLocalId = chatEntryNotification.EntryId.LocalId;
-            authorSid = chatEntryNotification.AuthorId.Value.NullIfEmpty();
-        }
-        var getAttentionNotification = model.GetAttentionNotification;
-        if (getAttentionNotification != null) {
-            textEntryLocalId = getAttentionNotification.LastEntryLocalId;
-            authorSid = getAttentionNotification.CallerId.Value.NullIfEmpty();
+        ChatId? chatId = null;
+        if (model is ChatNotificationItem chatModel) {
+            chatId = chatModel.ChatId;
+            chatEntryLid = chatModel.EntryLid;
+            authorSid = chatModel.AuthorId?.Value.NullIfEmpty();
         }
 
         Id = id.Value;
@@ -99,10 +83,10 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
         Kind = model.Kind;
         SimilarityKey = model.SimilarityKey;
         Title = model.Title;
-        Content = model.Content;
+        Content = model.Text;
         IconUrl = model.IconUrl;
-        ChatId = model.ChatId?.Value;
-        ChatEntryLid = textEntryLocalId;
+        ChatId = chatId?.Value.NullIfEmpty();
+        ChatEntryLid = chatEntryLid;
         AuthorId = authorSid;
         CreatedAt = model.CreatedAt;
         SentAt = model.SentAt;

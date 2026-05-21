@@ -21,7 +21,7 @@ public class Notifications(IServiceProvider services) : INotifications
     private ICommander Commander { get; } = services.Commander();
 
     // [ComputeMethod]
-    public virtual async Task<Notification?> Get(
+    public virtual async Task<NotificationItem?> Get(
         Session session, NotificationId notificationId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);

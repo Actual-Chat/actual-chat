@@ -14,9 +14,9 @@ public class NotificationTest(AppHostFixture fixture, ITestOutputHelper @out)
         var account = await tester.SignInAsBob();
 
         var notificationId = NotificationId.New(account.Id, NotificationKind.Message, Constants.Chat.DefaultChatId.Value);
-        var notification = new Notification(notificationId) {
+        var notification = NotificationItem.New(notificationId, Constants.Chat.DefaultChatId) with {
             Title = "Notify",
-            Content = "Hello",
+            Text = "Hello",
         };
 
         var tasks = new List<Task<bool>>();
@@ -41,9 +41,9 @@ public class NotificationTest(AppHostFixture fixture, ITestOutputHelper @out)
         var account = await tester.SignInAsBob();
 
         var notificationId = NotificationId.New(account.Id, NotificationKind.Message, Constants.Chat.DefaultChatId.Value);
-        var notification = new Notification(notificationId) {
+        var notification = NotificationItem.New(notificationId, Constants.Chat.DefaultChatId) with {
             Title = "Notify",
-            Content = "Hello",
+            Text = "Hello",
         };
 
         var tasks = new List<Task>();
