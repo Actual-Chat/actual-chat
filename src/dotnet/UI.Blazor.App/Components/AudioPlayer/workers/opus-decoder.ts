@@ -278,11 +278,11 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
         this.flushDecodeDemand();
     }
 
-    public async requestFrame(targetDelayMs: number, _noWait?: RpcNoWait): Promise<void> {
+    public async requestFrame(feederTargetDelayMs: number, _noWait?: RpcNoWait): Promise<void> {
         if (this.mustAbort)
             return;
 
-        this.feederTargetDelayMs = targetDelayMs;
+        this.feederTargetDelayMs = feederTargetDelayMs;
         this.frameRequested = true;
         this.flushDecodeDemand();
     }
