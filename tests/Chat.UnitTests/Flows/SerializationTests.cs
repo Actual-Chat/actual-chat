@@ -78,3 +78,40 @@ public class TranslationCleanupFlowSerializationTest(ITestOutputHelper @out)
         LastReadiness = "test-suspension",
     };
 }
+
+public class ChatContentIndexingMasterFlowSerializationTest(ITestOutputHelper @out)
+    : FlowSerializationTestBase<ChatContentIndexingMasterFlow>(@out)
+{
+    protected override ChatContentIndexingMasterFlow CreatePopulated() => new() {
+        // Own
+        MaxVersion = 9999,
+        // From IndexingFlow<IndexingFlowCursor<ChatId>>
+        Cursor = new IndexingFlowCursor<ChatId>(ChatId.Parse("the-actual-one"), 42),
+        LastRunAt = new Moment(new DateTime(2026, 4, 16, 12, 0, 0, DateTimeKind.Utc)),
+        LastReadiness = "test-suspension",
+    };
+}
+
+public class ChatEntryContentIndexingFlowSerializationTest(ITestOutputHelper @out)
+    : FlowSerializationTestBase<ChatEntryContentIndexingFlow>(@out)
+{
+    protected override ChatEntryContentIndexingFlow CreatePopulated() => new() {
+        // From IndexingFlow<IndexingFlowCursor<ChatEntryId>>
+        Cursor = new IndexingFlowCursor<ChatEntryId>(ChatEntryId.New(ChatId.Parse("the-actual-one"), 42), 7),
+        LastRunAt = new Moment(new DateTime(2026, 4, 16, 12, 0, 0, DateTimeKind.Utc)),
+        LastReadiness = "test-suspension",
+    };
+}
+
+public class ChatMediaIndexingFlowSerializationTest(ITestOutputHelper @out)
+    : FlowSerializationTestBase<ChatMediaIndexingFlow>(@out)
+{
+    protected override ChatMediaIndexingFlow CreatePopulated() => new() {
+        // Own
+        PendingEntryLids = [1L, 2L, 3L],
+        // From IndexingFlow<IndexingFlowCursor<ChatEntryId>>
+        Cursor = new IndexingFlowCursor<ChatEntryId>(ChatEntryId.New(ChatId.Parse("the-actual-one"), 42), 7),
+        LastRunAt = new Moment(new DateTime(2026, 4, 16, 12, 0, 0, DateTimeKind.Utc)),
+        LastReadiness = "test-suspension",
+    };
+}
