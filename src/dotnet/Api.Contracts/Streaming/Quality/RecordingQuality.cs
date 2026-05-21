@@ -54,11 +54,24 @@ public sealed record RecorderStats(
     int BundlesShipped,
     // Cumulative encoded bytes (sum across layers). Drives the outbound
     // "kbps" display in the diagnostics modal.
-    long BytesEncoded)
+    long BytesEncoded,
+    // Health-classifier inputs (Step 4 of split-attribution QC plan).
+    double EncodeQueueDepthEma,
+    double WireQueueDepthEma,
+    double FloodGateSkipPerSec,
+    int PeerReconnectStreak,
+    int EncoderRestartStreakIn60s,
+    bool IsTabBackgrounded)
 {
     private static readonly IReadOnlyDictionary<FrameDropStage, int> EmptyDropTrace
         = new Dictionary<FrameDropStage, int>();
 
     public static RecorderStats Empty { get; } =
-        new(0, 0, 0, IsConnected: false, IsPeerConnected: false, EmptyDropTrace, 0, 0);
+        new(0, 0, 0, IsConnected: false, IsPeerConnected: false, EmptyDropTrace, 0, 0,
+            EncodeQueueDepthEma: -1,
+            WireQueueDepthEma: -1,
+            FloodGateSkipPerSec: 0,
+            PeerReconnectStreak: 0,
+            EncoderRestartStreakIn60s: 0,
+            IsTabBackgrounded: false);
 }

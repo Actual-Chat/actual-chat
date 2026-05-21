@@ -1815,7 +1815,13 @@ export class VideoRecorder {
                 stages,
                 counts,
                 stats.bundlesShipped,
-                stats.bytesEncoded);
+                stats.bytesEncoded,
+                stats.encodeQueueDepthEma,
+                stats.wireQueueDepthEma,
+                stats.floodGateSkipPerSec,
+                stats.peerReconnectStreak,
+                stats.encoderRestartStreakIn60s,
+                stats.isTabBackgrounded);
         } catch (e) {
             warnLog?.log('reportRecorderStats failed:', e);
         } finally {
