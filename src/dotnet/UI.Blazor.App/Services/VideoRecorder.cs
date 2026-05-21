@@ -403,7 +403,13 @@ public sealed class VideoRecorder : IAsyncDisposable
             byte[] dropStages,
             int[] dropCounts,
             int bundlesShipped,
-            long bytesEncoded)
+            long bytesEncoded,
+            double encodeQueueDepthEma,
+            double wireQueueDepthEma,
+            double floodGateSkipPerSec,
+            int peerReconnectStreak,
+            int encoderRestartStreakIn60s,
+            bool isTabBackgrounded)
         {
             var dropTrace = new Dictionary<FrameDropStage, int>(dropStages.Length);
             for (var i = 0; i < dropStages.Length && i < dropCounts.Length; i++)
@@ -416,7 +422,13 @@ public sealed class VideoRecorder : IAsyncDisposable
                 IsPeerConnected: isPeerConnected,
                 DropTrace: dropTrace,
                 BundlesShipped: bundlesShipped,
-                BytesEncoded: bytesEncoded));
+                BytesEncoded: bytesEncoded,
+                EncodeQueueDepthEma: encodeQueueDepthEma,
+                WireQueueDepthEma: wireQueueDepthEma,
+                FloodGateSkipPerSec: floodGateSkipPerSec,
+                PeerReconnectStreak: peerReconnectStreak,
+                EncoderRestartStreakIn60s: encoderRestartStreakIn60s,
+                IsTabBackgrounded: isTabBackgrounded));
         }
     }
 }

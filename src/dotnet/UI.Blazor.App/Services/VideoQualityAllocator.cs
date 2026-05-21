@@ -23,12 +23,26 @@ public sealed record StreamAllocationRequest(
 /// </summary>
 public static class VideoQualityAllocator
 {
+    /// <summary>
+    /// Allocates per-stream <see cref="ReceiveQuality"/> envelopes within
+    /// <paramref name="budgetBytesPerSec"/>. The optional
+    /// <paramref name="decoderLayerCap"/> dictionary caps a per-stream
+    /// allocation when the receiver's decoder can't keep up: the picked
+    /// layer is clamped to <c>min(LayerCountCap, decoderLayerCap[streamId] + 1)</c>
+    /// so a slow decoder demotes only its own viewer without dragging the
+    /// shared downlink BWE down. Streams absent from the cap dict are
+    /// unconstrained.
+    /// </summary>
     public static IReadOnlyDictionary<string, ReceiveQuality> Allocate(
         long budgetBytesPerSec,
         IReadOnlyList<StreamAllocationRequest> primaries,
-        IReadOnlyList<StreamAllocationRequest> secondaries)
+        IReadOnlyList<StreamAllocationRequest> secondaries,
+        IReadOnlyDictionary<string, int>? decoderLayerCap = null)
     {
         var result = new Dictionary<string, ReceiveQuality>();
+
+        primaries = ApplyDecoderCap(primaries, decoderLayerCap);
+        secondaries = ApplyDecoderCap(secondaries, decoderLayerCap);
 
         long floorBudget = 0;
         foreach (var s in secondaries)
@@ -65,6 +79,26 @@ public static class VideoQualityAllocator
         }
 
         return result;
+    }
+
+    private static IReadOnlyList<StreamAllocationRequest> ApplyDecoderCap(
+        IReadOnlyList<StreamAllocationRequest> requests,
+        IReadOnlyDictionary<string, int>? decoderLayerCap)
+    {
+        if (decoderLayerCap is null || decoderLayerCap.Count == 0)
+            return requests;
+        var out_ = new List<StreamAllocationRequest>(requests.Count);
+        foreach (var r in requests) {
+            if (decoderLayerCap.TryGetValue(r.StreamId, out var capLayerId)) {
+                var capLayerCount = Math.Max(1, capLayerId + 1);
+                if (capLayerCount < r.LayerCountCap) {
+                    out_.Add(r with { LayerCountCap = capLayerCount });
+                    continue;
+                }
+            }
+            out_.Add(r);
+        }
+        return out_;
     }
 
     private static long FloorRateOf(StreamAllocationRequest s)
