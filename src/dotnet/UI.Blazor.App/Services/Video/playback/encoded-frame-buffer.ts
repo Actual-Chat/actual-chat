@@ -1,4 +1,5 @@
-import type { ArrivedChunk } from '../frame-envelopes';
+import { RunningEMA } from 'math';
+import type { ArrivedChunk, PlayerStats } from '../frame-envelopes';
 
 export type EncodedFrameBufferPushResult =
     | 'accepted'
@@ -15,7 +16,14 @@ export interface EncodedFrameBufferOptions {
      *  `VIDEO.frameDurationMs`. Defaults to `1000/30` (= 33.333 ms) for
      *  unit tests that don't initialize `VIDEO`. */
     frameDurationMs?: number;
+    /** Per-stream stats; when supplied, push() samples `bufferUnderrunRatio`
+     *  (EMA of 1 if spanMs() < targetSpanMs/3 else 0) while the buffer is
+     *  armed. */
+    stats?: PlayerStats;
 }
+
+const UNDERRUN_RATIO_EMA_ALPHA = 0.1;
+const UNDERRUN_FRACTION = 1 / 3;
 
 // Receiver-side jitter buffer for encoded video chunks. Pacing is
 // span-gated: tryPull() releases iff spanMs() >= targetSpanMs. An
@@ -29,12 +37,18 @@ export interface EncodedFrameBufferOptions {
 export class EncodedFrameBuffer {
     private readonly targetSpanMs: number;
     private readonly frameDurationMs: number;
+    private readonly stats: PlayerStats | undefined;
+    private readonly underrunEma: RunningEMA;
+    private readonly underrunThresholdMs: number;
     private readonly chunks: ArrivedChunk[] = [];
     private state: EncodedFrameBufferState = 'reset';
 
     constructor(opts: EncodedFrameBufferOptions) {
         this.targetSpanMs = opts.targetSpanMs;
         this.frameDurationMs = opts.frameDurationMs ?? 1000 / 30;
+        this.stats = opts.stats;
+        this.underrunEma = new RunningEMA(0, 1, UNDERRUN_RATIO_EMA_ALPHA);
+        this.underrunThresholdMs = this.targetSpanMs * UNDERRUN_FRACTION;
     }
 
     count(): number {
@@ -71,10 +85,20 @@ export class EncodedFrameBuffer {
             }
             this.state = 'armed';
             this.chunks.push(chunk);
+            this.sampleUnderrun();
             return 'armed';
         }
         this.chunks.push(chunk);
+        this.sampleUnderrun();
         return 'accepted';
+    }
+
+    private sampleUnderrun(): void {
+        const stats = this.stats;
+        if (!stats) return;
+        const underrun = this.spanMs() < this.underrunThresholdMs ? 1 : 0;
+        this.underrunEma.appendSample(underrun);
+        stats.bufferUnderrunRatio = this.underrunEma.value;
     }
 
     tryPull(): ArrivedChunk | null {

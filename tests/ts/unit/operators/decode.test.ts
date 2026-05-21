@@ -436,6 +436,125 @@ describe('decode operator', () => {
         expect(r1.done).toBe(false);
     });
 
+    it('stats: decodeRatioEma reflects (decodedAt - submitMs) / frameDurationMs', async () => {
+        const stats = makeStats();
+        let captured: MockDecoder | undefined;
+        let nowMs = 1000;
+        const opts: DecodeOptions = {
+            initialConfig: { codec: 'avc1.42E01E' },
+            createDecoder: handlers => {
+                captured = new MockDecoder(handlers);
+                return captured;
+            },
+            now: () => nowMs,
+            frameDurationMs: 50, // ratio = decodeMs / 50
+        };
+        const arrivals: ArrivedChunk[] = [
+            makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }),
+            makeArrived(stats, { isKeyFrame: false, width: 640, height: 360 }),
+        ];
+        const seg = decode(opts)(fromArray(arrivals));
+        const iter = seg[Symbol.asyncIterator]();
+
+        // Chunk 1: submitMs = 1000; decode took 25 ms → ratio = 0.5.
+        const n1 = stepIter(iter);
+        await pumpUntil(() => captured !== undefined && captured.decodeCalls.length >= 1);
+        nowMs = 1025;
+        captured!.emitFrame(0);
+        await n1;
+        expect(stats.decodeRatioEma).toBeCloseTo(0.5, 4);
+
+        // Chunk 2: submitMs = 1100; decode took 100 ms → ratio = 2.0. EMA blends.
+        nowMs = 1100;
+        const n2 = stepIter(iter);
+        await pumpUntil(() => captured !== undefined && captured.decodeCalls.length >= 2);
+        nowMs = 1200;
+        captured!.emitFrame(1);
+        await n2;
+        // With alpha=0.2: prev=0.5, new=2.0 → 0.5 + 0.2*(2.0-0.5) = 0.8.
+        expect(stats.decodeRatioEma).toBeCloseTo(0.8, 4);
+
+        await iter.next();
+    });
+
+    it('stats: recoveryStreak tracks consecutiveRecoveries; resets on successful frame', async () => {
+        const stats = makeStats();
+        const decoders: MockDecoder[] = [];
+        const opts: DecodeOptions = {
+            initialConfig: { codec: 'avc1.42E01E' },
+            createDecoder: handlers => {
+                const d = new MockDecoder(handlers);
+                decoders.push(d);
+                return d;
+            },
+            maxRecoveries: 5,
+        };
+        // keyframe → error → keyframe (recovery #1 — should bump streak to 1)
+        const arrivals: ArrivedChunk[] = [
+            makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }),
+            makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }),
+        ];
+        const seg = decode(opts)(fromArray(arrivals));
+        const iter = seg[Symbol.asyncIterator]();
+        const n1 = stepIter(iter);
+        await pumpUntil(() => decoders.length >= 1 && decoders[0].decodeCalls.length >= 1);
+        decoders[0].emitError('boom');
+        await pumpUntil(() => decoders.length >= 2 && decoders[1].decodeCalls.length >= 1);
+        expect(stats.recoveryStreak).toBe(1);
+
+        // A successful frame resets the streak.
+        decoders[1].emitFrame(0);
+        await n1;
+        expect(stats.recoveryStreak).toBe(0);
+    });
+
+    it('stats: hangRateIn60s increments on watchdog fire', async () => {
+        const stats = makeStats();
+        const decoders: MockDecoder[] = [];
+        interface FakeTimer { cb: () => void; canceled: boolean }
+        const timers: FakeTimer[] = [];
+        const setTimeoutFn = (cb: () => void): unknown => {
+            const t: FakeTimer = { cb, canceled: false };
+            timers.push(t);
+            return t;
+        };
+        const clearTimeoutFn = (h: unknown): void => { (h as FakeTimer).canceled = true; };
+        const fireWatchdog = (): void => {
+            for (const t of timers.splice(0)) if (!t.canceled) t.cb();
+        };
+        let nowMs = 0;
+        const opts: DecodeOptions = {
+            initialConfig: { codec: 'avc1.42E01E' },
+            createDecoder: handlers => {
+                const d = new MockDecoder(handlers);
+                decoders.push(d);
+                return d;
+            },
+            maxRecoveries: 4,
+            decoderHangTimeoutMs: 2_000,
+            now: () => nowMs,
+            setTimeoutFn,
+            clearTimeoutFn,
+        };
+        const arrivals: ArrivedChunk[] = [
+            makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }),
+            makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }),
+        ];
+        const seg = decode(opts)(fromArray(arrivals));
+        const iter = seg[Symbol.asyncIterator]();
+        const n1 = stepIter(iter);
+        await pumpUntil(() => decoders.length >= 1 && decoders[0].decodeCalls.length >= 1);
+        expect(stats.hangRateIn60s).toBe(0);
+        nowMs = 2_000;
+        fireWatchdog();
+        await pumpUntil(() => stats.hangRateIn60s >= 1);
+        expect(stats.hangRateIn60s).toBe(1);
+        // Recovery resubmits on chunk 2; emit a frame so the operator finishes.
+        await pumpUntil(() => decoders.length >= 2 && decoders[1].decodeCalls.length >= 1);
+        decoders[1].emitFrame(0);
+        await n1;
+    });
+
     it('reconfigure on dim change: second keyframe with different dims triggers a new configure()', async () => {
         const stats = makeStats();
         let captured: MockDecoder | undefined;
