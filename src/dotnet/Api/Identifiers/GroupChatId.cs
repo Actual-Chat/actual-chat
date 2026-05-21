@@ -20,18 +20,17 @@ public sealed partial class GroupChatId : ChatId, IStringIdentifier<GroupChatId>
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<GroupChatId>();
 
-    private readonly LocalChatId _localChatId;
-
     // Factories and constructors
 
     public static GroupChatId New()
     {
         var localChatId = IdGenerator.Next();
-        return new(localChatId, LocalChatId.New(localChatId));
+        return new(localChatId);
     }
 
-    internal GroupChatId(string value, LocalChatId localChatId) : base(value, ChatKind.Group)
-        => _localChatId = localChatId;
+    internal GroupChatId(string value)
+        : base(value, ChatKind.Group)
+    { }
 
     // Equality
 

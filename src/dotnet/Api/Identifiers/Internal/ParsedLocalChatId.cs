@@ -1,26 +1,26 @@
-namespace ActualChat;
+namespace ActualChat.Internal;
 
 /// <summary>
 /// Represents the local portion of a chat identifier for parsing purposes.
 /// </summary>
-internal class LocalChatId
+internal sealed class ParsedLocalChatId
 {
     public string Id { get; }
-    public LocalChatId? Parent { get; }
+    public ParsedLocalChatId? Parent { get; }
     public long ThreadId { get; }
-    public bool IsTread => ThreadId > 0;
+    public bool IsThread => ThreadId > 0;
 
-    public static LocalChatId New(string id)
+    public static ParsedLocalChatId New(string id)
         => new (id);
 
-    private LocalChatId(string id)
+    private ParsedLocalChatId(string id)
     {
         Id = id;
         Parent = null;
         ThreadId = 0;
     }
 
-    private LocalChatId(string id, LocalChatId parentChatId, long threadId)
+    private ParsedLocalChatId(string id, ParsedLocalChatId parentChatId, long threadId)
     {
         if (id.IsNullOrEmpty())
             throw new ArgumentOutOfRangeException(nameof(id));
@@ -31,7 +31,10 @@ internal class LocalChatId
         ThreadId = threadId;
     }
 
-    public static bool TryParse(ReadOnlySpan<char> s, Func<string, bool>? allowNonStandardChatIdFunc, [NotNullWhen(true)] out LocalChatId? result)
+    public static bool TryParse(
+        ReadOnlySpan<char> s,
+        Func<string, bool>? isSpecialChatIdPredicate,
+        [NotNullWhen(true)] out ParsedLocalChatId? result)
     {
         result = null;
         if (s.Length < 6)
@@ -40,7 +43,7 @@ internal class LocalChatId
         var span = s;
         List<long>? threadIds = null;
         while (true) {
-            var threadIdIndex = span.LastIndexOf(ActualChat.ChatId.ThreadIdSeparator);
+            var threadIdIndex = span.LastIndexOf(ChatId.ThreadIdSeparator);
             if (threadIdIndex < 0)
                 break;
 
@@ -56,12 +59,11 @@ internal class LocalChatId
             return false;
 
         var sRawChatId = span.ToString();
-        if (!(Alphabet.AlphaNumeric.IsMatch(sRawChatId)
-            || (allowNonStandardChatIdFunc is not null && allowNonStandardChatIdFunc(sRawChatId))))
+        if (!(Alphabet.AlphaNumeric.IsMatch(sRawChatId) || isSpecialChatIdPredicate?.Invoke(sRawChatId) == true))
             return false;
 
         // Local chat ID
-        result = new LocalChatId(sRawChatId);
+        result = new ParsedLocalChatId(sRawChatId);
         if (threadIds is null)
             return true;
 
@@ -70,9 +72,11 @@ internal class LocalChatId
         return true;
     }
 
-    private LocalChatId CreateThreadId(long threadId)
+    // Private methods
+
+    private ParsedLocalChatId CreateThreadId(long threadId)
     {
-        var s = Id + ChatId.ThreadIdSeparator + threadId.ToString();
-        return new LocalChatId(s, this, threadId);
+        var s = $"{Id}{ChatId.ThreadIdSeparator}{threadId}";
+        return new ParsedLocalChatId(s, this, threadId);
     }
 }

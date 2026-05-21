@@ -16,7 +16,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<ChatId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<ChatId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasShardKey<string>, IMentionTarget
+public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasShardKey<string>, IMentionTargetId
 {
     public const char ThreadIdSeparator = '-';
 
@@ -31,12 +31,12 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
     [IgnoreDataMember]
     public bool IsSystem => Constants.Chat.SystemChatIds.Contains(this);
     [IgnoreDataMember]
-    public virtual string ShardKey => Value;
-    [IgnoreDataMember]
     public ChatId RootChatId
         => this is PlaceChatId placeChatId ? placeChatId.RootChatId : this;
     [IgnoreDataMember]
     public MentionKind MentionKind => MentionKind.Chat;
+    [IgnoreDataMember]
+    public virtual string ShardKey => Value;
 
     // Factories and constructors
 
@@ -178,14 +178,14 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
 
         if (!PlaceId.TryParse(tail[..placeIdLength].ToString(), out var placeId))
             return null;
-        if (!LocalChatId.TryParse(tail[(placeIdLength + 1)..], null, out var localChatId))
+        if (!ParsedLocalChatId.TryParse(tail[(placeIdLength + 1)..], null, out var localChatId))
             return null;
 
-        if (!localChatId.IsTread)
+        if (!localChatId.IsThread)
             return new PlaceChatId(PlaceChatId.Format(placeId, localChatId.Id), placeId, localChatId);
 
         var threadIds = new List<long>();
-        while (localChatId.Parent is not null && localChatId.IsTread) {
+        while (localChatId.Parent is not null && localChatId.IsThread) {
             threadIds.Insert(0, localChatId.ThreadId);
             localChatId = localChatId.Parent;
         }
@@ -197,26 +197,24 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
 
     private static ChatId? TryParseGroupChatId(string s)
     {
-        if (!LocalChatId.TryParse(s, SpecialChatId, out var localChatId))
+        if (!ParsedLocalChatId.TryParse(s, IsSpecialChatId, out var localChatId))
             return null;
 
-        if (!localChatId.IsTread)
-            return new GroupChatId(localChatId.Id, localChatId);
+        if (!localChatId.IsThread)
+            return new GroupChatId(localChatId.Id);
 
         var threadIds = new List<long>();
-        while (localChatId.Parent is not null && localChatId.IsTread) {
+        while (localChatId.Parent is not null && localChatId.IsThread) {
             threadIds.Insert(0, localChatId.ThreadId);
             localChatId = localChatId.Parent;
         }
 
-        ChatId result = new GroupChatId(localChatId.Id, localChatId);
+        var result = (ChatId)new GroupChatId(localChatId.Id);
         foreach (var threadId in threadIds)
             result = new ThreadChatId(result, threadId);
         return result;
 
-        static bool SpecialChatId(string s1)
-        {
-            return s1 == "the-actual-one" || s1 == "feedback-template";
-        }
+        static bool IsSpecialChatId(string s1)
+            => s1 is "the-actual-one" or "feedback-template";
     }
 }

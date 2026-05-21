@@ -37,7 +37,7 @@ public static class MentionFilter
 
     /// <summary>
     /// Builds query prefixes — each query token lowercased and space-prefixed so a candidate's
-    /// <see cref="MentionCandidate.SearchText"/> can be probed with a single Ordinal Contains.
+    /// <see cref="MentionCandidate.NormalizedSearchText"/> can be probed with a single Ordinal Contains.
     /// </summary>
     public static string[] GetPrefixes(string? query)
     {
@@ -112,9 +112,9 @@ public static class MentionFilter
         foreach (var c in pool) {
             if (!kindFilter.Allows(c.Kind))
                 continue;
-            if (prefixes.Length > 0 && !Matches(c.SearchText, prefixes))
+            if (prefixes.Length > 0 && !Matches(c.NormalizedSearchText, prefixes))
                 continue;
-            var score = prefixes.Length == 0 ? 0 : CoverageScore(c.SearchText, prefixes);
+            var score = prefixes.Length == 0 ? 0 : CoverageScore(c.NormalizedSearchText, prefixes);
             matched.Add((c, score));
         }
 

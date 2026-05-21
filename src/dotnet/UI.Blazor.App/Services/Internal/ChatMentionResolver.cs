@@ -16,7 +16,7 @@ internal class ChatMentionResolver(IServiceProvider services, ChatId chatId) : I
         => ResolveAuthor(mention, cancellationToken);
     public async ValueTask<Author?> ResolveAuthor(MentionMarkup mention, CancellationToken cancellationToken)
     {
-        if (mention.Id.Target is not AuthorId authorId)
+        if (mention.Id.TargetId is not AuthorId authorId)
             return null;
 
         return await Authors.Get(Session, ChatId, authorId, cancellationToken).ConfigureAwait(false);

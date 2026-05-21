@@ -3,14 +3,14 @@ namespace ActualChat;
 /// <summary>
 /// One of the supported mention target categories. Holds the textual prefix used in
 /// the serialized <see cref="MentionId"/> value (e.g. <c>"u"</c> in <c>u:userId</c>)
-/// and the parser that turns the rest of the value into an <see cref="IMentionTarget"/>.
+/// and the parser that turns the rest of the value into an <see cref="IMentionTargetId"/>.
 /// </summary>
 public sealed class MentionKind
 {
-    public delegate bool TryParseDelegate<T>(string? s, [NotNullWhen(true)] out T? value);
-    public delegate bool TargetParser(string? s, [NotNullWhen(true)] out IMentionTarget? target);
+    public delegate bool TryParseHandler<T>(string? s, [NotNullWhen(true)] out T? value);
+    public delegate bool TryParseTargetIdHandler(string? s, [NotNullWhen(true)] out IMentionTargetId? target);
 
-    private static readonly Dictionary<string, MentionKind> _byPrefix = new(StringComparer.Ordinal);
+    public static readonly Dictionary<string, MentionKind> ByPrefix = new(StringComparer.Ordinal);
 
     public static readonly MentionKind Author = Register<AuthorId>("a", nameof(Author), AuthorId.TryParse);
     public static readonly MentionKind User = Register<UserId>("u", nameof(User), UserId.TryParse);
@@ -19,36 +19,36 @@ public sealed class MentionKind
     public static readonly MentionKind Emoji = Register<EmojiRef>("e", nameof(Emoji), EmojiRef.TryParse);
     public static readonly MentionKind Gif = Register<GifRef>("g", nameof(Gif), GifRef.TryParse);
 
-    public static IReadOnlyDictionary<string, MentionKind> ByPrefix => _byPrefix;
+    private readonly TryParseTargetIdHandler _tryParseTargetIdHandler;
 
-    private readonly TargetParser _tryParse;
-
-    public string Prefix { get; }
     public string Name { get; }
+    public string FullName { get; }
+    public string Prefix { get; }
 
-    private MentionKind(string prefix, string name, TargetParser tryParse)
+    private MentionKind(string prefix, string name, TryParseTargetIdHandler tryParseTargetIdHandler)
     {
-        Prefix = prefix;
         Name = name;
-        _tryParse = tryParse;
+        FullName = $"{nameof(MediaKind)}.{Name}";
+        Prefix = prefix;
+        _tryParseTargetIdHandler = tryParseTargetIdHandler;
     }
 
-    public bool TryParseTarget(string? s, [NotNullWhen(true)] out IMentionTarget? target)
-        => _tryParse(s, out target);
+    public bool TryParseTarget(string? s, [NotNullWhen(true)] out IMentionTargetId? target)
+        => _tryParseTargetIdHandler.Invoke(s, out target);
 
     public override string ToString()
-        => Name;
+        => FullName;
 
     // Private methods
 
-    private static MentionKind Register<T>(string prefix, string name, TryParseDelegate<T> tryParse)
-        where T : class, IMentionTarget
+    private static MentionKind Register<T>(string prefix, string name, TryParseHandler<T> tryParse)
+        where T : class, IMentionTargetId
     {
-        var kind = new MentionKind(prefix, name, Adapt);
-        _byPrefix.Add(prefix, kind);
+        var kind = new MentionKind(prefix, name, TryParseTarget);
+        ByPrefix.Add(prefix, kind);
         return kind;
 
-        bool Adapt(string? s, [NotNullWhen(true)] out IMentionTarget? target) {
+        bool TryParseTarget(string? s, [NotNullWhen(true)] out IMentionTargetId? target) {
             if (tryParse(s, out var typed)) {
                 target = typed;
                 return true;
