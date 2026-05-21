@@ -300,12 +300,14 @@ public sealed partial class VideoQualityUI
         return (long)(dBytes / dtSec);
     }
 
+    // Map a classifier verdict to a continuous BWE signal. Marginal/Unknown
+    // are treated as Good (1.0): the classifier already imposes a 2-tick
+    // streak before declaring Bad, so anything below Bad is conservatively
+    // not-a-problem. The earlier 0.5 mapping caused BWE.Tick to interpret
+    // every warm-up tick as < BadThreshold (0.85) → spurious cap walks
+    // before the first real signal arrived.
     private static double VerdictToSignal(HealthVerdict verdict)
-        => verdict switch {
-            HealthVerdict.Good => 1.0,
-            HealthVerdict.Bad => 0.0,
-            _ => 0.5,
-        };
+        => verdict == HealthVerdict.Bad ? 0.0 : 1.0;
 
     // Nested types
 
