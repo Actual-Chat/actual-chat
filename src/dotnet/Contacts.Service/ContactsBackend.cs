@@ -250,7 +250,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 || (x.Version == query.MinVersion && string.Compare(x.Id, query.LastId.Value) > 0));
 
         var dbContacts = await chatsQuery
-            .Where(x => x.UserId != null)
+            .Where(x => x.UserId != null && !Constants.User.SystemUserIdValues.Contains(x.UserId!))
             .OrderBy(x => x.Version)
             .ThenBy(x => x.Id)
             .Take(query.Limit)
