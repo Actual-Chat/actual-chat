@@ -743,8 +743,8 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 speechGain += gains[i];
             speechGain /= speechFrames;
 
-            // Scan backward within the pre-roll window to find where gain drops below speechGain/10.
-            var threshold = speechGain / 10;
+            // Scan backward within the pre-roll window to find where gain drops below speechGain/2.
+            var threshold = speechGain / 2;
             var minStartIndex = frameCount - retainedFrameLimit;
             var startIndex = frameCount - speechFrames - 1;
             while (startIndex >= minStartIndex) {
