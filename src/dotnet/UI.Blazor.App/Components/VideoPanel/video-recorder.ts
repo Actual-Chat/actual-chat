@@ -1688,6 +1688,12 @@ export class VideoRecorder {
         this.recorderHealthInFlight = true;
         try {
             const stats = await this.worker.getStats();
+            // Main thread owns the `document` reference — stamp the flag here
+            // so the worker doesn't need a document poke. The classifier reads
+            // it to relax encode-ratio thresholds under background-tab Chrome
+            // throttling.
+            stats.isTabBackgrounded =
+                typeof document !== 'undefined' && document.visibilityState === 'hidden';
             const isPeerConnected = stats.isPeerConnected;
             const previous = this.lastRecorderHealthStats;
             const nowMs = performance.now();

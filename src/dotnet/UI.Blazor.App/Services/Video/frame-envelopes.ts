@@ -44,6 +44,26 @@ export interface RecorderStats {
     // Wire-sender side-channels copied from the active sender's stats.
     wireLastAckAgeMs: number;
     isPeerConnected: boolean;
+    // EMA of VideoEncoder.encodeQueueSize sampled per bundle, taking the
+    // max across layers. -1 == not yet sampled. Maintained by the encode
+    // operator.
+    encodeQueueDepthEma: number;
+    // EMA of WireSenderStats.queueDepth sampled per bundle shipped.
+    // -1 == not yet sampled. Maintained by the wireSend operator.
+    wireQueueDepthEma: number;
+    // FloodGate skips per second (count of skip events in the last 1 s).
+    // Maintained by the floodGate operator.
+    floodGateSkipPerSec: number;
+    // Count of consecutive Api.peer disconnects since the last successful
+    // connection. Resets to 0 when isPeerConnected transitions to true.
+    peerReconnectStreak: number;
+    // Count of in-place encoder hang resets (handleEncoderHang) in the last
+    // 60 s window. Maintained by the encode operator.
+    encoderRestartStreakIn60s: number;
+    // True when document.visibilityState === 'hidden' on the main thread at
+    // the moment stats were last collected. Stamped by the main-thread stats
+    // poller; the worker has no document access.
+    isTabBackgrounded: boolean;
     // Cumulative per-FrameDropStage drop counts since the run started.
     dropTrace: Map<FrameDropStage, number>;
 }
@@ -118,6 +138,12 @@ export function createEmptyRecorderStats(): RecorderStats {
         encodeTimeMsCount: 0,
         wireLastAckAgeMs: -1,
         isPeerConnected: false,
+        encodeQueueDepthEma: -1,
+        wireQueueDepthEma: -1,
+        floodGateSkipPerSec: 0,
+        peerReconnectStreak: 0,
+        encoderRestartStreakIn60s: 0,
+        isTabBackgrounded: false,
         dropTrace: new Map(),
     };
 }

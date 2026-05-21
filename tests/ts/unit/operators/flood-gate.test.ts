@@ -117,6 +117,33 @@ describe('floodGate operator', () => {
         expect(gate.skipCount).toBe(2);
     });
 
+    it('stats: floodGateSkipPerSec reflects count of skip events in the last second', async () => {
+        const stats = createEmptyRecorderStats();
+        const gate = new FloodGate();
+        gate.close();
+        const frames = [
+            new MockVideoFrame(1),
+            new MockVideoFrame(2),
+            new MockVideoFrame(3),
+        ];
+        const envelopes = frames.map((f, i) => envelope(stats, f, i));
+
+        await drain(floodGate(gate)(source(envelopes)));
+
+        expect(stats.floodGateSkipPerSec).toBe(3);
+    });
+
+    it('stats: floodGateSkipPerSec stays 0 while gate is open', async () => {
+        const stats = createEmptyRecorderStats();
+        const gate = new FloodGate();
+        const frames = [new MockVideoFrame(1), new MockVideoFrame(2)];
+        const envelopes = frames.map((f, i) => envelope(stats, f, i));
+
+        await drain(floodGate(gate)(source(envelopes)));
+
+        expect(stats.floodGateSkipPerSec).toBe(0);
+    });
+
     it('tolerates VideoFrame.close() throwing', async () => {
         const stats = createEmptyRecorderStats();
         const gate = new FloodGate();

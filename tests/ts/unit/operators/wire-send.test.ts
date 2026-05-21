@@ -426,6 +426,74 @@ describe('wireSend', () => {
         expect(stats.isPeerConnected).toBe(true);
     });
 
+    it('stats: wireQueueDepthEma tracks senderStats.queueDepth per bundle', async () => {
+        const stats = createEmptyRecorderStats();
+        const sender = new StatsSender();
+        sender.stats.isPeerConnected = true;
+
+        const items: EncodedFrame[] = [];
+        // Bump queueDepth seen by getStats between sends so the EMA blends.
+        let q = 5;
+        const customSender = new (class extends StatsSender {
+            getStats(): StreamSenderStats {
+                this.stats.queueDepth = q;
+                return this.stats;
+            }
+        })();
+        for (let i = 0; i < 3; i++)
+            items.push(makeEncoded(stats, {
+                type: i === 0 ? 'key' : 'delta',
+                capturedAt: { timeMs: 1_000 + i * 33, epoch: 0 },
+            }));
+
+        // Cycle queue depths: 5, 5, 5 → EMA = 5.
+        await runWith(source(items), wireSend({ createSender: () => customSender }));
+        expect(stats.wireQueueDepthEma).toBeCloseTo(5, 6);
+
+        // New run with depth 10 every bundle: EMA seeds at 10.
+        const stats2 = createEmptyRecorderStats();
+        q = 10;
+        const sender2 = new (class extends StatsSender {
+            getStats(): StreamSenderStats {
+                this.stats.queueDepth = q;
+                return this.stats;
+            }
+        })();
+        const items2: EncodedFrame[] = [
+            makeEncoded(stats2, { type: 'key', capturedAt: { timeMs: 1_000, epoch: 0 } }),
+        ];
+        await runWith(source(items2), wireSend({ createSender: () => sender2 }));
+        expect(stats2.wireQueueDepthEma).toBe(10);
+
+        void sender; // keep variable in scope to avoid unused-var lint
+    });
+
+    it('stats: peerReconnectStreak bumps on connected→disconnected transitions', async () => {
+        const stats = createEmptyRecorderStats();
+        let connected = true;
+        const sender = new (class extends StatsSender {
+            getStats(): StreamSenderStats {
+                this.stats.isPeerConnected = connected;
+                return this.stats;
+            }
+        })();
+        const items = [
+            makeEncoded(stats, { type: 'key', capturedAt: { timeMs: 1_000, epoch: 0 } }),
+            makeEncoded(stats, { type: 'delta', capturedAt: { timeMs: 1_033, epoch: 0 } }),
+            makeEncoded(stats, { type: 'delta', capturedAt: { timeMs: 1_066, epoch: 0 } }),
+        ];
+        const sourceWithFlips = (async function* (): AsyncIterable<EncodedBundle> {
+            yield { layers: [items[0]], index: 0, dropTrace: [], rotation: 0, stats };
+            connected = false;
+            yield { layers: [items[1]], index: 1, dropTrace: [], rotation: 0, stats };
+            yield { layers: [items[2]], index: 2, dropTrace: [], rotation: 0, stats };
+        })();
+        await runWith(sourceWithFlips, wireSend({ createSender: () => sender }));
+        // Streak = 1 from one true→false transition. Subsequent false samples
+        // don't bump (we count transitions, not states).
+        expect(stats.peerReconnectStreak).toBe(1);
+    });
+
     it('recreates the sender if the wire pump completes while capture continues', async () => {
         const stats = createEmptyRecorderStats();
         const senders: ResolvingSender[] = [];
