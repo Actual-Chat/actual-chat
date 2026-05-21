@@ -54,12 +54,12 @@ partial record AppConstants
             // Pre-decoder buffer formula inputs — used TS-side by the OpusDecoder
             // to size its encoded-frame buffer from TrackInfo.TargetBufferSize:
             //   encoded = max(MinEncodeBuffer, target - DefaultDecodedBuffer - DefaultAudioEnginePlaybackLatency)
-            public int MinEncodeBufferSizeMs { get; init; } =
-                (int)Constants.Audio.MinEncodeBufferSize.TotalMilliseconds;
-            public int DefaultDecodedBufferSizeMs { get; init; } =
-                (int)Constants.Audio.DefaultDecodedBufferSize.TotalMilliseconds;
-            public int DefaultAudioEnginePlaybackLatencyMs { get; init; } =
-                (int)Constants.Audio.DefaultAudioEnginePlaybackLatency.TotalMilliseconds;
+            public int MinEncodedBufferSizeMs { get; init; } =
+                (int)Constants.Audio.MinEncodedBufferSize.TotalMilliseconds;
+            public int DecodedBufferSizeMs { get; init; } =
+                (int)Constants.Audio.DecodedBufferSize.TotalMilliseconds;
+            public int AudioEnginePlaybackLatencyMs { get; init; } =
+                (int)Constants.Audio.AudioEnginePlaybackLatency.TotalMilliseconds;
             // Buffer is "low" while it's less than this.
             public int LowBufferDurationMs { get; init; } = 10000;
             // Period between feeder state-update signals.

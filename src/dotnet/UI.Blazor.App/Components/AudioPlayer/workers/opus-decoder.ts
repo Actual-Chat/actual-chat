@@ -244,10 +244,10 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
      *   encoded = max(MinEncodeBufferSize, target - DefaultDecodedBufferSize - DefaultAudioEnginePlaybackLatency)
      */
     public setTargetBufferSize(targetBufferSizeMs: number): void {
-        const min = AUDIO.play.minEncodeBufferSizeMs;
-        const decoded = AUDIO.play.defaultDecodedBufferSizeMs;
-        const engine = AUDIO.play.defaultAudioEnginePlaybackLatencyMs;
-        const encoded = Math.max(min, targetBufferSizeMs - decoded - engine);
+        const minEncoded = AUDIO.play.minEncodedBufferSizeMs;
+        const decoded = AUDIO.play.decodedBufferSizeMs;
+        const engineLatency = AUDIO.play.audioEnginePlaybackLatencyMs;
+        const encoded = Math.max(minEncoded, targetBufferSizeMs - decoded - engineLatency);
         this.encodedFrames.setTargetDuration(encoded);
         this.flushDecodeDemand();
     }

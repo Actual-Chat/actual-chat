@@ -148,9 +148,9 @@ export interface AudioPlayConstants {
     readonly bufferHysteresisSize: number;
     readonly startBufferGrowDurationMs: number;
     readonly startBufferDurationWithVideoMs: number;
-    readonly minEncodeBufferSizeMs: number;
-    readonly defaultDecodedBufferSizeMs: number;
-    readonly defaultAudioEnginePlaybackLatencyMs: number;
+    readonly minEncodedBufferSizeMs: number;
+    readonly decodedBufferSizeMs: number;
+    readonly audioEnginePlaybackLatencyMs: number;
     readonly lowBufferDurationMs: number;
     readonly stateUpdatePeriodMs: number;
     readonly mediaSessionResetDebounceMs: number;

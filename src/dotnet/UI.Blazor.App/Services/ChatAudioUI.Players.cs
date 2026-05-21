@@ -32,7 +32,9 @@ public partial class ChatAudioUI
     public virtual async Task<TimeSpan> GetPlaybackTargetBufferSize(ChatId chatId, CancellationToken cancellationToken)
     {
         var hasVideo = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
-        return hasVideo ? Constants.Audio.PlaybackTargetBufferSizeWithVideo : TimeSpan.Zero;
+        return hasVideo
+            ? Constants.Audio.PlaybackTargetBufferSizeWithVideo
+            : Constants.Audio.PlaybackTargetBufferSize;
     }
 
     // GetXxxNonComputed
@@ -136,7 +138,6 @@ public partial class ChatAudioUI
                 ChatPlayerKind.Replaying => new ChatReplayer(Hub, chatId),
                 _ => throw new ArgumentOutOfRangeException(nameof(playerKind), playerKind, null),
             };
-            newPlayer.ChatAudioUI = this;
             _players = _players.Add((chatId, playerKind), newPlayer);
         }
         if (playerKind is ChatPlayerKind.Replaying)

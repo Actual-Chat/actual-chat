@@ -73,8 +73,7 @@ public sealed class ChatListener : ChatPlayer
             try {
                 // Skip own audio unless in debug mode
                 if (!Constants.DebugMode.ListenOwnAudio) {
-                    var author = await Authors.GetOwn(Session, ChatId, cancellationToken)
-                        .ConfigureAwait(false);
+                    var author = await Authors.GetOwn(Session, ChatId, cancellationToken).ConfigureAwait(false);
                     if (author != null && streamInfo.AuthorId == author.Id)
                         return;
                 }
@@ -93,10 +92,13 @@ public sealed class ChatListener : ChatPlayer
                     state.SyncedSleepDuration = sleepDuration;
                 }
 
+                var playbackTargetBufferSize = await ChatAudioUI
+                    .GetPlaybackTargetBufferSize(ChatId, cancellationToken)
+                    .ConfigureAwait(false);
                 var playAt = MomentExt.Max(
                     minPlayAt,
                     streamInfo.BeginsAt,
-                    serverClock.Now - Constants.Audio.PlaybackTargetBufferSizeWithVideo);
+                    serverClock.Now - playbackTargetBufferSize);
                 if (playAt >= streamInfo.BeginsAt + Constants.Chat.MaxEntryDuration)
                     return;
 
