@@ -87,8 +87,8 @@
     // Nested types
 
     public sealed record Model(
-        [property: MemberNotNullWhen(true, nameof(Model.IsWatching))] ChatContext? ChatContext,
-        bool IsWatching
+        ChatContext? ChatContext,
+        [property: MemberNotNullWhen(true, nameof(Model.ChatContext))] bool IsWatching
     ) {
         public static readonly Model None = new(null, false);
     }
