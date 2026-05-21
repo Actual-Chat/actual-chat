@@ -10,6 +10,7 @@ public class NotificationDbContext(DbContextOptions<NotificationDbContext> optio
     public DbSet<DbDevice> Devices { get; protected set; } = null!;
     public DbSet<DbNotification> Notifications { get; protected set; } = null!;
     public DbSet<DbExplicitNotification> ExplicitNotifications { get; protected set; } = null!;
+    public DbSet<DbUserNotifications> UserNotifications { get; protected set; } = null!;
 
     // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
@@ -40,6 +41,9 @@ public class NotificationDbContext(DbContextOptions<NotificationDbContext> optio
         manualNotification.Property(e => e.Id).UseCollation("C");
         manualNotification.Property(e => e.UserId).UseCollation("C");
         manualNotification.Property(e => e.SimilarityKey).UseCollation("C");
+
+        var userNotifications = model.Entity<DbUserNotifications>();
+        userNotifications.Property(e => e.Id).UseCollation("C");
 
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");
