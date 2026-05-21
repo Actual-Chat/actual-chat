@@ -1239,7 +1239,14 @@ export class VideoPlayer {
             counts,
             stats.presented,
             stats.playbackRateEma,
-            stats.producerTemporalLayerCount)
+            stats.producerTemporalLayerCount,
+            stats.decodeRatioEma,
+            stats.hangRateIn60s,
+            stats.recoveryStreak,
+            stats.presentSkipRatio,
+            stats.bufferUnderrunRatio,
+            stats.downlinkLatencyEma,
+            stats.arrivalIntervalEma)
             .catch((e: unknown) => warnLog?.log('reportPlaybackStats error:', e));
         // Also fire a stale-frame hint to the SKIP_TO_LIVE thresholds so
         // diagnostics still tick. The new pipeline's internal recovery

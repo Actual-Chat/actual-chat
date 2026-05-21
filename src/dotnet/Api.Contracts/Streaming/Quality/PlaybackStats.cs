@@ -20,7 +20,16 @@ public sealed record PlaybackStats(
     long IncomingByteRate,
     double BufferSpanMsEma,
     double PlaybackRateEma,
-    IReadOnlyDictionary<FrameDropStage, int> DropTrace)
+    IReadOnlyDictionary<FrameDropStage, int> DropTrace,
+    // Receiver health-classifier inputs (Steps 2-3 of split-attribution
+    // QC plan). -1 sentinels mean "not yet sampled".
+    double DecodeRatioEma,
+    int HangRateIn60s,
+    int RecoveryStreak,
+    double PresentSkipRatio,
+    double BufferUnderrunRatio,
+    double DownlinkLatencyEma,
+    double ArrivalIntervalEma)
 {
     private static readonly IReadOnlyDictionary<FrameDropStage, int> EmptyDropTrace
         = new Dictionary<FrameDropStage, int>();
@@ -33,7 +42,14 @@ public sealed record PlaybackStats(
             IncomingByteRate: 0,
             BufferSpanMsEma: 0,
             PlaybackRateEma: 1,
-            DropTrace: EmptyDropTrace);
+            DropTrace: EmptyDropTrace,
+            DecodeRatioEma: -1,
+            HangRateIn60s: 0,
+            RecoveryStreak: 0,
+            PresentSkipRatio: -1,
+            BufferUnderrunRatio: -1,
+            DownlinkLatencyEma: -1,
+            ArrivalIntervalEma: -1);
 
     public VideoSize RenderVideoSize
         => VideoSizeExt.FromLongSide(RenderCssLongSide, RenderDevicePixelRatio);
