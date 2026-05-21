@@ -1,11 +1,9 @@
-using ActualChat.Users;
-
 namespace ActualChat.Notifications;
 
 /// <summary>
 /// Frontend service for managing push notifications with session-based access control.
 /// </summary>
-public class Notifications(IServiceProvider services) : INotifications
+public class NotificationsService(IServiceProvider services) : INotifications
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private INotificationsBackend Backend { get; } = services.GetRequiredService<INotificationsBackend>();
@@ -13,9 +11,9 @@ public class Notifications(IServiceProvider services) : INotifications
     private IPlaces Places { get; } = services.GetRequiredService<IPlaces>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
-    private ILogger Log { get; } = services.LogFor<Notifications>();
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
         = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
+    private ILogger Log { get; } = services.LogFor<NotificationsService>();
 
     private MomentClockSet Clocks { get; } = services.Clocks();
     private ICommander Commander { get; } = services.Commander();

@@ -20,7 +20,7 @@ public sealed class NotificationServiceModule(IServiceProvider moduleServices)
         var isBackendClient = HostInfo.Roles.GetBackendServiceMode<INotificationsBackend>() is ServiceMode.Client;
 
         // Notifications
-        rpcHost.AddApi<INotifications, Notifications>();
+        rpcHost.AddApi<INotifications, NotificationsService>();
         rpcHost.AddBackend<INotificationsBackend, NotificationsBackend>();
 
         // NOTE(AY): Notifications service uses NotificationDbContext and FirebaseMessaging,
