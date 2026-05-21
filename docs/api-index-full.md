@@ -23,6 +23,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `Interest` (record struct) - Represents a user interest tag.
 - `Language` (record struct) - Represents a language identifier (BCP 47).
 - `MediaType` (enum) - Specifies the type of media content.
+- `MemSearchDocument` (readonly struct) - In-memory search match blob: lowercased space-prefixed tokens; `From` / `IsMatch` / `GetCoverageScore`.
+- `MemSearchQuery` (readonly struct) - Parsed in-memory search query: space-prefixed token prefixes; `From`.
 - `NotFoundException` - Exception thrown when an entity is not found.
 - `Phone` (record struct) - Represents a phone number in E.164 format.
 - `PostponeException` - Exception indicating an operation should be postponed.
@@ -472,10 +474,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `PlaceMention` (sealed class) - MentionMarkup with cached Place for a `p:` mention.
 - `EmojiMention` (sealed class) - MentionMarkup with cached Glyph / CustomPicture for an `e:` mention.
 - `GifMention` (sealed class) - MentionMarkup with cached Picture for a `g:` mention.
-- `MentionCandidate` (record) - Unified picker candidate (User/Chat/Emoji) returned by MentionIndexUI.
-- `MentionCandidateKind` (enum) - User / Chat / Emoji.
-- `MentionKindFilter` (flags enum) - Bitmask of allowed kinds for the picker.
-- `MentionFilter` (static class) - Pure tokenize / MatchesAll / CoverageScore / FilterAndRank helpers.
+- `MentionCandidate` (record) - Unified picker candidate (User/Chat/Emoji) returned by LocalSearchUI.
+- `MentionCandidateFilters` (static class) - `Func<MentionCandidate, bool>` category filters (All/User/Chat/Emoji) + `KindRank` ordering + `FilterAndRank`, keyed off `MentionId.Kind`.
 - `EmojiNormalizer` (record : MarkupRewriter) - Rewrites EmojiMention with a known glyph slug to PlainTextMarkup.
 - `MentionResolver` (record : AsyncMarkupRewriter) - Tree rewriter; delegates per-mention enrichment to IChatMentionResolver.Enrich (was MentionNamer).
 - `NewLineMarkup` (sealed class) - Represents a line break in markup.

@@ -7,13 +7,13 @@
     if (mentions.Length == 0)
         listCls += " non-visible";
     var selection = Selection;
-    var kindFilter = Manager.KindFilter.Value;
+    var categoryFilter = Manager.Filter.Value;
 }
 
 <div class="mention-list-wrapper @listCls">
     <div class="mention-list-chips" data-editor-focus="true">
         @foreach (var chip in Chips) {
-            var isActive = kindFilter == chip.Filter;
+            var isActive = categoryFilter == chip.Filter;
             var chipCls = isActive ? "mention-list-chip active" : "mention-list-chip";
             chipCls += " btn-xs btn-transparent";
             <ButtonRound
@@ -87,11 +87,11 @@
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.MentionList.create";
-    private static readonly (MentionKindFilter Filter, string Icon, string Tooltip)[] Chips = [
-        (MentionKindFilter.All, "icon-star-2", "All categories"),
-        (MentionKindFilter.User, "icon-person", "Users only"),
-        (MentionKindFilter.Chat, "icon-message-ellipse", "Chats only"),
-        (MentionKindFilter.Emoji, "icon-emoji-2", "Emoji only"),
+    private static readonly (Func<MentionCandidate, bool> Filter, string Icon, string Tooltip)[] Chips = [
+        (MentionCandidateFilters.All, "icon-star-2", "All categories"),
+        (MentionCandidateFilters.User, "icon-person", "Users only"),
+        (MentionCandidateFilters.Chat, "icon-message-ellipse", "Chats only"),
+        (MentionCandidateFilters.Emoji, "icon-emoji-2", "Emoji only"),
     ];
 
     private string? _lastFilter;
@@ -146,7 +146,7 @@
 
         var filter = await Filter.Use(cancellationToken).ConfigureAwait(false);
         // Subscribe to the chip state so the list re-runs when the user picks a category.
-        _ = await Manager.KindFilter.Use(cancellationToken).ConfigureAwait(false);
+        _ = await Manager.Filter.Use(cancellationToken).ConfigureAwait(false);
         var mentions = filter != null
             ? await Manager.Find(filter, managerLimit, cancellationToken).ConfigureAwait(false)
             : [];
@@ -173,9 +173,9 @@
 
     // Private methods
 
-    private void OnChipClick(MentionKindFilter filter)
-        => Manager.KindFilter.Value = Manager.KindFilter.Value == filter
-            ? MentionKindFilter.All
+    private void OnChipClick(Func<MentionCandidate, bool> filter)
+        => Manager.Filter.Value = Manager.Filter.Value == filter
+            ? MentionCandidateFilters.All
             : filter;
 
     private MentionSearchResult? FixSelection(MentionSearchResult? selection, MentionSearchResult[] mentions) {

@@ -58,9 +58,7 @@
     var collapsedCls = m.IsCollapsed ? "collapsed" : "";
     var hiddenCls = m.IsHidden ? "panel-hidden" : "";
     var expandedCls = m.IsExpanded ? "expanded" : "";
-    var videoMenuRef = MenuRef.New<VideoPanelMenu>(ChatId.Value, ScreenSize.IsNarrow().ToString()).ToString();
-    if (m.Chat is { } mChat)
-        _lastChat = mChat;
+    var videoMenuRef = MenuRef.New<VideoPanelMenu>(Chat.Id.Value, ScreenSize.IsNarrow().ToString()).ToString();
     var layout = m.Layout;
     var isMobileOrNarrow = ScreenSize.IsNarrow() || Hub.BrowserInfo.IsMobile;
 }
@@ -190,22 +188,22 @@
                user sees nothing at all. *@
             @if (isOwnCameraStreaming) {
                 <VideoStreamingPreview
-                    @key="@("own-camera-" + ChatId.Value)"
-                    ChatId="@ChatId"
+                    @key="@("own-camera-" + Chat.Id.Value)"
                     SourceKind="@VideoSourceKind.Camera"
                     Class="@(layout.OwnCameraPreviewClass)" />
             } else if (isOwnScreenCasting && !hasRemoteStreams) {
                 <VideoStreamingPreview
-                    @key="@("own-screencast-" + ChatId.Value)"
-                    ChatId="@ChatId"
+                    @key="@("own-screencast-" + Chat.Id.Value)"
                     SourceKind="@VideoSourceKind.ScreenCast"
                     Class="item-focused" />
             }
         </div>
-        @if (m.IsExpanded && isChatVisible && !ScreenSize.IsNarrow() && _lastChat is { } chat) {
+        @if (m.IsExpanded && isChatVisible && !ScreenSize.IsNarrow() && m.ChatContext is { } chatContext) {
             <div class="video-panel-chat upload-drag-drop-host">
-                <ChatView @key="@chat.Id.Value" ChatId="@chat.Id"/>
-                <ChatMessageEditor @key="@("vp-editor-" + chat.Id.Value)" Chat="@chat"/>
+                <CascadingValue Value="@chatContext">
+                    <ChatView @key="@chatContext.Chat.Id.Value"/>
+                    <ChatMessageEditor @key="@("vp-editor-" + chatContext.Chat.Id.Value)"/>
+                </CascadingValue>
             </div>
         }
     </div>
@@ -231,7 +229,6 @@
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPanel.create";
 
     private bool _isFirstOpen = true;
-    private Chat? _lastChat;
     private bool _noStreamsTimedOut;
     private bool _showConnecting;
     private bool _endingGraceActive;
@@ -244,10 +241,10 @@
     private VideoPanelLayoutCalculator? _layoutCalculator;
     private HistoryStepRef? _expandStepRef;
 
+    private Chat Chat => ChatContext.Chat;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private CameraUI CameraUI => Hub.CameraUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
-    private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
     private HistoryStepper HistoryStepper => field ??= Hub.Services.GetRequiredService<HistoryStepper>();
     private ILogger Log => field ??= Hub.LogFor(GetType());
@@ -256,8 +253,8 @@
     private DotNetObjectReference<VideoPanelContent> BlazorRef { get; set; } = null!;
     private IJSObjectReference? JSRef { get; set; }
 
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
     [Parameter] public bool IsClosing { get; set; }
     [Parameter] public EventCallback OnClosed { get; set; }
 
@@ -323,7 +320,6 @@
     public async Task CloseVideoPanel() {
         ChatVideoUI.SetVideoPanelExpanded(false);
         CloseExpandStep();
-        _lastChat = null;
         ChatVideoUI.StopStreaming();
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
@@ -392,16 +388,15 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = ChatId;
+        var chatContext = ChatContext;
+        var chatId = chatContext.Chat.Id;
+
         if (_layoutCalculator is null || _layoutCalculator.ChatId != chatId) {
             _layoutCalculator = Hub.Services.GetRequiredService<VideoPanelLayoutCalculator>();
             _layoutCalculator.Initialize(chatId);
         }
         var layout = await _layoutCalculator.GetLayout(cancellationToken).ConfigureAwait(false);
 
-        var isNarrow = ScreenSize.IsNarrow();
-
-        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var isCollapsed = await ChatVideoUI.GetIsVideoPanelCollapsed(cancellationToken).ConfigureAwait(false);
         var isHidden = await ChatVideoUI.GetIsVideoPanelHidden(cancellationToken).ConfigureAwait(false);
         var isExpanded = await ChatVideoUI.GetIsVideoPanelExpanded(cancellationToken).ConfigureAwait(false);
@@ -421,13 +416,13 @@
 
         if (activeStreams.Count == 0)
             return new Model(
+                chatContext,
                 layout,
                 [],
                 isOwnRecording,
                 isOwnScreenCasting,
                 audioState.IsRecording,
                 0,
-                chat,
                 isCollapsed,
                 IsHidden: isHidden,
                 IsExpanded: isExpanded,
@@ -435,8 +430,7 @@
                 SelectedCameraDeviceId: selectedCameraDeviceId);
 
         var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
-
-        // Name of the currently focused participant — shown above the member count in the header.
+        // Name of the currently focused participant — shown above the member count in the header
         var focusedName = await GetFocusedParticipantName(chatId, layout, remoteStreams, cancellationToken).ConfigureAwait(false);
 
 #if false
@@ -447,13 +441,13 @@
 #endif
 
         return new Model(
+            chatContext,
             layout,
             remoteStreams,
             isOwnRecording,
             isOwnScreenCasting,
             audioState.IsRecording,
             videoStreamMemberCount,
-            chat,
             isCollapsed,
             FocusedParticipantName: focusedName,
             IsHidden: isHidden,
@@ -489,28 +483,24 @@
         _skipCloseAnimation = m.IsExpanded || m.IsCollapsed || m.IsHidden;
         if (m.IsAudioRecording)
             _ = ChatAudioUI.SetRecordingChatId(null);
-        _ = ChatAudioUI.SetListeningState(ChatId, false);
+        _ = ChatAudioUI.SetListeningState(Chat.Id, false);
         ChatVideoUI.StopStreaming();
         ChatVideoUI.CloseVideoPanel();
     }
 
-    private void OnToggleRecordingClick(bool enable) {
-        if (!enable)
-            _ = ChatAudioUI.SetRecordingChatId(null);
-        else
-            _ = ChatAudioUI.SetRecordingChatId(ChatId);
-    }
+    private void OnToggleRecordingClick(bool enable)
+        => _ = ChatAudioUI.SetRecordingChatId(enable ? Chat.Id : null);
 
     private void OnVideoClick(bool enable) {
         if (!enable) {
             // Stop own camera only — screencast (if any) keeps running
             ChatVideoUI.StopRecording();
-        } else if (ChatVideoUI.HasJoinedVideoSession(ChatId)) {
+        } else if (ChatVideoUI.HasJoinedVideoSession(Chat.Id)) {
             // Already joined this call — resume without modal
-            ChatVideoUI.ResumeVideoStreaming(ChatId);
+            ChatVideoUI.ResumeVideoStreaming(Chat.Id);
         } else {
             // Open join/start modal
-            ChatVideoUI.JoinVideoSession(ChatId);
+            ChatVideoUI.JoinVideoSession(Chat.Id);
         }
     }
 
@@ -520,7 +510,7 @@
             ChatVideoUI.StopScreenCasting();
         } else {
             // Start screencast (additive — does not stop camera)
-            ChatVideoUI.StartScreenCasting(ChatId);
+            ChatVideoUI.StartScreenCasting(Chat.Id);
         }
     }
 
@@ -578,13 +568,13 @@
     // Nested types
 
     public sealed record Model(
+        ChatContext? ChatContext,
         VideoPanelLayout Layout,
         VideoStreamInfo[] RemoteStreams,
         bool IsOwnRecording,
         bool IsOwnScreenCasting,
         bool IsAudioRecording,
         int VideoStreamMemberCount,
-        Chat? Chat,
         bool IsCollapsed = false,
         string? FocusedParticipantName = null,
         bool IsHidden = false,
@@ -592,6 +582,6 @@
         bool? IsChatVisible = null,
         string? SelectedCameraDeviceId = null
     ) {
-        public static readonly Model Loading = new(VideoPanelLayout.New, [], false, false, false, 0, null, false);
+        public static readonly Model Loading = new(null, VideoPanelLayout.New, [], false, false, false, 0, false);
     }
 }

@@ -2,10 +2,9 @@ namespace ActualChat.Chat;
 
 public sealed record MentionCandidate(
     MentionId Id,
-    MentionCandidateKind Kind,
     string Title,
     Picture? Picture,
-    string NormalizedSearchText)
+    MemSearchDocument MemSearchDocument)
 {
     public bool IsChatMember { get; init; }
     public PlaceId? PlaceId { get; init; }

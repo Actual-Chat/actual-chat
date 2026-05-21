@@ -20,11 +20,11 @@
 @*      Size="@size" /> *@
 
 @code {
+    private Chat Chat => ChatContext.Chat;
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
 
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsListening { get; set; }
     [Parameter] public int MaxCount { get; set; } = 5;
 
@@ -36,7 +36,7 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = ChatId;
+        var chatId = Chat.Id;
         var authorIds = await LiveStreamUI.GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
         return new() {
             RecordingAuthorIds = authorIds.Select(id => id).ToList(),

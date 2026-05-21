@@ -54,7 +54,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<VideoPanelLayoutCalculator>(ServiceLifetime.Transient);
         fusion.AddService<ChatEditorUI>(ServiceLifetime.Scoped);
         fusion.AddService<HighlightUI>(ServiceLifetime.Scoped);
-        fusion.AddService<MentionIndexUI>(ServiceLifetime.Scoped);
+        fusion.AddService<LocalSearchUI>(ServiceLifetime.Scoped);
         fusion.AddService<LinkPreviewUI>(ServiceLifetime.Scoped);
         fusion.AddService<BackgroundActivityUI, PlaybackAndRecordingBackgroundActivityUI>(ServiceLifetime.Scoped);
         services.AddScoped(c => new SelectionUI(c.AppUIHub()));

@@ -224,7 +224,8 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             if (chat is null || !IsVideoAvailableNonComputed(chat))
                 return;
 
-            var model = new JoinVideoCallModal.Model(chat, JoinVideoCallModal.VideoCallMode.Join);
+            var chatContext = new ChatContext(Hub, chat);
+            var model = new JoinVideoCallModal.Model(chatContext, JoinVideoCallModal.VideoCallMode.Join);
             var modeRef = await ModalUI.Show(model, CancellationToken.None).ConfigureAwait(true);
             await modeRef.WhenClosed.ConfigureAwait(true);
             if (!model.IsConfirmed)
@@ -261,7 +262,8 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             // throws or the modal never opens.
             SuspendOwnStreamingPreview?.Invoke(true);
             try {
-                var model = new JoinVideoCallModal.Model(chat, JoinVideoCallModal.VideoCallMode.Settings);
+                var chatContext = new ChatContext(Hub, chat);
+                var model = new JoinVideoCallModal.Model(chatContext, JoinVideoCallModal.VideoCallMode.Settings);
                 var modeRef = await ModalUI.Show(model, CancellationToken.None).ConfigureAwait(true);
                 await modeRef.WhenClosed.ConfigureAwait(true);
             }

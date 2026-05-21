@@ -10,13 +10,10 @@
     Side="SideNavSide.Right"
     IsOpen="@isOpen"
     VisibilityChanged="@(NoStateHasChanged.EventCallback<bool>(b => PanelsUI.Right.SetIsVisible(b)))">
-    <RightPanelContent Chat="@Chat"/>
+    <RightPanelContent />
 </SideNav>
 
 @code {
-    [ParameterComparer(typeof(ByRefParameterComparer))]
-    [Parameter, EditorRequired] public Chat? Chat { get; set; }
-
     protected override ComputedState<bool>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<bool>.Options {

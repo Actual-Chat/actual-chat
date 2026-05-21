@@ -10,7 +10,6 @@
     if (!isVisible)
         return;
 
-    var chatId = m.ChatId;
     var iconSize = ScreenSize.IsNarrow() ? 6 : 8;
     var isListening = m.IsListening;
     var isRecordingHere = m.IsRecordingHere;
@@ -51,8 +50,7 @@
     @* Talking heads - shown when anyone is talking *@
     @if (m.IsAnyoneTalking) {
         <ChatActivities
-            @key="@chatId.Value"
-            ChatId="@chatId"
+            @key="@Chat.Id.Value"
             MaxCount="@MaxCount"
             IsListening="@isListening"/>
     }
@@ -63,7 +61,7 @@
                 Class="btn-sm btn-transparent unhovered not-listening"
                 StopPropagation="true"
                 PreventDefault="true"
-                Click="@(() => OnJoinClick(chatId))"
+                Click="@OnJoinClick"
                 Tooltip="@tooltip"
                 TooltipPosition="FloatingPosition.Bottom">
                 @joinButtonText
@@ -73,13 +71,13 @@
                 Class="talking"
                 StopPropagation="true"
                 PreventDefault="true"
-                Click="@(() => OnHangUpClick(chatId))"
+                Click="@OnHangUpClick"
                 Tooltip="@tooltip"
                 TooltipPosition="FloatingPosition.Bottom">
                 <i class="icon-phone-off"></i>
             </HeaderButton>
         } else {
-            <StopListeningCountdownButton ChatId="@chatId" Click="@(() => OnStopListeningClick(chatId))"/>
+            <StopListeningCountdownButton ChatId="@Chat.Id" Click="@OnStopListeningClick"/>
         }
     </div>
 </div>
@@ -92,13 +90,14 @@
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
 
+    private Chat Chat => ChatContext.Chat;
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
 
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
     [Parameter] public int MaxCount { get; set; } = 5;
     [Parameter] public EventCallback Click { get; set; }
 
@@ -114,55 +113,41 @@
     }
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var chatId = ChatId;
-        var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
-        var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
-        var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
-        var ownSourceKind = await ChatVideoUI.GetOwnSourceKind(chatId, cancellationToken).ConfigureAwait(false);
+        var chat = Chat;
+        var audioState = await ChatAudioUI.GetState(chat.Id).ConfigureAwait(false);
+        var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chat.Id, cancellationToken).ConfigureAwait(false);
+        var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chat.Id, cancellationToken).ConfigureAwait(false);
+        var ownSourceKind = await ChatVideoUI.GetOwnSourceKind(chat.Id, cancellationToken).ConfigureAwait(false);
         var isOwnVideoStreaming = ownSourceKind is not null;
         var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
-        var isWatchingHere = chatId == watchingChatId;
-        var model = new Model(chatId, audioState, isAnyoneTalking, hasRemoteStreams, isOwnVideoStreaming, isWatchingHere);
+        var isWatchingHere = chat.Id == watchingChatId;
+        var model = new Model(audioState, isAnyoneTalking, hasRemoteStreams, isOwnVideoStreaming, isWatchingHere);
         return model;
     }
 
-    private async Task OnJoinClick(ChatId chatId) {
-        if (IsUpdating(chatId))
-            return;
-
+    private async Task OnJoinClick() {
         // User is not participating — join with listening only (no recording, no camera)
-        _ = ChatAudioUI.SetListeningState(chatId, true);
+        _ = ChatAudioUI.SetListeningState(Chat.Id, true);
         // Open video panel to see others' streams
-        var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, CancellationToken.None).ConfigureAwait(false);
+        var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(Chat.Id, CancellationToken.None).ConfigureAwait(false);
         if (isAnyoneVideoStreaming)
-            ChatVideoUI.OpenVideoPanel(chatId);
+            ChatVideoUI.OpenVideoPanel(Chat.Id);
     }
 
-    private async Task OnHangUpClick(ChatId chatId) {
-        if (IsUpdating(chatId))
-            return;
-
+    private async Task OnHangUpClick() {
         // User is already participating — stop everything
-        var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
+        var audioState = await ChatAudioUI.GetState(Chat.Id).ConfigureAwait(false);
         if (audioState.IsRecording)
-            StopRecording(chatId);
+            StopRecording(Chat.Id);
         // Stop video recording and watching
         ChatVideoUI.StopStreaming();
         ChatVideoUI.CloseVideoPanel();
         // Stop listening
-        _ = ChatAudioUI.SetListeningState(chatId, false);
+        _ = ChatAudioUI.SetListeningState(Chat.Id, false);
     }
 
-    private void OnStopListeningClick(ChatId chatId) {
-        if (IsUpdating(chatId))
-            return;
-
-        // Stop listening
-        _ = ChatAudioUI.SetListeningState(chatId, false);
-    }
-
-    private bool IsUpdating(ChatId chatId)
-        => chatId != ChatId;
+    private void OnStopListeningClick()
+        => _ = ChatAudioUI.SetListeningState(Chat.Id, false);
 
     private void StopRecording(ChatId chatId) {
         if (!IsValidAction())
@@ -187,7 +172,6 @@
     // Nested types
 
     public sealed record Model(
-        ChatId ChatId,
         ChatAudioState AudioState,
         bool IsAnyoneTalking,
         bool HasRemoteStreams,

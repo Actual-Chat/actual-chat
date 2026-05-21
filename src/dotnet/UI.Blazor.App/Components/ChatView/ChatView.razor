@@ -51,27 +51,33 @@
 }
 
 <OnUIEvent TEvent="@NavigateToChatEntryEvent" Handler="@OnNavigateToChatEntry" />
-<VirtualList
-    @key="@ChatId.Value"
-    Class="chat-view"
-    DataSource="@this"
-    Identity="@ChatId.Value"
-    DefaultEdge="@VirtualListEdge.End"
-    SkeletonCount="15"
-    SpacerSize="1500"
-    ItemVisibilityChanged="@OnItemVisibilityChanged">
-    <Item>
-        @RenderChatMessage((context, _chatContext))
-    </Item>
-    <SkeletonBatch>
-        <chat-view-skeleton class="no-scrollbar" count="@context" />
-    </SkeletonBatch>
-</VirtualList>
+<CascadingValue Value="@this">
+    <VirtualList
+        @key="@Chat.Id.Value"
+        Class="chat-view"
+        DataSource="@this"
+        Identity="@Chat.Id.Value"
+        DefaultEdge="@VirtualListEdge.End"
+        SkeletonCount="15"
+        SpacerSize="1500"
+        ItemVisibilityChanged="@OnItemVisibilityChanged">
+        <Item>
+            @RenderChatMessage((context, ChatContext))
+        </Item>
+        <SkeletonBatch>
+            <chat-view-skeleton class="no-scrollbar" count="@context" />
+        </SkeletonBatch>
+    </VirtualList>
+</CascadingValue>
 
 <RenderIntoStack Name="@LayoutSlots.SubFooter" Order="-1000_000" Key="NavigationSubFooter">
-    <ChatViewNavigationPanel ChatId="@ChatId" ChatView="@this" />
+    <CascadingValue Value="@ChatContext">
+        <CascadingValue Value="@this">
+            <ChatViewNavigationPanel/>
+        </CascadingValue>
+    </CascadingValue>
 </RenderIntoStack>
 
 <RenderIntoStack Name="@LayoutSlots.SubHeader" Order="2000_000" Key="DateVisor">
-    <DateVisor ChatId="@ChatId" ChatView="@this"/>
+    <DateVisor Chat="@Chat" ChatView="@this"/>
 </RenderIntoStack>

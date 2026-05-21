@@ -2,19 +2,19 @@
 @inherits ComputedStateComponent<AppUIHub, RightPanelContent.Model>
 @{
     var m = State.Value;
-    if (m.ShowSkeletons) { // Chat is null
+    var chat = m.Chat;
+    if (chat is null) {
         <RightPanelSkeleton />
         return;
     }
 
-    var chat = m.Chat;
 }
 
 <div class="right-panel">
     <ErrorBarrier Name="RightPanelContent" Kind="@ErrorBarrierKind.Full">
-        <RightPanelHeader Chat="@chat" />
+        <RightPanelHeader />
         <div class="c-panel-content">
-            <RightPanelChatInfo Chat="@chat"/>
+            <RightPanelChatInfo/>
             <div class="c-panel-tabs">
                 @if (m.ShowTabs) {
                     <TabPanel
@@ -52,10 +52,10 @@
 </div>
 
 @code {
+    private Chat? Chat => ChatContext?.Chat;
     private IChats Chats => Hub.Chats;
 
-    [ParameterComparer(typeof(ByRefParameterComparer))]
-    [Parameter, EditorRequired] public Chat? Chat { get; set; }
+    [CascadingParameter] public ChatContext? ChatContext { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -86,12 +86,10 @@
     // Nested types
 
     public sealed record Model {
-        public static Model Skeletons = new();
+        public static Model Skeletons { get; } = new();
         public static Model Loading(Chat chat) => new() { Chat = chat };
 
         public Chat? Chat { get; init; }
-        [MemberNotNullWhen(false, nameof(Chat))]
-        public bool ShowSkeletons => Chat is null;
         public bool ShowThreads => Chat?.Id.Kind is ChatKind.Group or ChatKind.Place;
         public bool ShowTabs => ShowMembersTab || EnableIncompleteUI || ShowThreads;
         public bool ShowMembersTab { get; init; }

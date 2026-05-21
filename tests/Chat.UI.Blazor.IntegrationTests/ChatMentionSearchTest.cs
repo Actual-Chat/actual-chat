@@ -2,6 +2,7 @@ using ActualChat.Contacts;
 using ActualChat.Search;
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
@@ -28,10 +29,8 @@ public class ChatMentionSearchTest(ChatAppHostFixture fixture, ITestOutputHelper
         await Tester.JoinChat(chat.Id, inviteId);
         await Tester.SignIn(bob);
 
-        var searchProvider = GetMentionSearchProvider(chat.Id);
-
         // act
-        var results = await searchProvider.Find("Magn", 10, CancellationToken.None);
+        var results = await FindMentions(chat.Id, "Magn");
 
         // assert
         results.Should().ContainSingle()
@@ -54,10 +53,8 @@ public class ChatMentionSearchTest(ChatAppHostFixture fixture, ITestOutputHelper
         var contact = new Contact(contactId) { PeerContactName = "MyBestie" };
         await Tester.Commander.Call(new Contacts_Change(Tester.Session, contactId, null, Change.Create(contact)));
 
-        var searchProvider = GetMentionSearchProvider(chat.Id);
-
         // act - search by the contact display name Bob gave Alice
-        var results = await searchProvider.Find("MyBest", 10, CancellationToken.None);
+        var results = await FindMentions(chat.Id, "MyBest");
 
         // assert - top result should be the renamed contact
         results.Should().NotBeEmpty();
@@ -81,15 +78,13 @@ public class ChatMentionSearchTest(ChatAppHostFixture fixture, ITestOutputHelper
         var contact = new Contact(contactId) { PeerContactName = "MyBestie" };
         await Tester.Commander.Call(new Contacts_Change(Tester.Session, contactId, null, Change.Create(contact)));
 
-        var searchProvider = GetMentionSearchProvider(chat.Id);
-
         // act & assert - should find by account avatar name even when contact has been renamed
-        var byAvatar = await searchProvider.Find("Magnol", 10, CancellationToken.None);
+        var byAvatar = await FindMentions(chat.Id, "Magnol");
         byAvatar.Should().Contain(x => x.SearchMatch.Text == "Magnolia",
             "account avatar name should remain searchable even when contact display name is set");
 
         // act & assert - should find by contact display name
-        var byContact = await searchProvider.Find("MyBest", 10, CancellationToken.None);
+        var byContact = await FindMentions(chat.Id, "MyBest");
         byContact.Should().NotBeEmpty("contact display name should be searchable");
         byContact.First().SearchMatch.Text.Should().Be("MyBestie");
     }
@@ -105,19 +100,16 @@ public class ChatMentionSearchTest(ChatAppHostFixture fixture, ITestOutputHelper
         await Tester.JoinChat(chat.Id, inviteId);
         await Tester.SignIn(bob);
 
-        var searchProvider = GetMentionSearchProvider(chat.Id);
-
         // act
-        var results = await searchProvider.Find("", 10, CancellationToken.None);
+        var results = await FindMentions(chat.Id, "");
 
         // assert - should include both Bob and the other user
         results.Should().HaveCountGreaterThanOrEqualTo(2);
     }
 
-    private ISearchProvider<MentionSearchResult> GetMentionSearchProvider(ChatId chatId)
+    private Task<MentionSearchResult[]> FindMentions(ChatId chatId, string query)
     {
-        var hub = Tester.ScopedAppServices.AppUIHub();
-        var markupHub = hub.ChatMarkupHubFactory[chatId];
-        return markupHub.MentionSearchProvider;
+        var localSearch = Tester.ScopedAppServices.GetRequiredService<LocalSearchUI>();
+        return localSearch.FindMentions(chatId, MentionCandidateFilters.All, query, 10, CancellationToken.None);
     }
 }

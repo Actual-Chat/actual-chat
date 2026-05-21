@@ -2,19 +2,18 @@
 @inherits ComputedStateComponent<AppUIHub, Banners.ComputedModel>
 @{
     var m = State.Value;
-    var chatId = Chat?.Id;
-    var hasChat = chatId is not null;
+    var chat = Chat;
 }
 
 <ReconnectBanner/>
 @foreach (var banner in m.Banners.Take(MaxCount)) {
     @banner.View
 }
-@if (hasChat) {
+@if (chat is not null) {
     <NoComponent @key="Chat">
-        <ChatCopyBanner Chat="@Chat"/>
-        <AddToContactsBanner Chat="@Chat"/>
-        <AddChatMembersBanner Chat="@Chat"/>
+        <ChatCopyBanner/>
+        <AddToContactsBanner/>
+        <AddChatMembersBanner/>
     </NoComponent>
 }
 <PermissionBannerSwitch/>
@@ -22,10 +21,11 @@
 @code {
     private const int MaxCount = 2;
 
+    private Chat? Chat => ChatContext?.Chat;
     private BannerUI BannerUI => Hub.BannerUI;
 
+    [CascadingParameter] public ChatContext? ChatContext { get; set; }
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-    [Parameter, EditorRequired] public Chat? Chat { get; set; }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

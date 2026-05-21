@@ -37,7 +37,9 @@
 </div>
 
 @code {
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    private Chat? Chat => ChatContext?.Chat;
+
+    [CascadingParameter] public ChatContext? ChatContext { get; set; }
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {

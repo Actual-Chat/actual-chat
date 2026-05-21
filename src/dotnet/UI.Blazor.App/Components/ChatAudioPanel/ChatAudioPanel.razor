@@ -84,11 +84,12 @@
 @code {
     private const string CameraMenuRequester = nameof(ChatAudioPanel);
 
+    private Chat Chat => ChatContext.Chat;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private CameraUI CameraUI => Hub.CameraUI;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
     [Parameter] public bool IsNarrow { get; set; }
 
     private Task OnSwitchCamera()

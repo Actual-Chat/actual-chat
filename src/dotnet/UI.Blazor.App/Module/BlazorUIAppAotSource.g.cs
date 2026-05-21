@@ -108,7 +108,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatSettingsStartModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatViewNavigationPanel>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatViewSearchResultsNavigator>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NavigateToNextOrPrevSearchResult>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatWelcomeBlock>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatsNavbarButtonBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ClientUpgradeCover>();
@@ -765,7 +765,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatSettingsStartModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatViewNavigationPanel), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatViewSearchResultsNavigator), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.NavigateToNextOrPrevSearchResult), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatWelcomeBlock), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatsNavbarButtonBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ClientUpgradeCover), AotTypeKind.Component),

@@ -6,16 +6,16 @@
 }
 
 <div class="header-activity-panel-wrapper">
-    <ChatActivityPanel ChatId="@ChatId" MaxCount="3" Click="@Click"/>
+    <ChatActivityPanel MaxCount="3" Click="@Click"/>
 </div>
 
 @code {
+    private Chat Chat => ChatContext.Chat;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
 
-    [ParameterComparer(typeof(ByRefParameterComparer))]
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
     [Parameter] public EventCallback Click { get; set; }
 
     protected override ComputedState<bool>.Options GetStateOptions()
@@ -26,17 +26,20 @@
             });
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
-        var chatId = ChatId;
+        var chatId = Chat.Id;
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
         if (audioState.IsListening || audioState.IsRecording)
             return true;
+
         var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
         if (isAnyoneTalking)
             return true;
+
         var ownSourceKind = await ChatVideoUI.GetOwnSourceKind(chatId, cancellationToken).ConfigureAwait(false);
         var isOwnVideoStreaming = ownSourceKind is not null;
         if (isOwnVideoStreaming)
             return true;
+
         var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
         return hasRemoteStreams;
     }

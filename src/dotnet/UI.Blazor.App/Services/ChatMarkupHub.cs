@@ -1,5 +1,4 @@
 using ActualChat.UI.Blazor.App.Services.Internal;
-using ActualChat.Search;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -26,9 +25,6 @@ public class ChatMarkupHub(IServiceProvider services, ChatId chatId) : IChatMark
 
     public IChatMentionResolver ChatMentionResolver
         => field ??= new ChatMentionResolver(Services, NonThreadChatId);
-
-    public ISearchProvider<MentionSearchResult> MentionSearchProvider
-        => field ??= new MentionIndexSearchProvider(Services, NonThreadChatId);
 
     public IMarkupFormatter EditorHtmlConverter
         => _editorHtmlConverter ??= MarkupEditorHtmlConverter.Instance;

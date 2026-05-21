@@ -4,7 +4,6 @@ using ActualChat.Pooling;
 using ActualChat.UI.Blazor.App.Events;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Users;
 using ActualLab.Diagnostics;
 
 namespace ActualChat.UI.Blazor.App.Components;
@@ -26,11 +25,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private MutableState<ChatViewItemVisibility> _itemVisibility = null!;
     private MutableState<long> _shownReadEntryLid = null!;
     private MutableState<ChatViewNavigation?> _nextNavigation = null!;
-    private ChatContext _chatContext = null!;
     private CpuTimestamp _lastEndAnchorVisibleAt;
     private CpuTimestamp _newMessagesLineShownAt;
     private long _debouncedReadEntryLid;
 
+    private Chat.Chat Chat => ChatContext.Chat;
     private AppUIHub Hub { get; }
     private Session Session => Hub.Session;
     private ICommander Commander => Hub.Commander;
@@ -66,9 +65,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     public IState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
     public Task WhenInitialized => _whenInitializedSource.Task;
 
-    [Parameter, EditorRequired]
-    public ChatId ChatId { get; set; } = null!;
-
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
 
     public ChatView(AppUIHub hub)
@@ -80,7 +77,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     protected override async Task OnInitializedAsync()
     {
-        Log.LogDebug("Created for chat #{ChatId}", ChatId);
+        Log.LogDebug("Created for chat #{ChatId}", Chat.Id);
         Nav.LocationChanged += OnLocationChanged;
         try {
             var type = GetType();
@@ -93,8 +90,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _shownReadEntryLid = StateFactory.NewMutable(
                 0L,
                 StateCategories.Get(type, nameof(ShownReadEntryLid)));
-            _readPositionLease = await ChatUI.LeaseReadPositionState(ChatId, DisposeToken);
-            _viewPositionLease = await ChatUI.LeaseViewPositionState(ChatId, DisposeToken);
+            _readPositionLease = await ChatUI.LeaseReadPositionState(Chat.Id, DisposeToken);
+            _viewPositionLease = await ChatUI.LeaseViewPositionState(Chat.Id, DisposeToken);
             _shownReadEntryLid.Value = _readPositionLease.Resource.Value.EntryLid;
             if (_viewPositionLease.Resource.Value.EntryLid is 0)
                 _viewPositionLease.Resource.Value = _readPositionLease.Resource.Value;
@@ -114,14 +111,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             if (_disposeTokenSource.IsCancellationRequested)
                 _readPositionLease.DisposeSilently();
         }
-    }
-
-    protected override void OnParametersSet()
-    {
-        if (_disposeTokenSource.IsCancellationRequested)
-            return;
-
-        _chatContext = new ChatContext(Hub, ChatId);
     }
 
     protected override Task OnParametersSetAsync()
@@ -161,7 +150,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     }
 
     public override string ToString()
-        => $"ChatView #{ChatId}";
+        => $"ChatView #{Chat.Id}";
 
     // Event handlers
 
@@ -200,11 +189,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private void OnItemVisibilityChanged(VirtualListItemVisibility virtualListItemVisibility)
     {
         var identity = virtualListItemVisibility.ListIdentity;
-        if (identity != ChatId.Value) {
+        if (identity != Chat.Id.Value) {
             Log.LogWarning(
                 $"{nameof(OnItemVisibilityChanged)} received wrong identity {{Identity}} while expecting {{ActualIdentity}}",
                 identity,
-                ChatId.Value);
+                Chat.Id.Value);
             return;
         }
 
@@ -220,12 +209,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         if (itemVisibility.IsEndAnchorVisible) {
             _lastEndAnchorVisibleAt = CpuTimestamp.Now;
-            _ = UpdateReadPositionToTheLastId(ChatId);
+            _ = UpdateReadPositionToTheLastId(Chat.Id);
         } else
             UpdateReadPosition(itemVisibility.MaxMessageLid);
         if (_viewPositionLease is not null) {
             var entryId = itemVisibility.MaxMessageLid;
-            _viewPositionLease.Resource.Value = new ReadPosition(ChatId, entryId);
+            _viewPositionLease.Resource.Value = new ReadPosition(Chat.Id, entryId);
         }
         ChatUI.ItemVisibility.Value = itemVisibility;
         return;
@@ -246,7 +235,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private Task OnNavigateToChatEntry(NavigateToChatEntryEvent @event, CancellationToken cancellationToken)
     {
-        if (@event.ChatEntryId.ChatId == ChatId)
+        if (@event.ChatEntryId.ChatId == Chat.Id)
             _ = NavigateTo(@event.ChatEntryId.LocalId, @event.MustHighlight);
         return Task.CompletedTask;
     }
@@ -255,7 +244,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private async Task UpdateReadState(CancellationToken cancellationToken)
     {
-        var chatId = ChatId;
+        var chatId = Chat.Id;
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return;
@@ -313,7 +302,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         VirtualListData<ChatMessage> renderedData,
         CancellationToken cancellationToken)
     {
-        var chatId = ChatId;
+        var chatId = Chat.Id;
         var startedAt = CpuTimestamp.Now;
         await WhenInitialized;
 
@@ -623,7 +612,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var readPosition = ReadPosition;
         readEntryLid = Math.Max(readPosition.Value.EntryLid, readEntryLid);
         if (readPosition.Value.EntryLid < readEntryLid)
-            ((MutableState<ReadPosition>)readPosition).Value = new ReadPosition(ChatId, readEntryLid);
+            ((MutableState<ReadPosition>)readPosition).Value = new ReadPosition(Chat.Id, readEntryLid);
         return readEntryLid;
     }
 
@@ -672,7 +661,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private async ValueTask<ChatEntry?> GetFirstEntry(long minEntryLid, CancellationToken cancellationToken)
     {
-        var chatId = ChatId;
+        var chatId = Chat.Id;
         var entryReader = new ChatEntryReader(Chats, Session, chatId);
         var chatLidRange = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
         var range = new Range<long>(minEntryLid, minEntryLid + (20 * ChatUI.IdTileStack.MinTileSize))
@@ -682,7 +671,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private void UpdateGroupChatUsageList()
     {
-        var chatId = ChatId;
+        var chatId = Chat.Id;
         if (chatId.Kind == ChatKind.Peer)
             return;
 

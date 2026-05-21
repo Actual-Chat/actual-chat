@@ -24,7 +24,7 @@
     private IChats Chats => Hub.Chats;
 
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -48,7 +48,7 @@
 
     protected override async Task<string> ComputeState(CancellationToken cancellationToken) {
         var chatView = ChatView;
-        var chatId = ChatId;
+        var chatId = Chat.Id;
         if (!await RegionVisibility.IsVisible.Use(cancellationToken).ConfigureAwait(false))
             return "";
 

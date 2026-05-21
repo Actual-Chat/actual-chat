@@ -22,9 +22,10 @@
 @code {
     private bool _isCopying;
 
+    private Chat Chat => ChatContext.Chat;
     private IChats Chats => Hub.Chats;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

@@ -47,7 +47,7 @@
     }
 
     protected override void OnParametersSet() {
-        _chatId = ChatContext.ChatId;
+        _chatId = ChatContext.Chat.Id;
         _botId = Constants.User.Sherlock.GetSherlockAuthorId(_chatId);
     }
 

@@ -28,12 +28,13 @@
     private ShowHideAnimator _animator = null!;
     private Moment _lastClickAt;
 
+    private Chat Chat => ChatContext.Chat;
     private IChats Chats => Hub.Chats;
     private ChatUI ChatUI => Hub.ChatUI;
     private Moment CpuNow => Hub.Clocks.CpuClock.Now;
 
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
-    [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;
+    [CascadingParameter] public ChatView ChatView { get; set; } = null!;
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
 
     protected override void OnInitialized()
@@ -52,8 +53,8 @@
             });
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var chatId = Chat.Id;
         var chatView = ChatView;
-        var chatId = ChatId;
         var oldState = State.Value;
 
         if (!await RegionVisibility.IsVisible.Use(cancellationToken).ConfigureAwait(false))
