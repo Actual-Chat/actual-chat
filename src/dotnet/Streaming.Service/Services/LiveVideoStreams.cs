@@ -259,11 +259,11 @@ public class LiveVideoStreams : ILiveVideoStreams
     {
         if (qualityByStream is null) {
             if (_qualityBySession.TryGetValue(session, out var removing)) {
-                var prevMaxByStream = new Dictionary<string, int>(removing.QualityByStream.Count);
+                var prevMaxOnClear = new Dictionary<string, int>(removing.QualityByStream.Count);
                 foreach (var (sid, _) in removing.QualityByStream)
-                    prevMaxByStream[sid] = ComputeMaxLayerId(sid);
+                    prevMaxOnClear[sid] = ComputeMaxLayerId(sid);
                 _qualityBySession.TryRemove(session, out _);
-                foreach (var (sid, prevMax) in prevMaxByStream) {
+                foreach (var (sid, prevMax) in prevMaxOnClear) {
                     var newMax = ComputeMaxLayerId(sid);
                     if (newMax != prevMax) {
                         using (Invalidation.Begin())
