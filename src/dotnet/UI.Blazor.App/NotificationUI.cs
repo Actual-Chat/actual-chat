@@ -1,5 +1,5 @@
 using ActualChat.Hosting;
-using ActualChat.Notification;
+using ActualChat.Notifications;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Services;
 

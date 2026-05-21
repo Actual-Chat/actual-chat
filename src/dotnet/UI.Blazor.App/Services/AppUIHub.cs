@@ -2,7 +2,7 @@ using ActualChat.Audio;
 using ActualChat.Contacts;
 using ActualChat.Invite;
 using ActualChat.MediaPlayback;
-using ActualChat.Notification;
+using ActualChat.Notifications;
 using ActualChat.Streaming;
 using ActualChat.UI.App.Services;
 

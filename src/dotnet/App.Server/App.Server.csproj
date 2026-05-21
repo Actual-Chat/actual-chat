@@ -56,7 +56,7 @@
     <ProjectReference Include="..\Flows.Service.Migration\Flows.Service.Migration.csproj" />
     <ProjectReference Include="..\Chat.Service.Migration\Chat.Service.Migration.csproj" />
     <ProjectReference Include="..\Contacts.Service.Migration\Contacts.Service.Migration.csproj" />
-    <ProjectReference Include="..\Notification.Service.Migration\Notification.Service.Migration.csproj" />
+    <ProjectReference Include="..\Notifications.Service.Migration\Notifications.Service.Migration.csproj" />
     <ProjectReference Include="..\Invite.Service.Migration\Invite.Service.Migration.csproj" />
     <ProjectReference Include="..\Users.Service.Migration\Users.Service.Migration.csproj" />
     <ProjectReference Include="..\Media.Service.Migration\Media.Service.Migration.csproj" />

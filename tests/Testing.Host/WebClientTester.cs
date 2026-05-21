@@ -1,7 +1,7 @@
 using ActualChat.App.Server;
 using ActualChat.Chat;
 using ActualChat.Hosting;
-using ActualChat.Notification;
+using ActualChat.Notifications;
 using ActualChat.Search;
 using ActualChat.UI;
 using ActualChat.UI.Blazor.App;

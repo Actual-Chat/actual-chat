@@ -697,7 +697,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `GrabStatusesBackendExt` (static class) - Extension methods for IGrabStatusesBackend.
 
 
-## ActualChat.Notification.Contracts
+## ActualChat.Notifications.Contracts
 
 - `Device` (record) - Represents a user's push notification device registration.
 - `ExplicitNotification` (record) - Represents an explicit notification to be sent.
@@ -850,7 +850,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `MediaServiceModule` - DI module for Media service.
 
 
-## ActualChat.Notification.Service
+## ActualChat.Notifications.Service
 
 - `Notifications` - Implementation of INotifications for push notifications.
 - `NotificationsBackend` - Implementation of INotificationsBackend.

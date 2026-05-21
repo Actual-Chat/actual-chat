@@ -37,8 +37,8 @@ public static class AssertOptionsExt
         this EquivalencyOptions<FoundChatEntry> options)
         => options.Excluding(x => x.Match);
 
-    public static EquivalencyOptions<Notification.Notification> Text(
-        this EquivalencyOptions<Notification.Notification> options)
+    public static EquivalencyOptions<Notifications.Notification> Text(
+        this EquivalencyOptions<Notifications.Notification> options)
         => options.Including(x => x.Title).Including(x => x.Content);
 
     public static EquivalencyOptions<FoundItem> ExcludingSearchMatch(

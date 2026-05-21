@@ -57,7 +57,7 @@ Comprehensive serialization tests have been written for all serializable types. 
 | Contacts.UnitTests | `ContactSerializationTest.cs` | 19 |
 | Media.UnitTests | `MediaSerializationTest.cs` | 9 |
 | Streaming.UnitTests | `StreamingSerializationTest.cs` | 2 |
-| Notification.IntegrationTests | `NotificationSerializationTests.cs` | 22 |
+| Notifications.IntegrationTests | `NotificationSerializationTests.cs` | 22 |
 | **Total** | | **~340** |
 
 **All 340 tests pass** across all 7 test projects (0 failures, 3 skips).

@@ -1,6 +1,6 @@
 using ActualChat.Contacts;
 using ActualChat.Geo;
-using ActualChat.Notification;
+using ActualChat.Notifications;
 using ActualChat.Security;
 using UAParser;
 

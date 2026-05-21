@@ -1,7 +1,7 @@
-using ActualChat.Notification;
+using ActualChat.Notifications;
 using ActualChat.Security;
 using ActualLab.Rpc;
-using DeviceType = ActualChat.Notification.DeviceType;
+using DeviceType = ActualChat.Notifications.DeviceType;
 
 namespace ActualChat.App.Maui.Services;
 

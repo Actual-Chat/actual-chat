@@ -7,7 +7,7 @@
       "src\\dotnet\\Invite.Service.Migration\\Invite.Service.Migration.csproj",
       "src\\dotnet\\Media.Service.Migration\\Media.Service.Migration.csproj",
       "src\\dotnet\\MLSearch.Service.Migration\\MLSearch.Service.Migration.csproj",
-      "src\\dotnet\\Notification.Service.Migration\\Notification.Service.Migration.csproj",
+      "src\\dotnet\\Notifications.Service.Migration\\Notifications.Service.Migration.csproj",
       "src\\dotnet\\Users.Service.Migration\\Users.Service.Migration.csproj"
     ]
   }
