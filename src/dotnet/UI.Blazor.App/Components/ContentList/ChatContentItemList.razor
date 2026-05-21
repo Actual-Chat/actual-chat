@@ -1,87 +1,54 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, ChatContentItemList.Model>
-@{
-    var m = State.Value;
-}
+@inherits FusionComponentBase<AppUIHub>
+@implements IVirtualListDataSource<ContentListItem>
 
-<div class="content-list-tab @ModeClass">
-    @if (m.IsEmpty) {
-        <div class="c-empty">@EmptyText</div>
-    } else {
-        @foreach (var group in m.Groups) {
-            <div class="c-group" @key="@group.Title">
-                @if (group.Title.Length > 0) {
-                    <div class="c-group-header">@group.Title</div>
+<VirtualList
+    @key="@Identity"
+    Class="@($"content-list-tab {ModeClass}")"
+    Identity="@Identity"
+    DataSource="@this"
+    SkeletonCount="8">
+    <Item>
+        @{ var item = context; }
+        @if (item.IsEmptyPlaceholder) {
+            <div class="c-empty">@EmptyText</div>
+        }
+        else if (item.IsGroup) {
+            <div class="c-group-header">@item.GroupTitle</div>
+        }
+        else if (KindMask == ChatContentKind.File) {
+            @RenderFileRow(item.Items[0])
+        }
+        else if (KindMask == ChatContentKind.Link) {
+            @RenderLinkCard(item)
+        }
+        else {
+            <div class="c-media-row">
+                @foreach (var media in item.Items) {
+                    @RenderMediaTile(media)
                 }
-                <div class="c-content">
-                    @foreach (var item in group.Items) {
-                        var url = UrlMapper.ContentUrl(item.BlobId);
-                        var menuRef = MenuRef.New<ChatContentItemMenu>(item.EntryId.Value).ToString();
-                        @switch (item.Kind) {
-                        case ChatContentKind.Video: {
-                            var thumb = item.ThumbnailBlobId.IsNullOrEmpty() ? "" : UrlMapper.ContentUrl(item.ThumbnailBlobId);
-                            <a class="image-attachment c-video" @key="@item.Id"
-                               href="@url" role="button" data-menu="@menuRef"
-                               @onclick="@(() => OnMediaClick(item))" @onclick:preventDefault="true">
-                                @if (thumb.Length > 0) {
-                                    <image-skeleton class="show-image-skeleton" src="@thumb"/>
-                                }
-                                <i class="icon-play-fill c-play-icon"></i>
-                            </a>
-                            break;
-                        }
-                        case ChatContentKind.File: {
-                            var ext = FileExtension(item.FileName);
-                            var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(ext, "file-default");
-                            var fileIcon = fileCls == FileTypeHelper.FileClasses[FileType.Multimedia]
-                                ? "icon-play-fill" : "icon-file";
-                            <a class="c-file-row" @key="@item.Id"
-                               href="@url" target="_blank" rel="noopener" role="button"
-                               data-menu="@menuRef">
-                                <div class="c-file-icon @fileCls">
-                                    <i class="@fileIcon"></i>
-                                </div>
-                                <div class="c-file-info">
-                                    <FileAttachmentTitle Title="@item.FileName"/>
-                                    <div class="c-file-size">@FileSizeFormatter.Format(item.Size)</div>
-                                    <div class="c-file-date">@FormatDate(item.At)</div>
-                                </div>
-                            </a>
-                            break;
-                        }
-                        case ChatContentKind.Link: {
-                            if (item.LinkPreview is { IsEmpty: false } preview
-                                && m.LinkEntries.TryGetValue(item.Id, out var linkEntry)) {
-                                <div class="message-link-preview" @key="@item.Id" data-menu="@menuRef">
-                                    <LinkPreviewView Entry="@linkEntry" LinkPreview="@preview"/>
-                                </div>
-                            }
-                            break;
-                        }
-                        default: {
-                            var previewUrl = UrlMapper.ImagePreviewUrl(url, null, (int?)320);
-                            <a class="image-attachment" @key="@item.Id"
-                               href="@url" role="button" data-menu="@menuRef"
-                               @onclick="@(() => OnMediaClick(item))" @onclick:preventDefault="true">
-                                <image-skeleton class="show-image-skeleton" src="@url" thumbnailSrc="@previewUrl"/>
-                            </a>
-                            break;
-                        }
-                        }
-                    }
-                </div>
             </div>
         }
-    }
-</div>
+    </Item>
+    <Skeleton>
+        <div class="c-skeleton"></div>
+    </Skeleton>
+</VirtualList>
 
 @code {
+    private const int GridColumns = 3;
+    private const int InitialWindow = 60;
+    private const int MinWindow = 40;
+
     private IChats Chats => Hub.Chats;
     private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
 
     [Parameter, EditorRequired] public ChatId? ChatId { get; set; }
     [Parameter] public ChatContentKind KindMask { get; set; } = ChatContentKind.Media;
     [Parameter] public ContentGrouping GroupBy { get; set; } = ContentGrouping.Month;
+
+    private string Identity => $"content:{ChatId}:{KindMask}";
+    private bool IsGridMode => (KindMask & (ChatContentKind.File | ChatContentKind.Link)) == 0;
 
     private string ModeClass => KindMask switch {
         ChatContentKind.Link => "content-list-links",
@@ -97,40 +64,133 @@
         _ => "No media yet",
     };
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.None,
-                UpdateDelayer = FixedDelayer.Get(0.1),
-                Category = GetStateCategory(t),
-            });
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    public async Task<VirtualListData<ContentListItem>> GetData(
+        VirtualListDataQuery query,
+        VirtualListData<ContentListItem> renderedData,
+        CancellationToken cancellationToken) {
         var chatId = ChatId;
         if (chatId is null)
-            return Model.None;
+            return VirtualListData<ContentListItem>.None;
 
         var items = await Chats.ListChatContent(Session, chatId, KindMask, cancellationToken).ConfigureAwait(false);
         if (items.Length == 0)
-            return Model.None;
+            return EmptyData();
 
         var linkEntries = await ResolveLinkEntries(items, cancellationToken).ConfigureAwait(false);
-        return new Model { Groups = BuildGroups(items), LinkEntries = linkEntries };
+        var all = BuildItems(items, linkEntries);
+        if (all.Count == 0)
+            return EmptyData();
+
+        var (start, end) = GetWindow(query, all);
+        var result = new VirtualListData<ContentListItem>(all.GetRange(start, end - start)) {
+            Index = renderedData.Index + 1,
+            BeforeCount = start,
+            AfterCount = all.Count - end,
+            HasVeryFirstItem = start == 0,
+            HasVeryLastItem = end == all.Count,
+        };
+        return result.IsSimilarTo(renderedData) ? renderedData : result;
     }
 
-    private async Task OnMediaClick(ChatContentItem item) {
-        var entry = await Chats.GetEntry(Session, item.EntryId, CancellationToken.None).ConfigureAwait(false);
-        var attachment = entry?.Attachments.FirstOrDefault(x => x.Index == item.LocalIndex);
-        if (attachment is null)
-            return;
+    // Private methods
 
-        var url = UrlMapper.ContentUrl(attachment.Media.BlobId);
-        await VisualMediaViewerUI.Show(url, [attachment]);
+    private (int Start, int End) GetWindow(VirtualListDataQuery query, List<ContentListItem> all) {
+        var count = all.Count;
+        if (query.IsNone)
+            return (0, Math.Min(InitialWindow, count));
+
+        var s = all.FindIndex(x => x.Key == query.KeyRange.Start);
+        var e = all.FindIndex(x => x.Key == query.KeyRange.End);
+        if (s < 0 || e < 0)
+            return (0, Math.Min(InitialWindow, count));
+
+        var start = (s + query.MoveRange.Start).Clamp(0, count);
+        var end = (e + 1 + query.MoveRange.End).Clamp(start, count);
+        if (end - start < MinWindow)
+            end = Math.Min(start + MinWindow, count);
+        return (start, end);
     }
+
+    private List<ContentListItem> BuildItems(
+        IReadOnlyList<ChatContentItem> items,
+        IReadOnlyDictionary<Symbol, ChatEntry> linkEntries) {
+        var result = new List<ContentListItem>();
+        var isGrid = IsGridMode;
+        string? groupKey = null;
+        var rowItems = new List<ChatContentItem>();
+        var rowIndex = 0;
+
+        void FlushRow() {
+            if (rowItems.Count == 0)
+                return;
+
+            var rowArray = rowItems.ToArray();
+            result.Add(new ContentListItem {
+                Key = $"r:{groupKey}:{rowIndex}",
+                Version = SumVersion(rowArray),
+                Items = rowArray,
+            });
+            rowIndex++;
+            rowItems = new List<ChatContentItem>();
+        }
+
+        foreach (var item in items) {
+            var (gKey, gTitle) = GetGroupKey(DateTimeConverter.ToLocalTime(item.At));
+            if (gKey != groupKey) {
+                FlushRow();
+                groupKey = gKey;
+                rowIndex = 0;
+                if (gTitle.Length > 0)
+                    result.Add(new ContentListItem { Key = $"g:{gKey}", IsGroup = true, GroupTitle = gTitle });
+            }
+
+            if (isGrid) {
+                rowItems.Add(item);
+                if (rowItems.Count == GridColumns)
+                    FlushRow();
+            }
+            else if (item.Kind == ChatContentKind.Link) {
+                if (item.LinkPreview is not { IsEmpty: false } || !linkEntries.TryGetValue(item.Id, out var entry))
+                    continue;
+
+                result.Add(new ContentListItem {
+                    Key = $"i:{item.Id.Value}",
+                    Version = item.Version + entry.Version,
+                    Items = [item],
+                    LinkEntry = entry,
+                });
+            }
+            else {
+                result.Add(new ContentListItem {
+                    Key = $"i:{item.Id.Value}",
+                    Version = item.Version,
+                    Items = [item],
+                });
+            }
+        }
+        FlushRow();
+        return result;
+    }
+
+    private static long SumVersion(IReadOnlyList<ChatContentItem> items) {
+        long version = 0;
+        foreach (var item in items)
+            version += item.Version;
+        return version;
+    }
+
+    private static VirtualListData<ContentListItem> EmptyData()
+        => new([new ContentListItem { Key = "empty", IsEmptyPlaceholder = true }]) {
+            HasVeryFirstItem = true,
+            HasVeryLastItem = true,
+        };
 
     private async Task<IReadOnlyDictionary<Symbol, ChatEntry>> ResolveLinkEntries(
         IReadOnlyList<ChatContentItem> items,
         CancellationToken cancellationToken) {
+        if ((KindMask & ChatContentKind.Link) == 0)
+            return EmptyLinkEntries;
+
         var result = new Dictionary<Symbol, ChatEntry>();
         foreach (var item in items) {
             if (item.Kind != ChatContentKind.Link)
@@ -143,20 +203,16 @@
         return result;
     }
 
-    private List<Group> BuildGroups(IReadOnlyList<ChatContentItem> items) {
-        var groups = new List<Group>();
-        string? currentKey = null;
-        List<ChatContentItem>? current = null;
-        foreach (var item in items) {
-            var (key, title) = GetGroupKey(DateTimeConverter.ToLocalTime(item.At));
-            if (current is null || key != currentKey) {
-                current = [];
-                groups.Add(new Group(title, current));
-                currentKey = key;
-            }
-            current.Add(item);
-        }
-        return groups;
+    private static readonly IReadOnlyDictionary<Symbol, ChatEntry> EmptyLinkEntries = new Dictionary<Symbol, ChatEntry>();
+
+    private async Task OnMediaClick(ChatContentItem item) {
+        var entry = await Chats.GetEntry(Session, item.EntryId, CancellationToken.None).ConfigureAwait(false);
+        var attachment = entry?.Attachments.FirstOrDefault(x => x.Index == item.LocalIndex);
+        if (attachment is null)
+            return;
+
+        var url = UrlMapper.ContentUrl(attachment.Media.BlobId);
+        await VisualMediaViewerUI.Show(url, [attachment]);
     }
 
     private (string Key, string Title) GetGroupKey(DateTime d)
@@ -181,15 +237,53 @@
             : "";
     }
 
-    // Nested types
+    // Render fragments
 
-    public sealed class Model {
-        public static readonly Model None = new();
-        public IReadOnlyList<Group> Groups { get; init; } = [];
-        public IReadOnlyDictionary<Symbol, ChatEntry> LinkEntries { get; init; }
-            = new Dictionary<Symbol, ChatEntry>();
-        public bool IsEmpty => Groups.Count == 0;
+    private RenderFragment RenderMediaTile(ChatContentItem item) {
+        var url = UrlMapper.ContentUrl(item.BlobId);
+        var menuRef = MenuRef.New<ChatContentItemMenu>(item.EntryId.Value).ToString();
+        if (item.Kind == ChatContentKind.Video) {
+            var thumb = item.ThumbnailBlobId.IsNullOrEmpty() ? "" : UrlMapper.ContentUrl(item.ThumbnailBlobId);
+            return @<a class="image-attachment c-video" @key="@item.Id"
+                       href="@url" role="button" data-menu="@menuRef"
+                       @onclick="@(() => OnMediaClick(item))" @onclick:preventDefault="true">
+                       @if (thumb.Length > 0) {
+                           <image-skeleton class="show-image-skeleton" src="@thumb"/>
+                       }
+                       <i class="icon-play-fill c-play-icon"></i>
+                   </a>;
+        }
+        var previewUrl = UrlMapper.ImagePreviewUrl(url, null, (int?)320);
+        return @<a class="image-attachment" @key="@item.Id"
+                   href="@url" role="button" data-menu="@menuRef"
+                   @onclick="@(() => OnMediaClick(item))" @onclick:preventDefault="true">
+                   <image-skeleton class="show-image-skeleton" src="@url" thumbnailSrc="@previewUrl"/>
+               </a>;
     }
 
-    public sealed record Group(string Title, IReadOnlyList<ChatContentItem> Items);
+    private RenderFragment RenderFileRow(ChatContentItem item) {
+        var url = UrlMapper.ContentUrl(item.BlobId);
+        var menuRef = MenuRef.New<ChatContentItemMenu>(item.EntryId.Value).ToString();
+        var ext = FileExtension(item.FileName);
+        var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(ext, "file-default");
+        var fileIcon = fileCls == FileTypeHelper.FileClasses[FileType.Multimedia] ? "icon-play-fill" : "icon-file";
+        return @<a class="c-file-row" href="@url" target="_blank" rel="noopener" role="button" data-menu="@menuRef">
+                   <div class="c-file-icon @fileCls">
+                       <i class="@fileIcon"></i>
+                   </div>
+                   <div class="c-file-info">
+                       <FileAttachmentTitle Title="@item.FileName"/>
+                       <div class="c-file-size">@FileSizeFormatter.Format(item.Size)</div>
+                       <div class="c-file-date">@FormatDate(item.At)</div>
+                   </div>
+               </a>;
+    }
+
+    private RenderFragment RenderLinkCard(ContentListItem listItem) {
+        var item = listItem.Items[0];
+        var menuRef = MenuRef.New<ChatContentItemMenu>(item.EntryId.Value).ToString();
+        return @<div class="message-link-preview" data-menu="@menuRef">
+                   <LinkPreviewView Entry="@listItem.LinkEntry" LinkPreview="@item.LinkPreview"/>
+               </div>;
+    }
 }
