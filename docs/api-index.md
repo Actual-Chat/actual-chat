@@ -18,6 +18,9 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `TaskSerializer` — serializes task execution to run sequentially
 - `ChannelMuxer<TKey, TItem>` — multiplexes multiple channels into one
 
+### In-Memory Search
+- `MemSearchDocument` / `MemSearchQuery` — typed match blob + parsed query (tokenize / `IsMatch` / coverage)
+
 ### Collections & Caching
 - `LruCache<TKey, TValue>` — thread-safe LRU cache
 - `BlockRingBuffer<T>` — ring buffer with block-level operations
@@ -120,8 +123,8 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `EmojiRef` / `GifRef` — URL-encoded mention targets
 - `EmojiNormalizer` — persist-time rewriter that unwraps glyph-id emoji mentions to plain text
 - `IMentionResolver` (non-generic) — `Apply(Markup, ct)` markup-tree rewriter that enriches mentions with cached data (was `MentionNamer`)
-- `MentionFilter` — pure tokenize / matches-all / coverage-rank helpers used by the picker
 - `MentionCandidate` — unified candidate (User/Chat/Emoji) returned by the index
+- `MentionCandidateFilters` — category predicates + `KindRank` + `FilterAndRank` for the picker
 
 ### Media
 - `Media` (record) — media metadata (content type, size, dimensions)
@@ -269,7 +272,7 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 - `LanguageUI` — language preferences
 - `OnboardingUI` — user onboarding flow
 - `LiveStreamUI` — live streaming management
-- `MentionIndexUI` — per-chat candidate pool for the @-mention picker (contacts ∪ chat authors ∪ chats ∪ emojis); replaces legacy `MentionUI`
+- `LocalSearchUI` — in-memory local search service; public `ListXxx` compute methods (contacts, users, authors, chats, places) return natural types, `ListMentionCandidates` unions them for the @-mention picker
 
 ### Playback
 - `ChatPlayers` — orchestrates audio playback across chats

@@ -1,6 +1,3 @@
-@using ActualChat.Chat
-@using ActualChat.Search
-@using ActualChat.UI.Blazor.App.Services.Internal
 @namespace ActualChat.UI.Blazor.App.Components
 
 <CascadingValue TValue="MentionListManager" Value="@this" IsFixed="true">
@@ -13,28 +10,25 @@
 
 @code {
     private string _cls = "";
-    [Inject] protected StateFactory StateFactory { get; init; } = null!;
 
-    [Parameter, EditorRequired] public ISearchProvider<MentionSearchResult> SearchProvider { get; set; } = null!;
+    [Inject] protected StateFactory StateFactory { get; init; } = null!;
+    [Inject] protected LocalSearchUI LocalSearchUI { get; init; } = null!;
+
+    [CascadingParameter] public ChatContext? ChatContext { get; set; }
     [Parameter] public int Limit { get; set; } = 100;
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     public MentionList? ListRef { get; private set; }
-    public MutableState<MentionKindFilter> KindFilter { get; private set; } = null!;
+    public MutableState<Func<MentionCandidate, bool>> Filter { get; private set; } = null!;
     public event Action<MentionSearchResult>? MentionSelected;
 
     protected override void OnInitialized()
-        => KindFilter = StateFactory.NewMutable(
-            MentionKindFilter.All,
-            StateCategories.Get(GetType(), nameof(KindFilter)));
+        => Filter = StateFactory.NewMutable(
+            MentionCandidateFilters.All,
+            StateCategories.Get(GetType(), nameof(Filter)));
 
-    public Task<MentionSearchResult[]> Find(string filter, int limit, CancellationToken cancellationToken)
-    {
-        var kindFilter = KindFilter.Value;
-        return SearchProvider is MentionIndexSearchProvider mi
-            ? mi.Find(filter, kindFilter, limit, cancellationToken)
-            : SearchProvider.Find(filter, limit, cancellationToken);
-    }
+    public Task<MentionSearchResult[]> Find(string query, int limit, CancellationToken cancellationToken)
+        => LocalSearchUI.FindMentions(ChatContext?.Chat.Id, Filter.Value, query, limit, cancellationToken);
 
     public void SelectMention(MentionSearchResult mention)
         => MentionSelected?.Invoke(mention);
@@ -44,7 +38,7 @@
         if (ListRef != null) {
             ListRef.Filter.Value = filter;
             if (_cls != "show-mention-list") {
-                KindFilter.Value = MentionKindFilter.All;
+                Filter.Value = MentionCandidateFilters.All;
             }
             _cls = "show-mention-list";
             StateHasChanged();

@@ -3,7 +3,7 @@
 namespace ActualChat.UI.Blazor.App.Components;
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
-public sealed class ChatContext(AppUIHub hub, ChatId chatId)
+public sealed class ChatContext(AppUIHub hub, Chat.Chat chat)
 {
     private IChatMarkupHub? _chatMarkupHub;
 
@@ -12,9 +12,9 @@ public sealed class ChatContext(AppUIHub hub, ChatId chatId)
         get => hub;
     }
 
-    public ChatId ChatId {
+    public Chat.Chat Chat {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => chatId;
+        get => chat;
     }
 
     public IChatMarkupHub ChatMarkupHub => GetChatMarkupHub();
@@ -24,8 +24,8 @@ public sealed class ChatContext(AppUIHub hub, ChatId chatId)
     private IChatMarkupHub GetChatMarkupHub()
     {
         var chatMarkupHub = _chatMarkupHub;
-        return chatMarkupHub != null && chatMarkupHub.ChatId == ChatId
+        return chatMarkupHub != null && chatMarkupHub.ChatId == Chat.Id
             ? chatMarkupHub
-            : _chatMarkupHub = Hub.ChatMarkupHubFactory[ChatId];
+            : _chatMarkupHub = Hub.ChatMarkupHubFactory[Chat.Id];
     }
 }

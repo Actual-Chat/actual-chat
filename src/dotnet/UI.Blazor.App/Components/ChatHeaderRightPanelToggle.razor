@@ -44,12 +44,12 @@
 }
 
 @code {
-    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-
-    [Parameter] public Chat? Chat { get; set; }
-    [Parameter] public EventCallback Click { get; set; }
-
+    private Chat? Chat => ChatContext?.Chat;
     private IChats Chats => Hub.Chats;
+
+    [CascadingParameter] public ChatContext? ChatContext { get; set; }
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [Parameter] public EventCallback Click { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

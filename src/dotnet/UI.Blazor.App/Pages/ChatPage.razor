@@ -13,12 +13,12 @@
     var route = m?.Route;
     var chatId = route?.ChatId;
     var chatKey = chatId?.Value ?? "";
-    var chat = m?.Chat;
+    var chatContext = m?.ChatContext;
     var footerModel = m?.FooterModel;
     Log.LogDebug("Rendered for #{ChatId}", chatId);
 }
 
-@if (chat is null && m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
+@if (chatContext is null && m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
      <RenderIntoSlot Name="@LayoutSlots.MainLeftDrawer">
          <LeftPanel IsSkeletonWidePanel="@true">
              <WidePanelBottomContent>
@@ -29,34 +29,46 @@
 }
 
 <RenderIntoSlot Name="@LayoutSlots.MainHeader">
-    @if (chat is not null) {
-        <ChatHeader Chat="@chat"/>
+    @if (chatContext is not null) {
+        <CascadingValue Value="@chatContext">
+            <ChatHeader/>
+        </CascadingValue>
     } else if (route?.ChatId is not null) {
-        <ChatHeader Chat="@null" NoChatTitle="@UnavailableChatTitle"/>
+        <CascadingValue Value="@chatContext">
+            <ChatHeader Chat="@null" NoChatTitle="@UnavailableChatTitle"/>
+        </CascadingValue>
     } else {
         <ChatHeaderSkeleton/>
     }
 </RenderIntoSlot>
 
 <RenderIntoSlot Name="@LayoutSlots.MainFooter">
-    <ChatFooter Chat="@chat" Model="@footerModel" />
+    <CascadingValue Value="@chatContext">
+        <ChatFooter Model="@footerModel"/>
+    </CascadingValue>
 </RenderIntoSlot>
 
 <RenderIntoStack Name="@LayoutSlots.SubHeader" Order="1000_000" Key="BannersSubHeader">
-    <Banners Chat="@chat"/>
-    @if (chat is not null) {
-        <TranslationSubHeader Chat="@chat"/>
-    }
+    <CascadingValue Value="@chatContext">
+        <Banners/>
+        @if (chatContext is not null) {
+            <TranslationSubHeader/>
+        }
+    </CascadingValue>
 </RenderIntoStack>
 
 <RenderIntoSlot Name="@LayoutSlots.MainRightDrawer">
-    <RightPanel Chat="@chat"/>
+    <CascadingValue Value="@chatContext">
+        <RightPanel/>
+    </CascadingValue>
 </RenderIntoSlot>
 
 @if (m is null) {
     <chat-view-skeleton count="15" class="chat-view-skeleton-list no-scrollbar"/>
-} else if (chat is not null) {
-    <ChatView @key="@chatKey" ChatId="@chat.Id"/>
+} else if (chatContext is not null) {
+    <CascadingValue Value="@chatContext">
+        <ChatView @key="@chatKey"/>
+    </CascadingValue>
 } else if (m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
     <InaccessiblePlace ShowSignIn="@account.IsGuestOrNull()"/>
 } else if (route?.ChatId is not null) {
@@ -150,6 +162,9 @@
                 .Get(Session, chatId, cancellationToken)
                 .WaitAsync(LoadTimeout, cancellationToken)
                 .ConfigureAwait(false);
+            var chatContext = chat is not null
+                ? new ChatContext(Hub, chat)
+                : null;
             if (chat is null && chatId is PlaceChatId placeChatId) {
                 var place = await Places.Get(Session, placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
                 if (place is null) {
@@ -164,7 +179,7 @@
             }
             var footerModel = await GetFooterModel(chat, account, cancellationToken).ConfigureAwait(false);
             var enableIncompleteUI = await enableIncompleteUITask.ConfigureAwait(false);
-            return new(account, fixedRoute, chat, footerModel, canSendJoinPlaceRequest, enableIncompleteUI);
+            return new(account, fixedRoute, chatContext, footerModel, canSendJoinPlaceRequest, enableIncompleteUI);
         }
         catch (TimeoutException) {
             Computed.Current?.Invalidate(LoadTimeoutToReloadDelay);
@@ -345,7 +360,7 @@
     public sealed record Model(
         AccountFull OwnAccount,
         RouteResult Route,
-        Chat? Chat,
+        ChatContext? ChatContext,
         FooterModel FooterModel,
         bool CanSendJoinPlaceRequest,
         bool EnableIncompleteUI

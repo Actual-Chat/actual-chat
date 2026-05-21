@@ -1,4 +1,3 @@
-using ActualChat.Mathematics;
 using MessagePack.Formatters;
 
 namespace ActualChat.Search.Internal;

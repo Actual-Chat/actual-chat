@@ -73,16 +73,15 @@
     private ChatId? _previousChatId;
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.RightPanelHeader.create";
 
+    private Chat? Chat => ChatContext?.Chat;
     private IChats Chats => Hub.Chats;
     private IContacts Contacts => Hub.Contacts;
-    private EditMembersUI EditMembersUI => Hub.EditMembersUI;
 
     private IJSObjectReference? JSRef { get; set; }
     private DotNetObjectReference<RightPanelHeader> BlazorRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
-    [ParameterComparer(typeof(ByRefParameterComparer))]
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [CascadingParameter] public ChatContext? ChatContext { get; set; }
 
     public override ValueTask DisposeAsync() {
         JSRef.DisposeSilentlyAsync("dispose");

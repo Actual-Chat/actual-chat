@@ -12,7 +12,7 @@
         <ReadOnlyChatFooter Text="" />
     } else {
         @if (m.CanPost) {
-            <ChatMessageEditor @key="@chat.Id.Value" Chat="@chat" />
+            <ChatMessageEditor @key="@chat.Id.Value"/>
         } else if (m.CanJoin || m.ShouldJoinPlaceFirst) {
             <div class="chat-footer">
                 @if (!m.IsGuest) {
@@ -48,9 +48,10 @@
 </div>
 
 @code {
+    private Chat? Chat => ChatContext?.Chat;
     private ChatUI ChatUI => Hub.ChatUI;
 
-    [Parameter, EditorRequired] public Chat? Chat { get; set; }
+    [CascadingParameter] public ChatContext? ChatContext { get; set; }
     [Parameter, EditorRequired] public ChatPage.FooterModel? Model { get; set; }
 
     private async Task OnJoin() {

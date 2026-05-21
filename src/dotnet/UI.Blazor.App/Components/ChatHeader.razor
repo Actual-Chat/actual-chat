@@ -40,7 +40,7 @@
                 </div>
             </div>
             @if (!ScreenSize.IsNarrow()) {
-                <ChatActivityPanel ChatId="@chat.Id"/>
+                <ChatActivityPanel/>
             }
         } else {
             <ChatIcon Chat="@null"/>
@@ -55,26 +55,28 @@
     </div>
     @if (chat is not null) {
         <div class="chat-header-control-panel hideable">
-            <TranslationButton ChatId="@chat.Id"/>
+            <TranslationButton/>
             @if (chat.Id.IsThread(out var threadChatId)) {
                 <ChatHeaderFollowThreadToggle ThreadChatId="@threadChatId"/>
             }
             @if (IsRightNavigateButtonVisible) {
-                <ChatHeaderRightPanelToggle Chat="@Chat" Click="@OnToggleRightPanelClick"/>
+                <ChatHeaderRightPanelToggle Click="@OnToggleRightPanelClick"/>
             }
         </div>
     }
 </div>
 @if (ScreenSize.IsNarrow() && chat is not null) {
-    <ChatActivityPanelNarrowScreenWrapper ChatId="@chat.Id" Click="@OnToggleRightPanelClick" />
+    <ChatActivityPanelNarrowScreenWrapper Click="@OnToggleRightPanelClick" />
 }
 
 <VideoPanelContainer />
 
 @code {
+    private Chat? Chat => ChatContext?.Chat;
+
+    [CascadingParameter] public ChatContext? ChatContext { get; set; }
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [ParameterComparer(typeof(ByRefParameterComparer))]
-    [Parameter, EditorRequired] public Chat? Chat { get; set; }
     [Parameter] public bool IsLeftNavigateButtonVisible { get; set; } = true;
     [Parameter] public bool IsRightNavigateButtonVisible { get; set; } = true;
     [Parameter] public string NoChatTitle { get; set; } = "Loading...";

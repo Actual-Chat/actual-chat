@@ -1,6 +1,5 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Kvas
-@using ActualChat.Users
 @inherits ComputedStateComponent<AppUIHub, bool>
 
 <Banner
@@ -26,11 +25,11 @@
 
     private SyncedState<AddChatMembersBannerUserSettings> _settings = null!;
 
+    private Chat Chat => ChatContext.Chat;
     private IAuthors Authors => Hub.Authors;
     private IRoles Roles => Hub.Roles;
-    private EditMembersUI EditMembersUI => Hub.EditMembersUI;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
 
     protected override void OnInitialized() {
         var key = AddChatMembersBannerUserSettings.GetKey(Chat.Id);

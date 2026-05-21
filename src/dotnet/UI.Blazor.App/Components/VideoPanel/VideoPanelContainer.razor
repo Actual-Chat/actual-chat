@@ -3,46 +3,48 @@
 @{
     var m = State.Value;
     var isWatching = m.IsWatching;
-    var chatId = m.SelectedChatId;
+    var chatContext = m.ChatContext;
 
     // TODO(DF): move this logic to ChatVideoUI
     // Clear watching when navigating to a different chat
-    if (_lastWatchingChatId is not null && chatId is not null && _lastWatchingChatId != chatId)
+    if (_lastWatchingChatContext is not null && chatContext is not null && _lastWatchingChatContext != chatContext)
         ChatVideoUI.CloseVideoPanel();
-    _lastWatchingChatId = isWatching ? chatId : null;
+    _lastWatchingChatContext = isWatching ? chatContext : null;
 
     // Handle show/hide transitions based on watching state
-    if (!_rendered && isWatching) {
-        _rendered = true;
-        _chatIdToRender = chatId;
+    if (!_isRendered && isWatching) {
+        _isRendered = true;
+        _chatContextToRender = chatContext;
         _isClosing = false;
-    } else if (_rendered && isWatching) {
-        _chatIdToRender = chatId;
+    } else if (_isRendered && isWatching) {
+        _chatContextToRender = chatContext;
         _isClosing = false;
-    } else if (_rendered && !isWatching) {
+    } else if (_isRendered && !isWatching) {
         _isClosing = true;
     }
 
-    if (!_rendered)
-        _chatIdToRender = null;
+    if (!_isRendered)
+        _chatContextToRender = null;
 }
 
-@if (_chatIdToRender is not null) {
+@if (_chatContextToRender is not null) {
     <ErrorBarrier Name="VideoPanel" Kind="ErrorBarrierKind.Medium">
-        <VideoPanelContent ChatId="@_chatIdToRender" IsClosing="@_isClosing" OnClosed="@OnContentClosed" />
+        <CascadingValue Value="_chatContextToRender">
+            <VideoPanelContent IsClosing="@_isClosing" OnClosed="@OnContentClosed"/>
+        </CascadingValue>
     </ErrorBarrier>
 }
 
 @code {
-    private bool _rendered;
-    private ChatId? _chatIdToRender;
+    private ChatContext? _lastWatchingChatContext;
+    private ChatContext? _chatContextToRender;
+    private bool _isRendered;
     private bool _isClosing;
-    private ChatId? _lastWatchingChatId;
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
-    private IChats Chats => Hub.Chats;
 
+    [CascadingParameter] public ChatContext? ChatContext { get; set; }
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -54,15 +56,11 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken);
-        if (chatId is null)
+        var chatContext = ChatContext;
+        if (chatContext is null)
             return new Model(null, false);
 
-        // Ensure have access to the chat.
-        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat is null)
-            return new Model(null, false); // If not, do not show the video panel.
-
+        var chatId = chatContext.Chat.Id;
         var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
         var isWatching = watchingChatId == chatId;
 
@@ -77,12 +75,11 @@
                 }
             }
         }
-
-        return new Model(chatId, isWatching);
+        return new Model(chatContext, isWatching);
     }
 
     private void OnContentClosed() {
-        _rendered = false;
+        _isRendered = false;
         _isClosing = false;
         StateHasChanged();
     }
@@ -90,7 +87,7 @@
     // Nested types
 
     public sealed record Model(
-        [property:MemberNotNullWhen(true, nameof(Model.IsWatching))]ChatId? SelectedChatId,
+        [property: MemberNotNullWhen(true, nameof(Model.IsWatching))] ChatContext? ChatContext,
         bool IsWatching
     ) {
         public static readonly Model None = new(null, false);

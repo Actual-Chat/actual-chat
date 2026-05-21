@@ -26,7 +26,7 @@
 <OnUIEvent TEvent="@EmojiButtonClickEvent" Handler="OnEmojiButtonClickEvent" />
 <div @ref="Ref" class="chat-message-editor has-safe-area-bottom">
     <input class="attachment-web-file-picker" type="file" multiple/>
-    <MentionListManager @key="@MentionListManagerKey" SearchProvider="@ChatMarkupHub.MentionSearchProvider">
+    <MentionListManager @key="@MentionListManagerKey">
         @if (ScreenSize.IsWide()) {
             @RenderAttachmentListView()
             <RelatedChatEntryPanel/>
@@ -59,7 +59,7 @@
                         ContentClass="no-scrollbar"
                         Autofocus="Autofocus"
                         Placeholder="@placeholder"
-                        Post="text => Post(text)"
+                        Post="@Post"
                         Cancel="@(() => OnCancel())"
                         OpenPrevious="OnOpenPrevious"/>
                 </label>
@@ -81,7 +81,7 @@
                 <RelatedChatEntryPanel/>
             }
             @if (Chat.Rules.CanWriteAudio() || Chat.Rules.CanWriteVideo() || Chat.Rules.CanReadAudio() || Chat.Rules.CanReadVideo()) {
-                <ChatAudioPanel Chat="@Chat" IsNarrow="@ScreenSize.IsNarrow()"/>
+                <ChatAudioPanel IsNarrow="@ScreenSize.IsNarrow()"/>
             }
         </div>
     </MentionListManager>
@@ -110,7 +110,7 @@
     private SharedResourcePool<ChatId, SyncedState<ReadPosition>>.Lease? ReadPositionStateLease { get; set; }
     private SentContentStorage? ContentStorage { get; set; }
 
-    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
+    private Chat Chat => ChatContext.Chat;
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
     private SearchUI SearchUI => Hub.SearchUI;
@@ -119,7 +119,7 @@
     private FileAttachments FileAttachments { get; set; } = null!;
     private IAttachmentFilePicker? AttachmentFilePicker { get; set; }
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatMessageEditor))]
@@ -153,11 +153,11 @@
 
     protected override async Task OnParametersSetAsync() {
         var chatId = Chat.Id;
-        var oldChatId = ((IChatMarkupHub?)ChatMarkupHub)?.ChatId ?? default; // ChatMarkupHub == null on the very first call
+        var oldChatId = ((IChatMarkupHub?)ChatMarkupHub)?.ChatId; // ChatMarkupHub == null on the very first call
         if (oldChatId == chatId)
             return;
 
-        ChatMarkupHub = ChatMarkupHubFactory[chatId];
+        ChatMarkupHub = ChatContext.ChatMarkupHub;
         ReadPositionStateLease.DisposeSilently();
         ReadPositionStateLease = null;
         ReadPositionStateLease = await ChatUI.LeaseReadPositionState(chatId, default);

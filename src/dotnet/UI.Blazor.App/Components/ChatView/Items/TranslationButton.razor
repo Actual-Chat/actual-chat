@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, TranslationButton.Model>
 @{
-    if(State.IsInitial(out var m))
+    if (State.IsInitial(out var m))
         return;
 
     var isOnCls = m.IsOn ? "on" : "";
@@ -22,24 +22,22 @@
 @code {
     private TranslationUI TranslationUI => Hub.TranslationUI;
 
+    private Chat Chat => ChatContext.Chat;
+
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
-
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = ChatId;
+        var chatId = Chat.Id;
         var isSubHeaderVisible = await TranslationUI.IsSubHeaderVisible(chatId, cancellationToken).ConfigureAwait(false);
         var isOn = await TranslationUI.IsEnabled(chatId, cancellationToken).ConfigureAwait(false) ?? false;
-        return new(isSubHeaderVisible, isOn, chatId);
+        return new(isSubHeaderVisible, isOn);
     }
 
     private Task OnClick()
-        => TranslationUI.SetIsSubHeaderVisible(State.Value!.ChatId, !State.Value.IsSubHeaderVisible);
+        => TranslationUI.SetIsSubHeaderVisible(Chat.Id, !State.Value.IsSubHeaderVisible);
 
     // Nested types
 
-    public sealed record Model(
-        bool IsSubHeaderVisible,
-        bool IsOn,
-        ChatId ChatId);
+    public sealed record Model(bool IsSubHeaderVisible, bool IsOn);
 }

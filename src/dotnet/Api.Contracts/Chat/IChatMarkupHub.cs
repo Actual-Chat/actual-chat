@@ -1,5 +1,3 @@
-using ActualChat.Search;
-
 namespace ActualChat.Chat;
 
 /// <summary>
@@ -12,6 +10,5 @@ public interface IChatMarkupHub : IHasServices
     IMarkupParser Parser { get; }
     IMentionResolver MentionResolver { get; }
     IChatMentionResolver ChatMentionResolver { get; }
-    ISearchProvider<MentionSearchResult> MentionSearchProvider { get; }
     IMarkupFormatter EditorHtmlConverter { get; }
 }

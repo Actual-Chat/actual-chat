@@ -28,9 +28,6 @@ public class BackendChatMarkupHub(IServiceProvider services, ChatId chatId) : IB
     public IChatMentionResolver ChatMentionResolver
         => _chatMentionResolver ??= new BackendChatMentionResolver(Services, ChatId);
 
-    public ISearchProvider<MentionSearchResult> MentionSearchProvider
-        => throw StandardError.Internal($"You should use {nameof(IChatMarkupHub)} to get {nameof(MentionSearchProvider)}.");
-
     public IMarkupFormatter EditorHtmlConverter
         => _editorHtmlConverter ??= MarkupEditorHtmlConverter.Instance;
 }

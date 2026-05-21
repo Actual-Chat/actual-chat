@@ -1,5 +1,3 @@
-using ActualChat.Users;
-
 namespace ActualChat.UI.Blazor.App.Services.Internal;
 
 internal class ChatMentionResolver(IServiceProvider services, ChatId chatId) : IChatMentionResolver

@@ -1,7 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, JoinVideoCallModal.ComputedModel>
 @implements IModalView<JoinVideoCallModal.Model>
-@using ActualChat.Streaming
 @using ActualChat.Hosting
 @using ActualChat.UI
 @using ActualChat.UI.Blazor.App.Events
@@ -18,11 +17,9 @@
     <div class="c-container">
         @if (m.HasActiveSession) {
             <div class="c-members">
-                <ChatActivities
-                    @key="@ModalModel.Chat.Id.Value"
-                    ChatId="@ModalModel.Chat.Id"
-                    MaxCount="3"
-                    IsListening="true"/>
+                <CascadingValue Value="@ChatContext">
+                    <ChatActivities @key="@Chat.Id.Value" MaxCount="3" IsListening="true"/>
+                </CascadingValue>
             </div>
         }
         @if (_permission != CameraPermissionState.Granted) {
@@ -183,28 +180,22 @@
     private string? _currentFacingMode;
     private Task<string> _getLastSelectedDeviceIdTask = null!;
 
-    [CascadingParameter] public Modal Modal { get; set; } = null!;
-    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-    [Parameter] public Model ModalModel { get; set; } = null!;
-
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private CameraUI CameraUI => Hub.CameraUI;
     private CameraPermissionHandler CameraPermission => field ??= Hub.Services.GetRequiredService<CameraPermissionHandler>();
     private SystemSettingsUI SystemSettingsUI => field ??= Hub.Services.GetRequiredService<SystemSettingsUI>();
-    private bool IsSettingsMode => ModalModel.Mode is VideoCallMode.Settings;
-    // Default to Starting (not Off) until the session exists: InitializeCamera
-    // sets `_isInitialized = true` early and then awaits several JS interop calls
-    // before assigning `_session`, during which we want the Submit button to stay
-    // disabled instead of flashing enabled.
-    private CameraState PreviewState => _session?.State ?? CameraState.Starting;
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
+    // Computed properties
+    private ChatContext ChatContext => ModalModel.ChatContext;
+    private Chat Chat => ChatContext.Chat;
+    private bool IsSettingsMode => ModalModel.Mode is VideoCallMode.Settings;
+    private CameraState PreviewState => _session?.State ?? CameraState.Starting;
     private string Title => IsSettingsMode ? "Video Settings"
         : State.Value.HasActiveSession ? "Join the video"
         : "Video preview";
-
     private string SubmitButtonText => IsSettingsMode ? "Apply"
         : State.Value.HasActiveSession ? "Join"
         : "Start video";
@@ -219,6 +210,10 @@
     private bool IsSubmitDisabled => _isVideoOn
         ? _selectedDevice is null || PreviewState is not (CameraState.On or CameraState.Unavailable)
         : !State.Value.HasActiveSession;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
@@ -786,9 +781,9 @@
     // ReSharper disable once ClassNeverInstantiated.Global — instantiated via JS interop deserialization
     public sealed record CameraInfo(string? DeviceId, string? FacingMode);
 
-    public sealed class Model(Chat chat, VideoCallMode mode)
-    {
-        public Chat Chat { get; } = chat;
+    public sealed class Model(ChatContext chatContext, VideoCallMode mode) {
+        public ChatContext ChatContext { get; } = chatContext;
+        public Chat Chat => ChatContext.Chat;
         public VideoCallMode Mode { get; } = mode;
 
         // Result properties — set by the modal before closing

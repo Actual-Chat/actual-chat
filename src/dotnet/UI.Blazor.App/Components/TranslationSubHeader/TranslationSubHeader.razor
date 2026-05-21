@@ -30,8 +30,9 @@
 
 @code {
     private TranslationUI TranslationUI => Hub.TranslationUI;
+    private Chat Chat => ChatContext.Chat;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
