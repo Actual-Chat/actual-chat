@@ -20,6 +20,13 @@ import { ServerClock } from 'clocks';
 const { logScope, debugLog, warnLog, errorLog } = getLogs('OpusDecoder');
 const enableFrequentDebugLog = false;
 const DEFAULT_FEEDER_TARGET_DELAY_MS = 40;
+// Adaptive target-buffer policy: grow on starve, decay during stable playback.
+// Bumps the encoded-buffer cushion when the producer side (network/decode) stalls
+// often enough to drain the feeder; relaxes back to the base after clean playback.
+const ADAPTIVE_GROW_STEP_MS = 80;
+const ADAPTIVE_GROW_MIN_INTERVAL_MS = 1000;
+const ADAPTIVE_MAX_TARGET_MS = 800;
+const ADAPTIVE_DECAY_WINDOW_MS = 5000;
 
 interface EncodedFrame {
     data: Uint8Array;
@@ -180,6 +187,10 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
     private feederTargetDelayMs = DEFAULT_FEEDER_TARGET_DELAY_MS;
     private chunkTimeOffset = 0;
     private sourceRecordedAtMs = 0;
+    private baseTargetBufferSizeMs = 0;
+    private currentTargetBufferSizeMs = 0;
+    private lastStarveAtMs = 0;
+    private decayTimerId: ReturnType<typeof setTimeout> | null = null;
 
     private decoder: Decoder | null;
     private systemDecoder: AudioDecoder | null;
@@ -216,6 +227,9 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
         this.feederTargetDelayMs = DEFAULT_FEEDER_TARGET_DELAY_MS;
         this.chunkTimeOffset = 0;
         this.sourceRecordedAtMs = sourceRecordedAtMs;
+        this.currentTargetBufferSizeMs = this.baseTargetBufferSizeMs;
+        this.lastStarveAtMs = 0;
+        this.cancelDecay();
         this.encodedFrames.clear();
         this.systemDecodeTimings.clear();
         this.processor.clearQueue();
@@ -225,6 +239,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
         if (this.processor.isRunning)
             await this.end(true);
 
+        this.cancelDecay();
         this.decoder?.delete();
         this.systemDecoder?.close();
         this.decoder = null;
@@ -242,14 +257,13 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
     /**
      * Sizes the encoded (pre-decoder) buffer from the total target playback delay:
      *   encoded = max(MinEncodeBufferSize, target - DefaultDecodedBufferSize - DefaultAudioEnginePlaybackLatency)
+     * The adaptive layer may scale the effective target above this baseline on starvation.
      */
     public setTargetBufferSize(targetBufferSizeMs: number): void {
-        const minEncoded = AUDIO.play.minEncodedBufferSizeMs;
-        const decoded = AUDIO.play.decodedBufferSizeMs;
-        const engineLatency = AUDIO.play.audioEnginePlaybackLatencyMs;
-        const encoded = Math.max(minEncoded, targetBufferSizeMs - decoded - engineLatency);
-        this.encodedFrames.setTargetDuration(encoded);
-        this.flushDecodeDemand();
+        this.baseTargetBufferSizeMs = Math.max(0, targetBufferSizeMs);
+        if (this.currentTargetBufferSizeMs < this.baseTargetBufferSizeMs)
+            this.currentTargetBufferSizeMs = this.baseTargetBufferSizeMs;
+        this.applyTargetBufferSize();
     }
 
     public skipUntil(sourceOffsetMs: number): void {
@@ -286,10 +300,17 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
         }
     }
 
-    public async setDemand(active: boolean, targetDelayMs: number, _noWait?: RpcNoWait): Promise<void> {
+    public async setDemand(
+        active: boolean,
+        targetDelayMs: number,
+        starving: boolean,
+        _noWait?: RpcNoWait,
+    ): Promise<void> {
         if (this.mustAbort)
             return;
 
+        if (starving)
+            this.handleStarve();
         this.feederTargetDelayMs = targetDelayMs;
         this.demandActive = active;
         if (active)
@@ -401,5 +422,71 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
             sourceOffsetMs,
             presentationLagMs: ServerClock.now() + this.feederTargetDelayMs - (this.sourceRecordedAtMs + sourceOffsetMs),
         };
+    }
+
+    private handleStarve(): void {
+        const now = Date.now();
+        if (now - this.lastStarveAtMs < ADAPTIVE_GROW_MIN_INTERVAL_MS) {
+            this.lastStarveAtMs = now;
+            return;
+        }
+
+        this.lastStarveAtMs = now;
+        const next = Math.min(
+            ADAPTIVE_MAX_TARGET_MS,
+            this.currentTargetBufferSizeMs + ADAPTIVE_GROW_STEP_MS);
+        if (next === this.currentTargetBufferSizeMs)
+            return;
+
+        debugLog?.log(
+            `#${this.streamId}.handleStarve: target ${this.currentTargetBufferSizeMs}ms -> ${next}ms`);
+        this.currentTargetBufferSizeMs = next;
+        this.applyTargetBufferSize();
+        this.scheduleDecay();
+    }
+
+    private applyTargetBufferSize(): void {
+        const minEncoded = AUDIO.play.minEncodedBufferSizeMs;
+        const decoded = AUDIO.play.decodedBufferSizeMs;
+        const engineLatency = AUDIO.play.audioEnginePlaybackLatencyMs;
+        const encoded = Math.max(minEncoded, this.currentTargetBufferSizeMs - decoded - engineLatency);
+        this.encodedFrames.setTargetDuration(encoded);
+        this.flushDecodeDemand();
+    }
+
+    private scheduleDecay(): void {
+        if (this.decayTimerId !== null || this.currentTargetBufferSizeMs <= this.baseTargetBufferSizeMs)
+            return;
+
+        this.decayTimerId = setTimeout(() => {
+            this.decayTimerId = null;
+            if (this.mustAbort)
+                return;
+
+            const idleMs = Date.now() - this.lastStarveAtMs;
+            if (idleMs < ADAPTIVE_DECAY_WINDOW_MS) {
+                this.scheduleDecay();
+                return;
+            }
+            if (this.currentTargetBufferSizeMs <= this.baseTargetBufferSizeMs)
+                return;
+
+            const next = Math.max(
+                this.baseTargetBufferSizeMs,
+                this.currentTargetBufferSizeMs - ADAPTIVE_GROW_STEP_MS);
+            debugLog?.log(
+                `#${this.streamId}.decay: target ${this.currentTargetBufferSizeMs}ms -> ${next}ms`);
+            this.currentTargetBufferSizeMs = next;
+            this.applyTargetBufferSize();
+            this.scheduleDecay();
+        }, ADAPTIVE_DECAY_WINDOW_MS);
+    }
+
+    private cancelDecay(): void {
+        if (this.decayTimerId === null)
+            return;
+
+        clearTimeout(this.decayTimerId);
+        this.decayTimerId = null;
     }
 }

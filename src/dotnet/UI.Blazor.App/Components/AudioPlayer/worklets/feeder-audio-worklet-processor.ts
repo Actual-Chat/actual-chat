@@ -198,8 +198,9 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             const samplesAvailable = this.buffer.samplesAvailable;
             let chunk = this.chunks.shift();
             if (chunk === undefined) {
-                this.updateDemand();
-                // Not enough data to continue playing => starving
+                // Not enough data to continue playing => starving.
+                // Combine the demand-on and starve signals into a single setDemand
+                // call so the decoder can grow its adaptive target in the same RPC.
                 channel.fill(0);
                 if (samplesAvailable) {
                     const channelChunk = new Float32Array(channel.buffer, 0, samplesAvailable);
@@ -209,6 +210,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
 
                 this.playbackState = 'starving';
                 this.lastStarvingEventAt = time;
+                this.demandSignaled = true;
+                void this.decoder.setDemand(true, this.feederTargetDelayMs, true, rpcNoWait);
                 this.stateHasChanged();
                 return true;
             }
@@ -317,7 +320,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         if (stopped) {
             if (this.demandSignaled) {
                 this.demandSignaled = false;
-                void this.decoder.setDemand(false, this.feederTargetDelayMs, rpcNoWait);
+                void this.decoder.setDemand(false, this.feederTargetDelayMs, false, rpcNoWait);
             }
             return;
         }
@@ -326,12 +329,12 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         if (this.demandSignaled) {
             if (buffered >= this.feederHighWaterDuration) {
                 this.demandSignaled = false;
-                void this.decoder.setDemand(false, this.feederTargetDelayMs, rpcNoWait);
+                void this.decoder.setDemand(false, this.feederTargetDelayMs, false, rpcNoWait);
             }
         }
         else if (buffered < this.feederLowWaterDuration) {
             this.demandSignaled = true;
-            void this.decoder.setDemand(true, this.feederTargetDelayMs, rpcNoWait);
+            void this.decoder.setDemand(true, this.feederTargetDelayMs, false, rpcNoWait);
         }
     }
 
