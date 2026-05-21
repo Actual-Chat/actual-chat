@@ -226,7 +226,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.UrlMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.UserMentionView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupView>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MediaList>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatContentItemList>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatContentItemMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MemberSelector>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MentionList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MentionListManager>();
@@ -890,7 +891,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.UrlMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.UserMentionView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupView), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.MediaList), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatContentItemList), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatContentItemMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MemberSelector), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MentionList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MentionListManager), AotTypeKind.Component),

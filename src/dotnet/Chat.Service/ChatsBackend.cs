@@ -22,7 +22,10 @@ namespace ActualChat.Chat;
 public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IChatsBackend
 {
     private const string CreatedChatEntryId = "CreatedChatEntryId";
+    private const int ChatContentListLimit = 1000;
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
+    private static readonly ChatContentKind[] AllContentKinds =
+        [ChatContentKind.Photo, ChatContentKind.Video, ChatContentKind.File, ChatContentKind.Link];
     private static readonly Dictionary<MediaId, Media.Media> EmptyMediaMap = new ();
     private static readonly ILookup<ChatEntryId, ChatEntryAttachment> EmptyAttachments
         = Array.Empty<ChatEntryAttachment>().ToLookup(ta => ta.EntryId);
@@ -669,6 +672,82 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     [ComputeMethod]
+    // [ComputeMethod]
+    public virtual async Task<ChatContentTile> GetChatContentTile(
+        ChatId chatId,
+        Range<long> entryLidTileRange,
+        CancellationToken cancellationToken)
+    {
+        var idTile = IdTileStack.GetTile(entryLidTileRange);
+        var smallerIdTiles = idTile.Smaller();
+        if (smallerIdTiles.Length != 0) {
+            var smallerTiles = await smallerIdTiles
+                .Select(sidTile => GetChatContentTile(chatId, sidTile.Range, cancellationToken))
+                .Collect(cancellationToken)
+                .ConfigureAwait(false);
+            var mergedItems = smallerTiles.SelectMany(t => t.Items).ToArray();
+            return new ChatContentTile(idTile.Range, ChatContentKind.All, mergedItems);
+        }
+
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var chatSid = chatId.Value;
+        var idRange = idTile.Range;
+        var dbItems = await dbContext.ChatContentItems
+            .Where(x => x.ChatId == chatSid
+                && x.EntryLocalId >= idRange.Start
+                && x.EntryLocalId < idRange.End)
+            .OrderBy(x => x.EntryLocalId)
+            .ThenBy(x => x.Kind)
+            .ThenBy(x => x.LocalIndex)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (dbItems.Count == 0)
+            return new ChatContentTile(idRange, ChatContentKind.All, []);
+
+        var items = await dbItems
+            .Select(x => ResolveContentItem(x.ToModel(), cancellationToken))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+        return new ChatContentTile(idRange, ChatContentKind.All, items);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ChatContentItem[]> ListChatContent(
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var chatSid = chatId.Value;
+        var dbItems = await dbContext.ChatContentItems
+            .Where(x => x.ChatId == chatSid)
+            .OrderByDescending(x => x.EntryLocalId)
+            .ThenByDescending(x => x.Kind)
+            .ThenByDescending(x => x.LocalIndex)
+            .Take(ChatContentListLimit)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (dbItems.Count == 0)
+            return [];
+
+        return await dbItems
+            .Select(x => ResolveContentItem(x.ToModel(), cancellationToken))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<ChatContentItem> ResolveContentItem(ChatContentItem item, CancellationToken cancellationToken)
+    {
+        if (item.Kind != ChatContentKind.Link || item.LinkPreviewId.IsEmpty)
+            return item;
+
+        var linkPreview = await LinkPreviewsBackend.Get(item.LinkPreviewId, false, cancellationToken).ConfigureAwait(false);
+        return item with { LinkPreview = linkPreview };
+    }
+
     protected virtual async Task<ChatEntryAttachment[]> GetEntryAttachments(ChatEntryId entryId, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
@@ -1531,6 +1610,37 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // [CommandHandler]
+    public virtual async Task OnUpdateChatContentIndex(
+        ChatsBackend_UpdateChatContentIndex command,
+        CancellationToken cancellationToken)
+    {
+        var (chatId, kindMask, entryIds, items) = command;
+        if (entryIds.Length == 0)
+            return;
+
+        if (Invalidation.IsActive) {
+            _ = ListChatContent(chatId, default);
+            foreach (var entryLid in entryIds.Select(x => x.LocalId).Distinct())
+                InvalidateChatContentTiles(chatId, entryLid);
+            return;
+        }
+
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var kinds = AllContentKinds.Where(k => (kindMask & k) != 0).ToArray();
+        var entrySids = entryIds.Select(x => x.Value).Distinct().ToList();
+        await dbContext.ChatContentItems
+            .Where(x => entrySids.Contains(x.EntryId) && kinds.Contains(x.Kind))
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        foreach (var item in items)
+            dbContext.Add(new DbChatContentItem(item with { Version = VersionGenerator.NextVersion() }));
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
     public virtual async Task OnRemoveOwnChats(
         ChatsBackend_RemoveOwnChats command,
         CancellationToken cancellationToken)
@@ -2021,6 +2131,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 await Commander.Call(markChatEntryAsRemoved, true, cancellationToken).ConfigureAwait(false);
             }
         }
+        if (kind == ChangeKind.Create)
+            await ResumeContentIndexing(chat.Id, cancellationToken).ConfigureAwait(false);
+
         if (kind == ChangeKind.Remove || chat.IsSummarized == false)
             // TODO(AK): Check if we need any events to stop flow
             return;
@@ -2046,6 +2159,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             await FlowHub.NewResumeEvent<ChatEntryFixupFlow>(entry.ChatId.Value)
                 .WithDelay(Constants.Chat.StreamingEntryFixupDelay + TimeSpan.FromSeconds(1))
                 .Schedule(cancellationToken).ConfigureAwait(false);
+
+        await ResumeContentIndexing(entry.ChatId, cancellationToken).ConfigureAwait(false);
 
         if (entry.IsContentStreaming)
             return; // Streaming entries are not summarized
@@ -2100,6 +2215,27 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var tile = IdTileStack.LastLayer.GetTile(entryId);
             _ = GetEntryRangeMeta(chatId, tile.Start, default);
         }
+    }
+
+    protected void InvalidateChatContentTiles(ChatId chatId, long entryLid)
+    {
+        foreach (var idTile in IdTileStack.GetAllTiles(entryLid)) {
+            if (idTile.Layer.Smaller != null)
+                continue;
+
+            _ = GetChatContentTile(chatId, idTile.Range, default);
+        }
+    }
+
+    private Task ResumeContentIndexing(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var resumeContent = FlowHub.NewResumeEvent<ChatEntryContentIndexingFlow>(chatId.Value)
+            .WithDelay(TimeSpan.FromSeconds(2))
+            .Schedule(cancellationToken);
+        var resumeMedia = FlowHub.NewResumeEvent<ChatMediaIndexingFlow>(chatId.Value)
+            .WithDelay(TimeSpan.FromSeconds(2))
+            .Schedule(cancellationToken);
+        return Task.WhenAll(resumeContent, resumeMedia);
     }
 
     protected virtual async Task<AuthorRules> GetRulesRaw(
