@@ -7,7 +7,7 @@ namespace ActualChat.Chat;
 /// </summary>
 public static class MentionCandidateFilters
 {
-    public static readonly Func<MentionCandidate, bool> All = _ => true;
+    public static readonly Func<MentionCandidate, bool> All = static _ => true;
     public static readonly Func<MentionCandidate, bool> User =
         static c => c.Id.Kind == MentionKind.User || c.Id.Kind == MentionKind.Author;
     public static readonly Func<MentionCandidate, bool> Chat =

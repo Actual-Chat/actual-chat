@@ -66,7 +66,7 @@ public readonly struct MemSearchDocument : IEquatable<MemSearchDocument>
     public override bool Equals(object? obj)
         => obj is MemSearchDocument other && Equals(other);
     public override int GetHashCode()
-        => Value?.GetHashCode() ?? 0;
+        => Value.GetHashCode();
     public static bool operator ==(MemSearchDocument left, MemSearchDocument right)
         => left.Equals(right);
     public static bool operator !=(MemSearchDocument left, MemSearchDocument right)
