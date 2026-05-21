@@ -43,6 +43,17 @@ public interface IChatsBackend : IComputeService, IBackendService
         long idTileStart,
         CancellationToken cancellationToken);
 
+    [ComputeMethod]
+    Task<ChatContentTile> GetChatContentTile(
+        ChatId chatId,
+        Range<long> entryLidTileRange,
+        CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<ChatContentItem[]> ListChatContent(
+        ChatId chatId,
+        CancellationToken cancellationToken);
+
     // Note that it returns (firstId, lastId + 1) range!
     [ComputeMethod]
     Task<Range<long>> GetLidRange(
@@ -117,6 +128,8 @@ public interface IChatsBackend : IComputeService, IBackendService
     [CommandHandler]
     Task OnRemoveAttachments(ChatsBackend_RemoveAttachments command, CancellationToken cancellationToken);
     [CommandHandler]
+    Task OnUpdateChatContentIndex(ChatsBackend_UpdateChatContentIndex command, CancellationToken cancellationToken);
+    [CommandHandler]
     Task OnRemoveOwnChats(ChatsBackend_RemoveOwnChats command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemoveOwnEntries(ChatsBackend_RemoveOwnEntries command, CancellationToken cancellationToken);
@@ -169,6 +182,23 @@ public sealed partial record ChatsBackend_RemoveAttachments(
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatId ShardKey => EntryId.ChatId;
+}
+
+/// <summary>
+/// Command that replaces the indexed <see cref="ChatContentItem"/>s of the given <see cref="KindMask"/>
+/// for a set of chat entries (delete-by-entry + insert).
+/// </summary>
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatsBackend_UpdateChatContentIndex(
+    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatContentKind KindMask,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] ChatEntryId[] EntryIds,
+    [property: DataMember, MemoryPackOrder(3), Key(3)] ChatContentItem[] Items
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public ChatId ShardKey => ChatId;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]

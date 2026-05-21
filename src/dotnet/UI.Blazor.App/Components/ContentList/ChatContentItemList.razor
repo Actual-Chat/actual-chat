@@ -1,0 +1,195 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, ChatContentItemList.Model>
+@{
+    var m = State.Value;
+}
+
+<div class="content-list-tab @ModeClass">
+    @if (m.IsEmpty) {
+        <div class="c-empty">@EmptyText</div>
+    } else {
+        @foreach (var group in m.Groups) {
+            <div class="c-group" @key="@group.Title">
+                @if (group.Title.Length > 0) {
+                    <div class="c-group-header">@group.Title</div>
+                }
+                <div class="c-content">
+                    @foreach (var item in group.Items) {
+                        var url = UrlMapper.ContentUrl(item.BlobId);
+                        var menuRef = MenuRef.New<ChatContentItemMenu>(item.EntryId.Value).ToString();
+                        @switch (item.Kind) {
+                        case ChatContentKind.Video: {
+                            var thumb = item.ThumbnailBlobId.IsNullOrEmpty() ? "" : UrlMapper.ContentUrl(item.ThumbnailBlobId);
+                            <a class="image-attachment c-video" @key="@item.Id"
+                               href="@url" role="button" data-menu="@menuRef"
+                               @onclick="@(() => OnMediaClick(item))" @onclick:preventDefault="true">
+                                @if (thumb.Length > 0) {
+                                    <image-skeleton class="show-image-skeleton" src="@thumb"/>
+                                }
+                                <i class="icon-play-fill c-play-icon"></i>
+                            </a>
+                            break;
+                        }
+                        case ChatContentKind.File: {
+                            var ext = FileExtension(item.FileName);
+                            var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(ext, "file-default");
+                            var fileIcon = fileCls == FileTypeHelper.FileClasses[FileType.Multimedia]
+                                ? "icon-play-fill" : "icon-file";
+                            <a class="c-file-row" @key="@item.Id"
+                               href="@url" target="_blank" rel="noopener" role="button"
+                               data-menu="@menuRef">
+                                <div class="c-file-icon @fileCls">
+                                    <i class="@fileIcon"></i>
+                                </div>
+                                <div class="c-file-info">
+                                    <FileAttachmentTitle Title="@item.FileName"/>
+                                    <div class="c-file-size">@FileSizeFormatter.Format(item.Size)</div>
+                                    <div class="c-file-date">@FormatDate(item.At)</div>
+                                </div>
+                            </a>
+                            break;
+                        }
+                        case ChatContentKind.Link: {
+                            if (item.LinkPreview is { IsEmpty: false } preview
+                                && m.LinkEntries.TryGetValue(item.Id, out var linkEntry)) {
+                                <div class="message-link-preview" @key="@item.Id" data-menu="@menuRef">
+                                    <LinkPreviewView Entry="@linkEntry" LinkPreview="@preview"/>
+                                </div>
+                            }
+                            break;
+                        }
+                        default: {
+                            var previewUrl = UrlMapper.ImagePreviewUrl(url, null, (int?)320);
+                            <a class="image-attachment" @key="@item.Id"
+                               href="@url" role="button" data-menu="@menuRef"
+                               @onclick="@(() => OnMediaClick(item))" @onclick:preventDefault="true">
+                                <image-skeleton class="show-image-skeleton" src="@url" thumbnailSrc="@previewUrl"/>
+                            </a>
+                            break;
+                        }
+                        }
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private IChats Chats => Hub.Chats;
+    private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
+
+    [Parameter, EditorRequired] public ChatId? ChatId { get; set; }
+    [Parameter] public ChatContentKind KindMask { get; set; } = ChatContentKind.Media;
+    [Parameter] public ContentGrouping GroupBy { get; set; } = ContentGrouping.Month;
+
+    private string ModeClass => KindMask switch {
+        ChatContentKind.Link => "content-list-links",
+        ChatContentKind.File => "content-list-rows",
+        _ => "content-list-grid",
+    };
+
+    private string EmptyText => KindMask switch {
+        ChatContentKind.Photo => "No photos yet",
+        ChatContentKind.Video => "No videos yet",
+        ChatContentKind.File => "No files yet",
+        ChatContentKind.Link => "No links yet",
+        _ => "No media yet",
+    };
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.Get(0.1),
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = ChatId;
+        if (chatId is null)
+            return Model.None;
+
+        var items = await Chats.ListChatContent(Session, chatId, KindMask, cancellationToken).ConfigureAwait(false);
+        if (items.Length == 0)
+            return Model.None;
+
+        var linkEntries = await ResolveLinkEntries(items, cancellationToken).ConfigureAwait(false);
+        return new Model { Groups = BuildGroups(items), LinkEntries = linkEntries };
+    }
+
+    private async Task OnMediaClick(ChatContentItem item) {
+        var entry = await Chats.GetEntry(Session, item.EntryId, CancellationToken.None).ConfigureAwait(false);
+        var attachment = entry?.Attachments.FirstOrDefault(x => x.Index == item.LocalIndex);
+        if (attachment is null)
+            return;
+
+        var url = UrlMapper.ContentUrl(attachment.Media.BlobId);
+        await VisualMediaViewerUI.Show(url, [attachment]);
+    }
+
+    private async Task<IReadOnlyDictionary<Symbol, ChatEntry>> ResolveLinkEntries(
+        IReadOnlyList<ChatContentItem> items,
+        CancellationToken cancellationToken) {
+        var result = new Dictionary<Symbol, ChatEntry>();
+        foreach (var item in items) {
+            if (item.Kind != ChatContentKind.Link)
+                continue;
+
+            var entry = await Chats.GetEntry(Session, item.EntryId, cancellationToken).ConfigureAwait(false);
+            if (entry is not null)
+                result[item.Id] = entry;
+        }
+        return result;
+    }
+
+    private List<Group> BuildGroups(IReadOnlyList<ChatContentItem> items) {
+        var groups = new List<Group>();
+        string? currentKey = null;
+        List<ChatContentItem>? current = null;
+        foreach (var item in items) {
+            var (key, title) = GetGroupKey(DateTimeConverter.ToLocalTime(item.At));
+            if (current is null || key != currentKey) {
+                current = [];
+                groups.Add(new Group(title, current));
+                currentKey = key;
+            }
+            current.Add(item);
+        }
+        return groups;
+    }
+
+    private (string Key, string Title) GetGroupKey(DateTime d)
+        => GroupBy switch {
+            ContentGrouping.Day => ($"{d.Year:D4}-{d.Month:D2}-{d.Day:D2}", d.ToString("MMMM d, yyyy")),
+            ContentGrouping.Month => ($"{d.Year:D4}-{d.Month:D2}", d.ToString("MMMM yyyy")),
+            _ => ("", ""),
+        };
+
+    private string FormatDate(Moment at) {
+        var date = DateTimeConverter.ToLocalTime(at);
+        var today = DateTimeConverter.ToLocalTime(Hub.Clocks.SystemClock.Now);
+        return date.Year == today.Year
+            ? date.ToString("d MMM, HH:mm")
+            : date.ToString("d MMM yyyy, HH:mm");
+    }
+
+    private static string FileExtension(string fileName) {
+        var dotIndex = fileName.LastIndexOf('.');
+        return dotIndex >= 0 && dotIndex < fileName.Length - 1
+            ? fileName[(dotIndex + 1)..].ToLowerInvariant()
+            : "";
+    }
+
+    // Nested types
+
+    public sealed class Model {
+        public static readonly Model None = new();
+        public IReadOnlyList<Group> Groups { get; init; } = [];
+        public IReadOnlyDictionary<Symbol, ChatEntry> LinkEntries { get; init; }
+            = new Dictionary<Symbol, ChatEntry>();
+        public bool IsEmpty => Groups.Count == 0;
+    }
+
+    public sealed record Group(string Title, IReadOnlyList<ChatContentItem> Items);
+}

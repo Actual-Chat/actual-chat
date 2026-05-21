@@ -173,7 +173,10 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             .Add<ChatEntryFixupFlow>()
             .Add<ConversationSplitMasterFlow>()
             .Add<ConversationSplitFlow>()
-            .Add<TranslationCleanupFlow>();
+            .Add<TranslationCleanupFlow>()
+            .Add<ChatContentIndexingMasterFlow>()
+            .Add<ChatEntryContentIndexingFlow>()
+            .Add<ChatMediaIndexingFlow>();
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();

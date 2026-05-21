@@ -32,17 +32,18 @@
                                 <ThreadList ChatId="@chat.Id"/>
                             </Tab>
                         }
-                        @if (m.EnableIncompleteUI) {
-                            <Tab @key="@("media")" Id="media" Title="Media" Order="3">
-                                <MediaList ChatId="@chat.Id"/>
-                            </Tab>
-                            <Tab @key="@("files")" Id="files" Title="Files" Order="6">
-                                <ToBeDone/>
-                            </Tab>
-                            <Tab @key="@("links")" Id="links" Title="Links" Order="9">
-                                <ToBeDone/>
-                            </Tab>
-                        }
+                        <Tab @key="@("photo")" Id="photo" Title="Photo" Order="3">
+                            <ChatContentItemList ChatId="@chat.Id" KindMask="@(ChatContentKind.Photo)"/>
+                        </Tab>
+                        <Tab @key="@("video")" Id="video" Title="Video" Order="4">
+                            <ChatContentItemList ChatId="@chat.Id" KindMask="@(ChatContentKind.Video)"/>
+                        </Tab>
+                        <Tab @key="@("files")" Id="files" Title="Files" Order="6">
+                            <ChatContentItemList ChatId="@chat.Id" KindMask="@(ChatContentKind.File)"/>
+                        </Tab>
+                        <Tab @key="@("links")" Id="links" Title="Links" Order="9">
+                            <ChatContentItemList ChatId="@chat.Id" KindMask="@(ChatContentKind.Link)"/>
+                        </Tab>
                     </TabPanel>
                 }
             </div>
@@ -71,14 +72,12 @@
             return Model.Skeletons;
 
         var chatId = chat.Id;
-        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
         // Disable 'members' tab for the announcements chat
         var showMemberTab = chat.Id != Constants.Chat.AnnouncementsChatId && rules.CanSeeMembers();
 
         return new () {
             Chat = chat,
-            EnableIncompleteUI = enableIncompleteUI,
             ShowMembersTab = showMemberTab,
         };
     }
@@ -91,8 +90,7 @@
 
         public Chat? Chat { get; init; }
         public bool ShowThreads => Chat?.Id.Kind is ChatKind.Group or ChatKind.Place;
-        public bool ShowTabs => ShowMembersTab || EnableIncompleteUI || ShowThreads;
+        public bool ShowTabs => Chat is not null;
         public bool ShowMembersTab { get; init; }
-        public bool EnableIncompleteUI { get; init; }
     }
 }
