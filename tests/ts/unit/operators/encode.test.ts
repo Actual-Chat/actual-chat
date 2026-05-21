@@ -39,6 +39,10 @@ class MockVideoEncoder {
     output: MockVideoEncoderInit['output'];
     error: MockVideoEncoderInit['error'];
 
+    get encodeQueueSize(): number {
+        return this.encodeCalls.length;
+    }
+
     constructor(init: MockVideoEncoderInit) {
         this.output = init.output;
         this.error = init.error;
@@ -560,5 +564,34 @@ describe('encode operator', () => {
         expect(MockVideoEncoder.instances).toHaveLength(2);
         expect(MockVideoEncoder.instances[0].state).toBe('closed');
         expect(MockVideoEncoder.instances[1].state).toBe('closed');
+    });
+
+    it('stats: encodeQueueDepthEma samples encoder.encodeQueueSize per bundle', async () => {
+        const stats = makeStats();
+        const seg = encode({
+            configs: [cfg(640, 360)],
+            createEncoder: makeFactory(),
+        })(fromArray([
+            makeBundle(1, stats, [{ width: 640, height: 360 }]),
+            makeBundle(2, stats, [{ width: 640, height: 360 }]),
+        ]));
+        const iter: AsyncIterator<EncodedBundle> = seg[Symbol.asyncIterator]();
+
+        // Bundle 1: encoder has 1 inflight encode at sample time → ratio = 1.
+        const next1 = iter.next();
+        await waitForCalls(0, 1);
+        MockVideoEncoder.instances[0].emitNext();
+        await next1;
+        // EMA seed-on-first: equal to the first sample (1).
+        expect(stats.encodeQueueDepthEma).toBe(1);
+
+        // Bundle 2: same shape, samples 1 again. EMA holds at 1.
+        const next2 = iter.next();
+        await waitForCalls(0, 1);
+        MockVideoEncoder.instances[0].emitNext();
+        await next2;
+        expect(stats.encodeQueueDepthEma).toBeCloseTo(1, 6);
+
+        await iter.next();
     });
 });

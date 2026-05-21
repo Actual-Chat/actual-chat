@@ -1,6 +1,7 @@
 import type { MonotonicTime } from 'clocks';
 import { getLogs } from 'logging';
 import { from, type PipeOperator } from 'ix-ext';
+import { RunningEMA } from 'math';
 import { AsyncVideoEncoder, isAsyncVideoEncoderResetError } from '../adapters';
 import { isCapturedBundleKeyFrame } from '../bundle-helpers';
 import {
@@ -10,6 +11,9 @@ import {
     type EncodedBundle,
     type EncodedFrame,
 } from '../frame-envelopes';
+
+const ENCODE_QUEUE_DEPTH_EMA_ALPHA = 0.2;
+const RESTART_STREAK_WINDOW_MS = 60_000;
 
 // Message prefix stamped on a thrown error when the encode operator rejects
 // without having produced any chunk — VideoRecorder reads it to drive
@@ -81,6 +85,17 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
 
         async function* impl(): AsyncIterable<EncodedBundle> {
             const encoders: AsyncVideoEncoder<EncodeInput, EncodedFrame>[] = [];
+            const queueDepthEma = new RunningEMA(0, 1, ENCODE_QUEUE_DEPTH_EMA_ALPHA);
+            const restartTimestamps: number[] = [];
+            const recordRestart = (stats: EncodedBundle['stats'] | null): void => {
+                const nowMs = performance.now();
+                restartTimestamps.push(nowMs);
+                while (restartTimestamps.length > 0
+                    && nowMs - restartTimestamps[0] > RESTART_STREAK_WINDOW_MS)
+                    restartTimestamps.shift();
+                if (stats)
+                    stats.encoderRestartStreakIn60s = restartTimestamps.length;
+            };
             // We always request a keyframe on the first encode. Encoders may
             // come from `EncoderPool` (re-used across recording restarts to
             // avoid burning HW slots), so we cannot rely on a "fresh internal
@@ -100,6 +115,13 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
             const maxBundleHangAttempts = 2;
             try {
                 for await (const bundle of source) {
+                    // Time-decay restart timestamps so the count drops without
+                    // needing a new event.
+                    const bundleNowMs = performance.now();
+                    while (restartTimestamps.length > 0
+                        && bundleNowMs - restartTimestamps[0] > RESTART_STREAK_WINDOW_MS)
+                        restartTimestamps.shift();
+                    bundle.stats.encoderRestartStreakIn60s = restartTimestamps.length;
                     const layerCount = bundle.layers.length;
                     if (layerCount !== configs.length) {
                         closeBundleLayers(bundle);
@@ -165,6 +187,17 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                     // and retry on the next bundle — matches v2.8's per-encode
                     // self-heal that c24efe4f2 removed.
                     const bundleIndex: number = bundle.index;
+                    // Sample queue depth BEFORE awaiting — captures the peak
+                    // immediately after submitting every layer, which is the
+                    // real backpressure signal. Sampling after the await would
+                    // read zero in the steady state.
+                    let maxQueueDepth = 0;
+                    for (const enc of encoders) {
+                        const q = enc.encoder.encodeQueueSize;
+                        if (q > maxQueueDepth) maxQueueDepth = q;
+                    }
+                    queueDepthEma.appendSample(maxQueueDepth);
+                    bundle.stats.encodeQueueDepthEma = queueDepthEma.value;
                     let settled: PromiseSettledResult<EncodedFrame>[];
                     try {
                         settled = await raceWithTimeout(
@@ -174,6 +207,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         );
                     } catch (timeoutErr) {
                         bundleHangAttempts++;
+                        recordRestart(bundle.stats);
                         if (bundleHangAttempts >= maxBundleHangAttempts) {
                             // Encoders will be disposed by the outer finally; that
                             // closes any inflight frames via failAllPending.
