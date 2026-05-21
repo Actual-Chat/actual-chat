@@ -27,13 +27,13 @@ public abstract partial record Notification(
     public string Title { get => Sanitizer.MaskPrivate(field); init; } = "";
     [DataMember(Order = 3), Key(3)]
     public string Text { get => Sanitizer.MaskPrivate(field); init; } = "";
-    [DataMember(Order = 6), Key(6)]
+    [DataMember(Order = 4), Key(4)]
     public string IconUrl { get; init; } = "";
-    [DataMember(Order = 7), Key(7)]
+    [DataMember(Order = 5), Key(5)]
     public Moment CreatedAt { get; init; }
-    [DataMember(Order = 8), Key(8)]
+    [DataMember(Order = 6), Key(6)]
     public Moment SentAt { get; init; }
-    [DataMember(Order = 9), Key(9)]
+    [DataMember(Order = 7), Key(7)]
     public Moment? HandledAt { get; init; }
 
     // Computed

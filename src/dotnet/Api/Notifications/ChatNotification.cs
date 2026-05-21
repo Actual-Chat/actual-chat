@@ -7,7 +7,7 @@ namespace ActualChat.Notifications;
 public abstract partial record ChatNotification(NotificationId Id, long Version = 0)
     : Notification(Id, Version)
 {
-    [DataMember(Order = 10), Key(10)]
+    [DataMember(Order = 8), Key(8)]
     public AuthorId? AuthorId { get; init; }
 
     // Computed
