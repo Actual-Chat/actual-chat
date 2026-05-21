@@ -1,0 +1,37 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedMenuBase<AppUIHub, Unit>
+
+<div class="message-menu">
+    <MenuEntry
+        Icon="icon-message-ellipse"
+        Text="Go to message"
+        Click="@OnGoToMessage">
+    </MenuEntry>
+</div>
+
+@code {
+    private ChatEntryId _entryId = null!;
+
+    private ChatUI ChatUI => Hub.ChatUI;
+
+    protected override void OnParametersSet() {
+        if (Arguments is not [var sEntryId])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        _entryId = ChatEntryId.Parse(sEntryId);
+    }
+
+    protected override ComputedState<Unit>.Options GetStateOptions()
+        => new() {
+            InitialValue = default,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override Task<Unit> ComputeState(CancellationToken cancellationToken)
+        => ActualLab.Async.TaskExt.UnitTask;
+
+    private async Task OnGoToMessage() {
+        await WhenClosed;
+        ChatUI.HighlightEntry(_entryId, navigate: true);
+    }
+}
