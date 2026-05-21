@@ -143,6 +143,17 @@ export abstract class CodecToAsyncAdapter<TIn, TOut, TCodecOutput> implements Di
         this.hasResolvedOutput = false;
     }
 
+    // Same as handleCodecReset, but also issues the codec-level reset+reconfigure
+    // hook. Used by upstream operators when a watchdog detects that the codec
+    // accepted input but produced no output — the WebCodecs spec recovery step
+    // for a silently-wedged HW codec is `reset()` + `configure(lastConfig)`.
+    handleCodecHang(): void {
+        this.failAllPending('codec hang', true);
+        this.lastResolvedIndex = -1;
+        this.hasResolvedOutput = false;
+        this.resetCodec();
+    }
+
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
@@ -320,6 +331,10 @@ export class AsyncVideoEncoder<
 
     handleEncoderReset(): void {
         this.handleCodecReset();
+    }
+
+    handleEncoderHang(): void {
+        this.handleCodecHang();
     }
 
     protected getInputIndex(input: TIn): number {

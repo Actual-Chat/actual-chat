@@ -91,6 +91,13 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
             let forceKeyframeOnFirstEncode = true;
             let forceKeyframeNext = false;
             let anyEncodedOutput = false;
+            // Consecutive bundle-watchdog timeouts. Reset on any successful
+            // settle. Escalates to throw at 2 — first hang triggers in-place
+            // VideoEncoder.reset()+reconfigure (WebCodecs spec recovery for
+            // a wedged HW encoder); second consecutive hang means the reset
+            // didn't help and we should rebuild the pipeline.
+            let bundleHangAttempts = 0;
+            const maxBundleHangAttempts = 2;
             try {
                 for await (const bundle of source) {
                     const layerCount = bundle.layers.length;
@@ -153,11 +160,38 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                     // adapter's queue-full backpressure never triggers).
                     // One timer per BUNDLE — 3× fewer set/clear ops than
                     // a per-layer setTimeout in the adapter.
-                    const settled = await raceWithTimeout(
-                        Promise.allSettled(promises),
-                        bundleTimeoutMs,
-                        bundle.index,
-                    );
+                    // On first timeout per consecutive run we issue an
+                    // in-place WebCodecs reset+reconfigure (handleEncoderHang)
+                    // and retry on the next bundle — matches v2.8's per-encode
+                    // self-heal that c24efe4f2 removed.
+                    const bundleIndex: number = bundle.index;
+                    let settled: PromiseSettledResult<EncodedFrame>[];
+                    try {
+                        settled = await raceWithTimeout(
+                            Promise.allSettled(promises),
+                            bundleTimeoutMs,
+                            bundleIndex,
+                        );
+                    } catch (timeoutErr) {
+                        bundleHangAttempts++;
+                        if (bundleHangAttempts >= maxBundleHangAttempts) {
+                            // Encoders will be disposed by the outer finally; that
+                            // closes any inflight frames via failAllPending.
+                            throw timeoutErr;
+                        }
+                        warnLog?.log(
+                            `bundle ${bundleIndex} hung — resetting encoders in place `
+                            + `(attempt ${bundleHangAttempts}/${maxBundleHangAttempts}); `
+                            + `forcing keyframe on next bundle`);
+                        // handleEncoderHang fails+closes all pending inflight inputs
+                        // (frames) and issues encoder.reset()+configure(lastConfig).
+                        for (const enc of encoders) {
+                            try { enc.handleEncoderHang(); } catch { /* ignore */ }
+                        }
+                        forceKeyframeNext = true;
+                        continue;
+                    }
+                    bundleHangAttempts = 0;
                     let layerSumMs = 0;
                     let layerMaxMs = 0;
                     for (const d of layerDurations) {
