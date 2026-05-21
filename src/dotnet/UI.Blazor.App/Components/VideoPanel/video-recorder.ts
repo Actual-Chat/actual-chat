@@ -985,6 +985,30 @@ export class VideoRecorder {
         void this.worker.requestKeyframe();
     }
 
+    /**
+     * Server-driven cap on the encoder ladder: the recorder shouldn't waste
+     * encode time on layers that no subscriber is currently asking for.
+     *
+     * `maxLayerId` is the aggregate max of `ReceiveQuality.LayerId` across
+     * all subscribers, as reported by
+     * `LiveVideoStreams.MaxRequestedLayerId`. -1 == nobody is currently
+     * subscribed (or every viewer is paused) — we leave the ladder alone in
+     * that case so the next joiner doesn't pay a restart cost.
+     */
+    public setMaxLayerId(maxLayerId: number): void {
+        if (maxLayerId < 0)
+            return;
+        const fullLadder = this.fullLayerLadder;
+        if (!fullLadder || fullLadder.length === 0)
+            return;
+        const cappedCount = Math.min(fullLadder.length, maxLayerId + 1);
+        const currentCount = this.layers?.length ?? 0;
+        if (cappedCount === currentCount)
+            return;
+        infoLog?.log(`setMaxLayerId: maxLayerId=${maxLayerId} → cap ladder ${currentCount} -> ${cappedCount}`);
+        this.setLayers(fullLadder.slice(0, cappedCount));
+    }
+
     public getDiagnostics(): OwnStreamDiagnostics {
         // Aggregate counters live on `RecorderStats` and are refreshed at
         // 1Hz by the recorder-health monitor. Per-layer breakdowns are NOT
