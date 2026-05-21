@@ -16,7 +16,7 @@ import { Versioning } from 'versioning';
 // const { debugLog } = getLogs('AudioVadWorker');
 
 export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector {
-    protected readonly probEMA = new RunningEMA(0.5, 5); // 32ms*5 ~ 150ms
+    protected readonly probEMA = new RunningEMA(0.5, this.isNeural ? 2 : 5); // 32ms*2 ~ 64ms for Silero (fast onset); 5 for WebRTC
     protected readonly longProbEMA = new RunningEMA(0.5, 64); // 32ms*64 ~ 2s
     protected readonly probMedian = new RunningUnitMedian();
     protected readonly minSpeechSamples: number;

@@ -32,7 +32,7 @@ public abstract class VoiceActivityDetector(IServiceProvider services) : SafeDis
     private readonly RunningEma _gainEma = new (0, 10);
 
     // Processing state (mirrors TS VoiceActivityDetectorBase)
-    private readonly RunningEma _probEma = new (0.5f, 5);
+    private readonly RunningEma _probEma = new (0.5f, 2); // 32ms*2 ~ 64ms for fast onset detection (was 5 ~ 150ms)
     private readonly RunningUnitMedian _probMedian = new ();
 
     private long? _lastConversationSignalAtSample;

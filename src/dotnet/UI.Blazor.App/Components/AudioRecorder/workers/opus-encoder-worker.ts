@@ -327,7 +327,7 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
                 let startIndex = queue.length - speechFrameCount - 1;
                 while (startIndex >= minStartIndex) {
                     const gain = gains[startIndex];
-                    if (gain < speechGain/10)
+                    if (gain < speechGain/2)
                         break;
 
                     startIndex--;
