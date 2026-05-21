@@ -61,6 +61,10 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
                 options.ClientId = Settings.GoogleClientId;
                 options.ClientSecret = Settings.GoogleClientSecret;
                 options.CorrelationCookie.SameSite = SameSiteMode.Lax;
+                // Force Google's account chooser on every sign-in. Without this Google
+                // silently re-authenticates the last-used account, so a user who signed
+                // out of the app can't pick a different account on the next sign-in.
+                options.AdditionalAuthorizationParameters["prompt"] = "select_account";
                 // Pin the scopes explicitly — the package's defaults already include
                 // these, but locking them in protects us from a future package update
                 // silently dropping any of them.
