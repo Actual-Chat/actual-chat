@@ -44,15 +44,22 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
         set => _handledAt = value?.DefaultKind(DateTimeKind.Utc);
     }
 
-    public NotificationItem ToModel()
+    public Notification ToModel()
     {
         var id = NotificationId.Parse(Id);
-        var chatId = ActualChat.ChatId.Parse(ChatId);
         var entryLid = ChatEntryLid ?? 0;
         var authorId = ActualChat.AuthorId.ParseNullable(AuthorId);
 
-        return NotificationItem.New(id, chatId, entryLid, authorId) with {
-            Version = Version,
+        return id.Kind switch {
+            NotificationKind.Message => new MessageNotification(id, Version) { EntryLid = entryLid, AuthorId = authorId },
+            NotificationKind.Reply => new ReplyNotification(id, Version) { EntryLid = entryLid, AuthorId = authorId },
+            NotificationKind.Invitation => new InvitationNotification(id, Version) { EntryLid = entryLid, AuthorId = authorId },
+            NotificationKind.Mention => new MentionNotification(id, Version) { EntryLid = entryLid, AuthorId = authorId },
+            NotificationKind.Reaction => new ReactionNotification(id, Version) { EntryLid = entryLid, AuthorId = authorId },
+            NotificationKind.Thread => new ThreadNotification(id, Version) { EntryLid = entryLid, AuthorId = authorId },
+            NotificationKind.Attention => (Notification)new AttentionNotification(id, Version) { AuthorId = authorId },
+            _ => throw StandardError.NotSupported<DbNotification>($"Unsupported notification kind: {id.Kind}."),
+        } with {
             Title = Title,
             Text = Content,
             IconUrl = IconUrl,
@@ -62,7 +69,7 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
         };
     }
 
-    public void UpdateFrom(NotificationItem model)
+    public void UpdateFrom(Notification model)
     {
         var id = model.Id;
         this.RequireSameOrEmptyId(id.Value);
@@ -71,7 +78,7 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
         long? chatEntryLid = null;
         string? authorSid = null;
         ChatId? chatId = null;
-        if (model is ChatNotificationItem chatModel) {
+        if (model is ChatNotification chatModel) {
             chatId = chatModel.ChatId;
             chatEntryLid = chatModel.EntryLid;
             authorSid = chatModel.AuthorId?.Value.NullIfEmpty();

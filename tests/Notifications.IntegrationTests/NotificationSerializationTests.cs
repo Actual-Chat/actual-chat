@@ -19,10 +19,10 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     }
 
     [Fact]
-    public void NotificationItemSerializationTest()
+    public void NotificationSerializationTest()
     {
-        var id = NotificationId.New(UserId.New(), NotificationKind.Message, "1234");
-        var d = NotificationItem.New(id, TestChatId) with {
+        var userId = UserId.New();
+        var d = MessageNotification.New(userId, TestChatId) with {
             Version = 1L,
             Title = "Bob @ Good chat",
             Text = "Sent an image",
@@ -30,7 +30,7 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
         };
         AssertMessagePackRoundtrip(d);
 
-        d = NotificationItem.New(id, TestChatId) with {
+        d = MessageNotification.New(userId, TestChatId) with {
             Version = 1L,
             Title = "Bob @ Good chat",
             Text = "Sent an image",
@@ -40,17 +40,26 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     }
 
     [Fact]
-    public void NotificationItem_PerKind()
+    public void Notification_PerKind()
     {
         var entryId = ChatEntryId.New(TestChatId, 1);
         var authorId = AuthorId.New(TestChatId, 5);
         foreach (var kind in new[] {
                      NotificationKind.Message, NotificationKind.Reply, NotificationKind.Invitation,
                      NotificationKind.Mention, NotificationKind.Reaction, NotificationKind.Attention,
-                     NotificationKind.NewThread,
+                     NotificationKind.Thread,
                  }) {
-            var id = NotificationId.New(TestUserId, kind, "1234");
-            var notification = NotificationItem.New(id, TestChatId, entryId.LocalId, authorId) with {
+            Notification notification = kind switch {
+                NotificationKind.Message => MessageNotification.New(TestUserId, TestChatId, entryId.LocalId, authorId),
+                NotificationKind.Reply => ReplyNotification.New(TestUserId, TestChatId, entryId.LocalId, authorId),
+                NotificationKind.Invitation => InvitationNotification.New(TestUserId, TestChatId, entryId.LocalId, authorId),
+                NotificationKind.Mention => MentionNotification.New(TestUserId, TestChatId, entryId.LocalId, authorId),
+                NotificationKind.Reaction => ReactionNotification.New(TestUserId, TestChatId, entryId.LocalId, authorId),
+                NotificationKind.Thread => ThreadNotification.New(TestUserId, TestChatId, entryId.LocalId, authorId),
+                NotificationKind.Attention => AttentionNotification.New(TestUserId, entryId, authorId),
+                _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+            };
+            notification = notification with {
                 Version = 1,
                 Title = "Test",
                 Text = "Content",
@@ -132,8 +141,7 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     [Fact]
     public void NotificationsBackend_Notify_Basic()
     {
-        var id = NotificationId.New(TestUserId, NotificationKind.Message, "1234");
-        var notification = NotificationItem.New(id, TestChatId) with { Version = 1, Title = "Test" };
+        var notification = MessageNotification.New(TestUserId, TestChatId) with { Version = 1, Title = "Test" };
         var cmd = new NotificationsBackend_Notify(notification);
         var deserialized = AssertMessagePackRoundtrip(cmd);
         deserialized.Notification.Id.Should().Be(cmd.Notification.Id);
@@ -142,8 +150,7 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
     [Fact]
     public void NotificationsBackend_Upsert_Basic()
     {
-        var id = NotificationId.New(TestUserId, NotificationKind.Message, "1234");
-        var notification = NotificationItem.New(id, TestChatId) with { Version = 1, Title = "Test" };
+        var notification = MessageNotification.New(TestUserId, TestChatId) with { Version = 1, Title = "Test" };
         var cmd = new NotificationsBackend_Upsert(notification);
         var deserialized = AssertMessagePackRoundtrip(cmd);
         deserialized.Notification.Id.Should().Be(cmd.Notification.Id);

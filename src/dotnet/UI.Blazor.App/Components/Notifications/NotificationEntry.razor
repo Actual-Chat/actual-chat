@@ -1,5 +1,6 @@
 @using System.Timers
 @using ActualChat.Notifications
+@using Notification = ActualChat.Notifications.Notification
 @using Timer = System.Timers.Timer
 @inherits ComputedStateComponent<AppUIHub, NotificationEntry.Model>
 @implements IDisposable
@@ -36,7 +37,7 @@
     private bool _isClosing;
     private Timer? _closingTimer;
 
-    [Parameter] public NotificationItem Notification { get; set; } = null!;
+    [Parameter] public Notification Notification { get; set; } = null!;
     [Parameter] public EventCallback Closed { get; set; }
     [Parameter] public TimeSpan? AutoCloseDelay { get; set; }
     [Parameter] public TimeSpan? AnimationTime { get; set; }
@@ -67,7 +68,7 @@
 
     protected override Task<Model> ComputeState(CancellationToken cancellationToken) {
         var notification = Notification;
-        var chatNotification = notification as ChatNotificationItem;
+        var chatNotification = notification as ChatNotification;
         var chatId = chatNotification?.ChatId;
 
         if (chatId is null) {

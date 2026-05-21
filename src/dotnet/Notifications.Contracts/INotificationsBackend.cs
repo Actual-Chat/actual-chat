@@ -8,7 +8,7 @@ namespace ActualChat.Notifications;
 public interface INotificationsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<NotificationItem?> Get(NotificationId notificationId, CancellationToken cancellationToken);
+    Task<Notification?> Get(NotificationId notificationId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ExplicitNotification?> GetExplicit(ExplicitNotificationId notificationId, CancellationToken cancellationToken);
     [ComputeMethod]
@@ -58,7 +58,7 @@ public interface INotificationsBackend : IComputeService, IBackendService
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_Notify(
-    [property: DataMember, Key(0)] NotificationItem Notification
+    [property: DataMember, Key(0)] Notification Notification
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, IgnoreMember]
@@ -71,7 +71,7 @@ public sealed partial record NotificationsBackend_Notify(
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_Upsert(
-    [property: DataMember, Key(0)] NotificationItem Notification
+    [property: DataMember, Key(0)] Notification Notification
 ) : ICommand<bool>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, IgnoreMember]

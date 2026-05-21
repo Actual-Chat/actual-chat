@@ -1,4 +1,5 @@
 @using ActualChat.Notifications
+@using Notification = ActualChat.Notifications.Notification
 @inherits ComputedStateComponent<AppUIHub, NotificationStack.Model>
 @{
     var model = State.Value;
@@ -35,7 +36,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var minSentAt = Clocks.SystemClock.Now - TimeSpan.FromDays(1);
         var notificationIds = await Notifications.ListRecentNotificationIds(Session, minSentAt, cancellationToken).ConfigureAwait(false);
-        var notifications = new List<NotificationItem>();
+        var notifications = new List<Notification>();
         foreach (var notificationId in notificationIds) {
             var notification = await Notifications.Get(Session, notificationId, cancellationToken).ConfigureAwait(false);
             if (notification != null)
@@ -67,7 +68,7 @@
     public sealed record Model {
         public static readonly Model None = new();
 
-        public List<NotificationItem> Notifications { get; init; } = [];
+        public List<Notification> Notifications { get; init; } = [];
 
         // This record relies on referential equality
         public bool Equals(Model? other) => ReferenceEquals(this, other);

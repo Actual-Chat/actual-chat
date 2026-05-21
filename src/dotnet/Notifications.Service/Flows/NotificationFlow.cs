@@ -69,10 +69,8 @@ public sealed partial class NotificationFlow : Flow<Unit>
         var title = NotificationHelper.GetTitle(chat, author);
         var iconUrl = NotificationHelper.GetIconUrl(chat, author, UrlMapper);
         var now = Hub.Clocks.CoarseSystemClock.Now;
-        var similarityKey = chatId.Value;
 
-        var notificationId = NotificationId.New(userId, NotificationKind.Message, similarityKey);
-        var notification = NotificationItem.New(notificationId, chatId, entry.LocalId, entry.AuthorId) with {
+        var notification = MessageNotification.New(userId, chatId, entry.LocalId, entry.AuthorId) with {
             Title = title,
             Text = content,
             IconUrl = iconUrl,

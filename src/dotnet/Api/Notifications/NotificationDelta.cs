@@ -5,7 +5,7 @@ namespace ActualChat.Notifications;
 /// </summary>
 [DataContract, MessagePackObject]
 public sealed partial record NotificationDelta(
-    [property: DataMember(Order = 0), Key(0)] ApiArray<NotificationItem> Upserts,
+    [property: DataMember(Order = 0), Key(0)] ApiArray<Notification> Upserts,
     [property: DataMember(Order = 1), Key(1)] ApiArray<NotificationId> DismissedIds
 ) {
     public static readonly NotificationDelta Empty = new(default, default);

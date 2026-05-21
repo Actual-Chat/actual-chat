@@ -75,7 +75,7 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
             .Collect();
         var matching = notifications
             .SkipNullItems()
-            .OfType<ChatNotificationItem>()
+            .OfType<ChatNotification>()
             .Where(x => x.EntryId == entry.Id)
             .ToList();
         matching.Should().BeEmpty("Alice already read the message, so no notification should be sent");
@@ -155,7 +155,7 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
             .Collect();
         var matching = notifications
             .SkipNullItems()
-            .OfType<ChatNotificationItem>()
+            .OfType<ChatNotification>()
             .Where(x => x.EntryId == entry.Id)
             .ToList();
         matching.Should().HaveCount(1, "duplicate flow scheduling should not produce duplicate notifications");
@@ -192,15 +192,15 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
             .Collect();
         var matching = notifications
             .SkipNullItems()
-            .OfType<ChatNotificationItem>()
+            .OfType<ChatNotification>()
             .Where(x => x.EntryId == entry.Id)
             .ToList();
         matching.Should().BeEmpty("entry is fresh and user is online, notification should be skipped");
     }
 
-    private async Task<ChatNotificationItem> GetNotification(AccountFull user, ChatEntryId entryId)
+    private async Task<ChatNotification> GetNotification(AccountFull user, ChatEntryId entryId)
     {
-        ChatNotificationItem? notification = null!;
+        ChatNotification? notification = null!;
         await TestExt.When(async () => {
             var ids = await Tester.NotificationsBackend.ListRecentNotificationIds(
                 user.Id, Clocks.SystemClock.Now - TimeSpan.FromMinutes(1), CancellationToken.None);
@@ -208,7 +208,7 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
             var retrieved = await ids
                 .Select(x => Tester.NotificationsBackend.Get(x, CancellationToken.None))
                 .Collect();
-            var notifications = retrieved.SkipNullItems().OfType<ChatNotificationItem>().Where(x => x.EntryId == entryId).ToList();
+            var notifications = retrieved.SkipNullItems().OfType<ChatNotification>().Where(x => x.EntryId == entryId).ToList();
             notifications.Should().HaveCount(1);
             notification = notifications.FirstOrDefault()!;
         }, TimeSpan.FromSeconds(30));
