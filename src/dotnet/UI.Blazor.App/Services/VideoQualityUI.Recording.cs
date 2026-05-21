@@ -1,4 +1,5 @@
 using ActualChat.Bandwidth;
+using ActualChat.Diagnostics;
 using ActualChat.Streaming;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -201,6 +202,13 @@ public sealed partial class VideoQualityUI
         _lastEncoderHealth = encoderHealth;
         _lastUplinkHealth = uplinkHealth;
 
+        AppMeters.VideoEncoderEncodeRatio.Record(encoderHealth.EncodeRatioEma);
+        if (encoderHealth.EncodeQueueDepthEma >= 0)
+            AppMeters.VideoEncoderQueueDepth.Record(encoderHealth.EncodeQueueDepthEma);
+        if (uplinkHealth.WireLastAckAgeMs >= 0)
+            AppMeters.VideoUplinkAckAgeMs.Record(uplinkHealth.WireLastAckAgeMs);
+        AppMeters.VideoUplinkFloodSkipPerSec.Record(uplinkHealth.FloodGateSkipPerSec);
+
         // Uplink-only signal feeds BWE. Verdict→continuous mapping: Good=1,
         // Bad=0, Marginal/Unknown=0.5. Streak hysteresis inside the classifier
         // is the smoothing; BWE no longer averages raw penalties.
@@ -215,6 +223,14 @@ public sealed partial class VideoQualityUI
         _outboundBandwidthCap.Tick(_outboundBwEstimator);
         var postEncCam = _outboundEncodingCap.Layers.CameraLayers;
         var postBwCam = _outboundBandwidthCap.Layers.CameraLayers;
+        if (postEncCam != preEncCam)
+            AppMeters.VideoLayerCapWalkReason.Add(1,
+                new KeyValuePair<string, object?>("category", "encoder"),
+                new KeyValuePair<string, object?>("direction", postEncCam < preEncCam ? "down" : "up"));
+        if (postBwCam != preBwCam)
+            AppMeters.VideoLayerCapWalkReason.Add(1,
+                new KeyValuePair<string, object?>("category", "uplink"),
+                new KeyValuePair<string, object?>("direction", postBwCam < preBwCam ? "down" : "up"));
         if (preEncCam != postEncCam || preBwCam != postBwCam)
             Log.LogInformation(
                 "RunOutboundTick: cap changed — encCam {PreEnc}->{PostEnc} (encVerdict={EncVerdict}, encRatio={EncRatio:F2}, " +

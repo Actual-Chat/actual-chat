@@ -641,6 +641,30 @@
         builder.CloseElement();
     }
 
+    private static void AppendVerdictChips(
+        RenderTreeBuilder builder, int seqBase,
+        params (string Label, ActualChat.Streaming.HealthVerdict Verdict)[] chips)
+    {
+        builder.OpenElement(seqBase, "div");
+        builder.AddAttribute(seqBase + 1, "class", "diag-chips");
+        var i = 0;
+        foreach (var (label, verdict) in chips) {
+            var cls = verdict switch {
+                ActualChat.Streaming.HealthVerdict.Good => "diag-chip diag-chip-good",
+                ActualChat.Streaming.HealthVerdict.Marginal => "diag-chip diag-chip-marginal",
+                ActualChat.Streaming.HealthVerdict.Bad => "diag-chip diag-chip-bad",
+                _ => "diag-chip diag-chip-unknown",
+            };
+            builder.OpenElement(seqBase + 10 + i * 4, "span");
+            builder.AddAttribute(seqBase + 11 + i * 4, "class", cls);
+            builder.AddAttribute(seqBase + 12 + i * 4, "title", label + ": " + verdict);
+            builder.AddContent(seqBase + 13 + i * 4, label);
+            builder.CloseElement();
+            i++;
+        }
+        builder.CloseElement();
+    }
+
     private void OnToggleOwnStreamingDetails() {
         _showOwnStreamingDetails = !_showOwnStreamingDetails;
         EnsurePollingState();
