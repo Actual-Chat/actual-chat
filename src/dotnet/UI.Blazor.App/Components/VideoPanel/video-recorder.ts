@@ -292,33 +292,61 @@ export async function probeTopTierEncoderSupport(): Promise<CodecInfo['category'
         warnLog?.log('probeTopTierEncoderSupport: no HW-accelerated candidates available');
         return null;
     }
-    const ladder = buildLadder({
+
+    async function probeOnce(layers: { width: number; height: number; bitrateKbps?: number; baseBitrateKbps?: number }[],
+        hwAccel: HardwareAcceleration,
+        label: string): Promise<CodecInfo['category'] | null> {
+        for (const codec of candidates) {
+            const layersWithBitrates = layers.map(l => {
+                const baseBitrateKbps = l.baseBitrateKbps ?? l.bitrateKbps ?? 0;
+                return {
+                    ...l,
+                    baseBitrateKbps,
+                    bitrateKbps: getVideoLayerBitrateKbps(baseBitrateKbps, codec.codec),
+                };
+            });
+            const result = await probeEncoder(codec.codec, layersWithBitrates, undefined, undefined, hwAccel);
+            if (result.supported) {
+                infoLog?.log(
+                    `probeTopTierEncoderSupport: ${codec.category} (${codec.codec}) PASS ` +
+                    `@ ${targetSize.width}x${targetSize.height} (${label})`);
+                return codec.category;
+            }
+            warnLog?.log(
+                `probeTopTierEncoderSupport: ${codec.category} (${codec.codec}) ` +
+                `FAIL stage=${result.failedStage} (${label})`);
+        }
+        return null;
+    }
+
+    // Attempt 1: standard tier ladder with prefer-hardware. Mirrors the
+    // recorder's first startRecording attempt.
+    const ladderHW = buildLadder({
         topWidth: targetSize.width,
         topHeight: targetSize.height,
         tierCount,
         maxTierCount: VIDEO.cameraLayerBaseBitratesKbps.length,
         bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
     });
-    for (const codec of candidates) {
-        const layersWithBitrates = ladder.map(l => {
-            const baseBitrateKbps = l.baseBitrateKbps ?? l.bitrateKbps;
-            return {
-                ...l,
-                baseBitrateKbps,
-                bitrateKbps: getVideoLayerBitrateKbps(baseBitrateKbps, codec.codec),
-            };
-        });
-        const result = await probeEncoder(codec.codec, layersWithBitrates);
-        if (result.supported) {
-            infoLog?.log(
-                `probeTopTierEncoderSupport: ${codec.category} (${codec.codec}) PASS ` +
-                `@ ${targetSize.width}x${targetSize.height} (${tierCount} layer(s))`);
-            return codec.category;
-        }
-        warnLog?.log(
-            `probeTopTierEncoderSupport: ${codec.category} (${codec.codec}) ` +
-            `FAIL stage=${result.failedStage}`);
-    }
+    const hwPass = await probeOnce(ladderHW, 'prefer-hardware', `${tierCount} layer(s), prefer-hardware`);
+    if (hwPass) return hwPass;
+
+    // Attempt 2: 1-tier no-preference SW fallback. Mirrors the recorder's
+    // last-resort fallback. On AMD iGPU + Windows MFT (or any device where
+    // HW encoder activation is broken / exhausted), the SW OpenH264 path
+    // is independent of VCN sessions and will pass here. Without this the
+    // modal would gate the user behind "restart" while the recorder's
+    // SW fallback would actually have worked.
+    const ladderSW = buildLadder({
+        topWidth: targetSize.width,
+        topHeight: targetSize.height,
+        tierCount: 1,
+        maxTierCount: VIDEO.cameraLayerBaseBitratesKbps.length,
+        bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
+    });
+    const swPass = await probeOnce(ladderSW, 'no-preference', '1 layer, no-preference (SW fallback)');
+    if (swPass) return swPass;
+
     return null;
 }
 
@@ -390,6 +418,11 @@ export class VideoRecorder {
     // into every encoder config layer.
     private currentCodecString = '';
     private currentCodecHardwareAccel = false;
+    // HW-acceleration mode for the runtime encoder, chosen by the
+    // startRecording fallback chain. Default 'prefer-hardware'; flipped to
+    // 'no-preference' when the 1-tier last-resort fallback engages so the
+    // runtime encoder matches the config that actually probed working.
+    private currentHardwareAcceleration: HardwareAcceleration = 'prefer-hardware';
     // Stream-mode driving downstream config (simulcast caps and layer bitrates).
     private currentMode: 'camera' | 'screen' = 'camera';
     // Top-tier encoder framerate; undefined until a recording starts. Set from
@@ -652,9 +685,20 @@ export class VideoRecorder {
                 maxTierCount: VIDEO.cameraLayerBaseBitratesKbps.length,
                 bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
             });
+            // Fallback chain for HW encoder availability:
+            //   1. Tier-cap (3 desktop / 2 mobile) at top resolution, prefer-hardware
+            //   2. (Desktop only) Drop to 2-tier @ 360p, prefer-hardware
+            //   3. Last resort: 1-tier at top resolution, no-preference
+            //      (lets browser pick SW when HW encoder activation is failing
+            //      — e.g. AMD iGPU + Windows MFT hitting concurrent-session
+            //      limits or 0x8007000E "Not enough memory resources").
+            // chosenHwAccel is plumbed into the worker config so the runtime
+            // encoder matches the probed config; otherwise the probe says
+            // "works with no-preference" but runtime keeps using prefer-hardware.
             let bestCodecString = await this.pickSimulcastCodec(
                 supportedCodecs, audienceCodecs, ladderTop);
             let ladder: LayerConfig[] = ladderTop;
+            let chosenHwAccel: HardwareAcceleration = 'prefer-hardware';
             // Drop-top fallback only applies when we'd otherwise have built a
             // 3-tier ladder — mobile already starts at the lower cap.
             if (!bestCodecString && tierCap >= 3) {
@@ -670,19 +714,36 @@ export class VideoRecorder {
                     supportedCodecs, audienceCodecs, ladder2);
                 if (codec2) {
                     bestCodecString = codec2;
+                    ladder = ladder2;
+                }
+            }
+            if (!bestCodecString) {
+                // Last-resort: 1-tier at the original top resolution with
+                // no-preference. Excludes failed codecs on this attempt so
+                // server-driven codec switches won't pick a proven-broken
+                // codec.
+                const ladder1 = buildLadder({
+                    topWidth: targetSize.width,
+                    topHeight: targetSize.height,
+                    tierCount: 1,
+                    maxTierCount: VIDEO.cameraLayerBaseBitratesKbps.length,
+                    bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
+                });
+                infoLog?.log(`Tier-cap and drop-top probes failed — falling back to 1-tier @ ${targetSize.width}x${targetSize.height} with hardwareAcceleration='no-preference'`);
+                const codec1 = await this.pickSimulcastCodec(
+                    supportedCodecs, audienceCodecs, ladder1, 'no-preference', /*excludeOnFail*/ true);
+                if (codec1) {
+                    bestCodecString = codec1;
+                    ladder = ladder1;
+                    chosenHwAccel = 'no-preference';
                 } else {
                     warnLog?.log(
-                        `Both 3-tier and 2-tier probes failed (initialPick=${initialPick}) — ` +
-                        `aborting startRecording, HW encoder appears unavailable`);
+                        `All probe attempts failed (initialPick=${initialPick}) — ` +
+                        `aborting startRecording, HW+SW encoders appear unavailable`);
                     throw new Error(USER_FACING_RESTART_MESSAGE);
                 }
-                ladder = ladder2;
-            } else if (!bestCodecString) {
-                warnLog?.log(
-                    `Probe failed at tierCap=${tierCap} (initialPick=${initialPick}) — ` +
-                    `aborting startRecording, HW encoder appears unavailable`);
-                throw new Error(USER_FACING_RESTART_MESSAGE);
             }
+            this.currentHardwareAcceleration = chosenHwAccel;
             const bestCodecInfo = supportedCodecs.find(c => c.codec === bestCodecString);
             const codecCategory = getCodecCategory(bestCodecString);
             ladder = buildLadder({
@@ -1293,6 +1354,7 @@ export class VideoRecorder {
             // Both camera and screencast use a 3s keyframe cadence.
             keyframeIntervalFrames: framerate * 3,
             maxKeyFrameIntervalMs: 3000,
+            hardwareAcceleration: this.currentHardwareAcceleration,
         };
 
         const sourceStartedAtMs = Date.now();
@@ -1852,21 +1914,35 @@ export class VideoRecorder {
         supportedCodecs: CodecInfo[],
         audienceCodecs: string[] | undefined,
         ladder: LayerConfig[],
+        hardwareAcceleration: HardwareAcceleration = 'prefer-hardware',
+        excludeOnFail = false,
     ): Promise<string | null> {
         // Live encoder probe at top-layer dims. Result cached per
-        // (codec, dims, layerCount) so repeated picks (post-exclusion, restart)
-        // don't burn fresh HW slots. On FAIL probe disposes the encoder in
-        // finally — failed codec category gets excluded and the next category
-        // is probed without leaking NVENC sessions.
+        // (codec, dims, layerCount, hwAccel) so repeated picks across the
+        // fallback chain (3-tier prefer-hardware → 2-tier prefer-hardware →
+        // 1-tier no-preference) don't burn fresh HW slots. On FAIL probe
+        // disposes the encoder in finally — failed codec category gets
+        // excluded ONLY if excludeOnFail (last fallback) so earlier failures
+        // don't prevent subsequent attempts from trying the same codec
+        // under different config.
         for (const codecInfo of this.listCodecCandidatesByEfficiency(supportedCodecs, audienceCodecs)) {
             const layersWithBitrates = this.withCodecBitrates(ladder, codecInfo.codec);
-            const result = await probeEncoder(codecInfo.codec, layersWithBitrates);
+            const result = await probeEncoder(
+                codecInfo.codec, layersWithBitrates, undefined, undefined, hardwareAcceleration);
             if (result.supported) {
                 const top = layersWithBitrates[layersWithBitrates.length - 1];
-                infoLog?.log(`pickSimulcastCodec: ${codecInfo.category} (${codecInfo.codec}) PASS @ ${top.width}x${top.height} (${ladder.length} layer(s)), median=${result.medianEncodeMs.toFixed(1)}ms`);
+                infoLog?.log(`pickSimulcastCodec: ${codecInfo.category} (${codecInfo.codec}) PASS @ ${top.width}x${top.height} (${ladder.length} layer(s)), hwAccel=${hardwareAcceleration}, median=${result.medianEncodeMs.toFixed(1)}ms`);
                 return codecInfo.codec;
             }
-            infoLog?.log(`pickSimulcastCodec: ${codecInfo.category} (${codecInfo.codec}) FAIL stage=${result.failedStage}`);
+            infoLog?.log(`pickSimulcastCodec: ${codecInfo.category} (${codecInfo.codec}) FAIL stage=${result.failedStage}, hwAccel=${hardwareAcceleration}`);
+            if (excludeOnFail) {
+                // Last-resort fallback also failed for this codec — exclude
+                // it for the session so server-driven updateSupportedDecoderCodecs
+                // won't later switch into a codec proven non-functional.
+                // No-op for h264 (universal fallback) and for codecs proven
+                // working this session.
+                excludeEncoderCodec(codecInfo.category);
+            }
         }
         return null;
     }
