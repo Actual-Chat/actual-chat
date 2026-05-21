@@ -94,9 +94,9 @@ public static partial class Constants
         //   max(MinEncodeBufferSize, TrackInfo.TargetBufferSize - DefaultDecodedBufferSize - DefaultAudioEnginePlaybackLatency)
         // by the code that owns the pre-decoder buffer (TS decoder + MAUI engines).
         public static readonly TimeSpan MinEncodedBufferSize = TimeSpan.FromMilliseconds(30); // 2 frames
-        public static readonly TimeSpan DecodedBufferSize = TimeSpan.FromMilliseconds(40); // 2 frames, must be exact
+        public static readonly TimeSpan DecodedBufferSize = TimeSpan.FromMilliseconds(120); // 6 frames, must be exact
         public static readonly TimeSpan AudioEnginePlaybackLatency = TimeSpan.FromMilliseconds(40);
         public static readonly TimeSpan PlaybackTargetBufferSize = TimeSpan.Zero;
-        public static readonly TimeSpan PlaybackTargetBufferSizeWithVideo = TimeSpan.FromMilliseconds(120);
+        public static readonly TimeSpan PlaybackTargetBufferSizeWithVideo = TimeSpan.FromMilliseconds(60);
     }
 }
