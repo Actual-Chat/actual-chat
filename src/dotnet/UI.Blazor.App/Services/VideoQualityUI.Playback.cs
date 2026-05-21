@@ -1,4 +1,5 @@
 using ActualChat.Bandwidth;
+using ActualChat.Diagnostics;
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Module;
 
@@ -40,9 +41,16 @@ public sealed partial class VideoQualityUI
     // keeps the last value so the cap doesn't oscillate while the classifier
     // re-acquires Good.
     private readonly Dictionary<StreamId, int> _decoderLayerCapByStream = new();
+    private HealthVerdict _lastAggregateDownlinkVerdict = HealthVerdict.Unknown;
 
     public BandwidthEstimator InboundBandwidthEstimator => _inboundBwEstimator;
     public PlaybackQualitySnapshot PlaybackSnapshot => _playbackSnapshot;
+    public HealthVerdict AggregateDownlinkVerdict => _lastAggregateDownlinkVerdict;
+    public IReadOnlyDictionary<StreamId, DownlinkHealth> InboundDownlinkHealthByStream
+        => _lastDownlinkHealthByStream;
+    public IReadOnlyDictionary<StreamId, DecoderHealth> InboundDecoderHealthByStream
+        => _lastDecoderHealthByStream;
+    public int InboundDecoderCapStreamCount => _decoderLayerCapByStream.Count;
 
     public Task OnPlaybackStats(
         StreamId streamId,
@@ -203,16 +211,33 @@ public sealed partial class VideoQualityUI
                 receiverDecodePathDropRatio: 0); // TODO: split stages 63-64 once dropTrace is split.
             _lastDownlinkHealthByStream[streamId] = streamDownlink;
             _lastDecoderHealthByStream[streamId] = streamDecoder;
+            if (streamDownlink.ServerToReceiverLatencyEma >= 0)
+                AppMeters.VideoDownlinkLatencyMs.Record(streamDownlink.ServerToReceiverLatencyEma);
+            if (streamDownlink.BufferUnderrunRatio >= 0)
+                AppMeters.VideoDownlinkBufferUnderrunRatio.Record(streamDownlink.BufferUnderrunRatio);
+            if (streamDecoder.DecodeRatioEma >= 0)
+                AppMeters.VideoDecoderDecodeRatio.Record(streamDecoder.DecodeRatioEma);
+            AppMeters.VideoDecoderHangRateIn60s.Record(streamDecoder.HangRateIn60s);
             if (streamDownlink.Verdict != HealthVerdict.Unknown
                 && (int)streamDownlink.Verdict > (int)aggregateDownlinkVerdict)
                 aggregateDownlinkVerdict = streamDownlink.Verdict;
             // Sticky decoder cap: Bad → clamp; Good → release; Marginal → hold.
+            var hadDecoderCap = _decoderLayerCapByStream.ContainsKey(streamId);
             if (streamDecoder.Verdict == HealthVerdict.Bad) {
                 var currentLayer = Math.Max(0, state.RequestedLayerCount - 1);
                 _decoderLayerCapByStream[streamId] = Math.Max(0, currentLayer - 1);
+                if (!hadDecoderCap)
+                    AppMeters.VideoLayerCapWalkReason.Add(1,
+                        new KeyValuePair<string, object?>("category", "decoder"),
+                        new KeyValuePair<string, object?>("direction", "down"));
             }
             else if (streamDecoder.Verdict == HealthVerdict.Good) {
-                _decoderLayerCapByStream.Remove(streamId);
+                if (hadDecoderCap) {
+                    _decoderLayerCapByStream.Remove(streamId);
+                    AppMeters.VideoLayerCapWalkReason.Add(1,
+                        new KeyValuePair<string, object?>("category", "decoder"),
+                        new KeyValuePair<string, object?>("direction", "up"));
+                }
             }
         }
         // Drop stale entries so per-stream classifiers don't leak.
@@ -224,6 +249,15 @@ public sealed partial class VideoQualityUI
             _decoderLayerCapByStream.Remove(sid);
         }
 
+        if (aggregateDownlinkVerdict != _lastAggregateDownlinkVerdict
+            && aggregateDownlinkVerdict != HealthVerdict.Unknown
+            && _lastAggregateDownlinkVerdict != HealthVerdict.Unknown) {
+            var direction = (int)aggregateDownlinkVerdict > (int)_lastAggregateDownlinkVerdict ? "down" : "up";
+            AppMeters.VideoLayerCapWalkReason.Add(1,
+                new KeyValuePair<string, object?>("category", "downlink"),
+                new KeyValuePair<string, object?>("direction", direction));
+        }
+        _lastAggregateDownlinkVerdict = aggregateDownlinkVerdict;
         var downlinkSignal = VerdictToSignal(aggregateDownlinkVerdict);
         var connection = ConnectivityUI.ConnectionInfo.Value;
         _inboundBwEstimator.Tick(connection, SystemClock.Now, sumIncomingBytesPerSec, downlinkSignal);
