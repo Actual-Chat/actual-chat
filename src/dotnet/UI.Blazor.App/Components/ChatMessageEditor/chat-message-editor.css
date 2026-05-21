@@ -25,7 +25,7 @@ body.narrow .chat-message-editor > .c-content {
 
 /* Bottom Panel, Mobile, Landscape */
 .post-panel {
-    @apply relative;
+    @apply relative z-30;
     @apply flex-auto flex-x justify-between items-center md:gap-x-2;
     @apply min-h-12;
     @apply py-1 md:py-0 px-2;
@@ -602,41 +602,36 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
 }
 
 .rounded-sub-footer {
-    @apply absolute z-10;
+    @apply absolute inset-x-0 -top-8 z-10;
     @apply flex;
-    @apply h-8 inset-x-0;
-    top: calc(-2rem + 1px);
+    @apply h-8;
+    @apply pointer-events-none;
 }
 .rounded-sub-footer > .bg-layer {
-    z-index: -1;
-    width: 100%;
-    height: 100%;
+    @apply z-minus;
+    @apply h-full w-full;
     background: linear-gradient(to top, var(--background-01), 75%, transparent 100%);
     mask: linear-gradient(to top, var(--background-01) 75%, transparent 100%);
     -webkit-mask: linear-gradient(to top, var(--background-01) 75%, transparent 100%);
 }
 .rounded-sub-footer > .bg-layer:before {
-    content: "";
-    position: absolute;
-    inset: 0;
+    @apply content-empty;
+    @apply absolute inset-0;
     filter: blur(30px);
     backdrop-filter: blur(8px);
 }
 
-.chat-message-editor:has(.show-mention-list) .rounded-sub-footer {
-    @apply hidden;
-}
 .rounded-sub-footer::before {
     @apply content-empty;
     @apply absolute left-0 bottom-0;
     @apply w-8 h-8;
-    background: radial-gradient(circle at right top, transparent 70%, var(--post-panel) 60%)
+    background: radial-gradient(circle at right top, transparent 70%, var(--post-panel) 60%);
 }
 .rounded-sub-footer::after {
     @apply content-empty;
     @apply absolute right-0 bottom-0;
     @apply w-8 h-8;
-    background: radial-gradient(circle at left top, transparent 70%, var(--post-panel) 60%)
+    background: radial-gradient(circle at left top, transparent 70%, var(--post-panel) 60%);
 }
 body.narrow .list-view-layout:has(.chat-activity-panel.listening) .rounded-sub-footer,
 body.narrow .list-view-layout:has(.audio-panel-header) .rounded-sub-footer {

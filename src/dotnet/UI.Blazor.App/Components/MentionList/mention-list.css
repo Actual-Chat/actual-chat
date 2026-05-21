@@ -1,6 +1,6 @@
 .mention-list-manager {
     --mention-shadow: var(--post-panel);
-    @apply absolute inset-x-0 top-0 z-minus;
+    @apply absolute inset-x-0 top-0 z-20;
 }
 .mention-list-manager > div {
     @apply absolute inset-x-0 bottom-0;
@@ -18,41 +18,55 @@
 .mention-list-wrapper {
     @apply relative;
     @apply bg-01;
-    @apply translate-y-0;
-    animation: show-mention-list 400ms ease-in-out forwards;
+    transform: translateY(0);
+    transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1), visibility 0s;
 }
 /* Firefox workaround: it somehow displays the border otherwise */
 .mention-list-wrapper.non-visible {
-    @apply hidden border-y-0;
-    @apply translate-y-full;
+    @apply border-y-0;
+    @apply invisible;
+    @apply pointer-events-none;
+    transform: translateY(100%);
+    transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1), visibility 0s 250ms;
 }
 .mention-list {
     @apply flex-y;
-    @apply max-h-40 md:max-h-64;
     @apply p-0.5;
     @apply rounded-lg;
     @apply overflow-x-hidden overflow-y-auto;
     @apply bg-input text-03;
-    /*box-shadow: 0 -1px 0 1px var(--separator);*/
+    max-height: min(10rem, var(--mention-list-max-h, 100vh));
+}
+@media (min-width: 768px) {
+    .mention-list {
+        max-height: min(16rem, var(--mention-list-max-h, 100vh));
+    }
 }
 body.narrow .mention-list {
-    @apply border-b border-separator rounded-b-none;
+    @apply rounded-b-none;
     @apply bg-post-panel text-post-panel-text;
     transition: max-height 300ms ease-out;
 }
+body.narrow .mention-list-wrapper::after {
+    @apply content-empty;
+    @apply absolute bottom-0 left-12 right-12;
+    @apply h-px;
+    @apply bg-[var(--white-10)];
+}
 body.narrow .mention-list.expanded {
-    @apply max-h-64;
+    max-height: min(16rem, var(--mention-list-max-h, 100vh));
 }
 body.narrow .narrow-panel .mention-list {
-    @apply max-h-32;
+    max-height: min(8rem, var(--mention-list-max-h, 100vh));
 }
 body.narrow .narrow-panel .mention-list.expanded {
-    @apply max-h-48;
+    max-height: min(12rem, var(--mention-list-max-h, 100vh));
 }
 .mention-list .mention-list-item {
     @apply flex-none truncate cursor-pointer;
 }
-.mention-list .mention-list-item.selected {
+body.hoverable .mention-list .mention-list-item.selected,
+.touch-capable .mention-list .mention-list-item:active {
     @apply rounded-lg;
     @apply bg-mention-list-item-selected;
 }
@@ -66,18 +80,8 @@ body.narrow .narrow-panel .mention-list.expanded {
     @apply truncate;
     @apply text-headline-1;
 }
-/* Toolbar: floating row anchored above the top-right of the mention list.
-   Holds two sibling pills — chips (filter) and close — in the
-   .message-hover-menu-new style. */
-.mention-list-wrapper .mention-list-toolbar {
+.mention-list-wrapper .mention-list-chips {
     @apply absolute -top-5 right-3 z-10;
-    @apply flex-x items-center gap-1;
-}
-body.narrow .mention-list-wrapper .mention-list-toolbar {
-    @apply right-2;
-}
-.mention-list-wrapper .mention-list-chips,
-.mention-list-wrapper .mention-list-close {
     @apply flex-x items-center gap-0.5;
     @apply w-fit;
     @apply p-1;
@@ -85,20 +89,32 @@ body.narrow .mention-list-wrapper .mention-list-toolbar {
     @apply bg-modal;
     @apply shadow-modal-wide;
 }
+body.narrow .mention-list-wrapper .mention-list-chips {
+    @apply right-2;
+    @apply border-[var(--black-30)];
+    @apply bg-post-panel;
+}
 .mention-list-wrapper .mention-list-chip,
 .mention-list-wrapper .mention-list-close-btn {
-    @apply bg-modal text-01;
-}
-body.narrow .mention-list-wrapper .mention-list-chips,
-body.narrow .mention-list-wrapper .mention-list-close {
-    @apply bg-post-panel border-[var(--text-01)];
+    @apply bg-modal;
+    @apply text-01;
 }
 body.narrow .mention-list-wrapper .mention-list-chip,
 body.narrow .mention-list-wrapper .mention-list-close-btn {
-    @apply bg-post-panel text-white;
+    @apply bg-post-panel;
+    @apply text-white;
 }
-.mention-list-wrapper .mention-list-chip.active {
-    @apply bg-primary text-white;
+.mention-list-wrapper .mention-list-chip-divider {
+    @apply h-5 w-px;
+    @apply mx-1;
+    @apply bg-separator;
+}
+.mention-list-wrapper .mention-list-chip.active,
+body.narrow .mention-list-wrapper .mention-list-chip.active,
+body.hoverable .mention-list-wrapper .mention-list-chip.btn-transparent.active:hover,
+.touch-capable .mention-list-wrapper .mention-list-chip.btn-transparent.active:active {
+    @apply bg-primary;
+    @apply !text-white;
 }
 .mention-list .mention-list-emoji {
     @apply flex-none inline-flex items-center justify-center;
@@ -111,23 +127,4 @@ body.narrow .mention-list-wrapper .mention-list-close-btn {
 .mention-list .c-description {
     @apply text-03 font-light;
     @apply opacity-60;
-}
-
-@keyframes show-mention-list {
-    0% {
-        transform: translateY(100%);
-        /*box-shadow: 0 2rem 1rem 1rem var(--mention-shadow);*/
-    }
-    80% {
-        transform: translateY(-1rem);
-        /*box-shadow: 0 2rem 1rem 1rem var(--mention-shadow);*/
-    }
-    99% {
-        transform: translateY(0);
-        /*box-shadow: 0 2rem 1rem 1rem var(--mention-shadow);*/
-    }
-    100% {
-        transform: translateY(0);
-        /*box-shadow: 0 -1px 0 1px var(--separator);*/
-    }
 }

@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.Chat
 @using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, MentionSearchResult[]>
 @{
@@ -12,30 +11,29 @@
 }
 
 <div class="mention-list-wrapper @listCls">
-    <div class="mention-list-toolbar">
-        <div class="mention-list-chips" data-editor-focus="true">
-            @foreach (var chip in Chips) {
-                var isActive = kindFilter == chip.Filter;
-                var chipCls = isActive ? "mention-list-chip active" : "mention-list-chip";
-                chipCls += " btn-xs btn-transparent";
-                <ButtonRound
-                    Class="@chipCls"
-                    Tooltip="@chip.Tooltip"
-                    data-editor-focus="true"
-                    Click="@(_ => OnChipClick(chip.Filter))">
-                    <i class="@chip.Icon text-xl"></i>
-                </ButtonRound>
-            }
-        </div>
-        <div class="mention-list-close" data-editor-focus="true">
+    <div class="mention-list-chips" data-editor-focus="true">
+        @foreach (var chip in Chips) {
+            var isActive = kindFilter == chip.Filter;
+            var chipCls = isActive ? "mention-list-chip active" : "mention-list-chip";
+            chipCls += " btn-xs btn-transparent";
             <ButtonRound
-                Class="mention-list-close-btn btn-xs"
-                Tooltip="Close"
+                Class="@chipCls"
+                Tooltip="@chip.Tooltip"
                 data-editor-focus="true"
-                Click="@(_ => Manager.Hide())">
-                <i class="icon-close text-xl"></i>
+                PointerDownPreventDefault="true"
+                Click="@(_ => OnChipClick(chip.Filter))">
+                <i class="@chip.Icon text-xl"></i>
             </ButtonRound>
-        </div>
+        }
+        <div class="mention-list-chip-divider"></div>
+        <ButtonRound
+            Class="mention-list-close-btn btn-xs btn-transparent"
+            Tooltip="Close"
+            data-editor-focus="true"
+            PointerDownPreventDefault="true"
+            Click="@(_ => Manager.Hide())">
+            <i class="icon-close text-2xl"></i>
+        </ButtonRound>
     </div>
     <div @ref="Ref" class="@Class mention-list custom-scrollbar">
         @foreach (var mention in mentions) {
