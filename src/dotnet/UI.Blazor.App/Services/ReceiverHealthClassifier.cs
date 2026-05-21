@@ -46,16 +46,16 @@ public sealed class ReceiverHealthClassifier(ReceiverHealthThresholds? threshold
     {
         var latencyVerdict = _latency.Update(
             _t.DownlinkLatencyBadStreak, _t.DownlinkLatencyGoodStreak,
-            isBad: serverToReceiverLatencyEma >= 0 && serverToReceiverLatencyEma > _t.ServerToReceiverLatencyBadMs,
-            isGood: serverToReceiverLatencyEma >= 0 && serverToReceiverLatencyEma < _t.ServerToReceiverLatencyGoodMs);
+            isBad: serverToReceiverLatencyEma > _t.ServerToReceiverLatencyBadMs,
+            isGood: serverToReceiverLatencyEma < _t.ServerToReceiverLatencyGoodMs);
         var deficitVerdict = _byteRateDeficit.Update(
             _t.ByteRateDeficitBadStreak, _t.ByteRateDeficitGoodStreak,
             isBad: incomingByteRateDeficit >= 0 && incomingByteRateDeficit < _t.IncomingByteRateDeficitBad,
             isGood: incomingByteRateDeficit > _t.IncomingByteRateDeficitGood);
         var underrunVerdict = _underrun.Update(
             _t.DownlinkLatencyBadStreak, _t.DownlinkLatencyGoodStreak,
-            isBad: bufferUnderrunRatio >= 0 && bufferUnderrunRatio > _t.BufferUnderrunRatioBad,
-            isGood: bufferUnderrunRatio >= 0 && bufferUnderrunRatio < _t.BufferUnderrunRatioGood);
+            isBad: bufferUnderrunRatio > _t.BufferUnderrunRatioBad,
+            isGood: bufferUnderrunRatio < _t.BufferUnderrunRatioGood);
         var dropVerdict = serverPathDropRatio > _t.ServerPathDropRatioBad
             ? HealthVerdict.Bad
             : HealthVerdict.Good;
@@ -74,8 +74,8 @@ public sealed class ReceiverHealthClassifier(ReceiverHealthThresholds? threshold
     {
         var ratioVerdict = _decodeRatio.Update(
             _t.DecodeRatioBadStreak, _t.DecodeRatioGoodStreak,
-            isBad: decodeRatioEma >= 0 && decodeRatioEma > _t.DecodeRatioBad,
-            isGood: decodeRatioEma >= 0 && decodeRatioEma < _t.DecodeRatioGood);
+            isBad: decodeRatioEma > _t.DecodeRatioBad,
+            isGood: decodeRatioEma < _t.DecodeRatioGood);
         var hangVerdict = hangRateIn60s >= _t.HangRateBad
             ? HealthVerdict.Bad
             : HealthVerdict.Good;
@@ -83,7 +83,7 @@ public sealed class ReceiverHealthClassifier(ReceiverHealthThresholds? threshold
             ? HealthVerdict.Bad
             : recoveryStreak == 0 ? HealthVerdict.Good
             : HealthVerdict.Marginal;
-        var skipVerdict = presentSkipRatio >= 0 && presentSkipRatio > _t.PresentSkipRatioBad
+        var skipVerdict = presentSkipRatio > _t.PresentSkipRatioBad
             ? HealthVerdict.Bad
             : HealthVerdict.Good;
         var dropVerdict = receiverDecodePathDropRatio > _t.ReceiverDecodePathDropRatioBad

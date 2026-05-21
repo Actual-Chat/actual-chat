@@ -46,10 +46,10 @@ public sealed class SenderHealthClassifier(SenderHealthThresholds? thresholds = 
             : _t.EncodeRatioBadForeground;
         var ratioVerdict = _encRatio.Update(_t.BadStreakRequired, _t.GoodStreakRequired,
             isBad: encodeRatioEma > encRatioBad,
-            isGood: encodeRatioEma >= 0 && encodeRatioEma < _t.EncodeRatioGood);
+            isGood: encodeRatioEma < _t.EncodeRatioGood);
         var queueVerdict = _encQueue.Update(_t.BadStreakRequired, _t.GoodStreakRequired,
             isBad: encodeQueueDepthEma > _t.EncodeQueueDepthBad,
-            isGood: encodeQueueDepthEma >= 0 && encodeQueueDepthEma < _t.EncodeQueueDepthGood);
+            isGood: encodeQueueDepthEma < _t.EncodeQueueDepthGood);
         var restartVerdict = ClassifyRestartStreak(restartStreakIn60s);
         var dropVerdict = senderEncodePathDropRatio > _t.SenderEncodePathDropRatioBad
             ? HealthVerdict.Bad
@@ -69,10 +69,10 @@ public sealed class SenderHealthClassifier(SenderHealthThresholds? thresholds = 
     {
         var ackVerdict = _wireAck.Update(_t.BadStreakRequired, _t.GoodStreakRequired,
             isBad: wireLastAckAgeMs > _t.WireLastAckAgeBadMs,
-            isGood: wireLastAckAgeMs >= 0 && wireLastAckAgeMs < _t.WireLastAckAgeGoodMs);
+            isGood: wireLastAckAgeMs < _t.WireLastAckAgeGoodMs);
         var queueVerdict = _wireQueue.Update(_t.BadStreakRequired, _t.GoodStreakRequired,
             isBad: wireQueueDepthEma > _t.WireQueueDepthBad,
-            isGood: wireQueueDepthEma >= 0 && wireQueueDepthEma < _t.WireQueueDepthGood);
+            isGood: wireQueueDepthEma < _t.WireQueueDepthGood);
         var floodVerdict = _floodSkip.Update(_t.BadStreakRequired, _t.GoodStreakRequired,
             isBad: floodGateSkipPerSec > _t.FloodGateSkipPerSecBad,
             isGood: floodGateSkipPerSec == 0);
