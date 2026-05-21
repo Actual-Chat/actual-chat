@@ -132,6 +132,19 @@ export function pipe<A, B, C, D, E, F, G, H, I, J>(
     op8: PipeOperator<H, I>,
     op9: PipeOperator<I, J>,
 ): AsyncIterableX<J>;
+export function pipe<A, B, C, D, E, F, G, H, I, J, K>(
+    source: AsyncIterable<A>,
+    op1: PipeOperator<A, B>,
+    op2: PipeOperator<B, C>,
+    op3: PipeOperator<C, D>,
+    op4: PipeOperator<D, E>,
+    op5: PipeOperator<E, F>,
+    op6: PipeOperator<F, G>,
+    op7: PipeOperator<G, H>,
+    op8: PipeOperator<H, I>,
+    op9: PipeOperator<I, J>,
+    op10: PipeOperator<J, K>,
+): AsyncIterableX<K>;
 export function pipe(
     source: AsyncIterable<unknown>,
     ...operators: PipeOperator<unknown, unknown>[]

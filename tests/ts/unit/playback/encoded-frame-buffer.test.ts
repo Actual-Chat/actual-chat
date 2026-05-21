@@ -223,4 +223,36 @@ describe('EncodedFrameBuffer', () => {
         const buf = new EncodedFrameBuffer({ targetSpanMs: 100, frameDurationMs: 33.333 });
         expect(buf.spanMs()).toBe(0);
     });
+
+    it('stats: bufferUnderrunRatio stays at -1 when no stats supplied', () => {
+        const stats = createEmptyPlayerStats();
+        const buf = new EncodedFrameBuffer({ targetSpanMs: 300, frameDurationMs: 33.333 });
+        for (let i = 0; i < 5; i++) {
+            buf.push(mkChunk({ capturedAtMs: i * 33, isKeyFrame: i === 0, stats }));
+        }
+        expect(stats.bufferUnderrunRatio).toBe(-1);
+    });
+
+    it('stats: bufferUnderrunRatio stays near 1 while spanMs is below target/3', () => {
+        const stats = createEmptyPlayerStats();
+        // target = 300, threshold = 100. After 1 keyframe spanMs ≈ 33.333 < 100.
+        const buf = new EncodedFrameBuffer({ targetSpanMs: 300, frameDurationMs: 33.333, stats });
+        buf.push(mkChunk({ capturedAtMs: 0, isKeyFrame: true, stats }));
+        expect(stats.bufferUnderrunRatio).toBe(1);
+        for (let i = 1; i < 3; i++) {
+            buf.push(mkChunk({ capturedAtMs: i * 33, isKeyFrame: false, stats }));
+        }
+        expect(stats.bufferUnderrunRatio).toBeCloseTo(1, 6);
+    });
+
+    it('stats: bufferUnderrunRatio decays once spanMs exceeds target/3', () => {
+        const stats = createEmptyPlayerStats();
+        // target = 100 → threshold ≈ 33.33. Push many chunks past the threshold.
+        const buf = new EncodedFrameBuffer({ targetSpanMs: 100, frameDurationMs: 33.333, stats });
+        for (let i = 0; i < 20; i++) {
+            buf.push(mkChunk({ capturedAtMs: i * 33, isKeyFrame: i === 0, stats }));
+        }
+        // After many under→over transitions, EMA drops below 0.5.
+        expect(stats.bufferUnderrunRatio).toBeLessThan(0.5);
+    });
 });

@@ -86,6 +86,26 @@ export interface PlayerStats {
     // (server fan-out hiccup) raises this independently of latency. -1 == not
     // yet sampled.
     arrivalIntervalEma: number;
+    // EMA of (decodedAt - submitMs) / frameDurationMs. > 1 means the decoder
+    // is producing slower than the source frame rate. -1 == not yet sampled.
+    // Maintained by the decode operator.
+    decodeRatioEma: number;
+    // Count of decoder hang-watchdog fires in the last 60 s. Each event marks
+    // a stretch where the decoder accepted chunks but produced nothing within
+    // the watchdog window.
+    hangRateIn60s: number;
+    // Number of consecutive decoder recoveries (rebuild + reconfigure) since
+    // the last successful frame. Resets to 0 on the first frame emitted by
+    // the rebuilt decoder.
+    recoveryStreak: number;
+    // EMA of 0/1 sampled per decoded frame at the present stage: 1 when the
+    // catch-up skip branch was taken, 0 when the frame proceeded to write.
+    // -1 == not yet sampled. Maintained by the mstgPresent operator.
+    presentSkipRatio: number;
+    // EMA of 0/1 sampled per push to the encoded-frame buffer (when armed):
+    // 1 when spanMs() < targetSpanMs/3, 0 otherwise. -1 == not yet sampled.
+    // Maintained by EncodedFrameBuffer.
+    bufferUnderrunRatio: number;
 }
 
 export function createEmptyRecorderStats(): RecorderStats {
@@ -116,6 +136,11 @@ export function createEmptyPlayerStats(): PlayerStats {
         downlinkLatencyEma: -1,
         downlinkMinBaselineMs: -1,
         arrivalIntervalEma: -1,
+        decodeRatioEma: -1,
+        hangRateIn60s: 0,
+        recoveryStreak: 0,
+        presentSkipRatio: -1,
+        bufferUnderrunRatio: -1,
     };
 }
 

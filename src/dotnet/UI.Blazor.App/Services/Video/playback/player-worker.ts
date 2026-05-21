@@ -147,6 +147,7 @@ export const playerWorkerImpl: PlayerWorker = {
             streamId: opts.streamId,
             getStream: h.getStream,
             targetBufferSpanMs: opts.targetBufferSpanMs,
+            frameDurationMs: VIDEO?.frameDurationMs,
             initialDecoderConfig: opts.initialDecoderConfig,
             createDecoder: handlers => h.createDecoder(opts.initialDecoderConfig.codec, handlers),
             reportLatency: h.makeReportLatency?.(opts.streamId),
