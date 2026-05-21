@@ -205,11 +205,11 @@ public class Notifications(IServiceProvider services) : INotifications
         async Task<UserId[]> GetMentionedUserIds(UserId excludeUserId)
         {
             var authorIds = mentionIds
-                .Where(c => c.Target is AuthorId)
-                .Select(c => (AuthorId)c.Target);
+                .Where(c => c.TargetId is AuthorId)
+                .Select(c => (AuthorId)c.TargetId);
             var userIds = mentionIds
-                .Where(c => c.Target is UserId)
-                .Select(c => (UserId)c.Target);
+                .Where(c => c.TargetId is UserId)
+                .Select(c => (UserId)c.TargetId);
             var authorsFromAuthorMentions = authorIds
                 .Select(id => AuthorsBackend.Get(chatId, id, RequestedAuthorKind.Full, cancellationToken));
             var authorsFromUserMentions = userIds

@@ -502,7 +502,7 @@ public partial class ChatsBackend
         var markup = MarkupParser.Parse(content);
         var mentionIds = mentionExtractor.GetMentionIds(markup);
         foreach (var mentionId in mentionIds) {
-            if (mentionId.PrincipalId is not AuthorId authorId)
+            if (mentionId.TargetId is not AuthorId authorId)
                 continue;
             if (authorId.ChatId != chatId)
                 continue;

@@ -214,8 +214,8 @@ public partial class Chats(IServiceProvider services) : IChats
         if (!mentionIds.Contains(mentionId)) // Validate given mention id is used in the chat entry.
             return false;
 
-        var userId = mentionId.PrincipalId as UserId;
-        if (mentionId.PrincipalId is AuthorId authorId) {
+        var userId = mentionId.TargetId as UserId;
+        if (mentionId.TargetId is AuthorId authorId) {
             var author = await AuthorsBackend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
             if (author is not null)
                 userId = author.UserId;

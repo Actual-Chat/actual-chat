@@ -16,7 +16,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<GifRef>))]
 [TypeConverter(typeof(StringLikeTypeConverter<GifRef>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class GifRef : StringIdentifier, IStringIdentifier<GifRef>, IMentionTarget
+public sealed partial class GifRef : StringIdentifier, IStringIdentifier<GifRef>, IMentionTargetId
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<GifRef>();
@@ -26,6 +26,8 @@ public sealed partial class GifRef : StringIdentifier, IStringIdentifier<GifRef>
 
     [IgnoreDataMember]
     public MentionKind MentionKind => MentionKind.Gif;
+    [IgnoreDataMember]
+    public string ShardKey => Value;
 
     // Factories and constructors
 

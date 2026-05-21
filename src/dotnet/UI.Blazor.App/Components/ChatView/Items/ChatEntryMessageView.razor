@@ -335,8 +335,8 @@
         if (isOwnMessage && hasAnyMentions && !isForward) {
             var mentionIds = MentionExtractor.Instance.GetMentionIds(markup);
             mentionedAuthorIds = mentionIds
-                .Where(c => c.Target is AuthorId authorId && authorId != ownAuthorId)
-                .Select(c => (AuthorId)c.Target)
+                .Where(c => c.TargetId is AuthorId authorId && authorId != ownAuthorId)
+                .Select(c => (AuthorId)c.TargetId)
                 .ToList();
         }
         var relatedChatEntry = await ChatEditorUI.RelatedEntryRef.Use(cancellationToken).ConfigureAwait(false);

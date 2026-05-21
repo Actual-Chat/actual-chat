@@ -37,7 +37,7 @@ internal class MentionIndexSearchProvider(IServiceProvider services, ChatId chat
     // Computes the picker description suffix and the name baked into the mention on insert.
     private static (string? Description, string MentionName) Describe(MentionCandidate c, PlaceId? hostPlaceId)
     {
-        switch (c.Id.Target) {
+        switch (c.Id.TargetId) {
         case EmojiRef:
             return ("emoji", c.Title);
         case ActualChat.PlaceId:

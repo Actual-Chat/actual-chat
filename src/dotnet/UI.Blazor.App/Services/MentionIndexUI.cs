@@ -1,5 +1,4 @@
 using ActualChat.Contacts;
-using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -11,7 +10,6 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </summary>
 public class MentionIndexUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
-    private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
     private IContacts Contacts => Hub.Contacts;
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
@@ -27,6 +25,8 @@ public class MentionIndexUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
         var pool = await ListCandidates(chatId, cancellationToken).ConfigureAwait(false);
         return MentionFilter.FilterAndRank(pool, filter, kindFilter, limit);
     }
+
+    // Protected methods
 
     [ComputeMethod]
     protected virtual async Task<ApiArray<MentionCandidate>> ListCandidates(
@@ -45,11 +45,11 @@ public class MentionIndexUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
         var memberUserIds = new HashSet<UserId>();
         foreach (var a in authors) {
             result.Add(a);
-            if (a.Id.Target is UserId userId)
+            if (a.Id.TargetId is UserId userId)
                 memberUserIds.Add(userId);
         }
         foreach (var u in users) {
-            if (u.Id.Target is UserId userId && memberUserIds.Contains(userId))
+            if (u.Id.TargetId is UserId userId && memberUserIds.Contains(userId))
                 continue;
             result.Add(u);
         }
@@ -127,7 +127,7 @@ public class MentionIndexUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
             if (contact is null || contact.Kind == ContactKind.User || contact.State == ContactState.Blocked)
                 continue;
             var chat = contact.Chat;
-            if (chat is null || chat.Title.IsNullOrEmpty() || chat.Id is PlaceChatId)
+            if (chat.Title.IsNullOrEmpty() || chat.Id is PlaceChatId)
                 continue;
 
             result.Add(new MentionCandidate(
@@ -186,7 +186,7 @@ public class MentionIndexUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
             if (contact is null || contact.Kind == ContactKind.User || contact.State == ContactState.Blocked)
                 continue;
             var chat = contact.Chat;
-            if (chat is null || chat.Title.IsNullOrEmpty())
+            if (chat.Title.IsNullOrEmpty())
                 continue;
             if (chat.Id is not PlaceChatId placeChatId || placeChatId.IsRoot)
                 continue;

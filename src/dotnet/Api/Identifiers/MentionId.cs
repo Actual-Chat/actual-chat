@@ -7,9 +7,9 @@ namespace ActualChat;
 #pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
 
 /// <summary>
-/// Reference to a mentioned entity in chat content. The value is <c>"&lt;prefix&gt;:&lt;localId&gt;"</c>
+/// Reference to a mentioned entity in chat content. The value is <c>prefix:</c>
 /// where the prefix selects a <see cref="MentionKind"/> and the local id parses into an
-/// <see cref="IMentionTarget"/>. See <see cref="MentionKind.ByPrefix"/> for the registered kinds.
+/// <see cref="IMentionTargetId"/>. See <see cref="MentionKind.ByPrefix"/> for the registered kinds.
 /// </summary>
 // TODO(AY): Rename to MentionRef
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
@@ -18,7 +18,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<MentionId>))]
 [TypeConverter(typeof(StringLikeTypeConverter<MentionId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class MentionId : StringIdentifier, IStringIdentifier<MentionId>
+public sealed partial class MentionId : StringIdentifier, IStringIdentifier<MentionId>, IHasShardKey<string>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<MentionId>();
@@ -27,9 +27,9 @@ public sealed partial class MentionId : StringIdentifier, IStringIdentifier<Ment
     [IgnoreDataMember]
     public MentionKind Kind { get; }
     [IgnoreDataMember]
-    public IMentionTarget Target { get; }
+    public IMentionTargetId TargetId { get; }
     [IgnoreDataMember]
-    public PrincipalId? PrincipalId => Target as PrincipalId;
+    public string ShardKey => TargetId.ShardKey;
 
     // Factories and constructors
 
@@ -46,18 +46,18 @@ public sealed partial class MentionId : StringIdentifier, IStringIdentifier<Ment
     public static MentionId NewGif(GifRef gifRef)
         => Create(MentionKind.Gif, gifRef);
 
-    private static MentionId Create(MentionKind kind, IMentionTarget target)
+    private static MentionId Create(MentionKind kind, IMentionTargetId targetId)
     {
-        var value = Format(kind, target.Value);
+        var value = Format(kind, targetId.Value);
         if (Cache.TryGetValue(value, out var cached))
             return cached;
-        return Cache.AddOrGet(value, new MentionId(value, kind, target));
+        return Cache.AddOrGet(value, new MentionId(value, kind, targetId));
     }
 
-    private MentionId(string value, MentionKind kind, IMentionTarget target) : base(value)
+    private MentionId(string value, MentionKind kind, IMentionTargetId targetId) : base(value)
     {
         Kind = kind;
-        Target = target;
+        TargetId = targetId;
     }
 
     // Equality

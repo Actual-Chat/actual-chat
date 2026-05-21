@@ -15,16 +15,18 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<EmojiRef>))]
 [TypeConverter(typeof(StringLikeTypeConverter<EmojiRef>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class EmojiRef : StringIdentifier, IStringIdentifier<EmojiRef>, IMentionTarget
+public sealed partial class EmojiRef : StringIdentifier, IStringIdentifier<EmojiRef>, IMentionTargetId
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<EmojiRef>();
     private static readonly ILruCache<string, EmojiRef> Cache = CreateCache<EmojiRef>(128);
 
     [IgnoreDataMember]
+    public string Text => field ??= Value.UrlDecode();
+    [IgnoreDataMember]
     public MentionKind MentionKind => MentionKind.Emoji;
     [IgnoreDataMember]
-    public string Text => field ??= Value.UrlDecode();
+    public string ShardKey => Value;
 
     // Factories and constructors
 

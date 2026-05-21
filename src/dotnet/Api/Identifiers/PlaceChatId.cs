@@ -22,13 +22,11 @@ public sealed partial class PlaceChatId : ChatId, IStringIdentifier<PlaceChatId>
 
     public static readonly string IdPrefix = "s-";
 
-    private readonly LocalChatId _localChatId;
-
     [IgnoreDataMember]
     public PlaceId PlaceId { get; }
 
     [IgnoreDataMember]
-    public string LocalChatId => _localChatId.Id;
+    public string LocalChatId { get; }
     [IgnoreDataMember]
     public bool IsRoot { get; }
     [IgnoreDataMember]
@@ -40,18 +38,18 @@ public sealed partial class PlaceChatId : ChatId, IStringIdentifier<PlaceChatId>
     public static PlaceChatId New(PlaceId placeId)
     {
         var localChatId = IdGenerator.Next();
-        return new(Format(placeId, localChatId), placeId, ActualChat.LocalChatId.New(localChatId), false);
+        return new(Format(placeId, localChatId), placeId, Internal.ParsedLocalChatId.New(localChatId), false);
     }
 
-    internal PlaceChatId(string value, PlaceId placeId, LocalChatId localChatId)
+    internal PlaceChatId(string value, PlaceId placeId, ParsedLocalChatId localChatId)
         : this(value, placeId, localChatId, placeId.Value == localChatId.Id)
     { }
 
-    private PlaceChatId(string value, PlaceId placeId, LocalChatId localChatId, bool isRoot)
+    private PlaceChatId(string value, PlaceId placeId, ParsedLocalChatId localChatId, bool isRoot)
         : base(value, ChatKind.Place)
     {
         PlaceId = placeId;
-        _localChatId = localChatId;
+        LocalChatId = localChatId.Id;
         IsRoot = isRoot;
     }
 
