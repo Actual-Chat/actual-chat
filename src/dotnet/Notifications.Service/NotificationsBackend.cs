@@ -47,7 +47,7 @@ public class NotificationsBackend(IServiceProvider services)
     private ILogger? DebugLog => Log;
 
     // [ComputeMethod]
-    public virtual async Task<NotificationItem?> Get(
+    public virtual async Task<Notification?> Get(
         NotificationId notificationId,
         CancellationToken cancellationToken)
     {
@@ -108,7 +108,7 @@ public class NotificationsBackend(IServiceProvider services)
 
         var notification = command.Notification;
         var userId = notification.UserId.Require();
-        var entryId = (notification as ChatNotificationItem)?.EntryId;
+        var entryId = (notification as ChatNotification)?.EntryId;
 
         DebugLog?.LogInformation("-> OnNotify. EntryId={EntryId}, UserId={UserId}, NotificationId={NotificationId}",
             entryId, userId, notification.Id);
@@ -476,7 +476,7 @@ public class NotificationsBackend(IServiceProvider services)
 
         var text = $"Thread '{chat.Title}' has been created";
         await EnqueueMessageRelatedNotifications(
-                parentChatId, null, creator, text, NotificationKind.NewThread, similarityKey, userIds, cancellationToken)
+                parentChatId, null, creator, text, NotificationKind.Thread, similarityKey, userIds, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -537,7 +537,7 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
     }
 
-    private async Task Send(UserId userId, NotificationItem notification, CancellationToken cancellationToken1)
+    private async Task Send(UserId userId, Notification notification, CancellationToken cancellationToken1)
     {
         var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
         var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken1).ConfigureAwait(false);
@@ -549,7 +549,7 @@ public class NotificationsBackend(IServiceProvider services)
         var account = await AccountsBackend.Get(userId, cancellationToken1).ConfigureAwait(false);
         var isAdmin = account is { IsAdmin: true };
         var deviceIds = devices.Select(d => d.DeviceId).ToList();
-        var entryId = (notification as ChatNotificationItem)?.EntryId;
+        var entryId = (notification as ChatNotification)?.EntryId;
         DebugLog?.LogInformation("-> Send. EntryId={EntryId}, UserId={UserId}, NotificationId={Kind}, DeviceIds#={DeviceIdCount}",
             entryId, userId, notification.Id, deviceIds.Count);
         await FirebaseMessagingClient.SendMessage(notification, deviceIds, isAdmin, cancellationToken1).ConfigureAwait(false);
@@ -598,8 +598,19 @@ public class NotificationsBackend(IServiceProvider services)
                     continue;
                 }
             }
-            var notificationId = NotificationId.New(otherUserId, kind, similarityKey);
-            var notification = NotificationItem.New(notificationId, chatId, entryId?.LocalId ?? 0, changeAuthor.Id) with {
+            var entryLid = entryId?.LocalId ?? 0;
+            Notification notification = kind switch {
+                NotificationKind.Message => MessageNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
+                NotificationKind.Reply => ReplyNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
+                NotificationKind.Invitation => InvitationNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
+                NotificationKind.Mention => MentionNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
+                NotificationKind.Reaction => ReactionNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
+                NotificationKind.Thread => ThreadNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
+                NotificationKind.Attention => AttentionNotification.New(
+                    otherUserId, entryId ?? ChatEntryId.New(chatId, entryLid), changeAuthor.Id),
+                _ => throw StandardError.NotSupported<NotificationsBackend>($"Unsupported notification kind: {kind}."),
+            };
+            notification = notification with {
                 Title = title,
                 Text = content,
                 IconUrl = iconUrl,
@@ -610,7 +621,7 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
 
-    private static TimeSpan? GetThrottleInterval(NotificationItem notification)
+    private static TimeSpan? GetThrottleInterval(Notification notification)
     {
         if (notification.Kind == NotificationKind.Message)
             return Constants.Notification.ThrottleIntervals.Message;

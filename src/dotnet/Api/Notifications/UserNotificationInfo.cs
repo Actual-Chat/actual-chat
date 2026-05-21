@@ -13,7 +13,7 @@ public sealed partial record UserNotificationInfo(
     ) : IHasVersion<long>
 {
     [DataMember(Order = 2), Key(2)]
-    public ApiArray<NotificationItem> Displayed { get; init; }
+    public ApiArray<Notification> Displayed { get; init; }
     [DataMember(Order = 3), Key(3)]
     public NotificationDelta UnsentDelta { get; init; } = NotificationDelta.Empty;
     [DataMember(Order = 4), Key(4)]

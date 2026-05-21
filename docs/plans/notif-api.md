@@ -71,9 +71,11 @@ These types are **MessagePack-only — no MemoryPack**. Three levels:
 - `NotificationItem` (abstract) — carries only the identity/dedup key
   (`NotificationId`, which encodes `UserId`/`Kind`/`SimilarityKey`), `Title`, `Text`,
   `CreatedAt`. It makes **no** assumption that a notification is chat-related.
-- `ChatNotificationItem` (abstract) — for chat-related notifications: adds `EntryLid`
-  (the entry the notification points at, and the read-detection anchor) and derives
-  `ChatId` from the similarity key (not stored).
+- `ChatNotificationItem` (abstract) — for chat-related notifications: adds `ChatId`,
+  `EntryLid` (the entry the notification points at and the read-detection anchor),
+  and `AuthorId`. `ChatId` is stored explicitly — legacy `Attention`/`NotifyMembers`
+  notifications use a timestamp as their similarity key, so it can't be derived from
+  `SimilarityKey` universally; revisit once similarity-key formation is normalized.
 - One concrete record **per `NotificationKind`** — `MessageNotificationItem`,
   `ReplyNotificationItem`, `InvitationNotificationItem`, `MentionNotificationItem`,
   `ReactionNotificationItem`, `AttentionNotificationItem`, `NewThreadNotificationItem`

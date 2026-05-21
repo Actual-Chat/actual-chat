@@ -191,15 +191,15 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         notification.IconUrl.Should().Contain("api/content/");
     }
 
-    private async Task<NotificationItem> GetNotification(AccountFull user, ChatEntryId entryId)
+    private async Task<Notification> GetNotification(AccountFull user, ChatEntryId entryId)
     {
-        NotificationItem? notification = null!;
+        Notification? notification = null!;
         await TestExt.When(async () => {
             var ids = await Tester.NotificationsBackend.ListRecentNotificationIds(user.Id, Clocks.SystemClock.Now - TimeSpan.FromMinutes(1), CancellationToken.None);
             ids.Should().NotBeEmpty();
             var retrieved = await ids.Select(x => Tester.NotificationsBackend.Get(x, CancellationToken.None)).Collect();
             var notifications = retrieved.SkipNullItems()
-                .OfType<ChatNotificationItem>()
+                .OfType<ChatNotification>()
                 .Where(x => x.EntryId == entryId)
                 .ToList();
             notifications.Should().HaveCount(1);

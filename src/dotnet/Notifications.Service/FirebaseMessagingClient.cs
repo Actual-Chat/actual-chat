@@ -15,7 +15,7 @@ public class FirebaseMessagingClient(
     private ILogger? DebugLog => Log;
 
     public async Task SendMessage(
-        NotificationItem notification,
+        Notification notification,
         IReadOnlyCollection<Symbol> deviceIds,
         bool? enableDataCollection,
         CancellationToken cancellationToken)
@@ -25,7 +25,7 @@ public class FirebaseMessagingClient(
         var title = notification.Title;
         var content = notification.Text;
         var iconUrl = notification.IconUrl;
-        var chatNotification = notification as ChatNotificationItem;
+        var chatNotification = notification as ChatNotification;
         var chatId = (ChatId?)chatNotification?.ChatId;
         var entryId = (ChatEntryId?)null;
         long lastEntryLocalId = 0;

@@ -6,7 +6,7 @@ namespace ActualChat.Notifications;
 public interface INotifications : IComputeService
 {
     [ComputeMethod(MinCacheDuration = 10)]
-    Task<NotificationItem?> Get(Session session, NotificationId notificationId, CancellationToken cancellationToken);
+    Task<Notification?> Get(Session session, NotificationId notificationId, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 10)]
     Task<IReadOnlyList<NotificationId>> ListRecentNotificationIds(
         Session session, Moment minSentAt, CancellationToken cancellationToken);
