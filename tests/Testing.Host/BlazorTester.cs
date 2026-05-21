@@ -1,5 +1,5 @@
 using ActualChat.App.Server;
-using ActualChat.Notification;
+using ActualChat.Notifications;
 using ActualChat.Search;
 using ActualLab.Versioning;
 using Bunit;

@@ -5,7 +5,7 @@ using Firebase.CloudMessaging;
 using Foundation;
 using UIKit;
 using UserNotifications;
-using DeviceType = ActualChat.Notification.DeviceType;
+using DeviceType = ActualChat.Notifications.DeviceType;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace ActualChat.App.Maui;

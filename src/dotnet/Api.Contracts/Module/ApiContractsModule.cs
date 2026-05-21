@@ -5,7 +5,7 @@ using ActualChat.Contacts;
 using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Kvas;
-using ActualChat.Notification;
+using ActualChat.Notifications;
 using ActualChat.Search;
 using ActualChat.Security;
 using ActualChat.Streaming;

@@ -387,7 +387,7 @@ These files should be re-read at implementation time for exact patterns and line
 
 ### Chat list & notifications:
 - `src/dotnet/UI.Blazor.App/Components/ChatList/` — last message preview
-- `src/dotnet/Notification.Service/` — notification text for encrypted messages
+- `src/dotnet/Notifications.Service/` — notification text for encrypted messages
 
 ### DB & serialization:
 - `src/dotnet/Api/Chat/ChatEntry.cs` — Content field, MemoryPackOrder values

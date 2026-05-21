@@ -1,4 +1,4 @@
-using NotificationModel = ActualChat.Notification.Notification;
+using NotificationModel = ActualChat.Notifications.Notification;
 
 namespace ActualChat.Testing.Host;
 

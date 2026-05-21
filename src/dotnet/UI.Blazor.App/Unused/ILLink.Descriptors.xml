@@ -20,8 +20,8 @@
   <assembly fullname="ActualChat.Media" />
   <assembly fullname="ActualChat.Media.Contracts" />
   <assembly fullname="ActualChat.MediaPlayback" />
-  <assembly fullname="ActualChat.Notification" />
-  <assembly fullname="ActualChat.Notification.Contracts" />
+  <assembly fullname="ActualChat.Notifications" />
+  <assembly fullname="ActualChat.Notifications.Contracts" />
   <assembly fullname="ActualChat.Transcription.Contracts" />
   <assembly fullname="ActualChat.Users" />
   <assembly fullname="ActualChat.Users.Contracts" />

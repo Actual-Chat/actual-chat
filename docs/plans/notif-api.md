@@ -66,12 +66,21 @@ Idempotent — a missed or duplicated run converges on the next pass.
 ### 3.3 Data model
 
 `NotificationItem` — union with an abstract-record base (MessagePack `[Union]`).
-These types are **MessagePack-only — no MemoryPack**. The base carries the
-identity/dedup key (`NotificationId` → `SimilarityKey`), `ChatId`, `Title`, `Text`,
-`CreatedAt`, and the abstract **`ReadEntryLid`** — the read-detection anchor.
-Members: `ChatNotificationItem` (`EntryLid`, `AuthorId`),
-`AttentionNotificationItem` (`CallerId`, `LastEntryLid`). Minimum data stored;
-richer data (icon, reaction emoji) pulled at send time. `Text` *is* stored (tiny).
+These types are **MessagePack-only — no MemoryPack**. Three levels:
+
+- `NotificationItem` (abstract) — carries only the identity/dedup key
+  (`NotificationId`, which encodes `UserId`/`Kind`/`SimilarityKey`), `Title`, `Text`,
+  `CreatedAt`. It makes **no** assumption that a notification is chat-related.
+- `ChatNotificationItem` (abstract) — for chat-related notifications: adds `EntryLid`
+  (the entry the notification points at, and the read-detection anchor) and derives
+  `ChatId` from the similarity key (not stored).
+- One concrete record **per `NotificationKind`** — `MessageNotificationItem`,
+  `ReplyNotificationItem`, `InvitationNotificationItem`, `MentionNotificationItem`,
+  `ReactionNotificationItem`, `AttentionNotificationItem`, `NewThreadNotificationItem`
+  — union tags match the `NotificationKind` enum values.
+
+Minimum data stored; richer data (icon, author, reaction emoji) pulled at send time.
+`Text` *is* stored (tiny).
 
 `UserNotificationInfo` — one small blob per user: `Displayed: ApiArray<NotificationItem>`
 (converged set, one item per `SimilarityKey`), `UnsentDelta: NotificationDelta`
@@ -163,8 +172,8 @@ hitting Firebase.
 
 **Removed:** `NotificationFlow`.
 
-**New components** are all notification-specific → `Api/Notification/` and
-`Notification.*`. No new shared abstractions in `Core` / `Core.Server`.
+**New components** are all notification-specific → `Api/Notifications/` and
+`Notifications.*`. No new shared abstractions in `Core` / `Core.Server`.
 
 ## 6. Open details (resolved as we build)
 

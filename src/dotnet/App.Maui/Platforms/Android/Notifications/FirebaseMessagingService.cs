@@ -4,7 +4,7 @@ using Android.App;
 using AndroidX.Core.App;
 using Firebase.Analytics;
 using Firebase.Messaging;
-using DeviceType = ActualChat.Notification.DeviceType;
+using DeviceType = ActualChat.Notifications.DeviceType;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace ActualChat.App.Maui;

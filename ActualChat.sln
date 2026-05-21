@@ -143,15 +143,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "styles", "styles", "{747A6C
 		src\nodejs\styles\tailwind.css = src\nodejs\styles\tailwind.css
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Notification.Contracts", "src\dotnet\Notification.Contracts\Notification.Contracts.csproj", "{18F78214-B24B-42A9-85AC-84F14AEBD6C4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Notifications.Contracts", "src\dotnet\Notifications.Contracts\Notifications.Contracts.csproj", "{18F78214-B24B-42A9-85AC-84F14AEBD6C4}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Notification.Service", "src\dotnet\Notification.Service\Notification.Service.csproj", "{BA5873E5-ADC5-4928-8352-E16EC61658E2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Notifications.Service", "src\dotnet\Notifications.Service\Notifications.Service.csproj", "{BA5873E5-ADC5-4928-8352-E16EC61658E2}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Notification.Service.Migration", "src\dotnet\Notification.Service.Migration\Notification.Service.Migration.csproj", "{F9D0701D-0A70-42C5-9FCD-7CC20C7B1DF4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Notifications.Service.Migration", "src\dotnet\Notifications.Service.Migration\Notifications.Service.Migration.csproj", "{F9D0701D-0A70-42C5-9FCD-7CC20C7B1DF4}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chat", "Chat", "{82FCC17A-E824-491C-99A3-24403C73434C}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Notification", "Notification", "{EB66F67F-4549-44B3-B5DF-4EDAF91FF82A}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Notifications", "Notifications", "{EB66F67F-4549-44B3-B5DF-4EDAF91FF82A}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "UI", "UI", "{8F17CFD4-76C1-4CD5-B1D6-DAC6F9BEE9EA}"
 EndProject
@@ -344,7 +344,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mcp.IntegrationTests", "tes
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Media.IntegrationTests", "tests\Media.IntegrationTests\Media.IntegrationTests.csproj", "{50C0A7A4-CAEE-4EB1-B9CB-8E2DEA3680CF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notification.IntegrationTests", "tests\Notification.IntegrationTests\Notification.IntegrationTests.csproj", "{AFD390F6-42FB-4618-9930-D38404A6A43C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notifications.IntegrationTests", "tests\Notifications.IntegrationTests\Notifications.IntegrationTests.csproj", "{AFD390F6-42FB-4618-9930-D38404A6A43C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Media.UnitTests", "tests\Media.UnitTests\Media.UnitTests.csproj", "{DA26CF4E-9B27-490B-98EF-DCAEB1709000}"
 EndProject
