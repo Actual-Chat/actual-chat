@@ -1,7 +1,10 @@
 using ActualChat.Contacts;
+using ActualChat.MLSearch.Documents;
+using ActualChat.MLSearch.Engine;
 using ActualChat.Search;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
+using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.IntegrationTests;
 
@@ -10,6 +13,8 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
+    private IOpenSearchClient OpenSearchClient => field ??= AppHost.Services.GetRequiredService<IOpenSearchClient>();
+    private OpenSearchNames OpenSearchNames => field ??= AppHost.Services.GetRequiredService<OpenSearchNames>();
     private string UniquePart { get; } = UniqueNames.Prefix();
     private string DeviceId => field ??= $"Device-{UniquePart}";
 
@@ -394,6 +399,36 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
+    [Fact]
+    public async Task ShouldNotIndexSystemUsers()
+    {
+        // arrange
+        var bob = await Tester.SignInAsUniqueBob();
+        var sentinel = await CreateAccount("Sentinel");
+        await Tester.SignIn(bob);
+
+        // act
+        foreach (var systemUserId in Constants.User.SystemUserIds)
+            await Tester.CreatePeerContact(bob, new Account(systemUserId));
+        await Tester.CreatePeerContact(bob, sentinel);
+
+        // Wait until the sentinel contact is indexed — that proves UserContactIndexingFlow
+        // processed every peer contact created before it, including the system-user ones.
+        await TestsExt.When(async () => {
+                var response = await GetIndexedUser(sentinel.Id);
+                response.Found.Should().BeTrue();
+                return response;
+            },
+            TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(20));
+
+        // assert
+        foreach (var systemUserId in Constants.User.SystemUserIds) {
+            var response = await GetIndexedUser(systemUserId);
+            response.Found.Should()
+                .BeFalse("system user {0} must not be indexed in OpenSearch", systemUserId);
+        }
+    }
+
     // Private methods
 
     private ExternalContactFull NewExternalContact(AccountFull owner)
@@ -410,6 +445,10 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
 
     private Task<AccountFull> CreateAccount(string name)
         => Tester.CreateAccount($"{UniquePart} {name}");
+
+    private Task<GetResponse<IndexedUser>> GetIndexedUser(UserId userId)
+        => OpenSearchClient.GetAsync<IndexedUser>(userId.Value,
+            s => s.Index(OpenSearchNames.UserIndexName).Routing(userId.Value));
 
     private Task<ContactSearchResult[]> Find(
         string criteria,
