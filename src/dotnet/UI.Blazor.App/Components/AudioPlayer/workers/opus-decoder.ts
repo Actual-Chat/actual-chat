@@ -176,7 +176,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
     private readonly encodedFrames = new EncodedFrameBuffer();
     private readonly systemDecodeTimings = new Denque<DecodeTiming>();
     private mustAbort = false;
-    private frameRequested = false;
+    private demandActive = false;
     private feederTargetDelayMs = DEFAULT_FEEDER_TARGET_DELAY_MS;
     private chunkTimeOffset = 0;
     private sourceRecordedAtMs = 0;
@@ -212,7 +212,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
 
     public init(sourceRecordedAtMs = this.sourceRecordedAtMs): void {
         this.mustAbort = false;
-        this.frameRequested = false;
+        this.demandActive = false;
         this.feederTargetDelayMs = DEFAULT_FEEDER_TARGET_DELAY_MS;
         this.chunkTimeOffset = 0;
         this.sourceRecordedAtMs = sourceRecordedAtMs;
@@ -266,7 +266,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
         debugLog?.log(`#${this.streamId}.end: mustAbort:`, mustAbort);
         if (mustAbort) {
             this.mustAbort = true;
-            this.frameRequested = false;
+            this.demandActive = false;
             this.encodedFrames.clear();
             this.systemDecodeTimings.clear();
             this.processor.clearQueue();
@@ -275,16 +275,25 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
         }
 
         this.encodedFrames.end();
-        this.flushDecodeDemand();
+        // The end marker must reach the feeder regardless of demand state,
+        // otherwise the feeder never transitions to 'ended'.
+        while (true) {
+            const item = this.encodedFrames.shiftReady();
+            if (item === undefined)
+                break;
+
+            this.processor.enqueue(item, false);
+        }
     }
 
-    public async requestFrame(targetDelayMs: number, _noWait?: RpcNoWait): Promise<void> {
+    public async setDemand(active: boolean, targetDelayMs: number, _noWait?: RpcNoWait): Promise<void> {
         if (this.mustAbort)
             return;
 
         this.feederTargetDelayMs = targetDelayMs;
-        this.frameRequested = true;
-        this.flushDecodeDemand();
+        this.demandActive = active;
+        if (active)
+            this.flushDecodeDemand();
     }
 
     public async releaseBuffer(buffer: ArrayBuffer, _rpcNoWait?: RpcNoWait): Promise<void> {
@@ -375,15 +384,16 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
     }
 
     private flushDecodeDemand(): void {
-        if (!this.frameRequested)
+        if (!this.demandActive)
             return;
 
-        const item = this.encodedFrames.shiftReady();
-        if (item === undefined)
-            return;
+        while (true) {
+            const item = this.encodedFrames.shiftReady();
+            if (item === undefined)
+                return;
 
-        this.frameRequested = false;
-        this.processor.enqueue(item, false);
+            this.processor.enqueue(item, false);
+        }
     }
 
     private createDecodeTiming(sourceOffsetMs: number): DecodeTiming {

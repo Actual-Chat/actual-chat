@@ -21,7 +21,11 @@ import { type SharedSettingsSnapshot } from 'shared-settings';
 import { sharedSettingsWorker } from 'shared-settings-worker';
 
 const { logScope, debugLog, warnLog } = getLogs('FeederProcessor');
-const FEEDER_TARGET_BUFFER_FRAMES = 2;
+// Buffered duration below the low-water mark signals the decoder to push frames;
+// the decoder stops once buffered duration crosses the high-water mark.
+// Hysteresis (low < high) bounds the demand toggle rate and shapes steady-state depth.
+const FEEDER_LOW_WATER_FRAMES = 2;
+const FEEDER_HIGH_WATER_FRAMES = 8;
 
 interface DecodedChunk {
     samples: Float32Array;
@@ -54,7 +58,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     private isEnding = false;
     private bufferSizeToStartPlayback!: number; // set in init() after initAppConstants
     private lastStarvingEventAt = 0;
-    private frameRequestPending = false;
+    private demandSignaled = false;
     private presentationLagMs: number | null = null;
     private bufferHeadSourceOffsetMs: number | null = null;
     private bufferSourceRecordedAtMs: number | null = null;
@@ -83,7 +87,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     public async init(appConstants: AppConstants, sharedSettings: SharedSettingsSnapshot, id: string, workerPort: MessagePort): Promise<void> {
         await sharedSettingsWorker.updateSharedSettings(sharedSettings);
         initAppConstants(appConstants);
-        this.bufferSizeToStartPlayback = this.feederTargetDuration;
+        this.bufferSizeToStartPlayback = this.feederLowWaterDuration;
         this.id = id;
         this.decoder = rpcClientServer<BufferHandler>(`${logScope}.worker`, workerPort, this);
         debugLog?.log(`#${this.id}.init`);
@@ -97,8 +101,6 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         sourceOffsetMs: number,
         presentationLagMs: number,
         noWait?: RpcNoWait): Promise<void> {
-        // debugLog?.log(`#${this.id} -> frame()`);
-        this.frameRequestPending = false;
         if (this.playbackState === 'ended' || this.isEnding) {
             // Send buffer back
             void this.decoder.releaseBuffer(buffer, rpcNoWait);
@@ -112,8 +114,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             presentationLagMs,
         });
         this.tryBeginPlaying();
-        this.requestFrameIfLow();
-        // debugLog?.log(`#${this.id} <- frame()`);
+        this.updateDemand();
         return ResolvedPromise.Void;
     }
 
@@ -139,7 +140,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             ? 'paused'
             : 'playing';
         this.stateHasChanged();
-        this.requestFrameIfLow();
+        this.updateDemand();
         return ResolvedPromise.Void;
     }
 
@@ -188,7 +189,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         const time = currentTime;
         if (this.buffer.samplesAvailable >= channel.length) {
             this.pullBufferedSamples(channel);
-            this.requestFrameIfLow();
+            this.updateDemand();
             this.stateHasChanged();
             return true;
         }
@@ -197,7 +198,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             const samplesAvailable = this.buffer.samplesAvailable;
             let chunk = this.chunks.shift();
             if (chunk === undefined) {
-                this.requestFrameIfLow();
+                this.updateDemand();
                 // Not enough data to continue playing => starving
                 channel.fill(0);
                 if (samplesAvailable) {
@@ -227,6 +228,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
                         void this.decoder.releaseBuffer(chunk.samples.buffer, rpcNoWait);
                 }
                 this.chunks.clear();
+                this.updateDemand();
                 this.stateHasChanged();
                 // Keep worklet up and running even in ended state for reuse
                 return true;
@@ -246,7 +248,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             }
         }
         this.pullBufferedSamples(channel);
-        this.requestFrameIfLow();
+        this.updateDemand();
         this.stateHasChanged();
         return true;
     }
@@ -275,7 +277,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         if (this.isEnding)
             this.bufferState = 'ok';
         else {
-            this.bufferState = bufferedDuration < this.feederTargetDuration ? 'low' : 'ok';
+            this.bufferState = bufferedDuration < this.feederLowWaterDuration ? 'low' : 'ok';
         }
 
         const state: FeederState = {
@@ -307,22 +309,42 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         this.stateHasChanged();
     }
 
-    private requestFrameIfLow(): void {
-        if (!this.decoder || this.frameRequestPending || this.playbackState === 'ended' || this.isEnding)
-            return;
-        if (this.bufferedDuration >= this.feederTargetDuration)
+    private updateDemand(): void {
+        if (!this.decoder)
             return;
 
-        this.frameRequestPending = true;
-        void this.decoder.requestFrame(this.feederTargetDelayMs, rpcNoWait);
+        const stopped = this.playbackState === 'ended' || this.isEnding;
+        if (stopped) {
+            if (this.demandSignaled) {
+                this.demandSignaled = false;
+                void this.decoder.setDemand(false, this.feederTargetDelayMs, rpcNoWait);
+            }
+            return;
+        }
+
+        const buffered = this.bufferedDuration;
+        if (this.demandSignaled) {
+            if (buffered >= this.feederHighWaterDuration) {
+                this.demandSignaled = false;
+                void this.decoder.setDemand(false, this.feederTargetDelayMs, rpcNoWait);
+            }
+        }
+        else if (buffered < this.feederLowWaterDuration) {
+            this.demandSignaled = true;
+            void this.decoder.setDemand(true, this.feederTargetDelayMs, rpcNoWait);
+        }
     }
 
-    private get feederTargetDuration(): number {
-        return FEEDER_TARGET_BUFFER_FRAMES / AUDIO.frameRate;
+    private get feederLowWaterDuration(): number {
+        return FEEDER_LOW_WATER_FRAMES / AUDIO.frameRate;
+    }
+
+    private get feederHighWaterDuration(): number {
+        return FEEDER_HIGH_WATER_FRAMES / AUDIO.frameRate;
     }
 
     private get feederTargetDelayMs(): number {
-        return this.feederTargetDuration * 1000;
+        return this.feederHighWaterDuration * 1000;
     }
 }
 
