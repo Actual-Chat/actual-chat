@@ -199,7 +199,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
             ids.Should().NotBeEmpty();
             var retrieved = await ids.Select(x => Tester.NotificationsBackend.Get(x, CancellationToken.None)).Collect();
             var notifications = retrieved.SkipNullItems()
-                .OfType<ChatNotification>()
+                .OfType<ChatEntryRelatedNotification>()
                 .Where(x => x.EntryId == entryId)
                 .ToList();
             notifications.Should().HaveCount(1);

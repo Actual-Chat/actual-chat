@@ -52,10 +52,10 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
             Notification notification = kind switch {
                 NotificationKind.Message => MessageNotification.New(TestUserId, TestChatId, entryId.LocalId, authorId),
                 NotificationKind.Reply => ReplyNotification.New(TestUserId, TestChatId, entryId.LocalId, authorId),
-                NotificationKind.Invitation => InvitationNotification.New(TestUserId, TestChatId, entryId.LocalId, authorId),
-                NotificationKind.Mention => MentionNotification.New(TestUserId, TestChatId, entryId.LocalId, authorId),
-                NotificationKind.Reaction => ReactionNotification.New(TestUserId, TestChatId, entryId.LocalId, authorId),
                 NotificationKind.Thread => ThreadNotification.New(TestUserId, TestChatId, entryId.LocalId, authorId),
+                NotificationKind.Invitation => InvitationNotification.New(TestUserId, TestChatId, authorId),
+                NotificationKind.Mention => MentionNotification.New(TestUserId, entryId, authorId),
+                NotificationKind.Reaction => ReactionNotification.New(TestUserId, entryId, authorId),
                 NotificationKind.Attention => AttentionNotification.New(TestUserId, entryId, authorId),
                 _ => throw new ArgumentOutOfRangeException(nameof(kind)),
             };

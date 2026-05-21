@@ -53,11 +53,11 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
         return id.Kind switch {
             NotificationKind.Message => new MessageNotification(id, Version) { EntryLid = entryLid, AuthorId = authorId },
             NotificationKind.Reply => new ReplyNotification(id, Version) { EntryLid = entryLid, AuthorId = authorId },
-            NotificationKind.Invitation => new InvitationNotification(id, Version) { EntryLid = entryLid, AuthorId = authorId },
-            NotificationKind.Mention => new MentionNotification(id, Version) { EntryLid = entryLid, AuthorId = authorId },
-            NotificationKind.Reaction => new ReactionNotification(id, Version) { EntryLid = entryLid, AuthorId = authorId },
             NotificationKind.Thread => new ThreadNotification(id, Version) { EntryLid = entryLid, AuthorId = authorId },
-            NotificationKind.Attention => (Notification)new AttentionNotification(id, Version) { AuthorId = authorId },
+            NotificationKind.Mention => new MentionNotification(id, Version) { AuthorId = authorId },
+            NotificationKind.Reaction => new ReactionNotification(id, Version) { AuthorId = authorId },
+            NotificationKind.Attention => new AttentionNotification(id, Version) { AuthorId = authorId },
+            NotificationKind.Invitation => (Notification)new InvitationNotification(id, Version) { AuthorId = authorId },
             _ => throw StandardError.NotSupported<DbNotification>($"Unsupported notification kind: {id.Kind}."),
         } with {
             Title = Title,
@@ -80,7 +80,11 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
         ChatId? chatId = null;
         if (model is ChatNotification chatModel) {
             chatId = chatModel.ChatId;
-            chatEntryLid = chatModel.EntryLid;
+            chatEntryLid = chatModel switch {
+                ChatEntryRelatedNotification n => n.EntryLid,
+                ChatEntryNotification n => n.EntryLid,
+                _ => null,
+            };
             authorSid = chatModel.AuthorId?.Value.NullIfEmpty();
         }
 

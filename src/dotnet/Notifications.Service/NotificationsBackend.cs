@@ -108,7 +108,7 @@ public class NotificationsBackend(IServiceProvider services)
 
         var notification = command.Notification;
         var userId = notification.UserId.Require();
-        var entryId = (notification as ChatNotification)?.EntryId;
+        var entryId = GetEntryId(notification);
 
         DebugLog?.LogInformation("-> OnNotify. EntryId={EntryId}, UserId={UserId}, NotificationId={NotificationId}",
             entryId, userId, notification.Id);
@@ -549,7 +549,7 @@ public class NotificationsBackend(IServiceProvider services)
         var account = await AccountsBackend.Get(userId, cancellationToken1).ConfigureAwait(false);
         var isAdmin = account is { IsAdmin: true };
         var deviceIds = devices.Select(d => d.DeviceId).ToList();
-        var entryId = (notification as ChatNotification)?.EntryId;
+        var entryId = GetEntryId(notification);
         DebugLog?.LogInformation("-> Send. EntryId={EntryId}, UserId={UserId}, NotificationId={Kind}, DeviceIds#={DeviceIdCount}",
             entryId, userId, notification.Id, deviceIds.Count);
         await FirebaseMessagingClient.SendMessage(notification, deviceIds, isAdmin, cancellationToken1).ConfigureAwait(false);
@@ -599,15 +599,15 @@ public class NotificationsBackend(IServiceProvider services)
                 }
             }
             var entryLid = entryId?.LocalId ?? 0;
+            var fullEntryId = entryId ?? ChatEntryId.New(chatId, entryLid);
             Notification notification = kind switch {
                 NotificationKind.Message => MessageNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
                 NotificationKind.Reply => ReplyNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
-                NotificationKind.Invitation => InvitationNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
-                NotificationKind.Mention => MentionNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
-                NotificationKind.Reaction => ReactionNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
                 NotificationKind.Thread => ThreadNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
-                NotificationKind.Attention => AttentionNotification.New(
-                    otherUserId, entryId ?? ChatEntryId.New(chatId, entryLid), changeAuthor.Id),
+                NotificationKind.Invitation => InvitationNotification.New(otherUserId, chatId, changeAuthor.Id),
+                NotificationKind.Mention => MentionNotification.New(otherUserId, fullEntryId, changeAuthor.Id),
+                NotificationKind.Reaction => ReactionNotification.New(otherUserId, fullEntryId, changeAuthor.Id),
+                NotificationKind.Attention => AttentionNotification.New(otherUserId, fullEntryId, changeAuthor.Id),
                 _ => throw StandardError.NotSupported<NotificationsBackend>($"Unsupported notification kind: {kind}."),
             };
             notification = notification with {
@@ -711,4 +711,11 @@ public class NotificationsBackend(IServiceProvider services)
             .Select(c => c.Item1)
             .ToArray();
     }
+
+    private static ChatEntryId? GetEntryId(Notification notification)
+        => notification switch {
+            ChatEntryRelatedNotification n => n.EntryId,
+            ChatEntryNotification n => n.EntryId,
+            _ => null,
+        };
 }

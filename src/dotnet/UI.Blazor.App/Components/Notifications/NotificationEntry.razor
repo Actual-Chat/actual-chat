@@ -70,6 +70,11 @@
         var notification = Notification;
         var chatNotification = notification as ChatNotification;
         var chatId = chatNotification?.ChatId;
+        var entryLid = notification switch {
+            ChatEntryRelatedNotification n => n.EntryLid,
+            ChatEntryNotification n => n.EntryLid,
+            _ => 0L,
+        };
 
         if (chatId is null) {
             // TODO(AK): Unread message counter
@@ -77,8 +82,8 @@
         return Task.FromResult<Model>(new() {
             Title = notification.Title,
             Content = notification.Text,
-            NavigateToUrl = chatId is null ? null
-                : Links.Chat(chatId, chatNotification!.EntryLid).ToAbsolute(UrlMapper),
+            NavigateToUrl = chatId is not { } vChatId ? null
+                : Links.Chat(vChatId, entryLid).ToAbsolute(UrlMapper),
         });
     }
 

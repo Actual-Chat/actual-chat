@@ -4,14 +4,14 @@ namespace ActualChat.Testing.Host;
 
 public static class NotificationOperations
 {
-    public static async Task<ChatNotification> WaitForChatEntryNotification(
+    public static async Task<ChatEntryRelatedNotification> WaitForChatEntryNotification(
         this IWebClientTester tester,
         UserId userId,
         ChatEntryId entryId,
         TimeSpan? timeout = null)
     {
         var clocks = tester.AppServices.Clocks();
-        ChatNotification notification = null!;
+        ChatEntryRelatedNotification notification = null!;
         await TestExt.When(async () => {
             var ids = await tester.NotificationsBackend.ListRecentNotificationIds(
                 userId, clocks.SystemClock.Now - TimeSpan.FromMinutes(1), CancellationToken.None);
@@ -21,7 +21,7 @@ public static class NotificationOperations
                 .Collect();
             var notifications = retrieved
                 .SkipNullItems()
-                .OfType<ChatNotification>()
+                .OfType<ChatEntryRelatedNotification>()
                 .Where(x => x.EntryId == entryId)
                 .ToList();
             notifications.Should().HaveCount(1);

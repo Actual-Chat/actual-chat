@@ -29,11 +29,16 @@ public class FirebaseMessagingClient(
         var chatId = (ChatId?)chatNotification?.ChatId;
         var entryId = (ChatEntryId?)null;
         long lastEntryLocalId = 0;
-        if (chatNotification != null) {
-            if (kind == NotificationKind.Attention)
-                lastEntryLocalId = chatNotification.EntryLid;
-            else if (chatNotification.EntryLid != 0)
-                entryId = chatNotification.EntryId;
+        switch (notification) {
+        case AttentionNotification attention:
+            lastEntryLocalId = attention.EntryLid;
+            break;
+        case ChatEntryRelatedNotification related when related.EntryLid != 0:
+            entryId = related.EntryId;
+            break;
+        case ChatEntryNotification entry:
+            entryId = entry.EntryId;
+            break;
         }
 
         var absoluteIconUrl = UrlMapper.ToAbsolute(iconUrl, true);
