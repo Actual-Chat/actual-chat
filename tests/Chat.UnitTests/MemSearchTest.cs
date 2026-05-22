@@ -181,4 +181,78 @@ public class MemSearchTest(ITestOutputHelper @out) : TestBase(@out)
         a.Equals(c).Should().BeFalse();
         a.GetHashCode().Should().Be(b.GetHashCode());
     }
+
+    [Fact]
+    public void OrNewKeepsNonEmptyAndBuildsForEmpty()
+    {
+        var doc = new MemSearchDocument("Alice");
+        doc.OrNew("Bob").Should().Be(doc);
+        default(MemSearchDocument).OrNew("Bob").Should().Be(new MemSearchDocument("Bob"));
+        new MemSearchDocument("").OrNew("Bob").Value.Should().Be(" bob");
+    }
+
+    // MemSearchQuery — equality
+
+    [Fact]
+    public void QueryEqualityComparesNormalizedValue()
+    {
+        var a = new MemSearchQuery("Foo Bar");
+        var b = new MemSearchQuery("foo  bar");
+        (a == b).Should().BeTrue();
+        a.GetHashCode().Should().Be(b.GetHashCode());
+        (a == new MemSearchQuery("other")).Should().BeFalse();
+        (default(MemSearchQuery) == MemSearchQuery.Empty).Should().BeTrue();
+    }
+
+    // MemSearchQuery — highlight parts
+
+    [Fact]
+    public void GetMatchPartsEmptyQueryOrNoMatchYieldsNoParts()
+    {
+        new MemSearchQuery("").GetMatchParts("Hello World").Should().BeEmpty();
+        new MemSearchQuery("xyz").GetMatchParts("Hello World").Should().BeEmpty();
+        new MemSearchQuery("hello").GetMatchParts("").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void GetMatchPartsHighlightsWordPrefix()
+    {
+        Highlights("Hello World", "wor").Should().Equal("Wor");
+        Highlights("Hello World", "hello world").Should().Equal("Hello", "World");
+    }
+
+    [Fact]
+    public void GetMatchPartsHighlightsCamelCaseSegment()
+    {
+        Highlights("McDonalds", "don").Should().Equal("Don");
+        // "mcdon" matches the whole word [0,5) and its inner "don" [2,5) — merged into one.
+        Highlights("McDonalds", "mcdon").Should().Equal("McDon");
+    }
+
+    [Fact]
+    public void GetMatchPartsHighlightsDigitSegment()
+    {
+        Highlights("Room101", "101").Should().Equal("101");
+        Highlights("Room101", "room").Should().Equal("Room");
+    }
+
+    [Fact]
+    public void GetMatchPartsHighlightsEveryMatchingWordAndDedupsRepeats()
+    {
+        Highlights("Alice Anna Adam", "a").Should().Equal("A", "A", "A");
+        Highlights("Hello World", "wor wor").Should().Equal("Wor");
+    }
+
+    [Fact]
+    public void GetMatchPartsExactModeRequiresWholeToken()
+    {
+        Highlights("category cat", "cat", exact: true).Should().Equal("cat");
+        Highlights("category cat", "cat").Should().Equal("cat", "cat");
+    }
+
+    private static string[] Highlights(string text, string query, bool exact = false)
+        => new MemSearchQuery(query)
+            .GetMatchParts(text, exact)
+            .Select(p => text[p.Range.Start..p.Range.End])
+            .ToArray();
 }

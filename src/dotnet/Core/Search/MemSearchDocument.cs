@@ -59,6 +59,9 @@ public readonly struct MemSearchDocument : IEquatable<MemSearchDocument>
         return totalChars == 0 ? 0 : rawScore / totalChars;
     }
 
+    public MemSearchDocument OrNew(string? fallbackText)
+        => IsEmpty ? new MemSearchDocument(fallbackText) : this;
+
     // Equality
 
     public bool Equals(MemSearchDocument other)
@@ -79,43 +82,16 @@ public readonly struct MemSearchDocument : IEquatable<MemSearchDocument>
         if (source.IsNullOrEmpty())
             return;
 
-        var wordStart = -1;
-        for (var i = 0; i <= source.Length; i++) {
-            var isWordChar = i < source.Length && char.IsLetterOrDigit(source[i]);
-            if (isWordChar) {
-                if (wordStart < 0)
-                    wordStart = i;
-            }
-            else if (wordStart >= 0) {
-                AppendWord(sb, source, wordStart, i);
-                wordStart = -1;
-            }
-        }
-    }
-
-    private static void AppendWord(StringBuilder sb, string source, int wordStart, int wordEnd)
-    {
-        // Emit the whole word, then every camelCase / digit suffix — search is prefix-based, so
-        // partial suffixes aren't needed. " " precedes the whole word, "_" a mid-word suffix.
-        var segmentStart = wordStart;
-        var prefix = ' ';
-        while (true) {
-            sb.Append(prefix);
-            for (var j = segmentStart; j < wordEnd; j++)
+        // " " precedes the whole-word segment, "_" each camelCase / digit suffix — search is
+        // prefix-based, so partial suffixes aren't needed.
+        foreach (var segment in new SegmentEnumerator(source)) {
+            sb.Append(segment.IsWholeWord ? ' ' : '_');
+            for (var j = segment.Start; j < segment.End; j++)
                 sb.Append(char.ToLower(source[j]));
-
-            var nextStart = segmentStart + 1;
-            while (nextStart < wordEnd && !IsSegmentBoundary(source, nextStart, wordEnd))
-                nextStart++;
-            if (nextStart >= wordEnd)
-                return;
-
-            segmentStart = nextStart;
-            prefix = '_';
         }
     }
 
-    private static bool IsSegmentBoundary(string source, int i, int wordEnd)
+    private static bool IsSegmentBoundary(ReadOnlySpan<char> source, int i, int wordEnd)
     {
         // A segment starts at i on a letter/digit transition, a camelCase lower→upper transition,
         // or at the last uppercase of an acronym right before a lowercase letter (UIElement → UI|Element).
@@ -143,5 +119,60 @@ public readonly struct MemSearchDocument : IEquatable<MemSearchDocument>
                 count++;
         }
         return count;
+    }
+
+    // Nested types
+
+    internal readonly record struct Segment(int Start, int End, bool IsWholeWord);
+
+    // Walks original text and yields, per word, the whole-word segment then each camelCase /
+    // digit sub-segment. Every segment ends at the word's end; sub-segments are suffixes.
+    internal ref struct SegmentEnumerator
+    {
+        private readonly ReadOnlySpan<char> _text;
+        private int _scan;
+        private int _wordEnd;
+        private int _segmentStart;
+
+        public Segment Current { get; private set; }
+
+        public SegmentEnumerator(ReadOnlySpan<char> text)
+        {
+            _text = text;
+            _scan = 0;
+            _wordEnd = -1;
+            _segmentStart = -1;
+        }
+
+        public readonly SegmentEnumerator GetEnumerator()
+            => this;
+
+        public bool MoveNext()
+        {
+            if (_wordEnd >= 0) {
+                // Still inside a word — yield its next camelCase / digit sub-segment, if any.
+                var next = _segmentStart + 1;
+                while (next < _wordEnd && !IsSegmentBoundary(_text, next, _wordEnd))
+                    next++;
+                if (next < _wordEnd) {
+                    _segmentStart = next;
+                    Current = new Segment(next, _wordEnd, false);
+                    return true;
+                }
+                _wordEnd = -1;
+            }
+            while (_scan < _text.Length && !char.IsLetterOrDigit(_text[_scan]))
+                _scan++;
+            if (_scan >= _text.Length)
+                return false;
+
+            var wordStart = _scan;
+            while (_scan < _text.Length && char.IsLetterOrDigit(_text[_scan]))
+                _scan++;
+            _wordEnd = _scan;
+            _segmentStart = wordStart;
+            Current = new Segment(wordStart, _wordEnd, true);
+            return true;
+        }
     }
 }

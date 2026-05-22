@@ -24,6 +24,30 @@ public readonly struct MemSearchQuery : IEquatable<MemSearchQuery>
     public override string ToString()
         => Words.ToDelimitedString(", ");
 
+    public SearchMatchPart[] GetMatchParts(string text, bool exact = false)
+    {
+        // Highlight ranges over the original text: for each query word, the longest suffix that
+        // prefix-matches a text segment. In exact mode only a whole-segment match counts.
+        if (IsEmpty || text.IsNullOrEmpty())
+            return [];
+
+        var ranges = new List<Range<int>>();
+        foreach (var word in Words) {
+            foreach (var segment in new MemSearchDocument.SegmentEnumerator(text)) {
+                var length = MatchLength(text, segment, word, exact);
+                if (length > 0)
+                    ranges.Add(new Range<int>(segment.Start, segment.Start + length));
+            }
+        }
+        if (ranges.Count == 0)
+            return [];
+
+        ranges.Sort(static (a, b) => a.Start != b.Start
+            ? a.Start.CompareTo(b.Start)
+            : a.End.CompareTo(b.End));
+        return Merge(ranges);
+    }
+
     // Equality
 
     public bool Equals(MemSearchQuery other)
@@ -79,6 +103,47 @@ public readonly struct MemSearchQuery : IEquatable<MemSearchQuery>
         // Fewest suffixes first: a word with fewer alternatives is likelier to miss — fail fast.
         words.Sort(static (a, b) => a.Suffixes.Length.CompareTo(b.Suffixes.Length));
         return words.ToArray();
+    }
+
+    private static int MatchLength(string text, MemSearchDocument.Segment segment, Word word, bool exact)
+    {
+        // Suffixes run longest-first; the first prefix hit is the longest match for this segment.
+        var segmentLength = segment.End - segment.Start;
+        foreach (var suffix in word.Suffixes) {
+            var suffixText = suffix.ExpectedNeedle.AsSpan(1);
+            var fits = exact ? suffixText.Length == segmentLength : suffixText.Length <= segmentLength;
+            if (fits && IsPrefix(text, segment.Start, suffixText))
+                return suffixText.Length;
+            if (exact)
+                return 0;
+        }
+        return 0;
+    }
+
+    private static bool IsPrefix(string text, int start, ReadOnlySpan<char> suffix)
+    {
+        for (var i = 0; i < suffix.Length; i++)
+            if (char.ToLower(text[start + i]) != suffix[i])
+                return false;
+        return true;
+    }
+
+    private static SearchMatchPart[] Merge(List<Range<int>> sortedRanges)
+    {
+        // Ranges arrive sorted; collapse overlapping / adjacent ones into disjoint ascending parts.
+        var parts = new List<SearchMatchPart>();
+        var current = sortedRanges[0];
+        for (var i = 1; i < sortedRanges.Count; i++) {
+            var next = sortedRanges[i];
+            if (next.Start <= current.End)
+                current = new Range<int>(current.Start, Math.Max(current.End, next.End));
+            else {
+                parts.Add(new SearchMatchPart(current, 1));
+                current = next;
+            }
+        }
+        parts.Add(new SearchMatchPart(current, 1));
+        return parts.ToArray();
     }
 
     // Nested types
