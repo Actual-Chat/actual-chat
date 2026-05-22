@@ -18,8 +18,9 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `TaskSerializer` — serializes task execution to run sequentially
 - `ChannelMuxer<TKey, TItem>` — multiplexes multiple channels into one
 
-### In-Memory Search
-- `MemSearchDocument` / `MemSearchQuery` — typed match blob + parsed query (tokenize / `IsMatch` / coverage)
+### In-Memory Search (`ActualChat.Search`)
+- `MemSearchDocument` / `MemSearchQuery` — typed match blob + parsed query (tokenize, `IsMatch`, coverage score, `GetMatchParts` highlight ranges)
+- `SearchMatch` / `SearchMatchPart` — matched text + rank + highlight parts (explicit, or lazy from a `MemSearchQuery`)
 
 ### Collections & Caching
 - `LruCache<TKey, TValue>` — thread-safe LRU cache

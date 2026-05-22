@@ -23,8 +23,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `Interest` (record struct) - Represents a user interest tag.
 - `Language` (record struct) - Represents a language identifier (BCP 47).
 - `MediaType` (enum) - Specifies the type of media content.
-- `MemSearchDocument` (readonly struct) - In-memory search match blob: lowercased space-prefixed tokens; `From` / `IsMatch` / `GetCoverageScore`.
-- `MemSearchQuery` (readonly struct) - Parsed in-memory search query: space-prefixed token prefixes; `From`.
+- `MemSearchDocument` (readonly struct) - In-memory search match blob (`ActualChat.Search`): lowercased camelCase/digit-segment tokens; ctor / `IsMatch` / `GetCoverageScore` / `OrNew`.
+- `MemSearchQuery` (readonly struct) - Parsed in-memory search query (`ActualChat.Search`): precompiled prefix needles; ctor / `IsMatch` / `GetMatchParts`.
 - `NotFoundException` - Exception thrown when an entity is not found.
 - `Phone` (record struct) - Represents a phone number in E.164 format.
 - `PostponeException` - Exception indicating an operation should be postponed.
@@ -86,9 +86,8 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `MessageProcessorBase<TMessage>` - Base class for message processors.
 - `Tracer` - Performance tracing.
 - `ISearchProvider` - Search functionality interface.
-- `SearchMatch` - Search match with matched text and parts.
+- `SearchMatch` - Search match: matched text, rank, highlight parts (explicit or lazy from a `MemSearchQuery`).
 - `SearchMatchPart` - Part of a search match.
-- `SearchPhrase` - Represents a search phrase.
 - `SearchResult` - Base class for search results.
 - `ISecureTokens` - Secure token operations.
 - `ISecureTokensBackend` - Backend for secure tokens.
