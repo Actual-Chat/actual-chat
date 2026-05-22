@@ -82,7 +82,7 @@ export interface EncodeOptions {
 export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, EncodedBundle> {
     if (!opts.configs && !opts.controller)
         throw new Error('encode: requires `configs` or `controller`');
-    if (opts.configs && opts.configs.length === 0)
+    if (opts.configs?.length === 0)
         throw new Error('encode: configs must contain at least one layer');
 
     // Mutable local snapshot of the active ladder. When a controller is

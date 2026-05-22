@@ -82,7 +82,7 @@ describe('spatialize with LayerLadderController', () => {
         }
 
         const op = spatialize({ controller });
-        const out = await toArray(op(from(source()))) as CapturedBundle[];
+        const out: CapturedBundle[] = await toArray(op(from(source())));
 
         expect(out).toHaveLength(6);
         for (let i = 0; i < 3; i++) expect(out[i].layers).toHaveLength(1);
@@ -106,7 +106,7 @@ describe('spatialize with LayerLadderController', () => {
         }
 
         const op = spatialize({ controller });
-        const out = await toArray(op(from(source()))) as CapturedBundle[];
+        const out: CapturedBundle[] = await toArray(op(from(source())));
 
         expect(out[0].layers).toHaveLength(3);
         expect(out[1].layers).toHaveLength(3);

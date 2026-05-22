@@ -157,7 +157,7 @@ export function normalizeFrame(opts: NormalizeFrameOptions): PipeOperator<Captur
 export function spatialize(opts: SpatializeOptions): PipeOperator<NormalizedFrame, CapturedBundle> {
     if (!opts.ladder && !opts.controller)
         throw new Error('spatialize: requires `ladder` or `controller`');
-    if (opts.ladder && opts.ladder.length === 0)
+    if (opts.ladder?.length === 0)
         throw new Error('spatialize: ladder must contain at least one layer');
 
     // When a static ladder is passed, snapshot it; when a controller is
