@@ -1,8 +1,11 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ActualChat.Db;
 using ActualChat.Serialization;
 using ActualLab.Serialization;
 using ActualLab.Versioning;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ActualChat.Notifications.Db;
 
@@ -37,5 +40,11 @@ public class DbUserNotifications : IHasId<string>, IHasVersion<long>, IRequireme
         Data = buffer.ToArray();
         HasUnsentDelta = !model.UnsentDelta.IsEmpty;
         IsDormant = model.IsDormant;
+    }
+
+    internal class EntityConfiguration : IEntityTypeConfiguration<DbUserNotifications>
+    {
+        public void Configure(EntityTypeBuilder<DbUserNotifications> builder)
+            => builder.HasAnnotation(nameof(ConflictStrategy), ConflictStrategy.DoNothing);
     }
 }
