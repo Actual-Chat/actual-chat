@@ -1,7 +1,6 @@
 ﻿using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Notifications.Db;
-using ActualChat.Notifications.Flows;
 using ActualChat.Redis.Module;
 using FirebaseAdmin;
 using FirebaseAdmin.Messaging;
@@ -25,9 +24,6 @@ public sealed class NotificationServiceModule(IServiceProvider moduleServices)
 
         // NOTE(AY): Notifications service uses NotificationDbContext and FirebaseMessaging,
         // so we have to register them in any case.
-
-        // Flows
-        services.AddFlows().Add<NotificationFlow>();
 
         // Firebase
         services.AddSingleton(_ => {
