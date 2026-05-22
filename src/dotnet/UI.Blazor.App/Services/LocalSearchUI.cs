@@ -54,7 +54,7 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         var rest = await ListMentionCandidatesWithEmoji(cancellationToken).ConfigureAwait(false);
         var result = new List<MentionCandidate>();
 
-        // Chat authors win over the same user from the contact list.
+        // Each chat member gets a single candidate; its contact-list duplicate is dropped.
         var memberUserIds = new HashSet<UserId>();
         foreach (var (author, account) in authors) {
             if (account is null) {
@@ -66,7 +66,7 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
                 continue;
 
             memberUserIds.Add(account.Id);
-            result.Add(ToUserCandidate(account.Id, account.Avatar.Name, account, isChatMember: true));
+            result.Add(ToMemberCandidate(author, account));
         }
         foreach (var candidate in rest) {
             if (candidate.Id.TargetId is UserId userId && memberUserIds.Contains(userId))
@@ -254,6 +254,25 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
             picture,
             new SearchDocument(name)) {
             IsChatMember = isChatMember,
+        };
+    }
+
+    private static MentionCandidate ToMemberCandidate(Author author, Account account)
+    {
+        // author.Avatar.Name is the chat-effective name — it already reflects a contact rename
+        // or a chat-specific avatar. When it differs from the account name, show both:
+        // "MyBestie (Magnolia)"; otherwise just the account name.
+        var userName = account.Avatar.Name;
+        var name = author.Avatar.Name;
+        var title = name != userName ? $"{name} ({userName})" : userName;
+        var picture = account.Avatar.Picture
+            ?? new Picture(null, null, DefaultUserPicture.GetAvatarKey(account.Id.Value));
+        return new MentionCandidate(
+            MentionId.NewUser(account.Id),
+            title,
+            picture,
+            new SearchDocument(name, userName)) {
+            IsChatMember = true,
         };
     }
 
