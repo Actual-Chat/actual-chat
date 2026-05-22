@@ -4,6 +4,7 @@ import { DeviceOrientation, ScreenOrientation, normalizeRotationQuarter, type Ro
 import type { CapturedBundle, CapturedFrame, NormalizedFrame } from '../frame-envelopes';
 import { cameraRotationDeg } from '../orientation/quantize';
 import { drawFrameCover, resizeCanvas } from '../canvas/resize';
+import type { LayerLadderController } from '../sender/layer-ladder-controller';
 
 const { warnLog } = getLogs('VideoPipeline');
 
@@ -12,17 +13,23 @@ export interface LayerSpec {
     height: number;
 }
 
+// Operator receives either a static top-layer target (tests, single-shot setups)
+// or a LayerLadderController whose top-layer dims may change mid-stream.
 export interface NormalizeFrameOptions {
-    target: LayerSpec;
+    target?: LayerSpec;
+    ladder?: LayerLadderController;
     isCamera: boolean;
     isFrontCamera: boolean;
     isIos: boolean;
 }
 
+// Operator receives either a static ladder snapshot (tests, single-shot setups)
+// or a LayerLadderController whose ladder may grow/shrink mid-stream.
 export interface SpatializeOptions {
     // Bottom-first: ladder[0] is the base layer. The top layer must match the
     // normalized frame dimensions.
-    ladder: readonly LayerSpec[];
+    ladder?: readonly LayerSpec[];
+    controller?: LayerLadderController;
 }
 
 interface FrameTransform {
@@ -52,14 +59,27 @@ interface Slot {
 // time. Avoiding the allocation on the common path is the single most
 // impactful sender-side optimisation.
 export function normalizeFrame(opts: NormalizeFrameOptions): PipeOperator<CapturedFrame, NormalizedFrame> {
-    const target = { ...opts.target };
+    if (!opts.target && !opts.ladder)
+        throw new Error('normalizeFrame: requires `target` or `ladder`');
     const orientation = new NormalizeFrameOrientation(opts);
     let slot: Slot | null = null;
+    // Cached top-layer LayerSpec; refreshed when controller.version bumps.
+    let target: LayerSpec = opts.target
+        ? { ...opts.target }
+        : topLayerOf(opts.ladder!);
+    let lastSeenVersion = opts.ladder?.current.version ?? -1;
 
     return source => {
         async function* impl(): AsyncIterable<NormalizedFrame> {
             try {
                 for await (const envelope of source) {
+                    if (opts.ladder) {
+                        const cur = opts.ladder.current;
+                        if (cur.version !== lastSeenVersion) {
+                            target = topLayerOf(opts.ladder);
+                            lastSeenVersion = cur.version;
+                        }
+                    }
                     const input = envelope.frame;
                     const transform = orientation.decide(input, target);
                     const displayW = input.displayWidth || input.codedWidth;
@@ -135,10 +155,16 @@ export function normalizeFrame(opts: NormalizeFrameOptions): PipeOperator<Captur
 // Multi-layer ladder: each lower layer gets one canvas downscale +
 // `new VideoFrame`; the top layer stays as the input frame.
 export function spatialize(opts: SpatializeOptions): PipeOperator<NormalizedFrame, CapturedBundle> {
-    if (opts.ladder.length === 0)
+    if (!opts.ladder && !opts.controller)
+        throw new Error('spatialize: requires `ladder` or `controller`');
+    if (opts.ladder && opts.ladder.length === 0)
         throw new Error('spatialize: ladder must contain at least one layer');
 
-    const ladder = opts.ladder.slice();
+    // When a static ladder is passed, snapshot it; when a controller is
+    // passed, the processor re-reads on every frame and `shrinkTo` is
+    // invoked on version bumps that lower the layer count.
+    const staticLadder = opts.ladder ? opts.ladder.slice() : null;
+    let lastSeenVersion = opts.controller?.current.version ?? -1;
     let processor: SpatializeSlotProcessor | null = null;
 
     return source => {
@@ -146,6 +172,19 @@ export function spatialize(opts: SpatializeOptions): PipeOperator<NormalizedFram
             try {
                 for await (const frame of source) {
                     processor ??= new SpatializeSlotProcessor();
+                    let ladder: readonly LayerSpec[];
+                    if (opts.controller) {
+                        const cur = opts.controller.current;
+                        if (cur.version !== lastSeenVersion) {
+                            // Drop excess slots when the ladder shrank so we
+                            // don't carry stale canvases past their last use.
+                            processor.shrinkTo(cur.configs.length);
+                            lastSeenVersion = cur.version;
+                        }
+                        ladder = configsToLadder(cur.configs);
+                    } else {
+                        ladder = staticLadder!;
+                    }
                     yield await processor.process(frame, ladder);
                 }
             } finally {
@@ -155,6 +194,18 @@ export function spatialize(opts: SpatializeOptions): PipeOperator<NormalizedFram
         }
         return from(impl());
     };
+}
+
+function topLayerOf(controller: LayerLadderController): LayerSpec {
+    const cfg = controller.current.configs[controller.current.configs.length - 1];
+    return { width: cfg.width, height: cfg.height };
+}
+
+function configsToLadder(configs: readonly { width: number; height: number }[]): LayerSpec[] {
+    const out = new Array<LayerSpec>(configs.length);
+    for (let i = 0; i < configs.length; i++)
+        out[i] = { width: configs[i].width, height: configs[i].height };
+    return out;
 }
 
 class NormalizeFrameOrientation {
@@ -257,6 +308,16 @@ class SpatializeSlotProcessor {
         for (const slot of this.slots)
             resizeCanvas(slot.canvas, 0, 0);
         this.slots.length = 0;
+    }
+
+    // Releases slots beyond `newLength` (used when the ladder shrank).
+    // Keeps lower slots untouched so they reuse their canvas allocation.
+    shrinkTo(newLength: number): void {
+        if (newLength >= this.slots.length)
+            return;
+        for (let i = newLength; i < this.slots.length; i++)
+            resizeCanvas(this.slots[i].canvas, 0, 0);
+        this.slots.length = newLength;
     }
 
     private drawLowerLayers(
