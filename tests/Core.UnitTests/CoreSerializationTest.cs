@@ -78,6 +78,12 @@ public class CoreSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         s.Text.Should().Be(match.Text);
         s.Rank.Should().Be(match.Rank);
         s.Parts.Should().BeEmpty();
+
+        // Query-mode match: parts are computed lazily and serialize as explicit parts.
+        var queryMatch = new SearchMatch("McDonalds", new MemSearchQuery("don"));
+        var qs = queryMatch.PassThroughAllSerializers(Out);
+        qs.Text.Should().Be("McDonalds");
+        qs.Parts.Should().HaveCount(1);
     }
 
     [Fact]
