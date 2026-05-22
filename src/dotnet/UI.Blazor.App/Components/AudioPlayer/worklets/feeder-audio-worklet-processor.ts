@@ -21,7 +21,6 @@ import { type SharedSettingsSnapshot } from 'shared-settings';
 import { sharedSettingsWorker } from 'shared-settings-worker';
 
 const { logScope, debugLog, warnLog } = getLogs('FeederProcessor');
-const FEEDER_TARGET_BUFFER_FRAMES = 2;
 
 interface DecodedChunk {
     samples: Float32Array;
@@ -58,6 +57,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     private presentationLagMs: number | null = null;
     private bufferHeadSourceOffsetMs: number | null = null;
     private bufferSourceRecordedAtMs: number | null = null;
+    private _targetBufferedDuration?: number;
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
@@ -83,7 +83,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     public async init(appConstants: AppConstants, sharedSettings: SharedSettingsSnapshot, id: string, workerPort: MessagePort): Promise<void> {
         await sharedSettingsWorker.updateSharedSettings(sharedSettings);
         initAppConstants(appConstants);
-        this.bufferSizeToStartPlayback = this.feederTargetDuration;
+        this.bufferSizeToStartPlayback = this.targetBufferedDuration;
         this.id = id;
         this.decoder = rpcClientServer<BufferHandler>(`${logScope}.worker`, workerPort, this);
         debugLog?.log(`#${this.id}.init`);
@@ -275,7 +275,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         if (this.isEnding)
             this.bufferState = 'ok';
         else {
-            this.bufferState = bufferedDuration < this.feederTargetDuration ? 'low' : 'ok';
+            this.bufferState = bufferedDuration < this.targetBufferedDuration ? 'low' : 'ok';
         }
 
         const state: FeederState = {
@@ -310,19 +310,20 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     private requestFrameIfLow(): void {
         if (!this.decoder || this.frameRequestPending || this.playbackState === 'ended' || this.isEnding)
             return;
-        if (this.bufferedDuration >= this.feederTargetDuration)
+        if (this.bufferedDuration >= this.targetBufferedDuration)
             return;
 
         this.frameRequestPending = true;
-        void this.decoder.requestFrame(this.feederTargetDelayMs, rpcNoWait);
+        void this.decoder.requestFrame(this.targetBufferedDurationMs, rpcNoWait);
     }
 
-    private get feederTargetDuration(): number {
-        return FEEDER_TARGET_BUFFER_FRAMES / AUDIO.frameRate;
+    private get targetBufferedDuration(): number {
+        return this._targetBufferedDuration ??=
+            (AUDIO.play.decodedBufferSizeMs / (1000 / AUDIO.frameRate)) / AUDIO.frameRate;
     }
 
-    private get feederTargetDelayMs(): number {
-        return this.feederTargetDuration * 1000;
+    private get targetBufferedDurationMs(): number {
+        return this.targetBufferedDuration * 1000;
     }
 }
 

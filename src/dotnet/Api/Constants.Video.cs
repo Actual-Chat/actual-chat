@@ -9,9 +9,9 @@ public static partial class Constants
         public static readonly TimeSpan FrameDuration = TimeSpan.FromSeconds(1d / FrameRate); // 33.333 ms
 
         // Target playback buffer (the only intentional live-video buffer).
-        public const int TargetBufferSize = 10;
+        public const int TargetBufferSize = 5;
         public static readonly TimeSpan TargetBufferSpan =
-            TimeSpan.FromSeconds((double)TargetBufferSize / FrameRate); // 333.333 ms
+            TimeSpan.FromSeconds((double)TargetBufferSize / FrameRate); // 166,666 ms to match audio VAD pre-roll ~140 ms in average
         public static readonly double TargetBufferSpanMs = TargetBufferSpan.TotalMilliseconds;
 
         // Playback verdict thresholds (compared against per-tick EMAs of the

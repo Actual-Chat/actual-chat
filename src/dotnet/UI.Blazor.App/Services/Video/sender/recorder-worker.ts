@@ -187,9 +187,13 @@ export const recorderWorkerImpl: RecorderWorker = {
                 () => deps.createEncoder(session, layerCfg, layerId),
             );
             try {
-                // Mirror probeEncoder's config — prefer-hardware + h264 avc
-                // format. Without these the runtime encoder may land on a
-                // SW path even though the probe verified HW availability.
+                // hardwareAcceleration comes from the WireSafeRecorderConfig;
+                // defaults to 'prefer-hardware' for the normal multi-tier
+                // path. The 1-tier last-resort fallback flips this to
+                // 'no-preference' so the browser can pick SW when HW
+                // activation is failing (AMD iGPU + Windows MFT pressure
+                // produces "Not enough memory resources" on HW encoder
+                // activation).
                 const encoderConfig: VideoEncoderConfig = {
                     codec: layerCfg.codec,
                     width: layerCfg.width,
@@ -197,7 +201,7 @@ export const recorderWorkerImpl: RecorderWorker = {
                     bitrate: layerCfg.bitrate,
                     framerate: layerCfg.framerate,
                     latencyMode: 'realtime',
-                    hardwareAcceleration: 'prefer-hardware',
+                    hardwareAcceleration: config.hardwareAcceleration ?? 'prefer-hardware',
                 };
                 if (category === 'h264')
                     encoderConfig.avc = { format: 'avc' };

@@ -121,14 +121,6 @@ interface ViewportInfo {
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoPlayer');
 
-// Receiver-side jitter buffer span in ms. Drives the worker's
-// `pacedEncodedBuffer` operator: smaller = lower latency, larger =
-// more network jitter absorption. Sized to match the server-side
-// `Constants.Video.TargetBufferSpan` (≈ 333ms, = 10 frames at
-// 30fps); VideoQualityUI's `BufferDurationTooLowMs = TargetBuffer/3`
-// (≈ 111ms) means a 100ms target landed BELOW the "too low" threshold
-// → verdict pegged at -1 → Allocator capped at L0.
-const TARGET_BUFFER_SPAN_MS = 333;
 const PLAYBACK_PRIORITY_SECONDARY = 0;
 const PLAYBACK_PRIORITY_PRIMARY = 1;
 
@@ -839,7 +831,7 @@ export class VideoPlayer {
                     codedWidth: this.selectedCodecedWidth,
                     codedHeight: this.selectedCodecedHeight,
                 },
-                targetBufferSpanMs: TARGET_BUFFER_SPAN_MS,
+                targetBufferSpanMs: VIDEO.targetBufferSpanMs,
                 backend,
                 expectedPaused: this.getExpectedPaused(),
             }, mstgWritable, offscreen);
@@ -919,7 +911,7 @@ export class VideoPlayer {
             codecCategory: this.codecCategory,
             bitrateKbps,
             pipelineLatencyMs: Math.round(this.pipelineLatencyMs),
-            jitterBufferMs: TARGET_BUFFER_SPAN_MS,
+            jitterBufferMs: VIDEO.targetBufferSpanMs,
             jitterEstimateMs: 0,
             smoothedRttMs: 0,
             rttGradientMs: 0,

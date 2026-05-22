@@ -22,6 +22,11 @@ export interface WireSafeRecorderConfig {
     encoderConfigs: readonly EncoderConfigPerLayer[];
     keyframeIntervalFrames: number;
     maxKeyFrameIntervalMs?: number;
+    // Defaults to 'prefer-hardware'. Set to 'no-preference' as the 1-tier
+    // last-resort fallback when 3-tier and 2-tier probes both fail — lets
+    // the browser fall back to a SW encoder on machines where the HW
+    // encoder slot is broken or exhausted (AMD iGPU + Windows MFT, etc.).
+    hardwareAcceleration?: HardwareAcceleration;
 }
 
 export interface RecorderWorkerOptions {

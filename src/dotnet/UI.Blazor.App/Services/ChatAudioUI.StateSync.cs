@@ -369,6 +369,16 @@ public partial class ChatAudioUI
                     if (lastState is not null) {
                         _ = TuneUI.Play(Tune.StopReplay);
                         await StopPlayer(lastState.ChatId, ChatPlayerKind.Replaying).ConfigureAwait(false);
+
+                        // Restore listening for chats that had it before replay started
+                        ImmutableHashSet<ChatId> toRestore;
+                        lock (Lock) {
+                            toRestore = _listeningChatsBeforeReplay;
+                            _listeningChatsBeforeReplay = ImmutableHashSet<ChatId>.Empty;
+                        }
+                        foreach (var chatId in toRestore)
+                            await SetListeningState(chatId, true).ConfigureAwait(false);
+
                         // Release audio focus if no listening either
                         var listeningChatIds = await GetListeningChatIds().ConfigureAwait(false);
                         if (listeningChatIds.IsEmpty)
@@ -415,6 +425,8 @@ public partial class ChatAudioUI
                 Log.LogError(ex, "ManageReplay failed");
                 _replayState.Value = null;
                 lastState = null;
+                lock (Lock)
+                    _listeningChatsBeforeReplay = ImmutableHashSet<ChatId>.Empty;
             }
         }
     }

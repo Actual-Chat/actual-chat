@@ -24,10 +24,10 @@ public abstract class ChatPlayer : ProcessorBase
     protected ILogger? DebugLog => DebugMode ? Log : null;
     protected static bool DebugMode => Constants.DebugMode.AudioTrackPlayer;
 
-    protected AppUIHub Hub { get; }
     protected Session Session => Hub.Session;
     protected IChats Chats => Hub.Chats;
     protected IAuthors Authors => Hub.Authors;
+    protected ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     protected InteractiveUI InteractiveUI => Hub.InteractiveUI;
     protected MomentClockSet Clocks => Hub.Clocks;
 
@@ -35,7 +35,7 @@ public abstract class ChatPlayer : ProcessorBase
     protected IState<TimeSpan> PauseDuration { get; }
     protected TimeSpan SleepAndPauseDuration => SleepDuration.Value + Playback.TotalPauseDuration.Value;
 
-    public ChatAudioUI? ChatAudioUI { get; set; }
+    public AppUIHub Hub { get; }
     public ChatId ChatId { get; }
     public ChatPlayerKind PlayerKind { get; protected init; }
     public Playback Playback { get; }

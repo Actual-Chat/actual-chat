@@ -8,6 +8,7 @@ public partial class ChatAudioUI
 
     private volatile ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer> _players =
         ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer>.Empty;
+    private ImmutableHashSet<ChatId> _listeningChatsBeforeReplay = ImmutableHashSet<ChatId>.Empty;
     private readonly MutableState<ReplayState?> _replayState;
     private readonly AudioFocusRequester _audioFocusRequester;
     private AudioFocusScope? _audioFocusScope;
@@ -32,7 +33,9 @@ public partial class ChatAudioUI
     public virtual async Task<TimeSpan> GetPlaybackTargetBufferSize(ChatId chatId, CancellationToken cancellationToken)
     {
         var hasVideo = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
-        return hasVideo ? Constants.Audio.PlaybackTargetBufferSizeWithVideo : TimeSpan.Zero;
+        return hasVideo
+            ? Constants.Audio.PlaybackTargetBufferSizeWithVideo
+            : Constants.Audio.PlaybackTargetBufferSize;
     }
 
     // GetXxxNonComputed
@@ -58,7 +61,7 @@ public partial class ChatAudioUI
         if (!listeningChatIds.IsEmpty) {
             var confirmed = false;
             var model = new ConfirmModal.Model(false,
-                "Replay will stop listening. Continue?",
+                "Replay will pause listening, then resume it after you stop replay. Continue?",
                 () => { confirmed = true; }) {
                 Title = "Start replay?",
                 ConfirmButtonText = "Yes",
@@ -68,6 +71,12 @@ public partial class ChatAudioUI
             if (!confirmed)
                 return;
 
+            // One-shot per replay session: preserve the snapshot across replay switches
+            // (when a stop transition hasn't been processed yet by StartStopReplayingPlayers).
+            lock (Lock) {
+                if (_listeningChatsBeforeReplay.IsEmpty)
+                    _listeningChatsBeforeReplay = listeningChatIds;
+            }
             await ClearListeningChats().ConfigureAwait(false);
         }
 
@@ -136,7 +145,6 @@ public partial class ChatAudioUI
                 ChatPlayerKind.Replaying => new ChatReplayer(Hub, chatId),
                 _ => throw new ArgumentOutOfRangeException(nameof(playerKind), playerKind, null),
             };
-            newPlayer.ChatAudioUI = this;
             _players = _players.Add((chatId, playerKind), newPlayer);
         }
         if (playerKind is ChatPlayerKind.Replaying)

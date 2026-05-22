@@ -23,6 +23,6 @@ export interface OpusDecoderWorker extends SharedSettingsWorker {
 }
 
 export interface BufferHandler {
-    requestFrame(targetDelayMs: number, noWait?: RpcNoWait): Promise<void>;
+    requestFrame(feederTargetDelayMs: number, noWait?: RpcNoWait): Promise<void>;
     releaseBuffer(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void>;
 }

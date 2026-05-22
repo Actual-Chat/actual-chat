@@ -134,8 +134,8 @@ public class IosAudioPlaybackEngine(
 
     private static TimeSpan GetEncodedBufferDuration(TimeSpan targetBufferSize)
     {
-        var encoded = targetBufferSize - Constants.Audio.DefaultDecodedBufferSize - Constants.Audio.DefaultAudioEnginePlaybackLatency;
-        return encoded > Constants.Audio.MinEncodeBufferSize ? encoded : Constants.Audio.MinEncodeBufferSize;
+        var encoded = targetBufferSize - Constants.Audio.DecodedBufferSize - Constants.Audio.AudioEnginePlaybackLatency;
+        return TimeSpanExt.Max(encoded, Constants.Audio.MinEncodedBufferSize);
     }
 
     private void TryReportEnded(string? message)
