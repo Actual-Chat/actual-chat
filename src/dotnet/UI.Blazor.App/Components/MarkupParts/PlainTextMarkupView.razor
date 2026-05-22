@@ -10,7 +10,7 @@
     </span>
     @if (LastFragment != null)
         @LastFragment
-} else if (m.MustHighlight) {
+} else if (m.SearchMatch.IsMatch) {
     <SearchMatchHighlighter
         Match="m.SearchMatch"
         PlainTextClass="plain-text-markup"
@@ -35,21 +35,29 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Model>.Options() {
-                InitialValue = new(Markup.Text, Entry.Content, SearchMatch.Empty),
+                InitialValue = new(Markup.Text, SearchMatch.Empty, Entry.Content),
                 Category = GetStateCategory(t),
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var entryId = Entry.Id;
         var markupText = Markup.Text;
-        var searchMatch = await HighlightUI.GetMatch(entryId, markupText, cancellationToken).ConfigureAwait(false);
-        return new(markupText, Entry.Content, searchMatch);
+        var searchMatch = await HighlightUI.GetSearchMatch(entryId, markupText, cancellationToken).ConfigureAwait(false);
+        return new(markupText, searchMatch, Entry.Content);
     }
 
     // Nested types
 
-    public sealed record Model(string MarkupText, string EntryContent, SearchMatch SearchMatch) {
-        public Emoji? Emoji { get; } = Emojis.TryGetByIdOrSymbol(EntryContent.Trim());
-        public bool MustHighlight => !SearchMatch.IsEmpty;
+    public sealed record Model {
+        public string MarkupText { get; init; }
+        public SearchMatch SearchMatch { get; init; }
+        public Emoji? Emoji { get; }
+
+        public Model(string MarkupText, SearchMatch SearchMatch, string? entryContent = null) {
+            this.MarkupText = MarkupText;
+            this.SearchMatch = SearchMatch;
+            Emoji = entryContent.IsNullOrEmpty() ? null
+                : Emojis.TryGetByIdOrSymbol(entryContent.Trim());
+        }
     }
 }

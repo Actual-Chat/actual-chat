@@ -12,7 +12,7 @@ public class FoundItemFormatter : IValueFormatter
     {
         var foundContact = (FoundItem)value;
         var scope = foundContact.IsGlobalSearchResult ? "Global" : foundContact.Scope.ToString();
-        var result = $"{foundContact.SearchResult.SearchMatch.Text} (#{foundContact.SearchResult.Id}) {scope}";
+        var result = $"{foundContact.Item.Match.Text} (#{foundContact.ChatId}) {scope}";
         if (context.UseLineBreaks)
             formattedGraph.AddLine(result);
         else

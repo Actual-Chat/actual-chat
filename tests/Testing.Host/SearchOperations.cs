@@ -4,7 +4,7 @@ namespace ActualChat.Testing.Host;
 
 public static class SearchOperations
 {
-    public static Task<ContactSearchResult[]> FindPeople(
+    public static Task<FoundContact[]> FindPeople(
         this IWebTester tester,
         string criteria,
         bool isExistingContact,
@@ -13,7 +13,7 @@ public static class SearchOperations
         => FindContacts(tester, SearchScope.People, isExistingContact, criteria, limit, placeId);
 
 
-    public static Task<ContactSearchResult[]> FindGroups(
+    public static Task<FoundContact[]> FindGroups(
         this IWebTester tester,
         string criteria,
         bool own,
@@ -22,7 +22,7 @@ public static class SearchOperations
         => FindContacts(tester, SearchScope.Groups, own, criteria, limit, placeId);
 
 
-    public static Task<ContactSearchResult[]> FindPlaces(
+    public static Task<FoundContact[]> FindPlaces(
         this IWebTester tester,
         string criteria,
         bool own,
@@ -30,7 +30,7 @@ public static class SearchOperations
         => FindContacts(tester, SearchScope.Places, own, criteria, limit);
 
 
-    public static async Task<EntrySearchResult[]> FindEntries(
+    public static async Task<FoundChatEntry[]> FindEntries(
         this IWebTester tester,
         string criteria,
         PlaceId? placeId = null,
@@ -44,10 +44,10 @@ public static class SearchOperations
             PlaceId = placeId,
             ChatId = chatId,
         }, cancellationToken);
-        return response.Hits;
+        return response.Items;
     }
 
-    private static async Task<ContactSearchResult[]> FindContacts(
+    private static async Task<FoundContact[]> FindContacts(
         IWebTester tester,
         SearchScope scope,
         bool own,
@@ -65,6 +65,6 @@ public static class SearchOperations
             },
             CancellationToken.None);
         results.Offset.Should().Be(0);
-        return results.Hits;
+        return results.Items;
     }
 }

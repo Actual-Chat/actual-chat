@@ -94,7 +94,7 @@
 
         var hasSelection = await SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
         var model = await InnerComputeState(cancellationToken).ConfigureAwait(false);
-        var highlightedWords = await HighlightUI.GetHighlightedWords(entryId, cancellationToken).ConfigureAwait(false);
+        var highlightedWords = await HighlightUI.GetWordSet(entryId, cancellationToken).ConfigureAwait(false);
         if (rendered is not { Map: not null })
             return model with { // Never rendered
                 HasSelection = hasSelection,

@@ -29,7 +29,6 @@ public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
 
         // Search
         SerializationCodeGen.ValidateType<SearchMatch>();
-        SerializationCodeGen.ValidateType<SearchMatchPart>();
 
         // Users
         SerializationCodeGen.ValidateType<SessionInfoFull>();

@@ -11,7 +11,7 @@ public class PlaceContactIndexingStressTest(SlowAppHostFixture fixture, ITestOut
 {
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
 
-    private string UniquePart { get; } = UniqueNames.Prefix();
+    private string IsolationKey { get; } = UniqueNames.Random();
 
     protected override async Task DisposeAsync()
     {
@@ -54,13 +54,13 @@ public class PlaceContactIndexingStressTest(SlowAppHostFixture fixture, ITestOut
         => Enumerable.Range(1, count).Select(i => CreatePlace($"{prefix} {i}")).Collect(Environment.ProcessorCount / 2);
 
     private Task<Place> CreatePlace(string title)
-        => Tester.CreatePlace(false, $"{title} {UniquePart}");
+        => Tester.CreatePlace(false, $"{title} {IsolationKey}");
 
-    private async Task<ContactSearchResult[]> Find(string criteria, int expected = 50)
+    private async Task<FoundContact[]> Find(string criteria, int expected = 50)
     {
-        ContactSearchResult[] results = [];
+        FoundContact[] results = [];
         await TestExt.When(async () => {
-                results = await Tester.FindPlaces($"{UniquePart} {criteria}", true, expected);
+                results = await Tester.FindPlaces($"{IsolationKey} {criteria}", true, expected);
                 results.Should().HaveCount(expected, "for criteria '{0}'", criteria);
             },
             TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(90) : TimeSpan.FromSeconds(30));

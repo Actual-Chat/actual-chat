@@ -3,7 +3,7 @@ using ActualChat.Search;
 namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed record FoundItem(
-    SearchResult SearchResult,
+    IHasSearchMatch Item,
     SearchScope Scope,
     bool IsGlobalSearchResult,
     bool IsFirstInGroup = false,
@@ -11,19 +11,16 @@ public sealed record FoundItem(
     bool CanScopeBeExpanded = false,
     bool IsGlobalSearchPlaceholder = false)
 {
-    public ChatId ChatId => SearchResult switch {
-        ContactSearchResult contact => contact.ContactId.ChatId,
-        EntrySearchResult entry => entry.EntryId.ChatId,
-        _ => throw new ArgumentOutOfRangeException()
+    public ChatId ChatId => Item switch {
+        FoundContact contact => contact.ContactId.ChatId,
+        FoundChatEntry chatEntry => chatEntry.EntryId.ChatId,
+        _ => throw new ArgumentOutOfRangeException(),
     };
-    public ChatEntryId? EntryId
-        => SearchResult is EntrySearchResult entry ? entry.EntryId : null;
-    public SearchMatch ContactSearchMatch
-        => SearchResult is ContactSearchResult ? SearchResult.SearchMatch : SearchMatch.Empty;
-    public SearchMatch MessageSearchMatch
-        => SearchResult is EntrySearchResult ? SearchResult.SearchMatch : SearchMatch.Empty;
-    public ApiSet<string> HighlightedWords
-        => SearchResult is EntrySearchResult entrySearchResult ? entrySearchResult.HighlightedWords : [];
+    public ChatEntryId? EntryId => Item is FoundChatEntry entry ? entry.EntryId : null;
+    public SearchMatch? ContactSearchMatch => Item is FoundContact x ? x.Match : null;
+    public SearchMatch? ChatEntrySearchMatch => Item is FoundChatEntry x ? x.Match : null;
+    public ApiSet<string> HighlightedWords => Item is FoundChatEntry x ? x.HighlightedWords : [];
+
     public LocalUrl Link => Scope switch {
         SearchScope.Groups => Links.Chat(ChatId),
         SearchScope.People => Links.Chat(ChatId),
@@ -33,5 +30,5 @@ public sealed record FoundItem(
     };
 
     public override string ToString()
-        => $"{(IsFirstInGroup ? "|" : " ")} {Scope}: {SearchResult.Text} {(IsLastInGroup ? "|" : "")}";
+        => $"{(IsFirstInGroup ? "|" : " ")} {Scope}: {Item.Match.Text} {(IsLastInGroup ? "|" : "")}";
 }

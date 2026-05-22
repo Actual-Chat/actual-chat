@@ -61,7 +61,7 @@
         var titleMatch = foundItem.ContactSearchMatch;
         var selectedFoundItem = await SearchUI.SelectedItem.Use(cancellationToken).ConfigureAwait(false);
         return new(place) {
-            TitleMatch = titleMatch.IsEmpty ? SearchMatch.New(place.Title) : titleMatch,
+            TitleMatch = titleMatch ?? SearchMatch.Matchless(place.Title),
             MemberCount = allAuthorIds.Length,
             Link = Links.PlaceInfo(placeId),
             Item = foundItem,

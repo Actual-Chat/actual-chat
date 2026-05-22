@@ -6,12 +6,12 @@ namespace ActualChat.Search;
 public interface ISearch : IComputeService
 {
     // Non-compute methods
-    Task<ContactSearchResultPage> FindContacts(
+    Task<SearchResult<FoundContact>> FindContacts(
         Session session,
         ContactSearchQuery query,
         CancellationToken cancellationToken);
 
-    Task<EntrySearchResultPage> FindEntries(
+    Task<SearchResult<FoundChatEntry>> FindEntries(
         Session session,
         EntrySearchQuery query,
         CancellationToken cancellationToken);

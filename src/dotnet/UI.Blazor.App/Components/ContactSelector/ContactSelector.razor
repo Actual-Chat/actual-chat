@@ -18,7 +18,7 @@
     [Parameter] public ChatListFilter Filter { get; set; } = ChatListFilter.None;
     [Parameter] public bool UseCanWriteFilter { get; set; } = true;
     [Parameter] public IReadOnlySet<ChatId>? ExcludeChatIds { get; set; }
-    [Parameter] public MemSearchQuery SearchQuery { get; set; }
+    [Parameter] public SearchQuery SearchQuery { get; set; }
     [Parameter] public EventCallback Changed { get; set; }
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
 

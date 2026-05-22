@@ -66,7 +66,7 @@
 
 @code {
     private MutableState<ImmutableHashSet<UserId>> _selectedUserIds = null!;
-    private MemSearchQuery _searchQuery;
+    private SearchQuery _searchQuery;
 
     private Item[] FilteredItems { get; set; } = [];
     private Item[] AllItems { get; set; } = [];
@@ -122,7 +122,7 @@
         => DisposeTokenSource.CancelAndDisposeSilently();
 
     private void OnFilter(string filter) {
-        _searchQuery = new MemSearchQuery(filter);
+        _searchQuery = new SearchQuery(filter);
         FilteredItems = string.IsNullOrWhiteSpace(filter)
             ? AllItems.ToArray()
             : AllItems

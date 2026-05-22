@@ -40,7 +40,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
     public async Task StressTest_AllUsersExist_AllAreConnected(int count)
     {
         // arrange
-        var prefix = UniqueNames.Prefix();
+        var prefix = UniqueNames.Random();
         var tracer = AppHost.Services.TracerFor(GetType());
         using var __ = tracer.MethodRegion();
         var deviceIds = Enumerable.Repeat(0, count).Select(_ => NewDeviceId()).ToList();
@@ -78,7 +78,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
     public async Task StressTest_UsersCreatedSequentially_AllAreConnected(int count)
     {
         // arrange
-        var prefix = UniqueNames.Prefix();
+        var prefix = UniqueNames.Random();
         var accounts = new AccountFull[count];
         var deviceIds = Enumerable.Repeat(0, count).Select(_ => NewDeviceId()).ToList();
 

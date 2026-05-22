@@ -28,7 +28,7 @@ public static class MentionCandidateFilters
         if (limit <= 0)
             return [];
 
-        var searchQuery = new MemSearchQuery(query);
+        var searchQuery = new SearchQuery(query);
         var matched = new List<(MentionCandidate Candidate, double Score)>();
         foreach (var c in candidates) {
             if (!filter.Invoke(c))

@@ -17,7 +17,7 @@
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.MarkupEditor.create";
 
     private readonly AsyncTaskMethodBuilder _whenReadySource = AsyncTaskMethodBuilderExt.New();
-    private readonly Action<MentionSearchResult> _onMentionSelected;
+    private readonly Action<FoundMention> _onMentionSelected;
     private MentionListManager? _lastMentionListManager;
 
     private ElementReference Ref { get; set; }
@@ -113,13 +113,13 @@
         await JSRef.InvokeVoidAsync("moveCursorToEnd");
     }
 
-    public async ValueTask InsertMention(MentionSearchResult? mention) {
+    public async ValueTask InsertMention(FoundMention? mention) {
         await WhenReady;
         MentionListManager?.Hide();
         if (mention == null)
             return;
 
-        var name = mention.MentionName.NullIfEmpty() ?? mention.Text;
+        var name = mention.MentionName.NullIfEmpty() ?? mention.Match.Text;
         var html = HtmlConverter.Format(MentionMarkup.New(mention.MentionId, name)) + " ";
         await JSRef.InvokeVoidAsync("insertHtml", html, "@");
     }

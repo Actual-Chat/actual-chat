@@ -27,7 +27,7 @@ public static partial class HighlightsConverter
     {
         var highlight = hit.Highlight[AccountNameField].FirstOrDefault(x => !x.IsNullOrEmpty());
         if (highlight.IsNullOrEmpty())
-            return SearchMatch.New(hit.Source.Name);
+            return SearchMatch.Matchless(hit.Source.Name);
 
         return ToSearchMatch(hit.Source.Name, highlight, hit.Score ?? 1.0);
     }
@@ -36,7 +36,7 @@ public static partial class HighlightsConverter
     {
         var (name, highlight) = GetHighlight();
         return highlight.IsNullOrEmpty()
-            ? SearchMatch.New(hit.Source.Name)
+            ? SearchMatch.Matchless(hit.Source.Name)
             : ToSearchMatch(name, highlight, hit.Score ?? 1.0);
 
         (string Name, string? Higlight) GetHighlight()
@@ -59,7 +59,7 @@ public static partial class HighlightsConverter
     {
         var highlight = hit.Highlight[TitleField].FirstOrDefault(x => !x.IsNullOrEmpty());
         if (highlight.IsNullOrEmpty())
-            return SearchMatch.New(hit.Source.Title);
+            return SearchMatch.Matchless(hit.Source.Title);
 
         return ToSearchMatch(hit.Source.Title, highlight, hit.Score ?? 1.0);
     }
@@ -68,7 +68,7 @@ public static partial class HighlightsConverter
     {
         var highlight = hit.Highlight[TitleField].FirstOrDefault(x => !x.IsNullOrEmpty());
         if (highlight.IsNullOrEmpty())
-            return SearchMatch.New(hit.Source.Title);
+            return SearchMatch.Matchless(hit.Source.Title);
 
         return ToSearchMatch(hit.Source.Title, highlight, hit.Score ?? 1.0);
     }
@@ -77,7 +77,7 @@ public static partial class HighlightsConverter
     {
         var highlight = hit.Highlight[ContentField].FirstOrDefault(x => !x.IsNullOrEmpty());
         if (highlight.IsNullOrEmpty())
-            return SearchMatch.New(hit.Source.Content);
+            return SearchMatch.Matchless(hit.Source.Content);
 
         return ToSearchMatch(hit.Source.Content, highlight, hit.Score ?? 1.0);
     }

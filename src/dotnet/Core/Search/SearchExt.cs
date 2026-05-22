@@ -4,8 +4,8 @@ public static class SearchExt
 {
     public static IEnumerable<(TSource Source, double Rank)> WithSearchMatchRank<TSource>(
         this IEnumerable<TSource> source,
-        MemSearchQuery query,
-        Func<TSource, MemSearchDocument> documentSelector)
+        SearchQuery query,
+        Func<TSource, SearchDocument> documentSelector)
         => source.Select(c => (Source: c, Rank: documentSelector(c).GetCoverageScore(query)));
 
     public static IEnumerable<TSource> WithoutSearchMatchRank<TSource>(

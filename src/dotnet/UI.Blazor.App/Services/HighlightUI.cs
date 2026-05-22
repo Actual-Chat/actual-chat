@@ -5,29 +5,43 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class HighlightUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
-    private IReadOnlyDictionary<ChatEntryId, IReadOnlySet<string>> _hits = ReadOnlyDictionary<ChatEntryId, IReadOnlySet<string>>.Empty;
+    private IReadOnlyDictionary<ChatEntryId, IReadOnlySet<string>> _wordsByChatEntryId
+        = ReadOnlyDictionary<ChatEntryId, IReadOnlySet<string>>.Empty;
 
-    public void SetHighlightedWords(IReadOnlyDictionary<ChatEntryId, IReadOnlySet<string>> highlightedWords)
+    public void Set(IReadOnlyDictionary<ChatEntryId, IReadOnlySet<string>> wordsByChatEntryId)
     {
-        var oldHits = _hits;
-        _hits = highlightedWords;
+        var oldWordsByChatEntryId = _wordsByChatEntryId;
+        _wordsByChatEntryId = wordsByChatEntryId;
         using (Invalidation.Begin())
-            foreach (var entryId in oldHits.Keys.Union(highlightedWords.Keys))
-                _ = GetHighlightedWords(entryId, default);
+            foreach (var entryId in oldWordsByChatEntryId.Keys.Union(wordsByChatEntryId.Keys)) {
+                _ = GetSearchQuery(entryId, default);
+                _ = GetWordSet(entryId, default);
+            }
+    }
+
+    public void Reset()
+        => Set(ReadOnlyDictionary<ChatEntryId, IReadOnlySet<string>>.Empty);
+
+    public virtual async Task<SearchMatch> GetSearchMatch(ChatEntryId entryId, string text, CancellationToken cancellationToken)
+    {
+        var query = await GetSearchQuery(entryId, cancellationToken).ConfigureAwait(false);
+        return query.IsEmpty
+            ? SearchMatch.Empty
+            : new SearchMatch(text, query);
     }
 
     [ComputeMethod]
-    public virtual async Task<SearchMatch> GetMatch(ChatEntryId entryId, string text, CancellationToken cancellationToken)
+    public virtual Task<SearchQuery> GetSearchQuery(ChatEntryId chatEntryId, CancellationToken cancellationToken)
     {
-        var words = await GetHighlightedWords(entryId, cancellationToken).ConfigureAwait(false);
-        if (words.Count == 0)
-            return SearchMatch.Empty;
-
-        var query = new MemSearchQuery(words.ToDelimitedString(" "));
-        return new SearchMatch(text, 0, query.GetMatchParts(text, exact: true));
+        var wordSet = _wordsByChatEntryId.GetValueOrDefault(chatEntryId, ApiSet<string>.Empty);
+        var searchQuery = new SearchQuery(wordSet.ToDelimitedString(" "), matchSuffixes: true);
+        return Task.FromResult(searchQuery);
     }
 
-    [ComputeMethod] // Synced
-    public virtual Task<IReadOnlySet<string>> GetHighlightedWords(ChatEntryId chatEntryId, CancellationToken cancellationToken)
-        => Task.FromResult(_hits.GetValueOrDefault(chatEntryId, ApiSet<string>.Empty));
+    [ComputeMethod]
+    public virtual Task<IReadOnlySet<string>> GetWordSet(ChatEntryId chatEntryId, CancellationToken cancellationToken)
+    {
+        var wordSet = _wordsByChatEntryId.GetValueOrDefault(chatEntryId, ApiSet<string>.Empty);
+        return Task.FromResult(wordSet);
+    }
 }

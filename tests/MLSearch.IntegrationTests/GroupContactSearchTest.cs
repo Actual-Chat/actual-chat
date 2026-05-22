@@ -9,7 +9,7 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
-    private string UniquePart { get; } = UniqueNames.Prefix();
+    private string IsolationKey { get; } = UniqueNames.Random();
 
     protected override async Task DisposeAsync()
     {
@@ -23,23 +23,23 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
         await Tester.SignInAsUniqueAlice();
-        var places = await Tester.CreatePlaceContacts(bob, UniquePart);
-        var chats = await Tester.CreateGroupContacts(bob, places, uniquePart: UniquePart);
+        var places = await Tester.CreatePlaceContacts(bob, IsolationKey);
+        var chats = await Tester.CreateGroupContacts(bob, places, testIsolationKey: IsolationKey);
         await Tester.SignIn(bob);
 
         // act, assert
         var expected = bob.BuildSearchResults(chats.JoinedGroups2());
         var searchResults = await Find("GroupChat", true, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicChat1(), UniquePart, [(19, 28)]), o => o.ExcludingRank());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicPlace1JoinedPublicChat1(), UniquePart, [(51, 60)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicChat1(), IsolationKey, [(19, 28)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicPlace1JoinedPublicChat1(), IsolationKey, [(51, 60)]), o => o.ExcludingRank());
 
         expected = bob.BuildSearchResults(chats.OtherPublicGroups2());
         searchResults = await Find("GroupChat", false, null, expected.Count);
         searchResults.Should()
             .BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.OtherPublicChat1(), UniquePart, [(19, 28)]), o => o.ExcludingRank());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.OtherPublicPlace1OtherPublicChat1(), UniquePart, [(54, 63)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.OtherPublicChat1(), IsolationKey, [(19, 28)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.OtherPublicPlace1OtherPublicChat1(), IsolationKey, [(54, 63)]), o => o.ExcludingRank());
 
         expected = bob.BuildSearchResults(
             chats.JoinedPublicPlace1JoinedPrivateChat1(),
@@ -67,16 +67,16 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
         await Tester.SignInAsUniqueAlice();
-        var places = await Tester.CreatePlaceContacts(bob, UniquePart);
-        var chats = await Tester.CreateGroupContacts(bob, places, uniquePart: UniquePart);
+        var places = await Tester.CreatePlaceContacts(bob, IsolationKey);
+        var chats = await Tester.CreateGroupContacts(bob, places, testIsolationKey: IsolationKey);
         await Tester.SignIn(bob);
 
         // act, assert
         var expected = bob.BuildSearchResults(chats.JoinedPrivatePlace1JoinedChats());
         var searchResults = await Find("groupch", true, places.JoinedPrivatePlace1().Id, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPrivatePlace1JoinedPrivateChat2(), UniquePart, [(53, 62)]), o => o.ExcludingRank());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPrivatePlace1JoinedPublicChat1(), UniquePart, [(52, 61)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPrivatePlace1JoinedPrivateChat2(), IsolationKey, [(53, 62)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPrivatePlace1JoinedPublicChat1(), IsolationKey, [(52, 61)]), o => o.ExcludingRank());
 
         searchResults = await Find("groupch", false, places.JoinedPrivatePlace1().Id, 0);
         searchResults.Should().BeEmpty("private groups are not visible while public groups are 'joined' automatically");
@@ -85,8 +85,8 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         expected = bob.BuildSearchResults(chats.JoinedPublicPlace1JoinedChats());
         searchResults = await Find("groupch", true, places.JoinedPublicPlace1().Id, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicPlace1JoinedPrivateChat2(), UniquePart, [(52, 61)]), o => o.ExcludingRank());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicPlace1JoinedPublicChat1(), UniquePart, [(51, 60)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicPlace1JoinedPrivateChat2(), IsolationKey, [(52, 61)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicPlace1JoinedPublicChat1(), IsolationKey, [(51, 60)]), o => o.ExcludingRank());
 
         searchResults = await Find("groupch", false, places.JoinedPublicPlace1().Id, 0);
         searchResults.Should().BeEmpty("private groups are not visible while public groups are 'joined' automatically");
@@ -98,8 +98,8 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
         var alice = await Tester.SignInAsUniqueAlice();
-        var places = await Tester.CreatePlaceContacts(bob, UniquePart);
-        var chats = await Tester.CreateGroupContacts(bob, places, uniquePart: UniquePart);
+        var places = await Tester.CreatePlaceContacts(bob, IsolationKey);
+        var chats = await Tester.CreateGroupContacts(bob, places, testIsolationKey: IsolationKey);
         await Tester.SignIn(bob);
 
         // act, assert
@@ -109,7 +109,7 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
 
         // act
         await Tester.SignIn(alice);
-        var updatedChat = await Tester.UpdateChat(chats.JoinedPrivatePlace1JoinedPrivateChat1().Id, $"{UniquePart} bbb");
+        var updatedChat = await Tester.UpdateChat(chats.JoinedPrivatePlace1JoinedPrivateChat1().Id, $"{IsolationKey} bbb");
         await Tester.SignIn(bob);
 
         // assert
@@ -128,8 +128,8 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
         var alice = await Tester.SignInAsUniqueAlice();
-        var places = await Tester.CreatePlaceContacts(bob, UniquePart);
-        var chats = await Tester.CreateGroupContacts(bob, places, uniquePart: UniquePart);
+        var places = await Tester.CreatePlaceContacts(bob, IsolationKey);
+        var chats = await Tester.CreateGroupContacts(bob, places, testIsolationKey: IsolationKey);
         await Tester.SignIn(bob);
 
         // act, assert
@@ -148,9 +148,9 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
-    private Task<ContactSearchResult[]> Find(string criteria, bool own, PlaceId? placeId, int expectedCount)
+    private Task<FoundContact[]> Find(string criteria, bool own, PlaceId? placeId, int expectedCount)
         => TestsExt.When(async () => {
-                var groups = await Tester.FindGroups($"{UniquePart} {criteria}", own, placeId, 50);
+                var groups = await Tester.FindGroups($"{IsolationKey} {criteria}", own, placeId, 50);
                 groups.Should().HaveCount(expectedCount);
                 return groups;
             },

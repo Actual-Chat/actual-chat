@@ -63,15 +63,14 @@ public partial class SearchUI
         _cached = new Cached(foundItems);
         var messageSearchMatches = _cached.FoundItems
             .Where(x => x.Scope is SearchScope.Messages && !x.IsGlobalSearchPlaceholder)
-            .ToDictionary(x => (ChatEntryId)x.EntryId!, IReadOnlySet<string> (x) => x.HighlightedWords);
-        HighlightUI.SetHighlightedWords(messageSearchMatches);
+            .ToDictionary(x => x.EntryId!, IReadOnlySet<string> (x) => x.HighlightedWords);
+        HighlightUI.Set(messageSearchMatches);
         _selectedItem.Invalidate();
         using (Invalidation.Begin())
             _ = GetSearchResults();
         return;
 
-        void AddUserRelatedSearchResults(Dictionary<SubgroupKey, IReadOnlyList<SearchResult>> searchResultMap)
-        {
+        void AddUserRelatedSearchResults(Dictionary<SubgroupKey, IReadOnlyList<IHasSearchMatch>> searchResultMap) {
             foreach (var scope in Scopes) {
                 var scopeResults = searchResultMap.GetValueOrDefault(new (scope, true)) ?? [];
                 var displayLimit = criteria.DisplayLimit(scope);
@@ -90,8 +89,7 @@ public partial class SearchUI
             }
         }
 
-        void AddGlobalSearchResults(Dictionary<SubgroupKey, IReadOnlyList<SearchResult>> searchResultMap)
-        {
+        void AddGlobalSearchResults(Dictionary<SubgroupKey, IReadOnlyList<IHasSearchMatch>> searchResultMap) {
             var perScope = Scopes.Select(scope => {
                 var rs = searchResultMap.GetValueOrDefault(new (scope, false)) ?? [];
                 var dl = criteria.DisplayLimit(scope);
@@ -126,13 +124,11 @@ public partial class SearchUI
         }
     }
 
-    private async Task<Dictionary<SubgroupKey, IReadOnlyList<SearchResult>>> Find(
+    private async Task<Dictionary<SubgroupKey, IReadOnlyList<IHasSearchMatch>>> Find(
         Criteria criteria,
         CancellationToken cancellationToken)
     {
-        if (criteria == Criteria.None)
-            return [];
-        if (criteria.LocationFilter == SearchLocationFilter.Chat && criteria.ChatId is null)
+        if (criteria == Criteria.None || criteria is { LocationFilter: SearchLocationFilter.Chat, ChatId: null })
             return [];
 
         var session = Session;
@@ -151,18 +147,21 @@ public partial class SearchUI
             .Where(x => x.Second.HasValue)
             .ToDictionary(x => x.First, x => x.Second.Value);
 
-        async Task<IReadOnlyList<SearchResult>> FindSubgroup(SubgroupKey key) // TODO: reuse cached data for scope
-        {
+        async Task<IReadOnlyList<IHasSearchMatch>> FindSubgroup(SubgroupKey key) {
+            // TODO: reuse cached data for scope
             switch (key.Scope) {
             case SearchScope.People:
             case SearchScope.Groups:
             case SearchScope.Places:
-                var contactResponse = await Search.FindContacts(session, criteria.ToContactQuery(key), cancellationToken)
+                var contactsPage = await Search
+                    .FindContacts(session, criteria.ToContactQuery(key), cancellationToken)
                     .ConfigureAwait(false);
-                return contactResponse.Hits;
+                return contactsPage.Items;
             case SearchScope.Messages:
-                var entryResponse = await Search.FindEntries(session, criteria.ToEntryQuery(key), cancellationToken).ConfigureAwait(false);
-                return entryResponse.Hits;
+                var entriesPage = await Search
+                    .FindEntries(session, criteria.ToEntryQuery(key), cancellationToken)
+                    .ConfigureAwait(false);
+                return entriesPage.Items;
             default:
                 throw new ArgumentOutOfRangeException($"{nameof(key)}.{nameof(key.Scope)}");
             }

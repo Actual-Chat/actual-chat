@@ -9,12 +9,12 @@ public interface ISearchBackend : IComputeService, IBackendService
 {
     // Non-compute methods
 
-    Task<ContactSearchResultPage> FindContacts(
+    Task<SearchResult<FoundContact>> FindContacts(
         UserId ownerId,
         ContactSearchQuery query,
         CancellationToken cancellationToken);
 
-    Task<EntrySearchResultPage> FindEntries(
+    Task<SearchResult<FoundChatEntry>> FindEntries(
         UserId userId,
         EntrySearchQuery query,
         CancellationToken cancellationToken);

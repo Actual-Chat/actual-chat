@@ -6,7 +6,7 @@
 
 <CopyTrigger Class="!contents" Tooltip="Click to copy" CopyText="@m.MarkupText">
     <code class="preformatted-text-markup">
-        @if (m.MustHighlight) {
+        @if (m.SearchMatch.IsMatch) {
             <SearchMatchHighlighter
                 Match="m.SearchMatch"
                 HighlightedClass="highlight"/>
@@ -27,13 +27,11 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var entryId = Entry.Id;
         var markupText = Markup.Text;
-        var searchMatch = await HighlightUI.GetMatch(entryId, markupText, cancellationToken).ConfigureAwait(false);
+        var searchMatch = await HighlightUI.GetSearchMatch(entryId, markupText, cancellationToken).ConfigureAwait(false);
         return new(markupText, searchMatch);
     }
 
     // Nested types
 
-    public sealed record Model(string MarkupText, SearchMatch SearchMatch) {
-        public bool MustHighlight => !SearchMatch.IsEmpty;
-    }
+    public sealed record Model(string MarkupText, SearchMatch SearchMatch);
 }

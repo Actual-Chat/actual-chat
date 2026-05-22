@@ -8,7 +8,7 @@ namespace ActualChat.Testing.Host;
 
 public static class TestSearchDataGenerator
 {
-    // Underscores prevent matches in random alphanumeric strings (ChatId, UniquePart).
+    // Underscores prevent matches in random alphanumeric strings (ChatId, TestIsolationKey).
     public const string OneTerm = "o_n_e";
     public const string TwoTerm = "t_w_o";
 
@@ -21,7 +21,7 @@ public static class TestSearchDataGenerator
     public static async Task<ITestPlaceMap> CreatePlaceContacts(
         this IWebTester tester,
         AccountFull contactOwner,
-        string uniquePart = "",
+        string testIsolationKey = "",
         int placeIndexCount = 2)
     {
         var places = new Dictionary<TestPlaceKey, Place>();
@@ -29,7 +29,7 @@ public static class TestSearchDataGenerator
             foreach (var isPublic in new[] { true, false })
             foreach (var mustJoin in new[] { true, false }) {
                 var placeKey = new TestPlaceKey(i, isPublic, mustJoin);
-                var place = await tester.CreatePlace(placeKey.IsPublic, GetPlaceTitle(contactOwner, placeKey, uniquePart));
+                var place = await tester.CreatePlace(placeKey.IsPublic, GetPlaceTitle(contactOwner, placeKey, testIsolationKey));
                 if (placeKey.MustJoin)
                     await tester.InviteToPlace(place.Id, contactOwner);
                 places.Add(placeKey, place);
@@ -41,7 +41,7 @@ public static class TestSearchDataGenerator
         this IWebTester tester,
         AccountFull contactOwner,
         ITestPlaceMap places,
-        string uniquePart = "",
+        string testIsolationKey = "",
         int nonPlaceChatIndexCount = 2,
         int placeChatIndexCount = 2)
     {
@@ -56,7 +56,7 @@ public static class TestSearchDataGenerator
             => $"{GetPlaceTitle(contactOwner, key.PlaceKey)} - {GetTitleChatPart(key)}";
 
         string GetTitleChatPart(TestGroupKey key)
-            => $"{GetVisibilityString(key.IsPublic)} GroupChat {GetIndexString(key.Index)} {GetMembershipSuffix(contactOwner, key.MustJoin)} {uniquePart}".Trim();
+            => $"{GetVisibilityString(key.IsPublic)} GroupChat {GetIndexString(key.Index)} {GetMembershipSuffix(contactOwner, key.MustJoin)} {testIsolationKey}".Trim();
 
         async Task GenerateChats(TestPlaceKey? placeKey, int chatCount, Place? place)
         {
@@ -89,7 +89,7 @@ public static class TestSearchDataGenerator
         this IWebTester tester,
         AccountFull contactOwner,
         ITestPlaceMap places,
-        string uniquePart = "",
+        string testIsolationKey = "",
         int indexCount = 2)
     {
         var placeAdmin = await tester.GetOwnAccount();
@@ -104,7 +104,7 @@ public static class TestSearchDataGenerator
                         isExistingContact ? "Friend" : "Stranger",
                         "TestUser",
                         GetIndexString(i));
-                    var lastName = "from " + GetPlaceTitle(contactOwner, placeKey, uniquePart);
+                    var lastName = "from " + GetPlaceTitle(contactOwner, placeKey, testIsolationKey);
                     var account = await tester.CreateAccount(name, lastName);
                     users.Add(key, account);
                 }
@@ -132,29 +132,29 @@ public static class TestSearchDataGenerator
         AccountFull contactOwner,
         ITestGroupChatMap groups,
         ITestUserMap users,
-        string uniquePart = "",
+        string testIsolationKey = "",
         int entryIndexCount = 2)
     {
         var map = new Dictionary<TestEntryKey, ChatEntry>();
         for (int i = 0; i < entryIndexCount; i++)
             foreach (var group in groups)
-                map[new TestEntryKey(group.Key, i)] = await tester.CreateTextEntry(group.Value.Id, $"Message {GetIndexString(i)} in chat #{group.Value.Id} {uniquePart}".Trim());
+                map[new TestEntryKey(group.Key, i)] = await tester.CreateTextEntry(group.Value.Id, $"Message {GetIndexString(i)} in chat #{group.Value.Id} {testIsolationKey}".Trim());
         var userToRestore = await tester.GetOwnAccount();
         await tester.SignIn(contactOwner);
         for (int i = 0; i < entryIndexCount; i++)
             foreach (var user in users.Where(x => x.Key.MustJoin)) {
                 var chatId = PeerChatId.New(contactOwner.Id, user.Value.Id);
                 map[new TestEntryKey(user.Key, i)] =
-                    await tester.CreateTextEntry(chatId, $"Message {GetIndexString(i)} {uniquePart}".Trim());
+                    await tester.CreateTextEntry(chatId, $"Message {GetIndexString(i)} {testIsolationKey}".Trim());
             }
         await tester.SignIn(userToRestore);
         return map;
     }
 
-    private static string GetPlaceTitle(AccountFull contactOwner, TestPlaceKey? key, string uniquePart = "")
+    private static string GetPlaceTitle(AccountFull contactOwner, TestPlaceKey? key, string testIsolationKey = "")
         => key == null
             ? "Non-place"
-            : $"{GetVisibilityString(key.IsPublic)} place {GetIndexString(key.Index)} {GetMembershipSuffix(contactOwner, key.MustJoin)} {uniquePart}".Trim();
+            : $"{GetVisibilityString(key.IsPublic)} place {GetIndexString(key.Index)} {GetMembershipSuffix(contactOwner, key.MustJoin)} {testIsolationKey}".Trim();
 
     private static string GetVisibilityString(bool isPublic)
         => isPublic ? "public" : "private";

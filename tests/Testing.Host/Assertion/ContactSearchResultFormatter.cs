@@ -6,12 +6,12 @@ namespace ActualChat.Testing.Host.Assertion;
 public class ContactSearchResultFormatter : IValueFormatter
 {
     public bool CanHandle(object value)
-        => value is ContactSearchResult;
+        => value is FoundContact;
 
     public void Format(object value, FormattedObjectGraph formattedGraph, FormattingContext context, FormatChild formatChild)
     {
-        var item = (ContactSearchResult)value;
-        var result = $"{item.Text} (#{item.Id}) {FormatSearchMatch(item.SearchMatch)}";
+        var item = (FoundContact)value;
+        var result = $"{item.Match.Text} (#{item.ContactId}) {FormatSearchMatch(item.Match)}";
         if (context.UseLineBreaks)
             formattedGraph.AddLine(result);
         else

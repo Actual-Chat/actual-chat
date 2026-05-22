@@ -45,11 +45,10 @@ public sealed class SearchMatchMessagePackFormatter : IMessagePackFormatter<Sear
     }
 }
 
-public sealed class SearchMatchPartMessagePackFormatter : IMessagePackFormatter<SearchMatchPart?>
+public sealed class SearchMatchPartMessagePackFormatter : IMessagePackFormatter<SearchMatchPart>
 {
-    public void Serialize(ref MessagePackWriter writer, SearchMatchPart? value, MessagePackSerializerOptions options)
+    public void Serialize(ref MessagePackWriter writer, SearchMatchPart value, MessagePackSerializerOptions options)
     {
-        if (value is null) { writer.WriteNil(); return; }
         writer.WriteMapHeader(2);
         writer.Write(nameof(SearchMatchPart.Range));
         options.Resolver.GetFormatterWithVerify<Range<int>>().Serialize(ref writer, value.Range, options);
@@ -57,10 +56,8 @@ public sealed class SearchMatchPartMessagePackFormatter : IMessagePackFormatter<
         writer.Write(value.Rank);
     }
 
-    public SearchMatchPart? Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
+    public SearchMatchPart Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
     {
-        if (reader.TryReadNil())
-            return null;
         var mapLen = reader.ReadMapHeader();
         Range<int> range = default;
         var rank = 0d;

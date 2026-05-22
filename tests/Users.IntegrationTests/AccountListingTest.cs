@@ -8,7 +8,7 @@ public class AccountListingTest(AppHostFixture fixture, ITestOutputHelper @out, 
 {
     private IWebClientTester Tester { get; } = fixture.AppHost.NewWebClientTester(@out);
     private IAccountsBackend Sut { get; } = fixture.AppHost.Services.GetRequiredService<IAccountsBackend>();
-    private string UniquePart { get; } = UniqueNames.Prefix();
+    private string IsolationKey { get; } = UniqueNames.Random();
 
     protected override async Task DisposeAsync()
     {
@@ -23,7 +23,7 @@ public class AccountListingTest(AppHostFixture fixture, ITestOutputHelper @out, 
     {
         // arrange
         var alice = await Tester.SignInAsNew("Alice");
-        var accounts = await Tester.CreateAccounts(count, nameFactory: _ => $"{UniquePart} User");
+        var accounts = await Tester.CreateAccounts(count, nameFactory: _ => $"{IsolationKey} User");
 
         // act
         var minVersion = alice.Version;

@@ -51,7 +51,7 @@
 </div>
 
 @code {
-    private MemSearchQuery _searchQuery;
+    private SearchQuery _searchQuery;
     private ChatId ChatId { get; set; } = null!;
 
     private IAuthors Authors => Hub.Authors;
@@ -68,7 +68,7 @@
     }
 
     private void OnFilter(string filter) {
-        _searchQuery = new MemSearchQuery(filter);
+        _searchQuery = new SearchQuery(filter);
         _ = State.Recompute();
     }
 
@@ -103,7 +103,7 @@
             authors.Sort((Comparison<(AuthorId, string)>)Compare);
         } else {
             authors = authors
-                .WithSearchMatchRank(searchQuery, c => new MemSearchDocument(c.authorName))
+                .WithSearchMatchRank(searchQuery, c => new SearchDocument(c.authorName))
                 .FilterBySearchMatchRank()
                 .OrderBySearchMatchRank()
                 .WithoutSearchMatchRank()

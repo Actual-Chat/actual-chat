@@ -1,6 +1,5 @@
 using ActualChat.Search;
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.Users;
 
 namespace ActualChat.Testing.Host;
 
@@ -12,17 +11,16 @@ public static class UserContactSearchResultExt
     public static FoundItem BuildFoundContact(this Account owner, AccountFull other, bool isGlobalSearchResult)
         => new (owner.BuildSearchResult(other), SearchScope.People, isGlobalSearchResult);
 
-    public static List<ContactSearchResult> BuildSearchResults(this Account owner, params IEnumerable<AccountFull> others)
+    public static List<FoundContact> BuildSearchResults(this Account owner, params IEnumerable<AccountFull> others)
         => others.Select(x => owner.BuildSearchResult(x)).ToList();
 
-    public static ContactSearchResult BuildSearchResult(this Account owner, AccountFull other, Range<int>[]? searchMatchPartRanges = null)
+    public static FoundContact BuildSearchResult(this Account owner, AccountFull other, Range<int>[]? searchMatchPartRanges = null)
         => owner.Id.BuildSearchResult(other.Id, other.Name, searchMatchPartRanges);
 
-    public static ContactSearchResult BuildSearchResult(
+    public static FoundContact BuildSearchResult(
         this UserId ownerId,
         UserId otherUserId,
         string title,
         Range<int>[]? searchMatchPartRanges = null)
-        => new (ContactId.NewUser(ownerId, otherUserId),
-            searchMatchPartRanges.BuildSearchMatch(title));
+        => new (ContactId.NewUser(ownerId, otherUserId), searchMatchPartRanges.BuildSearchMatch(title));
 }

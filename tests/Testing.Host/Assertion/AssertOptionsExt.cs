@@ -17,25 +17,25 @@ public static class AssertOptionsExt
             .Excluding(mi => mi.Name == "CreatedAt")
             .Excluding(mi => mi.Name == "ModifiedAt");
 
-    public static EquivalencyOptions<ContactSearchResult> ExcludingRank(
-        this EquivalencyOptions<ContactSearchResult> options)
-        => options.Excluding(x => x.SearchMatch.Rank)
-            .For(x => x.SearchMatch.Parts)
+    public static EquivalencyOptions<FoundContact> ExcludingRank(
+        this EquivalencyOptions<FoundContact> options)
+        => options.Excluding(x => x.Match.Rank)
+            .For(x => x.Match.Parts)
             .Exclude(x => x.Rank);
 
-    public static EquivalencyOptions<ContactSearchResult> ExcludingUniquePart(
-        this EquivalencyOptions<ContactSearchResult> options)
-        => options.Excluding(x => x.SearchMatch.Rank)
-            .For(x => x.SearchMatch.Parts)
+    public static EquivalencyOptions<FoundContact> ExcludingUniquePart(
+        this EquivalencyOptions<FoundContact> options)
+        => options.Excluding(x => x.Match.Rank)
+            .For(x => x.Match.Parts)
             .Exclude(x => x.Rank);
 
-    public static EquivalencyOptions<ContactSearchResult> ExcludingSearchMatch(
-        this EquivalencyOptions<ContactSearchResult> options)
-        => options.Excluding(x => x.SearchMatch);
+    public static EquivalencyOptions<FoundContact> ExcludingSearchMatch(
+        this EquivalencyOptions<FoundContact> options)
+        => options.Excluding(x => x.Match);
 
-    public static EquivalencyOptions<EntrySearchResult> ExcludingSearchMatch(
-        this EquivalencyOptions<EntrySearchResult> options)
-        => options.Excluding(x => x.SearchMatch);
+    public static EquivalencyOptions<FoundChatEntry> ExcludingSearchMatch(
+        this EquivalencyOptions<FoundChatEntry> options)
+        => options.Excluding(x => x.Match);
 
     public static EquivalencyOptions<Notification.Notification> Text(
         this EquivalencyOptions<Notification.Notification> options)
@@ -43,9 +43,9 @@ public static class AssertOptionsExt
 
     public static EquivalencyOptions<FoundItem> ExcludingSearchMatch(
         this EquivalencyOptions<FoundItem> options)
-        => options.Excluding(x => x.SearchResult.SearchMatch)
+        => options.Excluding(x => x.Item.Match)
             .Excluding(x => x.ContactSearchMatch)
-            .Excluding(x => x.MessageSearchMatch);
+            .Excluding(x => x.ChatEntrySearchMatch);
 
     public static EquivalencyOptions<FoundItem> ExcludingBorders(
         this EquivalencyOptions<FoundItem> options)

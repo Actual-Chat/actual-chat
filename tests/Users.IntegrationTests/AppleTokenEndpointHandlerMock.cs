@@ -13,7 +13,7 @@ public sealed class AppleTokenEndpointHandlerMock : HttpMessageHandler
 
     public string Setup(string sub, string email)
     {
-        var code = UniqueNames.Prefix();
+        var code = UniqueNames.Random();
         _codes[code] = (sub, email);
         return code;
     }
