@@ -2,7 +2,6 @@ using System.Net;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
-using ActualChat.Search;
 using CommunityToolkit.HighPerformance;
 
 namespace ActualChat;
@@ -47,9 +46,6 @@ public static partial class StringExt
 
     public static bool IsNullOrWhiteSpace([NotNullWhen(false)] this string? source)
         => string.IsNullOrWhiteSpace(source);
-
-    public static SearchPhrase ToSearchPhrase(this string text, bool matchPrefixes, bool matchSuffixes)
-        => new(text, matchPrefixes, matchSuffixes);
 
     public static string ToSentenceCase(this string str, string delimiter = " ")
         => CaseChangeRegex.Replace(str, m => $"{m.Value[0]}{delimiter}{m.Value[1..]}");
