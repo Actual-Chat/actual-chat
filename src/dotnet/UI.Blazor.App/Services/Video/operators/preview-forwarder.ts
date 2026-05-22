@@ -4,6 +4,7 @@ import { getLogs } from 'logging';
 import type { MonotonicTime } from 'clocks';
 import type { NormalizedFrame } from '../frame-envelopes';
 import type { PreviewFramePresentation } from '../sender/recorder-worker-contract';
+import { HAS_VF_ROTATION_INIT, wrapWithRotation } from '../video-frame-caps';
 
 const { warnLog } = getLogs('VideoPipeline');
 // Log first, then 1-in-N — prevents flooding when a device-level failure drops every clone.
@@ -135,10 +136,24 @@ export function previewForwarder(opts: PreviewForwarderOptions): PipeOperator<No
             return;
         }
 
+        // MSTG path (Chromium): attach display rotation as VideoFrame
+        // metadata so the <video> element auto-rotates; report rotation=0
+        // to the presentation callback so the CSS --video-rotation path
+        // doesn't double-rotate. Canvas-preview path (writer === null)
+        // keeps the legacy path — canvas drawImage ignores VideoFrame
+        // rotation metadata, so it relies on CSS rotation.
+        let frame = clone;
+        let displayRotation = envelope.rotation;
+        if (writer && HAS_VF_ROTATION_INIT && envelope.rotation !== 0) {
+            frame = wrapWithRotation(clone, envelope.rotation);
+            closeFrame(clone);
+            displayRotation = 0;
+        }
+
         enqueue({
-            frame: clone,
+            frame,
             capturedAt: envelope.capturedAt,
-            rotation: envelope.rotation,
+            rotation: displayRotation,
             writer,
             reportFrame,
         });
