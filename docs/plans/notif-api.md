@@ -160,8 +160,14 @@ handler. Dismissals (clear-on-read) lower the count via a silent push.
   host via `TestAppHostFactory`, so tests never hit Firebase and can assert on sends.
   Phase 2 follow-up done here: `DbUserNotifications` got `ConflictStrategy.DoNothing` +
   `ApplyHardUpdate` re-reads under lock on a lost create race (no notification dropped).
-- **Phase 4 — Fan-out rewrite.** Event handlers → cheap fan-out → `OnNotify`.
-  Delete `NotificationFlow`.
+- **Phase 4 — Fan-out rewrite.** ✅ Done. Event handlers fan out straight to `OnNotify`:
+  removed the presence check and the `NotificationFlow`-based deferral of online users
+  (reconciliation + soft/silence coalescing replace it), and removed the redundant
+  `_recentChatsWithNotifications` chat-level throttle. Deleted `NotificationFlow`, its
+  module registration, `NotificationFlowTest`, `Flows/SerializationTests`, and the now-dead
+  `Constants.Notification.OnlineCheckDelay`. `EnqueueMessageRelatedNotifications` still
+  renders `Title`/`Text`/`IconUrl` once and enqueues one `NotificationsBackend_Notify`
+  per subscriber.
 - **Phase 5 — Read / dismiss.** Engagement/read signals → dormancy clear +
   clear-on-read (via the population re-check).
 - **Phase 6 — Client.** `ListActive` consumer, iOS badge simplification, silent

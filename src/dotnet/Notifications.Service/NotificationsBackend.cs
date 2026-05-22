@@ -1,32 +1,21 @@
 using System.Collections.Concurrent;
 using ActualChat.Contacts;
 using ActualChat.Db;
-using ActualChat.Flows;
 using ActualChat.Notifications.Db;
-using ActualChat.Notifications.Flows;
 using ActualChat.Queues;
 using ActualChat.Sharding;
 using ActualChat.Users;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 
 namespace ActualChat.Notifications;
 
 /// <summary>
 /// Backend service implementation for managing push notifications and device tokens.
 /// </summary>
-#pragma warning disable CA1001 // Has disposable _recentChatsWithNotifications
 public class NotificationsBackend(IServiceProvider services)
     : ShardedDbServiceBase<NotificationDbContext>(services), INotificationsBackend
-#pragma warning restore CA1001
 {
-    private readonly MemoryCache _recentChatsWithNotifications = new(new MemoryCacheOptions {
-        CompactionPercentage = 0.1,
-        SizeLimit = 10_000,
-        ExpirationScanFrequency = TimeSpan.FromSeconds(5),
-    });
-
     // Per-user soft-update buffers, owned by this shard. Entries are lost on restart by design
     // (see docs/plans/notif-api.md); a committed hard update always re-reads from the DB.
     private readonly ConcurrentDictionary<UserId, SoftBuffer> _softBuffers = new();
@@ -42,14 +31,12 @@ public class NotificationsBackend(IServiceProvider services)
     private IDbEntityResolver<string, DbExplicitNotification> DbExplicitNotificationResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbExplicitNotification>>();
 
-    private IUserPresences UserPresences { get; } = services.GetRequiredService<IUserPresences>();
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
         = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
     private IFirebaseMessagingClient FirebaseMessagingClient { get; }
         = services.GetRequiredService<IFirebaseMessagingClient>();
     private IQueues Queues { get; } = services.Queues();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
-    private FlowHub FlowHub => field ??= Services.FlowHub();
     private ILogger? DebugLog => Log;
 
     // [ComputeMethod]
@@ -542,20 +529,9 @@ public class NotificationsBackend(IServiceProvider services)
 
         var entryId = freshEntry.Id;
         var chatId = entryId.ChatId;
-        var (text, mentionIds) = await NotificationHelper
+        var (text, _) = await NotificationHelper
             .GetText(freshEntry, MarkupConsumer.Notification, ChatMarkupHubFactory, cancellationToken)
             .ConfigureAwait(false);
-        var key = chatId.Id.Value;
-        if (!_recentChatsWithNotifications.TryGetValue(key, out _)) {
-            using ICacheEntry cacheEntry = _recentChatsWithNotifications.CreateEntry(key);
-            cacheEntry.Size = 1;
-            cacheEntry.Value = "";
-            cacheEntry.AbsoluteExpirationRelativeToNow = Constants.Notification.ThrottleIntervals.Message;
-        }
-        else if (mentionIds.Count == 0) {
-            DebugLog?.LogInformation("Throttle low priority notifications. EntryId={EntryId}", entryId);
-            return;
-        }
         var userIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
         await EnqueueMessageRelatedNotifications(
             chatId, entryId, author, text, NotificationKind.Message,
@@ -606,24 +582,6 @@ public class NotificationsBackend(IServiceProvider services)
         var otherUserIds = userIds.Where(userId => userId != changeAuthor.UserId);
 
         foreach (var otherUserId in otherUserIds) {
-            var checkPresence = kind != NotificationKind.Attention;
-            if (checkPresence) {
-                var presence = await UserPresences.Get(otherUserId, cancellationToken).ConfigureAwait(false);
-                // Delay notifications for online users — if still unread after delay, send anyway
-                if (presence is Presence.Online or Presence.Recording) {
-                    if (kind == NotificationKind.Message && entryId is not null) {
-                        DebugLog?.LogInformation(
-                            "EnqueueMessageRelatedNotifications. Scheduling delayed check for online user. ChatId={ChatId}, EntryId={EntryId}, UserId={UserId}",
-                            chatId, entryId, otherUserId);
-                        var flowArgs = NotificationFlow.GetArguments(otherUserId, chatId);
-                        await FlowHub.NewResumeEvent<NotificationFlow>(flowArgs)
-                            .WithDelay(Constants.Notification.OnlineCheckDelay)
-                            .Schedule(cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-                    continue;
-                }
-            }
             var entryLid = entryId?.LocalId ?? 0;
             var fullEntryId = entryId ?? ChatEntryId.New(chatId, entryLid);
             Notification notification = kind switch {

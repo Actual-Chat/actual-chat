@@ -39,13 +39,10 @@ public static class UserOperations
             .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, googleId))
             .WithClaim(ClaimTypes.Email, email);
 
-    // Marks the user as having been last active 15 minutes ago so notification routing
-    // treats them as offline — i.e. pushes are delivered immediately via the
-    // ChatEntryChangedEvent path instead of being deferred by NotificationFlow's
-    // online-user check.
-    // Waits until UserPresences.Get observes Offline so callers can rely on
-    // an immediate read returning the new state (Fusion invalidation propagation
-    // is otherwise asynchronous and races with the next CreateTextEntry).
+    // Marks the user as having been last active 15 minutes ago, so presence-aware code
+    // treats them as offline. Waits until UserPresences.Get observes Offline so callers
+    // can rely on an immediate read returning the new state (Fusion invalidation
+    // propagation is otherwise asynchronous and races with the next CreateTextEntry).
     public static async Task ForceOffline(this IWebTester tester, AccountFull user)
     {
         var clocks = tester.AppServices.Clocks();
