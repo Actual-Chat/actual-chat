@@ -4,37 +4,19 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public static class ChatListExt
 {
-    public static IEnumerable<ChatInfo> FilterBySearchPhrase(
+    public static IEnumerable<ChatInfo> FilterAndOrderBySearchQuery(
         this IEnumerable<ChatInfo> chats,
-        SearchPhrase searchPhrase,
+        MemSearchQuery query,
         ChatId? selectedChatId = null)
     {
-        if (!searchPhrase.IsEmpty)
-            chats =  chats
-                .WithSearchMatchRank(searchPhrase)
-                .FilterBySearchMatchRank(selectedChatId)
-                .WithoutSearchMatchRank();
-        return chats;
-    }
-
-    public static IEnumerable<ChatInfo> FilterAndOrderBySearchPhrase(
-        this IEnumerable<ChatInfo> chats,
-        SearchPhrase searchPhrase,
-        ChatId? selectedChatId = null)
-    {
-        if (!searchPhrase.IsEmpty)
-            chats =  chats
-                .WithSearchMatchRank(searchPhrase)
+        if (!query.IsEmpty)
+            chats = chats
+                .WithSearchMatchRank(query, c => c.SearchDocument)
                 .FilterBySearchMatchRank(selectedChatId)
                 .OrderBySearchMatchRank()
                 .WithoutSearchMatchRank();
         return chats;
     }
-
-    public static IEnumerable<(ChatInfo ChatInfo, double Rank)> WithSearchMatchRank(
-        this IEnumerable<ChatInfo> chats,
-        SearchPhrase searchPhrase)
-        => chats.WithSearchMatchRank(searchPhrase, c => c.Chat.Title);
 
     public static IEnumerable<(ChatInfo ChatInfo, double Rank)> FilterBySearchMatchRank(
         this IEnumerable<(ChatInfo ChatInfo, double Rank)> rankedChats,

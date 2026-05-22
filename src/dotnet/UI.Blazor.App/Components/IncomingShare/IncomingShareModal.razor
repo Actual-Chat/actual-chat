@@ -23,7 +23,7 @@
             @ref="@_contactSelectorRef"
             Changed="StateHasChanged"
             ChatListPreOrder="@ChatListPreOrder.ChatList"
-            SearchPhrase="@_searchPhrase">
+            SearchQuery="@_searchQuery">
             <SearchBoxNew
                 Placeholder="Who would you like to share with"
                 MaxLength="@Constants.Chat.MaxSearchFilterLength"
@@ -52,7 +52,7 @@
 
 @code {
     private ContactSelector? _contactSelectorRef;
-    private SearchPhrase _searchPhrase = SearchPhrase.None;
+    private MemSearchQuery _searchQuery;
     private string _comment = "";
 
     private ImmutableHashSet<ChatId> SelectedChatIds
@@ -62,7 +62,7 @@
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     private void OnFilter(string filter) {
-        _searchPhrase = filter.ToSearchPhrase(true, false);
+        _searchQuery = new MemSearchQuery(filter);
         StateHasChanged();
     }
 

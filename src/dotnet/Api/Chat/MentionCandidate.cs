@@ -6,7 +6,7 @@ public sealed record MentionCandidate(
     MentionId Id,
     string Title,
     Picture? Picture,
-    MemSearchDocument MemSearchDocument)
+    MemSearchDocument SearchDocument)
 {
     public bool IsChatMember { get; init; }
     public PlaceId? PlaceId { get; init; }

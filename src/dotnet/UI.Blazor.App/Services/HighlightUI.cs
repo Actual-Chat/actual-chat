@@ -23,7 +23,8 @@ public class HighlightUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeS
         if (words.Count == 0)
             return SearchMatch.Empty;
 
-        return new SearchPhrase(words.ToArray(), false).GetMatch(text);
+        var query = new MemSearchQuery(words.ToDelimitedString(" "));
+        return new SearchMatch(text, 0, query.GetMatchParts(text, exact: true));
     }
 
     [ComputeMethod] // Synced

@@ -18,7 +18,7 @@
             @ref="@_contactSelectorRef"
             ExcludeChatIds="@ModalModel.ExcludedChatIds"
             ChatListPreOrder="@ChatListPreOrder.NotesFirst"
-            SearchPhrase="@_searchPhrase"
+            SearchQuery="@_searchQuery"
             Changed="@StateHasChanged">
             <SearchBox
                 Placeholder="@ModalModel.SearchPlaceholder"
@@ -48,7 +48,7 @@
 
 @code {
     private ContactSelector? _contactSelectorRef;
-    private SearchPhrase _searchPhrase = SearchPhrase.None;
+    private MemSearchQuery _searchQuery;
     private DialogFrameNarrowViewSettings _viewSettings = null!;
 
     private ImmutableHashSet<ChatId> SelectedChatIds
@@ -66,7 +66,7 @@
     }
 
     private void OnFilter(string filter) {
-        _searchPhrase = filter.ToSearchPhrase(true, false);
+        _searchQuery = new MemSearchQuery(filter);
         StateHasChanged();
     }
 
