@@ -257,17 +257,10 @@ async function waitForInstances(count: number): Promise<void> {
 // ---- Tests ----------------------------------------------------------------
 
 describe('encode operator', () => {
-    it('throws when constructed with empty configs', () => {
-        expect(() => encode({
-            configs: [],
-            createEncoder: makeFactory(),
-        })).toThrow(/at least one layer/);
-    });
-
     it('single layer: 5 bundles → 5 EncodedFrames out, in order', async () => {
         const stats = makeStats();
         const opts: EncodeOptions = {
-            configs: [cfg(640, 360)],
+            controller: new LayerLadderController([cfg(640, 360)]),
             createEncoder: makeFactory(),
         };
 
@@ -308,7 +301,7 @@ describe('encode operator', () => {
     it('forceKeyframe → keyFrame flag (verified by inspecting encoder calls)', async () => {
         const stats = makeStats();
         const seg = encode({
-            configs: [cfg(640, 360)],
+            controller: new LayerLadderController([cfg(640, 360)]),
             createEncoder: makeFactory(),
         })(fromArray([
             makeBundle(1, stats, [{ width: 640, height: 360 }], false),
@@ -353,7 +346,7 @@ describe('encode operator', () => {
             { width: 1280, height: 720 },
         ];
         const opts: EncodeOptions = {
-            configs: layers.map(l => cfg(l.width, l.height)),
+            controller: new LayerLadderController(layers.map(l => cfg(l.width, l.height))),
             createEncoder: makeFactory(),
         };
         const bundles: CapturedBundle[] = [];
@@ -391,7 +384,7 @@ describe('encode operator', () => {
             { width: 1280, height: 720 },
         ];
         const opts: EncodeOptions = {
-            configs: layers.map(l => cfg(l.width, l.height)),
+            controller: new LayerLadderController(layers.map(l => cfg(l.width, l.height))),
             createEncoder: makeFactory(),
         };
         const bundles: CapturedBundle[] = [
@@ -458,7 +451,7 @@ describe('encode operator', () => {
             dispose(): void { /* ignore */ },
         } as unknown as AsyncVideoEncoder<EncodeInput, EncodedFrame>;
         const seg = encode({
-            configs: [cfg(640, 360)],
+            controller: new LayerLadderController([cfg(640, 360)]),
             createEncoder: () => fakeEncoder,
         })(fromArray([first, second]));
 
@@ -481,7 +474,7 @@ describe('encode operator', () => {
         const stats = makeStats();
         const reasons: string[] = [];
         const seg = encode({
-            configs: [cfg(640, 360)],
+            controller: new LayerLadderController([cfg(640, 360)]),
             createEncoder: makeFactory({
                 timeoutMs: 50,
                 onResetRequested: r => reasons.push(r),
@@ -505,7 +498,7 @@ describe('encode operator', () => {
             { width: 640, height: 360 },
         ];
         const seg = encode({
-            configs: layers.map(l => cfg(l.width, l.height)),
+            controller: new LayerLadderController(layers.map(l => cfg(l.width, l.height))),
             createEncoder: makeFactory(),
         })(fromArray([makeBundle(1, stats, layers)]));
 
@@ -526,7 +519,7 @@ describe('encode operator', () => {
         const stats = makeStats();
         // configs: 2 layers; bundle: 1 layer.
         const seg = encode({
-            configs: [cfg(320, 180), cfg(1280, 720)],
+            controller: new LayerLadderController([cfg(320, 180), cfg(1280, 720)]),
             createEncoder: makeFactory(),
         })(fromArray([makeBundle(1, stats, [{ width: 1280, height: 720 }])]));
         await expect(drain(seg)).rejects.toThrow(/expected 2/);
@@ -545,7 +538,7 @@ describe('encode operator', () => {
         MockVideoEncoder.configureFailureForCodec = 'hev1.1.6.L93.B0';
 
         const seg = encode({
-            configs,
+            controller: new LayerLadderController(configs),
             createEncoder: makeFactory(),
         })(fromArray([bundle]));
 
@@ -570,7 +563,7 @@ describe('encode operator', () => {
     it('stats: encodeQueueDepthEma samples encoder.encodeQueueSize per bundle', async () => {
         const stats = makeStats();
         const seg = encode({
-            configs: [cfg(640, 360)],
+            controller: new LayerLadderController([cfg(640, 360)]),
             createEncoder: makeFactory(),
         })(fromArray([
             makeBundle(1, stats, [{ width: 640, height: 360 }]),

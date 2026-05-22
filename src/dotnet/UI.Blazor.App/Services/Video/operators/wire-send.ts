@@ -79,14 +79,9 @@ export interface StreamSenderStats {
 
 export interface WireSendOptions {
     createSender: () => StreamSenderLike;
-    // Fills LayerCount on every chunk; without it, consumers clamp to L0.
-    // Constant snapshot for static call sites; pass `controller` instead to
-    // pick up hot-apply changes.
-    layerCount?: number;
-    controller?: LayerLadderController;
-    // Encoder yields bottom-first; we wait for the top-layer keyframe before init.
-    topLayerWidth?: number;
-    topLayerHeight?: number;
+    // Drives per-bundle LayerCount stamping and the first-keyframe sender.init
+    // dims; reads on every bundle so hot-applied changes propagate.
+    controller: LayerLadderController;
     // Aborts mid-send so Recorder.stop() doesn't block on a stalled ring buffer / dead peer.
     abortSignal?: AbortSignal;
 }
@@ -105,9 +100,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
         return from(impl());
 
         async function* impl(): AsyncIterable<void> {
-            const { createSender, topLayerWidth, topLayerHeight, abortSignal } = opts;
-            const getLayerCount = (): number =>
-                opts.controller?.current.configs.length ?? opts.layerCount ?? 1;
+            const { createSender, controller, abortSignal } = opts;
             const wireQueueDepthEma = new RunningEMA(0, 1, WIRE_QUEUE_DEPTH_EMA_ALPHA);
             // Reconnect streak: persists across resetSender() calls so a burst
             // of disconnects accrues correctly.
@@ -178,7 +171,8 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                             ? Uint8Array.from(bundle.dropTrace)
                             : undefined;
 
-                        const layerCount = getLayerCount();
+                        const cur = controller.current.configs;
+                        const layerCount = cur.length;
                         const wireLayers: VideoStreamFrame[] = bundle.layers.map(encoded => {
                             const isKey = encoded.chunk.type === 'key';
                             if (isKey)
@@ -226,10 +220,11 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                         }
                         if (!initSent && isKeyFrame && sender.init) {
                             const description = resolveDescription(top, descriptionByLayer);
+                            const topCfg = cur[cur.length - 1];
                             sender.init({
                                 codec: top.metadata.decoderConfig?.codec ?? '',
-                                width: topLayerWidth ?? top.encodedWidth,
-                                height: topLayerHeight ?? top.encodedHeight,
+                                width: topCfg.width,
+                                height: topCfg.height,
                                 sourceWidth: top.sourceWidth,
                                 sourceHeight: top.sourceHeight,
                                 codecSettings: description ? bytesToBase64(description) : '',

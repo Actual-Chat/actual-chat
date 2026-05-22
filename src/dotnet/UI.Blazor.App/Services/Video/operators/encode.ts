@@ -58,13 +58,12 @@ export type EncoderFactory = (
 ) => AsyncVideoEncoder<EncodeInput, EncodedFrame>;
 
 export interface EncodeOptions {
-    // Initial ladder snapshot OR a LayerLadderController for hot-apply.
-    // Length MUST equal bundle.layers.length at each iteration. When a
-    // controller is supplied, the operator watches `controller.current.version`
-    // and grows/shrinks the encoder set on the next bundle whose ladder
-    // changed.
-    configs?: readonly EncoderConfigPerLayer[];
-    controller?: LayerLadderController;
+    // The active layer set lives in the controller. Operator snapshots
+    // `controller.current` on each bundle and grows/shrinks the encoder set
+    // on every version bump. bundle.layers.length MUST equal
+    // controller.current.configs.length (spatialize and encode read the same
+    // controller so they stay in sync).
+    controller: LayerLadderController;
     createEncoder: EncoderFactory;
     // Bundle-level hang watchdog. If `Promise.allSettled` on a bundle's
     // per-layer encode promises hasn't resolved within this budget, the
@@ -80,18 +79,10 @@ export interface EncodeOptions {
 // the first bundle, submit layers in parallel via allSettled so one
 // rejection doesn't leak the others' chunks. Bundle layers bottom-first.
 export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, EncodedBundle> {
-    if (!opts.configs && !opts.controller)
-        throw new Error('encode: requires `configs` or `controller`');
-    if (opts.configs?.length === 0)
-        throw new Error('encode: configs must contain at least one layer');
-
-    // Mutable local snapshot of the active ladder. When a controller is
-    // supplied, this is replaced on each version bump; otherwise it stays
-    // as the constructor-time snapshot.
-    let configs: readonly EncoderConfigPerLayer[] = opts.configs
-        ? opts.configs.slice()
-        : opts.controller!.current.configs;
-    let lastSeenVersion = opts.controller?.current.version ?? -1;
+    // Mutable local snapshot of the active ladder; replaced on each
+    // controller-version bump.
+    let configs: readonly EncoderConfigPerLayer[] = opts.controller.current.configs;
+    let lastSeenVersion = opts.controller.current.version;
     const createEncoder = opts.createEncoder;
     const bundleTimeoutMs = opts.bundleTimeoutMs ?? 3000;
     return source => {
@@ -140,7 +131,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                     // counts so the diff matches the bundle that was produced
                     // under the new ladder. spatialize reads the same controller
                     // so `bundle.layers.length` already reflects the new size.
-                    if (opts.controller && opts.controller.current.version !== lastSeenVersion) {
+                    if (opts.controller.current.version !== lastSeenVersion) {
                         const cur = opts.controller.current;
                         const oldN = encoders.length;
                         const newN = cur.configs.length;

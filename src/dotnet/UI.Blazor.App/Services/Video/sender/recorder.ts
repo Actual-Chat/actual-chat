@@ -15,7 +15,7 @@ import { FrameDropStage, traceDrops } from '../frame-drop-trace';
 import { mstpSource } from '../operators/capture';
 import { stampCaptureTime } from '../operators/stamp-capture-time';
 import { attachSourceDims } from '../operators/attach-source-dims';
-import { normalizeFrame, spatialize, type LayerSpec } from '../operators/downscale';
+import { normalizeFrame, spatialize } from '../operators/downscale';
 import { previewForwarder } from '../operators/preview-forwarder';
 import { applyKeyframePolicy } from '../operators/apply-keyframe-policy';
 import { encode, type EncoderConfigPerLayer, type EncoderFactory } from '../operators/encode';
@@ -87,10 +87,6 @@ export class Recorder {
         this.currentStats = stats;
         const ladderController = new LayerLadderController(config.encoderConfigs);
         this.ladderController = ladderController;
-        const topLayer: LayerSpec = {
-            width: config.encoderConfigs[config.encoderConfigs.length - 1].width,
-            height: config.encoderConfigs[config.encoderConfigs.length - 1].height,
-        };
         const abortController = new AbortController();
         const abortSignal = abortController.signal;
         const sourceStopController = new AbortController();
@@ -116,7 +112,6 @@ export class Recorder {
             stampCaptureTime({ clock: this.session.captureClock }),
             attachSourceDims(),
             normalizeFrame({
-                target: topLayer,
                 ladder: ladderController,
                 isCamera: config.sourceKind === 0,
                 isFrontCamera: config.isFrontCamera,
@@ -153,8 +148,6 @@ export class Recorder {
             wireSend({
                 createSender: () => config.createSender(gate),
                 controller: ladderController,
-                topLayerWidth: topLayer.width,
-                topLayerHeight: topLayer.height,
                 abortSignal,
             }),
         );
