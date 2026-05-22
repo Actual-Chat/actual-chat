@@ -1,22 +1,28 @@
-﻿namespace ActualChat.Search;
+namespace ActualChat.Search;
 
 /// <summary>
-/// Represents a search match with text, rank, and highlighted parts.
+/// A search match: the matched <see cref="Text"/>, its <see cref="Rank"/>, and the highlight
+/// <see cref="Parts"/> — supplied explicitly (server results) or computed lazily from a
+/// <see cref="MemSearchQuery"/> (local results).
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 [MessagePackFormatter(typeof(Internal.SearchMatchMessagePackFormatter))]
-public sealed partial record SearchMatch(
-    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] string Text,
-    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] double Rank,
-    SearchMatchPart[] Parts)
+public sealed partial record SearchMatch
 {
     public static readonly SearchMatch Empty = New("");
 
+    private SearchMatchPart[]? _parts;
+    private readonly MemSearchQuery _query;
+
+    [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
+    public string Text { get; }
+    [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
+    public double Rank { get; }
     [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
     public SearchMatchPart[] Parts {
-        get => field ?? [];
-        init;
-    } = Parts;
+        get => _parts ??= _query.IsEmpty ? [] : _query.GetMatchParts(Text);
+        init => _parts = value;
+    }
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public IEnumerable<SearchMatchPart> PartsWithGaps {
@@ -35,16 +41,30 @@ public sealed partial record SearchMatch(
     }
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public bool IsEmpty => this == Empty;
+    public bool IsEmpty => Text.Length == 0;
 
     public static SearchMatch New(string? text)
         => new(text ?? "", 0, []);
+
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
+    public SearchMatch(string text, double rank, SearchMatchPart[] parts)
+    {
+        Text = text;
+        Rank = rank;
+        _parts = parts;
+    }
+
+    public SearchMatch(string text, MemSearchQuery query, double rank = 0)
+    {
+        Text = text;
+        Rank = rank;
+        _query = query;
+    }
 
     public override string ToString()
     {
         var text = Text;
         var parts = Parts.Select(p => p.ToString(text)).ToDelimitedString(", ");
-        return
-            $"{GetType().GetName()}(\"{Text}\", {Rank:F3}, {{ {parts} }})";
+        return $"{GetType().GetName()}(\"{text}\", {Rank:F3}, {{ {parts} }})";
     }
 }
