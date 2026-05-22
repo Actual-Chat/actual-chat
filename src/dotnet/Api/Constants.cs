@@ -280,6 +280,13 @@ public static partial class Constants
         public static readonly TimeSpan EntryWaitTimeout = TimeSpan.FromSeconds(0.5);
         public static readonly TimeSpan OnlineCheckDelay = TimeSpan.FromMinutes(1);
         public static readonly TimeSpan ActiveDevicePeriod = TimeSpan.FromDays(30);
+
+        // A new push is sent right away only if the previous one is older than this;
+        // otherwise similar low-urgency notifications coalesce into a deferred tick.
+        public static readonly TimeSpan SilencePeriod = TimeSpan.FromSeconds(10);
+        // Once a user accumulates this many displayed notifications without engaging,
+        // the backend goes dormant and stops all work until an engagement signal.
+        public const int DormancyThreshold = 64;
     }
 
     public static class Media

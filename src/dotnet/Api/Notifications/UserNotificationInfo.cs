@@ -20,4 +20,16 @@ public sealed partial record UserNotificationInfo(
     public Moment LastPushAt { get; init; }
     [DataMember(Order = 5), Key(5)]
     public bool IsDormant { get; init; }
+
+    // Upserts notification into Displayed: a notification with the same Id replaces the
+    // existing one (keeping its Version/CreatedAt), otherwise it's appended.
+    public UserNotificationInfo WithNotification(Notification notification)
+    {
+        var id = notification.Id;
+        var existing = Displayed.FirstOrDefault(n => n.Id == id);
+        var displayed = existing != null
+            ? Displayed.WithUpdate(n => n.Id == id, _ => notification.WithSimilar(existing))
+            : Displayed.With(notification);
+        return this with { Displayed = displayed };
+    }
 }

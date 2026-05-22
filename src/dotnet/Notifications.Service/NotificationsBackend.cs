@@ -1,9 +1,11 @@
+using System.Collections.Concurrent;
 using ActualChat.Contacts;
 using ActualChat.Db;
 using ActualChat.Flows;
 using ActualChat.Notifications.Db;
 using ActualChat.Notifications.Flows;
 using ActualChat.Queues;
+using ActualChat.Sharding;
 using ActualChat.Users;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +18,7 @@ namespace ActualChat.Notifications;
 /// </summary>
 #pragma warning disable CA1001 // Has disposable _recentChatsWithNotifications
 public class NotificationsBackend(IServiceProvider services)
-    : DbServiceBase<NotificationDbContext>(services), INotificationsBackend
+    : ShardedDbServiceBase<NotificationDbContext>(services), INotificationsBackend
 #pragma warning restore CA1001
 {
     private readonly MemoryCache _recentChatsWithNotifications = new(new MemoryCacheOptions {
@@ -24,6 +26,10 @@ public class NotificationsBackend(IServiceProvider services)
         SizeLimit = 10_000,
         ExpirationScanFrequency = TimeSpan.FromSeconds(5),
     });
+
+    // Per-user soft-update buffers, owned by this shard. Entries are lost on restart by design
+    // (see docs/plans/notif-api.md); a committed hard update always re-reads from the DB.
+    private readonly ConcurrentDictionary<UserId, SoftBuffer> _softBuffers = new();
 
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
@@ -100,42 +106,62 @@ public class NotificationsBackend(IServiceProvider services)
             ).ToList();
     }
 
+    // [ComputeMethod]
+    public virtual async Task<UserNotificationInfo> GetUserNotificationInfo(UserId userId, CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var dbUserNotifications = await dbContext.UserNotifications
+            .FirstOrDefaultAsync(x => x.Id == userId.Value, cancellationToken)
+            .ConfigureAwait(false);
+        return dbUserNotifications?.ToModel() ?? new UserNotificationInfo(userId);
+    }
+
     // [CommandHandler]
     public virtual async Task OnNotify(NotificationsBackend_Notify command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
-            return; // It just spawns other commands, so nothing to do here
+            return; // GetUserNotificationInfo is invalidated by ApplyHardUpdate's completion handler
 
         var notification = command.Notification;
         var userId = notification.UserId.Require();
-        var entryId = GetEntryId(notification);
+        if (notification.SentAt == default)
+            notification = notification with { SentAt = Clocks.SystemClock.Now };
 
-        DebugLog?.LogInformation("-> OnNotify. EntryId={EntryId}, UserId={UserId}, NotificationId={NotificationId}",
-            entryId, userId, notification.Id);
+        DebugLog?.LogInformation("-> OnNotify. UserId={UserId}, NotificationId={NotificationId}",
+            userId, notification.Id);
 
-        var similar = await Get(notification.Id, cancellationToken).ConfigureAwait(false);
-        if (similar != null) {
-            var throttleInterval = GetThrottleInterval(notification);
-            if (throttleInterval is { } vThrottleInterval) {
-                var delta = notification.SentAt - similar.SentAt;
-                if (delta <= vThrottleInterval) {
-                    DebugLog?.LogInformation("OnNotify. Skipping (Throttling). EntryId={EntryId}, UserId={UserId}, NotificationId={NotificationId}",
-                        entryId, userId, notification.Id);
-                    return;
-                }
-            }
-            notification = notification.WithSimilar(similar);
-        }
-
-        var upsertCommand = new NotificationsBackend_Upsert(notification);
-        var hasUpserted = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
-        if (!hasUpserted) {
-            DebugLog?.LogInformation("OnNotify. Skipping (Upsert failed). EntryId={EntryId}, UserId={UserId}, NotificationId={NotificationId}",
-                entryId, userId, notification.Id);
+        var info = await GetUserNotificationInfo(userId, cancellationToken).ConfigureAwait(false);
+        if (info.IsDormant) {
+            DebugLog?.LogInformation("OnNotify: skipped (dormant). UserId={UserId}, NotificationId={NotificationId}",
+                userId, notification.Id);
             return;
         }
 
-        await Send(userId, notification, cancellationToken).ConfigureAwait(false);
+        if (IsSoftUpdate(info, notification)) {
+            EnqueueSoft(userId, notification, info);
+            return;
+        }
+
+        var batch = DrainSoftBuffer(userId);
+        batch.Add(notification);
+        await ApplyHardUpdate(userId, batch, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnProcess(NotificationsBackend_Process command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // GetUserNotificationInfo is invalidated by ApplyHardUpdate's completion handler
+
+        var userId = command.UserId;
+        var batch = DrainSoftBuffer(userId);
+        if (batch.Count == 0)
+            return;
+
+        DebugLog?.LogInformation("-> OnProcess. UserId={UserId}, Count={Count}", userId, batch.Count);
+        await ApplyHardUpdate(userId, batch, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -718,4 +744,117 @@ public class NotificationsBackend(IServiceProvider services)
             ChatEntryNotification n => n.EntryId,
             _ => null,
         };
+
+    private static bool IsSoftUpdate(UserNotificationInfo info, Notification notification)
+    {
+        var hasSimilar = info.Displayed.Any(n => n.Id == notification.Id);
+        if (!hasSimilar)
+            return false; // First notification for this key -> hard update
+
+        if (notification is ChatEntryNotification)
+            return false; // Individually-seen (mention / reaction / attention) -> hard update
+
+        var sinceLastPush = notification.SentAt - info.LastPushAt;
+        return sinceLastPush <= Constants.Notification.SilencePeriod;
+    }
+
+    private void EnqueueSoft(UserId userId, Notification notification, UserNotificationInfo info)
+    {
+        var buffer = _softBuffers.GetOrAdd(userId, static _ => new SoftBuffer());
+        bool mustSchedule;
+        lock (buffer.Lock) {
+            buffer.Pending.Add(notification);
+            mustSchedule = !buffer.IsProcessScheduled;
+            buffer.IsProcessScheduled = true;
+        }
+        if (!mustSchedule)
+            return;
+
+        var delay = Constants.Notification.SilencePeriod - (Clocks.SystemClock.Now - info.LastPushAt);
+        ScheduleProcess(userId, delay);
+    }
+
+    private void ScheduleProcess(UserId userId, TimeSpan delay)
+        => _ = Task.Run(async () => {
+            try {
+                if (delay > TimeSpan.Zero)
+                    await Task.Delay(delay).ConfigureAwait(false);
+                await Commander.Call(new NotificationsBackend_Process(userId), CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Deferred notification processing failed for UserId={UserId}", userId);
+            }
+        });
+
+    private List<Notification> DrainSoftBuffer(UserId userId)
+    {
+        if (!_softBuffers.TryGetValue(userId, out var buffer))
+            return [];
+
+        lock (buffer.Lock) {
+            buffer.IsProcessScheduled = false;
+            if (buffer.Pending.Count == 0)
+                return [];
+
+            var batch = new List<Notification>(buffer.Pending);
+            buffer.Pending.Clear();
+            return batch;
+        }
+    }
+
+    private async Task ApplyHardUpdate(
+        UserId userId, IReadOnlyList<Notification> notifications, CancellationToken cancellationToken)
+    {
+        var context = CommandContext.GetCurrent();
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+        context.Operation.MustStore(false);
+
+        var dbUserNotifications = await dbContext.UserNotifications.ForUpdate()
+            .FirstOrDefaultAsync(x => x.Id == userId.Value, cancellationToken)
+            .ConfigureAwait(false);
+        var isNew = dbUserNotifications == null;
+
+        var info = dbUserNotifications?.ToModel() ?? new UserNotificationInfo(userId);
+        foreach (var notification in notifications)
+            info = info.WithNotification(notification);
+        info = info with {
+            Version = VersionGenerator.NextVersion(info.Version),
+            LastPushAt = Clocks.SystemClock.Now,
+            IsDormant = info.IsDormant || info.Displayed.Count >= Constants.Notification.DormancyThreshold,
+        };
+
+        if (isNew) {
+            dbUserNotifications = new DbUserNotifications();
+            dbUserNotifications.UpdateFrom(info);
+            dbContext.UserNotifications.Add(dbUserNotifications);
+        }
+        else
+            dbUserNotifications!.UpdateFrom(info);
+
+        try {
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateException e) when (isNew) {
+            // Two concurrent first-time updates for the same user: the loser is dropped,
+            // the next OnNotify converges since the row now exists.
+            Log.LogWarning(e, "ApplyHardUpdate: concurrent create for UserId={UserId}, skipped", userId);
+            return;
+        }
+
+        context.Operation.AddCompletionHandler(scope => {
+            using (Invalidation.Begin())
+                _ = GetUserNotificationInfo(userId, default);
+            return Task.CompletedTask;
+        });
+
+        await Send(userId, notifications[^1], cancellationToken).ConfigureAwait(false);
+    }
+
+    private sealed class SoftBuffer
+    {
+        public readonly Lock Lock = new();
+        public readonly List<Notification> Pending = [];
+        public bool IsProcessScheduled;
+    }
 }

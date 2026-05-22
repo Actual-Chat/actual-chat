@@ -144,9 +144,14 @@ handler. Dismissals (clear-on-read) lower the count via a silent push.
 - **Phase 1 — Contracts & data model.** `NotificationItem` union, `UserNotificationInfo`
   / `NotificationDelta`, extend `INotifications`/`INotificationsBackend`,
   `DbUserNotifications` + migration.
-- **Phase 2 — `NotificationsBackend` core.** Rebase on `ShardedDbServiceBase`;
-  `GetUserNotificationInfo` (population re-check), `OnNotify` (hard/soft),
-  `OnProcess` (deferred tick), soft buffer, dormancy.
+- **Phase 2 — `NotificationsBackend` core.** ✅ Done. Rebased on `ShardedDbServiceBase`;
+  `GetUserNotificationInfo` (reads the `DbUserNotifications` blob), `OnNotify` (hard/soft),
+  `OnProcess` (deferred coalescing tick), in-memory soft buffer, dormancy set+honor.
+  `OnNotify` was rewritten in place, so the existing fan-out feeds the new path right away
+  (Phase 4 only makes that fan-out cheap). The population re-check (read-state
+  reconciliation) is deferred to Phase 5; `GetUserNotificationInfo` is just a blob read
+  for now. Dormancy *clear* is Phase 5. Legacy `DbNotification` / `OnUpsert` / `Get` /
+  `ListRecentNotificationIds` still coexist — retired in Phase 7.
 - **Phase 3 — FCM.** `IFirebaseMessagingClient` interface + real impl + test sink;
   `Aps.Badge`; silent dismissal push.
 - **Phase 4 — Fan-out rewrite.** Event handlers → cheap fan-out → `OnNotify`.
@@ -185,3 +190,8 @@ hitting Firebase.
    ≥ the throttle window.
 3. Web client consumers of `Get` / `ListRecentNotificationIds` — confirm before
    retiring them in Phase 7.
+4. `_softBuffers` (the per-`UserId` soft-buffer map) is currently never evicted —
+   bounded by active users per shard. Add TTL-based eviction (or reuse the
+   `MemoryCache` pattern of `_recentChatsWithNotifications`) before Phase 7.
+5. Phase 2 hard updates do one DB write and leave `UnsentDelta` empty — it is
+   reserved for Phase 5's silent-dismiss flow.
