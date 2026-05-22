@@ -9,6 +9,7 @@ import {
     type EncodedFrame,
     type RecorderStats,
 } from '../frame-envelopes';
+import type { LayerLadderController } from '../sender/layer-ladder-controller';
 
 const WIRE_QUEUE_DEPTH_EMA_ALPHA = 0.2;
 
@@ -79,7 +80,10 @@ export interface StreamSenderStats {
 export interface WireSendOptions {
     createSender: () => StreamSenderLike;
     // Fills LayerCount on every chunk; without it, consumers clamp to L0.
+    // Constant snapshot for static call sites; pass `controller` instead to
+    // pick up hot-apply changes.
     layerCount?: number;
+    controller?: LayerLadderController;
     // Encoder yields bottom-first; we wait for the top-layer keyframe before init.
     topLayerWidth?: number;
     topLayerHeight?: number;
@@ -102,7 +106,8 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
 
         async function* impl(): AsyncIterable<void> {
             const { createSender, topLayerWidth, topLayerHeight, abortSignal } = opts;
-            const layerCount = opts.layerCount ?? 1;
+            const getLayerCount = (): number =>
+                opts.controller?.current.configs.length ?? opts.layerCount ?? 1;
             const wireQueueDepthEma = new RunningEMA(0, 1, WIRE_QUEUE_DEPTH_EMA_ALPHA);
             // Reconnect streak: persists across resetSender() calls so a burst
             // of disconnects accrues correctly.
@@ -173,6 +178,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                             ? Uint8Array.from(bundle.dropTrace)
                             : undefined;
 
+                        const layerCount = getLayerCount();
                         const wireLayers: VideoStreamFrame[] = bundle.layers.map(encoded => {
                             const isKey = encoded.chunk.type === 'key';
                             if (isKey)

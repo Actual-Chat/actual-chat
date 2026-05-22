@@ -14,6 +14,8 @@ import {
     type RecorderStats,
     createEmptyRecorderStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
+import { LayerLadderController } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/sender/layer-ladder-controller';
+import type { EncoderConfigPerLayer } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/encode';
 // ---- Mocks ----------------------------------------------------------------
 
 class MockEncodedVideoChunk {
@@ -511,5 +513,44 @@ describe('wireSend', () => {
         expect(senders[0].sent).toHaveLength(1);
         expect(senders[1].sent).toHaveLength(1);
         expect(senders.every(s => s.disposed)).toBe(true);
+    });
+
+    it('controller-driven layerCount stamps current count per bundle', async () => {
+        const stats = createEmptyRecorderStats();
+        const sender = new FakeSender();
+        const cfg = (w: number, h: number): EncoderConfigPerLayer => ({
+            width: w, height: h, bitrate: 500_000, framerate: 30, codec: 'avc1.640028',
+        });
+        const controller = new LayerLadderController([cfg(640, 360)]);
+        const sink = wireSend({ createSender: () => sender, controller });
+
+        // Source bundle 1: one layer; bundle 2: same; reconfigure before bundle 3
+        // by setting controller to 2 layers; bundle 3 carries two encoded frames.
+        async function* src(): AsyncIterable<EncodedBundle> {
+            yield {
+                layers: [makeEncoded(stats, { type: 'key', layerId: 0, capturedAt: { timeMs: 1_000, epoch: 0 } })],
+                index: 1, dropTrace: [], rotation: 0, stats,
+            };
+            yield {
+                layers: [makeEncoded(stats, { type: 'delta', layerId: 0, capturedAt: { timeMs: 1_033, epoch: 0 } })],
+                index: 2, dropTrace: [], rotation: 0, stats,
+            };
+            controller.setConfigs([cfg(640, 360), cfg(1280, 720)]);
+            yield {
+                layers: [
+                    makeEncoded(stats, { type: 'key', layerId: 0, capturedAt: { timeMs: 1_066, epoch: 0 } }),
+                    makeEncoded(stats, { type: 'key', layerId: 1, capturedAt: { timeMs: 1_066, epoch: 0 } }),
+                ],
+                index: 3, dropTrace: [], rotation: 0, stats,
+            };
+        }
+        await runWith(src(), sink);
+
+        // 1+1+2 = 4 wire layers total
+        expect(sender.sent).toHaveLength(4);
+        expect(sender.sent[0].layerCount).toBe(1);
+        expect(sender.sent[1].layerCount).toBe(1);
+        expect(sender.sent[2].layerCount).toBe(2);
+        expect(sender.sent[3].layerCount).toBe(2);
     });
 });
