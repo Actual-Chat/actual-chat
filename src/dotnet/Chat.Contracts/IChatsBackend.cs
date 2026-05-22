@@ -44,14 +44,17 @@ public interface IChatsBackend : IComputeService, IBackendService
         CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ChatContentTile> GetChatContentTile(
+    Task<ChatContentPeriod[]> GetContentPeriods(
         ChatId chatId,
-        Range<long> entryLidTileRange,
+        ChatContentKind kind,
         CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ChatContentItem[]> ListChatContent(
+    Task<ChatContentItem[]> GetContentPeriod(
         ChatId chatId,
+        ChatContentKind kind,
+        string periodKey,
+        int pageIndex,
         CancellationToken cancellationToken);
 
     // Note that it returns (firstId, lastId + 1) range!

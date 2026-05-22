@@ -33,16 +33,16 @@
                             </Tab>
                         }
                         <Tab @key="@("photo")" Id="photo" Title="Photo" Order="3">
-                            <ChatContentItemList ChatId="@chat.Id" KindMask="@(ChatContentKind.Photo)"/>
+                            <ChatContentItemList ChatId="@chat.Id" Kind="@(ChatContentKind.Photo)"/>
                         </Tab>
                         <Tab @key="@("video")" Id="video" Title="Video" Order="4">
-                            <ChatContentItemList ChatId="@chat.Id" KindMask="@(ChatContentKind.Video)"/>
+                            <ChatContentItemList ChatId="@chat.Id" Kind="@(ChatContentKind.Video)"/>
                         </Tab>
                         <Tab @key="@("files")" Id="files" Title="Files" Order="6">
-                            <ChatContentItemList ChatId="@chat.Id" KindMask="@(ChatContentKind.File)"/>
+                            <ChatContentItemList ChatId="@chat.Id" Kind="@(ChatContentKind.File)"/>
                         </Tab>
                         <Tab @key="@("links")" Id="links" Title="Links" Order="9">
-                            <ChatContentItemList ChatId="@chat.Id" KindMask="@(ChatContentKind.Link)"/>
+                            <ChatContentItemList ChatId="@chat.Id" Kind="@(ChatContentKind.Link)" GroupBy="@(ContentGrouping.Day)"/>
                         </Tab>
                     </TabPanel>
                 }
