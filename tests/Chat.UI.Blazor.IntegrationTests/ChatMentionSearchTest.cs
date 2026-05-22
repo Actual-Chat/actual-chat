@@ -58,7 +58,7 @@ public class ChatMentionSearchTest(ChatAppHostFixture fixture, ITestOutputHelper
 
         // assert - top result should be the renamed contact
         results.Should().NotBeEmpty();
-        results.First().Match.Text.Should().Be("MyBestie");
+        results.First().Match.Text.Should().Be("MyBestie (Magnolia)");
     }
 
     [Fact]
@@ -80,13 +80,13 @@ public class ChatMentionSearchTest(ChatAppHostFixture fixture, ITestOutputHelper
 
         // act & assert - should find by account avatar name even when contact has been renamed
         var byAvatar = await FindMentions(chat.Id, "Magnol");
-        byAvatar.Should().Contain(x => x.Match.Text == "Magnolia",
+        byAvatar.Should().Contain(x => x.Match.Text == "MyBestie (Magnolia)",
             "account avatar name should remain searchable even when contact display name is set");
 
         // act & assert - should find by contact display name
         var byContact = await FindMentions(chat.Id, "MyBest");
         byContact.Should().NotBeEmpty("contact display name should be searchable");
-        byContact.First().Match.Text.Should().Be("MyBestie");
+        byContact.First().Match.Text.Should().Be("MyBestie (Magnolia)");
     }
 
     [Fact]

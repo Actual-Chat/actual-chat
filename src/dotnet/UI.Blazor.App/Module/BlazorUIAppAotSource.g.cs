@@ -108,7 +108,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatSettingsStartModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatViewNavigationPanel>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NavigateToNextOrPrevSearchResult>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatWelcomeBlock>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatsNavbarButtonBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ClientUpgradeCover>();
@@ -206,19 +205,24 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ManageAccountSettingsBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupEditor>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupEditorTestPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.ChatMentionView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.CodeBlockMarkupView.CodeBlockMarkupView>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.EmojiMentionView>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.GifMentionView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.HeaderMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.ListMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.MarkupSeqView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.MentionView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.NewLineMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.ParagraphMarkupView>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.PlaceMentionView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.PlainTextMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.PlayableTextMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.PreformattedTextMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.StylizedMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.UnknownMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.UrlMarkupView>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.UserMentionView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MediaList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MemberSelector>();
@@ -240,6 +244,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NavbarGroupSelectionButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NavbarItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NavbarPlaceButtons>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NavigateToNextOrPrevSearchResult>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NavigateToUnreadOrEnd>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NewChatModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NewChatModalMembers>();
@@ -765,7 +770,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatSettingsStartModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatViewNavigationPanel), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.NavigateToNextOrPrevSearchResult), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatWelcomeBlock), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatsNavbarButtonBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ClientUpgradeCover), AotTypeKind.Component),
@@ -863,19 +867,24 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ManageAccountSettingsBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupEditor), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupEditorTestPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.ChatMentionView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.CodeBlockMarkupView.CodeBlockMarkupView), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.EmojiMentionView), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.GifMentionView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.HeaderMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.ListMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.MarkupSeqView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.MentionView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.NewLineMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.ParagraphMarkupView), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.PlaceMentionView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.PlainTextMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.PlayableTextMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.PreformattedTextMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.StylizedMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.UnknownMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.UrlMarkupView), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.UserMentionView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MediaList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MemberSelector), AotTypeKind.Component),
@@ -897,6 +906,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.NavbarGroupSelectionButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NavbarItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NavbarPlaceButtons), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.NavigateToNextOrPrevSearchResult), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NavigateToUnreadOrEnd), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NewChatModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NewChatModalMembers), AotTypeKind.Component),
