@@ -18,11 +18,15 @@ public interface INotificationsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<IReadOnlyList<NotificationId>> ListRecentNotificationIds(
         UserId userId, Moment minSentAt, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<UserNotificationInfo> GetUserNotificationInfo(UserId userId, CancellationToken cancellationToken);
 
     // Commands
 
     [CommandHandler]
     Task OnNotify(NotificationsBackend_Notify command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnProcess(NotificationsBackend_Process command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<bool> OnUpsert(NotificationsBackend_Upsert command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -63,6 +67,17 @@ public sealed partial record NotificationsBackend_Notify(
 {
     [IgnoreDataMember, IgnoreMember]
     public UserId ShardKey => Notification.UserId;
+}
+
+// Drains a user's in-memory soft-update buffer and applies one coalesced hard update.
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record NotificationsBackend_Process(
+    [property: DataMember, Key(0)] UserId UserId
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+{
+    [IgnoreDataMember, IgnoreMember]
+    public UserId ShardKey => UserId;
 }
 
 /// <summary>
