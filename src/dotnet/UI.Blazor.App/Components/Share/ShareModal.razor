@@ -24,7 +24,7 @@
         @if (_selectorKind == SelectorKind.Contact) {
             <ContactSelector
                 @ref="@_contactSelectorRef"
-                SearchPhrase="_searchPhrase"
+                SearchQuery="_searchQuery"
                 ChatListPreOrder="@ChatListPreOrder.ChatList"
                 Changed="@StateHasChanged">
                 <SearchBox
@@ -75,7 +75,7 @@
 @code {
     private ContactSelector? _contactSelectorRef;
     private MemberSelector? _memberSelectorRef;
-    private SearchPhrase _searchPhrase = SearchPhrase.None;
+    private MemSearchQuery _searchQuery;
     private string _comment = "";
     private ElementReference _copyTextSourceRef;
     private SelectorKind _selectorKind = SelectorKind.Contact;
@@ -114,7 +114,7 @@
     // Event handlers
 
     private void OnFilter(string filter) {
-        _searchPhrase = filter.ToSearchPhrase(true, false);
+        _searchQuery = new MemSearchQuery(filter);
         StateHasChanged();
     }
 

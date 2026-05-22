@@ -66,8 +66,8 @@
 
 @code {
     private MutableState<ImmutableHashSet<UserId>> _selectedUserIds = null!;
+    private MemSearchQuery _searchQuery;
 
-    private string Filter { get; set; } = "";
     private Item[] FilteredItems { get; set; } = [];
     private Item[] AllItems { get; set; } = [];
     private CancellationTokenSource DisposeTokenSource { get; set; } = null!;
@@ -122,7 +122,7 @@
         => DisposeTokenSource.CancelAndDisposeSilently();
 
     private void OnFilter(string filter) {
-        Filter = filter;
+        _searchQuery = new MemSearchQuery(filter);
         FilteredItems = string.IsNullOrWhiteSpace(filter)
             ? AllItems.ToArray()
             : AllItems
@@ -130,10 +130,8 @@
                 .ToArray();
     }
 
-    private SearchMatch GetMatch(string text) {
-        var searchPhrase = Filter.ToSearchPhrase(true, false);
-        return searchPhrase.GetMatch(text);
-    }
+    private SearchMatch GetMatch(string text)
+        => new(text, _searchQuery);
 
     private void OnItemClick(Item item) {
         if (item.IsMember)

@@ -33,9 +33,8 @@
 
 @code {
     [Parameter, EditorRequired] public ChatInfo ChatInfo { get; set; } = null!;
-    [Parameter] public SearchPhrase? SearchPhrase { get; set; }
+    [Parameter] public MemSearchQuery SearchQuery { get; set; }
 
-    private SearchMatch GetMatch(string text) {
-        return SearchPhrase?.GetMatch(text) ?? SearchMatch.Empty;
-    }
+    private SearchMatch GetMatch(string text)
+        => new(text, SearchQuery);
 }

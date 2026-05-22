@@ -18,7 +18,7 @@
     [Parameter] public ChatListFilter Filter { get; set; } = ChatListFilter.None;
     [Parameter] public bool UseCanWriteFilter { get; set; } = true;
     [Parameter] public IReadOnlySet<ChatId>? ExcludeChatIds { get; set; }
-    [Parameter] public SearchPhrase SearchPhrase { get; set; } = SearchPhrase.None;
+    [Parameter] public MemSearchQuery SearchQuery { get; set; }
     [Parameter] public EventCallback Changed { get; set; }
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
 
@@ -74,7 +74,7 @@
     protected override async Task<IReadOnlyList<ChatInfo>> ComputeState(CancellationToken cancellationToken) {
         var chatListOrder = Order;
         var chatListPreOrder = ChatListPreOrder;
-        var searchPhrase = SearchPhrase;
+        var searchQuery = SearchQuery;
         var excludedChats = ExcludeChatIds;
 
         var allChats = await ChatListUI.ListUnordered(_placeId, Filter, cancellationToken).ConfigureAwait(false);
@@ -86,8 +86,8 @@
             chats = chats.Where(c => c.Chat.Rules.CanWrite());
 
         chats = chats.OrderBy(chatListOrder, chatListPreOrder);
-        if (!searchPhrase.IsEmpty)
-            chats = chats.FilterAndOrderBySearchPhrase(searchPhrase);
+        if (!searchQuery.IsEmpty)
+            chats = chats.FilterAndOrderBySearchQuery(searchQuery);
         return chats.ToList();
     }
 }

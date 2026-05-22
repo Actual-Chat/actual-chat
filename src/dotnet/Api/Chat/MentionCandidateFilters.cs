@@ -33,10 +33,10 @@ public static class MentionCandidateFilters
         foreach (var c in candidates) {
             if (!filter.Invoke(c))
                 continue;
-            if (!searchQuery.IsEmpty && !c.MemSearchDocument.IsMatch(searchQuery))
+            if (!searchQuery.IsEmpty && !c.SearchDocument.IsMatch(searchQuery))
                 continue;
 
-            matched.Add((c, c.MemSearchDocument.GetCoverageScore(searchQuery)));
+            matched.Add((c, c.SearchDocument.GetCoverageScore(searchQuery)));
         }
 
         // Order: kind (User < Chat < Emoji), chat-membership, coverage desc, alphabetical title.

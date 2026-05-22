@@ -10,7 +10,7 @@
         <div class="contact-selector-list-item" @onclick="() => OnContactClick(chat.Id)">
             <ContactView
                 ChatInfo="chat"
-                SearchPhrase="Selector.SearchPhrase"/>
+                SearchQuery="Selector.SearchQuery"/>
             <Checkbox
                 IsChecked="@(selectedChatIds.Contains(chat.Id))"
                 Class="!flex-none"

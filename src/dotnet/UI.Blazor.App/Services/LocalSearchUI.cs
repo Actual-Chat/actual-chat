@@ -25,14 +25,14 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         var candidates = await ListMentionCandidates(chatId, cancellationToken).ConfigureAwait(false);
         candidates = candidates.FilterAndRank(filter, query, limit);
 
-        var searchPhrase = query.ToSearchPhrase(true, true);
+        var searchQuery = new MemSearchQuery(query);
         var placeId = (chatId as PlaceChatId)?.PlaceId;
         var result = new MentionSearchResult[candidates.Count];
         for (var i = 0; i < candidates.Count; i++) {
             var c = candidates[i];
             var picture = c.Picture ?? new Picture(null, null, c.Title);
             var (description, mentionName) = Describe(c, placeId);
-            result[i] = new MentionSearchResult(c.Id, searchPhrase.GetMatch(c.Title), picture) {
+            result[i] = new MentionSearchResult(c.Id, new SearchMatch(c.Title, searchQuery), picture) {
                 IsChatMember = c.IsChatMember,
                 Description = description,
                 MentionName = mentionName,
