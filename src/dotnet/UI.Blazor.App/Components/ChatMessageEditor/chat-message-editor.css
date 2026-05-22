@@ -3,6 +3,9 @@
     @apply bg-transparent md:bg-01;
     padding-bottom: var(--safe-area-bottom);
 }
+.chat-message-editor.narrow-panel {
+    padding-bottom: 0;
+}
 .list-view-layout:has(.chat-activity-panel.listening) .chat-message-editor {
     @apply bg-transparent;
 }
