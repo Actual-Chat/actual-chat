@@ -1,3 +1,5 @@
+using ActualChat.Search;
+
 namespace ActualChat.Chat;
 
 /// <summary>
