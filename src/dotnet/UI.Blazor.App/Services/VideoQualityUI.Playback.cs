@@ -296,7 +296,7 @@ public sealed partial class VideoQualityUI
             reason, capacity, aggregateDownlinkVerdict, downlinkSignal,
             _decoderLayerCapByStream.Count,
             string.Join(", ", entries.Select(x =>
-                $"{x.Key.Value}:size={x.Value.DesiredVideoSize}/req=L{requestedMap[x.Key.Value].LayerId}/T{requestedMap[x.Key.Value].TemporalLayerId}"
+                $"{x.Key.Value}:size={x.Value.DesiredVideoSize}/req=L{requestedMap[x.Key.Value].LayerId}"
                 + $"/duration={x.Value.Snapshot.StreamDurationMs}ms"
                 + $"/buf={x.Value.Snapshot.BufferSpanMsEma:F0}ms"
                 + $"/rate={x.Value.Snapshot.IncomingByteRate}/peak={x.Value.ObservedPeakByteRate}"
@@ -344,7 +344,6 @@ public sealed partial class VideoQualityUI
                 entry.Key.Value,
                 rates,
                 layerCountCap,
-                Math.Max(1, entry.Value.Snapshot.AvailableTemporalLayerCount),
                 area);
         }
     }
@@ -440,12 +439,8 @@ public sealed partial class VideoQualityUI
     {
         if (s.PredictedRatesByLayer.Count == 0)
             return 0;
-        var fullRate = s.PredictedRatesByLayer[0];
-        return (long)Math.Ceiling(fullRate * TemporalFloor(s.EffectiveTemporalLayerCount));
+        return s.PredictedRatesByLayer[0];
     }
-
-    private static double TemporalFloor(int producerCount)
-        => 1.0 / Math.Pow(2, Math.Max(0, producerCount - 1));
 
     private static long ComputeDecayedObservedRate(PlaybackStatsState? prev, long currentRate)
     {
@@ -548,11 +543,11 @@ public sealed partial class VideoQualityUI
         foreach (var hint in streamHints) {
             if (requested is not null && requested.TryGetValue(hint.StreamId, out var q))
                 await JS
-                    .InvokeVoidAsync(jsMethod, cancellationToken, hint.StreamId, q.LayerId, q.TemporalLayerId)
+                    .InvokeVoidAsync(jsMethod, cancellationToken, hint.StreamId, q.LayerId)
                     .ConfigureAwait(false);
             else
                 await JS
-                    .InvokeVoidAsync(jsMethod, cancellationToken, hint.StreamId, null, null)
+                    .InvokeVoidAsync(jsMethod, cancellationToken, hint.StreamId, null)
                     .ConfigureAwait(false);
         }
     }
@@ -563,7 +558,7 @@ public sealed partial class VideoQualityUI
     {
         var jsMethod = $"{BlazorUIAppModule.ImportName}.setRequestedReceiveQuality";
         foreach (var hint in streamHints)
-            await JS.InvokeVoidAsync(jsMethod, cancellationToken, hint.StreamId, null, null).ConfigureAwait(false);
+            await JS.InvokeVoidAsync(jsMethod, cancellationToken, hint.StreamId, null).ConfigureAwait(false);
     }
 
     private static ApiMap<string, ReceiveQuality> BuildLayerCapQuality(
@@ -572,7 +567,7 @@ public sealed partial class VideoQualityUI
     {
         var map = new ApiMap<string, ReceiveQuality>();
         var quality = layerCount is { } count
-            ? new ReceiveQuality(Math.Max(0, count - 1), 0)
+            ? new ReceiveQuality(Math.Max(0, count - 1))
             : ReceiveQuality.Default;
         foreach (var hint in hints)
             map[hint.StreamId] = quality;

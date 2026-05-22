@@ -12,7 +12,6 @@ namespace ActualChat.Streaming;
 public sealed record PlaybackStats(
     PlaybackStreamPriority Priority,
     string Codec,
-    int AvailableTemporalLayerCount,
     double RenderCssLongSide,
     double RenderDevicePixelRatio,
     int PresentedCount,
@@ -35,7 +34,7 @@ public sealed record PlaybackStats(
         = new Dictionary<FrameDropStage, int>();
 
     public static PlaybackStats Empty { get; } =
-        new(PlaybackStreamPriority.Secondary, "", 1,
+        new(PlaybackStreamPriority.Secondary, "",
             0, 0, // Render*
             PresentedCount: 0,
             StreamDurationMs: 0,

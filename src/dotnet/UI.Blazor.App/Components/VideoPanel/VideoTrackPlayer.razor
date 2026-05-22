@@ -162,7 +162,6 @@
         int[] dropCounts,
         int presentedCount,
         double playbackRateEma,
-        int producerTemporalLayerCount,
         double decodeRatioEma,
         int hangRateIn60s,
         int recoveryStreak,
@@ -179,7 +178,6 @@
             dropTrace[(FrameDropStage)dropStages[i]] = dropCounts[i];
         var stats = new PlaybackStats(Priority: (PlaybackStreamPriority)priority,
             Codec: codec,
-            AvailableTemporalLayerCount: producerTemporalLayerCount,
             RenderCssLongSide: renderCssLongSide,
             RenderDevicePixelRatio: renderDevicePixelRatio,
             PresentedCount: presentedCount,

@@ -151,7 +151,7 @@ export interface OwnStreamDiagnostics {
     } | null;
     simulcast: {
         layerCount: number;
-        layers: { width: number; height: number; bitrateKbps: number; scalabilityMode?: string }[];
+        layers: { width: number; height: number; bitrateKbps: number }[];
     } | null;
     // Cumulative drop-stage histogram from the active RecorderStats sample.
     // Keys are decimal FrameDropStage values; only non-zero stages are
@@ -234,7 +234,6 @@ interface LayerInput {
     height: number;
     baseBitrateKbps?: number;
     bitrateKbps?: number;
-    scalabilityMode?: string;
 }
 
 // Preview frame listener used by the canvas fallback when generated preview
@@ -1109,7 +1108,6 @@ export class VideoRecorder {
                     width: l.width,
                     height: l.height,
                     bitrateKbps: l.bitrateKbps,
-                    scalabilityMode: l.scalabilityMode,
                 })),
             } : null,
             dropTraceByStage,
@@ -1599,15 +1597,12 @@ export class VideoRecorder {
 
     private normalizeLayerInput(layer: LayerInput): LayerConfig {
         const baseBitrateKbps = layer.baseBitrateKbps ?? layer.bitrateKbps ?? 0;
-        const result: LayerConfig = {
+        return {
             width: layer.width,
             height: layer.height,
             baseBitrateKbps,
             bitrateKbps: layer.bitrateKbps ?? baseBitrateKbps,
         };
-        if (layer.scalabilityMode !== undefined)
-            result.scalabilityMode = layer.scalabilityMode;
-        return result;
     }
 
     private tearDownWorker(): void {

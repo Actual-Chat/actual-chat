@@ -302,7 +302,7 @@ public class LiveVideoStreams : ILiveVideoStreams
         }
 
         // Request a fresh keyframe whenever a stream's quality envelope is
-        // UPGRADED (more spatial / temporal layers requested). On upgrades,
+        // UPGRADED (more spatial layers requested). On upgrades,
         // the new layer can't be decoded by the receiver until the next
         // keyframe of that layer arrives — periodic keyframes are 3 s apart,
         // so without this we get up to 3 s of stuck-on-old-quality after the
@@ -436,8 +436,7 @@ public class LiveVideoStreams : ILiveVideoStreams
             var oldQuality = previous is not null && previous.TryGetValue(streamId, out var old)
                 ? old
                 : ReceiveQuality.Lowest;
-            if (quality.LayerId > oldQuality.LayerId
-                || quality.TemporalLayerId < oldQuality.TemporalLayerId)
+            if (quality.LayerId > oldQuality.LayerId)
                 yield return streamId;
         }
     }

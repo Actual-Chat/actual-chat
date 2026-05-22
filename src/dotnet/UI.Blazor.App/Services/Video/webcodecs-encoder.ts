@@ -25,15 +25,6 @@ function shouldLogEncoderError(key: string): boolean {
     return true;
 }
 
-// WebCodecs SVC metadata (svc.temporalLayerId) is not yet in TS typings.
-function extractTemporalLayerId(metadata: EncodedVideoChunkMetadata | undefined): number | undefined {
-    if (!metadata) return undefined;
-    const svc = (metadata as Record<string, unknown>)['svc'];
-    if (svc != null && typeof svc === 'object')
-        return (svc as { temporalLayerId?: number }).temporalLayerId;
-    return undefined;
-}
-
 export interface EncoderConfig {
   codec: string;
   width: number;
@@ -47,8 +38,6 @@ export interface EncoderConfig {
   maxKeyFrameIntervalMs?: number;
   latencyMode: 'realtime' | 'quality';
   hardwareAcceleration: 'prefer-hardware' | 'prefer-software' | 'no-preference';
-  // 'L1T1' | 'L1T2' | 'L1T3'
-  scalabilityMode?: string;
   // Disabled by default — HW encoders accept RGBA natively.
   preConvertYuv?: boolean;
 }
@@ -63,8 +52,6 @@ export interface EncodedChunkData {
   byteLength: number;
   sequenceNumber: number;
   encodeTimeMs: number;
-  // SVC: 0=base, 1+=enhancement.
-  temporalLayerId?: number;
   // Simulcast: 0=base (lowest-res); always 0 for single-encoder (P2P).
   layerId?: number;
   // Dims of the producing encoder instance (per-layer truth, not primary config).
@@ -161,9 +148,6 @@ export class WebCodecsEncoder {
         try {
             infoLog?.log(`Initializing: ${this.config.width}x${this.config.height} @ ${(this.config.bitrate / 1_000_000).toFixed(1)}Mbps`);
             const encoderConfig = this.buildEncoderConfig();
-            if (this.config.scalabilityMode) {
-                infoLog?.log('Using scalability mode:', this.config.scalabilityMode);
-            }
             this.encoder.configure(encoderConfig);
         } catch (error) {
             errorLog?.log('Failed to configure encoder:', error);
@@ -399,7 +383,6 @@ export class WebCodecsEncoder {
                     byteLength: chunk.byteLength,
                     sequenceNumber: this.chunkSequence++,
                     encodeTimeMs: encodeTime,
-                    temporalLayerId: extractTemporalLayerId(metadata),
                     layerId: this.layerId,
                     width: this.config.width,
                     height: this.config.height,
@@ -459,10 +442,6 @@ export class WebCodecsEncoder {
 
         // Leave bitrateMode unset: variable is the spec default. Setting
         // explicit 'variable' + HEVC HW (Chrome) silently stalls the encoder.
-
-        if (this.config.scalabilityMode) {
-            encoderConfig.scalabilityMode = this.config.scalabilityMode;
-        }
 
         if (this.config.codec.startsWith('avc1')) {
             // Annex B everywhere: SPS/PPS embedded → no description, no AVCC overhead.
