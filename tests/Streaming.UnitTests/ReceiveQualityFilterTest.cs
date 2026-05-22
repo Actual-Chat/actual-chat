@@ -5,7 +5,7 @@ namespace ActualChat.Streaming.UnitTests;
 
 public class ReceiveQualityFilterTest
 {
-    private static readonly ReceiveQuality TopQuality = new(2, 0);
+    private static readonly ReceiveQuality TopQuality = new(2);
 
     [Fact]
     public async Task LoweredCapSwitchesOnNextKeyframe()
@@ -71,61 +71,6 @@ public class ReceiveQualityFilterTest
     }
 
     [Fact]
-    public async Task UpgradedTemporalRequestWaitsForNextKeyframe()
-    {
-        var quality = new ReceiveQuality(2, 1);
-        var frames = Frames(
-            Key(2, 1),
-            Delta(2, 1),
-            Delta(2, 1, temporal: 1),
-            Mutate(() => quality = TopQuality),
-            Delta(2, 1, temporal: 1),
-            Delta(2, 1),
-            Key(2, 2),
-            Delta(2, 2, temporal: 1));
-
-        var result = new List<VideoFrame>();
-        await foreach (var frame in ReceiveQualityFilter
-                           .Apply(frames, () => quality, NullLogger.Instance, CancellationToken.None))
-            result.Add(frame);
-
-        result.Select(x => (KeyFrameNumber: x.KeyFrameIndex, x.TemporalLayerId)).Should().Equal(
-            (1, 0),
-            (1, 0),
-            (1, 0),
-            (2, 0),
-            (2, 1));
-    }
-
-    [Fact]
-    public async Task LoweredTemporalRequestDoesNotReUpgradeBeforeKeyframe()
-    {
-        var quality = TopQuality;
-        var frames = Frames(
-            Key(2, 1),
-            Delta(2, 1, temporal: 1),
-            Mutate(() => quality = ReceiveQuality.Lowest),
-            Delta(2, 1, temporal: 1),
-            Delta(2, 1),
-            Mutate(() => quality = TopQuality),
-            Delta(2, 1, temporal: 1),
-            Key(2, 2),
-            Delta(2, 2, temporal: 1));
-
-        var result = new List<VideoFrame>();
-        await foreach (var frame in ReceiveQualityFilter
-                           .Apply(frames, () => quality, NullLogger.Instance, CancellationToken.None))
-            result.Add(frame);
-
-        result.Select(x => (KeyFrameNumber: x.KeyFrameIndex, x.TemporalLayerId)).Should().Equal(
-            (1, 0),
-            (1, 1),
-            (1, 0),
-            (2, 0),
-            (2, 1));
-    }
-
-    [Fact]
     public async Task PausedDropsEveryFrameAndRequiresKeyframeOnResume()
     {
         var quality = TopQuality;
@@ -149,33 +94,13 @@ public class ReceiveQualityFilterTest
         result.Select(x => x.KeyFrameIndex).Should().Equal(1, 1, 3, 3);
     }
 
-    [Fact]
-    public async Task ZeroTemporalRequestForwardsAllTemporalLayers()
-    {
-        var quality = new ReceiveQuality(2, 0);
-        var frames = Frames(
-            Key(2, 1),
-            Delta(2, 1),
-            Delta(2, 1, temporal: 1));
-
-        var result = new List<VideoFrame>();
-        await foreach (var frame in ReceiveQualityFilter
-                           .Apply(frames, () => quality, NullLogger.Instance, CancellationToken.None))
-            result.Add(frame);
-
-        result.Select(x => x.TemporalLayerId).Should().Equal((byte)0, (byte)0, (byte)1);
-    }
-
     private static VideoFrame Key(byte layer, long keyFrameNumber)
         => Frame(layer, keyFrameNumber, isKeyFrame: true);
 
     private static VideoFrame Delta(byte layer, long keyFrameNumber)
-        => Delta(layer, keyFrameNumber, temporal: 0);
+        => Frame(layer, keyFrameNumber, isKeyFrame: false);
 
-    private static VideoFrame Delta(byte layer, long keyFrameNumber, byte temporal)
-        => Frame(layer, keyFrameNumber, isKeyFrame: false, temporal);
-
-    private static VideoFrame Frame(byte layer, long keyFrameNumber, bool isKeyFrame, byte temporal = 0)
+    private static VideoFrame Frame(byte layer, long keyFrameNumber, bool isKeyFrame)
         => new() {
             Width = layer switch {
                 0 => 320,
@@ -189,8 +114,6 @@ public class ReceiveQualityFilterTest
             },
             LayerId = layer,
             LayerCount = 3,
-            TemporalLayerId = temporal,
-            TemporalLayerCount = 2,
             // KF: Index == KeyFrameIndex (so IsKeyFrame is true);
             // Delta: Index = -1 (or any other value != KeyFrameIndex) so the
             // getter returns false. The filter only ever compares KeyFrameIndex

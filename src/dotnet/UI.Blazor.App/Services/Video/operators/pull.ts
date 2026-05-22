@@ -175,8 +175,6 @@ export function pullSource(opts: PullSourceOptions): AsyncIterableX<ArrivedChunk
                         envelope.description = copyToArrayBuffer(dto.Description);
 
                     stats.bytesReceived += data.byteLength;
-                    if (dto.TemporalLayerCount && dto.TemporalLayerCount > stats.producerTemporalLayerCount)
-                        stats.producerTemporalLayerCount = dto.TemporalLayerCount;
                     mustClose = false;
                     yield envelope;
                 } finally {

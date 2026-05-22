@@ -38,15 +38,14 @@ export async function collectActiveStreamHints(): Promise<{ streamId: string; cu
 
 export function setRequestedReceiveQuality(
     streamId: string,
-    layerId: number | null,
-    temporalLayerId: number | null
+    layerId: number | null
 ): void {
-    if (layerId === null || temporalLayerId === null) {
+    if (layerId === null) {
         recordRequestedReceiveQuality(streamId, null);
         return;
     }
 
-    recordRequestedReceiveQuality(streamId, { layerId, temporalLayerId });
+    recordRequestedReceiveQuality(streamId, { layerId });
 }
 
 // Diagnostic settings — toggleable from VideoDiagnosticsSettingsModal.

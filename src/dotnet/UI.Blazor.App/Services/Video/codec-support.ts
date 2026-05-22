@@ -20,7 +20,6 @@ export interface CodecInfo {
     category: 'h264' | 'hevc' | 'av1' | 'vp9';
     supported: boolean;
     hardwareAccelerated: boolean;
-    scalabilityModes: string[];
 }
 
 const CODEC_PROFILES = {
@@ -148,7 +147,7 @@ async function detectSupportedCodecsUncached(width: number, height: number): Pro
     }
     const results: CodecInfo[] = [];
     for (const { category, name, codec } of probeList) {
-        const { supported, hardwareAccelerated, scalabilityModes } = await isCodecSupported(codec, category, width, height);
+        const { supported, hardwareAccelerated } = await isCodecSupported(codec, category, width, height);
         // WebCodecs level ladders are backward-compatible: a working low-level
         // profile implies higher ones at the same dims work too.
         const chosenCodec = supported ? getCodecForCategory(category, width, height) : codec;
@@ -158,7 +157,6 @@ async function detectSupportedCodecsUncached(width: number, height: number): Pro
             category,
             supported,
             hardwareAccelerated,
-            scalabilityModes,
         });
     }
     const supported = results.filter(c => c.supported);
@@ -172,7 +170,7 @@ async function isCodecSupported(
     category: 'h264' | 'hevc' | 'av1' | 'vp9',
     width: number,
     height: number
-): Promise<{ supported: boolean; hardwareAccelerated: boolean; scalabilityModes: string[] }> {
+): Promise<{ supported: boolean; hardwareAccelerated: boolean }> {
     try {
         const baseConfig: VideoEncoderConfig = {
             codec,
@@ -202,29 +200,11 @@ async function isCodecSupported(
             }
         }
 
-        const scalabilityModes: string[] = [];
-        if (supported) {
-            const modesToTest = ['L1T1', 'L1T2', 'L1T3'];
-            for (const mode of modesToTest) {
-                try {
-                    const testConfig: VideoEncoderConfig = {
-                        ...baseConfig,
-                        hardwareAcceleration: hardwareAccelerated ? 'prefer-hardware' : 'no-preference',
-                        scalabilityMode: mode,
-                    };
-                    const modeSupport = await VideoEncoder.isConfigSupported(testConfig);
-                    if (modeSupport.supported) {
-                        scalabilityModes.push(mode);
-                    }
-                } catch { /* unsupported */ }
-            }
-        }
-
         debugLog?.log(`Encoder ${codec}: ${supported ? `supported, hw=${hardwareAccelerated}` : 'not supported'}`);
-        return { supported, hardwareAccelerated, scalabilityModes };
+        return { supported, hardwareAccelerated };
     } catch (error) {
         errorLog?.log(`Error checking codec support for ${codec}:`, error);
-        return { supported: false, hardwareAccelerated: false, scalabilityModes: [] };
+        return { supported: false, hardwareAccelerated: false };
     }
 }
 
@@ -536,14 +516,13 @@ export async function getAV1CodecSupport(): Promise<CodecInfo[]> {
     const results: CodecInfo[] = [];
 
     for (const profile of CODEC_PROFILES.av1) {
-        const { supported, hardwareAccelerated, scalabilityModes } = await isCodecSupported(profile.codec, 'av1', 1920, 1080);
+        const { supported, hardwareAccelerated } = await isCodecSupported(profile.codec, 'av1', 1920, 1080);
         results.push({
             name: profile.name,
             codec: profile.codec,
             category: 'av1',
             supported,
             hardwareAccelerated,
-            scalabilityModes,
         });
     }
 

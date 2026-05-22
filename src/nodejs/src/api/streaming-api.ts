@@ -82,7 +82,8 @@ export interface VideoFrameDto {
     LayerCount?: number;
     MaxLayerWidth?: number;
     MaxLayerHeight?: number;
-    // SVC temporal layer ID (uint8 on wire). 0 = base, 1+ = enhancement.
+    // Wire-compat only: legacy SVC temporal fields. Ignored by current
+    // pipeline; preserved so older publishers can still be parsed.
     TemporalLayerId?: number;
     TemporalLayerCount?: number;
     Codec?: string | null;
@@ -142,7 +143,6 @@ export interface AudioFrameDto {
 
 export interface ReceiveQualityDto {
     0: number;  // LayerId
-    1: number;  // TemporalLayerId
 }
 
 export interface RecordingQualityStateDto {
@@ -170,9 +170,8 @@ export interface PlaybackStreamInfoDto {
     2: number;   // KeyframeSkipsInWindow
     3: number;   // DecoderQueueDepthEma
     4: number;   // CurrentLayerCount
-    5: number;   // CurrentTemporalLayerCount
-    6: number;   // PlaybackStreamPriority (0=Secondary, 1=Primary)
-    7: number;   // Verdict (-1, 0, +1)
+    5: number;   // PlaybackStreamPriority (0=Secondary, 1=Primary)
+    6: number;   // Verdict (-1, 0, +1)
 }
 
 export interface PlaybackQualityInfoDto {

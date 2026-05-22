@@ -763,10 +763,9 @@
     private static string FormatRequestedReceiveQuality(JsonElement rd) {
         if (!rd.TryGetProperty("requestedReceiveQuality", out var requested)
             || requested.ValueKind != JsonValueKind.Object)
-            return "default (L1 T0)";
+            return "default (L1)";
 
-        return $"{FormatRequestedLayerId((int)GetNum(requested, "layerId"))} "
-            + $"{FormatRequestedTemporalLayerId((int)GetNum(requested, "temporalLayerId"))}";
+        return FormatRequestedLayerId((int)GetNum(requested, "layerId"));
     }
 
     private static string FormatRecordingQualityState(VideoQualityUI.RecordingQualitySnapshot snapshot)
@@ -798,9 +797,6 @@
 
     private static string FormatRequestedLayerId(int value)
         => value == int.MaxValue ? "LMax" : $"L{Math.Max(0, value)}";
-
-    private static string FormatRequestedTemporalLayerId(int value)
-        => value == int.MaxValue ? "TMax" : $"T{Math.Max(0, value)}";
 
     private static string SignalText(int signal)
         => signal switch {

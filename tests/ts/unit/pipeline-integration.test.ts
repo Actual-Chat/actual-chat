@@ -616,7 +616,6 @@ describe('video pipeline integration', () => {
             Description: s.description,
             Codec: s.codec,
             LayerId: s.layerId,
-            TemporalLayerId: s.temporalLayerId,
         }));
 
         // Run the receiver side just up to pullSource → ArrivedChunk so we

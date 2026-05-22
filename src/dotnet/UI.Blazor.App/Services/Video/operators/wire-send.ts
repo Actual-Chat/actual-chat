@@ -30,8 +30,6 @@ export interface VideoStreamFrame {
     data: Uint8Array;
     description?: Uint8Array;
     codec?: string;
-    temporalLayerId?: number;
-    temporalLayerCount?: number;
     layerId?: number;
     layerCount?: number;
     // Quarter-turn CW (0|1|2|3) the receiver should apply to display upright.
@@ -194,7 +192,6 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                                 data: readChunkBytes(encoded.chunk),
                                 layerId: encoded.layerId,
                                 layerCount,
-                                temporalLayerId: encoded.metadata.temporalLayerId,
                             };
                             if (encoded.rotation !== 0) dto.rotation = encoded.rotation;
                             if (dropTraceBytes) dto.dropTrace = dropTraceBytes;

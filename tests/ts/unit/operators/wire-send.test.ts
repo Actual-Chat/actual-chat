@@ -95,7 +95,6 @@ interface BuildOpts {
     duration?: number | null;
     byteLength?: number;
     bytes?: Uint8Array;
-    temporalLayerId?: number;
     index?: number;
 }
 
@@ -111,8 +110,6 @@ function makeEncoded(stats: RecorderStats, opts: BuildOpts = {}): EncodedFrame {
             : opts.description;
         metadata.decoderConfig = { codec: 'avc1.42E01E', description: desc } as unknown as VideoDecoderConfig;
     }
-    if (opts.temporalLayerId !== undefined)
-        (metadata as { temporalLayerId?: number }).temporalLayerId = opts.temporalLayerId;
     return {
         chunk,
         metadata,

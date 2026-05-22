@@ -68,7 +68,6 @@ export interface VideoFrameDto {
     Height?: number;
     Description?: Uint8Array | null;
     Codec?: string | null;
-    TemporalLayerId?: number;
 }
 
 export interface Size2D {

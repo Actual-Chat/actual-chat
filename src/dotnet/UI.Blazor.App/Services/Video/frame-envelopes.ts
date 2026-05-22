@@ -91,7 +91,6 @@ export interface PlayerStats {
     driftAnchorEpoch: number;
     driftLastSampleOffsetMs: number;
     driftLastSampleWallMs: number;
-    producerTemporalLayerCount: number;
     // Above-baseline downlink delay EMA: max(0, rawLatency - minBaselineSkew)
     // where rawLatency = Date.now() - serverArrivedAtUnixMs and the baseline is
     // the sliding-60s minimum of rawLatency. -1 == not yet sampled.
@@ -158,7 +157,6 @@ export function createEmptyPlayerStats(): PlayerStats {
         driftAnchorEpoch: -1,
         driftLastSampleOffsetMs: 0,
         driftLastSampleWallMs: 0,
-        producerTemporalLayerCount: 1,
         downlinkLatencyEma: -1,
         downlinkMinBaselineMs: -1,
         arrivalIntervalEma: -1,
