@@ -11,6 +11,7 @@ import {
     type EncodedBundle,
     type EncodedFrame,
 } from '../frame-envelopes';
+import type { LayerLadderController } from '../sender/layer-ladder-controller';
 
 const ENCODE_QUEUE_DEPTH_EMA_ALPHA = 0.2;
 const RESTART_STREAK_WINDOW_MS = 60_000;
@@ -57,8 +58,13 @@ export type EncoderFactory = (
 ) => AsyncVideoEncoder<EncodeInput, EncodedFrame>;
 
 export interface EncodeOptions {
-    // Bottom-first; length MUST equal bundle.layers.length.
-    configs: readonly EncoderConfigPerLayer[];
+    // Initial ladder snapshot OR a LayerLadderController for hot-apply.
+    // Length MUST equal bundle.layers.length at each iteration. When a
+    // controller is supplied, the operator watches `controller.current.version`
+    // and grows/shrinks the encoder set on the next bundle whose ladder
+    // changed.
+    configs?: readonly EncoderConfigPerLayer[];
+    controller?: LayerLadderController;
     createEncoder: EncoderFactory;
     // Bundle-level hang watchdog. If `Promise.allSettled` on a bundle's
     // per-layer encode promises hasn't resolved within this budget, the
@@ -74,10 +80,18 @@ export interface EncodeOptions {
 // the first bundle, submit layers in parallel via allSettled so one
 // rejection doesn't leak the others' chunks. Bundle layers bottom-first.
 export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, EncodedBundle> {
-    if (opts.configs.length === 0)
+    if (!opts.configs && !opts.controller)
+        throw new Error('encode: requires `configs` or `controller`');
+    if (opts.configs && opts.configs.length === 0)
         throw new Error('encode: configs must contain at least one layer');
 
-    const configs = opts.configs.slice();
+    // Mutable local snapshot of the active ladder. When a controller is
+    // supplied, this is replaced on each version bump; otherwise it stays
+    // as the constructor-time snapshot.
+    let configs: readonly EncoderConfigPerLayer[] = opts.configs
+        ? opts.configs.slice()
+        : opts.controller!.current.configs;
+    let lastSeenVersion = opts.controller?.current.version ?? -1;
     const createEncoder = opts.createEncoder;
     const bundleTimeoutMs = opts.bundleTimeoutMs ?? 3000;
     return source => {
@@ -122,6 +136,41 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         && bundleNowMs - restartTimestamps[0] > RESTART_STREAK_WINDOW_MS)
                         restartTimestamps.shift();
                     bundle.stats.encoderRestartStreakIn60s = restartTimestamps.length;
+                    // Hot-apply: pick up a ladder change before checking layer
+                    // counts so the diff matches the bundle that was produced
+                    // under the new ladder. spatialize reads the same controller
+                    // so `bundle.layers.length` already reflects the new size.
+                    if (opts.controller && opts.controller.current.version !== lastSeenVersion) {
+                        const cur = opts.controller.current;
+                        const oldN = encoders.length;
+                        const newN = cur.configs.length;
+                        if (oldN > 0 && newN > oldN) {
+                            // Grow: append fresh encoders; force keyframe so
+                            // the new layer's first chunk is decodable.
+                            try {
+                                for (let i = oldN; i < newN; i++)
+                                    encoders.push(createEncoder(cur.configs[i], i));
+                            } catch (e) {
+                                closeBundleLayers(bundle);
+                                const topCodec = cur.configs[newN - 1].codec;
+                                const message = e instanceof Error ? e.message : String(e);
+                                throw new Error(
+                                    `${ENCODER_INIT_FAILED_PREFIX} codec=${topCodec}: ${message}`,
+                                    { cause: e },
+                                );
+                            }
+                            forceKeyframeNext = true;
+                        } else if (oldN > 0 && newN < oldN) {
+                            // Shrink: dispose tail encoders. EncoderPool may park
+                            // them via the release callback inside dispose().
+                            for (let i = newN; i < oldN; i++) {
+                                try { encoders[i].dispose(); } catch { /* ignore */ }
+                            }
+                            encoders.length = newN;
+                        }
+                        configs = cur.configs;
+                        lastSeenVersion = cur.version;
+                    }
                     const layerCount = bundle.layers.length;
                     if (layerCount !== configs.length) {
                         closeBundleLayers(bundle);
