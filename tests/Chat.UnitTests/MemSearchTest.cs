@@ -1,3 +1,5 @@
+using ActualChat.Search;
+
 namespace ActualChat.Chat.UnitTests;
 
 public class MemSearchTest(ITestOutputHelper @out) : TestBase(@out)

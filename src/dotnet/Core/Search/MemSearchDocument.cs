@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace ActualChat;
+namespace ActualChat.Search;
 
 /// <summary>
 /// A search target reduced to a match blob: each word emitted as its camelCase / digit-boundary

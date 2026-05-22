@@ -1,21 +1,41 @@
 using System.Buffers;
 
-namespace ActualChat;
+namespace ActualChat.Search;
 
 /// <summary>
 /// A query precompiled for fast matching: one <c>QueryWord</c> per query word, each carrying a
 /// <see cref="SearchValues{T}"/> of its prefix needles plus per-suffix scoring data. Words are
 /// ordered fewest-suffixes-first so <see cref="IsMatch"/> fails fast.
 /// </summary>
-public readonly struct MemSearchQuery(string? source)
+public readonly struct MemSearchQuery : IEquatable<MemSearchQuery>
 {
     public static MemSearchQuery Empty { get; } = new(null);
 
-    public Word[] Words { get => field ?? Empty.Words; } = BuildWords(source);
+    public string Value => field ?? "";
+    public Word[] Words { get => field ?? Empty.Words; }
     public bool IsEmpty => Words.Length == 0;
+
+    public MemSearchQuery(string? source)
+    {
+        Value = new MemSearchDocument(source).Value;
+        Words = BuildWords(Value);
+    }
 
     public override string ToString()
         => Words.ToDelimitedString(", ");
+
+    // Equality
+
+    public bool Equals(MemSearchQuery other)
+        => Value == other.Value;
+    public override bool Equals(object? obj)
+        => obj is MemSearchQuery other && Equals(other);
+    public override int GetHashCode()
+        => Value.GetHashCode();
+    public static bool operator ==(MemSearchQuery left, MemSearchQuery right)
+        => left.Equals(right);
+    public static bool operator !=(MemSearchQuery left, MemSearchQuery right)
+        => !left.Equals(right);
 
     // Internal methods
 
@@ -42,11 +62,9 @@ public readonly struct MemSearchQuery(string? source)
 
     // Private methods
 
-    private static Word[] BuildWords(string? source)
+    private static Word[] BuildWords(string value)
     {
-        // The query is tokenized like a document, split into one blob per word, and each blob
-        // is precompiled into a QueryWord.
-        var value = new MemSearchDocument(source).Value;
+        // value is a document blob; it's split into one sub-blob per word, each precompiled into a Word.
         if (value.Length == 0)
             return [];
 
