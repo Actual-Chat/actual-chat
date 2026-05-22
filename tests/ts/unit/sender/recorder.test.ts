@@ -329,6 +329,66 @@ describe('Recorder', () => {
         session.dispose();
     });
 
+    it('reconfigureLayers: grows ladder mid-stream without recreating the sender', async () => {
+        const session = new SenderSession();
+        const recorder = new Recorder(session);
+        // Many-frame source so we can reconfigure mid-flight.
+        const senders: FakeSender[] = [];
+        let enqueued = 0;
+        const slowSource = (_track: MediaStreamTrack) => ({
+            readable: new ReadableStream<VideoFrame>({
+                async pull(controller) {
+                    await Promise.resolve();
+                    if (enqueued >= 8) {
+                        controller.close();
+                        return;
+                    }
+                    controller.enqueue(new MockVideoFrame(enqueued++) as unknown as VideoFrame);
+                },
+            }),
+        });
+
+        const cfgTop: EncoderConfigPerLayer = {
+            width: 1280, height: 720, bitrate: 2_000_000, framerate: 30, codec: 'avc1.640028',
+        };
+        const cfgBase: EncoderConfigPerLayer = {
+            width: 640, height: 360, bitrate: 1_000_000, framerate: 30, codec: 'avc1.640028',
+        };
+        const runPromise = recorder.start({
+            ...buildConfig({
+                createSender: () => {
+                    const s = new FakeSender();
+                    senders.push(s);
+                    return s;
+                },
+                createProcessor: slowSource,
+            }),
+            encoderConfigs: [cfgTop],
+        });
+        // Pump until we see the first wire chunk land.
+        for (let i = 0; i < 200; i++) {
+            for (const enc of MockVideoEncoder.instances) enc.drainAll();
+            await Promise.resolve();
+            if (senders.length > 0 && senders[0].sent.length >= 1) break;
+        }
+        expect(senders.length).toBe(1);
+        const initialEncoderInstances = MockVideoEncoder.instances.length;
+
+        // Grow the ladder. The wire sender MUST NOT be recreated.
+        recorder.reconfigureLayers([cfgBase, cfgTop]);
+        await driveToCompletion(runPromise);
+
+        // Same sender instance carried us across the reconfigure — RpcStream
+        // identity is preserved.
+        expect(senders.length).toBe(1);
+        // The encoder set grew (a 2nd layer's encoder was created mid-run).
+        expect(MockVideoEncoder.instances.length).toBeGreaterThan(initialEncoderInstances);
+        // Wire DTOs after reconfigure carry layerCount=2.
+        const post = senders[0].sent.filter(f => f.layerCount === 2);
+        expect(post.length).toBeGreaterThan(0);
+        session.dispose();
+    });
+
     it('start: rejects when called while a run is already in flight', async () => {
         const session = new SenderSession();
         const recorder = new Recorder(session);

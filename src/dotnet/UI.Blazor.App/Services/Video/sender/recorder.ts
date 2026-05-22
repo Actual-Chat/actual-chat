@@ -21,6 +21,7 @@ import { applyKeyframePolicy } from '../operators/apply-keyframe-policy';
 import { encode, type EncoderConfigPerLayer, type EncoderFactory } from '../operators/encode';
 import { FloodGate, floodGate } from '../operators/flood-gate';
 import { wireSend, type StreamSenderLike } from '../operators/wire-send';
+import { LayerLadderController } from './layer-ladder-controller';
 import type { SenderSession } from './session';
 
 const { warnLog } = getLogs('VideoPipeline');
@@ -67,6 +68,8 @@ export class Recorder {
     private currentWhenDone: Promise<void> | null = null;
     private currentStats: RecorderStats | null = null;
     private forceKeyframeRequested = false;
+    // Lives for the duration of one run; null when stopped.
+    private ladderController: LayerLadderController | null = null;
 
     constructor(session: SenderSession) {
         this.session = session;
@@ -82,10 +85,12 @@ export class Recorder {
 
         const stats = createEmptyRecorderStats();
         this.currentStats = stats;
-        const ladder: LayerSpec[] = config.encoderConfigs.map(c => ({
-            width: c.width,
-            height: c.height,
-        }));
+        const ladderController = new LayerLadderController(config.encoderConfigs);
+        this.ladderController = ladderController;
+        const topLayer: LayerSpec = {
+            width: config.encoderConfigs[config.encoderConfigs.length - 1].width,
+            height: config.encoderConfigs[config.encoderConfigs.length - 1].height,
+        };
         const abortController = new AbortController();
         const abortSignal = abortController.signal;
         const sourceStopController = new AbortController();
@@ -103,7 +108,6 @@ export class Recorder {
 
         // Two pipes only because pipe()'s typed overload tops out at 9 ops;
         // runtime composition is identical.
-        const topLayer = ladder[ladder.length - 1];
         const captureToNormalized = pipe(
             captureSource,
             traceDrops<CapturedFrame>(FrameDropStage.SenderSource),
@@ -113,6 +117,7 @@ export class Recorder {
             attachSourceDims(),
             normalizeFrame({
                 target: topLayer,
+                ladder: ladderController,
                 isCamera: config.sourceKind === 0,
                 isFrontCamera: config.isFrontCamera,
                 isIos: config.isIos,
@@ -126,7 +131,7 @@ export class Recorder {
         );
         const normalizedToBundle = pipe(
             captureToNormalized,
-            spatialize({ ladder }),
+            spatialize({ controller: ladderController }),
             traceDrops<CapturedBundle>(FrameDropStage.SenderDownscale),
         );
         const recordingPipe = pipe(
@@ -141,15 +146,15 @@ export class Recorder {
                 },
             }),
             encode({
-                configs: config.encoderConfigs,
+                controller: ladderController,
                 createEncoder: config.createEncoder,
             }),
             traceDrops<EncodedBundle>(FrameDropStage.SenderEncode),
             wireSend({
                 createSender: () => config.createSender(gate),
-                layerCount: config.encoderConfigs.length,
-                topLayerWidth: config.encoderConfigs[config.encoderConfigs.length - 1].width,
-                topLayerHeight: config.encoderConfigs[config.encoderConfigs.length - 1].height,
+                controller: ladderController,
+                topLayerWidth: topLayer.width,
+                topLayerHeight: topLayer.height,
                 abortSignal,
             }),
         );
@@ -168,6 +173,7 @@ export class Recorder {
                 this.abortTimeoutId = null;
                 this.abortTimeoutReason = null;
                 this.currentWhenDone = null;
+                this.ladderController = null;
             }
             // Stats persist post-run for one-shot diagnostic reads;
             // cleared on the next `start()`.
@@ -197,6 +203,18 @@ export class Recorder {
         if (!this.abortController)
             return;
         this.forceKeyframeRequested = true;
+    }
+
+    // Hot-apply: mutate the running pipeline's layer ladder without stopping
+    // the wire RpcStream. Caller is responsible for ensuring `next` is
+    // codec-compatible with the running encoders (codec swap still requires a
+    // full restart). No-op when not running.
+    reconfigureLayers(next: readonly EncoderConfigPerLayer[]): void {
+        if (!this.abortController || !this.ladderController)
+            return;
+        if (next.length === 0)
+            throw new Error('Recorder.reconfigureLayers: configs must not be empty');
+        this.ladderController.setConfigs(next);
     }
 
     async restart(config: RecorderConfig): Promise<void> {
