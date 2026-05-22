@@ -64,6 +64,10 @@ export interface RecorderWorker extends SharedSettingsWorker {
     ): Promise<void>;
     setTraceKill(avgPeriod: VideoTraceKillPeriod, stage: number): Promise<boolean>;
     requestKeyframe(): Promise<void>;
+    // Hot-apply: swap the running pipeline's encoder ladder without
+    // recreating the wire RpcStream. Caller must ensure codec parity with
+    // the active run (codec swap still requires stop+start).
+    reconfigureLayers(configs: readonly EncoderConfigPerLayer[]): Promise<void>;
     getStats(): Promise<RecorderStats>;
     stop(): Promise<void>;
 
