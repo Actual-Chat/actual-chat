@@ -91,34 +91,28 @@ public partial class Chats(IServiceProvider services) : IChats
         => GetTile(session, chatId, lidTileRange, cancellationToken);
 
     // [ComputeMethod]
-    public virtual async Task<ChatContentTile> GetChatContentTile(
+    public virtual async Task<ChatContentPeriod[]> GetContentPeriods(
         Session session,
         ChatId chatId,
-        ChatContentKind kindMask,
-        Range<long> entryLidTileRange,
+        ChatContentKind kind,
         CancellationToken cancellationToken)
     {
         await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
-        var tile = await Backend.GetChatContentTile(chatId, entryLidTileRange, cancellationToken).ConfigureAwait(false);
-        if (kindMask is ChatContentKind.All || tile.IsEmpty)
-            return tile;
-
-        var items = tile.Items.Where(x => (x.Kind & kindMask) != 0).ToArray();
-        return new ChatContentTile(entryLidTileRange, kindMask, items);
+        return await Backend.GetContentPeriods(chatId, kind, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatContentItem[]> ListChatContent(
+    public virtual async Task<ChatContentItem[]> GetContentPeriod(
         Session session,
         ChatId chatId,
-        ChatContentKind kindMask,
+        ChatContentKind kind,
+        string periodKey,
+        int pageIndex,
         CancellationToken cancellationToken)
     {
         await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
-        var items = await Backend.ListChatContent(chatId, cancellationToken).ConfigureAwait(false);
-        return kindMask is ChatContentKind.All
-            ? items
-            : items.Where(x => (x.Kind & kindMask) != 0).ToArray();
+        return await Backend.GetContentPeriod(chatId, kind, periodKey, pageIndex, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // [ComputeMethod]

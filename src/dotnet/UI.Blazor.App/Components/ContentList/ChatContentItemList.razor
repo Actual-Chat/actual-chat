@@ -16,10 +16,10 @@
         else if (item.IsGroup) {
             <div class="c-group-header">@item.GroupTitle</div>
         }
-        else if (KindMask == ChatContentKind.File) {
+        else if (Kind == ChatContentKind.File) {
             @RenderFileRow(item.Items[0])
         }
-        else if (KindMask == ChatContentKind.Link) {
+        else if (Kind == ChatContentKind.Link) {
             @RenderLinkCard(item)
         }
         else {
@@ -39,24 +39,25 @@
     private const int GridColumns = 3;
     private const int InitialWindow = 60;
     private const int MinWindow = 40;
+    private static readonly IReadOnlyDictionary<Symbol, ChatEntry> EmptyLinkEntries = new Dictionary<Symbol, ChatEntry>();
 
     private IChats Chats => Hub.Chats;
     private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
 
     [Parameter, EditorRequired] public ChatId? ChatId { get; set; }
-    [Parameter] public ChatContentKind KindMask { get; set; } = ChatContentKind.Media;
+    [Parameter] public ChatContentKind Kind { get; set; } = ChatContentKind.Photo;
     [Parameter] public ContentGrouping GroupBy { get; set; } = ContentGrouping.Month;
 
-    private string Identity => $"content:{ChatId}:{KindMask}";
-    private bool IsGridMode => (KindMask & (ChatContentKind.File | ChatContentKind.Link)) == 0;
+    private string Identity => $"content:{ChatId}:{Kind}:{GroupBy}";
+    private bool IsGridMode => (Kind & (ChatContentKind.File | ChatContentKind.Link)) == 0;
 
-    private string ModeClass => KindMask switch {
+    private string ModeClass => Kind switch {
         ChatContentKind.Link => "content-list-links",
         ChatContentKind.File => "content-list-rows",
         _ => "content-list-grid",
     };
 
-    private string EmptyText => KindMask switch {
+    private string EmptyText => Kind switch {
         ChatContentKind.Photo => "No photos yet",
         ChatContentKind.Video => "No videos yet",
         ChatContentKind.File => "No files yet",
@@ -72,104 +73,163 @@
         if (chatId is null)
             return VirtualListData<ContentListItem>.None;
 
-        var items = await Chats.ListChatContent(Session, chatId, KindMask, cancellationToken).ConfigureAwait(false);
-        if (items.Length == 0)
+        var periods = await Chats.GetContentPeriods(Session, chatId, Kind, cancellationToken).ConfigureAwait(false);
+        if (periods.Length == 0)
             return EmptyData();
 
-        var linkEntries = await ResolveLinkEntries(items, cancellationToken).ConfigureAwait(false);
-        var all = BuildItems(items, linkEntries);
-        if (all.Count == 0)
+        var blocks = BuildBlocks(periods);
+        var (first, last) = GetWindow(query, blocks);
+        var windowBlocks = blocks.GetRange(first, last - first);
+        var contents = await windowBlocks
+            .Select(b => Chats.GetContentPeriod(Session, chatId, Kind, b.PeriodKey, b.PageIndex, cancellationToken))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+
+        var linkEntries = await ResolveLinkEntries(contents, cancellationToken).ConfigureAwait(false);
+        var listItems = BuildItems(windowBlocks, contents, linkEntries);
+        if (listItems.Count == 0)
             return EmptyData();
 
-        var (start, end) = GetWindow(query, all);
-        var result = new VirtualListData<ContentListItem>(all.GetRange(start, end - start)) {
+        var result = new VirtualListData<ContentListItem>(listItems) {
             Index = renderedData.Index + 1,
-            BeforeCount = start,
-            AfterCount = all.Count - end,
-            HasVeryFirstItem = start == 0,
-            HasVeryLastItem = end == all.Count,
+            HasVeryFirstItem = last == blocks.Count,
+            HasVeryLastItem = first == 0,
         };
         return result.IsSimilarTo(renderedData) ? renderedData : result;
     }
 
     // Private methods
 
-    private (int Start, int End) GetWindow(VirtualListDataQuery query, List<ContentListItem> all) {
-        var count = all.Count;
+    private static List<Block> BuildBlocks(IReadOnlyList<ChatContentPeriod> periods) {
+        var pageSize = ChatContentPeriod.PageSize;
+        var blocks = new List<Block>();
+        foreach (var period in periods) {
+            var pageCount = Math.Max(1, (period.ItemCount + pageSize - 1) / pageSize);
+            for (var p = pageCount - 1; p >= 0; p--) {
+                var itemCount = p == pageCount - 1 ? period.ItemCount - p * pageSize : pageSize;
+                blocks.Add(new Block(period.PeriodKey, p, itemCount));
+            }
+        }
+        return blocks;
+    }
+
+    private static (int First, int Last) GetWindow(VirtualListDataQuery query, List<Block> blocks) {
+        int first, last;
         if (query.IsNone)
-            return (0, Math.Min(InitialWindow, count));
+            (first, last) = (0, 0);
+        else {
+            var s = FindBlockIndex(blocks, query.KeyRange.Start);
+            var e = FindBlockIndex(blocks, query.KeyRange.End);
+            if (s < 0 || e < 0)
+                (first, last) = (0, 0);
+            else {
+                first = Math.Max(0, Math.Min(s, e) - 1);
+                last = Math.Min(blocks.Count, Math.Max(s, e) + 2);
+            }
+        }
 
-        var s = all.FindIndex(x => x.Key == query.KeyRange.Start);
-        var e = all.FindIndex(x => x.Key == query.KeyRange.End);
-        if (s < 0 || e < 0)
-            return (0, Math.Min(InitialWindow, count));
+        var targetCount = first == last ? InitialWindow : MinWindow;
+        var sum = 0;
+        for (var i = first; i < last; i++)
+            sum += blocks[i].ItemCount;
+        while (sum < targetCount && last < blocks.Count)
+            sum += blocks[last++].ItemCount;
+        if (last == first)
+            last = Math.Min(blocks.Count, first + 1);
+        return (first, last);
+    }
 
-        var start = (s + query.MoveRange.Start).Clamp(0, count);
-        var end = (e + 1 + query.MoveRange.End).Clamp(start, count);
-        if (end - start < MinWindow)
-            end = Math.Min(start + MinWindow, count);
-        return (start, end);
+    private static int FindBlockIndex(List<Block> blocks, string key) {
+        var parts = key.Split(':');
+        if (parts.Length < 4 || (parts[0] != "r" && parts[0] != "i"))
+            return -1;
+        if (!int.TryParse(parts[2], out var pageIndex))
+            return -1;
+
+        return blocks.FindIndex(b => b.PeriodKey == parts[1] && b.PageIndex == pageIndex);
     }
 
     private List<ContentListItem> BuildItems(
-        IReadOnlyList<ChatContentItem> items,
+        IReadOnlyList<Block> windowBlocks,
+        IReadOnlyList<ChatContentItem[]> contents,
         IReadOnlyDictionary<Symbol, ChatEntry> linkEntries) {
         var result = new List<ContentListItem>();
         var isGrid = IsGridMode;
-        string? groupKey = null;
-        var rowItems = new List<ChatContentItem>();
-        var rowIndex = 0;
+        var isLink = Kind == ChatContentKind.Link;
+        var chunkSize = isGrid ? GridColumns : 1;
+        string? currentGroupKey = null;
 
-        void FlushRow() {
-            if (rowItems.Count == 0)
-                return;
+        for (var b = 0; b < windowBlocks.Count; b++) {
+            var block = windowBlocks[b];
+            var rows = ChunkPage(contents[b], chunkSize, isLink, linkEntries);
+            for (var r = rows.Count - 1; r >= 0; r--) {
+                var (rowIndex, groupKey, items) = rows[r];
+                if (groupKey != currentGroupKey) {
+                    currentGroupKey = groupKey;
+                    var title = GetLocalGroup(items[0].At).Title;
+                    if (title.Length > 0)
+                        result.Add(new ContentListItem { Key = $"g:{groupKey}", IsGroup = true, GroupTitle = title });
+                }
 
-            var rowArray = rowItems.ToArray();
-            result.Add(new ContentListItem {
-                Key = $"r:{groupKey}:{rowIndex}",
-                Version = SumVersion(rowArray),
-                Items = rowArray,
-            });
-            rowIndex++;
-            rowItems = new List<ChatContentItem>();
-        }
-
-        foreach (var item in items) {
-            var (gKey, gTitle) = GetGroupKey(DateTimeConverter.ToLocalTime(item.At));
-            if (gKey != groupKey) {
-                FlushRow();
-                groupKey = gKey;
-                rowIndex = 0;
-                if (gTitle.Length > 0)
-                    result.Add(new ContentListItem { Key = $"g:{gKey}", IsGroup = true, GroupTitle = gTitle });
-            }
-
-            if (isGrid) {
-                rowItems.Add(item);
-                if (rowItems.Count == GridColumns)
-                    FlushRow();
-            }
-            else if (item.Kind == ChatContentKind.Link) {
-                if (item.LinkPreview is not { IsEmpty: false } || !linkEntries.TryGetValue(item.Id, out var entry))
-                    continue;
-
-                result.Add(new ContentListItem {
-                    Key = $"i:{item.Id.Value}",
-                    Version = item.Version + entry.Version,
-                    Items = [item],
-                    LinkEntry = entry,
-                });
-            }
-            else {
-                result.Add(new ContentListItem {
-                    Key = $"i:{item.Id.Value}",
-                    Version = item.Version,
-                    Items = [item],
-                });
+                var displayItems = new ChatContentItem[items.Length];
+                for (var k = 0; k < items.Length; k++)
+                    displayItems[k] = items[items.Length - 1 - k];
+                if (isGrid)
+                    result.Add(new ContentListItem {
+                        Key = $"r:{block.PeriodKey}:{block.PageIndex}:{rowIndex}",
+                        Version = SumVersion(displayItems),
+                        Items = displayItems,
+                    });
+                else {
+                    var item = displayItems[0];
+                    var entry = isLink ? linkEntries[item.Id] : null;
+                    result.Add(new ContentListItem {
+                        Key = $"i:{block.PeriodKey}:{block.PageIndex}:{rowIndex}",
+                        Version = item.Version + (entry?.Version ?? 0),
+                        Items = displayItems,
+                        LinkEntry = entry,
+                    });
+                }
             }
         }
-        FlushRow();
         return result;
+    }
+
+    private List<(int RowIndex, string GroupKey, ChatContentItem[] Items)> ChunkPage(
+        ChatContentItem[] pageItems,
+        int chunkSize,
+        bool skipLinks,
+        IReadOnlyDictionary<Symbol, ChatEntry> linkEntries) {
+        var visible = new List<ChatContentItem>(pageItems.Length);
+        foreach (var item in pageItems) {
+            if (skipLinks && (item.LinkPreview is not { IsEmpty: false } || !linkEntries.ContainsKey(item.Id)))
+                continue;
+            visible.Add(item);
+        }
+
+        var rows = new List<(int, string, ChatContentItem[])>();
+        var rowIndex = 0;
+        var runStart = 0;
+        while (runStart < visible.Count) {
+            var groupKey = GetLocalGroup(visible[runStart].At).Key;
+            var runEnd = runStart;
+            while (runEnd < visible.Count && GetLocalGroup(visible[runEnd].At).Key == groupKey)
+                runEnd++;
+
+            // visible is oldest-first and BuildItems renders rows bottom-up, so the
+            // short row must lead the run to land at the bottom of the group.
+            var runLength = runEnd - runStart;
+            var leadSize = runLength % chunkSize;
+            if (leadSize == 0)
+                leadSize = Math.Min(chunkSize, runLength);
+            for (var p = runStart; p < runEnd;) {
+                var size = Math.Min(p == runStart ? leadSize : chunkSize, runEnd - p);
+                rows.Add((rowIndex++, groupKey, visible.GetRange(p, size).ToArray()));
+                p += size;
+            }
+            runStart = runEnd;
+        }
+        return rows;
     }
 
     private static long SumVersion(IReadOnlyList<ChatContentItem> items) {
@@ -186,24 +246,20 @@
         };
 
     private async Task<IReadOnlyDictionary<Symbol, ChatEntry>> ResolveLinkEntries(
-        IReadOnlyList<ChatContentItem> items,
+        IReadOnlyList<ChatContentItem[]> contents,
         CancellationToken cancellationToken) {
-        if ((KindMask & ChatContentKind.Link) == 0)
+        if (Kind != ChatContentKind.Link)
             return EmptyLinkEntries;
 
         var result = new Dictionary<Symbol, ChatEntry>();
-        foreach (var item in items) {
-            if (item.Kind != ChatContentKind.Link)
-                continue;
-
-            var entry = await Chats.GetEntry(Session, item.EntryId, cancellationToken).ConfigureAwait(false);
-            if (entry is not null)
-                result[item.Id] = entry;
-        }
+        foreach (var pageItems in contents)
+            foreach (var item in pageItems) {
+                var entry = await Chats.GetEntry(Session, item.EntryId, cancellationToken).ConfigureAwait(false);
+                if (entry is not null)
+                    result[item.Id] = entry;
+            }
         return result;
     }
-
-    private static readonly IReadOnlyDictionary<Symbol, ChatEntry> EmptyLinkEntries = new Dictionary<Symbol, ChatEntry>();
 
     private async Task OnMediaClick(ChatContentItem item) {
         var entry = await Chats.GetEntry(Session, item.EntryId, CancellationToken.None).ConfigureAwait(false);
@@ -215,12 +271,14 @@
         await VisualMediaViewerUI.Show(url, [attachment]);
     }
 
-    private (string Key, string Title) GetGroupKey(DateTime d)
-        => GroupBy switch {
+    private (string Key, string Title) GetLocalGroup(Moment at) {
+        var d = DateTimeConverter.ToLocalTime(at);
+        return GroupBy switch {
             ContentGrouping.Day => ($"{d.Year:D4}-{d.Month:D2}-{d.Day:D2}", d.ToString("MMMM d, yyyy")),
             ContentGrouping.Month => ($"{d.Year:D4}-{d.Month:D2}", d.ToString("MMMM yyyy")),
             _ => ("", ""),
         };
+    }
 
     private string FormatDate(Moment at) {
         var date = DateTimeConverter.ToLocalTime(at);
@@ -253,7 +311,7 @@
                        <i class="icon-play-fill c-play-icon"></i>
                    </a>;
         }
-        var previewUrl = UrlMapper.ImagePreviewUrl(url, null, (int?)320);
+        var previewUrl = UrlMapper.ImagePreviewUrl(url, null, 320);
         return @<a class="image-attachment" @key="@item.Id"
                    href="@url" role="button" data-menu="@menuRef"
                    @onclick="@(() => OnMediaClick(item))" @onclick:preventDefault="true">
@@ -283,7 +341,11 @@
         var item = listItem.Items[0];
         var menuRef = MenuRef.New<ChatContentItemMenu>(item.EntryId.Value).ToString();
         return @<div class="message-link-preview" data-menu="@menuRef">
-                   <LinkPreviewView Entry="@listItem.LinkEntry" LinkPreview="@item.LinkPreview"/>
+                   <LinkPreviewView Entry="@listItem.LinkEntry!" LinkPreview="@item.LinkPreview!"/>
                </div>;
     }
+
+    // Nested types
+
+    private sealed record Block(string PeriodKey, int PageIndex, int ItemCount);
 }
