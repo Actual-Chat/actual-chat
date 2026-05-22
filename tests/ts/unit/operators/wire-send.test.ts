@@ -482,6 +482,7 @@ describe('wireSend', () => {
             makeEncoded(stats, { type: 'delta', capturedAt: { timeMs: 1_066, epoch: 0 } }),
         ];
         const sourceWithFlips = (async function* (): AsyncIterable<EncodedBundle> {
+            await Promise.resolve();
             yield { layers: [items[0]], index: 0, dropTrace: [], rotation: 0, stats };
             connected = false;
             yield { layers: [items[1]], index: 1, dropTrace: [], rotation: 0, stats };
@@ -527,6 +528,7 @@ describe('wireSend', () => {
         // Source bundle 1: one layer; bundle 2: same; reconfigure before bundle 3
         // by setting controller to 2 layers; bundle 3 carries two encoded frames.
         async function* src(): AsyncIterable<EncodedBundle> {
+            await Promise.resolve();
             yield {
                 layers: [makeEncoded(stats, { type: 'key', layerId: 0, capturedAt: { timeMs: 1_000, epoch: 0 } })],
                 index: 1, dropTrace: [], rotation: 0, stats,
