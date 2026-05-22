@@ -32,7 +32,7 @@
         }
 
         if (!isCurrentGroupCollapsed) {
-            <FoundResult @key=@foundItem.SearchResult.Id FoundItem="@foundItem" IsPlace="@isPlace"/>
+            <FoundResult @key=@foundItem.Item FoundItem="@foundItem" IsPlace="@isPlace"/>
 
             @if (foundItem.IsLastInGroup) {
                 <Divider Class="mx-1 my-1.5" />

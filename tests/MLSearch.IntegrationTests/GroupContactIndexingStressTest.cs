@@ -10,7 +10,7 @@ public class GroupContactIndexingStressTest(SlowAppHostFixture fixture, ITestOut
 {
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
 
-    private string UniquePart { get; } = UniqueNames.Prefix();
+    private string IsolationKey { get; } = UniqueNames.Random();
 
     protected override async Task DisposeAsync()
     {
@@ -54,15 +54,15 @@ public class GroupContactIndexingStressTest(SlowAppHostFixture fixture, ITestOut
 
     private async Task<Chat.Chat> CreateGroup(string title)
     {
-        var (chat, _) = await Tester.CreateAndGetChat(false, $"{title} {UniquePart}");
+        var (chat, _) = await Tester.CreateAndGetChat(false, $"{title} {IsolationKey}");
         return chat;
     }
 
-    private async Task<ContactSearchResult[]> Find(string criteria, int expected = 50)
+    private async Task<FoundContact[]> Find(string criteria, int expected = 50)
     {
-        ContactSearchResult[] results = [];
+        FoundContact[] results = [];
         await TestExt.When(async () => {
-                results = await Tester.FindGroups($"{UniquePart} {criteria}", true, null, expected);
+                results = await Tester.FindGroups($"{IsolationKey} {criteria}", true, null, expected);
                 results.Should().HaveCount(expected, "for criteria '{0}'", criteria);
             },
             TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(90) : TimeSpan.FromSeconds(30));

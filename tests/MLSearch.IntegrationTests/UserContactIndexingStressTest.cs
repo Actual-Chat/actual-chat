@@ -11,7 +11,7 @@ public class UserContactIndexingStressTest(SlowAppHostFixture fixture, ITestOutp
 {
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
 
-    private string UniquePart { get; } = UniqueNames.Prefix();
+    private string IsolationKey { get; } = UniqueNames.Random();
 
     protected override async Task DisposeAsync()
     {
@@ -77,7 +77,7 @@ public class UserContactIndexingStressTest(SlowAppHostFixture fixture, ITestOutp
     // Private methods
 
     private async Task<AccountFull[]> CreateAccounts(int portionSize, string prefix)
-        => await Tester.CreateAccounts(portionSize, nameFactory: _ => $"{UniquePart} {prefix}");
+        => await Tester.CreateAccounts(portionSize, nameFactory: _ => $"{IsolationKey} {prefix}");
 
     private async Task<Place[]> CreatePlaces(int count, params IReadOnlyCollection<AccountFull> usersToInvite)
     {
@@ -88,11 +88,11 @@ public class UserContactIndexingStressTest(SlowAppHostFixture fixture, ITestOutp
     }
 
     private Task<Place> CreatePlace(string title, params IReadOnlyCollection<AccountFull> usersToInvite)
-        => Tester.CreatePlace(false, $"{UniquePart} {title}", usersToInvite);
+        => Tester.CreatePlace(false, $"{IsolationKey} {title}", usersToInvite);
 
-    private Task<ContactSearchResult[]> Find(string criteria, PlaceId? placeId = null, int expected = 50)
+    private Task<FoundContact[]> Find(string criteria, PlaceId? placeId = null, int expected = 50)
         => TestsExt.When(async () => {
-                var results = await Tester.FindPeople($"{UniquePart} {criteria}", false, placeId, expected);
+                var results = await Tester.FindPeople($"{IsolationKey} {criteria}", false, placeId, expected);
                 results.Should().HaveCount(expected, "for place #{0} and criteria '{1}'", placeId, criteria);
                 return results;
             },

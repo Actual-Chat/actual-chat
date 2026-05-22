@@ -8,9 +8,9 @@ internal sealed class OpenSearchNames
     public const string PlaceIndexVersion = "v3";
 
     public const string TestPrefix = "test";
-    public string UniquePart { get; init; } = ""; // for testing purpose only
+    public string TestIsolationKey { get; init; } = ""; // for testing purpose only
     public string Env { get; init; } = "";
-    private string Prefix => ComposePrefix(Env, "sm", UniquePart); // sm == "Search Module"
+    private string Prefix => ComposePrefix(Env, "sm", TestIsolationKey); // sm == "Search Module"
     public string CommonIndexTemplateName => $"{Prefix}common";
     public string CommonIndexPattern => $"{Prefix}*";
     public string UserIndexName => $"{Prefix}users-{UserIndexVersion}";

@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Module
-@inherits ComputedStateComponent<AppUIHub, MentionSearchResult[]>
+@inherits ComputedStateComponent<AppUIHub, FoundMention[]>
 @{
     var mentions = State.Value;
     var listCls = "";
@@ -61,7 +61,7 @@
                     var avatarKey = mention.Picture.AvatarKey.NullIfEmpty() ?? mention.MentionId.Value;
                     var avatarKind = targetId is ChatId or PlaceId ? AvatarKind.Marble : AvatarKind.Beam;
                     <Pic
-                        Title="@mention.SearchMatch.Text"
+                        Title="@mention.Match.Text"
                         Picture="@mention.Picture"
                         Size="SquareSize.Size7"
                         AvatarKind="@avatarKind"
@@ -71,7 +71,7 @@
                     @if (isQuoted) {
                         <span class="c-quote">"</span>
                     }
-                    <SearchMatchHighlighter Match="@mention.SearchMatch"/>
+                    <SearchMatchHighlighter Match="@mention.Match"/>
                     @if (isQuoted) {
                         <span class="c-quote">"</span>
                     }
@@ -95,7 +95,7 @@
     ];
 
     private string? _lastFilter;
-    private MentionSearchResult? _selection;
+    private FoundMention? _selection;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
@@ -103,7 +103,7 @@
     [Parameter] public string Class { get; set; } = "";
 
     public MutableState<string?> Filter { get; private set; } = null!;
-    public MentionSearchResult? Selection {
+    public FoundMention? Selection {
         get => _selection;
         set {
             if (_selection == value)
@@ -131,15 +131,15 @@
         }
     }
 
-    protected override ComputedState<MentionSearchResult[]>.Options GetStateOptions()
+    protected override ComputedState<FoundMention[]>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<MentionSearchResult[]>.Options() {
+            static t => new ComputedState<FoundMention[]>.Options() {
                 InitialValue = [],
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
-    protected override async Task<MentionSearchResult[]> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<FoundMention[]> ComputeState(CancellationToken cancellationToken) {
         var managerLimit = Manager.Limit;
         var lastFilter = _lastFilter;
         var selection = _selection;
@@ -178,7 +178,7 @@
             ? MentionCandidateFilters.All
             : filter;
 
-    private MentionSearchResult? FixSelection(MentionSearchResult? selection, MentionSearchResult[] mentions) {
+    private FoundMention? FixSelection(FoundMention? selection, FoundMention[] mentions) {
         if (mentions.Length == 0)
             return null;
 

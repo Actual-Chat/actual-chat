@@ -101,7 +101,7 @@
         Place? place = null;
         var foundItem = FoundItem;
         var chatId = foundItem.ChatId;
-        var messageMatch = foundItem.MessageSearchMatch;
+        var messageMatch = foundItem.ChatEntrySearchMatch;
         var entryId = foundItem.EntryId!;
 
         var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
@@ -118,7 +118,7 @@
 
         return new() {
             ChatState = chatState,
-            MessageMatch = messageMatch.IsEmpty ? SearchMatch.New(chatState.Info.LastTextEntryText) : messageMatch,
+            MessageMatch = messageMatch ?? SearchMatch.Matchless(chatState.Info.LastTextEntryText),
             Entry = entry,
             OwnAuthor = ownAuthorFull,
             Place = place,

@@ -48,7 +48,7 @@
 
 @code {
     private ContactSelector? _contactSelectorRef;
-    private MemSearchQuery _searchQuery;
+    private SearchQuery _searchQuery;
     private DialogFrameNarrowViewSettings _viewSettings = null!;
 
     private ImmutableHashSet<ChatId> SelectedChatIds
@@ -66,7 +66,7 @@
     }
 
     private void OnFilter(string filter) {
-        _searchQuery = new MemSearchQuery(filter);
+        _searchQuery = new SearchQuery(filter);
         StateHasChanged();
     }
 

@@ -84,7 +84,7 @@
 
         return new() {
             ChatState = chatState,
-            TitleMatch = titleMatch.IsEmpty ? SearchMatch.New(chatState.Chat.Title) : titleMatch,
+            TitleMatch = titleMatch ?? SearchMatch.Matchless(chatState.Chat.Title),
             Entry = lastTextEntry,
             Link = Links.Chat(chatId),
             Author = anotherAuthor,

@@ -1,4 +1,3 @@
-using System.Threading.Channels;
 using ActualChat.Internal;
 using BenchmarkDotNet.Attributes;
 

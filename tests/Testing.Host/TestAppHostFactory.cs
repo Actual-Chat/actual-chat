@@ -90,7 +90,7 @@ public static class TestAppHostFactory
                 services.AddSingleton<IBlobStorages, TempFolderBlobStorages>();
                 services.AddSingleton<PostgreSqlPoolCleaner>();
                 services.AddSingleton<OpenSearchNames>(_ => new OpenSearchNames {
-                    UniquePart = UniqueNames.Prefix(),
+                    TestIsolationKey = UniqueNames.Random(),
                     Env = OpenSearchNames.TestPrefix,
                 });
                 services.AddTestLogging(outputAccessor);

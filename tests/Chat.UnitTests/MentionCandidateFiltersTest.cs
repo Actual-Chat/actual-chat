@@ -97,14 +97,14 @@ public class MentionCandidateFiltersTest(ITestOutputHelper @out) : TestBase(@out
             MentionId.NewUser(AnyUser),
             name,
             null,
-            new MemSearchDocument(name));
+            new SearchDocument(name));
 
     private static MentionCandidate Chat(string name, string? placeName = null)
         => new(
             MentionId.NewChat(GroupChatId.New()),
             name,
             null,
-            new MemSearchDocument(placeName, name));
+            new SearchDocument(placeName, name));
 
     private static MentionCandidate Emoji(string title)
     {
@@ -115,6 +115,6 @@ public class MentionCandidateFiltersTest(ITestOutputHelper @out) : TestBase(@out
             MentionId.NewEmoji(EmojiRef.Parse(slug)),
             title,
             null,
-            new MemSearchDocument(title));
+            new SearchDocument(title));
     }
 }

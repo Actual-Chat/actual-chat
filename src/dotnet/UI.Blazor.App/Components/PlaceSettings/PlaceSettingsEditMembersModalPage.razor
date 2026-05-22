@@ -49,7 +49,7 @@
 </div>
 
 @code {
-    private MemSearchQuery _searchQuery;
+    private SearchQuery _searchQuery;
     private PlaceId PlaceId { get; set; } = null!;
 
     private IPlaces Places => Hub.Places;
@@ -63,7 +63,7 @@
     }
 
     private void OnFilter(string filter) {
-        _searchQuery = new MemSearchQuery(filter);
+        _searchQuery = new SearchQuery(filter);
         _ = State.Recompute();
     }
 
@@ -99,7 +99,7 @@
             authors.Sort(comparison);
         } else {
             authors = authors
-                .WithSearchMatchRank(_searchQuery, c => new MemSearchDocument(c.authorName))
+                .WithSearchMatchRank(_searchQuery, c => new SearchDocument(c.authorName))
                 .FilterBySearchMatchRank()
                 .OrderBySearchMatchRank()
                 .WithoutSearchMatchRank()

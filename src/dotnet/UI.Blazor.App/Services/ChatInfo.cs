@@ -27,7 +27,7 @@ public sealed record ChatInfo(Contact Contact) : IHasId<ChatId>
     public bool IsThreadStartEntry => LastTextEntry?.IsThreadStart == true;
 
     // Computed
-    public MemSearchDocument SearchDocument => field = field.OrNew(Chat.Title);
+    public SearchDocument SearchDocument => field = field.OrNew(Chat.Title);
     public Trimmed<int> UnmutedUnreadCount => ChatUserSettings.NotificationMode switch {
         ChatNotificationMode.ImportantOnly => (HasUnreadMentions ? 1 : 0, MaxUnreadCount),
         ChatNotificationMode.Muted => (0, MaxUnreadCount),

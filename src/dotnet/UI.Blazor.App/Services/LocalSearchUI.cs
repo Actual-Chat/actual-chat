@@ -15,7 +15,7 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     private IPlaces Places => field ??= Services.GetRequiredService<IPlaces>();
 
-    public async Task<MentionSearchResult[]> FindMentions(
+    public async Task<FoundMention[]> FindMentions(
         ChatId? chatId,
         Func<MentionCandidate, bool> filter,
         string query,
@@ -25,14 +25,14 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         var candidates = await ListMentionCandidates(chatId, cancellationToken).ConfigureAwait(false);
         candidates = candidates.FilterAndRank(filter, query, limit);
 
-        var searchQuery = new MemSearchQuery(query);
+        var searchQuery = new SearchQuery(query);
         var placeId = (chatId as PlaceChatId)?.PlaceId;
-        var result = new MentionSearchResult[candidates.Count];
+        var result = new FoundMention[candidates.Count];
         for (var i = 0; i < candidates.Count; i++) {
             var c = candidates[i];
             var picture = c.Picture ?? new Picture(null, null, c.Title);
             var (description, mentionName) = Describe(c, placeId);
-            result[i] = new MentionSearchResult(c.Id, new SearchMatch(c.Title, searchQuery), picture) {
+            result[i] = new FoundMention(c.Id, new SearchMatch(c.Title, searchQuery), picture) {
                 IsChatMember = c.IsChatMember,
                 Description = description,
                 MentionName = mentionName,
@@ -252,7 +252,7 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
             MentionId.NewUser(userId),
             name,
             picture,
-            new MemSearchDocument(name)) {
+            new SearchDocument(name)) {
             IsChatMember = isChatMember,
         };
     }
@@ -266,7 +266,7 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
             MentionId.NewAuthor(author.Id),
             name,
             picture,
-            new MemSearchDocument(name)) {
+            new SearchDocument(name)) {
             IsChatMember = true,
         };
     }
@@ -276,14 +276,14 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
             MentionId.NewChat(chat.Id),
             chat.Title,
             chat.Picture?.ToPicture() ?? new Picture(null, null, chat.Id.Value),
-            new MemSearchDocument(chat.Title));
+            new SearchDocument(chat.Title));
 
     private static MentionCandidate ToPlaceCandidate(Place place)
         => new(
             MentionId.NewPlace(place.Id),
             place.Title,
             place.Picture?.ToPicture() ?? new Picture(null, null, place.Id.Value),
-            new MemSearchDocument(place.Title)) {
+            new SearchDocument(place.Title)) {
             PlaceId = place.Id,
             PlaceTitle = place.Title,
         };
@@ -294,7 +294,7 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
             chat.Title,
             chat.Picture?.ToPicture() ?? new Picture(null, null, chat.Id.Value),
             // Place name first so "fusion fun" matches "Funny Chat" in "Fusion Place".
-            new MemSearchDocument(place.Title, chat.Title)) {
+            new SearchDocument(place.Title, chat.Title)) {
             PlaceId = place.Id,
             PlaceTitle = place.Title,
         };
@@ -304,7 +304,7 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
             MentionId.NewEmoji(EmojiRef.New(emoji)),
             emoji.Title,
             null,
-            new MemSearchDocument(emoji.Title));
+            new SearchDocument(emoji.Title));
 
     // Computes mention picker description suffix and the name baked into the mention on insert.
     private static (string? Description, string MentionName) Describe(MentionCandidate c, PlaceId? hostPlaceId)

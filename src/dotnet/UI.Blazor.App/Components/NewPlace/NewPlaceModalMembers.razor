@@ -41,7 +41,7 @@
 
 @code {
     private ContactSelector? _contactSelectorRef;
-    private MemSearchQuery _searchQuery;
+    private SearchQuery _searchQuery;
 
     private IReadOnlyDictionary<ChatId, ChatInfo> AllChats
         => _contactSelectorRef?.AllChats.Value ?? ImmutableDictionary<ChatId, ChatInfo>.Empty;
@@ -54,7 +54,7 @@
     [Parameter, EditorRequired] public EventCallback<bool> Completed { get; set; }
 
     private void OnFilter(string filter) {
-        _searchQuery = new MemSearchQuery(filter);
+        _searchQuery = new SearchQuery(filter);
         StateHasChanged();
     }
 

@@ -15,8 +15,8 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
     private IOpenSearchClient OpenSearchClient => field ??= AppHost.Services.GetRequiredService<IOpenSearchClient>();
     private OpenSearchNames OpenSearchNames => field ??= AppHost.Services.GetRequiredService<OpenSearchNames>();
-    private string UniquePart { get; } = UniqueNames.Prefix();
-    private string DeviceId => field ??= $"Device-{UniquePart}";
+    private string IsolationKey { get; } = UniqueNames.Random();
+    private string DeviceId => field ??= $"Device-{IsolationKey}";
 
     protected override async Task DisposeAsync()
     {
@@ -182,8 +182,8 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
         await Tester.SignInAsUniqueAlice();
-        var places = await Tester.CreatePlaceContacts(bob, UniquePart);
-        var people = await Tester.CreateUserContacts(bob, places, UniquePart);
+        var places = await Tester.CreatePlaceContacts(bob, IsolationKey);
+        var people = await Tester.CreateUserContacts(bob, places, IsolationKey);
         await Tester.SignIn(bob);
 
         // act, assert
@@ -213,8 +213,8 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
         await Tester.SignInAsUniqueAlice();
-        var places = await Tester.CreatePlaceContacts(bob, UniquePart);
-        var people = await Tester.CreateUserContacts(bob, places, UniquePart);
+        var places = await Tester.CreatePlaceContacts(bob, IsolationKey);
+        var people = await Tester.CreateUserContacts(bob, places, IsolationKey);
 
         // act
         await Tester.SignIn(bob);
@@ -236,8 +236,8 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
         await Tester.SignInAsUniqueAlice();
-        var places = await Tester.CreatePlaceContacts(bob, UniquePart);
-        var people = await Tester.CreateUserContacts(bob, places, UniquePart);
+        var places = await Tester.CreatePlaceContacts(bob, IsolationKey);
+        var people = await Tester.CreateUserContacts(bob, places, IsolationKey);
         await Tester.SignIn(bob);
 
         // act, assert
@@ -342,8 +342,8 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
         await Tester.SignInAsUniqueAlice();
-        var places = await Tester.CreatePlaceContacts(bob, UniquePart, 1);
-        var people = await Tester.CreateUserContacts(bob, places, UniquePart);
+        var places = await Tester.CreatePlaceContacts(bob, IsolationKey, 1);
+        var people = await Tester.CreateUserContacts(bob, places, IsolationKey);
         await Tester.SignIn(bob);
 
         // act, assert
@@ -435,28 +435,28 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         => new (ExternalContactId.New(UserDeviceId.New(owner.Id, DeviceId), NewDeviceContactId()));
 
     private static Symbol NewDeviceContactId()
-        => UniqueNames.Prefix();
+        => UniqueNames.Random();
 
     private async Task<AccountFull[]> CreateAccounts(int count)
         => await Tester.CreateAccounts(count,
-            userNameFactory: i => $"{UniquePart} TestUser {i}",
-            nameFactory: i => $"{UniquePart} TestUser",
+            userNameFactory: i => $"{IsolationKey} TestUser {i}",
+            nameFactory: i => $"{IsolationKey} TestUser",
             secondNameFactory: i => $"{i}");
 
     private Task<AccountFull> CreateAccount(string name)
-        => Tester.CreateAccount($"{UniquePart} {name}");
+        => Tester.CreateAccount($"{IsolationKey} {name}");
 
     private Task<GetResponse<IndexedUser>> GetIndexedUser(UserId userId)
         => OpenSearchClient.GetAsync<IndexedUser>(userId.Value,
             s => s.Index(OpenSearchNames.UserIndexName).Routing(userId.Value));
 
-    private Task<ContactSearchResult[]> Find(
+    private Task<FoundContact[]> Find(
         string criteria,
         bool own,
         PlaceId? placeId = null,
         int expectedCount = 1)
         => TestsExt.When(async () => {
-                var people = await Tester.FindPeople($"{UniquePart} {criteria}", own, placeId);
+                var people = await Tester.FindPeople($"{IsolationKey} {criteria}", own, placeId);
                 people.Should().HaveCount(expectedCount);
                 return people;
             },

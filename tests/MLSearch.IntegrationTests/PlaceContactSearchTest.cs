@@ -9,7 +9,7 @@ public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
-    private string UniquePart { get; } = UniqueNames.Prefix();
+    private string IsolationKey { get; } = UniqueNames.Random();
 
     protected override async Task DisposeAsync()
     {
@@ -23,7 +23,7 @@ public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
         await Tester.SignInAsUniqueAlice();
-        var places = await Tester.CreatePlaceContacts(bob, UniquePart);
+        var places = await Tester.CreatePlaceContacts(bob, IsolationKey);
         await Tester.SignIn(bob);
 
         // act, assert
@@ -44,14 +44,14 @@ public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         expected = [
-            bob.BuildSearchResult(places.JoinedPublicPlace1(), UniquePart, [new (7, 12), new (15, 20)]),
-            bob.BuildSearchResult(places.JoinedPrivatePlace1(), UniquePart, [new (8, 13), new (16, 21)]),
+            bob.BuildSearchResult(places.JoinedPublicPlace1(), IsolationKey, [new (7, 12), new (15, 20)]),
+            bob.BuildSearchResult(places.JoinedPrivatePlace1(), IsolationKey, [new (8, 13), new (16, 21)]),
         ];
         searchResults = await Find($"place {TestSearchDataGenerator.OneTerm}", true, expected.Count);
         searchResults.Should()
             .BeEquivalentTo(expected, o => o.ExcludingRank());
 
-        expected = [bob.BuildSearchResult(places.OtherPublicPlace1(), UniquePart, [new (7, 12), new (15, 20)])];
+        expected = [bob.BuildSearchResult(places.OtherPublicPlace1(), IsolationKey, [new (7, 12), new (15, 20)])];
         searchResults = await Find($"place {TestSearchDataGenerator.OneTerm}", false, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingRank());
     }
@@ -62,7 +62,7 @@ public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
         var alice = await Tester.SignInAsUniqueAlice();
-        var places = await Tester.CreatePlaceContacts(bob, UniquePart);
+        var places = await Tester.CreatePlaceContacts(bob, IsolationKey);
         await Tester.SignIn(bob);
 
         // act, assert
@@ -76,7 +76,7 @@ public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
 
         // act
         await Tester.SignIn(alice);
-        var updatedPlace = await Tester.UpdatePlace(places.JoinedPrivatePlace1().Id, $"{UniquePart} bbb");
+        var updatedPlace = await Tester.UpdatePlace(places.JoinedPrivatePlace1().Id, $"{IsolationKey} bbb");
         await Tester.SignIn(bob);
 
         // assert
@@ -99,7 +99,7 @@ public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
         var alice = await Tester.SignInAsUniqueAlice();
-        var places = await Tester.CreatePlaceContacts(bob, UniquePart);
+        var places = await Tester.CreatePlaceContacts(bob, IsolationKey);
         await Tester.SignIn(bob);
 
         // act, assert
@@ -122,9 +122,9 @@ public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
-    private Task<ContactSearchResult[]> Find(string criteria, bool own, int expected)
+    private Task<FoundContact[]> Find(string criteria, bool own, int expected)
         => TestsExt.When(async () => {
-                var results = await Tester.FindPlaces($"{UniquePart} {criteria}", own);
+                var results = await Tester.FindPlaces($"{IsolationKey} {criteria}", own);
                 results.Should().HaveCount(expected);
                 return results;
             },

@@ -20,17 +20,17 @@
 
     public MentionList? ListRef { get; private set; }
     public MutableState<Func<MentionCandidate, bool>> Filter { get; private set; } = null!;
-    public event Action<MentionSearchResult>? MentionSelected;
+    public event Action<FoundMention>? MentionSelected;
 
     protected override void OnInitialized()
         => Filter = StateFactory.NewMutable(
             MentionCandidateFilters.All,
             StateCategories.Get(GetType(), nameof(Filter)));
 
-    public Task<MentionSearchResult[]> Find(string query, int limit, CancellationToken cancellationToken)
+    public Task<FoundMention[]> Find(string query, int limit, CancellationToken cancellationToken)
         => LocalSearchUI.FindMentions(ChatContext?.Chat.Id, Filter.Value, query, limit, cancellationToken);
 
-    public void SelectMention(MentionSearchResult mention)
+    public void SelectMention(FoundMention mention)
         => MentionSelected?.Invoke(mention);
 
     public void Show(string filter)

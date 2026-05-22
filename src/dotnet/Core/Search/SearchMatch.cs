@@ -3,16 +3,15 @@ namespace ActualChat.Search;
 /// <summary>
 /// A search match: the matched <see cref="Text"/>, its <see cref="Rank"/>, and the highlight
 /// <see cref="Parts"/> — supplied explicitly (server results) or computed lazily from a
-/// <see cref="MemSearchQuery"/> (local results).
+/// <see cref="SearchQuery"/> (local results).
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 [MessagePackFormatter(typeof(Internal.SearchMatchMessagePackFormatter))]
 public sealed partial record SearchMatch
 {
-    public static readonly SearchMatch Empty = New("");
+    public static readonly SearchMatch Empty = Matchless("");
 
-    private SearchMatchPart[]? _parts;
-    private readonly MemSearchQuery _query;
+    private readonly SearchQuery _query;
 
     [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public string Text { get; }
@@ -20,8 +19,8 @@ public sealed partial record SearchMatch
     public double Rank { get; }
     [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
     public SearchMatchPart[] Parts {
-        get => _parts ??= _query.IsEmpty ? [] : _query.GetMatchParts(Text);
-        init => _parts = value;
+        get => field ??= _query.IsEmpty ? [] : _query.GetMatchParts(Text);
+        init;
     }
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -32,6 +31,7 @@ public sealed partial record SearchMatch
                 var range = part.Range;
                 if (lastIndex < range.Start)
                     yield return new SearchMatchPart((lastIndex, range.Start), 0);
+
                 yield return part;
                 lastIndex = range.End;
             }
@@ -41,20 +41,25 @@ public sealed partial record SearchMatch
     }
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public bool IsEmpty => Text.Length == 0;
+    public bool IsMatch => Parts.Length != 0;
 
-    public static SearchMatch New(string? text)
-        => new(text ?? "", 0, []);
+    public static SearchMatch Matchless(string text)
+        => new(text, 0, []);
+
+    public SearchMatch(string text, SearchMatchPart[] parts)
+        : this(text, 0, parts) { }
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public SearchMatch(string text, double rank, SearchMatchPart[] parts)
     {
         Text = text;
         Rank = rank;
-        _parts = parts;
+        Parts = parts;
     }
 
-    public SearchMatch(string text, MemSearchQuery query, double rank = 0)
+    public SearchMatch(string text, SearchQuery query)
+        : this(text, 0, query) { }
+    public SearchMatch(string text, double rank, SearchQuery query)
     {
         Text = text;
         Rank = rank;

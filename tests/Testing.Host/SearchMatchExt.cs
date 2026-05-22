@@ -6,19 +6,17 @@ public static class SearchMatchExt
 {
     public static SearchMatch BuildSearchMatch(
         this Range<int>[]? searchMatchPartRanges,
-        string fullName,
-        string uniquePart = "")
+        string text,
+        string highlightedSuffix = "")
     {
-        if (searchMatchPartRanges is null || searchMatchPartRanges.Length == 0)
-            return SearchMatch.New(fullName);
+        if (searchMatchPartRanges.IsNullOrEmpty())
+            return SearchMatch.Matchless(text);
 
-        Range<int>[] uniquePartRanges = !uniquePart.IsNullOrEmpty() && fullName.EndsWith(uniquePart)
-            ? uniquePartRanges = [(fullName.Length - uniquePart.Length, fullName.Length)]
-            : [];
-
-        var searchMatchParts = searchMatchPartRanges.Concat(uniquePartRanges)
-            .Select(x => new SearchMatchPart(x, 1))
-            .ToArray();
-        return new SearchMatch(fullName, 1, searchMatchParts);
+        var searchMatchParts = searchMatchPartRanges.Select(x => new SearchMatchPart(x, 1));
+        if (!highlightedSuffix.IsNullOrEmpty() && text.EndsWith(highlightedSuffix)) {
+            var suffixRange = new Range<int>(text.Length - highlightedSuffix.Length, text.Length);
+            searchMatchParts = searchMatchParts.Append(new SearchMatchPart(suffixRange, 1));
+        }
+        return new SearchMatch(text, 1, searchMatchParts.ToArray());
     }
 }

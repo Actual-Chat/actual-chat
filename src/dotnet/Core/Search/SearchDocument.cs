@@ -5,34 +5,40 @@ namespace ActualChat.Search;
 /// <summary>
 /// A search target reduced to a match blob: each word emitted as its camelCase / digit-boundary
 /// suffixes, lowercased — e.g. "USA50" → " usa50_50". A space precedes a whole-word suffix, "_"
-/// a mid-word one; a <see cref="MemSearchQuery"/> prefix-probes either.
+/// a mid-word one; a <see cref="SearchQuery"/> prefix-probes either.
 /// </summary>
-public readonly struct MemSearchDocument : IEquatable<MemSearchDocument>
+public readonly struct SearchDocument : IEquatable<SearchDocument>
 {
     [ThreadStatic] private static StringBuilder? _builder;
 
-    public string Value => field ?? "";
-    public bool IsEmpty => Value.Length == 0;
+    public string PreprocessedText => field ?? "";
+    public bool IsEmpty => PreprocessedText.Length == 0;
 
-    public MemSearchDocument(string? text)
+    public static SearchDocument FromPreprocessedText(string preprocessedText)
+        => new(preprocessedText, AssumeValid.Option);
+
+    private SearchDocument(string preprocessedText, AssumeValid _)
+        => PreprocessedText = preprocessedText;
+
+    public SearchDocument(string? text)
     {
         var sb = _builder ??= new StringBuilder(256);
         try {
             AppendWords(sb, text);
-            Value = sb.ToString();
+            PreprocessedText = sb.ToString();
         }
         finally {
             sb.Clear();
         }
     }
 
-    public MemSearchDocument(params ReadOnlySpan<string?> fragments)
+    public SearchDocument(params ReadOnlySpan<string?> fragments)
     {
         var sb = _builder ??= new StringBuilder(256);
         try {
             foreach (var fragment in fragments)
                 AppendWords(sb, fragment);
-            Value = sb.ToString();
+            PreprocessedText = sb.ToString();
         }
         finally {
             sb.Clear();
@@ -40,40 +46,35 @@ public readonly struct MemSearchDocument : IEquatable<MemSearchDocument>
     }
 
     public override string ToString()
-        => Value;
+        => PreprocessedText;
 
-    public bool IsMatch(MemSearchQuery query)
-        => query.IsMatch(Value);
+    public bool IsMatch(SearchQuery query)
+        => query.IsMatch(PreprocessedText);
 
-    public double GetCoverageScore(MemSearchQuery query)
+    public double GetCoverageScore(SearchQuery query)
     {
         // Higher is better: the query's summed best-suffix score over the document's word length.
-        if (query.IsEmpty || Value.IsNullOrEmpty())
+        if (query.IsEmpty || PreprocessedText.IsNullOrEmpty())
             return 0;
 
-        var rawScore = query.GetRawScore(Value);
+        var rawScore = query.GetRawScore(PreprocessedText);
         if (rawScore <= 0)
             return 0;
 
-        var totalChars = CountWordChars(Value);
+        var totalChars = CountWordChars(PreprocessedText);
         return totalChars == 0 ? 0 : rawScore / totalChars;
     }
 
-    public MemSearchDocument OrNew(string? fallbackText)
-        => IsEmpty ? new MemSearchDocument(fallbackText) : this;
+    public SearchDocument OrNew(string? fallbackText)
+        => IsEmpty ? new SearchDocument(fallbackText) : this;
 
     // Equality
 
-    public bool Equals(MemSearchDocument other)
-        => Value == other.Value;
-    public override bool Equals(object? obj)
-        => obj is MemSearchDocument other && Equals(other);
-    public override int GetHashCode()
-        => Value.GetHashCode();
-    public static bool operator ==(MemSearchDocument left, MemSearchDocument right)
-        => left.Equals(right);
-    public static bool operator !=(MemSearchDocument left, MemSearchDocument right)
-        => !left.Equals(right);
+    public bool Equals(SearchDocument other) => PreprocessedText == other.PreprocessedText;
+    public override bool Equals(object? obj) => obj is SearchDocument other && Equals(other);
+    public override int GetHashCode() => PreprocessedText.GetHashCode();
+    public static bool operator ==(SearchDocument left, SearchDocument right) => left.Equals(right);
+    public static bool operator !=(SearchDocument left, SearchDocument right) => !left.Equals(right);
 
     // Private methods
 
@@ -123,26 +124,20 @@ public readonly struct MemSearchDocument : IEquatable<MemSearchDocument>
 
     // Nested types
 
+    [StructLayout(LayoutKind.Auto)]
     internal readonly record struct Segment(int Start, int End, bool IsWholeWord);
 
     // Walks original text and yields, per word, the whole-word segment then each camelCase /
     // digit sub-segment. Every segment ends at the word's end; sub-segments are suffixes.
-    internal ref struct SegmentEnumerator
+    [StructLayout(LayoutKind.Auto)]
+    internal ref struct SegmentEnumerator(ReadOnlySpan<char> text)
     {
-        private readonly ReadOnlySpan<char> _text;
-        private int _scan;
-        private int _wordEnd;
-        private int _segmentStart;
+        private readonly ReadOnlySpan<char> _text = text;
+        private int _scan = 0;
+        private int _wordEnd = -1;
+        private int _segmentStart = -1;
 
         public Segment Current { get; private set; }
-
-        public SegmentEnumerator(ReadOnlySpan<char> text)
-        {
-            _text = text;
-            _scan = 0;
-            _wordEnd = -1;
-            _segmentStart = -1;
-        }
 
         public readonly SegmentEnumerator GetEnumerator()
             => this;

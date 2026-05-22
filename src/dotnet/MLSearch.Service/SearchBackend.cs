@@ -31,14 +31,14 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     private ILogger? OpenSearchDebugLog => Constants.DebugMode.OpenSearchRequestResponse ? Log : null;
 
     // Not a [ComputeMethod]!
-    public async Task<ContactSearchResultPage> FindContacts(
+    public async Task<SearchResult<FoundContact>> FindContacts(
         UserId ownerId,
         ContactSearchQuery query,
         CancellationToken cancellationToken)
     {
         if (!Settings.IsEnabled) {
             Log.LogWarning($"{nameof(FindContacts)}: search is disabled");
-            return ContactSearchResultPage.Empty;
+            return SearchResult<FoundContact>.Empty;
         }
 
         if (!OpenSearchConfigurator.WhenReady.IsCompletedSuccessfully)
@@ -57,14 +57,14 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     }
 
     // Not a [ComputeMethod]!
-    public async Task<EntrySearchResultPage> FindEntries(
+    public async Task<SearchResult<FoundChatEntry>> FindEntries(
         UserId userId,
         EntrySearchQuery query,
         CancellationToken cancellationToken)
     {
         if (!Settings.IsEnabled) {
             Log.LogWarning($"{nameof(FindEntries)}: search is disabled");
-            return EntrySearchResultPage.Empty;
+            return SearchResult<FoundChatEntry>.Empty;
         }
 
         if (!OpenSearchConfigurator.WhenReady.IsCompletedSuccessfully)
@@ -237,7 +237,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
 
     // Private methods
 
-    private async Task<ContactSearchResultPage> FindPeopleFromContacts(
+    private async Task<SearchResult<FoundContact>> FindPeopleFromContacts(
         UserId userId,
         ContactSearchQuery query,
         CancellationToken cancellationToken)
@@ -258,9 +258,9 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                 .Log(OpenSearchClient, OpenSearchDebugLog, "People", OpenSearchNames.UserIndexName)
                 .ConfigureAwait(false);
         if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
-            return ContactSearchResultPage.Empty;
-        return new ContactSearchResultPage {
-            Hits = searchResponse.Hits.Select(ToSearchResult).ToArray(),
+            return SearchResult<FoundContact>.Empty;
+        return new SearchResult<FoundContact> {
+            Items = searchResponse.Hits.Select(ToSearchResult).ToArray(),
             Offset = query.Skip,
         };
 
@@ -299,11 +299,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                     .Type(TextQueryType.PhrasePrefix)
                     .Slop(20));
 
-        ContactSearchResult ToSearchResult(IHit<IndexedUserContact> hit)
+        FoundContact ToSearchResult(IHit<IndexedUserContact> hit)
             => new (hit.Source!.Id, hit.GetSearchMatch());
     }
 
-    private async Task<ContactSearchResultPage> FindPeopleNotFromContacts(
+    private async Task<SearchResult<FoundContact>> FindPeopleNotFromContacts(
         UserId userId,
         ContactSearchQuery query,
         CancellationToken cancellationToken)
@@ -322,9 +322,9 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                 .Log(OpenSearchClient, OpenSearchDebugLog, "People", OpenSearchNames.UserIndexName)
                 .ConfigureAwait(false);
         if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
-            return ContactSearchResultPage.Empty;
-        return new ContactSearchResultPage {
-            Hits = searchResponse.Hits.Select(ToSearchResult).ToArray(),
+            return SearchResult<FoundContact>.Empty;
+        return new SearchResult<FoundContact> {
+            Items = searchResponse.Hits.Select(ToSearchResult).ToArray(),
             Offset = query.Skip,
         };
 
@@ -341,11 +341,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                     qc => qc.HasChild<IndexedUserContact>(c => c.Query(q => q.Match(m => m.Field(x => x.OwnerId).Query(userId.Value)))),
                     qc => qc.Match(m => m.Field(x => x.Id).Query(userId.Value)));
 
-        ContactSearchResult ToSearchResult(IHit<IndexedUser> hit)
+        FoundContact ToSearchResult(IHit<IndexedUser> hit)
             => new(ContactId.NewUser(userId, hit.Source.Id), hit.GetSearchMatch());
     }
 
-    private async Task<ContactSearchResultPage> FindGroups(
+    private async Task<SearchResult<FoundContact>> FindGroups(
         UserId userId,
         ContactSearchQuery query,
         CancellationToken cancellationToken)
@@ -353,7 +353,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         var contactSubset = query.PlaceId is not null ? ContactSubset.Place(query.PlaceId) : ContactSubset.All();
         var ownGroupContactIds = await ContactsBackend.ListIdsForGroupContactSearch(userId, contactSubset, cancellationToken).ConfigureAwait(false);
         if (ownGroupContactIds.Length == 0 && query.Own)
-            return ContactSearchResultPage.Empty;
+            return SearchResult<FoundContact>.Empty;
 
         var ownGroupIds = ownGroupContactIds.Select(x => x.ChatId).ToList();
         var searchResponse =
@@ -369,9 +369,9 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                 .Assert(Log)
                 .ConfigureAwait(false);
         if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
-            return ContactSearchResultPage.Empty;
-        return new ContactSearchResultPage {
-            Hits = searchResponse.Hits.Select(ToSearchResult).ToArray(),
+            return SearchResult<FoundContact>.Empty;
+        return new SearchResult<FoundContact> {
+            Items = searchResponse.Hits.Select(ToSearchResult).ToArray(),
             Offset = query.Skip,
         };
 
@@ -389,18 +389,18 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                         ? null
                         : q => q.Terms(t => t.Field(x => x.Id).Terms(ownGroupIds)));
 
-        ContactSearchResult ToSearchResult(IHit<IndexedGroup> hit)
+        FoundContact ToSearchResult(IHit<IndexedGroup> hit)
             => new(ContactId.NewAny(userId, hit.Source.Id), hit.GetSearchMatch());
     }
 
-    private async Task<ContactSearchResultPage> FindPlaces(
+    private async Task<SearchResult<FoundContact>> FindPlaces(
         UserId userId,
         ContactSearchQuery query,
         CancellationToken cancellationToken)
     {
         var ownPlaceIds = await ContactsBackend.ListPlaceIds(userId, cancellationToken).ConfigureAwait(false);
         if (ownPlaceIds.Length == 0 && query.Own)
-            return ContactSearchResultPage.Empty;
+            return SearchResult<FoundContact>.Empty;
 
         var searchResponse =
             await OpenSearchClient.SearchAsync<IndexedPlace>(s
@@ -415,10 +415,10 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                 .Assert(Log)
                 .ConfigureAwait(false);
         if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
-            return ContactSearchResultPage.Empty;
+            return SearchResult<FoundContact>.Empty;
 
-        return new ContactSearchResultPage {
-            Hits = searchResponse.Hits.Select(ToSearchResult).ToArray(),
+        return new SearchResult<FoundContact> {
+            Items = searchResponse.Hits.Select(ToSearchResult).ToArray(),
             Offset = query.Skip,
         };
 
@@ -433,11 +433,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                     ? null
                     : q => q.Terms(t => t.Field(x => x.Id).Terms(ownPlaceIds)));
 
-        ContactSearchResult ToSearchResult(IHit<IndexedPlace> hit)
+        FoundContact ToSearchResult(IHit<IndexedPlace> hit)
             => new(ContactId.NewAny(userId, hit.Source.Id.RootChatId), hit.GetSearchMatch());
     }
 
-    private async Task<EntrySearchResultPage> FindEntriesInOpenSearch(
+    private async Task<SearchResult<FoundChatEntry>> FindEntriesInOpenSearch(
         UserId userId,
         EntrySearchQuery query,
         CancellationToken cancellationToken)
@@ -460,14 +460,14 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                 .Assert(Log)
                 .ConfigureAwait(false);
         if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
-            return EntrySearchResultPage.Empty;
+            return SearchResult<FoundChatEntry>.Empty;
 
-        return new EntrySearchResultPage {
-            Hits = searchResponse.Hits.Select(ToSearchResult).ToArray(),
+        return new SearchResult<FoundChatEntry> {
+            Items = searchResponse.Hits.Select(ToSearchResult).ToArray(),
             Offset = query.Skip,
         };
 
-        EntrySearchResult ToSearchResult(IHit<IndexedEntry> hit)
+        FoundChatEntry ToSearchResult(IHit<IndexedEntry> hit)
             => new (hit.Source!.Id, hit.GetSearchMatch()) {
                 HighlightedWords = hit.GetHighlightedWords().ToApiSet(StringComparer.OrdinalIgnoreCase),
             };

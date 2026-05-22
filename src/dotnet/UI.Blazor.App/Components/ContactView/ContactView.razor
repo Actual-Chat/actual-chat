@@ -33,7 +33,7 @@
 
 @code {
     [Parameter, EditorRequired] public ChatInfo ChatInfo { get; set; } = null!;
-    [Parameter] public MemSearchQuery SearchQuery { get; set; }
+    [Parameter] public SearchQuery SearchQuery { get; set; }
 
     private SearchMatch GetMatch(string text)
         => new(text, SearchQuery);

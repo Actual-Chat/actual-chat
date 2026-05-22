@@ -13,7 +13,7 @@ public class EntryIndexingStressTest(SlowAppHostFixture fixture, ITestOutputHelp
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
     private MLSearchSettings Settings => field ??= AppHost.Services.GetRequiredService<MLSearchSettings>();
 
-    private string UniquePart { get; } = UniqueNames.Prefix();
+    private string IsolationKey { get; } = UniqueNames.Random();
 
     protected override Task InitializeAsync()
     {
@@ -66,15 +66,15 @@ public class EntryIndexingStressTest(SlowAppHostFixture fixture, ITestOutputHelp
         => Enumerable.Range(1, count).Select(i => CreateEntry(chatId, $"{prefix} {i}")).Collect(Environment.ProcessorCount / 2);
 
     private Task<ChatEntry> CreateEntry(ChatId chatId, string text)
-        => Tester.CreateTextEntry(chatId, $"{text} {UniquePart}");
+        => Tester.CreateTextEntry(chatId, $"{text} {IsolationKey}");
 
-    private Task<EntrySearchResult[]> Find(
+    private Task<FoundChatEntry[]> Find(
         string criteria,
         PlaceId? placeId = null,
         ChatId? chatId = null,
         int expected = 50)
         => TestsExt.When(async () => {
-                var results = await Tester.FindEntries($"{UniquePart} {criteria}", placeId, chatId);
+                var results = await Tester.FindEntries($"{IsolationKey} {criteria}", placeId, chatId);
                 results.Should().HaveCount(expected, "for chat #{0} and criteria '{1}'", chatId, criteria);
                 return results;
             },

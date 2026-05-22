@@ -8,6 +8,9 @@ public static class UniqueNames
     private static readonly RandomStringGenerator Rsg = new (RandomPartLength, Alphabet.AlphaLower);
     private static readonly RandomStringGenerator Rng = new (10, Alphabet.Numeric);
 
+    public static string Random(int length = RandomPartLength)
+        => Rsg.Next(length);
+
     public static string User(int i)
         => Name($"User_{i}");
 
@@ -16,9 +19,6 @@ public static class UniqueNames
 
     public static string Place(int i)
         => Name($"Place {i}");
-
-    public static string Prefix(int length = RandomPartLength)
-        => Rsg.Next(length);
 
     public static string Name(string prefix, string delimiter = "_", int randomSuffixLength = RandomPartLength)
     {

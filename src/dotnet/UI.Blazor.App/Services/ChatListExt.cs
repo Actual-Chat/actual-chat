@@ -6,7 +6,7 @@ public static class ChatListExt
 {
     public static IEnumerable<ChatInfo> FilterAndOrderBySearchQuery(
         this IEnumerable<ChatInfo> chats,
-        MemSearchQuery query,
+        SearchQuery query,
         ChatId? selectedChatId = null)
     {
         if (!query.IsEmpty)

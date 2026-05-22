@@ -12,7 +12,7 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<SearchAppHostFixture>(fixture, @out)
 {
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
-    private string UniquePart { get; } = UniqueNames.Prefix();
+    private string IsolationKey { get; } = UniqueNames.Random();
     private SearchUI SearchUI => Tester.ScopedAppServices.AppUIHub().SearchUI;
 
     protected override async Task DisposeAsync()
@@ -27,10 +27,10 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
         await Tester.SignInAsUniqueAlice();
-        var places = await Tester.CreatePlaceContacts(bob, UniquePart);
-        var groups = await Tester.CreateGroupContacts(bob, places, uniquePart: UniquePart);
-        var people = await Tester.CreateUserContacts(bob, places, UniquePart);
-        var entries = await Tester.CreateEntries(bob, groups, people, UniquePart);
+        var places = await Tester.CreatePlaceContacts(bob, IsolationKey);
+        var groups = await Tester.CreateGroupContacts(bob, places, testIsolationKey: IsolationKey);
+        var people = await Tester.CreateUserContacts(bob, places, IsolationKey);
+        var entries = await Tester.CreateEntries(bob, groups, people, IsolationKey);
 
         // act
         await Tester.SignIn(bob);
@@ -50,14 +50,14 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
             expectedEntries,
             expectedJoinedPlaces,
             expectedOtherPlaces);
-        SearchUI.Text.Value = $"{UniquePart} one";
+        SearchUI.Text.Value = $"{IsolationKey} one";
 
         // assert
         var foundItems = await GetSearchResults(GetExpectedCount());
         AssertFoundItems(0, bob.BuildFoundContacts(false, expectedFriends));
         AssertFoundItems(3, bob.BuildFoundContacts(false, expectedJoinedGroups));
         AssertFoundItems(6, bob.BuildFoundContacts(false, expectedJoinedPlaces));
-        AssertFoundItems(8, expectedEntries.BuildFoundEntries(["one"], UniquePart));
+        AssertFoundItems(8, expectedEntries.BuildFoundEntries(["one"], IsolationKey));
         AssertFoundItems(11,
             bob.BuildFoundContacts(true, expectedStrangers),
             bob.BuildFoundContacts(true, expectedOtherGroups),
@@ -84,13 +84,13 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
             expectedOtherGroups,
             expectedEntries);
         SearchUI.PlaceId.Value = places.JoinedPrivatePlace2().Id;
-        SearchUI.Text.Value = $"{UniquePart} one";
+        SearchUI.Text.Value = $"{IsolationKey} one";
 
         // assert
         foundItems = await GetSearchResults(GetExpectedCount());
         AssertFoundItems(0, bob.BuildFoundContacts(false, expectedFriends));
         AssertFoundItems(1, bob.BuildFoundContacts(false, expectedJoinedGroups));
-        AssertFoundItems(3, expectedEntries.BuildFoundEntries(["one"], UniquePart));
+        AssertFoundItems(3, expectedEntries.BuildFoundEntries(["one"], IsolationKey));
         AssertFoundItems(6,
             bob.BuildFoundContacts(true, expectedStrangers),
             bob.BuildFoundContacts(true, expectedOtherGroups));
@@ -134,7 +134,7 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
         IReadOnlyCollection<Place>? expectedJoinedPlaces = null,
         IReadOnlyCollection<Place>? expectedOtherPlaces = null)
         => TestExt.When(async () => {
-                var uniqueCriteria = $"{criteria} {UniquePart}";
+                var uniqueCriteria = $"{criteria} {IsolationKey}";
                 var owner = await Tester.GetOwnAccount();
                 var friends = await Tester.FindPeople(uniqueCriteria, true, placeId);
                 friends.Should()
@@ -149,7 +149,7 @@ public class SearchUITest(SearchAppHostFixture fixture, ITestOutputHelper @out)
                 otherGroups.Should()
                     .BeEquivalentTo(owner.BuildSearchResults(expectedOtherGroups), o => o.ExcludingSearchMatch());
                 var entries = await Tester.FindEntries(uniqueCriteria, placeId);
-                entries.Should().BeEquivalentTo(expectedEntries.BuildSearchResults([criteria, UniquePart]), o => o.ExcludingSearchMatch());
+                entries.Should().BeEquivalentTo(expectedEntries.BuildSearchResults([criteria, IsolationKey]), o => o.ExcludingSearchMatch());
                 if (placeId is null) {
                     var joinedPlaces = await Tester.FindPlaces(uniqueCriteria, true);
                     joinedPlaces.Should()

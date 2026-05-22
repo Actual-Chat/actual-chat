@@ -11,7 +11,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
 
-    private string UniquePart { get; } = UniqueNames.Prefix();
+    private string IsolationKey { get; } = UniqueNames.Random();
 
     protected override async Task DisposeAsync()
     {
@@ -33,13 +33,13 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // act, assert
         var searchResults = await Find("let");
-        searchResults.Should().BeEquivalentTo([entry1.BuildSearchResult(["let's"], UniquePart)], o => o.ExcludingSearchMatch());
+        searchResults.Should().BeEquivalentTo([entry1.BuildSearchResult(["let's"], IsolationKey)], o => o.ExcludingSearchMatch());
         searchResults = await Find("something saying");
-        searchResults.Should().BeEquivalentTo([entry2.BuildSearchResult(["something", "saying"], UniquePart)], o => o.ExcludingSearchMatch());
+        searchResults.Should().BeEquivalentTo([entry2.BuildSearchResult(["something", "saying"], IsolationKey)], o => o.ExcludingSearchMatch());
         searchResults = await Find("river ba");
-        searchResults.Should().BeEquivalentTo([entry3.BuildSearchResult(["river", "bank"], UniquePart)], o => o.ExcludingSearchMatch());
+        searchResults.Should().BeEquivalentTo([entry3.BuildSearchResult(["river", "bank"], IsolationKey)], o => o.ExcludingSearchMatch());
         searchResults = await Find("wak");
-        searchResults.Should().BeEquivalentTo([entry4.BuildSearchResult(["wake"], UniquePart)], o => o.ExcludingSearchMatch());
+        searchResults.Should().BeEquivalentTo([entry4.BuildSearchResult(["wake"], IsolationKey)], o => o.ExcludingSearchMatch());
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
                 entry.Id.BuildSearchResult(
                     "…Lorem Ipsum test has been the industry's standard dummy text ever since the 1500s, when an unknown printer…",
                     ["test"],
-                    UniquePart,
+                    IsolationKey,
                     (13, 17)),
             ]);
     }
@@ -79,7 +79,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
             .BeEquivalentTo([
                 entry.BuildSearchResult(
                     [Constants.Hosts.Voxt],
-                    UniquePart,
+                    IsolationKey,
                     (8, 15)),
             ]);
     }
@@ -90,14 +90,14 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
         await Tester.SignInAsUniqueAlice();
-        var places = await Tester.CreatePlaceContacts(bob, UniquePart);
-        var groups = await Tester.CreateGroupContacts(bob, places, UniquePart);
-        var people = await Tester.CreateUserContacts(bob, places, UniquePart);
-        var entries = await Tester.CreateEntries(bob, groups, people, UniquePart);
+        var places = await Tester.CreatePlaceContacts(bob, IsolationKey);
+        var groups = await Tester.CreateGroupContacts(bob, places, IsolationKey);
+        var people = await Tester.CreateUserContacts(bob, places, IsolationKey);
+        var entries = await Tester.CreateEntries(bob, groups, people, IsolationKey);
         await Tester.SignIn(bob);
 
         // act
-        var expected = entries.Accessible1().BuildSearchResults([TestSearchDataGenerator.OneTerm], UniquePart);
+        var expected = entries.Accessible1().BuildSearchResults([TestSearchDataGenerator.OneTerm], IsolationKey);
         var searchResults = await Find(TestSearchDataGenerator.OneTerm, expected: expected.Count);
 
         // assert
@@ -110,8 +110,8 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
         await Tester.SignInAsUniqueAlice();
-        var places = await Tester.CreatePlaceContacts(bob, UniquePart);
-        var groups = await Tester.CreateGroupContacts(bob, places, UniquePart);
+        var places = await Tester.CreatePlaceContacts(bob, IsolationKey);
+        var groups = await Tester.CreateGroupContacts(bob, places, IsolationKey);
 
         // act
         var aliceEntries = await CreateEntries(groups.Joined(), "Let's go outside");
@@ -124,7 +124,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         foreach (var chat in groups.Values) {
             var expected = entryLookup[chat.Id]
                 .OrderByDescending(x => x.GetIndexedEntryDate())
-                .BuildSearchResults(["let's"], UniquePart);
+                .BuildSearchResults(["let's"], IsolationKey);
              var searchResults = await Find("let", chatId: chat.Id, expected: expected.Count);
             searchResults.Should()
                 .BeEquivalentTo(expected, o => o.ExcludingSearchMatch().WithStrictOrderingFor(x => x), chat.Title);
@@ -137,9 +137,9 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
         await Tester.SignInAsUniqueAlice();
-        var places = await Tester.CreatePlaceContacts(bob, UniquePart);
-        var groups = await Tester.CreateGroupContacts(bob, places, UniquePart);
-        var people = await Tester.CreateUserContacts(bob, places, UniquePart);
+        var places = await Tester.CreatePlaceContacts(bob, IsolationKey);
+        var groups = await Tester.CreateGroupContacts(bob, places, IsolationKey);
+        var people = await Tester.CreateUserContacts(bob, places, IsolationKey);
 
         // act
         var allPlaceEntries = new List<(PlaceId? PlaceId, ChatEntry Entry)>();
@@ -162,7 +162,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         foreach (var place in places.Values) {
             var expected = entryLookup[place.Id]
                 .OrderByDescending(x => x.GetIndexedEntryDate())
-                .BuildSearchResults(["let's"], UniquePart);
+                .BuildSearchResults(["let's"], IsolationKey);
             var searchResults = await Find("let", place.Id, expected: expected.Count);
             searchResults.Should()
                 .BeEquivalentTo(expected, o => o.ExcludingSearchMatch().WithStrictOrderingFor(x => x), place.Title);
@@ -183,14 +183,14 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         var searchResults = await Find("let", expected: 1);
 
         // assert
-        searchResults.Should().BeEquivalentTo([entry1.BuildSearchResult(["let's"], UniquePart)], o => o.ExcludingSearchMatch());
+        searchResults.Should().BeEquivalentTo([entry1.BuildSearchResult(["let's"], IsolationKey)], o => o.ExcludingSearchMatch());
 
         // act
         entry2 = await UpdateEntry(entry2.Id, "let");
         searchResults = await Find("let", expected: 2);
         searchResults.Should()
             .BeEquivalentTo([
-                    entry2.BuildSearchResult(["let"], UniquePart), entry1.BuildSearchResult(["let's"], UniquePart),
+                    entry2.BuildSearchResult(["let"], IsolationKey), entry1.BuildSearchResult(["let's"], IsolationKey),
                 ],
                 o => o.ExcludingSearchMatch().WithStrictOrderingFor(x => x));
     }
@@ -224,18 +224,18 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     private async Task<ChatEntry> CreateEntry(ChatId chatId, string text)
-        => await Tester.CreateTextEntry(chatId, $"{text} {UniquePart}");
+        => await Tester.CreateTextEntry(chatId, $"{text} {IsolationKey}");
 
     private Task<ChatEntry> UpdateEntry(ChatEntryId id, string text)
-        => Tester.UpdateTextEntry(id, $"{text} {UniquePart}");
+        => Tester.UpdateTextEntry(id, $"{text} {IsolationKey}");
 
-    private Task<EntrySearchResult[]> Find(
+    private Task<FoundChatEntry[]> Find(
         string criteria,
         PlaceId? placeId = null,
         ChatId chatId = null!,
         int expected = 1)
         => TestsExt.When(async () => {
-                var results = await Tester.FindEntries($"{UniquePart} {criteria}", placeId, chatId);
+                var results = await Tester.FindEntries($"{IsolationKey} {criteria}", placeId, chatId);
                 results.Should().HaveCount(expected);
                 return results;
             },

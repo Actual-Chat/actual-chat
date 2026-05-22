@@ -52,7 +52,7 @@
 
 @code {
     private ContactSelector? _contactSelectorRef;
-    private MemSearchQuery _searchQuery;
+    private SearchQuery _searchQuery;
     private string _comment = "";
 
     private ImmutableHashSet<ChatId> SelectedChatIds
@@ -62,7 +62,7 @@
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     private void OnFilter(string filter) {
-        _searchQuery = new MemSearchQuery(filter);
+        _searchQuery = new SearchQuery(filter);
         StateHasChanged();
     }
 
