@@ -272,6 +272,14 @@ export const recorderWorkerImpl: RecorderWorker = {
         await Promise.resolve();
     },
 
+    async reconfigureLayers(
+        configs: readonly import('../operators/encode').EncoderConfigPerLayer[],
+    ): Promise<void> {
+        const s = requireState();
+        s.recorder.reconfigureLayers(configs);
+        await Promise.resolve();
+    },
+
     getStats(): Promise<RecorderStats> {
         const s = requireState();
         return Promise.resolve(s.recorder.getStats() ?? emptyStats());
