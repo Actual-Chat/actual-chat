@@ -36,7 +36,7 @@ public sealed class NotificationServiceModule(IServiceProvider moduleServices)
                 return FirebaseMessaging.GetMessaging(firebaseApp);
             }
         });
-        services.AddSingleton<FirebaseMessagingClient>();
+        services.AddSingleton<IFirebaseMessagingClient, FirebaseMessagingClient>();
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();

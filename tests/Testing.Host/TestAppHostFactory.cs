@@ -3,6 +3,7 @@ using ActualChat.App.Server.Module;
 using ActualChat.Blobs.Internal;
 using ActualChat.MLSearch.Engine;
 using ActualChat.Module;
+using ActualChat.Notifications;
 using ActualLab.IO;
 using ActualLab.Testing.Web;
 using DotNetEnv.Configuration;
@@ -94,6 +95,11 @@ public static class TestAppHostFactory
                     Env = OpenSearchNames.TestPrefix,
                 });
                 services.AddTestLogging(outputAccessor);
+
+                // Record pushes instead of hitting Firebase
+                services.AddSingleton<FirebaseMessagingTestSink>();
+                services.AddSingleton<IFirebaseMessagingClient>(
+                    c => c.GetRequiredService<FirebaseMessagingTestSink>());
 
                 // Overrides from options
                 options.ConfigureServices?.Invoke(ctx, services);

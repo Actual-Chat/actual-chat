@@ -7,6 +7,7 @@ public class FirebaseMessagingClient(
     FirebaseMessaging firebaseMessaging,
     ICommander commander,
     ILogger<FirebaseMessagingClient> log)
+    : IFirebaseMessagingClient
 {
     private UrlMapper UrlMapper { get; } = urlMapper;
     private FirebaseMessaging FirebaseMessaging { get; } = firebaseMessaging;
@@ -18,6 +19,7 @@ public class FirebaseMessagingClient(
         Notification notification,
         IReadOnlyCollection<Symbol> deviceIds,
         bool? enableDataCollection,
+        int badgeCount,
         CancellationToken cancellationToken)
     {
         var notificationId = notification.Id;
@@ -94,6 +96,8 @@ public class FirebaseMessagingClient(
                         Title = title,
                         Body = content,
                     },
+                    // iOS only updates a backgrounded app's icon badge from aps.badge -> always send it.
+                    Badge = badgeCount,
                     Sound = kind == NotificationKind.Attention ? "attention_ringtone.caf" : "default",
                     MutableContent = true,
                     ThreadId = tag,
@@ -125,6 +129,52 @@ public class FirebaseMessagingClient(
         var batchResponse = await FirebaseMessaging
             .SendEachForMulticastAsync(multicastMessage, cancellationToken)
             .ConfigureAwait(false);
+        await HandleBatchResponse(batchResponse, deviceIds, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task SendDismissal(
+        IReadOnlyCollection<NotificationId> dismissedIds,
+        IReadOnlyCollection<Symbol> deviceIds,
+        int badgeCount,
+        CancellationToken cancellationToken)
+    {
+        if (deviceIds.Count == 0)
+            return;
+
+        var data = new Dictionary<string, string>() {
+            { Constants.Notification.MessageDataKeys.DismissedIds, string.Join(',', dismissedIds.Select(id => id.Value)) },
+        };
+        var multicastMessage = new MulticastMessage {
+            Tokens = deviceIds.Select(id => id.Value).ToList(),
+            Data = data,
+            Android = new AndroidConfig {
+                Data = data,
+                Priority = Priority.High,
+                TimeToLive = TimeSpan.FromDays(1),
+            },
+            Apns = new ApnsConfig {
+                Headers = new Dictionary<string, string>() {
+                    // A silent push: it only updates the badge and lets the app drop dismissed notifications.
+                    ["apns-push-type"] = "background",
+                    ["apns-priority"] = "5",
+                },
+                Aps = new Aps {
+                    ContentAvailable = true,
+                    Badge = badgeCount,
+                },
+            },
+        };
+        var batchResponse = await FirebaseMessaging
+            .SendEachForMulticastAsync(multicastMessage, cancellationToken)
+            .ConfigureAwait(false);
+        await HandleBatchResponse(batchResponse, deviceIds, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task HandleBatchResponse(
+        BatchResponse batchResponse,
+        IReadOnlyCollection<Symbol> deviceIds,
+        CancellationToken cancellationToken)
+    {
         if (DebugLog != null) {
             var messageIds = string.Join(", ",
                 batchResponse.Responses.Select(c =>
@@ -137,35 +187,36 @@ public class FirebaseMessagingClient(
                 batchResponse.SuccessCount, batchResponse.Responses.Count, messageIds);
         }
 
-        if (batchResponse.FailureCount > 0) {
-            var responses = batchResponse.Responses
-                .Zip(deviceIds)
-                .Select(p => new {
-                    DeviceId = p.Second,
-                    p.First.IsSuccess,
-                    p.First.Exception?.MessagingErrorCode,
-                    p.First.Exception?.HttpResponse,
-                })
-                .ToList();
-            var responseGroups = responses
-                .GroupBy(x => x.MessagingErrorCode);
-            foreach (var responseGroup in responseGroups)
-                if (responseGroup.Key is MessagingErrorCode.Unregistered or MessagingErrorCode.SenderIdMismatch) {
-                    var tokensToRemove = responseGroup
-                        .Select(g => g.DeviceId)
-                        .ToArray();
-                    _ = Commander.Start(new NotificationsBackend_RemoveDevices(tokensToRemove), true, CancellationToken.None);
-                }
-                else if (responseGroup.Key.HasValue) {
-                    var firstErrorItem = responseGroup.First();
-                    var errorContent = firstErrorItem.HttpResponse == null
-                        ? ""
-                        : await firstErrorItem.HttpResponse.Content
-                            .ReadAsStringAsync(cancellationToken)
-                            .ConfigureAwait(false);
-                    Log.LogWarning("Notification messages were not sent. ErrorCode = {ErrorCode}; Count = {ErrorCount}; {Details}",
-                        responseGroup.Key, responseGroup.Count(), errorContent);
-                }
-        }
+        if (batchResponse.FailureCount <= 0)
+            return;
+
+        var responses = batchResponse.Responses
+            .Zip(deviceIds)
+            .Select(p => new {
+                DeviceId = p.Second,
+                p.First.IsSuccess,
+                p.First.Exception?.MessagingErrorCode,
+                p.First.Exception?.HttpResponse,
+            })
+            .ToList();
+        var responseGroups = responses
+            .GroupBy(x => x.MessagingErrorCode);
+        foreach (var responseGroup in responseGroups)
+            if (responseGroup.Key is MessagingErrorCode.Unregistered or MessagingErrorCode.SenderIdMismatch) {
+                var tokensToRemove = responseGroup
+                    .Select(g => g.DeviceId)
+                    .ToArray();
+                _ = Commander.Start(new NotificationsBackend_RemoveDevices(tokensToRemove), true, CancellationToken.None);
+            }
+            else if (responseGroup.Key.HasValue) {
+                var firstErrorItem = responseGroup.First();
+                var errorContent = firstErrorItem.HttpResponse == null
+                    ? ""
+                    : await firstErrorItem.HttpResponse.Content
+                        .ReadAsStringAsync(cancellationToken)
+                        .ConfigureAwait(false);
+                Log.LogWarning("Notification messages were not sent. ErrorCode = {ErrorCode}; Count = {ErrorCount}; {Details}",
+                    responseGroup.Key, responseGroup.Count(), errorContent);
+            }
     }
 }

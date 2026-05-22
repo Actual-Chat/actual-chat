@@ -45,8 +45,8 @@ public class NotificationsBackend(IServiceProvider services)
     private IUserPresences UserPresences { get; } = services.GetRequiredService<IUserPresences>();
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
         = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
-    private FirebaseMessagingClient FirebaseMessagingClient { get; }
-        = services.GetRequiredService<FirebaseMessagingClient>();
+    private IFirebaseMessagingClient FirebaseMessagingClient { get; }
+        = services.GetRequiredService<IFirebaseMessagingClient>();
     private IQueues Queues { get; } = services.Queues();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
     private FlowHub FlowHub => field ??= Services.FlowHub();
@@ -563,7 +563,7 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
     }
 
-    private async Task Send(UserId userId, Notification notification, CancellationToken cancellationToken1)
+    private async Task Send(UserId userId, Notification notification, int badgeCount, CancellationToken cancellationToken1)
     {
         var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
         var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken1).ConfigureAwait(false);
@@ -578,7 +578,7 @@ public class NotificationsBackend(IServiceProvider services)
         var entryId = GetEntryId(notification);
         DebugLog?.LogInformation("-> Send. EntryId={EntryId}, UserId={UserId}, NotificationId={Kind}, DeviceIds#={DeviceIdCount}",
             entryId, userId, notification.Id, deviceIds.Count);
-        await FirebaseMessagingClient.SendMessage(notification, deviceIds, isAdmin, cancellationToken1).ConfigureAwait(false);
+        await FirebaseMessagingClient.SendMessage(notification, deviceIds, isAdmin, badgeCount, cancellationToken1).ConfigureAwait(false);
         DebugLog?.LogInformation("<- Send. EntryId={EntryId}, UserId={UserId}, NotificationId={Kind}, DeviceIds#={DeviceIdCount}",
             entryId, userId, notification.Id, deviceIds.Count);
     }
@@ -813,33 +813,32 @@ public class NotificationsBackend(IServiceProvider services)
         var dbUserNotifications = await dbContext.UserNotifications.ForUpdate()
             .FirstOrDefaultAsync(x => x.Id == userId.Value, cancellationToken)
             .ConfigureAwait(false);
-        var isNew = dbUserNotifications == null;
 
-        var info = dbUserNotifications?.ToModel() ?? new UserNotificationInfo(userId);
-        foreach (var notification in notifications)
-            info = info.WithNotification(notification);
-        info = info with {
-            Version = VersionGenerator.NextVersion(info.Version),
-            LastPushAt = Clocks.SystemClock.Now,
-            IsDormant = info.IsDormant || info.Displayed.Count >= Constants.Notification.DormancyThreshold,
-        };
-
-        if (isNew) {
+        UserNotificationInfo info;
+        if (dbUserNotifications != null) {
+            info = Apply(dbUserNotifications.ToModel());
+            dbUserNotifications.UpdateFrom(info);
+        }
+        else {
+            info = Apply(new UserNotificationInfo(userId));
             dbUserNotifications = new DbUserNotifications();
             dbUserNotifications.UpdateFrom(info);
             dbContext.UserNotifications.Add(dbUserNotifications);
         }
-        else
-            dbUserNotifications!.UpdateFrom(info);
 
         try {
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (DbUpdateException e) when (isNew) {
-            // Two concurrent first-time updates for the same user: the loser is dropped,
-            // the next OnNotify converges since the row now exists.
-            Log.LogWarning(e, "ApplyHardUpdate: concurrent create for UserId={UserId}, skipped", userId);
-            return;
+        catch (DbUpdateConcurrencyException e) when (e.Entries.All(en => en.State == EntityState.Added)) {
+            // Lost the create race (INSERT ... ON CONFLICT DO NOTHING affected 0 rows):
+            // the row exists now -> re-read it under lock and apply as an update instead.
+            dbContext.Entry(dbUserNotifications).State = EntityState.Detached;
+            dbUserNotifications = await dbContext.UserNotifications.ForUpdate()
+                .FirstAsync(x => x.Id == userId.Value, cancellationToken)
+                .ConfigureAwait(false);
+            info = Apply(dbUserNotifications.ToModel());
+            dbUserNotifications.UpdateFrom(info);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
         context.Operation.AddCompletionHandler(scope => {
@@ -848,7 +847,18 @@ public class NotificationsBackend(IServiceProvider services)
             return Task.CompletedTask;
         });
 
-        await Send(userId, notifications[^1], cancellationToken).ConfigureAwait(false);
+        await Send(userId, notifications[^1], info.Displayed.Count, cancellationToken).ConfigureAwait(false);
+        return;
+
+        UserNotificationInfo Apply(UserNotificationInfo current) {
+            foreach (var notification in notifications)
+                current = current.WithNotification(notification);
+            return current with {
+                Version = VersionGenerator.NextVersion(current.Version),
+                LastPushAt = Clocks.SystemClock.Now,
+                IsDormant = current.IsDormant || current.Displayed.Count >= Constants.Notification.DormancyThreshold,
+            };
+        }
     }
 
     private sealed class SoftBuffer

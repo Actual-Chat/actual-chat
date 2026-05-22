@@ -236,6 +236,8 @@ namespace ActualChat.Notifications.Migrations
                         .HasName("pk_user_notifications");
 
                     b.ToTable("user_notifications");
+
+                    b.HasAnnotation("ConflictStrategy", ConflictStrategy.DoNothing);
                 });
 
             modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbEvent", b =>

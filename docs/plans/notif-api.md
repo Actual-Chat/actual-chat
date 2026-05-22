@@ -152,8 +152,14 @@ handler. Dismissals (clear-on-read) lower the count via a silent push.
   reconciliation) is deferred to Phase 5; `GetUserNotificationInfo` is just a blob read
   for now. Dormancy *clear* is Phase 5. Legacy `DbNotification` / `OnUpsert` / `Get` /
   `ListRecentNotificationIds` still coexist — retired in Phase 7.
-- **Phase 3 — FCM.** `IFirebaseMessagingClient` interface + real impl + test sink;
-  `Aps.Badge`; silent dismissal push.
+- **Phase 3 — FCM.** ✅ Done. `IFirebaseMessagingClient` interface; `FirebaseMessagingClient`
+  implements it. Every `SendMessage` carries `aps.badge` = `Displayed.Count` (the iOS
+  badge fix). Added `SendDismissal` — a silent background push (`content-available` +
+  `aps.badge`, `dismissedIds` data key); its caller is wired in Phase 5.
+  `FirebaseMessagingTestSink` (in `Testing.Host`) replaces the client in **every** test
+  host via `TestAppHostFactory`, so tests never hit Firebase and can assert on sends.
+  Phase 2 follow-up done here: `DbUserNotifications` got `ConflictStrategy.DoNothing` +
+  `ApplyHardUpdate` re-reads under lock on a lost create race (no notification dropped).
 - **Phase 4 — Fan-out rewrite.** Event handlers → cheap fan-out → `OnNotify`.
   Delete `NotificationFlow`.
 - **Phase 5 — Read / dismiss.** Engagement/read signals → dormancy clear +
@@ -195,3 +201,7 @@ hitting Firebase.
    `MemoryCache` pattern of `_recentChatsWithNotifications`) before Phase 7.
 5. Phase 2 hard updates do one DB write and leave `UnsentDelta` empty — it is
    reserved for Phase 5's silent-dismiss flow.
+6. `NotificationContentTest` and similar tests still read via the legacy
+   `ListRecentNotificationIds` / `Get` (`DbNotification`), which `OnNotify` no
+   longer populates after Phase 2 — they must move to `GetUserNotificationInfo`
+   in Phase 7 (or sooner).
