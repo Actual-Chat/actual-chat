@@ -515,13 +515,12 @@ export class VideoRecorder {
     }
 
     /**
-     * Update the cached simulcast ladder. On a running recorder this
-     * triggers a stop+start with the new ladder (the new pipeline does
-     * NOT support hot reconfigure of the layer set).
-     *
-     * TODO(phase 7+): re-introduce hot-apply once the recorder
-     * supports a control channel for adding/removing layers without
-     * tearing down the underlying RPC stream.
+     * Update the cached simulcast ladder. When the running worker can
+     * absorb the change (same codec, same source dims), we route through
+     * {@link RecorderWorker.reconfigureLayers} so the wire RpcStream stays
+     * open — receivers see the new layer count on per-frame `LayerCount`
+     * without an end-of-stream blink. Codec or source-dim changes still
+     * fall back to a full stop+start.
      */
     public setLayers(layers: LayerInput[] | null): void {
         const maxTiers = this.isScreenCasting
@@ -547,11 +546,23 @@ export class VideoRecorder {
             infoLog?.log(`setLayers: ${prevCount} -> ${newCount} layer(s)`);
         }
         if (this.worker && prevCount !== newCount) {
-            // Hot-restart with the new ladder. The encoder pool inside
-            // the session retains parked encoders across the gap so
-            // codec / NVENC slot survives.
-            void this.restartWithCurrentConfig().catch((e: unknown) =>
-                warnLog?.log('setLayers: restart failed:', e));
+            // Codec / source dims unchanged → hot-apply without tearing
+            // down the wire stream. The worker mutates the running
+            // pipeline's LayerLadderController; spatialize, encode and
+            // wireSend pick up the change on the next bundle.
+            const ladderForWorker = this.resolveActiveLadder();
+            const encoderConfigs = this.toEncoderConfigs(ladderForWorker);
+            if (encoderConfigs.length > 0) {
+                void this.worker.reconfigureLayers(encoderConfigs).catch((e: unknown) => {
+                    warnLog?.log('setLayers: reconfigureLayers failed, falling back to restart:', e);
+                    void this.restartWithCurrentConfig().catch((restartErr: unknown) =>
+                        warnLog?.log('setLayers: restart fallback failed:', restartErr));
+                });
+            } else {
+                warnLog?.log('setLayers: empty ladder — falling back to restart');
+                void this.restartWithCurrentConfig().catch((e: unknown) =>
+                    warnLog?.log('setLayers: restart failed:', e));
+            }
         }
     }
 
