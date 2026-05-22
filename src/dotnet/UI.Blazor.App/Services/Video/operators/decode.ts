@@ -3,6 +3,7 @@ import { RunningEMA } from 'math';
 import { abortPromise, PromiseSource } from 'promises';
 import { closeEncodedChunk, type ArrivedChunk, type DecodedFrame } from '../frame-envelopes';
 import { createCodecProofTracker, type CodecProofTracker } from '../codec-proof';
+import { HAS_VF_ROTATION_INIT, wrapWithRotation } from '../video-frame-caps';
 import type { RotationQuarter } from 'orientation';
 
 const DECODE_RATIO_EMA_ALPHA = 0.2;
@@ -177,15 +178,28 @@ async function* decodeAsync(
             }
             const decodedAtMs = now();
             const stats = currentStats!;
+            // Move display rotation from the envelope to the VideoFrame's
+            // own metadata when supported. <video> element auto-rotates from
+            // `frame.rotation`; downstream CSS / canvas rotation paths read
+            // envelope.rotation, so zero it here to avoid double-rotation.
+            // Canvas render backends and Firefox stay on the legacy path
+            // (HAS_VF_ROTATION_INIT === false → no wrap, envelope unchanged).
+            let outFrame = frame;
+            let outRotation: RotationQuarter = meta.rotation;
+            if (HAS_VF_ROTATION_INIT && meta.rotation !== 0) {
+                outFrame = wrapWithRotation(frame, meta.rotation);
+                try { frame.close(); } catch { /* ignore */ }
+                outRotation = 0;
+            }
             const envelope: DecodedFrame = {
-                frame,
+                frame: outFrame,
                 capturedAt: meta.capturedAt,
                 arrivedAt: meta.arrivedAt,
                 decodedAt: { timeMs: decodedAtMs, epoch: 0 },
                 index: meta.index,
                 dropTrace: meta.dropTrace,
                 layerId: meta.layerId,
-                rotation: meta.rotation,
+                rotation: outRotation,
                 stats,
             };
             consecutiveRecoveries = 0;
