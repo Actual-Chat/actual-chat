@@ -11,7 +11,9 @@ namespace ActualChat.Maui;
 
 public class AndroidIncomingShareSuggestions(IServiceProvider services) : IncomingShareSuggestions(services)
 {
-    private const int AdaptiveIconSize = 108;
+    private const int AdaptiveIconSafeZone = 108;
+    private const int AdaptiveIconSize = AdaptiveIconSafeZone * 3 / 2;
+    private const int AdaptiveIconInset = (AdaptiveIconSize - AdaptiveIconSafeZone) / 2;
     private const int MaxShortLabelLength = 25;
 
     private IconUI IconUI => field ??= Services.GetRequiredService<IconUI>();
@@ -71,10 +73,12 @@ public class AndroidIncomingShareSuggestions(IServiceProvider services) : Incomi
             if (loadedImage is not null) {
                 var bitmap = await BitmapFactory.DecodeFileAsync(loadedImage.FilePath).ConfigureAwait(false);
                 if (bitmap is not null) {
-                    var scaled = Bitmap.CreateScaledBitmap(bitmap, AdaptiveIconSize, AdaptiveIconSize, true);
-                    if (!ReferenceEquals(scaled, bitmap))
+                    try {
+                        return IconCompat.CreateWithAdaptiveBitmap(ToAdaptiveIcon(bitmap))!;
+                    }
+                    finally {
                         bitmap.Recycle();
-                    return IconCompat.CreateWithAdaptiveBitmap(scaled)!;
+                    }
                 }
             }
         }
@@ -84,5 +88,29 @@ public class AndroidIncomingShareSuggestions(IServiceProvider services) : Incomi
 
         var context = Platform.AppContext;
         return IconCompat.CreateWithResource(context, context.ApplicationInfo!.Icon)!;
+    }
+
+    private static Bitmap ToAdaptiveIcon(Bitmap source)
+    {
+        // CreateWithAdaptiveBitmap treats the whole bitmap as the icon canvas, but the
+        // launcher mask reveals only the inner safe zone - the avatar is drawn into that
+        // zone (center-cropped to a square) and the surrounding inset is left transparent.
+        var result = Bitmap.CreateBitmap(AdaptiveIconSize, AdaptiveIconSize, Bitmap.Config.Argb8888!)!;
+        using var canvas = new Canvas(result);
+        using var paint = new Paint { AntiAlias = true, FilterBitmap = true };
+
+        var side = Math.Min(source.Width, source.Height);
+        var src = new Rect(
+            (source.Width - side) / 2,
+            (source.Height - side) / 2,
+            (source.Width + side) / 2,
+            (source.Height + side) / 2);
+        var dest = new Rect(
+            AdaptiveIconInset,
+            AdaptiveIconInset,
+            AdaptiveIconSize - AdaptiveIconInset,
+            AdaptiveIconSize - AdaptiveIconInset);
+        canvas.DrawBitmap(source, src, dest, paint);
+        return result;
     }
 }
