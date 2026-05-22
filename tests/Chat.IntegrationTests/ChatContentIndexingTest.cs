@@ -40,11 +40,11 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         await TriggerIndexing(chatId);
 
         await TestExt.When(async () => {
-            var content = await chats.ListChatContent(session, chatId, ChatContentKind.All, CancellationToken.None);
+            var content = await ListAllContent(chats, session, chatId, ChatContentKind.All);
             content.Should().HaveCount(4);
         }, TimeSpan.FromSeconds(30));
 
-        var items = await chats.ListChatContent(session, chatId, ChatContentKind.All, CancellationToken.None);
+        var items = await ListAllContent(chats, session, chatId, ChatContentKind.All);
         items.Count(x => x.Kind == ChatContentKind.Photo).Should().Be(1);
         items.Count(x => x.Kind == ChatContentKind.Video).Should().Be(1);
         items.Count(x => x.Kind == ChatContentKind.File).Should().Be(1);
@@ -58,12 +58,12 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         file.MediaId.Should().Be(fileId);
         file.FileName.Should().Be("notes.txt");
 
-        // kindMask filtering
-        var mediaOnly = await chats.ListChatContent(session, chatId, ChatContentKind.Media, CancellationToken.None);
+        // kind filtering
+        var mediaOnly = await ListAllContent(chats, session, chatId, ChatContentKind.Media);
         mediaOnly.Should().HaveCount(2);
         mediaOnly.Should().OnlyContain(x => x.Kind == ChatContentKind.Photo || x.Kind == ChatContentKind.Video);
 
-        var linksOnly = await chats.ListChatContent(session, chatId, ChatContentKind.Link, CancellationToken.None);
+        var linksOnly = await ListAllContent(chats, session, chatId, ChatContentKind.Link);
         linksOnly.Should().ContainSingle().Which.Kind.Should().Be(ChatContentKind.Link);
     }
 
@@ -89,7 +89,7 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
 
         await TriggerIndexing(chatId);
         await TestExt.When(async () => {
-            var content = await chats.ListChatContent(session, chatId, ChatContentKind.All, CancellationToken.None);
+            var content = await ListAllContent(chats, session, chatId, ChatContentKind.All);
             content.Should().HaveCount(2);
         }, TimeSpan.FromSeconds(30));
 
@@ -98,8 +98,10 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
 
         await TriggerIndexing(chatId);
         await TestExt.When(async () => {
-            var content = await chats.ListChatContent(session, chatId, ChatContentKind.All, CancellationToken.None);
+            var content = await ListAllContent(chats, session, chatId, ChatContentKind.All);
             content.Should().BeEmpty();
+            var photoPeriods = await chats.GetContentPeriods(session, chatId, ChatContentKind.File, CancellationToken.None);
+            photoPeriods.Should().BeEmpty();
         }, TimeSpan.FromSeconds(30));
     }
 
@@ -130,8 +132,7 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
             flow.Should().NotBeNull();
             flow!.PendingEntryLids.Should().Contain(entry.LocalId);
         }, TimeSpan.FromSeconds(30));
-        (await chats.ListChatContent(session, chatId, ChatContentKind.All, CancellationToken.None))
-            .Should().BeEmpty();
+        (await ListAllContent(chats, session, chatId, ChatContentKind.All)).Should().BeEmpty();
 
         // Complete the upload — the media gets a BlobId.
         var data = "uploaded file content"u8.ToArray();
@@ -147,13 +148,13 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         // On the next run the pending entry is rechecked and indexed.
         await FlowHub.NewResumeEvent<ChatMediaIndexingFlow>(chatId.Value).Schedule();
         await TestExt.When(async () => {
-            var content = await chats.ListChatContent(session, chatId, ChatContentKind.All, CancellationToken.None);
+            var content = await ListAllContent(chats, session, chatId, ChatContentKind.All);
             content.Should().ContainSingle().Which.Kind.Should().Be(ChatContentKind.File);
         }, TimeSpan.FromSeconds(30));
     }
 
     [Fact]
-    public async Task GetChatContentTileReturnsIndexedItems()
+    public async Task GetContentPeriodReturnsIndexedItems()
     {
         await using var tester = AppHost.NewBlazorTester(Out);
         await tester.SignInAsUniqueBob();
@@ -164,29 +165,29 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         var (chatId, _) = await tester.CreateChat(true);
 
         var fileId = await tester.SaveTextFile(chatId, "tile.txt", "tile content");
-        var entry = await commander.Call(new Chats_UpsertEntry(session, chatId, null) {
-            Text = "File for the tile",
+        await commander.Call(new Chats_UpsertEntry(session, chatId, null) {
+            Text = "File for the period",
             Attachments = [new ChatEntryAttachment { MediaId = fileId }],
         });
         await commander.Call(new Chats_UpsertEntry(session, chatId, null) {
-            Text = "Link for the tile https://example.net/p",
+            Text = "Link for the period https://example.net/p",
         });
 
         await TriggerIndexing(chatId);
         await TestExt.When(async () => {
-            var content = await chats.ListChatContent(session, chatId, ChatContentKind.All, CancellationToken.None);
+            var content = await ListAllContent(chats, session, chatId, ChatContentKind.All);
             content.Should().HaveCount(2);
         }, TimeSpan.FromSeconds(30));
 
-        var tileRange = Constants.Chat.ServerIdTileStack.LastLayer.GetTile(entry.LocalId).Range;
+        var filePeriods = await chats.GetContentPeriods(session, chatId, ChatContentKind.File, CancellationToken.None);
+        filePeriods.Should().ContainSingle().Which.ItemCount.Should().Be(1);
 
-        var tile = await chats.GetChatContentTile(session, chatId, ChatContentKind.All, tileRange, CancellationToken.None);
-        tile.EntryLidTileRange.Should().Be(tileRange);
-        tile.IsEmpty.Should().BeFalse();
-        tile.Items.Should().HaveCount(2);
+        var filePage = await chats.GetContentPeriod(
+            session, chatId, ChatContentKind.File, filePeriods[0].PeriodKey, 0, CancellationToken.None);
+        filePage.Should().ContainSingle().Which.Kind.Should().Be(ChatContentKind.File);
 
-        var filesTile = await chats.GetChatContentTile(session, chatId, ChatContentKind.File, tileRange, CancellationToken.None);
-        filesTile.Items.Should().ContainSingle().Which.Kind.Should().Be(ChatContentKind.File);
+        var linkPeriods = await chats.GetContentPeriods(session, chatId, ChatContentKind.Link, CancellationToken.None);
+        linkPeriods.Should().ContainSingle().Which.ItemCount.Should().Be(1);
     }
 
     [Fact]
@@ -214,7 +215,7 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         await FlowHub.NewResumeEvent<ChatContentIndexingMasterFlow>("").WithReset(true).Schedule();
 
         await TestExt.When(async () => {
-            var content = await chats.ListChatContent(session, chatId, ChatContentKind.All, CancellationToken.None);
+            var content = await ListAllContent(chats, session, chatId, ChatContentKind.All);
             content.Should().HaveCount(2);
         }, TimeSpan.FromSeconds(60));
     }
@@ -227,8 +228,7 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         var (chatId, _) = await ownerTester.CreateChat(false); // private chat
 
         var ownerChats = ownerTester.AppServices.GetRequiredService<IChats>();
-        var ownerContent = await ownerChats.ListChatContent(
-            ownerTester.Session, chatId, ChatContentKind.All, CancellationToken.None);
+        var ownerContent = await ListAllContent(ownerChats, ownerTester.Session, chatId, ChatContentKind.All);
         ownerContent.Should().BeEmpty();
 
         await using var outsiderTester = AppHost.NewBlazorTester(Out);
@@ -237,11 +237,10 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         var outsiderSession = outsiderTester.Session;
 
         await Assert.ThrowsAnyAsync<Exception>(() =>
-            outsiderChats.ListChatContent(outsiderSession, chatId, ChatContentKind.All, CancellationToken.None));
-
-        var tileRange = Constants.Chat.ServerIdTileStack.LastLayer.GetTile(0).Range;
+            outsiderChats.GetContentPeriods(outsiderSession, chatId, ChatContentKind.Photo, CancellationToken.None));
         await Assert.ThrowsAnyAsync<Exception>(() =>
-            outsiderChats.GetChatContentTile(outsiderSession, chatId, ChatContentKind.All, tileRange, CancellationToken.None));
+            outsiderChats.GetContentPeriod(
+                outsiderSession, chatId, ChatContentKind.Photo, "2026-05", 0, CancellationToken.None));
     }
 
     // Private methods
@@ -253,6 +252,26 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         await Task.Delay(TimeSpan.FromSeconds(4));
         await FlowHub.NewResumeEvent<ChatMediaIndexingFlow>(chatId.Value).Schedule();
         await FlowHub.NewResumeEvent<ChatEntryContentIndexingFlow>(chatId.Value).Schedule();
+    }
+
+    private static async Task<List<ChatContentItem>> ListAllContent(
+        IChats chats, Session session, ChatId chatId, ChatContentKind kindMask)
+    {
+        var kinds = new[] { ChatContentKind.Photo, ChatContentKind.Video, ChatContentKind.File, ChatContentKind.Link }
+            .Where(k => (kindMask & k) != 0);
+        var result = new List<ChatContentItem>();
+        foreach (var kind in kinds) {
+            var periods = await chats.GetContentPeriods(session, chatId, kind, CancellationToken.None);
+            foreach (var period in periods) {
+                var pageCount = (period.ItemCount + ChatContentPeriod.PageSize - 1) / ChatContentPeriod.PageSize;
+                for (var pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+                    var page = await chats.GetContentPeriod(
+                        session, chatId, kind, period.PeriodKey, pageIndex, CancellationToken.None);
+                    result.AddRange(page);
+                }
+            }
+        }
+        return result;
     }
 
     private static Task<MediaId> SaveMedia(IWebTester tester, ChatId chatId, string fileName, string contentType)

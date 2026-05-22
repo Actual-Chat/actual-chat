@@ -4,6 +4,7 @@ using ActualChat.Chat.Db;
 using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    partial class ChatDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260521222740_ChatContentItems_PeriodIndex")]
+    partial class ChatContentItems_PeriodIndex
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -746,7 +749,7 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("entry_lid");
 
-                    b.Property<string>("MentionRef")
+                    b.Property<string>("MentionId")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("mention_id")
@@ -755,10 +758,10 @@ namespace ActualChat.Chat.Migrations
                     b.HasKey("Id")
                         .HasName("pk_mentions");
 
-                    b.HasIndex("ChatId", "EntryLid", "MentionRef")
+                    b.HasIndex("ChatId", "EntryLid", "MentionId")
                         .HasDatabaseName("ix_mentions_chat_id_entry_lid_mention_id");
 
-                    b.HasIndex("ChatId", "MentionRef", "EntryLid")
+                    b.HasIndex("ChatId", "MentionId", "EntryLid")
                         .HasDatabaseName("ix_mentions_chat_id_mention_id_entry_lid");
 
                     b.ToTable("mentions");

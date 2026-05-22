@@ -22,7 +22,6 @@ namespace ActualChat.Chat;
 public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IChatsBackend
 {
     private const string CreatedChatEntryId = "CreatedChatEntryId";
-    private const int ChatContentListLimit = 1000;
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
     private static readonly ChatContentKind[] AllContentKinds =
         [ChatContentKind.Photo, ChatContentKind.Video, ChatContentKind.File, ChatContentKind.Link];
@@ -672,62 +671,51 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     [ComputeMethod]
-    // [ComputeMethod]
-    public virtual async Task<ChatContentTile> GetChatContentTile(
+    public virtual async Task<ChatContentPeriod[]> GetContentPeriods(
         ChatId chatId,
-        Range<long> entryLidTileRange,
+        ChatContentKind kind,
         CancellationToken cancellationToken)
     {
-        var idTile = IdTileStack.GetTile(entryLidTileRange);
-        var smallerIdTiles = idTile.Smaller();
-        if (smallerIdTiles.Length != 0) {
-            var smallerTiles = await smallerIdTiles
-                .Select(sidTile => GetChatContentTile(chatId, sidTile.Range, cancellationToken))
-                .Collect(cancellationToken)
-                .ConfigureAwait(false);
-            var mergedItems = smallerTiles.SelectMany(t => t.Items).ToArray();
-            return new ChatContentTile(idTile.Range, ChatContentKind.All, mergedItems);
-        }
-
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var chatSid = chatId.Value;
-        var idRange = idTile.Range;
-        var dbItems = await dbContext.ChatContentItems
-            .Where(x => x.ChatId == chatSid
-                && x.EntryLocalId >= idRange.Start
-                && x.EntryLocalId < idRange.End)
-            .OrderBy(x => x.EntryLocalId)
-            .ThenBy(x => x.Kind)
-            .ThenBy(x => x.LocalIndex)
+        var months = await dbContext.ChatContentItems
+            .Where(x => x.ChatId == chatSid && x.Kind == kind)
+            .GroupBy(x => new { x.At.Year, x.At.Month })
+            .Select(g => new { g.Key.Year, g.Key.Month, Count = g.Count() })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        if (dbItems.Count == 0)
-            return new ChatContentTile(idRange, ChatContentKind.All, []);
-
-        var items = await dbItems
-            .Select(x => ResolveContentItem(x.ToModel(), cancellationToken))
-            .Collect(cancellationToken)
-            .ConfigureAwait(false);
-        return new ChatContentTile(idRange, ChatContentKind.All, items);
+        return months
+            .Select(m => new ChatContentPeriod {
+                PeriodKey = FormatUtcMonthKey(m.Year, m.Month),
+                ItemCount = m.Count,
+            })
+            .OrderByDescending(p => p.PeriodKey)
+            .ToArray();
     }
 
-    // [ComputeMethod]
-    public virtual async Task<ChatContentItem[]> ListChatContent(
+    [ComputeMethod]
+    public virtual async Task<ChatContentItem[]> GetContentPeriod(
         ChatId chatId,
+        ChatContentKind kind,
+        string periodKey,
+        int pageIndex,
         CancellationToken cancellationToken)
     {
+        var (periodStart, periodEnd) = ParseUtcMonthRange(periodKey);
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var chatSid = chatId.Value;
         var dbItems = await dbContext.ChatContentItems
-            .Where(x => x.ChatId == chatSid)
-            .OrderByDescending(x => x.EntryLocalId)
-            .ThenByDescending(x => x.Kind)
-            .ThenByDescending(x => x.LocalIndex)
-            .Take(ChatContentListLimit)
+            .Where(x => x.ChatId == chatSid && x.Kind == kind
+                && x.At >= periodStart && x.At < periodEnd)
+            .OrderBy(x => x.At)
+            .ThenBy(x => x.EntryLocalId)
+            .ThenBy(x => x.LocalIndex)
+            .Skip(pageIndex * ChatContentPeriod.PageSize)
+            .Take(ChatContentPeriod.PageSize)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         if (dbItems.Count == 0)
@@ -1618,18 +1606,35 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (entryIds.Length == 0)
             return;
 
+        var kinds = AllContentKinds.Where(k => (kindMask & k) != 0).ToArray();
+        var chatSid = chatId.Value;
+
         if (Invalidation.IsActive) {
-            _ = ListChatContent(chatId, default);
-            foreach (var entryLid in entryIds.Select(x => x.LocalId).Distinct())
-                InvalidateChatContentTiles(chatId, entryLid);
+            foreach (var kind in kinds)
+                _ = GetContentPeriods(chatId, kind, default);
+            var invPageCounts = CommandContext.GetCurrent().Operation.Items
+                .KeylessGet<Dictionary<string, int>>();
+            if (invPageCounts != null)
+                foreach (var (key, count) in invPageCounts) {
+                    var sep = key.IndexOf(':');
+                    var kind = (ChatContentKind)int.Parse(key.AsSpan(0, sep));
+                    var monthKey = key[(sep + 1)..];
+                    var pageCount = Math.Max(1, (count + ChatContentPeriod.PageSize - 1) / ChatContentPeriod.PageSize);
+                    for (var pageIndex = 0; pageIndex < pageCount; pageIndex++)
+                        _ = GetContentPeriod(chatId, kind, monthKey, pageIndex, default);
+                }
             return;
         }
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var kinds = AllContentKinds.Where(k => (kindMask & k) != 0).ToArray();
         var entrySids = entryIds.Select(x => x.Value).Distinct().ToList();
+        var deleted = await dbContext.ChatContentItems
+            .Where(x => entrySids.Contains(x.EntryId) && kinds.Contains(x.Kind))
+            .Select(x => new { x.Kind, x.At })
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
         await dbContext.ChatContentItems
             .Where(x => entrySids.Contains(x.EntryId) && kinds.Contains(x.Kind))
             .ExecuteDeleteAsync(cancellationToken)
@@ -1638,6 +1643,26 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         foreach (var item in items)
             dbContext.Add(new DbChatContentItem(item with { Version = VersionGenerator.NextVersion() }));
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        var affected = new HashSet<(ChatContentKind Kind, string MonthKey)>();
+        foreach (var d in deleted)
+            affected.Add((d.Kind, FormatUtcMonthKey(d.At.Year, d.At.Month)));
+        foreach (var item in items) {
+            var at = item.At.ToDateTime();
+            affected.Add((item.Kind, FormatUtcMonthKey(at.Year, at.Month)));
+        }
+
+        var pageCounts = new Dictionary<string, int>();
+        foreach (var (kind, monthKey) in affected) {
+            var (periodStart, periodEnd) = ParseUtcMonthRange(monthKey);
+            var count = await dbContext.ChatContentItems
+                .Where(x => x.ChatId == chatSid && x.Kind == kind
+                    && x.At >= periodStart && x.At < periodEnd)
+                .CountAsync(cancellationToken)
+                .ConfigureAwait(false);
+            pageCounts[$"{(int)kind}:{monthKey}"] = count;
+        }
+        CommandContext.GetCurrent().Operation.Items.KeylessSet(pageCounts);
     }
 
     // [CommandHandler]
@@ -2217,16 +2242,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
     }
 
-    protected void InvalidateChatContentTiles(ChatId chatId, long entryLid)
-    {
-        foreach (var idTile in IdTileStack.GetAllTiles(entryLid)) {
-            if (idTile.Layer.Smaller != null)
-                continue;
-
-            _ = GetChatContentTile(chatId, idTile.Range, default);
-        }
-    }
-
     private Task ResumeContentIndexing(ChatId chatId, CancellationToken cancellationToken)
     {
         var resumeContent = FlowHub.NewResumeEvent<ChatEntryContentIndexingFlow>(chatId.Value)
@@ -2647,5 +2662,16 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             null,
             new Change<MediaFull> { Remove = true });
         await Commander.Call(removeCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static string FormatUtcMonthKey(int year, int month)
+        => $"{year:D4}-{month:D2}";
+
+    private static (DateTime Start, DateTime End) ParseUtcMonthRange(string periodKey)
+    {
+        var year = int.Parse(periodKey.AsSpan(0, 4));
+        var month = int.Parse(periodKey.AsSpan(5, 2));
+        var start = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
+        return (start, start.AddMonths(1));
     }
 }

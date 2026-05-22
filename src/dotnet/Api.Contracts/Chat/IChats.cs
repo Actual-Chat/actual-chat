@@ -63,18 +63,19 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration = 300)]
-    Task<ChatContentTile> GetChatContentTile(
+    Task<ChatContentPeriod[]> GetContentPeriods(
         Session session,
         ChatId chatId,
-        ChatContentKind kindMask,
-        Range<long> entryLidTileRange,
+        ChatContentKind kind,
         CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration = 300)]
-    Task<ChatContentItem[]> ListChatContent(
+    Task<ChatContentItem[]> GetContentPeriod(
         Session session,
         ChatId chatId,
-        ChatContentKind kindMask,
+        ChatContentKind kind,
+        string periodKey,
+        int pageIndex,
         CancellationToken cancellationToken);
 
     [ComputeMethod]
