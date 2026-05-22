@@ -173,7 +173,7 @@ function createEncoder(
     const enc = new AsyncVideoEncoder<EncodeInput, EncodedFrame>(
         buildOutput,
         onError,
-        { maxInflight: 2, firstTimeoutMs: 0, timeoutMs: 0 },
+        { maxInflight: 5, firstTimeoutMs: 0, timeoutMs: 0 },
     );
     return enc;
 }
