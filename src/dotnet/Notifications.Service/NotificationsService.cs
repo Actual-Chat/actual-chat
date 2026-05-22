@@ -14,8 +14,6 @@ public class NotificationsService(IServiceProvider services) : INotifications
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
         = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
     private ILogger Log { get; } = services.LogFor<NotificationsService>();
-
-    private MomentClockSet Clocks { get; } = services.Clocks();
     private ICommander Commander { get; } = services.Commander();
 
     // [ComputeMethod]
@@ -69,15 +67,11 @@ public class NotificationsService(IServiceProvider services) : INotifications
             return; // It just spawns other commands, so nothing to do here
 
         var (session, notificationId) = command;
-        var notification = await Get(session, notificationId, cancellationToken).Require().ConfigureAwait(false);
-        if (notification.HandledAt.HasValue)
-            return;
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (notificationId.UserId != account.Id)
+            throw Unauthorized();
 
-        notification = notification with {
-            HandledAt = Clocks.SystemClock.Now,
-        };
-        var upsertCommand = new NotificationsBackend_Upsert(notification);
-        await Commander.Run(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+        await Commander.Run(new NotificationsBackend_Handle(notificationId), cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
