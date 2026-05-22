@@ -168,8 +168,17 @@ handler. Dismissals (clear-on-read) lower the count via a silent push.
   `Constants.Notification.OnlineCheckDelay`. `EnqueueMessageRelatedNotifications` still
   renders `Title`/`Text`/`IconUrl` once and enqueues one `NotificationsBackend_Notify`
   per subscriber.
-- **Phase 5 — Read / dismiss.** Engagement/read signals → dormancy clear +
-  clear-on-read (via the population re-check).
+- **Phase 5 — Read / dismiss.** ✅ Done. `GetUserNotificationInfo` now does the
+  population re-check: it calls `IChatPositionsBackend.Get` per displayed item and hides
+  ones whose entry the user has read — and because that's a compute-method dependency,
+  Fusion re-invalidates it whenever a read position advances. `ApplyHardUpdate` is now the
+  one DB-write+push path for both adds and removals: it reconciles (adds new, drops
+  read/handled), pushes the new notification via `Send`, and pushes a silent badge update
+  via `SendDismissal` for the dropped ones. `OnHandle` was rewritten as a backend command
+  (`NotificationsBackend_Handle`) that dismisses one notification. Dormancy is re-derived
+  from the effective count (no latch) — reading clears it. There is no eager read-position
+  trigger; reconciliation converges on the next `OnNotify`/`OnProcess`/`OnHandle` (and
+  Phase 6's `ListActive`). Verified by `NotificationReadReconciliationTest`.
 - **Phase 6 — Client.** `ListActive` consumer, iOS badge simplification, silent
   dismissal handling, client-side reconciliation.
 - **Phase 7 — Tests, cleanup, docs.** Replace `NotificationFlowTest`; retire the old
@@ -205,8 +214,9 @@ hitting Firebase.
 4. `_softBuffers` (the per-`UserId` soft-buffer map) is currently never evicted —
    bounded by active users per shard. Add TTL-based eviction (or reuse the
    `MemoryCache` pattern of `_recentChatsWithNotifications`) before Phase 7.
-5. Phase 2 hard updates do one DB write and leave `UnsentDelta` empty — it is
-   reserved for Phase 5's silent-dismiss flow.
+5. `UnsentDelta` is still unused: Phase 5 sends dismissal pushes eagerly inside
+   `ApplyHardUpdate` (consistent with how new-notification pushes work). The field
+   remains available for a future crash-recovery refinement (committed-but-unpushed).
 6. `NotificationContentTest` and similar tests still read via the legacy
    `ListRecentNotificationIds` / `Get` (`DbNotification`), which `OnNotify` no
    longer populates after Phase 2 — they must move to `GetUserNotificationInfo`

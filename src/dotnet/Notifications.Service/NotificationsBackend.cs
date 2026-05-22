@@ -25,6 +25,7 @@ public class NotificationsBackend(IServiceProvider services)
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
     private IChatThreadsBackend ChatThreadsBackend { get; } = services.GetRequiredService<IChatThreadsBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
+    private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
     private IDbEntityResolver<string, DbNotification> DbNotificationResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbNotification>>();
@@ -102,7 +103,22 @@ public class NotificationsBackend(IServiceProvider services)
         var dbUserNotifications = await dbContext.UserNotifications
             .FirstOrDefaultAsync(x => x.Id == userId.Value, cancellationToken)
             .ConfigureAwait(false);
-        return dbUserNotifications?.ToModel() ?? new UserNotificationInfo(userId);
+        var info = dbUserNotifications?.ToModel() ?? new UserNotificationInfo(userId);
+
+        // Population re-check: hide notifications whose entry the user has since read.
+        // This method calls IChatPositionsBackend.Get, so Fusion re-invalidates it
+        // whenever a read position advances.
+        var displayed = info.Displayed;
+        foreach (var notification in info.Displayed)
+            if (await IsRead(userId, notification, cancellationToken).ConfigureAwait(false))
+                displayed = displayed.Without(x => x.Id == notification.Id);
+        if (displayed.Count == info.Displayed.Count)
+            return info;
+
+        return info with {
+            Displayed = displayed,
+            IsDormant = displayed.Count >= Constants.Notification.DormancyThreshold,
+        };
     }
 
     // [CommandHandler]
@@ -133,7 +149,7 @@ public class NotificationsBackend(IServiceProvider services)
 
         var batch = DrainSoftBuffer(userId);
         batch.Add(notification);
-        await ApplyHardUpdate(userId, batch, cancellationToken).ConfigureAwait(false);
+        await ApplyHardUpdate(userId, batch, [], cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -148,7 +164,18 @@ public class NotificationsBackend(IServiceProvider services)
             return;
 
         DebugLog?.LogInformation("-> OnProcess. UserId={UserId}, Count={Count}", userId, batch.Count);
-        await ApplyHardUpdate(userId, batch, cancellationToken).ConfigureAwait(false);
+        await ApplyHardUpdate(userId, batch, [], cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnHandle(NotificationsBackend_Handle command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return; // GetUserNotificationInfo is invalidated by ApplyHardUpdate's completion handler
+
+        var notificationId = command.NotificationId;
+        DebugLog?.LogInformation("-> OnHandle. NotificationId={NotificationId}", notificationId);
+        await ApplyHardUpdate(notificationId.UserId, [], [notificationId], cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -559,6 +586,36 @@ public class NotificationsBackend(IServiceProvider services)
             entryId, userId, notification.Id, deviceIds.Count);
     }
 
+    private async Task SendDismissal(
+        UserId userId, IReadOnlyCollection<NotificationId> dismissedIds, int badgeCount, CancellationToken cancellationToken)
+    {
+        var devices = await ListDevices(userId, cancellationToken).ConfigureAwait(false);
+        if (devices.Count == 0)
+            return;
+
+        var deviceIds = devices.Select(d => d.DeviceId).ToList();
+        DebugLog?.LogInformation("-> SendDismissal. UserId={UserId}, NotificationIds#={Count}, DeviceIds#={DeviceIdCount}",
+            userId, dismissedIds.Count, deviceIds.Count);
+        await FirebaseMessagingClient.SendDismissal(dismissedIds, deviceIds, badgeCount, cancellationToken).ConfigureAwait(false);
+    }
+
+    // A chat notification is read once the user's Read position has advanced past its entry.
+    private async Task<bool> IsRead(UserId userId, Notification notification, CancellationToken cancellationToken)
+    {
+        var (chatId, entryLid) = notification switch {
+            ChatEntryRelatedNotification n => (n.ChatId, n.EntryLid),
+            ChatEntryNotification n => (n.ChatId, n.EntryLid),
+            _ => (default(ChatId), 0L),
+        };
+        if (entryLid <= 0)
+            return false;
+
+        var position = await ChatPositionsBackend
+            .Get(userId, chatId, ChatPositionKind.Read, cancellationToken)
+            .ConfigureAwait(false);
+        return position.EntryLid >= entryLid;
+    }
+
     private async ValueTask EnqueueMessageRelatedNotifications(
         ChatId chatId,
         ChatEntryId? entryId,
@@ -760,8 +817,13 @@ public class NotificationsBackend(IServiceProvider services)
         }
     }
 
+    // The single DB-write + push path. Adds notifications, drops notifications whose entry
+    // has been read or that were explicitly handled, then pushes the resulting delta.
     private async Task ApplyHardUpdate(
-        UserId userId, IReadOnlyList<Notification> notifications, CancellationToken cancellationToken)
+        UserId userId,
+        IReadOnlyList<Notification> notifications,
+        IReadOnlyCollection<NotificationId> handledIds,
+        CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
@@ -772,13 +834,14 @@ public class NotificationsBackend(IServiceProvider services)
             .FirstOrDefaultAsync(x => x.Id == userId.Value, cancellationToken)
             .ConfigureAwait(false);
 
-        UserNotificationInfo info;
-        if (dbUserNotifications != null) {
-            info = Apply(dbUserNotifications.ToModel());
+        var (info, dismissedIds) = await Reconcile(
+            dbUserNotifications?.ToModel() ?? new UserNotificationInfo(userId)).ConfigureAwait(false);
+        if (notifications.Count == 0 && dismissedIds.Count == 0)
+            return; // Nothing changed (e.g. OnHandle for an already-dismissed notification)
+
+        if (dbUserNotifications != null)
             dbUserNotifications.UpdateFrom(info);
-        }
         else {
-            info = Apply(new UserNotificationInfo(userId));
             dbUserNotifications = new DbUserNotifications();
             dbUserNotifications.UpdateFrom(info);
             dbContext.UserNotifications.Add(dbUserNotifications);
@@ -794,7 +857,7 @@ public class NotificationsBackend(IServiceProvider services)
             dbUserNotifications = await dbContext.UserNotifications.ForUpdate()
                 .FirstAsync(x => x.Id == userId.Value, cancellationToken)
                 .ConfigureAwait(false);
-            info = Apply(dbUserNotifications.ToModel());
+            (info, dismissedIds) = await Reconcile(dbUserNotifications.ToModel()).ConfigureAwait(false);
             dbUserNotifications.UpdateFrom(info);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -805,17 +868,34 @@ public class NotificationsBackend(IServiceProvider services)
             return Task.CompletedTask;
         });
 
-        await Send(userId, notifications[^1], info.Displayed.Count, cancellationToken).ConfigureAwait(false);
+        var toPush = notifications.LastOrDefault(n => info.Displayed.Any(d => d.Id == n.Id));
+        if (toPush != null)
+            await Send(userId, toPush, info.Displayed.Count, cancellationToken).ConfigureAwait(false);
+        if (dismissedIds.Count > 0)
+            await SendDismissal(userId, dismissedIds, info.Displayed.Count, cancellationToken).ConfigureAwait(false);
         return;
 
-        UserNotificationInfo Apply(UserNotificationInfo current) {
+        async Task<(UserNotificationInfo Info, IReadOnlyList<NotificationId> DismissedIds)> Reconcile(UserNotificationInfo committed)
+        {
+            var current = committed;
+            var dismissed = new List<NotificationId>();
+            foreach (var existing in committed.Displayed) {
+                var isGone = handledIds.Contains(existing.Id)
+                    || await IsRead(userId, existing, cancellationToken).ConfigureAwait(false);
+                if (isGone) {
+                    current = current with { Displayed = current.Displayed.Without(x => x.Id == existing.Id) };
+                    dismissed.Add(existing.Id);
+                }
+            }
             foreach (var notification in notifications)
-                current = current.WithNotification(notification);
-            return current with {
+                if (!await IsRead(userId, notification, cancellationToken).ConfigureAwait(false))
+                    current = current.WithNotification(notification);
+            current = current with {
                 Version = VersionGenerator.NextVersion(current.Version),
-                LastPushAt = Clocks.SystemClock.Now,
-                IsDormant = current.IsDormant || current.Displayed.Count >= Constants.Notification.DormancyThreshold,
+                LastPushAt = notifications.Count > 0 ? Clocks.SystemClock.Now : current.LastPushAt,
+                IsDormant = current.Displayed.Count >= Constants.Notification.DormancyThreshold,
             };
+            return (current, dismissed);
         }
     }
 
