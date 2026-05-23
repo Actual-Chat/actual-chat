@@ -75,6 +75,56 @@ export class ReplaceableSlot<T> {
     }
 }
 
+export interface BoundedQueueOptions<T> {
+    capacity: number;
+    dispose?: DisposeAction<T>;
+}
+
+/** A capacity-N FIFO that drops the oldest item when full. */
+export class BoundedQueue<T> {
+    readonly capacity: number;
+    private readonly disposeItem: DisposeAction<T>;
+    private readonly items: T[] = [];
+    private _droppedCount = 0;
+
+    get length(): number { return this.items.length; }
+    get droppedCount(): number { return this._droppedCount; }
+    get isEmpty(): boolean { return this.items.length === 0; }
+    get isFull(): boolean { return this.items.length >= this.capacity; }
+
+    constructor(options: BoundedQueueOptions<T>) {
+        if (!Number.isInteger(options.capacity) || options.capacity < 1)
+            throw new RangeError(
+                `BoundedQueue capacity must be a positive integer (was ${options.capacity}).`);
+        this.capacity = options.capacity;
+        this.disposeItem = options.dispose ?? noopDispose;
+    }
+
+    push(item: T): void {
+        while (this.items.length >= this.capacity) {
+            this._droppedCount++;
+            const oldest = this.items.shift()!;
+            this.disposeItem(oldest);
+        }
+        this.items.push(item);
+    }
+
+    take(): T | null {
+        return this.items.shift() ?? null;
+    }
+
+    clear(): void {
+        while (this.items.length > 0) {
+            const item = this.items.shift()!;
+            this.disposeItem(item);
+        }
+    }
+
+    resetStats(): void {
+        this._droppedCount = 0;
+    }
+}
+
 export interface OwnedArrayBufferStats {
     readonly fastCount: number;
     readonly slowCount: number;
