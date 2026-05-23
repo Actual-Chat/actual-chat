@@ -1805,6 +1805,7 @@ export class VideoRecorder {
                 stages,
                 counts,
                 stats.bundlesShipped,
+                stats.bundlesEncoded,
                 stats.bytesEncoded,
                 stats.encodeQueueDepthEma,
                 stats.wireQueueDepthEma,
