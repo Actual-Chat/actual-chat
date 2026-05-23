@@ -30,6 +30,12 @@ export interface RecorderStats {
     // Cumulative bundles successfully shipped to the wire. One per source
     // moment (NOT per per-layer chunk).
     bundlesShipped: number;
+    // Cumulative bundles successfully encoded by all per-layer encoders
+    // (one per source moment, increments at the encode operator's yield
+    // boundary). Bundles can be encoded but not yet shipped if wire-send
+    // back-pressures, so this isolates encoder throughput from wire
+    // throughput. Drives the encoder-throughput QC health signal.
+    bundlesEncoded: number;
     // Cumulative encoded bytes summed across all layers — the real on-wire
     // payload total. Drives the outbound bitrate display.
     bytesEncoded: number;
@@ -131,6 +137,7 @@ export function createEmptyRecorderStats(): RecorderStats {
     return {
         framesCaptured: 0,
         bundlesShipped: 0,
+        bundlesEncoded: 0,
         bytesEncoded: 0,
         encodeTimeMsSum: 0,
         encodeTimeMsMaxSum: 0,

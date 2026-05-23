@@ -396,7 +396,7 @@ public sealed class VideoRecorder : IAsyncDisposable
 
         [JSInvokable]
         public Task OnRecorderStats(
-            double encodeRatioEma,
+            double encodeDeficitEma,
             double senderFrameDropRatioEma,
             double lastAckAgeMs,
             bool isPeerConnected,
@@ -415,7 +415,7 @@ public sealed class VideoRecorder : IAsyncDisposable
             for (var i = 0; i < dropStages.Length && i < dropCounts.Length; i++)
                 dropTrace[(FrameDropStage)dropStages[i]] = dropCounts[i];
             return videoRecorder.OnRecorderStats(new RecorderStats(
-                EncodeRatioEma: encodeRatioEma,
+                EncodeDeficitEma: encodeDeficitEma,
                 SenderFrameDropRatioEma: senderFrameDropRatioEma,
                 LastAckAgeMs: lastAckAgeMs,
                 IsConnected: false,

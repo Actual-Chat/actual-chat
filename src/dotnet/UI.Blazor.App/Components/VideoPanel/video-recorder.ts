@@ -1659,12 +1659,8 @@ export class VideoRecorder {
     // EMA smoothing factor for encode-ratio. Single-tick spikes from a
     // slow keyframe would otherwise pop the classifier; α=0.3 gives a
     // ~3-tick half-life at 1 Hz polling.
-    private static readonly EncodeRatioEmaAlpha = 0.3;
-    // Mirror of `AsyncVideoEncoder.maxInflight` in recorder-worker-host.ts.
-    // Used to normalize the worker-reported `encodeQueueDepthEma` to a
-    // 0..1 saturation ratio for the SenderHealthClassifier.
-    private static readonly MaxInflightPerEncoder = 5;
-    private encodeRatioEma = 0;
+    private static readonly EncodeDeficitEmaAlpha = 0.3;
+    private encodeDeficitEma = 0;
     private senderDropRatioEma = 0;
     // Per-tick instantaneous rates for every cumulative counter the modal /
     // overlay surfaces. Computed at the recorder-health-monitor boundary
@@ -1682,7 +1678,7 @@ export class VideoRecorder {
         this.stopRecorderHealthMonitor();
         this.lastRecorderHealthStats = null;
         this.lastRecorderHealthWasPeerConnected = false;
-        this.encodeRatioEma = 0;
+        this.encodeDeficitEma = 0;
         this.senderDropRatioEma = 0;
         this.capturedPerSec = 0;
         this.bundlesPerSec = 0;
@@ -1761,22 +1757,28 @@ export class VideoRecorder {
                 const totalProduced = shippedDelta + senderDropsDelta;
                 const ratio = totalProduced > 0 ? senderDropsDelta / totalProduced : 0;
                 this.senderDropRatioEma =
-                    VideoRecorder.EncodeRatioEmaAlpha * ratio
-                    + (1 - VideoRecorder.EncodeRatioEmaAlpha) * this.senderDropRatioEma;
+                    VideoRecorder.EncodeDeficitEmaAlpha * ratio
+                    + (1 - VideoRecorder.EncodeDeficitEmaAlpha) * this.senderDropRatioEma;
             }
 
-            // Encode ratio (semantic since the encode operator pipelines
-            // multiple bundles): encoder-queue saturation expressed as
-            // 0..1 of per-encoder maxInflight. Wall-clock-per-bundle is
-            // no longer a clean encoder-speed signal — bundles N+1, N+2
-            // wait for N to drain the encoder, so the legacy ratio
-            // (encodeTimeMs / frameDuration) double-counts inflight depth
-            // and false-flags healthy pipelined encoding as Bad. Queue
-            // depth is sampled at submit time and EMA'd inside the
-            // encode operator, so it tracks real encoder backpressure.
-            // The classifier threshold is re-tuned for the 0..1 range
-            // (see SenderHealthThresholds).
-            this.encodeRatioEma = stats.encodeQueueDepthEma / VideoRecorder.MaxInflightPerEncoder;
+            // Encoder THROUGHPUT DEFICIT, 0..1. Window-derived ratio of
+            // "bundles encoded this tick / frames captured this tick"
+            // subtracted from 1 and EMA-smoothed. A queue-full encoder
+            // still emitting at source rate registers 0 here (healthy
+            // pipelining); deficit only grows when encoder emit rate
+            // actually falls behind capture rate. This is the metric QC
+            // uses to decide whether to demote a spatial layer.
+            if (previous) {
+                const encDelta = Math.max(0, stats.bundlesEncoded - previous.bundlesEncoded);
+                const capDelta = Math.max(0, stats.framesCaptured - previous.framesCaptured);
+                if (capDelta > 0) {
+                    const throughputRatio = Math.min(1, encDelta / capDelta);
+                    const deficit = 1 - throughputRatio;
+                    this.encodeDeficitEma =
+                        VideoRecorder.EncodeDeficitEmaAlpha * deficit
+                        + (1 - VideoRecorder.EncodeDeficitEmaAlpha) * this.encodeDeficitEma;
+                }
+            }
 
             this.lastRecorderHealthStats = {
                 ...stats,
@@ -1796,7 +1798,7 @@ export class VideoRecorder {
             }
             await this.blazorRef.invokeMethodAsync(
                 'OnRecorderStats',
-                this.encodeRatioEma,
+                this.encodeDeficitEma,
                 this.senderDropRatioEma,
                 stats.wireLastAckAgeMs,
                 isPeerConnected,

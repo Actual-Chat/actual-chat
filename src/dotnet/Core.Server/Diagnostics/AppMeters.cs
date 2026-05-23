@@ -56,7 +56,7 @@ public static class AppMeters
             "app.video.receive.aggregate_health", "ratio", "Byte-weighted aggregate playback health verdict (-1..+1)");
 
         VideoEncoderEncodeRatio = m.CreateHistogram<double>(
-            "app.video.encoder.encode_ratio", "ratio", "Encoder wall-clock cost per frame / frame budget (sender, EMA-smoothed)");
+            "app.video.encoder.encode_ratio", "ratio", "Encoder throughput deficit, EMA-smoothed (0 = encoder keeps pace with capture, 1 = encoder emits nothing)");
         VideoEncoderQueueDepth = m.CreateHistogram<double>(
             "app.video.encoder.queue_depth", "frames", "WebCodecs encoder pending submissions, peak across layers (EMA)");
         VideoUplinkAckAgeMs = m.CreateHistogram<double>(
