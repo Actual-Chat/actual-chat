@@ -3,11 +3,17 @@ using ActualChat.Streaming;
 namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed record SenderHealthThresholds(
-    double EncodeRatioBadForeground = 2.0,
-    double EncodeRatioBadBackground = 3.0,
-    double EncodeRatioGood = 1.0,
-    double EncodeQueueDepthBad = 2.0,
-    double EncodeQueueDepthGood = 0.5,
+    // `EncodeRatio*` thresholds were retuned when the encode operator
+    // gained per-encoder pipelining: the metric is now queue-saturation
+    // (encodeQueueDepthEma / maxInflight, range 0..1), NOT wall-clock
+    // per-bundle / frameDuration. Bad = sustained heavy saturation,
+    // Good = encoder mostly idle. Background allows higher saturation
+    // because the tab itself is throttled.
+    double EncodeRatioBadForeground = 0.6,
+    double EncodeRatioBadBackground = 0.9,
+    double EncodeRatioGood = 0.2,
+    double EncodeQueueDepthBad = 3.5,
+    double EncodeQueueDepthGood = 1.0,
     int RestartStreakBad = 2,
     double SenderEncodePathDropRatioBad = 0.1,
     double WireLastAckAgeBadMs = 2_000,

@@ -15,6 +15,11 @@ import type { LayerLadderController } from '../sender/layer-ladder-controller';
 
 const ENCODE_QUEUE_DEPTH_EMA_ALPHA = 0.2;
 const RESTART_STREAK_WINDOW_MS = 60_000;
+// How many bundles the operator keeps in flight at the encoder before
+// awaiting the oldest. Equal to `AsyncVideoEncoder.maxInflight` so the
+// encoder pipeline fills exactly once. Higher = more memory + latency,
+// lower = HW encoder pipeline stalls on per-frame variance.
+const MAX_PIPELINE = 5;
 
 // Message prefix stamped on a thrown error when the encode operator rejects
 // without having produced any chunk — VideoRecorder reads it to drive
@@ -118,6 +123,211 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
             // didn't help and we should rebuild the pipeline.
             let bundleHangAttempts = 0;
             const maxBundleHangAttempts = 2;
+
+            // Pipelined submission queue. Steady-state encoding submits
+            // multiple bundles before awaiting any one's completion, so the
+            // per-encoder HW queue stays primed and a single 60+ms encode
+            // spike no longer pauses the whole pipeline. We drain back to
+            // empty before keyframe verification, hot-apply, hang recovery,
+            // and source end — those paths need a clean encoder state.
+            interface PendingBundle {
+                bundle: CapturedBundle;
+                keyFrame: boolean;
+                promises: Promise<EncodedFrame>[];
+                layerDurations: number[];
+            }
+            const pending: PendingBundle[] = [];
+
+            const submitBundle = (bundle: CapturedBundle, keyFrame: boolean): PendingBundle => {
+                const layerCount = bundle.layers.length;
+                const promises: Promise<EncodedFrame>[] = [];
+                const layerDurations = new Array<number>(layerCount).fill(0);
+                for (let layerId = 0; layerId < layerCount; layerId++) {
+                    const cf = bundle.layers[layerId];
+                    const enc = encoders[layerId];
+                    const encInput: EncodeInput = {
+                        frame: cf.frame,
+                        index: cf.index,
+                        capturedAt: cf.capturedAt,
+                    };
+                    const id = layerId;
+                    const startedAtMs = performance.now();
+                    promises.push(enc.encode(encInput, { keyFrame }).then(
+                        r => { layerDurations[id] = performance.now() - startedAtMs; return r; },
+                        (e: unknown) => { layerDurations[id] = performance.now() - startedAtMs; throw e; },
+                    ));
+                }
+                // The encoder has taken ownership of the layer frames via
+                // AsyncVideoEncoder.submit (which closes them inline now);
+                // nothing on the bundle side to release here.
+                return { bundle, keyFrame, promises, layerDurations };
+            };
+
+            type AwaitOutcome =
+                | { kind: 'yield'; bundle: EncodedBundle }
+                | { kind: 'skip' }
+                | { kind: 'throw'; error: unknown };
+
+            const awaitPending = async (p: PendingBundle): Promise<AwaitOutcome> => {
+                const layerCount = p.bundle.layers.length;
+                let settled: PromiseSettledResult<EncodedFrame>[];
+                try {
+                    settled = await raceWithTimeout(
+                        Promise.allSettled(p.promises),
+                        bundleTimeoutMs,
+                        p.bundle.index,
+                    );
+                } catch (timeoutErr) {
+                    bundleHangAttempts++;
+                    recordRestart(p.bundle.stats);
+                    if (bundleHangAttempts >= maxBundleHangAttempts)
+                        return { kind: 'throw', error: timeoutErr };
+                    warnLog?.log(
+                        `bundle ${p.bundle.index} hung — resetting encoders in place `
+                        + `(attempt ${bundleHangAttempts}/${maxBundleHangAttempts}); `
+                        + `forcing keyframe on next bundle`);
+                    // handleEncoderHang fails+closes all pending inflight inputs
+                    // (frames) and issues encoder.reset()+configure(lastConfig).
+                    // Any subsequent in-flight pending bundles will resolve with
+                    // reset errors and get swept by the all-reset branch below.
+                    for (const enc of encoders) {
+                        try { enc.handleEncoderHang(); } catch { /* ignore */ }
+                    }
+                    forceKeyframeNext = true;
+                    return { kind: 'skip' };
+                }
+                bundleHangAttempts = 0;
+                let layerSumMs = 0;
+                let layerMaxMs = 0;
+                for (const d of p.layerDurations) {
+                    layerSumMs += d;
+                    if (d > layerMaxMs) layerMaxMs = d;
+                }
+                p.bundle.stats.encodeTimeMsSum += layerSumMs;
+                p.bundle.stats.encodeTimeMsMaxSum += layerMaxMs;
+                p.bundle.stats.encodeTimeMsCount++;
+                const rejected = settled.filter(
+                    (r): r is PromiseRejectedResult => r.status === 'rejected');
+                for (const result of settled) {
+                    if (result.status === 'fulfilled') {
+                        anyEncodedOutput = true;
+                        break;
+                    }
+                }
+                if (rejected.length > 0) {
+                    for (const result of settled) {
+                        if (result.status === 'fulfilled')
+                            closeEncodedFrame(result.value);
+                    }
+                    if (rejected.every(r => isAsyncVideoEncoderResetError(r.reason))) {
+                        forceKeyframeNext = true;
+                        return { kind: 'skip' };
+                    }
+                    const firstRealReason: unknown = rejected
+                        .find(r => !isAsyncVideoEncoderResetError(r.reason))!.reason as unknown;
+                    if (!anyEncodedOutput) {
+                        const topCodec = configs[configs.length - 1].codec;
+                        const message = firstRealReason instanceof Error
+                            ? firstRealReason.message
+                            : String(firstRealReason);
+                        return {
+                            kind: 'throw',
+                            error: new Error(
+                                `${ENCODER_INIT_FAILED_PREFIX} codec=${topCodec}: ${message}`,
+                                { cause: firstRealReason },
+                            ),
+                        };
+                    }
+                    return { kind: 'throw', error: firstRealReason };
+                }
+                const results = settled.map((result): EncodedFrame => {
+                    if (result.status !== 'fulfilled')
+                        throw new Error('encode: unreachable rejected result after rejection check');
+                    return result.value;
+                });
+                // Verify keyframe-ness when we asked for one. Pooled
+                // encoders may have lingering state where the first
+                // post-reset encode unexpectedly emerges as a delta;
+                // shipping deltas with no preceding key downstream would
+                // produce undecodable output at receivers. Drop this
+                // bundle's chunks and re-request a keyframe on the next
+                // bundle pulled from source. Pipelining guarantees we
+                // drain before submitting more keyframe bundles, so the
+                // re-request will see a clean encoder state.
+                if (p.keyFrame) {
+                    let allKey = true;
+                    for (const r of results) {
+                        if (r.chunk.type !== 'key') {
+                            allKey = false;
+                            break;
+                        }
+                    }
+                    if (!allKey) {
+                        warnLog?.log(
+                            `requested keyframe but encoder produced delta(s) at index=${p.bundle.index}; re-requesting`);
+                        for (const r of results)
+                            closeEncodedFrame(r);
+                        forceKeyframeNext = true;
+                        return { kind: 'skip' };
+                    }
+                }
+                const out: EncodedFrame[] = [];
+                let mustClose = true;
+                try {
+                    const top = p.bundle.layers[layerCount - 1];
+                    for (let layerId = 0; layerId < results.length; layerId++) {
+                        const partial = results[layerId];
+                        const cfg = configs[layerId];
+                        const completed: EncodedFrame = {
+                            chunk: partial.chunk,
+                            metadata: partial.metadata,
+                            capturedAt: top.capturedAt,
+                            index: top.index,
+                            // Shared by reference with the bundle; per-layer
+                            // wire DTOs carry the same trace bytes.
+                            dropTrace: p.bundle.dropTrace,
+                            layerId: layerId,
+                            sourceWidth: top.sourceWidth,
+                            sourceHeight: top.sourceHeight,
+                            encodedWidth: cfg.width,
+                            encodedHeight: cfg.height,
+                            rotation: p.bundle.rotation,
+                            stats: p.bundle.stats,
+                        };
+                        p.bundle.stats.bytesEncoded += completed.chunk.byteLength;
+                        out.push(completed);
+                    }
+                    forceKeyframeNext = false;
+                    mustClose = false;
+                    return {
+                        kind: 'yield',
+                        bundle: {
+                            layers: out,
+                            index: p.bundle.index,
+                            dropTrace: p.bundle.dropTrace,
+                            rotation: p.bundle.rotation,
+                            stats: p.bundle.stats,
+                        },
+                    };
+                } finally {
+                    if (mustClose) {
+                        for (const f of out)
+                            closeEncodedFrame(f);
+                        for (let i = out.length; i < results.length; i++)
+                            closeEncodedFrame(results[i]);
+                    }
+                }
+            };
+
+            async function* drainPending(): AsyncIterable<EncodedBundle> {
+                while (pending.length > 0) {
+                    const p = pending.shift()!;
+                    const outcome = await awaitPending(p);
+                    if (outcome.kind === 'yield') yield outcome.bundle;
+                    else if (outcome.kind === 'throw') throw outcome.error;
+                }
+            }
+
             try {
                 for await (const bundle of source) {
                     // Time-decay restart timestamps so the count drops without
@@ -127,11 +337,10 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         && bundleNowMs - restartTimestamps[0] > RESTART_STREAK_WINDOW_MS)
                         restartTimestamps.shift();
                     bundle.stats.encoderRestartStreakIn60s = restartTimestamps.length;
-                    // Hot-apply: pick up a ladder change before checking layer
-                    // counts so the diff matches the bundle that was produced
-                    // under the new ladder. spatialize reads the same controller
-                    // so `bundle.layers.length` already reflects the new size.
+                    // Hot-apply: drain pending FIRST so encoder reconfig
+                    // doesn't race in-flight encodes against a new ladder.
                     if (opts.controller.current.version !== lastSeenVersion) {
+                        for await (const r of drainPending()) yield r;
                         const cur = opts.controller.current;
                         const oldN = encoders.length;
                         const newN = cur.configs.length;
@@ -191,46 +400,18 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         || forceKeyframeNext
                         || forceKeyframeOnFirstEncode;
                     forceKeyframeOnFirstEncode = false;
-                    const layerFrames: readonly CapturedFrame[] = bundle.layers;
-                    const promises: Promise<EncodedFrame>[] = [];
-                    const layerDurations = new Array<number>(layerCount).fill(0);
-                    try {
-                        for (let layerId = 0; layerId < layerCount; layerId++) {
-                            const cf = layerFrames[layerId];
-                            const enc = encoders[layerId];
-                            const encInput: EncodeInput = {
-                                frame: cf.frame,
-                                index: cf.index,
-                                capturedAt: cf.capturedAt,
-                            };
-                            const id = layerId;
-                            const startedAtMs = performance.now();
-                            promises.push(enc.encode(encInput, { keyFrame }).then(
-                                r => { layerDurations[id] = performance.now() - startedAtMs; return r; },
-                                (e: unknown) => { layerDurations[id] = performance.now() - startedAtMs; throw e; },
-                            ));
-                        }
-                    } catch (e) {
-                        closeCapturedFrames(layerFrames);
-                        throw e;
+                    // Keyframe bundles drain the pipeline first so we can
+                    // verify the encoder honored the request before pulling
+                    // more bundles from source. Delta bundles pipeline freely.
+                    if (keyFrame && pending.length > 0) {
+                        for await (const r of drainPending()) yield r;
                     }
-                    // Bundle-level watchdog: race Promise.allSettled against
-                    // a single timer. Detects a silently-hung HW encoder
-                    // that emits neither output nor error (would otherwise
-                    // deadlock the operator — upstream blocks on this
-                    // await, no encode call is ever resubmitted so the
-                    // adapter's queue-full backpressure never triggers).
-                    // One timer per BUNDLE — 3× fewer set/clear ops than
-                    // a per-layer setTimeout in the adapter.
-                    // On first timeout per consecutive run we issue an
-                    // in-place WebCodecs reset+reconfigure (handleEncoderHang)
-                    // and retry on the next bundle — matches v2.8's per-encode
-                    // self-heal that c24efe4f2 removed.
-                    const bundleIndex: number = bundle.index;
-                    // Sample queue depth BEFORE awaiting — captures the peak
-                    // immediately after submitting every layer, which is the
-                    // real backpressure signal. Sampling after the await would
-                    // read zero in the steady state.
+
+                    pending.push(submitBundle(bundle, keyFrame));
+
+                    // Sample queue depth right after submit — under
+                    // pipelining this captures the true encoder
+                    // saturation (multiple bundles can be inflight).
                     let maxQueueDepth = 0;
                     for (const enc of encoders) {
                         const q = enc.encoder.encodeQueueSize;
@@ -238,149 +419,18 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                     }
                     queueDepthEma.appendSample(maxQueueDepth);
                     bundle.stats.encodeQueueDepthEma = queueDepthEma.value;
-                    let settled: PromiseSettledResult<EncodedFrame>[];
-                    try {
-                        settled = await raceWithTimeout(
-                            Promise.allSettled(promises),
-                            bundleTimeoutMs,
-                            bundleIndex,
-                        );
-                    } catch (timeoutErr) {
-                        bundleHangAttempts++;
-                        recordRestart(bundle.stats);
-                        if (bundleHangAttempts >= maxBundleHangAttempts) {
-                            // Encoders will be disposed by the outer finally; that
-                            // closes any inflight frames via failAllPending.
-                            throw timeoutErr;
-                        }
-                        warnLog?.log(
-                            `bundle ${bundleIndex} hung — resetting encoders in place `
-                            + `(attempt ${bundleHangAttempts}/${maxBundleHangAttempts}); `
-                            + `forcing keyframe on next bundle`);
-                        // handleEncoderHang fails+closes all pending inflight inputs
-                        // (frames) and issues encoder.reset()+configure(lastConfig).
-                        for (const enc of encoders) {
-                            try { enc.handleEncoderHang(); } catch { /* ignore */ }
-                        }
-                        forceKeyframeNext = true;
-                        continue;
-                    }
-                    bundleHangAttempts = 0;
-                    let layerSumMs = 0;
-                    let layerMaxMs = 0;
-                    for (const d of layerDurations) {
-                        layerSumMs += d;
-                        if (d > layerMaxMs) layerMaxMs = d;
-                    }
-                    bundle.stats.encodeTimeMsSum += layerSumMs;
-                    bundle.stats.encodeTimeMsMaxSum += layerMaxMs;
-                    bundle.stats.encodeTimeMsCount++;
-                    const rejected = settled.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
-                    for (const result of settled) {
-                        if (result.status === 'fulfilled') {
-                            anyEncodedOutput = true;
-                            break;
-                        }
-                    }
-                    if (rejected.length > 0) {
-                        for (const result of settled) {
-                            if (result.status === 'fulfilled')
-                                closeEncodedFrame(result.value);
-                        }
-                        if (rejected.every(r => isAsyncVideoEncoderResetError(r.reason))) {
-                            forceKeyframeNext = true;
-                            continue;
-                        }
-                        const firstRealReason: unknown = rejected
-                            .find(r => !isAsyncVideoEncoderResetError(r.reason))!.reason as unknown;
-                        if (!anyEncodedOutput) {
-                            const topCodec = configs[configs.length - 1].codec;
-                            const message = firstRealReason instanceof Error
-                                ? firstRealReason.message
-                                : String(firstRealReason);
-                            throw new Error(
-                                `${ENCODER_INIT_FAILED_PREFIX} codec=${topCodec}: ${message}`,
-                                { cause: firstRealReason },
-                            );
-                        }
-                        throw firstRealReason;
-                    }
-                    const results = settled.map((result): EncodedFrame => {
-                        if (result.status !== 'fulfilled')
-                            throw new Error('encode: unreachable rejected result after rejection check');
 
-                        return result.value;
-                    });
-                    // Verify keyframe-ness when we asked for one. Pooled
-                    // encoders may have lingering state where the first
-                    // post-reset encode unexpectedly emerges as a delta;
-                    // shipping deltas with no preceding key downstream
-                    // would produce undecodable output at receivers. Drop
-                    // this bundle's chunks and re-request a keyframe on
-                    // the next iteration.
-                    if (keyFrame) {
-                        let allKey = true;
-                        for (const r of results) {
-                            if (r.chunk.type !== 'key') {
-                                allKey = false;
-                                break;
-                            }
-                        }
-                        if (!allKey) {
-                            warnLog?.log(
-                                `requested keyframe but encoder produced delta(s) at index=${bundle.index}; re-requesting`);
-                            for (const r of results)
-                                closeEncodedFrame(r);
-                            forceKeyframeNext = true;
-                            continue;
-                        }
-                    }
-                    const out: EncodedFrame[] = [];
-                    let mustClose = true;
-                    try {
-                        const top = layerFrames[layerCount - 1];
-                        for (let layerId = 0; layerId < results.length; layerId++) {
-                            const partial = results[layerId];
-                            const cfg = configs[layerId];
-                            const completed: EncodedFrame = {
-                                chunk: partial.chunk,
-                                metadata: partial.metadata,
-                                capturedAt: top.capturedAt,
-                                index: top.index,
-                                // Shared by reference with the bundle; per-layer
-                                // wire DTOs carry the same trace bytes.
-                                dropTrace: bundle.dropTrace,
-                                layerId: layerId,
-                                sourceWidth: top.sourceWidth,
-                                sourceHeight: top.sourceHeight,
-                                encodedWidth: cfg.width,
-                                encodedHeight: cfg.height,
-                                rotation: bundle.rotation,
-                                stats: bundle.stats,
-                            };
-                            bundle.stats.bytesEncoded += completed.chunk.byteLength;
-                            out.push(completed);
-                        }
-                        forceKeyframeNext = false;
-                        mustClose = false;
-                        const encodedBundle: EncodedBundle = {
-                            layers: out,
-                            index: bundle.index,
-                            dropTrace: bundle.dropTrace,
-                            rotation: bundle.rotation,
-                            stats: bundle.stats,
-                        };
-                        yield encodedBundle;
-                    } finally {
-                        if (mustClose) {
-                            // Assembly threw or consumer aborted pre-yield.
-                            for (const f of out)
-                                closeEncodedFrame(f);
-                            for (let i = out.length; i < results.length; i++)
-                                closeEncodedFrame(results[i]);
-                        }
+                    // Hold the pipeline at `MAX_PIPELINE` deep — drain the
+                    // oldest before submitting more on the next iteration.
+                    while (pending.length >= MAX_PIPELINE) {
+                        const p = pending.shift()!;
+                        const outcome = await awaitPending(p);
+                        if (outcome.kind === 'yield') yield outcome.bundle;
+                        else if (outcome.kind === 'throw') throw outcome.error;
                     }
                 }
+                // Source ended — drain anything still in flight.
+                for await (const r of drainPending()) yield r;
             } finally {
                 for (const enc of encoders) {
                     try { enc.dispose(); } catch { /* ignore */ }

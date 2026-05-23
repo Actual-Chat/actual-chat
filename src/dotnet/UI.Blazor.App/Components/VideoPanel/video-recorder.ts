@@ -1660,6 +1660,10 @@ export class VideoRecorder {
     // slow keyframe would otherwise pop the classifier; α=0.3 gives a
     // ~3-tick half-life at 1 Hz polling.
     private static readonly EncodeRatioEmaAlpha = 0.3;
+    // Mirror of `AsyncVideoEncoder.maxInflight` in recorder-worker-host.ts.
+    // Used to normalize the worker-reported `encodeQueueDepthEma` to a
+    // 0..1 saturation ratio for the SenderHealthClassifier.
+    private static readonly MaxInflightPerEncoder = 5;
     private encodeRatioEma = 0;
     private senderDropRatioEma = 0;
     // Per-tick instantaneous rates for every cumulative counter the modal /
@@ -1761,28 +1765,18 @@ export class VideoRecorder {
                     + (1 - VideoRecorder.EncodeRatioEmaAlpha) * this.senderDropRatioEma;
             }
 
-            // Encode ratio: (mean of MAX-across-layers per bundle) /
-            // frameDuration. The encode operator fires all encoders in
-            // parallel via Promise.allSettled, so per-bundle wall-clock
-            // cost is the SLOWEST layer, not the sum across layers.
-            // Using sum here was overcounting parallelism: 3 layers each
-            // at ~20ms ran in parallel → ~20ms bundle wall-clock → 30
-            // fps achievable, but sum=60ms produced ratio≈1.8-2.0 and
-            // tripped the `EncBadRatio=2.0` threshold by design. The
-            // resulting `signal=0` flipped BWE to Bad and triggered a
-            // false demote within 10s of every healthy 3-layer start.
-            const frameDurationMs = 1000 / 30;
-            if (previous) {
-                const maxSumDelta = Math.max(0, stats.encodeTimeMsMaxSum - previous.encodeTimeMsMaxSum);
-                const countDelta = Math.max(0, stats.encodeTimeMsCount - previous.encodeTimeMsCount);
-                if (countDelta > 0) {
-                    const meanMaxMs = maxSumDelta / countDelta;
-                    const ratio = meanMaxMs / frameDurationMs;
-                    this.encodeRatioEma =
-                        VideoRecorder.EncodeRatioEmaAlpha * ratio
-                        + (1 - VideoRecorder.EncodeRatioEmaAlpha) * this.encodeRatioEma;
-                }
-            }
+            // Encode ratio (semantic since the encode operator pipelines
+            // multiple bundles): encoder-queue saturation expressed as
+            // 0..1 of per-encoder maxInflight. Wall-clock-per-bundle is
+            // no longer a clean encoder-speed signal — bundles N+1, N+2
+            // wait for N to drain the encoder, so the legacy ratio
+            // (encodeTimeMs / frameDuration) double-counts inflight depth
+            // and false-flags healthy pipelined encoding as Bad. Queue
+            // depth is sampled at submit time and EMA'd inside the
+            // encode operator, so it tracks real encoder backpressure.
+            // The classifier threshold is re-tuned for the 0..1 range
+            // (see SenderHealthThresholds).
+            this.encodeRatioEma = stats.encodeQueueDepthEma / VideoRecorder.MaxInflightPerEncoder;
 
             this.lastRecorderHealthStats = {
                 ...stats,
