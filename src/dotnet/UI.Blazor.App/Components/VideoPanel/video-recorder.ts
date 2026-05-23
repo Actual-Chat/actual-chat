@@ -36,7 +36,7 @@ import {
 } from 'app-constants';
 import { getLogs } from 'logging';
 import { Api, WorkerKind } from 'api';
-import { rpcClientServer } from 'rpc';
+import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
 import { Versioning } from 'versioning';
 import { DeviceInfo } from 'device-info';
@@ -1301,20 +1301,11 @@ export class VideoRecorder {
             this.workerSourceCancelled = false;
             const workerForPump = this.worker;
             let pumpFrameCount = 0;
-            let pushInFlight = false;
-            let pushDroppedCount = 0;
             let lastPumpTickAtMs = performance.now();
             const onFrame = (now: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata): void => {
                 if (this.workerSourceCancelled) return;
                 void now;
                 lastPumpTickAtMs = performance.now();
-                if (pushInFlight) {
-                    pushDroppedCount++;
-                    if (pushDroppedCount <= 5 || pushDroppedCount % 60 === 0)
-                        warnLog?.log(`pushFrame pump: dropped while push in flight (#${pushDroppedCount})`);
-                    sourceVideo.requestVideoFrameCallback(onFrame);
-                    return;
-                }
 
                 const timestampUs = Math.round(metadata.mediaTime * 1_000_000);
                 let frame: VideoFrame;
@@ -1326,16 +1317,13 @@ export class VideoRecorder {
                     return;
                 }
                 pumpFrameCount++;
+                // `rpcNoWait` returns immediately after postMessage transfers
+                // the frame, so the next rVFC tick fires without waiting for
+                // the worker ack. Without this the round-trip easily exceeds
+                // the 33 ms frame interval on Android and caps capture at
+                // half-rate. Worker absorbs bursts in its ingress queue.
                 try {
-                    pushInFlight = true;
-                    void workerForPump.pushFrame(frame)
-                        .catch((e: unknown) => {
-                            warnLog?.log('pushFrame: worker rejected', e);
-                            this.workerSourceCancelled = true;
-                        })
-                        .finally(() => {
-                            pushInFlight = false;
-                        });
+                    void workerForPump.pushFrame(frame, rpcNoWait);
                 } catch (e) {
                     warnLog?.log('pushFrame: worker rejected', e);
                     this.workerSourceCancelled = true;
