@@ -1,8 +1,13 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed record EncodingCapConfig(
-    double EncodeRatioBad = 2.0,
-    double EncodeRatioGood = 1.2,
+    // Thresholds were retuned for the saturation-ratio semantic of
+    // `encodeRatioEma` (encodeQueueDepthEma / per-encoder maxInflight,
+    // range 0..1) after the encode operator gained pipelining. Bad =
+    // sustained encoder saturation, Good = encoder mostly idle. The
+    // gap between them is the hysteresis band.
+    double EncodeRatioBad = 0.7,
+    double EncodeRatioGood = 0.3,
     int BadStreak = 2,
     int GoodStreak = 5);
 
