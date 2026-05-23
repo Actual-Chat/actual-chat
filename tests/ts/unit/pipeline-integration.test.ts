@@ -409,9 +409,21 @@ describe('video pipeline integration', () => {
         for (let i = 0; i < 5; i++) {
             source.push(makeCaptured(i, stats, expectedSourceDims.width, expectedSourceDims.height));
         }
+        // Pipelined encode submits multiple bundles before awaiting, so
+        // advancing the mock clock per `sender.afterSend` no longer
+        // distinguishes captureTime per frame. Advance per source-yield
+        // instead so each captured frame gets a unique timestamp.
+        async function* tickingSource(): AsyncIterable<CapturedFrame> {
+            for (const f of source) {
+                await Promise.resolve();
+                yield f;
+                mockPerfMs += 33;
+                mockWallMs += 33;
+            }
+        }
 
         const captureToBundle = pipe(
-            fromArray(source),
+            tickingSource(),
             stampCaptureTime({ clock }),
             attachSourceDims(),
             forceKeyframeOnDimChange(),
@@ -425,8 +437,6 @@ describe('video pipeline integration', () => {
             encode({ controller: ladderController, createEncoder: makeEncoderFactory() }),
             wireSend({ createSender: () => sender, controller: ladderController }),
         );
-        const advance = (): void => { mockPerfMs += 33; mockWallMs += 33; };
-        sender.afterSend = advance;
         const runP = count(senderPipe);
 
         await runSenderToCompletion(runP, 15);

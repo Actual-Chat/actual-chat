@@ -68,21 +68,42 @@ class MockVideoFrame {
     public clones: MockVideoFrame[] = [];
     public rotation = 0;
     public timestamp = 0;
+    public displayWidth = 0;
+    public displayHeight = 0;
     constructor(
-        idOrCanvas: number | MockOffscreenCanvas,
-        widthOrInit: number | VideoFrameInit = 640,
+        source: number | MockOffscreenCanvas | MockVideoFrame,
+        widthOrInit: number | (VideoFrameInit & { visibleRect?: { width: number; height: number };
+            displayWidth?: number; displayHeight?: number }) = 640,
         codedHeight = 360,
     ) {
-        if (typeof idOrCanvas === 'number') {
-            this.id = idOrCanvas;
+        if (typeof source === 'number') {
+            this.id = source;
             this.codedWidth = widthOrInit as number;
             this.codedHeight = codedHeight;
+            this.displayWidth = this.codedWidth;
+            this.displayHeight = this.codedHeight;
             return;
         }
 
+        if (source instanceof MockVideoFrame) {
+            // `new VideoFrame(otherFrame, init)` wrap — used by normalizeFrame
+            // re-crop and spatialize lower-layer downscale.
+            const init = typeof widthOrInit === 'object' ? widthOrInit : {};
+            this.id = source.id + 100_000;
+            this.codedWidth = init.visibleRect?.width ?? source.codedWidth;
+            this.codedHeight = init.visibleRect?.height ?? source.codedHeight;
+            this.displayWidth = init.displayWidth ?? this.codedWidth;
+            this.displayHeight = init.displayHeight ?? this.codedHeight;
+            this.timestamp = init.timestamp ?? source.timestamp;
+            return;
+        }
+
+        // Canvas branch.
         this.id = -1;
-        this.codedWidth = idOrCanvas.width;
-        this.codedHeight = idOrCanvas.height;
+        this.codedWidth = source.width;
+        this.codedHeight = source.height;
+        this.displayWidth = this.codedWidth;
+        this.displayHeight = this.codedHeight;
         this.timestamp = typeof widthOrInit === 'object' ? (widthOrInit.timestamp ?? 0) : 0;
     }
     public id: number;
@@ -189,7 +210,9 @@ function makeEncoderFactory(opts: { timeoutMs?: number } = {}) {
                 stats: undefined as unknown as RecorderStats,
             }),
             () => { /* swallow */ },
-            { timeoutMs: opts.timeoutMs ?? 0 },
+            // Matches production recorder-worker-host.ts so the pipelined
+            // encode operator (MAX_PIPELINE=5) doesn't overrun the adapter.
+            { maxInflight: 5, timeoutMs: opts.timeoutMs ?? 0 },
         );
 }
 
@@ -332,7 +355,10 @@ describe('Recorder', () => {
     it('reconfigureLayers: grows ladder mid-stream without recreating the sender', async () => {
         const session = new SenderSession();
         const recorder = new Recorder(session);
-        // Many-frame source so we can reconfigure mid-flight.
+        // Many-frame source so we can reconfigure mid-flight. Frames match
+        // the top layer dims so normalizeFrame takes the zero-copy identity
+        // path and doesn't allocate fresh VideoFrames (the mock globalThis
+        // would race with afterEach cleanup if forced through the re-crop path).
         const senders: FakeSender[] = [];
         let enqueued = 0;
         const slowSource = (_track: MediaStreamTrack) => ({
@@ -343,7 +369,7 @@ describe('Recorder', () => {
                         controller.close();
                         return;
                     }
-                    controller.enqueue(new MockVideoFrame(enqueued++) as unknown as VideoFrame);
+                    controller.enqueue(new MockVideoFrame(enqueued++, 1280, 720) as unknown as VideoFrame);
                 },
             }),
         });
@@ -365,8 +391,10 @@ describe('Recorder', () => {
             }),
             encoderConfigs: [cfgTop],
         });
-        // Pump until we see the first wire chunk land.
-        for (let i = 0; i < 200; i++) {
+        // Pump until we see the first wire chunk land. Higher iteration count
+        // because the pipelined encode operator submits MAX_PIPELINE bundles
+        // before awaiting and yielding the first one.
+        for (let i = 0; i < 2000; i++) {
             for (const enc of MockVideoEncoder.instances) enc.drainAll();
             await Promise.resolve();
             if (senders.length > 0 && senders[0].sent.length >= 1) break;

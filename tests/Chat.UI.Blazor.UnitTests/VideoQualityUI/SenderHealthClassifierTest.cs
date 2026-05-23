@@ -11,14 +11,14 @@ public class SenderHealthClassifierTest
     };
 
     [Fact]
-    public void HighEncodeRatio_LowAckAge_EncoderBad_UplinkGood()
+    public void HighEncodeDeficit_LowAckAge_EncoderBad_UplinkGood()
     {
         var c = new SenderHealthClassifier(T());
         EncoderHealth enc = EncoderHealth.Empty;
         UplinkHealth up = UplinkHealth.Empty;
         for (var i = 0; i < 3; i++) {
             enc = c.ClassifyEncoder(
-                encodeRatioEma: 2.5,
+                encodeDeficitEma: 0.5,
                 encodeQueueDepthEma: 0,
                 restartStreakIn60s: 0,
                 senderEncodePathDropRatio: 0,
@@ -35,14 +35,14 @@ public class SenderHealthClassifierTest
     }
 
     [Fact]
-    public void LowEncodeRatio_HighAckAge_EncoderGood_UplinkBad()
+    public void LowEncodeDeficit_HighAckAge_EncoderGood_UplinkBad()
     {
         var c = new SenderHealthClassifier(T());
         EncoderHealth enc = EncoderHealth.Empty;
         UplinkHealth up = UplinkHealth.Empty;
         for (var i = 0; i < 3; i++) {
             enc = c.ClassifyEncoder(
-                encodeRatioEma: 0.5,
+                encodeDeficitEma: 0.0,
                 encodeQueueDepthEma: 0,
                 restartStreakIn60s: 0,
                 senderEncodePathDropRatio: 0,
@@ -59,14 +59,14 @@ public class SenderHealthClassifierTest
     }
 
     [Fact]
-    public void TabBackgrounded_RelaxesEncodeRatioThreshold()
+    public void TabBackgrounded_RelaxesEncodeDeficitThreshold()
     {
         var c = new SenderHealthClassifier(T());
-        // Ratio 2.5 — Bad under fg threshold (2.0), Good under bg threshold (3.0).
+        // Deficit 0.2 — Bad under fg threshold (0.15), Good under bg threshold (0.30).
         EncoderHealth enc = EncoderHealth.Empty;
         for (var i = 0; i < 4; i++) {
             enc = c.ClassifyEncoder(
-                encodeRatioEma: 2.5,
+                encodeDeficitEma: 0.2,
                 encodeQueueDepthEma: 0,
                 restartStreakIn60s: 0,
                 senderEncodePathDropRatio: 0,
@@ -76,12 +76,12 @@ public class SenderHealthClassifierTest
     }
 
     [Fact]
-    public void EncodeRatioBad_RequiresStreak()
+    public void EncodeDeficitBad_RequiresStreak()
     {
         var c = new SenderHealthClassifier(T());
         // One bad tick is not enough; BadStreakRequired = 2.
         var enc = c.ClassifyEncoder(
-            encodeRatioEma: 2.5,
+            encodeDeficitEma: 0.5,
             encodeQueueDepthEma: 0,
             restartStreakIn60s: 0,
             senderEncodePathDropRatio: 0,
@@ -89,7 +89,7 @@ public class SenderHealthClassifierTest
         enc.Verdict.Should().NotBe(HealthVerdict.Bad);
         // Second consecutive bad tick promotes to Bad.
         enc = c.ClassifyEncoder(
-            encodeRatioEma: 2.5,
+            encodeDeficitEma: 0.5,
             encodeQueueDepthEma: 0,
             restartStreakIn60s: 0,
             senderEncodePathDropRatio: 0,
@@ -103,7 +103,7 @@ public class SenderHealthClassifierTest
         var c = new SenderHealthClassifier(T());
         // RestartStreak is itself a streaked count — no extra hysteresis.
         var enc = c.ClassifyEncoder(
-            encodeRatioEma: 0.5,
+            encodeDeficitEma: 0.0,
             encodeQueueDepthEma: 0,
             restartStreakIn60s: SenderHealthThresholds.Defaults.RestartStreakBad,
             senderEncodePathDropRatio: 0,

@@ -151,8 +151,8 @@ export interface RecordingQualityStateDto {
 }
 
 export interface RecorderHealthSnapshotDto {
-    0: number;   // EncodeRatioEma
-    1: number;   // EncodeRatioP90
+    0: number;   // EncodeDeficitEma
+    1: number;   // EncodeDeficitP90
     2: number;   // SlotReplacementRateEma
     3: number;   // SenderFrameDropRatioEma
     4: number;   // LastAckAgeMs

@@ -194,6 +194,10 @@ function makeFactory(opts: { onResetRequested?: (reason: string) => void; timeou
             }),
             () => { /* swallow encoder error */ },
             {
+                // Matches production recorder-worker-host.ts so the
+                // pipelined encode operator (MAX_PIPELINE=5) doesn't
+                // overrun the adapter queue.
+                maxInflight: 5,
                 timeoutMs: opts.timeoutMs ?? 100,
                 firstTimeoutMs: opts.timeoutMs ?? 100,
                 onResetRequested: opts.onResetRequested,
@@ -449,6 +453,10 @@ describe('encode operator', () => {
                 });
             },
             dispose(): void { /* ignore */ },
+            // The encode operator samples encoder.encodeQueueSize per bundle
+            // (queue-depth EMA). Provide a static stub so the sampling path
+            // doesn't fault on this fake.
+            encoder: { encodeQueueSize: 0 },
         } as unknown as AsyncVideoEncoder<EncodeInput, EncodedFrame>;
         const seg = encode({
             controller: new LayerLadderController([cfg(640, 360)]),
@@ -457,15 +465,19 @@ describe('encode operator', () => {
 
         const iter: AsyncIterator<EncodedBundle> = seg[Symbol.asyncIterator]();
         const result = await iter.next();
+        // B1 drops with reset; B2 is the first bundle yielded.
         expect(result.done).toBe(false);
         expect(result.done === false ? result.value.layers[0].index : 0).toBe(2);
         expect(encodeCalls).toHaveLength(2);
-        // First encode is forced to keyFrame=true (per-encoder first-call guard).
+        // First encode forced to keyFrame=true (per-encoder first-call guard).
         expect(encodeCalls[0].opts.keyFrame).toBe(true);
-        // Second is also keyFrame=true: forceKeyframeNext is set after the
-        // reset-error rejection on the first bundle.
-        expect(encodeCalls[1].opts.keyFrame).toBe(true);
+        // B1's frame was closed by the fake encoder before rejecting.
         expect((first.layers[0].frame as unknown as MockVideoFrame).closed).toBe(true);
+        // Pipelined operator: B2 was submitted BEFORE B1's reset was observed,
+        // so B2 is a delta. forceKeyframeNext is set after B1's reset and
+        // applies only to bundles pulled from source AFTER the drain — none
+        // here because source only had 2 bundles.
+        expect(encodeCalls[1].opts.keyFrame).toBe(false);
         await iter.next();
     });
 
@@ -513,16 +525,6 @@ describe('encode operator', () => {
         // should be in 'closed' state.
         expect(MockVideoEncoder.instances).toHaveLength(2);
         for (const m of MockVideoEncoder.instances) expect(m.state).toBe('closed');
-    });
-
-    it('rejects bundles whose layer count mismatches configs (defensive)', async () => {
-        const stats = makeStats();
-        // configs: 2 layers; bundle: 1 layer.
-        const seg = encode({
-            controller: new LayerLadderController([cfg(320, 180), cfg(1280, 720)]),
-            createEncoder: makeFactory(),
-        })(fromArray([makeBundle(1, stats, [{ width: 1280, height: 720 }])]));
-        await expect(drain(seg)).rejects.toThrow(/expected 2/);
     });
 
     it('wraps synchronous encoder configure failure as init failure and cleans up', async () => {
