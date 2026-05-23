@@ -84,10 +84,9 @@ export interface EncodeOptions {
 // the first bundle, submit layers in parallel via allSettled so one
 // rejection doesn't leak the others' chunks. Bundle layers bottom-first.
 export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, EncodedBundle> {
-    // Mutable local snapshot of the active ladder; replaced on each
-    // controller-version bump.
+    // Mutable local snapshot of the active ladder; replaced whenever the
+    // encoder set is reshaped to match a bundle's layer count.
     let configs: readonly EncoderConfigPerLayer[] = opts.controller.current.configs;
-    let lastSeenVersion = opts.controller.current.version;
     const createEncoder = opts.createEncoder;
     const bundleTimeoutMs = opts.bundleTimeoutMs ?? 3000;
     return source => {
@@ -338,62 +337,47 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         && bundleNowMs - restartTimestamps[0] > RESTART_STREAK_WINDOW_MS)
                         restartTimestamps.shift();
                     bundle.stats.encoderRestartStreakIn60s = restartTimestamps.length;
-                    // Hot-apply: drain pending FIRST so encoder reconfig
-                    // doesn't race in-flight encodes against a new ladder.
-                    if (opts.controller.current.version !== lastSeenVersion) {
+                    // Hot-apply: align encoders to the BUNDLE's layer count,
+                    // not to the controller's current version. spatialize emits
+                    // bundles at the controller version it saw; if controller
+                    // mutated between spatialize-emit and encode-receive, the
+                    // bundle is at the OLD version while controller is at NEW.
+                    // Using the bundle as the source of truth avoids that race.
+                    const layerCount = bundle.layers.length;
+                    if (encoders.length !== layerCount) {
+                        // Drain pending first so encoder reconfig doesn't race
+                        // in-flight encodes against a different layer count.
                         for await (const r of drainPending()) yield r;
-                        const cur = opts.controller.current;
                         const oldN = encoders.length;
-                        const newN = cur.configs.length;
-                        if (oldN > 0 && newN > oldN) {
+                        const cur = opts.controller.current;
+                        if (layerCount > oldN) {
                             // Grow: append fresh encoders; force keyframe so
                             // the new layer's first chunk is decodable.
                             try {
-                                for (let i = oldN; i < newN; i++)
+                                for (let i = oldN; i < layerCount; i++)
                                     encoders.push(createEncoder(cur.configs[i], i));
                             } catch (e) {
                                 closeBundleLayers(bundle);
-                                const topCodec = cur.configs[newN - 1].codec;
+                                const topCodec = cur.configs[layerCount - 1].codec;
                                 const message = e instanceof Error ? e.message : String(e);
                                 throw new Error(
                                     `${ENCODER_INIT_FAILED_PREFIX} codec=${topCodec}: ${message}`,
                                     { cause: e },
                                 );
                             }
-                            forceKeyframeNext = true;
-                        } else if (oldN > 0 && newN < oldN) {
+                            // Skip force-keyframe when this is the first-ever
+                            // init (oldN === 0) — `forceKeyframeOnFirstEncode`
+                            // already handles that path.
+                            if (oldN > 0) forceKeyframeNext = true;
+                        } else if (layerCount < oldN) {
                             // Shrink: dispose tail encoders. EncoderPool may park
                             // them via the release callback inside dispose().
-                            for (let i = newN; i < oldN; i++) {
+                            for (let i = layerCount; i < oldN; i++) {
                                 try { encoders[i].dispose(); } catch { /* ignore */ }
                             }
-                            encoders.length = newN;
+                            encoders.length = layerCount;
                         }
                         configs = cur.configs;
-                        lastSeenVersion = cur.version;
-                    }
-                    const layerCount = bundle.layers.length;
-                    if (layerCount !== configs.length) {
-                        closeBundleLayers(bundle);
-                        throw new Error(
-                            `encode: bundle has ${layerCount} layer(s), expected ${configs.length}`);
-                    }
-                    if (encoders.length === 0) {
-                        try {
-                            for (let layerId = 0; layerId < configs.length; layerId++) {
-                                encoders.push(createEncoder(configs[layerId], layerId));
-                            }
-                        } catch (e) {
-                            closeBundleLayers(bundle);
-                            // The factory does synchronous WebCodecs configure(); a throw here
-                            // means the codec failed init before any frame was encoded.
-                            const topCodec = configs[configs.length - 1].codec;
-                            const message = e instanceof Error ? e.message : String(e);
-                            throw new Error(
-                                `${ENCODER_INIT_FAILED_PREFIX} codec=${topCodec}: ${message}`,
-                                { cause: e },
-                            );
-                        }
                     }
                     // applyKeyframePolicy promotes forceKeyframe to all-or-none;
                     // use the bundle helper to keep the contract explicit.
