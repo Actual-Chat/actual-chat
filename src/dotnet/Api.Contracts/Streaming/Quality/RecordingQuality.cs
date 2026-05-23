@@ -37,9 +37,14 @@ public sealed partial record RecordingQualityInfo(
 /// diagnostics. Pruned to only what one of those two consumers reads.
 /// </summary>
 public sealed record RecorderStats(
-    // Encode cost relative to frame budget. Computed as
-    // (sum of all per-layer encode times) / frameDuration, EMA-smoothed.
-    double EncodeRatioEma,
+    // Encoder THROUGHPUT DEFICIT, 0..1. Computed on the main thread as
+    // 1 - (bundlesEncodedPerSec / framesCapturedPerSec), EMA-smoothed.
+    // 0 = encoder keeps pace with the source; 1 = encoder emits nothing.
+    // Drives QC layer demotion via SenderHealthClassifier + EncodingCap.
+    // NOT pipeline saturation — a queue-full encoder that still emits at
+    // source rate is healthy and should not be demoted; this metric only
+    // moves when emit rate actually falls behind capture rate.
+    double EncodeDeficitEma,
     // Bundles dropped anywhere in the sender pipeline / (bundles dropped +
     // bundles shipped), EMA-smoothed.
     double SenderFrameDropRatioEma,
@@ -52,6 +57,11 @@ public sealed record RecorderStats(
     // Cumulative bundles successfully shipped to the wire since the run
     // started. Powers FPS (= delta-per-second) for the diagnostics row.
     int BundlesShipped,
+    // Cumulative bundles encoded (one per source moment) emerging from
+    // the encode operator. Isolates encoder throughput from wire
+    // throughput — if wire back-pressures, BundlesShipped lags
+    // BundlesEncoded; both drop together if encoder is the bottleneck.
+    int BundlesEncoded,
     // Cumulative encoded bytes (sum across layers). Drives the outbound
     // "kbps" display in the diagnostics modal.
     long BytesEncoded,
@@ -67,7 +77,9 @@ public sealed record RecorderStats(
         = new Dictionary<FrameDropStage, int>();
 
     public static RecorderStats Empty { get; } =
-        new(0, 0, 0, IsConnected: false, IsPeerConnected: false, EmptyDropTrace, 0, 0,
+        new(0, 0, 0, IsConnected: false, IsPeerConnected: false, EmptyDropTrace, 0,
+            BundlesEncoded: 0,
+            BytesEncoded: 0,
             EncodeQueueDepthEma: -1,
             WireQueueDepthEma: -1,
             FloodGateSkipPerSec: 0,

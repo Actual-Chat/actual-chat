@@ -5,7 +5,7 @@ namespace ActualChat.Streaming;
 // encode-ratio threshold to accommodate Chrome's hidden-tab throttling.
 public sealed record EncoderHealth(
     HealthVerdict Verdict,
-    double EncodeRatioEma,
+    double EncodeDeficitEma,
     double EncodeQueueDepthEma,
     int RestartStreakIn60s,
     double SenderEncodePathDropRatio,

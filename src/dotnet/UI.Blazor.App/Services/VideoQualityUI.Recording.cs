@@ -161,7 +161,7 @@ public sealed partial class VideoQualityUI
         // one cap — encoder pressure NEVER leaks into BWE here.
         var fusedDropRatio = 0.0;
         var fusedAckAgeMs = -1.0;
-        var fusedEncodeRatio = 0.0;
+        var fusedEncodeDeficit = 0.0;
         var fusedEncodeQueueDepth = 0.0;
         var fusedWireQueueDepth = 0.0;
         var fusedFloodSkipPerSec = 0.0;
@@ -174,7 +174,7 @@ public sealed partial class VideoQualityUI
             fusedDropRatio = Math.Max(fusedDropRatio, stats.SenderFrameDropRatioEma);
             if (stats.LastAckAgeMs >= 0)
                 fusedAckAgeMs = Math.Max(fusedAckAgeMs, stats.LastAckAgeMs);
-            fusedEncodeRatio = Math.Max(fusedEncodeRatio, stats.EncodeRatioEma);
+            fusedEncodeDeficit = Math.Max(fusedEncodeDeficit, stats.EncodeDeficitEma);
             if (stats.EncodeQueueDepthEma >= 0)
                 fusedEncodeQueueDepth = Math.Max(fusedEncodeQueueDepth, stats.EncodeQueueDepthEma);
             if (stats.WireQueueDepthEma >= 0)
@@ -187,7 +187,7 @@ public sealed partial class VideoQualityUI
         }
 
         var encoderHealth = _senderHealthClassifier.ClassifyEncoder(
-            encodeRatioEma: fusedEncodeRatio,
+            encodeDeficitEma: fusedEncodeDeficit,
             encodeQueueDepthEma: fusedEncodeQueueDepth,
             restartStreakIn60s: maxRestartStreak,
             senderEncodePathDropRatio: 0, // TODO: split RecorderStats.dropTrace into encode-stage vs wire-stage.
@@ -215,7 +215,7 @@ public sealed partial class VideoQualityUI
         var preBwCam = _outboundBandwidthCap.Layers.CameraLayers;
         // EncodingCap still consumes the raw encode ratio. The classifier
         // verdict is used for observability + future bg/fg threshold switch.
-        _outboundEncodingCap.Tick(fusedEncodeRatio);
+        _outboundEncodingCap.Tick(fusedEncodeDeficit);
         _outboundBandwidthCap.Tick(_outboundBwEstimator);
         var postEncCam = _outboundEncodingCap.Layers.CameraLayers;
         var postBwCam = _outboundBandwidthCap.Layers.CameraLayers;
@@ -226,7 +226,7 @@ public sealed partial class VideoQualityUI
                 "bwCam {PreBw}->{PostBw} (uplinkVerdict={UplinkVerdict}, uplinkSignal={Signal:F2}, " +
                 "bweVerdict={BweVerdict}, ceiling={CeilingBps}bps, current={CurrentBps}bps, " +
                 "negStreak={NegStreak}, posStreak={PosStreak}), totalBps={TotalBps}, dropRatio={DropRatio:F3}, ackAgeMs={AckAgeMs:F0}",
-                preEncCam, postEncCam, encoderHealth.Verdict, fusedEncodeRatio,
+                preEncCam, postEncCam, encoderHealth.Verdict, fusedEncodeDeficit,
                 _outboundEncodingCap.BadStreak, _outboundEncodingCap.GoodStreak,
                 preBwCam, postBwCam, uplinkHealth.Verdict, uplinkSignal,
                 _outboundBwEstimator.LastVerdict,

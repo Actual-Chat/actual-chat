@@ -3,16 +3,21 @@ using ActualChat.Streaming;
 namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed record SenderHealthThresholds(
-    // `EncodeRatio*` thresholds were retuned when the encode operator
-    // gained per-encoder pipelining: the metric is now queue-saturation
-    // (encodeQueueDepthEma / maxInflight, range 0..1), NOT wall-clock
-    // per-bundle / frameDuration. Bad = sustained heavy saturation,
-    // Good = encoder mostly idle. Background allows higher saturation
-    // because the tab itself is throttled.
-    double EncodeRatioBadForeground = 0.6,
-    double EncodeRatioBadBackground = 0.9,
-    double EncodeRatioGood = 0.2,
-    double EncodeQueueDepthBad = 3.5,
+    // `EncodeDeficit*` thresholds match the THROUGHPUT-DEFICIT semantic of
+    // `RecorderStats.EncodeDeficitEma` (range 0..1, 0 = encoder keeps up
+    // with capture, 1 = encoder emits nothing). Bad = sustained deficit
+    // (encoder produces fewer bundles than captured); Good = within a
+    // few-% margin. Background allows a wider miss because the tab
+    // itself is throttled and source rate is naturally lower.
+    double EncodeDeficitBadForeground = 0.15,
+    double EncodeDeficitBadBackground = 0.30,
+    double EncodeDeficitGood = 0.03,
+    // `EncodeQueueDepth*` is a SECONDARY signal — encoder's internal
+    // queue depth EMA. Useful as an early-warning for impending
+    // deficit but never the sole gate (a full queue with healthy
+    // throughput is the desired pipelined state). Thresholds sized for
+    // per-encoder maxInflight=5.
+    double EncodeQueueDepthBad = 4.5,
     double EncodeQueueDepthGood = 1.0,
     int RestartStreakBad = 2,
     double SenderEncodePathDropRatioBad = 0.1,
@@ -41,18 +46,18 @@ public sealed class SenderHealthClassifier(SenderHealthThresholds? thresholds = 
     private readonly HealthStreakState _floodSkip = new();
 
     public EncoderHealth ClassifyEncoder(
-        double encodeRatioEma,
+        double encodeDeficitEma,
         double encodeQueueDepthEma,
         int restartStreakIn60s,
         double senderEncodePathDropRatio,
         bool isTabBackgrounded)
     {
         var encRatioBad = isTabBackgrounded
-            ? _t.EncodeRatioBadBackground
-            : _t.EncodeRatioBadForeground;
+            ? _t.EncodeDeficitBadBackground
+            : _t.EncodeDeficitBadForeground;
         var ratioVerdict = _encRatio.Update(_t.BadStreakRequired, _t.GoodStreakRequired,
-            isBad: encodeRatioEma > encRatioBad,
-            isGood: encodeRatioEma < _t.EncodeRatioGood);
+            isBad: encodeDeficitEma > encRatioBad,
+            isGood: encodeDeficitEma < _t.EncodeDeficitGood);
         var queueVerdict = _encQueue.Update(_t.BadStreakRequired, _t.GoodStreakRequired,
             isBad: encodeQueueDepthEma > _t.EncodeQueueDepthBad,
             isGood: encodeQueueDepthEma < _t.EncodeQueueDepthGood);
@@ -62,7 +67,7 @@ public sealed class SenderHealthClassifier(SenderHealthThresholds? thresholds = 
             : HealthVerdict.Good;
         var combined = HealthVerdictExt.Combine([ratioVerdict, queueVerdict, restartVerdict, dropVerdict]);
         return new EncoderHealth(combined,
-            encodeRatioEma, encodeQueueDepthEma, restartStreakIn60s,
+            encodeDeficitEma, encodeQueueDepthEma, restartStreakIn60s,
             senderEncodePathDropRatio, isTabBackgrounded);
     }
 

@@ -1,15 +1,18 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed record EncodingCapConfig(
-    // Thresholds were retuned for the saturation-ratio semantic of
-    // `encodeRatioEma` (encodeQueueDepthEma / per-encoder maxInflight,
-    // range 0..1) after the encode operator gained pipelining. Bad =
-    // sustained encoder saturation, Good = encoder mostly idle. The
-    // gap between them is the hysteresis band.
-    double EncodeRatioBad = 0.7,
-    double EncodeRatioGood = 0.3,
+    // Thresholds match the THROUGHPUT-DEFICIT semantic of
+    // `RecorderStats.EncodeDeficitEma` (range 0..1, deficit = 1 -
+    // bundlesEncoded/framesCaptured per-second EMA). Bad = sustained
+    // encoder underrun, Good = within a few-% margin of source rate.
+    // Demote layers when underrun persists `BadStreak` ticks.
+    double EncodeDeficitBad = 0.20,
+    double EncodeDeficitGood = 0.05,
     int BadStreak = 2,
-    int GoodStreak = 5);
+    int GoodStreak = 5)
+{
+    public static EncodingCapConfig Default { get; } = new();
+}
 
 /// <summary>
 /// Sender-only encoding-pressure cap on camera/screencast spatial layers.
@@ -45,9 +48,9 @@ public sealed class EncodingCap
         _goodStreak = 0;
     }
 
-    public void Tick(double encodeRatioEma, IReadOnlyCollection<VideoSourceKind>? activeKinds = null)
+    public void Tick(double encodeDeficitEma, IReadOnlyCollection<VideoSourceKind>? activeKinds = null)
     {
-        if (encodeRatioEma > _config.EncodeRatioBad) {
+        if (encodeDeficitEma > _config.EncodeDeficitBad) {
             _badStreak++;
             _goodStreak = 0;
             if (_badStreak >= _config.BadStreak) {
@@ -57,7 +60,7 @@ public sealed class EncodingCap
             return;
         }
 
-        if (encodeRatioEma < _config.EncodeRatioGood) {
+        if (encodeDeficitEma < _config.EncodeDeficitGood) {
             _goodStreak++;
             _badStreak = 0;
             if (_goodStreak >= _config.GoodStreak) {

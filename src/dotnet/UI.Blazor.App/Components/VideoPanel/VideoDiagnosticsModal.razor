@@ -778,7 +778,8 @@
 
     // Verdict inputs only — must mirror RecordingClassifier.Classify.
     private static string FormatRecordingSignals(RecorderStats stats)
-        => $"encodeRatioEma={stats.EncodeRatioEma:F2}x, "
+        => $"encSaturation={(stats.EncodeDeficitEma * 100):F0}%, "
+            + $"encQueueDepth={stats.EncodeQueueDepthEma:F2}, "
             + $"ackAge={FormatAckAge(stats.LastAckAgeMs)}, "
             + $"dropRatioEma={stats.SenderFrameDropRatioEma:F2}, "
             + $"connected={(stats.IsConnected ? "yes" : "no")}";

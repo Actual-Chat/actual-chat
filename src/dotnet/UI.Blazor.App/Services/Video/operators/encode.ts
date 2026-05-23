@@ -299,6 +299,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                     }
                     forceKeyframeNext = false;
                     mustClose = false;
+                    p.bundle.stats.bundlesEncoded++;
                     return {
                         kind: 'yield',
                         bundle: {
