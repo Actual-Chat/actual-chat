@@ -1,6 +1,6 @@
 pushd src\dotnet\App.Maui
 rem dotnet publish -f:net10.0-android -c:Release /p:AndroidSigningKeyPass=%ActualChat_KeyPass% /p:AndroidSigningStorePass=%ActualChat_StorePass% /p:IsDevMaui=false /p:UseAppPack=true
-dotnet publish -f:net10.0-android -c:Release /p:AndroidSigningKeyPass=%ActualChat_AndroidSigningKeyPass% /p:AndroidSigningStorePass=%ActualChat_AndroidSigningStorePass% /p:IsDevMaui=false
+dotnet publish -f:net10.0-android -c:Release /p:AndroidSigningKeyPass=%ActualChat_AndroidSigningKeyPass% /p:AndroidSigningStorePass=%ActualChat_AndroidSigningStorePass% /p:IsDevMaui=false %*
 popd
 
 adb install -r artifacts\publish\App.Maui\release_net10.0-android\chat.actual.app-Signed.apk

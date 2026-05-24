@@ -18,5 +18,5 @@ export ASPNETCORE_ENVIRONMENT=Development
 # (sleep 5 && open https://local.voxt.ai || xdbg-open https://local.voxt.ai) &
 
 pushd artifacts/publish/App.Server/release
-./ActualChat.App.Server
+./ActualChat.App.Server %*
 popd
