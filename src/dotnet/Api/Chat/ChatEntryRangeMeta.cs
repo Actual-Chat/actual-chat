@@ -15,13 +15,13 @@ public sealed partial record ChatEntryRangeMeta(
 
     #region MemoryPackXxx properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(2)]
+    [MemoryPackInclude, MemoryPackOrder(2)]
     private ApiNullable8<long> MemoryPackPreviousEntryId {
         get => PreviousEntryLid;
         init => PreviousEntryLid = value;
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(3)]
+    [MemoryPackInclude, MemoryPackOrder(3)]
     private ApiNullable8<long> MemoryPackNextEntryId {
         get => NextEntryLid;
         init => NextEntryLid = value;

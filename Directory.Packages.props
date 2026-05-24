@@ -12,18 +12,18 @@
     <EntityFrameworkCoreNpgsqlVersion>10.0.1</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreCheckConstraintsVersion>10.0.0</EntityFrameworkCoreCheckConstraintsVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
-    <MicrosoftExtensionsVersion>[10.0.8,)</MicrosoftExtensionsVersion>
-    <NpgsqlVersion>[10.0.1,)</NpgsqlVersion>
+    <MicrosoftExtensionsVersion>10.0.8</MicrosoftExtensionsVersion>
+    <NpgsqlVersion>10.0.1</NpgsqlVersion>
     <RedisVersion>2.12.14</RedisVersion>
-    <SignalRVersion>[10.0.8,)</SignalRVersion>
+    <SignalRVersion>10.0.8</SignalRVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.15.3</OpenTelemetryVersion>
-    <OpenTelemetryInstrumentationAspNetCoreVersion>[1.15.1,)</OpenTelemetryInstrumentationAspNetCoreVersion>
+    <OpenTelemetryInstrumentationAspNetCoreVersion>1.15.1</OpenTelemetryInstrumentationAspNetCoreVersion>
     <SentryVersion>5.14.1</SentryVersion>
     <MemoryPackVersion>1.21.4</MemoryPackVersion>
     <MessagePackVersion>3.1.4</MessagePackVersion>
     <SemanticKernelVersion>1.76.0</SemanticKernelVersion>
-    <XamarinAndroidLifecycle>[2.10.0.2,)</XamarinAndroidLifecycle>
+    <XamarinAndroidLifecycle>2.10.0.2</XamarinAndroidLifecycle>
   </PropertyGroup>
   <!--
     MAUI is not fully compatible with centralized packages management:
@@ -53,6 +53,7 @@
     <PackageVersion Include="Xamarin.AndroidX.Core" Version="1.18.0" />
     <PackageVersion Include="Xamarin.AndroidX.Collection" Version="1.6.0" />
     <PackageVersion Include="Xamarin.AndroidX.Collection.Ktx" Version="1.6.0" />
+    <PackageVersion Include="Xamarin.AndroidX.DataStore.Preferences" Version="1.2.1" />
     <PackageVersion Include="Xamarin.AndroidX.Fragment.Ktx" Version="1.8.9.2" />
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Common" Version="$(XamarinAndroidLifecycle)" />
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Common.Java8" Version="$(XamarinAndroidLifecycle)" />

@@ -47,13 +47,13 @@ public sealed partial record LegacyChatEntry(
 
     // MemoryPackXxx properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(5)]
+    [MemoryPackInclude, MemoryPackOrder(5)]
     private ApiNullable8<Moment> MemoryPackEndsAt {
         get => EndsAt;
         init => EndsAt = value;
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(10)]
+    [MemoryPackInclude, MemoryPackOrder(10)]
     private ApiNullable8<long> MemoryPackRepliedEntryLocalId {
         get => RepliedEntryLid;
         init => RepliedEntryLid = value;

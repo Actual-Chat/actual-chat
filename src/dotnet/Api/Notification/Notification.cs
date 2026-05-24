@@ -15,7 +15,7 @@ public partial record Notification(
 {
     #region MemoryPackXxx properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(7)]
+    [MemoryPackInclude, MemoryPackOrder(7)]
     private ApiNullable8<Moment> MemoryPackHandledAt {
         get => HandledAt;
         init => HandledAt = value;

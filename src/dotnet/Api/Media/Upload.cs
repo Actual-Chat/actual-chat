@@ -15,7 +15,7 @@ public sealed partial record Upload : IHasId<UploadId>, IHasMetadata, IRequireme
     [DataMember, MemoryPackOrder(1), Key(1)] public UserId UserId { get; init; }
     #region MemoryPackXxx properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(2)]
+    [MemoryPackInclude, MemoryPackOrder(2)]
     private ApiNullable8<long> MemoryPackLength {
         get => Length;
         init => Length = value;

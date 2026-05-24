@@ -86,7 +86,10 @@
   <!-- Platform-specific package references -->
   <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
     <PackageReference Include="Plugin.Firebase.Analytics" />
+    <PackageReference Include="Xamarin.AndroidX.DataStore.Preferences" />
     <PackageReference Include="Xamarin.AndroidX.Lifecycle.Common" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.Common.Java8" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.Process" />
     <PackageReference Include="Xamarin.Firebase.Analytics" />
     <PackageReference Include="Xamarin.Firebase.Crashlytics" />
     <PackageReference Include="Xamarin.Firebase.Messaging" />
