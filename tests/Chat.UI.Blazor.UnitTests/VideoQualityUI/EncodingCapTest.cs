@@ -20,8 +20,8 @@ public class EncodingCapTest
     {
         var cap = NewCap(new EncodingCapConfig(BadStreak: 2));
 
-        cap.Tick(3.0); // bad #1, streak builds
-        cap.Tick(3.0); // bad #2 → reduce
+        cap.Tick(0.5); // bad #1, streak builds
+        cap.Tick(0.5); // bad #2 → reduce
 
         cap.Layers.CameraLayers.Should().Be(2);
         cap.Layers.ScreencastLayers.Should().Be(2);
@@ -32,10 +32,10 @@ public class EncodingCapTest
     {
         var cap = NewCap(new EncodingCapConfig(BadStreak: 1));
 
-        cap.Tick(3.0); // reduce camera 3→2
-        cap.Tick(3.0); // reduce camera 2→1
-        cap.Tick(3.0); // reduce screencast 2→1
-        cap.Tick(3.0); // both at floor — no change
+        cap.Tick(0.5); // reduce camera 3→2
+        cap.Tick(0.5); // reduce camera 2→1
+        cap.Tick(0.5); // reduce screencast 2→1
+        cap.Tick(0.5); // both at floor — no change
 
         cap.Layers.CameraLayers.Should().Be(1);
         cap.Layers.ScreencastLayers.Should().Be(1);
@@ -46,15 +46,15 @@ public class EncodingCapTest
     {
         var cap = NewCap(new EncodingCapConfig(BadStreak: 1, GoodStreak: 1));
 
-        cap.Tick(3.0); cap.Tick(3.0); cap.Tick(3.0); // drive both down
+        cap.Tick(0.5); cap.Tick(0.5); cap.Tick(0.5); // drive both down
         cap.Layers.ScreencastLayers.Should().Be(1);
         cap.Layers.CameraLayers.Should().Be(1);
 
-        cap.Tick(0.5); // good — increase screencast first
+        cap.Tick(0.0); // good — increase screencast first
         cap.Layers.ScreencastLayers.Should().Be(2);
         cap.Layers.CameraLayers.Should().Be(1);
 
-        cap.Tick(0.5); // screencast at cap → camera
+        cap.Tick(0.0); // screencast at cap → camera
         cap.Layers.CameraLayers.Should().Be(2);
     }
 
@@ -63,7 +63,7 @@ public class EncodingCapTest
     {
         var cap = NewCap();
         for (var i = 0; i < 10; i++)
-            cap.Tick(1.5); // between Good (1.2) and Bad (2.0)
+            cap.Tick(0.10); // between Good (0.05) and Bad (0.20)
 
         cap.Layers.CameraLayers.Should().Be(3);
         cap.Layers.ScreencastLayers.Should().Be(2);
@@ -74,10 +74,10 @@ public class EncodingCapTest
     {
         var cap = NewCap(new EncodingCapConfig(BadStreak: 3));
 
-        cap.Tick(3.0); // bad 1
-        cap.Tick(3.0); // bad 2
-        cap.Tick(0.5); // good — resets bad streak
-        cap.Tick(3.0); // bad 1 again
+        cap.Tick(0.5); // bad 1
+        cap.Tick(0.5); // bad 2
+        cap.Tick(0.0); // good — resets bad streak
+        cap.Tick(0.5); // bad 1 again
 
         cap.Layers.CameraLayers.Should().Be(3, "bad streak didn't reach BadStreak=3 again yet");
     }
