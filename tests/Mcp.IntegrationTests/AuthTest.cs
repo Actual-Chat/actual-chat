@@ -1,6 +1,5 @@
 using System.Net.Http.Headers;
 using ActualChat.Testing.Host;
-using ModelContextProtocol.Client;
 
 namespace ActualChat.Mcp.IntegrationTests;
 

@@ -1,3 +1,4 @@
+@using ActualLab.Rpc.Infrastructure
 @using ActualLab.Generators
 @inherits ComputedStateComponent<AppUIHub, MeshDiagInfo?>
 @implements IEmbeddedView
@@ -85,9 +86,9 @@
                         <span>@peer.Peer</span><br>
                         <span>ConnectionKind: <b>@peer.ConnectionKind</b></span><br>
                         @if (!string.Equals(peer.ConnectionKind, "local", StringComparison.OrdinalIgnoreCase)) {
-                            <details class="main-collapsed" open="@(!peer.IsConnected)">
+                            <details class="main-collapsed" open="@(peer.ConnectionStateKind != RpcPeerConnectionStateKind.Connected))">
                                 <summary class="c-summary">
-                                    <span class="underline cursor-pointer">> IsConnected: <b>@peer.IsConnected</b></span><br>
+                                    <span class="underline cursor-pointer">> IsConnected: <b>@peer.ConnectionStateKind</b></span><br>
                                 </summary>
                                 <span>Connection state:<span style="white-space: pre-wrap;">@peer.ConnectionInfo</span></span>
                             </details>

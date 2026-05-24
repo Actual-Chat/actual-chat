@@ -46,7 +46,7 @@ public sealed class ReconnectUI(UIHub hub)
             sleepDuration = totalSleepDuration - _lastTotalSleepDuration;
             _lastTotalSleepDuration = totalSleepDuration;
         }
-        if (ConnectivityUI.Peer is not { } peer || !peer.IsConnected())
+        if (ConnectivityUI.Peer is not { } peer || !peer.ConnectionState.Value.IsConnected())
             return;
 
         var keepAliveDelay = Moment.Now - peer.LastKeepAliveAt;

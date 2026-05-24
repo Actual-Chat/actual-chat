@@ -5,7 +5,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Pipelines.Sockets.Unofficial" />
     <PackageReference Include="StackExchange.Redis" />
     <PackageReference Include="ActualLab.Redis" />
   </ItemGroup>

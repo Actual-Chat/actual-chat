@@ -254,7 +254,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
             command?.UntypedCommand.GetKind(),
             command?.Uuid,
             command?.UntypedCommand);
-        return message.NakAsync(new AckOpts { DoubleAck = true }, default, cancellationToken).AsTask();
+        return message.NakAsync(new AckOpts { DoubleAck = true }, cancellationToken).AsTask();
     }
 
     protected override Task MarkPostponed(
@@ -267,7 +267,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
             command.Uuid,
             command.UntypedCommand,
             delay);
-        return message.NakAsync(new AckOpts { DoubleAck = true }, delay, cancellationToken).AsTask();
+        return message.NakAsync(new AckOpts { DoubleAck = true, NakDelay = delay }, cancellationToken).AsTask();
     }
 
     // GetXxxName/Filter/Config

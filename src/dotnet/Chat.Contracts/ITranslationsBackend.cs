@@ -54,12 +54,10 @@ public sealed partial record TranslationsBackend_Translate(
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public TranslationSourceId ShardKey => SourceId;
-
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    string IHasUuid.Uuid => $"Translate:{SourceId.Value}:{TargetLanguage.Value}";
-
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public TimeSpan? Timeout => TimeSpan.FromSeconds(180);
+
+    string IHasUuid.Uuid => $"Translate:{SourceId.Value}:{TargetLanguage.Value}";
 }
 
 /// <summary>
@@ -74,10 +72,8 @@ public sealed partial record TranslationsBackend_TranslateStream(
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public StreamId ShardKey => Id;
-
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    string IHasUuid.Uuid => TargetStreamId.Value;
-
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public StreamId TargetStreamId { get; } = StreamId.New(Id, TargetLanguage);
+
+    string IHasUuid.Uuid => TargetStreamId.Value;
 }
