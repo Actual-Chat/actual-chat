@@ -26,6 +26,7 @@
     <PackageReference Include="ActualLab.CommandR" />
     <PackageReference Include="ActualLab.Fusion" />
   </ItemGroup>
+
   <ItemGroup>
     <Using Remove="ActualChat.Users" />
   </ItemGroup>

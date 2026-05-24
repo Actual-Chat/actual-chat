@@ -1,7 +1,5 @@
 using ActualChat.UI.Blazor.Services;
-#if IOS
-using Plugin.Firebase.Analytics;
-#elif ANDROID
+#if IOS || ANDROID
 using Plugin.Firebase.Analytics;
 #endif
 

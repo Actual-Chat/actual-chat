@@ -150,6 +150,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 .AddAdditionalAssemblies(typeof(AppUIHub).Assembly); // UI.Blazor.App
         }
         app.MapRpcWebSocketServer();
+        app.MapRpcHttpServer();
+        app.MapGet("/rpc/check", () => Results.Text("ok"));
         if (HostInfo.HasRole(HostRole.Api)) {
             app.MapFusionAuthEndpoints(); // /signIn, /signOut
             app.MapFusionRenderModeEndpoints(); // /fusion/renderMode
@@ -433,6 +435,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                     "/api/hub/streams",
                     "/rpc/ws",
                     "/backend/rpc/ws",
+                    "/rpc/http",
+                    "/backend/rpc/http",
                 };
                 opt.Filter = httpContext =>
                     !excludedPaths.Any(x

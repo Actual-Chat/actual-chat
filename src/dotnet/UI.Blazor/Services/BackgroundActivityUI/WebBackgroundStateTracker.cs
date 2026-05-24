@@ -1,12 +1,6 @@
-﻿namespace ActualChat.UI.Blazor.Services;
+using ActualChat.Hosting;
 
-/// <summary>
-/// Normally you shouldn't use this class directly, use <see cref="BackgroundActivityUI"/> instead.
-/// </summary>
-public abstract class BackgroundStateTracker
-{
-    public abstract IState<bool> IsBackground { get; }
-}
+namespace ActualChat.UI.Blazor.Services;
 
 // Must be scoped!
 public sealed class WebBackgroundStateTracker : BackgroundStateTracker

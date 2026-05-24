@@ -57,6 +57,8 @@
   <PropertyGroup>
     <UseMemoryPack Condition="'$(UseMemoryPack)' == ''">true</UseMemoryPack>
     <DefineConstants Condition="$(UseMemoryPack)">$(DefineConstants);USE_MEMORYPACK</DefineConstants>
+    <UseRpcHttpClient Condition="'$(UseRpcHttpClient)' == ''">false</UseRpcHttpClient>
+    <DefineConstants Condition="$(UseRpcHttpClient)">$(DefineConstants);USE_RPC_HTTP_CLIENT</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup>

@@ -1,4 +1,6 @@
-﻿namespace ActualChat.UI.Blazor.Services;
+﻿using ActualChat.Hosting;
+
+namespace ActualChat.UI.Blazor.Services;
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public abstract partial class BackgroundActivityUI : UIWorkerBase<UIHub>, IComputeService
