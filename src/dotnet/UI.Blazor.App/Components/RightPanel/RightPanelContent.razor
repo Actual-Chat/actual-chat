@@ -77,7 +77,7 @@
         var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
         // Disable 'members' tab for the announcements chat
         var showMemberTab = chat.Id != Constants.Chat.AnnouncementsChatId && rules.CanSeeMembers();
-        var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = !Hub.UrlMapper.IsVoxt;
 
         return new () {
             Chat = chat,
