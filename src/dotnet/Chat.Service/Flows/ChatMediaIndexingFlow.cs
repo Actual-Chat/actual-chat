@@ -20,8 +20,8 @@ public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntr
     [DataMember(Order = 10), MemoryPackOrder(10), Key(10)]
     public long[] PendingEntryLids { get; set; } = [];
 
-    // Index the whole backlog within a single Run instead of relying on chained resumes.
-    protected override int Quota => int.MaxValue;
+    protected override int BatchSize => 200;
+    protected override int Quota => 2000;
 
     protected override async ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
     {
