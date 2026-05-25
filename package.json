@@ -15,8 +15,8 @@
     "test:video-load": "tsx src/nodejs/app.video-load-test/index.ts",
     "test:audio-stream": "tsx src/nodejs/app.audio-stream-test/index.ts",
     "typecheck:video-load": "tsc -p src/nodejs/app.video-load-test/tsconfig.json --noEmit",
-    "lint": "eslint \"src/nodejs/**/*.ts\" \"src/dotnet/**/*.ts\" \"tests/ts/**/*.ts\"",
-    "lint:fix": "eslint --fix \"src/nodejs/**/*.ts\" \"src/dotnet/**/*.ts\" \"tests/ts/**/*.ts\""
+    "lint": "eslint --no-error-on-unmatched-pattern \"src/nodejs/**/*.ts\" \"src/dotnet/**/*.ts\" \"tests/ts/**/*.ts\"",
+    "lint:fix": "eslint --fix --no-error-on-unmatched-pattern \"src/nodejs/**/*.ts\" \"src/dotnet/**/*.ts\" \"tests/ts/**/*.ts\""
   },
   "devDependencies": {
     "@chialab/esbuild-plugin-postcss": "^0.18.0",
