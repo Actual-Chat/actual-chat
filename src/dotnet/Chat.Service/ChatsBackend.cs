@@ -2156,9 +2156,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 await Commander.Call(markChatEntryAsRemoved, true, cancellationToken).ConfigureAwait(false);
             }
         }
-        if (kind == ChangeKind.Create)
-            await ResumeContentIndexing(chat.Id, cancellationToken).ConfigureAwait(false);
-
         if (kind == ChangeKind.Remove || chat.IsSummarized == false)
             // TODO(AK): Check if we need any events to stop flow
             return;
