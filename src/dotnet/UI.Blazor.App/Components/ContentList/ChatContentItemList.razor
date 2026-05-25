@@ -341,7 +341,7 @@
         var item = listItem.Items[0];
         var menuRef = MenuRef.New<ChatContentItemMenu>(item.EntryId.Value).ToString();
         return @<div class="message-link-preview" data-menu="@menuRef">
-                   <LinkPreviewView Entry="@listItem.LinkEntry!" LinkPreview="@item.LinkPreview!"/>
+                   <LinkPreviewView Entry="@listItem.LinkEntry" LinkPreview="@item.LinkPreview"/>
                </div>;
     }
 
