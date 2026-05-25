@@ -166,17 +166,19 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         services.TryAddSingleton<IEmbeddingsCalculator, EmbeddingsCalculator>();
 
         // Flows
-        services.AddFlows()
+        var flows = services.AddFlows()
             .Add<ChatEntryMigrationFlow>()
             .Add<ChatEntryMigrationFixupFlow>()
             .Add<ChatEntryEndsAtFixupFlow>()
             .Add<ChatEntryFixupFlow>()
             .Add<ConversationSplitMasterFlow>()
             .Add<ConversationSplitFlow>()
-            .Add<TranslationCleanupFlow>()
-            .Add<ChatContentIndexingMasterFlow>()
-            .Add<ChatEntryContentIndexingFlow>()
-            .Add<ChatMediaIndexingFlow>();
+            .Add<TranslationCleanupFlow>();
+        if (Settings.IsChatContentItemIndexingEnabled)
+            flows
+                .Add<ChatContentIndexingMasterFlow>()
+                .Add<ChatEntryContentIndexingFlow>()
+                .Add<ChatMediaIndexingFlow>();
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
