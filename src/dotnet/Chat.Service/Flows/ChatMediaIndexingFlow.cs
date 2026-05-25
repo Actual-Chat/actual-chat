@@ -16,6 +16,7 @@ public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntr
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private ICommander Commander => field ??= Services.Commander();
     private ChatId ChatId => field ??= ChatId.Parse(Id.Arguments);
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     [DataMember(Order = 10), MemoryPackOrder(10), Key(10)]
     public long[] PendingEntryLids { get; set; } = [];
@@ -46,14 +47,29 @@ public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntr
 
     protected override async Task ProcessBatch(IReadOnlyList<ChatEntry> batch, CancellationToken cancellationToken)
     {
+        var startedAt = CpuTimestamp.Now;
+        var first = batch[0];
+        var last = batch[^1];
+        Log.LogInformation(
+            "[ChatMediaIndexingFlow] ProcessBatch --> ChatId={ChatId}, First=#{FirstLid} v{FirstVersion}, Last=#{LastLid} v{LastVersion}",
+            ChatId, first.LocalId, first.Version, last.LocalId, last.Version);
+
         var entries = batch.Where(x => !x.IsSystemEntry).ToList();
-        if (entries.Count == 0)
+        if (entries.Count == 0) {
+            Log.LogInformation(
+                "[ChatMediaIndexingFlow] ProcessBatch <-- ChatId={ChatId}, Count={Count}, Entries=0 (no-op), Duration={Duration}",
+                ChatId, batch.Count, startedAt.Elapsed.ToShortString());
             return;
+        }
 
         var entryIds = entries.Select(x => x.Id).ToArray();
         var liveLids = entries.Where(x => !x.IsRemoved).Select(x => x.LocalId).ToList();
         var notReadyLids = await IndexEntries(entryIds, liveLids, cancellationToken).ConfigureAwait(false);
         PendingEntryLids = PendingEntryLids.Concat(notReadyLids).Distinct().ToArray();
+
+        Log.LogInformation(
+            "[ChatMediaIndexingFlow] ProcessBatch <-- ChatId={ChatId}, Count={Count}, EntryIds={EntryIds}, LiveLids={LiveLids}, NotReady={NotReady}, Pending={Pending}, Duration={Duration}",
+            ChatId, batch.Count, entryIds.Length, liveLids.Count, notReadyLids.Count, PendingEntryLids.Length, startedAt.Elapsed.ToShortString());
     }
 
     protected override async ValueTask TailReached(bool hasProcessedAnyItems, CancellationToken cancellationToken)
