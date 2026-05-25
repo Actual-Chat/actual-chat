@@ -294,8 +294,11 @@
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
     <RuntimeIdentifiers>android-arm64</RuntimeIdentifiers>
     <!-- Trimming & AOT -->
+    <!-- Must be commented out: r8/d8 is the default now, specifying them explicitly
+         triggers MSB6002: The command-line for the "R8" task is too long.
     <AndroidDexTool>d8</AndroidDexTool>
     <AndroidLinkTool>r8</AndroidLinkTool>
+    -->
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
     <!-- <TrimMode Condition="$(UseAppPack)">full</TrimMode> -->
