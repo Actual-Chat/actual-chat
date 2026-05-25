@@ -2241,6 +2241,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     private Task ResumeContentIndexing(ChatId chatId, CancellationToken cancellationToken)
     {
+        if (!Settings.IsChatContentItemIndexingEnabled)
+            return Task.CompletedTask;
+
         var resumeContent = FlowHub.NewResumeEvent<ChatEntryContentIndexingFlow>(chatId.Value)
             .WithDelay(TimeSpan.FromSeconds(2))
             .Schedule(cancellationToken);

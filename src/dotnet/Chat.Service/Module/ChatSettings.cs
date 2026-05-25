@@ -15,6 +15,7 @@ public sealed class ChatSettings
     public SummarizationSettings Summarization { get; set; } = new ();
     public bool IsRetranscriptionEnabled { get; set; }
     public RetranscriptionSettings Retranscription { get; set; } = new ();
+    public bool IsChatContentItemIndexingEnabled { get; set; }
 }
 
 public class TranslationSettings
