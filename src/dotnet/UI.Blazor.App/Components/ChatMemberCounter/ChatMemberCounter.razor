@@ -61,7 +61,7 @@
             .Collect(ApiConstants.Concurrency.High, cancellationToken)
             .ConfigureAwait(false);
 
-        var onlineCount = authorPresences.Count(presence => presence is Presence.Online or Presence.Recording);
+        var onlineCount = authorPresences.Count(presence => presence is Presence.Online or Presence.Recording or Presence.Away);
         return new() {
             MemberCount = allAuthorIds.Length,
             OnlineCount = onlineCount,
