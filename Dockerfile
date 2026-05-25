@@ -149,6 +149,9 @@ FROM runtime AS app
 COPY --from=dotnet-build /app .
 COPY --from=dotnet-build /src/.config/prompts /app/config/prompts
 COPY --from=nodejs-build /src/src/dotnet/App.Wasm/wwwroot/ /app/wwwroot/
-ENV ASPNETCORE_URLS=http://*:80
+ENV Kestrel__Endpoints__Http1__Url=http://*:80
+ENV Kestrel__Endpoints__Http1__Protocols=Http1
+ENV Kestrel__Endpoints__Http2__Url=http://*:81
+ENV Kestrel__Endpoints__Http2__Protocols=Http2
 ENV CoreSettings__PromptsDir=/app/config/prompts
 ENTRYPOINT ["dotnet", "ActualChat.App.Server.dll"]
