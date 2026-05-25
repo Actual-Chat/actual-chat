@@ -7,6 +7,7 @@ import {
 } from '../frame-envelopes';
 import { FrameDropStage, traceDrops } from '../frame-drop-trace';
 import { decode, type DecoderLike } from '../operators/decode';
+import { downlinkTap } from '../operators/downlink-tap';
 import { latencyTap, type LatencySample } from '../operators/latency-tap';
 import { canvasPresent, type CanvasImageInterface } from '../operators/present-canvas';
 import { mstgPresent } from '../operators/present-mstg';
@@ -33,6 +34,9 @@ export interface PlayerConfig {
 
     // -- buffer --
     targetBufferSpanMs: number;
+    // Source nominal frame duration (ms). Feeds buffer span approximation
+    // and decoder ratio. Defaults to 1000/30 inside the operators.
+    frameDurationMs?: number;
 
     // -- decode --
     initialDecoderConfig: { codec: string; codedWidth?: number; codedHeight?: number };
@@ -78,13 +82,16 @@ export class Player {
                 `Player.start: already running (streamId=${config.streamId})`));
         }
 
+        const stats = this.stats;
+        const frameDurationMs = config.frameDurationMs;
         const buffer = new EncodedFrameBuffer({
             targetSpanMs: config.targetBufferSpanMs,
+            frameDurationMs,
+            stats,
         });
         this.buffer = buffer;
         const session = this.session;
         const arrivalClock = session.arrivalClock;
-        const stats = this.stats;
         const abortController = new AbortController();
         const abortSignal = abortController.signal;
         const sourceStopController = new AbortController();
@@ -142,6 +149,7 @@ export class Player {
             source,
             arrivedTap,
             traceDrops<ArrivedChunk>(FrameDropStage.ReceiverPull),
+            downlinkTap({ stats }),
             resetOnEpochChange({ buffer }),
             pacedEncodedBuffer({ buffer, abortSignal }),
             traceDrops<ArrivedChunk>(FrameDropStage.ReceiverEncodedBuffer),
@@ -150,6 +158,7 @@ export class Player {
                 createDecoder: config.createDecoder,
                 onCodecProven: config.reportCodecProven,
                 abortSignal,
+                frameDurationMs,
             }),
             traceDrops<DecodedFrame>(FrameDropStage.ReceiverDecode),
             decodedTap,

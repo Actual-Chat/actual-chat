@@ -10,8 +10,6 @@ export interface LayerConfig {
     height: number;
     baseBitrateKbps?: number;
     bitrateKbps: number;
-    /** Overrides EncoderConfig.scalabilityMode for this layer (e.g. 'L1T3'). */
-    scalabilityMode?: string;
 }
 
 export const MIN_SIMULCAST_SMALL_AXIS = 150;

@@ -1,5 +1,5 @@
+using ActualChat.Hosting;
 using ActualChat.Maui.Services;
-using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui.Services;
 

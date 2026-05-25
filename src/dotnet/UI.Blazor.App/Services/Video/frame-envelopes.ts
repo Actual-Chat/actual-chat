@@ -30,6 +30,12 @@ export interface RecorderStats {
     // Cumulative bundles successfully shipped to the wire. One per source
     // moment (NOT per per-layer chunk).
     bundlesShipped: number;
+    // Cumulative bundles successfully encoded by all per-layer encoders
+    // (one per source moment, increments at the encode operator's yield
+    // boundary). Bundles can be encoded but not yet shipped if wire-send
+    // back-pressures, so this isolates encoder throughput from wire
+    // throughput. Drives the encoder-throughput QC health signal.
+    bundlesEncoded: number;
     // Cumulative encoded bytes summed across all layers — the real on-wire
     // payload total. Drives the outbound bitrate display.
     bytesEncoded: number;
@@ -44,6 +50,26 @@ export interface RecorderStats {
     // Wire-sender side-channels copied from the active sender's stats.
     wireLastAckAgeMs: number;
     isPeerConnected: boolean;
+    // EMA of VideoEncoder.encodeQueueSize sampled per bundle, taking the
+    // max across layers. -1 == not yet sampled. Maintained by the encode
+    // operator.
+    encodeQueueDepthEma: number;
+    // EMA of WireSenderStats.queueDepth sampled per bundle shipped.
+    // -1 == not yet sampled. Maintained by the wireSend operator.
+    wireQueueDepthEma: number;
+    // FloodGate skips per second (count of skip events in the last 1 s).
+    // Maintained by the floodGate operator.
+    floodGateSkipPerSec: number;
+    // Count of consecutive Api.peer disconnects since the last successful
+    // connection. Resets to 0 when isPeerConnected transitions to true.
+    peerReconnectStreak: number;
+    // Count of in-place encoder hang resets (handleEncoderHang) in the last
+    // 60 s window. Maintained by the encode operator.
+    encoderRestartStreakIn60s: number;
+    // True when document.visibilityState === 'hidden' on the main thread at
+    // the moment stats were last collected. Stamped by the main-thread stats
+    // poller; the worker has no document access.
+    isTabBackgrounded: boolean;
     // Cumulative per-FrameDropStage drop counts since the run started.
     dropTrace: Map<FrameDropStage, number>;
 }
@@ -71,19 +97,59 @@ export interface PlayerStats {
     driftAnchorEpoch: number;
     driftLastSampleOffsetMs: number;
     driftLastSampleWallMs: number;
-    producerTemporalLayerCount: number;
+    // Above-baseline downlink delay EMA: max(0, rawLatency - minBaselineSkew)
+    // where rawLatency = Date.now() - serverArrivedAtUnixMs and the baseline is
+    // the sliding-60s minimum of rawLatency. -1 == not yet sampled.
+    // Maintained by the downlink-tap operator; consumed by the Downlink health
+    // classifier (Step 5+).
+    downlinkLatencyEma: number;
+    // Sliding-60s minimum of rawLatency for this stream. Represents the
+    // constant cross-clock skew floor; jumps absorb NTP steps within the
+    // window. -1 == not yet sampled.
+    downlinkMinBaselineMs: number;
+    // EMA of wallclock ms between consecutive ArrivedChunks. Bursty arrival
+    // (server fan-out hiccup) raises this independently of latency. -1 == not
+    // yet sampled.
+    arrivalIntervalEma: number;
+    // EMA of (decodedAt - submitMs) / frameDurationMs. > 1 means the decoder
+    // is producing slower than the source frame rate. -1 == not yet sampled.
+    // Maintained by the decode operator.
+    decodeRatioEma: number;
+    // Count of decoder hang-watchdog fires in the last 60 s. Each event marks
+    // a stretch where the decoder accepted chunks but produced nothing within
+    // the watchdog window.
+    hangRateIn60s: number;
+    // Number of consecutive decoder recoveries (rebuild + reconfigure) since
+    // the last successful frame. Resets to 0 on the first frame emitted by
+    // the rebuilt decoder.
+    recoveryStreak: number;
+    // EMA of 0/1 sampled per decoded frame at the present stage: 1 when the
+    // catch-up skip branch was taken, 0 when the frame proceeded to write.
+    // -1 == not yet sampled. Maintained by the mstgPresent operator.
+    presentSkipRatio: number;
+    // EMA of 0/1 sampled per push to the encoded-frame buffer (when armed):
+    // 1 when spanMs() < targetSpanMs/3, 0 otherwise. -1 == not yet sampled.
+    // Maintained by EncodedFrameBuffer.
+    bufferUnderrunRatio: number;
 }
 
 export function createEmptyRecorderStats(): RecorderStats {
     return {
         framesCaptured: 0,
         bundlesShipped: 0,
+        bundlesEncoded: 0,
         bytesEncoded: 0,
         encodeTimeMsSum: 0,
         encodeTimeMsMaxSum: 0,
         encodeTimeMsCount: 0,
         wireLastAckAgeMs: -1,
         isPeerConnected: false,
+        encodeQueueDepthEma: -1,
+        wireQueueDepthEma: -1,
+        floodGateSkipPerSec: 0,
+        peerReconnectStreak: 0,
+        encoderRestartStreakIn60s: 0,
+        isTabBackgrounded: false,
         dropTrace: new Map(),
     };
 }
@@ -98,7 +164,14 @@ export function createEmptyPlayerStats(): PlayerStats {
         driftAnchorEpoch: -1,
         driftLastSampleOffsetMs: 0,
         driftLastSampleWallMs: 0,
-        producerTemporalLayerCount: 1,
+        downlinkLatencyEma: -1,
+        downlinkMinBaselineMs: -1,
+        arrivalIntervalEma: -1,
+        decodeRatioEma: -1,
+        hangRateIn60s: 0,
+        recoveryStreak: 0,
+        presentSkipRatio: -1,
+        bufferUnderrunRatio: -1,
     };
 }
 
@@ -257,6 +330,12 @@ export interface ArrivedChunk {
     // upstream of this point. 0 if the sender peer didn't populate it.
     index: number;
     dropTrace: FrameDropStage[];
+
+    // Server's Date.now()-equivalent at ProcessFrames ingest, converted from
+    // DateTime.UtcNow.Ticks on the wire. 0 == legacy frame with no stamp.
+    // Used by downlink-tap to compute server->receiver latency via a
+    // sliding-min skew baseline (downlinkMinBaselineMs on PlayerStats).
+    serverArrivedAtUnixMs: number;
 
     isKeyFrame: boolean;
 

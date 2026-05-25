@@ -475,7 +475,7 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     background-size: 100% 180%;
     background-position: center center;
     background-repeat: no-repeat;
-    animation: gradientShake 3s ease-in-out infinite alternate;
+    animation: bgShake 3s ease-in-out infinite alternate;
 }
 .video-panel .video-panel-footer > button.rec-btn.recording {
     background: linear-gradient(180deg, #2970FF -116.66%, #FF3880 66.08%);
@@ -748,6 +748,10 @@ body.narrow .video-panel-content .video-track-player.pip-overlay .video-particip
 }
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+@keyframes bgShake {
+    from { background-position: center 0%; }
+    to   { background-position: center 100%; }
 }
 .video-panel .chat-btn {
     @apply absolute right-4;

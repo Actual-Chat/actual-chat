@@ -43,8 +43,11 @@ public static partial class Constants
         public const double PlaybackRateBad = 0.00;
         public const double AckOkMs = 500;
         public const double AckBadMs = 2000;
-        public const double EncOkRatio = 1.0;
-        public const double EncBadRatio = 2.0;
+        // Encoder throughput-deficit thresholds (0..1, 0 = encoder keeps
+        // pace with capture, 1 = encoder emits nothing). Consumed by the
+        // sender-side EncodingCap for spatial-layer demote/restore.
+        public const double EncOkDeficit = 0.05;
+        public const double EncBadDeficit = 0.20;
 
         // Keyframe cadence — KeyFramePeriod is the input; KeyFramePeriodSize is derived.
         public static readonly TimeSpan KeyFramePeriod = TimeSpan.FromSeconds(3);

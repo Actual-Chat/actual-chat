@@ -4,6 +4,7 @@ import { DeviceOrientation, ScreenOrientation, normalizeRotationQuarter, type Ro
 import type { CapturedBundle, CapturedFrame, NormalizedFrame } from '../frame-envelopes';
 import { cameraRotationDeg } from '../orientation/quantize';
 import { drawFrameCover, resizeCanvas } from '../canvas/resize';
+import type { LayerLadderController } from '../sender/layer-ladder-controller';
 
 const { warnLog } = getLogs('VideoPipeline');
 
@@ -12,17 +13,20 @@ export interface LayerSpec {
     height: number;
 }
 
+// Top-layer dims come from the ladder controller and may change mid-stream
+// when QC hot-applies a different set of layers.
 export interface NormalizeFrameOptions {
-    target: LayerSpec;
+    ladder: LayerLadderController;
     isCamera: boolean;
     isFrontCamera: boolean;
     isIos: boolean;
 }
 
+// Layer set comes from the ladder controller and may grow/shrink mid-stream.
+// Bottom-first: configs[0] is the base layer; the top layer must match the
+// normalized frame dimensions.
 export interface SpatializeOptions {
-    // Bottom-first: ladder[0] is the base layer. The top layer must match the
-    // normalized frame dimensions.
-    ladder: readonly LayerSpec[];
+    controller: LayerLadderController;
 }
 
 interface FrameTransform {
@@ -52,14 +56,21 @@ interface Slot {
 // time. Avoiding the allocation on the common path is the single most
 // impactful sender-side optimisation.
 export function normalizeFrame(opts: NormalizeFrameOptions): PipeOperator<CapturedFrame, NormalizedFrame> {
-    const target = { ...opts.target };
     const orientation = new NormalizeFrameOrientation(opts);
     let slot: Slot | null = null;
+    // Cached top-layer LayerSpec; refreshed when controller.version bumps.
+    let target: LayerSpec = topLayerOf(opts.ladder);
+    let lastSeenVersion = opts.ladder.current.version;
 
     return source => {
         async function* impl(): AsyncIterable<NormalizedFrame> {
             try {
                 for await (const envelope of source) {
+                    const cur = opts.ladder.current;
+                    if (cur.version !== lastSeenVersion) {
+                        target = topLayerOf(opts.ladder);
+                        lastSeenVersion = cur.version;
+                    }
                     const input = envelope.frame;
                     const transform = orientation.decide(input, target);
                     const displayW = input.displayWidth || input.codedWidth;
@@ -130,31 +141,61 @@ export function normalizeFrame(opts: NormalizeFrameOptions): PipeOperator<Captur
     };
 }
 
-// NormalizedFrame -> CapturedBundle. Direct generator — no parallelMap.
-// Single-layer ladder: input becomes the only layer (zero allocation).
-// Multi-layer ladder: each lower layer gets one canvas downscale +
-// `new VideoFrame`; the top layer stays as the input frame.
+// NormalizedFrame -> CapturedBundle. Each lower layer is a metadata-only
+// `new VideoFrame(input.frame, { displayWidth, displayHeight })` wrap; the
+// per-layer encoder, configured at the target dimensions, performs the
+// downscale internally (HW-side on AVC/HEVC/AV1). No OffscreenCanvas, no
+// drawImage, no per-frame canvas allocation. Top layer passes through
+// untouched.
 export function spatialize(opts: SpatializeOptions): PipeOperator<NormalizedFrame, CapturedBundle> {
-    if (opts.ladder.length === 0)
-        throw new Error('spatialize: ladder must contain at least one layer');
-
-    const ladder = opts.ladder.slice();
-    let processor: SpatializeSlotProcessor | null = null;
-
     return source => {
         async function* impl(): AsyncIterable<CapturedBundle> {
-            try {
-                for await (const frame of source) {
-                    processor ??= new SpatializeSlotProcessor();
-                    yield await processor.process(frame, ladder);
-                }
-            } finally {
-                processor?.dispose();
-                processor = null;
-            }
+            for await (const frame of source)
+                yield buildBundle(frame, opts.controller.current.configs);
         }
         return from(impl());
     };
+}
+
+function buildBundle(
+    input: NormalizedFrame,
+    configs: readonly { width: number; height: number }[],
+): CapturedBundle {
+    const topIdx = configs.length - 1;
+    const layers = new Array<CapturedFrame | undefined>(configs.length).fill(undefined);
+    layers[topIdx] = input;
+    try {
+        for (let i = topIdx - 1; i >= 0; i--) {
+            const { width, height } = configs[i];
+            const wrapped = new VideoFrame(input.frame, {
+                displayWidth: width,
+                displayHeight: height,
+            });
+            layers[i] = makeLayerEnvelope(input, wrapped);
+        }
+        return {
+            layers: layers as CapturedFrame[],
+            index: input.index,
+            dropTrace: input.dropTrace,
+            rotation: input.rotation,
+            stats: input.stats,
+        };
+    } catch (e) {
+        warnLog?.log('spatialize: process failed:', e);
+        // Close only the wrap allocations we made — the top layer's frame
+        // belongs to `input` and is owned by upstream.
+        for (let i = 0; i < topIdx; i++) {
+            const layer = layers[i];
+            if (layer)
+                try { layer.frame.close(); } catch { /* ignore */ }
+        }
+        throw e instanceof Error ? e : new Error(String(e));
+    }
+}
+
+function topLayerOf(controller: LayerLadderController): LayerSpec {
+    const cfg = controller.current.configs[controller.current.configs.length - 1];
+    return { width: cfg.width, height: cfg.height };
 }
 
 class NormalizeFrameOrientation {
@@ -227,106 +268,6 @@ class NormalizeFrameOrientation {
     }
 }
 
-class SpatializeSlotProcessor {
-    private readonly slots: Slot[] = [];
-
-    process(input: NormalizedFrame, ladder: readonly LayerSpec[]): Promise<CapturedBundle> {
-        const topIdx = ladder.length - 1;
-        const layers = new Array<CapturedFrame | null>(ladder.length).fill(null);
-        layers[topIdx] = input;
-        try {
-            if (topIdx > 0)
-                this.drawLowerLayers(input, ladder, layers);
-            return Promise.resolve({
-                layers: layers as CapturedFrame[],
-                index: input.index,
-                dropTrace: input.dropTrace,
-                rotation: input.rotation,
-                stats: input.stats,
-            });
-        } catch (e) {
-            warnLog?.log('spatialize: process failed:', e);
-            closeFrames(layers
-                .filter((layer): layer is CapturedFrame => layer !== null)
-                .map(layer => layer.frame));
-            return Promise.reject(e instanceof Error ? e : new Error(String(e)));
-        }
-    }
-
-    dispose(): void {
-        for (const slot of this.slots)
-            resizeCanvas(slot.canvas, 0, 0);
-        this.slots.length = 0;
-    }
-
-    private drawLowerLayers(
-        input: NormalizedFrame,
-        ladder: readonly LayerSpec[],
-        layers: (CapturedFrame | null)[],
-    ): void {
-        const painted: number[] = [ladder.length - 1];
-        for (let i = ladder.length - 2; i >= 0; i--) {
-            const { width, height } = ladder[i];
-            const slot = this.prepareSlot(i, width, height);
-            const choice = pickSource(i, ladder, painted);
-            if (choice.kind === 'higher' && choice.idx < ladder.length - 1) {
-                const srcSlot = this.slots[choice.idx];
-                slot.ctx.drawImage(
-                    srcSlot.canvas,
-                    0, 0, srcSlot.canvas.width, srcSlot.canvas.height,
-                    0, 0, width, height);
-            } else {
-                // VideoFrame as CanvasImageSource has intrinsic size =
-                // displayWidth/Height (per WebCodecs spec). On Chrome MSTP
-                // `crop-and-scale` the coded plane is the camera's native
-                // sensor rect while display is the scaled output — sampling
-                // with coded coords reads beyond the visible region and
-                // pixels past it render black. Fall back to coded only if
-                // display is unreported (older WebKit before 17.x).
-                const inputW = input.frame.displayWidth || input.frame.codedWidth;
-                const inputH = input.frame.displayHeight || input.frame.codedHeight;
-                slot.ctx.drawImage(
-                    input.frame,
-                    0, 0, inputW, inputH,
-                    0, 0, width, height);
-            }
-            layers[i] = makeLayerEnvelope(input, new VideoFrame(slot.canvas, {
-                timestamp: input.frame.timestamp,
-                alpha: 'discard',
-            }));
-            painted.push(i);
-        }
-    }
-
-    private prepareSlot(index: number, width: number, height: number): Slot {
-        this.slots[index] ??= createSlot('spatialize');
-        const slot = this.slots[index];
-        prepareSlot(slot, width, height);
-        return slot;
-    }
-}
-
-export function pickSource(
-    targetIdx: number,
-    ladder: readonly LayerSpec[],
-    paintedHigherIdxs: readonly number[],
-): { kind: 'original' } | { kind: 'higher'; idx: number } {
-    if (targetIdx >= ladder.length - 1)
-        return { kind: 'original' };
-    const targetLong = longEdge(ladder[targetIdx]);
-    let bestIdx = -1;
-    let bestLong = Number.POSITIVE_INFINITY;
-    for (const i of paintedHigherIdxs) {
-        if (i <= targetIdx) continue;
-        const lo = longEdge(ladder[i]);
-        if (lo >= 2 * targetLong && lo < bestLong) {
-            bestIdx = i;
-            bestLong = lo;
-        }
-    }
-    return bestIdx >= 0 ? { kind: 'higher', idx: bestIdx } : { kind: 'original' };
-}
-
 // Returns a centered visibleRect with the target's aspect ratio that fits
 // inside the coded plane (cover-crop). Aspect match → full coded plane.
 function computeCoverVisibleRect(
@@ -371,10 +312,6 @@ function prepareSlot(slot: Slot, width: number, height: number): void {
     resizeCanvas(slot.canvas, width, height);
 }
 
-function longEdge(spec: LayerSpec): number {
-    return Math.max(spec.width, spec.height);
-}
-
 function isFrameTransposed(input: VideoFrame): boolean {
     const cw = input.codedWidth;
     const ch = input.codedHeight;
@@ -387,12 +324,6 @@ function signedAngleDeltaDeg(from: number, to: number): number {
     if (!Number.isFinite(from) || !Number.isFinite(to))
         return 0;
     return ((((to - from + 180) % 360) + 360) % 360) - 180;
-}
-
-function closeFrames(frames: readonly VideoFrame[]): void {
-    for (const frame of frames) {
-        try { frame.close(); } catch { /* ignore */ }
-    }
 }
 
 function makeLayerEnvelope(source: NormalizedFrame, frame: VideoFrame): CapturedFrame {

@@ -16,7 +16,7 @@ internal sealed class AnthropicClientWrapper(AnthropicClient anthropicClient) : 
         var parameters = new MessageParameters {
             Messages = [new Message(RoleType.User, prompt)],
             MaxTokens = 1024,
-            Model = AnthropicModels.Claude3Haiku,
+            Model = AnthropicModels.Claude45Haiku,
             Stream = false,
             Temperature = 0.01m,
         };

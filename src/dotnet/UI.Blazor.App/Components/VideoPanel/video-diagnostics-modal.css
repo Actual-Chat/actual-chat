@@ -171,3 +171,33 @@ div.diag-value.multiline .diag-value {
     @apply bg-02 text-01 px-1.5 py-0.5 rounded border border-separator font-mono;
     font-size: 0.75rem;
 }
+
+.diag-chips {
+    @apply flex flex-row gap-1 mb-1;
+}
+
+.diag-chip {
+    @apply px-1.5 py-0.5 rounded font-mono text-01;
+    font-size: 0.7rem;
+    border: 1px solid var(--separator);
+}
+
+.diag-chip-good {
+    background: rgba(56, 161, 105, 0.18);
+    border-color: rgba(56, 161, 105, 0.6);
+}
+
+.diag-chip-marginal {
+    background: rgba(214, 158, 46, 0.18);
+    border-color: rgba(214, 158, 46, 0.6);
+}
+
+.diag-chip-bad {
+    background: rgba(229, 62, 62, 0.18);
+    border-color: rgba(229, 62, 62, 0.6);
+}
+
+.diag-chip-unknown {
+    @apply bg-02;
+    opacity: 0.6;
+}

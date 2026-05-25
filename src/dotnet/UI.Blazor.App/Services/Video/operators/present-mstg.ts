@@ -1,8 +1,11 @@
 import { from, type PipeOperator } from 'ix-ext';
 import { getLogs } from 'logging';
+import { RunningEMA } from 'math';
 import { delayAsync } from 'promises';
 import { aggregateDropTrace, updatePlaybackRateEma, type DecodedFrame } from '../frame-envelopes';
 import { FrameDropStage } from '../frame-drop-trace';
+
+const PRESENT_SKIP_RATIO_EMA_ALPHA = 0.1;
 
 const { warnLog } = getLogs('VideoPipeline');
 
@@ -40,6 +43,7 @@ export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame
         let lastWriteAt: number | null = null;
         let prevCapturedAt: number | null = null;
         let prevCapturedEpoch: number | null = null;
+        const presentSkipRatio = new RunningEMA(0, 1, PRESENT_SKIP_RATIO_EMA_ALPHA);
         try {
             for await (const decoded of source) {
                 try {
@@ -54,9 +58,13 @@ export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame
                     && lastWriteAt !== null
                     && now - lastWriteAt < MIN_DURATION_MS) {
                         decoded.stats.pendingPresenterDrops++;
+                        presentSkipRatio.appendSample(1);
+                        decoded.stats.presentSkipRatio = presentSkipRatio.value;
                         prevCapturedAt = decoded.capturedAt.timeMs;
                         continue;
                     }
+                    presentSkipRatio.appendSample(0);
+                    decoded.stats.presentSkipRatio = presentSkipRatio.value;
 
                     let durationMs: number;
                     if (lastWriteAt === null || prevCapturedAt === null) {

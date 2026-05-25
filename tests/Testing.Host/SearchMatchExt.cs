@@ -1,5 +1,4 @@
 using ActualChat.Search;
-using Bunit.Extensions;
 
 namespace ActualChat.Testing.Host;
 
@@ -10,7 +9,7 @@ public static class SearchMatchExt
         string fullName,
         string uniquePart = "")
     {
-        if (searchMatchPartRanges.IsNullOrEmpty())
+        if (searchMatchPartRanges is null || searchMatchPartRanges.Length == 0)
             return SearchMatch.New(fullName);
 
         Range<int>[] uniquePartRanges = !uniquePart.IsNullOrEmpty() && fullName.EndsWith(uniquePart)

@@ -1,4 +1,5 @@
 using ActualLab.Redis;
+using StackExchange.Redis;
 
 namespace ActualChat.Redis;
 
@@ -20,7 +21,7 @@ public sealed class RedisScope<TValue>(RedisDb redisDb, string? keyPrefix = null
     {
         var db = await RedisDb.Database.Get().ConfigureAwait(false);
         var effectiveTtl = ttl ?? DefaultTtl;
-        await db.StringSetAsync(key, Serializer.Write(value), effectiveTtl).ConfigureAwait(false);
+        await db.StringSetAsync(key, Serializer.Write(value), effectiveTtl, When.Always).ConfigureAwait(false);
     }
 
     public async Task<TValue?> Get(string key)

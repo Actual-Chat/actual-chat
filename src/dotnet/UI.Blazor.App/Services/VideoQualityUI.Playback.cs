@@ -31,9 +31,25 @@ public sealed partial class VideoQualityUI
     private VideoPanelMode _currentPanelMode = VideoPanelMode.Inline;
     private readonly BandwidthEstimator _inboundBwEstimator;
     private PlaybackQualitySnapshot _playbackSnapshot = PlaybackQualitySnapshot.Empty;
+    // Per-stream classifier instances — each owns its own streak counters for
+    // Downlink + Decoder. Lazy-created on first OnPlaybackStats per stream.
+    private readonly Dictionary<StreamId, ReceiverHealthClassifier> _receiverHealthByStream = new();
+    private readonly Dictionary<StreamId, DownlinkHealth> _lastDownlinkHealthByStream = new();
+    private readonly Dictionary<StreamId, DecoderHealth> _lastDecoderHealthByStream = new();
+    // Sticky decoder cap: set on DecoderHealth=Bad, cleared on =Good. Marginal
+    // keeps the last value so the cap doesn't oscillate while the classifier
+    // re-acquires Good.
+    private readonly Dictionary<StreamId, int> _decoderLayerCapByStream = new();
+    private HealthVerdict _lastAggregateDownlinkVerdict = HealthVerdict.Unknown;
 
     public BandwidthEstimator InboundBandwidthEstimator => _inboundBwEstimator;
     public PlaybackQualitySnapshot PlaybackSnapshot => _playbackSnapshot;
+    public HealthVerdict AggregateDownlinkVerdict => _lastAggregateDownlinkVerdict;
+    public IReadOnlyDictionary<StreamId, DownlinkHealth> InboundDownlinkHealthByStream
+        => _lastDownlinkHealthByStream;
+    public IReadOnlyDictionary<StreamId, DecoderHealth> InboundDecoderHealthByStream
+        => _lastDecoderHealthByStream;
+    public int InboundDecoderCapStreamCount => _decoderLayerCapByStream.Count;
 
     public Task OnPlaybackStats(
         StreamId streamId,
@@ -168,20 +184,62 @@ public sealed partial class VideoQualityUI
         var sumIncomingBytesPerSec = entries.Sum(x => Math.Max(0, x.Value.Snapshot.IncomingByteRate));
         var playbackRateEma = ComputeByteWeightedPlaybackRate(entries);
         var receiverDropRatio = ComputeAggregateReceiveDropRatio(entries);
-        var driftPenalty = Math.Clamp(
-            (Constants.Video.PlaybackRateOk - playbackRateEma)
-                / (Constants.Video.PlaybackRateOk - Constants.Video.PlaybackRateBad),
-            0, 1);
-        var dropPenalty = Math.Clamp(
-            (receiverDropRatio - Constants.Video.DropOkReceiver)
-                / (Constants.Video.DropBadReceiver - Constants.Video.DropOkReceiver),
-            0, 1);
-        var signalLevel = 1.0 - Math.Max(driftPenalty, dropPenalty);
 
+        // Per-stream Downlink + Decoder classification. Drift defaults to
+        // Downlink (per plan §"Attribution"): when DecodeRatioEma is healthy
+        // we attribute drift to Downlink anyway, so the existing playbackRate
+        // signal stays as additional Downlink evidence.
+        var aggregateDownlinkVerdict = HealthVerdict.Unknown;
+        foreach (var (streamId, state) in entries) {
+            if (!_receiverHealthByStream.TryGetValue(streamId, out var classifier)) {
+                classifier = new ReceiverHealthClassifier();
+                _receiverHealthByStream[streamId] = classifier;
+            }
+            var snap = state.Snapshot;
+            var streamDownlink = classifier.ClassifyDownlink(
+                serverToReceiverLatencyEma: snap.DownlinkLatencyEma,
+                arrivalIntervalEma: snap.ArrivalIntervalEma,
+                serverPathDropRatio: receiverDropRatio, // TODO: split dropTrace stages 31-34+61-62 from 63-64.
+                bufferUnderrunRatio: snap.BufferUnderrunRatio,
+                incomingByteRateDeficit: 1.0); // TODO: actual / expected-for-layer once allocator publishes it.
+            var streamDecoder = classifier.ClassifyDecoder(
+                decodeRatioEma: snap.DecodeRatioEma,
+                hangRateIn60s: snap.HangRateIn60s,
+                recoveryStreak: snap.RecoveryStreak,
+                presentSkipRatio: snap.PresentSkipRatio,
+                receiverDecodePathDropRatio: 0); // TODO: split stages 63-64 once dropTrace is split.
+            _lastDownlinkHealthByStream[streamId] = streamDownlink;
+            _lastDecoderHealthByStream[streamId] = streamDecoder;
+            // OpenTelemetry emission deferred — AppMeters lives in Core.Server
+            // (unreferenced from UI.Blazor.App). Wire DTOs will carry the
+            // per-leg fields in a follow-up so server-side handlers can record.
+            if (streamDownlink.Verdict != HealthVerdict.Unknown
+                && (int)streamDownlink.Verdict > (int)aggregateDownlinkVerdict)
+                aggregateDownlinkVerdict = streamDownlink.Verdict;
+            // Sticky decoder cap: Bad → clamp; Good → release; Marginal → hold.
+            if (streamDecoder.Verdict == HealthVerdict.Bad) {
+                var currentLayer = Math.Max(0, state.RequestedLayerCount - 1);
+                _decoderLayerCapByStream[streamId] = Math.Max(0, currentLayer - 1);
+            }
+            else if (streamDecoder.Verdict == HealthVerdict.Good) {
+                _decoderLayerCapByStream.Remove(streamId);
+            }
+        }
+        // Drop stale entries so per-stream classifiers don't leak.
+        var liveStreamIds = entries.Select(x => x.Key).ToHashSet();
+        foreach (var sid in _receiverHealthByStream.Keys.Where(k => !liveStreamIds.Contains(k)).ToArray()) {
+            _receiverHealthByStream.Remove(sid);
+            _lastDownlinkHealthByStream.Remove(sid);
+            _lastDecoderHealthByStream.Remove(sid);
+            _decoderLayerCapByStream.Remove(sid);
+        }
+
+        _lastAggregateDownlinkVerdict = aggregateDownlinkVerdict;
+        var downlinkSignal = VerdictToSignal(aggregateDownlinkVerdict);
         var connection = ConnectivityUI.ConnectionInfo.Value;
-        _inboundBwEstimator.Tick(connection, SystemClock.Now, sumIncomingBytesPerSec, signalLevel);
+        _inboundBwEstimator.Tick(connection, SystemClock.Now, sumIncomingBytesPerSec, downlinkSignal);
         var estimatedCapacity = (long)(_inboundBwEstimator.CeilingBps * _debugBandwidthMultiplier);
-        var aggregateHealth = 2 * signalLevel - 1;
+        var aggregateHealth = 2 * downlinkSignal - 1;
         var verdicts = entries.ToDictionary(x => x.Key.Value, x => x.Value.Verdict);
 
         var primaries = entries
@@ -193,7 +251,13 @@ public sealed partial class VideoQualityUI
             .Select(ToAllocationRequest)
             .ToArray();
         var capacity = GetAllocationCapacity(estimatedCapacity, primaries, secondaries);
-        var requested = VideoQualityAllocator.Allocate(capacity, primaries, secondaries);
+        // Map per-stream decoder cap (sticky from Bad classification above)
+        // into the allocator. Keys must match StreamAllocationRequest.StreamId
+        // (= StreamId.Value string).
+        var decoderLayerCapDict = _decoderLayerCapByStream.Count == 0
+            ? null
+            : _decoderLayerCapByStream.ToDictionary(kv => kv.Key.Value, kv => kv.Value);
+        var requested = VideoQualityAllocator.Allocate(capacity, primaries, secondaries, decoderLayerCapDict);
         var requestedMap = new ApiMap<string, ReceiveQuality>();
         foreach (var (streamId, _) in entries)
             requestedMap[streamId.Value] = requested.GetValueOrDefault(streamId.Value, ReceiveQuality.Lowest);
@@ -227,10 +291,12 @@ public sealed partial class VideoQualityUI
             PlaybackRateEma: playbackRateEma,
             DropRatio: receiverDropRatio);
         Log.LogDebug(
-            "PlaybackQuality: reason={Reason} ceiling={Ceiling} signalLevel={SignalLevel:F2} streams=[{Streams}]",
-            reason, capacity, signalLevel,
+            "PlaybackQuality: reason={Reason} ceiling={Ceiling} downlinkVerdict={DownlinkVerdict} " +
+            "downlinkSignal={DownlinkSignal:F2} decoderCaps={DecoderCapCount} streams=[{Streams}]",
+            reason, capacity, aggregateDownlinkVerdict, downlinkSignal,
+            _decoderLayerCapByStream.Count,
             string.Join(", ", entries.Select(x =>
-                $"{x.Key.Value}:size={x.Value.DesiredVideoSize}/req=L{requestedMap[x.Key.Value].LayerId}/T{requestedMap[x.Key.Value].TemporalLayerId}"
+                $"{x.Key.Value}:size={x.Value.DesiredVideoSize}/req=L{requestedMap[x.Key.Value].LayerId}"
                 + $"/duration={x.Value.Snapshot.StreamDurationMs}ms"
                 + $"/buf={x.Value.Snapshot.BufferSpanMsEma:F0}ms"
                 + $"/rate={x.Value.Snapshot.IncomingByteRate}/peak={x.Value.ObservedPeakByteRate}"
@@ -278,7 +344,6 @@ public sealed partial class VideoQualityUI
                 entry.Key.Value,
                 rates,
                 layerCountCap,
-                Math.Max(1, entry.Value.Snapshot.AvailableTemporalLayerCount),
                 area);
         }
     }
@@ -374,12 +439,8 @@ public sealed partial class VideoQualityUI
     {
         if (s.PredictedRatesByLayer.Count == 0)
             return 0;
-        var fullRate = s.PredictedRatesByLayer[0];
-        return (long)Math.Ceiling(fullRate * TemporalFloor(s.EffectiveTemporalLayerCount));
+        return s.PredictedRatesByLayer[0];
     }
-
-    private static double TemporalFloor(int producerCount)
-        => 1.0 / Math.Pow(2, Math.Max(0, producerCount - 1));
 
     private static long ComputeDecayedObservedRate(PlaybackStatsState? prev, long currentRate)
     {
@@ -482,11 +543,11 @@ public sealed partial class VideoQualityUI
         foreach (var hint in streamHints) {
             if (requested is not null && requested.TryGetValue(hint.StreamId, out var q))
                 await JS
-                    .InvokeVoidAsync(jsMethod, cancellationToken, hint.StreamId, q.LayerId, q.TemporalLayerId)
+                    .InvokeVoidAsync(jsMethod, cancellationToken, hint.StreamId, q.LayerId)
                     .ConfigureAwait(false);
             else
                 await JS
-                    .InvokeVoidAsync(jsMethod, cancellationToken, hint.StreamId, null, null)
+                    .InvokeVoidAsync(jsMethod, cancellationToken, hint.StreamId, null)
                     .ConfigureAwait(false);
         }
     }
@@ -497,7 +558,7 @@ public sealed partial class VideoQualityUI
     {
         var jsMethod = $"{BlazorUIAppModule.ImportName}.setRequestedReceiveQuality";
         foreach (var hint in streamHints)
-            await JS.InvokeVoidAsync(jsMethod, cancellationToken, hint.StreamId, null, null).ConfigureAwait(false);
+            await JS.InvokeVoidAsync(jsMethod, cancellationToken, hint.StreamId, null).ConfigureAwait(false);
     }
 
     private static ApiMap<string, ReceiveQuality> BuildLayerCapQuality(
@@ -506,7 +567,7 @@ public sealed partial class VideoQualityUI
     {
         var map = new ApiMap<string, ReceiveQuality>();
         var quality = layerCount is { } count
-            ? new ReceiveQuality(Math.Max(0, count - 1), 0)
+            ? new ReceiveQuality(Math.Max(0, count - 1))
             : ReceiveQuality.Default;
         foreach (var hint in hints)
             map[hint.StreamId] = quality;

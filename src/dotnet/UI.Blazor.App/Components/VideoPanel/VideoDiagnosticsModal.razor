@@ -641,6 +641,30 @@
         builder.CloseElement();
     }
 
+    private static void AppendVerdictChips(
+        RenderTreeBuilder builder, int seqBase,
+        params (string Label, ActualChat.Streaming.HealthVerdict Verdict)[] chips)
+    {
+        builder.OpenElement(seqBase, "div");
+        builder.AddAttribute(seqBase + 1, "class", "diag-chips");
+        var i = 0;
+        foreach (var (label, verdict) in chips) {
+            var cls = verdict switch {
+                ActualChat.Streaming.HealthVerdict.Good => "diag-chip diag-chip-good",
+                ActualChat.Streaming.HealthVerdict.Marginal => "diag-chip diag-chip-marginal",
+                ActualChat.Streaming.HealthVerdict.Bad => "diag-chip diag-chip-bad",
+                _ => "diag-chip diag-chip-unknown",
+            };
+            builder.OpenElement(seqBase + 10 + i * 4, "span");
+            builder.AddAttribute(seqBase + 11 + i * 4, "class", cls);
+            builder.AddAttribute(seqBase + 12 + i * 4, "title", label + ": " + verdict);
+            builder.AddContent(seqBase + 13 + i * 4, label);
+            builder.CloseElement();
+            i++;
+        }
+        builder.CloseElement();
+    }
+
     private void OnToggleOwnStreamingDetails() {
         _showOwnStreamingDetails = !_showOwnStreamingDetails;
         EnsurePollingState();
@@ -739,10 +763,9 @@
     private static string FormatRequestedReceiveQuality(JsonElement rd) {
         if (!rd.TryGetProperty("requestedReceiveQuality", out var requested)
             || requested.ValueKind != JsonValueKind.Object)
-            return "default (L1 T0)";
+            return "default (L1)";
 
-        return $"{FormatRequestedLayerId((int)GetNum(requested, "layerId"))} "
-            + $"{FormatRequestedTemporalLayerId((int)GetNum(requested, "temporalLayerId"))}";
+        return FormatRequestedLayerId((int)GetNum(requested, "layerId"));
     }
 
     private static string FormatRecordingQualityState(VideoQualityUI.RecordingQualitySnapshot snapshot)
@@ -755,7 +778,8 @@
 
     // Verdict inputs only — must mirror RecordingClassifier.Classify.
     private static string FormatRecordingSignals(RecorderStats stats)
-        => $"encodeRatioEma={stats.EncodeRatioEma:F2}x, "
+        => $"encDeficit={(stats.EncodeDeficitEma * 100):F1}%, "
+            + $"encQueueDepth={stats.EncodeQueueDepthEma:F2}, "
             + $"ackAge={FormatAckAge(stats.LastAckAgeMs)}, "
             + $"dropRatioEma={stats.SenderFrameDropRatioEma:F2}, "
             + $"connected={(stats.IsConnected ? "yes" : "no")}";
@@ -774,9 +798,6 @@
 
     private static string FormatRequestedLayerId(int value)
         => value == int.MaxValue ? "LMax" : $"L{Math.Max(0, value)}";
-
-    private static string FormatRequestedTemporalLayerId(int value)
-        => value == int.MaxValue ? "TMax" : $"T{Math.Max(0, value)}";
 
     private static string SignalText(int signal)
         => signal switch {

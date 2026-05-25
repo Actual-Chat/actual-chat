@@ -3,8 +3,8 @@
   "license": "UNLICENSED",
   "scripts": {
     "build:Debug": "tsc --noEmit && node build.mjs",
-    "build:Verify": "tsc --noEmit && eslint && node build.mjs",
-    "build:Release": "tsc --noEmit && eslint && node build.mjs --production",
+    "build:Verify": "tsc --noEmit && npm run lint:all && node build.mjs",
+    "build:Release": "tsc --noEmit && npm run lint && node build.mjs --production",
     "bundle-report": "node build.mjs --production --analyze",
     "watch": "node build.mjs --watch",
     "font": "svgtofont --sources ./src/nodejs/icons --output ./src/nodejs/fonts/svgtofont",
@@ -15,8 +15,9 @@
     "test:video-load": "tsx src/nodejs/app.video-load-test/index.ts",
     "test:audio-stream": "tsx src/nodejs/app.audio-stream-test/index.ts",
     "typecheck:video-load": "tsc -p src/nodejs/app.video-load-test/tsconfig.json --noEmit",
-    "lint": "eslint",
-    "lint:fix": "eslint --fix"
+    "lint": "eslint \"src/nodejs/**/*.ts\" \"src/dotnet/**/*.ts\"",
+    "lint:all": "eslint --no-error-on-unmatched-pattern \"src/nodejs/**/*.ts\" \"src/dotnet/**/*.ts\" \"tests/ts/**/*.ts\"",
+    "lint:fix": "eslint --fix --no-error-on-unmatched-pattern \"src/nodejs/**/*.ts\" \"src/dotnet/**/*.ts\" \"tests/ts/**/*.ts\""
   },
   "devDependencies": {
     "@chialab/esbuild-plugin-postcss": "^0.18.0",

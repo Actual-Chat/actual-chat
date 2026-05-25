@@ -1,11 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <!-- NOTE: android target is a workaround for windows  -->
-    <TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('osx'))">net10.0-android;</TargetFrameworks>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">net10.0-ios;</TargetFrameworks>
+    <TargetFramework Condition="!$([MSBuild]::IsOSPlatform('osx'))">net10.0</TargetFramework>
+    <TargetFramework Condition="$([MSBuild]::IsOSPlatform('osx'))">net10.0-ios</TargetFramework>
     <OutputType>Library</OutputType>
-    <UseMauiEssentials>true</UseMauiEssentials>
-    <SingleProject>true</SingleProject>
+    <UseMauiEssentials Condition="$(TargetFramework.Contains('-ios'))">true</UseMauiEssentials>
+    <SingleProject Condition="$(TargetFramework.Contains('-ios'))">true</SingleProject>
 
     <ApplicationId>chat.actual.app.share</ApplicationId>
     <ApplicationTitle>Voxt</ApplicationTitle>
@@ -32,7 +31,7 @@
 
   <!-- Build properties -->
   <!-- Both: Debug & Release configuration -->
-  <PropertyGroup>
+  <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
     <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Entitlements.dev.plist</CodesignEntitlements>
     <CodesignEntitlements Condition="'$(IsDevMaui)' != 'true'">Entitlements.prod.plist</CodesignEntitlements>
@@ -65,7 +64,7 @@
   </PropertyGroup>
 
 
-  <ItemGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
     <BundleResource Include="..\..\..\resources\images\converted\error-barrier-image.png" Link="%(Filename)%(Extension)" />
   </ItemGroup>
 
@@ -79,17 +78,18 @@
     <BundleResource Include="..\App.Maui\Platforms\iOS\GoogleService-Info.plist.prod" Link="GoogleService-Info.plist" />
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
     <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
     <ProjectReference Include="..\Maui\Maui.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
     <PackageReference Include="Microsoft.Maui.Essentials" />
   </ItemGroup>
 
   <!-- Workaround for excluding C# files from compilation for non-iOS targets -->
   <ItemGroup Condition="!$(TargetFramework.Contains('-ios'))">
+    <Using Remove="@(Using)" />
     <Compile Remove="**\*.cs"/>
     <None Include="**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)"/>
   </ItemGroup>

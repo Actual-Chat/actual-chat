@@ -1,4 +1,6 @@
-﻿namespace ActualChat.Chat;
+﻿using ActualLab.Rpc.Infrastructure;
+
+namespace ActualChat.Chat;
 
 /// <summary>
 /// Service for retrieving server mesh diagnostic information.
@@ -34,7 +36,7 @@ public sealed partial record RpcPeerDiagInfo(
     [property: DataMember, MemoryPackOrder(0), Key(0)] string Id,
     [property: DataMember, MemoryPackOrder(1), Key(1)] string Peer,
     [property: DataMember, MemoryPackOrder(2), Key(2)] string ConnectionKind,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] bool IsConnected,
+    [property: DataMember, MemoryPackOrder(3), Key(3)] RpcPeerConnectionStateKind ConnectionStateKind,
     [property: DataMember, MemoryPackOrder(4), Key(4)] string ConnectionInfo,
     [property: DataMember, MemoryPackOrder(5), Key(5)] string Extra);
 

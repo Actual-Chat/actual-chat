@@ -41,13 +41,17 @@ export function setPendingSource(source: ReadableStream<VideoFrame>): void {
 
 // ---- Frame-by-frame source (workaround for MSTP-readable cross-realm bug) ----
 //
-// NO QUEUE between rVFC and the consumer — only a capacity-1 ReplaceableSlot
-// that closes the evicted frame. A VideoFrame holds a GPU buffer reference and
-// Chromium's pool is ~12–20; any build-up exhausts it, future
-// `new VideoFrame(<video>)` calls fail, and the camera freezes.
-import { ReplaceableSlot } from 'buffers';
+// Small bounded FIFO between rVFC and the consumer — capacity 3, drops the
+// OLDEST on overflow and closes the evicted frame. A VideoFrame holds a GPU
+// buffer reference and Chromium's pool is ~12–20; capacity 3 covers a
+// ~50 ms drain hiccup while leaving plenty of pool headroom (encoder
+// maxInflight × layers + slot + generators stay under 20).
+import { BoundedQueue } from 'buffers';
 
-const pushedSlot = new ReplaceableSlot<VideoFrame>({
+const PUSHED_FRAME_QUEUE_CAPACITY = 3;
+
+const pushedSlot = new BoundedQueue<VideoFrame>({
+    capacity: PUSHED_FRAME_QUEUE_CAPACITY,
     dispose: f => { try { f.close(); } catch { /* ignore */ } },
 });
 let frameWaker: (() => void) | null = null;
@@ -173,7 +177,7 @@ function createEncoder(
     const enc = new AsyncVideoEncoder<EncodeInput, EncodedFrame>(
         buildOutput,
         onError,
-        { maxInflight: 2, firstTimeoutMs: 0, timeoutMs: 0 },
+        { maxInflight: 5, firstTimeoutMs: 0, timeoutMs: 0 },
     );
     return enc;
 }

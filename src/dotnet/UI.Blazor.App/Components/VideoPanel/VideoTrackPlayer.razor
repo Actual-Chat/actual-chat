@@ -162,7 +162,13 @@
         int[] dropCounts,
         int presentedCount,
         double playbackRateEma,
-        int producerTemporalLayerCount)
+        double decodeRatioEma,
+        int hangRateIn60s,
+        int recoveryStreak,
+        double presentSkipRatio,
+        double bufferUnderrunRatio,
+        double downlinkLatencyEma,
+        double arrivalIntervalEma)
     {
         if (_isDisposed)
             return;
@@ -172,7 +178,6 @@
             dropTrace[(FrameDropStage)dropStages[i]] = dropCounts[i];
         var stats = new PlaybackStats(Priority: (PlaybackStreamPriority)priority,
             Codec: codec,
-            AvailableTemporalLayerCount: producerTemporalLayerCount,
             RenderCssLongSide: renderCssLongSide,
             RenderDevicePixelRatio: renderDevicePixelRatio,
             PresentedCount: presentedCount,
@@ -180,7 +185,14 @@
             IncomingByteRate: incomingByteRate,
             BufferSpanMsEma: bufferSpanMsEma,
             PlaybackRateEma: playbackRateEma,
-            DropTrace: dropTrace);
+            DropTrace: dropTrace,
+            DecodeRatioEma: decodeRatioEma,
+            HangRateIn60s: hangRateIn60s,
+            RecoveryStreak: recoveryStreak,
+            PresentSkipRatio: presentSkipRatio,
+            BufferUnderrunRatio: bufferUnderrunRatio,
+            DownlinkLatencyEma: downlinkLatencyEma,
+            ArrivalIntervalEma: arrivalIntervalEma);
         try {
             await Hub.VideoQualityUI
                 .OnPlaybackStats(

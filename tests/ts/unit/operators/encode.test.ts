@@ -7,6 +7,7 @@ import {
     type EncodeInput,
     type EncoderConfigPerLayer,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/encode';
+import { LayerLadderController } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/sender/layer-ladder-controller';
 import {
     type CapturedBundle,
     type CapturedFrame,
@@ -38,6 +39,10 @@ class MockVideoEncoder {
     resetCalls = 0;
     output: MockVideoEncoderInit['output'];
     error: MockVideoEncoderInit['error'];
+
+    get encodeQueueSize(): number {
+        return this.encodeCalls.length;
+    }
 
     constructor(init: MockVideoEncoderInit) {
         this.output = init.output;
@@ -189,6 +194,10 @@ function makeFactory(opts: { onResetRequested?: (reason: string) => void; timeou
             }),
             () => { /* swallow encoder error */ },
             {
+                // Matches production recorder-worker-host.ts so the
+                // pipelined encode operator (MAX_PIPELINE=5) doesn't
+                // overrun the adapter queue.
+                maxInflight: 5,
                 timeoutMs: opts.timeoutMs ?? 100,
                 firstTimeoutMs: opts.timeoutMs ?? 100,
                 onResetRequested: opts.onResetRequested,
@@ -252,17 +261,10 @@ async function waitForInstances(count: number): Promise<void> {
 // ---- Tests ----------------------------------------------------------------
 
 describe('encode operator', () => {
-    it('throws when constructed with empty configs', () => {
-        expect(() => encode({
-            configs: [],
-            createEncoder: makeFactory(),
-        })).toThrow(/at least one layer/);
-    });
-
     it('single layer: 5 bundles → 5 EncodedFrames out, in order', async () => {
         const stats = makeStats();
         const opts: EncodeOptions = {
-            configs: [cfg(640, 360)],
+            controller: new LayerLadderController([cfg(640, 360)]),
             createEncoder: makeFactory(),
         };
 
@@ -303,7 +305,7 @@ describe('encode operator', () => {
     it('forceKeyframe → keyFrame flag (verified by inspecting encoder calls)', async () => {
         const stats = makeStats();
         const seg = encode({
-            configs: [cfg(640, 360)],
+            controller: new LayerLadderController([cfg(640, 360)]),
             createEncoder: makeFactory(),
         })(fromArray([
             makeBundle(1, stats, [{ width: 640, height: 360 }], false),
@@ -348,7 +350,7 @@ describe('encode operator', () => {
             { width: 1280, height: 720 },
         ];
         const opts: EncodeOptions = {
-            configs: layers.map(l => cfg(l.width, l.height)),
+            controller: new LayerLadderController(layers.map(l => cfg(l.width, l.height))),
             createEncoder: makeFactory(),
         };
         const bundles: CapturedBundle[] = [];
@@ -386,7 +388,7 @@ describe('encode operator', () => {
             { width: 1280, height: 720 },
         ];
         const opts: EncodeOptions = {
-            configs: layers.map(l => cfg(l.width, l.height)),
+            controller: new LayerLadderController(layers.map(l => cfg(l.width, l.height))),
             createEncoder: makeFactory(),
         };
         const bundles: CapturedBundle[] = [
@@ -451,23 +453,31 @@ describe('encode operator', () => {
                 });
             },
             dispose(): void { /* ignore */ },
+            // The encode operator samples encoder.encodeQueueSize per bundle
+            // (queue-depth EMA). Provide a static stub so the sampling path
+            // doesn't fault on this fake.
+            encoder: { encodeQueueSize: 0 },
         } as unknown as AsyncVideoEncoder<EncodeInput, EncodedFrame>;
         const seg = encode({
-            configs: [cfg(640, 360)],
+            controller: new LayerLadderController([cfg(640, 360)]),
             createEncoder: () => fakeEncoder,
         })(fromArray([first, second]));
 
         const iter: AsyncIterator<EncodedBundle> = seg[Symbol.asyncIterator]();
         const result = await iter.next();
+        // B1 drops with reset; B2 is the first bundle yielded.
         expect(result.done).toBe(false);
         expect(result.done === false ? result.value.layers[0].index : 0).toBe(2);
         expect(encodeCalls).toHaveLength(2);
-        // First encode is forced to keyFrame=true (per-encoder first-call guard).
+        // First encode forced to keyFrame=true (per-encoder first-call guard).
         expect(encodeCalls[0].opts.keyFrame).toBe(true);
-        // Second is also keyFrame=true: forceKeyframeNext is set after the
-        // reset-error rejection on the first bundle.
-        expect(encodeCalls[1].opts.keyFrame).toBe(true);
+        // B1's frame was closed by the fake encoder before rejecting.
         expect((first.layers[0].frame as unknown as MockVideoFrame).closed).toBe(true);
+        // Pipelined operator: B2 was submitted BEFORE B1's reset was observed,
+        // so B2 is a delta. forceKeyframeNext is set after B1's reset and
+        // applies only to bundles pulled from source AFTER the drain — none
+        // here because source only had 2 bundles.
+        expect(encodeCalls[1].opts.keyFrame).toBe(false);
         await iter.next();
     });
 
@@ -476,7 +486,7 @@ describe('encode operator', () => {
         const stats = makeStats();
         const reasons: string[] = [];
         const seg = encode({
-            configs: [cfg(640, 360)],
+            controller: new LayerLadderController([cfg(640, 360)]),
             createEncoder: makeFactory({
                 timeoutMs: 50,
                 onResetRequested: r => reasons.push(r),
@@ -500,7 +510,7 @@ describe('encode operator', () => {
             { width: 640, height: 360 },
         ];
         const seg = encode({
-            configs: layers.map(l => cfg(l.width, l.height)),
+            controller: new LayerLadderController(layers.map(l => cfg(l.width, l.height))),
             createEncoder: makeFactory(),
         })(fromArray([makeBundle(1, stats, layers)]));
 
@@ -517,16 +527,6 @@ describe('encode operator', () => {
         for (const m of MockVideoEncoder.instances) expect(m.state).toBe('closed');
     });
 
-    it('rejects bundles whose layer count mismatches configs (defensive)', async () => {
-        const stats = makeStats();
-        // configs: 2 layers; bundle: 1 layer.
-        const seg = encode({
-            configs: [cfg(320, 180), cfg(1280, 720)],
-            createEncoder: makeFactory(),
-        })(fromArray([makeBundle(1, stats, [{ width: 1280, height: 720 }])]));
-        await expect(drain(seg)).rejects.toThrow(/expected 2/);
-    });
-
     it('wraps synchronous encoder configure failure as init failure and cleans up', async () => {
         const stats = makeStats();
         const configs: EncoderConfigPerLayer[] = [
@@ -540,7 +540,7 @@ describe('encode operator', () => {
         MockVideoEncoder.configureFailureForCodec = 'hev1.1.6.L93.B0';
 
         const seg = encode({
-            configs,
+            controller: new LayerLadderController(configs),
             createEncoder: makeFactory(),
         })(fromArray([bundle]));
 
@@ -560,5 +560,126 @@ describe('encode operator', () => {
         expect(MockVideoEncoder.instances).toHaveLength(2);
         expect(MockVideoEncoder.instances[0].state).toBe('closed');
         expect(MockVideoEncoder.instances[1].state).toBe('closed');
+    });
+
+    it('stats: encodeQueueDepthEma samples encoder.encodeQueueSize per bundle', async () => {
+        const stats = makeStats();
+        const seg = encode({
+            controller: new LayerLadderController([cfg(640, 360)]),
+            createEncoder: makeFactory(),
+        })(fromArray([
+            makeBundle(1, stats, [{ width: 640, height: 360 }]),
+            makeBundle(2, stats, [{ width: 640, height: 360 }]),
+        ]));
+        const iter: AsyncIterator<EncodedBundle> = seg[Symbol.asyncIterator]();
+
+        // Bundle 1: encoder has 1 inflight encode at sample time → ratio = 1.
+        const next1 = iter.next();
+        await waitForCalls(0, 1);
+        MockVideoEncoder.instances[0].emitNext();
+        await next1;
+        // EMA seed-on-first: equal to the first sample (1).
+        expect(stats.encodeQueueDepthEma).toBe(1);
+
+        // Bundle 2: same shape, samples 1 again. EMA holds at 1.
+        const next2 = iter.next();
+        await waitForCalls(0, 1);
+        MockVideoEncoder.instances[0].emitNext();
+        await next2;
+        expect(stats.encodeQueueDepthEma).toBeCloseTo(1, 6);
+
+        await iter.next();
+    });
+
+    it('controller grow: appended layer\'s first chunk is keyframe', async () => {
+        const stats = makeStats();
+        const controller = new LayerLadderController([cfg(640, 360)]);
+        const seg = encode({
+            controller,
+            createEncoder: makeFactory(),
+        })(fromArray([
+            makeBundle(1, stats, [{ width: 640, height: 360 }]),
+            makeBundle(2, stats, [{ width: 640, height: 360 }, { width: 1280, height: 720 }]),
+            makeBundle(3, stats, [{ width: 640, height: 360 }, { width: 1280, height: 720 }]),
+        ]));
+        const iter: AsyncIterator<EncodedBundle> = seg[Symbol.asyncIterator]();
+
+        // Bundle 1: single layer, KF on first encode (warm-up).
+        const next1 = iter.next();
+        await waitForCalls(0, 1);
+        expect(MockVideoEncoder.instances[0].encodeCalls[0].opts.keyFrame).toBe(true);
+        MockVideoEncoder.instances[0].emitNext(80, 'key');
+        const r1 = await next1;
+        if (!r1.done) expect(r1.value.layers).toHaveLength(1);
+
+        // Reconfigure before bundle 2 lands.
+        controller.setConfigs([cfg(640, 360), cfg(1280, 720)]);
+
+        // Bundle 2: grow triggers forceKeyframeNext=true → both encoders see keyFrame.
+        const next2 = iter.next();
+        await waitForInstances(2);
+        expect(MockVideoEncoder.instances[0].encodeCalls[0].opts.keyFrame).toBe(true);
+        expect(MockVideoEncoder.instances[1].encodeCalls[0].opts.keyFrame).toBe(true);
+        MockVideoEncoder.instances[0].emitNext(80, 'key');
+        MockVideoEncoder.instances[1].emitNext(160, 'key');
+        const r2 = await next2;
+        expect(r2.done).toBe(false);
+        if (!r2.done) {
+            expect(r2.value.layers).toHaveLength(2);
+            expect(r2.value.layers[1].chunk.type).toBe('key');
+        }
+
+        // Bundle 3: normal delta on both.
+        const next3 = iter.next();
+        await waitForCalls(0, 1);
+        await waitForCalls(1, 1);
+        MockVideoEncoder.instances[0].emitNext(80, 'delta');
+        MockVideoEncoder.instances[1].emitNext(160, 'delta');
+        await next3;
+        await iter.next();
+    });
+
+    it('controller shrink: disposed encoder count tracks ladder shrink', async () => {
+        const stats = makeStats();
+        const controller = new LayerLadderController([
+            cfg(320, 180), cfg(640, 360), cfg(1280, 720),
+        ]);
+        const seg = encode({
+            controller,
+            createEncoder: makeFactory(),
+        })(fromArray([
+            makeBundle(1, stats, [
+                { width: 320, height: 180 },
+                { width: 640, height: 360 },
+                { width: 1280, height: 720 },
+            ]),
+            makeBundle(2, stats, [
+                { width: 320, height: 180 },
+                { width: 640, height: 360 },
+            ]),
+        ]));
+        const iter: AsyncIterator<EncodedBundle> = seg[Symbol.asyncIterator]();
+
+        const next1 = iter.next();
+        await waitForInstances(3);
+        for (const m of MockVideoEncoder.instances) m.emitNext(80, 'key');
+        await next1;
+
+        // Capture the top encoder before shrinking so we can assert it closed.
+        const topEncoder = MockVideoEncoder.instances[2];
+        controller.setConfigs([cfg(320, 180), cfg(640, 360)]);
+
+        const next2 = iter.next();
+        await waitForCalls(0, 1);
+        await waitForCalls(1, 1);
+        MockVideoEncoder.instances[0].emitNext(80, 'delta');
+        MockVideoEncoder.instances[1].emitNext(80, 'delta');
+        const r2 = await next2;
+        expect(r2.done).toBe(false);
+        if (!r2.done) expect(r2.value.layers).toHaveLength(2);
+        // Top encoder dispose() flushed and closed it.
+        expect(topEncoder.state).toBe('closed');
+
+        await iter.next();
     });
 });

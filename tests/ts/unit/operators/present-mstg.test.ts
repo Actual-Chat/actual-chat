@@ -463,4 +463,46 @@ describe('mstgPresent', () => {
         expect(writerCalls).toBe(1);
         expect(writer.written).toHaveLength(4);
     });
+
+    it('stats: presentSkipRatio is 0 when no frames take the catch-up skip branch', async () => {
+        const stats = createEmptyPlayerStats();
+        const writer = new FakeWriter();
+        const clock = fakeClock(0);
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            getBufferSpanMs: (): number => 0,
+            targetSpanMs: 333,
+            nowFn: clock.nowFn,
+            delayFn: clock.delayFn,
+        });
+        const items = Array.from({ length: 4 }, (_, i) => makeEnvelope(stats, i, i * 33));
+
+        await count(pipe(staticSource(items), sink));
+
+        expect(stats.presented).toBe(4);
+        // 4 samples of 0 → EMA stays 0.
+        expect(stats.presentSkipRatio).toBe(0);
+    });
+
+    it('stats: presentSkipRatio rises when frames take the skip branch', async () => {
+        const stats = createEmptyPlayerStats();
+        const writer = new FakeWriter();
+        // Same setup as the existing skip-after-decode test.
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            getBufferSpanMs: (): number => 5000,
+            targetSpanMs: 333,
+            nowFn: (): number => 1000,
+            delayFn: (): Promise<void> => Promise.resolve(),
+        });
+        const items = Array.from({ length: 5 }, (_, i) => makeEnvelope(stats, i, i * 33));
+
+        await count(pipe(staticSource(items), sink));
+
+        // Frame 0 writes (lastWriteAt=null → no skip branch); frames 1..4 skip.
+        // Sample sequence: 0, 1, 1, 1, 1 → EMA (alpha=0.1) above 0.3.
+        expect(stats.presented).toBe(1);
+        expect(stats.presentSkipRatio).toBeGreaterThan(0.3);
+        expect(stats.presentSkipRatio).toBeLessThanOrEqual(1);
+    });
 });

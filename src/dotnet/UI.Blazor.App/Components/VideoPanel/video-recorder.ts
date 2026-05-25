@@ -36,7 +36,7 @@ import {
 } from 'app-constants';
 import { getLogs } from 'logging';
 import { Api, WorkerKind } from 'api';
-import { rpcClientServer } from 'rpc';
+import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
 import { Versioning } from 'versioning';
 import { DeviceInfo } from 'device-info';
@@ -151,7 +151,7 @@ export interface OwnStreamDiagnostics {
     } | null;
     simulcast: {
         layerCount: number;
-        layers: { width: number; height: number; bitrateKbps: number; scalabilityMode?: string }[];
+        layers: { width: number; height: number; bitrateKbps: number }[];
     } | null;
     // Cumulative drop-stage histogram from the active RecorderStats sample.
     // Keys are decimal FrameDropStage values; only non-zero stages are
@@ -234,7 +234,6 @@ interface LayerInput {
     height: number;
     baseBitrateKbps?: number;
     bitrateKbps?: number;
-    scalabilityMode?: string;
 }
 
 // Preview frame listener used by the canvas fallback when generated preview
@@ -516,13 +515,12 @@ export class VideoRecorder {
     }
 
     /**
-     * Update the cached simulcast ladder. On a running recorder this
-     * triggers a stop+start with the new ladder (the new pipeline does
-     * NOT support hot reconfigure of the layer set).
-     *
-     * TODO(phase 7+): re-introduce hot-apply once the recorder
-     * supports a control channel for adding/removing layers without
-     * tearing down the underlying RPC stream.
+     * Update the cached simulcast ladder. When the running worker can
+     * absorb the change (same codec, same source dims), we route through
+     * {@link RecorderWorker.reconfigureLayers} so the wire RpcStream stays
+     * open — receivers see the new layer count on per-frame `LayerCount`
+     * without an end-of-stream blink. Codec or source-dim changes still
+     * fall back to a full stop+start.
      */
     public setLayers(layers: LayerInput[] | null): void {
         const maxTiers = this.isScreenCasting
@@ -548,11 +546,23 @@ export class VideoRecorder {
             infoLog?.log(`setLayers: ${prevCount} -> ${newCount} layer(s)`);
         }
         if (this.worker && prevCount !== newCount) {
-            // Hot-restart with the new ladder. The encoder pool inside
-            // the session retains parked encoders across the gap so
-            // codec / NVENC slot survives.
-            void this.restartWithCurrentConfig().catch((e: unknown) =>
-                warnLog?.log('setLayers: restart failed:', e));
+            // Codec / source dims unchanged → hot-apply without tearing
+            // down the wire stream. The worker mutates the running
+            // pipeline's LayerLadderController; spatialize, encode and
+            // wireSend pick up the change on the next bundle.
+            const ladderForWorker = this.resolveActiveLadder();
+            const encoderConfigs = this.toEncoderConfigs(ladderForWorker);
+            if (encoderConfigs.length > 0) {
+                void this.worker.reconfigureLayers(encoderConfigs).catch((e: unknown) => {
+                    warnLog?.log('setLayers: reconfigureLayers failed, falling back to restart:', e);
+                    void this.restartWithCurrentConfig().catch((restartErr: unknown) =>
+                        warnLog?.log('setLayers: restart fallback failed:', restartErr));
+                });
+            } else {
+                warnLog?.log('setLayers: empty ladder — falling back to restart');
+                void this.restartWithCurrentConfig().catch((e: unknown) =>
+                    warnLog?.log('setLayers: restart failed:', e));
+            }
         }
     }
 
@@ -985,6 +995,30 @@ export class VideoRecorder {
         void this.worker.requestKeyframe();
     }
 
+    /**
+     * Server-driven cap on the encoder ladder: the recorder shouldn't waste
+     * encode time on layers that no subscriber is currently asking for.
+     *
+     * `maxLayerId` is the aggregate max of `ReceiveQuality.LayerId` across
+     * all subscribers, as reported by
+     * `LiveVideoStreams.MaxRequestedLayerId`. -1 == nobody is currently
+     * subscribed (or every viewer is paused) — we leave the ladder alone in
+     * that case so the next joiner doesn't pay a restart cost.
+     */
+    public setMaxLayerId(maxLayerId: number): void {
+        if (maxLayerId < 0)
+            return;
+        const fullLadder = this.fullLayerLadder;
+        if (!fullLadder || fullLadder.length === 0)
+            return;
+        const cappedCount = Math.min(fullLadder.length, maxLayerId + 1);
+        const currentCount = this.layers?.length ?? 0;
+        if (cappedCount === currentCount)
+            return;
+        infoLog?.log(`setMaxLayerId: maxLayerId=${maxLayerId} → cap ladder ${currentCount} -> ${cappedCount}`);
+        this.setLayers(fullLadder.slice(0, cappedCount));
+    }
+
     public getDiagnostics(): OwnStreamDiagnostics {
         // Aggregate counters live on `RecorderStats` and are refreshed at
         // 1Hz by the recorder-health monitor. Per-layer breakdowns are NOT
@@ -1085,7 +1119,6 @@ export class VideoRecorder {
                     width: l.width,
                     height: l.height,
                     bitrateKbps: l.bitrateKbps,
-                    scalabilityMode: l.scalabilityMode,
                 })),
             } : null,
             dropTraceByStage,
@@ -1268,20 +1301,11 @@ export class VideoRecorder {
             this.workerSourceCancelled = false;
             const workerForPump = this.worker;
             let pumpFrameCount = 0;
-            let pushInFlight = false;
-            let pushDroppedCount = 0;
             let lastPumpTickAtMs = performance.now();
             const onFrame = (now: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata): void => {
                 if (this.workerSourceCancelled) return;
                 void now;
                 lastPumpTickAtMs = performance.now();
-                if (pushInFlight) {
-                    pushDroppedCount++;
-                    if (pushDroppedCount <= 5 || pushDroppedCount % 60 === 0)
-                        warnLog?.log(`pushFrame pump: dropped while push in flight (#${pushDroppedCount})`);
-                    sourceVideo.requestVideoFrameCallback(onFrame);
-                    return;
-                }
 
                 const timestampUs = Math.round(metadata.mediaTime * 1_000_000);
                 let frame: VideoFrame;
@@ -1293,16 +1317,13 @@ export class VideoRecorder {
                     return;
                 }
                 pumpFrameCount++;
+                // `rpcNoWait` returns immediately after postMessage transfers
+                // the frame, so the next rVFC tick fires without waiting for
+                // the worker ack. Without this the round-trip easily exceeds
+                // the 33 ms frame interval on Android and caps capture at
+                // half-rate. Worker absorbs bursts in its ingress queue.
                 try {
-                    pushInFlight = true;
-                    void workerForPump.pushFrame(frame)
-                        .catch((e: unknown) => {
-                            warnLog?.log('pushFrame: worker rejected', e);
-                            this.workerSourceCancelled = true;
-                        })
-                        .finally(() => {
-                            pushInFlight = false;
-                        });
+                    void workerForPump.pushFrame(frame, rpcNoWait);
                 } catch (e) {
                     warnLog?.log('pushFrame: worker rejected', e);
                     this.workerSourceCancelled = true;
@@ -1575,15 +1596,12 @@ export class VideoRecorder {
 
     private normalizeLayerInput(layer: LayerInput): LayerConfig {
         const baseBitrateKbps = layer.baseBitrateKbps ?? layer.bitrateKbps ?? 0;
-        const result: LayerConfig = {
+        return {
             width: layer.width,
             height: layer.height,
             baseBitrateKbps,
             bitrateKbps: layer.bitrateKbps ?? baseBitrateKbps,
         };
-        if (layer.scalabilityMode !== undefined)
-            result.scalabilityMode = layer.scalabilityMode;
-        return result;
     }
 
     private tearDownWorker(): void {
@@ -1641,8 +1659,8 @@ export class VideoRecorder {
     // EMA smoothing factor for encode-ratio. Single-tick spikes from a
     // slow keyframe would otherwise pop the classifier; α=0.3 gives a
     // ~3-tick half-life at 1 Hz polling.
-    private static readonly EncodeRatioEmaAlpha = 0.3;
-    private encodeRatioEma = 0;
+    private static readonly EncodeDeficitEmaAlpha = 0.3;
+    private encodeDeficitEma = 0;
     private senderDropRatioEma = 0;
     // Per-tick instantaneous rates for every cumulative counter the modal /
     // overlay surfaces. Computed at the recorder-health-monitor boundary
@@ -1660,7 +1678,7 @@ export class VideoRecorder {
         this.stopRecorderHealthMonitor();
         this.lastRecorderHealthStats = null;
         this.lastRecorderHealthWasPeerConnected = false;
-        this.encodeRatioEma = 0;
+        this.encodeDeficitEma = 0;
         this.senderDropRatioEma = 0;
         this.capturedPerSec = 0;
         this.bundlesPerSec = 0;
@@ -1688,6 +1706,12 @@ export class VideoRecorder {
         this.recorderHealthInFlight = true;
         try {
             const stats = await this.worker.getStats();
+            // Main thread owns the `document` reference — stamp the flag here
+            // so the worker doesn't need a document poke. The classifier reads
+            // it to relax encode-ratio thresholds under background-tab Chrome
+            // throttling.
+            stats.isTabBackgrounded =
+                typeof document !== 'undefined' && document.visibilityState === 'hidden';
             const isPeerConnected = stats.isPeerConnected;
             const previous = this.lastRecorderHealthStats;
             const nowMs = performance.now();
@@ -1733,30 +1757,26 @@ export class VideoRecorder {
                 const totalProduced = shippedDelta + senderDropsDelta;
                 const ratio = totalProduced > 0 ? senderDropsDelta / totalProduced : 0;
                 this.senderDropRatioEma =
-                    VideoRecorder.EncodeRatioEmaAlpha * ratio
-                    + (1 - VideoRecorder.EncodeRatioEmaAlpha) * this.senderDropRatioEma;
+                    VideoRecorder.EncodeDeficitEmaAlpha * ratio
+                    + (1 - VideoRecorder.EncodeDeficitEmaAlpha) * this.senderDropRatioEma;
             }
 
-            // Encode ratio: (mean of MAX-across-layers per bundle) /
-            // frameDuration. The encode operator fires all encoders in
-            // parallel via Promise.allSettled, so per-bundle wall-clock
-            // cost is the SLOWEST layer, not the sum across layers.
-            // Using sum here was overcounting parallelism: 3 layers each
-            // at ~20ms ran in parallel → ~20ms bundle wall-clock → 30
-            // fps achievable, but sum=60ms produced ratio≈1.8-2.0 and
-            // tripped the `EncBadRatio=2.0` threshold by design. The
-            // resulting `signal=0` flipped BWE to Bad and triggered a
-            // false demote within 10s of every healthy 3-layer start.
-            const frameDurationMs = 1000 / 30;
+            // Encoder THROUGHPUT DEFICIT, 0..1. Window-derived ratio of
+            // "bundles encoded this tick / frames captured this tick"
+            // subtracted from 1 and EMA-smoothed. A queue-full encoder
+            // still emitting at source rate registers 0 here (healthy
+            // pipelining); deficit only grows when encoder emit rate
+            // actually falls behind capture rate. This is the metric QC
+            // uses to decide whether to demote a spatial layer.
             if (previous) {
-                const maxSumDelta = Math.max(0, stats.encodeTimeMsMaxSum - previous.encodeTimeMsMaxSum);
-                const countDelta = Math.max(0, stats.encodeTimeMsCount - previous.encodeTimeMsCount);
-                if (countDelta > 0) {
-                    const meanMaxMs = maxSumDelta / countDelta;
-                    const ratio = meanMaxMs / frameDurationMs;
-                    this.encodeRatioEma =
-                        VideoRecorder.EncodeRatioEmaAlpha * ratio
-                        + (1 - VideoRecorder.EncodeRatioEmaAlpha) * this.encodeRatioEma;
+                const encDelta = Math.max(0, stats.bundlesEncoded - previous.bundlesEncoded);
+                const capDelta = Math.max(0, stats.framesCaptured - previous.framesCaptured);
+                if (capDelta > 0) {
+                    const throughputRatio = Math.min(1, encDelta / capDelta);
+                    const deficit = 1 - throughputRatio;
+                    this.encodeDeficitEma =
+                        VideoRecorder.EncodeDeficitEmaAlpha * deficit
+                        + (1 - VideoRecorder.EncodeDeficitEmaAlpha) * this.encodeDeficitEma;
                 }
             }
 
@@ -1778,14 +1798,21 @@ export class VideoRecorder {
             }
             await this.blazorRef.invokeMethodAsync(
                 'OnRecorderStats',
-                this.encodeRatioEma,
+                this.encodeDeficitEma,
                 this.senderDropRatioEma,
                 stats.wireLastAckAgeMs,
                 isPeerConnected,
                 stages,
                 counts,
                 stats.bundlesShipped,
-                stats.bytesEncoded);
+                stats.bundlesEncoded,
+                stats.bytesEncoded,
+                stats.encodeQueueDepthEma,
+                stats.wireQueueDepthEma,
+                stats.floodGateSkipPerSec,
+                stats.peerReconnectStreak,
+                stats.encoderRestartStreakIn60s,
+                stats.isTabBackgrounded);
         } catch (e) {
             warnLog?.log('reportRecorderStats failed:', e);
         } finally {

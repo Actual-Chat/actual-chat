@@ -1,4 +1,5 @@
 import { from, type PipeOperator } from 'ix-ext';
+import { RunningEMA } from 'math';
 import { abortPromise } from 'promises';
 import { getLogs } from 'logging';
 import {
@@ -8,6 +9,9 @@ import {
     type EncodedFrame,
     type RecorderStats,
 } from '../frame-envelopes';
+import type { LayerLadderController } from '../sender/layer-ladder-controller';
+
+const WIRE_QUEUE_DEPTH_EMA_ALPHA = 0.2;
 
 const { warnLog } = getLogs('VideoPipeline');
 
@@ -27,8 +31,6 @@ export interface VideoStreamFrame {
     data: Uint8Array;
     description?: Uint8Array;
     codec?: string;
-    temporalLayerId?: number;
-    temporalLayerCount?: number;
     layerId?: number;
     layerCount?: number;
     // Quarter-turn CW (0|1|2|3) the receiver should apply to display upright.
@@ -77,11 +79,9 @@ export interface StreamSenderStats {
 
 export interface WireSendOptions {
     createSender: () => StreamSenderLike;
-    // Fills LayerCount on every chunk; without it, consumers clamp to L0.
-    layerCount?: number;
-    // Encoder yields bottom-first; we wait for the top-layer keyframe before init.
-    topLayerWidth?: number;
-    topLayerHeight?: number;
+    // Drives per-bundle LayerCount stamping and the first-keyframe sender.init
+    // dims; reads on every bundle so hot-applied changes propagate.
+    controller: LayerLadderController;
     // Aborts mid-send so Recorder.stop() doesn't block on a stalled ring buffer / dead peer.
     abortSignal?: AbortSignal;
 }
@@ -100,8 +100,26 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
         return from(impl());
 
         async function* impl(): AsyncIterable<void> {
-            const { createSender, topLayerWidth, topLayerHeight, abortSignal } = opts;
-            const layerCount = opts.layerCount ?? 1;
+            const { createSender, controller, abortSignal } = opts;
+            const wireQueueDepthEma = new RunningEMA(0, 1, WIRE_QUEUE_DEPTH_EMA_ALPHA);
+            // Reconnect streak: persists across resetSender() calls so a burst
+            // of disconnects accrues correctly.
+            const reconnectTracker = { streak: 0, prevConnected: false };
+            const copyStats = (stats: RecorderStats, sender: StreamSenderLike | null): void => {
+                if (!sender) return;
+                const senderStats = sender.getStats?.();
+                if (!senderStats) return;
+                stats.wireLastAckAgeMs = senderStats.lastAckAgeMs;
+                stats.isPeerConnected = senderStats.isPeerConnected;
+                wireQueueDepthEma.appendSample(senderStats.queueDepth);
+                stats.wireQueueDepthEma = wireQueueDepthEma.value;
+                if (!senderStats.isPeerConnected && reconnectTracker.prevConnected)
+                    reconnectTracker.streak++;
+                else if (senderStats.isPeerConnected)
+                    reconnectTracker.streak = 0;
+                reconnectTracker.prevConnected = senderStats.isPeerConnected;
+                stats.peerReconnectStreak = reconnectTracker.streak;
+            };
             const abortRace: Promise<never> = abortSignal
                 ? abortPromise(abortSignal)
                 : new Promise(() => { /* never resolves */ });
@@ -114,7 +132,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
             const getPumpFailure = (): Error | null => pumpFailure;
             const resetSender = (reason: string): void => {
                 if (sender && lastStats)
-                    copySenderStats(lastStats, sender.getStats?.());
+                    copyStats(lastStats, sender);
                 try { sender?.dispose?.(); } catch { /* ignore */ }
                 sender = null;
                 initSent = false;
@@ -153,6 +171,8 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                             ? Uint8Array.from(bundle.dropTrace)
                             : undefined;
 
+                        const cur = controller.current.configs;
+                        const layerCount = cur.length;
                         const wireLayers: VideoStreamFrame[] = bundle.layers.map(encoded => {
                             const isKey = encoded.chunk.type === 'key';
                             if (isKey)
@@ -172,7 +192,6 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                                 data: readChunkBytes(encoded.chunk),
                                 layerId: encoded.layerId,
                                 layerCount,
-                                temporalLayerId: encoded.metadata.temporalLayerId,
                             };
                             if (encoded.rotation !== 0) dto.rotation = encoded.rotation;
                             if (dropTraceBytes) dto.dropTrace = dropTraceBytes;
@@ -201,10 +220,11 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                         }
                         if (!initSent && isKeyFrame && sender.init) {
                             const description = resolveDescription(top, descriptionByLayer);
+                            const topCfg = cur[cur.length - 1];
                             sender.init({
                                 codec: top.metadata.decoderConfig?.codec ?? '',
-                                width: topLayerWidth ?? top.encodedWidth,
-                                height: topLayerHeight ?? top.encodedHeight,
+                                width: topCfg.width,
+                                height: topCfg.height,
                                 sourceWidth: top.sourceWidth,
                                 sourceHeight: top.sourceHeight,
                                 codecSettings: description ? bytesToBase64(description) : '',
@@ -221,29 +241,18 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                         // trail and count the bundle as shipped.
                         aggregateDropTrace(bundle.stats, bundle.dropTrace);
                         bundle.stats.bundlesShipped++;
-                        copySenderStats(bundle.stats, sender.getStats?.());
+                        copyStats(bundle.stats, sender);
                     } finally {
                         disposeEncodedBundle(bundle);
                     }
                 }
             } finally {
                 if (sender && lastStats)
-                    copySenderStats(lastStats, sender.getStats?.());
+                    copyStats(lastStats, sender);
                 try { sender?.dispose?.(); } catch { /* ignore */ }
             }
         }
     };
-}
-
-function copySenderStats(
-    stats: RecorderStats,
-    senderStats: StreamSenderStats | undefined,
-): void {
-    if (!senderStats)
-        return;
-
-    stats.wireLastAckAgeMs = senderStats.lastAckAgeMs;
-    stats.isPeerConnected = senderStats.isPeerConnected;
 }
 
 // Copy on insert so later mutation of metadata.decoderConfig.description

@@ -222,6 +222,7 @@ public readonly struct RpcHostBuilder
     private void AddRpcServer(bool isApiHost)
     {
         Fusion.AddWebServer();
+        Rpc.AddHttpServer(exposeBackend: true);
 
         // Replace RpcWebSocketServerOptions
         Services.ReplaceFactory<RpcWebSocketServerOptions>((_, oldFactory) => oldFactory.Invoke() with {

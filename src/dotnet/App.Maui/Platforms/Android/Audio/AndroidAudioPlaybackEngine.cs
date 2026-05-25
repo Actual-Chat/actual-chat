@@ -110,16 +110,13 @@ internal sealed class AndroidAudioPlaybackEngine(
         }
 
         lock (Lock) { // We must re-lock after await
-            // Deactivate and remove listener BEFORE stopping the track
-            // to prevent OnPeriodicNotification callbacks on a stopped/released track,
-            // which can cause stack overflow via JNI interop infinite recursion
+            // Detach the listener and fully release the track BEFORE disposing the listener.
+            // Disposing it while the native track is alive severs its managed peer, so a late
+            // OnPeriodicNotification callback resurrects it as the Invoker and recurses through
+            // JNI until the stack overflows.
             _positionListener?.Deactivate();
             if (_audioTrack.IsValid()) {
                 try { _audioTrack.SetPlaybackPositionUpdateListener(null); } catch { /* Ignore */ }
-            }
-            if (_positionListener.IsValid())
-                _positionListener.DisposeSilently();
-            if (_audioTrack.IsValid()) {
                 try {
                     if (_audioTrack.PlayState is PlayState.Playing or PlayState.Paused)
                         _audioTrack.Stop();
@@ -129,6 +126,10 @@ internal sealed class AndroidAudioPlaybackEngine(
                 _audioTrack.DisposeSilently();
             }
             _audioTrack = null;
+
+            if (_positionListener.IsValid())
+                _positionListener.DisposeSilently();
+            _positionListener = null;
 
             if (_positionListenerHandle.IsAllocated)
                 _positionListenerHandle.Free();
@@ -173,9 +174,10 @@ internal sealed class AndroidAudioPlaybackEngine(
         if (mustAbort) {
             try {
                 _positionListener?.Deactivate();
-                if (audioTrack?.PlayState is PlayState.Playing or PlayState.Paused) {
+                if (audioTrack is not null) {
                     try { audioTrack.SetPlaybackPositionUpdateListener(null); } catch { }
-                    audioTrack.Stop();
+                    if (audioTrack.PlayState is PlayState.Playing or PlayState.Paused)
+                        audioTrack.Stop();
                 }
             }
             catch {

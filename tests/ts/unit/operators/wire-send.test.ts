@@ -14,6 +14,16 @@ import {
     type RecorderStats,
     createEmptyRecorderStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
+import { LayerLadderController } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/sender/layer-ladder-controller';
+import type { EncoderConfigPerLayer } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/encode';
+
+// Default single-layer controller used by every test that doesn't exercise
+// hot-apply directly. wireSend reads layer count from the controller; tests
+// that need a specific count construct their own.
+const defaultLayerConfig: EncoderConfigPerLayer = {
+    width: 1920, height: 1080, bitrate: 1_000_000, framerate: 30, codec: 'avc1.640028',
+};
+const defaultController = (): LayerLadderController => new LayerLadderController([defaultLayerConfig]);
 // ---- Mocks ----------------------------------------------------------------
 
 class MockEncodedVideoChunk {
@@ -95,7 +105,6 @@ interface BuildOpts {
     duration?: number | null;
     byteLength?: number;
     bytes?: Uint8Array;
-    temporalLayerId?: number;
     index?: number;
 }
 
@@ -111,8 +120,6 @@ function makeEncoded(stats: RecorderStats, opts: BuildOpts = {}): EncodedFrame {
             : opts.description;
         metadata.decoderConfig = { codec: 'avc1.42E01E', description: desc } as unknown as VideoDecoderConfig;
     }
-    if (opts.temporalLayerId !== undefined)
-        (metadata as { temporalLayerId?: number }).temporalLayerId = opts.temporalLayerId;
     return {
         chunk,
         metadata,
@@ -178,7 +185,7 @@ describe('wireSend', () => {
     it('first chunk pins captureStartUnixMs; offset is 0', async () => {
         const stats = createEmptyRecorderStats();
         const sender = new FakeSender();
-        const sink = wireSend({ createSender: () => sender });
+        const sink = wireSend({ createSender: () => sender, controller: defaultController() });
 
         const items = [
             makeEncoded(stats, { type: 'key', capturedAt: { timeMs: 12_345.678, epoch: 0 } }),
@@ -192,7 +199,7 @@ describe('wireSend', () => {
     it('subsequent chunk offset = (capturedAt.timeMs − captureStartUnixMs) × 1000 µs (× 10 ticks)', async () => {
         const stats = createEmptyRecorderStats();
         const sender = new FakeSender();
-        const sink = wireSend({ createSender: () => sender });
+        const sink = wireSend({ createSender: () => sender, controller: defaultController() });
 
         const items = [
             makeEncoded(stats, { type: 'key', capturedAt: { timeMs: 1_000, epoch: 0 } }),
@@ -208,7 +215,7 @@ describe('wireSend', () => {
     it('offsetEpoch is included on every frame', async () => {
         const stats = createEmptyRecorderStats();
         const sender = new FakeSender();
-        const sink = wireSend({ createSender: () => sender });
+        const sink = wireSend({ createSender: () => sender, controller: defaultController() });
 
         const items = [
             makeEncoded(stats, { type: 'key', capturedAt: { timeMs: 1_000, epoch: 0 } }),
@@ -225,7 +232,7 @@ describe('wireSend', () => {
     it('per-layer description cache: first keyframe with description sets cache; later keyframe without picks from it', async () => {
         const stats = createEmptyRecorderStats();
         const sender = new FakeSender();
-        const sink = wireSend({ createSender: () => sender });
+        const sink = wireSend({ createSender: () => sender, controller: defaultController() });
 
         const desc0 = new Uint8Array([0xAA, 0xBB, 0xCC]);
         const desc1 = new Uint8Array([0x11, 0x22, 0x33, 0x44]);
@@ -252,7 +259,7 @@ describe('wireSend', () => {
     it('epoch change does not re-anchor captureStartUnixMs', async () => {
         const stats = createEmptyRecorderStats();
         const sender = new FakeSender();
-        const sink = wireSend({ createSender: () => sender });
+        const sink = wireSend({ createSender: () => sender, controller: defaultController() });
 
         const items = [
             makeEncoded(stats, { type: 'key', capturedAt: { timeMs: 1_000, epoch: 0 } }),
@@ -274,7 +281,7 @@ describe('wireSend', () => {
     it('keyframe DTOs have keyFrameIndex === index; delta DTOs differ', async () => {
         const stats = createEmptyRecorderStats();
         const sender = new FakeSender();
-        const sink = wireSend({ createSender: () => sender });
+        const sink = wireSend({ createSender: () => sender, controller: defaultController() });
 
         const items = [
             makeEncoded(stats, { type: 'key', index: 0, capturedAt: { timeMs: 1_000, epoch: 0 } }),
@@ -299,7 +306,7 @@ describe('wireSend', () => {
         // is required after configure() or flush()".
         const stats = createEmptyRecorderStats();
         const sender = new FakeSender();
-        const sink = wireSend({ createSender: () => sender });
+        const sink = wireSend({ createSender: () => sender, controller: defaultController() });
 
         const items = [
             makeEncoded(stats, { type: 'delta', index: 0, capturedAt: { timeMs: 1_000, epoch: 0 } }),
@@ -330,6 +337,7 @@ describe('wireSend', () => {
                 createCount++;
                 return sender;
             },
+            controller: defaultController(),
         });
 
         const items = [
@@ -349,9 +357,11 @@ describe('wireSend', () => {
         const sender = new FakeSender();
         const sink = wireSend({
             createSender: () => sender,
-            layerCount: 3,
-            topLayerWidth: 1280,
-            topLayerHeight: 720,
+            controller: new LayerLadderController([
+                { width: 320, height: 180, bitrate: 250_000, framerate: 30, codec: 'avc1.640028' },
+                { width: 640, height: 360, bitrate: 500_000, framerate: 30, codec: 'avc1.640028' },
+                { width: 1280, height: 720, bitrate: 1_500_000, framerate: 30, codec: 'avc1.640028' },
+            ]),
         });
         const topDescription = new Uint8Array([0x67, 0x42, 0x00, 0x1f]);
 
@@ -392,7 +402,7 @@ describe('wireSend', () => {
     // Ensure the helper is referenced so unused-import lints don't fire if we pare down later.
     it('runs cleanly with no items (empty stream)', async () => {
         const sender = new FakeSender();
-        const op = wireSend({ createSender: () => sender });
+        const op = wireSend({ createSender: () => sender, controller: defaultController() });
         await runWith(source([]), op);
         expect(sender.sent).toEqual([]);
     });
@@ -405,7 +415,7 @@ describe('wireSend', () => {
             makeEncoded(stats, { type: 'delta', capturedAt: { timeMs: 1_033, epoch: 0 } }),
         ];
 
-        await runWith(source(items), wireSend({ createSender: () => sender }));
+        await runWith(source(items), wireSend({ createSender: () => sender, controller: defaultController() }));
 
         expect(items.map(x => (x.chunk as unknown as MockEncodedVideoChunk).closed)).toEqual([true, true]);
     });
@@ -419,11 +429,80 @@ describe('wireSend', () => {
 
         await runWith(source([
             makeEncoded(stats, { type: 'key', capturedAt: { timeMs: 1_000, epoch: 0 } }),
-        ]), wireSend({ createSender: () => sender }));
+        ]), wireSend({ createSender: () => sender, controller: defaultController() }));
 
         expect(stats.bundlesShipped).toBe(1);
         expect(stats.wireLastAckAgeMs).toBe(123);
         expect(stats.isPeerConnected).toBe(true);
+    });
+
+    it('stats: wireQueueDepthEma tracks senderStats.queueDepth per bundle', async () => {
+        const stats = createEmptyRecorderStats();
+        const sender = new StatsSender();
+        sender.stats.isPeerConnected = true;
+
+        const items: EncodedFrame[] = [];
+        // Bump queueDepth seen by getStats between sends so the EMA blends.
+        let q = 5;
+        const customSender = new (class extends StatsSender {
+            getStats(): StreamSenderStats {
+                this.stats.queueDepth = q;
+                return this.stats;
+            }
+        })();
+        for (let i = 0; i < 3; i++)
+            items.push(makeEncoded(stats, {
+                type: i === 0 ? 'key' : 'delta',
+                capturedAt: { timeMs: 1_000 + i * 33, epoch: 0 },
+            }));
+
+        // Cycle queue depths: 5, 5, 5 → EMA = 5.
+        await runWith(source(items), wireSend({ createSender: () => customSender, controller: defaultController() }));
+        expect(stats.wireQueueDepthEma).toBeCloseTo(5, 6);
+
+        // New run with depth 10 every bundle: EMA seeds at 10.
+        const stats2 = createEmptyRecorderStats();
+        q = 10;
+        const sender2 = new (class extends StatsSender {
+            getStats(): StreamSenderStats {
+                this.stats.queueDepth = q;
+                return this.stats;
+            }
+        })();
+        const items2: EncodedFrame[] = [
+            makeEncoded(stats2, { type: 'key', capturedAt: { timeMs: 1_000, epoch: 0 } }),
+        ];
+        await runWith(source(items2), wireSend({ createSender: () => sender2, controller: defaultController() }));
+        expect(stats2.wireQueueDepthEma).toBe(10);
+
+        void sender; // keep variable in scope to avoid unused-var lint
+    });
+
+    it('stats: peerReconnectStreak bumps on connected→disconnected transitions', async () => {
+        const stats = createEmptyRecorderStats();
+        let connected = true;
+        const sender = new (class extends StatsSender {
+            getStats(): StreamSenderStats {
+                this.stats.isPeerConnected = connected;
+                return this.stats;
+            }
+        })();
+        const items = [
+            makeEncoded(stats, { type: 'key', capturedAt: { timeMs: 1_000, epoch: 0 } }),
+            makeEncoded(stats, { type: 'delta', capturedAt: { timeMs: 1_033, epoch: 0 } }),
+            makeEncoded(stats, { type: 'delta', capturedAt: { timeMs: 1_066, epoch: 0 } }),
+        ];
+        const sourceWithFlips = (async function* (): AsyncIterable<EncodedBundle> {
+            await Promise.resolve();
+            yield { layers: [items[0]], index: 0, dropTrace: [], rotation: 0, stats };
+            connected = false;
+            yield { layers: [items[1]], index: 1, dropTrace: [], rotation: 0, stats };
+            yield { layers: [items[2]], index: 2, dropTrace: [], rotation: 0, stats };
+        })();
+        await runWith(sourceWithFlips, wireSend({ createSender: () => sender, controller: defaultController() }));
+        // Streak = 1 from one true→false transition. Subsequent false samples
+        // don't bump (we count transitions, not states).
+        expect(stats.peerReconnectStreak).toBe(1);
     });
 
     it('recreates the sender if the wire pump completes while capture continues', async () => {
@@ -435,6 +514,7 @@ describe('wireSend', () => {
                 senders.push(sender);
                 return sender;
             },
+            controller: defaultController(),
         });
 
         await runWith(source([
@@ -446,5 +526,45 @@ describe('wireSend', () => {
         expect(senders[0].sent).toHaveLength(1);
         expect(senders[1].sent).toHaveLength(1);
         expect(senders.every(s => s.disposed)).toBe(true);
+    });
+
+    it('controller-driven layerCount stamps current count per bundle', async () => {
+        const stats = createEmptyRecorderStats();
+        const sender = new FakeSender();
+        const cfg = (w: number, h: number): EncoderConfigPerLayer => ({
+            width: w, height: h, bitrate: 500_000, framerate: 30, codec: 'avc1.640028',
+        });
+        const controller = new LayerLadderController([cfg(640, 360)]);
+        const sink = wireSend({ createSender: () => sender, controller });
+
+        // Source bundle 1: one layer; bundle 2: same; reconfigure before bundle 3
+        // by setting controller to 2 layers; bundle 3 carries two encoded frames.
+        async function* src(): AsyncIterable<EncodedBundle> {
+            await Promise.resolve();
+            yield {
+                layers: [makeEncoded(stats, { type: 'key', layerId: 0, capturedAt: { timeMs: 1_000, epoch: 0 } })],
+                index: 1, dropTrace: [], rotation: 0, stats,
+            };
+            yield {
+                layers: [makeEncoded(stats, { type: 'delta', layerId: 0, capturedAt: { timeMs: 1_033, epoch: 0 } })],
+                index: 2, dropTrace: [], rotation: 0, stats,
+            };
+            controller.setConfigs([cfg(640, 360), cfg(1280, 720)]);
+            yield {
+                layers: [
+                    makeEncoded(stats, { type: 'key', layerId: 0, capturedAt: { timeMs: 1_066, epoch: 0 } }),
+                    makeEncoded(stats, { type: 'key', layerId: 1, capturedAt: { timeMs: 1_066, epoch: 0 } }),
+                ],
+                index: 3, dropTrace: [], rotation: 0, stats,
+            };
+        }
+        await runWith(src(), sink);
+
+        // 1+1+2 = 4 wire layers total
+        expect(sender.sent).toHaveLength(4);
+        expect(sender.sent[0].layerCount).toBe(1);
+        expect(sender.sent[1].layerCount).toBe(1);
+        expect(sender.sent[2].layerCount).toBe(2);
+        expect(sender.sent[3].layerCount).toBe(2);
     });
 });

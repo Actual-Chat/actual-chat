@@ -1,6 +1,5 @@
 using System.Numerics;
 using ActualChat.Hosting;
-using ActualChat.Media;
 
 namespace ActualChat;
 
@@ -30,20 +29,6 @@ public static partial class Constants
         public static bool IsLocalDev(string host)
             => AllLocal.Contains(host)
             || host.EndsWith(LocalVoxtSuffix, StringComparison.OrdinalIgnoreCase);
-    }
-
-    public static class Rpc
-    {
-        public static class RemoteComputedCache
-        {
-            public static readonly TimeSpan HitToCallInitialDelay = TimeSpan.FromMilliseconds(1500);
-        }
-
-        public static class Compression
-        {
-            public const bool IsServerSideEnabled = false;
-            public const bool IsClientSideEnabled = true;
-        }
     }
 
     public static class Session
@@ -182,11 +167,6 @@ public static partial class Constants
         public static readonly Vector2 MaxActualThumbnailResolution = MaxThumbnailResolution * 2;
     }
 
-    public static class Uploads
-    {
-        public const int ChuckSizeLimit = 10 * 1024 * 1024;
-    }
-
     public static class Contacts
     {
         public static readonly int MinLoadLimit = 20;
@@ -311,11 +291,6 @@ public static partial class Constants
         public const int PageSizeLimit = 50;
         public const int DefaultPageSize = 5;
         public const int ExtendedPageSize = 30;
-    }
-
-    public static class ServerSettings
-    {
-        public const string UseChatContentArranger2ChatIds = "UseChatContentArranger2ChatIds";
     }
 
     public static class Sentry

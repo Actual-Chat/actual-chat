@@ -1,9 +1,8 @@
 import { tap, type PipeOperator } from 'ix-ext';
-import { VIDEO } from 'app-constants';
 import { getLogs } from 'logging';
-import type { MonotonicTime } from 'clocks';
 import type { NormalizedFrame } from '../frame-envelopes';
 import type { PreviewFramePresentation } from '../sender/recorder-worker-contract';
+import { HAS_VF_ROTATION_INIT, wrapWithRotation } from '../video-frame-caps';
 
 const { warnLog } = getLogs('VideoPipeline');
 // Log first, then 1-in-N — prevents flooding when a device-level failure drops every clone.
@@ -14,33 +13,24 @@ export interface PreviewForwarderOptions {
     getWriter: () => WritableStreamDefaultWriter<VideoFrame> | null;
     reportFrame?: (frame: VideoFrame) => void | Promise<void>;
     reportPresentation?: (presentation: PreviewFramePresentation) => void;
-    maxBufferedFrames?: number;
-    frameDurationMs?: number;
-    nowMs?: () => number;
-    sleep?: (delayMs: number) => Promise<void>;
-}
-
-interface PreviewQueueItem {
-    frame: VideoFrame;
-    capturedAt: MonotonicTime;
-    rotation: number;
-    writer: WritableStreamDefaultWriter<VideoFrame> | null;
-    reportFrame?: (frame: VideoFrame) => void | Promise<void>;
 }
 
 // Forwards a clone of the normalized sender surface to a writer (typically the
 // self-view's MediaStreamTrackGenerator). Cloning is mandatory — pipeline owns
 // the original; the selected preview sink observes a short-lived clone.
+//
+// No internal queue or timer-based pacing. The upstream rVFC pump already
+// drives frames at the source's natural cadence (30 Hz on a 30 fps camera),
+// and the downstream <video> element renders each MSTG-fed frame as it
+// arrives. A per-frame `setTimeout` pacer was previously inserted here to
+// align display deltas to capture deltas — that's an inversion of effort
+// (the browser already paces playback). It also showed up in profiles as the
+// dominant timer churn (~25 ms / s combined across workers). Frames whose
+// writer is backpressured are dropped on the spot rather than buffered:
+// the bottleneck is the renderer, and a buffer here only delays the drop.
 export function previewForwarder(opts: PreviewForwarderOptions): PipeOperator<NormalizedFrame, NormalizedFrame> {
     const { getWriter, reportFrame, reportPresentation } = opts;
-    const maxBufferedFrames = Math.max(1, Math.floor(opts.maxBufferedFrames ?? 3));
-    const frameDurationMs = opts.frameDurationMs ?? getFrameDurationMs();
-    const nowMs = opts.nowMs ?? (() => performance.now());
-    const sleep = opts.sleep ?? ((delayMs: number) => new Promise<void>(resolve => setTimeout(resolve, delayMs)));
-    const pacer = new PreviewPacer(frameDurationMs);
-    const queue: PreviewQueueItem[] = [];
     let failures = 0;
-    let pumpRunning = false;
     let lastReportedRotation: number | null = null;
     const reportFailure = (where: string, e: unknown): void => {
         failures++;
@@ -50,7 +40,6 @@ export function previewForwarder(opts: PreviewForwarderOptions): PipeOperator<No
     const reportPresentationOnce = (rotation: number): void => {
         if (!reportPresentation || lastReportedRotation === rotation)
             return;
-
         lastReportedRotation = rotation;
         try {
             reportPresentation({ rotation });
@@ -60,56 +49,6 @@ export function previewForwarder(opts: PreviewForwarderOptions): PipeOperator<No
     };
     const closeFrame = (frame: VideoFrame): void => {
         try { frame.close(); } catch { /* ignore */ }
-    };
-    const enqueue = (item: PreviewQueueItem): void => {
-        while (queue.length >= maxBufferedFrames) {
-            const dropped = queue.shift();
-            if (dropped)
-                closeFrame(dropped.frame);
-        }
-        queue.push(item);
-        startPump();
-    };
-    const startPump = (): void => {
-        if (pumpRunning)
-            return;
-
-        pumpRunning = true;
-        void pump();
-    };
-    const pump = async (): Promise<void> => {
-        try {
-            while (queue.length > 0) {
-                const item = queue.shift()!;
-                try {
-                    const plan = pacer.plan(item.capturedAt, nowMs());
-                    if (plan === 'skip')
-                        continue;
-                    if (plan.delayMs > 0)
-                        await sleep(plan.delayMs);
-
-                    if (item.writer) {
-                        const desiredSize = item.writer.desiredSize;
-                        if (desiredSize !== null && desiredSize <= 0)
-                            continue;
-
-                        reportPresentationOnce(item.rotation);
-                        await item.writer.write(item.frame);
-                    } else if (item.reportFrame) {
-                        reportPresentationOnce(item.rotation);
-                        await item.reportFrame(item.frame);
-                    }
-                } catch (e) {
-                    reportFailure(item.writer ? 'writer.write' : 'reportFrame', e);
-                } finally {
-                    closeFrame(item.frame);
-                }
-            }
-        } finally {
-            pumpRunning = false;
-            if (queue.length > 0)
-                startPump();
-        }
     };
     return tap((envelope: NormalizedFrame): void => {
         let writer: WritableStreamDefaultWriter<VideoFrame> | null;
@@ -121,11 +60,12 @@ export function previewForwarder(opts: PreviewForwarderOptions): PipeOperator<No
         }
         if (!writer && !reportFrame) return;
 
-        if (writer) {
-            const desiredSize = writer.desiredSize;
-            if (desiredSize !== null && desiredSize <= 0)
-                return;
-        }
+        // Writer back-pressure: drop instead of buffer. The downstream
+        // <video> element drains MSTG at its render cadence; if desiredSize
+        // is exhausted, the renderer is stalled and queueing here only
+        // delays the same drop while holding a GPU plane.
+        if (writer && writer.desiredSize !== null && writer.desiredSize <= 0)
+            return;
 
         let clone: VideoFrame;
         try {
@@ -135,49 +75,35 @@ export function previewForwarder(opts: PreviewForwarderOptions): PipeOperator<No
             return;
         }
 
-        enqueue({
-            frame: clone,
-            capturedAt: envelope.capturedAt,
-            rotation: envelope.rotation,
-            writer,
-            reportFrame,
-        });
-    });
-}
-
-type PreviewPacePlan = { delayMs: number } | 'skip';
-
-class PreviewPacer {
-    private anchorEpoch: number | null = null;
-    private anchorCaptureMs = 0;
-    private anchorWallMs = 0;
-    private lastDueMs: number | null = null;
-
-    constructor(private readonly frameDurationMs: number) {}
-
-    plan(capturedAt: MonotonicTime, nowMs: number): PreviewPacePlan {
-        if (this.anchorEpoch !== capturedAt.epoch) {
-            this.anchorEpoch = capturedAt.epoch;
-            this.anchorCaptureMs = capturedAt.timeMs;
-            this.anchorWallMs = nowMs;
-            this.lastDueMs = nowMs;
-            return { delayMs: 0 };
+        // MSTG path (Chromium): attach display rotation as VideoFrame
+        // metadata so the <video> element auto-rotates; report rotation=0
+        // to the presentation callback so the CSS --video-rotation path
+        // doesn't double-rotate. Canvas-preview path (writer === null)
+        // keeps the legacy path — canvas drawImage ignores VideoFrame
+        // rotation metadata, so it relies on CSS rotation.
+        let frame = clone;
+        let displayRotation = envelope.rotation;
+        if (writer && HAS_VF_ROTATION_INIT && envelope.rotation !== 0) {
+            frame = wrapWithRotation(clone, envelope.rotation);
+            closeFrame(clone);
+            displayRotation = 0;
         }
 
-        const naturalDueMs = this.anchorWallMs + capturedAt.timeMs - this.anchorCaptureMs;
-        if (nowMs - naturalDueMs >= 2 * this.frameDurationMs)
-            return 'skip';
+        reportPresentationOnce(displayRotation);
 
-        const minDueMs = this.lastDueMs === null
-            ? nowMs
-            : this.lastDueMs + this.frameDurationMs;
-        const dueMs = Math.max(naturalDueMs, minDueMs);
-        this.lastDueMs = dueMs;
-        return { delayMs: Math.max(0, dueMs - nowMs) };
-    }
-}
-
-function getFrameDurationMs(): number {
-    const video = VIDEO as typeof VIDEO | undefined;
-    return video?.frameDurationMs ?? 1000 / 30;
+        if (writer) {
+            writer.write(frame)
+                .catch((e: unknown) => reportFailure('writer.write', e))
+                .finally(() => closeFrame(frame));
+        } else if (reportFrame) {
+            const result = reportFrame(frame);
+            if (result && typeof result.then === 'function') {
+                result
+                    .catch((e: unknown) => reportFailure('reportFrame', e))
+                    .finally(() => closeFrame(frame));
+            } else {
+                closeFrame(frame);
+            }
+        }
+    });
 }

@@ -23,8 +23,17 @@ public sealed partial class VideoQualityUI
     private readonly EncodingCap _outboundEncodingCap;
     private readonly BandwidthCap _outboundBandwidthCap;
     private readonly BandwidthEstimator _outboundBwEstimator;
+    // One classifier per recording run. The Encoder/Uplink streak counters
+    // are persisted across ticks; restart-cooldown branches do NOT recreate
+    // it — see RunOutboundTick for the streak-reset path.
+    private readonly SenderHealthClassifier _senderHealthClassifier = new();
+    private EncoderHealth _lastEncoderHealth = EncoderHealth.Empty;
+    private UplinkHealth _lastUplinkHealth = UplinkHealth.Empty;
     private CpuTimestamp _outboundStartedAt;
     private CpuTimestamp _outboundLastEvalAt;
+
+    public EncoderHealth OutboundEncoderHealth => _lastEncoderHealth;
+    public UplinkHealth OutboundUplinkHealth => _lastUplinkHealth;
 
     public BandwidthEstimator OutboundBandwidthEstimator => _outboundBwEstimator;
     public LayerCap OutboundEncodingLayers => _outboundEncodingCap.Layers;
@@ -147,35 +156,80 @@ public sealed partial class VideoQualityUI
 
     private async Task RunOutboundTick(CancellationToken cancellationToken)
     {
+        // Per the split-attribution plan: aggregate stats across kinds, then
+        // classify into Encoder + Uplink health. Each verdict drives exactly
+        // one cap — encoder pressure NEVER leaks into BWE here.
         var fusedDropRatio = 0.0;
         var fusedAckAgeMs = -1.0;
-        var fusedEncodeRatio = 0.0;
+        var fusedEncodeDeficit = 0.0;
+        var fusedEncodeQueueDepth = 0.0;
+        var fusedWireQueueDepth = 0.0;
+        var fusedFloodSkipPerSec = 0.0;
+        var maxRestartStreak = 0;
+        var maxPeerReconnectStreak = 0;
+        var isTabBackgrounded = false;
         long totalBytesPerSec = 0;
         var sampleAt = CpuTimestamp.Now;
         foreach (var (k, stats) in _lastRecorderStatsByKind) {
             fusedDropRatio = Math.Max(fusedDropRatio, stats.SenderFrameDropRatioEma);
             if (stats.LastAckAgeMs >= 0)
                 fusedAckAgeMs = Math.Max(fusedAckAgeMs, stats.LastAckAgeMs);
-            fusedEncodeRatio = Math.Max(fusedEncodeRatio, stats.EncodeRatioEma);
+            fusedEncodeDeficit = Math.Max(fusedEncodeDeficit, stats.EncodeDeficitEma);
+            if (stats.EncodeQueueDepthEma >= 0)
+                fusedEncodeQueueDepth = Math.Max(fusedEncodeQueueDepth, stats.EncodeQueueDepthEma);
+            if (stats.WireQueueDepthEma >= 0)
+                fusedWireQueueDepth = Math.Max(fusedWireQueueDepth, stats.WireQueueDepthEma);
+            fusedFloodSkipPerSec = Math.Max(fusedFloodSkipPerSec, stats.FloodGateSkipPerSec);
+            maxRestartStreak = Math.Max(maxRestartStreak, stats.EncoderRestartStreakIn60s);
+            maxPeerReconnectStreak = Math.Max(maxPeerReconnectStreak, stats.PeerReconnectStreak);
+            isTabBackgrounded = isTabBackgrounded || stats.IsTabBackgrounded;
             totalBytesPerSec += ComputeAndUpdateBytesPerSec(k, stats.BytesEncoded, sampleAt);
         }
 
-        var signalLevel = ComputeSenderSignalLevel(fusedDropRatio, fusedAckAgeMs, fusedEncodeRatio);
+        var encoderHealth = _senderHealthClassifier.ClassifyEncoder(
+            encodeDeficitEma: fusedEncodeDeficit,
+            encodeQueueDepthEma: fusedEncodeQueueDepth,
+            restartStreakIn60s: maxRestartStreak,
+            senderEncodePathDropRatio: 0, // TODO: split RecorderStats.dropTrace into encode-stage vs wire-stage.
+            isTabBackgrounded: isTabBackgrounded);
+        var uplinkHealth = _senderHealthClassifier.ClassifyUplink(
+            wireLastAckAgeMs: fusedAckAgeMs,
+            wireQueueDepthEma: fusedWireQueueDepth,
+            floodGateSkipPerSec: fusedFloodSkipPerSec,
+            peerReconnectStreak: maxPeerReconnectStreak,
+            senderWirePathDropRatio: fusedDropRatio);
+        _lastEncoderHealth = encoderHealth;
+        _lastUplinkHealth = uplinkHealth;
+        // OpenTelemetry emission for these verdicts is deferred: AppMeters
+        // lives in Core.Server (not referenced from UI.Blazor.App). When
+        // RecordingQualityInfo grows the per-leg fields, the server-side
+        // ChangeRecordingQuality handler will record them.
+
+        // Uplink-only signal feeds BWE. Verdict→continuous mapping: Good=1,
+        // Bad=0, Marginal/Unknown=0.5. Streak hysteresis inside the classifier
+        // is the smoothing; BWE no longer averages raw penalties.
+        var uplinkSignal = VerdictToSignal(uplinkHealth.Verdict);
         var connection = ConnectivityUI.ConnectionInfo.Value;
-        _outboundBwEstimator.Tick(connection, SystemClock.Now, totalBytesPerSec, signalLevel);
+        _outboundBwEstimator.Tick(connection, SystemClock.Now, totalBytesPerSec, uplinkSignal);
         var preEncCam = _outboundEncodingCap.Layers.CameraLayers;
         var preBwCam = _outboundBandwidthCap.Layers.CameraLayers;
-        _outboundEncodingCap.Tick(fusedEncodeRatio);
+        // EncodingCap still consumes the raw encode ratio. The classifier
+        // verdict is used for observability + future bg/fg threshold switch.
+        _outboundEncodingCap.Tick(fusedEncodeDeficit);
         _outboundBandwidthCap.Tick(_outboundBwEstimator);
         var postEncCam = _outboundEncodingCap.Layers.CameraLayers;
         var postBwCam = _outboundBandwidthCap.Layers.CameraLayers;
         if (preEncCam != postEncCam || preBwCam != postBwCam)
             Log.LogInformation(
-                "RunOutboundTick: cap changed — encCam {PreEnc}->{PostEnc} (encRatio={EncRatio:F2}, badStreak={BadStreak}, goodStreak={GoodStreak}), " +
-                "bwCam {PreBw}->{PostBw} (signal={Signal:F2}, verdict={Verdict}, ceiling={CeilingBps}bps, current={CurrentBps}bps, " +
+                "RunOutboundTick: cap changed — encCam {PreEnc}->{PostEnc} (encVerdict={EncVerdict}, encRatio={EncRatio:F2}, " +
+                "badStreak={BadStreak}, goodStreak={GoodStreak}), " +
+                "bwCam {PreBw}->{PostBw} (uplinkVerdict={UplinkVerdict}, uplinkSignal={Signal:F2}, " +
+                "bweVerdict={BweVerdict}, ceiling={CeilingBps}bps, current={CurrentBps}bps, " +
                 "negStreak={NegStreak}, posStreak={PosStreak}), totalBps={TotalBps}, dropRatio={DropRatio:F3}, ackAgeMs={AckAgeMs:F0}",
-                preEncCam, postEncCam, fusedEncodeRatio, _outboundEncodingCap.BadStreak, _outboundEncodingCap.GoodStreak,
-                preBwCam, postBwCam, signalLevel, _outboundBwEstimator.LastVerdict,
+                preEncCam, postEncCam, encoderHealth.Verdict, fusedEncodeDeficit,
+                _outboundEncodingCap.BadStreak, _outboundEncodingCap.GoodStreak,
+                preBwCam, postBwCam, uplinkHealth.Verdict, uplinkSignal,
+                _outboundBwEstimator.LastVerdict,
                 _outboundBwEstimator.CeilingBps, _outboundBwEstimator.LastCurrentBps,
                 _outboundBwEstimator.NegativeStreak, _outboundBwEstimator.PositiveStreak,
                 totalBytesPerSec * 8, fusedDropRatio, fusedAckAgeMs);
@@ -246,24 +300,14 @@ public sealed partial class VideoQualityUI
         return (long)(dBytes / dtSec);
     }
 
-    private static double ComputeSenderSignalLevel(double dropRatioEma, double ackAgeMs, double encodeRatioEma)
-    {
-        var dropPenalty = Math.Clamp(
-            (dropRatioEma - Constants.Video.DropOkSender)
-                / (Constants.Video.DropBadSender - Constants.Video.DropOkSender),
-            0, 1);
-        var ackPenalty = ackAgeMs < 0
-            ? 0
-            : Math.Clamp(
-                (ackAgeMs - Constants.Video.AckOkMs)
-                    / (Constants.Video.AckBadMs - Constants.Video.AckOkMs),
-                0, 1);
-        var encPenalty = Math.Clamp(
-            (encodeRatioEma - Constants.Video.EncOkRatio)
-                / (Constants.Video.EncBadRatio - Constants.Video.EncOkRatio),
-            0, 1);
-        return 1.0 - Math.Max(dropPenalty, Math.Max(ackPenalty, encPenalty));
-    }
+    // Map a classifier verdict to a continuous BWE signal. Marginal/Unknown
+    // are treated as Good (1.0): the classifier already imposes a 2-tick
+    // streak before declaring Bad, so anything below Bad is conservatively
+    // not-a-problem. The earlier 0.5 mapping caused BWE.Tick to interpret
+    // every warm-up tick as < BadThreshold (0.85) → spurious cap walks
+    // before the first real signal arrived.
+    private static double VerdictToSignal(HealthVerdict verdict)
+        => verdict == HealthVerdict.Bad ? 0.0 : 1.0;
 
     // Nested types
 

@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Buffers.Binary;
 using MessagePack.Formatters;
 
 namespace ActualChat.Video;
@@ -34,13 +35,13 @@ namespace ActualChat.Video;
 /// element to this formatter, so <see cref="VideoFrame"/>[] batches hit the cache too.
 /// </para>
 /// <para>
-/// Wire format: an 18-entry MessagePack map with PascalCase string keys — Data (bin),
+/// Wire format: a 19-entry MessagePack map with PascalCase string keys — Data (bin),
 /// Offset (int64 ticks), Duration (int64 ticks), OffsetEpoch (int32),
 /// Index (int32), KeyFrameIndex (int32), Width (int32), Height (int32),
 /// Rotation (uint8, 0..3 CW),
 /// LayerId (uint8), LayerCount (uint8), MaxLayerWidth (int32), MaxLayerHeight (int32),
 /// TemporalLayerId (uint8), TemporalLayerCount (uint8), Codec (str or nil),
-/// Description (bin or nil), DropTrace (bin).
+/// Description (bin or nil), DropTrace (bin), ServerArrivedAtTicks (int64).
 /// IsKeyFrame is NOT on the wire — derived as <c>KeyFrameIndex == Index</c>.
 /// </para>
 /// </remarks>
@@ -104,6 +105,7 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
         byte layerId = 0;
         byte layerCount = 1;
         byte rotation = 0;
+        long serverArrivedAtTicks = 0;
         var dataSlice = default(ReadOnlyMemory<byte>);
         var descriptionSlice = default(ReadOnlyMemory<byte>);
         var dropTraceSlice = default(ReadOnlyMemory<byte>);
@@ -166,6 +168,9 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
                 case "Rotation":
                     rotation = reader.ReadByte();
                     break;
+                case "ServerArrivedAtTicks":
+                    serverArrivedAtTicks = reader.ReadInt64();
+                    break;
                 default:
                     // Unknown keys are skipped so a future field rename or
                     // addition doesn't immediately break consumers.
@@ -193,6 +198,7 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
             MaxLayerHeight = maxLayerHeight,
             DropTrace = dropTraceSlice,             // slice of bytes (may be empty)
             Rotation = rotation,
+            ServerArrivedAtTicks = serverArrivedAtTicks,
             SerializedData = bytes,
         };
     }
@@ -229,7 +235,7 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
 
     private static void WriteFrame(ref MessagePackWriter writer, VideoFrame v)
     {
-        writer.WriteMapHeader(18);
+        writer.WriteMapHeader(19);
 
         writer.Write("Data");
         writer.Write(v.Data.Span);
@@ -293,5 +299,43 @@ public sealed class CachingVideoFrameFormatter : IMessagePackFormatter<VideoFram
 
         writer.Write("Rotation");
         writer.Write(v.Rotation);
+
+        writer.Write("ServerArrivedAtTicks");
+        // Force fixed 9-byte int64 form so StampServerArrived can overwrite
+        // the trailing 8 bytes in-place without rebuilding the cache.
+        WriteFixedInt64(ref writer, v.ServerArrivedAtTicks);
     }
+
+    // Stamps ServerArrivedAtTicks on the frame and, if SerializedData is already
+    // populated, overwrites the cached int64 in-place. Must be called before any
+    // fan-out consumer touches SerializedData — VideoStreamingBackend.ProcessFrames
+    // invokes this prior to memoizer publication. Assumes WriteFrame emitted the
+    // field in fixed 9-byte form (see WriteFixedInt64) and that ServerArrivedAtTicks
+    // is the last field in the map.
+    public static void StampServerArrived(VideoFrame frame, long ticks)
+    {
+        frame.ServerArrivedAtTicks = ticks;
+
+        var cached = frame.SerializedData;
+        if (cached.IsEmpty)
+            return;
+        if (!MemoryMarshal.TryGetArray(cached, out var seg) || seg.Array is null)
+            return;
+
+        var end = seg.Offset + seg.Count;
+        // 0xd3 = fixed int64 marker; verify our layout assumption still holds.
+        // If a future change reorders fields or shortens the int64 encoding,
+        // fall back to cache invalidation rather than corrupting bytes.
+        if (seg.Count < 9 || seg.Array[end - 9] != 0xd3) {
+            frame.SerializedData = default;
+            return;
+        }
+        BinaryPrimitives.WriteInt64BigEndian(seg.Array.AsSpan(end - 8, 8), ticks);
+    }
+
+    private static void WriteFixedInt64(ref MessagePackWriter writer, long value)
+        // MessagePackWriter.WriteInt64 forces the fixed-form int64 encoding
+        // (0xd3 + 8 BE bytes), independent of the value's range — required so
+        // StampServerArrived can overwrite the trailing 8 bytes in place.
+        => writer.WriteInt64(value);
 }

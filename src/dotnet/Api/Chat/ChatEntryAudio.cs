@@ -12,19 +12,19 @@ public sealed partial record ChatEntryAudio
 {
     #region MemoryPackXxx properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(10)]
+    [MemoryPackInclude, MemoryPackOrder(10)]
     private ApiNullable8<Moment> MemoryPackEndsAt {
         get => EndsAt;
         init => EndsAt = value;
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(11)]
+    [MemoryPackInclude, MemoryPackOrder(11)]
     private ApiNullable8<Moment> MemoryPackContentEndsAt {
         get => ContentEndsAt;
         init => ContentEndsAt = value;
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(12)]
+    [MemoryPackInclude, MemoryPackOrder(12)]
     private ApiNullable8<Moment> MemoryPackClientSideBeginsAt {
         get => ClientSideBeginsAt;
         init => ClientSideBeginsAt = value;

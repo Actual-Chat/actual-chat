@@ -164,7 +164,8 @@ public sealed class VideoRecorder : IAsyncDisposable
         var t1 = SubscribeToKeyFrameRequests(chatId, cancellationToken);
         var t2 = SubscribeToSupportedDecoderCodecs(chatId, cancellationToken);
         var t3 = ForwardRemoteStreamCount(chatId, cancellationToken);
-        await Task.WhenAll(t1, t2, t3).ConfigureAwait(false);
+        var t4 = SubscribeToMaxLayerId(chatId, cancellationToken);
+        await Task.WhenAll(t1, t2, t3, t4).ConfigureAwait(false);
     }
 
     private (ChatId, bool) GetStartRequest()
@@ -239,6 +240,51 @@ public sealed class VideoRecorder : IAsyncDisposable
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (Exception e) {
             Log.LogWarning(e, "SubscribeToKeyFrameRequests failed");
+        }
+    }
+
+    private async Task SubscribeToMaxLayerId(ChatId chatId, CancellationToken cancellationToken) {
+        try {
+            Log.LogInformation("SubscribeToMaxLayerId: starting for ChatId={ChatId}", chatId);
+
+            StreamId? ownStreamId = null;
+            var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+            if (ownAuthor == null)
+                return;
+
+            for (var i = 0; i < 30; i++) {
+                var streams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
+                var ownStream = streams.FirstOrDefault(s => s.AuthorId == ownAuthor.Id && s.SourceKind == Kind);
+                if (ownStream != default) {
+                    ownStreamId = ownStream.StreamId;
+                    break;
+                }
+                await Task.Delay(500, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (ownStreamId == null) {
+                Log.LogWarning("SubscribeToMaxLayerId: own stream not found after polling for ChatId={ChatId}", chatId);
+                return;
+            }
+
+            Log.LogInformation("SubscribeToMaxLayerId: found own stream #{StreamId}, subscribing", ownStreamId);
+            var cState = await Computed.Capture(
+                () => LiveVideoStreams.MaxRequestedLayerId(Session, ownStreamId, cancellationToken),
+                cancellationToken).ConfigureAwait(false);
+            var lastMax = int.MinValue;
+            await foreach (var (maxLayerId, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+                if (maxLayerId == lastMax)
+                    continue;
+
+                lastMax = maxLayerId;
+                Log.LogInformation(
+                    "MaxRequestedLayerId: stream {StreamId} → {MaxLayerId}", ownStreamId, maxLayerId);
+                await _jsRef.InvokeVoidAsync("setMaxLayerId", cancellationToken, maxLayerId).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception e) {
+            Log.LogWarning(e, "SubscribeToMaxLayerId failed");
         }
     }
 
@@ -350,27 +396,41 @@ public sealed class VideoRecorder : IAsyncDisposable
 
         [JSInvokable]
         public Task OnRecorderStats(
-            double encodeRatioEma,
+            double encodeDeficitEma,
             double senderFrameDropRatioEma,
             double lastAckAgeMs,
             bool isPeerConnected,
             byte[] dropStages,
             int[] dropCounts,
             int bundlesShipped,
-            long bytesEncoded)
+            int bundlesEncoded,
+            long bytesEncoded,
+            double encodeQueueDepthEma,
+            double wireQueueDepthEma,
+            double floodGateSkipPerSec,
+            int peerReconnectStreak,
+            int encoderRestartStreakIn60s,
+            bool isTabBackgrounded)
         {
             var dropTrace = new Dictionary<FrameDropStage, int>(dropStages.Length);
             for (var i = 0; i < dropStages.Length && i < dropCounts.Length; i++)
                 dropTrace[(FrameDropStage)dropStages[i]] = dropCounts[i];
             return videoRecorder.OnRecorderStats(new RecorderStats(
-                EncodeRatioEma: encodeRatioEma,
+                EncodeDeficitEma: encodeDeficitEma,
                 SenderFrameDropRatioEma: senderFrameDropRatioEma,
                 LastAckAgeMs: lastAckAgeMs,
                 IsConnected: false,
                 IsPeerConnected: isPeerConnected,
                 DropTrace: dropTrace,
                 BundlesShipped: bundlesShipped,
-                BytesEncoded: bytesEncoded));
+                BundlesEncoded: bundlesEncoded,
+                BytesEncoded: bytesEncoded,
+                EncodeQueueDepthEma: encodeQueueDepthEma,
+                WireQueueDepthEma: wireQueueDepthEma,
+                FloodGateSkipPerSec: floodGateSkipPerSec,
+                PeerReconnectStreak: peerReconnectStreak,
+                EncoderRestartStreakIn60s: encoderRestartStreakIn60s,
+                IsTabBackgrounded: isTabBackgrounded));
         }
     }
 }

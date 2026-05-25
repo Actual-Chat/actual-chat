@@ -1,8 +1,14 @@
 import { from, type PipeOperator } from 'ix-ext';
+import { RunningEMA } from 'math';
 import { abortPromise, PromiseSource } from 'promises';
 import { closeEncodedChunk, type ArrivedChunk, type DecodedFrame } from '../frame-envelopes';
 import { createCodecProofTracker, type CodecProofTracker } from '../codec-proof';
+import { HAS_VF_ROTATION_INIT, wrapWithRotation } from '../video-frame-caps';
 import type { RotationQuarter } from 'orientation';
+
+const DECODE_RATIO_EMA_ALPHA = 0.2;
+const HANG_WINDOW_MS = 60_000;
+const DEFAULT_FRAME_DURATION_MS = 1000 / 30;
 
 // Message prefix stamped on a thrown error when the decode operator's recovery
 // budget is exhausted — VideoPlayer reads it to drive codec exclusion. Encoded
@@ -56,6 +62,10 @@ export interface DecodeOptions {
     setTimeoutFn?: (cb: () => void, ms: number) => unknown;
     clearTimeoutFn?: (handle: unknown) => void;
     abortSignal?: AbortSignal;
+    // Source nominal frame duration (ms); decodeRatio = (decodedAt - submitMs)
+    // / frameDurationMs. Defaults to 1000/30 for tests; production passes
+    // VIDEO.frameDurationMs.
+    frameDurationMs?: number;
 }
 
 // HEVC (hev1/hvc1) needs a description; AVC and AV1 inline codec
@@ -94,6 +104,7 @@ export function decode(opts: DecodeOptions): PipeOperator<ArrivedChunk, DecodedF
     const setTimeoutFn = opts.setTimeoutFn ?? ((cb, ms): unknown => setTimeout(cb, ms));
     const clearTimeoutFn = opts.clearTimeoutFn ?? ((h: unknown): void => clearTimeout(h as ReturnType<typeof setTimeout>));
     const abortSignal = opts.abortSignal;
+    const frameDurationMs = opts.frameDurationMs ?? DEFAULT_FRAME_DURATION_MS;
 
     return source => from(decodeAsync(
         source,
@@ -108,6 +119,7 @@ export function decode(opts: DecodeOptions): PipeOperator<ArrivedChunk, DecodedF
         setTimeoutFn,
         clearTimeoutFn,
         abortSignal,
+        frameDurationMs,
     ));
 }
 
@@ -124,7 +136,15 @@ async function* decodeAsync(
     setTimeoutFn: (cb: () => void, ms: number) => unknown,
     clearTimeoutFn: (handle: unknown) => void,
     abortSignal: AbortSignal | undefined,
+    frameDurationMs: number,
 ): AsyncIterable<DecodedFrame> {
+    const decodeRatioEma = new RunningEMA(0, 1, DECODE_RATIO_EMA_ALPHA);
+    const hangTimestamps: number[] = [];
+    const recordHang = (wallMs: number): void => {
+        hangTimestamps.push(wallMs);
+        while (hangTimestamps.length > 0 && wallMs - hangTimestamps[0] > HANG_WINDOW_MS)
+            hangTimestamps.shift();
+    };
     const currentCodec = initialConfig.codec;
     let currentWidth = initialConfig.codedWidth ?? 0;
     let currentHeight = initialConfig.codedHeight ?? 0;
@@ -158,18 +178,34 @@ async function* decodeAsync(
             }
             const decodedAtMs = now();
             const stats = currentStats!;
+            // Move display rotation from the envelope to the VideoFrame's
+            // own metadata when supported. <video> element auto-rotates from
+            // `frame.rotation`; downstream CSS / canvas rotation paths read
+            // envelope.rotation, so zero it here to avoid double-rotation.
+            // Canvas render backends and Firefox stay on the legacy path
+            // (HAS_VF_ROTATION_INIT === false → no wrap, envelope unchanged).
+            let outFrame = frame;
+            let outRotation: RotationQuarter = meta.rotation;
+            if (HAS_VF_ROTATION_INIT && meta.rotation !== 0) {
+                outFrame = wrapWithRotation(frame, meta.rotation);
+                try { frame.close(); } catch { /* ignore */ }
+                outRotation = 0;
+            }
             const envelope: DecodedFrame = {
-                frame,
+                frame: outFrame,
                 capturedAt: meta.capturedAt,
                 arrivedAt: meta.arrivedAt,
                 decodedAt: { timeMs: decodedAtMs, epoch: 0 },
                 index: meta.index,
                 dropTrace: meta.dropTrace,
                 layerId: meta.layerId,
-                rotation: meta.rotation,
+                rotation: outRotation,
                 stats,
             };
             consecutiveRecoveries = 0;
+            stats.recoveryStreak = 0;
+            decodeRatioEma.appendSample((decodedAtMs - meta.submitMs) / frameDurationMs);
+            stats.decodeRatioEma = decodeRatioEma.value;
             noteFrameDecoded(meta.layerId);
             ready.push(envelope);
             if (!wakeup.isCompleted()) wakeup.resolve();
@@ -260,7 +296,11 @@ async function* decodeAsync(
                 pendingError ??= new Error(
                     `decode: hang watchdog (no frames in ${decoderHangTimeoutMs} ms, pending=${pending.length}, codec=${currentCodec})`);
                 codecProofTracker.noteDecoderError();
-                lastDecoderActivityMs = now();
+                const nowMs = now();
+                recordHang(nowMs);
+                if (currentStats)
+                    currentStats.hangRateIn60s = hangTimestamps.length;
+                lastDecoderActivityMs = nowMs;
                 wakeup = new PromiseSource<void>();
                 continue;
             }
@@ -279,6 +319,12 @@ async function* decodeAsync(
             const arrived = result.value;
             try {
                 currentStats = arrived.stats;
+                // Time-decay hangs so the count drops without needing a new event.
+                const arrivalNowMs = now();
+                while (hangTimestamps.length > 0
+                    && arrivalNowMs - hangTimestamps[0] > HANG_WINDOW_MS)
+                    hangTimestamps.shift();
+                currentStats.hangRateIn60s = hangTimestamps.length;
 
                 // Local snapshot: TS narrows pendingError to null otherwise
                 // (it can't see the async writes from the error callback).
@@ -288,6 +334,7 @@ async function* decodeAsync(
                         continue;
                     }
                     consecutiveRecoveries++;
+                    arrived.stats.recoveryStreak = consecutiveRecoveries;
                     if (!codecProofTracker.isProven() && consecutiveRecoveries >= maxRecoveries) {
                         const codec = currentCodec;
                         pendingError = null;

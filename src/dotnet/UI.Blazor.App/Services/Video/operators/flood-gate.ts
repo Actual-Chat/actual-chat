@@ -5,6 +5,8 @@
 import { from, type PipeOperator } from 'ix-ext';
 import type { CapturedFrame } from '../frame-envelopes';
 
+const SKIP_RATE_WINDOW_MS = 1_000;
+
 export class FloodGate {
     private _isOpen = true;
     private _skipCount = 0;
@@ -38,13 +40,24 @@ export function floodGate(gate: FloodGate): PipeOperator<CapturedFrame, Captured
         return from(impl());
 
         async function* impl(): AsyncIterable<CapturedFrame> {
+            const skipTimestamps: number[] = [];
+            const updateRate = (stats: CapturedFrame['stats']): void => {
+                const nowMs = performance.now();
+                while (skipTimestamps.length > 0
+                    && nowMs - skipTimestamps[0] > SKIP_RATE_WINDOW_MS)
+                    skipTimestamps.shift();
+                stats.floodGateSkipPerSec = skipTimestamps.length;
+            };
             for await (const captured of source) {
                 if (gate.isOpen) {
+                    updateRate(captured.stats);
                     yield captured;
                     continue;
                 }
                 try { captured.frame.close(); } catch { /* ignore */ }
                 gate.recordSkip();
+                skipTimestamps.push(performance.now());
+                updateRate(captured.stats);
             }
         }
     };

@@ -66,7 +66,6 @@ function makeDto(opts: Partial<VideoFrameDto> & { offsetTicks?: number; IsKeyFra
         Description: opts.Description,
         Codec: opts.Codec,
         LayerId: opts.LayerId,
-        TemporalLayerId: opts.TemporalLayerId,
     };
 }
 

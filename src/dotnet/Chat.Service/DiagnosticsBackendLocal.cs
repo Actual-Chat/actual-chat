@@ -66,7 +66,7 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
                 c.Id.ToString(),
                 c.ToString(),
                 c.ConnectionKind.ToString(),
-                c.IsConnected(),
+                c.ConnectionState.Value.Kind,
                 GetConnectionInfo(c.ConnectionState.Value),
                 ""))
             .ToArray();

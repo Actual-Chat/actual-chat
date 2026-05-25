@@ -65,16 +65,6 @@ async function settlePreviewWork(): Promise<void> {
         await Promise.resolve();
 }
 
-function spacedSource<T>(items: T[]): AsyncIterable<T> {
-    return (async function* () {
-        await Promise.resolve();
-        for (const item of items) {
-            yield item;
-            await settlePreviewWork();
-        }
-    })();
-}
-
 async function drain<T>(seg: AsyncIterable<T>): Promise<T[]> {
     const out: T[] = [];
     for await (const item of seg) out.push(item);
@@ -87,9 +77,6 @@ function makePreviewForwarder(
 ): ReturnType<typeof previewForwarder> {
     return previewForwarder({
         getWriter,
-        frameDurationMs: 1,
-        nowMs: () => 0,
-        sleep: () => Promise.resolve(),
         ...extra,
     });
 }
@@ -118,7 +105,7 @@ describe('previewForwarder', () => {
         const writer = new FakeWriter();
 
         const op = makePreviewForwarder(() => writer as unknown as WritableStreamDefaultWriter<VideoFrame>);
-        const out = await drain(op(spacedSource(envelopes)));
+        const out = await drain(op(source(envelopes)));
         await settlePreviewWork();
 
         expect(out).toHaveLength(3);
@@ -155,12 +142,11 @@ describe('previewForwarder', () => {
         const writerB = new FakeWriter();
         let calls = 0;
         const op = makePreviewForwarder(() => {
-            // First two frames go to A; remaining to B.
             const writer = calls < 2 ? writerA : writerB;
             calls++;
             return writer as unknown as WritableStreamDefaultWriter<VideoFrame>;
         });
-        await drain(op(spacedSource(envelopes)));
+        await drain(op(source(envelopes)));
         await settlePreviewWork();
 
         expect(calls).toBe(4);
@@ -181,7 +167,7 @@ describe('previewForwarder', () => {
         writer.writeShouldThrow = new Error('writer closed');
 
         const op = makePreviewForwarder(() => writer as unknown as WritableStreamDefaultWriter<VideoFrame>);
-        const out = await drain(op(spacedSource(envelopes)));
+        const out = await drain(op(source(envelopes)));
         await settlePreviewWork();
 
         expect(out).toHaveLength(2);
@@ -208,110 +194,6 @@ describe('previewForwarder', () => {
         expect(writer.written).toEqual([]);
     });
 
-    it('paces bunched frames from capturedAt time', async () => {
-        const stats = createEmptyRecorderStats();
-        const { envelopes } = makeFrames(stats, 3);
-        const writer = new FakeWriter();
-        let now = 0;
-        const sleeps: number[] = [];
-
-        const op = previewForwarder({
-            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
-            frameDurationMs: 33,
-            nowMs: () => now,
-            sleep: async delayMs => {
-                await Promise.resolve();
-                sleeps.push(delayMs);
-                now += delayMs;
-            },
-        });
-        await drain(op(spacedSource(envelopes)));
-        await settlePreviewWork();
-
-        expect(writer.written).toHaveLength(3);
-        expect(envelopes.map(e => (e.frame as unknown as MockVideoFrame).clones[0].closed)).toEqual([
-            true,
-            true,
-            true,
-        ]);
-        expect(sleeps).toEqual([33, 33]);
-    });
-
-    it('resets pacing on capture-clock epoch changes', async () => {
-        const stats = createEmptyRecorderStats();
-        const { envelopes } = makeFrames(stats, 3);
-        envelopes[2] = {
-            ...envelopes[2],
-            capturedAt: { timeMs: 0, epoch: 1 },
-        };
-        const writer = new FakeWriter();
-        let now = 0;
-        const sleeps: number[] = [];
-
-        const op = previewForwarder({
-            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
-            frameDurationMs: 33,
-            nowMs: () => now,
-            sleep: async delayMs => {
-                await Promise.resolve();
-                sleeps.push(delayMs);
-                now += delayMs;
-            },
-        });
-        await drain(op(spacedSource(envelopes)));
-        await settlePreviewWork();
-
-        expect(writer.written).toHaveLength(3);
-        expect(sleeps).toEqual([33]);
-    });
-
-    it('does not stall passthrough while preview delivery is paced', async () => {
-        const stats = createEmptyRecorderStats();
-        const { envelopes } = makeFrames(stats, 2);
-        const writer = new FakeWriter();
-        let now = 0;
-        const sleeps: number[] = [];
-        const pendingSleep: { resume?: () => void } = {};
-
-        const op = previewForwarder({
-            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
-            frameDurationMs: 33,
-            nowMs: () => now,
-            sleep: delayMs => {
-                sleeps.push(delayMs);
-                now += delayMs;
-                return new Promise<void>(resolve => { pendingSleep.resume = resolve; });
-            },
-        });
-        const out = await drain(op(spacedSource(envelopes)));
-
-        expect(out).toHaveLength(2);
-        expect(writer.written).toHaveLength(1);
-        expect(sleeps).toEqual([33]);
-        pendingSleep.resume?.();
-        await settlePreviewWork();
-    });
-
-    it('drops preview frames that are already two frame intervals late', async () => {
-        const stats = createEmptyRecorderStats();
-        const { envelopes, frames } = makeFrames(stats, 3);
-        const writer = new FakeWriter();
-        let calls = 0;
-
-        const op = previewForwarder({
-            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
-            frameDurationMs: 33,
-            nowMs: () => calls++ === 0 ? 0 : 100,
-            sleep: () => Promise.resolve(),
-        });
-        await drain(op(source(envelopes)));
-        await settlePreviewWork();
-
-        expect(writer.written).toHaveLength(1);
-        expect(frames.map(f => f.clones.length)).toEqual([1, 1, 1]);
-        expect(frames.map(f => f.clones[0].closed)).toEqual([true, true, true]);
-    });
-
     it('reports frames to the canvas fallback when no writer is available', async () => {
         const stats = createEmptyRecorderStats();
         const { envelopes, frames } = makeFrames(stats, 2);
@@ -322,9 +204,6 @@ describe('previewForwarder', () => {
             reportFrame: frame => {
                 reported.push(frame);
             },
-            frameDurationMs: 1,
-            nowMs: () => 0,
-            sleep: () => Promise.resolve(),
         });
         const out = await drain(op(source(envelopes)));
         await settlePreviewWork();

@@ -7,6 +7,8 @@ namespace ActualChat.App.Maui;
 /// </summary>
 public partial class CustomBlazorWebViewHandler : BlazorWebViewHandler
 {
+    private ILogger Log => field ??= StaticLog.For<CustomBlazorWebViewHandler>();
+
     public override void SetMauiContext(IMauiContext mauiContext)
     {
         BlazorWebViewApp.EnsureStarted();

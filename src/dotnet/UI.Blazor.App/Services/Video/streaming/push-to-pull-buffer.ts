@@ -69,10 +69,6 @@ function frameToDto(frame: VideoStreamFrame): VideoFrameDto {
     }
     if (frame.description) dto.Description = frame.description;
     if (frame.codec) dto.Codec = frame.codec;
-    if (frame.temporalLayerId !== undefined && frame.temporalLayerId > 0)
-        dto.TemporalLayerId = frame.temporalLayerId;
-    if (frame.temporalLayerCount !== undefined && frame.temporalLayerCount > 1)
-        dto.TemporalLayerCount = frame.temporalLayerCount;
     if (frame.layerId !== undefined && frame.layerId > 0)
         dto.LayerId = frame.layerId;
     // Always emit producer's current ladder size — server's ReceiveQualityFilter

@@ -175,6 +175,27 @@ public class LiveVideoStreams : ILiveVideoStreams
         CancellationToken cancellationToken)
         => await VideoStreamingBackend.LastKeyframeRequestAt(streamId, cancellationToken).ConfigureAwait(false);
 
+    // [ComputeMethod]
+    // Single-node aggregate: scans _qualityBySession on this frontend node.
+    // Cross-node aggregation is out of scope here; for multi-node deployments
+    // the recorder still sees a node-local cap that is at worst conservative
+    // (lower than the true global max), which preserves the safety property
+    // we care about: no viewer asks for a layer the sender isn't producing.
+    public virtual Task<int> MaxRequestedLayerId(
+        Session session,
+        StreamId streamId,
+        CancellationToken cancellationToken)
+    {
+        var max = -1;
+        var streamIdValue = streamId.Value;
+        foreach (var (_, state) in _qualityBySession) {
+            if (!state.QualityByStream.TryGetValue(streamIdValue, out var q))
+                continue;
+            if (q.LayerId > max) max = q.LayerId;
+        }
+        return Task.FromResult(max);
+    }
+
     public async Task PushStream(
         Session session,
         string chatId,
@@ -237,14 +258,41 @@ public class LiveVideoStreams : ILiveVideoStreams
         CancellationToken cancellationToken)
     {
         if (qualityByStream is null) {
-            _qualityBySession.TryRemove(session, out _);
+            if (_qualityBySession.TryGetValue(session, out var removing)) {
+                var prevMaxOnClear = new Dictionary<string, int>(removing.QualityByStream.Count);
+                foreach (var (sid, _) in removing.QualityByStream)
+                    prevMaxOnClear[sid] = ComputeMaxLayerId(sid);
+                _qualityBySession.TryRemove(session, out _);
+                foreach (var (sid, prevMax) in prevMaxOnClear) {
+                    var newMax = ComputeMaxLayerId(sid);
+                    if (newMax != prevMax) {
+                        using (Invalidation.Begin())
+                            _ = MaxRequestedLayerId(session, StreamId.Parse(sid), default);
+                    }
+                }
+            }
             DebugLog?.LogDebug("ChangePlaybackQuality: session={Session}, info={Info} (cleared)", session, info);
             return;
         }
 
         qualityByStream = ApplyStreamCountCap(qualityByStream, info);
         _qualityBySession.TryGetValue(session, out var prevState);
+        // Snapshot the per-stream max BEFORE we install the new state so we
+        // can invalidate `MaxRequestedLayerId` only for streams whose
+        // aggregate actually changed.
+        var affectedStreamIds = CollectStreamIdsForInvalidation(
+            prevState?.QualityByStream, qualityByStream);
+        var prevMaxByStream = new Dictionary<string, int>(affectedStreamIds.Count);
+        foreach (var sid in affectedStreamIds)
+            prevMaxByStream[sid] = ComputeMaxLayerId(sid);
         _qualityBySession[session] = new ReceiveQualityState(qualityByStream, SystemClock.Now);
+        foreach (var sid in affectedStreamIds) {
+            var newMax = ComputeMaxLayerId(sid);
+            if (newMax != prevMaxByStream[sid]) {
+                using (Invalidation.Begin())
+                    _ = MaxRequestedLayerId(session, StreamId.Parse(sid), default);
+            }
+        }
         DebugLog?.LogDebug("ChangePlaybackQuality: session={Session}, streams={Count}, info={Info}",
             session, qualityByStream.Count, info);
 
@@ -254,7 +302,7 @@ public class LiveVideoStreams : ILiveVideoStreams
         }
 
         // Request a fresh keyframe whenever a stream's quality envelope is
-        // UPGRADED (more spatial / temporal layers requested). On upgrades,
+        // UPGRADED (more spatial layers requested). On upgrades,
         // the new layer can't be decoded by the receiver until the next
         // keyframe of that layer arrives — periodic keyframes are 3 s apart,
         // so without this we get up to 3 s of stuck-on-old-quality after the
@@ -352,6 +400,29 @@ public class LiveVideoStreams : ILiveVideoStreams
                 : ReceiveQuality.Lowest
             : ReceiveQuality.Default;
 
+    private int ComputeMaxLayerId(string streamIdValue)
+    {
+        var max = -1;
+        foreach (var (_, state) in _qualityBySession) {
+            if (state.QualityByStream.TryGetValue(streamIdValue, out var q) && q.LayerId > max)
+                max = q.LayerId;
+        }
+        return max;
+    }
+
+    private static HashSet<string> CollectStreamIdsForInvalidation(
+        ApiMap<string, ReceiveQuality>? previous,
+        ApiMap<string, ReceiveQuality> current)
+    {
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var (streamId, _) in current)
+            ids.Add(streamId);
+        if (previous is not null)
+            foreach (var (streamId, _) in previous)
+                ids.Add(streamId);
+        return ids;
+    }
+
     internal static IEnumerable<string> GetUpgradedStreams(
         ApiMap<string, ReceiveQuality>? previous,
         ApiMap<string, ReceiveQuality> current)
@@ -365,8 +436,7 @@ public class LiveVideoStreams : ILiveVideoStreams
             var oldQuality = previous is not null && previous.TryGetValue(streamId, out var old)
                 ? old
                 : ReceiveQuality.Lowest;
-            if (quality.LayerId > oldQuality.LayerId
-                || quality.TemporalLayerId < oldQuality.TemporalLayerId)
+            if (quality.LayerId > oldQuality.LayerId)
                 yield return streamId;
         }
     }

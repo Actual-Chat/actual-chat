@@ -252,6 +252,10 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                             continue;
                         }
 
+                        // Stamp arrival wallclock for downlink-latency attribution
+                        // on receivers; overwrites the int64 in-place when the
+                        // serializer cache is already populated (no rebuild).
+                        CachingVideoFrameFormatter.StampServerArrived(frame, DateTime.UtcNow.Ticks);
                         yield return frame;
                     }
 

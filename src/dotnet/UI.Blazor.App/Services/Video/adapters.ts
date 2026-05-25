@@ -398,10 +398,17 @@ export class AsyncVideoEncoder<
     private nextEncodeOptions: { keyFrame: boolean } | null = null;
 
     protected submit(input: TIn): void {
-        this.encoder.encode(input.frame, { keyFrame: this.nextEncodeOptions?.keyFrame ?? false });
+        try {
+            this.encoder.encode(input.frame, { keyFrame: this.nextEncodeOptions?.keyFrame ?? false });
+        } finally {
+            // Per WebCodecs spec, VideoEncoder.encode() takes its own internal
+            // reference to the frame, so the caller can close immediately. This
+            // frees the JS-side handle (and its GPU plane slot when no other
+            // wrap references it) one or more frame-intervals sooner than the
+            // legacy "defer until output" behavior — important on Android where
+            // Chromium's frame pool is ~12-20 and the simulcast pipeline keeps
+            // multiple wraps in flight.
+            try { input.frame.close(); } catch { /* already closed */ }
+        }
     }
-
-    // Frame close is DEFERRED until the encoder's output callback fires:
-    // canvas-backed frames may be the sole reference to their GPU texture, and
-    // closing before the encoder reads it makes the encoder silently never emit.
 }

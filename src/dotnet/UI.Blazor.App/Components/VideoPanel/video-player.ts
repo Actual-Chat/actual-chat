@@ -49,12 +49,11 @@ export function getActivePlayers(): ReadonlyMap<string, VideoPlayer> {
 
 const requestedReceiveQuality = new Map<string, {
     layerId: number;
-    temporalLayerId: number
 } | null>();
 
 export function recordRequestedReceiveQuality(
     streamId: string,
-    quality: { layerId: number; temporalLayerId: number } | null
+    quality: { layerId: number } | null
 ): void {
     if (quality === null)
         requestedReceiveQuality.delete(streamId);
@@ -93,7 +92,6 @@ export interface RemoteStreamDiagnostics {
     } | null;
     requestedReceiveQuality: {
         layerId: number;
-        temporalLayerId: number;
     } | null;
     streamAgeMs: number;
     // Cumulative drop-stage histogram from the player's stats. Keys are
@@ -1239,7 +1237,13 @@ export class VideoPlayer {
             counts,
             stats.presented,
             stats.playbackRateEma,
-            stats.producerTemporalLayerCount)
+            stats.decodeRatioEma,
+            stats.hangRateIn60s,
+            stats.recoveryStreak,
+            stats.presentSkipRatio,
+            stats.bufferUnderrunRatio,
+            stats.downlinkLatencyEma,
+            stats.arrivalIntervalEma)
             .catch((e: unknown) => warnLog?.log('reportPlaybackStats error:', e));
         // Also fire a stale-frame hint to the SKIP_TO_LIVE thresholds so
         // diagnostics still tick. The new pipeline's internal recovery

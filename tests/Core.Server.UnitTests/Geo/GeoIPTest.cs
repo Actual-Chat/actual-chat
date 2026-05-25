@@ -36,7 +36,7 @@ public class GeoIPTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Theory]
-    [InlineData("81.2.69.142", "Kettering, United Kingdom")]    // London, UK — city DB should resolve
+    [InlineData("81.2.69.142", "East Finchley, United Kingdom")]    // London, UK — city DB should resolve
     [InlineData("98.184.227.207", "Laguna Niguel, United States")] // Laguna Niguel, United States
     [InlineData("192.168.1.1")]
     [InlineData("77.88.55.242")] // Russia, but no City

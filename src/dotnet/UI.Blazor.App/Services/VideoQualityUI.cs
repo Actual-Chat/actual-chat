@@ -47,8 +47,8 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
         _outboundEncodingCap = new EncodingCap(
             new LayerCap(deviceCameraCap, screencastCap),
             new EncodingCapConfig(
-                EncodeRatioBad: Constants.Video.EncBadRatio,
-                EncodeRatioGood: Constants.Video.EncOkRatio + 0.2));
+                EncodeDeficitBad: Constants.Video.EncBadDeficit,
+                EncodeDeficitGood: Constants.Video.EncOkDeficit));
         _outboundBandwidthCap = new BandwidthCap(
             new LayerCap(deviceCameraCap, screencastCap),
             new BandwidthCapConfig());

@@ -1,15 +1,12 @@
 using ActualChat.App.Server;
-using ActualChat.Chat;
-using ActualChat.Kvas;
 using ActualChat.Notification;
 using ActualChat.Search;
-using ActualChat.Users;
 using ActualLab.Versioning;
 using Bunit;
 
 namespace ActualChat.Testing.Host;
 
-public class BlazorTester : TestContext, IWebTester
+public class BlazorTester : BunitContext, IWebTester
 {
     private readonly IServiceScope _serviceScope;
 
@@ -47,19 +44,12 @@ public class BlazorTester : TestContext, IWebTester
         Services.AddTransient(_ => ScopedAppServices.StateFactory());
     }
 
-#pragma warning disable CA2215 // Ensure method calls base.Dispose(bool)
-    protected override void Dispose(bool disposing)
-#pragma warning restore CA2215
+    protected override async ValueTask DisposeAsyncCore()
     {
-        if (disposing)
+        await base.DisposeAsyncCore();
+        if (_serviceScope is IAsyncDisposable ad)
+            await ad.DisposeSilentlyAsync();
+        else
             _serviceScope.DisposeSilently();
-        // base.Dispose(disposing);
-    }
-
-    public ValueTask DisposeAsync()
-    {
-        GC.SuppressFinalize(this);
-        Dispose(true);
-        return default;
     }
 }

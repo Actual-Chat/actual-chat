@@ -55,6 +55,7 @@ import {
 import { EncodedFrameBuffer } from '../../../src/dotnet/UI.Blazor.App/Services/Video/playback/encoded-frame-buffer';
 
 import { AsyncVideoEncoder } from '../../../src/dotnet/UI.Blazor.App/Services/Video/adapters';
+import { LayerLadderController } from '../../../src/dotnet/UI.Blazor.App/Services/Video/sender/layer-ladder-controller';
 import { MonotonicClock } from 'clocks';
 // ============================================================================
 // Mock WebCodecs surfaces
@@ -344,6 +345,7 @@ describe('video pipeline integration', () => {
         const clock = new MonotonicClock();
         const sender = new FakeSender();
         const encDims = { width: 1280, height: 720 };
+        const ladderController = new LayerLadderController([cfg(encDims.width, encDims.height)]);
 
         const source: CapturedFrame[] = [];
         for (let i = 0; i < 10; i++) {
@@ -356,14 +358,14 @@ describe('video pipeline integration', () => {
             attachSourceDims(),
             forceKeyframeOnDimChange(),
             dropDimMismatch({ getExpectedDims: () => encDims }),
-            normalizeFrame({ target: encDims, isCamera: false, isFrontCamera: false, isIos: false }),
-            spatialize({ ladder: [encDims] }),
+            normalizeFrame({ ladder: ladderController, isCamera: false, isFrontCamera: false, isIos: false }),
+            spatialize({ controller: ladderController }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
             captureToBundle,
-            encode({ configs: [cfg(encDims.width, encDims.height)], createEncoder: makeEncoderFactory() }),
-            wireSend({ createSender: () => sender }),
+            encode({ controller: ladderController, createEncoder: makeEncoderFactory() }),
+            wireSend({ createSender: () => sender, controller: ladderController }),
         );
         // Advance clocks 33ms per call to performance.now/Date.now so each
         // captured frame gets a distinct capturedAt.timeMs.
@@ -397,6 +399,7 @@ describe('video pipeline integration', () => {
             { width: 960, height: 540 },
             { width: 1920, height: 1080 },
         ];
+        const ladderController = new LayerLadderController(ladder.map(l => cfg(l.width, l.height)));
         // Encoder expects coded dims at the TOP of the ladder (= primary
         // tier = 1920x1080). The dim-mismatch guard runs BEFORE downscale,
         // so it sees the source frame at top dims.
@@ -406,24 +409,34 @@ describe('video pipeline integration', () => {
         for (let i = 0; i < 5; i++) {
             source.push(makeCaptured(i, stats, expectedSourceDims.width, expectedSourceDims.height));
         }
+        // Pipelined encode submits multiple bundles before awaiting, so
+        // advancing the mock clock per `sender.afterSend` no longer
+        // distinguishes captureTime per frame. Advance per source-yield
+        // instead so each captured frame gets a unique timestamp.
+        async function* tickingSource(): AsyncIterable<CapturedFrame> {
+            for (const f of source) {
+                await Promise.resolve();
+                yield f;
+                mockPerfMs += 33;
+                mockWallMs += 33;
+            }
+        }
 
         const captureToBundle = pipe(
-            fromArray(source),
+            tickingSource(),
             stampCaptureTime({ clock }),
             attachSourceDims(),
             forceKeyframeOnDimChange(),
             dropDimMismatch({ getExpectedDims: () => expectedSourceDims }),
-            normalizeFrame({ target: ladder[ladder.length - 1], isCamera: false, isFrontCamera: false, isIos: false }),
-            spatialize({ ladder }),
+            normalizeFrame({ ladder: ladderController, isCamera: false, isFrontCamera: false, isIos: false }),
+            spatialize({ controller: ladderController }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
             captureToBundle,
-            encode({ configs: ladder.map(l => cfg(l.width, l.height)), createEncoder: makeEncoderFactory() }),
-            wireSend({ createSender: () => sender }),
+            encode({ controller: ladderController, createEncoder: makeEncoderFactory() }),
+            wireSend({ createSender: () => sender, controller: ladderController }),
         );
-        const advance = (): void => { mockPerfMs += 33; mockWallMs += 33; };
-        sender.afterSend = advance;
         const runP = count(senderPipe);
 
         await runSenderToCompletion(runP, 15);
@@ -574,6 +587,7 @@ describe('video pipeline integration', () => {
         const clock = new MonotonicClock();
         const fakeSender = new FakeSender();
         const encDims = { width: 1280, height: 720 };
+        const ladderController = new LayerLadderController([cfg(encDims.width, encDims.height)]);
 
         const source: CapturedFrame[] = [];
         for (let i = 0; i < 4; i++) source.push(makeCaptured(i, recStats, encDims.width, encDims.height));
@@ -584,14 +598,14 @@ describe('video pipeline integration', () => {
             attachSourceDims(),
             forceKeyframeOnDimChange(),
             dropDimMismatch({ getExpectedDims: () => encDims }),
-            normalizeFrame({ target: encDims, isCamera: false, isFrontCamera: false, isIos: false }),
-            spatialize({ ladder: [encDims] }),
+            normalizeFrame({ ladder: ladderController, isCamera: false, isFrontCamera: false, isIos: false }),
+            spatialize({ controller: ladderController }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
             captureToBundle,
-            encode({ configs: [cfg(encDims.width, encDims.height)], createEncoder: makeEncoderFactory() }),
-            wireSend({ createSender: () => fakeSender }),
+            encode({ controller: ladderController, createEncoder: makeEncoderFactory() }),
+            wireSend({ createSender: () => fakeSender, controller: ladderController }),
         );
         const advance = (): void => { mockPerfMs += 33; mockWallMs += 33; };
         fakeSender.afterSend = advance;
@@ -616,7 +630,6 @@ describe('video pipeline integration', () => {
             Description: s.description,
             Codec: s.codec,
             LayerId: s.layerId,
-            TemporalLayerId: s.temporalLayerId,
         }));
 
         // Run the receiver side just up to pullSource → ArrivedChunk so we
@@ -671,6 +684,7 @@ describe('video pipeline integration', () => {
             const clock = new MonotonicClock();
             const sender = new FakeSender();
             const encDims = { width: 1280, height: 720 };
+            const ladderController = new LayerLadderController([cfg(encDims.width, encDims.height)]);
 
             const source: CapturedFrame[] = [];
             for (let i = 0; i < 3; i++) source.push(makeCaptured(i, stats, encDims.width, encDims.height));
@@ -681,14 +695,14 @@ describe('video pipeline integration', () => {
                 attachSourceDims(),
                 forceKeyframeOnDimChange(),
                 dropDimMismatch({ getExpectedDims: () => encDims }),
-                normalizeFrame({ target: encDims, isCamera: false, isFrontCamera: false, isIos: false }),
-                spatialize({ ladder: [encDims] }),
+                normalizeFrame({ ladder: ladderController, isCamera: false, isFrontCamera: false, isIos: false }),
+                spatialize({ controller: ladderController }),
                 applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
             );
             const senderPipe = pipe(
                 captureToBundle,
-                encode({ configs: [cfg(encDims.width, encDims.height)], createEncoder: makeEncoderFactory() }),
-                wireSend({ createSender: () => sender }),
+                encode({ controller: ladderController, createEncoder: makeEncoderFactory() }),
+                wireSend({ createSender: () => sender, controller: ladderController }),
             );
             const advance = (): void => { mockPerfMs += 33; mockWallMs += 33; };
             sender.afterSend = advance;
