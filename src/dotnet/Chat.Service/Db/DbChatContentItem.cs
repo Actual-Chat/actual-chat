@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ActualChat.Chat.Db;
 
 [Table("ChatContentItems")]
-[Index(nameof(ChatId), nameof(Kind), nameof(At))]
+[Index(nameof(ChatId), nameof(Kind), nameof(At), nameof(EntryLocalId), nameof(LocalIndex))]
 [Index(nameof(EntryId))]
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbChatContentItem : IHasId<string>, IHasVersion<long>, IRequirementTarget
