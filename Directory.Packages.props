@@ -74,9 +74,9 @@
     <PackageVersion Include="Xamarin.Google.AI.Edge.LiteRT.GPU" Version="1.4.2" />
     <!-- iOS -->
     <PackageVersion Include="Xamarin.Build.Download" Version="0.11.4" />
-    <PackageVersion Include="AdamE.Firebase.iOS.Analytics" Version="11.10.0.2" />
-    <PackageVersion Include="AdamE.Firebase.iOS.Crashlytics" Version="11.10.0" />
-    <PackageVersion Include="AdamE.Firebase.iOS.CloudMessaging" Version="11.10.0" />
+    <PackageVersion Include="AdamE.Firebase.iOS.Analytics" Version="12.5.0.4" />
+    <PackageVersion Include="AdamE.Firebase.iOS.Crashlytics" Version="12.5.0.4" />
+    <PackageVersion Include="AdamE.Firebase.iOS.CloudMessaging" Version="12.5.0.4" />
     <PackageVersion Include="ActualLab.Opus.MaciOS" Version="1.0.16-alpha" />
   </ItemGroup>
   <!-- Strictly non-MAUI packages -->
