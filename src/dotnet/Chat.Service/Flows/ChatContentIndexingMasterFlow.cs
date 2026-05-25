@@ -7,15 +7,15 @@ namespace ActualChat.Chat.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial class ChatContentIndexingMasterFlow
-    : IndexingMasterFlow<ChatEntryContentIndexingFlow, Chat, ChatId>, IMasterFlow
+    : BatchedIndexingFlow<Chat, ChatId>, IMasterFlow
 {
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
 
     [DataMember(Order = 5), MemoryPackOrder(5), Key(5)]
     public long MaxVersion { get; set; }
 
-    // Spawn child flows for every chat within a single Run instead of relying on chained resumes.
-    protected override int Quota => int.MaxValue;
+    protected override int BatchSize => 200;
+    protected override int Quota => 2000;
 
     protected override ValueTask Init(CancellationToken cancellationToken)
     {
@@ -40,7 +40,9 @@ public sealed partial class ChatContentIndexingMasterFlow
     protected override async Task ProcessBatch(IReadOnlyList<Chat> batch, CancellationToken cancellationToken)
     {
         foreach (var chat in batch) {
-            await ScheduleResume(chat, cancellationToken).ConfigureAwait(false);
+            await Hub.NewResumeEvent<ChatEntryContentIndexingFlow>(chat.Id.Value)
+                .Schedule(cancellationToken)
+                .ConfigureAwait(false);
             await Hub.NewResumeEvent<ChatMediaIndexingFlow>(chat.Id.Value)
                 .Schedule(cancellationToken)
                 .ConfigureAwait(false);
