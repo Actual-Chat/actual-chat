@@ -10,6 +10,7 @@ public sealed partial class ChatContentIndexingMasterFlow
     : BatchedIndexingFlow<Chat, ChatId>, IMasterFlow
 {
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     [DataMember(Order = 5), MemoryPackOrder(5), Key(5)]
     public long MaxVersion { get; set; }
@@ -39,6 +40,13 @@ public sealed partial class ChatContentIndexingMasterFlow
 
     protected override async Task ProcessBatch(IReadOnlyList<Chat> batch, CancellationToken cancellationToken)
     {
+        var startedAt = CpuTimestamp.Now;
+        var first = batch[0];
+        var last = batch[^1];
+        Log.LogInformation(
+            "[ChatContentIndexingMasterFlow] ProcessBatch --> MaxVersion={MaxVersion}, First={FirstChatId} v{FirstVersion}, Last={LastChatId} v{LastVersion}",
+            MaxVersion, first.Id, first.Version, last.Id, last.Version);
+
         foreach (var chat in batch) {
             await Hub.NewResumeEvent<ChatEntryContentIndexingFlow>(chat.Id.Value)
                 .Schedule(cancellationToken)
@@ -47,5 +55,9 @@ public sealed partial class ChatContentIndexingMasterFlow
                 .Schedule(cancellationToken)
                 .ConfigureAwait(false);
         }
+
+        Log.LogInformation(
+            "[ChatContentIndexingMasterFlow] ProcessBatch <-- Count={Count}, Duration={Duration}",
+            batch.Count, startedAt.Elapsed.ToShortString());
     }
 }

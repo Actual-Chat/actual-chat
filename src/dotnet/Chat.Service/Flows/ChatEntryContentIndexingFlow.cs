@@ -11,6 +11,7 @@ public sealed partial class ChatEntryContentIndexingFlow : BatchedIndexingFlow<C
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private ICommander Commander => field ??= Services.Commander();
     private ChatId ChatId => field ??= ChatId.Parse(Id.Arguments);
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
     protected override int BatchSize => 200;
     protected override int Quota => 2000;
@@ -38,9 +39,20 @@ public sealed partial class ChatEntryContentIndexingFlow : BatchedIndexingFlow<C
 
     protected override async Task ProcessBatch(IReadOnlyList<ChatEntry> batch, CancellationToken cancellationToken)
     {
+        var startedAt = CpuTimestamp.Now;
+        var first = batch[0];
+        var last = batch[^1];
+        Log.LogInformation(
+            "[ChatEntryContentIndexingFlow] ProcessBatch --> ChatId={ChatId}, First=#{FirstLid} v{FirstVersion}, Last=#{LastLid} v{LastVersion}",
+            ChatId, first.LocalId, first.Version, last.LocalId, last.Version);
+
         var entries = batch.Where(x => !x.IsSystemEntry).ToList();
-        if (entries.Count == 0)
+        if (entries.Count == 0) {
+            Log.LogInformation(
+                "[ChatEntryContentIndexingFlow] ProcessBatch <-- ChatId={ChatId}, Count={Count}, Items=0 (no-op), Duration={Duration}",
+                ChatId, batch.Count, startedAt.Elapsed.ToShortString());
             return;
+        }
 
         var entryIds = entries.Select(x => x.Id).ToArray();
         var items = entries
@@ -50,6 +62,10 @@ public sealed partial class ChatEntryContentIndexingFlow : BatchedIndexingFlow<C
         await Commander
             .Call(new ChatsBackend_UpdateChatContentIndex(ChatId, ChatContentKind.Link, entryIds, items), cancellationToken)
             .ConfigureAwait(false);
+
+        Log.LogInformation(
+            "[ChatEntryContentIndexingFlow] ProcessBatch <-- ChatId={ChatId}, Count={Count}, EntryIds={EntryIds}, Items={Items}, Duration={Duration}",
+            ChatId, batch.Count, entryIds.Length, items.Length, startedAt.Elapsed.ToShortString());
     }
 
     private static IEnumerable<ChatContentItem> ExtractItems(ChatEntry entry)
