@@ -23,6 +23,11 @@
     <DefineConstants>$(DefineConstants);IS_DEV_MAUI</DefineConstants>
   </PropertyGroup>
 
+  <!-- Library, not a shippable app: no dSYM to upload to Crashlytics. -->
+  <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
+    <FirebaseCrashlyticsUploadSymbolsEnabled>false</FirebaseCrashlyticsUploadSymbolsEnabled>
+  </PropertyGroup>
+
   <!-- Platform-specific files to compile -->
 
   <!-- NOT iOS -->
