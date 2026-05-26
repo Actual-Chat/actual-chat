@@ -23,8 +23,9 @@
         </div>
     }
     <div class="c-control-panel">
-        @if (_enableIncompleteUI) {
+        @if (_mediaShareUI != null && Attachment != null) {
             <HeaderButton
+                Click="OnShareClick"
                 Class="bleached"
                 Tooltip="Share"
                 TooltipPosition="FloatingPosition.Bottom">
@@ -73,11 +74,10 @@
 @code {
     private ChatEntry? _chatEntry;
     private Author? _author;
-    private bool _enableIncompleteUI;
+    private IMediaShareUI? _mediaShareUI;
 
     [Inject] private UIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session;
-    private Features Features => Hub.Features;
     private ModalUI ModalUI => Hub.ModalUI;
     private IAuthors Authors => field ??= Hub.Services.GetRequiredService<IAuthors>();
     private IChats Chats => Hub.Services.GetRequiredService<IChats>();
@@ -88,7 +88,7 @@
     [Parameter] public string DownloadUrl { set; get; } = "";
     [Parameter] public string ContentType { set; get; } = "";
 
-    protected override async Task OnInitializedAsync() {
+    protected override void OnInitialized() {
         var saver = Hub.Services.GetService<IMediaSaver>();
         if (saver != null) {
             SaveMediaActionHandler = UIActionHandler.Create(
@@ -96,7 +96,7 @@
                 () => saver.Save(DownloadUrl, ContentType));
         }
 
-        _enableIncompleteUI = await Features.IsIncompleteUIEnabled(CancellationToken.None);
+        _mediaShareUI = Hub.Services.GetService<IMediaShareUI>();
     }
 
     protected override async Task OnParametersSetAsync() {
@@ -110,4 +110,11 @@
 
     private void OnInfoClick()
         => _ = ModalUI.Show(new VisualMediaInfoModal.Model(Attachment));
+
+    private Task OnShareClick() {
+        if (_mediaShareUI == null || Attachment == null)
+            return Task.CompletedTask;
+
+        return _mediaShareUI.Share(Attachment);
+    }
 }
