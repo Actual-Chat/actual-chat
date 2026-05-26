@@ -15,12 +15,18 @@ import { getLogs } from 'logging';
 const { warnLog } = getLogs('VideoWebGPU');
 
 const BG_CANVAS_WIDTH = 64;
-// Gaussian sigma (in target-pixel units). 8 ≈ ctx.filter='blur(3px)' on
-// the same 64×N canvas perceptually; tunable without recompile.
-const BLUR_RADIUS_PX = 8;
+// Gaussian sigma (in target-pixel units). Picks the per-pass kernel
+// spread; effective radius after all iterations ≈ sigma * sqrt(N).
+const BLUR_RADIUS_PX = 12;
 // Compile-time loop cap; the runtime branch inside the loop skips taps
 // beyond ceil(radius). Matches gregblur's MAX_SAMPLES.
 const MAX_SAMPLES = 16;
+// Number of H+V passes to chain. Each iteration convolves another
+// Gaussian, compounding to a wider effective radius without enlarging
+// the per-pass kernel (cheap because the canvas is tiny).
+// 2 iterations roughly matches the visual softness of the WebGPU
+// dual-Kawase path on this 64×N target.
+const BLUR_ITERATIONS = 2;
 
 const VERTEX_SHADER = `#version 300 es
 layout(location = 0) in vec2 a_position;
@@ -153,25 +159,49 @@ export class WebGlBgRenderer {
             gl.uniform1i(this.uCopyTexture, 0);
             gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-            // Pass 2: ping → pong, horizontal Gaussian.
-            gl.bindFramebuffer(gl.FRAMEBUFFER, this.pongFbo);
-            gl.viewport(0, 0, targetW, targetH);
+            // BLUR_ITERATIONS rounds of H then V; ping/pong alternates and
+            // the LAST vertical pass renders straight to the canvas swap
+            // chain. Source for the first H is the ping FBO populated by
+            // the copy pass.
             gl.useProgram(this.blurProgram);
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, this.pingTexture);
-            gl.uniform1i(this.uBlurTexture, 0);
             gl.uniform2f(this.uBlurTexelSize, 1 / targetW, 1 / targetH);
-            gl.uniform2f(this.uBlurDirection, 1, 0);
             gl.uniform1f(this.uBlurRadius, BLUR_RADIUS_PX);
-            gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-            // Pass 3: pong → canvas swap chain, vertical Gaussian.
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-            gl.viewport(0, 0, targetW, targetH);
-            gl.bindTexture(gl.TEXTURE_2D, this.pongTexture);
+            gl.activeTexture(gl.TEXTURE0);
             gl.uniform1i(this.uBlurTexture, 0);
-            gl.uniform2f(this.uBlurDirection, 0, 1);
-            gl.drawArrays(gl.TRIANGLES, 0, 6);
+            let srcTex = this.pingTexture;
+            let srcFbo = this.pingFbo;
+            let dstFbo = this.pongFbo;
+            for (let i = 0; i < BLUR_ITERATIONS; i++) {
+                const isLast = i === BLUR_ITERATIONS - 1;
+
+                // Horizontal pass into the alternate FBO.
+                gl.bindFramebuffer(gl.FRAMEBUFFER, dstFbo);
+                gl.viewport(0, 0, targetW, targetH);
+                gl.bindTexture(gl.TEXTURE_2D, srcTex);
+                gl.uniform2f(this.uBlurDirection, 1, 0);
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+                // Vertical pass: into the (now free) other FBO, unless this
+                // is the last iteration — then straight to the canvas.
+                const hOutputTex = dstFbo === this.pongFbo ? this.pongTexture : this.pingTexture;
+                if (isLast) {
+                    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                } else {
+                    gl.bindFramebuffer(gl.FRAMEBUFFER, srcFbo);
+                }
+                gl.viewport(0, 0, targetW, targetH);
+                gl.bindTexture(gl.TEXTURE_2D, hOutputTex);
+                gl.uniform2f(this.uBlurDirection, 0, 1);
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+                // Swap ping/pong roles for the next iteration's H pass.
+                if (!isLast) {
+                    const tmpFbo = srcFbo;
+                    srcFbo = dstFbo;
+                    dstFbo = tmpFbo;
+                    srcTex = srcFbo === this.pingFbo ? this.pingTexture : this.pongTexture;
+                }
+            }
 
             this.perf.sample(performance.now() - t0);
             return true;
