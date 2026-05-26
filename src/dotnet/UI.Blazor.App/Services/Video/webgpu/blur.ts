@@ -39,11 +39,19 @@ let mipmapUpsamplePipeline: GPURenderPipeline;
 let maskBufferToTexturePipeline: GPUComputePipeline | null = null;
 let temporalSmoothingPipeline: GPUComputePipeline | null = null;
 
-// Module-scope OffscreenCanvas used by applyBackgroundBlur as a swap-chain
-// texture target before re-wrapping the result back into a VideoFrame.
-// The full-frame BgBlurRenderer does NOT use this — it owns its own canvas.
-const offscreenCanvas = new OffscreenCanvas(1, 1);
+// Lazy module-scope OffscreenCanvas used by applyBackgroundBlur (segmentation
+// path) as a swap-chain texture target before re-wrapping the result back into
+// a VideoFrame. Constructed on first use so simply importing this module is
+// safe in non-browser environments (Node-based unit tests) that lack
+// OffscreenCanvas. The full-frame BgBlurRenderer does NOT use this — it owns
+// its own canvas.
+let offscreenCanvas: OffscreenCanvas | null = null;
 let canvasCtx: GPUCanvasContext;
+
+function ensureOffscreenCanvas(): OffscreenCanvas {
+    offscreenCanvas ??= new OffscreenCanvas(1, 1);
+    return offscreenCanvas;
+}
 
 let lastBlurStrength = -1;
 let cachedLevels = 3;
@@ -520,7 +528,7 @@ function initializeGpuResources(): void {
 
     sampler = WebGPUManager.getSampler();
 
-    canvasCtx = offscreenCanvas.getContext('webgpu')!;
+    canvasCtx = ensureOffscreenCanvas().getContext('webgpu')!;
     canvasCtx.configure({
         device,
         format: FORMAT,
@@ -941,9 +949,10 @@ export function applyBackgroundBlur(
     const outW = outputWidth ?? w;
     const outH = outputHeight ?? h;
 
-    if (offscreenCanvas.width !== outW || offscreenCanvas.height !== outH) {
-        offscreenCanvas.width = outW;
-        offscreenCanvas.height = outH;
+    const canvasEl = ensureOffscreenCanvas();
+    if (canvasEl.width !== outW || canvasEl.height !== outH) {
+        canvasEl.width = outW;
+        canvasEl.height = outH;
     }
 
     const encoder = device!.createCommandEncoder();
@@ -955,12 +964,12 @@ export function applyBackgroundBlur(
     device!.queue.submit([encoder.finish()]);
 
     // No GPU sync needed: WebGPU guarantees command ordering within the
-    // same queue, and new VideoFrame(offscreenCanvas) implicitly waits
+    // same queue, and new VideoFrame(canvasEl) implicitly waits
     // for render completion.
     const timestamp = frame.timestamp;
     deferFrameClose(frame);
 
-    return new VideoFrame(offscreenCanvas, { timestamp });
+    return new VideoFrame(canvasEl, { timestamp });
 }
 
 // ============================================================
