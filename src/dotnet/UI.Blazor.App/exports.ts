@@ -32,6 +32,7 @@ export * from './Components/DateVisor/date-visor';
 export * from './Components/FontSizeSlider/font-size-slider';
 export * from './Components/InaccessiblePlace/not-member-yet-svg.lit';
 export * from './Components/JoinVideoCallModal/join-video-call-modal';
+export * from './Components/LogView/log-view';
 export * from './Components/MarkupEditor/markup-editor';
 export * from './Components/MarkupParts/playable-text-markup-view';
 export * from './Components/MarkupParts/CodeBlockMarkupView/code-block-markup-view';

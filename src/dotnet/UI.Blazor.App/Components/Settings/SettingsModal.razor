@@ -1,5 +1,6 @@
 @implements IModalView<SettingsModal.Model>
 @using ActualChat.Hosting
+@using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, SettingsModal.ComputedModel>
 @{
     var m = State.Value;
@@ -64,11 +65,12 @@
                     <div class="log-viewer-page">
                         <LogView/>
                     </div>
-                    @if (Hub.ReportUI.IsAvailable) {
-                        <div class="log-viewer-footer">
+                    <div class="log-viewer-footer">
+                        @if (Hub.ReportUI.IsAvailable) {
                             <Button Class="log-viewer-report-btn btn-primary" Click="@OnReportClick">Report</Button>
-                        </div>
-                    }
+                        }
+                        <Button Class="log-viewer-copy-btn btn-primary" Click="@OnCopyVisibleLogsClick">Copy</Button>
+                    </div>
                 </ChildContent>
             </SettingsTab>
         }
@@ -110,6 +112,19 @@
 
     private Task OnReportClick()
         => ModalUI.Show(new ReportModal.Model());
+
+    private async Task OnCopyVisibleLogsClick() {
+        var text = await JS.InvokeAsync<string>(JSGetVisibleLogsText).ConfigureAwait(true);
+        if (text.IsNullOrEmpty()) {
+            ToastUI.Show("Nothing to copy", "icon-alert-circle", ToastDismissDelay.Short);
+            return;
+        }
+        await Hub.ClipboardUI.WriteText(text).ConfigureAwait(true);
+        ToastUI.Show("Visible log entries copied", "icon-checkmark-circle", ToastDismissDelay.Short);
+    }
+
+    private static readonly string JSGetVisibleLogsText =
+        $"{BlazorUIAppModule.ImportName}.LogView.getVisibleEntriesText";
 
     // Nested types
 

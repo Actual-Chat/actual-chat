@@ -11,11 +11,12 @@
         _ => "",
     };
     var sTime = Entry.Timestamp.ToString("HH:mm:ss.fff");
-    var text = $@"""
-                {sTime} {Entry.LogLevel} {Entry.CategoryName}:
-                {Entry.Message}
-                {Entry.Exception}
-                """;
+    var sLevel = Entry.LogLevel.ToString()[0];
+    var header = $"{sTime} {sLevel} [{Entry.CategoryName}]";
+    var body = Entry.Exception is null
+        ? Entry.Message
+        : $"{Entry.Message}\n{Entry.Exception}";
+    var text = string.IsNullOrEmpty(body) ? header : $"{header}\n{body}";
 }
 
 <CopyTrigger CopyText="@text" Tooltip="Copy to clipboard">

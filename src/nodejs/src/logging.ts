@@ -110,6 +110,7 @@ export type LogScope =
     | 'FontSizes'
     | 'Landing'
     | 'LandingLeftMenu'
+    | 'LogView'
     | 'MarkupEditor'
     | 'MessageEditor'
     | 'SearchPanel'
@@ -216,6 +217,7 @@ const defaults: Record<LogScope, LogLevel> = {
     FontSizes: LogLevel.Warn,
     Landing: LogLevel.Warn,
     LandingLeftMenu: LogLevel.Warn,
+    LogView: LogLevel.Warn,
     MarkupEditor: LogLevel.Warn,
     MessageEditor: LogLevel.Warn,
     SearchPanel: LogLevel.Warn,

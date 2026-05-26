@@ -3,11 +3,14 @@
 }
 .log-viewer-footer {
     @apply absolute inset-x-4;
-    @apply flex justify-center;
-    bottom: var(--safe-area-bottom);
+    @apply flex justify-center gap-x-2;
+    /* Sits above the very bottom — overlapping the bottom log entries is
+       fine, and keeps the buttons reachable above the device safe-area. */
+    bottom: calc(var(--safe-area-bottom) + 1rem);
 }
-.log-viewer-report-btn.btn {
-    @apply w-full md:w-40;
+.log-viewer-report-btn.btn,
+.log-viewer-copy-btn.btn {
+    @apply flex-1 md:flex-none md:w-40;
 }
 .log-list {
     @apply font-mono;
