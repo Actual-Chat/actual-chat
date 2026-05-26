@@ -6,9 +6,9 @@
   <!-- <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk.Razor" /> -->
 
   <PropertyGroup>
-    <!-- Build Android by default; add iOS only on macOS to avoid iOS build issues on Windows CI -->
+    <!-- Build Android by default; add iOS / MacCatalyst only on macOS to avoid iOS build issues on Windows CI -->
     <TargetFrameworks>net10.0-android;</TargetFrameworks>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net10.0-ios</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.22621.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <AssemblyName>$(BaseName)</AssemblyName>
@@ -184,6 +184,12 @@
     <PackageReference Include="AdamE.Firebase.iOS.Analytics" />
     <PackageReference Include="AdamE.Firebase.iOS.Crashlytics" />
     <PackageReference Include="AdamE.Firebase.iOS.CloudMessaging" />
+    <PackageReference Include="ActualLab.Opus.MaciOS" />
+  </ItemGroup>
+  <!-- MacCatalyst shares Mac/iOS audio code paths but no Firebase native packages
+       (Plugin.Firebase / AdamE.Firebase are iOS-only). Opus is provided by the same
+       ActualLab.Opus.MaciOS package used by iOS. -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-maccatalyst'))">
     <PackageReference Include="ActualLab.Opus.MaciOS" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
@@ -456,6 +462,38 @@
     <CreatePackage>false</CreatePackage>
   </PropertyGroup>
 
+  <!-- MacCatalyst build properties -->
+
+  <!-- MacCatalyst: Both Debug & Release configurations -->
+  <PropertyGroup Condition="$(TargetFramework.Contains('-maccatalyst'))">
+    <!-- Build for the host architecture by default; arm64 on Apple Silicon, x64 on Intel -->
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">maccatalyst-arm64</RuntimeIdentifier>
+    <IntermediateOutputPath>..\..\..\artifacts\out</IntermediateOutputPath>
+    <UseShortFileNames>True</UseShortFileNames>
+    <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Platforms\MacCatalyst\Entitlements.dev.plist</CodesignEntitlements>
+    <CodesignEntitlements Condition="'$(IsDevMaui)' != 'true'">Platforms\MacCatalyst\Entitlements.prod.plist</CodesignEntitlements>
+    <EnableSGenConc>False</EnableSGenConc>
+    <UseNativeHttpHandler>true</UseNativeHttpHandler>
+  </PropertyGroup>
+
+  <!-- MacCatalyst: Debug configuration — ad-hoc sign with the local "-" identity so the
+       app runs on the developer machine without a provisioning profile. -->
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net10.0-maccatalyst|AnyCPU'">
+    <CreatePackage>false</CreatePackage>
+    <CodesignKey>-</CodesignKey>
+    <EnableCodeSigning>true</EnableCodeSigning>
+    <DisableCodesignVerification>true</DisableCodesignVerification>
+    <MtouchLink>SdkOnly</MtouchLink>
+  </PropertyGroup>
+
+  <!-- MacCatalyst: Release configuration — mirrors iOS interpreter / link mode for parity -->
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net10.0-maccatalyst|AnyCPU'">
+    <CreatePackage>false</CreatePackage>
+    <MtouchLink>SdkOnly</MtouchLink>
+    <UseInterpreter>true</UseInterpreter>
+    <MTouchInterpreter>-ActualChat</MTouchInterpreter>
+  </PropertyGroup>
+
   <!-- Windows build properties -->
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Debug'">
@@ -574,9 +612,32 @@
   <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true">
     <Compile Remove="**\**\*.iOS.cs" />
     <None Include="**\**\*.iOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+  </ItemGroup>
+  <!-- NOT iOS AND NOT MacCatalyst — Platforms/iOS contains shared MaciOS code (audio, etc.) -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true AND $(TargetFramework.Contains('-maccatalyst')) != true">
     <Compile Remove="**\iOS\**\*.cs" />
     <None Include="**\iOS\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
   </ItemGroup>
+  <!-- MacCatalyst: MAUI SingleProject marks every Platforms/*.cs file with
+       ExcludeFromCurrentConfiguration=true (after our project content evaluates) and removes
+       them in _MauiRemovePlatformCompileItems unless TargetPlatformIdentifier matches.
+       Opt the shared MaciOS code back in via a target that runs just before the removal.
+       We include all of Platforms/iOS/** except Firebase-coupled files and the
+       AppDelegate/Program/ContentResolver that MacCatalyst overrides with its own copies. -->
+  <Target Name="_KeepSharedIosFilesOnMacCatalyst"
+          Condition="$(TargetFramework.Contains('-maccatalyst'))"
+          BeforeTargets="_MauiRemovePlatformCompileItems">
+    <ItemGroup>
+      <Compile Update="@(Compile)"
+               Condition="$([System.String]::Copy('%(Identity)').Replace('\','/').Contains('Platforms/iOS/'))
+                          AND '%(Filename)' != 'AppDelegate'
+                          AND '%(Filename)' != 'IosPushNotifications'
+                          AND '%(Filename)' != 'Program'
+                          AND '%(Filename)' != 'ContentResolver'">
+        <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
+      </Compile>
+    </ItemGroup>
+  </Target>
   <!-- iOS -->
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
     <Folder Include="Platforms\iOS\Resources\" />
@@ -602,6 +663,12 @@
   </ItemGroup>
   <!-- MacCatalyst -->
   <ItemGroup Condition="$(TargetFramework.Contains('-maccatalyst'))">
+    <Folder Include="Platforms\iOS\Resources\" />
+    <BundleResource Include="..\..\..\resources\sounds\converted\attention_ringtone.caf" Link="%(Filename)%(Extension)" />
+    <!-- Remove metadata.json from Content to prevent default SDK behavior -->
+    <Content Remove="Platforms\iOS\Resources\vad_batched_fp16.mlmodelc\metadata.json" />
+    <!-- Includes all files in the .mlmodelc recursively as BundleResources -->
+    <BundleResource Include="Platforms\iOS\Resources\vad_batched_fp16.mlmodelc\**" />
   </ItemGroup>
 
   <!-- NOT Windows -->
@@ -683,6 +750,25 @@
     <PropertyGroup>
       <_AndroidEnablePreloadAssembliesDefault>True</_AndroidEnablePreloadAssembliesDefault>
     </PropertyGroup>
+  </Target>
+
+  <!-- MacCatalyst: workaround for a MAUI/iOS-SDK 26.1.10502 bug where the in-process Codesign task
+       overwrites top-level .dylib files in the app bundle's MonoBundle folder with the codesign
+       argument string instead of signing them in place, and writes stray `.stampfile` entries at
+       the root of each embedded .framework. The script restores the dylib from the linker-stage
+       staging copy, deletes the stray .stampfile files, and ad-hoc re-signs every dylib,
+       framework, and the bundle itself. Drop this once the upstream SDK is bumped past the
+       regression. -->
+  <Target Name="_FixMacCatalystCodesigningRegression"
+          Condition="$(TargetFramework.Contains('-maccatalyst'))"
+          AfterTargets="_CodesignAppBundle">
+    <PropertyGroup>
+      <_MaciOSStagingMonoBundle>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../artifacts/out/nativelibraries/Contents/MonoBundle'))</_MaciOSStagingMonoBundle>
+      <_MaciOSAppBundle>$([System.IO.Path]::GetFullPath('$(AppBundleDir)').TrimEnd('/'))</_MaciOSAppBundle>
+      <_MaciOSEntitlementsXcent>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../artifacts/out/Entitlements.xcent'))</_MaciOSEntitlementsXcent>
+      <_MaciOSFixCodesignScript>$(MSBuildThisFileDirectory)Platforms/MacCatalyst/fix-codesigning.sh</_MaciOSFixCodesignScript>
+    </PropertyGroup>
+    <Exec Command="/bin/sh &quot;$(_MaciOSFixCodesignScript)&quot; &quot;$(_MaciOSAppBundle)&quot; &quot;$(_MaciOSStagingMonoBundle)&quot; &quot;$(_MaciOSEntitlementsXcent)&quot;" />
   </Target>
 
   <Target Name="UpdateBundleHash" AfterTargets="Build">
