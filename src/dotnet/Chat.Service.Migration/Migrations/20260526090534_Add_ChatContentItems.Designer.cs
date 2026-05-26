@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    [Migration("20260525164555_ChatContentItems_PeriodIndex_AddSortColumns")]
-    partial class ChatContentItems_PeriodIndex_AddSortColumns
+    [Migration("20260526090534_Add_ChatContentItems")]
+    partial class Add_ChatContentItems
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

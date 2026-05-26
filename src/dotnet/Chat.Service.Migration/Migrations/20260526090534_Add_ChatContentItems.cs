@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,16 +11,6 @@ namespace ActualChat.Chat.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<string>(
-                name: "audio_id",
-                table: "chat_entries",
-                type: "text",
-                nullable: true,
-                collation: "C",
-                oldClrType: typeof(string),
-                oldType: "text",
-                oldNullable: true);
-
             migrationBuilder.CreateTable(
                 name: "chat_content_items",
                 columns: table => new
@@ -48,9 +38,9 @@ namespace ActualChat.Chat.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "ix_chat_content_items_chat_id_kind_entry_local_id",
+                name: "ix_chat_content_items_chat_id_kind_at_entry_local_id_local_ind~",
                 table: "chat_content_items",
-                columns: new[] { "chat_id", "kind", "entry_local_id" });
+                columns: new[] { "chat_id", "kind", "at", "entry_local_id", "local_index" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_chat_content_items_entry_id",
@@ -63,16 +53,6 @@ namespace ActualChat.Chat.Migrations
         {
             migrationBuilder.DropTable(
                 name: "chat_content_items");
-
-            migrationBuilder.AlterColumn<string>(
-                name: "audio_id",
-                table: "chat_entries",
-                type: "text",
-                nullable: true,
-                oldClrType: typeof(string),
-                oldType: "text",
-                oldNullable: true,
-                oldCollation: "C");
         }
     }
 }
