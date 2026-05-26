@@ -39,6 +39,10 @@ public sealed partial class VideoQualityUI
     // Sticky decoder cap with edge-triggered demote. Set on Good→Bad
     // transition, cleared on =Good. Marginal holds the last value.
     private readonly DecoderCapState _decoderCapState = new();
+    // Snapshot of the previous tick's requested layer per stream, used to
+    // detect allocator-driven cap moves for the decision log.
+    private readonly Dictionary<string, int> _prevRequestedLayerByStream = new();
+    private readonly Dictionary<string, int> _prevDecoderCapByStream = new();
     private HealthVerdict _lastAggregateDownlinkVerdict = HealthVerdict.Unknown;
 
     public BandwidthEstimator InboundBandwidthEstimator => _inboundBwEstimator;
@@ -318,6 +322,83 @@ public sealed partial class VideoQualityUI
                 .ToArray(),
             requestedMap,
             cancellationToken).ConfigureAwait(false);
+
+        // Decision-log entry. Aggregate decoder verdict = worst across
+        // streams (mirrors the removed Decoder chip semantics).
+        var aggregateDecoderVerdict = HealthVerdict.Unknown;
+        foreach (var (_, h) in _lastDecoderHealthByStream) {
+            if (h.Verdict == HealthVerdict.Unknown) continue;
+            if (aggregateDecoderVerdict == HealthVerdict.Unknown
+                || (int)h.Verdict > (int)aggregateDecoderVerdict)
+                aggregateDecoderVerdict = h.Verdict;
+        }
+        // Cap-change detection: compare requested layer + decoder cap maps
+        // with the previous tick's snapshot. Pick the first changed stream
+        // in lexical order (predictable, deterministic for the log).
+        var capChange = "";
+        foreach (var (sid, q) in requestedMap.OrderBy(x => x.Key)) {
+            var prevLayer = _prevRequestedLayerByStream.GetValueOrDefault(sid, -1);
+            if (prevLayer >= 0 && prevLayer != q.LayerId) {
+                var capTag = _decoderCapState.Caps.ContainsKey(sid) ? "decoder" : "bw";
+                capChange = $"{ShortStreamId(sid)} L{prevLayer}→L{q.LayerId} ({capTag})";
+                break;
+            }
+        }
+        // Refresh snapshot maps for the next tick.
+        _prevRequestedLayerByStream.Clear();
+        foreach (var (sid, q) in requestedMap)
+            _prevRequestedLayerByStream[sid] = q.LayerId;
+        _prevDecoderCapByStream.Clear();
+        foreach (var (sid, c) in _decoderCapState.Caps)
+            _prevDecoderCapByStream[sid] = c;
+
+        // Pick the worst stream for the decoder raw-values line so the
+        // operator sees the actual numbers behind the aggregate verdict.
+        DecoderHealth? worstDecoder = null;
+        foreach (var (_, h) in _lastDecoderHealthByStream) {
+            if (h.Verdict == HealthVerdict.Unknown) continue;
+            if (worstDecoder is null || (int)h.Verdict > (int)worstDecoder.Verdict)
+                worstDecoder = h;
+        }
+        // Pick the worst stream for the downlink raw-values line similarly.
+        DownlinkHealth? worstDownlink = null;
+        foreach (var (_, h) in _lastDownlinkHealthByStream) {
+            if (h.Verdict == HealthVerdict.Unknown) continue;
+            if (worstDownlink is null || (int)h.Verdict > (int)worstDownlink.Verdict)
+                worstDownlink = h;
+        }
+        var ceilingKbps = _inboundBwEstimator.CeilingBps * 8 / 1000;
+        var currentKbps = _inboundBwEstimator.LastCurrentBps * 8 / 1000;
+        var dlReason = aggregateDownlinkVerdict == HealthVerdict.Bad && worstDownlink is not null
+            ? $"downlink lat={worstDownlink.ServerToReceiverLatencyEma:F0}ms drop={worstDownlink.ServerPathDropRatio:F2}"
+            : "";
+        var decReason = aggregateDecoderVerdict == HealthVerdict.Bad && worstDecoder is not null
+            ? $"decode ratio={worstDecoder.DecodeRatioEma:F2} hang={worstDecoder.HangRateIn60s}"
+            : "";
+        var inboundReason = !string.IsNullOrEmpty(dlReason) ? dlReason
+            : !string.IsNullOrEmpty(decReason) ? decReason
+            : _inboundBwEstimator.LastVerdict switch {
+                BandwidthVerdict.Good => $"BW ↑ {ceilingKbps} kbps",
+                BandwidthVerdict.Bad => $"BW ↓ {ceilingKbps} kbps",
+                _ => "stable",
+            };
+        var rawA = worstDownlink is not null
+            ? $"lat={worstDownlink.ServerToReceiverLatencyEma:F0}ms drop={worstDownlink.ServerPathDropRatio:F2} und={worstDownlink.BufferUnderrunRatio:F2} pr={playbackRateEma:F2}"
+            : $"pr={playbackRateEma:F2} drop={receiverDropRatio:F2}";
+        var rawB = worstDecoder is not null
+            ? $"ratio={worstDecoder.DecodeRatioEma:F2} hang={worstDecoder.HangRateIn60s} rec={worstDecoder.RecoveryStreak} skip={worstDecoder.PresentSkipRatio:F2}"
+            : "";
+        var rawBw = $"{(_inboundBwEstimator.LastVerdict == BandwidthVerdict.Good ? "↑" : _inboundBwEstimator.LastVerdict == BandwidthVerdict.Bad ? "↓" : "=")}{ceilingKbps}/cur {currentKbps} kbps";
+        AppendInboundDecision(new QualityDecisionEntry(
+            SystemClock.Now,
+            aggregateDownlinkVerdict,
+            aggregateDecoderVerdict,
+            _inboundBwEstimator.LastVerdict,
+            capChange,
+            inboundReason,
+            rawA,
+            rawB,
+            rawBw));
 
         return;
 
@@ -628,4 +709,10 @@ public sealed partial class VideoQualityUI
         // Per-stream layer count requested for this allocation cycle (1-based).
         int RequestedLayerCount,
         VideoSize DesiredVideoSize);
+
+    private static string ShortStreamId(string streamId)
+    {
+        if (string.IsNullOrEmpty(streamId)) return "";
+        return streamId.Length <= 6 ? streamId : streamId[..6];
+    }
 }
