@@ -3,19 +3,29 @@ import { getLogs } from 'logging';
 
 const { warnLog } = getLogs('VideoWebGPU');
 
-// Filter values lifted from the pre-removal main-thread CanvasBgRenderTarget
-// (commit before 2bbf4c02e). `saturate(1.2)` keeps the bleed colored rather
-// than washed out under heavy blur. Overdraw pushes the filter's edge falloff
-// off-canvas so CSS object-cover never reveals it.
-const BG_FILTER = 'blur(3px) saturate(1.2)';
-const BG_OVERDRAW_PX = 4;
+// Lifted from Dmitrii Filippov's 45f32d675 (2026-04-22) main-thread
+// CanvasTarget — the bitmap-baked blur he benchmarked at ~50% paint cost
+// reduction vs. CSS filter:blur. Same numbers here; the only structural
+// change is that the canvas lives in the player worker and the source
+// is a VideoFrame instead of a `<video>` element on main.
+const BG_CANVAS_WIDTH = 64;
+const BG_FILTER = 'blur(3px) saturate(1.3)';
 
-// Off-thread bg backdrop using Canvas2D + `filter: blur(...)`. Fallback for
-// browsers without WebGPU (Firefox, locked-down Safari) or when WebGPU init
-// fails. Draws directly from a worker-side VideoFrame into a transferred
-// OffscreenCanvas — no `<video>` element, no main-thread compositor sync.
-// Aesthetically the same as the old main-thread WebGL Gaussian; the win is
-// it costs ~1 ms instead of ~24 ms and never blocks UI.
+// Off-thread bg backdrop via Canvas2D + `filter: blur(...)` baked into a
+// low-res bitmap. drawImage stretches the whole frame down to a 64-px-wide
+// canvas sized to the source aspect, with the blur applied during the
+// downsample. CSS object-cover then upscales the result to fill the tile.
+// Reads as a soft frosted backdrop of the whole frame.
+//
+// Fallback for browsers without WebGPU (Firefox, locked-down Safari) and
+// for the explicit `?bgBlur=canvas2d` override. Draws directly from a
+// worker-side VideoFrame into a transferred OffscreenCanvas — no `<video>`
+// element, no main-thread compositor sync.
+//
+// Geometry note: tuned for the common portrait-source-on-landscape-panel
+// case (left/right letterbox bars). Landscape-source-on-portrait-panel
+// (top/bottom bars) gets the same left/right colors filling top/bottom
+// bars; still coherent, just doesn't track the source's vertical edges.
 export class Canvas2DBgRenderer {
     private readonly ctx: OffscreenCanvasRenderingContext2D | null;
     private readonly perf = new BgBlurPerfTracker('canvas2d');
@@ -29,29 +39,26 @@ export class Canvas2DBgRenderer {
             return;
         }
         this.ctx = ctx;
-        this.ctx.filter = BG_FILTER;
-        this.ctx.imageSmoothingEnabled = true;
-        this.ctx.imageSmoothingQuality = 'medium';
+        this.applyCtxState();
     }
 
-    // Same shape as BgBlurRenderer.render. `strength` is ignored — Canvas2D
-    // filter blur is fixed-radius; rolling it via the filter string per call
-    // would cost a layer rebuild.
+    // Same shape as BgBlurRenderer.render. `strength` is ignored.
     render(frame: VideoFrame): boolean {
         if (this.disposed || !this.ctx) return false;
-        const w = frame.displayWidth;
-        const h = frame.displayHeight;
-        if (w <= 0 || h <= 0) return false;
-        const bgW = this.canvas.width;
-        const bgH = this.canvas.height;
+        const fw = frame.displayWidth;
+        const fh = frame.displayHeight;
+        if (fw <= 0 || fh <= 0) return false;
+        const targetW = BG_CANVAS_WIDTH;
+        const targetH = Math.max(1, Math.round(targetW * fh / fw));
         try {
             const t0 = performance.now();
-            this.ctx.drawImage(
-                frame,
-                -BG_OVERDRAW_PX,
-                -BG_OVERDRAW_PX,
-                bgW + 2 * BG_OVERDRAW_PX,
-                bgH + 2 * BG_OVERDRAW_PX);
+            if (this.canvas.width !== targetW || this.canvas.height !== targetH) {
+                this.canvas.width = targetW;
+                this.canvas.height = targetH;
+                // Canvas resize resets ctx state (filter, smoothing) on every engine.
+                this.applyCtxState();
+            }
+            this.ctx.drawImage(frame, 0, 0, targetW, targetH);
             this.perf.sample(performance.now() - t0);
             return true;
         } catch (e) {
@@ -62,5 +69,12 @@ export class Canvas2DBgRenderer {
 
     dispose(): void {
         this.disposed = true;
+    }
+
+    private applyCtxState(): void {
+        if (!this.ctx) return;
+        this.ctx.filter = BG_FILTER;
+        this.ctx.imageSmoothingEnabled = true;
+        this.ctx.imageSmoothingQuality = 'medium';
     }
 }
