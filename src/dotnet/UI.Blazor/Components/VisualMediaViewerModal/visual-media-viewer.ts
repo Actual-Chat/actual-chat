@@ -1192,23 +1192,18 @@ export class VisualMediaViewer {
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: PointerEvent | MouseEvent) => this.onJumpBtnClick(event, video, true));
 
-        // @ts-expect-error TODO(Andrey) fix eslint error
-        this.dragThumb(video, progressBar, thumb);
+        this.dragThumb(video, progressBar);
     }
 
-    private dragThumb(video: HTMLMediaElement, progressBar: HTMLProgressElement, thumb: HTMLElement) {
+    private dragThumb(video: HTMLMediaElement, progressBar: HTMLProgressElement) {
         let rect: DOMRect | null = null;
+        const line2 = progressBar.closest('.c-line-2');
 
         const updateThumbPosition = (percent: number) => {
-            if (!rect)
-                return;
-
-            const left = (percent / 100) * rect.width;
-            thumb.style.left = `${left}px`;
+            if (line2 instanceof HTMLElement)
+                line2.style.setProperty('--progress', String(percent / 100));
             progressBar.value = percent;
         };
-
-        const line2 = progressBar.closest('.c-line-2');
 
         const onLinePointerDown = (e: PointerEvent) => {
             e.preventDefault();
@@ -1399,20 +1394,14 @@ export class VisualMediaViewer {
 
     private updateTimeline(video: HTMLMediaElement, control: HTMLElement, progressBar: HTMLProgressElement) {
         const current = video.currentTime;
-        const percentage = Math.round(current / video.duration * 100);
-        progressBar.value = percentage;
-        progressBar.innerHTML = `${percentage}% played`;
-        const thumb = control.querySelector('.c-thumb')!;
+        const fraction = video.duration > 0 ? current / video.duration : 0;
+        progressBar.value = fraction * 100;
+        progressBar.innerHTML = `${Math.round(fraction * 100)}% played`;
 
         if (!this.isDraggingThumb) {
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-            if (thumb) {
-                const rect = progressBar.getBoundingClientRect();
-                const left = (percentage / 100) * rect.width;
-                // @ts-expect-error TODO(Andrey) fix eslint error
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                thumb.style.left = `${left}px`;
-            }
+            const line2 = control.querySelector('.c-line-2');
+            if (line2 instanceof HTMLElement)
+                line2.style.setProperty('--progress', String(fraction));
         }
         const currentTimeDiv = control.querySelector('.c-current')!;
         currentTimeDiv.innerHTML = this.formatTime(current);

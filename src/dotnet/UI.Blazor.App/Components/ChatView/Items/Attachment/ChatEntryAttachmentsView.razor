@@ -19,7 +19,11 @@ else if (Entry.Attachments.Length > 0) {
         <VisualMediaAttachmentList MediaList="@mediaList" />
         <div class="message-file-attachments">
             @foreach (var attachment in fileList) {
-                <FileAttachment Attachment="@attachment"/>
+                if (attachment.IsAudio()) {
+                    <AudioFileAttachment Attachment="@attachment"/>
+                } else {
+                    <FileAttachment Attachment="@attachment"/>
+                }
             }
         </div>
         @if (IsUnreadByOthers) {

@@ -3,7 +3,7 @@
     @apply relative z-10;
     @apply flex items-center;
     @apply w-full min-h-12;
-    @apply pl-2 md:pl-0 pr-3 md:pr-1;
+    @apply pl-2 md:pl-1 pr-3 md:pr-1;
     @apply rounded-lg border-2 border-replay;
     @apply bg-replay;
     @apply text-replay;

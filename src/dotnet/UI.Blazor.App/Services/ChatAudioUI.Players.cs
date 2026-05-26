@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -86,6 +87,9 @@ public partial class ChatAudioUI
 
         StopReplay();
         _replayState.Value = new ReplayState(chatId, startAt, rewindOffset, speed);
+
+        // Replay and audio-attachment playback are mutually exclusive.
+        _ = Hub.AudioAttachmentPlayer.Stop();
     }
 
     public void PauseReplay(Moment pausedAt)

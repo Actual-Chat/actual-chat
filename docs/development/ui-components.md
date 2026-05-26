@@ -385,6 +385,131 @@ Decorative animations (film strips, placeholder waves) should be hidden when the
 }
 ```
 
+## Custom Sliders
+
+Styling `<input type="range">` directly has hard browser limits — the native thumb's position is computed internally and can't be re-aligned with a custom-painted track fill. The two visible symptoms in practice: thumb spills past the bar's edges at `value=0` / `value=max`, and during drag the gradient fill lags one frame behind the thumb (gradient repaints on paint thread, thumb moves on compositor).
+
+**Pattern:** keep the native input as a transparent hit-target overlay, render visual elements (track, fill, thumb) as sibling `<div>`s driven by a single `--progress` CSS variable.
+
+```html
+<div class="slider" style="--progress: 0.42">
+    <div class="c-track"></div>
+    <div class="c-fill"></div>
+    <div class="c-thumb"></div>
+    <input type="range" min="0" max="1" step="0.001" value="0.42" />
+</div>
+```
+
+```css
+.slider {
+    @apply relative;
+    container-type: inline-size;  /* enables 100cqw inside */
+}
+.slider .c-track,
+.slider .c-fill {
+    @apply absolute left-0 right-0 top-1/2 h-0.5 rounded-full;
+}
+.slider .c-track {
+    @apply -translate-y-1/2;
+}
+.slider .c-fill {
+    @apply origin-left;
+    transform: translateY(-50%) scaleX(var(--progress, 0));  /* composite-only */
+}
+.slider .c-thumb {
+    @apply absolute top-1/2 w-2 h-2 -mt-1 rounded-full;
+    transform: translateX(calc(var(--progress, 0) * (100cqw - 100%)));
+}
+.slider input {
+    @apply absolute inset-0 w-full h-full m-0 cursor-pointer opacity-0;
+    -webkit-appearance: none;
+    appearance: none;
+}
+```
+
+**Key tricks:**
+
+- **`container-type: inline-size` + `100cqw - 100%`** positions the thumb so its left edge ranges from `0` to `(container - thumb_width)`. `100cqw` is the container's inline size; `100%` inside a transform refers to the element's own width. The math doesn't need to know the thumb's size — change `width` on the thumb and it stays aligned.
+- **`scaleX` on the fill is composite-only.** No paint per frame. Both fill and thumb read the same `--progress` and animate on the compositor — they stay perfectly synced during drag.
+- **Transparent native input on top** captures pointer events and emits `input` / `change` events that drive `--progress`. Keyboard nav (Arrow / Home / End) and screen-reader semantics work for free.
+
+**Optimistic update during drag.** A document-level `input` listener that sets `--progress` directly on the slider element bypasses the C#/Blazor round-trip. Without it, the fill lags ~50 ms behind the thumb during fast drags:
+
+```ts
+document.addEventListener('input', (e) => {
+    const t = e.target;
+    if (t instanceof HTMLInputElement && t.classList.contains('slider-input'))
+        t.parentElement?.style.setProperty('--progress', t.value);
+}, true);
+```
+
+Real usage: `Components/AudioAttachmentPlayer/` (audio scrubber), `VisualMediaViewerModal/visual-media-viewer.ts` (video scrubber — same `100cqw - 100%` trick, native `<progress>` element kept for the fill).
+
+## Atomic Content Swap Inside an Animated Container
+
+When two components are mutually exclusive ("one or the other, never both") and each owns its own animated container (subheader, banner, toast), swapping between them runs both animations in parallel — outgoing exit + incoming enter — and the user sees a "dance" as one container shrinks while the other grows.
+
+**Pattern:** one parent owns the animated wrapper, multiple inner components render their content inside. The wrapper only animates on the outermost transition (any active ↔ none active), never on swaps between modes.
+
+```razor
+@* AudioSubHeader.razor — one container, two possible bodies *@
+@inherits ComputedStateComponent<AppUIHub, bool>
+@{ var isVisible = State.Value; }
+
+<SubHeader IsVisible="@isVisible">
+    <ReplayBody />        @* self-hides via @if when its state is null *@
+    <AttachmentBody />    @* same *@
+</SubHeader>
+
+@code {
+    protected override async Task<bool> ComputeState(CancellationToken ct) {
+        var a = await StateA.Use(ct).ConfigureAwait(false);
+        if (a is not null) return true;
+        var b = await StateB.Use(ct).ConfigureAwait(false);
+        return b is not null;
+    }
+}
+```
+
+Each inner body keeps its own `ComputedStateComponent` subscribed to its own source — no coupling between them, no need to extract their state to the parent.
+
+**Two non-obvious gotchas:**
+
+### 1. State-update ordering — set the new state *before* clearing the old
+
+When the action that triggers a swap modifies both source states (e.g. `Play()` stops the replay and starts attachment playback), order matters:
+
+```csharp
+// WRONG — opens a one-frame window where both are null
+ChatAudioUI.StopReplay();
+_attachmentState.Value = new PlaybackState { ... };
+
+// CORRECT — overlap window where both are non-null instead
+_attachmentState.Value = new PlaybackState { ... };
+ChatAudioUI.StopReplay();
+```
+
+With the wrong order, the parent's `ComputeState` sees `both null` for one synchronous step → `IsVisible` flips to `false` → exit animation queued → next step flips it back → enter animation queued. Browser sees `enter → exit → enter` and may visibly start the exit before the enter overrides it. Reversed, the parent always sees "at least one non-null" → `IsVisible` stays `true` throughout.
+
+The same applies to fire-and-forget cross-stops: `_ = OtherService.Stop()` at the top of an async method races with the rest of the method body and can resolve to "both null" while the method is awaiting something. Move the fire-and-forget *after* the new state is committed.
+
+### 2. Children may not re-render in lock-step — guard the container's height
+
+Each inner body has its own `ComputedStateComponent` with its own recompute schedule. Fusion's `UpdateDelayer.NextTick` batches *within* a single state, but two independent children watching two different sources can re-render in different Blazor frames. Result: for one paint frame, body A has gone empty (its `@if` flipped to `false`) and body B hasn't rendered yet (its `@if` still `false` from initial state). The container's slot is briefly empty → content-driven height collapses to 0 → user sees the container close and reopen even though `IsVisible` never flipped.
+
+Cheapest fix: pin a `min-height` on the container's host so its rendered height never falls below the steady-state value:
+
+```css
+.audio-subheader {
+    --subheader-height: 3.5rem;
+    min-height: 3.5rem;
+}
+```
+
+This doesn't break the enter/exit animation — `max-height` in the keyframes wins over `min-height` when they conflict (per CSS spec), so the container still shrinks to 0 during the exit keyframe.
+
+Real usage: `Components/AudioSubHeader/`.
+
 ## TypeScript Interop
 
 ### Class Structure

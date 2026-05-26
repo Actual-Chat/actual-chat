@@ -84,6 +84,7 @@ export type LogScope =
     | 'AudioContextTraits'
     | 'AudioInfo'
     // Audio playback
+    | 'AudioAttachmentPlayer'
     | 'AudioPlayer'
     | 'FallbackPlayback'
     | 'OpusDecoder'
@@ -189,6 +190,7 @@ const defaults: Record<LogScope, LogLevel> = {
     AudioContextTraits: LogLevel.Warn,
     AudioInfo: LogLevel.Warn,
     // Audio playback
+    AudioAttachmentPlayer: LogLevel.Warn,
     AudioPlayer: LogLevel.Warn,
     FallbackPlayback: LogLevel.Warn,
     OpusDecoder: LogLevel.Warn,
