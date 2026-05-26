@@ -25,8 +25,15 @@
 .copy-trigger.copied .log-item {
     animation: flash 0.8s ease-in-out;
 }
+/* VirtualList measures item sizes via getBoundingClientRect (border box,
+   no margin), and its chain math assumes the inter-item gap matches the
+   container's CSS row-gap. Using item margin or container gap for spacing
+   both miss the gap between the start spacer and the first item, which
+   shifts visible items by the gap size on every new entry. Use padding on
+   each item instead — padding is inside the border box, so rect.height
+   includes it and the chain stays accurate. */
 .log-list.virtual-list > .c-wrapper > ul.c-virtual-container .item {
-    @apply mb-2;
+    @apply pb-2;
 }
 
 /* Header */
