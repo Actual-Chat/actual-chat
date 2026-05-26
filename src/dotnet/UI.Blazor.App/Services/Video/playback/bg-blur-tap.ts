@@ -13,6 +13,13 @@ const { warnLog } = getLogs('VideoWebGPU');
 // 20 was the value used by the pre-2bbf4c02e bg painter on this same shader.
 const BG_BLUR_STRENGTH = 20;
 
+// Repaint cadence. Backdrop is decorative letterbox fill — 10 Hz reads as
+// smooth to a viewer who's watching the main video. Matches the old WebGL
+// painter's BG_DRAW_INTERVAL_MS. Saves the per-frame GPU pyramid + the
+// importExternalTexture cost on every other decoded frame at 30 fps and
+// 5/6 of them at 60 fps.
+const BG_RENDER_INTERVAL_MS = 100;
+
 // Per-stream owner of an OffscreenCanvas + its BgBlurRenderer. Lifetime is
 // bound to a single Player run (install on start, dispose when the player
 // drains). The main thread sends the canvas across via the player-worker
@@ -26,6 +33,7 @@ const BG_BLUR_STRENGTH = 20;
 export class BgBlurController {
     private renderer: BgBlurRenderer | null = null;
     private active = false;
+    private lastRenderAtMs = 0;
 
     install(canvas: OffscreenCanvas): void {
         if (this.renderer) {
@@ -48,6 +56,9 @@ export class BgBlurController {
         if (!this.active) return;
         const r = this.renderer;
         if (!r) return;
+        const nowMs = performance.now();
+        if (nowMs - this.lastRenderAtMs < BG_RENDER_INTERVAL_MS) return;
+        this.lastRenderAtMs = nowMs;
         try {
             r.render(envelope.frame, BG_BLUR_STRENGTH);
         } catch (e) {
