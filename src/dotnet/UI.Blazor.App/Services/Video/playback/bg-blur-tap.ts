@@ -5,6 +5,14 @@ import { getLogs } from 'logging';
 
 const { warnLog } = getLogs('VideoWebGPU');
 
+// Receiver backdrop strength. Drives both the pyramid depth (≥20 → 4 levels)
+// and the per-pass sample spread (offset = strength/textureSize). The default
+// applyFullFrameBlur strength of 4 produces a barely-blurred pyramid mip 0
+// that aliases when the composite shader downsamples it onto the small
+// (64×64) bg canvas — the result looks pixelated through CSS object-cover.
+// 20 was the value used by the pre-2bbf4c02e bg painter on this same shader.
+const BG_BLUR_STRENGTH = 20;
+
 // Per-stream owner of an OffscreenCanvas + its BgBlurRenderer. Lifetime is
 // bound to a single Player run (install on start, dispose when the player
 // drains). The main thread sends the canvas across via the player-worker
@@ -41,7 +49,7 @@ export class BgBlurController {
         const r = this.renderer;
         if (!r) return;
         try {
-            r.render(envelope.frame);
+            r.render(envelope.frame, BG_BLUR_STRENGTH);
         } catch (e) {
             warnLog?.log('BgBlurController: render failed:', e);
         }
