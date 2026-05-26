@@ -32,6 +32,25 @@ partial class SendingMessages
     public void Cancel(SendingMessage sendingMessage)
         => sendingMessage.Cancel();
 
+    public Task<ChatEntry> SendAttachments(
+        ChatId chatId,
+        IReadOnlyList<ChatEntryAttachment> attachments,
+        string text,
+        CancellationToken cancellationToken)
+    {
+        var entryAttachments = attachments
+            .Select(x => new ChatEntryAttachment {
+                MediaId = x.MediaId,
+                ThumbnailMediaId = x.ThumbnailMediaId,
+            })
+            .ToArray();
+        var cmd = new Chats_UpsertEntry(Session, chatId, null) {
+            Text = text,
+            Attachments = entryAttachments,
+        };
+        return Commander.Call(cmd, cancellationToken);
+    }
+
     private SendingMessage CreateAndRegisterSendingMessage(
         PostMessageRequestInternal request,
         Action cancelSendRequested)

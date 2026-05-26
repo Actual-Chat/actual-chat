@@ -8,5 +8,6 @@ public enum ShareKind
     Place,
     PlaceInvite,
     Message,
+    Media,
     Other,
 }

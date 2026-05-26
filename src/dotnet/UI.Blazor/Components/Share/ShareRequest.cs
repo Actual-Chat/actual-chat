@@ -4,6 +4,8 @@ public sealed record ShareRequest(
     string Text,
     LocalUrl? Link = null)
 {
+    public IReadOnlyList<ChatEntryAttachment> Attachments { get; init; } = [];
+
     public ShareRequest(LocalUrl link) : this("", link)
     { }
 
@@ -21,6 +23,9 @@ public sealed record ShareRequest(
         link = default;
         return false;
     }
+
+    public bool HasAttachments()
+        => Attachments.Count > 0;
 
     // GetXxx
 

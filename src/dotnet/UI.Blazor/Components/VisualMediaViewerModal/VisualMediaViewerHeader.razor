@@ -23,7 +23,7 @@
         </div>
     }
     <div class="c-control-panel">
-        @if (_mediaShareUI != null && Attachment != null) {
+        @if (Attachment != null) {
             <HeaderButton
                 Click="OnShareClick"
                 Class="bleached"
@@ -74,11 +74,11 @@
 @code {
     private ChatEntry? _chatEntry;
     private Author? _author;
-    private IMediaShareUI? _mediaShareUI;
 
     [Inject] private UIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session;
     private ModalUI ModalUI => Hub.ModalUI;
+    private ShareUI ShareUI => Hub.ShareUI;
     private IAuthors Authors => field ??= Hub.Services.GetRequiredService<IAuthors>();
     private IChats Chats => Hub.Services.GetRequiredService<IChats>();
     private IUIActionHandler? SaveMediaActionHandler { get; set; }
@@ -95,8 +95,6 @@
                 this,
                 () => saver.Save(DownloadUrl, ContentType));
         }
-
-        _mediaShareUI = Hub.Services.GetService<IMediaShareUI>();
     }
 
     protected override async Task OnParametersSetAsync() {
@@ -112,9 +110,16 @@
         => _ = ModalUI.Show(new VisualMediaInfoModal.Model(Attachment));
 
     private Task OnShareClick() {
-        if (_mediaShareUI == null || Attachment == null)
+        if (Attachment == null)
             return Task.CompletedTask;
 
-        return _mediaShareUI.Share(Attachment);
+        var targetTitle = _author?.Avatar.Name ?? "";
+        var model = new ShareModalModel(
+            ShareKind.Media,
+            "Share media",
+            targetTitle,
+            new ShareRequest("") { Attachments = [Attachment] },
+            null);
+        return ShareUI.Share(model);
     }
 }
