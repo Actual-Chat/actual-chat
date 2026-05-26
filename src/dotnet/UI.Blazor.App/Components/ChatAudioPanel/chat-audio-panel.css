@@ -17,10 +17,13 @@ body.narrow .chat-audio-panel {
     @apply overflow-visible;
     @apply pointer-events-none;
 }
-body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-panel,
-body.narrow .text-mode .chat-audio-panel,
 body.narrow .narrow-panel .chat-audio-panel {
     @apply bottom-2;
+    @apply py-1;
+}
+body.narrow .chat-message-editor:has(.related-chat-entry-panel):not(.narrow-panel) .chat-audio-panel,
+body.narrow .chat-message-editor.text-mode:not(.narrow-panel) .chat-audio-panel {
+    @apply bottom-3;
     @apply py-1;
 }
 body.narrow .to-thick:not(.text-mode) .chat-audio-panel {
@@ -212,10 +215,26 @@ body.narrow .chat-audio-panel .recorder-wrapper {
 body.narrow .narrow-panel .recorder-wrapper::before,
 body.narrow .text-mode .recorder-wrapper::before,
 body.narrow .to-thin .recorder-wrapper::before,
+body.narrow .chat-message-editor:has(.related-chat-entry-panel) .recorder-wrapper::before,
 body.narrow .narrow-panel .chat-audio-panel .listen-only-btn.btn::before,
 body.narrow .text-mode .chat-audio-panel .listen-only-btn.btn::before,
-body.narrow .to-thin .chat-audio-panel .listen-only-btn.btn::before {
+body.narrow .to-thin .chat-audio-panel .listen-only-btn.btn::before,
+body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-panel .listen-only-btn.btn::before {
     @apply hidden;
+}
+/* Small language button: white outline + white text (no colored gradient from record state) */
+body.narrow .narrow-panel .chat-audio-panel .volume-settings-btn.text::before,
+body.narrow .text-mode .chat-audio-panel .volume-settings-btn.text::before,
+body.narrow .to-thin .chat-audio-panel .volume-settings-btn.text::before,
+body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-panel .volume-settings-btn.text::before {
+    background: var(--text-03);
+}
+body.narrow .narrow-panel .chat-audio-panel .volume-settings-btn.text > .c-text,
+body.narrow .text-mode .chat-audio-panel .volume-settings-btn.text > .c-text,
+body.narrow .to-thin .chat-audio-panel .volume-settings-btn.text > .c-text,
+body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-panel .volume-settings-btn.text > .c-text {
+    background-image: none;
+    -webkit-text-fill-color: white;
 }
 /* On-state: rotate + on colors + thicker ring */
 .chat-audio-panel .recorder-wrapper.record-on::before,
@@ -862,7 +881,7 @@ body.narrow .chat-audio-panel .mobile-video-btn.btn-round i {
     @apply duration-150 ease-in-out;
     transition-property: background-color, opacity;
 }
-body.narrow .chat-audio-panel:has(.audio-panel-header) .volume-settings-btn {
+body.narrow .chat-message-editor:not(.narrow-panel, .text-mode) .chat-audio-panel:has(.audio-panel-header) .volume-settings-btn {
     @apply hidden;
 }
 body.narrow .chat-audio-panel:has(.record-on) .volume-settings-btn.btn.btn-round > .btn-content i {

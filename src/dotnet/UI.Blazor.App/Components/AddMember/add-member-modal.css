@@ -25,8 +25,7 @@
     @apply px-2;
     @apply rounded-md;
 }
-body.hoverable .c-contact-list > .c-item:hover,
-.touch-capable .c-contact-list > .c-item:active {
+body.hoverable .c-contact-list > .c-item:hover {
     @apply bg-hover;
 }
 .c-contact-list > .c-item,
@@ -38,8 +37,7 @@ body.hoverable .c-contact-list > .c-item:hover,
     @apply truncate;
     @apply text-headline-1 text-02;
 }
-body.hoverable .c-contact-list > .c-item:hover > .avatar-name,
-.touch-capable .c-contact-list > .c-item:active > .avatar-name {
+body.hoverable .c-contact-list > .c-item:hover > .avatar-name {
     @apply text-01;
 }
 
