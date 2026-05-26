@@ -1,13 +1,11 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
-using ActualChat.Audio;
 using ActualChat.Contacts;
 using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Kvas;
 using ActualChat.Notification;
-using ActualChat.Live;
 using ActualChat.Search;
 using ActualChat.Security;
 using ActualChat.Streaming;
@@ -16,7 +14,6 @@ using ActualLab.RestEase;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Clients;
 using ActualLab.Rpc.WebSockets;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.Module;
 
@@ -101,7 +98,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
     public void ConfigureFusionClients(FusionBuilder fusion)
     {
         var hostKind = HostInfo.HostKind;
-        var useHttpClient = Constants.Rpc.UseHttpClient || HostInfo.AppKind == AppKind.Android;
+        var useRpcSwitchingClient = Constants.Rpc.UseHttpClient || HostInfo.HostKind is HostKind.MauiApp;
         fusion.Rpc.AddWebSocketClient(c => {
             var options = RpcWebSocketClientOptions.Default with {
                 ConnectionUriResolver = peer => {
@@ -169,7 +166,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                 };
             return options;
         });
-        if (useHttpClient)
+        if (useRpcSwitchingClient)
             fusion.Rpc.AddHttpClient(c => RpcHttpClientOptions.Default with {
                 ConnectionUriResolver = peer => {
                     if (peer.Ref != RpcPeerRef.Default)
@@ -223,7 +220,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                 },
             });
 
-        if (useHttpClient) {
+        if (useRpcSwitchingClient) {
             var services = fusion.Services;
             services.RemoveAll(d => d.ServiceType == typeof(RpcClient));
             services.AddSingleton(c => {
