@@ -47,13 +47,10 @@ function pickRenderBackend(canvas: HTMLCanvasElement, videoEl: HTMLVideoElement)
 // Parse `?bgBlur=webgpu|webgl|off` from the page URL. Used to A/B the
 // two bg-blur paths on the same hardware without rebuilding. Anything
 // else (missing or unknown) → no override.
-function readBgBlurOverride(): 'webgpu' | 'canvas2d' | 'off' | undefined {
+function readBgBlurOverride(): 'webgpu' | 'webgl' | 'canvas2d' | 'off' | undefined {
     try {
         const v = new URLSearchParams(globalThis.location.search).get('bgBlur');
-        if (v === 'webgpu' || v === 'canvas2d' || v === 'off') return v;
-        // Back-compat: 'webgl' was the pre-step-8 main-thread fallback name.
-        // Map it to the closest current equivalent so old shared URLs still work.
-        if (v === 'webgl') return 'canvas2d';
+        if (v === 'webgpu' || v === 'webgl' || v === 'canvas2d' || v === 'off') return v;
     } catch { /* ignore */ }
     return undefined;
 }

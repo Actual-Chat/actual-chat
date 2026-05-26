@@ -2,6 +2,7 @@ import { tap, type PipeOperator } from 'ix-ext';
 import type { DecodedFrame } from '../frame-envelopes';
 import { BgBlurRenderer } from '../webgpu/blur';
 import { Canvas2DBgRenderer } from './canvas2d-bg';
+import { WebGlBgRenderer } from './webgl-bg';
 import { getLogs } from 'logging';
 
 const { infoLog, warnLog } = getLogs('VideoWebGPU');
@@ -21,8 +22,9 @@ const BG_RENDER_INTERVAL_MS = 100;
 // it as a hint on top of its own WebGPU probe.
 //  • 'auto'     — pick WebGPU if available in this worker, else Canvas2D.
 //  • 'webgpu'   — force WebGPU. Falls back to Canvas2D if construction throws.
-//  • 'canvas2d' — force Canvas2D (cheaper, no shaders).
-export type BgBlurMode = 'auto' | 'webgpu' | 'canvas2d';
+//  • 'webgl'    — force WebGL2 separable-Gaussian (off-thread, gregblur-derived).
+//  • 'canvas2d' — force Canvas2D (ctx.filter blur baked into a 64×N bitmap).
+export type BgBlurMode = 'auto' | 'webgpu' | 'webgl' | 'canvas2d';
 
 interface BgRenderer {
     render(frame: VideoFrame, strength?: number): boolean;
@@ -52,7 +54,7 @@ function isWebGpuLikelyAvailableInWorker(): boolean {
 // reads synchronously, so the upstream pipe always keeps its frame.
 export class BgBlurController {
     private renderer: BgRenderer | null = null;
-    private rendererKind: 'webgpu' | 'canvas2d' | null = null;
+    private rendererKind: 'webgpu' | 'webgl' | 'canvas2d' | null = null;
     private active = false;
     private lastRenderAtMs = 0;
 
@@ -68,6 +70,9 @@ export class BgBlurController {
             if (wantWebGpu) {
                 this.renderer = new BgBlurRenderer(canvas);
                 this.rendererKind = 'webgpu';
+            } else if (mode === 'webgl') {
+                this.renderer = new WebGlBgRenderer(canvas);
+                this.rendererKind = 'webgl';
             } else {
                 this.renderer = new Canvas2DBgRenderer(canvas);
                 this.rendererKind = 'canvas2d';

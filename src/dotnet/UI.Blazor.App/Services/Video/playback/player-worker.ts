@@ -244,7 +244,11 @@ export const playerWorkerImpl: PlayerWorker = {
         // so the runtime check actually inspects the received value (e.g. when
         // an older main bundle sends an OffscreenCanvas in this slot).
         const modeRaw: unknown = mode;
-        if (modeRaw !== 'auto' && modeRaw !== 'webgpu' && modeRaw !== 'canvas2d') {
+        if (modeRaw !== 'auto'
+            && modeRaw !== 'webgpu'
+            && modeRaw !== 'webgl'
+            && modeRaw !== 'canvas2d'
+        ) {
             throw new Error(
                 `installBgCanvas: unknown mode '${String(modeRaw)}'. Bundle-version skew?`);
         }
