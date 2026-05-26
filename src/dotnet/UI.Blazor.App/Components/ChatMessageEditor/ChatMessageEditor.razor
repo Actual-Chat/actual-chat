@@ -63,6 +63,13 @@
                         Cancel="@(() => OnCancel())"
                         OpenPrevious="OnOpenPrevious"/>
                 </label>
+                <button class="post-panel-btn convert-to-file-btn btn btn-round btn-transparent btn-xs unhovered"
+                        data-tooltip="Send text as file"
+                        data-tooltip-position="@(FloatingPosition.Top.ToPositionString())"
+                        @onmousedown="@(_ => OnConvertToFileClick())"
+                        @onmousedown:preventDefault="true">
+                    <i class="icon-file-text"></i>
+                </button>
                 <div class="c-right-buttons">
                     <NotifyAllButton Chat="@Chat"/>
                     <div class="c-incut"></div>
@@ -284,6 +291,11 @@
     private async Task OnMentionButtonClick() {
         await MarkupEditorRef.WhenReady;
         await MarkupEditorRef.JSRef.InvokeVoidAsync("beginMention");
+    }
+
+    private async Task OnConvertToFileClick() {
+        await JSRef.InvokeVoidAsync("convertCurrentTextToAttachment");
+        await MarkupEditorRef.Clear();
     }
 
     private async Task OnAttachClick(string acceptTypes) {
