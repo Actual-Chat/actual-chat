@@ -60,7 +60,8 @@ body.narrow .markup-editor > .c-cursor {
     @apply top-0;
 }
 body.wide .markup-editor > .c-cursor,
-body.narrow .markup-editor:has(.editor-content:focus) > .c-cursor {
+body.narrow .markup-editor:has(.editor-content:focus) > .c-cursor,
+body.narrow .markup-editor:has(.editor-content.has-content) > .c-cursor {
     @apply hidden;
 }
 body.narrow .editor-content:focus {
