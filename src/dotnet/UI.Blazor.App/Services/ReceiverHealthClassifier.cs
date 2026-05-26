@@ -79,13 +79,6 @@ public sealed class ReceiverHealthClassifier(ReceiverHealthThresholds? threshold
         var hangVerdict = hangRateIn60s >= _t.HangRateBad
             ? HealthVerdict.Bad
             : HealthVerdict.Good;
-        var recoveryVerdict = recoveryStreak >= _t.RecoveryStreakBad
-            ? HealthVerdict.Bad
-            : recoveryStreak == 0 ? HealthVerdict.Good
-            : HealthVerdict.Marginal;
-        var skipVerdict = presentSkipRatio > _t.PresentSkipRatioBad
-            ? HealthVerdict.Bad
-            : HealthVerdict.Good;
         var dropVerdict = receiverDecodePathDropRatio > _t.ReceiverDecodePathDropRatioBad
             ? HealthVerdict.Bad
             : HealthVerdict.Good;

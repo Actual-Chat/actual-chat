@@ -42,7 +42,6 @@ public sealed partial class VideoQualityUI
     // Snapshot of the previous tick's requested layer per stream, used to
     // detect allocator-driven cap moves for the decision log.
     private readonly Dictionary<string, int> _prevRequestedLayerByStream = new();
-    private readonly Dictionary<string, int> _prevDecoderCapByStream = new();
     private HealthVerdict _lastAggregateDownlinkVerdict = HealthVerdict.Unknown;
 
     public BandwidthEstimator InboundBandwidthEstimator => _inboundBwEstimator;
@@ -338,7 +337,10 @@ public sealed partial class VideoQualityUI
         var capChange = "";
         foreach (var (sid, q) in requestedMap.OrderBy(x => x.Key)) {
             var prevLayer = _prevRequestedLayerByStream.GetValueOrDefault(sid, -1);
-            if (prevLayer >= 0 && prevLayer != q.LayerId) {
+            // Skip Paused transitions in either direction — they're panel-mode
+            // events, not QC decisions, and would produce nonsensical L→-1 rows.
+            if (prevLayer < 0 || q.LayerId < 0) continue;
+            if (prevLayer != q.LayerId) {
                 var capTag = _decoderCapState.Caps.ContainsKey(sid) ? "decoder" : "bw";
                 capChange = $"{ShortStreamId(sid)} L{prevLayer}→L{q.LayerId} ({capTag})";
                 break;
@@ -348,9 +350,6 @@ public sealed partial class VideoQualityUI
         _prevRequestedLayerByStream.Clear();
         foreach (var (sid, q) in requestedMap)
             _prevRequestedLayerByStream[sid] = q.LayerId;
-        _prevDecoderCapByStream.Clear();
-        foreach (var (sid, c) in _decoderCapState.Caps)
-            _prevDecoderCapByStream[sid] = c;
 
         // Pick the worst stream for the decoder raw-values line so the
         // operator sees the actual numbers behind the aggregate verdict.
