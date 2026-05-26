@@ -137,4 +137,38 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
         var required = age < QcSettlingDuration ? QcSettlingInterval : QcSteadyInterval;
         return sinceLast >= required;
     }
+
+    // ----- Decision log -----
+
+    private const int DecisionLogCapacity = 10;
+    private readonly Queue<QualityDecisionEntry> _outboundDecisionLog = new(DecisionLogCapacity);
+    private readonly Queue<QualityDecisionEntry> _inboundDecisionLog = new(DecisionLogCapacity);
+
+    public IReadOnlyCollection<QualityDecisionEntry> OutboundDecisionLog => _outboundDecisionLog;
+    public IReadOnlyCollection<QualityDecisionEntry> InboundDecisionLog => _inboundDecisionLog;
+
+    internal void AppendOutboundDecision(QualityDecisionEntry entry)
+    {
+        _outboundDecisionLog.Enqueue(entry);
+        while (_outboundDecisionLog.Count > DecisionLogCapacity)
+            _outboundDecisionLog.Dequeue();
+    }
+
+    internal void AppendInboundDecision(QualityDecisionEntry entry)
+    {
+        _inboundDecisionLog.Enqueue(entry);
+        while (_inboundDecisionLog.Count > DecisionLogCapacity)
+            _inboundDecisionLog.Dequeue();
+    }
+
+    public sealed record QualityDecisionEntry(
+        Moment At,
+        HealthVerdict SignalA,        // outbound: Encoder | inbound: Downlink
+        HealthVerdict SignalB,        // outbound: Uplink  | inbound: Decoder
+        BandwidthVerdict BweVerdict,
+        string CapChange,             // "" when no cap moved
+        string Reason,                // dominant trigger
+        string RawValuesA,
+        string RawValuesB,
+        string RawValuesBw);
 }
