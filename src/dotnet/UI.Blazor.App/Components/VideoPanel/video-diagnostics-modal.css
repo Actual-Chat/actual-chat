@@ -201,3 +201,42 @@ div.diag-value.multiline .diag-value {
     @apply bg-02;
     opacity: 0.6;
 }
+
+.diag-log-row {
+    @apply flex flex-col gap-0.5 mb-1 px-1 py-0.5 rounded;
+}
+
+.diag-log-row-action {
+    background: rgba(99, 102, 241, 0.10);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+}
+
+.diag-log-line {
+    @apply flex flex-row items-center gap-2 font-mono;
+    font-size: 0.75rem;
+}
+
+.diag-log-time {
+    @apply text-04;
+}
+
+.diag-log-swatches {
+    @apply flex flex-row gap-1;
+}
+
+.diag-log-swatch {
+    @apply px-1 py-0 rounded font-mono;
+    font-size: 0.65rem;
+    border: none;
+}
+
+.diag-log-cap {
+    @apply flex-1 text-01;
+}
+
+.diag-log-subline {
+    @apply font-mono;
+    font-size: 0.7rem;
+    padding-left: 0.5rem;
+    overflow-wrap: anywhere;
+}
