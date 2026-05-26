@@ -230,6 +230,24 @@ export const playerWorkerImpl: PlayerWorker = {
     },
 
     installBgCanvas(streamId: string, mode: BgBlurMode, canvas: OffscreenCanvas): Promise<void> {
+        // Defensive: catch main↔worker bundle-version skew at the boundary.
+        // If main is on an older bundle that sends (streamId, canvas) instead
+        // of (streamId, mode, canvas), `mode` here is the OffscreenCanvas and
+        // `canvas` is undefined — the renderer ctor would otherwise blow up
+        // deep inside with `getContext is not a function`.
+        if (!(canvas instanceof OffscreenCanvas)) {
+            throw new Error(
+                `installBgCanvas: bundle-version skew — expected OffscreenCanvas at arg[2], `
+                + `got ${typeof canvas}. Update main bundle (hard-reload, clear service worker).`);
+        }
+        // TS narrows `mode` to BgBlurMode, but the wire delivers `unknown`. Cast
+        // so the runtime check actually inspects the received value (e.g. when
+        // an older main bundle sends an OffscreenCanvas in this slot).
+        const modeRaw: unknown = mode;
+        if (modeRaw !== 'auto' && modeRaw !== 'webgpu' && modeRaw !== 'canvas2d') {
+            throw new Error(
+                `installBgCanvas: unknown mode '${String(modeRaw)}'. Bundle-version skew?`);
+        }
         ensureBgBlurController(streamId).install(canvas, mode);
         return Promise.resolve();
     },
