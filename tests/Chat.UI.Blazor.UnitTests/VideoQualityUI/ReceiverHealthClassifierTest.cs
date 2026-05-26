@@ -78,9 +78,6 @@ public class ReceiverHealthClassifierTest
     [Fact]
     public void RecoveryStreak_AtThreshold_DoesNotDriveBad()
     {
-        // recoveryStreak is recorded on DecoderHealth but no longer drives the
-        // combined verdict — it fires on decoder restart events, which are not
-        // direct decoder fault.
         var c = new ReceiverHealthClassifier(T());
         var dec = c.ClassifyDecoder(
             decodeRatioEma: 0.5,
@@ -142,7 +139,6 @@ public class ReceiverHealthClassifierTest
     [Fact]
     public void PresentSkipHigh_NoOtherSignal_DoesNotDriveBad()
     {
-        // presentSkipRatio fires on MSTG catch-up skips, not decoder fault.
         var c = new ReceiverHealthClassifier(T());
         var dec = c.ClassifyDecoder(
             decodeRatioEma: 0.5,
@@ -157,9 +153,10 @@ public class ReceiverHealthClassifierTest
     [Fact]
     public void DecodeRatioBad_AfterStreak_IsBad()
     {
-        var c = new ReceiverHealthClassifier(T());
+        var t = T();
+        var c = new ReceiverHealthClassifier(t);
         DecoderHealth dec = DecoderHealth.Empty;
-        for (var i = 0; i < 3; i++) {
+        for (var i = 0; i < t.DecodeRatioBadStreak; i++) {
             dec = c.ClassifyDecoder(
                 decodeRatioEma: 2.0,
                 hangRateIn60s: 0,
