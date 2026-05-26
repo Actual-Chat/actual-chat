@@ -19,6 +19,9 @@ import { AttachmentWebFilePicker, AttachmentWebFilePickerBackend, PickFileResult
 
 const { debugLog, warnLog } = getLogs('MessageEditor');
 
+const LargeTextPasteThreshold = 4000;
+const LargeTextPasteFileName = 'pasted.txt';
+
 export type PanelMode = 'Normal' | 'Narrow';
 
 export class ChatMessageEditor {
@@ -257,7 +260,7 @@ export class ChatMessageEditor {
         fromEvent(this.postPanelDiv, 'click')
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: MouseEvent) => this.onPostPanelClick(event));
-        fromEvent(this.input, 'paste')
+        fromEvent<ClipboardEvent>(this.input, 'paste', { capture: true })
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: ClipboardEvent) => this.onInputPaste(event));
 
@@ -301,20 +304,16 @@ export class ChatMessageEditor {
     });
 
     private onInputPaste = async (event: ClipboardEvent) => {
-        // Get pasted data via clipboard API
-        // We need to handle only files pasting.
-        // Text pasting is controlled by markup editor.
+        // We handle clipboard files here, and route large plain-text pastes
+        // through the same attachment pipeline. Small text pastes fall through
+        // to MarkupEditor (bubble phase on the inner .editor-content).
         const clipboardData = event.clipboardData;
         if (!clipboardData)
             return;
 
-        let isAdding = false;
         const fileResults : PickFileResult[] = [];
         for (const item of clipboardData.items) {
             if (item.kind === 'file') {
-                if (!isAdding)
-                    preventDefaultForEvent(event); // We can do it only in the sync part of async handler
-                isAdding = true;
                 const file = item.getAsFile();
                 if (!file)
                     continue; // Should not happen, but just in case
@@ -322,6 +321,22 @@ export class ChatMessageEditor {
                 fileResults.push({ file: file, fileHandle: null });
             }
         }
+
+        if (fileResults.length === 0) {
+            const text = clipboardData.getData('text');
+            if (text && text.length >= LargeTextPasteThreshold) {
+                const file = new File([text], LargeTextPasteFileName, { type: 'text/plain' });
+                fileResults.push({ file: file, fileHandle: null });
+                // Capture-phase + stopImmediatePropagation keeps MarkupEditor.onPaste
+                // from inserting the same text into the editor.
+                event.stopImmediatePropagation();
+            }
+        }
+
+        if (fileResults.length === 0)
+            return;
+
+        preventDefaultForEvent(event); // Must run sync — async tail can't preventDefault
         void this.filePickerBackend.add(fileResults);
     };
 
