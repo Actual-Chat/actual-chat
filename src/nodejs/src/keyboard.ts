@@ -8,6 +8,19 @@ export function isEscapeKey(event: KeyboardEvent): boolean {
     return event.key === 'Escape' || event.key === 'Esc';
 }
 
+export function dismissSystemKeyboard(): void {
+    if (!DeviceInfo.isMobile)
+        return;
+
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement))
+        return;
+    if (!active.isContentEditable && active.tagName !== 'INPUT' && active.tagName !== 'TEXTAREA')
+        return;
+
+    active.blur();
+}
+
 export function unselect(everything = false): void {
     if (!DeviceInfo.isMobile)
         return;

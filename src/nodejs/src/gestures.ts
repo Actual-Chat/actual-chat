@@ -1,6 +1,7 @@
 import { DeviceInfo } from 'device-info';
 import { DisposableBag } from 'disposable';
 import { DocumentEvents, preventDefaultForEvent, stopEvent } from 'event-handling';
+import { dismissSystemKeyboard } from 'keyboard';
 import { fromEvent } from 'rxjs';
 import { getOrInheritAttribute, getOrInheritData } from 'dom-helpers';
 import { History } from '../../dotnet/UI.Blazor/Services/History/history';
@@ -25,6 +26,8 @@ export class Gestures {
         DataHrefGesture.use();
         SuppressDefaultContextMenuGesture.use();
         ContextMenuGesture.use();
+        DismissKeyboardOnDragGesture.use();
+        KeepEditorFocusOnBottomPanelTapGesture.use();
     }
 
     public static addActive(gesture: Gesture): Gesture {
@@ -266,6 +269,61 @@ class ContextMenuGesture extends Gesture {
                 }
             }),
         );
+    }
+}
+
+const BottomPanelSelector = '.chat-message-editor, .chat-audio-panel';
+
+class DismissKeyboardOnDragGesture extends Gesture {
+    public static use(): void {
+        if (!DeviceInfo.isMobile)
+            return;
+
+        debugLog?.log(`DismissKeyboardOnDragGesture.use`);
+        DocumentEvents.capturedPassive.touchMove$.subscribe((event: TouchEvent) => {
+            const target = event.target;
+            if (!(target instanceof Element))
+                return;
+            // Skip drags inside the focused editor (text selection / caret
+            // repositioning) or anywhere in the bottom panel (tap-jitter on
+            // attach, record, send, etc. shouldn't dismiss).
+            if (document.activeElement?.contains(target))
+                return;
+            if (target.closest(BottomPanelSelector))
+                return;
+            dismissSystemKeyboard();
+        });
+    }
+}
+
+class KeepEditorFocusOnBottomPanelTapGesture extends Gesture {
+    private static readonly DismissingButtonSelector = 'button:not(.post-message), [data-menu]';
+
+    public static use(): void {
+        if (!DeviceInfo.isMobile)
+            return;
+
+        debugLog?.log(`KeepEditorFocusOnBottomPanelTapGesture.use`);
+        // preventDefault on mousedown keeps the contentEditable focused, so
+        // iOS doesn't dismiss the keyboard before the click reaches a button.
+        // After the click resolves we dismiss the keyboard ourselves, except
+        // for the send button — sending shouldn't kick the user out of typing.
+        document.addEventListener('mousedown', (event: MouseEvent) => {
+            const target = event.target;
+            if (!(target instanceof Element))
+                return;
+            const active = document.activeElement;
+            if (!(active instanceof HTMLElement) || !active.isContentEditable)
+                return;
+            if (active.contains(target))
+                return;
+            if (!target.closest(BottomPanelSelector))
+                return;
+
+            event.preventDefault();
+            if (target.closest(this.DismissingButtonSelector))
+                requestAnimationFrame(() => dismissSystemKeyboard());
+        }, { capture: true });
     }
 }
 
