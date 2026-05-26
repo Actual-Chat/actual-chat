@@ -218,7 +218,12 @@ public partial class AppHost
                     options.ValidateOnBuild = true;
                 }
             })
-            .UseKestrel();
+            .UseKestrel(options => {
+                // GFE preserves the original client :scheme (https) when proxying
+                // over h2c to /rpc/http. Without this, Kestrel rejects :scheme=https
+                // on a plaintext listener with PROTOCOL_ERROR.
+                options.AllowAlternateSchemes = true;
+            });
         App = ctx.App = builder.Build();
         if (coreServicesOnly)
             return this;
