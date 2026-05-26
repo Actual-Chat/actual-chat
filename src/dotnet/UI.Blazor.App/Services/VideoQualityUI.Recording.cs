@@ -248,6 +248,36 @@ public sealed partial class VideoQualityUI
             target = Math.Max(1, target);
             await ApplyOutboundTarget(k, recorder, target, cancellationToken).ConfigureAwait(false);
         }
+
+        var capChange = "";
+        if (preEncCam != postEncCam)
+            capChange = $"camera {preEncCam}→{postEncCam} (enc)";
+        else if (preBwCam != postBwCam)
+            capChange = $"camera {preBwCam}→{postBwCam} (bw)";
+        var ceilingKbps = _outboundBwEstimator.CeilingBps * 8 / 1000;
+        var currentKbps = _outboundBwEstimator.LastCurrentBps * 8 / 1000;
+        var reason = encoderHealth.Verdict == HealthVerdict.Bad
+            ? $"encDeficit {(fusedEncodeDeficit * 100):F0}%"
+            : uplinkHealth.Verdict == HealthVerdict.Bad
+                ? $"ack {fusedAckAgeMs:F0}ms / drop {fusedDropRatio:F2}"
+                : _outboundBwEstimator.LastVerdict switch {
+                    BandwidthVerdict.Good => $"BW ↑ {ceilingKbps} kbps",
+                    BandwidthVerdict.Bad => $"BW ↓ {ceilingKbps} kbps",
+                    _ => "stable",
+                };
+        var rawA = $"def={(fusedEncodeDeficit * 100):F0}% q={fusedEncodeQueueDepth:F1} rs={maxRestartStreak}";
+        var rawB = $"ack={(fusedAckAgeMs < 0 ? "n/a" : fusedAckAgeMs.ToString("F0") + "ms")} drop={fusedDropRatio:F2} qd={fusedWireQueueDepth:F1} flood={fusedFloodSkipPerSec:F1}";
+        var rawBw = $"{(_outboundBwEstimator.LastVerdict == BandwidthVerdict.Good ? "↑" : _outboundBwEstimator.LastVerdict == BandwidthVerdict.Bad ? "↓" : "=")}{ceilingKbps}/cur {currentKbps} kbps";
+        AppendOutboundDecision(new QualityDecisionEntry(
+            SystemClock.Now,
+            encoderHealth.Verdict,
+            uplinkHealth.Verdict,
+            _outboundBwEstimator.LastVerdict,
+            capChange,
+            reason,
+            rawA,
+            rawB,
+            rawBw));
     }
 
     private async Task ApplyOutboundTarget(
