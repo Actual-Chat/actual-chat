@@ -97,3 +97,22 @@ export function isWebGpuSupported(): Promise<boolean> {
     })();
     return webGpuSupportedPromise;
 }
+
+// Synchronous, conservative probe — needed at VideoPlayer construction time
+// when the bg-canvas transfer decision must be made before any frame paints.
+// Checks only the API surface (navigator.gpu + importExternalTexture on the
+// prototype) without requesting an adapter. False negatives are acceptable
+// (we just keep the WebGL fallback painter); false positives are paid by
+// BgBlurRenderer's `initFailed` path, which simply stops painting — never
+// blocks the main thread.
+export function isWebGpuLikelySupported(): boolean {
+    try {
+        const nav = globalThis.navigator as Navigator | undefined;
+        if (!nav || !('gpu' in nav))
+            return false;
+        return typeof GPUDevice !== 'undefined'
+            && typeof GPUDevice.prototype.importExternalTexture === 'function';
+    } catch {
+        return false;
+    }
+}

@@ -26,6 +26,7 @@ import type { RenderBackend } from './render-backend';
 import { TransferableCanvasRenderBackend } from './render-backend-canvas';
 import { OffThreadRenderBackend } from './render-backend-mstg';
 import { pickRenderBackendKind } from './render-backend-selection';
+import { isWebGpuLikelySupported } from '../../Services/Video/support/gpu';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 import { AC, VIDEO } from 'app-constants';
@@ -131,6 +132,16 @@ export class VideoPlayer {
     private videoEl: HTMLVideoElement;
     private bgCanvasEl: HTMLCanvasElement;
     private renderBackend: RenderBackend;
+
+    // WebGPU backdrop blur state. Decided once at construction via the
+    // sync `isWebGpuLikelySupported` probe. When true the bg canvas is
+    // transferControlToOffscreen()'d and shipped to the player worker;
+    // backend.setBackdrop is then always called with null. When false,
+    // the existing WebGL BgCanvasPainter path inside the backend runs.
+    private useWebGpuBgBlur = false;
+    private transferredBgCanvas: OffscreenCanvas | null = null;
+    private bgCanvasInstallSent = false;
+    private bgActive = false;
 
     // Player worker (the new pipeline pulls + decodes + renders entirely off-thread)
     private playerWorkerInstance: Worker | null = null;
@@ -268,6 +279,20 @@ export class VideoPlayer {
         this.canvas = canvas;
         this.videoEl = videoEl;
         this.bgCanvasEl = bgCanvasEl;
+        // Decide bg-blur path before pickRenderBackend (which constructs a
+        // backend that may otherwise wire up the WebGL BgCanvasPainter). The
+        // OffscreenCanvas transfer is one-shot; once committed here, the
+        // backend MUST be told setBackdrop(null) from now on.
+        if (isWebGpuLikelySupported()) {
+            try {
+                this.transferredBgCanvas = bgCanvasEl.transferControlToOffscreen();
+                this.useWebGpuBgBlur = true;
+            } catch (e) {
+                warnLog?.log('transferControlToOffscreen for bg canvas failed; falling back to WebGL painter:', e);
+                this.useWebGpuBgBlur = false;
+                this.transferredBgCanvas = null;
+            }
+        }
         this.renderBackend = pickRenderBackend(canvas, videoEl);
         this.applyBackendVisibility(canvas, videoEl);
 
@@ -408,6 +433,21 @@ export class VideoPlayer {
                 }
             );
             this.traceKillRegistration = registerVideoTraceKillWorker('playback', this.playerWorker);
+
+            // Hand the bg-blur OffscreenCanvas to the worker as soon as the
+            // RPC pair is up. Fire-and-forget — RPC message order is preserved,
+            // so a setBgActive issued before install resolves still lands
+            // correctly. Flush the latched bgActive state in the same .then so
+            // a focused tile that was decided before the worker came online
+            // immediately starts painting.
+            if (this.useWebGpuBgBlur && this.transferredBgCanvas && !this.bgCanvasInstallSent) {
+                this.bgCanvasInstallSent = true;
+                const canvas = this.transferredBgCanvas;
+                this.transferredBgCanvas = null; // ownership moves to worker
+                void this.playerWorker.installBgCanvas(this.streamId, canvas)
+                    .then(() => this.playerWorker?.setBgActive(this.streamId, this.bgActive, rpcNoWait))
+                    .catch((e: unknown) => warnLog?.log('installBgCanvas failed:', e));
+            }
 
             // Seed worker-local app constants so push-to-pull-buffer / decoder
             // helpers can read VIDEO/AUDIO. AC is structurally cloneable.
@@ -562,18 +602,41 @@ export class VideoPlayer {
             this.updateCollapsedIslandAspect();
         if (!focused) {
             try { backend.setFit('cover'); } catch { /* ignore */ }
-            try { backend.setBackdrop(null, false); } catch { /* ignore */ }
+            this.applyBackdrop(false);
             return;
         }
         const fit = this.computeFocusedFit(parent);
         if (isMinimized) {
             try { backend.setFit(fit); } catch { /* ignore */ }
-            try { backend.setBackdrop(null, false); } catch { /* ignore */ }
+            this.applyBackdrop(false);
             return;
         }
         try { backend.setFit(fit); } catch (e) { warnLog?.log('setFit failed:', e); }
-        try { backend.setBackdrop(this.bgCanvasEl, true); }
+        this.applyBackdrop(true);
+    }
+
+    // Dispatch a backdrop on/off decision. WebGPU path keeps the bg canvas
+    // owned by the worker (transferred at construction); we only flip
+    // setBgActive there. WebGL fallback hands the canvas to the backend and
+    // lets BgCanvasPainter pump from `<video>` on main.
+    private applyBackdrop(focused: boolean): void {
+        if (this.useWebGpuBgBlur) {
+            try { this.renderBackend.setBackdrop(null, false); } catch { /* ignore */ }
+            this.setBgActive(focused);
+            return;
+        }
+        const canvas = focused ? this.bgCanvasEl : null;
+        try { this.renderBackend.setBackdrop(canvas, focused); }
         catch (e) { warnLog?.log('setBackdrop failed:', e); }
+    }
+
+    private setBgActive(active: boolean): void {
+        if (this.bgActive === active) return;
+        this.bgActive = active;
+        const worker = this.playerWorker;
+        if (!worker) return; // Flushed once initPlayerWorker brings the worker up.
+        void worker.setBgActive(this.streamId, active, rpcNoWait)
+            .catch((e: unknown) => warnLog?.log('worker setBgActive failed:', e));
     }
 
     private computeFocusedFit(parent: Element): 'cover' | 'contain' {
