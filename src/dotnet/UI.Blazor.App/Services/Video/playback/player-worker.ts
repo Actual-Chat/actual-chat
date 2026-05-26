@@ -209,6 +209,19 @@ export const playerWorkerImpl: PlayerWorker = {
         return Promise.resolve();
     },
 
+    installBgCanvas(streamId: string, canvas: OffscreenCanvas): Promise<void> {
+        // Wired up in a follow-up step. Close the canvas defensively so
+        // a stale transfer doesn't keep a hidden allocation around.
+        void streamId;
+        try { canvas.width = 0; canvas.height = 0; } catch { /* ignore */ }
+        return Promise.resolve();
+    },
+
+    setBgActive(streamId: string, active: boolean): Promise<void> {
+        void streamId; void active;
+        return Promise.resolve();
+    },
+
     getStats(streamId: string): Promise<PlayerStats> {
         const player = players.get(streamId);
         if (!player)

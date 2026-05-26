@@ -94,6 +94,16 @@ export interface PlayerWorker {
 
     setExpectedPaused(streamId: string, paused: boolean, noWait?: RpcNoWait): Promise<void>;
 
+    // Bind a bg-blur OffscreenCanvas to `streamId`. `canvas` is transferred
+    // (trailing transferable). Replaces any previously-installed canvas
+    // for the same stream. The worker renders the dual-Kawase backdrop
+    // here whenever setBgActive(streamId, true) is in effect.
+    installBgCanvas(streamId: string, canvas: OffscreenCanvas): Promise<void>;
+
+    // Toggle whether the worker pumps frames into the bg-blur renderer
+    // installed for `streamId`. No-op if no canvas is bound.
+    setBgActive(streamId: string, active: boolean, noWait?: RpcNoWait): Promise<void>;
+
     getStats(streamId: string): Promise<PlayerStats>;
 
     stop(streamId?: string): Promise<void>;
