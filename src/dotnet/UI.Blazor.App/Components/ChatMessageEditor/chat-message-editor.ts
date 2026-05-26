@@ -13,6 +13,7 @@ import { MarkupEditor } from '../MarkupEditor/markup-editor';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 import { localSettings } from '../../../UI.Blazor/Services/Settings/local-settings';
 import { CompactLayout } from 'compact-layout';
+import { dismissSystemKeyboard } from 'keyboard';
 import { getLogs } from 'logging';
 import { AttachmentWebFilePicker, AttachmentWebFilePickerBackend, PickFileResult } from './attachment-web-file-picker';
 
@@ -130,6 +131,26 @@ export class ChatMessageEditor {
                 .pipe(takeUntil(this.disposed$))
                 .subscribe(e => this.onDrop(e));
         }
+
+        if (DeviceInfo.isMobile)
+            this.addBottomPanelTapHandler();
+    }
+
+    private addBottomPanelTapHandler(): void {
+        const DismissingButtonSelector = 'button:not(.post-message), [data-menu]';
+        this.editorDiv.addEventListener('mousedown', (event: MouseEvent) => {
+            const target = event.target;
+            if (!(target instanceof Element))
+                return;
+            const active = document.activeElement;
+            if (!(active instanceof HTMLElement) || !active.isContentEditable)
+                return;
+            if (active.contains(target))
+                return;
+            event.preventDefault();
+            if (target.closest(DismissingButtonSelector))
+                requestAnimationFrame(() => dismissSystemKeyboard());
+        }, { capture: true });
     }
 
     public dispose() {
