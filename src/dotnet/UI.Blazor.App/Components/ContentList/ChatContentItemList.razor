@@ -37,8 +37,12 @@
 
 @code {
     private const int GridColumns = 3;
-    private const int InitialWindow = 60;
-    private const int MinWindow = 40;
+    // Window sizes are in raw period-items (pre-filter). For Link kind a significant
+    // fraction of items can be dropped by ChunkPage when the link preview didn't resolve
+    // (stale/archived entries), so the window must be roomy enough for the survivors to
+    // still fill the viewport after filtering.
+    private const int InitialWindow = 200;
+    private const int MinWindow = 120;
     private static readonly IReadOnlyDictionary<Symbol, ChatEntry> EmptyLinkEntries = new Dictionary<Symbol, ChatEntry>();
 
     private IChats Chats => Hub.Chats;
@@ -73,6 +77,13 @@
         if (chatId is null)
             return VirtualListData<ContentListItem>.None;
 
+        // Right panel keeps tabs mounted while collapsed (SideNav just CSS-hides them).
+        // Defer all compute/fetch while invisible — VirtualList's ComputeState re-runs
+        // once IsVisible flips because Use() registers it as a dependency.
+        var isVisible = await Hub.PanelsUI.Right.IsVisible.Use(cancellationToken).ConfigureAwait(false);
+        if (!isVisible)
+            return renderedData;
+
         var periods = await Chats.GetContentPeriods(Session, chatId, Kind, cancellationToken).ConfigureAwait(false);
         if (periods.Length == 0)
             return EmptyData();
@@ -90,10 +101,27 @@
         if (listItems.Count == 0)
             return EmptyData();
 
+        // BeforeCount/AfterCount let VirtualList size the spacers proportionally to the
+        // unloaded blocks instead of falling back to defaultSpacerSize (1000px each).
+        // Without these, scrollHeight overshoots the actual data: scrolling to the bottom
+        // lands the viewport inside the bottom spacer (empty), and a subsequent scroll up
+        // can leave the query KeyRange anchored to the old bottom window.
+        var beforeCount = 0;
+        for (var b = 0; b < first; b++)
+            beforeCount += blocks[b].ItemCount;
+        var afterCount = 0;
+        for (var b = last; b < blocks.Count; b++)
+            afterCount += blocks[b].ItemCount;
+
         var result = new VirtualListData<ContentListItem>(listItems) {
             Index = renderedData.Index + 1,
-            HasVeryFirstItem = last == blocks.Count,
-            HasVeryLastItem = first == 0,
+            // BuildItems emits newest-first, so the rendered DOM order is newest-at-top.
+            // VirtualList treats Items[0] as VeryFirst (top of the list) — keep that aligned
+            // with our window: top of window = newest block (first==0), bottom = oldest (last==blocks.Count).
+            HasVeryFirstItem = first == 0,
+            HasVeryLastItem = last == blocks.Count,
+            BeforeCount = beforeCount,
+            AfterCount = afterCount,
         };
         return result.IsSimilarTo(renderedData) ? renderedData : result;
     }
@@ -132,8 +160,15 @@
         var sum = 0;
         for (var i = first; i < last; i++)
             sum += blocks[i].ItemCount;
-        while (sum < targetCount && last < blocks.Count)
-            sum += blocks[last++].ItemCount;
+        // Bidirectional expansion: when at the boundary (oldest or newest), we'd otherwise
+        // stop with too few items in the window. Keep growing in whichever direction is
+        // still available until the window reaches targetCount or we run out of blocks.
+        while (sum < targetCount && (last < blocks.Count || first > 0)) {
+            if (last < blocks.Count)
+                sum += blocks[last++].ItemCount;
+            else
+                sum += blocks[--first].ItemCount;
+        }
         if (last == first)
             last = Math.Min(blocks.Count, first + 1);
         return (first, last);
@@ -262,7 +297,7 @@
     }
 
     private async Task OnMediaClick(ChatContentItem item) {
-        var entry = await Chats.GetEntry(Session, item.EntryId, CancellationToken.None).ConfigureAwait(false);
+        var entry = await Chats.GetEntry(Session, item.EntryId, CancellationToken.None);
         var attachment = entry?.Attachments.FirstOrDefault(x => x.Index == item.LocalIndex);
         if (attachment is null)
             return;
