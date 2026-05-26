@@ -6,6 +6,7 @@ import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/
 import { setVideoTraceKill, type VideoTraceKillPeriod } from '../frame-drop-trace';
 import { Player, type PlayerConfig } from './player';
 import { PlaybackSession } from './session';
+import { BgBlurController, bgBlurTap } from './bg-blur-tap';
 import type {
     PlayerWorker,
     PlayerWorkerOptions,
@@ -16,6 +17,18 @@ import type {
 // on every start() would defeat the pool entirely.
 let session: PlaybackSession | null = null;
 const players = new Map<string, Player>();
+// Per-stream WebGPU bg-blur controller. Created lazily by installBgCanvas
+// or by start() (whichever lands first), disposed when the player drains.
+const bgBlurControllers = new Map<string, BgBlurController>();
+
+function ensureBgBlurController(streamId: string): BgBlurController {
+    let c = bgBlurControllers.get(streamId);
+    if (!c) {
+        c = new BgBlurController();
+        bgBlurControllers.set(streamId, c);
+    }
+    return c;
+}
 
 interface PlayerWorkerHooks {
     getStream: (streamId: string) => Promise<AsyncIterable<VideoFrameDto>> | AsyncIterable<VideoFrameDto>;
@@ -143,6 +156,7 @@ export const playerWorkerImpl: PlayerWorker = {
         // attachment off the critical path of the first keyframe.
         h.onTrackReady?.(opts.streamId, backend.kind, track);
 
+        const bgController = ensureBgBlurController(opts.streamId);
         const playerConfig: PlayerConfig = {
             streamId: opts.streamId,
             getStream: h.getStream,
@@ -151,6 +165,7 @@ export const playerWorkerImpl: PlayerWorker = {
             initialDecoderConfig: opts.initialDecoderConfig,
             createDecoder: handlers => h.createDecoder(opts.initialDecoderConfig.codec, handlers),
             reportLatency: h.makeReportLatency?.(opts.streamId),
+            bgBlurTap: bgBlurTap(bgController),
             backend,
             streamStallTimeoutMs: getStreamStallTimeoutMs(),
             reportCodecProven: h.reportCodecProven
@@ -182,6 +197,11 @@ export const playerWorkerImpl: PlayerWorker = {
                 players.delete(opts.streamId);
                 s.unregisterStream();
             }
+            const c = bgBlurControllers.get(opts.streamId);
+            if (c === bgController) {
+                bgBlurControllers.delete(opts.streamId);
+                c.dispose();
+            }
             locallyStopped.delete(opts.streamId);
         });
     },
@@ -210,15 +230,14 @@ export const playerWorkerImpl: PlayerWorker = {
     },
 
     installBgCanvas(streamId: string, canvas: OffscreenCanvas): Promise<void> {
-        // Wired up in a follow-up step. Close the canvas defensively so
-        // a stale transfer doesn't keep a hidden allocation around.
-        void streamId;
-        try { canvas.width = 0; canvas.height = 0; } catch { /* ignore */ }
+        ensureBgBlurController(streamId).install(canvas);
         return Promise.resolve();
     },
 
     setBgActive(streamId: string, active: boolean): Promise<void> {
-        void streamId; void active;
+        // Controllers persist only while a stream is running. Drop late
+        // toggles silently to keep this RPC lock-free on the main side.
+        bgBlurControllers.get(streamId)?.setActive(active);
         return Promise.resolve();
     },
 

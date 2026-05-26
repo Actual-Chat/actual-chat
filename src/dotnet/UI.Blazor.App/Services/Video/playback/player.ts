@@ -48,6 +48,13 @@ export interface PlayerConfig {
     // -- latency-tap --
     reportLatency?: (sample: LatencySample) => void;
 
+    // -- bg-blur tap (optional) --
+    // Inserted between the latency tap and the present operator. The worker
+    // builds this from a per-stream BgBlurController so each decoded frame
+    // can be forked into a WebGPU dual-Kawase backdrop renderer without
+    // interfering with the present path. See `bg-blur-tap.ts`.
+    bgBlurTap?: PipeOperator<DecodedFrame, DecodedFrame>;
+
     // -- present --
     backend: RenderBackendConfig;
 
@@ -137,9 +144,13 @@ export class Player {
                 reportLatency(sample);
             }
             : undefined;
-        const decodedTap = wrappedReportLatency
+        const latencyOp = wrappedReportLatency
             ? latencyTap({ report: wrappedReportLatency })
             : tap<DecodedFrame>(() => { /* identity */ });
+        const bgBlurOp = config.bgBlurTap ?? tap<DecodedFrame>(() => { /* identity */ });
+        // Compose to keep the pipe() arg list within the 11-overload limit.
+        const decodedTap: PipeOperator<DecodedFrame, DecodedFrame> =
+            src => bgBlurOp(latencyOp(src));
         const arrivedTap = streamStallTimeoutMs > 0
             ? tap<ArrivedChunk>(() => stallTimer.reset())
             : tap<ArrivedChunk>(() => { /* identity */ });
