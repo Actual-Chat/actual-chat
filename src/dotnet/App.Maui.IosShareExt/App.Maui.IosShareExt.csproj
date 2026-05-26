@@ -36,6 +36,7 @@
     <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Entitlements.dev.plist</CodesignEntitlements>
     <CodesignEntitlements Condition="'$(IsDevMaui)' != 'true'">Entitlements.prod.plist</CodesignEntitlements>
     <MtouchLink>SdkOnly</MtouchLink>
+    <FirebaseCrashlyticsUploadSymbolsEnabled>false</FirebaseCrashlyticsUploadSymbolsEnabled>
   </PropertyGroup>
 
   <!-- Debug configuration -->
