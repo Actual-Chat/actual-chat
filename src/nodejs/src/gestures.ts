@@ -27,7 +27,6 @@ export class Gestures {
         SuppressDefaultContextMenuGesture.use();
         ContextMenuGesture.use();
         DismissKeyboardOnDragGesture.use();
-        KeepEditorFocusOnBottomPanelTapGesture.use();
     }
 
     public static addActive(gesture: Gesture): Gesture {
@@ -272,9 +271,9 @@ class ContextMenuGesture extends Gesture {
     }
 }
 
-const BottomPanelSelector = '.chat-message-editor, .chat-audio-panel';
-
 class DismissKeyboardOnDragGesture extends Gesture {
+    private static readonly BottomPanelSelector = '.chat-message-editor, .chat-audio-panel';
+
     public static use(): void {
         if (!DeviceInfo.isMobile)
             return;
@@ -289,41 +288,10 @@ class DismissKeyboardOnDragGesture extends Gesture {
             // attach, record, send, etc. shouldn't dismiss).
             if (document.activeElement?.contains(target))
                 return;
-            if (target.closest(BottomPanelSelector))
+            if (target.closest(this.BottomPanelSelector))
                 return;
             dismissSystemKeyboard();
         });
-    }
-}
-
-class KeepEditorFocusOnBottomPanelTapGesture extends Gesture {
-    private static readonly DismissingButtonSelector = 'button:not(.post-message), [data-menu]';
-
-    public static use(): void {
-        if (!DeviceInfo.isMobile)
-            return;
-
-        debugLog?.log(`KeepEditorFocusOnBottomPanelTapGesture.use`);
-        // preventDefault on mousedown keeps the contentEditable focused, so
-        // iOS doesn't dismiss the keyboard before the click reaches a button.
-        // After the click resolves we dismiss the keyboard ourselves, except
-        // for the send button — sending shouldn't kick the user out of typing.
-        document.addEventListener('mousedown', (event: MouseEvent) => {
-            const target = event.target;
-            if (!(target instanceof Element))
-                return;
-            const active = document.activeElement;
-            if (!(active instanceof HTMLElement) || !active.isContentEditable)
-                return;
-            if (active.contains(target))
-                return;
-            if (!target.closest(BottomPanelSelector))
-                return;
-
-            event.preventDefault();
-            if (target.closest(this.DismissingButtonSelector))
-                requestAnimationFrame(() => dismissSystemKeyboard());
-        }, { capture: true });
     }
 }
 
