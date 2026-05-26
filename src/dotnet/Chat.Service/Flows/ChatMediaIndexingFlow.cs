@@ -107,8 +107,20 @@ public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntr
                 }
                 items.Add(ToItem(entry, attachment, media));
             }
-            if (!isReady && entry.BeginsAt >= pendingCutoff)
-                notReadyLids.Add(entry.LocalId);
+            if (!isReady) {
+                if (entry.BeginsAt >= pendingCutoff)
+                    notReadyLids.Add(entry.LocalId);
+                else {
+                    var brokenMediaIds = entry.Attachments
+                        .Where(a => !a.Media.IsReady)
+                        .Select(a => a.MediaId.Value)
+                        .ToArray();
+                    Log.LogWarning(
+                        "[ChatMediaIndexingFlow] Dropping not-ready entry from PendingEntryLids: "
+                        + "EntryId={EntryId}, BeginsAt={BeginsAt:O}, AgeDays={AgeDays:F1}, BrokenMediaIds={BrokenMediaIds}",
+                        entry.Id, entry.BeginsAt.ToDateTime(), (ResumedAt - entry.BeginsAt).TotalDays, brokenMediaIds);
+                }
+            }
         }
         await Commander
             .Call(new ChatsBackend_UpdateChatContentIndex(ChatId, MediaKinds, entryIds, items.ToArray()), cancellationToken)
