@@ -1,6 +1,5 @@
 import { getLogs } from 'logging';
 import type { PresentableFrame, RenderBackend } from './render-backend';
-import { BgCanvasPainter } from '../../Services/Video/services/bg-canvas';
 import { applyRotationLayout } from '../../Services/Video/services/tile-fit';
 
 const { debugLog, errorLog } = getLogs('VideoPlayer');
@@ -13,11 +12,6 @@ export class CanvasRenderBackend implements RenderBackend {
     private lastOutputSize: { width: number; height: number } | null = null;
     private rotationQuarter = 0;
     private currentFit: 'cover' | 'contain' = 'cover';
-    private bgCanvas: HTMLCanvasElement | null = null;
-    private bgPainter: BgCanvasPainter | null = null;
-    private bgFocused = false;
-    // Stable getter so BgCanvasPainter.start can identity-compare and no-op.
-    private readonly getBgSource = (): HTMLCanvasElement => this.canvas;
 
     constructor(private readonly canvas: HTMLCanvasElement) {
         this.ctx = canvas.getContext('2d');
@@ -62,26 +56,11 @@ export class CanvasRenderBackend implements RenderBackend {
         if (fit === this.currentFit) return;
         this.currentFit = fit;
         this.canvas.style.objectFit = fit;
-        this.refreshBgPump();
     }
 
-    setBackdrop(canvas: HTMLCanvasElement | null, focused: boolean): void {
-        this.bgFocused = focused;
-        if (canvas !== this.bgCanvas) {
-            this.bgPainter?.dispose();
-            this.bgCanvas = canvas;
-            this.bgPainter = canvas ? new BgCanvasPainter(canvas) : null;
-        }
-        this.refreshBgPump();
-    }
-
-    private refreshBgPump(): void {
-        if (!this.bgPainter) return;
-        if (this.currentFit === 'contain' && this.bgFocused) {
-            this.bgPainter.start(this.getBgSource);
-        } else {
-            this.bgPainter.stop();
-        }
+    // No-op: bg blur runs in the player worker. See VideoPlayer.applyBackdrop.
+    setBackdrop(_canvas: HTMLCanvasElement | null, _focused: boolean): void {
+        // intentionally empty
     }
 
     setExpectedPaused(_paused: boolean): void {
@@ -105,8 +84,7 @@ export class CanvasRenderBackend implements RenderBackend {
     }
 
     dispose(): void {
-        this.bgPainter?.dispose();
-        this.bgPainter = null;
+        // intentionally empty
     }
 }
 
@@ -116,10 +94,6 @@ export class TransferableCanvasRenderBackend implements RenderBackend {
     private rotationQuarter = 0;
     private lastAspectRatio = '';
     private currentFit: 'cover' | 'contain' = 'cover';
-    private bgCanvas: HTMLCanvasElement | null = null;
-    private bgPainter: BgCanvasPainter | null = null;
-    private bgFocused = false;
-    private readonly getBgSource = (): HTMLCanvasElement => this.canvas;
 
     constructor(private readonly canvas: HTMLCanvasElement) {}
 
@@ -156,26 +130,11 @@ export class TransferableCanvasRenderBackend implements RenderBackend {
         if (fit === this.currentFit) return;
         this.currentFit = fit;
         this.canvas.style.objectFit = fit;
-        this.refreshBgPump();
     }
 
-    setBackdrop(canvas: HTMLCanvasElement | null, focused: boolean): void {
-        this.bgFocused = focused;
-        if (canvas !== this.bgCanvas) {
-            this.bgPainter?.dispose();
-            this.bgCanvas = canvas;
-            this.bgPainter = canvas ? new BgCanvasPainter(canvas) : null;
-        }
-        this.refreshBgPump();
-    }
-
-    private refreshBgPump(): void {
-        if (!this.bgPainter) return;
-        if (this.currentFit === 'contain' && this.bgFocused) {
-            this.bgPainter.start(this.getBgSource);
-        } else {
-            this.bgPainter.stop();
-        }
+    // No-op: bg blur runs in the player worker. See VideoPlayer.applyBackdrop.
+    setBackdrop(_canvas: HTMLCanvasElement | null, _focused: boolean): void {
+        // intentionally empty
     }
 
     setExpectedPaused(_paused: boolean): void {
@@ -196,7 +155,6 @@ export class TransferableCanvasRenderBackend implements RenderBackend {
     }
 
     dispose(): void {
-        this.bgPainter?.dispose();
-        this.bgPainter = null;
+        // intentionally empty
     }
 }

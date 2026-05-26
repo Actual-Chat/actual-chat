@@ -6,7 +6,7 @@ import { WorkerConnectivityUI } from '../../../Components/AudioRecorder/workers/
 import { setVideoTraceKill, type VideoTraceKillPeriod } from '../frame-drop-trace';
 import { Player, type PlayerConfig } from './player';
 import { PlaybackSession } from './session';
-import { BgBlurController, bgBlurTap } from './bg-blur-tap';
+import { BgBlurController, bgBlurTap, type BgBlurMode } from './bg-blur-tap';
 import type {
     PlayerWorker,
     PlayerWorkerOptions,
@@ -229,8 +229,8 @@ export const playerWorkerImpl: PlayerWorker = {
         return Promise.resolve();
     },
 
-    installBgCanvas(streamId: string, canvas: OffscreenCanvas): Promise<void> {
-        ensureBgBlurController(streamId).install(canvas);
+    installBgCanvas(streamId: string, mode: BgBlurMode, canvas: OffscreenCanvas): Promise<void> {
+        ensureBgBlurController(streamId).install(canvas, mode);
         return Promise.resolve();
     },
 

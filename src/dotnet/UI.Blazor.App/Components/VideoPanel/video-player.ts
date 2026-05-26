@@ -27,6 +27,7 @@ import { TransferableCanvasRenderBackend } from './render-backend-canvas';
 import { OffThreadRenderBackend } from './render-backend-mstg';
 import { pickRenderBackendKind } from './render-backend-selection';
 import { isWebGpuLikelySupported } from '../../Services/Video/support/gpu';
+import type { BgBlurMode } from '../../Services/Video/playback/bg-blur-tap';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 import { AC, VIDEO } from 'app-constants';
@@ -46,10 +47,13 @@ function pickRenderBackend(canvas: HTMLCanvasElement, videoEl: HTMLVideoElement)
 // Parse `?bgBlur=webgpu|webgl|off` from the page URL. Used to A/B the
 // two bg-blur paths on the same hardware without rebuilding. Anything
 // else (missing or unknown) → no override.
-function readBgBlurOverride(): 'webgpu' | 'webgl' | 'off' | undefined {
+function readBgBlurOverride(): 'webgpu' | 'canvas2d' | 'off' | undefined {
     try {
         const v = new URLSearchParams(globalThis.location.search).get('bgBlur');
-        if (v === 'webgpu' || v === 'webgl' || v === 'off') return v;
+        if (v === 'webgpu' || v === 'canvas2d' || v === 'off') return v;
+        // Back-compat: 'webgl' was the pre-step-8 main-thread fallback name.
+        // Map it to the closest current equivalent so old shared URLs still work.
+        if (v === 'webgl') return 'canvas2d';
     } catch { /* ignore */ }
     return undefined;
 }
@@ -144,14 +148,17 @@ export class VideoPlayer {
     private bgCanvasEl: HTMLCanvasElement;
     private renderBackend: RenderBackend;
 
-    // Bg-blur path. Decided once at construction:
-    //   • 'webgpu' — transferControlToOffscreen + worker-side dual-Kawase.
-    //   • 'webgl'  — main-thread WebGL BgCanvasPainter (Firefox / probe miss).
-    //   • 'off'    — never paint a backdrop (perf comparison baseline).
-    // Default picks 'webgpu' when isWebGpuLikelySupported(), 'webgl' otherwise.
-    // Override via `?bgBlur=webgpu|webgl|off` on the page URL — useful for
-    // A/B-ing the two paths on the same hardware.
-    private bgBlurMode: 'webgpu' | 'webgl' | 'off' = 'webgl';
+    // Bg-blur lifecycle. The bg canvas is ALWAYS transferred to the
+    // player worker — the worker picks WebGPU (dual-Kawase) or Canvas2D
+    // (filter-blur) per its own probe + the mode hint sent here.
+    //
+    // Mode hints:
+    //   • 'auto'     — default; worker probes WebGPU.
+    //   • 'webgpu'   — force WebGPU; worker falls back to Canvas2D on init failure.
+    //   • 'canvas2d' — force Canvas2D (cheap, no shaders).
+    //   • 'off'      — skip the transfer entirely; no backdrop painted.
+    // Override via `?bgBlur=webgpu|canvas2d|off` (auto is default).
+    private bgBlurMode: BgBlurMode | 'off' = 'auto';
     private transferredBgCanvas: OffscreenCanvas | null = null;
     private bgCanvasInstallSent = false;
     private bgActive = false;
@@ -292,27 +299,28 @@ export class VideoPlayer {
         this.canvas = canvas;
         this.videoEl = videoEl;
         this.bgCanvasEl = bgCanvasEl;
-        // Decide bg-blur path before pickRenderBackend (which constructs a
-        // backend that may otherwise wire up the WebGL BgCanvasPainter). The
-        // OffscreenCanvas transfer is one-shot; once committed here, the
-        // backend MUST be told setBackdrop(null) from now on.
+        // Bg canvas always transfers to the worker — the worker picks WebGPU
+        // (dual-Kawase) or Canvas2D (filter-blur) per its own probe. Only the
+        // mode hint and the 'off' kill-switch are decided here.
         const override = readBgBlurOverride();
-        const wantWebGpu = override === undefined
-            ? isWebGpuLikelySupported()
-            : override === 'webgpu';
         if (override === 'off') {
             this.bgBlurMode = 'off';
-        } else if (wantWebGpu) {
+        } else if (override) {
+            this.bgBlurMode = override;
+        } else {
+            // 'auto' lets the worker probe — but on browsers where main's
+            // sync probe already says no WebGPU, hint Canvas2D so the worker
+            // skips the WebGPU init attempt.
+            this.bgBlurMode = isWebGpuLikelySupported() ? 'auto' : 'canvas2d';
+        }
+        if (this.bgBlurMode !== 'off') {
             try {
                 this.transferredBgCanvas = bgCanvasEl.transferControlToOffscreen();
-                this.bgBlurMode = 'webgpu';
             } catch (e) {
-                warnLog?.log('transferControlToOffscreen for bg canvas failed; falling back to WebGL painter:', e);
-                this.bgBlurMode = 'webgl';
+                warnLog?.log('transferControlToOffscreen for bg canvas failed; backdrop disabled:', e);
+                this.bgBlurMode = 'off';
                 this.transferredBgCanvas = null;
             }
-        } else {
-            this.bgBlurMode = 'webgl';
         }
         infoLog?.log(`Bg-blur mode: ${this.bgBlurMode}${override ? ` (override=${override})` : ''}`);
         this.renderBackend = pickRenderBackend(canvas, videoEl);
@@ -462,11 +470,12 @@ export class VideoPlayer {
             // correctly. Flush the latched bgActive state in the same .then so
             // a focused tile that was decided before the worker came online
             // immediately starts painting.
-            if (this.bgBlurMode === 'webgpu' && this.transferredBgCanvas && !this.bgCanvasInstallSent) {
+            if (this.bgBlurMode !== 'off' && this.transferredBgCanvas && !this.bgCanvasInstallSent) {
                 this.bgCanvasInstallSent = true;
                 const canvas = this.transferredBgCanvas;
+                const mode = this.bgBlurMode;
                 this.transferredBgCanvas = null; // ownership moves to worker
-                void this.playerWorker.installBgCanvas(this.streamId, canvas)
+                void this.playerWorker.installBgCanvas(this.streamId, mode, canvas)
                     .then(() => this.playerWorker?.setBgActive(this.streamId, this.bgActive, rpcNoWait))
                     .catch((e: unknown) => warnLog?.log('installBgCanvas failed:', e));
             }
@@ -637,25 +646,13 @@ export class VideoPlayer {
         this.applyBackdrop(true);
     }
 
-    // Dispatch a backdrop on/off decision. Routing depends on bgBlurMode:
-    //  • 'webgpu' — canvas already transferred to the worker; only flip
-    //    setBgActive there. Backend stays setBackdrop(null).
-    //  • 'webgl'  — hand the canvas to the backend, BgCanvasPainter
-    //    pumps from `<video>` on main.
-    //  • 'off'    — no backdrop at all (perf baseline).
+    // Dispatch a backdrop on/off decision. The bg canvas lives in the
+    // worker now; backends are always told setBackdrop(null) and the
+    // controller-side renderer is gated by setBgActive.
     private applyBackdrop(focused: boolean): void {
-        if (this.bgBlurMode === 'off') {
-            try { this.renderBackend.setBackdrop(null, false); } catch { /* ignore */ }
-            return;
-        }
-        if (this.bgBlurMode === 'webgpu') {
-            try { this.renderBackend.setBackdrop(null, false); } catch { /* ignore */ }
-            this.setBgActive(focused);
-            return;
-        }
-        const canvas = focused ? this.bgCanvasEl : null;
-        try { this.renderBackend.setBackdrop(canvas, focused); }
-        catch (e) { warnLog?.log('setBackdrop failed:', e); }
+        try { this.renderBackend.setBackdrop(null, false); } catch { /* ignore */ }
+        if (this.bgBlurMode === 'off') return;
+        this.setBgActive(focused);
     }
 
     private setBgActive(active: boolean): void {

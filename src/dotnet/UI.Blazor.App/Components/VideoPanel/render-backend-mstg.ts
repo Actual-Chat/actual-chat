@@ -1,6 +1,5 @@
 import { getLogs } from 'logging';
 import type { PresentableFrame, RenderBackend } from './render-backend';
-import { BgCanvasPainter } from '../../Services/Video/services/bg-canvas';
 import { applyRotationLayout } from '../../Services/Video/services/tile-fit';
 import { MstgPlaybackWatchdog, type MstgPlaybackStallReport } from './mstg-playback-watchdog';
 import { isMstgRenderBackendPlausible } from './render-backend-selection';
@@ -43,10 +42,6 @@ export class OffThreadRenderBackend implements RenderBackend {
     private lastAspectRatio = '';
     private rotationQuarter = 0;
     private currentFit: 'cover' | 'contain' = 'cover';
-    private bgCanvas: HTMLCanvasElement | null = null;
-    private bgPainter: BgCanvasPainter | null = null;
-    private bgFocused = false;
-    private readonly getBgSource = (): HTMLVideoElement => this.videoEl;
     private expectedPaused = false;
     private resizeListener: (() => void) | null = null;
     // DIAG: watchdog watches whether <video> playback is actually advancing
@@ -157,26 +152,13 @@ export class OffThreadRenderBackend implements RenderBackend {
         if (fit === this.currentFit) return;
         this.currentFit = fit;
         this.videoEl.style.objectFit = fit;
-        this.refreshBgPump();
     }
 
-    setBackdrop(canvas: HTMLCanvasElement | null, focused: boolean): void {
-        this.bgFocused = focused;
-        if (canvas !== this.bgCanvas) {
-            this.bgPainter?.dispose();
-            this.bgCanvas = canvas;
-            this.bgPainter = canvas ? new BgCanvasPainter(canvas) : null;
-        }
-        this.refreshBgPump();
-    }
-
-    private refreshBgPump(): void {
-        if (!this.bgPainter) return;
-        if (this.currentFit === 'contain' && this.bgFocused) {
-            this.bgPainter.start(this.getBgSource);
-        } else {
-            this.bgPainter.stop();
-        }
+    // No-op: bg blur runs in the player worker (see VideoPlayer.applyBackdrop).
+    // The interface argument is preserved so callers don't need to branch on
+    // backend kind, but the canvas reference is ignored.
+    setBackdrop(_canvas: HTMLCanvasElement | null, _focused: boolean): void {
+        // intentionally empty
     }
 
     setExpectedPaused(paused: boolean): void {
@@ -213,8 +195,6 @@ export class OffThreadRenderBackend implements RenderBackend {
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
-        this.bgPainter?.dispose();
-        this.bgPainter = null;
         this.watchdog.dispose();
         this.stopParentClassObserver();
         if (this.resizeListener) {

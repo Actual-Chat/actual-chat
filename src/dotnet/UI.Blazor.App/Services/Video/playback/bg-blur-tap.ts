@@ -1,50 +1,88 @@
 import { tap, type PipeOperator } from 'ix-ext';
 import type { DecodedFrame } from '../frame-envelopes';
 import { BgBlurRenderer } from '../webgpu/blur';
+import { Canvas2DBgRenderer } from './canvas2d-bg';
 import { getLogs } from 'logging';
 
-const { warnLog } = getLogs('VideoWebGPU');
+const { infoLog, warnLog } = getLogs('VideoWebGPU');
 
-// Receiver backdrop strength. Drives both the pyramid depth (≥20 → 4 levels)
-// and the per-pass sample spread (offset = strength/textureSize). The default
-// applyFullFrameBlur strength of 4 produces a barely-blurred pyramid mip 0
-// that aliases when the composite shader downsamples it onto the small
-// (64×64) bg canvas — the result looks pixelated through CSS object-cover.
-// 20 was the value used by the pre-2bbf4c02e bg painter on this same shader.
+// Receiver backdrop strength (WebGPU path only). Drives both the pyramid
+// depth (≥20 → 4 levels) and the per-pass sample spread (offset =
+// strength/textureSize). 20 was the value used by the pre-2bbf4c02e bg
+// painter on this same shader.
 const BG_BLUR_STRENGTH = 20;
 
 // Repaint cadence. Backdrop is decorative letterbox fill — 10 Hz reads as
 // smooth to a viewer who's watching the main video. Matches the old WebGL
-// painter's BG_DRAW_INTERVAL_MS. Saves the per-frame GPU pyramid + the
-// importExternalTexture cost on every other decoded frame at 30 fps and
-// 5/6 of them at 60 fps.
+// painter's BG_DRAW_INTERVAL_MS.
 const BG_RENDER_INTERVAL_MS = 100;
 
-// Per-stream owner of an OffscreenCanvas + its BgBlurRenderer. Lifetime is
-// bound to a single Player run (install on start, dispose when the player
-// drains). The main thread sends the canvas across via the player-worker
-// RPC; the controller decides whether each decoded frame is fed through
-// the GPU pyramid based on an `active` flag toggled by the main thread.
+// Renderer preference. Sent from main via installBgCanvas; the worker uses
+// it as a hint on top of its own WebGPU probe.
+//  • 'auto'     — pick WebGPU if available in this worker, else Canvas2D.
+//  • 'webgpu'   — force WebGPU. Falls back to Canvas2D if construction throws.
+//  • 'canvas2d' — force Canvas2D (cheaper, no shaders).
+export type BgBlurMode = 'auto' | 'webgpu' | 'canvas2d';
+
+interface BgRenderer {
+    render(frame: VideoFrame, strength?: number): boolean;
+    dispose(): void;
+}
+
+function isWebGpuLikelyAvailableInWorker(): boolean {
+    try {
+        const nav = globalThis.navigator as Navigator | undefined;
+        if (!nav || !('gpu' in nav))
+            return false;
+        return typeof GPUDevice !== 'undefined'
+            && typeof GPUDevice.prototype.importExternalTexture === 'function';
+    } catch {
+        return false;
+    }
+}
+
+// Per-stream owner of an OffscreenCanvas + bg renderer. Lifetime is bound
+// to a single Player run (install on start, dispose when the player drains).
+// The main thread sends the canvas across via player-worker RPC; the
+// controller decides whether each decoded frame is fed through the renderer
+// based on an `active` flag toggled by the main thread.
 //
-// Frame ownership: `maybeRender` reads envelope.frame WITHOUT taking
-// ownership. `BgBlurRenderer.render` internally clones the frame and
-// closes the clone via the deferred-cleanup queue, so the upstream
-// envelope keeps flowing through the IxJS pipeline unmodified.
+// Frame ownership: `maybeRender` reads envelope.frame WITHOUT taking it.
+// The WebGPU renderer clones+defer-closes internally; Canvas2D drawImage
+// reads synchronously, so the upstream pipe always keeps its frame.
 export class BgBlurController {
-    private renderer: BgBlurRenderer | null = null;
+    private renderer: BgRenderer | null = null;
+    private rendererKind: 'webgpu' | 'canvas2d' | null = null;
     private active = false;
     private lastRenderAtMs = 0;
 
-    install(canvas: OffscreenCanvas): void {
+    install(canvas: OffscreenCanvas, mode: BgBlurMode = 'auto'): void {
         if (this.renderer) {
             this.renderer.dispose();
             this.renderer = null;
+            this.rendererKind = null;
         }
+        const wantWebGpu = mode === 'webgpu'
+            || (mode === 'auto' && isWebGpuLikelyAvailableInWorker());
         try {
-            this.renderer = new BgBlurRenderer(canvas);
+            if (wantWebGpu) {
+                this.renderer = new BgBlurRenderer(canvas);
+                this.rendererKind = 'webgpu';
+            } else {
+                this.renderer = new Canvas2DBgRenderer(canvas);
+                this.rendererKind = 'canvas2d';
+            }
+            infoLog?.log(`BgBlurController: installed ${this.rendererKind} renderer (mode=${mode})`);
         } catch (e) {
-            warnLog?.log('BgBlurController: BgBlurRenderer construction failed:', e);
-            this.renderer = null;
+            warnLog?.log(`BgBlurController: ${this.rendererKind ?? 'primary'} ctor failed, falling back to Canvas2D:`, e);
+            try {
+                this.renderer = new Canvas2DBgRenderer(canvas);
+                this.rendererKind = 'canvas2d';
+            } catch (e2) {
+                warnLog?.log('BgBlurController: Canvas2D ctor also failed:', e2);
+                this.renderer = null;
+                this.rendererKind = null;
+            }
         }
     }
 
@@ -69,6 +107,7 @@ export class BgBlurController {
     dispose(): void {
         this.renderer?.dispose();
         this.renderer = null;
+        this.rendererKind = null;
         this.active = false;
     }
 }

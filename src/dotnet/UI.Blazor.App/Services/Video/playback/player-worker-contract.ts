@@ -3,6 +3,7 @@ import type { PlayerStats } from '../frame-envelopes';
 import type { LatencySample } from '../operators/latency-tap';
 import type { RenderBackendKind } from './render-backends';
 import type { VideoTraceKillPeriod } from '../frame-drop-trace';
+import type { BgBlurMode } from './bg-blur-tap';
 
 export type { LatencySample } from '../operators/latency-tap';
 
@@ -96,9 +97,10 @@ export interface PlayerWorker {
 
     // Bind a bg-blur OffscreenCanvas to `streamId`. `canvas` is transferred
     // (trailing transferable). Replaces any previously-installed canvas
-    // for the same stream. The worker renders the dual-Kawase backdrop
-    // here whenever setBgActive(streamId, true) is in effect.
-    installBgCanvas(streamId: string, canvas: OffscreenCanvas): Promise<void>;
+    // for the same stream. `mode` hints which renderer the worker should
+    // try first; 'auto' lets the worker probe WebGPU itself. Worker may
+    // still fall back to Canvas2D if the chosen renderer fails to init.
+    installBgCanvas(streamId: string, mode: BgBlurMode, canvas: OffscreenCanvas): Promise<void>;
 
     // Toggle whether the worker pumps frames into the bg-blur renderer
     // installed for `streamId`. No-op if no canvas is bound.
