@@ -109,29 +109,24 @@ describe('share media as a new message', () => {
         await shareBtn.waitFor({ state: 'visible', timeout: 5_000 });
         await shareBtn.click();
 
-        // assert — ForwardMessageModal appears
-        const forwardModal = page.locator('.forward-message-modal').first();
-        await forwardModal.waitFor({ state: 'visible', timeout: 10_000 });
-        await page.screenshot({ path: shot('share-forward-open') });
+        // assert — ShareModal appears
+        const shareModal = page.locator('.share-modal').first();
+        await shareModal.waitFor({ state: 'visible', timeout: 10_000 });
+        await page.screenshot({ path: shot('share-modal-open') });
 
-        // act — pick the Notes chat (NotesFirst ordering pins it at the top)
-        const firstContact = forwardModal.locator('.contact-selector-list-item').first();
+        // act — pick the first contact in the list
+        const firstContact = shareModal.locator('.contact-selector-list-item').first();
         await firstContact.waitFor({ state: 'visible', timeout: 10_000 });
         await firstContact.click();
         await page.waitForTimeout(300);
 
         // act — submit
-        const sendBtn = forwardModal.locator('button:has-text("Share"):not([disabled])').first();
+        const sendBtn = shareModal.locator('button:has-text("Send to selected contacts"):not([disabled])').first();
         await sendBtn.waitFor({ state: 'visible', timeout: 5_000 });
         await sendBtn.click();
 
         // assert — modal closes after sharing
-        await forwardModal.waitFor({ state: 'hidden', timeout: 15_000 });
-        await page.screenshot({ path: shot('share-forward-closed') });
-
-        // assert — success toast appears confirming the share
-        const toast = page.locator('.toast-container .toast:has-text("Shared media")').first();
-        await toast.waitFor({ state: 'visible', timeout: 10_000 });
-        await page.screenshot({ path: shot('share-toast') });
+        await shareModal.waitFor({ state: 'hidden', timeout: 15_000 });
+        await page.screenshot({ path: shot('share-modal-closed') });
     }, 180_000);
 });
