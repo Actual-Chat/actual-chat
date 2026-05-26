@@ -674,10 +674,16 @@ export class VirtualList {
         let endAnchorHasChanged = false;
         const itemRefsWithWrongSize = new Array<HTMLElement>();
         for (const entry of entries) {
-            const rect = entry.contentRect;
             const key = getItemKey(entry.target as HTMLElement);
             const rowGap = this.rowGap;
-            const size = Math.ceil(rect.height + rowGap);
+            // The observer is configured with { box: 'border-box' }, but
+            // entry.contentRect is always content-box. Reading height from
+            // entry.contentRect undersizes items whose spacing uses padding,
+            // which makes the chain math drift by the padding amount on every
+            // new item. Use borderBoxSize when available; fall back to
+            // contentRect for older browsers.
+            const heightPx = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
+            const size = Math.ceil(heightPx + rowGap);
             if (!key) {
                 notAnItem = true;
                 if (entry.target === this.endAnchorRef) {
