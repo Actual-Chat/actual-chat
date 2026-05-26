@@ -1700,7 +1700,18 @@ export class VirtualList {
                 if (this.defaultEdge === VirtualListEdge.End) {
                     offset = end;
 
-                    if (offset > -endAnchorSize) {
+                    // When user is scrolled away from the end edge and the item chain
+                    // extends past -endAnchorSize (e.g. new messages were appended at the
+                    // bottom while user was reading older messages), avoid the reset+shift
+                    // path. Resetting item ranges and compensating scrollTop produces a
+                    // visible jump on the user's screen. Instead, let `containerRef.style.bottom`
+                    // go negative so the container's TOP stays at the same wrapper coordinate —
+                    // visible items don't move and the new content extends below the wrapper
+                    // bottom (clipped by overflow).
+                    const isAtEndEdge = this.state.isEndAnchorVisible
+                        || this.state.stickyEdge?.edge === VirtualListEdge.End;
+
+                    if (offset > -endAnchorSize && isAtEndEdge) {
                         // adjust item ranges
                         const resetDelta = this.resetItemRange();
                         if (resetDelta !== null) {
