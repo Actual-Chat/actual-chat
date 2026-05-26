@@ -214,6 +214,7 @@ swiper-container::part(button-prev) {
     @apply relative;
     @apply flex-x items-center;
     @apply w-full min-h-8;
+    container-type: inline-size;
 }
 .video-wrapper .video-control progress {
     @apply relative;
@@ -249,10 +250,10 @@ swiper-container::part(button-prev) {
     @apply absolute top-1/2 z-10;
     @apply w-3 h-3;
     @apply rounded-full;
-    @apply -translate-y-1/2;
     @apply cursor-pointer pointer-events-auto;
     @apply bg-white;
     transition: width 150ms ease, height 150ms ease;
+    transform: translate(calc(var(--progress, 0) * (100cqw - 100%)), -50%);
 }
 .video-wrapper .video-control .c-line-2.thumb-active .c-thumb {
     @apply w-5 h-5;

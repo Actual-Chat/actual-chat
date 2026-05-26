@@ -2,6 +2,7 @@ using ActualChat.Audio;
 using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.App.Services;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Components.AudioPlayer;
 using ActualChat.UI.Blazor.App.Components.VideoPanel;
 using ActualChat.UI.Blazor.App.Components.MarkupParts;
@@ -210,6 +211,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             services.AddScoped<IMediaMetadataUI>(_ => new WebMediaMetadataUI());
         }
         services.AddScoped(c => new AudioWidget(c.AppUIHub()));
+        services.AddScoped(c => new AudioAttachmentPlayer(c.AppUIHub()));
 
         // IModalViews
         services.AddTypeMap<IModalView>(map => map

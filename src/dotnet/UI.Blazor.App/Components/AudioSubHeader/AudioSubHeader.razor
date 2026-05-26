@@ -1,0 +1,31 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, bool>
+@{
+    var isVisible = State.Value;
+}
+
+<SubHeader Class="audio-subheader" IsVisible="@isVisible">
+    <ReplaySubHeader/>
+    <AudioAttachmentSubHeader/>
+</SubHeader>
+
+@code {
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private AudioAttachmentPlayer AudioAttachmentPlayer => Hub.AudioAttachmentPlayer;
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<bool>.Options() {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var replay = await ChatAudioUI.ReplayState.Use(cancellationToken).ConfigureAwait(false);
+        if (replay is not null)
+            return true;
+
+        var attachment = await AudioAttachmentPlayer.State.Use(cancellationToken).ConfigureAwait(false);
+        return attachment is not null;
+    }
+}

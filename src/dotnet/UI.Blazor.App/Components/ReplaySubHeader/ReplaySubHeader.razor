@@ -36,73 +36,75 @@
     }
 }
 
-<SubHeader Class="replay-subheader" IsVisible="@(m is not null)">
-    <div class="c-authors-block @slotsCls">
-        @if (showSkeletons) {
-            <div class="c-skeletons" aria-hidden="true">
-                @for (var i = 0; i < slotCount; i++) {
-                    <div class="replay-skeleton"></div>
-                }
-            </div>
+@if (m is not null) {
+    <div class="replay-subheader">
+        <div class="c-authors-block @slotsCls">
+            @if (showSkeletons) {
+                <div class="c-skeletons" aria-hidden="true">
+                    @for (var i = 0; i < slotCount; i++) {
+                        <div class="replay-skeleton"></div>
+                    }
+                </div>
+            }
+            <AuthorCircleGroup
+                Class="c-authors"
+                MaxCount="@slotCount"
+                Size="@size"
+                AuthorIds="@m?.AuthorIds"
+                IsListening="true"/>
+        </div>
+        @if (showDivider) {
+            <div class="c-divider" aria-hidden="true"></div>
         }
-        <AuthorCircleGroup
-            Class="c-authors"
-            MaxCount="@slotCount"
-            Size="@size"
-            AuthorIds="@m?.AuthorIds"
-            IsListening="true"/>
+        <div class="c-info">
+            @if (m?.ShowChatTitle == true) {
+                <a class="c-title" href="@Links.Chat(m.ChatId)">@titleLabel</a>
+            } else {
+                <div class="c-title">@titleLabel</div>
+            }
+            @if (dateLabel.Length > 0) {
+                <div class="c-date">@dateLabel</div>
+            }
+        </div>
+        <div class="c-playback">
+            @if (ScreenSize.IsWide()) {
+                <ButtonRound Tooltip="Backward" Click="@OnBackward" Class="btn-xs btn-transparent hover-primary-icon">
+                    <i class="icon-rewind-left-fill text-2xl"></i>
+                </ButtonRound>
+            }
+            @if (m?.IsPaused ?? false) {
+                <ButtonRound Tooltip="Play" Click="@OnResume" Class="btn-xs btn-transparent btn-primary" MustKeepAwake="true">
+                    <i class="icon-play-fill text-2xl"></i>
+                </ButtonRound>
+            } else {
+                <ButtonRound Tooltip="Pause" Click="@OnPause" Class="btn-xs btn-transparent btn-primary">
+                    <i class="icon-pause-fill text-2xl"></i>
+                </ButtonRound>
+            }
+            @if (ScreenSize.IsWide()) {
+                <ButtonRound Tooltip="Forward" Click="@OnForward" Class="btn-xs btn-transparent hover-primary-icon">
+                    <i class="icon-rewind-right-fill text-2xl"></i>
+                </ButtonRound>
+                <ButtonRound Tooltip="Stop" Click="@OnStop" Class="btn-xs btn-transparent hover-primary-icon">
+                    <i class="icon-stop-fill text-2xl"></i>
+                </ButtonRound>
+            }
+        </div>
+        <div class="c-actions">
+            <HeaderButton
+                Class="c-speed-btn btn-lg hover-primary-icon"
+                Tooltip="Speed"
+                data-menu="@(MenuRef.New<ReplaySpeedMenu>())"
+                data-menu-trigger="@MenuTrigger.Primary"
+                data-menu-placement="@(FloatingPosition.TopEnd.ToPositionString())">
+                <span class="c-speed-label">@speedLabel</span>
+            </HeaderButton>
+            <HeaderButton Click="@OnStop">
+                <i class="icon-close-fill text-2xl"></i>
+            </HeaderButton>
+        </div>
     </div>
-    @if (showDivider) {
-        <div class="c-divider" aria-hidden="true"></div>
-    }
-    <div class="c-info">
-        @if (m?.ShowChatTitle == true) {
-            <a class="c-title" href="@Links.Chat(m.ChatId)">@titleLabel</a>
-        } else {
-            <div class="c-title">@titleLabel</div>
-        }
-        @if (dateLabel.Length > 0) {
-            <div class="c-date">@dateLabel</div>
-        }
-    </div>
-    <div class="c-playback">
-        @if (ScreenSize.IsWide()) {
-            <ButtonRound Tooltip="Backward" Click="@OnBackward" Class="btn-xs btn-transparent hover-primary-icon">
-                <i class="icon-rewind-left-fill text-2xl"></i>
-            </ButtonRound>
-        }
-        @if (m?.IsPaused ?? false) {
-            <ButtonRound Tooltip="Play" Click="@OnResume" Class="btn-xs btn-transparent btn-primary" MustKeepAwake="true">
-                <i class="icon-play-fill text-2xl"></i>
-            </ButtonRound>
-        } else {
-            <ButtonRound Tooltip="Pause" Click="@OnPause" Class="btn-xs btn-transparent btn-primary">
-                <i class="icon-pause-fill text-2xl"></i>
-            </ButtonRound>
-        }
-        @if (ScreenSize.IsWide()) {
-            <ButtonRound Tooltip="Forward" Click="@OnForward" Class="btn-xs btn-transparent hover-primary-icon">
-                <i class="icon-rewind-right-fill text-2xl"></i>
-            </ButtonRound>
-            <ButtonRound Tooltip="Stop" Click="@OnStop" Class="btn-xs btn-transparent hover-primary-icon">
-                <i class="icon-stop-fill text-2xl"></i>
-            </ButtonRound>
-        }
-    </div>
-    <div class="c-actions">
-        <HeaderButton
-            Class="c-speed-btn btn-lg hover-primary-icon"
-            Tooltip="Speed"
-            data-menu="@(MenuRef.New<ReplaySpeedMenu>())"
-            data-menu-trigger="@MenuTrigger.Primary"
-            data-menu-placement="@(FloatingPosition.TopEnd.ToPositionString())">
-            <span class="c-speed-label">@speedLabel</span>
-        </HeaderButton>
-        <HeaderButton Click="@OnStop">
-            <i class="icon-close-fill text-2xl"></i>
-        </HeaderButton>
-    </div>
-</SubHeader>
+}
 
 @code {
     private RewindDelayer? _rewindController;

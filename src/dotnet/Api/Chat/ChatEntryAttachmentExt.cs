@@ -13,4 +13,6 @@ public static class ChatEntryAttachmentExt
         => MediaTypeExt.IsSupportedVideo(attachment.Media.ContentType);
     public static bool IsVisualMedia(this ChatEntryAttachment attachment)
         => MediaTypeExt.IsSupportedVisualMedia(attachment.Media.ContentType);
+    public static bool IsAudio(this ChatEntryAttachment attachment)
+        => MediaTypeExt.IsAudio(attachment.Media.ContentType);
 }

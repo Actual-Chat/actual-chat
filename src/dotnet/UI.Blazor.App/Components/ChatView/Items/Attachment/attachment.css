@@ -120,7 +120,7 @@ body.hoverable .file-attachment:not(.upload-file):hover,
 }
 .file-attachment .c-normal-title {
     @apply flex-x;
-    @apply text-headline-1 text-02;
+    @apply text-caption-4 text-02;
 }
 .file-attachment .c-normal-title .c-start {
     @apply truncate;

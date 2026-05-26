@@ -53,6 +53,7 @@ export * from './Services/FileUploads/upload-sessions';
 export * from './notification-ui';
 export * from './recaptcha-handler';
 
+export * from './Components/AudioAttachmentPlayer/audio-attachment-player';
 export * from './Components/AudioPlayer/audio-player';
 export * from './Components/AudioRecorder/audio-recorder';
 export * from './Components/AudioRecorder/web-microphone-permission-handler';

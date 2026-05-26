@@ -1,0 +1,142 @@
+.audio-file-attachment {
+    @apply gap-x-2;
+    @apply p-1 pr-4;
+    @apply rounded-full border border-separator;
+    @apply bg-01;
+}
+.audio-file-attachment .c-play-btn {
+    @apply relative;
+    @apply flex-none flex items-center justify-center;
+    @apply w-10 h-10;
+    @apply rounded-full;
+    @apply bg-primary text-white;
+    @apply cursor-pointer;
+}
+body.hoverable .audio-file-attachment .c-play-btn:hover {
+    filter: brightness(1.1);
+}
+.audio-file-attachment .c-file-info {
+    @apply flex-y justify-start;
+    @apply w-full;
+    @apply overflow-hidden;
+}
+.audio-file-attachment .c-time {
+    @apply flex-x gap-x-2;
+    @apply text-caption-8 text-03;
+}
+.audio-file-attachment .c-progress {
+    @apply absolute inset-x-13 bottom-0.5;
+    @apply flex items-center;
+    @apply h-2;
+}
+
+/* Subheader */
+.audio-attachment-subheader {
+    --subheader-height: 3rem;
+    @apply relative z-10;
+    @apply flex-x items-center gap-x-2;
+    @apply w-full min-h-12;
+    @apply pl-2 md:pl-1 pr-3 md:pr-1;
+    @apply rounded-lg border-2 border-replay;
+    @apply bg-replay;
+    @apply text-replay;
+}
+.audio-attachment-subheader .c-icon {
+    @apply flex-none flex items-center justify-center;
+    @apply w-9 h-9;
+    @apply rounded-full;
+    @apply bg-primary text-white;
+}
+.audio-attachment-subheader .c-info {
+    @apply flex-1 flex-y self-start justify-center;
+    @apply min-w-0;
+    @apply overflow-hidden;
+}
+.audio-attachment-subheader .c-info .c-title {
+    @apply overflow-hidden whitespace-nowrap;
+    @apply text-caption-1 text-01;
+    container-type: inline-size;
+}
+.audio-attachment-subheader .c-info .c-title-inner {
+    @apply inline-block;
+    animation: c-title-marquee 12s steps(30) infinite;
+}
+@keyframes c-title-marquee {
+    0%, 20%  { transform: translateX(0); }
+    50%, 70% { transform: translateX(min(0px, calc(-100% + 100cqw))); }
+    100%     { transform: translateX(0); }
+}
+.audio-attachment-subheader .c-info .c-time {
+    @apply truncate;
+    @apply text-xs leading-3.5 text-03;
+}
+.audio-attachment-subheader .c-playback {
+    @apply flex-none flex-x items-center gap-x-0.5 md:gap-x-1;
+    @apply p-0.5;
+    @apply rounded-full;
+    @apply bg-cancel;
+}
+.audio-attachment-subheader .c-actions {
+    @apply flex-none flex-x items-center gap-x-2;
+}
+.audio-attachment-subheader .c-progress {
+    @apply absolute left-13 md:left-12 right-24 sm:right-40 bottom-0.5;
+    @apply flex items-center;
+    @apply h-2;
+}
+
+/* Shared interactive progress bar — custom slider, see AudioAttachmentPlayer notes */
+.c-progress {
+    @apply relative;
+    container-type: inline-size;
+}
+.c-progress .c-progress-track,
+.c-progress .c-progress-fill {
+    @apply absolute left-0 right-0 top-1/2;
+    @apply h-0.5;
+    @apply rounded-full;
+    @apply pointer-events-none;
+    transition: height 0.1s ease;
+}
+.c-progress .c-progress-track {
+    @apply bg-cancel;
+    @apply -translate-y-1/2;
+}
+.c-progress .c-progress-fill {
+    @apply bg-primary;
+    @apply origin-left;
+    transform: translateY(-50%) scaleX(var(--progress, 0));
+}
+.c-progress .c-progress-thumb {
+    @apply absolute top-1/2;
+    @apply w-2 h-2;
+    @apply -mt-1;
+    @apply rounded-full;
+    @apply bg-primary;
+    @apply pointer-events-none;
+    transform: translateX(calc(var(--progress, 0) * (100cqw - 0.5rem)));
+}
+.c-progress .c-progress-input {
+    @apply absolute inset-0;
+    @apply w-full h-full;
+    @apply m-0;
+    @apply opacity-0;
+    @apply bg-transparent;
+    @apply cursor-pointer;
+    -webkit-appearance: none;
+    appearance: none;
+}
+body.hoverable .c-progress:hover .c-progress-track,
+body.hoverable .c-progress:hover .c-progress-fill,
+.c-progress.is-scrubbing .c-progress-track,
+.c-progress.is-scrubbing .c-progress-fill {
+    @apply h-1;
+}
+.c-progress:has(.c-progress-input:disabled) .c-progress-track,
+.c-progress:has(.c-progress-input:disabled) .c-progress-fill,
+.c-progress:has(.c-progress-input:disabled) .c-progress-thumb {
+    @apply opacity-50;
+}
+.c-progress .c-progress-input:disabled {
+    cursor: default;
+}

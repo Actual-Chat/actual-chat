@@ -38,6 +38,8 @@
 @import './Components/ForwardMessage/forward-message-modal.css';
 @import './Components/GrantFileUploadsSubHeader/grant-file-uploads-subheader.css';
 @import './Components/ReplaySubHeader/replay-subheader.css';
+@import './Components/AudioAttachmentPlayer/audio-attachment-player.css';
+@import './Components/AudioSubHeader/audio-subheader.css';
 @import './Components/IncomingCallModal/incoming-call-modal.css';
 @import './Components/AddMember/add-member-modal.css';
 @import './Components/MarkupEditor/markup-editor.css';

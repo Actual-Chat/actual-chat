@@ -538,7 +538,12 @@ function getTouchResponsiveControlKind(node: EventTarget): TouchResponsiveContro
     const tagName = node.tagName;
     if (tagName === 'BODY' || tagName === 'HTML')
         return 'none';
-    if (tagName === 'INPUT' || tagName === 'BUTTON' || tagName === 'LABEL')
+    if (tagName === 'INPUT') {
+        if ((node as HTMLInputElement).type === 'range')
+            return 'scrollable';
+        return 'control';
+    }
+    if (tagName === 'BUTTON' || tagName === 'LABEL')
         return 'control';
     if (node.scrollWidth > (node.clientWidth + 0.5))
         return 'scrollable';
