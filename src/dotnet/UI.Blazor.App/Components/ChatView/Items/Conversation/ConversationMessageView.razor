@@ -23,7 +23,7 @@
                 StartsAt="@startsAt"
                 ConversationToggleClick="@ToggleShowMessage"/>
             <div class="c-short">
-                @TranslationFragments.TranslatedMarkupWithMark(m.Description)
+                <MarkupView Markup="@m.Description.Markup"/>
                 @if (!_isOpen) {
                     <span class="show-more-btn" @onclick="@ToggleDetails"> Show items</span>
                 }
@@ -32,7 +32,7 @@
         @if (_isOpen) {
             <div class="c-long">
                 <div class="c-long-content @detailsCls">
-                    @TranslationFragments.TranslatedMarkupWithMark(m.Summary)
+                    <MarkupView Markup="@m.Summary.Markup"/>
                     <span class="show-more-btn" @onclick="@ToggleDetails"> Hide items</span>
                 </div>
             </div>

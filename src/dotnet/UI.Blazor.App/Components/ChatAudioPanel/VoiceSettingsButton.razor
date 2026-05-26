@@ -9,7 +9,9 @@
 }
 
 @if (IsNarrow) {
-    <button class="volume-settings-btn text" @onclick="@OnClick">
+    <button class="volume-settings-btn text"
+            @onpointerdown:preventDefault="true"
+            @onclick="@OnClick">
         @if (language is not null) {
             <div class="c-text">@language.ShortTitle</div>
         } else {
@@ -27,6 +29,7 @@
             Class="transcription-options-btn"
             Tooltip="Voice settings"
             TooltipPosition="FloatingPosition.Top"
+            PointerDownPreventDefault="true"
             Click="@OnClick">
             <i class="icon-options-2"></i>
         </ButtonRound>

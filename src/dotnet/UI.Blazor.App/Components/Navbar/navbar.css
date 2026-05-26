@@ -135,19 +135,18 @@ body.hoverable .navbar-chat-buttons .navbar-button:has(.hover-zone:hover) .left-
     @apply overflow-hidden;
 }
 
-body.hoverable .navbar-item:hover,
-.touch-capable .navbar-item:active {
+body.hoverable .navbar-item:hover {
     @apply bg-hover;
     @apply cursor-pointer;
 }
-.navbar-item:active,
-.navbar-item:hover:active {
+body.hoverable .navbar-item:active,
+body.hoverable .navbar-item:hover:active {
     filter: brightness(1.2);
 }
 .navbar-item.active {
     @apply bg-selected;
 }
-.navbar-item.active:active {
+body.hoverable .navbar-item.active:active {
     @apply border-0;
 }
 .navbar-item.incut-item {

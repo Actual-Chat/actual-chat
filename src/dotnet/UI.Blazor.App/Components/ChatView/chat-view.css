@@ -10,17 +10,14 @@
     @apply min-h-12;
 }
 .message-wrapper.marked-message,
-body.hoverable .message-wrapper:hover,
-.touch-capable .message-wrapper:active {
+body.hoverable .message-wrapper:hover {
     @apply bg-message-hover;
     @apply border-message-hover;
 }
-body.hoverable .message-wrapper:hover .avatar-badge,
-.touch-capable .message-wrapper:active .avatar-badge {
+body.hoverable .message-wrapper:hover .avatar-badge {
     @apply bg-message-hover;
 }
-body.hoverable .system-entry.message-wrapper:hover,
-.touch-capable .system-entry.message-wrapper:active {
+body.hoverable .system-entry.message-wrapper:hover {
     @apply bg-transparent;
     @apply border-transparent;
 }
@@ -123,8 +120,7 @@ body.hoverable .message-link:hover {
     @apply animate-highlight;
 }
 
-body.hoverable .message-wrapper:hover .avatar-badge,
-.touch-capable .message-wrapper:active .avatar-badge {
+body.hoverable .message-wrapper:hover .avatar-badge {
     @apply bg-inherit;
 }
 
@@ -134,9 +130,7 @@ body.hoverable .message-wrapper:hover .avatar-badge,
     @apply bg-replied-message;
 }
 body.hoverable .message-wrapper.replied-message:hover,
-.touch-capable .message-wrapper.replied-message:active,
-body.hoverable .message-wrapper.mention.replied-message:hover,
-.touch-capable .message-wrapper.mention.replied-message:active {
+body.hoverable .message-wrapper.mention.replied-message:hover {
     @apply bg-replied-message-hover;
 }
 
@@ -148,9 +142,7 @@ body.hoverable .message-wrapper.mention.replied-message:hover,
     transition: border-radius 0.25s ease 0.1s, border-color 0.25s ease 0.1s;
 }
 body.hoverable .message-wrapper.selected-message:hover,
-.touch-capable .message-wrapper.selected-message:active,
-body.hoverable .message-wrapper.mention.selected-message:hover,
-.touch-capable .message-wrapper.mention.selected-message:active {
+body.hoverable .message-wrapper.mention.selected-message:hover {
     @apply border-selected-message-border;
     @apply bg-selected-message-hover;
 }
@@ -504,8 +496,7 @@ body.narrow .chat-link .c-link-buttons {
 .chat-link .btn .btn-content {
     @apply flex-x gap-x-3;
 }
-body.hoverable .message-wrapper:has(.chat-welcome-block):hover,
-.touch-capable .message-wrapper:has(.chat-welcome-block):active {
+body.hoverable .message-wrapper:has(.chat-welcome-block):hover {
     @apply border-transparent;
     @apply bg-transparent;
 }

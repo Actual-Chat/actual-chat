@@ -12,6 +12,7 @@
         data-tooltip-position="@(TooltipPosition.ToPositionString())"
         data-must-keep-awake="@MustKeepAwake.ToString()"
         @attributes="@AdditionalAttributes"
+        @onpointerdown:preventDefault="@PointerDownPreventDefault"
         @onclick:stopPropagation="@StopPropagation"
         @onclick:preventDefault="@PreventDefault"
         @onclick="@OnClick">
@@ -38,6 +39,7 @@
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
     [Parameter] public bool StopPropagation { get; set; }
     [Parameter] public bool PreventDefault { get; set; }
+    [Parameter] public bool PointerDownPreventDefault { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }

@@ -165,11 +165,14 @@
     }
 
     private RenderFragment GifButton(GifItem gif, string cls, bool lazy) => __builder => {
+        var src = UrlMapper.GifProxyUrl(gif.PreviewUrl);
+        if (src.IsNullOrEmpty())
+            src = gif.PreviewUrl;
         <button @key="gif.Slug"
                 class="@cls"
                 @onclick="@(() => OnGifClick(gif))">
             <img class="c-gif-img"
-                 src="@gif.PreviewUrl"
+                 src="@src"
                  alt=""
                  loading="@(lazy ? "lazy" : null)"
                  style="@GetAspectRatioStyle(gif)"/>
