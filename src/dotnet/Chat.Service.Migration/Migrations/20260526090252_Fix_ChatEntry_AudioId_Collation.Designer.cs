@@ -13,15 +13,15 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    [Migration("20260521222740_ChatContentItems_PeriodIndex")]
-    partial class ChatContentItems_PeriodIndex
+    [Migration("20260526090252_Fix_ChatEntry_AudioId_Collation")]
+    partial class Fix_ChatEntry_AudioId_Collation
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.2")
+                .HasAnnotation("ProductVersion", "10.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -245,98 +245,6 @@ namespace ActualChat.Chat.Migrations
                     NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("Version"), new[] { "Id", "IsPlaceRootChat" });
 
                     b.ToTable("chats");
-                });
-
-            modelBuilder.Entity("ActualChat.Chat.Db.DbChatContentItem", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id")
-                        .UseCollation("C");
-
-                    b.Property<DateTime>("At")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("at");
-
-                    b.Property<string>("BlobId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("blob_id");
-
-                    b.Property<string>("ChatId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("chat_id")
-                        .UseCollation("C");
-
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("content_type");
-
-                    b.Property<string>("EntryId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("entry_id")
-                        .UseCollation("C");
-
-                    b.Property<long>("EntryLocalId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("entry_local_id");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("file_name");
-
-                    b.Property<int>("Kind")
-                        .HasColumnType("integer")
-                        .HasColumnName("kind");
-
-                    b.Property<string>("LinkPreviewId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("link_preview_id")
-                        .UseCollation("C");
-
-                    b.Property<int>("LocalIndex")
-                        .HasColumnType("integer")
-                        .HasColumnName("local_index");
-
-                    b.Property<string>("MediaId")
-                        .HasColumnType("text")
-                        .HasColumnName("media_id")
-                        .UseCollation("C");
-
-                    b.Property<long>("Size")
-                        .HasColumnType("bigint")
-                        .HasColumnName("size");
-
-                    b.Property<string>("ThumbnailBlobId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("thumbnail_blob_id");
-
-                    b.Property<string>("ThumbnailMediaId")
-                        .HasColumnType("text")
-                        .HasColumnName("thumbnail_media_id")
-                        .UseCollation("C");
-
-                    b.Property<long>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint")
-                        .HasColumnName("version");
-
-                    b.HasKey("Id")
-                        .HasName("pk_chat_content_items");
-
-                    b.HasIndex("EntryId")
-                        .HasDatabaseName("ix_chat_content_items_entry_id");
-
-                    b.HasIndex("ChatId", "Kind", "At")
-                        .HasDatabaseName("ix_chat_content_items_chat_id_kind_at");
-
-                    b.ToTable("chat_content_items");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbChatCopyState", b =>
