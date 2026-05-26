@@ -15,8 +15,10 @@ public class ReceiverHealthClassifierTest
     };
 
     [Fact]
-    public void HighDownlinkLatency_LowDecodeRatio_DownlinkBad_DecoderGood()
+    public void HighDownlinkLatency_Alone_DoesNotDriveDownlinkBad()
     {
+        // Latency above-floor is diagnostic-only. With healthy throughput
+        // (no drops, no underrun) Downlink should NOT be Bad.
         var c = new ReceiverHealthClassifier(T());
         DownlinkHealth dl = DownlinkHealth.Empty;
         DecoderHealth dec = DecoderHealth.Empty;
@@ -34,7 +36,8 @@ public class ReceiverHealthClassifierTest
                 presentSkipRatio: 0,
                 receiverDecodePathDropRatio: 0);
         }
-        dl.Verdict.Should().Be(HealthVerdict.Bad);
+        dl.Verdict.Should().NotBe(HealthVerdict.Bad);
+        dl.ServerToReceiverLatencyEma.Should().Be(400);
         dec.Verdict.Should().Be(HealthVerdict.Good);
     }
 
@@ -108,32 +111,6 @@ public class ReceiverHealthClassifierTest
             bufferUnderrunRatio: 0.5,
             incomingByteRateDeficit: 1.0);
         dl.Verdict.Should().Be(HealthVerdict.Bad);
-    }
-
-    [Fact]
-    public void DriftUnexplainedByDecode_DefaultsToDownlink()
-    {
-        // Plan §"Attribution": when DecodeRatioEma is healthy AND
-        // ServerToReceiverLatencyEma is bad, the verdict is Downlink, not Decoder.
-        var c = new ReceiverHealthClassifier(T());
-        DownlinkHealth dl = DownlinkHealth.Empty;
-        DecoderHealth dec = DecoderHealth.Empty;
-        for (var i = 0; i < 3; i++) {
-            dl = c.ClassifyDownlink(
-                serverToReceiverLatencyEma: 400,
-                arrivalIntervalEma: 33,
-                serverPathDropRatio: 0,
-                bufferUnderrunRatio: 0,
-                incomingByteRateDeficit: 1.0);
-            dec = c.ClassifyDecoder(
-                decodeRatioEma: 0.5,
-                hangRateIn60s: 0,
-                recoveryStreak: 0,
-                presentSkipRatio: 0,
-                receiverDecodePathDropRatio: 0);
-        }
-        dl.Verdict.Should().Be(HealthVerdict.Bad);
-        dec.Verdict.Should().NotBe(HealthVerdict.Bad);
     }
 
     [Fact]

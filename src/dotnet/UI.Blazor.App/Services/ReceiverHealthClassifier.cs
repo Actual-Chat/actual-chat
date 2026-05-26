@@ -26,13 +26,9 @@ public sealed record ReceiverHealthThresholds(
     public static ReceiverHealthThresholds Defaults { get; } = new();
 }
 
-// Stateful per-stream classifier. The receiver decomposes the legacy fused
-// drift signal by reading DecodeRatioEma alongside ServerToReceiverLatencyEma:
-// drift unexplained by decode defaults to Downlink (see plan §"Attribution").
 public sealed class ReceiverHealthClassifier(ReceiverHealthThresholds? thresholds = null)
 {
     private readonly ReceiverHealthThresholds _t = thresholds ?? ReceiverHealthThresholds.Defaults;
-    private readonly HealthStreakState _latency = new();
     private readonly HealthStreakState _byteRateDeficit = new();
     private readonly HealthStreakState _underrun = new();
     private readonly HealthStreakState _decodeRatio = new();
@@ -44,10 +40,6 @@ public sealed class ReceiverHealthClassifier(ReceiverHealthThresholds? threshold
         double bufferUnderrunRatio,
         double incomingByteRateDeficit)
     {
-        var latencyVerdict = _latency.Update(
-            _t.DownlinkLatencyBadStreak, _t.DownlinkLatencyGoodStreak,
-            isBad: serverToReceiverLatencyEma > _t.ServerToReceiverLatencyBadMs,
-            isGood: serverToReceiverLatencyEma < _t.ServerToReceiverLatencyGoodMs);
         var deficitVerdict = _byteRateDeficit.Update(
             _t.ByteRateDeficitBadStreak, _t.ByteRateDeficitGoodStreak,
             isBad: incomingByteRateDeficit >= 0 && incomingByteRateDeficit < _t.IncomingByteRateDeficitBad,
@@ -59,7 +51,11 @@ public sealed class ReceiverHealthClassifier(ReceiverHealthThresholds? threshold
         var dropVerdict = serverPathDropRatio > _t.ServerPathDropRatioBad
             ? HealthVerdict.Bad
             : HealthVerdict.Good;
-        var combined = HealthVerdictExt.Combine([latencyVerdict, deficitVerdict, underrunVerdict, dropVerdict]);
+        // Latency is intentionally NOT in the combine: latency above-floor is
+        // orthogonal to bandwidth health — high RTT with healthy throughput
+        // (no drops, no underrun) doesn't justify demoting quality. The raw
+        // `serverToReceiverLatencyEma` stays on the record for diagnostics.
+        var combined = HealthVerdictExt.Combine([deficitVerdict, underrunVerdict, dropVerdict]);
         return new DownlinkHealth(combined,
             serverToReceiverLatencyEma, arrivalIntervalEma, serverPathDropRatio,
             bufferUnderrunRatio, incomingByteRateDeficit);
