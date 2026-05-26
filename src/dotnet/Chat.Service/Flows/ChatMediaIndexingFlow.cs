@@ -11,6 +11,9 @@ public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntr
 {
     private const ChatContentKind MediaKinds = ChatContentKind.Photo | ChatContentKind.Video | ChatContentKind.File;
     private static readonly TimeSpan PendingRecheckDelay = TimeSpan.FromSeconds(20);
+    // Entries with media still !IsReady past this age are treated as permanently broken
+    // (e.g. metadata row created but blob never uploaded) and dropped from PendingEntryLids.
+    private static readonly TimeSpan PendingMaxAge = TimeSpan.FromDays(7);
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
 
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
@@ -93,6 +96,7 @@ public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntr
         var entries = await ResolveWithAttachments(liveLids, cancellationToken).ConfigureAwait(false);
         var items = new List<ChatContentItem>();
         var notReadyLids = new List<long>();
+        var pendingCutoff = ResumedAt - PendingMaxAge;
         foreach (var entry in entries) {
             var isReady = true;
             foreach (var attachment in entry.Attachments) {
@@ -103,7 +107,7 @@ public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntr
                 }
                 items.Add(ToItem(entry, attachment, media));
             }
-            if (!isReady)
+            if (!isReady && entry.BeginsAt >= pendingCutoff)
                 notReadyLids.Add(entry.LocalId);
         }
         await Commander
