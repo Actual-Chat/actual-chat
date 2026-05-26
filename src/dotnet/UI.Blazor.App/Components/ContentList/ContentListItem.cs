@@ -17,7 +17,7 @@ public sealed class ContentListItem : IVirtualListItem, IEquatable<ContentListIt
     public IReadOnlyList<ChatContentItem> Items { get; init; } = [];
     public ChatEntry? LinkEntry { get; init; }
 
-    public bool ShouldSkipKey => IsGroup || IsEmptyPlaceholder;
+    public bool ShouldSkipKey => IsGroup;
 
     public bool Equals(ContentListItem? other)
         => other is not null && Key == other.Key && Version == other.Version;
