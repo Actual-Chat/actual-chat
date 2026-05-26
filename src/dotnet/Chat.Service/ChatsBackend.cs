@@ -1571,6 +1571,15 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        // Keep the content index in sync even if this handler is ever called standalone
+        // (without a follow-up entry update that would re-fire ResumeContentIndexing).
+        if (Settings.IsChatContentItemIndexingEnabled)
+            await FlowHub.NewResumeEvent<ChatMediaIndexingFlow>(entryId.ChatId.Value)
+                .WithDelay(TimeSpan.FromSeconds(2))
+                .Schedule(cancellationToken)
+                .ConfigureAwait(false);
+
         return dbAttachments.Select(x => x.ToModel()).ToArray();
     }
 
@@ -1595,6 +1604,16 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .Where(x => x.Id.StartsWith(idPrefix))
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        // Keep the content index in sync even if this handler is ever called standalone
+        // (without a follow-up entry update that would re-fire ResumeContentIndexing).
+        // When it's called as part of an Update, the per-FlowId lock just serializes
+        // the two resumes; the second one runs an empty no-op pass.
+        if (Settings.IsChatContentItemIndexingEnabled)
+            await FlowHub.NewResumeEvent<ChatMediaIndexingFlow>(entryId.ChatId.Value)
+                .WithDelay(TimeSpan.FromSeconds(2))
+                .Schedule(cancellationToken)
+                .ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -2182,7 +2201,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .WithDelay(Constants.Chat.StreamingEntryFixupDelay + TimeSpan.FromSeconds(1))
                 .Schedule(cancellationToken).ConfigureAwait(false);
 
-        await ResumeContentIndexing(entry.ChatId, cancellationToken).ConfigureAwait(false);
+        await ResumeContentIndexing(eventCommand, cancellationToken).ConfigureAwait(false);
 
         if (entry.IsContentStreaming)
             return; // Streaming entries are not summarized
@@ -2239,18 +2258,39 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
     }
 
-    private Task ResumeContentIndexing(ChatId chatId, CancellationToken cancellationToken)
+    private Task ResumeContentIndexing(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (!Settings.IsChatContentItemIndexingEnabled)
             return Task.CompletedTask;
 
-        var resumeContent = FlowHub.NewResumeEvent<ChatEntryContentIndexingFlow>(chatId.Value)
-            .WithDelay(TimeSpan.FromSeconds(2))
-            .Schedule(cancellationToken);
-        var resumeMedia = FlowHub.NewResumeEvent<ChatMediaIndexingFlow>(chatId.Value)
-            .WithDelay(TimeSpan.FromSeconds(2))
-            .Schedule(cancellationToken);
-        return Task.WhenAll(resumeContent, resumeMedia);
+        var (entry, _, kind, oldEntry) = eventCommand;
+        if (entry.IsSystemEntry)
+            return Task.CompletedTask;
+
+        var hasOrHadLinkPreviews = entry.LinkPreviewIds.Length > 0
+            || oldEntry?.LinkPreviewIds.Length > 0;
+        // Remove: ChatEntry doesn't carry HasAttachments, and oldEntry is loaded without
+        // attachments, so we don't know if the entry being removed had any. Schedule
+        // defensively — the media flow's delete-by-entryId is a no-op when no rows match.
+        // Update never empties attachments (only replaces with a non-empty list), so the
+        // current entry.Attachments alone is sufficient there.
+        var hasOrHadAttachments = entry.Attachments.Length > 0
+            || kind == ChangeKind.Remove;
+
+        if (!hasOrHadLinkPreviews && !hasOrHadAttachments)
+            return Task.CompletedTask;
+
+        var chatSid = entry.ChatId.Value;
+        var tasks = new List<Task>(2);
+        if (hasOrHadLinkPreviews)
+            tasks.Add(FlowHub.NewResumeEvent<ChatEntryContentIndexingFlow>(chatSid)
+                .WithDelay(TimeSpan.FromSeconds(2))
+                .Schedule(cancellationToken));
+        if (hasOrHadAttachments)
+            tasks.Add(FlowHub.NewResumeEvent<ChatMediaIndexingFlow>(chatSid)
+                .WithDelay(TimeSpan.FromSeconds(2))
+                .Schedule(cancellationToken));
+        return Task.WhenAll(tasks);
     }
 
     protected virtual async Task<AuthorRules> GetRulesRaw(
