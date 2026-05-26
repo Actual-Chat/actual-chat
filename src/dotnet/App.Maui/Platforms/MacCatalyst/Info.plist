@@ -4,7 +4,6 @@
 <dict>
 	<key>UIDeviceFamily</key>
 	<array>
-		<integer>1</integer>
 		<integer>2</integer>
 	</array>
 	<key>UIRequiredDeviceCapabilities</key>
@@ -26,9 +25,50 @@
 	</array>
 	<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/appicon.appiconset</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>localhost</key>
+			<dict>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSTemporaryExceptionMinimumTLSVersion</key>
+				<string>TLSv1.1</string>
+			</dict>
+		</dict>
+	</dict>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Need access to your microphone to record audio messages.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Need access to your camera to share video in chats.</string>
+	<string>Need access to your camera to take photos and share them with other users.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Share photos and videos from your photo gallery.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Upload photos to share with other users or to change your avatar.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Voxt uses your contacts to help you find friends already using Voxt.</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.social-networking</string>
+	<key>MinimumOSVersion</key>
+	<string>15.0</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>ai.voxt.dev</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>voxt-dev</string>
+				<string>voxt</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
