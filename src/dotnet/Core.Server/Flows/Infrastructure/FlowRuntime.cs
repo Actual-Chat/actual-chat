@@ -20,7 +20,11 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
 
     public FlowResumeEvent StageResume()
     {
-        var e = new FlowResumeEvent(Flow.Id, Hub);
+        // Immediate self-resume (e.g. chained Quota-based continuation in IndexingFlow):
+        // must NOT inherit the flow's DelayQuanta — that bucket-Uuid dedup is meant to
+        // coalesce external triggers, but it silently drops consecutive self-resumes
+        // that fall into the same bucket, breaking Quota-driven Run chains.
+        var e = new FlowResumeEvent(Flow.Id, Hub).WithDelayQuanta(TimeSpan.Zero);
         StagedEvents.Add(e);
         return e;
     }
