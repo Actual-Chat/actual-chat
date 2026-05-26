@@ -10,9 +10,8 @@
 <span class="@Class">@m</span>
 
 @code {
-    private MomentClock CpuClock => field ??= Clocks.CpuClock;
-
-    [Parameter, EditorRequired] public Moment EndsAt { get; set; } // CPU time!
+    [Parameter, EditorRequired] public Moment EndsAt { get; set; }
+    [Parameter] public MomentClock? Clock { get; set; }
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Format { get; set; } = "Default";
     [Parameter] public double UpdatePeriod { get; set; } = 1;
@@ -25,7 +24,8 @@
             });
 
     protected override Task<string> ComputeState(CancellationToken cancellationToken) {
-        var remaining = (EndsAt - CpuClock.Now).Positive();
+        var clock = Clock ?? Clocks.SystemClock;
+        var remaining = (EndsAt - clock.Now).Positive();
         var result = remaining.Format(Format);
         if (remaining > TimeSpan.Zero)
             Computed.GetCurrent().Invalidate(TimeSpan.FromSeconds(UpdatePeriod), true);
