@@ -89,7 +89,11 @@ public sealed class ReceiverHealthClassifier(ReceiverHealthThresholds? threshold
         var dropVerdict = receiverDecodePathDropRatio > _t.ReceiverDecodePathDropRatioBad
             ? HealthVerdict.Bad
             : HealthVerdict.Good;
-        var combined = HealthVerdictExt.Combine([ratioVerdict, hangVerdict, recoveryVerdict, skipVerdict, dropVerdict]);
+        // recoveryStreak and presentSkipRatio remain on the record for
+        // diagnostics but no longer drive the combine — both fire on
+        // transient pipeline events (decoder restart, MSTG catch-up skip)
+        // that are not direct decoder fault.
+        var combined = HealthVerdictExt.Combine([ratioVerdict, hangVerdict, dropVerdict]);
         return new DecoderHealth(combined,
             decodeRatioEma, hangRateIn60s, recoveryStreak,
             presentSkipRatio, receiverDecodePathDropRatio);

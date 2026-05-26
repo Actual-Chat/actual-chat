@@ -76,8 +76,11 @@ public class ReceiverHealthClassifierTest
     }
 
     [Fact]
-    public void RecoveryStreak_AtThreshold_IsBad()
+    public void RecoveryStreak_AtThreshold_DoesNotDriveBad()
     {
+        // recoveryStreak is recorded on DecoderHealth but no longer drives the
+        // combined verdict — it fires on decoder restart events, which are not
+        // direct decoder fault.
         var c = new ReceiverHealthClassifier(T());
         var dec = c.ClassifyDecoder(
             decodeRatioEma: 0.5,
@@ -85,7 +88,8 @@ public class ReceiverHealthClassifierTest
             recoveryStreak: ReceiverHealthThresholds.Defaults.RecoveryStreakBad,
             presentSkipRatio: 0,
             receiverDecodePathDropRatio: 0);
-        dec.Verdict.Should().Be(HealthVerdict.Bad);
+        dec.Verdict.Should().NotBe(HealthVerdict.Bad);
+        dec.RecoveryStreak.Should().Be(ReceiverHealthThresholds.Defaults.RecoveryStreakBad);
     }
 
     [Fact]
@@ -133,5 +137,36 @@ public class ReceiverHealthClassifierTest
         }
         dl.Verdict.Should().Be(HealthVerdict.Bad);
         dec.Verdict.Should().NotBe(HealthVerdict.Bad);
+    }
+
+    [Fact]
+    public void PresentSkipHigh_NoOtherSignal_DoesNotDriveBad()
+    {
+        // presentSkipRatio fires on MSTG catch-up skips, not decoder fault.
+        var c = new ReceiverHealthClassifier(T());
+        var dec = c.ClassifyDecoder(
+            decodeRatioEma: 0.5,
+            hangRateIn60s: 0,
+            recoveryStreak: 0,
+            presentSkipRatio: 0.9,
+            receiverDecodePathDropRatio: 0);
+        dec.Verdict.Should().NotBe(HealthVerdict.Bad);
+        dec.PresentSkipRatio.Should().Be(0.9);
+    }
+
+    [Fact]
+    public void DecodeRatioBad_AfterStreak_IsBad()
+    {
+        var c = new ReceiverHealthClassifier(T());
+        DecoderHealth dec = DecoderHealth.Empty;
+        for (var i = 0; i < 3; i++) {
+            dec = c.ClassifyDecoder(
+                decodeRatioEma: 2.0,
+                hangRateIn60s: 0,
+                recoveryStreak: 0,
+                presentSkipRatio: 0,
+                receiverDecodePathDropRatio: 0);
+        }
+        dec.Verdict.Should().Be(HealthVerdict.Bad);
     }
 }
