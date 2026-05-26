@@ -601,30 +601,107 @@
             bw.LastSignalLevel.ToString("F2") + " (" + bw.LastVerdict + ")");
     }
 
-    private static void AppendHistory(
-        RenderTreeBuilder builder, int seqBase, ActualChat.Bandwidth.BandwidthEstimator bw)
+    private static void AppendDecisionLog(
+        RenderTreeBuilder builder, int seqBase,
+        IReadOnlyCollection<VideoQualityUI.QualityDecisionEntry> entries,
+        string labelA, string labelB)
     {
         builder.OpenElement(seqBase, "div");
         builder.AddAttribute(seqBase + 1, "class", "diag-group-header");
-        builder.AddContent(seqBase + 2, "Recent updates");
+        builder.AddContent(seqBase + 2, "Decision log");
         builder.CloseElement();
 
         var i = 0;
-        foreach (var r in bw.History) {
-            var line = $"{r.At.ToDateTimeOffset():HH:mm:ss}: "
-                + $"{r.TriedBps * 8 / 1000} kbps ? {r.SignalLevel:F2} -> "
-                + $"{r.CeilingAfter * 8 / 1000} kbps "
-                + (bw.HasSeenBadSignal ? "ceiling" : "seed");
-            builder.OpenElement(seqBase + 100 + i * 2, "div");
-            builder.AddAttribute(seqBase + 101 + i * 2, "class", "diag-row diag-history-row");
-            builder.OpenElement(seqBase + 102 + i * 2, "span");
-            builder.AddAttribute(seqBase + 103 + i * 2, "class", "diag-value diag-history-value");
-            builder.AddContent(seqBase + 104 + i * 2, line);
+        // Most recent first.
+        foreach (var e in entries.Reverse()) {
+            var rowClass = string.IsNullOrEmpty(e.CapChange)
+                ? "diag-log-row"
+                : "diag-log-row diag-log-row-action";
+            builder.OpenElement(seqBase + 100 + i * 30, "div");
+            builder.AddAttribute(seqBase + 101 + i * 30, "class", rowClass);
+
+            // Line 1: time + swatches + cap change.
+            builder.OpenElement(seqBase + 102 + i * 30, "div");
+            builder.AddAttribute(seqBase + 103 + i * 30, "class", "diag-log-line");
+            builder.OpenElement(seqBase + 104 + i * 30, "span");
+            builder.AddAttribute(seqBase + 105 + i * 30, "class", "diag-log-time");
+            builder.AddContent(seqBase + 106 + i * 30, e.At.ToDateTimeOffset().ToString("HH:mm:ss"));
             builder.CloseElement();
+
+            builder.OpenElement(seqBase + 107 + i * 30, "span");
+            builder.AddAttribute(seqBase + 108 + i * 30, "class", "diag-log-swatches");
+            AppendSwatch(builder, seqBase + 109 + i * 30, labelA, e.SignalA);
+            AppendSwatch(builder, seqBase + 113 + i * 30, labelB, e.SignalB);
+            AppendBweSwatch(builder, seqBase + 117 + i * 30, "BW", e.BweVerdict);
             builder.CloseElement();
+
+            builder.OpenElement(seqBase + 121 + i * 30, "span");
+            builder.AddAttribute(seqBase + 122 + i * 30, "class",
+                string.IsNullOrEmpty(e.CapChange) ? "diag-log-cap diag-dim" : "diag-log-cap");
+            builder.AddContent(seqBase + 123 + i * 30,
+                string.IsNullOrEmpty(e.CapChange) ? e.Reason : $"{e.CapChange} · {e.Reason}");
+            builder.CloseElement();
+            builder.CloseElement(); // diag-log-line
+
+            // Line 2: raw values.
+            builder.OpenElement(seqBase + 124 + i * 30, "div");
+            builder.AddAttribute(seqBase + 125 + i * 30, "class", "diag-log-subline diag-dim");
+            var subline = string.Join("   ",
+                new[] {
+                    string.IsNullOrEmpty(e.RawValuesA) ? "" : $"{labelA.ToLowerInvariant()}: {e.RawValuesA}",
+                    string.IsNullOrEmpty(e.RawValuesB) ? "" : $"{labelB.ToLowerInvariant()}: {e.RawValuesB}",
+                    string.IsNullOrEmpty(e.RawValuesBw) ? "" : $"bw: {e.RawValuesBw}",
+                }.Where(s => !string.IsNullOrEmpty(s)));
+            builder.AddContent(seqBase + 126 + i * 30, subline);
+            builder.CloseElement();
+
+            builder.CloseElement(); // diag-log-row
             i++;
         }
     }
+
+    private static void AppendSwatch(
+        RenderTreeBuilder builder, int seqBase, string label, HealthVerdict verdict)
+    {
+        var cls = verdict switch {
+            HealthVerdict.Good => "diag-log-swatch diag-chip-good",
+            HealthVerdict.Marginal => "diag-log-swatch diag-chip-marginal",
+            HealthVerdict.Bad => "diag-log-swatch diag-chip-bad",
+            _ => "diag-log-swatch diag-chip-unknown",
+        };
+        builder.OpenElement(seqBase, "span");
+        builder.AddAttribute(seqBase + 1, "class", cls);
+        builder.AddAttribute(seqBase + 2, "title", $"{label}: {verdict}");
+        builder.AddContent(seqBase + 3, $"{label}:{VerdictLetter(verdict)}");
+        builder.CloseElement();
+    }
+
+    private static void AppendBweSwatch(
+        RenderTreeBuilder builder, int seqBase, string label, BandwidthVerdict verdict)
+    {
+        var cls = verdict switch {
+            BandwidthVerdict.Good => "diag-log-swatch diag-chip-good",
+            BandwidthVerdict.Bad => "diag-log-swatch diag-chip-bad",
+            _ => "diag-log-swatch diag-chip-unknown",
+        };
+        var letter = verdict switch {
+            BandwidthVerdict.Good => "G",
+            BandwidthVerdict.Bad => "B",
+            _ => "·",
+        };
+        builder.OpenElement(seqBase, "span");
+        builder.AddAttribute(seqBase + 1, "class", cls);
+        builder.AddAttribute(seqBase + 2, "title", $"{label}: {verdict}");
+        builder.AddContent(seqBase + 3, $"{label}:{letter}");
+        builder.CloseElement();
+    }
+
+    private static string VerdictLetter(HealthVerdict v) => v switch {
+        HealthVerdict.Good => "G",
+        HealthVerdict.Marginal => "M",
+        HealthVerdict.Bad => "B",
+        _ => "·",
+    };
 
     private static void AppendRow(RenderTreeBuilder builder, int seq, string label, string value)
     {
@@ -638,30 +715,6 @@
         builder.AddAttribute(seq + 6, "class", "diag-value");
         builder.AddContent(seq + 7, value);
         builder.CloseElement();
-        builder.CloseElement();
-    }
-
-    private static void AppendVerdictChips(
-        RenderTreeBuilder builder, int seqBase,
-        params (string Label, ActualChat.Streaming.HealthVerdict Verdict)[] chips)
-    {
-        builder.OpenElement(seqBase, "div");
-        builder.AddAttribute(seqBase + 1, "class", "diag-chips");
-        var i = 0;
-        foreach (var (label, verdict) in chips) {
-            var cls = verdict switch {
-                ActualChat.Streaming.HealthVerdict.Good => "diag-chip diag-chip-good",
-                ActualChat.Streaming.HealthVerdict.Marginal => "diag-chip diag-chip-marginal",
-                ActualChat.Streaming.HealthVerdict.Bad => "diag-chip diag-chip-bad",
-                _ => "diag-chip diag-chip-unknown",
-            };
-            builder.OpenElement(seqBase + 10 + i * 4, "span");
-            builder.AddAttribute(seqBase + 11 + i * 4, "class", cls);
-            builder.AddAttribute(seqBase + 12 + i * 4, "title", label + ": " + verdict);
-            builder.AddContent(seqBase + 13 + i * 4, label);
-            builder.CloseElement();
-            i++;
-        }
         builder.CloseElement();
     }
 

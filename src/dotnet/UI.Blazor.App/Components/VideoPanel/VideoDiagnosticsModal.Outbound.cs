@@ -20,14 +20,11 @@ public partial class VideoDiagnosticsModal
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "class", "diag-section");
         builder.AddMarkupContent(2, "<div class=\"diag-section-header\">Quality Control</div>");
-        AppendVerdictChips(builder, 50,
-            ("Encoder", qualityUi.OutboundEncoderHealth.Verdict),
-            ("Uplink", qualityUi.OutboundUplinkHealth.Verdict));
         AppendCeilingAndSignal(builder, 100, bw);
         AppendOutboundInputs(builder, 200, activeKinds, statsByKind);
         AppendCapReadout(builder, 300, "Encoding cap", encLayers, activeKinds);
         AppendCapReadout(builder, 400, "Bandwidth cap", bwLayers, activeKinds);
-        AppendHistory(builder, 500, bw);
+        AppendDecisionLog(builder, 500, qualityUi.OutboundDecisionLog, "Enc", "Up");
         builder.CloseElement();
     };
 
