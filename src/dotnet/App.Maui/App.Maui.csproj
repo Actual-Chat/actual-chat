@@ -174,6 +174,7 @@
     <PackageReference Include="Xamarin.Google.Dagger" />
     <PackageReference Include="Xamarin.Google.AI.Edge.LiteRT" />
     <PackageReference Include="OpusSharp.Core" />
+    <PackageReference Include="OpusSharp.Natives" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
     <PackageReference Include="Plugin.Firebase.Analytics" />
@@ -198,6 +199,7 @@
     <PackageReference Include="Microsoft.AI.DirectML" ExcludeAssets="build;buildTransitive;native" />
     <PackageReference Include="NAudio" />
     <PackageReference Include="OpusSharp.Core" />
+    <PackageReference Include="OpusSharp.Natives" />
   </ItemGroup>
 
   <!-- Common Windows, iOS and Android build properties -->
@@ -548,12 +550,6 @@
   <!-- Android -->
   <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
     <AndroidResource Include="..\..\..\resources\sounds\raw\attention_ringtone.mp3" Link="Resources\Raw\attention_ringtone.mp3" />
-    <!-- Keep the wildcard include for any other native libs laid out per ABI -->
-    <AndroidNativeLibrary Include="runtimes\android-$(AndroidSupportedAbis)\native\*.so" />
-    <!-- Explicitly include Opus for the ABIs we ship -->
-    <AndroidNativeLibrary Include="runtimes\android-arm64-v8a\native\libopus.so">
-      <Abi>arm64-v8a</Abi>
-    </AndroidNativeLibrary>
   </ItemGroup>
   <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-android'))">
     <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.dev" Link="Platforms\Android\Resources\google-services.json" />
@@ -624,11 +620,6 @@
     <Content Include="Platforms\Windows\Assets\**\*.*" />
     <Content Include="..\Core.Audio\APM\runtimes\win-x64\native\webrtc-apm.dll">
       <Link>webrtc-apm.dll</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-    <Content Include="runtimes\win-x64\native\opus.dll">
-      <Link>opus.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
