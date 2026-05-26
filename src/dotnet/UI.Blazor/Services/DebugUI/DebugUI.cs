@@ -110,6 +110,19 @@ public sealed partial class DebugUI : UIServiceBase<UIHub>, IDisposable
     }
 
     [JSInvokable]
+    public void TestLog(int count = 1, int lineCount = 1)
+    {
+        count = Math.Clamp(count, 1, 200);
+        lineCount = Math.Clamp(lineCount, 1, 200);
+        var testLog = Services.LoggerFactory().CreateLogger("ActualChat.DebugUI.TestLog");
+        var line = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
+        for (var i = 0; i < count; i++) {
+            var body = lineCount == 1 ? line : string.Join('\n', Enumerable.Range(0, lineCount).Select(n => $"L{n + 1}: {line}"));
+            testLog.LogInformation("TestLog #{Index}/{Count} ({Lines} lines):\n{Body}", i + 1, count, lineCount, body);
+        }
+    }
+
+    [JSInvokable]
     public void TestVideoPlaybackQualityChange(int periodSeconds = 30)
     {
         TestVideoPlaybackQualityChangeHandler?.Invoke(periodSeconds);

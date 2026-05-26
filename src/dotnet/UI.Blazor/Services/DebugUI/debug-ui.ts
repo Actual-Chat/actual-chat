@@ -86,6 +86,13 @@ export class DebugUI {
         OnDeviceAwake.fakeSleep(duration * 1000);
     }
 
+    /** Emits `count` log entries to the LogUI ring buffer for testing the log
+     *  viewer. Each entry is `lineCount` lines of placeholder text. */
+    public static testLog(count = 1, lineCount = 1): Promise<void> {
+        infoLog?.log(`testLog: count=${count}, lineCount=${lineCount}`);
+        return this.backendRef.invokeMethodAsync('TestLog', count, lineCount) as unknown as Promise<void>;
+    }
+
     public static resetOnboarding(enable: boolean): void {
         void this.backendRef.invokeMethodAsync('ResetOnboarding', enable);
     };
