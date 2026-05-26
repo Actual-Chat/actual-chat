@@ -15,6 +15,7 @@
 // `webgpu-yuv-converter.ts`) is intentionally not restored.
 
 import { WebGPUManager } from './manager';
+import { BgBlurPerfTracker } from '../services/bg-blur-stats';
 import { getLogs } from 'logging';
 
 const { infoLog, warnLog } = getLogs('VideoWebGPU');
@@ -1021,6 +1022,7 @@ export class BgBlurRenderer {
     // the cached `ctx` keeps a dead device reference; next render() would
     // submit work to a dead Dawn handle and crash the renderer.
     private lostDispose: (() => void) | null = null;
+    private readonly perf = new BgBlurPerfTracker('webgpu');
 
     constructor(canvas: OffscreenCanvas) {
         this.canvas = canvas;
@@ -1060,7 +1062,9 @@ export class BgBlurRenderer {
         }
 
         try {
+            const t0 = performance.now();
             applyFullFrameBlur(frame, this.ctx, blurStrength);
+            this.perf.sample(performance.now() - t0);
             return true;
         } catch (e) {
             warnLog?.log('BgBlurRenderer render failed:', e);

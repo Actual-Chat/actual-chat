@@ -3,6 +3,7 @@
 // the tiny bg-canvas pixel space; 2D canvas is the fallback.
 
 import { CanvasTarget } from './canvas-target';
+import { BgBlurPerfTracker } from './bg-blur-stats';
 
 export const BG_CANVAS_WIDTH = 48;
 export const BG_DRAW_INTERVAL_MS = 100;
@@ -54,6 +55,7 @@ export class BgCanvasPainter {
     private readonly target: BgCanvasRenderer;
     private timer: ReturnType<typeof setInterval> | null = null;
     private getSource: (() => SourceLike | null) | null = null;
+    private readonly perf = new BgBlurPerfTracker('webgl');
 
     constructor(bgCanvas: HTMLCanvasElement) {
         this.target = new BgCanvasRenderer(bgCanvas);
@@ -97,7 +99,9 @@ export class BgCanvasPainter {
         if (sw <= 0 || sh <= 0) return;
         const bgW = BG_CANVAS_WIDTH;
         const bgH = Math.max(1, Math.round(bgW * sh / sw));
+        const t0 = performance.now();
         this.target.draw(src as CanvasImageSource, bgW, bgH);
+        this.perf.sample(performance.now() - t0);
     }
 }
 

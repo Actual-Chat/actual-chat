@@ -43,6 +43,17 @@ function pickRenderBackend(canvas: HTMLCanvasElement, videoEl: HTMLVideoElement)
 }
 
 // Global registry of active VideoPlayer instances for diagnostics
+// Parse `?bgBlur=webgpu|webgl|off` from the page URL. Used to A/B the
+// two bg-blur paths on the same hardware without rebuilding. Anything
+// else (missing or unknown) → no override.
+function readBgBlurOverride(): 'webgpu' | 'webgl' | 'off' | undefined {
+    try {
+        const v = new URLSearchParams(globalThis.location.search).get('bgBlur');
+        if (v === 'webgpu' || v === 'webgl' || v === 'off') return v;
+    } catch { /* ignore */ }
+    return undefined;
+}
+
 const activePlayers = new Map<string, VideoPlayer>();
 export function getActivePlayers(): ReadonlyMap<string, VideoPlayer> {
     return activePlayers;
@@ -133,12 +144,14 @@ export class VideoPlayer {
     private bgCanvasEl: HTMLCanvasElement;
     private renderBackend: RenderBackend;
 
-    // WebGPU backdrop blur state. Decided once at construction via the
-    // sync `isWebGpuLikelySupported` probe. When true the bg canvas is
-    // transferControlToOffscreen()'d and shipped to the player worker;
-    // backend.setBackdrop is then always called with null. When false,
-    // the existing WebGL BgCanvasPainter path inside the backend runs.
-    private useWebGpuBgBlur = false;
+    // Bg-blur path. Decided once at construction:
+    //   • 'webgpu' — transferControlToOffscreen + worker-side dual-Kawase.
+    //   • 'webgl'  — main-thread WebGL BgCanvasPainter (Firefox / probe miss).
+    //   • 'off'    — never paint a backdrop (perf comparison baseline).
+    // Default picks 'webgpu' when isWebGpuLikelySupported(), 'webgl' otherwise.
+    // Override via `?bgBlur=webgpu|webgl|off` on the page URL — useful for
+    // A/B-ing the two paths on the same hardware.
+    private bgBlurMode: 'webgpu' | 'webgl' | 'off' = 'webgl';
     private transferredBgCanvas: OffscreenCanvas | null = null;
     private bgCanvasInstallSent = false;
     private bgActive = false;
@@ -283,16 +296,25 @@ export class VideoPlayer {
         // backend that may otherwise wire up the WebGL BgCanvasPainter). The
         // OffscreenCanvas transfer is one-shot; once committed here, the
         // backend MUST be told setBackdrop(null) from now on.
-        if (isWebGpuLikelySupported()) {
+        const override = readBgBlurOverride();
+        const wantWebGpu = override === undefined
+            ? isWebGpuLikelySupported()
+            : override === 'webgpu';
+        if (override === 'off') {
+            this.bgBlurMode = 'off';
+        } else if (wantWebGpu) {
             try {
                 this.transferredBgCanvas = bgCanvasEl.transferControlToOffscreen();
-                this.useWebGpuBgBlur = true;
+                this.bgBlurMode = 'webgpu';
             } catch (e) {
                 warnLog?.log('transferControlToOffscreen for bg canvas failed; falling back to WebGL painter:', e);
-                this.useWebGpuBgBlur = false;
+                this.bgBlurMode = 'webgl';
                 this.transferredBgCanvas = null;
             }
+        } else {
+            this.bgBlurMode = 'webgl';
         }
+        infoLog?.log(`Bg-blur mode: ${this.bgBlurMode}${override ? ` (override=${override})` : ''}`);
         this.renderBackend = pickRenderBackend(canvas, videoEl);
         this.applyBackendVisibility(canvas, videoEl);
 
@@ -440,7 +462,7 @@ export class VideoPlayer {
             // correctly. Flush the latched bgActive state in the same .then so
             // a focused tile that was decided before the worker came online
             // immediately starts painting.
-            if (this.useWebGpuBgBlur && this.transferredBgCanvas && !this.bgCanvasInstallSent) {
+            if (this.bgBlurMode === 'webgpu' && this.transferredBgCanvas && !this.bgCanvasInstallSent) {
                 this.bgCanvasInstallSent = true;
                 const canvas = this.transferredBgCanvas;
                 this.transferredBgCanvas = null; // ownership moves to worker
@@ -615,12 +637,18 @@ export class VideoPlayer {
         this.applyBackdrop(true);
     }
 
-    // Dispatch a backdrop on/off decision. WebGPU path keeps the bg canvas
-    // owned by the worker (transferred at construction); we only flip
-    // setBgActive there. WebGL fallback hands the canvas to the backend and
-    // lets BgCanvasPainter pump from `<video>` on main.
+    // Dispatch a backdrop on/off decision. Routing depends on bgBlurMode:
+    //  • 'webgpu' — canvas already transferred to the worker; only flip
+    //    setBgActive there. Backend stays setBackdrop(null).
+    //  • 'webgl'  — hand the canvas to the backend, BgCanvasPainter
+    //    pumps from `<video>` on main.
+    //  • 'off'    — no backdrop at all (perf baseline).
     private applyBackdrop(focused: boolean): void {
-        if (this.useWebGpuBgBlur) {
+        if (this.bgBlurMode === 'off') {
+            try { this.renderBackend.setBackdrop(null, false); } catch { /* ignore */ }
+            return;
+        }
+        if (this.bgBlurMode === 'webgpu') {
             try { this.renderBackend.setBackdrop(null, false); } catch { /* ignore */ }
             this.setBgActive(focused);
             return;
