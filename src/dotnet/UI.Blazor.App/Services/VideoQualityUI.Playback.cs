@@ -36,10 +36,9 @@ public sealed partial class VideoQualityUI
     private readonly Dictionary<StreamId, ReceiverHealthClassifier> _receiverHealthByStream = new();
     private readonly Dictionary<StreamId, DownlinkHealth> _lastDownlinkHealthByStream = new();
     private readonly Dictionary<StreamId, DecoderHealth> _lastDecoderHealthByStream = new();
-    // Sticky decoder cap: set on DecoderHealth=Bad, cleared on =Good. Marginal
-    // keeps the last value so the cap doesn't oscillate while the classifier
-    // re-acquires Good.
-    private readonly Dictionary<StreamId, int> _decoderLayerCapByStream = new();
+    // Sticky decoder cap with edge-triggered demote. Set on Good→Bad
+    // transition, cleared on =Good. Marginal holds the last value.
+    private readonly DecoderCapState _decoderCapState = new();
     private HealthVerdict _lastAggregateDownlinkVerdict = HealthVerdict.Unknown;
 
     public BandwidthEstimator InboundBandwidthEstimator => _inboundBwEstimator;
@@ -49,7 +48,7 @@ public sealed partial class VideoQualityUI
         => _lastDownlinkHealthByStream;
     public IReadOnlyDictionary<StreamId, DecoderHealth> InboundDecoderHealthByStream
         => _lastDecoderHealthByStream;
-    public int InboundDecoderCapStreamCount => _decoderLayerCapByStream.Count;
+    public int InboundDecoderCapStreamCount => _decoderCapState.Caps.Count;
 
     public Task OnPlaybackStats(
         StreamId streamId,
@@ -216,23 +215,18 @@ public sealed partial class VideoQualityUI
             if (streamDownlink.Verdict != HealthVerdict.Unknown
                 && (int)streamDownlink.Verdict > (int)aggregateDownlinkVerdict)
                 aggregateDownlinkVerdict = streamDownlink.Verdict;
-            // Sticky decoder cap: Bad → clamp; Good → release; Marginal → hold.
-            if (streamDecoder.Verdict == HealthVerdict.Bad) {
-                var currentLayer = Math.Max(0, state.RequestedLayerCount - 1);
-                _decoderLayerCapByStream[streamId] = Math.Max(0, currentLayer - 1);
-            }
-            else if (streamDecoder.Verdict == HealthVerdict.Good) {
-                _decoderLayerCapByStream.Remove(streamId);
-            }
+            _decoderCapState.OnVerdict(
+                streamId.Value, streamDecoder.Verdict, state.RequestedLayerCount);
         }
         // Drop stale entries so per-stream classifiers don't leak.
         var liveStreamIds = entries.Select(x => x.Key).ToHashSet();
+        var liveStreamIdStrings = liveStreamIds.Select(x => x.Value).ToHashSet();
         foreach (var sid in _receiverHealthByStream.Keys.Where(k => !liveStreamIds.Contains(k)).ToArray()) {
             _receiverHealthByStream.Remove(sid);
             _lastDownlinkHealthByStream.Remove(sid);
             _lastDecoderHealthByStream.Remove(sid);
-            _decoderLayerCapByStream.Remove(sid);
         }
+        _decoderCapState.PruneStaleStreams(liveStreamIdStrings);
 
         _lastAggregateDownlinkVerdict = aggregateDownlinkVerdict;
         var downlinkSignal = VerdictToSignal(aggregateDownlinkVerdict);
@@ -251,12 +245,9 @@ public sealed partial class VideoQualityUI
             .Select(ToAllocationRequest)
             .ToArray();
         var capacity = GetAllocationCapacity(estimatedCapacity, primaries, secondaries);
-        // Map per-stream decoder cap (sticky from Bad classification above)
-        // into the allocator. Keys must match StreamAllocationRequest.StreamId
-        // (= StreamId.Value string).
-        var decoderLayerCapDict = _decoderLayerCapByStream.Count == 0
+        var decoderLayerCapDict = _decoderCapState.Caps.Count == 0
             ? null
-            : _decoderLayerCapByStream.ToDictionary(kv => kv.Key.Value, kv => kv.Value);
+            : _decoderCapState.Caps;
         var requested = VideoQualityAllocator.Allocate(capacity, primaries, secondaries, decoderLayerCapDict);
         var requestedMap = new ApiMap<string, ReceiveQuality>();
         foreach (var (streamId, _) in entries)
@@ -294,7 +285,7 @@ public sealed partial class VideoQualityUI
             "PlaybackQuality: reason={Reason} ceiling={Ceiling} downlinkVerdict={DownlinkVerdict} " +
             "downlinkSignal={DownlinkSignal:F2} decoderCaps={DecoderCapCount} streams=[{Streams}]",
             reason, capacity, aggregateDownlinkVerdict, downlinkSignal,
-            _decoderLayerCapByStream.Count,
+            _decoderCapState.Caps.Count,
             string.Join(", ", entries.Select(x =>
                 $"{x.Key.Value}:size={x.Value.DesiredVideoSize}/req=L{requestedMap[x.Key.Value].LayerId}"
                 + $"/duration={x.Value.Snapshot.StreamDurationMs}ms"
