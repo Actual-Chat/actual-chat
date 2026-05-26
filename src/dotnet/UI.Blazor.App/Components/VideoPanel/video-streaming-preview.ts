@@ -1,4 +1,5 @@
 import { RecorderPreviewView } from '../../Services/Video/services/recorder-preview-view';
+import { isBgBlurOff } from '../../Services/Video/playback/bg-blur-override';
 
 export class VideoStreamingPreview {
     private readonly element: HTMLElement;
@@ -12,7 +13,12 @@ export class VideoStreamingPreview {
     constructor(element: HTMLElement, sourceKind: number) {
         this.element = element;
         const canvas = this.element.querySelector<HTMLCanvasElement>('.call-video')!;
-        const bgCanvas = this.element.querySelector<HTMLCanvasElement>('.remote-video-bg') ?? undefined;
+        // Sender's local preview shares the `?bgBlur=off` kill-switch with the
+        // receiver: drop the bg canvas entirely so RecorderPreviewView never
+        // constructs a BgCanvasRenderer.
+        const bgCanvas = isBgBlurOff()
+            ? undefined
+            : this.element.querySelector<HTMLCanvasElement>('.remote-video-bg') ?? undefined;
         const videoEl = this.element.querySelector<HTMLVideoElement>('.call-video-native')!;
 
         this.view = RecorderPreviewView.create({

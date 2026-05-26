@@ -29,7 +29,6 @@ public sealed record ReceiverHealthThresholds(
 public sealed class ReceiverHealthClassifier(ReceiverHealthThresholds? thresholds = null)
 {
     private readonly ReceiverHealthThresholds _t = thresholds ?? ReceiverHealthThresholds.Defaults;
-    private readonly HealthStreakState _byteRateDeficit = new();
     private readonly HealthStreakState _underrun = new();
     private readonly HealthStreakState _decodeRatio = new();
 
@@ -40,10 +39,6 @@ public sealed class ReceiverHealthClassifier(ReceiverHealthThresholds? threshold
         double bufferUnderrunRatio,
         double incomingByteRateDeficit)
     {
-        var deficitVerdict = _byteRateDeficit.Update(
-            _t.ByteRateDeficitBadStreak, _t.ByteRateDeficitGoodStreak,
-            isBad: incomingByteRateDeficit >= 0 && incomingByteRateDeficit < _t.IncomingByteRateDeficitBad,
-            isGood: incomingByteRateDeficit > _t.IncomingByteRateDeficitGood);
         var underrunVerdict = _underrun.Update(
             _t.DownlinkLatencyBadStreak, _t.DownlinkLatencyGoodStreak,
             isBad: bufferUnderrunRatio > _t.BufferUnderrunRatioBad,
@@ -51,11 +46,15 @@ public sealed class ReceiverHealthClassifier(ReceiverHealthThresholds? threshold
         var dropVerdict = serverPathDropRatio > _t.ServerPathDropRatioBad
             ? HealthVerdict.Bad
             : HealthVerdict.Good;
-        // Latency is intentionally NOT in the combine: latency above-floor is
-        // orthogonal to bandwidth health — high RTT with healthy throughput
-        // (no drops, no underrun) doesn't justify demoting quality. The raw
-        // `serverToReceiverLatencyEma` stays on the record for diagnostics.
-        var combined = HealthVerdictExt.Combine([deficitVerdict, underrunVerdict, dropVerdict]);
+        // Downlink combine includes ONLY direct delivery-failure signals:
+        // underrun (buffer running dry) and drops (frames lost on server→
+        // receiver leg). Excluded by design:
+        //  - latency above-floor: high RTT with healthy throughput doesn't
+        //    justify lowering bitrate.
+        //  - byte-rate deficit: actual-vs-predicted is a measurement
+        //    artifact of codec/scene variance, not a delivery problem.
+        // Both raw values stay on the DownlinkHealth record for diagnostics.
+        var combined = HealthVerdictExt.Combine([underrunVerdict, dropVerdict]);
         return new DownlinkHealth(combined,
             serverToReceiverLatencyEma, arrivalIntervalEma, serverPathDropRatio,
             bufferUnderrunRatio, incomingByteRateDeficit);

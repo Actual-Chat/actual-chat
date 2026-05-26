@@ -28,6 +28,7 @@ import { OffThreadRenderBackend } from './render-backend-mstg';
 import { pickRenderBackendKind } from './render-backend-selection';
 import { isWebGpuLikelySupported } from '../../Services/Video/support/gpu';
 import type { BgBlurMode } from '../../Services/Video/playback/bg-blur-tap';
+import { readBgBlurOverride } from '../../Services/Video/playback/bg-blur-override';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 import { AC, VIDEO } from 'app-constants';
@@ -44,16 +45,6 @@ function pickRenderBackend(canvas: HTMLCanvasElement, videoEl: HTMLVideoElement)
 }
 
 // Global registry of active VideoPlayer instances for diagnostics
-// Parse `?bgBlur=webgpu|webgl|off` from the page URL. Used to A/B the
-// two bg-blur paths on the same hardware without rebuilding. Anything
-// else (missing or unknown) → no override.
-function readBgBlurOverride(): 'webgpu' | 'webgl' | 'canvas2d' | 'off' | undefined {
-    try {
-        const v = new URLSearchParams(globalThis.location.search).get('bgBlur');
-        if (v === 'webgpu' || v === 'webgl' || v === 'canvas2d' || v === 'off') return v;
-    } catch { /* ignore */ }
-    return undefined;
-}
 
 const activePlayers = new Map<string, VideoPlayer>();
 export function getActivePlayers(): ReadonlyMap<string, VideoPlayer> {

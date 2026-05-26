@@ -143,4 +143,24 @@ public class ReceiverHealthClassifierTest
         }
         dec.Verdict.Should().Be(HealthVerdict.Bad);
     }
+
+    [Fact]
+    public void LowByteRateDeficit_Alone_DoesNotDriveDownlinkBad()
+    {
+        // incomingByteRateDeficit is diagnostic-only. Efficient codecs and
+        // static scenes legitimately produce < expected ladder rate while
+        // delivering all frames; that's not a downlink problem.
+        var c = new ReceiverHealthClassifier(T());
+        DownlinkHealth dl = DownlinkHealth.Empty;
+        for (var i = 0; i < 5; i++) {
+            dl = c.ClassifyDownlink(
+                serverToReceiverLatencyEma: 20,
+                arrivalIntervalEma: 33,
+                serverPathDropRatio: 0,
+                bufferUnderrunRatio: 0,
+                incomingByteRateDeficit: 0.3);
+        }
+        dl.Verdict.Should().NotBe(HealthVerdict.Bad);
+        dl.IncomingByteRateDeficit.Should().Be(0.3);
+    }
 }
