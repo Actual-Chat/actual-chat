@@ -18,29 +18,17 @@ const BG_BLUR_STRENGTH = 20;
 // painter's BG_DRAW_INTERVAL_MS.
 const BG_RENDER_INTERVAL_MS = 100;
 
-// Renderer preference. Sent from main via installBgCanvas; the worker uses
-// it as a hint on top of its own WebGPU probe.
-//  • 'auto'     — pick WebGPU if available in this worker, else Canvas2D.
-//  • 'webgpu'   — force WebGPU. Falls back to Canvas2D if construction throws.
-//  • 'webgl'    — force WebGL2 separable-Gaussian (off-thread, gregblur-derived).
+// Renderer preference. Sent from main via installBgCanvas.
+//  • 'auto'     — default; resolves to WebGL2 separable-Gaussian (cheapest
+//                 off-thread option, universal browser support).
+//  • 'webgl'    — same as 'auto', spelled explicitly.
+//  • 'webgpu'   — force WebGPU dual-Kawase. Falls back to Canvas2D if init throws.
 //  • 'canvas2d' — force Canvas2D (ctx.filter blur baked into a 64×N bitmap).
 export type BgBlurMode = 'auto' | 'webgpu' | 'webgl' | 'canvas2d';
 
 interface BgRenderer {
     render(frame: VideoFrame, strength?: number): boolean;
     dispose(): void;
-}
-
-function isWebGpuLikelyAvailableInWorker(): boolean {
-    try {
-        const nav = globalThis.navigator as Navigator | undefined;
-        if (!nav || !('gpu' in nav))
-            return false;
-        return typeof GPUDevice !== 'undefined'
-            && typeof GPUDevice.prototype.importExternalTexture === 'function';
-    } catch {
-        return false;
-    }
 }
 
 // Per-stream owner of an OffscreenCanvas + bg renderer. Lifetime is bound
@@ -64,18 +52,18 @@ export class BgBlurController {
             this.renderer = null;
             this.rendererKind = null;
         }
-        const wantWebGpu = mode === 'webgpu'
-            || (mode === 'auto' && isWebGpuLikelyAvailableInWorker());
         try {
-            if (wantWebGpu) {
+            if (mode === 'webgpu') {
                 this.renderer = new BgBlurRenderer(canvas);
                 this.rendererKind = 'webgpu';
-            } else if (mode === 'webgl') {
-                this.renderer = new WebGlBgRenderer(canvas);
-                this.rendererKind = 'webgl';
-            } else {
+            } else if (mode === 'canvas2d') {
                 this.renderer = new Canvas2DBgRenderer(canvas);
                 this.rendererKind = 'canvas2d';
+            } else {
+                // 'auto' and 'webgl' — WebGL2 separable-Gaussian is the
+                // default; cheapest off-thread option and universal.
+                this.renderer = new WebGlBgRenderer(canvas);
+                this.rendererKind = 'webgl';
             }
             infoLog?.log(`BgBlurController: installed ${this.rendererKind} renderer (mode=${mode})`);
         } catch (e) {

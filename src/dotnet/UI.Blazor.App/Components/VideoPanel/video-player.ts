@@ -26,7 +26,6 @@ import type { RenderBackend } from './render-backend';
 import { TransferableCanvasRenderBackend } from './render-backend-canvas';
 import { OffThreadRenderBackend } from './render-backend-mstg';
 import { pickRenderBackendKind } from './render-backend-selection';
-import { isWebGpuLikelySupported } from '../../Services/Video/support/gpu';
 import type { BgBlurMode } from '../../Services/Video/playback/bg-blur-tap';
 import { readBgBlurOverride } from '../../Services/Video/playback/bg-blur-override';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
@@ -287,20 +286,17 @@ export class VideoPlayer {
         this.canvas = canvas;
         this.videoEl = videoEl;
         this.bgCanvasEl = bgCanvasEl;
-        // Bg canvas always transfers to the worker — the worker picks WebGPU
-        // (dual-Kawase) or Canvas2D (filter-blur) per its own probe. Only the
-        // mode hint and the 'off' kill-switch are decided here.
+        // Bg canvas always transfers to the worker; the worker constructs
+        // the renderer per the mode hint. Default 'auto' resolves to WebGL2
+        // in the worker (cheapest off-thread option, universal). Override
+        // via ?bgBlur=webgpu|webgl|canvas2d|off.
         const override = readBgBlurOverride();
-        if (override === 'off') {
+        if (override === 'off')
             this.bgBlurMode = 'off';
-        } else if (override) {
+        else if (override)
             this.bgBlurMode = override;
-        } else {
-            // 'auto' lets the worker probe — but on browsers where main's
-            // sync probe already says no WebGPU, hint Canvas2D so the worker
-            // skips the WebGPU init attempt.
-            this.bgBlurMode = isWebGpuLikelySupported() ? 'auto' : 'canvas2d';
-        }
+        else
+            this.bgBlurMode = 'auto';
         if (this.bgBlurMode !== 'off') {
             try {
                 this.transferredBgCanvas = bgCanvasEl.transferControlToOffscreen();
