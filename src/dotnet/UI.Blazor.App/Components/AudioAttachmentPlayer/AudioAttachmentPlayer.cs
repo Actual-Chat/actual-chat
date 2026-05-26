@@ -17,6 +17,7 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
     private readonly object _lock = new();
     private DotNetObjectReference<AudioAttachmentPlayer>? _blazorRef;
     private Task<IJSObjectReference>? _jsRefTask;
+    private volatile bool _isDisposed;
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
 
@@ -34,6 +35,7 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
         Task<IJSObjectReference>? jsRefTask;
         DotNetObjectReference<AudioAttachmentPlayer>? blazorRef;
         lock (_lock) {
+            _isDisposed = true;
             jsRefTask = _jsRefTask;
             blazorRef = _blazorRef;
             _jsRefTask = null;
@@ -53,7 +55,7 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
 
     public async ValueTask Play(ChatEntryAttachment attachment)
     {
-        if (!attachment.IsAudio())
+        if (_isDisposed || !attachment.IsAudio())
             return;
 
         var url = UrlMapper.ContentUrl(attachment.Media.BlobId);
@@ -73,45 +75,63 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
             IsLoading = true,
             IsPlaying = true,
         };
-        ChatAudioUI.StopReplay();
-        var jsRef = await EnsureJSRef().ConfigureAwait(true);
-        await jsRef.InvokeVoidAsync("play", url).ConfigureAwait(true);
+        try {
+            ChatAudioUI.StopReplay();
+            var jsRef = await EnsureJSRef().ConfigureAwait(true);
+            await jsRef.InvokeVoidAsync("play", url).ConfigureAwait(true);
+        }
+        catch (ObjectDisposedException) { }
     }
 
     public async ValueTask Pause()
     {
+        if (_isDisposed)
+            return;
         var jsRef = TryGetJSRef();
         if (jsRef is null)
             return;
 
-        await jsRef.InvokeVoidAsync("pause").ConfigureAwait(true);
+        try { await jsRef.InvokeVoidAsync("pause").ConfigureAwait(true); }
+        catch (ObjectDisposedException) { }
     }
 
     public async ValueTask Resume()
     {
+        if (_isDisposed)
+            return;
         var jsRef = TryGetJSRef();
         if (jsRef is null)
             return;
 
-        ChatAudioUI.StopReplay();
-        await jsRef.InvokeVoidAsync("resume").ConfigureAwait(true);
+        try {
+            ChatAudioUI.StopReplay();
+            await jsRef.InvokeVoidAsync("resume").ConfigureAwait(true);
+        }
+        catch (ObjectDisposedException) { }
     }
 
     public async ValueTask Stop()
     {
+        if (_isDisposed)
+            return;
         var jsRef = TryGetJSRef();
-        if (jsRef is not null)
-            await jsRef.InvokeVoidAsync("stop").ConfigureAwait(true);
+        if (jsRef is not null) {
+            try { await jsRef.InvokeVoidAsync("stop").ConfigureAwait(true); }
+            catch (ObjectDisposedException) { }
+        }
         _state.Value = null;
     }
 
     public async ValueTask Seek(TimeSpan position)
     {
+        if (_isDisposed)
+            return;
         var jsRef = TryGetJSRef();
         if (jsRef is null)
             return;
 
-        await jsRef.InvokeVoidAsync("seek", position.TotalSeconds).ConfigureAwait(true);
+        try { await jsRef.InvokeVoidAsync("seek", position.TotalSeconds).ConfigureAwait(true); }
+        catch (ObjectDisposedException) { }
     }
 
     public ValueTask SkipBy(TimeSpan delta)
@@ -133,6 +153,8 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
     [JSInvokable]
     public void OnTimeUpdate(double positionSec)
     {
+        if (_isDisposed)
+            return;
         var current = _state.Value;
         if (current is null)
             return;
@@ -143,6 +165,8 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
     [JSInvokable]
     public void OnDurationChange(double durationSec)
     {
+        if (_isDisposed)
+            return;
         var current = _state.Value;
         if (current is null || double.IsNaN(durationSec) || double.IsInfinity(durationSec))
             return;
@@ -153,6 +177,8 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
     [JSInvokable]
     public void OnPlay()
     {
+        if (_isDisposed)
+            return;
         var current = _state.Value;
         if (current is null)
             return;
@@ -163,6 +189,8 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
     [JSInvokable]
     public void OnPause()
     {
+        if (_isDisposed)
+            return;
         var current = _state.Value;
         if (current is null)
             return;
@@ -173,6 +201,8 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
     [JSInvokable]
     public void OnEnded()
     {
+        if (_isDisposed)
+            return;
         var current = _state.Value;
         if (current is null)
             return;
@@ -186,6 +216,8 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
     [JSInvokable]
     public void OnError(string message)
     {
+        if (_isDisposed)
+            return;
         Log.LogWarning("Audio playback error: {Message}", message);
         _state.Value = null;
     }
@@ -206,6 +238,7 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
     private Task<IJSObjectReference> EnsureJSRef()
     {
         lock (_lock) {
+            ObjectDisposedException.ThrowIf(_isDisposed, this);
             if (_jsRefTask is not null)
                 return _jsRefTask;
 
