@@ -95,10 +95,13 @@ public sealed class ChatListener : ChatPlayer
                 var playbackTargetBufferSize = await ChatAudioUI
                     .GetPlaybackTargetBufferSize(ChatId, cancellationToken)
                     .ConfigureAwait(false);
-                var playAt = MomentExt.Max(
-                    minPlayAt,
-                    streamInfo.BeginsAt,
-                    serverClock.Now - playbackTargetBufferSize);
+                // Streams that started after we began listening play from the head
+                // so subscription latency (RTT + Register/List propagation + RPC startup)
+                // doesn't chop the first words; only late-joins skip the in-progress past.
+                var isLateJoin = streamInfo.BeginsAt < minPlayAt;
+                var playAt = isLateJoin
+                    ? MomentExt.Max(minPlayAt, streamInfo.BeginsAt, serverClock.Now - playbackTargetBufferSize)
+                    : streamInfo.BeginsAt;
                 if (playAt >= streamInfo.BeginsAt + Constants.Chat.MaxEntryDuration)
                     return;
 
