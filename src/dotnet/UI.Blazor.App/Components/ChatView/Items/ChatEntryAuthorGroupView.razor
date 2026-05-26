@@ -2,7 +2,11 @@
 @{
     var m = Message;
     var firstItem = m.Items.FirstOrDefault();
-    var showAuthorBadge = !(firstItem?.Entry.IsSystemEntry ?? false);
+    var isSystem = firstItem?.Entry.IsSystemEntry ?? false;
+    // No BlockStart => the group exists only because a separator (e.g. NewMessagesLine) split a
+    // same-author run; the inner header is suppressed too, so a lone avatar would look orphaned.
+    var isBlockStart = firstItem?.Flags.HasFlag(ChatMessageFlags.BlockStart) ?? false;
+    var showAuthorBadge = !isSystem && isBlockStart;
     // Log.LogInformation("Render ChatEntryAuthorGroupView: {Id}, Count = {Count}", firstItem?.Entry.Id, m.Items.Count);
 }
 
