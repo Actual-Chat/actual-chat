@@ -3,7 +3,7 @@
 import { AUDIO, AC, whenAppConstantsReady } from 'app-constants';
 import { Disposable } from 'disposable';
 import { Versioning } from 'versioning';
-import { catchErrors, delayAsync, delayAsyncWith, PromiseSource, ResolvedPromise, retry } from 'promises';
+import { catchErrors, delayAsync, delayAsyncWith, PromiseSource, ResolvedPromise, retry } from 'actuallab-core';
 import { rpcClient, rpcClientServer, RpcNoWait, rpcNoWait } from 'rpc';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
@@ -326,7 +326,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
     public async init(baseUri: string, canUseNNVad: boolean): Promise<void> {
         debugLog?.log(`-> init()`, baseUri, canUseNNVad);
         this.state = 'initializing';
-        if (this.whenInitialized.isCompleted())
+        if (this.whenInitialized.isCompleted)
             return;
 
         await whenAppConstantsReady;
@@ -510,7 +510,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
     }
 
     public async runDiagnostics(diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState> {
-        diagnosticsState.isRecorderInitialized = this.whenInitialized?.isCompleted();
+        diagnosticsState.isRecorderInitialized = this.whenInitialized?.isCompleted;
         diagnosticsState.hasMicrophoneStream = this.stream != null;
         infoLog?.log('runDiagnostics: ', diagnosticsState);
 
@@ -590,11 +590,11 @@ export class OpusMediaRecorder implements RecorderStateServer {
 
     private async ensureInitialized(): Promise<void> {
         if (this.state !== 'inactive') {
-            if (this.whenInitialized.isCompleted())
+            if (this.whenInitialized.isCompleted)
                 return;
 
             await Promise.race([this.whenInitialized, delayAsync(5000)]);
-            if (this.whenInitialized.isCompleted())
+            if (this.whenInitialized.isCompleted)
                 return;
         }
         // retry init again

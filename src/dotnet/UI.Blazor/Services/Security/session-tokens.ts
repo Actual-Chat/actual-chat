@@ -1,4 +1,4 @@
-import { PromiseSource } from 'promises';
+import { PromiseSource } from 'actuallab-core';
 import { getLogs } from 'logging';
 import { SharedSettings } from 'shared-settings';
 

@@ -1,5 +1,5 @@
 import { clamp, Vector2D } from 'math';
-import { delayAsync, PromiseSourceWithTimeout, serialize } from 'promises';
+import { delayAsync, PromiseSourceWithTimeout, serialize } from 'actuallab-core';
 import { DeviceInfo } from 'device-info';
 import { Disposable, DisposableBag, Disposables } from 'disposable';
 import { DocumentEvents, tryPreventDefaultForEvent } from 'event-handling';

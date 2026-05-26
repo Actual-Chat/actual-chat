@@ -1,7 +1,7 @@
 import { deleteFileHandle, getFileHandle, saveFileHandle } from './file-handle-storage';
 import { grantFileUploadPermissionsInvoker, requestFileHandlePermission, GetFilePermissionsRequest } from './file-handle-permissions';
 import { getLogs } from 'logging';
-import { PromiseSource } from 'promises';
+import { PromiseSource } from 'actuallab-core';
 import { v4 as uuidv4 } from 'uuid';
 import { NullableJSObjectReference } from 'UI.Blazor/JSRuntime/nullable-js-object-reference';
 import { AttachmentWebFilePickerRegistry } from '../../Components/ChatMessageEditor/attachment-web-file-picker';

@@ -10,7 +10,6 @@ export default defineConfig({
             // Mirror tsconfig.json paths: bare imports resolve to src/nodejs/src/*
             'logging-init': src('logging-init'),
             'logging': src('logging'),
-            'promises': src('promises'),
             'timeout': src('timeout'),
             'timerQueue': src('timerQueue'),
             'disposable': src('disposable'),

@@ -1,7 +1,7 @@
 import { getLogs } from 'logging';
 import type { MonotonicTime } from 'clocks';
 import { type Disposable, ObjectDisposedError } from 'disposable';
-import { PromiseSourceWithTimeout } from 'promises';
+import { PromiseSourceWithTimeout } from 'actuallab-core';
 import { closeEncodedChunk } from './frame-envelopes';
 
 const { warnLog } = getLogs('AsyncVideoEncoder');
@@ -172,7 +172,7 @@ export abstract class CodecToAsyncAdapter<TIn, TOut, TCodecOutput> implements Di
             return;
         }
         this.closeInputAfterOutput(front.input);
-        if (front.source.isCompleted()) {
+        if (front.source.isCompleted) {
             this.degradeAndReset(`stale-output (index=${front.index})`);
             this.closeOutput(output);
             return;

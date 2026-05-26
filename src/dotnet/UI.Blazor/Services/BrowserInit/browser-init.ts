@@ -3,7 +3,7 @@
 import { Api, streamingApi, uploadsApi } from 'api';
 import { ConnectivityUI } from '../ConnectivityUI/connectivity-ui';
 import { EventHandlerSet } from 'event-handling';
-import { delayAsync, PromiseSource } from 'promises';
+import { delayAsync, PromiseSource } from 'actuallab-core';
 import { AppKind, BrowserInfo, HostKind } from '../BrowserInfo/browser-info';
 import { getLogs } from 'logging';
 import { MainThreadDiagnostics } from 'main-thread-diagnostics';
@@ -113,7 +113,7 @@ export class BrowserInit {
                 }
 
                 await ConnectivityUI.whenReadyToReload('reconnecting');
-                if (this.whenReloading.isCompleted())
+                if (this.whenReloading.isCompleted)
                     return; // Already reloading
 
                 warnLog?.log('startReconnecting: reconnecting...');
@@ -135,7 +135,7 @@ export class BrowserInit {
     }
 
     public static async startReloading(): Promise<void> {
-        if (this.whenReloading.isCompleted())
+        if (this.whenReloading.isCompleted)
             return; // Already reloading
 
         if (!this.isMauiApp) // No "Reloading..." on MAUI app
@@ -158,7 +158,7 @@ export class BrowserInit {
             const reconnectDiv = document.getElementById('components-reconnect-modal');
             if (reconnectDiv) {
                 const checkReconnectDiv = () => {
-                    if (this.whenReloading.isCompleted())
+                    if (this.whenReloading.isCompleted)
                         return;
 
                     const classList = reconnectDiv.classList;
@@ -350,7 +350,7 @@ export class BrowserInit {
             return;
 
         this.connectionState = state;
-        if (this.whenReloading.isCompleted())
+        if (this.whenReloading.isCompleted)
             return;
 
         const appConnectionStateDiv = document.getElementById('app-connection-state');

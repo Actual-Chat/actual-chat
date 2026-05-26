@@ -76,9 +76,9 @@ export {
     RpcClientPeer,
     RpcServerPeer,
     RPC_CLOSE_CODE_UNSUPPORTED_FORMAT,
-    HANDSHAKE_TIMEOUT_MS,
     defaultConnectionUrlResolver,
 } from './rpc-peer.js';
+export { RpcLimits } from './rpc-limits.js';
 export type {
     RemoteHandshake,
     RpcCallOptions,

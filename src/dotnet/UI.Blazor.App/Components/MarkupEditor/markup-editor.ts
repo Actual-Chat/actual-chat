@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-deprecated,@typescript-eslint/no-unsafe-argument,@typescript-eslint/no-unsafe-member-access */
 import { DeviceInfo } from 'device-info';
 import { getOrInheritData } from 'dom-helpers';
-import { throttle } from 'promises';
+import { throttle } from 'actuallab-core';
 import { preventDefaultForEvent } from 'event-handling';
 import { UndoStack } from './undo-stack';
 import { getLogs } from 'logging';

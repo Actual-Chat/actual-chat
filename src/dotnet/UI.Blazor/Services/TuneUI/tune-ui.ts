@@ -1,4 +1,4 @@
-import { delayAsync, PromiseSource } from 'promises';
+import { delayAsync, PromiseSource } from 'actuallab-core';
 import { getLogs } from 'logging';
 import { DeviceInfo } from 'device-info';
 import { SoundPlayer } from './sound-player';

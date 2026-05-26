@@ -1,5 +1,5 @@
 import { EventHandlerSet } from 'event-handling';
-import { delayAsync, PromiseSource, PromiseSourceWithTimeout } from 'promises';
+import { delayAsync, PromiseSource, PromiseSourceWithTimeout } from 'actuallab-core';
 import { getLogs } from 'logging';
 
 const { infoLog, warnLog, errorLog } = getLogs('ConnectivityUI');
@@ -38,7 +38,7 @@ export class ConnectivityUI {
                 globalThis.addEventListener('offline', () => setOnline(false));
             } catch { /* ignore if not available */ }
         }
-        if (!this.whenReady.isCompleted())
+        if (!this.whenReady.isCompleted)
             this.whenReady.resolve();
     }
 

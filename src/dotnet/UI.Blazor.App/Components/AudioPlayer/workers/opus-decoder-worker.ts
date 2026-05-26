@@ -8,7 +8,7 @@ import { AUDIO, AppConstants, initAppConstants } from 'app-constants';
 import { OpusDecoder } from './opus-decoder';
 import { OpusDecoderWorker } from './opus-decoder-worker-contract';
 import { RpcNoWait, rpcServer, RpcTimeout } from 'rpc';
-import { retry } from 'promises';
+import { retry } from 'actuallab-core';
 import { Versioning } from 'versioning';
 import { getLogs } from 'logging';
 import { type SharedSettingsSnapshot } from 'shared-settings';

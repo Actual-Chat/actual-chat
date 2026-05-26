@@ -1,4 +1,4 @@
-import { PromiseSource } from 'promises';
+import { PromiseSource } from 'actuallab-core';
 
 // Mirror of .NET `AppConstants` (single source of truth: `Constants.*`).
 // Populated once at app startup via BrowserInit and propagated to every worker

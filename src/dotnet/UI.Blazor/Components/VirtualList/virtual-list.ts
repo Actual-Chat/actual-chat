@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition */
-import { debounce, PromiseSource, PromiseSourceWithTimeout, throttle } from 'promises';
+import { debounce, PromiseSource, PromiseSourceWithTimeout, throttle } from 'actuallab-core';
 import { NumberRange, Range } from './ts/range';
 import { VirtualListEdge } from './ts/virtual-list-edge';
 import { VirtualListStickyEdgeState } from './ts/virtual-list-sticky-edge-state';
@@ -1091,8 +1091,7 @@ export class VirtualList {
     private readonly updateViewportThrottled = throttle(
         () => this.updateViewport(true),
         UpdateViewportInterval,
-        'default',
-        'updateViewport');
+        'default');
 
     private async updateViewport(isThrottled = false): Promise<void> {
         const rs = this.state.renderState;
@@ -1139,8 +1138,7 @@ export class VirtualList {
     private readonly updateVisibleKeysThrottled = throttle(
         () => this.updateVisibleKeys(),
         UpdateItemVisibilityInterval,
-        'delayHead',
-        'updateVisibleKeys');
+        'delayHead');
     private async updateVisibleKeys(): Promise<void> {
         if (this.isDisposed || !this.state.renderState.keyRange.start)
             return;
@@ -2225,7 +2223,7 @@ export class VirtualList {
         this.updateState('requestData: query', this.state, { query });
 
         const whenRequestDataCompleted = this.whenRequestDataCompleted;
-        if (whenRequestDataCompleted && !whenRequestDataCompleted.isCompleted()) {
+        if (whenRequestDataCompleted && !whenRequestDataCompleted.isCompleted) {
             debugLog?.log(`requestData: the previous request is not completed yet`);
             return;
         }

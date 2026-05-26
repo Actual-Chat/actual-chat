@@ -1,5 +1,5 @@
 import Denque from 'denque';
-import { PromiseSource } from 'promises';
+import { PromiseSource } from 'actuallab-core';
 import { getLogs } from 'logging';
 
 const { debugLog, errorLog } = getLogs('AsyncProcessor');
@@ -27,7 +27,7 @@ export class AsyncProcessor<T> {
         }
 
         this.queue.push(item);
-        if (!this.whenReadyToResume.isCompleted())
+        if (!this.whenReadyToResume.isCompleted)
             this.whenReadyToResume.resolve(undefined);
     }
 

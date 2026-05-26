@@ -2,7 +2,7 @@ import { getLogs } from 'logging';
 import { AudioPlayer } from '../Components/AudioPlayer/audio-player';
 import { opusMediaRecorder } from '../Components/AudioRecorder/opus-media-recorder';
 import { audioContextSource, recordingAudioContextSource } from './audio-context-source';
-import { ResolvedPromise } from 'promises';
+import { ResolvedPromise } from 'actuallab-core';
 
 const { infoLog, warnLog } = getLogs('AudioInfo');
 

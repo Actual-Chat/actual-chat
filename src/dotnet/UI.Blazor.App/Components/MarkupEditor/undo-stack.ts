@@ -1,4 +1,4 @@
-import { throttle, ResettableFunc } from 'promises';
+import { throttle, ResettableFunc } from 'actuallab-core';
 import { getLogs } from 'logging';
 
 const { debugLog } = getLogs('UndoStack');
@@ -8,7 +8,7 @@ export class UndoStack<T> {
     private position = 0;
     private isPushEnabled = true;
     public maxSize = 200;
-    public pushThrottled: ResettableFunc<() => void>
+    public pushThrottled: ResettableFunc<[]>
 
     public constructor(
         public reader: () => T,

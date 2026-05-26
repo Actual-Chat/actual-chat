@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-type-parameters */
 // TODO(AY): review eslint suppressions
-import { PromiseSourceWithTimeout } from 'promises';
+import { PromiseSourceWithTimeout } from 'actuallab-core';
 import { Disposable } from 'disposable';
 import { getLogs } from 'logging';
 
@@ -66,20 +66,7 @@ export class RpcPromise<T> extends PromiseSourceWithTimeout<T> {
     constructor(id?: number) {
         super();
         this.id = id ?? nextRpcPromiseId++;
-        const oldResolve = this.resolve;
-        const oldReject = this.reject;
-        this.resolve = (value: T) => {
-            debugLog?.log(`RpcPromise.resolve[#${this.id}] =`, value)
-            this.unregister();
-            oldResolve(value);
-        };
-        this.reject = (reason: unknown) => {
-            debugLog?.log(`RpcPromise.reject[#${this.id}] =`, reason)
-            this.unregister();
-            oldReject(reason);
-        };
         rpcPromisesInProgress.set(this.id, this);
-        // debugLog?.log(`RpcPromise.ctor[#${this.id}]`);
     }
 
     public static get<T>(id: number): RpcPromise<T> | null {
@@ -88,6 +75,18 @@ export class RpcPromise<T> extends PromiseSourceWithTimeout<T> {
 
     public unregister(): boolean {
         return rpcPromisesInProgress.delete(this.id);
+    }
+
+    override resolve(value: T): boolean {
+        debugLog?.log(`RpcPromise.resolve[#${this.id}] =`, value);
+        this.unregister();
+        return super.resolve(value);
+    }
+
+    override reject(reason?: unknown): boolean {
+        debugLog?.log(`RpcPromise.reject[#${this.id}] =`, reason);
+        this.unregister();
+        return super.reject(reason);
     }
 }
 

@@ -7,7 +7,7 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #code import codecWasm from '@actual-chat/codec/codec.wasm';
 /// #endif
 import { AUDIO } from 'app-constants';
-import { retry } from 'promises';
+import { retry } from 'actuallab-core';
 import { Versioning } from 'versioning';
 import { AudioPlayer } from '../../Components/AudioPlayer/audio-player';
 import { PlaybackState } from '../../Components/AudioPlayer/worklets/feeder-audio-worklet-contract';

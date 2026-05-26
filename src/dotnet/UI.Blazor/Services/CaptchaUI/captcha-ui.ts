@@ -1,5 +1,5 @@
 // noinspection JSUnusedGlobalSymbols
-import { PromiseSource } from 'promises';
+import { PromiseSource } from 'actuallab-core';
 
 let fakeCaptchaMustFail = false;
 

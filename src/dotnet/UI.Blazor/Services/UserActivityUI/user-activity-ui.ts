@@ -1,5 +1,5 @@
 import { DocumentEvents } from 'event-handling';
-import { delayAsync, throttle } from 'promises';
+import { delayAsync, throttle } from 'actuallab-core';
 import { getLogs } from 'logging';
 
 const { debugLog } = getLogs('UserActivityUI');

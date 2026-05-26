@@ -12,7 +12,7 @@ import {
 import { Disposable } from 'disposable';
 import { DocumentEvents, stopEvent } from 'event-handling';
 import { getOrInheritData } from 'dom-helpers';
-import { delayAsync } from 'promises';
+import { delayAsync } from 'actuallab-core';
 import { nextTick } from 'timeout';
 import { Vector2D } from 'math';
 import Escapist from '../../Services/Escapist/escapist';

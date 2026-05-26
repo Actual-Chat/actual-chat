@@ -1,7 +1,7 @@
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import { clearTimeout, setTimeout } from 'timerQueue';
 import { Swiper } from 'swiper';
-import { debounce } from 'promises';
+import { debounce } from 'actuallab-core';
 
 // TODO(Andrey) fix eslint errors
 interface SwiperElement extends HTMLElement {

@@ -3,7 +3,7 @@
 import resamplerModuleFactory, { ResamplerModule, Resampler } from '@actual-chat/resampler';
 import ResamplerWasm from '@actual-chat/resampler/resampler.wasm';
 import { Versioning } from 'versioning';
-import { retry } from 'promises';
+import { retry } from 'actuallab-core';
 import { AudioRingBuffer } from '../audio-ring-buffer';
 
 export class ResamplerWrapper implements Resampler {

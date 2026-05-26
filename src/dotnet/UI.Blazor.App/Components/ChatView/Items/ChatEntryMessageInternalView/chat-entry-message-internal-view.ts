@@ -1,7 +1,7 @@
 // TODO: remove eslint-disables and fix errors
 /* eslint-disable @typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await */
 import { Subject } from 'rxjs';
-import { debounce, ResettableFunc } from 'promises';
+import { debounce, ResettableFunc } from 'actuallab-core';
 import { fastRaf } from 'fast-raf';
 
 const importantClasses = new Set([
@@ -31,7 +31,7 @@ export class ChatEntryMessageInternalView {
     };
     private isResizing = false;
     private skipNext = false;
-    private slowDebouncedChangeSize: ResettableFunc<(height: number) => Promise<void>>;
+    private slowDebouncedChangeSize: ResettableFunc<[height: number]>;
     private disposed$: Subject<void> = new Subject<void>();
 
     static create(blazorRef: DotNet.DotNetObject, messageMarkup: HTMLElement): ChatEntryMessageInternalView {

@@ -1,5 +1,5 @@
 import { from, type PipeOperator } from 'ix-ext';
-import { abortPromise } from 'promises';
+import { abortPromise } from 'actuallab-core';
 import { closeEncodedChunk, type ArrivedChunk } from '../frame-envelopes';
 import type { EncodedFrameBuffer } from '../playback/encoded-frame-buffer';
 

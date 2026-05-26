@@ -1,6 +1,6 @@
 import { BrowserInit } from '../BrowserInit/browser-init';
 import { DeviceInfo } from 'device-info';
-import { delayAsync, PromiseSource } from 'promises';
+import { delayAsync, PromiseSource } from 'actuallab-core';
 import { Interactive } from 'interactive';
 import { ScreenSize } from '../ScreenSize/screen-size';
 import { getLogs } from 'logging';

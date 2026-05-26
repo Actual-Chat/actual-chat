@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { resilientStream, expRetryDelays } from 'resilient-stream';
-import { PromiseSource, cancelled, type Cancelled } from 'promises';
 
 async function collect<T>(iterable: AsyncIterable<T>): Promise<T[]> {
     const result: T[] = [];
@@ -109,18 +108,18 @@ describe('resilientStream', () => {
         expect(attempt).toBe(3);
     });
 
-    it('should cancel via cancel promise', async () => {
-        const cancelSource = new PromiseSource<Cancelled>();
+    it('should cancel via abort signal', async () => {
+        const abortController = new AbortController();
         const stream = resilientStream<number>({
-            provider: () => slowStream(cancelSource),
-            cancel: cancelSource,
+            provider: () => slowStream(abortController),
+            signal: abortController.signal,
         });
 
         const result: number[] = [];
         await expect(async () => {
             for await (const item of stream)
                 result.push(item);
-        }).rejects.toThrow('cancelled');
+        }).rejects.toThrow();
         expect(result).toContain(1);
     });
 
@@ -150,10 +149,10 @@ describe('resilientStream', () => {
     });
 });
 
-async function* slowStream(cancelSource: PromiseSource<Cancelled>): AsyncIterable<number> {
+async function* slowStream(abortController: AbortController): AsyncIterable<number> {
     yield 1;
     await new Promise(resolve => setTimeout(resolve, 50));
-    cancelSource.resolve(cancelled);
+    abortController.abort();
     await new Promise(resolve => setTimeout(resolve, 5000));
     yield 2;
 }

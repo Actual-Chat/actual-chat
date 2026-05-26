@@ -1,5 +1,5 @@
 import { Observable } from 'rxjs';
-import { ResolvedPromise } from 'promises';
+import { ResolvedPromise } from 'actuallab-core';
 import { EventHandlerSet } from 'event-handling';
 import { getLogs } from 'logging';
 import { BrowserInfo } from '../../dotnet/UI.Blazor/Services/BrowserInfo/browser-info';

@@ -4,7 +4,7 @@ import {
     FeederAudioWorklet,
     FeederState,
 } from './feeder-audio-worklet-contract';
-import { ResolvedPromise } from 'promises';
+import { ResolvedPromise } from 'actuallab-core';
 import { rpcClientServer, RpcNoWait } from 'rpc';
 import { Log, getLogs } from 'logging';
 import { AC, whenAppConstantsReady } from 'app-constants';

@@ -10,7 +10,7 @@ import { FeederState, PlaybackState } from './worklets/feeder-audio-worklet-cont
 import { Disposable } from 'disposable';
 import { FeederAudioWorkletNode } from './worklets/feeder-audio-worklet-node';
 import { OpusDecoderWorker } from './workers/opus-decoder-worker-contract';
-import { catchErrors, PromiseSource } from 'promises';
+import { catchErrors, PromiseSource } from 'actuallab-core';
 import { rpcClient, rpcNoWait, rpcSendNoWait } from 'rpc';
 import { Versioning } from 'versioning';
 import { AC, whenAppConstantsReady } from 'app-constants';
@@ -168,14 +168,14 @@ export class AudioPlayer implements Resettable {
     private static readonly ReportPlayingMaxIntervalMs = 1000;
 
     public static get isInitialized() {
-        return AudioPlayer.whenInitialized.isCompleted();
+        return AudioPlayer.whenInitialized.isCompleted;
     }
 
     public onPlaybackStateChanged?: (playbackState: PlaybackState) => void;
 
     public static async init(): Promise<void> {
         this.initStarted = true;
-        if (this.whenInitialized.isCompleted())
+        if (this.whenInitialized.isCompleted)
             return;
 
         if (!decoderWorkerInstance) {
@@ -291,7 +291,7 @@ export class AudioPlayer implements Resettable {
         await Promise.race([
             whenPlaybackStarted,
             this.playingAction.whenDone.then(() => {
-                if (!whenPlaybackStarted.isCompleted())
+                if (!whenPlaybackStarted.isCompleted)
                     throw new Error('Audio playback startup action completed before feeder resume');
             }),
         ]);

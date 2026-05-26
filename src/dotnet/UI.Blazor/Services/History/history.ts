@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { PromiseSource } from 'promises';
+import { PromiseSource } from 'actuallab-core';
 import { getLogs } from 'logging';
 import { BrowserInfo } from '../BrowserInfo/browser-info';
 

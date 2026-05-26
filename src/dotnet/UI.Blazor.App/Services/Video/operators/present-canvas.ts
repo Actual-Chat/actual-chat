@@ -1,5 +1,5 @@
 import { from, type PipeOperator } from 'ix-ext';
-import { delayAsync } from 'promises';
+import { delayAsync } from 'actuallab-core';
 import { aggregateDropTrace, updatePlaybackRateEma, type DecodedFrame } from '../frame-envelopes';
 import { FrameDropStage } from '../frame-drop-trace';
 

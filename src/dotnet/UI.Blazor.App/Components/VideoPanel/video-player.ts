@@ -1,6 +1,6 @@
 import { getLogs } from 'logging';
 import { Api, streamingApi } from 'api';
-import { delayAsync } from 'promises';
+import { delayAsync } from 'actuallab-core';
 
 const RPC_SESSION_DEFAULT = '~';
 import { rpcClientServer, rpcNoWait } from 'rpc';

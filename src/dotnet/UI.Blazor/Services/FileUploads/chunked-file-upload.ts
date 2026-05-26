@@ -1,5 +1,5 @@
 import { getLogs } from 'logging';
-import { delayAsync, OperationCancelledError, PromiseSource } from 'promises';
+import { delayAsync, PromiseSource } from 'actuallab-core';
 import { Api, int64ToNumber, toInt64, uploadsApi } from 'api';
 import { ConnectivityUI } from '../ConnectivityUI/connectivity-ui';
 import { IFileUpload, IUploadStreamSource } from './web-uploads';
@@ -70,7 +70,7 @@ export class ChunkedFileUpload implements IFileUpload {
         upload.whenCompleted.then(() => {
             void reporter.reportUploadSucceed();
         }).catch((e: unknown) => {
-            if (e instanceof OperationCancelledError) {
+            if (isAbortError(e)) {
                 debugLog?.log(`File upload '${uploadId}' cancelled`);
                 void reporter.reportUploadCancelled();
             } else if (e instanceof UploadNotFoundError) {
@@ -116,8 +116,7 @@ export class ChunkedFileUpload implements IFileUpload {
                     this.progressReporter((offset / fileSize) * 100);
                     // Upload chunks
                     while (offset < fileSize) {
-                        if (this.isCancelled())
-                            throw new OperationCancelledError('File upload cancelled');
+                        this.abortController.signal.throwIfAborted();
 
                         const remainingBytes = fileSize - offset;
                         const chunkSize = chunkSizeSelector.getChunkSize();
@@ -166,7 +165,7 @@ export class ChunkedFileUpload implements IFileUpload {
                         }
                     }
                     if (this.isCancelled()) {
-                        this.whenCompletedSource.reject(new OperationCancelledError('File upload cancelled'));
+                        this.whenCompletedSource.reject(this.abortController.signal.reason);
                     } else {
                         this.whenCompletedSource.reject(error);
                     }
@@ -236,9 +235,13 @@ function mapUploadError(e: unknown): unknown {
 function isConnectivityError(e: unknown): boolean {
     if (e instanceof OffsetConflictError || e instanceof UploadNotFoundError || e instanceof UploadTransientFailure)
         return false;
-    if (e instanceof OperationCancelledError)
+    if (isAbortError(e))
         return false;
     return e instanceof Error;
+}
+
+function isAbortError(e: unknown): boolean {
+    return e instanceof DOMException && e.name === 'AbortError';
 }
 
 interface Stat { multiplier: number; ms: number; }

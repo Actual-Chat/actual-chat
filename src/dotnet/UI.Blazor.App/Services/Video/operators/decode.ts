@@ -1,6 +1,6 @@
 import { from, type PipeOperator } from 'ix-ext';
 import { RunningEMA } from 'math';
-import { abortPromise, PromiseSource } from 'promises';
+import { abortPromise, PromiseSource } from 'actuallab-core';
 import { closeEncodedChunk, type ArrivedChunk, type DecodedFrame } from '../frame-envelopes';
 import { createCodecProofTracker, type CodecProofTracker } from '../codec-proof';
 import { HAS_VF_ROTATION_INIT, wrapWithRotation } from '../video-frame-caps';
@@ -208,13 +208,13 @@ async function* decodeAsync(
             stats.decodeRatioEma = decodeRatioEma.value;
             noteFrameDecoded(meta.layerId);
             ready.push(envelope);
-            if (!wakeup.isCompleted()) wakeup.resolve();
+            if (!wakeup.isCompleted) wakeup.resolve();
         },
         onError: (e: Error): void => {
             lastDecoderActivityMs = now();
             pendingError = e;
             codecProofTracker.noteDecoderError();
-            if (!wakeup.isCompleted()) wakeup.resolve();
+            if (!wakeup.isCompleted) wakeup.resolve();
         },
     };
 
@@ -423,7 +423,7 @@ async function* decodeAsync(
                     pending.pop();
                     pendingError ??= e instanceof Error ? e : new Error(String(e));
                     codecProofTracker.noteDecoderError();
-                    if (!wakeup.isCompleted()) wakeup.resolve();
+                    if (!wakeup.isCompleted) wakeup.resolve();
                 }
             } finally {
                 closeEncodedChunk(arrived.chunk);

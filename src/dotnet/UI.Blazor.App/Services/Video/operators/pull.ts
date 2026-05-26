@@ -1,5 +1,5 @@
 import { AsyncIterableX, exclusive, finalize, from } from 'ix-ext';
-import { abortPromise } from 'promises';
+import { abortPromise } from 'actuallab-core';
 import { MonotonicClock } from 'clocks';
 import { closeEncodedChunk, type ArrivedChunk, type PlayerStats } from '../frame-envelopes';
 import { quantize } from '../orientation/quantize';

@@ -1,4 +1,4 @@
-import { throttle } from 'promises';
+import { throttle } from 'actuallab-core';
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import { DeviceInfo } from 'device-info';
 

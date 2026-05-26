@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-unnecessary-condition */
 import { DeviceInfo } from 'device-info';
 import { getLogs } from 'logging';
-import { PromiseSource } from 'promises';
+import { PromiseSource } from 'actuallab-core';
 import { Disposable } from 'disposable';
 
 const { infoLog, errorLog } = getLogs('WebRtcAec');

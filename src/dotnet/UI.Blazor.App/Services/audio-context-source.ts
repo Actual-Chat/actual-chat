@@ -1,7 +1,7 @@
 // TODO: remove eslint-disables and fix errors
 /* eslint-disable @typescript-eslint/no-unnecessary-type-parameters,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/use-unknown-in-catch-callback-variable,@typescript-eslint/require-await */
 import { AUDIO, whenAppConstantsReady } from 'app-constants';
-import { debounce, delayAsync, PromiseSource, ResettableFunc, ResolvedPromise, waitAsync, Cancelled } from 'promises';
+import { debounce, delayAsync, PromiseSource, ResettableFunc, ResolvedPromise, abortPromise } from 'actuallab-core';
 import { Interactive } from 'interactive';
 import { InteractiveUI } from '../../UI.Blazor/Services/InteractiveUI/interactive-ui';
 import { OnDeviceAwake } from 'on-device-awake';
@@ -61,13 +61,13 @@ export function resetMediaSessionMetadata(): void {
 // Lazily constructed once `AUDIO.play.mediaSessionResetDebounceMs` is available.
 // Pre-init invocations are silent no-ops (only user actions trigger this, and
 // those only fire after BrowserInit has completed).
-let _resetMediaSessionDebouncedImpl: ResettableFunc<() => void> | null = null;
+let _resetMediaSessionDebouncedImpl: ResettableFunc<[]> | null = null;
 void whenAppConstantsReady.then(() => {
     _resetMediaSessionDebouncedImpl = debounce(
         () => resetMediaSessionMetadata(),
         AUDIO.play.mediaSessionResetDebounceMs);
 });
-export const resetMediaSessionDebounced: ResettableFunc<() => void> = Object.assign(
+export const resetMediaSessionDebounced: ResettableFunc<[]> = Object.assign(
     () => { _resetMediaSessionDebouncedImpl?.(); },
     { reset: () => { _resetMediaSessionDebouncedImpl?.reset(); } },
 );
@@ -144,7 +144,7 @@ export class AudioContextRef implements Disposable {
         this._attachedTraits.clear();
         this._context = null;
 
-        if (!this._whenFailed.isCompleted())
+        if (!this._whenFailed.isCompleted)
             this._whenFailed.resolve(undefined);
 
         this._whenDisposed.resolve(undefined);
@@ -170,7 +170,7 @@ export class AudioContextRef implements Disposable {
             }
         }
 
-        if (!this._whenReady.isCompleted()) {
+        if (!this._whenReady.isCompleted) {
             this._whenReady.resolve(context);
         } else {
             // If already resolved (e.g., context recycled), create new promise sources
@@ -179,7 +179,7 @@ export class AudioContextRef implements Disposable {
         }
 
         // Reset failed promise if it was completed
-        if (this._whenFailed.isCompleted()) {
+        if (this._whenFailed.isCompleted) {
             this._whenFailed = new PromiseSource<void>();
         }
     }
@@ -192,12 +192,12 @@ export class AudioContextRef implements Disposable {
         this._context = null;
         this._attachedTraits.clear();
 
-        if (!this._whenFailed.isCompleted()) {
+        if (!this._whenFailed.isCompleted) {
             this._whenFailed.resolve(undefined);
         }
 
         // Reset ready promise for next context
-        if (this._whenReady.isCompleted()) {
+        if (this._whenReady.isCompleted) {
             this._whenReady = new PromiseSource<AudioContext>();
         }
     }
@@ -257,7 +257,7 @@ export class AudioContextAction implements Disposable {
         this._disposed = true;
         this._isRunning = false;
 
-        if (!this._whenDone.isCompleted()) {
+        if (!this._whenDone.isCompleted) {
             this._whenDone.resolve(undefined);
         }
     }
@@ -435,7 +435,7 @@ export class AudioContextSource {
         });
     }
 
-    public async whenReady(cancel?: Promise<Cancelled>): Promise<AudioContext> {
+    public async whenReady(signal?: AbortSignal): Promise<AudioContext> {
         // Ensure the maintain loop is running so that `_whenReady` can eventually resolve.
         if (!this._isMaintained) {
             debugLog?.log(`whenReady: auto-start maintain (was inactive)`);
@@ -444,19 +444,23 @@ export class AudioContextSource {
         }
 
         const whenReady = this._whenReady;
-        if (whenReady.isCompleted()) {
+        if (whenReady.isCompleted) {
             const context = await whenReady;
             if (!context || context.state === 'closed' || context !== this._context)
                 this.markNotReady(); // Reset ready state
             else return context;
         }
-        return waitAsync(this._whenReady, cancel);
+        return signal
+            ? Promise.race([this._whenReady, abortPromise(signal)])
+            : this._whenReady;
     }
 
-    public whenNotReady(context: AudioContext, cancel?: Promise<Cancelled>): Promise<void> {
+    public whenNotReady(context: AudioContext, signal?: AbortSignal): Promise<void> {
         if (!context || this._context != context) return ResolvedPromise.Void;
 
-        return waitAsync(this._whenNotReady, cancel);
+        return signal
+            ? Promise.race([this._whenNotReady, abortPromise(signal)])
+            : this._whenNotReady;
     }
 
     public async initContextInteractively(): Promise<void> {
@@ -924,7 +928,8 @@ export class AudioContextSource {
         // _whenReady must be replaced first
         this._whenReady = new PromiseSource<AudioContext>();
         // Complete _whenNotReady
-        if (!this._whenNotReady.isCompleted()) this._whenNotReady.resolve(undefined);
+        if (!this._whenNotReady.isCompleted)
+            this._whenNotReady.resolve(undefined);
     }
 
     private setContextAndMarkReady(context: AudioContext): void {
@@ -939,7 +944,8 @@ export class AudioContextSource {
         debugLog?.log(`markReady: AudioContext:`, Log.ref(context));
 
         // _whenNotReady must be replaced first
-        if (this._whenNotReady.isCompleted()) this._whenNotReady = new PromiseSource<void>();
+        if (this._whenNotReady.isCompleted)
+            this._whenNotReady = new PromiseSource<void>();
         // Complete _whenReady
         this._whenReady.resolve(context);
         this.notifyRefsReady(context);
@@ -1001,7 +1007,7 @@ export class AudioContextSource {
 
                     if (!this._isMaintained) break;
 
-                    const isWakeUpTest = testRequested.isCompleted();
+                    const isWakeUpTest = testRequested.isCompleted;
                     lastTestAt = Date.now();
                     try {
                         await this.test(context, !isWakeUpTest);

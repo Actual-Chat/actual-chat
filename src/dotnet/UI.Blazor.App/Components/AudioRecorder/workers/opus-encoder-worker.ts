@@ -6,7 +6,7 @@ import codecWasm from '@actual-chat/codec/codec.wasm';
 import { AUDIO, AppConstants, initAppConstants } from 'app-constants';
 import Denque from 'denque';
 import { Disposable } from 'disposable';
-import { retry } from 'promises';
+import { retry } from 'actuallab-core';
 import { approximateGain, average, clamp } from 'math';
 import { rpcClientServer, rpcNoWait, RpcNoWait, RpcTimeout } from 'rpc';
 import { Versioning } from 'versioning';

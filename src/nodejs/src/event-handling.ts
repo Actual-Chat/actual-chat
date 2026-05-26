@@ -2,7 +2,7 @@ import { fromEvent, Observable } from 'rxjs';
 import { Disposable } from 'disposable';
 import { getLogs } from 'logging';
 import { Timeout } from 'timeout';
-import { PromiseSource, TimedOut } from 'promises';
+import { PromiseSource, TimedOut } from 'actuallab-core';
 
 const { debugLog, errorLog } = getLogs('EventHandling');
 

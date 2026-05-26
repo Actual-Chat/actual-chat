@@ -6,7 +6,7 @@ import { AudioPlayer } from '../AudioPlayer/audio-player';
 import { recordingAudioContextSource } from '../../Services/audio-context-source';
 import { VoiceActivityChange } from './workers/audio-vad-contract';
 import { getLogs } from 'logging';
-import { throttle } from 'promises';
+import { throttle } from 'actuallab-core';
 import { WebMicrophonePermissionHandler } from './web-microphone-permission-handler';
 import { AudioRecorderState } from './audio-recorder-state';
 import { Subscription } from 'rxjs';

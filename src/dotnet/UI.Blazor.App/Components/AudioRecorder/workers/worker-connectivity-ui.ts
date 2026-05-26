@@ -1,5 +1,5 @@
 import { EventHandlerSet } from 'event-handling';
-import { PromiseSource } from 'promises';
+import { PromiseSource } from 'actuallab-core';
 
 /** Connectivity state propagated from the main thread via RPC */
 export class WorkerConnectivityUI {
@@ -28,7 +28,7 @@ export class WorkerConnectivityUI {
             this._lastCameOnlineAt = Date.now();
         if (isConnected && !wasConnected)
             this._lastCameConnectedAt = Date.now();
-        if (!this.whenReady.isCompleted())
+        if (!this.whenReady.isCompleted)
             this.whenReady.resolve();
 
         if (wasOnline !== isOnline)

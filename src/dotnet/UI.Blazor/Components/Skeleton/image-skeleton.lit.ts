@@ -1,7 +1,7 @@
 import { customElement, property } from 'lit/decorators.js';
 import { createRef, Ref, ref } from 'lit/directives/ref.js';
 import { html, LitElement, nothing } from 'lit';
-import { delayAsync } from 'promises';
+import { delayAsync } from 'actuallab-core';
 import { AC } from 'app-constants';
 
 type ImageState = 'none' | 'skeleton' | 'thumbnail' | 'original';

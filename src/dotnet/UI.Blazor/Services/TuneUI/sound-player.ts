@@ -1,4 +1,4 @@
-import { PromiseSource, PromiseSourceWithTimeout } from 'promises';
+import { PromiseSource, PromiseSourceWithTimeout } from 'actuallab-core';
 import { audioContextSource, AppAudioContext, AudioContextAction } from '../../../UI.Blazor.App/Services/audio-context-source';
 import { DestinationFallbackTrait } from '../../../UI.Blazor.App/Services/audio-context-traits';
 import { getLogs } from 'logging';

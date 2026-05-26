@@ -66,16 +66,16 @@ describe('RpcResult', () => {
 describe('RpcPromise', () => {
     it('should resolve via completeRpc with value', async () => {
         const p = new RpcPromise<string>();
-        expect(p.isCompleted()).toBe(false);
+        expect(p.isCompleted).toBe(false);
         completeRpc(RpcResult.value(p.id, 'hello'));
-        expect(p.isCompleted()).toBe(true);
+        expect(p.isCompleted).toBe(true);
         await expect(p).resolves.toBe('hello');
     });
 
     it('should reject via completeRpc with error', async () => {
         const p = new RpcPromise<string>();
         completeRpc(RpcResult.error(p.id, 'oops'));
-        expect(p.isCompleted()).toBe(true);
+        expect(p.isCompleted).toBe(true);
         await expect(p).rejects.toThrow('oops');
     });
 

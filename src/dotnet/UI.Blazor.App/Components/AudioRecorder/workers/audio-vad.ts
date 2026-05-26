@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-enum-comparison,@typescript-eslint/no-explicit-any */
 import { AUDIO } from 'app-constants';
 import { clamp, lerp, RunningUnitMedian, RunningEMA, approximateGain } from 'math';
-import { ResolvedPromise } from 'promises';
+import { ResolvedPromise } from 'actuallab-core';
 import * as ort from 'onnxruntime-web';
 import ortMjs from './ort-wasm-simd.mjs'
 import ortWasm from './ort-wasm-simd.wasm'

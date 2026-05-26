@@ -4,7 +4,7 @@ import Denque from 'denque';
 import { Disposable } from 'disposable';
 import { EventHandlerSet } from 'event-handling';
 import { ObjectPool } from 'object-pool';
-import { delayAsync } from 'promises';
+import { delayAsync } from 'actuallab-core';
 import { RpcClientPeer, RpcConnectionState, RpcStream } from 'actuallab-rpc';
 import { Api, MediaRpcStreamOptions, streamingApi, toMoment,
     type ApiModule, type AudioFrameDto, type SessionTokenProvider } from 'api';

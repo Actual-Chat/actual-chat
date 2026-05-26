@@ -8,7 +8,6 @@ export default defineConfig({
         alias: {
             'logging-init': src('logging-init'),
             'logging': src('logging'),
-            'promises': src('promises'),
             'timeout': src('timeout'),
             'timerQueue': src('timerQueue'),
             'disposable': src('disposable'),

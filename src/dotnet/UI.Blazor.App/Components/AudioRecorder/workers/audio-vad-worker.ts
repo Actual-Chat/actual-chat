@@ -4,7 +4,7 @@ import WebRtcVadWasm from '@actual-chat/webrtc-vad/webrtc-vad.wasm';
 
 import { AUDIO, AppConstants, initAppConstants } from 'app-constants';
 import Denque from 'denque';
-import { delayAsync, PromiseSource, retry } from 'promises';
+import { delayAsync, PromiseSource, retry } from 'actuallab-core';
 import { Disposable } from 'disposable';
 import { RunningEMA } from 'math';
 import { rpcClientServer, RpcNoWait, rpcNoWait, RpcTimeout } from 'rpc';

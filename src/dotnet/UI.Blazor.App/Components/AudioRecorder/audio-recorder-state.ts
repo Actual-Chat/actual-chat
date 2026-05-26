@@ -1,5 +1,5 @@
 import { Observable, Subject } from 'rxjs';
-import { debounce } from 'promises';
+import { debounce } from 'actuallab-core';
 import { RecorderState } from './opus-media-recorder-contracts';
 import { getLogs } from 'logging';
 

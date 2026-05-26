@@ -1,4 +1,4 @@
-import { delayAsync } from 'promises';
+import { delayAsync } from 'actuallab-core';
 import { Interactive } from 'interactive';
 import { getLogs } from 'logging';
 

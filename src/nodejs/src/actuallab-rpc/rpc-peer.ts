@@ -75,7 +75,7 @@
 //     yet propagate cancellation to the service handler (would require AbortSignal
 //     threading through RpcServiceHost.dispatch).
 
-import { EventHandlerSet, PromiseSource } from '../actuallab-core/index.js';
+import { EventHandlerSet, PromiseSource, TimeoutError, withTimeout } from '../actuallab-core/index.js';
 import { getLogs } from './logging.js';
 import {
     RpcWebSocketConnection,
@@ -112,16 +112,9 @@ function yieldToEventLoop(): Promise<void> {
 
 export const RPC_CLOSE_CODE_UNSUPPORTED_FORMAT = 4001;
 
-/** Maximum time to wait for the server's handshake response after opening the socket. */
-export const HANDSHAKE_TIMEOUT_MS = 10_000;
-
-/** Outbound `$sys.KeepAlive` send period. Mirrors .NET `RpcLimits.KeepAlivePeriod`. */
-export const KEEP_ALIVE_PERIOD_MS = 15_000;
-/** If no inbound `$sys.KeepAlive` has been seen for this long, the peer's
- *  watchdog force-closes the WebSocket (so the reconnect loop can take over
- *  and the UI sees a real `Disconnected` state). Mirrors .NET
- *  `RpcLimits.KeepAliveTimeout` (~3-4 missed keepalives). */
-export const KEEP_ALIVE_TIMEOUT_MS = 55_000;
+// Connect / handshake / keepalive timing limits now live on `RpcLimits`,
+// resolved via `hub.limits` at peer construction. See `rpc-limits.ts` for
+// the override paths (process-wide / per-hub / per-peer).
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('RpcPeer');
 
@@ -220,14 +213,18 @@ export abstract class RpcPeer {
     /** Wall-clock time of the last inbound `$sys.KeepAlive`, or 0 if none yet
      *  for the current connection. Useful for diagnostics. */
     private _lastKeepAliveAt = 0;
-    /** Outbound keep-alive send period (per-peer override for tests). */
-    keepAlivePeriodMs: number = KEEP_ALIVE_PERIOD_MS;
-    /** Inbound keep-alive silence tolerance (per-peer override for tests). */
-    keepAliveTimeoutMs: number = KEEP_ALIVE_TIMEOUT_MS;
+    /** Outbound keep-alive send period. Initialized from `hub.limits` at
+     *  construction; set directly to override on a single peer. */
+    keepAlivePeriodMs: number;
+    /** Inbound keep-alive silence tolerance. Initialized from `hub.limits`
+     *  at construction; set directly to override on a single peer. */
+    keepAliveTimeoutMs: number;
 
     protected constructor(hub: RpcHub, ref: string) {
         this.hub = hub;
         this.ref = ref;
+        this.keepAlivePeriodMs = hub.limits.keepAlivePeriodMs;
+        this.keepAliveTimeoutMs = hub.limits.keepAliveTimeoutMs;
     }
 
     get connection(): RpcConnection | undefined {
@@ -370,7 +367,7 @@ export abstract class RpcPeer {
             this.connectionStateChanged.add(stateHandler);
             // Detach the handler if the call is completed before we ever
             // reach `Connected` — prevents leaking the listener.
-            outboundCall.result.promise
+            outboundCall.result
                 .then(() => this.connectionStateChanged.remove(stateHandler))
                 .catch(() => this.connectionStateChanged.remove(stateHandler));
         }
@@ -388,7 +385,7 @@ export abstract class RpcPeer {
             };
             signal.addEventListener('abort', onAbort, { once: true });
             // Clean up listener when the call completes normally
-            outboundCall.result.promise
+            outboundCall.result
                 .then(() => signal.removeEventListener('abort', onAbort))
                 .catch(() => signal.removeEventListener('abort', onAbort));
         }
@@ -666,9 +663,14 @@ export class RpcClientPeer extends RpcPeer {
      *  `Cookie` headers to the WS upgrade, which the browser `WebSocket`
      *  constructor can't do). Must be set before `start()`. */
     webSocketFactory: ((url: string) => WebSocketLike) | undefined;
+    /** Max time to wait for the WebSocket to reach OPEN before aborting the
+     *  connection attempt. Initialized from `hub.limits` at construction;
+     *  set directly to override on a single peer. */
+    connectTimeoutMs: number;
     /** Max time to wait for the server's handshake response before aborting
-     *  the connection attempt. Mirrors .NET's `Hub.Limits.HandshakeTimeout`. */
-    handshakeTimeoutMs: number = HANDSHAKE_TIMEOUT_MS;
+     *  the connection attempt. Initialized from `hub.limits` at construction;
+     *  set directly to override on a single peer. */
+    handshakeTimeoutMs: number;
     readonly peerChanged = new EventHandlerSet<void>();
     /** Fired when the server rejects the connection due to an unsupported serialization format (close code 4010). */
     readonly unsupportedFormat = new EventHandlerSet<{ reason: string }>();
@@ -703,6 +705,8 @@ export class RpcClientPeer extends RpcPeer {
      */
     constructor(hub: RpcHub, url: string, mustStart = true) {
         super(hub, url);
+        this.connectTimeoutMs = hub.limits.connectTimeoutMs;
+        this.handshakeTimeoutMs = hub.limits.handshakeTimeoutMs;
         this.clientId = guidToBase64Url(this.id);
         const resolver = RpcSerializationFormatResolver.Default;
         this.serializationFormat = resolver.get(parseFormatFromUrl(url) ?? resolver.defaultFormatKey);
@@ -807,7 +811,7 @@ export class RpcClientPeer extends RpcPeer {
 
                     // Derived rejecting promise — used to unblock awaits that
                     // expect a successful signal (whenConnected, handshake).
-                    const closedRejection = whenClosed.promise.then<never>(() => {
+                    const closedRejection = whenClosed.then<never>(() => {
                         throw new Error('Connection failed');
                     });
                     closedRejection.catch(() => { /* noop — prevent unhandled rejection when conn closes normally */ });
@@ -825,7 +829,26 @@ export class RpcClientPeer extends RpcPeer {
 
                     // Race connection open against close — if WS fails to connect,
                     // whenConnected stays pending forever, so we must also watch for close.
-                    await Promise.race([conn.whenConnected, closedRejection]);
+                    // The connect timeout caps how long we wait for the OPEN state: on a
+                    // hung connect (mobile after network change, half-open after sleep)
+                    // the browser may take ~2 min to emit onerror/onclose, which blocks
+                    // the reconnect loop and surfaces as "can't reconnect" to the user.
+                    const connectTimeoutMs = this.connectTimeoutMs;
+                    try {
+                        await withTimeout(
+                            Promise.race([conn.whenConnected, closedRejection]),
+                            connectTimeoutMs,
+                            'Connect timeout');
+                    } catch (e) {
+                        if (e instanceof TimeoutError) {
+                            warnLog?.log(`'${this.ref}': Connect timed out after ${connectTimeoutMs}ms`);
+                            // Force-close the WS so the run loop iterates to retry-delay
+                            // instead of leaking a half-open socket. The browser onclose
+                            // may still take a moment but the loop no longer waits for it.
+                            conn.close();
+                        }
+                        throw e;
+                    }
 
                     // WS open, handshake exchange about to start. Mirrors
                     // .NET's `Handshaking` phase of `RpcPeerConnectionState`.
@@ -852,23 +875,14 @@ export class RpcClientPeer extends RpcPeer {
                     // (half-open TCP, mid-restart server holding the socket briefly)
                     // would block the run loop indefinitely, preventing reconnect.
                     const handshakeTimeoutMs = this.handshakeTimeoutMs;
-                    let handshakeTimer: ReturnType<typeof setTimeout> | undefined;
-                    const handshakeTimeout = new Promise<never>((_, reject) => {
-                        handshakeTimer = setTimeout(() => {
-                            reject(new Error('Handshake timeout'));
-                        }, handshakeTimeoutMs);
-                    });
-                    handshakeTimeout.catch(() => { /* noop */ });
-
                     let remoteHandshake: RemoteHandshake;
                     try {
-                        remoteHandshake = await Promise.race([
-                            this._pendingHandshake.promise,
-                            closedRejection,
-                            handshakeTimeout,
-                        ]);
+                        remoteHandshake = await withTimeout(
+                            Promise.race([this._pendingHandshake, closedRejection]),
+                            handshakeTimeoutMs,
+                            'Handshake timeout');
                     } catch (e) {
-                        if (e instanceof Error && e.message === 'Handshake timeout') {
+                        if (e instanceof TimeoutError) {
                             warnLog?.log(`'${this.ref}': Handshake timed out after ${handshakeTimeoutMs}ms`);
                             // Force-close the socket so the run loop continues to
                             // the retry-delay branch instead of leaking the WS.
@@ -876,7 +890,6 @@ export class RpcClientPeer extends RpcPeer {
                         }
                         throw e;
                     } finally {
-                        if (handshakeTimer !== undefined) clearTimeout(handshakeTimer);
                         this._pendingHandshake = undefined;
                     }
 
@@ -914,7 +927,7 @@ export class RpcClientPeer extends RpcPeer {
 
                     // Wait until disconnected — use the eager whenClosed promise
                     // so we don't miss an already-fired close event.
-                    await whenClosed.promise;
+                    await whenClosed;
                 } catch (e) {
                 // connection failed or handshake failed
                     debugLog?.log(`'${this.ref}': run() iteration failed:`, e);
@@ -1102,7 +1115,7 @@ export class RpcClientPeer extends RpcPeer {
                     signal: closedSignal,
                 },
             );
-            const result = await reconnectCall.result.promise;
+            const result = await reconnectCall.result;
             const bytes = _toBytes(result);
             if (bytes === null) return new Set(eligible.map(c => c.callId));
             return new Set(IncreasingSeqCompressor.deserialize(bytes));

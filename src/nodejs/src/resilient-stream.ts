@@ -1,5 +1,5 @@
 import { getLogs } from 'logging';
-import { OperationCancelledError, cancelled, type Cancelled, PromiseSource, delayAsync } from 'promises';
+import { PromiseSource, delayAsync, abortPromise } from 'actuallab-core';
 
 const { warnLog } = getLogs('ResilientStream');
 
@@ -14,11 +14,11 @@ export function expRetryDelays(minMs: number, maxMs: number): RetryDelayFn {
 // --- Options ---
 
 export interface ResilientStreamOptions<T> {
-    provider: (cancel?: Promise<Cancelled>) => AsyncIterable<T>;
+    provider: (signal?: AbortSignal) => AsyncIterable<T>;
     resetItem?: T;
     retryDelays?: RetryDelayFn;
     maxRetries?: number; // undefined = infinite
-    cancel?: Promise<Cancelled>;
+    signal?: AbortSignal;
 }
 
 // --- ResilientStream ---
@@ -33,7 +33,7 @@ export function resilientStream<T>(options: ResilientStreamOptions<T>): AsyncIte
         resetItem,
         retryDelays = expRetryDelays(100, 5000),
         maxRetries,
-        cancel,
+        signal,
     } = options;
 
     return {
@@ -42,7 +42,8 @@ export function resilientStream<T>(options: ResilientStreamOptions<T>): AsyncIte
             let done = false;
             let error: unknown = undefined;
             let waitingConsumer: PromiseSource<void> | null = null;
-            let cancelled_ = false;
+
+            const isAborted = (): boolean => signal?.aborted === true;
 
             // Start the background producer
             void pushItems();
@@ -52,9 +53,9 @@ export function resilientStream<T>(options: ResilientStreamOptions<T>): AsyncIte
                 try {
                     for (;;) {
                         try {
-                            const source = provider(cancel);
+                            const source = provider(signal);
                             for await (const item of source) {
-                                if (cancelled_) return;
+                                if (isAborted()) return;
                                 buffer.push(item);
                                 waitingConsumer?.resolve(undefined);
                                 waitingConsumer = null;
@@ -66,7 +67,7 @@ export function resilientStream<T>(options: ResilientStreamOptions<T>): AsyncIte
                             return;
                         }
                         catch (e) {
-                            if (cancelled_ || e instanceof OperationCancelledError)
+                            if (isAborted())
                                 return;
 
                             failedTryCount++;
@@ -100,16 +101,15 @@ export function resilientStream<T>(options: ResilientStreamOptions<T>): AsyncIte
                 }
             }
 
-            // Cancel listener
-            void cancel?.then(v => {
-                if (v === cancelled) {
-                    cancelled_ = true;
+            // Abort listener
+            if (signal) {
+                void abortPromise(signal).catch((reason: unknown) => {
                     done = true;
-                    error = new OperationCancelledError();
+                    error = reason;
                     waitingConsumer?.resolve(undefined);
                     waitingConsumer = null;
-                }
-            });
+                });
+            }
 
             return {
                 async next(): Promise<IteratorResult<T>> {

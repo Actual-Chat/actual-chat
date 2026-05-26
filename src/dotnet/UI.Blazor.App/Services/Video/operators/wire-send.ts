@@ -1,6 +1,6 @@
 import { from, type PipeOperator } from 'ix-ext';
 import { RunningEMA } from 'math';
-import { abortPromise } from 'promises';
+import { abortPromise } from 'actuallab-core';
 import { getLogs } from 'logging';
 import {
     aggregateDropTrace,

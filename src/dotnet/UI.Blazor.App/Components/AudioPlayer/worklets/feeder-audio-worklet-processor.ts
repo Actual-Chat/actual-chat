@@ -12,7 +12,7 @@ import {
 } from './feeder-audio-worklet-contract';
 import { rpcClientServer, rpcNoWait, RpcNoWait } from 'rpc';
 import { Disposable } from 'disposable';
-import { ResolvedPromise } from 'promises';
+import { ResolvedPromise } from 'actuallab-core';
 import { getLogs } from 'logging';
 import { BufferHandler } from '../workers/opus-decoder-worker-contract';
 import { AudioRingBuffer } from '../../AudioRecorder/audio-ring-buffer';
