@@ -18,8 +18,10 @@ import { AttachmentWebFilePicker, AttachmentWebFilePickerBackend, PickFileResult
 
 const { debugLog, warnLog } = getLogs('MessageEditor');
 
-const LargeTextPasteThreshold = 4000;
+const LargeTextSuggestFileThreshold = 4_000;
+const LargeTextAutoFileThreshold = 32_000;
 const LargeTextPasteFileName = 'pasted.txt';
+const CanConvertToFileClass = 'text-can-convert-to-file';
 
 export type PanelMode = 'Normal' | 'Narrow';
 
@@ -243,13 +245,29 @@ export class ChatMessageEditor {
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: ClipboardEvent) => this.onInputPaste(event));
 
-        this.markupEditor.changed = () => {
+        this.markupEditor.changed = (_html, text) => {
             this.backupRequired$.next();
             this.updateHasContent();
+            this.updateCanConvertToFile(text);
         }
         this.updateHasContent();
+        this.updateCanConvertToFile(this.markupEditor.getText());
         if (this.isNarrowScreen)
             this.markupEditor.contentDiv.blur(); // We want to see the placeholder on mobile when you open a chat
+    }
+
+    /** Called by Blazor */
+    public convertCurrentTextToAttachment(): void {
+        const text = this.markupEditor?.getText() ?? '';
+        if (text.length < LargeTextSuggestFileThreshold)
+            return;
+        const file = new File([text], LargeTextPasteFileName, { type: 'text/plain' });
+        void this.filePickerBackend.add([{ file: file, fileHandle: null }]);
+    }
+
+    private updateCanConvertToFile(text: string) {
+        const canConvert = text.length >= LargeTextSuggestFileThreshold;
+        this.editorDiv.classList.toggle(CanConvertToFileClass, canConvert);
     }
 
     /** Called by Blazor */
@@ -303,7 +321,7 @@ export class ChatMessageEditor {
 
         if (fileResults.length === 0) {
             const text = clipboardData.getData('text');
-            if (text && text.length >= LargeTextPasteThreshold) {
+            if (text && text.length >= LargeTextAutoFileThreshold) {
                 const file = new File([text], LargeTextPasteFileName, { type: 'text/plain' });
                 fileResults.push({ file: file, fileHandle: null });
                 // Capture-phase + stopImmediatePropagation keeps MarkupEditor.onPaste
