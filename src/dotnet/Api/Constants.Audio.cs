@@ -96,7 +96,7 @@ public static partial class Constants
         public static readonly TimeSpan MinEncodedBufferSize = TimeSpan.FromMilliseconds(30); // 2 frames
         public static readonly TimeSpan DecodedBufferSize = TimeSpan.FromMilliseconds(120); // 6 frames, must be exact
         public static readonly TimeSpan AudioEnginePlaybackLatency = TimeSpan.FromMilliseconds(40);
-        public static readonly TimeSpan PlaybackTargetBufferSize = TimeSpan.Zero;
-        public static readonly TimeSpan PlaybackTargetBufferSizeWithVideo = TimeSpan.FromMilliseconds(60);
+        public static readonly TimeSpan PlaybackTargetBufferSize = TimeSpan.FromMilliseconds(240);
+        public static readonly TimeSpan PlaybackTargetBufferSizeWithVideo = TimeSpan.FromMilliseconds(280);
     }
 }
