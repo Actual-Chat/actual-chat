@@ -82,3 +82,18 @@ export async function detectGPUBackends(): Promise<GPUBackendSupport> {
     debugLog?.log('Detected backends:', support);
     return support;
 }
+
+// Cached probe used by the render-backends to decide whether to transfer
+// the bg-blur OffscreenCanvas to the player worker or stay on the WebGL
+// main-thread painter. transferControlToOffscreen is one-shot, so we
+// must commit to a single answer per canvas; caching the first probe
+// result here keeps that decision stable for the session.
+let webGpuSupportedPromise: Promise<boolean> | null = null;
+
+export function isWebGpuSupported(): Promise<boolean> {
+    webGpuSupportedPromise ??= (async () => {
+        const support = await detectGPUBackends();
+        return support.webgpu;
+    })();
+    return webGpuSupportedPromise;
+}
