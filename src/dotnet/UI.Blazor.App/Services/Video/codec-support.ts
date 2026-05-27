@@ -182,7 +182,7 @@ async function isCodecSupported(
         };
 
         if (category === 'h264') {
-            baseConfig.avc = { format: 'avc' };
+            baseConfig.avc = { format: 'annexb' };
         }
 
         // Firefox often returns false for 'prefer-hardware' but works with 'no-preference'.
@@ -306,7 +306,7 @@ async function probeEncoderUncached(
             hardwareAcceleration,
         };
         if (category === 'h264')
-            config.avc = { format: 'avc' };
+            config.avc = { format: 'annexb' };
         const support = await VideoEncoder.isConfigSupported(config);
         if (!support.supported) {
             debugLog?.log(`probeEncoder: isConfigSupported=false for ${codec} at ${top.width}x${top.height}`);

@@ -204,7 +204,7 @@ export const recorderWorkerImpl: RecorderWorker = {
                     hardwareAcceleration: config.hardwareAcceleration ?? 'prefer-hardware',
                 };
                 if (category === 'h264')
-                    encoderConfig.avc = { format: 'avc' };
+                    encoderConfig.avc = { format: 'annexb' };
                 handle.encoder.configure(encoderConfig);
                 // Stamp the encoder's diagnostic tag with current layer + dims
                 // so the onError log reports the encoder's CURRENT use, not
