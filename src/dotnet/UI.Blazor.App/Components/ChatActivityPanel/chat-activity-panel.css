@@ -190,7 +190,7 @@ body.narrow .layout-header:has(.video-streaming) {
 
 .chat-activity-panel > .c-buttons {
     @apply flex-none flex-x items-center gap-x-4 md:gap-x-2;
-    @apply pl-1 pr-2 md:pr-1;
+    @apply px-1;
 }
 .chat-activity-panel > .c-buttons > .btn {
     @apply px-0;
@@ -417,14 +417,14 @@ body.narrow .chat-activity-panel.listening:after {
     /* height transition is defined in main.css on the wrapper */
 }
 .header-activity-panel-wrapper:has(.not-participating) {
-    @apply py-1 px-2;
+    @apply py-1 px-1;
 }
 .layout-header:not(.expanded):not(.collapsed) .header-activity-panel-wrapper {
     @apply mt-1;
 }
 .header-activity-panel-wrapper .chat-activity-panel {
     @apply absolute z-10 bottom-0 inset-x-0;
-    @apply h-14 w-auto;
+    @apply h-13 w-auto;
     @apply pl-3 pr-2;
 }
 .header-activity-panel-wrapper .chat-activity-panel {

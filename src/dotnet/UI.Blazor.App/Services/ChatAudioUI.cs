@@ -112,6 +112,8 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public ValueTask SetListeningState(ChatId chatId, bool mustListen)
     {
+        if (mustListen)
+            Hub.AudioAttachmentPlayer.OnConversationJoined();
         var now = CpuNow;
         return ActiveChatsUI.UpdateActiveChats(activeChats => {
             if (activeChats.TryGetValue(chatId, out var chat)) {
@@ -155,7 +157,10 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     public ValueTask SetRecordingChatId(ChatId? chatId, bool isPushToTalk = false)
-        => ActiveChatsUI.UpdateActiveChats(activeChats => {
+    {
+        if (chatId is not null)
+            Hub.AudioAttachmentPlayer.OnConversationJoined();
+        return ActiveChatsUI.UpdateActiveChats(activeChats => {
                 var oldRecordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
                 if (oldRecordingChat?.ChatId == chatId)
                     return activeChats;
@@ -220,4 +225,5 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
                 }
             },
             StopToken);
+    }
 }
