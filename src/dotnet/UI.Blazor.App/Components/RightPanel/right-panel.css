@@ -471,6 +471,6 @@ body.hoverable .content-list-rows .c-file-row:hover,
     @apply justify-center gap-y-0.5;
     @apply py-0 pr-16;
 }
-.content-list-links .link-preview .c-description {
+.content-list-links .link-preview:not(.local-link) .c-description {
     @apply hidden;
 }
