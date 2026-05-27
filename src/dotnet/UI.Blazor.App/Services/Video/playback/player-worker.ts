@@ -247,6 +247,7 @@ export const playerWorkerImpl: PlayerWorker = {
         if (modeRaw !== 'auto'
             && modeRaw !== 'webgpu'
             && modeRaw !== 'webgl'
+            && modeRaw !== 'webgl-kawase'
             && modeRaw !== 'canvas2d'
         ) {
             throw new Error(

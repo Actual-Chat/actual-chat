@@ -3,6 +3,7 @@ import type { DecodedFrame } from '../frame-envelopes';
 import { BgBlurRenderer } from '../webgpu/blur';
 import { Canvas2DBgRenderer } from './canvas2d-bg';
 import { WebGlBgRenderer } from './webgl-bg';
+import { WebGlKawaseBgRenderer } from './webgl-kawase';
 import { getLogs } from 'logging';
 
 const { infoLog, warnLog } = getLogs('VideoWebGPU');
@@ -19,12 +20,18 @@ const BG_BLUR_STRENGTH = 20;
 const BG_RENDER_INTERVAL_MS = 100;
 
 // Renderer preference. Sent from main via installBgCanvas.
-//  • 'auto'     — default; resolves to WebGL2 separable-Gaussian (cheapest
-//                 off-thread option, universal browser support).
-//  • 'webgl'    — same as 'auto', spelled explicitly.
-//  • 'webgpu'   — force WebGPU dual-Kawase. Falls back to Canvas2D if init throws.
-//  • 'canvas2d' — force Canvas2D (ctx.filter blur baked into a 64×N bitmap).
-export type BgBlurMode = 'auto' | 'webgpu' | 'webgl' | 'canvas2d';
+//  • 'auto'          — default; resolves to WebGL2 dual-Kawase pyramid
+//                      blur. Same algorithm as 'webgpu' but on a WebGL2
+//                      context; ties or beats WebGPU on the 64×N target
+//                      and uses no platform GPU-API that some browsers
+//                      lack.
+//  • 'webgl-kawase'  — same as 'auto', spelled explicitly.
+//  • 'webgl'         — WebGL2 separable-Gaussian (the earlier default).
+//                      Kept for A/B comparison; flip via `?bgBlur=webgl`.
+//  • 'webgpu'        — force WebGPU dual-Kawase. Falls back to Canvas2D if
+//                      init throws.
+//  • 'canvas2d'      — force Canvas2D (ctx.filter blur baked into a 64×N bitmap).
+export type BgBlurMode = 'auto' | 'webgpu' | 'webgl' | 'webgl-kawase' | 'canvas2d';
 
 interface BgRenderer {
     render(frame: VideoFrame, strength?: number): boolean;
@@ -42,7 +49,7 @@ interface BgRenderer {
 // reads synchronously, so the upstream pipe always keeps its frame.
 export class BgBlurController {
     private renderer: BgRenderer | null = null;
-    private rendererKind: 'webgpu' | 'webgl' | 'canvas2d' | null = null;
+    private rendererKind: 'webgpu' | 'webgl' | 'webgl-kawase' | 'canvas2d' | null = null;
     private active = false;
     private lastRenderAtMs = 0;
 
@@ -59,11 +66,15 @@ export class BgBlurController {
             } else if (mode === 'canvas2d') {
                 this.renderer = new Canvas2DBgRenderer(canvas);
                 this.rendererKind = 'canvas2d';
-            } else {
-                // 'auto' and 'webgl' — WebGL2 separable-Gaussian is the
-                // default; cheapest off-thread option and universal.
+            } else if (mode === 'webgl') {
                 this.renderer = new WebGlBgRenderer(canvas);
                 this.rendererKind = 'webgl';
+            } else {
+                // 'auto' and 'webgl-kawase' — WebGL2 dual-Kawase pyramid is
+                // the default; matches the WebGPU look and runs at least as
+                // fast on the 64×N target.
+                this.renderer = new WebGlKawaseBgRenderer(canvas);
+                this.rendererKind = 'webgl-kawase';
             }
             infoLog?.log(`BgBlurController: installed ${this.rendererKind} renderer (mode=${mode})`);
         } catch (e) {

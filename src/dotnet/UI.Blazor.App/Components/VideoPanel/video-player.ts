@@ -288,8 +288,8 @@ export class VideoPlayer {
         this.bgCanvasEl = bgCanvasEl;
         // Bg canvas always transfers to the worker; the worker constructs
         // the renderer per the mode hint. Default 'auto' resolves to WebGL2
-        // in the worker (cheapest off-thread option, universal). Override
-        // via ?bgBlur=webgpu|webgl|canvas2d|off.
+        // dual-Kawase in the worker (matches the WebGPU look, runs everywhere).
+        // Override via ?bgBlur=webgpu|webgl|webgl-kawase|canvas2d|off.
         const override = readBgBlurOverride();
         if (override === 'off')
             this.bgBlurMode = 'off';
