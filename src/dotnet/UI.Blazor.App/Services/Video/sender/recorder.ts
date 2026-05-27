@@ -20,6 +20,7 @@ import { previewForwarder } from '../operators/preview-forwarder';
 import { applyKeyframePolicy } from '../operators/apply-keyframe-policy';
 import { encode, type EncoderConfigPerLayer, type EncoderFactory } from '../operators/encode';
 import { FloodGate, floodGate } from '../operators/flood-gate';
+import { MutableWireGate, wireGate } from '../operators/wire-gate';
 import { wireSend, type StreamSenderLike } from '../operators/wire-send';
 import { LayerLadderController } from './layer-ladder-controller';
 import type { SenderSession } from './session';
@@ -57,6 +58,12 @@ export interface RecorderConfig {
 
     // -- wire send --
     createSender: (gate: FloodGate) => StreamSenderLike;
+    // When false, the pipeline runs end-to-end but encoded bundles are
+    // discarded before they reach `wireSend` — the server sees nothing.
+    // Used for JoinVideoCallModal warmup so the encoder/HW slot can be
+    // proven on real camera frames before the user clicks Join. Default
+    // `true` preserves the legacy single-shot `startRecording` behavior.
+    initialGateOpen?: boolean;
 }
 
 export class Recorder {
@@ -70,6 +77,7 @@ export class Recorder {
     private forceKeyframeRequested = false;
     // Lives for the duration of one run; null when stopped.
     private ladderController: LayerLadderController | null = null;
+    private wireGateState: MutableWireGate | null = null;
 
     constructor(session: SenderSession) {
         this.session = session;
@@ -87,6 +95,8 @@ export class Recorder {
         this.currentStats = stats;
         const ladderController = new LayerLadderController(config.encoderConfigs);
         this.ladderController = ladderController;
+        const wireGateState = new MutableWireGate(config.initialGateOpen ?? true);
+        this.wireGateState = wireGateState;
         const abortController = new AbortController();
         const abortSignal = abortController.signal;
         const sourceStopController = new AbortController();
@@ -145,6 +155,7 @@ export class Recorder {
                 createEncoder: config.createEncoder,
             }),
             traceDrops<EncodedBundle>(FrameDropStage.SenderEncode),
+            wireGate(wireGateState),
             wireSend({
                 createSender: () => config.createSender(gate),
                 controller: ladderController,
@@ -167,6 +178,7 @@ export class Recorder {
                 this.abortTimeoutReason = null;
                 this.currentWhenDone = null;
                 this.ladderController = null;
+                this.wireGateState = null;
             }
             // Stats persist post-run for one-shot diagnostic reads;
             // cleared on the next `start()`.
@@ -196,6 +208,13 @@ export class Recorder {
         if (!this.abortController)
             return;
         this.forceKeyframeRequested = true;
+    }
+
+    // Flip the wireGate. Closed = encoded bundles are dropped before
+    // wireSend; open = bundles flow to the server. Idempotent; safe to
+    // call on a stopped recorder (no-op).
+    setGateOpen(open: boolean): void {
+        this.wireGateState?.setOpen(open);
     }
 
     // Hot-apply: mutate the running pipeline's layer ladder without stopping

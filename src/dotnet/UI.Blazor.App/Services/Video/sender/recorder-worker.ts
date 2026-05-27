@@ -231,6 +231,7 @@ export const recorderWorkerImpl: RecorderWorker = {
             sourceKind: config.sourceKind ?? 0,
             isFrontCamera: config.isFrontCamera ?? false,
             isIos: config.isIos ?? false,
+            initialGateOpen: config.initialGateOpen ?? true,
         });
         s.whenDone = whenDone;
         // RPC `start()` resolves once the pipeline is wired up; the run
@@ -269,6 +270,12 @@ export const recorderWorkerImpl: RecorderWorker = {
     async requestKeyframe(): Promise<void> {
         const s = requireState();
         s.recorder.requestKeyframe();
+        await Promise.resolve();
+    },
+
+    async setGateOpen(open: boolean): Promise<void> {
+        const s = requireState();
+        s.recorder.setGateOpen(open);
         await Promise.resolve();
     },
 

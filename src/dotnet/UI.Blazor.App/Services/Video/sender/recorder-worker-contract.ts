@@ -27,6 +27,11 @@ export interface WireSafeRecorderConfig {
     // the browser fall back to a SW encoder on machines where the HW
     // encoder slot is broken or exhausted (AMD iGPU + Windows MFT, etc.).
     hardwareAcceleration?: HardwareAcceleration;
+    // When false the recorder pipeline starts with the wire-gate CLOSED:
+    // encode + downstream operators run but no chunk reaches the server.
+    // Caller flips it open via `setGateOpen(true)`. Defaults to true to
+    // preserve legacy `startRecording → ship immediately` behavior.
+    initialGateOpen?: boolean;
 }
 
 export interface RecorderWorkerOptions {
@@ -64,6 +69,9 @@ export interface RecorderWorker extends SharedSettingsWorker {
     ): Promise<void>;
     setTraceKill(avgPeriod: VideoTraceKillPeriod, stage: number): Promise<boolean>;
     requestKeyframe(): Promise<void>;
+    // Open/close the wire-gate on a running pipeline. Independent of
+    // start/stop so warmup → live transitions don't restart the encoder.
+    setGateOpen(open: boolean): Promise<void>;
     // Hot-apply: swap the running pipeline's encoder ladder without
     // recreating the wire RpcStream. Caller must ensure codec parity with
     // the active run (codec swap still requires stop+start).
