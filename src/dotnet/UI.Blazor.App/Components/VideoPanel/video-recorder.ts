@@ -1678,7 +1678,11 @@ export class VideoRecorder {
         if (!this.isRecording || this.disposed)
             return;
 
-        await this.startWorker(ladder);
+        // Preserve the gate-closed warmup state across codec-switch
+        // restarts; without this, a warmup-time encoder failure would
+        // recover into a live stream.
+        const initialGateOpen = this._recordingState !== 'warming-up';
+        await this.startWorker(ladder, initialGateOpen);
     }
 
     private toEncoderConfigs(ladder: LayerConfig[]): EncoderConfigPerLayer[] {
@@ -1725,7 +1729,8 @@ export class VideoRecorder {
         } catch (e) {
             warnLog?.log('restart: stop failed (continuing):', e);
         }
-        await this.startWorker(ladder);
+        const initialGateOpen = this._recordingState !== 'warming-up';
+        await this.startWorker(ladder, initialGateOpen);
     }
 
     private withCodecBitrates(layers: readonly LayerConfig[], codec: string): LayerConfig[] {
