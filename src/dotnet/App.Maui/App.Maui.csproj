@@ -644,8 +644,10 @@
     <BundleResource Include="..\..\..\resources\sounds\converted\attention_ringtone.caf" Link="%(Filename)%(Extension)" />
     <!-- Remove metadata.json from Content to prevent default SDK behavior -->
     <Content Remove="Platforms\iOS\Resources\vad_batched_fp16.mlmodelc\metadata.json" />
-    <!-- Includes all files in the .mlmodelc recursively as BundleResources -->
-    <BundleResource Include="Platforms\iOS\Resources\vad_batched_fp16.mlmodelc\**" />
+    <!-- Includes all files in the .mlmodelc recursively as BundleResources.
+         Link with the .mlmodelc root at the bundle's Resources/ so NSBundle.GetUrlForResource
+         finds it (without the Platforms\iOS\Resources\ prefix it'd otherwise inherit). -->
+    <BundleResource Include="Platforms\iOS\Resources\vad_batched_fp16.mlmodelc\**" Link="vad_batched_fp16.mlmodelc\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-ios'))">
     <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.dev" Link="GoogleService-Info.plist" />
@@ -667,8 +669,10 @@
     <BundleResource Include="..\..\..\resources\sounds\converted\attention_ringtone.caf" Link="%(Filename)%(Extension)" />
     <!-- Remove metadata.json from Content to prevent default SDK behavior -->
     <Content Remove="Platforms\iOS\Resources\vad_batched_fp16.mlmodelc\metadata.json" />
-    <!-- Includes all files in the .mlmodelc recursively as BundleResources -->
-    <BundleResource Include="Platforms\iOS\Resources\vad_batched_fp16.mlmodelc\**" />
+    <!-- Includes all files in the .mlmodelc recursively as BundleResources.
+         Link with the .mlmodelc root at the bundle's Resources/ so NSBundle.GetUrlForResource
+         finds it (without the Platforms\iOS\Resources\ prefix it'd otherwise inherit). -->
+    <BundleResource Include="Platforms\iOS\Resources\vad_batched_fp16.mlmodelc\**" Link="vad_batched_fp16.mlmodelc\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- NOT Windows -->

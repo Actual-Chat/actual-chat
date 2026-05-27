@@ -10,8 +10,9 @@ public class Haptics(AppUIHub hub) : IDisposable
     private const float Sharpness = 0.5f;
     private readonly Lock _lock = new ();
     private readonly Dictionary<Tune, ICHHapticPatternPlayer> _players = new ();
+    private bool _isUnsupported; // true once CHHapticEngine init fails (e.g. on Mac Catalyst)
 
-    private CHHapticEngine HapticEngine => field ??= CreateHapticEngine();
+    private CHHapticEngine? HapticEngine => field ??= CreateHapticEngine();
     protected ILogger Log => field ??= hub.LogFor(GetType());
 
     public void Dispose()
@@ -30,21 +31,24 @@ public class Haptics(AppUIHub hub) : IDisposable
 
     public async Task Vibrate(Tune tune, int[] vibration)
     {
-            if (HapticEngine.IsMutedForHaptics)
-                return;
+        var engine = HapticEngine;
+        if (engine is null || engine.IsMutedForHaptics)
+            return;
 
-            await HapticEngine.StartAsync().ConfigureAwait(false);
-            var player = GetPlayer(tune, vibration);
-            player.Start(0, out var error);
-            error.Assert();
-            await Task.Delay(vibration.Sum(), hub.StopToken).ConfigureAwait(false);
-            player.Cancel(out error);
-            error.Assert();
+        await engine.StartAsync().ConfigureAwait(false);
+        var player = GetPlayer(tune, vibration);
+        player.Start(0, out var error);
+        error.Assert();
+        await Task.Delay(vibration.Sum(), hub.StopToken).ConfigureAwait(false);
+        player.Cancel(out error);
+        error.Assert();
     }
 
-    private CHHapticEngine CreateHapticEngine()
+    private CHHapticEngine? CreateHapticEngine()
     {
-        lock (_lock)
+        lock (_lock) {
+            if (_isUnsupported)
+                return null;
             try {
                 var engine = new CHHapticEngine(out var error);
                 error.Assert();
@@ -54,9 +58,14 @@ public class Haptics(AppUIHub hub) : IDisposable
                 return engine;
             }
             catch (Exception e) {
-                Log.LogError(e, "Failed to create haptic engine");
-                throw;
+                // Mac Catalyst (and some iOS devices) don't expose a Taptic Engine —
+                // CHHapticEngine's initAndReturnError: returns nil. Degrade to no-op
+                // so the rest of the recording pipeline isn't blocked.
+                Log.LogWarning(e, "CHHapticEngine init failed; haptics will be disabled");
+                _isUnsupported = true;
+                return null;
             }
+        }
     }
 
     private ICHHapticPatternPlayer GetPlayer(Tune tune, int[] vibration)
