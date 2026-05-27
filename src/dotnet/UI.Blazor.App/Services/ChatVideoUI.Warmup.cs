@@ -12,9 +12,15 @@ public partial class ChatVideoUI
     private readonly object _warmupLock = new();
     private VideoRecorder? _cameraWarmupRecorder;
     private ChatId? _cameraWarmupChatId;
+    private string? _cameraWarmupDeviceId;
+    private bool _cameraWarmupBlurEnabled;
     private CancellationTokenSource? _cameraWarmupIdleCts;
 
-    public async Task<bool> StartCameraWarmup(ChatId chatId, CancellationToken cancellationToken)
+    public async Task<bool> StartCameraWarmup(
+        ChatId chatId,
+        string? deviceId,
+        bool isBlurEnabled,
+        CancellationToken cancellationToken)
     {
         lock (_warmupLock) {
             if (_cameraWarmupRecorder is not null && _cameraWarmupChatId == chatId)
@@ -37,8 +43,15 @@ public partial class ChatVideoUI
             }
             _cameraWarmupRecorder = recorder;
             _cameraWarmupChatId = chatId;
+            _cameraWarmupDeviceId = deviceId;
+            _cameraWarmupBlurEnabled = isBlurEnabled;
         }
         try {
+            // Apply settings BEFORE warmup so MediaCapture.captureCameraStream
+            // requests the right camera from the start — otherwise the
+            // browser picks a default (often back-cam on mobile).
+            await recorder.SetSelectedCamera(deviceId ?? "", cancellationToken).ConfigureAwait(false);
+            await recorder.SetBlurEnabled(isBlurEnabled, cancellationToken).ConfigureAwait(false);
             await recorder.Warmup(chatId, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
@@ -47,6 +60,7 @@ public partial class ChatVideoUI
                 if (ReferenceEquals(_cameraWarmupRecorder, recorder)) {
                     _cameraWarmupRecorder = null;
                     _cameraWarmupChatId = default;
+                    _cameraWarmupDeviceId = null;
                 }
             }
             _ = recorder.DisposeAsync().AsTask();
@@ -62,6 +76,47 @@ public partial class ChatVideoUI
         }
         _ = AutoExpireWarmup(chatId, idleCts.Token);
         return true;
+    }
+
+    // Modal preview lets the user change camera/blur. Mirror those changes
+    // onto the warmup recorder so it streams the right device on Join.
+    // Device change forces a full re-warmup (JS switchCamera bounces into
+    // startRecording, which would convert warmup → live). Blur-only changes
+    // hot-apply.
+    public async Task UpdateCameraWarmupSettings(
+        ChatId chatId,
+        string? deviceId,
+        bool isBlurEnabled,
+        CancellationToken cancellationToken)
+    {
+        VideoRecorder? recorder;
+        string? prevDeviceId;
+        bool prevBlurEnabled;
+        lock (_warmupLock) {
+            if (_cameraWarmupRecorder is null || _cameraWarmupChatId != chatId)
+                return;
+            recorder = _cameraWarmupRecorder;
+            prevDeviceId = _cameraWarmupDeviceId;
+            prevBlurEnabled = _cameraWarmupBlurEnabled;
+            _cameraWarmupDeviceId = deviceId;
+            _cameraWarmupBlurEnabled = isBlurEnabled;
+        }
+        if (!string.Equals(prevDeviceId, deviceId, StringComparison.Ordinal)) {
+            Log.LogInformation(
+                "UpdateCameraWarmupSettings: deviceId changed ({Prev} -> {Next}) — re-warming",
+                prevDeviceId, deviceId);
+            await CancelCameraWarmup(chatId).ConfigureAwait(false);
+            await StartCameraWarmup(chatId, deviceId, isBlurEnabled, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+        if (prevBlurEnabled != isBlurEnabled) {
+            try {
+                await recorder.ToggleBlur(isBlurEnabled, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogWarning(e, "UpdateCameraWarmupSettings: ToggleBlur failed");
+            }
+        }
     }
 
     private async Task AutoExpireWarmup(ChatId chatId, CancellationToken cancellationToken)
@@ -88,6 +143,7 @@ public partial class ChatVideoUI
             toDispose = _cameraWarmupRecorder;
             _cameraWarmupRecorder = null;
             _cameraWarmupChatId = default;
+            _cameraWarmupDeviceId = null;
             _cameraWarmupIdleCts?.Cancel();
             _cameraWarmupIdleCts?.Dispose();
             _cameraWarmupIdleCts = null;
@@ -119,6 +175,7 @@ public partial class ChatVideoUI
             var claimed = _cameraWarmupRecorder;
             _cameraWarmupRecorder = null;
             _cameraWarmupChatId = default;
+            _cameraWarmupDeviceId = null;
             _cameraWarmupIdleCts?.Cancel();
             _cameraWarmupIdleCts?.Dispose();
             _cameraWarmupIdleCts = null;

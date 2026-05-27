@@ -321,7 +321,11 @@
         }
 
         async Task StartWarmup() {
-            await ChatVideoUI.StartCameraWarmup(ModalModel.Chat.Id, _disposeCts.Token);
+            await ChatVideoUI.StartCameraWarmup(
+                ModalModel.Chat.Id,
+                _selectedDevice?.DeviceId,
+                _isBlurEnabled,
+                _disposeCts.Token);
         }
     }
 
@@ -474,6 +478,16 @@
             return;
 
         await _session.ChangeCamera(device.DeviceId);
+        if (!IsSettingsMode) {
+            // Modal preview camera changed — re-warm so the encoder runs
+            // against the user's actual choice. Otherwise OpenGate would
+            // ship from the camera the warmup was started with.
+            _ = ChatVideoUI.UpdateCameraWarmupSettings(
+                ModalModel.Chat.Id,
+                device.DeviceId,
+                _isBlurEnabled,
+                _disposeCts.Token);
+        }
     }
 
     private Task OnCameraSelectedEvent(CameraSelectedEvent @event, CancellationToken cancellationToken) {
@@ -529,6 +543,13 @@
             return;
 
         await _session.SetBlurEnabled(_isBlurEnabled);
+        if (!IsSettingsMode) {
+            _ = ChatVideoUI.UpdateCameraWarmupSettings(
+                ModalModel.Chat.Id,
+                _selectedDevice?.DeviceId,
+                _isBlurEnabled,
+                _disposeCts.Token);
+        }
     }
 
     private async Task OnCloseSettingsClick() {
