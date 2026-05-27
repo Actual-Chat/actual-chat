@@ -581,6 +581,12 @@ body.hoverable .video-panel .video-panel-toolbar > button:hover,
     container-type: size;
 }
 
+.video-track-player.is-ending {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 150ms ease-out;
+}
+
 /* Blurred background canvas — only visible inside focused container,
    fills the container behind the letterboxed main canvas. The canvas
    renders at 64×N intrinsic resolution; CSS upscales it via object-cover

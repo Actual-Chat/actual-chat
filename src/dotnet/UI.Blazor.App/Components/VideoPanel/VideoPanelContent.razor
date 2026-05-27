@@ -12,26 +12,35 @@
     var isOwnStreaming = isOwnCameraStreaming || isOwnScreenCasting;
     var remoteStreamEndedSuccessfully = ChatVideoUI.ConsumeRemoteStreamEndedSuccessfully();
 
-    // Show "Connecting..." overlay when remote streams briefly disappear;
-    // after 5s timeout, auto-close the panel if streams haven't appeared.
-    // A codec/quality switch can complete the old pull normally before the
-    // replacement stream is registered, so the reconnect grace period wins
-    // over the intentional-end signal once this panel has already seen streams.
+    // Intentional-end signal (sender hung up / codec switch) wins over the
+    // 5s "Connecting..." overlay: when remote streams transition from present
+    // to empty we enter a short ending-grace window (~500ms) so a codec/
+    // quality switch can register a replacement stream before we close the
+    // panel. Two paths trigger grace:
+    //   1. JS reports OnEnded(null) → NotifyRemoteStreamEnded sets the flag
+    //      consumed at line above.
+    //   2. Server removes the stream from the active list first (typical
+    //      for sender hang-up — B's player is unmounted before its OnEnded
+    //      JS callback fires) — caught by hasRemoteStreams transition below.
+    var lostAllStreams = !hasRemoteStreams && _hadRemoteStreams
+        && !_endingGraceActive && !_showConnecting && !_noStreamsTimedOut;
+    if (remoteStreamEndedSuccessfully || lostAllStreams)
+        _endingGraceActive = true;
     if (hasRemoteStreams) {
         _showConnecting = false;
         _noStreamsTimedOut = false;
         _hadRemoteStreams = true;
+        _endingGraceActive = false;
     } else if (isOwnStreaming && !_hadRemoteStreams && !_noStreamsTimedOut) {
         // Recording solo, never had remote peers — show preview, not "Connecting..."
         _showConnecting = false;
+    } else if (_endingGraceActive) {
+        _showConnecting = false;
     } else if (!_noStreamsTimedOut && _hadRemoteStreams) {
         _showConnecting = true;
-    } else if (remoteStreamEndedSuccessfully) {
-        // Remote stream ended normally (sender hung up) — don't show "Connecting..."
-        _showConnecting = false;
     }
 
-    if (m != Model.Loading && !isOwnStreaming && !hasRemoteStreams && !_showConnecting) {
+    if (m != Model.Loading && !isOwnStreaming && !hasRemoteStreams && !_showConnecting && !_endingGraceActive) {
         // TODO(DF): move this logic to ChatVideoUI
         _skipCloseAnimation = m.IsExpanded || m.IsCollapsed || m.IsHidden;
         ChatVideoUI.CloseVideoPanel();
@@ -154,6 +163,8 @@
                     <div class="connecting-spinner"></div>
                     <span>Connecting...</span>
                 </div>
+            } else if (_endingGraceActive) {
+                <UITimer Period="@TimeSpan.FromMilliseconds(500)" IsRecurring="false" Tick="OnEndingGraceTimeout" />
             }
             @foreach (var streamInfo in m.RemoteStreams) {
                 var remoteStreamCls = layout.GetRemoteStreamPlayerClass(streamInfo.StreamId);
@@ -223,6 +234,7 @@
     private Chat? _lastChat;
     private bool _noStreamsTimedOut;
     private bool _showConnecting;
+    private bool _endingGraceActive;
     private bool _hadRemoteStreams;
     private bool _shouldStartClosing;
     private bool _skipCloseAnimation;
@@ -543,6 +555,17 @@
 
     private void OnConnectingTimeout() {
         _showConnecting = false;
+        _noStreamsTimedOut = true;
+        var m = State.Value;
+        if (m.RemoteStreams.Length == 0 && !m.IsOwnRecording && !m.IsOwnScreenCasting) {
+            _skipCloseAnimation = m.IsExpanded || m.IsCollapsed || m.IsHidden;
+            ChatVideoUI.CloseVideoPanel();
+        }
+        StateHasChanged();
+    }
+
+    private void OnEndingGraceTimeout() {
+        _endingGraceActive = false;
         _noStreamsTimedOut = true;
         var m = State.Value;
         if (m.RemoteStreams.Length == 0 && !m.IsOwnRecording && !m.IsOwnScreenCasting) {

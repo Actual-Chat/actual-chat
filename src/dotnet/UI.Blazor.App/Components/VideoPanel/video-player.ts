@@ -166,6 +166,7 @@ export class VideoPlayer {
     private codecCategory = '';
 
     private isPlaying = false;
+    private tileEndingApplied = false;
     private visibilitySubscription: Subscription | null = null;
 
     /** True between `worker.start({...})` and the worker's stream-end
@@ -328,6 +329,18 @@ export class VideoPlayer {
         infoLog?.log(`VideoPlayer registry: added ${streamId}, active=${activePlayers.size}`);
 
         this.playerReady = this.initPlayerWorker(codec, width, height, codecSettings);
+    }
+
+    // Fade the tile out the moment we know the stream has ended gracefully,
+    // so the user doesn't see the last decoded frame frozen during the
+    // Blazor invalidate → recompute → unmount → DisposeAsync → stop() chain.
+    private markTileEnding(reason: string): void {
+        if (this.tileEndingApplied) return;
+        this.tileEndingApplied = true;
+        const tile = this.canvas.parentElement;
+        if (!tile) return;
+        tile.classList.add('is-ending');
+        debugLog?.log(`markTileEnding: ${reason}`);
     }
 
     private applyBackendVisibility(canvas: HTMLCanvasElement, videoEl: HTMLVideoElement): void {
@@ -797,6 +810,7 @@ export class VideoPlayer {
         while (this.isPlaying && !this.codecExclusionRequested) {
             try {
                 await this.runOneAttempt(streamId);
+                this.markTileEnding('graceful-completion');
                 void this.reportEnded(undefined);
                 return;
             } catch (err) {
