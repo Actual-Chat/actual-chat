@@ -794,12 +794,15 @@ export class VideoRecorder {
         // Reuse the warmup ladder's top dims so the encoder keeps its
         // post-orientation-flip resolution. Falls back to camera dims (then
         // device defaults) only if warmup didn't record a ladder.
+        // 0 means unset for cameraWidth/Height — || (not ??) is intentional
+        /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
         const topW = this.warmupTopSize?.width
             || this.cameraWidth
             || (DeviceInfo.isMobile ? 640 : 1280);
         const topH = this.warmupTopSize?.height
             || this.cameraHeight
             || (DeviceInfo.isMobile ? 360 : 720);
+        /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
         let ladder = buildLadder({
             topWidth: topW,
             topHeight: topH,

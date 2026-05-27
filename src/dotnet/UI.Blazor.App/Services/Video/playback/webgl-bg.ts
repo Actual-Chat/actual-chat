@@ -265,7 +265,7 @@ export class WebGlBgRenderer {
         //     registers as MISSING_ATTACHMENT on Chromium, and calling
         //     texImage2D later does not retroactively populate the slot.
         //     Rebinding here makes the FBO complete on first draw.
-        const pairs: Array<[WebGLTexture | null, WebGLFramebuffer | null]> = [
+        const pairs: [WebGLTexture | null, WebGLFramebuffer | null][] = [
             [this.pingTexture, this.pingFbo],
             [this.pongTexture, this.pongFbo],
         ];

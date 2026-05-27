@@ -40,11 +40,11 @@ export class LogView {
 }
 
 function formatLogItem(item: HTMLElement): string {
-    const timestamp = item.querySelector('.c-timestamp')?.textContent?.trim() ?? '';
-    const level = item.querySelector('.c-level')?.textContent?.trim() ?? '';
-    const category = item.querySelector('.c-category')?.textContent?.trim() ?? '';
-    const message = item.querySelector('.c-message')?.textContent?.trim() ?? '';
-    const exception = item.querySelector('.c-exception')?.textContent?.trim() ?? '';
+    const timestamp = item.querySelector('.c-timestamp')?.textContent.trim() ?? '';
+    const level = item.querySelector('.c-level')?.textContent.trim() ?? '';
+    const category = item.querySelector('.c-category')?.textContent.trim() ?? '';
+    const message = item.querySelector('.c-message')?.textContent.trim() ?? '';
+    const exception = item.querySelector('.c-exception')?.textContent.trim() ?? '';
 
     const header = `${timestamp} ${level} [${category}]`;
     const body = exception ? `${message}\n${exception}` : message;

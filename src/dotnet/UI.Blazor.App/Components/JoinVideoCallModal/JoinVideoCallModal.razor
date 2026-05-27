@@ -301,31 +301,19 @@
         // from OnAfterRenderAsync blocks the Blazor render dispatcher and prevents any
         // subsequent click (e.g. Join/Cancel) from running DisposeAsync, so the whole app
         // hangs. OnFirstFrameRendered (JSInvokable) updates CameraState.On when it arrives.
+        // Session.Start handles BOTH the warmup recorder kick-off AND the
+        // modal-display attach (via attachToRecorder). One camera open call,
+        // shared across preview / warmup / openGate live recording — the
+        // browser doesn't have to juggle multiple MediaStreamTracks against
+        // the same camera (which on Android/iOS Safari can wedge with
+        // NotReadableError after a swap).
         _ = BackgroundTask.Run(StartPreview, Log,
             "JoinVideoCallModal preview start failed");
-        // Spin up the real recorder pipeline with the wire-gate closed so the
-        // encoder + HW slot are exercised on actual camera frames during
-        // preview. On Join the gate flips open without restarting the
-        // encoder — see ChatVideoUI.StartCameraWarmup. Settings mode skips:
-        // the recorder is already live there, so warming a second one would
-        // collide on the camera/HW slot.
-        if (!IsSettingsMode) {
-            _ = BackgroundTask.Run(StartWarmup, Log,
-                "JoinVideoCallModal encoder warmup failed");
-        }
         return;
 
         async Task StartPreview() {
             await _session!.Start();
             await InvokeAsync(StateHasChanged);
-        }
-
-        async Task StartWarmup() {
-            await ChatVideoUI.StartCameraWarmup(
-                ModalModel.Chat.Id,
-                _selectedDevice?.DeviceId,
-                _isBlurEnabled,
-                _disposeCts.Token);
         }
     }
 
@@ -403,7 +391,14 @@
                 ModalModel.Chat.Id,
                 () => _isVideoOn,
                 () => _selectedDevice?.DeviceId)
-            : new LocalVideoSession(jsRef, () => _selectedDevice?.DeviceId, () => _isBlurEnabled);
+            : new WarmupRecorderVideoSession(
+                jsRef,
+                ChatVideoUI,
+                ModalModel.Chat.Id,
+                () => _isVideoOn,
+                () => _selectedDevice?.DeviceId,
+                () => _isBlurEnabled,
+                _disposeCts.Token);
 
     public override async ValueTask DisposeAsync() {
         _disposeCts.CancelAndDisposeSilently();
@@ -477,17 +472,10 @@
         if (!_isVideoOn || _session is null)
             return;
 
+        // Session.ChangeCamera routes to the recorder (warmup-aware in
+        // Join mode, live-recorder in Settings mode). No second
+        // ChatVideoUI call — the session owns warmup propagation.
         await _session.ChangeCamera(device.DeviceId);
-        if (!IsSettingsMode) {
-            // Modal preview camera changed — re-warm so the encoder runs
-            // against the user's actual choice. Otherwise OpenGate would
-            // ship from the camera the warmup was started with.
-            _ = ChatVideoUI.UpdateCameraWarmupSettings(
-                ModalModel.Chat.Id,
-                device.DeviceId,
-                _isBlurEnabled,
-                _disposeCts.Token);
-        }
     }
 
     private Task OnCameraSelectedEvent(CameraSelectedEvent @event, CancellationToken cancellationToken) {
@@ -543,13 +531,6 @@
             return;
 
         await _session.SetBlurEnabled(_isBlurEnabled);
-        if (!IsSettingsMode) {
-            _ = ChatVideoUI.UpdateCameraWarmupSettings(
-                ModalModel.Chat.Id,
-                _selectedDevice?.DeviceId,
-                _isBlurEnabled,
-                _disposeCts.Token);
-        }
     }
 
     private async Task OnCloseSettingsClick() {
@@ -609,10 +590,12 @@
     // Nested types
 
     /// <summary>
-    /// Strategy for the modal's live preview. <see cref="LocalVideoSession"/> drives
-    /// an own-stream preview via the modal's JS instance (Join mode);
-    /// <see cref="RecorderVideoSession"/> follows the active <c>VideoRecorder</c>
-    /// through <see cref="ChatVideoUI"/> (Settings mode). The session owns the
+    /// Strategy for the modal's live preview. <see cref="WarmupRecorderVideoSession"/>
+    /// kicks off a warmup <c>VideoRecorder</c> and attaches the modal's canvas to
+    /// its preview pipeline (Join mode); <see cref="RecorderVideoSession"/> follows
+    /// the already-active recorder through <see cref="ChatVideoUI"/> (Settings
+    /// mode). Both ride a single MediaStreamTrack the recorder owns — the modal
+    /// never opens the camera itself. The session owns the
     /// <see cref="CameraState"/> machine and notifies the component via
     /// <see cref="StateChanged"/>; the first actually-rendered frame is funneled
     /// into <see cref="NotifyFirstFrameRendered"/>.
@@ -688,46 +671,57 @@
         }
     }
 
-    /// <summary>Join mode — the modal owns its own preview stream via its JS instance.</summary>
-    private sealed class LocalVideoSession(
+
+    /// <summary>Join mode — kicks off the warmup recorder and attaches the
+    /// modal's display canvas to its preview pipeline. ONE camera open call
+    /// for the entire preview → openGate → live recording flow; no second
+    /// MediaStreamTrack acquisition (which can wedge the camera on iOS
+    /// Safari and some Android browsers).</summary>
+    private sealed class WarmupRecorderVideoSession(
         IJSObjectReference jsRef,
+        ChatVideoUI chatVideoUI,
+        ChatId chatId,
+        Func<bool> getIsVideoOn,
         Func<string?> getSelectedDeviceId,
-        Func<bool> getIsBlurEnabled) : VideoSessionBase
+        Func<bool> getIsBlurEnabled,
+        CancellationToken disposeCt) : VideoSessionBase
     {
-        public override async Task Start() {
-            await StartPreview();
-            if (getIsBlurEnabled() && State is CameraState.On)
-                await SetBlurEnabled(true);
+        public override async Task Start()
+        {
+            if (!getIsVideoOn()) {
+                SetState(CameraState.Off);
+                return;
+            }
+            SetState(CameraState.Starting);
+            // Recorder must register before attachToRecorder can find it.
+            await chatVideoUI.StartCameraWarmup(
+                chatId,
+                getSelectedDeviceId(),
+                getIsBlurEnabled(),
+                disposeCt);
+            await jsRef.InvokeVoidAsync("attachToRecorder");
         }
 
         public override Task ChangeCamera(string deviceId)
-            => SwitchCamera(deviceId);
+        {
+            SetState(CameraState.Starting);
+            return chatVideoUI.UpdateCameraWarmupSettings(
+                chatId, deviceId, getIsBlurEnabled(), disposeCt);
+        }
 
-        public override async Task SetBlurEnabled(bool enabled)
-            => await jsRef.InvokeVoidAsync("toggleBlur", enabled);
+        public override Task SetBlurEnabled(bool enabled)
+            => chatVideoUI.UpdateCameraWarmupSettings(
+                chatId, getSelectedDeviceId(), enabled, disposeCt);
 
-        public override async Task SetVideoEnabled(bool enabled) {
+        public override async Task SetVideoEnabled(bool enabled)
+        {
             if (enabled) {
-                await StartPreview();
-            } else {
-                await jsRef.InvokeVoidAsync("stopPreview");
-                SetState(CameraState.Off);
+                await Start();
             }
-        }
-
-        private async Task StartPreview() {
-            SetState(CameraState.Starting);
-            var success = await jsRef.InvokeAsync<bool>("startPreview", getSelectedDeviceId());
-            // Flip eagerly — `startPreview` returning true means the track is live
-            // and the canvas is drawing. The subsequent OnFirstFrameRendered
-            // callback is a no-op thanks to the `Starting`-only guard in the base.
-            SetState(success ? CameraState.On : CameraState.Unavailable);
-        }
-
-        private async Task SwitchCamera(string deviceId) {
-            SetState(CameraState.Starting);
-            var success = await jsRef.InvokeAsync<bool>("switchCamera", deviceId);
-            SetState(success ? CameraState.On : CameraState.Unavailable);
+            else {
+                SetState(CameraState.Off);
+                await chatVideoUI.CancelCameraWarmup(chatId);
+            }
         }
     }
 
