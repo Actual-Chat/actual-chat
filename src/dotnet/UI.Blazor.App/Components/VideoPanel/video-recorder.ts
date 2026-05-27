@@ -242,7 +242,7 @@ interface LayerInput {
 export type PreviewFrameListener = (frame: VideoFrame) => void | Promise<void>;
 export type PreviewPresentationListener = (presentation: PreviewFramePresentation | null) => void;
 
-export type VideoRecordingState = 'stopped' | 'starting' | 'recording' | 'error';
+export type VideoRecordingState = 'stopped' | 'warming-up' | 'starting' | 'recording' | 'error';
 
 // ---- Worker construction --------------------------------------------------
 
@@ -632,6 +632,98 @@ export class VideoRecorder {
     public addBlurChangeListener(cb: (enabled: boolean) => void): () => void {
         this.blurChangeListeners.add(cb);
         return () => this.blurChangeListeners.delete(cb);
+    }
+
+    // Run the real recorder pipeline with the wire-gate CLOSED so encoded
+    // chunks are discarded before reaching the server. Used by
+    // JoinVideoCallModal to prove the encoder works on actual camera frames
+    // before the user clicks Join. `openGate` flips the same pipeline into
+    // live mode without restarting the encoder. Single top-tier layer is
+    // enough to verify the hardest case; lower tiers spin up on openGate.
+    //
+    // Picks the codec via static support metadata only — `isConfigSupported`
+    // is run by `detectSupportedCodecs`; no synthetic OffscreenCanvas probe.
+    // The encoder either works on real frames or doesn't, and a failure
+    // surfaces via the same OnRecordingError path as `startRecording`.
+    public async warmup(audienceCodecs?: string[]): Promise<void> {
+        if (this.isRecording) {
+            warnLog?.log('warmup: already recording or warming up');
+            return;
+        }
+        this.audienceCodecs = audienceCodecs;
+        this.currentMaxLayerCount = 1;
+        this.setRecordingState('warming-up');
+        this.currentMode = 'camera';
+        infoLog?.log(`Warmup starting... audienceCodecs=[${audienceCodecs?.join(', ') ?? '(none)'}]`);
+
+        try {
+            const isMobile = DeviceInfo.isMobile;
+            const targetSize: Size = isMobile
+                ? { width: 640, height: 360 }
+                : { width: 1280, height: 720 };
+            const wantsPortrait = isMobile
+                && !DeviceInfo.isIos
+                && ScreenOrientation.isObserved
+                && ScreenOrientation.isPortrait;
+            const requestSize: Size = wantsPortrait
+                ? { width: targetSize.height, height: targetSize.width }
+                : targetSize;
+            const targetFramerate = VIDEO.frameRate;
+            this.currentFramerate = targetFramerate;
+
+            const supportedCodecs = await detectSupportedCodecs(requestSize.width, requestSize.height);
+            this.supportedCodecs = supportedCodecs;
+            this.supportedEncoderCategories = this.extractEncoderCategories(supportedCodecs);
+
+            const codecString = this.pickInitialCodec(supportedCodecs, audienceCodecs, requestSize);
+            const codecInfo = supportedCodecs.find(c => c.codec === codecString);
+            this.currentCodecString = codecString;
+            this.currentCodecHardwareAccel = codecInfo?.hardwareAccelerated ?? false;
+            this.currentHardwareAcceleration = 'prefer-hardware';
+
+            let ladder = buildLadder({
+                topWidth: requestSize.width,
+                topHeight: requestSize.height,
+                tierCount: 1,
+                maxTierCount: VIDEO.cameraLayerBaseBitratesKbps.length,
+                bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
+            });
+            ladder = this.withCodecBitrates(ladder, codecString);
+            this.layers = null; // single-tier — no simulcast ladder cached
+            this.fullLayerLadder = null;
+            infoLog?.log(`Warmup codec=${codecString} (hw=${this.currentCodecHardwareAccel}) at ${requestSize.width}x${requestSize.height}`);
+
+            const track = await MediaCapture.captureCameraStream({
+                deviceId: this.selectedCameraDeviceId ?? undefined,
+                frameRate: targetFramerate,
+                width: requestSize.width,
+                height: requestSize.height,
+            });
+            this.inputTrack = track;
+            this.previewTrack = track;
+
+            const trackSettings = track.getSettings();
+            this.cameraWidth = trackSettings.width ?? requestSize.width;
+            this.cameraHeight = trackSettings.height ?? requestSize.height;
+            this.currentFramerate = trackSettings.frameRate ?? targetFramerate;
+
+            track.onended = () => {
+                infoLog?.log('Warmup camera track ended externally — stopping recording');
+                void this.stopRecording();
+            };
+
+            this.ensureWorker();
+            await this.startWorker(ladder, /*initialGateOpen*/ false);
+
+            this.isRecording = true;
+            // State stays 'warming-up' until openGate flips it to 'recording'.
+            infoLog?.log('Warmup pipeline running (wire gate closed)');
+        } catch (error) {
+            this.setRecordingState('error');
+            errorLog?.log('Failed to start warmup:', error);
+            const message = await this.describeStartError(error);
+            await this.blazorRef.invokeMethodAsync('OnRecordingError', message);
+        }
     }
 
     public async startRecording(chatId: string, audienceCodecs?: string[], maxLayerCount = 3): Promise<void> {
@@ -1233,7 +1325,7 @@ export class VideoRecorder {
         this._sharedSettingsRegistration = SharedSettingsWorkerSync.register(this.worker);
     }
 
-    private async startWorker(ladder: LayerConfig[]): Promise<void> {
+    private async startWorker(ladder: LayerConfig[], initialGateOpen = true): Promise<void> {
         if (!this.worker || !this.inputTrack) {
             throw new Error('startWorker: worker or input track missing');
         }
@@ -1376,6 +1468,7 @@ export class VideoRecorder {
             keyframeIntervalFrames: framerate * 3,
             maxKeyFrameIntervalMs: 3000,
             hardwareAcceleration: this.currentHardwareAcceleration,
+            initialGateOpen,
         };
 
         const sourceStartedAtMs = Date.now();
