@@ -36,7 +36,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private Moment ServerNow => Clocks.ServerClock.Now;
     private new ILogger? DebugLog => DebugMode ? Log : null;
 
-    public bool IsAudioSyncEnabled { get; set; } = false; // NOTE(AY): Needs testing!
+    public bool IsAudioSyncEnabled { get; set; } = true;
     public SyncedState<UserReplaySettings> ReplaySettings { get; init; }
     public IState<ReplayState?> ReplayState => _replayState;
     public IState<Moment?> StopRecordingAt => _stopRecordingAt; // CPU time

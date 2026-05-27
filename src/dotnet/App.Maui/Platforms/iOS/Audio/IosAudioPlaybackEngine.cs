@@ -14,6 +14,8 @@ public class IosAudioPlaybackEngine(
     AppUIHub hub
     ) : IAudioPlaybackEngine
 {
+    private const long LagReportIntervalMs = 500;
+
     private readonly DurationTargetingFrameBuffer<AudioFrame> _frames = new(
         static frame => frame.Offset,
         static frame => frame.Duration);
@@ -24,6 +26,7 @@ public class IosAudioPlaybackEngine(
     private OpusDecoder _decoder = null!;
     private Task? _decodeFeedTask;
     private int _endedReported;
+    private long _nextLagReportAtTicks;
 
     private ILogger Log => field ??= hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.NativeAudioPlayer);
@@ -107,10 +110,32 @@ public class IosAudioPlaybackEngine(
 
     private async Task MonitorPlayer(CancellationToken cancellationToken)
     {
-        await foreach (var cPosition in _voicePlayer.PlaybackState.Computed.Changes(cancellationToken).ConfigureAwait(false))
-            backend.OnPlaying(cPosition.Value.Position.TotalSeconds,
-                !cPosition.Value.IsPlaying,
-                cPosition.Value.IsBufferLow);
+        await foreach (var cPosition in _voicePlayer.PlaybackState.Computed.Changes(cancellationToken).ConfigureAwait(false)) {
+            var state = cPosition.Value;
+            backend.OnPlaying(state.Position.TotalSeconds, !state.IsPlaying, state.IsBufferLow);
+            if (state.IsPlaying && state.Position > TimeSpan.Zero)
+                TryReportPresentationLag(state.Position);
+        }
+    }
+
+    private void TryReportPresentationLag(TimeSpan playheadOffset)
+    {
+        var nowTicks = Environment.TickCount64;
+        if (nowTicks < Interlocked.Read(ref _nextLagReportAtTicks))
+            return;
+        Interlocked.Exchange(ref _nextLagReportAtTicks, nowTicks + LagReportIntervalMs);
+
+        var anchor = info.SourceRecordedAt != default ? info.SourceRecordedAt : info.RecordedAt;
+        if (anchor == default)
+            return;
+
+        var lag = hub.Clocks.ServerClock.Now - anchor - playheadOffset + Constants.Audio.AudioEnginePlaybackLatency;
+        try {
+            backend.OnPresentationLag(lag);
+        }
+        catch {
+            // Don't propagate reporting errors
+        }
     }
 
     private async Task DecodeAndFeed(CancellationToken cancellationToken)

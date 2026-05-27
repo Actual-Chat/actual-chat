@@ -37,10 +37,13 @@ internal sealed class WindowsAudioPlaybackEngine(
     private Task? _decodeTask;
     private Task? _delayedPlayTask; // Reference to the delayed Start task to prevent GC
 
+    private const long LagReportIntervalMs = 500;
+
     // Playback reporting state
     private long _playedSamples;
     private volatile bool _isPaused;
     private DateTime _lastReportAt = DateTime.MinValue;
+    private long _nextLagReportAtTicks;
     private int _endedReported;
     private int _decodeCompleted;
 
@@ -334,6 +337,30 @@ internal sealed class WindowsAudioPlaybackEngine(
         var isBufferLow = buffered < Constants.Audio.LowPlaybackBufferDuration;
         try {
             playerBackend.OnPlaying(played, _isPaused, isBufferLow);
+        }
+        catch {
+            // Don't propagate reporting errors
+        }
+        if (!_isPaused && _playedSamples > 0)
+            TryReportPresentationLag(played);
+    }
+
+    private void TryReportPresentationLag(double playheadOffsetSeconds)
+    {
+        var nowTicks = Environment.TickCount64;
+        if (nowTicks < Interlocked.Read(ref _nextLagReportAtTicks))
+            return;
+        Interlocked.Exchange(ref _nextLagReportAtTicks, nowTicks + LagReportIntervalMs);
+
+        var anchor = info.SourceRecordedAt != default ? info.SourceRecordedAt : info.RecordedAt;
+        if (anchor == default)
+            return;
+
+        var lag = Clocks.ServerClock.Now - anchor
+            - TimeSpan.FromSeconds(playheadOffsetSeconds)
+            + Constants.Audio.AudioEnginePlaybackLatency;
+        try {
+            playerBackend.OnPresentationLag(lag);
         }
         catch {
             // Don't propagate reporting errors

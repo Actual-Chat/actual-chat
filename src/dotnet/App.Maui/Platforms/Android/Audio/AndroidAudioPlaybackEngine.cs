@@ -18,6 +18,8 @@ internal sealed class AndroidAudioPlaybackEngine(
     IServiceProvider services
     ) : ProcessorBase, IAudioPlaybackEngine
 {
+    private const long LagReportIntervalMs = 500;
+
     private readonly DurationTargetingFrameBuffer<AudioFrame> _frames = new(
         static frame => frame.Offset,
         static frame => frame.Duration);
@@ -33,8 +35,10 @@ internal sealed class AndroidAudioPlaybackEngine(
     private volatile int _fedSampleCount;
     private volatile int _lastPlayedSampleCount;
     private int _isEnded;
+    private long _nextLagReportAtTicks;
 
     private IAudioCodec AudioCodec => field ??= services.GetRequiredService<IAudioCodec>();
+    private MomentClockSet Clocks => field ??= services.GetRequiredService<MomentClockSet>();
     private ILogger Log => field ??= services.LogFor<AndroidAudioPlaybackEngine>();
 
     public async Task Play(CancellationToken cancellationToken)
@@ -289,6 +293,30 @@ internal sealed class AndroidAudioPlaybackEngine(
         var isPaused = !_audioTrack.IsValid() || _audioTrack.PlayState is PlayState.Paused or PlayState.Stopped;
         try {
             playerBackend.OnPlaying(played, isPaused, isBufferLow);
+        }
+        catch {
+            // Don't propagate reporting errors
+        }
+        if (!isPaused && playedSampleCount > 0)
+            TryReportPresentationLag(played);
+    }
+
+    private void TryReportPresentationLag(double playheadOffsetSeconds)
+    {
+        var nowTicks = Environment.TickCount64;
+        if (nowTicks < Interlocked.Read(ref _nextLagReportAtTicks))
+            return;
+        Interlocked.Exchange(ref _nextLagReportAtTicks, nowTicks + LagReportIntervalMs);
+
+        var anchor = info.SourceRecordedAt != default ? info.SourceRecordedAt : info.RecordedAt;
+        if (anchor == default)
+            return;
+
+        var lag = Clocks.ServerClock.Now - anchor
+            - TimeSpan.FromSeconds(playheadOffsetSeconds)
+            + Constants.Audio.AudioEnginePlaybackLatency;
+        try {
+            playerBackend.OnPresentationLag(lag);
         }
         catch {
             // Don't propagate reporting errors
