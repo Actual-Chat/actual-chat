@@ -1,12 +1,12 @@
 using System.Text.Json;
 using ActualChat.Chat;
-using ActualChat.Mcp.Dtos;
+using ActualChat.Mcp;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Mcp.IntegrationTests;
 
 [Collection(nameof(McpCollection))]
-public class MessageToolsTest(McpCollection.AppHostFixture fixture, ITestOutputHelper @out)
+public class McpMessageToolsTest(McpCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : McpTestBase<McpCollection.AppHostFixture>(fixture, @out)
 {
     [Fact]
@@ -77,7 +77,7 @@ public class MessageToolsTest(McpCollection.AppHostFixture fixture, ITestOutputH
         var result = await client.CallToolAsync("get_id_range", new Dictionary<string, object?> {
             ["chatId"] = chatId.Value,
         });
-        var range = DeserializeResult<IdRange<long>>(result);
+        var range = DeserializeResult<McpIdRange<long>>(result);
         range.FirstId.Should().BeLessThanOrEqualTo(posted[0].LocalId);
         range.LastId.Should().Be(posted[^1].LocalId);
     }
@@ -95,7 +95,7 @@ public class MessageToolsTest(McpCollection.AppHostFixture fixture, ITestOutputH
             ["afterId"] = null,
             ["limit"] = 100,
         });
-        var page = DeserializeResult<ListMessagesResult>(result);
+        var page = DeserializeResult<McpListMessagesResult>(result);
 
         page.Messages.Should().HaveCountGreaterThanOrEqualTo(posted.Length);
         var textOnly = page.Messages.Where(m => !m.IsSystem).ToArray();
@@ -122,7 +122,7 @@ public class MessageToolsTest(McpCollection.AppHostFixture fixture, ITestOutputH
             ["afterId"] = posted[2].LocalId,
             ["limit"] = 100,
         });
-        var page = DeserializeResult<ListMessagesResult>(result);
+        var page = DeserializeResult<McpListMessagesResult>(result);
 
         page.Messages.Should().NotContain(m => m.Id <= posted[2].LocalId);
         page.Messages.Should().Contain(m => m.Id == posted[3].LocalId);
@@ -142,7 +142,7 @@ public class MessageToolsTest(McpCollection.AppHostFixture fixture, ITestOutputH
             ["afterId"] = null,
             ["limit"] = 100,
         });
-        var page = DeserializeResult<ListMessagesResult>(result);
+        var page = DeserializeResult<McpListMessagesResult>(result);
 
         page.Messages.Should().NotContain(m => m.Id == entries[1].LocalId);
         page.Messages.Should().Contain(m => m.Id == entries[0].LocalId);
