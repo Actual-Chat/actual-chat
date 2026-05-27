@@ -4,9 +4,15 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class ChatVideoUI
 {
+    // Bounded modal sit-time; after this the warmup encoder is torn down
+    // to release the HW slot and stop draining battery. Re-warmup happens
+    // on the next StartCameraWarmup call if the user re-engages the modal.
+    private static readonly TimeSpan WarmupIdleTimeout = TimeSpan.FromMinutes(5);
+
     private readonly object _warmupLock = new();
     private VideoRecorder? _cameraWarmupRecorder;
     private ChatId _cameraWarmupChatId;
+    private CancellationTokenSource? _cameraWarmupIdleCts;
 
     public async Task<bool> StartCameraWarmup(ChatId chatId, CancellationToken cancellationToken)
     {
@@ -36,7 +42,6 @@ public partial class ChatVideoUI
         }
         try {
             await recorder.Warmup(chatId, cancellationToken).ConfigureAwait(false);
-            return true;
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "StartCameraWarmup: Warmup failed for chat {ChatId}", chatId);
@@ -49,6 +54,29 @@ public partial class ChatVideoUI
             _ = recorder.DisposeAsync().AsTask();
             return false;
         }
+        // Arm the idle timeout. Cancelled by TryClaim or CancelCameraWarmup;
+        // otherwise fires after WarmupIdleTimeout and tears down.
+        var idleCts = new CancellationTokenSource();
+        lock (_warmupLock) {
+            _cameraWarmupIdleCts?.Cancel();
+            _cameraWarmupIdleCts?.Dispose();
+            _cameraWarmupIdleCts = idleCts;
+        }
+        _ = AutoExpireWarmup(chatId, idleCts.Token);
+        return true;
+    }
+
+    private async Task AutoExpireWarmup(ChatId chatId, CancellationToken cancellationToken)
+    {
+        try {
+            await Task.Delay(WarmupIdleTimeout, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            return;
+        }
+        Log.LogInformation(
+            "Warmup idle timeout reached for chat {ChatId} — disposing recorder", chatId);
+        await CancelCameraWarmup(chatId).ConfigureAwait(false);
     }
 
     public async Task CancelCameraWarmup(ChatId chatId)
@@ -62,6 +90,9 @@ public partial class ChatVideoUI
             toDispose = _cameraWarmupRecorder;
             _cameraWarmupRecorder = null;
             _cameraWarmupChatId = default;
+            _cameraWarmupIdleCts?.Cancel();
+            _cameraWarmupIdleCts?.Dispose();
+            _cameraWarmupIdleCts = null;
         }
         try {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
@@ -90,6 +121,9 @@ public partial class ChatVideoUI
             var claimed = _cameraWarmupRecorder;
             _cameraWarmupRecorder = null;
             _cameraWarmupChatId = default;
+            _cameraWarmupIdleCts?.Cancel();
+            _cameraWarmupIdleCts?.Dispose();
+            _cameraWarmupIdleCts = null;
             return claimed;
         }
     }
