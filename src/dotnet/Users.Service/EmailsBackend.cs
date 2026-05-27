@@ -23,17 +23,18 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
     public virtual async Task<DigestPreview> GetDigestPreview(
         UserId userId, ChatId[] chatIds, DateTime? asOf, CancellationToken cancellationToken)
     {
+        var userLanguage = await GetUserLanguage(userId, cancellationToken).ConfigureAwait(false);
         DigestParameters digestParameters;
         if (chatIds.Length > 0) {
             var now = asOf ?? Clocks.SystemClock.Now;
-            digestParameters = await BuildSpecificChatsDigest(chatIds, now, cancellationToken).ConfigureAwait(false);
+            digestParameters = await BuildSpecificChatsDigest(chatIds, now, userLanguage, cancellationToken).ConfigureAwait(false);
         }
         else {
             var account = await AccountsBackend
                 .Get(userId, cancellationToken)
                 .Require()
                 .ConfigureAwait(false);
-            digestParameters = await BuildUnreadChatsDigest(account, cancellationToken).ConfigureAwait(false);
+            digestParameters = await BuildUnreadChatsDigest(account, userLanguage, cancellationToken).ConfigureAwait(false);
         }
 
         var html = "";
@@ -74,7 +75,8 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             return default;
         }
 
-        var digestParameters = await BuildUnreadChatsDigest(account, cancellationToken).ConfigureAwait(false);
+        var userLanguage = await GetUserLanguage(account.Id, cancellationToken).ConfigureAwait(false);
+        var digestParameters = await BuildUnreadChatsDigest(account, userLanguage, cancellationToken).ConfigureAwait(false);
         if (digestParameters.UnreadChats.Count == 0) {
             diagLog?.LogInformation("<- OnSendDigest. No unread chats");
             return default;
@@ -89,7 +91,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
         return default;
     }
 
-    private async Task<DigestParameters> BuildUnreadChatsDigest(AccountFull account, CancellationToken cancellationToken)
+    private async Task<DigestParameters> BuildUnreadChatsDigest(AccountFull account, Language userLanguage, CancellationToken cancellationToken)
     {
         const int takeChats = 5;
         var totalUnreadCount = 0;
@@ -151,18 +153,19 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
                 return default;
 
             var unreadCount = maxEntryId - chatPosition.EntryLid;
-            return await BuildDigestChat(chatId, now, unreadCount, cancellationToken).ConfigureAwait(false);
+            return await BuildDigestChat(chatId, now, unreadCount, userLanguage, cancellationToken).ConfigureAwait(false);
         }
     }
 
     private async Task<DigestParameters> BuildSpecificChatsDigest(
         IEnumerable<ChatId> chatIds,
         DateTime asOf,
+        Language userLanguage,
         CancellationToken cancellationToken)
     {
         var unreadChats = new List<DigestParameters.DigestChat>();
         foreach (var chatId in chatIds) {
-            var digestChat = await BuildDigestChat(chatId, asOf, 0, cancellationToken).ConfigureAwait(false);
+            var digestChat = await BuildDigestChat(chatId, asOf, 0, userLanguage, cancellationToken).ConfigureAwait(false);
             if (digestChat is not null)
                 unreadChats.Add(digestChat);
         }
@@ -173,7 +176,8 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
         };
     }
 
-    private async Task<DigestParameters.DigestChat?> BuildDigestChat(ChatId chatId, DateTime now, long unreadCount, CancellationToken cancellationToken)
+    private async Task<DigestParameters.DigestChat?> BuildDigestChat(
+        ChatId chatId, DateTime now, long unreadCount, Language userLanguage, CancellationToken cancellationToken)
     {
         var minBeginsAt = now + TimeSpan.FromDays(-1);
         var chat = await ChatsBackend
@@ -191,16 +195,32 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
         if (!messages.Any())
             return default;
 
-        var summarizableMessages = messages
-            .Where(x => !x.IsSystemEntry
-                && !x.IsRemoved
-                && !x.IsContentStreaming
-                && !x.Content.IsNullOrEmpty())
+        var validMessages = messages
+            .Where(x => !x.IsSystemEntry && !x.IsRemoved && !x.IsContentStreaming)
             .ToList();
-        if (summarizableMessages.Count == 0)
+        if (validMessages.Count == 0)
             return default;
 
-        var bulletPoints = await ChatDigestSummarizer.Summarize(summarizableMessages, cancellationToken).ConfigureAwait(false);
+        var hasText = validMessages.Any(x => !x.Content.IsNullOrEmpty());
+        IReadOnlyCollection<string> bulletPoints;
+        if (hasText) {
+            var summarizable = validMessages
+                .Select(WithMediaHint)
+                .Where(x => !x.Content.IsNullOrEmpty())
+                .ToList();
+            bulletPoints = await ChatDigestSummarizer
+                .Summarize(summarizable, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        else {
+            var mediaEntries = validMessages.Where(x => x.Attachments.Length > 0).ToList();
+            if (mediaEntries.Count == 0)
+                return default;
+            var summary = await ChatDigestSummarizer
+                .SummarizeMediaShares(mediaEntries, userLanguage, cancellationToken)
+                .ConfigureAwait(false);
+            bulletPoints = summary.IsNullOrEmpty() ? [] : [summary];
+        }
         if (bulletPoints.Count == 0)
             return default;
 
@@ -210,6 +230,66 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             UnreadCount = unreadCount,
             BulletPoints = bulletPoints,
         };
+    }
+
+    private async Task<Language> GetUserLanguage(UserId userId, CancellationToken cancellationToken)
+    {
+        var settings = await ServerKvasBackend
+            .ForUser(userId)
+            .UserLanguageSettings()
+            .Get(cancellationToken)
+            .ConfigureAwait(false);
+        return settings.Primary;
+    }
+
+    private static ChatEntry WithMediaHint(ChatEntry entry)
+    {
+        if (!entry.Content.IsNullOrEmpty() || entry.Attachments.Length == 0)
+            return entry;
+        return entry with { Content = FormatMediaHint(entry.Attachments) };
+    }
+
+    // Language-neutral bracket form (e.g. "[image]", "[2 images and a video]", "[report.pdf]") so
+    // that the LLM doesn't switch the summary's language to English on media-heavy chats.
+    private static string FormatMediaHint(ChatEntryAttachment[] attachments)
+    {
+        var imageCount = 0;
+        var videoCount = 0;
+        ChatEntryAttachment? firstFile = null;
+        foreach (var a in attachments)
+            if (a.IsSupportedImage())
+                imageCount++;
+            else if (a.IsSupportedVideo())
+                videoCount++;
+            else
+                firstFile ??= a;
+        var fileCount = attachments.Length - imageCount - videoCount;
+
+        var imagePart = imageCount switch {
+            0 => "",
+            1 => "image",
+            _ => $"{imageCount} images",
+        };
+        var videoPart = videoCount switch {
+            0 => "",
+            1 => "video",
+            _ => $"{videoCount} videos",
+        };
+        var filePart = fileCount switch {
+            0 => "",
+            1 => firstFile!.Media.FileName,
+            _ => $"{fileCount} files",
+        };
+        var body = (imagePart.Length, videoPart.Length, filePart.Length) switch {
+            (0, 0, _) => filePart,
+            (0, _, 0) => videoPart,
+            (_, 0, 0) => imagePart,
+            (_, _, 0) => $"{imagePart} and {videoPart}",
+            (_, 0, _) => $"{imagePart} and {filePart}",
+            (0, _, _) => $"{videoPart} and {filePart}",
+            _ => $"{imagePart}, {videoPart}, and {filePart}",
+        };
+        return $"[{body}]";
     }
 
     private static async Task<string> RenderDigest(DigestParameters digestParameters, CancellationToken cancellationToken)
