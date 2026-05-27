@@ -56,8 +56,6 @@
                 videoCls += " camera-starting";
             if (!_isCameraMirrored)
                 videoCls += " no-mirror";
-            if (_encoderUnavailable)
-                videoCls += " encoder-unavailable";
             <div @ref="_containerRef" class="@videoCls">
                 <div class="video-frame">
                     <video class="camera-preview-video live-stream-video"
@@ -71,12 +69,6 @@
                             <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
                         </span>
                     </div>
-                    @if (_encoderUnavailable) {
-                        <div class="c-encoder-error">
-                            <i class="icon-alert-circle text-3xl"></i>
-                            <div class="c-encoder-error-text">@EncoderUnavailableMessage</div>
-                        </div>
-                    }
                 </div>
             </div>
         }
@@ -185,13 +177,6 @@
     private bool _isBlurEnabled;
     private bool _isCameraMirrored = true;
     private bool _isRecording;
-    // Set to true when modal-time encoder probe finds no working HW codec.
-    // Blocks Start Video and surfaces a restart prompt over the preview;
-    // matches the same outcome startRecording would produce later, but
-    // surfaces it before the modal closes so the user has a clear next step.
-    private bool _encoderUnavailable;
-    private const string EncoderUnavailableMessage =
-        "Please restart the app or device to be able to use video.";
     private CameraPermissionState _permission = CameraPermissionState.Unknown;
     private List<VideoDevice> _videoDevices = new();
     private VideoDevice? _selectedDevice;
@@ -225,18 +210,15 @@
         : "Start video";
 
     // Submit conditions:
-    // - Encoder unavailable: hard block — the recording would fail with the
-    //   same restart prompt the moment the modal closes; surface it here.
     // - Video off: enabled iff remote streams exist (joining as viewer makes
     //   sense only when someone else is already streaming).
     // - Video on: require both a resolved device and a settled camera state
     //   (On = preview live, Unavailable = preview failed but user can still
     //   join without a working camera). Starting/Off mean we don't yet know
     //   if the camera works, so block submit.
-    private bool IsSubmitDisabled => _encoderUnavailable
-        || (_isVideoOn
-            ? _selectedDevice is null || PreviewState is not (CameraState.On or CameraState.Unavailable)
-            : !State.Value.HasActiveSession);
+    private bool IsSubmitDisabled => _isVideoOn
+        ? _selectedDevice is null || PreviewState is not (CameraState.On or CameraState.Unavailable)
+        : !State.Value.HasActiveSession;
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
@@ -321,13 +303,15 @@
         // hangs. OnFirstFrameRendered (JSInvokable) updates CameraState.On when it arrives.
         _ = BackgroundTask.Run(StartPreview, Log,
             "JoinVideoCallModal preview start failed");
-        // Run the encoder probe alongside the preview so we surface a wedged
-        // HW encoder before the user clicks Start Video. Settings mode skips:
-        // the recorder is already live there, so any failure is on the
-        // VideoPanel's own preview, not ours.
+        // Spin up the real recorder pipeline with the wire-gate closed so the
+        // encoder + HW slot are exercised on actual camera frames during
+        // preview. On Join the gate flips open without restarting the
+        // encoder — see ChatVideoUI.StartCameraWarmup. Settings mode skips:
+        // the recorder is already live there, so warming a second one would
+        // collide on the camera/HW slot.
         if (!IsSettingsMode) {
-            _ = BackgroundTask.Run(ProbeEncoderSupport, Log,
-                "JoinVideoCallModal encoder probe failed");
+            _ = BackgroundTask.Run(StartWarmup, Log,
+                "JoinVideoCallModal encoder warmup failed");
         }
         return;
 
@@ -336,12 +320,8 @@
             await InvokeAsync(StateHasChanged);
         }
 
-        async Task ProbeEncoderSupport() {
-            if (_jsRef is null) return;
-            var ok = await _jsRef.InvokeAsync<bool>("probeEncoderSupport");
-            if (ok || _disposeCts.IsCancellationRequested) return;
-            _encoderUnavailable = true;
-            await InvokeAsync(StateHasChanged);
+        async Task StartWarmup() {
+            await ChatVideoUI.StartCameraWarmup(ModalModel.Chat.Id, _disposeCts.Token);
         }
     }
 
@@ -433,6 +413,11 @@
         }
         _blazorRef?.Dispose();
         _blazorRef = null;
+        // Modal closed without Join (IsConfirmed false) → tear down the
+        // warmup recorder. When OnJoinClick set IsConfirmed=true, leave it
+        // alone — StateSync will claim it via TryClaimCameraWarmupRecorder.
+        if (!IsSettingsMode && !ModalModel.IsConfirmed)
+            await ChatVideoUI.CancelCameraWarmup(ModalModel.Chat.Id);
         await base.DisposeAsync();
     }
 

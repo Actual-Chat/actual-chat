@@ -1,7 +1,6 @@
 import { getLogs } from 'logging';
 import { MediaCapture } from '../../Services/Video/services/media-capture';
 import { RecorderPreviewView } from '../../Services/Video/services/recorder-preview-view';
-import { probeTopTierEncoderSupport } from '../VideoPanel/video-recorder';
 
 const { infoLog, warnLog, errorLog } = getLogs('JoinVideoCallModal');
 
@@ -134,24 +133,6 @@ export class JoinVideoCallModal {
             await this.startBlurPreview();
         }
         return success;
-    }
-
-    // Modal-time encoder check. Runs the same top-tier probe `startRecording`
-    // would run, so a machine with a wedged HW encoder (every codec fails
-    // configure+encode) is detected while the user is still in the preview UI
-    // — instead of after they click Start Video and the call tile appears.
-    // Cached results are reused by the recorder's own probe later.
-    // Returns true when at least one HW codec (HEVC or H264) passes.
-    public async probeEncoderSupport(): Promise<boolean> {
-        try {
-            const passingCategory = await probeTopTierEncoderSupport();
-            return passingCategory !== null;
-        } catch (e) {
-            // Treat unexpected probe failures as "supported" so the modal stays
-            // permissive — startRecording will surface a real error if needed.
-            errorLog?.log('probeEncoderSupport: probe threw, treating as supported', e);
-            return true;
-        }
     }
 
     // Returns deviceId + facingMode for the modal's own preview track (Join mode).
