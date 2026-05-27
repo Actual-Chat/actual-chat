@@ -55,14 +55,17 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         SetPlaybackState(TimeSpan.FromSeconds(offset * TrackInfo.Speed), isPaused);
     }
 
-    [JSInvokable]
-    public void OnPresentationLag(double lagMs)
+    [JSInvokable("OnPresentationLag")]
+    public void OnPresentationLagMs(double lagMs)
+        => OnPresentationLag(TimeSpan.FromMilliseconds(lagMs));
+
+    public void OnPresentationLag(TimeSpan lag)
     {
         var authorId = (TrackInfo as ChatAudioTrackInfo)?.Author?.Id;
         if (authorId is null)
             return;
 
-        LagTracker.UpdateAudio(authorId, _id, TimeSpan.FromMilliseconds(lagMs));
+        LagTracker.UpdateAudio(authorId, _id, lag);
     }
 
     [JSInvokable]

@@ -154,6 +154,8 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
         StateHasChanged();
     }
 
+    public void OnPresentationLag(TimeSpan lag) { }
+
     [JSInvokable]
     public void OnEnded(string? errorMessage)
     {
