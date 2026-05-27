@@ -11,13 +11,11 @@ public partial class ChatVideoUI
 
     private readonly object _warmupLock = new();
     private VideoRecorder? _cameraWarmupRecorder;
-    private ChatId _cameraWarmupChatId;
+    private ChatId? _cameraWarmupChatId;
     private CancellationTokenSource? _cameraWarmupIdleCts;
 
     public async Task<bool> StartCameraWarmup(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (chatId.IsNone)
-            return false;
         lock (_warmupLock) {
             if (_cameraWarmupRecorder is not null && _cameraWarmupChatId == chatId)
                 return true;
