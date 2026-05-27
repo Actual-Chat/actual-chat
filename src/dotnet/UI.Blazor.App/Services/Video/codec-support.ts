@@ -279,19 +279,21 @@ async function probeEncoderUncached(
     budgetMs: number,
     hardwareAcceleration: HardwareAcceleration,
 ): Promise<EncoderProbeResult> {
-    // Probe only the top-tier encoder. Spinning up N concurrent encoders here
-    // creates cold-start contention not present at runtime (encoders warm,
-    // submission paced), producing false-fails. Top tier dominates simulcast cost.
+    // Codec support is decided by `VideoEncoder.isConfigSupported` alone.
+    // The previous implementation spun up a real encoder and pushed 8
+    // synthetic OffscreenCanvas frames at the top resolution to verify HW
+    // throughput; under GPU contention (modal preview + bg-blur shader +
+    // camera capture all running) that synthetic load false-fails on
+    // healthy systems, especially iOS (1 HW encoder slot) and Windows MFT.
+    // Real-frame validation now happens at the running pipeline's
+    // boundary: encoder errors during actual recording drive codec
+    // fallback at runtime, not in a pre-flight probe.
     if (layers.length === 0)
         return { supported: false, medianEncodeMs: 0, failedStage: 'configure' };
+    void frameCount;
+    void budgetMs;
     const category = getCodecCategory(codec);
     const top = layers[layers.length - 1];
-    let encoder: VideoEncoder | null = null;
-    let encoderError: unknown = null;
-    const frames: VideoFrame[] = [];
-    let outputCount = 0;
-    let resolveAllOutputs: () => void = () => { /* set below */ };
-    const allOutputsPromise = new Promise<void>(r => { resolveAllOutputs = r; });
 
     try {
         const config: VideoEncoderConfig = {
@@ -307,112 +309,14 @@ async function probeEncoderUncached(
             config.avc = { format: 'avc' };
         const support = await VideoEncoder.isConfigSupported(config);
         if (!support.supported) {
-            debugLog?.log(`probeEncoder: configure fail for ${codec} at ${top.width}x${top.height}`);
+            debugLog?.log(`probeEncoder: isConfigSupported=false for ${codec} at ${top.width}x${top.height}`);
             return { supported: false, medianEncodeMs: 0, failedStage: 'configure' };
         }
-        encoder = new VideoEncoder({
-            output: () => {
-                // WebCodecs guarantees FIFO output ordering, so the i-th output
-                // corresponds to the i-th submitted frame. Close that frame now.
-                if (outputCount < frames.length) {
-                    try { frames[outputCount].close(); } catch { /* already closed */ }
-                }
-                outputCount++;
-                if (outputCount >= frameCount) {
-                    resolveAllOutputs();
-                }
-            },
-            // Hardware encoders can fail asynchronously (NVENC contention,
-            // VideoToolbox init quirks). Capture and unblock the await so
-            // the probe fails fast instead of hanging.
-            error: e => {
-                encoderError = e;
-                debugLog?.log(`probeEncoder: encoder error for ${codec}`, e);
-                resolveAllOutputs();
-            },
-        });
-        encoder.configure(config);
-
-        const srcW = top.width;
-        const srcH = top.height;
-        const canvas = new OffscreenCanvas(srcW, srcH);
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-            warnLog?.log('probeEncoder: 2D context unavailable on OffscreenCanvas');
-            return { supported: false, medianEncodeMs: 0, failedStage: 'configure' };
-        }
-
-        const frameDurationUs = Math.round(1_000_000 / 30);
-        const frameDurationMs = 1000 / 30;
-        const totalBudgetMs = frameCount * budgetMs + 500;
-
-        // Pre-create all VideoFrames OUTSIDE the timed encode loop. Canvas →
-        // VideoFrame involves a GPU texture upload (~3.7 MB at 1280x720
-        // RGBA), and OffscreenCanvas 2D fillRect itself can hit
-        // compositor sync. With camera capture concurrently using the GPU,
-        // doing this inline with encode submission contaminates the
-        // throughput measurement — frame-creation cost gets billed to the
-        // encoder.
-        const tFramesStart = performance.now();
-        for (let f = 0; f < frameCount; f++) {
-            ctx.fillStyle = `rgb(${(f * 31) & 0xff}, ${(f * 61) & 0xff}, ${(f * 127) & 0xff})`;
-            ctx.fillRect(0, 0, srcW, srcH);
-            const srcFrame = new VideoFrame(canvas, { timestamp: f * frameDurationUs });
-            frames.push(srcFrame);
-        }
-        const framePrepMs = performance.now() - tFramesStart;
-
-        // Now submit all frames back-to-back; the encoder is free to
-        // pipeline. Track encode-only wall-clock so frame prep is excluded.
-        const t0 = performance.now();
-        for (let f = 0; f < frameCount; f++) {
-            try {
-                encoder.encode(frames[f], { keyFrame: f === 0 });
-            } catch (e) {
-                errorLog?.log(`probeEncoder encode threw`, e);
-                return { supported: false, medianEncodeMs: 0, failedStage: 'encode' };
-            }
-        }
-
-        // Race all-outputs against the total wall-clock budget.
-        const raceResult = await Promise.race([
-            allOutputsPromise.then(() => 'completed' as const),
-            new Promise<'timeout'>(resolve =>
-                setTimeout(() => resolve('timeout'), totalBudgetMs)),
-        ]);
-
-        const elapsedMs = performance.now() - t0;
-        const avgPerFrameMs = elapsedMs / Math.max(1, outputCount);
-
-        if (encoderError) {
-            debugLog?.log(`probeEncoder: ${codec} (top-layer solo) @ ${top.width}x${top.height} — encoder error after ${outputCount}/${frameCount} outputs in ${elapsedMs.toFixed(1)}ms (framePrep=${framePrepMs.toFixed(1)}ms), FAIL`);
-            return { supported: false, medianEncodeMs: avgPerFrameMs, failedStage: 'encode' };
-        }
-        if (raceResult === 'timeout') {
-            debugLog?.log(`probeEncoder: ${codec} (top-layer solo) @ ${top.width}x${top.height} — TIMEOUT @ ${elapsedMs.toFixed(1)}ms with ${outputCount}/${frameCount} outputs (budget=${totalBudgetMs}ms, avg=${avgPerFrameMs.toFixed(1)}ms/frame, framePrep=${framePrepMs.toFixed(1)}ms), FAIL`);
-            return { supported: false, medianEncodeMs: avgPerFrameMs, failedStage: 'encode' };
-        }
-        // Real-frame-interval comparison: avg per-frame wall-clock (encode
-        // only, frame prep excluded) must be ≤ budgetMs to claim the codec
-        // can sustain ~30fps.
-        const supported = avgPerFrameMs <= budgetMs;
-        debugLog?.log(`probeEncoder: ${codec} (top-layer solo) @ ${top.width}x${top.height} — pipelined ${frameCount} frames in ${elapsedMs.toFixed(1)}ms (avg=${avgPerFrameMs.toFixed(1)}ms/frame, frameInterval=${frameDurationMs.toFixed(1)}ms, budget=${budgetMs}ms/frame, framePrep=${framePrepMs.toFixed(1)}ms), ${supported ? 'PASS' : 'FAIL'}`);
-        return { supported, medianEncodeMs: avgPerFrameMs, failedStage: supported ? null : 'encode' };
+        debugLog?.log(`probeEncoder: isConfigSupported=true for ${codec} at ${top.width}x${top.height} (hwAccel=${hardwareAcceleration})`);
+        return { supported: true, medianEncodeMs: 0, failedStage: null };
     } catch (error) {
         errorLog?.log('probeEncoder: unexpected error', error);
         return { supported: false, medianEncodeMs: 0, failedStage: 'configure' };
-    } finally {
-        // Close any frames whose output never arrived (encoder errored or
-        // timed out). Successfully-emitted frames are closed in the output
-        // callback by index, so this loop only catches the un-emitted tail.
-        for (let i = outputCount; i < frames.length; i++) {
-            try { frames[i].close(); } catch { /* already closed */ }
-        }
-        // Always close — probe never parks. Failed codec must release the HW
-        // slot so the next codec category can claim it.
-        if (encoder) {
-            try { encoder.close(); } catch { /* already closed */ }
-        }
     }
 }
 
