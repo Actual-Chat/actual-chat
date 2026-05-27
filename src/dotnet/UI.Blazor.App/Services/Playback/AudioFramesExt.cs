@@ -35,7 +35,7 @@ internal static class AudioFramesExt
             if (mode != CatchUpMode.HardSkip && sampleIn <= 0) {
                 var desired = TimeSpan.Zero;
                 try {
-                    desired = await policy.GetDesiredCatchUp(authorId, cancellationToken).ConfigureAwait(false);
+                    desired = (await policy.GetDesiredCatchUp(authorId, cancellationToken).ConfigureAwait(false)).Desired;
                 }
                 catch (OperationCanceledException) {
                     throw;

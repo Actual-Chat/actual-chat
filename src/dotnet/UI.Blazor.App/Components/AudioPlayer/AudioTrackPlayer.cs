@@ -29,6 +29,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 
     private IMediaMetadataUI MediaMetadataUI => field ??= Services.GetRequiredService<IMediaMetadataUI>();
     private PlaybackLagTracker LagTracker => field ??= Services.GetRequiredService<PlaybackLagTracker>();
+    private AudioSyncDiagnostics SyncDiagnostics => field ??= Services.GetRequiredService<AudioSyncDiagnostics>();
     private ChatAudioUI ChatAudioUI => field ??= Services.GetRequiredService<ChatAudioUI>();
     private IAudioCatchUpPolicy AudioCatchUpPolicy => field ??= Services.GetRequiredService<IAudioCatchUpPolicy>();
     private IAudioPlaybackEngineFactory Factory { get; }
@@ -165,10 +166,13 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 
     private async ValueTask ApplyAudioSync(AudioFrame frame, CancellationToken cancellationToken)
     {
-        if (!ChatAudioUI.IsAudioSyncEnabled)
-            return;
         if (TrackInfo is not ChatAudioTrackInfo { Author.Id: { } authorId })
             return;
+        if (!ChatAudioUI.IsAudioSyncEnabled) {
+            SyncDiagnostics.RecordDecision(authorId, TimeSpan.Zero, AudioSyncSkipReason.SyncDisabled);
+            SyncDiagnostics.RecordCommand(authorId, AudioSyncCommand.None);
+            return;
+        }
         if (frame.Offset < _audioSyncSuppressedUntil)
             return;
 
@@ -178,9 +182,9 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         }
         _audioSyncSampleIn = AudioSyncPolicySamplePeriodFrames;
 
-        var desired = TimeSpan.Zero;
+        var decision = new AudioCatchUpDecision(TimeSpan.Zero, AudioSyncSkipReason.None);
         try {
-            desired = await AudioCatchUpPolicy.GetDesiredCatchUp(authorId, cancellationToken).ConfigureAwait(false);
+            decision = await AudioCatchUpPolicy.GetDesiredCatchUp(authorId, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
             throw;
@@ -188,14 +192,20 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         catch (Exception e) {
             Log.LogWarning(e, "Audio catch-up policy failed for {AuthorId}", authorId);
         }
-        if (desired <= TimeSpan.Zero || _playbackEngine == null)
+        SyncDiagnostics.RecordDecision(authorId, decision.Desired, decision.Reason);
+
+        var desired = decision.Desired;
+        if (desired <= TimeSpan.Zero || _playbackEngine == null) {
+            SyncDiagnostics.RecordCommand(authorId, AudioSyncCommand.None);
             return;
+        }
 
         var cooldown = Constants.Audio.PlaybackCatchUpCommandCooldown;
         if (desired >= Constants.Audio.PlaybackHardSkipThreshold) {
             var skipUntil = frame.Offset + desired;
             DebugLog?.LogDebug("Audio sync: skip until {SkipUntil} for {AuthorId}", skipUntil, authorId);
             await _playbackEngine.SkipUntil(skipUntil, cancellationToken).ConfigureAwait(false);
+            SyncDiagnostics.RecordCommand(authorId, AudioSyncCommand.Skip);
             _audioSyncSuppressedUntil = skipUntil + cooldown;
             _audioSyncSampleIn = 0;
             return;
@@ -210,6 +220,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             "Audio sync: speed-up until {SpeedUpUntil}, drop every {DropEveryN} frames for {AuthorId}",
             speedUpUntil, dropEveryN, authorId);
         await _playbackEngine.SpeedUpUntil(speedUpUntil, dropEveryN, cancellationToken).ConfigureAwait(false);
+        SyncDiagnostics.RecordCommand(authorId, AudioSyncCommand.SpeedUp);
         _audioSyncSuppressedUntil = speedUpUntil + cooldown;
         _audioSyncSampleIn = 0;
     }

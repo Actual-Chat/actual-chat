@@ -15,8 +15,11 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </remarks>
 public interface IAudioCatchUpPolicy
 {
-    Task<TimeSpan> GetDesiredCatchUp(AuthorId authorId, CancellationToken cancellationToken);
+    Task<AudioCatchUpDecision> GetDesiredCatchUp(AuthorId authorId, CancellationToken cancellationToken);
 }
+
+[StructLayout(LayoutKind.Auto)]
+public readonly record struct AudioCatchUpDecision(TimeSpan Desired, AudioSyncSkipReason Reason);
 
 /// <summary>
 /// Aligns audio playback to video presentation by reading per-author lag
@@ -36,27 +39,27 @@ public sealed class LiveAudioCatchUpPolicy(IServiceProvider services) : IAudioCa
     private PlaybackLagTracker PlaybackLagTracker => field ??= Services.GetRequiredService<PlaybackLagTracker>();
     private ILogger Log => field ??= Services.LogFor<LiveAudioCatchUpPolicy>();
 
-    public Task<TimeSpan> GetDesiredCatchUp(AuthorId authorId, CancellationToken cancellationToken)
+    public Task<AudioCatchUpDecision> GetDesiredCatchUp(AuthorId authorId, CancellationToken cancellationToken)
     {
         var snapshot = PlaybackLagTracker.GetSnapshot(authorId);
         var video = snapshot.VideoLag;
         if (video is null) {
             LogMissingSignal(authorId, "video", snapshot);
-            return Task.FromResult(TimeSpan.Zero);
+            return Task.FromResult(new AudioCatchUpDecision(TimeSpan.Zero, AudioSyncSkipReason.MissingVideoLag));
         }
 
         var audio = snapshot.AudioLag;
         if (audio is null) {
             LogMissingSignal(authorId, "audio", snapshot);
-            return Task.FromResult(TimeSpan.Zero);
+            return Task.FromResult(new AudioCatchUpDecision(TimeSpan.Zero, AudioSyncSkipReason.MissingAudioLag));
         }
 
         var desired = audio.Value - video.Value;
         var baseline = Constants.Audio.AudioCatchUpBaselineDelta;
         var syncError = desired - baseline;
-        var desiredCatchUp = syncError < Constants.Audio.AudioCatchUpDeadband
-            ? TimeSpan.Zero
-            : syncError;
+        var insideDeadband = syncError < Constants.Audio.AudioCatchUpDeadband;
+        var desiredCatchUp = insideDeadband ? TimeSpan.Zero : syncError;
+        var reason = insideDeadband ? AudioSyncSkipReason.InsideDeadband : AudioSyncSkipReason.None;
         if (IsDiagnosticLogEnabled)
             Log.LogWarning(
                 "Audio/video latency delta for {AuthorId}: "
@@ -71,7 +74,7 @@ public sealed class LiveAudioCatchUpPolicy(IServiceProvider services) : IAudioCa
                 syncError.TotalMilliseconds,
                 desiredCatchUp.TotalMilliseconds,
                 Constants.Audio.AudioCatchUpDeadband.TotalMilliseconds);
-        return Task.FromResult(desiredCatchUp);
+        return Task.FromResult(new AudioCatchUpDecision(desiredCatchUp, reason));
     }
 
     private void LogMissingSignal(AuthorId authorId, string missingSignal, PlaybackLagSnapshot snapshot)

@@ -408,6 +408,44 @@
                                 @RenderDropBreakdown(inDelta)
                             }
                         }
+
+                        @{
+                            var authorId = s.Info.AuthorId;
+                            var lag = LagTracker.GetSnapshot(authorId);
+                            var sync = SyncDiagnostics.GetSnapshot(authorId);
+                        }
+                        <div class="diag-group-header">A/V Sync</div>
+                        <div class="diag-row">
+                            <span class="diag-label">Audio lag</span>
+                            <span class="diag-value">@FormatLag(lag.AudioLag) (fresh @lag.FreshAudioStreamCount, stale @lag.StaleAudioStreamCount)</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Video lag</span>
+                            <span class="diag-value">@FormatLag(lag.VideoLag) (fresh @lag.FreshVideoStreamCount, stale @lag.StaleVideoStreamCount)</span>
+                        </div>
+                        <div class="diag-row">
+                            <span class="diag-label">Drift</span>
+                            <span class="diag-value">@FormatDrift(lag.AudioLag, lag.VideoLag)</span>
+                        </div>
+                        @if (sync is { } syncSnap) {
+                            <div class="diag-row">
+                                <span class="diag-label">Desired</span>
+                                <span class="diag-value">@FormatDesired(syncSnap)</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Last action</span>
+                                <span class="diag-value">@FormatLastCommand(syncSnap)</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Totals</span>
+                                <span class="diag-value">skip @syncSnap.SkipCount · speedup @syncSnap.SpeedUpCount · no-op @syncSnap.NoOpCount</span>
+                            </div>
+                        } else {
+                            <div class="diag-row">
+                                <span class="diag-label">Desired</span>
+                                <span class="diag-value diag-dim">no decision yet</span>
+                            </div>
+                        }
                     </div>
                 }
             }
@@ -529,6 +567,8 @@
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private IAuthors Authors => Hub.Authors;
+    private PlaybackLagTracker LagTracker => field ??= Services.GetRequiredService<PlaybackLagTracker>();
+    private AudioSyncDiagnostics SyncDiagnostics => field ??= Services.GetRequiredService<AudioSyncDiagnostics>();
     private ILogger Log => field ??= Services.LogFor<VideoDiagnosticsModal>();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -859,6 +899,38 @@
             > 0 => $"+{signal} (good)",
             _ => "0 (neutral)",
         };
+
+    private static string FormatLag(TimeSpan? lag)
+        => lag is null ? "—" : $"{lag.Value.TotalMilliseconds:+0;-0;0} ms";
+
+    private static string FormatDrift(TimeSpan? audio, TimeSpan? video)
+        => audio is null || video is null
+            ? "—"
+            : $"{(audio.Value - video.Value).TotalMilliseconds:+0;-0;0} ms";
+
+    private static string FormatDesired(AudioSyncDiagnosticsSnapshot s)
+        => s.LastSkipReason switch {
+            AudioSyncSkipReason.SyncDisabled => "disabled",
+            AudioSyncSkipReason.MissingVideoLag => "no video lag",
+            AudioSyncSkipReason.MissingAudioLag => "no audio lag",
+            AudioSyncSkipReason.InsideDeadband => $"{s.LastDesiredCatchUp.TotalMilliseconds:+0;-0;0} ms (deadband)",
+            _ => $"{s.LastDesiredCatchUp.TotalMilliseconds:+0;-0;0} ms",
+        };
+
+    private static string FormatLastCommand(AudioSyncDiagnosticsSnapshot s)
+    {
+        if (s.LastCommand == AudioSyncCommand.None || s.LastCommandAge is null)
+            return "none";
+
+        var age = s.LastCommandAge.Value;
+        var ageStr = age.TotalSeconds < 60 ? $"{age.TotalSeconds:0.#}s ago" : $"{age.TotalMinutes:0}m ago";
+        var cmd = s.LastCommand switch {
+            AudioSyncCommand.Skip => "skip",
+            AudioSyncCommand.SpeedUp => "speedup",
+            _ => "none",
+        };
+        return $"{cmd} · {ageStr}";
+    }
 
     private string GetShowDetailsIndicator(bool show)
         => show ? ">---<" : "<->";
