@@ -645,11 +645,12 @@ export class VideoRecorder {
     // is run by `detectSupportedCodecs`; no synthetic OffscreenCanvas probe.
     // The encoder either works on real frames or doesn't, and a failure
     // surfaces via the same OnRecordingError path as `startRecording`.
-    public async warmup(audienceCodecs?: string[]): Promise<void> {
+    public async warmup(chatId: string, audienceCodecs?: string[]): Promise<void> {
         if (this.isRecording) {
             warnLog?.log('warmup: already recording or warming up');
             return;
         }
+        this.chatId = chatId;
         this.audienceCodecs = audienceCodecs;
         this.currentMaxLayerCount = 1;
         this.setRecordingState('warming-up');
@@ -724,6 +725,68 @@ export class VideoRecorder {
             const message = await this.describeStartError(error);
             await this.blazorRef.invokeMethodAsync('OnRecordingError', message);
         }
+    }
+
+    // Modal-to-live transition: flip the wire gate open, expand the ladder
+    // from 1 tier to the requested simulcast count, and force a keyframe so
+    // the first chunk reaching wireSend bootstraps the stream cleanly.
+    // The encoder spawned during warmup keeps running — only new lower-tier
+    // encoders are added. No fresh capture, no fresh HW slot.
+    public async openGate(maxLayerCount = 3): Promise<void> {
+        if (this._recordingState !== 'warming-up') {
+            warnLog?.log(`openGate: not in warmup state (state=${this._recordingState})`);
+            return;
+        }
+        if (!this.worker) {
+            warnLog?.log('openGate: worker missing');
+            return;
+        }
+        const tierCeiling = DeviceInfo.isMobile ? 2 : 3;
+        const tierCap = Math.max(1, Math.min(maxLayerCount, tierCeiling));
+        this.currentMaxLayerCount = maxLayerCount;
+
+        const topW = this.cameraWidth || (DeviceInfo.isMobile ? 640 : 1280);
+        const topH = this.cameraHeight || (DeviceInfo.isMobile ? 360 : 720);
+        let ladder = buildLadder({
+            topWidth: topW,
+            topHeight: topH,
+            tierCount: tierCap,
+            maxTierCount: VIDEO.cameraLayerBaseBitratesKbps.length,
+            bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
+        });
+        ladder = this.withCodecBitrates(ladder, this.currentCodecString);
+        this.layers = ladder.length >= 2 ? [...ladder] : null;
+        this.fullLayerLadder = this.layers ? [...this.layers] : null;
+
+        if (ladder.length >= 2) {
+            // Hot-apply: existing top-tier encoder keeps running, lower
+            // tiers spin up on the next captured frame.
+            const encoderConfigs = this.toEncoderConfigs(ladder);
+            try {
+                await this.worker.reconfigureLayers(encoderConfigs);
+            } catch (e) {
+                warnLog?.log('openGate: reconfigureLayers failed — continuing at 1 tier:', e);
+            }
+        }
+
+        await this.worker.setGateOpen(true);
+        await this.worker.requestKeyframe();
+
+        this.setRecordingState('recording');
+        await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
+        infoLog?.log(`openGate: live (${ladder.length} layer(s), codec=${this.currentCodecString})`);
+    }
+
+    // Tear down a running warmup without firing OnRecordingStarted —
+    // modal closed before the user clicked Join. Internally identical to
+    // stopRecording; kept as a separate name so the C# side can distinguish
+    // "warmup cancelled" from "live recording stopped" in its callbacks.
+    public async cancelWarmup(): Promise<void> {
+        if (this._recordingState !== 'warming-up') {
+            return;
+        }
+        infoLog?.log('cancelWarmup: tearing down warmup pipeline');
+        await this.stopRecording();
     }
 
     public async startRecording(chatId: string, audienceCodecs?: string[], maxLayerCount = 3): Promise<void> {
