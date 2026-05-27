@@ -20,6 +20,7 @@ import { previewForwarder } from '../operators/preview-forwarder';
 import { applyKeyframePolicy } from '../operators/apply-keyframe-policy';
 import { encode, type EncoderConfigPerLayer, type EncoderFactory } from '../operators/encode';
 import { FloodGate, floodGate } from '../operators/flood-gate';
+import { stampEncoderDescription } from '../operators/stamp-encoder-description';
 import { MutableWireGate, wireGate } from '../operators/wire-gate';
 import { wireSend, type StreamSenderLike } from '../operators/wire-send';
 import { LayerLadderController } from './layer-ladder-controller';
@@ -155,6 +156,7 @@ export class Recorder {
                 createEncoder: config.createEncoder,
             }),
             traceDrops<EncodedBundle>(FrameDropStage.SenderEncode),
+            stampEncoderDescription(),
             wireGate(wireGateState),
             wireSend({
                 createSender: () => config.createSender(gate),

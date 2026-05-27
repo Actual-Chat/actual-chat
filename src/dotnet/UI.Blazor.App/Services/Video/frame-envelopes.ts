@@ -303,6 +303,13 @@ export interface EncodedFrame {
 
     rotation: RotationQuarter;
 
+    // avcC/HVCC/AV1C bytes for receiver-side decoder.configure().
+    // WebCodecs UAs only attach metadata.decoderConfig.description on the
+    // first chunk after configure(); the stampEncoderDescription operator
+    // caches it per layer and stamps every subsequent frame so the value
+    // survives wireGate drops during warmup.
+    description?: Uint8Array;
+
     stats: RecorderStats;
 }
 

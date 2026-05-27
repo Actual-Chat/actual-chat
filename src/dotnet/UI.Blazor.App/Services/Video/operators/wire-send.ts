@@ -6,7 +6,6 @@ import {
     aggregateDropTrace,
     disposeEncodedBundle,
     type EncodedBundle,
-    type EncodedFrame,
     type RecorderStats,
 } from '../frame-envelopes';
 import type { LayerLadderController } from '../sender/layer-ladder-controller';
@@ -140,9 +139,6 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                 pumpResolved = false;
                 warnLog?.log(`wireSend: resetting wire sender — ${reason}`);
             };
-            // HEVC: later keyframes may omit description; cache the first one
-            // so the receiver can always reconfigure on dim change.
-            const descriptionByLayer = new Map<number, Uint8Array>();
             // Per-layer "last keyframe's Index" — the value we stamp into
             // `keyFrameIndex` on every encoded frame. A frame is a keyframe
             // iff its `keyFrameIndex === index`.
@@ -195,10 +191,8 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                             };
                             if (encoded.rotation !== 0) dto.rotation = encoded.rotation;
                             if (dropTraceBytes) dto.dropTrace = dropTraceBytes;
-                            if (isKey) {
-                                const description = resolveDescription(encoded, descriptionByLayer);
-                                if (description) dto.description = description;
-                            }
+                            if (isKey && encoded.description)
+                                dto.description = encoded.description;
                             return dto;
                         });
 
@@ -219,7 +213,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                             );
                         }
                         if (!initSent && isKeyFrame && sender.init) {
-                            const description = resolveDescription(top, descriptionByLayer);
+                            const description = top.description ?? null;
                             const topCfg = cur[cur.length - 1];
                             sender.init({
                                 codec: top.metadata.decoderConfig?.codec ?? '',
@@ -253,30 +247,6 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
             }
         }
     };
-}
-
-// Copy on insert so later mutation of metadata.decoderConfig.description
-// can't bleed into earlier wire frames.
-function resolveDescription(
-    encoded: EncodedFrame,
-    cache: Map<number, Uint8Array>,
-): Uint8Array | null {
-    const raw = encoded.metadata.decoderConfig?.description as ArrayBuffer | ArrayBufferView | undefined;
-    if (raw) {
-        const bytes = toUint8Array(raw);
-        cache.set(encoded.layerId, bytes);
-        return bytes;
-    }
-    return cache.get(encoded.layerId) ?? null;
-}
-
-function toUint8Array(source: ArrayBuffer | ArrayBufferView): Uint8Array {
-    if (source instanceof Uint8Array) return new Uint8Array(source);
-    if (ArrayBuffer.isView(source)) {
-        const view = new Uint8Array(source.buffer as ArrayBuffer, source.byteOffset, source.byteLength);
-        return new Uint8Array(view);
-    }
-    return new Uint8Array(source.slice(0));
 }
 
 function readChunkBytes(chunk: EncodedVideoChunk): Uint8Array {

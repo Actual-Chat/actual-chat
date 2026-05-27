@@ -28,6 +28,7 @@ describe('wireGate', () => {
             makeBundle(1, () => closed++),
             makeBundle(2, () => closed++),
         ];
+        // eslint-disable-next-line @typescript-eslint/require-await
         async function* src(): AsyncIterable<EncodedBundle> {
             for (const b of bundles) yield b;
         }
@@ -44,6 +45,7 @@ describe('wireGate', () => {
             makeBundle(1, () => closed++),
             makeBundle(2, () => closed++),
         ];
+        // eslint-disable-next-line @typescript-eslint/require-await
         async function* src(): AsyncIterable<EncodedBundle> {
             for (const b of bundles) yield b;
         }
@@ -61,6 +63,7 @@ describe('wireGate', () => {
             makeBundle(2, () => closed++), // forward
             makeBundle(3, () => closed++), // close before yield: drop
         ];
+        // eslint-disable-next-line @typescript-eslint/require-await
         async function* src(): AsyncIterable<EncodedBundle> {
             yield bundles[0];
             gate.setOpen(true);
