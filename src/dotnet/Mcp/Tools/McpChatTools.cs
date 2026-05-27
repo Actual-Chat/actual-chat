@@ -1,15 +1,12 @@
 using System.ComponentModel;
-using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.Mcp.Auth;
-using ActualChat.Mcp.Dtos;
-using ActualChat.Users;
 using ModelContextProtocol.Server;
 
 namespace ActualChat.Mcp.Tools;
 
 [McpServerToolType]
-public sealed class ChatTools(IServiceProvider services)
+public sealed class McpChatTools(IServiceProvider services)
 {
     private const int DefaultLimit = 256;
     private const int MaxLimit = 1024;
@@ -25,26 +22,26 @@ public sealed class ChatTools(IServiceProvider services)
     [McpServerTool(Name = "list_group_chats", UseStructuredContent = true)]
     [Description("Lists group chats the caller has access to (excludes peer/place chats). " +
         "`afterId` is exclusive; pass null to start from the beginning. `limit` is capped at 1024.")]
-    public async Task<ListChatsResult> ListGroupChats(
+    public async Task<McpListChatsResult> ListGroupChats(
         [Description("Return chats with id > afterId. Use null to start from the beginning.")] string? afterId = null,
         [Description("Max chats to return; capped at 1024.")] int limit = DefaultLimit,
         CancellationToken cancellationToken = default)
     {
         var contactIds = await Contacts.ListIds(Session, placeId: null, cancellationToken).ConfigureAwait(false);
         var chatIds = contactIds
-            .Where(id => id.Kind == ContactKind.Chat && id.ChatId is GroupChatId)
+            .Where(id => id is { Kind: ContactKind.Chat, ChatId: GroupChatId })
             .Select(id => id.ChatId)
             .ToArray();
         var page = Page(chatIds, afterId, limit, chatId => chatId.Value);
         var infos = await Task.WhenAll(page.Select(id => ResolveChatInfo(id, cancellationToken)))
             .ConfigureAwait(false);
-        return new ListChatsResult(infos.Where(i => i is not null).Cast<ChatInfo>().ToArray());
+        return new McpListChatsResult(infos.Where(i => i is not null).Cast<McpChatInfo>().ToArray());
     }
 
     [McpServerTool(Name = "list_places", UseStructuredContent = true)]
     [Description("Lists places the caller has access to. " +
         "`afterId` is exclusive; pass null to start from the beginning. `limit` is capped at 1024.")]
-    public async Task<ListPlacesResult> ListPlaces(
+    public async Task<McpListPlacesResult> ListPlaces(
         [Description("Return places with id > afterId. Use null to start from the beginning.")] string? afterId = null,
         [Description("Max places to return; capped at 1024.")] int limit = DefaultLimit,
         CancellationToken cancellationToken = default)
@@ -53,13 +50,13 @@ public sealed class ChatTools(IServiceProvider services)
         var page = Page(placeIds, afterId, limit, placeId => placeId.Value);
         var infos = await Task.WhenAll(page.Select(id => ResolvePlaceInfo(id, cancellationToken)))
             .ConfigureAwait(false);
-        return new ListPlacesResult(infos.Where(i => i is not null).Cast<PlaceInfo>().ToArray());
+        return new McpListPlacesResult(infos.Where(i => i is not null).Cast<McpPlaceInfo>().ToArray());
     }
 
     [McpServerTool(Name = "list_place_chats", UseStructuredContent = true)]
     [Description("Lists chats inside a place the caller has access to. " +
         "`afterId` is exclusive; pass null to start from the beginning. `limit` is capped at 1024.")]
-    public async Task<ListChatsResult> ListPlaceChats(
+    public async Task<McpListChatsResult> ListPlaceChats(
         [Description("The place id.")] string placeId,
         [Description("Return chats with id > afterId. Use null to start from the beginning.")] string? afterId = null,
         [Description("Max chats to return; capped at 1024.")] int limit = DefaultLimit,
@@ -74,13 +71,13 @@ public sealed class ChatTools(IServiceProvider services)
         var page = Page(chatIds, afterId, limit, chatId => chatId.Value);
         var infos = await Task.WhenAll(page.Select(id => ResolveChatInfo(id, cancellationToken)))
             .ConfigureAwait(false);
-        return new ListChatsResult(infos.Where(i => i is not null).Cast<ChatInfo>().ToArray());
+        return new McpListChatsResult(infos.Where(i => i is not null).Cast<McpChatInfo>().ToArray());
     }
 
     [McpServerTool(Name = "list_peer_chats", UseStructuredContent = true)]
     [Description("Lists peer (direct) chats the caller has with other users. " +
         "`afterId` is exclusive; pass null to start from the beginning. `limit` is capped at 1024.")]
-    public async Task<ListChatsResult> ListPeerChats(
+    public async Task<McpListChatsResult> ListPeerChats(
         [Description("Return chats with id > afterId. Use null to start from the beginning.")] string? afterId = null,
         [Description("Max chats to return; capped at 1024.")] int limit = DefaultLimit,
         CancellationToken cancellationToken = default)
@@ -88,25 +85,25 @@ public sealed class ChatTools(IServiceProvider services)
         var ownAccount = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
         var contactIds = await Contacts.ListIds(Session, placeId: null, cancellationToken).ConfigureAwait(false);
         var peerChatIds = contactIds
-            .Where(id => id.Kind == ContactKind.User && id.ChatId is PeerChatId)
+            .Where(id => id is { Kind: ContactKind.User, ChatId: PeerChatId })
             .Select(id => (PeerChatId)id.ChatId)
             .ToArray();
         var page = Page(peerChatIds, afterId, limit, peerChatId => peerChatId.Value);
         var infos = await Task.WhenAll(page.Select(id =>
                 ResolvePeerChatInfo(id, ownAccount.Id, cancellationToken)))
             .ConfigureAwait(false);
-        return new ListChatsResult(infos.Where(i => i is not null).Cast<ChatInfo>().ToArray());
+        return new McpListChatsResult(infos.Where(i => i is not null).Cast<McpChatInfo>().ToArray());
     }
 
     // Private methods
 
-    private async Task<ChatInfo?> ResolveChatInfo(ChatId chatId, CancellationToken cancellationToken)
+    private async Task<McpChatInfo?> ResolveChatInfo(ChatId chatId, CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return chat is null ? null : new ChatInfo(chat.Id.Value, chat.IsPublic, chat.Title);
+        return chat is null ? null : new McpChatInfo(chat.Id.Value, chat.IsPublic, chat.Title);
     }
 
-    private async Task<ChatInfo?> ResolvePeerChatInfo(
+    private async Task<McpChatInfo?> ResolvePeerChatInfo(
         PeerChatId peerChatId, UserId ownUserId, CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(Session, peerChatId, cancellationToken).ConfigureAwait(false);
@@ -119,13 +116,13 @@ public sealed class ChatTools(IServiceProvider services)
             var otherAccount = await Accounts.Get(Session, otherUserId, cancellationToken).ConfigureAwait(false);
             title = otherAccount?.Avatar?.Name ?? "";
         }
-        return new ChatInfo(chat.Id.Value, chat.IsPublic, title);
+        return new McpChatInfo(chat.Id.Value, chat.IsPublic, title);
     }
 
-    private async Task<PlaceInfo?> ResolvePlaceInfo(PlaceId placeId, CancellationToken cancellationToken)
+    private async Task<McpPlaceInfo?> ResolvePlaceInfo(PlaceId placeId, CancellationToken cancellationToken)
     {
         var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
-        return place is null ? null : new PlaceInfo(place.Id.Value, place.IsPublic, place.Title);
+        return place is null ? null : new McpPlaceInfo(place.Id.Value, place.IsPublic, place.Title);
     }
 
     private static T[] Page<T>(IReadOnlyList<T> items, string? afterId, int limit, Func<T, string> idSelector)

@@ -1,6 +1,6 @@
-namespace ActualChat.Mcp.Dtos;
+namespace ActualChat.Mcp;
 
-public sealed record MessageDto(
+public sealed record McpChatMessage(
     long Id,
     long Version,
     long CreatedAt,

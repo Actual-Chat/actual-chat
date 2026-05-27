@@ -1,14 +1,14 @@
 using System.Text.Json;
 using ActualChat.Chat;
 using ActualChat.Contacts;
-using ActualChat.Mcp.Dtos;
+using ActualChat.Mcp;
 using ActualChat.Testing.Host;
 using ModelContextProtocol.Client;
 
 namespace ActualChat.Mcp.IntegrationTests;
 
 [Collection(nameof(McpCollection))]
-public class ChatToolsTest(McpCollection.AppHostFixture fixture, ITestOutputHelper @out)
+public class McpChatToolsTest(McpCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : McpTestBase<McpCollection.AppHostFixture>(fixture, @out)
 {
     private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(10);
@@ -24,7 +24,7 @@ public class ChatToolsTest(McpCollection.AppHostFixture fixture, ITestOutputHelp
         var result = await client.CallToolAsync("list_group_chats", new Dictionary<string, object?> {
             ["limit"] = 100,
         });
-        var page = DeserializeResult<ListChatsResult>(result);
+        var page = DeserializeResult<McpListChatsResult>(result);
         page.Chats.Should().Contain(c => c.Id == chatId.Value && c.Title == "MyGroup" && c.IsPublic);
     }
 
@@ -43,14 +43,14 @@ public class ChatToolsTest(McpCollection.AppHostFixture fixture, ITestOutputHelp
         var placesResult = await client.CallToolAsync("list_places", new Dictionary<string, object?> {
             ["limit"] = 100,
         });
-        var placesPage = DeserializeResult<ListPlacesResult>(placesResult);
+        var placesPage = DeserializeResult<McpListPlacesResult>(placesResult);
         placesPage.Places.Should().Contain(p => p.Id == place.Id.Value && p.Title == "MyPlace" && p.IsPublic);
 
         var chatsResult = await client.CallToolAsync("list_place_chats", new Dictionary<string, object?> {
             ["placeId"] = place.Id.Value,
             ["limit"] = 100,
         });
-        var chatsPage = DeserializeResult<ListChatsResult>(chatsResult);
+        var chatsPage = DeserializeResult<McpListChatsResult>(chatsResult);
         chatsPage.Chats.Should().Contain(c => c.Id == placeChatId.Value && c.Title == "InPlace");
     }
 
@@ -70,7 +70,7 @@ public class ChatToolsTest(McpCollection.AppHostFixture fixture, ITestOutputHelp
         var result = await client.CallToolAsync("list_peer_chats", new Dictionary<string, object?> {
             ["limit"] = 100,
         });
-        var page = DeserializeResult<ListChatsResult>(result);
+        var page = DeserializeResult<McpListChatsResult>(result);
         page.Chats.Should().Contain(c => c.Id == peerChatId.Value);
     }
 
