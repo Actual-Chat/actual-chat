@@ -10,8 +10,8 @@ public class ReceiverHealthClassifierTest
         DownlinkLatencyGoodStreak = 3,
         ByteRateDeficitBadStreak = 2,
         ByteRateDeficitGoodStreak = 3,
-        DecodeRatioBadStreak = 2,
-        DecodeRatioGoodStreak = 3,
+        DecodeDeficitBadStreak = 2,
+        DecodeDeficitGoodStreak = 3,
     };
 
     [Fact]
@@ -31,6 +31,7 @@ public class ReceiverHealthClassifierTest
                 incomingByteRateDeficit: 1.0);
             dec = c.ClassifyDecoder(
                 decodeRatioEma: 0.5,
+                decodeDeficitEma: 0,
                 hangRateIn60s: 0,
                 recoveryStreak: 0,
                 presentSkipRatio: 0,
@@ -42,7 +43,7 @@ public class ReceiverHealthClassifierTest
     }
 
     [Fact]
-    public void LowDownlinkLatency_HighDecodeRatio_DownlinkGood_DecoderBad()
+    public void HighDecodeDeficit_DrivesDecoderBad()
     {
         var c = new ReceiverHealthClassifier(T());
         DownlinkHealth dl = DownlinkHealth.Empty;
@@ -55,7 +56,8 @@ public class ReceiverHealthClassifierTest
                 bufferUnderrunRatio: 0,
                 incomingByteRateDeficit: 1.0);
             dec = c.ClassifyDecoder(
-                decodeRatioEma: 2.0,
+                decodeRatioEma: 0,
+                decodeDeficitEma: 0.5,
                 hangRateIn60s: 0,
                 recoveryStreak: 0,
                 presentSkipRatio: 0,
@@ -66,11 +68,29 @@ public class ReceiverHealthClassifierTest
     }
 
     [Fact]
+    public void HighDecodeRatio_ZeroDeficit_DoesNotDriveBad()
+    {
+        // Regression: pipelined-decoder false-Bad. decodeRatioEma reflects
+        // queue wait + decode CPU and inflates with pipeline depth; it must
+        // not drive the verdict. Only decodeDeficitEma does.
+        var c = new ReceiverHealthClassifier(T());
+        var dec = c.ClassifyDecoder(
+            decodeRatioEma: 7.0,
+            decodeDeficitEma: 0,
+            hangRateIn60s: 0,
+            recoveryStreak: 0,
+            presentSkipRatio: 0,
+            receiverDecodePathDropRatio: 0);
+        dec.Verdict.Should().NotBe(HealthVerdict.Bad);
+    }
+
+    [Fact]
     public void DecoderHang_OneEvent_PromotesDecoderBad()
     {
         var c = new ReceiverHealthClassifier(T());
         var dec = c.ClassifyDecoder(
             decodeRatioEma: 0.5,
+            decodeDeficitEma: 0,
             hangRateIn60s: 1,
             recoveryStreak: 0,
             presentSkipRatio: 0,
@@ -84,6 +104,7 @@ public class ReceiverHealthClassifierTest
         var c = new ReceiverHealthClassifier(T());
         var dec = c.ClassifyDecoder(
             decodeRatioEma: 0.5,
+            decodeDeficitEma: 0,
             hangRateIn60s: 0,
             recoveryStreak: ReceiverHealthThresholds.Defaults.RecoveryStreakBad,
             presentSkipRatio: 0,
@@ -119,6 +140,7 @@ public class ReceiverHealthClassifierTest
         var c = new ReceiverHealthClassifier(T());
         var dec = c.ClassifyDecoder(
             decodeRatioEma: 0.5,
+            decodeDeficitEma: 0,
             hangRateIn60s: 0,
             recoveryStreak: 0,
             presentSkipRatio: 0.9,
@@ -128,20 +150,40 @@ public class ReceiverHealthClassifierTest
     }
 
     [Fact]
-    public void DecodeRatioBad_AfterStreak_IsBad()
+    public void DecodeDeficit_AfterStreak_IsBad()
     {
         var t = T();
         var c = new ReceiverHealthClassifier(t);
         DecoderHealth dec = DecoderHealth.Empty;
-        for (var i = 0; i < t.DecodeRatioBadStreak; i++) {
+        for (var i = 0; i < t.DecodeDeficitBadStreak; i++) {
             dec = c.ClassifyDecoder(
-                decodeRatioEma: 2.0,
+                decodeRatioEma: 0,
+                decodeDeficitEma: 0.5,
                 hangRateIn60s: 0,
                 recoveryStreak: 0,
                 presentSkipRatio: 0,
                 receiverDecodePathDropRatio: 0);
         }
         dec.Verdict.Should().Be(HealthVerdict.Bad);
+    }
+
+    [Fact]
+    public void LowDecodeDeficit_IsGood()
+    {
+        // Sustained deficit below the Good threshold (0.03 default) keeps
+        // the decoder Good no matter how long the run.
+        var c = new ReceiverHealthClassifier(T());
+        DecoderHealth dec = DecoderHealth.Empty;
+        for (var i = 0; i < 5; i++) {
+            dec = c.ClassifyDecoder(
+                decodeRatioEma: 0,
+                decodeDeficitEma: 0.01,
+                hangRateIn60s: 0,
+                recoveryStreak: 0,
+                presentSkipRatio: 0,
+                receiverDecodePathDropRatio: 0);
+        }
+        dec.Verdict.Should().Be(HealthVerdict.Good);
     }
 
     [Fact]
