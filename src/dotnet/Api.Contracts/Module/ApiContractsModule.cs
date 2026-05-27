@@ -98,7 +98,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
     public void ConfigureFusionClients(FusionBuilder fusion)
     {
         var hostKind = HostInfo.HostKind;
-        var useRpcSwitchingClient = Constants.Rpc.UseHttpClient || HostInfo.HostKind is HostKind.MauiApp;
+        var useRpcSwitchingClient = Constants.Rpc.UseHttpClient; // HostInfo.HostKind is HostKind.MauiApp
         fusion.Rpc.AddWebSocketClient(c => {
             var options = RpcWebSocketClientOptions.Default with {
                 ConnectionUriResolver = peer => {
