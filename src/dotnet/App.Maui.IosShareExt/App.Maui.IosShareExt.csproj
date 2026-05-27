@@ -45,7 +45,7 @@
     <UseInterpreter>true</UseInterpreter>
   </PropertyGroup>
 
-  <!-- Release configuration -->
+  <!-- Release configuration (default — Mono + interpreter; NAOT block below overrides) -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">App Store Share Dev</CodesignProvision>
     <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">App Store Share</CodesignProvision>
@@ -87,6 +87,27 @@
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
     <PackageReference Include="Microsoft.Maui.Essentials" />
   </ItemGroup>
+
+  <!-- Native AOT — mirrors App.Maui.csproj; keep in sync -->
+  <PropertyGroup>
+    <UseNativeAot Condition="'$(UseNativeAot)' == ''">false</UseNativeAot>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' and $(UseNativeAot) and $(TargetFramework.Contains('-ios'))">
+    <PublishAot>true</PublishAot>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
+    <IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
+    <IlcDisableReflection>false</IlcDisableReflection>
+    <IlcTrimMetadata>false</IlcTrimMetadata>
+
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <UseInterpreter>false</UseInterpreter>
+    <MtouchLink>Full</MtouchLink>
+
+    <!-- NativeAOT requires the managed-static registrar (default 'static' is rejected) -->
+    <Registrar>managed-static</Registrar>
+  </PropertyGroup>
 
   <!-- Workaround for excluding C# files from compilation for non-iOS targets -->
   <ItemGroup Condition="!$(TargetFramework.Contains('-ios'))">
