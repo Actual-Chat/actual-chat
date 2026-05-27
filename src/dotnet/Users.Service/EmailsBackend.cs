@@ -191,11 +191,16 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
         if (!messages.Any())
             return default;
 
-        var nonSystemMessages = messages.Where(x => !x.IsSystemEntry).ToList();
-        if (nonSystemMessages.Count == 0)
+        var summarizableMessages = messages
+            .Where(x => !x.IsSystemEntry
+                && !x.IsRemoved
+                && !x.IsContentStreaming
+                && !x.Content.IsNullOrEmpty())
+            .ToList();
+        if (summarizableMessages.Count == 0)
             return default;
 
-        var bulletPoints = await ChatDigestSummarizer.Summarize(nonSystemMessages, cancellationToken).ConfigureAwait(false);
+        var bulletPoints = await ChatDigestSummarizer.Summarize(summarizableMessages, cancellationToken).ConfigureAwait(false);
         if (bulletPoints.Count == 0)
             return default;
 
