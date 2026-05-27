@@ -413,6 +413,10 @@ export class VideoRecorder {
     // recorder config via {@link toEncoderConfigs}.
     private layers: LayerConfig[] | null = null;
     private fullLayerLadder: LayerConfig[] | null = null;
+    // Warmup-time top-tier dims (post-orientation-flip). openGate uses
+    // them to expand the ladder while preserving the warmup encoder's
+    // resolution + aspect.
+    private warmupTopSize: Size | null = null;
     // Currently-selected codec string (e.g. 'avc1.640028'). Threaded
     // into every encoder config layer.
     private currentCodecString = '';
@@ -662,6 +666,9 @@ export class VideoRecorder {
             const targetSize: Size = isMobile
                 ? { width: 640, height: 360 }
                 : { width: 1280, height: 720 };
+            // Same gate startRecording uses: explicit portrait request only
+            // on Android (iOS Safari's MSTP doesn't auto-rotate; rotation is
+            // baked into wire metadata instead of pixels).
             const wantsPortrait = isMobile
                 && !DeviceInfo.isIos
                 && ScreenOrientation.isObserved
@@ -671,6 +678,13 @@ export class VideoRecorder {
                 : targetSize;
             const targetFramerate = VIDEO.frameRate;
             this.currentFramerate = targetFramerate;
+            infoLog?.log(
+                `Warmup orientation pre-capture: isMobile=${isMobile}, ` +
+                `isIos=${DeviceInfo.isIos}, ` +
+                `screen.isObserved=${ScreenOrientation.isObserved}, ` +
+                `screen.isPortrait=${ScreenOrientation.isPortrait}, ` +
+                `wantsPortrait=${wantsPortrait}, ` +
+                `requestTarget=${requestSize.width}x${requestSize.height}`);
 
             const supportedCodecs = await detectSupportedCodecs(requestSize.width, requestSize.height);
             this.supportedCodecs = supportedCodecs;
@@ -704,9 +718,41 @@ export class VideoRecorder {
             this.previewTrack = track;
 
             const trackSettings = track.getSettings();
+            infoLog?.log(
+                `Warmup track resolution: ${trackSettings.width}x${trackSettings.height}, ` +
+                `frameRate=${trackSettings.frameRate ?? '(none)'}, ` +
+                `facingMode=${trackSettings.facingMode ?? '(none)'}`);
             this.cameraWidth = trackSettings.width ?? requestSize.width;
             this.cameraHeight = trackSettings.height ?? requestSize.height;
             this.currentFramerate = trackSettings.frameRate ?? targetFramerate;
+
+            // Same orientation reconciliation as startRecording: if the
+            // browser returned a portrait sensor but our ladder is landscape,
+            // flip the ladder so the encoder targets portrait — otherwise
+            // normalizeFrame center-crops a landscape band out of a portrait
+            // frame and the receiver sees only the middle (e.g. just the face).
+            const cameraIsPortrait = this.cameraHeight > this.cameraWidth;
+            const ladderTopIsPortrait = ladder[ladder.length - 1].height > ladder[ladder.length - 1].width;
+            if (!wantsPortrait && cameraIsPortrait !== ladderTopIsPortrait) {
+                ladder = ladder.map(l => ({ ...l, width: l.height, height: l.width }));
+                infoLog?.log(
+                    `Warmup: camera orientation mismatch — flipped ladder to: ` +
+                    `[${ladder.map(l => `${l.width}x${l.height}`).join(', ')}]`);
+            }
+            else if (wantsPortrait && !cameraIsPortrait) {
+                infoLog?.log(
+                    `Warmup: camera returned landscape despite portrait request — ` +
+                    `keeping ladder portrait, normalize will cover-crop. ` +
+                    `Camera=${this.cameraWidth}x${this.cameraHeight}, ` +
+                    `ladder top=${ladder[ladder.length - 1].width}x${ladder[ladder.length - 1].height}`);
+            }
+            const ladderTop = ladder[ladder.length - 1];
+            this.warmupTopSize = { width: ladderTop.width, height: ladderTop.height };
+
+            void this.blazorRef.invokeMethodAsync(
+                'OnTrackSettings',
+                trackSettings.deviceId ?? null,
+                trackSettings.facingMode ?? null);
 
             track.onended = () => {
                 infoLog?.log('Warmup camera track ended externally — stopping recording');
@@ -745,8 +791,15 @@ export class VideoRecorder {
         const tierCap = Math.max(1, Math.min(maxLayerCount, tierCeiling));
         this.currentMaxLayerCount = maxLayerCount;
 
-        const topW = this.cameraWidth || (DeviceInfo.isMobile ? 640 : 1280);
-        const topH = this.cameraHeight || (DeviceInfo.isMobile ? 360 : 720);
+        // Reuse the warmup ladder's top dims so the encoder keeps its
+        // post-orientation-flip resolution. Falls back to camera dims (then
+        // device defaults) only if warmup didn't record a ladder.
+        const topW = this.warmupTopSize?.width
+            || this.cameraWidth
+            || (DeviceInfo.isMobile ? 640 : 1280);
+        const topH = this.warmupTopSize?.height
+            || this.cameraHeight
+            || (DeviceInfo.isMobile ? 360 : 720);
         let ladder = buildLadder({
             topWidth: topW,
             topHeight: topH,
@@ -757,6 +810,9 @@ export class VideoRecorder {
         ladder = this.withCodecBitrates(ladder, this.currentCodecString);
         this.layers = ladder.length >= 2 ? [...ladder] : null;
         this.fullLayerLadder = this.layers ? [...this.layers] : null;
+        infoLog?.log(
+            `openGate: expanding ladder from warmup top ${topW}x${topH} ` +
+            `to [${ladder.map(l => `${l.width}x${l.height}`).join(', ')}]`);
 
         if (ladder.length >= 2) {
             // Hot-apply: existing top-tier encoder keeps running, lower
@@ -1100,6 +1156,7 @@ export class VideoRecorder {
             this.isScreenCasting = false;
             this.layers = null;
             this.fullLayerLadder = null;
+            this.warmupTopSize = null;
             this.lastCodecSwitchAt = 0;
             this.startedAtMs = 0;
             this.setRecordingState('stopped');
