@@ -19,6 +19,10 @@ public sealed class VideoRecorder : IAsyncDisposable
     private (ChatId, bool)? _startRequest;
     private string _deviceId = "";
     private bool _isBlurEnabled;
+    // True after Warmup() resolved and OpenGate() hasn't fired yet.
+    // StateSync inspects this when an intent fires for an already-warm
+    // recorder so it routes through OpenGate instead of StartRecording.
+    public bool IsWarmedUp { get; private set; }
 
     private AppUIHub Hub { get; }
     private Session Session => Hub.Session;
@@ -79,6 +83,52 @@ public sealed class VideoRecorder : IAsyncDisposable
         await _jsRef
             .InvokeVoidAsync("startRecording", cancellationToken, chatId.Value, codecs, maxLayerCount)
             .ConfigureAwait(false);
+    }
+
+    // Start the recorder pipeline in warmup mode: real camera frames flow
+    // through encode, but the wire-gate is closed so nothing reaches the
+    // server. OpenGate flips the gate open without restarting the encoder.
+    // Used by JoinVideoCallModal so the encoder/HW slot is proven on real
+    // frames during preview, then transitions seamlessly to live on Join.
+    public async Task Warmup(ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (_startRequest.HasValue)
+            throw StandardError.Constraint("Start request already set");
+        _startRequest = (chatId, true);
+        var codecs = await GetInitialAudienceCodecs(chatId).ConfigureAwait(false);
+        await _jsRef
+            .InvokeVoidAsync("warmup", cancellationToken, chatId.Value, codecs)
+            .ConfigureAwait(false);
+        IsWarmedUp = true;
+    }
+
+    // Modal-to-live transition for a warm recorder. JS-side expands the
+    // ladder to maxLayerCount tiers, flips the gate, forces a keyframe, and
+    // fires OnRecordingStarted (which kicks RunMaintenance into its
+    // subscription loop). No-op if the recorder isn't in warmup state.
+    public async Task OpenGate(int maxLayerCount, CancellationToken cancellationToken)
+    {
+        if (!IsWarmedUp) {
+            Log.LogWarning(nameof(OpenGate) + " called but recorder is not in warmup state");
+            return;
+        }
+        await _jsRef
+            .InvokeVoidAsync("openGate", cancellationToken, maxLayerCount)
+            .ConfigureAwait(false);
+        IsWarmedUp = false;
+    }
+
+    // Modal closed without Join. Tears down the warmup pipeline without
+    // firing OnRecordingStarted (since the recording never officially
+    // started). Safe to call on a non-warm recorder.
+    public async Task CancelWarmup(CancellationToken cancellationToken)
+    {
+        if (!IsWarmedUp)
+            return;
+        await _jsRef
+            .InvokeVoidAsync("cancelWarmup", cancellationToken)
+            .ConfigureAwait(false);
+        IsWarmedUp = false;
     }
 
     public async Task StartScreenCast(ChatId chatId, int maxLayerCount, CancellationToken cancellationToken)
