@@ -168,7 +168,8 @@
         double presentSkipRatio,
         double bufferUnderrunRatio,
         double downlinkLatencyEma,
-        double arrivalIntervalEma)
+        double arrivalIntervalEma,
+        double decodeDeficitEma)
     {
         if (_isDisposed)
             return;
@@ -192,7 +193,8 @@
             PresentSkipRatio: presentSkipRatio,
             BufferUnderrunRatio: bufferUnderrunRatio,
             DownlinkLatencyEma: downlinkLatencyEma,
-            ArrivalIntervalEma: arrivalIntervalEma);
+            ArrivalIntervalEma: arrivalIntervalEma,
+            DecodeDeficitEma: decodeDeficitEma);
         try {
             await Hub.VideoQualityUI
                 .OnPlaybackStats(

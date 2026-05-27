@@ -206,6 +206,7 @@ public sealed partial class VideoQualityUI
                 incomingByteRateDeficit: 1.0); // TODO: actual / expected-for-layer once allocator publishes it.
             var streamDecoder = classifier.ClassifyDecoder(
                 decodeRatioEma: snap.DecodeRatioEma,
+                decodeDeficitEma: snap.DecodeDeficitEma,
                 hangRateIn60s: snap.HangRateIn60s,
                 recoveryStreak: snap.RecoveryStreak,
                 presentSkipRatio: snap.PresentSkipRatio,
@@ -372,7 +373,7 @@ public sealed partial class VideoQualityUI
             ? $"downlink lat={worstDownlink.ServerToReceiverLatencyEma:F0}ms drop={worstDownlink.ServerPathDropRatio:F2}"
             : "";
         var decReason = aggregateDecoderVerdict == HealthVerdict.Bad && worstDecoder is not null
-            ? $"decode ratio={worstDecoder.DecodeRatioEma:F2} hang={worstDecoder.HangRateIn60s}"
+            ? $"decode deficit={worstDecoder.DecodeDeficitEma * 100:F1}% hang={worstDecoder.HangRateIn60s}"
             : "";
         var inboundReason = !string.IsNullOrEmpty(dlReason) ? dlReason
             : !string.IsNullOrEmpty(decReason) ? decReason
@@ -385,7 +386,7 @@ public sealed partial class VideoQualityUI
             ? $"lat={worstDownlink.ServerToReceiverLatencyEma:F0}ms drop={worstDownlink.ServerPathDropRatio:F2} und={worstDownlink.BufferUnderrunRatio:F2} pr={playbackRateEma:F2}"
             : $"pr={playbackRateEma:F2} drop={receiverDropRatio:F2}";
         var rawB = worstDecoder is not null
-            ? $"ratio={worstDecoder.DecodeRatioEma:F2} hang={worstDecoder.HangRateIn60s} rec={worstDecoder.RecoveryStreak} skip={worstDecoder.PresentSkipRatio:F2}"
+            ? $"deficit={worstDecoder.DecodeDeficitEma * 100:F1}% ratio={worstDecoder.DecodeRatioEma:F2} hang={worstDecoder.HangRateIn60s} rec={worstDecoder.RecoveryStreak} skip={worstDecoder.PresentSkipRatio:F2}"
             : "";
         var rawBw = $"{(_inboundBwEstimator.LastVerdict == BandwidthVerdict.Good ? "↑" : _inboundBwEstimator.LastVerdict == BandwidthVerdict.Bad ? "↓" : "=")}{ceilingKbps}/cur {currentKbps} kbps";
         AppendInboundDecision(new QualityDecisionEntry(

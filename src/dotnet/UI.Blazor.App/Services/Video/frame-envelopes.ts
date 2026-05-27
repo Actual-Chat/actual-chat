@@ -111,9 +111,15 @@ export interface PlayerStats {
     // (server fan-out hiccup) raises this independently of latency. -1 == not
     // yet sampled.
     arrivalIntervalEma: number;
-    // EMA of (decodedAt - submitMs) / frameDurationMs. > 1 means the decoder
-    // is producing slower than the source frame rate. -1 == not yet sampled.
-    // Maintained by the decode operator.
+    // Cumulative ArrivedChunks the decode operator pulled from its source.
+    // Pairs with `framesDecoded` to derive the decoder throughput deficit.
+    chunksReceived: number;
+    // Cumulative VideoFrames the decoder emitted (onFrame callback). Strictly
+    // ≤ chunksReceived; the gap is decoder slowness + post-recovery losses.
+    framesDecoded: number;
+    // EMA of (decodedAt - submitMs) / frameDurationMs. Diagnostic only — for
+    // QC use see `decodeDeficitEma` (computed at the main-thread reporter from
+    // chunksReceived / framesDecoded deltas).
     decodeRatioEma: number;
     // Count of decoder hang-watchdog fires in the last 60 s. Each event marks
     // a stretch where the decoder accepted chunks but produced nothing within
@@ -167,6 +173,8 @@ export function createEmptyPlayerStats(): PlayerStats {
         downlinkLatencyEma: -1,
         downlinkMinBaselineMs: -1,
         arrivalIntervalEma: -1,
+        chunksReceived: 0,
+        framesDecoded: 0,
         decodeRatioEma: -1,
         hangRateIn60s: 0,
         recoveryStreak: 0,

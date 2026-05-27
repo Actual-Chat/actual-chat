@@ -22,6 +22,7 @@ import {
 import { isDecoderCodecProven, markDecoderCodecProven } from '../../Services/Video/codec-support';
 import { consumeVideoTraceKill, registerVideoTraceKillWorker } from '../../Services/Video/video-trace-kill-control';
 import { isCodecExhaustedError } from '../../Services/Video/operators/decode';
+import { ThroughputDeficitTicker } from '../../Services/Video/throughput-deficit-ticker';
 import type { RenderBackend } from './render-backend';
 import { TransferableCanvasRenderBackend } from './render-backend-canvas';
 import { OffThreadRenderBackend } from './render-backend-mstg';
@@ -202,7 +203,12 @@ export class VideoPlayer {
     private lastLatencyTickMs = 0;
     private lastPresentedAtTick = 0;
     private lastBytesAtTick = 0;
+    private lastChunksReceivedAtTick = 0;
+    private lastFramesDecodedAtTick = 0;
     private readonly lastDropAtTick = new Map<number, number>();
+    // α=0.3 matches the encoder-side EMA (video-recorder.ts) so the two
+    // QC signals share half-life characteristics.
+    private readonly decodeDeficitTicker = new ThroughputDeficitTicker(0.3);
     private receivedFrameCount = 0;
     private receivedKeyframeCount = 0;
     private receivedBytes = 0;
@@ -1113,6 +1119,11 @@ export class VideoPlayer {
                 const scale = 1000 / dt;
                 this.presentedPerSec = Math.max(0, this.presentedFrameCount - this.lastPresentedAtTick) * scale;
                 this.bytesPerSec = Math.max(0, this.receivedBytes - this.lastBytesAtTick) * scale;
+                const chunksDelta = Math.max(0,
+                    sample.playerStats.chunksReceived - this.lastChunksReceivedAtTick);
+                const framesDelta = Math.max(0,
+                    sample.playerStats.framesDecoded - this.lastFramesDecodedAtTick);
+                this.decodeDeficitTicker.tick(framesDelta, chunksDelta);
                 this.dropPerSec.clear();
                 for (const [stage, count] of sample.playerStats.dropTrace) {
                     const prev = this.lastDropAtTick.get(stage) ?? 0;
@@ -1125,6 +1136,8 @@ export class VideoPlayer {
         this.lastLatencyTickMs = nowMs;
         this.lastPresentedAtTick = this.presentedFrameCount;
         this.lastBytesAtTick = this.receivedBytes;
+        this.lastChunksReceivedAtTick = sample.playerStats.chunksReceived;
+        this.lastFramesDecodedAtTick = sample.playerStats.framesDecoded;
         this.lastDropAtTick.clear();
         for (const [stage, count] of sample.playerStats.dropTrace)
             this.lastDropAtTick.set(stage as number, count);
@@ -1167,6 +1180,9 @@ export class VideoPlayer {
         this.bytesPerSec = 0;
         this.dropPerSec.clear();
         this.lastLatencyTickMs = 0;
+        this.lastChunksReceivedAtTick = 0;
+        this.lastFramesDecodedAtTick = 0;
+        this.decodeDeficitTicker.reset();
         this.lastPresentedAtTick = 0;
         this.lastBytesAtTick = 0;
         this.lastDropAtTick.clear();
@@ -1315,7 +1331,8 @@ export class VideoPlayer {
             stats.presentSkipRatio,
             stats.bufferUnderrunRatio,
             stats.downlinkLatencyEma,
-            stats.arrivalIntervalEma)
+            stats.arrivalIntervalEma,
+            this.decodeDeficitTicker.value)
             .catch((e: unknown) => warnLog?.log('reportPlaybackStats error:', e));
         // Also fire a stale-frame hint to the SKIP_TO_LIVE thresholds so
         // diagnostics still tick. The new pipeline's internal recovery

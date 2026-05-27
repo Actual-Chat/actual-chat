@@ -6,11 +6,12 @@ namespace ActualChat.Streaming;
 public sealed record DecoderHealth(
     HealthVerdict Verdict,
     double DecodeRatioEma,
+    double DecodeDeficitEma,
     int HangRateIn60s,
     int RecoveryStreak,
     double PresentSkipRatio,
     double ReceiverDecodePathDropRatio)
 {
     public static DecoderHealth Empty { get; } =
-        new(HealthVerdict.Unknown, 0, 0, 0, 0, 0);
+        new(HealthVerdict.Unknown, 0, 0, 0, 0, 0, 0);
 }

@@ -206,6 +206,7 @@ async function* decodeAsync(
             stats.recoveryStreak = 0;
             decodeRatioEma.appendSample((decodedAtMs - meta.submitMs) / frameDurationMs);
             stats.decodeRatioEma = decodeRatioEma.value;
+            stats.framesDecoded++;
             noteFrameDecoded(meta.layerId);
             ready.push(envelope);
             if (!wakeup.isCompleted) wakeup.resolve();
@@ -319,6 +320,7 @@ async function* decodeAsync(
             const arrived = result.value;
             try {
                 currentStats = arrived.stats;
+                arrived.stats.chunksReceived++;
                 // Time-decay hangs so the count drops without needing a new event.
                 const arrivalNowMs = now();
                 while (hangTimestamps.length > 0

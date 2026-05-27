@@ -28,7 +28,8 @@ public sealed record PlaybackStats(
     double PresentSkipRatio,
     double BufferUnderrunRatio,
     double DownlinkLatencyEma,
-    double ArrivalIntervalEma)
+    double ArrivalIntervalEma,
+    double DecodeDeficitEma)
 {
     private static readonly IReadOnlyDictionary<FrameDropStage, int> EmptyDropTrace
         = new Dictionary<FrameDropStage, int>();
@@ -48,7 +49,8 @@ public sealed record PlaybackStats(
             PresentSkipRatio: -1,
             BufferUnderrunRatio: -1,
             DownlinkLatencyEma: -1,
-            ArrivalIntervalEma: -1);
+            ArrivalIntervalEma: -1,
+            DecodeDeficitEma: 0);
 
     public VideoSize RenderVideoSize
         => VideoSizeExt.FromLongSide(RenderCssLongSide, RenderDevicePixelRatio);
