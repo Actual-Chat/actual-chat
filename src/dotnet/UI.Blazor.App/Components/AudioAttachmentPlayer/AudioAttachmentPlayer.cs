@@ -1,5 +1,9 @@
+using System.Collections.Immutable;
+using ActualChat.Chat;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Components;
+using Microsoft.JSInterop;
 
 // ReSharper disable once CheckNamespace
 namespace ActualChat.UI.Blazor.App.Components;
@@ -17,6 +21,7 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
     private DotNetObjectReference<AudioAttachmentPlayer>? _blazorRef;
     private Task<IJSObjectReference>? _jsRefTask;
     private volatile bool _isDisposed;
+    private ImmutableHashSet<ChatId> _listeningChatsBeforeAudio = ImmutableHashSet<ChatId>.Empty;
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
 
@@ -67,6 +72,9 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
             return;
         }
 
+        if (!await TryConfirmInterruptConversation().ConfigureAwait(true))
+            return;
+
         _state.Value = new PlaybackState {
             AttachmentId = attachmentId,
             Url = url,
@@ -102,6 +110,9 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
         if (jsRef is null)
             return;
 
+        if (!await TryConfirmInterruptConversation().ConfigureAwait(true))
+            return;
+
         try {
             ChatAudioUI.StopReplay();
             await jsRef.InvokeVoidAsync("resume").ConfigureAwait(true);
@@ -119,6 +130,7 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
             catch (ObjectDisposedException) { }
         }
         _state.Value = null;
+        await RestoreConversation().ConfigureAwait(true);
     }
 
     public async ValueTask Seek(TimeSpan position)
@@ -210,6 +222,7 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
             IsPlaying = false,
             Position = current.Duration ?? current.Position,
         };
+        _ = BackgroundTask.Run(RestoreConversation, Log, "RestoreConversation failed", CancellationToken.None);
     }
 
     [JSInvokable]
@@ -219,9 +232,61 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
             return;
         Log.LogWarning("Audio playback error: {Message}", message);
         _state.Value = null;
+        _ = BackgroundTask.Run(RestoreConversation, Log, "RestoreConversation failed", CancellationToken.None);
+    }
+
+    internal void OnConversationJoined()
+    {
+        if (_isDisposed)
+            return;
+        _listeningChatsBeforeAudio = ImmutableHashSet<ChatId>.Empty;
+        if (_state.Value is { IsPlaying: true })
+            _ = BackgroundTask.Run(() => Pause().AsTask(), Log, "Pause failed", CancellationToken.None);
     }
 
     // Private methods
+
+    private async Task<bool> TryConfirmInterruptConversation()
+    {
+        var activeChats = Hub.ActiveChatsUI.ActiveChats.Value
+            .Where(c => c.IsListening || c.IsRecording)
+            .ToList();
+        if (activeChats.Count == 0)
+            return true;
+
+        var text = activeChats.Count == 1
+            ? "Playing this audio will stop your active conversation."
+            : $"Playing this audio will stop {activeChats.Count} active conversations.";
+        var confirmed = false;
+        var modalRef = await Hub.ModalUI.Show(new ConfirmModal.Model(
+                IsDestructive: false,
+                text,
+                Confirm: () => confirmed = true) {
+                Title = "Interrupt conversation?",
+                ConfirmButtonText = "Confirm",
+                CancelButtonText = "Cancel",
+            })
+            .ConfigureAwait(true);
+        await modalRef.WhenClosed.ConfigureAwait(true);
+        if (!confirmed)
+            return false;
+
+        _listeningChatsBeforeAudio = activeChats
+            .Where(c => c.IsListening)
+            .Select(c => c.ChatId)
+            .ToImmutableHashSet();
+        await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(true);
+        await ChatAudioUI.ClearListeningChats().ConfigureAwait(true);
+        return true;
+    }
+
+    private async Task RestoreConversation()
+    {
+        var toRestore = _listeningChatsBeforeAudio;
+        _listeningChatsBeforeAudio = ImmutableHashSet<ChatId>.Empty;
+        foreach (var chatId in toRestore)
+            await ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(true);
+    }
 
     private IJSObjectReference? TryGetJSRef()
     {

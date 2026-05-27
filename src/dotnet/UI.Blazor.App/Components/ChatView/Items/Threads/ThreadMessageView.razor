@@ -115,7 +115,11 @@
             <VisualMediaAttachmentList MediaList="@mediaList" IsConversation="true" IsNarrow="@ScreenSize.IsNarrow()"/>
             <div class="message-file-attachments">
                 @foreach (var attachment in fileList) {
-                    <FileAttachment Attachment="@attachment"/>
+                    if (attachment.IsAudio()) {
+                        <AudioFileAttachment Attachment="@attachment"/>
+                    } else {
+                        <FileAttachment Attachment="@attachment"/>
+                    }
                 }
             </div>
         </div>
