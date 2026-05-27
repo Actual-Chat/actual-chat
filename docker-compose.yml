@@ -4,26 +4,6 @@ include:
   - ./services/embeddings/docker-compose.yaml
   - ./services/opensearch/docker-compose.yaml
 
-# Shared base for the chrome-devtools-mcp-* services. Each instance reads its
-# target Chrome debug port from $CHROME_DEBUG_PORT, so callers control the
-# binding via the environment override on the service (or the .env file) — not
-# baked into the compose definition. Listens on port 8765 internally; the
-# instance maps it to a unique host port. The image is built from
-# ./services/chrome-devtools-mcp — its entrypoint supervises supergateway and
-# recycles it when host Chrome flaps, so --stateful sessions recover after a
-# Chrome restart.
-x-chrome-devtools-mcp-base: &chrome-devtools-mcp-base
-  build: ./services/chrome-devtools-mcp
-  restart: unless-stopped
-  extra_hosts:
-    - "host.docker.internal:host-gateway"
-  healthcheck:
-    test: ["CMD-SHELL", "wget -qO- http://localhost:8765/healthz >/dev/null 2>&1 || exit 1"]
-    interval: 15s
-    timeout: 5s
-    retries: 5
-    start_period: 60s
-
 services:
   redis:
     image: "valkey/valkey:9.0.3-alpine3.23"
@@ -139,22 +119,3 @@ services:
       - ACCEPT_EULA=Y
       - SEQ_FIRSTRUN_NOAUTHENTICATION=true
 #    restart: unless-stopped
-  # Chrome DevTools MCP instances. Each bridges stdio chrome-devtools-mcp to
-  # streamable HTTP via supergateway. Two instances let us drive two Chromes
-  # with separate cookie jars (e.g. `c chrome*2`) for multi-user UI tests.
-  # Override CHROME_DEBUG_PORT_{1,2} in the environment or `.env` to rebind.
-  chrome-devtools-mcp-1:
-    <<: *chrome-devtools-mcp-base
-    ports:
-      - "8765:8765"
-    environment:
-      CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS: "1"
-      CHROME_DEBUG_PORT: "${CHROME_DEBUG_PORT_1:-9222}"
-
-  chrome-devtools-mcp-2:
-    <<: *chrome-devtools-mcp-base
-    ports:
-      - "8766:8765"
-    environment:
-      CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS: "1"
-      CHROME_DEBUG_PORT: "${CHROME_DEBUG_PORT_2:-9223}"
