@@ -93,7 +93,15 @@ public partial class ChatVideoUI
                 if (recorder is null) {
                     try {
                         ClearRecordingError(kind);
-                        recorder = await VideoRecorder.Create(Hub, kind).ConfigureAwait(false);
+                        // Reuse a recorder that the JoinVideoCallModal already
+                        // warmed up for this chat — the encoder + HW slot stay
+                        // live across modal close → intent fire, so the join
+                        // transition is just OpenGate (see StartCamera).
+                        recorder = kind == VideoSourceKind.Camera
+                            ? TryClaimCameraWarmupRecorder(intent.ChatId)
+                            : null;
+                        if (recorder is null)
+                            recorder = await VideoRecorder.Create(Hub, kind).ConfigureAwait(false);
                         var serverTimeSync = Hub.Services.GetService<ServerTimeSync>();
                         if (serverTimeSync != null)
                             await serverTimeSync.EnsureSynced(cancellationToken).ConfigureAwait(false);
@@ -138,6 +146,14 @@ public partial class ChatVideoUI
     {
         await recorder.SetSelectedCamera(intent.CameraDeviceId ?? "", ct).ConfigureAwait(false);
         await recorder.SetBlurEnabled(intent.BlurEnabled, ct).ConfigureAwait(false);
+        if (recorder.IsWarmedUp) {
+            // Modal-pre-warmed recorder. Flip the gate; no re-acquire,
+            // no fresh HW encoder slot.
+            await recorder
+                .OpenGate(Hub.VideoQualityUI.OutboundDeviceCameraCap, ct)
+                .ConfigureAwait(false);
+            return;
+        }
         await recorder
             .StartRecording(intent.ChatId, Hub.VideoQualityUI.OutboundDeviceCameraCap, ct)
             .ConfigureAwait(false);
