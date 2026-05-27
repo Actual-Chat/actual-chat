@@ -409,6 +409,19 @@
                             }
                         }
 
+                        @if (Hub.VideoQualityUI.InboundDecoderHealthByStream.TryGetValue(s.Info.StreamId, out var decoderHealth)
+                            && decoderHealth.Verdict != HealthVerdict.Unknown) {
+                            <div class="diag-group-header">Decoder</div>
+                            <div class="diag-row">
+                                <span class="diag-label">Verdict</span>
+                                <span class="diag-value">@FormatVerdict(decoderHealth.Verdict)</span>
+                            </div>
+                            <div class="diag-row">
+                                <span class="diag-label">Signals</span>
+                                <span class="diag-value multiline">@FormatDecoderHealth(decoderHealth)</span>
+                            </div>
+                        }
+
                         @{
                             var authorId = s.Info.AuthorId;
                             var lag = LagTracker.GetSnapshot(authorId);
@@ -684,21 +697,25 @@
             builder.CloseElement();
             builder.CloseElement(); // diag-log-line
 
-            // Line 2: raw values.
-            builder.OpenElement(seqBase + 124 + i * 30, "div");
-            builder.AddAttribute(seqBase + 125 + i * 30, "class", "diag-log-subline diag-dim");
-            var subline = string.Join("   ",
-                new[] {
-                    string.IsNullOrEmpty(e.RawValuesA) ? "" : $"{labelA.ToLowerInvariant()}: {e.RawValuesA}",
-                    string.IsNullOrEmpty(e.RawValuesB) ? "" : $"{labelB.ToLowerInvariant()}: {e.RawValuesB}",
-                    string.IsNullOrEmpty(e.RawValuesBw) ? "" : $"bw: {e.RawValuesBw}",
-                }.Where(s => !string.IsNullOrEmpty(s)));
-            builder.AddContent(seqBase + 126 + i * 30, subline);
-            builder.CloseElement();
+            // Lines 2..4: one subline per leg (A, B, BW). Skip empty ones.
+            AppendSubline(builder, seqBase + 124 + i * 30, labelA, e.RawValuesA);
+            AppendSubline(builder, seqBase + 127 + i * 30, labelB, e.RawValuesB);
+            AppendSubline(builder, seqBase + 130 + i * 30, "bw", e.RawValuesBw);
 
             builder.CloseElement(); // diag-log-row
             i++;
         }
+    }
+
+    private static void AppendSubline(RenderTreeBuilder builder, int seqBase, string label, string rawValues)
+    {
+        if (string.IsNullOrEmpty(rawValues))
+            return;
+
+        builder.OpenElement(seqBase, "div");
+        builder.AddAttribute(seqBase + 1, "class", "diag-log-subline diag-dim");
+        builder.AddContent(seqBase + 2, $"{label.ToLowerInvariant()}: {rawValues}");
+        builder.CloseElement();
     }
 
     private static void AppendSwatch(
@@ -899,6 +916,18 @@
             > 0 => $"+{signal} (good)",
             _ => "0 (neutral)",
         };
+
+    private static string FormatVerdict(HealthVerdict v) => v switch {
+        HealthVerdict.Good => "Good (G)",
+        HealthVerdict.Marginal => "Marginal (M)",
+        HealthVerdict.Bad => "Bad (B)",
+        _ => "Unknown",
+    };
+
+    private static string FormatDecoderHealth(DecoderHealth h)
+        => $"decRatio={h.DecodeRatioEma:F2}, decDeficit={h.DecodeDeficitEma * 100:F1}%, "
+            + $"hang/60s={h.HangRateIn60s}, recovery={h.RecoveryStreak}, "
+            + $"presentSkip={h.PresentSkipRatio * 100:F1}%, pathDrop={h.ReceiverDecodePathDropRatio * 100:F1}%";
 
     private static string FormatLag(TimeSpan? lag)
         => lag is null ? "—" : $"{lag.Value.TotalMilliseconds:+0;-0;0} ms";
