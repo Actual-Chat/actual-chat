@@ -262,10 +262,25 @@ export class WebGlBgRenderer {
 
     private allocPingPong(w: number, h: number): void {
         const gl = this.gl!;
-        for (const tex of [this.pingTexture, this.pongTexture]) {
+        // (1) Allocate storage with a *sized* internal format (RGBA8). Unsized
+        //     `gl.RGBA` isn't color-renderable on WebGL2; attaching such a
+        //     texture leaves the FBO incomplete.
+        // (2) Re-attach the texture to the FBO *after* storage exists. An
+        //     earlier attachment made when the texture had no level-0 image
+        //     registers as MISSING_ATTACHMENT on Chromium, and calling
+        //     texImage2D later does not retroactively populate the slot.
+        //     Rebinding here makes the FBO complete on first draw.
+        const pairs: Array<[WebGLTexture | null, WebGLFramebuffer | null]> = [
+            [this.pingTexture, this.pingFbo],
+            [this.pongTexture, this.pongFbo],
+        ];
+        for (const [tex, fbo] of pairs) {
             gl.bindTexture(gl.TEXTURE_2D, tex);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
         }
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         this.allocW = w;
         this.allocH = h;
     }
