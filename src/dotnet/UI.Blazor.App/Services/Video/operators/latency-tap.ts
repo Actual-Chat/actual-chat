@@ -10,6 +10,10 @@ export interface LatencySample {
     // Cross-clock approximation: sender/receiver MonotonicClocks share a Unix anchor
     // but drift independently — soft KPI, not an SLO.
     e2eLatencyMs: number;
+    // Presented frame's offset from stream start (ms), reconstructed on the
+    // receiver from wire Offset. Same units as audio's sourceOffsetMs — the
+    // A/V-sync lag is startedAtMs + capturedAtMs vs ServerClock.now.
+    capturedAtMs: number;
     capturedEpoch: number;
     layerId: number;
     width: number;
@@ -57,6 +61,7 @@ export function latencyTap(opts: LatencyTapOptions): PipeOperator<DecodedFrame, 
             report({
                 frameAgeMs: nowMs - envelope.decodedAt.timeMs,
                 e2eLatencyMs: nowMs - envelope.capturedAt.timeMs,
+                capturedAtMs: envelope.capturedAt.timeMs,
                 capturedEpoch: envelope.capturedAt.epoch,
                 layerId: envelope.layerId,
                 width: envelope.frame.displayWidth,

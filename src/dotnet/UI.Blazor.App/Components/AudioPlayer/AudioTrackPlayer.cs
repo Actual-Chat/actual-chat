@@ -66,7 +66,9 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         if (authorId is null)
             return;
 
-        LagTracker.UpdateAudio(authorId, _id, lag);
+        var anchor = TrackInfo.SourceRecordedAt != default ? TrackInfo.SourceRecordedAt : TrackInfo.RecordedAt;
+        var raw = new LagInputs(AnchorMs: anchor.EpochOffset.TotalMilliseconds);
+        LagTracker.UpdateAudio(authorId, _id, lag, raw);
     }
 
     [JSInvokable]

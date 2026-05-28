@@ -238,13 +238,15 @@
     }
 
     [JSInvokable]
-    public void OnPresentationLag(double lagMs)
+    public void OnPresentationLag(double lagMs, double captureOffsetMs, double bufferSpanMs)
     {
         // Camera-only: screencast pacing is too uneven to be a useful A/V sync target.
         if (StreamInfo.SourceKind != VideoSourceKind.Camera)
             return;
 
-        LagTracker.UpdateVideo(StreamInfo.AuthorId, StreamInfo.StreamId.Value, TimeSpan.FromMilliseconds(lagMs));
+        var anchor = StreamInfo.SourceStartedAt != default ? StreamInfo.SourceStartedAt : StreamInfo.StartedAt;
+        var raw = new LagInputs(anchor.EpochOffset.TotalMilliseconds, bufferSpanMs, captureOffsetMs);
+        LagTracker.UpdateVideo(StreamInfo.AuthorId, StreamInfo.StreamId.Value, TimeSpan.FromMilliseconds(lagMs), raw);
     }
 
     [JSInvokable]

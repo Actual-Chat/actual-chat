@@ -432,9 +432,17 @@
                             <span class="diag-label">Audio lag</span>
                             <span class="diag-value">@FormatLag(lag.AudioLag) (fresh @lag.FreshAudioStreamCount, stale @lag.StaleAudioStreamCount)</span>
                         </div>
+                        <div class="diag-row diag-sub">
+                            <span class="diag-label">audio in</span>
+                            <span class="diag-value diag-dim">@FormatAudioInputs(lag.AudioInputs)</span>
+                        </div>
                         <div class="diag-row">
                             <span class="diag-label">Video lag</span>
                             <span class="diag-value">@FormatLag(lag.VideoLag) (fresh @lag.FreshVideoStreamCount, stale @lag.StaleVideoStreamCount)</span>
+                        </div>
+                        <div class="diag-row diag-sub">
+                            <span class="diag-label">video in</span>
+                            <span class="diag-value diag-dim">@FormatVideoInputs(lag.VideoInputs)</span>
                         </div>
                         <div class="diag-row">
                             <span class="diag-label">Drift</span>
@@ -928,6 +936,12 @@
         => $"decRatio={h.DecodeRatioEma:F2}, decDeficit={h.DecodeDeficitEma * 100:F1}%, "
             + $"hang/60s={h.HangRateIn60s}, recovery={h.RecoveryStreak}, "
             + $"presentSkip={h.PresentSkipRatio * 100:F1}%, pathDrop={h.ReceiverDecodePathDropRatio * 100:F1}%";
+
+    private static string FormatAudioInputs(LagInputs i)
+        => i.AnchorMs <= 0 ? "—" : $"rec={i.AnchorMs:F0}";
+
+    private static string FormatVideoInputs(LagInputs i)
+        => i.AnchorMs <= 0 ? "—" : $"rec={i.AnchorMs:F0} buf={i.LookaheadMs:F0}ms off={i.OffsetMs:F0}ms";
 
     private static string FormatLag(TimeSpan? lag)
         => lag is null ? "—" : $"{lag.Value.TotalMilliseconds:+0;-0;0} ms";

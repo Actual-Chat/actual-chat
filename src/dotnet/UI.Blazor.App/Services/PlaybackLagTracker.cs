@@ -29,10 +29,10 @@ public sealed class PlaybackLagTracker : IDisposable
         _cleanupTimer = new Timer(_ => Cleanup(), null, CleanupInterval, CleanupInterval);
     }
 
-    public void UpdateAudio(AuthorId authorId, string streamId, TimeSpan lag)
-        => Update(_audio, authorId, streamId, lag);
-    public void UpdateVideo(AuthorId authorId, string streamId, TimeSpan lag)
-        => Update(_video, authorId, streamId, lag);
+    public void UpdateAudio(AuthorId authorId, string streamId, TimeSpan lag, LagInputs raw = default)
+        => Update(_audio, authorId, streamId, lag, raw);
+    public void UpdateVideo(AuthorId authorId, string streamId, TimeSpan lag, LagInputs raw = default)
+        => Update(_video, authorId, streamId, lag, raw);
 
     public TimeSpan? GetAudioLag(AuthorId authorId) => GetMinLag(_audio, authorId);
     public TimeSpan? GetVideoLag(AuthorId authorId) => GetMinLag(_video, authorId);
@@ -51,23 +51,25 @@ public sealed class PlaybackLagTracker : IDisposable
             video.FreshCount,
             video.StaleCount,
             audio.FreshestAge,
-            video.FreshestAge);
+            video.FreshestAge,
+            audio.Raw,
+            video.Raw);
     }
 
     public void Dispose() => _cleanupTimer.Dispose();
 
     private void Update(ConcurrentDictionary<string, Entry> store,
-        AuthorId authorId, string streamId, TimeSpan lag)
+        AuthorId authorId, string streamId, TimeSpan lag, LagInputs raw)
     {
         var now = _clocks.SystemClock.Now;
         store.AddOrUpdate(streamId,
-            _ => new Entry(authorId, lag, now),
+            _ => new Entry(authorId, lag, now, raw),
             (_, prev) => {
                 var staleAfter = Constants.Audio.PlaybackLagStaleAfter;
                 var emaLag = prev.AuthorId == authorId && now - prev.UpdatedAt < staleAfter
                     ? prev.Lag * (1 - EmaAlpha) + lag * EmaAlpha
                     : lag;
-                return new Entry(authorId, emaLag, now);
+                return new Entry(authorId, emaLag, now, raw);
             });
     }
 
@@ -89,6 +91,7 @@ public sealed class PlaybackLagTracker : IDisposable
     private static ScanResult Scan(ConcurrentDictionary<string, Entry> store, AuthorId authorId, Moment now, Moment threshold)
     {
         TimeSpan? min = null;
+        var minRaw = default(LagInputs);
         Moment? freshestAt = null;
         var freshCount = 0;
         var staleCount = 0;
@@ -105,10 +108,12 @@ public sealed class PlaybackLagTracker : IDisposable
             }
 
             freshCount++;
-            if (min is null || e.Lag < min.Value)
+            if (min is null || e.Lag < min.Value) {
                 min = e.Lag;
+                minRaw = e.Raw;
+            }
         }
-        return new ScanResult(min, freshCount, staleCount, freshestAt is null ? null : now - freshestAt.Value);
+        return new ScanResult(min, freshCount, staleCount, freshestAt is null ? null : now - freshestAt.Value, minRaw);
     }
 
     private void Cleanup()
@@ -129,15 +134,26 @@ public sealed class PlaybackLagTracker : IDisposable
     private readonly record struct Entry(
         AuthorId AuthorId,
         TimeSpan Lag,
-        Moment UpdatedAt);
+        Moment UpdatedAt,
+        LagInputs Raw);
 
     [StructLayout(LayoutKind.Auto)]
     private readonly record struct ScanResult(
         TimeSpan? Lag,
         int FreshCount,
         int StaleCount,
-        TimeSpan? FreshestAge);
+        TimeSpan? FreshestAge,
+        LagInputs Raw);
 }
+
+// Raw lag-formula components (ms) for diagnostics. AnchorMs = source-recorded
+// wallclock (server domain); LookaheadMs = forward buffer (audio feeder target
+// delay / video buffer span); OffsetMs = presented frame's offset from start.
+[StructLayout(LayoutKind.Auto)]
+public readonly record struct LagInputs(
+    double AnchorMs = 0,
+    double LookaheadMs = 0,
+    double OffsetMs = 0);
 
 [StructLayout(LayoutKind.Auto)]
 public readonly record struct PlaybackLagSnapshot(
@@ -148,4 +164,6 @@ public readonly record struct PlaybackLagSnapshot(
     int FreshVideoStreamCount,
     int StaleVideoStreamCount,
     TimeSpan? FreshestAudioAge,
-    TimeSpan? FreshestVideoAge);
+    TimeSpan? FreshestVideoAge,
+    LagInputs AudioInputs = default,
+    LagInputs VideoInputs = default);

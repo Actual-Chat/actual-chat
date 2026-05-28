@@ -1,6 +1,7 @@
 import { getLogs } from 'logging';
 import { Api, streamingApi } from 'api';
 import { delayAsync } from 'actuallab-core';
+import { ServerClock } from 'clocks';
 
 const RPC_SESSION_DEFAULT = '~';
 import { rpcClientServer, rpcNoWait } from 'rpc';
@@ -1165,9 +1166,16 @@ export class VideoPlayer {
         if (sample.layerId > this.observedMaxLayerId)
             this.observedMaxLayerId = sample.layerId;
 
-        // Forward presentation lag to Blazor for A/V sync.
-        const presentationLagMs = Math.max(0, sample.frameAgeMs);
-        void this.blazorRef.invokeMethodAsync('OnPresentationLag', presentationLagMs)
+        // Forward presentation lag to Blazor for A/V sync. Same shape as the
+        // audio path (opus-decoder.ts): server-clock now + forward buffer span
+        // − source-capture wallclock (stream anchor + per-frame offset). NOT
+        // frameAgeMs, which is decode→present age in receiver-local time and
+        // ignores both the buffer span and the capture anchor.
+        const captureAtServerMs = this.startedAtMs + sample.capturedAtMs;
+        const presentationLagMs = Math.max(0,
+            ServerClock.now() + sample.bufferSpanMs - captureAtServerMs);
+        void this.blazorRef.invokeMethodAsync(
+            'OnPresentationLag', presentationLagMs, sample.capturedAtMs, sample.bufferSpanMs)
             .catch(() => { /* ignore */ });
 
         // Push a playback-health snapshot for the server-side controller.
