@@ -39,7 +39,9 @@ public class KvasSerializer : ByteSerializerBase
                 _ => TextSerializer.Read(data, type, out readLength), // Legacy JSON format (no marker)
             };
         }
-        catch (Exception e) when (e is MemoryPackSerializationException or MessagePackSerializationException) {
+        catch (Exception e) when (e is MemoryPackSerializationException
+            or MessagePackSerializationException
+            or System.Text.Json.JsonException) {
             Log.LogWarning(e, "Failed to deserialize data of type {Type} with length {Length}", type, data.Length);
             readLength = 0;
             return null;
