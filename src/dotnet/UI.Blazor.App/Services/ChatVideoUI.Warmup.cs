@@ -28,7 +28,7 @@ public partial class ChatVideoUI
         }
         VideoRecorder recorder;
         try {
-            recorder = await VideoRecorder.Create(Hub, VideoSourceKind.Camera).ConfigureAwait(false);
+            recorder = await VideoRecorder.Create(Hub).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "StartCameraWarmup: failed to create recorder");
