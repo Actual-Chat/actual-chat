@@ -20,7 +20,13 @@
             var link = (LinkItem)item.Items[0];
             var menuRef = MenuRef.New<ChatContentItemMenu>(link.EntryId.Value).ToString();
             <div class="message-link-preview" data-menu="@menuRef">
-                <LinkPreviewView Entry="@item.LinkEntry" LinkPreview="@link.LinkPreview"/>
+                @if (link.LinkPreview is { IsEmpty: false }) {
+                    <LinkPreviewView Entry="@item.LinkEntry" LinkPreview="@link.LinkPreview"/>
+                }
+                else {
+                    var url = link.LinkPreview?.Url ?? "";
+                    <a class="c-link-plain" href="@url" target="_blank" rel="noopener">@(url.Length > 0 ? url : "[link unavailable]")</a>
+                }
             </div>
         }
     </Item>
@@ -41,7 +47,7 @@
         VirtualListData<ContentListItem> renderedData,
         CancellationToken cancellationToken)
         => ContentListPlumbing.LoadFromPeriods<LinkItem>(
-            Hub, Session, ChatId, ChatContentKind.Link, query, renderedData,
+            Hub, Session, ChatId, query, renderedData,
             (periodKey, pageIndex, ct) => Chats.GetLinkPeriod(Session, ChatId, periodKey, pageIndex, ct),
             BuildItems,
             cancellationToken);
@@ -50,32 +56,30 @@
         IReadOnlyList<ContentListPlumbing.Block> windowBlocks,
         IReadOnlyList<LinkItem[]> contents,
         CancellationToken cancellationToken) {
+        // Resolve entries only for the rich-preview rendering path; absent entries are
+        // fine — the fallback shows just the URL.
         var linkEntries = await ResolveLinkEntries(contents, cancellationToken).ConfigureAwait(false);
         var result = new List<ContentListItem>();
         string? currentGroupKey = null;
 
         for (var b = 0; b < windowBlocks.Count; b++) {
             var block = windowBlocks[b];
-            // Filter out items whose preview never resolved (stale/archived entries).
-            var visible = contents[b]
-                .Where(it => it.LinkPreview is { IsEmpty: false } && linkEntries.ContainsKey(it.Id))
-                .Cast<IChatContentItem>()
-                .ToList();
-            var rows = ContentListPlumbing.ChunkPage(visible, 1, ContentGrouping.Day, DateTimeConverter);
+            var items = contents[b].Cast<IChatContentItem>().ToList();
+            var rows = ContentListPlumbing.ChunkPage(items, 1, ContentGrouping.Day, DateTimeConverter);
             for (var r = rows.Count - 1; r >= 0; r--) {
-                var (rowIndex, groupKey, items) = rows[r];
+                var (rowIndex, groupKey, rowItems) = rows[r];
                 if (groupKey != currentGroupKey) {
                     currentGroupKey = groupKey;
-                    var title = ContentListPlumbing.GetLocalGroup(items[0].At, ContentGrouping.Day, DateTimeConverter).Title;
+                    var title = ContentListPlumbing.GetLocalGroup(rowItems[0].At, ContentGrouping.Day, DateTimeConverter).Title;
                     if (title.Length > 0)
                         result.Add(new ContentListItem { Key = $"g:{groupKey}", IsGroup = true, GroupTitle = title });
                 }
 
-                var link = (LinkItem)items[0];
-                var entry = linkEntries[link.Id];
+                var link = (LinkItem)rowItems[0];
+                linkEntries.TryGetValue(link.Id, out var entry);
                 result.Add(new ContentListItem {
                     Key = $"i:{block.PeriodKey}:{block.PageIndex}:{rowIndex}",
-                    Version = link.Version + entry.Version,
+                    Version = link.Version + (entry?.Version ?? 0),
                     Items = new IChatContentItem[] { link },
                     LinkEntry = entry,
                 });

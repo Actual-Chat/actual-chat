@@ -121,8 +121,8 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         await TestExt.When(async () => {
             (await ListAllFiles(chats, session, chatId)).Should().BeEmpty();
             (await ListAllLinks(chats, session, chatId)).Should().BeEmpty();
-            (await chats.GetContentPeriods(session, chatId, ChatContentKind.File, CancellationToken.None))
-                .Should().BeEmpty();
+            (await chats.GetContentPeriods(session, chatId, ChatContentKind.File, null, CancellationToken.None))
+                .Periods.Should().BeEmpty();
         }, TimeSpan.FromSeconds(30));
     }
 
@@ -201,15 +201,17 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
             (await ListAllLinks(chats, session, chatId)).Should().ContainSingle();
         }, TimeSpan.FromSeconds(30));
 
-        var filePeriods = await chats.GetContentPeriods(session, chatId, ChatContentKind.File, CancellationToken.None);
-        filePeriods.Should().ContainSingle().Which.ItemCount.Should().Be(1);
+        var fileSkeleton = await chats.GetContentPeriods(session, chatId, ChatContentKind.File, null, CancellationToken.None);
+        fileSkeleton.Periods.Should().ContainSingle().Which.PageCount.Should().Be(1);
+        fileSkeleton.NextPeriodKey.Should().BeNull();
 
         var filePage = await chats.GetFilePeriod(
-            session, chatId, filePeriods[0].PeriodKey, 0, CancellationToken.None);
+            session, chatId, fileSkeleton.Periods[0].PeriodKey, 0, CancellationToken.None);
         filePage.Should().ContainSingle().Which.FileName.Should().Be("tile.txt");
 
-        var linkPeriods = await chats.GetContentPeriods(session, chatId, ChatContentKind.Link, CancellationToken.None);
-        linkPeriods.Should().ContainSingle().Which.ItemCount.Should().Be(1);
+        var linkSkeleton = await chats.GetContentPeriods(session, chatId, ChatContentKind.Link, null, CancellationToken.None);
+        linkSkeleton.Periods.Should().ContainSingle().Which.PageCount.Should().Be(1);
+        linkSkeleton.NextPeriodKey.Should().BeNull();
     }
 
     [Fact]
@@ -255,7 +257,7 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         var outsiderSession = outsiderTester.Session;
 
         await Assert.ThrowsAnyAsync<Exception>(() =>
-            outsiderChats.GetContentPeriods(outsiderSession, chatId, ChatContentKind.Media, CancellationToken.None));
+            outsiderChats.GetContentPeriods(outsiderSession, chatId, ChatContentKind.Media, null, CancellationToken.None));
         await Assert.ThrowsAnyAsync<Exception>(() =>
             outsiderChats.GetVisualMediaPeriod(
                 outsiderSession, chatId, "2026-05", 0, CancellationToken.None));
@@ -282,15 +284,13 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         IChats chats, Session session, ChatId chatId)
     {
         var result = new List<VisualMediaItem>();
-        var periods = await chats.GetContentPeriods(session, chatId, ChatContentKind.Media, CancellationToken.None);
-        foreach (var period in periods) {
-            var pageCount = (period.ItemCount + ChatContentPeriod.PageSize - 1) / ChatContentPeriod.PageSize;
-            for (var pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+        var skeleton = await chats.GetContentPeriods(session, chatId, ChatContentKind.Media, null, CancellationToken.None);
+        foreach (var period in skeleton.Periods)
+            for (var pageIndex = 0; pageIndex < period.PageCount; pageIndex++) {
                 var page = await chats.GetVisualMediaPeriod(
                     session, chatId, period.PeriodKey, pageIndex, CancellationToken.None);
                 result.AddRange(page);
             }
-        }
         return result;
     }
 
@@ -298,15 +298,13 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         IChats chats, Session session, ChatId chatId)
     {
         var result = new List<FileItem>();
-        var periods = await chats.GetContentPeriods(session, chatId, ChatContentKind.File, CancellationToken.None);
-        foreach (var period in periods) {
-            var pageCount = (period.ItemCount + ChatContentPeriod.PageSize - 1) / ChatContentPeriod.PageSize;
-            for (var pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+        var skeleton = await chats.GetContentPeriods(session, chatId, ChatContentKind.File, null, CancellationToken.None);
+        foreach (var period in skeleton.Periods)
+            for (var pageIndex = 0; pageIndex < period.PageCount; pageIndex++) {
                 var page = await chats.GetFilePeriod(
                     session, chatId, period.PeriodKey, pageIndex, CancellationToken.None);
                 result.AddRange(page);
             }
-        }
         return result;
     }
 
@@ -314,15 +312,13 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         IChats chats, Session session, ChatId chatId)
     {
         var result = new List<LinkItem>();
-        var periods = await chats.GetContentPeriods(session, chatId, ChatContentKind.Link, CancellationToken.None);
-        foreach (var period in periods) {
-            var pageCount = (period.ItemCount + ChatContentPeriod.PageSize - 1) / ChatContentPeriod.PageSize;
-            for (var pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+        var skeleton = await chats.GetContentPeriods(session, chatId, ChatContentKind.Link, null, CancellationToken.None);
+        foreach (var period in skeleton.Periods)
+            for (var pageIndex = 0; pageIndex < period.PageCount; pageIndex++) {
                 var page = await chats.GetLinkPeriod(
                     session, chatId, period.PeriodKey, pageIndex, CancellationToken.None);
                 result.AddRange(page);
             }
-        }
         return result;
     }
 

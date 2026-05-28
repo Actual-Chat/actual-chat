@@ -63,7 +63,7 @@
         VirtualListData<ContentListItem> renderedData,
         CancellationToken cancellationToken)
         => ContentListPlumbing.LoadFromPeriods<VisualMediaItem>(
-            Hub, Session, ChatId, ChatContentKind.Media, query, renderedData,
+            Hub, Session, ChatId, query, renderedData,
             (periodKey, pageIndex, ct) => Chats.GetVisualMediaPeriod(Session, ChatId, periodKey, pageIndex, ct),
             BuildItems,
             cancellationToken);

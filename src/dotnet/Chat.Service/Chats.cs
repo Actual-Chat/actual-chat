@@ -91,14 +91,15 @@ public partial class Chats(IServiceProvider services) : IChats
         => GetTile(session, chatId, lidTileRange, cancellationToken);
 
     // [ComputeMethod]
-    public virtual async Task<ChatContentPeriod[]> GetContentPeriods(
+    public virtual async Task<ChatContentSkeleton> GetContentPeriods(
         Session session,
         ChatId chatId,
         ChatContentKind kind,
+        string? beforePeriodKey,
         CancellationToken cancellationToken)
     {
         await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetContentPeriods(chatId, kind, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetContentPeriods(chatId, kind, beforePeriodKey, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]

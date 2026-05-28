@@ -669,11 +669,17 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     [ComputeMethod]
-    public virtual async Task<ChatContentPeriod[]> GetContentPeriods(
+    public virtual async Task<ChatContentSkeleton> GetContentPeriods(
         ChatId chatId,
         ChatContentKind kind,
+        string? beforePeriodKey,
         CancellationToken cancellationToken)
     {
+        // Lazy paging not implemented yet — see ChatContentSkeleton.NextPeriodKey.
+        if (beforePeriodKey != null)
+            throw new NotSupportedException(
+                "Paginated skeleton not implemented yet; beforePeriodKey must be null.");
+
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
@@ -699,13 +705,14 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .Select(m => (m.Year, m.Month, m.Count)).ToList(),
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
         };
-        return months
+        var periods = months
             .Select(m => new ChatContentPeriod {
                 PeriodKey = FormatUtcMonthKey(m.Year, m.Month),
-                ItemCount = m.Count,
+                PageCount = (m.Count + ChatContentPeriod.PageSize - 1) / ChatContentPeriod.PageSize,
             })
             .OrderByDescending(p => p.PeriodKey)
             .ToArray();
+        return new ChatContentSkeleton { Periods = periods, NextPeriodKey = null };
     }
 
     [ComputeMethod]
@@ -1821,7 +1828,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     private void InvalidateContentIndex(ChatContentKind kind, ChatId chatId)
     {
-        _ = GetContentPeriods(chatId, kind, default);
+        _ = GetContentPeriods(chatId, kind, null, default);
         var pageCounts = CommandContext.GetCurrent().Operation.Items
             .KeylessGet<ContentIndexPageCounts>();
         if (pageCounts == null || pageCounts.Kind != kind)
