@@ -7,6 +7,7 @@ import {
     type ArrivedChunk,
     type PlayerStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
+import { FrameDropStage } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-drop-trace';
 // ---- Helpers --------------------------------------------------------------
 
 class MockEncodedVideoChunk {
@@ -290,5 +291,76 @@ describe('pacedEncodedBuffer', () => {
         await runPromise;
         expect(buffer.count()).toBe(0);
         expect((cs[4].chunk as unknown as MockEncodedVideoChunk).closed).toBe(true);
+    });
+});
+
+describe('EncodedFrameBuffer skip-to-live', () => {
+    it('drops the stale backlog to the newest buffered keyframe past threshold', () => {
+        const stats = createEmptyPlayerStats();
+        const buffer = new EncodedFrameBuffer({
+            targetSpanMs: 100,
+            frameDurationMs: 33.333,
+            stats,
+            skipToLiveSpanMs: 300,
+            nowFn: () => 0,
+        });
+
+        buffer.push(mkChunk({ timeMs: 0, isKeyFrame: true, stats }));      // 0
+        for (let i = 1; i <= 8; i++)                                       // 1..8 deltas
+            buffer.push(mkChunk({ timeMs: 33 * i, isKeyFrame: false, stats }));
+        const kf2 = mkChunk({ timeMs: 297, isKeyFrame: true, stats });
+        const head0 = buffer.count();
+        buffer.push(kf2);                                                  // newer keyframe
+        // span now 297 + 33.333 = 330.3 > 300 → skip drops [0..8] (9 chunks)
+        // before kf2; kf2 becomes the head.
+        buffer.push(mkChunk({ timeMs: 330, isKeyFrame: false, stats }));
+
+        expect(head0).toBe(9);
+        expect(buffer.count()).toBe(2); // kf2 + the trailing delta
+        expect(stats.dropTrace.get(FrameDropStage.ReceiverSkipToLive)).toBe(9);
+    });
+
+    it('does not skip when there is no newer keyframe to land on', () => {
+        const stats = createEmptyPlayerStats();
+        const buffer = new EncodedFrameBuffer({
+            targetSpanMs: 100,
+            frameDurationMs: 33.333,
+            stats,
+            skipToLiveSpanMs: 300,
+            nowFn: () => 0,
+        });
+
+        buffer.push(mkChunk({ timeMs: 0, isKeyFrame: true, stats }));
+        for (let i = 1; i <= 12; i++) // span well past 300, but only one keyframe
+            buffer.push(mkChunk({ timeMs: 33 * i, isKeyFrame: false, stats }));
+
+        expect(buffer.count()).toBe(13);
+        expect(stats.dropTrace.get(FrameDropStage.ReceiverSkipToLive)).toBeUndefined();
+    });
+
+    it('respects the cooldown between skips', () => {
+        const stats = createEmptyPlayerStats();
+        let nowMs = 0;
+        const buffer = new EncodedFrameBuffer({
+            targetSpanMs: 100,
+            frameDurationMs: 33.333,
+            stats,
+            skipToLiveSpanMs: 300,
+            nowFn: () => nowMs,
+        });
+
+        buffer.push(mkChunk({ timeMs: 0, isKeyFrame: true, stats }));
+        for (let i = 1; i <= 8; i++)
+            buffer.push(mkChunk({ timeMs: 33 * i, isKeyFrame: false, stats }));
+        buffer.push(mkChunk({ timeMs: 297, isKeyFrame: true, stats })); // first skip fires
+        expect(stats.dropTrace.get(FrameDropStage.ReceiverSkipToLive)).toBe(9);
+
+        // Within cooldown (1500 ms): build another stale backlog + newer keyframe.
+        nowMs = 1000;
+        for (let i = 1; i <= 8; i++)
+            buffer.push(mkChunk({ timeMs: 297 + 33 * i, isKeyFrame: false, stats }));
+        buffer.push(mkChunk({ timeMs: 600, isKeyFrame: true, stats }));
+        // Still 9 — cooldown blocked the second skip.
+        expect(stats.dropTrace.get(FrameDropStage.ReceiverSkipToLive)).toBe(9);
     });
 });

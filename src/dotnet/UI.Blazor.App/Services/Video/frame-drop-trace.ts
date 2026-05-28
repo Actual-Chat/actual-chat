@@ -36,6 +36,10 @@ export enum FrameDropStage {
     // also walks every surviving frame's dropTrace into the per-stream
     // histogram, so this is the canonical end-of-pipe count point.
     ReceiverPresent = 64,
+    // Intentional pre-decode skip-to-live: when the encoded buffer holds more
+    // than the skip-to-live span, chunks before the newest buffered keyframe
+    // are dropped to reach the live edge. Not a failure / not a kill stage.
+    ReceiverSkipToLive = 65,
 }
 
 // `traceDrops` is a generic AsyncIterable wrapper. Items must expose `index`

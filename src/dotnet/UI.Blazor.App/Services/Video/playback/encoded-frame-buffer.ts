@@ -1,5 +1,6 @@
 import { RunningEMA } from 'math';
 import type { ArrivedChunk, PlayerStats } from '../frame-envelopes';
+import { FrameDropStage } from '../frame-drop-trace';
 
 export type EncodedFrameBufferPushResult =
     | 'accepted'
@@ -20,10 +21,17 @@ export interface EncodedFrameBufferOptions {
      *  (EMA of 1 if spanMs() < targetSpanMs/3 else 0) while the buffer is
      *  armed. */
     stats?: PlayerStats;
+    /** When the buffered span exceeds this, push() skips pre-decode to the
+     *  newest buffered keyframe (drops the stale backlog). 0 disables.
+     *  Should be well below the present-stage 4 s catch-up budget. */
+    skipToLiveSpanMs?: number;
+    /** Monotonic clock for the skip cooldown (ms). Defaults to performance.now. */
+    nowFn?: () => number;
 }
 
 const UNDERRUN_RATIO_EMA_ALPHA = 0.1;
 const UNDERRUN_FRACTION = 1 / 3;
+const SKIP_TO_LIVE_COOLDOWN_MS = 1500;
 
 // Receiver-side jitter buffer for encoded video chunks. Pacing is
 // span-gated: tryPull() releases iff spanMs() >= targetSpanMs. An
@@ -42,11 +50,16 @@ export class EncodedFrameBuffer {
     private readonly underrunThresholdMs: number;
     private readonly chunks: ArrivedChunk[] = [];
     private state: EncodedFrameBufferState = 'reset';
+    private readonly skipToLiveSpanMs: number;
+    private readonly nowFn: () => number;
+    private nextSkipAllowedAtMs = 0;
 
     constructor(opts: EncodedFrameBufferOptions) {
         this.targetSpanMs = opts.targetSpanMs;
         this.frameDurationMs = opts.frameDurationMs ?? 1000 / 30;
         this.stats = opts.stats;
+        this.skipToLiveSpanMs = opts.skipToLiveSpanMs ?? 0;
+        this.nowFn = opts.nowFn ?? ((): number => performance.now());
         this.underrunEma = new RunningEMA(0, 1, UNDERRUN_RATIO_EMA_ALPHA);
         this.underrunThresholdMs = this.targetSpanMs * UNDERRUN_FRACTION;
     }
@@ -90,7 +103,43 @@ export class EncodedFrameBuffer {
         }
         this.chunks.push(chunk);
         this.sampleUnderrun();
+        this.trySkipToLive();
         return 'accepted';
+    }
+
+    // Pre-decode skip-to-live: when the buffered span exceeds skipToLiveSpanMs,
+    // drop every chunk before the newest buffered keyframe so the next pull is
+    // at the live edge. Keyframe-anchored (decoder stays valid); cooldown
+    // prevents thrash. No-op when disabled, under threshold, in cooldown, or
+    // when the newest keyframe is already the head (nothing to drop).
+    private trySkipToLive(): void {
+        if (this.skipToLiveSpanMs <= 0 || this.state !== 'armed')
+            return;
+        if (this.spanMs() <= this.skipToLiveSpanMs)
+            return;
+        const now = this.nowFn();
+        if (now < this.nextSkipAllowedAtMs)
+            return;
+
+        // Newest keyframe index; only worth skipping if it's past the head.
+        let kfIndex = -1;
+        for (let i = this.chunks.length - 1; i > 0; i--) {
+            if (this.chunks[i].isKeyFrame) { kfIndex = i; break; }
+        }
+        if (kfIndex <= 0)
+            return;
+
+        for (let i = 0; i < kfIndex; i++)
+            this.disposeChunk(this.chunks[i]);
+        this.chunks.splice(0, kfIndex);
+        this.nextSkipAllowedAtMs = now + SKIP_TO_LIVE_COOLDOWN_MS;
+        this.countDrops(FrameDropStage.ReceiverSkipToLive, kfIndex);
+    }
+
+    private countDrops(stage: FrameDropStage, n: number): void {
+        const stats = this.stats;
+        if (!stats || n <= 0) return;
+        stats.dropTrace.set(stage, (stats.dropTrace.get(stage) ?? 0) + n);
     }
 
     private sampleUnderrun(): void {

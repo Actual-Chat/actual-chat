@@ -95,6 +95,10 @@ export class Player {
             targetSpanMs: config.targetBufferSpanMs,
             frameDurationMs,
             stats,
+            // Pre-decode skip-to-live kicks in at 3× the target span (≈1 s),
+            // well below the present-stage 4 s catch-up budget; on a recovery
+            // burst it drops the stale backlog to the newest buffered keyframe.
+            skipToLiveSpanMs: config.targetBufferSpanMs * 3,
         });
         this.buffer = buffer;
         const session = this.session;
