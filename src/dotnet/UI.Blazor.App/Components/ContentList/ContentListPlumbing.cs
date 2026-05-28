@@ -210,7 +210,33 @@ internal static class ContentListPlumbing
             HasVeryFirstItem = first == 0,
             HasVeryLastItem = last == blocks.Count,
         };
-        return result.IsSimilarTo(renderedData) ? renderedData : result;
+        var isSame = result.IsSimilarTo(renderedData);
+        // Uncomment for quick window/query diagnostics; warning level guarantees DevLog visibility.
+        // var log = hub.LogFor(typeof(ContentListPlumbing));
+        // var winFirst = windowBlocks.Count > 0 ? $"{windowBlocks[0].PeriodKey}:{windowBlocks[0].PageIndex}" : "-";
+        // var winLast = windowBlocks.Count > 0 ? $"{windowBlocks[^1].PeriodKey}:{windowBlocks[^1].PageIndex}" : "-";
+        // var itemFirst = listItems.Count > 0 ? listItems[0].Key : "-";
+        // var itemLast = listItems.Count > 0 ? listItems[^1].Key : "-";
+        // if (query.IsNone)
+        //     log.LogWarning(
+        //         "CL[{Kind}/{ChatId}] same={IsSame}\n"
+        //         + "  q=<none>\n"
+        //         + "  win={{ range: [{First}..{Last})/{Total}, first: {WinFirst}, last: {WinLast}, hasFirst: {HasVeryFirst}, hasLast: {HasVeryLast} }}\n"
+        //         + "  items={{ count: {ItemCount}, first: {ItemFirst}, last: {ItemLast} }}",
+        //         kind, chatId, isSame, first, last, blocks.Count, winFirst, winLast,
+        //         result.HasVeryFirstItem, result.HasVeryLastItem,
+        //         listItems.Count, itemFirst, itemLast);
+        // else
+        //     log.LogWarning(
+        //         "CL[{Kind}/{ChatId}] same={IsSame}\n"
+        //         + "  q={{ keys: {KeyRange}, virt: {VirtualRange}, move: {MoveRange} }}\n"
+        //         + "  win={{ range: [{First}..{Last})/{Total}, first: {WinFirst}, last: {WinLast}, hasFirst: {HasVeryFirst}, hasLast: {HasVeryLast} }}\n"
+        //         + "  items={{ count: {ItemCount}, first: {ItemFirst}, last: {ItemLast} }}",
+        //         kind, chatId, isSame, query.KeyRange, query.VirtualRange, query.MoveRange,
+        //         first, last, blocks.Count, winFirst, winLast,
+        //         result.HasVeryFirstItem, result.HasVeryLastItem,
+        //         listItems.Count, itemFirst, itemLast);
+        return isSame ? renderedData : result;
     }
 
     private static bool HasEnoughForWindow(List<ChatContentPeriod> periods, VirtualListDataQuery query)
