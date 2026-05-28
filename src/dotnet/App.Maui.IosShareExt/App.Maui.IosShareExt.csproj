@@ -45,7 +45,7 @@
     <UseInterpreter>true</UseInterpreter>
   </PropertyGroup>
 
-  <!-- Release configuration (default — Mono + interpreter; NAOT block below overrides) -->
+  <!-- Release configuration (Mono + interpreter) -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">App Store Share Dev</CodesignProvision>
     <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">App Store Share</CodesignProvision>
@@ -88,26 +88,10 @@
     <PackageReference Include="Microsoft.Maui.Essentials" />
   </ItemGroup>
 
-  <!-- Native AOT — mirrors App.Maui.csproj; keep in sync -->
-  <PropertyGroup>
-    <UseNativeAot Condition="'$(UseNativeAot)' == ''">false</UseNativeAot>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)' == 'Release' and $(UseNativeAot) and $(TargetFramework.Contains('-ios'))">
-    <PublishAot>true</PublishAot>
-    <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode>full</TrimMode>
-    <IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
-    <IlcDisableReflection>false</IlcDisableReflection>
-    <IlcTrimMetadata>false</IlcTrimMetadata>
-
-    <RunAOTCompilation>false</RunAOTCompilation>
-    <PublishReadyToRun>false</PublishReadyToRun>
-    <UseInterpreter>false</UseInterpreter>
-    <MtouchLink>Full</MtouchLink>
-
-    <!-- NativeAOT requires the managed-static registrar (default 'static' is rejected) -->
-    <Registrar>managed-static</Registrar>
-  </PropertyGroup>
+  <!-- Native AOT is intentionally NOT enabled here yet: a real NAOT build makes this the first
+       iOS binary through ILC + ld, which trips the Apple linker bug "too many large addends"
+       (dotnet/runtime#119380). Stay on Mono like App.Maui's iOS does today; the AOT scaffolding
+       (IosShareExtAotSource / CodeKeeper) is kept ready to flip on once the linker bug is fixed. -->
 
   <!-- Workaround for excluding C# files from compilation for non-iOS targets -->
   <ItemGroup Condition="!$(TargetFramework.Contains('-ios'))">
