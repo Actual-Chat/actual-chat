@@ -468,6 +468,16 @@ export class MarkupEditor {
         ok();
     }
 
+    public insertText(text: string) {
+        if (!this.hasFocus()) {
+            this.focus();
+            this.restoreSelection();
+        }
+        this.transaction('insertText', () => {
+            this.insertTextAtCursor(text);
+        });
+    }
+
     private insertTextAtCursor(text)
     {
         const selection = window.getSelection()!;

@@ -62,13 +62,6 @@
                         Cancel="@(() => OnCancel())"
                         OpenPrevious="OnOpenPrevious"/>
                 </label>
-                <button class="post-panel-btn convert-to-file-btn btn btn-round btn-transparent btn-xs unhovered"
-                        data-tooltip="Send text as file"
-                        data-tooltip-position="@(FloatingPosition.Top.ToPositionString())"
-                        @onmousedown="@(_ => OnConvertToFileClick())"
-                        @onmousedown:preventDefault="true">
-                    <i class="icon-file-text"></i>
-                </button>
                 <div class="c-right-buttons">
                     <NotifyAllButton Chat="@Chat"/>
                     <div class="c-incut"></div>
@@ -292,9 +285,19 @@
         await MarkupEditorRef.JSRef.InvokeVoidAsync("beginMention");
     }
 
-    private async Task OnConvertToFileClick() {
-        await JSRef.InvokeVoidAsync("convertCurrentTextToAttachment");
-        await MarkupEditorRef.Clear();
+    [JSInvokable]
+    public async Task<bool> OnLargeTextPasted(int textLength) {
+        var text = $"The pasted text is {textLength:N0} characters long. "
+            + "Do you want to send it as a .txt file or keep it as a regular text message?";
+        var confirmed = false;
+        var model = new ConfirmModal.Model(false, text, () => confirmed = true) {
+            Title = "Large text pasted",
+            ConfirmButtonText = "Send as file",
+            CancelButtonText = "Keep as text",
+        };
+        var modalRef = await ModalUI.Show(model);
+        await modalRef.WhenClosed;
+        return confirmed;
     }
 
     private async Task OnAttachClick(string acceptTypes) {

@@ -237,28 +237,6 @@ body.narrow .notify-call-panel.panel-open {
     @apply text-primary-title;
 }
 
-/* Convert-text-to-file button (appears when editor text is large enough to suggest attaching) */
-.convert-to-file-btn.post-panel-btn {
-    @apply absolute right-0 md:right-2 top-2;
-    @apply flex-none;
-    @apply opacity-0 pointer-events-none;
-    @apply text-03;
-    transition: opacity 150ms ease;
-}
-.convert-to-file-btn > i {
-    @apply text-2.5xl md:text-2xl;
-}
-.chat-message-editor.text-can-convert-to-file .convert-to-file-btn.post-panel-btn {
-    @apply opacity-100 pointer-events-auto;
-}
-body.hoverable .convert-to-file-btn.post-panel-btn:hover {
-    @apply text-02;
-}
-body.narrow .convert-to-file-btn.post-panel-btn {
-    @apply right-auto top-auto;
-    @apply left-12 bottom-3;
-}
-
 /* Post button */
 .post-panel-btn.post-message {
     @apply hidden;
