@@ -148,4 +148,55 @@ public class McpMessageToolsTest(McpCollection.AppHostFixture fixture, ITestOutp
         page.Messages.Should().Contain(m => m.Id == entries[0].LocalId);
         page.Messages.Should().Contain(m => m.Id == entries[2].LocalId);
     }
+
+    [Fact]
+    public async Task ListMessages_IncludesImageAttachmentWithUrls()
+    {
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
+        var media = await Tester.CreateImageMedia(chatId, "photo.png", "image/png", 800, 600);
+        var entry = await Tester.CreateTextEntry(chatId, "with image", media.Id);
+        var client = await CreateClient();
+
+        var result = await client.CallToolAsync("list_messages", new Dictionary<string, object?> {
+            ["chatId"] = chatId.Value,
+            ["afterId"] = null,
+            ["limit"] = 100,
+        });
+        var page = DeserializeResult<McpListMessagesResult>(result);
+
+        var message = page.Messages.Single(m => m.Id == entry.LocalId);
+        message.Attachments.Should().HaveCount(1);
+        var attachment = message.Attachments[0];
+        attachment.Kind.Should().Be("image");
+        attachment.ContentType.Should().Be("image/png");
+        attachment.FileName.Should().Be("photo.png");
+        attachment.Width.Should().Be(800);
+        attachment.Height.Should().Be(600);
+        attachment.MediaId.Should().Be(media.Id.Value);
+        attachment.Url.Should().Be(Tester.UrlMapper.ContentUrl(media.BlobId));
+        if (Tester.UrlMapper.HasImageProxy)
+            attachment.PreviewUrl.Should().NotBeNullOrEmpty();
+        else
+            attachment.PreviewUrl.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ListMessages_TextOnlyMessage_HasNoAttachments()
+    {
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: true);
+        var entry = await Tester.CreateTextEntry(chatId, "just text");
+        var client = await CreateClient();
+
+        var result = await client.CallToolAsync("list_messages", new Dictionary<string, object?> {
+            ["chatId"] = chatId.Value,
+            ["afterId"] = null,
+            ["limit"] = 100,
+        });
+        var page = DeserializeResult<McpListMessagesResult>(result);
+
+        var message = page.Messages.Single(m => m.Id == entry.LocalId);
+        message.Attachments.Should().BeEmpty();
+    }
 }
