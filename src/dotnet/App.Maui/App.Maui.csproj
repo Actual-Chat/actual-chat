@@ -470,24 +470,41 @@
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">maccatalyst-arm64</RuntimeIdentifier>
     <IntermediateOutputPath>..\..\..\artifacts\out</IntermediateOutputPath>
     <UseShortFileNames>True</UseShortFileNames>
-    <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Platforms\MacCatalyst\Entitlements.dev.plist</CodesignEntitlements>
-    <CodesignEntitlements Condition="'$(IsDevMaui)' != 'true'">Platforms\MacCatalyst\Entitlements.prod.plist</CodesignEntitlements>
     <EnableSGenConc>False</EnableSGenConc>
     <UseNativeHttpHandler>true</UseNativeHttpHandler>
   </PropertyGroup>
 
   <!-- MacCatalyst: Debug configuration — ad-hoc sign with the local "-" identity so the
-       app runs on the developer machine without a provisioning profile. -->
+       app runs on the developer machine without a provisioning profile.
+       Uses a minimal entitlements set (no team-scoped App Store entitlements like
+       keychain-access-groups / applesignin, which can't be satisfied by an ad-hoc
+       signature and would block launch). IsDevMaui still selects the backend at compile
+       time, so Debug + IsDevMaui=false runs locally against prod. -->
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net10.0-maccatalyst|AnyCPU'">
     <CreatePackage>false</CreatePackage>
     <CodesignKey>-</CodesignKey>
+    <CodesignEntitlements>Platforms\MacCatalyst\Entitlements.debug.plist</CodesignEntitlements>
     <EnableCodeSigning>true</EnableCodeSigning>
     <DisableCodesignVerification>true</DisableCodesignVerification>
     <MtouchLink>SdkOnly</MtouchLink>
   </PropertyGroup>
 
-  <!-- MacCatalyst: Release configuration — mirrors iOS interpreter / link mode for parity -->
+  <!-- MacCatalyst: Release configuration — App Store / TestFlight signed.
+       Provisioning profile names must match the ones registered in Apple Developer Console
+       (Mac Catalyst subtype, Mac App Store distribution):
+         dev  → "Mac App Store Dev"  (chat.actual.dev.app)
+         prod → "Mac App Store"      (chat.actual.app)
+       Both profiles must use the Apple Distribution cert.
+       Packaging to .pkg for App Store upload is done by tools/sign-maccatalyst.sh
+       (productbuild + "3rd Party Mac Developer Installer" cert), not by MSBuild. -->
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net10.0-maccatalyst|AnyCPU'">
+    <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Platforms\MacCatalyst\Entitlements.dev.plist</CodesignEntitlements>
+    <CodesignEntitlements Condition="'$(IsDevMaui)' != 'true'">Platforms\MacCatalyst\Entitlements.prod.plist</CodesignEntitlements>
+    <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">Mac App Store Dev</CodesignProvision>
+    <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">Mac App Store</CodesignProvision>
+    <CodesignKey>Apple Distribution: Actual Chat Inc. (M287G8G83F)</CodesignKey>
+    <EnableCodeSigning>true</EnableCodeSigning>
+    <ArchiveOnBuild>true</ArchiveOnBuild>
     <CreatePackage>false</CreatePackage>
     <MtouchLink>SdkOnly</MtouchLink>
     <UseInterpreter>true</UseInterpreter>
@@ -771,8 +788,11 @@
       <_MaciOSAppBundle>$([System.IO.Path]::GetFullPath('$(AppBundleDir)').TrimEnd('/'))</_MaciOSAppBundle>
       <_MaciOSEntitlementsXcent>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../artifacts/out/Entitlements.xcent'))</_MaciOSEntitlementsXcent>
       <_MaciOSFixCodesignScript>$(MSBuildThisFileDirectory)Platforms/MacCatalyst/fix-codesigning.sh</_MaciOSFixCodesignScript>
+      <!-- Debug => "-" (ad-hoc); Release => Apple Distribution identity so nested code matches the bundle. -->
+      <_MaciOSCodesignKey Condition="'$(CodesignKey)' == ''">-</_MaciOSCodesignKey>
+      <_MaciOSCodesignKey Condition="'$(CodesignKey)' != ''">$(CodesignKey)</_MaciOSCodesignKey>
     </PropertyGroup>
-    <Exec Command="/bin/sh &quot;$(_MaciOSFixCodesignScript)&quot; &quot;$(_MaciOSAppBundle)&quot; &quot;$(_MaciOSStagingMonoBundle)&quot; &quot;$(_MaciOSEntitlementsXcent)&quot;" />
+    <Exec Command="/bin/sh &quot;$(_MaciOSFixCodesignScript)&quot; &quot;$(_MaciOSAppBundle)&quot; &quot;$(_MaciOSStagingMonoBundle)&quot; &quot;$(_MaciOSEntitlementsXcent)&quot; &quot;$(_MaciOSCodesignKey)&quot;" />
   </Target>
 
   <Target Name="UpdateBundleHash" AfterTargets="Build">

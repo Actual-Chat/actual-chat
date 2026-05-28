@@ -41,6 +41,7 @@ internal static class Program
         public const string Build = "build";
         public const string Maui = "maui";
         public const string PublishIos = "publish-ios";
+        public const string PublishMacCatalyst = "publish-maccatalyst";
         public const string PublishAndroid = "publish-android";
         public const string PublishWin = "publish-win";
         public const string RestoreTools = "restore-tools";
@@ -474,6 +475,43 @@ internal static class Program
                     $"-c {configuration}",
                     $"-p:IsDevMaui={isDevMaui}",
                     $"-p:UseNativeAot={useNativeAot}")
+                .WithWorkingDirectory("src/dotnet/App.Maui")
+                .ToConsole(Green("dotnet: "))
+                .ExecuteAsync(cancellationToken)
+                .Task
+                .ConfigureAwait(false);
+        });
+
+        Target(Targets.PublishMacCatalyst, DependsOn(Targets.NpmBuild), async () => {
+            var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
+            isDevMaui ??= !isProduction;
+            await Cli
+                .Wrap(dotnet)
+                .WithArguments("build",
+                    "-noLogo",
+                    "-maxCpuCount",
+                    "-nodeReuse:false",
+                    "-f net10.0-maccatalyst",
+                    @"/p:TargetFrameworks=\""net10.0-maccatalyst;net10.0\""",
+                    $"-c {configuration}",
+                    $"-p:IsDevMaui={isDevMaui}")
+                .WithWorkingDirectory("src/dotnet/App.Maui")
+                .ToConsole(Green("dotnet: "))
+                .ExecuteAsync(cancellationToken)
+                .Task
+                .ConfigureAwait(false);
+            await Cli
+                .Wrap(dotnet)
+                .WithArguments("publish",
+                    "-noLogo",
+                    "-maxCpuCount",
+                    "-nodeReuse:false",
+                    "-f net10.0-maccatalyst",
+                    @"/p:TargetFrameworks=\""net10.0-maccatalyst;net10.0\""",
+                    "-p:RuntimeIdentifier=maccatalyst-arm64",
+                    "-p:ArchiveOnBuild=true",
+                    $"-c {configuration}",
+                    $"-p:IsDevMaui={isDevMaui}")
                 .WithWorkingDirectory("src/dotnet/App.Maui")
                 .ToConsole(Green("dotnet: "))
                 .ExecuteAsync(cancellationToken)
