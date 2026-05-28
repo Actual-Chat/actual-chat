@@ -30,19 +30,20 @@
 
   <!-- Platform-specific files to compile -->
 
-  <!-- NOT iOS -->
+  <!-- NOT iOS and NOT Mac Catalyst — shared iOS+MacCatalyst code lives in MaciOS\ -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true AND $(TargetFramework.Contains('-maccatalyst')) != true">
+    <Compile Remove="**\**\*.MaciOS.cs" />
+    <None Include="**\**\*.MaciOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <Compile Remove="**\MaciOS\**\*.cs" />
+    <None Include="**\MaciOS\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+  </ItemGroup>
+
+  <!-- NOT iOS — Platforms\iOS holds iOS-only files -->
   <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true">
     <Compile Remove="**\**\*.iOS.cs" />
     <None Include="**\**\*.iOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
-  </ItemGroup>
-
-  <!-- NOT iOS AND NOT MacCatalyst — Platforms/iOS holds shared MaciOS code -->
-  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true AND $(TargetFramework.Contains('-maccatalyst')) != true">
     <Compile Remove="**\iOS\**\*.cs" />
     <None Include="**\iOS\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
-    <Compile Update="Platforms\iOS\NSErrorExt.cs">
-      <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
-    </Compile>
   </ItemGroup>
 
   <!-- NOT MacCatalyst -->
