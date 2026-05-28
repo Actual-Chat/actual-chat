@@ -6,7 +6,6 @@ on:
     branches:
       - "**"
     paths:
-      - "c.ps1"
       - "scripts/Common.ps1"
       - "add-hosts.ps1"
       - "tests/ps/**"
