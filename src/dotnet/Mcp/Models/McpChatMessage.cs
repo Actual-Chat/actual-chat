@@ -10,4 +10,5 @@ public sealed record McpChatMessage(
     bool IsStreaming,
     bool IsTranscribed,
     bool IsRemoved,
-    string Text);
+    string Text,
+    McpAttachment[] Attachments);

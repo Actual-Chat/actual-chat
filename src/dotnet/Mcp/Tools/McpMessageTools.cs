@@ -12,6 +12,7 @@ public sealed class McpMessageTools(IServiceProvider services)
 
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
+    private UrlMapper UrlMapper { get; } = services.GetRequiredService<UrlMapper>();
     private ICommander Commander { get; } = services.Commander();
     private McpSessionAccessor SessionAccessor { get; } = services.GetRequiredService<McpSessionAccessor>();
 
@@ -71,6 +72,7 @@ public sealed class McpMessageTools(IServiceProvider services)
     [Description("Lists up to `limit` messages with LID > `afterId`. " +
         "Returns the inclusive range of the messages, the chat's full inclusive range, and the messages themselves. " +
         "Removed entries are skipped (their LIDs appear as gaps); system and streaming entries are included. " +
+        "Each message carries its attachments (images/files) with download, preview, and thumbnail URLs. " +
         "If `afterId` is null, starts from the beginning of the chat. `limit` is capped at 1024.")]
     public async Task<McpListMessagesResult> ListMessages(
         [Description("The chat id.")] string chatId,
@@ -118,7 +120,7 @@ public sealed class McpMessageTools(IServiceProvider services)
         for (var i = 0; i < distinctAuthorIds.Length; i++)
             authorById[distinctAuthorIds[i]] = fetched[i];
 
-        var messages = collected.Select(e => e.ToMcpModel(authorById)).ToArray();
+        var messages = collected.Select(e => e.ToMcpModel(authorById, UrlMapper)).ToArray();
         var rangeOut = messages.Length == 0
             ? new McpIdRange<long>(startLid, startLid - 1)
             : new McpIdRange<long>(messages[0].Id, messages[^1].Id);
