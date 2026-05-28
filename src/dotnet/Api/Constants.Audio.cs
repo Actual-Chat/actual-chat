@@ -42,7 +42,13 @@ public static partial class Constants
         // Below this |audioLag - videoLag| the policy returns Zero so the filter
         // doesn't oscillate on small jitter.
         public static readonly TimeSpan AudioCatchUpDeadband = TimeSpan.FromMilliseconds(200);
-        public static readonly TimeSpan AudioCatchUpBaselineDelta = TimeSpan.FromMilliseconds(-100);
+        // Target audio-vs-video lag offset. 0 = exact sync. Was -100 ms (audio
+        // kept ahead) to compensate unmeasured audio output latency — but the
+        // audio lag metric already includes it (AudioContext baseLatency+
+        // outputLatency on web, AudioEnginePlaybackLatency on native), so a
+        // negative baseline made audio genuinely lead video. Keep ≥ 0; a small
+        // positive would bias toward audio-slightly-behind (the safe side).
+        public static readonly TimeSpan AudioCatchUpBaselineDelta = TimeSpan.Zero;
         // Per-stream presentation-lag updates older than this are ignored when
         // aggregating per-author lag. Covers paused video, hidden tabs, and
         // stopped streams — all map to "no signal → desired = 0".
