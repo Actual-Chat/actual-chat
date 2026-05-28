@@ -3,7 +3,7 @@ using Security;
 
 namespace ActualChat.Maui;
 
-public class IosSharedSecureStorage : ISecureStorage
+public class AppleSharedSecureStorage : ISecureStorage
 {
     private const string ServiceName = "Voxt";
     private static string AccessGroup => field ??= MauiSettings.IsDevApp
@@ -11,7 +11,7 @@ public class IosSharedSecureStorage : ISecureStorage
         // ReSharper disable once HeuristicUnreachableCode
         : "M287G8G83F.chat.actual.app.shared";
 
-    public static IosSharedSecureStorage Default { get; } = new ();
+    public static AppleSharedSecureStorage Default { get; } = new ();
 
     public Task<string?> GetAsync(string key)
     {

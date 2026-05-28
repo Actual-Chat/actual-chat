@@ -6,7 +6,7 @@ using Foundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-public sealed class IosAudioFocusUI : AudioFocusUI
+public sealed class AppleAudioFocusUI : AudioFocusUI
 {
     private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.2, 3);
 
@@ -23,7 +23,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
     private AudioEngines AudioEngines => field ??= Hub.Services.GetRequiredService<AudioEngines>();
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
-    public IosAudioFocusUI(AppUIHub hub)
+    public AppleAudioFocusUI(AppUIHub hub)
     {
         Hub = hub;
         _activeScopes = new ActiveScopes(Hub.LogFor(GetType()));
@@ -207,7 +207,7 @@ public sealed class IosAudioFocusUI : AudioFocusUI
 
     // Nested types
 
-    private sealed class Scope(IosAudioFocusUI owner, AudioFocusRequester requester) : AudioFocusScope
+    private sealed class Scope(AppleAudioFocusUI owner, AudioFocusRequester requester) : AudioFocusScope
     {
         public AudioFocusRequester Requester => requester;
         public AudioFocusRestoreHandler? PendingRestore { get; set; }

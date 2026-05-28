@@ -5,7 +5,7 @@ using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class IosAudioCapture(AppUIHub hub) : IAudioCapture
+public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
 {
     public ResamplerFactory ResamplerFactory => field ??= hub.Services.GetRequiredService<ResamplerFactory>();
 

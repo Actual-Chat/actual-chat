@@ -2,7 +2,7 @@ using UIKit;
 
 namespace ActualChat.App.Maui;
 
-public class IosBars : Bars
+public class AppleBars : Bars
 {
     public override int GetStatusBarHeight()
     {

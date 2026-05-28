@@ -6,7 +6,7 @@ using Intents;
 
 namespace ActualChat.Maui;
 
-public class IosIncomingShareSuggestions(IServiceProvider services) : IncomingShareSuggestions(services)
+public class AppleIncomingShareSuggestions(IServiceProvider services) : IncomingShareSuggestions(services)
 {
     private const string ViewChatActivityType = $"{MauiSettings.ReverseDomain}.viewChat";
 

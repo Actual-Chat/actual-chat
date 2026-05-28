@@ -6,7 +6,7 @@ using ActualLab.Opus.MaciOS;
 
 namespace ActualChat.App.Maui.Audio;
 
-public sealed class IosAudioCodec(AppUIHub hub) : IAudioCodec
+public sealed class AppleAudioCodec(AppUIHub hub) : IAudioCodec
 {
     private ILogger Log => field ??= hub.Services.LogFor(GetType());
 

@@ -16,7 +16,7 @@ public class MauiFileProviderImplFactory(IServiceProvider services) : IMauiFileP
 #elif ANDROID
         return new AndroidFileProviderImpl(Downloader, fileRef);
 #elif IOS
-        return new IosFileProviderImpl(services, fileRef);
+        return new AppleFileProviderImpl(services, fileRef);
 #else
         throw new PlatformNotSupportedException();
 #endif

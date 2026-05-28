@@ -7,14 +7,14 @@ using Microsoft.Maui.Storage;
 
 namespace ActualChat.Maui;
 
-public class IosVideoTranscoder(IServiceProvider services) : VideoTranscoder
+public class AppleVideoTranscoder(IServiceProvider services) : VideoTranscoder
 {
     private const int MaxLongSide = 1920;
     private const int MaxShortSide = 1080;
     private const int MaxBitrate = 8_000_000; // 8 Mbps - HEVC 1080p typically outputs around this
     private const long MaxRemuxSize = 70L * 1024 * 1024; // 70 MB - remux instead of transcode for small videos
 
-    private ILogger Log => field ??= services.LogFor<IosVideoTranscoder>();
+    private ILogger Log => field ??= services.LogFor<AppleVideoTranscoder>();
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.VideoTranscoding);
 
     protected override async Task<FilePath> TranscodeInternal(

@@ -4,7 +4,7 @@ namespace ActualChat.UI.App.Services;
 
 /// <summary>
 /// Base video transcoder. Returns null (no transcoding) by default.
-/// Platform-specific implementations (e.g., IosVideoTranscoder) override this.
+/// Platform-specific implementations (e.g., AppleVideoTranscoder) override this.
 /// </summary>
 public class VideoTranscoder
 {
