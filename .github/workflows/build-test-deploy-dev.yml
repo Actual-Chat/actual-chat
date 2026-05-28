@@ -692,7 +692,7 @@ jobs:
 
       - name: Build app package
         run: |-
-          ./run-build.cmd publish-ios --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}" --use-native-aot "${{ github.event.inputs.useNativeAot || 'false' }}"
+          ./run-build.cmd publish-ios --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}" --use-native-aot "${{ github.event.inputs.useNativeAot || 'true' }}"
           pushd artifacts/publish/App.Maui/release_net10.0-ios_ios-arm64
           unzip ActualChat.ipa
           rm -r Payload/ActualChat.app/_CodeSignature
