@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Testing.Host;
 using ModelContextProtocol.Client;
 

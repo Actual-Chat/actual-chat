@@ -1,6 +1,3 @@
-using System.Text.Json;
-using ActualChat.Chat;
-using ActualChat.Mcp;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Mcp.IntegrationTests;

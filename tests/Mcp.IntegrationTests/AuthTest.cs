@@ -1,6 +1,5 @@
 using System.Net.Http.Headers;
 using ActualChat.Testing.Host;
-using ModelContextProtocol.Client;
 
 namespace ActualChat.Mcp.IntegrationTests;
 
@@ -46,7 +45,7 @@ public class AuthTest(McpCollection.AppHostFixture fixture, ITestOutputHelper @o
     public async Task ApiKeyForGuestSession_IsRejected()
     {
         var unboundKey = await Tester.Commander
-            .Call(new ActualChat.Users.SessionsBackend_Upsert(SessionExt.NewApiKey()));
+            .Call(new SessionsBackend_Upsert(SessionExt.NewApiKey()));
         unboundKey.Session.Kind.Should().Be(SessionKind.ApiKey);
 
         var connect = CreateClientWithRawKey(unboundKey.Session.Id).AsAsyncFunc();

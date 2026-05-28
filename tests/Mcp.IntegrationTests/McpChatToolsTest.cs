@@ -1,9 +1,5 @@
-using System.Text.Json;
-using ActualChat.Chat;
 using ActualChat.Contacts;
-using ActualChat.Mcp;
 using ActualChat.Testing.Host;
-using ModelContextProtocol.Client;
 
 namespace ActualChat.Mcp.IntegrationTests;
 
