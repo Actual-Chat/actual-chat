@@ -18,7 +18,7 @@ public sealed class MauiSession(IServiceProvider services)
 
     private static ISecureStorage Storage
 #if IOS || MACCATALYST
-        => field ??= IosSharedSecureStorage.Default;
+        => field ??= AppleSharedSecureStorage.Default;
 #else
         => field ??= SecureStorage.Default;
 #endif

@@ -7,7 +7,7 @@ using UIKit;
 
 namespace ActualChat.App.Maui;
 
-public class IosMediaSaver(UIHub hub) : UIServiceBase<UIHub>(hub), IMediaSaver
+public class AppleMediaSaver(UIHub hub) : UIServiceBase<UIHub>(hub), IMediaSaver
 {
     private HttpClient HttpClient
         => field ??= Hub.Services.HttpClientFactory().CreateClient(GetType().Name);

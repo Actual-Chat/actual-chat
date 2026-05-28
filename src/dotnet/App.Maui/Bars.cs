@@ -7,7 +7,7 @@ public class Bars
 {
     public static readonly Bars Instance =
 #if IOS
-     new IosBars();
+     new AppleBars();
 #elif ANDROID
     new AndroidBars();
 #else

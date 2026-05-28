@@ -7,7 +7,7 @@ using Foundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-public sealed class IosTuneUI(UIHub hub) : MauiTuneUI(hub)
+public sealed class AppleTuneUI(UIHub hub) : MauiTuneUI(hub)
 {
     private static readonly ConcurrentDictionary<string, NSUrl> Urls = new (StringComparer.OrdinalIgnoreCase);
     private readonly SharedResourcePool<string, AVAudioFile> _audioFiles = new (GetAudioFile, ReleaseAudioFile) {

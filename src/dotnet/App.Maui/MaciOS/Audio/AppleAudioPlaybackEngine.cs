@@ -7,7 +7,7 @@ using ActualLab.Opus.MaciOS;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class IosAudioPlaybackEngine(
+public class AppleAudioPlaybackEngine(
     string playerId,
     TrackInfo info,
     IAudioPlayerBackend backend,

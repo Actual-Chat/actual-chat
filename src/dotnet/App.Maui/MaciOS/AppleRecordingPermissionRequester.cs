@@ -3,7 +3,7 @@ using Microsoft.Maui.ApplicationModel;
 
 namespace ActualChat.App.Maui;
 
-public class IosRecordingPermissionRequester : IRecordingPermissionRequester
+public class AppleRecordingPermissionRequester : IRecordingPermissionRequester
 {
     public bool CanRequest => true;
 

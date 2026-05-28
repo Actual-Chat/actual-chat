@@ -26,12 +26,12 @@ public static partial class MauiProgram
         services.AddScoped<IosPushNotifications>(c => new IosPushNotifications(c.AppUIHub()));
         services.AddTransient<IDeviceTokenRetriever>(c => c.GetRequiredService<IosPushNotifications>());
         services.AddScoped<INotificationsPermission>(c => c.GetRequiredService<IosPushNotifications>());
-        services.AddScoped<IRecordingPermissionRequester>(_ => new IosRecordingPermissionRequester());
+        services.AddScoped<IRecordingPermissionRequester>(_ => new AppleRecordingPermissionRequester());
         services.AddScoped(c => new NativeAppleAuth(c));
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
-        services.AddScoped<IMediaSaver>(c => new IosMediaSaver(c.UIHub()));
+        services.AddScoped<IMediaSaver>(c => new AppleMediaSaver(c.UIHub()));
         services.AddScoped<AddPhotoPermissionHandler>(c => new AddPhotoPermissionHandler(c.UIHub()));
-        services.AddTransient<IAppIconBadge>(_ => new IosAppIconBadge());
+        services.AddTransient<IAppIconBadge>(_ => new AppleAppIconBadge());
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)

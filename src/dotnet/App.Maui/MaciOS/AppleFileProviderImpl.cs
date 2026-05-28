@@ -3,9 +3,9 @@ using ActualLab.IO;
 
 namespace ActualChat.App.Maui;
 
-public sealed class IosFileProviderImpl(IServiceProvider services, FilePath filePath) : IMauiFileProviderImpl
+public sealed class AppleFileProviderImpl(IServiceProvider services, FilePath filePath) : IMauiFileProviderImpl
 {
-    private IosPhotoGalleryFiles PhotoGalleryFiles => field ??= services.GetRequiredService<IosPhotoGalleryFiles>();
+    private ApplePhotoGalleryFiles PhotoGalleryFiles => field ??= services.GetRequiredService<ApplePhotoGalleryFiles>();
 
     public Task WhenFileStreamReady()
         => PhotoGalleryFiles.WhenFileReady(filePath);

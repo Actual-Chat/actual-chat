@@ -86,15 +86,15 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddSingleton<VoiceActivityDetector>(c => new TfLiteVoiceActivityDetector(c));
         services.AddSingleton<IAudioCodec, OpusAudioCodec>();
 #elif IOS || MACCATALYST
-        services.AddScoped<AudioFocusUI>(c => new IosAudioFocusUI(c.AppUIHub()));
-        services.AddScoped<TuneUI>(c => new IosTuneUI(c.UIHub()));
+        services.AddScoped<AudioFocusUI>(c => new AppleAudioFocusUI(c.AppUIHub()));
+        services.AddScoped<TuneUI>(c => new AppleTuneUI(c.UIHub()));
         services.AddScoped<VoiceActivityDetector>(c => new CoreMLVoiceActivityDetector(c));
-        services.AddScoped<IAudioCodec, IosAudioCodec>();
+        services.AddScoped<IAudioCodec, AppleAudioCodec>();
         services.AddScoped<ResamplerFactory>(c => new ResamplerFactory(c.AppUIHub()));
         services.AddScoped<AudioEngines>(c => new AudioEngines(c.AppUIHub()));
         services.AddScoped<Haptics>(c => new Haptics(c.AppUIHub()));
         services.AddScoped<AudioSession>(c => new AudioSession(c.AppUIHub()));
-        services.AddScoped<IAudioCapture>(c => new IosAudioCapture(c.AppUIHub()));
+        services.AddScoped<IAudioCapture>(c => new AppleAudioCapture(c.AppUIHub()));
 #endif
         services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());
         services.AddScoped<IAudioPlaybackEngineFactory>(c => new MauiAudioPlaybackEngineFactory(c.AppUIHub()));
@@ -110,8 +110,8 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 #if ANDROID
         services.AddScoped<IAttachmentFilePicker>(c => new AndroidAttachmentFilePicker(c));
 #elif IOS
-        services.AddScoped<IAttachmentFilePicker>(c => new IosAttachmentFilePicker(c));
-        services.AddSingleton<IosPhotoGalleryFiles>();
+        services.AddScoped<IAttachmentFilePicker>(c => new AppleAttachmentFilePicker(c));
+        services.AddSingleton<ApplePhotoGalleryFiles>();
 #else
         services.AddScoped<IAttachmentFilePicker>(c => new MauiAttachmentFilePicker(c));
 #endif

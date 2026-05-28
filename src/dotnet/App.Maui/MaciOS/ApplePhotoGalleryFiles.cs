@@ -11,7 +11,7 @@ namespace ActualChat.App.Maui;
 /// Loads files from PHPickerResult in background while allowing the picker to return immediately.
 /// Provides two-phase processing: preview (thumbnail) first, then main file.
 /// </summary>
-public sealed class IosPhotoGalleryFiles(IServiceProvider services) : ProcessorBase
+public sealed class ApplePhotoGalleryFiles(IServiceProvider services) : ProcessorBase
 {
     private static readonly FilePath AttachmentsDir = new FilePath(FileSystem.CacheDirectory) | "attachments";
     private static readonly FilePath ThumbnailDir = new FilePath(FileSystem.CacheDirectory) | "thumbnails";

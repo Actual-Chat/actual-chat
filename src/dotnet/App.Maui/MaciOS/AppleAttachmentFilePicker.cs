@@ -6,11 +6,11 @@ using UniformTypeIdentifiers;
 
 namespace ActualChat.App.Maui;
 
-public class IosAttachmentFilePicker(IServiceProvider services) : MauiAttachmentFilePicker(services)
+public class AppleAttachmentFilePicker(IServiceProvider services) : MauiAttachmentFilePicker(services)
 {
     private const int MaxSelectionCount = 10;
 
-    private IosPhotoGalleryFiles PhotoGalleryFiles => field ??= Services.GetRequiredService<IosPhotoGalleryFiles>();
+    private ApplePhotoGalleryFiles PhotoGalleryFiles => field ??= Services.GetRequiredService<ApplePhotoGalleryFiles>();
 
     protected override async Task<AttachFileInfo[]?> TryPickVisualMediaFiles(string acceptTypes)
     {

@@ -18,7 +18,7 @@ public class SessionInitializer(TrueSessionResolver trueSessionResolver, ILogger
 
     private async Task SetSession(CancellationToken cancellationToken)
     {
-        var sessionId = await IosSharedSecureStorage.Default.GetAsync("Fusion.SessionId")
+        var sessionId = await AppleSharedSecureStorage.Default.GetAsync("Fusion.SessionId")
             .WaitAsync(cancellationToken)
             .ConfigureAwait(false);
         if (sessionId.IsNullOrEmpty()) {
