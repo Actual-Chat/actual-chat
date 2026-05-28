@@ -48,6 +48,10 @@ partial class SendingMessages
         var mediaIds = await ReserveMediaIds(request, cancellationToken).ConfigureAwait(false);
         var attachments = mediaIds
             .Select(x => new ChatEntryAttachment { MediaId = x })
+            .Concat(request.ExistingMedia.Select(x => new ChatEntryAttachment {
+                MediaId = x.MediaId,
+                ThumbnailMediaId = x.ThumbnailMediaId,
+            }))
             .ToArray();
         var cmd = new Chats_UpsertEntry(Session, request.ChatId, request.LocalId) {
             Text = request.Text,

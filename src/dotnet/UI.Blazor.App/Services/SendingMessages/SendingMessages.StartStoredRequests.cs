@@ -66,6 +66,7 @@ partial class SendingMessages
             Text = cmd.Text,
             RepliedEntryLid = cmd.RepliedEntryLid,
             AttachFileRequests = attachEntries,
+            ExistingMedia = cmd.ExistingMedia.ToArray(),
             ClientId = clientId,
             AfterSendMessageHandlerKey = cmd.AfterSendMessageHandler?.Key ?? "",
             AfterSendMessageHandlerArgs = cmd.AfterSendMessageHandler?.Args ?? "",

@@ -15,4 +15,11 @@ public static class ChatEntryAttachmentExt
         => MediaTypeExt.IsSupportedVisualMedia(attachment.Media.ContentType);
     public static bool IsAudio(this ChatEntryAttachment attachment)
         => MediaTypeExt.IsAudio(attachment.Media.ContentType);
+
+    public static MediaRef ToMediaRef(this ChatEntryAttachment attachment)
+        => new(
+            attachment.MediaId,
+            attachment.Media?.BlobId ?? "",
+            attachment.ThumbnailMediaId,
+            attachment.ThumbnailMedia?.BlobId);
 }

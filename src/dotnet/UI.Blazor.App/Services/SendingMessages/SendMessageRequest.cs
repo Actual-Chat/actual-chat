@@ -9,13 +9,20 @@ public sealed class SendMessageRequest
     public long? LocalId { get; private set;  }
     public Option<long?> RepliedEntryLid { get; private set; }
     public FilesUploadHandle? Uploads { get; private set; }
+    public IReadOnlyList<MediaRef> ExistingMedia { get; private set; } = [];
     public AfterSendMessageHandler? AfterSendMessageHandler { get; private set; }
 
-    public static SendMessageRequest NewMessage(ChatId chatId, string text, FilesUploadHandle? uploads = null, AfterSendMessageHandler? afterSendMessageHandler = null)
+    public static SendMessageRequest NewMessage(
+        ChatId chatId,
+        string text,
+        FilesUploadHandle? uploads = null,
+        AfterSendMessageHandler? afterSendMessageHandler = null,
+        IReadOnlyList<MediaRef>? existingMedia = null)
         => new () {
             ChatId = chatId,
             Text = text,
             Uploads = uploads,
+            ExistingMedia = existingMedia ?? [],
             AfterSendMessageHandler = afterSendMessageHandler,
         };
 
