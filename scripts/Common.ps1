@@ -187,6 +187,43 @@ function Get-HostsFilePath {
     }
 }
 
+function Get-MatchingHostnames {
+    <#
+    .SYNOPSIS
+        Returns hostnames in the hosts file that equal or are a subdomain of
+        any of the given domain suffixes.
+    .DESCRIPTION
+        Discovers dynamically-created entries (e.g. per-worktree subdomains like
+        3899-foo.local.voxt.ai) so their IP can be refreshed alongside the
+        well-known base hostnames. Comment lines and inline comments are ignored.
+    .PARAMETER Suffixes
+        Domain suffixes to match, e.g. @('local.voxt.ai', 'local.actual.chat').
+    .PARAMETER HostsFile
+        Path to the hosts file. Defaults to the platform-specific path.
+    #>
+    param(
+        [Parameter(Mandatory)][string[]]$Suffixes,
+        [string]$HostsFile = (Get-HostsFilePath)
+    )
+
+    $lines = @(Get-Content $HostsFile -ErrorAction SilentlyContinue)
+    if ($lines.Count -eq 0) { return @() }
+
+    $suffixPattern = ($Suffixes | ForEach-Object { [regex]::Escape($_) }) -join '|'
+    $regex = "(^|\.)($suffixPattern)$"
+
+    $found = [ordered]@{}
+    foreach ($line in $lines) {
+        $text = ($line -split '#', 2)[0].Trim()
+        if (-not $text) { continue }
+        $tokens = $text -split '\s+'
+        foreach ($name in ($tokens | Select-Object -Skip 1)) {
+            if ($name -match $regex) { $found[$name] = $true }
+        }
+    }
+    return @($found.Keys)
+}
+
 function Update-HostEntries {
     <#
     .SYNOPSIS
@@ -218,34 +255,29 @@ function Update-HostEntries {
     $hostsContent = Get-Content $hostsFile -ErrorAction SilentlyContinue
     if (-not $hostsContent) { $hostsContent = @() }
 
-    $entriesToAdd = @()
     $needsUpdate = $false
-
     foreach ($hostname in $Hostnames) {
         $escapedHostname = [regex]::Escape($hostname)
         $existingLine = $hostsContent | Where-Object { $_ -match "(?<=\s)$escapedHostname(?=\s|$)" }
-        $newLine = "$IP  $hostname"
-
         if ($existingLine) {
-            if ($existingLine -notmatch "^\s*$([regex]::Escape($IP))\s+") {
-                $needsUpdate = $true
-                $entriesToAdd += $newLine
-            }
+            if ($existingLine -notmatch "^\s*$([regex]::Escape($IP))\s+") { $needsUpdate = $true }
         } else {
-            $entriesToAdd += $newLine
+            $needsUpdate = $true
         }
     }
 
-    if ($entriesToAdd.Count -eq 0) {
+    if (-not $needsUpdate) {
         Write-Host "Hosts entries already up-to-date"
         return $IP
     }
 
-    $existingLines = @(Get-Content $hostsFile -ErrorAction SilentlyContinue)
-    if ($needsUpdate) {
-        $patterns = ($Hostnames | ForEach-Object { [regex]::Escape($_) }) -join '|'
-        $existingLines = @($existingLines | Where-Object { $_ -notmatch "(?<=\s)($patterns)(?=\s|`$)" })
-    }
+    # Re-add a line for every hostname, not just the changed ones: removal strips
+    # all matching lines, so a hostname already at the correct IP would be lost
+    # otherwise. This lets one call repoint a mix of stale and correct entries.
+    $patterns = ($Hostnames | ForEach-Object { [regex]::Escape($_) }) -join '|'
+    $existingLines = @(Get-Content $hostsFile -ErrorAction SilentlyContinue |
+        Where-Object { $_ -notmatch "(?<=\s)($patterns)(?=\s|`$)" })
+    $entriesToAdd = @($Hostnames | ForEach-Object { "$IP  $_" })
     $newContent = ($existingLines + $entriesToAdd) -join "`n"
 
     # Write content to a temp file so the elevated script never needs to embed or

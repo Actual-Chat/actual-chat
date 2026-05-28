@@ -138,10 +138,15 @@ function Configure-LocalEnvHosts {
     # 1. Hosts file + .env LOCAL_IP. Update-HostEntries already elevates only
     #    when the file actually needs changes.
     Write-Host "Updating hosts file and .env LOCAL_IP..."
-    Update-HostEntries -DetectIP -Hostnames @(
+    $baseHostnames = @(
         'local.voxt.ai', 'media.local.voxt.ai', 'cdn.local.voxt.ai',
         'local.actual.chat', 'media.local.actual.chat', 'cdn.local.actual.chat'
-    ) | Out-Null
+    )
+    # Also refresh any dynamically-created subdomains already in the hosts file
+    # (e.g. per-worktree domains) — they all resolve to this same machine.
+    $existingHostnames = Get-MatchingHostnames -Suffixes @('local.voxt.ai', 'local.actual.chat')
+    $allHostnames = @($baseHostnames + $existingHostnames | Select-Object -Unique)
+    Update-HostEntries -DetectIP -Hostnames $allHostnames | Out-Null
     Update-LocalIP | Out-Null
 
     # 2. Root CA

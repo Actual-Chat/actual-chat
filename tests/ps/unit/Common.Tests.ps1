@@ -230,6 +230,82 @@ Describe "Common.ps1" {
             $content | Should -Contain "::1  localhost"
             $content | Should -Contain "192.168.1.65  local.voxt.ai"
         }
+
+        It "repoints stale entries without dropping already-correct ones (mixed IPs)" {
+            Set-Content $script:hostsFile @(
+                "192.168.1.6  local.voxt.ai"
+                "192.168.31.217  3899-copy-image.local.voxt.ai"
+            )
+            Update-HostEntries -Hostnames "local.voxt.ai","3899-copy-image.local.voxt.ai" -IP "192.168.1.6"
+            $content = Get-Content $script:hostsFile
+            $content | Should -Contain "192.168.1.6  local.voxt.ai"
+            $content | Should -Contain "192.168.1.6  3899-copy-image.local.voxt.ai"
+            $content | Should -Not -Contain "192.168.31.217  3899-copy-image.local.voxt.ai"
+            @($content | Where-Object { $_ -match 'local\.voxt\.ai' }) | Should -HaveCount 2
+        }
+    }
+
+    Context "Get-MatchingHostnames" {
+        BeforeEach {
+            $script:hostsFile = [System.IO.Path]::GetTempFileName()
+        }
+
+        AfterEach {
+            Remove-Item $script:hostsFile -ErrorAction SilentlyContinue
+        }
+
+        It "returns base and subdomain hostnames for a suffix" {
+            Set-Content $script:hostsFile @(
+                "192.168.1.6  local.voxt.ai"
+                "192.168.1.6  media.local.voxt.ai"
+                "192.168.31.217  3899-copy-image.local.voxt.ai"
+                "192.168.31.217  cdn-3899-copy-image.local.voxt.ai"
+            )
+            $names = @(Get-MatchingHostnames -Suffixes 'local.voxt.ai' -HostsFile $script:hostsFile)
+            $names | Should -Contain 'local.voxt.ai'
+            $names | Should -Contain 'media.local.voxt.ai'
+            $names | Should -Contain '3899-copy-image.local.voxt.ai'
+            $names | Should -Contain 'cdn-3899-copy-image.local.voxt.ai'
+        }
+
+        It "ignores unrelated entries and comment lines" {
+            Set-Content $script:hostsFile @(
+                "127.0.0.1  localhost"
+                "# 192.168.1.6  commented.local.voxt.ai"
+                "192.168.1.6  local.voxt.ai"
+            )
+            $names = @(Get-MatchingHostnames -Suffixes 'local.voxt.ai' -HostsFile $script:hostsFile)
+            $names | Should -HaveCount 1
+            $names | Should -Contain 'local.voxt.ai'
+        }
+
+        It "strips inline comments" {
+            Set-Content $script:hostsFile "192.168.1.6  local.voxt.ai # base entry"
+            $names = @(Get-MatchingHostnames -Suffixes 'local.voxt.ai' -HostsFile $script:hostsFile)
+            $names | Should -HaveCount 1
+            $names | Should -Contain 'local.voxt.ai'
+        }
+
+        It "does not match hostnames that merely contain the suffix" {
+            Set-Content $script:hostsFile @(
+                "192.168.1.6  notlocal.voxt.ai"
+                "192.168.1.6  local.voxt.ai.evil.com"
+            )
+            @(Get-MatchingHostnames -Suffixes 'local.voxt.ai' -HostsFile $script:hostsFile) | Should -HaveCount 0
+        }
+
+        It "matches multiple suffixes and dedupes" {
+            Set-Content $script:hostsFile @(
+                "192.168.1.6  local.voxt.ai"
+                "192.168.1.6  local.actual.chat"
+                "192.168.1.6  local.voxt.ai"
+            )
+            @(Get-MatchingHostnames -Suffixes 'local.voxt.ai','local.actual.chat' -HostsFile $script:hostsFile) | Should -HaveCount 2
+        }
+
+        It "returns empty for a missing or empty file" {
+            @(Get-MatchingHostnames -Suffixes 'local.voxt.ai' -HostsFile '/nonexistent/hosts') | Should -HaveCount 0
+        }
     }
 
     Context "Remove-HostEntries" {
