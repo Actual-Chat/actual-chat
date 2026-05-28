@@ -385,9 +385,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebEdgeGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebSafariGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.AdminCopyChatToPlacePage>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.AudioBlobDownloadTestPage>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.AudioPlayerTestPage>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.AudioRecorderTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.ChatInvitePage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.ChatPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.DigestTestPage>();
@@ -1038,9 +1035,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebEdgeGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebSafariGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.AdminCopyChatToPlacePage), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Pages.AudioBlobDownloadTestPage), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Pages.AudioPlayerTestPage), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Pages.AudioRecorderTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.ChatInvitePage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.ChatPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.DigestTestPage), AotTypeKind.Component),

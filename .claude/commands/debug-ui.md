@@ -438,14 +438,11 @@ they test.
 | Route | What it exercises |
 |---|---|
 | `/test/auth` | Sign-in / claims plumbing. |
-| `/test/audio-player` | Audio player component. |
-| `/test/audio-recorder` | Audio recorder + opus encoder. |
 | `/test/blazor` | Blazor render / RPC sandbox. |
-| `/test/compute-state` | Fusion `IComputed` UI behaviour. |
 | `/test/copy-chat2place` | Admin-style chat→place migration. |
 | `/test/digest` | Email digest preview. |
 | `/test/discover` | Discover feed component. |
-| `/test/dive-in-modal-test` | Dive-in modal animation. |
+| `/test/dive-in-modal` | Dive-in modal animation. |
 | `/test/email-templates` | All email templates with sample data. |
 | `/test/embedded` | Embedded-host (iframe-like) shell. |
 | `/test/emojis` | Emoji picker / rendering. |

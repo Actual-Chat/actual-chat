@@ -1,7 +1,7 @@
 namespace ActualChat.UI.Blazor.Services;
 
 // ReSharper disable once InconsistentNaming
-public class TestFeature_ClientAccount : FeatureDef<AccountFull?>
+public class TestFeature_ClientAccount : FeatureDef<AccountFull?>, IClientFeatureDef
 {
     public override async Task<AccountFull?> Compute(IServiceProvider services, CancellationToken cancellationToken)
     {

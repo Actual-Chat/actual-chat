@@ -1,8 +1,7 @@
-using ActualChat.Chat;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.App.Services;
-using Microsoft.JSInterop;
 
+// ReSharper disable once CheckNamespace
 namespace ActualChat.UI.Blazor.App.Components;
 
 /// <summary>
@@ -14,7 +13,7 @@ public sealed class AudioAttachmentPlayer : UIServiceBase<AppUIHub>, IAsyncDispo
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.AudioAttachmentPlayer.create";
 
     private readonly MutableState<PlaybackState?> _state;
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private DotNetObjectReference<AudioAttachmentPlayer>? _blazorRef;
     private Task<IJSObjectReference>? _jsRefTask;
     private volatile bool _isDisposed;

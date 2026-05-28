@@ -1,5 +1,3 @@
-using ActualChat.Streaming;
-
 namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class ChatVideoUI
@@ -9,7 +7,7 @@ public partial class ChatVideoUI
     // on the next StartCameraWarmup call if the user re-engages the modal.
     private static readonly TimeSpan WarmupIdleTimeout = TimeSpan.FromMinutes(5);
 
-    private readonly object _warmupLock = new();
+    private readonly Lock _warmupLock = new();
     private VideoRecorder? _cameraWarmupRecorder;
     private ChatId? _cameraWarmupChatId;
     private string? _cameraWarmupDeviceId;

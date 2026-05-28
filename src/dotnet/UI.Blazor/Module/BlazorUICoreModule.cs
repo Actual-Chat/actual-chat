@@ -2,7 +2,6 @@ using ActualChat.Hardware;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Diagnostics;
-using ActualChat.UI.Blazor.Pages.ComputeStateTestPage;
 using ActualChat.UI.Blazor.Pages.DiveInModalTestPage;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services.Internal;
@@ -164,10 +163,6 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
                 return new WebRemoteComputedCache(options, c);
             });
         }
-
-        // Test services
-        if (HostInfo.IsDevelopmentInstance)
-            fusion.AddService<ComputeStateTestService>(ServiceLifetime.Scoped);
     }
 
     private void InjectDiagnosticsServices(IServiceCollection services)

@@ -8,13 +8,14 @@
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Video Transcoding Test</MainHeader>
 
-<div class="test-page-wrapper">
 @{
     var m = State.LastNonErrorValue;
     if (m is null)
         return;
     var error = State.Error;
 }
+
+<div class="test-page-wrapper">
 
 @if (error != null) {
     <ErrorToast Class="mb-3">@error.Message</ErrorToast>

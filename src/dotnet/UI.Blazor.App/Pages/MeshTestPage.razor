@@ -7,13 +7,16 @@
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Mesh Diagnostic Page</MainHeader>
 
-<div class="test-page-wrapper">
 @{
     var m = State.Value;
     if (m is null) {
         <h2>Loading...</h2>
         return;
     }
+}
+
+<div class="test-page-wrapper">
+@{
     <div class="flex-y h-full">
         <div class="flex-x gap-x-2 mb-3">
             <Button Click="OnRefresh">Refresh</Button>

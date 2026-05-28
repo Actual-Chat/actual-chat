@@ -171,9 +171,6 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Layouts.DiscoverLayout>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Layouts.ListViewLayout>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Layouts.LiterallyNoLayout>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.ComputeStateTestPage.ComputeStateTestChildComponent>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.ComputeStateTestPage.ComputeStateTestComponent>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.ComputeStateTestPage.ComputeStateTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.DiveInModalTestPage.DiveInModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.DiveInModalTestPage.DiveInModalInner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.DiveInModalTestPage.DiveInModalStart>();
@@ -640,9 +637,6 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Layouts.DiscoverLayout), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Layouts.ListViewLayout), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Layouts.LiterallyNoLayout), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.Pages.ComputeStateTestPage.ComputeStateTestChildComponent), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.Pages.ComputeStateTestPage.ComputeStateTestComponent), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.Pages.ComputeStateTestPage.ComputeStateTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.DiveInModalTestPage.DiveInModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.DiveInModalTestPage.DiveInModalInner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.DiveInModalTestPage.DiveInModalStart), AotTypeKind.Component),
