@@ -20,12 +20,13 @@ IDENTITY="${4:--}"
 MONO="$APP/Contents/MonoBundle"
 FW="$APP/Contents/Frameworks"
 
-if [ "$IDENTITY" = "-" ] || [ -z "$IDENTITY" ]; then
-  IDENTITY=-
-  TS="--timestamp=none"
-else
-  TS="--timestamp"
-fi
+# Secure (network) timestamp only for distribution builds; ad-hoc and Apple
+# Development signing don't need it and shouldn't depend on network access.
+case "$IDENTITY" in
+  ""|"-")            IDENTITY=-; TS="--timestamp=none" ;;
+  *Distribution*)    TS="--timestamp" ;;
+  *)                 TS="--timestamp=none" ;;
+esac
 
 echo "fix-codesigning: APP=$APP"
 echo "fix-codesigning: STAGING=$STAGING"
