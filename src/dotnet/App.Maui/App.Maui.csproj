@@ -636,31 +636,11 @@
     <Compile Remove="**\**\*.iOS.cs" />
     <None Include="**\**\*.iOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
   </ItemGroup>
-  <!-- NOT iOS AND NOT MacCatalyst — Platforms/iOS contains shared MaciOS code (audio, etc.) -->
-  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true AND $(TargetFramework.Contains('-maccatalyst')) != true">
+  <!-- NOT iOS — Platforms\iOS holds iOS-only files; shared iOS+MacCatalyst code lives in MaciOS\ -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true">
     <Compile Remove="**\iOS\**\*.cs" />
     <None Include="**\iOS\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
   </ItemGroup>
-  <!-- MacCatalyst: MAUI SingleProject marks every Platforms/*.cs file with
-       ExcludeFromCurrentConfiguration=true (after our project content evaluates) and removes
-       them in _MauiRemovePlatformCompileItems unless TargetPlatformIdentifier matches.
-       Opt the shared MaciOS code back in via a target that runs just before the removal.
-       We include all of Platforms/iOS/** except Firebase-coupled files and the
-       AppDelegate/Program/ContentResolver that MacCatalyst overrides with its own copies. -->
-  <Target Name="_KeepSharedIosFilesOnMacCatalyst"
-          Condition="$(TargetFramework.Contains('-maccatalyst'))"
-          BeforeTargets="_MauiRemovePlatformCompileItems">
-    <ItemGroup>
-      <Compile Update="@(Compile)"
-               Condition="$([System.String]::Copy('%(Identity)').Replace('\','/').Contains('Platforms/iOS/'))
-                          AND '%(Filename)' != 'AppDelegate'
-                          AND '%(Filename)' != 'IosPushNotifications'
-                          AND '%(Filename)' != 'Program'
-                          AND '%(Filename)' != 'ContentResolver'">
-        <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
-      </Compile>
-    </ItemGroup>
-  </Target>
   <!-- iOS -->
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
     <Folder Include="Platforms\iOS\Resources\" />
