@@ -74,6 +74,10 @@ export interface StreamSenderStats {
     floodGateSkipCount: number;
     lastAckAgeMs: number;
     isPeerConnected: boolean;
+    // Cumulative bytes drained out of the wire send buffer (handed to the
+    // RpcStream as it pulls; the pull is ack-window-gated). Delta/time while the
+    // buffer is backlogged ≈ the wire delivery rate = uplink capacity.
+    ackedBytes: number;
 }
 
 export interface WireSendOptions {
@@ -110,6 +114,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                 if (!senderStats) return;
                 stats.wireLastAckAgeMs = senderStats.lastAckAgeMs;
                 stats.isPeerConnected = senderStats.isPeerConnected;
+                stats.wireAckedBytes = senderStats.ackedBytes;
                 wireQueueDepthEma.appendSample(senderStats.queueDepth);
                 stats.wireQueueDepthEma = wireQueueDepthEma.value;
                 if (!senderStats.isPeerConnected && reconnectTracker.prevConnected)

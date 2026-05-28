@@ -149,6 +149,10 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
     const bundles = new Denque<VideoStreamFrameBundle>();
     const frameAdded = new EventHandlerSet<void>();
     let addedFrameCount = 0;
+    // Cumulative bytes drained out of this buffer (handed to the RpcStream as it
+    // pulls). The pull is gated by the RPC ack-window, so while this buffer is
+    // backlogged the delta/time ≈ the wire delivery rate = uplink capacity.
+    let shiftedBytes = 0;
     let maxQueueDepth = 0;
     let rpcStreamSkipped = 0;
     let rpcStreamSender: { readonly skipCount: number; onAckProcessed?: () => void } | null = null;
@@ -195,6 +199,8 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
                     for (;;) {
                         while (!bundles.isEmpty()) {
                             const bundle = bundles.shift()!;
+                            for (const f of bundle.layers)
+                                shiftedBytes += f.data.byteLength;
                             if (!floodGate.isOpen && bundles.length <= openGateAt)
                                 floodGate.open();
                             yield bundleToDto(bundle);
@@ -299,6 +305,7 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
         // Gate on !lastError too — without it, a stream-create rejection
         // (auth/permission) would still report connected because the RPC peer is healthy.
         isPeerConnected: Api.peer.isConnected && !lastError,
+        ackedBytes: shiftedBytes,
     });
 
     return { send, dispose, whenDisposed, getStats };

@@ -460,7 +460,8 @@ public sealed class VideoRecorder : IAsyncDisposable
             double floodGateSkipPerSec,
             int peerReconnectStreak,
             int encoderRestartStreakIn60s,
-            bool isTabBackgrounded)
+            bool isTabBackgrounded,
+            long wireAckedBytes)
         {
             var dropTrace = new Dictionary<FrameDropStage, int>(dropStages.Length);
             for (var i = 0; i < dropStages.Length && i < dropCounts.Length; i++)
@@ -480,7 +481,8 @@ public sealed class VideoRecorder : IAsyncDisposable
                 FloodGateSkipPerSec: floodGateSkipPerSec,
                 PeerReconnectStreak: peerReconnectStreak,
                 EncoderRestartStreakIn60s: encoderRestartStreakIn60s,
-                IsTabBackgrounded: isTabBackgrounded));
+                IsTabBackgrounded: isTabBackgrounded,
+                WireAckedBytes: wireAckedBytes));
         }
     }
 }

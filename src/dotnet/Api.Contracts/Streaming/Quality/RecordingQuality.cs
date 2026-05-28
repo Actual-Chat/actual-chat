@@ -71,7 +71,11 @@ public sealed record RecorderStats(
     double FloodGateSkipPerSec,
     int PeerReconnectStreak,
     int EncoderRestartStreakIn60s,
-    bool IsTabBackgrounded)
+    bool IsTabBackgrounded,
+    // Cumulative bytes the peer acknowledged (delivered) on the wire. While the
+    // wire queue is backlogged the delta over time is the link drain rate — a
+    // true measured uplink capacity, used to re-anchor the bandwidth ceiling.
+    long WireAckedBytes = 0)
 {
     private static readonly IReadOnlyDictionary<FrameDropStage, int> EmptyDropTrace
         = new Dictionary<FrameDropStage, int>();

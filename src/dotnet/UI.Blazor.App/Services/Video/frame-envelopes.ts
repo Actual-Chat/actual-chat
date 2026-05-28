@@ -50,6 +50,11 @@ export interface RecorderStats {
     // Wire-sender side-channels copied from the active sender's stats.
     wireLastAckAgeMs: number;
     isPeerConnected: boolean;
+    // Cumulative bytes drained out of the wire send buffer (handed to the
+    // RpcStream as it pulls, gated by the ack-window). While the buffer is
+    // backlogged the delta over time is the wire delivery rate = uplink
+    // capacity. Maintained by the wireSend operator.
+    wireAckedBytes: number;
     // EMA of VideoEncoder.encodeQueueSize sampled per bundle, taking the
     // max across layers. -1 == not yet sampled. Maintained by the encode
     // operator.
@@ -155,6 +160,7 @@ export function createEmptyRecorderStats(): RecorderStats {
         encodeTimeMsCount: 0,
         wireLastAckAgeMs: -1,
         isPeerConnected: false,
+        wireAckedBytes: 0,
         encodeQueueDepthEma: -1,
         wireQueueDepthEma: -1,
         floodGateSkipPerSec: 0,

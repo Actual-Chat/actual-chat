@@ -237,6 +237,7 @@ function createSender(chatId: string, floodGate: FloodGate): StreamSenderLike {
                 floodGateSkipCount: 0,
                 lastAckAgeMs: -1,
                 isPeerConnected: false,
+                ackedBytes: 0,
             };
         },
     };

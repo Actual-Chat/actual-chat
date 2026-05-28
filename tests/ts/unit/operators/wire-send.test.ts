@@ -83,6 +83,7 @@ class StatsSender extends FakeSender {
         floodGateSkipCount: 0,
         lastAckAgeMs: -1,
         isPeerConnected: false,
+        ackedBytes: 0,
     };
     override send(bundle: VideoStreamFrameBundle): void {
         super.send(bundle);
