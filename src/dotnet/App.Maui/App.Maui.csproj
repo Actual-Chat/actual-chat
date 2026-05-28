@@ -464,28 +464,36 @@
 
   <!-- MacCatalyst build properties -->
 
-  <!-- MacCatalyst: Both Debug & Release configurations -->
+  <!-- MacCatalyst: Both Debug & Release configurations.
+       Entitlements are selected by IsDevMaui (not by configuration) — same App Store
+       entitlement set is used for local development and distribution, matching iOS.
+       Debug is signed with an Apple Development cert + development provisioning profile,
+       which satisfies the team-scoped entitlements (keychain-access-groups / applesignin
+       / associated-domains); Release uses the Apple Distribution cert + App Store profile. -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-maccatalyst'))">
     <!-- Build for the host architecture by default; arm64 on Apple Silicon, x64 on Intel -->
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">maccatalyst-arm64</RuntimeIdentifier>
     <IntermediateOutputPath>..\..\..\artifacts\out</IntermediateOutputPath>
     <UseShortFileNames>True</UseShortFileNames>
+    <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Platforms\MacCatalyst\Entitlements.dev.plist</CodesignEntitlements>
+    <CodesignEntitlements Condition="'$(IsDevMaui)' != 'true'">Platforms\MacCatalyst\Entitlements.prod.plist</CodesignEntitlements>
     <EnableSGenConc>False</EnableSGenConc>
     <UseNativeHttpHandler>true</UseNativeHttpHandler>
   </PropertyGroup>
 
-  <!-- MacCatalyst: Debug configuration — ad-hoc sign with the local "-" identity so the
-       app runs on the developer machine without a provisioning profile.
-       Uses a minimal entitlements set (no team-scoped App Store entitlements like
-       keychain-access-groups / applesignin, which can't be satisfied by an ad-hoc
-       signature and would block launch). IsDevMaui still selects the backend at compile
-       time, so Debug + IsDevMaui=false runs locally against prod. -->
+  <!-- MacCatalyst: Debug configuration — Apple Development cert + development profile
+       (mirrors iOS Debug). Profile names must match the ones registered in Apple
+       Developer Console (Mac Catalyst subtype, macOS App Development):
+         dev  → "mac.chat.actual.dev.app"  (chat.actual.dev.app)
+         prod → "mac.chat.actual.app"      (chat.actual.app)
+       The developer's Mac must be a registered device on these profiles. -->
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net10.0-maccatalyst|AnyCPU'">
     <CreatePackage>false</CreatePackage>
-    <CodesignKey>-</CodesignKey>
-    <CodesignEntitlements>Platforms\MacCatalyst\Entitlements.debug.plist</CodesignEntitlements>
+    <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">mac.chat.actual.dev.app</CodesignProvision>
+    <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">mac.chat.actual.app</CodesignProvision>
+    <CodesignKey>Apple Development</CodesignKey>
+    <ProvisioningType>manual</ProvisioningType>
     <EnableCodeSigning>true</EnableCodeSigning>
-    <DisableCodesignVerification>true</DisableCodesignVerification>
     <MtouchLink>SdkOnly</MtouchLink>
   </PropertyGroup>
 
@@ -498,8 +506,6 @@
        Packaging to .pkg for App Store upload is done by tools/sign-maccatalyst.sh
        (productbuild + "3rd Party Mac Developer Installer" cert), not by MSBuild. -->
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net10.0-maccatalyst|AnyCPU'">
-    <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Platforms\MacCatalyst\Entitlements.dev.plist</CodesignEntitlements>
-    <CodesignEntitlements Condition="'$(IsDevMaui)' != 'true'">Platforms\MacCatalyst\Entitlements.prod.plist</CodesignEntitlements>
     <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">Mac App Store Dev</CodesignProvision>
     <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">Mac App Store</CodesignProvision>
     <CodesignKey>Apple Distribution: Actual Chat Inc. (M287G8G83F)</CodesignKey>

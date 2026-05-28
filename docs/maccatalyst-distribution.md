@@ -11,31 +11,39 @@ existing iOS pipeline (`build-ios-pkg` / `deploy-ios-to-appstore`).
 1. **Identifiers** — for both `chat.actual.dev.app` and `chat.actual.app`:
    the Mac Catalyst app reuses the iOS App ID (universal purchase). You do **not**
    need to enable the legacy "Mac Catalyst" capability / derived `maccatalyst.*` ID.
-2. **Provisioning Profiles** — create two **Mac App Store** (Mac Catalyst subtype) profiles:
-   - `Mac App Store Dev` → `chat.actual.dev.app`
-   - `Mac App Store` → `chat.actual.app`
+2. **Register your Mac as a device** — Devices → +  → Platform **macOS** → Device ID =
+   the Mac's **Provisioning UDID** (`system_profiler SPHardwareDataType | grep "Provisioning UDID"`).
+   Needed so development profiles can authorize local runs.
+3. **Provisioning Profiles** — four total (all Mac Catalyst subtype):
 
-   Both signed by `Apple Distribution: Actual Chat Inc. (M287G8G83F)`.
-   The names must match `CodesignProvision` in `src/dotnet/App.Maui/App.Maui.csproj`
-   (Release config).
-3. **Certificates** — in addition to the existing Apple Distribution cert,
-   create a **Mac Installer Distribution** cert (Production). Installs as
+   | Name | Type | App ID | Cert |
+   |---|---|---|---|
+   | `mac.chat.actual.dev.app` | macOS App Development | `chat.actual.dev.app` | Apple Development (+ your Mac) |
+   | `mac.chat.actual.app` | macOS App Development | `chat.actual.app` | Apple Development (+ your Mac) |
+   | `Mac App Store Dev` | Mac App Store | `chat.actual.dev.app` | Apple Distribution |
+   | `Mac App Store` | Mac App Store | `chat.actual.app` | Apple Distribution |
+
+   Names must match `CodesignProvision` in `src/dotnet/App.Maui/App.Maui.csproj`
+   (Debug uses the Development pair, Release the App Store pair).
+4. **Certificates** — in addition to the existing Apple Distribution + Apple Development
+   certs, create a **Mac Installer Distribution** cert (Production). Installs as
    `3rd Party Mac Developer Installer: Actual Chat Inc. (M287G8G83F)`.
    Required to wrap the `.app` into an App-Store-uploadable `.pkg`.
 
 ### Locally
 
-Double-click both `.provisionprofile` files to install. Verify with:
+Double-click all four `.provisionprofile` files to install. Verify certs with:
 
 ```bash
-security find-identity -v -p basic | grep -E "Apple Distribution|3rd Party Mac Developer Installer"
+security find-identity -v -p basic | grep -E "Apple Development|Apple Distribution|3rd Party Mac Developer Installer"
 ```
 
-## Run locally (Debug — no Apple account needed)
+## Run locally (Debug)
 
-For everyday local testing against dev or prod backends. Ad-hoc signed, minimal
-entitlements (`Entitlements.debug.plist`), launches directly on your Mac.
-`IsDevMaui` picks the backend; signing config is independent.
+For everyday local testing against dev or prod backends. Signed with the Apple
+Development cert + the matching `Mac Development …` profile, using the same
+entitlements as the App Store build (so keychain / Apple Sign-In / universal
+links behave as in production). `IsDevMaui` picks the backend.
 
 ```bash
 cd src/dotnet/App.Maui
