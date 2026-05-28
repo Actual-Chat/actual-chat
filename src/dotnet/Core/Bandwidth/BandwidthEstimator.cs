@@ -127,6 +127,18 @@ public sealed class BandwidthEstimator(BandwidthEstimatorConfig config)
         if (CalmTicks >= config.ProbeFailureResetStreak) {
             ProbeFailures = 0;
             LastCeilingDownAt = null;
+            // Re-anchor a ratcheted-down ceiling. When the cap is pinned low,
+            // the encoder can't emit enough bytes to satisfy the headroom-confirm
+            // gate (LastCurrentBps >= CeilingBps * ConfirmRatio), and the ceiling
+            // never descends on non-Bad ticks — so the cap can never climb back.
+            // After sustained calm, lower the ceiling to the confirm level of the
+            // measured rate so the next Good tick confirms headroom and the cap
+            // re-probes upward.
+            if (LastCurrentBps > 0 && LastCurrentBps < CeilingBps * config.ConfirmRatio) {
+                var reanchored = Math.Max(config.FloorBps, LastCurrentBps);
+                if (reanchored < CeilingBps)
+                    CeilingBps = reanchored;
+            }
         }
 
         AppendHistory(now, currentBandwidthBps, signalLevel, ceilingBefore, verdict);
@@ -193,6 +205,26 @@ public sealed class BandwidthEstimator(BandwidthEstimatorConfig config)
         CeilingBps = lift;
         PositiveStreak++;
         NegativeStreak = 0;
+    }
+
+    /// <summary>
+    /// Anchor the ceiling to a confirmed measured drain rate (bytes/sec), taken
+    /// while the wire was backlogged — there the measured throughput IS the link
+    /// capacity. Unlike the verdict-driven paths this is hard evidence, so it
+    /// overrides the estimate in both directions (even with <see cref="HasSeenBadSignal"/>)
+    /// and refreshes <see cref="LastCurrentBps"/> so a ratcheted-down cap can
+    /// re-confirm headroom and climb back.
+    /// </summary>
+    public void ApplyMeasuredCapacity(long measuredBps, Moment now)
+    {
+        if (measuredBps <= 0)
+            return;
+
+        LastCurrentBps = measuredBps;
+        CeilingBps = Math.Max(config.FloorBps, measuredBps);
+        // A real measurement isn't a failed probe — clear the back-off anchor so
+        // the next good tick can lift immediately.
+        LastCeilingDownAt = null;
     }
 
     private void ApplyNeutralOrIdleGood(long currentBandwidthBps)

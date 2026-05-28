@@ -22,6 +22,8 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
     // startup cooldown covers the L2-keyframe wait while keeping upgrades
     // responsive once the first real playback stats arrive.
     private static readonly TimeSpan QcStartupCooldown = TimeSpan.FromSeconds(3);
+    // Initial outbound camera tiers at openGate; the ramp earns tiers beyond this.
+    private const int SoftStartCameraLayers = 3;
     private static readonly TimeSpan QcSettlingInterval = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan QcSettlingDuration = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan QcSteadyInterval = TimeSpan.FromSeconds(5);
@@ -43,14 +45,18 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
             ? Math.Min(2, VideoLayerDef.CameraLayers.Length)
             : VideoLayerDef.CameraLayers.Length;
         var screencastCap = VideoLayerDef.ScreenCastLayers.Length;
+        // Soft-start the outbound camera health caps below the device ceiling so
+        // the top tier (e.g. 1080) is only added by the bump-quality ramp once the
+        // lower tiers run smoothly — not encoded from the first frame.
+        var softCameraStart = Math.Min(SoftStartCameraLayers, deviceCameraCap);
         _outboundLayers = new LayerCap(deviceCameraCap, screencastCap);
         _outboundEncodingCap = new EncodingCap(
-            new LayerCap(deviceCameraCap, screencastCap),
+            new LayerCap(deviceCameraCap, screencastCap, softCameraStart),
             new EncodingCapConfig(
                 EncodeDeficitBad: Constants.Video.EncBadDeficit,
                 EncodeDeficitGood: Constants.Video.EncOkDeficit));
         _outboundBandwidthCap = new BandwidthCap(
-            new LayerCap(deviceCameraCap, screencastCap),
+            new LayerCap(deviceCameraCap, screencastCap, softCameraStart),
             new BandwidthCapConfig());
         _outboundBwEstimator = new BandwidthEstimator(
             new BandwidthEstimatorConfig(Constants.Video.InitialOutboundCeilingBps));
@@ -115,6 +121,8 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
                 _outboundLastEvalAt = default;
                 _lastAppliedTargetByKind.Clear();
                 _lastEncodedSampleByKind.Clear();
+                _lastAckedSampleByKind.Clear();
+                _outboundProbe.Reset();
                 lock (_playbackLock) {
                     _playbackStartedAt.Clear();
                     _playbackLastEvalAt.Clear();

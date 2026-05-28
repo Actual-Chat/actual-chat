@@ -11,6 +11,12 @@ public sealed partial class VideoQualityUI
     private readonly Dictionary<VideoSourceKind, int> _lastRecordingSignalByKind = new();
     private readonly Dictionary<VideoSourceKind, RecordingQualityReason> _lastRecordingReasonByKind = new();
     private readonly Dictionary<VideoSourceKind, (long BytesAt, CpuTimestamp At)> _lastEncodedSampleByKind = new();
+    // Separate sample tracker for wire-acked (delivered) bytes — its delta over
+    // time under backlog is the measured uplink drain rate.
+    private readonly Dictionary<VideoSourceKind, (long BytesAt, CpuTimestamp At)> _lastAckedSampleByKind = new();
+    // WireQueueDepthEma above this (bundles) is treated as a sustained backlog:
+    // the link can't drain instantly, so the acked-bytes rate equals capacity.
+    private const double WireBacklogBundles = 2.0;
     private readonly Dictionary<VideoSourceKind, int> _lastAppliedTargetByKind = new();
     // Worker-restart cooldown: a worker.stop()/start() cycle resets the
     // RecorderStats counters to 0, producing a transient bytes/sec=0
@@ -22,6 +28,7 @@ public sealed partial class VideoQualityUI
     private readonly LayerCap _outboundLayers;
     private readonly EncodingCap _outboundEncodingCap;
     private readonly BandwidthCap _outboundBandwidthCap;
+    private readonly SpeculativeProbe _outboundProbe = new();
     private readonly BandwidthEstimator _outboundBwEstimator;
     // One classifier per recording run. The Encoder/Uplink streak counters
     // are persisted across ticks; restart-cooldown branches do NOT recreate
@@ -40,6 +47,10 @@ public sealed partial class VideoQualityUI
     public LayerCap OutboundBandwidthLayers => _outboundBandwidthCap.Layers;
     public int OutboundDeviceCameraCap => _outboundLayers.DeviceCameraCap;
     public int OutboundDeviceScreencastCap => _outboundLayers.ScreencastCap;
+    // Current effective outbound camera cap (soft-started, ramped by QC). openGate
+    // opens at this, not the device ceiling, so the top tier is earned by the ramp.
+    public int OutboundCameraCap
+        => Math.Min(_outboundEncodingCap.Layers.CameraLayers, _outboundBandwidthCap.Layers.CameraLayers);
 
     /// <summary>
     /// Receives a <see cref="RecorderStats"/> from the worker
@@ -69,9 +80,11 @@ public sealed partial class VideoQualityUI
                 || snapshot.BundlesShipped < previous.BundlesShipped)) {
             _restartCooldownByKind[kind] = RestartCooldownTicks;
             _lastEncodedSampleByKind[kind] = (snapshot.BytesEncoded, CpuTimestamp.Now);
+            _lastAckedSampleByKind[kind] = (snapshot.WireAckedBytes, CpuTimestamp.Now);
             _outboundBwEstimator.ResetStreaks();
             _outboundEncodingCap.ResetStreaks();
             _outboundBandwidthCap.ResetStreaks();
+            _outboundProbe.Reset();
             Log.LogInformation(
                 "OnRecorderStats: {Kind} worker restart detected (BytesEncoded {PrevB}->{NewB}, " +
                 "BundlesShipped {PrevBundles}->{NewBundles}); skipping outbound tick for {Cooldown} ticks, " +
@@ -169,6 +182,7 @@ public sealed partial class VideoQualityUI
         var maxPeerReconnectStreak = 0;
         var isTabBackgrounded = false;
         long totalBytesPerSec = 0;
+        long ackedBytesPerSec = 0;
         var sampleAt = CpuTimestamp.Now;
         foreach (var (k, stats) in _lastRecorderStatsByKind) {
             fusedDropRatio = Math.Max(fusedDropRatio, stats.SenderFrameDropRatioEma);
@@ -183,7 +197,8 @@ public sealed partial class VideoQualityUI
             maxRestartStreak = Math.Max(maxRestartStreak, stats.EncoderRestartStreakIn60s);
             maxPeerReconnectStreak = Math.Max(maxPeerReconnectStreak, stats.PeerReconnectStreak);
             isTabBackgrounded = isTabBackgrounded || stats.IsTabBackgrounded;
-            totalBytesPerSec += ComputeAndUpdateBytesPerSec(k, stats.BytesEncoded, sampleAt);
+            totalBytesPerSec += ComputeAndUpdateBytesPerSec(_lastEncodedSampleByKind, k, stats.BytesEncoded, sampleAt);
+            ackedBytesPerSec += ComputeAndUpdateBytesPerSec(_lastAckedSampleByKind, k, stats.WireAckedBytes, sampleAt);
         }
 
         var encoderHealth = _senderHealthClassifier.ClassifyEncoder(
@@ -211,6 +226,12 @@ public sealed partial class VideoQualityUI
         var uplinkSignal = VerdictToSignal(uplinkHealth.Verdict);
         var connection = ConnectivityUI.ConnectionInfo.Value;
         _outboundBwEstimator.Tick(connection, SystemClock.Now, totalBytesPerSec, uplinkSignal);
+        // Drain-rate measurement: a sustained wire backlog means the link is the
+        // bottleneck, so the acked-bytes rate IS the capacity. Anchor the ceiling
+        // to it (overriding the verdict-based guess) — this is what lets a
+        // ratcheted-down ceiling become accurate again and the cap climb back.
+        if (fusedWireQueueDepth >= WireBacklogBundles && ackedBytesPerSec > 0)
+            _outboundBwEstimator.ApplyMeasuredCapacity(ackedBytesPerSec, SystemClock.Now);
         var preEncCam = _outboundEncodingCap.Layers.CameraLayers;
         var preBwCam = _outboundBandwidthCap.Layers.CameraLayers;
         // EncodingCap still consumes the raw encode ratio. The classifier
@@ -236,7 +257,23 @@ public sealed partial class VideoQualityUI
 
         var encLayers = _outboundEncodingCap.Layers;
         var bwLayers = _outboundBandwidthCap.Layers;
-        var effCamera = Math.Min(encLayers.CameraLayers, bwLayers.CameraLayers);
+
+        // Speculative probe (camera): when bandwidth is the binding cap and below
+        // the device max on a healthy, non-backlogged link, send one extra layer
+        // for a short window to test for uplink headroom the drain-rate path can't
+        // measure (no backlog). A passed probe commits by bumping bwLayers.
+        var backlogged = fusedWireQueueDepth >= WireBacklogBundles;
+        var baseCamera = Math.Min(encLayers.CameraLayers, bwLayers.CameraLayers);
+        var canGrow = baseCamera < bwLayers.DeviceCameraCap
+            && baseCamera == bwLayers.CameraLayers
+            && !backlogged;
+        var cameraProbeExtra = _outboundProbe.Tick(
+            canGrow, fusedAckAgeMs, fusedWireQueueDepth, bwLayers, _recordersByKind.Keys);
+
+        // Recompute after a possible commit, then add the in-window probe layer.
+        var effCamera = Math.Min(
+            bwLayers.DeviceCameraCap,
+            Math.Min(encLayers.CameraLayers, bwLayers.CameraLayers) + cameraProbeExtra);
         var effScreencast = Math.Min(encLayers.ScreencastLayers, bwLayers.ScreencastLayers);
         if (_debugMaxRecordingLayerCount is { } debugCap) {
             effCamera = Math.Min(effCamera, debugCap);
@@ -316,14 +353,16 @@ public sealed partial class VideoQualityUI
         }
     }
 
-    private long ComputeAndUpdateBytesPerSec(VideoSourceKind kind, long currentBytes, CpuTimestamp now)
+    private static long ComputeAndUpdateBytesPerSec(
+        Dictionary<VideoSourceKind, (long BytesAt, CpuTimestamp At)> samples,
+        VideoSourceKind kind, long currentBytes, CpuTimestamp now)
     {
-        if (!_lastEncodedSampleByKind.TryGetValue(kind, out var prev) || prev.At == default) {
-            _lastEncodedSampleByKind[kind] = (currentBytes, now);
+        if (!samples.TryGetValue(kind, out var prev) || prev.At == default) {
+            samples[kind] = (currentBytes, now);
             return 0;
         }
         var dtSec = (now - prev.At).TotalSeconds;
-        _lastEncodedSampleByKind[kind] = (currentBytes, now);
+        samples[kind] = (currentBytes, now);
         if (dtSec <= 0) return 0;
 
         var dBytes = Math.Max(0, currentBytes - prev.BytesAt);

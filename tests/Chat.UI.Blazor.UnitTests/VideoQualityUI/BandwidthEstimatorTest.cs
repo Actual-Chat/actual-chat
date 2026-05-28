@@ -327,6 +327,80 @@ public class BandwidthEstimatorTest
     }
 
     [Fact]
+    public void StuckLowCap_ReanchorsCeilingAfterCalm_EnablingRecovery()
+    {
+        // Regression: once the cap is ratcheted to the bottom layer, the encoder
+        // can only emit a low rate, which never reaches CeilingBps*ConfirmRatio,
+        // so the ceiling can't be re-confirmed and the cap can never climb back.
+        // After sustained calm the ceiling must re-anchor to the measured rate so
+        // headroom becomes confirmable and recovery can proceed.
+        var cfg = Cfg() with { ProbeFailureResetStreak = 5 };
+        var e = NewEstimator(cfg);
+        var conn = Conn();
+        var t = 0.0;
+
+        // Prove the ceiling with a bad tick — it stays well above the low rate we
+        // can produce while pinned to the bottom layer.
+        t += 1; e.Tick(conn, At(t), currentBandwidthBps: 900_000, signalLevel: 0.3);
+        e.HasSeenBadSignal.Should().BeTrue();
+        var stuckCeiling = e.CeilingBps;
+
+        const long lowRate = 150_000; // bottom-layer-only output
+        (lowRate >= stuckCeiling * cfg.ConfirmRatio)
+            .Should().BeFalse("precondition: low rate can't confirm headroom against the stuck ceiling");
+
+        // Sustained calm at the low (capped) rate — Good signal but no headroom.
+        for (var i = 0; i < cfg.ProbeFailureResetStreak; i++) {
+            t += 1; e.Tick(conn, At(t), lowRate, signalLevel: 1.0);
+        }
+
+        e.CeilingBps.Should().BeLessThan(stuckCeiling, "ceiling re-anchored toward the measured rate");
+        (lowRate >= e.CeilingBps * cfg.ConfirmRatio)
+            .Should().BeTrue("re-anchor makes headroom confirmable again");
+
+        // Next good tick now confirms headroom and lifts the ceiling — the cap can climb.
+        var beforeLift = e.CeilingBps;
+        t += 1; e.Tick(conn, At(t), lowRate, signalLevel: 1.0);
+        e.CeilingBps.Should().BeGreaterThanOrEqualTo(beforeLift);
+        e.PositiveStreak.Should().BeGreaterThan(0,
+            "good-with-headroom ticks accumulate a positive streak so BandwidthCap.Increase can fire");
+    }
+
+    [Fact]
+    public void ApplyMeasuredCapacity_AnchorsCeilingAndEnablesHeadroom()
+    {
+        var e = NewEstimator();
+        var conn = Conn();
+        // A bad tick proves the ceiling but leaves it well above the true rate.
+        e.Tick(conn, At(1), 900_000, 0.3);
+        e.HasSeenBadSignal.Should().BeTrue();
+
+        // Backlogged drain rate of 300_000 B/s = the real capacity.
+        e.ApplyMeasuredCapacity(300_000, At(2));
+
+        e.CeilingBps.Should().Be(300_000, "the ceiling anchors to the measurement, even after a bad signal");
+        e.LastCurrentBps.Should().Be(300_000);
+        e.LastCeilingDownAt.Should().BeNull("a measurement isn't a failed probe");
+        (e.LastCurrentBps >= e.CeilingBps * e.Config.ConfirmRatio)
+            .Should().BeTrue("headroom is now confirmable at the measured rate");
+    }
+
+    [Fact]
+    public void ApplyMeasuredCapacity_FloorsAndIgnoresNonPositive()
+    {
+        var e = NewEstimator(Cfg() with { FloorBps = 100_000 });
+        var conn = Conn();
+        e.Tick(conn, At(1), 50_000, 1.0);
+        var before = e.CeilingBps;
+
+        e.ApplyMeasuredCapacity(0, At(2));
+        e.CeilingBps.Should().Be(before, "non-positive measurement is ignored");
+
+        e.ApplyMeasuredCapacity(10_000, At(3));
+        e.CeilingBps.Should().Be(100_000, "measurement below the floor is clamped to the floor");
+    }
+
+    [Fact]
     public void CalmTicks_ResetOnBadVerdict()
     {
         var e = NewEstimator(Cfg() with { ProbeFailureResetStreak = 100 });
