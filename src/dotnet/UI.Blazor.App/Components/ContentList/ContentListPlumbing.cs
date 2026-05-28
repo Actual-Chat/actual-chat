@@ -11,26 +11,23 @@ namespace ActualChat.UI.Blazor.App.Components;
 internal static class ContentListPlumbing
 {
     public const int GridColumns = 3;
-    // Window sizes are in raw period-items (pre-filter). For Link kind a significant
-    // fraction of items can be dropped by ChunkPage when the link preview didn't resolve
-    // (stale/archived entries), so the window must be roomy enough for the survivors to
-    // still fill the viewport after filtering.
-    public const int InitialWindow = 200;
-    public const int MinWindow = 120;
+    // Window sizes are in blocks (period-pages), not raw items. Block count is the only
+    // dimension the UI can reason about without knowing PageSize; spacer sizes use the
+    // loaded-block density as a proxy for the unloaded items count.
+    // Window always tries to cover at least this many blocks, both for the cold
+    // init query and when the user scrolls. Smaller values starve infinite-scroll
+    // (one block at a time keeps the end-spacer with skeletons visible too long,
+    // especially for kinds with item-level filtering like Link).
+    public const int BlocksInWindow = 5;
 
-    public sealed record Block(string PeriodKey, int PageIndex, int ItemCount);
+    public sealed record Block(string PeriodKey, int PageIndex);
 
     public static List<Block> BuildBlocks(IReadOnlyList<ChatContentPeriod> periods)
     {
-        var pageSize = ChatContentPeriod.PageSize;
         var blocks = new List<Block>();
-        foreach (var period in periods) {
-            var pageCount = Math.Max(1, (period.ItemCount + pageSize - 1) / pageSize);
-            for (var p = pageCount - 1; p >= 0; p--) {
-                var itemCount = p == pageCount - 1 ? period.ItemCount - p * pageSize : pageSize;
-                blocks.Add(new Block(period.PeriodKey, p, itemCount));
-            }
-        }
+        foreach (var period in periods)
+            for (var p = period.PageCount - 1; p >= 0; p--)
+                blocks.Add(new Block(period.PeriodKey, p));
         return blocks;
     }
 
@@ -50,18 +47,13 @@ internal static class ContentListPlumbing
             }
         }
 
-        var targetCount = first == last ? InitialWindow : MinWindow;
-        var sum = 0;
-        for (var i = first; i < last; i++)
-            sum += blocks[i].ItemCount;
-        // Bidirectional expansion: when at the boundary (oldest or newest), we'd otherwise
-        // stop with too few items in the window. Keep growing in whichever direction is
-        // still available until the window reaches targetCount or we run out of blocks.
-        while (sum < targetCount && (last < blocks.Count || first > 0)) {
+        // Bidirectional expansion in block units. Same target for cold-init and
+        // targeted queries so infinite-scroll grows the window in meaningful chunks.
+        while ((last - first) < BlocksInWindow && (last < blocks.Count || first > 0)) {
             if (last < blocks.Count)
-                sum += blocks[last++].ItemCount;
+                last++;
             else
-                sum += blocks[--first].ItemCount;
+                first--;
         }
         if (last == first)
             last = Math.Min(blocks.Count, first + 1);
@@ -163,7 +155,6 @@ internal static class ContentListPlumbing
         AppUIHub hub,
         Session session,
         ChatId chatId,
-        ChatContentKind kind,
         VirtualListDataQuery query,
         VirtualListData<ContentListItem> renderedData,
         Func<string, int, CancellationToken, Task<TItem[]>> loadPage,
@@ -178,8 +169,25 @@ internal static class ContentListPlumbing
         if (!isVisible)
             return renderedData;
 
-        var periods = await hub.Chats.GetContentPeriods(session, chatId, kind, cancellationToken).ConfigureAwait(false);
-        if (periods.Length == 0)
+        // Walk the skeleton cursor: pull more periods only until the current query's
+        // window can be served. Backend currently returns everything in one batch
+        // (NextPeriodKey=null), so the loop typically runs once; the early-exit kicks
+        // in once the backend starts paginating the skeleton.
+        var kind = ResolveKind<TItem>();
+        var periods = new List<ChatContentPeriod>();
+        string? cursor = null;
+        do {
+            var skeleton = await hub.Chats
+                .GetContentPeriods(session, chatId, kind, cursor, cancellationToken)
+                .ConfigureAwait(false);
+            periods.AddRange(skeleton.Periods);
+            cursor = skeleton.NextPeriodKey;
+            if (cursor == null)
+                break;
+            if (HasEnoughForWindow(periods, query))
+                break;
+        } while (true);
+        if (periods.Count == 0)
             return EmptyData();
 
         var blocks = BuildBlocks(periods);
@@ -191,20 +199,9 @@ internal static class ContentListPlumbing
             .ConfigureAwait(false);
 
         var listItems = await buildItems(windowBlocks, contents, cancellationToken).ConfigureAwait(false);
+
         if (listItems.Count == 0)
             return EmptyData();
-
-        // BeforeCount/AfterCount let VirtualList size the spacers proportionally to the
-        // unloaded blocks instead of falling back to defaultSpacerSize (1000px each).
-        // Without these, scrollHeight overshoots the actual data: scrolling to the bottom
-        // lands the viewport inside the bottom spacer (empty), and a subsequent scroll up
-        // can leave the query KeyRange anchored to the old bottom window.
-        var beforeCount = 0;
-        for (var b = 0; b < first; b++)
-            beforeCount += blocks[b].ItemCount;
-        var afterCount = 0;
-        for (var b = last; b < blocks.Count; b++)
-            afterCount += blocks[b].ItemCount;
 
         var result = new VirtualListData<ContentListItem>(listItems) {
             Index = renderedData.Index + 1,
@@ -212,9 +209,34 @@ internal static class ContentListPlumbing
             // VirtualList treats Items[0] as VeryFirst — keep it aligned with our window.
             HasVeryFirstItem = first == 0,
             HasVeryLastItem = last == blocks.Count,
-            BeforeCount = beforeCount,
-            AfterCount = afterCount,
         };
         return result.IsSimilarTo(renderedData) ? renderedData : result;
+    }
+
+    private static bool HasEnoughForWindow(List<ChatContentPeriod> periods, VirtualListDataQuery query)
+    {
+        if (query.IsNone) {
+            var blockCount = 0;
+            foreach (var p in periods)
+                blockCount += p.PageCount;
+            return blockCount >= BlocksInWindow;
+        }
+        // Targeted query: stop once both endpoints map to already-loaded blocks.
+        var blocks = BuildBlocks(periods);
+        var s = FindBlockIndex(blocks, query.KeyRange.Start);
+        var e = FindBlockIndex(blocks, query.KeyRange.End);
+        return s >= 0 && e >= 0;
+    }
+
+    private static ChatContentKind ResolveKind<TItem>() where TItem : IChatContentItem
+    {
+        if (typeof(TItem) == typeof(VisualMediaItem))
+            return ChatContentKind.Media;
+        if (typeof(TItem) == typeof(FileItem))
+            return ChatContentKind.File;
+        if (typeof(TItem) == typeof(LinkItem))
+            return ChatContentKind.Link;
+        throw new ArgumentOutOfRangeException(
+            nameof(TItem), typeof(TItem), $"Unknown content item type: {typeof(TItem).Name}");
     }
 }

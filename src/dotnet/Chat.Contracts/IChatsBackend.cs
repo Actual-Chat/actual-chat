@@ -44,9 +44,10 @@ public interface IChatsBackend : IComputeService, IBackendService
         CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ChatContentPeriod[]> GetContentPeriods(
+    Task<ChatContentSkeleton> GetContentPeriods(
         ChatId chatId,
         ChatContentKind kind,
+        string? beforePeriodKey,
         CancellationToken cancellationToken);
 
     [ComputeMethod]

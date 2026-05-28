@@ -52,7 +52,7 @@
         VirtualListData<ContentListItem> renderedData,
         CancellationToken cancellationToken)
         => ContentListPlumbing.LoadFromPeriods<FileItem>(
-            Hub, Session, ChatId, ChatContentKind.File, query, renderedData,
+            Hub, Session, ChatId, query, renderedData,
             (periodKey, pageIndex, ct) => Chats.GetFilePeriod(Session, ChatId, periodKey, pageIndex, ct),
             BuildItems,
             cancellationToken);
