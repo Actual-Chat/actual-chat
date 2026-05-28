@@ -153,6 +153,49 @@ describe('buildLadder — quarter-pixel ratio', () => {
     });
 });
 
+describe('buildLadder — explicit tierSizes (append model)', () => {
+    const SIZES_4 = [
+        { width: 320, height: 180 },
+        { width: 640, height: 360 },
+        { width: 1280, height: 720 },
+        { width: 1920, height: 1080 },
+    ] as const;
+    const BITRATES_4 = [312.5, 1_250, 4_000, 6_000] as const;
+
+    it('4-tier 180/360/720/1080 with bottom-first bitrates', () => {
+        const result = buildLadder({
+            topWidth: 1920, topHeight: 1080, tierCount: 4,
+            maxTierCount: 4,
+            bitratesKbps: BITRATES_4,
+            tierSizes: SIZES_4,
+        });
+        expect(dims(result)).toEqual(['320x180', '640x360', '1280x720', '1920x1080']);
+        expect(result.map(l => l.bitrateKbps)).toEqual([312.5, 1_250, 4_000, 6_000]);
+        expect(result.map(l => l.baseBitrateKbps)).toEqual([312.5, 1_250, 4_000, 6_000]);
+    });
+
+    it('cap below length keeps top tiers, drops bottom, pairs bitrate from top', () => {
+        const result = buildLadder({
+            topWidth: 1920, topHeight: 1080, tierCount: 3,
+            maxTierCount: 4,
+            bitratesKbps: BITRATES_4,
+            tierSizes: SIZES_4,
+        });
+        expect(dims(result)).toEqual(['640x360', '1280x720', '1920x1080']);
+        expect(result.map(l => l.bitrateKbps)).toEqual([1_250, 4_000, 6_000]);
+    });
+
+    it('bypasses ½-derivation — top step is ×1.5 (720→1080), not ×2', () => {
+        const result = buildLadder({
+            topWidth: 1920, topHeight: 1080, tierCount: 4,
+            maxTierCount: 4,
+            bitratesKbps: BITRATES_4,
+            tierSizes: SIZES_4,
+        });
+        expect(result[3].width / result[2].width).toBeCloseTo(1.5);
+    });
+});
+
 describe('capture top sizing', () => {
     it('screencast caps to fit within 1080p preserving aspect', () => {
         expect(fitWithin(3440, 1440, 1920, 1080)).toEqual({ width: 1920, height: 804 });

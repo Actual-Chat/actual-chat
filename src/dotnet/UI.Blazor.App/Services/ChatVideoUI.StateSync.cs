@@ -150,12 +150,12 @@ public partial class ChatVideoUI
             // Modal-pre-warmed recorder. Flip the gate; no re-acquire,
             // no fresh HW encoder slot.
             await recorder
-                .OpenGate(Hub.VideoQualityUI.OutboundDeviceCameraCap, ct)
+                .OpenGate(Hub.VideoQualityUI.OutboundCameraCap, ct)
                 .ConfigureAwait(false);
             return;
         }
         await recorder
-            .StartRecording(intent.ChatId, Hub.VideoQualityUI.OutboundDeviceCameraCap, ct)
+            .StartRecording(intent.ChatId, Hub.VideoQualityUI.OutboundCameraCap, ct)
             .ConfigureAwait(false);
     }
 

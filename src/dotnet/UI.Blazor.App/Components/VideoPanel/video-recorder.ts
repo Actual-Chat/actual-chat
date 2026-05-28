@@ -264,6 +264,18 @@ function isPromiseLike(value: unknown): value is PromiseLike<void> {
         && typeof value.then === 'function');
 }
 
+// Bottom-first camera simulcast tier sizes (mirrors VideoLayerDef.CameraLayers
+// in C#). The 1920×1080 top tier is desktop-only and non-H264; it's added by
+// the QC ramp (receiver demand / encode+bandwidth headroom) on top of the
+// ½-derived 180/360/720 base. 720→1080 is ×1.5, so an explicit size list is
+// used instead of the ½-derivation.
+const CAMERA_TIER_SIZES = [
+    { width: 320, height: 180 },
+    { width: 640, height: 360 },
+    { width: 1280, height: 720 },
+    { width: 1920, height: 1080 },
+] as const;
+
 // Standalone top-tier encoder probe, callable before any VideoRecorder
 // instance exists. Mirrors the dims and tier count that `startRecording`
 // would pick (3-tier 1280×720 on desktop, 2-tier 640×360 on mobile) so the
@@ -404,6 +416,13 @@ export class VideoRecorder {
     private supportedEncoderCategories: string[] = [];
     private audienceCodecs?: string[];
     private currentMaxLayerCount = 3;
+    // Active layer count = min(healthLayerCap, receiverLayerCap, fullLayerLadder).
+    // healthLayerCap: outbound QC target (encode + bandwidth health, soft-started
+    // below the ceiling so the top tier is only added once lower tiers are smooth).
+    // receiverLayerCap: max tier any viewer requests. The min() ensures receiver
+    // demand can't pull in the top tier before the sender's health allows it.
+    private healthLayerCap = Number.MAX_SAFE_INTEGER;
+    private receiverLayerCap = Number.MAX_SAFE_INTEGER;
     // Codec switch fallback bookkeeping (preserved from legacy).
     private lastCodecSwitchAt = 0;
     private readonly codecSwitchCooldownMs = 2000;
@@ -527,6 +546,9 @@ export class VideoRecorder {
      * fall back to a full stop+start.
      */
     public setLayers(layers: LayerInput[] | null): void {
+        // C# outbound QC health target. Record it as the health cap; the active
+        // count is min(health, receiver). null/short means the QC wants a single
+        // (non-simulcast) encoder.
         const maxTiers = this.isScreenCasting
             ? VIDEO.screenCastLayerBaseBitratesKbps.length
             : VIDEO.cameraLayerBaseBitratesKbps.length;
@@ -534,38 +556,44 @@ export class VideoRecorder {
             ? layers.slice(-maxTiers)
             : layers;
         const normalized = clamped?.map(l => this.normalizeLayerInput(l)) ?? null;
-        const requestedCount = normalized?.length ?? 0;
-        let active: LayerConfig[] | null = (normalized && normalized.length >= 2) ? normalized : null;
+        this.healthLayerCap = (normalized && normalized.length >= 2) ? normalized.length : 1;
+        this.applyEffectiveLayers();
+    }
+
+    // Apply min(healthLayerCap, receiverLayerCap, fullLayerLadder.length) tiers by
+    // slicing the full ladder. Single-encoder mode (count < 2) sets layers = null.
+    private applyEffectiveLayers(): void {
+        const full = this.fullLayerLadder;
+        const requestedCount = full
+            ? Math.min(full.length, this.healthLayerCap, this.receiverLayerCap)
+            : 0;
+        const active: LayerConfig[] | null = (full && requestedCount >= 2)
+            ? this.withCodecBitrates(full.slice(0, requestedCount), this.currentCodecString)
+            : null;
         const prevCount = this.layers?.length ?? 0;
-        if (active !== null && this.fullLayerLadder) {
-            active = this.fullLayerLadder.slice(0, Math.min(requestedCount, this.fullLayerLadder.length));
-            if (active.length < 2)
-                active = null;
-        }
-        if (active !== null)
-            active = this.withCodecBitrates(active, this.currentCodecString);
         const newCount = active?.length ?? 0;
         this.layers = active;
-        if (prevCount !== newCount) {
-            infoLog?.log(`setLayers: ${prevCount} -> ${newCount} layer(s)`);
-        }
+        if (prevCount !== newCount)
+            infoLog?.log(
+                `applyEffectiveLayers: health=${this.healthLayerCap} receiver=${this.receiverLayerCap} ` +
+                `→ ${prevCount} -> ${newCount} layer(s)`);
         if (this.worker && prevCount !== newCount) {
-            // Codec / source dims unchanged → hot-apply without tearing
-            // down the wire stream. The worker mutates the running
-            // pipeline's LayerLadderController; spatialize, encode and
-            // wireSend pick up the change on the next bundle.
+            // Codec / source dims unchanged → hot-apply without tearing down the
+            // wire stream. The worker mutates the running pipeline's
+            // LayerLadderController; spatialize, encode and wireSend pick up the
+            // change on the next bundle.
             const ladderForWorker = this.resolveActiveLadder();
             const encoderConfigs = this.toEncoderConfigs(ladderForWorker);
             if (encoderConfigs.length > 0) {
                 void this.worker.reconfigureLayers(encoderConfigs).catch((e: unknown) => {
-                    warnLog?.log('setLayers: reconfigureLayers failed, falling back to restart:', e);
+                    warnLog?.log('applyEffectiveLayers: reconfigureLayers failed, falling back to restart:', e);
                     void this.restartWithCurrentConfig().catch((restartErr: unknown) =>
-                        warnLog?.log('setLayers: restart fallback failed:', restartErr));
+                        warnLog?.log('applyEffectiveLayers: restart fallback failed:', restartErr));
                 });
             } else {
-                warnLog?.log('setLayers: empty ladder — falling back to restart');
+                warnLog?.log('applyEffectiveLayers: empty ladder — falling back to restart');
                 void this.restartWithCurrentConfig().catch((e: unknown) =>
-                    warnLog?.log('setLayers: restart failed:', e));
+                    warnLog?.log('applyEffectiveLayers: restart failed:', e));
             }
         }
     }
@@ -663,9 +691,6 @@ export class VideoRecorder {
 
         try {
             const isMobile = DeviceInfo.isMobile;
-            const targetSize: Size = isMobile
-                ? { width: 640, height: 360 }
-                : { width: 1280, height: 720 };
             // Same gate startRecording uses: explicit portrait request only
             // on Android (iOS Safari's MSTP doesn't auto-rotate; rotation is
             // baked into wire metadata instead of pixels).
@@ -673,28 +698,46 @@ export class VideoRecorder {
                 && !DeviceInfo.isIos
                 && ScreenOrientation.isObserved
                 && ScreenOrientation.isPortrait;
-            const requestSize: Size = wantsPortrait
-                ? { width: targetSize.height, height: targetSize.width }
-                : targetSize;
             const targetFramerate = VIDEO.frameRate;
             this.currentFramerate = targetFramerate;
+
+            // Capability probe at a safe baseline; the actual capture top is
+            // resolved after the codec is known.
+            const probeBase: Size = isMobile
+                ? { width: 640, height: 360 }
+                : { width: 1280, height: 720 };
+            const probeSize: Size = wantsPortrait
+                ? { width: probeBase.height, height: probeBase.width }
+                : probeBase;
+
+            const supportedCodecs = await detectSupportedCodecs(probeSize.width, probeSize.height);
+            this.supportedCodecs = supportedCodecs;
+            this.supportedEncoderCategories = this.extractEncoderCategories(supportedCodecs);
+
+            const codecString = this.pickInitialCodec(supportedCodecs, audienceCodecs, probeSize);
+            const codecInfo = supportedCodecs.find(c => c.codec === codecString);
+            this.currentCodecString = codecString;
+            this.currentCodecHardwareAccel = codecInfo?.hardwareAccelerated ?? false;
+            this.currentHardwareAcceleration = 'prefer-hardware';
+
+            // Desktop non-H264 captures at 1080 so the QC ramp can later hot-add
+            // a real 1080 top tier (downscaled for lower tiers). H264 caps at
+            // 720; mobile at 360.
+            const captureBase: Size = isMobile
+                ? { width: 640, height: 360 }
+                : (getCodecCategory(codecString) === 'h264'
+                    ? { width: 1280, height: 720 }
+                    : { width: 1920, height: 1080 });
+            const requestSize: Size = wantsPortrait
+                ? { width: captureBase.height, height: captureBase.width }
+                : captureBase;
             infoLog?.log(
                 `Warmup orientation pre-capture: isMobile=${isMobile}, ` +
                 `isIos=${DeviceInfo.isIos}, ` +
                 `screen.isObserved=${ScreenOrientation.isObserved}, ` +
                 `screen.isPortrait=${ScreenOrientation.isPortrait}, ` +
-                `wantsPortrait=${wantsPortrait}, ` +
+                `wantsPortrait=${wantsPortrait}, codec=${codecString}, ` +
                 `requestTarget=${requestSize.width}x${requestSize.height}`);
-
-            const supportedCodecs = await detectSupportedCodecs(requestSize.width, requestSize.height);
-            this.supportedCodecs = supportedCodecs;
-            this.supportedEncoderCategories = this.extractEncoderCategories(supportedCodecs);
-
-            const codecString = this.pickInitialCodec(supportedCodecs, audienceCodecs, requestSize);
-            const codecInfo = supportedCodecs.find(c => c.codec === codecString);
-            this.currentCodecString = codecString;
-            this.currentCodecHardwareAccel = codecInfo?.hardwareAccelerated ?? false;
-            this.currentHardwareAcceleration = 'prefer-hardware';
 
             let ladder = buildLadder({
                 topWidth: requestSize.width,
@@ -787,8 +830,15 @@ export class VideoRecorder {
             warnLog?.log('openGate: worker missing');
             return;
         }
-        const tierCeiling = DeviceInfo.isMobile ? 2 : 3;
-        const tierCap = Math.max(1, Math.min(maxLayerCount, tierCeiling));
+        // Desktop tops at 4 tiers (adds 1080) for efficient codecs; H264 caps
+        // at 3 (≤720). Mobile caps at 2. The 1080 tier is only realized when
+        // the QC ramp slices it in (receiver demand / encode+bandwidth headroom).
+        const isH264 = getCodecCategory(this.currentCodecString) === 'h264';
+        // Build the FULL ladder up to the device/codec ceiling so the QC bump-
+        // quality ramp can later add the top tier. Desktop non-H264 = 4 (adds
+        // 1080); H264 = 3 (≤720); mobile = 2. Capture already matches the ceiling
+        // top (warmup captured at the ceiling resolution).
+        const tierCeiling = DeviceInfo.isMobile ? 2 : (isH264 ? 3 : 4);
         this.currentMaxLayerCount = maxLayerCount;
 
         // Reuse the warmup ladder's top dims so the encoder keeps its
@@ -803,24 +853,37 @@ export class VideoRecorder {
             || this.cameraHeight
             || (DeviceInfo.isMobile ? 360 : 720);
         /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
-        let ladder = buildLadder({
+        const fullLadder = this.withCodecBitrates(buildLadder({
             topWidth: topW,
             topHeight: topH,
-            tierCount: tierCap,
+            tierCount: tierCeiling,
             maxTierCount: VIDEO.cameraLayerBaseBitratesKbps.length,
             bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
-        });
-        ladder = this.withCodecBitrates(ladder, this.currentCodecString);
-        this.layers = ladder.length >= 2 ? [...ladder] : null;
-        this.fullLayerLadder = this.layers ? [...this.layers] : null;
-        infoLog?.log(
-            `openGate: expanding ladder from warmup top ${topW}x${topH} ` +
-            `to [${ladder.map(l => `${l.width}x${l.height}`).join(', ')}]`);
+            ...(tierCeiling >= 4 ? { tierSizes: CAMERA_TIER_SIZES } : {}),
+        }), this.currentCodecString);
+        this.fullLayerLadder = fullLadder.length > 0 ? [...fullLadder] : null;
 
-        if (ladder.length >= 2) {
+        // Soft-start: open at the QC's current (soft) target, NOT the ceiling, so
+        // the encoder isn't hammered with the top tier on start. The top tier is
+        // added later by the bump-quality ramp (drain-rate / speculative probe /
+        // good bandwidth) once the lower tiers run smoothly. receiverLayerCap is
+        // reset so a viewer's demand re-applies via setMaxLayerId and is min()'d
+        // against the health cap — demand can't pull the top tier in early.
+        const softCount = Math.max(1, Math.min(maxLayerCount, tierCeiling));
+        this.healthLayerCap = softCount;
+        this.receiverLayerCap = Number.MAX_SAFE_INTEGER;
+        const activeLadder = (this.fullLayerLadder && softCount >= 2)
+            ? this.fullLayerLadder.slice(0, softCount)
+            : null;
+        this.layers = activeLadder;
+        infoLog?.log(
+            `openGate: full ladder [${fullLadder.map(l => `${l.width}x${l.height}`).join(', ')}], ` +
+            `soft-start ${activeLadder?.length ?? 1} of ${fullLadder.length} tier(s)`);
+
+        if (activeLadder && activeLadder.length >= 2) {
             // Hot-apply: existing top-tier encoder keeps running, lower
             // tiers spin up on the next captured frame.
-            const encoderConfigs = this.toEncoderConfigs(ladder);
+            const encoderConfigs = this.toEncoderConfigs(activeLadder);
             try {
                 await this.worker.reconfigureLayers(encoderConfigs);
             } catch (e) {
@@ -833,7 +896,7 @@ export class VideoRecorder {
 
         this.setRecordingState('recording');
         await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
-        infoLog?.log(`openGate: live (${ladder.length} layer(s), codec=${this.currentCodecString})`);
+        infoLog?.log(`openGate: live (${this.layers?.length ?? 1} layer(s), codec=${this.currentCodecString})`);
     }
 
     // Tear down a running warmup without firing OnRecordingStarted —
@@ -861,8 +924,10 @@ export class VideoRecorder {
         this.currentMode = 'camera';
         // Mobile maxes out at 2 spatial tiers (640×360 top). Phones can't usefully
         // encode + ship a 720p+ top layer alongside lower tiers on a wireless
-        // link, and the extra GPU work strangles their HW encoders.
-        const tierCeiling = DeviceInfo.isMobile ? 2 : 3;
+        // link, and the extra GPU work strangles their HW encoders. Desktop tops
+        // at 4 tiers (adds 1080); the 1080 top is reserved for non-H264 codecs
+        // (gated below at the probe + fallback), realized by the QC ramp.
+        const tierCeiling = DeviceInfo.isMobile ? 2 : 4;
         const tierCap = Math.max(1, Math.min(maxLayerCount, tierCeiling));
         infoLog?.log(`Starting video recording... audienceCodecs=[${audienceCodecs?.join(', ') ?? '(none)'}], maxLayerCount=${maxLayerCount} → tierCap=${tierCap}`);
 
@@ -871,6 +936,7 @@ export class VideoRecorder {
                 1: { width: 320, height: 180 },
                 2: { width: 640, height: 360 },
                 3: { width: 1280, height: 720 },
+                4: { width: 1920, height: 1080 },
             };
             // Detect orientation BEFORE camera request so we ask for the
             // matching aspect directly — avoids the browser center-cropping a
@@ -902,12 +968,17 @@ export class VideoRecorder {
             infoLog?.log(`Supported encoder categories: [${this.supportedEncoderCategories.join(', ')}]`);
 
             const initialPick = this.pickInitialCodec(supportedCodecs, audienceCodecs, targetSize);
+            // 4-tier uses the explicit append ladder (180/360/720/1080); reset to
+            // undefined on any fallback that drops the 1080 top.
+            let ladderTierSizes: readonly { width: number; height: number }[] | undefined =
+                tierCap >= 4 ? CAMERA_TIER_SIZES : undefined;
             const ladderTop = buildLadder({
                 topWidth: targetSize.width,
                 topHeight: targetSize.height,
                 tierCount: tierCap,
                 maxTierCount: VIDEO.cameraLayerBaseBitratesKbps.length,
                 bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
+                ...(ladderTierSizes ? { tierSizes: ladderTierSizes } : {}),
             });
             // Fallback chain for HW encoder availability:
             //   1. Tier-cap (3 desktop / 2 mobile) at top resolution, prefer-hardware
@@ -920,9 +991,30 @@ export class VideoRecorder {
             // encoder matches the probed config; otherwise the probe says
             // "works with no-preference" but runtime keeps using prefer-hardware.
             let bestCodecString = await this.pickSimulcastCodec(
-                supportedCodecs, audienceCodecs, ladderTop);
+                supportedCodecs, audienceCodecs, ladderTop, 'prefer-hardware', false,
+                tierCap >= 4 ? 'h264' : undefined);
             let ladder: LayerConfig[] = ladderTop;
             let chosenHwAccel: HardwareAcceleration = 'prefer-hardware';
+            // 4-tier (1080 top) is reserved for non-H264 codecs. If no efficient
+            // codec passed, drop the 1080 top and retry a 3-tier @720 ladder with
+            // H264 allowed.
+            if (!bestCodecString && tierCap >= 4) {
+                const ladder3 = buildLadder({
+                    topWidth: 1280,
+                    topHeight: 720,
+                    tierCount: 3,
+                    maxTierCount: VIDEO.cameraLayerBaseBitratesKbps.length,
+                    bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
+                });
+                infoLog?.log('4-tier 1080 probe failed for all non-H264 codecs — falling back to 3-tier @720 (H264 allowed)');
+                const codec3 = await this.pickSimulcastCodec(
+                    supportedCodecs, audienceCodecs, ladder3);
+                if (codec3) {
+                    bestCodecString = codec3;
+                    ladder = ladder3;
+                    ladderTierSizes = undefined;
+                }
+            }
             // Drop-top fallback only applies when we'd otherwise have built a
             // 3-tier ladder — mobile already starts at the lower cap.
             if (!bestCodecString && tierCap >= 3) {
@@ -939,6 +1031,7 @@ export class VideoRecorder {
                 if (codec2) {
                     bestCodecString = codec2;
                     ladder = ladder2;
+                    ladderTierSizes = undefined;
                 }
             }
             if (!bestCodecString) {
@@ -960,6 +1053,7 @@ export class VideoRecorder {
                     bestCodecString = codec1;
                     ladder = ladder1;
                     chosenHwAccel = 'no-preference';
+                    ladderTierSizes = undefined;
                 } else {
                     warnLog?.log(
                         `All probe attempts failed (initialPick=${initialPick}) — ` +
@@ -976,6 +1070,7 @@ export class VideoRecorder {
                 tierCount: ladder.length,
                 maxTierCount: VIDEO.cameraLayerBaseBitratesKbps.length,
                 bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
+                ...(ladderTierSizes ? { tierSizes: ladderTierSizes } : {}),
             });
             ladder = this.withCodecBitrates(ladder, bestCodecString);
             const top = ladder[ladder.length - 1];
@@ -1159,6 +1254,8 @@ export class VideoRecorder {
             this.isScreenCasting = false;
             this.layers = null;
             this.fullLayerLadder = null;
+            this.healthLayerCap = Number.MAX_SAFE_INTEGER;
+            this.receiverLayerCap = Number.MAX_SAFE_INTEGER;
             this.warmupTopSize = null;
             this.lastCodecSwitchAt = 0;
             this.startedAtMs = 0;
@@ -1223,15 +1320,12 @@ export class VideoRecorder {
     public setMaxLayerId(maxLayerId: number): void {
         if (maxLayerId < 0)
             return;
-        const fullLadder = this.fullLayerLadder;
-        if (!fullLadder || fullLadder.length === 0)
-            return;
-        const cappedCount = Math.min(fullLadder.length, maxLayerId + 1);
-        const currentCount = this.layers?.length ?? 0;
-        if (cappedCount === currentCount)
-            return;
-        infoLog?.log(`setMaxLayerId: maxLayerId=${maxLayerId} → cap ladder ${currentCount} -> ${cappedCount}`);
-        this.setLayers(fullLadder.slice(0, cappedCount));
+        // Receiver demand sets a ceiling on the active tiers, but never pulls in a
+        // tier the sender's health cap hasn't cleared — applyEffectiveLayers mins
+        // the two. So the top (e.g. 1080) tier is added only when the health ramp
+        // AND a viewer both want it.
+        this.receiverLayerCap = maxLayerId + 1;
+        this.applyEffectiveLayers();
     }
 
     public getDiagnostics(): OwnStreamDiagnostics {
@@ -2033,7 +2127,8 @@ export class VideoRecorder {
                 stats.floodGateSkipPerSec,
                 stats.peerReconnectStreak,
                 stats.encoderRestartStreakIn60s,
-                stats.isTabBackgrounded);
+                stats.isTabBackgrounded,
+                stats.wireAckedBytes);
         } catch (e) {
             warnLog?.log('reportRecorderStats failed:', e);
         } finally {
@@ -2164,6 +2259,7 @@ export class VideoRecorder {
         ladder: LayerConfig[],
         hardwareAcceleration: HardwareAcceleration = 'prefer-hardware',
         excludeOnFail = false,
+        excludeCategory?: CodecInfo['category'],
     ): Promise<string | null> {
         // Live encoder probe at top-layer dims. Result cached per
         // (codec, dims, layerCount, hwAccel) so repeated picks across the
@@ -2174,6 +2270,8 @@ export class VideoRecorder {
         // don't prevent subsequent attempts from trying the same codec
         // under different config.
         for (const codecInfo of this.listCodecCandidatesByEfficiency(supportedCodecs, audienceCodecs)) {
+            if (excludeCategory && codecInfo.category === excludeCategory)
+                continue;
             const layersWithBitrates = this.withCodecBitrates(ladder, codecInfo.codec);
             const result = await probeEncoder(
                 codecInfo.codec, layersWithBitrates, undefined, undefined, hardwareAcceleration);

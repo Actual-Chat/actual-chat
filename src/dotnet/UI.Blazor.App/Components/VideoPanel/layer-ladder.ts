@@ -27,6 +27,10 @@ export interface LadderBuildInput {
     minSmallAxis?: number;
     /** Bottom-first bitrate ladder in kbps. The last value belongs to the top tier. */
     bitratesKbps: readonly number[];
+    /** Explicit bottom-first tier sizes. When set, bypasses ½-derivation — the
+        ladder uses these exact dims, for ladders that aren't a clean ½ chain
+        (e.g. 180/360/720/1080, where 720→1080 is ×1.5). Last entry is the top tier. */
+    tierSizes?: readonly { width: number; height: number }[];
 }
 
 // Builds a simulcast ladder. Top tier is `(topWidth, topHeight)` — the
@@ -42,15 +46,19 @@ export interface LadderBuildInput {
 //
 // Capped to maxTierCount regardless of `tierCount`.
 export function buildLadder(input: LadderBuildInput): LayerConfig[] {
-    const { topWidth, topHeight, tierCount, maxTierCount, bitratesKbps } = input;
+    const { topWidth, topHeight, tierCount, maxTierCount, bitratesKbps, tierSizes } = input;
     if (tierCount <= 0 || topWidth <= 0 || topHeight <= 0)
         return [];
+
+    const minSmallAxis = input.minSmallAxis ?? MIN_SIMULCAST_SMALL_AXIS;
+
+    if (tierSizes && tierSizes.length > 0)
+        return buildExplicitLadder(tierSizes, tierCount, maxTierCount, bitratesKbps, minSmallAxis);
 
     const effectiveCount = Math.min(tierCount, maxTierCount, bitratesKbps.length);
     if (effectiveCount <= 0)
         return [];
 
-    const minSmallAxis = input.minSmallAxis ?? MIN_SIMULCAST_SMALL_AXIS;
     const ladder: LayerConfig[] = [];
     // Build top-down then reverse to keep the bottom-first invariant.
     let w = topWidth;
@@ -70,6 +78,42 @@ export function buildLadder(input: LadderBuildInput): LayerConfig[] {
         h = roundToEven(h / 2);
     }
     return ladder.reverse();
+}
+
+// Bottom-first explicit-size ladder. Resolutions come straight from
+// `tierSizes`; bitrates pair to them from the top down (top tier ↔ last
+// bitrate). A cap below `tierSizes.length` keeps the top tiers and drops the
+// smallest (bottom) ones — matching the ½-derived path's "keep top" rule.
+function buildExplicitLadder(
+    tierSizes: readonly { width: number; height: number }[],
+    tierCount: number,
+    maxTierCount: number,
+    bitratesKbps: readonly number[],
+    minSmallAxis: number,
+): LayerConfig[] {
+    const count = Math.min(tierCount, maxTierCount, bitratesKbps.length, tierSizes.length);
+    if (count <= 0)
+        return [];
+
+    const start = tierSizes.length - count;
+    const ladder: LayerConfig[] = [];
+    let started = false;
+    for (let i = start; i < tierSizes.length; i++) {
+        const size = tierSizes[i];
+        const isTop = i === tierSizes.length - 1;
+        // Drop the smallest bottom tiers below the usable threshold; always keep the top.
+        if (!started && !isTop && Math.min(size.width, size.height) < minSmallAxis)
+            continue;
+        started = true;
+        const bitrate = bitratesKbps[bitratesKbps.length - (tierSizes.length - i)];
+        ladder.push({
+            width: roundToEven(size.width),
+            height: roundToEven(size.height),
+            baseBitrateKbps: bitrate,
+            bitrateKbps: bitrate,
+        });
+    }
+    return ladder;
 }
 
 export function fitWithin(width: number, height: number, maxWidth: number, maxHeight: number): Size {

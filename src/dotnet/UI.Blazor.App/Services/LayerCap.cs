@@ -11,13 +11,15 @@ public sealed class LayerCap
     public int CameraLayers { get; private set; }
     public int ScreencastLayers { get; private set; }
 
-    public LayerCap(int deviceCameraCap, int screencastCap)
+    public LayerCap(int deviceCameraCap, int screencastCap, int? initialCameraLayers = null)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(deviceCameraCap, 1);
         ArgumentOutOfRangeException.ThrowIfLessThan(screencastCap, 1);
         DeviceCameraCap = deviceCameraCap;
         ScreencastCap = screencastCap;
-        CameraLayers = deviceCameraCap;
+        // Soft-start below the ceiling lets the QC ramp earn the top tier rather
+        // than shipping it from the first frame.
+        CameraLayers = initialCameraLayers is { } n ? Math.Clamp(n, 1, deviceCameraCap) : deviceCameraCap;
         ScreencastLayers = screencastCap;
     }
 

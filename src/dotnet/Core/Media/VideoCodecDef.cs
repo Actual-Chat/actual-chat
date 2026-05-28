@@ -9,9 +9,9 @@ public sealed record VideoCodecDef
     public static readonly VideoCodecDef[] All = [
         new() { Kind = VideoCodecKind.Unknown, Efficiency = 1 },
         new() { Kind = VideoCodecKind.H264, Efficiency = 1 },
-        new() { Kind = VideoCodecKind.Hevc, Efficiency = 2 },
-        new() { Kind = VideoCodecKind.Vp9, Efficiency = 2.35 },
-        new() { Kind = VideoCodecKind.Av1, Efficiency = 2.85 },
+        new() { Kind = VideoCodecKind.Hevc, Efficiency = 1.4 },
+        new() { Kind = VideoCodecKind.Vp9, Efficiency = 1.5 },
+        new() { Kind = VideoCodecKind.Av1, Efficiency = 1.6 },
     ];
 
     public VideoCodecKind Kind { get; init; }
