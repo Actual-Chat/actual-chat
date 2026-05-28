@@ -15,7 +15,9 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
     public DbSet<DbReaction> Reactions { get; protected set; } = null!;
     public DbSet<DbReactionSummary> ReactionSummaries { get; protected set; } = null!;
     public DbSet<DbChatEntryAttachment> ChatEntryAttachments { get; protected set; } = null!;
-    public DbSet<DbChatContentItem> ChatContentItems { get; protected set; } = null!;
+    public DbSet<DbChatVisualMediaItem> ChatVisualMediaItems { get; protected set; } = null!;
+    public DbSet<DbChatFileItem> ChatFileItems { get; protected set; } = null!;
+    public DbSet<DbChatLinkItem> ChatLinkItems { get; protected set; } = null!;
     public DbSet<DbAuthor> Authors { get; protected set; } = null!;
     public DbSet<DbRole> Roles { get; protected set; } = null!;
     public DbSet<DbAuthorRole> AuthorRoles { get; protected set; } = null!;
@@ -82,13 +84,24 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         chatEntryAttachment.Property(e => e.MediaId).UseCollation("C");
         chatEntryAttachment.Property(a => a.ThumbnailMediaId).UseCollation("C");
 
-        var chatContentItem = model.Entity<DbChatContentItem>();
-        chatContentItem.Property(e => e.Id).UseCollation("C");
-        chatContentItem.Property(e => e.ChatId).UseCollation("C");
-        chatContentItem.Property(e => e.EntryId).UseCollation("C");
-        chatContentItem.Property(e => e.MediaId).UseCollation("C");
-        chatContentItem.Property(e => e.ThumbnailMediaId).UseCollation("C");
-        chatContentItem.Property(e => e.LinkPreviewId).UseCollation("C");
+        var visualMedia = model.Entity<DbChatVisualMediaItem>();
+        visualMedia.Property(e => e.Id).UseCollation("C");
+        visualMedia.Property(e => e.ChatId).UseCollation("C");
+        visualMedia.Property(e => e.EntryId).UseCollation("C");
+        visualMedia.Property(e => e.MediaId).UseCollation("C");
+        visualMedia.Property(e => e.ThumbnailMediaId).UseCollation("C");
+
+        var fileItem = model.Entity<DbChatFileItem>();
+        fileItem.Property(e => e.Id).UseCollation("C");
+        fileItem.Property(e => e.ChatId).UseCollation("C");
+        fileItem.Property(e => e.EntryId).UseCollation("C");
+        fileItem.Property(e => e.MediaId).UseCollation("C");
+
+        var linkItem = model.Entity<DbChatLinkItem>();
+        linkItem.Property(e => e.Id).UseCollation("C");
+        linkItem.Property(e => e.ChatId).UseCollation("C");
+        linkItem.Property(e => e.EntryId).UseCollation("C");
+        linkItem.Property(e => e.LinkPreviewId).UseCollation("C");
 
         var authors = model.Entity<DbAuthor>();
         authors.Property(e => e.Id).UseCollation("C");

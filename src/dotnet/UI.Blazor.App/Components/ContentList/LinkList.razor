@@ -1,0 +1,104 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase<AppUIHub>
+@implements IVirtualListDataSource<ContentListItem>
+
+<VirtualList
+    @key="@Identity"
+    Class="content-list-tab content-list-links"
+    Identity="@Identity"
+    DataSource="@this"
+    SkeletonCount="8">
+    <Item>
+        @{ var item = context; }
+        @if (item.IsEmptyPlaceholder) {
+            <div class="c-empty">No links yet</div>
+        }
+        else if (item.IsGroup) {
+            <div class="c-group-header">@item.GroupTitle</div>
+        }
+        else {
+            var link = (LinkItem)item.Items[0];
+            var menuRef = MenuRef.New<ChatContentItemMenu>(link.EntryId.Value).ToString();
+            <div class="message-link-preview" data-menu="@menuRef">
+                <LinkPreviewView Entry="@item.LinkEntry" LinkPreview="@link.LinkPreview"/>
+            </div>
+        }
+    </Item>
+    <Skeleton>
+        <div class="c-skeleton"></div>
+    </Skeleton>
+</VirtualList>
+
+@code {
+    private IChats Chats => Hub.Chats;
+
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
+
+    private string Identity => $"links:{ChatId}";
+
+    public Task<VirtualListData<ContentListItem>> GetData(
+        VirtualListDataQuery query,
+        VirtualListData<ContentListItem> renderedData,
+        CancellationToken cancellationToken)
+        => ContentListPlumbing.LoadFromPeriods<LinkItem>(
+            Hub, Session, ChatId, ChatContentKind.Link, query, renderedData,
+            (periodKey, pageIndex, ct) => Chats.GetLinkPeriod(Session, ChatId, periodKey, pageIndex, ct),
+            BuildItems,
+            cancellationToken);
+
+    private async Task<List<ContentListItem>> BuildItems(
+        IReadOnlyList<ContentListPlumbing.Block> windowBlocks,
+        IReadOnlyList<LinkItem[]> contents,
+        CancellationToken cancellationToken) {
+        var linkEntries = await ResolveLinkEntries(contents, cancellationToken).ConfigureAwait(false);
+        var result = new List<ContentListItem>();
+        string? currentGroupKey = null;
+
+        for (var b = 0; b < windowBlocks.Count; b++) {
+            var block = windowBlocks[b];
+            // Filter out items whose preview never resolved (stale/archived entries).
+            var visible = contents[b]
+                .Where(it => it.LinkPreview is { IsEmpty: false } && linkEntries.ContainsKey(it.Id))
+                .Cast<IChatContentItem>()
+                .ToList();
+            var rows = ContentListPlumbing.ChunkPage(visible, 1, ContentGrouping.Day, DateTimeConverter);
+            for (var r = rows.Count - 1; r >= 0; r--) {
+                var (rowIndex, groupKey, items) = rows[r];
+                if (groupKey != currentGroupKey) {
+                    currentGroupKey = groupKey;
+                    var title = ContentListPlumbing.GetLocalGroup(items[0].At, ContentGrouping.Day, DateTimeConverter).Title;
+                    if (title.Length > 0)
+                        result.Add(new ContentListItem { Key = $"g:{groupKey}", IsGroup = true, GroupTitle = title });
+                }
+
+                var link = (LinkItem)items[0];
+                var entry = linkEntries[link.Id];
+                result.Add(new ContentListItem {
+                    Key = $"i:{block.PeriodKey}:{block.PageIndex}:{rowIndex}",
+                    Version = link.Version + entry.Version,
+                    Items = new IChatContentItem[] { link },
+                    LinkEntry = entry,
+                });
+            }
+        }
+        return result;
+    }
+
+    private async Task<IReadOnlyDictionary<Symbol, ChatEntry>> ResolveLinkEntries(
+        IReadOnlyList<LinkItem[]> contents,
+        CancellationToken cancellationToken) {
+        var items = contents.SelectMany(p => p).ToList();
+        if (items.Count == 0)
+            return new Dictionary<Symbol, ChatEntry>();
+        var entries = await items
+            .Select(item => Chats.GetEntry(Session, item.EntryId, cancellationToken).AsTask())
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+        var result = new Dictionary<Symbol, ChatEntry>(items.Count);
+        for (var i = 0; i < items.Count; i++)
+            if (entries[i] is { } entry)
+                result[items[i].Id] = entry;
+        return result;
+    }
+
+}

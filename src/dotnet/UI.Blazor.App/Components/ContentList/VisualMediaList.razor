@@ -1,0 +1,112 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase<AppUIHub>
+@implements IVirtualListDataSource<ContentListItem>
+@using ActualChat.Media
+
+<VirtualList
+    @key="@Identity"
+    Class="content-list-tab content-list-grid"
+    Identity="@Identity"
+    DataSource="@this"
+    SkeletonCount="8">
+    <Item>
+        @{ var item = context; }
+        @if (item.IsEmptyPlaceholder) {
+            <div class="c-empty">No media yet</div>
+        }
+        else if (item.IsGroup) {
+            <div class="c-group-header">@item.GroupTitle</div>
+        }
+        else {
+            <div class="c-media-row">
+                @foreach (var media in item.Items.Cast<VisualMediaItem>()) {
+                    var url = UrlMapper.ContentUrl(media.BlobId);
+                    var menuRef = MenuRef.New<ChatContentItemMenu>(media.EntryId.Value).ToString();
+                    if (MediaTypeExt.IsSupportedVideo(media.ContentType)) {
+                        var thumb = media.ThumbnailBlobId.IsNullOrEmpty() ? "" : UrlMapper.ContentUrl(media.ThumbnailBlobId);
+                        <a class="image-attachment c-video" @key="@media.Id"
+                           href="@url" role="button" data-menu="@menuRef"
+                           @onclick="@(() => OnMediaClick(media))" @onclick:preventDefault="true">
+                            @if (thumb.Length > 0) {
+                                <image-skeleton class="show-image-skeleton" src="@thumb"/>
+                            }
+                            <i class="icon-play-fill c-play-icon"></i>
+                        </a>
+                    }
+                    else {
+                        var previewUrl = UrlMapper.ImagePreviewUrl(url, null, 320);
+                        <a class="image-attachment" @key="@media.Id"
+                           href="@url" role="button" data-menu="@menuRef"
+                           @onclick="@(() => OnMediaClick(media))" @onclick:preventDefault="true">
+                            <image-skeleton class="show-image-skeleton" src="@url" thumbnailSrc="@previewUrl"/>
+                        </a>
+                    }
+                }
+            </div>
+        }
+    </Item>
+    <Skeleton>
+        <div class="c-skeleton"></div>
+    </Skeleton>
+</VirtualList>
+
+@code {
+    private IChats Chats => Hub.Chats;
+    private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
+
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
+
+    private string Identity => $"visualMedia:{ChatId}";
+
+    public Task<VirtualListData<ContentListItem>> GetData(
+        VirtualListDataQuery query,
+        VirtualListData<ContentListItem> renderedData,
+        CancellationToken cancellationToken)
+        => ContentListPlumbing.LoadFromPeriods<VisualMediaItem>(
+            Hub, Session, ChatId, ChatContentKind.Media, query, renderedData,
+            (periodKey, pageIndex, ct) => Chats.GetVisualMediaPeriod(Session, ChatId, periodKey, pageIndex, ct),
+            BuildItems,
+            cancellationToken);
+
+    private Task<List<ContentListItem>> BuildItems(
+        IReadOnlyList<ContentListPlumbing.Block> windowBlocks,
+        IReadOnlyList<VisualMediaItem[]> contents,
+        CancellationToken cancellationToken) {
+        var result = new List<ContentListItem>();
+        string? currentGroupKey = null;
+
+        for (var b = 0; b < windowBlocks.Count; b++) {
+            var block = windowBlocks[b];
+            var rows = ContentListPlumbing.ChunkPage(contents[b], ContentListPlumbing.GridColumns, ContentGrouping.Month, DateTimeConverter);
+            for (var r = rows.Count - 1; r >= 0; r--) {
+                var (rowIndex, groupKey, items) = rows[r];
+                if (groupKey != currentGroupKey) {
+                    currentGroupKey = groupKey;
+                    var title = ContentListPlumbing.GetLocalGroup(items[0].At, ContentGrouping.Month, DateTimeConverter).Title;
+                    if (title.Length > 0)
+                        result.Add(new ContentListItem { Key = $"g:{groupKey}", IsGroup = true, GroupTitle = title });
+                }
+
+                var displayItems = new IChatContentItem[items.Length];
+                for (var k = 0; k < items.Length; k++)
+                    displayItems[k] = items[items.Length - 1 - k];
+                result.Add(new ContentListItem {
+                    Key = $"r:{block.PeriodKey}:{block.PageIndex}:{rowIndex}",
+                    Version = ContentListPlumbing.SumVersion(displayItems),
+                    Items = displayItems,
+                });
+            }
+        }
+        return Task.FromResult(result);
+    }
+
+    private async Task OnMediaClick(VisualMediaItem item) {
+        var entry = await Chats.GetEntry(Session, item.EntryId, CancellationToken.None);
+        var attachment = entry?.Attachments.FirstOrDefault(x => x.Index == item.LocalIndex);
+        if (attachment is null)
+            return;
+
+        var url = UrlMapper.ContentUrl(attachment.Media.BlobId);
+        await VisualMediaViewerUI.Show(url, [attachment]);
+    }
+}

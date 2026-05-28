@@ -50,9 +50,22 @@ public interface IChatsBackend : IComputeService, IBackendService
         CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ChatContentItem[]> GetContentPeriod(
+    Task<VisualMediaItem[]> GetVisualMediaPeriod(
         ChatId chatId,
-        ChatContentKind kind,
+        string periodKey,
+        int pageIndex,
+        CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<FileItem[]> GetFilePeriod(
+        ChatId chatId,
+        string periodKey,
+        int pageIndex,
+        CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<LinkItem[]> GetLinkPeriod(
+        ChatId chatId,
         string periodKey,
         int pageIndex,
         CancellationToken cancellationToken);
@@ -131,7 +144,11 @@ public interface IChatsBackend : IComputeService, IBackendService
     [CommandHandler]
     Task OnRemoveAttachments(ChatsBackend_RemoveAttachments command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnUpdateChatContentIndex(ChatsBackend_UpdateChatContentIndex command, CancellationToken cancellationToken);
+    Task OnUpdateChatVisualMediaIndex(ChatsBackend_UpdateChatVisualMediaIndex command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnUpdateChatFileIndex(ChatsBackend_UpdateChatFileIndex command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnUpdateChatLinkIndex(ChatsBackend_UpdateChatLinkIndex command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemoveOwnChats(ChatsBackend_RemoveOwnChats command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -187,17 +204,39 @@ public sealed partial record ChatsBackend_RemoveAttachments(
     public ChatId ShardKey => EntryId.ChatId;
 }
 
-/// <summary>
-/// Command that replaces the indexed <see cref="ChatContentItem"/>s of the given <see cref="KindMask"/>
-/// for a set of chat entries (delete-by-entry + insert).
-/// </summary>
+// Replaces indexed visual media items for the given chat entries (delete-by-entry + insert).
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record ChatsBackend_UpdateChatContentIndex(
+public sealed partial record ChatsBackend_UpdateChatVisualMediaIndex(
     [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatContentKind KindMask,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] ChatEntryId[] EntryIds,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] ChatContentItem[] Items
+    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatEntryId[] EntryIds,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] VisualMediaItem[] Items
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public ChatId ShardKey => ChatId;
+}
+
+// Replaces indexed file items for the given chat entries (delete-by-entry + insert).
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatsBackend_UpdateChatFileIndex(
+    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatEntryId[] EntryIds,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] FileItem[] Items
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public ChatId ShardKey => ChatId;
+}
+
+// Replaces indexed link items for the given chat entries (delete-by-entry + insert).
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatsBackend_UpdateChatLinkIndex(
+    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatEntryId[] EntryIds,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] LinkItem[] Items
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

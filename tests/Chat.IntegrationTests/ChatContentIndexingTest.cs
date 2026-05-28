@@ -40,31 +40,50 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         await TriggerIndexing(chatId);
 
         await TestExt.When(async () => {
-            var content = await ListAllContent(chats, session, chatId, ChatContentKind.All);
-            content.Should().HaveCount(4);
+            var visualMedia = await ListAllVisualMedia(chats, session, chatId);
+            visualMedia.Should().HaveCount(2);
+            var files = await ListAllFiles(chats, session, chatId);
+            files.Should().ContainSingle();
+            var links = await ListAllLinks(chats, session, chatId);
+            links.Should().ContainSingle();
         }, TimeSpan.FromSeconds(30));
 
-        var items = await ListAllContent(chats, session, chatId, ChatContentKind.All);
-        items.Count(x => x.Kind == ChatContentKind.Photo).Should().Be(1);
-        items.Count(x => x.Kind == ChatContentKind.Video).Should().Be(1);
-        items.Count(x => x.Kind == ChatContentKind.File).Should().Be(1);
-        items.Count(x => x.Kind == ChatContentKind.Link).Should().Be(1);
+        var visualMediaItems = await ListAllVisualMedia(chats, session, chatId);
+        visualMediaItems.Should().HaveCount(2);
+        visualMediaItems.Should().Contain(x => x.MediaId == photoId && x.ContentType == "image/png");
+        visualMediaItems.Should().Contain(x => x.MediaId == videoId && x.ContentType == "video/mp4");
 
-        var photo = items.Single(x => x.Kind == ChatContentKind.Photo);
-        photo.MediaId.Should().Be(photoId);
-        photo.ContentType.Should().Be("image/png");
+        var fileItems = await ListAllFiles(chats, session, chatId);
+        var fileItem = fileItems.Should().ContainSingle().Subject;
+        fileItem.MediaId.Should().Be(fileId);
+        fileItem.FileName.Should().Be("notes.txt");
+    }
 
-        var file = items.Single(x => x.Kind == ChatContentKind.File);
-        file.MediaId.Should().Be(fileId);
-        file.FileName.Should().Be("notes.txt");
+    [Fact]
+    public async Task GifGoesToVisualMedia()
+    {
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var commander = tester.Commander;
+        var chats = tester.AppServices.GetRequiredService<IChats>();
 
-        // kind filtering
-        var mediaOnly = await ListAllContent(chats, session, chatId, ChatContentKind.Media);
-        mediaOnly.Should().HaveCount(2);
-        mediaOnly.Should().OnlyContain(x => x.Kind == ChatContentKind.Photo || x.Kind == ChatContentKind.Video);
+        var (chatId, _) = await tester.CreateChat(true);
 
-        var linksOnly = await ListAllContent(chats, session, chatId, ChatContentKind.Link);
-        linksOnly.Should().ContainSingle().Which.Kind.Should().Be(ChatContentKind.Link);
+        var gifId = await SaveMedia(tester, chatId, "anim.gif", "image/gif");
+        await commander.Call(new Chats_UpsertEntry(session, chatId, null) {
+            Text = "Look at this gif",
+            Attachments = [new ChatEntryAttachment { MediaId = gifId }],
+        });
+
+        await TriggerIndexing(chatId);
+
+        await TestExt.When(async () => {
+            var visualMedia = await ListAllVisualMedia(chats, session, chatId);
+            visualMedia.Should().ContainSingle().Which.ContentType.Should().Be("image/gif");
+            var files = await ListAllFiles(chats, session, chatId);
+            files.Should().BeEmpty();
+        }, TimeSpan.FromSeconds(30));
     }
 
     [Fact]
@@ -89,8 +108,10 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
 
         await TriggerIndexing(chatId);
         await TestExt.When(async () => {
-            var content = await ListAllContent(chats, session, chatId, ChatContentKind.All);
-            content.Should().HaveCount(2);
+            var files = await ListAllFiles(chats, session, chatId);
+            files.Should().ContainSingle();
+            var links = await ListAllLinks(chats, session, chatId);
+            links.Should().ContainSingle();
         }, TimeSpan.FromSeconds(30));
 
         await commander.Call(new Chats_RemoveEntry(session, chatId, fileEntry.LocalId));
@@ -98,10 +119,10 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
 
         await TriggerIndexing(chatId);
         await TestExt.When(async () => {
-            var content = await ListAllContent(chats, session, chatId, ChatContentKind.All);
-            content.Should().BeEmpty();
-            var photoPeriods = await chats.GetContentPeriods(session, chatId, ChatContentKind.File, CancellationToken.None);
-            photoPeriods.Should().BeEmpty();
+            (await ListAllFiles(chats, session, chatId)).Should().BeEmpty();
+            (await ListAllLinks(chats, session, chatId)).Should().BeEmpty();
+            (await chats.GetContentPeriods(session, chatId, ChatContentKind.File, CancellationToken.None))
+                .Should().BeEmpty();
         }, TimeSpan.FromSeconds(30));
     }
 
@@ -132,7 +153,8 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
             flow.Should().NotBeNull();
             flow!.PendingEntryLids.Should().Contain(entry.LocalId);
         }, TimeSpan.FromSeconds(30));
-        (await ListAllContent(chats, session, chatId, ChatContentKind.All)).Should().BeEmpty();
+        (await ListAllFiles(chats, session, chatId)).Should().BeEmpty();
+        (await ListAllVisualMedia(chats, session, chatId)).Should().BeEmpty();
 
         // Complete the upload — the media gets a BlobId.
         var data = "uploaded file content"u8.ToArray();
@@ -148,8 +170,8 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         // On the next run the pending entry is rechecked and indexed.
         await FlowHub.NewResumeEvent<ChatMediaIndexingFlow>(chatId.Value).Schedule();
         await TestExt.When(async () => {
-            var content = await ListAllContent(chats, session, chatId, ChatContentKind.All);
-            content.Should().ContainSingle().Which.Kind.Should().Be(ChatContentKind.File);
+            var files = await ListAllFiles(chats, session, chatId);
+            files.Should().ContainSingle().Which.FileName.Should().Be("doc.txt");
         }, TimeSpan.FromSeconds(30));
     }
 
@@ -175,16 +197,16 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
 
         await TriggerIndexing(chatId);
         await TestExt.When(async () => {
-            var content = await ListAllContent(chats, session, chatId, ChatContentKind.All);
-            content.Should().HaveCount(2);
+            (await ListAllFiles(chats, session, chatId)).Should().ContainSingle();
+            (await ListAllLinks(chats, session, chatId)).Should().ContainSingle();
         }, TimeSpan.FromSeconds(30));
 
         var filePeriods = await chats.GetContentPeriods(session, chatId, ChatContentKind.File, CancellationToken.None);
         filePeriods.Should().ContainSingle().Which.ItemCount.Should().Be(1);
 
-        var filePage = await chats.GetContentPeriod(
-            session, chatId, ChatContentKind.File, filePeriods[0].PeriodKey, 0, CancellationToken.None);
-        filePage.Should().ContainSingle().Which.Kind.Should().Be(ChatContentKind.File);
+        var filePage = await chats.GetFilePeriod(
+            session, chatId, filePeriods[0].PeriodKey, 0, CancellationToken.None);
+        filePage.Should().ContainSingle().Which.FileName.Should().Be("tile.txt");
 
         var linkPeriods = await chats.GetContentPeriods(session, chatId, ChatContentKind.Link, CancellationToken.None);
         linkPeriods.Should().ContainSingle().Which.ItemCount.Should().Be(1);
@@ -215,8 +237,8 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         await FlowHub.NewResumeEvent<ChatContentIndexingMasterFlow>("").WithReset(true).Schedule();
 
         await TestExt.When(async () => {
-            var content = await ListAllContent(chats, session, chatId, ChatContentKind.All);
-            content.Should().HaveCount(2);
+            (await ListAllFiles(chats, session, chatId)).Should().ContainSingle();
+            (await ListAllLinks(chats, session, chatId)).Should().ContainSingle();
         }, TimeSpan.FromSeconds(60));
     }
 
@@ -227,20 +249,22 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         await ownerTester.SignInAsUniqueBob();
         var (chatId, _) = await ownerTester.CreateChat(false); // private chat
 
-        var ownerChats = ownerTester.AppServices.GetRequiredService<IChats>();
-        var ownerContent = await ListAllContent(ownerChats, ownerTester.Session, chatId, ChatContentKind.All);
-        ownerContent.Should().BeEmpty();
-
         await using var outsiderTester = AppHost.NewBlazorTester(Out);
         await outsiderTester.SignInAsUniqueAlice();
         var outsiderChats = outsiderTester.AppServices.GetRequiredService<IChats>();
         var outsiderSession = outsiderTester.Session;
 
         await Assert.ThrowsAnyAsync<Exception>(() =>
-            outsiderChats.GetContentPeriods(outsiderSession, chatId, ChatContentKind.Photo, CancellationToken.None));
+            outsiderChats.GetContentPeriods(outsiderSession, chatId, ChatContentKind.Media, CancellationToken.None));
         await Assert.ThrowsAnyAsync<Exception>(() =>
-            outsiderChats.GetContentPeriod(
-                outsiderSession, chatId, ChatContentKind.Photo, "2026-05", 0, CancellationToken.None));
+            outsiderChats.GetVisualMediaPeriod(
+                outsiderSession, chatId, "2026-05", 0, CancellationToken.None));
+        await Assert.ThrowsAnyAsync<Exception>(() =>
+            outsiderChats.GetFilePeriod(
+                outsiderSession, chatId, "2026-05", 0, CancellationToken.None));
+        await Assert.ThrowsAnyAsync<Exception>(() =>
+            outsiderChats.GetLinkPeriod(
+                outsiderSession, chatId, "2026-05", 0, CancellationToken.None));
     }
 
     // Private methods
@@ -254,21 +278,49 @@ public class ChatContentIndexingTest(ChatCollection.AppHostFixture fixture, ITes
         await FlowHub.NewResumeEvent<ChatEntryContentIndexingFlow>(chatId.Value).Schedule();
     }
 
-    private static async Task<List<ChatContentItem>> ListAllContent(
-        IChats chats, Session session, ChatId chatId, ChatContentKind kindMask)
+    private static async Task<List<VisualMediaItem>> ListAllVisualMedia(
+        IChats chats, Session session, ChatId chatId)
     {
-        var kinds = new[] { ChatContentKind.Photo, ChatContentKind.Video, ChatContentKind.File, ChatContentKind.Link }
-            .Where(k => (kindMask & k) != 0);
-        var result = new List<ChatContentItem>();
-        foreach (var kind in kinds) {
-            var periods = await chats.GetContentPeriods(session, chatId, kind, CancellationToken.None);
-            foreach (var period in periods) {
-                var pageCount = (period.ItemCount + ChatContentPeriod.PageSize - 1) / ChatContentPeriod.PageSize;
-                for (var pageIndex = 0; pageIndex < pageCount; pageIndex++) {
-                    var page = await chats.GetContentPeriod(
-                        session, chatId, kind, period.PeriodKey, pageIndex, CancellationToken.None);
-                    result.AddRange(page);
-                }
+        var result = new List<VisualMediaItem>();
+        var periods = await chats.GetContentPeriods(session, chatId, ChatContentKind.Media, CancellationToken.None);
+        foreach (var period in periods) {
+            var pageCount = (period.ItemCount + ChatContentPeriod.PageSize - 1) / ChatContentPeriod.PageSize;
+            for (var pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+                var page = await chats.GetVisualMediaPeriod(
+                    session, chatId, period.PeriodKey, pageIndex, CancellationToken.None);
+                result.AddRange(page);
+            }
+        }
+        return result;
+    }
+
+    private static async Task<List<FileItem>> ListAllFiles(
+        IChats chats, Session session, ChatId chatId)
+    {
+        var result = new List<FileItem>();
+        var periods = await chats.GetContentPeriods(session, chatId, ChatContentKind.File, CancellationToken.None);
+        foreach (var period in periods) {
+            var pageCount = (period.ItemCount + ChatContentPeriod.PageSize - 1) / ChatContentPeriod.PageSize;
+            for (var pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+                var page = await chats.GetFilePeriod(
+                    session, chatId, period.PeriodKey, pageIndex, CancellationToken.None);
+                result.AddRange(page);
+            }
+        }
+        return result;
+    }
+
+    private static async Task<List<LinkItem>> ListAllLinks(
+        IChats chats, Session session, ChatId chatId)
+    {
+        var result = new List<LinkItem>();
+        var periods = await chats.GetContentPeriods(session, chatId, ChatContentKind.Link, CancellationToken.None);
+        foreach (var period in periods) {
+            var pageCount = (period.ItemCount + ChatContentPeriod.PageSize - 1) / ChatContentPeriod.PageSize;
+            for (var pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+                var page = await chats.GetLinkPeriod(
+                    session, chatId, period.PeriodKey, pageIndex, CancellationToken.None);
+                result.AddRange(page);
             }
         }
         return result;

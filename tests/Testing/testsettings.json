@@ -26,7 +26,8 @@
   "ChatSettings": {
     "Db": "",
     "Redis": "",
-    "OpenAIKey": "not-an-api-key"
+    "OpenAIKey": "not-an-api-key",
+    "IsChatContentItemIndexingEnabled": true
   },
   "MLSearchSettings": {
     "OpenSearch": {

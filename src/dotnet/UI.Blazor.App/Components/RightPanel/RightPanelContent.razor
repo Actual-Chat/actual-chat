@@ -32,18 +32,15 @@
                                 <ThreadList ChatId="@chat.Id"/>
                             </Tab>
                         }
-                        @if (m.EnableIncompleteUI) {
-                            <Tab @key="@("photo")" Id="photo" Title="Photo" Order="3">
-                                <ChatContentItemList ChatId="@chat.Id" Kind="@(ChatContentKind.Photo)"/>
-                            </Tab>
-                            <Tab @key="@("video")" Id="video" Title="Video" Order="4">
-                                <ChatContentItemList ChatId="@chat.Id" Kind="@(ChatContentKind.Video)"/>
+                        @if (m.ShowContentItemsTab) {
+                            <Tab @key="@("media")" Id="media" Title="Media" Order="3">
+                                <VisualMediaList ChatId="@chat.Id"/>
                             </Tab>
                             <Tab @key="@("files")" Id="files" Title="Files" Order="6">
-                                <ChatContentItemList ChatId="@chat.Id" Kind="@(ChatContentKind.File)"/>
+                                <FileList ChatId="@chat.Id"/>
                             </Tab>
                             <Tab @key="@("links")" Id="links" Title="Links" Order="9">
-                                <ChatContentItemList ChatId="@chat.Id" Kind="@(ChatContentKind.Link)" GroupBy="@(ContentGrouping.Day)"/>
+                                <LinkList ChatId="@chat.Id"/>
                             </Tab>
                         }
                     </TabPanel>
@@ -82,7 +79,7 @@
         return new () {
             Chat = chat,
             ShowMembersTab = showMemberTab,
-            EnableIncompleteUI = enableIncompleteUI,
+            ShowContentItemsTab = enableIncompleteUI,
         };
     }
 
@@ -94,8 +91,8 @@
 
         public Chat? Chat { get; init; }
         public bool ShowThreads => Chat?.Id.Kind is ChatKind.Group or ChatKind.Place;
-        public bool ShowTabs => ShowMembersTab || EnableIncompleteUI || ShowThreads;
+        public bool ShowTabs => ShowMembersTab || ShowContentItemsTab || ShowThreads;
         public bool ShowMembersTab { get; init; }
-        public bool EnableIncompleteUI { get; init; }
+        public bool ShowContentItemsTab { get; init; }
     }
 }
