@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.Components;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-// One VirtualList row of the content tabs: a month header, a media row (up to 3 tiles),
+// One VirtualList row of the content tabs: a month/day header, a media row (up to 3 tiles),
 // or a single file/link entry. Equality is by Key + Version so VirtualList can skip
 // re-renders of rows whose content hasn't changed.
 public sealed class ContentListItem : IVirtualListItem, IEquatable<ContentListItem>
@@ -14,7 +14,7 @@ public sealed class ContentListItem : IVirtualListItem, IEquatable<ContentListIt
     public long Version { get; init; }
 
     public string GroupTitle { get; init; } = "";
-    public IReadOnlyList<ChatContentItem> Items { get; init; } = [];
+    public IReadOnlyList<IChatContentItem> Items { get; init; } = [];
     public ChatEntry? LinkEntry { get; init; }
 
     public bool ShouldSkipKey => IsGroup;

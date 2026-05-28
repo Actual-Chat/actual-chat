@@ -102,17 +102,39 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatContentItem[]> GetContentPeriod(
+    public virtual async Task<VisualMediaItem[]> GetVisualMediaPeriod(
         Session session,
         ChatId chatId,
-        ChatContentKind kind,
         string periodKey,
         int pageIndex,
         CancellationToken cancellationToken)
     {
         await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetContentPeriod(chatId, kind, periodKey, pageIndex, cancellationToken)
-            .ConfigureAwait(false);
+        return await Backend.GetVisualMediaPeriod(chatId, periodKey, pageIndex, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<FileItem[]> GetFilePeriod(
+        Session session,
+        ChatId chatId,
+        string periodKey,
+        int pageIndex,
+        CancellationToken cancellationToken)
+    {
+        await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetFilePeriod(chatId, periodKey, pageIndex, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<LinkItem[]> GetLinkPeriod(
+        Session session,
+        ChatId chatId,
+        string periodKey,
+        int pageIndex,
+        CancellationToken cancellationToken)
+    {
+        await RequireCanRead(session, chatId, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetLinkPeriod(chatId, periodKey, pageIndex, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]

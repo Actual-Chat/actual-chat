@@ -2,14 +2,14 @@ using ActualChat.Flows;
 
 namespace ActualChat.Chat.Flows;
 
-// Indexes media attachments (photos, videos, files) of a chat. Media is indexed only once its
-// blob is uploaded; entries with not-yet-uploaded media are rechecked via a delayed self-resume.
+// Indexes media attachments (visual media + files) of a chat. Each attachment is routed to
+// the right index table by its content type. Media is indexed only once its blob is uploaded;
+// entries with not-yet-uploaded media are rechecked via a delayed self-resume.
 
 [Flow(DelayQuanta = 30)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntry, ChatEntryId>
 {
-    private const ChatContentKind MediaKinds = ChatContentKind.Photo | ChatContentKind.Video | ChatContentKind.File;
     private static readonly TimeSpan PendingRecheckDelay = TimeSpan.FromSeconds(20);
     // Entries with media still !IsReady past this age are treated as permanently broken
     // (e.g. metadata row created but blob never uploaded) and dropped from PendingEntryLids.
@@ -94,7 +94,8 @@ public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntr
         CancellationToken cancellationToken)
     {
         var entries = await ResolveWithAttachments(liveLids, cancellationToken).ConfigureAwait(false);
-        var items = new List<ChatContentItem>();
+        var visualItems = new List<VisualMediaItem>();
+        var fileItems = new List<FileItem>();
         var notReadyLids = new List<long>();
         var pendingCutoff = ResumedAt - PendingMaxAge;
         foreach (var entry in entries) {
@@ -105,7 +106,10 @@ public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntr
                     isReady = false;
                     continue;
                 }
-                items.Add(ToItem(entry, attachment, media));
+                if (MediaTypeExt.IsSupportedVisualMedia(media.ContentType))
+                    visualItems.Add(ToVisualMediaItem(entry, attachment, media));
+                else
+                    fileItems.Add(ToFileItem(entry, attachment, media));
             }
             if (!isReady) {
                 if (entry.BeginsAt >= pendingCutoff)
@@ -122,8 +126,9 @@ public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntr
                 }
             }
         }
-        await Commander
-            .Call(new ChatsBackend_UpdateChatContentIndex(ChatId, MediaKinds, entryIds, items.ToArray()), cancellationToken)
+        await Task.WhenAll(
+                Commander.Call(new ChatsBackend_UpdateChatVisualMediaIndex(ChatId, entryIds, visualItems.ToArray()), cancellationToken),
+                Commander.Call(new ChatsBackend_UpdateChatFileIndex(ChatId, entryIds, fileItems.ToArray()), cancellationToken))
             .ConfigureAwait(false);
         return notReadyLids;
     }
@@ -151,10 +156,9 @@ public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntr
             .ToList();
     }
 
-    private static ChatContentItem ToItem(ChatEntry entry, ChatEntryAttachment attachment, Media.Media media)
+    private static VisualMediaItem ToVisualMediaItem(ChatEntry entry, ChatEntryAttachment attachment, Media.Media media)
         => new() {
             Id = Symbol.Empty,
-            Kind = Classify(media.ContentType),
             EntryId = entry.Id,
             LocalIndex = attachment.Index,
             At = entry.BeginsAt,
@@ -167,8 +171,16 @@ public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntr
             Size = media.Length,
         };
 
-    private static ChatContentKind Classify(string contentType)
-        => MediaTypeExt.IsSupportedVideo(contentType) ? ChatContentKind.Video
-            : MediaTypeExt.IsSupportedImage(contentType) ? ChatContentKind.Photo
-            : ChatContentKind.File;
+    private static FileItem ToFileItem(ChatEntry entry, ChatEntryAttachment attachment, Media.Media media)
+        => new() {
+            Id = Symbol.Empty,
+            EntryId = entry.Id,
+            LocalIndex = attachment.Index,
+            At = entry.BeginsAt,
+            MediaId = attachment.MediaId,
+            BlobId = media.BlobId,
+            ContentType = media.ContentType,
+            FileName = media.FileName,
+            Size = media.Length,
+        };
 }

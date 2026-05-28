@@ -60,7 +60,7 @@ public sealed partial class ChatEntryContentIndexingFlow : BatchedIndexingFlow<C
             .SelectMany(ExtractItems)
             .ToArray();
         await Commander
-            .Call(new ChatsBackend_UpdateChatContentIndex(ChatId, ChatContentKind.Link, entryIds, items), cancellationToken)
+            .Call(new ChatsBackend_UpdateChatLinkIndex(ChatId, entryIds, items), cancellationToken)
             .ConfigureAwait(false);
 
         Log.LogInformation(
@@ -68,16 +68,15 @@ public sealed partial class ChatEntryContentIndexingFlow : BatchedIndexingFlow<C
             ChatId, batch.Count, entryIds.Length, items.Length, startedAt.Elapsed.ToShortString());
     }
 
-    private static IEnumerable<ChatContentItem> ExtractItems(ChatEntry entry)
+    private static IEnumerable<LinkItem> ExtractItems(ChatEntry entry)
     {
         var localIndex = 0;
         foreach (var linkPreviewId in entry.LinkPreviewIds) {
             if (linkPreviewId.IsEmpty)
                 continue;
 
-            yield return new ChatContentItem {
+            yield return new LinkItem {
                 Id = Symbol.Empty,
-                Kind = ChatContentKind.Link,
                 EntryId = entry.Id,
                 LocalIndex = localIndex++,
                 At = entry.BeginsAt,

@@ -1,0 +1,97 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase<AppUIHub>
+@implements IVirtualListDataSource<ContentListItem>
+
+<VirtualList
+    @key="@Identity"
+    Class="content-list-tab content-list-rows"
+    Identity="@Identity"
+    DataSource="@this"
+    SkeletonCount="8">
+    <Item>
+        @{ var item = context; }
+        @if (item.IsEmptyPlaceholder) {
+            <div class="c-empty">No files yet</div>
+        }
+        else if (item.IsGroup) {
+            <div class="c-group-header">@item.GroupTitle</div>
+        }
+        else {
+            var file = (FileItem)item.Items[0];
+            var url = UrlMapper.ContentUrl(file.BlobId);
+            var menuRef = MenuRef.New<ChatContentItemMenu>(file.EntryId.Value).ToString();
+            var ext = ContentListPlumbing.FileExtension(file.FileName);
+            var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(ext, "file-default");
+            var fileIcon = fileCls == FileTypeHelper.FileClasses[FileType.Multimedia] ? "icon-play-fill" : "icon-file";
+            <a class="c-file-row" href="@url" target="_blank" rel="noopener" role="button" data-menu="@menuRef">
+                <div class="c-file-icon @fileCls">
+                    <i class="@fileIcon"></i>
+                </div>
+                <div class="c-file-info">
+                    <FileAttachmentTitle Title="@file.FileName"/>
+                    <div class="c-file-size">@FileSizeFormatter.Format(file.Size)</div>
+                    <div class="c-file-date">@FormatDate(file.At)</div>
+                </div>
+            </a>
+        }
+    </Item>
+    <Skeleton>
+        <div class="c-skeleton"></div>
+    </Skeleton>
+</VirtualList>
+
+@code {
+    private IChats Chats => Hub.Chats;
+
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
+
+    private string Identity => $"files:{ChatId}";
+
+    public Task<VirtualListData<ContentListItem>> GetData(
+        VirtualListDataQuery query,
+        VirtualListData<ContentListItem> renderedData,
+        CancellationToken cancellationToken)
+        => ContentListPlumbing.LoadFromPeriods<FileItem>(
+            Hub, Session, ChatId, ChatContentKind.File, query, renderedData,
+            (periodKey, pageIndex, ct) => Chats.GetFilePeriod(Session, ChatId, periodKey, pageIndex, ct),
+            BuildItems,
+            cancellationToken);
+
+    private Task<List<ContentListItem>> BuildItems(
+        IReadOnlyList<ContentListPlumbing.Block> windowBlocks,
+        IReadOnlyList<FileItem[]> contents,
+        CancellationToken cancellationToken) {
+        var result = new List<ContentListItem>();
+        string? currentGroupKey = null;
+
+        for (var b = 0; b < windowBlocks.Count; b++) {
+            var block = windowBlocks[b];
+            var rows = ContentListPlumbing.ChunkPage(contents[b], 1, ContentGrouping.Month, DateTimeConverter);
+            for (var r = rows.Count - 1; r >= 0; r--) {
+                var (rowIndex, groupKey, items) = rows[r];
+                if (groupKey != currentGroupKey) {
+                    currentGroupKey = groupKey;
+                    var title = ContentListPlumbing.GetLocalGroup(items[0].At, ContentGrouping.Month, DateTimeConverter).Title;
+                    if (title.Length > 0)
+                        result.Add(new ContentListItem { Key = $"g:{groupKey}", IsGroup = true, GroupTitle = title });
+                }
+
+                var displayItems = new IChatContentItem[] { items[0] };
+                result.Add(new ContentListItem {
+                    Key = $"i:{block.PeriodKey}:{block.PageIndex}:{rowIndex}",
+                    Version = items[0].Version,
+                    Items = displayItems,
+                });
+            }
+        }
+        return Task.FromResult(result);
+    }
+
+    private string FormatDate(Moment at) {
+        var date = DateTimeConverter.ToLocalTime(at);
+        var today = DateTimeConverter.ToLocalTime(Hub.Clocks.SystemClock.Now);
+        return date.Year == today.Year
+            ? date.ToString("d MMM, HH:mm")
+            : date.ToString("d MMM yyyy, HH:mm");
+    }
+}

@@ -70,10 +70,25 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration = 300)]
-    Task<ChatContentItem[]> GetContentPeriod(
+    Task<VisualMediaItem[]> GetVisualMediaPeriod(
         Session session,
         ChatId chatId,
-        ChatContentKind kind,
+        string periodKey,
+        int pageIndex,
+        CancellationToken cancellationToken);
+
+    [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration = 300)]
+    Task<FileItem[]> GetFilePeriod(
+        Session session,
+        ChatId chatId,
+        string periodKey,
+        int pageIndex,
+        CancellationToken cancellationToken);
+
+    [ComputeMethod(MinCacheDuration = 10), RemoteComputeMethod(MinCacheDuration = 300)]
+    Task<LinkItem[]> GetLinkPeriod(
+        Session session,
+        ChatId chatId,
         string periodKey,
         int pageIndex,
         CancellationToken cancellationToken);
