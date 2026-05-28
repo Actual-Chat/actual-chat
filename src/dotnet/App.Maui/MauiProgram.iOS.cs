@@ -31,7 +31,7 @@ public static partial class MauiProgram
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
         services.AddScoped<IMediaSaver>(c => new AppleMediaSaver(c.UIHub()));
         services.AddScoped<AddPhotoPermissionHandler>(c => new AddPhotoPermissionHandler(c.UIHub()));
-        services.AddTransient<IAppIconBadge>(_ => new AppleAppIconBadge());
+        services.AddTransient<IAppIconBadge>(_ => new AppIconBadge());
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
