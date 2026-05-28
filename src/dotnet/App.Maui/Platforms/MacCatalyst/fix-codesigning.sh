@@ -28,6 +28,19 @@ case "$IDENTITY" in
   *)                 TS="--timestamp=none" ;;
 esac
 
+# Resolve a generic identity name (e.g. "Apple Development") to a concrete SHA-1.
+# Raw `codesign --sign` fails with "ambiguous" when several certs match the name
+# (common locally: multiple Apple Development certs), even though the in-process
+# SDK Codesign task tolerates it. A full unique name (the Distribution cert)
+# resolves to itself, so this is a no-op there.
+if [ "$IDENTITY" != "-" ]; then
+  resolved=$(security find-identity -v -p codesigning | grep -F "$IDENTITY" | head -1 | awk '{print $2}')
+  if [ -n "$resolved" ]; then
+    echo "fix-codesigning: resolved '$IDENTITY' -> $resolved"
+    IDENTITY="$resolved"
+  fi
+fi
+
 echo "fix-codesigning: APP=$APP"
 echo "fix-codesigning: STAGING=$STAGING"
 echo "fix-codesigning: ENT=$ENT"

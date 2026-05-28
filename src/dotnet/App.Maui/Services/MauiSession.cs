@@ -17,13 +17,8 @@ public sealed class MauiSession(IServiceProvider services)
     private IMobileSessions MobileSessions => field ??= Services.GetRequiredService<IMobileSessions>();
 
     private static ISecureStorage Storage
-#if IOS
+#if IOS || MACCATALYST
         => field ??= IosSharedSecureStorage.Default;
-#elif MACCATALYST && DEBUG
-        // Keychain-backed SecureStorage drops the session on every ad-hoc rebuild
-        // because the signing identity changes. Use a plist-backed fallback that
-        // survives rebuilds. Debug-only.
-        => field ??= MacCatalystDevSecureStorage.Default;
 #else
         => field ??= SecureStorage.Default;
 #endif
