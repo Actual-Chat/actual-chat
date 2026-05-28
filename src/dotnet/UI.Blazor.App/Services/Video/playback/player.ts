@@ -141,6 +141,7 @@ export class Player {
         const wrappedReportLatency = reportLatency
             ? (sample: LatencySample): void => {
                 sample.bufferSpanMs = buffer.spanMs();
+                sample.playerStats.encodedQueueCount = buffer.count();
                 reportLatency(sample);
             }
             : undefined;

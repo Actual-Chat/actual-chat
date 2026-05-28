@@ -207,6 +207,7 @@ async function* decodeAsync(
             decodeRatioEma.appendSample((decodedAtMs - meta.submitMs) / frameDurationMs);
             stats.decodeRatioEma = decodeRatioEma.value;
             stats.framesDecoded++;
+            stats.decoderQueueSize = pending.length;
             noteFrameDecoded(meta.layerId);
             ready.push(envelope);
             if (!wakeup.isCompleted) wakeup.resolve();

@@ -91,7 +91,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             case PlayCommand:
                 var trackInfo = (ChatAudioTrackInfo)TrackInfo;
                 await MediaMetadataUI.SetPlayback(MediaMetadata.FromTrack(trackInfo), trackInfo.IsStreaming).ConfigureAwait(false);
-                _playbackEngine = Factory.Create(_id, TrackInfo, Source, this);
+                _playbackEngine = Factory.Create(_id, ApplyAvSyncHold(trackInfo), Source, this);
                 await _playbackEngine.Play(cancellationToken).ConfigureAwait(false);
                 break;
             case PauseCommand:
@@ -164,6 +164,29 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         finally {
             await _playbackEngine.DisposeSilentlyAsync().ConfigureAwait(false);
         }
+    }
+
+    private TrackInfo ApplyAvSyncHold(ChatAudioTrackInfo trackInfo)
+    {
+        // Hold audio at start so it doesn't lead video: raise TargetBufferSize
+        // toward (videoLag + baseline). Both playback pipelines honor
+        // TargetBufferSize as the hold knob (native via DurationTargetingFrameBuffer,
+        // web via the opus-decoder buffer), so no per-engine wiring is needed.
+        // Gated on a live video-lag sample, so voice-only playback is untouched.
+        if (!ChatAudioUI.IsAudioSyncEnabled)
+            return trackInfo;
+        if (trackInfo is not { Author.Id: { } authorId })
+            return trackInfo;
+        if (LagTracker.GetVideoLag(authorId) is not { } videoLag)
+            return trackInfo;
+
+        var hold = videoLag + Constants.Audio.AudioCatchUpBaselineDelta;
+        var maxHold = Constants.Audio.PlaybackTargetBufferSizeWithVideo + TimeSpan.FromMilliseconds(500);
+        if (hold > maxHold)
+            hold = maxHold;
+        return hold > trackInfo.TargetBufferSize
+            ? trackInfo with { TargetBufferSize = hold }
+            : trackInfo;
     }
 
     private async ValueTask ApplyAudioSync(AudioFrame frame, CancellationToken cancellationToken)

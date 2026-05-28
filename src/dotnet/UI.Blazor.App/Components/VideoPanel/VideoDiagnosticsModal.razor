@@ -420,6 +420,12 @@
                                 <span class="diag-label">Signals</span>
                                 <span class="diag-value multiline">@FormatDecoderHealth(decoderHealth)</span>
                             </div>
+                            @if (hasDiag) {
+                                <div class="diag-row">
+                                    <span class="diag-label">Queues</span>
+                                    <span class="diag-value">enc @(GetNum(rdPeek, "bufferSize").ToString("0")) frames · decoder @(GetNested(rdPeek, "decoderStats", "decoderQueueSize").ToString("0")) in-flight</span>
+                                </div>
+                            }
                         }
 
                         @{
@@ -845,6 +851,9 @@
 
     private static double GetNum(JsonElement el, string prop)
         => el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : 0;
+
+    private static double GetNested(JsonElement el, string obj, string prop)
+        => el.TryGetProperty(obj, out var o) && o.ValueKind == JsonValueKind.Object ? GetNum(o, prop) : 0;
 
     private static bool GetBool(JsonElement el, string prop)
         => el.TryGetProperty(prop, out var v) && v.ValueKind is JsonValueKind.True or JsonValueKind.False && v.GetBoolean();

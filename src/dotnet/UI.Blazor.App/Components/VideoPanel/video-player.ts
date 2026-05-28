@@ -1007,9 +1007,8 @@ export class VideoPlayer {
             smoothedRttMs: 0,
             rttGradientMs: 0,
             playbackRate: 1.0,
-            // Encoded buffer depth lives inside the worker and isn't
-            // exposed via PlayerStats; report 0 here.
-            bufferSize: 0,
+            // Encoded received-but-not-decoded depth, surfaced via PlayerStats.
+            bufferSize: stats?.encodedQueueCount ?? 0,
             receivedFrameCount: this.receivedFrameCount,
             receivedKeyframeCount: this.receivedKeyframeCount,
             renderFrameCount: this.renderFrameCount,
@@ -1166,14 +1165,14 @@ export class VideoPlayer {
         if (sample.layerId > this.observedMaxLayerId)
             this.observedMaxLayerId = sample.layerId;
 
-        // Forward presentation lag to Blazor for A/V sync. Same shape as the
-        // audio path (opus-decoder.ts): server-clock now + forward buffer span
-        // − source-capture wallclock (stream anchor + per-frame offset). NOT
-        // frameAgeMs, which is decode→present age in receiver-local time and
-        // ignores both the buffer span and the capture anchor.
+        // Forward presentation lag to Blazor for A/V sync: capture→present
+        // delay of the frame being presented now, in server-clock ms (stream
+        // anchor + per-frame offset). latency-tap samples post-decode/
+        // pre-present, so the frame has already drained the encoded buffer —
+        // do NOT add bufferSpanMs (that's future frames, double-counts).
+        // NOT frameAgeMs, which is decode→present age in receiver-local time.
         const captureAtServerMs = this.startedAtMs + sample.capturedAtMs;
-        const presentationLagMs = Math.max(0,
-            ServerClock.now() + sample.bufferSpanMs - captureAtServerMs);
+        const presentationLagMs = Math.max(0, ServerClock.now() - captureAtServerMs);
         void this.blazorRef.invokeMethodAsync(
             'OnPresentationLag', presentationLagMs, sample.capturedAtMs, sample.bufferSpanMs)
             .catch(() => { /* ignore */ });

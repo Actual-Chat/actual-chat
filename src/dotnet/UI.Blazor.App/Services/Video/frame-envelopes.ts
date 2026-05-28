@@ -137,6 +137,11 @@ export interface PlayerStats {
     // 1 when spanMs() < targetSpanMs/3, 0 otherwise. -1 == not yet sampled.
     // Maintained by EncodedFrameBuffer.
     bufferUnderrunRatio: number;
+    // Instantaneous queue depths for catch-up decisions / diagnostics.
+    // encodedQueueCount: received-but-not-yet-decoded chunks in EncodedFrameBuffer.
+    // decoderQueueSize: chunks submitted to the decode operator awaiting output.
+    encodedQueueCount: number;
+    decoderQueueSize: number;
 }
 
 export function createEmptyRecorderStats(): RecorderStats {
@@ -180,6 +185,8 @@ export function createEmptyPlayerStats(): PlayerStats {
         recoveryStreak: 0,
         presentSkipRatio: -1,
         bufferUnderrunRatio: -1,
+        encodedQueueCount: 0,
+        decoderQueueSize: 0,
     };
 }
 
