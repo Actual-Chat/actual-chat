@@ -1,5 +1,5 @@
 // TODO: remove eslint-disables and fix errors
-/* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-misused-promises,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-misused-promises,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access */
 import { DeviceInfo } from 'device-info';
 import {
     Subject,
@@ -22,7 +22,6 @@ const { debugLog, warnLog } = getLogs('MessageEditor');
 const LargeTextSuggestFileThreshold = 4_000;
 const LargeTextAutoFileThreshold = 32_000;
 const LargeTextPasteFileName = 'pasted.txt';
-const CanConvertToFileClass = 'text-can-convert-to-file';
 
 export type PanelMode = 'Normal' | 'Narrow';
 
@@ -34,6 +33,7 @@ export class ChatMessageEditor {
     private readonly postPanelDiv: HTMLDivElement;
     private readonly input: HTMLDivElement;
     private readonly filePickerInput: HTMLInputElement;
+    private readonly blazorRef: DotNet.DotNetObject;
     private readonly filePickerBackend: AttachmentWebFilePickerBackend;
     private readonly filePicker: AttachmentWebFilePicker;
     private readonly postPanelHeightObserver: ResizeObserver;
@@ -62,6 +62,7 @@ export class ChatMessageEditor {
         this.editorDiv = editorDiv;
         this.postPanelDiv = this.editorDiv.querySelector(':scope .post-panel')!;
         this.input = this.postPanelDiv.querySelector(':scope .message-input')!;
+        this.blazorRef = filePickerBlazorRef;
         this.filePickerBackend = new AttachmentWebFilePickerBackend(filePickerBlazorRef);
         this.filePickerInput = this.editorDiv.querySelector(':scope .attachment-web-file-picker')!;
         this.filePicker = new AttachmentWebFilePicker(this.filePickerBackend, this.filePickerInput);
@@ -266,29 +267,13 @@ export class ChatMessageEditor {
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: ClipboardEvent) => this.onInputPaste(event));
 
-        this.markupEditor.changed = (_html, text) => {
+        this.markupEditor.changed = () => {
             this.backupRequired$.next();
             this.updateHasContent();
-            this.updateCanConvertToFile(text);
         }
         this.updateHasContent();
-        this.updateCanConvertToFile(this.markupEditor.getText());
         if (this.isNarrowScreen)
             this.markupEditor.contentDiv.blur(); // We want to see the placeholder on mobile when you open a chat
-    }
-
-    /** Called by Blazor */
-    public convertCurrentTextToAttachment(): void {
-        const text = this.markupEditor?.getText() ?? '';
-        if (text.length < LargeTextSuggestFileThreshold)
-            return;
-        const file = new File([text], LargeTextPasteFileName, { type: 'text/plain' });
-        void this.filePickerBackend.add([{ file: file, fileHandle: null }]);
-    }
-
-    private updateCanConvertToFile(text: string) {
-        const canConvert = text.length >= LargeTextSuggestFileThreshold;
-        this.editorDiv.classList.toggle(CanConvertToFileClass, canConvert);
     }
 
     /** Called by Blazor */
@@ -340,23 +325,37 @@ export class ChatMessageEditor {
             }
         }
 
-        if (fileResults.length === 0) {
-            const text = clipboardData.getData('text');
-            if (text && text.length >= LargeTextAutoFileThreshold) {
-                const file = new File([text], LargeTextPasteFileName, { type: 'text/plain' });
-                fileResults.push({ file: file, fileHandle: null });
-                // Capture-phase + stopImmediatePropagation keeps MarkupEditor.onPaste
-                // from inserting the same text into the editor.
-                event.stopImmediatePropagation();
-            }
+        if (fileResults.length > 0) {
+            preventDefaultForEvent(event); // Must run sync — async tail can't preventDefault
+            void this.filePickerBackend.add(fileResults);
+            return;
         }
 
-        if (fileResults.length === 0)
+        const text = clipboardData.getData('text');
+        if (!text || text.length < LargeTextSuggestFileThreshold)
             return;
 
-        preventDefaultForEvent(event); // Must run sync — async tail can't preventDefault
-        void this.filePickerBackend.add(fileResults);
+        // Capture-phase + stopImmediatePropagation keeps MarkupEditor.onPaste
+        // from inserting the same text into the editor.
+        preventDefaultForEvent(event);
+        event.stopImmediatePropagation();
+
+        if (text.length >= LargeTextAutoFileThreshold) {
+            this.addTextAsAttachment(text);
+            return;
+        }
+
+        const asFile = await this.blazorRef.invokeMethodAsync<boolean>('OnLargeTextPasted', text.length);
+        if (asFile)
+            this.addTextAsAttachment(text);
+        else
+            this.markupEditor.insertText(text);
     };
+
+    private addTextAsAttachment(text: string) {
+        const file = new File([text], LargeTextPasteFileName, { type: 'text/plain' });
+        void this.filePickerBackend.add([{ file: file, fileHandle: null }]);
+    }
 
     // Drag-and-drop handlers
 
