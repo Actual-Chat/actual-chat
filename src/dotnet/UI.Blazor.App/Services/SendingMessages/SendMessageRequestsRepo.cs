@@ -106,6 +106,7 @@ public sealed partial record SendMessageRequestEntry : IHasId<string>, ISanitize
     [DataMember, MemoryPackOrder(8), Key(8)] public string AfterSendMessageHandlerKey { get; init; } = "";
     [DataMember, MemoryPackOrder(9), Key(9)] public string AfterSendMessageHandlerArgs { get; init; } = "";
     [DataMember, MemoryPackOrder(10), Key(10)] public long? NewChatEntryLocalId { get; init; }
+    [DataMember, MemoryPackOrder(11), Key(11)] public MediaRef[] ExistingMedia { get; init; } = [];
 
     string IHasId<string>.Id => Uuid;
 

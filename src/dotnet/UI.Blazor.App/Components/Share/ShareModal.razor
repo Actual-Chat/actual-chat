@@ -95,7 +95,7 @@
 
     protected override void OnInitialized() {
         _comment = ModalModel.Request.Text;
-        if (ModalModel.Request.HasAttachments())
+        if (ModalModel.Request.HasMedia())
             _hideShareExternallyButton = true;
         if (ModalModel.SelectorPrefs is ShareWithPlaceMembersOnly selector) {
             _memberListSource = new PlaceMemberListSource(Hub, selector.PlaceId, [OwnAccount.Id]);
@@ -131,10 +131,10 @@
         }
 
         foreach (var chatId in selectedChatIds) {
-            if (request.HasAttachments())
-                await SendingMessages.SendAttachments(chatId, request.Attachments, text, CancellationToken.None);
-            else
-                _ = await SendingMessages.Send(SendMessageRequest.NewMessage(chatId, text), CancellationToken.None);
+            var sendRequest = SendMessageRequest.NewMessage(
+                chatId, text,
+                existingMedia: request.HasMedia() ? request.Media : null);
+            _ = await SendingMessages.Send(sendRequest, CancellationToken.None);
         }
         Modal.Close(true);
     }

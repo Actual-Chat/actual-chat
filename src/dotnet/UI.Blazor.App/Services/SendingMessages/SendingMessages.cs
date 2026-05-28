@@ -147,6 +147,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             Text = entry.Text,
             RepliedEntryLid = entry.RepliedEntryLid,
             AttachmentUploads = uploads,
+            ExistingMedia = entry.ExistingMedia,
             ClientId = entry.ClientId,
             NewChatEntryLocalId = entry.NewChatEntryLocalId,
             AfterSendMessageHandler = !entry.AfterSendMessageHandlerKey.IsNullOrEmpty()
@@ -556,6 +557,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         public string Text { get => Sanitizer.MaskPrivate(field); init; } = "";
         public Option<long?> RepliedEntryLid { get; init; }
         public AttachmentUploads? AttachmentUploads { get; init; }
+        public IReadOnlyList<MediaRef> ExistingMedia { get; init; } = [];
         public string ClientId { get; init; } = "";
         public long? NewChatEntryLocalId { get; init; }
         public AfterSendMessageHandler? AfterSendMessageHandler { get; init; }
