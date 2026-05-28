@@ -9,9 +9,9 @@ public static partial class Constants
         public static readonly TimeSpan FrameDuration = TimeSpan.FromSeconds(1d / FrameRate); // 33.333 ms
 
         // Target playback buffer (the only intentional live-video buffer).
-        public const int TargetBufferSize = 8;
+        public const int TargetBufferSize = 6; // jitter buffer depth (frames)
         public static readonly TimeSpan TargetBufferSpan =
-            TimeSpan.FromSeconds((double)TargetBufferSize / FrameRate); // 266,666 ms to match audio Buffer
+            TimeSpan.FromSeconds((double)TargetBufferSize / FrameRate); // 200 ms — below audio buffer so audio lands slightly behind video (safe side); trades jitter headroom for latency
         public static readonly double TargetBufferSpanMs = TargetBufferSpan.TotalMilliseconds;
 
         // Playback verdict thresholds (compared against per-tick EMAs of the
