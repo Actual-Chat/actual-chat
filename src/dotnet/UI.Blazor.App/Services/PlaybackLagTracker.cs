@@ -151,9 +151,10 @@ public sealed class PlaybackLagTracker : IDisposable
 // delay / video buffer span); OffsetMs = presented frame's offset from start.
 // SkipRatio (video only) = EMA of present-stage skip activity; the catch-up
 // policy suppresses corrections while it's high (audio-master under skip).
-// DeviceLatencyMs = output-device latency included in the lag but NOT
-// controllable by catch-up: audio = AudioContext (baseLatency+outputLatency),
-// video = display/compositor latency. Diagnostics only.
+// DeviceLatencyMs: audio = AudioContext output latency (baseLatency+outputLatency),
+// included in the lag but not catch-up-controllable; video = the pre-present tap
+// lag (the lag itself is now the true on-screen rVFC value), kept to show the
+// present→display gap. Diagnostics only.
 [StructLayout(LayoutKind.Auto)]
 public readonly record struct LagInputs(
     double AnchorMs = 0,

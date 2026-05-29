@@ -263,6 +263,7 @@ export class VideoPlayer {
     private readonly videoLagEma = new RunningEMA(0, 3, 0.3);
     private readonly displayLatencyEma = new RunningEMA(0, 3, 0.3);
     private displayLatencyMs = 0;
+    private hasDisplayLag = false;
     private rvfcStop = false;
 
     /** Creates a new VideoPlayer instance for Blazor interop */
@@ -379,11 +380,16 @@ export class VideoPlayer {
         const videoEl = this.videoEl;
         if (typeof videoEl.requestVideoFrameCallback !== 'function')
             return;
-        const onFrame = (now: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata): void => {
-            const disp = metadata.expectedDisplayTime - now;
-            if (Number.isFinite(disp) && disp >= 0 && disp < 1000) {
-                this.displayLatencyEma.appendSample(disp);
+        const onFrame = (_now: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata): void => {
+            // True capture→on-screen latency: mediaTime is the displayed frame's
+            // offset from stream start (we stamp chunk.timestamp = offset), so
+            // now − (anchor + mediaTime) is its age on screen — this INCLUDES the
+            // MSTG→<video> playback buffer that the pre-present latency-tap misses.
+            const lagMs = ServerClock.now() - (this.startedAtMs + metadata.mediaTime * 1000);
+            if (Number.isFinite(lagMs) && lagMs >= 0 && lagMs < 30_000) {
+                this.displayLatencyEma.appendSample(lagMs);
                 this.displayLatencyMs = this.displayLatencyEma.value;
+                this.hasDisplayLag = true;
             }
             if (!this.rvfcStop)
                 videoEl.requestVideoFrameCallback(onFrame);
@@ -1209,19 +1215,19 @@ export class VideoPlayer {
         if (sample.layerId > this.observedMaxLayerId)
             this.observedMaxLayerId = sample.layerId;
 
-        // Forward presentation lag to Blazor for A/V sync: capture→present
-        // delay of the frame being presented now, in server-clock ms (stream
-        // anchor + per-frame offset). latency-tap samples post-decode/
-        // pre-present, so the frame has already drained the encoded buffer —
-        // do NOT add bufferSpanMs (that's future frames, double-counts).
-        // NOT frameAgeMs, which is decode→present age in receiver-local time.
+        // A/V-sync video lag. The latency-tap is post-decode/pre-present, so its
+        // age (tapLagMs) MISSES the MSTG→<video> playback buffer (under-reports,
+        // badly on fast/loopback streams). Prefer the true on-screen lag from
+        // requestVideoFrameCallback (displayLatencyMs); fall back to the tap lag
+        // only when rVFC is unavailable (canvas backend / Firefox). The tap lag is
+        // still forwarded as a diagnostic so the present→display gap is visible.
         const captureAtServerMs = this.startedAtMs + sample.capturedAtMs;
-        const presentationLagMs = Math.max(0, ServerClock.now() - captureAtServerMs);
-        // EMA-smoothed to avoid spike-driven A/V-sync decisions (matches audio).
-        this.videoLagEma.appendSample(presentationLagMs);
+        const tapLagMs = Math.max(0, ServerClock.now() - captureAtServerMs);
+        this.videoLagEma.appendSample(tapLagMs);
+        const videoLagMs = this.hasDisplayLag ? this.displayLatencyMs : this.videoLagEma.value;
         void this.blazorRef.invokeMethodAsync(
-            'OnPresentationLag', this.videoLagEma.value, sample.capturedAtMs, sample.bufferSpanMs,
-            sample.playerStats.presentSkipRatio, this.displayLatencyMs)
+            'OnPresentationLag', videoLagMs, sample.capturedAtMs, sample.bufferSpanMs,
+            sample.playerStats.presentSkipRatio, this.videoLagEma.value)
             .catch(() => { /* ignore */ });
 
         // Push a playback-health snapshot for the server-side controller.

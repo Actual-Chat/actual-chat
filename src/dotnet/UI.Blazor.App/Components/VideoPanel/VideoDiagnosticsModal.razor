@@ -954,7 +954,7 @@
         => i.AnchorMs <= 0 ? "—" : $"rec={i.AnchorMs:F0} out={i.DeviceLatencyMs:F0}ms";
 
     private static string FormatVideoInputs(LagInputs i)
-        => i.AnchorMs <= 0 ? "—" : $"rec={i.AnchorMs:F0} buf={i.LookaheadMs:F0}ms off={i.OffsetMs:F0}ms disp={i.DeviceLatencyMs:F0}ms";
+        => i.AnchorMs <= 0 ? "—" : $"rec={i.AnchorMs:F0} buf={i.LookaheadMs:F0}ms off={i.OffsetMs:F0}ms tap={i.DeviceLatencyMs:F0}ms";
 
     private static string FormatLag(TimeSpan? lag)
         => lag is null ? "—" : $"{lag.Value.TotalMilliseconds:+0;-0;0} ms";
