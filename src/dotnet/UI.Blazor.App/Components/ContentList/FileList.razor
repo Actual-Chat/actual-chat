@@ -53,7 +53,7 @@
         CancellationToken cancellationToken)
         => ContentListPlumbing.LoadFromPeriods<FileItem>(
             Hub, Session, ChatId, query, renderedData,
-            (periodKey, pageIndex, ct) => Chats.GetFilePeriod(Session, ChatId, periodKey, pageIndex, ct),
+            (block, ct) => Chats.GetFilePeriod(Session, ChatId, block.PeriodKey, block.PageIndex, ct),
             BuildItems,
             cancellationToken);
 

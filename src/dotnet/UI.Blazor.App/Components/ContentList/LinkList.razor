@@ -48,7 +48,7 @@
         CancellationToken cancellationToken)
         => ContentListPlumbing.LoadFromPeriods<LinkItem>(
             Hub, Session, ChatId, query, renderedData,
-            (periodKey, pageIndex, ct) => Chats.GetLinkPeriod(Session, ChatId, periodKey, pageIndex, ct),
+            (block, ct) => Chats.GetLinkPeriod(Session, ChatId, block.PeriodKey, block.PageIndex, ct),
             BuildItems,
             cancellationToken);
 
