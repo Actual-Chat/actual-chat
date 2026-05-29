@@ -2,38 +2,18 @@
 @inherits ComputedMenuBase<AppUIHub, AccountFull>
 @{
     var m = State.Value;
-    var avatar = m.Avatar;
-    var name = avatar.Name;
 }
 
-<div class="landing-docs-menu">
-    <MenuEntry
-        Click="@OnAccountClick">
-        <IconContent>
-            <AvatarCircle
-                Avatar="@avatar"
-                Size="SquareSize.Size8"/>
-        </IconContent>
-        <TextContent>
-            <div class="manage-account-menu-item">
-                <div class="c-content">
-                    <div class="c-name">
-                        @name
-                    </div>
-                    <div class="text-sm text-primary">
-                        Manage your Account
-                    </div>
-                </div>
-                <div class="c-ending">
-                    <i class="icon-chevron-left"></i>
-                </div>
-            </div>
-        </TextContent>
-    </MenuEntry>
+<div class="landing-account-menu">
     <MenuEntry
         Icon="icon-message-ellipse"
         Text="Go to Chats"
         Click="@(_ => NavigateTo(Links.Chats))">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-settings"
+        Text="Settings"
+        Click="@OnSettingsClick">
     </MenuEntry>
     <a class="ac-menu-item" href="mailto:@Constants.Team.SupportEmail" target="_blank">
         <div class="ac-menu-content">
@@ -45,11 +25,19 @@
             </div>
         </div>
     </a>
-    <MenuEntry
-        Icon="icon-log-out"
-        Text="Sign out"
-        Click="@(_ => AccountUI.SignOut())">
-    </MenuEntry>
+    @if (m.IsGuest) {
+        <MenuEntry
+            Icon="icon-log-in"
+            Text="Sign in"
+            Click="@(_ => ModalUI.Show(new SignInModal.Model()))">
+        </MenuEntry>
+    } else {
+        <MenuEntry
+            Icon="icon-log-out"
+            Text="Sign out"
+            Click="@(_ => AccountUI.SignOut())">
+        </MenuEntry>
+    }
 </div>
 
 @code {
@@ -62,6 +50,6 @@
     protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => AccountUI.OwnAccount.Use(cancellationToken);
 
-    private void OnAccountClick()
+    private void OnSettingsClick()
         => _ = UIEventHub.Publish(new ShowSettingsEvent());
 }

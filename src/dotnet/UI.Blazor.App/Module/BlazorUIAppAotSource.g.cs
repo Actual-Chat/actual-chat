@@ -349,7 +349,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ThreadMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ThreadMessageView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.TimeZoneStep>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.TopNavbarMenu>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NavbarLogoMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.TranscriptReplayTutorialStep>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.TranscriptionEngineSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.TranscriptionSettings>();
@@ -414,7 +414,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Landing.DownloadButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Landing.Landing>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Landing.LandingCard>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Landing.LandingDocsMenu>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Landing.LandingAccountMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Landing.LandingDownloadLinks>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Landing.LandingFooter>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Landing.LandingForApp>();
@@ -1004,7 +1004,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ThreadMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ThreadMessageView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.TimeZoneStep), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.TopNavbarMenu), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.NavbarLogoMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.TranscriptReplayTutorialStep), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.TranscriptionEngineSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.TranscriptionSettings), AotTypeKind.Component),
@@ -1069,7 +1069,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Landing.DownloadButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Landing.Landing), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Landing.LandingCard), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Pages.Landing.LandingDocsMenu), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Pages.Landing.LandingAccountMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Landing.LandingDownloadLinks), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Landing.LandingFooter), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Landing.LandingForApp), AotTypeKind.Component),

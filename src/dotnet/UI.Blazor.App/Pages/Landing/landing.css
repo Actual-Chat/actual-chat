@@ -1619,7 +1619,7 @@ body.narrow .premium-features-modal .c-block-note {
     @apply text-title-1 text-primary;
 }
 
-.ac-menu:has(.landing-docs-menu) {
+.ac-menu:has(.landing-account-menu) {
     @apply theme-light;
 }
 
