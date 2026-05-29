@@ -6,7 +6,6 @@ public sealed record VideoLayerDef(VideoSourceKind SourceKind, VideoSize Size, d
         new(VideoSourceKind.Camera, VideoSize.W320, 312.5),
         new(VideoSourceKind.Camera, VideoSize.W640, 1_250),
         new(VideoSourceKind.Camera, VideoSize.W1280, 4_000),
-        new(VideoSourceKind.Camera, VideoSize.W1920, 6_000),
     ];
     public static readonly VideoLayerDef[] ScreenCastLayers = [
         new(VideoSourceKind.ScreenCast, VideoSize.W960, 4_375),

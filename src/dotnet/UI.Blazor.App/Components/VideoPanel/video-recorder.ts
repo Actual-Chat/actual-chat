@@ -721,13 +721,15 @@ export class VideoRecorder {
             this.currentHardwareAcceleration = 'prefer-hardware';
 
             // Desktop non-H264 captures at 1080 so the QC ramp can later hot-add
-            // a real 1080 top tier (downscaled for lower tiers). H264 caps at
-            // 720; mobile at 360.
+            // a real 1080 top tier (downscaled for lower tiers) — but only when a
+            // 1080 layer actually exists. H264 caps at 720; mobile at 360.
+            const supportsTopTier = getCodecCategory(codecString) !== 'h264'
+                && VIDEO.cameraLayerBaseBitratesKbps.length >= 4;
             const captureBase: Size = isMobile
                 ? { width: 640, height: 360 }
-                : (getCodecCategory(codecString) === 'h264'
-                    ? { width: 1280, height: 720 }
-                    : { width: 1920, height: 1080 });
+                : (supportsTopTier
+                    ? { width: 1920, height: 1080 }
+                    : { width: 1280, height: 720 });
             const requestSize: Size = wantsPortrait
                 ? { width: captureBase.height, height: captureBase.width }
                 : captureBase;
@@ -830,15 +832,14 @@ export class VideoRecorder {
             warnLog?.log('openGate: worker missing');
             return;
         }
-        // Desktop tops at 4 tiers (adds 1080) for efficient codecs; H264 caps
-        // at 3 (≤720). Mobile caps at 2. The 1080 tier is only realized when
-        // the QC ramp slices it in (receiver demand / encode+bandwidth headroom).
         const isH264 = getCodecCategory(this.currentCodecString) === 'h264';
         // Build the FULL ladder up to the device/codec ceiling so the QC bump-
-        // quality ramp can later add the top tier. Desktop non-H264 = 4 (adds
-        // 1080); H264 = 3 (≤720); mobile = 2. Capture already matches the ceiling
-        // top (warmup captured at the ceiling resolution).
-        const tierCeiling = DeviceInfo.isMobile ? 2 : (isH264 ? 3 : 4);
+        // quality ramp can later add the top tier — capped to the available layer
+        // count (desktop non-H264 = up to 4, adds 1080 only when that layer
+        // exists; H264 = 3 ≤720; mobile = 2). Capture matches the ceiling top.
+        const tierCeiling = DeviceInfo.isMobile
+            ? 2
+            : Math.min(isH264 ? 3 : 4, VIDEO.cameraLayerBaseBitratesKbps.length);
         this.currentMaxLayerCount = maxLayerCount;
 
         // Reuse the warmup ladder's top dims so the encoder keeps its
@@ -925,9 +926,12 @@ export class VideoRecorder {
         // Mobile maxes out at 2 spatial tiers (640×360 top). Phones can't usefully
         // encode + ship a 720p+ top layer alongside lower tiers on a wireless
         // link, and the extra GPU work strangles their HW encoders. Desktop tops
-        // at 4 tiers (adds 1080); the 1080 top is reserved for non-H264 codecs
-        // (gated below at the probe + fallback), realized by the QC ramp.
-        const tierCeiling = DeviceInfo.isMobile ? 2 : 4;
+        // at up to 4 tiers (adds 1080 when that layer exists); the 1080 top is
+        // reserved for non-H264 (gated below at the probe + fallback), realized by
+        // the QC ramp. Capped to the available layer count.
+        const tierCeiling = DeviceInfo.isMobile
+            ? 2
+            : Math.min(4, VIDEO.cameraLayerBaseBitratesKbps.length);
         const tierCap = Math.max(1, Math.min(maxLayerCount, tierCeiling));
         infoLog?.log(`Starting video recording... audienceCodecs=[${audienceCodecs?.join(', ') ?? '(none)'}], maxLayerCount=${maxLayerCount} → tierCap=${tierCap}`);
 
