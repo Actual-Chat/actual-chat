@@ -261,6 +261,9 @@ export class VideoPlayer {
 
     private audioCaTimer: ReturnType<typeof setInterval> | null = null;
     private readonly videoLagEma = new RunningEMA(0, 3, 0.3);
+    private readonly displayLatencyEma = new RunningEMA(0, 3, 0.3);
+    private displayLatencyMs = 0;
+    private rvfcStop = false;
 
     /** Creates a new VideoPlayer instance for Blazor interop */
     static create(
@@ -336,6 +339,10 @@ export class VideoPlayer {
         // until a worker stream is active and a fresh audio latency exists.
         this.audioCaTimer = setInterval(() => this.pushAudioCaptureOffset(), 150);
 
+        // Diagnostics: measure display/compositor latency (present → on-screen)
+        // via rVFC, the symmetric counterpart of audio's AudioContext output latency.
+        this.startDisplayLatencyTracking();
+
         activePlayers.set(streamId, this);
         infoLog?.log(`VideoPlayer registry: added ${streamId}, active=${activePlayers.size}`);
 
@@ -366,6 +373,22 @@ export class VideoPlayer {
         // doesn't leave us showing cover with no painter attached.
         this.applyFitDecision();
         this.renderBackend.setExpectedPaused(this.getExpectedPaused());
+    }
+
+    private startDisplayLatencyTracking(): void {
+        const videoEl = this.videoEl;
+        if (typeof videoEl.requestVideoFrameCallback !== 'function')
+            return;
+        const onFrame = (now: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata): void => {
+            const disp = metadata.expectedDisplayTime - now;
+            if (Number.isFinite(disp) && disp >= 0 && disp < 1000) {
+                this.displayLatencyEma.appendSample(disp);
+                this.displayLatencyMs = this.displayLatencyEma.value;
+            }
+            if (!this.rvfcStop)
+                videoEl.requestVideoFrameCallback(onFrame);
+        };
+        videoEl.requestVideoFrameCallback(onFrame);
     }
 
     private pushAudioCaptureOffset(): void {
@@ -1198,7 +1221,7 @@ export class VideoPlayer {
         this.videoLagEma.appendSample(presentationLagMs);
         void this.blazorRef.invokeMethodAsync(
             'OnPresentationLag', this.videoLagEma.value, sample.capturedAtMs, sample.bufferSpanMs,
-            sample.playerStats.presentSkipRatio)
+            sample.playerStats.presentSkipRatio, this.displayLatencyMs)
             .catch(() => { /* ignore */ });
 
         // Push a playback-health snapshot for the server-side controller.
@@ -1206,6 +1229,7 @@ export class VideoPlayer {
     }
 
     public async stop(): Promise<void> {
+        this.rvfcStop = true;
         if (this.audioCaTimer !== null) {
             clearInterval(this.audioCaTimer);
             this.audioCaTimer = null;

@@ -57,17 +57,20 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     }
 
     [JSInvokable("OnPresentationLag")]
-    public void OnPresentationLagMs(double lagMs)
-        => OnPresentationLag(TimeSpan.FromMilliseconds(lagMs));
+    public void OnPresentationLagMs(double lagMs, double outputLatencyMs = 0)
+        => OnPresentationLag(TimeSpan.FromMilliseconds(lagMs), outputLatencyMs);
 
     public void OnPresentationLag(TimeSpan lag)
+        => OnPresentationLag(lag, 0);
+
+    public void OnPresentationLag(TimeSpan lag, double outputLatencyMs)
     {
         var authorId = (TrackInfo as ChatAudioTrackInfo)?.Author?.Id;
         if (authorId is null)
             return;
 
         var anchor = TrackInfo.SourceRecordedAt != default ? TrackInfo.SourceRecordedAt : TrackInfo.RecordedAt;
-        var raw = new LagInputs(AnchorMs: anchor.EpochOffset.TotalMilliseconds);
+        var raw = new LagInputs(AnchorMs: anchor.EpochOffset.TotalMilliseconds, DeviceLatencyMs: outputLatencyMs);
         LagTracker.UpdateAudio(authorId, _id, lag, raw);
     }
 

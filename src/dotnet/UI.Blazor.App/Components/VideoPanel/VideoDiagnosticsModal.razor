@@ -454,6 +454,10 @@
                             <span class="diag-label">Drift</span>
                             <span class="diag-value">@FormatDrift(lag.AudioLag, lag.VideoLag)</span>
                         </div>
+                        <div class="diag-row diag-sub">
+                            <span class="diag-label">ctrl drift</span>
+                            <span class="diag-value diag-dim">@FormatControllableDrift(lag)</span>
+                        </div>
                         @if (sync is { } syncSnap) {
                             <div class="diag-row">
                                 <span class="diag-label">Desired</span>
@@ -947,10 +951,10 @@
             + $"presentSkip={h.PresentSkipRatio * 100:F1}%, pathDrop={h.ReceiverDecodePathDropRatio * 100:F1}%";
 
     private static string FormatAudioInputs(LagInputs i)
-        => i.AnchorMs <= 0 ? "—" : $"rec={i.AnchorMs:F0}";
+        => i.AnchorMs <= 0 ? "—" : $"rec={i.AnchorMs:F0} out={i.DeviceLatencyMs:F0}ms";
 
     private static string FormatVideoInputs(LagInputs i)
-        => i.AnchorMs <= 0 ? "—" : $"rec={i.AnchorMs:F0} buf={i.LookaheadMs:F0}ms off={i.OffsetMs:F0}ms";
+        => i.AnchorMs <= 0 ? "—" : $"rec={i.AnchorMs:F0} buf={i.LookaheadMs:F0}ms off={i.OffsetMs:F0}ms disp={i.DeviceLatencyMs:F0}ms";
 
     private static string FormatLag(TimeSpan? lag)
         => lag is null ? "—" : $"{lag.Value.TotalMilliseconds:+0;-0;0} ms";
@@ -959,6 +963,17 @@
         => audio is null || video is null
             ? "—"
             : $"{(audio.Value - video.Value).TotalMilliseconds:+0;-0;0} ms";
+
+    // Drift with the uncontrollable output-device latencies removed from both
+    // sides — the portion the catch-up policy can actually affect.
+    private static string FormatControllableDrift(PlaybackLagSnapshot lag)
+    {
+        if (lag.AudioLag is not { } a || lag.VideoLag is not { } v)
+            return "—";
+        var audioCtl = a.TotalMilliseconds - lag.AudioInputs.DeviceLatencyMs;
+        var videoCtl = v.TotalMilliseconds - lag.VideoInputs.DeviceLatencyMs;
+        return $"{audioCtl - videoCtl:+0;-0;0} ms";
+    }
 
     private static string FormatDesired(AudioSyncDiagnosticsSnapshot s)
         => s.LastSkipReason switch {

@@ -470,14 +470,17 @@ export class AudioPlayer implements Resettable {
                 // AudioContext output latency. EMA-smoothed to avoid spikes,
                 // then published for the video pipeline's skip-to-audio.
                 if (state.presentationLagMs !== null) {
-                    const lagMs = state.presentationLagMs + this.getAudioContextLatencyMs();
+                    const outMs = this.getAudioContextLatencyMs();
+                    const lagMs = state.presentationLagMs + outMs;
                     this.audioLatencyEma.appendSample(lagMs);
                     const emaMs = this.audioLatencyEma.value;
                     publishAudioLatency(this.authorId, emaMs);
                     const sysNow = Date.now();
                     if (this.blazorRef && sysNow - this.lastLagReportTime >= AudioPlayer.LagReportIntervalMs) {
                         this.lastLagReportTime = sysNow;
-                        void this.blazorRef.invokeMethodAsync('OnPresentationLag', emaMs)
+                        // outMs (device output latency) is for diagnostics only —
+                        // the sync value (emaMs) is unchanged.
+                        void this.blazorRef.invokeMethodAsync('OnPresentationLag', emaMs, outMs)
                             .catch(() => { /* ignore */ });
                     }
                 }
