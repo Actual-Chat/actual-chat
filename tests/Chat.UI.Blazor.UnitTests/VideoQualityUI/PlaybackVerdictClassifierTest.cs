@@ -71,7 +71,7 @@ public class VideoSizeTest
         videoConstants.CameraLayerBaseBitratesKbps.Should().Equal(312.5, 1_250d, 4_000d);
         videoConstants.ScreenCastLayerBaseBitratesKbps.Should().Equal(4_375d, 11_375d);
         videoConstants.CodecDefs.Should().Contain(new VideoCodecDef() { Kind = VideoCodecKind.H264, Efficiency = 1 });
-        videoConstants.CodecDefs.Should().Contain(new VideoCodecDef() { Kind = VideoCodecKind.Hevc, Efficiency = 2 });
+        videoConstants.CodecDefs.Should().Contain(new VideoCodecDef() { Kind = VideoCodecKind.Hevc, Efficiency = 1.4 });
     }
 
     [Fact]
@@ -80,8 +80,8 @@ public class VideoSizeTest
         var topCameraLayer = VideoLayerDef.CameraLayers[^1];
 
         topCameraLayer.GetBitrateKbps(VideoCodecKind.H264).Should().Be(4_000);
-        topCameraLayer.GetBitrateKbps(VideoCodecKind.Hevc).Should().Be(2_000);
-        topCameraLayer.GetByteRate(VideoCodecKind.Hevc).Should().Be(250_000);
+        topCameraLayer.GetBitrateKbps(VideoCodecKind.Hevc).Should().BeApproximately(4_000 / 1.4, 0.01);
+        topCameraLayer.GetByteRate(VideoCodecKind.Hevc).Should().Be(357_143);
     }
 
     [Theory]

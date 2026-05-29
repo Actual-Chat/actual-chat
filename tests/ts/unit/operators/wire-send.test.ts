@@ -16,6 +16,7 @@ import {
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 import { LayerLadderController } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/sender/layer-ladder-controller';
 import type { EncoderConfigPerLayer } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/encode';
+import { stampEncoderDescription } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/stamp-encoder-description';
 
 // Default single-layer controller used by every test that doesn't exercise
 // hot-apply directly. wireSend reads layer count from the controller; tests
@@ -180,6 +181,17 @@ async function runWith(
     await count(pipe(seg, op));
 }
 
+// wireSend reads description from EncodedFrame.description, which the upstream
+// stampEncoderDescription operator fills from metadata.decoderConfig.description
+// (and per-layer caches for keyframes that arrive without one). Tests that
+// assert description forwarding route through that operator first.
+async function runStamped(
+    seg: AsyncIterable<EncodedBundle>,
+    op: ReturnType<typeof wireSend>,
+): Promise<void> {
+    await count(pipe(seg, stampEncoderDescription(), op));
+}
+
 // ---- Tests ----------------------------------------------------------------
 
 describe('wireSend', () => {
@@ -230,7 +242,7 @@ describe('wireSend', () => {
         expect(sender.sent[2].offsetEpoch).toBe(1);
     });
 
-    it('per-layer description cache: first keyframe with description sets cache; later keyframe without picks from it', async () => {
+    it('forwards stamped per-layer description to the wire DTO, incl. cache fallback', async () => {
         const stats = createEmptyRecorderStats();
         const sender = new FakeSender();
         const sink = wireSend({ createSender: () => sender, controller: defaultController() });
@@ -248,7 +260,7 @@ describe('wireSend', () => {
             // Layer 1 keyframe WITHOUT description → fall back to layer-1 cache.
             makeEncoded(stats, { type: 'key', layerId: 1, capturedAt: { timeMs: 5_000, epoch: 0 } }),
         ];
-        await runWith(source(items), sink);
+        await runStamped(source(items), sink);
 
         expect(sender.sent).toHaveLength(4);
         expect(Array.from(sender.sent[0].description!)).toEqual([0xAA, 0xBB, 0xCC]);
@@ -368,7 +380,7 @@ describe('wireSend', () => {
 
         // One bundle carrying all three layers — wireSend takes the top
         // (frames[length-1]) for the init payload.
-        await runWith(bundledSource([[
+        await runStamped(bundledSource([[
             makeEncoded(stats, {
                 type: 'key',
                 layerId: 0,
