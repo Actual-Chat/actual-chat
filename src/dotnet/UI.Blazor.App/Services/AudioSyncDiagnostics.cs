@@ -10,6 +10,7 @@ public enum AudioSyncSkipReason
     VideoSkipping,
     LocalVideoPreview,
     ImplausibleDrift,
+    OwnStream,
 }
 
 public enum AudioSyncCommand

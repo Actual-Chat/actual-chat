@@ -26,8 +26,11 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private int _audioSyncSampleIn;
     private TimeSpan _currentTargetBufferSize;
     private CpuTimestamp _lastBufferAdjustAt;
+    private bool _isOwnStream;
 
     private IServiceProvider Services { get; }
+
+    private AppUIHub Hub => field ??= Services.GetRequiredService<AppUIHub>();
 
     private IMediaMetadataUI MediaMetadataUI => field ??= Services.GetRequiredService<IMediaMetadataUI>();
     private PlaybackLagTracker LagTracker => field ??= Services.GetRequiredService<PlaybackLagTracker>();
@@ -95,6 +98,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         switch (command) {
             case PlayCommand:
                 var trackInfo = (ChatAudioTrackInfo)TrackInfo;
+                _isOwnStream = await IsOwnStream(trackInfo, cancellationToken).ConfigureAwait(false);
                 await MediaMetadataUI.SetPlayback(MediaMetadata.FromTrack(trackInfo), trackInfo.IsStreaming).ConfigureAwait(false);
                 var heldTrackInfo = ApplyAvSyncHold(trackInfo);
                 _currentTargetBufferSize = heldTrackInfo.TargetBufferSize;
@@ -173,6 +177,23 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         }
     }
 
+    // True when this track is the local user's own stream — its video is a
+    // 0-latency local self-preview, so A/V-syncing audio to it is meaningless
+    // (and produces a runaway speed-up/skip storm). Computed once at start.
+    private async Task<bool> IsOwnStream(ChatAudioTrackInfo trackInfo, CancellationToken cancellationToken)
+    {
+        if (trackInfo is not { Chat: { } chat, Author.Id: { } authorId })
+            return false;
+        try {
+            var ownAuthor = await Hub.Authors.GetOwn(Hub.Session, chat.Id, cancellationToken).ConfigureAwait(false);
+            return ownAuthor is { } own && own.Id == authorId;
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "IsOwnStream check failed for {AuthorId}", authorId);
+            return false;
+        }
+    }
+
     private TrackInfo ApplyAvSyncHold(ChatAudioTrackInfo trackInfo)
     {
         // Hold audio at start so it doesn't lead video: raise TargetBufferSize
@@ -229,6 +250,11 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             return;
         if (!ChatAudioUI.IsAudioSyncEnabled) {
             SyncDiagnostics.RecordDecision(authorId, TimeSpan.Zero, AudioSyncSkipReason.SyncDisabled);
+            SyncDiagnostics.RecordCommand(authorId, AudioSyncCommand.None);
+            return;
+        }
+        if (_isOwnStream) {
+            SyncDiagnostics.RecordDecision(authorId, TimeSpan.Zero, AudioSyncSkipReason.OwnStream);
             SyncDiagnostics.RecordCommand(authorId, AudioSyncCommand.None);
             return;
         }
