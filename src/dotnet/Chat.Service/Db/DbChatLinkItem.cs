@@ -28,6 +28,7 @@ public class DbChatLinkItem : IHasId<string>, IHasVersion<long>, IRequirementTar
         set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
+    public string Url { get; set; } = "";
     public string LinkPreviewId { get; set; } = "";
 
     public static string ComposeId(ChatEntryId entryId, int localIndex)
@@ -40,6 +41,7 @@ public class DbChatLinkItem : IHasId<string>, IHasVersion<long>, IRequirementTar
             EntryId = ChatEntryId.Parse(EntryId),
             LocalIndex = LocalIndex,
             At = new Moment(At),
+            Url = Url,
             LinkPreviewId = LinkPreviewId,
         };
 
@@ -55,6 +57,7 @@ public class DbChatLinkItem : IHasId<string>, IHasVersion<long>, IRequirementTar
         EntryLocalId = model.EntryId.LocalId;
         LocalIndex = model.LocalIndex;
         At = model.At.ToDateTime();
+        Url = model.Url;
         LinkPreviewId = model.LinkPreviewId.Value;
     }
 }

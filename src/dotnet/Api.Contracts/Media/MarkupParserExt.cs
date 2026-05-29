@@ -17,8 +17,13 @@ public static class MarkupParserExt
             => Uri.TryCreate(x, UriKind.Absolute, out var uri) && SupportedSchemes.Contains(uri.Scheme);
     }
 
+    // Skips trusted-GIF hosts: those URLs render as inline <img> via image proxy
+    // (UrlMarkupView), not as link previews — generating previews for them would be
+    // pointless.
     public static Symbol[] ExtractLinkPreviewIds(this IMarkupParser markupParser, ChatEntry entry)
-        => markupParser.ExtractLinks(entry.Content, Constants.Media.LinkPreviewsPerMessageLimit)
+        => markupParser.ExtractLinks(entry.Content)
+            .Where(x => !UrlMapper.IsTrustedGifUrl(x))
+            .Take(Constants.Media.LinkPreviewsPerMessageLimit)
             .Select(LinkPreview.ComposeId)
             .ToArray();
 }

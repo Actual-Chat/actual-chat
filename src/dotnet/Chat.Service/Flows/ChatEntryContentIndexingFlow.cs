@@ -9,6 +9,7 @@ namespace ActualChat.Chat.Flows;
 public sealed partial class ChatEntryContentIndexingFlow : BatchedIndexingFlow<ChatEntry, ChatEntryId>
 {
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
+    private IMarkupParser MarkupParser => field ??= Services.GetRequiredService<IMarkupParser>();
     private ICommander Commander => field ??= Services.Commander();
     private ChatId ChatId => field ??= ChatId.Parse(Id.Arguments);
     private ILogger Log => field ??= Services.LogFor(GetType());
@@ -68,11 +69,15 @@ public sealed partial class ChatEntryContentIndexingFlow : BatchedIndexingFlow<C
             ChatId, batch.Count, entryIds.Length, items.Length, startedAt.Elapsed.ToShortString());
     }
 
-    private static IEnumerable<LinkItem> ExtractItems(ChatEntry entry)
+    // Re-extracts URLs from the current markup and stores the URL directly on the
+    // LinkItem so the UI can always render at least a plain <a>, even if the
+    // LinkPreview never resolved. Trusted-GIF URLs are filtered out — they render
+    // inline as <img> (UrlMarkupView) and have no business in the Links tab.
+    private IEnumerable<LinkItem> ExtractItems(ChatEntry entry)
     {
         var localIndex = 0;
-        foreach (var linkPreviewId in entry.LinkPreviewIds) {
-            if (linkPreviewId.IsEmpty)
+        foreach (var url in MarkupParser.ExtractLinks(entry.Content)) {
+            if (UrlMapper.IsTrustedGifUrl(url))
                 continue;
 
             yield return new LinkItem {
@@ -80,7 +85,8 @@ public sealed partial class ChatEntryContentIndexingFlow : BatchedIndexingFlow<C
                 EntryId = entry.Id,
                 LocalIndex = localIndex++,
                 At = entry.BeginsAt,
-                LinkPreviewId = linkPreviewId,
+                Url = url,
+                LinkPreviewId = LinkPreview.ComposeId(url),
             };
         }
     }
