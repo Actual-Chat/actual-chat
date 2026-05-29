@@ -149,24 +149,33 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
     // ----- Decision log -----
 
     private const int DecisionLogCapacity = 10;
+    private readonly Lock _decisionLogLock = new();
     private readonly Queue<QualityDecisionEntry> _outboundDecisionLog = new(DecisionLogCapacity);
     private readonly Queue<QualityDecisionEntry> _inboundDecisionLog = new(DecisionLogCapacity);
 
-    public IReadOnlyCollection<QualityDecisionEntry> OutboundDecisionLog => _outboundDecisionLog;
-    public IReadOnlyCollection<QualityDecisionEntry> InboundDecisionLog => _inboundDecisionLog;
+    public IReadOnlyCollection<QualityDecisionEntry> OutboundDecisionLog {
+        get { lock (_decisionLogLock) return _outboundDecisionLog.ToArray(); }
+    }
+    public IReadOnlyCollection<QualityDecisionEntry> InboundDecisionLog {
+        get { lock (_decisionLogLock) return _inboundDecisionLog.ToArray(); }
+    }
 
     internal void AppendOutboundDecision(QualityDecisionEntry entry)
     {
-        _outboundDecisionLog.Enqueue(entry);
-        while (_outboundDecisionLog.Count > DecisionLogCapacity)
-            _outboundDecisionLog.Dequeue();
+        lock (_decisionLogLock) {
+            _outboundDecisionLog.Enqueue(entry);
+            while (_outboundDecisionLog.Count > DecisionLogCapacity)
+                _outboundDecisionLog.Dequeue();
+        }
     }
 
     internal void AppendInboundDecision(QualityDecisionEntry entry)
     {
-        _inboundDecisionLog.Enqueue(entry);
-        while (_inboundDecisionLog.Count > DecisionLogCapacity)
-            _inboundDecisionLog.Dequeue();
+        lock (_decisionLogLock) {
+            _inboundDecisionLog.Enqueue(entry);
+            while (_inboundDecisionLog.Count > DecisionLogCapacity)
+                _inboundDecisionLog.Dequeue();
+        }
     }
 
     public sealed record QualityDecisionEntry(
