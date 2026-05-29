@@ -1,6 +1,4 @@
-using ActualChat.Chat;
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
@@ -10,15 +8,11 @@ namespace ActualChat.UI.Blazor.App.Components;
 // and the rendering differ.
 internal static class ContentListPlumbing
 {
-    public const int GridColumns = 3;
-    // Window sizes are in blocks (period-pages), not raw items. Block count is the only
-    // dimension the UI can reason about without knowing PageSize; spacer sizes use the
-    // loaded-block density as a proxy for the unloaded items count.
-    // Window always tries to cover at least this many blocks, both for the cold
-    // init query and when the user scrolls. Smaller values starve infinite-scroll
-    // (one block at a time keeps the end-spacer with skeletons visible too long,
-    // especially for kinds with item-level filtering like Link).
-    public const int BlocksInWindow = 5;
+    // Window grows by whole blocks (atomic fetch + cache unit), but the stop criterion
+    // is in items — the user-visible scale. Adapts to per-kind density without a magic
+    // block count: one fat block (≤PageSize=300 items) usually covers the target;
+    // sparse Link blocks after client-side filtering trigger more rounds.
+    public const int TargetItemCount = 60;
 
     public sealed record Block(string PeriodKey, int PageIndex);
 
@@ -29,35 +23,6 @@ internal static class ContentListPlumbing
             for (var p = period.PageCount - 1; p >= 0; p--)
                 blocks.Add(new Block(period.PeriodKey, p));
         return blocks;
-    }
-
-    public static (int First, int Last) GetWindow(VirtualListDataQuery query, List<Block> blocks)
-    {
-        int first, last;
-        if (query.IsNone)
-            (first, last) = (0, 0);
-        else {
-            var s = FindBlockIndex(blocks, query.KeyRange.Start);
-            var e = FindBlockIndex(blocks, query.KeyRange.End);
-            if (s < 0 || e < 0)
-                (first, last) = (0, 0);
-            else {
-                first = Math.Max(0, Math.Min(s, e) - 1);
-                last = Math.Min(blocks.Count, Math.Max(s, e) + 2);
-            }
-        }
-
-        // Bidirectional expansion in block units. Same target for cold-init and
-        // targeted queries so infinite-scroll grows the window in meaningful chunks.
-        while ((last - first) < BlocksInWindow && (last < blocks.Count || first > 0)) {
-            if (last < blocks.Count)
-                last++;
-            else
-                first--;
-        }
-        if (last == first)
-            last = Math.Min(blocks.Count, first + 1);
-        return (first, last);
     }
 
     public static int FindBlockIndex(List<Block> blocks, string key)
@@ -148,7 +113,7 @@ internal static class ContentListPlumbing
     }
 
     // Runs the period-based load pipeline shared by VisualMediaList / FileList / LinkList:
-    //   skeleton → window → typed pages → buildItems → VirtualListData with spacer counts.
+    //   skeleton → bidirectional sequential page load → buildItems → VirtualListData.
     // Each component supplies only the typed `loadPage` (which page-method to call) and `buildItems`
     // (which can do extra async work like resolving link entries).
     public static async Task<VirtualListData<ContentListItem>> LoadFromPeriods<TItem>(
@@ -157,7 +122,7 @@ internal static class ContentListPlumbing
         ChatId chatId,
         VirtualListDataQuery query,
         VirtualListData<ContentListItem> renderedData,
-        Func<string, int, CancellationToken, Task<TItem[]>> loadPage,
+        Func<Block, CancellationToken, Task<TItem[]>> loadPage,
         Func<IReadOnlyList<Block>, IReadOnlyList<TItem[]>, CancellationToken, Task<List<ContentListItem>>> buildItems,
         CancellationToken cancellationToken)
         where TItem : IChatContentItem
@@ -169,10 +134,6 @@ internal static class ContentListPlumbing
         if (!isVisible)
             return renderedData;
 
-        // Walk the skeleton cursor: pull more periods only until the current query's
-        // window can be served. Backend currently returns everything in one batch
-        // (NextPeriodKey=null), so the loop typically runs once; the early-exit kicks
-        // in once the backend starts paginating the skeleton.
         var kind = ResolveKind<TItem>();
         var periods = new List<ChatContentPeriod>();
         string? cursor = null;
@@ -182,24 +143,87 @@ internal static class ContentListPlumbing
                 .ConfigureAwait(false);
             periods.AddRange(skeleton.Periods);
             cursor = skeleton.NextPeriodKey;
-            if (cursor == null)
-                break;
-            if (HasEnoughForWindow(periods, query))
-                break;
-        } while (true);
-        if (periods.Count == 0)
-            return EmptyData();
+        } while (cursor != null);
 
         var blocks = BuildBlocks(periods);
-        var (first, last) = GetWindow(query, blocks);
-        var windowBlocks = blocks.GetRange(first, last - first);
-        var contents = await windowBlocks
-            .Select(b => loadPage(b.PeriodKey, b.PageIndex, cancellationToken))
-            .Collect(cancellationToken)
-            .ConfigureAwait(false);
+        if (blocks.Count == 0)
+            return EmptyData();
 
-        var listItems = await buildItems(windowBlocks, contents, cancellationToken).ConfigureAwait(false);
+        // Seed window = blocks already covered by VirtualList's KeyRange
+        // (or [0..0] for cold-init). `first` = newest block index, `last` = oldest.
+        int first, last;
+        if (query.IsNone)
+            first = last = 0;
+        else {
+            var s = FindBlockIndex(blocks, query.KeyRange.Start);
+            var e = FindBlockIndex(blocks, query.KeyRange.End);
+            if (s < 0 || e < 0)
+                first = last = 0;
+            else {
+                first = Math.Min(s, e);
+                last = Math.Max(s, e);
+            }
+        }
 
+        var loaded = new Dictionary<int, TItem[]>();
+        var seedItems = 0;
+        for (var i = first; i <= last; i++) {
+            loaded[i] = await loadPage(blocks[i], cancellationToken).ConfigureAwait(false);
+            seedItems += loaded[i].Length;
+        }
+
+        // Direction-aware extension driven by MoveRange. VirtualList's contract:
+        //   move.Start < 0 → "I need ~N more items BEFORE current first" (toward newer = smaller idx).
+        //   move.End   > 0 → "I need ~N more items AFTER current last"  (toward older = larger idx).
+        // Grow the relevant side until the request is satisfied — independent of how
+        // many items the seed already has. Without this a fat seed block (≥ target)
+        // would short-circuit growth and the data source would spin returning the same
+        // payload, never reacting to scroll-into-spacer requests.
+        var wantBefore = query.IsNone ? 0 : Math.Max(0, -query.MoveRange.Start);
+        var wantAfter = query.IsNone ? 0 : Math.Max(0, query.MoveRange.End);
+        var gotBefore = 0;
+        while (gotBefore < wantBefore && first > 0) {
+            first--;
+            loaded[first] = await loadPage(blocks[first], cancellationToken).ConfigureAwait(false);
+            gotBefore += loaded[first].Length;
+        }
+        var gotAfter = 0;
+        while (gotAfter < wantAfter && last < blocks.Count - 1) {
+            last++;
+            loaded[last] = await loadPage(blocks[last], cancellationToken).ConfigureAwait(false);
+            gotAfter += loaded[last].Length;
+        }
+
+        // Cold-init / tiny-seed padding: ensure window covers at least TargetItemCount.
+        // Block is the atomic unit of fetch + cache; item count is the stop criterion —
+        // adapts to per-kind density without a magic block count.
+        var itemCount = seedItems + gotBefore + gotAfter;
+        var center = (first + last) / 2;
+        while (itemCount < TargetItemCount && (first > 0 || last < blocks.Count - 1)) {
+            var canGoOlder = last < blocks.Count - 1;
+            var canGoNewer = first > 0;
+            int next;
+            if (canGoOlder && (!canGoNewer || (last - center) <= (center - first))) {
+                last++;
+                next = last;
+            }
+            else {
+                first--;
+                next = first;
+            }
+            var items = await loadPage(blocks[next], cancellationToken).ConfigureAwait(false);
+            loaded[next] = items;
+            itemCount += items.Length;
+        }
+
+        var windowBlocks = new List<Block>(last - first + 1);
+        var windowContents = new List<TItem[]>(last - first + 1);
+        for (var i = first; i <= last; i++) {
+            windowBlocks.Add(blocks[i]);
+            windowContents.Add(loaded[i]);
+        }
+
+        var listItems = await buildItems(windowBlocks, windowContents, cancellationToken).ConfigureAwait(false);
         if (listItems.Count == 0)
             return EmptyData();
 
@@ -208,50 +232,35 @@ internal static class ContentListPlumbing
             // BuildItems emits newest-first, so the rendered DOM order is newest-at-top.
             // VirtualList treats Items[0] as VeryFirst — keep it aligned with our window.
             HasVeryFirstItem = first == 0,
-            HasVeryLastItem = last == blocks.Count,
+            HasVeryLastItem = last == blocks.Count - 1,
         };
         var isSame = result.IsSimilarTo(renderedData);
-        // Uncomment for quick window/query diagnostics; warning level guarantees DevLog visibility.
-        // var log = hub.LogFor(typeof(ContentListPlumbing));
-        // var winFirst = windowBlocks.Count > 0 ? $"{windowBlocks[0].PeriodKey}:{windowBlocks[0].PageIndex}" : "-";
-        // var winLast = windowBlocks.Count > 0 ? $"{windowBlocks[^1].PeriodKey}:{windowBlocks[^1].PageIndex}" : "-";
-        // var itemFirst = listItems.Count > 0 ? listItems[0].Key : "-";
-        // var itemLast = listItems.Count > 0 ? listItems[^1].Key : "-";
-        // if (query.IsNone)
-        //     log.LogWarning(
-        //         "CL[{Kind}/{ChatId}] same={IsSame}\n"
-        //         + "  q=<none>\n"
-        //         + "  win={{ range: [{First}..{Last})/{Total}, first: {WinFirst}, last: {WinLast}, hasFirst: {HasVeryFirst}, hasLast: {HasVeryLast} }}\n"
-        //         + "  items={{ count: {ItemCount}, first: {ItemFirst}, last: {ItemLast} }}",
-        //         kind, chatId, isSame, first, last, blocks.Count, winFirst, winLast,
-        //         result.HasVeryFirstItem, result.HasVeryLastItem,
-        //         listItems.Count, itemFirst, itemLast);
-        // else
-        //     log.LogWarning(
-        //         "CL[{Kind}/{ChatId}] same={IsSame}\n"
-        //         + "  q={{ keys: {KeyRange}, virt: {VirtualRange}, move: {MoveRange} }}\n"
-        //         + "  win={{ range: [{First}..{Last})/{Total}, first: {WinFirst}, last: {WinLast}, hasFirst: {HasVeryFirst}, hasLast: {HasVeryLast} }}\n"
-        //         + "  items={{ count: {ItemCount}, first: {ItemFirst}, last: {ItemLast} }}",
-        //         kind, chatId, isSame, query.KeyRange, query.VirtualRange, query.MoveRange,
-        //         first, last, blocks.Count, winFirst, winLast,
-        //         result.HasVeryFirstItem, result.HasVeryLastItem,
-        //         listItems.Count, itemFirst, itemLast);
+        // Quick window/query diagnostics; warning level guarantees DevLog visibility.
+        var log = hub.LogFor(typeof(ContentListPlumbing));
+        var winFirst = windowBlocks.Count > 0 ? $"{windowBlocks[0].PeriodKey}:{windowBlocks[0].PageIndex}" : "-";
+        var winLast = windowBlocks.Count > 0 ? $"{windowBlocks[^1].PeriodKey}:{windowBlocks[^1].PageIndex}" : "-";
+        var itemFirst = listItems.Count > 0 ? listItems[0].Key : "-";
+        var itemLast = listItems.Count > 0 ? listItems[^1].Key : "-";
+        if (query.IsNone)
+            log.LogWarning(
+                "CL[{Kind}/{ChatId}] same={IsSame}\n"
+                + "  q=<none>\n"
+                + "  win={{ range: [{First}..{Last}]/{Total}, first: {WinFirst}, last: {WinLast}, hasFirst: {HasVeryFirst}, hasLast: {HasVeryLast} }}\n"
+                + "  items={{ count: {ItemCount}, first: {ItemFirst}, last: {ItemLast} }}",
+                kind, chatId, isSame, first, last, blocks.Count, winFirst, winLast,
+                result.HasVeryFirstItem, result.HasVeryLastItem,
+                listItems.Count, itemFirst, itemLast);
+        else
+            log.LogWarning(
+                "CL[{Kind}/{ChatId}] same={IsSame}\n"
+                + "  q={{ keys: {KeyRange}, virt: {VirtualRange}, move: {MoveRange} }}\n"
+                + "  win={{ range: [{First}..{Last}]/{Total}, first: {WinFirst}, last: {WinLast}, hasFirst: {HasVeryFirst}, hasLast: {HasVeryLast} }}\n"
+                + "  items={{ count: {ItemCount}, first: {ItemFirst}, last: {ItemLast} }}",
+                kind, chatId, isSame, query.KeyRange, query.VirtualRange, query.MoveRange,
+                first, last, blocks.Count, winFirst, winLast,
+                result.HasVeryFirstItem, result.HasVeryLastItem,
+                listItems.Count, itemFirst, itemLast);
         return isSame ? renderedData : result;
-    }
-
-    private static bool HasEnoughForWindow(List<ChatContentPeriod> periods, VirtualListDataQuery query)
-    {
-        if (query.IsNone) {
-            var blockCount = 0;
-            foreach (var p in periods)
-                blockCount += p.PageCount;
-            return blockCount >= BlocksInWindow;
-        }
-        // Targeted query: stop once both endpoints map to already-loaded blocks.
-        var blocks = BuildBlocks(periods);
-        var s = FindBlockIndex(blocks, query.KeyRange.Start);
-        var e = FindBlockIndex(blocks, query.KeyRange.End);
-        return s >= 0 && e >= 0;
     }
 
     private static ChatContentKind ResolveKind<TItem>() where TItem : IChatContentItem

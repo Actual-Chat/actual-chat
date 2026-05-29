@@ -51,6 +51,8 @@
 </VirtualList>
 
 @code {
+    private const int GridColumns = 3;
+
     private IChats Chats => Hub.Chats;
     private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
 
@@ -64,7 +66,7 @@
         CancellationToken cancellationToken)
         => ContentListPlumbing.LoadFromPeriods<VisualMediaItem>(
             Hub, Session, ChatId, query, renderedData,
-            (periodKey, pageIndex, ct) => Chats.GetVisualMediaPeriod(Session, ChatId, periodKey, pageIndex, ct),
+            (block, ct) => Chats.GetVisualMediaPeriod(Session, ChatId, block.PeriodKey, block.PageIndex, ct),
             BuildItems,
             cancellationToken);
 
@@ -77,7 +79,7 @@
 
         for (var b = 0; b < windowBlocks.Count; b++) {
             var block = windowBlocks[b];
-            var rows = ContentListPlumbing.ChunkPage(contents[b], ContentListPlumbing.GridColumns, ContentGrouping.Month, DateTimeConverter);
+            var rows = ContentListPlumbing.ChunkPage(contents[b], GridColumns, ContentGrouping.Month, DateTimeConverter);
             for (var r = rows.Count - 1; r >= 0; r--) {
                 var (rowIndex, groupKey, items) = rows[r];
                 if (groupKey != currentGroupKey) {
