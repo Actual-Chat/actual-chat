@@ -1,7 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
 using System.Security.Claims;
-using ActualChat.Users.Module;
+using ActualChat.Module;
 using AspNet.Security.OAuth.Apple;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -14,7 +14,7 @@ namespace ActualChat.Users;
 public class NativeAuth(IServiceProvider services) : INativeAuth
 {
     private IServiceProvider Services { get; } = services;
-    private UsersSettings Settings { get; } = services.GetRequiredService<UsersSettings>();
+    private CoreServerSettings CoreServerSettings { get; } = services.GetRequiredService<CoreServerSettings>();
     private AuthHelper AuthHelper { get; } = services.GetRequiredService<AuthHelper>();
     private ICommander Commander { get; } = services.Commander();
     private IOptionsFactory<AppleAuthenticationOptions> AppleOptionsFactory { get; }
@@ -83,7 +83,7 @@ public class NativeAuth(IServiceProvider services) : INativeAuth
             // app id without mutating the shared singleton. The secret generator reads ClientId to build
             // the JWT 'iss'/'sub', and Apple's token endpoint requires it to match the request's client_id.
             var options = AppleOptionsFactory.Create(schemeName);
-            options.ClientId = Settings.AppleAppId;
+            options.ClientId = CoreServerSettings.AppleAppId;
 
             var stubHttpContext = new DefaultHttpContext { RequestServices = Services };
             var scheme = new AuthenticationScheme(schemeName, schemeName, typeof(AppleAuthenticationHandler));

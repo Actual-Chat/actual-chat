@@ -97,7 +97,7 @@ public class IosCalls : CXProviderDelegate
             var audioSession = c.GetRequiredService<AudioSession>();
             // NOTE: Only configuring the session here, not starting it to avoid errors.
             // CallKit activates the audio session and notifies us via DidActivateAudioSession.
-            await audioSession.Reconfigure(AudioFocusMode.Recording, false).ConfigureAwait(false);
+            await audioSession.Reconfigure(AudioFocusMode.Recording).ConfigureAwait(false);
             action.Fulfill();
         });
         Log.LogInformation("PerformAnswerCallAction: answered call #{CallId}", action.CallUuid);

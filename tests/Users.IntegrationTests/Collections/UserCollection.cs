@@ -1,5 +1,5 @@
+using ActualChat.Module;
 using ActualChat.Testing.Host;
-using ActualChat.Users.Module;
 using AspNet.Security.OAuth.Apple;
 
 namespace ActualChat.Users.IntegrationTests;
@@ -10,7 +10,7 @@ public class UserCollection : ICollectionFixture<AppHostFixture>;
 public class AppHostFixture(IMessageSink messageSink)
     : ActualChat.Testing.Host.AppHostFixture("users", messageSink, TestAppHostOptions.WithDefaultChat with {
         ConfigureHost = (_, cfg) => {
-            cfg.AddInMemory<UsersSettings>((x => x.AppleAppId, "com.test.app"));
+            cfg.AddInMemory<CoreServerSettings>((x => x.AppleAppId, "com.test.app"));
         },
         ConfigureServices = (_, services) => {
             var handler = new AppleTokenEndpointHandlerMock();

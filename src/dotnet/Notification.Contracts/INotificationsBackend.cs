@@ -102,7 +102,7 @@ public sealed partial record NotificationsBackend_RegisterDevice(
     [property: DataMember, MemoryPackOrder(1), Key(1)] Symbol DeviceId,
     [property: DataMember, MemoryPackOrder(2), Key(2)] DeviceType DeviceType,
     [property: DataMember, MemoryPackOrder(3), Key(3)] Symbol SessionHash,
-    [property: DataMember, MemoryPackOrder(3), Key(3)] NotificationChannel NotificationChannel
+    [property: DataMember, MemoryPackOrder(4), Key(4)] NotificationChannel NotificationChannel
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
