@@ -6,9 +6,10 @@
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
 
-	<!-- Bundle identity (mirrors iOS dev entitlements) -->
-	<key>application-identifier</key>
-	<string>M287G8G83F.chat.actual.dev.app</string>
+	<!-- Team identity. NOTE: do NOT add the iOS-style `application-identifier` here.
+	     On a Mac App Store build it makes dyld treat the app as iOS/Catalyst-restricted
+	     and refuse @rpath expansion for embedded .frameworks, crashing at launch
+	     (dotnet/macios#14686). The "Mac"-type profile supplies com.apple.application-identifier. -->
 	<key>com.apple.developer.team-identifier</key>
 	<string>M287G8G83F</string>
 
