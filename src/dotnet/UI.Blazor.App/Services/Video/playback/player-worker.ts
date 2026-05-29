@@ -229,6 +229,11 @@ export const playerWorkerImpl: PlayerWorker = {
         return Promise.resolve();
     },
 
+    setAudioCaptureOffsetMs(streamId: string, caOffsetMs: number | null): Promise<void> {
+        players.get(streamId)?.setAudioCaptureOffsetMs(caOffsetMs);
+        return Promise.resolve();
+    },
+
     installBgCanvas(streamId: string, mode: BgBlurMode, canvas: OffscreenCanvas): Promise<void> {
         // Defensive: catch main↔worker bundle-version skew at the boundary.
         // If main is on an older bundle that sends (streamId, canvas) instead

@@ -232,6 +232,10 @@ export class Player {
             this.stallTimer?.reset();
     }
 
+    setAudioCaptureOffsetMs(caOffsetMs: number | null): void {
+        this.buffer?.setAudioCaptureOffsetMs(caOffsetMs);
+    }
+
     whenDone(): Promise<void> {
         return this.whenDoneInternal;
     }

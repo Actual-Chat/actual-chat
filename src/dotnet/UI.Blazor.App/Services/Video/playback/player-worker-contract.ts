@@ -95,6 +95,10 @@ export interface PlayerWorker {
 
     setExpectedPaused(streamId: string, paused: boolean, noWait?: RpcNoWait): Promise<void>;
 
+    // Audio presentation capture-point (ms, in the stream's offset domain) for
+    // A/V-sync skip-to-audio. null ⇒ no audio signal ⇒ buffer skips to live.
+    setAudioCaptureOffsetMs(streamId: string, caOffsetMs: number | null, noWait?: RpcNoWait): Promise<void>;
+
     // Bind a bg-blur OffscreenCanvas to `streamId`. `canvas` is transferred
     // (trailing transferable). Replaces any previously-installed canvas
     // for the same stream. `mode` hints which renderer the worker should

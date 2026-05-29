@@ -14,6 +14,8 @@ import { catchErrors, PromiseSource } from 'actuallab-core';
 import { rpcClient, rpcNoWait, rpcSendNoWait } from 'rpc';
 import { Versioning } from 'versioning';
 import { AC, whenAppConstantsReady } from 'app-constants';
+import { RunningEMA } from 'math';
+import { publishAudioLatency } from '../../Services/Video/audio-latency-registry';
 import { Log, getLogs } from 'logging';
 import { ObjectPool } from 'object-pool';
 import { Resettable } from 'resettable';
@@ -150,6 +152,7 @@ export class AudioPlayer implements Resettable {
     private playbackState: PlaybackState = 'paused';
     private targetBufferSizeMs = 0;
     private authorId: string | null = null;
+    private readonly audioLatencyEma = new RunningEMA(0, 3, 0.3);
     private recordedAtMs = 0;
     private lastLatencyLogTime = 0;
     private lastLagReportTime = 0;
@@ -463,20 +466,20 @@ export class AudioPlayer implements Resettable {
         }
         else {
             if (this.authorId && state.playbackState === 'playing') {
-                // The decoder reports presentation lag from the source offset
-                // of the decoded frame it handed to the feeder, using the
-                // feeder's current target buffer delay.
-                const sysNow = Date.now();
-                if (
-                    this.blazorRef
-                    && state.presentationLagMs !== null
-                    && sysNow - this.lastLagReportTime >= AudioPlayer.LagReportIntervalMs
-                ) {
-                    this.lastLagReportTime = sysNow;
-                    void this.blazorRef.invokeMethodAsync(
-                        'OnPresentationLag',
-                        state.presentationLagMs + this.getAudioContextLatencyMs())
-                        .catch(() => { /* ignore */ });
+                // Presentation lag = output moment − record time, plus the
+                // AudioContext output latency. EMA-smoothed to avoid spikes,
+                // then published for the video pipeline's skip-to-audio.
+                if (state.presentationLagMs !== null) {
+                    const lagMs = state.presentationLagMs + this.getAudioContextLatencyMs();
+                    this.audioLatencyEma.appendSample(lagMs);
+                    const emaMs = this.audioLatencyEma.value;
+                    publishAudioLatency(this.authorId, emaMs);
+                    const sysNow = Date.now();
+                    if (this.blazorRef && sysNow - this.lastLagReportTime >= AudioPlayer.LagReportIntervalMs) {
+                        this.lastLagReportTime = sysNow;
+                        void this.blazorRef.invokeMethodAsync('OnPresentationLag', emaMs)
+                            .catch(() => { /* ignore */ });
+                    }
                 }
                 const serverNow = ServerClock.now();
                 if (serverNow - this.lastLatencyLogTime > 10_000) {

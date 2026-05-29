@@ -14,6 +14,7 @@ import type {
     PlayerWorker,
     LatencySample,
 } from '../../Services/Video/playback/player-worker-contract';
+import { getAudioLatency } from '../../Services/Video/audio-latency-registry';
 import type { RenderBackendKind } from '../../Services/Video/playback/render-backends';
 import type { PlayerStats } from '../../Services/Video/frame-envelopes';
 import {
@@ -257,6 +258,8 @@ export class VideoPlayer {
 
     private startedAtMs: number;
 
+    private audioCaTimer: ReturnType<typeof setInterval> | null = null;
+
     /** Creates a new VideoPlayer instance for Blazor interop */
     static create(
         canvas: HTMLCanvasElement,
@@ -326,6 +329,11 @@ export class VideoPlayer {
             `VideoPlayer created for stream ${streamId}, codec: ${codec}, size: ${width}x${height}, ` +
             `authorId=${authorId}, startedAtMs=${startedAtMs.toFixed(0)}`);
 
+        // A/V-sync: push the audio capture-point to the worker so a video skip
+        // lands on the audio timeline instead of the live edge. Cheap no-op
+        // until a worker stream is active and a fresh audio latency exists.
+        this.audioCaTimer = setInterval(() => this.pushAudioCaptureOffset(), 150);
+
         activePlayers.set(streamId, this);
         infoLog?.log(`VideoPlayer registry: added ${streamId}, active=${activePlayers.size}`);
 
@@ -356,6 +364,17 @@ export class VideoPlayer {
         // doesn't leave us showing cover with no painter attached.
         this.applyFitDecision();
         this.renderBackend.setExpectedPaused(this.getExpectedPaused());
+    }
+
+    private pushAudioCaptureOffset(): void {
+        if (!this.workerStreamActive || !this.playerWorker)
+            return;
+        const audioLatencyMs = getAudioLatency(this.authorId);
+        const caOffsetMs = audioLatencyMs === null
+            ? null
+            : (ServerClock.now() - audioLatencyMs) - this.startedAtMs;
+        this.playerWorker.setAudioCaptureOffsetMs(this.streamId, caOffsetMs, rpcNoWait)
+            .catch((e: unknown) => warnLog?.log('setAudioCaptureOffsetMs failed:', e));
     }
 
     setExpectedPaused(paused: boolean): void {
@@ -1182,6 +1201,10 @@ export class VideoPlayer {
     }
 
     public async stop(): Promise<void> {
+        if (this.audioCaTimer !== null) {
+            clearInterval(this.audioCaTimer);
+            this.audioCaTimer = null;
+        }
         if (!this.isPlaying) return;
 
         infoLog?.log(`VideoPlayer stop() called for stream ${this.streamId}, rendered=${this.renderFrameCount} frames, received=${this.receivedFrameCount}`);
