@@ -24,6 +24,8 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private TimeSpan _playDuration;
     private TimeSpan _audioSyncSuppressedUntil;
     private int _audioSyncSampleIn;
+    private TimeSpan _currentTargetBufferSize;
+    private CpuTimestamp _lastBufferAdjustAt;
 
     private IServiceProvider Services { get; }
 
@@ -94,7 +96,9 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             case PlayCommand:
                 var trackInfo = (ChatAudioTrackInfo)TrackInfo;
                 await MediaMetadataUI.SetPlayback(MediaMetadata.FromTrack(trackInfo), trackInfo.IsStreaming).ConfigureAwait(false);
-                _playbackEngine = Factory.Create(_id, ApplyAvSyncHold(trackInfo), Source, this);
+                var heldTrackInfo = ApplyAvSyncHold(trackInfo);
+                _currentTargetBufferSize = heldTrackInfo.TargetBufferSize;
+                _playbackEngine = Factory.Create(_id, heldTrackInfo, Source, this);
                 await _playbackEngine.Play(cancellationToken).ConfigureAwait(false);
                 break;
             case PauseCommand:
@@ -192,6 +196,33 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             : trackInfo;
     }
 
+    // Adaptive A/V hold: track video lag at runtime and lower the playback-buffer
+    // target when video freshens (or raise it when video slows), so the catch-up
+    // speed-up converges instead of fighting a stale, locked-high target. The
+    // start-time ApplyAvSyncHold seeds _currentTargetBufferSize.
+    private void AdjustBufferHold(AuthorId authorId)
+    {
+        if (LagTracker.GetVideoLag(authorId) is not { } videoLag)
+            return; // No fresh video lag — keep the current hold (don't collapse the buffer).
+
+        var baseSize = Constants.Audio.PlaybackTargetBufferSizeWithVideo;
+        var cap = baseSize + TimeSpan.FromMilliseconds(500);
+        var desired = videoLag + Constants.Audio.AudioCatchUpBaselineDelta;
+        if (desired < baseSize)
+            desired = baseSize;
+        if (desired > cap)
+            desired = cap;
+
+        if ((desired - _currentTargetBufferSize).Duration() <= TimeSpan.FromMilliseconds(50))
+            return; // Hysteresis: ignore small changes.
+        if (_lastBufferAdjustAt.Elapsed < TimeSpan.FromMilliseconds(500))
+            return; // Rate-limit to avoid thrash.
+
+        _lastBufferAdjustAt = CpuTimestamp.Now;
+        _currentTargetBufferSize = desired;
+        _ = _playbackEngine?.SetTargetBufferSize(desired, CancellationToken.None);
+    }
+
     private async ValueTask ApplyAudioSync(AudioFrame frame, CancellationToken cancellationToken)
     {
         if (TrackInfo is not ChatAudioTrackInfo { Author.Id: { } authorId })
@@ -209,6 +240,8 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             return;
         }
         _audioSyncSampleIn = AudioSyncPolicySamplePeriodFrames;
+
+        AdjustBufferHold(authorId);
 
         var decision = new AudioCatchUpDecision(TimeSpan.Zero, AudioSyncSkipReason.None);
         try {

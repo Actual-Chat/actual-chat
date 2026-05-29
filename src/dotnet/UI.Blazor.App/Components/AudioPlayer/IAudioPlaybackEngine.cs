@@ -11,4 +11,9 @@ public interface IAudioPlaybackEngine : IAsyncDisposable
     ValueTask PushFrame(AudioFrame frame, CancellationToken cancellationToken);
     ValueTask SkipUntil(TimeSpan sourceOffset, CancellationToken cancellationToken);
     ValueTask SpeedUpUntil(TimeSpan sourceOffset, int dropEveryNFrames, CancellationToken cancellationToken);
+
+    // Runtime playback-buffer target change (A/V-sync adaptive hold). Default
+    // no-op so non-web engines keep their start-time hold; web overrides it.
+    ValueTask SetTargetBufferSize(TimeSpan targetBufferSize, CancellationToken cancellationToken)
+        => ValueTask.CompletedTask;
 }

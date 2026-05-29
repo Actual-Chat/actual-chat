@@ -127,6 +127,16 @@ public sealed class WebAudioPlaybackEngine(
         return ValueTask.CompletedTask;
     }
 
+    public ValueTask SetTargetBufferSize(TimeSpan targetBufferSize, CancellationToken cancellationToken)
+    {
+        // No-op before the JS player exists; the start-time hold seeds the value.
+        if (_jsRef == null)
+            return ValueTask.CompletedTask;
+
+        _ = _jsRef.InvokeVoidAsync("setTargetBufferSize", cancellationToken, targetBufferSize.TotalMilliseconds);
+        return ValueTask.CompletedTask;
+    }
+
     public async ValueTask DisposeAsync()
     {
         var (jsRef, blazorRef) = (_jsRef, _blazorRef);
