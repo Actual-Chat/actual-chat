@@ -11,6 +11,13 @@ interface AudioLatencyEntry {
 
 const entries = new Map<string, AudioLatencyEntry>();
 
+// Kill switch for the audio-master skip-to-audio behavior. Default on; when off,
+// callers fall back to skip-to-live (exact pre-feature behavior). Independent of
+// the C# IsAudioSyncEnabled audio catch-up gate.
+let skipToAudioEnabled = true;
+export function setSkipToAudioEnabled(enabled: boolean): void { skipToAudioEnabled = enabled; }
+export function isSkipToAudioEnabled(): boolean { return skipToAudioEnabled; }
+
 export function publishAudioLatency(authorId: string, latencyMs: number): void {
     if (authorId.length === 0)
         return;

@@ -14,7 +14,7 @@ import type {
     PlayerWorker,
     LatencySample,
 } from '../../Services/Video/playback/player-worker-contract';
-import { getAudioLatency } from '../../Services/Video/audio-latency-registry';
+import { getAudioLatency, isSkipToAudioEnabled } from '../../Services/Video/audio-latency-registry';
 import type { RenderBackendKind } from '../../Services/Video/playback/render-backends';
 import type { PlayerStats } from '../../Services/Video/frame-envelopes';
 import {
@@ -34,6 +34,7 @@ import { readBgBlurOverride } from '../../Services/Video/playback/bg-blur-overri
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { ConnectivityUI } from '../../../UI.Blazor/Services/ConnectivityUI/connectivity-ui';
 import { AC, VIDEO } from 'app-constants';
+import { RunningEMA } from 'math';
 
 // Backend selection: prefer the off-thread renderer wherever a generator API
 // (MediaStreamTrackGenerator on Chromium, VideoTrackGenerator on Safari) is
@@ -259,6 +260,7 @@ export class VideoPlayer {
     private startedAtMs: number;
 
     private audioCaTimer: ReturnType<typeof setInterval> | null = null;
+    private readonly videoLagEma = new RunningEMA(0, 3, 0.3);
 
     /** Creates a new VideoPlayer instance for Blazor interop */
     static create(
@@ -369,7 +371,7 @@ export class VideoPlayer {
     private pushAudioCaptureOffset(): void {
         if (!this.workerStreamActive || !this.playerWorker)
             return;
-        const audioLatencyMs = getAudioLatency(this.authorId);
+        const audioLatencyMs = isSkipToAudioEnabled() ? getAudioLatency(this.authorId) : null;
         const caOffsetMs = audioLatencyMs === null
             ? null
             : (ServerClock.now() - audioLatencyMs) - this.startedAtMs;
@@ -1192,8 +1194,11 @@ export class VideoPlayer {
         // NOT frameAgeMs, which is decode→present age in receiver-local time.
         const captureAtServerMs = this.startedAtMs + sample.capturedAtMs;
         const presentationLagMs = Math.max(0, ServerClock.now() - captureAtServerMs);
+        // EMA-smoothed to avoid spike-driven A/V-sync decisions (matches audio).
+        this.videoLagEma.appendSample(presentationLagMs);
         void this.blazorRef.invokeMethodAsync(
-            'OnPresentationLag', presentationLagMs, sample.capturedAtMs, sample.bufferSpanMs)
+            'OnPresentationLag', this.videoLagEma.value, sample.capturedAtMs, sample.bufferSpanMs,
+            sample.playerStats.presentSkipRatio)
             .catch(() => { /* ignore */ });
 
         // Push a playback-health snapshot for the server-side controller.

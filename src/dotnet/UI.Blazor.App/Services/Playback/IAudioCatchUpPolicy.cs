@@ -54,6 +54,13 @@ public sealed class LiveAudioCatchUpPolicy(IServiceProvider services) : IAudioCa
             return Task.FromResult(new AudioCatchUpDecision(TimeSpan.Zero, AudioSyncSkipReason.MissingAudioLag));
         }
 
+        // Audio-master under degradation: while video is actively skipping it
+        // moves to the audio timeline (skip-to-audio), so suppress audio
+        // catch-up rather than chasing a transiently-jumpy video target.
+        const double videoSkippingThreshold = 0.2;
+        if (snapshot.VideoInputs.SkipRatio > videoSkippingThreshold)
+            return Task.FromResult(new AudioCatchUpDecision(TimeSpan.Zero, AudioSyncSkipReason.VideoSkipping));
+
         var desired = audio.Value - video.Value;
         var baseline = Constants.Audio.AudioCatchUpBaselineDelta;
         var syncError = desired - baseline;

@@ -149,11 +149,14 @@ public sealed class PlaybackLagTracker : IDisposable
 // Raw lag-formula components (ms) for diagnostics. AnchorMs = source-recorded
 // wallclock (server domain); LookaheadMs = forward buffer (audio feeder target
 // delay / video buffer span); OffsetMs = presented frame's offset from start.
+// SkipRatio (video only) = EMA of present-stage skip activity; the catch-up
+// policy suppresses corrections while it's high (audio-master under skip).
 [StructLayout(LayoutKind.Auto)]
 public readonly record struct LagInputs(
     double AnchorMs = 0,
     double LookaheadMs = 0,
-    double OffsetMs = 0);
+    double OffsetMs = 0,
+    double SkipRatio = 0);
 
 [StructLayout(LayoutKind.Auto)]
 public readonly record struct PlaybackLagSnapshot(

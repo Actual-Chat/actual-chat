@@ -7,6 +7,7 @@ public enum AudioSyncSkipReason
     MissingVideoLag,
     MissingAudioLag,
     InsideDeadband,
+    VideoSkipping,
 }
 
 public enum AudioSyncCommand
