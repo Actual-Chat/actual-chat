@@ -412,6 +412,28 @@ describe('wireSend', () => {
         expect(sender.formats[0].codecSettings).not.toBe('');
     });
 
+    // When the init keyframe carries no metadata.decoderConfig (its first KF
+    // was dropped by the warmup gate), the codec must fall back to the
+    // configured codec — otherwise the announce ships '' and the receiver
+    // mis-selects H.264 for an AV1 stream.
+    it('init codec falls back to configured codec when decoderConfig is absent', async () => {
+        const stats = createEmptyRecorderStats();
+        const sender = new FakeSender();
+        const sink = wireSend({
+            createSender: () => sender,
+            controller: new LayerLadderController([
+                { width: 1280, height: 720, bitrate: 2_500_000, framerate: 30, codec: 'av01.0.08M.08' },
+            ]),
+        });
+
+        await runWith(source([
+            makeEncoded(stats, { type: 'key', capturedAt: { timeMs: 1_000, epoch: 0 } }),
+        ]), sink);
+
+        expect(sender.formats).toHaveLength(1);
+        expect(sender.formats[0].codec).toBe('av01.0.08M.08');
+    });
+
     // Ensure the helper is referenced so unused-import lints don't fire if we pare down later.
     it('runs cleanly with no items (empty stream)', async () => {
         const sender = new FakeSender();

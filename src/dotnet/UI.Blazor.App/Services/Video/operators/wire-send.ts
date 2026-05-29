@@ -221,7 +221,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                             const description = top.description ?? null;
                             const topCfg = cur[cur.length - 1];
                             sender.init({
-                                codec: top.metadata.decoderConfig?.codec ?? '',
+                                codec: top.metadata.decoderConfig?.codec ?? topCfg.codec,
                                 width: topCfg.width,
                                 height: topCfg.height,
                                 sourceWidth: top.sourceWidth,
