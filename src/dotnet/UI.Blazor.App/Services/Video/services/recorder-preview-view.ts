@@ -262,8 +262,22 @@ export class RecorderPreviewView {
         }
 
         if (this.attachedRecorder) {
-            if (paused || !this.attachedTrack) this.options.videoEl.pause();
-            else void this.options.videoEl.play();
+            const videoEl = this.options.videoEl;
+            if (paused) {
+                videoEl.pause();
+                // Release the generated-track sink while paused: a single
+                // generator-backed track doesn't fan out to two <video>
+                // elements, so a paused-but-still-attached sink starves the
+                // surface taking over (Settings modal during live). Canvas
+                // fallback (no track) keeps its last frame and needs no release.
+                if (this.attachedTrack && videoEl.srcObject)
+                    videoEl.srcObject = null;
+            } else if (!this.attachedTrack) {
+                videoEl.pause();
+            } else {
+                videoEl.srcObject ??= new MediaStream([this.attachedTrack]);
+                void videoEl.play();
+            }
         }
 
         const isStarting = !paused
