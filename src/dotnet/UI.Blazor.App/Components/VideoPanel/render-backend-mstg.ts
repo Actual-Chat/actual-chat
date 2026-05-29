@@ -13,13 +13,6 @@ export type OffThreadPlaybackStallReport = MstgPlaybackStallReport;
 // inside a worker (VTG). The canvas backend is broken on Chromium/Safari, so
 // negative-gate on Firefox rather than positive-probe APIs that may be hidden
 // behind worker globals we can't reach from main.
-//
-// Edge is also negative-gated: Chromium-on-Windows mis-composites a rotated
-// `<video srcObject>` at focused-tile sizes — the entire focused tile paints
-// black even though drawImage(video) returns live pixels and the bg canvas
-// has live content. Canvas backend doesn't hit this because its frames go
-// through a 2D context. `?renderBackend=mstg` still lets you opt back in
-// for testing.
 export function isOffThreadPlausible(): boolean {
     return isMstgRenderBackendPlausible();
 }
