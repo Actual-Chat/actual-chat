@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.Events
-@inherits ComputedMenuBase<AppUIHub, TopNavbarMenu.Model>
+@inherits ComputedMenuBase<AppUIHub, NavbarLogoMenu.Model>
 @{
     var m = State.Value;
 }
@@ -22,11 +22,19 @@
     Text="Reload"
     Click="@OnReloadClick">
 </MenuEntry>
-<MenuEntry
-    Icon="icon-log-out"
-    Text="Log out"
-    Click="@SignOut">
-</MenuEntry>
+@if (m.Account.IsGuest) {
+    <MenuEntry
+        Icon="icon-log-in"
+        Text="Sign in"
+        Click="@SignIn">
+    </MenuEntry>
+} else {
+    <MenuEntry
+        Icon="icon-log-out"
+        Text="Log out"
+        Click="@SignOut">
+    </MenuEntry>
+}
 @if (m.Account.IsAdmin) {
     <MenuEntrySeparator/>
     <MenuEntry
@@ -61,6 +69,11 @@
     private async Task OnSettingsClick() {
         await WhenClosed;
         _ = UIEventHub.Publish(new ShowSettingsEvent());
+    }
+
+    private async Task SignIn() {
+        await WhenClosed;
+        _ = ModalUI.Show(new SignInModal.Model());
     }
 
     private async Task SignOut() {
