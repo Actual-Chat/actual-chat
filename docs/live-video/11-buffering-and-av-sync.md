@@ -251,9 +251,17 @@ Why audio is the one that adjusts:
 - So if A/V drift, audio is the lever — speed-up or skip — because video's
   presentation timing is anchored on its keyframe-aware buffer.
 
-### Current state — wired but disabled
+### Current state — wired and enabled; audio-master under video skip
 
-The mechanism is fully implemented in code; it just doesn't run by default.
+The mechanism is fully implemented and **enabled by default**
+(`IsAudioSyncEnabled = true`). Beyond the original "audio adapts to video" catch-up,
+the receiver now also handles the **video-skip** case explicitly: under poor network
+the video buffer skips to the **audio capture-point** (`skip-to-audio`) instead of
+the live edge, so video lands lip-synced to audio rather than racing ahead and
+forcing endless audio speed-ups. While video is actively skipping, the catch-up
+policy suppresses corrections (`AudioSyncSkipReason.VideoSkipping`) — audio is the
+master timeline during degradation. See the audio-latency registry
+(`Services/Video/audio-latency-registry.ts`) and `EncodedFrameBuffer.setAudioCaptureOffsetMs`.
 
 #### The pieces (all live)
 
@@ -309,8 +317,12 @@ The mechanism is fully implemented in code; it just doesn't run by default.
 
 ```csharp
 // ChatAudioUI.cs
-public bool IsAudioSyncEnabled { get; set; } = false;  // NOTE(AY): Needs testing!
+public bool IsAudioSyncEnabled { get; set; } = true;
 ```
+
+The JS skip-to-audio behavior has its own independent kill switch
+(`setSkipToAudioEnabled(false)` in `audio-latency-registry.ts`); when off it falls
+back to the original skip-to-live.
 
 Toggle path:
 
@@ -334,7 +346,7 @@ chain runs.
 | Speed-up bounded duration | Yes (`PlaybackMaxSpeedUpDuration = 5 s`) |
 | Deadband / baseline | Yes (`AudioCatchUpDeadband = 200 ms`, `AudioCatchUpBaselineDelta = -100 ms`) |
 | Cooldown between commands | Yes (`PlaybackCatchUpCommandCooldown = 1 s`) |
-| Production-enabled | **No.** Gated by `IsAudioSyncEnabled = false` |
+| Production-enabled | **Yes.** `IsAudioSyncEnabled = true` (default) |
 
 #### Practical implications
 
