@@ -980,6 +980,9 @@
             AudioSyncSkipReason.SyncDisabled => "disabled",
             AudioSyncSkipReason.MissingVideoLag => "no video lag",
             AudioSyncSkipReason.MissingAudioLag => "no audio lag",
+            AudioSyncSkipReason.VideoSkipping => "video skipping",
+            AudioSyncSkipReason.LocalVideoPreview => "local/own preview",
+            AudioSyncSkipReason.ImplausibleDrift => "implausible drift",
             AudioSyncSkipReason.InsideDeadband => $"{s.LastDesiredCatchUp.TotalMilliseconds:+0;-0;0} ms (deadband)",
             _ => $"{s.LastDesiredCatchUp.TotalMilliseconds:+0;-0;0} ms",
         };

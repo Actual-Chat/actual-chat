@@ -48,6 +48,12 @@ public sealed class LiveAudioCatchUpPolicy(IServiceProvider services) : IAudioCa
             return Task.FromResult(new AudioCatchUpDecision(TimeSpan.Zero, AudioSyncSkipReason.MissingVideoLag));
         }
 
+        // A real remote's video lag can't fall below its receive buffer (~170ms). A
+        // value this low means a local self-preview (own stream reads ~0) or a
+        // skew-corrupted lag — not a trustworthy sync target. Don't drive audio off it.
+        if (video.Value < Constants.Audio.AudioSyncMinVideoLag)
+            return Task.FromResult(new AudioCatchUpDecision(TimeSpan.Zero, AudioSyncSkipReason.LocalVideoPreview));
+
         var audio = snapshot.AudioLag;
         if (audio is null) {
             LogMissingSignal(authorId, "audio", snapshot);
@@ -66,6 +72,10 @@ public sealed class LiveAudioCatchUpPolicy(IServiceProvider services) : IAudioCa
         var syncError = desired - baseline;
         var insideDeadband = syncError < Constants.Audio.AudioCatchUpDeadband;
         var desiredCatchUp = insideDeadband ? TimeSpan.Zero : syncError;
+        // Reject garbage: a multi-second+ "drift" is a bad/stale lag sample, not a real
+        // gap — never skip seconds of audio off it.
+        if (desiredCatchUp > Constants.Audio.AudioSyncMaxDesired)
+            return Task.FromResult(new AudioCatchUpDecision(TimeSpan.Zero, AudioSyncSkipReason.ImplausibleDrift));
         var reason = insideDeadband ? AudioSyncSkipReason.InsideDeadband : AudioSyncSkipReason.None;
         if (IsDiagnosticLogEnabled)
             Log.LogWarning(
