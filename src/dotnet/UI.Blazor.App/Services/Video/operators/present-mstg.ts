@@ -43,6 +43,7 @@ export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame
         let lastWriteAt: number | null = null;
         let prevCapturedAt: number | null = null;
         let prevCapturedEpoch: number | null = null;
+        let lastPresentLogAt = 0; // INSTRUMENTATION (temporary)
         const presentSkipRatio = new RunningEMA(0, 1, PRESENT_SKIP_RATIO_EMA_ALPHA);
         try {
             for await (const decoded of source) {
@@ -116,6 +117,15 @@ export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame
                     lastWriteAt = nextWriteAt;
                     prevCapturedAt = decoded.capturedAt.timeMs;
                     prevCapturedEpoch = decoded.capturedAt.epoch;
+                    // INSTRUMENTATION (temporary): offset of the frame written to
+                    // the MSTG sink (~live edge) + buffer span + pacing wait.
+                    if (now - lastPresentLogAt > 1000) {
+                        lastPresentLogAt = now;
+                        warnLog?.log(
+                            `[AVLAT present] writeOffsetMs=${decoded.capturedAt.timeMs.toFixed(0)} `
+                            + `bufSpanMs=${getBufferSpanMs().toFixed(0)} pacingWaitMs=${(nextWriteAt - now).toFixed(1)} `
+                            + `presented=${decoded.stats.presented}`);
+                    }
                 } finally {
                     try { decoded.frame.close(); } catch { /* already closed */ }
                 }

@@ -265,6 +265,8 @@ export class VideoPlayer {
     private displayLatencyMs = 0;
     private hasDisplayLag = false;
     private rvfcStop = false;
+    private lastTapCapturedAtMs = 0;
+    private lastRvfcLogAt = 0;
 
     /** Creates a new VideoPlayer instance for Blazor interop */
     static create(
@@ -380,16 +382,31 @@ export class VideoPlayer {
         const videoEl = this.videoEl;
         if (typeof videoEl.requestVideoFrameCallback !== 'function')
             return;
-        const onFrame = (_now: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata): void => {
+        const onFrame = (rvfcNow: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata): void => {
             // True capture→on-screen latency: mediaTime is the displayed frame's
             // offset from stream start (we stamp chunk.timestamp = offset), so
             // now − (anchor + mediaTime) is its age on screen — this INCLUDES the
             // MSTG→<video> playback buffer that the pre-present latency-tap misses.
-            const lagMs = ServerClock.now() - (this.startedAtMs + metadata.mediaTime * 1000);
+            const mediaTimeMs = metadata.mediaTime * 1000;
+            const lagMs = ServerClock.now() - (this.startedAtMs + mediaTimeMs);
             if (Number.isFinite(lagMs) && lagMs >= 0 && lagMs < 30_000) {
                 this.displayLatencyEma.appendSample(lagMs);
                 this.displayLatencyMs = this.displayLatencyEma.value;
                 this.hasDisplayLag = true;
+            }
+            // INSTRUMENTATION (temporary): does rVFC mediaTime lag the live edge,
+            // or track it? lastTapCapturedAtMs is the latest decoded-frame offset
+            // (~live). gapBehindLive ≈ how far behind live the *displayed* frame is.
+            const nowMs = performance.now();
+            if (nowMs - this.lastRvfcLogAt > 1000) {
+                this.lastRvfcLogAt = nowMs;
+                warnLog?.log(
+                    `[AVLAT rvfc] stream=${this.streamId} `
+                    + `mediaTimeMs=${mediaTimeMs.toFixed(0)} displayLag=${lagMs.toFixed(0)}ms `
+                    + `tapOffsetMs=${this.lastTapCapturedAtMs.toFixed(0)} `
+                    + `gapBehindLive=${(this.lastTapCapturedAtMs - mediaTimeMs).toFixed(0)}ms `
+                    + `expDisplayMinusNow=${(metadata.expectedDisplayTime - rvfcNow).toFixed(1)}ms `
+                    + `presentedFrames=${metadata.presentedFrames} hasDisplayLag=${this.hasDisplayLag}`);
             }
             if (!this.rvfcStop)
                 videoEl.requestVideoFrameCallback(onFrame);
@@ -1224,6 +1241,7 @@ export class VideoPlayer {
         const captureAtServerMs = this.startedAtMs + sample.capturedAtMs;
         const tapLagMs = Math.max(0, ServerClock.now() - captureAtServerMs);
         this.videoLagEma.appendSample(tapLagMs);
+        this.lastTapCapturedAtMs = sample.capturedAtMs; // ~live edge, for the rVFC gap log
         const videoLagMs = this.hasDisplayLag ? this.displayLatencyMs : this.videoLagEma.value;
         void this.blazorRef.invokeMethodAsync(
             'OnPresentationLag', videoLagMs, sample.capturedAtMs, sample.bufferSpanMs,
