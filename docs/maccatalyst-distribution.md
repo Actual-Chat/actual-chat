@@ -14,17 +14,25 @@ existing iOS pipeline (`build-ios-pkg` / `deploy-ios-to-appstore`).
 2. **Register your Mac as a device** — Devices → +  → Platform **macOS** → Device ID =
    the Mac's **Provisioning UDID** (`system_profiler SPHardwareDataType | grep "Provisioning UDID"`).
    Needed so development profiles can authorize local runs.
-3. **Provisioning Profiles** — four total (all Mac Catalyst subtype):
+3. **Provisioning Profiles** — four total. On the profile-generation page select the
+   **"Mac"** profile type, **not "Mac Catalyst"**:
 
-   | Name | Type | App ID | Cert |
-   |---|---|---|---|
-   | `mac.chat.actual.dev.app` | macOS App Development | `chat.actual.dev.app` | Apple Development (+ your Mac) |
-   | `mac.chat.actual.app` | macOS App Development | `chat.actual.app` | Apple Development (+ your Mac) |
-   | `Mac App Store Dev` | Mac App Store | `chat.actual.dev.app` | Apple Distribution |
-   | `Mac App Store` | Mac App Store | `chat.actual.app` | Apple Distribution |
+   | Name | Type | Profile type | App ID | Cert |
+   |---|---|---|---|---|
+   | `mac.chat.actual.dev.app` | macOS App Development | **Mac** | `chat.actual.dev.app` | Apple Development (+ your Mac) |
+   | `mac.chat.actual.app` | macOS App Development | **Mac** | `chat.actual.app` | Apple Development (+ your Mac) |
+   | `Mac App Store Dev` | Mac App Store | **Mac** | `chat.actual.dev.app` | Apple Distribution |
+   | `Mac App Store` | Mac App Store | **Mac** | `chat.actual.app` | Apple Distribution |
 
    Names must match `CodesignProvision` in `src/dotnet/App.Maui/App.Maui.csproj`
    (Debug uses the Development pair, Release the App Store pair).
+
+   > **Do not use the "Mac Catalyst" profile type.** A Mac Catalyst profile makes dyld
+   > refuse `@rpath` expansion for embedded `.framework`s under the App Store/TestFlight
+   > security policy, so the app gets `EXC_CRASH (SIGABRT)` at launch with
+   > *"Library not loaded: @rpath/…OpusLib … security policy does not allow @ path expansion"*.
+   > It only bites the distribution build (`get-task-allow=false`); local Debug masks it.
+   > See [dotnet/macios#14686](https://github.com/dotnet/macios/issues/14686).
 4. **Certificates** — in addition to the existing Apple Distribution + Apple Development
    certs, create a **Mac Installer Distribution** cert (Production). Installs as
    `3rd Party Mac Developer Installer: Actual Chat Inc. (M287G8G83F)`.
@@ -58,20 +66,18 @@ open ../../../artifacts/bin/App.Maui/debug_net10.0-maccatalyst_maccatalyst-arm64
 Release locally cross-contaminates that dir and yields an unsigned app or undefined
 `_callback_*` linker symbols. If you switch configs, run `rm -rf artifacts/out` first.
 
-## Local build (dev — App Store signed)
+## Local build (App Store signed `.pkg`)
+
+`publish-maccatalyst` builds, signs the `.app` with the Apple Distribution cert, and —
+via `CreatePackage` + `EnablePackageSigning` + `PackageSigningKey` (the installer cert) —
+emits the installer-signed `.pkg` directly. No separate packaging step.
 
 ```bash
+# dev:
 ./run-build.cmd publish-maccatalyst --configuration Release --is-dev-maui true
-./tools/sign-maccatalyst.sh dev
-# artifacts/maccatalyst/chat.actual.dev.app-<version>.pkg
-```
-
-## Local build (prod — App Store signed)
-
-```bash
+# prod:
 ./run-build.cmd publish-maccatalyst --configuration Release --is-dev-maui false
-./tools/sign-maccatalyst.sh prod
-# artifacts/maccatalyst/chat.actual.app-<version>.pkg
+# -> artifacts/publish/App.Maui/release_net10.0-maccatalyst_maccatalyst-arm64/ActualChat-<version>.pkg
 ```
 
 Upload via Transporter, or:
@@ -86,12 +92,14 @@ xcrun altool --upload-app -f <pkg> -t macos \
 Two jobs in `.github/workflows/build-test-deploy-dev.yml` —
 `build-maccatalyst-pkg` and `deploy-maccatalyst-to-appstore` — mirror the iOS
 ones. They run whenever `MUST_BUILD_PACKAGE == true` (dev/release branch pushes,
-or a manual run with `buildAppFor`), build via the `publish-maccatalyst` target,
-wrap the signed `.app` with `tools/sign-maccatalyst.sh`, and validate + upload
-with `altool -t macos`.
+or a manual run with `buildAppFor`), build via the `publish-maccatalyst` target
+(which emits the installer-signed `.pkg` directly), then validate + upload with
+`altool -t macos`.
 
-Unlike iOS, no manual re-sign step is needed: the Release config + `fix-codesigning.sh`
-already sign the `.app` (and nested code) with the Apple Distribution cert.
+The Release config signs the `.app` (and nested code) with the Apple Distribution cert,
+`fix-codesigning.sh` repairs the SDK codesign regression (see below), and the SDK's
+`CreatePackage`/`EnablePackageSigning` produces the `.pkg` — no manual re-sign or
+`productbuild` step.
 
 ### Required GitHub secrets
 
