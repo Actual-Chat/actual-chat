@@ -38,6 +38,7 @@ class EncodedFrameBuffer {
     private speedUpUntilMs = 0;
     private speedUpDropEveryNFrames = 0;
     private speedUpFrameCounter = 0;
+    private primed = false;
 
     get length(): number { return this.frames.length; }
 
@@ -57,6 +58,7 @@ class EncodedFrameBuffer {
         this.frames.clear();
         this.skipUntilMs = 0;
         this.clearSpeedUp();
+        this.primed = false;
     }
 
     skipUntil(sourceOffsetMs: number): void {
@@ -109,8 +111,17 @@ class EncodedFrameBuffer {
     private canRelease(): boolean {
         if (this.targetDurationMs <= 0 || this.hasEnd())
             return true;
-
-        return this.durationMs() >= this.targetDurationMs;
+        // Prebuffer once: gate the start until we first reach target, then
+        // release on demand. Re-gating below target mid-stream would strand
+        // the cushion during an arrival gap and starve the feeder (clicks);
+        // letting it drain is what absorbs jitter. Re-primes on clear().
+        if (this.primed)
+            return true;
+        if (this.durationMs() >= this.targetDurationMs) {
+            this.primed = true;
+            return true;
+        }
+        return false;
     }
 
     private durationMs(): number {
