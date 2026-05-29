@@ -53,6 +53,7 @@ export class EncodedFrameBuffer {
     private readonly skipToLiveSpanMs: number;
     private readonly nowFn: () => number;
     private nextSkipAllowedAtMs = 0;
+    private caOffsetMs: number | null = null;
 
     constructor(opts: EncodedFrameBufferOptions) {
         this.targetSpanMs = opts.targetSpanMs;
@@ -70,6 +71,13 @@ export class EncodedFrameBuffer {
 
     isReset(): boolean {
         return this.state === 'reset';
+    }
+
+    // Audio presentation capture-time in this stream's offset domain (ms).
+    // When set, a skip targets the newest keyframe at or before it so video
+    // lands on the audio timeline instead of the live edge. null ⇒ skip-to-live.
+    setAudioCaptureOffsetMs(ms: number | null): void {
+        this.caOffsetMs = ms;
     }
 
     // Capture-time duration of buffered content (ms). The trailing-chunk's
@@ -107,11 +115,14 @@ export class EncodedFrameBuffer {
         return 'accepted';
     }
 
-    // Pre-decode skip-to-live: when the buffered span exceeds skipToLiveSpanMs,
-    // drop every chunk before the newest buffered keyframe so the next pull is
-    // at the live edge. Keyframe-anchored (decoder stays valid); cooldown
-    // prevents thrash. No-op when disabled, under threshold, in cooldown, or
-    // when the newest keyframe is already the head (nothing to drop).
+    // Pre-decode skip: when the buffered span exceeds skipToLiveSpanMs, drop
+    // every chunk before the chosen keyframe. Target is the newest keyframe at
+    // or before the audio capture-point (caOffsetMs) so video lands on the
+    // audio timeline; with no audio offset it's the newest keyframe (live edge).
+    // Keyframe-anchored (decoder stays valid); cooldown prevents thrash. No-op
+    // when disabled, under threshold, in cooldown, when audio sits before the
+    // head (nothing at/before Ca past the head), or when the target keyframe is
+    // already the head.
     private trySkipToLive(): void {
         if (this.skipToLiveSpanMs <= 0 || this.state !== 'armed')
             return;
@@ -121,10 +132,16 @@ export class EncodedFrameBuffer {
         if (now < this.nextSkipAllowedAtMs)
             return;
 
-        // Newest keyframe index; only worth skipping if it's past the head.
+        // Newest keyframe at or before Ca (newest overall when Ca is unset);
+        // only worth skipping if it's past the head.
         let kfIndex = -1;
         for (let i = this.chunks.length - 1; i > 0; i--) {
-            if (this.chunks[i].isKeyFrame) { kfIndex = i; break; }
+            if (!this.chunks[i].isKeyFrame)
+                continue;
+            if (this.caOffsetMs !== null && this.chunks[i].capturedAt.timeMs > this.caOffsetMs)
+                continue;
+            kfIndex = i;
+            break;
         }
         if (kfIndex <= 0)
             return;

@@ -256,3 +256,97 @@ describe('EncodedFrameBuffer', () => {
         expect(stats.bufferUnderrunRatio).toBeLessThan(0.5);
     });
 });
+
+describe('EncodedFrameBuffer skip-to-audio', () => {
+    // Keyframes at 0/100/200/300, one delta at 400. Pushing 400 makes
+    // spanMs = 400 + frameDur > skipToLiveSpanMs (300), tripping a skip.
+    function pushLadder(buf: EncodedFrameBuffer): ChunkWithDispose[] {
+        const layout: [number, boolean][] = [
+            [0, true], [100, true], [200, true], [300, true], [400, false],
+        ];
+        const chunks = layout.map(([capturedAtMs, isKeyFrame]) =>
+            mkChunk({ capturedAtMs, isKeyFrame }));
+        for (const c of chunks)
+            buf.push(c);
+        return chunks;
+    }
+
+    it('falls back to skip-to-live (newest keyframe) when no audio offset is set', () => {
+        const buf = new EncodedFrameBuffer({
+            targetSpanMs: 100, frameDurationMs: 33.333,
+            skipToLiveSpanMs: 300, nowFn: () => 100_000,
+        });
+        const c = pushLadder(buf);
+        // Drops everything before the newest keyframe (capturedAt 300).
+        expect(c[0].disposed).toBe(true);
+        expect(c[1].disposed).toBe(true);
+        expect(c[2].disposed).toBe(true);
+        expect(c[3].disposed).toBe(false);
+        expect(buf.count()).toBe(2); // [300 KF, 400 delta]
+    });
+
+    it('skips to the newest keyframe at or before Ca when an audio offset is set', () => {
+        const buf = new EncodedFrameBuffer({
+            targetSpanMs: 100, frameDurationMs: 33.333,
+            skipToLiveSpanMs: 300, nowFn: () => 100_000,
+        });
+        buf.setAudioCaptureOffsetMs(250); // audio is at capture-time 250
+        const c = pushLadder(buf);
+        // Newest keyframe with capturedAt <= 250 is the one at 200.
+        expect(c[0].disposed).toBe(true);
+        expect(c[1].disposed).toBe(true);
+        expect(c[2].disposed).toBe(false); // 200 KF kept (== audio position)
+        expect(c[3].disposed).toBe(false);
+        expect(buf.count()).toBe(3); // [200, 300, 400]
+    });
+
+    it('falls back to skip-to-live when Ca is at/after the newest keyframe', () => {
+        const buf = new EncodedFrameBuffer({
+            targetSpanMs: 100, frameDurationMs: 33.333,
+            skipToLiveSpanMs: 300, nowFn: () => 100_000,
+        });
+        buf.setAudioCaptureOffsetMs(500); // audio ahead of all buffered video
+        const c = pushLadder(buf);
+        expect(c[2].disposed).toBe(true);
+        expect(c[3].disposed).toBe(false); // newest keyframe (300) kept
+        expect(buf.count()).toBe(2);
+    });
+
+    it('does not skip when Ca is before the buffer head (audio behind buffer)', () => {
+        const buf = new EncodedFrameBuffer({
+            targetSpanMs: 100, frameDurationMs: 33.333,
+            skipToLiveSpanMs: 300, nowFn: () => 100_000,
+        });
+        buf.setAudioCaptureOffsetMs(-50); // audio older than everything buffered
+        const c = pushLadder(buf);
+        expect(c.every(x => !x.disposed)).toBe(true);
+        expect(buf.count()).toBe(5);
+    });
+
+    it('honors the skip cooldown between successive skips', () => {
+        let now = 100_000;
+        const buf = new EncodedFrameBuffer({
+            targetSpanMs: 100, frameDurationMs: 33.333,
+            skipToLiveSpanMs: 300, nowFn: () => now,
+        });
+        const first = pushLadder(buf); // skip fires at now=100_000
+        expect(first[0].disposed).toBe(true);
+        expect(buf.count()).toBe(2);
+
+        // Within cooldown (1500 ms): pushing more must NOT skip again.
+        const within = [
+            mkChunk({ capturedAtMs: 700, isKeyFrame: true }),
+            mkChunk({ capturedAtMs: 800, isKeyFrame: false }),
+        ];
+        for (const c of within) buf.push(c);
+        expect(within.every(x => !x.disposed)).toBe(true);
+
+        // Past cooldown: a skip is allowed again.
+        now += 2_000;
+        const after = mkChunk({ capturedAtMs: 900, isKeyFrame: true });
+        buf.push(after);
+        // Newest keyframe now is 900 (after); older chunks before it drop.
+        expect(within[0].disposed).toBe(true);
+        expect(after.disposed).toBe(false);
+    });
+});
