@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    [Migration("20260527113518_Split_ChatContentItems")]
-    partial class Split_ChatContentItems
+    [Migration("20260529103926_Add_ChatContentItems")]
+    partial class Add_ChatContentItems
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -659,6 +659,11 @@ namespace ActualChat.Chat.Migrations
                     b.Property<int>("LocalIndex")
                         .HasColumnType("integer")
                         .HasColumnName("local_index");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("url");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
