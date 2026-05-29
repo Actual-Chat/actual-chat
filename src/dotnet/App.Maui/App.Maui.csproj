@@ -498,20 +498,21 @@
   </PropertyGroup>
 
   <!-- MacCatalyst: Release configuration — App Store / TestFlight signed.
-       Provisioning profile names must match the ones registered in Apple Developer Console
-       (Mac Catalyst subtype, Mac App Store distribution):
+       Provisioning profile names must match the ones registered in Apple Developer Console.
+       They MUST be the "Mac" profile type, not "Mac Catalyst" — the Mac Catalyst type makes
+       dyld reject @rpath expansion for embedded .frameworks on App Store/TestFlight, crashing
+       the app at launch (dotnet/macios#14686).
          dev  → "Mac App Store Dev"  (chat.actual.dev.app)
          prod → "Mac App Store"      (chat.actual.app)
-       Both profiles must use the Apple Distribution cert.
-       Packaging to .pkg for App Store upload is done by tools/sign-maccatalyst.sh
-       (productbuild + "3rd Party Mac Developer Installer" cert), not by MSBuild. -->
+       CreatePackage + EnablePackageSigning have the SDK build & sign the .pkg directly. -->
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net10.0-maccatalyst|AnyCPU'">
     <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">Mac App Store Dev</CodesignProvision>
     <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">Mac App Store</CodesignProvision>
     <CodesignKey>Apple Distribution: Actual Chat Inc. (M287G8G83F)</CodesignKey>
+    <PackageSigningKey>3rd Party Mac Developer Installer: Actual Chat Inc. (M287G8G83F)</PackageSigningKey>
     <EnableCodeSigning>true</EnableCodeSigning>
-    <ArchiveOnBuild>true</ArchiveOnBuild>
-    <CreatePackage>false</CreatePackage>
+    <EnablePackageSigning>true</EnablePackageSigning>
+    <CreatePackage>true</CreatePackage>
     <MtouchLink>SdkOnly</MtouchLink>
     <UseInterpreter>true</UseInterpreter>
     <MTouchInterpreter>-ActualChat</MTouchInterpreter>

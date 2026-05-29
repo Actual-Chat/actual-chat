@@ -487,29 +487,12 @@ internal static class Program
             isDevMaui ??= !isProduction;
             await Cli
                 .Wrap(dotnet)
-                .WithArguments("build",
-                    "-noLogo",
-                    "-maxCpuCount",
-                    "-nodeReuse:false",
-                    "-f net10.0-maccatalyst",
-                    @"/p:TargetFrameworks=\""net10.0-maccatalyst;net10.0\""",
-                    $"-c {configuration}",
-                    $"-p:IsDevMaui={isDevMaui}")
-                .WithWorkingDirectory("src/dotnet/App.Maui")
-                .ToConsole(Green("dotnet: "))
-                .ExecuteAsync(cancellationToken)
-                .Task
-                .ConfigureAwait(false);
-            await Cli
-                .Wrap(dotnet)
                 .WithArguments("publish",
                     "-noLogo",
                     "-maxCpuCount",
                     "-nodeReuse:false",
                     "-f net10.0-maccatalyst",
-                    @"/p:TargetFrameworks=\""net10.0-maccatalyst;net10.0\""",
                     "-p:RuntimeIdentifier=maccatalyst-arm64",
-                    "-p:ArchiveOnBuild=true",
                     $"-c {configuration}",
                     $"-p:IsDevMaui={isDevMaui}")
                 .WithWorkingDirectory("src/dotnet/App.Maui")

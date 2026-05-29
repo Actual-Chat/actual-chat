@@ -871,25 +871,21 @@ jobs:
           ${{ secrets.GOOGLE_SERVICES_PLIST_PROD }}
           EOF
 
-      # publish-maccatalyst signs the .app with the Apple Distribution cert (Release
-      # config + fix-codesigning.sh), so no manual re-sign is needed here — only the
-      # productbuild .pkg wrap, which the installer cert handles.
+      # publish-maccatalyst (Release) builds, signs with the Apple Distribution cert,
+      # applies fix-codesigning.sh, and — via CreatePackage + EnablePackageSigning —
+      # emits the installer-signed .pkg directly.
       - name: Build app package
-        run: |-
-          ./run-build.cmd publish-maccatalyst --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}"
-
-      - name: Wrap signed .app into .pkg
         id: pkg
         run: |-
-          ./tools/sign-maccatalyst.sh $( [ "${{env.IS_DEV_MAUI}}" = "true" ] && echo dev || echo prod )
-          PKG=$(ls artifacts/maccatalyst/*.pkg | head -1)
+          ./run-build.cmd publish-maccatalyst --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}"
+          PKG=$(ls artifacts/publish/App.Maui/release_net10.0-maccatalyst_maccatalyst-arm64/*.pkg | head -1)
           echo "PACKAGE_FILE_NAME=$(basename "$PKG")" | tee -a $GITHUB_OUTPUT
 
       - name: Upload package to artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.pkg
-          path: artifacts/maccatalyst/*.pkg
+          path: artifacts/publish/App.Maui/release_net10.0-maccatalyst_maccatalyst-arm64/*.pkg
           if-no-files-found: error
           compression-level: 0
           retention-days: 10
