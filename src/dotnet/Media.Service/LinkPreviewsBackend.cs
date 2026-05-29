@@ -100,11 +100,13 @@ public class LinkPreviewsBackend(IServiceProvider services)
 
             var links = ExtractLinks(entry);
             var oldLinks = ExtractLinks(oldEntry);
-            foreach (var link in links.Take(Constants.Media.LinkPreviewsPerMessageLimit).Except(oldLinks))
+            foreach (var link in links.Except(oldLinks))
                 await FlowHub.TryScheduleUpdate<LinkPreviewFlow>(link, cancellationToken).ConfigureAwait(false);
         }
     }
 
     private IEnumerable<string> ExtractLinks(ChatEntry? entry)
-        => MarkupParser.ExtractLinks(entry?.Content ?? "", Constants.Media.LinkPreviewsPerMessageLimit);
+        => MarkupParser.ExtractLinks(entry?.Content ?? "")
+            .Where(x => !UrlMapper.IsTrustedGifUrl(x))
+            .Take(Constants.Media.LinkPreviewsPerMessageLimit);
 }

@@ -24,7 +24,7 @@
                     <LinkPreviewView Entry="@item.LinkEntry" LinkPreview="@link.LinkPreview"/>
                 }
                 else {
-                    var url = link.LinkPreview?.Url ?? "";
+                    var url = link.Url.NullIfEmpty() ?? link.LinkPreview?.Url ?? "";
                     <a class="c-link-plain" href="@url" target="_blank" rel="noopener">@(url.Length > 0 ? url : "[link unavailable]")</a>
                 }
             </div>
