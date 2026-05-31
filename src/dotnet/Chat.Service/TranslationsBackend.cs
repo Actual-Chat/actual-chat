@@ -558,9 +558,11 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                             if (sourceId.Kind is TranslationIdKind.ChatEntry)
                                 await WhenEntryFinalized(sourceId.GetChatEntryId(), cancellationToken).ConfigureAwait(false);
                             // StreamId will be cleaned up by this command
-                            var finalReTranslate =
-                                new TranslationsBackend_Translate(sourceId, targetLanguage, true, true);
-                            await Queues.Enqueue(finalReTranslate, cancellationToken).ConfigureAwait(false);
+                            var cmd = new TranslationsBackend_Translate(
+                                sourceId, targetLanguage,
+                                OverwriteIfVersionMismatch: true,
+                                SkipRealtimeTranslation: true);
+                            await Queues.Enqueue(cmd, cancellationToken).ConfigureAwait(false);
                         }
                         catch (Exception ex2) {
                             if (error == null)
