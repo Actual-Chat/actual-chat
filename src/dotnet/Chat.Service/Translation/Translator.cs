@@ -39,7 +39,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
     protected ILogger Log => field ??= Services.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.TranscriptionTranslation);
 
-    public async Task<string> Translate(
+    public virtual async Task<string> Translate(
         string textToTranslate,
         Language targetLanguage,
         TranslationResult[] context,
@@ -77,7 +77,11 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
         }
     }
 
-    public async IAsyncEnumerable<StringDiff> Stream(string textToTranslate, Language targetLanguage, TranslationResult[] context, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public virtual async IAsyncEnumerable<StringDiff> Stream(
+        string textToTranslate,
+        Language targetLanguage,
+        TranslationResult[] context,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         textToTranslate.RequireNonEmpty();
         if (!Settings.IsTranslationEnabled) {

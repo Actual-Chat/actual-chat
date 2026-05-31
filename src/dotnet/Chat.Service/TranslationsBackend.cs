@@ -22,6 +22,7 @@ namespace ActualChat.Chat;
 public class TranslationsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), ITranslationsBackend
 {
     private static readonly TimeSpan TranslateThrottleDelay = TimeSpan.FromMilliseconds(500);
+    private static readonly TimeSpan EntryFinalizationTimeout = Constants.Transcription.RetranscriptionTimeout + TimeSpan.FromSeconds(5);
     private readonly ConcurrentDictionary<StreamId, FuncWorker> _activePublishers = new();
 
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
@@ -547,15 +548,16 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                     }
                     finally {
                         try {
-                            // // Delay to ensure ITranslationsBackend.Get() will return the finalized translation
-                            // // Wait for Chat Entry Finalization - without delay translation will be skipped due to empty Content
-                            // // TODO(AK): Think about more robust approach
-                            // await Task.Delay(TranslateThrottleDelay * 2, cancellationToken).ConfigureAwait(false);
-
-                            // Enqueue the translation command to retranslate full finalized transcript with larger context and model
-                            // StreamId will be cleaned up by this command
+                            // The realtime transcript stream ends well before re-transcription
+                            // finalizes the entry, so the entry is still content-streaming here.
+                            // Re-translating now would be dropped by NeedsTranslation, leaving the
+                            // realtime translation in place. Wait for the entry to finalize before
+                            // enqueueing the re-translation of the full finalized transcript.
                             var sourceId = translationId.SourceId;
                             var targetLanguage = translationId.Language;
+                            if (sourceId.Kind is TranslationIdKind.ChatEntry)
+                                await WhenEntryFinalized(sourceId.GetChatEntryId(), cancellationToken).ConfigureAwait(false);
+                            // StreamId will be cleaned up by this command
                             var finalReTranslate =
                                 new TranslationsBackend_Translate(sourceId, targetLanguage, true, true);
                             await Queues.Enqueue(finalReTranslate, cancellationToken).ConfigureAwait(false);
@@ -647,5 +649,32 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
 
         var translation = await GetInternal(id, cancellationToken).ConfigureAwait(false);
         return (source, translation);
+    }
+
+    private async Task WhenEntryFinalized(ChatEntryId entryId, CancellationToken cancellationToken)
+    {
+        var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(entryId.LocalId);
+        var cTile = await Computed
+            .Capture(
+                () => ChatsBackend.GetTile(entryId.ChatId, idTile.Range, includeRemoved: false, cancellationToken),
+                cancellationToken)
+            .ConfigureAwait(false);
+        try {
+            // A removed entry (empty realtime transcript) never appears in the non-removed tile,
+            // so a missing entry counts as finalized.
+            await cTile
+                .When(t => {
+                    var entry = t.Entries.SingleOrDefault(e => e.LocalId == entryId.LocalId);
+                    return entry is null || !entry.IsContentStreaming;
+                }, cancellationToken)
+                .WaitAsync(EntryFinalizationTimeout, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (TimeoutException) {
+            // Don't propagate: re-translation is best-effort and would be dropped anyway if not finalized.
+            Log.LogWarning(
+                "WhenEntryFinalized: entry #{EntryId} didn't finalize within {Timeout}",
+                entryId, EntryFinalizationTimeout);
+        }
     }
 }
