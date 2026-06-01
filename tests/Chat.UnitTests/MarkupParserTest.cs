@@ -1185,6 +1185,44 @@ code
         text.Should().Contain("tail line that must survive");
     }
 
+    [Fact]
+    public void MultiMessageCopyMarkupReconstructs()
+    {
+        // Mirrors SelectionUI multi-message copy: each author-run is headed by an author mention on
+        // its own line, runs separated by a blank line. Pasting it back runs through
+        // MarkupParser.Parse (editor reconstruction) — it must keep every author mention and never
+        // truncate the tail.
+        var input =
+            "@`Bright Virnala`a:the-actual-one:43:\n" +
+            "Hello\n" +
+            "World\n" +
+            "\n" +
+            "@`Enchanted Porthos`a:the-actual-one:45:\n" +
+            "hey\n" +
+            "test";
+        var m = MarkupParser.ParseRaw(input).Simplify();
+
+        var mentions = MentionExtractor.Instance.GetMentionIds(m).Select(x => x.Value).ToList();
+        mentions.Should().Contain("a:the-actual-one:43");
+        mentions.Should().Contain("a:the-actual-one:45");
+        MarkupFormatter.Default.Format(m).Should().Contain("test");
+    }
+
+    [Theory]
+    [InlineData("@`Alex`u:abcdef1234: hi", "u:abcdef1234", ": hi")]
+    [InlineData("@u:abcdef1234: hi", "u:abcdef1234", ": hi")]
+    [InlineData("@`Alex`u:abcdef1234. Next", "u:abcdef1234", ". Next")]
+    public void MentionFollowedByPunctuationKeepsId(string input, string id, string tail)
+    {
+        // A ':' or '.' right after a mention id is punctuation, not part of the id — the id parser
+        // must stop before it, so "@mention: text" parses the mention and renders the ": text".
+        var p = MarkupParser.ParseRaw(input).Simplify().Should().BeOfType<ParagraphMarkup>().Subject;
+        var seq = p.Content.Should().BeOfType<MarkupSeq>().Subject;
+        var mention = seq.Items[0].Should().BeAssignableTo<MentionMarkup>().Subject;
+        mention.Id.Value.Should().Be(id);
+        MarkupFormatter.Default.Format(seq.Items[1]).Should().Be(tail);
+    }
+
     // Helpers
 
     private TResult Parse<TResult>(string text, out string copy)

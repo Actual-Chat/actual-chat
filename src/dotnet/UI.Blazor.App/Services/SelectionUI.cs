@@ -83,9 +83,12 @@ public class SelectionUI : UIServiceBase<AppUIHub>
         var chatMarkupHub = ChatMarkupHubFactory[chatId];
         CancellationToken cancellationToken = default;
 
+        // Multi-message copy is identical to a single message, except each author-run is headed by
+        // its author on its own line — a readable "@Name:" in plain text, and a real author mention
+        // in the markup flavor (so pasting back reconstructs the author as a mention pill).
         var lines = new List<string>();
         var markupLines = new List<string>();
-        AuthorId? currentAuthorId = null;
+        AuthorId? lastAuthorId = null;
         foreach (var chatEntryId in selection.OrderBy(x => x.LocalId)) {
             var chatEntry = await Chats.GetEntry(Session, chatEntryId, cancellationToken).ConfigureAwait(false);
             if (chatEntry == null || chatEntry.Content.IsNullOrEmpty())
@@ -104,22 +107,20 @@ public class SelectionUI : UIServiceBase<AppUIHub>
                 .ConfigureAwait(false);
             markup = await chatMarkupHub.ApplyMentionResolver(markup, cancellationToken).ConfigureAwait(false);
 
-            // First message of each author-run gets an author-mention prefix in the markup flavor, so
-            // pasting a multi-message copy back into the editor reads "@Author: …" with real mentions.
-            var markupPrefix = "";
-            if (showAuthor && currentAuthorId != chatEntry.AuthorId) {
-                if (lines.Count > 0)
+            if (showAuthor && chatEntry.AuthorId != lastAuthorId) {
+                lastAuthorId = chatEntry.AuthorId;
+                if (lines.Count > 0) {
                     lines.Add("");
-                currentAuthorId = chatEntry.AuthorId;
+                    markupLines.Add("");
+                }
                 var author = await Authors.Get(Session, chatEntry.ChatId, chatEntry.AuthorId, cancellationToken).ConfigureAwait(false);
                 var authorName = author?.Avatar.Name ?? "(N/A)";
-                var timestamp = DateTimeConverter.ToLocalTime(chatEntry.BeginsAt).ToString("g");
-                lines.Add($"{authorName}, [{timestamp}]");
-                markupPrefix = MentionMarkup.New(MentionRef.NewAuthor(chatEntry.AuthorId), authorName).Format() + ": ";
+                lines.Add($"@{authorName}:");
+                markupLines.Add($"{MentionMarkup.New(MentionRef.NewAuthor(chatEntry.AuthorId), authorName).Format()}:");
             }
 
             lines.Add(markup.ToClipboardText());
-            markupLines.Add(markupPrefix + MarkupTextFormatter.Format(markup));
+            markupLines.Add(MarkupTextFormatter.Format(markup));
         }
 
         var plain = string.Join('\n', lines);
