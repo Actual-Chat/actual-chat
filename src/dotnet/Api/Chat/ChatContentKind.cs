@@ -5,7 +5,7 @@ namespace ActualChat.Chat;
 // (VisualMediaItem / FileItem / LinkItem).
 public enum ChatContentKind
 {
-    Media = 1,
-    File = 2,
-    Link = 3,
+    Media = 0,
+    File = 1,
+    Link = 2,
 }
