@@ -16,6 +16,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private ILiveVideoBackend LiveVideoBackend => field ??= Services.GetRequiredService<ILiveVideoBackend>();
+    private ILiveConversationsBackend LiveConversationsBackend => field ??= Services.GetRequiredService<ILiveConversationsBackend>();
 
     private IServiceProvider Services { get; }
     private ILogger Log { get; }
@@ -174,6 +175,11 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         await LiveVideoBackend.Register(record.ChatId, streamInfo, cancellationToken)
             .ConfigureAwait(false);
 
+        var chat = await Chats.Get(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false);
+        await LiveConversationsBackend
+            .OnStreamRegistered(record.ChatId, author.Id, null, chat?.IsSummarized ?? false, cancellationToken)
+            .ConfigureAwait(false);
+
         Task? silenceWatchdogTask = null;
         try {
             // Publish video stream for real-time viewing
@@ -305,6 +311,8 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 
             // Unregister stream when it ends — cross-service RPC call
             await LiveVideoBackend.Unregister(record.ChatId, record.StreamId, CancellationToken.None)
+                .ConfigureAwait(false);
+            await LiveConversationsBackend.OnStreamsChanged(record.ChatId, CancellationToken.None)
                 .ConfigureAwait(false);
             // Latency state cleanup deferred to OnVideoStreamExpire — peers may still read buffered frames
         }

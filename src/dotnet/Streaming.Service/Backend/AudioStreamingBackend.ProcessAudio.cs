@@ -121,6 +121,11 @@ public partial class AudioStreamingBackend
                 Format = audio.Format,
             };
             await LiveAudioBackend.Register(chatId, streamInfo, cancellationToken).ConfigureAwait(false);
+
+            var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+            await LiveConversationsBackend
+                .OnStreamRegistered(chatId, author.Id, null, chat?.IsSummarized ?? false, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         var headerFrame = new AudioFrame {
@@ -196,8 +201,10 @@ public partial class AudioStreamingBackend
                 openSegment.StreamId);
         }
         finally {
-            if (mustStreamVoice)
+            if (mustStreamVoice) {
                 await LiveAudioBackend.Unregister(chatId, openSegment.StreamId.Value, CancellationToken.None).ConfigureAwait(false);
+                await LiveConversationsBackend.OnStreamsChanged(chatId, CancellationToken.None).ConfigureAwait(false);
+            }
             audioMediaIdTcs.TrySetResult(audioMediaId);
         }
 
