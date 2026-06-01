@@ -730,19 +730,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         int pageIndex,
         CancellationToken cancellationToken)
     {
-        var (periodStart, periodEnd) = ParseUtcMonthRange(periodKey);
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
-
-        var chatSid = chatId.Value;
-        var dbItems = await dbContext.ChatVisualMediaItems
-            .Where(x => x.ChatId == chatSid && x.At >= periodStart && x.At < periodEnd)
-            .OrderBy(x => x.At)
-            .ThenBy(x => x.EntryLocalId)
-            .ThenBy(x => x.LocalIndex)
-            .Skip(pageIndex * ChatContentPeriod.PageSize)
-            .Take(ChatContentPeriod.PageSize)
-            .ToListAsync(cancellationToken)
+        var dbItems = await QueryPeriodPage(
+                dbContext.ChatVisualMediaItems, chatId.Value, periodKey, pageIndex, cancellationToken)
             .ConfigureAwait(false);
         return dbItems.Select(x => x.ToModel()).ToArray();
     }
@@ -754,19 +745,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         int pageIndex,
         CancellationToken cancellationToken)
     {
-        var (periodStart, periodEnd) = ParseUtcMonthRange(periodKey);
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
-
-        var chatSid = chatId.Value;
-        var dbItems = await dbContext.ChatFileItems
-            .Where(x => x.ChatId == chatSid && x.At >= periodStart && x.At < periodEnd)
-            .OrderBy(x => x.At)
-            .ThenBy(x => x.EntryLocalId)
-            .ThenBy(x => x.LocalIndex)
-            .Skip(pageIndex * ChatContentPeriod.PageSize)
-            .Take(ChatContentPeriod.PageSize)
-            .ToListAsync(cancellationToken)
+        var dbItems = await QueryPeriodPage(
+                dbContext.ChatFileItems, chatId.Value, periodKey, pageIndex, cancellationToken)
             .ConfigureAwait(false);
         return dbItems.Select(x => x.ToModel()).ToArray();
     }
@@ -778,19 +760,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         int pageIndex,
         CancellationToken cancellationToken)
     {
-        var (periodStart, periodEnd) = ParseUtcMonthRange(periodKey);
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
-
-        var chatSid = chatId.Value;
-        var dbItems = await dbContext.ChatLinkItems
-            .Where(x => x.ChatId == chatSid && x.At >= periodStart && x.At < periodEnd)
-            .OrderBy(x => x.At)
-            .ThenBy(x => x.EntryLocalId)
-            .ThenBy(x => x.LocalIndex)
-            .Skip(pageIndex * ChatContentPeriod.PageSize)
-            .Take(ChatContentPeriod.PageSize)
-            .ToListAsync(cancellationToken)
+        var dbItems = await QueryPeriodPage(
+                dbContext.ChatLinkItems, chatId.Value, periodKey, pageIndex, cancellationToken)
             .ConfigureAwait(false);
         if (dbItems.Count == 0)
             return [];
@@ -2930,6 +2903,28 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .AnyAsync(x => x.ChatId == chatSid && x.At < lowerBoundInclusive, cancellationToken)
             .ConfigureAwait(false);
         return (months, hasOlder);
+    }
+
+    // Loads a paged slice of chat content items for the given UTC month, oldest-first
+    // by (At, EntryLocalId, LocalIndex). Shared by Get{VisualMedia,File,Link}Period.
+    private static async Task<List<TDbItem>> QueryPeriodPage<TDbItem>(
+        IQueryable<TDbItem> table,
+        string chatSid,
+        string periodKey,
+        int pageIndex,
+        CancellationToken cancellationToken)
+        where TDbItem : class, IDbChatContentItem
+    {
+        var (periodStart, periodEnd) = ParseUtcMonthRange(periodKey);
+        return await table
+            .Where(x => x.ChatId == chatSid && x.At >= periodStart && x.At < periodEnd)
+            .OrderBy(x => x.At)
+            .ThenBy(x => x.EntryLocalId)
+            .ThenBy(x => x.LocalIndex)
+            .Skip(pageIndex * ChatContentPeriod.PageSize)
+            .Take(ChatContentPeriod.PageSize)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static string FormatUtcMonthKey(int year, int month)
