@@ -35,6 +35,8 @@ public sealed partial record LiveConversation
     public bool StartNotificationSent { get; init; }
     [DataMember(Order = 12), MemoryPackOrder(12), Key(12)]
     public long Version { get; init; }
+    [DataMember(Order = 13), MemoryPackOrder(13), Key(13)]
+    public bool IsClosing { get; init; }
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ConversationId ConversationId => ConversationId.New(ChatId, StartEntryLid);
