@@ -44,14 +44,16 @@ internal static class ParserExt
 
     public static Parser<char, Markup> AtLeastOnceInlineMarkup(this Parser<char, Markup> markup) =>
         markup
-            .JoinMarkup(Try(MarkupParser.WhitespaceOrNewLine.JoinMarkup(markup)).ManyMarkup())
+            // A continuation element may be whitespace-separated OR adjacent (e.g. `a`/`b`); without
+            // the adjacent case, styled spans like **`a`/`b`** stop after the first element.
+            .JoinMarkup(Try(Try(MarkupParser.WhitespaceOrNewLine.JoinMarkup(markup)).Or(markup)).ManyMarkup())
             .JoinMarkup(Try(MarkupParser.WhitespaceOrNewLine).Or(Nothing.ThenReturn(Markup.EmptyText)))
             .Debug("1+ inline");
 
     // Same as above but without newlines (for single-line content like list items)
     public static Parser<char, Markup> AtLeastOnceSingleLineMarkup(this Parser<char, Markup> markup) =>
         markup
-            .JoinMarkup(Try(MarkupParser.WhitespaceText.JoinMarkup(markup)).ManyMarkup())
+            .JoinMarkup(Try(Try(MarkupParser.WhitespaceText.JoinMarkup(markup)).Or(markup)).ManyMarkup())
             .JoinMarkup(Try(MarkupParser.WhitespaceText).Or(Nothing.ThenReturn(Markup.EmptyText)))
             .Debug("1+ single-line");
 

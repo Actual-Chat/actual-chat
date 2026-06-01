@@ -1160,6 +1160,19 @@ code
         text.Should().Contain(tail);
     }
 
+    [Theory]
+    [InlineData("**`a`/`b`**")]
+    [InlineData("**`a`/`u`/`c`/`p`/`e`**")]
+    public void AdjacentInlineElementsInsideBoldParse(string input)
+    {
+        // Code spans separated by a non-whitespace char must stay inside one bold span — the inline
+        // combinator joins adjacent elements, not only whitespace-separated ones.
+        var m = MarkupParser.ParseRaw(input).Simplify();
+        m.Should().BeOfType<ParagraphMarkup>().Which.Content
+            .Should().BeOfType<StylizedMarkup>().Which.Style.Should().Be(TextStyle.Bold);
+        MarkupFormatter.Default.Format(m).Should().Be(input);
+    }
+
     [Fact]
     public void MultiBlockDocumentWithAmbiguousBoldSurvives()
     {
