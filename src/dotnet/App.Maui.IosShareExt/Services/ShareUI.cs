@@ -16,7 +16,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     private readonly MutableState<bool> _canSend;
     private readonly MutableState<double> _uploadPct;
     private readonly FuncWorker _sendWorker;
-    private MemSearchQuery _searchQuery;
+    private SearchQuery _searchQuery;
     private readonly MutableState<bool> _isInitialized;
     private readonly MutableState<bool> _isSending;
     private readonly MutableState<bool> _isSent;
@@ -147,7 +147,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             return sendable.ToList();
 
         return sendable
-            .WithSearchMatchRank(_searchQuery, c => new MemSearchDocument(c.Chat.Title))
+            .WithSearchMatchRank(_searchQuery, c => new SearchDocument(c.Chat.Title))
             .FilterBySearchMatchRank()
             .OrderBySearchMatchRank()
             .WithoutSearchMatchRank()
@@ -167,7 +167,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     public void SetFilter(string filter)
     {
         Log.LogInformation("Set filter: {Filter}", filter);
-        _searchQuery = new MemSearchQuery(filter);
+        _searchQuery = new SearchQuery(filter);
 
         using (Invalidation.Begin())
             _ = ListContacts(default);

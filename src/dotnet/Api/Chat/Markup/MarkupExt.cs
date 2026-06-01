@@ -38,6 +38,15 @@ public static partial class MarkupExt
         => markup is BlockMarkup
             || (markup is MarkupSeq seq && seq.Items.Any(IsBlockMarkup));
 
+    // True when the whole message body is a single emoji mention (ignoring paragraph/seq wrappers).
+    public static bool IsSoleEmojiMention(this Markup markup)
+        => markup switch {
+            EmojiMention => true,
+            ParagraphMarkup p => p.Content.IsSoleEmojiMention(),
+            MarkupSeq s => s.Items.Length == 1 && s.Items[0].IsSoleEmojiMention(),
+            _ => false,
+        };
+
     public static bool IsPlainText(this Markup markup)
         => markup switch {
             PlainTextMarkup => true,

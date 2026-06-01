@@ -8,5 +8,8 @@ public interface IClipboardHandlers
     Task WriteText(string? text);
 
     [JSInvokable]
+    Task WriteRichText(string? text, string? html);
+
+    [JSInvokable]
     Task<string?> ReadText();
 }

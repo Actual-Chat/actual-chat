@@ -1146,6 +1146,32 @@ code
         bq.Format().Should().Be("> a\n> b");
     }
 
+    // Regression: stray/ambiguous markup must never truncate the document
+
+    [Theory]
+    [InlineData("- **`a`/`b`** c", "c")]
+    [InlineData("- prefixes **`a`/`u`/`c`/`p`/`e`** (author)", "author")]
+    [InlineData("- one\n- **`a`/`b`** two\n- three", "three")]
+    public void AmbiguousMarkupInListItemDoesNotTruncate(string input, string tail)
+    {
+        // A '**`a`/`b`**' that the bold grammar can't resolve must degrade to literal text,
+        // not stall list-item parsing and silently drop the rest of the message.
+        var text = MarkupFormatter.Default.Format(MarkupParser.ParseRaw(input).Simplify());
+        text.Should().Contain(tail);
+    }
+
+    [Fact]
+    public void MultiBlockDocumentWithAmbiguousBoldSurvives()
+    {
+        var input =
+            "## Header\n" +
+            "- `MentionId` -> **`MentionRef`**; `x` -> **`y`**.\n" +
+            "- prefixes **`a`/`u`/`c`/`p`/`e`** (legacy)\n" +
+            "- tail line that must survive";
+        var text = MarkupFormatter.Default.Format(MarkupParser.ParseRaw(input).Simplify());
+        text.Should().Contain("tail line that must survive");
+    }
+
     // Helpers
 
     private TResult Parse<TResult>(string text, out string copy)

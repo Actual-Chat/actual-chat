@@ -457,6 +457,15 @@ public override async Task Require(CancellationToken cancellationToken)
    | `string.Compare(a, b, StringComparison.Ordinal)` | `string.Compare(a, b)` |
    | `s.GetHashCode(StringComparison.Ordinal)` | `s.GetHashCode()` |
 
+   **Null/empty checks — prefer the extension methods.** Use `x.IsNullOrEmpty()` /
+   `x.IsNullOrWhiteSpace()` (the ActualLab string extensions) over `string.IsNullOrEmpty(x)` /
+   `string.IsNullOrWhiteSpace(x)`.
+
+   **Exception — `StringIdentifier` equality.** The `Equals` implementations of
+   `StringIdentifier`-derived id types intentionally keep `string.Equals(Value, other.Value)`
+   (comparing the backing value). Leave those as-is — the `a == b` rule above is for ordinary
+   string comparisons, not the id types' own equality.
+
    **Case-insensitive comparison — `StringComparison.OrdinalIgnoreCase` is still required**,
    because there is no other way to express case-insensitivity:
 
