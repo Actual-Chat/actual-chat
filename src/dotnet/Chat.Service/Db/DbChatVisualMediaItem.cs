@@ -9,7 +9,7 @@ namespace ActualChat.Chat.Db;
 [Index(nameof(ChatId), nameof(At), nameof(EntryLocalId), nameof(LocalIndex))]
 [Index(nameof(EntryId))]
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
-public class DbChatVisualMediaItem : IHasId<string>, IHasVersion<long>, IRequirementTarget
+public class DbChatVisualMediaItem : IHasId<string>, IHasVersion<long>, IRequirementTarget, IDbChatContentItem
 {
     private const char IdSeparator = ':';
 
