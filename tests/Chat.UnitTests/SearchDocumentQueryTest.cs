@@ -255,4 +255,48 @@ public class SearchDocumentQueryTest(ITestOutputHelper @out) : TestBase(@out)
             .GetMatchParts(text)
             .Select(p => text[p.Range.Start..p.Range.End])
             .ToArray();
+
+    // SearchMatch — query-mode highlighting (the in-chat message highlight path)
+
+    [Fact]
+    public void QueryModeSearchMatchLazilyHighlightsAndReportsMatch()
+    {
+        // HighlightUI produces SearchMatch(text, query); Parts/IsMatch materialize on first use.
+        var match = new SearchMatch("Hello World", new SearchQuery("wor"));
+        match.IsMatch.Should().BeTrue();
+        Spans(match).Should().Equal(("Hello ", false), ("Wor", true), ("ld", false));
+    }
+
+    [Fact]
+    public void QueryModeSearchMatchHighlightsEveryHighlightedWord()
+    {
+        // HighlightUI joins a word set with spaces and matches suffixes — several words light up.
+        var match = new SearchMatch("Alice Bob Charlie David Emma", new SearchQuery("al ch em"));
+        HighlightedSpans(match).Should().Equal("Al", "Ch", "Em");
+    }
+
+    [Fact]
+    public void EmptyQueryModeSearchMatchHasNoMatchAndOneGapCoveringText()
+    {
+        SearchMatch.Empty.IsMatch.Should().BeFalse();
+        var match = new SearchMatch("Plain text", SearchQuery.Empty);
+        match.IsMatch.Should().BeFalse();
+        Spans(match).Should().Equal(("Plain text", false));
+    }
+
+    [Fact]
+    public void PartsWithGapsReconstructsFullText()
+    {
+        var match = new SearchMatch("Hello World", new SearchQuery("hello world"));
+        string.Concat(match.PartsWithGaps.Select(p => match.Text[p.Range.Start..p.Range.End]))
+            .Should().Be("Hello World");
+    }
+
+    private static (string Text, bool IsHighlighted)[] Spans(SearchMatch match)
+        => match.PartsWithGaps.Select(p => (match.Text[p.Range.Start..p.Range.End], p.Rank > 0)).ToArray();
+
+    private static string[] HighlightedSpans(SearchMatch match)
+        => match.PartsWithGaps.Where(p => p.Rank > 0)
+            .Select(p => match.Text[p.Range.Start..p.Range.End])
+            .ToArray();
 }
