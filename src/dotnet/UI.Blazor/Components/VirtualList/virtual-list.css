@@ -28,18 +28,18 @@
     overflow-anchor: none;
 }
 
-.virtual-list > .c-wrapper > .c-end-anchor {
-    @apply absolute w-full bottom-0;
+.virtual-list > .c-wrapper > ul.c-virtual-container > .c-end-anchor {
+    @apply w-full flex-none;
     @apply flex flex-nowrap flex-col items-stretch content-start justify-start;
     @apply min-h-1;
     line-height: 0.25rem;
     overflow-anchor: none;
 }
-body.narrow .virtual-list > .c-wrapper > .c-end-anchor {
+body.narrow .virtual-list > .c-wrapper > ul.c-virtual-container > .c-end-anchor {
     @apply min-h-0 h-12;
 }
-body.narrow .list-view-layout:has(.chat-activity-panel.listening) .virtual-list > .c-wrapper > .c-end-anchor,
-body.narrow .list-view-layout:has(.audio-panel-header) .virtual-list > .c-wrapper > .c-end-anchor {
+body.narrow .list-view-layout:has(.chat-activity-panel.listening) .virtual-list > .c-wrapper > ul.c-virtual-container > .c-end-anchor,
+body.narrow .list-view-layout:has(.audio-panel-header) .virtual-list > .c-wrapper > ul.c-virtual-container > .c-end-anchor {
     @apply portrait:min-h-0 h-20;
 }
 
@@ -66,12 +66,12 @@ body.narrow .list-view-layout:has(.audio-panel-header) .virtual-list > .c-wrappe
 
 .virtual-list > .c-wrapper > ul.c-virtual-container >.c-spacer-start {
     @apply w-full;
-    @apply flex flex-nowrap flex-col-reverse flex-none items-stretch content-start justify-start;
+    @apply flex flex-nowrap flex-col flex-none items-stretch content-start justify-start;
     @apply overflow-y-hidden;
     overflow-anchor: none;
 }
 
-.chat-list.virtual-list > .c-wrapper > .c-end-anchor {
+.chat-list.virtual-list > .c-wrapper > ul.c-virtual-container > .c-end-anchor {
     @apply hidden;
 }
 
