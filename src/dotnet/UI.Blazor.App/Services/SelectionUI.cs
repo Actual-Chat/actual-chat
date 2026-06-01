@@ -104,6 +104,9 @@ public class SelectionUI : UIServiceBase<AppUIHub>
                 .ConfigureAwait(false);
             markup = await chatMarkupHub.ApplyMentionResolver(markup, cancellationToken).ConfigureAwait(false);
 
+            // First message of each author-run gets an author-mention prefix in the markup flavor, so
+            // pasting a multi-message copy back into the editor reads "@Author: …" with real mentions.
+            var markupPrefix = "";
             if (showAuthor && currentAuthorId != chatEntry.AuthorId) {
                 if (lines.Count > 0)
                     lines.Add("");
@@ -112,10 +115,11 @@ public class SelectionUI : UIServiceBase<AppUIHub>
                 var authorName = author?.Avatar.Name ?? "(N/A)";
                 var timestamp = DateTimeConverter.ToLocalTime(chatEntry.BeginsAt).ToString("g");
                 lines.Add($"{authorName}, [{timestamp}]");
+                markupPrefix = MentionMarkup.New(MentionRef.NewAuthor(chatEntry.AuthorId), authorName).Format() + ": ";
             }
 
             lines.Add(markup.ToClipboardText());
-            markupLines.Add(MarkupTextFormatter.Format(markup));
+            markupLines.Add(markupPrefix + MarkupTextFormatter.Format(markup));
         }
 
         var plain = string.Join('\n', lines);

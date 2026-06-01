@@ -18,5 +18,11 @@ export async function writeRich(plainText: string, html: string): Promise<void> 
     } catch {
         // Falls through to plain-text write below.
     }
-    await navigator.clipboard.writeText(plainText);
+    // Plain-text fallback. On MAUI/Android writeText is overridden to route to the native clipboard,
+    // so rich copy degrades to plain text there. Guard against insecure-context throws.
+    try {
+        await navigator.clipboard.writeText(plainText);
+    } catch (e) {
+        console.warn("writeRich: clipboard write failed", e);
+    }
 }

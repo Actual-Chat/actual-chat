@@ -4,8 +4,8 @@
     var emoji = Emojis.TryGetByIdOrSymbol(Markup.EmojiRef.Text);
     var hasSvg = Emojis.TryGetSvgName(emoji) is not null;
     var glyph = Markup.Glyph.NullIfEmpty() ?? emoji?.Symbol;
-    // A message that is exactly one emoji mention renders large, like a lone plain-text emoji.
-    var isLarge = string.Equals(Entry?.Content.Trim(), Markup.Format(), StringComparison.Ordinal);
+    // Large only when the whole message is this one emoji mention (structural signal from the entry view).
+    var isLarge = IsSoleEmojiMention;
 }
 
 @if (isLarge) {
@@ -30,4 +30,8 @@ else if (Markup.CustomPicture is { } picture) {
 }
 else {
     <span class="emoji-markup emoji-markup-placeholder">:@Markup.EmojiRef.Text:</span>
+}
+
+@code {
+    [CascadingParameter(Name = "IsSoleEmojiMention")] public bool IsSoleEmojiMention { get; set; }
 }
