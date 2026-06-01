@@ -1,4 +1,6 @@
 using ActualChat.Live;
+using ActualChat.Notification;
+using ActualChat.Queues;
 using ActualChat.Redis;
 using ActualLab.Locking;
 using ActualLab.Redis;
@@ -91,6 +93,9 @@ public partial class LiveConversationsBackend : ShardComputeService, ILiveConver
                 TranscriptionOn = transcriptionOn,
                 Version = VersionGenerator.NextVersion(),
             };
+            if (!transcriptionOn)
+                // Phone-mode START fires immediately; transcription START waits for the first summary (in the flow).
+                await EnqueueLiveNotification(chatId, "Voice chat started", isFinal: false, cancellationToken).ConfigureAwait(false);
         }
         else {
             var authorIds = state.AuthorIds.Contains(authorId)
@@ -136,7 +141,9 @@ public partial class LiveConversationsBackend : ShardComputeService, ILiveConver
         if (!state.TranscriptionOn) {
             // Phone-mode call: nothing to materialize, the block just disappears.
             await _redisScope.Remove(chatId.Value).ConfigureAwait(false);
+            await _participants.RemoveHashMap(chatId.Value).ConfigureAwait(false);
             InvalidateGet(chatId);
+            await EnqueueLiveNotification(chatId, "Voice chat ended", isFinal: true, cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -224,6 +231,10 @@ public partial class LiveConversationsBackend : ShardComputeService, ILiveConver
             return null;
         }
     }
+
+    private Task EnqueueLiveNotification(ChatId chatId, string content, bool isFinal, CancellationToken cancellationToken)
+        => Services.Queues()
+            .Enqueue(new NotificationsBackend_NotifyLiveConversation(chatId, content, isFinal), cancellationToken);
 
     private void InvalidateGet(ChatId chatId)
     {
