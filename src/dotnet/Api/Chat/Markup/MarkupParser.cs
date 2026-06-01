@@ -61,7 +61,15 @@ public partial class MarkupParser : IMarkupParser
     private static readonly Parser<char, string> CodeBlockToken = String("```");
     private static readonly Parser<char, char> AtToken = Char('@');
 
-    private static readonly Parser<char, string> Id = IdChar.AtLeastOnceString();
+    // ':' and '.' only join id segments — they're consumed as part of an id solely when another id
+    // char follows. This keeps a trailing ':' or '.' out of the id, so "@`Name`a:c:1: text" (the
+    // author-mention prefix in a multi-message copy) and "@`Name`u:id. Next" parse the mention and
+    // leave the punctuation to the surrounding text.
+    private static readonly Parser<char, char> IdBodyChar =
+        Token(c => char.IsLetterOrDigit(c) || c is '_' or '-' or '%' or '~')
+            .Labelled("letter, digit, '_', '-', '%', or '~'");
+    private static readonly Parser<char, string> Id =
+        OneOf(IdBodyChar, Try(Token(c => c is ':' or '.').Before(Lookahead(IdChar)))).AtLeastOnceString();
     private static readonly Parser<char, string> QuotedName =
         PreToken.Then(NotPreToken.Or(DoublePreToken).ManyString()).Before(PreToken);
 
