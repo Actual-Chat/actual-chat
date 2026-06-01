@@ -1,0 +1,9 @@
+@inherits MarkupViewBase<BlockQuoteMarkup>
+
+<div class="quote-markup">
+    @if (Markup.Content is TextMarkup { Text.Length: 0 }) {
+        <br/>
+    } else {
+        <MarkupView Markup="@Markup.Content"/>
+    }
+</div>

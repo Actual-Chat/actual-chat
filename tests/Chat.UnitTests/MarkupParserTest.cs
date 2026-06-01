@@ -1058,6 +1058,94 @@ code
         completed.Should().BeTrue("parsing must complete within 5s (no regex backtracking)");
     }
 
+    // Block quotes
+
+    [Fact]
+    public void BlockQuoteSingleLineTest()
+    {
+        var bq = Parse<BlockQuoteMarkup>("> hello");
+        bq.Content.Should().BeAssignableTo<TextMarkup>().Which.Text.Should().Be("hello");
+    }
+
+    [Fact]
+    public void BlockQuoteMultiLineTest()
+    {
+        var bq = Parse<BlockQuoteMarkup>("> a\n> b");
+        var seq = bq.Content.Should().BeOfType<MarkupSeq>().Subject;
+        seq.Items.Count(x => x is NewLineMarkup).Should().Be(1);
+        var texts = seq.Items.OfType<TextMarkup>().Select(t => t.Text).ToList();
+        texts.Should().Contain("a");
+        texts.Should().Contain("b");
+    }
+
+    [Fact]
+    public void BlockQuoteWithMentionTest()
+    {
+        var bq = Parse<BlockQuoteMarkup>("> hi @u:userId");
+        var seq = bq.Content.Should().BeOfType<MarkupSeq>().Subject;
+        seq.Items.OfType<UserMention>().Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void BlockQuoteWithBoldTest()
+    {
+        var bq = Parse<BlockQuoteMarkup>("> **bold**");
+        bq.Content.Should().BeOfType<StylizedMarkup>().Which.Style.Should().Be(TextStyle.Bold);
+    }
+
+    [Fact]
+    public void BlockQuoteMultiLineWithMentionAndStyleTest()
+    {
+        // Mentions + styles across multiple quoted lines stay inside one block quote.
+        var bq = Parse<BlockQuoteMarkup>("> hey @u:userId\n> see **this**");
+        var seq = bq.Content.Should().BeOfType<MarkupSeq>().Subject;
+        seq.Items.OfType<UserMention>().Should().NotBeEmpty();
+        seq.Items.OfType<StylizedMarkup>().Any(s => s.Style == TextStyle.Bold).Should().BeTrue();
+        seq.Items.Count(x => x is NewLineMarkup).Should().Be(1);
+    }
+
+    [Fact]
+    public void BlockQuoteThenParagraphTest()
+    {
+        var seq = Parse<MarkupSeq>("> quote\ntext", validateFormat: false);
+        seq.Items[0].Should().BeOfType<BlockQuoteMarkup>();
+        seq.Items[1].Should().BeOfType<ParagraphMarkup>();
+    }
+
+    [Fact]
+    public void ParagraphThenBlockQuoteTest()
+    {
+        var seq = Parse<MarkupSeq>("text\n> quote", validateFormat: false);
+        seq.Items[0].Should().BeOfType<ParagraphMarkup>();
+        seq.Items[1].Should().BeOfType<BlockQuoteMarkup>();
+    }
+
+    [Fact]
+    public void GreaterWithoutSpaceIsNotBlockQuoteTest()
+    {
+        // ">foo" (no space after '>') is plain text, not a block quote.
+        var p = Parse<ParagraphMarkup>(">foo");
+        p.Content.Should().BeAssignableTo<TextMarkup>();
+    }
+
+    [Fact]
+    public void BlockQuoteCannotContainCodeBlockTest()
+    {
+        // A '```' inside a quoted line is not a code block — the inner content is inline-only.
+        var bq = Parse<BlockQuoteMarkup>("> ```not code```", validateFormat: false);
+        bq.Content.Should().NotBeOfType<CodeBlockMarkup>();
+    }
+
+    [Fact]
+    public void BlockQuoteFormatRoundTripsTest()
+    {
+        var bq = new BlockQuoteMarkup(new MarkupSeq(
+            new PlainTextMarkup("a"),
+            NewLineMarkup.Instance,
+            new PlainTextMarkup("b")));
+        bq.Format().Should().Be("> a\n> b");
+    }
+
     // Helpers
 
     private TResult Parse<TResult>(string text, out string copy)

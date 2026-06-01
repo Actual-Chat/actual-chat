@@ -102,6 +102,14 @@ public abstract record MarkupFormatterBase : MarkupVisitorWithState<StringBuilde
         Visit(markup.Content, ref state);
     }
 
+    protected override void VisitBlockQuote(BlockQuoteMarkup markup, ref StringBuilder state)
+    {
+        var inner = new StringBuilder();
+        Visit(markup.Content, ref inner);
+        state.Append("> ");
+        state.Append(inner.ToString().Replace("\r\n", "\n").Replace("\n", "\n> "));
+    }
+
     protected override void VisitStylized(StylizedMarkup markup, ref StringBuilder state)
     {
         state.Append(markup.StyleToken);

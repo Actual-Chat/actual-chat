@@ -7,6 +7,7 @@ public abstract record MarkupVisitor<TResult>
             MarkupSeq markupSeq => VisitSeq(markupSeq),
             ParagraphMarkup paragraphMarkup => VisitParagraph(paragraphMarkup),
             HeaderMarkup headerMarkup => VisitHeader(headerMarkup),
+            BlockQuoteMarkup blockQuoteMarkup => VisitBlockQuote(blockQuoteMarkup),
             CodeBlockMarkup codeBlockMarkup => VisitCodeBlock(codeBlockMarkup),
             MentionMarkup mention => VisitMention(mention),
             UrlMarkup urlMarkup => VisitUrl(urlMarkup),
@@ -31,6 +32,8 @@ public abstract record MarkupVisitor<TResult>
     protected abstract TResult VisitListItem(ListItemMarkup markup);
     protected abstract TResult VisitParagraph(ParagraphMarkup markup);
     protected abstract TResult VisitHeader(HeaderMarkup markup);
+    protected virtual TResult VisitBlockQuote(BlockQuoteMarkup markup)
+        => Visit(markup.Content);
 
     protected abstract TResult VisitSeq(MarkupSeq markup);
     protected abstract TResult VisitStylized(StylizedMarkup markup);

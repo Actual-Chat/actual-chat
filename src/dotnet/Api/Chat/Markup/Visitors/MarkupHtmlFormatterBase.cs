@@ -83,6 +83,15 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
         AddHtml(">", ref state);
     }
 
+    protected override void VisitBlockQuote(BlockQuoteMarkup markup, ref StringBuilder state)
+    {
+        AddHtml("<blockquote", ref state);
+        AddAttribute("class", "quote-markup", false, ref state);
+        AddHtml(">", ref state);
+        Visit(markup.Content, ref state);
+        AddHtml("</blockquote>", ref state);
+    }
+
     // protected override void VisitParagraph(ParagraphMarkup markup, ref StringBuilder state)
     // {
     //     AddHtml("<p", ref state);
