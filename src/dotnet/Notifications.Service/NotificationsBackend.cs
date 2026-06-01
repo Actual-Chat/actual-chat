@@ -25,6 +25,7 @@ public class NotificationsBackend(IServiceProvider services)
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
+    private Streaming.ILiveConversationsBackend LiveConversationsBackend { get; } = services.GetRequiredService<Streaming.ILiveConversationsBackend>();
     private IChatThreadsBackend ChatThreadsBackend { get; } = services.GetRequiredService<IChatThreadsBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
@@ -374,6 +375,12 @@ public class NotificationsBackend(IServiceProvider services)
             return;
 
         if (!ShouldNotify(entry, oldEntry, changeKind))
+            return;
+
+        // Suppress per-message notifications for entries inside an active live conversation —
+        // non-joined users get only the START/FINAL notifications, joined users get none.
+        var live = await LiveConversationsBackend.Get(entry.ChatId, cancellationToken).ConfigureAwait(false);
+        if (live is { } lc && entry.LocalId >= lc.StartEntryLid)
             return;
 
         await SendChatMessageNotification(entry, author, cancellationToken).ConfigureAwait(false);
