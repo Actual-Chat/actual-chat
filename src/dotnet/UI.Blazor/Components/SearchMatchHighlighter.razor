@@ -2,12 +2,12 @@
 @{
     var m = Match;
     if (m.Parts.Length == 0) {
-        <span>@(m.Text)</span>
+        <span class="@PlainTextClass">@(m.Text)</span>
         return;
     }
 }
 @foreach (var part in m.PartsWithGaps) {
-    var textClass = part.Rank > 0 ? HighlightedClass : "";
+    var textClass = part.Rank > 0 ? HighlightedClass : PlainTextClass;
     <span class="@textClass">@m.Text[part.Range.Start..part.Range.End]</span>
 }
 

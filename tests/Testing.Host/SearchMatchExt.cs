@@ -9,7 +9,7 @@ public static class SearchMatchExt
         string text,
         string highlightedSuffix = "")
     {
-        if (searchMatchPartRanges.IsNullOrEmpty())
+        if (searchMatchPartRanges is null || searchMatchPartRanges.Length == 0)
             return SearchMatch.Matchless(text);
 
         var searchMatchParts = searchMatchPartRanges.Select(x => new SearchMatchPart(x, 1));
