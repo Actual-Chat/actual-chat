@@ -21,6 +21,7 @@ public interface ILiveConversationsBackend : IComputeService, IBackendService
         bool transcriptionOn,
         CancellationToken cancellationToken);
     Task OnStreamsChanged(ChatId chatId, CancellationToken cancellationToken);
+    Task Close(ChatId chatId, CancellationToken cancellationToken);
     Task SetParticipation(
         ChatId chatId,
         UserId userId,

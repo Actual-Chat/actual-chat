@@ -2,6 +2,7 @@ using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
 using ActualChat.Flows;
 using ActualChat.Queues;
+using ActualChat.Streaming;
 
 namespace ActualChat.Chat.Flows;
 
@@ -16,6 +17,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
+    private ILiveConversationsBackend LiveConversationsBackend => field ??= Services.GetRequiredService<ILiveConversationsBackend>();
     private IEntryGroupExtractor EntryGroupExtractor => field ??= Services.GetRequiredKeyedService<IEntryGroupExtractor>(EntryGroupLimit.None);
 
     private ChatId ChatId => field ??= ChatId.Parse(Id.Arguments);
@@ -124,6 +126,11 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
                 continue;
             }
 
+            if (await IsAlreadyCovered(idRanges, cancellationToken).ConfigureAwait(false)) {
+                Console.Log("Skipping group: already covered by an existing conversation (materialized live conversation)");
+                continue;
+            }
+
             Console.Log($"Enqueuing summarize for group: {group.Entries.Count} entries, {group.WordCount} words");
             var summarize = new ConversationBackend_Summarize(ChatId, [.. idRanges]);
             await Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
@@ -207,6 +214,11 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
         var chatId = ChatId;
         var immatureMoment = now - Settings.Summarization.ChatEntrySummarizationDelay;
 
+        // An active live conversation owns the tail range [StartEntryLid, ...) — leave it alone
+        // until it closes and materializes; the split flow must not summarize it in parallel.
+        var live = await LiveConversationsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var liveStartLid = live?.StartEntryLid ?? long.MaxValue;
+
         // Fetch up to (BatchSize + 1) items
         var entries = await ChatsBackend.ListNewEntries(chatId, lastId, BatchSize + 1, cancellationToken).ConfigureAwait(false);
 
@@ -221,16 +233,36 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
             break;
         }
 
-        var maturedCount = firstImmatureIndex >= 0 ? firstImmatureIndex : entries.Length;
-        var take = Math.Min(maturedCount, BatchSize);
+        // Detect the first entry that falls into the active live conversation range
+        var firstLiveIndex = -1;
+        for (var i = 0; i < entries.Length; i++)
+            if (entries[i].LocalId >= liveStartLid) {
+                firstLiveIndex = i;
+                break;
+            }
+
+        var availableCount = entries.Length;
+        if (firstImmatureIndex >= 0)
+            availableCount = Math.Min(availableCount, firstImmatureIndex);
+        if (firstLiveIndex >= 0)
+            availableCount = Math.Min(availableCount, firstLiveIndex);
+
+        var take = Math.Min(availableCount, BatchSize);
         var textEntries = entries
             .Take(take)
             .Select(e => new ChatEntrySlim(e))
             .ToList();
 
-        var hasMore = entries.Length > BatchSize;   // More pages exist
-        var hasImmature = firstImmatureIndex >= 0;  // At least one immature entry in this window
+        var hasMore = entries.Length > BatchSize && availableCount > BatchSize;
+        var hasImmature = firstImmatureIndex >= 0 || firstLiveIndex >= 0;
 
         return (textEntries, hasMore, hasImmature);
+    }
+
+    private async Task<bool> IsAlreadyCovered(IReadOnlyList<Range<long>> idRanges, CancellationToken cancellationToken)
+    {
+        var conversationId = ConversationId.New(ChatId, idRanges[0].Start);
+        var existing = await ConversationsBackend.Get(conversationId, cancellationToken).ConfigureAwait(false);
+        return existing != null && existing.EndEntryLid >= idRanges[^1].End - 1;
     }
 }

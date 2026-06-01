@@ -2101,6 +2101,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .WithDelay(endsAt + Settings.Summarization.ChatEntrySummarizationDelay, Settings.Summarization.ChatEntrySummarizationDelayQuanta)
                 .Schedule(cancellationToken)
                 .ConfigureAwait(false);
+
+            // Kick-start live resummarization while a voice call is in progress; the flow
+            // no-ops and completes when there's no active live conversation for the chat.
+            if (entry.HasAudio)
+                await FlowHub.NewResumeEvent<LiveConversationSummaryFlow>(chat.Id.Value)
+                    .Schedule(cancellationToken)
+                    .ConfigureAwait(false);
         }
     }
 
