@@ -410,10 +410,11 @@ public class NotificationsBackend(IServiceProvider services)
         if (!ShouldNotify(entry, oldEntry, changeKind))
             return;
 
-        // Suppress per-message notifications for entries inside an active live conversation —
-        // non-joined users get only the START/FINAL notifications, joined users get none.
+        // Suppress per-message notifications for call-generated (audio) entries inside an active
+        // live conversation — non-joined users get only START/FINAL, joined users get none. Typed
+        // text posted during the call still notifies normally.
         var live = await LiveConversationsBackend.Get(entry.ChatId, cancellationToken).ConfigureAwait(false);
-        if (live is { } lc && entry.LocalId >= lc.StartEntryLid)
+        if (live is { } lc && entry.LocalId >= lc.StartEntryLid && entry.HasAudio)
             return;
 
         await SendChatMessageNotification(entry, author, cancellationToken).ConfigureAwait(false);
