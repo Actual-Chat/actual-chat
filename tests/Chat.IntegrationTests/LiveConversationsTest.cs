@@ -90,4 +90,50 @@ public class LiveConversationsTest(ChatCollection.AppHostFixture fixture, ITestO
         await backend.SetParticipation(chatId, account.Id, ParticipationKind.AudioListen, false, default);
         (await backend.IsParticipant(chatId, account.Id, default)).Should().BeFalse();
     }
+
+    [Fact]
+    public async Task ClosingTransitionStampsClosingAt()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveConversationsBackend>();
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+
+        // act — no live streams remain, so it transitions to closing and stamps ClosingAt
+        await backend.OnStreamsChanged(chatId, default);
+
+        // assert — ClosingAt drives the self-heal timeout that vanishes a flow-less conversation
+        var live = await backend.Get(chatId, default);
+        live.Should().NotBeNull();
+        live!.IsClosing.Should().BeTrue();
+        live.ClosingAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task RejoinClearsClosingState()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveConversationsBackend>();
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
+        await backend.OnStreamsChanged(chatId, default);
+        (await backend.Get(chatId, default))!.IsClosing.Should().BeTrue();
+
+        // act — a stream registers again before finalization
+        await backend.OnStreamRegistered(chatId, author.Id, null, true, default);
+
+        // assert — re-open clears both the closing flag and the timeout stamp
+        var live = await backend.Get(chatId, default);
+        live.Should().NotBeNull();
+        live!.IsClosing.Should().BeFalse();
+        live.ClosingAt.Should().BeNull();
+    }
 }
