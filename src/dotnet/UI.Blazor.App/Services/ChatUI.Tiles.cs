@@ -8,6 +8,11 @@ public record ChatItems(IReadOnlyList<ChatMessage> Items, bool HasBefore, bool H
     public static readonly ChatItems Empty = new([], false, false);
 }
 
+public sealed record ConversationViewState(
+    bool ShowConversations,
+    IImmutableSet<ConversationId> ExpandedConversations,
+    Range<long> HiddenLiveTailRange);
+
 public partial class ChatUI
 {
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
@@ -51,6 +56,15 @@ public partial class ChatUI
         if (chat == null)
             return ChatItems.Empty;
 
+        var liveConversation = await Hub.LiveConversationUI.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var amInLiveConversation = liveConversation != null
+            && await Hub.LiveConversationUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
+        // Non-joined users see the live block's summary only — no live entries. The synthetic
+        // conversation already collapses [Start, EndEntryLid]; hide the un-summarized tail too.
+        var hiddenLiveTailRange = liveConversation is { } liveConv && !amInLiveConversation
+            ? new Range<long>(liveConv.EndEntryLid + 1, long.MaxValue)
+            : default;
+
         var metaIdTiles = ServerIdTileStack.LastLayer.GetCoveringTiles(dataQuery.ExistingLidRange.Expand(LoadLimit))
             .Where(t => t.Start >= 0)
             .ToList();
@@ -64,7 +78,7 @@ public partial class ChatUI
             .EnsureMonotonic(Comparer<ChatRangeMeta>.Create((a, b) => a.LidRange.Start.CompareTo(b.LidRange.Start)))
             .ToList();
 
-        var showConversations = chat.IsSummarized ?? false;
+        var showConversations = (chat.IsSummarized ?? false) || liveConversation != null;
         if (showConversations && dataQuery.Navigation is { ShouldRestoreViewPosition: false, KeepConversationsCollapsed: false }) {
             var conversationRanges = chatRangeMetaList
                 .SelectMany(rm => rm.ConversationLidRanges)
@@ -176,8 +190,7 @@ public partial class ChatUI
                     chatId,
                     chat.Rules.Author?.Id,
                     idTile,
-                    showConversations,
-                    expandedConversations,
+                    new ConversationViewState(showConversations, expandedConversations, hiddenLiveTailRange),
                     prevMessage,
                     lastReadEntryLid,
                     isLastTile ? chatLidRange.End : null,
@@ -318,6 +331,8 @@ public partial class ChatUI
             var excludedRanges = conversationIdRanges
                 .Where(r => !expandedConversations.Contains(ConversationId.New(chatId, r.Start)))
                 .ToList();
+            if (!hiddenLiveTailRange.IsEmpty)
+                excludedRanges.Add(hiddenLiveTailRange);
 
             var merged = showConversations
                 ? entryIdRanges
@@ -428,8 +443,7 @@ public partial class ChatUI
         ChatId chatId,
         AuthorId? currentAuthorId,
         Range<long> lidRange,
-        bool showConversations,
-        IImmutableSet<ConversationId> expandedConversations,
+        ConversationViewState conversationView,
         ChatMessage? prevMessage,
         long lastReadEntryId,
         long? rangeEnd, /* specified only for last tile */
@@ -439,6 +453,8 @@ public partial class ChatUI
         // DebugLog?.LogDebug("GetTile: {ChatId} {IdRange} {LastReadEntryId}", chatId, idRange, lastReadEntryId);
         if (lidRange.IsEmptyOrNegative)
             throw new ArgumentOutOfRangeException(nameof(lidRange));
+
+        var (showConversations, expandedConversations, hiddenLiveTailRange) = conversationView;
 
         var chatSendingMessages = chatSendingMessagesWrapper.Value;
         var requestedIdRange = prevMessage == null
@@ -461,6 +477,8 @@ public partial class ChatUI
                 .Select(c => c.EntryLidRange)
                 .ToArray();
         }
+        if (!hiddenLiveTailRange.IsEmpty)
+            idRangesToSkip = [..idRangesToSkip, hiddenLiveTailRange];
         var entryIdTiles = IdTileStack.FirstLayer
             .GetCoveringTiles(requestedIdRange)
             .Where(t => !idRangesToSkip.Any(range => range.Contains(t.Range)))
