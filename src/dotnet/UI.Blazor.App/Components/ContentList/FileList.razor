@@ -53,39 +53,19 @@
         CancellationToken cancellationToken)
         => ContentListPlumbing.LoadFromPeriods<FileItem>(
             Hub, Session, ChatId, query, renderedData,
-            (block, ct) => Chats.GetFilePeriod(Session, ChatId, block.PeriodKey, block.PageIndex, ct),
-            BuildItems,
+            rowSize: 1,
+            groupBy: ContentGrouping.Month,
+            loadPage: (block, ct) => Chats.GetFilePeriod(Session, ChatId, block.PeriodKey, block.PageIndex, ct),
+            rowFactory: BuildRow,
+            prefetch: null,
             cancellationToken);
 
-    private Task<List<ContentListItem>> BuildItems(
-        IReadOnlyList<ContentListPlumbing.Block> windowBlocks,
-        IReadOnlyList<FileItem[]> contents,
-        CancellationToken cancellationToken) {
-        var result = new List<ContentListItem>();
-        string? currentGroupKey = null;
-
-        for (var b = 0; b < windowBlocks.Count; b++) {
-            var block = windowBlocks[b];
-            var rows = ContentListPlumbing.ChunkPage(contents[b], 1, ContentGrouping.Month, DateTimeConverter);
-            for (var r = rows.Count - 1; r >= 0; r--) {
-                var (rowIndex, groupKey, items) = rows[r];
-                if (groupKey != currentGroupKey) {
-                    currentGroupKey = groupKey;
-                    var title = ContentListPlumbing.GetLocalGroup(items[0].At, ContentGrouping.Month, DateTimeConverter).Title;
-                    if (title.Length > 0)
-                        result.Add(new ContentListItem { Key = $"g:{groupKey}", IsGroup = true, GroupTitle = title });
-                }
-
-                var displayItems = new IChatContentItem[] { items[0] };
-                result.Add(new ContentListItem {
-                    Key = $"i:{block.PeriodKey}:{block.PageIndex}:{rowIndex}",
-                    Version = items[0].Version,
-                    Items = displayItems,
-                });
-            }
-        }
-        return Task.FromResult(result);
-    }
+    private static ContentListItem BuildRow(FileItem[] items, string key)
+        => new() {
+            Key = key,
+            Version = items[0].Version,
+            Items = items,
+        };
 
     private string FormatDate(Moment at) {
         var date = DateTimeConverter.ToLocalTime(at);

@@ -3,18 +3,21 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-// Shared helpers for content-list components (VisualMediaList / FileList / LinkList).
-// All three iterate the same period-skeleton + paged-page protocol; only the item DTO
-// and the rendering differ.
+// Shared plumbing for content-list components (VisualMediaList / FileList / LinkList).
+// All three speak the same period-skeleton + paged-page protocol; here lives the
+// rows-from-anchor windowing that decides which blocks to fetch and crops the rendered
+// list to exactly what VirtualList asked for.
 internal static class ContentListPlumbing
 {
-    // Window grows by whole blocks (atomic fetch + cache unit), but the stop criterion
-    // is in items — the user-visible scale. Adapts to per-kind density without a magic
-    // block count: one fat block (≤PageSize=300 items) usually covers the target;
-    // sparse Link blocks after client-side filtering trigger more rounds.
-    public const int TargetItemCount = 60;
+    // Cold-init target: how many rows the very first GetData call returns when there
+    // is no anchor and no MoveRange. Subsequent scroll requests are sized by MoveRange.
+    public const int TargetRowsColdInit = 25;
 
     public sealed record Block(string PeriodKey, int PageIndex);
+
+    private sealed record RowSpec<TItem>(
+        string Key, string GroupKey, string GroupTitle, TItem[] Items)
+        where TItem : IChatContentItem;
 
     public static List<Block> BuildBlocks(IReadOnlyList<ChatContentPeriod> periods)
     {
@@ -58,50 +61,15 @@ internal static class ContentListPlumbing
             HasVeryLastItem = true,
         };
 
+    public static ContentListItem GroupHeader(string key, string title)
+        => new() { Key = $"g:{key}", IsGroup = true, GroupTitle = title };
+
     public static long SumVersion(IReadOnlyList<IChatContentItem> items)
     {
         long version = 0;
         foreach (var item in items)
             version += item.Version;
         return version;
-    }
-
-    // Chunks one page of items into rows preserving group boundaries. Items must be oldest-first
-    // (the order returned by the backend). The returned rows are also oldest-first; callers that
-    // render newest-at-top iterate them in reverse.
-    public static List<(int RowIndex, string GroupKey, IChatContentItem[] Items)> ChunkPage(
-        IReadOnlyList<IChatContentItem> visible,
-        int chunkSize,
-        ContentGrouping groupBy,
-        DateTimeConverter dateTimeConverter)
-    {
-        var rows = new List<(int, string, IChatContentItem[])>();
-        var rowIndex = 0;
-        var runStart = 0;
-        while (runStart < visible.Count) {
-            var groupKey = GetLocalGroup(visible[runStart].At, groupBy, dateTimeConverter).Key;
-            var runEnd = runStart;
-            while (runEnd < visible.Count
-                && GetLocalGroup(visible[runEnd].At, groupBy, dateTimeConverter).Key == groupKey)
-                runEnd++;
-
-            // visible is oldest-first and BuildItems renders rows bottom-up, so the
-            // short row must lead the run to land at the bottom of the group.
-            var runLength = runEnd - runStart;
-            var leadSize = runLength % chunkSize;
-            if (leadSize == 0)
-                leadSize = Math.Min(chunkSize, runLength);
-            for (var p = runStart; p < runEnd;) {
-                var size = Math.Min(p == runStart ? leadSize : chunkSize, runEnd - p);
-                var slice = new IChatContentItem[size];
-                for (var i = 0; i < size; i++)
-                    slice[i] = visible[p + i];
-                rows.Add((rowIndex++, groupKey, slice));
-                p += size;
-            }
-            runStart = runEnd;
-        }
-        return rows;
     }
 
     public static string FileExtension(string fileName)
@@ -112,18 +80,34 @@ internal static class ContentListPlumbing
             : "";
     }
 
-    // Runs the period-based load pipeline shared by VisualMediaList / FileList / LinkList:
-    //   skeleton → bidirectional sequential page load → buildItems → VirtualListData.
-    // Each component supplies only the typed `loadPage` (which page-method to call) and `buildItems`
-    // (which can do extra async work like resolving link entries).
+    // Rows-from-anchor + crop pipeline shared by VisualMediaList / FileList / LinkList.
+    //
+    // 1. Resolves wantBefore/wantAfter from VirtualList's MoveRange (or the cold-init
+    //    target when query.IsNone).
+    // 2. Loads the period skeleton (currently always one batch — backend returns the
+    //    whole skeleton with NextPeriodKey=null; the cursor loop is forward-compatible
+    //    for paginated skeletons).
+    // 3. Locates seed blocks via KeyRange (or [0..0] for cold init) and loads them.
+    // 4. Expands the loaded block range one block at a time toward the side that lacks
+    //    rows, until rowsBefore ≥ wantBefore and rowsAfter ≥ wantAfter (or we run out
+    //    of blocks).
+    // 5. Crops the flattened row list to exactly wantBefore + seed + wantAfter rows,
+    //    so the returned VirtualListData mirrors what was asked — no fat windows.
+    // 6. Optional prefetch hook warms extra data per visible window (LinkList uses it
+    //    to fetch ChatEntry for rich link previews).
+    // 7. rowFactory wraps each row's items into ContentListItem; group headers are
+    //    inserted on local-group boundaries.
     public static async Task<VirtualListData<ContentListItem>> LoadFromPeriods<TItem>(
         AppUIHub hub,
         Session session,
         ChatId chatId,
         VirtualListDataQuery query,
         VirtualListData<ContentListItem> renderedData,
+        int rowSize,
+        ContentGrouping groupBy,
         Func<Block, CancellationToken, Task<TItem[]>> loadPage,
-        Func<IReadOnlyList<Block>, IReadOnlyList<TItem[]>, CancellationToken, Task<List<ContentListItem>>> buildItems,
+        Func<TItem[], string, ContentListItem> rowFactory,
+        Func<IReadOnlyList<TItem>, CancellationToken, Task>? prefetch,
         CancellationToken cancellationToken)
         where TItem : IChatContentItem
     {
@@ -134,133 +118,284 @@ internal static class ContentListPlumbing
         if (!isVisible)
             return renderedData;
 
+        var dateTimeConverter = hub.DateTimeConverter;
         var kind = ResolveKind<TItem>();
+
+        // 1. Translate the VirtualList query into row-space terms.
+        int wantBefore, wantAfter;
+        string? seedStartKey, seedEndKey;
+        if (query.IsNone) {
+            wantBefore = 0;
+            wantAfter = TargetRowsColdInit;
+            seedStartKey = seedEndKey = null;
+        }
+        else {
+            wantBefore = Math.Max(0, -query.MoveRange.Start);
+            wantAfter = Math.Max(0, query.MoveRange.End);
+            seedStartKey = query.KeyRange.Start;
+            seedEndKey = query.KeyRange.End;
+        }
+
+        // 2. Skeleton (lazy). Pull the first page; pull more only when needed —
+        // either the anchor wasn't found in what we have, or block-expansion ran
+        // out of room. Backend currently returns the whole skeleton in one page
+        // (cursor stays null after the first call), so the extra pulls are no-ops
+        // today; the loop is correct once backend starts paginating.
         var periods = new List<ChatContentPeriod>();
         string? cursor = null;
-        do {
-            var skeleton = await hub.Chats
+        // Returns true if THIS call added periods. Callers gate further pulls on
+        // `cursor != null` (no need to re-check inside the helper).
+        async Task<bool> PullNextSkeletonPage()
+        {
+            var page = await hub.Chats
                 .GetContentPeriods(session, chatId, kind, cursor, cancellationToken)
                 .ConfigureAwait(false);
-            periods.AddRange(skeleton.Periods);
-            cursor = skeleton.NextPeriodKey;
-        } while (cursor != null);
+            periods.AddRange(page.Periods);
+            cursor = page.NextPeriodKey;
+            return page.Periods.Length > 0;
+        }
 
-        var blocks = BuildBlocks(periods);
-        if (blocks.Count == 0)
+        // 3. First skeleton page (always at least one fetch). Empty chat → done.
+        await PullNextSkeletonPage().ConfigureAwait(false);
+        if (periods.Count == 0)
             return EmptyData();
 
-        // Seed window = blocks already covered by VirtualList's KeyRange
-        // (or [0..0] for cold-init). `first` = newest block index, `last` = oldest.
+        // 4. Locate seed: pull more skeleton pages until the anchor blocks are
+        // found (or skeleton is exhausted). Cold init only needs the first page —
+        // blocks[0] = newest block. Backend never returns periods with PageCount=0,
+        // so we don't guard against an empty blocks list here.
+        List<Block> blocks;
         int first, last;
-        if (query.IsNone)
-            first = last = 0;
-        else {
-            var s = FindBlockIndex(blocks, query.KeyRange.Start);
-            var e = FindBlockIndex(blocks, query.KeyRange.End);
-            if (s < 0 || e < 0)
+        while (true) {
+            blocks = BuildBlocks(periods);
+            if (seedStartKey == null) {
                 first = last = 0;
-            else {
+                break;
+            }
+            var s = FindBlockIndex(blocks, seedStartKey);
+            var e = FindBlockIndex(blocks, seedEndKey!);
+            if (s >= 0 && e >= 0) {
                 first = Math.Min(s, e);
                 last = Math.Max(s, e);
+                break;
             }
+            if (cursor != null) {
+                // Anchor may live in a not-yet-pulled skeleton page.
+                await PullNextSkeletonPage().ConfigureAwait(false);
+                continue;
+            }
+            // Skeleton exhausted, anchor genuinely stale.
+            seedStartKey = seedEndKey = null;
+            wantBefore = 0;
+            first = last = 0;
+            break;
         }
 
-        var loaded = new Dictionary<int, TItem[]>();
-        var seedItems = 0;
+        // 5. Load seed blocks; index seed positions inside their blocks so we can
+        // seed rowsBefore/rowsAfter counters without flattening.
+        var blockRows = new Dictionary<int, List<RowSpec<TItem>>>();
         for (var i = first; i <= last; i++) {
-            loaded[i] = await loadPage(blocks[i], cancellationToken).ConfigureAwait(false);
-            seedItems += loaded[i].Length;
+            var block = blocks[i];
+            var items = await loadPage(block, cancellationToken).ConfigureAwait(false);
+            blockRows[i] = BuildBlockRowsNewestFirst(items, block, rowSize, groupBy, dateTimeConverter);
         }
 
-        // Direction-aware extension driven by MoveRange. VirtualList's contract:
-        //   move.Start < 0 → "I need ~N more items BEFORE current first" (toward newer = smaller idx).
-        //   move.End   > 0 → "I need ~N more items AFTER current last"  (toward older = larger idx).
-        // Grow the relevant side until the request is satisfied — independent of how
-        // many items the seed already has. Without this a fat seed block (≥ target)
-        // would short-circuit growth and the data source would spin returning the same
-        // payload, never reacting to scroll-into-spacer requests.
-        var wantBefore = query.IsNone ? 0 : Math.Max(0, -query.MoveRange.Start);
-        var wantAfter = query.IsNone ? 0 : Math.Max(0, query.MoveRange.End);
-        var gotBefore = 0;
-        while (gotBefore < wantBefore && first > 0) {
-            first--;
-            loaded[first] = await loadPage(blocks[first], cancellationToken).ConfigureAwait(false);
-            gotBefore += loaded[first].Length;
+        int rowsBefore, rowsAfter;
+        int seedStartPos = -1, seedEndPos = -1;
+        if (seedStartKey == null) {
+            rowsBefore = 0;
+            rowsAfter = 0;
+            for (var i = first; i <= last; i++)
+                rowsAfter += blockRows[i].Count;
         }
-        var gotAfter = 0;
-        while (gotAfter < wantAfter && last < blocks.Count - 1) {
-            last++;
-            loaded[last] = await loadPage(blocks[last], cancellationToken).ConfigureAwait(false);
-            gotAfter += loaded[last].Length;
-        }
-
-        // Cold-init / tiny-seed padding: ensure window covers at least TargetItemCount.
-        // Block is the atomic unit of fetch + cache; item count is the stop criterion —
-        // adapts to per-kind density without a magic block count.
-        var itemCount = seedItems + gotBefore + gotAfter;
-        var center = (first + last) / 2;
-        while (itemCount < TargetItemCount && (first > 0 || last < blocks.Count - 1)) {
-            var canGoOlder = last < blocks.Count - 1;
-            var canGoNewer = first > 0;
-            int next;
-            if (canGoOlder && (!canGoNewer || (last - center) <= (center - first))) {
-                last++;
-                next = last;
+        else {
+            seedStartPos = blockRows[first].FindIndex(r => r.Key == seedStartKey);
+            seedEndPos = blockRows[last].FindIndex(r => r.Key == seedEndKey);
+            if (seedStartPos < 0 || seedEndPos < 0) {
+                // Anchor disappeared mid-flight (e.g. seed block invalidated after locateSeed).
+                // Degrade to cold-init shape, keep wantAfter.
+                seedStartKey = seedEndKey = null;
+                wantBefore = 0;
+                rowsBefore = 0;
+                rowsAfter = 0;
+                for (var i = first; i <= last; i++)
+                    rowsAfter += blockRows[i].Count;
             }
             else {
-                first--;
-                next = first;
+                // rowsBefore = rows ABOVE seedStart inside the loaded window — only
+                // those in blockRows[first] above seedStartPos. Anything below
+                // seedStart (inside seedFirst, between seed blocks, inside seedLast
+                // up to seedEnd) belongs to the seed zone, not to rowsBefore/After.
+                // rowsAfter symmetrically: only rows below seedEnd in blockRows[last].
+                rowsBefore = seedStartPos;
+                rowsAfter = blockRows[last].Count - 1 - seedEndPos;
             }
-            var items = await loadPage(blocks[next], cancellationToken).ConfigureAwait(false);
-            loaded[next] = items;
-            itemCount += items.Length;
         }
 
-        var windowBlocks = new List<Block>(last - first + 1);
-        var windowContents = new List<TItem[]>(last - first + 1);
-        for (var i = first; i <= last; i++) {
-            windowBlocks.Add(blocks[i]);
-            windowContents.Add(loaded[i]);
+        // 6. ExpandNewer — pure backward. Skeleton pagination only grows older,
+        // so the newer edge is whatever the very first skeleton page provided.
+        async Task ExpandNewer()
+        {
+            while (rowsBefore < wantBefore && first > 0) {
+                first--;
+                var items = await loadPage(blocks[first], cancellationToken).ConfigureAwait(false);
+                blockRows[first] = BuildBlockRowsNewestFirst(items, blocks[first], rowSize, groupBy, dateTimeConverter);
+                rowsBefore += blockRows[first].Count;
+            }
         }
 
-        var listItems = await buildItems(windowBlocks, windowContents, cancellationToken).ConfigureAwait(false);
+        // 7. ExpandOlder — forward with lazy skeleton extension.
+        async Task ExpandOlder()
+        {
+            while (rowsAfter < wantAfter) {
+                if (last == blocks.Count - 1) {
+                    if (cursor == null || !await PullNextSkeletonPage().ConfigureAwait(false))
+                        return;
+                    blocks = BuildBlocks(periods);
+                    if (last == blocks.Count - 1)
+                        return; // skeleton didn't actually grow
+                }
+                last++;
+                var items = await loadPage(blocks[last], cancellationToken).ConfigureAwait(false);
+                blockRows[last] = BuildBlockRowsNewestFirst(items, blocks[last], rowSize, groupBy, dateTimeConverter);
+                rowsAfter += blockRows[last].Count;
+            }
+        }
+
+        await ExpandNewer().ConfigureAwait(false);
+        await ExpandOlder().ConfigureAwait(false);
+
+        // 8. Flatten once at the end and crop to the requested window.
+        var flat = new List<RowSpec<TItem>>(rowsBefore + rowsAfter + (seedEndPos - seedStartPos + 1));
+        for (var i = first; i <= last; i++)
+            flat.AddRange(blockRows[i]);
+
+        int cropStart, cropEnd;
+        if (seedStartKey == null) {
+            cropStart = 0;
+            cropEnd = Math.Min(flat.Count, wantAfter) - 1;
+        }
+        else {
+            var seedStartIdx = rowsBefore;                  // rows above seedStart in the loaded window
+            var seedEndIdx = flat.Count - 1 - rowsAfter;    // rows below seedEnd in the loaded window
+            cropStart = Math.Max(0, seedStartIdx - wantBefore);
+            cropEnd = Math.Min(flat.Count - 1, seedEndIdx + wantAfter);
+        }
+        if (cropEnd < cropStart)
+            cropEnd = cropStart;
+        var visible = flat.GetRange(cropStart, cropEnd - cropStart + 1);
+
+        // 7. Prefetch extra data for visible rows (LinkList warms ChatEntry resolution).
+        if (prefetch != null) {
+            var visibleItems = new List<TItem>(visible.Count * rowSize);
+            foreach (var r in visible)
+                visibleItems.AddRange(r.Items);
+            if (visibleItems.Count > 0)
+                await prefetch(visibleItems, cancellationToken).ConfigureAwait(false);
+        }
+
+        // 8. Assemble ContentListItem list with group headers on local-group boundaries.
+        var listItems = new List<ContentListItem>(visible.Count + 4);
+        string? currentGroupKey = null;
+        foreach (var r in visible) {
+            if (r.GroupKey != currentGroupKey) {
+                currentGroupKey = r.GroupKey;
+                if (r.GroupTitle.Length > 0)
+                    listItems.Add(GroupHeader(r.GroupKey, r.GroupTitle));
+            }
+            listItems.Add(rowFactory(r.Items, r.Key));
+        }
+
         if (listItems.Count == 0)
             return EmptyData();
 
+        var hasVeryFirstItem = first == 0 && cropStart == 0;
+        var hasVeryLastItem = last == blocks.Count - 1 && cursor == null && cropEnd == flat.Count - 1;
+
         var result = new VirtualListData<ContentListItem>(listItems) {
             Index = renderedData.Index + 1,
-            // BuildItems emits newest-first, so the rendered DOM order is newest-at-top.
-            // VirtualList treats Items[0] as VeryFirst — keep it aligned with our window.
-            HasVeryFirstItem = first == 0,
-            HasVeryLastItem = last == blocks.Count - 1,
+            HasVeryFirstItem = hasVeryFirstItem,
+            HasVeryLastItem = hasVeryLastItem,
         };
         var isSame = result.IsSimilarTo(renderedData);
+
         // Quick window/query diagnostics; warning level guarantees DevLog visibility.
         var log = hub.LogFor(typeof(ContentListPlumbing));
-        var winFirst = windowBlocks.Count > 0 ? $"{windowBlocks[0].PeriodKey}:{windowBlocks[0].PageIndex}" : "-";
-        var winLast = windowBlocks.Count > 0 ? $"{windowBlocks[^1].PeriodKey}:{windowBlocks[^1].PageIndex}" : "-";
+        var winFirst = $"{blocks[first].PeriodKey}:{blocks[first].PageIndex}";
+        var winLast = $"{blocks[last].PeriodKey}:{blocks[last].PageIndex}";
         var itemFirst = listItems.Count > 0 ? listItems[0].Key : "-";
         var itemLast = listItems.Count > 0 ? listItems[^1].Key : "-";
         if (query.IsNone)
             log.LogWarning(
                 "CL[{Kind}/{ChatId}] same={IsSame}\n"
                 + "  q=<none>\n"
-                + "  win={{ range: [{First}..{Last}]/{Total}, first: {WinFirst}, last: {WinLast}, hasFirst: {HasVeryFirst}, hasLast: {HasVeryLast} }}\n"
-                + "  items={{ count: {ItemCount}, first: {ItemFirst}, last: {ItemLast} }}",
+                + "  win={{ blocks: [{First}..{Last}]/{Total}, first: {WinFirst}, last: {WinLast}, hasFirst: {HasVeryFirst}, hasLast: {HasVeryLast} }}\n"
+                + "  items={{ count: {ItemCount}, first: {ItemFirst}, last: {ItemLast}, rowsFlat: {RowsFlat}, crop: [{CropStart}..{CropEnd}] }}",
                 kind, chatId, isSame, first, last, blocks.Count, winFirst, winLast,
                 result.HasVeryFirstItem, result.HasVeryLastItem,
-                listItems.Count, itemFirst, itemLast);
+                listItems.Count, itemFirst, itemLast, flat.Count, cropStart, cropEnd);
         else
             log.LogWarning(
                 "CL[{Kind}/{ChatId}] same={IsSame}\n"
                 + "  q={{ keys: {KeyRange}, virt: {VirtualRange}, move: {MoveRange} }}\n"
-                + "  win={{ range: [{First}..{Last}]/{Total}, first: {WinFirst}, last: {WinLast}, hasFirst: {HasVeryFirst}, hasLast: {HasVeryLast} }}\n"
-                + "  items={{ count: {ItemCount}, first: {ItemFirst}, last: {ItemLast} }}",
+                + "  win={{ blocks: [{First}..{Last}]/{Total}, first: {WinFirst}, last: {WinLast}, hasFirst: {HasVeryFirst}, hasLast: {HasVeryLast} }}\n"
+                + "  items={{ count: {ItemCount}, first: {ItemFirst}, last: {ItemLast}, rowsFlat: {RowsFlat}, seed: [{SeedStart}..{SeedEnd}], crop: [{CropStart}..{CropEnd}] }}",
                 kind, chatId, isSame, query.KeyRange, query.VirtualRange, query.MoveRange,
                 first, last, blocks.Count, winFirst, winLast,
                 result.HasVeryFirstItem, result.HasVeryLastItem,
-                listItems.Count, itemFirst, itemLast);
+                listItems.Count, itemFirst, itemLast, flat.Count, rowsBefore, flat.Count - 1 - rowsAfter, cropStart, cropEnd);
+
         return isSame ? renderedData : result;
+    }
+
+    // Slices one page of items into rows preserving group boundaries, emitting in
+    // newest-first DOM order. Within each local-group run the short row leads so that
+    // after the reverse it lands at the bottom of the group — matching ChunkPage's
+    // original layout. Items must arrive oldest-first (as backend returns them).
+    private static List<RowSpec<TItem>> BuildBlockRowsNewestFirst<TItem>(
+        TItem[] items,
+        Block block,
+        int rowSize,
+        ContentGrouping groupBy,
+        DateTimeConverter dateTimeConverter)
+        where TItem : IChatContentItem
+    {
+        var keyPrefix = rowSize == 1 ? "i" : "r";
+        var rows = new List<RowSpec<TItem>>();
+        var rowIndex = 0;
+        var runStart = 0;
+        while (runStart < items.Length) {
+            var firstGroupKey = GetLocalGroup(items[runStart].At, groupBy, dateTimeConverter).Key;
+            var runEnd = runStart;
+            while (runEnd < items.Length
+                && GetLocalGroup(items[runEnd].At, groupBy, dateTimeConverter).Key == firstGroupKey)
+                runEnd++;
+
+            var runLength = runEnd - runStart;
+            var leadSize = runLength % rowSize;
+            if (leadSize == 0)
+                leadSize = Math.Min(rowSize, runLength);
+            var p = runStart;
+            while (p < runEnd) {
+                var size = Math.Min(p == runStart ? leadSize : rowSize, runEnd - p);
+                // Items within a row are stored newest-first to match the DOM read order
+                // (newest at the left for multi-item rows); single-item rows are unaffected.
+                var slice = new TItem[size];
+                for (var i = 0; i < size; i++)
+                    slice[i] = items[p + size - 1 - i];
+                var rowGroup = GetLocalGroup(slice[^1].At, groupBy, dateTimeConverter);
+                rows.Add(new RowSpec<TItem>(
+                    $"{keyPrefix}:{block.PeriodKey}:{block.PageIndex}:{rowIndex}",
+                    rowGroup.Key,
+                    rowGroup.Title,
+                    slice));
+                p += size;
+                rowIndex++;
+            }
+            runStart = runEnd;
+        }
+        rows.Reverse();
+        return rows;
     }
 
     private static ChatContentKind ResolveKind<TItem>() where TItem : IChatContentItem
