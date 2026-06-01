@@ -326,9 +326,12 @@ ul.list-markup li::before {
 }
 .header-markup {
     @apply whitespace-break-spaces;
-    @apply my-2;
     word-break: break-word;
     color: var(--header-markup-color-1);
+}
+/* Headers read like plain-text lines: no top padding. Only H1 gets a tiny bottom gap. */
+.header-markup-1 {
+    margin-bottom: 0.125lh;
 }
 .header-markup-2 {
     color: var(--header-markup-color-2);
@@ -362,8 +365,14 @@ ul.list-markup li::before {
     @apply font-medium;
 }
 
-.chat-message-markup .header-markup + .header-markup,
-.chat-message-markup p.paragraph-markup + .header-markup,
-.chat-message-markup .header-markup + p.paragraph-markup {
-    @apply mt-2;
+/* Block quote: a colored left rule (distinct from the blue used by replies/forwards). */
+:root, .theme-light {
+    --quote-markup-border: #c026d3; /* fuchsia-600 */
+}
+.theme-dark {
+    --quote-markup-border: #e879f9; /* fuchsia-400 */
+}
+.quote-markup {
+    @apply pl-3 my-1;
+    border-left: 3px solid var(--quote-markup-border);
 }

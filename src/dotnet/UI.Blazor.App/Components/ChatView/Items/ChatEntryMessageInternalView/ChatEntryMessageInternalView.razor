@@ -9,7 +9,8 @@
     var entry = m.Entry;
     var trimmedContent = entry.Content.Trim();
     var isSoleEmojiMention = IsSoleEmojiMention(markup);
-    var isEmojiOnly = Emojis.TryGetByIdOrSymbol(trimmedContent) != null || isSoleEmojiMention;
+    // Plain-text zoom only for an actual unicode emoji glyph — not a slug id like "ginger-clown".
+    var isEmojiOnly = Emojis.BySymbol.GetValueOrDefault(trimmedContent) != null || isSoleEmojiMention;
     var isGifOnly = UrlMapper.IsTrustedGifUrl(trimmedContent);
     var isCodeBlockOnly = markup is CodeBlockMarkup;
     var oldTranslation = _rendered?.Translation ?? m.Translation;

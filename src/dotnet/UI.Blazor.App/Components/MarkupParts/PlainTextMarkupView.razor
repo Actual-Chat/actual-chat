@@ -56,8 +56,9 @@
         public Model(string MarkupText, SearchMatch SearchMatch, string? entryContent = null) {
             this.MarkupText = MarkupText;
             this.SearchMatch = SearchMatch;
+            // Zoom only for a known unicode emoji glyph, not a slug id (e.g. "ginger-clown").
             Emoji = entryContent.IsNullOrEmpty() ? null
-                : Emojis.TryGetByIdOrSymbol(entryContent.Trim());
+                : Emojis.BySymbol.GetValueOrDefault(entryContent.Trim());
         }
     }
 }

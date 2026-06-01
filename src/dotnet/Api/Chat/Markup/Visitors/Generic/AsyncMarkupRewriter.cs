@@ -59,6 +59,12 @@ public abstract record AsyncMarkupRewriter : AsyncMarkupVisitor<Markup>
         return newContent == markup.Content ? markup : new HeaderMarkup(markup.Level, newContent);
     }
 
+    protected override async ValueTask<Markup> VisitBlockQuote(BlockQuoteMarkup markup, CancellationToken cancellationToken)
+    {
+        var newContent = await Visit(markup.Content, cancellationToken).ConfigureAwait(false);
+        return newContent == markup.Content ? markup : new BlockQuoteMarkup(newContent);
+    }
+
     protected override ValueTask<Markup> VisitUrl(UrlMarkup markup, CancellationToken cancellationToken)
         => new (markup);
     protected override ValueTask<Markup> VisitMention(MentionMarkup markup, CancellationToken cancellationToken)

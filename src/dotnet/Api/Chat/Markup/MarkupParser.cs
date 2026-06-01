@@ -126,13 +126,16 @@ public partial class MarkupParser : IMarkupParser
         EndOfLine.Then(CodeBlockToken);
     private static readonly Parser<char, int> HeaderAhead =
         EndOfLine.Then(HeaderLevel);
+    private static readonly Parser<char, char> QuoteAhead =
+        EndOfLine.Then(Char('>').Before(WhitespaceChar)); // "> " block-quote line start
 
-    // Inline newline (single newline within inline content, not paragraph break or list/code/header block start)
+    // Inline newline (single newline within inline content, not paragraph break or list/code/header/quote block start)
     private static readonly Parser<char, Markup> InlineNewLine =
         Lookahead(Not(ParagraphBreakAhead)) // not paragraph break
             .Then(Lookahead(Not(ListItemAhead))) // not list item start
             .Then(Lookahead(Not(CodeBlockAhead))) // not code block start
             .Then(Lookahead(Not(HeaderAhead))) // not header start
+            .Then(Lookahead(Not(QuoteAhead))) // not block-quote start
             .Then(EndOfLine)
             .ThenReturn(NewLineMarkup.Instance as Markup);
 
@@ -313,11 +316,12 @@ public partial class MarkupParser : IMarkupParser
             // A single paragraph line (can be empty - 0 or more chars)
             Parser<char, string> paragraphLine = NotEndOfLineChar.ManyString();
 
-            // Check if next line starts a block element (CodeBlock, ListBlock, or Header)
+            // Check if next line starts a block element (CodeBlock, ListBlock, Header, or BlockQuote)
             Parser<char, char> blockElementAhead =
                 Lookahead(Try(CodeBlockToken.ThenReturn('`'))
                     .Or(Try(OneOf(Char('-'), Char('*')).Before(WhitespaceChar)))
-                    .Or(Try(HeaderLevel.ThenReturn('#'))));
+                    .Or(Try(HeaderLevel.ThenReturn('#')))
+                    .Or(Try(Char('>').Before(WhitespaceChar))));
 
             // Paragraph: collect all content until paragraph break or block element, then parse as inline
             // This allows styled text (**bold**) to span multiple lines
@@ -341,8 +345,22 @@ public partial class MarkupParser : IMarkupParser
                 select BuildHeader(level, line.TrimEnd(), inlineParser)
                 ).Debug("<Header>");
 
-            // Any standalone block (list/code/header, or paragraph including empty/inline-only).
-            Parser<char, Markup> blockOrHeader = SafeTryOneOf(CodeBlock, ListBlock, header);
+            // Block quote: one or more consecutive "> " lines; inner content is inline markup
+            // (mentions/styles/urls/emoji/newlines) — no nested block elements like code blocks.
+            Parser<char, string> quoteContentLine =
+                Char('>').Then(WhitespaceChar).Then(paragraphLine);
+            Parser<char, Markup> blockquote = (
+                from firstLine in quoteContentLine
+                from restLines in Try(
+                    from nl in EndOfLine
+                    from line in quoteContentLine
+                    select "\n" + line
+                ).Many()
+                select BuildBlockQuote(firstLine, restLines, inlineParser)
+                ).Debug("<BlockQuote>");
+
+            // Any standalone block (list/code/header/quote, or paragraph including empty/inline-only).
+            Parser<char, Markup> blockOrHeader = SafeTryOneOf(CodeBlock, ListBlock, header, blockquote);
             Parser<char, Markup> block = SafeTryOneOf(blockOrHeader, paragraph);
 
             // After the first block, every subsequent block is preceded by one or more
@@ -405,5 +423,11 @@ public partial class MarkupParser : IMarkupParser
 
         private static Markup BuildHeader(int level, string line, Parser<char, Markup> inlineParser)
             => new HeaderMarkup(level, inlineParser.ParseOrThrow(line));
+
+        private static Markup BuildBlockQuote(string firstLine, IEnumerable<string> restLines, Parser<char, Markup> inlineParser)
+        {
+            var content = firstLine + string.Concat(restLines);
+            return new BlockQuoteMarkup(inlineParser.ParseOrThrow(content));
+        }
     }
 }
