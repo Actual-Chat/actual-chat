@@ -147,7 +147,6 @@
     private async Task OnJoin() {
         var chatId = Message.Conversation!.Id.ChatId;
         await ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(true);
-        await LiveConversationUI.SetParticipation(chatId, ParticipationKind.AudioListen, true, CancellationToken.None).ConfigureAwait(true);
     }
 
     private void ToggleDetails() {
