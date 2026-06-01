@@ -107,7 +107,7 @@ public partial class LiveConversationsBackend : ShardComputeService, ILiveConver
             };
             if (!transcriptionOn)
                 // Phone-mode START fires immediately; transcription START waits for the first summary (in the flow).
-                await EnqueueLiveNotification(chatId, "Voice chat started", isFinal: false, cancellationToken).ConfigureAwait(false);
+                await EnqueueLiveNotification(chatId, "Voice chat started", isFinal: false, startEntryLid, cancellationToken).ConfigureAwait(false);
         }
         else {
             var authorIds = state.AuthorIds.Contains(authorId)
@@ -156,7 +156,7 @@ public partial class LiveConversationsBackend : ShardComputeService, ILiveConver
             await _redisScope.Remove(chatId.Value).ConfigureAwait(false);
             await _participants.RemoveHashMap(chatId.Value).ConfigureAwait(false);
             InvalidateGet(chatId);
-            await EnqueueLiveNotification(chatId, "Voice chat ended", isFinal: true, cancellationToken).ConfigureAwait(false);
+            await EnqueueLiveNotification(chatId, "Voice chat ended", isFinal: true, state.StartEntryLid, cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -257,7 +257,7 @@ public partial class LiveConversationsBackend : ShardComputeService, ILiveConver
                 return;
 
             var content = state.Title.IsNullOrEmpty() ? "Voice chat ended" : $"Voice chat ended: {state.Title}";
-            await EnqueueLiveNotification(chatId, content, isFinal: true, CancellationToken.None).ConfigureAwait(false);
+            await EnqueueLiveNotification(chatId, content, isFinal: true, state.StartEntryLid, CancellationToken.None).ConfigureAwait(false);
             await Close(chatId, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
@@ -265,9 +265,9 @@ public partial class LiveConversationsBackend : ShardComputeService, ILiveConver
         }
     }
 
-    private Task EnqueueLiveNotification(ChatId chatId, string content, bool isFinal, CancellationToken cancellationToken)
+    private Task EnqueueLiveNotification(ChatId chatId, string content, bool isFinal, long startEntryLid, CancellationToken cancellationToken)
         => Services.Queues()
-            .Enqueue(new NotificationsBackend_NotifyLiveConversation(chatId, content, isFinal), cancellationToken);
+            .Enqueue(new NotificationsBackend_NotifyLiveConversation(chatId, content, isFinal, startEntryLid), cancellationToken);
 
     private void InvalidateGet(ChatId chatId)
     {

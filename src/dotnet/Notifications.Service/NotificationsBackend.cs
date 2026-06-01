@@ -370,13 +370,14 @@ public class NotificationsBackend(IServiceProvider services)
         if (Invalidation.IsActive)
             return;
 
-        var (chatId, content, isFinal) = command;
+        var (chatId, content, isFinal, startEntryLid) = command;
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat is null)
             return;
 
         var userIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
-        var similarityKey = isFinal ? $"{chatId.Value}:live:final" : $"{chatId.Value}:live:start";
+        var phase = isFinal ? "final" : "start";
+        var similarityKey = $"{chatId.Value}:live:{startEntryLid}:{phase}";
         var now = Clocks.CoarseSystemClock.Now;
         foreach (var userId in userIds) {
             // Joined users (and streamers, who signal participation) already see the call live.
