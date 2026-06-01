@@ -248,6 +248,35 @@ export class DebugUI {
         infoLog?.log(`showSafeAreas: ${show ?? 'default'}`);
     }
 
+    /** On-demand: toggles the VirtualList consistency checker (see virtual-list-debug.ts).
+     *  When on, every live list checks its geometry ~10×/s plus on data-request and render,
+     *  logging inconsistencies and accumulating them in globalThis.__vlDebugs[identity]. */
+    public static virtualListDebug(enable = true): void {
+        const vl = (globalThis as Record<string, unknown>).VirtualList as
+            { setDebugEnabled?: (e: boolean) => unknown } | undefined;
+        if (!vl?.setDebugEnabled) {
+            console.warn('virtualListDebug: VirtualList is not loaded yet');
+            return;
+        }
+        vl.setDebugEnabled(enable);
+        infoLog?.log(`virtualListDebug: ${enable ? 'enabled' : 'disabled'}`);
+    }
+
+    /** Returns accumulated VirtualList consistency violations across all live lists.
+     *  Pass clear=true to also drain each list's buffer (so a poller doesn't re-report them). */
+    public static listVirtualListViolations(clear = false): unknown[] {
+        const reg = ((globalThis as Record<string, unknown>).__vlDebugs ?? {}) as
+            Record<string, { violations?: unknown[]; clear?: () => void }>;
+        const all: unknown[] = [];
+        for (const d of Object.values(reg)) {
+            if (d?.violations)
+                all.push(...d.violations);
+            if (clear)
+                d?.clear?.();
+        }
+        return all;
+    }
+
     private static setVideoTraceKill(
         kind: VideoTraceKillKind,
         avgPeriod: VideoTraceKillPeriodInput,

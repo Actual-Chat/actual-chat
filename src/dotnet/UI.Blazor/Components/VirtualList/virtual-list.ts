@@ -7,6 +7,8 @@ import { VirtualListRenderState } from './ts/virtual-list-render-state';
 import { VirtualListDataQuery } from './ts/virtual-list-data-query';
 import { VirtualListItem } from './ts/virtual-list-item';
 import { VirtualListStatistics } from './ts/virtual-list-statistics';
+import { VirtualListDebug, VirtualListDebugTarget } from './virtual-list-debug';
+import { EdgeBounce } from './ts/edge-bounce';
 import { Pivot } from './ts/pivot';
 import { DotNet } from '@microsoft/dotnet-js-interop';
 
@@ -29,6 +31,10 @@ const ScrollRestoreGuard = DeviceInfo.isMobile ? 250 : 100;
 const SkeletonDetectionBoundary = 200;
 const MinViewPortSize = 400;
 const RequestDataTimeout = 800;
+// Fixed scroll size of an infinite (scrollbar-less) list — its wrapper height. Kept well under the
+// browser's max element height (Firefox ≈ 17.9M); at ~50px/item that is still ~200k items of scroll.
+// Must match InfiniteSize in VirtualList.razor.cs.
+const InfiniteSize = 1e7;
 
 type ScrollToEdgeReason = 'no-pivot' | 'last-item' | 'item' | 'sticky-edge' | 'non-item-resize' | 'item-resize' | 'unknown';
 interface ScrollMetadata {
@@ -85,6 +91,7 @@ const SkeletonWatchdogInterval = 5000;
 export class VirtualList {
     private static readonly _instances = new Set<VirtualList>();
     public static enableWatchdogFixes = false;
+    public static enableDebug = false;
 
     public static dumpStateChangeLogs(lastN?: number, endStateEvery = 10): void {
         for (const instance of VirtualList._instances) {
@@ -92,6 +99,25 @@ export class VirtualList {
                 `[VirtualList:${instance.identity}] State history:`,
                 instance.getStateChangeLog(lastN, endStateEvery));
         }
+    }
+
+    // On-demand consistency checker. Off by default; turn on via debugUI.virtualListDebug(true)
+    // or globalThis.VirtualList.setDebugEnabled(true). Toggles every live list and all new ones.
+    public static setDebugEnabled(enabled: boolean): VirtualListDebug[] {
+        VirtualList.enableDebug = enabled;
+        const result: VirtualListDebug[] = [];
+        for (const instance of VirtualList._instances) {
+            if (enabled) {
+                instance.startDebug();
+                if (instance.debug)
+                    result.push(instance.debug);
+            }
+            else {
+                instance.debug?.stop();
+                instance.debug = null;
+            }
+        }
+        return result;
     }
 
     /** ref to div.virtual-list */
@@ -104,6 +130,9 @@ export class VirtualList {
     private readonly defaultEdge: VirtualListEdge;
     private readonly defaultSpacerSize: number;
     private readonly expandMultiplier: number;
+    // Infinite mode: no scrollbar, wrapper fixed to InfiniteSize (the ~infinite virtual space).
+    // false = finite, size-to-fit list with a visible scrollbar (needs an accurate total count).
+    private readonly isInfinite: boolean;
     private readonly wrapperRef: HTMLElement;
     private readonly spacerRef: HTMLElement;
     private readonly endSpacerRef: HTMLElement;
@@ -133,12 +162,22 @@ export class VirtualList {
     private skeletonWatchdogLastVersion = -1;
     private userScrollDirection: 'up' | 'down' | 'none' = 'none';
     private _restoreScrollPositionPending = false;
+    private debug: VirtualListDebug | null = null;
+    private edgeBounce: EdgeBounce | null = null;
+    private suppressBounceScroll = false;
 
     private _state: VirtualListState;
     private readonly _stateHistory: VirtualListStateSnapshot[] = [];
     private _stateVersion = 0;
 
     private get state(): VirtualListState { return this._state; }
+
+    // Per-item size for GEOMETRY estimation only (cornerstone offsets, before/after sizing) in FINITE
+    // lists, never for loading and never in infinite mode (there spacers + container anchoring position
+    // the chain). The measured average is good enough; catch-up corrects any drift.
+    private get geometryItemSize(): number {
+        return this.statistics.itemSize;
+    }
 
     public static create(
         ref: HTMLElement,
@@ -147,6 +186,7 @@ export class VirtualList {
         defaultEdge: VirtualListEdge,
         spacerSize: number,
         expandMultiplier: number,
+        isInfinite = true,
     ) {
         return new VirtualList(
             ref,
@@ -154,7 +194,8 @@ export class VirtualList {
             identity,
             defaultEdge,
             spacerSize,
-            expandMultiplier);
+            expandMultiplier,
+            isInfinite);
     }
 
     public constructor(
@@ -164,6 +205,7 @@ export class VirtualList {
         defaultEdge: VirtualListEdge,
         spacerSize: number,
         expandMultiplier: number,
+        isInfinite = true,
     ) {
         if (debugLog) {
             debugLog?.log(`constructor`);
@@ -178,6 +220,7 @@ export class VirtualList {
         this.defaultEdge = defaultEdge;
         this.defaultSpacerSize = spacerSize;
         this.expandMultiplier = expandMultiplier;
+        this.isInfinite = isInfinite;
 
         this.items = new Map<string, VirtualListItem>();
         this.sizeCache = new Map<string, number>();
@@ -190,8 +233,20 @@ export class VirtualList {
         this.endSpacerRef = this.containerRef.querySelector(':scope > .c-spacer-end')!;
         this.renderStateRef = this.ref.querySelector(':scope > .data.render-state')!;
         this.renderIndexRef = this.ref.querySelector(':scope > .data.render-index')!;
-        this.endAnchorRef = this.wrapperRef.querySelector(':scope > .c-end-anchor')!;
+        this.endAnchorRef = this.containerRef.querySelector(':scope > .c-end-anchor')!;
         this.rowGap = parseFloat(window.getComputedStyle(this.containerRef).rowGap) || 0;
+        this.edgeBounce = new EdgeBounce({
+            getOverscroll: () => this.computeOverscroll(),
+            getBoundary: over => this.ref.scrollTop - over,
+            getViewportHeight: () => this.ref.clientHeight,
+            isDragging: () => this.isPointerDown,
+            getScrollTop: () => this.ref.scrollTop,
+            setScrollTop: v => { this.suppressBounceScroll = true; this.ref.scrollTop = v; },
+            setTransform: y => {
+                this.containerRef.style.transform =
+                    Math.abs(y) < 0.01 ? 'translate3d(0, 0, 0)' : `translate3d(0, ${y.toFixed(2)}px, 0)`;
+            },
+        });
 
         this._state = {
             viewport: null,
@@ -231,13 +286,9 @@ export class VirtualList {
             isUpdatingPivots: false,
         };
 
-        // Set positioning according to the default edge
-        if (this.defaultEdge === VirtualListEdge.Start) {
-            this.ref.style.flexDirection = 'column';
-        }
-        else {
-            this.ref.style.flexDirection = 'column-reverse';
-        }
+        // Always top-to-bottom: defaultEdge is now only a preference (initial scroll target + sticky
+        // edge), not a coordinate flip. There is no reverse rendering anymore.
+        this.ref.style.flexDirection = 'column';
 
         // Events & observers
         const listenerOptions = { signal: this.abortController.signal, passive: true, };
@@ -332,12 +383,23 @@ export class VirtualList {
 
         VirtualList._instances.add(this);
         this.skeletonWatchdogTimer = setInterval(() => this.checkSkeletonWatchdog(), SkeletonWatchdogInterval);
+        if (VirtualList.enableDebug)
+            this.startDebug();
     };
+
+    private startDebug(): void {
+        this.debug ??= new VirtualListDebug(this as unknown as VirtualListDebugTarget);
+        this.debug.start();
+    }
 
     /** Called by blazor */
     public dispose() {
         debugLog?.log(`dispose()`);
         this.isDisposed = true;
+        this.debug?.stop();
+        this.debug = null;
+        this.edgeBounce?.reset();
+        this.edgeBounce = null;
         VirtualList._instances.delete(this);
         if (this.skeletonWatchdogTimer !== null) {
             clearInterval(this.skeletonWatchdogTimer);
@@ -827,18 +889,13 @@ export class VirtualList {
             }
         }
         if (hasChanged) {
-            let hasStickyEdge = false;
-            if (rs.hasVeryLastItem) {
-                if (lastItemKey && this.visibleItems.has(lastItemKey)) {
-                    this.setStickyEdge({ itemKey: lastItemKey, edge: VirtualListEdge.End });
-                    hasStickyEdge = true;
-                }
-            }
-            if (firstItemKey && !hasStickyEdge && rs.hasVeryFirstItem) {
-                if (this.visibleItems.has(firstItemKey)) {
-                    this.setStickyEdge({ itemKey: firstItemKey, edge: VirtualListEdge.Start });
-                }
-            }
+            // Both edges are sticky; the preferred edge (defaultEdge) wins when both are visible.
+            const lastVisible = rs.hasVeryLastItem && !!lastItemKey && this.visibleItems.has(lastItemKey);
+            const firstVisible = rs.hasVeryFirstItem && !!firstItemKey && this.visibleItems.has(firstItemKey);
+            if (lastVisible && (this.defaultEdge === VirtualListEdge.End || !firstVisible))
+                this.setStickyEdge({ itemKey: lastItemKey!, edge: VirtualListEdge.End });
+            else if (firstVisible)
+                this.setStickyEdge({ itemKey: firstItemKey!, edge: VirtualListEdge.Start });
 
             this.updateVisibleKeysThrottled();
         }
@@ -1016,6 +1073,7 @@ export class VirtualList {
         // The call inside restoreScrollPosition may get swallowed by the
         // leading-edge throttle while isRendering was still true.
         this.updateViewportThrottled();
+        this.debug?.onEvent('render');
     }
 
     private getScrollMetadata(rs: VirtualListRenderState): ScrollMetadata {
@@ -1054,8 +1112,9 @@ export class VirtualList {
                 // Keep position of visible item
                 scrollFunc = () => this.scrollTo(scrollToItemRef, false, 'end');
             }
-        } else if (this.state.query.isNone && this.state.stickyEdge != null) {
-            // Sticky edge scroll when we are not requesting data with query - render of new items only
+        } else if (this.state.query.isNone && this.state.stickyEdge != null
+            && this.computeOverscroll() === 0 && !this.edgeBounce?.isActive) {
+            // Suppressed while past a discovered edge / bounce active, so the edge magnet owns positioning.
             const itemKey = this.state.stickyEdge.edge === VirtualListEdge.Start && rs.hasVeryFirstItem
                 ? this.getFirstItemKey()
                 : this.state.stickyEdge.edge === VirtualListEdge.End && rs.hasVeryLastItem
@@ -1129,9 +1188,7 @@ export class VirtualList {
         if (viewportHeight === 0 && scrollTop === 0)
             return null; // Unable to calculate viewport as the element is hidden
 
-        const viewport = this.defaultEdge === VirtualListEdge.End
-            ? new NumberRange(scrollTop - viewportHeight, scrollTop)
-            : new NumberRange(scrollTop, scrollTop + viewportHeight);
+        const viewport = new NumberRange(scrollTop, scrollTop + viewportHeight);
 
         const oldViewport = this.state.viewport ?? this.state.lastViewport;
         if (oldViewport && viewport) {
@@ -1206,6 +1263,13 @@ export class VirtualList {
         if (!ev.isTrusted)
             return; // Ignore non-user initiated scrolls
 
+        // Consume the single scroll event fired by the bounce's snap-to-edge, so it doesn't cancel the
+        // in-flight transform spring.
+        if (this.suppressBounceScroll) {
+            this.suppressBounceScroll = false;
+            return;
+        }
+
         // Ignore scroll events from programmatic scroll position restoration.
         // Setting scrollTop in restoreScrollPosition fires a trusted scroll event
         // that would otherwise be misidentified as user scroll, clearing pivots
@@ -1213,22 +1277,19 @@ export class VirtualList {
         if (Date.now() - this.state.scrollPositionRestoredAt < ScrollRestoreGuard)
             return;
 
+        this.edgeBounce?.engage();
+
         // Clear sticky edge when user is scrolling via touch/pointer drag
-        if (this.isPointerDown && this.state.stickyEdge != null && !this.state.isEndAnchorVisible) {
-            // Require minimum displacement from edge before clearing — prevents
-            // keyboard resize and small touch movements from losing sticky edge
-            if (Math.abs(this.ref.scrollTop) > 50)
-                this.setStickyEdge(null);
-        }
+        if (this.isPointerDown && this.state.stickyEdge != null && !this.isAtStickyEdge())
+            // Dragged away from the sticky edge — drop it so it stops auto-following.
+            this.setStickyEdge(null);
 
         // Detect user scroll direction on the first trusted scroll event
         if (this.userScrollDirection === 'none') {
             const scrollTop = this.ref.scrollTop;
             const prevViewport = this.state.viewport ?? this.state.lastViewport;
             if (prevViewport) {
-                const prevScrollTop = this.defaultEdge === VirtualListEdge.End
-                    ? prevViewport.end
-                    : prevViewport.start;
+                const prevScrollTop = prevViewport.start;
                 if (scrollTop !== prevScrollTop) {
                     this.userScrollDirection = scrollTop < prevScrollTop ? 'up' : 'down';
                     warnLog?.log(`User scroll: +${this.userScrollDirection}`);
@@ -1243,6 +1304,40 @@ export class VirtualList {
 
     private onScrollEnd = (): void => {
         this.turnOffIsScrolling();
+        this.edgeBounce?.engage();
+    }
+
+    // Signed overscroll (px) past a discovered edge, measured from the DOM: >0 below the newest, <0
+    // above the oldest, 0 = none. Closing it means moving scrollTop by -over (see edgeBounce boundary).
+    private computeOverscroll(): number {
+        if (!this.isInfinite)
+            return 0;
+
+        const rs = this.state.renderState;
+        const vr = this.ref.getBoundingClientRect();
+        const first = this.getFirstItemRef();
+        const anchorBottom = this.endAnchorRef.getBoundingClientRect().bottom;
+        const firstTop = first ? first.getBoundingClientRect().top : anchorBottom;
+
+        // Short fully-loaded list (content fits the viewport): pin to the PREFERRED edge only — the other
+        // edge's gap is expected. Checking both edges here would ping-pong (close one, open the other).
+        if (rs.hasVeryFirstItem && rs.hasVeryLastItem && anchorBottom - firstTop <= vr.height)
+            return this.defaultEdge === VirtualListEdge.End
+                ? vr.bottom - anchorBottom
+                : -(firstTop - vr.top);
+
+        if (rs.hasVeryLastItem) {
+            const belowGap = vr.bottom - anchorBottom;
+            if (belowGap > 0)
+                return belowGap;
+        }
+        if (rs.hasVeryFirstItem) {
+            const aboveGap = firstTop - vr.top;
+            if (aboveGap > 0)
+                return -aboveGap;
+        }
+
+        return 0;
     }
 
     private onPointerDown = (): void => {
@@ -1258,9 +1353,8 @@ export class VirtualList {
         if (DeviceInfo.isMobile)
             return;
 
-        const { stickyEdge, isEndAnchorVisible } = this.state;
-        if (stickyEdge != null && !isEndAnchorVisible) {
-            // Only clear if wheel direction is away from the sticky edge
+        const { stickyEdge } = this.state;
+        if (stickyEdge != null && !this.isAtStickyEdge()) {
             const isAwayFromEdge = stickyEdge.edge === VirtualListEdge.End
                 ? ev.deltaY < 0
                 : ev.deltaY > 0;
@@ -1288,8 +1382,11 @@ export class VirtualList {
         fastRaf(() => this.updateCurrentPivots(interactiveKey));
     }
 
-    private updateCurrentPivots(interactiveKey?: string): void {
-        if (this.isRendering)
+    private updateCurrentPivots(interactiveKey?: string, force = false): void {
+        // `force` is used by restoreScrollPosition() when it runs during a render (renderStartedAt
+        // is still set, so isRendering is true) but the DOM is already laid out — capturing pivots
+        // there is both safe and necessary to anchor the coordinate system.
+        if (!force && this.isRendering)
             return;
         if (this.state.isUpdatingPivots)
             return;
@@ -1388,6 +1485,34 @@ export class VirtualList {
         this.updateVisibleKeysThrottled();
     }
 
+    // Debug-only: a keyed content item to anchor the no-jump check on. With a key, returns that item's
+    // viewport-relative top (or null if gone); without, the keyed item nearest the viewport centre.
+    private captureViewportAnchor(key?: string): { key: string; top: number } | null {
+        const viewRect = this.ref.getBoundingClientRect();
+        if (key != null) {
+            const li = this.containerRef.querySelector<HTMLElement>(`li.item[data-key="${CSS.escape(key)}"]`);
+            if (li == null)
+                return null;
+            const r = li.getBoundingClientRect();
+            return r.height > 0 ? { key, top: r.top - viewRect.top } : null;
+        }
+        const centre = viewRect.height / 2;
+        let best: { key: string; top: number } | null = null;
+        let bestDist = Infinity;
+        for (const li of this.containerRef.querySelectorAll<HTMLElement>('li.item[data-key]')) {
+            const r = li.getBoundingClientRect();
+            if (r.height <= 0 || r.bottom <= viewRect.top || r.top >= viewRect.bottom)
+                continue;
+            const top = r.top - viewRect.top;
+            const dist = Math.abs(top + r.height / 2 - centre);
+            if (dist < bestDist) {
+                bestDist = dist;
+                best = { key: li.dataset.key ?? '', top };
+            }
+        }
+        return best;
+    }
+
     private getAllItemRefs(): HTMLElement[] {
         if (this.cachedAllItemRefs === null) {
             const elementRefs = this.containerRef.querySelectorAll<HTMLElement>(`:scope .item`);
@@ -1431,7 +1556,10 @@ export class VirtualList {
     }
 
     private getLastItemRef(): HTMLElement | null {
-        let ref = this.containerRef.lastElementChild!.previousElementSibling; // skip end spacer
+        // Skip trailing non-content children (end spacer, end anchor) to reach the last item/group.
+        let ref: Element | null = this.containerRef.lastElementChild;
+        while (ref && !ref.classList.contains('item') && !ref.classList.contains('group'))
+            ref = ref.previousElementSibling;
         if (ref == null)
             return null;
 
@@ -1532,23 +1660,31 @@ export class VirtualList {
         let targetScrollTop = 0;
         fastRaf({
             read: () => {
-                const isFarFromEdge = edge == VirtualListEdge.End
-                    ? -this.ref.scrollTop > this.ref.offsetHeight
-                    : this.ref.scrollTop > this.ref.offsetHeight;
-                useSmoothScroll = useSmoothScroll && !isFarFromEdge;
-
-                // Compute target scroll position based on layout direction
-                if (this.defaultEdge === VirtualListEdge.End) {
-                    // column-reverse: scrollTop=0 is end, negative is toward start
-                    targetScrollTop = edge === VirtualListEdge.End
-                        ? 0
-                        : this.ref.clientHeight - this.ref.scrollHeight;
-                } else {
-                    // column: scrollTop=0 is start, positive is toward end
-                    targetScrollTop = edge === VirtualListEdge.Start
-                        ? 0
-                        : this.ref.scrollHeight - this.ref.clientHeight;
+                // Position from the ACTUAL DOM (robust to model/DOM size drift): bring the end anchor
+                // flush to the viewport bottom (End) or the first item to the viewport top (Start).
+                const vr = this.ref.getBoundingClientRect();
+                const maxScrollTop = Math.max(0, this.ref.scrollHeight - this.ref.clientHeight);
+                let delta: number;
+                if (edge === VirtualListEdge.Start) {
+                    const first = this.getFirstItemRef();
+                    delta = first ? first.getBoundingClientRect().top - vr.top : -this.ref.scrollTop;
                 }
+                else {
+                    // Prefer the end anchor (infinite lists — it carries the editor gap). When it's hidden
+                    // (finite lists hide it via CSS) its rect is empty, so fall back to the last item /
+                    // the full scroll range.
+                    const anchorRect = this.endAnchorRef.getBoundingClientRect();
+                    if (anchorRect.height > 0)
+                        delta = anchorRect.bottom - vr.bottom;
+                    else {
+                        const last = this.getLastItemRef();
+                        delta = last ? last.getBoundingClientRect().bottom - vr.bottom : maxScrollTop - this.ref.scrollTop;
+                    }
+                }
+                targetScrollTop = clamp(this.ref.scrollTop + delta, 0, maxScrollTop);
+
+                const isFarFromEdge = Math.abs(this.ref.scrollTop - targetScrollTop) > this.ref.offsetHeight;
+                useSmoothScroll = useSmoothScroll && !isFarFromEdge;
             },
             write: () => {
                 if (useSmoothScroll) {
@@ -1568,6 +1704,22 @@ export class VirtualList {
                 debugLog?.log('scrollToEdge: complete', edge, useSmoothScroll, reason);
             },
         });
+    }
+
+    // True when the viewport is still flush with the current sticky edge (End: end anchor visible;
+    // Start: the first item's top is at/above the viewport top).
+    private isAtStickyEdge(): boolean {
+        const edge = this.state.stickyEdge?.edge;
+        if (edge == null)
+            return false;
+        if (edge === VirtualListEdge.End)
+            return this.state.isEndAnchorVisible;
+
+        const first = this.getFirstItemRef();
+        if (!first)
+            return false;
+
+        return first.getBoundingClientRect().top >= this.ref.getBoundingClientRect().top - VisibilityEpsilon;
     }
 
     private setStickyEdge(stickyEdge: VirtualListStickyEdgeState | null): boolean {
@@ -1627,6 +1779,9 @@ export class VirtualList {
         let spacerSize = 0;
         let endSpacerSize = 0;
         let totalSizeDiff = 0;
+        // No-jump check (debug only): a visible anchored item must keep its screen position across a
+        // render that isn't an intentional scroll. Captured before re-layout, compared after.
+        let jumpAnchor: { key: string; top: number } | null = null;
         const isInteractivePositioning = [...this.state.pivots].some(p => p.isInteractive)
             && scrollMetadata?.scrollType !== 'sticky-edge'
             && scrollMetadata?.scrollType !== 'last-item'
@@ -1639,6 +1794,16 @@ export class VirtualList {
             key: `restoreScrollPosition_${this.identity}`,
             read: () => {
                 this._restoreScrollPositionPending = false;
+                if (this.debug)
+                    jumpAnchor = this.captureViewportAnchor();
+                // Pivots anchor the item-range coordinate system across re-measurement: measureItems()
+                // keeps a pivot item's range fixed while resetting the rest. Pivots are cleared on every
+                // scroll and only re-created on interactive (touch/click) events, so wheel/mouse scrolling
+                // leaves none — and without an anchor the ranges (and totalSize) recompute from scratch,
+                // which jumps the viewport or pushes all items off-screen. Establish one from the currently
+                // visible items first (force: we're called mid-render, but the DOM is already laid out).
+                if (this.state.pivots.length === 0)
+                    this.updateCurrentPivots(undefined, true);
                 if (hasUnmeasuredItems)
                     this.measureItems();
                 if (!this.state.itemRange)
@@ -1649,131 +1814,90 @@ export class VirtualList {
 
                 scrollTop = this.ref.scrollTop;
 
-                if (rs.beforeCount !== null && rs.afterCount !== null) {
-                    beforeSize = Math.floor(rs.beforeCount * this.statistics.itemSize);
-                    afterSize =  Math.floor(rs.afterCount * this.statistics.itemSize);
+                if (this.isInfinite) {
+                    totalSize = InfiniteSize; // fixed huge scroll space; chain floats around the middle
                 }
                 else {
-                    const knownRange = this.knownRange ?? new NumberRange(0,0);
-                    const estimatedTotalSize = rs.estimatedCount
-                        ? clamp(Math.floor(rs.estimatedCount * this.statistics.itemSize), knownRange.size, 5E6)
-                        : 0;
-
-                    let fullRange: NumberRange;
-                    if (this.state.isStartKnown && this.state.isEndKnown)
-                        fullRange = new NumberRange(knownRange.start, knownRange.end + endAnchorSize);
-                    else if (this.state.isStartKnown) {
-                        const fullRangeSize = Math.max(estimatedTotalSize, knownRange.size + defaultSpacerSize);
-                        fullRange = new NumberRange(knownRange.start, fullRangeSize);
-                    }
-                    else if (this.state.isEndKnown) {
-                        const fullRangeSize = Math.max(estimatedTotalSize, knownRange.size + defaultSpacerSize);
-                        fullRange = new NumberRange(knownRange.end - fullRangeSize, knownRange.end);
+                    if (rs.beforeCount !== null && rs.afterCount !== null) {
+                        beforeSize = Math.floor(rs.beforeCount * this.geometryItemSize);
+                        afterSize =  Math.floor(rs.afterCount * this.geometryItemSize);
                     }
                     else {
-                        const fullRangeSize = Math.max(estimatedTotalSize, knownRange.size + defaultSpacerSize * 2);
-                        fullRange = this.defaultEdge === VirtualListEdge.End
-                            ? new NumberRange(knownRange.end - fullRangeSize, knownRange.end)
-                            : new NumberRange(knownRange.start, knownRange.start + fullRangeSize)
+                        const knownRange = this.knownRange ?? new NumberRange(0,0);
+                        const estimatedTotalSize = rs.estimatedCount
+                            ? clamp(Math.floor(rs.estimatedCount * this.geometryItemSize), knownRange.size, 5E6)
+                            : 0;
+
+                        let fullRange: NumberRange;
+                        if (this.state.isStartKnown && this.state.isEndKnown)
+                            fullRange = new NumberRange(knownRange.start, knownRange.end + endAnchorSize);
+                        else if (this.state.isStartKnown) {
+                            const fullRangeSize = Math.max(estimatedTotalSize, knownRange.size + defaultSpacerSize);
+                            fullRange = new NumberRange(knownRange.start, fullRangeSize);
+                        }
+                        else if (this.state.isEndKnown) {
+                            const fullRangeSize = Math.max(estimatedTotalSize, knownRange.size + defaultSpacerSize);
+                            fullRange = new NumberRange(knownRange.end - fullRangeSize, knownRange.end);
+                        }
+                        else {
+                            const fullRangeSize = Math.max(estimatedTotalSize, knownRange.size + defaultSpacerSize * 2);
+                            fullRange = this.defaultEdge === VirtualListEdge.End
+                                ? new NumberRange(knownRange.end - fullRangeSize, knownRange.end)
+                                : new NumberRange(knownRange.start, knownRange.start + fullRangeSize)
+                        }
+
+                        beforeSize = clamp(start - fullRange.start, 0, fullRange.size - itemRangeSize);
+                        afterSize = clamp(fullRange.end - end, 0, fullRange.size - itemRangeSize);
                     }
+                    if (beforeSize == 0 && !rs.hasVeryFirstItem)
+                        beforeSize = defaultSpacerSize;
+                    if (afterSize == 0 && !rs.hasVeryLastItem)
+                        afterSize = defaultSpacerSize;
+                    if (rs.hasVeryFirstItem)
+                        beforeSize = 0;
+                    if (rs.hasVeryLastItem)
+                        afterSize = 0;
 
-                    beforeSize = clamp(start - fullRange.start, 0, fullRange.size - itemRangeSize);
-                    afterSize = clamp(fullRange.end - end, 0, fullRange.size - itemRangeSize);
+                    totalSize = itemRangeSize
+                        + beforeSize
+                        + afterSize
+                        + endAnchorSize;
+
+                    if (!rs.hasVeryFirstItem && !rs.hasVeryLastItem)
+                        totalSize = Math.max(totalSize, end, -start);
+                    else if (rs.hasVeryFirstItem)
+                        totalSize = Math.max(totalSize, -start);
+                    else if (rs.hasVeryLastItem)
+                        totalSize = Math.max(totalSize, end);
                 }
-                if (beforeSize == 0 && !rs.hasVeryFirstItem)
-                    beforeSize = defaultSpacerSize;
-                if (afterSize == 0 && !rs.hasVeryLastItem)
-                    afterSize = defaultSpacerSize;
-                if (rs.hasVeryFirstItem)
-                    beforeSize = 0;
-                if (rs.hasVeryLastItem)
-                    afterSize = 0;
-
-                totalSize = itemRangeSize
-                    + beforeSize
-                    + afterSize
-                    + endAnchorSize;
-
-                if (!rs.hasVeryFirstItem && !rs.hasVeryLastItem)
-                    totalSize = Math.max(totalSize, end, -start);
-                else if (rs.hasVeryFirstItem)
-                    totalSize = Math.max(totalSize, -start);
-                else if (rs.hasVeryLastItem)
-                    totalSize = Math.max(totalSize, end);
 
                 totalSizeDiff = totalSize - oldTotalSize;
 
-                if (this.defaultEdge === VirtualListEdge.End) {
-                    offset = end;
+                // offset = wrapper coordinate of the first loaded item; container.top = offset - startSpacer.
+                offset = start;
 
-                    // When user is scrolled away from the end edge and the item chain
-                    // extends past -endAnchorSize (e.g. new messages were appended at the
-                    // bottom while user was reading older messages), avoid the reset+shift
-                    // path. Resetting item ranges and compensating scrollTop produces a
-                    // visible jump on the user's screen. Instead, let `containerRef.style.bottom`
-                    // go negative so the container's TOP stays at the same wrapper coordinate —
-                    // visible items don't move and the new content extends below the wrapper
-                    // bottom (clipped by overflow).
-                    const isAtEndEdge = this.state.isEndAnchorVisible
-                        || this.state.stickyEdge?.edge === VirtualListEdge.End;
+                const reCenter = () => {
+                    const resetDelta = this.resetItemRange();
+                    if (resetDelta !== null) {
+                        scrollTopOffset = resetDelta;
+                        offset = this.state.itemRange!.start;
+                    }
+                };
 
-                    if (offset > -endAnchorSize && isAtEndEdge) {
-                        // adjust item ranges
-                        const resetDelta = this.resetItemRange();
-                        if (resetDelta !== null) {
-                            scrollTopOffset = resetDelta;
-                            offset = this.state.itemRange!.end;
-                        }
-                    }
-                    else if (rs.hasVeryLastItem && offset < -endAnchorSize) {
-                        // reset if we are at the end anchor and offset is less than end anchor size - e.g., when item size is reduced
-                        const resetDelta = this.resetItemRange();
-                        if (resetDelta !== null) {
-                            scrollTopOffset = resetDelta;
-                            offset = this.state.itemRange!.end;
-                        }
-                    }
-
-                    // Adjust spacer size
-                    endSpacerSize = clamp(-offset - endAnchorSize, 0, defaultSpacerSize);
-                    if (rs.hasVeryFirstItem) {
-                        spacerSize = 0;
-                    }
-                    else {
-                        spacerSize = clamp(oldTotalSize - itemRangeSize - endSpacerSize - endAnchorSize, 0, defaultSpacerSize);
-                    }
-                    offset += endSpacerSize; // adjust offset to include end spacer size
+                if (this.isInfinite) {
+                    // Re-center only if the chain drifted within a viewport of a wrapper edge (fast fling).
+                    const margin = Math.max(this.ref.clientHeight, defaultSpacerSize);
+                    if (start < margin || end > InfiniteSize - margin)
+                        reCenter();
                 }
-                else {
-                    offset = start;
+                else if (offset < 0 || (rs.hasVeryFirstItem && offset > 0))
+                    reCenter();
 
-                    if (offset < 0) {
-                        // adjust item ranges
-                        const resetDelta = this.resetItemRange();
-                        if (resetDelta !== null) {
-                            scrollTopOffset = resetDelta;
-                            offset = this.state.itemRange!.start;
-                        }
-                    }
-                    else if (rs.hasVeryFirstItem && offset > 0) {
-                        // reset if we are at the start and the offset is greater than 0
-                        const resetDelta = this.resetItemRange();
-                        if (resetDelta !== null) {
-                            scrollTopOffset = resetDelta;
-                            offset = this.state.itemRange!.start;
-                        }
-                    }
-
-                    // Adjust spacer size
-                    spacerSize = clamp(offset, 0, defaultSpacerSize);
-                    if (rs.hasVeryLastItem) {
-                        endSpacerSize = 0;
-                    }
-                    else {
-                        endSpacerSize = clamp(oldTotalSize - itemRangeSize - spacerSize - endAnchorSize, 0, defaultSpacerSize);
-                    }
-                    offset -= spacerSize; // adjust offset to include spacer size
-                }
+                spacerSize = rs.hasVeryFirstItem ? 0 : clamp(offset, 0, defaultSpacerSize);
+                endSpacerSize = rs.hasVeryLastItem
+                    ? 0
+                    : clamp(oldTotalSize - itemRangeSize - spacerSize - endAnchorSize, 0, defaultSpacerSize);
+                offset -= spacerSize;
                 // Set scrollPositionRestoredAt BEFORE write/scroll to guard onScroll from false "user scroll" detection
                 this.updateState('scrollRestored', this.state, { scrollPositionRestoredAt: Date.now() });
             },
@@ -1792,7 +1916,7 @@ export class VirtualList {
                 this.endSpacerRef.style.height = `${endSpacerSize}px`;
 
                 if (totalSizeDiff != 0 && this.state.isScrolling && rs.renderIndex > 0) {
-                    // delay wrapper size increase when scrolling in Chromium to prevent issues with scroll position jumps
+                    // delay wrapper size change while scrolling in Chromium to prevent scroll position jumps
                     const setWrapperHeight = () => fastRaf({
                         write: () => {
                             if (this.state.isScrolling)
@@ -1811,19 +1935,11 @@ export class VirtualList {
                     this.wrapperRef.style.height = `${totalSize}px`;
                 }
 
-                if (this.defaultEdge === VirtualListEdge.End) {
-                    this.containerRef.style.bottom = `${-offset}px`;
-                }
-                else {
-                    this.containerRef.style.top = `${offset}px`;
-                }
-                // Compensate scrollTop after item range reset to prevent visual jumps,
-                // but skip when pinned to the bottom edge — staying pinned matters more
-                const isPinnedToBottom = this.state.stickyEdge?.edge === VirtualListEdge.End
-                    && this.defaultEdge === VirtualListEdge.End;
-                if (scrollTopOffset && !isPinnedToBottom) {
+                this.containerRef.style.top = `${offset}px`;
+                // Compensate scrollTop after a re-anchor so the view doesn't visibly jump (chain and
+                // scrollTop shift by the same delta).
+                if (scrollTopOffset)
                     this.ref.scrollTop = scrollTop + scrollTopOffset;
-                }
 
                 if (!isInteractivePositioning) {
                     scrollMetadata?.scroll?.();
@@ -1835,6 +1951,25 @@ export class VirtualList {
                     debugLog?.log(`restoreScrollPosition: scroll set interactive`, scrollMetadata?.scrollType);
                 }
                 this.updateViewportThrottled();
+
+                // No-jump check: after a non-intentional-scroll render, a previously-visible anchored
+                // item must be at the same screen position (the scrollTop compensation should have kept
+                // it put). If it moved, the compensation was wrong — a visible jump.
+                if (this.debug && jumpAnchor && !scrollMetadata?.scroll) {
+                    const after = this.captureViewportAnchor(jumpAnchor.key);
+                    if (after != null) {
+                        const drift = after.top - jumpAnchor.top;
+                        if (Math.abs(drift) > 8)
+                            this.debug.noteRenderJump({
+                                key: jumpAnchor.key,
+                                before: Math.round(jumpAnchor.top),
+                                after: Math.round(after.top),
+                                drift: Math.round(drift),
+                                scrollType: scrollMetadata?.scrollType ?? 'none',
+                                renderIndex: rs.renderIndex,
+                            });
+                    }
+                }
 
                 // debugLog?.log(`restoreScrollPosition: scroll set`, offset, totalSize, scrollTop, spacerSize, endSpacerSize);
 
@@ -2007,17 +2142,16 @@ export class VirtualList {
         }
 
         const isCornerstoneRangeMissing = !cornerstoneItem?.range;
-        const removedLastItem =
-            this.defaultEdge === VirtualListEdge.End &&
-            cornerstoneItemIndex === orderedItems.length - 1 &&
-            rs.hasVeryLastItem &&
-            (cornerstoneItem?.range?.end ?? 0) < -this.state.endAnchorSize;
+        // Finite-only edge corrections: pull the first item back to coord 0 when the very-first item is
+        // loaded but drifted. Infinite lists float around InfiniteSize/2, so these don't apply (the
+        // rubber-band handles discovered ends instead).
         const removedFirstItem =
+            !this.isInfinite &&
             this.defaultEdge === VirtualListEdge.Start &&
             cornerstoneItemIndex === 0 &&
             rs.hasVeryFirstItem &&
             (cornerstoneItem?.range?.start ?? 0) > 0;
-        const needsRangeReset = isCornerstoneRangeMissing || removedLastItem || removedFirstItem;
+        const needsRangeReset = isCornerstoneRangeMissing || removedFirstItem;
         if (needsRangeReset) {
             // We have checked all items and there is no cornerstone item, so let's recalculate all ranges
             this.resetItemRange(true);
@@ -2100,127 +2234,69 @@ export class VirtualList {
             return cornerstoneItemIndex;
         }
 
-        if (this.defaultEdge === VirtualListEdge.End) {
-            let cornerstoneItemIndex = orderedItems.length - 1;
-            let cornerstoneItem = orderedItems[cornerstoneItemIndex];
+        let cornerstoneItemIndex = 0;
+        let cornerstoneItem = orderedItems[0];
 
-            if (rs.beforeCount !== null && rs.afterCount !== null) {
-                // We are able to calculate range based on before and after counts
-                cornerstoneItem.range = new NumberRange(
-                    0 - Math.floor(rs.afterCount * this.statistics.itemSize) - cornerstoneItem.size!,
-                    0 - Math.floor(rs.afterCount * this.statistics.itemSize));
-            }
-            else if (canUseViewport && !rs.hasVeryLastItem) {
-                // use coords of viewport and center ordered items
-                const query = rs.query;
-                const viewportCenter = viewport
-                    ? viewport.start + viewport.size / 2
-                    : query.isNone
-                        ? 0 // We should not be here, but just in case
-                        : query.virtualRange.start + query.virtualRange.size / 2;
-                cornerstoneItemIndex = findCenterItemIndex();
-                cornerstoneItem = orderedItems[cornerstoneItemIndex];
-                cornerstoneItem.range = new NumberRange(
-                    Math.floor(viewportCenter - cornerstoneItem.size! / 2),
-                    Math.ceil(viewportCenter + cornerstoneItem.size! / 2)
-                );
-            }
-            else if (!rs.hasVeryLastItem) {
-                // There is no query range and no very last item, so we have to calculate range manually with end spacer
-                cornerstoneItem.range = new NumberRange(
-                    0 - defaultSpacerSize - endAnchorSize - cornerstoneItem.size!,
-                    0 - defaultSpacerSize - endAnchorSize);
-            }
-            else
-                cornerstoneItem.range = new NumberRange(
-                    0 - endAnchorSize - cornerstoneItem.size!,
-                    0 - endAnchorSize);
+        if (this.isInfinite) {
+            // Center the loaded chain in the huge virtual space. On a re-anchor this rigidly shifts the
+            // whole chain by a fixed delta (returned as rangeDelta); restoreScrollPosition shifts scrollTop
+            // by the same amount, so the on-screen position doesn't change.
+            cornerstoneItemIndex = findCenterItemIndex();
+            cornerstoneItem = orderedItems[cornerstoneItemIndex];
+            const half = Math.floor(cornerstoneItem.size! / 2);
+            const base = Math.round(InfiniteSize / 2);
+            cornerstoneItem.range = new NumberRange(base - half, base - half + cornerstoneItem.size!);
+        }
+        else if (rs.beforeCount !== null && rs.afterCount !== null) {
+            // Finite list with known counts: anchor the first item below its before-region.
+            cornerstoneItem.range = new NumberRange(
+                Math.floor(rs.beforeCount * this.geometryItemSize),
+                Math.floor(rs.beforeCount * this.geometryItemSize) + cornerstoneItem.size!);
+        }
+        else if (canUseViewport && !rs.hasVeryFirstItem) {
+            // Anchor the center item at the current viewport center.
+            const query = rs.query;
+            const viewportCenter = viewport
+                ? viewport.start + viewport.size / 2
+                : query.isNone
+                    ? 0
+                    : query.virtualRange.start + query.virtualRange.size / 2;
+            cornerstoneItemIndex = findCenterItemIndex();
+            cornerstoneItem = orderedItems[cornerstoneItemIndex];
+            cornerstoneItem.range = new NumberRange(
+                Math.floor(viewportCenter - cornerstoneItem.size! / 2),
+                Math.ceil(viewportCenter + cornerstoneItem.size! / 2)
+            );
+        }
+        else if (!rs.hasVeryFirstItem) {
+            // No counts and not at the very first item: leave room for a start spacer.
+            cornerstoneItem.range = new NumberRange(defaultSpacerSize, defaultSpacerSize + cornerstoneItem.size!);
+        }
+        else
+            cornerstoneItem.range = new NumberRange(0, cornerstoneItem.size!);
 
-            this.recalculateItemRangesFromCornerstone(orderedItems, cornerstoneItemIndex);
-
-            rangeDelta = Math.max(...originalRanges.map((r, i) => orderedItems[i].range!.end - r.end));
-            const newItemRange = new NumberRange(
-                orderedItems[0].range!.start,
-                orderedItems[orderedItems.length - 1].range!.end);
-            if (fullRangeSize) {
-                this.updateState('resetItemRange: End fullRange', this.state, {
-                    itemRange: newItemRange,
-                    minStart: 0 - fullRangeSize - endAnchorSize,
-                    maxEnd: 0  - endAnchorSize,
-                });
-                // Do not reset isStartKnown \ isEndKnown as knownRange size has not changed
-            }
-            else {
-                this.updateState('resetItemRange: End', this.state, {
-                    itemRange: newItemRange,
-                    minStart: orderedItems[0].range!.start,
-                    maxEnd: orderedItems[orderedItems.length - 1].range!.end,
-                    isEndKnown: rs.hasVeryLastItem,
-                    isStartKnown: rs.hasVeryFirstItem,
-                });
-            }
-            return rangeDelta;
+        this.recalculateItemRangesFromCornerstone(orderedItems, cornerstoneItemIndex);
+        rangeDelta = Math.max(...originalRanges.map((r, i) => orderedItems[i].range!.start - r.start));
+        const newItemRange = new NumberRange(
+            orderedItems[0].range!.start,
+            orderedItems[orderedItems.length - 1].range!.end);
+        if (!this.isInfinite && fullRangeSize) {
+            this.updateState('resetItemRange: fullRange', this.state, {
+                itemRange: newItemRange,
+                minStart: 0,
+                maxEnd: fullRangeSize + endAnchorSize,
+            });
         }
         else {
-            let cornerstoneItemIndex = 0;
-            let cornerstoneItem = orderedItems[cornerstoneItemIndex];
-
-            if (rs.beforeCount !== null && rs.afterCount !== null) {
-                // We are able to calculate range based on before and after counts
-                cornerstoneItem.range = new NumberRange(
-                    Math.floor(rs.beforeCount * this.statistics.itemSize),
-                    Math.floor(rs.beforeCount * this.statistics.itemSize) + cornerstoneItem.size!);
-            }
-            else if (canUseViewport && !rs.hasVeryFirstItem) {
-                // use coords of viewport and center ordered items
-                const query = rs.query;
-                const viewportCenter = viewport
-                    ? viewport.start + viewport.size / 2
-                    : query.isNone
-                        ? 0 // We should not be here, but just in case
-                        : query.virtualRange.start + query.virtualRange.size / 2;
-                cornerstoneItemIndex = findCenterItemIndex();
-                cornerstoneItem = orderedItems[cornerstoneItemIndex];
-                cornerstoneItem.range = new NumberRange(
-                    Math.floor(viewportCenter - cornerstoneItem.size! / 2),
-                    Math.ceil(viewportCenter + cornerstoneItem.size! / 2)
-                );
-            }
-            else if (!rs.hasVeryFirstItem) {
-                // There is no query range and no very first item, so we have to calculate range manually with spacer
-                cornerstoneItem.range = new NumberRange(
-                    defaultSpacerSize,
-                    defaultSpacerSize + cornerstoneItem.size!);
-            }
-            else
-                cornerstoneItem.range = new NumberRange(
-                    0,
-                    cornerstoneItem.size!);
-
-            this.recalculateItemRangesFromCornerstone(orderedItems, cornerstoneItemIndex);
-            rangeDelta = Math.max(...originalRanges.map((r, i) => orderedItems[i].range!.start - r.start));
-            const newItemRange = new NumberRange(
-                orderedItems[0].range!.start,
-                orderedItems[orderedItems.length - 1].range!.end);
-            if (fullRangeSize) {
-                this.updateState('resetItemRange: Start fullRange', this.state, {
-                    itemRange: newItemRange,
-                    minStart: 0,
-                    maxEnd: fullRangeSize + endAnchorSize,
-                });
-                // Do not reset isStartKnown \ isEndKnown as knownRange size has not changed
-            }
-            else {
-                this.updateState('resetItemRange: Start', this.state, {
-                    itemRange: newItemRange,
-                    minStart: orderedItems[0].range!.start,
-                    maxEnd: orderedItems[orderedItems.length - 1].range!.end,
-                    isEndKnown: rs.hasVeryLastItem,
-                    isStartKnown: rs.hasVeryFirstItem,
-                });
-            }
-            return rangeDelta;
+            this.updateState('resetItemRange', this.state, {
+                itemRange: newItemRange,
+                minStart: newItemRange.start,
+                maxEnd: newItemRange.end,
+                isEndKnown: rs.hasVeryLastItem,
+                isStartKnown: rs.hasVeryFirstItem,
+            });
         }
+        return rangeDelta;
     }
 
     private async requestData(): Promise<void> {
@@ -2255,6 +2331,7 @@ export class VirtualList {
         this.updateState('requestData: sending', this.state, { lastQueryTime: Date.now(), lastQuery: this.state.query });
         // debug helper
         // await delayAsync(1500);
+        this.debug?.onRequestData();
         await this.blazorRef.invokeMethodAsync('RequestData', this.state.query);
     }
 

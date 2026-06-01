@@ -15,9 +15,7 @@
         ? 48
         : 4;
     var containerStyle = renderIndex == 0
-        ? DefaultEdge == VirtualListEdge.End
-            ? $"bottom: {endAnchorSize}px;"
-            : "top: 0px;"
+        ? "top: 0px;"
         : "";
     var hasVeryFirstItem = data.HasVeryFirstItem;
     var hasVeryLastItem = data.HasVeryLastItem;
@@ -101,11 +99,13 @@
                 <VirtualListSkeletonView SkeletonCount="@endSkeletonCount" Skeleton="@Skeleton" SkeletonBatch="@SkeletonBatch"/>
             </li>
 
-        </ul>
+            @* In-flow end marker right after the content: visible only when scrolled to the newest,
+               which drives sticky-end detection (top-to-bottom layout, no reverse rendering). *@
+            <li @key="@VirtualListSpecialKeys.EndAnchor"
+                class="c-end-anchor">
+                &nbsp;
+            </li>
 
-        <div @key="@VirtualListSpecialKeys.EndAnchor"
-             class="c-end-anchor">
-            &nbsp;
-        </div>
+        </ul>
     </div>
 </div>

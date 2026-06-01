@@ -7,6 +7,8 @@ namespace ActualChat.UI.Blazor.Components;
 
 public static class VirtualList
 {
+    // Wrapper height of an infinite (scrollbar-less) list. Must match InfiniteSize in virtual-list.ts.
+    public const double InfiniteSize = 10_000_000;
     public static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.VirtualList.create";
     public static bool IsNonFirstRender { get; set; }
 }
@@ -44,6 +46,11 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
     [Parameter] public double SpacerSize { get; set; } = 1000;
     [Parameter] public VirtualListEdge DefaultEdge { get; set; }
     [Parameter] public double ExpandMultiplier { get; set; } = 2;
+    // Infinite mode (default): no scrollbar, the wrapper is a fixed huge scroll space (InfiniteSize) and
+    // the list can over-scroll past the first/last item, with a magnet dragging it back to the edge.
+    // Set false for finite lists with a visible scrollbar — their data source must report the total item
+    // count so spacers size the scroll range accurately for the thumb.
+    [Parameter] public bool IsInfinite { get; set; } = true;
     // This event is intentionally Action vs EventCallback, coz normally it shouldn't
     // trigger StateHasChanged on parent component.
     [Parameter] public Action<VirtualListItemVisibility>? ItemVisibilityChanged { get; set; }
@@ -139,7 +146,8 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
                 Identity,
                 DefaultEdge,
                 SpacerSize,
-                ExpandMultiplier
+                ExpandMultiplier,
+                IsInfinite
                 );
         }
     }
