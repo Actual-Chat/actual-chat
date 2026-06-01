@@ -95,6 +95,7 @@ public class NotificationFlowTest(AppHostFixture fixture, ITestOutputHelper @out
         // Bob sends 3 messages
         await Tester.SignIn(bob);
         var entry1 = await Tester.CreateTextEntry(chatId, "First");
+        await Queues.WhenProcessing();
         var entry2 = await Tester.CreateTextEntry(chatId, "Second");
         var entry3 = await Tester.CreateTextEntry(chatId, "Third");
 
