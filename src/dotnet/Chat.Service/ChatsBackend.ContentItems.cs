@@ -38,7 +38,7 @@ public partial class ChatsBackend
         await using var _ = dbContext.ConfigureAwait(false);
 
         var chatSid = chatId.Value;
-        var (months, hasOlder) = kind switch {
+        var months = kind switch {
             ChatContentKind.Media => await QueryPeriodCounts(
                 dbContext.ChatVisualMediaItems, chatSid, lowerBoundInclusive, upperBoundExclusive, cancellationToken)
                 .ConfigureAwait(false),
@@ -59,6 +59,9 @@ public partial class ChatsBackend
             .ToArray();
         // NextPeriodKey = the month immediately at the lower boundary; client
         // sends it back as beforePeriodKey to advance to the next year window.
+        // Pulled out as a separate compute method so invalidation can target it
+        // independently of the in-window month list.
+        var hasOlder = await HasContentBefore(chatId, kind, lowerBoundInclusive, cancellationToken).ConfigureAwait(false);
         var nextPeriodKey = hasOlder
             ? FormatUtcMonthKey(lowerBoundInclusive.Year, lowerBoundInclusive.Month)
             : null;
@@ -163,6 +166,30 @@ public partial class ChatsBackend
             cancellationToken);
     }
 
+    // Protected members
+
+    // [ComputeMethod]
+
+    protected virtual async Task<bool> HasContentBefore(
+        ChatId chatId,
+        ChatContentKind kind,
+        DateTime boundaryUtc,
+        CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+        var chatSid = chatId.Value;
+        return kind switch {
+            ChatContentKind.Media => await QueryHasContentBefore(
+                dbContext.ChatVisualMediaItems, chatSid, boundaryUtc, cancellationToken).ConfigureAwait(false),
+            ChatContentKind.File => await QueryHasContentBefore(
+                dbContext.ChatFileItems, chatSid, boundaryUtc, cancellationToken).ConfigureAwait(false),
+            ChatContentKind.Link => await QueryHasContentBefore(
+                dbContext.ChatLinkItems, chatSid, boundaryUtc, cancellationToken).ConfigureAwait(false),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
+        };
+    }
+
     // Private members
 
     private async Task<LinkItem> ResolveLinkItem(LinkItem item, CancellationToken cancellationToken)
@@ -248,28 +275,36 @@ public partial class ChatsBackend
             return;
         }
 
-        // Skeleton is paged one calendar year at a time. Each affected month sits
-        // in exactly one page; invalidate just those plus the first page (its
-        // NextPeriodKey may flip null↔non-null when an out-of-window month
-        // appears or disappears).
         var nowUtc = Clocks.SystemClock.Now.ToDateTime();
-        var firstPageUpperExclusive = new DateTime(nowUtc.Year + 1, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var skeletonBeforeKeys = new HashSet<string?> { null };
+        var nowYear = nowUtc.Year;
+
+        // Skeleton page that owns an affected month m: beforeKey = null when
+        // m sits in the current year, otherwise the first month of (m.year+1).
+        // Each month belongs to exactly one page — invalidate that one for its
+        // Periods/PageCount entry.
+        var skeletonBeforeKeys = new HashSet<string?>();
         foreach (var monthKey in pageCounts.PageCounts.Keys) {
             var (monthStart, _) = ParseUtcMonthRange(monthKey);
-            var monthsFromUpper = (firstPageUpperExclusive.Year - monthStart.Year) * 12
-                + (firstPageUpperExclusive.Month - monthStart.Month);
-            if (monthsFromUpper <= 0)
-                continue; // future month — shouldn't happen, no skeleton page owns it
-            var pageIndex = (monthsFromUpper - 1) / 12;
-            skeletonBeforeKeys.Add(pageIndex == 0
+            skeletonBeforeKeys.Add(monthStart.Year == nowYear
                 ? null
-                : FormatUtcMonthKey(
-                    firstPageUpperExclusive.AddMonths(-12 * pageIndex).Year,
-                    firstPageUpperExclusive.AddMonths(-12 * pageIndex).Month));
+                : FormatUtcMonthKey(monthStart.Year + 1, 1));
         }
         foreach (var beforeKey in skeletonBeforeKeys)
             _ = GetContentPeriods(chatId, kind, beforeKey, default);
+
+        // NextPeriodKey on every skeleton page comes from HasContentBefore(b),
+        // where b = page lower bound. An item at month m can flip HasContentBefore(b)
+        // iff b > m — i.e., for year boundaries y in (m.year, nowYear].
+        // Invalidating those compute keys cascades into the corresponding
+        // GetContentPeriods(beforeKey) entries automatically.
+        var boundaries = new HashSet<DateTime>();
+        foreach (var monthKey in pageCounts.PageCounts.Keys) {
+            var (monthStart, _) = ParseUtcMonthRange(monthKey);
+            for (var y = monthStart.Year + 1; y <= nowYear; y++)
+                boundaries.Add(new DateTime(y, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        }
+        foreach (var b in boundaries)
+            _ = HasContentBefore(chatId, kind, b, default);
 
         foreach (var (monthKey, count) in pageCounts.PageCounts) {
             var pageCount = Math.Max(1, (count + ChatContentPeriod.PageSize - 1) / ChatContentPeriod.PageSize);
@@ -289,10 +324,10 @@ public partial class ChatsBackend
         }
     }
 
-    // Aggregates content items into per-month counts for the given UTC window and
-    // probes whether anything older than the window exists. Shared by Media/File/Link —
-    // tables implement IDbChatContentItem so the same LINQ shape compiles for all three.
-    private static async Task<(List<(int Year, int Month, int Count)> Months, bool HasOlder)>
+    // Aggregates content items into per-month counts for the given UTC window.
+    // Shared by Media/File/Link — tables implement IDbChatContentItem so the
+    // same LINQ shape compiles for all three.
+    private static async Task<List<(int Year, int Month, int Count)>>
         QueryPeriodCounts<TDbItem>(
             IQueryable<TDbItem> table,
             string chatSid,
@@ -300,19 +335,21 @@ public partial class ChatsBackend
             DateTime upperBoundExclusive,
             CancellationToken cancellationToken)
         where TDbItem : class, IDbChatContentItem
-    {
-        var months = (await table
+        => (await table
                 .Where(x => x.ChatId == chatSid && x.At >= lowerBoundInclusive && x.At < upperBoundExclusive)
                 .GroupBy(x => new { x.At.Year, x.At.Month })
                 .Select(g => new { g.Key.Year, g.Key.Month, Count = g.Count() })
                 .ToListAsync(cancellationToken).ConfigureAwait(false))
             .Select(m => (m.Year, m.Month, m.Count))
             .ToList();
-        var hasOlder = await table
-            .AnyAsync(x => x.ChatId == chatSid && x.At < lowerBoundInclusive, cancellationToken)
-            .ConfigureAwait(false);
-        return (months, hasOlder);
-    }
+
+    private static Task<bool> QueryHasContentBefore<TDbItem>(
+        IQueryable<TDbItem> table,
+        string chatSid,
+        DateTime boundaryUtc,
+        CancellationToken cancellationToken)
+        where TDbItem : class, IDbChatContentItem
+        => table.AnyAsync(x => x.ChatId == chatSid && x.At < boundaryUtc, cancellationToken);
 
     // Loads a paged slice of chat content items for the given UTC month, oldest-first
     // by (At, EntryLocalId, LocalIndex). Shared by Get{VisualMedia,File,Link}Period.
