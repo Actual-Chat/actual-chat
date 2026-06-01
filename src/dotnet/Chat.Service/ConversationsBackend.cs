@@ -1,6 +1,8 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.ML;
 using ActualChat.Db;
+using ActualChat.Live;
+using ActualChat.Streaming;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,6 +19,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IDbEntityResolver<string, DbConversation> DbConversationResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbConversation>>();
     private IConversationSummarizer ConversationSummarizer { get; } = services.GetRequiredService<IConversationSummarizer>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
+    private ILiveConversationsBackend LiveConversationsBackend { get; } = services.GetRequiredService<ILiveConversationsBackend>();
 
     // [ComputeMethod]
     public virtual async Task<Conversation?> Get(ConversationId conversationId, CancellationToken cancellationToken)
@@ -78,6 +81,15 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        var live = await LiveConversationsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (live is { } lc && lc.StartEntryLid < idTileRange.End && lc.EndEntryLid >= idTileRange.Start) {
+            var liveRange = new Range<long>(lc.StartEntryLid, lc.EndEntryLid + 1);
+            if (!conversationRanges.Contains(liveRange)) {
+                conversationRanges.Add(liveRange);
+                conversationRanges = conversationRanges.OrderBy(r => r.Start).ToList();
+            }
+        }
+
         return new ConversationRangeMeta(chatId,
             conversationRanges.ToArray(),
             previousConversationRange,
@@ -99,10 +111,23 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             .Collect(cancellationToken)
             .ConfigureAwait(false);
 
-        return conversations
+        var result = conversations
             .Where(c => c != null && !c.EntryLidRange.IntersectWith(lidTileRange).IsEmpty)
             .OrderBy(c => c!.EntryLidRange.Start)
-            .ToArray()!;
+            .ToList()!;
+
+        // The live conversation isn't persisted yet — inject its synthetic projection directly.
+        var live = await LiveConversationsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (live is { } lc) {
+            var liveConversation = lc.ToConversation();
+            if (!liveConversation.EntryLidRange.IntersectWith(lidTileRange).IsEmpty
+                && result.All(c => c!.Id != liveConversation.Id)) {
+                result.Add(liveConversation);
+                result = result.OrderBy(c => c!.EntryLidRange.Start).ToList();
+            }
+        }
+
+        return result.ToArray()!;
     }
 
     // Commands
