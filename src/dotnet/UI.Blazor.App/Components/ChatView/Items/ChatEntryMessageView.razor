@@ -334,10 +334,19 @@
         IReadOnlyList<AuthorId>? mentionedAuthorIds = null;
         if (isOwnMessage && hasAnyMentions && !isForward) {
             var mentionIds = MentionExtractor.Instance.GetMentionIds(markup);
-            mentionedAuthorIds = mentionIds
-                .Where(c => c.TargetId is AuthorId authorId && authorId != ownAuthorId)
-                .Select(c => (AuthorId)c.TargetId)
-                .ToList();
+            var ids = new List<AuthorId>();
+            var seen = new HashSet<AuthorId>();
+            foreach (var mentionId in mentionIds) {
+                // A member can be mentioned directly (@a:author) or via their account (@u:user).
+                AuthorId? authorId = mentionId.Target switch {
+                    AuthorId a => a,
+                    UserId u => (await Authors.GetByUserId(Session, entry.ChatId, u, cancellationToken).ConfigureAwait(false))?.Id,
+                    _ => null,
+                };
+                if (authorId is { } id && id != ownAuthorId && seen.Add(id))
+                    ids.Add(id);
+            }
+            mentionedAuthorIds = ids;
         }
         var relatedChatEntry = await ChatEditorUI.RelatedEntryRef.Use(cancellationToken).ConfigureAwait(false);
         var isReplyTarget = relatedChatEntry is { Kind: RelatedEntryKind.Reply, EntryId: var repliedEntryId } && repliedEntryId == entry.Id;
@@ -496,7 +505,7 @@
         if (repliedEntry?.AuthorId == authorId)
             return true;
 
-        return hasAnyMentions && MarkupValidator.ContainsMention(MentionId.NewAuthor(authorId)).IsValid(markup);
+        return hasAnyMentions && MarkupValidator.ContainsMention(MentionRef.NewAuthor(authorId)).IsValid(markup);
     }
 
     private void ShowHoverMenu() {

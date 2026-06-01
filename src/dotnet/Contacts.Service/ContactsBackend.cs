@@ -911,11 +911,11 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var parentChat = threadChatId.GetOutermostParent();
         foreach (var mentionId in mentionIds) {
             AuthorFull? author = null;
-            if (mentionId.TargetId is AuthorId authorId)
+            if (mentionId.Target is AuthorId authorId)
                 author = await AuthorsBackend
                     .Get(parentChat, authorId, RequestedAuthorKind.Full, cancellationToken)
                     .ConfigureAwait(false);
-            else if (mentionId.TargetId is UserId userId)
+            else if (mentionId.Target is UserId userId)
                 author = await AuthorsBackend
                     .GetByUserId(parentChat, userId, RequestedAuthorKind.Full, cancellationToken)
                     .ConfigureAwait(false);

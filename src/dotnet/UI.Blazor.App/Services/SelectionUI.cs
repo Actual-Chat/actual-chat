@@ -1,9 +1,14 @@
+using System.Net;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
 public class SelectionUI : UIServiceBase<AppUIHub>
 {
+    // Serializes markup back to its storable text form (`@`name`id`, **bold**, …) for the clipboard's
+    // hidden data-voxt-markup payload, which the editor reconstructs on paste.
+    private static readonly MarkupFormatter MarkupTextFormatter = new();
+
     private readonly MutableState<ImmutableHashSet<ChatEntryId>> _selection;
     private readonly MutableState<bool> _hasSelection;
 
@@ -51,19 +56,27 @@ public class SelectionUI : UIServiceBase<AppUIHub>
         if (selection.Count == 0)
             return;
 
-        var textToCopy = await GetTextToCopy(selection).ConfigureAwait(true); // Get back to the Blazor Dispatcher
-        await ClipboardUI.WriteText(textToCopy).ConfigureAwait(true);
+        var (plain, html) = await GetTextToCopy(selection).ConfigureAwait(true); // Get back to the Blazor Dispatcher
+        await ClipboardUI.WriteText(plain, html).ConfigureAwait(true);
         Clear();
     }
     public async Task CopyToClipboard(ChatEntry sendingChatEntry)
     {
         if (!sendingChatEntry.IsSending)
             throw new ArgumentOutOfRangeException(nameof(sendingChatEntry), "Given chat entry should be a sending chat entry.");
-        var textToCopy = await GetTextToCopy(sendingChatEntry).ConfigureAwait(true); // Get back to the Blazor Dispatcher
-        await ClipboardUI.WriteText(textToCopy).ConfigureAwait(true);
+        var (plain, html) = await GetTextToCopy(sendingChatEntry).ConfigureAwait(true); // Get back to the Blazor Dispatcher
+        await ClipboardUI.WriteText(plain, html).ConfigureAwait(true);
     }
 
-    private async Task<string> GetTextToCopy(IReadOnlySet<ChatEntryId> selection)
+    // Returns (plain text shown to external apps, HTML carrying the original markup for our editor).
+    private static string BuildClipboardHtml(string plainText, string markup)
+    {
+        var visible = WebUtility.HtmlEncode(plainText).Replace("\n", "<br>");
+        var data = WebUtility.HtmlEncode(markup);
+        return $"<div data-voxt-markup=\"{data}\">{visible}</div>";
+    }
+
+    private async Task<(string Plain, string Html)> GetTextToCopy(IReadOnlySet<ChatEntryId> selection)
     {
         var showAuthor = selection.Count > 1;
         var chatId = selection.First().ChatId;
@@ -71,6 +84,7 @@ public class SelectionUI : UIServiceBase<AppUIHub>
         CancellationToken cancellationToken = default;
 
         var lines = new List<string>();
+        var markupLines = new List<string>();
         AuthorId? currentAuthorId = null;
         foreach (var chatEntryId in selection.OrderBy(x => x.LocalId)) {
             var chatEntry = await Chats.GetEntry(Session, chatEntryId, cancellationToken).ConfigureAwait(false);
@@ -101,12 +115,14 @@ public class SelectionUI : UIServiceBase<AppUIHub>
             }
 
             lines.Add(markup.ToClipboardText());
+            markupLines.Add(MarkupTextFormatter.Format(markup));
         }
 
-        return string.Join('\n', lines);
+        var plain = string.Join('\n', lines);
+        return (plain, BuildClipboardHtml(plain, string.Join('\n', markupLines)));
     }
 
-    private async Task<string> GetTextToCopy(ChatEntry sendingChatEntry)
+    private async Task<(string Plain, string Html)> GetTextToCopy(ChatEntry sendingChatEntry)
     {
         var chatId = sendingChatEntry.ChatId;
         var chatMarkupHub = ChatMarkupHubFactory[chatId];
@@ -115,7 +131,8 @@ public class SelectionUI : UIServiceBase<AppUIHub>
             .GetMarkup(sendingChatEntry, null, MarkupConsumer.MessageView, cancellationToken)
             .ConfigureAwait(false);
         markup = await chatMarkupHub.ApplyMentionResolver(markup, cancellationToken).ConfigureAwait(false);
-        return markup.ToClipboardText();
+        var plain = markup.ToClipboardText();
+        return (plain, BuildClipboardHtml(plain, MarkupTextFormatter.Format(markup)));
     }
 
     public Task Delete(ChatEntryId chatEntryId)

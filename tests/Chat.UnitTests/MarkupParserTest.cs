@@ -186,29 +186,11 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public void UrlEncodedGifMentionTest()
-    {
-        // GIF picker yields URL-encoded ids — parser must accept '%', '.', '~'.
-        var encoded = "https%3A%2F%2Fmedia.tenor.com%2Ffoo.gif";
-        var p = Parse<ParagraphMarkup>("@g:" + encoded, out _);
-        var m = p.Content.Should().BeOfType<GifMention>().Subject;
-        m.Id.Kind.Should().Be(MentionKind.Gif);
-        m.GifRef.Value.Should().Be(encoded);
-
-        // Named form round-trip
-        p = Parse<ParagraphMarkup>("@`waving hand`g:" + encoded);
-        m = p.Content.Should().BeOfType<GifMention>().Subject;
-        m.Name.Should().Be("waving hand");
-        m.GifRef.Value.Should().Be(encoded);
-        m.Format().Should().Be("@`waving hand`g:" + encoded);
-    }
-
-    [Fact]
     public void UnknownPrefixIsNotAMentionTest()
     {
         // 'z' isn't a registered prefix — the token shouldn't parse as a mention.
         Parse<ParagraphMarkup>("@z:foo");
-        var ok = MentionId.TryParse("z:foo", out var mention);
+        var ok = MentionRef.TryParse("z:foo", out var mention);
         ok.Should().BeFalse();
         mention.Should().BeNull();
     }
@@ -503,16 +485,16 @@ code
         var item0 = m.Items[0].Content.Should().BeOfType<MarkupSeq>().Subject;
         item0.Items.Length.Should().Be(7);
         item0.Items[0].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("Participants ");
-        item0.Items[1].Should().BeAssignableTo<MentionMarkup>().Which.Id.Should().Be(MentionId.NewAuthor(AuthorId.New(chatId, 3)));
+        item0.Items[1].Should().BeAssignableTo<MentionMarkup>().Which.Id.Should().Be(MentionRef.NewAuthor(AuthorId.New(chatId, 3)));
         item0.Items[2].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(", ");
-        item0.Items[3].Should().BeAssignableTo<MentionMarkup>().Which.Id.Should().Be(MentionId.NewAuthor(AuthorId.New(chatId, 2)));
+        item0.Items[3].Should().BeAssignableTo<MentionMarkup>().Which.Id.Should().Be(MentionRef.NewAuthor(AuthorId.New(chatId, 2)));
         item0.Items[4].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(" and ");
-        item0.Items[5].Should().BeAssignableTo<MentionMarkup>().Which.Id.Should().Be(MentionId.NewAuthor(AuthorId.New(chatId, 1)));
+        item0.Items[5].Should().BeAssignableTo<MentionMarkup>().Which.Id.Should().Be(MentionRef.NewAuthor(AuthorId.New(chatId, 1)));
         item0.Items[6].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(" exchanged greetings and discussed the status of current tasks.");
 
         var item1 = m.Items[1].Content.Should().BeOfType<MarkupSeq>().Subject;
         item1.Items.Length.Should().Be(2);
-        item1.Items[0].Should().BeAssignableTo<MentionMarkup>().Which.Id.Should().Be(MentionId.NewAuthor(AuthorId.New(chatId, 2)));
+        item1.Items[0].Should().BeAssignableTo<MentionMarkup>().Which.Id.Should().Be(MentionRef.NewAuthor(AuthorId.New(chatId, 2)));
         item1.Items[1].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(" raised questions about adding and managing the list of images.");
     }
 

@@ -10,7 +10,7 @@ public interface IMentionsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<Mention?> GetLast(
         ChatId chatId,
-        MentionId mentionId,
+        MentionRef mentionId,
         CancellationToken cancellationToken);
 
     // Events

@@ -176,7 +176,7 @@ public class IdentifierSerializationTest(ITestOutputHelper @out) : TestBase(@out
     [Fact]
     public void MentionId_Basic()
     {
-        var id = MentionId.Parse("u:user123456");
+        var id = MentionRef.Parse("u:user123456");
         id.AssertPassesThroughAllSerializers();
     }
 

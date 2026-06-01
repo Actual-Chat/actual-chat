@@ -2,6 +2,7 @@
 @implements IMarkupEditorBackend
 @implements IAsyncDisposable
 @using ActualChat.UI.Blazor.App.Module
+@using ActualChat.UI.Blazor.App.Services
 @using System.Diagnostics.CodeAnalysis
 
 <div @ref="Ref" id="@Id" class="@Class markup-editor">
@@ -25,6 +26,7 @@
 
     [Inject] public IMarkupParser MarkupParser { get; init; } = null!;
     [Inject] public IJSRuntime JS { get; init; } = null!;
+    [Inject] public RecentMentionsUI RecentMentionsUI { get; init; } = null!;
 
     [CascadingParameter] public MentionListManager? MentionListManager { get; set; }
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
@@ -120,8 +122,9 @@
             return;
 
         var name = mention.MentionName.NullIfEmpty() ?? mention.Match.Text;
-        var html = HtmlConverter.Format(MentionMarkup.New(mention.MentionId, name)) + " ";
+        var html = HtmlConverter.Format(MentionMarkup.New(mention.MentionRef, name)) + " ";
         await JSRef.InvokeVoidAsync("insertHtml", html, "@");
+        _ = RecentMentionsUI.Use(mention.MentionRef);
     }
 
     [JSInvokable]

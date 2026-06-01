@@ -9,72 +9,69 @@ namespace ActualChat;
 /// <summary>
 /// Reference to a mentioned entity in chat content. The value is <c>prefix:</c>
 /// where the prefix selects a <see cref="MentionKind"/> and the local id parses into an
-/// <see cref="IMentionTargetId"/>. See <see cref="MentionKind.ByPrefix"/> for the registered kinds.
+/// <see cref="IMentionTarget"/>. See <see cref="MentionKind.ByPrefix"/> for the registered kinds.
 /// </summary>
-// TODO(AY): Rename to MentionRef
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
-[JsonConverter(typeof(StringLikeJsonConverter<MentionId>))]
-[Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<MentionId>))]
-[MessagePackFormatter(typeof(StringLikeMessagePackFormatter<MentionId>))]
-[TypeConverter(typeof(StringLikeTypeConverter<MentionId>))]
+[JsonConverter(typeof(StringLikeJsonConverter<MentionRef>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringLikeNewtonsoftJsonConverter<MentionRef>))]
+[MessagePackFormatter(typeof(StringLikeMessagePackFormatter<MentionRef>))]
+[TypeConverter(typeof(StringLikeTypeConverter<MentionRef>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class MentionId : StringIdentifier, IStringIdentifier<MentionId>, IHasShardKey<string>
+public sealed partial class MentionRef : StringIdentifier, IStringIdentifier<MentionRef>, IHasShardKey<string>
 {
     private static ILogger? _log;
-    private static ILogger Log => _log ??= StaticLog.For<MentionId>();
-    private static readonly ILruCache<string, MentionId> Cache = CreateCache<MentionId>(256);
+    private static ILogger Log => _log ??= StaticLog.For<MentionRef>();
+    private static readonly ILruCache<string, MentionRef> Cache = CreateCache<MentionRef>(256);
 
     [IgnoreDataMember]
     public MentionKind Kind { get; }
     [IgnoreDataMember]
-    public IMentionTargetId TargetId { get; }
+    public IMentionTarget Target { get; }
     [IgnoreDataMember]
-    public string ShardKey => TargetId.ShardKey;
+    public string ShardKey => Target.ShardKey;
 
     // Factories and constructors
 
-    public static MentionId NewAuthor(AuthorId authorId)
+    public static MentionRef NewAuthor(AuthorId authorId)
         => Create(MentionKind.Author, authorId);
-    public static MentionId NewUser(UserId userId)
+    public static MentionRef NewUser(UserId userId)
         => Create(MentionKind.User, userId);
-    public static MentionId NewChat(ChatId chatId)
+    public static MentionRef NewChat(ChatId chatId)
         => Create(MentionKind.Chat, chatId);
-    public static MentionId NewPlace(PlaceId placeId)
+    public static MentionRef NewPlace(PlaceId placeId)
         => Create(MentionKind.Place, placeId);
-    public static MentionId NewEmoji(EmojiRef emojiRef)
+    public static MentionRef NewEmoji(EmojiRef emojiRef)
         => Create(MentionKind.Emoji, emojiRef);
-    public static MentionId NewGif(GifRef gifRef)
-        => Create(MentionKind.Gif, gifRef);
 
-    private static MentionId Create(MentionKind kind, IMentionTargetId targetId)
+    private static MentionRef Create(MentionKind kind, IMentionTarget target)
     {
-        var value = Format(kind, targetId.Value);
+        var value = Format(kind, target.Value);
         if (Cache.TryGetValue(value, out var cached))
             return cached;
-        return Cache.AddOrGet(value, new MentionId(value, kind, targetId));
+        return Cache.AddOrGet(value, new MentionRef(value, kind, target));
     }
 
-    private MentionId(string value, MentionKind kind, IMentionTargetId targetId) : base(value)
+    private MentionRef(string value, MentionKind kind, IMentionTarget target) : base(value)
     {
         Kind = kind;
-        TargetId = targetId;
+        Target = target;
     }
 
     // Equality
 
-    public bool Equals(MentionId? other)
+    public bool Equals(MentionRef? other)
         => !ReferenceEquals(other, null)
             && HashCode == other.HashCode
             && string.Equals(Value, other.Value);
     public override bool Equals(object? obj)
-        => obj is MentionId other && Equals(other);
+        => obj is MentionRef other && Equals(other);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool operator ==(MentionId? left, MentionId? right)
+    public static bool operator ==(MentionRef? left, MentionRef? right)
         => left?.Equals(right) ?? right is null;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool operator !=(MentionId? left, MentionId? right)
+    public static bool operator !=(MentionRef? left, MentionRef? right)
         => !(left?.Equals(right) ?? right is null);
 
     // Format & Parse
@@ -82,18 +79,18 @@ public sealed partial class MentionId : StringIdentifier, IStringIdentifier<Ment
     private static string Format(MentionKind kind, string localId)
         => $"{kind.Prefix}:{localId}";
 
-    public static MentionId Parse(string? s)
-        => TryParse(s, out var result) ? result : throw StandardError.Format<MentionId>(s);
+    public static MentionRef Parse(string? s)
+        => TryParse(s, out var result) ? result : throw StandardError.Format<MentionRef>(s);
 
-    public static MentionId? ParseNullable(string? s)
+    public static MentionRef? ParseNullable(string? s)
         => s.IsNullOrEmpty() ? null : Parse(s);
 
-    public static MentionId? TryParse(string? s, bool allowNull = false)
+    public static MentionRef? TryParse(string? s, bool allowNull = false)
         => allowNull && s.IsNullOrEmpty() ? null
             : !TryParse(s, out var result) ? null
             : result;
 
-    public static bool TryParse(string? s, [NotNullWhen(true)] out MentionId? result)
+    public static bool TryParse(string? s, [NotNullWhen(true)] out MentionRef? result)
     {
         result = null;
         if (s.IsNullOrEmpty() || s.Length < 3)
@@ -116,7 +113,7 @@ public sealed partial class MentionId : StringIdentifier, IStringIdentifier<Ment
         if (!kind.TryParseTarget(localId, out var target))
             return false;
 
-        result = new MentionId(s, kind, target);
+        result = new MentionRef(s, kind, target);
         result = Cache.AddOrGet(s, result);
         return true;
     }

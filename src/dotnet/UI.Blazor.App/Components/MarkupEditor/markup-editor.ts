@@ -475,6 +475,24 @@ export class MarkupEditor {
         if (!data)
         { ok(); return; }
 
+        // Our own copies carry the exact source markup in data-voxt-markup — reconstruct mentions from it.
+        const voxtMarkup = extractVoxtMarkup(data.getData('text/html'));
+        if (voxtMarkup) {
+            ok();
+            void this.blazorRef.invokeMethodAsync<string>('ParseTextToHtml', voxtMarkup)
+                .then(html => {
+                    if (!html)
+                        this.transaction('onPaste', () => this.insertTextAtCursor(voxtMarkup));
+                    else
+                        this.insertHtml(html);
+                })
+                .catch(err => {
+                    errorLog?.log('onPaste: ParseTextToHtml (voxt-markup) failed', err);
+                    this.transaction('onPaste', () => this.insertTextAtCursor(voxtMarkup));
+                });
+            return;
+        }
+
         const plainText = data.getData('text');
         const text = cleanupPastedText(plainText);
         const url = data.getData('text/uri-list');
@@ -952,6 +970,18 @@ function getPostMentionText(mention: HTMLElement): Text | null {
     while (text && text.textContent?.length == 0)
         text = asText(text.nextSibling);
     return text;
+}
+
+// Pulls the original markup out of clipboard HTML produced by our copy action (SelectionUI).
+function extractVoxtMarkup(html: string | null): string | null {
+    if (!html || html.indexOf('data-voxt-markup') < 0)
+        return null;
+    try {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        return doc.querySelector('[data-voxt-markup]')?.getAttribute('data-voxt-markup') ?? null;
+    } catch {
+        return null;
+    }
 }
 
 function cleanupPastedText(text: string): string {

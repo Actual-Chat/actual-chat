@@ -47,6 +47,8 @@ namespace ActualChat;
 [Union(12, typeof(UserTranscodingTestSettings))]
 [Union(13, typeof(FakeDeviceContactOptions))]
 [Union(14, typeof(UserReplaySettings))]
+[Union(15, typeof(RecentMentions))]
+[Union(16, typeof(RecentGifs))]
 // Chat-User settings
 [Union(50, typeof(ChatUserSettings))]
 [Union(51, typeof(ChatInviteSettings))]

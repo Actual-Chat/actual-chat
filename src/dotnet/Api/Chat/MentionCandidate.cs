@@ -3,7 +3,7 @@ using ActualChat.Search;
 namespace ActualChat.Chat;
 
 public sealed record MentionCandidate(
-    MentionId Id,
+    MentionRef Id,
     string Title,
     Picture? Picture,
     SearchDocument SearchDocument)

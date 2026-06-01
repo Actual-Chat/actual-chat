@@ -1,3 +1,4 @@
+using ActualChat.Chat;
 using ActualChat.Kvas;
 
 namespace ActualChat.Users.UnitTests;
@@ -229,6 +230,35 @@ public partial class StoredSettingsSerializationTest
             Origin = "nav-test",
             PinnedChats = [],
             PlacesOrder = [],
+        });
+
+    // New MessagePack-only settings types (no MemoryPack) — verify the [Union] dispatch works.
+
+    [Fact]
+    public void RecentMentions_AsBase_MessagePackRoundTrip()
+        => AssertBaseTypeRoundTrip(new RecentMentions {
+            Origin = "recents",
+            Items = [
+                new RecentMention {
+                    Id = MentionRef.NewUser(UserId.New()),
+                    Uses = [new Moment(new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc))],
+                },
+            ],
+        });
+
+    [Fact]
+    public void RecentGifs_AsBase_MessagePackRoundTrip()
+        => AssertBaseTypeRoundTrip(new RecentGifs {
+            Origin = "gifs",
+            Items = [
+                new RecentGif {
+                    Slug = "party-parrot",
+                    PreviewUrl = "https://example.com/p.gif",
+                    PreviewWidth = 120,
+                    PreviewHeight = 90,
+                    Url = "https://example.com/f.gif",
+                },
+            ],
         });
 
     private static void AssertBaseTypeRoundTrip<T>(T value)

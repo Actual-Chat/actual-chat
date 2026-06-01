@@ -55,6 +55,8 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<ChatEditorUI>(ServiceLifetime.Scoped);
         fusion.AddService<HighlightUI>(ServiceLifetime.Scoped);
         fusion.AddService<LocalSearchUI>(ServiceLifetime.Scoped);
+        services.AddScoped<RecentMentionsUI>();
+        services.AddScoped<RecentGifsUI>();
         fusion.AddService<LinkPreviewUI>(ServiceLifetime.Scoped);
         fusion.AddService<BackgroundActivityUI, PlaybackAndRecordingBackgroundActivityUI>(ServiceLifetime.Scoped);
         services.AddScoped(c => new SelectionUI(c.AppUIHub()));
@@ -89,12 +91,11 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddTypeMapper<IMarkupView>(map => map
             .Add<NewLineMarkup, NewLineMarkupView>()
             .Add<UrlMarkup, UrlMarkupView>()
-            .Add<MentionMarkup, MentionView>()
+            .Add<MentionMarkup, AuthorMentionView>()
             .Add<UserMention, UserMentionView>()
             .Add<ChatMention, ChatMentionView>()
             .Add<PlaceMention, PlaceMentionView>()
             .Add<EmojiMention, EmojiMentionView>()
-            .Add<GifMention, GifMentionView>()
             .Add<PreformattedTextMarkup, PreformattedTextMarkupView>()
             .Add<PlayableTextMarkup, PlayableTextMarkupView>()
             .Add<CodeBlockMarkup, CodeBlockMarkupView>()

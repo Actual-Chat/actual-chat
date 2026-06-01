@@ -12,7 +12,7 @@ public static class NotificationHelper
     public static string GetIconUrl(Chat.Chat chat, AuthorFull author, UrlMapper urlMapper)
         => urlMapper.IconUrl(chat.GetIconQuery(author));
 
-    public static async ValueTask<(string Content, HashSet<MentionId> MentionIds)> GetText(
+    public static async ValueTask<(string Content, HashSet<MentionRef> MentionIds)> GetText(
         ChatEntry entry,
         MarkupConsumer consumer,
         KeyedFactory<IBackendChatMarkupHub, ChatId> chatMarkupHubFactory,

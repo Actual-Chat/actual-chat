@@ -124,7 +124,7 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
         foreach (var authorId in authorIds) {
             var authorName = await AuthorNameRetriever.GetAuthorName(authorId).ConfigureAwait(false);
             var key = $"[{authorName}|{authorId.LocalId}]";
-            var mentionId = MentionId.NewAuthor(authorId);
+            var mentionId = MentionRef.NewAuthor(authorId);
             var value = "@" + mentionId.Value; // ensure leading '@' as required
             map[key] = value;
         }

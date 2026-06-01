@@ -22,7 +22,7 @@ public sealed partial record MembersChangedEntry : SystemEntry
         return TargetAuthorId is null
             ? new PlainTextMarkup($"{authorName} has {verb} the chat.")
             : new MarkupSeq(
-                new AuthorMention(MentionId.NewAuthor(TargetAuthorId), authorName),
+                new AuthorMention(MentionRef.NewAuthor(TargetAuthorId), authorName),
                 new PlainTextMarkup($" has {verb} the chat."));
     }
 }

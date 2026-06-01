@@ -199,7 +199,7 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<bool> IsEntryReadByMentionedUser(Session session, ChatEntryId chatEntryId, MentionId mentionId, CancellationToken cancellationToken)
+    public virtual async Task<bool> IsEntryReadByMentionedUser(Session session, ChatEntryId chatEntryId, MentionRef mentionId, CancellationToken cancellationToken)
     {
         var chatId = chatEntryId.ChatId;
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -214,8 +214,8 @@ public partial class Chats(IServiceProvider services) : IChats
         if (!mentionIds.Contains(mentionId)) // Validate given mention id is used in the chat entry.
             return false;
 
-        var userId = mentionId.TargetId as UserId;
-        if (mentionId.TargetId is AuthorId authorId) {
+        var userId = mentionId.Target as UserId;
+        if (mentionId.Target is AuthorId authorId) {
             var author = await AuthorsBackend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
             if (author is not null)
                 userId = author.UserId;
@@ -230,7 +230,7 @@ public partial class Chats(IServiceProvider services) : IChats
         // TODO: Do not track dependency after resulting to true.
         return hasRead;
 
-        async Task<HashSet<MentionId>> GetMentionIds()
+        async Task<HashSet<MentionRef>> GetMentionIds()
         {
             var chatMarkupHub = ChatMarkupHubFactory[chatEntry.ChatId];
             var markup = await chatMarkupHub.GetMarkup(chatEntry, MarkupConsumer.Notification, cancellationToken).ConfigureAwait(false);
