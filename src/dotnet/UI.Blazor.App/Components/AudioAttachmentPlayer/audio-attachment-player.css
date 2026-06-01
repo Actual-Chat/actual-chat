@@ -1,6 +1,6 @@
 .audio-file-attachment {
     @apply gap-x-2;
-    @apply p-1 pr-4;
+    @apply p-1;
     @apply rounded-full border border-separator;
     @apply bg-01;
 }
@@ -25,7 +25,7 @@ body.hoverable .audio-file-attachment .c-play-btn:hover {
     @apply text-caption-8 text-03;
 }
 .audio-file-attachment .c-progress {
-    @apply absolute inset-x-13 bottom-0.5;
+    @apply absolute left-13 right-13 bottom-0.5;
     @apply flex items-center;
     @apply h-2;
 }
