@@ -24,7 +24,6 @@
 
 @code {
     private AuthorId? _authorId;
-    private bool? _hasRead;
 
     protected override void OnParametersSet()
         => _authorId = Markup.Id.Target as AuthorId;
@@ -32,25 +31,22 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Model>.Options() {
-                InitialValue = new Model(false),
+                InitialValue = new Model(null),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatEntry = Entry;
-        _hasRead = chatEntry.IsSystemEntry ? null : false;
-
-        if (_hasRead == null)
+        if (chatEntry.IsSystemEntry)
             return new(null); // Do not track hasRead status for mentions inside system messages.
 
         var chat = await Chats.Get(Session, chatEntry.ChatId, cancellationToken).ConfigureAwait(false);
         if (chat?.Rules.Author?.Id == _authorId)
             return new(true);
 
-        if (!_hasRead.Value)
-            _hasRead = await Chats.IsEntryReadByMentionedUser(Session, chatEntry.Id, Markup.Id, cancellationToken).ConfigureAwait(false);
-        return new(_hasRead);
+        var hasRead = await Chats.IsEntryReadByMentionedUser(Session, chatEntry.Id, Markup.Id, cancellationToken).ConfigureAwait(false);
+        return new(hasRead);
     }
 
     // Nested types

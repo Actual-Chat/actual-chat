@@ -8,7 +8,8 @@
     var markup = m.Markup;
     var entry = m.Entry;
     var trimmedContent = entry.Content.Trim();
-    var isEmojiOnly = Emojis.TryGetByIdOrSymbol(trimmedContent) != null || markup is EmojiMention;
+    var isSoleEmojiMention = IsSoleEmojiMention(markup);
+    var isEmojiOnly = Emojis.TryGetByIdOrSymbol(trimmedContent) != null || isSoleEmojiMention;
     var isGifOnly = UrlMapper.IsTrustedGifUrl(trimmedContent);
     var isCodeBlockOnly = markup is CodeBlockMarkup;
     var oldTranslation = _rendered?.Translation ?? m.Translation;
@@ -112,7 +113,10 @@
         }
         <CascadingValue Value="@entry" IsFixed="true">
             <CascadingValue Value="@statusFragment">
-                <MarkupView Markup="@markup"/>
+                @* A lone emoji mention (the whole message is one EmojiMention) renders large. *@
+                <CascadingValue Value="@isSoleEmojiMention" Name="IsSoleEmojiMention" IsFixed="true">
+                    <MarkupView Markup="@markup"/>
+                </CascadingValue>
             </CascadingValue>
         </CascadingValue>
     }
@@ -137,6 +141,16 @@
     private ChatUI ChatUI => Hub.ChatUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
+
+    // True when the message body is a single emoji mention (ignoring paragraph/seq wrappers) —
+    // the only case that renders large.
+    private static bool IsSoleEmojiMention(Markup markup)
+        => markup switch {
+            EmojiMention => true,
+            ParagraphMarkup p => IsSoleEmojiMention(p.Content),
+            MarkupSeq s => s.Items.Length == 1 && IsSoleEmojiMention(s.Items[0]),
+            _ => false,
+        };
 
     private bool HasNewerStreamingEntry() {
         var authorId = Message.Entry.AuthorId;

@@ -41,6 +41,8 @@ export class MarkupEditor {
     private readonly listHandlers: ListHandler[];
     private listHandler?: ListHandler;
     private listFilter = '';
+    // While > Date.now(), suppress the mention picker — set on paste so pasted "@…" never auto-opens it.
+    private pasteGuardUntil = 0;
     private sizeObserver: ResizeObserver | null = null;
     private parent: HTMLElement | null = null;
 
@@ -475,12 +477,16 @@ export class MarkupEditor {
         if (!data)
         { ok(); return; }
 
+        // Never let a paste auto-open the mention picker (the inserted text may contain "@…").
+        this.pasteGuardUntil = Date.now() + 1500;
+
         // Our own copies carry the exact source markup in data-voxt-markup — reconstruct mentions from it.
         const voxtMarkup = extractVoxtMarkup(data.getData('text/html'));
         if (voxtMarkup) {
             ok();
             void this.blazorRef.invokeMethodAsync<string>('ParseTextToHtml', voxtMarkup)
                 .then(html => {
+                    this.pasteGuardUntil = Date.now() + 300; // re-arm to cover the post-insert selectionchange
                     if (!html)
                         this.transaction('onPaste', () => this.insertTextAtCursor(voxtMarkup));
                     else
@@ -512,6 +518,7 @@ export class MarkupEditor {
         ok();
         void this.blazorRef.invokeMethodAsync<string>('ParseTextToHtml', concatenatedText)
             .then(html => {
+                this.pasteGuardUntil = Date.now() + 300; // re-arm to cover the post-insert selectionchange
                 if (!html) {
                     this.transaction('onPaste', () => this.insertTextAtCursor(concatenatedText));
                     return;
@@ -615,6 +622,10 @@ export class MarkupEditor {
     private updateListUIThrottled = throttle(() => this.updateListUI(), 250);
     private updateListUI() {
         debugLog?.log(`updateListUI`);
+        if (Date.now() < this.pasteGuardUntil) {
+            this.closeListUI();
+            return;
+        }
         const cursorRange = this.getCursorRange();
         if (!cursorRange) {
             this.closeListUI();

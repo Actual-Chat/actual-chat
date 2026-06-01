@@ -27,7 +27,7 @@ public sealed class MentionKind
     private MentionKind(string prefix, string name, TryParseTargetIdHandler tryParseTargetIdHandler)
     {
         Name = name;
-        FullName = $"{nameof(MediaKind)}.{Name}";
+        FullName = $"{nameof(MentionKind)}.{Name}";
         Prefix = prefix;
         _tryParseTargetIdHandler = tryParseTargetIdHandler;
     }
