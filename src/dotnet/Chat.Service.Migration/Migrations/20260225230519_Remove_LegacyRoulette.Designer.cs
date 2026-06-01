@@ -620,7 +620,7 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("entry_local_id");
 
-                    b.Property<string>("MentionId")
+                    b.Property<string>("MentionRef")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("mention_id")
@@ -629,10 +629,10 @@ namespace ActualChat.Chat.Migrations
                     b.HasKey("Id")
                         .HasName("pk_mentions");
 
-                    b.HasIndex("ChatId", "EntryLocalId", "MentionId")
+                    b.HasIndex("ChatId", "EntryLocalId", "MentionRef")
                         .HasDatabaseName("ix_mentions_chat_id_entry_local_id_mention_id");
 
-                    b.HasIndex("ChatId", "MentionId", "EntryLocalId")
+                    b.HasIndex("ChatId", "MentionRef", "EntryLocalId")
                         .HasDatabaseName("ix_mentions_chat_id_mention_id_entry_local_id");
 
                     b.ToTable("mentions");

@@ -64,7 +64,7 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         var mention = model.Entity<DbMention>();
         mention.Property(e => e.Id).UseCollation("C");
         mention.Property(e => e.ChatId).UseCollation("C");
-        mention.Property(e => e.MentionId).UseCollation("C");
+        mention.Property(e => e.MentionRef).UseCollation("C");
 
         var reaction = model.Entity<DbReaction>();
         reaction.Property(e => e.Id).UseCollation("C");
@@ -75,11 +75,11 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         reactionSummary.Property(e => e.Id).UseCollation("C");
         reactionSummary.Property(e => e.EntryId).UseCollation("C");
 
-        var ChatEntryAttachment = model.Entity<DbChatEntryAttachment>();
-        ChatEntryAttachment.Property(e => e.Id).UseCollation("C");
-        ChatEntryAttachment.Property(e => e.EntryId).UseCollation("C");
-        ChatEntryAttachment.Property(e => e.MediaId).UseCollation("C");
-        ChatEntryAttachment.Property(a => a.ThumbnailMediaId).UseCollation("C");
+        var chatEntryAttachment = model.Entity<DbChatEntryAttachment>();
+        chatEntryAttachment.Property(e => e.Id).UseCollation("C");
+        chatEntryAttachment.Property(e => e.EntryId).UseCollation("C");
+        chatEntryAttachment.Property(e => e.MediaId).UseCollation("C");
+        chatEntryAttachment.Property(a => a.ThumbnailMediaId).UseCollation("C");
 
         var authors = model.Entity<DbAuthor>();
         authors.Property(e => e.Id).UseCollation("C");

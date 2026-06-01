@@ -26,7 +26,7 @@ public static class Emojis
     public static readonly Emoji Melting = new("🫠", "Melting face", EmojiGroup.Negative);
     public static readonly Emoji Devil = new("😈", "Smiling face with horns", EmojiGroup.Negative);
     public static readonly Emoji Clown = new("🤡", "Clown face", EmojiGroup.Negative);
-    public static readonly Emoji ClownYellow = new("🤡", "clown-yellow", "Yellow clown face", EmojiGroup.Negative);
+    public static readonly Emoji ClownGinger = new("🤡", "ginger-clown", "Ginger clown face", EmojiGroup.Negative);
     public static readonly Emoji Bored = new("😒", "Unamused face", EmojiGroup.Negative);
     public static readonly Emoji Crazy = new("🤪", "Zany face", EmojiGroup.Negative);
     public static readonly Emoji Dead = new("💀", "Skull", EmojiGroup.Negative);
@@ -78,6 +78,7 @@ public static class Emojis
     public static readonly Emoji PartyPopper = new("🎉", "Party popper", EmojiGroup.Gestures);
     public static readonly Emoji JackOLantern = new("🎃", "Jack-o-Lantern", EmojiGroup.Gestures);
     public static readonly Emoji FramedPicture = new("🖼️️", "Framed picture", EmojiGroup.Gestures);
+    public static readonly Emoji ClownYellow = new("🤡", "clown-yellow", "Ginger clown face", EmojiGroup.Negative);
 
     /// <summary>
     /// Legacy emojis that were removed from the picker but may exist in stored reactions.
@@ -96,6 +97,7 @@ public static class Emojis
         PartyPopper,
         JackOLantern,
         FramedPicture,
+        ClownYellow,
     ];
 
     public static readonly Emoji[] All = [
@@ -119,7 +121,7 @@ public static class Emojis
         Melting,
         Devil,
         Clown,
-        ClownYellow,
+        ClownGinger,
         Bored,
         Crazy,
         Dead,
@@ -188,7 +190,7 @@ public static class Emojis
         { Melting, "emoji-melting" },
         { Devil, "emoji-devil" },
         { Clown, "emoji-clown" },
-        { ClownYellow, "emoji-clown-yellow" },
+        { ClownGinger, "emoji-clown-yellow" },
         { Bored, "emoji-bored" },
         { Crazy, "emoji-crazy" },
         { Dead, "emoji-dead" },

@@ -7,7 +7,7 @@ namespace ActualChat;
 #pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
 
 /// <summary>
-/// Reference to a unicode-emoji slug or a custom emoji id used as a <see cref="MentionId"/> target.
+/// Reference to a unicode-emoji slug or a custom emoji id used as a <see cref="MentionRef"/> target.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
 [JsonConverter(typeof(StringLikeJsonConverter<EmojiRef>))]
@@ -15,7 +15,7 @@ namespace ActualChat;
 [MessagePackFormatter(typeof(StringLikeMessagePackFormatter<EmojiRef>))]
 [TypeConverter(typeof(StringLikeTypeConverter<EmojiRef>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed partial class EmojiRef : StringIdentifier, IStringIdentifier<EmojiRef>, IMentionTargetId
+public sealed partial class EmojiRef : StringIdentifier, IStringIdentifier<EmojiRef>, IMentionTarget
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<EmojiRef>();
@@ -31,9 +31,9 @@ public sealed partial class EmojiRef : StringIdentifier, IStringIdentifier<Emoji
     // Factories and constructors
 
     public static EmojiRef New(Emoji emoji)
-        => NewFromText(emoji.Id.Value);
+        => FromText(emoji.Id.Value);
 
-    public static EmojiRef NewFromText(string text)
+    public static EmojiRef FromText(string text)
         => Parse(text.UrlEncode());
 
     private EmojiRef(string value) : base(value)

@@ -311,7 +311,7 @@ public class ApiEvolutionTest(ITestOutputHelper @out) : TestBase(@out)
         => new() {
             Id = "mention-1",
             EntryId = TestEntryId,
-            MentionId = MentionId.NewUser(TestUserId),
+            MentionRef = MentionRef.NewUser(TestUserId),
         };
 
     // Kvas settings types - factory methods

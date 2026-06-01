@@ -2,9 +2,9 @@ using ActualChat.Search;
 
 namespace ActualChat.Chat;
 
-public sealed class FoundMention(MentionId id, SearchMatch match, Picture picture) : IHasSearchMatch
+public sealed class FoundMention(MentionRef id, SearchMatch match, Picture picture) : IHasSearchMatch
 {
-    public MentionId MentionId { get; } = id;
+    public MentionRef MentionRef { get; } = id;
     public SearchMatch Match { get; } = match;
     public string Text => Match.Text;
     public Picture Picture { get; } = picture;

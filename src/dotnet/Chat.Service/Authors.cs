@@ -67,6 +67,25 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
     }
 
     // [ComputeMethod]
+    public virtual async Task<Author?> GetByUserId(
+        Session session, ChatId chatId, UserId userId,
+        CancellationToken cancellationToken)
+    {
+        if (userId.IsGuestOrNull())
+            return null;
+
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return null;
+
+        var author = await Backend.GetByUserId(chatId, userId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
+        if (author is null || author.IsAnonymous)
+            return null; // Never de-anonymize: an anonymous participant isn't resolvable by their user id.
+
+        return author.ToAuthor();
+    }
+
+    // [ComputeMethod]
     public virtual async Task<AuthorFull?> GetFull(
         Session session, ChatId chatId, AuthorId authorId,
         CancellationToken cancellationToken)

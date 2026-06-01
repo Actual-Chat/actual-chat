@@ -4,9 +4,22 @@
     var emoji = Emojis.TryGetByIdOrSymbol(Markup.EmojiRef.Text);
     var hasSvg = Emojis.TryGetSvgName(emoji) is not null;
     var glyph = Markup.Glyph.NullIfEmpty() ?? emoji?.Symbol;
+    // A message that is exactly one emoji mention renders large, like a lone plain-text emoji.
+    var isLarge = string.Equals(Entry?.Content.Trim(), Markup.Format(), StringComparison.Ordinal);
 }
 
-@if (hasSvg && emoji is not null) {
+@if (isLarge) {
+    <span class="emoji-message">
+        @if (emoji is not null) {
+            <EmojiIcon Emoji="@emoji" Class="c-emoji" HasPreview="false" InlineAnimate="true"/>
+        } else if (Markup.CustomPicture is { } picture) {
+            <img class="c-emoji emoji-markup-custom" src="@UrlMapper.PicturePreview128Url(picture)" alt="@Markup.NameOrId" />
+        } else {
+            <span class="emoji-markup-placeholder">:@Markup.EmojiRef.Text:</span>
+        }
+    </span>
+}
+else if (hasSvg && emoji is not null) {
     <EmojiIcon Emoji="@emoji" Class="emoji-markup c-emoji" HasPreview="false"/>
 }
 else if (glyph is not null) {

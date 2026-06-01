@@ -8,7 +8,7 @@ namespace ActualChat.Chat;
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-public partial class MentionMarkup(MentionId id, string name = "") : Markup
+public partial class MentionMarkup(MentionRef id, string name = "") : Markup
 {
     public static readonly string NotAvailableName = "(n/a)";
     public static readonly Func<MentionMarkup, string> DefaultFormatter = m => m.Format();
@@ -28,10 +28,8 @@ public partial class MentionMarkup(MentionId id, string name = "") : Markup
     {
         var text = em.EmojiRef.Text;
         if (Emojis.BySymbol.ContainsKey(text))
-            return text;
-        var resolved = Emojis.ById.GetValueOrDefault(text);
-        var title = resolved?.Title ?? em.NameOrNotAvailable;
-        return "@(" + title + ")";
+            return text; // Standard unicode emoji — copy the glyph itself.
+        return ":" + text + ":"; // Custom emoji — copy its id, e.g. :ginger-clown:.
     }
 
     private static string JoinWithReadableSpace(string name)
@@ -42,7 +40,7 @@ public partial class MentionMarkup(MentionId id, string name = "") : Markup
     }
 
     [DataMember, MemoryPackOrder(0), Key(0)]
-    public MentionId Id { get; } = id;
+    public MentionRef Id { get; } = id;
     [DataMember, MemoryPackOrder(1), Key(1)]
     public string Name { get; } = name;
 
@@ -53,7 +51,7 @@ public partial class MentionMarkup(MentionId id, string name = "") : Markup
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string NameOrId => Name.NullIfEmpty() ?? Id.Value;
 
-    public static MentionMarkup New(MentionId id, string name = "")
+    public static MentionMarkup New(MentionRef id, string name = "")
     {
         var kind = id.Kind;
         if (kind == MentionKind.Author) return new AuthorMention(id, name);
@@ -61,7 +59,6 @@ public partial class MentionMarkup(MentionId id, string name = "") : Markup
         if (kind == MentionKind.Chat) return new ChatMention(id, name);
         if (kind == MentionKind.Place) return new PlaceMention(id, name);
         if (kind == MentionKind.Emoji) return new EmojiMention(id, name);
-        if (kind == MentionKind.Gif) return new GifMention(id, name);
         return new MentionMarkup(id, name);
     }
 

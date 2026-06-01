@@ -143,7 +143,7 @@ public partial class MarkupParser : IMarkupParser
     // Mentions
     private static Parser<char, Markup> MentionParserFactory(string name = "") =>
         from id in Id
-        let mentionId = MentionId.TryParse(id, true)
+        let mentionId = MentionRef.TryParse(id, true)
         where mentionId != null
         select (Markup)MentionMarkup.New(mentionId, name);
     private static readonly Parser<char, Markup> NamedMention =

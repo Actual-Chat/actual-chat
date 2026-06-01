@@ -18,7 +18,7 @@ public sealed partial record NotifyMembersEntry(ChatEntryId Id, long Version = 0
         return TargetAuthorId is null
             ? new PlainTextMarkup($"{authorName} asked for attention.")
             : new MarkupSeq(
-                new AuthorMention(MentionId.NewAuthor(TargetAuthorId), authorName),
+                new AuthorMention(MentionRef.NewAuthor(TargetAuthorId), authorName),
                 new PlainTextMarkup(" asked for attention."));
     }
 }

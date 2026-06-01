@@ -92,16 +92,66 @@ public class MentionCandidateFiltersTest(ITestOutputHelper @out) : TestBase(@out
         pool.FilterAndRank(MentionCandidateFilters.Chat, "funny", 10).Should().HaveCount(1);
     }
 
+    [Fact]
+    public void RecentMatchIsBoostedWithinKindOnTypedQuery()
+    {
+        // Same kind, same membership, equal coverage for "alex" → recency breaks the tie.
+        var recentId = UserId.New();
+        var recent = User("Alex Lee", recentId);
+        var other = User("Alex Kim", UserId.New());
+        var pool = new[] { other, recent }.ToApiArray();
+
+        var scores = new Dictionary<MentionRef, double> { [recent.Id] = 1.0 };
+        var result = pool.FilterAndRank(MentionCandidateFilters.User, "alex", 10, scores);
+        result[0].Title.Should().Be("Alex Lee");
+    }
+
+    [Fact]
+    public void StrongerTextMatchStillBeatsWeakRecentBoost()
+    {
+        // Additive boost, not absolute: a clearly better text match wins over a recent one.
+        var recentId = UserId.New();
+        var recent = User("Alexander", recentId);  // weaker coverage for "alex"
+        var exact = User("Alex", UserId.New());     // exact coverage
+        var pool = new[] { recent, exact }.ToApiArray();
+
+        var scores = new Dictionary<MentionRef, double> { [recent.Id] = 1.0 };
+        var result = pool.FilterAndRank(MentionCandidateFilters.User, "alex", 10, scores);
+        result[0].Title.Should().Be("Alex");
+    }
+
+    [Fact]
+    public void EmptyQueryShowsRecentsFirstByScore()
+    {
+        var a = User("Anna", UserId.New());
+        var b = User("Boris", UserId.New());
+        var c = User("Cleo", UserId.New());
+        var pool = new[] { a, b, c }.ToApiArray();
+
+        var scores = new Dictionary<MentionRef, double> { [c.Id] = 2.0, [a.Id] = 1.0 };
+        var result = pool.FilterAndRank(MentionCandidateFilters.All, "", 10, scores);
+        result.Select(x => x.Title).Take(2).Should().Equal("Cleo", "Anna");
+    }
+
     private static MentionCandidate User(string name)
         => new(
-            MentionId.NewUser(AnyUser),
+            MentionRef.NewUser(AnyUser),
             name,
             null,
             new SearchDocument(name));
 
+    private static MentionCandidate User(string name, UserId userId, bool isMember = false)
+        => new(
+            MentionRef.NewUser(userId),
+            name,
+            null,
+            new SearchDocument(name)) {
+            IsChatMember = isMember,
+        };
+
     private static MentionCandidate Chat(string name, string? placeName = null)
         => new(
-            MentionId.NewChat(GroupChatId.New()),
+            MentionRef.NewChat(GroupChatId.New()),
             name,
             null,
             new SearchDocument(placeName, name));
@@ -112,7 +162,7 @@ public class MentionCandidateFiltersTest(ITestOutputHelper @out) : TestBase(@out
         // tests don't depend on URL-encoding behavior.
         var slug = title.ToLower().Split(' ')[0];
         return new(
-            MentionId.NewEmoji(EmojiRef.Parse(slug)),
+            MentionRef.NewEmoji(EmojiRef.Parse(slug)),
             title,
             null,
             new SearchDocument(title));

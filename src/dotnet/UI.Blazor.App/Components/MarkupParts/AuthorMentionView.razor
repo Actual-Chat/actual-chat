@@ -1,11 +1,6 @@
-@inherits ComputedMarkupViewBase<MentionMarkup, MentionView.Model>
+@inherits ComputedMarkupViewBase<MentionMarkup, AuthorMentionView.Model>
 @{
     var m = State.Value;
-    var cls = "";
-    if (m.HasRead != null) {
-        cls = !m.HasRead.Value ? "dim" : "";
-    }
-
     var tooltip = m.HasRead == null
         ? ""
         : m.HasRead.Value
@@ -19,15 +14,12 @@
         return;
     }
 
-    <div
-        class="mention-markup mention-markup-valid @(context.IsOwn ? "mention-markup-own" : "") @cls cursor-pointer"
-        data-tooltip="@tooltip"
-        data-tooltip-position="@FloatingPosition.Top.ToPositionString()"
-        @onclick="@(_ => AuthorUI.Show(author.Id))">
-        <div class="truncate">
-            @author.Avatar.Name
-        </div>
-    </div>
+    <MentionBadge
+        Label="@author.Avatar.Name"
+        IsOwn="@context.IsOwn"
+        HasRead="@m.HasRead"
+        Tooltip="@tooltip"
+        OnClick="@(() => AuthorUI.Show(author.Id))"/>
 </AuthorBadgeTemplate>
 
 @code {
@@ -35,7 +27,7 @@
     private bool? _hasRead;
 
     protected override void OnParametersSet()
-        => _authorId = Markup.Id.TargetId as AuthorId;
+        => _authorId = Markup.Id.Target as AuthorId;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

@@ -116,6 +116,7 @@
     private SearchUI SearchUI => Hub.SearchUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private SendingMessages SendingMessages => Hub.SendingMessages;
+    private RecentMentionsUI RecentMentionsUI => Hub.Services.GetRequiredService<RecentMentionsUI>();
     private FileAttachments FileAttachments { get; set; } = null!;
     private IAttachmentFilePicker? AttachmentFilePicker { get; set; }
 
@@ -391,7 +392,10 @@
 
         string? text = null;
         if (model.SelectedEmoji is { } emoji) {
-            text = emoji.Id.Value;
+            // Send the lone emoji as a mention so it renders large and counts as a recent-mention pick.
+            var emojiRef = MentionRef.NewEmoji(EmojiRef.New(emoji));
+            text = MentionMarkup.New(emojiRef, emoji.Title).Format();
+            _ = RecentMentionsUI.Use(emojiRef);
             if (Emojis.SvgNames.TryGetValue(emoji, out var svgName))
                 await JS.InvokeVoidAsync("EmojiPreview.setPendingMessageEmoji", svgName).ConfigureAwait(true);
         } else if (!model.SelectedGifUrl.IsNullOrEmpty())

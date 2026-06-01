@@ -1,0 +1,30 @@
+@namespace ActualChat.UI.Blazor.App.Components.MarkupParts
+
+<span class="@Cls"
+      data-tooltip="@Tooltip"
+      data-tooltip-position="@(Tooltip.IsNullOrEmpty() ? null : FloatingPosition.Top.ToPositionString())"
+      @onclick="OnClick">
+    <div class="truncate">@Label</div>
+</span>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public bool IsOwn { get; set; }
+    [Parameter] public bool IsMember { get; set; } = true;
+    [Parameter] public bool? HasRead { get; set; }
+    [Parameter] public string? Tooltip { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    private string Cls {
+        get {
+            var cls = "mention-markup mention-markup-valid cursor-pointer";
+            if (IsOwn)
+                cls += " mention-markup-own";
+            if (!IsMember)
+                cls += " mention-markup-non-member line-through";
+            if (HasRead == false)
+                cls += " dim";
+            return cls;
+        }
+    }
+}

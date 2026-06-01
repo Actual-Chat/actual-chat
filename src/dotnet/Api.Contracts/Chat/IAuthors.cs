@@ -16,6 +16,8 @@ public interface IAuthors : IComputeService
     [ComputeMethod]
     Task<Account?> GetAccount(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
     [ComputeMethod, RemoteComputeMethod(MinCacheDuration = 600)]
+    Task<Author?> GetByUserId(Session session, ChatId chatId, UserId userId, CancellationToken cancellationToken);
+    [ComputeMethod, RemoteComputeMethod(MinCacheDuration = 600)]
     Task<Presence> GetPresence(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ApiNullable8<Moment>> GetLastCheckIn(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);

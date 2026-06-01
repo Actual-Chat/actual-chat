@@ -14,6 +14,7 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     private IContacts Contacts => Hub.Contacts;
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     private IPlaces Places => field ??= Services.GetRequiredService<IPlaces>();
+    private RecentMentionsUI RecentMentionsUI => field ??= Services.GetRequiredService<RecentMentionsUI>();
 
     public async Task<FoundMention[]> FindMentions(
         ChatId? chatId,
@@ -23,7 +24,8 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         CancellationToken cancellationToken)
     {
         var candidates = await ListMentionCandidates(chatId, cancellationToken).ConfigureAwait(false);
-        candidates = candidates.FilterAndRank(filter, query, limit);
+        var recencyScores = RecentMentionsUI.GetScores();
+        candidates = candidates.FilterAndRank(filter, query, limit, recencyScores);
 
         var searchQuery = new SearchQuery(query);
         var placeId = (chatId as PlaceChatId)?.PlaceId;
@@ -69,7 +71,7 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
             result.Add(ToMemberCandidate(author, account));
         }
         foreach (var candidate in rest) {
-            if (candidate.Id.TargetId is UserId userId && memberUserIds.Contains(userId))
+            if (candidate.Id.Target is UserId userId && memberUserIds.Contains(userId))
                 continue;
 
             result.Add(candidate);
@@ -249,7 +251,7 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         var picture = account.Avatar.Picture
             ?? new Picture(null, null, DefaultUserPicture.GetAvatarKey(userId.Value));
         return new MentionCandidate(
-            MentionId.NewUser(userId),
+            MentionRef.NewUser(userId),
             name,
             picture,
             new SearchDocument(name)) {
@@ -268,7 +270,7 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         var picture = account.Avatar.Picture
             ?? new Picture(null, null, DefaultUserPicture.GetAvatarKey(account.Id.Value));
         return new MentionCandidate(
-            MentionId.NewUser(account.Id),
+            MentionRef.NewUser(account.Id),
             title,
             picture,
             new SearchDocument(name, userName)) {
@@ -282,7 +284,7 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         var picture = author.Avatar.Picture
             ?? new Picture(null, null, DefaultUserPicture.GetAvatarKey(author.Id.Value));
         return new MentionCandidate(
-            MentionId.NewAuthor(author.Id),
+            MentionRef.NewAuthor(author.Id),
             name,
             picture,
             new SearchDocument(name)) {
@@ -292,14 +294,14 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
 
     private static MentionCandidate ToChatCandidate(Chat.Chat chat)
         => new(
-            MentionId.NewChat(chat.Id),
+            MentionRef.NewChat(chat.Id),
             chat.Title,
             chat.Picture?.ToPicture() ?? new Picture(null, null, chat.Id.Value),
             new SearchDocument(chat.Title));
 
     private static MentionCandidate ToPlaceCandidate(Place place)
         => new(
-            MentionId.NewPlace(place.Id),
+            MentionRef.NewPlace(place.Id),
             place.Title,
             place.Picture?.ToPicture() ?? new Picture(null, null, place.Id.Value),
             new SearchDocument(place.Title)) {
@@ -309,7 +311,7 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
 
     private static MentionCandidate ToPlaceChatCandidate(Chat.Chat chat, Place place)
         => new(
-            MentionId.NewChat(chat.Id),
+            MentionRef.NewChat(chat.Id),
             chat.Title,
             chat.Picture?.ToPicture() ?? new Picture(null, null, chat.Id.Value),
             // Place name first so "fusion fun" matches "Funny Chat" in "Fusion Place".
@@ -320,7 +322,7 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
 
     private static MentionCandidate ToEmojiCandidate(Emoji emoji)
         => new(
-            MentionId.NewEmoji(EmojiRef.New(emoji)),
+            MentionRef.NewEmoji(EmojiRef.New(emoji)),
             emoji.Title,
             null,
             new SearchDocument(emoji.Title));
@@ -328,7 +330,7 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     // Computes mention picker description suffix and the name baked into the mention on insert.
     private static (string? Description, string MentionName) Describe(MentionCandidate c, PlaceId? hostPlaceId)
     {
-        switch (c.Id.TargetId) {
+        switch (c.Id.Target) {
         case EmojiRef:
             return ("emoji", c.Title);
         case PlaceId:

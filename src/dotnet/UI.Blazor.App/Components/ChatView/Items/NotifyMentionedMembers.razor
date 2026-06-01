@@ -79,7 +79,7 @@
             return new Model(true, false); // We can skip checking hasRead status, because we will show badge anyway.
         var everybodyHasRead = true;
         foreach (var authorId in AuthorIds) {
-            var mentionId = MentionId.NewAuthor(authorId);
+            var mentionId = MentionRef.NewAuthor(authorId);
             var hasRead = await Chats.IsEntryReadByMentionedUser(Session, chatEntryId, mentionId, cancellationToken).ConfigureAwait(false);
             if (!hasRead)
                 everybodyHasRead = false;

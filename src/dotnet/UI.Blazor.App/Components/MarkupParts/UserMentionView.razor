@@ -1,26 +1,68 @@
 @namespace ActualChat.UI.Blazor.App.Components.MarkupParts
-@inherits MarkupViewBase<UserMention>
+@using ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Services
+@inherits ComputedMarkupViewBase<UserMention, UserMentionView.Model>
 @{
     var name = Markup.Account?.Avatar.Name.NullIfEmpty() ?? Markup.NameOrNotAvailable;
     var isMember = Markup.IsChatMember;
-    var cls = isMember
-        ? "mention-markup mention-markup-valid cursor-pointer"
-        : "mention-markup mention-markup-valid mention-markup-non-member cursor-pointer line-through";
-    var tooltip = isMember ? null : "Not a member of this chat";
+    var m = State.Value;
+    var tooltip = !isMember
+        ? "Not a member of this chat"
+        : m.HasRead == null
+            ? null
+            : m.HasRead.Value
+                ? "Has read"
+                : "Has not read";
 }
 
-<span class="@cls"
-      data-tooltip="@tooltip"
-      data-tooltip-position="@(tooltip is null ? null : FloatingPosition.Top.ToPositionString())"
-      @onclick="OnClick">
-    <div class="truncate">@@@name</div>
-</span>
+<MentionBadge
+    Label="@("@" + name)"
+    IsMember="@isMember"
+    HasRead="@m.HasRead"
+    Tooltip="@tooltip"
+    OnClick="OnClick"/>
 
 @code {
-    private void OnClick() {
-        // TODO: open the "author info + invite" modal — for members, show profile;
-        // for non-members, show profile + Invite-to-chat button (when allowed).
-        if (!Markup.UserId.IsGuestOrNull())
-            _ = History.NavigateTo(Links.User(Markup.UserId));
+    private EditMembersUI EditMembersUI => Hub.Services.GetRequiredService<EditMembersUI>();
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = new Model(null),
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatEntry = Entry;
+        if (chatEntry.IsSystemEntry || !Markup.IsChatMember)
+            return new(null); // No read-tracking for system entries or non-members.
+
+        var hasRead = await Chats.IsEntryReadByMentionedUser(Session, chatEntry.Id, Markup.Id, cancellationToken).ConfigureAwait(false);
+        return new(hasRead);
     }
+
+    private async Task OnClick() {
+        var userId = Markup.UserId;
+        if (userId.IsGuestOrNull())
+            return;
+
+        var chatId = Entry.ChatId;
+        var author = await Authors.GetByUserId(Session, chatId, userId, CancellationToken.None).ConfigureAwait(false);
+        if (author is not null) {
+            await AuthorUI.Show(author.Id).ConfigureAwait(false);
+            return;
+        }
+
+        // Non-member: invite to this chat when allowed, otherwise open their profile.
+        var chat = await Chats.Get(Session, chatId, CancellationToken.None).ConfigureAwait(false);
+        if (chat is not null && EditMembersUI.CanAddMembers(chat))
+            _ = Hub.ModalUI.Show(new AddMemberModal.Model(chatId));
+        else
+            _ = Hub.History.NavigateTo(Links.User(userId));
+    }
+
+    // Nested types
+
+    public sealed record Model(bool? HasRead);
 }

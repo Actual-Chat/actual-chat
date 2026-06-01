@@ -11,7 +11,7 @@ public sealed partial record Mention : IHasId<Symbol>, IRequirementTarget
 {
     [DataMember, MemoryPackOrder(0), Key(0)] public required Symbol Id { get; init; }
     [DataMember, MemoryPackOrder(1), Key(1)] public required ChatEntryId EntryId { get; init; }
-    [DataMember, MemoryPackOrder(2), Key(2)] public required MentionId MentionId { get; init; }
+    [DataMember, MemoryPackOrder(2), Key(2)] public required MentionRef MentionRef { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatId ChatId => EntryId.ChatId;

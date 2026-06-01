@@ -195,7 +195,7 @@ public class Notifications(IServiceProvider services) : INotifications
         await Commander.Run(upsertNotificationCommand, cancellationToken).ConfigureAwait(false);
         return;
 
-        async Task<HashSet<MentionId>> GetMentionIds()
+        async Task<HashSet<MentionRef>> GetMentionIds()
         {
             var chatMarkupHub = ChatMarkupHubFactory[chatEntry.ChatId];
             var markup = await chatMarkupHub.GetMarkup(chatEntry, MarkupConsumer.Notification, cancellationToken).ConfigureAwait(false);
@@ -205,11 +205,11 @@ public class Notifications(IServiceProvider services) : INotifications
         async Task<UserId[]> GetMentionedUserIds(UserId excludeUserId)
         {
             var authorIds = mentionIds
-                .Where(c => c.TargetId is AuthorId)
-                .Select(c => (AuthorId)c.TargetId);
+                .Where(c => c.Target is AuthorId)
+                .Select(c => (AuthorId)c.Target);
             var userIds = mentionIds
-                .Where(c => c.TargetId is UserId)
-                .Select(c => (UserId)c.TargetId);
+                .Where(c => c.Target is UserId)
+                .Select(c => (UserId)c.Target);
             var authorsFromAuthorMentions = authorIds
                 .Select(id => AuthorsBackend.Get(chatId, id, RequestedAuthorKind.Full, cancellationToken));
             var authorsFromUserMentions = userIds

@@ -484,17 +484,17 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var chatId = ChatId.Parse("the-actual-one");
         var entryId = ChatEntryId.New(chatId, 1);
-        var mentionId = MentionId.Parse("u:user123456");
+        var mentionId = MentionRef.Parse("u:user123456");
         var mention = new Mention {
             Id = "mention-1",
             EntryId = entryId,
-            MentionId = mentionId,
+            MentionRef = mentionId,
         };
 
         var s = mention.PassThroughAllSerializers(Out);
         s.Id.Should().Be(mention.Id);
         s.EntryId.Should().Be(mention.EntryId);
-        s.MentionId.Should().Be(mention.MentionId);
+        s.MentionRef.Should().Be(mention.MentionRef);
     }
 
     [Fact]

@@ -70,6 +70,11 @@ body.hoverable .mention-list .mention-list-item.selected,
     @apply rounded-lg;
     @apply bg-mention-list-item-selected;
 }
+.mention-list .mention-list-item.mention-list-no-match {
+    @apply cursor-default;
+    @apply flex-x items-center h-9 px-2 md:px-4;
+    @apply text-headline-1 text-03 opacity-60;
+}
 .mention-list .mention-list-item > .c-content {
     @apply flex-x items-center gap-x-2;
     @apply h-9;

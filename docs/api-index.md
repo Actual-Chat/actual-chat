@@ -118,14 +118,14 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `Markup` — base markup element (PlainText, Url, Mention, CodeBlock, etc.)
 - `MarkupFormatter` — formats markup to plain text
 - `MentionExtractor` — extracts mentions from markup
-- `MentionMarkup` — base mention; subclasses `AuthorMention`, `UserMention`, `ChatMention`, `PlaceMention`, `EmojiMention`, `GifMention` carry pre-resolved data
-- `MentionId` — `<prefix>:<localId>` reference; dispatches via `MentionKind` registry to an `IMentionTarget`
-- `MentionKind` — registry of mention prefixes (`a`/`u`/`c`/`p`/`e`/`g`)
-- `EmojiRef` / `GifRef` — URL-encoded mention targets
-- `EmojiNormalizer` — persist-time rewriter that unwraps glyph-id emoji mentions to plain text
+- `MentionMarkup` — base mention; subclasses `AuthorMention`, `UserMention`, `ChatMention`, `PlaceMention`, `EmojiMention` carry pre-resolved data
+- `MentionRef` — `<prefix>:<localId>` reference; dispatches via `MentionKind` registry to an `IMentionTarget` (its `.Target`)
+- `MentionKind` — registry of mention prefixes (`a`/`u`/`c`/`p`/`e`; `a` author is legacy/anonymous-only)
+- `EmojiRef` — URL-encoded emoji mention target (`EmojiRef.FromText` encodes raw text)
 - `IMentionResolver` (non-generic) — `Apply(Markup, ct)` markup-tree rewriter that enriches mentions with cached data (was `MentionNamer`)
 - `MentionCandidate` — unified candidate (User/Chat/Emoji) returned by the index
-- `MentionCandidateFilters` — category predicates + `KindRank` + `FilterAndRank` for the picker
+- `MentionCandidateFilters` — category predicates + `KindRank` + `FilterAndRank(filter, query, limit, recencyScores?)` for the picker (recents boost ranking)
+- `RecentMentions` / `RecentGifs` — per-user `StoredSettings` (MessagePack-only) tracking recently picked mentions (recency+frequency score) and GIFs (MRU); surfaced via `RecentMentionsUI` / `RecentGifsUI` synced-state services
 
 ### Media
 - `Media` (record) — media metadata (content type, size, dimensions)

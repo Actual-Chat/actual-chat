@@ -502,13 +502,13 @@ public partial class ChatsBackend
         var markup = MarkupParser.Parse(content);
         var mentionIds = mentionExtractor.GetMentionIds(markup);
         foreach (var mentionId in mentionIds) {
-            if (mentionId.TargetId is not AuthorId authorId)
+            if (mentionId.Target is not AuthorId authorId)
                 continue;
             if (authorId.ChatId != chatId)
                 continue;
 
             var newAuthorId = migratedAuthors.GetNewAuthorId(authorId);
-            var newMentionId = MentionId.NewAuthor(newAuthorId);
+            var newMentionId = MentionRef.NewAuthor(newAuthorId);
             content = content.Replace(mentionId.Id.Value, newMentionId.Id.Value);
         }
         return content;
@@ -719,12 +719,12 @@ public partial class ChatsBackend
         const string mentionIdAuthorPrefix = "a:";
         foreach (var mention in mentions) {
             mention.ChatId = newChatSid;
-            var mentionSid = mention.MentionId;
-            MentionId mentionId;
+            var mentionSid = mention.MentionRef;
+            MentionRef mentionId;
             if (mentionSid.StartsWith(mentionIdAuthorPrefix)) {
                 var authorSid = mentionSid.Substring(mentionIdAuthorPrefix.Length);
                 if (!AuthorId.TryParse(authorSid, out var tempAuthorId)) {
-                    Log.LogWarning("OnCopyChat({CorrelationId}): skipping mention {MentionId}: invalid AuthorId",
+                    Log.LogWarning("OnCopyChat({CorrelationId}): skipping mention {MentionRef}: invalid AuthorId",
                         correlationId, mention.Id);
                     continue;
                 }
@@ -733,36 +733,36 @@ public partial class ChatsBackend
                     var migratedAuthor = migratedAuthors.GetMigratedAuthor(authorSid);
                     if (migratedAuthor == null) {
                         Log.LogWarning(
-                            "OnCopyChat({CorrelationId}): skipping mention {MentionId}: copied author not found",
+                            "OnCopyChat({CorrelationId}): skipping mention {MentionRef}: copied author not found",
                             correlationId, mention.Id);
                         continue;
                     }
                     if (migratedAuthor.NewAuthorId is null) {
                         Log.LogWarning(
-                            "OnCopyChat({CorrelationId}): skipping mention {MentionId}: copied author is marked as removed",
+                            "OnCopyChat({CorrelationId}): skipping mention {MentionRef}: copied author is marked as removed",
                             correlationId, mention.Id);
                         continue;
                     }
                     var newAuthorId = migratedAuthor.NewAuthorId;
-                    mentionId = MentionId.NewAuthor(newAuthorId);
+                    mentionId = MentionRef.NewAuthor(newAuthorId);
                 }
                 else {
-                    mentionId = MentionId.NewAuthor(AuthorId.Parse(authorSid));
+                    mentionId = MentionRef.NewAuthor(AuthorId.Parse(authorSid));
                     Log.LogWarning(
-                        "OnCopyChat({CorrelationId}): another author's mention with Id {MentionId} is found",
+                        "OnCopyChat({CorrelationId}): another author's mention with Id {MentionRef} is found",
                         correlationId, mention.Id);
                 }
             }
             else {
-                if (!MentionId.TryParse(mentionSid, out var parsedMentionId)) {
+                if (!MentionRef.TryParse(mentionSid, out var parsedMentionId)) {
                     Log.LogWarning(
-                        "OnCopyChat({CorrelationId}): skipping mention {MentionId}: invalid MentionId",
+                        "OnCopyChat({CorrelationId}): skipping mention {MentionRef}: invalid MentionRef",
                         correlationId, mention.Id);
                     continue;
                 }
                 mentionId = parsedMentionId;
             }
-            mention.MentionId = mentionId.Value;
+            mention.MentionRef = mentionId.Value;
             mention.Id = DbMention.ComposeId(ChatEntryId.New(newChatId, mention.EntryLid), mentionId);
             dbContext.Mentions.Add(mention);
             entryIdsCollector.Add(mention.EntryLid);
@@ -777,7 +777,7 @@ public partial class ChatsBackend
             if (mention.Id.EndsWith(authorSid))
                 return authorSid;
 
-            // At some point DbMention.AuthorId field (later renamed to MentionId) mistakenly hold value of author of text entry instead of mentioned author.
+            // At some point DbMention.AuthorId field (later renamed to MentionRef) mistakenly hold value of author of text entry instead of mentioned author.
             // Fixed in https://github.com/Actual-Chat/actual-chat/commit/de35ccfe1f756546bdb68c7ada016791773637a1
             // Extract mention_id from id.
             var parts = mention.Id.Split(':');
@@ -794,8 +794,8 @@ public partial class ChatsBackend
             }
             if (!hasFixedMentionId)
                 throw StandardError.Constraint(
-                    $"OnCopyChat({correlationId}): failed to process mention {mention.Id} / {mention.MentionId}' "
-                    + $"due to MentionId mismatch.");
+                    $"OnCopyChat({correlationId}): failed to process mention {mention.Id} / {mention.MentionRef}' "
+                    + $"due to MentionRef mismatch.");
 
             return authorSid;
         }
