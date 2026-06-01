@@ -373,6 +373,6 @@ ul.list-markup li::before {
     --quote-markup-border: #e879f9; /* fuchsia-400 */
 }
 .quote-markup {
-    @apply pl-3 my-1;
-    border-left: 3px solid var(--quote-markup-border);
+    @apply py-0 pl-2;
+    border-left: 2px solid var(--quote-markup-border);
 }
