@@ -18,6 +18,10 @@ public partial class LiveConversationsBackend : ShardComputeService, ILiveConver
     private static readonly TimeSpan KeyTtl = TimeSpan.FromMinutes(6);
     private static readonly TimeSpan SelfHealDelay = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan ParticipantStaleness = TimeSpan.FromSeconds(90);
+    // Safety net: if a closing transcription-on conversation isn't finalized by
+    // LiveConversationSummaryFlow within this window (flow not scheduled when global
+    // summarization is off, or it threw), the backend vanishes it and sends FINAL itself.
+    private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(90);
 
     private readonly RedisScope<LiveConversation> _redisScope;
     private readonly RedisMultiHashMap<ParticipationInfo> _participants;
@@ -50,8 +54,16 @@ public partial class LiveConversationsBackend : ShardComputeService, ILiveConver
         await ShardOwner.RequireShardOwnership(chatId, addDependency: true, cancellationToken).ConfigureAwait(false);
 
         var state = await SafeGet(chatId).ConfigureAwait(false);
-        if (state is not null)
-            Computed.GetCurrent().Invalidate(SelfHealDelay);
+        if (state is null)
+            return null;
+
+        if (state is { IsClosing: true, ClosingAt: { } closingAt }
+            && Clocks.SystemClock.Now - closingAt > CloseTimeout) {
+            _ = SelfClose(chatId);
+            return null;
+        }
+
+        Computed.GetCurrent().Invalidate(SelfHealDelay);
         return state;
     }
 
@@ -107,6 +119,7 @@ public partial class LiveConversationsBackend : ShardComputeService, ILiveConver
             state = state with {
                 AuthorIds = authorIds,
                 IsClosing = false,
+                ClosingAt = null,
                 Version = VersionGenerator.NextVersion(state.Version),
             };
         }
@@ -132,7 +145,7 @@ public partial class LiveConversationsBackend : ShardComputeService, ILiveConver
             if (!state.IsClosing)
                 return;
 
-            state = state with { IsClosing = false, Version = VersionGenerator.NextVersion(state.Version) };
+            state = state with { IsClosing = false, ClosingAt = null, Version = VersionGenerator.NextVersion(state.Version) };
             await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
             InvalidateGet(chatId);
             return;
@@ -151,7 +164,11 @@ public partial class LiveConversationsBackend : ShardComputeService, ILiveConver
             return;
 
         // Transcription-on close is finalized by LiveConversationSummaryFlow (materialize or vanish).
-        state = state with { IsClosing = true, Version = VersionGenerator.NextVersion(state.Version) };
+        state = state with {
+            IsClosing = true,
+            ClosingAt = Clocks.SystemClock.Now,
+            Version = VersionGenerator.NextVersion(state.Version),
+        };
         await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
         InvalidateGet(chatId);
     }
@@ -229,6 +246,22 @@ public partial class LiveConversationsBackend : ShardComputeService, ILiveConver
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to read participants from Redis for chat #{ChatId}", chatId);
             return null;
+        }
+    }
+
+    private async Task SelfClose(ChatId chatId)
+    {
+        try {
+            var state = await SafeGet(chatId).ConfigureAwait(false);
+            if (state is not { IsClosing: true })
+                return;
+
+            var content = state.Title.IsNullOrEmpty() ? "Voice chat ended" : $"Voice chat ended: {state.Title}";
+            await EnqueueLiveNotification(chatId, content, isFinal: true, CancellationToken.None).ConfigureAwait(false);
+            await Close(chatId, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "SelfClose failed for chat #{ChatId}", chatId);
         }
     }
 
