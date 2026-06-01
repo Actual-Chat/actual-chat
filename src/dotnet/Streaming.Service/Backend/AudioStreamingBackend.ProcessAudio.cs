@@ -201,11 +201,20 @@ public partial class AudioStreamingBackend
                 openSegment.StreamId);
         }
         finally {
-            if (mustStreamVoice) {
-                await LiveAudioBackend.Unregister(chatId, openSegment.StreamId.Value, CancellationToken.None).ConfigureAwait(false);
-                await LiveConversationsBackend.OnStreamsChanged(chatId, CancellationToken.None).ConfigureAwait(false);
+            try {
+                if (mustStreamVoice) {
+                    await LiveAudioBackend.Unregister(chatId, openSegment.StreamId.Value, CancellationToken.None).ConfigureAwait(false);
+                    try {
+                        await LiveConversationsBackend.OnStreamsChanged(chatId, CancellationToken.None).ConfigureAwait(false);
+                    }
+                    catch (Exception e) when (e is not OperationCanceledException) {
+                        Log.LogWarning(e, "OnStreamsChanged failed on stream #{StreamId} teardown", openSegment.StreamId);
+                    }
+                }
             }
-            audioMediaIdTcs.TrySetResult(audioMediaId);
+            finally {
+                audioMediaIdTcs.TrySetResult(audioMediaId);
+            }
         }
 
         DispatchRefineTranscription(openSegment, closedSegment, mustStreamVoice, refineTranscriptLanguageTcs.Task, refinedTranscriptTcs);
