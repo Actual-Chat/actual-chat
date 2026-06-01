@@ -1,15 +1,19 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, TranslatedConversation>
+@using ActualChat.Live
+@inherits ComputedStateComponent<AppUIHub, ConversationLiveState>
 @{
-    var m = State.Value;
+    var state = State.Value;
+    var m = state.Conversation;
     var conversation = Message.Conversation!;
     var messageCount = conversation.MessageCount;
     var startsAt = DateTimeConverter.ToLocalTime(conversation.StartsAt);
     var endsAt = DateTimeConverter.ToLocalTime(conversation.EndsAt);
     var openClass = _isOpen ? "open-details" : "closed-details";
     var detailsCls = _isOpen ? "show" : "";
-    var cls = $"conversation-message message-wrapper {openClass}";
+    var liveClass = state.IsLive ? (state.IsJoined ? "live joined" : "live") : "";
+    var cls = $"conversation-message message-wrapper {openClass} {liveClass}";
     var attachments = conversation.Attachments;
+    var canExpand = !state.IsLive || state.IsJoined;
 }
 <div class="@cls"
      data-menu="@(MenuRef.New<ConversationMenu>(conversation.Id.Value, false.ToString()))">
@@ -21,13 +25,26 @@
                 Title="@m.Title"
                 MessageCount="@messageCount"
                 StartsAt="@startsAt"
-                ConversationToggleClick="@ToggleShowMessage"/>
-            <div class="c-short">
-                <MarkupView Markup="@m.Description.Markup"/>
-                @if (!_isOpen) {
-                    <span class="show-more-btn" @onclick="@ToggleDetails"> Show items</span>
-                }
-            </div>
+                ConversationToggleClick="@OnHeaderClick"/>
+            @if (state.IsLive) {
+                <div class="c-live-status">
+                    <span class="c-live-badge">@(state.IsJoined ? "live in voice" : "live")</span>
+                    @if (!state.IsJoined) {
+                        <span class="c-join-btn" @onclick="@OnJoin">Tap to join</span>
+                    }
+                </div>
+            }
+            @if (state.IsVoiceOnly) {
+                <div class="c-short">Voice only</div>
+            }
+            else {
+                <div class="c-short">
+                    <MarkupView Markup="@m.Description.Markup"/>
+                    @if (!_isOpen && canExpand) {
+                        <span class="show-more-btn" @onclick="@ToggleDetails"> Show items</span>
+                    }
+                </div>
+            }
         </div>
         @if (_isOpen) {
             <div class="c-long">
@@ -68,6 +85,8 @@
     private ChatEntry _fakeEntry = null!;
 
     private ChatUI ChatUI => Hub.ChatUI;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private LiveConversationUI LiveConversationUI => Hub.LiveConversationUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
     private ClipboardUI ClipboardUI => ChatContext.Hub.ClipboardUI;
     private ConversationUI ConversationUI => Hub.ConversationUI;
@@ -76,18 +95,19 @@
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ConversationMessage Message { get; set; } = null!;
 
-    protected override ComputedState<TranslatedConversation>.Options GetStateOptions() {
+    protected override ComputedState<ConversationLiveState>.Options GetStateOptions() {
         var conversation = Message.Conversation!;
         var title = conversation.Title;
         var descriptionMarkup = ChatMarkupHub.Parser.Parse(conversation.Description);
         var summaryMarkup = ChatMarkupHub.Parser.Parse(conversation.Summary);
+        var translated = new TranslatedConversation(
+            conversation.Id,
+            TranslatedText.From(title),
+            TranslatedMarkup.From(descriptionMarkup),
+            TranslatedMarkup.From(summaryMarkup));
         return ComputedStateComponent.GetStateOptions(GetType(),
-            t => new ComputedState<TranslatedConversation>.Options() {
-                InitialValue = new TranslatedConversation(
-                    conversation.Id,
-                    TranslatedText.From(title),
-                    TranslatedMarkup.From(descriptionMarkup),
-                    TranslatedMarkup.From(summaryMarkup)),
+            t => new ComputedState<ConversationLiveState>.Options() {
+                InitialValue = new ConversationLiveState(translated, false, false, false),
                 Category = GetStateCategory(t),
             });
     }
@@ -102,13 +122,33 @@
         _lastMessage = Message;
     }
 
-    protected override async Task<TranslatedConversation> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<ConversationLiveState> ComputeState(CancellationToken cancellationToken) {
         var conversation = Message.Conversation!;
-        return await ConversationUI.GetTranslatedConversation(conversation, cancellationToken).ConfigureAwait(false);
+        var translated = await ConversationUI.GetTranslatedConversation(conversation, cancellationToken).ConfigureAwait(true);
+
+        var chatId = conversation.Id.ChatId;
+        var live = await LiveConversationUI.Get(chatId, cancellationToken).ConfigureAwait(true);
+        var isLive = live != null && live.ConversationId == conversation.Id;
+        var isJoined = isLive && await LiveConversationUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(true);
+        var isVoiceOnly = isLive && live!.Title.IsNullOrEmpty() && live.Summary.IsNullOrEmpty();
+        return new ConversationLiveState(translated, isLive, isJoined, isVoiceOnly);
+    }
+
+    private void OnHeaderClick() {
+        if (State.Value is { IsLive: true, IsJoined: false })
+            _ = OnJoin();
+        else
+            ToggleShowMessage();
     }
 
     private void ToggleShowMessage()
         => ChatUI.ToggleExpandConversation(Message.Conversation!.Id);
+
+    private async Task OnJoin() {
+        var chatId = Message.Conversation!.Id.ChatId;
+        await ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(true);
+        await LiveConversationUI.SetParticipation(chatId, ParticipationKind.AudioListen, true, CancellationToken.None).ConfigureAwait(true);
+    }
 
     private void ToggleDetails() {
         _isOpen = !_isOpen;
@@ -116,7 +156,7 @@
     }
 
     private async Task OnCopyToClipboardRequested() {
-        var text = await ConversationUI.GetClipboardText(State.Value);
+        var text = await ConversationUI.GetClipboardText(State.Value.Conversation);
         await ClipboardUI.WriteText(text).ConfigureAwait(false);
     }
 

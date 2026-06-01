@@ -6,6 +6,23 @@
     @apply mb-2;
     background: linear-gradient(5deg, var(--conversation-gradient-01) -96.64%, var(--conversation-gradient-02) 39.02%, var(--conversation-gradient-01) 182.11%)
 }
+.conversation-message.live {
+    @apply border border-primary;
+}
+.conversation-message .c-live-status {
+    @apply flex flex-row items-center gap-x-2;
+    @apply my-1;
+}
+.conversation-message .c-live-badge {
+    @apply inline-flex items-center;
+    @apply px-2 py-0.5;
+    @apply rounded-full;
+    @apply text-xs font-medium uppercase;
+    @apply bg-cr-badge-selected text-cr-badge-selected-text;
+}
+.conversation-message.live .c-join-btn {
+    @apply text-primary font-medium cursor-pointer;
+}
 .conversation-message .c-details {
     @apply flex-y gap-y-2;
     @apply w-full;
