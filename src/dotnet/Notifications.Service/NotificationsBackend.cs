@@ -362,6 +362,38 @@ public class NotificationsBackend(IServiceProvider services)
         await NotifyMembersInternal(userId, chatId, ChatEntryId.LocalId, userIds, cancellationToken).ConfigureAwait(false);
     }
 
+    // [CommandHandler]
+    public virtual async Task OnNotifyLiveConversation(
+        NotificationsBackend_NotifyLiveConversation command,
+        CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var (chatId, content, isFinal) = command;
+        var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null)
+            return;
+
+        var userIds = await ListSubscribedUserIds(chatId, cancellationToken).ConfigureAwait(false);
+        var similarityKey = isFinal ? $"{chatId.Value}:live:final" : $"{chatId.Value}:live:start";
+        var now = Clocks.CoarseSystemClock.Now;
+        foreach (var userId in userIds) {
+            // Joined users (and streamers, who signal participation) already see the call live.
+            if (await LiveConversationsBackend.IsParticipant(chatId, userId, cancellationToken).ConfigureAwait(false))
+                continue;
+
+            var notificationId = NotificationId.New(userId, NotificationKind.Message, similarityKey);
+            var notification = new Notification(notificationId) {
+                Title = chat.Title,
+                Content = content,
+                SentAt = now,
+                ChatNotification = new ChatNotificationOption(chatId),
+            };
+            await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     // Event handlers
 
     // [EventHandler]

@@ -42,6 +42,8 @@ public interface INotificationsBackend : IComputeService, IBackendService
     Task OnNotifyMembers(NotificationsBackend_NotifyMembers command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnNotifyMentionedMembers(NotificationsBackend_NotifyMentionedMembers command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnNotifyLiveConversation(NotificationsBackend_NotifyLiveConversation command, CancellationToken cancellationToken);
 
     // Events
 
@@ -186,6 +188,22 @@ public sealed partial record NotificationsBackend_NotifyMembers(
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public UserId ShardKey => UserId;
+}
+
+/// <summary>
+/// Command to notify a chat's subscribers (minus current participants) that a live
+/// conversation has started or ended.
+/// </summary>
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record NotificationsBackend_NotifyLiveConversation(
+    [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] string Content,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] bool IsFinal
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public ChatId ShardKey => ChatId;
 }
 
 /// <summary>
