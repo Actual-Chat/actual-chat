@@ -73,10 +73,11 @@ public static class ChatMarkupHubExt
 
         var markup = markupHub.Parser.Parse(content);
         var resolved = await markupHub.MentionResolver.Apply(markup, cancellationToken).ConfigureAwait(false);
-        if (ReferenceEquals(resolved, markup))
+        var normalized = EmojiNormalizer.Instance.Apply(resolved);
+        if (ReferenceEquals(resolved, markup) && ReferenceEquals(normalized, resolved))
             return entry.Content;
 
-        return MarkupFormatter.Default.Format(resolved);
+        return MarkupFormatter.Default.Format(normalized);
     }
 
     public static async ValueTask<Markup> Parse(

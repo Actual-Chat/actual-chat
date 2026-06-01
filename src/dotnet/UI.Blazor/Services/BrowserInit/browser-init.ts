@@ -318,6 +318,19 @@ export class BrowserInit {
         navigator.clipboard.readText = async (): Promise<string> => {
             return await clipboardHandlersRef.invokeMethodAsync('ReadText') ?? '';
         };
+        // Route the rich (ClipboardItem) write through the native handler too — it stores HTML via
+        // ClipData.newHtmlText, so our data-voxt-markup payload survives on the system clipboard.
+        navigator.clipboard.write = async (items: ClipboardItem[]): Promise<void> => {
+            const item = items?.[0];
+            let text = '', html = '';
+            if (item) {
+                if (item.types.includes('text/plain'))
+                    text = await (await item.getType('text/plain')).text();
+                if (item.types.includes('text/html'))
+                    html = await (await item.getType('text/html')).text();
+            }
+            await clipboardHandlersRef.invokeMethodAsync('WriteRichText', text, html);
+        };
     }
 
     private static preventSuspend(): void {

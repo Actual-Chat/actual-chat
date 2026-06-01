@@ -195,7 +195,7 @@
     }
 
     private async Task SaveRecentGif(GifItem gif) {
-        _recentGifs.RemoveAll(g => string.Equals(g.Slug, gif.Slug, StringComparison.Ordinal));
+        _recentGifs.RemoveAll(g => g.Slug == gif.Slug);
         _recentGifs.Insert(0, gif);
         var recentGif = new RecentGif {
             Slug = gif.Slug,

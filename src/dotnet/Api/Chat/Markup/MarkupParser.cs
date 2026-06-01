@@ -196,9 +196,15 @@ public partial class MarkupParser : IMarkupParser
             .Select(t => (Markup)new StylizedMarkup(t, TextStyle.Italic))
             .Debug("*");
 
+    // Fallback for single-line content: consume a run of stray '*'/'`'/'@' as plain text when no
+    // styled/preformatted/mention/url markup matches. Without it, an unmatched '**' (e.g. the
+    // **`a`/`b`** ambiguity) would stall list-item parsing and silently drop the rest of the message.
+    private static readonly Parser<char, Markup> StraySpecialText =
+        SpecialChar.AtLeastOnceString().ToTextMarkup(TextMarkupKind.Plain, false);
+
     // Text block for single-line content (list items) - no newlines allowed
     private static readonly Parser<char, Markup> TextBlockSingleLine =
-        SafeTryOneOf(BoldMarkup, ItalicMarkup, NonStylizedMarkup)
+        SafeTryOneOf(BoldMarkup, ItalicMarkup, NonStylizedMarkup, StraySpecialText)
             .AtLeastOnceSingleLineMarkup()
             .Debug("<TextSingleLine>");
 

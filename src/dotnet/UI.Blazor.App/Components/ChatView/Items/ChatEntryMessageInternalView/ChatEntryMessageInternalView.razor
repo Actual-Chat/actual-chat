@@ -8,7 +8,7 @@
     var markup = m.Markup;
     var entry = m.Entry;
     var trimmedContent = entry.Content.Trim();
-    var isSoleEmojiMention = IsSoleEmojiMention(markup);
+    var isSoleEmojiMention = markup.IsSoleEmojiMention();
     // Plain-text zoom only for an actual unicode emoji glyph — not a slug id like "ginger-clown".
     var isEmojiOnly = Emojis.BySymbol.GetValueOrDefault(trimmedContent) != null || isSoleEmojiMention;
     var isGifOnly = UrlMapper.IsTrustedGifUrl(trimmedContent);
@@ -142,16 +142,6 @@
     private ChatUI ChatUI => Hub.ChatUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
-
-    // True when the message body is a single emoji mention (ignoring paragraph/seq wrappers) —
-    // the only case that renders large.
-    private static bool IsSoleEmojiMention(Markup markup)
-        => markup switch {
-            EmojiMention => true,
-            ParagraphMarkup p => IsSoleEmojiMention(p.Content),
-            MarkupSeq s => s.Items.Length == 1 && IsSoleEmojiMention(s.Items[0]),
-            _ => false,
-        };
 
     private bool HasNewerStreamingEntry() {
         var authorId = Message.Entry.AuthorId;

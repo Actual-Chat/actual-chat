@@ -15,6 +15,17 @@ public class AndroidClipboardHandlers : IClipboardHandlers
         });
 
     [JSInvokable]
+    public Task WriteRichText(string? text, string? html)
+        => DispatchToMainThread(() => {
+            var clipboard = (ClipboardManager)Platform.AppContext.GetSystemService(Context.ClipboardService)!;
+            // NewHtmlText puts both MIMETYPE_TEXT_HTML and the plain-text fallback on the clip.
+            var clip = html.IsNullOrEmpty()
+                ? ClipData.NewPlainText("text", text ?? "")
+                : ClipData.NewHtmlText("text", text ?? "", html);
+            clipboard.PrimaryClip = clip;
+        });
+
+    [JSInvokable]
     public Task<string?> ReadText()
         => DispatchToMainThread(() => {
             var clipboard = (ClipboardManager)Platform.AppContext.GetSystemService(Context.ClipboardService)!;
