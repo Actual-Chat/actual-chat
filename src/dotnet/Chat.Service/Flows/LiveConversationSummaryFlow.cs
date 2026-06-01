@@ -53,7 +53,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
                 LastSummaryEndLid = entries[^1].LocalId;
                 if (!StartNotificationSent && !summary.Title.IsNullOrEmpty()) {
                     await Services.Queues()
-                        .Enqueue(new NotificationsBackend_NotifyLiveConversation(ChatId, $"Voice chat: {summary.Title}", false), cancellationToken)
+                        .Enqueue(new NotificationsBackend_NotifyLiveConversation(ChatId, $"Voice chat: {summary.Title}", false, live.StartEntryLid), cancellationToken)
                         .ConfigureAwait(false);
                     StartNotificationSent = true;
                 }
@@ -79,7 +79,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
         }
         var finalContent = live.Title.IsNullOrEmpty() ? "Voice chat ended" : $"Voice chat ended: {live.Title}";
         await Services.Queues()
-            .Enqueue(new NotificationsBackend_NotifyLiveConversation(ChatId, finalContent, true), cancellationToken)
+            .Enqueue(new NotificationsBackend_NotifyLiveConversation(ChatId, finalContent, true, live.StartEntryLid), cancellationToken)
             .ConfigureAwait(false);
         await LiveConversationsBackend.Close(ChatId, cancellationToken).ConfigureAwait(false);
     }

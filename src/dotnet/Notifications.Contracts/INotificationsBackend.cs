@@ -199,7 +199,8 @@ public sealed partial record NotificationsBackend_NotifyMembers(
 public sealed partial record NotificationsBackend_NotifyLiveConversation(
     [property: DataMember, MemoryPackOrder(0), Key(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1), Key(1)] string Content,
-    [property: DataMember, MemoryPackOrder(2), Key(2)] bool IsFinal
+    [property: DataMember, MemoryPackOrder(2), Key(2)] bool IsFinal,
+    [property: DataMember, MemoryPackOrder(3), Key(3)] long StartEntryLid
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
