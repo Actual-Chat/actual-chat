@@ -149,6 +149,16 @@ public partial class LiveConversationsBackend : ShardComputeService, ILiveConver
         InvalidateGet(chatId);
     }
 
+    public virtual async Task Close(ChatId chatId, CancellationToken cancellationToken)
+    {
+        using var _ = Computed.BeginIsolation();
+        using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
+
+        await _redisScope.Remove(chatId.Value).ConfigureAwait(false);
+        await _participants.RemoveHashMap(chatId.Value).ConfigureAwait(false);
+        InvalidateGet(chatId);
+    }
+
     public virtual async Task SetParticipation(
         ChatId chatId,
         UserId userId,
