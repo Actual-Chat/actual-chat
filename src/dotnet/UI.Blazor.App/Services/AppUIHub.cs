@@ -30,6 +30,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public ITranslations Translations => field ??= Services.GetRequiredService<ITranslations>();
     public ILiveAudioStreams LiveAudioStreams => field ??= Services.GetRequiredService<ILiveAudioStreams>();
     public ILiveVideoStreams LiveVideoStreams => field ??= Services.GetRequiredService<ILiveVideoStreams>();
+    public ILiveConversations LiveConversations => field ??= Services.GetRequiredService<ILiveConversations>();
     public IMedia Media => field ??= Services.GetRequiredService<IMedia>();
     public IGifs Gifs => field ??= Services.GetRequiredService<IGifs>();
     public VideoTranscoder VideoTranscoder => field ??= Services.GetRequiredService<VideoTranscoder>();
@@ -52,6 +53,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public CameraUI CameraUI => field ??= Services.GetRequiredService<CameraUI>();
     public VideoQualityUI VideoQualityUI => field ??= Services.GetRequiredService<VideoQualityUI>();
     public LiveStreamUI LiveStreamUI => field ??= Services.GetRequiredService<LiveStreamUI>();
+    public LiveConversationUI LiveConversationUI => field ??= Services.GetRequiredService<LiveConversationUI>();
     public new NotificationUI NotificationUI => field ??= Services.GetRequiredService<NotificationUI>();
     public LanguageUI LanguageUI => field ??= Services.GetRequiredService<LanguageUI>();
     public EditMembersUI EditMembersUI => field ??= Services.GetRequiredService<EditMembersUI>();
