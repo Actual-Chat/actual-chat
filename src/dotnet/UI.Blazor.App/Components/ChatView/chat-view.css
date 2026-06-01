@@ -401,7 +401,7 @@ body.hoverable .chat-message-quote:hover,
     @apply max-w-96;
 }
 body.narrow .message-file-attachments {
-    max-width: 75vw;
+    @apply max-w-full;
 }
 
 .chat-welcome-block {

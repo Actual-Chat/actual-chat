@@ -738,6 +738,44 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [CommandHandler]
+    public virtual async Task<Unit> OnForwardAttachment(Chats_ForwardAttachment command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return default;
+
+        var (session, chatEntryId, attachmentIndex, destinationChatIds) = command;
+        var sourceChatId = chatEntryId.ChatId;
+        await Authors.EnsureJoined(session, sourceChatId, cancellationToken).ConfigureAwait(false);
+        var sourceChat = await Get(session, sourceChatId, cancellationToken).Require().ConfigureAwait(false);
+        sourceChat.Rules.Permissions.Require(ChatPermissions.Read);
+
+        var chatEntry = await this.GetEntry(session, chatEntryId, cancellationToken)
+            .Require(ChatEntry.MustNotBeRemoved)
+            .ConfigureAwait(false);
+        var attachment = chatEntry.Attachments.FirstOrDefault(a => a.Index == attachmentIndex)
+            ?? throw StandardError.NotFound<ChatEntryAttachment>("Attachment not found in the source entry.");
+
+        foreach (var destinationChatId in destinationChatIds) {
+            var destinationChat = await Get(session, destinationChatId, cancellationToken).Require().ConfigureAwait(false);
+            await Authors.EnsureJoined(session, destinationChatId, cancellationToken).ConfigureAwait(false);
+            destinationChat.Rules.Permissions.Require(ChatPermissions.Write);
+
+            var cmd = new Chats_UpsertEntry(session, destinationChatId, null) {
+                Text = "",
+                Attachments = [
+                    new ChatEntryAttachment {
+                        MediaId = attachment.MediaId,
+                        ThumbnailMediaId = attachment.ThumbnailMediaId,
+                    },
+                ],
+            };
+            await Commander.Run(cmd, CancellationToken.None).ConfigureAwait(false);
+        }
+
+        return default;
+    }
+
+    // [CommandHandler]
     public virtual async Task<Chat_CopyChatResult> OnCopyChat(Chat_CopyChat command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)

@@ -3,7 +3,7 @@
 @{
     var m = State.Value;
     var fileSize = Attachment.Media.Length;
-    var iconCls = m.IsPlaying ? "icon-pause-fill" : "icon-play-fill";
+    var iconCls = m.IsPlaying ? "icon-pause-fill text-2xl" : "icon-note text-xl";
     var fraction = m.Duration is { } d && d.TotalSeconds > 0
         ? Math.Clamp(m.Position.TotalSeconds / d.TotalSeconds, 0, 1)
         : 0;
@@ -13,7 +13,7 @@
 
 <div class="audio-file-attachment file-attachment unfocusable">
     <button class="c-play-btn" type="button" @onclick="@OnToggle" @onclick:stopPropagation>
-        <i class="@iconCls text-2xl"></i>
+        <i class="@iconCls"></i>
     </button>
     <div class="c-file-info">
         <FileAttachmentTitle Title="@Attachment.Media.FileName"/>
@@ -44,6 +44,13 @@
             </div>
         }
     </div>
+    <ButtonRound
+        Class="btn-sm btn-transparent"
+        data-menu="@(MenuRef.New<AudioFileAttachmentMenu>(Attachment.EntryId.Value, Attachment.Index.ToString()).ToString())"
+        data-menu-trigger="@MenuTrigger.Primary"
+        data-menu-placement="@(FloatingPosition.TopEnd.ToPositionString())">
+        <i class="icon-more-vertical text-xl"></i>
+    </ButtonRound>
 </div>
 
 @code {

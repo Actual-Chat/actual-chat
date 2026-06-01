@@ -104,6 +104,9 @@ public interface IChats : IComputeService
     Task<Unit> OnForwardEntries(Chats_ForwardEntries command, CancellationToken cancellationToken);
 
     [CommandHandler]
+    Task<Unit> OnForwardAttachment(Chats_ForwardAttachment command, CancellationToken cancellationToken);
+
+    [CommandHandler]
     Task<Chat_CopyChatResult> OnCopyChat(Chat_CopyChat command, CancellationToken cancellationToken);
 
     [CommandHandler]
@@ -180,6 +183,15 @@ public sealed partial record Chats_ForwardEntries(
     [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1), Key(1)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(2), Key(2)] ChatEntryId[] ChatEntries,
+    [property: DataMember, MemoryPackOrder(3), Key(3)] ChatId[] DestinationChatIds
+) : ISessionCommand<Unit>, IApiCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Chats_ForwardAttachment(
+    [property: DataMember, MemoryPackOrder(0), Key(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1), Key(1)] ChatEntryId ChatEntryId,
+    [property: DataMember, MemoryPackOrder(2), Key(2)] int AttachmentIndex,
     [property: DataMember, MemoryPackOrder(3), Key(3)] ChatId[] DestinationChatIds
 ) : ISessionCommand<Unit>, IApiCommand;
 
