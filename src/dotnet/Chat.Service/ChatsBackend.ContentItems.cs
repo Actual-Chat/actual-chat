@@ -115,6 +115,56 @@ public partial class ChatsBackend
             .ConfigureAwait(false);
     }
 
+    // [CommandHandler]
+    public virtual Task OnUpdateChatVisualMediaIndex(
+        ChatsBackend_UpdateChatVisualMediaIndex command,
+        CancellationToken cancellationToken)
+    {
+        var (chatId, entryIds, items) = command;
+        return UpdateContentIndex<VisualMediaItem, DbChatVisualMediaItem>(
+            ChatContentKind.Media,
+            chatId,
+            entryIds,
+            items,
+            db => db.ChatVisualMediaItems,
+            x => new DbChatVisualMediaItem(x with { Version = VersionGenerator.NextVersion() }),
+            cancellationToken);
+    }
+
+    // [CommandHandler]
+    public virtual Task OnUpdateChatFileIndex(
+        ChatsBackend_UpdateChatFileIndex command,
+        CancellationToken cancellationToken)
+    {
+        var (chatId, entryIds, items) = command;
+        return UpdateContentIndex<FileItem, DbChatFileItem>(
+            ChatContentKind.File,
+            chatId,
+            entryIds,
+            items,
+            db => db.ChatFileItems,
+            x => new DbChatFileItem(x with { Version = VersionGenerator.NextVersion() }),
+            cancellationToken);
+    }
+
+    // [CommandHandler]
+    public virtual Task OnUpdateChatLinkIndex(
+        ChatsBackend_UpdateChatLinkIndex command,
+        CancellationToken cancellationToken)
+    {
+        var (chatId, entryIds, items) = command;
+        return UpdateContentIndex<LinkItem, DbChatLinkItem>(
+            ChatContentKind.Link,
+            chatId,
+            entryIds,
+            items,
+            db => db.ChatLinkItems,
+            x => new DbChatLinkItem(x with { Version = VersionGenerator.NextVersion() }),
+            cancellationToken);
+    }
+
+    // Private members
+
     private async Task<LinkItem> ResolveLinkItem(LinkItem item, CancellationToken cancellationToken)
     {
         if (item.LinkPreviewId.IsEmpty)
@@ -124,34 +174,40 @@ public partial class ChatsBackend
         return item with { LinkPreview = linkPreview };
     }
 
-    // [CommandHandler]
-    public virtual async Task OnUpdateChatVisualMediaIndex(
-        ChatsBackend_UpdateChatVisualMediaIndex command,
+    private async Task UpdateContentIndex<TItem, TDbItem>(
+        ChatContentKind kind,
+        ChatId chatId,
+        ChatEntryId[] entryIds,
+        TItem[] items,
+        Func<ChatDbContext, DbSet<TDbItem>> getTable,
+        Func<TItem, TDbItem> toDbItem,
         CancellationToken cancellationToken)
+        where TItem : IChatContentItem
+        where TDbItem : class, IDbChatContentItem
     {
-        var (chatId, entryIds, items) = command;
         if (entryIds.Length == 0)
             return;
 
         if (Invalidation.IsActive) {
-            InvalidateContentIndex(ChatContentKind.Media, chatId);
+            InvalidateContentIndex(kind, chatId);
             return;
         }
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        var table = getTable(dbContext);
         var entrySids = entryIds.Select(x => x.Value).Distinct().ToList();
-        var deletedAts = await dbContext.ChatVisualMediaItems
+        var deletedAts = await table
             .Where(x => entrySids.Contains(x.EntryId))
             .Select(x => x.At)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
-        await dbContext.ChatVisualMediaItems
+        await table
             .Where(x => entrySids.Contains(x.EntryId))
             .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 
         foreach (var item in items)
-            dbContext.Add(new DbChatVisualMediaItem(item with { Version = VersionGenerator.NextVersion() }));
+            dbContext.Add(toDbItem(item));
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         var chatSid = chatId.Value;
@@ -159,101 +215,13 @@ public partial class ChatsBackend
         var pageCounts = new Dictionary<string, int>();
         foreach (var monthKey in affectedMonths) {
             var (periodStart, periodEnd) = ParseUtcMonthRange(monthKey);
-            pageCounts[monthKey] = await dbContext.ChatVisualMediaItems
+            pageCounts[monthKey] = await table
                 .Where(x => x.ChatId == chatSid && x.At >= periodStart && x.At < periodEnd)
                 .CountAsync(cancellationToken).ConfigureAwait(false);
         }
         CommandContext.GetCurrent().Operation.Items
-            .KeylessSet(new ContentIndexPageCounts(ChatContentKind.Media, pageCounts));
+            .KeylessSet(new ContentIndexPageCounts(kind, pageCounts));
     }
-
-    // [CommandHandler]
-    public virtual async Task OnUpdateChatFileIndex(
-        ChatsBackend_UpdateChatFileIndex command,
-        CancellationToken cancellationToken)
-    {
-        var (chatId, entryIds, items) = command;
-        if (entryIds.Length == 0)
-            return;
-
-        if (Invalidation.IsActive) {
-            InvalidateContentIndex(ChatContentKind.File, chatId);
-            return;
-        }
-
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var entrySids = entryIds.Select(x => x.Value).Distinct().ToList();
-        var deletedAts = await dbContext.ChatFileItems
-            .Where(x => entrySids.Contains(x.EntryId))
-            .Select(x => x.At)
-            .ToListAsync(cancellationToken).ConfigureAwait(false);
-        await dbContext.ChatFileItems
-            .Where(x => entrySids.Contains(x.EntryId))
-            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
-
-        foreach (var item in items)
-            dbContext.Add(new DbChatFileItem(item with { Version = VersionGenerator.NextVersion() }));
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-        var chatSid = chatId.Value;
-        var affectedMonths = CollectAffectedMonths(deletedAts, items);
-        var pageCounts = new Dictionary<string, int>();
-        foreach (var monthKey in affectedMonths) {
-            var (periodStart, periodEnd) = ParseUtcMonthRange(monthKey);
-            pageCounts[monthKey] = await dbContext.ChatFileItems
-                .Where(x => x.ChatId == chatSid && x.At >= periodStart && x.At < periodEnd)
-                .CountAsync(cancellationToken).ConfigureAwait(false);
-        }
-        CommandContext.GetCurrent().Operation.Items
-            .KeylessSet(new ContentIndexPageCounts(ChatContentKind.File, pageCounts));
-    }
-
-    // [CommandHandler]
-    public virtual async Task OnUpdateChatLinkIndex(
-        ChatsBackend_UpdateChatLinkIndex command,
-        CancellationToken cancellationToken)
-    {
-        var (chatId, entryIds, items) = command;
-        if (entryIds.Length == 0)
-            return;
-
-        if (Invalidation.IsActive) {
-            InvalidateContentIndex(ChatContentKind.Link, chatId);
-            return;
-        }
-
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var entrySids = entryIds.Select(x => x.Value).Distinct().ToList();
-        var deletedAts = await dbContext.ChatLinkItems
-            .Where(x => entrySids.Contains(x.EntryId))
-            .Select(x => x.At)
-            .ToListAsync(cancellationToken).ConfigureAwait(false);
-        await dbContext.ChatLinkItems
-            .Where(x => entrySids.Contains(x.EntryId))
-            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
-
-        foreach (var item in items)
-            dbContext.Add(new DbChatLinkItem(item with { Version = VersionGenerator.NextVersion() }));
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-        var chatSid = chatId.Value;
-        var affectedMonths = CollectAffectedMonths(deletedAts, items);
-        var pageCounts = new Dictionary<string, int>();
-        foreach (var monthKey in affectedMonths) {
-            var (periodStart, periodEnd) = ParseUtcMonthRange(monthKey);
-            pageCounts[monthKey] = await dbContext.ChatLinkItems
-                .Where(x => x.ChatId == chatSid && x.At >= periodStart && x.At < periodEnd)
-                .CountAsync(cancellationToken).ConfigureAwait(false);
-        }
-        CommandContext.GetCurrent().Operation.Items
-            .KeylessSet(new ContentIndexPageCounts(ChatContentKind.Link, pageCounts));
-    }
-
-    // ---- Shared helpers ----------------------------------------------------
 
     private static HashSet<string> CollectAffectedMonths<TItem>(
         IEnumerable<DateTime> deletedAts,
