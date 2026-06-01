@@ -66,41 +66,19 @@
         CancellationToken cancellationToken)
         => ContentListPlumbing.LoadFromPeriods<VisualMediaItem>(
             Hub, Session, ChatId, query, renderedData,
-            (block, ct) => Chats.GetVisualMediaPeriod(Session, ChatId, block.PeriodKey, block.PageIndex, ct),
-            BuildItems,
+            rowSize: GridColumns,
+            groupBy: ContentGrouping.Month,
+            loadPage: (block, ct) => Chats.GetVisualMediaPeriod(Session, ChatId, block.PeriodKey, block.PageIndex, ct),
+            rowFactory: BuildRow,
+            prefetch: null,
             cancellationToken);
 
-    private Task<List<ContentListItem>> BuildItems(
-        IReadOnlyList<ContentListPlumbing.Block> windowBlocks,
-        IReadOnlyList<VisualMediaItem[]> contents,
-        CancellationToken cancellationToken) {
-        var result = new List<ContentListItem>();
-        string? currentGroupKey = null;
-
-        for (var b = 0; b < windowBlocks.Count; b++) {
-            var block = windowBlocks[b];
-            var rows = ContentListPlumbing.ChunkPage(contents[b], GridColumns, ContentGrouping.Month, DateTimeConverter);
-            for (var r = rows.Count - 1; r >= 0; r--) {
-                var (rowIndex, groupKey, items) = rows[r];
-                if (groupKey != currentGroupKey) {
-                    currentGroupKey = groupKey;
-                    var title = ContentListPlumbing.GetLocalGroup(items[0].At, ContentGrouping.Month, DateTimeConverter).Title;
-                    if (title.Length > 0)
-                        result.Add(new ContentListItem { Key = $"g:{groupKey}", IsGroup = true, GroupTitle = title });
-                }
-
-                var displayItems = new IChatContentItem[items.Length];
-                for (var k = 0; k < items.Length; k++)
-                    displayItems[k] = items[items.Length - 1 - k];
-                result.Add(new ContentListItem {
-                    Key = $"r:{block.PeriodKey}:{block.PageIndex}:{rowIndex}",
-                    Version = ContentListPlumbing.SumVersion(displayItems),
-                    Items = displayItems,
-                });
-            }
-        }
-        return Task.FromResult(result);
-    }
+    private static ContentListItem BuildRow(VisualMediaItem[] items, string key)
+        => new() {
+            Key = key,
+            Version = ContentListPlumbing.SumVersion(items),
+            Items = items,
+        };
 
     private async Task OnMediaClick(VisualMediaItem item) {
         var entry = await Chats.GetEntry(Session, item.EntryId, CancellationToken.None);

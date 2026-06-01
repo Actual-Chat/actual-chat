@@ -45,64 +45,39 @@
     public Task<VirtualListData<ContentListItem>> GetData(
         VirtualListDataQuery query,
         VirtualListData<ContentListItem> renderedData,
-        CancellationToken cancellationToken)
-        => ContentListPlumbing.LoadFromPeriods<LinkItem>(
-            Hub, Session, ChatId, query, renderedData,
-            (block, ct) => Chats.GetLinkPeriod(Session, ChatId, block.PeriodKey, block.PageIndex, ct),
-            BuildItems,
-            cancellationToken);
-
-    private async Task<List<ContentListItem>> BuildItems(
-        IReadOnlyList<ContentListPlumbing.Block> windowBlocks,
-        IReadOnlyList<LinkItem[]> contents,
         CancellationToken cancellationToken) {
-        // Resolve entries only for the rich-preview rendering path; absent entries are
-        // fine — the fallback shows just the URL.
-        var linkEntries = await ResolveLinkEntries(contents, cancellationToken).ConfigureAwait(false);
-        var result = new List<ContentListItem>();
-        string? currentGroupKey = null;
-
-        for (var b = 0; b < windowBlocks.Count; b++) {
-            var block = windowBlocks[b];
-            var items = contents[b].Cast<IChatContentItem>().ToList();
-            var rows = ContentListPlumbing.ChunkPage(items, 1, ContentGrouping.Day, DateTimeConverter);
-            for (var r = rows.Count - 1; r >= 0; r--) {
-                var (rowIndex, groupKey, rowItems) = rows[r];
-                if (groupKey != currentGroupKey) {
-                    currentGroupKey = groupKey;
-                    var title = ContentListPlumbing.GetLocalGroup(rowItems[0].At, ContentGrouping.Day, DateTimeConverter).Title;
-                    if (title.Length > 0)
-                        result.Add(new ContentListItem { Key = $"g:{groupKey}", IsGroup = true, GroupTitle = title });
-                }
-
-                var link = (LinkItem)rowItems[0];
-                linkEntries.TryGetValue(link.Id, out var entry);
-                result.Add(new ContentListItem {
-                    Key = $"i:{block.PeriodKey}:{block.PageIndex}:{rowIndex}",
+        // Per-GetData scratch — captured by both prefetch (writes) and rowFactory (reads).
+        // Holds ChatEntry-s for rich link previews; absent entries fall back to plain URL.
+        var entries = new Dictionary<Symbol, ChatEntry>();
+        return ContentListPlumbing.LoadFromPeriods<LinkItem>(
+            Hub, Session, ChatId, query, renderedData,
+            rowSize: 1,
+            groupBy: ContentGrouping.Day,
+            loadPage: (block, ct) => Chats.GetLinkPeriod(Session, ChatId, block.PeriodKey, block.PageIndex, ct),
+            rowFactory: (items, key) => {
+                var link = items[0];
+                entries.TryGetValue(link.Id, out var entry);
+                return new ContentListItem {
+                    Key = key,
                     Version = link.Version + (entry?.Version ?? 0),
-                    Items = new IChatContentItem[] { link },
+                    Items = items,
                     LinkEntry = entry,
-                });
-            }
-        }
-        return result;
+                };
+            },
+            prefetch: (items, ct) => PrefetchEntries(items, entries, ct),
+            cancellationToken);
     }
 
-    private async Task<IReadOnlyDictionary<Symbol, ChatEntry>> ResolveLinkEntries(
-        IReadOnlyList<LinkItem[]> contents,
+    private async Task PrefetchEntries(
+        IReadOnlyList<LinkItem> items,
+        Dictionary<Symbol, ChatEntry> sink,
         CancellationToken cancellationToken) {
-        var items = contents.SelectMany(p => p).ToList();
-        if (items.Count == 0)
-            return new Dictionary<Symbol, ChatEntry>();
-        var entries = await items
+        var resolved = await items
             .Select(item => Chats.GetEntry(Session, item.EntryId, cancellationToken).AsTask())
             .Collect(cancellationToken)
             .ConfigureAwait(false);
-        var result = new Dictionary<Symbol, ChatEntry>(items.Count);
         for (var i = 0; i < items.Count; i++)
-            if (entries[i] is { } entry)
-                result[items[i].Id] = entry;
-        return result;
+            if (resolved[i] is { } entry)
+                sink[items[i].Id] = entry;
     }
-
 }
