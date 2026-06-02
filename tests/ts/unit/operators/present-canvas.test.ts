@@ -235,4 +235,27 @@ describe('canvasPresent', () => {
         expect(ctx.calls).toHaveLength(4);
         expect(stats.presented).toBe(4);
     });
+
+    it('stats: presentSkipRatio rises when frames take the skip branch', async () => {
+        const stats = createEmptyPlayerStats();
+        const ctx = new FakeCtx();
+        // extra = 5000 - 333 = 4667 > CATCHUP_BUDGET_MS (4000); frozen clock keeps
+        // every non-first frame within MIN_DURATION_MS → skip-after-decode path.
+        const sink = canvasPresent({
+            getCanvasCtx: () => ctx,
+            getBufferSpanMs: (): number => 5000,
+            targetSpanMs: 333,
+            nowFn: (): number => 1000,
+            delayFn: (): Promise<void> => Promise.resolve(),
+        });
+        const items = Array.from({ length: 5 }, (_, i) => makeEnvelope(stats, i, i * 33));
+
+        await count(pipe(source(items), sink));
+
+        // Frame 0 draws (lastWriteAt=null → no skip branch); frames 1..4 skip.
+        // Sample sequence: 0, 1, 1, 1, 1 → EMA (alpha=0.1) above 0.3.
+        expect(stats.presented).toBe(1);
+        expect(stats.presentSkipRatio).toBeGreaterThan(0.3);
+        expect(stats.presentSkipRatio).toBeLessThanOrEqual(1);
+    });
 });
