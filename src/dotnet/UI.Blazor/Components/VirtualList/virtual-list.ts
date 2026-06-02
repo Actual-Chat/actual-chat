@@ -40,7 +40,7 @@ const RevealTimeout = 1500;
 // Must match InfiniteSize in VirtualList.razor.cs.
 const InfiniteSize = 1e7;
 
-type ScrollToEdgeReason = 'no-pivot' | 'last-item' | 'item' | 'sticky-edge' | 'non-item-resize' | 'item-resize' | 'unknown';
+type ScrollToEdgeReason = 'no-pivot' | 'last-item' | 'item' | 'sticky-edge' | 'non-item-resize' | 'item-resize' | 'viewport-resize' | 'unknown';
 interface ScrollMetadata {
     shouldUseSmoothScroll: boolean;
     scrollType: ScrollToEdgeReason;
@@ -333,6 +333,10 @@ export class VirtualList {
         this.visibleItems = new Set<string>();
 
         this.sizeObserver.observe(this.endAnchorRef, { box: 'border-box' });
+        // Observe the viewport itself: a height-only change (mobile keyboard, sub-header/footer panels)
+        // resizes neither items nor the end anchor, so without this the sticky edge isn't re-pinned and
+        // the content drifts off-screen (blank chat until the scroll-to-bottom button is used).
+        this.sizeObserver.observe(this.ref, { box: 'border-box' });
         this.visibilityObserver.observe(this.endAnchorRef);
         this.skeletonObserver0.observe(this.spacerRef);
         this.skeletonObserver0.observe(this.endSpacerRef);
@@ -787,6 +791,7 @@ export class VirtualList {
         // debugLog?.log('onResize: ', [...entries]);
         let itemsWereMeasured = false;
         let notAnItem = false;
+        let viewportResized = false;
         let existingResizedCount = 0;
         let totalExistingSizeDiff = 0;
         let endAnchorHasChanged = false;
@@ -808,6 +813,8 @@ export class VirtualList {
                     this.updateState('onResize: endAnchor', this.state, { endAnchorSize: size });
                     endAnchorHasChanged = true;
                 }
+                else if (entry.target === this.ref)
+                    viewportResized = true;
                 continue; // container or footer also can be resized
             }
 
@@ -853,9 +860,11 @@ export class VirtualList {
         }
         if (notAnItem) {
             this.updateState('onResize: windowScrollTop', this.state, { windowScrollTop: window.visualViewport?.offsetTop ?? window.scrollY });
-            // restore sticky end edge on item resize - not adding new one!
-            if (!itemsWereMeasured && this.state.stickyEdge?.edge === this.defaultEdge)
-                this.scrollToEdge(this.defaultEdge, false, 'non-item-resize');
+            // Re-pin the sticky edge on resize (don't create a new one). A viewport resize uses the
+            // 'viewport-resize' reason, which — unlike 'non-item-resize' — is honored during the initial
+            // render too, so panels/keyboard resizing the view right after open still keep the edge pinned.
+            if (this.state.stickyEdge?.edge === this.defaultEdge && (viewportResized || !itemsWereMeasured))
+                this.scrollToEdge(this.defaultEdge, false, viewportResized ? 'viewport-resize' : 'non-item-resize');
 
             if (DeviceInfo.isIos) {
                 const htmlElement = document.getElementsByTagName('html')[0];
