@@ -39,6 +39,9 @@ internal static class ContentListPlumbing
         return blocks.FindIndex(b => b.PeriodKey == parts[1] && b.PageIndex == pageIndex);
     }
 
+    public static bool IsRowKey(string key)
+        => key.Length > 2 && key[1] == ':' && (key[0] == 'r' || key[0] == 'i');
+
     public static (string Key, string Title) GetLocalGroup(
         Moment at,
         ContentGrouping groupBy,
@@ -122,12 +125,30 @@ internal static class ContentListPlumbing
         var kind = ResolveKind<TItem>();
 
         // 1. Translate the VirtualList query into row-space terms.
+        // VirtualList resets Query to None after every render, so query.IsNone alone
+        // can't tell cold-init from a Fusion-driven recompute of an already-rendered
+        // list. Use renderedData as the tiebreaker — same pattern as ChatView's
+        // (false, false) vs (false, true) switch in GetChatDataQuery.
         int wantBefore, wantAfter;
         string? seedStartKey, seedEndKey;
         if (query.IsNone) {
-            wantBefore = 0;
-            wantAfter = TargetRowsColdInit;
-            seedStartKey = seedEndKey = null;
+            var firstRow = renderedData.FirstItem;
+            var lastRow = renderedData.LastItem;
+            var isRehydrating = firstRow is { IsEmptyPlaceholder: false }
+                && lastRow is { IsEmptyPlaceholder: false }
+                && IsRowKey(firstRow.Key)
+                && IsRowKey(lastRow.Key);
+            if (isRehydrating) {
+                wantBefore = 0;
+                wantAfter = 0;
+                seedStartKey = firstRow!.Key;
+                seedEndKey = lastRow!.Key;
+            }
+            else {
+                wantBefore = 0;
+                wantAfter = TargetRowsColdInit;
+                seedStartKey = seedEndKey = null;
+            }
         }
         else {
             wantBefore = Math.Max(0, -query.MoveRange.Start);
