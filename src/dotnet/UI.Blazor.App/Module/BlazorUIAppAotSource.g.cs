@@ -34,6 +34,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AttachmentListView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AudioAttachmentSubHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AudioFileAttachment>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AudioFileAttachmentMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AudioSubHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AuthorBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.AuthorBadgeTemplate>();
@@ -206,6 +207,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupEditor>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupEditorTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.AuthorMentionView>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.BlockQuoteMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.ChatMentionView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.CodeBlockMarkupView.CodeBlockMarkupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.MarkupParts.EmojiMentionView>();
@@ -696,6 +698,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.AttachmentListView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AudioAttachmentSubHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AudioFileAttachment), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.AudioFileAttachmentMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AudioSubHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AuthorBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.AuthorBadgeTemplate), AotTypeKind.Component),
@@ -868,6 +871,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupEditor), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupEditorTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.AuthorMentionView), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.BlockQuoteMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.ChatMentionView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.CodeBlockMarkupView.CodeBlockMarkupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.MarkupParts.EmojiMentionView), AotTypeKind.Component),
