@@ -250,6 +250,10 @@ export class AudioPlayer implements Resettable {
         this.authorId = authorId;
         this.recordedAtMs = recordedAtMs;
         this.targetBufferSizeMs = targetBufferSizeMs;
+        // Pooled players are reused across VAD-segment streams; reset the latency
+        // EMA so a prior utterance's lag doesn't bleed into this stream's reported
+        // A/V-sync signal for ~1-2s (would corrupt the catch-up policy at onset).
+        this.audioLatencyEma.reset();
         this.playbackState = 'paused';
         this.lastReportAttemptedPlayingAt = null;
         this.lastReportAttemptedIsPaused = null;
