@@ -9,7 +9,7 @@
 
 /* ChatAudioPanel Mobile */
 body.narrow .chat-audio-panel {
-    @apply absolute bottom-3 z-10;
+    @apply absolute bottom-3 z-button;
     @apply self-center items-center gap-x-8;
     @apply h-auto;
     @apply p-0;
@@ -25,11 +25,6 @@ body.narrow .chat-message-editor:has(.related-chat-entry-panel):not(.narrow-pane
 body.narrow .chat-message-editor.text-mode:not(.narrow-panel) .chat-audio-panel {
     @apply bottom-3;
     @apply py-1;
-}
-body.narrow .to-thick:not(.text-mode) .chat-audio-panel {
-    @apply z-button;
-    @apply gap-x-8;
-    @apply py-0;
 }
 
 /* === 2. Buttons === */
