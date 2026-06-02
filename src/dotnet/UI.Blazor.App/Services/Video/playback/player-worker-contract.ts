@@ -1,4 +1,5 @@
 import type { RpcNoWait } from 'rpc';
+import type { SharedSettingsWorker } from 'shared-settings-worker';
 import type { PlayerStats } from '../frame-envelopes';
 import type { LatencySample } from '../operators/latency-tap';
 import type { RenderBackendKind } from './render-backends';
@@ -59,7 +60,7 @@ export interface AppConstantsLike { readonly appName: string; readonly prodHost:
 //
 // Methods ordered by lifecycle:
 //   init → prewarm → connectivity → run → query → stop.
-export interface PlayerWorker {
+export interface PlayerWorker extends SharedSettingsWorker {
     // First call wins. MUST be called before any start().
     init(appConstants: AppConstantsLike): Promise<void>;
 

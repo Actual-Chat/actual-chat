@@ -5,6 +5,7 @@ import { ServerClock } from 'clocks';
 
 const RPC_SESSION_DEFAULT = '~';
 import { rpcClientServer, rpcNoWait } from 'rpc';
+import { SharedSettingsWorkerSync } from 'shared-settings-worker';
 import type { Disposable } from 'disposable';
 import { DocumentEvents } from 'event-handling';
 import { Versioning } from 'versioning';
@@ -179,6 +180,7 @@ export class VideoPlayer {
     private connectivityHandlerOnline: { dispose(): void } | null = null;
     private connectivityHandlerConnected: { dispose(): void } | null = null;
     private traceKillRegistration: Disposable | null = null;
+    private sharedSettingsRegistration: Disposable | null = null;
 
     private currentAttempt: {
         readonly attemptId: number;
@@ -517,6 +519,7 @@ export class VideoPlayer {
                 }
             );
             this.traceKillRegistration = registerVideoTraceKillWorker('playback', this.playerWorker);
+            this.sharedSettingsRegistration = SharedSettingsWorkerSync.register(this.playerWorker);
 
             // Hand the bg-blur OffscreenCanvas to the worker as soon as the
             // RPC pair is up. Fire-and-forget — RPC message order is preserved,
@@ -1320,6 +1323,10 @@ export class VideoPlayer {
         if (this.traceKillRegistration) {
             this.traceKillRegistration.dispose();
             this.traceKillRegistration = null;
+        }
+        if (this.sharedSettingsRegistration) {
+            this.sharedSettingsRegistration.dispose();
+            this.sharedSettingsRegistration = null;
         }
 
         // Tear the worker down.

@@ -7,6 +7,7 @@ import { setVideoTraceKill, type VideoTraceKillPeriod } from '../frame-drop-trac
 import { Player, type PlayerConfig } from './player';
 import { PlaybackSession } from './session';
 import { BgBlurController, bgBlurTap, type BgBlurMode } from './bg-blur-tap';
+import { sharedSettingsWorker } from 'shared-settings-worker';
 import type {
     PlayerWorker,
     PlayerWorkerOptions,
@@ -108,6 +109,8 @@ function ensureHooks(): PlayerWorkerHooks {
 // Method order matches the PlayerWorker interface contract:
 //   init → prewarm → connectivity → run → query → stop.
 export const playerWorkerImpl: PlayerWorker = {
+    updateSharedSettings: (settings, noWait) => sharedSettingsWorker.updateSharedSettings(settings, noWait),
+
     init(appConstants): Promise<void> {
         const h = hooks;
         h?.initAppConstants?.(appConstants);
