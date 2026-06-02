@@ -64,7 +64,7 @@ public class NotificationsBackend(IServiceProvider services)
 
     // [ComputeMethod]
     public virtual Task<IReadOnlyList<Device>> ListDevices(UserId userId, CancellationToken cancellationToken)
-        => ListDevices(userId, Symbol.Empty, cancellationToken);
+        => ListDevices(userId, Symbol.Empty, null, cancellationToken);
 
     // [ComputeMethod]
     public virtual async Task<IReadOnlyList<UserId>> ListSubscribedUserIds(ChatId chatId, CancellationToken cancellationToken)
@@ -486,7 +486,7 @@ public class NotificationsBackend(IServiceProvider services)
             return; // It just spawns other commands, so nothing to do here
 
         var session = eventCommand.Session;
-        var devices = await ListDevices(eventCommand.UserId, session.Hash, cancellationToken).ConfigureAwait(false);
+        var devices = await ListDevices(eventCommand.UserId, session.Hash, null, cancellationToken).ConfigureAwait(false);
         if (devices.Count == 0)
             return;
 
@@ -538,7 +538,8 @@ public class NotificationsBackend(IServiceProvider services)
 
     private async Task Send(UserId userId, Notification notification, CancellationToken cancellationToken1)
     {
-        var devices = await ListDevices(userId, cancellationToken1).ConfigureAwait(false);
+        var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
+        var devices = await ListDevices(userId, Symbol.Empty, minActiveAt, cancellationToken1).ConfigureAwait(false);
         if (devices.Count == 0) {
             Log.LogInformation("No recipient devices found for notification #{NotificationId}", notification.Id);
             return;
@@ -629,14 +630,18 @@ public class NotificationsBackend(IServiceProvider services)
         return null;
     }
 
-    private async Task<IReadOnlyList<Device>> ListDevices(UserId userId, Symbol sessionHash, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<Device>> ListDevices(
+        UserId userId, Symbol sessionHash, Moment? minActiveAt, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
+        // AccessedAt is null until the same token re-registers, so freshness falls back to CreatedAt.
+        var minActiveAtValue = minActiveAt?.ToDateTime() ?? default;
         var dbDevices = await dbContext.Devices
             .Where(d => d.UserId == userId.Value)
             .WhereIf(d => d.SessionHash == sessionHash.Value, !sessionHash.IsEmpty)
+            .WhereIf(d => (d.AccessedAt ?? d.CreatedAt) >= minActiveAtValue, minActiveAt.HasValue)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var devices = dbDevices.Select(d => d.ToModel()).ToList();
