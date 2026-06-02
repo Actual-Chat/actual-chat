@@ -3,23 +3,19 @@
     @apply py-2;
     @apply overflow-hidden;
     @apply opacity-0;
-    @apply bg-03;
     @apply pointer-events-auto;
     @apply ease-in-out;
-    transform: translateY(-125%);
-    transition: display 200ms, opacity 200ms, transform 200ms;
+    transition: display 200ms, opacity 200ms;
     transition-behavior: allow-discrete;
 }
 .left-search-overlay-panel.open {
     @apply flex-y flex-1;
     @apply opacity-100;
-    @apply translate-y-0;
     @apply ease-in-out;
-    transition: display 300ms 200ms, opacity 300ms 200ms, transform 300ms 200ms;
+    transition: display 200ms, opacity 200ms;
     transition-behavior: allow-discrete;
     @starting-style {
         opacity: 0;
-        transform: translateY(-125%);
     }
 }
 .left-place-search-overlay-panel {
@@ -43,6 +39,15 @@
     @apply h-full;
     @apply overflow-y-auto;
     @apply custom-scrollbar;
+}
+body.wide .left-place-search-overlay-panel .c-search-tab.c-container,
+body.wide .left-place-search-overlay-panel .tab > .c-container {
+    scrollbar-width: none;
+}
+body.wide .left-place-search-overlay-panel .c-search-tab.c-container::-webkit-scrollbar,
+body.wide .left-place-search-overlay-panel .tab > .c-container::-webkit-scrollbar {
+    width: 0;
+    height: 0;
 }
 .left-search-overlay-panel .own-chat-list {
     @apply px-2;

@@ -57,6 +57,10 @@
     @apply bg-03;
     @apply overflow-hidden;
     contain: layout;
+    transition: background-color 200ms ease-out;
+}
+.left-panel-content:has(.left-search-overlay-panel.open) {
+    @apply bg-04;
 }
 .left-panel-content .left-panel-content-main-wrapper {
     @apply relative;
@@ -81,6 +85,10 @@
     @apply absolute top-1/2 inset-x-0;
     @apply min-h-26;
     @apply -translate-y-1/2;
+    transition: transform 200ms ease-out;
+}
+.left-panel-content:has(.left-search-overlay-panel.open) .left-panel-content-header.place .c-icon {
+    @apply -translate-y-[150%];
 }
 .left-panel-content-header.place.chat-roulette .c-icon.c-chat-roulette-icon {
     @apply flex items-center justify-center;
@@ -189,6 +197,16 @@ body.hoverable .add-members-btn:hover {
     @apply pointer-events-none;
     @apply overflow-hidden;
     top: var(--safe-area-top);
+    transition: background-color 200ms ease-in-out, border-color 200ms ease-in-out;
+}
+.left-search-panel:has(.left-search-overlay-panel.open) {
+    background: color-mix(in srgb, var(--primary) 4%, var(--background-03));
+    /*border: 1px solid var(--separator);*/
+    border-radius: 16px;
+    box-shadow:
+        inset 0 0 0 4px rgba(0, 0, 0, 0.08),
+        0 8px 16px -8px rgba(0, 0, 0, 0.15),
+        0 2px 4px rgba(0, 0, 0, 0.06);
 }
 
 .left-panel-content-header.place.chat-roulette > .c-content {
