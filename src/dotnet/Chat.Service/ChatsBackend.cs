@@ -668,6 +668,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return null;
     }
 
+    [ComputeMethod]
     protected virtual async Task<ChatEntryAttachment[]> GetEntryAttachments(ChatEntryId entryId, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
@@ -2567,5 +2568,4 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             new Change<MediaFull> { Remove = true });
         await Commander.Call(removeCommand, true, cancellationToken).ConfigureAwait(false);
     }
-
 }
