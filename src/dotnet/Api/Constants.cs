@@ -279,6 +279,7 @@ public static partial class Constants
         public static readonly TimeSpan PermissionRequestDismissPeriod = TimeSpan.FromDays(7);
         public static readonly TimeSpan EntryWaitTimeout = TimeSpan.FromSeconds(0.5);
         public static readonly TimeSpan OnlineCheckDelay = TimeSpan.FromMinutes(1);
+        public static readonly TimeSpan ActiveDevicePeriod = TimeSpan.FromDays(30);
     }
 
     public static class Media
