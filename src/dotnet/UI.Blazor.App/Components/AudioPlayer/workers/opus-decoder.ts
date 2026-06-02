@@ -18,6 +18,10 @@ import Denque from 'denque';
 
 const { logScope, debugLog, warnLog, errorLog } = getLogs('OpusDecoder');
 const enableFrequentDebugLog = false;
+// Min encoded-queue cushion (in frames) required before speed-up may drop a
+// frame. Dropping with no cushion leaves the feeder's on-demand request unserved
+// and starves the decoded ring → audible clicks. ~3 frames keeps a replacement.
+const SPEEDUP_MIN_QUEUE_FRAMES = 3;
 
 interface EncodedFrame {
     data: Uint8Array;
@@ -141,6 +145,11 @@ class EncodedFrameBuffer {
             this.clearSpeedUp();
             return false;
         }
+        // Never drop when the queue lacks a cushion: dropping the last frame(s)
+        // strands the feeder's request and starves the decoded ring (clicks).
+        // Pause speed-up while the buffer is too low; resume once it refills.
+        if (this.durationMs() < SPEEDUP_MIN_QUEUE_FRAMES * AUDIO.frameDurationMs)
+            return false;
 
         this.speedUpFrameCounter++;
         return this.speedUpFrameCounter % this.speedUpDropEveryNFrames === 0;
