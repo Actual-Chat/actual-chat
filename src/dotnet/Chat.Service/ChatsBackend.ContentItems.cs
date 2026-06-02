@@ -168,8 +168,7 @@ public partial class ChatsBackend
 
     // Protected members
 
-    // [ComputeMethod]
-
+    [ComputeMethod]
     protected virtual async Task<bool> HasContentBefore(
         ChatId chatId,
         ChatContentKind kind,
