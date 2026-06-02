@@ -155,8 +155,13 @@ internal static class ContentListPlumbing
             return page.Periods.Length > 0;
         }
 
-        // 3. First skeleton page (always at least one fetch). Empty chat → done.
-        await PullNextSkeletonPage().ConfigureAwait(false);
+        // 3. Skeleton head. A chat with no content in the current calendar year
+        // but older history returns Periods=[] with NextPeriodKey != null on the
+        // first page — keep pulling until we see real periods or the skeleton
+        // is exhausted.
+        do {
+            await PullNextSkeletonPage().ConfigureAwait(false);
+        } while (periods.Count == 0 && cursor != null);
         if (periods.Count == 0)
             return EmptyData();
 
@@ -269,6 +274,13 @@ internal static class ContentListPlumbing
         var flat = new List<RowSpec<TItem>>(rowsBefore + rowsAfter + (seedEndPos - seedStartPos + 1));
         for (var i = first; i <= last; i++)
             flat.AddRange(blockRows[i]);
+
+        // All loaded blocks ended up empty — happens when a concurrent delete
+        // drained the period after the skeleton was computed but before we
+        // loaded its pages. Bail to the empty placeholder; next compute will
+        // re-render once skeleton catches up.
+        if (flat.Count == 0)
+            return EmptyData();
 
         int cropStart, cropEnd;
         if (seedStartKey == null) {
