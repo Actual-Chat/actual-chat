@@ -371,6 +371,32 @@ describe('mstgPresent', () => {
         expect(stats.presented).toBe(4);
     });
 
+    it('buffer-span meter: a one-frame span spike does NOT trigger skip', async () => {
+        const stats = createEmptyPlayerStats();
+        const writer = new FakeWriter();
+        // Span sits at target (extra=0, steady) except a single spike to 5000 on
+        // frame 2. Frozen clock keeps every frame within MIN_DURATION_MS, so the
+        // raw spike would trip skip-mode — but the windowed-min meter holds the
+        // low floor, so no frame is dropped.
+        const spans = [333, 333, 5000, 333, 333];
+        let spanCall = 0;
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            getBufferSpanMs: (): number => spans[spanCall++] ?? 333,
+            targetSpanMs: 333,
+            nowFn: (): number => 1000,
+            delayFn: (): Promise<void> => Promise.resolve(),
+        });
+        const frames = Array.from({ length: 5 }, (_, i) => new MockVideoFrame(i));
+        const items = frames.map((f, i) => makeEnvelope(stats, i, i * 33, f));
+
+        await count(pipe(staticSource(items), sink));
+
+        expect(writer.written).toHaveLength(5);
+        expect(stats.presented).toBe(5);
+        for (const f of frames) expect(f.closed).toBe(true);
+    });
+
     it('write rejection bumps framesDroppedAtPresenter and propagates the error', async () => {
         const stats = createEmptyPlayerStats();
         const writer = new FakeWriter();

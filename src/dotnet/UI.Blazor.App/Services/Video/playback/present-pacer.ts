@@ -3,6 +3,7 @@ import { RunningEMA } from 'math';
 import { delayAsync } from 'actuallab-core';
 import { aggregateDropTrace, updatePlaybackRateEma, type DecodedFrame } from '../frame-envelopes';
 import { FrameDropStage } from '../frame-drop-trace';
+import { BufferSpanMeter, type BufferSpanMeterOptions } from './buffer-span-meter';
 
 const PRESENT_SKIP_RATIO_EMA_ALPHA = 0.1;
 
@@ -32,6 +33,7 @@ export interface PresentPacerOptions {
     trackSkipRatio?: boolean;
     nowFn?: () => number;
     delayFn?: (ms: number) => Promise<void>;
+    meter?: BufferSpanMeterOptions;
 }
 
 // Per frame: extra = max(0, bufferSpan - targetSpan).
@@ -54,15 +56,17 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
         let prevCapturedAt: number | null = null;
         let prevCapturedEpoch: number | null = null;
         const presentSkipRatio = new RunningEMA(0, 1, PRESENT_SKIP_RATIO_EMA_ALPHA);
+        const meter = new BufferSpanMeter(opts.meter);
         try {
             for await (const decoded of source) {
                 try {
                     const now = nowFn();
-                    const extraMs = Math.max(0, getBufferSpanMs() - targetSpanMs);
                     if (prevCapturedEpoch !== null && decoded.capturedAt.epoch !== prevCapturedEpoch) {
                         lastWriteAt = null;
                         prevCapturedAt = null;
+                        meter.reset();
                     }
+                    const extraMs = Math.max(0, meter.sample(getBufferSpanMs(), now) - targetSpanMs);
 
                     if (extraMs > CATCHUP_BUDGET_MS
                     && lastWriteAt !== null
