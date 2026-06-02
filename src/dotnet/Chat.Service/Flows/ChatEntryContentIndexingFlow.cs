@@ -73,12 +73,16 @@ public sealed partial class ChatEntryContentIndexingFlow : BatchedIndexingFlow<C
     // LinkItem so the UI can always render at least a plain <a>, even if the
     // LinkPreview never resolved. Trusted-GIF URLs are filtered out — they render
     // inline as <img> (UrlMarkupView) and have no business in the Links tab.
+    // Capped at LinkPreviewsPerMessageLimit to match the preview pipeline and
+    // keep a spam message from blowing up the index.
     private IEnumerable<LinkItem> ExtractItems(ChatEntry entry)
     {
         var localIndex = 0;
         foreach (var url in MarkupParser.ExtractLinks(entry.Content)) {
             if (UrlMapper.IsTrustedGifUrl(url))
                 continue;
+            if (localIndex >= Constants.Media.LinkPreviewsPerMessageLimit)
+                yield break;
 
             yield return new LinkItem {
                 Id = Symbol.Empty,
