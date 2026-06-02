@@ -19,7 +19,7 @@ const CATCHUP_BUDGET_MS = 4_000;
 // (mstg write failure / canvas draw failure). The pacer bumps
 // pendingPresenterDrops whenever present did not succeed, including the throw.
 export interface PresentSink {
-    present(frame: VideoFrame, decoded: DecodedFrame): Promise<boolean>;
+    present(frame: VideoFrame): Promise<boolean>;
     dispose?(): void;
 }
 
@@ -127,7 +127,7 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
                     sink ??= createSink();
                     let presented = false;
                     try {
-                        presented = await sink.present(decoded.frame, decoded);
+                        presented = await sink.present(decoded.frame);
                     } finally {
                         if (!presented) {
                             decoded.stats.pendingPresenterDrops++;
