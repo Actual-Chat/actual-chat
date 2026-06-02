@@ -552,7 +552,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _ => new ChatDataQuery(
                 keyRange,
                 query.MoveRange.Start,
-                query.MoveRange.End),
+                query.MoveRange.End) {
+                    // Pin the visible range so a contracting offset can't unload a visible item (e.g. a
+                    // very large message at the load-zone edge), which would drop the scroll anchor.
+                    VisibleLidRange = itemVisibility.IsEmpty
+                        ? default
+                        : new Range<long>(itemVisibility.MinMessageLid, itemVisibility.MaxMessageLid + 1),
+                },
         };
 
         // If we are scrolling somewhere within idRange, let's extend the range to navigation & nearby entries.
