@@ -6,6 +6,12 @@ public sealed class DurationTargetingFrameBuffer<TFrame>(
     TimeSpan targetDuration = default)
     where TFrame : class
 {
+    // Min queued source-duration cushion before speed-up may drop a frame.
+    // Dropping the last frame(s) strands the engine's decode/feed loop and
+    // starves the platform output → audible clicks. Mirrors the Web pipeline's
+    // SPEEDUP_MIN_QUEUE_FRAMES (~3 frames) gate in opus-decoder.ts.
+    private static readonly TimeSpan SpeedUpMinQueueDuration = Constants.Audio.FrameDuration * 3;
+
     private readonly Lock _lock = new();
     private readonly Queue<TFrame> _frames = new();
 
@@ -196,6 +202,11 @@ public sealed class DurationTargetingFrameBuffer<TFrame>(
             ClearSpeedUpUnsafe();
             return false;
         }
+        // Never drop when the queue lacks a cushion: dropping the last frame(s)
+        // strands the decode/feed loop and starves the platform output (clicks).
+        // Pause speed-up while the buffer is too low; resume once it refills.
+        if (GetDurationUnsafe() < SpeedUpMinQueueDuration)
+            return false;
 
         _speedUpFrameCounter++;
         return _speedUpFrameCounter % _speedUpDropEveryNFrames == 0;
