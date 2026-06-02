@@ -93,9 +93,9 @@ const StateHistoryCapacity = 50;
 const SkeletonWatchdogInterval = 5000;
 
 export class VirtualList {
-    private static readonly _instances = new Set<VirtualList>();
     public static enableWatchdogFixes = false;
     public static enableDebug = false;
+    private static readonly _instances = new Set<VirtualList>();
 
     public static dumpStateChangeLogs(lastN?: number, endStateEvery = 10): void {
         for (const instance of VirtualList._instances) {
@@ -176,13 +176,6 @@ export class VirtualList {
     private _stateVersion = 0;
 
     private get state(): VirtualListState { return this._state; }
-
-    // Per-item size for GEOMETRY estimation only (cornerstone offsets, before/after sizing) in FINITE
-    // lists, never for loading and never in infinite mode (there spacers + container anchoring position
-    // the chain). The measured average is good enough; catch-up corrects any drift.
-    private get geometryItemSize(): number {
-        return this.statistics.itemSize;
-    }
 
     public static create(
         ref: HTMLElement,
@@ -393,6 +386,101 @@ export class VirtualList {
             this.startDebug();
     };
 
+    /** Called by blazor */
+    public dispose() {
+        debugLog?.log(`dispose()`);
+        this.isDisposed = true;
+        this.debug?.stop();
+        this.debug = null;
+        this.edgeBounce?.reset();
+        this.edgeBounce = null;
+        VirtualList._instances.delete(this);
+        if (this.skeletonWatchdogTimer !== null) {
+            clearInterval(this.skeletonWatchdogTimer);
+            this.skeletonWatchdogTimer = null;
+        }
+        this.abortController.abort();
+        this.itemSetChangeObserver.disconnect();
+        this.skeletonObserver0.disconnect();
+        this.skeletonObserver1.disconnect();
+        this.visibilityObserver.disconnect();
+        this.sizeObserver.disconnect();
+        this.visibilityChangeSubscription.unsubscribe();
+        this.whenRequestDataCompleted?.resolve(undefined);
+        this.whenRequestDataCompleted = null;
+        this.ref.removeEventListener('scroll', this.onScroll);
+        this.ref.removeEventListener('scrollend', this.onScrollEnd);
+        this.ref.removeEventListener('pointerdown', this.onPointerDown);
+        this.ref.removeEventListener('pointerup', this.onPointerUp);
+        this.ref.removeEventListener('pointercancel', this.onPointerUp);
+        this.ref.removeEventListener('wheel', this.onWheel);
+    }
+
+    /** Called by blazor */
+    public reset() {
+        debugLog?.log(`reset()`);
+        this.isPointerDown = false;
+        this.items.clear();
+        this.sizeCache.clear();
+        this.updateState('reset', this.state, {
+            lastViewport: null,
+            viewport: null,
+            lastQueryTime: null,
+            stickyEdge: null,
+            query: VirtualListDataQuery.None,
+            lastQuery: VirtualListDataQuery.None,
+            orderedItems: [],
+            pivots: [],
+            minStart: null,
+            maxEnd: null,
+            isStartKnown: false,
+            isEndKnown: false,
+            renderState: {
+                renderIndex: -1,
+                query: VirtualListDataQuery.None,
+                keyRange: new Range<string>('', ''),
+                beforeCount: null,
+                afterCount: null,
+                estimatedCount: null,
+                count: 0,
+                hasVeryFirstItem: false,
+                hasVeryLastItem: false,
+            },
+        });
+    }
+
+    /** Called by blazor */
+    public renderSkipped(): void {
+        debugLog?.log(`renderSkipped()`);
+        this.updateState('renderSkipped', this.state, { renderStartedAt: null, renderCompletedAt: Date.now() });
+        this.whenRequestDataCompleted?.resolve(undefined);
+        this.whenRequestDataCompleted = null;
+    }
+
+    public getStateChangeLog(lastN?: number, endStateEvery = 10): Record<string, unknown>[] {
+        const history = lastN
+            ? this._stateHistory.slice(-lastN)
+            : this._stateHistory;
+
+        const log: Record<string, unknown>[] = [];
+        for (let i = 0; i < history.length; i++) {
+            const s = history[i];
+            const endState = i + 1 < history.length ? history[i + 1].state : this._state;
+
+            const change: Record<string, unknown> = {};
+            for (const key of s.changedFields)
+                change[key] = endState[key];
+
+            const entry: Record<string, unknown> = { reason: s.reason, change };
+            if (i % endStateEvery === 0)
+                entry.state = endState;
+            log.push(entry);
+        }
+        return log;
+    }
+
+    // Private methods
+
     // The wrapper is hidden by CSS (c-initially-hidden) until the chain is positioned at its target, so
     // the user never sees the pre-positioned (top-aligned) frames. This is purely visual — it never reads
     // or writes scroll/layout state, so it cannot affect positioning. Polls per animation frame (not per
@@ -453,36 +541,6 @@ export class VirtualList {
         this.debug.start();
     }
 
-    /** Called by blazor */
-    public dispose() {
-        debugLog?.log(`dispose()`);
-        this.isDisposed = true;
-        this.debug?.stop();
-        this.debug = null;
-        this.edgeBounce?.reset();
-        this.edgeBounce = null;
-        VirtualList._instances.delete(this);
-        if (this.skeletonWatchdogTimer !== null) {
-            clearInterval(this.skeletonWatchdogTimer);
-            this.skeletonWatchdogTimer = null;
-        }
-        this.abortController.abort();
-        this.itemSetChangeObserver.disconnect();
-        this.skeletonObserver0.disconnect();
-        this.skeletonObserver1.disconnect();
-        this.visibilityObserver.disconnect();
-        this.sizeObserver.disconnect();
-        this.visibilityChangeSubscription.unsubscribe();
-        this.whenRequestDataCompleted?.resolve(undefined);
-        this.whenRequestDataCompleted = null;
-        this.ref.removeEventListener('scroll', this.onScroll);
-        this.ref.removeEventListener('scrollend', this.onScrollEnd);
-        this.ref.removeEventListener('pointerdown', this.onPointerDown);
-        this.ref.removeEventListener('pointerup', this.onPointerUp);
-        this.ref.removeEventListener('pointercancel', this.onPointerUp);
-        this.ref.removeEventListener('wheel', this.onWheel);
-    }
-
     private updateState(reason: string, prev: VirtualListState, changes: Partial<VirtualListState>): VirtualListState {
         const changedFields: (keyof VirtualListState)[] = [];
         for (const key of Object.keys(changes) as (keyof VirtualListState)[]) {
@@ -518,28 +576,6 @@ export class VirtualList {
             orderedItems: [...state.orderedItems],
             pivots: [...state.pivots],
         };
-    }
-
-    public getStateChangeLog(lastN?: number, endStateEvery = 10): Record<string, unknown>[] {
-        const history = lastN
-            ? this._stateHistory.slice(-lastN)
-            : this._stateHistory;
-
-        const log: Record<string, unknown>[] = [];
-        for (let i = 0; i < history.length; i++) {
-            const s = history[i];
-            const endState = i + 1 < history.length ? history[i + 1].state : this._state;
-
-            const change: Record<string, unknown> = {};
-            for (const key of s.changedFields)
-                change[key] = endState[key];
-
-            const entry: Record<string, unknown> = { reason: s.reason, change };
-            if (i % endStateEvery === 0)
-                entry.state = endState;
-            log.push(entry);
-        }
-        return log;
     }
 
     private validateState(
@@ -589,47 +625,6 @@ export class VirtualList {
                 `[VirtualList] ⚠ after "${reason}":\n` + warnings.map(w => `  ${w}`).join('\n'),
                 this.getStateChangeLog(10));
         }
-    }
-
-    /** Called by blazor */
-    public reset() {
-        debugLog?.log(`reset()`);
-        this.isPointerDown = false;
-        this.items.clear();
-        this.sizeCache.clear();
-        this.updateState('reset', this.state, {
-            lastViewport: null,
-            viewport: null,
-            lastQueryTime: null,
-            stickyEdge: null,
-            query: VirtualListDataQuery.None,
-            lastQuery: VirtualListDataQuery.None,
-            orderedItems: [],
-            pivots: [],
-            minStart: null,
-            maxEnd: null,
-            isStartKnown: false,
-            isEndKnown: false,
-            renderState: {
-                renderIndex: -1,
-                query: VirtualListDataQuery.None,
-                keyRange: new Range<string>('', ''),
-                beforeCount: null,
-                afterCount: null,
-                estimatedCount: null,
-                count: 0,
-                hasVeryFirstItem: false,
-                hasVeryLastItem: false,
-            },
-        });
-    }
-
-    /** Called by blazor */
-    public renderSkipped(): void {
-        debugLog?.log(`renderSkipped()`);
-        this.updateState('renderSkipped', this.state, { renderStartedAt: null, renderCompletedAt: Date.now() });
-        this.whenRequestDataCompleted?.resolve(undefined);
-        this.whenRequestDataCompleted = null;
     }
 
     private get isRendering(): boolean {
@@ -954,9 +949,9 @@ export class VirtualList {
             const lastVisible = rs.hasVeryLastItem && !!lastItemKey && this.visibleItems.has(lastItemKey);
             const firstVisible = rs.hasVeryFirstItem && !!firstItemKey && this.visibleItems.has(firstItemKey);
             if (lastVisible && (this.defaultEdge === VirtualListEdge.End || !firstVisible))
-                this.setStickyEdge({ itemKey: lastItemKey!, edge: VirtualListEdge.End });
+                this.setStickyEdge({ itemKey: lastItemKey, edge: VirtualListEdge.End });
             else if (firstVisible)
-                this.setStickyEdge({ itemKey: firstItemKey!, edge: VirtualListEdge.Start });
+                this.setStickyEdge({ itemKey: firstItemKey, edge: VirtualListEdge.Start });
 
             this.updateVisibleKeysThrottled();
         }
@@ -1880,13 +1875,13 @@ export class VirtualList {
                 }
                 else {
                     if (rs.beforeCount !== null && rs.afterCount !== null) {
-                        beforeSize = Math.floor(rs.beforeCount * this.geometryItemSize);
-                        afterSize =  Math.floor(rs.afterCount * this.geometryItemSize);
+                        beforeSize = Math.floor(rs.beforeCount * this.statistics.itemSize);
+                        afterSize =  Math.floor(rs.afterCount * this.statistics.itemSize);
                     }
                     else {
                         const knownRange = this.knownRange ?? new NumberRange(0,0);
                         const estimatedTotalSize = rs.estimatedCount
-                            ? clamp(Math.floor(rs.estimatedCount * this.geometryItemSize), knownRange.size, 5E6)
+                            ? clamp(Math.floor(rs.estimatedCount * this.statistics.itemSize), knownRange.size, 5E6)
                             : 0;
 
                         let fullRange: NumberRange;
@@ -2325,8 +2320,8 @@ export class VirtualList {
         else if (rs.beforeCount !== null && rs.afterCount !== null) {
             // Finite list with known counts: anchor the first item below its before-region.
             cornerstoneItem.range = new NumberRange(
-                Math.floor(rs.beforeCount * this.geometryItemSize),
-                Math.floor(rs.beforeCount * this.geometryItemSize) + cornerstoneItem.size!);
+                Math.floor(rs.beforeCount * this.statistics.itemSize),
+                Math.floor(rs.beforeCount * this.statistics.itemSize) + cornerstoneItem.size!);
         }
         else if (canUseViewport && !rs.hasVeryFirstItem) {
             // Anchor the center item at the current viewport center.

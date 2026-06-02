@@ -269,10 +269,10 @@ export class DebugUI {
             Record<string, { violations?: unknown[]; clear?: () => void }>;
         const all: unknown[] = [];
         for (const d of Object.values(reg)) {
-            if (d?.violations)
+            if (d.violations)
                 all.push(...d.violations);
             if (clear)
-                d?.clear?.();
+                d.clear?.();
         }
         return all;
     }

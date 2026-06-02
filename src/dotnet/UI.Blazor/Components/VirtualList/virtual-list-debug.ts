@@ -1,9 +1,14 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NumberRange } from './ts/range';
 import { VirtualListEdge } from './ts/virtual-list-edge';
 import { getLogs } from 'logging';
 
 const { warnLog } = getLogs('VirtualList');
+
+// Console-debugging handles exposed on the global object.
+type VlDebugGlobal = typeof globalThis & {
+    __vlDebugs?: Record<string, VirtualListDebug>;
+    __vlDebug?: VirtualListDebug;
+};
 
 // Pixel tolerances. Geometry is integer-floored in several places, and measured item sizes
 // shift by a few px during reflow, so small deviations are not real inconsistencies.
@@ -104,9 +109,9 @@ export class VirtualListDebug {
         if (this.timer != null)
             return;
         this.timer = setInterval(() => this.check('timer'), intervalMs);
-        const g = globalThis as any;
-        g.__vlDebugs ??= {};
-        g.__vlDebugs[this.vl.identity] = this;
+        const g = globalThis as VlDebugGlobal;
+        const debugs = (g.__vlDebugs ??= {});
+        debugs[this.vl.identity] = this;
         g.__vlDebug = this; // most-recently-started, convenience handle
         warnLog?.log(`[${this.vl.identity}] debug checker started`);
     }
@@ -116,8 +121,9 @@ export class VirtualListDebug {
             clearInterval(this.timer);
             this.timer = null;
         }
-        const g = globalThis as any;
+        const g = globalThis as VlDebugGlobal;
         if (g.__vlDebugs)
+            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
             delete g.__vlDebugs[this.vl.identity];
         if (g.__vlDebug === this)
             delete g.__vlDebug;
@@ -135,7 +141,7 @@ export class VirtualListDebug {
     }
 
     public check(trigger: string): VlViolation[] {
-        if (this.vl.ref == null || this.vl.ref.clientHeight === 0)
+        if (this.vl.ref.clientHeight === 0)
             return []; // hidden / not laid out
         const s = this.capture(trigger);
         const geom = this.readGeom();
@@ -208,7 +214,7 @@ export class VirtualListDebug {
     public noteRenderJump(detail: Record<string, unknown>): void {
         this.report({
             code: 'render-jump',
-            message: `render moved anchored item "${detail.key}" by ${detail.drift}px (no intentional scroll)`,
+            message: `render moved anchored item "${String(detail.key)}" by ${String(detail.drift)}px (no intentional scroll)`,
             detail,
             snapshot: this.capture('render'),
         });
