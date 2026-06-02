@@ -205,6 +205,7 @@ describe('canvasPresent', () => {
             targetSpanMs: 333,
             nowFn: (): number => 1000,
             delayFn: (): Promise<void> => Promise.resolve(),
+            holdMs: 0,
         });
         const frames = Array.from({ length: 3 }, (_, i) => new MockVideoFrame(i));
         const items = frames.map((f, i) => makeEnvelope(stats, i, i * 33, f));
@@ -247,6 +248,7 @@ describe('canvasPresent', () => {
             targetSpanMs: 333,
             nowFn: (): number => 1000,
             delayFn: (): Promise<void> => Promise.resolve(),
+            holdMs: 0,
         });
         const items = Array.from({ length: 5 }, (_, i) => makeEnvelope(stats, i, i * 33));
 

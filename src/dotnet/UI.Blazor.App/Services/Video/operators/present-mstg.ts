@@ -11,6 +11,7 @@ export interface MstgPresentOptions {
     targetSpanMs: number;
     nowFn?: () => number;
     delayFn?: (ms: number) => Promise<void>;
+    holdMs?: number;
 }
 
 export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame, void> {
@@ -19,6 +20,7 @@ export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame
         targetSpanMs: opts.targetSpanMs,
         nowFn: opts.nowFn,
         delayFn: opts.delayFn,
+        holdMs: opts.holdMs,
         createSink: (): PresentSink => {
             const writer = opts.getWriter();
             return {

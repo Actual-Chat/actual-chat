@@ -34,7 +34,13 @@ export interface PresentPacerOptions {
     nowFn?: () => number;
     delayFn?: (ms: number) => Promise<void>;
     meter?: BufferSpanMeterOptions;
+    // Skip-mode only engages once the overflow has persisted this long, and only
+    // disengages after the overflow has cleared this long — damps flapping at the
+    // CATCHUP_BUDGET_MS threshold. 0 reproduces the instantaneous legacy behavior.
+    holdMs?: number;
 }
+
+const DEFAULT_HOLD_MS = 500;
 
 // Per frame: extra = max(0, bufferSpan - targetSpan).
 // Skip (extra > CATCHUP_BUDGET_MS && now - lastWriteAt < MIN_DURATION_MS):
@@ -46,6 +52,7 @@ export interface PresentPacerOptions {
 export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFrame, void> {
     const { createSink, getBufferSpanMs, targetSpanMs } = opts;
     const trackSkipRatio = opts.trackSkipRatio ?? true;
+    const holdMs = opts.holdMs ?? DEFAULT_HOLD_MS;
     const nowFn = opts.nowFn ?? ((): number => performance.now());
     const delayFn = opts.delayFn ?? ((ms): Promise<void> => delayAsync(ms));
     return source => from(impl(source));
@@ -57,6 +64,9 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
         let prevCapturedEpoch: number | null = null;
         const presentSkipRatio = new RunningEMA(0, 1, PRESENT_SKIP_RATIO_EMA_ALPHA);
         const meter = new BufferSpanMeter(opts.meter);
+        let skipEngaged = false;
+        let skipCandidate = false;
+        let skipCandidateSinceMs: number | null = null;
         try {
             for await (const decoded of source) {
                 try {
@@ -65,10 +75,22 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
                         lastWriteAt = null;
                         prevCapturedAt = null;
                         meter.reset();
+                        skipEngaged = false;
+                        skipCandidate = false;
+                        skipCandidateSinceMs = null;
                     }
                     const extraMs = Math.max(0, meter.sample(getBufferSpanMs(), now) - targetSpanMs);
 
-                    if (extraMs > CATCHUP_BUDGET_MS
+                    const rawSkip = extraMs > CATCHUP_BUDGET_MS;
+                    if (rawSkip !== skipCandidate) {
+                        skipCandidate = rawSkip;
+                        skipCandidateSinceMs = now;
+                    } else if (skipCandidateSinceMs !== null && now - skipCandidateSinceMs >= holdMs) {
+                        skipEngaged = skipCandidate;
+                        skipCandidateSinceMs = null;
+                    }
+
+                    if (skipEngaged
                     && lastWriteAt !== null
                     && now - lastWriteAt < MIN_DURATION_MS) {
                         decoded.stats.pendingPresenterDrops++;

@@ -339,6 +339,7 @@ describe('mstgPresent', () => {
             targetSpanMs: 333,
             nowFn: (): number => 1000,
             delayFn: (): Promise<void> => Promise.resolve(),
+            holdMs: 0,
         });
         const frames = Array.from({ length: 5 }, (_, i) => new MockVideoFrame(i));
         const items = frames.map((f, i) => makeEnvelope(stats, i, i * 33, f));
@@ -520,6 +521,7 @@ describe('mstgPresent', () => {
             targetSpanMs: 333,
             nowFn: (): number => 1000,
             delayFn: (): Promise<void> => Promise.resolve(),
+            holdMs: 0,
         });
         const items = Array.from({ length: 5 }, (_, i) => makeEnvelope(stats, i, i * 33));
 
@@ -530,5 +532,103 @@ describe('mstgPresent', () => {
         expect(stats.presented).toBe(1);
         expect(stats.presentSkipRatio).toBeGreaterThan(0.3);
         expect(stats.presentSkipRatio).toBeLessThanOrEqual(1);
+    });
+
+    // ---- Skip-mode hysteresis (holdMs) ------------------------------------
+
+    // now advances < MIN_DURATION_MS (8.33) per frame so frames stay
+    // skip-eligible; the 1 ms meter windows make the smoothed span == raw span.
+    function advancingClock(stepMs: number): () => number {
+        let now = 0;
+        return (): number => { const v = now; now += stepMs; return v; };
+    }
+
+    it('hysteresis: skip engages only after sustained overflow exceeds holdMs', async () => {
+        const stats = createEmptyPlayerStats();
+        const writer = new FakeWriter();
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            getBufferSpanMs: (): number => 5000,           // sustained overflow
+            targetSpanMs: 333,
+            nowFn: advancingClock(8),
+            delayFn: (): Promise<void> => Promise.resolve(),
+            holdMs: 50,
+        });
+        const frames = Array.from({ length: 10 }, (_, i) => new MockVideoFrame(i));
+        const items = frames.map((f, i) => makeEnvelope(stats, i, i, f));
+
+        await count(pipe(staticSource(items), sink));
+
+        // now = 8·idx: frames 0..6 (now ≤ 48 < 50) present; skip engages at frame 7 (now 56).
+        for (let i = 0; i <= 6; i++)
+            expect(writer.written).toContain(frames[i] as unknown as VideoFrame);
+        expect(writer.written).not.toContain(frames[7] as unknown as VideoFrame);
+    });
+
+    it('hysteresis: a sub-holdMs overflow blip drops zero frames', async () => {
+        const stats = createEmptyPlayerStats();
+        const writer = new FakeWriter();
+        // Overflow for 4 frames (~24 ms < holdMs 50), then clears → never engages.
+        const spans = [5000, 5000, 5000, 5000, 333, 333, 333, 333];
+        let si = 0;
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            getBufferSpanMs: (): number => spans[si++] ?? 333,
+            targetSpanMs: 333,
+            nowFn: advancingClock(8),
+            delayFn: (): Promise<void> => Promise.resolve(),
+            holdMs: 50,
+        });
+        const items = Array.from({ length: 8 }, (_, i) => makeEnvelope(stats, i, i));
+
+        await count(pipe(staticSource(items), sink));
+
+        expect(writer.written).toHaveLength(8);
+        expect(stats.presented).toBe(8);
+    });
+
+    it('hysteresis: an interrupted overflow restarts the hold timer (no skip)', async () => {
+        const stats = createEmptyPlayerStats();
+        const writer = new FakeWriter();
+        // Overflow ~40 ms, one frame dips below budget, overflow resumes: neither
+        // run reaches holdMs (50), so the timer restart prevents any skip.
+        const spans = [5000, 5000, 5000, 5000, 5000, 333, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000];
+        let si = 0;
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            getBufferSpanMs: (): number => spans[si++] ?? 333,
+            targetSpanMs: 333,
+            nowFn: advancingClock(8),
+            delayFn: (): Promise<void> => Promise.resolve(),
+            holdMs: 50,
+        });
+        const items = Array.from({ length: 14 }, (_, i) => makeEnvelope(stats, i, i));
+
+        await count(pipe(staticSource(items), sink));
+
+        expect(writer.written).toHaveLength(14);
+        expect(stats.presented).toBe(14);
+    });
+
+    it('hysteresis: rate-limit still presents engaged frames that are behind schedule', async () => {
+        const stats = createEmptyPlayerStats();
+        const writer = new FakeWriter();
+        // holdMs 0 → skip engages immediately, but now advances 20 ms/frame
+        // (> MIN_DURATION_MS), so every frame is behind schedule → rate-limit
+        // presents them all despite skip being engaged.
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            getBufferSpanMs: (): number => 5000,
+            targetSpanMs: 333,
+            nowFn: advancingClock(20),
+            delayFn: (): Promise<void> => Promise.resolve(),
+            holdMs: 0,
+        });
+        const items = Array.from({ length: 6 }, (_, i) => makeEnvelope(stats, i, i));
+
+        await count(pipe(staticSource(items), sink));
+
+        expect(writer.written).toHaveLength(6);
+        expect(stats.presented).toBe(6);
     });
 });

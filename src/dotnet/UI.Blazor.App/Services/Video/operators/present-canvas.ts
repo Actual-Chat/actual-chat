@@ -16,6 +16,7 @@ export interface CanvasPresentOptions {
     targetSpanMs: number;
     nowFn?: () => number;
     delayFn?: (ms: number) => Promise<void>;
+    holdMs?: number;
 }
 
 export function canvasPresent(opts: CanvasPresentOptions): PipeOperator<DecodedFrame, void> {
@@ -24,6 +25,7 @@ export function canvasPresent(opts: CanvasPresentOptions): PipeOperator<DecodedF
         targetSpanMs: opts.targetSpanMs,
         nowFn: opts.nowFn,
         delayFn: opts.delayFn,
+        holdMs: opts.holdMs,
         createSink: (): PresentSink => {
             const canvasCtx = opts.getCanvasCtx();
             const convertToBitmap = opts.convertToBitmap;
