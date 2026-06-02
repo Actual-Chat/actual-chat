@@ -492,7 +492,7 @@ export class MarkupEditor {
                     else
                         this.insertHtml(html);
                 })
-                .catch(err => {
+                .catch((err: unknown) => {
                     errorLog?.log('onPaste: ParseTextToHtml (voxt-markup) failed', err);
                     this.transaction('onPaste', () => this.insertTextAtCursor(voxtMarkup));
                 });
@@ -506,7 +506,7 @@ export class MarkupEditor {
 
         if (!concatenatedText) { ok(); return; }
 
-        const looksLikeMarkup = /@`/.test(concatenatedText) || /@[a-z]:[\w%.\-:]+/.test(concatenatedText);
+        const looksLikeMarkup = concatenatedText.includes('@`') || /@[a-z]:[\w%.\-:]+/.test(concatenatedText);
         if (!looksLikeMarkup) {
             this.transaction('onPaste', () => {
                 this.insertTextAtCursor(concatenatedText);
@@ -525,7 +525,7 @@ export class MarkupEditor {
                 }
                 this.insertHtml(html);
             })
-            .catch(err => {
+            .catch((err: unknown) => {
                 errorLog?.log('onPaste: ParseTextToHtml failed', err);
                 this.transaction('onPaste', () => this.insertTextAtCursor(concatenatedText));
             });
@@ -985,7 +985,7 @@ function getPostMentionText(mention: HTMLElement): Text | null {
 
 // Pulls the original markup out of clipboard HTML produced by our copy action (SelectionUI).
 function extractVoxtMarkup(html: string | null): string | null {
-    if (!html || html.indexOf('data-voxt-markup') < 0)
+    if (!html?.includes('data-voxt-markup'))
         return null;
     try {
         const doc = new DOMParser().parseFromString(html, 'text/html');

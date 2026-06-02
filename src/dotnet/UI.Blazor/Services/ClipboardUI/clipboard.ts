@@ -7,10 +7,10 @@
 // text while our editor can reconstruct mentions from the HTML's data-voxt-markup attribute.
 export async function writeRich(plainText: string, html: string): Promise<void> {
     try {
-        if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
+        if (typeof ClipboardItem !== 'undefined') {
             const item = new ClipboardItem({
-                "text/plain": new Blob([plainText], { type: "text/plain" }),
-                "text/html": new Blob([html], { type: "text/html" }),
+                'text/plain': new Blob([plainText], { type: 'text/plain' }),
+                'text/html': new Blob([html], { type: 'text/html' }),
             });
             await navigator.clipboard.write([item]);
             return;
@@ -23,6 +23,6 @@ export async function writeRich(plainText: string, html: string): Promise<void> 
     try {
         await navigator.clipboard.writeText(plainText);
     } catch (e) {
-        console.warn("writeRich: clipboard write failed", e);
+        console.warn('writeRich: clipboard write failed', e);
     }
 }
