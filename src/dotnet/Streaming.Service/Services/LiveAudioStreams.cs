@@ -13,7 +13,7 @@ namespace ActualChat.Streaming.Services;
 public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
 {
     private readonly Lock _lock = new();
-    private readonly ConcurrentDictionary<(Session, ChatId), LiveStreamMuxer> _liveMuxers = new();
+    private readonly ConcurrentDictionary<(Session, ChatId), ListeningStreamMuxer> _liveMuxers = new();
     private readonly ConcurrentDictionary<(Session, ChatId), ReplayStreamMuxer> _replayMuxers = new();
 
     private IServiceProvider Services { get; } = services;
@@ -25,7 +25,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
     private ILogger Log => field ??= Services.LogFor<LiveAudioStreams>();
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<LiveStreamInfo>> List(
+    public virtual async Task<ApiArray<LiveAudioStreamInfo>> List(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
@@ -52,7 +52,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
             return await Backend.GetAudio(parsedStreamId, skipTo, cancellationToken).ConfigureAwait(false);
 
         var cached = await GetOrFetchRemoteAudio(parsedStreamId, skipTo, cancellationToken).ConfigureAwait(false);
-        return cached == null ? null : MediaRpcStreamOptions.AudioDelivery(cached);
+        return cached == null ? null : StandardRpcStream.NewAudioDelivery(cached);
     }
 
     public async Task<RpcStream<TranscriptDiff>?> GetTranscriptStream(
@@ -74,10 +74,8 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         if (diffs == null)
             return null;
 
-        var diffStream = diffs
-            .SuppressException<TranscriptDiff, RpcReconnectFailedException>(cancellationToken)
-            .SuppressCancellation(cancellationToken);
-        return MediaRpcStreamOptions.TranscriptDelivery(diffStream);
+        var diffStream = diffs.SuppressExceptions(e => e is RpcReconnectFailedException, CancellationToken.None);
+        return StandardRpcStream.NewTranscriptDelivery(diffStream);
     }
 
     public async Task PushStream(
@@ -116,45 +114,30 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         return Task.CompletedTask;
     }
 
-    public async Task<RpcStream<LiveStreamItem>> LegacyGetStream(
+    public async Task<RpcStream<MuxedStreamItem>> GetListeningStream(
         Session session,
         ChatId chatId,
-        LiveStreamSettings settings,
         CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
         chat.Rules.Require(ChatPermissions.ReadAudio);
 
-        LiveStreamMuxer muxer;
+        ListeningStreamMuxer muxer;
         var key = (session, chatId);
         lock (_lock) { // TODO(AY): Make it more efficient later?
             if (_liveMuxers.TryRemove(key, out var oldMuxer))
                 _ = oldMuxer.DisposeSilentlyAsync(); // No need to await for this here
 
-            muxer = new LiveStreamMuxer(Services, chatId, settings);
+            muxer = new ListeningStreamMuxer(Services, chatId);
             _liveMuxers[key] = muxer;
         }
 
         var stream = ToLiveAsyncEnumerable(key, muxer, muxer.Output, cancellationToken);
-        return MediaRpcStreamOptions.AudioDelivery(stream, allowReconnect: false);
+        return StandardRpcStream.NewAudioDelivery(stream, allowReconnect: false);
     }
 
-    public async Task ChangeSettings(
-        Session session,
-        ChatId chatId,
-        LiveStreamSettings settings,
-        CancellationToken cancellationToken)
-    {
-        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
-        chat.Require();
-        chat.Rules.Require(ChatPermissions.ReadAudio);
-
-        if (_liveMuxers.TryGetValue((session, chatId), out var muxer))
-            muxer.UpdateConfig(settings);
-    }
-
-    public async Task<RpcStream<LiveStreamItem>> GetReplayStream(
+    public async Task<RpcStream<MuxedStreamItem>> GetReplayStream(
         Session session,
         ChatId chatId,
         Moment startAt,
@@ -177,8 +160,24 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         }
 
         var stream = ToReplayAsyncEnumerable(key, muxer, muxer.Output, cancellationToken);
-        return MediaRpcStreamOptions.AudioDelivery(stream, allowReconnect: false);
+        return StandardRpcStream.NewAudioDelivery(stream, allowReconnect: false);
     }
+
+    // Legacy methods
+
+    public Task<RpcStream<MuxedStreamItem>> LegacyGetStream(
+        Session session,
+        ChatId chatId,
+        LegacyLiveStreamSettings settings,
+        CancellationToken cancellationToken)
+        => GetListeningStream(session, chatId, cancellationToken);
+
+    public Task LegacyChangeSettings(
+        Session session,
+        ChatId chatId,
+        LegacyLiveStreamSettings settings,
+        CancellationToken cancellationToken)
+        => Task.CompletedTask; // No-op method
 
     // Private methods
 
@@ -220,10 +219,10 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         }
     }
 
-    private async IAsyncEnumerable<LiveStreamItem> ToLiveAsyncEnumerable(
+    private async IAsyncEnumerable<MuxedStreamItem> ToLiveAsyncEnumerable(
         (Session, ChatId) key,
-        LiveStreamMuxer originalMuxer,
-        ChannelReader<LiveStreamItem> reader,
+        ListeningStreamMuxer originalMuxer,
+        ChannelReader<MuxedStreamItem> reader,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         try {
@@ -245,10 +244,10 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         }
     }
 
-    private async IAsyncEnumerable<LiveStreamItem> ToReplayAsyncEnumerable(
+    private async IAsyncEnumerable<MuxedStreamItem> ToReplayAsyncEnumerable(
         (Session, ChatId) key,
         ReplayStreamMuxer originalMuxer,
-        ChannelReader<LiveStreamItem> reader,
+        ChannelReader<MuxedStreamItem> reader,
         [EnumeratorCancellation]
         CancellationToken cancellationToken)
     {

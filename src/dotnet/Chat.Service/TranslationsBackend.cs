@@ -419,7 +419,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
  #pragma warning restore CA2016
         var stopToken = stopTokenSource.Token;
         var transcriptStream = transcript
-            .SuppressException<TranscriptDiff, RpcReconnectFailedException>(stopToken)
+            .SuppressExceptions(e => e is RpcReconnectFailedException, stopToken)
             .Memoize(stopToken);
 
         var worker = _activePublishers.GetOrAdd(translatedStreamId,

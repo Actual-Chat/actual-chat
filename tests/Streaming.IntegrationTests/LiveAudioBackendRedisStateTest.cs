@@ -383,7 +383,7 @@ public class LiveAudioBackendRedisStateTest(AppHostFixture fixture, ITestOutputH
         return chat.Id;
     }
 
-    private LiveStreamInfo NewAudioStreamInfo(ChatId chatId)
+    private LiveAudioStreamInfo NewAudioStreamInfo(ChatId chatId)
         => new() {
             ChatId = chatId,
             AuthorId = AuthorId.New(chatId, 1),

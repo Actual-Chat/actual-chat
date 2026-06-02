@@ -64,10 +64,23 @@ public abstract class ChatPlayer : ProcessorBase
         await Playback.DisposeAsync().ConfigureAwait(false);
     }
 
-    public async Task<Task> Start(Moment startAt, CancellationToken cancellationToken)
+    public async Task<Chat.Chat?> GetChat(CancellationToken cancellationToken)
     {
-        DebugLog?.LogInformation("ChatPlayer.Start: {PlayerKind} for {ChatId} at {StartAt}", PlayerKind, ChatId, startAt);
+        var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
+        return chat?.Rules.CanRead() == true
+            ? chat
+            : null;
+    }
+
+    public async Task<Task> Start(
+        Moment startAt, // Server time
+        CancellationToken cancellationToken)
+    {
+        DebugLog?.LogInformation(
+            "ChatPlayer.Start: {PlayerKind} for {ChatId} at {StartAt}",
+            PlayerKind, ChatId, startAt);
         this.ThrowIfDisposedOrDisposing();
+
         CancellationTokenSource playTokenSource;
         CancellationToken playToken;
 
@@ -137,7 +150,7 @@ public abstract class ChatPlayer : ProcessorBase
 
     protected async ValueTask<bool> CanContinuePlayback(CancellationToken cancellationToken)
     {
-        if (this is ChatReplayer)
+        if (this is ChatReplayPlayer)
             await Playback.IsPaused.Computed
                 .When(x => !x, cancellationToken)
                 .ConfigureAwait(false);
@@ -154,5 +167,5 @@ public abstract class ChatPlayer : ProcessorBase
     // Protected methods
 
     protected abstract Task Play(
-        Playback playback, Moment minPlayAt, CancellationToken cancellationToken);
+        Playback playback, Moment startAt, CancellationToken cancellationToken);
 }

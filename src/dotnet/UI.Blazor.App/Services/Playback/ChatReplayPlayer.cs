@@ -4,28 +4,28 @@ using ActualChat.MediaPlayback;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public sealed class ChatReplayer : ChatPlayer
+public sealed class ChatReplayPlayer : ChatPlayer
 {
-    public ChatReplayer(AppUIHub hub, ChatId chatId)
+    public ChatReplayPlayer(AppUIHub hub, ChatId chatId)
         : base(hub, chatId)
         => PlayerKind = ChatPlayerKind.Replaying;
 
     public override void Pause()
     {
         _ = Playback.Pause(CancellationToken.None);
-        if (ChatAudioUI!.ReplayState.Value is { } rs && rs.ChatId == ChatId)
-            ChatAudioUI!.TryReleaseAudioFocus();
+        if (ChatAudioUI.ReplayState.Value is { } rs && rs.ChatId == ChatId)
+            ChatAudioUI.TryReleaseAudioFocus();
     }
 
     public override async Task Resume()
     {
-        var replayState = ChatAudioUI!.ReplayState.Value;
+        var replayState = ChatAudioUI.ReplayState.Value;
         if (replayState is null || replayState.ChatId != ChatId) {
             Log.LogInformation("Can't resume replay. State: '{State}', ChatId: '{ChatId}'", replayState, ChatId);
             return;
         }
 
-        if (!await ChatAudioUI!.TryAcquireAudioFocusForResume(this).ConfigureAwait(false))
+        if (!await ChatAudioUI.TryAcquireAudioFocusForResume(this).ConfigureAwait(false))
             return;
 
         _ = Playback.Resume(default);
@@ -33,13 +33,17 @@ public sealed class ChatReplayer : ChatPlayer
 
     protected override async Task Play(
         Playback playback,
-        Moment minPlayAt,
+        Moment startAt, // Server time
         CancellationToken cancellationToken)
     {
+        var chat = await GetChat(cancellationToken).ConfigureAwait(false);
+        if (chat is null)
+            return;
+
         var rewindOffset = TimeSpan.Zero;
         var speed = 1.0d;
         // Read rewindOffset and speed from ReplayState (set by ChatAudioUI.StartReplay)
-        var replayState = ChatAudioUI?.ReplayState.Value;
+        var replayState = ChatAudioUI.ReplayState.Value;
         if (replayState is { ChatId: var rsChatId } && rsChatId == ChatId) {
             speed = replayState.Speed;
             rewindOffset = replayState.RewindOffset;
@@ -47,26 +51,20 @@ public sealed class ChatReplayer : ChatPlayer
         var sleepDurationAtStart = SleepDuration.Value;
         var pauseDurationAtStart = Playback.TotalPauseDuration.Value;
 
-        Log.LogInformation(
-            "Starting server-streamed replay in chat {ChatId} from {MinPlayAt}, rewindOffset={RewindOffset}, speed={Speed}",
-            ChatId, minPlayAt, rewindOffset, speed);
-        var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
-        if (chat?.Rules.CanRead() != true) {
-            Log.LogWarning("Cannot read chat {ChatId}", ChatId);
-            return;
-        }
-
+        DebugLog?.LogDebug(
+            "Replaying in #{ChatId} from {StartAt}, rewindOffset={RewindOffset}, speed={Speed}",
+            ChatId, startAt, rewindOffset, speed);
         Operation = $"replaying in \"{chat.Title}\"";
-        var processor = new ReplayStreamProcessor(
-            Hub.Services, Session, ChatId, minPlayAt, rewindOffset, speed,
+        var streamProcessor = new ReplayStreamProcessor(
+            Hub.Services, Session, ChatId, startAt, rewindOffset, speed,
             cancellationToken.CreateLinkedTokenSource());
-        await using var _ = processor.ConfigureAwait(false);
+        await using var _ = streamProcessor.ConfigureAwait(false);
 
         // Capture playbackStartedAt on first StreamStarted event, not before the RPC call,
         // to avoid wall-clock drift that would cause all tracks to play immediately.
         CpuTimestamp playbackStartedAt = default;
         var trackTasks = new ConcurrentBag<Task>();
-        processor.StreamStarted += (info, playsAt, frames) => {
+        streamProcessor.StreamStarted += (info, playsAt, frames) => {
             if (playbackStartedAt == default)
                 playbackStartedAt = CpuTimestamp.Now;
             var trackTask = OnStreamStarted(
@@ -77,7 +75,7 @@ public sealed class ChatReplayer : ChatPlayer
         };
 
         // Wait for server to finish streaming all entries
-        await processor.Run().ConfigureAwait(false);
+        await streamProcessor.Run().ConfigureAwait(false);
 
         // Wait for all tracks to finish playing (but respect cancellation)
         await Task.WhenAll(trackTasks).WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -85,7 +83,7 @@ public sealed class ChatReplayer : ChatPlayer
 
     private Task OnStreamStarted(
         Playback playback,
-        LiveStreamInfo streamInfo,
+        LiveAudioStreamInfo streamInfo,
         TimeSpan playsAt,
         IAsyncEnumerable<AudioFrame> audioFrames,
         double speed,
@@ -182,7 +180,7 @@ public sealed class ChatReplayer : ChatPlayer
     }
 
     private AudioSource CreateAudioSource(
-        LiveStreamInfo streamInfo,
+        LiveAudioStreamInfo streamInfo,
         IAsyncEnumerable<AudioFrame> audioFrames,
         TimeSpan skipTo,
         CancellationToken cancellationToken)

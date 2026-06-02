@@ -4,7 +4,7 @@
 /// Audio data packet in a multiplexed live stream.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-public sealed partial class LiveAudioFrame : LiveStreamItem
+public sealed partial class MuxedAudioFrame : MuxedStreamItem
 {
     [DataMember(Order = 1), MemoryPackOrder(1), Key(3)]
     public ReadOnlyMemory<byte> Data { get; init; }

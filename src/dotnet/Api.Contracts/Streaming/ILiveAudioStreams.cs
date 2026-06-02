@@ -14,7 +14,7 @@ public interface ILiveAudioStreams : IComputeService
 {
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     [LegacyName("ListActiveStreams", "2.6.9999")]
-    Task<ApiArray<LiveStreamInfo>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<LiveAudioStreamInfo>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     Task<RpcStream<AudioFrame>?> GetStream(
         Session session,
@@ -25,6 +25,19 @@ public interface ILiveAudioStreams : IComputeService
     Task<RpcStream<TranscriptDiff>?> GetTranscriptStream(
         Session session,
         string streamId,
+        CancellationToken cancellationToken);
+
+    Task<RpcStream<MuxedStreamItem>> GetListeningStream(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken);
+
+    Task<RpcStream<MuxedStreamItem>> GetReplayStream(
+        Session session,
+        ChatId chatId,
+        Moment startAt,
+        TimeSpan rewindOffset,
+        double speed,
         CancellationToken cancellationToken);
 
     [RpcMethod(RemoteExecutionMode = RpcRemoteExecutionMode.AwaitForConnection | RpcRemoteExecutionMode.AllowReconnect)]
@@ -39,25 +52,20 @@ public interface ILiveAudioStreams : IComputeService
 
     Task ReportAudioLatency(Session session, TimeSpan latency, CancellationToken cancellationToken);
 
+    // Legacy methods
+
     [LegacyName("GetStream", "2.7.9999")]
     [LegacyName("GetLiveStream", "2.6.9999")]
-    Task<RpcStream<LiveStreamItem>> LegacyGetStream(
+    Task<RpcStream<MuxedStreamItem>> LegacyGetStream(
         Session session,
         ChatId chatId,
-        LiveStreamSettings settings,
+        LegacyLiveStreamSettings settings,
         CancellationToken cancellationToken);
 
-    Task ChangeSettings(
+    [LegacyName("ChangeSettings", "2.9.9999")]
+    Task LegacyChangeSettings(
         Session session,
         ChatId chatId,
-        LiveStreamSettings settings,
-        CancellationToken cancellationToken);
-
-    Task<RpcStream<LiveStreamItem>> GetReplayStream(
-        Session session,
-        ChatId chatId,
-        Moment startAt,
-        TimeSpan rewindOffset,
-        double speed,
+        LegacyLiveStreamSettings settings,
         CancellationToken cancellationToken);
 }

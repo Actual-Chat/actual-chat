@@ -65,7 +65,7 @@
         if (replayState is not { ChatId: var chatId })
             return Model.NotPlaying;
 
-        var player = await ChatAudioUI.GetReplayer(chatId, cancellationToken).ConfigureAwait(false);
+        var player = await ChatAudioUI.GetReplayPlayer(chatId, cancellationToken).ConfigureAwait(false);
         var lastState = State.Value;
         if (player is null) {
             // This happens when player is being disposed, which means this method

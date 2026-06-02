@@ -50,7 +50,7 @@ public class LiveAudioBackendShardMigrationTest(ITestOutputHelper @out)
         chatIdPerShard.Count.Should().Be(shardScheme.ShardCount,
             "must be able to pick one chat per shard from the test id space");
 
-        var capturedPerShard = new Dictionary<int, Computed<ApiArray<LiveStreamInfo>>>();
+        var capturedPerShard = new Dictionary<int, Computed<ApiArray<LiveAudioStreamInfo>>>();
         foreach (var (shardIndex, chatId) in chatIdPerShard) {
             var computed = await Computed.Capture(() => s1.List(chatId, CancellationToken.None));
             computed.Value.Should().BeEmpty($"no streams registered yet for chat {chatId}");

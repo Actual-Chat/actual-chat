@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
 [Collection(nameof(ChatUICollection))]
-public class ChatReplayerTest(ChatAppHostFixture fixture, ITestOutputHelper @out)
+public class ChatReplayPlayerTest(ChatAppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<ChatAppHostFixture>(fixture, @out)
 {
     [Fact(Timeout = 60_000)]

@@ -6,7 +6,7 @@ namespace ActualChat.Live;
 /// Information about an active audio stream in a chat.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-public sealed partial record LiveStreamInfo
+public sealed partial record LiveAudioStreamInfo
 {
     [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public ChatId ChatId { get; init; } = null!;

@@ -10,8 +10,8 @@ namespace ActualChat.Streaming;
 public interface ILiveAudioBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<ApiArray<LiveStreamInfo>> List(ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<LiveAudioStreamInfo>> List(ChatId chatId, CancellationToken cancellationToken);
 
-    Task Register(ChatId chatId, LiveStreamInfo streamInfo, CancellationToken cancellationToken);
+    Task Register(ChatId chatId, LiveAudioStreamInfo streamInfo, CancellationToken cancellationToken);
     Task Unregister(ChatId chatId, string streamId, CancellationToken cancellationToken);
 }

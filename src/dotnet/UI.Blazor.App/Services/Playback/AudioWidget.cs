@@ -87,7 +87,7 @@ public class AudioWidget : IDisposable
             var replayState = await ChatAudioUI.ReplayState.Use(cancellationToken).ConfigureAwait(false);
             if (replayState is not null) {
                 chatId = replayState.ChatId;
-                var player = await ChatAudioUI.GetReplayer(chatId, cancellationToken).ConfigureAwait(false);
+                var player = await ChatAudioUI.GetReplayPlayer(chatId, cancellationToken).ConfigureAwait(false);
                 if (player is not null) {
                     var isPlaying = await player.Playback.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
                     if (isPlaying) {
@@ -100,7 +100,7 @@ public class AudioWidget : IDisposable
                 var listeningChatIds = await ChatAudioUI.GetListeningChatIds().ConfigureAwait(false);
                 if (!listeningChatIds.IsEmpty) {
                     chatId = listeningChatIds.First();
-                    var player = await ChatAudioUI.GetListener(chatId, cancellationToken).ConfigureAwait(false);
+                    var player = await ChatAudioUI.GetListeningPlayer(chatId, cancellationToken).ConfigureAwait(false);
                     if (player is not null) {
                         var isPlaying = await player.Playback.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
                         if (isPlaying) {
@@ -150,10 +150,10 @@ public class AudioWidget : IDisposable
             ChatAudioUI.StopReplay();
             break;
         case ActionNames.Pause:
-            ChatAudioUI.GetReplayerNonComputed(state.ChatId)?.Pause();
+            ChatAudioUI.GetReplayPlayerNonComputed(state.ChatId)?.Pause();
             break;
         case ActionNames.Resume:
-            _ = ChatAudioUI.GetReplayerNonComputed(state.ChatId)?.Resume();
+            _ = ChatAudioUI.GetReplayPlayerNonComputed(state.ChatId)?.Resume();
             break;
         }
     }
@@ -165,10 +165,10 @@ public class AudioWidget : IDisposable
             _ = ChatAudioUI.SetListeningState(chatId, false);
             break;
         case ActionNames.Pause:
-            ChatAudioUI.GetListenerNonComputed(chatId)?.Pause();
+            ChatAudioUI.GetListeningPlayerNonComputed(chatId)?.Pause();
             break;
         case ActionNames.Resume:
-            _ = ChatAudioUI.GetListenerNonComputed(chatId)?.Resume();
+            _ = ChatAudioUI.GetListeningPlayerNonComputed(chatId)?.Resume();
             break;
         }
     }

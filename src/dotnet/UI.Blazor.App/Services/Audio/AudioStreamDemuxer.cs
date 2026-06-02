@@ -7,8 +7,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// Demultiplexes a single live stream into individual audio streams.
 /// Raises events when streams start and end.
 /// </summary>
-public sealed class LiveStreamDemuxer(
-    IAsyncEnumerable<LiveStreamItem> input,
+public sealed class AudioStreamDemuxer(
+    IAsyncEnumerable<MuxedStreamItem> input,
     ILogger? log,
     CancellationTokenSource? stopTokenSource = null)
     : WorkerBase(stopTokenSource)
@@ -16,11 +16,11 @@ public sealed class LiveStreamDemuxer(
     private static bool DebugMode => Constants.DebugMode.LiveStreaming;
     private readonly ConcurrentDictionary<int, Channel<AudioFrame>> _streams = new();
 
-    private IAsyncEnumerable<LiveStreamItem> Input { get; } = input;
+    private IAsyncEnumerable<MuxedStreamItem> Input { get; } = input;
     private ILogger? Log { get; } = log;
     private ILogger? DebugLog { get; } = DebugMode ? log : null;
 
-    public event Action<LiveStreamInfo, TimeSpan, IAsyncEnumerable<AudioFrame>>? StreamStarted;
+    public event Action<LiveAudioStreamInfo, TimeSpan, IAsyncEnumerable<AudioFrame>>? StreamStarted;
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
@@ -29,11 +29,11 @@ public sealed class LiveStreamDemuxer(
             await foreach (var item in Input.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 itemCount++;
                 switch (item) {
-                case LiveStreamReset:
+                case MuxedAudioStreamReset:
                     DebugLog?.LogDebug("StreamReset: flushing {Count} in-flight streams", _streams.Count);
                     FlushAllStreams();
                     continue;
-                case LiveStreamStart start:
+                case MuxedAudioStreamStart start:
                     var startChannel = _streams.GetValueOrDefault(start.StreamIndex);
                     if (startChannel is not null) {
                         Log?.LogWarning("StreamStart N{StreamIndex}: duplicate!", start.StreamIndex);
@@ -49,7 +49,7 @@ public sealed class LiveStreamDemuxer(
                     var audioFrames = ToAsyncEnumerable(startChannel.Reader, CancellationToken.None);
                     StreamStarted?.Invoke(start.StreamInfo, start.PlaysAt, audioFrames);
                     break;
-                case LiveAudioFrame frame:
+                case MuxedAudioFrame frame:
                     var frameChannel = _streams.GetValueOrDefault(frame.StreamIndex);
                     if (frameChannel is null)
                         continue;
@@ -64,7 +64,7 @@ public sealed class LiveStreamDemuxer(
                     if (!frameChannel.Writer.TryWrite(audioFrame))
                         Log?.LogWarning("Failed to write frame for stream {StreamIndex}", frame.StreamIndex);
                     continue;
-                case LiveStreamEnd end:
+                case MuxedAudioStreamEnd end:
                     DebugLog?.LogDebug("StreamEnd #{StreamIndex}", end.StreamIndex);
                     var endChannel = _streams.GetValueOrDefault(end.StreamIndex);
                     if (endChannel is null)

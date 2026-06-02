@@ -38,14 +38,13 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // Start Live Streams listener
         var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
-        var settings = LiveStreamSettings.Default;
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-        var liveStreamTask = liveStreams.LegacyGetStream(session, chat.Id, settings, cts.Token);
+        var liveStreamTask = liveStreams.GetListeningStream(session, chat.Id, cts.Token);
         var liveStream = await liveStreamTask;
 
         // Collect items in background
-        var receivedItems = new List<LiveStreamItem>();
+        var receivedItems = new List<MuxedStreamItem>();
         var collectTask = BackgroundTask.Run(async () => {
             log.LogInformation("Starting to collect Live items");
             try {
@@ -89,9 +88,9 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         log.LogInformation("Total items received: {Count}", receivedItems.Count);
 
         // Log item details
-        var startItems = receivedItems.OfType<LiveStreamStart>().ToList();
-        var audioFrameItems = receivedItems.OfType<LiveAudioFrame>().ToList();
-        var endItems = receivedItems.OfType<LiveStreamEnd>().ToList();
+        var startItems = receivedItems.OfType<MuxedAudioStreamStart>().ToList();
+        var audioFrameItems = receivedItems.OfType<MuxedAudioFrame>().ToList();
+        var endItems = receivedItems.OfType<MuxedAudioStreamEnd>().ToList();
 
         log.LogInformation("StreamStart items: {Count}", startItems.Count);
         log.LogInformation("AudioFrame items: {Count}", audioFrameItems.Count);
@@ -111,10 +110,10 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // Create test items
         var testChatId = ChatId.Parse("testChat");
-        var testItems = new List<LiveStreamItem> {
-            new LiveStreamStart {
+        var testItems = new List<MuxedStreamItem> {
+            new MuxedAudioStreamStart {
                 StreamIndex = 1,
-                StreamInfo = new LiveStreamInfo {
+                StreamInfo = new LiveAudioStreamInfo {
                     ChatId = testChatId,
                     AuthorId = AuthorId.New(testChatId, 1),
                     StreamId = "test-stream-1",
@@ -122,13 +121,13 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
                     Format = AudioSource.DefaultFormat,
                 },
             },
-            new LiveAudioFrame { StreamIndex = 1, Data = new byte[]{1, 2, 3, 4}, Offset = TimeSpan.Zero },
-            new LiveAudioFrame {
+            new MuxedAudioFrame { StreamIndex = 1, Data = new byte[]{1, 2, 3, 4}, Offset = TimeSpan.Zero },
+            new MuxedAudioFrame {
                 StreamIndex = 1,
                 Data = new byte[]{5, 6, 7, 8},
                 Offset = Constants.Audio.OpusFrameDuration,
             },
-            new LiveStreamEnd { StreamIndex = 1 },
+            new MuxedAudioStreamEnd { StreamIndex = 1 },
         };
 
         var streamStartedEvents = new List<int>();
@@ -139,7 +138,7 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         var rpcStream = RpcStream.New(testItems.ToAsyncEnumerable());
 
         // Create demuxer
-        var demuxer = new LiveStreamDemuxer(rpcStream, log);
+        var demuxer = new AudioStreamDemuxer(rpcStream, log);
         demuxer.StreamStarted += (streamInfo, playsAt, audioFrames) => {
             log.LogInformation("StreamStarted event: #{StreamId}, PlaysAt={PlaysAt}", streamInfo.StreamId, playsAt);
             streamStartedEvents.Add(1); // Using 1 as placeholder since we no longer have StreamIndex

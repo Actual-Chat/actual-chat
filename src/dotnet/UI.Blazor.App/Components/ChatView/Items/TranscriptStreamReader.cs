@@ -94,7 +94,7 @@ public class TranscriptStreamReader(ChatEntryId id, AppUIHub hub) : WorkerBase
                 .ConfigureAwait(false);
             var diffs = rpcStream is null
                 ? AsyncEnumerable.Empty<TranscriptDiff>()
-                : rpcStream.SuppressException<TranscriptDiff, RpcReconnectFailedException>(cancellationToken);
+                : rpcStream.SuppressExceptions(e => e is RpcReconnectFailedException, cancellationToken);
             var transcripts = diffs.ToTranscripts();
 
             // Optimization state:

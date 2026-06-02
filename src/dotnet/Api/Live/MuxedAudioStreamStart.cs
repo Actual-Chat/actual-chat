@@ -4,10 +4,10 @@
 /// Announces the start of a new audio stream within the multiplexed live stream.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-public sealed partial class LiveStreamStart : LiveStreamItem
+public sealed partial class MuxedAudioStreamStart : MuxedStreamItem
 {
     [DataMember(Order = 1), MemoryPackOrder(1), Key(3)]
-    public LiveStreamInfo StreamInfo { get; init; } = null!;
+    public LiveAudioStreamInfo StreamInfo { get; init; } = null!;
     [DataMember(Order = 2), MemoryPackOrder(2), Key(4)]
     public TimeSpan PlaysAt { get; init; }
 }

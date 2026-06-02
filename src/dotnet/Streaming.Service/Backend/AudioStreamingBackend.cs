@@ -69,7 +69,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
             return null;
 
         stream = SkipTo(stream, skipTo, cancellationToken);
-        return MediaRpcStreamOptions.AudioDelivery(stream);
+        return StandardRpcStream.NewAudioDelivery(stream);
     }
 
     public virtual async Task<RpcStream<TranscriptDiff>?> GetTranscript(StreamId streamId, CancellationToken cancellationToken)
@@ -77,7 +77,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         DebugLog?.LogDebug("GetTranscript: #{StreamId}", streamId);
         var stream = await _transcriptStreams.Get(streamId, false, cancellationToken).ConfigureAwait(false);
         if (stream != null)
-            return MediaRpcStreamOptions.TranscriptDelivery(stream);
+            return StandardRpcStream.NewTranscriptDelivery(stream);
 
         var language = streamId.Language;
         if (language == null)
@@ -86,7 +86,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         var originalStreamId = StreamId.New(streamId.NodeRef, streamId.LocalId);
         if (!_translatingStreams.TryAdd(streamId, originalStreamId)) {
             stream = await _transcriptStreams.Get(streamId, true, cancellationToken).ConfigureAwait(false);
-            return MediaRpcStreamOptions.TranscriptDelivery(stream!); // Already translating
+            return StandardRpcStream.NewTranscriptDelivery(stream!); // Already translating
         }
 
         DebugLog?.LogDebug("GetTranscript: #{StreamId} - Translate stream", streamId);
@@ -99,7 +99,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
         DebugLog?.LogDebug("GetTranscript: #{StreamId} - Return stream", streamId);
         return stream == null
             ? null
-            : MediaRpcStreamOptions.TranscriptDelivery(stream);
+            : StandardRpcStream.NewTranscriptDelivery(stream);
     }
 
     public async Task PushTranscript(StreamId streamId, RpcStream<TranscriptDiff> diffStream, CancellationToken cancellationToken)

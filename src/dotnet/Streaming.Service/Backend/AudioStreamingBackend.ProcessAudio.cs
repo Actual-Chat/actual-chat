@@ -112,7 +112,7 @@ public partial class AudioStreamingBackend
 
         // Register stream as early as possible (before creating ChatEntry)
         if (mustStreamVoice) {
-            var streamInfo = new LiveStreamInfo {
+            var streamInfo = new LiveAudioStreamInfo {
                 ChatId = chatId,
                 AuthorId = author.Id,
                 StreamId = openSegment.StreamId.Value,

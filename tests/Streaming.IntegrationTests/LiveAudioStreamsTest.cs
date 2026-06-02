@@ -26,9 +26,8 @@ public class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelper @out
         chat.Require();
 
         var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
-        var config = LiveStreamSettings.Default;
 
-        var stream = await liveStreams.LegacyGetStream(session, chat.Id, config, CancellationToken.None);
+        var stream = await liveStreams.GetListeningStream(session, chat.Id, CancellationToken.None);
 
         stream.Should().NotBeNull();
     }
@@ -52,13 +51,12 @@ public class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelper @out
         chat.Require();
 
         var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
-        var config = LiveStreamSettings.Default;
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        var stream = await liveStreams.LegacyGetStream(session, chat.Id, config, cts.Token);
+        var stream = await liveStreams.GetListeningStream(session, chat.Id, cts.Token);
 
         // Stream should not throw when enumerated (even if empty)
-        var items = new List<LiveStreamItem>();
+        var items = new List<MuxedStreamItem>();
         try {
             await foreach (var item in stream)
                 items.Add(item);
@@ -89,9 +87,9 @@ public class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelper @out
         chat.Require();
 
         var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
-        var settings = new LiveStreamSettings { StreamKindFilter = LiveStreamKind.None };
+        var settings = new LegacyLiveStreamSettings { StreamKindFilter = LegacyLiveStreamKind.None };
 
-        await liveStreams.ChangeSettings(session, chat.Id, settings, CancellationToken.None);
+        await liveStreams.LegacyChangeSettings(session, chat.Id, settings, CancellationToken.None);
         // Should not throw
     }
 }

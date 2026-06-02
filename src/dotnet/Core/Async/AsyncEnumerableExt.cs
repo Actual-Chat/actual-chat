@@ -169,10 +169,10 @@ public static partial class AsyncEnumerableExt
 
     // SuppressXxx
 
-    public static async IAsyncEnumerable<T> SuppressException<T, TException>(
+    public static async IAsyncEnumerable<T> SuppressExceptions<T>(
         this IAsyncEnumerable<T> source,
+        Func<Exception, bool> exceptionFilter,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    where TException : Exception
     {
         // ReSharper disable once NotDisposedResource
         var enumerator = source.GetAsyncEnumerator(cancellationToken);
@@ -186,7 +186,7 @@ public static partial class AsyncEnumerableExt
                 if (hasMore)
                     item = enumerator.Current;
             }
-            catch (TException) {
+            catch (Exception e) when (exceptionFilter.Invoke(e)) {
                 yield break;
             }
             if (hasMore)

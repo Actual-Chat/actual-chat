@@ -1,7 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.Live;
 using ActualChat.Streaming;
-using ActualLab.Resilience;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -9,7 +8,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// Manages live stream connection with automatic reconnection on disconnect
 /// using <see cref="ResilientStream{T}"/>.
 /// </summary>
-public sealed class LiveStreamProcessor : WorkerBase
+public sealed class ListeningStreamProcessor : WorkerBase
 {
     private static bool DebugMode => Constants.DebugMode.LiveStreaming;
 
@@ -19,14 +18,12 @@ public sealed class LiveStreamProcessor : WorkerBase
     public IServiceProvider Services { get; }
     public Session Session { get; }
     public ChatId ChatId { get; }
-    public LiveStreamSettings Settings { get; }
 
-    public event Action<LiveStreamInfo, TimeSpan, IAsyncEnumerable<AudioFrame>>? StreamStarted;
+    public event Action<LiveAudioStreamInfo, TimeSpan, IAsyncEnumerable<AudioFrame>>? StreamStarted;
 
-    public LiveStreamProcessor(IServiceProvider services,
+    public ListeningStreamProcessor(IServiceProvider services,
         Session session,
         ChatId chatId,
-        LiveStreamSettings settings,
         CancellationTokenSource? stopTokenSource = null
         ) : base(stopTokenSource)
     {
@@ -36,25 +33,24 @@ public sealed class LiveStreamProcessor : WorkerBase
         Services = services;
         Session = session;
         ChatId = chatId;
-        Settings = settings;
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var liveStreams = Services.GetRequiredService<ILiveAudioStreams>();
-        var demuxerLog = Services.LogFor<LiveStreamDemuxer>();
+        var demuxerLog = Services.LogFor<AudioStreamDemuxer>();
 
-        var itemStream = new ResilientStream<LiveStreamItem> {
+        var itemStream = new ResilientStream<MuxedStreamItem> {
             Provider = async ct => {
-                DebugLog?.LogInformation("-> LiveStreams.GetLiveStream({ChatId})", ChatId);
-                var stream = await liveStreams.LegacyGetStream(Session, ChatId, Settings, ct).ConfigureAwait(false);
-                DebugLog?.LogInformation("<- LiveStreams.GetLiveStream({ChatId})", ChatId);
+                DebugLog?.LogInformation("-> LiveStreams.GetListeningStream({ChatId})", ChatId);
+                var stream = await liveStreams.GetListeningStream(Session, ChatId, ct).ConfigureAwait(false);
+                DebugLog?.LogInformation("<- LiveStreams.GetListeningStream({ChatId})", ChatId);
                 return stream;
             },
-            ResetItem = Option.Some<LiveStreamItem>(new LiveStreamReset()),
+            ResetItem = Option.Some<MuxedStreamItem>(new MuxedAudioStreamReset()),
         };
 
-        var demuxer = new LiveStreamDemuxer(itemStream, demuxerLog, cancellationToken.CreateLinkedTokenSource());
+        var demuxer = new AudioStreamDemuxer(itemStream, demuxerLog, cancellationToken.CreateLinkedTokenSource());
         await using var _ = demuxer.ConfigureAwait(false);
         demuxer.StreamStarted += (info, playsAt, frames) => StreamStarted?.Invoke(info, playsAt, frames);
 

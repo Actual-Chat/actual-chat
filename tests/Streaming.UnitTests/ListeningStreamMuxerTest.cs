@@ -11,7 +11,7 @@ namespace ActualChat.Streaming.UnitTests;
 /// private helpers via reflection to validate concurrency-sensitive paths
 /// without needing full service wiring.
 /// </summary>
-public class LiveStreamMuxerTest
+public class ListeningStreamMuxerTest
 {
     private static readonly ChatId TestChatId = ChatId.Parse("the-actual-one");
     private static readonly AuthorId Author1 = AuthorId.New(TestChatId, 1);
@@ -120,7 +120,7 @@ public class LiveStreamMuxerTest
     /// </summary>
     private sealed class MuxerHarness
     {
-        private static readonly Type MuxerType = typeof(LiveStreamMuxer);
+        private static readonly Type MuxerType = typeof(ListeningStreamMuxer);
         private static readonly Type StreamEntryType =
             MuxerType.GetNestedType("StreamEntry", BindingFlags.NonPublic)!;
         private static readonly FieldInfo StreamByIdField =
@@ -131,7 +131,7 @@ public class LiveStreamMuxerTest
             MuxerType.GetMethod("TryRegister", BindingFlags.NonPublic | BindingFlags.Instance)!;
         private static readonly PropertyInfo StreamIdProp = StreamEntryType.GetProperty("StreamId")!;
 
-        private readonly LiveStreamMuxer _muxer;
+        private readonly ListeningStreamMuxer _muxer;
         private readonly object _streamByAuthor;
         private readonly object _streamById;
 
@@ -142,7 +142,7 @@ public class LiveStreamMuxerTest
                 .BuildServiceProvider();
 
             // Allocate without running constructor (which starts the worker)
-            _muxer = (LiveStreamMuxer)RuntimeHelpers.GetUninitializedObject(MuxerType);
+            _muxer = (ListeningStreamMuxer)RuntimeHelpers.GetUninitializedObject(MuxerType);
 
             StreamByIdField.SetValue(_muxer, Activator.CreateInstance(StreamByIdField.FieldType));
             StreamByAuthorField.SetValue(_muxer, Activator.CreateInstance(StreamByAuthorField.FieldType));
@@ -155,12 +155,12 @@ public class LiveStreamMuxerTest
 
             var logBackingField = MuxerType.GetField("<Log>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
             if (logBackingField != null)
-                logBackingField.SetValue(_muxer, services.GetRequiredService<ILoggerFactory>().CreateLogger<LiveStreamMuxer>());
+                logBackingField.SetValue(_muxer, services.GetRequiredService<ILoggerFactory>().CreateLogger<ListeningStreamMuxer>());
         }
 
         public bool Register(AuthorId authorId, string streamId, Moment beginsAt, CancellationTokenSource cts)
         {
-            var streamInfo = new LiveStreamInfo {
+            var streamInfo = new LiveAudioStreamInfo {
                 ChatId = TestChatId,
                 AuthorId = authorId,
                 StreamId = streamId,

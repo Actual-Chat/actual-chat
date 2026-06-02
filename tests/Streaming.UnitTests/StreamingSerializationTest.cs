@@ -11,7 +11,7 @@ public class StreamingSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void LiveStreamInfo_Basic()
     {
         var authorId = AuthorId.New(TestChatId, 5);
-        var info = new LiveStreamInfo {
+        var info = new LiveAudioStreamInfo {
             ChatId = TestChatId,
             AuthorId = authorId,
             StreamId = "stream-1",

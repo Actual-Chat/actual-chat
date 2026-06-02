@@ -33,7 +33,7 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
             cStreamingAuthorIds.Value.Length.Should().Be(0);
 
             // Register an active stream
-            var streamInfo = new LiveStreamInfo {
+            var streamInfo = new LiveAudioStreamInfo {
                 ChatId = TestChatId,
                 AuthorId = author.Id,
                 StreamId = "test-stream-1",

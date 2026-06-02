@@ -36,7 +36,7 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<LiveStreamInfo>> List(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<LiveAudioStreamInfo>> List(ChatId chatId, CancellationToken cancellationToken)
     {
         var state = await ListRaw(chatId, cancellationToken).ConfigureAwait(false);
         if (state.Streams.Count == 0)
@@ -46,7 +46,7 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
         return state.Streams.WhereAlive(meshState, static info => StreamId.Parse(info.StreamId)).ToApiArray();
     }
 
-    public virtual async Task Register(ChatId chatId, LiveStreamInfo streamInfo, CancellationToken cancellationToken)
+    public virtual async Task Register(ChatId chatId, LiveAudioStreamInfo streamInfo, CancellationToken cancellationToken)
     {
         var now = Clocks.SystemClock.Now;
         if (streamInfo.BeginsAt + StreamTtl <= now) {
@@ -59,7 +59,7 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
         using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
 
         var prevState = await ListRaw(chatId, cancellationToken).ConfigureAwait(false);
-        var streams = new List<LiveStreamInfo>(prevState.Streams.Count + 1);
+        var streams = new List<LiveAudioStreamInfo>(prevState.Streams.Count + 1);
         foreach (var prevStreamInfo in prevState.Streams) {
             if (prevStreamInfo.StreamId == streamInfo.StreamId)
                 return; // Already registered
@@ -75,7 +75,7 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
 
         var nextState = new State(
             VersionGenerator.NextVersion(prevState.Version),
-            new ApiArray<LiveStreamInfo>(streams));
+            new ApiArray<LiveAudioStreamInfo>(streams));
         await _redisScope.Set(chatId.Value, nextState).ConfigureAwait(false);
         await _listRawPrimer.Prime(chatId, nextState.Version, nextState, cancellationToken).ConfigureAwait(false);
     }
@@ -120,11 +120,11 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
         // Fallback: reconstruct from ChatsBackend.ListEntries
         var cutoff = now - Constants.Chat.MaxEntryDuration;
         var entries = await ChatsBackend.ListEntries(chatId, cutoff, cancellationToken).ConfigureAwait(false);
-        var byStreamId = new Dictionary<string, LiveStreamInfo>(StringComparer.Ordinal);
+        var byStreamId = new Dictionary<string, LiveAudioStreamInfo>(StringComparer.Ordinal);
         foreach (var entry in entries)
             if (entry.Audio is { StreamId.Length: > 0 } liveAudio
                 && !MediaId.TryParse(liveAudio.StreamId, out _)) {
-                var streamInfo = new LiveStreamInfo {
+                var streamInfo = new LiveAudioStreamInfo {
                     ChatId = chatId,
                     AuthorId = entry.AuthorId,
                     StreamId = liveAudio.StreamId,
@@ -164,5 +164,5 @@ public partial class LiveAudioBackend : ShardComputeService, ILiveAudioBackend
     [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
     public sealed partial record State(
         [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] long Version,
-        [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] ApiArray<LiveStreamInfo> Streams);
+        [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] ApiArray<LiveAudioStreamInfo> Streams);
 }

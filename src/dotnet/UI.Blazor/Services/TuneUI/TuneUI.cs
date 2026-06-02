@@ -84,6 +84,7 @@ public abstract class TuneUI : ProcessorBase
     {
         if (IsSuppressed(tune))
             return Task.CompletedTask;
+
         OnBeforePlay(tune);
         return PlayInternal(tune);
     }
@@ -92,6 +93,7 @@ public abstract class TuneUI : ProcessorBase
     {
         if (IsSuppressed(tune))
             return Task.CompletedTask;
+
         OnBeforePlay(tune);
         return PlayAndWaitInternal(tune);
     }

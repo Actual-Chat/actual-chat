@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
 /// Connects to the server-side replay stream and demuxes it into individual audio streams.
-/// Unlike <see cref="LiveStreamProcessor"/>, does not auto-reconnect on failure.
+/// Unlike <see cref="ListeningStreamProcessor"/>, does not auto-reconnect on failure.
 /// </summary>
 public sealed class ReplayStreamProcessor : WorkerBase
 {
@@ -19,7 +19,7 @@ public sealed class ReplayStreamProcessor : WorkerBase
     public TimeSpan RewindOffset { get; }
     public double Speed { get; }
 
-    public event Action<LiveStreamInfo, TimeSpan, IAsyncEnumerable<AudioFrame>>? StreamStarted;
+    public event Action<LiveAudioStreamInfo, TimeSpan, IAsyncEnumerable<AudioFrame>>? StreamStarted;
 
     public ReplayStreamProcessor(
         IServiceProvider services,
@@ -43,7 +43,7 @@ public sealed class ReplayStreamProcessor : WorkerBase
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var liveStreams = Services.GetRequiredService<ILiveAudioStreams>();
-        var demuxerLog = Services.LogFor<LiveStreamDemuxer>();
+        var demuxerLog = Services.LogFor<AudioStreamDemuxer>();
 
         try {
             Log.LogInformation("-> LiveStreams.GetReplayStream({ChatId}, {StartAt}, {RewindOffset}, speed={Speed})",
@@ -53,7 +53,7 @@ public sealed class ReplayStreamProcessor : WorkerBase
                 .ConfigureAwait(false);
             Log.LogInformation("<- LiveStreams.GetReplayStream({ChatId})", ChatId);
 
-            var demuxer = new LiveStreamDemuxer(stream, demuxerLog, cancellationToken.CreateLinkedTokenSource());
+            var demuxer = new AudioStreamDemuxer(stream, demuxerLog, cancellationToken.CreateLinkedTokenSource());
             await using var _ = demuxer.ConfigureAwait(false);
             demuxer.StreamStarted += (info, playsAt, frames) => StreamStarted?.Invoke(info, playsAt, frames);
 

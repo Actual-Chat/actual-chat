@@ -41,7 +41,7 @@ public class LiveAudioBackendStreamTest(AppHostFixture fixture, ITestOutputHelpe
         initialStreams.Count.Should().Be(0, "no streams should exist initially");
 
         // Register a stream
-        var testStreamInfo = new LiveStreamInfo {
+        var testStreamInfo = new LiveAudioStreamInfo {
             ChatId = chatId,
             AuthorId = AuthorId.New(chatId, 1),
             StreamId = StreamId.New(services.MeshWatcher().ThisNode.Ref).Value,
@@ -92,7 +92,7 @@ public class LiveAudioBackendStreamTest(AppHostFixture fixture, ITestOutputHelpe
         computed.Value.Count.Should().Be(0, "no streams initially");
 
         // Register a stream
-        var testStreamInfo = new LiveStreamInfo {
+        var testStreamInfo = new LiveAudioStreamInfo {
             ChatId = chatId,
             AuthorId = AuthorId.New(chatId, 1),
             StreamId = StreamId.New(services.MeshWatcher().ThisNode.Ref).Value,
@@ -139,7 +139,7 @@ public class LiveAudioBackendStreamTest(AppHostFixture fixture, ITestOutputHelpe
         var liveBackend = services.GetRequiredService<ILiveAudioBackend>();
 
         // Register a stream
-        var testStreamInfo = new LiveStreamInfo {
+        var testStreamInfo = new LiveAudioStreamInfo {
             ChatId = chatId,
             AuthorId = AuthorId.New(chatId, 1),
             StreamId = StreamId.New(services.MeshWatcher().ThisNode.Ref).Value,
@@ -184,7 +184,7 @@ public class LiveAudioBackendStreamTest(AppHostFixture fixture, ITestOutputHelpe
         var liveBackend = services.GetRequiredService<ILiveAudioBackend>();
 
         // Register a stream
-        var streamInfo = new LiveStreamInfo {
+        var streamInfo = new LiveAudioStreamInfo {
             ChatId = chatId,
             AuthorId = AuthorId.New(chatId, 1),
             StreamId = StreamId.New(services.MeshWatcher().ThisNode.Ref).Value,

@@ -149,7 +149,7 @@
                 ParticipantCount = participantCount,
             };
 
-        var player = await ChatAudioUI.GetReplayer(chatId, cancellationToken).ConfigureAwait(false);
+        var player = await ChatAudioUI.GetReplayPlayer(chatId, cancellationToken).ConfigureAwait(false);
         if (player is null) {
             // This happens when player is being disposed, which means this method
             // will soon recompute anyway.
@@ -255,7 +255,7 @@
         public Moment? PlayingAt { get; init; }
         public bool IsPaused { get; init; }
         public double Speed { get; init; } = 1.0;
-        public ChatReplayer? Player { get; init; }
+        public ChatReplayPlayer? Player { get; init; }
         public string ChatTitle { get; init; } = "";
         public required ChatId ChatId { get; init; }
         public bool ShowChatTitle { get; init; }

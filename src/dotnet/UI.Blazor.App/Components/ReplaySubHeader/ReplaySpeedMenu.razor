@@ -43,7 +43,7 @@
     }
 
     private async Task<Moment> GetCurrentPlayingAt(ReplayState replayState) {
-        var player = ChatAudioUI.GetReplayerNonComputed(replayState.ChatId);
+        var player = ChatAudioUI.GetReplayPlayerNonComputed(replayState.ChatId);
         if (player is null)
             return replayState.StartAt;
 

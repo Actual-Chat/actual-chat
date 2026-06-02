@@ -5,4 +5,4 @@ namespace ActualChat.Live;
 /// All in-flight sub-streams should be flushed and re-started.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
-public sealed partial class LiveStreamReset : LiveStreamItem;
+public sealed partial class MuxedAudioStreamReset : MuxedStreamItem;

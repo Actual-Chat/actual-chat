@@ -1,4 +1,3 @@
-using ActualChat.Audio;
 using ActualChat.Live;
 using ActualLab.Rpc;
 
@@ -8,19 +7,15 @@ namespace ActualChat.Streaming.Services;
 /// Watches for active streams via ILiveAudioBackend computed List and multiplexes audio into a single output channel.
 /// Per-author merge: when two streams overlap for the same author (e.g. reconnection), keeps the fresher stream.
 /// </summary>
-public sealed class LiveStreamMuxer : WorkerBase
+public sealed class ListeningStreamMuxer : WorkerBase
 {
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(1);
-    private static readonly TimeSpan StaleAudioTrimWindow = TimeSpan.FromSeconds(3);
-    private static readonly TimeSpan EvictionDelay = StaleAudioTrimWindow + TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan EvictionDelay = Constants.Audio.MaxRealtimeStreamDrift + TimeSpan.FromSeconds(1);
 
-    private readonly Channel<LiveStreamItem> _output;
-    private volatile LiveStreamSettings _settings;
+    private readonly Channel<MuxedStreamItem> _output;
     private readonly ConcurrentDictionary<string, StreamEntry> _streamById = new();
     private readonly ConcurrentDictionary<AuthorId, StreamEntry> _streamByAuthor = new();
     private int _nextStreamIndex;
-
-    public LiveStreamSettings Settings => _settings;
 
     private IServiceProvider Services { get; }
     private ChatId ChatId { get; }
@@ -28,24 +23,17 @@ public sealed class LiveStreamMuxer : WorkerBase
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private MomentClock SystemClock => Clocks.SystemClock;
-    private ILogger Log => field ??= Services.LogFor<LiveStreamMuxer>();
+    private ILogger Log => field ??= Services.LogFor<ListeningStreamMuxer>();
 
-    public ChannelReader<LiveStreamItem> Output => _output.Reader;
+    public ChannelReader<MuxedStreamItem> Output => _output.Reader;
 
-    public LiveStreamMuxer(
-        IServiceProvider services,
-        ChatId chatId,
-        LiveStreamSettings settings)
+    public ListeningStreamMuxer(IServiceProvider services, ChatId chatId)
     {
         Services = services;
         ChatId = chatId;
-        _settings = settings;
-        _output = ChannelExt.Create<LiveStreamItem>(ChannelExt.UnboundedFanInOptions);
+        _output = ChannelExt.Create<MuxedStreamItem>(ChannelExt.UnboundedFanInOptions);
         _ = Run(); // Start immediately
     }
-
-    public void UpdateConfig(LiveStreamSettings settings)
-        => Interlocked.Exchange(ref _settings, settings);
 
     protected override Task OnStop()
     {
@@ -134,8 +122,8 @@ public sealed class LiveStreamMuxer : WorkerBase
             // bursts and late joins from streaming long-past speech just so the
             // client can drop it. Fine A/V alignment still belongs to the client
             // audio buffer; this only caps how much old audio we send.
-            var lag = SystemClock.Now - streamInfo.BeginsAt;
-            var skipTo = (lag - StaleAudioTrimWindow).Positive();
+            var skipTo = SystemClock.Now - streamInfo.BeginsAt;
+            skipTo = (skipTo - Constants.Audio.MaxRealtimeStreamDrift).Positive();
             var rpcStream = await LiveAudioStreams
                 .GetStream(Session.Default, streamId, skipTo, streamStopToken)
                 .ConfigureAwait(false);
@@ -144,16 +132,16 @@ public sealed class LiveStreamMuxer : WorkerBase
                 return;
             }
 
-            var audioStream = rpcStream.SuppressException<AudioFrame, RpcReconnectFailedException>(streamStopToken);
+            var audioStream = rpcStream.SuppressExceptions(e => e is RpcReconnectFailedException, streamStopToken);
             await foreach (var frame in audioStream.ConfigureAwait(false)) {
                 if (frameCount == 0) {
-                    var startItem = new LiveStreamStart() {
+                    var startItem = new MuxedAudioStreamStart() {
                         StreamIndex = streamIndex,
                         StreamInfo = streamInfo,
                     };
                     await _output.Writer.WriteAsync(startItem, streamStopToken).ConfigureAwait(false);
                 }
-                var audioFrame = new LiveAudioFrame {
+                var audioFrame = new MuxedAudioFrame {
                     StreamIndex = streamIndex,
                     Data = frame.Data,
                     Offset = frame.Offset,
@@ -199,7 +187,7 @@ public sealed class LiveStreamMuxer : WorkerBase
                 return;
 
             try {
-                var endItem = new LiveStreamEnd { StreamIndex = streamIndex };
+                var endItem = new MuxedAudioStreamEnd { StreamIndex = streamIndex };
                 await _output.Writer.WriteAsync(endItem, cancellationToken).ConfigureAwait(false);
             }
             catch { /* Ignore */ }
@@ -238,7 +226,7 @@ public sealed class LiveStreamMuxer : WorkerBase
 
     private sealed record StreamEntry(
         int Index,
-        LiveStreamInfo StreamInfo,
+        LiveAudioStreamInfo StreamInfo,
         CancellationTokenSource StopTokenSource)
     {
         public string StreamId => StreamInfo.StreamId;

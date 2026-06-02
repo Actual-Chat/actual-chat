@@ -17,16 +17,16 @@ public partial class ChatAudioUI
     // Compute methods
 
     [ComputeMethod]
-    public virtual Task<ChatListener?> GetListener(ChatId chatId, CancellationToken cancellationToken)
+    public virtual Task<ChatListeningPlayer?> GetListeningPlayer(ChatId chatId, CancellationToken cancellationToken)
     {
-        var player = GetListenerNonComputed(chatId);
+        var player = GetListeningPlayerNonComputed(chatId);
         return Task.FromResult(player);
     }
 
     [ComputeMethod]
-    public virtual Task<ChatReplayer?> GetReplayer(ChatId chatId, CancellationToken cancellationToken)
+    public virtual Task<ChatReplayPlayer?> GetReplayPlayer(ChatId chatId, CancellationToken cancellationToken)
     {
-        var player = GetReplayerNonComputed(chatId);
+        var player = GetReplayPlayerNonComputed(chatId);
         return Task.FromResult(player);
     }
 
@@ -41,16 +41,16 @@ public partial class ChatAudioUI
 
     // GetXxxNonComputed
 
-    public ChatListener? GetListenerNonComputed(ChatId chatId)
+    public ChatListeningPlayer? GetListeningPlayerNonComputed(ChatId chatId)
     {
         lock (Lock)
-            return _players.GetValueOrDefault((chatId, ChatPlayerKind.Listening)) as ChatListener;
+            return _players.GetValueOrDefault((chatId, ChatPlayerKind.Listening)) as ChatListeningPlayer;
     }
 
-    public ChatReplayer? GetReplayerNonComputed(ChatId chatId)
+    public ChatReplayPlayer? GetReplayPlayerNonComputed(ChatId chatId)
     {
         lock (Lock)
-            return _players.GetValueOrDefault((chatId, ChatPlayerKind.Replaying)) as ChatReplayer;
+            return _players.GetValueOrDefault((chatId, ChatPlayerKind.Replaying)) as ChatReplayPlayer;
     }
 
     // Actions
@@ -145,18 +145,18 @@ public partial class ChatAudioUI
             }
             DebugLog?.LogInformation("GetOrCreatePlayer: creating new {PlayerKind} player for {ChatId}", playerKind, chatId);
             newPlayer = playerKind switch {
-                ChatPlayerKind.Listening => new ChatListener(Hub, chatId),
-                ChatPlayerKind.Replaying => new ChatReplayer(Hub, chatId),
+                ChatPlayerKind.Listening => new ChatListeningPlayer(Hub, chatId),
+                ChatPlayerKind.Replaying => new ChatReplayPlayer(Hub, chatId),
                 _ => throw new ArgumentOutOfRangeException(nameof(playerKind), playerKind, null),
             };
             _players = _players.Add((chatId, playerKind), newPlayer);
         }
         if (playerKind is ChatPlayerKind.Replaying)
             using (Invalidation.Begin())
-                _ = GetReplayer(chatId, default);
+                _ = GetReplayPlayer(chatId, default);
         if (playerKind is ChatPlayerKind.Listening)
             using (Invalidation.Begin())
-                _ = GetListener(chatId, default);
+                _ = GetListeningPlayer(chatId, default);
         return newPlayer;
     }
 
@@ -182,31 +182,23 @@ public partial class ChatAudioUI
             .Select(kv => StopPlayer(kv.Key.ChatId, kv.Key.PlayerKind))
             .Collect(ApiConstants.Concurrency.Unlimited);
 
-    private Task<Task> StartListeningPlayer(ChatId chatId, CancellationToken cancellationToken)
+    private async Task<Task> StartListeningPlayer(ChatId chatId, CancellationToken cancellationToken)
     {
         var player = GetOrCreatePlayer(chatId, ChatPlayerKind.Listening);
         var whenPlaying = player.WhenPlaying;
-        return whenPlaying is { IsCompleted: false }
-            ? Task.FromResult(whenPlaying)
-            : player.Start(Clocks.SystemClock.Now, cancellationToken);
+        if (whenPlaying is { IsCompleted: false })
+            return whenPlaying;
+
+        var serverClock = Clocks.ServerClock;
+        await serverClock.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(true);
+        await Chats.Get(Hub.Session, chatId, cancellationToken).ConfigureAwait(true); // Just to cache it
+        return await player.Start(serverClock.Now, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<Task> StartListeningPlayers(IEnumerable<ChatId> chatIds, CancellationToken cancellationToken)
+    private Task<Task> StartReplayPlayer(ChatId chatId, Moment startAt, CancellationToken cancellationToken)
     {
-        var resultPlayingTasks = await chatIds
-            .Select(chatId => StartListeningPlayer(chatId, cancellationToken))
-            .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
-            .ConfigureAwait(false);
-        return Task.WhenAll(resultPlayingTasks);
-    }
-
-    private Task<Task> StartReplayPlayer(ChatId chatId, Moment startAt, TimeSpan rewindOffset, CancellationToken cancellationToken)
-    {
-        DebugLog?.LogInformation("StartReplayPlayer: getting or creating player for {ChatId}", chatId);
         var player = GetOrCreatePlayer(chatId, ChatPlayerKind.Replaying);
-        DebugLog?.LogInformation("StartReplayPlayer: calling player.Start for {ChatId}", chatId);
-        var startTask = player.Start(startAt, cancellationToken);
-        return startTask;
+        return player.Start(startAt, cancellationToken);
     }
 
     private AudioFocusRestoreHandler? OnAudioFocusLost(bool mayRecover, bool canDuck)
@@ -228,7 +220,7 @@ public partial class ChatAudioUI
         var pausedAt = replayState.StartAt;
         lock (Lock) {
             var chatReplayer = _players.Values
-                .OfType<ChatReplayer>()
+                .OfType<ChatReplayPlayer>()
                 .FirstOrDefault(c => c.ChatId == replayState.ChatId);
             if (chatReplayer is null)
                 return null;

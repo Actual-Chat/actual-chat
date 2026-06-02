@@ -4,11 +4,11 @@ namespace ActualChat.Streaming.Services;
 
 /// <summary>
 /// Reads historical chat entries, downloads their audio from blob storage,
-/// and multiplexes them into a single <see cref="LiveStreamItem"/> output channel.
+/// and multiplexes them into a single <see cref="MuxedStreamItem"/> output channel.
 /// </summary>
 public sealed class ReplayStreamMuxer : WorkerBase
 {
-    private readonly Channel<LiveStreamItem> _output;
+    private readonly Channel<MuxedStreamItem> _output;
     private int _nextStreamIndex;
 
     private IServiceProvider Services { get; }
@@ -23,7 +23,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
     private MomentClock SystemClock => Clocks.SystemClock;
     private ILogger Log => field ??= Services.LogFor<ReplayStreamMuxer>();
 
-    public ChannelReader<LiveStreamItem> Output => _output.Reader;
+    public ChannelReader<MuxedStreamItem> Output => _output.Reader;
 
     public ReplayStreamMuxer(
         IServiceProvider services,
@@ -39,7 +39,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
         StartAt = startAt;
         RewindOffset = rewindOffset;
         Speed = Math.Clamp(speed, 1.0, 2.0);
-        _output = ChannelExt.Create<LiveStreamItem>(ChannelExt.UnboundedFanInOptions);
+        _output = ChannelExt.Create<MuxedStreamItem>(ChannelExt.UnboundedFanInOptions);
         _ = Run(); // Start immediately
     }
 
@@ -164,7 +164,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
                 .ConfigureAwait(false);
 
             // Emit stream start
-            var streamInfo = new LiveStreamInfo {
+            var streamInfo = new LiveAudioStreamInfo {
                 ChatId = ChatId,
                 AuthorId = entry.AuthorId,
                 StreamId = audio.StreamId.NullIfEmpty() ?? blobId,
@@ -173,7 +173,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
                 Format = audioSource.Format,
                 EntryId = entry.Id,
             };
-            var startItem = new LiveStreamStart {
+            var startItem = new MuxedAudioStreamStart {
                 StreamIndex = streamIndex,
                 StreamInfo = streamInfo,
                 PlaysAt = playsAt,
@@ -191,7 +191,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
                 if (skipInterval > 0 && rawFrameIndex % skipInterval == 0)
                     continue; // Skip this frame for speedup
 
-                var audioFrame = new LiveAudioFrame {
+                var audioFrame = new MuxedAudioFrame {
                     StreamIndex = streamIndex,
                     Data = frame.Data,
                     Offset = frame.Offset,
@@ -201,7 +201,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
             }
 
             // Emit stream end
-            var endItem = new LiveStreamEnd { StreamIndex = streamIndex };
+            var endItem = new MuxedAudioStreamEnd { StreamIndex = streamIndex };
             await _output.Writer.WriteAsync(endItem, cancellationToken).ConfigureAwait(false);
             Log.LogDebug("Entry {EntryId}: completed, {FrameCount} frames", entry.Id, frameCount);
         }
@@ -214,7 +214,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
 
             // Still emit end marker on error
             try {
-                var endItem = new LiveStreamEnd { StreamIndex = streamIndex };
+                var endItem = new MuxedAudioStreamEnd { StreamIndex = streamIndex };
                 await _output.Writer.WriteAsync(endItem, cancellationToken).ConfigureAwait(false);
             }
             catch {
