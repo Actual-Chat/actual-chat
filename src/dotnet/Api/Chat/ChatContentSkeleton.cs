@@ -1,11 +1,10 @@
 namespace ActualChat.Chat;
 
 // Skeleton response from IChats.GetContentPeriods: a newest-first batch of periods
-// plus a pagination cursor. NextPeriodKey is opaque; when non-null, the caller can
+// plus an opaque pagination cursor. When NextPeriodKey is non-null the caller can
 // continue with GetContentPeriods(beforePeriodKey: NextPeriodKey) to load older
-// periods. Currently the backend always returns the full history in one batch and
-// sets NextPeriodKey to null — the field is here so the contract supports lazy
-// paging in the future without a breaking change.
+// periods. Periods can be empty while NextPeriodKey is still set — older history
+// exists, just not within this page's window.
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
 public sealed partial record ChatContentSkeleton
 {
