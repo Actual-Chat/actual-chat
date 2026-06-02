@@ -12,15 +12,12 @@ describe('render backend selection', () => {
         expect(readRenderBackendOverride('https://local.test/')).toBeNull();
     });
 
-    it('uses override before browser plausibility', () => {
-        expect(pickRenderBackendKind('canvas', true)).toBe('canvas');
-        expect(pickRenderBackendKind('canvas', false)).toBe('canvas');
-        expect(pickRenderBackendKind('mstg', true)).toBe('mstg');
-        expect(pickRenderBackendKind('mstg', false)).toBe('mstg');
+    it('honors the override', () => {
+        expect(pickRenderBackendKind('canvas')).toBe('canvas');
+        expect(pickRenderBackendKind('mstg')).toBe('mstg');
     });
 
-    it('defaults to mstg only when plausible', () => {
-        expect(pickRenderBackendKind(null, true)).toBe('mstg');
-        expect(pickRenderBackendKind(null, false)).toBe('canvas');
+    it('defaults to the generator path when no override', () => {
+        expect(pickRenderBackendKind(null)).toBe('mstg');
     });
 });

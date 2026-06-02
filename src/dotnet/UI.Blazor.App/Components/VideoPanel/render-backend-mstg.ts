@@ -2,20 +2,10 @@ import { getLogs } from 'logging';
 import type { PresentableFrame, RenderBackend } from './render-backend';
 import { applyRotationLayout } from '../../Services/Video/services/tile-fit';
 import { MstgPlaybackWatchdog, type MstgPlaybackStallReport } from './mstg-playback-watchdog';
-import { isMstgRenderBackendPlausible } from './render-backend-selection';
 
 const { debugLog, infoLog, warnLog } = getLogs('VideoPlayer');
 
 export type OffThreadPlaybackStallReport = MstgPlaybackStallReport;
-
-// Off-thread support: only Firefox lacks MSTG/VTG. Every other browser we
-// target (Chromium, Safari) exposes a generator either in main (MSTG) or
-// inside a worker (VTG). The canvas backend is broken on Chromium/Safari, so
-// negative-gate on Firefox rather than positive-probe APIs that may be hidden
-// behind worker globals we can't reach from main.
-export function isOffThreadPlausible(): boolean {
-    return isMstgRenderBackendPlausible();
-}
 
 // Off-thread renderer: just an HTMLVideoElement adapter. The decoder worker
 // owns the generator + writable + selector + Fusion RPC pull (see
@@ -59,6 +49,13 @@ export class OffThreadRenderBackend implements RenderBackend {
     onPlaybackStalled: ((report: OffThreadPlaybackStallReport) => void) | null = null;
 
     constructor(private readonly videoEl: HTMLVideoElement) {
+        // Safari/iOS autoplay ritual. The markup already carries these
+        // attributes, but setting the properties is more reliable for a
+        // dynamically-assigned srcObject on iOS. Muting is free — the
+        // generator track is video-only (audio is a separate pipeline).
+        videoEl.muted = true;
+        videoEl.playsInline = true;
+        videoEl.autoplay = true;
         this.watchdog = new MstgPlaybackWatchdog({
             videoEl,
             tryPlay: (reason) => this.tryPlay(reason),
