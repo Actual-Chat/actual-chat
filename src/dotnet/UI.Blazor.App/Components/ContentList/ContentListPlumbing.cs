@@ -331,7 +331,9 @@ internal static class ContentListPlumbing
         };
         var isSame = result.IsSimilarTo(renderedData);
 
-        // Quick window/query diagnostics; warning level guarantees DevLog visibility.
+#if false
+        // Quick window/query diagnostics. Disabled in source so it doesn't spam
+        // DevLog; flip the #if to re-enable when debugging windowing/crop math.
         var log = hub.LogFor(typeof(ContentListPlumbing));
         var winFirst = $"{blocks[first].PeriodKey}:{blocks[first].PageIndex}";
         var winLast = $"{blocks[last].PeriodKey}:{blocks[last].PageIndex}";
@@ -356,6 +358,7 @@ internal static class ContentListPlumbing
                 first, last, blocks.Count, winFirst, winLast,
                 result.HasVeryFirstItem, result.HasVeryLastItem,
                 listItems.Count, itemFirst, itemLast, flat.Count, rowsBefore, flat.Count - 1 - rowsAfter, cropStart, cropEnd);
+#endif
 
         return isSame ? renderedData : result;
     }
