@@ -14,9 +14,10 @@ export interface EdgeBounceHost {
     setTransform(y: number): void;  // translateY on the content layer
 }
 
-const ResistanceGain = 0.55;        // c: ~55% follow on the first pixels, tapering toward the viewport
+const ResistanceGain = 0.55;        // ~55% follow on the first pixels, tapering toward the viewport
 const MagnetEase = 0.28;            // fraction of the remaining gap closed per frame once settled
 const DoneEps = 0.5;                // px: gap below this is treated as closed
+const SnapDistance = 20_000;        // gaps larger than this snap instantly (initial positioning, not a bounce)
 
 export class EdgeBounce {
     private raf: number | null = null;
@@ -47,7 +48,9 @@ export class EdgeBounce {
                 this.host.setTransform(0);
                 const st = this.host.getScrollTop();
                 const boundary = this.host.getBoundary(over);
-                const next = st + (boundary - st) * MagnetEase;
+                const dist = boundary - st;
+                // Huge gap = initial positioning (chain parked mid-wrapper), not an over-scroll: snap.
+                const next = Math.abs(dist) > SnapDistance ? boundary : st + dist * MagnetEase;
                 this.host.setScrollTop(Math.abs(boundary - next) < DoneEps ? boundary : next);
             }
             this.raf = requestAnimationFrame(step);

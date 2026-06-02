@@ -31,6 +31,10 @@ const ScrollRestoreGuard = DeviceInfo.isMobile ? 250 : 100;
 const SkeletonDetectionBoundary = 200;
 const MinViewPortSize = 400;
 const RequestDataTimeout = 800;
+// Initial-reveal watch: px tolerance for "preferred edge is flush", and the hard backstop after which
+// the wrapper is revealed regardless (e.g. an empty chat that never "places").
+const EdgePlacedEpsilon = 8;
+const RevealTimeout = 1500;
 // Fixed scroll size of an infinite (scrollbar-less) list — its wrapper height. Kept well under the
 // browser's max element height (Firefox ≈ 17.9M); at ~50px/item that is still ~200k items of scroll.
 // Must match InfiniteSize in VirtualList.razor.cs.
@@ -122,6 +126,7 @@ export class VirtualList {
 
     /** ref to div.virtual-list */
     private readonly createdAt: number;
+    private isContainerRevealed = false;
     private readonly ref: HTMLElement;
     private readonly containerRef: HTMLElement;
     private readonly renderStateRef: HTMLElement;
@@ -383,9 +388,65 @@ export class VirtualList {
 
         VirtualList._instances.add(this);
         this.skeletonWatchdogTimer = setInterval(() => this.checkSkeletonWatchdog(), SkeletonWatchdogInterval);
+        this.startRevealWatch();
         if (VirtualList.enableDebug)
             this.startDebug();
     };
+
+    // The wrapper is hidden by CSS (c-initially-hidden) until the chain is positioned at its target, so
+    // the user never sees the pre-positioned (top-aligned) frames. This is purely visual — it never reads
+    // or writes scroll/layout state, so it cannot affect positioning. Polls per animation frame (not per
+    // render) so it isn't gated on render cadence, with a hard timeout backstop.
+    private startRevealWatch(): void {
+        const check = () => {
+            if (this.isDisposed || this.isContainerRevealed)
+                return;
+            if (this.isContentPlaced() || Date.now() - this.createdAt > RevealTimeout)
+                this.revealContainer();
+            else
+                requestAnimationFrame(check);
+        };
+        requestAnimationFrame(check);
+    }
+
+    private revealContainer(): void {
+        if (this.isContainerRevealed)
+            return;
+        this.isContainerRevealed = true;
+        // Inline style beats the c-initially-hidden class, so later re-renders keeping the class stay visible.
+        this.wrapperRef.style.visibility = 'visible';
+    }
+
+    // True once the loaded chain sits at its intended target (deep-link key visible / preferred edge flush),
+    // i.e. the initial scroll has landed. Read-only DOM probe.
+    private isContentPlaced(): boolean {
+        const items = this.state.orderedItems;
+        const rs = this.state.renderState;
+        if (!items?.length) {
+            // Confirmed-empty chat (both ends loaded, nothing between): nothing to position, reveal so its
+            // placeholder shows. A still-loading chat has neither end known yet, so this stays hidden.
+            return rs.hasVeryFirstItem && rs.hasVeryLastItem;
+        }
+        if (this.hasUnmeasuredItems)
+            return false;
+        const vr = this.ref.getBoundingClientRect();
+        if (vr.height <= 0)
+            return false;
+        const scrollToKey = this.state.renderState.scrollToKey;
+        if (scrollToKey) {
+            const el = this.getItemRef(scrollToKey);
+            if (!el)
+                return false;
+            const r = el.getBoundingClientRect();
+            return r.height > 0 && r.bottom > vr.top && r.top < vr.bottom;
+        }
+        if (this.defaultEdge === VirtualListEdge.End) {
+            const ea = this.endAnchorRef.getBoundingClientRect();
+            return Math.abs(ea.bottom - vr.bottom) <= EdgePlacedEpsilon;
+        }
+        const first = this.getFirstItemRef();
+        return first != null && Math.abs(first.getBoundingClientRect().top - vr.top) <= EdgePlacedEpsilon;
+    }
 
     private startDebug(): void {
         this.debug ??= new VirtualListDebug(this as unknown as VirtualListDebugTarget);
@@ -1973,6 +2034,12 @@ export class VirtualList {
 
                 // debugLog?.log(`restoreScrollPosition: scroll set`, offset, totalSize, scrollTop, spacerSize, endSpacerSize);
 
+                // After a settled (non-interactive) infinite render, park at the preferred edge: the edge
+                // magnet pulls there when there's a gap (e.g. an empty/short chat whose initial
+                // scroll-to-edge ran before any items existed) and is a no-op once flush.
+                if (this.isInfinite && !isInteractivePositioning && !this.state.isScrolling)
+                    this.edgeBounce?.engage();
+
                 result.resolve(undefined);
             }
         };
@@ -2112,8 +2179,16 @@ export class VirtualList {
             .sort((a, b) => (a!.range?.start ?? 0) - (b!.range?.start ?? 0))
             .map(i => i!.key);
         if (!cornerstoneItem && visibleItemKeys.length > 0) {
-            for (const cornerstoneItemKey of visibleItemKeys) {
-                const index = orderedItems.findIndex(i => i.key === cornerstoneItemKey && i.range);
+            // Pick the viewport-CENTER visible item as the cornerstone (its range is kept fixed across the
+            // re-layout), not the topmost one. Anchoring the top lets a size change between it and the centre
+            // shift what the user is actually looking at. visibleItemKeys is sorted by range.start, so scan
+            // outward from the median.
+            const mid = Math.floor(visibleItemKeys.length / 2);
+            for (let d = 0; d < visibleItemKeys.length; d++) {
+                const idx = d % 2 === 0 ? mid + d / 2 : mid - (d + 1) / 2;
+                if (idx < 0 || idx >= visibleItemKeys.length)
+                    continue;
+                const index = orderedItems.findIndex(i => i.key === visibleItemKeys[idx] && i.range);
                 if (index !== -1) {
                     cornerstoneItemIndex = index;
                     cornerstoneItem = orderedItems[cornerstoneItemIndex];

@@ -352,6 +352,14 @@ public partial class ChatUI
             var hasFulfilledEnd = (endIdWithOffset != null && HasOffsetReached(dataQuery1.EndOffset, endIdWithOffset.Value.ActualOffset)) || !hasNextIdTile;
             var startEntryLid = startIdWithOffset?.Id ?? 0L;
             var endEntryLid = endIdWithOffset?.Id ?? long.MaxValue;
+            // Keep the loaded range covering the visible range even when the scroll-driven offsets would
+            // contract past it (they're derived from coordinate gaps ÷ average item size, which misfires
+            // next to a very large item) — dropping a visible item would drop the scroll anchor and jump.
+            var visibleLidRange = dataQuery1.VisibleLidRange;
+            if (!visibleLidRange.IsEmpty) {
+                startEntryLid = Math.Min(startEntryLid, visibleLidRange.Start);
+                endEntryLid = Math.Max(endEntryLid, visibleLidRange.End);
+            }
             idTiles1 = resultIdRanges
                 .SkipWhile(r => r.End <= startEntryLid)
                 .TakeWhile(r => r.Start <= endEntryLid)

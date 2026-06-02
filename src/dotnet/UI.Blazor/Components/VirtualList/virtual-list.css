@@ -79,6 +79,13 @@ body.narrow .list-view-layout:has(.audio-panel-header) .virtual-list > .c-wrappe
     display: none;
 }
 
+/* Hidden until JS confirms the chain is positioned at its target, then revealed with an inline
+   `visibility: visible` (inline beats this class). Prevents the first frames painting content at the
+   top before the initial scroll lands. visibility:hidden keeps layout so items still measure. */
+.virtual-list > .c-wrapper.c-initially-hidden {
+    visibility: hidden;
+}
+
 .virtual-list > .c-wrapper > ul.c-virtual-container > li {
     @apply flex flex-y;
     @apply min-h-6;
