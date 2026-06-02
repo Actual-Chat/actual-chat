@@ -13,7 +13,6 @@ export interface FeederAudioWorklet extends SharedSettingsWorker {
         length: number,
         sourceRecordedAtMs: number,
         sourceOffsetMs: number,
-        presentationLagMs: number,
         noWait?: RpcNoWait): Promise<void>;
     pause(noWait?: RpcNoWait): Promise<void>;
     resume(preSkip: number): Promise<void>;

@@ -15,11 +15,9 @@ import { ObjectPool } from 'object-pool';
 import { getLogs } from 'logging';
 import { BufferHandler } from './opus-decoder-worker-contract';
 import Denque from 'denque';
-import { ServerClock } from 'clocks';
 
 const { logScope, debugLog, warnLog, errorLog } = getLogs('OpusDecoder');
 const enableFrequentDebugLog = false;
-const DEFAULT_FEEDER_TARGET_DELAY_MS = 40;
 
 interface EncodedFrame {
     data: Uint8Array;
@@ -28,7 +26,6 @@ interface EncodedFrame {
 
 interface DecodeTiming {
     sourceOffsetMs: number;
-    presentationLagMs: number;
 }
 
 class EncodedFrameBuffer {
@@ -188,7 +185,6 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
     private readonly systemDecodeTimings = new Denque<DecodeTiming>();
     private mustAbort = false;
     private frameRequested = false;
-    private feederTargetDelayMs = DEFAULT_FEEDER_TARGET_DELAY_MS;
     private chunkTimeOffset = 0;
     private sourceRecordedAtMs = 0;
 
@@ -224,7 +220,6 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
     public init(sourceRecordedAtMs = this.sourceRecordedAtMs): void {
         this.mustAbort = false;
         this.frameRequested = false;
-        this.feederTargetDelayMs = DEFAULT_FEEDER_TARGET_DELAY_MS;
         this.chunkTimeOffset = 0;
         this.sourceRecordedAtMs = sourceRecordedAtMs;
         this.encodedFrames.clear();
@@ -289,11 +284,10 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
         this.flushDecodeDemand();
     }
 
-    public async requestFrame(feederTargetDelayMs: number, _noWait?: RpcNoWait): Promise<void> {
+    public async requestFrame(_noWait?: RpcNoWait): Promise<void> {
         if (this.mustAbort)
             return;
 
-        this.feederTargetDelayMs = feederTargetDelayMs;
         this.frameRequested = true;
         this.flushDecodeDemand();
     }
@@ -352,7 +346,6 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
                     samples.length,
                     this.sourceRecordedAtMs,
                     timing.sourceOffsetMs,
-                    timing.presentationLagMs,
                     rpcNoWait);
             }
         }
@@ -381,7 +374,6 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
             samples.length,
             this.sourceRecordedAtMs,
             timing.sourceOffsetMs,
-            timing.presentationLagMs,
             rpcNoWait);
     }
 
@@ -400,7 +392,6 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
     private createDecodeTiming(sourceOffsetMs: number): DecodeTiming {
         return {
             sourceOffsetMs,
-            presentationLagMs: ServerClock.now() + this.feederTargetDelayMs - (this.sourceRecordedAtMs + sourceOffsetMs),
         };
     }
 }

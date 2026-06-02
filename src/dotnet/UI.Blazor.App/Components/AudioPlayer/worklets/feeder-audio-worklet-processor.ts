@@ -26,7 +26,6 @@ interface DecodedChunk {
     samples: Float32Array;
     sourceRecordedAtMs: number;
     sourceOffsetMs: number;
-    presentationLagMs: number;
 }
 
 /** Part of the feeder that lives in [AudioWorkletGlobalScope]{@link https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletGlobalScope} */
@@ -36,6 +35,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
 
     private readonly chunks = new Denque<DecodedChunk | 'end'>();
     private readonly buffer: AudioRingBuffer;
+
     /**
      * 128 samples at 48 kHz ~= 2.67 ms
      * 240_000 samples at 48 kHz ~= 5_000 ms
@@ -55,8 +55,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     private lastStarvingEventAt = 0;
     private frameRequestPending = false;
     private presentationLagMs: number | null = null;
-    private bufferHeadSourceOffsetMs: number | null = null;
-    private bufferSourceRecordedAtMs: number | null = null;
+    private recordedStartMs: number | null = null;
+    private nextExpectedOffsetMs: number | null = null;
     private _targetBufferedDuration?: number;
 
     constructor(options: AudioWorkletNodeOptions) {
@@ -95,7 +95,6 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         length: number,
         sourceRecordedAtMs: number,
         sourceOffsetMs: number,
-        presentationLagMs: number,
         noWait?: RpcNoWait): Promise<void> {
         // debugLog?.log(`#${this.id} -> frame()`);
         this.frameRequestPending = false;
@@ -109,7 +108,6 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             samples: new Float32Array(buffer, offset, length),
             sourceRecordedAtMs,
             sourceOffsetMs,
-            presentationLagMs,
         });
         this.tryBeginPlaying();
         this.requestFrameIfLow();
@@ -130,6 +128,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     public resume(preSkip: number): Promise<void> {
         this.playingAt = 0;
         this.skipSamples = preSkip;
+        this.recordedStartMs = null;
+        this.nextExpectedOffsetMs = null;
 
         if (this.playbackState === 'playing')
             return ResolvedPromise.Void;
@@ -158,6 +158,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             this.chunks.clear();
             this.playingAt = 0;
             this.buffer.reset();
+            this.recordedStartMs = null;
+            this.nextExpectedOffsetMs = null;
         }
         this.chunks.push('end');
     }
@@ -218,8 +220,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
                 this.playbackState = 'ended';
                 this.playingAt = 0;
                 this.buffer.reset();
-                this.bufferHeadSourceOffsetMs = null;
-                this.bufferSourceRecordedAtMs = null;
+                this.recordedStartMs = null;
+                this.nextExpectedOffsetMs = null;
                 while (chunk) {
                     chunk = this.chunks.shift();
                     if (chunk !== 'end' && chunk)
@@ -231,17 +233,15 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
                 // Keep worklet up and running even in ended state for reuse
                 return true;
             }
-            if (this.buffer.samplesAvailable === 0) {
-                this.bufferHeadSourceOffsetMs = chunk.sourceOffsetMs;
-                this.bufferSourceRecordedAtMs = chunk.sourceRecordedAtMs;
-            }
+            this.trackChunkOffset(chunk);
             this.buffer.push([chunk.samples]);
             // @ts-expect-error TODO(AK): fix error
             void this.decoder.releaseBuffer(chunk.samples.buffer, rpcNoWait);
             if (this.skipSamples) {
                 const skipSamples = Math.min(this.skipSamples, this.buffer.samplesAvailable);
                 this.buffer.pull([new Float32Array(skipSamples)]);
-                this.advanceBufferHead(skipSamples);
+                // Discarded preSkip samples still advance the source position.
+                this.playingAt += skipSamples * AUDIO.play.sampleDuration;
                 this.skipSamples -= skipSamples;
             }
         }
@@ -252,22 +252,27 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     }
 
     private pullBufferedSamples(channel: Float32Array): void {
-        const outputSourceOffsetMs = this.bufferHeadSourceOffsetMs;
-        const sourceRecordedAtMs = this.bufferSourceRecordedAtMs;
         this.buffer.pull([channel]);
-        if (outputSourceOffsetMs !== null && sourceRecordedAtMs !== null)
-            this.presentationLagMs = ServerClock.now() - (sourceRecordedAtMs + outputSourceOffsetMs);
-        this.advanceBufferHead(channel.length);
         this.playingAt += channel.length * AUDIO.play.sampleDuration;
+        this.updatePresentationLag();
     }
 
-    private advanceBufferHead(sampleCount: number): void {
-        if (this.bufferHeadSourceOffsetMs !== null)
-            this.bufferHeadSourceOffsetMs += sampleCount * AUDIO.play.sampleDuration * 1000;
-        if (this.buffer.samplesAvailable === 0) {
-            this.bufferHeadSourceOffsetMs = null;
-            this.bufferSourceRecordedAtMs = null;
-        }
+    // playingAt tracks the played source position. Hard-skip / speed-up drop
+    // encoded frames upstream, so the next chunk's sourceOffsetMs jumps forward;
+    // we add that gap to playingAt so it keeps tracking the true source position
+    // (preSkip-discarded samples are bumped separately, at the pull site).
+    private trackChunkOffset(chunk: DecodedChunk): void {
+        if (this.recordedStartMs === null)
+            this.recordedStartMs = chunk.sourceRecordedAtMs + chunk.sourceOffsetMs - this.playingAt * 1000;
+        else if (this.nextExpectedOffsetMs !== null && chunk.sourceOffsetMs > this.nextExpectedOffsetMs + 1)
+            this.playingAt += (chunk.sourceOffsetMs - this.nextExpectedOffsetMs) / 1000;
+        this.nextExpectedOffsetMs = chunk.sourceOffsetMs + chunk.samples.length * AUDIO.play.sampleDuration * 1000;
+    }
+
+    private updatePresentationLag(): void {
+        if (this.recordedStartMs === null)
+            return;
+        this.presentationLagMs = ServerClock.now() - (this.recordedStartMs + this.playingAt * 1000);
     }
 
     private stateHasChanged() {
@@ -314,16 +319,12 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             return;
 
         this.frameRequestPending = true;
-        void this.decoder.requestFrame(this.targetBufferedDurationMs, rpcNoWait);
+        void this.decoder.requestFrame(rpcNoWait);
     }
 
     private get targetBufferedDuration(): number {
         return this._targetBufferedDuration ??=
             (AUDIO.play.decodedBufferSizeMs / (1000 / AUDIO.frameRate)) / AUDIO.frameRate;
-    }
-
-    private get targetBufferedDurationMs(): number {
-        return this.targetBufferedDuration * 1000;
     }
 }
 
