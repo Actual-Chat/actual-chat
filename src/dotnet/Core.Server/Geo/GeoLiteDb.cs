@@ -15,39 +15,50 @@ public static class GeoLiteDb
 
     static GeoLiteDb()
     {
-        WhenCountryDbReady = Task.Run(UnpackCountry);
-        WhenCityDbReady = Task.Run(UnpackCity);
+        WhenCountryDbReady = Task.Run(async () => {
+            var reader = await Unpack("GeoLite2-Country").ConfigureAwait(false);
+            Interlocked.Exchange(ref _countryDbReader, reader);
+            return reader;
+        });
+        WhenCityDbReady = Task.Run(async () => {
+            var reader = await Unpack("GeoLite2-City").ConfigureAwait(false);
+            Interlocked.Exchange(ref _cityDbReader, reader);
+            return reader;
+        });
     }
 
     // Private methods
 
-    private static async Task<DatabaseReader> UnpackCountry()
+    private static async Task<DatabaseReader> Unpack(string name)
     {
         var assemblyDir = Path.GetDirectoryName(typeof(GeoLiteDb).Assembly.Location)!;
-        var zipPath = Path.Combine(assemblyDir, "data", "GeoLite2-Country.zip");
-        var extractDir = Path.Combine(assemblyDir, "data", "GeoLite2-Country");
-        if (!Directory.Exists(extractDir))
+        var zipPath = Path.Combine(assemblyDir, "data", $"{name}.zip");
+        var extractDir = Path.Combine(assemblyDir, "data", name);
+        var stamp = GetArchiveStamp(zipPath);
+        if (!IsExtracted(extractDir, stamp)) {
+            if (Directory.Exists(extractDir))
+                Directory.Delete(extractDir, true);
             await ZipFile.ExtractToDirectoryAsync(zipPath, extractDir).ConfigureAwait(false);
+            await File.WriteAllTextAsync(GetStampPath(extractDir), stamp).ConfigureAwait(false);
+        }
 
         var dbPath = Directory.GetFiles(extractDir, "*.mmdb", SearchOption.AllDirectories).FirstOrDefault()
-            ?? throw new FileNotFoundException("GeoLite2-Country.mmdb not found in the extracted archive.");
-        var reader = new DatabaseReader(dbPath);
-        Interlocked.Exchange(ref _countryDbReader, reader);
-        return reader;
+            ?? throw new FileNotFoundException($"{name}.mmdb not found in the extracted archive.");
+        return new DatabaseReader(dbPath);
     }
 
-    private static async Task<DatabaseReader> UnpackCity()
+    private static bool IsExtracted(string extractDir, string stamp)
     {
-        var assemblyDir = Path.GetDirectoryName(typeof(GeoLiteDb).Assembly.Location)!;
-        var zipPath = Path.Combine(assemblyDir, "data", "GeoLite2-City.zip");
-        var extractDir = Path.Combine(assemblyDir, "data", "GeoLite2-City");
-        if (!Directory.Exists(extractDir))
-            await ZipFile.ExtractToDirectoryAsync(zipPath, extractDir).ConfigureAwait(false);
+        var stampPath = GetStampPath(extractDir);
+        return File.Exists(stampPath) && File.ReadAllText(stampPath) == stamp;
+    }
 
-        var dbPath = Directory.GetFiles(extractDir, "*.mmdb", SearchOption.AllDirectories).FirstOrDefault()
-            ?? throw new FileNotFoundException("GeoLite2-City.mmdb not found in the extracted archive.");
-        var reader = new DatabaseReader(dbPath);
-        Interlocked.Exchange(ref _cityDbReader, reader);
-        return reader;
+    private static string GetStampPath(string extractDir)
+        => Path.Combine(extractDir, ".archive-stamp");
+
+    private static string GetArchiveStamp(string zipPath)
+    {
+        var info = new FileInfo(zipPath);
+        return string.Create(CultureInfo.InvariantCulture, $"{info.Length}:{info.LastWriteTimeUtc.Ticks}");
     }
 }
