@@ -312,8 +312,12 @@ internal sealed class AndroidAudioPlaybackEngine(
         if (anchor == default)
             return;
 
+        // Subtract source-time dropped by catch-up skip/speed-up: the playhead
+        // counts only PLAYED samples, so without this the lag over-reports by the
+        // skipped duration during catch-up (parity with the Web playingAt fix).
         var lag = Clocks.ServerClock.Now - anchor
             - TimeSpan.FromSeconds(playheadOffsetSeconds)
+            - _frames.DroppedDuration
             + Constants.Audio.AudioEnginePlaybackLatency;
         try {
             playerBackend.OnPresentationLag(lag);

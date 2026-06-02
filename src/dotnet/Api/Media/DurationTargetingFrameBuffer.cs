@@ -22,6 +22,7 @@ public sealed class DurationTargetingFrameBuffer<TFrame>(
     private TimeSpan _speedUpUntil;
     private int _speedUpDropEveryNFrames;
     private int _speedUpFrameCounter;
+    private TimeSpan _droppedDuration;
     private bool _isCompleted;
 
     public int Count {
@@ -49,6 +50,19 @@ public sealed class DurationTargetingFrameBuffer<TFrame>(
         get {
             lock (_lock)
                 return GetDurationUnsafe();
+        }
+    }
+
+    // Cumulative source-duration removed by skip/speed-up (frames dropped, never
+    // played). Engines add this to the played-samples playhead so presentation
+    // lag reflects the true source position of the playing sample (catch-up drops
+    // advance source time without playing it). Note: drops happen at the read/feed
+    // point, ahead of the playhead by the decode+output buffer, so this slightly
+    // over-counts during an in-flight catch-up burst (bounded by buffer depth).
+    public TimeSpan DroppedDuration {
+        get {
+            lock (_lock)
+                return _droppedDuration;
         }
     }
 
@@ -142,6 +156,7 @@ public sealed class DurationTargetingFrameBuffer<TFrame>(
                 if (!CanReleaseUnsafe())
                     return false;
                 if (ShouldDropForSpeedUpUnsafe(frame)) {
+                    _droppedDuration += getDuration(frame);
                     DequeueUnsafe();
                     continue;
                 }
@@ -190,8 +205,10 @@ public sealed class DurationTargetingFrameBuffer<TFrame>(
 
     private void DropSkippedFramesUnsafe()
     {
-        while (PeekUnsafe() is { } frame && getOffset(frame) < _skipUntil)
+        while (PeekUnsafe() is { } frame && getOffset(frame) < _skipUntil) {
+            _droppedDuration += getDuration(frame);
             DequeueUnsafe();
+        }
     }
 
     private bool ShouldDropForSpeedUpUnsafe(TFrame frame)

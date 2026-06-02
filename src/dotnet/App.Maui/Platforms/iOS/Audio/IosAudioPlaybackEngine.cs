@@ -129,7 +129,11 @@ public class IosAudioPlaybackEngine(
         if (anchor == default)
             return;
 
-        var lag = hub.Clocks.ServerClock.Now - anchor - playheadOffset + Constants.Audio.AudioEnginePlaybackLatency;
+        // Subtract source-time dropped by catch-up skip/speed-up: the playhead
+        // counts only PLAYED samples, so without this the lag over-reports by the
+        // skipped duration during catch-up (parity with the Web playingAt fix).
+        var lag = hub.Clocks.ServerClock.Now - anchor - playheadOffset - _frames.DroppedDuration
+            + Constants.Audio.AudioEnginePlaybackLatency;
         try {
             backend.OnPresentationLag(lag);
         }
