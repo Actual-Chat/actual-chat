@@ -480,7 +480,7 @@ export class AudioPlayer implements Resettable {
                         this.lastLagReportTime = sysNow;
                         // outMs (device output latency) is for diagnostics only —
                         // the sync value (emaMs) is unchanged.
-                        void this.blazorRef.invokeMethodAsync('OnPresentationLag', emaMs, outMs)
+                        void this.blazorRef.invokeMethodAsync('OnPresentationLag', emaMs, outMs, this.targetBufferSizeMs)
                             .catch(() => { /* ignore */ });
                     }
                 }
