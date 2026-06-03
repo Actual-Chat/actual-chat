@@ -38,9 +38,21 @@ export interface PresentPacerOptions {
     // disengages after the overflow has cleared this long — damps flapping at the
     // CATCHUP_BUDGET_MS threshold. 0 reproduces the instantaneous legacy behavior.
     holdMs?: number;
+    // Audio-master gate: current audio capture-point in this stream's capture-time
+    // domain (same domain as DecodedFrame.capturedAt.timeMs), or null when there's
+    // no paired audio. When set, video may sprint to catch up only while it's
+    // behind this point; it never sprints past audio.
+    getAudioCaptureOffsetMs?: () => number | null;
 }
 
 const DEFAULT_HOLD_MS = 500;
+
+// Stop the MAX_FPS catch-up once video is within this margin of the audio
+// capture-point, so video converges toward audio and stays slightly behind it
+// (audio leads — the safe side) rather than sprinting past. Audio is the
+// A/V-sync master: dropped video frames are imperceptible, audio rate changes
+// are not.
+const AUDIO_MASTER_LEAD_MS = 50;
 
 // Per frame: extra = max(0, bufferSpan - targetSpan).
 // Skip (extra > CATCHUP_BUDGET_MS && now - lastWriteAt < MIN_DURATION_MS):
@@ -51,6 +63,7 @@ const DEFAULT_HOLD_MS = 500;
 //   anchor drift across the run.
 export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFrame, void> {
     const { createSink, getBufferSpanMs, targetSpanMs } = opts;
+    const getAudioCaptureOffsetMs = opts.getAudioCaptureOffsetMs;
     const trackSkipRatio = opts.trackSkipRatio ?? true;
     const holdMs = opts.holdMs ?? DEFAULT_HOLD_MS;
     const nowFn = opts.nowFn ?? ((): number => performance.now());
@@ -106,10 +119,15 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
                         decoded.stats.presentSkipRatio = presentSkipRatio.value;
                     }
 
+                    // Audio-master gate: only sprint while video is behind audio.
+                    const audioOffsetMs = getAudioCaptureOffsetMs?.() ?? null;
+                    const mayCatchUp = audioOffsetMs === null
+                        || decoded.capturedAt.timeMs < audioOffsetMs - AUDIO_MASTER_LEAD_MS;
+
                     let durationMs: number;
                     if (lastWriteAt === null || prevCapturedAt === null) {
                         durationMs = 0;
-                    } else if (extraMs > 0) {
+                    } else if (extraMs > 0 && mayCatchUp) {
                         durationMs = MIN_DURATION_MS;
                     } else {
                         const natural = decoded.capturedAt.timeMs - prevCapturedAt;

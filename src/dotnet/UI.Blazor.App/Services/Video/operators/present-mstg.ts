@@ -12,6 +12,7 @@ export interface MstgPresentOptions {
     nowFn?: () => number;
     delayFn?: (ms: number) => Promise<void>;
     holdMs?: number;
+    getAudioCaptureOffsetMs?: () => number | null;
 }
 
 export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame, void> {
@@ -21,6 +22,7 @@ export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame
         nowFn: opts.nowFn,
         delayFn: opts.delayFn,
         holdMs: opts.holdMs,
+        getAudioCaptureOffsetMs: opts.getAudioCaptureOffsetMs,
         createSink: (): PresentSink => {
             const writer = opts.getWriter();
             return {

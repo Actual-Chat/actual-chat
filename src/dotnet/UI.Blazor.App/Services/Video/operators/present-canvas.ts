@@ -17,6 +17,7 @@ export interface CanvasPresentOptions {
     nowFn?: () => number;
     delayFn?: (ms: number) => Promise<void>;
     holdMs?: number;
+    getAudioCaptureOffsetMs?: () => number | null;
 }
 
 export function canvasPresent(opts: CanvasPresentOptions): PipeOperator<DecodedFrame, void> {
@@ -26,6 +27,7 @@ export function canvasPresent(opts: CanvasPresentOptions): PipeOperator<DecodedF
         nowFn: opts.nowFn,
         delayFn: opts.delayFn,
         holdMs: opts.holdMs,
+        getAudioCaptureOffsetMs: opts.getAudioCaptureOffsetMs,
         createSink: (): PresentSink => {
             const canvasCtx = opts.getCanvasCtx();
             const convertToBitmap = opts.convertToBitmap;

@@ -151,4 +151,30 @@ describe('presentPacer', () => {
         // which is what the EMA would settle to once tracking is on).
         expect(stats.presentSkipRatio).toBe(initialSkipRatio);
     });
+
+    it('audio-master gate: a frame past the audio capture-point paces 1x, not MAX_FPS', async () => {
+        const stats = createEmptyPlayerStats();
+        // Two frames 1 s apart, with a steady 1 s of excess buffer (1333 - 333):
+        // catch-up regime, below the 4 s skip budget. Fixed now so the scheduled
+        // delay equals the chosen frame duration.
+        async function lastDelay(getAudioCaptureOffsetMs?: () => number | null): Promise<number> {
+            const delays: number[] = [];
+            const items = [0, 1000].map((c, i) => makeEnvelope(stats, i, c));
+            await count(pipe(staticSource(items), presentPacer({
+                createSink: () => new MockSink(),
+                getBufferSpanMs: (): number => 1333,
+                targetSpanMs: 333,
+                nowFn: (): number => 0,
+                delayFn: (ms: number): Promise<void> => { delays.push(ms); return Promise.resolve(); },
+                getAudioCaptureOffsetMs,
+            })));
+            return delays[delays.length - 1];
+        }
+
+        // No audio pairing: video sprints the backlog at MAX_FPS.
+        expect(await lastDelay()).toBeCloseTo(1000 / 120, 1);
+        // Audio at 500 ms: the second frame (capturedAt 1000) is past audio, so it
+        // paces at natural 1x (clamped to MAX_DURATION) instead of sprinting.
+        expect(await lastDelay(() => 500)).toBe(1000 / 10);
+    });
 });

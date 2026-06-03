@@ -116,6 +116,7 @@ export class Player {
         });
         let present: PipeOperator<DecodedFrame, void>;
         const getBufferSpanMs = (): number => buffer.spanMs();
+        const getAudioCaptureOffsetMs = (): number | null => buffer.audioCaptureOffsetMs();
         const targetSpanMs = config.targetBufferSpanMs;
         if (config.backend.kind === 'mstg') {
             const writer = config.backend.writer;
@@ -123,6 +124,7 @@ export class Player {
                 getWriter: () => writer,
                 getBufferSpanMs,
                 targetSpanMs,
+                getAudioCaptureOffsetMs,
             });
         } else {
             const canvasCtx: CanvasImageInterface = config.backend.canvasCtx;
@@ -132,6 +134,7 @@ export class Player {
                 convertToBitmap,
                 getBufferSpanMs,
                 targetSpanMs,
+                getAudioCaptureOffsetMs,
             });
         }
         const reportLatency = config.reportLatency;

@@ -80,6 +80,10 @@ export class EncodedFrameBuffer {
         this.caOffsetMs = ms;
     }
 
+    audioCaptureOffsetMs(): number | null {
+        return this.caOffsetMs;
+    }
+
     // Capture-time duration of buffered content (ms). The trailing-chunk's
     // own duration isn't known until the next chunk arrives, so it's
     // approximated as one nominal frame. 0 only when the buffer is empty.
@@ -126,7 +130,13 @@ export class EncodedFrameBuffer {
     private trySkipToLive(): void {
         if (this.skipToLiveSpanMs <= 0 || this.state !== 'armed')
             return;
-        if (this.spanMs() <= this.skipToLiveSpanMs)
+        // Tighter trigger when paired with audio: realign video to the audio
+        // capture-point sooner (2× target ≈ 666 ms) than the plain skip-to-live
+        // threshold (3× target ≈ 1 s), so video can't lead audio by as much.
+        const threshold = this.caOffsetMs !== null
+            ? Math.min(this.skipToLiveSpanMs, this.targetSpanMs * 2)
+            : this.skipToLiveSpanMs;
+        if (this.spanMs() <= threshold)
             return;
         const now = this.nowFn();
         if (now < this.nextSkipAllowedAtMs)
