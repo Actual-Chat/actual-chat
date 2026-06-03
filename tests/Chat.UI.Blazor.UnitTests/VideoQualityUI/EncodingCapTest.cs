@@ -70,6 +70,38 @@ public class EncodingCapTest
     }
 
     [Fact]
+    public void DeadBandDecaysGoodStreakInsteadOfResetting()
+    {
+        var cap = NewCap(new EncodingCapConfig(BadStreak: 1), cameraCap: 3);
+        cap.Tick(0.5); cap.Tick(0.5); // drive camera 3→1
+        cap.Layers.CameraLayers.Should().Be(1);
+
+        // Mostly-good with an occasional dead-band blip must still reach the
+        // 5-tick good streak and ramp — a hard reset would never get there.
+        cap.Tick(0.0); // g1
+        cap.Tick(0.0); // g2
+        cap.Tick(0.0); // g3
+        cap.Tick(0.10); // dead band → decay to 2 (not 0)
+        cap.Tick(0.0); // g3
+        cap.Tick(0.0); // g4
+        cap.Tick(0.0); // g5 → increase
+        cap.Layers.CameraLayers.Should().Be(2);
+    }
+
+    [Fact]
+    public void SustainedDeadBandDoesNotRamp()
+    {
+        var cap = NewCap(new EncodingCapConfig(BadStreak: 1), cameraCap: 3);
+        cap.Tick(0.5); cap.Tick(0.5); // drive camera 3→1
+        cap.Layers.CameraLayers.Should().Be(1);
+
+        for (var i = 0; i < 20; i++)
+            cap.Tick(0.10); // steady marginal underrun — must NOT ramp
+
+        cap.Layers.CameraLayers.Should().Be(1);
+    }
+
+    [Fact]
     public void StreakResetsOnOppositeSignal()
     {
         var cap = NewCap(new EncodingCapConfig(BadStreak: 3));

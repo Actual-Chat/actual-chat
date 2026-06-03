@@ -70,7 +70,11 @@ public sealed class EncodingCap
             return;
         }
 
+        // Dead band: not bad enough to demote, not good enough to credit a ramp
+        // tick. Clear the bad streak but only DECAY the good streak so a single
+        // transient excursion doesn't wipe ramp progress earned by good ticks —
+        // a hard reset here pins a mostly-healthy encoder at 1 layer forever.
         _badStreak = 0;
-        _goodStreak = 0;
+        _goodStreak = Math.Max(0, _goodStreak - 1);
     }
 }

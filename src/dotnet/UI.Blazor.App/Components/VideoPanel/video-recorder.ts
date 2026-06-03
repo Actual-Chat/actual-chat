@@ -890,6 +890,20 @@ export class VideoRecorder {
             } catch (e) {
                 warnLog?.log('openGate: reconfigureLayers failed — continuing at 1 tier:', e);
             }
+        } else {
+            // Single-encoder soft-start: the warmup encoder is still at the top
+            // tier. Drop it to the bottom tier so a pinned single layer stays
+            // sharp at a low bitrate instead of shipping a starved top-resolution
+            // frame. Mirrors resolveActiveLadder()'s single-encoder-mode rule.
+            const bottomLadder = this.resolveActiveLadder();
+            if (bottomLadder.length > 0) {
+                const encoderConfigs = this.toEncoderConfigs(bottomLadder);
+                try {
+                    await this.worker.reconfigureLayers(encoderConfigs);
+                } catch (e) {
+                    warnLog?.log('openGate: single-tier reconfigure failed — continuing at warmup tier:', e);
+                }
+            }
         }
 
         await this.worker.setGateOpen(true);
