@@ -1,6 +1,7 @@
 using ActualChat.Bandwidth;
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Module;
+using ActualChat.Video;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -15,6 +16,10 @@ public sealed partial class VideoQualityUI
     // quickly; otherwise a startup/keyframe burst can pin L2 as "too expensive".
     private const double ObservedRateDecayPerSecond = 0.80; // halves in ~3s
     private const double ObservedRateCapMultiplier = 1.50;
+    // Sustained-calm ticks before the receiver re-probes a higher layer after
+    // HasSeenBadSignal latched. Recovers faster than the estimator's 20-tick
+    // re-anchor; the exponential probe cooldown still gates repeated attempts.
+    private const int ReprobeCalmStreak = 3;
 
     // Stream-age-aware throttle on QC decisions: cooldown for the first
     // StartupCooldown, then evaluate at SettlingInterval until SettlingDuration
@@ -43,6 +48,8 @@ public sealed partial class VideoQualityUI
     // detect allocator-driven cap moves for the decision log.
     private readonly Dictionary<string, int> _prevRequestedLayerByStream = new();
     private HealthVerdict _lastAggregateDownlinkVerdict = HealthVerdict.Unknown;
+    // Set by GetAllocationCapacity each tick; surfaced in the receiver decision log.
+    private string _lastInboundProbeNote = "";
 
     public BandwidthEstimator InboundBandwidthEstimator => _inboundBwEstimator;
     public PlaybackQualitySnapshot PlaybackSnapshot => _playbackSnapshot;
@@ -192,6 +199,7 @@ public sealed partial class VideoQualityUI
         // we attribute drift to Downlink anyway, so the existing playbackRate
         // signal stays as additional Downlink evidence.
         var aggregateDownlinkVerdict = HealthVerdict.Unknown;
+        var aggregateDecoderVerdict = HealthVerdict.Unknown;
         foreach (var (streamId, state) in entries) {
             if (!_receiverHealthByStream.TryGetValue(streamId, out var classifier)) {
                 classifier = new ReceiverHealthClassifier();
@@ -219,6 +227,9 @@ public sealed partial class VideoQualityUI
             if (streamDownlink.Verdict != HealthVerdict.Unknown
                 && (int)streamDownlink.Verdict > (int)aggregateDownlinkVerdict)
                 aggregateDownlinkVerdict = streamDownlink.Verdict;
+            if (streamDecoder.Verdict != HealthVerdict.Unknown
+                && (int)streamDecoder.Verdict > (int)aggregateDecoderVerdict)
+                aggregateDecoderVerdict = streamDecoder.Verdict;
             _decoderCapState.OnVerdict(
                 streamId.Value, streamDecoder.Verdict, state.RequestedLayerCount);
         }
@@ -248,7 +259,16 @@ public sealed partial class VideoQualityUI
             .Where(x => x.Value.Snapshot.Priority != PlaybackStreamPriority.Primary)
             .Select(ToAllocationRequest)
             .ToArray();
-        var capacity = GetAllocationCapacity(estimatedCapacity, primaries, secondaries);
+        var healthyStreamIds = entries
+            .Where(x => _lastDownlinkHealthByStream.TryGetValue(x.Key, out var dl)
+                && dl.Verdict == HealthVerdict.Good
+                && (!_lastDecoderHealthByStream.TryGetValue(x.Key, out var dec)
+                    || dec.Verdict != HealthVerdict.Bad))
+            .Select(x => x.Key.Value)
+            .ToHashSet();
+        var capacity = GetAllocationCapacity(
+            estimatedCapacity, primaries, secondaries, healthyStreamIds,
+            aggregateDownlinkVerdict, aggregateDecoderVerdict, SystemClock.Now);
         var decoderLayerCapDict = _decoderCapState.Caps.Count == 0
             ? null
             : _decoderCapState.Caps;
@@ -323,15 +343,6 @@ public sealed partial class VideoQualityUI
             requestedMap,
             cancellationToken).ConfigureAwait(false);
 
-        // Decision-log entry. Aggregate decoder verdict = worst across
-        // streams (mirrors the removed Decoder chip semantics).
-        var aggregateDecoderVerdict = HealthVerdict.Unknown;
-        foreach (var (_, h) in _lastDecoderHealthByStream) {
-            if (h.Verdict == HealthVerdict.Unknown) continue;
-            if (aggregateDecoderVerdict == HealthVerdict.Unknown
-                || (int)h.Verdict > (int)aggregateDecoderVerdict)
-                aggregateDecoderVerdict = h.Verdict;
-        }
         // Cap-change detection: compare requested layer + decoder cap maps
         // with the previous tick's snapshot. Pick the first changed stream
         // in lexical order (predictable, deterministic for the log).
@@ -377,6 +388,7 @@ public sealed partial class VideoQualityUI
             : "";
         var inboundReason = !string.IsNullOrEmpty(dlReason) ? dlReason
             : !string.IsNullOrEmpty(decReason) ? decReason
+            : !string.IsNullOrEmpty(_lastInboundProbeNote) ? _lastInboundProbeNote
             : _inboundBwEstimator.LastVerdict switch {
                 BandwidthVerdict.Good => $"BW ↑ {ceilingKbps} kbps",
                 BandwidthVerdict.Bad => $"BW ↓ {ceilingKbps} kbps",
@@ -432,19 +444,21 @@ public sealed partial class VideoQualityUI
         return totalWeight > 0 ? weightedSum / totalWeight : 1;
     }
 
-    // Only receiver-side stages (61-90) reflect bandwidth/health on the
-    // consumer side — sender + server drops are intentional pacing and don't
-    // belong in the receive-side penalty.
+    // Downlink congestion = frames the server sent but the receiver never got:
+    // the ReceiverPull gap detector (stage 61), placed before the encoded buffer
+    // on the raw arrival sequence. The other receiver stages are benign and
+    // burst at join — ReceiverEncodedBuffer (62) keyframe-gating + skip-to-live,
+    // ReceiverDecode (63) decoder warmup, ReceiverPresent (64) present-pacer
+    // catch-up, ReceiverSkipToLive (65). Counting those as "drops" spiked the
+    // ratio to ~0.5 on localhost at join and falsely flipped downlink to Bad
+    // (no streak on the drop leg), ratcheting the bandwidth ceiling down. Real
+    // slow-arrival congestion surfaces on the separate buffer-underrun leg.
     private static double ComputeAggregateReceiveDropRatio(IReadOnlyList<KeyValuePair<StreamId, PlaybackStatsState>> entries)
     {
         long totalDrops = 0;
         long totalPresented = 0;
         foreach (var (_, state) in entries) {
-            foreach (var (stage, count) in state.Snapshot.DropTrace) {
-                var b = (byte)stage;
-                if (b is >= 61 and <= 90)
-                    totalDrops += count;
-            }
+            totalDrops += state.Snapshot.DropTrace.GetValueOrDefault(FrameDropStage.ReceiverPull);
             totalPresented += state.Snapshot.PresentedCount;
         }
         var denom = Math.Max(1, totalDrops + totalPresented);
@@ -474,18 +488,45 @@ public sealed partial class VideoQualityUI
     private long GetAllocationCapacity(
         long estimatedCapacity,
         IReadOnlyList<StreamAllocationRequest> primaries,
-        IReadOnlyList<StreamAllocationRequest> secondaries)
+        IReadOnlyList<StreamAllocationRequest> secondaries,
+        IReadOnlySet<string> healthyStreamIds,
+        HealthVerdict downlinkVerdict,
+        HealthVerdict decoderVerdict,
+        Moment now)
     {
-        if (_inboundBwEstimator.HasSeenBadSignal)
-            return estimatedCapacity;
+        // The receiver feeds supply-limited goodput as "current bandwidth", so a
+        // ceiling once ratcheted to L0 can never measure enough to climb back —
+        // the only way to learn real downlink capacity is to request more and
+        // watch it arrive. The startup probe does this before the first bad
+        // signal; the re-probe does it again after sustained calm + cooldown,
+        // and a failed probe demotes via the normal path (growing the cooldown).
+        var startupProbe = !_inboundBwEstimator.HasSeenBadSignal;
+        var reprobe = !startupProbe && ShouldReprobe(
+            downlinkVerdict,
+            decoderVerdict,
+            _inboundBwEstimator.CalmTicks,
+            ReprobeCalmStreak,
+            _inboundBwEstimator.LastCeilingDownAt,
+            _inboundBwEstimator.ProbeFailures,
+            now,
+            _inboundBwEstimator.Config);
 
-        // Before the first bad receiver signal, the ceiling is only a seed.
-        // Don't let that unproven estimate prevent the probe that would prove
-        // a higher capacity. Probe primaries to their requested cap and keep
-        // secondaries at floor; if there are no primaries, probe all active
-        // streams to their requested caps.
+        if (!startupProbe && !reprobe) {
+            _lastInboundProbeNote = ReprobeCooldownNote(now);
+            return estimatedCapacity;
+        }
+
         long probeCapacity = 0;
-        if (primaries.Count != 0) {
+        if (reprobe) {
+            // Every healthy stream may climb to its requested cap; unhealthy
+            // streams (or a stressed shared downlink already excluded the probe)
+            // stay at floor.
+            foreach (var p in primaries)
+                probeCapacity += healthyStreamIds.Contains(p.StreamId) ? MaxRateOf(p) : FloorRateOf(p);
+            foreach (var s in secondaries)
+                probeCapacity += healthyStreamIds.Contains(s.StreamId) ? MaxRateOf(s) : FloorRateOf(s);
+        }
+        else if (primaries.Count != 0) {
             foreach (var p in primaries)
                 probeCapacity += MaxRateOf(p);
             foreach (var s in secondaries)
@@ -497,7 +538,45 @@ public sealed partial class VideoQualityUI
         }
 
         probeCapacity = (long)(probeCapacity * _debugBandwidthMultiplier);
-        return Math.Max(estimatedCapacity, probeCapacity);
+        var capacity = Math.Max(estimatedCapacity, probeCapacity);
+        _lastInboundProbeNote = reprobe && capacity > estimatedCapacity ? "reprobe" : "";
+        return capacity;
+    }
+
+    internal static bool ShouldReprobe(
+        HealthVerdict downlinkVerdict,
+        HealthVerdict decoderVerdict,
+        int calmTicks,
+        int reprobeCalmStreak,
+        Moment? lastCeilingDownAt,
+        int probeFailures,
+        Moment now,
+        BandwidthEstimatorConfig config)
+    {
+        if (downlinkVerdict != HealthVerdict.Good || decoderVerdict == HealthVerdict.Bad)
+            return false;
+        if (calmTicks < reprobeCalmStreak)
+            return false;
+        if (lastCeilingDownAt is { } downAt) {
+            var cooldownSec = Math.Min(
+                config.MaxProbeCooldownSec,
+                config.BaseProbeCooldownSec * Math.Pow(config.ProbeCooldownGrowth, probeFailures));
+            if ((now - downAt).TotalSeconds < cooldownSec)
+                return false;
+        }
+        return true;
+    }
+
+    private string ReprobeCooldownNote(Moment now)
+    {
+        if (_inboundBwEstimator.LastCeilingDownAt is not { } downAt)
+            return "";
+        var config = _inboundBwEstimator.Config;
+        var cooldownSec = Math.Min(
+            config.MaxProbeCooldownSec,
+            config.BaseProbeCooldownSec * Math.Pow(config.ProbeCooldownGrowth, _inboundBwEstimator.ProbeFailures));
+        var remaining = cooldownSec - (now - downAt).TotalSeconds;
+        return remaining > 0 ? $"reprobe cooldown {remaining:F0}s" : "";
     }
 
     private static long MaxRateOf(StreamAllocationRequest s)
