@@ -198,6 +198,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E72
 		src\nodejs\src\orientation.ts = src\nodejs\src\orientation.ts
 		src\nodejs\src\worker-bootstrap.ts = src\nodejs\src\worker-bootstrap.ts
 		src\nodejs\src\on-device-awake-worker-bootstrap.ts = src\nodejs\src\on-device-awake-worker-bootstrap.ts
+		src\nodejs\src\scroll-controller.ts = src\nodejs\src\scroll-controller.ts
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "worklets", "worklets", "{DBDAA2CE-FEAF-46AE-9EBD-808C191E1A78}"

@@ -51,6 +51,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
     // Set false for finite lists with a visible scrollbar — their data source must report the total item
     // count so spacers size the scroll range accurately for the thumb.
     [Parameter] public bool IsInfinite { get; set; } = true;
+    [Parameter] public int RetainedItemCount { get; set; } = 5;
     // This event is intentionally Action vs EventCallback, coz normally it shouldn't
     // trigger StateHasChanged on parent component.
     [Parameter] public Action<VirtualListItemVisibility>? ItemVisibilityChanged { get; set; }
@@ -147,7 +148,8 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
                 DefaultEdge,
                 SpacerSize,
                 ExpandMultiplier,
-                IsInfinite
+                IsInfinite,
+                RetainedItemCount
                 );
         }
     }

@@ -29,6 +29,20 @@ the marker line `Last step failed, remove this file to restart the loop.`
 is the last line of `tmp/server-loop.log`. To unstick, delete that file
 or press a key in the loop terminal.
 
+### The loop rebuild is the PREFERRED way to check everything
+
+When the loop is running, validate TS / shared-code changes by triggering a
+loop rebuild and watching its logs — **not** by running `tsc`/`eslint`/
+`npm run build:Verify` yourself. The loop runs **natively on the host**, while
+Claude runs in Docker, and the difference is large:
+
+- `tsc --noEmit` alone: **~1 min in Docker** (where Claude runs).
+- The same check via the loop / natively: **~5–10s**.
+
+So: edit code → trigger a restart → watch `tmp/server-loop-npm-build.log` (TS
+type/build errors) and `tmp/server-loop.log` (stage transitions). Don't burn a
+minute on an in-Docker `tsc`.
+
 ### DON'T manually run `npm run build:Debug` while the loop is running
 
 Step 1 of the loop already runs `npm run build:Debug` on every iteration.

@@ -48,6 +48,12 @@ export function lerp(x: number, y: number, alpha: number) {
     return x + alpha*(y - x);
 }
 
+export function nudge(n: number, scale: number) {
+    const x = n * scale;
+    const f = x - Math.floor(x);
+    return n + (f < 0.5 ? 1 / scale : -1 / scale);
+}
+
 export interface RunningCounter {
     readonly sampleCount: number;
     readonly value: number;
