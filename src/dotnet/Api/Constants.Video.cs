@@ -93,7 +93,7 @@ public static partial class Constants
 
         // RPC stream flow control for video. 5-frame ack cadence (~165ms @ 30fps).
         // The credit window must exceed the receiver's skip-to-live threshold
-        // (≈ TargetBufferSpanMs × 2-3 = 666-1000ms): a consumer that subscribed
+        // (TargetBufferSpanMs × 3 ≈ 600ms): a consumer that subscribed
         // behind the live edge (replay-tail keyframe) only catches up by pulling
         // the backlog into its buffer until the span trips skip-to-live. A window
         // below that threshold caps the buffer too low for the skip to ever fire,

@@ -30,6 +30,7 @@ export { AsyncLock } from './async-lock.js';
 // Event handling, primises
 export { EventHandlerSet } from './events.js';
 export { PromiseSource, resolvedVoidPromise } from './promise-source.js';
+export { AsyncSignal } from './async-signal.js';
 export { PromiseSourceWithTimeout } from './promise-source-with-timeout.js';
 export { ResolvedPromise } from './resolved-promise.js';
 export { TimedOut } from './timed-out.js';

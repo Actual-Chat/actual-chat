@@ -219,8 +219,8 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     }
 
     // Adaptive A/V hold: track video lag at runtime and lower the playback-buffer
-    // target when video freshens (or raise it when video slows), so the catch-up
-    // speed-up converges instead of fighting a stale, locked-high target. The
+    // target when video freshens (or raise it when video slows), so the hold
+    // converges instead of fighting a stale, locked-high target. The
     // start-time ApplyAvSyncHold seeds _currentTargetBufferSize.
     private void AdjustBufferHold(AuthorId authorId)
     {

@@ -94,6 +94,11 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
                     }
                     const extraMs = Math.max(0, meter.sample(getBufferSpanMs(), now) - targetSpanMs);
 
+                    // Last-resort overflow backstop: drop frames once the span runs
+                    // CATCHUP_BUDGET_MS past target. Deliberately NOT audio-gated, unlike
+                    // the time-compression sprint below — it sits well above the 600ms
+                    // audio-anchored encoded-buffer skip, so the "no sprint past audio"
+                    // invariant covers the sprint, not this drop.
                     const rawSkip = extraMs > CATCHUP_BUDGET_MS;
                     if (rawSkip !== skipCandidate) {
                         skipCandidate = rawSkip;
