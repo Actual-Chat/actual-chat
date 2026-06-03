@@ -33,7 +33,6 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 
     private IMediaMetadataUI MediaMetadataUI => field ??= Services.GetRequiredService<IMediaMetadataUI>();
     private PlaybackLagTracker LagTracker => field ??= Services.GetRequiredService<PlaybackLagTracker>();
-    private AudioSyncDiagnostics SyncDiagnostics => field ??= Services.GetRequiredService<AudioSyncDiagnostics>();
     private ChatAudioUI ChatAudioUI => field ??= Services.GetRequiredService<ChatAudioUI>();
     private IAudioPlaybackEngineFactory Factory { get; }
 
@@ -207,23 +206,16 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         if (trackInfo is not { Author.Id: { } authorId })
             return trackInfo;
 
-        var videoLag = LagTracker.GetVideoLag(authorId);
+        if (LagTracker.GetVideoLag(authorId) is not { } videoLag)
+            return trackInfo;
+
         var maxHold = Constants.Audio.PlaybackTargetBufferSizeWithVideo + Constants.Audio.AudioSyncMaxHold;
-        TimeSpan? applied = null;
-        var result = (TrackInfo)trackInfo;
-        if (videoLag is { } lag) {
-            var hold = lag + Constants.Audio.AudioCatchUpBaselineDelta;
-            if (hold > maxHold)
-                hold = maxHold;
-            if (hold > trackInfo.TargetBufferSize) {
-                result = trackInfo with { TargetBufferSize = hold };
-                applied = hold;
-            }
-        }
-        DebugLog?.LogDebug(
-            "AvSync start hold {AuthorId}: videoLag={VideoLag}, base={Base}, maxHold={MaxHold}, applied={Applied}",
-            authorId, videoLag, trackInfo.TargetBufferSize, maxHold, applied);
-        return result;
+        var hold = videoLag + Constants.Audio.AudioCatchUpBaselineDelta;
+        if (hold > maxHold)
+            hold = maxHold;
+        return hold > trackInfo.TargetBufferSize
+            ? trackInfo with { TargetBufferSize = hold }
+            : trackInfo;
     }
 
     // Adaptive A/V hold: track video lag at runtime and lower the playback-buffer
@@ -260,16 +252,8 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     {
         if (TrackInfo is not ChatAudioTrackInfo { Author.Id: { } authorId })
             return;
-        if (!ChatAudioUI.IsAudioSyncEnabled) {
-            SyncDiagnostics.RecordDecision(authorId, TimeSpan.Zero, AudioSyncSkipReason.SyncDisabled);
-            SyncDiagnostics.RecordCommand(authorId, AudioSyncCommand.None);
+        if (!ChatAudioUI.IsAudioSyncEnabled || _isOwnStream)
             return;
-        }
-        if (_isOwnStream) {
-            SyncDiagnostics.RecordDecision(authorId, TimeSpan.Zero, AudioSyncSkipReason.OwnStream);
-            SyncDiagnostics.RecordCommand(authorId, AudioSyncCommand.None);
-            return;
-        }
 
         if (_audioSyncSampleIn > 0) {
             _audioSyncSampleIn--;
@@ -278,8 +262,6 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         _audioSyncSampleIn = AudioSyncPolicySamplePeriodFrames;
 
         AdjustBufferHold(authorId);
-        SyncDiagnostics.RecordDecision(authorId, TimeSpan.Zero, AudioSyncSkipReason.None);
-        SyncDiagnostics.RecordCommand(authorId, AudioSyncCommand.None);
     }
 
     private void UpdateBufferState(bool isBufferLow)
