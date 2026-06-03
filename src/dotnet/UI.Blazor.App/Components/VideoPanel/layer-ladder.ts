@@ -116,6 +116,33 @@ function buildExplicitLadder(
     return ladder;
 }
 
+// Demand-driven target fps from the highest layer any viewer requests. Keyed
+// on the DISTANCE from the sender's top tier, not absolute resolution, so a
+// focused stream runs full rate regardless of the device's max resolution
+// (a 2-tier mobile sender's 360p top still earns 30fps when focused):
+//   top tier (focused)     → captureFps
+//   one tier below the top → 15
+//   two+ tiers below       → 10
+// `maxLayerId < 0` (nobody subscribed / all paused) → 0 = idle stop.
+// Unknown/out-of-range ladder → full rate (don't pace).
+export function fpsForRequestedLayer(
+    ladder: readonly LayerConfig[] | null,
+    maxLayerId: number,
+    captureFps: number,
+): number {
+    if (maxLayerId < 0)
+        return 0;
+    if (!ladder || ladder.length === 0 || maxLayerId >= ladder.length)
+        return captureFps;
+    const distanceFromTop = (ladder.length - 1) - maxLayerId;
+    let fps = 10;
+    if (distanceFromTop <= 0)
+        fps = captureFps;
+    else if (distanceFromTop === 1)
+        fps = 15;
+    return Math.min(fps, captureFps);
+}
+
 export function fitWithin(width: number, height: number, maxWidth: number, maxHeight: number): Size {
     if (width <= 0 || height <= 0 || maxWidth <= 0 || maxHeight <= 0)
         return { width: 0, height: 0 };

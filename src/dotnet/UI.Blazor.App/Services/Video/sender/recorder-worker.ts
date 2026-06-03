@@ -287,6 +287,12 @@ export const recorderWorkerImpl: RecorderWorker = {
         await Promise.resolve();
     },
 
+    async setTargetFps(fps: number): Promise<void> {
+        const s = requireState();
+        s.recorder.setTargetFps(fps);
+        await Promise.resolve();
+    },
+
     getStats(): Promise<RecorderStats> {
         const s = requireState();
         return Promise.resolve(s.recorder.getStats() ?? emptyStats());

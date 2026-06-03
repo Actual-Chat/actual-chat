@@ -22,6 +22,10 @@ export enum FrameDropStage {
     SenderFloodGate = 2,
     SenderDownscale = 3,
     SenderEncode = 4,
+    // Intentional temporal downsample: frames dropped before encode to hit a
+    // demand-driven target fps (non-focused streams pace to ~10fps). Not a
+    // failure — excluded from senderDropRatioEma.
+    SenderFpsPacing = 5,
 
     ServerPushStream = 31,
     ServerMemoizer = 32,

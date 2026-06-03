@@ -76,6 +76,9 @@ export interface RecorderWorker extends SharedSettingsWorker {
     // recreating the wire RpcStream. Caller must ensure codec parity with
     // the active run (codec swap still requires stop+start).
     reconfigureLayers(configs: readonly EncoderConfigPerLayer[]): Promise<void>;
+    // Demand-driven target fps for temporal pacing. <=0 drops every frame
+    // (idle: stop encoding, keep camera warm). Hot-applied, no restart.
+    setTargetFps(fps: number, noWait?: RpcNoWait): Promise<void>;
     getStats(): Promise<RecorderStats>;
     stop(): Promise<void>;
 

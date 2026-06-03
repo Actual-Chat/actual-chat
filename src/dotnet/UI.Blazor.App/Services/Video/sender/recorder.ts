@@ -20,6 +20,7 @@ import { previewForwarder } from '../operators/preview-forwarder';
 import { applyKeyframePolicy } from '../operators/apply-keyframe-policy';
 import { encode, type EncoderConfigPerLayer, type EncoderFactory } from '../operators/encode';
 import { FloodGate, floodGate } from '../operators/flood-gate';
+import { PaceState, temporalPace } from '../operators/temporal-pace';
 import { stampEncoderDescription } from '../operators/stamp-encoder-description';
 import { MutableWireGate, wireGate } from '../operators/wire-gate';
 import { wireSend, type StreamSenderLike } from '../operators/wire-send';
@@ -79,6 +80,7 @@ export class Recorder {
     // Lives for the duration of one run; null when stopped.
     private ladderController: LayerLadderController | null = null;
     private wireGateState: MutableWireGate | null = null;
+    private paceState: PaceState | null = null;
 
     constructor(session: SenderSession) {
         this.session = session;
@@ -105,6 +107,8 @@ export class Recorder {
         // half, reopened below a quarter. Closing right after capture is
         // the cheapest place to absorb a wire stall.
         const gate = new FloodGate();
+        const paceState = new PaceState();
+        this.paceState = paceState;
         const captureSource = mstpSource({
             track: config.track,
             stats,
@@ -137,6 +141,10 @@ export class Recorder {
         );
         const normalizedToBundle = pipe(
             captureToNormalized,
+            // Demand-driven fps: drop AFTER preview (local self-view stays
+            // smooth) but BEFORE the expensive spatialize/encode. fps 0 = idle.
+            temporalPace(paceState),
+            traceDrops<CapturedFrame>(FrameDropStage.SenderFpsPacing),
             spatialize({ controller: ladderController }),
             traceDrops<CapturedBundle>(FrameDropStage.SenderDownscale),
         );
@@ -181,6 +189,7 @@ export class Recorder {
                 this.currentWhenDone = null;
                 this.ladderController = null;
                 this.wireGateState = null;
+                this.paceState = null;
             }
             // Stats persist post-run for one-shot diagnostic reads;
             // cleared on the next `start()`.
@@ -217,6 +226,13 @@ export class Recorder {
     // call on a stopped recorder (no-op).
     setGateOpen(open: boolean): void {
         this.wireGateState?.setOpen(open);
+    }
+
+    // Demand-driven target fps. <=0 drops every frame (idle: stop encoding,
+    // keep the camera warm); >= capture rate is full rate. No-op when stopped;
+    // re-applied on the next run via PaceState's default (no pacing).
+    setTargetFps(fps: number): void {
+        this.paceState?.setTargetFps(fps);
     }
 
     // Hot-apply: mutate the running pipeline's layer ladder without stopping

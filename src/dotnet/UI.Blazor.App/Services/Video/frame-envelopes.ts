@@ -27,6 +27,11 @@ export interface RecorderStats {
     // `track.getSettings().frameRate` is the *negotiated* / requested
     // value, which Chrome's screencast pipeline routinely overstates.
     framesCaptured: number;
+    // Frames that survived the capture-side gates (floodGate backpressure +
+    // temporalPace demand-fps) and entered the encode path. Encode-throughput
+    // deficit measures bundlesEncoded against THIS, not framesCaptured, so
+    // intentional fps pacing isn't read as the encoder falling behind.
+    framesOffered: number;
     // Cumulative bundles successfully shipped to the wire. One per source
     // moment (NOT per per-layer chunk).
     bundlesShipped: number;
@@ -152,6 +157,7 @@ export interface PlayerStats {
 export function createEmptyRecorderStats(): RecorderStats {
     return {
         framesCaptured: 0,
+        framesOffered: 0,
         bundlesShipped: 0,
         bundlesEncoded: 0,
         bytesEncoded: 0,

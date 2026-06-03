@@ -60,6 +60,7 @@ import {
 } from '../../Services/Video/codec-support';
 import {
     buildLadder,
+    fpsForRequestedLayer,
     type LayerConfig,
 } from './layer-ladder';
 import { MediaCapture } from '../../Services/Video/services/media-capture';
@@ -1336,6 +1337,17 @@ export class VideoRecorder {
      * that case so the next joiner doesn't pay a restart cost.
      */
     public setMaxLayerId(maxLayerId: number): void {
+        // Temporal demand: pace fps to the highest requested layer's tier —
+        // focused top tier → full rate, lower tiers → fewer fps (the CPU win
+        // for non-focused streams). Only once live (warmup/preview must run
+        // full-rate so the encoder proves itself and the self-view stays
+        // smooth). maxLayerId < 0 is NOT treated as idle-stop: it's ambiguous
+        // (no subscriber vs all-paused vs a join transient vs node-local
+        // conservative) and would starve an actively-watched stream, so we
+        // leave the encoder running at its current rate.
+        if (maxLayerId >= 0 && this._recordingState === 'recording')
+            void this.worker?.setTargetFps(fpsForRequestedLayer(this.fullLayerLadder, maxLayerId, VIDEO.frameRate));
+
         if (maxLayerId < 0)
             return;
         // Receiver demand sets a ceiling on the active tiers, but never pulls in a
@@ -2082,7 +2094,10 @@ export class VideoRecorder {
             if (previous && isPeerConnected && this.lastRecorderHealthWasPeerConnected) {
                 for (const [stage, count] of stats.dropTrace) {
                     const stageNum = stage as number;
-                    if (stageNum < 1 || stageNum > 30) continue;
+                    // SenderFpsPacing (5) is intentional temporal downsampling,
+                    // not loss — exclude it so demand-driven fps pacing doesn't
+                    // read as an uplink drop.
+                    if (stageNum < 1 || stageNum > 30 || stageNum === 5) continue;
                     const prevCount = previous.dropTrace.get(stage) ?? 0;
                     senderDropsDelta += Math.max(0, count - prevCount);
                 }
@@ -2095,15 +2110,17 @@ export class VideoRecorder {
             }
 
             // Encoder THROUGHPUT DEFICIT, 0..1. Window-derived ratio of
-            // "bundles encoded this tick / frames captured this tick"
-            // subtracted from 1 and EMA-smoothed. A queue-full encoder
-            // still emitting at source rate registers 0 here (healthy
-            // pipelining); deficit only grows when encoder emit rate
-            // actually falls behind capture rate. This is the metric QC
-            // uses to decide whether to demote a spatial layer.
+            // "bundles encoded this tick / frames OFFERED to encode this tick"
+            // subtracted from 1 and EMA-smoothed. The denominator is
+            // framesOffered (survivors of floodGate + temporalPace), not
+            // framesCaptured — otherwise intentional fps pacing would register
+            // as the encoder falling behind. A queue-full encoder still
+            // emitting at the offered rate registers 0 here; deficit only grows
+            // when encoder emit rate actually falls behind. QC uses this to
+            // decide whether to demote a spatial layer.
             if (previous) {
                 const encDelta = Math.max(0, stats.bundlesEncoded - previous.bundlesEncoded);
-                const capDelta = Math.max(0, stats.framesCaptured - previous.framesCaptured);
+                const capDelta = Math.max(0, stats.framesOffered - previous.framesOffered);
                 if (capDelta > 0) {
                     const throughputRatio = Math.min(1, encDelta / capDelta);
                     const deficit = 1 - throughputRatio;
