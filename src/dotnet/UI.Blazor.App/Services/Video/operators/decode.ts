@@ -387,8 +387,11 @@ async function* decodeAsync(
                             codec: currentCodec,
                             codedWidth: newWidth || undefined,
                             codedHeight: newHeight || undefined,
-                            hardwareAcceleration: initialConfig.hardwareAcceleration,
-                            optimizeForLatency: initialConfig.optimizeForLatency,
+                            // Prefer the HW decoder (default 'no-preference' lets the
+                            // browser pick a slow SW path even when HW exists) and ask
+                            // for low-latency mode (no decode-reorder buffering).
+                            hardwareAcceleration: initialConfig.hardwareAcceleration ?? 'prefer-hardware',
+                            optimizeForLatency: initialConfig.optimizeForLatency ?? true,
                         };
                         if (description) config.description = description;
                         if (newWidth > 0 && newHeight > 0) {
