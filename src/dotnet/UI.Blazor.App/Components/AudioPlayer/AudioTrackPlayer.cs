@@ -203,16 +203,25 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             return trackInfo;
         if (trackInfo is not { Author.Id: { } authorId })
             return trackInfo;
-        if (LagTracker.GetVideoLag(authorId) is not { } videoLag)
-            return trackInfo;
 
-        var hold = videoLag + Constants.Audio.AudioCatchUpBaselineDelta;
-        var maxHold = Constants.Audio.PlaybackTargetBufferSizeWithVideo + TimeSpan.FromMilliseconds(500);
-        if (hold > maxHold)
-            hold = maxHold;
-        return hold > trackInfo.TargetBufferSize
-            ? trackInfo with { TargetBufferSize = hold }
-            : trackInfo;
+        var videoLag = LagTracker.GetVideoLag(authorId);
+        var maxHold = Constants.Audio.PlaybackTargetBufferSizeWithVideo + Constants.Audio.AudioSyncMaxHold;
+        TimeSpan? applied = null;
+        var result = (TrackInfo)trackInfo;
+        if (videoLag is { } lag) {
+            var hold = lag + Constants.Audio.AudioCatchUpBaselineDelta;
+            if (hold > maxHold)
+                hold = maxHold;
+            if (hold > trackInfo.TargetBufferSize) {
+                result = trackInfo with { TargetBufferSize = hold };
+                applied = hold;
+            }
+        }
+        // [AVSYNC] temporary diagnostic — confirms whether the start hold fires.
+        Log.LogWarning(
+            "[AVSYNC] start hold {AuthorId}: videoLag={VideoLag}, base={Base}, maxHold={MaxHold}, applied={Applied}",
+            authorId, videoLag, trackInfo.TargetBufferSize, maxHold, applied);
+        return result;
     }
 
     // Adaptive A/V hold: track video lag at runtime and lower the playback-buffer
@@ -225,7 +234,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             return; // No fresh video lag — keep the current hold (don't collapse the buffer).
 
         var baseSize = Constants.Audio.PlaybackTargetBufferSizeWithVideo;
-        var cap = baseSize + TimeSpan.FromMilliseconds(500);
+        var cap = baseSize + Constants.Audio.AudioSyncMaxHold;
         var desired = videoLag + Constants.Audio.AudioCatchUpBaselineDelta;
         if (desired < baseSize)
             desired = baseSize;

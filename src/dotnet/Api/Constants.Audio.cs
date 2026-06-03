@@ -41,6 +41,11 @@ public static partial class Constants
         // negative baseline made audio genuinely lead video. Keep ≥ 0; a small
         // positive would bias toward audio-slightly-behind (the safe side).
         public static readonly TimeSpan AudioCatchUpBaselineDelta = TimeSpan.Zero;
+        // Max EXTRA audio delay the A/V-sync hold may add over the base playback
+        // buffer. Audio is delayed to meet video's latency, but never by more than
+        // this — so a far-behind video (e.g. ≥1.5 s) delays audio ≤1 s rather than
+        // stalling it. Bounds both the start-time and runtime holds.
+        public static readonly TimeSpan AudioSyncMaxHold = TimeSpan.FromSeconds(1);
         // Per-stream presentation-lag updates older than this are ignored when
         // aggregating per-author lag. Covers paused video, hidden tabs, and
         // stopped streams — all map to "no signal → desired = 0".
