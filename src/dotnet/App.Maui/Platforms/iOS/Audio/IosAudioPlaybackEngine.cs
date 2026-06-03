@@ -96,18 +96,6 @@ public class IosAudioPlaybackEngine(
         return ValueTask.CompletedTask;
     }
 
-    public ValueTask SkipUntil(TimeSpan sourceOffset, CancellationToken cancellationToken)
-    {
-        _frames.SkipUntil(sourceOffset);
-        return ValueTask.CompletedTask;
-    }
-
-    public ValueTask SpeedUpUntil(TimeSpan sourceOffset, int dropEveryNFrames, CancellationToken cancellationToken)
-    {
-        _frames.SpeedUpUntil(sourceOffset, dropEveryNFrames);
-        return ValueTask.CompletedTask;
-    }
-
     private async Task MonitorPlayer(CancellationToken cancellationToken)
     {
         await foreach (var cPosition in _voicePlayer.PlaybackState.Computed.Changes(cancellationToken).ConfigureAwait(false)) {
@@ -129,10 +117,7 @@ public class IosAudioPlaybackEngine(
         if (anchor == default)
             return;
 
-        // Subtract source-time dropped by catch-up skip/speed-up: the playhead
-        // counts only PLAYED samples, so without this the lag over-reports by the
-        // skipped duration during catch-up (parity with the Web playingAt fix).
-        var lag = hub.Clocks.ServerClock.Now - anchor - playheadOffset - _frames.DroppedDuration
+        var lag = hub.Clocks.ServerClock.Now - anchor - playheadOffset
             + Constants.Audio.AudioEnginePlaybackLatency;
         try {
             backend.OnPresentationLag(lag);

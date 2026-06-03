@@ -157,18 +157,6 @@ internal sealed class WindowsAudioPlaybackEngine(
         return ValueTask.CompletedTask;
     }
 
-    public ValueTask SkipUntil(TimeSpan sourceOffset, CancellationToken cancellationToken)
-    {
-        _packetBuffer.SkipUntil(sourceOffset);
-        return ValueTask.CompletedTask;
-    }
-
-    public ValueTask SpeedUpUntil(TimeSpan sourceOffset, int dropEveryNFrames, CancellationToken cancellationToken)
-    {
-        _packetBuffer.SpeedUpUntil(sourceOffset, dropEveryNFrames);
-        return ValueTask.CompletedTask;
-    }
-
     public ValueTask DisposeAsync()
     {
         try {
@@ -356,12 +344,8 @@ internal sealed class WindowsAudioPlaybackEngine(
         if (anchor == default)
             return;
 
-        // Subtract source-time dropped by catch-up skip/speed-up: the playhead
-        // counts only PLAYED samples, so without this the lag over-reports by the
-        // skipped duration during catch-up (parity with the Web playingAt fix).
         var lag = Clocks.ServerClock.Now - anchor
             - TimeSpan.FromSeconds(playheadOffsetSeconds)
-            - _packetBuffer.DroppedDuration
             + Constants.Audio.AudioEnginePlaybackLatency;
         try {
             playerBackend.OnPresentationLag(lag);

@@ -215,18 +215,6 @@ internal sealed class AndroidAudioPlaybackEngine(
         return ValueTask.CompletedTask;
     }
 
-    public ValueTask SkipUntil(TimeSpan sourceOffset, CancellationToken cancellationToken)
-    {
-        _frames.SkipUntil(sourceOffset);
-        return ValueTask.CompletedTask;
-    }
-
-    public ValueTask SpeedUpUntil(TimeSpan sourceOffset, int dropEveryNFrames, CancellationToken cancellationToken)
-    {
-        _frames.SpeedUpUntil(sourceOffset, dropEveryNFrames);
-        return ValueTask.CompletedTask;
-    }
-
     // Private methods
 
     private async Task DecodeAndFeed()
@@ -312,12 +300,8 @@ internal sealed class AndroidAudioPlaybackEngine(
         if (anchor == default)
             return;
 
-        // Subtract source-time dropped by catch-up skip/speed-up: the playhead
-        // counts only PLAYED samples, so without this the lag over-reports by the
-        // skipped duration during catch-up (parity with the Web playingAt fix).
         var lag = Clocks.ServerClock.Now - anchor
             - TimeSpan.FromSeconds(playheadOffsetSeconds)
-            - _frames.DroppedDuration
             + Constants.Audio.AudioEnginePlaybackLatency;
         try {
             playerBackend.OnPresentationLag(lag);
