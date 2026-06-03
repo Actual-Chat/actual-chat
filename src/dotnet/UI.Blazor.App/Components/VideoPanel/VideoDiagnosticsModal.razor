@@ -280,6 +280,15 @@
                                         </div>
                                     }
 
+                                    <div class="diag-row">
+                                        <span class="diag-label">Caps</span>
+                                        <span class="diag-value multiline">@FormatRecordingCaps(recordingSnap)</span>
+                                    </div>
+                                    <div class="diag-row">
+                                        <span class="diag-label">Bandwidth</span>
+                                        <span class="diag-value">@FormatRecordingBandwidth(recordingSnap)</span>
+                                    </div>
+
                                     @if (recordingSnap.Health is { } health) {
                                         <div class="diag-row">
                                             <span class="diag-label">Signals</span>
@@ -337,10 +346,12 @@
                     int? activeLayerId = null;
                     var activeWidth = 0;
                     var activeHeight = 0;
+                    var observedMaxLayerId = -1;
                     if (fwdEl is { } fActive && GetNum(fActive, "ForwardedLayerId") >= 0) {
                         activeLayerId = (int)GetNum(fActive, "ForwardedLayerId");
                         activeWidth = (int)GetNum(fActive, "ForwardedWidth");
                         activeHeight = (int)GetNum(fActive, "ForwardedHeight");
+                        observedMaxLayerId = (int)GetNum(fActive, "ObservedMaxLayerId");
                     }
                     var ageSec = hasDiag ? GetNum(rdPeek, "streamAgeMs") / 1000 : 0;
 
@@ -366,7 +377,10 @@
                             <span class="diag-label">Resolution</span>
                             <span class="diag-value">
                                 @if (activeLayerId is { } activeId) {
-                                    @($"L{activeId} {activeWidth}×{activeHeight}")
+                                    var depth = Math.Max(observedMaxLayerId, activeId) + 1;
+                                    var tierIdx = CanonicalTierIndex(s.Info.SourceKind, activeWidth, activeHeight);
+                                    var tierText = tierIdx is { } t ? $" (tier L{t})" : "";
+                                    @($"L{activeId}/{depth} {activeWidth}×{activeHeight}{tierText}")
                                 }
                                 else {
                                     <span class="diag-dim">no frame yet</span>
@@ -872,17 +886,43 @@
     }
 
     private static string FormatRequestedReceiveQuality(JsonElement rd) {
+        var senderMax = -1;
+        if (rd.TryGetProperty("forwarded", out var fwd) && fwd.ValueKind == JsonValueKind.Object)
+            senderMax = (int)GetNum(fwd, "ObservedMaxLayerId");
+        var senderMaxText = senderMax >= 0 ? $" (sender max L{senderMax})" : "";
+
         if (!rd.TryGetProperty("requestedReceiveQuality", out var requested)
             || requested.ValueKind != JsonValueKind.Object)
-            return "default (L1)";
+            return $"default (L1){senderMaxText}";
 
-        return FormatRequestedLayerId((int)GetNum(requested, "layerId"));
+        return FormatRequestedLayerId((int)GetNum(requested, "layerId")) + senderMaxText;
+    }
+
+    private static int? CanonicalTierIndex(VideoSourceKind kind, int width, int height) {
+        if (width <= 0 || height <= 0)
+            return null;
+        var layers = VideoLayerDef.ListFor(kind);
+        var longSide = Math.Max(width, height);
+        int? result = null;
+        for (var i = 0; i < layers.Length; i++)
+            if (layers[i].Width <= longSide)
+                result = i;
+        return result;
     }
 
     private static string FormatRecordingQualityState(VideoQualityUI.RecordingQualitySnapshot snapshot)
         => snapshot.State is { } state
             ? $"target={state.TargetLayerCount}, effective={state.EffectiveLayerCount}"
             : "no controller state yet";
+
+    private static string FormatRecordingCaps(VideoQualityUI.RecordingQualitySnapshot s) {
+        var binding = s.EncodeCapLayers <= s.BandwidthCapLayers ? "encode" : "bandwidth";
+        return $"enc={s.EncodeCapLayers} (g{s.EncodeGoodStreak}/b{s.EncodeBadStreak}), "
+            + $"bw={s.BandwidthCapLayers} (+{s.BwPositiveStreak}/-{s.BwNegativeStreak}) · binding={binding}";
+    }
+
+    private static string FormatRecordingBandwidth(VideoQualityUI.RecordingQualitySnapshot s)
+        => $"ceiling={s.CeilingKbps:0} kbps, current={s.CurrentKbps:0} kbps";
 
     private static bool ShouldShowRecordingAction(RecordingQualityReason reason)
         => reason != RecordingQualityReason.Stable;

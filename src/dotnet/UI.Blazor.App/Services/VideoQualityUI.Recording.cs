@@ -156,13 +156,28 @@ public sealed partial class VideoQualityUI
     public RecordingQualitySnapshot GetRecordingSnapshot(VideoSourceKind kind)
     {
         var state = _lastRecordingStateByKind.GetValueOrDefault(kind);
+        var isScreencast = kind == VideoSourceKind.ScreenCast;
+        var encLayers = isScreencast
+            ? _outboundEncodingCap.Layers.ScreencastLayers
+            : _outboundEncodingCap.Layers.CameraLayers;
+        var bwLayers = isScreencast
+            ? _outboundBandwidthCap.Layers.ScreencastLayers
+            : _outboundBandwidthCap.Layers.CameraLayers;
         return new(
             kind,
             state,
             _lastRecorderStatsByKind.GetValueOrDefault(kind),
             _lastRecordingSignalByKind.GetValueOrDefault(kind),
             _lastRecordingReasonByKind.GetValueOrDefault(kind),
-            _debugMaxRecordingLayerCount);
+            _debugMaxRecordingLayerCount,
+            encLayers,
+            bwLayers,
+            _outboundEncodingCap.GoodStreak,
+            _outboundEncodingCap.BadStreak,
+            _outboundBwEstimator.PositiveStreak,
+            _outboundBwEstimator.NegativeStreak,
+            _outboundBwEstimator.CeilingBps * 8 / 1000.0,
+            _outboundBwEstimator.LastCurrentBps * 8 / 1000.0);
     }
 
     // Private methods
@@ -386,5 +401,13 @@ public sealed partial class VideoQualityUI
         RecorderStats? Health,
         int Signal,
         RecordingQualityReason Reason,
-        int? DebugMaxLayerCount);
+        int? DebugMaxLayerCount,
+        int EncodeCapLayers,
+        int BandwidthCapLayers,
+        int EncodeGoodStreak,
+        int EncodeBadStreak,
+        int BwPositiveStreak,
+        int BwNegativeStreak,
+        double CeilingKbps,
+        double CurrentKbps);
 }
