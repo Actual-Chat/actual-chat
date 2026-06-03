@@ -220,9 +220,8 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 applied = hold;
             }
         }
-        // [AVSYNC] temporary diagnostic — confirms whether the start hold fires.
-        Log.LogWarning(
-            "[AVSYNC] start hold {AuthorId}: videoLag={VideoLag}, base={Base}, maxHold={MaxHold}, applied={Applied}",
+        DebugLog?.LogDebug(
+            "AvSync start hold {AuthorId}: videoLag={VideoLag}, base={Base}, maxHold={MaxHold}, applied={Applied}",
             authorId, videoLag, trackInfo.TargetBufferSize, maxHold, applied);
         return result;
     }
