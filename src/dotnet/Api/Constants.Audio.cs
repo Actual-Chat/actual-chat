@@ -34,14 +34,6 @@ public static partial class Constants
         public const int DeliveryRpcStreamAckPeriod = 10; // 200 ms @ 50 fps
         public const int RecordingRpcStreamAckPeriod = 10; // 200 ms @ 50 fps
 
-        // Audio buffer playback catch-up policy (used when paired with video
-        // from the same author; a separate step will wire these in).
-        public static readonly TimeSpan PlaybackHardSkipThreshold = TimeSpan.FromSeconds(2);
-        public static readonly TimeSpan PlaybackMaxSpeedUpDuration = TimeSpan.FromSeconds(5);
-        public const int PlaybackSpeedUpDropEveryNFrames = 4;
-        // Below this |audioLag - videoLag| the policy returns Zero so the filter
-        // doesn't oscillate on small jitter.
-        public static readonly TimeSpan AudioCatchUpDeadband = TimeSpan.FromMilliseconds(200);
         // Target audio-vs-video lag offset. 0 = exact sync. Was -100 ms (audio
         // kept ahead) to compensate unmeasured audio output latency — but the
         // audio lag metric already includes it (AudioContext baseLatency+
@@ -53,13 +45,6 @@ public static partial class Constants
         // aggregating per-author lag. Covers paused video, hidden tabs, and
         // stopped streams — all map to "no signal → desired = 0".
         public static readonly TimeSpan PlaybackLagStaleAfter = TimeSpan.FromMilliseconds(1500);
-        // A real remote's video lag is always ≥ its receive buffer; below this floor the
-        // lag is a local self-preview (own stream ≈ 0) or skew-corrupted — not a
-        // trustworthy A/V-sync target, so the catch-up policy ignores it.
-        public static readonly TimeSpan AudioSyncMinVideoLag = TimeSpan.FromMilliseconds(100);
-        // Catch-up beyond this is treated as a bad/stale sample (e.g. a garbage audio
-        // lag), not real drift — the policy returns Zero instead of skipping seconds.
-        public static readonly TimeSpan AudioSyncMaxDesired = TimeSpan.FromSeconds(30);
 
         // Other audio frame characteristics
         public const int VadFrameDurationMs = 32;
@@ -100,7 +85,6 @@ public static partial class Constants
         // refactor unifies start-threshold semantics across web and MAUI.
         public static readonly TimeSpan LowPlaybackBufferDuration = TimeSpan.FromSeconds(10);
         public static readonly TimeSpan StartPlaybackWhenBufferedDuration = StartBufferDuration;
-        public static readonly TimeSpan PlaybackCatchUpCommandCooldown = TimeSpan.FromSeconds(1);
 
         // Pre-decoder (encoded frame) buffer sizing. The engine's pre-decoder
         // buffer target is computed as

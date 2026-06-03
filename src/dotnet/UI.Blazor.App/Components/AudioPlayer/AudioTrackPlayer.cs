@@ -22,7 +22,6 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private volatile TaskCompletionSource _whenBufferLowSource = TaskCompletionSourceExt.New();
     private CpuTimestamp _playStartedAt;
     private TimeSpan _playDuration;
-    private TimeSpan _audioSyncSuppressedUntil;
     private int _audioSyncSampleIn;
     private TimeSpan _currentTargetBufferSize;
     private CpuTimestamp _lastBufferAdjustAt;
@@ -36,7 +35,6 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private PlaybackLagTracker LagTracker => field ??= Services.GetRequiredService<PlaybackLagTracker>();
     private AudioSyncDiagnostics SyncDiagnostics => field ??= Services.GetRequiredService<AudioSyncDiagnostics>();
     private ChatAudioUI ChatAudioUI => field ??= Services.GetRequiredService<ChatAudioUI>();
-    private IAudioCatchUpPolicy AudioCatchUpPolicy => field ??= Services.GetRequiredService<IAudioCatchUpPolicy>();
     private IAudioPlaybackEngineFactory Factory { get; }
 
     public AudioTrackPlayer(
@@ -154,7 +152,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 
             _playDuration += frame.Duration;
             var audioFrame = (AudioFrame)frame;
-            await ApplyAudioSync(audioFrame, cancellationToken).ConfigureAwait(false);
+            ApplyAudioSync();
             await _playbackEngine.PushFrame(audioFrame, cancellationToken).ConfigureAwait(false);
             await _whenBufferLowSource.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
         }
@@ -178,8 +176,8 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     }
 
     // True when this track is the local user's own stream — its video is a
-    // 0-latency local self-preview, so A/V-syncing audio to it is meaningless
-    // (and produces a runaway speed-up/skip storm). Computed once at start.
+    // 0-latency local self-preview, so A/V-syncing audio to it is meaningless.
+    // Computed once at start.
     private async Task<bool> IsOwnStream(ChatAudioTrackInfo trackInfo, CancellationToken cancellationToken)
     {
         if (trackInfo is not { Chat: { } chat, Author.Id: { } authorId })
@@ -244,7 +242,10 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         _ = _playbackEngine?.SetTargetBufferSize(desired, CancellationToken.None);
     }
 
-    private async ValueTask ApplyAudioSync(AudioFrame frame, CancellationToken cancellationToken)
+    // Audio plays clean at 1×; the only A/V-sync lever is the playback-buffer
+    // hold (start-time ApplyAvSyncHold + runtime AdjustBufferHold). No frame is
+    // ever dropped or sped up — video paces to the audio position instead.
+    private void ApplyAudioSync()
     {
         if (TrackInfo is not ChatAudioTrackInfo { Author.Id: { } authorId })
             return;
@@ -258,8 +259,6 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             SyncDiagnostics.RecordCommand(authorId, AudioSyncCommand.None);
             return;
         }
-        if (frame.Offset < _audioSyncSuppressedUntil)
-            return;
 
         if (_audioSyncSampleIn > 0) {
             _audioSyncSampleIn--;
@@ -268,48 +267,8 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         _audioSyncSampleIn = AudioSyncPolicySamplePeriodFrames;
 
         AdjustBufferHold(authorId);
-
-        var decision = new AudioCatchUpDecision(TimeSpan.Zero, AudioSyncSkipReason.None);
-        try {
-            decision = await AudioCatchUpPolicy.GetDesiredCatchUp(authorId, cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) {
-            throw;
-        }
-        catch (Exception e) {
-            Log.LogWarning(e, "Audio catch-up policy failed for {AuthorId}", authorId);
-        }
-        SyncDiagnostics.RecordDecision(authorId, decision.Desired, decision.Reason);
-
-        var desired = decision.Desired;
-        if (desired <= TimeSpan.Zero || _playbackEngine == null) {
-            SyncDiagnostics.RecordCommand(authorId, AudioSyncCommand.None);
-            return;
-        }
-
-        var cooldown = Constants.Audio.PlaybackCatchUpCommandCooldown;
-        if (desired >= Constants.Audio.PlaybackHardSkipThreshold) {
-            var skipUntil = frame.Offset + desired;
-            DebugLog?.LogDebug("Audio sync: skip until {SkipUntil} for {AuthorId}", skipUntil, authorId);
-            await _playbackEngine.SkipUntil(skipUntil, cancellationToken).ConfigureAwait(false);
-            SyncDiagnostics.RecordCommand(authorId, AudioSyncCommand.Skip);
-            _audioSyncSuppressedUntil = skipUntil + cooldown;
-            _audioSyncSampleIn = 0;
-            return;
-        }
-
-        var dropEveryN = Constants.Audio.PlaybackSpeedUpDropEveryNFrames;
-        var speedUpTicks = Math.Min(
-            desired.Ticks * dropEveryN,
-            Constants.Audio.PlaybackMaxSpeedUpDuration.Ticks);
-        var speedUpUntil = frame.Offset + TimeSpan.FromTicks(speedUpTicks);
-        DebugLog?.LogDebug(
-            "Audio sync: speed-up until {SpeedUpUntil}, drop every {DropEveryN} frames for {AuthorId}",
-            speedUpUntil, dropEveryN, authorId);
-        await _playbackEngine.SpeedUpUntil(speedUpUntil, dropEveryN, cancellationToken).ConfigureAwait(false);
-        SyncDiagnostics.RecordCommand(authorId, AudioSyncCommand.SpeedUp);
-        _audioSyncSuppressedUntil = speedUpUntil + cooldown;
-        _audioSyncSampleIn = 0;
+        SyncDiagnostics.RecordDecision(authorId, TimeSpan.Zero, AudioSyncSkipReason.None);
+        SyncDiagnostics.RecordCommand(authorId, AudioSyncCommand.None);
     }
 
     private void UpdateBufferState(bool isBufferLow)

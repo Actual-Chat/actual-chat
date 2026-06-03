@@ -66,14 +66,6 @@ partial record AppConstants
             public int StateUpdatePeriodMs { get; init; } = 200;
             // Debounce window for resetting iOS media-session metadata.
             public int MediaSessionResetDebounceMs { get; init; } = 5000;
-            // Audio buffer playback catch-up policy (used when paired with video
-            // from the same author; a separate step will wire these in).
-            public int PlaybackHardSkipThresholdMs { get; init; } =
-                (int)Constants.Audio.PlaybackHardSkipThreshold.TotalMilliseconds;
-            public int PlaybackMaxSpeedUpDurationMs { get; init; } =
-                (int)Constants.Audio.PlaybackMaxSpeedUpDuration.TotalMilliseconds;
-            public int PlaybackSpeedUpDropEveryNFrames { get; init; } =
-                Constants.Audio.PlaybackSpeedUpDropEveryNFrames;
         }
 
         public sealed record EncodeConstants
