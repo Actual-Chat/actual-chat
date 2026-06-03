@@ -5,6 +5,7 @@ import { Disposable, DisposableBag, Disposables } from 'disposable';
 import { DocumentEvents, tryPreventDefaultForEvent } from 'event-handling';
 import { fromEvent } from 'rxjs';
 import { Gesture, Gestures } from 'gestures';
+import { ScrollController } from 'scroll-controller';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { getLogs } from 'logging';
 import { unselect } from 'keyboard';
@@ -50,6 +51,8 @@ export class SideNav extends DisposableBag {
     public set isPulling(value: boolean) {
         this._isPulling = value;
         this.element.classList.toggle('pulling', value);
+        if (value)
+            ScrollController.startScrollLockAll();
     }
 
     public static create(
