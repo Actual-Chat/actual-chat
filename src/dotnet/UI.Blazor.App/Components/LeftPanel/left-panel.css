@@ -88,7 +88,7 @@
     transition: transform 200ms ease-out;
 }
 .left-panel-content:has(.left-search-overlay-panel.open) .left-panel-content-header.place .c-icon {
-    @apply -translate-y-[150%];
+    @apply -translate-y-[100vh];
 }
 .left-panel-content-header.place.chat-roulette .c-icon.c-chat-roulette-icon {
     @apply flex items-center justify-center;
@@ -200,13 +200,15 @@ body.hoverable .add-members-btn:hover {
     transition: background-color 200ms ease-in-out, border-color 200ms ease-in-out;
 }
 .left-search-panel:has(.left-search-overlay-panel.open) {
-    background: color-mix(in srgb, var(--primary) 4%, var(--background-03));
-    /*border: 1px solid var(--separator);*/
-    border-radius: 16px;
-    box-shadow:
-        inset 0 0 0 4px rgba(0, 0, 0, 0.08),
-        0 8px 16px -8px rgba(0, 0, 0, 0.15),
-        0 2px 4px rgba(0, 0, 0, 0.06);
+    @apply bg-03;
+    background-image: linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--blue-50) 80%, var(--violet-60)),
+        var(--background-03) 15%);
+    border-radius: 0.75rem 0 0 0;
+    transition: background-color 200ms ease-in-out,
+                border-color 200ms ease-in-out,
+                border-radius 200ms ease-in-out 200ms;
 }
 
 .left-panel-content-header.place.chat-roulette > .c-content {

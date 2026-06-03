@@ -3,7 +3,7 @@
     @apply h-5;
     @apply pl-2 pr-1.5;
     @apply rounded-full border-0;
-    @apply bg-status-badge text-status;
+    @apply bg-03;
     @apply text-caption-4 text-03 whitespace-nowrap;
     @apply cursor-pointer;
 }

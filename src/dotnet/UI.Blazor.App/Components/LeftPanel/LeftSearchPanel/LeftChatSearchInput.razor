@@ -14,6 +14,17 @@
     <div class="c-search">
         <div class="search-input">
             <label>
+                <TextInput
+                    @ref="_inputRef"
+                    Text="@m.InitialText"
+                    Class="w-full dialog-unstyled"
+                    Placeholder="@Placeholder"
+                    MaxLength="@MaxLength"
+                    CloseOnBlurSelector=".left-chat-search-input"
+                    OnFocus="@(_ => OnClick(true))"
+                    OnBlur="@OnInputBlur"
+                    TextChanged="OnSearchInputTextChanged">
+                </TextInput>
                 <HeaderButton
                     Class="c-filter-btn btn-lg"
                     data-menu="@(MenuRef.New<SearchFilterMenu>())"
@@ -21,15 +32,6 @@
                     data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
                     <i class="icon-options-2 text-xl"></i>
                 </HeaderButton>
-                <TextInput
-                    @ref="_inputRef"
-                    Text="@m.InitialText"
-                    Class="w-full dialog-unstyled"
-                    Placeholder="@Placeholder"
-                    MaxLength="@MaxLength"
-                    OnFocus="@(_ => OnClick(true))"
-                    TextChanged="OnSearchInputTextChanged">
-                </TextInput>
 
                 <ButtonRound Click="@OnSearchButtonClick" Class="c-ai-btn search-btn btn-transparent">
                     <i class="icon-search text-xl"></i>
@@ -130,6 +132,11 @@
         } else {
             OnClick(false);
         }
+    }
+
+    private void OnInputBlur() {
+        if (!_hasText)
+            OnClick(false);
     }
 
     private void OnLocationBadgeClick()

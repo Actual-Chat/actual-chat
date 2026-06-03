@@ -31,8 +31,13 @@
     @apply bg-transparent;
     @apply border-transparent;
 }
+.left-chat-search-input.open .search-input {
+    @apply bg-01;
+    box-shadow: inset 0 0 0 1px var(--primary);
+}
 .left-chat-search-input .c-filter-btn {
     @apply flex-none self-center inline-flex;
+    @apply order-first;
     @apply w-0;
     @apply ml-0;
     @apply rounded-full;
@@ -48,7 +53,6 @@
     @apply w-8;
     @apply ml-1;
     @apply opacity-100;
-    @apply bg-03;
     pointer-events: auto;
 }
 .left-chat-search-input .c-filter-badges {
@@ -69,7 +73,6 @@
 }
 .left-chat-search-input.place .search-input {
     @apply relative;
-    @apply bg-input;
     @apply overflow-hidden;
 }
 .left-chat-search-input.place .search-input:after {
@@ -100,6 +103,7 @@
 }
 .left-chat-search-input.open .c-ai-btn {
     @apply opacity-0;
+    @apply pointer-events-none;
 }
 .left-chat-search-input.closed .c-ai-btn {
     @apply opacity-100;

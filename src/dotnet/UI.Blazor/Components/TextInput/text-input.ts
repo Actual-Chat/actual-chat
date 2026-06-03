@@ -4,6 +4,7 @@ import { fromEvent, Subject, takeUntil, debounceTime, switchMap } from 'rxjs';
 interface TextInputOptions {
     text: string;
     debounce: number;
+    closeOnBlurSelector?: string;
 }
 
 export class TextInput implements Disposable {
@@ -36,6 +37,19 @@ export class TextInput implements Disposable {
                 debounceTime(this.options.debounce),
                 switchMap((e: ClipboardEvent) => this.blazorRef.invokeMethodAsync('OnPaste', e.clipboardData?.getData('Text'))),
             ).subscribe();
+
+        const closeOnBlurSelector = this.options.closeOnBlurSelector;
+        if (closeOnBlurSelector) {
+            const boundary = this.element.closest(closeOnBlurSelector);
+            fromEvent(this.element, 'focusout')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe((e: FocusEvent) => {
+                    const related = e.relatedTarget as Node | null;
+                    if (boundary && related && boundary.contains(related))
+                        return;
+                    void this.blazorRef.invokeMethodAsync('NotifyBlur');
+                });
+        }
     }
 
     public dispose() {
