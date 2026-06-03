@@ -18,10 +18,6 @@ import Denque from 'denque';
 
 const { logScope, debugLog, warnLog, errorLog } = getLogs('OpusDecoder');
 const enableFrequentDebugLog = false;
-// Min encoded-queue cushion (in frames) required before speed-up may drop a
-// frame. Dropping with no cushion leaves the feeder's on-demand request unserved
-// and starves the decoded ring → audible clicks. ~3 frames keeps a replacement.
-const SPEEDUP_MIN_QUEUE_FRAMES = 3;
 
 interface EncodedFrame {
     data: Uint8Array;
@@ -35,10 +31,6 @@ interface DecodeTiming {
 class EncodedFrameBuffer {
     private readonly frames = new Denque<EncodedFrame | 'end'>();
     private targetDurationMs = 0;
-    private skipUntilMs = 0;
-    private speedUpUntilMs = 0;
-    private speedUpDropEveryNFrames = 0;
-    private speedUpFrameCounter = 0;
     private primed = false;
 
     get length(): number { return this.frames.length; }
@@ -57,56 +49,19 @@ class EncodedFrameBuffer {
 
     clear(): void {
         this.frames.clear();
-        this.skipUntilMs = 0;
-        this.clearSpeedUp();
         this.primed = false;
     }
 
-    skipUntil(sourceOffsetMs: number): void {
-        this.skipUntilMs = Math.max(this.skipUntilMs, sourceOffsetMs);
-        this.clearSpeedUp();
-        this.dropSkippedFrames();
-    }
-
-    private dropSkippedFrames(): void {
-        while (true) {
-            const frame = this.frames.peekFront();
-            if (!frame || frame === 'end' || frame.sourceOffsetMs >= this.skipUntilMs)
-                return;
-            this.frames.shift();
-        }
-    }
-
-    speedUpUntil(sourceOffsetMs: number, dropEveryNFrames: number): void {
-        if (dropEveryNFrames <= 1 || sourceOffsetMs <= 0) {
-            this.clearSpeedUp();
-            return;
-        }
-
-        this.speedUpUntilMs = sourceOffsetMs;
-        this.speedUpDropEveryNFrames = dropEveryNFrames;
-        this.speedUpFrameCounter = 0;
-    }
-
     shiftReady(): EncodedFrame | 'end' | undefined {
-        while (true) {
-            this.dropSkippedFrames();
-            const frame = this.frames.peekFront();
-            if (!frame)
-                return undefined;
-            if (frame === 'end')
-                return this.frames.shift();
-            if (frame.sourceOffsetMs >= this.skipUntilMs)
-                this.skipUntilMs = 0;
-            if (!this.canRelease())
-                return undefined;
-            if (this.shouldDropForSpeedUp(frame)) {
-                this.frames.shift();
-                continue;
-            }
-
+        const frame = this.frames.peekFront();
+        if (!frame)
+            return undefined;
+        if (frame === 'end')
             return this.frames.shift();
-        }
+        if (!this.canRelease())
+            return undefined;
+
+        return this.frames.shift();
     }
 
     private canRelease(): boolean {
@@ -136,29 +91,6 @@ class EncodedFrameBuffer {
 
     private hasEnd(): boolean {
         return this.frames.peekBack() === 'end';
-    }
-
-    private shouldDropForSpeedUp(frame: EncodedFrame): boolean {
-        if (this.speedUpDropEveryNFrames <= 0)
-            return false;
-        if (frame.sourceOffsetMs >= this.speedUpUntilMs) {
-            this.clearSpeedUp();
-            return false;
-        }
-        // Never drop when the queue lacks a cushion: dropping the last frame(s)
-        // strands the feeder's request and starves the decoded ring (clicks).
-        // Pause speed-up while the buffer is too low; resume once it refills.
-        if (this.durationMs() < SPEEDUP_MIN_QUEUE_FRAMES * AUDIO.frameDurationMs)
-            return false;
-
-        this.speedUpFrameCounter++;
-        return this.speedUpFrameCounter % this.speedUpDropEveryNFrames === 0;
-    }
-
-    private clearSpeedUp(): void {
-        this.speedUpUntilMs = 0;
-        this.speedUpDropEveryNFrames = 0;
-        this.speedUpFrameCounter = 0;
     }
 
     private firstFrame(): EncodedFrame | undefined {
@@ -264,16 +196,6 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
         const engineLatency = AUDIO.play.audioEnginePlaybackLatencyMs;
         const encoded = Math.max(minEncoded, targetBufferSizeMs - decoded - engineLatency);
         this.encodedFrames.setTargetDuration(encoded);
-        this.flushDecodeDemand();
-    }
-
-    public skipUntil(sourceOffsetMs: number): void {
-        this.encodedFrames.skipUntil(sourceOffsetMs);
-        this.flushDecodeDemand();
-    }
-
-    public speedUpUntil(sourceOffsetMs: number, dropEveryNFrames: number): void {
-        this.encodedFrames.speedUpUntil(sourceOffsetMs, dropEveryNFrames);
         this.flushDecodeDemand();
     }
 

@@ -353,16 +353,6 @@ export class AudioPlayer implements Resettable {
             [buf]);
     }
 
-    /** Called by Blazor */
-    public skipUntil(sourceOffsetMs: number): void {
-        void decoderWorker!.skipUntil(this.internalId, sourceOffsetMs, rpcNoWait);
-    }
-
-    /** Called by Blazor */
-    public speedUpUntil(sourceOffsetMs: number, dropEveryNFrames: number): void {
-        void decoderWorker!.speedUpUntil(this.internalId, sourceOffsetMs, dropEveryNFrames, rpcNoWait);
-    }
-
     /** Called by Blazor — runtime playback-buffer target change (adaptive A/V hold). */
     public setTargetBufferSize(targetBufferSizeMs: number): void {
         this.targetBufferSizeMs = targetBufferSizeMs;
