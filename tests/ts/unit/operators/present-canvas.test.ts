@@ -49,6 +49,7 @@ function makeEnvelope(
         frame: f as unknown as VideoFrame,
         capturedAt: { timeMs: capturedAtMs, epoch: 0 },
         arrivedAt: { timeMs: capturedAtMs + 100, epoch: 0 },
+        serverArrivedAtUnixMs: 0,
         decodedAt: { timeMs: capturedAtMs + 200, epoch: 0 },
         index: id,
         dropTrace: [],

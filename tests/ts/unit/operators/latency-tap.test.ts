@@ -28,6 +28,7 @@ interface MakeOpts {
     arrivedTimeMs?: number;
     decodedTimeMs: number;
     layerId?: number;
+    serverArrivedAtUnixMs?: number;
 }
 
 function makeEnvelope(stats: PlayerStats, id: number, opts: MakeOpts): DecodedFrame {
@@ -35,6 +36,7 @@ function makeEnvelope(stats: PlayerStats, id: number, opts: MakeOpts): DecodedFr
         frame: new MockVideoFrame(id) as unknown as VideoFrame,
         capturedAt: { timeMs: opts.capturedTimeMs, epoch: opts.capturedEpoch ?? 0 },
         arrivedAt: { timeMs: opts.arrivedTimeMs ?? opts.capturedTimeMs + 5, epoch: opts.capturedEpoch ?? 0 },
+        serverArrivedAtUnixMs: opts.serverArrivedAtUnixMs ?? 0,
         decodedAt: { timeMs: opts.decodedTimeMs, epoch: opts.capturedEpoch ?? 0 },
         index: id,
         dropTrace: [],

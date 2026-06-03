@@ -15,6 +15,9 @@ export interface LatencySample {
     // A/V-sync lag is startedAtMs + capturedAtMs vs ServerClock.now.
     capturedAtMs: number;
     capturedEpoch: number;
+    // Server-stamped receive time (Unix ms); 0 when absent. With capturedAtMs +
+    // startedAtMs (server domain) this isolates uplink (capture→server).
+    serverArrivedAtUnixMs: number;
     layerId: number;
     width: number;
     height: number;
@@ -63,6 +66,7 @@ export function latencyTap(opts: LatencyTapOptions): PipeOperator<DecodedFrame, 
                 e2eLatencyMs: nowMs - envelope.capturedAt.timeMs,
                 capturedAtMs: envelope.capturedAt.timeMs,
                 capturedEpoch: envelope.capturedAt.epoch,
+                serverArrivedAtUnixMs: envelope.serverArrivedAtUnixMs,
                 layerId: envelope.layerId,
                 width: envelope.frame.displayWidth,
                 height: envelope.frame.displayHeight,

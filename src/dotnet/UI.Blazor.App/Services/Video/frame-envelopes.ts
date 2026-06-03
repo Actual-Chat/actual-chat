@@ -389,6 +389,9 @@ export interface DecodedFrame {
 
     capturedAt: { timeMs: number; epoch: number };
     arrivedAt: MonotonicTime;
+    // Server-stamped receive time (Unix ms); 0 when absent. Lets the latency-tap
+    // split capture→server (uplink) from server→screen (downlink + receiver).
+    serverArrivedAtUnixMs: number;
 
     // Canonical "frame age" reference for the latency-tap operator.
     decodedAt: MonotonicTime;

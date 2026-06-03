@@ -79,6 +79,7 @@ function canConfigureWithoutDescription(codec: string): boolean {
 interface PendingDecode {
     capturedAt: { timeMs: number; epoch: number };
     arrivedAt: ArrivedChunk['arrivedAt'];
+    serverArrivedAtUnixMs: number;
     layerId: number;
     submitMs: number;
     index: number;
@@ -195,6 +196,7 @@ async function* decodeAsync(
                 frame: outFrame,
                 capturedAt: meta.capturedAt,
                 arrivedAt: meta.arrivedAt,
+                serverArrivedAtUnixMs: meta.serverArrivedAtUnixMs,
                 decodedAt: { timeMs: decodedAtMs, epoch: 0 },
                 index: meta.index,
                 dropTrace: meta.dropTrace,
@@ -414,6 +416,7 @@ async function* decodeAsync(
                 pending.push({
                     capturedAt: arrived.capturedAt,
                     arrivedAt: arrived.arrivedAt,
+                    serverArrivedAtUnixMs: arrived.serverArrivedAtUnixMs,
                     layerId: arrived.layerId,
                     submitMs,
                     index: arrived.index,

@@ -264,6 +264,7 @@ export class VideoPlayer {
     private audioCaTimer: ReturnType<typeof setInterval> | null = null;
     private readonly videoLagEma = new RunningEMA(0, 3, 0.3);
     private readonly displayLatencyEma = new RunningEMA(0, 3, 0.3);
+    private readonly uplinkLatencyEma = new RunningEMA(0, 3, 0.3);
     private displayLatencyMs = 0;
     private hasDisplayLag = false;
     private rvfcStop = false;
@@ -1228,9 +1229,13 @@ export class VideoPlayer {
         const tapLagMs = Math.max(0, ServerClock.now() - captureAtServerMs);
         this.videoLagEma.appendSample(tapLagMs);
         const videoLagMs = this.hasDisplayLag ? this.displayLatencyMs : this.videoLagEma.value;
+        // Uplink (capture→server) — both server domain, skew-free. Splits the
+        // sender+upload share out of the total on-screen lag.
+        if (sample.serverArrivedAtUnixMs > 0)
+            this.uplinkLatencyEma.appendSample(Math.max(0, sample.serverArrivedAtUnixMs - captureAtServerMs));
         void this.blazorRef.invokeMethodAsync(
             'OnPresentationLag', videoLagMs, sample.capturedAtMs, sample.bufferSpanMs,
-            sample.playerStats.presentSkipRatio, this.videoLagEma.value)
+            sample.playerStats.presentSkipRatio, this.videoLagEma.value, this.uplinkLatencyEma.value)
             .catch(() => { /* ignore */ });
 
         // Push a playback-health snapshot for the server-side controller.
