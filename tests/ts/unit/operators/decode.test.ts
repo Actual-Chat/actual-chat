@@ -111,6 +111,34 @@ async function* fromArrayAsync<T>(items: readonly T[]): AsyncIterable<T> {
     }
 }
 
+// Manually-gated source: the test controls exactly when each chunk becomes
+// available, so the run-ahead feed pump can't submit ahead of what's pushed.
+// Needed for timing/recovery tests that assumed lockstep submit-on-pull.
+interface ManualSource<T> {
+    iterable: AsyncIterable<T>;
+    push(item: T): void;
+    end(): void;
+}
+function manualSource<T>(): ManualSource<T> {
+    const queue: T[] = [];
+    let wake: (() => void) | null = null;
+    let done = false;
+    const iterable: AsyncIterable<T> = {
+        async *[Symbol.asyncIterator]() {
+            for (;;) {
+                while (queue.length > 0) yield queue.shift()!;
+                if (done) return;
+                await new Promise<void>(r => { wake = r; });
+            }
+        },
+    };
+    return {
+        iterable,
+        push(item: T): void { queue.push(item); wake?.(); wake = null; },
+        end(): void { done = true; wake?.(); wake = null; },
+    };
+}
+
 /** Drives the operator one chunk at a time, letting tests slip in
  *  decoder.emitFrame() between submissions. */
 async function stepIter<T>(
@@ -284,24 +312,23 @@ describe('decode operator', () => {
             maxRecoveries: 2,
         };
 
-        // Sequence: keyframe → error → keyframe (recovery #1) → error → keyframe (recovery #2 → exhausted)
-        const arrivals: ArrivedChunk[] = [
-            makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }),
-            makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }),
-            makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }),
-        ];
-
-        const seg = decode(opts)(fromArray(arrivals));
+        // Sequence: keyframe → error → keyframe (recovery #1) → error → keyframe (recovery #2 → exhausted).
+        // Gated source: a keyframe must remain unsubmitted to drive each recovery,
+        // so push them one at a time rather than letting the pump run ahead.
+        const src = manualSource<ArrivedChunk>();
+        const seg = decode(opts)(src.iterable);
         const iter = seg[Symbol.asyncIterator]();
 
         // Step 1: submit the first keyframe.
         const n1 = stepIter(iter);
+        src.push(makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }));
         await pumpUntil(() => captured !== undefined && captured.decodeCalls.length >= 1);
         expect(captured!.configureCalls).toHaveLength(1);
         expect(captured!.decodeCalls).toHaveLength(1);
         // Trigger an error on the just-submitted chunk (no frame emitted).
         captured!.emitError('boom 1');
-        // Wait for recovery to spin up a second decoder and submit on it.
+        // Recovery consumes the next keyframe to spin up a second decoder.
+        src.push(makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }));
         await pumpUntil(() => decoders.length >= 2 && decoders[1].decodeCalls.length >= 1);
         const second = decoders[1];
         expect(second.configureCalls).toHaveLength(1);
@@ -309,6 +336,8 @@ describe('decode operator', () => {
 
         // Now trigger another error on this rebuilt decoder.
         second.emitError('boom 2');
+        // Recovery #2 consumes the third keyframe and hits the limit.
+        src.push(makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }));
         // Recovery #2 hits the limit; the operator throws and onCodecExhausted fires.
         await expect(n1).rejects.toThrow(/recovery exhausted/i);
         expect(exhaustedCalls).toEqual(['avc1.42E01E']);
@@ -414,18 +443,20 @@ describe('decode operator', () => {
             clearTimeoutFn,
         };
         // First keyframe hangs (no frame emitted) → watchdog → recovery on the
-        // second keyframe rebuilds the decoder and resubmits.
-        const arrivals: ArrivedChunk[] = [
-            makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }),
-            makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }),
-        ];
-        const seg = decode(opts)(fromArray(arrivals));
+        // second keyframe rebuilds the decoder and resubmits. Gated source holds
+        // the second keyframe back so it's available to drive recovery.
+        const src = manualSource<ArrivedChunk>();
+        const seg = decode(opts)(src.iterable);
         const iter = seg[Symbol.asyncIterator]();
         const n1 = stepIter(iter);
+        src.push(makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }));
 
         await pumpUntil(() => decoders.length >= 1 && decoders[0].decodeCalls.length >= 1);
+        // The drain loop arms the watchdog a hop after the pump submits.
+        await pumpUntil(() => timers.length >= 1);
         nowMs = 100 + 2_000;
         fireWatchdog();
+        src.push(makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }));
         // Recovery: a second decoder is created and the second keyframe is submitted.
         await pumpUntil(() => decoders.length >= 2 && decoders[1].decodeCalls.length >= 1);
         expect(decoders[0].closed).toBe(true);
@@ -449,15 +480,15 @@ describe('decode operator', () => {
             now: () => nowMs,
             frameDurationMs: 50, // ratio = decodeMs / 50
         };
-        const arrivals: ArrivedChunk[] = [
-            makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }),
-            makeArrived(stats, { isKeyFrame: false, width: 640, height: 360 }),
-        ];
-        const seg = decode(opts)(fromArray(arrivals));
+        // Gated source so each chunk is submitted at a controlled `nowMs` (the
+        // run-ahead pump would otherwise submit chunk 2 as soon as space frees).
+        const src = manualSource<ArrivedChunk>();
+        const seg = decode(opts)(src.iterable);
         const iter = seg[Symbol.asyncIterator]();
 
         // Chunk 1: submitMs = 1000; decode took 25 ms → ratio = 0.5.
         const n1 = stepIter(iter);
+        src.push(makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }));
         await pumpUntil(() => captured !== undefined && captured.decodeCalls.length >= 1);
         nowMs = 1025;
         captured!.emitFrame(0);
@@ -467,6 +498,7 @@ describe('decode operator', () => {
         // Chunk 2: submitMs = 1100; decode took 100 ms → ratio = 2.0. EMA blends.
         nowMs = 1100;
         const n2 = stepIter(iter);
+        src.push(makeArrived(stats, { isKeyFrame: false, width: 640, height: 360 }));
         await pumpUntil(() => captured !== undefined && captured.decodeCalls.length >= 2);
         nowMs = 1200;
         captured!.emitFrame(1);
@@ -474,6 +506,7 @@ describe('decode operator', () => {
         // With alpha=0.2: prev=0.5, new=2.0 → 0.5 + 0.2*(2.0-0.5) = 0.8.
         expect(stats.decodeRatioEma).toBeCloseTo(0.8, 4);
 
+        src.end();
         await iter.next();
     });
 
@@ -490,15 +523,14 @@ describe('decode operator', () => {
             maxRecoveries: 5,
         };
         // keyframe → error → keyframe (recovery #1 — should bump streak to 1)
-        const arrivals: ArrivedChunk[] = [
-            makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }),
-            makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }),
-        ];
-        const seg = decode(opts)(fromArray(arrivals));
+        const src = manualSource<ArrivedChunk>();
+        const seg = decode(opts)(src.iterable);
         const iter = seg[Symbol.asyncIterator]();
         const n1 = stepIter(iter);
+        src.push(makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }));
         await pumpUntil(() => decoders.length >= 1 && decoders[0].decodeCalls.length >= 1);
         decoders[0].emitError('boom');
+        src.push(makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }));
         await pumpUntil(() => decoders.length >= 2 && decoders[1].decodeCalls.length >= 1);
         expect(stats.recoveryStreak).toBe(1);
 
@@ -536,20 +568,21 @@ describe('decode operator', () => {
             setTimeoutFn,
             clearTimeoutFn,
         };
-        const arrivals: ArrivedChunk[] = [
-            makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }),
-            makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }),
-        ];
-        const seg = decode(opts)(fromArray(arrivals));
+        const src = manualSource<ArrivedChunk>();
+        const seg = decode(opts)(src.iterable);
         const iter = seg[Symbol.asyncIterator]();
         const n1 = stepIter(iter);
+        src.push(makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }));
         await pumpUntil(() => decoders.length >= 1 && decoders[0].decodeCalls.length >= 1);
         expect(stats.hangRateIn60s).toBe(0);
+        // The drain loop arms the watchdog a hop after the pump submits.
+        await pumpUntil(() => timers.length >= 1);
         nowMs = 2_000;
         fireWatchdog();
         await pumpUntil(() => stats.hangRateIn60s >= 1);
         expect(stats.hangRateIn60s).toBe(1);
         // Recovery resubmits on chunk 2; emit a frame so the operator finishes.
+        src.push(makeArrived(stats, { isKeyFrame: true, width: 640, height: 360 }));
         await pumpUntil(() => decoders.length >= 2 && decoders[1].decodeCalls.length >= 1);
         decoders[1].emitFrame(0);
         await n1;
@@ -590,6 +623,208 @@ describe('decode operator', () => {
         expect(captured!.configureCalls[1].codedWidth).toBe(1280);
         expect(captured!.configureCalls[1].codedHeight).toBe(720);
         expect(captured!.decodeCalls).toHaveLength(3);
+    });
+
+    it('feed pump keeps the decoder topped to targetInFlightDepth without consumer pulls', async () => {
+        const stats = makeStats();
+        const ac = new AbortController();
+        let captured: MockDecoder | undefined;
+        const opts: DecodeOptions = {
+            initialConfig: { codec: 'avc1.42E01E' },
+            createDecoder: handlers => {
+                captured = new MockDecoder(handlers);
+                return captured;
+            },
+            abortSignal: ac.signal,
+            targetInFlightDepth: 3,
+            readyCap: 10,
+        };
+        const arrivals: ArrivedChunk[] = [makeArrived(stats, { isKeyFrame: true })];
+        for (let i = 0; i < 10; i++) arrivals.push(makeArrived(stats, { isKeyFrame: false }));
+        const seg = decode(opts)(fromArray(arrivals));
+        const iter = seg[Symbol.asyncIterator]();
+
+        // Kick the generator (starts the pump) but never consume a frame.
+        const first = stepIter(iter);
+        await pumpUntil(() => captured !== undefined && captured.decodeCalls.length >= 3);
+        // Prove it backpressures: it must NOT submit beyond the target.
+        for (let i = 0; i < 30; i++) await Promise.resolve();
+        expect(captured!.decodeCalls.length).toBe(3);
+
+        ac.abort();
+        const r = await first;
+        expect(r.done).toBe(true);
+    });
+
+    it('backpressure: plateaus at targetInFlightDepth, advances by one when a frame frees a slot', async () => {
+        const stats = makeStats();
+        const ac = new AbortController();
+        let captured: MockDecoder | undefined;
+        const opts: DecodeOptions = {
+            initialConfig: { codec: 'avc1.42E01E' },
+            createDecoder: handlers => {
+                captured = new MockDecoder(handlers);
+                return captured;
+            },
+            abortSignal: ac.signal,
+            targetInFlightDepth: 2,
+            readyCap: 10,
+        };
+        const arrivals: ArrivedChunk[] = [makeArrived(stats, { isKeyFrame: true })];
+        for (let i = 0; i < 4; i++) arrivals.push(makeArrived(stats, { isKeyFrame: false }));
+        const seg = decode(opts)(fromArray(arrivals));
+        const iter = seg[Symbol.asyncIterator]();
+
+        const first = stepIter(iter);
+        await pumpUntil(() => captured !== undefined && captured.decodeCalls.length >= 2);
+        for (let i = 0; i < 20; i++) await Promise.resolve();
+        expect(captured!.decodeCalls.length).toBe(2);
+
+        // Emit one frame → one in-flight slot frees → exactly one more submitted.
+        captured!.emitFrame(0);
+        await first;
+        await pumpUntil(() => captured!.decodeCalls.length >= 3);
+        for (let i = 0; i < 20; i++) await Promise.resolve();
+        expect(captured!.decodeCalls.length).toBe(3);
+
+        ac.abort();
+        await iter.return?.();
+    });
+
+    it('backpressure: plateaus at readyCap until the consumer drains decoded inventory', async () => {
+        const stats = makeStats();
+        const ac = new AbortController();
+        let captured: MockDecoder | undefined;
+        const opts: DecodeOptions = {
+            initialConfig: { codec: 'avc1.42E01E' },
+            createDecoder: handlers => {
+                captured = new MockDecoder(handlers);
+                return captured;
+            },
+            abortSignal: ac.signal,
+            targetInFlightDepth: 100, // not the binding constraint here
+            readyCap: 2,
+        };
+        const src = manualSource<ArrivedChunk>();
+        const seg = decode(opts)(src.iterable);
+        const iter = seg[Symbol.asyncIterator]();
+
+        const n0 = stepIter(iter);
+        src.push(makeArrived(stats, { isKeyFrame: true }));
+        await pumpUntil(() => captured !== undefined && captured.decodeCalls.length >= 1);
+        captured!.emitFrame(0);
+        await n0; // consumes frame0, ready back to 0, generator suspended
+
+        // Fill decoded inventory to readyCap without pulling.
+        src.push(makeArrived(stats, { isKeyFrame: false }));
+        await pumpUntil(() => captured!.decodeCalls.length >= 2);
+        captured!.emitFrame(1); // ready = 1
+        src.push(makeArrived(stats, { isKeyFrame: false }));
+        await pumpUntil(() => captured!.decodeCalls.length >= 3);
+        captured!.emitFrame(2); // ready = 2 (== cap)
+
+        // Next chunk is available but must NOT be submitted — readyCap is full.
+        src.push(makeArrived(stats, { isKeyFrame: false }));
+        for (let i = 0; i < 30; i++) await Promise.resolve();
+        expect(captured!.decodeCalls.length).toBe(3);
+
+        // Draining one decoded frame frees inventory → the pump submits again.
+        const r = await iter.next();
+        expect(r.done).toBe(false);
+        await pumpUntil(() => captured!.decodeCalls.length >= 4);
+        expect(captured!.decodeCalls.length).toBe(4);
+
+        ac.abort();
+        src.end();
+        await iter.return?.();
+    });
+
+    it('count conservation: N chunks in → N frames out, every chunk closed, no on-time drop', async () => {
+        const stats = makeStats();
+        let captured: MockDecoder | undefined;
+        const opts: DecodeOptions = {
+            initialConfig: { codec: 'avc1.42E01E' },
+            createDecoder: handlers => {
+                captured = new MockDecoder(handlers);
+                return captured;
+            },
+            targetInFlightDepth: 3,
+            readyCap: 5,
+        };
+        const n = 8;
+        const arrivals: ArrivedChunk[] = [];
+        for (let i = 0; i < n; i++) arrivals.push(makeArrived(stats, { isKeyFrame: i === 0 }));
+        const seg = decode(opts)(fromArray(arrivals));
+        const iter = seg[Symbol.asyncIterator]();
+
+        const collected: DecodedFrame[] = [];
+        for (let i = 0; i < n; i++) {
+            const next = stepIter(iter);
+            await pumpUntil(() => captured !== undefined && captured.decodeCalls.length >= i + 1);
+            captured!.emitFrame(i);
+            const r = await next;
+            if (r.done === false) collected.push(r.value);
+        }
+        const tail = await iter.next();
+        expect(tail.done).toBe(true);
+
+        expect(collected).toHaveLength(n);
+        expect(stats.framesDecoded).toBe(n);
+        for (const a of arrivals)
+            expect((a.chunk as unknown as MockEncodedVideoChunk).closed).toBe(true);
+    });
+
+    it('watchdog: a frame arriving during decode clears the hang timer (no false hang)', async () => {
+        const stats = makeStats();
+        const ac = new AbortController();
+        interface FakeTimer { cb: () => void; canceled: boolean }
+        const timers: FakeTimer[] = [];
+        const setTimeoutFn = (cb: () => void): unknown => {
+            const t: FakeTimer = { cb, canceled: false };
+            timers.push(t);
+            return t;
+        };
+        const clearTimeoutFn = (h: unknown): void => { (h as FakeTimer).canceled = true; };
+        const fireWatchdog = (): void => {
+            for (const t of timers.splice(0)) if (!t.canceled) t.cb();
+        };
+        let nowMs = 0;
+        let captured: MockDecoder | undefined;
+        const opts: DecodeOptions = {
+            initialConfig: { codec: 'avc1.42E01E' },
+            createDecoder: handlers => {
+                captured = new MockDecoder(handlers);
+                return captured;
+            },
+            abortSignal: ac.signal,
+            decoderHangTimeoutMs: 2_000,
+            now: () => nowMs,
+            setTimeoutFn,
+            clearTimeoutFn,
+        };
+        const src = manualSource<ArrivedChunk>();
+        const seg = decode(opts)(src.iterable);
+        const iter = seg[Symbol.asyncIterator]();
+
+        const n0 = stepIter(iter);
+        src.push(makeArrived(stats, { isKeyFrame: true }));
+        // A watchdog arms while the chunk is in flight.
+        await pumpUntil(() => captured !== undefined
+            && captured.decodeCalls.length >= 1
+            && timers.length >= 1);
+        // The frame lands just before the timeout would elapse — the drain loop
+        // clears the armed timer.
+        nowMs = 1_900;
+        captured!.emitFrame(0);
+        await n0;
+        // Any leftover timer is now canceled → firing it must not synthesise a hang.
+        fireWatchdog();
+        for (let i = 0; i < 10; i++) await Promise.resolve();
+        expect(stats.hangRateIn60s).toBe(0);
+
+        ac.abort();
+        src.end();
+        await iter.return?.();
     });
 });
 

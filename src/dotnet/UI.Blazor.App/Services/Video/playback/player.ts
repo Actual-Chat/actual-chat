@@ -39,7 +39,13 @@ export interface PlayerConfig {
     frameDurationMs?: number;
 
     // -- decode --
-    initialDecoderConfig: { codec: string; codedWidth?: number; codedHeight?: number };
+    initialDecoderConfig: {
+        codec: string;
+        codedWidth?: number;
+        codedHeight?: number;
+        hardwareAcceleration?: 'prefer-hardware' | 'prefer-software' | 'no-preference';
+        optimizeForLatency?: boolean;
+    };
     createDecoder: (handlers: {
         onFrame: (frame: VideoFrame) => void;
         onError: (e: Error) => void;

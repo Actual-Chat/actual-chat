@@ -162,7 +162,8 @@ public readonly record struct LagInputs(
     double OffsetMs = 0,
     double SkipRatio = 0,
     double DeviceLatencyMs = 0,
-    double UplinkMs = 0);
+    double UplinkMs = 0,
+    double RxMs = 0);
 
 [StructLayout(LayoutKind.Auto)]
 public readonly record struct PlaybackLagSnapshot(

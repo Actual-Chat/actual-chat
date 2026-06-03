@@ -30,6 +30,8 @@ export interface PlayerWorkerOptions {
         codec: string;
         codedWidth?: number;
         codedHeight?: number;
+        hardwareAcceleration?: 'prefer-hardware' | 'prefer-software' | 'no-preference';
+        optimizeForLatency?: boolean;
     };
 
     // -- present --

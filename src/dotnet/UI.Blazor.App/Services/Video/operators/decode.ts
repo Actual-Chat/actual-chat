@@ -10,6 +10,16 @@ const DECODE_RATIO_EMA_ALPHA = 0.2;
 const HANG_WINDOW_MS = 60_000;
 const DEFAULT_FRAME_DURATION_MS = 1000 / 30;
 
+// Feed pump keeps the decoder input queue topped to this many submitted-but-not-
+// output frames, independent of present pacing, so a latency-y decoder pipelines
+// instead of running one-deep at the live edge.
+const DEFAULT_TARGET_INFLIGHT_DEPTH = 3;
+// Hard cap on decoded-VideoFrame inventory awaiting present. The receiver buffers
+// ENCODED frames (cheap) upstream; decoded frames are expensive, so the pump
+// pauses once this many sit in `ready`. Must stay >= the decoder reorder depth
+// (≈0 with optimizeForLatency) to avoid stalling.
+const DEFAULT_READY_CAP = 4;
+
 // Message prefix stamped on a thrown error when the decode operator's recovery
 // budget is exhausted — VideoPlayer reads it to drive codec exclusion. Encoded
 // in the message because errors cross the worker boundary as strings.
@@ -66,6 +76,9 @@ export interface DecodeOptions {
     // / frameDurationMs. Defaults to 1000/30 for tests; production passes
     // VIDEO.frameDurationMs.
     frameDurationMs?: number;
+    // Feed pump backpressure knobs (tests shrink these for determinism).
+    targetInFlightDepth?: number;
+    readyCap?: number;
 }
 
 // HEVC (hev1/hvc1) needs a description; AVC and AV1 inline codec
@@ -106,6 +119,8 @@ export function decode(opts: DecodeOptions): PipeOperator<ArrivedChunk, DecodedF
     const clearTimeoutFn = opts.clearTimeoutFn ?? ((h: unknown): void => clearTimeout(h as ReturnType<typeof setTimeout>));
     const abortSignal = opts.abortSignal;
     const frameDurationMs = opts.frameDurationMs ?? DEFAULT_FRAME_DURATION_MS;
+    const targetInFlightDepth = Math.max(1, opts.targetInFlightDepth ?? DEFAULT_TARGET_INFLIGHT_DEPTH);
+    const readyCap = Math.max(1, opts.readyCap ?? DEFAULT_READY_CAP);
 
     return source => from(decodeAsync(
         source,
@@ -121,6 +136,8 @@ export function decode(opts: DecodeOptions): PipeOperator<ArrivedChunk, DecodedF
         clearTimeoutFn,
         abortSignal,
         frameDurationMs,
+        targetInFlightDepth,
+        readyCap,
     ));
 }
 
@@ -138,6 +155,8 @@ async function* decodeAsync(
     clearTimeoutFn: (handle: unknown) => void,
     abortSignal: AbortSignal | undefined,
     frameDurationMs: number,
+    targetInFlightDepth: number,
+    readyCap: number,
 ): AsyncIterable<DecodedFrame> {
     const decodeRatioEma = new RunningEMA(0, 1, DECODE_RATIO_EMA_ALPHA);
     const hangTimestamps: number[] = [];
@@ -153,7 +172,12 @@ async function* decodeAsync(
     const descriptionByLayer = new Map<number, ArrayBuffer>();
     const pending: PendingDecode[] = [];
     const ready: DecodedFrame[] = [];
-    let wakeup = new PromiseSource<void>();
+    // Two wakeups decouple the feed pump from presentation: `dataReady` nudges the
+    // drain/yield loop (a frame landed or an error needs handling); `spaceAvailable`
+    // nudges the feed pump when backpressure clears (in-flight dropped or inventory
+    // drained).
+    let dataReady = new PromiseSource<void>();
+    let spaceAvailable = new PromiseSource<void>();
     let pendingError: Error | null = null;
     let consecutiveRecoveries = 0;
     const codecProofTracker: CodecProofTracker = createCodecProofTracker(framesUntilProven);
@@ -212,13 +236,15 @@ async function* decodeAsync(
             stats.decoderQueueSize = pending.length;
             noteFrameDecoded(meta.layerId);
             ready.push(envelope);
-            if (!wakeup.isCompleted) wakeup.resolve();
+            if (!dataReady.isCompleted) dataReady.resolve();
+            if (!spaceAvailable.isCompleted) spaceAvailable.resolve();
         },
         onError: (e: Error): void => {
             lastDecoderActivityMs = now();
             pendingError = e;
             codecProofTracker.noteDecoderError();
-            if (!wakeup.isCompleted) wakeup.resolve();
+            if (!dataReady.isCompleted) dataReady.resolve();
+            if (!spaceAvailable.isCompleted) spaceAvailable.resolve();
         },
     };
 
@@ -229,7 +255,7 @@ async function* decodeAsync(
         ? abortPromise(abortSignal).catch((): WaitResult => ({ kind: 'abort' }))
         : new Promise<WaitResult>(() => { /* never resolves */ });
 
-    // Manual iterator so we can race source.next() against the wakeup.
+    // Manual iterator so the feed pump can race source.next() against abort.
     const sourceIter = source[Symbol.asyncIterator]();
     let nextSourcePromise: Promise<IteratorResult<ArrivedChunk>> | null = null;
     let sourceDone = false;
@@ -242,16 +268,200 @@ async function* decodeAsync(
     };
 
     type WaitResult =
-        | { kind: 'src'; result: IteratorResult<ArrivedChunk> }
-        | { kind: 'wake' }
+        | { kind: 'data' }
         | { kind: 'abort' }
         | { kind: 'watchdog' };
+
+    let stopped = false;
+    const isStopped = (): boolean => stopped || (abortSignal?.aborted ?? false);
+
+    // Process one arrived chunk: recovery, keyframe (re)configure, submit. Returns
+    // whether the chunk was submitted, dropped (pre-keyframe during recovery), or
+    // used only to (re)configure; throws only when recovery is exhausted.
+    const processChunk = (arrived: ArrivedChunk): void => {
+        try {
+            currentStats = arrived.stats;
+            arrived.stats.chunksReceived++;
+            // Time-decay hangs so the count drops without needing a new event.
+            const arrivalNowMs = now();
+            while (hangTimestamps.length > 0
+                && arrivalNowMs - hangTimestamps[0] > HANG_WINDOW_MS)
+                hangTimestamps.shift();
+            currentStats.hangRateIn60s = hangTimestamps.length;
+
+            // Local snapshot: TS narrows pendingError to null otherwise
+            // (it can't see the async writes from the error callback).
+            const errSnapshot = pendingError;
+            if (errSnapshot) {
+                if (!arrived.isKeyFrame)
+                    return;
+
+                consecutiveRecoveries++;
+                arrived.stats.recoveryStreak = consecutiveRecoveries;
+                if (!codecProofTracker.isProven() && consecutiveRecoveries >= maxRecoveries) {
+                    const codec = currentCodec;
+                    pendingError = null;
+                    onCodecExhausted?.(codec);
+                    throw new Error(
+                        `${CODEC_EXHAUSTED_PREFIX} decode: recovery exhausted after ${consecutiveRecoveries} attempts (codec=${codec})`,
+                        { cause: errSnapshot },
+                    );
+                }
+                pendingError = null;
+                try { decoder.close(); } catch { /* ignore */ }
+                decoder = createDecoder(handlers);
+                configured = false;
+                pending.length = 0;
+            }
+
+            const dec = decoder;
+            if (arrived.isKeyFrame) {
+                const newWidth = arrived.width || currentWidth;
+                const newHeight = arrived.height || currentHeight;
+                if (arrived.description && arrived.description.byteLength > 0)
+                    descriptionByLayer.set(arrived.layerId, arrived.description);
+                const description = descriptionByLayer.get(arrived.layerId);
+
+                const dimChanged = configured
+                    && (newWidth !== currentWidth || newHeight !== currentHeight);
+                if (!configured || dimChanged) {
+                    if (!description && !canConfigureWithoutDescription(currentCodec)) {
+                        // Funnel through pendingError so the same N-attempt recovery handles it.
+                        pendingError ??= new Error(
+                            `decode: codec ${currentCodec} requires description but none provided`);
+                        codecProofTracker.noteDecoderError();
+                        return;
+                    }
+
+                    // Pin displayAspect=coded so the browser doesn't
+                    // derive display dims from the bitstream SPS/HVCC.
+                    // Without this, Edge HEVC HW returns swapped portrait
+                    // display dims (1280x720 for a 720x1280 coded portrait
+                    // stream) and Chrome Android delivers VideoFrames
+                    // whose display dims confuse <video srcObject>
+                    // rendering of an MSTG-fed track — track stays black
+                    // until the watchdog falls back to canvas after ~8 s.
+                    const config: VideoDecoderConfig = {
+                        codec: currentCodec,
+                        codedWidth: newWidth || undefined,
+                        codedHeight: newHeight || undefined,
+                        // Prefer the HW decoder (default 'no-preference' lets the
+                        // browser pick a slow SW path even when HW exists) and ask
+                        // for low-latency mode (no decode-reorder buffering).
+                        hardwareAcceleration: initialConfig.hardwareAcceleration ?? 'prefer-hardware',
+                        optimizeForLatency: initialConfig.optimizeForLatency ?? true,
+                    };
+                    if (description) config.description = description;
+                    if (newWidth > 0 && newHeight > 0) {
+                        config.displayAspectWidth = newWidth;
+                        config.displayAspectHeight = newHeight;
+                    }
+                    try {
+                        dec.configure(config);
+                        configured = true;
+                        currentWidth = newWidth;
+                        currentHeight = newHeight;
+                    } catch (e) {
+                        pendingError ??= e instanceof Error ? e : new Error(String(e));
+                        codecProofTracker.noteDecoderError();
+                        return;
+                    }
+                }
+            }
+
+            if (!configured)
+                return;
+
+            const submitMs = now();
+            pending.push({
+                capturedAt: arrived.capturedAt,
+                arrivedAt: arrived.arrivedAt,
+                serverArrivedAtUnixMs: arrived.serverArrivedAtUnixMs,
+                layerId: arrived.layerId,
+                submitMs,
+                index: arrived.index,
+                dropTrace: arrived.dropTrace,
+                rotation: arrived.rotation,
+            });
+            try {
+                dec.decode(arrived.chunk);
+                // Nudge the drain loop so it (re)arms the hang watchdog now that a
+                // chunk is in flight — the pump, not the consumer, drives submission.
+                if (!dataReady.isCompleted) dataReady.resolve();
+            } catch (e) {
+                pending.pop();
+                pendingError ??= e instanceof Error ? e : new Error(String(e));
+                codecProofTracker.noteDecoderError();
+                if (!dataReady.isCompleted) dataReady.resolve();
+            }
+        } finally {
+            closeEncodedChunk(arrived.chunk);
+        }
+    };
+
+    // Feed pump: submits chunks to the decoder ahead of presentation, keeping up to
+    // targetInFlightDepth in flight and at most readyCap decoded frames buffered, so
+    // a paced consumer never starves the decoder at the live edge. Runs detached
+    // from the drain/yield loop. Resolves (never rejects) on stop/abort; routes a
+    // fatal throw to the drain loop via pendingError.
+    const runFeedPump = async (): Promise<void> => {
+        try {
+            for (;;) {
+                if (isStopped()) return;
+
+                const sourceP = armSource();
+                const result = await Promise.race([
+                    sourceP.then((r): IteratorResult<ArrivedChunk> | 'abort' => r),
+                    abortWait.then((): 'abort' => 'abort'),
+                ]);
+                if (isStopped() || result === 'abort') return;
+                nextSourcePromise = null;
+                if (result.done) {
+                    sourceDone = true;
+                    if (!dataReady.isCompleted) dataReady.resolve();
+                    return;
+                }
+                const arrived = result.value;
+
+                // Backpressure: hold the pulled chunk until the decoder has room
+                // and decoded-frame inventory is below cap — but never stall while a
+                // pendingError is outstanding, since this chunk may be the recovery
+                // keyframe. Gating after the pull (not before) ensures the check sees
+                // current depth, not a stale snapshot.
+                for (;;) {
+                    if (isStopped()) { closeEncodedChunk(arrived.chunk); return; }
+                    if (pendingError)
+                        break;
+                    if (pending.length < targetInFlightDepth && ready.length < readyCap)
+                        break;
+                    spaceAvailable = new PromiseSource<void>();
+                    // Re-check after creating the wakeup to avoid a lost signal
+                    // (a break above already handled the pendingError case).
+                    if (pending.length < targetInFlightDepth && ready.length < readyCap)
+                        continue;
+                    await Promise.race([spaceAvailable, abortWait]);
+                }
+                if (isStopped()) { closeEncodedChunk(arrived.chunk); return; }
+
+                processChunk(arrived);
+            }
+        } catch (e) {
+            // Surface a fatal feed error (e.g. recovery exhausted) to the consumer.
+            pendingError ??= e instanceof Error ? e : new Error(String(e));
+            sourceDone = true;
+            if (!dataReady.isCompleted) dataReady.resolve();
+        }
+    };
+
+    const feedDone = runFeedPump();
 
     try {
         for (;;) {
             if (abortSignal?.aborted) return;
             while (ready.length > 0) {
                 const envelope = ready.shift()!;
+                // Draining inventory may unblock a backpressured feed pump.
+                if (!spaceAvailable.isCompleted) spaceAvailable.resolve();
                 let mustClose = true;
                 try {
                     mustClose = false;
@@ -261,20 +471,17 @@ async function* decodeAsync(
                         try { envelope.frame.close(); } catch { /* ignore */ }
                 }
             }
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- both flags are set from the feed pump / decoder callbacks.
             if (pendingError && sourceDone) throw pendingError;
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- sourceDone is set from the feed pump.
             if (sourceDone && pending.length === 0) return;
-
-            const sourceP = sourceDone ? null : armSource();
-            const wakeP = wakeup;
 
             // Watchdog arms only when the decoder owes us a frame —
             // otherwise a quiet stream would synthesise spurious timeouts.
             const racers: Promise<WaitResult>[] = [
-                wakeP.then((): WaitResult => ({ kind: 'wake' })),
+                dataReady.then((): WaitResult => ({ kind: 'data' })),
                 abortWait,
             ];
-            if (sourceP)
-                racers.push(sourceP.then((r): WaitResult => ({ kind: 'src', result: r })));
             let watchdogHandle: unknown = null;
             if (pending.length > 0) {
                 const elapsed = now() - lastDecoderActivityMs;
@@ -302,143 +509,26 @@ async function* decodeAsync(
                 codecProofTracker.noteDecoderError();
                 const nowMs = now();
                 recordHang(nowMs);
-                if (currentStats)
-                    currentStats.hangRateIn60s = hangTimestamps.length;
+                // currentStats is assigned only inside processChunk (a closure), so
+                // TS narrows it to null here; assert the declared type to read it.
+                const cs = currentStats as ArrivedChunk['stats'] | null;
+                if (cs)
+                    cs.hangRateIn60s = hangTimestamps.length;
                 lastDecoderActivityMs = nowMs;
-                wakeup = new PromiseSource<void>();
+                dataReady = new PromiseSource<void>();
+                // pendingError now opens the pump's backpressure gate; wake it so it
+                // consumes the recovery keyframe (a hung decoder won't drain pending).
+                if (!spaceAvailable.isCompleted) spaceAvailable.resolve();
                 continue;
             }
 
-            if (winner.kind === 'wake') {
-                wakeup = new PromiseSource<void>();
-                continue;
-            }
-
-            const result = winner.result;
-            nextSourcePromise = null;
-            if (result.done) {
-                sourceDone = true;
-                continue;
-            }
-            const arrived = result.value;
-            try {
-                currentStats = arrived.stats;
-                arrived.stats.chunksReceived++;
-                // Time-decay hangs so the count drops without needing a new event.
-                const arrivalNowMs = now();
-                while (hangTimestamps.length > 0
-                    && arrivalNowMs - hangTimestamps[0] > HANG_WINDOW_MS)
-                    hangTimestamps.shift();
-                currentStats.hangRateIn60s = hangTimestamps.length;
-
-                // Local snapshot: TS narrows pendingError to null otherwise
-                // (it can't see the async writes from the error callback).
-                const errSnapshot = pendingError;
-                if (errSnapshot) {
-                    if (!arrived.isKeyFrame) {
-                        continue;
-                    }
-                    consecutiveRecoveries++;
-                    arrived.stats.recoveryStreak = consecutiveRecoveries;
-                    if (!codecProofTracker.isProven() && consecutiveRecoveries >= maxRecoveries) {
-                        const codec = currentCodec;
-                        pendingError = null;
-                        onCodecExhausted?.(codec);
-                        throw new Error(
-                            `${CODEC_EXHAUSTED_PREFIX} decode: recovery exhausted after ${consecutiveRecoveries} attempts (codec=${codec})`,
-                            { cause: errSnapshot },
-                        );
-                    }
-                    pendingError = null;
-                    try { decoder.close(); } catch { /* ignore */ }
-                    decoder = createDecoder(handlers);
-                    configured = false;
-                    pending.length = 0;
-                }
-
-                const dec = decoder;
-                if (arrived.isKeyFrame) {
-                    const newWidth = arrived.width || currentWidth;
-                    const newHeight = arrived.height || currentHeight;
-                    if (arrived.description && arrived.description.byteLength > 0)
-                        descriptionByLayer.set(arrived.layerId, arrived.description);
-                    const description = descriptionByLayer.get(arrived.layerId);
-
-                    const dimChanged = configured
-                        && (newWidth !== currentWidth || newHeight !== currentHeight);
-                    if (!configured || dimChanged) {
-                        if (!description && !canConfigureWithoutDescription(currentCodec)) {
-                            // Funnel through pendingError so the same N-attempt recovery handles it.
-                            pendingError ??= new Error(
-                                `decode: codec ${currentCodec} requires description but none provided`);
-                            codecProofTracker.noteDecoderError();
-                            continue;
-                        }
-
-                        // Pin displayAspect=coded so the browser doesn't
-                        // derive display dims from the bitstream SPS/HVCC.
-                        // Without this, Edge HEVC HW returns swapped portrait
-                        // display dims (1280x720 for a 720x1280 coded portrait
-                        // stream) and Chrome Android delivers VideoFrames
-                        // whose display dims confuse <video srcObject>
-                        // rendering of an MSTG-fed track — track stays black
-                        // until the watchdog falls back to canvas after ~8 s.
-                        const config: VideoDecoderConfig = {
-                            codec: currentCodec,
-                            codedWidth: newWidth || undefined,
-                            codedHeight: newHeight || undefined,
-                            // Prefer the HW decoder (default 'no-preference' lets the
-                            // browser pick a slow SW path even when HW exists) and ask
-                            // for low-latency mode (no decode-reorder buffering).
-                            hardwareAcceleration: initialConfig.hardwareAcceleration ?? 'prefer-hardware',
-                            optimizeForLatency: initialConfig.optimizeForLatency ?? true,
-                        };
-                        if (description) config.description = description;
-                        if (newWidth > 0 && newHeight > 0) {
-                            config.displayAspectWidth = newWidth;
-                            config.displayAspectHeight = newHeight;
-                        }
-                        try {
-                            dec.configure(config);
-                            configured = true;
-                            currentWidth = newWidth;
-                            currentHeight = newHeight;
-                        } catch (e) {
-                            pendingError ??= e instanceof Error ? e : new Error(String(e));
-                            codecProofTracker.noteDecoderError();
-                            continue;
-                        }
-                    }
-                }
-
-                if (!configured) {
-                    continue;
-                }
-
-                const submitMs = now();
-                pending.push({
-                    capturedAt: arrived.capturedAt,
-                    arrivedAt: arrived.arrivedAt,
-                    serverArrivedAtUnixMs: arrived.serverArrivedAtUnixMs,
-                    layerId: arrived.layerId,
-                    submitMs,
-                    index: arrived.index,
-                    dropTrace: arrived.dropTrace,
-                    rotation: arrived.rotation,
-                });
-                try {
-                    dec.decode(arrived.chunk);
-                } catch (e) {
-                    pending.pop();
-                    pendingError ??= e instanceof Error ? e : new Error(String(e));
-                    codecProofTracker.noteDecoderError();
-                    if (!wakeup.isCompleted) wakeup.resolve();
-                }
-            } finally {
-                closeEncodedChunk(arrived.chunk);
-            }
+            // kind === 'data'
+            dataReady = new PromiseSource<void>();
         }
     } finally {
+        stopped = true;
+        if (!spaceAvailable.isCompleted) spaceAvailable.resolve();
+        try { await feedDone; } catch { /* ignore */ }
         while (ready.length > 0) {
             const envelope = ready.shift()!;
             try { envelope.frame.close(); } catch { /* ignore */ }

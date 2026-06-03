@@ -18,6 +18,10 @@ export interface LatencySample {
     // Server-stamped receive time (Unix ms); 0 when absent. With capturedAtMs +
     // startedAtMs (server domain) this isolates uplink (capture→server).
     serverArrivedAtUnixMs: number;
+    // Receiver-local, skew-free: decodedAt − arrivedAt = time the frame spent
+    // inside the receiver from intake to decode-output (encoded buffer wait +
+    // decode). Isolates receiver-internal latency from everything upstream.
+    rxDecodeMs: number;
     layerId: number;
     width: number;
     height: number;
@@ -67,6 +71,7 @@ export function latencyTap(opts: LatencyTapOptions): PipeOperator<DecodedFrame, 
                 capturedAtMs: envelope.capturedAt.timeMs,
                 capturedEpoch: envelope.capturedAt.epoch,
                 serverArrivedAtUnixMs: envelope.serverArrivedAtUnixMs,
+                rxDecodeMs: Math.max(0, envelope.decodedAt.timeMs - envelope.arrivedAt.timeMs),
                 layerId: envelope.layerId,
                 width: envelope.frame.displayWidth,
                 height: envelope.frame.displayHeight,

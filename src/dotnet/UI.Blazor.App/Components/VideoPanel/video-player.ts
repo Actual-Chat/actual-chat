@@ -211,6 +211,7 @@ export class VideoPlayer {
     private lastBytesAtTick = 0;
     private lastChunksReceivedAtTick = 0;
     private lastFramesDecodedAtTick = 0;
+    private lastEffectiveChunks = 0;
     private readonly lastDropAtTick = new Map<number, number>();
     // α=0.3 matches the encoder-side EMA (video-recorder.ts) so the two
     // QC signals share half-life characteristics.
@@ -265,6 +266,7 @@ export class VideoPlayer {
     private readonly videoLagEma = new RunningEMA(0, 3, 0.3);
     private readonly displayLatencyEma = new RunningEMA(0, 3, 0.3);
     private readonly uplinkLatencyEma = new RunningEMA(0, 3, 0.3);
+    private readonly rxLatencyEma = new RunningEMA(0, 3, 0.3);
     private displayLatencyMs = 0;
     private hasDisplayLag = false;
     private rvfcStop = false;
@@ -975,6 +977,8 @@ export class VideoPlayer {
                     codec: this.selectedCodec,
                     codedWidth: this.selectedCodecedWidth,
                     codedHeight: this.selectedCodecedHeight,
+                    hardwareAcceleration: 'prefer-hardware',
+                    optimizeForLatency: true,
                 },
                 targetBufferSpanMs: VIDEO.targetBufferSpanMs,
                 backend,
@@ -1187,11 +1191,17 @@ export class VideoPlayer {
                 const scale = 1000 / dt;
                 this.presentedPerSec = Math.max(0, this.presentedFrameCount - this.lastPresentedAtTick) * scale;
                 this.bytesPerSec = Math.max(0, this.receivedBytes - this.lastBytesAtTick) * scale;
-                const chunksDelta = Math.max(0,
-                    sample.playerStats.chunksReceived - this.lastChunksReceivedAtTick);
                 const framesDelta = Math.max(0,
                     sample.playerStats.framesDecoded - this.lastFramesDecodedAtTick);
-                this.decodeDeficitTicker.tick(framesDelta, chunksDelta);
+                // Deficit must count only frames that were lost, not frames still
+                // in flight. Subtracting decoderQueueSize (in-flight) from arrived
+                // makes input and output deltas line up under bursty/jittery
+                // delivery, so a non-empty pipeline that keeps pace reads 0 — and
+                // the stale-spike-at-queue-0 artifact disappears as the queue drains.
+                const effectiveChunks =
+                    sample.playerStats.chunksReceived - sample.playerStats.decoderQueueSize;
+                const effectiveChunksDelta = Math.max(0, effectiveChunks - this.lastEffectiveChunks);
+                this.decodeDeficitTicker.tick(framesDelta, effectiveChunksDelta);
                 this.dropPerSec.clear();
                 for (const [stage, count] of sample.playerStats.dropTrace) {
                     const prev = this.lastDropAtTick.get(stage) ?? 0;
@@ -1206,6 +1216,8 @@ export class VideoPlayer {
         this.lastBytesAtTick = this.receivedBytes;
         this.lastChunksReceivedAtTick = sample.playerStats.chunksReceived;
         this.lastFramesDecodedAtTick = sample.playerStats.framesDecoded;
+        this.lastEffectiveChunks =
+            sample.playerStats.chunksReceived - sample.playerStats.decoderQueueSize;
         this.lastDropAtTick.clear();
         for (const [stage, count] of sample.playerStats.dropTrace)
             this.lastDropAtTick.set(stage as number, count);
@@ -1233,9 +1245,11 @@ export class VideoPlayer {
         // sender+upload share out of the total on-screen lag.
         if (sample.serverArrivedAtUnixMs > 0)
             this.uplinkLatencyEma.appendSample(Math.max(0, sample.serverArrivedAtUnixMs - captureAtServerMs));
+        this.rxLatencyEma.appendSample(sample.rxDecodeMs);
         void this.blazorRef.invokeMethodAsync(
             'OnPresentationLag', videoLagMs, sample.capturedAtMs, sample.bufferSpanMs,
-            sample.playerStats.presentSkipRatio, this.videoLagEma.value, this.uplinkLatencyEma.value)
+            sample.playerStats.presentSkipRatio, this.videoLagEma.value, this.uplinkLatencyEma.value,
+            this.rxLatencyEma.value)
             .catch(() => { /* ignore */ });
 
         // Push a playback-health snapshot for the server-side controller.
@@ -1269,6 +1283,7 @@ export class VideoPlayer {
         this.lastLatencyTickMs = 0;
         this.lastChunksReceivedAtTick = 0;
         this.lastFramesDecodedAtTick = 0;
+        this.lastEffectiveChunks = 0;
         this.decodeDeficitTicker.reset();
         this.lastPresentedAtTick = 0;
         this.lastBytesAtTick = 0;
