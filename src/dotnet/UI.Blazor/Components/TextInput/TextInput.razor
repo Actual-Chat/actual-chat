@@ -35,6 +35,8 @@
     [Parameter] public EventCallback<string> TextChanged { get; set; }
     [Parameter] public EventCallback<KeyboardEventArgs> KeyUp { get; set; }
     [Parameter] public EventCallback<FocusEventArgs> OnFocus { get; set; }
+    [Parameter] public EventCallback OnBlur { get; set; }
+    [Parameter] public string? CloseOnBlurSelector { get; set; }
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TextInput))]
     public TextInput() { }
@@ -53,6 +55,7 @@
             var options = new TextInputOptions {
                 Text = Text,
                 Debounce = Debounce,
+                CloseOnBlurSelector = CloseOnBlurSelector,
             };
             JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, ElementRef, BlazorRef, options);
         }
@@ -76,6 +79,10 @@
         Text = text;
         return TextChanged.InvokeAsync(text);
     }
+
+    [JSInvokable]
+    public Task NotifyBlur()
+        => OnBlur.InvokeAsync();
 
     private Task OnKeyUp(KeyboardEventArgs e)
         => KeyUp.InvokeAsync(e);
