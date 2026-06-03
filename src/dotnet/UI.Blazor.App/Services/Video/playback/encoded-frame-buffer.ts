@@ -130,13 +130,7 @@ export class EncodedFrameBuffer {
     private trySkipToLive(): void {
         if (this.skipToLiveSpanMs <= 0 || this.state !== 'armed')
             return;
-        // Tighter trigger when paired with audio: realign video to the audio
-        // capture-point sooner (2× target ≈ 666 ms) than the plain skip-to-live
-        // threshold (3× target ≈ 1 s), so video can't lead audio by as much.
-        const threshold = this.caOffsetMs !== null
-            ? Math.min(this.skipToLiveSpanMs, this.targetSpanMs * 2)
-            : this.skipToLiveSpanMs;
-        if (this.spanMs() <= threshold)
+        if (this.spanMs() <= this.skipToLiveSpanMs)
             return;
         const now = this.nowFn();
         if (now < this.nextSkipAllowedAtMs)

@@ -91,13 +91,16 @@ public static partial class Constants
         public static readonly TimeSpan StreamSilenceCheckInterval = TimeSpan.FromSeconds(5);
         public static readonly int StreamSilenceMaxConsecutiveZeroIntervals = 2;
 
-        // RPC stream flow control for video — doc-target values from
-        // docs/video-pipeline.md "Constants" block: derived from TargetBufferSize.
-        // 5-frame ack cadence (~165ms @ 30fps), 10-frame credit window
-        // (~333ms outstanding). Real-time canSkipTo=isKeyFrame compaction
-        // handles stalls by skipping to the latest decoder-safe frame.
+        // RPC stream flow control for video. 5-frame ack cadence (~165ms @ 30fps).
+        // The credit window must exceed the receiver's skip-to-live threshold
+        // (≈ TargetBufferSpanMs × 2-3 = 666-1000ms): a consumer that subscribed
+        // behind the live edge (replay-tail keyframe) only catches up by pulling
+        // the backlog into its buffer until the span trips skip-to-live. A window
+        // below that threshold caps the buffer too low for the skip to ever fire,
+        // so the consumer trails the server forever. 45 frames ≈ 1.5s of headroom.
+        // Real-time canSkipTo=isKeyFrame compaction still handles sender stalls.
         public const int RpcStreamAckPeriod = 5;
-        public const int RpcStreamAckAdvance = (RpcStreamAckPeriod * 3) + 1; // 16
+        public const int RpcStreamAckAdvance = 45;
         // Memoizer retention is now duration-tracked, keyframe-span eviction
         // (VideoStreamMemoizer in Streaming.Service) bounded by
         // ServerReplayTailDuration — no count-based ceiling.
