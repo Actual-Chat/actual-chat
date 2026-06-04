@@ -143,9 +143,6 @@ export class VirtualList {
     private readonly isInfinite: boolean;
     private readonly retainedItemCount: number;
     private readonly scrollController: ScrollController;
-    // Last bottom scroll-limit computed while the newest item was loaded; reused when it unloads on
-    // scroll-up so the limit never falls back to the (meaningless) wrapper bottom. Shifted on re-center.
-    private lastKnownLimitMax: number | null = null;
     private readonly wrapperRef: HTMLElement;
     private readonly spacerRef: HTMLElement;
     private readonly endSpacerRef: HTMLElement;
@@ -890,19 +887,20 @@ export class VirtualList {
             this.updateState('onResize: measured', this.state, { itemRange: null });
 
             const now = Date.now();
-            // Skip scroll position restoration if we have a scrollToKey and recently restored position
-            if (this.state.renderState.scrollToKey && now - this.state.scrollPositionRestoredAt < ScrollDebounce)
-                return;
-
-            // Skip scroll position restoration if we are currently rendering - restoreScrollPosition() will be called
-            // later in endRender() and will have up-to-date information about item sizes and positions
+            // A render in flight will re-pin via endRender().
             if (this.state.renderStartedAt)
                 return;
 
-            // Skip scroll position restoration if we are recently completed rendering - endRender()
-            // will have done it already, and we want to avoid doing it twice in a short time
-            if (now - this.state.renderCompletedAt < ScrollDebounce)
+            // Scroll restoration is skipped here, but the recompute shifted itemRange — re-pin the
+            // container (no scroll) so the DOM doesn't drift from the model.
+            const skipScrollRestore =
+                (this.state.renderState.scrollToKey && now - this.state.scrollPositionRestoredAt < ScrollDebounce)
+                || now - this.state.renderCompletedAt < ScrollDebounce;
+            if (skipScrollRestore) {
+                this.ensureItemRangeCalculated();
+                this.repinContainerToModel();
                 return;
+            }
 
             const renderState = { ...this.state.renderState, scrollToKey: undefined };
             const scrollMetadata = this.getScrollMetadata(renderState);
@@ -1791,19 +1789,11 @@ export class VirtualList {
         const rs = this.state.renderState;
         const clientHeight = this.ref.clientHeight;
         const containerTop = parseFloat(this.containerRef.style.top) || 0;
+        // A limit exists only at a discovered edge; with no edge that way it's null => free scroll there
+        // (more items load in as you go).
         let min = rs.hasVeryFirstItem ? containerTop : null;
-        let max: number | null;
-        if (rs.hasVeryLastItem && !CutVirtualSpaceAtBottom) {
-            max = itemRange.end + this.state.endAnchorSize - clientHeight;
-            this.lastKnownLimitMax = max;
-        }
-        else {
-            // Newest not loaded (scrolled up) — keep the last known bottom instead of letting the limit
-            // fall back to the wrapper bottom (scrollHeight, ~InfiniteSize), which is never the real edge.
-            max = CutVirtualSpaceAtBottom ? null : this.lastKnownLimitMax;
-        }
-        // Content fits the viewport => the band inverts (min > max). Collapse it to the preferred edge
-        // so a short chat rests at that edge (bottom for End) instead of the top.
+        let max = rs.hasVeryLastItem ? itemRange.end + this.state.endAnchorSize - clientHeight : null;
+        // Whole chat fits the viewport (both edges known, band inverts) => collapse to the preferred edge.
         if (min != null && max != null && min > max) {
             if (this.defaultEdge === VirtualListEdge.End)
                 min = max;
@@ -1933,8 +1923,6 @@ export class VirtualList {
                         scrollTopOffset = resetDelta;
                         end = this.state.itemRange!.end;
                         offset = this.state.itemRange!.start;
-                        if (this.lastKnownLimitMax !== null)
-                            this.lastKnownLimitMax += resetDelta;
                     }
                 };
 
@@ -2055,6 +2043,27 @@ export class VirtualList {
             options.write();
         }
         await result;
+    }
+
+    // No scrollTop change: the cornerstone is held fixed, so writing containerTop alone keeps the view put.
+    private repinContainerToModel(): void {
+        if (!this.isInfinite)
+            return;
+
+        const itemRange = this.state.itemRange;
+        if (!itemRange)
+            return;
+
+        const rs = this.state.renderState;
+        const { defaultSpacerSize } = this;
+        const oldTotalSize = this.wrapperRef.offsetHeight;
+        const spacerSize = rs.hasVeryFirstItem ? 0 : clamp(itemRange.start, 0, defaultSpacerSize);
+        const endSpacerSize = rs.hasVeryLastItem
+            ? 0
+            : clamp(oldTotalSize - itemRange.size - spacerSize - this.state.endAnchorSize, 0, defaultSpacerSize);
+        this.spacerRef.style.height = `${spacerSize}px`;
+        this.endSpacerRef.style.height = `${endSpacerSize}px`;
+        this.containerRef.style.top = `${itemRange.start - spacerSize}px`;
     }
 
     private measureItems(): void {
