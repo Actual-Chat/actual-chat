@@ -87,6 +87,10 @@ interface WorkerState {
     // (Safari). Its track is transferred to main; its writable stays here, so
     // the worker owns the lifetime and stops it on run end.
     workerPreviewGenerator: WorkerVideoTrackGenerator | null;
+    // Set when capture runs through a worker-side MediaStreamTrackProcessor
+    // (Safari): main transfers a clone of the camera track in, the worker owns
+    // it and stops it on run end.
+    workerSourceTrack: MediaStreamTrack | null;
 }
 
 let state: WorkerState | null = null;
@@ -104,6 +108,7 @@ export function initRecorderWorker(deps: RecorderWorkerDeps): void {
         whenDone: null,
         deps,
         workerPreviewGenerator: null,
+        workerSourceTrack: null,
     };
 }
 
@@ -117,10 +122,20 @@ function disposeWorkerPreviewGenerator(s: WorkerState): void {
     try { generator.track.stop(); } catch { /* ignore */ }
 }
 
+// Stops the worker-owned capture track (transferred clone) feeding a worker-side
+// MSTP, and clears the ref.
+function disposeWorkerSourceTrack(s: WorkerState): void {
+    const track = s.workerSourceTrack;
+    if (!track) return;
+    s.workerSourceTrack = null;
+    try { track.stop(); } catch { /* ignore */ }
+}
+
 export function disposeRecorderWorker(): void {
     if (!state) return;
     state.recorder.stop();
     disposeWorkerPreviewGenerator(state);
+    disposeWorkerSourceTrack(state);
     state.session.dispose();
     state = null;
 }
@@ -161,6 +176,30 @@ export const recorderWorkerImpl: RecorderWorker = {
         const s = requireState();
         s.deps.setSource?.(readable);
         return Promise.resolve();
+    },
+
+    setSourceTrack(track: MediaStreamTrack): Promise<boolean> {
+        const s = requireState();
+        disposeWorkerSourceTrack(s);
+        const Ctor = (globalThis as unknown as {
+            MediaStreamTrackProcessor?: new (init: { track: MediaStreamTrack })
+                => { readable: ReadableStream<VideoFrame> };
+        }).MediaStreamTrackProcessor;
+        if (typeof Ctor !== 'function') {
+            try { track.stop(); } catch { /* ignore */ }
+            return Promise.resolve(false);
+        }
+        try {
+            const processor = new Ctor({ track });
+            s.deps.setSource?.(processor.readable);
+            s.workerSourceTrack = track;
+            infoLog?.log('setSourceTrack: worker-side MSTP built from transferred track');
+            return Promise.resolve(true);
+        } catch (e) {
+            errorLog?.log('setSourceTrack: MSTP construction failed:', e);
+            try { track.stop(); } catch { /* ignore */ }
+            return Promise.resolve(false);
+        }
     },
 
     pushFrame(frame: VideoFrame): Promise<void> {
@@ -296,6 +335,7 @@ export const recorderWorkerImpl: RecorderWorker = {
         ).finally(() => {
             session.setPreviewGenerator(undefined);
             disposeWorkerPreviewGenerator(s);
+            disposeWorkerSourceTrack(s);
             if (s.whenDone === whenDone) s.whenDone = null;
         });
         await Promise.resolve();

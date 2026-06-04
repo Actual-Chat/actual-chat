@@ -1702,12 +1702,32 @@ export class VideoRecorder {
             } catch (e) {
                 warnLog?.log('startWorker: MSTP construction/transfer failed, falling back to rVFC pump:', e);
             }
-        } else {
-            infoLog?.log('startWorker: MSTP unavailable, using rVFC pump');
+        }
+
+        // Safari: MSTP is worker-only, so main can't build it. Transfer a CLONE
+        // of the camera track into the worker and let it build the processor in
+        // its realm — source-bound capture, no main-thread rVFC tick. A clone
+        // keeps the attempt non-destructive: main retains `inputTrack` for the
+        // rVFC fallback and for restarts (which re-clone).
+        if (!useMstp) {
+            try {
+                const clone = this.inputTrack.clone();
+                const ok = await this.worker.setSourceTrack(clone);
+                if (ok) {
+                    this.workerSourceCancelled = false;
+                    useMstp = true;
+                    infoLog?.log('startWorker: capture path = worker MSTP (transferred clone)');
+                } else {
+                    warnLog?.log('startWorker: worker has no MSTP, falling back to rVFC pump');
+                }
+            } catch (e) {
+                warnLog?.log('startWorker: worker MSTP attempt failed, falling back to rVFC pump:', e);
+            }
         }
 
         if (!useMstp) {
-        // FALLBACK: rVFC pump from a hidden <video>.
+            infoLog?.log('startWorker: MSTP unavailable (main + worker), using rVFC pump');
+            // FALLBACK: rVFC pump from a hidden <video>.
             const sourceVideo = document.createElement('video');
             sourceVideo.muted = true;
             sourceVideo.autoplay = true;

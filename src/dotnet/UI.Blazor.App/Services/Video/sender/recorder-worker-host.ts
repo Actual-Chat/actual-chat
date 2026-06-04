@@ -39,7 +39,7 @@ export function setPendingSource(source: ReadableStream<VideoFrame>): void {
     pendingSource = source;
 }
 
-// ---- Frame-by-frame source (workaround for MSTP-readable cross-realm bug) ----
+// ---- rVFC fallback source (used when MSTP-readable capture is unavailable) ----
 //
 // Small bounded FIFO between rVFC and the consumer — capacity 3, drops the
 // OLDEST on overflow and closes the evicted frame. A VideoFrame holds a GPU

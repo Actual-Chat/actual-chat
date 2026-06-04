@@ -58,9 +58,17 @@ export interface RecorderWorker extends SharedSettingsWorker {
     init(appConstants: AppConstantsLike): Promise<void>;
     onConnectivityUpdate(isOnline: boolean, isConnected: boolean, isBlazorServer: boolean): Promise<void>;
 
-    // Test path. Production prefers `pushFrame`+`endSource` because Chrome's
-    // MSTP-readable cross-realm bridge starves after a few frames.
+    // Primary Chromium capture path: main builds the MediaStreamTrackProcessor
+    // and transfers its `readable` here; the worker pulls frames source-bound,
+    // with no main-thread rVFC tick. `pushFrame`/`endSource` below is the rVFC
+    // fallback for browsers/cases where MSTP is unavailable.
     setSource(readable: ReadableStream<VideoFrame>): Promise<void>;
+    // Safari capture path: MSTP is worker-only there, so main transfers a CLONE
+    // of the camera track and the worker builds the MediaStreamTrackProcessor in
+    // its own realm. Returns true when MSTP was built (worker owns the track and
+    // stops it on run end); false ⇒ no worker MSTP, main falls back to rVFC and
+    // the (already-stopped) clone is discarded.
+    setSourceTrack(track: MediaStreamTrack): Promise<boolean>;
     // Callers MUST keep at most one push in flight; otherwise transferred
     // VideoFrames pile up in the message queue ahead of the slot that closes them.
     pushFrame(frame: VideoFrame, noWait?: RpcNoWait): Promise<void>;
