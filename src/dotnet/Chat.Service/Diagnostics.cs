@@ -1,3 +1,5 @@
+using ActualChat.Flows;
+using ActualChat.Flows.Infrastructure;
 using ActualChat.Users;
 
 namespace ActualChat.Chat;
@@ -11,6 +13,8 @@ public class Diagnostics(IServiceProvider services) : IDiagnostics
     private DiagnosticsBackendLocal LocalBackend { get; } = services.GetRequiredService<DiagnosticsBackendLocal>();
     private MeshWatcher MeshWatcher { get; } = services.GetRequiredService<MeshWatcher>();
     private IDiagnosticsBackend Backend => field ??= services.GetRequiredService<IDiagnosticsBackend>();
+    private IFlowBackend FlowBackend => field ??= services.GetRequiredService<IFlowBackend>();
+    private FlowHub FlowHub => field ??= services.FlowHub();
 
     public virtual async Task<MeshDiagInfo> GetMeshDiagInfo(Session session, string tag, CancellationToken cancellationToken)
     {
@@ -27,6 +31,34 @@ public class Diagnostics(IServiceProvider services) : IDiagnostics
         return info with {
             Others = Flatten(info.Others, nodeIds).ToArray(),
         };
+    }
+
+    public virtual async Task<FlowsReport> GetFlowsReport(Session session, FlowsQuery query, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (!account.IsAdmin)
+            throw StandardError.Unauthorized("Only admins can access.");
+
+        return await FlowBackend.List(query, cancellationToken).ConfigureAwait(false);
+    }
+
+    public virtual async Task<FlowDetails?> GetFlowDetails(Session session, string flowId, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (!account.IsAdmin)
+            throw StandardError.Unauthorized("Only admins can access.");
+
+        if (!FlowId.TryParse(flowId, out var id))
+            return null;
+
+        var flowData = await FlowBackend.TryGetData(id, cancellationToken).ConfigureAwait(false);
+        if (flowData is null)
+            return null;
+
+        var flow = flowData.GetFlow(FlowHub);
+        var error = flow.UntypedResult?.Error;
+        var errorText = error is null ? null : $"{error.GetType().GetName()}: {error.Message}";
+        return new FlowDetails(flowData.Console, errorText);
     }
 
     // Private methods

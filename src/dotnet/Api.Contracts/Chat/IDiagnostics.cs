@@ -1,4 +1,5 @@
-﻿using ActualLab.Rpc.Infrastructure;
+﻿using ActualChat.Flows;
+using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.Chat;
 
@@ -9,6 +10,10 @@ public interface IDiagnostics : IComputeService
 {
     [ComputeMethod]
     Task<MeshDiagInfo> GetMeshDiagInfo(Session session, string tag, CancellationToken cancellationToken);
+
+    // Regular RPC methods - the Flows dashboard polls these (no Fusion invalidation).
+    Task<FlowsReport> GetFlowsReport(Session session, FlowsQuery query, CancellationToken cancellationToken);
+    Task<FlowDetails?> GetFlowDetails(Session session, string flowId, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
