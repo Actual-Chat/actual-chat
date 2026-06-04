@@ -1624,6 +1624,7 @@ export class VideoRecorder {
             onTraceKillInjected: () => consumeVideoTraceKill('recording'),
             onPreviewFrame: frame => this.handlePreviewFrame(frame),
             onPreviewFramePresentation: presentation => this.setPreviewFramePresentation(presentation),
+            onPreviewTrackReady: track => this.handleWorkerPreviewTrack(track),
         };
 
         this.worker = rpcClientServer<RecorderWorker>(
@@ -1815,19 +1816,24 @@ export class VideoRecorder {
         // startRecording() and let the operator pipe drive itself.
         const previousPreviewTrack = this.previewTrack;
         const previewGenerator = this.createGeneratedPreviewTrack();
+        // No main-side generator (Safari): ask the worker to build one in its
+        // realm and ship the track back via onPreviewTrackReady. Leave the
+        // preview pending (don't commit to canvas yet) until that arrives.
+        const createPreviewInWorker = !previewGenerator;
         if (previewGenerator) {
             this.setPreviewFramePresentation(null);
             this.previewCanvasFallback = false;
             this.previewTrack = previewGenerator.track;
+            if (this.previewTrack !== previousPreviewTrack)
+                this.notifyPreviewTrackChanged();
         } else {
             this.setPreviewFramePresentation(null);
-            this.previewCanvasFallback = true;
-            this.previewTrack = null;
         }
-        if (this.previewTrack !== previousPreviewTrack)
-            this.notifyPreviewTrackChanged();
 
-        void this.worker.start({ sourceStartedAtMs, config }, previewGenerator?.writable).catch((e: unknown) => {
+        void this.worker.start(
+            { sourceStartedAtMs, config, createPreviewInWorker },
+            previewGenerator?.writable,
+        ).catch((e: unknown) => {
             errorLog?.log('Worker start rejected:', e);
             if (previewGenerator && this.previewTrack === previewGenerator.track) {
                 this.cleanupGeneratedPreviewTrack();
@@ -2355,6 +2361,27 @@ export class VideoRecorder {
         for (const cb of this.stateChangeListeners) {
             try { cb(this._recordingState); } catch (e) { warnLog?.log('state change listener threw', e); }
         }
+    }
+
+    // Worker-created preview track (Safari, where MSTG/VTG are worker-only).
+    // Non-null ⇒ attach it to the preview <video>; null ⇒ canvas fallback.
+    private handleWorkerPreviewTrack(track: MediaStreamTrack | null): void {
+        // The run may already have stopped by the time this arrives; the worker
+        // owns the track's lifetime, so just stop and drop a stale one.
+        if (this.disposed || !this.isRecording) {
+            if (track) try { track.stop(); } catch { /* ignore */ }
+            return;
+        }
+        if (track) {
+            infoLog?.log(`Worker preview track ready (id=${track.id})`);
+            this.previewCanvasFallback = false;
+            this.previewTrack = track;
+        } else {
+            infoLog?.log('Worker preview track unavailable — using canvas fallback');
+            this.previewCanvasFallback = true;
+            this.previewTrack = null;
+        }
+        this.notifyPreviewTrackChanged();
     }
 
     private setPreviewFramePresentation(presentation: PreviewFramePresentation | null): void {

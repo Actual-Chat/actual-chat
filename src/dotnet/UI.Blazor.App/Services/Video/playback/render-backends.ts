@@ -47,3 +47,41 @@ export function pickRenderBackend(opts: {
         'pickRenderBackend: no rendering surface available '
         + '(neither MSTG writer nor canvas context supplied)');
 }
+
+// A worker-scope video track generator: a WritableStream<VideoFrame> sink
+// whose `track` can be transferred to the main thread and attached to a
+// <video srcObject>.
+export interface WorkerVideoTrackGenerator {
+    writable: WritableStream<VideoFrame>;
+    track: MediaStreamTrack;
+}
+
+interface VideoTrackGeneratorGlobal {
+    MediaStreamTrackGenerator?: new (init: { kind: 'video' }) => MediaStreamTrack & {
+        readonly writable: WritableStream<VideoFrame>;
+    };
+    // Safari-only equivalent: same shape but a different ctor name and the
+    // emitted MediaStreamTrack lives on `.track`, not on the generator itself.
+    VideoTrackGenerator?: new () => {
+        readonly writable: WritableStream<VideoFrame>;
+        readonly track: MediaStreamTrack;
+    };
+}
+
+// Constructs a video track generator from whichever ctor the current realm
+// exposes — MediaStreamTrackGenerator (Chromium) or VideoTrackGenerator
+// (Safari). Both are worker-only on Safari, so this MUST be called from a
+// worker realm there. Returns null when neither ctor is available; the caller
+// should fall back to canvas. Shared by the player and recorder workers.
+export function createWorkerVideoTrackGenerator(): WorkerVideoTrackGenerator | null {
+    const g = globalThis as unknown as VideoTrackGeneratorGlobal;
+    if (typeof g.MediaStreamTrackGenerator === 'function') {
+        const generator = new g.MediaStreamTrackGenerator({ kind: 'video' });
+        return { writable: generator.writable, track: generator };
+    }
+    if (typeof g.VideoTrackGenerator === 'function') {
+        const generator = new g.VideoTrackGenerator();
+        return { writable: generator.writable, track: generator.track };
+    }
+    return null;
+}

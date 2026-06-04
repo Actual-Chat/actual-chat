@@ -327,6 +327,11 @@ const deps: RecorderWorkerDeps = {
             'onPreviewFramePresentation',
             () => callbacks.onPreviewFramePresentation(presentation));
     },
+    reportPreviewTrack(track) {
+        void observeCallbackPromise(
+            'onPreviewTrackReady',
+            () => callbacks.onPreviewTrackReady(track));
+    },
 };
 
 initRecorderWorker(deps);

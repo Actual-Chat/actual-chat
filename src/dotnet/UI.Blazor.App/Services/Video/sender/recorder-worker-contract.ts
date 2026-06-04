@@ -37,6 +37,12 @@ export interface WireSafeRecorderConfig {
 export interface RecorderWorkerOptions {
     sourceStartedAtMs: number;
     config: WireSafeRecorderConfig;
+    // Set by main when it could not build a main-side generator (Safari, where
+    // MediaStreamTrackGenerator / VideoTrackGenerator are worker-only). The
+    // worker then creates the preview generator in its own realm and ships the
+    // track back via `onPreviewTrackReady`. When false/omitted with no
+    // `previewWritable`, the preview uses the canvas fallback.
+    createPreviewInWorker?: boolean;
 }
 
 export interface PreviewFramePresentation {
@@ -96,4 +102,8 @@ export interface RecorderWorkerCallbacks {
     onTraceKillInjected(): void;
     onPreviewFrame(frame: VideoFrame): void | Promise<void>;
     onPreviewFramePresentation(presentation: PreviewFramePresentation): void;
+    // Worker-created preview track (Safari path). Non-null ⇒ main attaches it
+    // to the preview <video srcObject>; null ⇒ worker has no generator, main
+    // uses the canvas fallback. Mirrors the player's `onTrackReady`.
+    onPreviewTrackReady(track: MediaStreamTrack | null): void;
 }

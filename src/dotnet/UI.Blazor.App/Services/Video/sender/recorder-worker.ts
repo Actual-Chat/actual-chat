@@ -15,6 +15,10 @@ import { setVideoTraceKill, type VideoTraceKillPeriod } from '../frame-drop-trac
 import { ScreenOrientation, DeviceOrientation } from 'orientation';
 import { SenderSession } from './session';
 import { getCodecCategory } from '../codec-support';
+import {
+    createWorkerVideoTrackGenerator,
+    type WorkerVideoTrackGenerator,
+} from '../playback/render-backends';
 import type {
     PreviewFramePresentation,
     RecorderWorker,
@@ -69,6 +73,9 @@ export interface RecorderWorkerDeps {
     reportTraceKillInjected?: () => void;
     reportPreviewFrame?: (frame: VideoFrame) => void | Promise<void>;
     reportPreviewFramePresentation?: (presentation: PreviewFramePresentation) => void;
+    // Ships a worker-created preview track to main (Safari). Null ⇒ no
+    // generator available, main falls back to canvas.
+    reportPreviewTrack?: (track: MediaStreamTrack | null) => void;
 }
 
 interface WorkerState {
@@ -76,6 +83,10 @@ interface WorkerState {
     recorder: Recorder;
     whenDone: Promise<void> | null;
     deps: RecorderWorkerDeps;
+    // Set only when the preview generator is created in this worker realm
+    // (Safari). Its track is transferred to main; its writable stays here, so
+    // the worker owns the lifetime and stops it on run end.
+    workerPreviewGenerator: WorkerVideoTrackGenerator | null;
 }
 
 let state: WorkerState | null = null;
@@ -92,12 +103,24 @@ export function initRecorderWorker(deps: RecorderWorkerDeps): void {
         recorder: new Recorder(session),
         whenDone: null,
         deps,
+        workerPreviewGenerator: null,
     };
+}
+
+// Stops the worker-created preview generator's track (if any) and clears the
+// ref. The track was transferred to main, but stopping it here closes the
+// underlying source so the generator's writable can be released.
+function disposeWorkerPreviewGenerator(s: WorkerState): void {
+    const generator = s.workerPreviewGenerator;
+    if (!generator) return;
+    s.workerPreviewGenerator = null;
+    try { generator.track.stop(); } catch { /* ignore */ }
 }
 
 export function disposeRecorderWorker(): void {
     if (!state) return;
     state.recorder.stop();
+    disposeWorkerPreviewGenerator(state);
     state.session.dispose();
     state = null;
 }
@@ -162,7 +185,26 @@ export const recorderWorkerImpl: RecorderWorker = {
 
         const { config } = opts;
         const { deps, recorder, session } = s;
-        session.setPreviewGenerator(previewWritable ? { writable: previewWritable } : undefined);
+        disposeWorkerPreviewGenerator(s);
+        if (previewWritable) {
+            // Tier 2: main built the generator (Chromium) and transferred only
+            // the writable.
+            session.setPreviewGenerator({ writable: previewWritable });
+        } else if (opts.createPreviewInWorker) {
+            // Tier 1: main couldn't build a generator (Safari) — create it here
+            // and ship the track back. Writable stays in this realm.
+            const generator = createWorkerVideoTrackGenerator();
+            if (generator) {
+                s.workerPreviewGenerator = generator;
+                session.setPreviewGenerator({ writable: generator.writable });
+                deps.reportPreviewTrack?.(generator.track);
+            } else {
+                session.setPreviewGenerator(undefined);
+                deps.reportPreviewTrack?.(null);
+            }
+        } else {
+            session.setPreviewGenerator(undefined);
+        }
         // Streaming context must land before the pipeline starts so
         // `createWireSender` finds it on the first encoded chunk.
         deps.configureStreaming?.({
@@ -253,6 +295,7 @@ export const recorderWorkerImpl: RecorderWorker = {
             },
         ).finally(() => {
             session.setPreviewGenerator(undefined);
+            disposeWorkerPreviewGenerator(s);
             if (s.whenDone === whenDone) s.whenDone = null;
         });
         await Promise.resolve();

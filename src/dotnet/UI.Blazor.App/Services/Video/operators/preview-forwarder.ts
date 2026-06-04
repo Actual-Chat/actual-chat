@@ -9,6 +9,12 @@ const { warnLog } = getLogs('VideoPipeline');
 const LogEveryN = 30;
 
 export interface PreviewForwarderOptions {
+    // iOS Safari's <video> auto-orients a generated (VTG) track to upright on
+    // its own — verified: a 640x360 landscape capture renders as 360x640 in
+    // the element. So the CSS --video-rotation layer must NOT add a second
+    // turn for the generated-track path there. Threaded from config (worker
+    // realm), not probed.
+    isIos?: boolean;
     // Called per frame so the recorder can swap / detach without restarting.
     getWriter: () => WritableStreamDefaultWriter<VideoFrame> | null;
     reportFrame?: (frame: VideoFrame) => void | Promise<void>;
@@ -29,7 +35,7 @@ export interface PreviewForwarderOptions {
 // writer is backpressured are dropped on the spot rather than buffered:
 // the bottleneck is the renderer, and a buffer here only delays the drop.
 export function previewForwarder(opts: PreviewForwarderOptions): PipeOperator<NormalizedFrame, NormalizedFrame> {
-    const { getWriter, reportFrame, reportPresentation } = opts;
+    const { isIos, getWriter, reportFrame, reportPresentation } = opts;
     let failures = 0;
     let lastReportedRotation: number | null = null;
     const reportFailure = (where: string, e: unknown): void => {
@@ -75,17 +81,22 @@ export function previewForwarder(opts: PreviewForwarderOptions): PipeOperator<No
             return;
         }
 
-        // MSTG path (Chromium): attach display rotation as VideoFrame
-        // metadata so the <video> element auto-rotates; report rotation=0
-        // to the presentation callback so the CSS --video-rotation path
-        // doesn't double-rotate. Canvas-preview path (writer === null)
-        // keeps the legacy path — canvas drawImage ignores VideoFrame
-        // rotation metadata, so it relies on CSS rotation.
+        // Generated-track path (<video srcObject>): the element auto-orients,
+        // so report rotation=0 to keep the CSS --video-rotation layer from
+        // double-rotating. Two engines, two mechanisms:
+        //   * Chromium (HAS_VF_ROTATION_INIT): stamp display rotation as
+        //     VideoFrame metadata; the <video> rotates from it.
+        //   * iOS Safari (VTG): the <video> auto-orients the track natively
+        //     (no metadata field exists) — just skip the CSS turn.
+        // Canvas-preview path (writer === null) keeps the legacy path — canvas
+        // drawImage ignores VideoFrame rotation metadata, so it relies on CSS.
         let frame = clone;
         let displayRotation = envelope.rotation;
-        if (writer && HAS_VF_ROTATION_INIT && envelope.rotation !== 0) {
-            frame = wrapWithRotation(clone, envelope.rotation);
-            closeFrame(clone);
+        if (writer && envelope.rotation !== 0 && (HAS_VF_ROTATION_INIT || isIos)) {
+            if (HAS_VF_ROTATION_INIT) {
+                frame = wrapWithRotation(clone, envelope.rotation);
+                closeFrame(clone);
+            }
             displayRotation = 0;
         }
 

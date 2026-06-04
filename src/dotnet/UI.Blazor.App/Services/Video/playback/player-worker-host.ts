@@ -20,7 +20,7 @@ import type {
 import type { DecoderLike } from '../operators/decode';
 import type { VideoFrameDto } from '../operators/pull';
 import type { PlayerConfig } from './player';
-import { pickRenderBackend, type RenderBackendConfig } from './render-backends';
+import { createWorkerVideoTrackGenerator, pickRenderBackend, type RenderBackendConfig } from './render-backends';
 
 const { infoLog, warnLog } = getLogs('VideoPipeline');
 
@@ -72,18 +72,6 @@ function createDecoder(
     }) as DecoderLike;
 }
 
-interface MstgGlobal {
-    MediaStreamTrackGenerator?: new (init: { kind: 'video' }) => MediaStreamTrack & {
-        readonly writable: WritableStream<VideoFrame>;
-    };
-    // Safari-only equivalent: same shape but a different ctor name and the
-    // emitted MediaStreamTrack lives on `.track`, not on the generator itself.
-    VideoTrackGenerator?: new () => {
-        readonly writable: WritableStream<VideoFrame>;
-        readonly track: MediaStreamTrack;
-    };
-}
-
 function buildBackend(
     opts: PlayerWorkerOptions,
 ): { config: RenderBackendConfig; track: MediaStreamTrack | null } {
@@ -102,21 +90,12 @@ function buildBackend(
         // Tier 1: worker-side generator. Chromium exposes
         // MediaStreamTrackGenerator on the worker; Safari exposes
         // VideoTrackGenerator (different ctor, track lives on `.track`).
-        const g = globalThis as unknown as MstgGlobal;
-        if (typeof g.MediaStreamTrackGenerator === 'function') {
-            const generator = new g.MediaStreamTrackGenerator({ kind: 'video' });
+        const generator = createWorkerVideoTrackGenerator();
+        if (generator) {
             const writer = generator.writable.getWriter();
             return {
                 config: pickRenderBackend({ preferMstg: true, mstgWriter: writer }),
-                track: generator,
-            };
-        }
-        if (typeof g.VideoTrackGenerator === 'function') {
-            const vtg = new g.VideoTrackGenerator();
-            const writer = vtg.writable.getWriter();
-            return {
-                config: pickRenderBackend({ preferMstg: true, mstgWriter: writer }),
-                track: vtg.track,
+                track: generator.track,
             };
         }
         throw new Error(
