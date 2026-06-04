@@ -1,5 +1,6 @@
 import { clamp } from 'math';
 import { fastRaf } from 'fast-raf';
+import { DeviceInfo } from 'device-info';
 
 export interface ScrollToOptions {
     smooth?: boolean;
@@ -14,9 +15,6 @@ const ProgrammaticScrollSuppressMs = 300;
 // so the first pixels move almost 1:1 and resistance grows as you drag further (soft, spring-like).
 const MaxResistance = 0.667;
 const ResistanceRampPx = 667;
-// Predict scroll ~half a frame ahead (speed + acceleration) so the drag transform isn't a frame behind.
-const ExtrapolationFraction = 0.5;
-const MaxFrameMs = 32;
 
 // Return spring (release / fling): critically damped => single excursion, no second bounce.
 const ReturnStiffness = 120;
@@ -27,29 +25,11 @@ const ReturnSettleSpeedPxS = 8;
 const MaxFlingOverscrollPx = 120;       // cap on the spring excursion for a no-touch fling
 const FlingEntryAsymptotePx = 100;      // smoothly caps the no-touch entry offset (no snap on a fast fling)
 
-// Pull-back distance (the part the resistance "eats") for a touch overscroll of `over` (>= 0).
-function resistancePull(over: number): number {
-    return over <= ResistanceRampPx
-        ? (MaxResistance * over * over) / (2 * ResistanceRampPx)
-        : MaxResistance * over - (MaxResistance * ResistanceRampPx) / 2;
-}
-
-// Visible overscroll the finger sees for a touch overscroll of `over` (>= 0).
-function visibleOverscroll(over: number): number {
-    return over - resistancePull(over);
-}
-
-// No-touch entry offset: a fast fling can overshoot the boundary far in one frame; map it through an
-// asymptote so the spring starts from a bounded offset (smoothly, no snap) and the speed drives the rest.
-function flingEntryOffset(over: number): number {
-    return (over * FlingEntryAsymptotePx) / (over + FlingEntryAsymptotePx);
-}
-
 // Binds to one scrollable element and, when scroll handling is enabled, keeps scrollTop within a
 // [min, max] band (provided on demand via getLimits, so it reflects current item sizes / viewport) with
 // an iOS-style rubber-band overscroll on bounceElement:
-//  - finger down + past the boundary: a soft, ramping-resistance transform tracks the (latency-
-//    compensated) overscroll; scroll is NOT blocked.
+//  - finger down + past the boundary: a soft, ramping-resistance transform tracks the overscroll;
+//    scroll is NOT blocked.
 //  - no finger + past the boundary: scroll is blocked (overflow:hidden, scrollTop pinned to the edge)
 //    and a critically-damped spring carries the view back to the edge with the entry speed and stops.
 export class ScrollController {
@@ -63,6 +43,7 @@ export class ScrollController {
     private recentSpeed = 0;            // px/ms, signed, smoothed (no-touch path)
     private suppressUntil = 0;
     private isOverflowLocked = false;
+    private resizeObserver: ResizeObserver | null = null;
 
     private overscrollSign = 0;         // +1 = past max (bottom), -1 = past min (top), 0 = in band
     private overscrollBoundary = 0;
@@ -72,7 +53,6 @@ export class ScrollController {
     private touchPrevTop = 0;
     private touchPrevTime = 0;
     private touchSpeed = 0;             // px/ms, smoothed
-    private touchAccel = 0;             // px/ms^2, smoothed
 
     private isReturning = false;
     private returnEpoch = 0;
@@ -95,6 +75,10 @@ export class ScrollController {
             const onTouchEnd = (e: TouchEvent) => { if (e.touches.length === 0) this.onTouchEnd(); };
             element.addEventListener('touchend', onTouchEnd, opts);
             element.addEventListener('touchcancel', onTouchEnd, opts);
+            // A viewport resize (e.g. the mobile keyboard hiding) changes the limits but fires no scroll
+            // event, so re-clamp scrollTop to the new edge here.
+            this.resizeObserver = new ResizeObserver(() => this.clampToLimits());
+            this.resizeObserver.observe(element);
         }
         ScrollController.all.add(this);
         (element as unknown as { scrollController?: ScrollController }).scrollController = this;
@@ -103,6 +87,7 @@ export class ScrollController {
     public dispose(): void {
         this.finishReturn();
         ++this.touchLoopEpoch;
+        this.resizeObserver?.disconnect();
         this.abort.abort();
         ScrollController.all.delete(this);
     }
@@ -224,7 +209,6 @@ export class ScrollController {
         this.touchPrevTop = this.element.scrollTop;
         this.touchPrevTime = Date.now();
         this.touchSpeed = 0;
-        this.touchAccel = 0;
         const epoch = ++this.touchLoopEpoch;
         const tick = () => {
             if (epoch !== this.touchLoopEpoch || !this.isTouching) {
@@ -237,20 +221,17 @@ export class ScrollController {
             const dt = now - this.touchPrevTime;
             if (dt > 0) {
                 const speed = (scrollTop - this.touchPrevTop) / dt;
-                this.touchAccel = 0.6 * (speed - this.touchSpeed) / dt + 0.4 * this.touchAccel;
                 this.touchSpeed = 0.6 * speed + 0.4 * this.touchSpeed;
                 this.touchPrevTop = scrollTop;
                 this.touchPrevTime = now;
             }
-            const t = ExtrapolationFraction * Math.min(dt, MaxFrameMs);
-            const predicted = scrollTop + this.touchSpeed * t + 0.5 * this.touchAccel * t * t;
 
             const limits = this.getCurrentScrollLimits();
-            const sign = predicted < limits.min ? -1 : predicted > limits.max ? 1 : 0;
+            const sign = scrollTop < limits.min ? -1 : scrollTop > limits.max ? 1 : 0;
             if (sign !== 0) {
                 const boundary = sign < 0 ? limits.min : limits.max;
                 this.overscrollSign = sign;
-                this.applyTranslate(sign * resistancePull(Math.abs(predicted - boundary)));
+                this.applyTranslate(sign * resistancePull(Math.abs(scrollTop - boundary)));
             }
             else if (this.overscrollSign !== 0) {
                 this.overscrollSign = 0;
@@ -266,13 +247,24 @@ export class ScrollController {
         this.springOffset = offset;
         this.springCap = Math.max(Math.abs(offset), MaxFlingOverscrollPx);
         this.springSpeed = clamp(speedPxMs * 1000, -MaxReturnSpeedPxS, MaxReturnSpeedPxS);
-        this.setOverflowLocked(true);
+        // Non-Safari: keep overflow:hidden for the whole spring — flicker-free; finishReturn unlocks it,
+        // and these browsers re-attach a scroll to a touch that lands mid-bounce.
+        if (!DeviceInfo.isWebKit)
+            this.setOverflowLocked(true);
         this.element.scrollTop = boundary;
         this.applyTranslate(-this.springOffset);
         if (this.isReturning)
             return;
 
         this.isReturning = true;
+        // Safari won't scroll an element that was overflow:hidden when a finger landed, so a held lock blocks
+        // interrupting the bounce. Lock for one frame only (enough to kill the fling momentum), then leave it
+        // scrollable; the rAF below keeps scrollTop pinned and onTouchStart ends the spring on a touch.
+        if (DeviceInfo.isWebKit) {
+            this.setOverflowLocked(true);
+            void this.element.offsetHeight;
+            fastRaf({ write: () => { if (this.isReturning) this.setOverflowLocked(false); } });
+        }
         const epoch = ++this.returnEpoch;
         let lastTime = Date.now();
         const tick = () => {
@@ -337,6 +329,26 @@ export class ScrollController {
         this.isOverflowLocked = locked;
         this.element.style.overflowY = locked ? 'hidden' : '';
     }
+}
+
+// Helpers
+
+// Pull-back distance (the part the resistance "eats") for a touch overscroll of `over` (>= 0).
+function resistancePull(over: number): number {
+    return over <= ResistanceRampPx
+        ? (MaxResistance * over * over) / (2 * ResistanceRampPx)
+        : MaxResistance * over - (MaxResistance * ResistanceRampPx) / 2;
+}
+
+// Visible overscroll the finger sees for a touch overscroll of `over` (>= 0).
+function visibleOverscroll(over: number): number {
+    return over - resistancePull(over);
+}
+
+// No-touch entry offset: a fast fling can overshoot the boundary far in one frame; map it through an
+// asymptote so the spring starts from a bounded offset (smoothly, no snap) and the speed drives the rest.
+function flingEntryOffset(over: number): number {
+    return (over * FlingEntryAsymptotePx) / (over + FlingEntryAsymptotePx);
 }
 
 (globalThis as unknown as { ScrollController: typeof ScrollController }).ScrollController = ScrollController;
