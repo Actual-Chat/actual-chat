@@ -16,6 +16,9 @@ namespace ActualChat.Flows;
 /// </summary>
 public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
 {
+    private static readonly TimeSpan StuckThreshold = TimeSpan.FromHours(6);
+    private const int MaxListLimit = 1000;
+
     private readonly AsyncLockSet<FlowId> _resumeLocks = new(LockReentryMode.CheckedPass);
     private readonly VersionedComputeMethodPrimer<FlowId, long, IFlowData?> _flowDataPrimer;
 
@@ -79,6 +82,61 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
                     .ConfigureAwait(false);
             return cFlowData.Value!;
         }, new RetryLogger(Log), cancellationToken).ConfigureAwait(false);
+    }
+
+    // Regular RPC method! Pinned to a single node via ShardKeyResolver<FlowsQuery>.
+    public virtual async Task<FlowsReport> List(FlowsQuery query, CancellationToken cancellationToken)
+    {
+        var now = FlowHub.Clocks.SystemClock.Now;
+        var cutoffVersion = (now - StuckThreshold).EpochOffset.Ticks;
+
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _1 = dbContext.ConfigureAwait(false);
+
+        var aggRows = await dbContext.Database
+            .SqlQuery<AggRow>($"""
+                SELECT split_part(id, ':', 1) AS "Name",
+                       COUNT(*) FILTER (WHERE NOT is_completed AND version >= {cutoffVersion})::int AS "Active",
+                       COUNT(*) FILTER (WHERE is_completed AND NOT is_failed)::int AS "Completed",
+                       COUNT(*) FILTER (WHERE is_completed AND is_failed)::int AS "Failed",
+                       COUNT(*) FILTER (WHERE NOT is_completed AND version < {cutoffVersion})::int AS "Stuck"
+                FROM _flows
+                GROUP BY split_part(id, ':', 1)
+                """)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var aggregates = aggRows
+            .Select(a => new FlowTypeStat(a.Name, a.Active, a.Completed, a.Failed, a.Stuck))
+            .OrderByDescending(a => a.Problematic)
+            .ThenBy(a => a.Name, StringComparer.Ordinal)
+            .ToArray();
+
+        var rowsQuery = dbContext.Flows.AsNoTracking();
+        if (!query.Name.IsNullOrEmpty()) {
+            var namePrefix = query.Name + ":";
+            rowsQuery = rowsQuery.Where(f => f.Id.StartsWith(namePrefix));
+        }
+        if (query.ProblematicOnly)
+            rowsQuery = rowsQuery.Where(f =>
+                (f.IsCompleted && f.IsFailed) || (!f.IsCompleted && f.Version < cutoffVersion));
+
+        var limit = query.Limit.Clamp(1, MaxListLimit);
+        var rawRows = await rowsQuery
+            .OrderByDescending(f => f.Version)
+            .Take(limit)
+            .Select(f => new { f.Id, f.IsCompleted, f.IsFailed, f.Version })
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var rows = rawRows
+            .Select(r => new FlowSummary(
+                r.Id,
+                GetName(r.Id),
+                GetStatus(r.IsCompleted, r.IsFailed, r.Version, cutoffVersion),
+                r.Version,
+                new Moment(TimeSpan.FromTicks(r.Version))))
+            .ToArray();
+
+        return new FlowsReport(aggregates, rows, now);
     }
 
     // The `long` it returns is DbFlow/FlowData.Version
@@ -229,5 +287,29 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
                 context.Operation.AddEvent(item);
 
         context.Operation.MustStore(false);
+    }
+
+    // Private methods
+
+    private static string GetName(string flowId)
+    {
+        var nameLength = flowId.IndexOf(':');
+        return nameLength <= 0 ? flowId : flowId[..nameLength];
+    }
+
+    private static FlowStatus GetStatus(bool isCompleted, bool isFailed, long version, long cutoffVersion)
+        => isCompleted
+            ? isFailed ? FlowStatus.Failed : FlowStatus.Completed
+            : version < cutoffVersion ? FlowStatus.Stuck : FlowStatus.Active;
+
+    // Nested types
+
+    private sealed class AggRow
+    {
+        public string Name { get; set; } = "";
+        public int Active { get; set; }
+        public int Completed { get; set; }
+        public int Failed { get; set; }
+        public int Stuck { get; set; }
     }
 }
