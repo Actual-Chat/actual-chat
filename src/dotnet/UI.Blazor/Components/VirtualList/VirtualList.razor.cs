@@ -10,7 +10,6 @@ public static class VirtualList
     // Wrapper height of an infinite (scrollbar-less) list. Must match InfiniteSize in virtual-list.ts.
     public const double InfiniteSize = 10_000_000;
     public static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.VirtualList.create";
-    public static bool IsNonFirstRender { get; set; }
 }
 
 public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, VirtualListData<TItem>>, IVirtualListBackend
@@ -87,7 +86,10 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
     public override async Task SetParametersAsync(ParameterView parameters)
     {
         parameters.SetParameterProperties(this);
-        var shouldSetInitialData = VirtualList.IsNonFirstRender && RenderIndex == 0;
+        // NOTE: Hub (and other injected services) aren't available yet in the first SetParametersAsync,
+        // so we can't use Hub.IsPrerendering here. RendererInfo is set before SetParametersAsync and is
+        // per-circuit: IsInteractive is false during prerender SSR, true once the list is interactive.
+        var shouldSetInitialData = RendererInfo.IsInteractive && RenderIndex == 0;
         if (shouldSetInitialData)
             _initialData = await DataSource.GetData(VirtualListDataQuery.None,
                 VirtualListData<TItem>.None,
@@ -136,7 +138,6 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        VirtualList.IsNonFirstRender = true;
         if (CircuitHub.IsPrerendering)
             return;
 

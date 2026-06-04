@@ -43,7 +43,7 @@ const InfiniteSize = 1e7;
 // bottom). When false, the bottom is managed like the top — via a scroll-limit + rubber-band overscroll.
 const CutVirtualSpaceAtBottom = true;
 
-type ScrollToEdgeReason = 'no-pivot' | 'last-item' | 'item' | 'sticky-edge' | 'non-item-resize' | 'item-resize' | 'viewport-resize' | 'unknown';
+type ScrollToEdgeReason = 'no-pivot' | 'last-item' | 'item' | 'sticky-edge' | 'non-item-resize' | 'item-resize' | 'viewport-resize' | 'stranded' | 'unknown';
 interface ScrollIntent {
     shouldUseSmoothScroll: boolean;
     reason: ScrollToEdgeReason;
@@ -95,9 +95,18 @@ interface VirtualListStateSnapshot {
 const StateHistoryCapacity = 50;
 const SkeletonWatchdogInterval = 5000;
 
+const delayMs = (ms: number): Promise<void> => new Promise<void>(resolve => setTimeout(resolve, ms));
+
 export class VirtualList {
     public static enableWatchdogFixes = false;
     public static enableDebug = false;
+    // Debug-only race surfacing: when > 0, a uniform-random delay in [0, value) ms is injected before
+    // each render is processed (debugRenderDelayMs) and before each data request is sent
+    // (debugDataLoadDelayMs). Shuffling these two timings exposes the recenter/scroll-restore races
+    // that are otherwise hard to reproduce. Leave at 0 in production; toggle at runtime via
+    // globalThis.VirtualList.debugRenderDelayMs = N.
+    public static debugRenderDelayMs = 0;
+    public static debugDataLoadDelayMs = 0;
     private static readonly _instances = new Set<VirtualList>();
 
     public static dumpStateChangeLogs(lastN?: number, endStateEvery = 10): void {
@@ -1097,6 +1106,8 @@ export class VirtualList {
             this.whenRequestDataCompleted = null;
             return;
         }
+        if (VirtualList.debugRenderDelayMs > 0)
+            await delayMs(Math.random() * VirtualList.debugRenderDelayMs);
         const rs = this.parseRenderState();
         if (rs === null) {
             this.updateState('endRender: no rs', this.state, { renderStartedAt: null });
@@ -1140,6 +1151,7 @@ export class VirtualList {
         // The call inside syncLayoutAfterRender may get swallowed by the
         // leading-edge throttle while isRendering was still true.
         this.updateViewportThrottled();
+        this.repinIfViewportStrandedDebounced();
         this.debug?.onEvent('render');
     }
 
@@ -1211,7 +1223,18 @@ export class VirtualList {
         } else {
             if (rs.query.isNone && rs.renderIndex === 0) {
                 reason = 'no-pivot';
-                scrollFunc = () => this.scrollToEdge(this.defaultEdge, false, reason);
+                const edge = this.defaultEdge;
+                scrollFunc = () => {
+                    this.scrollToEdge(edge, false, reason);
+                    // Pin the sticky edge now rather than waiting for the end-anchor
+                    // IntersectionObserver — that callback is racy and sometimes never fires, leaving
+                    // the list at the edge but unpinned, so later renders have no re-pin path.
+                    const stickyKey = edge === VirtualListEdge.End
+                        ? (rs.hasVeryLastItem ? this.getLastItemKey() : null)
+                        : (rs.hasVeryFirstItem ? this.getFirstItemKey() : null);
+                    if (stickyKey)
+                        this.setStickyEdge({ itemKey: stickyKey, edge });
+                };
             }
         }
 
@@ -1500,6 +1523,32 @@ export class VirtualList {
 
         void this.updateViewport();
         this.updateVisibleKeysThrottled();
+        this.repinIfViewportStrandedDebounced();
+    }
+
+    private repinIfViewportStrandedDebounced = debounce(() => this.repinIfViewportStranded(), ScrollDebounce);
+
+    // Safety net for infinite lists: the viewport must never settle entirely off the rendered
+    // container — that happens when a no-pivot open scrolls to the edge before the chain is
+    // recentered (~InfiniteSize/2 away) and no sticky edge / scrollToKey exists to re-pin, while a
+    // null first-item min-limit lets clampToLimits leave it there. Snap back to the default edge.
+    private repinIfViewportStranded(): void {
+        if (!this.isInfinite || this.isRendering || this.isDisposed)
+            return;
+
+        const clientHeight = this.ref.clientHeight;
+        if (clientHeight <= 0)
+            return;
+
+        const scrollTop = this.ref.scrollTop;
+        const containerTop = parseFloat(this.containerRef.style.top) || 0;
+        const containerBottom = containerTop + this.containerRef.offsetHeight;
+        if (scrollTop + clientHeight >= containerTop && scrollTop <= containerBottom)
+            return; // viewport overlaps the rendered container (items + skeleton spacers) — fine
+
+        debugLog?.log('repinIfViewportStranded: re-pinning to edge', this.defaultEdge,
+            { scrollTop, clientHeight, containerTop, containerBottom });
+        this.scrollToEdge(this.defaultEdge, false, 'stranded');
     }
 
     // Debug-only: a keyed content item to anchor the no-jump check on. With a key, returns that item's
@@ -2417,8 +2466,8 @@ export class VirtualList {
 
         debugLog?.log(`requestData: query:`, query, query.virtualRange, this.state.itemRange);
         this.updateState('requestData: sending', this.state, { lastQueryTime: Date.now(), lastQuery: this.state.query });
-        // debug helper
-        // await delayAsync(1500);
+        if (VirtualList.debugDataLoadDelayMs > 0)
+            await delayMs(Math.random() * VirtualList.debugDataLoadDelayMs);
         this.debug?.onRequestData();
         await this.blazorRef.invokeMethodAsync('RequestData', this.state.query);
     }
