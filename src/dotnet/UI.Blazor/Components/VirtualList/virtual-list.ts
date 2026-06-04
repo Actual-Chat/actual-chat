@@ -39,6 +39,9 @@ const RevealTimeout = 1500;
 // browser's max element height (Firefox ≈ 17.9M); at ~50px/item that is still ~200k items of scroll.
 // Must match InfiniteSize in VirtualList.razor.cs.
 const InfiniteSize = 1e7;
+// When true, the wrapper is trimmed to the newest once the last item is loaded (native hard-stop at the
+// bottom). When false, the bottom is managed like the top — via a scroll-limit + rubber-band overscroll.
+const CutVirtualSpaceAtBottom = false;
 
 type ScrollToEdgeReason = 'no-pivot' | 'last-item' | 'item' | 'sticky-edge' | 'non-item-resize' | 'item-resize' | 'viewport-resize' | 'unknown';
 interface ScrollMetadata {
@@ -239,7 +242,8 @@ export class VirtualList {
         this.rowGap = parseFloat(window.getComputedStyle(this.containerRef).rowGap) || 0;
         if (this.isInfinite)
             this.wrapperRef.style.height = `${InfiniteSize}px`;
-        this.scrollController = new ScrollController(this.ref, this.isInfinite);
+        this.scrollController = new ScrollController(
+            this.ref, this.isInfinite, this.containerRef, () => this.computeScrollLimits());
 
         this._state = {
             viewport: null,
@@ -1771,6 +1775,34 @@ export class VirtualList {
         return false;
     }
 
+    // Computed on demand by ScrollController (so it always reflects the latest item sizes, edges, and
+    // viewport height — incl. mobile keyboard). Reads the model + current container.top, no re-measure.
+    private computeScrollLimits(): { min: number | null, max: number | null } {
+        if (!this.isInfinite)
+            return { min: null, max: null };
+
+        const itemRange = this.state.itemRange;
+        if (!itemRange)
+            return { min: null, max: null };
+
+        const rs = this.state.renderState;
+        const clientHeight = this.ref.clientHeight;
+        const containerTop = parseFloat(this.containerRef.style.top) || 0;
+        let min = rs.hasVeryFirstItem ? containerTop : null;
+        let max = (rs.hasVeryLastItem && !CutVirtualSpaceAtBottom)
+            ? itemRange.end + this.state.endAnchorSize - clientHeight
+            : null;
+        // Content fits the viewport => the band inverts (min > max). Collapse it to the preferred edge
+        // so a short chat rests at that edge (bottom for End) instead of the top.
+        if (min != null && max != null && min > max) {
+            if (this.defaultEdge === VirtualListEdge.End)
+                min = max;
+            else
+                max = min;
+        }
+        return { min, max };
+    }
+
     private async restoreScrollPosition(rs: VirtualListRenderState, scrollMetadata: ScrollMetadata | null = null, useRaf = false): Promise<void> {
         const { endAnchorSize } = this.state;
         const { hasUnmeasuredItems, defaultSpacerSize } = this;
@@ -1787,8 +1819,6 @@ export class VirtualList {
         let endSpacerSize = 0;
         let totalSizeDiff = 0;
         let bottomCapped = false;
-        let limitMin: number | null = null;
-        let limitMax: number | null = null;
         // No-jump check (debug only): a visible anchored item must keep its screen position across a
         // render that isn't an intentional scroll. Captured before re-layout, compared after.
         let jumpAnchor: { key: string; top: number } | null = null;
@@ -1907,7 +1937,7 @@ export class VirtualList {
 
                 // Bottom cap: clip the wrapper to the newest so scrolling down hard-stops there natively (no
                 // chain reposition — safe, unlike a top cap). After re-center so `end` is final.
-                if (this.isInfinite && rs.hasVeryLastItem) {
+                if (this.isInfinite && rs.hasVeryLastItem && CutVirtualSpaceAtBottom) {
                     totalSize = end + endAnchorSize;
                     bottomCapped = true;
                 }
@@ -1919,11 +1949,6 @@ export class VirtualList {
                     ? 0
                     : clamp(oldTotalSize - itemRangeSize - spacerSize - endAnchorSize, 0, defaultSpacerSize);
                 offset -= spacerSize;
-
-                // Top: pin the scroll at the oldest via the overflow-kill band (no chain reposition).
-                // Bottom: pinned by the wrapper cap above (native), so no band limit there.
-                limitMin = rs.hasVeryFirstItem ? offset : null;
-                limitMax = null;
 
                 // Set scrollPositionRestoredAt BEFORE write/scroll to guard onScroll from false "user scroll" detection
                 this.updateState('scrollRestored', this.state, { scrollPositionRestoredAt: Date.now() });
@@ -1942,21 +1967,24 @@ export class VirtualList {
                 this.spacerRef.style.height = `${spacerSize}px`;
                 this.endSpacerRef.style.height = `${endSpacerSize}px`;
 
-                if (totalSizeDiff != 0 && this.state.isScrolling && rs.renderIndex > 0 && !bottomCapped) {
+                if (bottomCapped) {
+                    // The cap must stick: drop any deferred (stale, larger) height set and apply now,
+                    // else a pending turnOffScrollingCallback restores InfiniteSize and lets the user
+                    // scroll past the newest.
+                    this.turnOffScrollingCallback = undefined;
+                    if (totalSizeDiff != 0)
+                        this.wrapperRef.style.height = `${totalSize}px`;
+                }
+                else if (totalSizeDiff != 0 && this.state.isScrolling && rs.renderIndex > 0) {
                     // delay wrapper size change while scrolling in Chromium to prevent scroll position jumps
                     const setWrapperHeight = () => fastRaf({
                         write: () => {
                             if (this.state.isScrolling)
                                 this.turnOffScrollingCallback = setWrapperHeight;
-                            else {
+                            else
                                 this.wrapperRef.style.height = `${totalSize}px`;
-                                // console.warn(
-                                //     'restoreScrollPosition: wrapper size increased with DELAY!',
-                                //     totalSize);
-                            }
                         } });
                     this.turnOffScrollingCallback = setWrapperHeight;
-
                 }
                 else if (totalSizeDiff != 0) {
                     this.wrapperRef.style.height = `${totalSize}px`;
@@ -2001,7 +2029,7 @@ export class VirtualList {
                 // debugLog?.log(`restoreScrollPosition: scroll set`, offset, totalSize, scrollTop, spacerSize, endSpacerSize);
 
                 if (this.isInfinite)
-                    this.scrollController.setScrollLimits(limitMin, limitMax);
+                    this.scrollController.clampToLimits();
 
                 result.resolve(undefined);
             }
