@@ -1,0 +1,131 @@
+@using ActualChat.Chat
+@using ActualChat.Flows
+@inherits ComputedStateComponent<AppUIHub, FlowsReport?>
+@page "/test/flows"
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Flows Dashboard</MainHeader>
+
+@{
+    var m = State.Value;
+}
+<div class="test-page-wrapper">
+    <div class="flex-y h-full select-text">
+        <div class="flex-x items-center gap-x-2 mb-3">
+            <Button Click="OnRefresh">Refresh</Button>
+            <label class="flex-x items-center gap-x-1 cursor-pointer">
+                <input type="checkbox" checked="@_problematicOnly" @onchange="OnToggleProblematic"/>
+                <span>Problematic only</span>
+            </label>
+            @if (!_name.IsNullOrEmpty()) {
+                <Button Click="@(() => SelectType(null))">Type: @_name ✕</Button>
+            }
+            @if (m is null) {
+                <span>Loading…</span>
+            }
+            else {
+                <span class="text-02">@m.Rows.Length row(s), generated @m.GeneratedAt.ToDateTime().ToString("HH:mm:ss")</span>
+            }
+        </div>
+
+        @if (m is not null) {
+            <h3 class="mt-2 mb-1 font-semibold">Types</h3>
+            <table class="flow-table">
+                <thead>
+                    <tr><th>Type</th><th>Active</th><th>Completed</th><th>Failed</th><th>Stuck</th><th>Total</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var t in m.Aggregates) {
+                    <tr class="cursor-pointer" @onclick="@(() => SelectType(t.Name))">
+                        <td>@t.Name</td>
+                        <td>@t.Active</td>
+                        <td>@t.Completed</td>
+                        <td class="@(t.Failed > 0 ? "text-danger font-semibold" : "")">@t.Failed</td>
+                        <td class="@(t.Stuck > 0 ? "text-warning font-semibold" : "")">@t.Stuck</td>
+                        <td>@t.Total</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+
+            <h3 class="mt-4 mb-1 font-semibold">Flows</h3>
+            <table class="flow-table">
+                <thead>
+                    <tr><th>Id</th><th>Status</th><th>Updated</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var row in m.Rows) {
+                    <tr class="cursor-pointer" @onclick="@(() => ToggleRow(row.FlowId))">
+                        <td>@row.FlowId</td>
+                        <td><span class="@StatusClass(row.Status)">@row.Status</span></td>
+                        <td>@row.UpdatedAt.ToDateTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    </tr>
+                    @if (_expanded.Contains(row.FlowId)) {
+                        <tr>
+                            <td colspan="3">
+                                @if (!_details.TryGetValue(row.FlowId, out var details)) {
+                                    <span>Loading…</span>
+                                }
+                                else if (details is null) {
+                                    <span class="text-02">No data.</span>
+                                }
+                                else {
+                                    @if (!details.Error.IsNullOrEmpty()) {
+                                        <div class="text-danger mb-1">@details.Error</div>
+                                    }
+                                    <pre class="flow-console">@details.Console</pre>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@code {
+    private bool _problematicOnly;
+    private string? _name;
+    private readonly HashSet<string> _expanded = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, FlowDetails?> _details = new(StringComparer.Ordinal);
+
+    private IDiagnostics Diagnostics => field ??= Hub.Services.GetRequiredService<IDiagnostics>();
+
+    protected override async Task<FlowsReport?> ComputeState(CancellationToken cancellationToken) {
+        var query = new FlowsQuery(_name, _problematicOnly, Limit: 200);
+        return await Diagnostics.GetFlowsReport(Session, query, cancellationToken).ConfigureAwait(false);
+    }
+
+    private void OnRefresh()
+        => _ = State.Recompute();
+
+    private void OnToggleProblematic(ChangeEventArgs e) {
+        _problematicOnly = e.Value is true;
+        _ = State.Recompute();
+    }
+
+    private void SelectType(string? name) {
+        _name = name;
+        _ = State.Recompute();
+    }
+
+    private async Task ToggleRow(string flowId) {
+        if (!_expanded.Add(flowId)) {
+            _expanded.Remove(flowId);
+            return;
+        }
+        if (!_details.ContainsKey(flowId)) {
+            _details[flowId] = await Diagnostics.GetFlowDetails(Session, flowId, default);
+            StateHasChanged();
+        }
+    }
+
+    private static string StatusClass(FlowStatus status)
+        => status switch {
+            FlowStatus.Failed => "text-danger font-semibold",
+            FlowStatus.Stuck => "text-warning font-semibold",
+            _ => "",
+        };
+}
