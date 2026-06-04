@@ -28,6 +28,14 @@ export function mstgPresent(opts: MstgPresentOptions): PipeOperator<DecodedFrame
             return {
                 async present(frame: VideoFrame): Promise<boolean> {
                     try {
+                        // Backpressure: only block when the generator's queue is
+                        // actually full (desiredSize is synchronous, so steady state
+                        // stays timer-free). When the consumer (<video>/compositor)
+                        // is behind, await ready — this paces us to its drain rate
+                        // and, on a sustained stall, stalls the present loop + the
+                        // upstream decode until it resumes.
+                        if ((writer.desiredSize ?? 1) <= 0)
+                            await writer.ready;
                         await writer.write(frame);
                         return true;
                     } catch (e: unknown) {

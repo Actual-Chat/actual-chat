@@ -34,6 +34,32 @@ class FakeWriter {
     /** When false, write() resolves synchronously. When true, write() returns
      *  a pending promise that the test resolves manually via `flushNext()`. */
     public manualMode = false;
+    /** Synchronous backpressure signal: >0 → room (gate skips ready). */
+    public desiredSize: number | null = 1;
+
+    private _ready: Promise<void> = Promise.resolve();
+    private _resolveReady: (() => void) | null = null;
+    private _rejectReady: ((e: unknown) => void) | null = null;
+
+    get ready(): Promise<void> { return this._ready; }
+
+    blockReady(): void {
+        this._ready = new Promise<void>((resolve, reject) => {
+            this._resolveReady = resolve;
+            this._rejectReady = reject;
+        });
+    }
+    unblockReady(): void {
+        this._resolveReady?.();
+        this._resolveReady = null;
+        this._rejectReady = null;
+        this._ready = Promise.resolve();
+    }
+    failReady(e: unknown = new Error('ready failed')): void {
+        this._rejectReady?.(e);
+        this._resolveReady = null;
+        this._rejectReady = null;
+    }
 
     write(frame: VideoFrame): Promise<void> {
         this.written.push(frame);
@@ -609,6 +635,82 @@ describe('mstgPresent', () => {
 
         expect(writer.written).toHaveLength(14);
         expect(stats.presented).toBe(14);
+    });
+
+    // ---- Backpressure (writer.desiredSize / writer.ready) -----------------
+
+    it('backpressure: awaits writer.ready when desiredSize<=0, then writes', async () => {
+        const stats = createEmptyPlayerStats();
+        const writer = new FakeWriter();
+        writer.desiredSize = 0;
+        writer.blockReady();
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            ...defaults(),
+        });
+        const ch = controllableSource<DecodedFrame>();
+        const frame = new MockVideoFrame(0);
+        const run = count(pipe(ch.seg, sink));
+
+        ch.push(makeEnvelope(stats, 0, 0, frame));
+        await tick();
+        // ready is pending → the write must not have happened yet.
+        expect(writer.written).toHaveLength(0);
+        expect(stats.presented).toBe(0);
+
+        writer.unblockReady();
+        await tick();
+        expect(writer.written).toHaveLength(1);
+        expect(stats.presented).toBe(1);
+
+        ch.close();
+        await run;
+    });
+
+    it('no backpressure wait when desiredSize>0 even if ready is pending', async () => {
+        const stats = createEmptyPlayerStats();
+        const writer = new FakeWriter();
+        // Room available; a pending ready must be ignored (gate skipped).
+        writer.desiredSize = 4;
+        writer.blockReady();
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            ...defaults(),
+        });
+        const ch = controllableSource<DecodedFrame>();
+        const frame = new MockVideoFrame(0);
+        const run = count(pipe(ch.seg, sink));
+
+        ch.push(makeEnvelope(stats, 0, 0, frame));
+        ch.close();
+        // If the gate had awaited the (still-pending) ready, run would hang and
+        // this await would time out — completing proves the gate was skipped.
+        await run;
+        expect(writer.written).toHaveLength(1);
+        expect(stats.presented).toBe(1);
+    });
+
+    it('ready rejection propagates like a write failure', async () => {
+        const stats = createEmptyPlayerStats();
+        const writer = new FakeWriter();
+        writer.desiredSize = 0;
+        writer.blockReady();
+        const sink = mstgPresent({
+            getWriter: () => writer as unknown as WritableStreamDefaultWriter<VideoFrame>,
+            ...defaults(),
+        });
+        const ch = controllableSource<DecodedFrame>();
+        const frame = new MockVideoFrame(0);
+        const run = count(pipe(ch.seg, sink));
+
+        ch.push(makeEnvelope(stats, 0, 0, frame));
+        await tick();
+        writer.failReady(new Error('ready broke'));
+
+        await expect(run).rejects.toThrow('ready broke');
+        expect(stats.presented).toBe(0);
+        expect(writer.written).toHaveLength(0);
+        expect(frame.closed).toBe(true);
     });
 
     it('hysteresis: rate-limit still presents engaged frames that are behind schedule', async () => {
