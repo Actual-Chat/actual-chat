@@ -72,6 +72,32 @@ body.narrow .list-view-layout:has(.audio-panel-header) .virtual-list > .c-wrappe
     overflow-anchor: none;
 }
 
+.virtual-list > .c-wrapper > ul.c-virtual-container > .c-top-overscroll-cue {
+    @apply absolute flex-none pointer-events-none select-none;
+    top: -100vh;
+    left: 50%;
+    width: 50%;
+    aspect-ratio: 2 / 3;
+    min-height: 0;
+    transform: translate(-50%, -100%);
+    overflow: hidden;
+    overflow-anchor: none;
+    opacity: 0;
+    animation: top-overscroll-cue-appear 250ms ease-out 3s forwards;
+}
+
+.virtual-list > .c-wrapper > ul.c-virtual-container > .c-top-overscroll-cue > img {
+    @apply block w-full h-full;
+    object-fit: contain;
+    user-select: none;
+}
+
+@keyframes top-overscroll-cue-appear {
+    to {
+        opacity: 1;
+    }
+}
+
 .chat-list.virtual-list > .c-wrapper > ul.c-virtual-container > .c-end-anchor {
     @apply hidden;
 }

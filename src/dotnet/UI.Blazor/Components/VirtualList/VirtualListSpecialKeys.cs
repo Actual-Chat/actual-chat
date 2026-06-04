@@ -5,6 +5,7 @@ internal static class VirtualListSpecialKeys
     public static readonly object RenderIndex = new();
     public static readonly object RenderState = new();
     public static readonly object Wrapper = new();
+    public static readonly object TopOverscrollCue = new();
     public static readonly object Spacer = new();
     public static readonly object EndSpacer = new();
     public static readonly object EndAnchor = new();

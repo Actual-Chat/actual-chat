@@ -19,6 +19,9 @@
         : "";
     var hasVeryFirstItem = data.HasVeryFirstItem;
     var hasVeryLastItem = data.HasVeryLastItem;
+    var showOverscrollCue = ShowOverscrollCue
+        && IsInfinite
+        && hasVeryFirstItem;
     var spacerStyleDisplay = hasVeryFirstItem
         ? "none"
         : "flex";
@@ -71,6 +74,14 @@
 
         <ul @key="@VirtualListSpecialKeys.Container"
             class="c-virtual-container" style="@containerStyle">
+
+            @if (showOverscrollCue) {
+                <li @key="@VirtualListSpecialKeys.TopOverscrollCue"
+                    class="c-top-overscroll-cue"
+                    aria-hidden="true">
+                    <img src="/dist/images/top-overscroll-cue.svg" draggable="false" alt=""/>
+                </li>
+            }
 
             <li @key="@VirtualListSpecialKeys.Spacer"
                 class="c-spacer-start"

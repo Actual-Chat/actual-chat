@@ -1542,7 +1542,9 @@ export class VirtualList {
     }
 
     private getFirstItemRef(): HTMLElement | null {
-        let ref = this.containerRef.firstElementChild?.nextElementSibling; // skip spacer
+        let ref: Element | null = this.containerRef.firstElementChild;
+        while (ref && !ref.classList.contains('item') && !ref.classList.contains('group'))
+            ref = ref.nextElementSibling;
         if (ref == null)
             return null;
 
