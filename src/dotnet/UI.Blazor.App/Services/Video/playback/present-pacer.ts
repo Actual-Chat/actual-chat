@@ -12,6 +12,14 @@ const MIN_FPS = 10;
 const MIN_DURATION_MS = 1000 / MAX_FPS;
 const MAX_DURATION_MS = 1000 / MIN_FPS;
 
+// Land each write this many ms before its nominal slot. setTimeout fires late,
+// never early, so without a lead the actual enqueue can slip past the display's
+// vsync deadline — and the <video> (which recomposites at refresh and shows the
+// latest enqueued frame) then holds the previous frame one extra refresh. The
+// schedule anchor (lastWriteAt) stays at the nominal slot, so this is a one-time
+// phase lead, not a rate change (no drift). ~quarter of a 60 Hz refresh.
+export const PRESENT_LEAD_MS = 4;
+
 // Beyond this backlog the MAX_FPS cap alone can't drain it; switch to skip-mode.
 const CATCHUP_BUDGET_MS = 4_000;
 
@@ -153,8 +161,11 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
                     if (nextWriteAt - now > MAX_DURATION_MS)
                         nextWriteAt = now + MAX_DURATION_MS;
 
-                    if (nextWriteAt > now)
-                        await delayFn(nextWriteAt - now);
+                    if (nextWriteAt > now) {
+                        const sleepMs = nextWriteAt - now - PRESENT_LEAD_MS;
+                        if (sleepMs > 0)
+                            await delayFn(sleepMs);
+                    }
 
                     sink ??= createSink();
                     let presented = false;

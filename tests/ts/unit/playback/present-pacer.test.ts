@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { count, pipe } from 'ix-ext';
 import {
     presentPacer,
+    PRESENT_LEAD_MS,
     type PresentSink,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/playback/present-pacer';
 import {
@@ -172,10 +173,11 @@ describe('presentPacer', () => {
             return delays[delays.length - 1];
         }
 
-        // No audio pairing: video sprints the backlog at MAX_FPS.
-        expect(await lastDelay()).toBeCloseTo(1000 / 120, 1);
+        // No audio pairing: video sprints the backlog at MAX_FPS. Single delay =
+        // first frame, so it carries the one-time PRESENT_LEAD_MS phase lead.
+        expect(await lastDelay()).toBeCloseTo(1000 / 120 - PRESENT_LEAD_MS, 1);
         // Audio at 500 ms: the second frame (capturedAt 1000) is past audio, so it
         // paces at natural 1x (clamped to MAX_DURATION) instead of sprinting.
-        expect(await lastDelay(() => 500)).toBe(1000 / 10);
+        expect(await lastDelay(() => 500)).toBe(1000 / 10 - PRESENT_LEAD_MS);
     });
 });

@@ -5,6 +5,7 @@ import {
     type CanvasImageInterface,
     type CanvasPresentOptions,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/present-canvas';
+import { PRESENT_LEAD_MS } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/playback/present-pacer';
 import {
     createEmptyPlayerStats,
     type DecodedFrame,
@@ -149,8 +150,8 @@ describe('canvasPresent', () => {
 
         expect(ctx.calls).toHaveLength(3);
         expect(delays).toHaveLength(1);
-        expect(delays[0]).toBeGreaterThan(32);
-        expect(delays[0]).toBeLessThan(34);
+        // The single (first) delay carries the one-time PRESENT_LEAD_MS lead.
+        expect(delays[0]).toBeCloseTo(33 - PRESENT_LEAD_MS, 5);
     });
 
     it('Safari path: convertToBitmap is called per frame; bitmap is drawn and closed; frame is closed', async () => {

@@ -4,6 +4,7 @@ import {
     mstgPresent,
     type MstgPresentOptions,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/present-mstg';
+import { PRESENT_LEAD_MS } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/playback/present-pacer';
 import {
     createEmptyPlayerStats,
     type DecodedFrame,
@@ -246,7 +247,10 @@ describe('mstgPresent', () => {
         expect(writer.written).toHaveLength(4);
         expect(stats.presented).toBe(4);
         expect(clock.delays).toHaveLength(3);
-        for (const d of clock.delays) {
+        // First write carries the one-time PRESENT_LEAD_MS phase lead; the rest
+        // settle back to the nominal 33 ms source delta.
+        expect(clock.delays[0]).toBeCloseTo(33 - PRESENT_LEAD_MS, 5);
+        for (const d of clock.delays.slice(1)) {
             expect(d).toBeGreaterThan(32);
             expect(d).toBeLessThan(34);
         }
@@ -276,8 +280,8 @@ describe('mstgPresent', () => {
 
         expect(writer.written).toHaveLength(3);
         expect(clock.delays).toHaveLength(1);
-        expect(clock.delays[0]).toBeGreaterThan(32);
-        expect(clock.delays[0]).toBeLessThan(34);
+        // The single (first) delay carries the one-time PRESENT_LEAD_MS lead.
+        expect(clock.delays[0]).toBeCloseTo(33 - PRESENT_LEAD_MS, 5);
     });
 
     it('steady mode: clamps duration up to MIN_DURATION_MS for source above 120 fps', async () => {
@@ -298,9 +302,11 @@ describe('mstgPresent', () => {
         await count(pipe(staticSource(items), sink));
 
         expect(writer.written).toHaveLength(4);
-        // Each delay clamped up to MIN_DURATION_MS (1000/120 ≈ 8.33 ms).
+        // Each delay clamped up to MIN_DURATION_MS (1000/120 ≈ 8.33 ms); the first
+        // also carries the one-time PRESENT_LEAD_MS lead.
         expect(clock.delays).toHaveLength(3);
-        for (const d of clock.delays) {
+        expect(clock.delays[0]).toBeCloseTo(1000 / 120 - PRESENT_LEAD_MS, 5);
+        for (const d of clock.delays.slice(1)) {
             expect(d).toBeGreaterThan(8);
             expect(d).toBeLessThan(9);
         }
@@ -324,9 +330,11 @@ describe('mstgPresent', () => {
         await count(pipe(staticSource(items), sink));
 
         expect(writer.written).toHaveLength(3);
-        // Each delay clamped down to MAX_DURATION_MS (1000/10 = 100 ms).
+        // Clamped to MAX_DURATION_MS (1000/10 = 100 ms), minus PRESENT_LEAD_MS: at
+        // the MAX cap the lead-lagged `now` keeps the `nextWriteAt - now > MAX`
+        // re-anchor binding, so every sleep (not just the first) is MAX - lead.
         expect(clock.delays).toHaveLength(2);
-        for (const d of clock.delays) expect(d).toBeCloseTo(100, 5);
+        for (const d of clock.delays) expect(d).toBeCloseTo(100 - PRESENT_LEAD_MS, 5);
     });
 
     it('catch-up mode (extra > 0, ≤ budget): writes every frame at MIN_DURATION_MS cadence', async () => {
@@ -349,7 +357,9 @@ describe('mstgPresent', () => {
         expect(writer.written).toHaveLength(4);
         expect(stats.presented).toBe(4);
         expect(clock.delays).toHaveLength(3);
-        for (const d of clock.delays) {
+        // MIN_DURATION_MS cadence; first delay also carries the PRESENT_LEAD_MS lead.
+        expect(clock.delays[0]).toBeCloseTo(1000 / 120 - PRESENT_LEAD_MS, 5);
+        for (const d of clock.delays.slice(1)) {
             expect(d).toBeGreaterThan(8);
             expect(d).toBeLessThan(9);
         }
