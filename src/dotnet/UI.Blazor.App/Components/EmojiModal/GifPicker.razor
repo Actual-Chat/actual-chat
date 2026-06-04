@@ -6,7 +6,7 @@
 @inherits ComponentBase<AppUIHub>
 
 <div class="c-gif-tab">
-    <SearchBox Placeholder="Search GIFs..." ClearButton="true" TextChanged="@OnSearch"/>
+    <SearchBox Placeholder="Search KLIPY" ClearButton="true" TextChanged="@OnSearch"/>
     <div class="c-gif-scroll no-scrollbar">
         @if (_recentGifs.Count > 0 && _searchQuery.IsNullOrEmpty()) {
             <div class="c-gif-recent">

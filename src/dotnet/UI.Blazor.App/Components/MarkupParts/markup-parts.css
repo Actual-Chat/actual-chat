@@ -63,10 +63,22 @@
 }
 
 /* GIF image in message */
+.gif-message-wrapper {
+    @apply relative;
+    @apply block;
+    @apply w-fit;
+}
 .gif-message {
     @apply block;
     @apply max-w-64 md:max-w-96 max-h-64 md:max-h-80;
     @apply rounded-lg;
+}
+.gif-watermark {
+    @apply absolute bottom-1 left-1;
+    @apply h-3 w-auto;
+    @apply pointer-events-none select-none;
+    @apply opacity-70;
+    filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.45));
 }
 
 .plain-text-markup {

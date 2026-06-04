@@ -5,7 +5,10 @@
 }
 
 @if (_isGifImage) {
-    <img class="gif-message" src="@_gifSrc" alt="" loading="lazy"/>
+    <div class="gif-message-wrapper">
+        <img class="gif-message" src="@_gifSrc" alt="" loading="lazy"/>
+        <img class="gif-watermark" src="/dist/images/klipy/klipy-light-text.png" alt="KLIPY" draggable="false" aria-hidden="true"/>
+    </div>
     return;
 }
 
