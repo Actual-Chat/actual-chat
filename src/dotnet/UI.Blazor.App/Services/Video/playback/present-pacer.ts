@@ -132,11 +132,20 @@ export function presentPacer(opts: PresentPacerOptions): PipeOperator<DecodedFra
                     let durationMs: number;
                     if (lastWriteAt === null || prevCapturedAt === null) {
                         durationMs = 0;
-                    } else if (extraMs > 0 && mayCatchUp) {
-                        durationMs = MIN_DURATION_MS;
                     } else {
                         const natural = decoded.capturedAt.timeMs - prevCapturedAt;
-                        durationMs = Math.max(MIN_DURATION_MS, Math.min(MAX_DURATION_MS, natural));
+                        // Sprint (compress to MAX_FPS) only when the backlog is at least
+                        // one SOURCE frame beyond target. A sub-one-frame excess is the
+                        // normal steady-state buffer; for a low-fps source (e.g. 10fps,
+                        // 100ms frames) the 30fps-based targetSpanMs sits ~one frame below
+                        // the natural buffer, so the old `extraMs > 0` trigger sprinted
+                        // every frame → burst-present then freeze (~0-1fps). Scaling the
+                        // threshold to the actual frame interval keeps catch-up for genuine
+                        // backlogs while letting a steady low-fps source play at 1x.
+                        const sprintThresholdMs = Math.max(MIN_DURATION_MS, natural);
+                        durationMs = extraMs >= sprintThresholdMs && mayCatchUp
+                            ? MIN_DURATION_MS
+                            : Math.max(MIN_DURATION_MS, Math.min(MAX_DURATION_MS, natural));
                     }
 
                     const baseAt: number = lastWriteAt ?? now;

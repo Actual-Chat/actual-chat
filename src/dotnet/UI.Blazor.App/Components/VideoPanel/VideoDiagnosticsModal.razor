@@ -151,6 +151,29 @@
                                         }
                                     }
 
+                                    @* Demand — why the ladder/fps are what they are *@
+                                    @{
+                                        var dMax = (int)GetNum(stream, "lastMaxLayerId");
+                                        var dRecvCap = (int)GetNum(stream, "receiverLayerCap");
+                                        var dHealthCap = (int)GetNum(stream, "healthLayerCap");
+                                        var dActive = (int)GetNum(stream, "activeLayerCount");
+                                        var dFps = (int)GetNum(stream, "targetFps");
+                                        var dSpeaking = GetBool(stream, "isSpeaking");
+                                    }
+                                    <div class="diag-group-header">Demand</div>
+                                    <div class="diag-row">
+                                        <span class="diag-label">Requested</span>
+                                        <span class="diag-value">@(dMax < 0 ? "none (nobody / all paused)" : $"max L{dMax} across viewers")</span>
+                                    </div>
+                                    <div class="diag-row">
+                                        <span class="diag-label">Active layers</span>
+                                        <span class="diag-value">@dActive (recvCap @(dRecvCap < 0 ? "—" : dRecvCap.ToString()), healthCap @(dHealthCap < 0 ? "—" : dHealthCap.ToString()))</span>
+                                    </div>
+                                    <div class="diag-row">
+                                        <span class="diag-label">Target fps</span>
+                                        <span class="diag-value">@(dFps < 0 ? "full (unpaced)" : dFps.ToString())@(dSpeaking ? " · speaking (VAD full)" : "")</span>
+                                    </div>
+
                                     @* Selected layer *@
                                     @{
                                         var layers = GetArray(stream, "layers")

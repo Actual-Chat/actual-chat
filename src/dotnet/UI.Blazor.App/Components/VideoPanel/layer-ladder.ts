@@ -14,6 +14,9 @@ export interface LayerConfig {
 
 export const MIN_SIMULCAST_SMALL_AXIS = 150;
 
+// fps for the bottom (unfocused-thumbnail) tier; higher tiers run full rate.
+export const LOW_TIER_FPS = 10;
+
 export interface LadderBuildInput {
     /** Top-tier width — the largest tier in the ladder. */
     topWidth: number;
@@ -116,15 +119,16 @@ function buildExplicitLadder(
     return ladder;
 }
 
-// Demand-driven target fps from the highest layer any viewer requests. Keyed
-// on the DISTANCE from the sender's top tier, not absolute resolution, so a
-// focused stream runs full rate regardless of the device's max resolution
-// (a 2-tier mobile sender's 360p top still earns 30fps when focused):
-//   top tier (focused)     → captureFps
-//   one tier below the top → 15
-//   two+ tiers below       → 10
-// `maxLayerId < 0` (nobody subscribed / all paused) → 0 = idle stop.
-// Unknown/out-of-range ladder → full rate (don't pace).
+// Demand-driven target fps from the highest layer any viewer requests. Only
+// the BOTTOM tier (the tiny unfocused thumbnail, layerId 0) is paced down — any
+// higher request is a real, focused-sized view that must stay smooth, even when
+// the focused viewer's screen only warrants L1 (e.g. a focused tile on a phone).
+// Keying on the requested layer (not focus directly) is what the sender can see;
+// thumbnails are the only thing rendered small enough to request L0.
+//   bottom tier (L0, unfocused thumbnail) → LOW_TIER_FPS (10)
+//   any higher tier (focused / real view) → captureFps (full)
+// `maxLayerId < 0` (nobody subscribed / all paused) → 0 = idle (unused in the
+// live path). Unknown/out-of-range ladder → full rate (don't pace).
 export function fpsForRequestedLayer(
     ladder: readonly LayerConfig[] | null,
     maxLayerId: number,
@@ -134,12 +138,9 @@ export function fpsForRequestedLayer(
         return 0;
     if (!ladder || ladder.length === 0 || maxLayerId >= ladder.length)
         return captureFps;
-    const distanceFromTop = (ladder.length - 1) - maxLayerId;
-    let fps = 10;
-    if (distanceFromTop <= 0)
-        fps = captureFps;
-    else if (distanceFromTop === 1)
-        fps = 15;
+    // L0 is only a "thumbnail" when a higher tier exists above it; in a 1-tier
+    // ladder L0 IS the full view and must stay smooth.
+    const fps = maxLayerId === 0 && ladder.length > 1 ? LOW_TIER_FPS : captureFps;
     return Math.min(fps, captureFps);
 }
 

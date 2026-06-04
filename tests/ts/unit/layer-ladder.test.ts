@@ -215,23 +215,23 @@ describe('fpsForRequestedLayer', () => {
         { width: 1280, height: 720, bitrateKbps: 4000 },
     ];
 
-    it('maps distance-from-top to fps (L2 top=30, L1=15, L0=10) for a 3-tier ladder', () => {
-        expect(fpsForRequestedLayer(ladder3, 0, 30)).toBe(10);
-        expect(fpsForRequestedLayer(ladder3, 1, 30)).toBe(15);
-        expect(fpsForRequestedLayer(ladder3, 2, 30)).toBe(30);
+    it('only the bottom tier (L0 thumbnail) is paced down; L1+ stay full', () => {
+        expect(fpsForRequestedLayer(ladder3, 0, 30)).toBe(10); // L0 thumbnail
+        expect(fpsForRequestedLayer(ladder3, 1, 30)).toBe(30); // focused/real view
+        expect(fpsForRequestedLayer(ladder3, 2, 30)).toBe(30); // top
     });
 
     it('returns 0 (idle) when nobody is subscribed', () => {
         expect(fpsForRequestedLayer(ladder3, -1, 30)).toBe(0);
     });
 
-    it('focused top tier of a 2-tier mobile ladder earns full rate (not capped by 360p)', () => {
+    it('a focused L1 view on a 2-tier mobile ladder stays full rate', () => {
         const ladder2: LayerConfig[] = [
             { width: 320, height: 180, bitrateKbps: 312 },
             { width: 640, height: 360, bitrateKbps: 1250 },
         ];
-        expect(fpsForRequestedLayer(ladder2, 1, 30)).toBe(30); // top → full
-        expect(fpsForRequestedLayer(ladder2, 0, 30)).toBe(15); // one below top
+        expect(fpsForRequestedLayer(ladder2, 1, 30)).toBe(30); // top / focused
+        expect(fpsForRequestedLayer(ladder2, 0, 30)).toBe(10); // L0 thumbnail
     });
 
     it('single-tier ladder always earns full rate when requested', () => {
@@ -246,6 +246,6 @@ describe('fpsForRequestedLayer', () => {
 
     it('never exceeds the capture rate', () => {
         expect(fpsForRequestedLayer(ladder3, 2, 24)).toBe(24);
-        expect(fpsForRequestedLayer(ladder3, 1, 12)).toBe(12);
+        expect(fpsForRequestedLayer(ladder3, 0, 8)).toBe(8);
     });
 });

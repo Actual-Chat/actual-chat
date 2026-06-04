@@ -81,6 +81,9 @@ import { pickRenderBackendKind } from './render-backend-selection';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
 const RECORDER_HEALTH_INTERVAL_MS = 1000;
+// Hold full fps this long after voice activity stops, so demand-driven pacing
+// doesn't flap the encoder rate through the natural gaps between words.
+const VAD_FPS_HOLD_MS = 2000;
 // Cap on consecutive failed recovery attempts before we surface a fatal error
 // to the user. With the existing backoff (200ms × 1.7^n, capped at 3s), 5
 // attempts span ~9s — long enough to absorb a transient blip, short enough
@@ -158,6 +161,13 @@ export interface OwnStreamDiagnostics {
     // Keys are decimal FrameDropStage values; only non-zero stages are
     // emitted.
     dropTraceByStage: Record<string, number>;
+    // Demand inputs driving layer pruning + fps pacing.
+    activeLayerCount: number;
+    receiverLayerCap: number;
+    healthLayerCap: number;
+    lastMaxLayerId: number;
+    targetFps: number;
+    isSpeaking: boolean;
     // Cumulative bytes encoded.
     bytesEncoded: number;
     // Per-tick instantaneous rates, computed at the recorder-health-monitor
@@ -424,6 +434,14 @@ export class VideoRecorder {
     // demand can't pull in the top tier before the sender's health allows it.
     private healthLayerCap = Number.MAX_SAFE_INTEGER;
     private receiverLayerCap = Number.MAX_SAFE_INTEGER;
+    // Demand-driven fps inputs: last aggregate requested layer, and whether the
+    // local user is speaking (VAD). Speaking forces full rate so the active
+    // speaker never goes choppy; a short hold rides through natural pauses.
+    private lastMaxLayerId = -1;
+    private isSpeaking = false;
+    private speakingHoldTimer: ReturnType<typeof setTimeout> | null = null;
+    // Last fps target pushed to the worker (-1 = none pushed yet / no pacing).
+    private lastTargetFps = -1;
     // Codec switch fallback bookkeeping (preserved from legacy).
     private lastCodecSwitchAt = 0;
     private readonly codecSwitchCooldownMs = 2000;
@@ -1337,16 +1355,8 @@ export class VideoRecorder {
      * that case so the next joiner doesn't pay a restart cost.
      */
     public setMaxLayerId(maxLayerId: number): void {
-        // Temporal demand: pace fps to the highest requested layer's tier —
-        // focused top tier → full rate, lower tiers → fewer fps (the CPU win
-        // for non-focused streams). Only once live (warmup/preview must run
-        // full-rate so the encoder proves itself and the self-view stays
-        // smooth). maxLayerId < 0 is NOT treated as idle-stop: it's ambiguous
-        // (no subscriber vs all-paused vs a join transient vs node-local
-        // conservative) and would starve an actively-watched stream, so we
-        // leave the encoder running at its current rate.
-        if (maxLayerId >= 0 && this._recordingState === 'recording')
-            void this.worker?.setTargetFps(fpsForRequestedLayer(this.fullLayerLadder, maxLayerId, VIDEO.frameRate));
+        this.lastMaxLayerId = maxLayerId;
+        this.applyTargetFps();
 
         if (maxLayerId < 0)
             return;
@@ -1356,6 +1366,52 @@ export class VideoRecorder {
         // AND a viewer both want it.
         this.receiverLayerCap = maxLayerId + 1;
         this.applyEffectiveLayers();
+    }
+
+    // Local voice-activity edge from the audio recorder's VAD. Speaking forces
+    // full fps (the active speaker must stay smooth even when unfocused); on
+    // silence we hold full rate briefly through natural pauses before letting
+    // demand-driven pacing resume.
+    public setSpeaking(isSpeaking: boolean): void {
+        if (isSpeaking) {
+            if (this.speakingHoldTimer !== null) {
+                clearTimeout(this.speakingHoldTimer);
+                this.speakingHoldTimer = null;
+            }
+            const changed = !this.isSpeaking;
+            this.isSpeaking = true;
+            if (changed)
+                this.applyTargetFps();
+        }
+        else if (this.isSpeaking && this.speakingHoldTimer === null) {
+            this.speakingHoldTimer = setTimeout(() => {
+                this.speakingHoldTimer = null;
+                this.isSpeaking = false;
+                this.applyTargetFps();
+            }, VAD_FPS_HOLD_MS);
+        }
+    }
+
+    // Temporal demand → encoder fps. Speaking → full rate. Otherwise the
+    // highest requested layer's tier drives it (focused top → full, lower
+    // tiers → fewer fps — the CPU win for non-focused streams). Only once live
+    // (warmup/preview must run full-rate so the encoder proves itself and the
+    // self-view stays smooth). maxLayerId < 0 is left running, NOT idle-stopped:
+    // it's ambiguous (no subscriber vs all-paused vs a join transient vs
+    // node-local conservative) and would starve an actively-watched stream.
+    private applyTargetFps(): void {
+        if (this._recordingState !== 'recording')
+            return;
+        if (this.isSpeaking) {
+            this.lastTargetFps = VIDEO.frameRate;
+            void this.worker?.setTargetFps(VIDEO.frameRate);
+            return;
+        }
+        if (this.lastMaxLayerId >= 0) {
+            const fps = fpsForRequestedLayer(this.fullLayerLadder, this.lastMaxLayerId, VIDEO.frameRate);
+            this.lastTargetFps = fps;
+            void this.worker?.setTargetFps(fps);
+        }
     }
 
     public getDiagnostics(): OwnStreamDiagnostics {
@@ -1384,15 +1440,25 @@ export class VideoRecorder {
                     dropTraceByStage[String(stage)] = count;
             }
         }
-        const meanEncodeTimeMs = liveStats && liveStats.encodeTimeMsCount > 0
+        // Prefer the current-window mean (live encoder load after a prune);
+        // fall back to the lifetime mean until the first delta window lands.
+        const lifetimeMeanEncodeTimeMs = liveStats && liveStats.encodeTimeMsCount > 0
             ? liveStats.encodeTimeMsSum / liveStats.encodeTimeMsCount
             : 0;
-        const meanMaxLayerEncodeTimeMs = liveStats && liveStats.encodeTimeMsCount > 0
+        const lifetimeMeanMaxLayerEncodeTimeMs = liveStats && liveStats.encodeTimeMsCount > 0
             ? liveStats.encodeTimeMsMaxSum / liveStats.encodeTimeMsCount
             : 0;
-        const aggregateBitrateKbps = liveStats && duration > 0
-            ? (liveStats.bytesEncoded * 8) / duration / 1000
-            : 0;
+        const meanEncodeTimeMs = this.windowMeanEncodeTimeMs >= 0
+            ? this.windowMeanEncodeTimeMs
+            : lifetimeMeanEncodeTimeMs;
+        const meanMaxLayerEncodeTimeMs = this.windowMeanMaxLayerEncodeTimeMs >= 0
+            ? this.windowMeanMaxLayerEncodeTimeMs
+            : lifetimeMeanMaxLayerEncodeTimeMs;
+        // Current-window encoded bitrate (sum over CURRENTLY encoding layers),
+        // not the lifetime average — a focus→unfocus prune drops the encoder to
+        // one layer, and the lifetime `bytesEncoded/duration` would keep showing
+        // the focused-era sum and read as "still encoding all layers".
+        const aggregateBitrateKbps = (this.bytesPerSec * 8) / 1000;
 
         return {
             mode: this.isScreenCasting ? 'screen' : this.isRecording ? 'camera' : 'none',
@@ -1461,6 +1527,17 @@ export class VideoRecorder {
                 })),
             } : null,
             dropTraceByStage,
+            // Demand inputs that drive layer pruning + fps pacing. activeLayerCount
+            // is the REAL number of encoders running (min of all caps), which
+            // differs from the C# health-cap "effective" when receiver demand is
+            // the binding cap. receiverLayerCap = aggregate max requested layer + 1
+            // across all viewers (MAX_SAFE = unset / nobody asked yet).
+            activeLayerCount: this.layers?.length ?? (this.fullLayerLadder ? 1 : 0),
+            receiverLayerCap: this.receiverLayerCap === Number.MAX_SAFE_INTEGER ? -1 : this.receiverLayerCap,
+            healthLayerCap: this.healthLayerCap === Number.MAX_SAFE_INTEGER ? -1 : this.healthLayerCap,
+            lastMaxLayerId: this.lastMaxLayerId,
+            targetFps: this.lastTargetFps,
+            isSpeaking: this.isSpeaking,
             bytesEncoded: liveStats?.bytesEncoded ?? 0,
             bundlesPerSec: this.bundlesPerSec,
             bytesPerSec: this.bytesPerSec,
@@ -1497,6 +1574,12 @@ export class VideoRecorder {
         // grows churn pressure.
         this._connectivityHandler = null;
 
+        if (this.speakingHoldTimer !== null) {
+            clearTimeout(this.speakingHoldTimer);
+            this.speakingHoldTimer = null;
+        }
+        this.isSpeaking = false;
+        this.lastMaxLayerId = -1;
         this.isRecording = false;
         this.isScreenCasting = false;
         this.setRecordingState('stopped');
@@ -2016,6 +2099,11 @@ export class VideoRecorder {
     private capturedPerSec = 0;
     private bundlesPerSec = 0;
     private bytesPerSec = 0;
+    // Current-window mean encode time (per bundle / per slowest layer), so the
+    // header reflects the live encoder load after a layer prune rather than the
+    // lifetime mean. -1 until the first delta window produces samples.
+    private windowMeanEncodeTimeMs = -1;
+    private windowMeanMaxLayerEncodeTimeMs = -1;
     private readonly dropPerSec = new Map<number, number>();
     private lastReportTickMs = 0;
 
@@ -2028,6 +2116,8 @@ export class VideoRecorder {
         this.capturedPerSec = 0;
         this.bundlesPerSec = 0;
         this.bytesPerSec = 0;
+        this.windowMeanEncodeTimeMs = -1;
+        this.windowMeanMaxLayerEncodeTimeMs = -1;
         this.dropPerSec.clear();
         this.lastReportTickMs = 0;
         this.recorderHealthTimer = window.setInterval(() => {
@@ -2070,6 +2160,13 @@ export class VideoRecorder {
                         Math.max(0, stats.bundlesShipped - previous.bundlesShipped) * scale;
                     this.bytesPerSec =
                         Math.max(0, stats.bytesEncoded - previous.bytesEncoded) * scale;
+                    const encCountDelta = Math.max(0, stats.encodeTimeMsCount - previous.encodeTimeMsCount);
+                    if (encCountDelta > 0) {
+                        this.windowMeanEncodeTimeMs =
+                            Math.max(0, stats.encodeTimeMsSum - previous.encodeTimeMsSum) / encCountDelta;
+                        this.windowMeanMaxLayerEncodeTimeMs =
+                            Math.max(0, stats.encodeTimeMsMaxSum - previous.encodeTimeMsMaxSum) / encCountDelta;
+                    }
                     if (this.recoveryAttempts > 0 && this.bundlesPerSec > 0)
                         this.recoveryAttempts = 0;
                     if (this.bundlesPerSec > 0 && this.currentCodecString) {

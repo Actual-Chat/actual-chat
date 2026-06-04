@@ -376,6 +376,14 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                                 try { encoders[i].dispose(); } catch { /* ignore */ }
                             }
                             encoders.length = layerCount;
+                            // Re-key the surviving layers. A receiver that was
+                            // holding a now-removed top layer (ReceiveQualityFilter
+                            // only switches on a keyframe of the newly desired
+                            // layer) gets nothing until the next periodic keyframe
+                            // (~3 s) otherwise, and its decoder locks into a
+                            // hang/recovery loop. One immediate keyframe makes the
+                            // down-switch land within a frame.
+                            forceKeyframeNext = true;
                         }
                         configs = cur.configs;
                     }

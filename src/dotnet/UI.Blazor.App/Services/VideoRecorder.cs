@@ -215,7 +215,8 @@ public sealed class VideoRecorder : IAsyncDisposable
         var t2 = SubscribeToSupportedDecoderCodecs(chatId, cancellationToken);
         var t3 = ForwardRemoteStreamCount(chatId, cancellationToken);
         var t4 = SubscribeToMaxLayerId(chatId, cancellationToken);
-        await Task.WhenAll(t1, t2, t3, t4).ConfigureAwait(false);
+        var t5 = SubscribeToVoiceActivity(chatId, cancellationToken);
+        await Task.WhenAll(t1, t2, t3, t4, t5).ConfigureAwait(false);
     }
 
     private (ChatId, bool) GetStartRequest()
@@ -335,6 +336,26 @@ public sealed class VideoRecorder : IAsyncDisposable
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (Exception e) {
             Log.LogWarning(e, "SubscribeToMaxLayerId failed");
+        }
+    }
+
+    // Forwards local voice-activity edges to JS so the sender keeps full fps
+    // while the user is speaking, even when no peer is focusing them — pacing
+    // down the active speaker would make them choppy the moment they talk.
+    private async Task SubscribeToVoiceActivity(ChatId chatId, CancellationToken cancellationToken) {
+        try {
+            bool? lastSpeaking = null;
+            await foreach (var (state, _) in Hub.AudioRecorder.State.Computed.Changes(cancellationToken).ConfigureAwait(false)) {
+                var speaking = state.IsVoiceActive && state.ChatId == chatId;
+                if (speaking == lastSpeaking)
+                    continue;
+                lastSpeaking = speaking;
+                await _jsRef.InvokeVoidAsync("setSpeaking", cancellationToken, speaking).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception e) {
+            Log.LogWarning(e, "SubscribeToVoiceActivity failed");
         }
     }
 

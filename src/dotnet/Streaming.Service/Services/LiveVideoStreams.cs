@@ -181,17 +181,33 @@ public class LiveVideoStreams : ILiveVideoStreams
     // the recorder still sees a node-local cap that is at worst conservative
     // (lower than the true global max), which preserves the safety property
     // we care about: no viewer asks for a layer the sender isn't producing.
-    public virtual Task<int> MaxRequestedLayerId(
+    public virtual async Task<int> MaxRequestedLayerId(
         Session session,
         StreamId streamId,
         CancellationToken cancellationToken)
+        // `session` is unused in the result (the aggregate scans every session),
+        // so it must NOT take part in the cache key — otherwise a viewer's
+        // ChangePlaybackQuality invalidates its OWN session's key while the
+        // producer subscribes under the producer's session key, and the producer
+        // never sees the change (stuck at its startup value). Delegate to a
+        // session-less inner compute and invalidate THAT instead.
+        => await MaxRequestedLayerIdByStream(streamId, cancellationToken).ConfigureAwait(false);
+
+    [ComputeMethod]
+    public virtual Task<int> MaxRequestedLayerIdByStream(
+        StreamId streamId,
+        CancellationToken cancellationToken)
     {
-        var max = -1;
         var streamIdValue = streamId.Value;
-        foreach (var (_, state) in _qualityBySession) {
-            if (!state.QualityByStream.TryGetValue(streamIdValue, out var q))
-                continue;
-            if (q.LayerId > max) max = q.LayerId;
+        var max = ComputeMaxLayerId(streamIdValue);
+        if (Log.IsEnabled(LogLevel.Debug)) {
+            // Per-viewer breakdown so a stuck-high producer can be traced to the
+            // session that's requesting the top layer (e.g. "who is focusing it").
+            var breakdown = string.Join(", ", _qualityBySession
+                .Where(kv => kv.Value.QualityByStream.ContainsKey(streamIdValue))
+                .Select(kv => $"{kv.Key.Hash}=L{kv.Value.QualityByStream[streamIdValue].LayerId}"));
+            Log.LogDebug("MaxRequestedLayerId: stream {StreamId} -> L{Max} [{Breakdown}]",
+                streamIdValue, max, breakdown);
         }
         return Task.FromResult(max);
     }
@@ -267,7 +283,7 @@ public class LiveVideoStreams : ILiveVideoStreams
                     var newMax = ComputeMaxLayerId(sid);
                     if (newMax != prevMax) {
                         using (Invalidation.Begin())
-                            _ = MaxRequestedLayerId(session, StreamId.Parse(sid), default);
+                            _ = MaxRequestedLayerIdByStream(StreamId.Parse(sid), default);
                     }
                 }
             }
@@ -290,7 +306,7 @@ public class LiveVideoStreams : ILiveVideoStreams
             var newMax = ComputeMaxLayerId(sid);
             if (newMax != prevMaxByStream[sid]) {
                 using (Invalidation.Begin())
-                    _ = MaxRequestedLayerId(session, StreamId.Parse(sid), default);
+                    _ = MaxRequestedLayerIdByStream(StreamId.Parse(sid), default);
             }
         }
         DebugLog?.LogDebug("ChangePlaybackQuality: session={Session}, streams={Count}, info={Info}",

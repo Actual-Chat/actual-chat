@@ -21,6 +21,18 @@ public sealed partial class VideoQualityUI
     // re-anchor; the exponential probe cooldown still gates repeated attempts.
     private const int ReprobeCalmStreak = 3;
 
+    // A decoder stuck waiting for a keyframe (dropping every delta while
+    // pendingError is set) reads as Bad with a high decode deficit. Periodic
+    // keyframes are ~3 s apart and there is no other receiver→sender keyframe
+    // path, so without a PLI the stall persists for up to a full keyframe
+    // interval and the hang watchdog re-fires into a ~3 s loop. Requesting a
+    // keyframe when the deficit is this high bounds the stall to the server PLI
+    // cooldown (~1 s). Threshold sits well above any healthy-stream deficit
+    // (a settled stream is near 0; the stuck one observed at ~0.96).
+    private const double KeyFrameRequestDeficitThreshold = 0.5;
+    private static readonly TimeSpan KeyFrameRequestCooldown = TimeSpan.FromSeconds(1);
+    private readonly Dictionary<StreamId, CpuTimestamp> _lastKeyFrameRequestAt = new();
+
     // Stream-age-aware throttle on QC decisions: cooldown for the first
     // StartupCooldown, then evaluate at SettlingInterval until SettlingDuration
     // of stream age, then SteadyInterval. Prevents premature thrash and keeps
@@ -170,6 +182,30 @@ public sealed partial class VideoQualityUI
 
     // Private methods
 
+    // Backstop for a decoder stuck waiting for a keyframe: the receive-filter
+    // only switches a layer (and a recovering decoder only re-configures) on a
+    // keyframe, but periodic keyframes are ~3 s apart and a sender prune can
+    // remove the layer the receiver was holding. Ask the sender for a fresh
+    // keyframe; the server PLI path is itself cooldown-collapsed across viewers,
+    // and the per-stream cooldown here keeps a single viewer from spamming.
+    private void MaybeRequestKeyFrame(
+        StreamId streamId,
+        DecoderHealth decoder,
+        CancellationToken cancellationToken)
+    {
+        if (decoder.Verdict != HealthVerdict.Bad
+            || decoder.DecodeDeficitEma < KeyFrameRequestDeficitThreshold)
+            return;
+        var now = CpuTimestamp.Now;
+        if (_lastKeyFrameRequestAt.TryGetValue(streamId, out var last)
+            && last.Elapsed < KeyFrameRequestCooldown)
+            return;
+        _lastKeyFrameRequestAt[streamId] = now;
+        _ = LiveVideoStreams
+            .RequestKeyFrame(Session, streamId.Value, cancellationToken)
+            .SuppressExceptions();
+    }
+
     private async Task RunPlaybackQualityKeepAlive(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested) {
@@ -221,6 +257,7 @@ public sealed partial class VideoQualityUI
                 receiverDecodePathDropRatio: 0); // TODO: split stages 63-64 once dropTrace is split.
             _lastDownlinkHealthByStream[streamId] = streamDownlink;
             _lastDecoderHealthByStream[streamId] = streamDecoder;
+            MaybeRequestKeyFrame(streamId, streamDecoder, cancellationToken);
             // OpenTelemetry emission deferred — AppMeters lives in Core.Server
             // (unreferenced from UI.Blazor.App). Wire DTOs will carry the
             // per-leg fields in a follow-up so server-side handlers can record.
@@ -240,6 +277,7 @@ public sealed partial class VideoQualityUI
             _receiverHealthByStream.Remove(sid);
             _lastDownlinkHealthByStream.Remove(sid);
             _lastDecoderHealthByStream.Remove(sid);
+            _lastKeyFrameRequestAt.Remove(sid);
         }
         _decoderCapState.PruneStaleStreams(liveStreamIdStrings);
 
