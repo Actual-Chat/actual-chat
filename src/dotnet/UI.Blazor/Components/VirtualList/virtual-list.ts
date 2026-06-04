@@ -27,7 +27,7 @@ const UpdateItemVisibilityInterval = 250;
 const VisibilityEpsilon = 4;
 const EdgeEpsilon = 4;
 const ScrollDebounce = 200;
-const ScrollRestoreGuard = DeviceInfo.isMobile ? 250 : 100;
+const ProgrammaticScrollGuardMs = DeviceInfo.isMobile ? 250 : 100;
 const SkeletonDetectionBoundary = 200;
 const MinViewPortSize = 400;
 const RequestDataTimeout = 800;
@@ -41,12 +41,12 @@ const RevealTimeout = 1500;
 const InfiniteSize = 1e7;
 // When true, the wrapper is trimmed to the newest once the last item is loaded (native hard-stop at the
 // bottom). When false, the bottom is managed like the top — via a scroll-limit + rubber-band overscroll.
-const CutVirtualSpaceAtBottom = false;
+const CutVirtualSpaceAtBottom = true;
 
 type ScrollToEdgeReason = 'no-pivot' | 'last-item' | 'item' | 'sticky-edge' | 'non-item-resize' | 'item-resize' | 'viewport-resize' | 'unknown';
-interface ScrollMetadata {
+interface ScrollIntent {
     shouldUseSmoothScroll: boolean;
-    scrollType: ScrollToEdgeReason;
+    reason: ScrollToEdgeReason;
     scroll?: () => void;
 }
 
@@ -75,7 +75,7 @@ interface VirtualListState {
     renderState: VirtualListRenderState;
     renderStartedAt: number | null;
     renderCompletedAt: number;
-    scrollPositionRestoredAt: number;
+    lastProgrammaticScrollAt: number;
     // Visibility
     isNearSkeleton: boolean;
     isEndAnchorVisible: boolean;
@@ -171,7 +171,6 @@ export class VirtualList {
     private skeletonWatchdogTimer: ReturnType<typeof setInterval> | null = null;
     private skeletonWatchdogLastVersion = -1;
     private userScrollDirection: 'up' | 'down' | 'none' = 'none';
-    private _restoreScrollPositionPending = false;
     private debug: VirtualListDebug | null = null;
 
     private _state: VirtualListState;
@@ -275,7 +274,7 @@ export class VirtualList {
             },
             renderStartedAt: null,
             renderCompletedAt: 0,
-            scrollPositionRestoredAt: 0,
+            lastProgrammaticScrollAt: 0,
             isNearSkeleton: false,
             isEndAnchorVisible: false,
             endAnchorSize: this.endAnchorRef.getBoundingClientRect().height,
@@ -613,7 +612,7 @@ export class VirtualList {
                 warnings.push(`stickyEdge.itemKey="${next.stickyEdge.itemKey}" not found in orderedItems (${next.orderedItems.length} items)`);
         }
 
-        // itemRange jumping significantly after resetItemRange
+        // itemRange jumping significantly after rebuildItemRangeFromAnchor
         if (changedFields.includes('itemRange') && prev.itemRange && next.itemRange) {
             const rangeJump = Math.abs(next.itemRange.start - prev.itemRange.start);
             const rangeSize = Math.max(prev.itemRange.size, next.itemRange.size);
@@ -894,7 +893,7 @@ export class VirtualList {
             // Scroll restoration is skipped here, but the recompute shifted itemRange — re-pin the
             // container (no scroll) so the DOM doesn't drift from the model.
             const skipScrollRestore =
-                (this.state.renderState.scrollToKey && now - this.state.scrollPositionRestoredAt < ScrollDebounce)
+                (this.state.renderState.scrollToKey != null && now - this.state.lastProgrammaticScrollAt < ScrollDebounce)
                 || now - this.state.renderCompletedAt < ScrollDebounce;
             if (skipScrollRestore) {
                 this.ensureItemRangeCalculated();
@@ -903,12 +902,12 @@ export class VirtualList {
             }
 
             const renderState = { ...this.state.renderState, scrollToKey: undefined };
-            const scrollMetadata = this.getScrollMetadata(renderState);
+            const scrollIntent = this.getScrollIntent(renderState);
 
-            // It is safe to avoid fastRaf and call restoreScrollPosition() directly as layout is already recalculated
+            // It is safe to avoid fastRaf and call syncLayoutAfterRender() directly as layout is already recalculated
             // at this point, and we are not in the middle of a render, so there will be no new information about
             // item sizes that could come in before the next paint
-            void this.restoreScrollPosition(renderState, scrollMetadata, false);
+            void this.syncLayoutAfterRender(renderState, scrollIntent, false);
         }
     };
 
@@ -1054,8 +1053,8 @@ export class VirtualList {
         }
         this.updateState('endAnchor: off', this.state, { isEndAnchorVisible: false });
         if (this.state.stickyEdge?.edge === VirtualListEdge.End) {
-            const timeSinceRestore = Date.now() - this.state.scrollPositionRestoredAt;
-            if (timeSinceRestore > ScrollDebounce)
+            const timeSinceProgrammaticScroll = Date.now() - this.state.lastProgrammaticScrollAt;
+            if (timeSinceProgrammaticScroll > ScrollDebounce)
                 this.setStickyEdge(null);
             else
                 this.turnOffIsEndAnchorVisibleDebounced();
@@ -1118,10 +1117,10 @@ export class VirtualList {
             if (!rs.query.isNone && rs.query.expectedCount)
                 this.statistics.addResponse(rs.count, rs.query.expectedCount);
 
-            const scrollMetadata = this.getScrollMetadata(rs);
+            const scrollIntent = this.getScrollIntent(rs);
 
             // endRender is already being called from fastRaf, so useRaf = false
-            await this.restoreScrollPosition(rs, scrollMetadata, false);
+            await this.syncLayoutAfterRender(rs, scrollIntent, false);
         } finally {
             this.updateState('endRender: finalize', this.state, {
                 renderStartedAt: null,
@@ -1134,16 +1133,16 @@ export class VirtualList {
         }
 
         // Schedule viewport update AFTER finalize — isRendering is now false.
-        // The call inside restoreScrollPosition may get swallowed by the
+        // The call inside syncLayoutAfterRender may get swallowed by the
         // leading-edge throttle while isRendering was still true.
         this.updateViewportThrottled();
         this.debug?.onEvent('render');
     }
 
-    private getScrollMetadata(rs: VirtualListRenderState): ScrollMetadata {
+    private getScrollIntent(rs: VirtualListRenderState): ScrollIntent {
         const scrollToItemRef = this.getItemRef(rs.scrollToKey);
         let shouldUseSmoothScroll = false;
-        let scrollType: ScrollToEdgeReason = 'unknown';
+        let reason: ScrollToEdgeReason = 'unknown';
         let scrollFunc: (() => void) | undefined = undefined;
 
         if (scrollToItemRef != null) {
@@ -1151,24 +1150,24 @@ export class VirtualList {
             const isScrollToKeyVisible = this.isKeyVisible(rs.scrollToKey);
             if (!isScrollToKeyVisible) {
                 if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
-                    scrollType = 'last-item';
+                    reason = 'last-item';
                     shouldUseSmoothScroll = this.state.stickyEdge?.edge == VirtualListEdge.End;
                     scrollFunc = () => {
-                        this.scrollToEdge(VirtualListEdge.End, shouldUseSmoothScroll, scrollType);
+                        this.scrollToEdge(VirtualListEdge.End, shouldUseSmoothScroll, reason);
                         this.setStickyEdge({ itemKey: rs.scrollToKey!, edge: VirtualListEdge.End });
                     };
                 } else {
                     const blockPosition: ScrollLogicalPosition = rs.scrollToKeyInTheMiddle
                         ? 'center'
                         : 'end'
-                    scrollType = 'item';
+                    reason = 'item';
                     scrollFunc = () => this.scrollTo(scrollToItemRef, false, blockPosition);
                 }
             } else if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
                 shouldUseSmoothScroll = true;
-                scrollType = 'last-item';
+                reason = 'last-item';
                 scrollFunc = () => {
-                    this.scrollToEdge(VirtualListEdge.End, shouldUseSmoothScroll, scrollType);
+                    this.scrollToEdge(VirtualListEdge.End, shouldUseSmoothScroll, reason);
                     this.setStickyEdge({ itemKey: rs.scrollToKey!, edge: VirtualListEdge.End });
                 };
             }
@@ -1184,10 +1183,10 @@ export class VirtualList {
                     : null;
             if (itemKey) {
                 shouldUseSmoothScroll = itemKey !== this.state.stickyEdge.itemKey;
-                scrollType = 'sticky-edge';
+                reason = 'sticky-edge';
                 scrollFunc = () => {
                     this.setStickyEdge({ itemKey, edge: this.state.stickyEdge!.edge });
-                    this.scrollToEdge(this.state.stickyEdge!.edge, shouldUseSmoothScroll, scrollType);
+                    this.scrollToEdge(this.state.stickyEdge!.edge, shouldUseSmoothScroll, reason);
                 };
             } else {
                 const isEdgeGenuinelyGone = this.state.stickyEdge.edge === VirtualListEdge.End
@@ -1207,12 +1206,12 @@ export class VirtualList {
             }
         } else {
             if (rs.query.isNone && rs.renderIndex === 0) {
-                scrollType = 'no-pivot';
-                scrollFunc = () => this.scrollToEdge(this.defaultEdge, false, scrollType);
+                reason = 'no-pivot';
+                scrollFunc = () => this.scrollToEdge(this.defaultEdge, false, reason);
             }
         }
 
-        return { shouldUseSmoothScroll: shouldUseSmoothScroll, scrollType, scroll: scrollFunc };
+        return { shouldUseSmoothScroll: shouldUseSmoothScroll, reason, scroll: scrollFunc };
     }
 
     private readonly updateViewportThrottled = throttle(
@@ -1326,10 +1325,10 @@ export class VirtualList {
             return; // Ignore non-user initiated scrolls
 
         // Ignore scroll events from programmatic scroll position restoration.
-        // Setting scrollTop in restoreScrollPosition fires a trusted scroll event
+        // Setting scrollTop in syncLayoutAfterRender fires a trusted scroll event
         // that would otherwise be misidentified as user scroll, clearing pivots
         // and causing a visual jump.
-        if (Date.now() - this.state.scrollPositionRestoredAt < ScrollRestoreGuard)
+        if (Date.now() - this.state.lastProgrammaticScrollAt < ProgrammaticScrollGuardMs)
             return;
 
         // Clear sticky edge when user is scrolling via touch/pointer drag
@@ -1403,7 +1402,7 @@ export class VirtualList {
     }
 
     private updateCurrentPivots(interactiveKey?: string, force = false): void {
-        // `force` is used by restoreScrollPosition() when it runs during a render (renderStartedAt
+        // `force` is used by syncLayoutAfterRender() when it runs during a render (renderStartedAt
         // is still set, so isRendering is true) but the DOM is already laid out — capturing pivots
         // there is both safe and necessary to anchor the coordinate system.
         if (!force && this.isRendering)
@@ -1469,17 +1468,11 @@ export class VirtualList {
         finally {
             this.updateState('updatePivots: end', this.state, { isUpdatingPivots: false });
             // if (interactiveKey)
-            //     void this.restoreScrollPosition(this.state.renderState);
+            //     void this.syncLayoutAfterRender(this.state.renderState);
         }
     }
 
     private turnOffIsScrollingDebounced = debounce(() => this.turnOffIsScrolling(), ScrollDebounce);
-
-    private restoreScrollPositionOnResizeDebounced = debounce(() => {
-        const renderState = { ...this.state.renderState, scrollToKey: undefined };
-        const scrollMetadata = this.getScrollMetadata(renderState);
-        void this.restoreScrollPosition(renderState, scrollMetadata, true);
-    }, ScrollDebounce);
 
     private turnOffIsScrolling() {
         if (this.userScrollDirection !== 'none') {
@@ -1657,13 +1650,13 @@ export class VirtualList {
         this.updateState('scrollTo', this.state, { scrollTime: Date.now() });
         if (!itemRef)
             return;
-        const navigateTarget = (itemRef.querySelector('div.c-author-badge') ?? itemRef) as HTMLElement;
+        const navigateTarget = itemRef.querySelector('div.c-author-badge') ?? itemRef;
         const vr = this.ref.getBoundingClientRect();
         const tr = navigateTarget.getBoundingClientRect();
         const elementTop = this.ref.scrollTop + (tr.top - vr.top);
         const target = blockPosition === 'center' ? elementTop - (vr.height - tr.height) / 2
             : blockPosition === 'end' ? elementTop - (vr.height - tr.height)
-            : elementTop;
+                : elementTop;
         this.scrollController.scrollTo(target, { smooth: useSmoothScroll });
     }
 
@@ -1803,11 +1796,11 @@ export class VirtualList {
         return { min, max };
     }
 
-    private async restoreScrollPosition(rs: VirtualListRenderState, scrollMetadata: ScrollMetadata | null = null, useRaf = false): Promise<void> {
+    private async syncLayoutAfterRender(rs: VirtualListRenderState, scrollIntent: ScrollIntent | null = null, useRaf = false): Promise<void> {
         const { endAnchorSize } = this.state;
         const { hasUnmeasuredItems, defaultSpacerSize } = this;
         const result = new PromiseSource();
-        // debugLog?.log(`restoreScrollPosition: start`);
+        // debugLog?.log(`syncLayoutAfterRender: start`);
 
         let scrollTop = 0;
         let scrollTopOffset = 0;
@@ -1822,18 +1815,17 @@ export class VirtualList {
         // No-jump check (debug only): a visible anchored item must keep its screen position across a
         // render that isn't an intentional scroll. Captured before re-layout, compared after.
         let jumpAnchor: { key: string; top: number } | null = null;
-        const isInteractivePositioning = [...this.state.pivots].some(p => p.isInteractive)
-            && scrollMetadata?.scrollType !== 'sticky-edge'
-            && scrollMetadata?.scrollType !== 'last-item'
-            && scrollMetadata?.scrollType !== 'item';
+        const hasInteractiveLayoutAnchor = [...this.state.pivots].some(p => p.isInteractive)
+            && scrollIntent?.reason !== 'sticky-edge'
+            && scrollIntent?.reason !== 'last-item'
+            && scrollIntent?.reason !== 'item';
 
         // Cancel any pending viewport calculations
         this.updateViewportThrottled.reset();
 
         const options = {
-            key: `restoreScrollPosition_${this.identity}`,
+            key: `syncLayoutAfterRender_${this.identity}`,
             read: () => {
-                this._restoreScrollPositionPending = false;
                 if (this.debug)
                     jumpAnchor = this.captureViewportAnchor();
                 // Pivots anchor the item-range coordinate system across re-measurement: measureItems()
@@ -1918,7 +1910,7 @@ export class VirtualList {
                 offset = start;
 
                 const reCenter = () => {
-                    const resetDelta = this.resetItemRange();
+                    const resetDelta = this.rebuildItemRangeFromAnchor();
                     if (resetDelta !== null) {
                         scrollTopOffset = resetDelta;
                         end = this.state.itemRange!.end;
@@ -1950,8 +1942,8 @@ export class VirtualList {
                     : clamp(oldTotalSize - itemRangeSize - spacerSize - endAnchorSize, 0, defaultSpacerSize);
                 offset -= spacerSize;
 
-                // Set scrollPositionRestoredAt BEFORE write/scroll to guard onScroll from false "user scroll" detection
-                this.updateState('scrollRestored', this.state, { scrollPositionRestoredAt: Date.now() });
+                // Set lastProgrammaticScrollAt BEFORE write/scroll to guard onScroll from false "user scroll" detection
+                this.updateState('programmaticScroll', this.state, { lastProgrammaticScrollAt: Date.now() });
             },
             write: () => {
                 const showSpacer = spacerSize > 0;
@@ -1996,21 +1988,13 @@ export class VirtualList {
                 if (scrollTopOffset)
                     this.scrollController.scrollTo(scrollTop + scrollTopOffset, { smooth: false });
 
-                if (!isInteractivePositioning) {
-                    scrollMetadata?.scroll?.();
-                    debugLog?.log(`restoreScrollPosition: scroll set synchronously`, scrollMetadata?.scrollType);
-                } else {
-                    // Only clear sticky edge if user has actually scrolled away from the edge
-                    if (this.state.stickyEdge && Math.abs(this.ref.scrollTop) > 50)
-                        this.setStickyEdge(null);
-                    debugLog?.log(`restoreScrollPosition: scroll set interactive`, scrollMetadata?.scrollType);
-                }
+                this.applyScrollIntent(scrollIntent, hasInteractiveLayoutAnchor);
                 this.updateViewportThrottled();
 
                 // No-jump check: after a non-intentional-scroll render, a previously-visible anchored
                 // item must be at the same screen position (the scrollTop compensation should have kept
                 // it put). If it moved, the compensation was wrong — a visible jump.
-                if (this.debug && jumpAnchor && !scrollMetadata?.scroll) {
+                if (this.debug && jumpAnchor && !scrollIntent?.scroll) {
                     const after = this.captureViewportAnchor(jumpAnchor.key);
                     if (after != null) {
                         const drift = after.top - jumpAnchor.top;
@@ -2020,13 +2004,13 @@ export class VirtualList {
                                 before: Math.round(jumpAnchor.top),
                                 after: Math.round(after.top),
                                 drift: Math.round(drift),
-                                scrollType: scrollMetadata?.scrollType ?? 'none',
+                                reason: scrollIntent?.reason ?? 'none',
                                 renderIndex: rs.renderIndex,
                             });
                     }
                 }
 
-                // debugLog?.log(`restoreScrollPosition: scroll set`, offset, totalSize, scrollTop, spacerSize, endSpacerSize);
+                // debugLog?.log(`syncLayoutAfterRender: scroll set`, offset, totalSize, scrollTop, spacerSize, endSpacerSize);
 
                 if (this.isInfinite)
                     this.scrollController.clampToLimits();
@@ -2036,13 +2020,24 @@ export class VirtualList {
         };
 
         if (useRaf) {
-            this._restoreScrollPositionPending = true;
             fastRaf(options);
         } else {
             options.read();
             options.write();
         }
         await result;
+    }
+
+    private applyScrollIntent(scrollIntent: ScrollIntent | null, hasInteractiveLayoutAnchor: boolean): void {
+        if (!hasInteractiveLayoutAnchor) {
+            scrollIntent?.scroll?.();
+            debugLog?.log(`applyScrollIntent: scroll set synchronously`, scrollIntent?.reason);
+            return;
+        }
+
+        if (this.state.stickyEdge && Math.abs(this.ref.scrollTop) > 50)
+            this.setStickyEdge(null);
+        debugLog?.log(`applyScrollIntent: scroll set interactive`, scrollIntent?.reason);
     }
 
     // No scrollTop change: the cornerstone is held fixed, so writing containerTop alone keeps the view put.
@@ -2241,7 +2236,7 @@ export class VirtualList {
         const needsRangeReset = isCornerstoneRangeMissing || removedFirstItem;
         if (needsRangeReset) {
             // We have checked all items and there is no cornerstone item, so let's recalculate all ranges
-            this.resetItemRange(true);
+            this.rebuildItemRangeFromAnchor(true);
         }
         else
             this.recalculateItemRangesFromCornerstone(orderedItems, cornerstoneItemIndex);
@@ -2283,7 +2278,7 @@ export class VirtualList {
         }
     }
 
-    private resetItemRange(canUseViewport = false): number | null {
+    private rebuildItemRangeFromAnchor(canUseViewport = false): number | null {
         // This function is expected to be called with RAF
         const { orderedItems, endAnchorSize, renderState: rs } = this.state;
         const { defaultSpacerSize } = this;
@@ -2295,7 +2290,7 @@ export class VirtualList {
 
         // Use current viewport if new one is not available
         if (viewport != null)
-            this.updateState('resetItemRange: viewport', this.state, { viewport });
+            this.updateState('rebuildItemRangeFromAnchor: viewport', this.state, { viewport });
         else
             viewport = this.state.viewport!;
 
@@ -2326,7 +2321,7 @@ export class VirtualList {
 
         if (this.isInfinite) {
             // Center the loaded chain in the huge virtual space. On a re-anchor this rigidly shifts the
-            // whole chain by a fixed delta (returned as rangeDelta); restoreScrollPosition shifts scrollTop
+            // whole chain by a fixed delta (returned as rangeDelta); syncLayoutAfterRender shifts scrollTop
             // by the same amount, so the on-screen position doesn't change.
             cornerstoneItemIndex = findCenterItemIndex();
             cornerstoneItem = orderedItems[cornerstoneItemIndex];
@@ -2368,14 +2363,14 @@ export class VirtualList {
             orderedItems[0].range!.start,
             orderedItems[orderedItems.length - 1].range!.end);
         if (!this.isInfinite && fullRangeSize) {
-            this.updateState('resetItemRange: fullRange', this.state, {
+            this.updateState('rebuildItemRangeFromAnchor: fullRange', this.state, {
                 itemRange: newItemRange,
                 minStart: 0,
                 maxEnd: fullRangeSize + endAnchorSize,
             });
         }
         else {
-            this.updateState('resetItemRange', this.state, {
+            this.updateState('rebuildItemRangeFromAnchor', this.state, {
                 itemRange: newItemRange,
                 minStart: newItemRange.start,
                 maxEnd: newItemRange.end,
@@ -2390,7 +2385,7 @@ export class VirtualList {
         if (this.isRendering || !this.state.viewport)
             return;
 
-        const query = this.getDataQuery();
+        const query = this.buildDataQuery();
         // if (this.state.renderState.renderIndex > 0)
         //     return;// this.state.lastQuery; // Debug helper
         if (!this.mustRequestData(query)) {
@@ -2470,7 +2465,7 @@ export class VirtualList {
         return mustExpand || mustContract;
     }
 
-    private getDataQuery(): VirtualListDataQuery {
+    private buildDataQuery(): VirtualListDataQuery {
         const rs = this.state.renderState;
         // if (rs.renderIndex > 0)
         //     return this.state.lastQuery; // Debug helper
@@ -2483,7 +2478,7 @@ export class VirtualList {
             return this.state.lastQuery;
 
         if (orderedItems.some(item => item.range == null)) {
-            this.updateState('getDataQuery: invalidate', this.state, { itemRange: null });
+            this.updateState('buildDataQuery: invalidate', this.state, { itemRange: null });
             this.ensureItemRangeCalculated();
         }
 
@@ -2519,7 +2514,7 @@ export class VirtualList {
         if (loadEnd > alreadyLoaded.end && rs.hasVeryLastItem)
             loadEnd = alreadyLoaded.end;
 
-        const anchors = this.getRetainedAnchors(orderedItems, viewport);
+        const anchors = this.getQueryRetainedItems(orderedItems, viewport);
         if (anchors.length) {
             loadStart = Math.min(loadStart, anchors[0].range!.start);
             loadEnd = Math.max(loadEnd, anchors[anchors.length - 1].range!.end);
@@ -2572,7 +2567,7 @@ export class VirtualList {
         return query;
     }
 
-    private getRetainedAnchors(orderedItems: VirtualListItem[], viewport: NumberRange): VirtualListItem[] {
+    private getQueryRetainedItems(orderedItems: VirtualListItem[], viewport: NumberRange): VirtualListItem[] {
         const withRange = orderedItems.filter(i => i.range != null);
         const visible = withRange.filter(i => i.range!.end > viewport.start && i.range!.start < viewport.end);
         if (visible.length)
