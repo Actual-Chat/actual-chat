@@ -25,9 +25,9 @@ const ReturnSettleSpeedPxS = 8;
 const MaxFlingOverscrollPx = 120;       // cap on the spring excursion for a no-touch fling
 const FlingEntryAsymptotePx = 100;      // smoothly caps the no-touch entry offset (no snap on a fast fling)
 
-// Binds to one scrollable element and, when scroll handling is enabled, keeps scrollTop within a
-// [min, max] band (provided on demand via getLimits, so it reflects current item sizes / viewport) with
-// an iOS-style rubber-band overscroll on bounceElement:
+// Binds to one scrollable element and, when scroll constraints are enabled, keeps scrollTop within a
+// [min, max] band (provided on demand via getScrollLimits, so it reflects current item sizes / viewport) with
+// an iOS-style rubber-band overscroll on overscrollElement:
 //  - finger down + past the boundary: a soft, ramping-resistance transform tracks the overscroll;
 //    scroll is NOT blocked.
 //  - no finger + past the boundary: scroll is blocked (overflow:hidden, scrollTop pinned to the edge)
@@ -62,11 +62,11 @@ export class ScrollController {
 
     constructor(
         private readonly element: HTMLElement,
-        private readonly enableScrollHandling = false,
-        private readonly bounceElement: HTMLElement = element,
-        private readonly getLimits: () => { min: number | null, max: number | null } = () => ({ min: null, max: null }),
+        private readonly enableScrollConstraints = false,
+        private readonly overscrollElement: HTMLElement = element,
+        private readonly getScrollLimits: () => { min: number | null, max: number | null } = () => ({ min: null, max: null }),
     ) {
-        if (this.enableScrollHandling) {
+        if (this.enableScrollConstraints) {
             this.lastScrollTop = element.scrollTop;
             this.lastScrollTime = Date.now();
             const opts = { passive: true, signal: this.abort.signal };
@@ -85,16 +85,16 @@ export class ScrollController {
     }
 
     public dispose(): void {
-        this.finishReturn();
+        this.finishOverscrollReturn();
         ++this.touchLoopEpoch;
         this.resizeObserver?.disconnect();
         this.abort.abort();
         ScrollController.all.delete(this);
     }
 
-    public static stopScrollAll(): void {
+    public static cancelMomentumAll(): void {
         for (const controller of this.all)
-            controller.stopMomentum();
+            controller.cancelMomentum();
     }
 
     public scrollTo(target: number | HTMLElement, options: ScrollToOptions = {}): void {
@@ -102,7 +102,7 @@ export class ScrollController {
         if (typeof target === 'number') {
             let top = target + (options.offset ?? 0);
             if (options.clamp !== false) {
-                const limits = this.getCurrentScrollLimits();
+                const limits = this.getEffectiveScrollLimits();
                 top = clamp(top, limits.min, limits.max);
             }
             if (options.smooth === false) {
@@ -121,18 +121,18 @@ export class ScrollController {
 
     // Re-clamp scrollTop to the current limits (e.g. after a render or a resize changed them).
     public clampToLimits(): void {
-        if (!this.enableScrollHandling || this.isTouching || this.isReturning)
+        if (!this.enableScrollConstraints || this.isTouching || this.isReturning)
             return;
 
-        const limits = this.getCurrentScrollLimits();
+        const limits = this.getEffectiveScrollLimits();
         const clamped = clamp(this.element.scrollTop, limits.min, limits.max);
         if (Math.abs(this.element.scrollTop - clamped) > FixPrecisionPx)
             this.scrollTo(clamped, { smooth: false });
     }
 
-    public getCurrentScrollLimits(): { min: number, max: number } {
+    public getEffectiveScrollLimits(): { min: number, max: number } {
         // null edge => no limit that way (free scroll): ±Infinity, so the rubber-band and clamp never engage.
-        const raw = this.getLimits();
+        const raw = this.getScrollLimits();
         const min = raw.min ?? Number.NEGATIVE_INFINITY;
         const max = raw.max ?? Number.POSITIVE_INFINITY;
         return {
@@ -158,7 +158,7 @@ export class ScrollController {
         if (this.isTouching || this.isReturning || now < this.suppressUntil)
             return;
 
-        const boundary = this.overBoundary(scrollTop);
+        const boundary = this.getViolatedBoundary(scrollTop);
         if (boundary === null) {
             if (this.overscrollSign !== 0) {
                 this.overscrollSign = 0;
@@ -168,23 +168,23 @@ export class ScrollController {
         }
         const over = scrollTop - boundary;
         this.overscrollSign = Math.sign(over);
-        this.startReturn(boundary, this.overscrollSign * flingEntryOffset(Math.abs(over)), this.recentSpeed);
+        this.startOverscrollReturn(boundary, this.overscrollSign * flingEntryOffset(Math.abs(over)), this.recentSpeed);
     }
 
     private onTouchStart(): void {
         this.isTouching = true;
         if (this.isReturning)
-            this.finishReturn();
+            this.finishOverscrollReturn();
         this.startTouchLoop();
     }
 
     private onTouchEnd(): void {
         this.isTouching = false;
         const scrollTop = this.element.scrollTop;
-        const boundary = this.overBoundary(scrollTop);
+        const boundary = this.getViolatedBoundary(scrollTop);
         if (boundary !== null) {
             this.overscrollSign = Math.sign(scrollTop - boundary);
-            this.startReturn(boundary, this.overscrollSign * visibleOverscroll(Math.abs(scrollTop - boundary)), this.touchSpeed);
+            this.startOverscrollReturn(boundary, this.overscrollSign * visibleOverscroll(Math.abs(scrollTop - boundary)), this.touchSpeed);
         }
         else if (this.overscrollSign !== 0) {
             this.overscrollSign = 0;
@@ -192,8 +192,8 @@ export class ScrollController {
         }
     }
 
-    private overBoundary(scrollTop: number): number | null {
-        const limits = this.getCurrentScrollLimits();
+    private getViolatedBoundary(scrollTop: number): number | null {
+        const limits = this.getEffectiveScrollLimits();
         if (scrollTop < limits.min - FixPrecisionPx)
             return limits.min;
         if (scrollTop > limits.max + FixPrecisionPx)
@@ -226,7 +226,7 @@ export class ScrollController {
                 this.touchPrevTime = now;
             }
 
-            const limits = this.getCurrentScrollLimits();
+            const limits = this.getEffectiveScrollLimits();
             const sign = scrollTop < limits.min ? -1 : scrollTop > limits.max ? 1 : 0;
             if (sign !== 0) {
                 const boundary = sign < 0 ? limits.min : limits.max;
@@ -242,12 +242,12 @@ export class ScrollController {
         fastRaf({ write: tick });
     }
 
-    private startReturn(boundary: number, offset: number, speedPxMs: number): void {
+    private startOverscrollReturn(boundary: number, offset: number, speedPxMs: number): void {
         this.overscrollBoundary = boundary;
         this.springOffset = offset;
         this.springCap = Math.max(Math.abs(offset), MaxFlingOverscrollPx);
         this.springSpeed = clamp(speedPxMs * 1000, -MaxReturnSpeedPxS, MaxReturnSpeedPxS);
-        // Non-Safari: keep overflow:hidden for the whole spring — flicker-free; finishReturn unlocks it,
+        // Non-Safari: keep overflow:hidden for the whole spring — flicker-free; finishOverscrollReturn unlocks it,
         // and these browsers re-attach a scroll to a touch that lands mid-bounce.
         if (!DeviceInfo.isWebKit)
             this.setOverflowLocked(true);
@@ -284,7 +284,7 @@ export class ScrollController {
                 this.springOffset = next;
             }
             if (Math.abs(this.springOffset) <= ReturnSettlePx && Math.abs(this.springSpeed) <= ReturnSettleSpeedPxS) {
-                this.finishReturn();
+                this.finishOverscrollReturn();
                 return;
             }
             if (Math.abs(this.element.scrollTop - this.overscrollBoundary) > FixPrecisionPx)
@@ -295,7 +295,7 @@ export class ScrollController {
         fastRaf({ write: tick });
     }
 
-    private finishReturn(): void {
+    private finishOverscrollReturn(): void {
         this.isReturning = false;
         this.springOffset = 0;
         this.springSpeed = 0;
@@ -305,8 +305,8 @@ export class ScrollController {
         this.setOverflowLocked(false);
     }
 
-    private stopMomentum(): void {
-        if (!this.enableScrollHandling || this.isReturning || this.isTouching)
+    private cancelMomentum(): void {
+        if (!this.enableScrollConstraints || this.isReturning || this.isTouching)
             return;
 
         this.setOverflowLocked(true);
@@ -315,11 +315,11 @@ export class ScrollController {
     }
 
     private applyTranslate(y: number): void {
-        this.bounceElement.style.transform = `translate3d(0, ${y}px, 0)`;
+        this.overscrollElement.style.transform = `translate3d(0, ${y}px, 0)`;
     }
 
     private clearTransform(): void {
-        this.bounceElement.style.transform = '';
+        this.overscrollElement.style.transform = '';
     }
 
     private setOverflowLocked(locked: boolean): void {
