@@ -143,6 +143,9 @@ export class VirtualList {
     private readonly isInfinite: boolean;
     private readonly retainedItemCount: number;
     private readonly scrollController: ScrollController;
+    // Last bottom scroll-limit computed while the newest item was loaded; reused when it unloads on
+    // scroll-up so the limit never falls back to the (meaningless) wrapper bottom. Shifted on re-center.
+    private lastKnownLimitMax: number | null = null;
     private readonly wrapperRef: HTMLElement;
     private readonly spacerRef: HTMLElement;
     private readonly endSpacerRef: HTMLElement;
@@ -1789,9 +1792,16 @@ export class VirtualList {
         const clientHeight = this.ref.clientHeight;
         const containerTop = parseFloat(this.containerRef.style.top) || 0;
         let min = rs.hasVeryFirstItem ? containerTop : null;
-        let max = (rs.hasVeryLastItem && !CutVirtualSpaceAtBottom)
-            ? itemRange.end + this.state.endAnchorSize - clientHeight
-            : null;
+        let max: number | null;
+        if (rs.hasVeryLastItem && !CutVirtualSpaceAtBottom) {
+            max = itemRange.end + this.state.endAnchorSize - clientHeight;
+            this.lastKnownLimitMax = max;
+        }
+        else {
+            // Newest not loaded (scrolled up) — keep the last known bottom instead of letting the limit
+            // fall back to the wrapper bottom (scrollHeight, ~InfiniteSize), which is never the real edge.
+            max = CutVirtualSpaceAtBottom ? null : this.lastKnownLimitMax;
+        }
         // Content fits the viewport => the band inverts (min > max). Collapse it to the preferred edge
         // so a short chat rests at that edge (bottom for End) instead of the top.
         if (min != null && max != null && min > max) {
@@ -1923,6 +1933,8 @@ export class VirtualList {
                         scrollTopOffset = resetDelta;
                         end = this.state.itemRange!.end;
                         offset = this.state.itemRange!.start;
+                        if (this.lastKnownLimitMax !== null)
+                            this.lastKnownLimitMax += resetDelta;
                     }
                 };
 
