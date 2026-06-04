@@ -10,70 +10,83 @@
     var m = State.Value;
 }
 <div class="test-page-wrapper">
-    <div class="flex-y h-full select-text">
-        <div class="flex-x items-center gap-x-2 mb-3">
+    <div class="flex-y h-full overflow-y-auto select-text p-4 gap-y-2">
+        <div class="flex-x items-center gap-x-4">
             <Button Click="OnRefresh">Refresh</Button>
             <label class="flex-x items-center gap-x-1 cursor-pointer">
                 <input type="checkbox" checked="@_problematicOnly" @onchange="OnToggleProblematic"/>
                 <span>Problematic only</span>
             </label>
-            @if (!_name.IsNullOrEmpty()) {
-                <Button Click="@(() => SelectType(null))">Type: @_name ✕</Button>
-            }
             @if (m is null) {
-                <span>Loading…</span>
+                <span class="text-gray-500">Loading…</span>
             }
             else {
-                <span class="text-02">@m.Rows.Length row(s), generated @m.GeneratedAt.ToDateTime().ToString("HH:mm:ss")</span>
+                <span class="text-gray-500 text-sm">@m.Rows.Length row(s) · @m.GeneratedAt.ToDateTime().ToString("HH:mm:ss")</span>
             }
         </div>
 
         @if (m is not null) {
-            <h3 class="mt-2 mb-1 font-semibold">Types</h3>
-            <table class="flow-table">
+            <h2 class="mt-3 text-lg font-semibold">Summary by flow type</h2>
+            <p class="text-gray-500 text-sm">Counts per registered flow type. Click a row to filter the instances below.</p>
+            <table class="w-full border-collapse text-sm">
                 <thead>
-                    <tr><th>Type</th><th>Active</th><th>Completed</th><th>Failed</th><th>Stuck</th><th>Total</th></tr>
+                    <tr class="border-b text-gray-500">
+                        <th class="text-left p-2">Type</th>
+                        <th class="text-right p-2">Active</th>
+                        <th class="text-right p-2">Completed</th>
+                        <th class="text-right p-2">Failed</th>
+                        <th class="text-right p-2">Stuck</th>
+                        <th class="text-right p-2">Total</th>
+                    </tr>
                 </thead>
                 <tbody>
                 @foreach (var t in m.Aggregates) {
-                    <tr class="cursor-pointer" @onclick="@(() => SelectType(t.Name))">
-                        <td>@t.Name</td>
-                        <td>@t.Active</td>
-                        <td>@t.Completed</td>
-                        <td class="@(t.Failed > 0 ? "text-danger font-semibold" : "")">@t.Failed</td>
-                        <td class="@(t.Stuck > 0 ? "text-warning font-semibold" : "")">@t.Stuck</td>
-                        <td>@t.Total</td>
+                    <tr class="border-b cursor-pointer hover:bg-gray-100 @(t.Name == _name ? "bg-blue-50" : "")"
+                        @onclick="@(() => SelectType(t.Name == _name ? null : t.Name))">
+                        <td class="p-2 font-medium">@t.Name</td>
+                        <td class="text-right p-2">@t.Active</td>
+                        <td class="text-right p-2">@t.Completed</td>
+                        <td class="text-right p-2 @(t.Failed > 0 ? "text-red-600 font-semibold" : "")">@t.Failed</td>
+                        <td class="text-right p-2 @(t.Stuck > 0 ? "text-amber-600 font-semibold" : "")">@t.Stuck</td>
+                        <td class="text-right p-2 text-gray-500">@t.Total</td>
                     </tr>
                 }
                 </tbody>
             </table>
 
-            <h3 class="mt-4 mb-1 font-semibold">Flows</h3>
-            <table class="flow-table">
+            <h2 class="mt-5 text-lg font-semibold">
+                Flow instances@(_name.IsNullOrEmpty() ? "" : $" — {_name}")
+            </h2>
+            <p class="text-gray-500 text-sm">Newest first. Click a row to view its console log and error.</p>
+            <table class="w-full border-collapse text-sm">
                 <thead>
-                    <tr><th>Id</th><th>Status</th><th>Updated</th></tr>
+                    <tr class="border-b text-gray-500">
+                        <th class="text-left p-2 w-1/2">Id</th>
+                        <th class="text-left p-2">Status</th>
+                        <th class="text-left p-2">Updated</th>
+                    </tr>
                 </thead>
                 <tbody>
                 @foreach (var row in m.Rows) {
-                    <tr class="cursor-pointer" @onclick="@(() => ToggleRow(row.FlowId))">
-                        <td>@row.FlowId</td>
-                        <td><span class="@StatusClass(row.Status)">@row.Status</span></td>
-                        <td>@row.UpdatedAt.ToDateTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <tr class="border-b cursor-pointer hover:bg-gray-100" @onclick="@(() => ToggleRow(row.FlowId))">
+                        <td class="p-2 font-mono break-all">@row.FlowId</td>
+                        <td class="p-2"><span class="@StatusClass(row.Status)">@row.Status</span></td>
+                        <td class="p-2 text-gray-500">@row.UpdatedAt.ToDateTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
                     </tr>
                     @if (_expanded.Contains(row.FlowId)) {
-                        <tr>
-                            <td colspan="3">
+                        <tr class="border-b bg-gray-50">
+                            <td colspan="3" class="p-2">
                                 @if (!_details.TryGetValue(row.FlowId, out var details)) {
-                                    <span>Loading…</span>
+                                    <span class="text-gray-500">Loading…</span>
                                 }
                                 else if (details is null) {
-                                    <span class="text-02">No data.</span>
+                                    <span class="text-gray-500">No data.</span>
                                 }
                                 else {
                                     @if (!details.Error.IsNullOrEmpty()) {
-                                        <div class="text-danger mb-1">@details.Error</div>
+                                        <div class="text-red-600 font-mono text-xs mb-2 whitespace-pre-wrap">@details.Error</div>
                                     }
-                                    <pre class="flow-console">@details.Console</pre>
+                                    <pre class="font-mono text-xs whitespace-pre-wrap">@details.Console</pre>
                                 }
                             </td>
                         </tr>
@@ -124,8 +137,9 @@
 
     private static string StatusClass(FlowStatus status)
         => status switch {
-            FlowStatus.Failed => "text-danger font-semibold",
-            FlowStatus.Stuck => "text-warning font-semibold",
+            FlowStatus.Failed => "text-red-600 font-semibold",
+            FlowStatus.Stuck => "text-amber-600 font-semibold",
+            FlowStatus.Completed => "text-gray-500",
             _ => "",
         };
 }
