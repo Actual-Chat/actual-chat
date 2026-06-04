@@ -898,6 +898,10 @@ export class VirtualList {
             if (skipScrollRestore) {
                 this.ensureItemRangeCalculated();
                 this.repinContainerToModel();
+                // Still follow edge-item growth while pinned: a new message stamps renderCompletedAt,
+                // so transcript growth of the latest messages lands in this window and would slip below.
+                if (this.state.stickyEdge?.edge === this.defaultEdge)
+                    this.scrollToEdge(this.defaultEdge, true, 'item-resize');
                 return;
             }
 
