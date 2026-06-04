@@ -174,6 +174,12 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
 
                         const cur = controller.current.configs;
                         const layerCount = cur.length;
+                        // One backing buffer for all layers' bytes: copy each chunk
+                        // into its own slice. Saves N-1 ArrayBuffer allocations per
+                        // bundle (the slices stay live together until serialized).
+                        const dataPool = new ArrayBuffer(
+                            bundle.layers.reduce((sum, e) => sum + e.chunk.byteLength, 0));
+                        let dataOffset = 0;
                         const wireLayers: VideoStreamFrame[] = bundle.layers.map(encoded => {
                             const isKey = encoded.chunk.type === 'key';
                             if (isKey)
@@ -182,6 +188,9 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                             // can emit one before its first 'key'): `-1 !== index`
                             // keeps server + receiver from mis-classifying it as KF.
                             const keyFrameIndex = lastKfIndexByLayer.get(encoded.layerId) ?? -1;
+                            const data = new Uint8Array(dataPool, dataOffset, encoded.chunk.byteLength);
+                            encoded.chunk.copyTo(data);
+                            dataOffset += encoded.chunk.byteLength;
                             const dto: VideoStreamFrame = {
                                 offset,
                                 offsetEpoch: capturedAt.epoch,
@@ -190,7 +199,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                                 index: encoded.index,
                                 width: encoded.encodedWidth,
                                 height: encoded.encodedHeight,
-                                data: readChunkBytes(encoded.chunk),
+                                data,
                                 layerId: encoded.layerId,
                                 layerCount,
                             };
@@ -252,12 +261,6 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
             }
         }
     };
-}
-
-function readChunkBytes(chunk: EncodedVideoChunk): Uint8Array {
-    const buffer = new ArrayBuffer(chunk.byteLength);
-    chunk.copyTo(buffer);
-    return new Uint8Array(buffer);
 }
 
 // Chunked Latin-1 base64: workers don't expose Buffer, and HVCC/SPS inputs

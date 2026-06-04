@@ -1,6 +1,7 @@
 import type { MonotonicTime } from 'clocks';
 import { getLogs } from 'logging';
 import { from, type PipeOperator } from 'ix-ext';
+import { AsyncSignal } from 'actuallab-core';
 import { RunningEMA } from 'math';
 import { AsyncVideoEncoder, isAsyncVideoEncoderResetError } from '../adapters';
 import { isCapturedBundleKeyFrame } from '../bundle-helpers';
@@ -137,6 +138,30 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
             }
             const pending: PendingBundle[] = [];
 
+            // One bundle-hang timer shared across all awaited bundles: it rides
+            // until it fires instead of an install/clear pair per bundle (which
+            // churned ~one timer per captured frame on the recorder worker).
+            // Bundles are awaited FIFO, so only one deadline is live at a time; a
+            // stale wake (timer armed for an earlier, shorter deadline) is a no-op
+            // and the loop re-arms for the current bundle's deadline.
+            const bundleWatchdogSignal = new AsyncSignal();
+            let bundleWatchdogHandle: ReturnType<typeof setTimeout> | null = null;
+            let bundleAwaitDeadline = 0;
+            const ensureBundleWatchdog = (): void => {
+                if (bundleWatchdogHandle !== null)
+                    return;
+                bundleWatchdogHandle = setTimeout(() => {
+                    bundleWatchdogHandle = null;
+                    bundleWatchdogSignal.notify();
+                }, Math.max(0, bundleAwaitDeadline - performance.now()));
+            };
+            const disposeBundleWatchdog = (): void => {
+                if (bundleWatchdogHandle === null)
+                    return;
+                clearTimeout(bundleWatchdogHandle);
+                bundleWatchdogHandle = null;
+            };
+
             const submitBundle = (bundle: CapturedBundle, keyFrame: boolean): PendingBundle => {
                 const layerCount = bundle.layers.length;
                 const promises: Promise<EncodedFrame>[] = [];
@@ -171,11 +196,26 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                 const layerCount = p.bundle.layers.length;
                 let settled: PromiseSettledResult<EncodedFrame>[];
                 try {
-                    settled = await raceWithTimeout(
-                        Promise.allSettled(p.promises),
-                        bundleTimeoutMs,
-                        p.bundle.index,
-                    );
+                    const all = Promise.allSettled(p.promises);
+                    if (bundleTimeoutMs <= 0) {
+                        settled = await all;
+                    } else {
+                        const tagged = all.then(r => ({ kind: 'done' as const, r }));
+                        bundleAwaitDeadline = performance.now() + bundleTimeoutMs;
+                        for (;;) {
+                            ensureBundleWatchdog();
+                            const wake = bundleWatchdogSignal.wait().then(() => ({ kind: 'wd' as const }));
+                            const res = await Promise.race([tagged, wake]);
+                            if (res.kind === 'done') {
+                                settled = res.r;
+                                break;
+                            }
+                            if (performance.now() >= bundleAwaitDeadline)
+                                throw new Error(
+                                    `encode: bundle ${p.bundle.index} hung — `
+                                    + `Promise.allSettled exceeded ${bundleTimeoutMs}ms`);
+                        }
+                    }
                 } catch (timeoutErr) {
                     bundleHangAttempts++;
                     recordRestart(p.bundle.stats);
@@ -425,6 +465,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                 // Source ended — drain anything still in flight.
                 for await (const r of drainPending()) yield r;
             } finally {
+                disposeBundleWatchdog();
                 for (const enc of encoders) {
                     try { enc.dispose(); } catch { /* ignore */ }
                 }
@@ -445,17 +486,4 @@ function closeCapturedFrames(frames: readonly CapturedFrame[]): void {
 
 function closeEncodedFrame(frame: EncodedFrame): void {
     closeEncodedChunk(frame.chunk);
-}
-
-async function raceWithTimeout<T>(p: Promise<T>, timeoutMs: number, bundleIndex: number): Promise<T> {
-    if (timeoutMs <= 0)
-        return p;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    return await new Promise<T>((resolve, reject) => {
-        timer = setTimeout(() => {
-            reject(new Error(`encode: bundle ${bundleIndex} hung — Promise.allSettled exceeded ${timeoutMs}ms`));
-        }, timeoutMs);
-        p.then(resolve, reject)
-            .then(() => clearTimeout(timer!), () => clearTimeout(timer!));
-    });
 }

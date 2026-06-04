@@ -136,12 +136,15 @@ export class VideoDecoderBridge {
         return frame;
     }
 
-    // Watchdog: remaining ms before the decoder is declared hung, or null when
-    // nothing is in flight (a quiet stream must not synthesise spurious timeouts).
-    msUntilHang(now: number): number | null {
+    // Watchdog: absolute time the decoder is declared hung, or null when nothing
+    // is in flight (a quiet stream must not synthesise spurious timeouts). The
+    // drain loop arms one timer for this deadline and re-checks it on fire, so a
+    // frame that bumps activity simply moves the deadline out instead of forcing
+    // a per-frame timer re-arm.
+    hangDeadline(): number | null {
         if (this.pending.length === 0)
             return null;
-        return Math.max(0, this.opts.decoderHangTimeoutMs - (now - this.lastDecoderActivityMs));
+        return this.lastDecoderActivityMs + this.opts.decoderHangTimeoutMs;
     }
 
     onWatchdogFired(now: number): void {

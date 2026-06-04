@@ -1,5 +1,5 @@
 import { from, type PipeOperator } from 'ix-ext';
-import { abortPromise } from 'actuallab-core';
+import { AsyncSignal, abortPromise } from 'actuallab-core';
 import { closeEncodedChunk, type ArrivedChunk, type DecodedFrame } from '../frame-envelopes';
 import {
     VideoDecoderBridge,
@@ -95,6 +95,35 @@ async function* decodeAsync(
         ? abortPromise(abortSignal).catch((): WaitResult => ({ kind: 'abort' }))
         : new Promise<WaitResult>(() => { /* never resolves */ });
 
+    // One long-lived hang timer instead of an install/clear pair per drain
+    // iteration. It's armed once for the current deadline and left running while
+    // frames keep landing; each frame only moves bridge.hangDeadline() out, so
+    // the timer just fires harmlessly at the old deadline and re-arms. A genuine
+    // hang is confirmed at fire time by re-reading the deadline.
+    const watchdogSignal = new AsyncSignal();
+    let watchdogHandle: unknown = null;
+    const disarmWatchdog = (): void => {
+        if (watchdogHandle === null)
+            return;
+        try { clearTimeoutFn(watchdogHandle); } catch { /* ignore */ }
+        watchdogHandle = null;
+    };
+    const armWatchdog = (): void => {
+        // Leave a live timer running across transient pending==0 dips — tearing
+        // it down every frame just reintroduces the per-frame churn this rework
+        // removes. A stale fire (deadline moved out, or nothing pending) is a
+        // no-op at the race winner check, which then re-arms for the real deadline.
+        if (watchdogHandle !== null)
+            return;
+        const deadline = bridge.hangDeadline();
+        if (deadline === null)
+            return;
+        watchdogHandle = setTimeoutFn(() => {
+            watchdogHandle = null;
+            watchdogSignal.notify();
+        }, Math.max(0, deadline - now()));
+    };
+
     // Manual iterator so the feed pump can race source.next() against abort.
     const sourceIter = source[Symbol.asyncIterator]();
     let nextSourcePromise: Promise<IteratorResult<ArrivedChunk>> | null = null;
@@ -167,9 +196,11 @@ async function* decodeAsync(
         for (;;) {
             if (abortSignal?.aborted)
                 return;
-            // Arm the data wakeup before draining/checking so a frame that lands
-            // during this iteration can't be lost between the check and the await.
+            // Arm the data/watchdog wakeups before draining/checking so a frame
+            // that lands during this iteration can't be lost between the check
+            // and the await.
             const whenData = bridge.whenDataReady.wait();
+            const whenWatchdog = watchdogSignal.wait();
             let envelope: DecodedFrame | null;
             while ((envelope = bridge.tryPull()) !== null) {
                 let mustClose = true;
@@ -186,33 +217,29 @@ async function* decodeAsync(
             if (feed.done && bridge.inFlight === 0)
                 return;
 
-            // Watchdog arms only when the decoder owes us a frame.
-            const racers: Promise<WaitResult>[] = [
+            // Arms only when the decoder owes us a frame, and only if not already
+            // armed (a no-op while the timer keeps running).
+            armWatchdog();
+            const winner = await Promise.race([
                 whenData.then((): WaitResult => ({ kind: 'data' })),
+                whenWatchdog.then((): WaitResult => ({ kind: 'watchdog' })),
                 abortWait,
-            ];
-            let watchdogHandle: unknown = null;
-            const msUntilHang = bridge.msUntilHang(now());
-            if (msUntilHang !== null) {
-                racers.push(new Promise<WaitResult>(resolve => {
-                    watchdogHandle = setTimeoutFn(() => resolve({ kind: 'watchdog' }), msUntilHang);
-                }));
-            }
-            let winner: WaitResult;
-            try {
-                winner = await Promise.race(racers);
-            } finally {
-                if (watchdogHandle !== null)
-                    try { clearTimeoutFn(watchdogHandle); } catch { /* ignore */ }
-            }
+            ]);
 
             if (winner.kind === 'abort')
                 return;
-            if (winner.kind === 'watchdog')
-                bridge.onWatchdogFired(now());
+            if (winner.kind === 'watchdog') {
+                // Confirm the hang at fire time: a frame may have landed and moved
+                // the deadline out, making this a stale fire to ignore (the next
+                // iteration re-arms for the new deadline).
+                const deadline = bridge.hangDeadline();
+                if (deadline !== null && now() >= deadline)
+                    bridge.onWatchdogFired(now());
+            }
         }
     } finally {
         stopped = true;
+        disarmWatchdog();
         bridge.whenSpaceAvailable.notify();
         try { await feedDone; } catch { /* ignore */ }
         bridge.dispose();

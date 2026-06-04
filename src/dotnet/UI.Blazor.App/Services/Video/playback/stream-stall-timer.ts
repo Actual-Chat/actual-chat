@@ -18,8 +18,13 @@ export interface StreamStallTimerOptions {
     isPaused: () => boolean;
 }
 
+// `reset()` runs per arrived chunk, so it must stay O(1): it only stamps the
+// last-activity time. A single low-frequency interval polls that stamp against
+// `timeoutMs`, instead of re-arming a per-chunk setTimeout (which churned
+// thousands of install/clear pairs a second on the playback worker).
 export class StreamStallTimer {
-    private timeoutId: ReturnType<typeof setTimeout> | null = null;
+    private intervalId: ReturnType<typeof setInterval> | null = null;
+    private lastResetAt = 0;
     // Surfaced for callers that drain the pipeline and need to rethrow
     // the stall as the terminal error rather than the abort-controller
     // signal value.
@@ -28,9 +33,9 @@ export class StreamStallTimer {
     constructor(private readonly opts: StreamStallTimerOptions) {}
 
     clear(): void {
-        if (this.timeoutId !== null)
-            clearTimeout(this.timeoutId);
-        this.timeoutId = null;
+        if (this.intervalId !== null)
+            clearInterval(this.intervalId);
+        this.intervalId = null;
     }
 
     reset(): void {
@@ -38,14 +43,27 @@ export class StreamStallTimer {
             return;
         if (this.opts.timeoutMs <= 0)
             return;
-        if (this.opts.isPaused())
+        this.lastResetAt = performance.now();
+        if (this.intervalId === null) {
+            const checkMs = Math.min(1000, Math.max(50, this.opts.timeoutMs));
+            this.intervalId = setInterval(() => this.tick(), checkMs);
+        }
+    }
+
+    private tick(): void {
+        const now = performance.now();
+        if (this.opts.isPaused()) {
+            // Treat paused as activity: the server drops every frame while
+            // parked, so resume must get a full window rather than tripping.
+            this.lastResetAt = now;
             return;
+        }
+        if (now - this.lastResetAt <= this.opts.timeoutMs)
+            return;
+        this.error = new Error(
+            `Player stream stalled: no frames received for ${this.opts.timeoutMs}ms`);
+        if (!this.opts.abortController.signal.aborted)
+            this.opts.abortController.abort(this.error);
         this.clear();
-        this.timeoutId = setTimeout(() => {
-            this.error = new Error(
-                `Player stream stalled: no frames received for ${this.opts.timeoutMs}ms`);
-            if (!this.opts.abortController.signal.aborted)
-                this.opts.abortController.abort(this.error);
-        }, this.opts.timeoutMs);
     }
 }

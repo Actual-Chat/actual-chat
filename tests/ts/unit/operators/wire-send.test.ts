@@ -35,8 +35,11 @@ class MockEncodedVideoChunk {
         public duration: number | null = null,
         private readonly bytes: Uint8Array = new Uint8Array(byteLength),
     ) {}
-    copyTo(buffer: ArrayBuffer): void {
-        new Uint8Array(buffer).set(this.bytes.subarray(0, Math.min(buffer.byteLength, this.bytes.length)));
+    copyTo(destination: ArrayBuffer | ArrayBufferView): void {
+        const view = destination instanceof ArrayBuffer
+            ? new Uint8Array(destination)
+            : new Uint8Array(destination.buffer, destination.byteOffset, destination.byteLength);
+        view.set(this.bytes.subarray(0, Math.min(view.byteLength, this.bytes.length)));
     }
     close(): void {
         this.closed = true;
