@@ -107,8 +107,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
             .ConfigureAwait(false);
         var aggregates = aggRows
             .Select(a => new FlowTypeStat(a.Name, a.Active, a.Completed, a.Failed, a.Stuck))
-            .OrderByDescending(a => a.Problematic)
-            .ThenBy(a => a.Name, StringComparer.Ordinal)
+            .OrderBy(a => a.Name, StringComparer.Ordinal)
             .ToArray();
 
         var rowsQuery = dbContext.Flows.AsNoTracking();
@@ -120,9 +119,9 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
             rowsQuery = rowsQuery.Where(f =>
                 (f.IsCompleted && f.IsFailed) || (!f.IsCompleted && f.Version < cutoffVersion));
 
-        var limit = query.Limit.Clamp(1, MaxListLimit);
+        var limit = query.Limit.Clamp(0, MaxListLimit);
         var rawRows = await rowsQuery
-            .OrderByDescending(f => f.Version)
+            .OrderBy(f => f.Id)
             .Take(limit)
             .Select(f => new { f.Id, f.IsCompleted, f.IsFailed, f.Version })
             .ToListAsync(cancellationToken)
