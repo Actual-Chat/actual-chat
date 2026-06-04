@@ -4,8 +4,9 @@
 @inherits ComputedStateComponent<AppUIHub, RightPanelHeader.Model>
 @{
     var m = State.Value;
-    var canEditProperties = m.CanEditProperties;
-    var shareModal = m.ShareModel;
+    var chat = Chat;
+    if (chat is null)
+        return;
 }
 
 <div @ref="Ref" class="c-header">
@@ -17,7 +18,7 @@
 
     <div class="c-top">
         <ChatIcon
-            Chat="Chat"
+            Chat="@chat"
             Size="SquareSize.SizeFull"
             IsSquare="@true"
             HideTitle="@true"
@@ -28,30 +29,55 @@
     <div class="c-center">
         <div class="chat-avatar">
             <div class="c-wrapper">
-                <ChatIcon Chat="Chat" Size="SquareSize.SizeFull" ShowPresence="@false" Class="small-avatar"/>
+                <ChatIcon Chat="@chat" Size="SquareSize.SizeFull" ShowPresence="@false" Class="small-avatar"/>
                 @if (_showFullSizeAvatar) {
-                    <ChatIcon Chat="Chat" Size="SquareSize.SizeFull" ShowPresence="@false" ShowFullSizeAvatar="@true" Class="full-size-avatar"/>
+                    <ChatIcon Chat="@chat" Size="SquareSize.SizeFull" ShowPresence="@false" ShowFullSizeAvatar="@true" Class="full-size-avatar"/>
                 }
             </div>
         </div>
         <div class="c-buttons">
             @if (m.PeerContact is not null) {
-                <ButtonRound Class="btn-sm" Click="@(() => OnEditPeerContactClick(m.PeerContact))">
-                    <i class="icon-edit text-2xl"></i>
+                @if (m.EnableIncompleteUI) {
+                    <ButtonRound
+                        Class="btn-sm"
+                        Tooltip="Show call"
+                        TooltipPosition="FloatingPosition.Top"
+                        Click="@OnCallClick">
+                        <i class="icon-phone text-2xl"></i>
+                    </ButtonRound>
+                }
+                @if (!m.IsActivePeerChat) {
+                    <ButtonRound
+                        Class="btn-sm"
+                        Tooltip="Start chat"
+                        TooltipPosition="FloatingPosition.Top"
+                        Click="@OnStartPeerChatClick">
+                        <i class="icon-message-ellipse text-2xl"></i>
+                    </ButtonRound>
+                }
+                <ButtonRound
+                    Class="btn-sm"
+                    data-menu="@(MenuRef.New<ContactActionMenu>(chat.Id.Value).ToString())"
+                    data-menu-trigger="@MenuTrigger.Primary"
+                    data-menu-placement="@(FloatingPosition.BottomEnd.ToPositionString())">
+                    <i class="icon-more-vertical text-2xl"></i>
                 </ButtonRound>
-            } else if (canEditProperties) {
-                <ButtonRound Class="btn-sm" Click="@OnEditChatSettingsClick">
-                    <i class="icon-edit text-2xl"></i>
-                </ButtonRound>
-            }
-            @if (EditMembersUI.CanAddMembers(Chat)) {
-                <ButtonRound Class="btn-sm" Click="@OnInviteClick">
-                    <i class="icon-person-add text-2xl"></i>
-                </ButtonRound>
-            }
-            @if (shareModal != null) {
-                <ButtonRound Class="btn-sm" Click="@(() => OnShareClick(shareModal))">
-                    <i class="icon-share text-2xl"></i>
+            } else {
+                @if (EditMembersUI.CanAddMembers(chat)) {
+                    <ButtonRound
+                        Class="btn-sm"
+                        Tooltip="Add members"
+                        TooltipPosition="FloatingPosition.Top"
+                        Click="@OnInviteClick">
+                        <i class="icon-person-add text-2xl"></i>
+                    </ButtonRound>
+                }
+                <ButtonRound
+                    Class="btn-sm"
+                    data-menu="@(MenuRef.New<ChatHeaderMenu>(chat.Id.Value).ToString())"
+                    data-menu-trigger="@MenuTrigger.Primary"
+                    data-menu-placement="@(FloatingPosition.BottomEnd.ToPositionString())">
+                    <i class="icon-more-vertical text-2xl"></i>
                 </ButtonRound>
             }
         </div>
@@ -60,11 +86,11 @@
     <div class="c-bottom">
         <div class="c-content">
             <div class="c-title">
-                @Chat.Title
+                @chat.Title
             </div>
-            <StatusBadge Chat="@Chat"/>
+            <StatusBadge Chat="@chat"/>
         </div>
-        <ChatDescription Chat="@Chat"/>
+        <ChatDescription Chat="@chat"/>
     </div>
 </div>
 
@@ -76,6 +102,7 @@
     private Chat? Chat => ChatContext?.Chat;
     private IChats Chats => Hub.Chats;
     private IContacts Contacts => Hub.Contacts;
+    private ChatUI ChatUI => Hub.ChatUI;
 
     private IJSObjectReference? JSRef { get; set; }
     private DotNetObjectReference<RightPanelHeader> BlazorRef { get; set; } = null!;
@@ -102,7 +129,7 @@
     }
 
     protected override async Task OnParametersSetAsync() {
-        var currentId = Chat.Id;
+        var currentId = Chat?.Id;
         if (_previousChatId != currentId) {
             _showFullSizeAvatar = false;
             _previousChatId = currentId;
@@ -120,32 +147,34 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = (ChatId?)Chat.Id;
+        var chatId = Chat?.Id;
         if (chatId is null)
             return Model.Loading;
 
         var authorRules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
         var shareModel = await ShareUI.GetModel(chatId, cancellationToken).ConfigureAwait(false);
         Contact? peerContact = null;
-        if (chatId is PeerChatId)
+        var isActivePeerChat = false;
+        if (chatId is PeerChatId) {
             peerContact = await Contacts.GetForChat(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return new Model(authorRules.CanEditProperties(), shareModel, peerContact);
+            var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+            isActivePeerChat = selectedChatId == chatId;
+        }
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        return new Model(authorRules.CanEditProperties(), shareModel, peerContact, isActivePeerChat, enableIncompleteUI);
     }
 
     private void OnHideRightPanelClick()
         => PanelsUI.Right.SetIsVisible(false);
 
-    private void OnEditChatSettingsClick()
-        => _ = ModalUI.Show(new ChatSettingsModal.Model(Chat.Id));
-
-    private void OnShareClick(ShareModalModel shareModel)
-        => ShareUI.Share(shareModel);
-
     private void OnInviteClick()
-        => _ = ModalUI.Show(new AddMemberModal.Model(Chat.Id));
+        => _ = ModalUI.Show(new AddMemberModal.Model(Chat!.Id));
 
-    private void OnEditPeerContactClick(Contact peerContact)
-        => _ = ModalUI.Show(new PeerContactEditorModal.Model(peerContact.Id));
+    private Task OnStartPeerChatClick()
+        => History.NavigateTo(Links.Chat(Chat!.Id));
+
+    private Task OnCallClick()
+        => Task.CompletedTask;
 
     [JSInvokable]
     public void FullSizeAvatarHandler(bool show) {
@@ -158,7 +187,12 @@
 
     // Nested types
 
-    public sealed record Model(bool CanEditProperties, ShareModalModel? ShareModel, Contact? PeerContact) {
-        public static readonly Model Loading = new (false, null, null);
+    public sealed record Model(
+        bool CanEditProperties,
+        ShareModalModel? ShareModel,
+        Contact? PeerContact,
+        bool IsActivePeerChat,
+        bool EnableIncompleteUI) {
+        public static readonly Model Loading = new (false, null, null, false, false);
     }
 }

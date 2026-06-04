@@ -8,7 +8,7 @@
     var chat = m.Chat;
     var rules = chat.Rules;
     var shareChatTitle = chat.Id is PeerChatId
-        ? $"Share {chat.Title}'s contact"
+        ? "Share contact"
         : chat.IsPublic
             ? "Share chat"
             : "Share chat join link";

@@ -25,38 +25,53 @@
             </BadgeContent>
         </AuthorCircle>
         <div class="c-buttons">
-            @if (_enableIncompleteUI) {
-                <ButtonRound
-                    Class="btn-sm"
-                    Tooltip="Show call"
-                    TooltipPosition="FloatingPosition.Top"
-                    Click="OnCallClick">
-                    <i class="icon-phone text-2xl"></i>
-                </ButtonRound>
-            }
-
-            @if (OnEditClick.HasDelegate) {
-                <ButtonRound
-                    Class="btn-sm"
-                    Tooltip="Edit"
-                    TooltipPosition="FloatingPosition.Top"
-                    Click="@OnEditClick">
-                    <i class="icon-edit text-2xl"></i>
-                </ButtonRound>
-            }
-
-            @if (!IsOwn) {
-                <AddToContactsButton Author="@Author"/>
-            }
-
-            @if (_shareModalModel is not null) {
-                <ButtonRound
-                    Class="btn-sm"
-                    Tooltip="Share"
-                    TooltipPosition="FloatingPosition.Top"
-                    Click="@OnShareClick">
-                    <i class="icon-share text-2xl"></i>
-                </ButtonRound>
+            @if (IsOwn) {
+                @if (OnEditClick.HasDelegate) {
+                    <ButtonRound
+                        Class="btn-sm"
+                        Tooltip="Edit"
+                        TooltipPosition="FloatingPosition.Top"
+                        Click="@OnEditClick">
+                        <i class="icon-edit text-2xl"></i>
+                    </ButtonRound>
+                }
+                @if (_shareModalModel is not null) {
+                    <ButtonRound
+                        Class="btn-sm"
+                        Tooltip="Share"
+                        TooltipPosition="FloatingPosition.Top"
+                        Click="@OnShareClick">
+                        <i class="icon-share text-2xl"></i>
+                    </ButtonRound>
+                }
+            } else {
+                @if (_enableIncompleteUI) {
+                    <ButtonRound
+                        Class="btn-sm"
+                        Tooltip="Show call"
+                        TooltipPosition="FloatingPosition.Top"
+                        Click="OnCallClick">
+                        <i class="icon-phone text-2xl"></i>
+                    </ButtonRound>
+                }
+                @if (_peerChatId is { } peerChatId) {
+                    @if (!_isActivePeerChat) {
+                        <ButtonRound
+                            Class="btn-sm"
+                            Tooltip="Start chat"
+                            TooltipPosition="FloatingPosition.Top"
+                            Click="@OnStartPeerChat">
+                            <i class="icon-message-ellipse text-2xl"></i>
+                        </ButtonRound>
+                    }
+                    <ButtonRound
+                        Class="btn-sm"
+                        data-menu="@(MenuRef.New<ContactActionMenu>(peerChatId.Value).ToString())"
+                        data-menu-trigger="@MenuTrigger.Primary"
+                        data-menu-placement="@(FloatingPosition.BottomEnd.ToPositionString())">
+                        <i class="icon-more-vertical text-2xl"></i>
+                    </ButtonRound>
+                }
             }
         </div>
     </div>
@@ -82,9 +97,13 @@
     private ShareModalModel? _shareModalModel;
     private string? _peerOwnName;
     private bool _enableIncompleteUI;
+    private PeerChatId? _peerChatId;
+    private bool _isActivePeerChat;
 
     private IAuthors Authors => Hub.Authors;
     private IAvatars Avatars => Hub.Avatars;
+    private AuthorUI AuthorUI => Hub.AuthorUI;
+    private ChatUI ChatUI => Hub.ChatUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter, EditorRequired] public Author Author { get; set; } = null!;
@@ -99,6 +118,8 @@
         var cancellationToken = CancellationToken.None;
         _shareModalModel = await GetShareModalModel(cancellationToken);
         _peerOwnName = await GetPeerOwnName(cancellationToken);
+        _peerChatId = IsOwn ? null : await AuthorUI.GetPeerChatId(Author.Id, cancellationToken).ConfigureAwait(false);
+        _isActivePeerChat = _peerChatId is not null && ChatUI.SelectedChatId.Value == _peerChatId;
     }
 
     private async Task<string?> GetPeerOwnName(CancellationToken cancellationToken) {
@@ -130,6 +151,9 @@
         Modal.Close();
         await ModalUI.Show(new IncomingCallModal.Model(Author.Id));
     }
+
+    private Task OnStartPeerChat()
+        => AuthorUI.StartPeerChat(Author.Id);
 
     private void OnClose()
         => Modal.Close();

@@ -188,7 +188,7 @@ body.hoverable .tile-item.clickable.item-danger:hover,
     @apply leading-5 text-02;
 }
 .tile-item-body-caption {
-    @apply text-caption-6 font-normal text-03;
+    @apply text-caption-6 leading-3.5 font-normal text-03;
 }
 .tile-item-right {
     @apply flex-1 flex-x justify-end items-center;

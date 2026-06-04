@@ -1,0 +1,81 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedMenuBase<AppUIHub, ChatHeaderMenu.Model?>
+@{
+    var m = State.Value;
+    if (m == null)
+        return;
+}
+
+@if (m.CanEditProperties) {
+    <MenuEntry
+        Icon="icon-edit"
+        Text="Edit chat"
+        Click="@OnEditChatClick">
+    </MenuEntry>
+}
+@if (m.ShareModel is not null) {
+    <MenuEntry
+        Icon="icon-share"
+        Text="Share chat"
+        Click="@OnShareClick">
+    </MenuEntry>
+}
+@if (m.Chat is not null && m.CanLeave) {
+    <MenuEntrySeparator />
+    <MenuEntry
+        Class="warning-item"
+        Icon="icon-log-out"
+        Text="Leave chat"
+        Click="@OnLeaveClick">
+    </MenuEntry>
+}
+
+@code {
+    private ChatId _chatId = null!;
+
+    private IChats Chats => Hub.Chats;
+    private ChatUI ChatUI => Hub.ChatUI;
+
+    protected override async Task OnParametersSetAsync() {
+        if (Arguments is not [ var sChatId ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        _chatId = ChatId.Parse(sChatId);
+        await base.OnParametersSetAsync();
+    }
+
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var chat = await Chats.Get(Session, _chatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null)
+            return null;
+
+        var rules = await Chats.GetRules(Session, _chatId, cancellationToken).ConfigureAwait(false);
+        var shareModel = await ShareUI.GetModel(_chatId, cancellationToken).ConfigureAwait(false);
+        return new Model(chat, rules.CanEditProperties(), rules.CanLeave(), shareModel);
+    }
+
+    private async Task OnEditChatClick() {
+        await WhenClosed;
+        _ = ModalUI.Show(new ChatSettingsModal.Model(_chatId));
+    }
+
+    private async Task OnShareClick() {
+        var shareModel = State.Value?.ShareModel;
+        if (shareModel is null)
+            return;
+
+        await WhenClosed;
+        _ = ShareUI.Share(shareModel);
+    }
+
+    private async Task OnLeaveClick() {
+        var chat = State.Value?.Chat;
+        if (chat is null)
+            return;
+
+        await WhenClosed;
+        ChatUI.LeaveChat(chat);
+    }
+
+    public sealed record Model(Chat Chat, bool CanEditProperties, bool CanLeave, ShareModalModel? ShareModel);
+}

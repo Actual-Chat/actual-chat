@@ -44,8 +44,10 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
-        var chatId = chat.Id;
+        if (chat is null)
+            return new() { HideNotificationsToggle = true };
 
+        var chatId = chat.Id;
         if (chat.HasSingleAuthor || !chat.IsMember())
             return new() { HideNotificationsToggle = true };
 
@@ -54,13 +56,13 @@
         return new() {
             NotificationMode = chatUserSettings.NotificationMode,
             ShowSummarizationToggle = isOwner,
-            IsSummarized = Chat.IsSummarized ?? false,
+            IsSummarized = chat.IsSummarized ?? false,
         };
     }
 
     private Task OnNotificationToggleChanged(bool isMuted)
         => UICommander.RunLocal(ct
-            => UserSettingsUI.ChatUserSettings(Chat.Id)
+            => UserSettingsUI.ChatUserSettings(Chat!.Id)
                 .Update(x => x with { NotificationMode = isMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default, }, ct));
 
     private Task OnSummarizeToggleChanged(bool isSummarized) {
@@ -68,7 +70,7 @@
             return Task.CompletedTask;
 
         var update = Change.Update<ChatDiff>(new() { IsSummarized = isSummarized });
-        return UICommander.Run(new Chats_Change(Session, Chat.Id, null, update));
+        return UICommander.Run(new Chats_Change(Session, Chat!.Id, null, update));
     }
 
     // Nested types

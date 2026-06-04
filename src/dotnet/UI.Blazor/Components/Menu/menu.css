@@ -20,6 +20,7 @@
 /* Normal menu container */
 .ac-menu {
     @apply hidden absolute z-menu;
+    @apply min-w-40;
     @apply p-1;
     @apply rounded-lg border-modal border;
     @apply overflow-y-auto overflow-x-hidden;

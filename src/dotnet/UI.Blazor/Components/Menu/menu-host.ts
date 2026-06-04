@@ -1,4 +1,4 @@
-import { merge, Subject, takeUntil } from 'rxjs';
+import { merge, Subject, Subscription, takeUntil } from 'rxjs';
 import {
     computePosition,
     flip,
@@ -46,6 +46,7 @@ export class MenuHost implements Disposable {
     private readonly disposed$: Subject<void> = new Subject<void>();
     private menu: Menu | null;
     private currentMenuRef: string;
+    private escapeSubscription: Subscription | null = null;
 
     public static create(blazorRef: DotNet.DotNetObject): MenuHost {
         return new MenuHost(blazorRef);
@@ -64,14 +65,6 @@ export class MenuHost implements Disposable {
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: PointerEvent) => this.onPointerOver(event));
 
-        Escapist.escapeEvents()
-            .pipe(takeUntil(this.disposed$))
-            .subscribe((event: KeyboardEvent) => {
-                if (this.menu != null) {
-                    stopEvent(event);
-                    this.hide();
-                }
-            });
         ScreenOrientation.change$
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => {
@@ -181,6 +174,13 @@ export class MenuHost implements Disposable {
             throw new Error(`${logScope}.show: menu == null.`);
 
         this.menu = menu;
+        this.escapeSubscription?.unsubscribe();
+        this.escapeSubscription = Escapist.escapeEvents()
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: KeyboardEvent) => {
+                stopEvent(event);
+                this.hide();
+            });
         void this.blazorRef.invokeMethodAsync('OnShowRequest', menu.id, menu.menuRef, menu.isHoverMenu);
         this.removeMessageMark(this.currentMenuRef);
         this.currentMenuRef = menu.menuRef;
@@ -212,6 +212,8 @@ export class MenuHost implements Disposable {
         }
 
         this.menu = null;
+        this.escapeSubscription?.unsubscribe();
+        this.escapeSubscription = null;
         // Hide (un-render) it
         void this.blazorRef.invokeMethodAsync('OnHideRequest', menu.id);
         this.removeMessageMark(this.currentMenuRef);

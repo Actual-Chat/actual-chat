@@ -1,0 +1,85 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Contacts
+@inherits ComputedMenuBase<AppUIHub, ContactActionMenu.Model?>
+@{
+    var m = State.Value;
+    if (m == null)
+        return;
+}
+
+@if (m.Contact is not null) {
+    <MenuEntry
+        Icon="icon-edit"
+        Text="Edit contact"
+        Click="@OnEditClick">
+    </MenuEntry>
+}
+@if (m.ShareModel is not null) {
+    <MenuEntry
+        Icon="icon-share"
+        Text="Share"
+        Click="@OnShareClick">
+    </MenuEntry>
+}
+@if (m.EnableIncompleteUI) {
+    <MenuEntrySeparator />
+    <MenuEntry
+        Class="warning-item"
+        Icon="icon-flag"
+        Text="Block user"
+        Click="@OnBlockClick">
+    </MenuEntry>
+    <MenuEntry
+        Class="warning-item"
+        Icon="icon-trash02"
+        Text="Remove contact"
+        Click="@OnRemoveContactClick">
+    </MenuEntry>
+}
+
+@code {
+    private PeerChatId _peerChatId = null!;
+
+    private IContacts Contacts => Hub.Contacts;
+
+    protected override async Task OnParametersSetAsync() {
+        if (Arguments is not [ var sPeerChatId ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        _peerChatId = PeerChatId.Parse(sPeerChatId);
+        await base.OnParametersSetAsync();
+    }
+
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var contact = await Contacts.GetForChat(Session, _peerChatId, cancellationToken).ConfigureAwait(false);
+        var shareModel = await ShareUI.GetModel(_peerChatId, cancellationToken).ConfigureAwait(false);
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        return new Model(contact, shareModel, enableIncompleteUI);
+    }
+
+    private async Task OnEditClick() {
+        var contact = State.Value?.Contact;
+        if (contact is null)
+            return;
+
+        await WhenClosed;
+        _ = ModalUI.Show(new PeerContactEditorModal.Model(contact.Id));
+    }
+
+    private async Task OnShareClick() {
+        var shareModel = State.Value?.ShareModel;
+        if (shareModel is null)
+            return;
+
+        await WhenClosed;
+        _ = ShareUI.Share(shareModel);
+    }
+
+    private Task OnBlockClick()
+        => Task.CompletedTask;
+
+    private Task OnRemoveContactClick()
+        => Task.CompletedTask;
+
+    public sealed record Model(Contact? Contact, ShareModalModel? ShareModel, bool EnableIncompleteUI);
+}

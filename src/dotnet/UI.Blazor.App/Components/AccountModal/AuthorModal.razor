@@ -23,13 +23,7 @@
         title = "Your profile";
     else if (author.IsAnonymous)
         title = "Anonymous profile";
-    else
-        cls += " wide-dialog-buttons";
 
-    var tileCls = "anonymous-chat-toggle";
-    if (m.OnlyAnonymousChatAllowed)
-        tileCls += " unhovered tile-selected";
-    var toggleValue = m.OnlyAnonymousChatAllowed || _anonymousChat;
     EventCallback onEditClick = default;
     if (m.IsOwnAuthor) {
         if (!author.IsAnonymous)
@@ -39,7 +33,7 @@
     }
 }
 
-<DialogFrame Title="@title" Class="@cls" HasCloseButton="true">
+<DialogFrame Title="@title" Class="@cls" HasCloseButton="true" Buttons="@(author.IsAnonymous ? RenderAnonymousButtons(author) : null)">
     <Body>
     <AuthorModalHeader
         Author="author"
@@ -53,97 +47,10 @@
             EditMemberModel="@m.EditMemberModel"/>
     </FormBlock>
     </Body>
-    <Buttons>
-        @if (m.IsOwnAuthor) {
-            if (!author.IsAnonymous) {
-                <Button Class="btn-modal btn-primary" Click="OnChangeAvatarClicked">
-                    <Icon><i class="icon-sync text-lg"></i></Icon>
-                    <Title>Change avatar</Title>
-                </Button>
-            } else {
-                <Button Class="btn-modal" Click="@(_ => OnEditAvatarClick(author))">
-                    <Icon><i class="icon-sync text-lg md:hidden"></i></Icon>
-                    <Title>Edit avatar</Title>
-                </Button>
-                <Button Class="btn-modal btn-danger" Click="OnRevealClicked">
-                    <Icon><i class="icon-eye text-xl md:hidden"></i></Icon>
-                    <Title>Reveal</Title>
-                </Button>
-            }
-        } else if (author.IsAnonymous) {
-            <Button Class="btn-modal btn-primary" Click="OnCancel">OK</Button>
-        } else {
-            @if (m.CanStartPeerChat) {
-                var authorName = author?.Avatar.Name ?? "";
-                if (!m.OnlyAnonymousChatAllowed) {
-                    if (Features_EnableAnonymousChat.IsEnabled && _anonymousChat) {
-                        <Button Class="btn-modal btn-primary anonymous-chat-btn" Click="OnStartAnonymousPeerChat">
-                            <i class="icon-question-mark-bubble text-xl"></i>
-                            <span class="c-title">
-                                <span>Chat with</span>
-                                <span class="c-name">@authorName</span>
-                            </span>
-                        </Button>
-                    } else {
-                        <Button
-                            Class="btn-modal btn-primary start-chat-btn"
-                            Click="OnStartPeerChat">
-                            <i class="icon-message-ellipse text-xl"></i>
-                            <span class="c-title">
-                                <span>Chat with</span>
-                                <span class="c-name">@authorName</span>
-                            </span>
-                        </Button>
-                    }
-                } else {
-                    if (Features_EnableAnonymousChat.IsEnabled && m.EnableIncompleteUI) {
-                        <Button Class="btn-modal btn-primary anonymous-chat-btn" Click="OnStartAnonymousPeerChat">
-                            <i class="icon-question-mark-bubble text-xl"></i>
-                            <span class="c-title">
-                                <span>Chat with</span>
-                                <span class="c-name">@authorName</span>
-                            </span>
-                        </Button>
-                    }
-                }
-
-                @if (Features_EnableAnonymousChat.IsEnabled && m.EnableIncompleteUI) {
-                    <div class="tile-wrapper">
-                        <div class="c-incut @(toggleValue ? "show" : "")">
-                            <div class="c-info">
-                                <i class="icon-alert-triangle text-lg text-warning"></i>
-                                <span>
-                                    Anonymous chats hide user identities and don't transmit or record your voice, though still
-                                    show real-time transcription. And you can reveal you real identity there at any moment.
-                                </span>
-                            </div>
-                        </div>
-
-                        <TileItem Click="@OnChatTypeChanged" Class="@tileCls">
-                            <Content>
-                                Anonymous chat
-                            </Content>
-                            <Caption>
-                                Chat can be direct or anonymous.
-                            </Caption>
-                            <Right>
-                                <Toggle Class="mr-2"
-                                        IsChecked="@toggleValue"
-                                        IsDisabled="@m.OnlyAnonymousChatAllowed"/>
-                            </Right>
-                        </TileItem>
-                    </div>
-                }
-            } else {
-                <Button Class="btn-modal" Click="OnCancel">Close</Button>
-            }
-        }
-    </Buttons>
 </DialogFrame>
 
 @code {
     private bool _isAutoClosed;
-    private bool _anonymousChat;
 
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
@@ -202,6 +109,21 @@
     private void OnCancel()
         => Modal.Close();
 
+    private RenderFragment RenderAnonymousButtons(Author author) => @<text>
+        @if (State.Value!.IsOwnAuthor) {
+            <Button Class="btn-modal" Click="@(_ => OnEditAvatarClick(author))">
+                <Icon><i class="icon-sync text-lg md:hidden"></i></Icon>
+                <Title>Edit avatar</Title>
+            </Button>
+            <Button Class="btn-modal btn-danger" Click="OnRevealClicked">
+                <Icon><i class="icon-eye text-xl md:hidden"></i></Icon>
+                <Title>Reveal</Title>
+            </Button>
+        } else {
+            <Button Class="btn-modal btn-primary" Click="OnCancel">OK</Button>
+        }
+    </text>;
+
     private async Task OnRevealClicked() {
         var revealed = false;
         var modelRef = await ModalUI.Show(new AvatarSelectModal.RevealModel(ChatId, SetAvatar));
@@ -214,27 +136,6 @@
             await UICommander.Run(command);
             revealed = true;
         }
-    }
-
-    private async Task OnChangeAvatarClicked() {
-        Modal.Close();
-        await ModalUI.Show(new AvatarSelectModal.Model(AuthorId.ChatId, false, OnAvatarSelected));
-    }
-
-    private void OnChatTypeChanged() {
-        _anonymousChat = !_anonymousChat;
-        StateHasChanged();
-    }
-
-    private Task OnStartPeerChat()
-        => AuthorUI.StartPeerChat(AuthorId);
-
-    private Task OnStartAnonymousPeerChat()
-        => AuthorUI.StartAnonymousPeerChat(AuthorId);
-
-    private async Task OnAvatarSelected(AvatarFull avatar) {
-        var command = new Authors_SetAvatar(Session, AuthorId.ChatId.GetThreadOutermostParentOrSelf(), avatar.Id);
-        await UICommander.Run(command);
     }
 
     private void OnSettingsClick() {
