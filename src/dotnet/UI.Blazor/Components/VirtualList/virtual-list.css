@@ -2,6 +2,7 @@
     @apply flex flex-col items-center;
     height: 100%;
     overflow-y: scroll;
+    scrollbar-gutter: stable;
     -ms-overflow-style: none;
     overflow-anchor: none;
     will-change: transform;

@@ -52,7 +52,7 @@ export class SideNav extends DisposableBag {
         this._isPulling = value;
         this.element.classList.toggle('pulling', value);
         if (value)
-            ScrollController.startScrollLockAll();
+            ScrollController.stopScrollAll();
     }
 
     public static create(
