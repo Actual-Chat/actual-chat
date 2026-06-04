@@ -92,4 +92,40 @@
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)template.xunit.runner.json" CopyToOutputDirectory="PreserveNewest" Link="$(AssemblyName).xunit.runner.json"/>
   </ItemGroup>
+
+  <!-- RID-agnostic builds (plain `build`/`test`, no `-r`) copy runtimes/<rid>/native for every
+       platform, which bloats each test bin by ~hundreds of MB of unusable foreign-OS/arch natives
+       and their pdbs. Keep only the host RID's runtimes; `publish -r <rid>` is left untouched.
+       RID props are computed inside the target: NETCoreSdkPortableRuntimeIdentifier is set by SDK
+       targets imported after this file, so it isn't available at .props evaluation time. -->
+  <Target Name="TrimForeignRuntimeAssets"
+          Condition="'$(RuntimeIdentifier)' == '' and '$(NETCoreSdkPortableRuntimeIdentifier)' != ''"
+          AfterTargets="ResolvePackageAssets"
+          BeforeTargets="ResolveLockFileCopyLocalFiles;ResolveReferences">
+    <PropertyGroup>
+      <_HostRid>$(NETCoreSdkPortableRuntimeIdentifier)</_HostRid>
+      <_HostOs>$(_HostRid.Substring(0, $(_HostRid.IndexOf('-'))))</_HostOs>
+      <_KeepRids>$(_HostRid);$(_HostOs)</_KeepRids>
+      <_KeepRids Condition="'$(_HostOs)' != 'win'">$(_KeepRids);unix</_KeepRids>
+      <_KeepRidsPattern>$(_KeepRids.Replace(';', '|'))</_KeepRidsPattern>
+    </PropertyGroup>
+    <ItemGroup>
+      <RuntimeTargetsCopyLocalItems Remove="@(RuntimeTargetsCopyLocalItems)"
+        Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('%(RuntimeTargetsCopyLocalItems.RuntimeIdentifier)', '^($(_KeepRidsPattern))$'))" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Drop native debug symbols (e.g. libSkiaSharp.pdb ~80MB, libHarfBuzzSharp.pdb ~20MB): only
+       useful for stepping into the C++ libraries themselves. They land under runtimes\ as reference
+       related files (AllowedReferenceRelatedFileExtensions includes .pdb above) via several copy
+       paths, so they're deleted from the output after copy. Native binaries and managed (bin-root)
+       pdbs are untouched. -->
+  <Target Name="TrimNativeRuntimePdbs"
+          AfterTargets="CopyFilesToOutputDirectory"
+          Condition="'$(OutDir)' != ''">
+    <ItemGroup>
+      <_NativeRuntimePdb Include="$(OutDir)runtimes\**\*.pdb" />
+    </ItemGroup>
+    <Delete Files="@(_NativeRuntimePdb)" />
+  </Target>
 </Project>
