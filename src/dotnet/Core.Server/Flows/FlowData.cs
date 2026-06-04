@@ -10,6 +10,7 @@ public interface IFlowData
     int DataVersion { get; }
     byte[] ResultData { get; }
     bool IsCompleted { get; }
+    bool IsFailed { get; }
     byte[] Data { get; }
     string Console { get; }
 
@@ -108,6 +109,11 @@ public partial class FlowData<TFlow> : IFlowData
         ? flow.UntypedResult is not null
         : ResultData.Length != 0;
 
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public bool IsFailed => _flow is { } flow
+        ? flow.UntypedResult?.Error is not null
+        : _resultData is { Length: > 0 } resultData && ResultHasError(resultData);
+
     public static FlowData<TFlow> FromFlow(TFlow flow)
         => new FlowData<TFlow>() {
             Id = flow.Id,
@@ -157,6 +163,18 @@ public partial class FlowData<TFlow> : IFlowData
     }
 
     // Private methods
+
+    private static bool ResultHasError(byte[] resultData)
+    {
+        try {
+            var result = (IResult?)FlowData.ResultSerializer.Read(resultData, typeof(IResult), out _);
+            return result?.Error is not null;
+        }
+        catch {
+            // A completed flow whose result can't be deserialized is treated as failed
+            return true;
+        }
+    }
 
     private FlowData<TFlow> SetFlow(TFlow flow)
     {

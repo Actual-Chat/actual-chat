@@ -7,6 +7,7 @@ namespace ActualChat.Flows.Db;
 [Table("_Flows")]
 [Index(nameof(IsCompleted), nameof(Version))]
 [Index(nameof(Version), nameof(IsCompleted))]
+[Index(nameof(IsFailed), nameof(Version))]
 public sealed class DbFlow
 {
     [DbKey, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -16,6 +17,7 @@ public sealed class DbFlow
     public int DataVersion { get; set; }
 
     public bool IsCompleted { get; set; }
+    public bool IsFailed { get; set; }
     public byte[]? ResultData { get; set; }
     public byte[]? Data { get; set; }
     public string Console { get; set; } = "";
@@ -39,6 +41,7 @@ public sealed class DbFlow
         Data = flowData.Data;
         Console = flowData.Console;
         IsCompleted = flowData.IsCompleted;
+        IsFailed = flowData.IsFailed;
     }
 
     public IFlowData? ToFlowData(Type flowType)
