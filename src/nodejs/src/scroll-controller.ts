@@ -146,9 +146,10 @@ export class ScrollController {
     }
 
     public getCurrentScrollLimits(): { min: number, max: number } {
+        // null edge => no limit that way (free scroll): ±Infinity, so the rubber-band and clamp never engage.
         const raw = this.getLimits();
-        const min = raw.min ?? 0;
-        const max = raw.max ?? this.element.scrollHeight - this.element.clientHeight;
+        const min = raw.min ?? Number.NEGATIVE_INFINITY;
+        const max = raw.max ?? Number.POSITIVE_INFINITY;
         return {
             min: min,
             max: max < min ? min : max,
