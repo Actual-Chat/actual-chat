@@ -110,13 +110,12 @@ export function detectSupportedCodecs(width = 1920, height = 1080): Promise<Code
 // priority order. The actual encoder profile string is then derived from
 // getCodecForCategory(category, w, h). Reduces startup probes ~7× vs per-profile.
 //
-// VP9 selection disabled — see commit 3ae12d7f8. To re-enable VP9, uncomment
+// VP9 and AV1 selection disabled — see commit 3ae12d7f8. To re-enable, uncomment
 // the entry. Detection, modal-time probe, recorder probe, default-codec
 // fallback, and audience ordering all derive from this list (directly, or
 // via `supportedCodecs`), so a single change here cascades everywhere.
-// AV1 is excluded on mobile at module init below (HW scarce, SW too slow).
 const REPRESENTATIVE_CODECS: { category: CodecInfo['category']; name: string; codec: string }[] = [
-    { category: 'av1',  name: 'AV1 Main L3.0',      codec: 'av01.0.05M.08' },
+    // { category: 'av1',  name: 'AV1 Main L3.0',      codec: 'av01.0.05M.08' },
     { category: 'hevc', name: 'HEVC Main L3.1',     codec: 'hev1.1.6.L93.B0' },
     // { category: 'vp9',  name: 'VP9 Profile 0 L3.1', codec: 'vp09.00.31.08' },
     { category: 'h264', name: 'H.264 Main 3.1',     codec: 'avc1.4D401F' },
@@ -490,15 +489,6 @@ export function getExcludedDecoderCodecs(): string[] {
     return [...excludedDecoderCodecs];
 }
 
-// AV1 encoder excluded on mobile by default — HW encode is scarce
-// (Snapdragon 8 Gen 2+ only) and SW is too slow for realtime. Decoder
-// stays enabled: mobile devices with AV1 HW decode can receive AV1
-// streams from desktop senders.
-if (DeviceInfo.isMobile) {
-    excludedEncoderCodecs.add('av1');
-    infoLog?.log('Mobile device — AV1 encoder excluded by default.');
-}
-
 let decoderCodecCache: Promise<string[]> | null = null;
 
 export function detectSupportedDecoderCodecs(): Promise<string[]> {
@@ -514,18 +504,8 @@ async function detectSupportedDecoderCodecsUncached(): Promise<string[]> {
         return codecs;
     }
 
-    if (!excludedDecoderCodecs.has('av1')) {
-        try {
-            const av1Supported = await isDecoderCodecSupported('av01.0.08M.08', 1280, 720)
-                || await isDecoderCodecSupported('av01.0.05M.08', 1280, 720);
-            infoLog?.log(`Decoder AV1: supported=${av1Supported}`);
-            if (av1Supported) codecs.push('av1');
-        } catch (e) {
-            warnLog?.log(`Decoder AV1: error=${e}`);
-        }
-    } else {
-        warnLog?.log(`Decoder AV1: excluded at runtime`);
-    }
+    // AV1 — TEMPORARILY DISABLED.
+    infoLog?.log('Decoder AV1: temporarily disabled');
 
     if (!excludedDecoderCodecs.has('hevc')) {
         let hevcSupported = false;
