@@ -42,7 +42,7 @@ public class FlowsListTest(ITestOutputHelper @out)
             dbContext.Flows.AddRange(seed);
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            // A pending resume event makes {prefix}A:susp count as Suspended. delay_until must be
+            // A pending resume event makes {prefix}A:susp count as Scheduled. delay_until must be
             // in the future, otherwise the AppHost's DbEventProcessor picks it up mid-test and the
             // event stops being pending.
             var suspUuid = $"FlowResumeEvent({suspId})-at-test";
@@ -60,7 +60,7 @@ public class FlowsListTest(ITestOutputHelper @out)
         var aggA = stats.Single(a => a.Name == $"{prefix}A");
         aggA.Completed.Should().Be(1);
         aggA.Failed.Should().Be(1);
-        aggA.Suspended.Should().Be(1);
+        aggA.Scheduled.Should().Be(1);
         aggA.Idle.Should().Be(1);
         aggA.Stuck.Should().Be(0);
 
@@ -69,7 +69,7 @@ public class FlowsListTest(ITestOutputHelper @out)
         rowById[$"{prefix}A:ok"].Status.Should().Be(FlowStatus.Completed);
         rowById[$"{prefix}A:bad"].Status.Should().Be(FlowStatus.Failed);
         rowById[$"{prefix}A:idle"].Status.Should().Be(FlowStatus.Idle);
-        rowById[suspId].Status.Should().Be(FlowStatus.Suspended);
+        rowById[suspId].Status.Should().Be(FlowStatus.Scheduled);
         rowById[stuckId].Status.Should().Be(FlowStatus.Stuck);
 
         var problematic = await backend.List(default, new FlowsQuery(ProblematicOnly: true, Limit: 10_000), cancellationToken);

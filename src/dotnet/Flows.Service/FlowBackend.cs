@@ -101,7 +101,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
                 SELECT split_part(f.id, ':', 1) AS "Name",
                        COUNT(*) FILTER (WHERE f.is_completed AND NOT f.is_failed)::int AS "Completed",
                        COUNT(*) FILTER (WHERE f.is_completed AND f.is_failed)::int AS "Failed",
-                       COUNT(*) FILTER (WHERE NOT f.is_completed AND r.id IS NOT NULL)::int AS "Suspended",
+                       COUNT(*) FILTER (WHERE NOT f.is_completed AND r.id IS NOT NULL)::int AS "Scheduled",
                        COUNT(*) FILTER (WHERE NOT f.is_completed AND r.id IS NULL)::int AS "NoEvent"
                 FROM _flows f
                 LEFT JOIN (
@@ -116,7 +116,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         return aggRows
             .Select(a => {
                 var isPeriodic = periodicNameSet.Contains(a.Name);
-                return new FlowTypeStat(a.Name, a.Completed, a.Failed, a.Suspended,
+                return new FlowTypeStat(a.Name, a.Completed, a.Failed, a.Scheduled,
                     Stuck: isPeriodic ? a.NoEvent : 0,
                     Idle: isPeriodic ? 0 : a.NoEvent);
             })
@@ -344,7 +344,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
     private static FlowStatus GetStatus(bool isCompleted, bool isFailed, bool hasResume, bool isPeriodic)
         => isCompleted
             ? isFailed ? FlowStatus.Failed : FlowStatus.Completed
-            : hasResume ? FlowStatus.Suspended
+            : hasResume ? FlowStatus.Scheduled
             : isPeriodic ? FlowStatus.Stuck : FlowStatus.Idle;
 
     // Nested types
@@ -354,7 +354,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         public string Name { get; set; } = "";
         public int Completed { get; set; }
         public int Failed { get; set; }
-        public int Suspended { get; set; }
+        public int Scheduled { get; set; }
         public int NoEvent { get; set; }
     }
 

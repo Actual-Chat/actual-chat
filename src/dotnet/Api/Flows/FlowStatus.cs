@@ -4,7 +4,7 @@ public enum FlowStatus
 {
     Completed = 0,
     Failed,
-    Suspended,
+    Scheduled,
     Stuck,
     Idle,
 }
