@@ -6,7 +6,10 @@ namespace ActualChat.Chat.Flows;
 // the right index table by its content type. Media is indexed only once its blob is uploaded;
 // entries with not-yet-uploaded media are rechecked via a delayed self-resume.
 
-[Flow(DelayQuanta = 30)]
+// ResumeTimeout > 15s routes resume events to the SlowQueue (see QueueRef.For) and gives a
+// full quota Run time to commit its cursor. Without it a backfill Run that overruns the 15s
+// default is cancelled before committing, so it restarts from the same cursor and never advances.
+[Flow(DelayQuanta = 30, ResumeTimeout = 5 * 60)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntry, ChatEntryId>
 {
