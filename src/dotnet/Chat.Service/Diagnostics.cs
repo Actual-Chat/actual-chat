@@ -36,7 +36,7 @@ public class Diagnostics(IServiceProvider services) : IDiagnostics
     public virtual async Task<FlowSummary[]> GetFlows(Session session, FlowsQuery query, CancellationToken cancellationToken)
     {
         await RequireAdmin(session, cancellationToken).ConfigureAwait(false);
-        return await FlowBackend.List(query, cancellationToken).ConfigureAwait(false);
+        return await FlowBackend.List(default, query, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<FlowDetails?> GetFlowDetails(Session session, string flowId, CancellationToken cancellationToken)

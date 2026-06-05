@@ -119,8 +119,8 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
             .ToArray();
     }
 
-    // Regular RPC method! Pinned to a single node via ShardKeyResolver<FlowsQuery>.
-    public virtual async Task<FlowSummary[]> List(FlowsQuery query, CancellationToken cancellationToken)
+    // Regular RPC method! Pinned to a single node via ShardKeyResolver<Unit> (the leading Unit arg).
+    public virtual async Task<FlowSummary[]> List(Unit unit, FlowsQuery query, CancellationToken cancellationToken)
     {
         var periodicNameSet = GetPeriodicNames();
         var periodicNames = periodicNameSet.ToArray();
