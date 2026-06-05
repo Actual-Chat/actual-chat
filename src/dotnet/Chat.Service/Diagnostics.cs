@@ -1,6 +1,4 @@
 using ActualChat.Flows;
-using ActualChat.Flows.Infrastructure;
-using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
@@ -11,16 +9,12 @@ public class Diagnostics(IServiceProvider services) : IDiagnostics
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private DiagnosticsBackendLocal LocalBackend { get; } = services.GetRequiredService<DiagnosticsBackendLocal>();
-    private MeshWatcher MeshWatcher { get; } = services.GetRequiredService<MeshWatcher>();
-    private IDiagnosticsBackend Backend => field ??= services.GetRequiredService<IDiagnosticsBackend>();
     private IFlowBackend FlowBackend => field ??= services.GetRequiredService<IFlowBackend>();
     private FlowHub FlowHub => field ??= services.FlowHub();
 
     public virtual async Task<MeshDiagInfo> GetMeshDiagInfo(Session session, string tag, CancellationToken cancellationToken)
     {
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (!account.IsAdmin)
-            throw StandardError.Unauthorized("Only admins can access.");
+        await RequireAdmin(session, cancellationToken).ConfigureAwait(false);
 
         // NOTE: Can't use diagnosticsBackend.GetMeshDiagInfo with theNode.Ref because it fails with NRE when launched in AspireHost.
         // ProxyTarget property of IDiagnosticsBackendProxy is NULL.
@@ -35,27 +29,19 @@ public class Diagnostics(IServiceProvider services) : IDiagnostics
 
     public virtual async Task<FlowTypeStat[]> GetFlowStats(Session session, CancellationToken cancellationToken)
     {
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (!account.IsAdmin)
-            throw StandardError.Unauthorized("Only admins can access.");
-
+        await RequireAdmin(session, cancellationToken).ConfigureAwait(false);
         return await FlowBackend.ListStats(default, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<FlowSummary[]> GetFlows(Session session, FlowsQuery query, CancellationToken cancellationToken)
     {
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (!account.IsAdmin)
-            throw StandardError.Unauthorized("Only admins can access.");
-
+        await RequireAdmin(session, cancellationToken).ConfigureAwait(false);
         return await FlowBackend.List(query, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<FlowDetails?> GetFlowDetails(Session session, string flowId, CancellationToken cancellationToken)
     {
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (!account.IsAdmin)
-            throw StandardError.Unauthorized("Only admins can access.");
+        await RequireAdmin(session, cancellationToken).ConfigureAwait(false);
 
         if (!FlowId.TryParse(flowId, out var id))
             return null;
@@ -71,6 +57,13 @@ public class Diagnostics(IServiceProvider services) : IDiagnostics
     }
 
     // Private methods
+
+    private async Task RequireAdmin(Session session, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (!account.IsAdmin)
+            throw StandardError.Unauthorized("Only admins can access.");
+    }
 
     private static IEnumerable<MeshDiagInfo> Flatten(MeshDiagInfo[] infos, HashSet<string> nodeIds)
     {
