@@ -2,9 +2,11 @@ using ActualChat.Diagnostics;
 using ActualChat.Kvas;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.App.Events;
+using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Diagnostics;
+using Microsoft.JSInterop;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
@@ -28,6 +30,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private CpuTimestamp _lastEndAnchorVisibleAt;
     private CpuTimestamp _newMessagesLineShownAt;
     private long _debouncedReadEntryLid;
+
+    private static readonly string HoverMenuJSCreateMethod = $"{BlazorUIAppModule.ImportName}.ChatHoverMenu.create";
+    private readonly Dictionary<ChatEntryId, MessageHoverMenu> _hoverMenus = new();
+    private Task<IJSObjectReference>? _hoverMenuJsRefTask;
+    private DotNetObjectReference<ChatView>? _hoverMenuBlazorRef;
+    private bool _isHoverMenuDisposed;
+    private ChatEntryId? _activeHoverEntryId;
 
     private Chat.Chat Chat => ChatContext.Chat;
     private AppUIHub Hub { get; }
@@ -116,6 +125,21 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     protected override Task OnParametersSetAsync()
         => NavigateToUrlFragment();
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        _hoverMenuBlazorRef = DotNetObjectReference.Create(this);
+        _hoverMenuJsRefTask = Hub.JS
+            .InvokeAsync<IJSObjectReference>(HoverMenuJSCreateMethod, _hoverMenuBlazorRef)
+            .AsTask();
+        var jsRef = await _hoverMenuJsRefTask.ConfigureAwait(true);
+        // Dispose may have run while the JS controller was being created — tear it down right away
+        if (_isHoverMenuDisposed)
+            await jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+    }
+
     public void Dispose()
     {
         if (_disposeTokenSource.IsCancellationRequested)
@@ -125,6 +149,48 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         _whenInitializedSource.TrySetCanceled();
         _readPositionLease.DisposeSilently();
         Nav.LocationChanged -= OnLocationChanged;
+        _isHoverMenuDisposed = true;
+        if (_hoverMenuJsRefTask is { IsCompletedSuccessfully: true } jsRefTask)
+            _ = jsRefTask.Result.DisposeSilentlyAsync("dispose");
+        _hoverMenuBlazorRef.DisposeSilently();
+    }
+
+    // Hover menu coordinator: each ChatEntryMessageView registers its inline MessageHoverMenu here by
+    // entry id; the JS-side hover-intent (180ms) routes show/hide to exactly one menu at a time.
+
+    public void RegisterHoverMenu(ChatEntryId entryId, MessageHoverMenu menu)
+        => _hoverMenus[entryId] = menu;
+
+    public void UnregisterHoverMenu(ChatEntryId entryId, MessageHoverMenu menu)
+    {
+        if (_hoverMenus.TryGetValue(entryId, out var registered) && ReferenceEquals(registered, menu))
+            _hoverMenus.Remove(entryId);
+    }
+
+    [JSInvokable]
+    public void OnHoverShow(string entryId)
+    {
+        if (ChatEntryId.TryParse(entryId) is not { } id || !_hoverMenus.TryGetValue(id, out var menu))
+            return; // Recycled or scrolled off — don't show a stale menu
+        if (_activeHoverEntryId == id)
+            return;
+
+        HideActiveHoverMenu();
+        _activeHoverEntryId = id;
+        menu.Show();
+    }
+
+    [JSInvokable]
+    public void OnHoverHide()
+    {
+        HideActiveHoverMenu();
+        _activeHoverEntryId = null;
+    }
+
+    private void HideActiveHoverMenu()
+    {
+        if (_activeHoverEntryId is { } activeId && _hoverMenus.TryGetValue(activeId, out var active))
+            active.Hide();
     }
 
     public async Task NavigateToNext(long entryLid, bool highlight, bool updateReadPosition = false)

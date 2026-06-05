@@ -25,6 +25,7 @@ export * from './Components/ChatMessageEditor/chat-message-editor';
 export * from './Components/ChatMessageEditor/bell-svg.lit';
 export * from './Components/ChatNotFound/chat-not-found-svg.lit';
 export * from './Components/ChatView/chat-view';
+export * from './Components/ChatView/chat-hover-menu';
 export * from './Components/ChatView/EmptyChatContent/empty-chat-svg.lit';
 export * from './Components/ChatView/EmptyChatContent/empty-search-chat-svg.lit';
 export * from './Components/ChatView/Items/ChatEntryMessageInternalView/chat-entry-message-internal-view';
