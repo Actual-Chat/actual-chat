@@ -1698,7 +1698,8 @@ export class VirtualList {
         const vr = this.ref.getBoundingClientRect();
         const tr = navigateTarget.getBoundingClientRect();
         const elementTop = this.ref.scrollTop + (tr.top - vr.top);
-        const target = blockPosition === 'center' ? elementTop - (vr.height - tr.height) / 2
+        // 'center' puts the message's BEGINNING (not its middle) at the viewport center.
+        const target = blockPosition === 'center' ? elementTop - vr.height / 2
             : blockPosition === 'end' ? elementTop - (vr.height - tr.height)
                 : elementTop;
         this.scrollController.scrollTo(target, { smooth: useSmoothScroll });
