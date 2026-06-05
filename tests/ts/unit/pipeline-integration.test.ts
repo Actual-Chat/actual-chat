@@ -15,7 +15,8 @@ import { forceKeyframeOnDimChange } from '../../../src/dotnet/UI.Blazor.App/Serv
 import { dropDimMismatch } from '../../../src/dotnet/UI.Blazor.App/Services/Video/operators/dim-mismatch-guard';
 import {
     normalizeFrame,
-    spatialize,
+    downscale,
+    type DownscalerLike,
     type LayerSpec,
 } from '../../../src/dotnet/UI.Blazor.App/Services/Video/operators/downscale';
 import { applyKeyframePolicy } from '../../../src/dotnet/UI.Blazor.App/Services/Video/operators/apply-keyframe-policy';
@@ -177,6 +178,25 @@ interface MockGlobals {
 // ============================================================================
 // Fakes for collaborators (sender, decoder)
 // ============================================================================
+
+// Fake real-downscale: top tier = input, lower tiers = fresh mocks at the
+// target dims. Stands in for the WebGL/Canvas downscaler (no GL in vitest);
+// encode() derives wire dims from the ladder config, not the frame, so the
+// mock dims are irrelevant to assertions here.
+class FakeDownscaler implements DownscalerLike {
+    private next = 9000;
+    // eslint-disable-next-line @typescript-eslint/require-await
+    async process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]> {
+        const topIdx = layers.length - 1;
+        const out: VideoFrame[] = [];
+        for (let i = 0; i < layers.length; i++) {
+            out.push(i === topIdx
+                ? input
+                : (new MockVideoFrame(this.next++, layers[i].width, layers[i].height) as unknown as VideoFrame));
+        }
+        return out;
+    }
+}
 
 class FakeSender implements StreamSenderLike {
     sent: VideoStreamFrame[] = [];
@@ -358,8 +378,8 @@ describe('video pipeline integration', () => {
             attachSourceDims(),
             forceKeyframeOnDimChange(),
             dropDimMismatch({ getExpectedDims: () => encDims }),
-            normalizeFrame({ ladder: ladderController, isCamera: false, isFrontCamera: false, isIos: false }),
-            spatialize({ controller: ladderController }),
+            normalizeFrame({ getNormalizeSize: () => ladderController.current.configs[ladderController.current.configs.length - 1], isCamera: false, isFrontCamera: false, isIos: false }),
+            downscale({ controller: ladderController, createDownscaler: () => new FakeDownscaler() }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
@@ -428,8 +448,8 @@ describe('video pipeline integration', () => {
             attachSourceDims(),
             forceKeyframeOnDimChange(),
             dropDimMismatch({ getExpectedDims: () => expectedSourceDims }),
-            normalizeFrame({ ladder: ladderController, isCamera: false, isFrontCamera: false, isIos: false }),
-            spatialize({ controller: ladderController }),
+            normalizeFrame({ getNormalizeSize: () => ladderController.current.configs[ladderController.current.configs.length - 1], isCamera: false, isFrontCamera: false, isIos: false }),
+            downscale({ controller: ladderController, createDownscaler: () => new FakeDownscaler() }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
@@ -598,8 +618,8 @@ describe('video pipeline integration', () => {
             attachSourceDims(),
             forceKeyframeOnDimChange(),
             dropDimMismatch({ getExpectedDims: () => encDims }),
-            normalizeFrame({ ladder: ladderController, isCamera: false, isFrontCamera: false, isIos: false }),
-            spatialize({ controller: ladderController }),
+            normalizeFrame({ getNormalizeSize: () => ladderController.current.configs[ladderController.current.configs.length - 1], isCamera: false, isFrontCamera: false, isIos: false }),
+            downscale({ controller: ladderController, createDownscaler: () => new FakeDownscaler() }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
@@ -695,8 +715,8 @@ describe('video pipeline integration', () => {
                 attachSourceDims(),
                 forceKeyframeOnDimChange(),
                 dropDimMismatch({ getExpectedDims: () => encDims }),
-                normalizeFrame({ ladder: ladderController, isCamera: false, isFrontCamera: false, isIos: false }),
-                spatialize({ controller: ladderController }),
+                normalizeFrame({ getNormalizeSize: () => ladderController.current.configs[ladderController.current.configs.length - 1], isCamera: false, isFrontCamera: false, isIos: false }),
+                downscale({ controller: ladderController, createDownscaler: () => new FakeDownscaler() }),
                 applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
             );
             const senderPipe = pipe(

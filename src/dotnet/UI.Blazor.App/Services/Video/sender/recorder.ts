@@ -15,7 +15,7 @@ import { FrameDropStage, traceDrops } from '../frame-drop-trace';
 import { mstpSource } from '../operators/capture';
 import { stampCaptureTime } from '../operators/stamp-capture-time';
 import { attachSourceDims } from '../operators/attach-source-dims';
-import { normalizeFrame, spatialize } from '../operators/downscale';
+import { normalizeFrame, downscale } from '../operators/downscale';
 import { previewForwarder } from '../operators/preview-forwarder';
 import { applyKeyframePolicy } from '../operators/apply-keyframe-policy';
 import { encode, type EncoderConfigPerLayer, type EncoderFactory } from '../operators/encode';
@@ -48,6 +48,10 @@ export interface RecorderConfig {
     sourceKind: number;
     isFrontCamera: boolean;
     isIos: boolean;
+    // Fixed display ceiling `normalize` targets (full-ladder top), independent
+    // of the active encode ladder, so the self-preview stays full-res even when
+    // the active ladder shrinks toward L0. Defaults to the active top.
+    normalizeSize?: { width: number; height: number };
 
     // -- encode --
     // Bottom-first simulcast ladder; single-tier P2P passes one entry.
@@ -98,6 +102,10 @@ export class Recorder {
         this.currentStats = stats;
         const ladderController = new LayerLadderController(config.encoderConfigs);
         this.ladderController = ladderController;
+        // Fixed ceiling for `normalize` (full-ladder top); falls back to the
+        // active top when the caller didn't supply one.
+        const normalizeSize = config.normalizeSize
+            ?? config.encoderConfigs[config.encoderConfigs.length - 1];
         const wireGateState = new MutableWireGate(config.initialGateOpen ?? true);
         this.wireGateState = wireGateState;
         const abortController = new AbortController();
@@ -127,7 +135,7 @@ export class Recorder {
             stampCaptureTime({ clock: this.session.captureClock }),
             attachSourceDims(),
             normalizeFrame({
-                ladder: ladderController,
+                getNormalizeSize: () => normalizeSize,
                 isCamera: config.sourceKind === 0,
                 isFrontCamera: config.isFrontCamera,
                 isIos: config.isIos,
@@ -143,10 +151,10 @@ export class Recorder {
         const normalizedToBundle = pipe(
             captureToNormalized,
             // Demand-driven fps: drop AFTER preview (local self-view stays
-            // smooth) but BEFORE the expensive spatialize/encode. fps 0 = idle.
+            // smooth) but BEFORE the expensive downscale/encode. fps 0 = idle.
             temporalPace(paceState),
             traceDrops<CapturedFrame>(FrameDropStage.SenderFpsPacing),
-            spatialize({ controller: ladderController }),
+            downscale({ controller: ladderController }),
             traceDrops<CapturedBundle>(FrameDropStage.SenderDownscale),
         );
         const recordingPipe = pipe(

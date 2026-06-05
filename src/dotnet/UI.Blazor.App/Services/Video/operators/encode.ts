@@ -95,6 +95,17 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
 
         async function* impl(): AsyncIterable<EncodedBundle> {
             const encoders: AsyncVideoEncoder<EncodeInput, EncodedFrame>[] = [];
+            // Dims/codec each live encoder[i] was created with, so a reshape can
+            // reuse a slot only when its config still matches configs[i] and
+            // recreate it otherwise. Critical for the warmup→openGate flip: the
+            // warmup ladder is a single TOP-res tier living at index 0, but the
+            // expanded ladder is bottom-first, so index 0 becomes the BOTTOM
+            // layer and its encoder MUST be reconfigured (else the bottom layer
+            // encodes at the top res → oversized coded + conformance window →
+            // Edge HEVC renders only the top-left corner).
+            let encoderCfgs: EncoderConfigPerLayer[] = [];
+            const sameEncDims = (a: EncoderConfigPerLayer, b: EncoderConfigPerLayer): boolean =>
+                a.width === b.width && a.height === b.height && a.codec === b.codec;
             const queueDepthEma = new RunningEMA(0, 1, ENCODE_QUEUE_DEPTH_EMA_ALPHA);
             const restartTimestamps: number[] = [];
             const recordRestart = (stats: EncodedBundle['stats'] | null): void => {
@@ -386,45 +397,59 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                     const layerCount = bundle.layers.length;
                     if (encoders.length !== layerCount) {
                         // Drain pending first so encoder reconfig doesn't race
-                        // in-flight encodes against a different layer count.
+                        // in-flight encodes against a different layer set. The
+                        // await also lets a just-issued controller reshape land
+                        // before we snapshot it below.
                         for await (const r of drainPending()) yield r;
                         const oldN = encoders.length;
                         const cur = opts.controller.current;
-                        if (layerCount > oldN) {
-                            // Grow: append fresh encoders; force keyframe so
-                            // the new layer's first chunk is decodable.
-                            try {
-                                for (let i = oldN; i < layerCount; i++)
-                                    encoders.push(createEncoder(cur.configs[i], i));
-                            } catch (e) {
-                                closeBundleLayers(bundle);
-                                const topCodec = cur.configs[layerCount - 1].codec;
-                                const message = e instanceof Error ? e.message : String(e);
-                                throw new Error(
-                                    `${ENCODER_INIT_FAILED_PREFIX} codec=${topCodec}: ${message}`,
-                                    { cause: e },
-                                );
+                        // Reconcile per index: reuse encoders[i] only when its
+                        // config still matches configs[i]; recreate mismatches;
+                        // dispose slots beyond the new count. This is what makes
+                        // the warmup→openGate flip correct: the warmup ladder is a
+                        // single TOP-res tier at index 0, but the expanded ladder
+                        // is bottom-first, so index 0 becomes the BOTTOM layer and
+                        // its encoder must be recreated at the bottom res (else the
+                        // bottom layer encodes at the top res → oversized coded +
+                        // conformance window → Edge HEVC shows only the top-left).
+                        const reused = new Array<AsyncVideoEncoder<EncodeInput, EncodedFrame> | undefined>(layerCount);
+                        try {
+                            for (let i = 0; i < layerCount; i++) {
+                                const want = cur.configs[i];
+                                if (i < encoders.length && encoderCfgs[i] && sameEncDims(encoderCfgs[i], want)) {
+                                    reused[i] = encoders[i];
+                                } else {
+                                    if (i < encoders.length && encoders[i])
+                                        try { encoders[i].dispose(); } catch { /* ignore */ }
+                                    reused[i] = createEncoder(want, i);
+                                }
                             }
-                            // Skip force-keyframe when this is the first-ever
-                            // init (oldN === 0) — `forceKeyframeOnFirstEncode`
-                            // already handles that path.
-                            if (oldN > 0) forceKeyframeNext = true;
-                        } else if (layerCount < oldN) {
-                            // Shrink: dispose tail encoders. EncoderPool may park
-                            // them via the release callback inside dispose().
-                            for (let i = layerCount; i < oldN; i++) {
-                                try { encoders[i].dispose(); } catch { /* ignore */ }
-                            }
-                            encoders.length = layerCount;
-                            // Re-key the surviving layers. A receiver that was
-                            // holding a now-removed top layer (ReceiveQualityFilter
-                            // only switches on a keyframe of the newly desired
-                            // layer) gets nothing until the next periodic keyframe
-                            // (~3 s) otherwise, and its decoder locks into a
-                            // hang/recovery loop. One immediate keyframe makes the
-                            // down-switch land within a frame.
-                            forceKeyframeNext = true;
+                        } catch (e) {
+                            for (const enc of reused)
+                                if (enc) try { enc.dispose(); } catch { /* ignore */ }
+                            for (const enc of encoders)
+                                try { enc.dispose(); } catch { /* ignore */ }
+                            encoders.length = 0;
+                            encoderCfgs = [];
+                            closeBundleLayers(bundle);
+                            const topCodec = cur.configs[layerCount - 1]?.codec ?? 'unknown';
+                            const message = e instanceof Error ? e.message : String(e);
+                            throw new Error(
+                                `${ENCODER_INIT_FAILED_PREFIX} codec=${topCodec}: ${message}`,
+                                { cause: e },
+                            );
                         }
+                        // Dispose old slots past the new count (shrink tail).
+                        for (let i = layerCount; i < oldN; i++)
+                            try { encoders[i].dispose(); } catch { /* ignore */ }
+                        encoders.length = 0;
+                        encoders.push(...(reused as AsyncVideoEncoder<EncodeInput, EncodedFrame>[]));
+                        encoderCfgs = cur.configs.slice(0, layerCount).map(c => ({ ...c }));
+                        // Force a keyframe so every (re)created encoder re-anchors —
+                        // a receiver only switches layers on a keyframe of the
+                        // desired layer. Skip only the first-ever init (oldN === 0),
+                        // which `forceKeyframeOnFirstEncode` already covers.
+                        if (oldN > 0) forceKeyframeNext = true;
                         configs = cur.configs;
                     }
                     // applyKeyframePolicy promotes forceKeyframe to all-or-none;

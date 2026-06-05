@@ -4,6 +4,8 @@ import { DeviceOrientation, ScreenOrientation, normalizeRotationQuarter, type Ro
 import type { CapturedBundle, CapturedFrame, NormalizedFrame } from '../frame-envelopes';
 import { cameraRotationDeg } from '../orientation/quantize';
 import { drawFrameCover, resizeCanvas } from '../canvas/resize';
+import { CanvasDownscaler } from '../canvas/downscaler';
+import { WebGlDownscaler, probeWebGl2 } from '../webgl/downscaler';
 import type { LayerLadderController } from '../sender/layer-ladder-controller';
 
 const { warnLog } = getLogs('VideoPipeline');
@@ -13,20 +15,58 @@ export interface LayerSpec {
     height: number;
 }
 
-// Top-layer dims come from the ladder controller and may change mid-stream
-// when QC hot-applies a different set of layers.
+// `normalize` produces the full-res surface that BOTH the self-preview clone and
+// `spatialize` consume, so its target is the fixed display CEILING (capture-derived
+// full-ladder top), NOT the active-ladder top. This keeps the self-view full-res even
+// when the active encode ladder shrinks toward L0; `spatialize` owns all per-tier
+// downscaling from this ceiling frame. `getNormalizeSize` is a thunk so a mid-stream
+// orientation flip (which swaps the ceiling W/H) is picked up without a pipeline rebuild.
 export interface NormalizeFrameOptions {
-    ladder: LayerLadderController;
+    getNormalizeSize: () => LayerSpec;
     isCamera: boolean;
     isFrontCamera: boolean;
     isIos: boolean;
 }
 
+// Contract: one frame per spec in order; implementation owns the input frame
+// (consumes/closes it, including on failure before throwing). The top tier
+// (last spec) is the input passed through unchanged; lower tiers are real
+// pixel downscales (coded == target).
+export interface DownscalerLike {
+    process(
+        input: VideoFrame,
+        layers: readonly LayerSpec[],
+    ): Promise<VideoFrame[]>;
+    dispose?(): void;
+}
+
 // Layer set comes from the ladder controller and may grow/shrink mid-stream.
 // Bottom-first: configs[0] is the base layer; the top layer must match the
 // normalized frame dimensions.
-export interface SpatializeOptions {
+export interface DownscaleOptions {
     controller: LayerLadderController;
+    // Lazy-init per slot so construction runs after the worker (and any GPU)
+    // exists. Defaults to WebGL2 with a Canvas2D fallback.
+    createDownscaler?: () => DownscalerLike;
+    // If process() doesn't resolve within this budget the frame is abandoned
+    // and the operator throws so the recorder's recovery restarts the pipeline
+    // (a wedged GPU downscaler — e.g. context-lost). Default 1500 ms.
+    hangTimeoutMs?: number;
+    setTimeoutFn?: (cb: () => void, ms: number) => unknown;
+    clearTimeoutFn?: (handle: unknown) => void;
+}
+
+// WebGL2 real downscale with a Canvas2D fallback. Re-probes WebGL each call so
+// a session-level disable (context-lost) routes new instances to Canvas2D.
+export function createDefaultDownscaler(): DownscalerLike {
+    if (probeWebGl2()) {
+        try {
+            return new WebGlDownscaler();
+        } catch (e) {
+            warnLog?.log('createDefaultDownscaler: WebGL init failed, using Canvas2D:', e);
+        }
+    }
+    return new CanvasDownscaler();
 }
 
 interface FrameTransform {
@@ -58,19 +98,17 @@ interface Slot {
 export function normalizeFrame(opts: NormalizeFrameOptions): PipeOperator<CapturedFrame, NormalizedFrame> {
     const orientation = new NormalizeFrameOrientation(opts);
     let slot: Slot | null = null;
-    // Cached top-layer LayerSpec; refreshed when controller.version bumps.
-    let target: LayerSpec = topLayerOf(opts.ladder);
-    let lastSeenVersion = opts.ladder.current.version;
+    // Cached ceiling LayerSpec; refreshed when getNormalizeSize() changes (e.g.
+    // an orientation flip swaps W/H).
+    let target: LayerSpec = opts.getNormalizeSize();
 
     return source => {
         async function* impl(): AsyncIterable<NormalizedFrame> {
             try {
                 for await (const envelope of source) {
-                    const cur = opts.ladder.current;
-                    if (cur.version !== lastSeenVersion) {
-                        target = topLayerOf(opts.ladder);
-                        lastSeenVersion = cur.version;
-                    }
+                    const ns = opts.getNormalizeSize();
+                    if (ns.width !== target.width || ns.height !== target.height)
+                        target = ns;
                     const input = envelope.frame;
                     const transform = orientation.decide(input, target);
                     const displayW = input.displayWidth || input.codedWidth;
@@ -141,61 +179,79 @@ export function normalizeFrame(opts: NormalizeFrameOptions): PipeOperator<Captur
     };
 }
 
-// NormalizedFrame -> CapturedBundle. Each lower layer is a metadata-only
-// `new VideoFrame(input.frame, { displayWidth, displayHeight })` wrap; the
-// per-layer encoder, configured at the target dimensions, performs the
-// downscale internally (HW-side on AVC/HEVC/AV1). No OffscreenCanvas, no
-// drawImage, no per-frame canvas allocation. Top layer passes through
-// untouched.
-export function spatialize(opts: SpatializeOptions): PipeOperator<NormalizedFrame, CapturedBundle> {
+// NormalizedFrame -> CapturedBundle. Per-layer envelopes share all metadata
+// from the input — only `frame` differs. Output bottom-first. Each lower tier
+// is a REAL pixel downscale (coded == target) produced by the injected
+// downscaler (WebGL2, Canvas2D fallback); the top tier is the input passed
+// through. Up to `concurrency` bundles run process() in parallel, each on its
+// own downscaler instance; ordering preserved via parallelMap. The downscaler
+// owns the input frame; the operator owns the produced layer frames and closes
+// them on any pre-yield error.
+export function downscale(opts: DownscaleOptions): PipeOperator<NormalizedFrame, CapturedBundle> {
+    const createDownscaler = opts.createDownscaler ?? createDefaultDownscaler;
+    const hangTimeoutMs = opts.hangTimeoutMs ?? 1_500;
+    const setTimeoutFn = opts.setTimeoutFn ?? ((cb, ms): unknown => setTimeout(cb, ms));
+    const clearTimeoutFn = opts.clearTimeoutFn
+        ?? ((h: unknown): void => clearTimeout(h as ReturnType<typeof setTimeout>));
+
     return source => {
         async function* impl(): AsyncIterable<CapturedBundle> {
-            for await (const frame of source)
-                yield buildBundle(frame, opts.controller.current.configs);
+            let downscaler: DownscalerLike | null = null;
+            try {
+                for await (const envelope of source) {
+                    // Snapshot the ladder per frame so QC hot-applies (layer
+                    // grow/shrink) take effect; encode() aligns to
+                    // bundle.layers.length, so both stay in sync.
+                    const layers: LayerSpec[] = opts.controller.current.configs.map(
+                        c => ({ width: c.width, height: c.height }));
+                    downscaler ??= createDownscaler();
+                    const processPromise = downscaler.process(envelope.frame, layers);
+                    let timerHandle: unknown = null;
+                    const timeoutP = new Promise<'timeout'>(resolve => {
+                        timerHandle = setTimeoutFn(() => resolve('timeout'), hangTimeoutMs);
+                    });
+                    let raced: VideoFrame[] | 'timeout';
+                    try {
+                        raced = await Promise.race([processPromise, timeoutP]);
+                    } finally {
+                        if (timerHandle !== null)
+                            try { clearTimeoutFn(timerHandle); } catch { /* ignore */ }
+                    }
+                    if (raced === 'timeout') {
+                        // Detach: close whatever the stuck process() eventually
+                        // produces (input frame is owned by process()).
+                        void processPromise.then(closeFrames, () => { /* logged */ });
+                        try { downscaler.dispose?.(); } catch { /* ignore */ }
+                        downscaler = null;
+                        throw new Error(`downscale: process() hung > ${hangTimeoutMs}ms`);
+                    }
+                    const frames = raced;
+                    if (frames.length !== layers.length) {
+                        closeFrames(frames);
+                        throw new Error(
+                            `downscale: downscaler returned ${frames.length} frames, expected ${layers.length}`);
+                    }
+                    yield {
+                        layers: frames.map(frame => makeLayerEnvelope(envelope, frame)),
+                        index: envelope.index,
+                        dropTrace: envelope.dropTrace,
+                        rotation: envelope.rotation,
+                        stats: envelope.stats,
+                    };
+                }
+            } finally {
+                if (downscaler && typeof downscaler.dispose === 'function')
+                    try { downscaler.dispose(); } catch { /* ignore */ }
+            }
         }
         return from(impl());
     };
 }
 
-function buildBundle(
-    input: NormalizedFrame,
-    configs: readonly { width: number; height: number }[],
-): CapturedBundle {
-    const topIdx = configs.length - 1;
-    const layers = new Array<CapturedFrame | undefined>(configs.length).fill(undefined);
-    layers[topIdx] = input;
-    try {
-        for (let i = topIdx - 1; i >= 0; i--) {
-            const { width, height } = configs[i];
-            const wrapped = new VideoFrame(input.frame, {
-                displayWidth: width,
-                displayHeight: height,
-            });
-            layers[i] = makeLayerEnvelope(input, wrapped);
-        }
-        return {
-            layers: layers as CapturedFrame[],
-            index: input.index,
-            dropTrace: input.dropTrace,
-            rotation: input.rotation,
-            stats: input.stats,
-        };
-    } catch (e) {
-        warnLog?.log('spatialize: process failed:', e);
-        // Close only the wrap allocations we made — the top layer's frame
-        // belongs to `input` and is owned by upstream.
-        for (let i = 0; i < topIdx; i++) {
-            const layer = layers[i];
-            if (layer)
-                try { layer.frame.close(); } catch { /* ignore */ }
-        }
-        throw e instanceof Error ? e : new Error(String(e));
+function closeFrames(frames: readonly VideoFrame[]): void {
+    for (const frame of frames) {
+        try { frame.close(); } catch { /* ignore */ }
     }
-}
-
-function topLayerOf(controller: LayerLadderController): LayerSpec {
-    const cfg = controller.current.configs[controller.current.configs.length - 1];
-    return { width: cfg.width, height: cfg.height };
 }
 
 class NormalizeFrameOrientation {

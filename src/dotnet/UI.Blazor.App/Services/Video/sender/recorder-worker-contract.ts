@@ -20,6 +20,10 @@ export interface WireSafeRecorderConfig {
     isIos?: boolean;
     serverClockOffsetMs?: number;
     encoderConfigs: readonly EncoderConfigPerLayer[];
+    // Fixed display ceiling `normalize` targets (full-ladder top), independent of
+    // the active encode ladder, so the self-preview stays full-res when the active
+    // ladder shrinks toward L0. Defaults to the active top when absent.
+    normalizeSize?: { width: number; height: number };
     keyframeIntervalFrames: number;
     maxKeyFrameIntervalMs?: number;
     // Defaults to 'prefer-hardware'. Set to 'no-preference' as the 1-tier
