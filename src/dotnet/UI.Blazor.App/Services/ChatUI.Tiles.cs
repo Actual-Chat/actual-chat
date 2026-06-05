@@ -216,6 +216,32 @@ public partial class ChatUI
             tiles[^1].Items[^1].NextMessage = null;
         }
 
+        // When the chat's tail isn't carried by any loaded tile (e.g. an empty chat whose only entries
+        // are removed), no GetTile call merges the optimistic "sending" messages. Build the tail tile
+        // explicitly so they still surface - and so this query depends on OnNewMessagesChanged.
+        var isTailLoaded = idTiles.Any(t => t.Contains(chatLidRange.End - 1));
+        if (!isTailLoaded && !hasMoreAfter) {
+            var tailRange = IdTileStack.FirstLayer.GetTile(chatLidRange.End).Range;
+            var tailTile = await GetTile(
+                    chatId,
+                    chat.Rules.Author?.Id,
+                    tailRange,
+                    showConversations,
+                    expandedConversations,
+                    prevMessage,
+                    shownReadyEntryLid,
+                    chatLidRange.End,
+                    chatSendingMessagesWrapper,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (tailTile.Items.Count > 0) {
+                if (tiles.Count > 0)
+                    tiles[^1].Items[^1].NextMessage = tailTile.Items[0];
+                tiles.Add(tailTile);
+                hasVeryFirstItem = idTiles.Count == 0 || hasVeryFirstItem;
+            }
+        }
+
         var items = tiles.SelectMany(t => t.Items).ToList();
 
         // Ensure welcome block is present when at the very beginning
