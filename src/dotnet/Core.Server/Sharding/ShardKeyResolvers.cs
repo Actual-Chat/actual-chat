@@ -78,7 +78,6 @@ public static class ShardKeyResolvers
         Register<Session>(x => ForString(x.Id));
         Register<ISessionCommand>(x => ForString(x.Session.Id));
         Register<FlowResumeEvent>(static x => ForString(x.FlowId.Arguments));
-        Register<FlowsQuery>(static _ => 0); // Pins IFlowBackend.List to a single node
     }
 
     public static void Register<T>(ShardKeyResolver<T> resolver)

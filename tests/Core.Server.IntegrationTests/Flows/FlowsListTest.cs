@@ -64,7 +64,7 @@ public class FlowsListTest(ITestOutputHelper @out)
         aggA.Idle.Should().Be(1);
         aggA.Stuck.Should().Be(0);
 
-        var allRows = await backend.List(new FlowsQuery(Limit: 10_000), cancellationToken);
+        var allRows = await backend.List(default, new FlowsQuery(Limit: 10_000), cancellationToken);
         var rowById = allRows.Where(r => seededIds.Contains(r.FlowId)).ToDictionary(r => r.FlowId);
         rowById[$"{prefix}A:ok"].Status.Should().Be(FlowStatus.Completed);
         rowById[$"{prefix}A:bad"].Status.Should().Be(FlowStatus.Failed);
@@ -72,11 +72,11 @@ public class FlowsListTest(ITestOutputHelper @out)
         rowById[suspId].Status.Should().Be(FlowStatus.Suspended);
         rowById[stuckId].Status.Should().Be(FlowStatus.Stuck);
 
-        var problematic = await backend.List(new FlowsQuery(ProblematicOnly: true, Limit: 10_000), cancellationToken);
+        var problematic = await backend.List(default, new FlowsQuery(ProblematicOnly: true, Limit: 10_000), cancellationToken);
         var ours = problematic.Where(r => seededIds.Contains(r.FlowId)).ToList();
         ours.Select(r => r.FlowId).Should().BeEquivalentTo([$"{prefix}A:bad", stuckId]);
 
-        var typeA = await backend.List(new FlowsQuery(Name: $"{prefix}A", Limit: 10_000), cancellationToken);
+        var typeA = await backend.List(default, new FlowsQuery(Name: $"{prefix}A", Limit: 10_000), cancellationToken);
         typeA.Should().OnlyContain(r => r.Name == $"{prefix}A");
         typeA.Select(r => r.FlowId).Should()
             .BeEquivalentTo([$"{prefix}A:ok", $"{prefix}A:bad", $"{prefix}A:idle", suspId]);
