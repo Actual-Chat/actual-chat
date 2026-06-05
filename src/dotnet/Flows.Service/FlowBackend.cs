@@ -349,6 +349,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
 
     // Nested types
 
+#pragma warning disable CA1812 // Avoid uninstantiated internal classes (EF instantiates these via SqlQuery<T>)
     private sealed class AggRow
     {
         public string Name { get; set; } = "";
@@ -366,4 +367,5 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         public long Version { get; set; }
         public bool HasResume { get; set; }
     }
+#pragma warning restore CA1812
 }
