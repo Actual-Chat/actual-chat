@@ -1,13 +1,13 @@
 @using ActualChat.Chat
 @using ActualChat.Flows
-@inherits ComputedStateComponent<AppUIHub, FlowSummary[]?>
+@inherits ComputedStateComponent<AppUIHub, FlowsTestPage.Model>
 @page "/test/flows"
 
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>Flows Dashboard</MainHeader>
 
 @{
-    var rows = State.Value;
+    var details = State.Value.Details;
 }
 <div class="test-page-wrapper">
     <div class="flex-y h-full overflow-y-auto select-text p-4 gap-y-2">
@@ -20,8 +20,8 @@
             @if (_stats is null) {
                 <span class="text-gray-500">Loading…</span>
             }
-            else if (rows is not null) {
-                <span class="text-gray-500 text-sm">@rows.Length row(s)</span>
+            else if (_rows is not null) {
+                <span class="text-gray-500 text-sm">@_rows.Length row(s)</span>
             }
         </div>
 
@@ -78,7 +78,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                @foreach (var row in rows ?? []) {
+                @foreach (var row in _rows ?? []) {
                     <tr class="border-b cursor-pointer hover:bg-gray-100" @onclick="@(() => ToggleRow(row.FlowId))">
                         <td class="p-2 font-mono break-all">@row.FlowId</td>
                         <td class="p-2"><span class="@StatusClass(row.Status)">@row.Status</span></td>
@@ -87,17 +87,17 @@
                     @if (_expanded.Contains(row.FlowId)) {
                         <tr class="border-b bg-gray-50">
                             <td colspan="3" class="p-2">
-                                @if (!_details.TryGetValue(row.FlowId, out var details)) {
+                                @if (!details.TryGetValue(row.FlowId, out var d)) {
                                     <span class="text-gray-500">Loading…</span>
                                 }
-                                else if (details is null) {
+                                else if (d is null) {
                                     <span class="text-gray-500">No data.</span>
                                 }
                                 else {
-                                    @if (!details.Error.IsNullOrEmpty()) {
-                                        <div class="text-red-600 font-mono text-xs mb-2 whitespace-pre-wrap">@details.Error</div>
+                                    @if (!d.Error.IsNullOrEmpty()) {
+                                        <div class="text-red-600 font-mono text-xs mb-2 whitespace-pre-wrap">@d.Error</div>
                                     }
-                                    <pre class="font-mono text-xs whitespace-pre-wrap">@details.Console</pre>
+                                    <pre class="font-mono text-xs whitespace-pre-wrap">@d.Console</pre>
                                 }
                             </td>
                         </tr>
@@ -116,21 +116,37 @@
     private bool _hideCompleted = true;
     private string? _name;
     private FlowTypeStat[]? _stats;
+    private FlowSummary[]? _rows;
+    private int _rowsGen;
     private readonly HashSet<string> _expanded = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, FlowDetails?> _details = new(StringComparer.Ordinal);
 
     private IDiagnostics Diagnostics => field ??= Hub.Services.GetRequiredService<IDiagnostics>();
 
     private bool ShowRows => !_name.IsNullOrEmpty() || _problematicOnly;
 
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Loading,
+                Category = GetStateCategory(t),
+            });
+
     protected override async Task OnInitializedAsync() {
         await base.OnInitializedAsync();
         await LoadStats();
+        await LoadRows();
     }
 
-    protected override async Task<FlowSummary[]?> ComputeState(CancellationToken cancellationToken) {
-        var query = new FlowsQuery(_name, _problematicOnly, Limit: ShowRows ? 200 : 0, HideCompleted: _hideCompleted);
-        return await Diagnostics.GetFlows(Session, query, cancellationToken).ConfigureAwait(false);
+    // Only GetFlowDetails is a compute method, so the State exists to keep expanded rows' console
+    // logs live; stats and instances are plain polling snapshots loaded outside it.
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        if (_expanded.Count == 0)
+            return Model.Loading;
+
+        var details = new Dictionary<string, FlowDetails?>(StringComparer.Ordinal);
+        foreach (var flowId in _expanded)
+            details[flowId] = await Diagnostics.GetFlowDetails(Session, flowId, cancellationToken).ConfigureAwait(false);
+        return new Model { Details = details };
     }
 
     private async Task LoadStats() {
@@ -138,35 +154,47 @@
         StateHasChanged();
     }
 
+    private async Task LoadRows() {
+        var gen = ++_rowsGen;
+        var query = new FlowsQuery(_name, _problematicOnly, Limit: ShowRows ? 200 : 0, HideCompleted: _hideCompleted);
+        var rows = await Diagnostics.GetFlows(Session, query, default);
+        if (gen != _rowsGen)
+            return; // A newer LoadRows superseded this one
+
+        _rows = rows;
+        StateHasChanged();
+    }
+
     private void OnRefresh() {
         _ = LoadStats();
-        _ = State.Recompute();
+        _ = LoadRows();
     }
 
     private void OnToggleProblematic(ChangeEventArgs e) {
         _problematicOnly = e.Value is true;
-        _ = State.Recompute();
+        OnFilterChanged();
     }
 
     private void OnToggleHideCompleted(ChangeEventArgs e) {
         _hideCompleted = e.Value is true;
-        _ = State.Recompute();
+        OnFilterChanged();
     }
 
     private void SelectType(string? name) {
         _name = name;
-        _ = State.Recompute();
+        OnFilterChanged();
     }
 
-    private async Task ToggleRow(string flowId) {
-        if (!_expanded.Add(flowId)) {
+    private void OnFilterChanged() {
+        _expanded.Clear();
+        _ = State.Recompute();
+        _ = LoadRows();
+    }
+
+    private void ToggleRow(string flowId) {
+        if (!_expanded.Add(flowId))
             _expanded.Remove(flowId);
-            StateHasChanged();
-            return;
-        }
-        if (!_details.ContainsKey(flowId))
-            _details[flowId] = await Diagnostics.GetFlowDetails(Session, flowId, default);
-        StateHasChanged();
+        _ = State.Recompute();
     }
 
     private static string StatusClass(FlowStatus status)
@@ -175,4 +203,14 @@
             FlowStatus.Stuck => "text-amber-600 font-semibold",
             _ => "text-gray-500",
         };
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model Loading = new();
+
+        // Console log / error of currently expanded flow instances, keyed by FlowId.
+        public IReadOnlyDictionary<string, FlowDetails?> Details { get; init; }
+            = new Dictionary<string, FlowDetails?>(StringComparer.Ordinal);
+    }
 }

@@ -14,6 +14,9 @@ public interface IDiagnostics : IComputeService
     // Regular RPC methods - the Flows dashboard polls these (no Fusion invalidation).
     Task<FlowTypeStat[]> GetFlowStats(Session session, CancellationToken cancellationToken);
     Task<FlowSummary[]> GetFlows(Session session, FlowsQuery query, CancellationToken cancellationToken);
+    // Computed: TryGetData invalidates on every flow store, so an expanded row's console log
+    // updates live as the flow runs.
+    [ComputeMethod]
     Task<FlowDetails?> GetFlowDetails(Session session, string flowId, CancellationToken cancellationToken);
 }
 
