@@ -101,7 +101,9 @@
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var tabId = ModalModel.TabId;
-        var showLogViewer = await Hub.LogUI.IsEnabled.Use(cancellationToken).ConfigureAwait(false);
+        // Hide the Log Viewer in SSB — it can't capture/show local logs there.
+        var showLogViewer = Hub.LogUI.CanCapture
+            && await Hub.LogUI.IsEnabled.Use(cancellationToken).ConfigureAwait(false);
         return new ComputedModel(account, tabId) {
             ShowLogViewer = showLogViewer,
         };

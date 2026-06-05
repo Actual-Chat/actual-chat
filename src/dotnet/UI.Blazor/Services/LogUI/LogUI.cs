@@ -22,6 +22,8 @@ public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogS
     public static ILogger? DiagLog { get; set; }
     public IState<bool> IsEnabled => _isEnabled!;
     public Task WhenReady => _whenReady.Task;
+    // Local logs are captured (and thus viewable) only off the server — SSB must not stream server logs.
+    public bool CanCapture => !HostInfo.HostKind.IsServer() || HostInfo.IsTested;
 
     void INotifyInitialized.Initialized()
     {
@@ -146,7 +148,7 @@ public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogS
     }
 
     protected override Task OnRun(CancellationToken cancellationToken) {
-        if (!HostInfo.HostKind.IsServer() || HostInfo.IsTested) // SECURITY: No log streaming from SSB!
+        if (CanCapture) // SECURITY: No log streaming from SSB!
             TailLoggerSinks.Add(this);
         _whenReady.TrySetResult();
         return Task.CompletedTask;
