@@ -17,7 +17,6 @@ public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntr
     // Entries with media still !IsReady past this age are treated as permanently broken
     // (e.g. metadata row created but blob never uploaded) and dropped from PendingEntryLids.
     private static readonly TimeSpan PendingMaxAge = TimeSpan.FromDays(7);
-    private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
 
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private ICommander Commander => field ??= Services.Commander();
@@ -72,13 +71,14 @@ public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntr
         }
 
         var entryIds = entries.Select(x => x.Id).ToArray();
-        var liveLids = entries.Where(x => !x.IsRemoved).Select(x => x.LocalId).ToList();
-        var notReadyLids = await IndexEntries(entryIds, liveLids, cancellationToken).ConfigureAwait(false);
+        var liveEntries = entries.Where(x => !x.IsRemoved).ToList();
+        var resolved = await ResolveAttachmentsFor(liveEntries, cancellationToken).ConfigureAwait(false);
+        var notReadyLids = await IndexEntries(entryIds, resolved, cancellationToken).ConfigureAwait(false);
         PendingEntryLids = PendingEntryLids.Concat(notReadyLids).Distinct().ToArray();
 
         Log.LogInformation(
             "[ChatMediaIndexingFlow] ProcessBatch <-- ChatId={ChatId}, Count={Count}, EntryIds={EntryIds}, LiveLids={LiveLids}, NotReady={NotReady}, Pending={Pending}, Duration={Duration}",
-            ChatId, batch.Count, entryIds.Length, liveLids.Count, notReadyLids.Count, PendingEntryLids.Length, startedAt.Elapsed.ToShortString());
+            ChatId, batch.Count, entryIds.Length, liveEntries.Count, notReadyLids.Count, PendingEntryLids.Length, startedAt.Elapsed.ToShortString());
     }
 
     protected override async ValueTask TailReached(bool hasProcessedAnyItems, CancellationToken cancellationToken)
@@ -88,7 +88,11 @@ public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntr
 
         var pendingLids = PendingEntryLids;
         var entryIds = pendingLids.Select(lid => ChatEntryId.New(ChatId, lid)).ToArray();
-        var notReadyLids = await IndexEntries(entryIds, pendingLids, cancellationToken).ConfigureAwait(false);
+        // Pending entries are referenced by lid only; reload them (incl. BeginsAt + attachments) by id.
+        var pendingEntries = (await ChatsBackend.ListEntries(entryIds, false, cancellationToken).ConfigureAwait(false))
+            .Where(e => e.Attachments.Length > 0)
+            .ToList();
+        var notReadyLids = await IndexEntries(entryIds, pendingEntries, cancellationToken).ConfigureAwait(false);
         PendingEntryLids = notReadyLids.ToArray();
         if (PendingEntryLids.Length > 0)
             Runtime.StageResumeIn(PendingRecheckDelay);
@@ -96,10 +100,9 @@ public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntr
 
     private async Task<IReadOnlyList<long>> IndexEntries(
         ChatEntryId[] entryIds,
-        IReadOnlyCollection<long> liveLids,
+        IReadOnlyList<ChatEntry> entries,
         CancellationToken cancellationToken)
     {
-        var entries = await ResolveWithAttachments(liveLids, cancellationToken).ConfigureAwait(false);
         var visualItems = new List<VisualMediaItem>();
         var fileItems = new List<FileItem>();
         var notReadyLids = new List<long>();
@@ -139,27 +142,23 @@ public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntr
         return notReadyLids;
     }
 
-    private async Task<IReadOnlyList<ChatEntry>> ResolveWithAttachments(
-        IReadOnlyCollection<long> lids,
+    // Main path: resolves attachments directly per entry, touching only the entries that have them.
+    // Avoids materializing whole id-tiles - critical once the batch holds sparse, attachment-only
+    // entries that would otherwise spread across many tiles.
+    private async Task<IReadOnlyList<ChatEntry>> ResolveAttachmentsFor(
+        IReadOnlyList<ChatEntry> entries,
         CancellationToken cancellationToken)
     {
-        if (lids.Count == 0)
+        if (entries.Count == 0)
             return [];
 
-        var tileRanges = lids.Select(lid => IdTileStack.LastLayer.GetTile(lid).Range).Distinct().ToList();
-        var tiles = await tileRanges
-            .Select(range => ChatsBackend.GetTile(ChatId, range, true, cancellationToken))
+        var withAttachments = await entries
+            .Select(async e => e with {
+                Attachments = await ChatsBackend.GetEntryAttachments(e.Id, cancellationToken).ConfigureAwait(false),
+            })
             .Collect(cancellationToken)
             .ConfigureAwait(false);
-        var entryByLid = tiles
-            .SelectMany(t => t.Entries)
-            .DistinctBy(e => e.LocalId)
-            .ToDictionary(e => e.LocalId);
-        return lids
-            .Select(lid => entryByLid.GetValueOrDefault(lid))
-            .SkipNullItems()
-            .Where(e => !e.IsRemoved && e.Attachments.Length > 0)
-            .ToList();
+        return withAttachments.Where(e => e.Attachments.Length > 0).ToList();
     }
 
     private static VisualMediaItem ToVisualMediaItem(ChatEntry entry, ChatEntryAttachment attachment, Media.Media media)

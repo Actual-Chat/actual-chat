@@ -116,6 +116,10 @@ public interface IChatsBackend : IComputeService, IBackendService
 
     Task<ChatEntry[]> ListChangedEntries(ChangedEntriesQuery query, CancellationToken cancellationToken);
 
+    // entryId routes to its ChatId's shard (ShardKeyResolvers registers ChatEntryId -> ChatId.Value).
+    [ComputeMethod]
+    Task<ChatEntryAttachment[]> GetEntryAttachments(ChatEntryId entryId, CancellationToken cancellationToken);
+
     Task<ChatEntry[]> ListNewEntries(
         ChatId chatId,
         long minLocalIdExclusive,
