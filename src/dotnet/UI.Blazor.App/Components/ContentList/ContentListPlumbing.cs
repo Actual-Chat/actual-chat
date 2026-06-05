@@ -16,7 +16,7 @@ internal static class ContentListPlumbing
     public sealed record Block(string PeriodKey, int PageIndex);
 
     private sealed record RowSpec<TItem>(
-        string Key, string GroupKey, string GroupTitle, TItem[] Items)
+        string Key, string GroupKey, string GroupTitle, string VisorDate, TItem[] Items)
         where TItem : IChatContentItem;
 
     public static List<Block> BuildBlocks(IReadOnlyList<ChatContentPeriod> periods)
@@ -54,6 +54,10 @@ internal static class ContentListPlumbing
             _ => ("", ""),
         };
     }
+
+    // Day-level label shown by the floating date-visor — finer than the month group headers.
+    public static string GetVisorDate(Moment at, DateTimeConverter dateTimeConverter)
+        => dateTimeConverter.ToLocalTime(at).ToString("d MMMM yyyy");
 
     public static ContentListItem EmptyPlaceholder()
         => new() { Key = "empty", IsEmptyPlaceholder = true };
@@ -109,7 +113,7 @@ internal static class ContentListPlumbing
         int rowSize,
         ContentGrouping groupBy,
         Func<Block, CancellationToken, Task<TItem[]>> loadPage,
-        Func<TItem[], string, ContentListItem> rowFactory,
+        Func<TItem[], string, string, ContentListItem> rowFactory,
         Func<IReadOnlyList<TItem>, CancellationToken, Task>? prefetch,
         CancellationToken cancellationToken)
         where TItem : IChatContentItem
@@ -336,7 +340,7 @@ internal static class ContentListPlumbing
                 if (r.GroupTitle.Length > 0)
                     listItems.Add(GroupHeader(r.GroupKey, r.GroupTitle));
             }
-            listItems.Add(rowFactory(r.Items, r.Key));
+            listItems.Add(rowFactory(r.Items, r.Key, r.VisorDate));
         }
 
         if (listItems.Count == 0)
@@ -424,6 +428,7 @@ internal static class ContentListPlumbing
                     $"{keyPrefix}:{block.PeriodKey}:{block.PageIndex}:{rowIndex}",
                     rowGroup.Key,
                     rowGroup.Title,
+                    GetVisorDate(slice[0].At, dateTimeConverter),
                     slice));
                 p += size;
                 rowIndex++;

@@ -1,0 +1,15 @@
+.content-list-date-visor {
+    @apply absolute top-1 left-0 right-0 z-button;
+    @apply flex justify-center;
+    @apply invisible opacity-0;
+    @apply duration-500 transition-[opacity,visibility];
+    @apply pointer-events-none;
+}
+.content-list-date-visor.show {
+    @apply visible opacity-100;
+    @apply delay-200;
+}
+.content-list-with-visor {
+    @apply relative;
+    @apply h-full min-h-0;
+}

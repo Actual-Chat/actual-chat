@@ -1,10 +1,10 @@
 .date-visor-wrapper {
     @apply hidden justify-center;
     @apply max-h-0;
+    @apply opacity-0;
     @apply bg-transparent;
     @apply duration-500;
-    filter: opacity(0);
-    transition-property: display, filter, -webkit-filter;
+    transition-property: display, opacity;
     transition-behavior: allow-discrete;
 }
 .layout-subheader > div.date-visor-wrapper {
@@ -13,10 +13,10 @@
 }
 .date-visor-wrapper.show {
     @apply flex-x;
+    @apply opacity-100;
     @apply delay-200;
-    filter: opacity(1);
     @starting-style {
-        filter: opacity(0);
+        opacity: 0;
     }
 }
 .date-visor-wrapper:empty {

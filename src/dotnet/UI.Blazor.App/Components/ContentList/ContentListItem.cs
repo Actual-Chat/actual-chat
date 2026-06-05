@@ -14,6 +14,7 @@ public sealed class ContentListItem : IVirtualListItem, IEquatable<ContentListIt
     public long Version { get; init; }
 
     public string GroupTitle { get; init; } = "";
+    public string VisorDate { get; init; } = "";
     public IReadOnlyList<IChatContentItem> Items { get; init; } = [];
     public ChatEntry? LinkEntry { get; init; }
 

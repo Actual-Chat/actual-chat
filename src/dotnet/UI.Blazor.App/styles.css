@@ -33,6 +33,7 @@
 @import './Components/ChatPropertiesMenu/chat-properties-menu.css';
 @import './Components/EmojiModal/emoji-modal.css';
 @import './Components/DateVisor/date-visor.css';
+@import './Components/ContentList/content-list-date-visor.css';
 @import './Components/Discover/discover.css';
 @import './Components/FontSizeSlider/font-size-slider.css';
 @import './Components/ForwardMessage/forward-message-modal.css';
