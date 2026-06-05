@@ -39,9 +39,8 @@ const RevealTimeout = 1500;
 // browser's max element height (Firefox ≈ 17.9M); at ~50px/item that is still ~200k items of scroll.
 // Must match InfiniteSize in VirtualList.razor.cs.
 const InfiniteSize = 1e7;
-// Min viewport↔container gap for repinIfViewportStranded to treat the list as "blank"-stranded. The
-// no-pivot/recenter blank leaves a ~InfiniteSize/2 gap; legitimate scroll/overscroll/skeleton gaps are
-// far smaller, so this threshold has no false positives while leaving lots of room to scroll.
+// Min viewport-to-container gap for repinIfViewportStranded: the blank leaves a ~InfiniteSize/2 gap,
+// while legit scroll/overscroll gaps are far smaller — so no false positives.
 const StrandedGapThreshold = InfiniteSize / 10;
 // When true, the wrapper is trimmed to the newest once the last item is loaded (native hard-stop at the
 // bottom). When false, the bottom is managed like the top — via a scroll-limit + rubber-band overscroll.
@@ -104,11 +103,8 @@ const delayMs = (ms: number): Promise<void> => new Promise<void>(resolve => setT
 export class VirtualList {
     public static enableWatchdogFixes = false;
     public static enableDebug = false;
-    // Debug-only race surfacing: when > 0, a uniform-random delay in [0, value) ms is injected before
-    // each render is processed (debugRenderDelayMs) and before each data request is sent
-    // (debugDataLoadDelayMs). Shuffling these two timings exposes the recenter/scroll-restore races
-    // that are otherwise hard to reproduce. Leave at 0 in production; toggle at runtime via
-    // globalThis.VirtualList.debugRenderDelayMs = N.
+    // Debug-only: when > 0, inject a random [0, value) ms delay before each render (debugRenderDelayMs)
+    // and each data request (debugDataLoadDelayMs) to surface scroll/recenter timing races. 0 in prod.
     public static debugRenderDelayMs = 0;
     public static debugDataLoadDelayMs = 0;
     private static readonly _instances = new Set<VirtualList>();
@@ -311,9 +307,7 @@ export class VirtualList {
         this.itemSetChangeObserver.observe(this.containerRef, { childList: true });
         this.itemSetChangeObserver.observe(this.renderIndexRef, { attributes: true });
         this.sizeObserver = new ResizeObserver(this.onResize);
-        // An array of numbers between 0.0 and 1.0, specifying a ratio of intersection area to total bounding box area for the observed target.
-        // Trigger callbacks as early as it can on any intersection change, even 1 percent
-        // 0 threshold doesn't work, despite what is written in the documentation
+        // Fire as early as possible on any intersection change; a 0 threshold doesn't work despite the docs.
         const visibilityThresholds = [...Array(101).keys()].map(i => i / 100);
         this.visibilityObserver = new IntersectionObserver(
             this.onItemVisibilityChange,
@@ -344,9 +338,8 @@ export class VirtualList {
         this.visibleItems = new Set<string>();
 
         this.sizeObserver.observe(this.endAnchorRef, { box: 'border-box' });
-        // Observe the viewport itself: a height-only change (mobile keyboard, sub-header/footer panels)
-        // resizes neither items nor the end anchor, so without this the sticky edge isn't re-pinned and
-        // the content drifts off-screen (blank chat until the scroll-to-bottom button is used).
+        // Observe the viewport: a height-only change (keyboard, panels) resizes neither items nor the end
+        // anchor, so without this the sticky edge isn't re-pinned and content drifts off-screen.
         this.sizeObserver.observe(this.ref, { box: 'border-box' });
         this.visibilityObserver.observe(this.endAnchorRef);
         this.skeletonObserver0.observe(this.spacerRef);
@@ -363,9 +356,8 @@ export class VirtualList {
         // eslint-disable-next-line @typescript-eslint/unbound-method
         const origSetAttribute = this.renderIndexRef.setAttribute;
         this.renderIndexRef.setAttribute = (qualifiedName: string, value: string) => {
-            // update pivots just before the render
-            // we can do this because Blazor updates attributes before changing nodes
-            // we SHOULD NOT fail there - otherwise Blazor will fail
+            // Update pivots just before the render (Blazor sets attributes before changing nodes).
+            // Must not throw here — it would break Blazor's render.
             try {
                 const time = Date.now();
                 debugLog?.log(`renderStartedAt: `, time, value);
@@ -495,10 +487,8 @@ export class VirtualList {
 
     // Private methods
 
-    // The wrapper is hidden by CSS (c-initially-hidden) until the chain is positioned at its target, so
-    // the user never sees the pre-positioned (top-aligned) frames. This is purely visual — it never reads
-    // or writes scroll/layout state, so it cannot affect positioning. Polls per animation frame (not per
-    // render) so it isn't gated on render cadence, with a hard timeout backstop.
+    // The wrapper stays CSS-hidden (c-initially-hidden) until the chain is positioned, so the user never
+    // sees the pre-positioned frames. Visual only; polls per frame with a timeout backstop.
     private startRevealWatch(): void {
         const check = () => {
             if (this.isDisposed || this.isContainerRevealed)
@@ -809,12 +799,8 @@ export class VirtualList {
         for (const entry of entries) {
             const key = getItemKey(entry.target as HTMLElement);
             const rowGap = this.rowGap;
-            // The observer is configured with { box: 'border-box' }, but
-            // entry.contentRect is always content-box. Reading height from
-            // entry.contentRect undersizes items whose spacing uses padding,
-            // which makes the chain math drift by the padding amount on every
-            // new item. Use borderBoxSize when available; fall back to
-            // contentRect for older browsers.
+            // entry.contentRect is always content-box even under box:'border-box', undersizing items whose
+            // spacing uses padding (drifts the chain math). Prefer borderBoxSize, fall back to contentRect.
             const heightPx = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
             const size = Math.ceil(heightPx + rowGap);
             if (!key) {
@@ -870,9 +856,8 @@ export class VirtualList {
         }
         if (notAnItem) {
             this.updateState('onResize: windowScrollTop', this.state, { windowScrollTop: window.visualViewport?.offsetTop ?? window.scrollY });
-            // Re-pin the sticky edge on resize (don't create a new one). A viewport resize uses the
-            // 'viewport-resize' reason, which — unlike 'non-item-resize' — is honored during the initial
-            // render too, so panels/keyboard resizing the view right after open still keep the edge pinned.
+            // Re-pin (don't recreate) the sticky edge on resize. 'viewport-resize' is honored even on the
+            // initial render, so panels/keyboard resizing right after open still keep the edge pinned.
             if (this.state.stickyEdge?.edge === this.defaultEdge && (viewportResized || !itemsWereMeasured))
                 this.scrollToEdge(this.defaultEdge, false, viewportResized ? 'viewport-resize' : 'non-item-resize');
 
@@ -921,9 +906,8 @@ export class VirtualList {
             const renderState = { ...this.state.renderState, scrollToKey: undefined };
             const scrollIntent = this.getScrollIntent(renderState);
 
-            // It is safe to avoid fastRaf and call syncLayoutAfterRender() directly as layout is already recalculated
-            // at this point, and we are not in the middle of a render, so there will be no new information about
-            // item sizes that could come in before the next paint
+            // Safe to call syncLayoutAfterRender() directly (no fastRaf): layout is recalculated and we're
+            // not mid-render, so no new item-size info can arrive before the next paint.
             void this.syncLayoutAfterRender(renderState, scrollIntent, false);
         }
     };
@@ -1151,9 +1135,8 @@ export class VirtualList {
             this.whenRequestDataCompleted = null;
         }
 
-        // Schedule viewport update AFTER finalize — isRendering is now false.
-        // The call inside syncLayoutAfterRender may get swallowed by the
-        // leading-edge throttle while isRendering was still true.
+        // Schedule viewport update AFTER finalize (isRendering now false) — the call inside
+        // syncLayoutAfterRender can be swallowed by the leading-edge throttle while it was still true.
         this.updateViewportThrottled();
         this.repinIfViewportStrandedDebounced();
         this.debug?.onEvent('render');
@@ -1230,9 +1213,8 @@ export class VirtualList {
                 const edge = this.defaultEdge;
                 scrollFunc = () => {
                     this.scrollToEdge(edge, false, reason);
-                    // Pin the sticky edge now rather than waiting for the end-anchor
-                    // IntersectionObserver — that callback is racy and sometimes never fires, leaving
-                    // the list at the edge but unpinned, so later renders have no re-pin path.
+                    // Pin sticky now instead of via the racy end-anchor IntersectionObserver, which
+                    // sometimes never fires — leaving the list at the edge but unpinned.
                     const stickyKey = edge === VirtualListEdge.End
                         ? (rs.hasVeryLastItem ? this.getLastItemKey() : null)
                         : (rs.hasVeryFirstItem ? this.getFirstItemKey() : null);
@@ -1355,10 +1337,8 @@ export class VirtualList {
         if (!ev.isTrusted)
             return; // Ignore non-user initiated scrolls
 
-        // Ignore scroll events from programmatic scroll position restoration.
-        // Setting scrollTop in syncLayoutAfterRender fires a trusted scroll event
-        // that would otherwise be misidentified as user scroll, clearing pivots
-        // and causing a visual jump.
+        // Ignore the trusted scroll event that setting scrollTop in syncLayoutAfterRender fires —
+        // otherwise it's misread as a user scroll, clearing pivots and causing a visual jump.
         if (Date.now() - this.state.lastProgrammaticScrollAt < ProgrammaticScrollGuardMs)
             return;
 
@@ -1433,9 +1413,8 @@ export class VirtualList {
     }
 
     private updateCurrentPivots(interactiveKey?: string, force = false): void {
-        // `force` is used by syncLayoutAfterRender() when it runs during a render (renderStartedAt
-        // is still set, so isRendering is true) but the DOM is already laid out — capturing pivots
-        // there is both safe and necessary to anchor the coordinate system.
+        // `force` lets syncLayoutAfterRender() capture pivots mid-render (isRendering true) when the DOM
+        // is already laid out — needed to anchor the coordinate system.
         if (!force && this.isRendering)
             return;
         if (this.state.isUpdatingPivots)
@@ -1532,12 +1511,9 @@ export class VirtualList {
 
     private repinIfViewportStrandedDebounced = debounce(() => this.repinIfViewportStranded(), ScrollDebounce);
 
-    // Safety net for infinite lists: catch the no-pivot/recenter "blank" where the viewport ends up on
-    // the far side of the InfiniteSize wrapper from the chain (~InfiniteSize/2 px away), with no sticky
-    // edge / scrollToKey to re-pin and a null first-item min-limit so clampToLimits can't recover it.
-    // ONLY that catastrophic case — never legitimate scrolling: a fast scroll-up into the not-yet-loaded
-    // zone, overscroll, or a visible skeleton all leave the viewport at most a few screens off the
-    // container, far below StrandedGapThreshold.
+    // Safety net: if the viewport ends up catastrophically far from the chain — the no-pivot/recenter
+    // "blank" (~InfiniteSize/2 gap) that no sticky edge or clamp recovers — snap back to the default edge.
+    // Gated by StrandedGapThreshold so it never fires for normal scroll/overscroll/skeleton gaps.
     private repinIfViewportStranded(): void {
         if (!this.isInfinite || this.isRendering || this.isDisposed)
             return;
@@ -1752,9 +1728,8 @@ export class VirtualList {
                     delta = first ? first.getBoundingClientRect().top - vr.top : -this.ref.scrollTop;
                 }
                 else {
-                    // Prefer the end anchor (infinite lists — it carries the editor gap). When it's hidden
-                    // (finite lists hide it via CSS) its rect is empty, so fall back to the last item /
-                    // the full scroll range.
+                    // Prefer the end anchor (infinite lists — it carries the editor gap); when it's hidden
+                    // (finite lists, empty rect) fall back to the last item / full scroll range.
                     const anchorRect = this.endAnchorRef.getBoundingClientRect();
                     if (anchorRect.height > 0)
                         delta = anchorRect.bottom - vr.bottom;
@@ -1896,12 +1871,10 @@ export class VirtualList {
             read: () => {
                 if (this.debug)
                     jumpAnchor = this.captureViewportAnchor();
-                // Pivots anchor the item-range coordinate system across re-measurement: measureItems()
-                // keeps a pivot item's range fixed while resetting the rest. Pivots are cleared on every
-                // scroll and only re-created on interactive (touch/click) events, so wheel/mouse scrolling
-                // leaves none — and without an anchor the ranges (and totalSize) recompute from scratch,
-                // which jumps the viewport or pushes all items off-screen. Establish one from the currently
-                // visible items first (force: we're called mid-render, but the DOM is already laid out).
+                // Pivots anchor the item-range coords across re-measurement (a pivot's range stays fixed).
+                // They're cleared on scroll and only re-made on interactive events, so wheel/mouse leaves
+                // none — without one the ranges recompute from scratch and the viewport jumps. Force one
+                // from the visible items first (mid-render, but the DOM is already laid out).
                 if (this.state.pivots.length === 0)
                     this.updateCurrentPivots(undefined, true);
                 if (hasUnmeasuredItems)
@@ -2028,9 +2001,8 @@ export class VirtualList {
                 this.endSpacerRef.style.height = `${endSpacerSize}px`;
 
                 if (bottomCapped) {
-                    // The cap must stick: drop any deferred (stale, larger) height set and apply now,
-                    // else a pending turnOffScrollingCallback restores InfiniteSize and lets the user
-                    // scroll past the newest.
+                    // The cap must stick: drop any deferred (stale, larger) height and apply now, else a
+                    // pending turnOffScrollingCallback restores InfiniteSize and lets you scroll past newest.
                     this.turnOffScrollingCallback = undefined;
                     if (totalSizeDiff != 0)
                         this.wrapperRef.style.height = `${totalSize}px`;
@@ -2059,9 +2031,8 @@ export class VirtualList {
                 this.applyScrollIntent(scrollIntent, hasInteractiveLayoutAnchor);
                 this.updateViewportThrottled();
 
-                // No-jump check: after a non-intentional-scroll render, a previously-visible anchored
-                // item must be at the same screen position (the scrollTop compensation should have kept
-                // it put). If it moved, the compensation was wrong — a visible jump.
+                // No-jump check (debug): a previously-visible anchored item must keep its screen position
+                // across a non-scroll render; if it drifted, the scrollTop compensation was wrong.
                 if (this.debug && jumpAnchor && !scrollIntent?.scroll) {
                     const after = this.captureViewportAnchor(jumpAnchor.key);
                     if (after != null) {
@@ -2254,10 +2225,8 @@ export class VirtualList {
             .sort((a, b) => (a!.range?.start ?? 0) - (b!.range?.start ?? 0))
             .map(i => i!.key);
         if (!cornerstoneItem && visibleItemKeys.length > 0) {
-            // Pick the viewport-CENTER visible item as the cornerstone (its range is kept fixed across the
-            // re-layout), not the topmost one. Anchoring the top lets a size change between it and the centre
-            // shift what the user is actually looking at. visibleItemKeys is sorted by range.start, so scan
-            // outward from the median.
+            // Cornerstone = the viewport-CENTER visible item (its range is kept fixed across re-layout),
+            // not the topmost — anchoring the top lets a size change above the centre shift what's on screen.
             const mid = Math.floor(visibleItemKeys.length / 2);
             for (let d = 0; d < visibleItemKeys.length; d++) {
                 const idx = d % 2 === 0 ? mid + d / 2 : mid - (d + 1) / 2;
@@ -2292,9 +2261,8 @@ export class VirtualList {
         }
 
         const isCornerstoneRangeMissing = !cornerstoneItem?.range;
-        // Finite-only edge corrections: pull the first item back to coord 0 when the very-first item is
-        // loaded but drifted. Infinite lists float around InfiniteSize/2, so these don't apply (the
-        // rubber-band handles discovered ends instead).
+        // Finite-only: pull the first item back to 0 when the very-first item is loaded but drifted.
+        // Infinite lists float around InfiniteSize/2, so this doesn't apply (rubber-band handles ends).
         const removedFirstItem =
             !this.isInfinite &&
             this.defaultEdge === VirtualListEdge.Start &&
@@ -2388,9 +2356,8 @@ export class VirtualList {
         let cornerstoneItem = orderedItems[0];
 
         if (this.isInfinite) {
-            // Center the loaded chain in the huge virtual space. On a re-anchor this rigidly shifts the
-            // whole chain by a fixed delta (returned as rangeDelta); syncLayoutAfterRender shifts scrollTop
-            // by the same amount, so the on-screen position doesn't change.
+            // Center the chain in the virtual space. On a re-anchor it rigidly shifts the whole chain by a
+            // fixed delta (returned); syncLayoutAfterRender shifts scrollTop by the same amount, so no jump.
             cornerstoneItemIndex = findCenterItemIndex();
             cornerstoneItem = orderedItems[cornerstoneItemIndex];
             const half = Math.floor(cornerstoneItem.size! / 2);
