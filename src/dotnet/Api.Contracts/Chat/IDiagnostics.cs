@@ -12,7 +12,8 @@ public interface IDiagnostics : IComputeService
     Task<MeshDiagInfo> GetMeshDiagInfo(Session session, string tag, CancellationToken cancellationToken);
 
     // Regular RPC methods - the Flows dashboard polls these (no Fusion invalidation).
-    Task<FlowsReport> GetFlowsReport(Session session, FlowsQuery query, CancellationToken cancellationToken);
+    Task<FlowTypeStat[]> GetFlowStats(Session session, CancellationToken cancellationToken);
+    Task<FlowSummary[]> GetFlows(Session session, FlowsQuery query, CancellationToken cancellationToken);
     Task<FlowDetails?> GetFlowDetails(Session session, string flowId, CancellationToken cancellationToken);
 }
 

@@ -33,7 +33,16 @@ public class Diagnostics(IServiceProvider services) : IDiagnostics
         };
     }
 
-    public virtual async Task<FlowsReport> GetFlowsReport(Session session, FlowsQuery query, CancellationToken cancellationToken)
+    public virtual async Task<FlowTypeStat[]> GetFlowStats(Session session, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (!account.IsAdmin)
+            throw StandardError.Unauthorized("Only admins can access.");
+
+        return await FlowBackend.ListStats(default, cancellationToken).ConfigureAwait(false);
+    }
+
+    public virtual async Task<FlowSummary[]> GetFlows(Session session, FlowsQuery query, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (!account.IsAdmin)
