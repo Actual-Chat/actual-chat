@@ -2,8 +2,9 @@ namespace ActualChat.Flows;
 
 public enum FlowStatus
 {
-    Active = 0,
-    Completed,
+    Completed = 0,
     Failed,
+    Suspended,
     Stuck,
+    Idle,
 }

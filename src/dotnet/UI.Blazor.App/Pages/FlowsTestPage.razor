@@ -33,11 +33,11 @@
                     <thead>
                         <tr class="border-b text-gray-500 bg-white sticky top-0">
                             <th class="text-left p-2">Type</th>
-                            <th class="text-right p-2">Active</th>
-                            <th class="text-right p-2">Completed</th>
-                            <th class="text-right p-2">Failed</th>
-                            <th class="text-right p-2">Stuck/Idle</th>
-                            <th class="text-right p-2">Total</th>
+                            <th class="text-right p-2 w-24">Total</th>
+                            <th class="text-right p-2 w-24">Completed</th>
+                            <th class="text-right p-2 w-24">Suspended</th>
+                            <th class="text-right p-2 w-24">Idle/Stuck</th>
+                            <th class="text-right p-2 w-24">Failed</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -45,11 +45,11 @@
                         <tr class="border-b cursor-pointer hover:bg-gray-100 @(t.Name == _name ? "bg-blue-50" : "")"
                             @onclick="@(() => SelectType(t.Name == _name ? null : t.Name))">
                             <td class="p-2 font-medium">@t.Name</td>
-                            <td class="text-right p-2">@t.Active</td>
-                            <td class="text-right p-2">@t.Completed</td>
-                            <td class="text-right p-2 @(t.Failed > 0 ? "text-red-600 font-semibold" : "")">@t.Failed</td>
-                            <td class="text-right p-2 @(t.Stuck > 0 ? "text-amber-600 font-semibold" : "")">@t.Stuck</td>
                             <td class="text-right p-2 text-gray-500">@t.Total</td>
+                            <td class="text-right p-2">@t.Completed</td>
+                            <td class="text-right p-2">@t.Suspended</td>
+                            <td class="text-right p-2 @(t.Stuck > 0 ? "text-amber-600 font-semibold" : "")">@(t.Idle + t.Stuck)</td>
+                            <td class="text-right p-2 @(t.Failed > 0 ? "text-red-600 font-semibold" : "")">@t.Failed</td>
                         </tr>
                     }
                     </tbody>
@@ -60,6 +60,10 @@
                 Flow instances@(_name.IsNullOrEmpty() ? "" : $" — {_name}")
             </h2>
             <p class="text-gray-500 text-sm">Click a row to view its console log and error.</p>
+            <label class="flex-x items-center gap-x-1 cursor-pointer w-fit">
+                <input type="checkbox" checked="@_hideCompleted" @onchange="OnToggleHideCompleted"/>
+                <span>Hide completed</span>
+            </label>
             @if (!ShowRows) {
                 <p class="text-gray-500 text-sm italic">Select a flow type above, or check “Problematic only” to list instances.</p>
             }
@@ -77,7 +81,7 @@
                 @foreach (var row in m.Rows) {
                     <tr class="border-b cursor-pointer hover:bg-gray-100" @onclick="@(() => ToggleRow(row.FlowId))">
                         <td class="p-2 font-mono break-all">@row.FlowId</td>
-                        <td class="p-2"><span class="@StatusClass(row.Status)">@StatusText(row.Status)</span></td>
+                        <td class="p-2"><span class="@StatusClass(row.Status)">@row.Status</span></td>
                         <td class="p-2 text-gray-500">@row.UpdatedAt.ToDateTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
                     </tr>
                     @if (_expanded.Contains(row.FlowId)) {
@@ -109,6 +113,7 @@
 
 @code {
     private bool _problematicOnly;
+    private bool _hideCompleted = true;
     private string? _name;
     private readonly HashSet<string> _expanded = new(StringComparer.Ordinal);
     private readonly Dictionary<string, FlowDetails?> _details = new(StringComparer.Ordinal);
@@ -118,7 +123,7 @@
     private bool ShowRows => !_name.IsNullOrEmpty() || _problematicOnly;
 
     protected override async Task<FlowsReport?> ComputeState(CancellationToken cancellationToken) {
-        var query = new FlowsQuery(_name, _problematicOnly, Limit: ShowRows ? 200 : 0);
+        var query = new FlowsQuery(_name, _problematicOnly, Limit: ShowRows ? 200 : 0, HideCompleted: _hideCompleted);
         return await Diagnostics.GetFlowsReport(Session, query, cancellationToken).ConfigureAwait(false);
     }
 
@@ -127,6 +132,11 @@
 
     private void OnToggleProblematic(ChangeEventArgs e) {
         _problematicOnly = e.Value is true;
+        _ = State.Recompute();
+    }
+
+    private void OnToggleHideCompleted(ChangeEventArgs e) {
+        _hideCompleted = e.Value is true;
         _ = State.Recompute();
     }
 
@@ -146,14 +156,10 @@
         StateHasChanged();
     }
 
-    private static string StatusText(FlowStatus status)
-        => status == FlowStatus.Stuck ? "Stuck/Idle" : status.ToString();
-
     private static string StatusClass(FlowStatus status)
         => status switch {
             FlowStatus.Failed => "text-red-600 font-semibold",
             FlowStatus.Stuck => "text-amber-600 font-semibold",
-            FlowStatus.Completed => "text-gray-500",
-            _ => "",
+            _ => "text-gray-500",
         };
 }
