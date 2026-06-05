@@ -2,6 +2,8 @@
 @inherits FusionComponentBase<AppUIHub>
 @implements IVirtualListDataSource<ContentListItem>
 
+<div class="content-list-with-visor">
+<ContentListDateVisor/>
 <VirtualList
     @key="@Identity"
     Class="content-list-tab content-list-rows"
@@ -23,7 +25,7 @@
             var ext = ContentListPlumbing.FileExtension(file.FileName);
             var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(ext, "file-default");
             var fileIcon = fileCls == FileTypeHelper.FileClasses[FileType.Multimedia] ? "icon-play-fill" : "icon-file";
-            <a class="c-file-row" href="@url" target="_blank" rel="noopener" role="button" data-menu="@menuRef">
+            <a class="c-file-row" href="@url" target="_blank" rel="noopener" role="button" data-menu="@menuRef" data-visor-date="@item.VisorDate">
                 <div class="c-file-icon @fileCls">
                     <i class="@fileIcon"></i>
                 </div>
@@ -39,6 +41,7 @@
         <div class="c-skeleton"></div>
     </Skeleton>
 </VirtualList>
+</div>
 
 @code {
     private IChats Chats => Hub.Chats;
@@ -60,11 +63,12 @@
             prefetch: null,
             cancellationToken);
 
-    private static ContentListItem BuildRow(FileItem[] items, string key)
+    private static ContentListItem BuildRow(FileItem[] items, string key, string visorDate)
         => new() {
             Key = key,
             Version = items[0].Version,
             Items = items,
+            VisorDate = visorDate,
         };
 
     private string FormatDate(Moment at) {

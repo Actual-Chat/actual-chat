@@ -1,0 +1,25 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+@implements IAsyncDisposable
+@using ActualChat.UI.Blazor.App.Module
+
+<div @ref="Ref" class="content-list-date-visor">
+    <div class="date-visor"></div>
+</div>
+
+@code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.ContentListDateVisor.create";
+
+    private IJSObjectReference? JSRef { get; set; }
+    private ElementReference Ref { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender)
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+    }
+
+    public async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null;
+    }
+}

@@ -28,6 +28,7 @@ export * from './Components/ChatView/EmptyChatContent/empty-chat-svg.lit';
 export * from './Components/ChatView/EmptyChatContent/empty-search-chat-svg.lit';
 export * from './Components/ChatView/Items/ChatEntryMessageInternalView/chat-entry-message-internal-view';
 export * from './Components/ClientUpgradeCover/upgrade-app-cat-svg.lit';
+export * from './Components/ContentList/content-list-date-visor';
 export * from './Components/DateVisor/date-visor';
 export * from './Components/FontSizeSlider/font-size-slider';
 export * from './Components/InaccessiblePlace/not-member-yet-svg.lit';

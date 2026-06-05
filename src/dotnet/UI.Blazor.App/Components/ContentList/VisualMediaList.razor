@@ -3,6 +3,8 @@
 @implements IVirtualListDataSource<ContentListItem>
 @using ActualChat.Media
 
+<div class="content-list-with-visor">
+<ContentListDateVisor/>
 <VirtualList
     @key="@Identity"
     Class="content-list-tab content-list-grid"
@@ -18,7 +20,7 @@
             <div class="c-group-header">@item.GroupTitle</div>
         }
         else {
-            <div class="c-media-row">
+            <div class="c-media-row" data-visor-date="@item.VisorDate">
                 @foreach (var media in item.Items.Cast<VisualMediaItem>()) {
                     var url = UrlMapper.ContentUrl(media.BlobId);
                     var menuRef = MenuRef.New<ChatContentItemMenu>(media.EntryId.Value).ToString();
@@ -49,6 +51,7 @@
         <div class="c-skeleton"></div>
     </Skeleton>
 </VirtualList>
+</div>
 
 @code {
     private const int GridColumns = 3;
@@ -73,11 +76,12 @@
             prefetch: null,
             cancellationToken);
 
-    private static ContentListItem BuildRow(VisualMediaItem[] items, string key)
+    private static ContentListItem BuildRow(VisualMediaItem[] items, string key, string visorDate)
         => new() {
             Key = key,
             Version = ContentListPlumbing.SumVersion(items),
             Items = items,
+            VisorDate = visorDate,
         };
 
     private async Task OnMediaClick(VisualMediaItem item) {
