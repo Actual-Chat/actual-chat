@@ -39,6 +39,10 @@ const RevealTimeout = 1500;
 // browser's max element height (Firefox ≈ 17.9M); at ~50px/item that is still ~200k items of scroll.
 // Must match InfiniteSize in VirtualList.razor.cs.
 const InfiniteSize = 1e7;
+// Min viewport↔container gap for repinIfViewportStranded to treat the list as "blank"-stranded. The
+// no-pivot/recenter blank leaves a ~InfiniteSize/2 gap; legitimate scroll/overscroll/skeleton gaps are
+// far smaller, so this threshold has no false positives while leaving lots of room to scroll.
+const StrandedGapThreshold = InfiniteSize / 10;
 // When true, the wrapper is trimmed to the newest once the last item is loaded (native hard-stop at the
 // bottom). When false, the bottom is managed like the top — via a scroll-limit + rubber-band overscroll.
 const CutVirtualSpaceAtBottom = true;
@@ -1528,13 +1532,17 @@ export class VirtualList {
 
     private repinIfViewportStrandedDebounced = debounce(() => this.repinIfViewportStranded(), ScrollDebounce);
 
-    // Safety net for infinite lists: the viewport must never settle entirely off the rendered
-    // container — that happens when a no-pivot open scrolls to the edge before the chain is
-    // recentered (~InfiniteSize/2 away) and no sticky edge / scrollToKey exists to re-pin, while a
-    // null first-item min-limit lets clampToLimits leave it there. Snap back to the default edge.
+    // Safety net for infinite lists: catch the no-pivot/recenter "blank" where the viewport ends up on
+    // the far side of the InfiniteSize wrapper from the chain (~InfiniteSize/2 px away), with no sticky
+    // edge / scrollToKey to re-pin and a null first-item min-limit so clampToLimits can't recover it.
+    // ONLY that catastrophic case — never legitimate scrolling: a fast scroll-up into the not-yet-loaded
+    // zone, overscroll, or a visible skeleton all leave the viewport at most a few screens off the
+    // container, far below StrandedGapThreshold.
     private repinIfViewportStranded(): void {
         if (!this.isInfinite || this.isRendering || this.isDisposed)
             return;
+        if (this.state.isScrolling)
+            return; // a scroll is in flight — not stuck
 
         const clientHeight = this.ref.clientHeight;
         if (clientHeight <= 0)
@@ -1543,11 +1551,16 @@ export class VirtualList {
         const scrollTop = this.ref.scrollTop;
         const containerTop = parseFloat(this.containerRef.style.top) || 0;
         const containerBottom = containerTop + this.containerRef.offsetHeight;
-        if (scrollTop + clientHeight >= containerTop && scrollTop <= containerBottom)
-            return; // viewport overlaps the rendered container (items + skeleton spacers) — fine
+        const gap = scrollTop + clientHeight < containerTop
+            ? containerTop - (scrollTop + clientHeight)
+            : scrollTop > containerBottom
+                ? scrollTop - containerBottom
+                : 0;
+        if (gap < StrandedGapThreshold)
+            return; // viewport overlaps, or is only normally far from, the rendered container
 
         debugLog?.log('repinIfViewportStranded: re-pinning to edge', this.defaultEdge,
-            { scrollTop, clientHeight, containerTop, containerBottom });
+            { scrollTop, clientHeight, containerTop, containerBottom, gap });
         this.scrollToEdge(this.defaultEdge, false, 'stranded');
     }
 
