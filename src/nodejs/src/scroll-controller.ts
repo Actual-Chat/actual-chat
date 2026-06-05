@@ -11,27 +11,22 @@ export interface ScrollToOptions {
 const FixPrecisionPx = 0.1;
 const ProgrammaticScrollSuppressMs = 300;
 
-// Touch-drag rubber band: marginal resistance ramps 0 -> MaxResistance over ResistanceRampPx of pull,
-// so the first pixels move almost 1:1 and resistance grows as you drag further (soft, spring-like).
+// Touch rubber-band: resistance ramps 0 -> MaxResistance over ResistanceRampPx of pull (soft, spring-like).
 const MaxResistance = 0.667;
 const ResistanceRampPx = 667;
 
-// Return spring (release / fling): critically damped => single excursion, no second bounce.
+// Release/fling return spring: critically damped (single excursion, no second bounce).
 const ReturnStiffness = 120;
 const ReturnDampingRatio = 1;
 const MaxReturnSpeedPxS = 3000;
 const ReturnSettlePx = 0.3;
 const ReturnSettleSpeedPxS = 8;
-const MaxFlingOverscrollPx = 120;       // cap on the spring excursion for a no-touch fling
-const FlingEntryAsymptotePx = 100;      // smoothly caps the no-touch entry offset (no snap on a fast fling)
+const MaxFlingOverscrollPx = 120;
+const FlingEntryAsymptotePx = 100;
 
-// Binds to one scrollable element and, when scroll constraints are enabled, keeps scrollTop within a
-// [min, max] band (provided on demand via getScrollLimits, so it reflects current item sizes / viewport) with
-// an iOS-style rubber-band overscroll on overscrollElement:
-//  - finger down + past the boundary: a soft, ramping-resistance transform tracks the overscroll;
-//    scroll is NOT blocked.
-//  - no finger + past the boundary: scroll is blocked (overflow:hidden, scrollTop pinned to the edge)
-//    and a critically-damped spring carries the view back to the edge with the entry speed and stops.
+// Keeps an element's scrollTop within getScrollLimits()'s [min, max] band with iOS-style rubber-band
+// overscroll: finger-down past the edge tracks with ramping resistance (scroll not blocked); no-finger
+// past the edge pins to the edge (overflow:hidden) and a critically-damped spring returns it.
 export class ScrollController {
     private static readonly all = new Set<ScrollController>();
 
@@ -75,8 +70,7 @@ export class ScrollController {
             const onTouchEnd = (e: TouchEvent) => { if (e.touches.length === 0) this.onTouchEnd(); };
             element.addEventListener('touchend', onTouchEnd, opts);
             element.addEventListener('touchcancel', onTouchEnd, opts);
-            // A viewport resize (e.g. the mobile keyboard hiding) changes the limits but fires no scroll
-            // event, so re-clamp scrollTop to the new edge here.
+            // A resize (e.g. mobile keyboard hiding) changes limits without firing a scroll event.
             this.resizeObserver = new ResizeObserver(() => this.clampToLimits());
             this.resizeObserver.observe(element);
         }
@@ -119,7 +113,6 @@ export class ScrollController {
         });
     }
 
-    // Re-clamp scrollTop to the current limits (e.g. after a render or a resize changed them).
     public clampToLimits(): void {
         if (!this.enableScrollConstraints || this.isTouching || this.isReturning)
             return;
@@ -247,8 +240,8 @@ export class ScrollController {
         this.springOffset = offset;
         this.springCap = Math.max(Math.abs(offset), MaxFlingOverscrollPx);
         this.springSpeed = clamp(speedPxMs * 1000, -MaxReturnSpeedPxS, MaxReturnSpeedPxS);
-        // Non-Safari: keep overflow:hidden for the whole spring — flicker-free; finishOverscrollReturn unlocks it,
-        // and these browsers re-attach a scroll to a touch that lands mid-bounce.
+        // Non-Safari: hold overflow:hidden for the whole spring — flicker-free, and these browsers still
+        // re-attach a scroll to a mid-bounce touch.
         if (!DeviceInfo.isWebKit)
             this.setOverflowLocked(true);
         this.element.scrollTop = boundary;
@@ -257,9 +250,8 @@ export class ScrollController {
             return;
 
         this.isReturning = true;
-        // Safari won't scroll an element that was overflow:hidden when a finger landed, so a held lock blocks
-        // interrupting the bounce. Lock for one frame only (enough to kill the fling momentum), then leave it
-        // scrollable; the rAF below keeps scrollTop pinned and onTouchStart ends the spring on a touch.
+        // Safari won't scroll an element that was overflow:hidden when the finger landed, so a held lock
+        // would block interrupting the bounce. Lock one frame (kills the fling), then stay scrollable.
         if (DeviceInfo.isWebKit) {
             this.setOverflowLocked(true);
             void this.element.offsetHeight;
@@ -345,8 +337,7 @@ function visibleOverscroll(over: number): number {
     return over - resistancePull(over);
 }
 
-// No-touch entry offset: a fast fling can overshoot the boundary far in one frame; map it through an
-// asymptote so the spring starts from a bounded offset (smoothly, no snap) and the speed drives the rest.
+// Maps a one-frame fling overshoot through an asymptote so the spring starts from a bounded offset.
 function flingEntryOffset(over: number): number {
     return (over * FlingEntryAsymptotePx) / (over + FlingEntryAsymptotePx);
 }
