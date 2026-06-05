@@ -107,8 +107,10 @@ public abstract class ChatPlayer : ProcessorBase
         _ = BackgroundTask.Run(async () => {
             try {
                 await Play(Playback, startAt, playToken).ConfigureAwait(false);
-                if (PlayerKind == ChatPlayerKind.Listening)
-                    await TaskExt.NeverEnding(playToken).ConfigureAwait(false);
+                if (PlayerKind == ChatPlayerKind.Listening && !playToken.IsCancellationRequested)
+                    Log.LogError(
+                        "Play exited normally for a listening player in chat #{ChatId} - this should never happen",
+                        ChatId);
             }
             catch (Exception e) {
                 if (e is not OperationCanceledException)
