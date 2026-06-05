@@ -18,6 +18,7 @@ export interface ResilientStreamOptions<T> {
     resetItem?: T;
     retryDelays?: RetryDelayFn;
     maxRetries?: number; // undefined = infinite
+    isInfinite?: boolean; // when set, a normal completion is treated as a transient drop and reconnected
     signal?: AbortSignal;
 }
 
@@ -33,6 +34,7 @@ export function resilientStream<T>(options: ResilientStreamOptions<T>): AsyncIte
         resetItem,
         retryDelays = expRetryDelays(100, 5000),
         maxRetries,
+        isInfinite,
         signal,
     } = options;
 
@@ -56,15 +58,20 @@ export function resilientStream<T>(options: ResilientStreamOptions<T>): AsyncIte
                             const source = provider(signal);
                             for await (const item of source) {
                                 if (isAborted()) return;
+                                failedTryCount = 0;
                                 buffer.push(item);
                                 waitingConsumer?.resolve(undefined);
                                 waitingConsumer = null;
                             }
-                            // Normal completion
-                            done = true;
-                            waitingConsumer?.resolve(undefined);
-                            waitingConsumer = null;
-                            return;
+                            if (!isInfinite) {
+                                // Normal completion
+                                done = true;
+                                waitingConsumer?.resolve(undefined);
+                                waitingConsumer = null;
+                                return;
+                            }
+                            // Infinite stream completed - reconnect just as we do on a transient drop
+                            failedTryCount++;
                         }
                         catch (e) {
                             if (isAborted())
@@ -80,17 +87,17 @@ export function resilientStream<T>(options: ResilientStreamOptions<T>): AsyncIte
                             }
 
                             warnLog?.log(`retry(${failedTryCount}): error:`, e);
-
-                            if (resetItem !== undefined) {
-                                buffer.push(resetItem);
-                                waitingConsumer?.resolve(undefined);
-                                waitingConsumer = null;
-                            }
-
-                            const delay = retryDelays(failedTryCount - 1);
-                            if (delay > 0)
-                                await delayAsync(delay);
                         }
+
+                        if (resetItem !== undefined) {
+                            buffer.push(resetItem);
+                            waitingConsumer?.resolve(undefined);
+                            waitingConsumer = null;
+                        }
+
+                        const delay = retryDelays(failedTryCount - 1);
+                        if (delay > 0)
+                            await delayAsync(delay);
                     }
                 }
                 catch (e) {

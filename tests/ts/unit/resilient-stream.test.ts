@@ -147,6 +147,49 @@ describe('resilientStream', () => {
         expect(result2).toEqual([1, 2, 3]);
         expect(callCount).toBe(2);
     });
+
+    it('should reconnect on normal completion when isInfinite', async () => {
+        const abortController = new AbortController();
+        let attempt = 0;
+        const stream = resilientStream<number>({
+            provider: () => fromArray([++attempt]),
+            isInfinite: true,
+            retryDelays: () => 0,
+            signal: abortController.signal,
+        });
+
+        const result: number[] = [];
+        for await (const item of stream) {
+            result.push(item);
+            if (result.length >= 3) {
+                abortController.abort();
+                break;
+            }
+        }
+        expect(result).toEqual([1, 2, 3]);
+    });
+
+    it('should emit reset item between reconnects when isInfinite', async () => {
+        const abortController = new AbortController();
+        let attempt = 0;
+        const stream = resilientStream<number>({
+            provider: () => fromArray([++attempt]),
+            isInfinite: true,
+            resetItem: -1,
+            retryDelays: () => 0,
+            signal: abortController.signal,
+        });
+
+        const result: number[] = [];
+        for await (const item of stream) {
+            result.push(item);
+            if (result.filter(x => x !== -1).length >= 2) {
+                abortController.abort();
+                break;
+            }
+        }
+        expect(result).toEqual([1, -1, 2]);
+    });
 });
 
 async function* slowStream(abortController: AbortController): AsyncIterable<number> {
