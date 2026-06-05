@@ -42,26 +42,30 @@ public class FlowsListTest(ITestOutputHelper @out)
             dbContext.Flows.AddRange(seed);
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            // A pending resume event makes {prefix}A:susp count as Suspended.
+            // A pending resume event makes {prefix}A:susp count as Suspended. delay_until must be
+            // in the future, otherwise the AppHost's DbEventProcessor picks it up mid-test and the
+            // event stops being pending.
             var suspUuid = $"FlowResumeEvent({suspId})-at-test";
             var nowDt = now.ToDateTime();
+            var futureDt = (now + TimeSpan.FromDays(1)).ToDateTime();
             var emptyJson = "{}";
             await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
                 INSERT INTO _events (uuid, version, state, logged_at, delay_until, value_json)
-                VALUES ({suspUuid}, 1, 0, {nowDt}, {nowDt}, {emptyJson})
+                VALUES ({suspUuid}, 1, 0, {nowDt}, {futureDt}, {emptyJson})
                 """, cancellationToken);
         }
 
-        var report = await backend.List(new FlowsQuery(Limit: 10_000), cancellationToken);
+        var stats = await backend.ListStats(default, cancellationToken);
 
-        var aggA = report.Aggregates.Single(a => a.Name == $"{prefix}A");
+        var aggA = stats.Single(a => a.Name == $"{prefix}A");
         aggA.Completed.Should().Be(1);
         aggA.Failed.Should().Be(1);
         aggA.Suspended.Should().Be(1);
         aggA.Idle.Should().Be(1);
         aggA.Stuck.Should().Be(0);
 
-        var rowById = report.Rows.Where(r => seededIds.Contains(r.FlowId)).ToDictionary(r => r.FlowId);
+        var allRows = await backend.List(new FlowsQuery(Limit: 10_000), cancellationToken);
+        var rowById = allRows.Where(r => seededIds.Contains(r.FlowId)).ToDictionary(r => r.FlowId);
         rowById[$"{prefix}A:ok"].Status.Should().Be(FlowStatus.Completed);
         rowById[$"{prefix}A:bad"].Status.Should().Be(FlowStatus.Failed);
         rowById[$"{prefix}A:idle"].Status.Should().Be(FlowStatus.Idle);
@@ -69,12 +73,12 @@ public class FlowsListTest(ITestOutputHelper @out)
         rowById[stuckId].Status.Should().Be(FlowStatus.Stuck);
 
         var problematic = await backend.List(new FlowsQuery(ProblematicOnly: true, Limit: 10_000), cancellationToken);
-        var ours = problematic.Rows.Where(r => seededIds.Contains(r.FlowId)).ToList();
+        var ours = problematic.Where(r => seededIds.Contains(r.FlowId)).ToList();
         ours.Select(r => r.FlowId).Should().BeEquivalentTo([$"{prefix}A:bad", stuckId]);
 
         var typeA = await backend.List(new FlowsQuery(Name: $"{prefix}A", Limit: 10_000), cancellationToken);
-        typeA.Rows.Should().OnlyContain(r => r.Name == $"{prefix}A");
-        typeA.Rows.Select(r => r.FlowId).Should()
+        typeA.Should().OnlyContain(r => r.Name == $"{prefix}A");
+        typeA.Select(r => r.FlowId).Should()
             .BeEquivalentTo([$"{prefix}A:ok", $"{prefix}A:bad", $"{prefix}A:idle", suspId]);
     }
 

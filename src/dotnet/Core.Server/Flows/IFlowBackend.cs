@@ -14,8 +14,10 @@ public interface IFlowBackend : IComputeService, IBackendService
     Task<IFlowData?> TryGetData(FlowId flowId, CancellationToken cancellationToken);
     // Regular RPC method!
     Task<IFlowData> Start(FlowId flowId, long? expectedVersion, CancellationToken cancellationToken);
+    // Regular RPC method! Pinned to a single node via ShardKeyResolver<Unit>.
+    Task<FlowTypeStat[]> ListStats(Unit unit, CancellationToken cancellationToken);
     // Regular RPC method! Pinned to a single node via ShardKeyResolver<FlowsQuery>.
-    Task<FlowsReport> List(FlowsQuery query, CancellationToken cancellationToken);
+    Task<FlowSummary[]> List(FlowsQuery query, CancellationToken cancellationToken);
 
     // The `long` result in any of the methods below return is DbFlow/FlowData.Version
     [CommandHandler]

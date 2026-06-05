@@ -83,20 +83,10 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         }, new RetryLogger(Log), cancellationToken).ConfigureAwait(false);
     }
 
-    // Regular RPC method! Pinned to a single node via ShardKeyResolver<FlowsQuery>.
-    public virtual async Task<FlowsReport> List(FlowsQuery query, CancellationToken cancellationToken)
+    // Regular RPC method! Pinned to a single node via ShardKeyResolver<Unit>.
+    public virtual async Task<FlowTypeStat[]> ListStats(Unit unit, CancellationToken cancellationToken)
     {
-        var now = FlowHub.Clocks.SystemClock.Now;
-
-        // A PeriodicFlow always reschedules itself, so a non-completed one without a pending
-        // resume event has lost its wake-up = genuinely stuck. Other flow types legitimately
-        // rest without an event (e.g. an indexing flow that reached the tail), so for them the
-        // same situation means idle, not stuck.
-        var periodicNames = FlowHub.Defs.ByName.Values
-            .Where(d => typeof(PeriodicFlow).IsAssignableFrom(d.Type))
-            .Select(d => d.Name.Value)
-            .ToArray();
-        var periodicNameSet = periodicNames.ToHashSet(StringComparer.Ordinal);
+        var periodicNameSet = GetPeriodicNames();
 
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
@@ -118,7 +108,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
                 """)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var aggregates = aggRows
+        return aggRows
             .Select(a => {
                 var isPeriodic = periodicNameSet.Contains(a.Name);
                 return new FlowTypeStat(a.Name, a.Completed, a.Failed, a.Suspended,
@@ -127,6 +117,16 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
             })
             .OrderBy(a => a.Name, StringComparer.Ordinal)
             .ToArray();
+    }
+
+    // Regular RPC method! Pinned to a single node via ShardKeyResolver<FlowsQuery>.
+    public virtual async Task<FlowSummary[]> List(FlowsQuery query, CancellationToken cancellationToken)
+    {
+        var periodicNameSet = GetPeriodicNames();
+        var periodicNames = periodicNameSet.ToArray();
+
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _1 = dbContext.ConfigureAwait(false);
 
         var nameUnset = query.Name.IsNullOrEmpty();
         var namePattern = (query.Name ?? "") + ":%";
@@ -154,7 +154,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
                 """)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var rows = rawRows
+        return rawRows
             .Select(r => {
                 var name = GetName(r.Id);
                 return new FlowSummary(
@@ -165,8 +165,6 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
                     new Moment(TimeSpan.FromTicks(r.Version)));
             })
             .ToArray();
-
-        return new FlowsReport(aggregates, rows, now);
     }
 
     // The `long` it returns is DbFlow/FlowData.Version
@@ -320,6 +318,16 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
     }
 
     // Private methods
+
+    // A PeriodicFlow always reschedules itself, so a non-completed one without a pending
+    // resume event has lost its wake-up = genuinely stuck. Other flow types legitimately
+    // rest without an event (e.g. an indexing flow that reached the tail), so for them the
+    // same situation means idle, not stuck.
+    private HashSet<string> GetPeriodicNames()
+        => FlowHub.Defs.ByName.Values
+            .Where(d => typeof(PeriodicFlow).IsAssignableFrom(d.Type))
+            .Select(d => d.Name.Value)
+            .ToHashSet(StringComparer.Ordinal);
 
     private static string GetName(string flowId)
     {
