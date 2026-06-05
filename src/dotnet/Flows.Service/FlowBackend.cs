@@ -91,6 +91,11 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
 
+        // Raw SQL here (and in List) because none of these translate to LINQ: split_part to derive
+        // the flow type from the id, FILTER aggregates, and most of all the join to _events on the
+        // FlowId — which DbEvent stores only inside its `uuid` ("FlowResumeEvent(<id>)-at-..."), so
+        // it has to be parsed out in SQL. All interpolated values are EF parameters, not string
+        // concatenation. Single shared DB, so one unsharded scan is correct.
         var aggRows = await dbContext.Database
             .SqlQuery<AggRow>($"""
                 SELECT split_part(f.id, ':', 1) AS "Name",
@@ -131,6 +136,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         var nameUnset = query.Name.IsNullOrEmpty();
         var namePattern = (query.Name ?? "") + ":%";
         var limit = query.Limit.Clamp(0, MaxListLimit);
+        // Raw SQL for the same reasons as ListStats — see the comment there.
         var rawRows = await dbContext.Database
             .SqlQuery<RawRow>($"""
                 SELECT f.id AS "Id",
