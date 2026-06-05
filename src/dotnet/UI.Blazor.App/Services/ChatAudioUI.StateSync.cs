@@ -8,6 +8,7 @@ public partial class ChatAudioUI
 {
     private static readonly TimeSpan Epsilon = TimeSpan.FromMilliseconds(50);
     private static readonly int MaxStopRecordingTryCount = 3;
+    private static readonly TimeSpan ListeningPlayerStableInterval = TimeSpan.FromSeconds(30);
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
@@ -335,6 +336,7 @@ public partial class ChatAudioUI
         var restartDelays = RetryDelaySeq.Exp(0.5, 8);
         var restartAttempt = 0;
         while (!cancellationToken.IsCancellationRequested) {
+            var startedAt = Clocks.CpuClock.Now;
             var whenPlaying = await StartListeningPlayer(chatId, cancellationToken).ConfigureAwait(false);
             await whenPlaying.SilentAwait(false);
 
@@ -344,6 +346,10 @@ public partial class ChatAudioUI
             var listeningChatIds = await GetListeningChatIds().ConfigureAwait(false);
             if (!listeningChatIds.Contains(chatId))
                 return;
+
+            // A session that ran long enough is healthy, so the backoff starts fresh on its exit
+            if (Clocks.CpuClock.Now - startedAt >= ListeningPlayerStableInterval)
+                restartAttempt = 0;
 
             restartAttempt++;
             var delay = restartDelays[restartAttempt];
