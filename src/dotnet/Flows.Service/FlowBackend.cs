@@ -16,7 +16,6 @@ namespace ActualChat.Flows;
 /// </summary>
 public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
 {
-    private static readonly TimeSpan StuckThreshold = TimeSpan.FromHours(6);
     private const int MaxListLimit = 1000;
 
     private readonly AsyncLockSet<FlowId> _resumeLocks = new(LockReentryMode.CheckedPass);
@@ -88,51 +87,83 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
     public virtual async Task<FlowsReport> List(FlowsQuery query, CancellationToken cancellationToken)
     {
         var now = FlowHub.Clocks.SystemClock.Now;
-        var cutoffVersion = (now - StuckThreshold).EpochOffset.Ticks;
+
+        // A PeriodicFlow always reschedules itself, so a non-completed one without a pending
+        // resume event has lost its wake-up = genuinely stuck. Other flow types legitimately
+        // rest without an event (e.g. an indexing flow that reached the tail), so for them the
+        // same situation means idle, not stuck.
+        var periodicNames = FlowHub.Defs.ByName.Values
+            .Where(d => typeof(PeriodicFlow).IsAssignableFrom(d.Type))
+            .Select(d => d.Name.Value)
+            .ToArray();
+        var periodicNameSet = periodicNames.ToHashSet(StringComparer.Ordinal);
 
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
 
         var aggRows = await dbContext.Database
             .SqlQuery<AggRow>($"""
-                SELECT split_part(id, ':', 1) AS "Name",
-                       COUNT(*) FILTER (WHERE NOT is_completed AND version >= {cutoffVersion})::int AS "Active",
-                       COUNT(*) FILTER (WHERE is_completed AND NOT is_failed)::int AS "Completed",
-                       COUNT(*) FILTER (WHERE is_completed AND is_failed)::int AS "Failed",
-                       COUNT(*) FILTER (WHERE NOT is_completed AND version < {cutoffVersion})::int AS "Stuck"
-                FROM _flows
-                GROUP BY split_part(id, ':', 1)
+                SELECT split_part(f.id, ':', 1) AS "Name",
+                       COUNT(*) FILTER (WHERE f.is_completed AND NOT f.is_failed)::int AS "Completed",
+                       COUNT(*) FILTER (WHERE f.is_completed AND f.is_failed)::int AS "Failed",
+                       COUNT(*) FILTER (WHERE NOT f.is_completed AND r.id IS NOT NULL)::int AS "Suspended",
+                       COUNT(*) FILTER (WHERE NOT f.is_completed AND r.id IS NULL)::int AS "NoEvent"
+                FROM _flows f
+                LEFT JOIN (
+                    SELECT DISTINCT split_part(substring(uuid FROM char_length('FlowResumeEvent(') + 1), ')', 1) AS id
+                    FROM _events
+                    WHERE state = 0 AND uuid LIKE 'FlowResumeEvent(%'
+                ) r ON r.id = f.id
+                GROUP BY split_part(f.id, ':', 1)
                 """)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var aggregates = aggRows
-            .Select(a => new FlowTypeStat(a.Name, a.Active, a.Completed, a.Failed, a.Stuck))
+            .Select(a => {
+                var isPeriodic = periodicNameSet.Contains(a.Name);
+                return new FlowTypeStat(a.Name, a.Completed, a.Failed, a.Suspended,
+                    Stuck: isPeriodic ? a.NoEvent : 0,
+                    Idle: isPeriodic ? 0 : a.NoEvent);
+            })
             .OrderBy(a => a.Name, StringComparer.Ordinal)
             .ToArray();
 
-        var rowsQuery = dbContext.Flows.AsNoTracking();
-        if (!query.Name.IsNullOrEmpty()) {
-            var namePrefix = query.Name + ":";
-            rowsQuery = rowsQuery.Where(f => f.Id.StartsWith(namePrefix));
-        }
-        if (query.ProblematicOnly)
-            rowsQuery = rowsQuery.Where(f =>
-                (f.IsCompleted && f.IsFailed) || (!f.IsCompleted && f.Version < cutoffVersion));
-
+        var nameUnset = query.Name.IsNullOrEmpty();
+        var namePattern = (query.Name ?? "") + ":%";
         var limit = query.Limit.Clamp(0, MaxListLimit);
-        var rawRows = await rowsQuery
-            .OrderBy(f => f.Id)
-            .Take(limit)
-            .Select(f => new { f.Id, f.IsCompleted, f.IsFailed, f.Version })
+        var rawRows = await dbContext.Database
+            .SqlQuery<RawRow>($"""
+                SELECT f.id AS "Id",
+                       f.is_completed AS "IsCompleted",
+                       f.is_failed AS "IsFailed",
+                       f.version AS "Version",
+                       (r.id IS NOT NULL) AS "HasResume"
+                FROM _flows f
+                LEFT JOIN (
+                    SELECT DISTINCT split_part(substring(uuid FROM char_length('FlowResumeEvent(') + 1), ')', 1) AS id
+                    FROM _events
+                    WHERE state = 0 AND uuid LIKE 'FlowResumeEvent(%'
+                ) r ON r.id = f.id
+                WHERE ({nameUnset} OR f.id LIKE {namePattern})
+                  AND (NOT {query.HideCompleted} OR NOT f.is_completed)
+                  AND (NOT {query.ProblematicOnly}
+                       OR (f.is_completed AND f.is_failed)
+                       OR (NOT f.is_completed AND r.id IS NULL AND split_part(f.id, ':', 1) = ANY({periodicNames})))
+                ORDER BY f.id
+                LIMIT {limit}
+                """)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var rows = rawRows
-            .Select(r => new FlowSummary(
-                r.Id,
-                GetName(r.Id),
-                GetStatus(r.IsCompleted, r.IsFailed, r.Version, cutoffVersion),
-                r.Version,
-                new Moment(TimeSpan.FromTicks(r.Version))))
+            .Select(r => {
+                var name = GetName(r.Id);
+                return new FlowSummary(
+                    r.Id,
+                    name,
+                    GetStatus(r.IsCompleted, r.IsFailed, r.HasResume, periodicNameSet.Contains(name)),
+                    r.Version,
+                    new Moment(TimeSpan.FromTicks(r.Version)));
+            })
             .ToArray();
 
         return new FlowsReport(aggregates, rows, now);
@@ -296,19 +327,29 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         return nameLength <= 0 ? flowId : flowId[..nameLength];
     }
 
-    private static FlowStatus GetStatus(bool isCompleted, bool isFailed, long version, long cutoffVersion)
+    private static FlowStatus GetStatus(bool isCompleted, bool isFailed, bool hasResume, bool isPeriodic)
         => isCompleted
             ? isFailed ? FlowStatus.Failed : FlowStatus.Completed
-            : version < cutoffVersion ? FlowStatus.Stuck : FlowStatus.Active;
+            : hasResume ? FlowStatus.Suspended
+            : isPeriodic ? FlowStatus.Stuck : FlowStatus.Idle;
 
     // Nested types
 
     private sealed class AggRow
     {
         public string Name { get; set; } = "";
-        public int Active { get; set; }
         public int Completed { get; set; }
         public int Failed { get; set; }
-        public int Stuck { get; set; }
+        public int Suspended { get; set; }
+        public int NoEvent { get; set; }
+    }
+
+    private sealed class RawRow
+    {
+        public string Id { get; set; } = "";
+        public bool IsCompleted { get; set; }
+        public bool IsFailed { get; set; }
+        public long Version { get; set; }
+        public bool HasResume { get; set; }
     }
 }

@@ -21,25 +21,40 @@ public class FlowsListTest(ITestOutputHelper @out)
         var clock = h.Services.Clocks().SystemClock;
         var now = clock.Now;
 
-        // FlowBackend.List derives UpdatedAt and the stuck cutoff from Version, assuming
-        // Version == clock-based epoch ticks. Confirm that assumption against the live generator.
+        // FlowBackend.List derives UpdatedAt from Version, assuming Version == clock-based epoch
+        // ticks. Confirm that assumption against the live generator.
         var version = h.Services.VersionGenerator<long>().NextVersion(0);
         Math.Abs(version - now.EpochOffset.Ticks).Should().BeLessThan(TimeSpan.FromSeconds(10).Ticks);
 
         var backend = h.Services.GetRequiredService<IFlowBackend>();
         var dbHub = h.Services.DbHub<FlowsDbContext>();
 
-        long V(TimeSpan ago) => (now - ago).EpochOffset.Ticks;
+        var ticks = now.EpochOffset.Ticks;
         var prefix = $"FlowsListTest{Guid.NewGuid():N}";
+        // DigestFlow is a registered PeriodicFlow, so a non-completed one without a pending resume
+        // event is classified as Stuck. The synthetic {prefix}A flows are not registered, hence Idle.
+        var stuckId = $"DigestFlow:{prefix}";
+        var suspId = $"{prefix}A:susp";
+        var seededIds = new[] { $"{prefix}A:ok", $"{prefix}A:bad", $"{prefix}A:idle", suspId, stuckId };
         var seed = new[] {
-            NewDbFlow($"{prefix}A:ok", V(TimeSpan.FromMinutes(1)), isCompleted: true, isFailed: false),
-            NewDbFlow($"{prefix}A:bad", V(TimeSpan.FromMinutes(2)), isCompleted: true, isFailed: true),
-            NewDbFlow($"{prefix}A:active", V(TimeSpan.FromMinutes(3)), isCompleted: false, isFailed: false),
-            NewDbFlow($"{prefix}B:stuck", V(TimeSpan.FromHours(12)), isCompleted: false, isFailed: false),
+            NewDbFlow($"{prefix}A:ok", ticks, isCompleted: true, isFailed: false),
+            NewDbFlow($"{prefix}A:bad", ticks, isCompleted: true, isFailed: true),
+            NewDbFlow($"{prefix}A:idle", ticks, isCompleted: false, isFailed: false),
+            NewDbFlow(suspId, ticks, isCompleted: false, isFailed: false),
+            NewDbFlow(stuckId, ticks, isCompleted: false, isFailed: false),
         };
         await using (var dbContext = await dbHub.CreateDbContext(true, cancellationToken)) {
             dbContext.Flows.AddRange(seed);
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            // A pending resume event makes {prefix}A:susp count as Suspended.
+            var suspUuid = $"FlowResumeEvent({suspId})-at-test";
+            var nowDt = now.ToDateTime();
+            var emptyJson = "{}";
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO _events (uuid, version, state, logged_at, delay_until, value_json)
+                VALUES ({suspUuid}, 1, 0, {nowDt}, {nowDt}, {emptyJson})
+                """, cancellationToken);
         }
 
         var report = await backend.List(new FlowsQuery(Limit: 10_000), cancellationToken);
@@ -47,18 +62,25 @@ public class FlowsListTest(ITestOutputHelper @out)
         var aggA = report.Aggregates.Single(a => a.Name == $"{prefix}A");
         aggA.Completed.Should().Be(1);
         aggA.Failed.Should().Be(1);
-        aggA.Active.Should().Be(1);
+        aggA.Suspended.Should().Be(1);
+        aggA.Idle.Should().Be(1);
         aggA.Stuck.Should().Be(0);
-        report.Aggregates.Single(a => a.Name == $"{prefix}B").Stuck.Should().Be(1);
+
+        var rowById = report.Rows.Where(r => seededIds.Contains(r.FlowId)).ToDictionary(r => r.FlowId);
+        rowById[$"{prefix}A:ok"].Status.Should().Be(FlowStatus.Completed);
+        rowById[$"{prefix}A:bad"].Status.Should().Be(FlowStatus.Failed);
+        rowById[$"{prefix}A:idle"].Status.Should().Be(FlowStatus.Idle);
+        rowById[suspId].Status.Should().Be(FlowStatus.Suspended);
+        rowById[stuckId].Status.Should().Be(FlowStatus.Stuck);
 
         var problematic = await backend.List(new FlowsQuery(ProblematicOnly: true, Limit: 10_000), cancellationToken);
-        var ours = problematic.Rows.Where(r => r.Name.StartsWith(prefix, StringComparison.Ordinal)).ToList();
-        ours.Select(r => r.FlowId).Should().BeEquivalentTo([$"{prefix}A:bad", $"{prefix}B:stuck"]);
-        ours.Single(r => r.FlowId == $"{prefix}A:bad").Status.Should().Be(FlowStatus.Failed);
-        ours.Single(r => r.FlowId == $"{prefix}B:stuck").Status.Should().Be(FlowStatus.Stuck);
+        var ours = problematic.Rows.Where(r => seededIds.Contains(r.FlowId)).ToList();
+        ours.Select(r => r.FlowId).Should().BeEquivalentTo([$"{prefix}A:bad", stuckId]);
 
-        var typeB = await backend.List(new FlowsQuery(Name: $"{prefix}B", Limit: 10_000), cancellationToken);
-        typeB.Rows.Should().OnlyContain(r => r.Name == $"{prefix}B");
+        var typeA = await backend.List(new FlowsQuery(Name: $"{prefix}A", Limit: 10_000), cancellationToken);
+        typeA.Rows.Should().OnlyContain(r => r.Name == $"{prefix}A");
+        typeA.Rows.Select(r => r.FlowId).Should()
+            .BeEquivalentTo([$"{prefix}A:ok", $"{prefix}A:bad", $"{prefix}A:idle", suspId]);
     }
 
     private static DbFlow NewDbFlow(string id, long version, bool isCompleted, bool isFailed)
