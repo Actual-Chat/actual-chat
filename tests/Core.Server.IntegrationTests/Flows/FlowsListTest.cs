@@ -10,10 +10,10 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 public class FlowsListTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(FlowsListTest)}", TestAppHostOptions.Default, @out)
 {
-    [Fact(Timeout = 180_000)]
+    [Fact(Timeout = 60_000)]
     public async Task ListReportsStatuses()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(170));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(55));
         var cancellationToken = cts.Token;
 
         await using var h = await NewAppHost();
