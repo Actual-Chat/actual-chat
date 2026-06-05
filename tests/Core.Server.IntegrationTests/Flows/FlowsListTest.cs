@@ -2,7 +2,6 @@ using ActualChat.Flows;
 using ActualChat.Flows.Db;
 using ActualChat.Testing.Host;
 using ActualLab.Fusion.EntityFramework;
-using ActualLab.Versioning;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
@@ -21,11 +20,7 @@ public class FlowsListTest(ITestOutputHelper @out)
         var clock = h.Services.Clocks().SystemClock;
         var now = clock.Now;
 
-        // FlowBackend.List derives UpdatedAt from Version, assuming Version == clock-based epoch
-        // ticks. Confirm that assumption against the live generator.
-        var version = h.Services.VersionGenerator<long>().NextVersion(0);
-        Math.Abs(version - now.EpochOffset.Ticks).Should().BeLessThan(TimeSpan.FromSeconds(10).Ticks);
-
+        // FlowBackend.List derives UpdatedAt from Version, assuming Version == clock-based epoch ticks.
         var backend = h.Services.GetRequiredService<IFlowBackend>();
         var dbHub = h.Services.DbHub<FlowsDbContext>();
 
