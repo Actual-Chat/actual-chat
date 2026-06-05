@@ -11,10 +11,15 @@ public sealed class ListeningStreamMuxer : WorkerBase
 {
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan EvictionDelay = Constants.Audio.MaxRealtimeStreamDrift + TimeSpan.FromSeconds(1);
+    private static readonly RetryDelaySeq PreStartRetryDelays = RetryDelaySeq.Exp(0.25, 2);
+    private const int MaxPreStartRetryCount = 3;
 
     private readonly Channel<MuxedStreamItem> _output;
     private readonly ConcurrentDictionary<string, StreamEntry> _streamById = new();
     private readonly ConcurrentDictionary<AuthorId, StreamEntry> _streamByAuthor = new();
+    private readonly ConcurrentDictionary<string, byte> _excludedStreamIds = new();
+    private readonly ConcurrentDictionary<string, int> _preStartRetryCountByStreamId = new();
+    private TaskCompletionSource _whenRetryNeededSource = TaskCompletionSourceExt.New();
     private int _nextStreamIndex;
 
     private IServiceProvider Services { get; }
@@ -74,6 +79,8 @@ public sealed class ListeningStreamMuxer : WorkerBase
 
                         // Start processing any new streams
                         foreach (var streamInfo in currentStreams) {
+                            if (_excludedStreamIds.ContainsKey(streamInfo.StreamId))
+                                continue;
                             if (_streamById.ContainsKey(streamInfo.StreamId))
                                 continue; // Already processing this stream
 
@@ -87,8 +94,15 @@ public sealed class ListeningStreamMuxer : WorkerBase
                             _ = ProcessStream(streamEntry, cancellationToken);
                         }
 
-                        // Wait for invalidation (stream registered/unregistered)
-                        await computed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+                        var retryTask = _whenRetryNeededSource.Task;
+                        var invalidatedTask = computed.WhenInvalidated(cancellationToken);
+                        var completedTask = await Task
+                            .WhenAny(invalidatedTask, retryTask)
+                            .ConfigureAwait(false);
+                        if (ReferenceEquals(completedTask, invalidatedTask))
+                            await invalidatedTask.ConfigureAwait(false);
+                        else
+                            ResetRetryNeeded(retryTask);
                     }
                 }
                 catch (Exception e) {
@@ -114,6 +128,10 @@ public sealed class ListeningStreamMuxer : WorkerBase
         var streamId = streamInfo.StreamId;
         var streamStopToken = streamStopTokenSource.Token;
         var frameCount = 0;
+        var mustRetry = false;
+        var mustExclude = false;
+        var isStartEmitted = false;
+        var shouldRetry = false;
         try {
             if (!TryRegister(streamEntry))
                 return; // See `finally` block below
@@ -129,17 +147,18 @@ public sealed class ListeningStreamMuxer : WorkerBase
                 .ConfigureAwait(false);
             if (rpcStream == null) {
                 Log.LogWarning("ProcessStream: Stream #{StreamId} not found", streamId);
+                mustRetry = true;
                 return;
             }
 
-            var audioStream = rpcStream.SuppressExceptions(e => e is RpcReconnectFailedException, streamStopToken);
-            await foreach (var frame in audioStream.ConfigureAwait(false)) {
+            await foreach (var frame in rpcStream.ConfigureAwait(false)) {
                 if (frameCount == 0) {
                     var startItem = new MuxedAudioStreamStart() {
                         StreamIndex = streamIndex,
                         StreamInfo = streamInfo,
                     };
                     await _output.Writer.WriteAsync(startItem, streamStopToken).ConfigureAwait(false);
+                    isStartEmitted = true;
                 }
                 var audioFrame = new MuxedAudioFrame {
                     StreamIndex = streamIndex,
@@ -153,6 +172,15 @@ public sealed class ListeningStreamMuxer : WorkerBase
                 "Stream #{StreamIndex} for {AuthorId} completed, {FrameCount} frames emitted",
                 streamIndex, authorId, frameCount);
         }
+        catch (RpcReconnectFailedException e) {
+            if (isStartEmitted)
+                mustExclude = true;
+            else
+                mustRetry = true;
+            Log.LogWarning(e,
+                "Reconnect failed processing stream #{StreamIndex} for {AuthorId} #{StreamId}, {FrameCount} frames emitted",
+                streamIndex, authorId, streamId, frameCount);
+        }
         catch (OperationCanceledException)
             when (streamStopToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested) {
             // A fresher stream replaced us — not an error
@@ -164,6 +192,10 @@ public sealed class ListeningStreamMuxer : WorkerBase
             Log.LogDebug("Stream #{StreamIndex} cancelled after {FrameCount} frames", streamIndex, frameCount);
         }
         catch (Exception e) {
+            if (isStartEmitted)
+                mustExclude = true;
+            else
+                mustRetry = true;
             Log.LogWarning(e,
                 "Error processing stream #{StreamIndex} for {AuthorId} #{StreamId}, {FrameCount} frames emitted",
                 streamIndex, authorId, streamId, frameCount);
@@ -172,18 +204,39 @@ public sealed class ListeningStreamMuxer : WorkerBase
             streamStopTokenSource.CancelAndDisposeSilently();
             await EmitEndSafe().ConfigureAwait(false);
 
-            // LiveAudioBackend.List may still enlist the same stream, so this delay
-            // prevents duplicates of the same stream to be processed
-            await Task.Delay(EvictionDelay, CancellationToken.None).ConfigureAwait(false);
+            if (mustExclude)
+                _excludedStreamIds.TryAdd(streamId, 0);
+            if (mustRetry) {
+                var retryCount = _preStartRetryCountByStreamId.AddOrUpdate(streamId, 1, (_, count) => count + 1);
+                if (retryCount <= MaxPreStartRetryCount) {
+                    await Task.Delay(PreStartRetryDelays[retryCount], CancellationToken.None).ConfigureAwait(false);
+                    shouldRetry = true;
+                }
+                else {
+                    Log.LogWarning(
+                        "ProcessStream: Stream #{StreamId} failed before start after {RetryCount} retries, excluding",
+                        streamId, MaxPreStartRetryCount);
+                    _excludedStreamIds.TryAdd(streamId, 0);
+                    _preStartRetryCountByStreamId.TryRemove(streamId, out _);
+                }
+            }
+            else if (!mustExclude) {
+                _preStartRetryCountByStreamId.TryRemove(streamId, out _);
+                await Task.Delay(EvictionDelay, CancellationToken.None).ConfigureAwait(false);
+            }
+            else
+                _preStartRetryCountByStreamId.TryRemove(streamId, out _);
 
             // Unregister the stream
             _streamById.TryRemove(streamId, streamEntry);
             _streamByAuthor.TryRemove(authorId, streamEntry);
+            if (shouldRetry)
+                NotifyRetryNeeded();
         }
         return;
 
         async ValueTask EmitEndSafe() {
-            if (frameCount == 0 || cancellationToken.IsCancellationRequested)
+            if (!isStartEmitted || cancellationToken.IsCancellationRequested)
                 return;
 
             try {
@@ -220,6 +273,22 @@ public sealed class ListeningStreamMuxer : WorkerBase
                 entry.StopTokenSource.CancelAndDisposeSilently();
                 return existing;
             }));
+    }
+
+    private void NotifyRetryNeeded()
+        => _whenRetryNeededSource.TrySetResult();
+
+    private void ResetRetryNeeded(Task retryTask)
+    {
+        while (true) {
+            var current = _whenRetryNeededSource;
+            if (!ReferenceEquals(current.Task, retryTask))
+                return;
+
+            var next = TaskCompletionSourceExt.New();
+            if (ReferenceEquals(Interlocked.CompareExchange(ref _whenRetryNeededSource, next, current), current))
+                return;
+        }
     }
 
     // Nested types
