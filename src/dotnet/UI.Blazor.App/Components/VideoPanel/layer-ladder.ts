@@ -14,6 +14,12 @@ export interface LayerConfig {
 
 export const MIN_SIMULCAST_SMALL_AXIS = 150;
 
+// Derived (lower) tier dims are rounded up to this multiple. HEVC's minimum
+// coding block is 8×8, so a non-mod-8 height (e.g. 180) is encoded at the
+// rounded-up coded size (184) with a conformance window — which Edge HEVC HW
+// mis-renders as a top-left-corner crop. mod-8 keeps coded == display.
+const DERIVED_TIER_MULTIPLE = 8;
+
 // fps for the bottom (unfocused-thumbnail) tier; higher tiers run full rate.
 export const LOW_TIER_FPS = 10;
 
@@ -39,13 +45,14 @@ export interface LadderBuildInput {
 // Builds a simulcast ladder. Top tier is `(topWidth, topHeight)` — the
 // caller's chosen source dim (becomes the downscaler's identity slot:
 // `clone()` instead of a canvas-backed VideoFrame, no GPU sync). Each lower
-// tier is ½ width × ½ height (¼ pixels) of the next, even-rounded so encoders
-// accept them. Result is bottom-first.
+// tier is ~½ width × ½ height (¼ pixels) of the next, rounded up to a multiple
+// of `DERIVED_TIER_MULTIPLE` so coded == display (no HEVC conformance window).
+// Result is bottom-first.
 //
 // Examples:
-//  - Camera 3-tier @ 720p: (1280,720,3) → [320×180, 640×360, 1280×720]
-//  - Camera 2-tier dropTop @ 360p: (640,360,2) → [320×180, 640×360]
-//  - ScreenCast 2-tier @ 1080p: (1920,1080,2) → [960×540, 1920×1080]
+//  - Camera 3-tier @ 720p: (1280,720,3) → [320×184, 640×360, 1280×720]
+//  - Camera 2-tier dropTop @ 360p: (640,360,2) → [320×184, 640×360]
+//  - ScreenCast 2-tier @ 1080p: (1920,1080,2) → [960×544, 1920×1080]
 //
 // Capped to maxTierCount regardless of `tierCount`.
 export function buildLadder(input: LadderBuildInput): LayerConfig[] {
@@ -77,8 +84,8 @@ export function buildLadder(input: LadderBuildInput): LayerConfig[] {
             baseBitrateKbps: bitratesKbps[effectiveCount - i - 1],
             bitrateKbps: bitratesKbps[effectiveCount - i - 1],
         });
-        w = roundToEven(w / 2);
-        h = roundToEven(h / 2);
+        w = roundToMultiple(w / 2, DERIVED_TIER_MULTIPLE);
+        h = roundToMultiple(h / 2, DERIVED_TIER_MULTIPLE);
     }
     return ladder.reverse();
 }
@@ -110,8 +117,10 @@ function buildExplicitLadder(
         started = true;
         const bitrate = bitratesKbps[bitratesKbps.length - (tierSizes.length - i)];
         ladder.push({
-            width: roundToEven(size.width),
-            height: roundToEven(size.height),
+            // Top stays exact (source/identity slot); lower tiers mod-8 so HEVC
+            // coded == display (see DERIVED_TIER_MULTIPLE).
+            width: isTop ? roundToEven(size.width) : roundToMultiple(size.width, DERIVED_TIER_MULTIPLE),
+            height: isTop ? roundToEven(size.height) : roundToMultiple(size.height, DERIVED_TIER_MULTIPLE),
             baseBitrateKbps: bitrate,
             bitrateKbps: bitrate,
         });
@@ -181,6 +190,10 @@ interface Size {
     height: number;
 }
 
+function roundToMultiple(value: number, multiple: number): number {
+    return Math.max(multiple, Math.round(value / multiple) * multiple);
+}
+
 function roundToEven(value: number): number {
-    return Math.max(2, Math.round(value / 2) * 2);
+    return roundToMultiple(value, 2);
 }
