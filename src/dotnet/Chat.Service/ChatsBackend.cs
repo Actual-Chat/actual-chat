@@ -782,6 +782,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     && x.Kind == 0
                     && x.Version >= query.MinVersion
                     && x.Version <= query.MaxVersion)
+                .WhereIf(x => x.HasAttachments, query.RequireAttachments)
                 .OrderBy(x => x.Version)
                 .ThenBy(x => x.LocalId)
                 .Take(query.Limit)
@@ -795,6 +796,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 && x.Kind == 0
                 && x.Version == query.MinVersion
                 && x.LocalId > query.LastLocalId)
+            .WhereIf(x => x.HasAttachments, query.RequireAttachments)
             .OrderBy(x => x.Version)
             .ThenBy(x => x.LocalId)
             .Take(query.Limit)
@@ -809,6 +811,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 && x.Kind == 0
                 && x.Version > query.MinVersion
                 && x.Version <= query.MaxVersion)
+            .WhereIf(x => x.HasAttachments, query.RequireAttachments)
             .OrderBy(x => x.Version)
             .ThenBy(x => x.LocalId)
             .Take(query.Limit - part1.Count)
