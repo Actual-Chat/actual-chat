@@ -278,10 +278,11 @@ function isPromiseLike(value: unknown): value is PromiseLike<void> {
 // Bottom-first camera simulcast tier sizes (mirrors VideoLayerDef.CameraLayers
 // in C#). The 1920×1080 top tier is desktop-only and non-H264; it's added by
 // the QC ramp (receiver demand / encode+bandwidth headroom) on top of the
-// ½-derived 180/360/720 base. 720→1080 is ×1.5, so an explicit size list is
-// used instead of the ½-derivation.
+// ½-derived 184/360/720 base (bottom rounded to mod-8 for HEVC; see
+// DERIVED_TIER_MULTIPLE in layer-ladder.ts). 720→1080 is ×1.5, so an explicit
+// size list is used instead of the ½-derivation.
 const CAMERA_TIER_SIZES = [
-    { width: 320, height: 180 },
+    { width: 320, height: 184 },
     { width: 640, height: 360 },
     { width: 1280, height: 720 },
     { width: 1920, height: 1080 },
@@ -760,17 +761,22 @@ export class VideoRecorder {
                 `wantsPortrait=${wantsPortrait}, codec=${codecString}, ` +
                 `requestTarget=${requestSize.width}x${requestSize.height}`);
 
-            let ladder = buildLadder({
+            // Build the FULL bottom-first simulcast ladder up front. Warmup runs
+            // the normal pipeline gate-closed and encodes only L0 (the lowest
+            // tier); the QC ramp grows upward once live. `normalize`/preview stay
+            // at the ceiling (full-ladder top) regardless — see startWorker's
+            // normalizeSize. (No special single-TOP-tier warmup encoder, so no
+            // index remap when openGate expands.)
+            const warmupTierCeiling = isMobile ? 2 : (supportsTopTier ? 4 : 3);
+            let ladder = this.withCodecBitrates(buildLadder({
                 topWidth: requestSize.width,
                 topHeight: requestSize.height,
-                tierCount: 1,
+                tierCount: warmupTierCeiling,
                 maxTierCount: VIDEO.cameraLayerBaseBitratesKbps.length,
                 bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
-            });
-            ladder = this.withCodecBitrates(ladder, codecString);
-            this.layers = null; // single-tier — no simulcast ladder cached
-            this.fullLayerLadder = null;
-            infoLog?.log(`Warmup codec=${codecString} (hw=${this.currentCodecHardwareAccel}) at ${requestSize.width}x${requestSize.height}`);
+                ...(supportsTopTier ? { tierSizes: CAMERA_TIER_SIZES } : {}),
+            }), codecString);
+            infoLog?.log(`Warmup codec=${codecString} (hw=${this.currentCodecHardwareAccel}) at ${requestSize.width}x${requestSize.height}, full ladder ${warmupTierCeiling} tier(s)`);
 
             const track = await MediaCapture.captureCameraStream({
                 deviceId: this.selectedCameraDeviceId ?? undefined,
@@ -812,6 +818,12 @@ export class VideoRecorder {
             }
             const ladderTop = ladder[ladder.length - 1];
             this.warmupTopSize = { width: ladderTop.width, height: ladderTop.height };
+            // Cache the full ladder so openGate just opens the gate (+ ramps) —
+            // no ladder rebuild, no index remap. Warmup encodes only L0; layers
+            // stays null (single active tier = L0 via resolveActiveLadder).
+            this.fullLayerLadder = [...ladder];
+            this.layers = null;
+            const warmupActive = [ladder[0]];
 
             void this.blazorRef.invokeMethodAsync(
                 'OnTrackSettings',
@@ -824,7 +836,7 @@ export class VideoRecorder {
             };
 
             this.ensureWorker();
-            await this.startWorker(ladder, /*initialGateOpen*/ false);
+            await this.startWorker(warmupActive, /*initialGateOpen*/ false);
 
             this.isRecording = true;
             // State stays 'warming-up' until openGate flips it to 'recording'.
@@ -837,11 +849,11 @@ export class VideoRecorder {
         }
     }
 
-    // Modal-to-live transition: flip the wire gate open, expand the ladder
-    // from 1 tier to the requested simulcast count, and force a keyframe so
-    // the first chunk reaching wireSend bootstraps the stream cleanly.
-    // The encoder spawned during warmup keeps running — only new lower-tier
-    // encoders are added. No fresh capture, no fresh HW slot.
+    // Modal-to-live transition: expand the active ladder from warmup's single L0
+    // tier up to the soft-start count, flip the wire gate open, and force a
+    // keyframe so the first chunk reaching wireSend bootstraps the stream cleanly.
+    // Warmup's L0 encoder keeps running (index 0 stays L0); only higher tiers are
+    // appended. No fresh capture, no fresh HW slot.
     public async openGate(maxLayerCount = 3): Promise<void> {
         if (this._recordingState !== 'warming-up') {
             warnLog?.log(`openGate: not in warmup state (state=${this._recordingState})`);
@@ -901,8 +913,9 @@ export class VideoRecorder {
             `soft-start ${activeLadder?.length ?? 1} of ${fullLadder.length} tier(s)`);
 
         if (activeLadder && activeLadder.length >= 2) {
-            // Hot-apply: existing top-tier encoder keeps running, lower
-            // tiers spin up on the next captured frame.
+            // Hot-apply: warmup's L0 encoder keeps running at index 0; the higher
+            // tiers spin up on the next captured frame (encode reconciles by
+            // config, so no index remap).
             const encoderConfigs = this.toEncoderConfigs(activeLadder);
             try {
                 await this.worker.reconfigureLayers(encoderConfigs);
@@ -910,10 +923,9 @@ export class VideoRecorder {
                 warnLog?.log('openGate: reconfigureLayers failed — continuing at 1 tier:', e);
             }
         } else {
-            // Single-encoder soft-start: the warmup encoder is still at the top
-            // tier. Drop it to the bottom tier so a pinned single layer stays
-            // sharp at a low bitrate instead of shipping a starved top-resolution
-            // frame. Mirrors resolveActiveLadder()'s single-encoder-mode rule.
+            // Soft-start floor = a single L0 tier. Warmup already encodes L0, so
+            // this reconfigure is normally a no-op; kept so a maxLayerCount=1 open
+            // still pins the bottom tier explicitly.
             const bottomLadder = this.resolveActiveLadder();
             if (bottomLadder.length > 0) {
                 const encoderConfigs = this.toEncoderConfigs(bottomLadder);
@@ -1806,6 +1818,14 @@ export class VideoRecorder {
 
         const encoderConfigs = this.toEncoderConfigs(ladder);
 
+        // Display ceiling `normalize` targets — the full-ladder top, NOT the
+        // active ladder top — so the self-preview stays full-res even when the
+        // active encode ladder is just L0. `spatialize` downscales from it.
+        const ceilingTier = this.fullLayerLadder?.[this.fullLayerLadder.length - 1]
+            ?? this.warmupTopSize
+            ?? ladder[ladder.length - 1];
+        const normalizeSize = { width: ceilingTier.width, height: ceilingTier.height };
+
         const framerate = this.requireFramerate('startWorker');
         const isFrontCamera = this.inputTrack.getSettings().facingMode === 'user';
         const config: WireSafeRecorderConfig = {
@@ -1815,6 +1835,7 @@ export class VideoRecorder {
             isFrontCamera,
             isIos: DeviceInfo.isIos || BrowserInfo.appKind === 'Ios',
             encoderConfigs,
+            normalizeSize,
             // Both camera and screencast use a 3s keyframe cadence.
             keyframeIntervalFrames: framerate * 3,
             maxKeyFrameIntervalMs: 3000,
