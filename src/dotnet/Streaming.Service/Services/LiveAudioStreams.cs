@@ -12,10 +12,6 @@ namespace ActualChat.Streaming.Services;
 /// </summary>
 public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
 {
-    private readonly Lock _lock = new();
-    private readonly ConcurrentDictionary<(Session, ChatId), ListeningStreamMuxer> _liveMuxers = new();
-    private readonly ConcurrentDictionary<(Session, ChatId), ReplayStreamMuxer> _replayMuxers = new();
-
     private IServiceProvider Services { get; } = services;
     private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
@@ -123,17 +119,8 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         chat.Require();
         chat.Rules.Require(ChatPermissions.ReadAudio);
 
-        ListeningStreamMuxer muxer;
-        var key = (session, chatId);
-        lock (_lock) { // TODO(AY): Make it more efficient later?
-            if (_liveMuxers.TryRemove(key, out var oldMuxer))
-                _ = oldMuxer.DisposeSilentlyAsync(); // No need to await for this here
-
-            muxer = new ListeningStreamMuxer(Services, chatId);
-            _liveMuxers[key] = muxer;
-        }
-
-        var stream = ToLiveAsyncEnumerable(key, muxer, muxer.Output, cancellationToken);
+        var muxer = new ListeningStreamMuxer(Services, chatId);
+        var stream = ToLiveAsyncEnumerable(muxer, muxer.Output, cancellationToken);
         return StandardRpcStream.NewAudioDelivery(stream, allowReconnect: false);
     }
 
@@ -149,17 +136,8 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         chat.Require();
         chat.Rules.Require(ChatPermissions.ReadAudio);
 
-        ReplayStreamMuxer muxer;
-        var key = (session, chatId);
-        lock (_lock) {
-            if (_replayMuxers.TryRemove(key, out var oldMuxer))
-                _ = oldMuxer.DisposeSilentlyAsync();
-
-            muxer = new ReplayStreamMuxer(Services, session, chatId, startAt, rewindOffset, speed);
-            _replayMuxers[key] = muxer;
-        }
-
-        var stream = ToReplayAsyncEnumerable(key, muxer, muxer.Output, cancellationToken);
+        var muxer = new ReplayStreamMuxer(Services, session, chatId, startAt, rewindOffset, speed);
+        var stream = ToReplayAsyncEnumerable(muxer, muxer.Output, cancellationToken);
         return StandardRpcStream.NewAudioDelivery(stream, allowReconnect: false);
     }
 
@@ -219,9 +197,8 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         }
     }
 
-    private async IAsyncEnumerable<MuxedStreamItem> ToLiveAsyncEnumerable(
-        (Session, ChatId) key,
-        ListeningStreamMuxer originalMuxer,
+    private static async IAsyncEnumerable<MuxedStreamItem> ToLiveAsyncEnumerable(
+        ListeningStreamMuxer muxer,
         ChannelReader<MuxedStreamItem> reader,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -230,23 +207,12 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
                 yield return item;
         }
         finally {
-            // Only remove if the muxer in the dictionary is still the one we started with.
-            // A new GetStream call may have replaced it; removing the replacement would be wrong.
-            // Use lock to avoid TOCTOU race with GetStream (which also holds _lock).
-            bool shouldDispose;
-            lock (_lock) {
-                shouldDispose = _liveMuxers.TryGetValue(key, out var current)
-                    && ReferenceEquals(current, originalMuxer)
-                    && _liveMuxers.TryRemove(key, out _);
-            }
-            if (shouldDispose)
-                await originalMuxer.DisposeAsync().ConfigureAwait(false);
+            await muxer.DisposeAsync().ConfigureAwait(false);
         }
     }
 
-    private async IAsyncEnumerable<MuxedStreamItem> ToReplayAsyncEnumerable(
-        (Session, ChatId) key,
-        ReplayStreamMuxer originalMuxer,
+    private static async IAsyncEnumerable<MuxedStreamItem> ToReplayAsyncEnumerable(
+        ReplayStreamMuxer muxer,
         ChannelReader<MuxedStreamItem> reader,
         [EnumeratorCancellation]
         CancellationToken cancellationToken)
@@ -256,14 +222,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
                 yield return item;
         }
         finally {
-            bool shouldDispose;
-            lock (_lock) {
-                shouldDispose = _replayMuxers.TryGetValue(key, out var current)
-                    && ReferenceEquals(current, originalMuxer)
-                    && _replayMuxers.TryRemove(key, out _);
-            }
-            if (shouldDispose)
-                await originalMuxer.DisposeAsync().ConfigureAwait(false);
+            await muxer.DisposeAsync().ConfigureAwait(false);
         }
     }
 }
