@@ -13,6 +13,9 @@ public partial class Chats
     [GeneratedRegex(@"^/bot-army(?:\s+(\d+))?$")]
     private static partial Regex BotArmyCommandRegex();
 
+    [GeneratedRegex(@"^/pause\s+(\d+)$")]
+    private static partial Regex PauseCommandRegex();
+
     private async Task<ChatEntry?> TryHandleAdminCommand(
         Session session, ChatId chatId, Author author, string text,
         CancellationToken cancellationToken)
@@ -34,6 +37,10 @@ public partial class Chats
         match = BotArmyCommandRegex().Match(text);
         if (match.Success)
             return await HandleBotArmy(session, chatId, author, account, match, cancellationToken).ConfigureAwait(false);
+
+        match = PauseCommandRegex().Match(text);
+        if (match.Success)
+            return await HandlePause(chatId, author, match, cancellationToken).ConfigureAwait(false);
 
         return null;
     }
@@ -81,6 +88,25 @@ public partial class Chats
             lastEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         }
         return lastEntry!;
+    }
+
+    private async Task<ChatEntry> HandlePause(
+        ChatId chatId, Author author, Match match,
+        CancellationToken cancellationToken)
+    {
+        var seconds = int.Parse(match.Groups[1].Value);
+        seconds = Math.Clamp(seconds, 1, 600);
+        await Task.Delay(TimeSpan.FromSeconds(seconds), cancellationToken).ConfigureAwait(false);
+
+        var chatEntryId = ChatEntryId.New(chatId, 0);
+        var upsertCommand = new ChatsBackend_ChangeEntry(
+            chatEntryId,
+            null,
+            Change.Create(new ChatEntryDiff {
+                AuthorId = author.Id,
+                Content = $"{seconds} seconds passed.",
+            }));
+        return await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<ChatEntry> HandleBotArmy(
