@@ -52,6 +52,12 @@ export interface RecorderStats {
     encodeTimeMsSum: number;
     encodeTimeMsMaxSum: number;
     encodeTimeMsCount: number;
+    // Wall-time of the downscale stage (one `downscaler.process()` per bundle,
+    // covering all tiers). `Sum/Count` = mean ms/bundle, `Max` = peak observed.
+    // Tells you whether the per-frame GPU downscale is the throughput bottleneck.
+    downscaleTimeMsSum: number;
+    downscaleTimeMsCount: number;
+    downscaleTimeMsMax: number;
     // Wire-sender side-channels copied from the active sender's stats.
     wireLastAckAgeMs: number;
     isPeerConnected: boolean;
@@ -164,6 +170,9 @@ export function createEmptyRecorderStats(): RecorderStats {
         encodeTimeMsSum: 0,
         encodeTimeMsMaxSum: 0,
         encodeTimeMsCount: 0,
+        downscaleTimeMsSum: 0,
+        downscaleTimeMsCount: 0,
+        downscaleTimeMsMax: 0,
         wireLastAckAgeMs: -1,
         isPeerConnected: false,
         wireAckedBytes: 0,

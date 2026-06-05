@@ -2151,6 +2151,8 @@ export class VideoRecorder {
     // lifetime mean. -1 until the first delta window produces samples.
     private windowMeanEncodeTimeMs = -1;
     private windowMeanMaxLayerEncodeTimeMs = -1;
+    private windowMeanDownscaleTimeMs = -1;
+    private windowDownscaleTimeMsMax = -1;
     private readonly dropPerSec = new Map<number, number>();
     private lastReportTickMs = 0;
 
@@ -2165,6 +2167,8 @@ export class VideoRecorder {
         this.bytesPerSec = 0;
         this.windowMeanEncodeTimeMs = -1;
         this.windowMeanMaxLayerEncodeTimeMs = -1;
+        this.windowMeanDownscaleTimeMs = -1;
+        this.windowDownscaleTimeMsMax = -1;
         this.dropPerSec.clear();
         this.lastReportTickMs = 0;
         this.recorderHealthTimer = window.setInterval(() => {
@@ -2213,6 +2217,12 @@ export class VideoRecorder {
                             Math.max(0, stats.encodeTimeMsSum - previous.encodeTimeMsSum) / encCountDelta;
                         this.windowMeanMaxLayerEncodeTimeMs =
                             Math.max(0, stats.encodeTimeMsMaxSum - previous.encodeTimeMsMaxSum) / encCountDelta;
+                    }
+                    const dsCountDelta = Math.max(0, stats.downscaleTimeMsCount - previous.downscaleTimeMsCount);
+                    if (dsCountDelta > 0) {
+                        this.windowMeanDownscaleTimeMs =
+                            Math.max(0, stats.downscaleTimeMsSum - previous.downscaleTimeMsSum) / dsCountDelta;
+                        this.windowDownscaleTimeMsMax = stats.downscaleTimeMsMax;
                     }
                     if (this.recoveryAttempts > 0 && this.bundlesPerSec > 0)
                         this.recoveryAttempts = 0;
@@ -2307,7 +2317,10 @@ export class VideoRecorder {
                 stats.peerReconnectStreak,
                 stats.encoderRestartStreakIn60s,
                 stats.isTabBackgrounded,
-                stats.wireAckedBytes);
+                stats.wireAckedBytes,
+                this.windowMeanEncodeTimeMs,
+                this.windowMeanDownscaleTimeMs,
+                this.windowDownscaleTimeMsMax);
         } catch (e) {
             warnLog?.log('reportRecorderStats failed:', e);
         } finally {

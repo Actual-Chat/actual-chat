@@ -6,6 +6,7 @@ import { cameraRotationDeg } from '../orientation/quantize';
 import { drawFrameCover, resizeCanvas } from '../canvas/resize';
 import { CanvasDownscaler } from '../canvas/downscaler';
 import { WebGlDownscaler, probeWebGl2 } from '../webgl/downscaler';
+import { parallelMap } from './parallel-map';
 import type { LayerLadderController } from '../sender/layer-ladder-controller';
 
 const { warnLog } = getLogs('VideoPipeline');
@@ -48,12 +49,21 @@ export interface DownscaleOptions {
     // Lazy-init per slot so construction runs after the worker (and any GPU)
     // exists. Defaults to WebGL2 with a Canvas2D fallback.
     createDownscaler?: () => DownscalerLike;
-    // If process() doesn't resolve within this budget the frame is abandoned
-    // and the operator throws so the recorder's recovery restarts the pipeline
-    // (a wedged GPU downscaler — e.g. context-lost). Default 1500 ms.
+    // Number of frames whose downscale may be in flight at once, each on its own
+    // downscaler instance (its own WebGL context/canvas). >1 overlaps a frame's
+    // GPU downscale with the previous frame's encode and the next frame's
+    // capture, so a slow per-frame `new VideoFrame(canvas)` round-trip (Android)
+    // doesn't cap capture throughput. Default 2.
+    concurrency?: number;
+    // On hang: detach the stuck process(), recreate the downscaler on the next
+    // frame, and force a keyframe so encoders re-anchor. Default 1500 ms.
     hangTimeoutMs?: number;
     setTimeoutFn?: (cb: () => void, ms: number) => unknown;
     clearTimeoutFn?: (handle: unknown) => void;
+}
+
+interface DownscaleSlotState {
+    downscaler: DownscalerLike | null;
 }
 
 // WebGL2 real downscale with a Canvas2D fallback. Re-probes WebGL each call so
@@ -189,68 +199,113 @@ export function normalizeFrame(opts: NormalizeFrameOptions): PipeOperator<Captur
 // them on any pre-yield error.
 export function downscale(opts: DownscaleOptions): PipeOperator<NormalizedFrame, CapturedBundle> {
     const createDownscaler = opts.createDownscaler ?? createDefaultDownscaler;
+    const concurrency = Math.max(1, opts.concurrency ?? 2);
     const hangTimeoutMs = opts.hangTimeoutMs ?? 1_500;
     const setTimeoutFn = opts.setTimeoutFn ?? ((cb, ms): unknown => setTimeout(cb, ms));
     const clearTimeoutFn = opts.clearTimeoutFn
         ?? ((h: unknown): void => clearTimeout(h as ReturnType<typeof setTimeout>));
 
+    // Shared across slots: single-threaded JS keeps the read-modify-write between
+    // awaits atomic, so a hang on one slot can force a keyframe on the next bundle.
+    let consecutiveHangs = 0;
+    let forceKeyframeAfterHang = false;
+    const slots: (DownscaleSlotState | undefined)[] =
+        new Array<DownscaleSlotState | undefined>(concurrency).fill(undefined);
+
     return source => {
-        async function* impl(): AsyncIterable<CapturedBundle> {
-            let downscaler: DownscalerLike | null = null;
-            try {
-                for await (const envelope of source) {
-                    // Snapshot the ladder per frame so QC hot-applies (layer
-                    // grow/shrink) take effect; encode() aligns to
-                    // bundle.layers.length, so both stay in sync.
-                    const layers: LayerSpec[] = opts.controller.current.configs.map(
-                        c => ({ width: c.width, height: c.height }));
-                    downscaler ??= createDownscaler();
-                    const processPromise = downscaler.process(envelope.frame, layers);
-                    let timerHandle: unknown = null;
-                    const timeoutP = new Promise<'timeout'>(resolve => {
-                        timerHandle = setTimeoutFn(() => resolve('timeout'), hangTimeoutMs);
-                    });
-                    let raced: VideoFrame[] | 'timeout';
-                    try {
-                        raced = await Promise.race([processPromise, timeoutP]);
-                    } finally {
-                        if (timerHandle !== null)
-                            try { clearTimeoutFn(timerHandle); } catch { /* ignore */ }
-                    }
-                    if (raced === 'timeout') {
-                        // Detach: close whatever the stuck process() eventually
-                        // produces (input frame is owned by process()).
-                        void processPromise.then(closeFrames, () => { /* logged */ });
-                        try { downscaler.dispose?.(); } catch { /* ignore */ }
-                        downscaler = null;
-                        throw new Error(`downscale: process() hung > ${hangTimeoutMs}ms`);
-                    }
-                    const frames = raced;
-                    if (frames.length !== layers.length) {
-                        closeFrames(frames);
-                        throw new Error(
-                            `downscale: downscaler returned ${frames.length} frames, expected ${layers.length}`);
-                    }
-                    yield {
-                        layers: frames.map(frame => makeLayerEnvelope(envelope, frame)),
-                        index: envelope.index,
-                        dropTrace: envelope.dropTrace,
-                        rotation: envelope.rotation,
-                        stats: envelope.stats,
-                    };
+        const stage = parallelMap<NormalizedFrame, CapturedBundle | null>({
+            concurrency,
+            onSlotInit: slotId => { slots[slotId] = { downscaler: null }; },
+            onSlotDispose: slotId => {
+                const s = slots[slotId];
+                if (s?.downscaler && typeof s.downscaler.dispose === 'function')
+                    try { s.downscaler.dispose(); } catch { /* ignore */ }
+                slots[slotId] = undefined;
+            },
+            onUnconsumedResult: bundle => { if (bundle) closeBundleLayers(bundle); },
+            map: async (envelope, slotId) => {
+                // Snapshot the ladder per frame so QC hot-applies (layer grow/
+                // shrink) take effect; encode() aligns to bundle.layers.length.
+                const layers: LayerSpec[] = opts.controller.current.configs.map(
+                    c => ({ width: c.width, height: c.height }));
+                const slot = slots[slotId]!;
+                slot.downscaler ??= createDownscaler();
+                const downscaler = slot.downscaler;
+
+                const startedAtMs = performance.now();
+                const processPromise = downscaler.process(envelope.frame, layers);
+                let timerHandle: unknown = null;
+                const timeoutP = new Promise<'timeout'>(resolve => {
+                    timerHandle = setTimeoutFn(() => resolve('timeout'), hangTimeoutMs);
+                });
+                let raced: VideoFrame[] | 'timeout';
+                try {
+                    raced = await Promise.race([processPromise, timeoutP]);
+                } finally {
+                    if (timerHandle !== null)
+                        try { clearTimeoutFn(timerHandle); } catch { /* ignore */ }
                 }
-            } finally {
-                if (downscaler && typeof downscaler.dispose === 'function')
-                    try { downscaler.dispose(); } catch { /* ignore */ }
-            }
-        }
-        return from(impl());
+                if (raced === 'timeout') {
+                    consecutiveHangs++;
+                    forceKeyframeAfterHang = true;
+                    // Detach: close whatever the stuck process() eventually
+                    // produces (it owns the input frame); drop this slot's
+                    // downscaler so the next frame recreates it.
+                    void processPromise.then(closeFrames, () => { /* logged */ });
+                    const stuck = slot.downscaler;
+                    slot.downscaler = null;
+                    if (typeof stuck.dispose === 'function')
+                        try { stuck.dispose(); } catch { /* ignore */ }
+                    if (consecutiveHangs >= 4)
+                        throw new Error(
+                            `downscale: hang watchdog fired ${consecutiveHangs}x in a row, giving up`);
+                    return null;
+                }
+                consecutiveHangs = 0;
+                const frames = raced;
+                if (frames.length !== layers.length) {
+                    closeFrames(frames);
+                    throw new Error(
+                        `downscale: downscaler returned ${frames.length} frames, expected ${layers.length}`);
+                }
+                const ms = performance.now() - startedAtMs;
+                const stats = envelope.stats;
+                stats.downscaleTimeMsSum += ms;
+                stats.downscaleTimeMsCount++;
+                if (ms > stats.downscaleTimeMsMax) stats.downscaleTimeMsMax = ms;
+                // After a hang, re-anchor every encoder with a keyframe.
+                const layerSource = forceKeyframeAfterHang
+                    ? { ...envelope, forceKeyframe: true }
+                    : envelope;
+                forceKeyframeAfterHang = false;
+                return {
+                    layers: frames.map(frame => makeLayerEnvelope(layerSource, frame)),
+                    index: envelope.index,
+                    dropTrace: envelope.dropTrace,
+                    rotation: envelope.rotation,
+                    stats: envelope.stats,
+                };
+            },
+        });
+
+        // Skip post-hang null entries (input consumed, no bundle produced).
+        const op = stage(source);
+        return from((async function* (): AsyncIterable<CapturedBundle> {
+            for await (const bundle of op)
+                if (bundle !== null) yield bundle;
+        })());
     };
 }
 
 function closeFrames(frames: readonly VideoFrame[]): void {
     for (const frame of frames) {
         try { frame.close(); } catch { /* ignore */ }
+    }
+}
+
+function closeBundleLayers(bundle: CapturedBundle): void {
+    for (const layer of bundle.layers) {
+        try { layer.frame.close(); } catch { /* ignore */ }
     }
 }
 

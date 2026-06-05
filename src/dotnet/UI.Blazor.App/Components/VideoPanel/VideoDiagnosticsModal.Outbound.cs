@@ -36,6 +36,7 @@ public partial class VideoDiagnosticsModal
         double fusedDropRatio = 0, fusedAckAgeMs = -1;
         double fusedEncDeficit = 0, fusedEncQueueDepth = 0;
         int fusedRestartStreak = 0;
+        double fusedDownscaleMs = -1, fusedDownscaleMaxMs = -1, fusedEncodeMs = -1;
         foreach (var k in activeKinds) {
             if (!statsByKind.TryGetValue(k, out var stats)) continue;
             fusedDropRatio = Math.Max(fusedDropRatio, stats.SenderFrameDropRatioEma);
@@ -45,6 +46,12 @@ public partial class VideoDiagnosticsModal
             if (stats.EncodeQueueDepthEma >= 0)
                 fusedEncQueueDepth = Math.Max(fusedEncQueueDepth, stats.EncodeQueueDepthEma);
             fusedRestartStreak = Math.Max(fusedRestartStreak, stats.EncoderRestartStreakIn60s);
+            if (stats.DownscaleTimeMsMean >= 0)
+                fusedDownscaleMs = Math.Max(fusedDownscaleMs, stats.DownscaleTimeMsMean);
+            if (stats.DownscaleTimeMsMax >= 0)
+                fusedDownscaleMaxMs = Math.Max(fusedDownscaleMaxMs, stats.DownscaleTimeMsMax);
+            if (stats.EncodeTimeMsMean >= 0)
+                fusedEncodeMs = Math.Max(fusedEncodeMs, stats.EncodeTimeMsMean);
         }
         AppendRow(builder, seqBase + 0, "Wire drop ratio", fusedDropRatio.ToString("F3"));
         AppendRow(builder, seqBase + 1, "Ack age",
@@ -63,6 +70,14 @@ public partial class VideoDiagnosticsModal
             $"{fusedEncQueueDepth:F2} / bad >{SenderHealthThresholds.Defaults.EncodeQueueDepthBad:F1}");
         AppendRow(builder, seqBase + 4, "Enc restarts (60s)",
             $"{fusedRestartStreak} / bad >={SenderHealthThresholds.Defaults.RestartStreakBad}");
+        // Where pipeline time goes per bundle (window mean ms): the GPU downscale
+        // stage vs the HW encoder. At 30 fps the per-frame budget is ~33 ms.
+        AppendRow(builder, seqBase + 5, "Downscale time",
+            fusedDownscaleMs < 0
+                ? "n/a"
+                : $"{fusedDownscaleMs:F1} ms (max {fusedDownscaleMaxMs:F0})");
+        AppendRow(builder, seqBase + 6, "Encode time",
+            fusedEncodeMs < 0 ? "n/a" : $"{fusedEncodeMs:F1} ms");
     }
 
     private static void AppendCapReadout(

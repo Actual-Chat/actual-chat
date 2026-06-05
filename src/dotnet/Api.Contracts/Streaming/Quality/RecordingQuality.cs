@@ -75,7 +75,13 @@ public sealed record RecorderStats(
     // Cumulative bytes the peer acknowledged (delivered) on the wire. While the
     // wire queue is backlogged the delta over time is the link drain rate — a
     // true measured uplink capacity, used to re-anchor the bandwidth ceiling.
-    long WireAckedBytes = 0)
+    long WireAckedBytes = 0,
+    // Per-stage wall-time (ms/bundle, window mean) for the outbound diagnostics
+    // "where time goes" rows. -1 until the first sample window. Downscale is the
+    // GPU resize stage; Encode is the HW encoder.
+    double EncodeTimeMsMean = -1,
+    double DownscaleTimeMsMean = -1,
+    double DownscaleTimeMsMax = -1)
 {
     private static readonly IReadOnlyDictionary<FrameDropStage, int> EmptyDropTrace
         = new Dictionary<FrameDropStage, int>();
