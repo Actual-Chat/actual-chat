@@ -22,7 +22,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
     private readonly SendMessageRequestsRepo _requestsRepo;
     private readonly Task _whenStoredRequestsProcessed;
     private readonly CancellationTokenSource _cancellationTokenSource;
-    private readonly MessageProcessor<PostMessageQueueItem> _messageProcessor;
+    private readonly ConcurrentDictionary<ChatId, MessageProcessor<PostMessageQueueItem>> _chatMessageProcessors = new();
     // ReSharper disable once NotAccessedField.Local
     private readonly Task _pruneSendingMessagesTask;
     private readonly ChatSendingMessagesTriggers _triggers;
@@ -48,11 +48,6 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         _cancellationTokenSource = lifetimeToken.CreateLinkedTokenSource();
         var serviceToken = _cancellationTokenSource.Token;
         _whenStoredRequestsProcessed = BackgroundTask.Run(StartStoredPostRequests, serviceToken);
-        _messageProcessor = new MessageProcessor<PostMessageQueueItem>(ProcessQueueItem, _cancellationTokenSource) {
-            QueueSize = 100,
-            QueueFullMode = BoundedChannelFullMode.Wait,
-            ProcessCallTimeout = TimeSpan.Zero, // No limit to command processing
-        };
         _pruneSendingMessagesTask = AsyncChain.From(PruneSendingMessages)
             .Log(LogLevel.Debug, Log)
             .RetryForever(RetryDelaySeq.Exp(0.5, 3), Log)
@@ -127,12 +122,12 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         // unwind before we await the message processor.
         _cancellationTokenSource.CancelAndDisposeSilently();
         try {
-            await _messageProcessor.DisposeAsync().AsTask()
+            await Task.WhenAll(_chatMessageProcessors.Values.Select(p => p.DisposeAsync().AsTask()))
                 .WaitAsync(CoreConstants.DisposeTimeout).ConfigureAwait(false);
         }
         catch (TimeoutException) {
             Log.LogWarning(
-                "{Type}: message processor didn't dispose in {Timeout}, proceeding",
+                "{Type}: message processors didn't dispose in {Timeout}, proceeding",
                 GetType().GetName(), CoreConstants.DisposeTimeout);
         }
     }
@@ -419,10 +414,20 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             result2);
     }
 
+    // Per-chat send lanes: a stuck/slow send in one chat must not block sends in other chats (the old
+    // single global queue head-of-line blocked everything). Each chat is still processed serially.
+    private MessageProcessor<PostMessageQueueItem> GetMessageProcessor(ChatId chatId)
+        => _chatMessageProcessors.GetOrAdd(chatId, _ =>
+            new MessageProcessor<PostMessageQueueItem>(ProcessQueueItem, _cancellationTokenSource.Token.CreateLinkedTokenSource()) {
+                QueueSize = 100,
+                QueueFullMode = BoundedChannelFullMode.Wait,
+                ProcessCallTimeout = TimeSpan.Zero, // No limit to command processing
+            });
+
     private async Task<Result<ChatEntry>> ExecutePostRequestViaQueue(PostMessageRequestInternal request, CancellationToken cancellationToken1)
     {
         Result<ChatEntry> result;
-        var queueMessageProcess = _messageProcessor.Enqueue(new PostMessageQueueItem(request), cancellationToken1);
+        var queueMessageProcess = GetMessageProcessor(request.ChatId).Enqueue(new PostMessageQueueItem(request), cancellationToken1);
         try {
             // NOTE: wait on the cancellation token to fail fast on send message request cancellation
             // (not await when the command will be processed by queue processor)
