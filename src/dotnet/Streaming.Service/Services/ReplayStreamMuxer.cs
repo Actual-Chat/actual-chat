@@ -4,11 +4,11 @@ namespace ActualChat.Streaming.Services;
 
 /// <summary>
 /// Reads historical chat entries, downloads their audio from blob storage,
-/// and multiplexes them into a single <see cref="MuxedStreamItem"/> output channel.
+/// and multiplexes them into a single <see cref="MuxedAudioStreamItem"/> output channel.
 /// </summary>
 public sealed class ReplayStreamMuxer : WorkerBase
 {
-    private readonly Channel<MuxedStreamItem> _output;
+    private readonly Channel<MuxedAudioStreamItem> _output;
     private int _nextStreamIndex;
 
     private IServiceProvider Services { get; }
@@ -23,7 +23,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
     private MomentClock SystemClock => Clocks.SystemClock;
     private ILogger Log => field ??= Services.LogFor<ReplayStreamMuxer>();
 
-    public ChannelReader<MuxedStreamItem> Output => _output.Reader;
+    public ChannelReader<MuxedAudioStreamItem> Output => _output.Reader;
 
     public ReplayStreamMuxer(
         IServiceProvider services,
@@ -39,7 +39,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
         StartAt = startAt;
         RewindOffset = rewindOffset;
         Speed = Math.Clamp(speed, 1.0, 2.0);
-        _output = ChannelExt.Create<MuxedStreamItem>(ChannelExt.UnboundedFanInOptions);
+        _output = ChannelExt.Create<MuxedAudioStreamItem>(ChannelExt.UnboundedFanInOptions);
         _ = Run(); // Start immediately
     }
 

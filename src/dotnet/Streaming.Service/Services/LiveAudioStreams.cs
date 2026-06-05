@@ -110,7 +110,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         return Task.CompletedTask;
     }
 
-    public async Task<RpcStream<MuxedStreamItem>> GetListeningStream(
+    public async Task<RpcStream<MuxedAudioStreamItem>> GetListeningStream(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
@@ -124,7 +124,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         return StandardRpcStream.NewAudioDelivery(stream, allowReconnect: false);
     }
 
-    public async Task<RpcStream<MuxedStreamItem>> GetReplayStream(
+    public async Task<RpcStream<MuxedAudioStreamItem>> GetReplayStream(
         Session session,
         ChatId chatId,
         Moment startAt,
@@ -143,7 +143,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
 
     // Legacy methods
 
-    public Task<RpcStream<MuxedStreamItem>> LegacyGetStream(
+    public Task<RpcStream<MuxedAudioStreamItem>> LegacyGetStream(
         Session session,
         ChatId chatId,
         LegacyLiveStreamSettings settings,
@@ -197,9 +197,9 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         }
     }
 
-    private static async IAsyncEnumerable<MuxedStreamItem> ToLiveAsyncEnumerable(
+    private static async IAsyncEnumerable<MuxedAudioStreamItem> ToLiveAsyncEnumerable(
         ListeningStreamMuxer muxer,
-        ChannelReader<MuxedStreamItem> reader,
+        ChannelReader<MuxedAudioStreamItem> reader,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         try {
@@ -211,9 +211,9 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         }
     }
 
-    private static async IAsyncEnumerable<MuxedStreamItem> ToReplayAsyncEnumerable(
+    private static async IAsyncEnumerable<MuxedAudioStreamItem> ToReplayAsyncEnumerable(
         ReplayStreamMuxer muxer,
-        ChannelReader<MuxedStreamItem> reader,
+        ChannelReader<MuxedAudioStreamItem> reader,
         [EnumeratorCancellation]
         CancellationToken cancellationToken)
     {

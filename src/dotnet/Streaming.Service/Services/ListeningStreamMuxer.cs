@@ -14,7 +14,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
     private static readonly RetryDelaySeq PreStartRetryDelays = RetryDelaySeq.Exp(0.25, 2);
     private const int MaxPreStartRetryCount = 3;
 
-    private readonly Channel<MuxedStreamItem> _output;
+    private readonly Channel<MuxedAudioStreamItem> _output;
     private readonly ConcurrentDictionary<string, StreamEntry> _streamById = new();
     private readonly ConcurrentDictionary<AuthorId, StreamEntry> _streamByAuthor = new();
     private readonly ConcurrentDictionary<string, byte> _excludedStreamIds = new();
@@ -30,13 +30,13 @@ public sealed class ListeningStreamMuxer : WorkerBase
     private MomentClock SystemClock => Clocks.SystemClock;
     private ILogger Log => field ??= Services.LogFor<ListeningStreamMuxer>();
 
-    public ChannelReader<MuxedStreamItem> Output => _output.Reader;
+    public ChannelReader<MuxedAudioStreamItem> Output => _output.Reader;
 
     public ListeningStreamMuxer(IServiceProvider services, ChatId chatId)
     {
         Services = services;
         ChatId = chatId;
-        _output = ChannelExt.Create<MuxedStreamItem>(ChannelExt.UnboundedFanInOptions);
+        _output = ChannelExt.Create<MuxedAudioStreamItem>(ChannelExt.UnboundedFanInOptions);
         _ = Run(); // Start immediately
     }
 

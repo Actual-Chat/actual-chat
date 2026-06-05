@@ -56,7 +56,7 @@ public class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelper @out
         var stream = await liveStreams.GetListeningStream(session, chat.Id, cts.Token);
 
         // Stream should not throw when enumerated (even if empty)
-        var items = new List<MuxedStreamItem>();
+        var items = new List<MuxedAudioStreamItem>();
         try {
             await foreach (var item in stream)
                 items.Add(item);

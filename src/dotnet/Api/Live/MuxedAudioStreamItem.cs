@@ -16,7 +16,7 @@ namespace ActualChat.Live;
 [Union(1, typeof(MuxedAudioStreamEnd))]
 [Union(2, typeof(MuxedAudioFrame))]
 [Union(3, typeof(MuxedAudioStreamReset))]
-public abstract partial class MuxedStreamItem : IMuxable
+public abstract partial class MuxedAudioStreamItem : IMuxable
 {
     [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public int StreamIndex { get; set; }

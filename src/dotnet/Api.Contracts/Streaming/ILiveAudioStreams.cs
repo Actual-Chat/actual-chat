@@ -27,12 +27,12 @@ public interface ILiveAudioStreams : IComputeService
         string streamId,
         CancellationToken cancellationToken);
 
-    Task<RpcStream<MuxedStreamItem>> GetListeningStream(
+    Task<RpcStream<MuxedAudioStreamItem>> GetListeningStream(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken);
 
-    Task<RpcStream<MuxedStreamItem>> GetReplayStream(
+    Task<RpcStream<MuxedAudioStreamItem>> GetReplayStream(
         Session session,
         ChatId chatId,
         Moment startAt,
@@ -56,7 +56,7 @@ public interface ILiveAudioStreams : IComputeService
 
     [LegacyName("GetStream", "2.7.9999")]
     [LegacyName("GetLiveStream", "2.6.9999")]
-    Task<RpcStream<MuxedStreamItem>> LegacyGetStream(
+    Task<RpcStream<MuxedAudioStreamItem>> LegacyGetStream(
         Session session,
         ChatId chatId,
         LegacyLiveStreamSettings settings,

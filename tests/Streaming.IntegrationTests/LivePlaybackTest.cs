@@ -44,7 +44,7 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         var liveStream = await liveStreamTask;
 
         // Collect items in background
-        var receivedItems = new List<MuxedStreamItem>();
+        var receivedItems = new List<MuxedAudioStreamItem>();
         var collectTask = BackgroundTask.Run(async () => {
             log.LogInformation("Starting to collect Live items");
             try {
@@ -110,7 +110,7 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // Create test items
         var testChatId = ChatId.Parse("testChat");
-        var testItems = new List<MuxedStreamItem> {
+        var testItems = new List<MuxedAudioStreamItem> {
             new MuxedAudioStreamStart {
                 StreamIndex = 1,
                 StreamInfo = new LiveAudioStreamInfo {

@@ -8,7 +8,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// Raises events when streams start and end.
 /// </summary>
 public sealed class AudioStreamDemuxer(
-    IAsyncEnumerable<MuxedStreamItem> input,
+    IAsyncEnumerable<MuxedAudioStreamItem> input,
     ILogger? log,
     CancellationTokenSource? stopTokenSource = null)
     : WorkerBase(stopTokenSource)
@@ -16,7 +16,7 @@ public sealed class AudioStreamDemuxer(
     private static bool DebugMode => Constants.DebugMode.LiveStreaming;
     private readonly ConcurrentDictionary<int, Channel<AudioFrame>> _streams = new();
 
-    private IAsyncEnumerable<MuxedStreamItem> Input { get; } = input;
+    private IAsyncEnumerable<MuxedAudioStreamItem> Input { get; } = input;
     private ILogger? Log { get; } = log;
     private ILogger? DebugLog { get; } = DebugMode ? log : null;
 

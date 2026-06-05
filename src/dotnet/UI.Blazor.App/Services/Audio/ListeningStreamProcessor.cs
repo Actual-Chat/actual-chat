@@ -40,14 +40,15 @@ public sealed class ListeningStreamProcessor : WorkerBase
         var liveStreams = Services.GetRequiredService<ILiveAudioStreams>();
         var demuxerLog = Services.LogFor<AudioStreamDemuxer>();
 
-        var itemStream = new ResilientStream<MuxedStreamItem> {
+        var itemStream = new ResilientStream<MuxedAudioStreamItem> {
             Provider = async ct => {
                 DebugLog?.LogInformation("-> LiveStreams.GetListeningStream({ChatId})", ChatId);
                 var stream = await liveStreams.GetListeningStream(Session, ChatId, ct).ConfigureAwait(false);
                 DebugLog?.LogInformation("<- LiveStreams.GetListeningStream({ChatId})", ChatId);
                 return stream;
             },
-            ResetItem = Option.Some<MuxedStreamItem>(new MuxedAudioStreamReset()),
+            ResetItem = Option.Some<MuxedAudioStreamItem>(new MuxedAudioStreamReset()),
+            IsInfinite = true,
         };
 
         var demuxer = new AudioStreamDemuxer(itemStream, demuxerLog, cancellationToken.CreateLinkedTokenSource());
