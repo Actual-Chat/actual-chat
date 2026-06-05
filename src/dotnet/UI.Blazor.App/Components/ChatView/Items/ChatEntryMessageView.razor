@@ -67,9 +67,8 @@
 
 @if (isSystem) {
     <div class="@cls"
-         data-menu="@(MenuRef.New<MessageMenu>(entry.Id.Value, bool.TrueString, "", ""))"
-         @onmouseenter="@ShowHoverMenu"
-         @onmouseleave="@HideHoverMenu">
+         data-chat-entry-id="@(entry.Id)"
+         data-menu="@(MenuRef.New<MessageMenu>(entry.Id.Value, bool.TrueString, "", ""))">
         <div class="chat-message">
             <div class="c-content">
                 <div class="message-content">
@@ -94,9 +93,7 @@
 }
 <div class="@cls"
      data-chat-entry-id="@(entry.Id)"
-     data-menu="@menuRef"
-     @onmouseenter="@ShowHoverMenu"
-     @onmouseleave="@HideHoverMenu">
+     data-menu="@menuRef">
     <div class="chat-message group">
         <div class="c-author-badge">
             @if (showAuthorBadge) {
@@ -217,6 +214,7 @@
 
 @code {
     private MessageHoverMenu? _messageHoverMenu;
+    private ChatEntryId? _registeredHoverEntryId;
     private bool _forceRender;
     private Model? _rendered;
     private ChatEntryMessage? _renderedMessage;
@@ -244,6 +242,7 @@
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
+    [CascadingParameter] public ChatView? ChatView { get; set; }
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;
     [Parameter] public bool ShowAuthorBadge { get; set; } = true;
@@ -253,8 +252,30 @@
         OptimisticReactions.Changed += OnOptimisticReactionChanged;
     }
 
+    // The hosting ChatView is a single hover-menu coordinator; this instance keeps its inline
+    // MessageHoverMenu registered there by the current entry id, re-registering when the
+    // VirtualList recycles this instance onto a different entry.
+    protected override void OnAfterRender(bool firstRender) {
+        if (BrowserInfo.IsTouchCapable)
+            return;
+
+        var entryId = Entry.Id;
+        if (_registeredHoverEntryId == entryId)
+            return;
+
+        if (_registeredHoverEntryId is { } oldId && _messageHoverMenu != null)
+            ChatView?.UnregisterHoverMenu(oldId, _messageHoverMenu);
+        _registeredHoverEntryId = null;
+        if (_messageHoverMenu != null) {
+            ChatView?.RegisterHoverMenu(entryId, _messageHoverMenu);
+            _registeredHoverEntryId = entryId;
+        }
+    }
+
     public override ValueTask DisposeAsync() {
         OptimisticReactions.Changed -= OnOptimisticReactionChanged;
+        if (_registeredHoverEntryId is { } registeredId && _messageHoverMenu != null)
+            ChatView?.UnregisterHoverMenu(registeredId, _messageHoverMenu);
         return base.DisposeAsync();
     }
 
@@ -506,16 +527,6 @@
             return true;
 
         return hasAnyMentions && MarkupValidator.ContainsMention(MentionRef.NewAuthor(authorId)).IsValid(markup);
-    }
-
-    private void ShowHoverMenu() {
-        if (!BrowserInfo.IsTouchCapable)
-            _messageHoverMenu?.Show();
-    }
-
-    private void HideHoverMenu() {
-        if (!BrowserInfo.IsTouchCapable)
-            _messageHoverMenu?.Hide();
     }
 
     private async Task<Author?> GetForwardedAuthor(ChatEntry entry, AuthorFull? ownAuthor, CancellationToken cancellationToken) {
