@@ -242,11 +242,22 @@ public partial class ChatsBackend
             return;
         }
 
+        var entrySids = entryIds.Select(x => x.Value).Distinct().ToList();
+        if (items.Length == 0) {
+            // Nothing to insert: this is a no-op unless there are existing rows to remove.
+            // Probe on a plain read context so a no-op never opens (and commits) an empty operation.
+            var readDbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+            await using var _ = readDbContext.ConfigureAwait(false);
+            var hasExisting = await getTable(readDbContext)
+                .AnyAsync(x => entrySids.Contains(x.EntryId), cancellationToken).ConfigureAwait(false);
+            if (!hasExisting)
+                return;
+        }
+
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var table = getTable(dbContext);
-        var entrySids = entryIds.Select(x => x.Value).Distinct().ToList();
         var deletedAts = await table
             .Where(x => entrySids.Contains(x.EntryId))
             .Select(x => x.At)
