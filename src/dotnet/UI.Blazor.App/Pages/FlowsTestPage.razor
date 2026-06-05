@@ -113,13 +113,13 @@
 </div>
 
 @code {
+    private readonly HashSet<string> _expanded = new(StringComparer.Ordinal);
+    private string? _name;
     private bool _problematicOnly;
     private bool _hideCompleted = true;
-    private string? _name;
     private FlowTypeStat[]? _stats;
     private FlowSummary[]? _rows;
     private int _rowsGen;
-    private readonly HashSet<string> _expanded = new(StringComparer.Ordinal);
 
     private IDiagnostics Diagnostics => field ??= Hub.Services.GetRequiredService<IDiagnostics>();
 
