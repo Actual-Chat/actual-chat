@@ -44,6 +44,7 @@ public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntr
                 MinVersion = cursor.LastUpdatedVersion,
                 MaxVersion = ResumedAt.ToVersion(-TimeSpan.FromSeconds(2)),
                 Limit = BatchSize,
+                RequireAttachments = true,
             }, cancellationToken)
             .ConfigureAwait(false);
     }

@@ -11,4 +11,5 @@ public partial record ChangedEntriesQuery
     [DataMember, MemoryPackOrder(2), Key(2)] public long LastLocalId { get; init; }
     [DataMember, MemoryPackOrder(3), Key(3)] public ChatId ChatId { get; init; } = null!;
     [DataMember, MemoryPackOrder(4), Key(4)] public int Limit { get; init; }
+    [DataMember, MemoryPackOrder(5), Key(5)] public bool RequireAttachments { get; init; }
 }
