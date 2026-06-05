@@ -10,23 +10,15 @@
     var details = State.Value.Details;
 }
 <div class="test-page-wrapper">
-    <div class="flex-y h-full overflow-y-auto select-text p-4 gap-y-2">
-        <div class="flex-x items-center gap-x-4">
-            <Button Click="OnRefresh">Refresh</Button>
-            <label class="flex-x items-center gap-x-1 cursor-pointer">
-                <input type="checkbox" checked="@_problematicOnly" @onchange="OnToggleProblematic"/>
-                <span>Problematic only</span>
-            </label>
-            @if (_stats is null) {
-                <span class="text-gray-500">Loading…</span>
-            }
-            else if (_rows is not null) {
-                <span class="text-gray-500 text-sm">@_rows.Length row(s)</span>
-            }
-        </div>
-
-        @if (_stats is { } stats) {
-            <h2 class="mt-3 text-lg font-semibold">Summary by flow type</h2>
+    <div class="flex-y h-full overflow-y-auto select-text p-2 gap-y-2">
+        @if (_stats is not { } stats) {
+            <span class="text-gray-500">Loading…</span>
+        }
+        else {
+            <div class="flex-x items-center justify-between">
+                <h2 class="text-lg font-semibold">Summary by flow type</h2>
+                <Button Click="OnRefresh">Refresh</Button>
+            </div>
             <p class="text-gray-500 text-sm">Counts per registered flow type. Click a row to filter the instances below.</p>
             <div class="shrink-0 max-h-80 overflow-y-auto border rounded">
                 <table class="w-full border-collapse text-sm">
@@ -60,10 +52,19 @@
                 Flow instances@(_name.IsNullOrEmpty() ? "" : $" — {_name}")
             </h2>
             <p class="text-gray-500 text-sm">Click a row to view its console log and error.</p>
-            <label class="flex-x items-center gap-x-1 cursor-pointer w-fit">
-                <input type="checkbox" checked="@_hideCompleted" @onchange="OnToggleHideCompleted"/>
-                <span>Hide completed</span>
-            </label>
+            <div class="flex-x items-center gap-x-4">
+                <label class="flex-x items-center gap-x-1 cursor-pointer">
+                    <input type="checkbox" checked="@_problematicOnly" @onchange="OnToggleProblematic"/>
+                    <span>Problematic only</span>
+                </label>
+                <label class="flex-x items-center gap-x-1 cursor-pointer">
+                    <input type="checkbox" checked="@_hideCompleted" @onchange="OnToggleHideCompleted"/>
+                    <span>Hide completed</span>
+                </label>
+                @if (_rows is not null) {
+                    <span class="text-gray-500 text-sm">@_rows.Length row(s)</span>
+                }
+            </div>
             @if (!ShowRows) {
                 <p class="text-gray-500 text-sm italic">Select a flow type above, or check “Problematic only” to list instances.</p>
             }
