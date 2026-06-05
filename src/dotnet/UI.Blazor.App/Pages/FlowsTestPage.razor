@@ -27,7 +27,7 @@
                             <th class="text-left p-2">Type</th>
                             <th class="text-right p-2 w-24">Total</th>
                             <th class="text-right p-2 w-24">Completed</th>
-                            <th class="text-right p-2 w-24">Suspended</th>
+                            <th class="text-right p-2 w-24">Scheduled</th>
                             <th class="text-right p-2 w-24">Idle/Stuck</th>
                             <th class="text-right p-2 w-24">Failed</th>
                         </tr>
@@ -39,7 +39,7 @@
                             <td class="p-2 font-medium">@t.Name</td>
                             <td class="text-right p-2 text-gray-500">@t.Total</td>
                             <td class="text-right p-2">@t.Completed</td>
-                            <td class="text-right p-2">@t.Suspended</td>
+                            <td class="text-right p-2">@t.Scheduled</td>
                             <td class="text-right p-2 @(t.Stuck > 0 ? "text-amber-600 font-semibold" : "")">@(t.Idle + t.Stuck)</td>
                             <td class="text-right p-2 @(t.Failed > 0 ? "text-red-600 font-semibold" : "")">@t.Failed</td>
                         </tr>
