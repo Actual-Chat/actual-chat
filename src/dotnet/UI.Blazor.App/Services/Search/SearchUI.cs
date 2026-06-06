@@ -154,7 +154,7 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
     private SearchLocationFilter GetDefaultLocationFilter()
         => Hub.ChatUI.SelectedChatId.ValueOrDefault is PlaceChatId
             ? SearchLocationFilter.Place
-            : SearchLocationFilter.Chat;
+            : SearchLocationFilter.Anywhere;
 
     public void ShowRecent(bool isOn)
         => _isShowRecentOn.Set(isOn);
@@ -194,7 +194,7 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
         var newPlaceId = NavbarUI.IsPlaceSelected(out var placeId) ? placeId : null;
         PlaceId.Value = newPlaceId;
         if (newPlaceId is null && _locationFilter.Value == SearchLocationFilter.Place)
-            _locationFilter.Value = SearchLocationFilter.Chat;
+            _locationFilter.Value = SearchLocationFilter.Anywhere;
     }
 
     // Nested types
