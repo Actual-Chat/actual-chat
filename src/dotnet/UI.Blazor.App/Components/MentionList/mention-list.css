@@ -37,6 +37,8 @@
     @apply overflow-x-hidden overflow-y-auto;
     @apply bg-input text-03;
     max-height: min(10rem, var(--mention-list-max-h, 100vh));
+    /* Reveal the thin scrollbar whenever the list overflows (not only on hover). */
+    scrollbar-color: var(--scrollbar) transparent;
 }
 @media (min-width: 768px) {
     .mention-list {
