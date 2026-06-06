@@ -37,6 +37,7 @@ export * from './Components/LogView/log-view';
 export * from './Components/MarkupEditor/markup-editor';
 export * from './Components/MarkupParts/playable-text-markup-view';
 export * from './Components/MarkupParts/CodeBlockMarkupView/code-block-markup-view';
+export * from './Components/ChatQuickNavModal/chat-quick-nav-modal';
 export * from './Components/MentionList/mention-list';
 export * from './Components/Navbar/sortable-list';
 export * from './Components/NoResults/no-results-svg.lit';

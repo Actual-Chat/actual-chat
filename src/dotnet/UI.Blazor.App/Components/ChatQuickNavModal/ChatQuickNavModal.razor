@@ -1,0 +1,182 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Module
+@inherits ComputedStateComponent<AppUIHub, FoundMention[]>
+@implements IModalView<ChatQuickNavModal.Model>
+@{
+    var results = State.Value;
+    var hasQuery = !_query.IsNullOrEmpty();
+    var selection = Selection;
+}
+
+<div @ref="Ref" class="chat-quick-nav">
+    <div class="c-search">
+        <i class="icon-search c-search-icon text-2xl"></i>
+        <input @ref="InputRef"
+               class="c-input"
+               type="text"
+               placeholder="Jump to a chat or person…"
+               autocomplete="off"
+               autocapitalize="off"
+               spellcheck="false"
+               @oninput="OnInput"/>
+    </div>
+    @if (hasQuery) {
+        <div @ref="ListRef" class="c-list custom-scrollbar">
+            @if (results.Length == 0) {
+                <div class="c-item c-no-match">No chats found</div>
+            }
+            @foreach (var item in results) {
+                var cls = item == selection ? "c-item selected" : "c-item";
+                var targetId = item.MentionRef.Target;
+                <div class="@cls"
+                     @onmouseover="@(_ => Selection = item)"
+                     @onclick="@(_ => Select(item))">
+                    <div class="c-content">
+                        @if (targetId is AuthorId authorId) {
+                            <AuthorCircle @key="@authorId" AuthorId="@authorId" Size="SquareSize.Size9"/>
+                        }
+                        else {
+                            var avatarKey = item.Picture.AvatarKey.NullIfEmpty() ?? item.MentionRef.Value;
+                            var avatarKind = targetId is ChatId or PlaceId ? AvatarKind.Marble : AvatarKind.Beam;
+                            <Pic
+                                Title="@item.Match.Text"
+                                Picture="@item.Picture"
+                                Size="SquareSize.Size9"
+                                AvatarKind="@avatarKind"
+                                AvatarKey="@avatarKey"/>
+                        }
+                        <div class="c-center">
+                            <SearchMatchHighlighter Match="@item.Match"/>
+                            @* Only the chat/place "in <place>" hint is useful here; the
+                               mention picker's user "- not in this chat" note is noise. *@
+                            @if (targetId is ChatId or PlaceId && item.Description is { Length: > 0 } description) {
+                                <span class="c-description">&nbsp;@description</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.ChatQuickNavModal.create";
+    private static readonly Func<MentionCandidate, bool> NotEmoji = static c => c.Id.Kind != MentionKind.Emoji;
+    private const int Limit = 25;
+
+    private string? _query;
+    private FoundMention? _selection;
+    private DotNetObjectReference<ChatQuickNavModal>? _blazorRef;
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+    private ElementReference InputRef { get; set; }
+    private ElementReference ListRef { get; set; }
+
+    private LocalSearchUI LocalSearch => field ??= Services.GetRequiredService<LocalSearchUI>();
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public MutableState<string?> Filter { get; private set; } = null!;
+    public FoundMention? Selection {
+        get => _selection;
+        set {
+            if (_selection == value)
+                return;
+            _selection = FixSelection(value, State.Value);
+            StateHasChanged();
+            _ = JSRef.InvokeVoidAsync("scrollSelectedIntoView");
+        }
+    }
+
+    protected override void OnInitialized()
+        => Filter = StateFactory.NewMutable((string?)null, StateCategories.Get(GetType(), nameof(Filter)));
+
+    public override async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        _blazorRef?.Dispose();
+        await base.DisposeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            _blazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, _blazorRef);
+        }
+    }
+
+    protected override ComputedState<FoundMention[]>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<FoundMention[]>.Options() {
+                InitialValue = [],
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<FoundMention[]> ComputeState(CancellationToken cancellationToken) {
+        var lastQuery = _query;
+        var selection = _selection;
+
+        var query = await Filter.Use(cancellationToken).ConfigureAwait(false);
+        var results = query.IsNullOrEmpty()
+            ? []
+            : await LocalSearch.FindMentions(null, NotEmoji, query, Limit, cancellationToken).ConfigureAwait(false);
+
+        var fixedSelection = FixSelection(query == lastQuery ? selection : null, results);
+        await InvokeAsync(() => {
+            _selection = fixedSelection;
+            _query = query;
+        }).ConfigureAwait(false);
+        return results;
+    }
+
+    [JSInvokable]
+    public void OnMoveSelection(int offset) {
+        var results = State.Value;
+        var selection = FixSelection(_selection, results);
+        var index = Array.IndexOf(results, selection) + offset;
+        if (index < 0 || index >= results.Length)
+            return;
+
+        _selection = results[index];
+        StateHasChanged();
+        _ = JSRef.InvokeVoidAsync("scrollSelectedIntoView");
+    }
+
+    [JSInvokable]
+    public Task OnSelectCurrent()
+        => Selection is { } selection ? Select(selection) : Task.CompletedTask;
+
+    // Private methods
+
+    private void OnInput(ChangeEventArgs e)
+        => Filter.Value = (e.Value as string).NullIfEmpty();
+
+    private async Task Select(FoundMention item) {
+        Modal.Close();
+        LocalUrl? url = item.MentionRef.Target switch {
+            UserId userId => Links.User(userId),
+            AuthorId authorId => Links.Chat(authorId.ChatId),
+            ChatId chatId => Links.Chat(chatId),
+            PlaceId placeId => Links.Chat(placeId.RootChatId),
+            _ => null,
+        };
+        if (url is { } localUrl)
+            await Hub.History.NavigateTo(localUrl).ConfigureAwait(true);
+    }
+
+    private FoundMention? FixSelection(FoundMention? selection, FoundMention[] results) {
+        if (results.Length == 0)
+            return null;
+
+        var first = results[0];
+        selection ??= first;
+        return results.FirstOrDefault(o => o.MentionRef == selection.MentionRef) ?? first;
+    }
+
+    // Nested types
+
+    public sealed record Model;
+}

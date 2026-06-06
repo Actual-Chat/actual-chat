@@ -1,0 +1,80 @@
+/* Centered command-palette popup (Ctrl/Cmd-K). The overlay inherits the dim +
+   blur from .modal-overlay; here we only re-align it to the upper-center and
+   size the frameless box. The result list drops DOWN below the input. */
+.chat-quick-nav-overlay {
+    @apply justify-start items-center;
+    padding-top: 12vh;
+}
+body.narrow .chat-quick-nav-overlay {
+    @apply justify-start items-stretch;
+    padding-top: 0;
+}
+
+.chat-quick-nav-modal {
+    @apply flex-y;
+    @apply w-full max-w-[40rem] mx-4;
+    @apply rounded-xl overflow-hidden;
+    @apply bg-modal shadow-modal-wide;
+    max-height: 70vh;
+}
+body.narrow .chat-quick-nav-modal {
+    @apply max-w-none mx-0 rounded-none;
+    @apply h-full;
+    max-height: none;
+}
+.chat-quick-nav-modal .modal-content {
+    @apply flex-y;
+    min-height: 0;
+}
+
+.chat-quick-nav {
+    @apply flex-y;
+    min-height: 0;
+}
+.chat-quick-nav > .c-search {
+    @apply flex-x items-center gap-x-3;
+    @apply flex-none h-14 px-4;
+    @apply border-b border-separator;
+}
+.chat-quick-nav > .c-search > .c-search-icon {
+    @apply flex-none text-03;
+}
+.chat-quick-nav > .c-search > .c-input {
+    @apply flex-auto min-w-0;
+    @apply bg-transparent border-0 outline-none;
+    @apply text-title-1 text-01;
+}
+.chat-quick-nav > .c-search > .c-input::placeholder {
+    @apply text-03;
+}
+
+.chat-quick-nav > .c-list {
+    @apply flex-y;
+    @apply p-2;
+    @apply overflow-x-hidden overflow-y-auto;
+    min-height: 0;
+}
+.chat-quick-nav .c-item {
+    @apply flex-none truncate cursor-pointer;
+    @apply rounded-lg;
+}
+body.hoverable .chat-quick-nav .c-item.selected,
+.touch-capable .chat-quick-nav .c-item:active {
+    @apply bg-mention-list-item-selected;
+}
+.chat-quick-nav .c-item.c-no-match {
+    @apply cursor-default;
+    @apply flex-x items-center h-12 px-3;
+    @apply text-headline-1 text-03 opacity-60;
+}
+.chat-quick-nav .c-item > .c-content {
+    @apply flex-x items-center gap-x-3;
+    @apply h-12 px-3;
+}
+.chat-quick-nav .c-item > .c-content > .c-center {
+    @apply flex-auto truncate;
+    @apply text-headline-1 text-01;
+}
+.chat-quick-nav .c-item .c-description {
+    @apply text-03 opacity-60 font-light;
+}

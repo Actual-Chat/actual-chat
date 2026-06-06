@@ -4,6 +4,7 @@
 <ModalHost />
 <MenuHost />
 <BubbleHost />
+<Hotkey Keys="ctrl+k" AriaLabel="Quick chat navigation" OnTrigger="OnQuickNav"/>
 @if (!BrowserInfo.IsTouchCapable) {
     <TooltipHost />
 }
@@ -23,11 +24,33 @@
 }
 
 @code {
+    private static readonly ModalOptions QuickNavModalOptions = new() {
+        Class = "chat-quick-nav-modal",
+        OverlayClass = "modal-overlay chat-quick-nav-overlay",
+        UseFocusTrap = true,
+    };
+
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private LoadingUI LoadingUI => Hub.LoadingUI;
+    private ModalUI ModalUI => Hub.ModalUI;
+    private bool _isQuickNavOpen;
 
     protected override void OnAfterRender(bool firstRender) {
         if (firstRender)
             LoadingUI.MarkRendered();
+    }
+
+    private async Task OnQuickNav() {
+        if (_isQuickNavOpen)
+            return;
+
+        _isQuickNavOpen = true;
+        try {
+            var modalRef = await ModalUI.Show(new ChatQuickNavModal.Model(), QuickNavModalOptions);
+            await modalRef.WhenClosed;
+        }
+        finally {
+            _isQuickNavOpen = false;
+        }
     }
 }
