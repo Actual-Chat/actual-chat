@@ -149,13 +149,22 @@
     public Task OnSelectCurrent()
         => Selection is { } selection ? Select(selection) : Task.CompletedTask;
 
+    [JSInvokable]
+    public void OnClose()
+        => CloseImmediately();
+
     // Private methods
 
     private void OnInput(ChangeEventArgs e)
         => Filter.Value = (e.Value as string).NullIfEmpty();
 
+    // The palette has no DialogFrame, so the host's default FadeOut close just
+    // freezes it on screen for ~300ms before removal; close immediately instead.
+    private void CloseImmediately()
+        => Modal.Ref.Host.Close(Modal.Ref.Id, force: true, ModalHost.CloseBehavior.Immediate);
+
     private async Task Select(FoundMention item) {
-        Modal.Close();
+        CloseImmediately();
         LocalUrl? url = item.MentionRef.Target switch {
             UserId userId => Links.User(userId),
             AuthorId authorId => Links.Chat(authorId.ChatId),

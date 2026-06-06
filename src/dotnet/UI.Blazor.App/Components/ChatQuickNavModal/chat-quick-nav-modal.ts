@@ -63,6 +63,13 @@ export class ChatQuickNavModal {
             e.preventDefault();
             void this.blazorRef.invokeMethodAsync('OnSelectCurrent');
             break;
+        case 'Escape':
+            // Close instantly ourselves rather than letting the global keyux
+            // Escape handler run the modal host's slower fade-out close.
+            e.preventDefault();
+            e.stopPropagation();
+            void this.blazorRef.invokeMethodAsync('OnClose');
+            break;
         }
     }
 }
