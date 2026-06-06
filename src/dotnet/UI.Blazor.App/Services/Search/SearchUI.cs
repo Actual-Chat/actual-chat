@@ -37,6 +37,7 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
     public MutableState<ImmutableHashSet<SearchResultGroupKey>> CollapsedGroups { get; }
 
     private ISearch Search => Hub.Search;
+    private LocalSearchUI LocalSearch => field ??= Services.GetRequiredService<LocalSearchUI>();
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private NavbarUI NavbarUI => Hub.NavbarUI;
     private HighlightUI HighlightUI => Hub.HighlightUI;

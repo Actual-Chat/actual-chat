@@ -43,6 +43,30 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         return result;
     }
 
+    public async Task<IReadOnlyList<FoundContact>> FindContacts(
+        SearchScope scope,
+        string criteria,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        if (limit <= 0)
+            return [];
+
+        var candidates = scope switch {
+            SearchScope.People => await ListUserContactCandidates(cancellationToken).ConfigureAwait(false),
+            SearchScope.Groups => await ListChatContactCandidates(cancellationToken).ConfigureAwait(false),
+            _ => [],
+        };
+        var query = new SearchQuery(criteria);
+        return candidates
+            .WithSearchMatchRank(query, c => c.Document)
+            .FilterBySearchMatchRank()
+            .OrderBySearchMatchRank()
+            .Take(limit)
+            .Select(x => new FoundContact(x.Source.Id, new SearchMatch(x.Source.Title, x.Rank, query)))
+            .ToList();
+    }
+
     [ComputeMethod]
     public virtual async Task<ApiArray<MentionCandidate>> ListMentionCandidates(
         ChatId? chatId,
@@ -201,6 +225,41 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     }
 
     [ComputeMethod]
+    public virtual async Task<ApiArray<ContactCandidate>> ListUserContactCandidates(CancellationToken cancellationToken)
+    {
+        var ownUserId = await GetOwnUserId(cancellationToken).ConfigureAwait(false);
+        var users = await ListUsers(cancellationToken).ConfigureAwait(false);
+        var result = new List<ContactCandidate>();
+        foreach (var (contact, account) in users) {
+            if (account.Id == ownUserId)
+                continue;
+
+            var name = contact.PreferredPeerName.NullIfEmpty() ?? account.Avatar.Name;
+            result.Add(new ContactCandidate(contact.Id, name, new SearchDocument(name, account.Avatar.Name)));
+        }
+        return result.ToApiArray();
+    }
+
+    [ComputeMethod]
+    public virtual async Task<ApiArray<ContactCandidate>> ListChatContactCandidates(CancellationToken cancellationToken)
+    {
+        var ownUserId = await GetOwnUserId(cancellationToken).ConfigureAwait(false);
+        if (ownUserId is not { } ownerId)
+            return [];
+
+        var chats = await ListChats(cancellationToken).ConfigureAwait(false);
+        var result = new List<ContactCandidate>();
+        foreach (var chat in chats) {
+            if (chat.Id is not GroupChatId groupChatId)
+                continue;
+
+            var title = chat.Title;
+            result.Add(new ContactCandidate(ContactId.NewChat(ownerId, groupChatId), title, new SearchDocument(title)));
+        }
+        return result.ToApiArray();
+    }
+
+    [ComputeMethod]
     public virtual async Task<ApiArray<Place>> ListPlaces(CancellationToken cancellationToken)
     {
         var placeIds = await Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
@@ -350,4 +409,8 @@ public class LocalSearchUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
             return (null, c.Title);
         }
     }
+
+    // Nested types
+
+    public sealed record ContactCandidate(ContactId Id, string Title, SearchDocument Document);
 }
