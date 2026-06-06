@@ -1,9 +1,11 @@
 /* Centered command-palette popup (Ctrl/Cmd-K). The overlay inherits the dim +
    blur from .modal-overlay; here we only re-align it to the upper-center and
    size the frameless box. The result list drops DOWN below the input. */
-.chat-quick-nav-overlay {
+.modal-overlay.chat-quick-nav-overlay {
     @apply justify-start items-center;
+    @apply bg-transparent;
     padding-top: 12vh;
+    backdrop-filter: none;
 }
 body.narrow .chat-quick-nav-overlay {
     @apply justify-start items-stretch;
@@ -22,8 +24,13 @@ body.narrow .chat-quick-nav-modal {
     @apply h-full;
     max-height: none;
 }
-.chat-quick-nav-modal .modal-content {
-    @apply flex-y;
+/* The modal host merges ModalOptions.Implicit, so our dialog also carries the
+   base `.modal` class. That brings `body.wide .modal .modal-content { height: 90vh }`,
+   which would stretch the palette to full height. Override it so the box hugs
+   its content (search field + the 4-row list). */
+.chat-quick-nav-modal .modal-content,
+body.wide .chat-quick-nav-modal .modal-content {
+    @apply flex-y h-auto w-full;
     min-height: 0;
 }
 
@@ -53,6 +60,11 @@ body.narrow .chat-quick-nav-modal {
     @apply p-2;
     @apply overflow-x-hidden overflow-y-auto;
     min-height: 0;
+    /* Show at most 4 rows (each .c-item is h-12 = 3rem) + the 0.5rem*2 padding;
+       the rest scrolls. */
+    max-height: 13rem;
+    /* Reveal the thin scrollbar whenever the list overflows (not only on hover). */
+    scrollbar-color: var(--scrollbar) transparent;
 }
 .chat-quick-nav .c-item {
     @apply flex-none truncate cursor-pointer;
