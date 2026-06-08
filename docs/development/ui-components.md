@@ -592,6 +592,44 @@ Key conventions:
 - **`ImportName`** — `BlazorUICoreModule.ImportName` (`"ui"`) for `UI.Blazor` components, `BlazorUIAppModule.ImportName` (`"blazorApp"`) for `UI.Blazor.App` components
 - **`.ConfigureAwait(true)`** — use in UI code when accessing instance members after await
 
+### Conditional host element — dispose and re-create with the element
+
+The `if (!firstRender) return;` pattern above is correct only when the JS-bound element lives for the whole lifetime of the component. It breaks when a **persistent** component conditionally renders its host element — e.g. a component that returns a skeleton while its state is loading, then renders the real `@ref` element once data arrives:
+
+```razor
+@{
+    if (m.Chat is null) {
+        <RightPanelSkeleton />
+        return;
+    }
+}
+<div @ref="Ref" class="right-panel">...</div>
+```
+
+If the component instance itself outlives this toggle (here it's rendered unconditionally by a parent `SideNav`), the host element comes and goes while `OnAfterRenderAsync` keeps firing. Two failures follow from a naive `if (JSRef is null) create` guard:
+
+1. When the element is removed (state goes back to skeleton), the old JS instance is **never disposed** — any document-level subscriptions it holds keep firing against a detached element.
+2. When the element reappears, `JSRef` is still non-null, so `create` never runs again — the new element gets **no JS instance** and the feature silently dies.
+
+**Correct** — dispose when the host disappears, create when it reappears:
+
+```csharp
+protected override async Task OnAfterRenderAsync(bool firstRender) {
+    if (State.Value.Chat is null) {
+        if (JSRef is null)
+            return;
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        return;
+    }
+    JSRef ??= await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+}
+```
+
+Gate on the **same condition** that decides whether the `@ref` element renders, not on `firstRender`. This matters most for JS instances with document-level or global listeners (see `right-panel-collapse.ts`, which subscribes to `DocumentEvents` and only stops on `dispose()`), since those leak past the element they were created for.
+
+Real usage: `Components/RightPanel/RightPanelContent.razor`.
+
 ### State classes shared between Razor and JS
 
 Blazor rewrites the whole `class` attribute whenever any expression in the binding changes. Any class JS added on the side gets dropped silently on the next unrelated re-render.

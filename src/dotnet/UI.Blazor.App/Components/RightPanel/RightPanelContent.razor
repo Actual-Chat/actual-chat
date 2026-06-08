@@ -70,8 +70,14 @@
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (JSRef is null && State.Value.Chat is not null)
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+        if (State.Value.Chat is null) {
+            if (JSRef is null)
+                return;
+            await JSRef.DisposeSilentlyAsync("dispose");
+            JSRef = null!;
+            return;
+        }
+        JSRef ??= await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
