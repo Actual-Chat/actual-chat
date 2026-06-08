@@ -19,6 +19,8 @@ internal sealed class AndroidAudioPlaybackEngine(
     ) : ProcessorBase, IAudioPlaybackEngine
 {
     private const long LagReportIntervalMs = 500;
+    private const int PositionReportPeriodMs = 200;
+    private const int MinDrainPollMs = 20;
 
     private readonly DurationTargetingFrameBuffer<AudioFrame> _frames = new(
         static frame => frame.Offset,
@@ -26,10 +28,9 @@ internal sealed class AndroidAudioPlaybackEngine(
 
     private CancellationTokenSource? _pauseEndTokenSource;
     private volatile AudioTrack? _audioTrack;
-    private volatile PlayPositionListener? _positionListener;
     private volatile Task? _decodeAndFeedTask;
+    private volatile Task? _positionWatchTask;
     private GCHandle _audioTrackHandle;
-    private GCHandle _positionListenerHandle;
 
     private int _remainingPreSkip;
     private volatile int _fedSampleCount;
@@ -94,11 +95,8 @@ internal sealed class AndroidAudioPlaybackEngine(
 
             _audioTrack = audioTrack;
             _audioTrackHandle = GCHandle.Alloc(audioTrack, GCHandleType.Normal);
-            _positionListener = new PlayPositionListener(this);
-            _positionListenerHandle = GCHandle.Alloc(_positionListener, GCHandleType.Normal);
-            _audioTrack.SetPlaybackPositionUpdateListener(_positionListener);
-            _audioTrack.SetPositionNotificationPeriod(Constants.Audio.PcmFrameLength * 10); // 200 ms
             _decodeAndFeedTask = BackgroundTask.Run(DecodeAndFeed, CancellationToken.None);
+            _positionWatchTask = BackgroundTask.Run(WatchPlaybackPosition, CancellationToken.None);
         }
 
         audioTrack.Play();
@@ -107,20 +105,21 @@ internal sealed class AndroidAudioPlaybackEngine(
 
     protected override async Task DisposeAsyncCore()
     {
-        // This method starts inside lock (Lock)
+        // This method starts inside lock (Lock).
+        // Both background tasks observe StopToken, which ProcessorBase.DisposeAsync cancels before
+        // calling this method, so awaiting them here cannot deadlock. Letting them fully stop before
+        // releasing the track is what guarantees no callback ever runs against a released track.
         if (_decodeAndFeedTask is not null) {
             await _decodeAndFeedTask.SilentAwait();
             _decodeAndFeedTask = null;
         }
+        if (_positionWatchTask is not null) {
+            await _positionWatchTask.SilentAwait();
+            _positionWatchTask = null;
+        }
 
         lock (Lock) { // We must re-lock after await
-            // Detach the listener and fully release the track BEFORE disposing the listener.
-            // Disposing it while the native track is alive severs its managed peer, so a late
-            // OnPeriodicNotification callback resurrects it as the Invoker and recurses through
-            // JNI until the stack overflows.
-            _positionListener?.Deactivate();
             if (_audioTrack.IsValid()) {
-                try { _audioTrack.SetPlaybackPositionUpdateListener(null); } catch { /* Ignore */ }
                 try {
                     if (_audioTrack.PlayState is PlayState.Playing or PlayState.Paused)
                         _audioTrack.Stop();
@@ -131,12 +130,6 @@ internal sealed class AndroidAudioPlaybackEngine(
             }
             _audioTrack = null;
 
-            if (_positionListener.IsValid())
-                _positionListener.DisposeSilently();
-            _positionListener = null;
-
-            if (_positionListenerHandle.IsAllocated)
-                _positionListenerHandle.Free();
             if (_audioTrackHandle.IsAllocated)
                 _audioTrackHandle.Free();
         }
@@ -177,12 +170,8 @@ internal sealed class AndroidAudioPlaybackEngine(
         var audioTrack = _audioTrack.IfValid();
         if (mustAbort) {
             try {
-                _positionListener?.Deactivate();
-                if (audioTrack is not null) {
-                    try { audioTrack.SetPlaybackPositionUpdateListener(null); } catch { }
-                    if (audioTrack.PlayState is PlayState.Playing or PlayState.Paused)
-                        audioTrack.Stop();
-                }
+                if (audioTrack is not null && audioTrack.PlayState is PlayState.Playing or PlayState.Paused)
+                    audioTrack.Stop();
             }
             catch {
                 // Ignore
@@ -220,7 +209,6 @@ internal sealed class AndroidAudioPlaybackEngine(
     private async Task DecodeAndFeed()
     {
         var audioTrack = _audioTrack!;
-        var positionListener = _positionListener!;
         var cancellationToken = StopToken;
         var audioData = new float[Constants.Audio.PcmFrameLength];
         try {
@@ -261,10 +249,7 @@ internal sealed class AndroidAudioPlaybackEngine(
                 if (_remainingPreSkip < 0)
                     _remainingPreSkip = 0;
             }
-            if (GetPlayedSampleCount() < _fedSampleCount) {
-                audioTrack.SetNotificationMarkerPosition(_fedSampleCount);
-                await positionListener.WhenMarkerReached.WaitAsync(cancellationToken).ConfigureAwait(false);
-            }
+            await WhenPlaybackDrained(cancellationToken).ConfigureAwait(false);
             await End(true, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
@@ -366,70 +351,39 @@ internal sealed class AndroidAudioPlaybackEngine(
         cancellationToken.ThrowIfCancellationRequested();
     }
 
+    // We poll PlaybackHeadPosition instead of registering an AudioTrack.IOnPlaybackPositionUpdateListener.
+    // A native position-update callback fired while the listener's managed peer is being torn down resurrects
+    // it as a self-recursive JNI Invoker and overflows the stack. Polling removes the callback entirely.
+    private async Task WatchPlaybackPosition()
+    {
+        var cancellationToken = StopToken;
+        try {
+            while (!cancellationToken.IsCancellationRequested) {
+                NotifyPlaying(GetPlayedSampleCount());
+                await Task.Delay(PositionReportPeriodMs, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (Exception e) when (e.IsCancellationOf(cancellationToken)) {
+            // Expected on End/Dispose
+        }
+    }
+
+    private async Task WhenPlaybackDrained(CancellationToken cancellationToken)
+    {
+        var sampleRate = Constants.Audio.PlaybackSampleRate;
+        while (CanContinuePlaying(out _)) {
+            var remaining = _fedSampleCount - GetPlayedSampleCount();
+            if (remaining <= 0)
+                return;
+
+            var delayMs = (int)Math.Clamp(remaining * 1000L / sampleRate, MinDrainPollMs, PositionReportPeriodMs);
+            await Task.Delay(delayMs, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     private static TimeSpan GetEncodedBufferDuration(TimeSpan targetBufferSize)
     {
         var encoded = targetBufferSize - Constants.Audio.DecodedBufferSize - Constants.Audio.AudioEnginePlaybackLatency;
         return TimeSpanExt.Max(encoded, Constants.Audio.MinEncodedBufferSize);
-    }
-
-    // Nested types
-
-    private class PlayPositionListener : Java.Lang.Object, AudioTrack.IOnPlaybackPositionUpdateListener
-    {
-        private readonly AndroidAudioPlaybackEngine _parent;
-        private readonly TaskCompletionSource _whenMarkerReachedSource = TaskCompletionSourceExt.New();
-        private volatile bool _isDeactivated;
-
-        public Task WhenMarkerReached => _whenMarkerReachedSource.Task;
-
-        // ReSharper disable once ConvertToPrimaryConstructor
-        public PlayPositionListener(AndroidAudioPlaybackEngine parent)
-            => _parent = parent;
-
-        public void Deactivate()
-        {
-            _isDeactivated = true;
-            _whenMarkerReachedSource.TrySetResult();
-        }
-
-        public void OnMarkerReached(AudioTrack? audioTrack)
-        {
-            if (_isDeactivated)
-                return;
-
-            try {
-                if (_parent._audioTrack is null || !ReferenceEquals(audioTrack, _parent._audioTrack))
-                    return; // Something is off or already disposing
-
-                _parent.NotifyPlaying(_parent._fedSampleCount);
-                _whenMarkerReachedSource.TrySetResult();
-            }
-            catch {
-                // Swallow to prevent native callback from crashing the process
-                _whenMarkerReachedSource.TrySetResult();
-            }
-        }
-
-        public void OnPeriodicNotification(AudioTrack? audioTrack)
-        {
-            if (_isDeactivated)
-                return;
-
-            try {
-                var parentTrack = _parent._audioTrack;
-                if (parentTrack is null || !ReferenceEquals(audioTrack, parentTrack))
-                    return; // Something is off or already disposing
-
-                if (parentTrack.PlayState != PlayState.Stopped)
-                    _parent.NotifyPlaying(_parent.GetPlayedSampleCount());
-                else {
-                    _parent.NotifyPlaying(_parent._fedSampleCount);
-                    _whenMarkerReachedSource.TrySetResult();
-                }
-            }
-            catch {
-                _whenMarkerReachedSource.TrySetResult();
-            }
-        }
     }
 }
