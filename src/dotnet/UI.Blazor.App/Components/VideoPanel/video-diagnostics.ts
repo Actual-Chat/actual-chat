@@ -8,8 +8,13 @@ import {
     getDownscalerMode as getDownscalerModeImpl,
     setDownscalerMode as setDownscalerModeImpl,
 } from '../../Services/Video/downscaler-mode';
+import {
+    getSenderBackendMode as getSenderBackendModeImpl,
+    setSenderBackendMode as setSenderBackendModeImpl,
+} from '../../Services/Video/sender-backend-mode';
 import type { DownscalerMode } from '../../Services/Video/operators/downscale';
 import { ServerClock } from 'clocks';
+import type { SenderBackendKind } from '../../Services/Video/sender/sender-backend';
 
 export interface OwnStreamDiagnosticsSnapshot {
     stream: OwnStreamDiagnostics | null;
@@ -69,6 +74,7 @@ export interface VideoDebugSettings {
     maxInboundLayerCount: number | null;
     estBandwidthMultiplier: number;
     downscalerMode: DownscalerMode;
+    senderBackend: SenderBackendKind;
 }
 
 export function getVideoDebugSettings(): VideoDebugSettings {
@@ -78,6 +84,7 @@ export function getVideoDebugSettings(): VideoDebugSettings {
         maxInboundLayerCount: getLayerCount(INBOUND_LAYER_COUNT_KEY),
         estBandwidthMultiplier: getBandwidthMultiplier(),
         downscalerMode: getDownscalerModeImpl(),
+        senderBackend: getSenderBackendModeImpl(),
     };
 }
 
@@ -87,6 +94,10 @@ export function setVideoDebugForceH264Only(enabled: boolean): void {
 
 export function setVideoDebugDownscalerMode(mode: DownscalerMode): void {
     setDownscalerModeImpl(mode);
+}
+
+export function setVideoDebugSenderBackend(mode: SenderBackendKind): void {
+    setSenderBackendModeImpl(mode);
 }
 
 export function setVideoDebugMaxOutboundLayerCount(layerCount: number | null): void {

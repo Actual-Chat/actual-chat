@@ -64,6 +64,10 @@ export interface WebRtcStartParams {
     deviceId?: string;
     apiUrl?: string;
     preferredCodecs?: WebRtcCodecCategory[];
+    // Pre-acquired camera track (e.g. from the recorder's warmup preview). When
+    // provided, the sender reuses it and does NOT stop it on stop() — the caller
+    // owns its lifetime. When omitted, the sender opens (and stops) its own.
+    track?: MediaStreamTrack;
 }
 
 export class WebRtcSender implements ISenderBackend {
@@ -79,8 +83,13 @@ export class WebRtcSender implements ISenderBackend {
     private cameraHeight = 0;
     private keyframeTimer: ReturnType<typeof setInterval> | null = null;
     private running = false;
+    // false when the camera track was supplied by the caller (recorder warmup),
+    // so stop() must not stop a track it doesn't own.
+    private ownsTrack = true;
 
     get isRunning(): boolean { return this.running; }
+
+    getPreviewTrack(): MediaStreamTrack | null { return this.track; }
 
     async start(params: WebRtcStartParams): Promise<void> {
         if (this.running) {
@@ -120,20 +129,31 @@ export class WebRtcSender implements ISenderBackend {
             throw new Error('WebRtcSender: no usable WebRTC send codec');
         C(`codec picked: ${codec.category} → ${codec.wireCodec}`);
 
-        // 3) Acquire camera at the top-tier resolution.
+        // 3) Acquire camera at the top-tier resolution (or reuse the caller's).
         this.specs = buildTierSpecs();
         const top = this.specs[this.specs.length - 1];
-        const track = await MediaCapture.captureCameraStream({
-            deviceId: params.deviceId,
-            frameRate: FPS,
-            width: top.width,
-            height: top.height,
-        });
+        let track: MediaStreamTrack;
+        if (params.track) {
+            track = params.track;
+            this.ownsTrack = false;
+            C('reusing caller-supplied camera track');
+        } else {
+            track = await MediaCapture.captureCameraStream({
+                deviceId: params.deviceId,
+                frameRate: FPS,
+                width: top.width,
+                height: top.height,
+            });
+            this.ownsTrack = true;
+        }
         this.track = track;
         const s = track.getSettings();
         this.cameraWidth = s.width ?? top.width;
         this.cameraHeight = s.height ?? top.height;
-        track.onended = () => { void this.stop(); };
+        // Only own the ended→stop wiring when we opened the track; otherwise the
+        // caller (recorder warmup) owns the track's onended.
+        if (this.ownsTrack)
+            track.onended = () => { void this.stop(); };
         C(`camera acquired ${this.cameraWidth}x${this.cameraHeight}@${s.frameRate ?? FPS}, tiers=${this.specs.length}`);
 
         // 4) Configure the worker's wire sender.
@@ -253,9 +273,10 @@ export class WebRtcSender implements ISenderBackend {
         this.worker = null;
         try { this.workerInstance?.terminate(); } catch { /* ignore */ }
         this.workerInstance = null;
-        try { this.track?.stop(); } catch { /* ignore */ }
+        // Only stop the track if we opened it; caller-supplied tracks are theirs.
+        if (this.ownsTrack) { try { this.track?.stop(); } catch { /* ignore */ } }
         this.track = null;
-        infoLog?.log('stop: done');
+        C('stop: done — all PCs closed, worker terminated');
     }
 }
 

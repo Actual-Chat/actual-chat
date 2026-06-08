@@ -112,6 +112,10 @@
                                     @* Encoder *@
                                     <div class="diag-group-header">Encoder</div>
                                     <div class="diag-row">
+                                        <span class="diag-label">Backend</span>
+                                        <span class="diag-value">@(GetStr(stream, "senderBackend") == "webrtc" ? "WebRTC (experimental)" : "WebCodecs")</span>
+                                    </div>
+                                    <div class="diag-row">
                                         <span class="diag-label">Codec</span>
                                         <span class="diag-value">@GetStr(stream, "codec") (@GetStr(stream, "codecCategory"), @(GetBool(stream, "hardwareAccelerated") ? "HW" : "SW"))</span>
                                     </div>
@@ -592,6 +596,23 @@
                                 <option value="webgl">WebGL</option>
                                 <option value="canvas">Canvas2D</option>
                                 <option value="metadata">Metadata</option>
+                            </select>
+                        </Right>
+                    </TileItem>
+                    <TileItem IsHoverable="false">
+                        <Content>Sender backend</Content>
+                        <Caption>
+                            Encoder pipeline. <b>WebCodecs</b> = production multi-encoder
+                            simulcast. <b>WebRTC</b> = experimental WebRTC encoder-tap
+                            (one loopback PeerConnection per tier; H.264). Applies on the
+                            next recording — switch, then re-join the call.
+                        </Caption>
+                        <Right>
+                            <select class="diag-select"
+                                    value="@_senderBackend"
+                                    @onchange="@OnSenderBackendChange">
+                                <option value="webcodecs">WebCodecs</option>
+                                <option value="webrtc">WebRTC (experimental)</option>
                             </select>
                         </Right>
                     </TileItem>

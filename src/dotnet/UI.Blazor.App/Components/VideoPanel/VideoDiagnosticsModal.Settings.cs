@@ -8,6 +8,7 @@ public partial class VideoDiagnosticsModal
     private static readonly string JSGetSettingsMethod = $"{BlazorUIAppModule.ImportName}.getVideoDebugSettings";
     private static readonly string JSSetForceH264OnlyMethod = $"{BlazorUIAppModule.ImportName}.setVideoDebugForceH264Only";
     private static readonly string JSSetDownscalerModeMethod = $"{BlazorUIAppModule.ImportName}.setVideoDebugDownscalerMode";
+    private static readonly string JSSetSenderBackendMethod = $"{BlazorUIAppModule.ImportName}.setVideoDebugSenderBackend";
     private static readonly string JSSetMaxOutboundLayerCountMethod =
         $"{BlazorUIAppModule.ImportName}.setVideoDebugMaxOutboundLayerCount";
     private static readonly string JSSetMaxInboundLayerCountMethod =
@@ -26,6 +27,7 @@ public partial class VideoDiagnosticsModal
 
     private bool _forceH264Only;
     private string _downscalerMode = "metadata";
+    private string _senderBackend = "webcodecs";
     private bool _showFpsOverlay;
     private int? _maxOutboundLayerCount;
     private int? _maxInboundLayerCount;
@@ -41,6 +43,7 @@ public partial class VideoDiagnosticsModal
             var settings = await Hub.JS.InvokeAsync<VideoDebugSettings>(JSGetSettingsMethod);
             _forceH264Only = settings.ForceH264Only;
             _downscalerMode = settings.DownscalerMode ?? "metadata";
+            _senderBackend = settings.SenderBackend ?? "webcodecs";
             _maxOutboundLayerCount = settings.MaxOutboundLayerCount;
             _maxInboundLayerCount = settings.MaxInboundLayerCount;
             _estBandwidthMultiplier = NormalizeMultiplier(settings.EstBandwidthMultiplier);
@@ -71,6 +74,14 @@ public partial class VideoDiagnosticsModal
         _downscalerMode = mode is "webgl" or "canvas" or "metadata" ? mode : "metadata";
         StateHasChanged();
         await Hub.JS.InvokeVoidAsync(JSSetDownscalerModeMethod, _downscalerMode);
+    }
+
+    private async Task OnSenderBackendChange(ChangeEventArgs e)
+    {
+        var mode = e.Value?.ToString();
+        _senderBackend = mode is "webcodecs" or "webrtc" ? mode : "webcodecs";
+        StateHasChanged();
+        await Hub.JS.InvokeVoidAsync(JSSetSenderBackendMethod, _senderBackend);
     }
 
     private async Task OnShowFpsOverlayClick()
@@ -156,5 +167,6 @@ public partial class VideoDiagnosticsModal
         int? MaxOutboundLayerCount,
         int? MaxInboundLayerCount,
         double EstBandwidthMultiplier,
-        string? DownscalerMode);
+        string? DownscalerMode,
+        string? SenderBackend);
 }

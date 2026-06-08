@@ -79,8 +79,10 @@ import {
 } from '../../Services/Video/operators/encode';
 import type { RecorderStats } from '../../Services/Video/frame-envelopes';
 import { pickRenderBackendKind } from './render-backend-selection';
-// Side-effect: registers globalThis.voxtWebRtc (experimental WebRTC sender backend).
-import '../../Services/Video/sender/webrtc/webrtc-recorder';
+import { getSenderBackendMode } from '../../Services/Video/sender-backend-mode';
+import type { WebRtcCodecCategory } from '../../Services/Video/webrtc-codec-support';
+// Importing WebRtcSender also registers globalThis.voxtWebRtc (console harness).
+import { WebRtcSender } from '../../Services/Video/sender/webrtc/webrtc-recorder';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
 const RECORDER_HEALTH_INTERVAL_MS = 1000;
@@ -107,6 +109,8 @@ interface PreviewTrackGenerator {
 
 export interface OwnStreamDiagnostics {
     mode: string;
+    // Active sender backend: 'webcodecs' (production) or 'webrtc' (experimental).
+    senderBackend: string;
     codec: string;
     codecCategory: string;
     hardwareAccelerated: boolean;
@@ -384,6 +388,11 @@ export class VideoRecorder {
     // Worker + RPC proxy.
     private workerInstance: Worker | null = null;
     private worker: (RecorderWorker & Disposable) | null = null;
+
+    // Experimental WebRTC sender backend (gated by the `video.debug.senderBackend`
+    // setting). Non-null only while a WebRTC-backed recording/preview is active;
+    // the WebCodecs path leaves this null and is unaffected.
+    private webRtcSender: WebRtcSender | null = null;
 
     // Lifecycle flags.
     private isRecording = false;
@@ -705,6 +714,10 @@ export class VideoRecorder {
             warnLog?.log('warmup: already recording or warming up');
             return;
         }
+        if (getSenderBackendMode() === 'webrtc') {
+            await this.warmupWebRtc(chatId, audienceCodecs);
+            return;
+        }
         this.chatId = chatId;
         this.audienceCodecs = audienceCodecs;
         this.currentMaxLayerCount = 1;
@@ -862,6 +875,10 @@ export class VideoRecorder {
             warnLog?.log(`openGate: not in warmup state (state=${this._recordingState})`);
             return;
         }
+        if (getSenderBackendMode() === 'webrtc') {
+            await this.openGateWebRtc();
+            return;
+        }
         if (!this.worker) {
             warnLog?.log('openGate: worker missing');
             return;
@@ -960,12 +977,123 @@ export class VideoRecorder {
         await this.stopRecording();
     }
 
+    // ---- Experimental WebRTC sender backend (gated by video.debug.senderBackend) ----
+    // Mirrors the warmup → openGate → stop lifecycle. The WebRtcSender owns the
+    // N loopback PCs + encoded-transform tap; here we own the camera track (so
+    // preview works during warmup) and hand it to the sender on openGate.
+
+    private toWebRtcPreferredCodecs(audienceCodecs?: string[]): WebRtcCodecCategory[] | undefined {
+        const valid: WebRtcCodecCategory[] = ['h264', 'hevc', 'vp8', 'vp9', 'av1'];
+        const mapped = audienceCodecs?.filter((c): c is WebRtcCodecCategory =>
+            (valid as string[]).includes(c));
+        return mapped && mapped.length > 0 ? mapped : undefined;
+    }
+
+    private async warmupWebRtc(chatId: string, audienceCodecs?: string[]): Promise<void> {
+        this.chatId = chatId;
+        this.audienceCodecs = audienceCodecs;
+        this.currentMode = 'camera';
+        this.setRecordingState('warming-up');
+        infoLog?.log('WebRTC warmup: acquiring camera for preview (sender starts on openGate)');
+        try {
+            const track = await MediaCapture.captureCameraStream({
+                deviceId: this.selectedCameraDeviceId ?? undefined,
+                frameRate: VIDEO.frameRate,
+                width: 1280,
+                height: 720,
+            });
+            this.inputTrack = track;
+            this.previewTrack = track;
+            this.previewCanvasFallback = false;
+            const s = track.getSettings();
+            this.cameraWidth = s.width ?? 1280;
+            this.cameraHeight = s.height ?? 720;
+            this.currentFramerate = s.frameRate ?? VIDEO.frameRate;
+            track.onended = () => {
+                infoLog?.log('WebRTC warmup camera ended externally — stopping');
+                void this.stopRecording();
+            };
+            void this.blazorRef.invokeMethodAsync('OnTrackSettings', s.deviceId ?? null, s.facingMode ?? null);
+            this.notifyPreviewTrackChanged();
+            this.isRecording = true;
+        } catch (error) {
+            this.setRecordingState('error');
+            errorLog?.log('WebRTC warmup failed:', error);
+            const message = await this.describeStartError(error);
+            await this.blazorRef.invokeMethodAsync('OnRecordingError', message);
+        }
+    }
+
+    private async openGateWebRtc(): Promise<void> {
+        if (!this.inputTrack) {
+            warnLog?.log('openGateWebRtc: no camera track from warmup');
+            return;
+        }
+        const sender = new WebRtcSender();
+        this.webRtcSender = sender;
+        try {
+            await sender.start({
+                chatId: this.chatId,
+                track: this.inputTrack,
+                preferredCodecs: this.toWebRtcPreferredCodecs(this.audienceCodecs),
+            });
+            this.setRecordingState('recording');
+            await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
+            infoLog?.log('openGateWebRtc: live (WebRTC backend)');
+        } catch (e) {
+            this.webRtcSender = null;
+            this.setRecordingState('error');
+            const message = e instanceof Error ? e.message : String(e);
+            errorLog?.log('openGateWebRtc failed:', e);
+            await this.blazorRef.invokeMethodAsync('OnRecordingError', message);
+        }
+    }
+
+    private async startRecordingWebRtc(chatId: string, audienceCodecs?: string[]): Promise<void> {
+        this.currentMode = 'camera';
+        this.setRecordingState('starting');
+        const sender = new WebRtcSender();
+        this.webRtcSender = sender;
+        try {
+            await sender.start({
+                chatId,
+                deviceId: this.selectedCameraDeviceId ?? undefined,
+                preferredCodecs: this.toWebRtcPreferredCodecs(audienceCodecs),
+            });
+            const preview = sender.getPreviewTrack();
+            if (preview) {
+                this.inputTrack = preview;
+                this.previewTrack = preview;
+                this.previewCanvasFallback = false;
+                const s = preview.getSettings();
+                this.cameraWidth = s.width ?? 0;
+                this.cameraHeight = s.height ?? 0;
+                this.notifyPreviewTrackChanged();
+            }
+            this.isRecording = true;
+            this.startedAtMs = Date.now();
+            this.setRecordingState('recording');
+            await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
+            infoLog?.log('startRecordingWebRtc: live (WebRTC backend)');
+        } catch (e) {
+            this.webRtcSender = null;
+            this.setRecordingState('error');
+            const message = e instanceof Error ? e.message : String(e);
+            errorLog?.log('startRecordingWebRtc failed:', e);
+            await this.blazorRef.invokeMethodAsync('OnRecordingError', message);
+        }
+    }
+
     public async startRecording(chatId: string, audienceCodecs?: string[], maxLayerCount = 3): Promise<void> {
         this.chatId = chatId;
         this.audienceCodecs = audienceCodecs;
         this.currentMaxLayerCount = maxLayerCount;
         if (this.isRecording) {
             warnLog?.log('Already recording');
+            return;
+        }
+        if (getSenderBackendMode() === 'webrtc') {
+            await this.startRecordingWebRtc(chatId, audienceCodecs);
             return;
         }
 
@@ -1296,6 +1424,14 @@ export class VideoRecorder {
         this.isStoppingRecording = true;
 
         try {
+            if (this.webRtcSender) {
+                try {
+                    await this.webRtcSender.stop();
+                } catch (e) {
+                    warnLog?.log('WebRtc sender stop failed:', e);
+                }
+                this.webRtcSender = null;
+            }
             if (this.worker) {
                 try {
                     await this.worker.stop();
@@ -1480,6 +1616,7 @@ export class VideoRecorder {
 
         return {
             mode: this.isScreenCasting ? 'screen' : this.isRecording ? 'camera' : 'none',
+            senderBackend: this.webRtcSender ? 'webrtc' : 'webcodecs',
             codec: this.currentCodecString,
             codecCategory,
             hardwareAccelerated: this.currentCodecHardwareAccel,
