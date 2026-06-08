@@ -67,7 +67,7 @@
 
 @if (isSystem) {
     <div class="@cls"
-         data-chat-entry-id="@(entry.Id)"
+         data-chat-entry-id="@(entry.Id.Value)"
          data-menu="@(MenuRef.New<MessageMenu>(entry.Id.Value, bool.TrueString, "", ""))">
         <div class="chat-message">
             <div class="c-content">
@@ -92,7 +92,7 @@
     var menuRef = showMenu ? MenuRef.New<MessageMenu>(entry.GetClientId(m.IsOwnMessage), bool.FalseString, "", "").ToString() : "";
 }
 <div class="@cls"
-     data-chat-entry-id="@(entry.Id)"
+     data-chat-entry-id="@(entry.Id.Value)"
      data-menu="@menuRef">
     <div class="chat-message group">
         <div class="c-author-badge">
