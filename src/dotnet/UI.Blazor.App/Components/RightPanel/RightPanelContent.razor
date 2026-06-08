@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, RightPanelContent.Model>
 @{
     var m = State.Value;
@@ -10,7 +11,7 @@
 
 }
 
-<div class="right-panel">
+<div @ref="Ref" class="right-panel">
     <ErrorBarrier Name="RightPanelContent" Kind="@ErrorBarrierKind.Full">
         <RightPanelHeader />
         <div class="c-panel-content">
@@ -52,10 +53,26 @@
 </div>
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.RightPanelCollapse.create";
+
     private Chat? Chat => ChatContext?.Chat;
     private IChats Chats => Hub.Chats;
 
+    private IJSObjectReference? JSRef { get; set; }
+    private ElementReference Ref { get; set; }
+
     [CascadingParameter] public ChatContext? ChatContext { get; set; }
+
+    public override ValueTask DisposeAsync() {
+        JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        return base.DisposeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (JSRef is null && State.Value.Chat is not null)
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
