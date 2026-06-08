@@ -1068,6 +1068,7 @@ export class VideoRecorder {
                 const s = preview.getSettings();
                 this.cameraWidth = s.width ?? 0;
                 this.cameraHeight = s.height ?? 0;
+                this.currentFramerate = s.frameRate ?? VIDEO.frameRate;
                 this.notifyPreviewTrackChanged();
             }
             this.isRecording = true;
@@ -1702,6 +1703,14 @@ export class VideoRecorder {
     }
 
     public peekBundlesPerSec(): number {
+        // WebRTC backend owns a separate worker, so the per-sec stats above
+        // aren't populated. Use the real send rate measured from frames pushed
+        // to the wire (top-tier); fall back to the camera's negotiated rate for
+        // the first second, before the first delta sample lands.
+        if (this.webRtcSender) {
+            const measured = this.webRtcSender.getMeasuredFps();
+            return measured > 0 ? measured : (this.currentFramerate ?? 0);
+        }
         return this.bundlesPerSec;
     }
 

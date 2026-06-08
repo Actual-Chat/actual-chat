@@ -74,6 +74,7 @@ export interface RecorderWorkerDeps {
     webRtcStart?: (opts: WebRtcStartOptions) => void | Promise<void>;
     webRtcStop?: () => void;
     webRtcGenerateKeyFrame?: (tier: number) => void | Promise<void>;
+    webRtcGetSentFrameCount?: () => number;
 
     // -- lifecycle callbacks --
     reportError?: (error: string) => void;
@@ -413,6 +414,11 @@ export const recorderWorkerImpl: RecorderWorker = {
     async webRtcGenerateKeyFrame(tier: number): Promise<void> {
         const s = requireState();
         await s.deps.webRtcGenerateKeyFrame?.(tier);
+    },
+
+    webRtcGetSentFrameCount(): Promise<number> {
+        const s = requireState();
+        return Promise.resolve(s.deps.webRtcGetSentFrameCount?.() ?? 0);
     },
 
     async disconnectApi(): Promise<void> {

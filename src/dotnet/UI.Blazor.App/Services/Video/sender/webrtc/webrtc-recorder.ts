@@ -87,9 +87,21 @@ export class WebRtcSender implements ISenderBackend {
     // so stop() must not stop a track it doesn't own.
     private ownsTrack = true;
 
+    // Measured send rate (top-tier frames pushed to the wire / sec), sampled
+    // from the worker each second. This is the real transport throughput, not a
+    // nominal camera rate.
+    private fpsTimer: ReturnType<typeof setInterval> | null = null;
+    private lastSentCount = 0;
+    private lastSentAtMs = 0;
+    private measuredFps = 0;
+
     get isRunning(): boolean { return this.running; }
 
     getPreviewTrack(): MediaStreamTrack | null { return this.track; }
+
+    // Top-tier frames pushed to the wire per second (measured). 0 until the
+    // first two samples land.
+    getMeasuredFps(): number { return this.measuredFps; }
 
     async start(params: WebRtcStartParams): Promise<void> {
         if (this.running) {
@@ -210,7 +222,23 @@ export class WebRtcSender implements ISenderBackend {
         // periodic keyframe cadence (no receiver→sender PLI path in v1).
         await this.requestKeyframe();
         this.keyframeTimer = setInterval(() => { void this.requestKeyframe(); }, KEYFRAME_INTERVAL_MS);
+        this.fpsTimer = setInterval(() => { void this.sampleFps(); }, 1000);
         C('LIVE — WebRTC sender running. Check chrome://webrtc-internals for the PCs.');
+    }
+
+    private async sampleFps(): Promise<void> {
+        const worker = this.worker;
+        if (!worker) return;
+        let count: number;
+        try { count = await worker.webRtcGetSentFrameCount(); }
+        catch { return; }
+        const now = performance.now();
+        if (this.lastSentAtMs > 0) {
+            const dt = (now - this.lastSentAtMs) / 1000;
+            if (dt > 0) this.measuredFps = Math.max(0, (count - this.lastSentCount) / dt);
+        }
+        this.lastSentCount = count;
+        this.lastSentAtMs = now;
     }
 
     // Console-friendly snapshot: `voxtWebRtc.sender.status()`.
@@ -264,6 +292,10 @@ export class WebRtcSender implements ISenderBackend {
         if (!this.running && !this.workerInstance) return;
         this.running = false;
         if (this.keyframeTimer) { clearInterval(this.keyframeTimer); this.keyframeTimer = null; }
+        if (this.fpsTimer) { clearInterval(this.fpsTimer); this.fpsTimer = null; }
+        this.measuredFps = 0;
+        this.lastSentCount = 0;
+        this.lastSentAtMs = 0;
         for (const tier of this.tiers) tier.close();
         this.tiers = [];
         try { await this.worker?.webRtcStop(); } catch { /* ignore */ }

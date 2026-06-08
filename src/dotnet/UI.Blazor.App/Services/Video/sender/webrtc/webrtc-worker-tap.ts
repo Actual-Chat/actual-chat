@@ -35,6 +35,8 @@ interface TapState {
     initSent: boolean;
     tiers: Map<number, TierCounter>;
     transformers: Map<number, RTCRtpScriptTransformer>;
+    // Cumulative top-tier frames actually pushed to the wire sender.
+    topTierFramesSent: number;
 }
 
 let state: TapState | null = null;
@@ -53,6 +55,7 @@ export interface WebRtcTapHandlers {
     webRtcStart: (opts: WebRtcStartOptions) => void;
     webRtcStop: () => void;
     webRtcGenerateKeyFrame: (tier: number) => Promise<void>;
+    webRtcGetSentFrameCount: () => number;
 }
 
 export function installWebRtcTap(deps: WebRtcTapDeps): WebRtcTapHandlers {
@@ -92,6 +95,7 @@ export function installWebRtcTap(deps: WebRtcTapDeps): WebRtcTapHandlers {
                 initSent: false,
                 tiers: new Map(),
                 transformers: new Map(),
+                topTierFramesSent: 0,
             };
             C(`webRtcStart: chatId=${opts.chatId} layers=${opts.layerCount} codec=${opts.format.codec}`);
             infoLog?.log(`webRtcStart: chatId=${opts.chatId} layers=${opts.layerCount} codec=${opts.format.codec}`);
@@ -104,6 +108,9 @@ export function installWebRtcTap(deps: WebRtcTapDeps): WebRtcTapHandlers {
             if (!t || typeof t.generateKeyFrame !== 'function') return;
             try { await t.generateKeyFrame(); }
             catch (e) { warnLog?.log(`generateKeyFrame(tier=${tier}) failed`, e); }
+        },
+        webRtcGetSentFrameCount(): number {
+            return state?.topTierFramesSent ?? 0;
         },
     };
 }
@@ -198,6 +205,9 @@ function onEncodedFrame(
     }
     if (s.initSent) {
         void s.sender.send({ layers: [dto] });
+        // Top tier encodes every source moment → its count is the send fps.
+        if (opts.layerId === opts.layerCount - 1)
+            s.topTierFramesSent++;
         if (index > 0 && index % 90 === 0)
             C(`tier ${opts.tier}: ${index} frames tapped & pushed`);
     }

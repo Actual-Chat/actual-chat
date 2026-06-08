@@ -316,6 +316,7 @@ const deps: RecorderWorkerDeps = {
     webRtcStart: webRtcTap.webRtcStart,
     webRtcStop: webRtcTap.webRtcStop,
     webRtcGenerateKeyFrame: webRtcTap.webRtcGenerateKeyFrame,
+    webRtcGetSentFrameCount: webRtcTap.webRtcGetSentFrameCount,
 
     // -- lifecycle callbacks --
     reportError(error) {

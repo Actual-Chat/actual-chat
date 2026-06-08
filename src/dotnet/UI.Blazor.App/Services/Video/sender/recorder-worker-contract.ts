@@ -112,6 +112,10 @@ export interface RecorderWorker extends SharedSettingsWorker {
     webRtcStart(opts: WebRtcStartOptions): Promise<void>;
     webRtcStop(): Promise<void>;
     webRtcGenerateKeyFrame(tier: number): Promise<void>;
+    // Cumulative top-tier frames pushed to the wire (RpcStream) — the real
+    // send rate is the per-second delta. Top tier encodes every source moment,
+    // so its count is the source/send fps without dividing by layer count.
+    webRtcGetSentFrameCount(): Promise<number>;
 
     // No-op today — the new pipeline lazy-creates the peer per stream and the
     // reconnect loop lives in StreamingApi.
