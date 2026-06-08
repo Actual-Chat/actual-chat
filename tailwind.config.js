@@ -749,6 +749,7 @@ module.exports = {
         '"Courier New"',
         'monospace',
       ],
+      handwriting: ['"Nothing You Could Do"', 'cursive'],
     },
     fontSize: {
       xxs: ['0.6rem', { lineHeight: '0.75rem' }],
