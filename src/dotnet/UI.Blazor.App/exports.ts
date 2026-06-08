@@ -45,6 +45,7 @@ export * from './Components/Navbar/sortable-list';
 export * from './Components/NoResults/no-results-svg.lit';
 export * from './Components/NoResults/no-search-results-svg.lit';
 export * from './Components/Onboarding/phone-verification-cat-svg.lit';
+export * from './Components/RightPanel/right-panel-collapse';
 export * from './Components/RightPanel/right-panel-header';
 export * from './Components/SearchPanel/search-panel';
 export * from './Components/Selection/selection-host';

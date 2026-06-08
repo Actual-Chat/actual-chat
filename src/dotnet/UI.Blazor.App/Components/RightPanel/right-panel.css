@@ -1,3 +1,8 @@
+@property --rp-collapse {
+    syntax: '<number>';
+    inherits: true;
+    initial-value: 0;
+}
 .right-panel {
     @apply relative;
     @apply flex-y;
@@ -6,6 +11,7 @@
     @apply bg-03;
     @apply overflow-hidden;
     contain: layout;
+    --rp-collapse: 0;
 }
 .right-panel .tab-panel > .divider {
     @apply mx-6;
@@ -16,7 +22,11 @@
 }
 .right-panel > .c-panel-content > .c-chat-info {
     @apply flex-y gap-y-1;
-    @apply p-2 pt-4;
+    @apply overflow-hidden;
+    padding: calc(0.5rem - 0.5rem * var(--rp-collapse));
+    padding-top: calc(1rem - 1rem * var(--rp-collapse));
+    max-height: calc(20rem - 20rem * var(--rp-collapse));
+    opacity: clamp(0, calc((0.5 - var(--rp-collapse)) * 2), 1);
 }
 .right-panel-chat-info-item {
     @apply flex-none flex-x;
@@ -54,19 +64,21 @@ body.hoverable .right-panel-chat-info-item.hovered:hover {
 .right-panel > .c-header {
     @apply relative;
     @apply flex-y items-center gap-x-4;
-    @apply min-h-44 h-auto;
+    @apply h-auto;
     height: auto;
-    transition: height .25s ease-in, min-height .25s ease-in;
+    min-height: calc(11rem - 7.5rem * var(--rp-collapse));
 }
 .right-panel > .c-header.expanded-header {
     height: var(--expanded-header-height);
     min-height: var(--expanded-header-height);
 }
 .right-panel > .c-header > .c-buttons {
-    @apply absolute right-4 z-10;
+    @apply absolute z-30;
     @apply flex-x items-center justify-center gap-x-3;
     @apply opacity-100;
     top: calc(0.5rem + var(--safe-area-top));
+    right: 1rem;
+    transform: translateX(calc(0.5rem * var(--rp-collapse)));
     transition: opacity .25s ease-in .25s;
 }
 .right-panel > .c-header.expanded-header > .c-buttons {
@@ -79,15 +91,20 @@ body.hoverable .right-panel-chat-info-item.hovered:hover {
     @apply w-full;
     @apply rounded-b-xl;
     @apply overflow-hidden;
-    height: calc(6.5rem + var(--safe-area-top));
+    height: calc((6.5rem - 3rem * var(--rp-collapse)) + var(--safe-area-top));
     padding-top: var(--safe-area-top);
 }
 .right-panel > .c-header > .c-bottom {
     @apply flex-y items-start justify-end gap-y-1;
     @apply w-full;
-    @apply px-4 pt-10;
+    @apply px-4;
     @apply bg-transparent;
     @apply opacity-100;
+    @apply overflow-hidden;
+    min-height: 0;
+    max-height: calc(20rem - 20rem * var(--rp-collapse));
+    padding-top: calc(2.5rem - 2.5rem * var(--rp-collapse));
+    opacity: clamp(0, calc((0.5 - var(--rp-collapse)) * 2), 1);
     transition: opacity .25s ease-in;
 }
 .right-panel > .c-header.expanded-header > .c-bottom {
@@ -121,8 +138,10 @@ body.hoverable .right-panel-chat-info-item.hovered:hover {
     @apply absolute z-20;
     @apply flex-x;
     @apply h-16 w-full;
-    @apply px-4;
+    padding-left: calc(1rem - 0.5rem * var(--rp-collapse));
+    padding-right: calc(1rem - 0.5rem * var(--rp-collapse));
     top: calc(4.5rem + var(--safe-area-top));
+    transform: translateY(calc(-4rem * var(--rp-collapse)));
     transition:
         top .25s ease-in,
         height .25s ease-in,
@@ -140,7 +159,8 @@ body.hoverable .right-panel-chat-info-item.hovered:hover {
 }
 .right-panel > .c-header > .c-center .chat-avatar {
     @apply relative;
-    width: 4rem;
+    width: calc(4rem - 1.5rem * var(--rp-collapse));
+    height: calc(4rem - 1.5rem * var(--rp-collapse));
     background-color: var(--transparent);
     transition:
         width .25s ease-in,
@@ -227,7 +247,8 @@ body.hoverable .right-panel-chat-info-item.hovered:hover {
     @apply w-full h-full;
 }
 .right-panel > .c-header > .c-center .chat-avatar .clickable-avatar.small-avatar .c-content {
-    @apply w-16 h-16;
+    width: calc(4rem - 1.5rem * var(--rp-collapse));
+    height: calc(4rem - 1.5rem * var(--rp-collapse));
     transition: width 0.25s ease-in, height 0.25s ease-in;
 }
 .right-panel > .c-header.expanded-header > .c-center .chat-avatar .clickable-avatar.small-avatar .c-content {
@@ -243,6 +264,7 @@ body.hoverable .right-panel-chat-info-item.hovered:hover {
     @apply max-w-240;
     @apply overflow-hidden;
     @apply opacity-100;
+    opacity: calc(1 - var(--rp-collapse));
     transition:
         opacity .25s ease-in,
         max-width .25s ease-in,
@@ -277,6 +299,44 @@ body.hoverable .right-panel-chat-info-item.hovered:hover {
 }
 .right-panel > .c-header > .c-center i.icon-edit {
     @apply text-primary;
+}
+
+/* Compact (collapse) interpolation: everything driven by --rp-collapse (0..1).
+   Conflict-free with the avatar full-screen feature: collapse moves/scales via
+   transform (it uses top/width), so both can coexist. */
+.right-panel > .c-header > .c-compact-title {
+    @apply absolute z-20;
+    @apply text-02 text-headline-1;
+    @apply truncate pointer-events-none;
+    top: calc(0.5rem + var(--safe-area-top));
+    left: calc(1rem + 2.5rem + 0.5rem);
+    right: 3.5rem;
+    height: 2.5rem;
+    line-height: 2.5rem;
+    opacity: clamp(0, calc((var(--rp-collapse) - 0.5) * 2), 1);
+}
+/* Smooth scroll-linked collapse: animate the driver variable itself, so the
+   iOS Safari momentum-scroll batches (sparse scroll events) interpolate into a
+   continuous motion. Only while actively scroll-collapsing — drag stays 1:1. */
+.right-panel.collapsing {
+    transition: --rp-collapse .12s linear;
+}
+/* During an active collapse session (drag or scroll) the dependent properties
+   must follow the (already-smoothed) variable instantly, with no transitions of
+   their own fighting it. Outside a session their transitions still drive the
+   expanded/collapsed-header avatar feature. */
+.right-panel.dragging > .c-header,
+.right-panel.dragging > .c-header *,
+.right-panel.dragging > .c-panel-content,
+.right-panel.dragging > .c-panel-content *,
+.right-panel.collapsing > .c-header,
+.right-panel.collapsing > .c-header *,
+.right-panel.collapsing > .c-panel-content,
+.right-panel.collapsing > .c-panel-content * {
+    transition: none !important;
+}
+.right-panel.collapsed > .c-header > .c-center > .c-buttons {
+    @apply pointer-events-none;
 }
 
 .right-panel .tab-panel {
@@ -452,6 +512,7 @@ body.hoverable .content-list-rows .c-file-row:hover,
 }
 .content-list-links .message-link-preview {
     @apply w-full;
+    @apply truncate;
 }
 .content-list-links .link-preview:not(.local-link) {
     @apply flex-x items-center gap-x-3;
