@@ -42,8 +42,8 @@ import { RunningEMA } from 'math';
 // plausibly available. The worker host probes the real APIs; if none exists,
 // it rejects start() and we fall back to canvas.
 // ?renderBackend=mstg|canvas overrides for diagnostics.
-function pickRenderBackend(canvas: HTMLCanvasElement, videoEl: HTMLVideoElement): RenderBackend {
-    if (pickRenderBackendKind() === 'canvas')
+function pickRenderBackend(canvas: HTMLCanvasElement, videoEl: HTMLVideoElement, codec: string): RenderBackend {
+    if (pickRenderBackendKind(undefined, codec) === 'canvas')
         return new TransferableCanvasRenderBackend(canvas);
     return new OffThreadRenderBackend(videoEl);
 }
@@ -329,7 +329,7 @@ export class VideoPlayer {
             }
         }
         infoLog?.log(`Bg-blur mode: ${this.bgBlurMode}${override ? ` (override=${override})` : ''}`);
-        this.renderBackend = pickRenderBackend(canvas, videoEl);
+        this.renderBackend = pickRenderBackend(canvas, videoEl, codec);
         this.applyBackendVisibility(canvas, videoEl);
 
         // Set canvas size

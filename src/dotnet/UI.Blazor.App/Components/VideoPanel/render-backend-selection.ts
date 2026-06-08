@@ -1,5 +1,6 @@
 import type { RenderBackendKind } from '../../Services/Video/playback/render-backends';
 import { DeviceInfo } from 'device-info';
+import { getCodecCategory } from '../../Services/Video/codec-support';
 
 export type RenderBackendOverride = RenderBackendKind | null;
 
@@ -28,15 +29,23 @@ function getCurrentHref(): string {
     }
 }
 
-// Edge is negative-gated to canvas: Chromium-on-Windows mis-composites a
-// rotated `<video srcObject>` at focused-tile sizes (hardware-overlay path) —
-// the whole focused tile paints black while the bg-blur canvas, which draws
-// the VideoFrame through a 2D context, stays live. Canvas backend avoids the
-// overlay path entirely. `?renderBackend=mstg` opts back in for diagnostics.
+// Desktop Edge playing HEVC is negative-gated to canvas: Chromium-on-Windows
+// mis-composites a rotated `<video srcObject>` at focused-tile sizes (the
+// hardware-overlay path) — the whole focused tile paints black while the
+// bg-blur canvas, which draws the VideoFrame through a 2D context, stays live,
+// and the small thumbnail of the same stream renders fine. Canvas backend
+// avoids the overlay path entirely. The gate is narrowed to desktop Edge +
+// HEVC (the only confirmed-broken combination, and HEVC is what rotated iPhone
+// senders use); other browsers, mobile Edge, and non-HEVC streams keep MSTG.
+// `codec` is omitted for local preview, which is never affected.
+// `?renderBackend=mstg` opts back in for diagnostics.
 export function pickRenderBackendKind(
     override: RenderBackendOverride = readRenderBackendOverride(),
+    codec?: string,
 ): RenderBackendKind {
     if (override)
         return override;
-    return DeviceInfo.isEdge ? 'canvas' : 'mstg';
+    if (codec && DeviceInfo.isEdge && !DeviceInfo.isMobile && getCodecCategory(codec.toLowerCase()) === 'hevc')
+        return 'canvas';
+    return 'mstg';
 }
