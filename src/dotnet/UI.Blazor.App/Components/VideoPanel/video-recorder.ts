@@ -79,6 +79,8 @@ import {
 } from '../../Services/Video/operators/encode';
 import type { RecorderStats } from '../../Services/Video/frame-envelopes';
 import { pickRenderBackendKind } from './render-backend-selection';
+// Side-effect: registers globalThis.voxtWebRtc (experimental WebRTC sender backend).
+import '../../Services/Video/sender/webrtc/webrtc-recorder';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
 const RECORDER_HEALTH_INTERVAL_MS = 1000;

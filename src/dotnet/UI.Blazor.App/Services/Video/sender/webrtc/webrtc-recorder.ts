@@ -1,0 +1,288 @@
+// WebRTC sender backend — main-thread controller. Owns the camera track and
+// N single-encoding loopback PeerConnections (one per ladder tier). WebRTC
+// encodes (zero-copy HW path), and each tier's encoded frames are tapped via
+// RTCRtpScriptTransform whose target is a recorder-worker instance — the worker
+// maps them to the existing wire DTO and pushes over the same RpcStream the
+// WebCodecs path uses. The server, fan-out and receiver are unchanged.
+//
+// This is the experimental, flag-free entry point: `globalThis.voxtWebRtc`.
+// It deliberately does NOT touch the production `VideoRecorder`; it reuses the
+// real PushStream + signaling under a chatId so a second browser viewing that
+// chat sees the WebRTC-encoded video through the unchanged receiver UI.
+
+import { getLogs } from 'logging';
+import { AC } from 'app-constants';
+import { DeviceInfo } from 'device-info';
+import { Versioning } from 'versioning';
+import { rpcClientServer } from 'rpc';
+import { SharedSettings } from 'shared-settings';
+import { SharedSettingsWorkerSync } from 'shared-settings-worker';
+import type { Disposable } from 'disposable';
+import { MediaCapture } from '../../services/media-capture';
+import type { EncoderConfigPerLayer } from '../../operators/encode';
+import {
+    pickWebRtcCodec,
+    codecsForCategory,
+    type WebRtcCodecCategory,
+} from '../../webrtc-codec-support';
+import type {
+    RecorderWorker,
+    RecorderWorkerCallbacks,
+} from '../recorder-worker-contract';
+import type { ISenderBackend } from '../sender-backend';
+import { LoopbackTier } from './loopback-connection';
+import type { WebRtcStartOptions, WebRtcTierTransformOptions } from './webrtc-contract';
+
+const { infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
+
+// Unconditional console output — this is a console-driven debug harness, so
+// verification must not depend on per-scope log levels being enabled.
+const C = (...a: unknown[]): void => console.info('[voxtWebRtc]', ...a);
+const CE = (...a: unknown[]): void => console.error('[voxtWebRtc]', ...a);
+
+const KEYFRAME_INTERVAL_MS = 3000;
+const FPS = 30;
+
+interface TierSpec {
+    width: number;
+    height: number;
+    maxBitrate: number;
+}
+
+// Bottom-first ladder. Mobile = 2 tiers; desktop = 3 (1280×720 top).
+function buildTierSpecs(): TierSpec[] {
+    const desktop: TierSpec[] = [
+        { width: 320, height: 184, maxBitrate: 250_000 },
+        { width: 640, height: 360, maxBitrate: 700_000 },
+        { width: 1280, height: 720, maxBitrate: 1_800_000 },
+    ];
+    return DeviceInfo.isMobile ? desktop.slice(0, 2) : desktop;
+}
+
+export interface WebRtcStartParams {
+    chatId: string;
+    deviceId?: string;
+    apiUrl?: string;
+    preferredCodecs?: WebRtcCodecCategory[];
+}
+
+export class WebRtcSender implements ISenderBackend {
+    readonly kind = 'webrtc' as const;
+
+    private workerInstance: Worker | null = null;
+    private worker: (RecorderWorker & Disposable) | null = null;
+    private sharedSettingsReg: Disposable | null = null;
+    private track: MediaStreamTrack | null = null;
+    private tiers: LoopbackTier[] = [];
+    private specs: TierSpec[] = [];
+    private cameraWidth = 0;
+    private cameraHeight = 0;
+    private keyframeTimer: ReturnType<typeof setInterval> | null = null;
+    private running = false;
+
+    get isRunning(): boolean { return this.running; }
+
+    async start(params: WebRtcStartParams): Promise<void> {
+        if (this.running) {
+            warnLog?.log('start: already running — stop() first');
+            return;
+        }
+        const apiUrl = params.apiUrl ?? defaultApiUrl();
+        C(`start() called — chatId=${params.chatId} apiUrl=${apiUrl}`);
+        try {
+            await this.startImpl(params, apiUrl);
+        } catch (e) {
+            CE('start() FAILED:', e);
+            await this.stop().catch(() => { /* ignore */ });
+            throw e;
+        }
+    }
+
+    private async startImpl(params: WebRtcStartParams, apiUrl: string): Promise<void> {
+        // 1) Spawn a recorder-worker instance to host the transform + wire sender.
+        const workerInstance = new Worker(Versioning.mapPath('/dist/videoRecorderWorker.js'), { type: 'module' });
+        workerInstance.onerror = e => CE('recorder worker error:', e);
+        this.workerInstance = workerInstance;
+        const worker = rpcClientServer<RecorderWorker>('VideoRecorder.worker', workerInstance, makeCallbacks());
+        this.worker = worker;
+        C('worker spawned — calling init…');
+        await worker.init(AC);
+        // Bridge SharedSettings (session token the worker's RPC peer needs).
+        SharedSettings.update({ apiUrl });
+        this.sharedSettingsReg = SharedSettingsWorkerSync.register(worker);
+        // Satisfy requireConnection so PushStream's AwaitForConnection resolves.
+        await worker.onConnectivityUpdate(true, true, false);
+        C('worker initialized + connectivity pushed');
+
+        // 2) Pick codec (H.264 default — Annex-B, broad support, matches receiver).
+        const codec = pickWebRtcCodec(params.preferredCodecs);
+        if (!codec)
+            throw new Error('WebRtcSender: no usable WebRTC send codec');
+        C(`codec picked: ${codec.category} → ${codec.wireCodec}`);
+
+        // 3) Acquire camera at the top-tier resolution.
+        this.specs = buildTierSpecs();
+        const top = this.specs[this.specs.length - 1];
+        const track = await MediaCapture.captureCameraStream({
+            deviceId: params.deviceId,
+            frameRate: FPS,
+            width: top.width,
+            height: top.height,
+        });
+        this.track = track;
+        const s = track.getSettings();
+        this.cameraWidth = s.width ?? top.width;
+        this.cameraHeight = s.height ?? top.height;
+        track.onended = () => { void this.stop(); };
+        C(`camera acquired ${this.cameraWidth}x${this.cameraHeight}@${s.frameRate ?? FPS}, tiers=${this.specs.length}`);
+
+        // 4) Configure the worker's wire sender.
+        const startOpts: WebRtcStartOptions = {
+            chatId: params.chatId,
+            apiUrl,
+            sourceKind: 0,
+            format: {
+                codec: codec.wireCodec,
+                width: top.width,
+                height: top.height,
+                sourceWidth: this.cameraWidth,
+                sourceHeight: this.cameraHeight,
+                codecSettings: '',
+            },
+            layerCount: this.specs.length,
+            frameDurationMicros: Math.round(1_000_000 / FPS),
+        };
+        C('calling worker.webRtcStart…');
+        await worker.webRtcStart(startOpts);
+        C('worker.webRtcStart done — creating loopback PCs');
+
+        // 5) One loopback PC per tier, each tapped into the worker.
+        const codecPrefs = codecsForCategory(codec.category);
+        this.tiers = this.specs.map((spec, i) => {
+            const transformOptions: WebRtcTierTransformOptions = {
+                kind: 'webrtc-tier',
+                tier: i,
+                layerId: i,
+                layerCount: this.specs.length,
+                width: spec.width,
+                height: spec.height,
+                codec: codec.wireCodec,
+            };
+            return new LoopbackTier({
+                track,
+                worker: workerInstance,
+                transformOptions,
+                scaleResolutionDownBy: Math.max(1, this.cameraWidth / spec.width),
+                maxBitrate: spec.maxBitrate,
+                maxFramerate: FPS,
+                codecPreferences: codecPrefs,
+            });
+        });
+        C(`connecting ${this.tiers.length} loopback PC(s)…`);
+        await Promise.all(this.tiers.map(t => t.connect().catch((e: unknown) => {
+            CE(`tier ${t.tier} connect failed`, e);
+        })));
+        C('all tiers connected');
+
+        this.running = true;
+
+        // 6) Force an initial keyframe (so sender.init fires), then keep a
+        // periodic keyframe cadence (no receiver→sender PLI path in v1).
+        await this.requestKeyframe();
+        this.keyframeTimer = setInterval(() => { void this.requestKeyframe(); }, KEYFRAME_INTERVAL_MS);
+        C('LIVE — WebRTC sender running. Check chrome://webrtc-internals for the PCs.');
+    }
+
+    // Console-friendly snapshot: `voxtWebRtc.sender.status()`.
+    status(): unknown {
+        return {
+            running: this.running,
+            camera: `${this.cameraWidth}x${this.cameraHeight}`,
+            tierCount: this.tiers.length,
+            tiers: this.tiers.map(t => t.getState()),
+        };
+    }
+
+    // ---- ISenderBackend ----
+
+    reconfigureLayers(configs: readonly EncoderConfigPerLayer[]): void {
+        const activeCount = configs.length;
+        this.tiers.forEach((tier, i) => {
+            if (i < activeCount) {
+                const cfg = configs[i];
+                tier.applyParameters({
+                    active: true,
+                    maxBitrate: cfg.bitrate,
+                    scaleResolutionDownBy: Math.max(1, this.cameraWidth / cfg.width),
+                    maxFramerate: cfg.framerate,
+                });
+            } else {
+                tier.applyParameters({ active: false });
+            }
+        });
+    }
+
+    setTargetFps(fps: number): void {
+        const active = fps > 0;
+        for (const tier of this.tiers)
+            tier.applyParameters({ active, ...(active ? { maxFramerate: fps } : {}) });
+    }
+
+    async requestKeyframe(): Promise<void> {
+        await Promise.all(this.tiers.map(async tier => {
+            await tier.forceKeyFrame();
+            await this.worker?.webRtcGenerateKeyFrame(tier.tier);
+        }));
+    }
+
+    setGateOpen(open: boolean): void {
+        for (const tier of this.tiers)
+            tier.applyParameters({ active: open });
+    }
+
+    async stop(): Promise<void> {
+        if (!this.running && !this.workerInstance) return;
+        this.running = false;
+        if (this.keyframeTimer) { clearInterval(this.keyframeTimer); this.keyframeTimer = null; }
+        for (const tier of this.tiers) tier.close();
+        this.tiers = [];
+        try { await this.worker?.webRtcStop(); } catch { /* ignore */ }
+        try { this.sharedSettingsReg?.dispose(); } catch { /* ignore */ }
+        this.sharedSettingsReg = null;
+        try { this.worker?.dispose(); } catch { /* ignore */ }
+        this.worker = null;
+        try { this.workerInstance?.terminate(); } catch { /* ignore */ }
+        this.workerInstance = null;
+        try { this.track?.stop(); } catch { /* ignore */ }
+        this.track = null;
+        infoLog?.log('stop: done');
+    }
+}
+
+function defaultApiUrl(): string {
+    const wsOrigin = location.origin.replace(/^http/, 'ws');
+    return `${wsOrigin}/rpc/ws`;
+}
+
+function makeCallbacks(): RecorderWorkerCallbacks {
+    return {
+        onStreamCreated: () => { /* noop */ },
+        onStreamEnded: (reason: string) => infoLog?.log(`stream ended: ${reason}`),
+        onError: (error: string) => errorLog?.log(`worker error: ${error}`),
+        onTraceKillInjected: () => { /* noop */ },
+        onPreviewFrame: () => { /* noop */ },
+        onPreviewFramePresentation: () => { /* noop */ },
+        onPreviewTrackReady: () => { /* noop */ },
+    };
+}
+
+// Debug entry point — start/stop the WebRTC sender from the console:
+//   await voxtWebRtc.start('the-actual-one')
+//   await voxtWebRtc.stop()
+const singleton = new WebRtcSender();
+(globalThis as unknown as { voxtWebRtc?: unknown }).voxtWebRtc = {
+    start: (chatId: string, deviceId?: string, apiUrl?: string) =>
+        singleton.start({ chatId, deviceId, apiUrl }),
+    stop: () => singleton.stop(),
+    sender: singleton,
+};

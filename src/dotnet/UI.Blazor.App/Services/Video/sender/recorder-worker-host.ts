@@ -24,6 +24,7 @@ import {
     type DisposableStreamSender,
     type StreamingContext,
 } from '../streaming/push-to-pull-buffer';
+import { installWebRtcTap } from './webrtc/webrtc-worker-tap';
 import type { SenderSession } from './session';
 
 const { infoLog, warnLog } = getLogs('VideoPipeline');
@@ -274,6 +275,10 @@ function observeCallbackPromise(name: string, invoke: () => void | Promise<void>
 streamingContext.sessionTokenProvider = () =>
     Promise.resolve(SharedSettings.current.sessionToken ?? '');
 
+// WebRTC sender backend: installs `self.onrtctransform`, reusing the same
+// createSender → wire path. Main attaches the per-tier transforms to this worker.
+const webRtcTap = installWebRtcTap({ createSender, configureStreaming });
+
 const deps: RecorderWorkerDeps = {
     // -- init / configuration --
     initAppConstants(appConstants) {
@@ -306,6 +311,11 @@ const deps: RecorderWorkerDeps = {
     // -- pipeline-stage factories --
     createEncoder,
     createSender,
+
+    // -- WebRTC sender backend --
+    webRtcStart: webRtcTap.webRtcStart,
+    webRtcStop: webRtcTap.webRtcStop,
+    webRtcGenerateKeyFrame: webRtcTap.webRtcGenerateKeyFrame,
 
     // -- lifecycle callbacks --
     reportError(error) {

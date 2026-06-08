@@ -9,6 +9,7 @@ import type { DownscalerMode } from '../operators/downscale';
 import type { RecorderStats } from '../frame-envelopes';
 import type { SharedSettingsWorker } from 'shared-settings-worker';
 import type { VideoTraceKillPeriod } from '../frame-drop-trace';
+import type { WebRtcStartOptions } from './webrtc/webrtc-contract';
 
 // Must round-trip through `structuredClone` — no closures, no MediaStream refs.
 export interface WireSafeRecorderConfig {
@@ -102,6 +103,15 @@ export interface RecorderWorker extends SharedSettingsWorker {
     setTargetFps(fps: number, noWait?: RpcNoWait): Promise<void>;
     getStats(): Promise<RecorderStats>;
     stop(): Promise<void>;
+
+    // ---- WebRTC sender backend (experimental, parallel to the above) ----
+    // The encoded frames arrive via the Encoded Transform port, not RPC: main
+    // attaches `RTCRtpScriptTransform(thisWorker, tierOptions)` to each tier's
+    // RTCRtpSender. `webRtcStart` configures the wire sender the tap feeds;
+    // `webRtcGenerateKeyFrame` re-keys one tier (Safari path).
+    webRtcStart(opts: WebRtcStartOptions): Promise<void>;
+    webRtcStop(): Promise<void>;
+    webRtcGenerateKeyFrame(tier: number): Promise<void>;
 
     // No-op today — the new pipeline lazy-creates the peer per stream and the
     // reconnect loop lives in StreamingApi.

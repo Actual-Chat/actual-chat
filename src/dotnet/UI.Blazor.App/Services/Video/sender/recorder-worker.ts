@@ -24,6 +24,7 @@ import type {
     RecorderWorker,
     RecorderWorkerOptions,
 } from './recorder-worker-contract';
+import type { WebRtcStartOptions } from './webrtc/webrtc-contract';
 
 // Hydrate orientation in this worker realm via SharedSettings.changed.
 // Main thread is the source: it pushes screenOrientation/deviceOrientation
@@ -66,6 +67,13 @@ export interface RecorderWorkerDeps {
         layerId: number,
     ) => AsyncVideoEncoder<EncodeInput, EncodedFrame>;
     createSender: (chatId: string, floodGate: FloodGate) => StreamSenderLike;
+
+    // -- WebRTC sender backend --
+    // Installed by the host; the worker `self.onrtctransform` feeds the wire
+    // sender these set up.
+    webRtcStart?: (opts: WebRtcStartOptions) => void | Promise<void>;
+    webRtcStop?: () => void;
+    webRtcGenerateKeyFrame?: (tier: number) => void | Promise<void>;
 
     // -- lifecycle callbacks --
     reportError?: (error: string) => void;
@@ -389,6 +397,22 @@ export const recorderWorkerImpl: RecorderWorker = {
         s.recorder.stop();
         if (run)
             await run;
+    },
+
+    async webRtcStart(opts): Promise<void> {
+        const s = requireState();
+        await s.deps.webRtcStart?.(opts);
+    },
+
+    async webRtcStop(): Promise<void> {
+        const s = requireState();
+        s.deps.webRtcStop?.();
+        await Promise.resolve();
+    },
+
+    async webRtcGenerateKeyFrame(tier: number): Promise<void> {
+        const s = requireState();
+        await s.deps.webRtcGenerateKeyFrame?.(tier);
     },
 
     async disconnectApi(): Promise<void> {
