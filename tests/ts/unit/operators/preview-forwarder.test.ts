@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { previewForwarder } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/operators/preview-forwarder';
 import {
     createEmptyRecorderStats,
-    type NormalizedFrame,
+    type CapturedBundle,
+    type CapturedFrame,
     type RecorderStats,
 } from '../../../../src/dotnet/UI.Blazor.App/Services/Video/frame-envelopes';
 // ---- Mocks ----------------------------------------------------------------
@@ -32,13 +33,15 @@ class FakeWriter {
 
 // ---- Helpers --------------------------------------------------------------
 
-function makeFrames(stats: RecorderStats, count: number): { envelopes: NormalizedFrame[]; frames: MockVideoFrame[] } {
+// Each bundle's ceiling IS its single layer's frame (non-orphan), so the
+// forwarder taps it for preview but does NOT close the original.
+function makeFrames(stats: RecorderStats, count: number): { envelopes: CapturedBundle[]; frames: MockVideoFrame[] } {
     const frames: MockVideoFrame[] = [];
-    const envelopes: NormalizedFrame[] = [];
+    const envelopes: CapturedBundle[] = [];
     for (let i = 0; i < count; i++) {
         const f = new MockVideoFrame(i);
         frames.push(f);
-        envelopes.push({
+        const layer: CapturedFrame = {
             frame: f as unknown as VideoFrame,
             capturedAt: { timeMs: 100 + i, epoch: 0 },
             index: i,
@@ -46,6 +49,14 @@ function makeFrames(stats: RecorderStats, count: number): { envelopes: Normalize
             sourceWidth: 1920,
             sourceHeight: 1080,
             forceKeyframe: false,
+            rotation: 0,
+            stats,
+        };
+        envelopes.push({
+            layers: [layer],
+            ceiling: f as unknown as VideoFrame,
+            index: i,
+            dropTrace: [],
             rotation: 0,
             stats,
         });
@@ -126,12 +137,12 @@ describe('previewForwarder', () => {
         const out = await drain(op(source(envelopes)));
         await settlePreviewWork();
 
-        // Same frame references are still on the envelopes after the forwarder.
-        expect(out[0].frame).toBe(envelopes[0].frame);
-        expect(out[1].frame).toBe(envelopes[1].frame);
-        // Original frames not closed by the forwarder.
-        expect((envelopes[0].frame as unknown as MockVideoFrame).closed).toBe(false);
-        expect((envelopes[1].frame as unknown as MockVideoFrame).closed).toBe(false);
+        // Same ceiling references are still on the bundles after the forwarder.
+        expect(out[0].ceiling).toBe(envelopes[0].ceiling);
+        expect(out[1].ceiling).toBe(envelopes[1].ceiling);
+        // Original frames not closed by the forwarder (ceiling is also a layer).
+        expect((envelopes[0].ceiling as unknown as MockVideoFrame).closed).toBe(false);
+        expect((envelopes[1].ceiling as unknown as MockVideoFrame).closed).toBe(false);
     });
 
     it('getWriter is called once per frame (so the recorder can swap writers mid-stream)', async () => {

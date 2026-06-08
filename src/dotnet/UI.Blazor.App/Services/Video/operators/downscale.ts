@@ -5,6 +5,7 @@ import type { CapturedBundle, CapturedFrame, NormalizedFrame } from '../frame-en
 import { cameraRotationDeg } from '../orientation/quantize';
 import { drawFrameCover, resizeCanvas } from '../canvas/resize';
 import { CanvasDownscaler } from '../canvas/downscaler';
+import { MetadataDownscaler } from '../metadata/downscaler';
 import { WebGlDownscaler, probeWebGl2 } from '../webgl/downscaler';
 import { parallelMap } from './parallel-map';
 import type { LayerLadderController } from '../sender/layer-ladder-controller';
@@ -16,23 +17,18 @@ export interface LayerSpec {
     height: number;
 }
 
-// `normalize` produces the full-res surface that BOTH the self-preview clone and
-// `spatialize` consume, so its target is the fixed display CEILING (capture-derived
-// full-ladder top), NOT the active-ladder top. This keeps the self-view full-res even
-// when the active encode ladder shrinks toward L0; `spatialize` owns all per-tier
-// downscaling from this ceiling frame. `getNormalizeSize` is a thunk so a mid-stream
-// orientation flip (which swaps the ceiling W/H) is picked up without a pipeline rebuild.
-export interface NormalizeFrameOptions {
-    getNormalizeSize: () => LayerSpec;
-    isCamera: boolean;
-    isFrontCamera: boolean;
-    isIos: boolean;
-}
+// Downscaler backend, selectable from the video diagnostics toggle. `webgl` is
+// the GPU cascade (Canvas2D fallback if WebGL2 is unavailable); `canvas` forces
+// the Canvas2D cascade; `metadata` is the cheap display-size wrap (coded stays
+// at the ceiling, the HW encoder rescales) — a measurement/comparison mode only,
+// since it reproduces the Edge HEVC top-left crop on lower tiers.
+export type DownscalerMode = 'webgl' | 'canvas' | 'metadata';
 
-// Contract: one frame per spec in order; implementation owns the input frame
-// (consumes/closes it, including on failure before throwing). The top tier
-// (last spec) is the input passed through unchanged; lower tiers are real
-// pixel downscales (coded == target).
+// Contract: one frame per spec in order (bottom-first). A spec matching the
+// input's display dims returns the input frame as that tier (shared reference);
+// every other tier is a real coded == target downscale, cascaded top→bottom.
+// The implementation does NOT own the input — it neither closes it on success
+// nor on failure; the caller (normalizeDownscale) owns the ceiling frame.
 export interface DownscalerLike {
     process(
         input: VideoFrame,
@@ -41,19 +37,34 @@ export interface DownscalerLike {
     dispose?(): void;
 }
 
-// Layer set comes from the ladder controller and may grow/shrink mid-stream.
-// Bottom-first: configs[0] is the base layer; the top layer must match the
-// normalized frame dimensions.
-export interface DownscaleOptions {
+// Fused normalize + downscale. CapturedFrame -> CapturedBundle in one stage:
+// produce the full-res normalized ceiling (crop/orientation baked, the
+// self-preview surface) and every encode tier from it, emitting both on the
+// bundle. The ceiling target is the fixed display CEILING (`getNormalizeSize`,
+// the full-ladder top), independent of the active encode ladder, so the
+// self-view stays full-res when the active ladder shrinks toward L0.
+// `getNormalizeSize` is a thunk so a mid-stream orientation flip (which swaps
+// the ceiling W/H) is picked up without a pipeline rebuild.
+//
+// Sits AFTER temporalPace, so the ceiling (and therefore the self-preview) is
+// produced only for frames that survive demand pacing — the simplest fusion:
+// one capture upload feeds preview + every tier.
+export interface NormalizeDownscaleOptions {
     controller: LayerLadderController;
-    // Lazy-init per slot so construction runs after the worker (and any GPU)
-    // exists. Defaults to WebGL2 with a Canvas2D fallback.
+    getNormalizeSize: () => LayerSpec;
+    isCamera: boolean;
+    isFrontCamera: boolean;
+    isIos: boolean;
+    // Backend selection (diagnostics toggle). Default 'webgl'.
+    mode?: DownscalerMode;
+    // Test override; takes precedence over `mode`. Lazy-init per slot so
+    // construction runs after the worker (and any GPU) exists.
     createDownscaler?: () => DownscalerLike;
     // Number of frames whose downscale may be in flight at once, each on its own
-    // downscaler instance (its own WebGL context/canvas). >1 overlaps a frame's
-    // GPU downscale with the previous frame's encode and the next frame's
-    // capture, so a slow per-frame `new VideoFrame(canvas)` round-trip (Android)
-    // doesn't cap capture throughput. Default 2.
+    // downscaler instance (its own WebGL context/canvas) and its own normalize
+    // canvas. >1 overlaps a frame's GPU work with the previous frame's encode and
+    // the next frame's capture, so a slow per-frame `new VideoFrame(canvas)`
+    // round-trip (Android) doesn't cap capture throughput. Default 2.
     concurrency?: number;
     // On hang: detach the stuck process(), recreate the downscaler on the next
     // frame, and force a keyframe so encoders re-anchor. Default 1500 ms.
@@ -62,8 +73,21 @@ export interface DownscaleOptions {
     clearTimeoutFn?: (handle: unknown) => void;
 }
 
+interface Slot {
+    canvas: OffscreenCanvas;
+    ctx: OffscreenCanvasRenderingContext2D;
+}
+
 interface DownscaleSlotState {
     downscaler: DownscalerLike | null;
+    // Per-slot 2D canvas for the rotate fallback ceiling render (cannot be
+    // shared across concurrent frames).
+    normSlot: Slot | null;
+}
+
+interface FrameTransform {
+    cropboxRotation: RotationQuarter;
+    wireRotation: RotationQuarter;
 }
 
 // WebGL2 real downscale with a Canvas2D fallback. Re-probes WebGL each call so
@@ -79,131 +103,39 @@ export function createDefaultDownscaler(): DownscalerLike {
     return new CanvasDownscaler();
 }
 
-interface FrameTransform {
-    cropboxRotation: RotationQuarter;
-    wireRotation: RotationQuarter;
+export function createDownscalerForMode(mode: DownscalerMode): DownscalerLike {
+    switch (mode) {
+    case 'canvas':
+        return new CanvasDownscaler();
+    case 'metadata':
+        return new MetadataDownscaler();
+    case 'webgl':
+    default:
+        return createDefaultDownscaler();
+    }
 }
 
-interface Slot {
-    canvas: OffscreenCanvas;
-    ctx: OffscreenCanvasRenderingContext2D;
-}
-
-// CapturedFrame -> NormalizedFrame. Direct generator — no parallelMap, no
-// extra await tick. When the source frame already matches the top-layer dims
-// and no cropbox rotation is needed (the common desktop / OBS path), this
-// degenerates to a zero-allocation pass-through: the input frame flows
-// through unchanged. The expensive `new VideoFrame(canvas)` allocation only
-// happens when an actual crop/resize/rotate is required.
-//
-// iOS path: rotation is never baked into pixels (cropboxRotation always 0)
-// but `wireRotation` must be decided per frame from `ScreenOrientation`,
-// and the camera may not deliver target dims natively. Full per-frame
-// orientation.decide() + identity short-circuit + cover-crop fallback.
-//
-// Why this matters: per-frame `new VideoFrame(OffscreenCanvas)` at top dims
-// (1280×720+) builds GPU-texture pressure that strangles the HW encoder over
-// time. Avoiding the allocation on the common path is the single most
-// impactful sender-side optimisation.
-export function normalizeFrame(opts: NormalizeFrameOptions): PipeOperator<CapturedFrame, NormalizedFrame> {
+// CapturedFrame -> CapturedBundle. Produces the normalized ceiling (identity
+// pass-through on the common desktop/OBS path, zero-copy VideoFrame re-crop when
+// only a crop is needed, canvas render only when a cropbox rotation must be
+// baked) and the per-tier downscales (bottom-first) from it, in one stage. Up to
+// `concurrency` frames run in parallel, each on its own downscaler + normalize
+// canvas; ordering preserved via parallelMap. The operator owns the ceiling and
+// the produced tier frames; the only closer of the ceiling-when-orphan is the
+// downstream previewForwarder, of the tiers is the encode stage.
+export function normalizeDownscale(opts: NormalizeDownscaleOptions): PipeOperator<CapturedFrame, CapturedBundle> {
     const orientation = new NormalizeFrameOrientation(opts);
-    let slot: Slot | null = null;
-    // Cached ceiling LayerSpec; refreshed when getNormalizeSize() changes (e.g.
-    // an orientation flip swaps W/H).
-    let target: LayerSpec = opts.getNormalizeSize();
-
-    return source => {
-        async function* impl(): AsyncIterable<NormalizedFrame> {
-            try {
-                for await (const envelope of source) {
-                    const ns = opts.getNormalizeSize();
-                    if (ns.width !== target.width || ns.height !== target.height)
-                        target = ns;
-                    const input = envelope.frame;
-                    const transform = orientation.decide(input, target);
-                    const displayW = input.displayWidth || input.codedWidth;
-                    const displayH = input.displayHeight || input.codedHeight;
-                    if (transform.cropboxRotation === 0
-                        && displayW === target.width
-                        && displayH === target.height
-                        && input.codedWidth === target.width
-                        && input.codedHeight === target.height) {
-                        // True identity: pass envelope through. Only patch
-                        // `rotation` when it actually changes — preserves
-                        // object identity when nothing changed.
-                        yield envelope.rotation === transform.wireRotation
-                            ? envelope
-                            : { ...envelope, rotation: transform.wireRotation };
-                        continue;
-                    }
-                    // Zero-copy re-crop via VideoFrame constructor + explicit
-                    // visibleRect + displayWidth/Height. Chrome's MSTP
-                    // crop-and-scale gives us a frame with coded = native
-                    // sensor (e.g. 1920×1080) and display = scaled output
-                    // (e.g. 1280×720), but visibleRect spans the entire
-                    // coded plane — so the encoder, reading from the coded
-                    // plane, encodes the wrong region. We construct a new
-                    // VideoFrame referencing the same buffer with a centered
-                    // visibleRect at the target aspect; Chrome's encoder
-                    // honors that (verified empirically), producing the
-                    // correct crop without a `new VideoFrame(canvas)`
-                    // roundtrip. Saves ~0.5 ms/frame of canvas work and the
-                    // associated GPU texture allocation.
-                    if (transform.cropboxRotation === 0 && input.codedWidth > 0 && input.codedHeight > 0) {
-                        const visible = computeCoverVisibleRect(
-                            input.codedWidth, input.codedHeight,
-                            target.width, target.height);
-                        const recropped = new VideoFrame(input, {
-                            visibleRect: visible,
-                            displayWidth: target.width,
-                            displayHeight: target.height,
-                            timestamp: input.timestamp,
-                        });
-                        try { input.close(); } catch { /* already closed */ }
-                        yield { ...envelope, frame: recropped, rotation: transform.wireRotation };
-                        continue;
-                    }
-                    // Fallback path — used when cropbox rotation is needed
-                    // (Android portrait flip etc.), since VideoFrame's
-                    // zero-copy constructor cannot rotate pixels. Pay the
-                    // canvas + new VideoFrame cost only on this branch.
-                    slot ??= createSlot('normalizeFrame');
-                    prepareSlot(slot, target.width, target.height);
-                    drawFrameCover(slot.ctx, input, target.width, target.height, transform.cropboxRotation);
-                    const out = new VideoFrame(slot.canvas, {
-                        timestamp: input.timestamp,
-                        alpha: 'discard',
-                    });
-                    try { input.close(); } catch { /* already closed */ }
-                    yield { ...envelope, frame: out, rotation: transform.wireRotation };
-                }
-            } finally {
-                if (slot) {
-                    slot.canvas.width = 0;
-                    slot.canvas.height = 0;
-                    slot = null;
-                }
-            }
-        }
-        return from(impl());
-    };
-}
-
-// NormalizedFrame -> CapturedBundle. Per-layer envelopes share all metadata
-// from the input — only `frame` differs. Output bottom-first. Each lower tier
-// is a REAL pixel downscale (coded == target) produced by the injected
-// downscaler (WebGL2, Canvas2D fallback); the top tier is the input passed
-// through. Up to `concurrency` bundles run process() in parallel, each on its
-// own downscaler instance; ordering preserved via parallelMap. The downscaler
-// owns the input frame; the operator owns the produced layer frames and closes
-// them on any pre-yield error.
-export function downscale(opts: DownscaleOptions): PipeOperator<NormalizedFrame, CapturedBundle> {
-    const createDownscaler = opts.createDownscaler ?? createDefaultDownscaler;
+    const mode = opts.mode ?? 'webgl';
+    const createDownscaler = opts.createDownscaler ?? (() => createDownscalerForMode(mode));
     const concurrency = Math.max(1, opts.concurrency ?? 2);
     const hangTimeoutMs = opts.hangTimeoutMs ?? 1_500;
     const setTimeoutFn = opts.setTimeoutFn ?? ((cb, ms): unknown => setTimeout(cb, ms));
     const clearTimeoutFn = opts.clearTimeoutFn
         ?? ((h: unknown): void => clearTimeout(h as ReturnType<typeof setTimeout>));
+
+    // Cached ceiling LayerSpec; refreshed when getNormalizeSize() changes (e.g.
+    // an orientation flip swaps W/H).
+    let target: LayerSpec = opts.getNormalizeSize();
 
     // Shared across slots: single-threaded JS keeps the read-modify-write between
     // awaits atomic, so a hang on one slot can force a keyframe on the next bundle.
@@ -213,27 +145,40 @@ export function downscale(opts: DownscaleOptions): PipeOperator<NormalizedFrame,
         new Array<DownscaleSlotState | undefined>(concurrency).fill(undefined);
 
     return source => {
-        const stage = parallelMap<NormalizedFrame, CapturedBundle | null>({
+        const stage = parallelMap<CapturedFrame, CapturedBundle | null>({
             concurrency,
-            onSlotInit: slotId => { slots[slotId] = { downscaler: null }; },
+            onSlotInit: slotId => { slots[slotId] = { downscaler: null, normSlot: null }; },
             onSlotDispose: slotId => {
                 const s = slots[slotId];
                 if (s?.downscaler && typeof s.downscaler.dispose === 'function')
                     try { s.downscaler.dispose(); } catch { /* ignore */ }
+                if (s?.normSlot) {
+                    s.normSlot.canvas.width = 0;
+                    s.normSlot.canvas.height = 0;
+                }
                 slots[slotId] = undefined;
             },
-            onUnconsumedResult: bundle => { if (bundle) closeBundleLayers(bundle); },
+            onUnconsumedResult: bundle => { if (bundle) closeBundle(bundle); },
             map: async (envelope, slotId) => {
-                // Snapshot the ladder per frame so QC hot-applies (layer grow/
-                // shrink) take effect; encode() aligns to bundle.layers.length.
+                const slot = slots[slotId]!;
+                const ns = opts.getNormalizeSize();
+                if (ns.width !== target.width || ns.height !== target.height)
+                    target = ns;
+                const transform = orientation.decide(envelope.frame, target);
+                const startedAtMs = performance.now();
+                // 1. Normalize → ceiling (consumes envelope.frame; identity path
+                //    returns it unchanged).
+                const ceiling = produceCeiling(envelope.frame, target, transform.cropboxRotation, () => {
+                    slot.normSlot ??= createSlot('normalizeDownscale');
+                    return slot.normSlot;
+                });
+
+                // 2. Tiers from the ceiling, on the selected backend, watchdogged.
                 const layers: LayerSpec[] = opts.controller.current.configs.map(
                     c => ({ width: c.width, height: c.height }));
-                const slot = slots[slotId]!;
                 slot.downscaler ??= createDownscaler();
                 const downscaler = slot.downscaler;
-
-                const startedAtMs = performance.now();
-                const processPromise = downscaler.process(envelope.frame, layers);
+                const processPromise = downscaler.process(ceiling, layers);
                 let timerHandle: unknown = null;
                 const timeoutP = new Promise<'timeout'>(resolve => {
                     timerHandle = setTimeoutFn(() => resolve('timeout'), hangTimeoutMs);
@@ -249,24 +194,26 @@ export function downscale(opts: DownscaleOptions): PipeOperator<NormalizedFrame,
                     consecutiveHangs++;
                     forceKeyframeAfterHang = true;
                     // Detach: close whatever the stuck process() eventually
-                    // produces (it owns the input frame); drop this slot's
-                    // downscaler so the next frame recreates it.
+                    // produces; close the ceiling we own.
                     void processPromise.then(closeFrames, () => { /* logged */ });
+                    try { ceiling.close(); } catch { /* ignore */ }
                     const stuck = slot.downscaler;
                     slot.downscaler = null;
                     if (typeof stuck.dispose === 'function')
                         try { stuck.dispose(); } catch { /* ignore */ }
                     if (consecutiveHangs >= 4)
                         throw new Error(
-                            `downscale: hang watchdog fired ${consecutiveHangs}x in a row, giving up`);
+                            `normalizeDownscale: hang watchdog fired ${consecutiveHangs}x in a row, giving up`);
                     return null;
                 }
                 consecutiveHangs = 0;
                 const frames = raced;
                 if (frames.length !== layers.length) {
                     closeFrames(frames);
+                    if (!frames.includes(ceiling))
+                        try { ceiling.close(); } catch { /* ignore */ }
                     throw new Error(
-                        `downscale: downscaler returned ${frames.length} frames, expected ${layers.length}`);
+                        `normalizeDownscale: downscaler returned ${frames.length} frames, expected ${layers.length}`);
                 }
                 const ms = performance.now() - startedAtMs;
                 const stats = envelope.stats;
@@ -274,15 +221,19 @@ export function downscale(opts: DownscaleOptions): PipeOperator<NormalizedFrame,
                 stats.downscaleTimeMsCount++;
                 if (ms > stats.downscaleTimeMsMax) stats.downscaleTimeMsMax = ms;
                 // After a hang, re-anchor every encoder with a keyframe.
-                const layerSource = forceKeyframeAfterHang
-                    ? { ...envelope, forceKeyframe: true }
-                    : envelope;
+                const wireRotation = transform.wireRotation;
+                const layerSource: NormalizedFrame = {
+                    ...envelope,
+                    forceKeyframe: forceKeyframeAfterHang || envelope.forceKeyframe,
+                    rotation: wireRotation,
+                };
                 forceKeyframeAfterHang = false;
                 return {
                     layers: frames.map(frame => makeLayerEnvelope(layerSource, frame)),
+                    ceiling,
                     index: envelope.index,
                     dropTrace: envelope.dropTrace,
-                    rotation: envelope.rotation,
+                    rotation: wireRotation,
                     stats: envelope.stats,
                 };
             },
@@ -297,15 +248,64 @@ export function downscale(opts: DownscaleOptions): PipeOperator<NormalizedFrame,
     };
 }
 
+// Produce the normalized ceiling frame from the captured input, applying the
+// decided crop/rotation. Consumes `input` (closes it) whenever it allocates a
+// new frame; returns `input` unchanged on the true-identity path.
+//   * identity        — capture already matches the ceiling, no crop/rotate.
+//   * zero-copy recrop — crop only (cropboxRotation 0): a new VideoFrame sharing
+//                        the buffer with a centered visibleRect at ceiling aspect.
+//   * canvas render    — a cropbox rotation must be baked (Android portrait flip).
+function produceCeiling(
+    input: VideoFrame,
+    target: LayerSpec,
+    cropboxRotation: RotationQuarter,
+    getSlot: () => Slot,
+): VideoFrame {
+    const displayW = input.displayWidth || input.codedWidth;
+    const displayH = input.displayHeight || input.codedHeight;
+    if (cropboxRotation === 0
+        && displayW === target.width
+        && displayH === target.height
+        && input.codedWidth === target.width
+        && input.codedHeight === target.height) {
+        return input;
+    }
+    if (cropboxRotation === 0 && input.codedWidth > 0 && input.codedHeight > 0) {
+        const visible = computeCoverVisibleRect(
+            input.codedWidth, input.codedHeight,
+            target.width, target.height);
+        const recropped = new VideoFrame(input, {
+            visibleRect: visible,
+            displayWidth: target.width,
+            displayHeight: target.height,
+            timestamp: input.timestamp,
+        });
+        try { input.close(); } catch { /* already closed */ }
+        return recropped;
+    }
+    const slot = getSlot();
+    prepareSlot(slot, target.width, target.height);
+    drawFrameCover(slot.ctx, input, target.width, target.height, cropboxRotation);
+    const out = new VideoFrame(slot.canvas, {
+        timestamp: input.timestamp,
+        alpha: 'discard',
+    });
+    try { input.close(); } catch { /* already closed */ }
+    return out;
+}
+
 function closeFrames(frames: readonly VideoFrame[]): void {
     for (const frame of frames) {
         try { frame.close(); } catch { /* ignore */ }
     }
 }
 
-function closeBundleLayers(bundle: CapturedBundle): void {
+function closeBundle(bundle: CapturedBundle): void {
     for (const layer of bundle.layers) {
         try { layer.frame.close(); } catch { /* ignore */ }
+    }
+    if (!bundle.layers.some(l => l.frame === bundle.ceiling)) {
+        try { bundle.ceiling.close(); } catch { /* ignore */ }
     }
 }
 
@@ -313,7 +313,7 @@ class NormalizeFrameOrientation {
     private initialDeviceAngle: number | null = null;
     private currentCropboxRotation: RotationQuarter = 0;
 
-    constructor(private readonly opts: NormalizeFrameOptions) {}
+    constructor(private readonly opts: { isCamera: boolean; isFrontCamera: boolean; isIos: boolean }) {}
 
     decide(input: VideoFrame, target: LayerSpec): FrameTransform {
         if (!this.opts.isCamera)

@@ -7,6 +7,7 @@ public partial class VideoDiagnosticsModal
 {
     private static readonly string JSGetSettingsMethod = $"{BlazorUIAppModule.ImportName}.getVideoDebugSettings";
     private static readonly string JSSetForceH264OnlyMethod = $"{BlazorUIAppModule.ImportName}.setVideoDebugForceH264Only";
+    private static readonly string JSSetDownscalerModeMethod = $"{BlazorUIAppModule.ImportName}.setVideoDebugDownscalerMode";
     private static readonly string JSSetMaxOutboundLayerCountMethod =
         $"{BlazorUIAppModule.ImportName}.setVideoDebugMaxOutboundLayerCount";
     private static readonly string JSSetMaxInboundLayerCountMethod =
@@ -24,6 +25,7 @@ public partial class VideoDiagnosticsModal
         [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5];
 
     private bool _forceH264Only;
+    private string _downscalerMode = "webgl";
     private bool _showFpsOverlay;
     private int? _maxOutboundLayerCount;
     private int? _maxInboundLayerCount;
@@ -38,6 +40,7 @@ public partial class VideoDiagnosticsModal
         try {
             var settings = await Hub.JS.InvokeAsync<VideoDebugSettings>(JSGetSettingsMethod);
             _forceH264Only = settings.ForceH264Only;
+            _downscalerMode = settings.DownscalerMode ?? "webgl";
             _maxOutboundLayerCount = settings.MaxOutboundLayerCount;
             _maxInboundLayerCount = settings.MaxInboundLayerCount;
             _estBandwidthMultiplier = NormalizeMultiplier(settings.EstBandwidthMultiplier);
@@ -60,6 +63,14 @@ public partial class VideoDiagnosticsModal
         _forceH264Only = !_forceH264Only;
         StateHasChanged();
         await Hub.JS.InvokeVoidAsync(JSSetForceH264OnlyMethod, _forceH264Only);
+    }
+
+    private async Task OnDownscalerModeChange(ChangeEventArgs e)
+    {
+        var mode = e.Value?.ToString();
+        _downscalerMode = mode is "webgl" or "canvas" or "metadata" ? mode : "webgl";
+        StateHasChanged();
+        await Hub.JS.InvokeVoidAsync(JSSetDownscalerModeMethod, _downscalerMode);
     }
 
     private async Task OnShowFpsOverlayClick()
@@ -144,5 +155,6 @@ public partial class VideoDiagnosticsModal
         bool ForceH264Only,
         int? MaxOutboundLayerCount,
         int? MaxInboundLayerCount,
-        double EstBandwidthMultiplier);
+        double EstBandwidthMultiplier,
+        string? DownscalerMode);
 }

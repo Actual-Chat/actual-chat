@@ -154,7 +154,7 @@ function makeBundle(
     // Bottom-first: layers[0] = base layer, layers[last] = top layer.
     const captured: CapturedFrame[] = layers.map(l =>
         makeCaptured(index, stats, l.width, l.height, forceKeyframe));
-    return { layers: captured, index, dropTrace: [], rotation: 0, stats };
+    return { layers: captured, ceiling: captured[captured.length - 1].frame, index, dropTrace: [], rotation: 0, stats };
 }
 
 function fromArray<T>(items: T[]): AsyncIterable<T> {

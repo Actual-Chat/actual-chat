@@ -4,7 +4,8 @@
 // downscales (coded == target), each sampled from the previous larger tier.
 //
 // The input is already normalized (crop/rotation baked upstream by
-// normalizeFrame), so this is a pure aspect-1:1 downscale — no crop/rotate.
+// normalizeDownscale's ceiling render), so this is a pure aspect-1:1 downscale —
+// no crop/rotate. The input is owned by the caller — never closed here.
 
 import { getLogs } from 'logging';
 import type { DownscalerLike, LayerSpec } from '../operators/downscale';
@@ -21,7 +22,6 @@ export class CanvasDownscaler implements DownscalerLike {
         const results = new Array<VideoFrame | null>(layers.length).fill(null);
         const inW = input.displayWidth || input.codedWidth;
         const inH = input.displayHeight || input.codedHeight;
-        let inputReturned = false;
         try {
             const ctx = this.ensureCtx();
             const canvas = this.canvas!;
@@ -30,7 +30,6 @@ export class CanvasDownscaler implements DownscalerLike {
                 const { width, height } = layers[i];
                 if (width === inW && height === inH) {
                     results[i] = input;
-                    inputReturned = true;
                     continue;
                 }
                 if (canvas.width !== width)
@@ -45,14 +44,11 @@ export class CanvasDownscaler implements DownscalerLike {
                 results[i] = out;
                 src = out;
             }
-            if (!inputReturned)
-                try { input.close(); } catch { /* ignore */ }
             return results as VideoFrame[];
         } catch (e) {
             warnLog?.log('CanvasDownscaler.process failed:', e);
             for (const r of results)
                 if (r && r !== input) try { r.close(); } catch { /* ignore */ }
-            try { input.close(); } catch { /* ignore */ }
             throw e;
         }
     }

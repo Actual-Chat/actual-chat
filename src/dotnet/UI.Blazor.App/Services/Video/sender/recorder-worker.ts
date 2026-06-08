@@ -306,6 +306,7 @@ export const recorderWorkerImpl: RecorderWorker = {
             createProcessor: deps.createProcessor,
             encoderConfigs: config.encoderConfigs,
             normalizeSize: config.normalizeSize,
+            downscalerMode: config.downscalerMode,
             createEncoder: encoderFactory,
             keyframeIntervalFrames: config.keyframeIntervalFrames,
             maxKeyFrameIntervalMs: config.maxKeyFrameIntervalMs,

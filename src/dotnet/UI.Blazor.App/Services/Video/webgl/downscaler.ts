@@ -89,9 +89,9 @@ export class WebGlDownscaler implements DownscalerLike {
         const results = new Array<VideoFrame | null>(layers.length).fill(null);
         // Ceiling = the normalized input's visible size. A tier matching it is
         // passed through (no GPU work); every other tier is a real downscale.
+        // The input is owned by the caller — never closed here.
         const inW = input.displayWidth || input.codedWidth;
         const inH = input.displayHeight || input.codedHeight;
-        let inputReturned = false;
         try {
             // Cascade source: starts at the ceiling input, then each smaller
             // tier samples the previous larger tier's output.
@@ -100,7 +100,6 @@ export class WebGlDownscaler implements DownscalerLike {
                 const { width, height } = layers[i];
                 if (width === inW && height === inH) {
                     results[i] = input;
-                    inputReturned = true;
                     continue;
                 }
                 if (this.canvas.width !== width)
@@ -123,17 +122,12 @@ export class WebGlDownscaler implements DownscalerLike {
                 results[i] = out;
                 src = out;
             }
-            // If no tier matched the ceiling, the input was only a downscale
-            // source — close it (the contract makes the downscaler own it).
-            if (!inputReturned)
-                try { input.close(); } catch { /* ignore */ }
             return results as VideoFrame[];
         } catch (e) {
             warnLog?.log('WebGlDownscaler.process failed — disabling WebGL downscale:', e);
             disableWebGlDownscale();
             for (const r of results)
                 if (r && r !== input) try { r.close(); } catch { /* ignore */ }
-            try { input.close(); } catch { /* ignore */ }
             throw e;
         }
     }

@@ -15,7 +15,7 @@ import { FrameDropStage, traceDrops } from '../frame-drop-trace';
 import { mstpSource } from '../operators/capture';
 import { stampCaptureTime } from '../operators/stamp-capture-time';
 import { attachSourceDims } from '../operators/attach-source-dims';
-import { normalizeFrame, downscale } from '../operators/downscale';
+import { normalizeDownscale, type DownscalerMode } from '../operators/downscale';
 import { previewForwarder } from '../operators/preview-forwarder';
 import { applyKeyframePolicy } from '../operators/apply-keyframe-policy';
 import { encode, type EncoderConfigPerLayer, type EncoderFactory } from '../operators/encode';
@@ -32,7 +32,7 @@ const STOP_DRAIN_GRACE_MS = 3_000;
 
 export type { EncoderConfigPerLayer, EncoderFactory } from '../operators/encode';
 export type { StreamSenderLike } from '../operators/wire-send';
-export type { LayerSpec } from '../operators/downscale';
+export type { LayerSpec, DownscalerMode } from '../operators/downscale';
 export type { EncodeInput } from '../operators/encode';
 export type { RecorderStats };
 
@@ -52,6 +52,8 @@ export interface RecorderConfig {
     // of the active encode ladder, so the self-preview stays full-res even when
     // the active ladder shrinks toward L0. Defaults to the active top.
     normalizeSize?: { width: number; height: number };
+    // Downscaler backend (diagnostics toggle). Default 'webgl'.
+    downscalerMode?: DownscalerMode;
 
     // -- encode --
     // Bottom-first simulcast ladder; single-tier P2P passes one entry.
@@ -127,38 +129,38 @@ export class Recorder {
 
         // Two pipes only because pipe()'s typed overload tops out at 9 ops;
         // runtime composition is identical.
-        const captureToNormalized = pipe(
+        const captureToBundle = pipe(
             captureSource,
             traceDrops<CapturedFrame>(FrameDropStage.SenderSource),
             floodGate(gate),
             traceDrops<CapturedFrame>(FrameDropStage.SenderFloodGate),
             stampCaptureTime({ clock: this.session.captureClock }),
             attachSourceDims(),
-            normalizeFrame({
+            // Demand-driven fps before the fused stage: paced-out frames release
+            // their GPU plane without any normalize/downscale work. The
+            // self-preview taps the fused ceiling downstream, so it paces with
+            // the encode rate (fps 0 = idle stop). simpleBlur effect probe would
+            // slot in inside the fused stage.
+            temporalPace(paceState),
+            traceDrops<CapturedFrame>(FrameDropStage.SenderFpsPacing),
+            normalizeDownscale({
+                controller: ladderController,
                 getNormalizeSize: () => normalizeSize,
                 isCamera: config.sourceKind === 0,
                 isFrontCamera: config.isFrontCamera,
                 isIos: config.isIos,
+                mode: config.downscalerMode,
             }),
-            // simpleBlur({ radiusPx: 6 }), // Temporary effect probe; keep disabled by default.
+            traceDrops<CapturedBundle>(FrameDropStage.SenderDownscale),
+        );
+        const recordingPipe = pipe(
+            captureToBundle,
             previewForwarder({
                 isIos: config.isIos,
                 getWriter: () => this.session.getPreviewWriter(),
                 reportFrame: frame => this.session.reportPreviewFrame(frame),
                 reportPresentation: p => this.session.reportPreviewFramePresentation(p),
             }),
-        );
-        const normalizedToBundle = pipe(
-            captureToNormalized,
-            // Demand-driven fps: drop AFTER preview (local self-view stays
-            // smooth) but BEFORE the expensive downscale/encode. fps 0 = idle.
-            temporalPace(paceState),
-            traceDrops<CapturedFrame>(FrameDropStage.SenderFpsPacing),
-            downscale({ controller: ladderController }),
-            traceDrops<CapturedBundle>(FrameDropStage.SenderDownscale),
-        );
-        const recordingPipe = pipe(
-            normalizedToBundle,
             applyKeyframePolicy({
                 keyframeIntervalFrames: config.keyframeIntervalFrames,
                 maxKeyframeIntervalMs: config.maxKeyFrameIntervalMs,

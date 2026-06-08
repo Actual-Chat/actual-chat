@@ -14,8 +14,7 @@ import { attachSourceDims } from '../../../src/dotnet/UI.Blazor.App/Services/Vid
 import { forceKeyframeOnDimChange } from '../../../src/dotnet/UI.Blazor.App/Services/Video/operators/force-keyframe-on-dim-change';
 import { dropDimMismatch } from '../../../src/dotnet/UI.Blazor.App/Services/Video/operators/dim-mismatch-guard';
 import {
-    normalizeFrame,
-    downscale,
+    normalizeDownscale,
     type DownscalerLike,
     type LayerSpec,
 } from '../../../src/dotnet/UI.Blazor.App/Services/Video/operators/downscale';
@@ -378,8 +377,7 @@ describe('video pipeline integration', () => {
             attachSourceDims(),
             forceKeyframeOnDimChange(),
             dropDimMismatch({ getExpectedDims: () => encDims }),
-            normalizeFrame({ getNormalizeSize: () => ladderController.current.configs[ladderController.current.configs.length - 1], isCamera: false, isFrontCamera: false, isIos: false }),
-            downscale({ controller: ladderController, createDownscaler: () => new FakeDownscaler() }),
+            normalizeDownscale({ controller: ladderController, getNormalizeSize: () => ladderController.current.configs[ladderController.current.configs.length - 1], isCamera: false, isFrontCamera: false, isIos: false, createDownscaler: () => new FakeDownscaler() }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
@@ -448,8 +446,7 @@ describe('video pipeline integration', () => {
             attachSourceDims(),
             forceKeyframeOnDimChange(),
             dropDimMismatch({ getExpectedDims: () => expectedSourceDims }),
-            normalizeFrame({ getNormalizeSize: () => ladderController.current.configs[ladderController.current.configs.length - 1], isCamera: false, isFrontCamera: false, isIos: false }),
-            downscale({ controller: ladderController, createDownscaler: () => new FakeDownscaler() }),
+            normalizeDownscale({ controller: ladderController, getNormalizeSize: () => ladderController.current.configs[ladderController.current.configs.length - 1], isCamera: false, isFrontCamera: false, isIos: false, createDownscaler: () => new FakeDownscaler() }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
@@ -618,8 +615,7 @@ describe('video pipeline integration', () => {
             attachSourceDims(),
             forceKeyframeOnDimChange(),
             dropDimMismatch({ getExpectedDims: () => encDims }),
-            normalizeFrame({ getNormalizeSize: () => ladderController.current.configs[ladderController.current.configs.length - 1], isCamera: false, isFrontCamera: false, isIos: false }),
-            downscale({ controller: ladderController, createDownscaler: () => new FakeDownscaler() }),
+            normalizeDownscale({ controller: ladderController, getNormalizeSize: () => ladderController.current.configs[ladderController.current.configs.length - 1], isCamera: false, isFrontCamera: false, isIos: false, createDownscaler: () => new FakeDownscaler() }),
             applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
         );
         const senderPipe = pipe(
@@ -715,8 +711,7 @@ describe('video pipeline integration', () => {
                 attachSourceDims(),
                 forceKeyframeOnDimChange(),
                 dropDimMismatch({ getExpectedDims: () => encDims }),
-                normalizeFrame({ getNormalizeSize: () => ladderController.current.configs[ladderController.current.configs.length - 1], isCamera: false, isFrontCamera: false, isIos: false }),
-                downscale({ controller: ladderController, createDownscaler: () => new FakeDownscaler() }),
+                normalizeDownscale({ controller: ladderController, getNormalizeSize: () => ladderController.current.configs[ladderController.current.configs.length - 1], isCamera: false, isFrontCamera: false, isIos: false, createDownscaler: () => new FakeDownscaler() }),
                 applyKeyframePolicy({ keyframeIntervalFrames: 60, now: () => mockPerfMs }),
             );
             const senderPipe = pipe(

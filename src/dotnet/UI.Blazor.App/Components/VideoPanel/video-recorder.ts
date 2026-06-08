@@ -71,6 +71,7 @@ import {
     type WireSafeRecorderConfig,
 } from '../../Services/Video/sender/recorder-worker-contract';
 import { consumeVideoTraceKill, registerVideoTraceKillWorker } from '../../Services/Video/video-trace-kill-control';
+import { getDownscalerMode } from '../../Services/Video/downscaler-mode';
 import {
     isEncoderInitFailedError,
     parseEncoderInitFailedCodec,
@@ -1836,6 +1837,7 @@ export class VideoRecorder {
             isIos: DeviceInfo.isIos || BrowserInfo.appKind === 'Ios',
             encoderConfigs,
             normalizeSize,
+            downscalerMode: getDownscalerMode(),
             // Both camera and screencast use a 3s keyframe cadence.
             keyframeIntervalFrames: framerate * 3,
             maxKeyFrameIntervalMs: 3000,

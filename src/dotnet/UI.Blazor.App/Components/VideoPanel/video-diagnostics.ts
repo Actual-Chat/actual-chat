@@ -4,6 +4,11 @@ import {
     getForceH264Only as getForceH264OnlyImpl,
     setForceH264Only as setForceH264OnlyImpl,
 } from '../../Services/Video/codec-support';
+import {
+    getDownscalerMode as getDownscalerModeImpl,
+    setDownscalerMode as setDownscalerModeImpl,
+} from '../../Services/Video/downscaler-mode';
+import type { DownscalerMode } from '../../Services/Video/operators/downscale';
 
 export interface OwnStreamDiagnosticsSnapshot {
     stream: OwnStreamDiagnostics | null;
@@ -56,6 +61,7 @@ export interface VideoDebugSettings {
     maxOutboundLayerCount: number | null;
     maxInboundLayerCount: number | null;
     estBandwidthMultiplier: number;
+    downscalerMode: DownscalerMode;
 }
 
 export function getVideoDebugSettings(): VideoDebugSettings {
@@ -64,11 +70,16 @@ export function getVideoDebugSettings(): VideoDebugSettings {
         maxOutboundLayerCount: getLayerCount(OUTBOUND_LAYER_COUNT_KEY),
         maxInboundLayerCount: getLayerCount(INBOUND_LAYER_COUNT_KEY),
         estBandwidthMultiplier: getBandwidthMultiplier(),
+        downscalerMode: getDownscalerModeImpl(),
     };
 }
 
 export function setVideoDebugForceH264Only(enabled: boolean): void {
     setForceH264OnlyImpl(enabled);
+}
+
+export function setVideoDebugDownscalerMode(mode: DownscalerMode): void {
+    setDownscalerModeImpl(mode);
 }
 
 export function setVideoDebugMaxOutboundLayerCount(layerCount: number | null): void {

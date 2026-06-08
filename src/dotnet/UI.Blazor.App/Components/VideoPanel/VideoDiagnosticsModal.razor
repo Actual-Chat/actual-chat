@@ -543,6 +543,31 @@
                 </Tile>
             </div>
             <div class="diag-section">
+                <div class="diag-section-header">Sender pipeline</div>
+                <Tile>
+                    <TileItem IsHoverable="false">
+                        <Content>Downscaler backend</Content>
+                        <Caption>
+                            Backend that resizes captured frames into the simulcast
+                            ladder. <b>WebGL</b> = GPU cascade (Canvas2D fallback);
+                            <b>Canvas2D</b> = 2D cascade; <b>Metadata</b> = cheap
+                            display-size wrap (HW encoder rescales — reproduces the
+                            Edge HEVC lower-tier crop, comparison only). Applies on
+                            the next pipeline restart — switch, then re-join the call.
+                        </Caption>
+                        <Right>
+                            <select class="diag-select"
+                                    value="@_downscalerMode"
+                                    @onchange="@OnDownscalerModeChange">
+                                <option value="webgl">WebGL</option>
+                                <option value="canvas">Canvas2D</option>
+                                <option value="metadata">Metadata</option>
+                            </select>
+                        </Right>
+                    </TileItem>
+                </Tile>
+            </div>
+            <div class="diag-section">
                 <div class="diag-section-header">Quality control</div>
                 <Tile>
                     <TileItem IsHoverable="false">

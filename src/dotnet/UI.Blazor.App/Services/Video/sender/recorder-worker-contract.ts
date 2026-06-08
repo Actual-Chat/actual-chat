@@ -5,6 +5,7 @@
 
 import type { RpcNoWait } from 'rpc';
 import type { EncoderConfigPerLayer } from '../operators/encode';
+import type { DownscalerMode } from '../operators/downscale';
 import type { RecorderStats } from '../frame-envelopes';
 import type { SharedSettingsWorker } from 'shared-settings-worker';
 import type { VideoTraceKillPeriod } from '../frame-drop-trace';
@@ -24,6 +25,8 @@ export interface WireSafeRecorderConfig {
     // the active encode ladder, so the self-preview stays full-res when the active
     // ladder shrinks toward L0. Defaults to the active top when absent.
     normalizeSize?: { width: number; height: number };
+    // Sender downscaler backend (diagnostics toggle). Defaults to 'webgl'.
+    downscalerMode?: DownscalerMode;
     keyframeIntervalFrames: number;
     maxKeyFrameIntervalMs?: number;
     // Defaults to 'prefer-hardware'. Set to 'no-preference' as the 1-tier

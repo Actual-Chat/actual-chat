@@ -86,8 +86,8 @@ class MockVideoFrame {
         }
 
         if (source instanceof MockVideoFrame) {
-            // `new VideoFrame(otherFrame, init)` wrap — used by normalizeFrame
-            // re-crop and spatialize lower-layer downscale.
+            // `new VideoFrame(otherFrame, init)` wrap — used by normalizeDownscale
+            // ceiling re-crop and metadata-mode lower-layer wrap.
             const init = typeof widthOrInit === 'object' ? widthOrInit : {};
             this.id = source.id + 100_000;
             this.codedWidth = init.visibleRect?.width ?? source.codedWidth;
@@ -356,7 +356,7 @@ describe('Recorder', () => {
         const session = new SenderSession();
         const recorder = new Recorder(session);
         // Many-frame source so we can reconfigure mid-flight. Frames match
-        // the top layer dims so normalizeFrame takes the zero-copy identity
+        // the top layer dims so normalizeDownscale takes the zero-copy identity
         // path and doesn't allocate fresh VideoFrames (the mock globalThis
         // would race with afterEach cleanup if forced through the re-crop path).
         const senders: FakeSender[] = [];

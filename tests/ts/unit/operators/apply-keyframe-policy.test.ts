@@ -39,7 +39,7 @@ function makeBundle(stats: RecorderStats, idx: number, forceKeyframe = false, ex
     for (let i = 0; i < extraCount + 1; i++) {
         layers.push(makeCaptured(stats, idx, forceKeyframe));
     }
-    return { layers, index: idx, dropTrace: [], rotation: 0, stats };
+    return { layers, ceiling: layers[layers.length - 1].frame, index: idx, dropTrace: [], rotation: 0, stats };
 }
 
 async function* source(items: CapturedBundle[]): AsyncIterable<CapturedBundle> {
