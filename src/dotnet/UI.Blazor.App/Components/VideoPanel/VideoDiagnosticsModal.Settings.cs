@@ -25,7 +25,7 @@ public partial class VideoDiagnosticsModal
         [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5];
 
     private bool _forceH264Only;
-    private string _downscalerMode = "webgl";
+    private string _downscalerMode = "metadata";
     private bool _showFpsOverlay;
     private int? _maxOutboundLayerCount;
     private int? _maxInboundLayerCount;
@@ -40,7 +40,7 @@ public partial class VideoDiagnosticsModal
         try {
             var settings = await Hub.JS.InvokeAsync<VideoDebugSettings>(JSGetSettingsMethod);
             _forceH264Only = settings.ForceH264Only;
-            _downscalerMode = settings.DownscalerMode ?? "webgl";
+            _downscalerMode = settings.DownscalerMode ?? "metadata";
             _maxOutboundLayerCount = settings.MaxOutboundLayerCount;
             _maxInboundLayerCount = settings.MaxInboundLayerCount;
             _estBandwidthMultiplier = NormalizeMultiplier(settings.EstBandwidthMultiplier);
@@ -68,7 +68,7 @@ public partial class VideoDiagnosticsModal
     private async Task OnDownscalerModeChange(ChangeEventArgs e)
     {
         var mode = e.Value?.ToString();
-        _downscalerMode = mode is "webgl" or "canvas" or "metadata" ? mode : "webgl";
+        _downscalerMode = mode is "webgl" or "canvas" or "metadata" ? mode : "metadata";
         StateHasChanged();
         await Hub.JS.InvokeVoidAsync(JSSetDownscalerModeMethod, _downscalerMode);
     }

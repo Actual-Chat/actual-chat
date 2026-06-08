@@ -18,11 +18,12 @@ export interface LayerSpec {
     height: number;
 }
 
-// Downscaler backend, selectable from the video diagnostics toggle. `webgl` is
-// the GPU cascade (Canvas2D fallback if WebGL2 is unavailable); `canvas` forces
-// the Canvas2D cascade; `metadata` is the cheap display-size wrap (coded stays
-// at the ceiling, the HW encoder rescales) — a measurement/comparison mode only,
-// since it reproduces the Edge HEVC top-left crop on lower tiers.
+// Downscaler backend, selectable from the video diagnostics toggle. `metadata`
+// is the default cheap display-size wrap (coded stays at the ceiling, the HW
+// encoder rescales) — keeps the downscale off the GPU. `webgl` is the GPU cascade
+// (Canvas2D fallback if WebGL2 is unavailable) and `canvas` forces the Canvas2D
+// cascade; both are the fallback for HW that top-left-crops instead of scaling
+// (notably Edge HEVC). See docs/live-video/02-sender.md.
 export type DownscalerMode = 'webgl' | 'canvas' | 'metadata';
 
 // Contract: one frame per spec in order (bottom-first). A spec matching the

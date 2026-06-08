@@ -114,14 +114,35 @@ File: `operators/downscale.ts`.
   slot's downscaler, increments `consecutiveHangs`, sets
   `forceKeyframeAfterHang`, and recreates on the next frame. After 4
   consecutive hangs the operator gives up.
-- Production downscaler: **`CanvasDownscaler`** (`canvas/downscaler.ts`), a 2D
-  canvas implementation that processes top-down and reuses a higher tier's
-  canvas as the source for a lower tier when `longEdge(higher) ≥ 2 × longEdge(target)`
-  — saves a redundant draw per source frame for typical 3-tier ladders.
-- `WebGpuDownscaler` (`webgpu/downscaler.ts`) is still in the tree (and used
-  in some tests/labs) but the production codepath wires `CanvasDownscaler`
-  via `VideoRecorder.cs` because WebGPU pacing on iOS forced too many
-  per-frame drains.
+- Backend is chosen by `getDownscalerMode()` (`downscaler-mode.ts`), a
+  localStorage setting (`video.debug.downscalerMode`) read when the recorder
+  builds the worker config. `createDownscalerForMode` (`operators/downscale.ts`)
+  maps it: `metadata` → `MetadataDownscaler`, `canvas` → `CanvasDownscaler`,
+  `webgl`/default → `createDefaultDownscaler()` (WebGL2, Canvas2D fallback on
+  context-lost).
+- **Default: `metadata`** (`metadata/downscaler.ts`) — the cheapest path. Lower
+  tiers are the ceiling frame re-wrapped with a smaller `displayWidth/Height`;
+  `codedWidth/Height` stay at the ceiling and **the HW encoder rescales
+  coded→config when it encodes the tier** (no GPU resize, no extra
+  canvas/texture). The live simulcast encode path (`operators/encode.ts`) has no
+  coded≠config drop, so ceiling-coded frames flow straight to the per-layer
+  encoders.
+- Why this is the default — **the GPU→CPU readback is unavoidable on Chromium**,
+  so doing the resize on the GPU only adds cost. When the downscaled frame is
+  handed to the HW encoder, Chromium reads it back GPU→CPU **inside the GPU
+  process regardless of the downscaler**: the Android NDK encoder ingests a CPU
+  ByteBuffer (`NdkVideoEncodeAccelerator::FeedInputBuffer`, `PrepareCpuFrame`,
+  libyuv `ConvertAndScale` in Perfetto). A zero-copy GPU-surface-into-encoder
+  path is a Chromium-internal decision, not reachable from WebCodecs JS. So a GPU
+  downscaler (`webgl`/`canvas`, or a hypothetical WebGPU one) cannot avoid the
+  readback — it only **adds** GPU-thread contention with the HW encoder/decoder
+  and a per-frame GPU-sync stall (sender traces: `Chrome_InProcGpuThread` ~10.9s
+  and a per-frame `CommandBuffer Finish/WaitForGetOffset` block on `webgl`, vs
+  ~4.3s and no stall on `metadata`).
+- Caveat: `metadata` trusts the HW encoder to **scale** rather than top-left
+  **crop** when coded > config. Most encoders scale; a few (notably Edge HEVC)
+  crop. Where that shows, force `webgl`/`canvas` via `video.debug.downscalerMode`
+  — `WebGlDownscaler`/`CanvasDownscaler` produce real coded==target tiers.
 - Single-tier P2P streams default to `identityDownscaler()` in
   `Recorder.start()` — clones the input once, no resize.
 
