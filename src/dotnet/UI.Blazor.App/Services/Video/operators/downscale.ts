@@ -8,6 +8,7 @@ import { CanvasDownscaler } from '../canvas/downscaler';
 import { MetadataDownscaler } from '../metadata/downscaler';
 import { WebGlDownscaler, probeWebGl2 } from '../webgl/downscaler';
 import { parallelMap } from './parallel-map';
+import type { PreviewSink } from './preview-forwarder';
 import type { LayerLadderController } from '../sender/layer-ladder-controller';
 
 const { warnLog } = getLogs('VideoPipeline');
@@ -48,13 +49,20 @@ export interface DownscalerLike {
 //
 // Sits AFTER temporalPace, so the ceiling (and therefore the self-preview) is
 // produced only for frames that survive demand pacing — the simplest fusion:
-// one capture upload feeds preview + every tier.
+// one normalize feeds preview + every tier. The ceiling is owned entirely
+// within this stage: it is the top tier (closed downstream by encode) when the
+// active top matches it, otherwise an orphan this stage closes after the
+// preview tap. It never escapes onto the bundle.
 export interface NormalizeDownscaleOptions {
     controller: LayerLadderController;
     getNormalizeSize: () => LayerSpec;
     isCamera: boolean;
     isFrontCamera: boolean;
     isIos: boolean;
+    // Self-preview tap. Fed a clone of the full-res ceiling per kept frame —
+    // the ceiling only exists inside this stage, so the tap lives here rather
+    // than as a downstream operator over the bundle. Omit to skip preview.
+    preview?: PreviewSink;
     // Backend selection (diagnostics toggle). Default 'webgl'.
     mode?: DownscalerMode;
     // Test override; takes precedence over `mode`. Lazy-init per slot so
@@ -222,6 +230,12 @@ export function normalizeDownscale(opts: NormalizeDownscaleOptions): PipeOperato
                 if (ms > stats.downscaleTimeMsMax) stats.downscaleTimeMsMax = ms;
                 // After a hang, re-anchor every encoder with a keyframe.
                 const wireRotation = transform.wireRotation;
+                // Preview taps a clone of the ceiling (full-res, never the
+                // shrunk tier). Then close the ceiling iff it is not also a tier
+                // — encode closes the tiers (incl. the ceiling-as-top-tier case).
+                opts.preview?.forward(ceiling, wireRotation);
+                if (!frames.includes(ceiling))
+                    try { ceiling.close(); } catch { /* ignore */ }
                 const layerSource: NormalizedFrame = {
                     ...envelope,
                     forceKeyframe: forceKeyframeAfterHang || envelope.forceKeyframe,
@@ -230,7 +244,6 @@ export function normalizeDownscale(opts: NormalizeDownscaleOptions): PipeOperato
                 forceKeyframeAfterHang = false;
                 return {
                     layers: frames.map(frame => makeLayerEnvelope(layerSource, frame)),
-                    ceiling,
                     index: envelope.index,
                     dropTrace: envelope.dropTrace,
                     rotation: wireRotation,
@@ -301,11 +314,10 @@ function closeFrames(frames: readonly VideoFrame[]): void {
 }
 
 function closeBundle(bundle: CapturedBundle): void {
+    // The ceiling-when-orphan was already closed in map() before the bundle was
+    // produced; the ceiling-as-top-tier is one of these layers.
     for (const layer of bundle.layers) {
         try { layer.frame.close(); } catch { /* ignore */ }
-    }
-    if (!bundle.layers.some(l => l.frame === bundle.ceiling)) {
-        try { bundle.ceiling.close(); } catch { /* ignore */ }
     }
 }
 

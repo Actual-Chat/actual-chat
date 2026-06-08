@@ -1,6 +1,5 @@
-import { tap, type PipeOperator } from 'ix-ext';
 import { getLogs } from 'logging';
-import type { CapturedBundle } from '../frame-envelopes';
+import type { RotationQuarter } from '../orientation/quantize';
 import type { PreviewFramePresentation } from '../sender/recorder-worker-contract';
 import { HAS_VF_ROTATION_INIT, wrapWithRotation } from '../video-frame-caps';
 
@@ -8,7 +7,7 @@ const { warnLog } = getLogs('VideoPipeline');
 // Log first, then 1-in-N — prevents flooding when a device-level failure drops every clone.
 const LogEveryN = 30;
 
-export interface PreviewForwarderOptions {
+export interface PreviewSinkOptions {
     // iOS Safari's <video> auto-orients a generated (VTG) track to upright on
     // its own — verified: a 640x360 landscape capture renders as 360x640 in
     // the element. So the CSS --video-rotation layer must NOT add a second
@@ -21,12 +20,15 @@ export interface PreviewForwarderOptions {
     reportPresentation?: (presentation: PreviewFramePresentation) => void;
 }
 
-// Forwards a clone of the bundle's full-res ceiling surface to a writer
-// (typically the self-view's MediaStreamTrackGenerator). Cloning is mandatory —
-// the pipeline owns the original; the selected preview sink observes a
-// short-lived clone. Also the closer of the ceiling-when-orphan: when the
-// ceiling is NOT one of the bundle's layers (the active ladder shrank below it),
-// nothing downstream closes it, so this tap does after cloning.
+// The self-preview tap. `forward` takes a clone of the normalized ceiling
+// surface and ships it to a writer (typically the self-view's
+// MediaStreamTrackGenerator). Cloning is mandatory — the caller owns the
+// passed frame; the selected preview sink observes a short-lived clone.
+//
+// Lives as a plain sink (not a pipe operator) because the ceiling never exists
+// as its own stream: the fused normalizeDownscale stage produces it and calls
+// `forward` directly for every kept frame. Folding the tap there keeps ceiling
+// ownership in one place instead of threading it through the bundle.
 //
 // No internal queue or timer-based pacing. The upstream rVFC pump already
 // drives frames at the source's natural cadence (30 Hz on a 30 fps camera),
@@ -37,14 +39,21 @@ export interface PreviewForwarderOptions {
 // dominant timer churn (~25 ms / s combined across workers). Frames whose
 // writer is backpressured are dropped on the spot rather than buffered:
 // the bottleneck is the renderer, and a buffer here only delays the drop.
-export function previewForwarder(opts: PreviewForwarderOptions): PipeOperator<CapturedBundle, CapturedBundle> {
+export interface PreviewSink {
+    // Clone `frame` and ship the clone to the preview writer / report callback.
+    // Does NOT take ownership of `frame` (clones it); the caller still owns and
+    // closes the passed frame.
+    forward(frame: VideoFrame, rotation: RotationQuarter): void;
+}
+
+export function createPreviewSink(opts: PreviewSinkOptions): PreviewSink {
     const { isIos, getWriter, reportFrame, reportPresentation } = opts;
     let failures = 0;
     let lastReportedRotation: number | null = null;
     const reportFailure = (where: string, e: unknown): void => {
         failures++;
         if (failures === 1 || failures % LogEveryN === 0)
-            warnLog?.log(`previewForwarder: ${where} failed (#${failures}):`, e);
+            warnLog?.log(`previewSink: ${where} failed (#${failures}):`, e);
     };
     const reportPresentationOnce = (rotation: number): void => {
         if (!reportPresentation || lastReportedRotation === rotation)
@@ -59,11 +68,8 @@ export function previewForwarder(opts: PreviewForwarderOptions): PipeOperator<Ca
     const closeFrame = (frame: VideoFrame): void => {
         try { frame.close(); } catch { /* ignore */ }
     };
-    return tap((bundle: CapturedBundle): void => {
-        const ceiling = bundle.ceiling;
-        // Closed here only when it is not also a layer (encode closes layers).
-        const orphan = !bundle.layers.some(l => l.frame === ceiling);
-        try {
+    return {
+        forward(source: VideoFrame, rotation: RotationQuarter): void {
             let writer: WritableStreamDefaultWriter<VideoFrame> | null;
             try {
                 writer = getWriter();
@@ -82,7 +88,7 @@ export function previewForwarder(opts: PreviewForwarderOptions): PipeOperator<Ca
 
             let clone: VideoFrame;
             try {
-                clone = ceiling.clone();
+                clone = source.clone();
             } catch (e) {
                 reportFailure('frame clone', e);
                 return;
@@ -98,10 +104,10 @@ export function previewForwarder(opts: PreviewForwarderOptions): PipeOperator<Ca
             // Canvas-preview path (writer === null) keeps the legacy path — canvas
             // drawImage ignores VideoFrame rotation metadata, so it relies on CSS.
             let frame = clone;
-            let displayRotation = bundle.rotation;
-            if (writer && bundle.rotation !== 0 && (HAS_VF_ROTATION_INIT || isIos)) {
+            let displayRotation = rotation;
+            if (writer && rotation !== 0 && (HAS_VF_ROTATION_INIT || isIos)) {
                 if (HAS_VF_ROTATION_INIT) {
-                    frame = wrapWithRotation(clone, bundle.rotation);
+                    frame = wrapWithRotation(clone, rotation);
                     closeFrame(clone);
                 }
                 displayRotation = 0;
@@ -123,8 +129,6 @@ export function previewForwarder(opts: PreviewForwarderOptions): PipeOperator<Ca
                     closeFrame(frame);
                 }
             }
-        } finally {
-            if (orphan) closeFrame(ceiling);
-        }
-    });
+        },
+    };
 }

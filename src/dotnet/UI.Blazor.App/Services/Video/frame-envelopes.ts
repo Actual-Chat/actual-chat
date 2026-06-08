@@ -297,12 +297,6 @@ export type NormalizedFrame = CapturedFrame;
 // Single-tier (P2P) sources produce a length-1 bundle.
 export interface CapturedBundle {
     layers: CapturedFrame[];
-    // Full-res normalized surface (the display ceiling) the self-preview taps.
-    // Equals `layers[layers.length - 1].frame` (same object) when the active top
-    // tier matches the ceiling; a distinct frame when the active ladder shrank
-    // below the ceiling. The preview consumer (previewForwarder) closes it when
-    // it is NOT one of the layers; otherwise the encode stage closes it as a tier.
-    ceiling: VideoFrame;
     // Bundle-level index (== layers[*].index) for drop-trace gap detection.
     index: number;
     dropTrace: FrameDropStage[];
@@ -313,9 +307,6 @@ export interface CapturedBundle {
 export function disposeCapturedBundle(bundle: CapturedBundle): void {
     for (const f of bundle.layers) {
         try { f.frame.close(); } catch { /* already closed */ }
-    }
-    if (!bundle.layers.some(l => l.frame === bundle.ceiling)) {
-        try { bundle.ceiling.close(); } catch { /* already closed */ }
     }
 }
 

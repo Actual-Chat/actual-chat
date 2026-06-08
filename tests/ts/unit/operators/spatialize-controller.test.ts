@@ -92,8 +92,6 @@ describe('normalizeDownscale with LayerLadderController', () => {
         expect(out).toHaveLength(6);
         for (let i = 0; i < 3; i++) expect(out[i].layers).toHaveLength(1);
         for (let i = 3; i < 6; i++) expect(out[i].layers).toHaveLength(2);
-        // Top tier matches the ceiling, so ceiling === the top layer's frame.
-        for (const b of out) expect(b.ceiling).toBe(b.layers[b.layers.length - 1].frame);
     });
 
     it('shrinks: a 3-layer ladder dropping to 1 yields 1-layer bundles', async () => {

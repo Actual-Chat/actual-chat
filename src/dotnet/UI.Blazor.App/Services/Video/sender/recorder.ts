@@ -16,7 +16,7 @@ import { mstpSource } from '../operators/capture';
 import { stampCaptureTime } from '../operators/stamp-capture-time';
 import { attachSourceDims } from '../operators/attach-source-dims';
 import { normalizeDownscale, type DownscalerMode } from '../operators/downscale';
-import { previewForwarder } from '../operators/preview-forwarder';
+import { createPreviewSink } from '../operators/preview-forwarder';
 import { applyKeyframePolicy } from '../operators/apply-keyframe-policy';
 import { encode, type EncoderConfigPerLayer, type EncoderFactory } from '../operators/encode';
 import { FloodGate, floodGate } from '../operators/flood-gate';
@@ -127,6 +127,16 @@ export class Recorder {
             createProcessor: config.createProcessor,
         });
 
+        // The self-preview tap is owned by the fused normalizeDownscale stage
+        // (the only place the full-res ceiling exists); it forwards a clone of
+        // the ceiling per kept frame.
+        const previewSink = createPreviewSink({
+            isIos: config.isIos,
+            getWriter: () => this.session.getPreviewWriter(),
+            reportFrame: frame => this.session.reportPreviewFrame(frame),
+            reportPresentation: p => this.session.reportPreviewFramePresentation(p),
+        });
+
         // Two pipes only because pipe()'s typed overload tops out at 9 ops;
         // runtime composition is identical.
         const captureToBundle = pipe(
@@ -137,10 +147,9 @@ export class Recorder {
             stampCaptureTime({ clock: this.session.captureClock }),
             attachSourceDims(),
             // Demand-driven fps before the fused stage: paced-out frames release
-            // their GPU plane without any normalize/downscale work. The
-            // self-preview taps the fused ceiling downstream, so it paces with
-            // the encode rate (fps 0 = idle stop). simpleBlur effect probe would
-            // slot in inside the fused stage.
+            // their GPU plane without any normalize/downscale work. Preview taps
+            // inside the fused stage, so it paces with the encode rate (fps 0 =
+            // idle stop). simpleBlur effect probe would slot in there too.
             temporalPace(paceState),
             traceDrops<CapturedFrame>(FrameDropStage.SenderFpsPacing),
             normalizeDownscale({
@@ -149,18 +158,13 @@ export class Recorder {
                 isCamera: config.sourceKind === 0,
                 isFrontCamera: config.isFrontCamera,
                 isIos: config.isIos,
+                preview: previewSink,
                 mode: config.downscalerMode,
             }),
             traceDrops<CapturedBundle>(FrameDropStage.SenderDownscale),
         );
         const recordingPipe = pipe(
             captureToBundle,
-            previewForwarder({
-                isIos: config.isIos,
-                getWriter: () => this.session.getPreviewWriter(),
-                reportFrame: frame => this.session.reportPreviewFrame(frame),
-                reportPresentation: p => this.session.reportPreviewFramePresentation(p),
-            }),
             applyKeyframePolicy({
                 keyframeIntervalFrames: config.keyframeIntervalFrames,
                 maxKeyframeIntervalMs: config.maxKeyFrameIntervalMs,
