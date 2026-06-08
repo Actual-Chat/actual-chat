@@ -11,7 +11,7 @@ import { parallelMap } from './parallel-map';
 import type { PreviewSink } from './preview-forwarder';
 import type { LayerLadderController } from '../sender/layer-ladder-controller';
 
-const { warnLog } = getLogs('VideoPipeline');
+const { infoLog, warnLog } = getLogs('VideoPipeline');
 
 export interface LayerSpec {
     width: number;
@@ -149,6 +149,7 @@ export function normalizeDownscale(opts: NormalizeDownscaleOptions): PipeOperato
     // awaits atomic, so a hang on one slot can force a keyframe on the next bundle.
     let consecutiveHangs = 0;
     let forceKeyframeAfterHang = false;
+    let backendLogged = false;
     const slots: (DownscaleSlotState | undefined)[] =
         new Array<DownscaleSlotState | undefined>(concurrency).fill(undefined);
 
@@ -186,6 +187,13 @@ export function normalizeDownscale(opts: NormalizeDownscaleOptions): PipeOperato
                     c => ({ width: c.width, height: c.height }));
                 slot.downscaler ??= createDownscaler();
                 const downscaler = slot.downscaler;
+                // Report the resolved backend once — the requested mode plus the
+                // actual class, since 'webgl' falls back to Canvas2D when WebGL2
+                // is unavailable / its context was lost.
+                if (!backendLogged) {
+                    backendLogged = true;
+                    infoLog?.log(`normalizeDownscale: downscaler backend = ${downscaler.constructor.name} (mode '${mode}')`);
+                }
                 const processPromise = downscaler.process(ceiling, layers);
                 let timerHandle: unknown = null;
                 const timeoutP = new Promise<'timeout'>(resolve => {

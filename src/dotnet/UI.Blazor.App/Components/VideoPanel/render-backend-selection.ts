@@ -1,4 +1,5 @@
 import type { RenderBackendKind } from '../../Services/Video/playback/render-backends';
+import { DeviceInfo } from 'device-info';
 
 export type RenderBackendOverride = RenderBackendKind | null;
 
@@ -27,8 +28,15 @@ function getCurrentHref(): string {
     }
 }
 
+// Edge is negative-gated to canvas: Chromium-on-Windows mis-composites a
+// rotated `<video srcObject>` at focused-tile sizes (hardware-overlay path) —
+// the whole focused tile paints black while the bg-blur canvas, which draws
+// the VideoFrame through a 2D context, stays live. Canvas backend avoids the
+// overlay path entirely. `?renderBackend=mstg` opts back in for diagnostics.
 export function pickRenderBackendKind(
     override: RenderBackendOverride = readRenderBackendOverride(),
 ): RenderBackendKind {
-    return override ?? 'mstg';
+    if (override)
+        return override;
+    return DeviceInfo.isEdge ? 'canvas' : 'mstg';
 }
