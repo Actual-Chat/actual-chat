@@ -160,13 +160,18 @@ public partial class ChatUI
         var hasVeryFirstItem = idTiles.Count > 0 && idTiles[0].Start <= chatLidRange.Start;
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId) : null;
         var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
-        foreach (var idTile in idTiles) {
+        for (var tileIndex = 0; tileIndex < idTiles.Count; tileIndex++) {
+            var idTile = idTiles[tileIndex];
             var lastReadEntryLid = shownReadyEntryLid;
             if (lastReadEntryLid < idTile.Start)
                 lastReadEntryLid = 0;
             else if (shownReadyEntryLid >= idTile.End - 1)
                 lastReadEntryLid = long.MaxValue;
-            var isLastTile = idTile.Contains(chatLidRange.End - 1);
+            // When we're at the chat's newest end, the last loaded tile is the tail even if a trailing
+            // run of removed entries leaves chatLidRange.End-1 outside it - and it's where the optimistic
+            // "sending"/new messages must be merged.
+            var isLastTile = idTile.Contains(chatLidRange.End - 1)
+                || (!hasMoreAfter && tileIndex == idTiles.Count - 1);
             var tile = await GetTile(
                     chatId,
                     chat.Rules.Author?.Id,
@@ -216,11 +221,12 @@ public partial class ChatUI
             tiles[^1].Items[^1].NextMessage = null;
         }
 
-        // When the chat's tail isn't carried by any loaded tile (e.g. an empty chat whose only entries
-        // are removed), no GetTile call merges the optimistic "sending" messages. Build the tail tile
-        // explicitly so they still surface - and so this query depends on OnNewMessagesChanged.
-        var isTailLoaded = idTiles.Any(t => t.Contains(chatLidRange.End - 1));
-        if (!isTailLoaded && !hasMoreAfter) {
+        // A chat whose only entries are removed loads zero id-tiles, so the per-tile loop above never
+        // runs and never merges the optimistic "sending" messages. Build the tail tile explicitly for
+        // that case so they still surface - and so this query depends on OnNewMessagesChanged. When tiles
+        // *are* loaded, the loop's last tile already carries this merge (see isLastTile above), so we must
+        // not append a second tail tile here - doing so duplicated the trailing conversation header's @key.
+        if (idTiles.Count == 0 && !hasMoreAfter) {
             var tailRange = IdTileStack.FirstLayer.GetTile(chatLidRange.End).Range;
             var tailTile = await GetTile(
                     chatId,
@@ -235,10 +241,8 @@ public partial class ChatUI
                     cancellationToken)
                 .ConfigureAwait(false);
             if (tailTile.Items.Count > 0) {
-                if (tiles.Count > 0)
-                    tiles[^1].Items[^1].NextMessage = tailTile.Items[0];
                 tiles.Add(tailTile);
-                hasVeryFirstItem = idTiles.Count == 0 || hasVeryFirstItem;
+                hasVeryFirstItem = true;
             }
         }
 
