@@ -7,7 +7,7 @@
 
 import { getLogs } from 'logging';
 import { PromiseSource } from 'actuallab-core';
-import type { WebRtcTierTransformOptions } from './webrtc-contract';
+import type { WebRtcTierTransformOptions, WebRtcDropTransformOptions } from './webrtc-contract';
 
 const { infoLog, warnLog } = getLogs('VideoPipeline');
 
@@ -50,6 +50,17 @@ export class LoopbackTier {
         // Loopback ICE: host candidates only, exchanged in-process.
         outbound.onicecandidate = e => e.candidate && void inbound.addIceCandidate(e.candidate);
         inbound.onicecandidate = e => e.candidate && void outbound.addIceCandidate(e.candidate);
+
+        // Drop the echoed stream before it's decoded: attach a receiver-side
+        // transform that discards frames (the loopback only exists to run the
+        // encoder). Set on `ontrack` (fires during setRemoteDescription) so it's
+        // in place before any frame reaches the decoder. RTP still flows →
+        // RTCP/transport-cc feedback keeps the sender's BWE healthy.
+        inbound.ontrack = e => {
+            const dropOptions: WebRtcDropTransformOptions = { kind: 'webrtc-drop', tier: this.tier };
+            try { e.receiver.transform = new RTCRtpScriptTransform(this.opts.worker, dropOptions); }
+            catch (err) { warnLog?.log(`tier ${this.tier}: attach receiver drop-transform failed`, err); }
+        };
         const whenConnected = new PromiseSource<void>();
         outbound.onconnectionstatechange = () => {
             console.info(`[voxtWebRtc] tier ${this.tier} PC state=${outbound.connectionState}`);

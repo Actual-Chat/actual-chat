@@ -56,6 +56,10 @@ interface RTCRtpSender {
     transform?: RTCRtpScriptTransform | null;
 }
 
+interface RTCRtpReceiver {
+    transform?: RTCRtpScriptTransform | null;
+}
+
 interface DedicatedWorkerGlobalScope {
     onrtctransform: ((this: DedicatedWorkerGlobalScope, ev: RTCTransformEvent) => void) | null;
 }

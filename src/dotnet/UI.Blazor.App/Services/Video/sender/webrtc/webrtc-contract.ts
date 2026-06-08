@@ -48,3 +48,18 @@ export function isWebRtcTierTransformOptions(o: unknown): o is WebRtcTierTransfo
     return !!o && typeof o === 'object'
         && (o as { kind?: unknown }).kind === 'webrtc-tier';
 }
+
+// Receiver-side transform on the loopback's inbound PC. Frames are read and
+// DISCARDED before the decoder — the loopback exists only to make the encoder
+// run, so decoding the echoed stream is pure waste. RTP still flows (the
+// transform is post-depacketize), so RTCP/transport-cc feedback keeps the
+// sender's BWE healthy.
+export interface WebRtcDropTransformOptions {
+    kind: 'webrtc-drop';
+    tier: number;
+}
+
+export function isWebRtcDropTransformOptions(o: unknown): o is WebRtcDropTransformOptions {
+    return !!o && typeof o === 'object'
+        && (o as { kind?: unknown }).kind === 'webrtc-drop';
+}

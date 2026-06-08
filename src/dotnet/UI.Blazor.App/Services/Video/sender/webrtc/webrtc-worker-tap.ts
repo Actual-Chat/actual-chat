@@ -10,6 +10,7 @@ import { FloodGate } from '../../operators/flood-gate';
 import type { StreamSenderLike, VideoStreamFrame } from '../../operators/wire-send';
 import {
     isWebRtcTierTransformOptions,
+    isWebRtcDropTransformOptions,
     type WebRtcStartOptions,
 } from './webrtc-contract';
 
@@ -63,6 +64,12 @@ export function installWebRtcTap(deps: WebRtcTapDeps): WebRtcTapHandlers {
     scope.onrtctransform = (event): void => {
         const transformer = event.transformer;
         const opts = transformer.options;
+        if (isWebRtcDropTransformOptions(opts)) {
+            // Loopback receiver: discard frames before the decoder (no decode).
+            C(`onrtctransform: tier ${opts.tier} receiver drop attached`);
+            void pumpDrop(transformer);
+            return;
+        }
         if (!isWebRtcTierTransformOptions(opts)) {
             // Not ours — pass frames through untouched.
             void pipePassthrough(transformer);
@@ -216,4 +223,18 @@ function onEncodedFrame(
 async function pipePassthrough(transformer: RTCRtpScriptTransformer): Promise<void> {
     try { await transformer.readable.pipeTo(transformer.writable); }
     catch { /* transform ended */ }
+}
+
+// Receiver-side: drain the readable and DROP every frame (never enqueue to the
+// writable) so the decoder downstream never runs. We keep reading so RTP
+// processing/feedback isn't back-pressured. The writable is left unwritten.
+async function pumpDrop(transformer: RTCRtpScriptTransformer): Promise<void> {
+    const reader = transformer.readable.getReader();
+    try {
+        for (;;) {
+            const { done } = await reader.read();
+            if (done) break;
+            // frame intentionally discarded
+        }
+    } catch { /* transform ended */ }
 }
