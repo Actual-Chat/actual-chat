@@ -376,7 +376,15 @@ body.narrow .landing .page-1 > .c-content .main-text .main-text-wrapper {
     @apply w-auto;
 }
 .landing .page-1 > .c-content .main-text .main-text-wrapper .c-title {
+    @apply flex-y;
     @apply text-3.5xl md:text-headline-4 lg:text-headline-3;
+}
+.landing .page-1 > .c-content .main-text .main-text-wrapper .c-title .c-title-accent-line {
+    @apply inline-flex items-center gap-x-3;
+}
+.landing .page-1 > .c-content .main-text .main-text-wrapper .c-title .font-handwriting {
+    @apply -mb-4;
+    @apply font-normal text-7xl;
 }
 .landing .page-1 .main-text .main-text-wrapper .c-description {
     @apply flex-y;
@@ -1730,4 +1738,24 @@ body.narrow .btn.cookie-btn {
     @apply absolute inset-0;
 }
 .landing-card-video-plug {
+}
+
+ul.custom-list {
+    @apply flex-y gap-y-2;
+    @apply mx-0;
+    list-style: none;
+    padding-left: 0;
+    font-size: 2rem;
+    line-height: 3rem;
+    font-weight: 400;
+}
+.custom-list li {
+    position: relative;
+    padding-left: 2rem;
+}
+.custom-list li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #fff;
 }

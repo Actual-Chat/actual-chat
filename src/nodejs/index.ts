@@ -1,6 +1,7 @@
 // Styles
 import './fonts/svgtofont/icon.css';
 import './fonts/tt-commons-pro.css';
+import './fonts/nothing-you-could-do.css';
 import 'fork-awesome/css/fork-awesome.min.css';
 import './styles/index.css';
 
