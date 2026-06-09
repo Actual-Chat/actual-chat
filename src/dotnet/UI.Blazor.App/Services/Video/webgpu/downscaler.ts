@@ -272,12 +272,15 @@ export class WebGpuDownscaler implements DownscalerLike {
         const pass = encoder.beginComputePass();
         for (const t of nv12) {
             const ct = this.getComputeTier(t.w, t.h, inW, inH);
+            // Dispatch over the padded word stride so the shader fills full 256-aligned
+            // rows (padding maps to clamped edge pixels; the encoder reads only width).
+            const wordsW = align256(t.w) / 4;
             pass.setBindGroup(0, extBg);
             pass.setBindGroup(1, ct.bindGroup);
             pass.setPipeline(this.yCompute!);
-            pass.dispatchWorkgroups(Math.ceil((t.w / 4) / 8), Math.ceil(t.h / 8));
+            pass.dispatchWorkgroups(Math.ceil(wordsW / 8), Math.ceil(t.h / 8));
             pass.setPipeline(this.uvCompute!);
-            pass.dispatchWorkgroups(Math.ceil((t.w / 4) / 8), Math.ceil((t.h / 2) / 8));
+            pass.dispatchWorkgroups(Math.ceil(wordsW / 8), Math.ceil((t.h / 2) / 8));
         }
         pass.end();
         for (const t of nv12) {
@@ -334,8 +337,10 @@ export class WebGpuDownscaler implements DownscalerLike {
     }
 
     // (Re)build the shared readback buffer when the active tier set (or path)
-    // changes. tight=true → stride W (compute, copyBufferToBuffer has no row
-    // alignment); tight=false → 256-aligned stride (render copyTextureToBuffer).
+    // changes. Both paths use a 256-aligned plane stride — the HW encoder wants
+    // it (a tight stride forces a re-pack). tight (compute) only differs in
+    // inter-tier packing: copyBufferToBuffer needs a 4-byte dst offset, while
+    // copyTextureToBuffer (render) needs each tier's region 256-aligned.
     private ensureShared(nv12: { w: number; h: number }[], tight: boolean): SharedReadback {
         const device = this.device!;
         const key = (tight ? 'C:' : 'R:') + nv12.map(t => `${t.w}x${t.h}`).join('|');
@@ -346,7 +351,7 @@ export class WebGpuDownscaler implements DownscalerLike {
         const slots = new Map<string, Slot>();
         let off = 0;
         for (const t of nv12) {
-            const stride = tight ? t.w : align256(t.w);
+            const stride = align256(t.w);
             const yOff = off;
             const uvOff = yOff + stride * t.h;
             const end = uvOff + stride * (t.h / 2);
@@ -374,7 +379,7 @@ export class WebGpuDownscaler implements DownscalerLike {
             return existing;
         }
 
-        const size = w * h * 3 / 2;
+        const size = align256(w) * h * 3 / 2;
         const storage = device.createBuffer({
             size,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
@@ -397,12 +402,16 @@ export class WebGpuDownscaler implements DownscalerLike {
     }
 
     private computeParams(w: number, h: number, srcW: number, srcH: number): Uint32Array<ArrayBuffer> {
+        // Pad each plane row to a 256-byte stride — the HW encoder wants an aligned
+        // NV12 input and re-packs a tight one (libyuv ConvertAndScale), so match the
+        // render path's align256 geometry. dstW stays w (source mapping unchanged).
+        const sw = align256(w);
         const p = new Uint32Array(new ArrayBuffer(32));
         p.set([
             w, h, srcW, srcH,
-            w / 4,          // yWordsPerRow
-            w * h / 4,      // uvWordBase (Y-plane bytes / 4)
-            w / 4,          // uvWordsPerRow (2 chroma px/word)
+            sw / 4,         // yWordsPerRow (padded stride, words)
+            sw * h / 4,     // uvWordBase (padded Y-plane bytes / 4)
+            sw / 4,         // uvWordsPerRow (2 chroma px/word, padded)
             h / 2,          // dstHHalf
         ]);
         return p;
