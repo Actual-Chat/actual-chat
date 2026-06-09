@@ -16,6 +16,12 @@ public abstract class IndexingFlow<TCursor> : Flow<string>, IHasLastRunAt
     protected abstract ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken);
     protected abstract ValueTask<BatchIndexingResult<TCursor>> Run(TCursor? cursor, CancellationToken cancellationToken);
 
+    // When > Zero, a non-tail Run schedules its continuation after this delay instead of
+    // resuming immediately - used to throttle fan-out / backfill load. Quanta is forced to
+    // Zero so consecutive self-resumes are never deduped into the same bucket.
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    protected virtual TimeSpan BackfillResumeDelay => TimeSpan.Zero;
+
     // Implementation
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)
@@ -43,6 +49,10 @@ public abstract class IndexingFlow<TCursor> : Flow<string>, IHasLastRunAt
             await Complete(result.CompletionReason, cancellationToken).ConfigureAwait(false);
         else if (result.IsTailReached)
             await TailReached(result.HasProcessedAnyItems, cancellationToken).ConfigureAwait(false);
+        else if (BackfillResumeDelay > TimeSpan.Zero) {
+            Console.Log($"Scheduling resume in {BackfillResumeDelay.ToShortString()}");
+            Runtime.StageResumeIn(BackfillResumeDelay, TimeSpan.Zero);
+        }
         else {
             Console.Log("Scheduling immediate resume");
             Runtime.StageResume();

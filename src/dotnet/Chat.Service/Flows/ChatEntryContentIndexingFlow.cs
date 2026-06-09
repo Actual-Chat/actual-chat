@@ -17,7 +17,7 @@ public sealed partial class ChatEntryContentIndexingFlow : BatchedIndexingFlow<C
     private ChatId ChatId => field ??= ChatId.Parse(Id.Arguments);
     private ILogger Log => field ??= Services.LogFor(GetType());
 
-    protected override int BatchSize => 200;
+    protected override int BatchSize => 500;
     // One batch per Run: the cursor is committed at each Resume, so a batch that fails or times
     // out costs at most one batch of rework instead of discarding a whole multi-batch Run.
     protected override int Quota => BatchSize;

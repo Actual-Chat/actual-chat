@@ -15,8 +15,14 @@ public sealed partial class ChatContentIndexingMasterFlow
     [DataMember(Order = 5), MemoryPackOrder(5), Key(5)]
     public long MaxVersion { get; set; }
 
-    protected override int BatchSize => 200;
-    protected override int Quota => 2000;
+    // Fan-out throttling: wake per-chat indexing flows in small waves spaced by
+    // BackfillResumeDelay instead of all at once. A full (re)index otherwise spawns
+    // every chat's flow simultaneously, spiking DB connections + CPU at startup; the
+    // wave size caps how many flows can be freshly resumable at any instant (the herd),
+    // independent of the global queue ConcurrencyLevel. Trades fan-out speed for peak.
+    protected override int BatchSize => 20;
+    protected override int Quota => BatchSize;
+    protected override TimeSpan BackfillResumeDelay => TimeSpan.FromSeconds(5);
 
     protected override ValueTask Init(CancellationToken cancellationToken)
     {
