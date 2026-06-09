@@ -3,14 +3,16 @@
 // internal `PrepareCpuFrame → ConvertAndScale` (GPU→CPU readback + libyuv scale
 // + RGBA→NV12). The readback is unavoidable from JS, but if we hand the encoder
 // a frame that is ALREADY NV12 at exactly the tier size, that libyuv scale +
-// convert collapses to ~nothing, and the per-tier readback shrinks from a full
-// ceiling RGBA buffer (the `metadata` downscaler keeps coded=ceiling) to a
-// target-size NV12 buffer. We do the downscale + RGB→YUV on the GPU and map a
-// small buffer instead of running libyuv per tier on the CPU.
+// convert collapses to ~nothing (device trace 114921: ConvertAndScale 120→2 ms).
+//
+// Each lower tier renders a genuine two-plane NV12 (R8 Y + RG8 UV) — Chromium's
+// NV12 fast-path needs that two-plane shape (a packed single-R8 combined target
+// breaks it). The per-tier Y/UV copies all land in ONE shared buffer, read back
+// with a SINGLE mapAsync per frame (option 3 — one GPU→CPU sync instead of N).
 //
 // Top tier (matching the input's display dims) passes through unchanged (RGBA),
-// exactly like the WebGL downscaler — its encoder still reads+converts, but the
-// win is on the lower tiers, which today each read back the full ceiling.
+// like the WebGL downscaler — the win is on the lower tiers, which today each
+// read back the full ceiling.
 //
 // If WebGPU is unavailable (or the device is lost), every call delegates to a
 // MetadataDownscaler so capture keeps working.
@@ -22,9 +24,6 @@ import type { DownscalerLike, LayerSpec } from '../operators/downscale';
 
 const { infoLog, warnLog } = getLogs('VideoWebGPU');
 
-// Fullscreen quad (triangle-strip, 4 verts). Emits a uv varying in [0,1] with
-// the image upright for the external-texture sample (flip if the preview shows
-// upside-down).
 const FULLSCREEN_VS = /* wgsl */`
 struct VOut { @builtin(position) pos: vec4f, @location(0) uv: vec2f };
 @vertex fn vs(@builtin(vertex_index) i: u32) -> VOut {
@@ -65,15 +64,27 @@ function align256(n: number): number {
     return (n + 255) & ~255;
 }
 
-interface TierResources {
+// Per-tier GPU textures (cached by W×H). Y & UV render targets; the readback
+// buffer is shared across tiers (see SharedReadback).
+interface TierTextures {
     yTex: GPUTexture;
     uvTex: GPUTexture;
     yView: GPUTextureView;
     uvView: GPUTextureView;
+    stride: number;           // Y & UV plane stride (256-aligned; equal here)
+}
+
+interface Slot {
+    yOff: number;
+    uvOff: number;
+}
+
+// One mappable buffer holding every tier's [Y plane][UV plane] regions, plus the
+// per-tier byte offsets into it. Rebuilt only when the active tier set changes.
+interface SharedReadback {
     buffer: GPUBuffer;
-    yStride: number;
-    uvStride: number;
-    uvOffset: number;
+    key: string;
+    slots: Map<string, Slot>;
 }
 
 const NV12_COLORSPACE: VideoColorSpaceInit = {
@@ -91,7 +102,8 @@ export class WebGpuDownscaler implements DownscalerLike {
     private uvPipeline: GPURenderPipeline | null = null;
     private initState: 'pending' | 'ready' | 'failed' = 'pending';
     private lostDisposer: (() => void) | null = null;
-    private readonly tiers = new Map<string, TierResources>();
+    private readonly tiers = new Map<string, TierTextures>();
+    private shared: SharedReadback | null = null;
     private fallback: MetadataDownscaler | null = null;
     private disposed = false;
 
@@ -119,6 +131,22 @@ export class WebGpuDownscaler implements DownscalerLike {
         const inW = input.displayWidth || input.codedWidth;
         const inH = input.displayHeight || input.codedHeight;
 
+        // Collect the NV12 (non-ceiling) tiers bottom-first.
+        const nv12: { i: number; w: number; h: number; tex: TierTextures }[] = [];
+        for (let i = topIdx; i >= 0; i--) {
+            const { width: w, height: h } = layers[i];
+            if (w === inW && h === inH) {
+                results[i] = input; // ceiling passthrough (RGBA)
+                continue;
+            }
+            if ((w & 1) !== 0 || (h & 1) !== 0)
+                throw new Error(`WebGpuDownscaler: odd tier dims ${w}x${h}`);
+            nv12.push({ i, w, h, tex: this.getTier(w, h) });
+        }
+        if (nv12.length === 0)
+            return results as VideoFrame[];
+
+        const shared = this.ensureShared(nv12);
         const ext = device.importExternalTexture({ source: input });
         const bindGroup = device.createBindGroup({
             layout: this.bgl!,
@@ -128,22 +156,11 @@ export class WebGpuDownscaler implements DownscalerLike {
             ],
         });
         const encoder = device.createCommandEncoder();
-        const pending: { i: number; w: number; h: number; tier: TierResources }[] = [];
 
-        for (let i = topIdx; i >= 0; i--) {
-            const { width: w, height: h } = layers[i];
-            // Ceiling tier (matches input dims) — pass through RGBA, like WebGL.
-            if (w === inW && h === inH) {
-                results[i] = input;
-                continue;
-            }
-            // NV12 needs even dims; odd would shear the chroma plane.
-            if ((w & 1) !== 0 || (h & 1) !== 0)
-                throw new Error(`WebGpuDownscaler: odd tier dims ${w}x${h}`);
-
-            const tier = this.getTier(w, h);
+        for (const t of nv12) {
+            const slot = shared.slots.get(`${t.w}x${t.h}`)!;
             const yPass = encoder.beginRenderPass({
-                colorAttachments: [{ view: tier.yView, loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 1 } }],
+                colorAttachments: [{ view: t.tex.yView, loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 1 } }],
             });
             yPass.setPipeline(this.yPipeline!);
             yPass.setBindGroup(0, bindGroup);
@@ -151,7 +168,7 @@ export class WebGpuDownscaler implements DownscalerLike {
             yPass.end();
 
             const uvPass = encoder.beginRenderPass({
-                colorAttachments: [{ view: tier.uvView, loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 1 } }],
+                colorAttachments: [{ view: t.tex.uvView, loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 1 } }],
             });
             uvPass.setPipeline(this.uvPipeline!);
             uvPass.setBindGroup(0, bindGroup);
@@ -159,53 +176,73 @@ export class WebGpuDownscaler implements DownscalerLike {
             uvPass.end();
 
             encoder.copyTextureToBuffer(
-                { texture: tier.yTex },
-                { buffer: tier.buffer, offset: 0, bytesPerRow: tier.yStride, rowsPerImage: h },
-                { width: w, height: h, depthOrArrayLayers: 1 });
+                { texture: t.tex.yTex },
+                { buffer: shared.buffer, offset: slot.yOff, bytesPerRow: t.tex.stride, rowsPerImage: t.h },
+                { width: t.w, height: t.h, depthOrArrayLayers: 1 });
             encoder.copyTextureToBuffer(
-                { texture: tier.uvTex },
-                { buffer: tier.buffer, offset: tier.uvOffset, bytesPerRow: tier.uvStride, rowsPerImage: h / 2 },
-                { width: w / 2, height: h / 2, depthOrArrayLayers: 1 });
-
-            pending.push({ i, w, h, tier });
+                { texture: t.tex.uvTex },
+                { buffer: shared.buffer, offset: slot.uvOff, bytesPerRow: t.tex.stride, rowsPerImage: t.h / 2 },
+                { width: t.w / 2, height: t.h / 2, depthOrArrayLayers: 1 });
         }
 
         device.queue.submit([encoder.finish()]);
 
-        // Overlap the per-tier GPU→CPU maps (this IS the readback we trade libyuv
-        // for) — issue all copies above, then await all maps together.
-        await Promise.all(pending.map(async p => {
-            await p.tier.buffer.mapAsync(GPUMapMode.READ);
-            const range = p.tier.buffer.getMappedRange();
+        // One GPU→CPU sync for all tiers (option 3): map the shared buffer once,
+        // then slice each tier's NV12 planes out by absolute offset.
+        await shared.buffer.mapAsync(GPUMapMode.READ);
+        const range = shared.buffer.getMappedRange();
+        for (const t of nv12) {
+            const slot = shared.slots.get(`${t.w}x${t.h}`)!;
             // VideoFrame(BufferSource) copies synchronously — safe to unmap after.
-            results[p.i] = new VideoFrame(range, {
+            results[t.i] = new VideoFrame(range, {
                 format: 'NV12',
-                codedWidth: p.w,
-                codedHeight: p.h,
+                codedWidth: t.w,
+                codedHeight: t.h,
                 timestamp: input.timestamp,
                 colorSpace: NV12_COLORSPACE,
                 layout: [
-                    { offset: 0, stride: p.tier.yStride },
-                    { offset: p.tier.uvOffset, stride: p.tier.uvStride },
+                    { offset: slot.yOff, stride: t.tex.stride },
+                    { offset: slot.uvOff, stride: t.tex.stride },
                 ],
             });
-            p.tier.buffer.unmap();
-        }));
+        }
+        shared.buffer.unmap();
 
         return results as VideoFrame[];
     }
 
-    private getTier(w: number, h: number): TierResources {
+    // (Re)build the shared readback buffer when the active tier set changes. Each
+    // tier gets a 256-aligned Y region then a 256-aligned UV region.
+    private ensureShared(nv12: { w: number; h: number }[]): SharedReadback {
+        const device = this.device!;
+        const key = nv12.map(t => `${t.w}x${t.h}`).join('|');
+        if (this.shared?.key === key)
+            return this.shared;
+
+        try { this.shared?.buffer.destroy(); } catch { /* ignore */ }
+        const slots = new Map<string, Slot>();
+        let off = 0;
+        for (const t of nv12) {
+            const stride = align256(t.w);
+            const yOff = off;
+            const uvOff = yOff + stride * t.h;        // 256-aligned (stride is)
+            off = align256(uvOff + stride * (t.h / 2));
+            slots.set(`${t.w}x${t.h}`, { yOff, uvOff });
+        }
+        const buffer = device.createBuffer({
+            size: off,
+            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+        });
+        this.shared = { buffer, key, slots };
+        return this.shared;
+    }
+
+    private getTier(w: number, h: number): TierTextures {
         const key = `${w}x${h}`;
         const existing = this.tiers.get(key);
         if (existing) return existing;
 
         const device = this.device!;
-        const yStride = align256(w);            // R8: 1 byte/px
-        const uvStride = align256(w);           // RG8 half-res row = (w/2)*2 = w bytes
-        const uvOffset = yStride * h;           // 256-aligned (yStride is)
-        const bufferSize = uvOffset + uvStride * (h / 2);
-
         const yTex = device.createTexture({
             size: { width: w, height: h },
             format: 'r8unorm',
@@ -216,15 +253,11 @@ export class WebGpuDownscaler implements DownscalerLike {
             format: 'rg8unorm',
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
         });
-        const buffer = device.createBuffer({
-            size: bufferSize,
-            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-        });
-        const tier: TierResources = {
+        const tier: TierTextures = {
             yTex, uvTex,
             yView: yTex.createView(),
             uvView: uvTex.createView(),
-            buffer, yStride, uvStride, uvOffset,
+            stride: align256(w),
         };
         this.tiers.set(key, tier);
         return tier;
@@ -257,7 +290,7 @@ export class WebGpuDownscaler implements DownscalerLike {
             });
             this.lostDisposer = WebGPUManager.addLostListener(() => this.markFailed());
             this.initState = 'ready';
-            infoLog?.log('WebGpuDownscaler: device + NV12 pipelines ready');
+            infoLog?.log('WebGpuDownscaler: device + NV12 pipelines ready (shared readback)');
         } catch (e) {
             warnLog?.log('WebGpuDownscaler: init failed — using metadata fallback:', e);
             this.initState = 'failed';
@@ -280,10 +313,11 @@ export class WebGpuDownscaler implements DownscalerLike {
         this.disposed = true;
         this.lostDisposer?.();
         this.lostDisposer = null;
+        try { this.shared?.buffer.destroy(); } catch { /* ignore */ }
+        this.shared = null;
         for (const t of this.tiers.values()) {
             try { t.yTex.destroy(); } catch { /* ignore */ }
             try { t.uvTex.destroy(); } catch { /* ignore */ }
-            try { t.buffer.destroy(); } catch { /* ignore */ }
         }
         this.tiers.clear();
         this.fallback?.dispose();
