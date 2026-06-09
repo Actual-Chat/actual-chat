@@ -1,15 +1,17 @@
 // Diagnostics-selectable sender downscaler backend, backed by localStorage so
 // the choice survives reloads. Read by the recorder when it builds the worker
 // config; applies on the next pipeline restart (the recorder already restarts on
-// ladder/config changes). Default 'metadata' (HW encoder rescales from the
-// ceiling-coded frame) — it keeps the GPU off the downscale path; 'webgl'/'canvas'
-// stay selectable as the override fallback. See operators/downscale.ts.
+// ladder/config changes). Default 'webgpu' (GPU downscale + NV12 output, so the
+// HW encoder skips its internal libyuv ConvertAndScale + readback — device trace
+// 114921 vs 153125: ConvertAndScale 120→2 ms, encoder thread −85%, battery ~17%
+// lower). Self-falls-back to 'metadata' when WebGPU is unavailable. 'webgl'/
+// 'canvas'/'metadata' stay selectable. See operators/downscale.ts + webgpu/downscaler.ts.
 
 import type { DownscalerMode } from './operators/downscale';
 
 const KEY = 'video.debug.downscalerMode';
-const DEFAULT_MODE: DownscalerMode = 'metadata';
-const MODES: readonly DownscalerMode[] = ['webgl', 'canvas', 'metadata'];
+const DEFAULT_MODE: DownscalerMode = 'webgpu';
+const MODES: readonly DownscalerMode[] = ['webgl', 'canvas', 'metadata', 'webgpu'];
 
 function isMode(value: string | null): value is DownscalerMode {
     return value !== null && (MODES as readonly string[]).includes(value);
