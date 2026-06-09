@@ -85,6 +85,11 @@ fn srcRGB(px: u32, py: u32, dstW: u32, dstH: u32, srcW: u32, srcH: u32) -> vec3f
   let sy = i32((py * srcH) / dstH);
   let mx = i32(srcW) - 1;
   let my = i32(srcH) - 1;
+  // Ratio 1 (the top/focused tier, no downscale): sample the exact texel — a 2x2
+  // average would soften the full-res stream.
+  if (srcW == dstW && srcH == dstH) {
+    return textureLoad(src, vec2i(min(sx, mx), min(sy, my))).rgb;
+  }
   let a = textureLoad(src, vec2i(min(sx, mx),      min(sy, my))).rgb;
   let b = textureLoad(src, vec2i(min(sx + 1, mx),  min(sy, my))).rgb;
   let c = textureLoad(src, vec2i(min(sx, mx),      min(sy + 1, my))).rgb;
@@ -216,13 +221,13 @@ export class WebGpuDownscaler implements DownscalerLike {
         const inH = input.displayHeight || input.codedHeight;
 
         // Collect the NV12 (non-ceiling) tiers bottom-first.
+        // Every tier — including the top — is produced as NV12. The top tier used
+        // to pass through as RGBA, but the encoder then paid a full-res RGBA→NV12
+        // ConvertAndScale on it (the dominant remaining cost); producing NV12 at
+        // ratio 1 (exact 1:1 sample in the shader) is lossless and skips that.
         const nv12: { i: number; w: number; h: number }[] = [];
         for (let i = topIdx; i >= 0; i--) {
             const { width: w, height: h } = layers[i];
-            if (w === inW && h === inH) {
-                results[i] = input; // ceiling passthrough (RGBA)
-                continue;
-            }
             if ((w & 1) !== 0 || (h & 1) !== 0)
                 throw new Error(`WebGpuDownscaler: odd tier dims ${w}x${h}`);
             nv12.push({ i, w, h });
