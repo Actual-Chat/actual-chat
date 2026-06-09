@@ -189,6 +189,7 @@ export class WebGpuDownscaler implements DownscalerLike {
     private yCompute: GPUComputePipeline | null = null;
     private uvCompute: GPUComputePipeline | null = null;
     private useCompute = false;
+    private readonly forceRender: boolean;
     private initState: 'pending' | 'ready' | 'failed' = 'pending';
     private lostDisposer: (() => void) | null = null;
     private readonly tiers = new Map<string, TierTextures>();
@@ -196,6 +197,10 @@ export class WebGpuDownscaler implements DownscalerLike {
     private shared: SharedReadback | null = null;
     private fallback: MetadataDownscaler | null = null;
     private disposed = false;
+
+    constructor(opts?: { forceRender?: boolean }) {
+        this.forceRender = opts?.forceRender ?? false;
+    }
 
     async process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]> {
         if (this.disposed)
@@ -454,7 +459,7 @@ export class WebGpuDownscaler implements DownscalerLike {
             this.device = device;
             this.sampler = WebGPUManager.getSampler();
             this.buildRenderPipelines(device);
-            this.useCompute = this.tryBuildComputePipelines(device);
+            this.useCompute = this.forceRender ? false : this.tryBuildComputePipelines(device);
             this.lostDisposer = WebGPUManager.addLostListener(() => this.markFailed());
             this.initState = 'ready';
             warnLog?.log(`WebGpuDownscaler: ready (path=${this.useCompute ? 'compute' : 'render'})`);

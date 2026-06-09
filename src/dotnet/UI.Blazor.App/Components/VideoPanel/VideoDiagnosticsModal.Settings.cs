@@ -68,7 +68,7 @@ public partial class VideoDiagnosticsModal
     private async Task OnDownscalerModeChange(ChangeEventArgs e)
     {
         var mode = e.Value?.ToString();
-        _downscalerMode = mode is "webgl" or "canvas" or "metadata" or "webgpu" ? mode : "metadata";
+        _downscalerMode = mode is "webgl" or "canvas" or "metadata" or "webgpu" or "webgpu-2pass" ? mode : "metadata";
         StateHasChanged();
         await Hub.JS.InvokeVoidAsync(JSSetDownscalerModeMethod, _downscalerMode);
     }

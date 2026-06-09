@@ -29,7 +29,7 @@ export interface LayerSpec {
 // encoder skips its internal libyuv scale + RGBA→NV12 convert (the readback
 // remains, but shrinks to a target-size NV12 buffer). Falls back to 'metadata'
 // when WebGPU is unavailable. See webgpu/downscaler.ts.
-export type DownscalerMode = 'webgl' | 'canvas' | 'metadata' | 'webgpu';
+export type DownscalerMode = 'webgl' | 'canvas' | 'metadata' | 'webgpu' | 'webgpu-2pass';
 
 // Contract: one frame per spec in order (bottom-first). A spec matching the
 // input's display dims returns the input frame as that tier (shared reference);
@@ -126,6 +126,10 @@ export function createDownscalerForMode(mode: DownscalerMode): DownscalerLike {
     case 'webgpu':
         // Self-falls-back to metadata when WebGPU is unavailable / device lost.
         return new WebGpuDownscaler();
+    case 'webgpu-2pass':
+        // Same NV12 output, but forces the render two-pass path (compute disabled) —
+        // a diagnostic A/B against the compute path at full rate.
+        return new WebGpuDownscaler({ forceRender: true });
     case 'webgl':
     default:
         return createDefaultDownscaler();
