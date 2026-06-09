@@ -22,7 +22,7 @@
 }
 .landing .page > .c-content {
     @apply gap-x-12;
-    @apply h-full max-w-320 lg:max-w-352;
+    @apply h-full w-full max-w-320 lg:max-w-352;
     @apply pt-30 pb-16;
     @apply overflow-hidden;
 }
@@ -382,9 +382,9 @@ body.narrow .landing .page-1 > .c-content .main-text .main-text-wrapper {
 .landing .page-1 > .c-content .main-text .main-text-wrapper .c-title .c-title-accent-line {
     @apply inline-flex items-center gap-x-3;
 }
-.landing .page-1 > .c-content .main-text .main-text-wrapper .c-title .font-handwriting {
+.landing .page-1 .page-1-handwrite {
     @apply -mb-4;
-    @apply font-normal text-7xl;
+    @apply font-handwriting font-normal text-7xl;
 }
 .landing .page-1 .main-text .main-text-wrapper .c-description {
     @apply flex-y;
@@ -468,8 +468,9 @@ body.narrow .landing .page-2 > .c-content .main-image {
 .landing .page-2 > .c-content .main-text .c-line {
     @apply flex-x items-center gap-x-4;
 }
-.landing .page-2 > .c-content .main-text .c-line .c-square {
-    @apply w-10 h-10;
+.landing .page-2 .page-2-handwrite {
+    @apply whitespace-nowrap;
+    @apply font-handwriting font-normal text-3.5xl text-[var(--blue-40)];
 }
 
 /* Page 3 */
