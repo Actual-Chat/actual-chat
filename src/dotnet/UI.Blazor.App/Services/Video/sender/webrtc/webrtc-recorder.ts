@@ -59,6 +59,38 @@ function buildTierSpecs(): TierSpec[] {
     return DeviceInfo.isMobile ? desktop.slice(0, 2) : desktop;
 }
 
+// Per simulcast layer (= per tier) diagnostics, sampled from getStats().
+export interface WebRtcTierDiagnostics {
+    layerId: number;
+    width: number;
+    height: number;
+    fps: number;
+    framesEncoded: number;
+    keyFramesEncoded: number;
+    bitrateKbps: number;
+    targetBitrateKbps: number;
+    encoderImplementation: string;
+    hardwareAccelerated: boolean;
+    active: boolean;
+}
+
+export interface WebRtcDiagnostics {
+    codec: string;
+    sourceWidth: number;
+    sourceHeight: number;
+    layerCount: number;
+    tiers: WebRtcTierDiagnostics[];
+    aggregateBitrateKbps: number;
+    encoderImplementation: string;
+    hardwareAccelerated: boolean;
+}
+
+// HW unless the encoder name matches a known software implementation. Used only
+// when getStats() doesn't expose powerEfficientEncoder.
+function isSoftwareEncoder(impl: string): boolean {
+    return /libvpx|libaom|openh264|\bsvt\b|software|fallback/i.test(impl);
+}
+
 export interface WebRtcStartParams {
     chatId: string;
     deviceId?: string;
@@ -95,9 +127,18 @@ export class WebRtcSender implements ISenderBackend {
     private lastSentAtMs = 0;
     private measuredFps = 0;
 
+    // Diagnostics: chosen codec + sampled per-tier (simulcast layer) stats.
+    private codecString = '';
+    private lastDiag: WebRtcDiagnostics | null = null;
+    private lastBytesByTier = new Map<number, { bytes: number; ts: number }>();
+
     get isRunning(): boolean { return this.running; }
 
     getPreviewTrack(): MediaStreamTrack | null { return this.track; }
+
+    // Cached per-layer encoder diagnostics (resolution, fps, bitrate, frames,
+    // HW/SW per tier). Updated once/sec while running. Null until first sample.
+    getDiagnostics(): WebRtcDiagnostics | null { return this.lastDiag; }
 
     // Top-tier frames pushed to the wire per second (measured). 0 until the
     // first two samples land.
@@ -139,6 +180,7 @@ export class WebRtcSender implements ISenderBackend {
         const codec = pickWebRtcCodec(params.preferredCodecs);
         if (!codec)
             throw new Error('WebRtcSender: no usable WebRTC send codec');
+        this.codecString = codec.wireCodec;
         C(`codec picked: ${codec.category} → ${codec.wireCodec}`);
 
         // 3) Acquire camera at the top-tier resolution (or reuse the caller's).
@@ -222,8 +264,52 @@ export class WebRtcSender implements ISenderBackend {
         // periodic keyframe cadence (no receiver→sender PLI path in v1).
         await this.requestKeyframe();
         this.keyframeTimer = setInterval(() => { void this.requestKeyframe(); }, KEYFRAME_INTERVAL_MS);
-        this.fpsTimer = setInterval(() => { void this.sampleFps(); }, 1000);
+        this.fpsTimer = setInterval(() => { void this.sampleFps(); void this.sampleDiag(); }, 1000);
         C('LIVE — WebRTC sender running. Check chrome://webrtc-internals for the PCs.');
+    }
+
+    private async sampleDiag(): Promise<void> {
+        const stats = await Promise.all(this.tiers.map(t => t.getStats().catch(() => null)));
+        const now = performance.now();
+        const tiers: WebRtcTierDiagnostics[] = [];
+        let aggKbps = 0;
+        for (const s of stats) {
+            if (!s) continue;
+            const prev = this.lastBytesByTier.get(s.tier);
+            let kbps = 0;
+            if (prev) {
+                const dt = (now - prev.ts) / 1000;
+                if (dt > 0) kbps = Math.max(0, (s.bytesSent - prev.bytes) * 8 / 1000 / dt);
+            }
+            this.lastBytesByTier.set(s.tier, { bytes: s.bytesSent, ts: now });
+            const hw = s.powerEfficient ?? !isSoftwareEncoder(s.encoderImplementation);
+            tiers.push({
+                layerId: s.tier,
+                width: s.width,
+                height: s.height,
+                fps: Math.round(s.fps),
+                framesEncoded: s.framesEncoded,
+                keyFramesEncoded: s.keyFramesEncoded,
+                bitrateKbps: Math.round(kbps),
+                targetBitrateKbps: Math.round(s.targetBitrate / 1000),
+                encoderImplementation: s.encoderImplementation,
+                hardwareAccelerated: hw,
+                active: s.active,
+            });
+            aggKbps += kbps;
+        }
+        tiers.sort((a, b) => a.layerId - b.layerId);
+        const top = tiers.length > 0 ? tiers[tiers.length - 1] : null;
+        this.lastDiag = {
+            codec: this.codecString,
+            sourceWidth: this.cameraWidth,
+            sourceHeight: this.cameraHeight,
+            layerCount: tiers.length,
+            tiers,
+            aggregateBitrateKbps: Math.round(aggKbps),
+            encoderImplementation: top?.encoderImplementation ?? '',
+            hardwareAccelerated: tiers.length > 0 && tiers.every(t => t.hardwareAccelerated),
+        };
     }
 
     private async sampleFps(): Promise<void> {
@@ -296,6 +382,8 @@ export class WebRtcSender implements ISenderBackend {
         this.measuredFps = 0;
         this.lastSentCount = 0;
         this.lastSentAtMs = 0;
+        this.lastDiag = null;
+        this.lastBytesByTier.clear();
         for (const tier of this.tiers) tier.close();
         this.tiers = [];
         try { await this.worker?.webRtcStop(); } catch { /* ignore */ }

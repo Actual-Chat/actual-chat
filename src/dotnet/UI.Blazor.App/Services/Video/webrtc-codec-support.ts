@@ -76,9 +76,15 @@ export function pickWebRtcCodec(preferred?: WebRtcCodecCategory[]): WebRtcCodecC
         warnLog?.log('pickWebRtcCodec: RTCRtpSender.getCapabilities returned no codecs');
         return null;
     }
+    // Fallback order is H.264/HEVC ONLY — never vp8/vp9/av1. The project's
+    // encoder-codec policy (codec-support REPRESENTATIVE_CODECS) disables AV1/VP9;
+    // selecting AV1 here would (a) violate that policy and (b) land on a software
+    // AV1 encoder on devices without AV1 HW (reintroducing the readback we built
+    // this backend to avoid). Callers pass `preferred` already constrained to the
+    // active categories.
     const order: WebRtcCodecCategory[] = [
         ...(preferred ?? []),
-        'h264', 'vp8', 'vp9', 'av1', 'hevc',
+        'h264', 'hevc',
     ];
     for (const cat of order) {
         const rtcCodec = codecs.find(c => categoryOf(c.mimeType) === cat);

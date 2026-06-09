@@ -11,6 +11,20 @@ import type { WebRtcTierTransformOptions, WebRtcDropTransformOptions } from './w
 
 const { infoLog, warnLog } = getLogs('VideoPipeline');
 
+export interface LoopbackTierStats {
+    tier: number;
+    width: number;
+    height: number;
+    framesEncoded: number;
+    keyFramesEncoded: number;
+    bytesSent: number;
+    targetBitrate: number;
+    fps: number;
+    encoderImplementation: string;
+    powerEfficient: boolean | undefined;
+    active: boolean;
+}
+
 export interface LoopbackTierOptions {
     track: MediaStreamTrack;
     // Transform target — the recorder worker, which hosts onrtctransform.
@@ -38,6 +52,32 @@ export class LoopbackTier {
             tier: this.tier,
             connectionState: this.outbound?.connectionState ?? 'closed',
             encodings: this.sender?.getParameters().encodings ?? [],
+        };
+    }
+
+    // Per-tier (= per simulcast layer) encoder stats from the outbound-rtp report.
+    // `encoderImplementation`/`powerEfficientEncoder` reveal HW vs SW directly.
+    async getStats(): Promise<LoopbackTierStats | null> {
+        const sender = this.sender;
+        if (!sender) return null;
+        const report = await sender.getStats();
+        const stats: Record<string, unknown>[] = [];
+        report.forEach((s: unknown) => stats.push(s as Record<string, unknown>));
+        const ob = stats.find(r => r.type === 'outbound-rtp' && r.kind === 'video');
+        if (!ob) return null;
+        const numOf = (v: unknown): number => typeof v === 'number' ? v : 0;
+        return {
+            tier: this.tier,
+            width: numOf(ob.frameWidth),
+            height: numOf(ob.frameHeight),
+            framesEncoded: numOf(ob.framesEncoded),
+            keyFramesEncoded: numOf(ob.keyFramesEncoded),
+            bytesSent: numOf(ob.bytesSent),
+            targetBitrate: numOf(ob.targetBitrate),
+            fps: numOf(ob.framesPerSecond),
+            encoderImplementation: typeof ob.encoderImplementation === 'string' ? ob.encoderImplementation : '',
+            powerEfficient: typeof ob.powerEfficientEncoder === 'boolean' ? ob.powerEfficientEncoder : undefined,
+            active: typeof ob.active === 'boolean' ? ob.active : true,
         };
     }
 

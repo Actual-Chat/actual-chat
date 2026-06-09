@@ -82,7 +82,7 @@ import { pickRenderBackendKind } from './render-backend-selection';
 import { getSenderBackendMode } from '../../Services/Video/sender-backend-mode';
 import type { WebRtcCodecCategory } from '../../Services/Video/webrtc-codec-support';
 // Importing WebRtcSender also registers globalThis.voxtWebRtc (console harness).
-import { WebRtcSender } from '../../Services/Video/sender/webrtc/webrtc-recorder';
+import { WebRtcSender, type WebRtcDiagnostics } from '../../Services/Video/sender/webrtc/webrtc-recorder';
 
 const { debugLog, infoLog, warnLog, errorLog } = getLogs('VideoRecorder');
 const RECORDER_HEALTH_INTERVAL_MS = 1000;
@@ -983,10 +983,15 @@ export class VideoRecorder {
     // preview works during warmup) and hand it to the sender on openGate.
 
     private toWebRtcPreferredCodecs(audienceCodecs?: string[]): WebRtcCodecCategory[] | undefined {
-        const valid: WebRtcCodecCategory[] = ['h264', 'hevc', 'vp8', 'vp9', 'av1'];
-        const mapped = audienceCodecs?.filter((c): c is WebRtcCodecCategory =>
-            (valid as string[]).includes(c));
-        return mapped && mapped.length > 0 ? mapped : undefined;
+        // Honor the project's encoder-codec policy: only the ACTIVE encoder
+        // categories (codec-support → HEVC/H264; AV1/VP9 are deliberately
+        // disabled). `audienceCodecs` are viewers' DECODE caps — use them only to
+        // narrow/order within the allowed set, never to pull in a disabled codec.
+        const allowed = getActiveEncoderCategoriesByPriority() as WebRtcCodecCategory[];
+        if (!audienceCodecs || audienceCodecs.length === 0)
+            return allowed;
+        const byAudience = allowed.filter(c => audienceCodecs.includes(c));
+        return byAudience.length > 0 ? byAudience : allowed;
     }
 
     private async warmupWebRtc(chatId: string, audienceCodecs?: string[]): Promise<void> {
@@ -1570,6 +1575,12 @@ export class VideoRecorder {
     }
 
     public getDiagnostics(): OwnStreamDiagnostics {
+        // WebRTC backend: a separate worker/PCs own the pipeline, so RecorderStats
+        // is empty. Build diagnostics from the WebRtcSender's per-tier getStats()
+        // snapshot instead (real codec/resolution/bitrate/fps + HW-vs-SW per layer).
+        if (this.webRtcSender)
+            return this.buildWebRtcDiagnostics(this.webRtcSender.getDiagnostics());
+
         // Aggregate counters live on `RecorderStats` and are refreshed at
         // 1Hz by the recorder-health monitor. Per-layer breakdowns are NOT
         // tracked — the encode operator only mutates aggregates. The modal
@@ -1617,7 +1628,8 @@ export class VideoRecorder {
 
         return {
             mode: this.isScreenCasting ? 'screen' : this.isRecording ? 'camera' : 'none',
-            senderBackend: this.webRtcSender ? 'webrtc' : 'webcodecs',
+            // WebRTC backend early-returns above via buildWebRtcDiagnostics.
+            senderBackend: 'webcodecs',
             codec: this.currentCodecString,
             codecCategory,
             hardwareAccelerated: this.currentCodecHardwareAccel,
@@ -1699,6 +1711,99 @@ export class VideoRecorder {
             bytesPerSec: this.bytesPerSec,
             dropTracePerSecByStage: Object.fromEntries(
                 Array.from(this.dropPerSec.entries(), ([k, v]) => [String(k), v])),
+        };
+    }
+
+    // Maps the WebRtcSender's per-tier getStats() snapshot into the diagnostics
+    // shape the panel renders. Per-layer HW/SW + resolution + fps + bitrate come
+    // straight from the loopback PCs' outbound-rtp stats.
+    private buildWebRtcDiagnostics(d: WebRtcDiagnostics | null): OwnStreamDiagnostics {
+        const duration = this.startedAtMs > 0 ? (Date.now() - this.startedAtMs) / 1000 : 0;
+        const tiers = d?.tiers ?? [];
+        const top = tiers.length > 0 ? tiers[tiers.length - 1] : null;
+        const codec = d?.codec ?? this.currentCodecString;
+        const hwAccel = d?.hardwareAccelerated ?? false;
+        const layers: OwnLayerDiagnostics[] = tiers.map(t => ({
+            layerId: t.layerId,
+            outputResolution: `${t.width}x${t.height}`,
+            configuredBitrate: kbpsToBitsPerSecond(t.targetBitrateKbps),
+            actualBitrateKbps: t.bitrateKbps,
+            encodedFrames: t.framesEncoded,
+            droppedFrames: 0,
+            keyFrames: t.keyFramesEncoded,
+            medianEncodeTime: 0,
+            pureMedianEncodeTime: 0,
+            encoderHwAccel: t.hardwareAccelerated ? 'hardware' : 'software',
+            encoderState: t.active ? 'configured' : 'paused',
+            encoderReconfigureCount: 0,
+            encoderReplaceCount: 0,
+            encoderLastReconfigureSummary: t.encoderImplementation,
+            encoderLastReconfigureAgeMs: -1,
+            encoderLastErrorName: '',
+            encoderLastErrorMessage: '',
+            encoderLastErrorAgeMs: -1,
+            encoderErrorCount: 0,
+        }));
+        return {
+            mode: this.isScreenCasting ? 'screen' : 'camera',
+            senderBackend: 'webrtc',
+            codec,
+            codecCategory: codec ? getCodecCategory(codec) : '',
+            hardwareAccelerated: hwAccel,
+            inputResolution: this.cameraWidth > 0 ? `${this.cameraWidth}x${this.cameraHeight}` : 'N/A',
+            inputFramerate: top?.fps ?? this.peekBundlesPerSec(),
+            outputResolution: top ? `${top.width}x${top.height}` : 'N/A',
+            configuredBitrate: kbpsToBitsPerSecond(top?.targetBitrateKbps ?? 0),
+            actualBitrateKbps: d?.aggregateBitrateKbps ?? 0,
+            encodedFrames: top?.framesEncoded ?? 0,
+            droppedFrames: 0,
+            keyFrames: top?.keyFramesEncoded ?? 0,
+            layers,
+            medianEncodeTime: 0,
+            maxLayerEncodeTime: 0,
+            pureMedianEncodeTime: 0,
+            encoderHwAccel: hwAccel ? 'hardware' : 'software',
+            encoderState: this.isRecording ? 'configured' : 'unconfigured',
+            encoderReconfigureCount: 0,
+            encoderReplaceCount: 0,
+            // Surface the WebRTC encoder impl string here — this is where the
+            // HW-vs-SW / AV1-fallback shows up.
+            encoderLastReconfigureSummary: d?.encoderImplementation ?? '',
+            encoderLastReconfigureAgeMs: -1,
+            encoderLastErrorName: '',
+            encoderLastErrorMessage: '',
+            encoderLastErrorAgeMs: -1,
+            encoderErrorCount: 0,
+            duration,
+            cameraLabel: this.inputTrack?.label ?? null,
+            blurEnabled: false,
+            segmentationBackend: null,
+            segmentationAvgTime: null,
+            supportedEncoderCategories: this.supportedEncoderCategories,
+            status: this._recordingState,
+            orientation: null,
+            streaming: {
+                sentFrames: top?.framesEncoded ?? 0,
+                pendingFrames: 0,
+                streamRecreations: 0,
+                status: d?.encoderImplementation ?? 'webrtc',
+                lastError: '',
+            },
+            simulcast: tiers.length > 0 ? {
+                layerCount: tiers.length,
+                layers: tiers.map(t => ({ width: t.width, height: t.height, bitrateKbps: t.bitrateKbps })),
+            } : null,
+            dropTraceByStage: {},
+            activeLayerCount: tiers.filter(t => t.active).length,
+            receiverLayerCap: -1,
+            healthLayerCap: -1,
+            lastMaxLayerId: this.lastMaxLayerId,
+            targetFps: top?.fps ?? 0,
+            isSpeaking: this.isSpeaking,
+            bytesEncoded: 0,
+            bundlesPerSec: this.peekBundlesPerSec(),
+            bytesPerSec: (d?.aggregateBitrateKbps ?? 0) * 1000 / 8,
+            dropTracePerSecByStage: {},
         };
     }
 
