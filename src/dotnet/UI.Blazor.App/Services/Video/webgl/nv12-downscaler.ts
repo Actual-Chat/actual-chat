@@ -84,11 +84,18 @@ function align256(n: number): number {
     return (n + 255) & ~255;
 }
 
+// Max clientWaitSync polls before giving up and reading anyway (~ms each).
+const MAX_FENCE_POLLS = 200;
+
 interface Tier {
+    w: number;
+    h: number;
     yTex: WebGLTexture;
     yFbo: WebGLFramebuffer;
     uvTex: WebGLTexture;
     uvFbo: WebGLFramebuffer;
+    yPbo: WebGLBuffer;  // PIXEL_PACK_BUFFER, W×H
+    uvPbo: WebGLBuffer; // PIXEL_PACK_BUFFER, W×(H/2)
     yTmp: Uint8Array;   // W×H, bottom-up
     uvTmp: Uint8Array;  // W×(H/2), bottom-up
 }
@@ -117,14 +124,14 @@ export class WebGlNv12Downscaler implements DownscalerLike {
             throw new Error('WebGlNv12Downscaler: webgl2 context unavailable');
         this.gl = gl;
         this.initGl();
-        infoLog?.log('WebGlNv12Downscaler: ready (readback NV12)');
+        infoLog?.log('WebGlNv12Downscaler: ready (async PBO NV12)');
     }
 
     async process(input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]> {
         if (this.disposed || this.failed || !this.gl)
             return this.useFallback().process(input, layers);
         try {
-            return this.glProcess(this.gl, input, layers);
+            return await this.glProcess(this.gl, input, layers);
         } catch (e) {
             warnLog?.log('WebGlNv12Downscaler.process failed — falling back to metadata:', e);
             this.failed = true;
@@ -132,42 +139,78 @@ export class WebGlNv12Downscaler implements DownscalerLike {
         }
     }
 
-    private glProcess(gl: WebGL2RenderingContext, input: VideoFrame, layers: readonly LayerSpec[]): VideoFrame[] {
+    private async glProcess(gl: WebGL2RenderingContext, input: VideoFrame, layers: readonly LayerSpec[]): Promise<VideoFrame[]> {
         const results = new Array<VideoFrame | null>(layers.length).fill(null);
         // Upload the source once; every tier downscales directly from it (bilinear).
         gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE,
             input as unknown as TexImageSource);
 
-        for (let i = 0; i < layers.length; i++) {
-            const { width: w, height: h } = layers[i];
+        // Issue every tier's draws + readPixels-into-PBO (non-blocking), then one
+        // fence — so the GPU does all reads while the worker yields, instead of
+        // blocking ~18 ms/frame in a synchronous readPixels.
+        const tiers: Tier[] = [];
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
+        for (const { width: w, height: h } of layers) {
             if ((w & 3) !== 0 || (h & 1) !== 0)
                 throw new Error(`WebGlNv12Downscaler: tier ${w}x${h} not packable (W%4||H%2)`);
-            results[i] = this.renderTier(gl, input.timestamp, w, h);
+            const tier = this.getTier(gl, w, h);
+            this.issueTier(gl, tier);
+            tiers.push(tier);
         }
+        await this.awaitFence(gl);
+        for (const [i, tier] of tiers.entries())
+            results[i] = this.buildTier(gl, tier, input.timestamp);
         return results as VideoFrame[];
     }
 
-    private renderTier(gl: WebGL2RenderingContext, timestamp: number, w: number, h: number): VideoFrame {
-        const tier = this.getTier(gl, w, h);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
-
-        // Y pass → (W/4)×H, read back W×H bytes (bottom-up).
+    // Render Y + UV and start the async readback into this tier's PBOs.
+    private issueTier(gl: WebGL2RenderingContext, tier: Tier): void {
+        const { w, h } = tier;
         gl.useProgram(this.yProgram);
         gl.uniform1f(this.yOutW, w);
         gl.bindFramebuffer(gl.FRAMEBUFFER, tier.yFbo);
         gl.viewport(0, 0, w / 4, h);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
-        gl.readPixels(0, 0, w / 4, h, gl.RGBA, gl.UNSIGNED_BYTE, tier.yTmp);
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, tier.yPbo);
+        gl.readPixels(0, 0, w / 4, h, gl.RGBA, gl.UNSIGNED_BYTE, 0);
 
-        // UV pass → (W/4)×(H/2), read back W×(H/2) bytes (bottom-up).
         gl.useProgram(this.uvProgram);
         gl.uniform1f(this.uvOutW, w);
         gl.bindFramebuffer(gl.FRAMEBUFFER, tier.uvFbo);
         gl.viewport(0, 0, w / 4, h / 2);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
-        gl.readPixels(0, 0, w / 4, h / 2, gl.RGBA, gl.UNSIGNED_BYTE, tier.uvTmp);
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, tier.uvPbo);
+        gl.readPixels(0, 0, w / 4, h / 2, gl.RGBA, gl.UNSIGNED_BYTE, 0);
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+    }
+
+    // Yield the worker until the GPU readback completes, instead of blocking.
+    private async awaitFence(gl: WebGL2RenderingContext): Promise<void> {
+        const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+        if (!sync) return; // unsupported → getBufferSubData below blocks instead
+        gl.flush();
+        try {
+            for (let i = 0; i < MAX_FENCE_POLLS; i++) {
+                const s = gl.clientWaitSync(sync, 0, 0);
+                if (s === gl.ALREADY_SIGNALED || s === gl.CONDITION_SATISFIED)
+                    return;
+                await new Promise<void>(r => setTimeout(r, 1));
+            }
+        } finally {
+            gl.deleteSync(sync);
+        }
+    }
+
+    // Pull the readback out of the PBOs and assemble the NV12 VideoFrame.
+    private buildTier(gl: WebGL2RenderingContext, tier: Tier, timestamp: number): VideoFrame {
+        const { w, h } = tier;
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, tier.yPbo);
+        gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, tier.yTmp);
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, tier.uvPbo);
+        gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, tier.uvTmp);
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
 
         // Assemble NV12 (256-aligned stride), reversing rows: readPixels is
         // bottom-up, NV12 is top-down.
@@ -200,12 +243,22 @@ export class WebGlNv12Downscaler implements DownscalerLike {
         const uvTex = this.fboTexture(gl, w / 4, h / 2);
         const uvFbo = this.attachFbo(gl, uvTex);
         const tier: Tier = {
-            yTex, yFbo, uvTex, uvFbo,
+            w, h, yTex, yFbo, uvTex, uvFbo,
+            yPbo: this.packBuffer(gl, w * h),
+            uvPbo: this.packBuffer(gl, w * (h / 2)),
             yTmp: new Uint8Array(w * h),
             uvTmp: new Uint8Array(w * (h / 2)),
         };
         this.tiers.set(key, tier);
         return tier;
+    }
+
+    private packBuffer(gl: WebGL2RenderingContext, size: number): WebGLBuffer {
+        const buf = gl.createBuffer();
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, buf);
+        gl.bufferData(gl.PIXEL_PACK_BUFFER, size, gl.STREAM_READ);
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+        return buf;
     }
 
     private fboTexture(gl: WebGL2RenderingContext, w: number, h: number): WebGLTexture {
@@ -254,6 +307,8 @@ export class WebGlNv12Downscaler implements DownscalerLike {
                 gl.deleteFramebuffer(t.yFbo);
                 gl.deleteTexture(t.uvTex);
                 gl.deleteFramebuffer(t.uvFbo);
+                gl.deleteBuffer(t.yPbo);
+                gl.deleteBuffer(t.uvPbo);
             }
             if (this.sourceTexture) gl.deleteTexture(this.sourceTexture);
             if (this.positionBuffer) gl.deleteBuffer(this.positionBuffer);
