@@ -21,7 +21,7 @@
     @apply overflow-y-hidden;
 }
 .right-panel > .c-panel-content > .c-chat-info {
-    @apply flex-y gap-y-1;
+    @apply flex-none flex-y gap-y-1;
     @apply overflow-hidden;
     padding: calc(0.5rem - 0.5rem * var(--rp-collapse));
     padding-top: calc(1rem - 1rem * var(--rp-collapse));
@@ -315,24 +315,17 @@ body.hoverable .right-panel-chat-info-item.hovered:hover {
     line-height: 2.5rem;
     opacity: clamp(0, calc((var(--rp-collapse) - 0.5) * 2), 1);
 }
-/* Smooth scroll-linked collapse: animate the driver variable itself, so the
-   iOS Safari momentum-scroll batches (sparse scroll events) interpolate into a
-   continuous motion. Only while actively scroll-collapsing — drag stays 1:1. */
-.right-panel.collapsing {
-    transition: --rp-collapse .12s linear;
-}
-/* During an active collapse session (drag or scroll) the dependent properties
-   must follow the (already-smoothed) variable instantly, with no transitions of
-   their own fighting it. Outside a session their transitions still drive the
-   expanded/collapsed-header avatar feature. */
+/* While dragging or during the frame-driven snap the dependent properties must follow
+   the variable instantly — their own transitions would lag and stall the motion. Outside
+   these the transitions still drive the expanded/collapsed-header avatar feature. */
 .right-panel.dragging > .c-header,
 .right-panel.dragging > .c-header *,
 .right-panel.dragging > .c-panel-content,
 .right-panel.dragging > .c-panel-content *,
-.right-panel.collapsing > .c-header,
-.right-panel.collapsing > .c-header *,
-.right-panel.collapsing > .c-panel-content,
-.right-panel.collapsing > .c-panel-content * {
+.right-panel.snapping > .c-header,
+.right-panel.snapping > .c-header *,
+.right-panel.snapping > .c-panel-content,
+.right-panel.snapping > .c-panel-content * {
     transition: none !important;
 }
 .right-panel.collapsed > .c-header > .c-center > .c-buttons {
@@ -530,7 +523,8 @@ body.hoverable .content-list-rows .c-file-row:hover,
 }
 .content-list-links .link-preview:not(.local-link) .c-info {
     @apply justify-center gap-y-0.5;
-    @apply py-0 pr-16;
+    @apply py-0 pr-8;
+    @apply truncate;
 }
 .content-list-links .link-preview:not(.local-link) .c-description {
     @apply hidden;
