@@ -3,16 +3,20 @@
 // internal `PrepareCpuFrame → ConvertAndScale` (GPU→CPU readback + libyuv scale
 // + RGBA→NV12). The readback is unavoidable from JS, but if we hand the encoder
 // a frame that is ALREADY NV12 at exactly the tier size, that libyuv scale +
-// convert collapses to ~nothing, and the per-tier readback shrinks from a full
-// ceiling RGBA buffer (the `metadata` downscaler keeps coded=ceiling) to a
-// target-size NV12 buffer. We do the downscale + RGB→YUV on the GPU and map a
-// small buffer instead of running libyuv per tier on the CPU.
+// convert collapses (device trace 114921 vs 153125: ConvertAndScale 120→2 ms).
+//
+// Contention-minimized layout: each lower tier renders Y *and* UV in ONE render
+// pass to a single R8 texture sized W × (H + H/2) — the top H rows hold the Y
+// plane, the bottom H/2 rows hold the interleaved UV plane — followed by ONE
+// copyTextureToBuffer. That single combined target is already laid out as NV12
+// (Y rows then UV rows at the same stride), so one map + one VideoFrame finish
+// the tier. One pass + one copy per tier (vs two passes + two copies) keeps the
+// RenderThread / QueueSubmit load down. All tiers go through one command encoder
+// → one queue.submit per frame.
 //
 // Top tier (matching the input's display dims) passes through unchanged (RGBA),
-// exactly like the WebGL downscaler — its encoder still reads+converts, but the
-// win is on the lower tiers, which today each read back the full ceiling.
-//
-// If WebGPU is unavailable (or the device is lost), every call delegates to a
+// like the WebGL downscaler — the win is on the lower tiers. If WebGPU is
+// unavailable (or the device is lost), every call delegates to a
 // MetadataDownscaler so capture keeps working.
 
 import { getLogs } from 'logging';
@@ -22,42 +26,40 @@ import type { DownscalerLike, LayerSpec } from '../operators/downscale';
 
 const { infoLog, warnLog } = getLogs('VideoWebGPU');
 
-// Fullscreen quad (triangle-strip, 4 verts). Emits a uv varying in [0,1] with
-// the image upright for the external-texture sample (flip if the preview shows
-// upside-down).
+// One pass → a combined R8 target W×(3H/2). Region split by builtin position:
+// rows [0,H) = Y (full-res sample), rows [H,3H/2) = NV12-interleaved UV (even x =
+// Cb/U, odd x = Cr/V, chroma sample at half-res). BT.709 limited range. Builtin
+// `position` gives target pixel centers; uv = pos/size is upright (matches blur).
 const FULLSCREEN_VS = /* wgsl */`
-struct VOut { @builtin(position) pos: vec4f, @location(0) uv: vec2f };
-@vertex fn vs(@builtin(vertex_index) i: u32) -> VOut {
+@vertex fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {
   let x = f32(i & 1u);
   let y = f32((i >> 1u) & 1u);
-  var o: VOut;
-  o.pos = vec4f(x * 2.0 - 1.0, y * 2.0 - 1.0, 0.0, 1.0);
-  o.uv = vec2f(x, 1.0 - y);
-  return o;
+  return vec4f(x * 2.0 - 1.0, y * 2.0 - 1.0, 0.0, 1.0);
 }
 `;
 
-// BT.709 limited-range RGB(0..1) → Y (R8). textureSampleBaseClampToEdge samples
-// the full external frame at the target grid → bilinear downscale.
-const Y_FS = /* wgsl */`
+const NV12_FS = /* wgsl */`
 @group(0) @binding(0) var src: texture_external;
 @group(0) @binding(1) var s: sampler;
-@fragment fn fs(@location(0) uv: vec2f) -> @location(0) vec4f {
-  let c = textureSampleBaseClampToEdge(src, s, uv).rgb;
-  let y = (16.0 + 46.5594*c.r + 156.6294*c.g + 15.8112*c.b) / 255.0;
-  return vec4f(y, 0.0, 0.0, 1.0);
-}
-`;
-
-// BT.709 limited-range RGB → Cb,Cr (RG8, NV12 interleave order = U then V).
-const UV_FS = /* wgsl */`
-@group(0) @binding(0) var src: texture_external;
-@group(0) @binding(1) var s: sampler;
-@fragment fn fs(@location(0) uv: vec2f) -> @location(0) vec4f {
-  let c = textureSampleBaseClampToEdge(src, s, uv).rgb;
+@group(0) @binding(2) var<uniform> dims: vec4f;   // (W, H, _, _)
+@fragment fn fs(@builtin(position) pos: vec4f) -> @location(0) vec4f {
+  let W = dims.x;
+  let H = dims.y;
+  let x = pos.x;
+  let y = pos.y;
+  if (y < H) {
+    let c = textureSampleBaseClampToEdge(src, s, vec2f(x / W, y / H)).rgb;
+    let yv = (16.0 + 46.5594*c.r + 156.6294*c.g + 15.8112*c.b) / 255.0;
+    return vec4f(yv, 0.0, 0.0, 1.0);
+  }
+  let cy = y - H;                      // [0, H/2)
+  let cx = floor(x * 0.5);             // chroma column [0, W/2)
+  let su = vec2f((cx + 0.5) / (W * 0.5), (cy + 0.5) / (H * 0.5));
+  let c = textureSampleBaseClampToEdge(src, s, su).rgb;
   let cb = (128.0 - 25.6642*c.r - 86.3358*c.g + 112.0*c.b) / 255.0;
   let cr = (128.0 + 112.0*c.r - 101.7303*c.g - 10.2697*c.b) / 255.0;
-  return vec4f(cb, cr, 0.0, 1.0);
+  let v = select(cb, cr, (u32(x) & 1u) == 1u);
+  return vec4f(v, 0.0, 0.0, 1.0);
 }
 `;
 
@@ -66,13 +68,11 @@ function align256(n: number): number {
 }
 
 interface TierResources {
-    yTex: GPUTexture;
-    uvTex: GPUTexture;
-    yView: GPUTextureView;
-    uvView: GPUTextureView;
-    buffer: GPUBuffer;
-    yStride: number;
-    uvStride: number;
+    tex: GPUTexture;          // combined NV12-layout R8 target, W × (3H/2)
+    view: GPUTextureView;
+    dimsBuf: GPUBuffer;       // uniform (W, H)
+    buffer: GPUBuffer;        // mappable NV12 readback
+    stride: number;          // Y & UV plane stride (256-aligned)
     uvOffset: number;
 }
 
@@ -87,8 +87,7 @@ export class WebGpuDownscaler implements DownscalerLike {
     private device: GPUDevice | null = null;
     private sampler: GPUSampler | null = null;
     private bgl: GPUBindGroupLayout | null = null;
-    private yPipeline: GPURenderPipeline | null = null;
-    private uvPipeline: GPURenderPipeline | null = null;
+    private pipeline: GPURenderPipeline | null = null;
     private initState: 'pending' | 'ready' | 'failed' = 'pending';
     private lostDisposer: (() => void) | null = null;
     private readonly tiers = new Map<string, TierResources>();
@@ -120,64 +119,50 @@ export class WebGpuDownscaler implements DownscalerLike {
         const inH = input.displayHeight || input.codedHeight;
 
         const ext = device.importExternalTexture({ source: input });
-        const bindGroup = device.createBindGroup({
-            layout: this.bgl!,
-            entries: [
-                { binding: 0, resource: ext },
-                { binding: 1, resource: this.sampler! },
-            ],
-        });
         const encoder = device.createCommandEncoder();
         const pending: { i: number; w: number; h: number; tier: TierResources }[] = [];
 
         for (let i = topIdx; i >= 0; i--) {
             const { width: w, height: h } = layers[i];
-            // Ceiling tier (matches input dims) — pass through RGBA, like WebGL.
             if (w === inW && h === inH) {
-                results[i] = input;
+                results[i] = input; // ceiling passthrough (RGBA)
                 continue;
             }
-            // NV12 needs even dims; odd would shear the chroma plane.
             if ((w & 1) !== 0 || (h & 1) !== 0)
                 throw new Error(`WebGpuDownscaler: odd tier dims ${w}x${h}`);
 
             const tier = this.getTier(w, h);
-            const yPass = encoder.beginRenderPass({
-                colorAttachments: [{ view: tier.yView, loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 1 } }],
+            const bindGroup = device.createBindGroup({
+                layout: this.bgl!,
+                entries: [
+                    { binding: 0, resource: ext },
+                    { binding: 1, resource: this.sampler! },
+                    { binding: 2, resource: { buffer: tier.dimsBuf } },
+                ],
             });
-            yPass.setPipeline(this.yPipeline!);
-            yPass.setBindGroup(0, bindGroup);
-            yPass.draw(4);
-            yPass.end();
-
-            const uvPass = encoder.beginRenderPass({
-                colorAttachments: [{ view: tier.uvView, loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 1 } }],
+            const pass = encoder.beginRenderPass({
+                colorAttachments: [{ view: tier.view, loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 1 } }],
             });
-            uvPass.setPipeline(this.uvPipeline!);
-            uvPass.setBindGroup(0, bindGroup);
-            uvPass.draw(4);
-            uvPass.end();
+            pass.setPipeline(this.pipeline!);
+            pass.setBindGroup(0, bindGroup);
+            pass.draw(4);
+            pass.end();
 
+            // The combined target is already NV12-laid-out (Y rows then UV rows
+            // at the same stride) — one copy covers both planes.
             encoder.copyTextureToBuffer(
-                { texture: tier.yTex },
-                { buffer: tier.buffer, offset: 0, bytesPerRow: tier.yStride, rowsPerImage: h },
-                { width: w, height: h, depthOrArrayLayers: 1 });
-            encoder.copyTextureToBuffer(
-                { texture: tier.uvTex },
-                { buffer: tier.buffer, offset: tier.uvOffset, bytesPerRow: tier.uvStride, rowsPerImage: h / 2 },
-                { width: w / 2, height: h / 2, depthOrArrayLayers: 1 });
+                { texture: tier.tex },
+                { buffer: tier.buffer, offset: 0, bytesPerRow: tier.stride, rowsPerImage: h + h / 2 },
+                { width: w, height: h + h / 2, depthOrArrayLayers: 1 });
 
             pending.push({ i, w, h, tier });
         }
 
         device.queue.submit([encoder.finish()]);
 
-        // Overlap the per-tier GPU→CPU maps (this IS the readback we trade libyuv
-        // for) — issue all copies above, then await all maps together.
         await Promise.all(pending.map(async p => {
             await p.tier.buffer.mapAsync(GPUMapMode.READ);
             const range = p.tier.buffer.getMappedRange();
-            // VideoFrame(BufferSource) copies synchronously — safe to unmap after.
             results[p.i] = new VideoFrame(range, {
                 format: 'NV12',
                 codedWidth: p.w,
@@ -185,8 +170,8 @@ export class WebGpuDownscaler implements DownscalerLike {
                 timestamp: input.timestamp,
                 colorSpace: NV12_COLORSPACE,
                 layout: [
-                    { offset: 0, stride: p.tier.yStride },
-                    { offset: p.tier.uvOffset, stride: p.tier.uvStride },
+                    { offset: 0, stride: p.tier.stride },
+                    { offset: p.tier.uvOffset, stride: p.tier.stride },
                 ],
             });
             p.tier.buffer.unmap();
@@ -201,30 +186,27 @@ export class WebGpuDownscaler implements DownscalerLike {
         if (existing) return existing;
 
         const device = this.device!;
-        const yStride = align256(w);            // R8: 1 byte/px
-        const uvStride = align256(w);           // RG8 half-res row = (w/2)*2 = w bytes
-        const uvOffset = yStride * h;           // 256-aligned (yStride is)
-        const bufferSize = uvOffset + uvStride * (h / 2);
+        const combinedH = h + h / 2;
+        const stride = align256(w);          // R8: 1 byte/px; Y & UV share this stride
+        const uvOffset = stride * h;         // UV plane begins at row H (256-aligned)
+        const bufferSize = stride * combinedH;
 
-        const yTex = device.createTexture({
-            size: { width: w, height: h },
+        const tex = device.createTexture({
+            size: { width: w, height: combinedH },
             format: 'r8unorm',
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
         });
-        const uvTex = device.createTexture({
-            size: { width: w / 2, height: h / 2 },
-            format: 'rg8unorm',
-            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+        const dimsBuf = device.createBuffer({
+            size: 16,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
+        device.queue.writeBuffer(dimsBuf, 0, new Float32Array([w, h, 0, 0]));
         const buffer = device.createBuffer({
             size: bufferSize,
             usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
         });
         const tier: TierResources = {
-            yTex, uvTex,
-            yView: yTex.createView(),
-            uvView: uvTex.createView(),
-            buffer, yStride, uvStride, uvOffset,
+            tex, view: tex.createView(), dimsBuf, buffer, stride, uvOffset,
         };
         this.tiers.set(key, tier);
         return tier;
@@ -239,25 +221,19 @@ export class WebGpuDownscaler implements DownscalerLike {
                 entries: [
                     { binding: 0, visibility: GPUShaderStage.FRAGMENT, externalTexture: {} },
                     { binding: 1, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
+                    { binding: 2, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
                 ],
             });
             const layout = device.createPipelineLayout({ bindGroupLayouts: [this.bgl] });
-            const vs = device.createShaderModule({ code: FULLSCREEN_VS });
-            this.yPipeline = device.createRenderPipeline({
+            this.pipeline = device.createRenderPipeline({
                 layout,
-                vertex: { module: vs, entryPoint: 'vs' },
-                fragment: { module: device.createShaderModule({ code: Y_FS }), entryPoint: 'fs', targets: [{ format: 'r8unorm' }] },
-                primitive: { topology: 'triangle-strip' },
-            });
-            this.uvPipeline = device.createRenderPipeline({
-                layout,
-                vertex: { module: vs, entryPoint: 'vs' },
-                fragment: { module: device.createShaderModule({ code: UV_FS }), entryPoint: 'fs', targets: [{ format: 'rg8unorm' }] },
+                vertex: { module: device.createShaderModule({ code: FULLSCREEN_VS }), entryPoint: 'vs' },
+                fragment: { module: device.createShaderModule({ code: NV12_FS }), entryPoint: 'fs', targets: [{ format: 'r8unorm' }] },
                 primitive: { topology: 'triangle-strip' },
             });
             this.lostDisposer = WebGPUManager.addLostListener(() => this.markFailed());
             this.initState = 'ready';
-            infoLog?.log('WebGpuDownscaler: device + NV12 pipelines ready');
+            infoLog?.log('WebGpuDownscaler: device + single-pass NV12 pipeline ready');
         } catch (e) {
             warnLog?.log('WebGpuDownscaler: init failed — using metadata fallback:', e);
             this.initState = 'failed';
@@ -266,8 +242,7 @@ export class WebGpuDownscaler implements DownscalerLike {
 
     private markFailed(): void {
         this.initState = 'failed';
-        this.yPipeline = null;
-        this.uvPipeline = null;
+        this.pipeline = null;
         this.device = null;
     }
 
@@ -281,8 +256,8 @@ export class WebGpuDownscaler implements DownscalerLike {
         this.lostDisposer?.();
         this.lostDisposer = null;
         for (const t of this.tiers.values()) {
-            try { t.yTex.destroy(); } catch { /* ignore */ }
-            try { t.uvTex.destroy(); } catch { /* ignore */ }
+            try { t.tex.destroy(); } catch { /* ignore */ }
+            try { t.dimsBuf.destroy(); } catch { /* ignore */ }
             try { t.buffer.destroy(); } catch { /* ignore */ }
         }
         this.tiers.clear();
