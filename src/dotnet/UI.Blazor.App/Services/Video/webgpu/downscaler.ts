@@ -32,7 +32,7 @@ import { WebGPUManager } from './manager';
 import { MetadataDownscaler } from '../metadata/downscaler';
 import type { DownscalerLike, LayerSpec } from '../operators/downscale';
 
-const { warnLog } = getLogs('VideoWebGPU');
+const { infoLog, warnLog } = getLogs('VideoWebGPU');
 
 const FULLSCREEN_VS = /* wgsl */`
 struct VOut { @builtin(position) pos: vec4f, @location(0) uv: vec2f };
@@ -462,7 +462,7 @@ export class WebGpuDownscaler implements DownscalerLike {
             this.useCompute = this.forceRender ? false : this.tryBuildComputePipelines(device);
             this.lostDisposer = WebGPUManager.addLostListener(() => this.markFailed());
             this.initState = 'ready';
-            warnLog?.log(`WebGpuDownscaler: ready (path=${this.useCompute ? 'compute' : 'render'})`);
+            infoLog?.log(`WebGpuDownscaler: ready (path=${this.useCompute ? 'compute' : 'render'})`);
         } catch (e) {
             warnLog?.log('WebGpuDownscaler: init failed — using metadata fallback:', e);
             this.initState = 'failed';

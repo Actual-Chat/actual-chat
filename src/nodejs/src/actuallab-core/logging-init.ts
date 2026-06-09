@@ -88,6 +88,14 @@ export async function initWorkerLogging(): Promise<void> {
         reset(minLevels, false);
 }
 
+// Apply a snapshot of overrides into Log.minLevels. Used to seed a worker with
+// the main thread's levels at startup (before module loads freeze their loggers
+// at the then-current level). Does not persist.
+export function applyLogLevelOverrides(levels: Record<string, LogLevel>): void {
+    for (const [scope, level] of Object.entries(levels))
+        Log.minLevels.set(scope, level);
+}
+
 export class LogLevelController {
     constructor(private minLevels: Map<string, LogLevel>)
     { }

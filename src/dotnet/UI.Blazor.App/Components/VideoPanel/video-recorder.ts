@@ -262,7 +262,13 @@ export type VideoRecordingState = 'stopped' | 'warming-up' | 'starting' | 'recor
 // Each VideoRecorder owns its own worker so a camera + screencast can
 // run side-by-side without overwriting each other's state.
 function createRecorderWorker(): Worker {
-    const workerPath = Versioning.mapPath('/dist/videoRecorderWorker.js');
+    let workerPath = Versioning.mapPath('/dist/videoRecorderWorker.js');
+    // Seed the worker with the main thread's logLevel overrides so worker-scope
+    // logs (VideoWebGPU/VideoPipeline) honor a console override; must ride
+    // creation since the worker freezes loggers at module load.
+    const levels = (globalThis as { logLevels?: { list(): Record<string, number> } }).logLevels?.list();
+    if (levels && Object.keys(levels).length > 0)
+        workerPath += `?ll=${encodeURIComponent(JSON.stringify(levels))}`;
     infoLog?.log('Creating video recorder worker from:', workerPath);
     const worker = new Worker(workerPath, { type: 'module' });
     worker.onerror = (e) => errorLog?.log('Video recorder worker error:', e);

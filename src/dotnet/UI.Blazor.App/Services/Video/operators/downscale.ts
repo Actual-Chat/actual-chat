@@ -13,7 +13,7 @@ import { parallelMap } from './parallel-map';
 import type { PreviewSink } from './preview-forwarder';
 import type { LayerLadderController } from '../sender/layer-ladder-controller';
 
-const { warnLog } = getLogs('VideoPipeline');
+const { infoLog, warnLog } = getLogs('VideoPipeline');
 
 export interface LayerSpec {
     width: number;
@@ -210,7 +210,7 @@ export function normalizeDownscale(opts: NormalizeDownscaleOptions): PipeOperato
                 // is unavailable / its context was lost.
                 if (!backendLogged) {
                     backendLogged = true;
-                    warnLog?.log(`normalizeDownscale: downscaler backend = ${downscaler.constructor.name} (mode '${mode}')`);
+                    infoLog?.log(`normalizeDownscale: downscaler backend = ${downscaler.constructor.name} (mode '${mode}')`);
                 }
                 const processPromise = downscaler.process(ceiling, layers);
                 let timerHandle: unknown = null;
