@@ -159,16 +159,27 @@ export class RightPanelHeader {
 
         const isExpanded = this.header.classList.contains('expanded-header');
 
+        // While the header is collapsed (scrolled compact), the avatar is inert.
+        const rightPanel = this.header.closest('.right-panel');
+        if (!isExpanded && rightPanel?.classList.contains('collapsed'))
+            return;
+
         if (!isExpanded) {
             // show avatar
             this.header.classList.add('expanded-header');
             this.blazorRef.invokeMethodAsync('FullSizeAvatarHandler', true);
         } else {
-            // hide avatar
-            this.header.addEventListener('transitionend', this.onTransitionEndBound);
-            this.header.classList.add('collapsed-header');
-            this.header.classList.remove('expanded-header');
+            this.closeFullScreenAvatar();
         }
+    };
+
+    private closeFullScreenAvatar = () => {
+        if (!this.header.classList.contains('expanded-header'))
+            return;
+
+        this.header.addEventListener('transitionend', this.onTransitionEndBound);
+        this.header.classList.add('collapsed-header');
+        this.header.classList.remove('expanded-header');
     };
 
     private onTransitionEndBound = (e: TransitionEvent) => this.onTransitionEnd(e);
