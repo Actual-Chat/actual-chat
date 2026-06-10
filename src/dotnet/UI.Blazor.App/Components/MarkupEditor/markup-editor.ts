@@ -298,11 +298,16 @@ export class MarkupEditor {
     }
 
     public beginMention() {
-        const mentionList = document.querySelector('.mention-list');
-        if (mentionList == null)
+        const mentionListWrapper = document.querySelector('.mention-list-wrapper');
+        if (mentionListWrapper == null)
             return;
 
-        const isMentionListOpen = !mentionList.classList.contains('non-visible');
+        if (!this.hasFocus()) {
+            this.focus();
+            this.restoreSelection();
+        }
+
+        const isMentionListOpen = !mentionListWrapper.classList.contains('non-visible');
         const { selection, range, caretPosition, prevChar } = this.getPrevCharInfo();
         let newCaretPosition = caretPosition;
         if (!isMentionListOpen) {
