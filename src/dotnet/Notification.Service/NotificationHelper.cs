@@ -3,8 +3,8 @@ namespace ActualChat.Notification;
 public static class NotificationHelper
 {
     public static string GetTitle(Chat.Chat chat, AuthorFull author)
-        => chat.Kind switch {
-            ChatKind.Group or ChatKind.Place or ChatKind.Thread => $"{author.Avatar.Name} @ {chat.Title}",
+        => chat.Id.GetThreadOutermostParentOrSelf().Kind switch {
+            ChatKind.Group or ChatKind.Place => $"{author.Avatar.Name} @ {chat.Title}",
             ChatKind.Peer => $"{author.Avatar.Name}",
             _ => throw new ArgumentOutOfRangeException($"{nameof(chat)}.{nameof(chat.Kind)}", chat.Kind, null),
         };

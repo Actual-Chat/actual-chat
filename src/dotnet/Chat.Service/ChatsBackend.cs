@@ -989,12 +989,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             else if (chatId.Kind == ChatKind.Thread) {
                 ownerId.Require("Command.OwnerId");
                 var threadChatId = (ThreadChatId)chatId;
-                var author = await AuthorsBackend
+                // Threads carry no roles of their own; just ensure the creator is a member of the parent chat.
+                await AuthorsBackend
                     .GetByUserId(threadChatId.GetOutermostParent(), ownerId, RequestedAuthorKind.Full, cancellationToken)
                     .Require()
                     .ConfigureAwait(false);
-
-                await CreateOwnerRole(chatId, author).ConfigureAwait(false);
             }
             else
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
