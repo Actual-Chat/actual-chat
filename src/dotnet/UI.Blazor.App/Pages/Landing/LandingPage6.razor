@@ -2,7 +2,7 @@
     <img draggable="false" src="/dist/images/landing/landing-page-noise.svg" alt="">
 </div>
 <div class="c-content">
-    <div class="title-text">Privacy & Security</div>
+    <div class="title-text">Security & Privacy</div>
 
     @* Row 1 *@
     <div class="c-row c-first">
@@ -32,11 +32,27 @@
         </LandingImageCard>
     </div>
     <div class="c-description">
+        @if (ScreenSize.IsNarrow()) {
+            <span class="c-text page-6-handwrite">
+                No followers.
+            </span>
+            <span class="c-text page-6-handwrite">
+                No feeds.
+            </span>
+            <span class="c-text page-6-handwrite">
+                No noise.
+            </span>
+        } else {
+            <span class="c-text page-6-handwrite">
+                No followers. No feeds. No noise.
+            </span>
+        }
         <div class="c-text">
-            No followers. No noise.
-        </div>
-        <div class="c-text">
-            Voxt is built only for people you actually know and trust.
+            Voxt is built for people you actually know and trust.
         </div>
     </div>
 </div>
+
+@code {
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+}

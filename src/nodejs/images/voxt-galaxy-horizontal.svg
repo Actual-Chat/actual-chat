@@ -65,9 +65,9 @@
         <pattern id="pattern0_24081_2442" patternContentUnits="objectBoundingBox" width="0.151613" height="0.282452">
             <use xlink:href="#image0_24081_2442" transform="scale(0.000322581 0.000600962)"/>
         </pattern>
-        <radialGradient id="paint0_radial_24081_2442" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(737 418.5) rotate(-90) scale(418.5 689)">
-            <stop stop-color="#0153AC"/>
-            <stop offset="1" stop-color="#0C003D"/>
+        <radialGradient id="paint0_radial_24081_2442" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(713 424.48) scale(3436.09 1742.16)">
+            <stop stop-color="#0036A3"/>
+            <stop offset="1" stop-color="#FF3880"/>
         </radialGradient>
         <linearGradient id="paint1_linear_24081_2442" x1="696.351" y1="397.365" x2="551.2" y2="108.577" gradientUnits="userSpaceOnUse">
             <stop stop-color="#78B8FF"/>

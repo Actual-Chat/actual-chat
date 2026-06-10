@@ -1,5 +1,11 @@
 @{
-    var isNarrow = ScreenSize.IsNarrow();
+    var items = new (string Title, int N)[] {
+        ("Voice + Text. Together.", 1),
+        ("Video & Screencast", 2),
+        ("Read and listen anytime", 3),
+        ("Conversation Summaries", 4),
+        ("Groups & Places", 5),
+    };
 }
 
 <div class="landing-page-noise">
@@ -8,151 +14,28 @@
 <div class="c-content">
     <div class="title-text">How @CoreConstants.AppName can help you?</div>
 
-    @* Row 1 *@
-    <div class="c-row c-first">
-        <div class="colored-card card-1">
-            <div class="c-wrapper">
-                <div class="landing-page-noise">
-                    <img draggable="false" src="/dist/images/landing/landing-page-noise-small.svg" alt="">
-                </div>
-                <div class="landing-card-video-container">
-                    <video hidden preload="none" muted playsinline loop class="landing-card-video"
-                           data-src-webm="/dist/images/webonly/unmatched-flexibility.webm"
-                           data-src-mp4="/dist/images/webonly/unmatched-flexibility.mp4">
-                    </video>
-                    <img draggable="false" src="/dist/images/webonly/unmatched-flexibility-poster.png"
-                         alt="" class="landing-card-video-plug">
-                </div>
-            </div>
-        </div>
-        <div class="c-column">
-            <div class="c-description">
-                <div class="c-title">Voice + Text, Combined</div>
-                <div class="c-card-image">
-                    <img draggable="false" src="/dist/images/landing/page-3-card-1.svg" alt="">
-                </div>
-            </div>
-        </div>
-    </div>
-
-    @* Row 2 *@
-    <div class="c-row">
-        @if (isNarrow) {
-            <div class="colored-card card-2">
+    @for (var i = 0; i < items.Length; i++) {
+        var item = items[i];
+        var parity = i % 2 == 0 ? "odd" : "even";
+        <div class="c-row @parity">
+            <div class="colored-card">
                 <div class="c-wrapper">
-                    <div class="landing-page-noise">
-                        <img draggable="false" src="/dist/images/landing/landing-page-noise-small.svg" alt="">
-                    </div>
                     <div class="landing-card-video-container">
-                        <video hidden preload="none" muted playsinline loop class="landing-card-video"
-                               data-src-webm="/dist/images/webonly/elevate-conversations.webm"
-                               data-src-mp4="/dist/images/webonly/elevate-conversations.mp4">
-                        </video>
-                        <img draggable="false" src="/dist/images/webonly/elevate-conversations-poster.png"
+                        <img draggable="false" src="/dist/images/landing/page-4-image-@(item.N).svg"
                              alt="" class="landing-card-video-plug">
                     </div>
                 </div>
             </div>
-        }
-        <div class="c-column">
-            <div class="c-description">
-                <div class="c-title">Read and Replay anything</div>
-                <div class="c-card-image">
-                    <img draggable="false" src="/dist/images/landing/page-3-card-2.svg" alt="">
+            <div class="c-column">
+                <div class="c-description">
+                    <div class="c-title">@item.Title</div>
+                    <div class="c-card-image">
+                        <img draggable="false" src="/dist/images/landing/page-4-card-@(item.N).svg" alt="">
+                    </div>
                 </div>
             </div>
         </div>
-        @if (!isNarrow) {
-            <div class="colored-card card-2">
-                <div class="c-wrapper">
-                    <div class="landing-page-noise">
-                        <img draggable="false" src="/dist/images/landing/landing-page-noise-small.svg" alt="">
-                    </div>
-                    <div class="landing-card-video-container">
-                        <video hidden preload="none" muted playsinline loop class="landing-card-video"
-                               data-src-webm="/dist/images/webonly/elevate-conversations.webm"
-                               data-src-mp4="/dist/images/webonly/elevate-conversations.mp4">
-                        </video>
-                        <img draggable="false" src="/dist/images/webonly/elevate-conversations-poster.png"
-                             alt="" class="landing-card-video-plug">
-                    </div>
-                </div>
-            </div>
-        }
-    </div>
-
-    @* Row 3 *@
-    <div class="c-row">
-        <div class="colored-card card-1">
-            <div class="c-wrapper">
-                <div class="landing-page-noise">
-                    <img draggable="false" src="/dist/images/landing/landing-page-noise-small.svg" alt="">
-                </div>
-                <div class="landing-card-video-container">
-                    <video hidden preload="none" muted playsinline loop class="landing-card-video"
-                           data-src-webm="/dist/images/webonly/embrace-inclusivity.webm"
-                           data-src-mp4="/dist/images/webonly/embrace-inclusivity.mp4">
-                    </video>
-                    <img draggable="false" src="/dist/images/webonly/embrace-inclusivity-poster.png"
-                         alt="" class="landing-card-video-plug">
-                </div>
-            </div>
-        </div>
-        <div class="c-column">
-            <div class="c-description">
-                <div class="c-title">AI Summaries</div>
-                <div class="c-card-image">
-                    <img draggable="false" src="/dist/images/landing/page-3-card-3.svg" alt="">
-                </div>
-            </div>
-        </div>
-    </div>
-
-    @* Row 4 *@
-    <div class="c-row c-last">
-        @if (isNarrow) {
-            <div class="colored-card card-2">
-                <div class="c-wrapper">
-                    <div class="landing-page-noise">
-                        <img draggable="false" src="/dist/images/landing/landing-page-noise-small.svg" alt="">
-                    </div>
-                    <div class="landing-card-video-container">
-                        <video hidden preload="none" muted playsinline loop class="landing-card-video"
-                               data-src-webm="/dist/images/webonly/elevate-conversations.webm"
-                               data-src-mp4="/dist/images/webonly/elevate-conversations.mp4">
-                        </video>
-                        <img draggable="false" src="/dist/images/webonly/elevate-conversations-poster.png"
-                             alt="" class="landing-card-video-plug">
-                    </div>
-                </div>
-            </div>
-        }
-        <div class="c-column">
-            <div class="c-description">
-                <div class="c-title">Groups & Places</div>
-                <div class="c-card-image">
-                    <img draggable="false" src="/dist/images/landing/page-3-card-4.svg" alt="">
-                </div>
-            </div>
-        </div>
-        @if (!isNarrow) {
-            <div class="colored-card card-2">
-                <div class="c-wrapper">
-                    <div class="landing-page-noise">
-                        <img draggable="false" src="/dist/images/landing/landing-page-noise-small.svg" alt="">
-                    </div>
-                    <div class="landing-card-video-container">
-                        <video hidden preload="none" muted playsinline loop class="landing-card-video"
-                               data-src-webm="/dist/images/webonly/elevate-conversations.webm"
-                               data-src-mp4="/dist/images/webonly/elevate-conversations.mp4">
-                        </video>
-                        <img draggable="false" src="/dist/images/webonly/elevate-conversations-poster.png"
-                             alt="" class="landing-card-video-plug">
-                    </div>
-                </div>
-            </div>
-        }
-    </div>
+    }
 </div>
 
 @code {

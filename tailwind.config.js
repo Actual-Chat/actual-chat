@@ -1203,6 +1203,7 @@ module.exports = {
       9: '2.25rem',
       10: '2.5rem',
       11: '2.75rem',
+      12: '3rem',
     },
     listStyleType: {
       none: 'none',

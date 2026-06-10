@@ -2,7 +2,7 @@
     <img draggable="false" src="/dist/images/landing/landing-page-noise.svg" alt="">
 </div>
 <div class="c-content">
-    <div class="title-text">Key features</div>
+    <div class="title-text">Feature Breakdown</div>
 
     @* Row 1 *@
     <div class="c-row c-first">
@@ -27,7 +27,7 @@
                 <img draggable="false" src="/dist/images/landing/page-7-image-3.svg" alt="">
             </CardImage>
             <CardTitle>
-                AI Summarization
+                Conversation Summaries
             </CardTitle>
         </LandingImageCard>
     </div>
@@ -39,23 +39,24 @@
                 <img draggable="false" src="/dist/images/landing/page-7-image-4.svg" alt="">
             </CardImage>
             <CardTitle>
-                Group chats & Places
+                Organized Places
             </CardTitle>
         </LandingImageCard>
-        <LandingImageCard>
-            <CardImage>
-                <img draggable="false" src="/dist/images/landing/page-7-image-5.svg" alt="">
-            </CardImage>
-            <CardTitle>
-                Voice playback
-            </CardTitle>
-        </LandingImageCard>
+        @if (!ScreenSize.IsNarrow()) {
+            <LandingImageCard>
+                <CardImage>
+                    <img draggable="false" src="/dist/images/landing/page-7-image-5.svg" alt="">
+                </CardImage>
+                <CardTitle>
+                </CardTitle>
+            </LandingImageCard>
+        }
         <LandingImageCard>
             <CardImage>
                 <img draggable="false" src="/dist/images/landing/page-7-image-6.svg" alt="">
             </CardImage>
             <CardTitle>
-                Files & Media uploads
+                File uploads
             </CardTitle>
         </LandingImageCard>
     </div>
@@ -67,7 +68,7 @@
                 <img draggable="false" src="/dist/images/landing/page-7-image-7.svg" alt="">
             </CardImage>
             <CardTitle>
-                Threads
+                Video & Screenshare
             </CardTitle>
         </LandingImageCard>
         <LandingImageCard>
@@ -83,8 +84,12 @@
                 <img draggable="false" src="/dist/images/landing/page-7-image-9.svg" alt="">
             </CardImage>
             <CardTitle>
-                Notifications
+                Custom notifications
             </CardTitle>
         </LandingImageCard>
     </div>
 </div>
+
+@code {
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+}
