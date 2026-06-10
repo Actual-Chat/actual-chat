@@ -126,6 +126,9 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         change.RequireValid();
         chatId.Require("Command.ChatId");
+        if (chatId.IsThread() || chatId is PeerChatId)
+            throw StandardError.Constraint("Roles are not supported in thread or peer chats.");
+
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -210,11 +213,15 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                     throw StandardError.Constraint("There can be only one author in this chat.");
             }
 
-            foreach (var authorId in addedAuthorIds)
+            foreach (var authorId in addedAuthorIds) {
+                if (authorId.ChatId != roleId.ChatId)
+                    throw StandardError.Constraint("Author and role must belong to the same chat.");
+
                 dbContext.AuthorRoles.Add(new() {
                     DbRoleId = roleId.Value,
                     DbAuthorId = authorId.Value,
                 });
+            }
             // Removing items
             var removedAuthorIds = update.AuthorIds.RemovedItems
                 .Distinct()

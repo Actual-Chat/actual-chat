@@ -113,7 +113,7 @@
         public static Model Loading(Chat chat) => new() { Chat = chat };
 
         public Chat? Chat { get; init; }
-        public bool ShowThreads => Chat?.Id.Kind is ChatKind.Group or ChatKind.Place;
+        public bool ShowThreads => Chat?.Id.Kind is ChatKind.Group or ChatKind.Place or ChatKind.Peer;
         public bool ShowTabs => ShowMembersTab || ShowContentItemsTab || ShowThreads;
         public bool ShowMembersTab { get; init; }
         public bool ShowContentItemsTab { get; init; }

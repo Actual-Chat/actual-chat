@@ -61,7 +61,7 @@
         => _peerChatUserId = GetPeerChatUserId();
 
     private UserId? GetPeerChatUserId() {
-        if (Chat?.Id is not PeerChatId peerChatId)
+        if (Chat?.Id.GetThreadOutermostParentOrSelf() is not PeerChatId peerChatId)
             return null;
 
         var account = AccountUI.OwnAccount.Value;

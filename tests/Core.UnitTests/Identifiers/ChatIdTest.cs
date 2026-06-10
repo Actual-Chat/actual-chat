@@ -7,6 +7,9 @@ public class ChatIdTest(ITestOutputHelper @out) : StringIdentifierTestBase<ChatI
             "p-Actual-actual-admin",
             "p-actual-admin-bobby93",
             "p-admin1-admin2",
+            "p-admin1-admin2-148",
+            "p-123456-admin1",
+            "p-123456-admin1-7",
             "p-bobby93-ml-search",
             "whatever",
         }
@@ -45,5 +48,55 @@ public class ChatIdTest(ITestOutputHelper @out) : StringIdentifierTestBase<ChatI
         var peerChatId = chatId.Should().BeOfType<PeerChatId>().Subject;
         peerChatId.UserId1.Should().Be(UserId.Parse("bobby93"));
         peerChatId.UserId2.Should().Be(UserId.Parse("ml-search"));
+    }
+
+    [Fact]
+    public void PeerChatThreadIdShouldParse()
+    {
+        // act
+        var chatId = ChatId.Parse("p-admin1-admin2-148");
+
+        // assert
+        var threadChatId = chatId.Should().BeOfType<ThreadChatId>().Subject;
+        threadChatId.ThreadId.Should().Be(148);
+        threadChatId.ParentChatId.Should().BeOfType<PeerChatId>();
+        threadChatId.ParentChatId.Value.Should().Be("p-admin1-admin2");
+    }
+
+    [Fact]
+    public void NumericUserIdPeerChatIdShouldNotBeMisreadAsThread()
+    {
+        // act
+        var chatId = ChatId.Parse("p-123456-admin1");
+
+        // assert
+        var peerChatId = chatId.Should().BeOfType<PeerChatId>().Subject;
+        peerChatId.UserId1.Should().Be(UserId.Parse("123456"));
+        peerChatId.UserId2.Should().Be(UserId.Parse("admin1"));
+    }
+
+    [Fact]
+    public void NestedPeerChatThreadIdShouldRoundTrip()
+    {
+        // act
+        var chatId = ChatId.Parse("p-admin1-admin2-148-3");
+
+        // assert
+        var threadChatId = chatId.Should().BeOfType<ThreadChatId>().Subject;
+        threadChatId.ThreadId.Should().Be(3);
+        threadChatId.ParentChatId.Value.Should().Be("p-admin1-admin2-148");
+        chatId.Value.Should().Be("p-admin1-admin2-148-3");
+    }
+
+    [Fact]
+    public void RoleIdInPeerChatThreadShouldParse()
+    {
+        // act
+        var roleId = RoleId.Parse("p-i0fuE0-kiLGwd-148:1");
+
+        // assert
+        roleId.ChatId.Should().BeOfType<ThreadChatId>();
+        roleId.ChatId.Value.Should().Be("p-i0fuE0-kiLGwd-148");
+        roleId.LocalId.Should().Be(1);
     }
 }

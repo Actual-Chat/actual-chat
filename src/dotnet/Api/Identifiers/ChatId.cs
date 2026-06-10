@@ -128,7 +128,36 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
 
     // Private methods
 
-    private static PeerChatId? TryParsePeerChatId(string s)
+    private static ChatId? TryParsePeerChatId(string s)
+    {
+        // Peer chat IDs may carry trailing "-<threadId>" segments (peer-chat threads).
+        // Peer user IDs never end with "-<number>", so any such suffix is a thread ID:
+        // try the plain "p-u1-u2" base first, then peel one numeric segment at a time.
+        if (TryParsePeerChatIdBase(s) is { } peerChatId)
+            return peerChatId;
+
+        var span = s.AsSpan();
+        List<long>? threadIds = null;
+        while (true) {
+            var threadIdIndex = span.LastIndexOf(ThreadIdSeparator);
+            if (threadIdIndex < 0 || !long.TryParse(span[(threadIdIndex + 1)..], out var threadId) || threadId <= 0)
+                return null;
+
+            threadIds ??= new List<long>();
+            threadIds.Insert(0, threadId);
+            span = span[..threadIdIndex];
+            if (span.Length < 6 || TryParsePeerChatIdBase(span.ToString()) is not { } baseChatId)
+                continue;
+
+            ChatId result = baseChatId;
+            foreach (var id in threadIds)
+                result = new ThreadChatId(result, id);
+
+            return result;
+        }
+    }
+
+    private static PeerChatId? TryParsePeerChatIdBase(string s)
     {
         var tail = s.AsSpan(2);
         var userId1Length = tail.IndexOf('-');
