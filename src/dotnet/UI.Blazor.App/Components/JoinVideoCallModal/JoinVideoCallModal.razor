@@ -177,7 +177,6 @@
     private CameraPermissionState _permission = CameraPermissionState.Unknown;
     private List<VideoDevice> _videoDevices = new();
     private VideoDevice? _selectedDevice;
-    private string? _currentFacingMode;
     private Task<string> _getLastSelectedDeviceIdTask = null!;
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
@@ -425,26 +424,14 @@
         return Task.CompletedTask;
     }
 
-    // Reads the currently-previewing camera's deviceId + facingMode (Join mode:
-    // from own JS; Settings mode: from CameraUI's last-seen values), resolves
-    // the effective mirror state per-camera, and updates local UI + CameraUI
-    // so VideoStreamingPreview picks it up too.
+    // Seeds the modal's mirror toggle from the same resolved value the live
+    // self-preview uses (CameraUI, populated by the recorder's OnTrackSettings),
+    // so the modal preview and the live tile never disagree.
     private async Task ApplyMirrorForCurrentCamera() {
         if (_jsRef is null)
             return;
 
-        var currentDeviceId = "";
-        if (IsSettingsMode) {
-            currentDeviceId = CameraUI.LastDeviceId;
-            _currentFacingMode = CameraUI.LastFacingMode;
-        } else {
-            var info = await _jsRef.InvokeAsync<CameraInfo?>("getCurrentCameraInfo");
-            currentDeviceId = info?.DeviceId;
-            _currentFacingMode = info?.FacingMode;
-        }
-        var settings = await LocalSettings.LocalAppSettings().Get();
-        _isCameraMirrored = settings
-            .ResolveIsCameraMirrored(currentDeviceId, _currentFacingMode, Hub.BrowserInfo.IsMobile);
+        _isCameraMirrored = await CameraUI.GetIsMirrored();
         await InvokeAsync(StateHasChanged);
     }
 
@@ -505,9 +492,9 @@
         // Persist the per-camera override and tell CameraUI to re-resolve so
         // the live self-preview picks up the change without waiting for the
         // next camera (re)acquisition. No-op if we never resolved a deviceId.
-        if (_selectedDevice is null)
+        var deviceId = CameraUI.LastDeviceId ?? _selectedDevice?.DeviceId;
+        if (string.IsNullOrEmpty(deviceId))
             return;
-        var deviceId = _selectedDevice.DeviceId;
         var mirrored = _isCameraMirrored;
         await Hub.LocalSettings.LocalAppSettings().Update(
             s => s with { CameraMirrorOverrides = s.CameraMirrorOverrides.With(deviceId, mirrored) });
@@ -776,10 +763,6 @@
     public enum CameraState { Off, Starting, On, Unavailable }
     public enum CameraPermissionState { Unknown, Prompt, Granted, Denied }
     public enum VideoCallMode { Join, Settings }
-
-    // JSON DTO returned by the JS `getCurrentCameraInfo` method.
-    // ReSharper disable once ClassNeverInstantiated.Global — instantiated via JS interop deserialization
-    public sealed record CameraInfo(string? DeviceId, string? FacingMode);
 
     public sealed class Model(ChatContext chatContext, VideoCallMode mode) {
         public ChatContext ChatContext { get; } = chatContext;

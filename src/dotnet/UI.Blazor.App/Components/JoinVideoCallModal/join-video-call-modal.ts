@@ -135,16 +135,6 @@ export class JoinVideoCallModal {
         return success;
     }
 
-    // Returns deviceId + facingMode for the modal's own preview track (Join mode).
-    // Consumed by Blazor to resolve per-camera display preferences (mirror).
-    public getCurrentCameraInfo(): { deviceId: string | null; facingMode: string | null } {
-        const s = this.track?.getSettings();
-        return {
-            deviceId: s?.deviceId ?? this.selectedDeviceId,
-            facingMode: s?.facingMode ?? null,
-        };
-    }
-
     // ---------- Settings mode: follow the active recorder -------------------
 
     /**
