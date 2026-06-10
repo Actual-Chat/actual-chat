@@ -9,13 +9,15 @@
 //
 // Per tier: render RGB→Y packed 4-per-RGBA-texel into a (W/4)×H framebuffer and
 // RGB→UV (U0,V0,U1,V1 per texel) into a (W/4)×(H/2) framebuffer (BT.709 limited),
-// readPixels both, assemble a 256-aligned NV12 buffer (rows reversed — readPixels
-// is bottom-up), and wrap as a VideoFrame. Orientation/upload mirror
+// readPixels both, assemble an NV12 buffer (rows reversed — readPixels is
+// bottom-up; row stride 256-aligned on Chromium, tight on WebKit which ignores
+// the custom layout stride), and wrap as a VideoFrame. Orientation/upload mirror
 // webgl/downscaler.ts (UNPACK_FLIP_Y + non-flipping VS, verified upright).
 //
 // Self-falls-back to MetadataDownscaler on context loss / failure.
 
 import { getLogs } from 'logging';
+import { DeviceInfo } from 'device-info';
 import { createProgram, createTexture, createFbo, setupFullScreenQuad } from '../playback/webgl-helpers';
 import { MetadataDownscaler } from '../metadata/downscaler';
 import type { DownscalerLike, LayerSpec } from '../operators/downscale';
@@ -80,8 +82,13 @@ const NV12_COLORSPACE: VideoColorSpaceInit = {
     fullRange: false,
 };
 
-function align256(n: number): number {
-    return (n + 255) & ~255;
+// Chromium's HW encoder wants a 256-aligned NV12 row stride to take its fast
+// path; it honors the padded `stride` we pass in `layout`. WebKit ignores the
+// custom stride and reads NV12 tightly packed, so the padding shears each row
+// (green diagonal bands) and the UV offset lands in the wrong bytes (green
+// blocks). Tight-pack (stride = width) for WebKit so its assumption matches.
+function nv12Stride(w: number): number {
+    return DeviceInfo.isWebKit ? w : (w + 255) & ~255;
 }
 
 interface Tier {
@@ -169,9 +176,9 @@ export class WebGlNv12Downscaler implements DownscalerLike {
         gl.drawArrays(gl.TRIANGLES, 0, 6);
         gl.readPixels(0, 0, w / 4, h / 2, gl.RGBA, gl.UNSIGNED_BYTE, tier.uvTmp);
 
-        // Assemble NV12 (256-aligned stride), reversing rows: readPixels is
-        // bottom-up, NV12 is top-down.
-        const stride = align256(w);
+        // Assemble NV12, reversing rows: readPixels is bottom-up, NV12 is
+        // top-down. Stride is 256-aligned on Chromium, tight on WebKit.
+        const stride = nv12Stride(w);
         const uvBase = stride * h;
         const nv12 = new Uint8Array(new ArrayBuffer(uvBase + stride * (h / 2)));
         for (let r = 0; r < h; r++)
