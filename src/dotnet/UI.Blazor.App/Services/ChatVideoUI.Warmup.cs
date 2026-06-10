@@ -44,6 +44,10 @@ public partial class ChatVideoUI
             _cameraWarmupDeviceId = deviceId;
             _cameraWarmupBlurEnabled = isBlurEnabled;
         }
+        // Start each attempt clean: warmup success never fires OnRecordingStarted,
+        // so a previous failure's error would otherwise linger and mask a now-working
+        // camera. A failed attempt re-sets it via the JS OnRecordingError callback.
+        ClearRecordingError(VideoSourceKind.Camera);
         try {
             // Apply settings BEFORE warmup so MediaCapture.captureCameraStream
             // requests the right camera from the start — otherwise the
@@ -81,7 +85,7 @@ public partial class ChatVideoUI
     // Device change forces a full re-warmup (JS switchCamera bounces into
     // startRecording, which would convert warmup → live). Blur-only changes
     // hot-apply.
-    public async Task UpdateCameraWarmupSettings(
+    public async Task<bool> UpdateCameraWarmupSettings(
         ChatId chatId,
         string? deviceId,
         bool isBlurEnabled,
@@ -91,21 +95,29 @@ public partial class ChatVideoUI
         string? prevDeviceId;
         bool prevBlurEnabled;
         lock (_warmupLock) {
-            if (_cameraWarmupRecorder is null || _cameraWarmupChatId != chatId)
-                return;
-            recorder = _cameraWarmupRecorder;
-            prevDeviceId = _cameraWarmupDeviceId;
-            prevBlurEnabled = _cameraWarmupBlurEnabled;
-            _cameraWarmupDeviceId = deviceId;
-            _cameraWarmupBlurEnabled = isBlurEnabled;
+            if (_cameraWarmupRecorder is null || _cameraWarmupChatId != chatId) {
+                recorder = null;
+                prevDeviceId = null;
+                prevBlurEnabled = false;
+            }
+            else {
+                recorder = _cameraWarmupRecorder;
+                prevDeviceId = _cameraWarmupDeviceId;
+                prevBlurEnabled = _cameraWarmupBlurEnabled;
+                _cameraWarmupDeviceId = deviceId;
+                _cameraWarmupBlurEnabled = isBlurEnabled;
+            }
         }
+        // No live warmup — never started, or a prior attempt failed (e.g. the
+        // target camera was busy). Start fresh so a failed switch can recover.
+        if (recorder is null)
+            return await StartCameraWarmup(chatId, deviceId, isBlurEnabled, cancellationToken).ConfigureAwait(false);
         if (!string.Equals(prevDeviceId, deviceId, StringComparison.Ordinal)) {
             Log.LogInformation(
                 "UpdateCameraWarmupSettings: deviceId changed ({Prev} -> {Next}) — re-warming",
                 prevDeviceId, deviceId);
             await CancelCameraWarmup(chatId).ConfigureAwait(false);
-            await StartCameraWarmup(chatId, deviceId, isBlurEnabled, cancellationToken).ConfigureAwait(false);
-            return;
+            return await StartCameraWarmup(chatId, deviceId, isBlurEnabled, cancellationToken).ConfigureAwait(false);
         }
         if (prevBlurEnabled != isBlurEnabled) {
             try {
@@ -115,6 +127,7 @@ public partial class ChatVideoUI
                 Log.LogWarning(e, "UpdateCameraWarmupSettings: ToggleBlur failed");
             }
         }
+        return true;
     }
 
     private async Task AutoExpireWarmup(ChatId chatId, CancellationToken cancellationToken)

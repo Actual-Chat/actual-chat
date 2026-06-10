@@ -45,7 +45,7 @@
                 }
             </div>
         } else {
-            var effectiveCameraState = IsSettingsMode && !string.IsNullOrEmpty(m.LastRecorderError)
+            var effectiveCameraState = !string.IsNullOrEmpty(m.LastRecorderError)
                 ? CameraState.Unavailable
                 : PreviewState;
             var videoCls = "c-video";
@@ -223,18 +223,18 @@
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chat = ModalModel.Chat;
-        if (IsSettingsMode) {
-            // Show "Camera is unavailable" when the live recorder reports an error
-            // (e.g. ghost camera). The recorder clears the error on a successful
-            // switch so the state recovers automatically.
-            var lastError = await ChatVideoUI
-                .GetLastVideoRecorderError(VideoSourceKind.Camera, cancellationToken)
-                .ConfigureAwait(false);
+        // Show "Camera is unavailable" when the recorder reports an error (e.g. a
+        // camera that won't start). Applies to both modes: in Settings the live
+        // recorder reports it, in Join the warmup recorder does. The recorder
+        // clears the error on a successful switch so the state recovers.
+        var lastError = await ChatVideoUI
+            .GetLastVideoRecorderError(VideoSourceKind.Camera, cancellationToken)
+            .ConfigureAwait(false);
+        if (IsSettingsMode)
             return new ComputedModel(false, lastError);
-        }
 
         var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chat.Id, cancellationToken).ConfigureAwait(false);
-        return new(hasRemoteStreams, null);
+        return new(hasRemoteStreams, lastError);
     }
 
     protected override async Task OnInitializedAsync() {
@@ -676,19 +676,25 @@
             }
             SetState(CameraState.Starting);
             // Recorder must register before attachToRecorder can find it.
-            await chatVideoUI.StartCameraWarmup(
+            var ok = await chatVideoUI.StartCameraWarmup(
                 chatId,
                 getSelectedDeviceId(),
                 getIsBlurEnabled(),
                 disposeCt);
+            if (!ok) {
+                SetState(CameraState.Unavailable);
+                return;
+            }
             await jsRef.InvokeVoidAsync("attachToRecorder");
         }
 
-        public override Task ChangeCamera(string deviceId)
+        public override async Task ChangeCamera(string deviceId)
         {
             SetState(CameraState.Starting);
-            return chatVideoUI.UpdateCameraWarmupSettings(
+            var ok = await chatVideoUI.UpdateCameraWarmupSettings(
                 chatId, deviceId, getIsBlurEnabled(), disposeCt);
+            if (!ok)
+                SetState(CameraState.Unavailable);
         }
 
         public override Task SetBlurEnabled(bool enabled)
