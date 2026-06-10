@@ -36,18 +36,6 @@ body.narrow .landing .page {
 
 /* General styles */
 
-.landing ul {
-    @apply mx-4;
-    @apply md:ml-6 md:mt-4;
-    @apply list-disc;
-}
-.landing ul li {
-    @apply my-2;
-    @apply leading-6;
-}
-body.narrow .landing ul li {
-    @apply leading-4.5;
-}
 .landing .page a[target="_blank"] {
     @apply underline hover:no-underline;
 }
@@ -124,6 +112,7 @@ body.narrow .landing .page > .c-content .main-text {
     @apply text-4.5xl md:text-3.5xl lg:text-5xl;
 }
 body.narrow .landing .title-text {
+    @apply self-center;
     @apply py-4;
     @apply text-4.5xl;
     @apply leading-11;
@@ -372,19 +361,22 @@ body.narrow .landing .page.page-1 > .c-content .main-text {
     @apply md:text-3xl font-normal text-06;
 }
 body.narrow .landing .page-1 > .c-content .main-text .main-text-wrapper {
-    @apply justify-center gap-y-4;
+    @apply justify-center gap-y-8;
     @apply w-auto;
 }
 .landing .page-1 > .c-content .main-text .main-text-wrapper .c-title {
     @apply flex-y;
     @apply text-3.5xl md:text-headline-4 lg:text-headline-3;
 }
+body.narrow .landing .page-1 > .c-content .main-text .main-text-wrapper .c-title {
+    @apply items-center;
+}
 .landing .page-1 > .c-content .main-text .main-text-wrapper .c-title .c-title-accent-line {
     @apply inline-flex items-center gap-x-3;
 }
 .landing .page-1 .page-1-handwrite {
-    @apply -mb-4;
-    @apply font-handwriting font-normal text-7xl;
+    @apply -mb-2 md:-mb-4;
+    @apply font-handwriting font-normal text-4.5xl md:text-7xl;
 }
 .landing .page-1 .main-text .main-text-wrapper .c-description {
     @apply flex-y;
@@ -469,8 +461,12 @@ body.narrow .landing .page-2 > .c-content .main-image {
     @apply flex-x items-center gap-x-4;
 }
 .landing .page-2 .page-2-handwrite {
-    @apply whitespace-nowrap;
+    @apply mt-4 md:mt-0;
+    @apply md:whitespace-nowrap;
     @apply font-handwriting font-normal text-3.5xl text-[var(--blue-40)];
+}
+body.narrow .landing .page-2 .page-2-handwrite {
+    @apply text-center;
 }
 
 /* Page 3 */
@@ -521,7 +517,7 @@ body.narrow .landing .page-3 > .c-content > .c-bottom {
 }
 .landing .page-4 > .c-content {
     @apply relative z-20;
-    @apply flex-y gap-y-8;
+    @apply flex-y gap-y-20;
 }
 body.narrow .landing .page-4 > .c-content {
     @apply gap-y-4;
@@ -535,21 +531,22 @@ body.narrow .landing .page-4 > .c-content {
     @apply pt-12;
 }
 .landing .page-4 > .c-content > .c-row {
-    @apply grid grid-cols-2 justify-items-center gap-x-24;
+    @apply items-center justify-center gap-x-24;
     @apply px-2;
 }
-body.narrow .landing .page-4 > .c-content > .c-row {
-    @apply flex-y gap-y-4;
+.landing .page-4 > .c-content > .c-row.odd {
+    @apply flex-x;
+}
+.landing .page-4 > .c-content > .c-row.even {
+    @apply -flex-x;
+}
+body.narrow .landing .page-4 > .c-content > .c-row.odd {
+    @apply -flex-y gap-y-4;
     @apply px-0;
 }
-.landing .page-4 > .c-content .c-row.c-first {
-    @apply pt-12;
-}
-body.narrow .landing .page-4 > .c-content .c-row.c-first {
-    @apply pt-0;
-}
-.landing .page-4 > .c-content .c-row.c-last {
-    @apply pb-12;
+body.narrow .landing .page-4 > .c-content > .c-row.even {
+    @apply -flex-y gap-y-4;
+    @apply px-0;
 }
 .landing .page-4 > .c-content > .c-row > div {
     @apply max-w-80;
@@ -559,7 +556,6 @@ body.narrow .landing .page-4 > .c-content > .c-row > div {
 }
 .landing .page-4 > .c-content > .c-row > .c-column {
     @apply flex-y gap-y-4;
-    @apply md:pt-24;
 }
 .landing .page-4 > .c-content > .c-title,
 .landing .page-5 > .c-content > .c-title {
@@ -580,32 +576,24 @@ body.narrow .landing .page-5 > .c-content > .c-title {
     @apply flex gap-4;
     @apply rounded-2xl;
     @apply overflow-hidden;
+    @apply h-fit w-fit;
+}
+body.narrow .colored-card {
+    @apply w-auto;
 }
 .colored-card > .c-wrapper {
     @apply relative;
-    @apply px-6 pb-12;
+    /*@apply px-6 pb-12;*/
     min-height: 25.75rem;
 }
 body.narrow .colored-card > .c-wrapper,
 body.narrow .colored-card > .c-wrapper > img {
     @apply flex-1 flex;
 }
-.colored-card.card-1 {
-    @apply h-fit w-fit;
-    @apply bg-[#BBBEFF];
-}
-body.narrow .colored-card.card-1,
-body.narrow .colored-card.card-2 {
-    @apply w-auto;
-}
-.colored-card.card-2 {
-    @apply h-fit w-fit;
-    @apply bg-[#BBBEFF];
-}
 .colored-card.card-3 {
     @apply flex-y gap-y-2;
     @apply p-4;
-    @apply bg-[#BBBEFF];
+    /*@apply bg-[#BBBEFF];*/
 }
 .colored-card.card-3 > .c-title {
     @apply text-headline-6;
@@ -664,6 +652,11 @@ body.narrow .landing .page-5 > .c-content > .c-row.c-first {
     @apply flex;
     @apply min-h-60;
 }
+body.narrow .page-6 .landing-image-card > .c-image,
+body.narrow .page-7 .landing-image-card > .c-image {
+    @apply self-center;
+    @apply min-h-0 w-3/5;
+}
 .landing-image-card > .c-image > img {
     @apply relative z-10;
     @apply flex-1 flex;
@@ -683,15 +676,18 @@ body.narrow .landing .page-5 > .c-content > .c-row.c-first {
     @apply flex-x gap-x-4;
 }
 .landing-image-card-item > .c-icon {
-    @apply flex-none;
+    @apply flex-none flex items-center;
     @apply w-6 h-6;
 }
 .landing-image-card-item > .c-content {
     @apply text-text-1;
 }
 .landing-image-card .image-bg {
-    @apply absolute z-0 inset-x-0 bottom-0;
+    @apply absolute z-0 -inset-4 md:inset-0;
     @apply flex items-center justify-center;
+}
+.landing-image-card .image-bg img {
+    @apply h-full;
 }
 
 /* Page 6 */
@@ -721,6 +717,16 @@ body.narrow .landing .page-6 > .c-content > .c-row.c-first {
 .landing .page-6 > .c-content > .c-description {
     @apply flex-y items-start md:items-center justify-center;
     @apply text-2xl;
+}
+.landing .page-6 .page-6-handwrite {
+    @apply whitespace-nowrap;
+    @apply font-handwriting font-normal text-4.5xl text-[var(--blue-40)];
+}
+body.narrow .landing .page-6 .page-6-handwrite {
+    @apply self-center;
+}
+body.narrow .landing .page-6 .page-6-handwrite:last-of-type {
+    @apply mb-8;
 }
 
 /* Page 7 */
@@ -768,20 +774,22 @@ body.narrow .landing .page-7 > .c-content > .c-row.c-first {
     @apply py-0;
 }
 .landing .page-last > .c-content > .c-top {
-    @apply flex-x gap-x-8;
+    @apply flex-x gap-x-16;
 }
 body.narrow .landing .page-last > .c-content > .c-top {
     @apply -flex-y gap-y-4;
 }
 .landing .page-last > .c-content > .c-top > .main-image {
-    @apply flex justify-center;
+    @apply flex justify-end;
     @apply w-1/3;
 }
 body.narrow .landing .page-last > .c-content > .c-top > .main-image {
+    @apply justify-center;
     @apply w-full;
+    @apply my-8;
 }
 .landing .page-last > .c-content > .c-top > .main-text {
-    @apply flex items-start self-center;
+    @apply flex items-start self-center gap-8;
     @apply text-white;
 }
 body.narrow .landing .page-last > .c-content .main-text p {
@@ -824,6 +832,9 @@ body.narrow .landing .page-last > .c-content > .c-bottom > .c-btn-group > .btn-d
 body.narrow .landing .page-last > .c-content > .c-bottom > .c-btn-group > .btn-download.web-signin > span {
     @apply text-base font-medium;
 }
+.landing .page-last .page-last-handwrite {
+    @apply font-handwriting font-normal text-[3rem] md:text-[4rem] leading-4;
+}
 
 /* Buttons */
 
@@ -843,12 +854,12 @@ body.narrow .signin-button-group {
 .link-btn {
     @apply flex-none flex-x items-center justify-center gap-x-3;
     @apply py-2 px-4;
-    @apply rounded-full;
+    @apply rounded-2xl;
     @apply bg-transparent;
 }
 body.hoverable .link-btn:hover,
 .touch-capable .link-btn:active {
-    @apply bg-[var(--white-10)];
+    @apply bg-[var(--white-20)];
 }
 .link-btn-content {
     @apply flex items-center;
@@ -953,14 +964,15 @@ body.narrow .landing .landing-links {
 }
 .landing .landing-links > .c-title {
     @apply flex-none flex-y;
-    @apply text-06 text-headline-6;
+    @apply text-06 text-headline-4;
 }
 .landing .landing-links > .link-group {
     @apply flex-1 flex-x justify-evenly lg:gap-x-2;
 }
 .landing .landing-links > .link-group > .link-btn > .c-text {
     @apply flex-y items-start;
-    @apply text-06 text-headline-1;
+    @apply text-06 text-xl;
+    line-height: 1.375rem;
 }
 
 /* Landing Footer */
@@ -1743,20 +1755,16 @@ body.narrow .btn.cookie-btn {
 
 ul.custom-list {
     @apply flex-y gap-y-2;
-    @apply mx-0;
+    @apply mx-0 pl-0;
+    @apply font-normal text-2xl md:text-3.5xl leading-7 md:leading-12;
     list-style: none;
-    padding-left: 0;
-    font-size: 2rem;
-    line-height: 3rem;
-    font-weight: 400;
 }
 .custom-list li {
-    position: relative;
-    padding-left: 2rem;
+    @apply relative;
+    @apply pl-8;
 }
 .custom-list li::before {
     content: "•";
-    position: absolute;
-    left: 0;
-    color: #fff;
+    @apply absolute left-0;
+    @apply text-white;
 }

@@ -16,8 +16,12 @@
     <div class="main-text">
         <div class="main-text-wrapper">
             <div class="c-title">
-                <span>Where</span>
-                <span>conversations</span>
+                @if (ScreenSize.IsNarrow()) {
+                    <span>Where conversations</span>
+                } else {
+                    <span>Where</span>
+                    <span>conversations</span>
+                }
                 <span class="c-title-accent-line">feel <span class="page-1-handwrite">human</span></span>
             </div>
             <ul class="custom-list">
