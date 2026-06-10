@@ -3,7 +3,6 @@
 @using ActualChat.Security
 @using ActualChat.AspNetCore
 @using ActualChat.UI.Blazor.App
-@using ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @using ActualChat.Users.Module
@@ -22,6 +21,7 @@
     var webSplashNonce = nonceGenerator.Next(12);
     var closeFlowNonce = nonceGenerator.Next(12);
     var importMapNonce = nonceGenerator.Next(12);
+    var screenSizeNonce = nonceGenerator.Next(12);
     // unsafe-eval is required for 'eval-source-map' to debug during local development
     var unsafeEval = isLocal ? "'unsafe-eval'" : "'wasm-unsafe-eval'";
     var extraConnectSrc = isLocal ? "ws://localhost:* wss://localhost:* https://raw.githubusercontent.com" : "";
@@ -77,6 +77,7 @@
             'nonce-@closeFlowNonce'
             'nonce-@recaptchaNonce'
             'nonce-@importMapNonce'
+            'nonce-@screenSizeNonce'
             'sha256-IWFoCSRBx0i01sF31ty8kSeDtD8PRi/efpTSg/fumWo='
             'sha256-zU2GIxfpzdHVMmYxjdLyOs4r4XWtc9oFoEFrwbxzdQg='
             https://www.youtube.com/iframe_api
@@ -206,6 +207,18 @@
 </head>
 
 <body class="app-web" style="background-color: #0C003D">
+<script nonce="@screenSizeNonce">
+    // Pre-paint screen-size body classes to avoid a wide->narrow layout flash before
+    // the bundle's ScreenSize runs. Mirrors updateBodyClasses() in screen-size.ts and
+    // the `sm` (640px) breakpoint in screen-size.css; ScreenSize re-measures on init.
+    (function () {
+        const cl = document.body.classList;
+        const isNarrow = !window.matchMedia('(min-width: 640px)').matches;
+        const isHoverable = !isNarrow && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+        cl.add(isNarrow ? 'narrow' : 'wide');
+        cl.add(isHoverable ? 'hoverable' : 'non-hoverable');
+    })();
+</script>
 
 @if (!_authState.IsAnyAuthFlow && !renderModeKey.StartsWith("s")) {
     <div id="web-splash" class="web-splash"></div>
