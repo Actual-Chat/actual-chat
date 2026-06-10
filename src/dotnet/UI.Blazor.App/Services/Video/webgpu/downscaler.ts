@@ -28,6 +28,7 @@
 // MetadataDownscaler so capture keeps working.
 
 import { getLogs } from 'logging';
+import { DeviceInfo } from 'device-info';
 import { WebGPUManager } from './manager';
 import { MetadataDownscaler } from '../metadata/downscaler';
 import type { DownscalerLike, LayerSpec } from '../operators/downscale';
@@ -178,6 +179,41 @@ const NV12_COLORSPACE: VideoColorSpaceInit = {
     fullRange: false,
 };
 
+// Build the NV12 VideoFrame from the mapped readback. Chromium honors the padded
+// 256-aligned `layout.stride` and reads the buffer zero-copy. WebKit ignores the
+// custom stride and reads NV12 tightly packed — the padding would shear each row
+// (green bands) and misplace the UV plane (green blocks) — so on WebKit repack the
+// planes into a tight buffer (stride = width) and hand that over instead. The GPU
+// side stays 256-aligned regardless (copyTextureToBuffer requires bytesPerRow % 256).
+function nv12FrameFrom(range: ArrayBuffer, w: number, h: number, slot: Slot, timestamp: number): VideoFrame {
+    if (!DeviceInfo.isWebKit) {
+        return new VideoFrame(range, {
+            format: 'NV12',
+            codedWidth: w,
+            codedHeight: h,
+            timestamp,
+            colorSpace: NV12_COLORSPACE,
+            layout: [{ offset: slot.yOff, stride: slot.stride }, { offset: slot.uvOff, stride: slot.stride }],
+        });
+    }
+    const src = new Uint8Array(range);
+    const uvBase = w * h;
+    const tight = new Uint8Array(uvBase + w * (h / 2));
+    for (let r = 0; r < h; r++)
+        tight.set(src.subarray(slot.yOff + r * slot.stride, slot.yOff + r * slot.stride + w), r * w);
+    const uvRows = h / 2;
+    for (let r = 0; r < uvRows; r++)
+        tight.set(src.subarray(slot.uvOff + r * slot.stride, slot.uvOff + r * slot.stride + w), uvBase + r * w);
+    return new VideoFrame(tight, {
+        format: 'NV12',
+        codedWidth: w,
+        codedHeight: h,
+        timestamp,
+        colorSpace: NV12_COLORSPACE,
+        layout: [{ offset: 0, stride: w }, { offset: uvBase, stride: w }],
+    });
+}
+
 export class WebGpuDownscaler implements DownscalerLike {
     private device: GPUDevice | null = null;
     private sampler: GPUSampler | null = null;
@@ -252,17 +288,7 @@ export class WebGpuDownscaler implements DownscalerLike {
         for (const t of nv12) {
             const slot = shared.slots.get(`${t.w}x${t.h}`)!;
             // VideoFrame(BufferSource) copies synchronously — safe to unmap after.
-            results[t.i] = new VideoFrame(range, {
-                format: 'NV12',
-                codedWidth: t.w,
-                codedHeight: t.h,
-                timestamp: input.timestamp,
-                colorSpace: NV12_COLORSPACE,
-                layout: [
-                    { offset: slot.yOff, stride: slot.stride },
-                    { offset: slot.uvOff, stride: slot.stride },
-                ],
-            });
+            results[t.i] = nv12FrameFrom(range, t.w, t.h, slot, input.timestamp);
         }
         shared.buffer.unmap();
         return results as VideoFrame[];
