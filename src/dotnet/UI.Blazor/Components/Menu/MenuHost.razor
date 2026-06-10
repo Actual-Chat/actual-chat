@@ -20,7 +20,7 @@
     var menu = _menu;
 }
 
-<div class="ac-menu-host @(GetHostCssClass())">
+<div class="ac-menu-host @(GetHostCssClass())" data-no-inert>
     <CascadingValue Value="@this" IsFixed="true">
         @if (IsOverlayVisible()) {
             <div class="ac-menu-overlay">

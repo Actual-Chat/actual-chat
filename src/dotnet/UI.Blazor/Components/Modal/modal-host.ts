@@ -31,7 +31,12 @@ export class ModalHost {
             for (const sibling of Array.from(node.parentElement.children)) {
                 if (sibling === node || !(sibling instanceof HTMLElement))
                     continue;
-                if (sibling.hasAttribute('data-modal') || sibling.hasAttribute('inert'))
+                // data-no-inert opts a floating-layer host (e.g. the menu host)
+                // out of inerting so dropdowns/menus opened from within the modal
+                // stay interactive.
+                if (sibling.hasAttribute('data-modal')
+                    || sibling.hasAttribute('data-no-inert')
+                    || sibling.hasAttribute('inert'))
                     continue;
 
                 sibling.setAttribute('inert', '');
