@@ -13,6 +13,7 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
     private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
+    private IChatEntryLanguagesBackend ChatEntryLanguagesBackend { get; } = services.GetRequiredService<IChatEntryLanguagesBackend>();
     private IEmailSender EmailSender { get; } = services.GetRequiredService<IEmailSender>();
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
     private IChatDigestSummarizer ChatDigestSummarizer { get; } = services.GetRequiredService<IChatDigestSummarizer>();
@@ -208,8 +209,10 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
                 .Select(WithMediaHint)
                 .Where(x => !x.Content.IsNullOrEmpty())
                 .ToList();
+            var digestLanguage = await GetDominantLanguage(chatId, summarizable, cancellationToken).ConfigureAwait(false)
+                ?? userLanguage;
             bulletPoints = await ChatDigestSummarizer
-                .Summarize(summarizable, cancellationToken)
+                .Summarize(summarizable, digestLanguage, cancellationToken)
                 .ConfigureAwait(false);
         }
         else {
@@ -230,6 +233,32 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
             UnreadCount = unreadCount,
             BulletPoints = bulletPoints,
         };
+    }
+
+    private async Task<Language?> GetDominantLanguage(
+        ChatId chatId, IReadOnlyCollection<ChatEntry> entries, CancellationToken cancellationToken)
+    {
+        var idTileLayer = Constants.Chat.ServerIdTileStack.FirstLayer;
+        var tileRanges = entries
+            .Select(e => idTileLayer.GetTile(e.LocalId).Range)
+            .Distinct()
+            .ToList();
+
+        var languagesByEntryId = new Dictionary<ChatEntryId, Language[]>();
+        foreach (var range in tileRanges) {
+            var tile = await ChatEntryLanguagesBackend.GetTile(chatId, range, cancellationToken).ConfigureAwait(false);
+            foreach (var entryLanguage in tile.Entries)
+                languagesByEntryId[entryLanguage.Id] = entryLanguage.Languages;
+        }
+
+        return entries
+            .Select(e => languagesByEntryId.GetValueOrDefault(e.Id))
+            .Where(languages => languages is { Length: > 0 })
+            .Select(languages => languages![0])
+            .GroupBy(language => language)
+            .OrderByDescending(g => g.Count())
+            .Select(g => g.Key)
+            .FirstOrDefault();
     }
 
     private async Task<Language> GetUserLanguage(UserId userId, CancellationToken cancellationToken)
