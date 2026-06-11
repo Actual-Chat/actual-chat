@@ -39,6 +39,8 @@ export class VisualMediaViewer {
     private hideBlocked = false;
     private isDoubleClick = false;
     private isDraggingThumb = false;
+    private isReindexing = false;
+    private readonly wiredMedia: WeakSet<Element> = new WeakSet<Element>();
     // Swipe-to-dismiss / info panel state
     private isDismissing = false;
     private dismissStartY = 0;
@@ -131,11 +133,13 @@ export class VisualMediaViewer {
             this.setMaxSize(video);
             this.addVideoListeners(video);
             this.videoPlugHandler(video);
+            this.wiredMedia.add(video);
         });
 
         this.imageContainers = this.imageViewer.querySelectorAll('.image-container');
         [...this.imageContainers].forEach((container: HTMLElement) => {
             this.addImageListeners(container);
+            this.wiredMedia.add(container);
         });
 
         fromEvent(this.overlay, 'click')
@@ -179,6 +183,33 @@ export class VisualMediaViewer {
 
         this.disposed$.next();
         this.disposed$.complete();
+    }
+
+    // Called from Blazor after the rendered slide window changes (items appended/prepended
+    // or a synthetic attachment upgraded to its resolved one). When activeIndex >= 0 a
+    // prepend shifted indices, so the active slide is re-pointed without animation or a
+    // recursive load-more (guarded by isReindexing) before media is re-measured.
+    public onWindowChanged(activeIndex = -1): void {
+        this.wireNewMedia();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
+        this.swiper.update();
+        if (activeIndex >= 0) {
+            this.isReindexing = true;
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
+            this.swiper.slideTo(activeIndex, 0, false);
+            requestAnimationFrame(() => this.isReindexing = false);
+        }
+        if (this.thumbs)
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
+            this.thumbs.update();
+        // The active slide's dimensions may have just resolved (synthetic 0×0 → real),
+        // so re-measure it for correct video scaling.
+        this.maxVideoWidth = this.maxVideoHeight = this.videoRatio = 0;
+        const activeVideo = this.imageViewer.querySelector<HTMLVideoElement>('.swiper-slide-active video.video-original');
+        if (activeVideo)
+            this.setMaxSize(activeVideo);
+        void this.safeCenterThumb();
+        this.updateVideoPlayback();
     }
 
     // State machine:
@@ -1025,10 +1056,36 @@ export class VisualMediaViewer {
         }
     }
 
+    private wireNewMedia(): void {
+        const videos = this.imageViewer.querySelectorAll<HTMLVideoElement>('video.video-original');
+        videos.forEach(video => {
+            if (this.wiredMedia.has(video))
+                return;
+
+            this.wiredMedia.add(video);
+            this.setMaxSize(video);
+            this.addVideoListeners(video);
+            this.videoPlugHandler(video);
+        });
+        this.videos = videos;
+        const containers = this.imageViewer.querySelectorAll<HTMLElement>('.image-container');
+        containers.forEach(container => {
+            if (this.wiredMedia.has(container))
+                return;
+
+            this.wiredMedia.add(container);
+            this.addImageListeners(container);
+        });
+        this.imageContainers = containers;
+    }
+
     private async onSlideChange(swiper: Swiper): Promise<void> {
         this.updateVideoPlayback();
         if (this.maxVideoWidth != 0 || this.maxVideoHeight != 0 || this.videoRatio != 0)
             this.maxVideoWidth = this.maxVideoHeight = this.videoRatio = 0;
+        if (this.isReindexing)
+            return;
+
         await this.blazorRef.invokeMethodAsync('SlideChanged', swiper.activeIndex);
     }
 

@@ -1,4 +1,5 @@
 @using ActualChat.Chat
+@using ActualChat.Media
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
 @inherits ComponentBase<UIHub>
@@ -6,11 +7,11 @@
 @implements IModalView<VisualMediaViewerModal.Model>
 @namespace ActualChat.UI.Blazor.Components
 @{
-    var selectedAttachment = _attachments.ElementAtOrDefault(_selectedSlide);
+    var selectedAttachment = _slots.ElementAtOrDefault(_selectedSlide)?.Attachment;
     var selectedAttachmentDownloadUrl = selectedAttachment != null
         ? UrlMapper.ContentUrl(selectedAttachment.Media.BlobId)
         : ModalModel.Url;
-    var singleAttachmentCls = _attachments.Count == 1 ? "single-attachment" : "";
+    var singleAttachmentCls = _slots.Count == 1 ? "single-attachment" : "";
 }
 
 <ModalFrame Class="image-viewer-modal">
@@ -27,14 +28,15 @@
         space-between="10"
         zoom="true"
         mousewheel="true"
-        initial-slide="@_selectedSlide"
+        initial-slide="@_initialSlide"
         thumbs-swiper=".media-preview-swiper"
         navigation="true">
-        @foreach (var attachment in _attachments) {
+        @foreach (var slot in _slots) {
+            var attachment = slot.Attachment;
             var url = UrlMapper.ContentUrl(attachment.Media.BlobId);
             var previewUrl = UrlMapper.ImagePreviewUrl(url, null, (int?)Constants.Attachments.MaxActualThumbnailResolution.Y);
             @if (attachment.IsSupportedImage()) {
-                <swiper-slide lazy="true" lazyPreloaderClass="hidden">
+                <swiper-slide @key="@slot.Key" lazy="true" lazyPreloaderClass="hidden">
                     <div class="swiper-zoom-container image-container">
                         <img src="@url"
                              alt=""
@@ -52,7 +54,7 @@
                     </div>
                 </swiper-slide>
             } else if (attachment.IsSupportedVideo()) {
-                <swiper-slide>
+                <swiper-slide @key="@slot.Key">
                     <div class="swiper-zoom-container">
                         <div class="video-wrapper @singleAttachmentCls">
                             <div class="video-thumbnail-wrapper">
@@ -102,18 +104,19 @@
             }
         }
     </swiper-container>
-    @if (_attachments.Count > 1) {
+    @if (_slots.Count > 1) {
         <swiper-container
             class="media-preview-swiper image-viewer-footer"
             init="false">
-            @foreach (var attachment in _attachments) {
+            @foreach (var slot in _slots) {
+                var attachment = slot.Attachment;
                 @if (attachment.IsSupportedImage()) {
                     var previewUrl = GetPreviewUrl(attachment);
-                    <swiper-slide>
+                    <swiper-slide @key="@slot.Key">
                         <image-skeleton src="@previewUrl" class="image-cover"/>
                     </swiper-slide>
                 } else if (attachment.IsSupportedVideo()) {
-                    <swiper-slide>
+                    <swiper-slide @key="@slot.Key">
                         <VideoAttachmentThumbnail Attachment="@attachment"/>
                     </swiper-slide>
                 }
@@ -146,9 +149,20 @@
 </ModalFrame>
 
 @code {
+    private const int LoadThreshold = 3;
+    private const int LoadBatch = 10;
+    private const int ResolveRadius = 2;
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.VisualMediaViewer.create";
-    private List<ChatEntryAttachment> _attachments = new();
+    private List<Slot> _slots = new();
+    private List<VisualMediaItem> _window = new();
+    private readonly HashSet<Symbol> _resolved = new();
     private int _selectedSlide;
+    private int _initialSlide;
+    private bool _hasNewer;
+    private bool _hasOlder;
+    private bool _loadInFlight;
+    private bool _windowDirty;
+    private int _pendingActiveIndex = -1;
     private DotNetObjectReference<VisualMediaViewerModal> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
@@ -156,6 +170,7 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
+    private GalleryContext? Gallery => ModalModel.Gallery;
     private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
 
     public async ValueTask DisposeAsync() {
@@ -166,18 +181,38 @@
     }
 
     protected override void OnInitialized() {
-        _attachments = ModalModel.Attachments.ToList();
-        var selectedAttachment = _attachments.FirstOrDefault(x => string.Equals(UrlMapper.ContentUrl(x.Media.BlobId), ModalModel.Url, StringComparison.OrdinalIgnoreCase));
-        if (selectedAttachment != null) {
-            _selectedSlide = _attachments.IndexOf(selectedAttachment);
+        if (Gallery is { } gallery) {
+            _window = gallery.Window.ToList();
+            _slots = _window.Select(i => new Slot(i.Id.Value, ToSyntheticAttachment(i))).ToList();
+            _selectedSlide = Math.Clamp(gallery.AnchorIndex, 0, Math.Max(0, _slots.Count - 1));
+            _hasNewer = gallery.HasNewer;
+            _hasOlder = gallery.HasOlder;
         }
-        // Resolve the audio focus service (may not be available on web)
+        else {
+            _slots = ModalModel.Attachments.Select(a => new Slot(a.Id.Value, a)).ToList();
+            var selected = _slots.FirstOrDefault(s => string.Equals(UrlMapper.ContentUrl(s.Attachment.Media.BlobId), ModalModel.Url, StringComparison.OrdinalIgnoreCase));
+            if (selected != null)
+                _selectedSlide = _slots.IndexOf(selected);
+        }
+        _initialSlide = _selectedSlide;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
+            if (Gallery is { } gallery) {
+                await ResolveNearActive(gallery).ConfigureAwait(true);
+                _windowDirty = true;
+                StateHasChanged();
+            }
+            return;
+        }
+        if (_windowDirty) {
+            _windowDirty = false;
+            var index = _pendingActiveIndex;
+            _pendingActiveIndex = -1;
+            await JSRef.InvokeVoidAsync("onWindowChanged", index).ConfigureAwait(true);
         }
     }
 
@@ -189,8 +224,38 @@
         => CloseModal();
 
     [JSInvokable]
-    public void SlideChanged(int selectedSlide) {
+    public async Task SlideChanged(int selectedSlide) {
         _selectedSlide = selectedSlide;
+        if (Gallery is not { } gallery) {
+            StateHasChanged();
+            return;
+        }
+
+        var prepended = 0;
+        if (!_loadInFlight) {
+            _loadInFlight = true;
+            try {
+                if (_hasOlder && _selectedSlide >= _slots.Count - 1 - LoadThreshold) {
+                    var page = await gallery.LoadOlder(LoadBatch, default).ConfigureAwait(true);
+                    AppendItems(page.Items);
+                    _hasOlder = page.HasMore;
+                }
+                if (_hasNewer && _selectedSlide <= LoadThreshold) {
+                    var page = await gallery.LoadNewer(LoadBatch, default).ConfigureAwait(true);
+                    prepended = page.Items.Count;
+                    PrependItems(page.Items);
+                    _hasNewer = page.HasMore;
+                }
+            }
+            finally {
+                _loadInFlight = false;
+            }
+        }
+        if (prepended > 0)
+            _selectedSlide += prepended;
+        await ResolveNearActive(gallery).ConfigureAwait(true);
+        _windowDirty = true;
+        _pendingActiveIndex = prepended > 0 ? _selectedSlide : -1;
         StateHasChanged();
     }
 
@@ -228,7 +293,62 @@
         return $"{bytes} B";
     }
 
+    private void AppendItems(IReadOnlyList<VisualMediaItem> items) {
+        foreach (var item in items) {
+            _window.Add(item);
+            _slots.Add(new Slot(item.Id.Value, ToSyntheticAttachment(item)));
+        }
+    }
+
+    private void PrependItems(IReadOnlyList<VisualMediaItem> items) {
+        for (var i = items.Count - 1; i >= 0; i--) {
+            _window.Insert(0, items[i]);
+            _slots.Insert(0, new Slot(items[i].Id.Value, ToSyntheticAttachment(items[i])));
+        }
+    }
+
+    private async Task ResolveNearActive(GalleryContext gallery) {
+        var from = Math.Max(0, _selectedSlide - ResolveRadius);
+        var to = Math.Min(_slots.Count - 1, _selectedSlide + ResolveRadius);
+        for (var i = from; i <= to; i++) {
+            var item = _window[i];
+            if (!_resolved.Add(item.Id))
+                continue;
+
+            var real = await gallery.ResolveAttachment(item, default).ConfigureAwait(true);
+            if (real == null)
+                continue;
+
+            var idx = _slots.FindIndex(s => s.Key == item.Id.Value);
+            if (idx >= 0)
+                _slots[idx] = new Slot(item.Id.Value, real);
+        }
+    }
+
+    private static ChatEntryAttachment ToSyntheticAttachment(VisualMediaItem item) {
+        var media = new Media(item.MediaId) {
+            BlobId = item.BlobId,
+            ContentType = item.ContentType,
+            FileName = item.FileName,
+            Length = item.Size,
+        };
+        Media? thumbnailMedia = null;
+        if (item.ThumbnailMediaId is { } thumbnailMediaId && !item.ThumbnailBlobId.IsNullOrEmpty())
+            thumbnailMedia = new Media(thumbnailMediaId) { BlobId = item.ThumbnailBlobId };
+        return new ChatEntryAttachment(item.Id) {
+            EntryId = item.EntryId,
+            Index = item.LocalIndex,
+            MediaId = item.MediaId,
+            Media = media,
+            ThumbnailMediaId = item.ThumbnailMediaId,
+            ThumbnailMedia = thumbnailMedia,
+        };
+    }
+
+    private sealed record Slot(string Key, ChatEntryAttachment Attachment);
+
     public sealed record Model(
         string Url,
-        ChatEntryAttachment[] Attachments);
+        ChatEntryAttachment[] Attachments,
+        GalleryContext? Gallery = null);
 }

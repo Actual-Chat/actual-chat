@@ -10,4 +10,11 @@ public class VisualMediaViewerUI(UIHub hub)
         var modalRef = await ModalUI.Show(model).ConfigureAwait(false);
         await modalRef.WhenClosed.ConfigureAwait(false);
     }
+
+    public async Task Show(string url, GalleryContext gallery)
+    {
+        var model = new VisualMediaViewerModal.Model(url, [], gallery);
+        var modalRef = await ModalUI.Show(model).ConfigureAwait(false);
+        await modalRef.WhenClosed.ConfigureAwait(false);
+    }
 }
