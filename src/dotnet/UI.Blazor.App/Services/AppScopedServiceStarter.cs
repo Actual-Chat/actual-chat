@@ -117,6 +117,11 @@ public sealed class AppScopedServiceStarter
 
             // Starting less important UI services
             await Task.Delay(baseDelay, cancellationToken).ConfigureAwait(false);
+            if (hostKind.IsServer())
+                // Server mode registers ServerTimeSync scoped (per-circuit IJSRuntime), not hosted,
+                // so its background sync loop must be started here — otherwise viewers never sync
+                // and recorders sync only once (see BlazorUICoreModule).
+                Hub.Services.GetService<ServerTimeSync>()?.Start();
             Hub.Services.GetRequiredService<SessionTokens>().Start();
             Hub.Services.GetRequiredService<BackgroundActivityUI>().Start();
             Hub.Services.GetRequiredService<ConnectivityUI>().Start();

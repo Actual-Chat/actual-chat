@@ -73,4 +73,14 @@ export class SharedSettings {
     public static updateServerClockOffset(serverNowMs: number): void {
         SharedSettings.update({ serverClockOffsetMs: serverNowMs - Date.now() });
     }
+
+    // Server render mode pushes the already-compensated offset directly (the C#
+    // side NTP-measures it over the circuit), bypassing the stale serverNow recompute.
+    public static setServerClockOffsetMs(offsetMs: number): void {
+        SharedSettings.update({ serverClockOffsetMs: offsetMs });
+    }
+
+    public static getClientTimeMs(): number {
+        return Date.now();
+    }
 }

@@ -9,6 +9,7 @@ import {
     setDownscalerMode as setDownscalerModeImpl,
 } from '../../Services/Video/downscaler-mode';
 import type { DownscalerMode } from '../../Services/Video/operators/downscale';
+import { ServerClock } from 'clocks';
 
 export interface OwnStreamDiagnosticsSnapshot {
     stream: OwnStreamDiagnostics | null;
@@ -19,6 +20,12 @@ export function collectOwnStreamDiagnostics(kind: number): OwnStreamDiagnosticsS
     return {
         stream: recorder?.getDiagnostics() ?? null,
     };
+}
+
+// Main-thread JS ServerClock offset — the value the video A/V-sync math actually
+// reads, distinct from the C# ServerTimeSync source that feeds it.
+export function collectServerClockDiagnostics(): { offsetMs: number } {
+    return { offsetMs: ServerClock.offsetMs };
 }
 
 export async function collectRemoteStreamDiagnostics(streamId: string): Promise<RemoteStreamDiagnostics | null> {

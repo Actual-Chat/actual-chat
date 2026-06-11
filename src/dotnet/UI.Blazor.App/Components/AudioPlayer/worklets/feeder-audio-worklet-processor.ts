@@ -22,6 +22,11 @@ import { sharedSettingsWorker } from 'shared-settings-worker';
 
 const { logScope, debugLog, warnLog } = getLogs('FeederProcessor');
 
+// Real presentation lag stays within a few seconds; beyond this the anchor or
+// the worklet's ServerClock offset must be invalid (e.g. an unsynced realm
+// leaking raw client↔server wall-clock skew), so we report "unknown" instead.
+const maxPlausibleLagMs = 10_000;
+
 interface DecodedChunk {
     samples: Float32Array;
     sourceRecordedAtMs: number;
@@ -272,7 +277,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     private updatePresentationLag(): void {
         if (this.recordedStartMs === null)
             return;
-        this.presentationLagMs = ServerClock.now() - (this.recordedStartMs + this.playingAt * 1000);
+        const lagMs = ServerClock.now() - (this.recordedStartMs + this.playingAt * 1000);
+        this.presentationLagMs = Math.abs(lagMs) > maxPlausibleLagMs ? null : lagMs;
     }
 
     private stateHasChanged() {

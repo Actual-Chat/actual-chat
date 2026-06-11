@@ -63,11 +63,13 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         });
         services.AddScoped(c => new LocalSettings(c.GetRequiredService<LocalSettings.Options>(), c));
         services.AddScoped(c => new UserSettingsUI(c, c.Session()));
+        services.AddSingleton(_ => new ServerClockSyncStats());
         if (isServer) {
             services.AddScoped<DateTimeConverter>(c => new ServerSideDateTimeConverter(c));
             MomentClockSet.Default.ServerClock.Offset = TimeSpan.Zero;
             // In Server mode, register as scoped (IJSRuntime is scoped per Blazor circuit).
-            // Sync is triggered on-demand via EnsureSynced() before recording/playback.
+            // Its background loop is started per-circuit by AppScopedServiceStarter.AfterFirstRender;
+            // EnsureSynced() additionally forces an immediate sync before the first recording.
             services.AddScoped(c => new ServerTimeSync(c));
         }
         else {

@@ -339,6 +339,32 @@
         } @* end Outbound tab *@
 
         @if (_activeTab == Tab.Inbound) {
+        <div class="diag-section">
+            @{
+                var clock = ClockStats.Current;
+            }
+            <div class="diag-section-header">Clock sync</div>
+            <div class="diag-row">
+                <span class="diag-label">Offset (JS, used by sync)</span>
+                <span class="diag-value">@FormatOffsetMs(_jsServerClockOffsetMs)</span>
+            </div>
+            <div class="diag-row diag-sub">
+                <span class="diag-label">source (C#)</span>
+                <span class="diag-value diag-dim">@FormatSignedMs(clock.Offset)</span>
+            </div>
+            <div class="diag-row">
+                <span class="diag-label">Precision</span>
+                <span class="diag-value">±@FormatMs(clock.Precision)</span>
+            </div>
+            <div class="diag-row">
+                <span class="diag-label">RTT (ema / last)</span>
+                <span class="diag-value">@FormatMs(clock.RttEma) / @FormatMs(clock.LastRtt)</span>
+            </div>
+            <div class="diag-row">
+                <span class="diag-label">Last sync</span>
+                <span class="diag-value">@FormatSyncAge(clock)</span>
+            </div>
+        </div>
         @* Active streams *@
         <div class="diag-section">
             <div class="diag-section-header">
@@ -490,6 +516,10 @@
                             <span class="diag-value diag-dim">@FormatVideoInputs(lag.VideoInputs)</span>
                         </div>
                         <div class="diag-row">
+                            <span class="diag-label">Peer clock skew</span>
+                            <span class="diag-value">@FormatPeerSkew(s.Info)</span>
+                        </div>
+                        <div class="diag-row">
                             <span class="diag-label">Drift</span>
                             <span class="diag-value">@FormatDrift(lag.AudioLag, lag.VideoLag)</span>
                         </div>
@@ -621,12 +651,14 @@
 @code {
     private static readonly string JSCollectOwnMethod = $"{BlazorUIAppModule.ImportName}.collectOwnStreamDiagnostics";
     private static readonly string JSCollectRemoteMethod = $"{BlazorUIAppModule.ImportName}.collectRemoteStreamDiagnostics";
+    private static readonly string JSCollectServerClockMethod = $"{BlazorUIAppModule.ImportName}.collectServerClockDiagnostics";
 
     private enum Tab { Inbound, Outbound, Settings }
 
     private Timer? _pollTimer;
     private readonly Dictionary<VideoSourceKind, JsonElement> _ownDiagByKind = new();
     private readonly Dictionary<string, JsonElement> _streamDiags = new();
+    private double? _jsServerClockOffsetMs;
     private bool _isDisposed;
     private bool _showOwnStreamingDetails;
     private Tab _activeTab = Tab.Inbound;
@@ -644,6 +676,8 @@
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private IAuthors Authors => Hub.Authors;
     private PlaybackLagTracker LagTracker => field ??= Services.GetRequiredService<PlaybackLagTracker>();
+    private ActualChat.UI.Blazor.Services.ServerClockSyncStats ClockStats
+        => field ??= Services.GetRequiredService<ActualChat.UI.Blazor.Services.ServerClockSyncStats>();
     private ILogger Log => field ??= Services.LogFor<VideoDiagnosticsModal>();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -865,6 +899,11 @@
     private async Task PollJsDiagnostics() {
         if (_isDisposed) return;
         try {
+            var clockDiag = await JS.InvokeAsync<JsonElement>(JSCollectServerClockMethod);
+            if (clockDiag.ValueKind == JsonValueKind.Object && clockDiag.TryGetProperty("offsetMs", out var offEl)
+                && offEl.ValueKind == JsonValueKind.Number)
+                _jsServerClockOffsetMs = offEl.GetDouble();
+
             // Poll every active outbound source kind — both camera and
             // screencast streams can be live simultaneously, each with its
             // own recorder and throughput row.
@@ -1033,6 +1072,39 @@
         => audio is null || video is null
             ? "—"
             : $"{(audio.Value - video.Value).TotalMilliseconds:+0;-0;0} ms";
+
+    // Loopback/LAN round-trips are sub-millisecond, so fall back to µs to avoid showing "0 ms".
+    private static string FormatMs(TimeSpan value)
+    {
+        var ms = value.TotalMilliseconds;
+        return Math.Abs(ms) < 1 ? $"{ms * 1000:0} µs" : $"{ms:0.##} ms";
+    }
+
+    private static string FormatSignedMs(TimeSpan value)
+    {
+        var ms = value.TotalMilliseconds;
+        return Math.Abs(ms) < 1 ? $"{ms * 1000:+0;-0;0} µs" : $"{ms:+0.##;-0.##;0} ms";
+    }
+
+    private static string FormatOffsetMs(double? ms)
+        => ms is null
+            ? "—"
+            : Math.Abs(ms.Value) < 1 ? $"{ms.Value * 1000:+0;-0;0} µs" : $"{ms.Value:+0.##;-0.##;0} ms";
+
+    private string FormatSyncAge(ActualChat.UI.Blazor.Services.ServerClockSyncStats.Snapshot clock)
+        => clock.SyncCount == 0
+            ? "never"
+            : $"{(Hub.Clocks.CpuClock.Now - clock.LastSyncAt).TotalSeconds:0}s ago";
+
+    // SourceStartedAt is the sender's claimed wall-clock at start (never server-overridden),
+    // so its gap from the server-stamped StartedAt approximates the peer's clock skew.
+    private static string FormatPeerSkew(VideoStreamInfo info)
+    {
+        if (info.SourceStartedAt == default || info.StartedAt == default)
+            return "—";
+        var skewMs = (info.SourceStartedAt - info.StartedAt).TotalMilliseconds;
+        return $"≈ {skewMs:+0;-0;0} ms";
+    }
 
     // Drift with the uncontrollable output-device latencies removed from both
     // sides — the portion the catch-up policy can actually affect.
