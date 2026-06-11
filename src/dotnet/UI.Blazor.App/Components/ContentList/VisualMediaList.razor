@@ -55,6 +55,7 @@
 
 @code {
     private const int GridColumns = 3;
+    private const int GalleryRadius = 12;
 
     private IChats Chats => Hub.Chats;
     private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
@@ -85,12 +86,17 @@
         };
 
     private async Task OnMediaClick(VisualMediaItem item) {
-        var entry = await Chats.GetEntry(Session, item.EntryId, CancellationToken.None);
-        var attachment = entry?.Attachments.FirstOrDefault(x => x.Index == item.LocalIndex);
-        if (attachment is null)
-            return;
-
-        var url = UrlMapper.ContentUrl(attachment.Media.BlobId);
-        await VisualMediaViewerUI.Show(url, [attachment]);
+        var gallery = new VisualMediaGallery(Hub, Session, ChatId);
+        var init = await gallery.InitializeAround(item, GalleryRadius, CancellationToken.None);
+        var url = UrlMapper.ContentUrl(item.BlobId);
+        var context = new GalleryContext(
+            init.Window,
+            init.AnchorIndex,
+            init.HasNewer,
+            init.HasOlder,
+            gallery.LoadNewer,
+            gallery.LoadOlder,
+            gallery.ResolveAttachment);
+        await VisualMediaViewerUI.Show(url, context);
     }
 }
