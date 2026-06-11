@@ -9,6 +9,7 @@ public interface IChatDigestSummarizer
 {
     Task<IReadOnlyCollection<string>> Summarize(
         IReadOnlyCollection<ChatEntry> chatEntries,
+        Language language,
         CancellationToken cancellationToken);
 
     Task<string?> SummarizeMediaShares(
@@ -37,6 +38,7 @@ public class ChatDigestSummarizer(ChatDigestSummarizer.Options settings, IServic
 
     public async Task<IReadOnlyCollection<string>> Summarize(
         IReadOnlyCollection<ChatEntry> chatEntries,
+        Language language,
         CancellationToken cancellationToken)
     {
         if (Prompt.IsNullOrEmpty())
@@ -47,6 +49,7 @@ public class ChatDigestSummarizer(ChatDigestSummarizer.Options settings, IServic
             Prompt,
             new Dictionary<string, string>() {
                 { "DOCUMENT", text.Substring(0, Math.Min(text.Length, 1_000_000)) },
+                { "LANGUAGE", language.Title },
             });
         try {
             var response = await Ask(prompt, cancellationToken).ConfigureAwait(false);
@@ -143,7 +146,7 @@ public class ChatDigestSummarizer(ChatDigestSummarizer.Options settings, IServic
 
 public class ChatDigestSummarizerStub : IChatDigestSummarizer
 {
-    public Task<IReadOnlyCollection<string>> Summarize(IReadOnlyCollection<ChatEntry> chatEntries, CancellationToken cancellationToken)
+    public Task<IReadOnlyCollection<string>> Summarize(IReadOnlyCollection<ChatEntry> chatEntries, Language language, CancellationToken cancellationToken)
         => Task.FromResult<IReadOnlyCollection<string>>([]);
 
     public Task<string?> SummarizeMediaShares(IReadOnlyCollection<ChatEntry> mediaEntries, Language language, CancellationToken cancellationToken)
