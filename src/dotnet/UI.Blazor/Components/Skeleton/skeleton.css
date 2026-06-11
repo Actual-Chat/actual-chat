@@ -195,7 +195,7 @@ body.narrow .right-panel-skeleton {
     @apply self-center;
     @apply w-full h-0 min-h-0 lg:max-w-192;
     @apply p-2 md:py-1.5 md:px-0 ml-[2px];
-    @apply overflow-y-auto;
+    @apply overflow-hidden;
 }
 
 /* Panel Footer Skeleton */
