@@ -4,10 +4,15 @@
 @{
     var mentions = State.Value;
     var isPickerActive = Filter.Value != null;
-    // Hide only when the picker isn't active; when active with no matches we show a "No matches" row.
+    var hasNoMatch = !_loading && isPickerActive && mentions.Length == 0;
+    // Hidden only when the picker isn't active; during loading the picker is already active
+    // (Show() sets Filter before the first skeleton render), so isPickerActive covers skeletons too.
     var listCls = isPickerActive ? "" : " non-visible";
     var selection = Selection;
     var categoryFilter = Manager.Filter.Value;
+    // Drives the explicit list height (CSS transitions it): skeletons while loading,
+    // a single row for the "No matches" placeholder, else the result count.
+    var rowCount = _loading ? DefaultSkeletonCount : hasNoMatch ? 1 : mentions.Length;
 }
 
 <div class="mention-list-wrapper @listCls">
@@ -35,55 +40,70 @@
             <i class="icon-close text-2xl"></i>
         </ButtonRound>
     </div>
-    <div @ref="Ref" class="@Class mention-list custom-scrollbar">
-        @if (isPickerActive && mentions.Length == 0) {
-            <div class="mention-list-item mention-list-no-match" data-editor-focus="true">No matches</div>
-        }
-        @foreach (var mention in mentions) {
-        var cls = mention == selection ? "selected" : "";
-        var targetId = mention.MentionRef.Target;
-        var isQuoted = targetId is ChatId or PlaceId;
-        <div class="@cls mention-list-item"
-             data-editor-focus="true"
-             @onmouseover="@(_ => Selection = mention)"
-             @onclick="@(_ => Manager.SelectMention(mention))">
-            <div class="c-content">
-                @if (targetId is AuthorId authorId) {
-                    <AuthorCircle
-                        @key="@authorId"
-                        AuthorId="@authorId"
-                        Size="SquareSize.Size7"/>
-                } else if (targetId is EmojiRef emojiRef) {
-                    var emoji = Emojis.ById.GetValueOrDefault(emojiRef.Text);
-                    <span class="mention-list-emoji">
-                        @if (emoji is not null) {
-                            <EmojiIcon Emoji="@emoji" Class="mention-list-emoji-icon" HasPreview="false" InlineAnimate="true"/>
-                        }
-                    </span>
-                } else {
-                    var avatarKey = mention.Picture.AvatarKey.NullIfEmpty() ?? mention.MentionRef.Value;
-                    var avatarKind = targetId is ChatId or PlaceId ? AvatarKind.Marble : AvatarKind.Beam;
-                    <Pic
-                        Title="@mention.Match.Text"
-                        Picture="@mention.Picture"
-                        Size="SquareSize.Size7"
-                        AvatarKind="@avatarKind"
-                        AvatarKey="@avatarKey"/>
-                }
-                <div class="c-center">
-                    @if (isQuoted) {
-                        <span class="c-quote">"</span>
-                    }
-                    <SearchMatchHighlighter Match="@mention.Match"/>
-                    @if (isQuoted) {
-                        <span class="c-quote">"</span>
-                    }
-                    @if (mention.Description is { Length: > 0 } description) {
-                        <span class="c-description">&nbsp;@description</span>
-                    }
+    <div @ref="Ref" class="@Class mention-list custom-scrollbar" style="--row-count: @rowCount">
+        @if (_loading) {
+            for (var i = 0; i < DefaultSkeletonCount; i++) {
+                <div class="mention-list-item mention-list-skeleton" data-editor-focus="true" aria-hidden="true">
+                    <div class="c-content">
+                        <div class="c-avatar animated-skeleton"></div>
+                        <div class="c-center">
+                            <div class="c-line animated-skeleton"
+                                 style="width: @(SkeletonWidths[i % SkeletonWidths.Length])%"></div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
+            }
+        }
+        @if (hasNoMatch) {
+            <div class="mention-list-item mention-list-no-match" data-editor-focus="true">No matches found</div>
+        }
+        @if (!_loading) {
+            foreach (var mention in mentions) {
+                var cls = mention == selection ? "selected" : "";
+                var targetId = mention.MentionRef.Target;
+                var isQuoted = targetId is ChatId or PlaceId;
+                <div class="@cls mention-list-item"
+                     data-editor-focus="true"
+                     @onmouseover="@(_ => Selection = mention)"
+                     @onclick="@(_ => Manager.SelectMention(mention))">
+                    <div class="c-content">
+                        @if (targetId is AuthorId authorId) {
+                            <AuthorCircle
+                                @key="@authorId"
+                                AuthorId="@authorId"
+                                Size="SquareSize.Size7"/>
+                        } else if (targetId is EmojiRef emojiRef) {
+                            var emoji = Emojis.ById.GetValueOrDefault(emojiRef.Text);
+                            <span class="mention-list-emoji">
+                                @if (emoji is not null) {
+                                    <EmojiIcon Emoji="@emoji" Class="mention-list-emoji-icon" HasPreview="false" InlineAnimate="true"/>
+                                }
+                            </span>
+                        } else {
+                            var avatarKey = mention.Picture.AvatarKey.NullIfEmpty() ?? mention.MentionRef.Value;
+                            var avatarKind = targetId is ChatId or PlaceId ? AvatarKind.Marble : AvatarKind.Beam;
+                            <Pic
+                                Title="@mention.Match.Text"
+                                Picture="@mention.Picture"
+                                Size="SquareSize.Size7"
+                                AvatarKind="@avatarKind"
+                                AvatarKey="@avatarKey"/>
+                        }
+                        <div class="c-center">
+                            @if (isQuoted) {
+                                <span class="c-quote">"</span>
+                            }
+                            <SearchMatchHighlighter Match="@mention.Match"/>
+                            @if (isQuoted) {
+                                <span class="c-quote">"</span>
+                            }
+                            @if (mention.Description is { Length: > 0 } description) {
+                                <span class="c-description">&nbsp;@description</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
         }
     </div>
 </div>
@@ -97,8 +117,12 @@
         (MentionCandidateFilters.Emoji, "icon-emoji-2", "Emoji only"),
     ];
 
+    private const int DefaultSkeletonCount = 8;
+    private static readonly int[] SkeletonWidths = [72, 54, 63, 45, 68, 50, 60, 57];
+
     private string? _lastFilter;
     private FoundMention? _selection;
+    private bool _loading;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
@@ -117,10 +141,14 @@
         }
     }
 
-    protected override void OnInitialized()
-        => Filter = StateFactory.NewMutable(
+    protected override void OnInitialized() {
+        // Render the loading skeletons even while the computed state is being (re)computed -
+        // otherwise ShouldRender() drops the skeleton frame and only the final result shows.
+        Options |= ComputedStateComponentOptions.RenderInconsistentState;
+        Filter = StateFactory.NewMutable(
             (string?)null,
             StateCategories.Get(GetType(), nameof(Filter)));
+    }
 
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
@@ -158,9 +186,20 @@
         await InvokeAsync(() => {
             _selection = fixedSelection;
             _lastFilter = filter;
+            _loading = false;
         }).ConfigureAwait(false);
 
         return mentions;
+    }
+
+    // Shows default-height skeletons on first open so the list appears instantly instead of
+    // after the candidate build. Later keystrokes re-rank the cached candidates fast, so we
+    // keep the current rows rather than flashing skeletons. Cleared at the end of ComputeState.
+    public void BeginLoading(bool isFirstOpen) {
+        if (!isFirstOpen)
+            return;
+        _loading = true;
+        StateHasChanged();
     }
 
     public void MoveSelection(int offset) {

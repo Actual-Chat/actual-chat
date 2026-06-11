@@ -25,8 +25,8 @@
 .mention-list-wrapper.non-visible {
     @apply border-y-0;
     @apply invisible;
-    @apply pointer-events-none;
     @apply opacity-0;
+    @apply pointer-events-none;
     transform: translateY(100%);
     transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1), opacity 150ms ease-out, visibility 0s 250ms;
 }
@@ -36,19 +36,25 @@
     @apply rounded-lg;
     @apply overflow-x-hidden overflow-y-auto;
     @apply bg-input text-03;
-    max-height: min(10rem, var(--mention-list-max-h, 100vh));
+    /* --mention-list-cap = the visible height cap; --row-count is set per-render (rows or skeletons).
+       The list keeps an explicit height (rows * 2.25rem) so it can transition smoothly between sizes. */
+    --mention-list-cap: min(10rem, var(--mention-list-max-h, 100vh));
+    height: min(calc(var(--row-count, 0) * 2.25rem + 0.25rem), var(--mention-list-cap));
+    max-height: var(--mention-list-cap);
+    transition: height 160ms ease-out;
     /* Reveal the thin scrollbar whenever the list overflows (not only on hover). */
     scrollbar-color: var(--scrollbar) transparent;
 }
 @media (min-width: 768px) {
     .mention-list {
-        max-height: min(16rem, var(--mention-list-max-h, 100vh));
+        --mention-list-cap: min(16rem, var(--mention-list-max-h, 100vh));
     }
 }
 body.narrow .mention-list {
     @apply rounded-b-none;
-    @apply bg-post-panel text-post-panel-text;
-    transition: max-height 300ms ease-out;
+    @apply bg-post-panel;
+    @apply text-post-panel-text;
+    transition: height 160ms ease-out, max-height 300ms ease-out;
 }
 body.narrow .mention-list-wrapper::after {
     @apply content-empty;
@@ -57,16 +63,23 @@ body.narrow .mention-list-wrapper::after {
     @apply bg-[var(--white-10)];
 }
 body.narrow .mention-list.expanded {
-    max-height: min(16rem, var(--mention-list-max-h, 100vh));
+    --mention-list-cap: min(16rem, var(--mention-list-max-h, 100vh));
 }
 body.narrow .narrow-panel .mention-list {
-    max-height: min(8rem, var(--mention-list-max-h, 100vh));
+    --mention-list-cap: min(8rem, var(--mention-list-max-h, 100vh));
 }
 body.narrow .narrow-panel .mention-list.expanded {
-    max-height: min(12rem, var(--mention-list-max-h, 100vh));
+    --mention-list-cap: min(12rem, var(--mention-list-max-h, 100vh));
+}
+@media (prefers-reduced-motion: reduce) {
+    .mention-list {
+        transition: none;
+    }
 }
 .mention-list .mention-list-item {
-    @apply flex-none truncate cursor-pointer;
+    @apply flex-none;
+    @apply truncate;
+    @apply cursor-pointer;
 }
 body.hoverable .mention-list .mention-list-item.selected,
 .touch-capable .mention-list .mention-list-item:active {
@@ -74,14 +87,32 @@ body.hoverable .mention-list .mention-list-item.selected,
     @apply bg-mention-list-item-selected;
 }
 .mention-list .mention-list-item.mention-list-no-match {
+    @apply flex-x items-center justify-center;
+    @apply h-9;
+    @apply px-2 md:px-4;
+    @apply opacity-60;
+    @apply text-headline-1 text-03;
     @apply cursor-default;
-    @apply flex-x items-center h-9 px-2 md:px-4;
-    @apply text-headline-1 text-03 opacity-60;
 }
 .mention-list .mention-list-item > .c-content {
     @apply flex-x items-center gap-x-2;
     @apply h-9;
     @apply px-2 md:px-4;
+}
+.mention-list .mention-list-skeleton {
+    @apply opacity-5;
+    @apply cursor-default pointer-events-none;
+}
+.mention-list .mention-list-skeleton .c-avatar {
+    @apply flex-none;
+    @apply w-7 h-7;
+    @apply rounded-full;
+    @apply bg-skeleton;
+}
+.mention-list .mention-list-skeleton .c-line {
+    @apply h-3.5;
+    @apply rounded-full;
+    @apply bg-skeleton;
 }
 .mention-list .mention-list-item > .c-content > .c-center {
     @apply flex-auto;
@@ -89,7 +120,7 @@ body.hoverable .mention-list .mention-list-item.selected,
     @apply text-headline-1;
 }
 .mention-list-wrapper .mention-list-chips {
-    @apply absolute -top-5 right-3 z-10;
+    @apply absolute -top-7 right-3 z-10;
     @apply flex-x items-center gap-0.5;
     @apply w-fit;
     @apply p-1;
@@ -133,6 +164,6 @@ body.hoverable .mention-list-wrapper .mention-list-chip.btn-transparent.active:h
     @apply w-6 h-6;
 }
 .mention-list .c-description {
-    @apply text-03 font-light;
     @apply opacity-60;
+    @apply text-03 font-light;
 }
