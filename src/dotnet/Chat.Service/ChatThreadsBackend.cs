@@ -5,26 +5,21 @@ namespace ActualChat.Chat;
 /// </summary>
 public class ChatThreadsBackend(IServiceProvider services) : IChatThreadsBackend
 {
-    private IRolesBackend RolesBackend => field ??= services.GetRequiredService<IRolesBackend>();
+    private IChatsBackend ChatsBackend => field ??= services.GetRequiredService<IChatsBackend>();
     private IAuthorsBackend AuthorsBackend => field ??= services.GetRequiredService<IAuthorsBackend>();
 
     // [ComputeMethod]
     public virtual async Task<AuthorFull?> GetThreadCreator(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (!chatId.IsThread())
+        if (!chatId.IsThread(out var threadChatId))
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
-        var ownerRole = await RolesBackend
-            .GetSystem(chatId, SystemRole.Owner, cancellationToken)
-            .Require()
-            .ConfigureAwait(false);
-
-        var ownerAuthorIds = await RolesBackend.ListAuthorIds(chatId, ownerRole.Id, cancellationToken).ConfigureAwait(false);
-        if (ownerAuthorIds.Length <= 0)
+        var startEntryId = ChatEntryId.New(threadChatId.ParentChatId, threadChatId.ThreadId);
+        var startEntry = await ChatsBackend.GetEntry(startEntryId, cancellationToken).ConfigureAwait(false);
+        if (startEntry is null)
             return null;
 
-        var ownerAuthorId = ownerAuthorIds[0];
-        var ownerAuthor = await AuthorsBackend.Get(ownerAuthorId.ChatId, ownerAuthorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
-        return ownerAuthor;
+        var creatorId = startEntry.AuthorId;
+        return await AuthorsBackend.Get(creatorId.ChatId, creatorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
     }
 }

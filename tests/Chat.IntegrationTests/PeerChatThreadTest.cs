@@ -53,6 +53,11 @@ public class PeerChatThreadTest(ChatCollection.AppHostFixture fixture, ITestOutp
             threadIds.Select(x => (ChatId)x).Should().Contain(threadChatId);
         }, TimeSpan.FromSeconds(10));
 
+        // The thread creator resolves without any role row (the "'Role' is not found" regression).
+        var creator = await chatThreads.GetThreadCreator(session, (ThreadChatId)threadChatId, cancellationToken);
+        creator.Should().NotBeNull();
+        creator!.Avatar.Name.Should().NotBeNullOrEmpty();
+
         // No role row is persisted for the thread chat.
         var dbHub = services.DbHub<ChatDbContext>();
         await using var dbContext = await dbHub.CreateDbContext();
