@@ -237,7 +237,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     [ComputeMethod] // Synced
     public virtual Task<bool> IsSelected(ChatId chatId)
-        => Task.FromResult(SelectedChatId.Value == chatId);
+        => Task.FromResult(SelectedChatId.Value?.GetThreadOutermostParentOrSelf() == chatId.GetThreadOutermostParentOrSelf());
 
     [ComputeMethod] // Synced
     public virtual Task<bool> IsSearchEnabled(ChatId chatId)

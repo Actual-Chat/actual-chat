@@ -42,9 +42,12 @@ public partial class ChatUI
 
             DebugLog?.LogDebug("InvalidateSelectedChatDependencies: *");
             using (Invalidation.Begin()) {
-                if (oldChatId is not null)
+                if (oldChatId is not null) {
                     _ = IsSelected(oldChatId);
+                    _ = IsSelected(oldChatId.GetThreadOutermostParentOrSelf());
+                }
                 _ = IsSelected(newChatId);
+                _ = IsSelected(newChatId.GetThreadOutermostParentOrSelf());
             }
 
             SelectionUI.Clear();
