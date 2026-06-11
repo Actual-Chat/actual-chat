@@ -43,5 +43,15 @@
     @apply w-[55%];
 }
 .reconnect-overlay > .c-circle > .c-text {
+    @apply relative p-1;
     @apply text-02;
+}
+.reconnect-overlay > .c-circle > .c-text::before {
+    @apply absolute inset-0 z-minus rounded-full;
+    content: '';
+    background: linear-gradient(to bottom,
+                transparent 5%,
+                var(--loading-cat-body-gradient-1) 50%,
+                transparent 95%);
+    filter: blur(8px);
 }
