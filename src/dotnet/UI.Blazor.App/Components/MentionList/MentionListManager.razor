@@ -36,11 +36,12 @@
     public void Show(string filter)
     {
         if (ListRef != null) {
-            ListRef.Filter.Value = filter;
-            if (_cls != "show-mention-list") {
+            var isFirstOpen = _cls != "show-mention-list";
+            if (isFirstOpen)
                 Filter.Value = MentionCandidateFilters.All;
-            }
             _cls = "show-mention-list";
+            ListRef.BeginLoading(isFirstOpen);
+            ListRef.Filter.Value = filter;
             StateHasChanged();
         }
     }
