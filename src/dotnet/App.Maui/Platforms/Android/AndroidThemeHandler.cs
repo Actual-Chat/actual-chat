@@ -29,6 +29,11 @@ public class AndroidThemeHandler : MauiThemeHandler
         if (window == null)
             return false;
 
+        // Edge-to-edge: without this the window stays in fits-system-windows mode and the WebView
+        // sees zero env(safe-area-inset-*). Enabling it here (called from OnCreate) makes insets
+        // correct from the first layout instead of only after the first theme switch.
+        WindowCompat.SetDecorFitsSystemWindows(window, false);
+
         var statusBarColor = Android.Graphics.Color.ParseColor(topBarColor);
         var navBarColor = Android.Graphics.Color.ParseColor(bottomBarColor);
         if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Q) {
@@ -43,6 +48,19 @@ public class AndroidThemeHandler : MauiThemeHandler
         wic.AppearanceLightStatusBars = !IsDark(statusBarColor);
         wic.AppearanceLightNavigationBars = !IsDark(navBarColor);
         return true;
+    }
+
+    public override void RequestRelayout()
+    {
+        var window = Window;
+        if (window == null)
+            return;
+
+        var decorView = window.DecorView;
+        decorView.Post(() => {
+            ViewCompat.RequestApplyInsets(decorView);
+            decorView.RequestLayout();
+        });
     }
 
     // Private methods
