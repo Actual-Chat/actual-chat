@@ -48,18 +48,24 @@ public class MauiThemeHandler
     public void Apply(bool force = false)
     {
         if (force || MauiLoadingUI.WhenFirstSplashRemoved.IsCompleted)
-            Apply(_theme, _colors);
+            Apply(_theme, _colors, force);
     }
+
+    // The WebView's viewport stays fixed at the size it had on the splash frame, so on cold start
+    // the content is clipped and env(safe-area-inset-*) is stale until the first real native relayout
+    // (a theme switch or device rotation). This forces that relayout once when the WebView is ready.
+    public virtual void RequestRelayout()
+    { }
 
     // Protected methods
 
-    protected void Apply(Theme? theme, string colors)
+    protected void Apply(Theme? theme, string colors, bool force = false)
     {
         if (colors.IsNullOrEmpty())
             return;
 
         BeginDispatchToMainThread(() => {
-            if (colors == _appliedColors)
+            if (!force && colors == _appliedColors)
                 return;
 
             try {

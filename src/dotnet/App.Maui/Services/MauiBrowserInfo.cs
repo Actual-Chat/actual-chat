@@ -60,6 +60,7 @@ public class MauiBrowserInfo : BrowserInfo
     public override void OnWebSplashRemoved()
     {
         MauiLoadingUI.MarkFirstSplashRemoved();
-        MauiThemeHandler.Instance.Apply();
+        MauiThemeHandler.Instance.Apply(force: true);
+        MauiThemeHandler.Instance.RequestRelayout();
     }
 }
