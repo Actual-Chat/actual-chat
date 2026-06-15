@@ -305,11 +305,10 @@ export async function signIn(page: Page) {
     ]).catch(() => { /* caller verifies */ });
 }
 
-// Sets the RenderMode cookie via /fusion/renderMode/{mode}. Use 'sp' (Server
-// Prerendered) to dodge the WASM-bootstrap flake on Debug builds — SignalR
-// drops mid-bootstrap leave ChatPage parked in its "synchronizing" early-return.
-// Use 'w' for tests that need a client-side host (e.g. LogUI.CanCapture).
-export async function useServerRenderMode(page: Page, mode: 'sp' | 's' | 'w' | 'a' = 'sp') {
+// Sets the RenderMode cookie via /fusion/renderMode/{mode}. Defaults to 'w'
+// (WASM) — Server Prerendered leaves ChatView unmounted on the CI debug build
+// (chat list shows, right panel stays blank). WASM bootstraps cleanly there.
+export async function useServerRenderMode(page: Page, mode: 'sp' | 's' | 'w' | 'a' = 'w') {
     await page.goto(`${BASE_URL}/fusion/renderMode/${mode}`, { waitUntil: 'domcontentloaded' });
 }
 

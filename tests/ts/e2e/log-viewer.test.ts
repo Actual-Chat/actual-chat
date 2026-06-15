@@ -9,7 +9,7 @@ import { describe, it, beforeAll, afterAll } from 'vitest';
 import type { Page } from 'playwright';
 import {
     BASE_URL, connectBrowser, dismissCookieConsent, ensureSignedIn,
-    screenshot, useServerRenderMode, waitForAppReady, type BrowserConnection,
+    screenshot, waitForAppReady, type BrowserConnection,
 } from './helpers';
 
 const shot = (name: string) => screenshot('e2e', `log-viewer-${name}`);
@@ -23,9 +23,6 @@ describe('Log Viewer tab is reachable on narrow screens', () => {
         page = await conn.context.newPage();
         await page.setViewportSize({ width: 393, height: 852 });
         await ensureSignedIn(page);
-        // Log Viewer tab is hidden in SSB (LogUI.CanCapture is false there);
-        // override the default 'sp' render mode that ensureSignedIn sets.
-        await useServerRenderMode(page, 'w');
     }, 120_000);
 
     afterAll(async () => {
