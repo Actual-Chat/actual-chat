@@ -1243,7 +1243,10 @@ export class VideoRecorder {
             this.currentCodecHardwareAccel = bestCodecInfo?.hardwareAccelerated ?? false;
             infoLog?.log(`ScreenCast ladder (bottom-first): [${actualScreenCastLadder.map(l => `${l.width}x${l.height}`).join(', ')}], capture ${screenCastTop.width}x${screenCastTop.height}`);
 
-            // Acquire the screen track on main thread.
+            // The screen track is pre-acquired by ScreenShareGesture inside the DOM
+            // click handler (getDisplayMedia needs transient activation, which the
+            // Blazor server round-trip to here has already consumed). captureScreenCast
+            // returns that gesture-acquired track.
             const screenTrack = await MediaCapture.captureScreenCast();
             this.inputTrack = screenTrack;
             this.previewTrack = screenTrack;

@@ -13,8 +13,11 @@ export interface CameraCaptureOptions {
     maxRetries?: number;
 }
 
+const PreacquireConsumeTimeoutMs = 120_000;
+
 export class MediaCapture {
     private static nextCaptureId = 0;
+    private static pendingScreenCast: Promise<MediaStreamTrack> | null = null;
 
     static async captureCameraStream(options: CameraCaptureOptions = {}): Promise<MediaStreamTrack> {
         const captureId = ++MediaCapture.nextCaptureId;
@@ -189,8 +192,44 @@ export class MediaCapture {
         return q === 0 || q === 2;
     }
 
+    // Acquires the screen track within the current transient user activation and
+    // caches it for the next captureScreenCast(). MUST run synchronously from a DOM
+    // gesture handler: Safari rejects getDisplayMedia ("must be called from a user
+    // gesture handler") once an async hop — here the Blazor server round-trip that
+    // reaches startScreenCast — has consumed the activation. See ScreenShareGesture.
+    static preacquireScreenCast(): void {
+        MediaCapture.discardPendingScreenCast();
+        const pending = MediaCapture.requestDisplayMedia();
+        MediaCapture.pendingScreenCast = pending;
+        // Backstop: stop the track if the consumer never picks it up (e.g. the
+        // Blazor flow aborted before startScreenCast, leaving it sharing silently).
+        self.setTimeout(() => {
+            if (MediaCapture.pendingScreenCast === pending)
+                MediaCapture.discardPendingScreenCast();
+        }, PreacquireConsumeTimeoutMs);
+    }
+
+    static discardPendingScreenCast(): void {
+        const pending = MediaCapture.pendingScreenCast;
+        if (!pending)
+            return;
+
+        MediaCapture.pendingScreenCast = null;
+        pending.then(track => track.stop()).catch(() => undefined);
+    }
+
     static async captureScreenCast(): Promise<MediaStreamTrack> {
-        infoLog?.log(`captureScreenCast: requesting display media @ ${VIDEO.frameRate}fps`);
+        const pending = MediaCapture.pendingScreenCast;
+        if (pending) {
+            MediaCapture.pendingScreenCast = null;
+            infoLog?.log('captureScreenCast: using pre-acquired (in-gesture) screen track');
+            return pending;
+        }
+        return MediaCapture.requestDisplayMedia();
+    }
+
+    private static async requestDisplayMedia(): Promise<MediaStreamTrack> {
+        infoLog?.log(`requestDisplayMedia: requesting display media @ ${VIDEO.frameRate}fps`);
         const stream = await navigator.mediaDevices.getDisplayMedia({
             video: {
                 displaySurface: 'monitor',
@@ -202,7 +241,7 @@ export class MediaCapture {
         // 'text' biases the encoder toward sharpness over motion smoothness.
         track.contentHint = 'text';
         const settings = track.getSettings();
-        infoLog?.log(`captureScreenCast: ${settings.width}x${settings.height} @ ${settings.frameRate}fps, surface=${settings.displaySurface}`);
+        infoLog?.log(`requestDisplayMedia: ${settings.width}x${settings.height} @ ${settings.frameRate}fps, surface=${settings.displaySurface}`);
         return track;
     }
 }
