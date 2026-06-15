@@ -461,14 +461,9 @@
 
   <!-- MacCatalyst build properties -->
 
-  <!-- MacCatalyst: Both Debug & Release configurations.
-       Entitlements are selected by IsDevMaui (not by configuration) — same App Store
-       entitlement set is used for local development and distribution, matching iOS.
-       Debug is signed with an Apple Development cert + development provisioning profile,
-       which satisfies the team-scoped entitlements (keychain-access-groups / applesignin
-       / associated-domains); Release uses the Apple Distribution cert + App Store profile. -->
+  <!-- Entitlements are selected by IsDevMaui (not Configuration) — same App Store
+       entitlement set is used for Debug and Release, matching iOS. -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-maccatalyst'))">
-    <!-- Build for the host architecture by default; arm64 on Apple Silicon, x64 on Intel -->
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">maccatalyst-arm64</RuntimeIdentifier>
     <IntermediateOutputPath>..\..\..\artifacts\out</IntermediateOutputPath>
     <UseShortFileNames>True</UseShortFileNames>
@@ -478,12 +473,9 @@
     <UseNativeHttpHandler>true</UseNativeHttpHandler>
   </PropertyGroup>
 
-  <!-- MacCatalyst: Debug configuration — Apple Development cert + development profile
-       (mirrors iOS Debug). Profile names must match the ones registered in Apple
-       Developer Console (Mac Catalyst subtype, macOS App Development):
-         dev  → "mac.chat.actual.dev.app"  (chat.actual.dev.app)
-         prod → "mac.chat.actual.app"      (chat.actual.app)
-       The developer's Mac must be a registered device on these profiles. -->
+  <!-- Debug: Apple Development cert + development profile (mirrors iOS Debug).
+       Profile names below must exist in Apple Developer Console as Mac Catalyst
+       subtype; the developer's Mac must be a registered device on them. -->
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net10.0-maccatalyst|AnyCPU'">
     <CreatePackage>false</CreatePackage>
     <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">mac.chat.actual.dev.app</CodesignProvision>
@@ -494,14 +486,10 @@
     <MtouchLink>SdkOnly</MtouchLink>
   </PropertyGroup>
 
-  <!-- MacCatalyst: Release configuration — App Store / TestFlight signed.
-       Provisioning profile names must match the ones registered in Apple Developer Console.
-       They MUST be the "Mac" profile type, not "Mac Catalyst" — the Mac Catalyst type makes
-       dyld reject @rpath expansion for embedded .frameworks on App Store/TestFlight, crashing
-       the app at launch (dotnet/macios#14686).
-         dev  → "Mac App Store Dev"  (chat.actual.dev.app)
-         prod → "Mac App Store"      (chat.actual.app)
-       CreatePackage + EnablePackageSigning have the SDK build & sign the .pkg directly. -->
+  <!-- Release: App Store / TestFlight signed. Profiles below MUST be the "Mac" type,
+       not "Mac Catalyst" — the latter makes dyld reject @rpath for embedded .frameworks
+       and crashes the app at launch (dotnet/macios#14686).
+       CreatePackage + EnablePackageSigning let the SDK build & sign the .pkg directly. -->
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net10.0-maccatalyst|AnyCPU'">
     <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">Mac App Store Dev</CodesignProvision>
     <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">Mac App Store</CodesignProvision>
@@ -757,13 +745,10 @@
     </PropertyGroup>
   </Target>
 
-  <!-- MacCatalyst: workaround for a MAUI/iOS-SDK 26.1.10502 bug where the in-process Codesign task
-       overwrites top-level .dylib files in the app bundle's MonoBundle folder with the codesign
-       argument string instead of signing them in place, and writes stray `.stampfile` entries at
-       the root of each embedded .framework. The script restores the dylib from the linker-stage
-       staging copy, deletes the stray .stampfile files, and ad-hoc re-signs every dylib,
-       framework, and the bundle itself. Drop this once the upstream SDK is bumped past the
-       regression. -->
+  <!-- MAUI/iOS-SDK 26.1.10502 workaround: in-process Codesign overwrites MonoBundle
+       .dylib files with the codesign arg string and leaves stray .stampfile entries
+       in embedded .frameworks. Restore dylibs from the linker-stage staging copy,
+       remove the stampfiles, and re-sign. Drop once the SDK is bumped past it. -->
   <Target Name="_FixMacCatalystCodesigningRegression"
           Condition="$(TargetFramework.Contains('-maccatalyst'))"
           AfterTargets="_CodesignAppBundle">
@@ -800,11 +785,10 @@
     <Message Importance="High" Text="Service Worker has been copied." />
   </Target>
 
-  <!-- wwwroot/index.html is generated from index.htm (UpdateBundleHash) and is gitignored, so on a
-       clean checkout (CI) it doesn't exist when MAUI evaluates the wwwroot content glob and never
-       gets bundled — the BlazorWebView host page then 404s ("There is no content at") and the app
-       shows a blank screen. Generate it directly into the assembled bundle from the bundled
-       index.htm, after resources are collected and before code signing (fix-codesigning re-seals). -->
+  <!-- wwwroot/index.html (generated from index.htm by UpdateBundleHash) is gitignored,
+       so on a clean CI checkout it's missing from the wwwroot glob and the BlazorWebView
+       host page 404s. Regenerate it into the assembled bundle here, between resource
+       collection and code signing. -->
   <Target Name="_InjectBlazorHostPage"
           Condition="$(TargetFramework.Contains('-maccatalyst'))"
           BeforeTargets="_CodesignAppBundle">
