@@ -71,6 +71,7 @@ export * from './Components/AudioRecorder/recording-activity';
 export * from './Components/AudioRecorder/audio-recorder-state';
 export * from './Components/VideoPanel/video-panel';
 export * from './Components/VideoPanel/video-recorder';
+export * from './Components/VideoPanel/screen-share-gesture';
 export * from './Components/VideoPanel/video-streaming-preview';
 export * from './Components/VideoPanel/video-player';
 export * from './Components/VideoPanel/video-diagnostics';

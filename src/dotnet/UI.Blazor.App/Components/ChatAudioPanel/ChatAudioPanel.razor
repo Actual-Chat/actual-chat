@@ -51,7 +51,7 @@
     <div class="audio-panel-wrapper">
         @if (!IsNarrow && showVideoControls) {
             @if (!Hub.BrowserInfo.IsMobile) {
-                <div class="@(isOwnScreenCasting ? "screencast-on" : "screencast-off") screencast-wrapper">
+                <div class="@(isOwnScreenCasting ? "screencast-on" : "screencast-off screen-share-start") screencast-wrapper">
                     <ButtonRound Click="@(() => OnScreenCastClick(!isOwnScreenCasting))"
                         IsDisabled="@isVideoDisabled"
                         Tooltip="@screenCastTooltip"

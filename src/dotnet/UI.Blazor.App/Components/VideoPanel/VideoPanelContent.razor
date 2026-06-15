@@ -51,7 +51,7 @@
     var firstOpenCls = _isFirstOpen ? "first-time-open" : "";
     var audioRecordingCls = m.IsAudioRecording ? "recording" : "";
     var videoBtnCls = isOwnCameraStreaming ? "on" : "";
-    var screenCastBtnCls = isOwnScreenCasting ? "on" : "";
+    var screenCastBtnCls = isOwnScreenCasting ? "on" : "screen-share-start";
     var expandedPanelRecBtnCls = $"rec-btn {audioRecordingCls}";
     var isChatVisible = m.IsChatVisible ?? GetDefaultChatVisibility();
     var chatBtnCls = isChatVisible ? "on" : "";
