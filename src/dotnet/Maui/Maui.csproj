@@ -38,7 +38,7 @@
     <None Include="**\MaciOS\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
   </ItemGroup>
 
-  <!-- NOT iOS — Platforms\iOS holds iOS-only files -->
+  <!-- NOT iOS -->
   <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true">
     <Compile Remove="**\**\*.iOS.cs" />
     <None Include="**\**\*.iOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />

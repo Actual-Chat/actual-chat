@@ -621,9 +621,6 @@
   <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true">
     <Compile Remove="**\**\*.iOS.cs" />
     <None Include="**\**\*.iOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
-  </ItemGroup>
-  <!-- NOT iOS — Platforms\iOS holds iOS-only files; shared iOS+MacCatalyst code lives in MaciOS\ -->
-  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true">
     <Compile Remove="**\iOS\**\*.cs" />
     <None Include="**\iOS\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
   </ItemGroup>
