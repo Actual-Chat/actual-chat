@@ -25,7 +25,7 @@ public class NotificationsBackend(IServiceProvider services)
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
-    private Streaming.ILiveConversationsBackend LiveConversationsBackend { get; } = services.GetRequiredService<Streaming.ILiveConversationsBackend>();
+    private Streaming.ILiveSessionsBackend LiveSessionsBackend { get; } = services.GetRequiredService<Streaming.ILiveSessionsBackend>();
     private IChatThreadsBackend ChatThreadsBackend { get; } = services.GetRequiredService<IChatThreadsBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
@@ -381,7 +381,7 @@ public class NotificationsBackend(IServiceProvider services)
         var now = Clocks.CoarseSystemClock.Now;
         foreach (var userId in userIds) {
             // Joined users (and streamers, who signal participation) already see the call live.
-            if (await LiveConversationsBackend.IsParticipant(chatId, userId, cancellationToken).ConfigureAwait(false))
+            if (await LiveSessionsBackend.IsParticipant(chatId, userId, cancellationToken).ConfigureAwait(false))
                 continue;
 
             var notificationId = NotificationId.New(userId, NotificationKind.Message, similarityKey);
@@ -413,7 +413,7 @@ public class NotificationsBackend(IServiceProvider services)
         // Suppress per-message notifications for call-generated (audio) entries inside an active
         // live conversation — non-joined users get only START/FINAL, joined users get none. Typed
         // text posted during the call still notifies normally.
-        var live = await LiveConversationsBackend.Get(entry.ChatId, cancellationToken).ConfigureAwait(false);
+        var live = await LiveSessionsBackend.Get(entry.ChatId, cancellationToken).ConfigureAwait(false);
         if (live is { } lc && entry.LocalId >= lc.StartEntryLid && entry.HasAudio)
             return;
 

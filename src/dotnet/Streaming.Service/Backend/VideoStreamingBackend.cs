@@ -16,7 +16,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private ILiveVideoBackend LiveVideoBackend => field ??= Services.GetRequiredService<ILiveVideoBackend>();
-    private ILiveConversationsBackend LiveConversationsBackend => field ??= Services.GetRequiredService<ILiveConversationsBackend>();
+    private ILiveSessionsBackend LiveSessionsBackend => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
 
     private IServiceProvider Services { get; }
     private ILogger Log { get; }
@@ -176,7 +176,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             .ConfigureAwait(false);
 
         var chat = await Chats.Get(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false);
-        await LiveConversationsBackend
+        await LiveSessionsBackend
             .OnStreamRegistered(record.ChatId, author.Id, null, chat?.IsSummarized ?? false, cancellationToken)
             .ConfigureAwait(false);
 
@@ -313,7 +313,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             await LiveVideoBackend.Unregister(record.ChatId, record.StreamId, CancellationToken.None)
                 .ConfigureAwait(false);
             try {
-                await LiveConversationsBackend.OnStreamsChanged(record.ChatId, CancellationToken.None)
+                await LiveSessionsBackend.OnStreamsChanged(record.ChatId, CancellationToken.None)
                     .ConfigureAwait(false);
             }
             catch (Exception e) when (e is not OperationCanceledException) {

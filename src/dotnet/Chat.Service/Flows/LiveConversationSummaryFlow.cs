@@ -22,7 +22,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IConversationSummarizer ConversationSummarizer => field ??= Services.GetRequiredService<IConversationSummarizer>();
-    private ILiveConversationsBackend LiveConversationsBackend => field ??= Services.GetRequiredService<ILiveConversationsBackend>();
+    private ILiveSessionsBackend LiveSessionsBackend => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
 
     private ChatId ChatId => field ??= ChatId.Parse(Id.Arguments);
 
@@ -33,7 +33,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
-        var live = await LiveConversationsBackend.Get(ChatId, cancellationToken).ConfigureAwait(false);
+        var live = await LiveSessionsBackend.Get(ChatId, cancellationToken).ConfigureAwait(false);
         if (live is null)
             return; // Already closed elsewhere
 
@@ -47,7 +47,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
         if (hasEnoughNew) {
             var result = await ConversationSummarizer.Summarize(entries, cancellationToken).ConfigureAwait(false);
             if (result.Summary is { } summary) {
-                await LiveConversationsBackend
+                await LiveSessionsBackend
                     .UpdateSummary(ChatId, ToLiveSummary(summary, entries), cancellationToken)
                     .ConfigureAwait(false);
                 LastSummaryEndLid = entries[^1].LocalId;
@@ -81,7 +81,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
         await Services.Queues()
             .Enqueue(new NotificationsBackend_NotifyLiveConversation(ChatId, finalContent, true, live.StartEntryLid), cancellationToken)
             .ConfigureAwait(false);
-        await LiveConversationsBackend.Close(ChatId, cancellationToken).ConfigureAwait(false);
+        await LiveSessionsBackend.Close(ChatId, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<IReadOnlyList<ChatEntrySlim>> GetEntries(long startEntryLid, CancellationToken cancellationToken)

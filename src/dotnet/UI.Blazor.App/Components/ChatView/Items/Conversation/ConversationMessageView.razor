@@ -86,7 +86,7 @@
 
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
-    private LiveConversationUI LiveConversationUI => Hub.LiveConversationUI;
+    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
     private ClipboardUI ClipboardUI => ChatContext.Hub.ClipboardUI;
     private ConversationUI ConversationUI => Hub.ConversationUI;
@@ -127,9 +127,9 @@
         var translated = await ConversationUI.GetTranslatedConversation(conversation, cancellationToken).ConfigureAwait(true);
 
         var chatId = conversation.Id.ChatId;
-        var live = await LiveConversationUI.Get(chatId, cancellationToken).ConfigureAwait(true);
+        var live = await LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(true);
         var isLive = live != null && live.ConversationId == conversation.Id;
-        var isJoined = isLive && await LiveConversationUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(true);
+        var isJoined = isLive && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(true);
         var isVoiceOnly = isLive && live!.Title.IsNullOrEmpty() && live.Summary.IsNullOrEmpty();
         return new ConversationLiveState(translated, isLive, isJoined, isVoiceOnly);
     }

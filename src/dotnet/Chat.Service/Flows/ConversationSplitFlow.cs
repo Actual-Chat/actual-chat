@@ -17,7 +17,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
-    private ILiveConversationsBackend LiveConversationsBackend => field ??= Services.GetRequiredService<ILiveConversationsBackend>();
+    private ILiveSessionsBackend LiveSessionsBackend => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
     private IEntryGroupExtractor EntryGroupExtractor => field ??= Services.GetRequiredKeyedService<IEntryGroupExtractor>(EntryGroupLimit.None);
 
     private ChatId ChatId => field ??= ChatId.Parse(Id.Arguments);
@@ -216,7 +216,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
 
         // An active live conversation owns the tail range [StartEntryLid, ...) — leave it alone
         // until it closes and materializes; the split flow must not summarize it in parallel.
-        var live = await LiveConversationsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var live = await LiveSessionsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         var liveStartLid = live?.StartEntryLid ?? long.MaxValue;
 
         // Fetch up to (BatchSize + 1) items

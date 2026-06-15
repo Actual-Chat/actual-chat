@@ -9,13 +9,13 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// UI-side facade for live conversations: the active block, the local "am I joined" signal
 /// (drives per-viewer collapse/expand), and join/leave participation signaling to the server.
 /// </summary>
-public class LiveConversationUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeService, INotifyInitialized
+public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeService, INotifyInitialized
 {
     // Refresh interval for active participations; must stay under the server's
     // ParticipantStaleness (90s) so a still-joined viewer never expires mid-call.
     private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(45);
 
-    private ILiveConversations LiveConversations => Hub.LiveConversations;
+    private ILiveSessions LiveSessions => Hub.LiveSessions;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
@@ -25,7 +25,7 @@ public class LiveConversationUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICo
 
     [ComputeMethod]
     public virtual Task<LiveConversation?> Get(ChatId chatId, CancellationToken cancellationToken)
-        => LiveConversations.Get(Session, chatId, cancellationToken);
+        => LiveSessions.Get(Session, chatId, cancellationToken);
 
     [ComputeMethod]
     public virtual async Task<bool> AmIInLiveConversation(ChatId chatId, CancellationToken cancellationToken)
@@ -38,7 +38,7 @@ public class LiveConversationUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICo
     }
 
     public Task SetParticipation(ChatId chatId, ParticipationKind kind, bool isActive, CancellationToken cancellationToken)
-        => LiveConversations.SetParticipation(Session, chatId, kind, isActive, cancellationToken);
+        => LiveSessions.SetParticipation(Session, chatId, kind, isActive, cancellationToken);
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {

@@ -123,7 +123,7 @@ public partial class AudioStreamingBackend
             await LiveAudioBackend.Register(chatId, streamInfo, cancellationToken).ConfigureAwait(false);
 
             var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-            await LiveConversationsBackend
+            await LiveSessionsBackend
                 .OnStreamRegistered(chatId, author.Id, null, chat?.IsSummarized ?? false, cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -205,7 +205,7 @@ public partial class AudioStreamingBackend
                 if (mustStreamVoice) {
                     await LiveAudioBackend.Unregister(chatId, openSegment.StreamId.Value, CancellationToken.None).ConfigureAwait(false);
                     try {
-                        await LiveConversationsBackend.OnStreamsChanged(chatId, CancellationToken.None).ConfigureAwait(false);
+                        await LiveSessionsBackend.OnStreamsChanged(chatId, CancellationToken.None).ConfigureAwait(false);
                     }
                     catch (Exception e) when (e is not OperationCanceledException) {
                         Log.LogWarning(e, "OnStreamsChanged failed on stream #{StreamId} teardown", openSegment.StreamId);

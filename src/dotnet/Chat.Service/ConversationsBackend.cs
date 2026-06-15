@@ -19,7 +19,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IDbEntityResolver<string, DbConversation> DbConversationResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbConversation>>();
     private IConversationSummarizer ConversationSummarizer { get; } = services.GetRequiredService<IConversationSummarizer>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
-    private ILiveConversationsBackend LiveConversationsBackend { get; } = services.GetRequiredService<ILiveConversationsBackend>();
+    private ILiveSessionsBackend LiveSessionsBackend { get; } = services.GetRequiredService<ILiveSessionsBackend>();
 
     // [ComputeMethod]
     public virtual async Task<Conversation?> Get(ConversationId conversationId, CancellationToken cancellationToken)
@@ -81,7 +81,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var live = await LiveConversationsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var live = await LiveSessionsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (live is { } lc && lc.StartEntryLid < idTileRange.End && lc.EndEntryLid >= idTileRange.Start) {
             var liveRange = new Range<long>(lc.StartEntryLid, lc.EndEntryLid + 1);
             if (!conversationRanges.Contains(liveRange)) {
@@ -117,7 +117,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ToList()!;
 
         // The live conversation isn't persisted yet — inject its synthetic projection directly.
-        var live = await LiveConversationsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var live = await LiveSessionsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (live is { } lc) {
             var liveConversation = lc.ToConversation();
             if (!liveConversation.EntryLidRange.IntersectWith(lidTileRange).IsEmpty
