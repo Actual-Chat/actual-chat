@@ -186,9 +186,6 @@
     <PackageReference Include="AdamE.Firebase.iOS.CloudMessaging" />
     <PackageReference Include="ActualLab.Opus.MaciOS" />
   </ItemGroup>
-  <!-- MacCatalyst shares Mac/iOS audio code paths but no Firebase native packages
-       (Plugin.Firebase / AdamE.Firebase are iOS-only). Opus is provided by the same
-       ActualLab.Opus.MaciOS package used by iOS. -->
   <ItemGroup Condition="$(TargetFramework.Contains('-maccatalyst'))">
     <PackageReference Include="ActualLab.Opus.MaciOS" />
   </ItemGroup>
