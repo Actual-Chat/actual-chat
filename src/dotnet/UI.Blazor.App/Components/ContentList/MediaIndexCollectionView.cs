@@ -113,23 +113,16 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
             _firstLoadedBlock = _lastLoadedBlock = anchorBlock;
             _loaded.Clear();
             _loaded.AddRange(_blockItems[anchorBlock]);
-            var anchorIndex = anchorPos;
-            while (anchorIndex < radius && _firstLoadedBlock > 0) {
-                var block = await EnsureBlockLoaded(_firstLoadedBlock - 1, cancellationToken).ConfigureAwait(false);
-                _firstLoadedBlock--;
-                _loaded.InsertRange(0, block);
-                anchorIndex += block.Length;
-            }
-            while (_loaded.Count - 1 - anchorIndex < radius) {
-                if (!await TryLoadOlderBlock(cancellationToken).ConfigureAwait(false))
-                    break;
-            }
+            _exposedStart = anchorPos;
+            _exposedEnd = anchorPos + 1;
+            _items.Add(ToSyntheticAttachment(_loaded[anchorPos]));
 
-            _exposedStart = Math.Max(0, anchorIndex - radius);
-            _exposedEnd = Math.Min(_loaded.Count, anchorIndex + radius + 1);
-            for (var i = _exposedStart; i < _exposedEnd; i++)
-                _items.Add(ToSyntheticAttachment(_loaded[i]));
-            InitialIndex = anchorIndex - _exposedStart;
+            var newer = await RevealNewer(radius, cancellationToken).ConfigureAwait(false);
+            for (var i = newer.Count - 1; i >= 0; i--)
+                _items.Insert(0, ToSyntheticAttachment(newer[i]));
+            foreach (var item in await RevealOlder(radius, cancellationToken).ConfigureAwait(false))
+                _items.Add(ToSyntheticAttachment(item));
+            InitialIndex = newer.Count;
         }
         finally {
             _lock.Release();
@@ -140,23 +133,7 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
     {
         await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
-            var revealed = new List<VisualMediaItem>();
-            while (revealed.Count < count) {
-                if (_exposedStart == 0) {
-                    if (_firstLoadedBlock <= 0)
-                        break;
-
-                    var block = await EnsureBlockLoaded(_firstLoadedBlock - 1, cancellationToken).ConfigureAwait(false);
-                    _firstLoadedBlock--;
-                    _loaded.InsertRange(0, block);
-                    _exposedStart += block.Length;
-                    _exposedEnd += block.Length;
-                }
-                var take = Math.Min(count - revealed.Count, _exposedStart);
-                revealed.InsertRange(0, _loaded.GetRange(_exposedStart - take, take));
-                _exposedStart -= take;
-            }
-            return revealed;
+            return await RevealNewer(count, cancellationToken).ConfigureAwait(false);
         }
         finally {
             _lock.Release();
@@ -167,21 +144,49 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
     {
         await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
-            var revealed = new List<VisualMediaItem>();
-            while (revealed.Count < count) {
-                if (_exposedEnd >= _loaded.Count) {
-                    if (!await TryLoadOlderBlock(cancellationToken).ConfigureAwait(false))
-                        break;
-                }
-                var take = Math.Min(count - revealed.Count, _loaded.Count - _exposedEnd);
-                revealed.AddRange(_loaded.GetRange(_exposedEnd, take));
-                _exposedEnd += take;
-            }
-            return revealed;
+            return await RevealOlder(count, cancellationToken).ConfigureAwait(false);
         }
         finally {
             _lock.Release();
         }
+    }
+
+    // Reveal cores — caller must hold _lock. Move the exposed window's edge outward by up to
+    // `count`, loading more blocks as needed, and return the newly exposed items.
+    private async Task<List<VisualMediaItem>> RevealNewer(int count, CancellationToken cancellationToken)
+    {
+        var revealed = new List<VisualMediaItem>();
+        while (revealed.Count < count) {
+            if (_exposedStart == 0) {
+                if (_firstLoadedBlock <= 0)
+                    break;
+
+                var block = await EnsureBlockLoaded(_firstLoadedBlock - 1, cancellationToken).ConfigureAwait(false);
+                _firstLoadedBlock--;
+                _loaded.InsertRange(0, block);
+                _exposedStart += block.Length;
+                _exposedEnd += block.Length;
+            }
+            var take = Math.Min(count - revealed.Count, _exposedStart);
+            revealed.InsertRange(0, _loaded.GetRange(_exposedStart - take, take));
+            _exposedStart -= take;
+        }
+        return revealed;
+    }
+
+    private async Task<List<VisualMediaItem>> RevealOlder(int count, CancellationToken cancellationToken)
+    {
+        var revealed = new List<VisualMediaItem>();
+        while (revealed.Count < count) {
+            if (_exposedEnd >= _loaded.Count) {
+                if (!await TryLoadOlderBlock(cancellationToken).ConfigureAwait(false))
+                    break;
+            }
+            var take = Math.Min(count - revealed.Count, _loaded.Count - _exposedEnd);
+            revealed.AddRange(_loaded.GetRange(_exposedEnd, take));
+            _exposedEnd += take;
+        }
+        return revealed;
     }
 
     private async Task<ChatEntryAttachment?> ResolveReal(ChatEntryAttachment synthetic, CancellationToken cancellationToken)
