@@ -2,37 +2,23 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- App Store / TestFlight: sandbox required -->
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
-
-	<!-- Team identity. NOTE: do NOT add the iOS-style `application-identifier` here.
-	     On a Mac App Store build it makes dyld treat the app as iOS/Catalyst-restricted
-	     and refuse @rpath expansion for embedded .frameworks, crashing at launch
-	     (dotnet/macios#14686). The "Mac"-type profile supplies com.apple.application-identifier. -->
 	<key>com.apple.developer.team-identifier</key>
 	<string>M287G8G83F</string>
-
-	<!-- Shared Keychain access group — matches iOS so session can be shared with the iOS app -->
 	<key>keychain-access-groups</key>
 	<array>
 		<string>M287G8G83F.chat.actual.app.shared</string>
 	</array>
-
-	<!-- Sign in with Apple -->
 	<key>com.apple.developer.applesignin</key>
 	<array>
 		<string>Default</string>
 	</array>
-
-	<!-- Universal links (associated domains) — prod hosts only -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:voxt.ai</string>
 		<string>applinks:actual.chat</string>
 	</array>
-
-	<!-- Sandbox-gated runtime capabilities -->
 	<key>com.apple.security.network.client</key>
 	<true/>
 	<key>com.apple.security.network.server</key>
