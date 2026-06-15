@@ -144,9 +144,12 @@ describe('SVG avatar upload', () => {
         const avatarPic = avatarModal.locator('.pic img').first();
         await avatarPic.waitFor({ state: 'visible', timeout: 10_000 });
 
-        const imgSrc = await avatarPic.getAttribute('src') ?? '';
-        console.log('Avatar editor img src after SVG upload:', imgSrc);
-        expect(imgSrc).toMatch(/\.png/);
+        // src starts as `blob:` (just-selected SVG) and swaps to the server `.png` URL
+        // once upload+conversion finishes. Poll instead of reading once.
+        await expect.poll(
+            async () => await avatarPic.getAttribute('src') ?? '',
+            { timeout: 10_000, interval: 250 },
+        ).toMatch(/\.png/);
 
         // Save
         const saveButton = avatarModal.locator('button:has-text("Save")').first();
@@ -186,9 +189,10 @@ describe('SVG avatar upload', () => {
         const hasPic = await chatPic.isVisible({ timeout: 5000 }).catch(() => false);
         expect(hasPic).toBe(true);
 
-        const imgSrc = await chatPic.getAttribute('src') ?? '';
-        console.log('New chat img src after SVG upload:', imgSrc);
-        expect(imgSrc).toMatch(/\.png/);
+        await expect.poll(
+            async () => await chatPic.getAttribute('src') ?? '',
+            { timeout: 10_000, interval: 250 },
+        ).toMatch(/\.png/);
 
         // Close modal
         await page.keyboard.press('Escape');

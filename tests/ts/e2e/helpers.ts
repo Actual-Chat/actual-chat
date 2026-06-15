@@ -305,7 +305,16 @@ export async function signIn(page: Page) {
     ]).catch(() => { /* caller verifies */ });
 }
 
+// Sets the RenderMode cookie via /fusion/renderMode/{mode}. Use 'sp' (Server
+// Prerendered) to dodge the WASM-bootstrap flake on Debug builds — SignalR
+// drops mid-bootstrap leave ChatPage parked in its "synchronizing" early-return.
+// Use 'w' for tests that need a client-side host (e.g. LogUI.CanCapture).
+export async function useServerRenderMode(page: Page, mode: 'sp' | 's' | 'w' | 'a' = 'sp') {
+    await page.goto(`${BASE_URL}/fusion/renderMode/${mode}`, { waitUntil: 'domcontentloaded' });
+}
+
 export async function ensureSignedIn(page: Page) {
+    await useServerRenderMode(page);
     await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
     await waitForAppReady(page);
     await dismissCookieConsent(page);
