@@ -11,7 +11,8 @@ public class Haptics(AppUIHub hub) : IDisposable
     private readonly Lock _lock = new ();
     private readonly Dictionary<Tune, ICHHapticPatternPlayer> _players = new ();
 
-    private CHHapticEngine? HapticEngine => field ??= CreateHapticEngine();
+    private CHHapticEngine HapticEngine => field ??= CreateHapticEngine();
+    protected ILogger Log => field ??= hub.LogFor(GetType());
 
     public void Dispose()
     {
@@ -29,11 +30,10 @@ public class Haptics(AppUIHub hub) : IDisposable
 
     public async Task Vibrate(Tune tune, int[] vibration)
     {
-        var engine = HapticEngine;
-        if (engine is null || engine.IsMutedForHaptics)
+        if (HapticEngine.IsMutedForHaptics)
             return;
 
-        await engine.StartAsync().ConfigureAwait(false);
+        await HapticEngine.StartAsync().ConfigureAwait(false);
         var player = GetPlayer(tune, vibration);
         player.Start(0, out var error);
         error.Assert();
@@ -42,20 +42,21 @@ public class Haptics(AppUIHub hub) : IDisposable
         error.Assert();
     }
 
-    private CHHapticEngine? CreateHapticEngine()
+    private CHHapticEngine CreateHapticEngine()
     {
-        lock (_lock) {
-            // iPads have no Taptic Engine, so CHHapticEngine init would fail there.
-            if (!CHHapticEngine.GetHardwareCapabilities().SupportsHaptics)
-                return null;
+        lock (_lock)
+            try {
+                var engine = new CHHapticEngine(out var error);
+                error.Assert();
 
-            var engine = new CHHapticEngine(out var error);
-            error.Assert();
-
-            engine.Start(out error);
-            error.Assert();
-            return engine;
-        }
+                engine.Start(out error);
+                error.Assert();
+                return engine;
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Failed to create haptic engine");
+                throw;
+            }
     }
 
     private ICHHapticPatternPlayer GetPlayer(Tune tune, int[] vibration)
