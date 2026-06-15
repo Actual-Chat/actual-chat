@@ -1,7 +1,6 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor;
-using ActualChat.UI.Blazor.Services;
 using AVFoundation;
 using Foundation;
 
@@ -15,7 +14,9 @@ public sealed class AppleTuneUI(UIHub hub) : MauiTuneUI(hub)
     };
 
     private AudioEngines AudioEngines => field ??= Hub.Services.GetRequiredService<AudioEngines>();
+#if IOS
     private Haptics Haptics => field ??= Hub.Services.GetRequiredService<Haptics>();
+#endif
 
     // Protected methods
 
@@ -48,8 +49,10 @@ public sealed class AppleTuneUI(UIHub hub) : MauiTuneUI(hub)
         }
     }
 
+#if IOS
     protected override Task Vibrate(Tune tune)
         => BackgroundTask.Run(() => Haptics.Vibrate(tune, Tunes[tune].Vibration), Log, $"Failed to vibrate '{tune}'");
+#endif
 
     // Private methods
 
@@ -69,5 +72,5 @@ public sealed class AppleTuneUI(UIHub hub) : MauiTuneUI(hub)
     }
 
     private static NSUrl GetUrl(string soundName)
-        => NSBundle.MainBundle.GetUrlForResource(soundName, "m4a", "sounds");
+        => NSBundle.MainBundle.GetUrlForResource(soundName, "m4a", "sounds").Require();
 }

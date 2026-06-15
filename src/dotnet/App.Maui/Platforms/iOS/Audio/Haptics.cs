@@ -10,7 +10,7 @@ public class Haptics(AppUIHub hub) : IDisposable
     private const float Sharpness = 0.5f;
     private readonly Lock _lock = new ();
     private readonly Dictionary<Tune, ICHHapticPatternPlayer> _players = new ();
-    private bool _isUnsupported; // true once CHHapticEngine init fails (e.g. on Mac Catalyst)
+    private bool _isUnsupported;
 
     private CHHapticEngine? HapticEngine => field ??= CreateHapticEngine();
     protected ILogger Log => field ??= hub.LogFor(GetType());
@@ -58,9 +58,9 @@ public class Haptics(AppUIHub hub) : IDisposable
                 return engine;
             }
             catch (Exception e) {
-                // Mac Catalyst (and some iOS devices) don't expose a Taptic Engine —
-                // CHHapticEngine's initAndReturnError: returns nil. Degrade to no-op
-                // so the rest of the recording pipeline isn't blocked.
+                // Older iOS devices without a Taptic Engine (iPhone 6s/SE-era,
+                // most iPads) return nil from CHHapticEngine init — degrade to
+                // no-op so the rest of the recording pipeline isn't blocked.
                 Log.LogWarning(e, "CHHapticEngine init failed; haptics will be disabled");
                 _isUnsupported = true;
                 return null;
