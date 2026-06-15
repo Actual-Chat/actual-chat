@@ -1281,7 +1281,7 @@ export class VirtualList {
             return;
 
         const visibleItems = [...this.visibleItems].sort((a, b) => this.keySortCollator.compare(a, b));
-        const isEndAnchorVisible = this.state.stickyEdge?.edge === VirtualListEdge.End;
+        const isEndAnchorVisible = this.state.isEndAnchorVisible;
         // debugLog?.log(`updateVisibleKeys: calling UpdateItemVisibility:`, visibleItems, isEndAnchorVisible);
         await this.blazorRef.invokeMethodAsync(
             'UpdateItemVisibility',

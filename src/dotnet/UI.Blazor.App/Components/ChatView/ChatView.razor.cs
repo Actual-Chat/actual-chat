@@ -404,9 +404,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var itemVisibility = ItemVisibility.Value;
         var isFirstRender = renderedData.IsNone && query.IsNone;
         var readEntryLid = GetReadEntryLid();
-        var viewEntryLid = readEntryLid == long.MaxValue
-            ? long.MaxValue
-            : ViewPosition.Value.EntryLid;
+        var viewEntryLid = ViewPosition.Value.EntryLid;
         var hasViewEntry = viewEntryLid != 0 && viewEntryLid != long.MaxValue;
         var nav = await _nextNavigation.Use(cancellationToken)
             ?? (isFirstRender && hasViewEntry ? new ChatViewNavigation(viewEntryLid, false, false, true) : null);
