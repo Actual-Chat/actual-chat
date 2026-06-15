@@ -21,7 +21,6 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
     private readonly List<ChatContentPeriod> _periods = new();
     private readonly Dictionary<int, VisualMediaItem[]> _blockItems = new();
     private readonly List<VisualMediaItem> _loaded = new();
-    private readonly List<VisualMediaItem> _window = new();
     private readonly List<ChatEntryAttachment> _items = new();
     private readonly HashSet<Symbol> _resolved = new();
     private List<ContentListPlumbing.Block> _blocks = new();
@@ -62,34 +61,30 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
     public async Task<int> LoadNewer(CancellationToken cancellationToken)
     {
         var items = await LoadNewerItems(Batch, cancellationToken).ConfigureAwait(false);
-        for (var i = items.Count - 1; i >= 0; i--) {
-            _window.Insert(0, items[i]);
+        for (var i = items.Count - 1; i >= 0; i--)
             _items.Insert(0, ToSyntheticAttachment(items[i]));
-        }
         return items.Count;
     }
 
     public async Task<int> LoadOlder(CancellationToken cancellationToken)
     {
         var items = await LoadOlderItems(Batch, cancellationToken).ConfigureAwait(false);
-        foreach (var item in items) {
-            _window.Add(item);
+        foreach (var item in items)
             _items.Add(ToSyntheticAttachment(item));
-        }
         return items.Count;
     }
 
     public async ValueTask EnsureResolved(int index, CancellationToken cancellationToken)
     {
         var from = Math.Max(0, index - ResolveRadius);
-        var to = Math.Min(_window.Count - 1, index + ResolveRadius);
+        var to = Math.Min(_items.Count - 1, index + ResolveRadius);
         for (var i = from; i <= to; i++) {
-            var item = _window[i];
-            if (!_resolved.Add(item.Id))
+            var synthetic = _items[i];
+            if (!_resolved.Add(synthetic.Id))
                 continue;
 
-            var real = await ResolveReal(item, cancellationToken).ConfigureAwait(false);
-            if (real != null && i < _items.Count && _window[i].Id == item.Id)
+            var real = await ResolveReal(synthetic, cancellationToken).ConfigureAwait(false);
+            if (real != null && i < _items.Count && ReferenceEquals(_items[i], synthetic))
                 _items[i] = real;
         }
     }
@@ -103,7 +98,6 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
             await EnsureSkeletonHead(cancellationToken).ConfigureAwait(false);
             var (anchorBlock, anchorPos) = await LocateAnchor(anchor, cancellationToken).ConfigureAwait(false);
             if (anchorBlock < 0) {
-                _window.Add(anchor);
                 _items.Add(ToSyntheticAttachment(anchor));
                 InitialIndex = 0;
                 return;
@@ -126,10 +120,8 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
 
             _exposedStart = Math.Max(0, anchorIndex - radius);
             _exposedEnd = Math.Min(_loaded.Count, anchorIndex + radius + 1);
-            for (var i = _exposedStart; i < _exposedEnd; i++) {
-                _window.Add(_loaded[i]);
+            for (var i = _exposedStart; i < _exposedEnd; i++)
                 _items.Add(ToSyntheticAttachment(_loaded[i]));
-            }
             InitialIndex = anchorIndex - _exposedStart;
         }
         finally {
@@ -185,10 +177,10 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
         }
     }
 
-    private async Task<ChatEntryAttachment?> ResolveReal(VisualMediaItem item, CancellationToken cancellationToken)
+    private async Task<ChatEntryAttachment?> ResolveReal(ChatEntryAttachment synthetic, CancellationToken cancellationToken)
     {
-        var entry = await Chats.GetEntry(_session, item.EntryId, cancellationToken).ConfigureAwait(false);
-        return entry?.Attachments.FirstOrDefault(a => a.Index == item.LocalIndex);
+        var entry = await Chats.GetEntry(_session, synthetic.EntryId, cancellationToken).ConfigureAwait(false);
+        return entry?.Attachments.FirstOrDefault(a => a.Index == synthetic.Index);
     }
 
     private async Task EnsureSkeletonHead(CancellationToken cancellationToken)
