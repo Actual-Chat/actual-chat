@@ -92,7 +92,9 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<IAudioCodec, AppleAudioCodec>();
         services.AddScoped<ResamplerFactory>(c => new ResamplerFactory(c.AppUIHub()));
         services.AddScoped<AudioEngines>(c => new AudioEngines(c.AppUIHub()));
+#if IOS
         services.AddScoped<Haptics>(c => new Haptics(c.AppUIHub()));
+#endif
         services.AddScoped<AudioSession>(c => new AudioSession(c.AppUIHub()));
         services.AddScoped<IAudioCapture>(c => new AppleAudioCapture(c.AppUIHub()));
 #endif
