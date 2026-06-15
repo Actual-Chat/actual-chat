@@ -8,7 +8,7 @@
     @apply absolute left-4;
     @apply flex-x gap-x-2 items-center justify-start;
     @apply h-full;
-    @apply text-placeholder;
+    @apply text-03;
 }
 .embedded-message-editor label:has(input:focus) .c-placeholder {
     @apply hidden;
