@@ -39,6 +39,10 @@ public sealed partial record LiveConversation
     public bool IsClosing { get; init; }
     [DataMember(Order = 14), MemoryPackOrder(14), Key(14)]
     public Moment? ClosingAt { get; init; }
+    [DataMember(Order = 15), MemoryPackOrder(15), Key(15)]
+    public AuthorId Host { get; init; } = null!;
+    [DataMember(Order = 16), MemoryPackOrder(16), Key(16)]
+    public SessionRules Rules { get; init; } = SessionRules.Default;
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ConversationId ConversationId => ConversationId.New(ChatId, StartEntryLid);
