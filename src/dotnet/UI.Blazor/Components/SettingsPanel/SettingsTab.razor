@@ -9,7 +9,7 @@
 <div class="@Class settings-tab">
     <div class="tab-inner">
         <div class="settings-tab-header @HeaderClass">
-            <SettingsHeader Title="@Title" ArrowClick="@OnChangeView" Buttons="@HeaderButtons"/>
+            <SettingsHeader Title="@Title" ArrowClick="@OnChangeView"/>
         </div>
         <div class="settings-tab-content @ContentClass">
             @ChildContent
@@ -32,7 +32,6 @@
     [Parameter] public int? TabIndex { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? TitleContent { get; set; }
-    [Parameter] public RenderFragment? HeaderButtons { get; set; }
     [Parameter] public EventCallback TabArrowClick { get; set; }
 
     double ITab.Order => TabIndex ?? double.MaxValue;

@@ -6,10 +6,8 @@
 <div class="c-title">
     @Title
 </div>
-@Buttons
 
 @code {
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public EventCallback ArrowClick { get; set; }
-    [Parameter] public RenderFragment? Buttons { get; set; }
 }
