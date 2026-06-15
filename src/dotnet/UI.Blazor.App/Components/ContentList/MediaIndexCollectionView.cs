@@ -7,11 +7,17 @@ namespace ActualChat.UI.Blazor.App.Components;
 // Navigable media-viewer collection over a chat's whole visual-media library.
 // Reuses the period-skeleton + paged-page protocol (and the block helpers) that the
 // right-panel grid uses, yields a flat newest-first window (index 0 = newest), and
-// extends it at either edge on demand. Items are synthetic ChatEntryAttachments built
-// from VisualMediaItem; Width/Height are filled lazily via GetEntry in EnsureResolved.
+// extends it at either edge on demand while trimming the far edge to cap the window at
+// MaxWindow (the loaded buffer is kept, so trimmed items re-reveal without a refetch).
+// Load* return the signed shift of existing items' indices (prepend +N, far-edge trim -N).
+// Items are synthetic ChatEntryAttachments built from VisualMediaItem; Width/Height are
+// filled lazily via GetEntry in EnsureResolved.
 public sealed class MediaIndexCollectionView : IMediaCollectionView
 {
     private const int Batch = 10;
+    // Must exceed Batch + 2*viewer LoadThreshold so that after a far-edge trim the active
+    // slide can't land back inside the opposite edge's load zone (which would thrash loads).
+    private const int MaxWindow = 40;
     private const int ResolveRadius = 2;
 
     private readonly AppUIHub _hub;
@@ -63,6 +69,7 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
         var items = await LoadNewerItems(Batch, cancellationToken).ConfigureAwait(false);
         for (var i = items.Count - 1; i >= 0; i--)
             _items.Insert(0, ToSyntheticAttachment(items[i]));
+        TrimBack();
         return items.Count;
     }
 
@@ -71,7 +78,7 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
         var items = await LoadOlderItems(Batch, cancellationToken).ConfigureAwait(false);
         foreach (var item in items)
             _items.Add(ToSyntheticAttachment(item));
-        return items.Count;
+        return -TrimFront();
     }
 
     public async ValueTask EnsureResolved(int index, CancellationToken cancellationToken)
@@ -181,6 +188,35 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
     {
         var entry = await Chats.GetEntry(_session, synthetic.EntryId, cancellationToken).ConfigureAwait(false);
         return entry?.Attachments.FirstOrDefault(a => a.Index == synthetic.Index);
+    }
+
+    // Trims the newer (front) edge back to MaxWindow and returns how many items were dropped;
+    // _loaded keeps them, so LoadNewer re-reveals them later without a refetch.
+    private int TrimFront()
+    {
+        var excess = _items.Count - MaxWindow;
+        if (excess <= 0)
+            return 0;
+
+        for (var i = 0; i < excess; i++)
+            _resolved.Remove(_items[i].Id);
+        _items.RemoveRange(0, excess);
+        _exposedStart += excess;
+        return excess;
+    }
+
+    // Trims the older (back) edge back to MaxWindow; back-edge drops don't shift existing indices.
+    private void TrimBack()
+    {
+        var excess = _items.Count - MaxWindow;
+        if (excess <= 0)
+            return;
+
+        var start = _items.Count - excess;
+        for (var i = start; i < _items.Count; i++)
+            _resolved.Remove(_items[i].Id);
+        _items.RemoveRange(start, excess);
+        _exposedEnd -= excess;
     }
 
     private async Task EnsureSkeletonHead(CancellationToken cancellationToken)
