@@ -24,6 +24,17 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         return await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
     }
 
+    // [ComputeMethod]
+    public virtual async Task<LiveSession?> GetLiveSession(Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+        if (!chat.Rules.CanRead())
+            return null;
+
+        return await Backend.GetLiveSession(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task SetParticipation(
         Session session,
         ChatId chatId,
@@ -33,5 +44,11 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         await Backend.SetParticipation(chatId, account.Id, kind, isActive, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task SetMicMuted(Session session, ChatId chatId, bool micMuted, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        await Backend.SetMicMuted(chatId, account.Id, micMuted, cancellationToken).ConfigureAwait(false);
     }
 }

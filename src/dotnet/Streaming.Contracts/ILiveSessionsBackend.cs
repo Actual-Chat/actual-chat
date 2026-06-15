@@ -12,6 +12,8 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<LiveConversation?> Get(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
+    Task<LiveSession?> GetLiveSession(ChatId chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
     Task<bool> IsParticipant(ChatId chatId, UserId userId, CancellationToken cancellationToken);
 
     Task OnStreamRegistered(
@@ -27,6 +29,11 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
         UserId userId,
         ParticipationKind kind,
         bool isActive,
+        CancellationToken cancellationToken);
+    Task SetMicMuted(
+        ChatId chatId,
+        UserId userId,
+        bool micMuted,
         CancellationToken cancellationToken);
     Task UpdateSummary(
         ChatId chatId,

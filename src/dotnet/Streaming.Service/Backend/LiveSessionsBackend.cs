@@ -1,4 +1,6 @@
+using ActualChat.Chat;
 using ActualChat.Live;
+using ActualChat.Media;
 using ActualChat.Notification;
 using ActualChat.Queues;
 using ActualChat.Redis;
@@ -28,6 +30,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     private readonly AsyncLockSet<ChatId> _changeLocks = new(LockReentryMode.CheckedFail);
 
     private IChatsBackend ChatsBackend { get; }
+    private IAuthorsBackend AuthorsBackend { get; }
     private ILiveAudioBackend LiveAudioBackend { get; }
     private ILiveVideoBackend LiveVideoBackend { get; }
     private VersionGenerator<long> VersionGenerator { get; }
@@ -36,6 +39,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         : base(services, ShardScheme.LiveBackend)
     {
         ChatsBackend = services.GetRequiredService<IChatsBackend>();
+        AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
         LiveAudioBackend = services.GetRequiredService<ILiveAudioBackend>();
         LiveVideoBackend = services.GetRequiredService<ILiveVideoBackend>();
         VersionGenerator = services.GetRequiredService<VersionGenerator<long>>();
@@ -65,6 +69,70 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
         Computed.GetCurrent().Invalidate(SelfHealDelay);
         return state;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<LiveSession?> GetLiveSession(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var state = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (state is null)
+            return null;
+
+        var audio = await LiveAudioBackend.List(chatId, cancellationToken).ConfigureAwait(false);
+        var video = await LiveVideoBackend.List(chatId, cancellationToken).ConfigureAwait(false);
+        var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
+        var host = state.Host ?? state.AuthorIds[0];
+        var cutoff = Clocks.SystemClock.Now - ParticipantStaleness;
+        var now = Clocks.SystemClock.Now;
+
+        var byAuthor = new Dictionary<AuthorId, LiveSessionMember>();
+        LiveSessionMember For(AuthorId a)
+            => byAuthor.TryGetValue(a, out var m) ? m : new LiveSessionMember { AuthorId = a, JoinedAt = now };
+
+        foreach (var s in audio)
+            byAuthor[s.AuthorId] = For(s.AuthorId) with { IsMicOpen = true };
+        foreach (var v in video) {
+            var m = For(v.AuthorId);
+            byAuthor[v.AuthorId] = m with {
+                HasCamera = m.HasCamera || v.SourceKind == VideoSourceKind.Camera,
+                HasScreenShare = m.HasScreenShare || v.SourceKind == VideoSourceKind.ScreenCast,
+            };
+        }
+        foreach (var (userIdValue, info) in participants) {
+            if (info is null)
+                continue;
+            var author = await AuthorsBackend
+                .GetByUserId(chatId, UserId.Parse(userIdValue), RequestedAuthorKind.Default, cancellationToken)
+                .ConfigureAwait(false);
+            if (author is null)
+                continue;
+            var m = For(author.Id);
+            byAuthor[author.Id] = m with {
+                IsListening = m.IsListening || (info.Kind == ParticipationKind.AudioListen && info.RegisteredAt >= cutoff),
+                MicMuted = info.MicMuted,
+                ForcedMuted = info.ForcedMuted,
+                JoinedAt = info.RegisteredAt,
+            };
+        }
+
+        var members = byAuthor.Values
+            .Select(m => m with {
+                Group = m.AuthorId == host ? MemberGroup.Host
+                    : m.IsMicOpen || m.HasCamera || m.HasScreenShare || m.IsListening ? MemberGroup.Other
+                    : MemberGroup.Exited,
+            })
+            .OrderBy(m => (int)m.Group)
+            .ToList();
+
+        return new LiveSession {
+            ChatId = chatId,
+            Host = host,
+            StartedAt = state.StartedAt,
+            Rules = state.Rules ?? SessionRules.Default,
+            Members = members,
+            Conversation = state,
+            Version = state.Version,
+        };
     }
 
     // [ComputeMethod]
@@ -102,6 +170,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
                 EndEntryLid = startEntryLid,
                 StartedAt = now,
                 AuthorIds = [authorId],
+                Host = authorId,
                 TranscriptionOn = transcriptionOn,
                 Version = VersionGenerator.NextVersion(),
             };
@@ -191,12 +260,29 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         CancellationToken cancellationToken)
     {
         if (isActive) {
-            var info = new ParticipationInfo(kind, Clocks.SystemClock.Now);
+            // Preserve mute flags across heartbeats / kind changes.
+            var existing = await SafeGetParticipant(chatId, userId).ConfigureAwait(false);
+            var info = new ParticipationInfo(kind, Clocks.SystemClock.Now,
+                existing?.MicMuted ?? false, existing?.ForcedMuted ?? false);
             await _participants.Set(chatId.Value, userId.Value, info).ConfigureAwait(false);
         }
         else
             await _participants.Remove(chatId.Value, userId.Value).ConfigureAwait(false);
         InvalidateIsParticipant(chatId, userId);
+        InvalidateGetLiveSession(chatId);
+    }
+
+    public virtual async Task SetMicMuted(
+        ChatId chatId,
+        UserId userId,
+        bool micMuted,
+        CancellationToken cancellationToken)
+    {
+        var existing = await SafeGetParticipant(chatId, userId).ConfigureAwait(false);
+        if (existing is null)
+            return;
+        await _participants.Set(chatId.Value, userId.Value, existing with { MicMuted = micMuted }).ConfigureAwait(false);
+        InvalidateGetLiveSession(chatId);
     }
 
     public virtual async Task UpdateSummary(
@@ -249,6 +335,17 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         }
     }
 
+    private async Task<Dictionary<string, ParticipationInfo?>> SafeGetHashMap(ChatId chatId)
+    {
+        try {
+            return await _participants.GetHashMap(chatId.Value).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "Failed to read participants from Redis for chat #{ChatId}", chatId);
+            return [];
+        }
+    }
+
     private async Task SelfClose(ChatId chatId)
     {
         try {
@@ -271,8 +368,16 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
 
     private void InvalidateGet(ChatId chatId)
     {
-        using (Invalidation.Begin())
+        using (Invalidation.Begin()) {
             _ = Get(chatId, default);
+            _ = GetLiveSession(chatId, default);
+        }
+    }
+
+    private void InvalidateGetLiveSession(ChatId chatId)
+    {
+        using (Invalidation.Begin())
+            _ = GetLiveSession(chatId, default);
     }
 
     private void InvalidateIsParticipant(ChatId chatId, UserId userId)
@@ -286,5 +391,7 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
     [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject]
     public sealed partial record ParticipationInfo(
         [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] ParticipationKind Kind,
-        [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] Moment RegisteredAt);
+        [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] Moment RegisteredAt,
+        [property: DataMember(Order = 2), MemoryPackOrder(2), Key(2)] bool MicMuted = false,
+        [property: DataMember(Order = 3), MemoryPackOrder(3), Key(3)] bool ForcedMuted = false);
 }
