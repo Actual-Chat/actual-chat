@@ -13,8 +13,8 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Page } from 'playwright';
 import {
     BASE_URL, connectBrowser, dismissCookieConsent, skipOnboarding,
-    isSignedIn, signIn, screenshot, waitForAppReady, waitForChatReady,
-    waitForEditor, type BrowserConnection,
+    isSignedIn, signIn, screenshot, useServerRenderMode, waitForAppReady,
+    waitForChatReady, waitForEditor, type BrowserConnection,
 } from './helpers';
 
 describe('sign-in and send message', () => {
@@ -35,6 +35,7 @@ describe('sign-in and send message', () => {
     });
 
     it('should be signed in (sign in if needed)', async () => {
+        await useServerRenderMode(page);
         await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
         await waitForAppReady(page);
         await dismissCookieConsent(page);
