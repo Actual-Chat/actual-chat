@@ -201,7 +201,10 @@
         @if (m.IsExpanded && isChatVisible && !ScreenSize.IsNarrow() && m.ChatContext is { } chatContext) {
             <div class="video-panel-chat upload-drag-drop-host">
                 <CascadingValue Value="@chatContext">
-                    <ChatView @key="@chatContext.Chat.Id.Value"/>
+                    <ChatView @key="@chatContext.Chat.Id.Value" NavigationSlotName="@ChatNavigationSlot"/>
+                    <div class="layout-subfooter">
+                        <RenderStack Name="@ChatNavigationSlot"/>
+                    </div>
                     <ChatMessageEditor @key="@("vp-editor-" + chatContext.Chat.Id.Value)"/>
                 </CascadingValue>
             </div>
@@ -225,6 +228,7 @@
 
 @code {
     private const string CameraMenuRequester = nameof(VideoPanelContent);
+    private const string ChatNavigationSlot = "VideoPanelSubFooter";
 
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPanel.create";
 
