@@ -14,8 +14,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Page } from 'playwright';
 import {
     BASE_URL, connectBrowser, dismissCookieConsent, skipOnboarding,
-    isSignedIn, signIn, screenshot, useServerRenderMode, waitForAppReady,
-    type BrowserConnection,
+    isSignedIn, signIn, screenshot, waitForAppReady, type BrowserConnection,
 } from './helpers';
 
 const shot = (name: string) => screenshot('e2e', name);
@@ -63,7 +62,6 @@ describe('avatar editing', () => {
         conn = await connectBrowser();
         page = await conn.context.newPage();
 
-        await useServerRenderMode(page);
         await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 15000 });
         await waitForAppReady(page);
         await dismissCookieConsent(page);

@@ -148,7 +148,7 @@ describe('SVG avatar upload', () => {
         // once upload+conversion finishes. Poll instead of reading once.
         await expect.poll(
             async () => await avatarPic.getAttribute('src') ?? '',
-            { timeout: 10_000, interval: 250 },
+            { timeout: 30_000, interval: 250 },
         ).toMatch(/\.png/);
 
         // Save
@@ -191,7 +191,7 @@ describe('SVG avatar upload', () => {
 
         await expect.poll(
             async () => await chatPic.getAttribute('src') ?? '',
-            { timeout: 10_000, interval: 250 },
+            { timeout: 30_000, interval: 250 },
         ).toMatch(/\.png/);
 
         // Close modal

@@ -305,15 +305,12 @@ export async function signIn(page: Page) {
     ]).catch(() => { /* caller verifies */ });
 }
 
-// Sets the RenderMode cookie via /fusion/renderMode/{mode}. Defaults to 'w'
-// (WASM) — Server Prerendered leaves ChatView unmounted on the CI debug build
-// (chat list shows, right panel stays blank). WASM bootstraps cleanly there.
-export async function useServerRenderMode(page: Page, mode: 'sp' | 's' | 'w' | 'a' = 'w') {
+// Sets the RenderMode cookie via /fusion/renderMode/{mode}.
+export async function useServerRenderMode(page: Page, mode: 'sp' | 's' | 'w' | 'a') {
     await page.goto(`${BASE_URL}/fusion/renderMode/${mode}`, { waitUntil: 'domcontentloaded' });
 }
 
 export async function ensureSignedIn(page: Page) {
-    await useServerRenderMode(page);
     await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
     await waitForAppReady(page);
     await dismissCookieConsent(page);

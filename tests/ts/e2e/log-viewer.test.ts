@@ -9,7 +9,7 @@ import { describe, it, beforeAll, afterAll } from 'vitest';
 import type { Page } from 'playwright';
 import {
     BASE_URL, connectBrowser, dismissCookieConsent, ensureSignedIn,
-    screenshot, waitForAppReady, type BrowserConnection,
+    screenshot, useServerRenderMode, waitForAppReady, type BrowserConnection,
 } from './helpers';
 
 const shot = (name: string) => screenshot('e2e', `log-viewer-${name}`);
@@ -22,6 +22,8 @@ describe('Log Viewer tab is reachable on narrow screens', () => {
         conn = await connectBrowser();
         page = await conn.context.newPage();
         await page.setViewportSize({ width: 393, height: 852 });
+        // Log Viewer tab is hidden on a server host (LogUI.CanCapture is false).
+        await useServerRenderMode(page, 'w');
         await ensureSignedIn(page);
     }, 120_000);
 
