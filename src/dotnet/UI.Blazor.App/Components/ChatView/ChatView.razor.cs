@@ -6,7 +6,6 @@ using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Diagnostics;
-using Microsoft.JSInterop;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
@@ -76,6 +75,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
+    [Parameter] public string NavigationSlotName { get; set; } = LayoutSlots.SubFooter;
 
     public ChatView(AppUIHub hub)
     {

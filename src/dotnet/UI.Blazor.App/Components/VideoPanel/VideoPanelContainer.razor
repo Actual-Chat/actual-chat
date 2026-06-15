@@ -6,10 +6,14 @@
     var chatContext = m.ChatContext;
 
     // TODO(DF): move this logic to ChatVideoUI
-    // Clear watching when navigating to a different chat
-    if (_lastWatchingChatContext is not null && chatContext is not null && _lastWatchingChatContext != chatContext)
+    // Clear watching when navigating to a different chat.
+    // Compare by ChatId, not ChatContext reference: ChatContext is recreated on every
+    // ChatPage.ComputeState run (it uses ByRef equality), so a reference change here
+    // means "the chat's data updated", not "the user switched chats".
+    var chatId = chatContext?.Chat.Id;
+    if (_lastWatchingChatId is { } lastChatId && chatId is { } currentChatId && lastChatId != currentChatId)
         ChatVideoUI.CloseVideoPanel();
-    _lastWatchingChatContext = isWatching ? chatContext : null;
+    _lastWatchingChatId = isWatching ? chatId : null;
 
     // Handle show/hide transitions based on watching state
     if (!_isRendered && isWatching) {
@@ -36,7 +40,7 @@
 }
 
 @code {
-    private ChatContext? _lastWatchingChatContext;
+    private ChatId? _lastWatchingChatId;
     private ChatContext? _chatContextToRender;
     private bool _isRendered;
     private bool _isClosing;
