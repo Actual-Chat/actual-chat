@@ -202,24 +202,24 @@
     [JSInvokable]
     public async Task SlideChanged(int selectedSlide) {
         _selectedSlide = selectedSlide;
-        var prepended = 0;
+        var frontDelta = 0;
         if (!_loadInFlight) {
             _loadInFlight = true;
             try {
                 if (Collection.HasOlder && _selectedSlide >= Collection.Items.Count - 1 - LoadThreshold)
-                    await Collection.LoadOlder(default).ConfigureAwait(true);
+                    frontDelta += await Collection.LoadOlder(default).ConfigureAwait(true);
                 if (Collection.HasNewer && _selectedSlide <= LoadThreshold)
-                    prepended = await Collection.LoadNewer(default).ConfigureAwait(true);
+                    frontDelta += await Collection.LoadNewer(default).ConfigureAwait(true);
             }
             finally {
                 _loadInFlight = false;
             }
         }
-        if (prepended > 0)
-            _selectedSlide += prepended;
+        if (frontDelta != 0)
+            _selectedSlide += frontDelta;
         await Collection.EnsureResolved(_selectedSlide, default).ConfigureAwait(true);
         _windowDirty = true;
-        _pendingActiveIndex = prepended > 0 ? _selectedSlide : -1;
+        _pendingActiveIndex = frontDelta != 0 ? _selectedSlide : -1;
         StateHasChanged();
     }
 
