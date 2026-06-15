@@ -162,10 +162,8 @@ public partial class MauiWebView
             WKSecurityOrigin origin,
             WKMediaCaptureType type)
         {
-            // Only grant for our own embedded WebView origin. MAUI BlazorWebView serves the
-            // host page at app://0.0.0.1/ (MauiSettings.LocalHost); the prior check rejected
-            // every origin with a non-empty host, which silently denied requests from our own
-            // page and forced everything onto the JS permission-handler fallback.
+            // Grant only for our own WebView origin — MAUI BlazorWebView serves the host page
+            // at app://0.0.0.1/ (MauiSettings.LocalHost); an empty host means an opaque origin.
             var host = origin.Host;
             if (!host.IsNullOrEmpty() && host != MauiSettings.LocalHost)
                 return false;
