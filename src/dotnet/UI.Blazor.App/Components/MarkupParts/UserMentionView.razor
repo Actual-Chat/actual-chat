@@ -4,8 +4,8 @@
 @inherits ComputedMarkupViewBase<UserMention, UserMentionView.Model>
 @{
     var name = Markup.Account?.Avatar.Name.NullIfEmpty() ?? Markup.NameOrNotAvailable;
-    var isMember = Markup.IsChatMember;
     var m = State.Value;
+    var isMember = m.IsMember;
     var tooltip = !isMember
         ? "Not a member of this chat"
         : m.HasRead == null
@@ -28,18 +28,20 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Model>.Options() {
-                InitialValue = new Model(null),
+                InitialValue = new Model(true, null),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatEntry = Entry;
-        if (chatEntry.IsSystemEntry || !Markup.IsChatMember)
-            return new(null); // No read-tracking for system entries or non-members.
+        var chatId = chatEntry.ChatId.GetThreadOutermostParentOrSelf();
+        var isMember = await Authors.IsUserChatMember(Session, chatId, Markup.UserId, cancellationToken).ConfigureAwait(false);
+        if (chatEntry.IsSystemEntry || !isMember)
+            return new(isMember, null); // No read-tracking for system entries or non-members.
 
         var hasRead = await Chats.IsEntryReadByMentionedUser(Session, chatEntry.Id, Markup.Id, cancellationToken).ConfigureAwait(false);
-        return new(hasRead);
+        return new(isMember, hasRead);
     }
 
     private async Task OnClick() {
@@ -64,5 +66,5 @@
 
     // Nested types
 
-    public sealed record Model(bool? HasRead);
+    public sealed record Model(bool IsMember, bool? HasRead);
 }
