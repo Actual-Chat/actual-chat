@@ -62,14 +62,8 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // [ComputeMethod]
-    public virtual async Task<IReadOnlyList<Device>> ListDevices(UserId userId, NotificationChannel? notificationChannel, CancellationToken cancellationToken)
-    {
-        if (notificationChannel is null)
-            return await ListDevicesFromDb(userId, Symbol.Empty, null, cancellationToken).ConfigureAwait(false);
-
-        var devices = await ListDevicesFromDb(userId, Symbol.Empty, null, cancellationToken).ConfigureAwait(false);
-        return devices.Where(x => x.NotificationChannel == notificationChannel).ToList();
-    }
+    public virtual Task<IReadOnlyList<Device>> ListDevices(UserId userId, NotificationChannel? notificationChannel, CancellationToken cancellationToken)
+        => ListDevicesFromDb(userId, Symbol.Empty, null, notificationChannel, cancellationToken);
 
     // [ComputeMethod]
     public virtual async Task<IReadOnlyList<UserId>> ListSubscribedUserIds(ChatId chatId, CancellationToken cancellationToken)
@@ -492,7 +486,7 @@ public class NotificationsBackend(IServiceProvider services)
             return; // It just spawns other commands, so nothing to do here
 
         var session = eventCommand.Session;
-        var devices = await ListDevicesFromDb(eventCommand.UserId, session.Hash, null, cancellationToken).ConfigureAwait(false);
+        var devices = await ListDevicesFromDb(eventCommand.UserId, session.Hash, null, null, cancellationToken).ConfigureAwait(false);
         if (devices.Count == 0)
             return;
 
@@ -545,7 +539,7 @@ public class NotificationsBackend(IServiceProvider services)
     private async Task Send(UserId userId, Notification notification, CancellationToken cancellationToken)
     {
         var minActiveAt = Clocks.SystemClock.Now - Constants.Notification.ActiveDevicePeriod;
-        var devices = await ListDevicesFromDb(userId, Symbol.Empty, minActiveAt, cancellationToken).ConfigureAwait(false);
+        var devices = await ListDevicesFromDb(userId, Symbol.Empty, minActiveAt, null, cancellationToken).ConfigureAwait(false);
         if (devices.Count == 0) {
             Log.LogInformation("No recipient devices found for notification #{NotificationId}", notification.Id);
             return;
@@ -636,7 +630,7 @@ public class NotificationsBackend(IServiceProvider services)
         return null;
     }
 
-    private async Task<IReadOnlyList<Device>> ListDevicesFromDb(UserId userId, Symbol sessionHash, Moment? minActiveAt, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<Device>> ListDevicesFromDb(UserId userId, Symbol sessionHash, Moment? minActiveAt, NotificationChannel? channel, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
@@ -647,6 +641,7 @@ public class NotificationsBackend(IServiceProvider services)
             .Where(d => d.UserId == userId.Value)
             .WhereIf(d => d.SessionHash == sessionHash.Value, !sessionHash.IsEmpty)
             .WhereIf(d => (d.AccessedAt ?? d.CreatedAt) >= minActiveAtValue, minActiveAt.HasValue)
+            .WhereIf(d => d.NotificationChannel == channel, channel != null)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return dbDevices.Select(d => d.ToModel()).ToList();
