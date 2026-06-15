@@ -13,7 +13,7 @@ namespace ActualChat.Streaming;
 /// Backend for the single live conversation per chat: its in-progress summary block,
 /// the participant registry, and open/close driven by live audio/video streams.
 /// </summary>
-public partial class LiveConversationsBackend : ShardComputeService, ILiveConversationsBackend
+public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBackend
 {
     private static readonly TimeSpan KeyTtl = TimeSpan.FromMinutes(6);
     private static readonly TimeSpan SelfHealDelay = TimeSpan.FromSeconds(30);
@@ -32,7 +32,7 @@ public partial class LiveConversationsBackend : ShardComputeService, ILiveConver
     private ILiveVideoBackend LiveVideoBackend { get; }
     private VersionGenerator<long> VersionGenerator { get; }
 
-    public LiveConversationsBackend(IServiceProvider services)
+    public LiveSessionsBackend(IServiceProvider services)
         : base(services, ShardScheme.LiveBackend)
     {
         ChatsBackend = services.GetRequiredService<IChatsBackend>();

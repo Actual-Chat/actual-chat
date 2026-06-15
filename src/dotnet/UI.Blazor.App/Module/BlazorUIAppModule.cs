@@ -68,7 +68,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
 
         // Live stream UI
         fusion.AddService<LiveStreamUI>(ServiceLifetime.Scoped);
-        fusion.AddService<LiveConversationUI>(ServiceLifetime.Scoped);
+        fusion.AddService<LiveSessionUI>(ServiceLifetime.Scoped);
 
         // Settings
         services.AddSingleton(_ => new AudioSettings()); // Used in StreamingServiceModule as well

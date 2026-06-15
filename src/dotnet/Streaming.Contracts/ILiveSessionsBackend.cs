@@ -7,7 +7,7 @@ namespace ActualChat.Streaming;
 
 [BackendService(nameof(HostRole.LiveBackend), ServiceMode.Distributed)]
 [BackendShardScheme(nameof(HostRole.LiveBackend))]
-public interface ILiveConversationsBackend : IComputeService, IBackendService
+public interface ILiveSessionsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<LiveConversation?> Get(ChatId chatId, CancellationToken cancellationToken);

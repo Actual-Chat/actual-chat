@@ -6,12 +6,12 @@ namespace ActualChat.Streaming.Services;
 /// <summary>
 /// Public facade for live-conversation activity in a chat: the in-progress block and join/leave.
 /// </summary>
-public class LiveConversations(IServiceProvider services) : ILiveConversations
+public class LiveSessions(IServiceProvider services) : ILiveSessions
 {
     private IServiceProvider Services { get; } = services;
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
-    private ILiveConversationsBackend Backend => field ??= Services.GetRequiredService<ILiveConversationsBackend>();
+    private ILiveSessionsBackend Backend => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
 
     // [ComputeMethod]
     public virtual async Task<LiveConversation?> Get(Session session, ChatId chatId, CancellationToken cancellationToken)

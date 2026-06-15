@@ -27,7 +27,7 @@ public partial class AudioStreamingBackend : IAudioStreamingBackend, IDisposable
     private AudioSettings AudioSettings { get; }
     private AudioSegmentSaver AudioSegmentSaver => field ??= Services.GetRequiredService<AudioSegmentSaver>();
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
-    private ILiveConversationsBackend LiveConversationsBackend => field ??= Services.GetRequiredService<ILiveConversationsBackend>();
+    private ILiveSessionsBackend LiveSessionsBackend => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
     private ITranscriberFactory TranscriberFactory => field ??= Services.GetRequiredService<ITranscriberFactory>();
     private IRefineTranscriber? RefineTranscriber => field ??= Services.GetService<IRefineTranscriber>();
     private IChats Chats => field ??= Services.GetRequiredService<IChats>();

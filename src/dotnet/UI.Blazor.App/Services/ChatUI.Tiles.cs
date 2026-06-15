@@ -56,9 +56,9 @@ public partial class ChatUI
         if (chat == null)
             return ChatItems.Empty;
 
-        var liveConversation = await Hub.LiveConversationUI.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var liveConversation = await Hub.LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(false);
         var amInLiveConversation = liveConversation != null
-            && await Hub.LiveConversationUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
+            && await Hub.LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
         // Non-joined users see the live block's summary only — no live entries. The synthetic
         // conversation already collapses [Start, EndEntryLid]; hide the un-summarized tail too.
         var hiddenLiveTailRange = liveConversation is { } liveConv && !amInLiveConversation
@@ -238,8 +238,7 @@ public partial class ChatUI
                     chatId,
                     chat.Rules.Author?.Id,
                     tailRange,
-                    showConversations,
-                    expandedConversations,
+                    new ConversationViewState(showConversations, expandedConversations, hiddenLiveTailRange),
                     prevMessage,
                     shownReadyEntryLid,
                     chatLidRange.End,

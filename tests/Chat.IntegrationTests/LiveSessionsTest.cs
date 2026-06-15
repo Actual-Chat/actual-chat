@@ -5,7 +5,7 @@ using ActualChat.Testing.Host;
 namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection))]
-public class LiveConversationsTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
+public class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact]
@@ -18,7 +18,7 @@ public class LiveConversationsTest(ChatCollection.AppHostFixture fixture, ITestO
         var (chatId, _) = await tester.CreateChat(true);
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
         author.Should().NotBeNull();
-        var backend = tester.AppServices.GetRequiredService<ILiveConversationsBackend>();
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
 
         // act
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
@@ -54,7 +54,7 @@ public class LiveConversationsTest(ChatCollection.AppHostFixture fixture, ITestO
         var session = tester.Session;
         var (chatId, _) = await tester.CreateChat(true);
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
-        var backend = tester.AppServices.GetRequiredService<ILiveConversationsBackend>();
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
 
         // act
         await backend.OnStreamRegistered(chatId, author!.Id, null, false, default);
@@ -78,7 +78,7 @@ public class LiveConversationsTest(ChatCollection.AppHostFixture fixture, ITestO
         var session = tester.Session;
         var (chatId, _) = await tester.CreateChat(true);
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
-        var backend = tester.AppServices.GetRequiredService<ILiveConversationsBackend>();
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.OnStreamRegistered(chatId, author!.Id, null, false, default);
 
         // act + assert
@@ -100,7 +100,7 @@ public class LiveConversationsTest(ChatCollection.AppHostFixture fixture, ITestO
         var session = tester.Session;
         var (chatId, _) = await tester.CreateChat(true);
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
-        var backend = tester.AppServices.GetRequiredService<ILiveConversationsBackend>();
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
 
         // act — no live streams remain, so it transitions to closing and stamps ClosingAt
@@ -122,7 +122,7 @@ public class LiveConversationsTest(ChatCollection.AppHostFixture fixture, ITestO
         var session = tester.Session;
         var (chatId, _) = await tester.CreateChat(true);
         var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
-        var backend = tester.AppServices.GetRequiredService<ILiveConversationsBackend>();
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         await backend.OnStreamRegistered(chatId, author!.Id, null, true, default);
         await backend.OnStreamsChanged(chatId, default);
         (await backend.Get(chatId, default))!.IsClosing.Should().BeTrue();
