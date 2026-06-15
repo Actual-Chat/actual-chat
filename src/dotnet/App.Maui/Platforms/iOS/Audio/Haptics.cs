@@ -10,10 +10,8 @@ public class Haptics(AppUIHub hub) : IDisposable
     private const float Sharpness = 0.5f;
     private readonly Lock _lock = new ();
     private readonly Dictionary<Tune, ICHHapticPatternPlayer> _players = new ();
-    private bool _isUnsupported;
 
     private CHHapticEngine? HapticEngine => field ??= CreateHapticEngine();
-    protected ILogger Log => field ??= hub.LogFor(GetType());
 
     public void Dispose()
     {
@@ -47,24 +45,16 @@ public class Haptics(AppUIHub hub) : IDisposable
     private CHHapticEngine? CreateHapticEngine()
     {
         lock (_lock) {
-            if (_isUnsupported)
+            // iPads have no Taptic Engine, so CHHapticEngine init would fail there.
+            if (!CHHapticEngine.GetHardwareCapabilities().SupportsHaptics)
                 return null;
-            try {
-                var engine = new CHHapticEngine(out var error);
-                error.Assert();
 
-                engine.Start(out error);
-                error.Assert();
-                return engine;
-            }
-            catch (Exception e) {
-                // Older iOS devices without a Taptic Engine (iPhone 6s/SE-era,
-                // most iPads) return nil from CHHapticEngine init — degrade to
-                // no-op so the rest of the recording pipeline isn't blocked.
-                Log.LogWarning(e, "CHHapticEngine init failed; haptics will be disabled");
-                _isUnsupported = true;
-                return null;
-            }
+            var engine = new CHHapticEngine(out var error);
+            error.Assert();
+
+            engine.Start(out error);
+            error.Assert();
+            return engine;
         }
     }
 
