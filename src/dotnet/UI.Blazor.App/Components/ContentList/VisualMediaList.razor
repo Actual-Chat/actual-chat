@@ -86,17 +86,7 @@
         };
 
     private async Task OnMediaClick(VisualMediaItem item) {
-        var gallery = new VisualMediaGallery(Hub, Session, ChatId);
-        var init = await gallery.InitializeAround(item, GalleryRadius, CancellationToken.None);
-        var url = UrlMapper.ContentUrl(item.BlobId);
-        var context = new GalleryContext(
-            init.Window,
-            init.AnchorIndex,
-            init.HasNewer,
-            init.HasOlder,
-            gallery.LoadNewer,
-            gallery.LoadOlder,
-            gallery.ResolveAttachment);
-        await VisualMediaViewerUI.Show(url, context);
+        var view = await MediaIndexCollectionView.Create(Hub, Session, ChatId, item, GalleryRadius, CancellationToken.None);
+        await VisualMediaViewerUI.Show(view);
     }
 }

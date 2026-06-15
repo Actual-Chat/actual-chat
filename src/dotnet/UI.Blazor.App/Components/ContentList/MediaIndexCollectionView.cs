@@ -4,17 +4,26 @@ using ActualChat.UI.Blazor.Components;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-// Stateful flat windowed view over a chat's visual-media library for the media viewer.
+// Navigable media-viewer collection over a chat's whole visual-media library.
 // Reuses the period-skeleton + paged-page protocol (and the block helpers) that the
-// right-panel grid uses, but yields a flat newest-first sequence (index 0 = newest)
-// and tracks an exposed window the viewer extends at either edge.
-public sealed class VisualMediaGallery(AppUIHub hub, Session session, ChatId chatId)
+// right-panel grid uses, yields a flat newest-first window (index 0 = newest), and
+// extends it at either edge on demand. Items are synthetic ChatEntryAttachments built
+// from VisualMediaItem; Width/Height are filled lazily via GetEntry in EnsureResolved.
+public sealed class MediaIndexCollectionView : IMediaCollectionView
 {
+    private const int Batch = 10;
+    private const int ResolveRadius = 2;
+
+    private readonly AppUIHub _hub;
+    private readonly Session _session;
+    private readonly ChatId _chatId;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly List<ChatContentPeriod> _periods = new();
     private readonly Dictionary<int, VisualMediaItem[]> _blockItems = new();
-    private readonly Dictionary<ChatEntryId, ChatEntry?> _entryCache = new();
     private readonly List<VisualMediaItem> _loaded = new();
+    private readonly List<VisualMediaItem> _window = new();
+    private readonly List<ChatEntryAttachment> _items = new();
+    private readonly HashSet<Symbol> _resolved = new();
     private List<ContentListPlumbing.Block> _blocks = new();
     private string? _cursor;
     private bool _skeletonStarted;
@@ -23,18 +32,82 @@ public sealed class VisualMediaGallery(AppUIHub hub, Session session, ChatId cha
     private int _exposedStart;
     private int _exposedEnd;
 
-    private IChats Chats => hub.Chats;
-    private bool HasNewer => _exposedStart > 0 || _firstLoadedBlock > 0;
-    private bool HasOlder => _exposedEnd < _loaded.Count || _lastLoadedBlock < _blocks.Count - 1 || _cursor != null;
+    public IReadOnlyList<ChatEntryAttachment> Items => _items;
+    public int InitialIndex { get; private set; }
+    public bool HasNewer => _exposedStart > 0 || _firstLoadedBlock > 0;
+    public bool HasOlder => _exposedEnd < _loaded.Count || _lastLoadedBlock < _blocks.Count - 1 || _cursor != null;
 
-    public async Task<GalleryInit> InitializeAround(VisualMediaItem anchor, int radius, CancellationToken cancellationToken)
+    private IChats Chats => _hub.Chats;
+
+    private MediaIndexCollectionView(AppUIHub hub, Session session, ChatId chatId)
+    {
+        _hub = hub;
+        _session = session;
+        _chatId = chatId;
+    }
+
+    public static async Task<MediaIndexCollectionView> Create(
+        AppUIHub hub,
+        Session session,
+        ChatId chatId,
+        VisualMediaItem anchor,
+        int radius,
+        CancellationToken cancellationToken)
+    {
+        var view = new MediaIndexCollectionView(hub, session, chatId);
+        await view.Initialize(anchor, radius, cancellationToken).ConfigureAwait(false);
+        return view;
+    }
+
+    public async Task<int> LoadNewer(CancellationToken cancellationToken)
+    {
+        var items = await LoadNewerItems(Batch, cancellationToken).ConfigureAwait(false);
+        for (var i = items.Count - 1; i >= 0; i--) {
+            _window.Insert(0, items[i]);
+            _items.Insert(0, ToSyntheticAttachment(items[i]));
+        }
+        return items.Count;
+    }
+
+    public async Task<int> LoadOlder(CancellationToken cancellationToken)
+    {
+        var items = await LoadOlderItems(Batch, cancellationToken).ConfigureAwait(false);
+        foreach (var item in items) {
+            _window.Add(item);
+            _items.Add(ToSyntheticAttachment(item));
+        }
+        return items.Count;
+    }
+
+    public async ValueTask EnsureResolved(int index, CancellationToken cancellationToken)
+    {
+        var from = Math.Max(0, index - ResolveRadius);
+        var to = Math.Min(_window.Count - 1, index + ResolveRadius);
+        for (var i = from; i <= to; i++) {
+            var item = _window[i];
+            if (!_resolved.Add(item.Id))
+                continue;
+
+            var real = await ResolveReal(item, cancellationToken).ConfigureAwait(false);
+            if (real != null && i < _items.Count && _window[i].Id == item.Id)
+                _items[i] = real;
+        }
+    }
+
+    // Private methods
+
+    private async Task Initialize(VisualMediaItem anchor, int radius, CancellationToken cancellationToken)
     {
         await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
             await EnsureSkeletonHead(cancellationToken).ConfigureAwait(false);
             var (anchorBlock, anchorPos) = await LocateAnchor(anchor, cancellationToken).ConfigureAwait(false);
-            if (anchorBlock < 0)
-                return new GalleryInit([anchor], 0, false, false);
+            if (anchorBlock < 0) {
+                _window.Add(anchor);
+                _items.Add(ToSyntheticAttachment(anchor));
+                InitialIndex = 0;
+                return;
+            }
 
             _firstLoadedBlock = _lastLoadedBlock = anchorBlock;
             _loaded.Clear();
@@ -53,15 +126,18 @@ public sealed class VisualMediaGallery(AppUIHub hub, Session session, ChatId cha
 
             _exposedStart = Math.Max(0, anchorIndex - radius);
             _exposedEnd = Math.Min(_loaded.Count, anchorIndex + radius + 1);
-            var window = _loaded.GetRange(_exposedStart, _exposedEnd - _exposedStart);
-            return new GalleryInit(window, anchorIndex - _exposedStart, HasNewer, HasOlder);
+            for (var i = _exposedStart; i < _exposedEnd; i++) {
+                _window.Add(_loaded[i]);
+                _items.Add(ToSyntheticAttachment(_loaded[i]));
+            }
+            InitialIndex = anchorIndex - _exposedStart;
         }
         finally {
             _lock.Release();
         }
     }
 
-    public async Task<GalleryPage> LoadNewer(int count, CancellationToken cancellationToken)
+    private async Task<List<VisualMediaItem>> LoadNewerItems(int count, CancellationToken cancellationToken)
     {
         await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
@@ -70,6 +146,7 @@ public sealed class VisualMediaGallery(AppUIHub hub, Session session, ChatId cha
                 if (_exposedStart == 0) {
                     if (_firstLoadedBlock <= 0)
                         break;
+
                     var block = await EnsureBlockLoaded(_firstLoadedBlock - 1, cancellationToken).ConfigureAwait(false);
                     _firstLoadedBlock--;
                     _loaded.InsertRange(0, block);
@@ -80,14 +157,14 @@ public sealed class VisualMediaGallery(AppUIHub hub, Session session, ChatId cha
                 revealed.InsertRange(0, _loaded.GetRange(_exposedStart - take, take));
                 _exposedStart -= take;
             }
-            return new GalleryPage(revealed, HasNewer);
+            return revealed;
         }
         finally {
             _lock.Release();
         }
     }
 
-    public async Task<GalleryPage> LoadOlder(int count, CancellationToken cancellationToken)
+    private async Task<List<VisualMediaItem>> LoadOlderItems(int count, CancellationToken cancellationToken)
     {
         await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
@@ -101,23 +178,18 @@ public sealed class VisualMediaGallery(AppUIHub hub, Session session, ChatId cha
                 revealed.AddRange(_loaded.GetRange(_exposedEnd, take));
                 _exposedEnd += take;
             }
-            return new GalleryPage(revealed, HasOlder);
+            return revealed;
         }
         finally {
             _lock.Release();
         }
     }
 
-    public async Task<ChatEntryAttachment?> ResolveAttachment(VisualMediaItem item, CancellationToken cancellationToken)
+    private async Task<ChatEntryAttachment?> ResolveReal(VisualMediaItem item, CancellationToken cancellationToken)
     {
-        if (!_entryCache.TryGetValue(item.EntryId, out var entry)) {
-            entry = await Chats.GetEntry(session, item.EntryId, cancellationToken).ConfigureAwait(false);
-            _entryCache[item.EntryId] = entry;
-        }
+        var entry = await Chats.GetEntry(_session, item.EntryId, cancellationToken).ConfigureAwait(false);
         return entry?.Attachments.FirstOrDefault(a => a.Index == item.LocalIndex);
     }
-
-    // Private methods
 
     private async Task EnsureSkeletonHead(CancellationToken cancellationToken)
     {
@@ -133,7 +205,7 @@ public sealed class VisualMediaGallery(AppUIHub hub, Session session, ChatId cha
     private async Task<bool> PullNextSkeletonPage(CancellationToken cancellationToken)
     {
         var page = await Chats
-            .GetContentPeriods(session, chatId, ChatContentKind.Media, _cursor, cancellationToken)
+            .GetContentPeriods(_session, _chatId, ChatContentKind.Media, _cursor, cancellationToken)
             .ConfigureAwait(false);
         _periods.AddRange(page.Periods);
         _cursor = page.NextPeriodKey;
@@ -148,7 +220,7 @@ public sealed class VisualMediaGallery(AppUIHub hub, Session session, ChatId cha
 
         var block = _blocks[index];
         var items = await Chats
-            .GetVisualMediaPeriod(session, chatId, block.PeriodKey, block.PageIndex, cancellationToken)
+            .GetVisualMediaPeriod(_session, _chatId, block.PeriodKey, block.PageIndex, cancellationToken)
             .ConfigureAwait(false);
         // Backend returns a page oldest-first; the flat sequence is newest-first.
         // GetVisualMediaPeriod is a [ComputeMethod] — its array is cached and shared,
@@ -222,5 +294,26 @@ public sealed class VisualMediaGallery(AppUIHub hub, Session session, ChatId cha
             if (pos >= 0)
                 return (b, pos);
         }
+    }
+
+    private static ChatEntryAttachment ToSyntheticAttachment(VisualMediaItem item)
+    {
+        var media = new Media.Media(item.MediaId) {
+            BlobId = item.BlobId,
+            ContentType = item.ContentType,
+            FileName = item.FileName,
+            Length = item.Size,
+        };
+        Media.Media? thumbnailMedia = null;
+        if (item.ThumbnailMediaId is { } thumbnailMediaId && !item.ThumbnailBlobId.IsNullOrEmpty())
+            thumbnailMedia = new Media.Media(thumbnailMediaId) { BlobId = item.ThumbnailBlobId };
+        return new ChatEntryAttachment(item.Id) {
+            EntryId = item.EntryId,
+            Index = item.LocalIndex,
+            MediaId = item.MediaId,
+            Media = media,
+            ThumbnailMediaId = item.ThumbnailMediaId,
+            ThumbnailMedia = thumbnailMedia,
+        };
     }
 }
