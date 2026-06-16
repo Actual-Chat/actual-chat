@@ -20,4 +20,6 @@ public interface ILiveSessions : IComputeService
         bool isActive,
         CancellationToken cancellationToken);
     Task SetMicMuted(Session session, ChatId chatId, bool micMuted, CancellationToken cancellationToken);
+    Task SetRules(Session session, ChatId chatId, SessionRules rules, CancellationToken cancellationToken);
+    Task MutePeer(Session session, ChatId chatId, AuthorId targetAuthorId, bool muted, CancellationToken cancellationToken);
 }

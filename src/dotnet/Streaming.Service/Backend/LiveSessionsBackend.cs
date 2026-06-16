@@ -194,6 +194,9 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         }
 
         await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
+        // Register the streamer as a participant so per-peer mute flags have a home
+        // (grouping uses live-stream state, so a stale entry never misgroups an active streamer).
+        await EnsureParticipant(chatId, authorId, cancellationToken).ConfigureAwait(false);
         InvalidateGet(chatId);
     }
 
@@ -285,6 +288,35 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
         InvalidateGetLiveSession(chatId);
     }
 
+    public virtual async Task SetRules(ChatId chatId, SessionRules rules, CancellationToken cancellationToken)
+    {
+        using var _ = Computed.BeginIsolation();
+        using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
+
+        var state = await SafeGet(chatId).ConfigureAwait(false);
+        if (state is null)
+            return;
+
+        state = state with { Rules = rules, Version = VersionGenerator.NextVersion(state.Version) };
+        await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
+        InvalidateGet(chatId);
+    }
+
+    public virtual async Task MutePeer(ChatId chatId, AuthorId targetAuthorId, bool muted, CancellationToken cancellationToken)
+    {
+        var author = await AuthorsBackend
+            .Get(chatId, targetAuthorId, RequestedAuthorKind.Default, cancellationToken)
+            .ConfigureAwait(false);
+        if (author is null)
+            return;
+        await EnsureParticipant(chatId, targetAuthorId, cancellationToken).ConfigureAwait(false);
+        var existing = await SafeGetParticipant(chatId, author.UserId).ConfigureAwait(false);
+        if (existing is null)
+            return;
+        await _participants.Set(chatId.Value, author.UserId.Value, existing with { ForcedMuted = muted }).ConfigureAwait(false);
+        InvalidateGetLiveSession(chatId);
+    }
+
     public virtual async Task UpdateSummary(
         ChatId chatId,
         LiveConversationSummary summary,
@@ -333,6 +365,20 @@ public partial class LiveSessionsBackend : ShardComputeService, ILiveSessionsBac
             Log.LogWarning(e, "Failed to read participants from Redis for chat #{ChatId}", chatId);
             return null;
         }
+    }
+
+    private async Task EnsureParticipant(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
+    {
+        var author = await AuthorsBackend
+            .Get(chatId, authorId, RequestedAuthorKind.Default, cancellationToken)
+            .ConfigureAwait(false);
+        if (author is null || author.UserId.Value.IsNullOrEmpty())
+            return;
+        var existing = await SafeGetParticipant(chatId, author.UserId).ConfigureAwait(false);
+        var info = new ParticipationInfo(ParticipationKind.Record, Clocks.SystemClock.Now,
+            existing?.MicMuted ?? false, existing?.ForcedMuted ?? false);
+        await _participants.Set(chatId.Value, author.UserId.Value, info).ConfigureAwait(false);
+        InvalidateIsParticipant(chatId, author.UserId);
     }
 
     private async Task<Dictionary<string, ParticipationInfo?>> SafeGetHashMap(ChatId chatId)
