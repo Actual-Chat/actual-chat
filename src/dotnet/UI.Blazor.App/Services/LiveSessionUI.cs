@@ -54,6 +54,11 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         => LiveSessions.SetParticipation(Session, chatId, kind, isActive, cancellationToken);
 
     protected override async Task OnRun(CancellationToken cancellationToken)
+        => await Task.WhenAll(
+            RunParticipationSync(cancellationToken),
+            RunForcedMuteEnforcement(cancellationToken)).ConfigureAwait(false);
+
+    private async Task RunParticipationSync(CancellationToken cancellationToken)
     {
         var cParticipations = await Computed
             .Capture(() => GetMyParticipations(cancellationToken), cancellationToken)
@@ -84,6 +89,39 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             cts.CancelAndDisposeSilently();
             cParticipations = await cParticipations.Update(cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    // Soft forced-mute: when a controller mutes me, my own recorder stops.
+    private async Task RunForcedMuteEnforcement(CancellationToken cancellationToken)
+    {
+        var cMuted = await Computed
+            .Capture(() => GetForcedMutedRecordingChat(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        while (!cancellationToken.IsCancellationRequested) {
+            if (cMuted.Value is { } chatId && !chatId.Value.IsNullOrEmpty())
+                await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
+
+            await cMuted.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+            cMuted = await cMuted.Update(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<ChatId?> GetForcedMutedRecordingChat(CancellationToken cancellationToken)
+    {
+        var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
+        var recording = activeChats.FirstOrDefault(c => c.IsRecording);
+        if (recording.ChatId is not { } chatId || chatId.Value.IsNullOrEmpty())
+            return null;
+
+        var live = await GetLiveSession(chatId, cancellationToken).ConfigureAwait(false);
+        if (live is null)
+            return null;
+        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (ownAuthor is null)
+            return null;
+        var me = live.Members.FirstOrDefault(m => m.AuthorId == ownAuthor.Id);
+        return me is { ForcedMuted: true } ? chatId : null;
     }
 
     [ComputeMethod]
