@@ -872,8 +872,8 @@ jobs:
           EOF
 
       # publish-maccatalyst (Release) builds, signs with the Apple Distribution cert,
-      # applies fix-codesigning.sh, and — via CreatePackage + EnablePackageSigning —
-      # emits the installer-signed .pkg directly.
+      # and — via CreatePackage + EnablePackageSigning — emits the installer-signed
+      # .pkg directly.
       - name: Build app package
         id: pkg
         run: |-
