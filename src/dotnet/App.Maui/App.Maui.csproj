@@ -702,6 +702,10 @@
 
   <ItemGroup>
     <MauiAsset Include="wwwroot\loading_icon_voxt.svg" />
+    <!-- wwwroot/index.html is generated from index.htm by UpdateBundleHash and gitignored.
+         Declare it explicitly so MSBuild's static-web-asset list includes it even when
+         the file doesn't exist at evaluation time (clean CI checkout). -->
+    <Content Include="wwwroot\index.html" />
   </ItemGroup>
 
   <ItemGroup>
@@ -740,7 +744,10 @@
     </PropertyGroup>
   </Target>
 
-  <Target Name="UpdateBundleHash" AfterTargets="Build">
+  <!-- ResolveProjectStaticWebAssets calls DefineStaticWebAssets, which checks every
+       Content item exists on disk. wwwroot/index.html is generated below, so it must
+       exist before that check runs — much earlier than the Build target. -->
+  <Target Name="UpdateBundleHash" BeforeTargets="ResolveProjectStaticWebAssets">
     <PropertyGroup>
       <InputFile>$(MSBuildThisFileDirectory)\wwwroot\index.htm</InputFile>
       <OutputFile>$(MSBuildThisFileDirectory)\wwwroot\index.html</OutputFile>
@@ -759,26 +766,6 @@
     <WriteLinesToFile File="$(OutputFile)" Lines="$([System.IO.File]::ReadAllText($(InputFile)))" Overwrite="true" />
 
     <Message Importance="High" Text="Service Worker has been copied." />
-  </Target>
-
-  <!-- wwwroot/index.html (generated from index.htm by UpdateBundleHash) is gitignored,
-       so on a clean CI checkout it's missing from the wwwroot glob and the BlazorWebView
-       host page 404s. Regenerate it into the assembled bundle here, between resource
-       collection and code signing. -->
-  <Target Name="_InjectBlazorHostPage"
-          Condition="$(TargetFramework.Contains('-maccatalyst'))"
-          BeforeTargets="_CodesignAppBundle">
-    <PropertyGroup>
-      <_BundleWwwroot>$([System.IO.Path]::GetFullPath('$(AppBundleDir)').TrimEnd('/'))/Contents/Resources/wwwroot</_BundleWwwroot>
-      <_HostHtm>$(_BundleWwwroot)/index.htm</_HostHtm>
-      <_HostHtml>$(_BundleWwwroot)/index.html</_HostHtml>
-      <_HostVersion>$(Version)-$([System.DateTime]::UtcNow.Ticks.ToString("X").Substring(7))</_HostVersion>
-    </PropertyGroup>
-    <WriteLinesToFile Condition="Exists('$(_HostHtm)')"
-        File="$(_HostHtml)" Overwrite="true"
-        Lines="$([System.IO.File]::ReadAllText($(_HostHtm)).Replace('.js&quot; a','.js?v=$(_HostVersion)&quot; a').Replace('.css&quot; r','.css?v=$(_HostVersion)&quot; r').Replace('.wasm&quot; a','.wasm?v=$(_HostVersion)&quot; a'))" />
-    <Message Importance="High" Condition="Exists('$(_HostHtml)')" Text="_InjectBlazorHostPage: wrote $(_HostHtml)" />
-    <Warning Condition="!Exists('$(_HostHtm)')" Text="_InjectBlazorHostPage: index.htm not found at $(_HostHtm)" />
   </Target>
 
   <!-- Target needed until LinkWithSwiftSystemLibraries makes it into the SDK: https://github.com/xamarin/xamarin-macios/pull/20463 -->

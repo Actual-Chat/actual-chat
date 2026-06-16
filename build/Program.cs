@@ -408,7 +408,7 @@ internal static class Program
             isDevMaui ??= !isProduction;
             await Cli
                 .Wrap(dotnet)
-                .WithArguments("build",
+                .WithArguments("publish",
                     "-noLogo",
                     "-maxCpuCount",
                     "-nodeReuse:false",
@@ -423,45 +423,11 @@ internal static class Program
                 .ExecuteAsync(cancellationToken)
                 .Task
                 .ConfigureAwait(false);
-            // TODO: figure out how to publish and consistently perform post build targets in App.Maui.csproj
-            await Cli
-                .Wrap(dotnet)
-                .WithArguments("publish",
-                    "-noLogo",
-                    "-maxCpuCount",
-                    "-nodeReuse:false",
-                    "-f net10.0-android",
-                    @"/p:TargetFrameworks=\""net10.0-android;net10.0\""", // otherwise needs maui-ios etc
-                    $"/p:AndroidSigningKeyPass={signingKeyPass} /p:AndroidSigningStorePass={signingStorePass}",
-                    $"-c {configuration}",
-                    $"-p:IsDevMaui={isDevMaui}")
-                .WithWorkingDirectory("src/dotnet/App.Maui")
-                .ToConsole(Green("dotnet: "))
-                .ExecuteAsync(cancellationToken)
-                .Task
-                .ConfigureAwait(false);
         });
 
         Target(Targets.PublishIos, DependsOn(Targets.NpmBuild), async () => {
             var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
             isDevMaui ??= !isProduction;
-            await Cli
-                .Wrap(dotnet)
-                .WithArguments("build",
-                    "-noLogo",
-                    "-maxCpuCount",
-                    "-nodeReuse:false",
-                    "-f net10.0-ios",
-                    @"/p:TargetFrameworks=\""net10.0-ios;net10.0\""", // otherwise needs maui-android etc
-                    $"-c {configuration}",
-                    $"-p:IsDevMaui={isDevMaui}",
-                    $"-p:UseNativeAot={useNativeAot}")
-                .WithWorkingDirectory("src/dotnet/App.Maui")
-                .ToConsole(Green("dotnet: "))
-                .ExecuteAsync(cancellationToken)
-                .Task
-                .ConfigureAwait(false);
-            // TODO: figure out how to publish and consistently perform post build targets in App.Maui.csproj
             await Cli
                 .Wrap(dotnet)
                 .WithArguments("publish",
