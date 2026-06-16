@@ -1,6 +1,4 @@
-using ActualChat.Chat;
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.UI.Blazor.Components;
 using ActualLab.Locking;
 
 namespace ActualChat.UI.Blazor.App.Components;
@@ -66,18 +64,18 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
 
     public async Task<int> LoadNewer(CancellationToken cancellationToken)
     {
-        var items = await LoadNewerItems(Batch, cancellationToken).ConfigureAwait(false);
-        for (var i = items.Count - 1; i >= 0; i--)
-            _items.Insert(0, ToSyntheticAttachment(items[i]));
+        using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
+        var items = await RevealNewer(Batch, cancellationToken).ConfigureAwait(false);
+        PrependSynthetic(items);
         TrimBack();
         return items.Count;
     }
 
     public async Task<int> LoadOlder(CancellationToken cancellationToken)
     {
-        var items = await LoadOlderItems(Batch, cancellationToken).ConfigureAwait(false);
-        foreach (var item in items)
-            _items.Add(ToSyntheticAttachment(item));
+        using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
+        var items = await RevealOlder(Batch, cancellationToken).ConfigureAwait(false);
+        AppendSynthetic(items);
         return -TrimFront();
     }
 
@@ -116,23 +114,10 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
         _items.Add(ToSyntheticAttachment(_loaded[anchorPos]));
 
         var newer = await RevealNewer(radius, cancellationToken).ConfigureAwait(false);
-        for (var i = newer.Count - 1; i >= 0; i--)
-            _items.Insert(0, ToSyntheticAttachment(newer[i]));
-        foreach (var item in await RevealOlder(radius, cancellationToken).ConfigureAwait(false))
-            _items.Add(ToSyntheticAttachment(item));
+        PrependSynthetic(newer);
+        var older = await RevealOlder(radius, cancellationToken).ConfigureAwait(false);
+        AppendSynthetic(older);
         InitialIndex = newer.Count;
-    }
-
-    private async Task<List<VisualMediaItem>> LoadNewerItems(int count, CancellationToken cancellationToken)
-    {
-        using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
-        return await RevealNewer(count, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task<List<VisualMediaItem>> LoadOlderItems(int count, CancellationToken cancellationToken)
-    {
-        using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
-        return await RevealOlder(count, cancellationToken).ConfigureAwait(false);
     }
 
     // Reveal cores — caller must hold _lock. Move the exposed window's edge outward by up to
@@ -264,6 +249,18 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
             if (_cursor == null)
                 return (-1, -1);
         }
+    }
+
+    private void PrependSynthetic(IReadOnlyList<VisualMediaItem> items)
+    {
+        for (var i = items.Count - 1; i >= 0; i--)
+            _items.Insert(0, ToSyntheticAttachment(items[i]));
+    }
+
+    private void AppendSynthetic(IReadOnlyList<VisualMediaItem> items)
+    {
+        foreach (var item in items)
+            _items.Add(ToSyntheticAttachment(item));
     }
 
     private static ChatEntryAttachment ToSyntheticAttachment(VisualMediaItem item)
