@@ -465,8 +465,6 @@
        entitlement set is used for Debug and Release, matching iOS. -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-maccatalyst'))">
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">maccatalyst-arm64</RuntimeIdentifier>
-    <IntermediateOutputPath>..\..\..\artifacts\out</IntermediateOutputPath>
-    <UseShortFileNames>True</UseShortFileNames>
     <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Platforms\MacCatalyst\Entitlements.dev.plist</CodesignEntitlements>
     <CodesignEntitlements Condition="'$(IsDevMaui)' != 'true'">Platforms\MacCatalyst\Entitlements.prod.plist</CodesignEntitlements>
     <EnableSGenConc>False</EnableSGenConc>
@@ -740,25 +738,6 @@
     <PropertyGroup>
       <_AndroidEnablePreloadAssembliesDefault>True</_AndroidEnablePreloadAssembliesDefault>
     </PropertyGroup>
-  </Target>
-
-  <!-- MAUI/iOS-SDK 26.1.10502 workaround: in-process Codesign overwrites MonoBundle
-       .dylib files with the codesign arg string and leaves stray .stampfile entries
-       in embedded .frameworks. Restore dylibs from the linker-stage staging copy,
-       remove the stampfiles, and re-sign. Drop once the SDK is bumped past it. -->
-  <Target Name="_FixMacCatalystCodesigningRegression"
-          Condition="$(TargetFramework.Contains('-maccatalyst'))"
-          AfterTargets="_CodesignAppBundle">
-    <PropertyGroup>
-      <_MaciOSStagingMonoBundle>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../artifacts/out/nativelibraries/Contents/MonoBundle'))</_MaciOSStagingMonoBundle>
-      <_MaciOSAppBundle>$([System.IO.Path]::GetFullPath('$(AppBundleDir)').TrimEnd('/'))</_MaciOSAppBundle>
-      <_MaciOSEntitlementsXcent>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../artifacts/out/Entitlements.xcent'))</_MaciOSEntitlementsXcent>
-      <_MaciOSFixCodesignScript>$(MSBuildThisFileDirectory)Platforms/MacCatalyst/fix-codesigning.sh</_MaciOSFixCodesignScript>
-      <!-- Debug => "-" (ad-hoc); Release => Apple Distribution identity so nested code matches the bundle. -->
-      <_MaciOSCodesignKey Condition="'$(CodesignKey)' == ''">-</_MaciOSCodesignKey>
-      <_MaciOSCodesignKey Condition="'$(CodesignKey)' != ''">$(CodesignKey)</_MaciOSCodesignKey>
-    </PropertyGroup>
-    <Exec Command="/bin/sh &quot;$(_MaciOSFixCodesignScript)&quot; &quot;$(_MaciOSAppBundle)&quot; &quot;$(_MaciOSStagingMonoBundle)&quot; &quot;$(_MaciOSEntitlementsXcent)&quot; &quot;$(_MaciOSCodesignKey)&quot;" />
   </Target>
 
   <Target Name="UpdateBundleHash" AfterTargets="Build">
