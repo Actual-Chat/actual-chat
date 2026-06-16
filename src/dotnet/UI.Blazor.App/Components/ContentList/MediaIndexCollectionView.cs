@@ -31,7 +31,6 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
     private readonly HashSet<Symbol> _resolved = new();
     private List<ContentListPlumbing.Block> _blocks = new();
     private string? _cursor;
-    private bool _skeletonStarted;
     private int _firstLoadedBlock = -1;
     private int _lastLoadedBlock = -1;
     private int _exposedStart;
@@ -56,11 +55,12 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
         Session session,
         ChatId chatId,
         VisualMediaItem anchor,
+        string anchorRowKey,
         int radius,
         CancellationToken cancellationToken)
     {
         var view = new MediaIndexCollectionView(hub, session, chatId);
-        await view.Initialize(anchor, radius, cancellationToken).ConfigureAwait(false);
+        await view.Initialize(anchor, anchorRowKey, radius, cancellationToken).ConfigureAwait(false);
         return view;
     }
 
@@ -98,12 +98,11 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
 
     // Private methods
 
-    private async Task Initialize(VisualMediaItem anchor, int radius, CancellationToken cancellationToken)
+    private async Task Initialize(VisualMediaItem anchor, string anchorRowKey, int radius, CancellationToken cancellationToken)
     {
         await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
-            await EnsureSkeletonHead(cancellationToken).ConfigureAwait(false);
-            var (anchorBlock, anchorPos) = await LocateAnchor(anchor, cancellationToken).ConfigureAwait(false);
+            var (anchorBlock, anchorPos) = await LocateAnchor(anchor, anchorRowKey, cancellationToken).ConfigureAwait(false);
             if (anchorBlock < 0) {
                 _items.Add(ToSyntheticAttachment(anchor));
                 InitialIndex = 0;
@@ -224,26 +223,13 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
         _exposedEnd -= excess;
     }
 
-    private async Task EnsureSkeletonHead(CancellationToken cancellationToken)
-    {
-        if (_skeletonStarted)
-            return;
-
-        do {
-            await PullNextSkeletonPage(cancellationToken).ConfigureAwait(false);
-        } while (_periods.Count == 0 && _cursor != null);
-        _blocks = ContentListPlumbing.BuildBlocks(_periods);
-    }
-
-    private async Task<bool> PullNextSkeletonPage(CancellationToken cancellationToken)
+    private async Task PullNextSkeletonPage(CancellationToken cancellationToken)
     {
         var page = await Chats
             .GetContentPeriods(_session, _chatId, ChatContentKind.Media, _cursor, cancellationToken)
             .ConfigureAwait(false);
         _periods.AddRange(page.Periods);
         _cursor = page.NextPeriodKey;
-        _skeletonStarted = true;
-        return page.Periods.Length > 0;
     }
 
     private async Task<VisualMediaItem[]> EnsureBlockLoaded(int index, CancellationToken cancellationToken)
@@ -279,53 +265,25 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
         return true;
     }
 
-    private async Task<(int Block, int Pos)> LocateAnchor(VisualMediaItem anchor, CancellationToken cancellationToken)
+    // The grid row the anchor was clicked in carries an opaque "r|i:PeriodKey:PageIndex:row"
+    // key; FindBlockIndex recovers its block without parsing the PeriodKey format. Page the
+    // skeleton until that block surfaces, then locate the anchor within it by Id. Returns
+    // (-1, -1) if the skeleton is exhausted without a match, or the anchor drifted off its
+    // page since the grid rendered it — the caller then shows the clicked item on its own.
+    private async Task<(int Block, int Pos)> LocateAnchor(VisualMediaItem anchor, string anchorRowKey, CancellationToken cancellationToken)
     {
-        if (_blocks.Count == 0)
-            return (-1, -1);
-
-        var at = anchor.At.ToDateTime();
-        var monthKey = $"{at.Year:D4}-{at.Month:D2}";
         while (true) {
-            var idx = _blocks.FindIndex(b => b.PeriodKey == monthKey);
-            if (idx >= 0) {
-                var first = idx;
-                while (first > 0 && _blocks[first - 1].PeriodKey == monthKey)
-                    first--;
-                var last = idx;
-                while (last < _blocks.Count - 1 && _blocks[last + 1].PeriodKey == monthKey)
-                    last++;
-                for (var b = first; b <= last; b++) {
-                    var items = await EnsureBlockLoaded(b, cancellationToken).ConfigureAwait(false);
-                    var pos = Array.FindIndex(items, x => x.Id == anchor.Id);
-                    if (pos >= 0)
-                        return (b, pos);
-                }
-                break;
-            }
-            if (_cursor == null)
-                break;
-
             await PullNextSkeletonPage(cancellationToken).ConfigureAwait(false);
             _blocks = ContentListPlumbing.BuildBlocks(_periods);
-        }
-        return await LinearLocate(anchor, cancellationToken).ConfigureAwait(false);
-    }
 
-    private async Task<(int Block, int Pos)> LinearLocate(VisualMediaItem anchor, CancellationToken cancellationToken)
-    {
-        for (var b = 0;; b++) {
-            while (b >= _blocks.Count) {
-                if (_cursor == null)
-                    return (-1, -1);
-
-                await PullNextSkeletonPage(cancellationToken).ConfigureAwait(false);
-                _blocks = ContentListPlumbing.BuildBlocks(_periods);
+            var idx = ContentListPlumbing.FindBlockIndex(_blocks, anchorRowKey);
+            if (idx >= 0) {
+                var items = await EnsureBlockLoaded(idx, cancellationToken).ConfigureAwait(false);
+                var pos = Array.FindIndex(items, x => x.Id == anchor.Id);
+                return pos >= 0 ? (idx, pos) : (-1, -1);
             }
-            var items = await EnsureBlockLoaded(b, cancellationToken).ConfigureAwait(false);
-            var pos = Array.FindIndex(items, x => x.Id == anchor.Id);
-            if (pos >= 0)
-                return (b, pos);
+            if (_cursor == null)
+                return (-1, -1);
         }
     }
 

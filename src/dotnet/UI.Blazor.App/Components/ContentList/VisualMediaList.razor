@@ -28,7 +28,7 @@
                         var thumb = media.ThumbnailBlobId.IsNullOrEmpty() ? "" : UrlMapper.ContentUrl(media.ThumbnailBlobId);
                         <a class="image-attachment c-video" @key="@media.Id"
                            href="@url" role="button" data-menu="@menuRef"
-                           @onclick="@(() => OnMediaClick(media))" @onclick:preventDefault="true">
+                           @onclick="@(() => OnMediaClick(item.Key, media))" @onclick:preventDefault="true">
                             @if (thumb.Length > 0) {
                                 <image-skeleton class="show-image-skeleton" src="@thumb"/>
                             }
@@ -39,7 +39,7 @@
                         var previewUrl = UrlMapper.ImagePreviewUrl(url, null, 320);
                         <a class="image-attachment" @key="@media.Id"
                            href="@url" role="button" data-menu="@menuRef"
-                           @onclick="@(() => OnMediaClick(media))" @onclick:preventDefault="true">
+                           @onclick="@(() => OnMediaClick(item.Key, media))" @onclick:preventDefault="true">
                             <image-skeleton class="show-image-skeleton" src="@url" thumbnailSrc="@previewUrl"/>
                         </a>
                     }
@@ -85,8 +85,8 @@
             VisorDate = visorDate,
         };
 
-    private async Task OnMediaClick(VisualMediaItem item) {
-        var view = await MediaIndexCollectionView.Create(Hub, Session, ChatId, item, GalleryRadius, CancellationToken.None);
+    private async Task OnMediaClick(string anchorRowKey, VisualMediaItem media) {
+        var view = await MediaIndexCollectionView.Create(Hub, Session, ChatId, media, anchorRowKey, GalleryRadius, CancellationToken.None);
         await VisualMediaViewerUI.Show(view);
     }
 }
