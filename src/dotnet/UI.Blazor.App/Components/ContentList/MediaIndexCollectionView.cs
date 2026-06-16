@@ -26,7 +26,6 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
     private readonly ChatId _chatId;
     private readonly AsyncLock _lock = new();
     private readonly List<ChatContentPeriod> _periods = new();
-    private readonly Dictionary<int, VisualMediaItem[]> _blockItems = new();
     private readonly List<VisualMediaItem> _loaded = new();
     private readonly List<ChatEntryAttachment> _items = new();
     private readonly HashSet<Symbol> _resolved = new();
@@ -111,7 +110,7 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
 
         _firstLoadedBlock = _lastLoadedBlock = anchorBlock;
         _loaded.Clear();
-        _loaded.AddRange(_blockItems[anchorBlock]);
+        _loaded.AddRange(await LoadBlock(anchorBlock, cancellationToken).ConfigureAwait(false));
         _exposedStart = anchorPos;
         _exposedEnd = anchorPos + 1;
         _items.Add(ToSyntheticAttachment(_loaded[anchorPos]));
@@ -146,7 +145,7 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
                 if (_firstLoadedBlock <= 0)
                     break;
 
-                var block = await EnsureBlockLoaded(_firstLoadedBlock - 1, cancellationToken).ConfigureAwait(false);
+                var block = await LoadBlock(_firstLoadedBlock - 1, cancellationToken).ConfigureAwait(false);
                 _firstLoadedBlock--;
                 _loaded.InsertRange(0, block);
                 _exposedStart += block.Length;
@@ -218,21 +217,15 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
         _cursor = page.NextPeriodKey;
     }
 
-    private async Task<VisualMediaItem[]> EnsureBlockLoaded(int index, CancellationToken cancellationToken)
+    private async Task<VisualMediaItem[]> LoadBlock(int index, CancellationToken cancellationToken)
     {
-        if (_blockItems.TryGetValue(index, out var cached))
-            return cached;
-
         var block = _blocks[index];
         var items = await Chats
             .GetVisualMediaPeriod(_session, _chatId, block.PeriodKey, block.PageIndex, cancellationToken)
             .ConfigureAwait(false);
-        // Backend returns a page oldest-first; the flat sequence is newest-first.
-        // GetVisualMediaPeriod is a [ComputeMethod] — its array is cached and shared,
-        // so reverse into a fresh array instead of mutating it in place.
-        var newestFirst = items.Reverse().ToArray();
-        _blockItems[index] = newestFirst;
-        return newestFirst;
+        // Backend returns a page oldest-first; the flat sequence is newest-first. GetVisualMediaPeriod
+        // is a cached [ComputeMethod], so reverse into a fresh array instead of mutating it in place.
+        return items.Reverse().ToArray();
     }
 
     private async Task<bool> TryLoadOlderBlock(CancellationToken cancellationToken)
@@ -245,7 +238,7 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
             _blocks = ContentListPlumbing.BuildBlocks(_periods);
         }
         var next = _lastLoadedBlock + 1;
-        var block = await EnsureBlockLoaded(next, cancellationToken).ConfigureAwait(false);
+        var block = await LoadBlock(next, cancellationToken).ConfigureAwait(false);
         _lastLoadedBlock = next;
         _loaded.AddRange(block);
         return true;
@@ -264,7 +257,7 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
 
             var idx = ContentListPlumbing.FindBlockIndex(_blocks, anchorRowKey);
             if (idx >= 0) {
-                var items = await EnsureBlockLoaded(idx, cancellationToken).ConfigureAwait(false);
+                var items = await LoadBlock(idx, cancellationToken).ConfigureAwait(false);
                 var pos = Array.FindIndex(items, x => x.Id == anchor.Id);
                 return pos >= 0 ? (idx, pos) : (-1, -1);
             }
