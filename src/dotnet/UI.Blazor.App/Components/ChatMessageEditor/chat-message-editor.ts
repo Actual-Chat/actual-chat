@@ -419,7 +419,7 @@ export class ChatMessageEditor {
             return;
 
         this.isNarrowScreen = isNarrowScreen;
-        const buttons = this.editorDiv.querySelectorAll(':scope div.chat-audio-panel .btn');
+        const buttons = this.editorDiv.querySelectorAll(':scope div.chat-audio-panel .btn:not(.rec-btn)');
         if (isNarrowScreen)
             buttons.forEach(b => b.addEventListener('click', this.onReturnFocusOnInput));
         else
