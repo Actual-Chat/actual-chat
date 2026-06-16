@@ -1,6 +1,7 @@
 using ActualChat.Chat;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Components;
+using ActualLab.Locking;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
@@ -23,7 +24,7 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
     private readonly AppUIHub _hub;
     private readonly Session _session;
     private readonly ChatId _chatId;
-    private readonly SemaphoreSlim _lock = new(1, 1);
+    private readonly AsyncLock _lock = new();
     private readonly List<ChatContentPeriod> _periods = new();
     private readonly Dictionary<int, VisualMediaItem[]> _blockItems = new();
     private readonly List<VisualMediaItem> _loaded = new();
@@ -100,54 +101,39 @@ public sealed class MediaIndexCollectionView : IMediaCollectionView
 
     private async Task Initialize(VisualMediaItem anchor, string anchorRowKey, int radius, CancellationToken cancellationToken)
     {
-        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try {
-            var (anchorBlock, anchorPos) = await LocateAnchor(anchor, anchorRowKey, cancellationToken).ConfigureAwait(false);
-            if (anchorBlock < 0) {
-                _items.Add(ToSyntheticAttachment(anchor));
-                InitialIndex = 0;
-                return;
-            }
-
-            _firstLoadedBlock = _lastLoadedBlock = anchorBlock;
-            _loaded.Clear();
-            _loaded.AddRange(_blockItems[anchorBlock]);
-            _exposedStart = anchorPos;
-            _exposedEnd = anchorPos + 1;
-            _items.Add(ToSyntheticAttachment(_loaded[anchorPos]));
-
-            var newer = await RevealNewer(radius, cancellationToken).ConfigureAwait(false);
-            for (var i = newer.Count - 1; i >= 0; i--)
-                _items.Insert(0, ToSyntheticAttachment(newer[i]));
-            foreach (var item in await RevealOlder(radius, cancellationToken).ConfigureAwait(false))
-                _items.Add(ToSyntheticAttachment(item));
-            InitialIndex = newer.Count;
+        using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
+        var (anchorBlock, anchorPos) = await LocateAnchor(anchor, anchorRowKey, cancellationToken).ConfigureAwait(false);
+        if (anchorBlock < 0) {
+            _items.Add(ToSyntheticAttachment(anchor));
+            InitialIndex = 0;
+            return;
         }
-        finally {
-            _lock.Release();
-        }
+
+        _firstLoadedBlock = _lastLoadedBlock = anchorBlock;
+        _loaded.Clear();
+        _loaded.AddRange(_blockItems[anchorBlock]);
+        _exposedStart = anchorPos;
+        _exposedEnd = anchorPos + 1;
+        _items.Add(ToSyntheticAttachment(_loaded[anchorPos]));
+
+        var newer = await RevealNewer(radius, cancellationToken).ConfigureAwait(false);
+        for (var i = newer.Count - 1; i >= 0; i--)
+            _items.Insert(0, ToSyntheticAttachment(newer[i]));
+        foreach (var item in await RevealOlder(radius, cancellationToken).ConfigureAwait(false))
+            _items.Add(ToSyntheticAttachment(item));
+        InitialIndex = newer.Count;
     }
 
     private async Task<List<VisualMediaItem>> LoadNewerItems(int count, CancellationToken cancellationToken)
     {
-        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try {
-            return await RevealNewer(count, cancellationToken).ConfigureAwait(false);
-        }
-        finally {
-            _lock.Release();
-        }
+        using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
+        return await RevealNewer(count, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<List<VisualMediaItem>> LoadOlderItems(int count, CancellationToken cancellationToken)
     {
-        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try {
-            return await RevealOlder(count, cancellationToken).ConfigureAwait(false);
-        }
-        finally {
-            _lock.Release();
-        }
+        using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
+        return await RevealOlder(count, cancellationToken).ConfigureAwait(false);
     }
 
     // Reveal cores — caller must hold _lock. Move the exposed window's edge outward by up to
